@@ -62,8 +62,7 @@ final DiscoverableTeam kSuperpowersTrioTeamTemplate = DiscoverableTeam(
           'review pass): do not enqueue implementation before the plan is '
           'ready, nor a review task before its implementation tasks exist. Use '
           'send_message only to relay clarifying questions and blockers between '
-          'members and the user, and update_task to track gates (Skill / '
-          'workflow / Write / Edit / Bash are disabled here). Never stand down; '
+          'members and the user, and update_task to track gates. Never stand down; '
           'escalate blockers to the user.',
     ),
     DiscoverableTeamMember(
@@ -131,6 +130,4 @@ final DiscoverableTeam kSuperpowersTrioTeamTemplate = DiscoverableTeam(
 
 /// All team templates bundled with TeamPilot (prepended to remote registry
 /// results in [CompositeTeamHubSource]).
-List<DiscoverableTeam> builtInTeamTemplates() => [
-      kSuperpowersTrioTeamTemplate,
-    ];
+List<DiscoverableTeam> builtInTeamTemplates() => [kSuperpowersTrioTeamTemplate];

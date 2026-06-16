@@ -64,7 +64,8 @@ class TeamToolProviderSelectors extends StatelessWidget {
           }
           return providerDropdownRow(
             context,
-            label: eligible
+            label:
+                eligible
                     .where((p) => p.id == id)
                     .map((p) => p.name)
                     .firstOrNull ??

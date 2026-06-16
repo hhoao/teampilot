@@ -34,9 +34,7 @@ String memberLaunchConfigLine({
 
   final catalogCli = memberCatalogCliFor(team, member);
   final def = registry.tryGet(catalogCli);
-  var cliLabel = def == null
-      ? catalogCli.value
-      : cliDisplayName(def, l10n);
+  var cliLabel = def == null ? catalogCli.value : cliDisplayName(def, l10n);
   if (team.teamMode == TeamMode.mixed && member.cli == null) {
     cliLabel = '$cliLabel · ${l10n.memberCliInheritHint}';
   }

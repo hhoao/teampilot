@@ -153,14 +153,14 @@ void main() {
     expect(changedTeam.members.single, changedMember);
   });
 
-  test('round trips cli and defaults to flashskyai for legacy json', () {
+  test('round trips cli and defaults to claude for legacy json', () {
     const team = TeamConfig(id: 'team-1', name: 'hello', cli: CliTool.codex);
     final decoded = TeamConfig.fromJson(team.toJson());
     expect(decoded.cli, CliTool.codex);
 
     final legacy = TeamConfig.fromJson({'id': 't', 'name': 'T'});
-    expect(legacy.cli, CliTool.flashskyai);
-    expect(legacy.toJson()['cli'], 'flashskyai');
+    expect(legacy.cli, CliTool.claude);
+    expect(legacy.toJson()['cli'], 'claude');
   });
 
   test('opencode round-trips through json', () {

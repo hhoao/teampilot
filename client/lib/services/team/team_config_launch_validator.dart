@@ -88,13 +88,17 @@ class TeamConfigLaunchValidator {
   final OfficialProviderResolver _isOfficialProvider;
 
   Future<TeamConfigValidation> validate(TeamConfig team) async {
-    final members = team.members.where((m) => m.isValid).toList(growable: false);
+    final members = team.members
+        .where((m) => m.isValid)
+        .toList(growable: false);
     final issues = <TeamConfigIssue>[];
 
     if (team.teamMode == TeamMode.mixed) {
       for (final member in members) {
         if (member.cli == null) {
-          issues.add(_memberIssue(TeamConfigIssueKind.memberCliMissing, member));
+          issues.add(
+            _memberIssue(TeamConfigIssueKind.memberCliMissing, member),
+          );
         }
         if (member.provider.trim().isEmpty) {
           issues.add(
@@ -111,11 +115,13 @@ class TeamConfigLaunchValidator {
         }
       }
     } else {
-      final hasTeamDefault =
-          (team.providerIdsByTool[team.cli.value] ?? '').trim().isNotEmpty;
+      final hasTeamDefault = (team.providerIdsByTool[team.cli.value] ?? '')
+          .trim()
+          .isNotEmpty;
       if (!hasTeamDefault) {
-        final anyMemberProvider =
-            members.any((m) => m.provider.trim().isNotEmpty);
+        final anyMemberProvider = members.any(
+          (m) => m.provider.trim().isNotEmpty,
+        );
         // No team default and nobody supplies a provider → the simplest fix is
         // configuring the team default; surface it as an overarching hint.
         if (members.isEmpty || !anyMemberProvider) {

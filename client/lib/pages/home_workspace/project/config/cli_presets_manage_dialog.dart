@@ -36,7 +36,7 @@ class CliPresetsManageDialog extends StatelessWidget {
               child: Text(
                 l10n.projectCliPresetsEmptyHint,
                 textAlign: TextAlign.center,
-                style: AppTextStyles.of(context).bodySmall,
+                style: AppTextStyles.of(context).body,
               ),
             )
           else
@@ -140,7 +140,8 @@ class _PresetRow extends StatelessWidget {
             icon: const Icon(Icons.edit_outlined, size: 20),
             tooltip: l10n.edit,
             onPressed: () {
-              final dialog = context.findAncestorWidgetOfExactType<CliPresetsManageDialog>();
+              final dialog = context
+                  .findAncestorWidgetOfExactType<CliPresetsManageDialog>();
               if (dialog != null) {
                 dialog._openEditDialog(context, preset);
               }
@@ -150,7 +151,8 @@ class _PresetRow extends StatelessWidget {
             icon: Icon(Icons.delete_outlined, size: 20, color: cs.error),
             tooltip: l10n.delete,
             onPressed: () {
-              final dialog = context.findAncestorWidgetOfExactType<CliPresetsManageDialog>();
+              final dialog = context
+                  .findAncestorWidgetOfExactType<CliPresetsManageDialog>();
               if (dialog != null) {
                 dialog._deletePreset(context, preset);
               }

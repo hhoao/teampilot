@@ -227,8 +227,9 @@ class LaunchCommandBuilder {
         ? normalizeEnvironmentForCli(extraEnvironment, useWslPaths: true)
         : extraEnvironment;
     final settingsPath = settingsPathFromEnvironment(normalizedEnvironment);
-    final appendSystemPromptFile =
-        appendSystemPromptFileFromEnvironment(normalizedEnvironment);
+    final appendSystemPromptFile = appendSystemPromptFileFromEnvironment(
+      normalizedEnvironment,
+    );
     final env = launchEnvironmentForProcess(normalizedEnvironment);
     final args = buildArguments(
       team,
@@ -449,8 +450,8 @@ class LaunchCommandBuilder {
   static String? appendSystemPromptFileFromEnvironment(
     Map<String, String>? environment,
   ) {
-    final value =
-        environment?[MemberRoleProvision.appendSystemPromptFileEnvKey]?.trim();
+    final value = environment?[MemberRoleProvision.appendSystemPromptFileEnvKey]
+        ?.trim();
     return value == null || value.isEmpty ? null : value;
   }
 

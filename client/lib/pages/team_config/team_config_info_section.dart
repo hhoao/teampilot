@@ -65,8 +65,7 @@ class TeamInfoSectionState extends State<TeamInfoSection> {
         : (widget.team.loop! ? 'true' : 'false');
     final catalogCli = catalogCliForTeam(context, widget.team.cli);
     final showDelegateRow =
-        catalogCli == CliTool.claude ||
-        catalogCli == CliTool.flashskyai;
+        catalogCli == CliTool.claude || catalogCli == CliTool.flashskyai;
     final showToolProviders = catalogCli == CliTool.claude;
     // Stop-hook/bus 仅 mixed 模式接线,故此开关只在 mixed 团队出现。
     final showForceWaitRow = widget.team.teamMode == TeamMode.mixed;
@@ -172,7 +171,8 @@ class TeamInfoSectionState extends State<TeamInfoSection> {
                       widget.team.copyWith(extraArgs: v),
                     ),
                   ),
-                  showDividerBelow: showDelegateRow ||
+                  showDividerBelow:
+                      showDelegateRow ||
                       showToolProviders ||
                       showTeamEffort ||
                       showForceWaitRow,
@@ -191,7 +191,9 @@ class TeamInfoSectionState extends State<TeamInfoSection> {
                       ),
                     ),
                     showDividerBelow:
-                        showDelegateRow || showForceWaitRow || showToolProviders,
+                        showDelegateRow ||
+                        showForceWaitRow ||
+                        showToolProviders,
                   ),
                 if (showDelegateRow)
                   SettingsLabeledRow(
@@ -240,7 +242,11 @@ class TeamInfoSectionState extends State<TeamInfoSection> {
 }
 
 class TeamConfigDangerZone extends StatelessWidget {
-  const TeamConfigDangerZone({super.key, required this.team, required this.cubit});
+  const TeamConfigDangerZone({
+    super.key,
+    required this.team,
+    required this.cubit,
+  });
 
   final TeamConfig team;
   final TeamCubit cubit;
@@ -298,7 +304,11 @@ class TeamConfigDangerZone extends StatelessWidget {
           child: OutlinedButton.icon(
             key: AppKeys.deleteButton,
             onPressed: () => _confirmDelete(context),
-            icon: Icon(Icons.delete_outline, size: context.appIconSizes.md, color: errorColor),
+            icon: Icon(
+              Icons.delete_outline,
+              size: context.appIconSizes.md,
+              color: errorColor,
+            ),
             label: Text(l10n.deleteTeam, style: TextStyle(color: errorColor)),
             style: OutlinedButton.styleFrom(
               side: BorderSide(color: errorColor.withValues(alpha: 0.4)),

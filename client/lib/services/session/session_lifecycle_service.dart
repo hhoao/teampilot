@@ -204,7 +204,7 @@ class SessionLifecycleService {
           : runtimeTeamId;
       // Mixed-mode members run (and store transcripts) under their own
       // `member.cliWithin(team)` override, which can differ from `team.cli`
-      // (the latter defaults to flashskyai when the team JSON omits `cli`).
+      // (the latter defaults to claude when the team JSON omits `cli`).
       // Probe the member's effective CLI so `--resume` finds the prior
       // transcript instead of falling back to `--session-id` (which the running
       // CLI rejects as "Session ID … is already in use").

@@ -114,8 +114,11 @@ class ConfigProfileService implements ConfigProfileDelegate {
   String projectConfigDir(String projectId) =>
       layout.workspace.projectConfigDir(projectId);
 
-  String standaloneSessionToolDir(String projectId, String sessionId, String tool) =>
-      layout.sessionRuntimeToolDir(projectId, sessionId, tool);
+  String standaloneSessionToolDir(
+    String projectId,
+    String sessionId,
+    String tool,
+  ) => layout.sessionRuntimeToolDir(projectId, sessionId, tool);
 
   @override
   String sessionToolDir(
@@ -191,8 +194,9 @@ class ConfigProfileService implements ConfigProfileDelegate {
           )
           .then((json) => memberProvisionJson = json),
     ]);
-    final pluginManifest =
-        _cliRegistry.capability<PluginManifestCapability>(cli);
+    final pluginManifest = _cliRegistry.capability<PluginManifestCapability>(
+      cli,
+    );
     if (pluginManifest?.supportsPluginRegistry == true) {
       await CliPluginRegistryService(
         fs: fs,
@@ -273,8 +277,9 @@ class ConfigProfileService implements ConfigProfileDelegate {
             )
             .then((json) => sessionProvisionJson = json),
       ]);
-      final pluginManifest =
-          _cliRegistry.capability<PluginManifestCapability>(cli);
+      final pluginManifest = _cliRegistry.capability<PluginManifestCapability>(
+        cli,
+      );
       if (pluginManifest?.supportsPluginRegistry == true) {
         await CliPluginRegistryService(
           fs: fs,
@@ -303,7 +308,10 @@ class ConfigProfileService implements ConfigProfileDelegate {
           ),
         );
       }
-      await McpRegistryService(fs: fs, layout: layout).writeForStandaloneProject(
+      await McpRegistryService(
+        fs: fs,
+        layout: layout,
+      ).writeForStandaloneProject(
         projectId: trimmedProjectId,
         sessionId: trimmedSessionId,
         extraServers: extraMcpServers,
@@ -356,19 +364,20 @@ class ConfigProfileService implements ConfigProfileDelegate {
 
       // Provision skills/plugins into the leaf CONFIG_DIR and collect any
       // "source missing" / "link failed" warnings so callers can surface them.
-      final provisionResult = await ResourceProvisioningService(
-        fs: fs,
-        registry: _cliRegistry,
-      ).provisionForLaunch(
-        scope: PersonalResourceScope(profile: profile),
-        cli: cli,
-        configDir: layout.sessionRuntimeToolDir(
-          trimmedProjectId,
-          trimmedSessionId,
-          cli.value,
-        ),
-        catalog: await _skillCatalog(),
-      );
+      final provisionResult =
+          await ResourceProvisioningService(
+            fs: fs,
+            registry: _cliRegistry,
+          ).provisionForLaunch(
+            scope: PersonalResourceScope(profile: profile),
+            cli: cli,
+            configDir: layout.sessionRuntimeToolDir(
+              trimmedProjectId,
+              trimmedSessionId,
+              cli.value,
+            ),
+            catalog: await _skillCatalog(),
+          );
       warnings.addAll(provisionResult.warnings);
 
       final cap = _cliRegistry.capability<ConfigProfileCapability>(cli);
@@ -454,10 +463,7 @@ class ConfigProfileService implements ConfigProfileDelegate {
     }
 
     final warnings = <String>[];
-    await _infra.collectExtensionWarnings(
-      warnings,
-      teamId: trimmedTeamId,
-    );
+    await _infra.collectExtensionWarnings(warnings, teamId: trimmedTeamId);
 
     String? memberId;
     if (team?.teamMode == TeamMode.mixed && member != null && member.isValid) {
@@ -483,20 +489,21 @@ class ConfigProfileService implements ConfigProfileDelegate {
     );
 
     if (team != null) {
-      final provisionResult = await ResourceProvisioningService(
-        fs: fs,
-        registry: _cliRegistry,
-      ).provisionForLaunch(
-        scope: TeamResourceScope(team: team, member: member),
-        cli: cli,
-        configDir: layout.sessionRuntimeToolDir(
-          trimmedProjectId,
-          trimmedSessionId,
-          cli.value,
-          memberId: memberId,
-        ),
-        catalog: await _skillCatalog(),
-      );
+      final provisionResult =
+          await ResourceProvisioningService(
+            fs: fs,
+            registry: _cliRegistry,
+          ).provisionForLaunch(
+            scope: TeamResourceScope(team: team, member: member),
+            cli: cli,
+            configDir: layout.sessionRuntimeToolDir(
+              trimmedProjectId,
+              trimmedSessionId,
+              cli.value,
+              memberId: memberId,
+            ),
+            catalog: await _skillCatalog(),
+          );
       warnings.addAll(provisionResult.warnings);
     }
 
@@ -530,10 +537,7 @@ class ConfigProfileService implements ConfigProfileDelegate {
     } on Object catch (e) {
       return TeamLaunchOutcome(
         environment: const {},
-        warnings: [
-          ...warnings,
-          'config_profile_${cli.value}: $e',
-        ],
+        warnings: [...warnings, 'config_profile_${cli.value}: $e'],
       );
     }
 
@@ -547,8 +551,7 @@ class ConfigProfileService implements ConfigProfileDelegate {
   Future<Map<String, Object?>> readMetadataFile(
     String path,
     Map<String, Object?> defaults,
-  ) =>
-      _infra.readMetadataFile(path, defaults);
+  ) => _infra.readMetadataFile(path, defaults);
 
   @override
   Future<void> writeJsonIfChanged(String path, Map<String, Object?> value) =>
@@ -560,25 +563,23 @@ class ConfigProfileService implements ConfigProfileDelegate {
     required Map<String, Object?> defaultMetadata,
     required Map<String, Object?> defaultProjectConfig,
     required Iterable<String> directories,
-  }) =>
-      _infra.metadataWithTrustedProjects(
-        metadataPath: metadataPath,
-        defaultMetadata: defaultMetadata,
-        defaultProjectConfig: defaultProjectConfig,
-        directories: directories,
-      );
+  }) => _infra.metadataWithTrustedProjects(
+    metadataPath: metadataPath,
+    defaultMetadata: defaultMetadata,
+    defaultProjectConfig: defaultProjectConfig,
+    directories: directories,
+  );
 
   @override
   Future<bool> trustedProjectsAlreadyCurrent(
     String metadataPath,
     Iterable<String> directories, {
     required Map<String, Object?> defaultMetadata,
-  }) =>
-      _infra.trustedProjectsAlreadyCurrent(
-        metadataPath,
-        directories,
-        defaultMetadata: defaultMetadata,
-      );
+  }) => _infra.trustedProjectsAlreadyCurrent(
+    metadataPath,
+    directories,
+    defaultMetadata: defaultMetadata,
+  );
 
   @override
   Future<Map<String, Object?>> readSettingsFile(String path) =>
@@ -592,27 +593,25 @@ class ConfigProfileService implements ConfigProfileDelegate {
     required String tool,
     String? teamId,
     String? projectId,
-  }) =>
-      _infra.writeSettingsFile(
-        path,
-        settings,
-        memberToolDir: memberToolDir,
-        tool: tool,
-        teamId: teamId,
-        projectId: projectId,
-      );
+  }) => _infra.writeSettingsFile(
+    path,
+    settings,
+    memberToolDir: memberToolDir,
+    tool: tool,
+    teamId: teamId,
+    projectId: projectId,
+  );
 
   @override
   Future<bool> hasEnabledExtensionSettingsHooks(
     String tool, {
     String? teamId,
     String? projectId,
-  }) =>
-      _infra.hasEnabledExtensionSettingsHooks(
-        tool,
-        teamId: teamId,
-        projectId: projectId,
-      );
+  }) => _infra.hasEnabledExtensionSettingsHooks(
+    tool,
+    teamId: teamId,
+    projectId: projectId,
+  );
 
   @override
   Future<Map<String, Object?>> applyExtensionSettings(
@@ -621,14 +620,13 @@ class ConfigProfileService implements ConfigProfileDelegate {
     required String tool,
     String? teamId,
     String? projectId,
-  }) =>
-      _infra.applyExtensionSettings(
-        settings,
-        memberToolDir,
-        tool: tool,
-        teamId: teamId,
-        projectId: projectId,
-      );
+  }) => _infra.applyExtensionSettings(
+    settings,
+    memberToolDir,
+    tool: tool,
+    teamId: teamId,
+    projectId: projectId,
+  );
 
   @override
   Future<Map<String, Object?>> maybeApplyTeamLeadHooks(
@@ -636,25 +634,23 @@ class ConfigProfileService implements ConfigProfileDelegate {
     TeamMemberConfig member,
     String memberToolDir, {
     required bool forceTeamLeadDelegateMode,
-  }) =>
-      _infra.maybeApplyTeamLeadHooks(
-        settings,
-        member,
-        memberToolDir,
-        forceTeamLeadDelegateMode: forceTeamLeadDelegateMode,
-      );
+  }) => _infra.maybeApplyTeamLeadHooks(
+    settings,
+    member,
+    memberToolDir,
+    forceTeamLeadDelegateMode: forceTeamLeadDelegateMode,
+  );
 
   @override
   Future<String?> resolveAppendSystemPromptPath({
     required LaunchProfileScope scope,
     required String tool,
     required TeamMemberConfig member,
-  }) =>
-      _infra.resolveAppendSystemPromptPath(
-        scope: scope,
-        tool: tool,
-        member: member,
-      );
+  }) => _infra.resolveAppendSystemPromptPath(
+    scope: scope,
+    tool: tool,
+    member: member,
+  );
 
   @override
   HostExecutionEnvironment hostEnvironmentForProvision() =>

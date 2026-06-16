@@ -397,7 +397,7 @@ class TeamConfig {
       providerIdsByTool: _decodeProviderIdsByTool(json['providerIdsByTool']),
       cli: json.containsKey('cli')
           ? CliTool.parse(json['cli'])
-          : CliTool.flashskyai,
+          : CliTool.claude,
       teamMode: TeamMode.decode(json['teamMode']),
       createdAt: (json['createdAt'] as num?)?.toInt() ?? 0,
       sortOrder: (json['sortOrder'] as num?)?.toInt() ?? 0,

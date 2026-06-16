@@ -7,7 +7,7 @@ import '../../theme/app_icon_sizes.dart';
 import '../menu/sidebar_action_menu.dart';
 import 'notification_list_tile.dart';
 
-const _dropdownWidth = 360.0;
+const _dropdownWidth = 560.0;
 const _dropdownListMaxHeight = 360.0;
 const _bellWidth = 34.0;
 
@@ -101,7 +101,10 @@ class _BellGlyphState extends State<_BellGlyph> {
                   right: 2,
                   child: Container(
                     padding: const EdgeInsets.symmetric(horizontal: 4),
-                    constraints: const BoxConstraints(minWidth: 14, minHeight: 14),
+                    constraints: const BoxConstraints(
+                      minWidth: 14,
+                      minHeight: 14,
+                    ),
                     decoration: BoxDecoration(
                       color: cs.error,
                       borderRadius: BorderRadius.circular(7),
@@ -148,9 +151,9 @@ class _NotificationDropdownPanel extends StatelessWidget {
               Expanded(
                 child: Text(
                   l10n.notificationCenterTitle,
-                  style: Theme.of(context).textTheme.titleSmall?.copyWith(
-                    fontWeight: FontWeight.w600,
-                  ),
+                  style: Theme.of(
+                    context,
+                  ).textTheme.titleSmall?.copyWith(fontWeight: FontWeight.w600),
                 ),
               ),
               IconButton(
@@ -173,7 +176,9 @@ class _NotificationDropdownPanel extends StatelessWidget {
             )
           else
             ConstrainedBox(
-              constraints: const BoxConstraints(maxHeight: _dropdownListMaxHeight),
+              constraints: const BoxConstraints(
+                maxHeight: _dropdownListMaxHeight,
+              ),
               child: SingleChildScrollView(
                 child: Column(
                   mainAxisSize: MainAxisSize.min,
