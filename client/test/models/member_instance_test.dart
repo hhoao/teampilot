@@ -44,6 +44,8 @@ void main() {
     final cfg = inst.toMemberConfig();
     expect(cfg.id, 'builder-0');
     expect(cfg.capabilities, {'builder', 'rust'});
+    // a projection is a single concrete pod, not itself re-expandable
+    expect(cfg.replicas, 1);
   });
 
   test('runtimeRosterMembers projects every instance', () {

@@ -35,6 +35,8 @@ class MemberInstance {
         id: instanceId,
         name: displayName,
         capabilities: {type.id, ...type.capabilities},
+        // A projection is a single concrete pod — never itself re-expandable.
+        replicas: 1,
       );
 }
 
