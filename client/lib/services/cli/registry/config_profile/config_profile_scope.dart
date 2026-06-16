@@ -6,6 +6,18 @@ import '../../../team/claude_team_roster_service.dart';
 /// Profile directory key when launching without a chat [AppSession].
 const configProfileAdhocSessionId = '_adhoc';
 
+/// Workspace project id for local (`local-*`) team shells with no persisted project.
+String effectiveLaunchProjectId({
+  required String projectId,
+  required String teamId,
+}) {
+  final trimmed = projectId.trim();
+  if (trimmed.isNotEmpty) return trimmed;
+  final team = teamId.trim();
+  if (team.isEmpty) return '';
+  return '_adhoc-$team';
+}
+
 /// Resolved launch path scope for a personal project session.
 class StandaloneLaunchProfileScope {
   const StandaloneLaunchProfileScope({
@@ -20,27 +32,35 @@ class StandaloneLaunchProfileScope {
 /// Resolved launch path scope for a team session.
 class LaunchProfileScope {
   const LaunchProfileScope({
+    required this.projectId,
     required this.teamId,
     required this.sessionId,
     required this.cliTeamName,
+    this.memberId,
   });
 
+  final String projectId;
   final String teamId;
   final String sessionId;
   final String cliTeamName;
+  final String? memberId;
 }
 
 LaunchProfileScope resolveLaunchProfileScope({
+  required String projectId,
   required String teamId,
-  required String runtimeTeamId,
+  required String appSessionId,
+  required String cliTeamName,
+  String? memberId,
 }) {
-  final runtime = runtimeTeamId.trim();
-  final sessionId = runtime.isNotEmpty ? runtime : configProfileAdhocSessionId;
-  final cliTeamName = runtime.isNotEmpty ? runtime : teamId;
+  final trimmedSession = appSessionId.trim();
+  final trimmedCliTeam = cliTeamName.trim();
   return LaunchProfileScope(
-    teamId: teamId,
-    sessionId: sessionId,
-    cliTeamName: cliTeamName,
+    projectId: projectId.trim(),
+    teamId: teamId.trim(),
+    sessionId: trimmedSession.isNotEmpty ? trimmedSession : configProfileAdhocSessionId,
+    cliTeamName: trimmedCliTeam.isNotEmpty ? trimmedCliTeam : teamId.trim(),
+    memberId: memberId,
   );
 }
 

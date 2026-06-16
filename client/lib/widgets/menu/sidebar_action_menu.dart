@@ -46,16 +46,13 @@ abstract final class SidebarActionMenuMetrics {
   static MenuStyle menuAnchorStyle(
     BuildContext context, {
     required double minWidth,
-    double? maxWidth,
   }) {
     final cs = Theme.of(context).colorScheme;
     final isDark = Theme.of(context).brightness == Brightness.dark;
     return MenuStyle(
       padding: const WidgetStatePropertyAll(EdgeInsets.zero),
       minimumSize: WidgetStatePropertyAll(Size(minWidth, 0)),
-      maximumSize: WidgetStatePropertyAll(
-        Size(maxWidth ?? minWidth * 2, double.infinity),
-      ),
+      maximumSize: WidgetStatePropertyAll(Size(minWidth * 2, double.infinity)),
       backgroundColor: WidgetStatePropertyAll(cs.surfaceContainer),
       surfaceTintColor: const WidgetStatePropertyAll(Colors.transparent),
       elevation: const WidgetStatePropertyAll(8),
@@ -95,16 +92,11 @@ class SidebarActionMenuPanel extends StatelessWidget {
     super.key,
     required this.children,
     this.minWidth = SidebarActionMenuMetrics.minWidth,
-    this.maxWidth,
     this.menuAnchorShell = false,
   });
 
   final List<Widget> children;
   final double minWidth;
-
-  /// Optional maximum width. When absent, the panel is unconstrained on the
-  /// high end (the [MenuAnchor]'s [MenuStyle.maximumSize] still applies).
-  final double? maxWidth;
 
   /// When true, border and shadow are drawn by [menuAnchorStyle] on
   /// [MenuAnchor]; this panel only supplies padding and content.
@@ -120,10 +112,7 @@ class SidebarActionMenuPanel extends StatelessWidget {
         SidebarActionMenuMetrics.panelPaddingBottom,
       ),
       child: ConstrainedBox(
-        constraints: BoxConstraints(
-          minWidth: minWidth,
-          maxWidth: maxWidth ?? double.infinity,
-        ),
+        constraints: BoxConstraints(minWidth: minWidth),
         child: Column(
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.stretch,

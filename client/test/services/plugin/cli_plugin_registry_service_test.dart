@@ -6,14 +6,14 @@ import 'package:path/path.dart' as p;
 import 'package:teampilot/models/plugin.dart';
 import 'package:teampilot/models/team_config.dart';
 import 'package:teampilot/services/storage/app_storage.dart';
-import 'package:teampilot/services/cli/cli_data_layout.dart';
+import 'package:teampilot/services/storage/runtime_layout.dart';
 import 'package:teampilot/services/plugin/cli_plugin_registry_service.dart';
 import 'package:teampilot/services/io/local_filesystem.dart';
 import 'package:teampilot/services/storage/runtime_storage_context.dart';
 
 void main() {
   late Directory base;
-  late CliDataLayout layout;
+  late RuntimeLayout layout;
   late CliPluginRegistryService registry;
 
   setUp(() async {
@@ -28,7 +28,7 @@ void main() {
       cwd: base.path,
     );
     final fs = LocalFilesystem();
-    layout = CliDataLayout(teampilotRoot: base.path, fs: fs);
+    layout = RuntimeLayout(teampilotRoot: base.path, fs: fs);
     registry = CliPluginRegistryService(
       fs: fs,
       teampilotRoot: base.path,
@@ -59,7 +59,12 @@ void main() {
     ).writeAsString(
       jsonEncode({'name': pluginName, 'version': '2.0.0'}),
     );
-    await layout.provisionMemberPluginsFromTeam(teamId, sessionId, tool);
+    await layout.provisionSessionPluginsFromTeam(
+      'project-1',
+      sessionId,
+      teamId,
+      tool,
+    );
   }
 
   test('writes enabledPlugins and installed_plugins.json for flashskyai', () async {
@@ -71,6 +76,7 @@ void main() {
     );
 
     await registry.writeForSession(
+      projectId: 'project-1',
       teamId: 't1',
       sessionId: 's1',
       tool: CliTool.flashskyai,
@@ -93,7 +99,7 @@ void main() {
       ],
     );
 
-    final configDir = layout.memberToolDir('t1', 's1', 'flashskyai');
+    final configDir = layout.sessionRuntimeToolDir('project-1', 's1', 'flashskyai');
     final settings = jsonDecode(
       await File(p.join(configDir, 'settings.json')).readAsString(),
     ) as Map<String, Object?>;
@@ -121,12 +127,13 @@ void main() {
     );
 
     await registry.writeForSession(
+      projectId: 'project-1',
       teamId: 't1',
       sessionId: 's2',
       tool: CliTool.claude,
     );
 
-    final configDir = layout.memberToolDir('t1', 's2', 'claude');
+    final configDir = layout.sessionRuntimeToolDir('project-1', 's2', 'claude');
     final settings = jsonDecode(
       await File(p.join(configDir, 'settings.json')).readAsString(),
     ) as Map<String, Object?>;
@@ -165,6 +172,7 @@ void main() {
     );
 
     await registry.writeForSession(
+      projectId: 'project-1',
       teamId: 't1',
       sessionId: 's3',
       tool: CliTool.flashskyai,
@@ -190,7 +198,7 @@ void main() {
       ],
     );
 
-    final configDir = layout.memberToolDir('t1', 's3', 'flashskyai');
+    final configDir = layout.sessionRuntimeToolDir('project-1', 's3', 'flashskyai');
     final known = jsonDecode(
       await File(p.join(configDir, 'plugins', 'known_marketplaces.json'))
           .readAsString(),
@@ -252,9 +260,10 @@ void main() {
       jsonEncode({'name': 'api-security-testing', 'version': '1.0.0'}),
     );
 
-    await layout.provisionMemberPluginsFromTeam('t1', 's4', 'flashskyai');
+    await layout.provisionSessionPluginsFromTeam('project-1', 's4', 't1', 'flashskyai');
 
     await registry.writeForSession(
+      projectId: 'project-1',
       teamId: 't1',
       sessionId: 's4',
       tool: CliTool.flashskyai,
@@ -280,7 +289,7 @@ void main() {
       ],
     );
 
-    final configDir = layout.memberToolDir('t1', 's4', 'flashskyai');
+    final configDir = layout.sessionRuntimeToolDir('project-1', 's4', 'flashskyai');
     final settings = jsonDecode(
       await File(p.join(configDir, 'settings.json')).readAsString(),
     ) as Map<String, Object?>;
@@ -317,6 +326,7 @@ void main() {
     ];
 
     await registry.writeForSession(
+      projectId: 'project-1',
       teamId: 't1',
       sessionId: 's5',
       tool: CliTool.flashskyai,
@@ -326,13 +336,14 @@ void main() {
 
     final stampBefore = await File(
       p.join(
-        layout.memberToolDir('t1', 's5', 'flashskyai'),
+        layout.sessionRuntimeToolDir('project-1', 's5', 'flashskyai'),
         'plugins',
         '.teampilot-registry-stamp.json',
       ),
     ).readAsString();
 
     await registry.writeForSession(
+      projectId: 'project-1',
       teamId: 't1',
       sessionId: 's5',
       tool: CliTool.flashskyai,
@@ -342,7 +353,7 @@ void main() {
 
     final stampAfter = await File(
       p.join(
-        layout.memberToolDir('t1', 's5', 'flashskyai'),
+        layout.sessionRuntimeToolDir('project-1', 's5', 'flashskyai'),
         'plugins',
         '.teampilot-registry-stamp.json',
       ),

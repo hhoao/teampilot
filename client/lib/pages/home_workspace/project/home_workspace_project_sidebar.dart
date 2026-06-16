@@ -185,10 +185,17 @@ class _HomeWorkspaceProjectSidebarState
   }
 }
 
-class _PresetDropdown extends StatelessWidget {
+class _PresetDropdown extends StatefulWidget {
   const _PresetDropdown({required this.projectId});
 
   final String projectId;
+
+  @override
+  State<_PresetDropdown> createState() => _PresetDropdownState();
+}
+
+class _PresetDropdownState extends State<_PresetDropdown> {
+  bool _didAutoActivate = false;
 
   @override
   Widget build(BuildContext context) {
@@ -228,6 +235,18 @@ class _PresetDropdown extends StatelessWidget {
       );
     }
 
+    // Auto-activate the first preset when none is active (e.g., after the
+    // user adds their first preset).  Without this the dropdown shows a
+    // preset as selected while activePresetId stays null, so sessions
+    // launch with the default CLI instead of the preset config.
+    if (!_didAutoActivate && activePreset == null && presets.isNotEmpty) {
+      _didAutoActivate = true;
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (!mounted) return;
+        context.read<ProjectProfileCubit>().setActivePreset(presets.first.id);
+      });
+    }
+
     final presetNames = presets.map((p) => p.id).toList();
     final initialId = activePreset?.id ?? presets.first.id;
 
@@ -238,7 +257,7 @@ class _PresetDropdown extends StatelessWidget {
         children: [
           Expanded(
             child: AppDropdownField<String>(
-              key: ValueKey('project-sidebar-preset-$projectId-$initialId'),
+              key: ValueKey('project-sidebar-preset-${widget.projectId}-$initialId'),
               items: presetNames,
               initialItem: initialId,
               decoration: AppDropdownDecorations.themed(context),

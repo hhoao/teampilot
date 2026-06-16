@@ -7,12 +7,12 @@ import 'package:teampilot/models/app_provider_config.dart';
 import 'package:teampilot/models/app_session.dart';
 import 'package:teampilot/models/session_member_binding.dart';
 import 'package:teampilot/models/team_config.dart';
-import 'package:teampilot/services/cli/cli_data_layout.dart';
+import 'package:teampilot/services/storage/runtime_layout.dart';
 import 'package:teampilot/services/cli/registry/config_profile/claude_config_profile_capability.dart';
 import 'package:teampilot/services/cli/registry/config_profile/flashskyai_config_profile_capability.dart';
-import 'package:teampilot/services/cli/registry/config_profile/config_profile_scope.dart';
 import 'package:teampilot/services/storage/storage_resolver.dart';
 import 'package:teampilot/services/session/session_lifecycle_service.dart';
+import 'package:teampilot/services/team/claude_team_roster_service.dart';
 
 import '../../support/post_frame_test_harness.dart';
 
@@ -22,7 +22,7 @@ StorageRootsSnapshot _roots(String basePath) => StorageRootsSnapshot(
   teamsUiDir: p.join(basePath, 'teams'),
   skillsRoot: p.join(basePath, 'skills', 'installed'),
   skillBackupsDir: p.join(basePath, 'skills', 'backups'),
-  appProjectsDir: p.join(basePath, 'projects'),
+  workspaceDir: p.join(basePath, 'workspace'),
   skillReposConfigPath: p.join(basePath, 'skills', 'repos.json'),
   pluginsRoot: p.join(basePath, 'plugins', 'installed'),
   pluginBackupsDir: p.join(basePath, 'plugins', 'backups'),
@@ -42,12 +42,14 @@ StorageRootsSnapshot _roots(String basePath) => StorageRootsSnapshot(
   ),
 );
 
+const _projectId = 'project-1';
+
 AppSession _session({
   String id = 'session-1',
   AppSessionLaunchState launchState = AppSessionLaunchState.created,
 }) => AppSession(
   sessionId: id,
-  projectId: 'project-1',
+  projectId: _projectId,
   primaryPath: '/work/project',
   sessionTeam: 'team-a',
   launchState: launchState,
@@ -72,12 +74,12 @@ Future<void> _writeProvidersCatalog(
 
 void main() {
   late Directory base;
-  late CliDataLayout layout;
+  late RuntimeLayout layout;
 
   setUp(() async {
     setUpTestAppStorage();
     base = await Directory.systemTemp.createTemp('session_lifecycle_');
-    layout = CliDataLayout(teampilotRoot: base.path);
+    layout = RuntimeLayout(teampilotRoot: base.path);
   });
 
   tearDown(() async {
@@ -106,7 +108,11 @@ void main() {
         member: const TeamMemberConfig(id: 'team-lead', name: 'team-lead'),
       );
 
-      final memberDir = layout.memberToolDir('team-a', 'session-1', 'claude');
+      final memberDir = layout.sessionRuntimeToolDir(
+        _projectId,
+        'session-1',
+        'claude',
+      );
       expect(plan.resume, isFalse);
       expect(plan.taskId, 'session-1');
       expect(plan.cliTeamName, 'session-1');
@@ -133,8 +139,8 @@ void main() {
         member: const TeamMemberConfig(id: 'team-lead', name: 'team-lead'),
       );
 
-      final memberDir = layout.memberToolDir(
-        'team-a',
+      final memberDir = layout.sessionRuntimeToolDir(
+        _projectId,
         'session-1',
         'flashskyai',
       );
@@ -152,7 +158,7 @@ void main() {
       );
       expect(
         plan.env['LLM_CONFIG_PATH'],
-        p.join(base.path, 'config-profiles', 'flashskyai', 'llm_config.json'),
+        p.join(base.path, 'cli-defaults', 'flashskyai', 'llm_config.json'),
       );
       expect(plan.resolvedRoots, contains(memberDir));
     },
@@ -162,11 +168,6 @@ void main() {
     'prepareLaunch cursor mixed mode uses HOME as memberConfigDir',
     () async {
       const member = TeamMemberConfig(id: 'planner', name: 'Planner');
-      final scopedSessionId = mixedModeMemberScopeSessionId(
-        p.context,
-        'mixed-session',
-        member,
-      );
       final plan = await service().prepareLaunch(
         session: _session(id: 'mixed-session'),
         team: const TeamConfig(
@@ -180,10 +181,11 @@ void main() {
         busIdleUrl: 'http://127.0.0.1:5050/idle',
       );
 
-      final cursorDir = layout.memberToolDir(
-        'team-a',
-        scopedSessionId,
+      final cursorDir = layout.sessionRuntimeToolDir(
+        _projectId,
+        'mixed-session',
         'cursor',
+        memberId: ClaudeTeamRosterService.safeClaudePathSegment('planner'),
       );
       final memberHome = p.join(cursorDir, 'home');
       expect(plan.memberConfigDir, memberHome);
@@ -200,11 +202,6 @@ void main() {
         name: 'team-lead',
         cli: CliTool.claude,
       );
-      final scopedSessionId = mixedModeMemberScopeSessionId(
-        p.context,
-        'mixed-session',
-        member,
-      );
       final plan = await service().prepareLaunch(
         session: _session(id: 'mixed-session'),
         team: const TeamConfig(
@@ -217,18 +214,17 @@ void main() {
         member: member,
       );
 
-      // Mixed members each own an isolated CONFIG_DIR nested under the session
-      // (members/<cliTeamName>/<memberId>/<tool>) so the teammate-bus MCP config
-      // and X-Member identity cannot be clobbered by a sibling member launch.
-      final claudeDir = layout.memberToolDir(
-        'team-a',
-        scopedSessionId,
+      final claudeDir = layout.sessionRuntimeToolDir(
+        _projectId,
+        'mixed-session',
         'claude',
+        memberId: ClaudeTeamRosterService.safeClaudePathSegment('team-lead'),
       );
-      final flashskyaiDir = layout.memberToolDir(
-        'team-a',
-        scopedSessionId,
+      final flashskyaiDir = layout.sessionRuntimeToolDir(
+        _projectId,
+        'mixed-session',
         'flashskyai',
+        memberId: ClaudeTeamRosterService.safeClaudePathSegment('team-lead'),
       );
       expect(plan.memberConfigDir, claudeDir);
       expect(plan.env['CLAUDE_CONFIG_DIR'], claudeDir);
@@ -244,12 +240,6 @@ void main() {
     'prepareLaunch resumes mixed member whose CLI override differs from '
     'team.cli',
     () async {
-      // Regression: a mixed team JSON without a top-level `cli` defaults
-      // team.cli to flashskyai, while members override `cli: claude`. The
-      // member launches (and stores transcripts) under its claude scope, so the
-      // resume probe must follow `member.cliWithin(team)` — not team.cli — or it
-      // falls back to `--session-id`, which the running CLI rejects as
-      // "Session ID ... is already in use".
       const taskId = '8c30aef6-19f6-469c-9b53-bcbda18b6fd2';
       const member = TeamMemberConfig(
         id: 'team-lead',
@@ -260,19 +250,16 @@ void main() {
         id: 'mixed-session',
         launchState: AppSessionLaunchState.started,
       ).copyWith(cliTeamName: 'team-a-4');
-      final scopedSessionId = mixedModeMemberScopeSessionId(
-        p.context,
-        'team-a-4',
-        member,
-      );
-      final bucket = CliDataLayout.projectBucketForPrimaryPath(
+      final bucket = RuntimeLayout.projectBucketForPrimaryPath(
         session.primaryPath,
       );
-      // Transcript lives under the member's *claude* scope, matching how the
-      // member actually launched.
       final transcript = File(
         p.join(
-          layout.memberToolDir('team-a', scopedSessionId, 'claude'),
+          layout.sessionRuntimeToolDir(
+            _projectId,
+            'mixed-session',
+            'claude',
+          ),
           'projects',
           bucket,
           '$taskId.jsonl',
@@ -290,7 +277,7 @@ void main() {
         team: const TeamConfig(
           id: 'team-a',
           name: 'Team A',
-          cli: CliTool.flashskyai, // team default; member overrides to claude
+          cli: CliTool.flashskyai,
           teamMode: TeamMode.mixed,
           members: [member],
         ),
@@ -317,12 +304,16 @@ void main() {
 
   test('hasCliState finds project transcripts in member roots', () async {
     final session = _session(launchState: AppSessionLaunchState.started);
-    final bucket = CliDataLayout.projectBucketForPrimaryPath(
+    final bucket = RuntimeLayout.projectBucketForPrimaryPath(
       session.primaryPath,
     );
     final transcript = File(
       p.join(
-        layout.memberToolDir('team-a', session.sessionId, 'flashskyai'),
+        layout.sessionRuntimeToolDir(
+          _projectId,
+          session.sessionId,
+          'flashskyai',
+        ),
         'projects',
         bucket,
         '${session.sessionId}.jsonl',
@@ -357,12 +348,16 @@ void main() {
       final session = _session(
         launchState: AppSessionLaunchState.started,
       ).copyWith(cliTeamName: 'team-a-3');
-      final bucket = CliDataLayout.projectBucketForPrimaryPath(
+      final bucket = RuntimeLayout.projectBucketForPrimaryPath(
         session.primaryPath,
       );
       final transcript = File(
         p.join(
-          layout.memberToolDir('team-a', 'team-a-3', 'flashskyai'),
+          layout.sessionRuntimeToolDir(
+            _projectId,
+            session.sessionId,
+            'flashskyai',
+          ),
           'projects',
           bucket,
           '$taskId.jsonl',
@@ -450,58 +445,40 @@ void main() {
     },
   );
 
-  test('destroyCliState removes the member profile tree', () async {
-    final memberRoot = p.dirname(
-      layout.memberToolDir('team-a', 'session-1', 'flashskyai'),
+  test('destroyCliState removes the session runtime tree', () async {
+    final sessionRoot = layout.workspace.sessionRuntimeDir(
+      _projectId,
+      'session-1',
     );
     await File(
-      p.join(memberRoot, 'flashskyai', 'projects', 'bucket', 'session-1.jsonl'),
+      p.join(
+        sessionRoot,
+        'flashskyai',
+        'projects',
+        'bucket',
+        'session-1.jsonl',
+      ),
     ).create(recursive: true);
     await File(
       p.join(
-        memberRoot,
+        sessionRoot,
         'claude',
         ClaudeConfigProfileCapability.metadataFileName,
       ),
     ).create(recursive: true);
 
-    expect(await Directory(memberRoot).exists(), isTrue);
-    await service().destroyCliState(teamId: 'team-a', sessionId: 'session-1');
+    expect(await Directory(sessionRoot).exists(), isTrue);
+    await service().destroyCliState(
+      projectId: _projectId,
+      teamId: 'team-a',
+      sessionId: 'session-1',
+    );
 
-    expect(await Directory(memberRoot).exists(), isFalse);
+    expect(await Directory(sessionRoot).exists(), isFalse);
   });
 
-  test(
-    'destroyCliState can remove a legacy runtime member directory',
-    () async {
-      final memberRoot = p.dirname(
-        layout.memberToolDir('team-a', 'legacy-runtime', 'flashskyai'),
-      );
-      await File(
-        p.join(
-          memberRoot,
-          'flashskyai',
-          'projects',
-          'bucket',
-          'session-1.jsonl',
-        ),
-      ).create(recursive: true);
-
-      await service().destroyCliState(
-        teamId: 'team-a',
-        sessionId: 'session-1',
-        runtimeSessionId: 'legacy-runtime',
-      );
-
-      expect(await Directory(memberRoot).exists(), isFalse);
-    },
-  );
-
-  test('destroyCliToolState removes the whole team profile tree', () async {
-    final teamRoot = p.dirname(layout.teamToolDir('team-a', 'flashskyai'));
-    await File(
-      p.join(teamRoot, 'members', 'session-1', 'flashskyai', 'state.json'),
-    ).create(recursive: true);
+  test('destroyCliToolState removes the whole team runtime tree', () async {
+    final teamRoot = layout.teamRuntimeDir('team-a');
     await File(
       p.join(teamRoot, 'flashskyai', 'skills', 'demo'),
     ).create(recursive: true);

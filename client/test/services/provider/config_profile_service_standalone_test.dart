@@ -5,12 +5,12 @@ import 'package:path/path.dart' as p;
 import 'package:teampilot/models/cli_preset.dart';
 import 'package:teampilot/models/project_profile.dart';
 import 'package:teampilot/models/team_config.dart';
-import 'package:teampilot/services/cli/cli_data_layout.dart';
+import 'package:teampilot/services/storage/runtime_layout.dart';
 import 'package:teampilot/services/io/local_filesystem.dart';
 import 'package:teampilot/services/cli/registry/config_profile/flashskyai_config_profile_capability.dart';
 import 'package:teampilot/services/provider/config_profile_service.dart';
-import 'package:teampilot/services/storage/runtime_storage_context.dart';
 import 'package:teampilot/services/host/host_execution_environment.dart';
+import 'package:teampilot/services/storage/runtime_storage_context.dart';
 
 String _standaloneSessionClaudeDir(
   String base,
@@ -19,12 +19,12 @@ String _standaloneSessionClaudeDir(
 ) =>
     p.join(
       base,
-      'config-profiles',
-      'standalone',
+      'workspace',
       'projects',
       projectId,
       'sessions',
       sessionId,
+      'runtime',
       'claude',
     );
 
@@ -38,7 +38,7 @@ void main() {
     service = ConfigProfileService(
       basePath: base.path,
       fs: fs,
-      layout: CliDataLayout(teampilotRoot: base.path, fs: fs),
+      layout: RuntimeLayout(teampilotRoot: base.path, fs: fs),
       hostEnvironment: HostExecutionEnvironment.resolve(
         isWindowsHost: false,
         storageMode: StorageBackendMode.native,
@@ -51,7 +51,7 @@ void main() {
   });
 
   test(
-    'prepareProjectLaunch for flashskyai sets FLASHSKYAI_CONFIG_DIR under standalone session',
+    'prepareProjectLaunch for flashskyai sets FLASHSKYAI_CONFIG_DIR under session runtime',
     () async {
       const projectId = 'proj-standalone-fs';
       const sessionId = 'sess-standalone-fs';
@@ -79,12 +79,12 @@ void main() {
 
       final flashskyaiDir = p.join(
         base.path,
-        'config-profiles',
-        'standalone',
+        'workspace',
         'projects',
         projectId,
         'sessions',
         sessionId,
+        'runtime',
         'flashskyai',
       );
       expect(await Directory(flashskyaiDir).exists(), isTrue);
@@ -97,7 +97,7 @@ void main() {
   );
 
   test(
-    'prepareProjectLaunch for claude sets CLAUDE_CONFIG_DIR under standalone session',
+    'prepareProjectLaunch for claude sets CLAUDE_CONFIG_DIR under session runtime',
     () async {
       const projectId = 'proj-standalone';
       const sessionId = 'sess-standalone';

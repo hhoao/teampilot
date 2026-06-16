@@ -26,7 +26,6 @@ class NotificationBellButton extends StatelessWidget {
       style: SidebarActionMenuMetrics.menuAnchorStyle(
         context,
         minWidth: _dropdownWidth,
-        maxWidth: _dropdownWidth,
       ),
       alignmentOffset: Offset(-(_dropdownWidth - _bellWidth), 8),
       builder: (context, controller, child) {
@@ -138,71 +137,74 @@ class _NotificationDropdownPanel extends StatelessWidget {
     final cubit = context.read<NotificationCubit>();
     final items = context.select((NotificationCubit c) => c.state.items);
 
-    return SidebarActionMenuPanel(
-      minWidth: _dropdownWidth,
-      menuAnchorShell: true,
-      children: [
-        Row(
-          children: [
-            Expanded(
+    return ConstrainedBox(
+      constraints: const BoxConstraints(maxWidth: _dropdownWidth),
+      child: SidebarActionMenuPanel(
+        minWidth: _dropdownWidth,
+        menuAnchorShell: true,
+        children: [
+          Row(
+            children: [
+              Expanded(
+                child: Text(
+                  l10n.notificationCenterTitle,
+                  style: Theme.of(context).textTheme.titleSmall?.copyWith(
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+              ),
+              IconButton(
+                tooltip: l10n.notificationMarkAllRead,
+                onPressed: items.isEmpty ? null : () => cubit.markAllRead(),
+                icon: const Icon(Icons.done_all, size: 18),
+                visualDensity: VisualDensity.compact,
+              ),
+            ],
+          ),
+          const SidebarActionMenuDivider(),
+          if (items.isEmpty)
+            Padding(
+              padding: const EdgeInsets.symmetric(vertical: 24),
               child: Text(
-                l10n.notificationCenterTitle,
-                style: Theme.of(context).textTheme.titleSmall?.copyWith(
-                  fontWeight: FontWeight.w600,
+                l10n.notificationEmpty,
+                textAlign: TextAlign.center,
+                style: TextStyle(color: cs.onSurfaceVariant),
+              ),
+            )
+          else
+            ConstrainedBox(
+              constraints: const BoxConstraints(maxHeight: _dropdownListMaxHeight),
+              child: SingleChildScrollView(
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
+                    for (var i = 0; i < items.length; i++) ...[
+                      if (i > 0)
+                        Divider(
+                          height: 1,
+                          color: cs.outlineVariant.withValues(alpha: 0.25),
+                        ),
+                      NotificationListTile(
+                        notification: items[i],
+                        onMarkRead: () => cubit.markRead(items[i].id),
+                        onDelete: () => cubit.delete(items[i].id),
+                      ),
+                    ],
+                  ],
                 ),
               ),
             ),
-            IconButton(
-              tooltip: l10n.notificationMarkAllRead,
-              onPressed: items.isEmpty ? null : () => cubit.markAllRead(),
-              icon: const Icon(Icons.done_all, size: 18),
-              visualDensity: VisualDensity.compact,
-            ),
-          ],
-        ),
-        const SidebarActionMenuDivider(),
-        if (items.isEmpty)
-          Padding(
-            padding: const EdgeInsets.symmetric(vertical: 24),
-            child: Text(
-              l10n.notificationEmpty,
-              textAlign: TextAlign.center,
-              style: TextStyle(color: cs.onSurfaceVariant),
-            ),
-          )
-        else
-          ConstrainedBox(
-            constraints: const BoxConstraints(maxHeight: _dropdownListMaxHeight),
-            child: SingleChildScrollView(
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                crossAxisAlignment: CrossAxisAlignment.stretch,
-                children: [
-                  for (var i = 0; i < items.length; i++) ...[
-                    if (i > 0)
-                      Divider(
-                        height: 1,
-                        color: cs.outlineVariant.withValues(alpha: 0.25),
-                      ),
-                    NotificationListTile(
-                      notification: items[i],
-                      onMarkRead: () => cubit.markRead(items[i].id),
-                      onDelete: () => cubit.delete(items[i].id),
-                    ),
-                  ],
-                ],
-              ),
+          const SidebarActionMenuDivider(),
+          Align(
+            alignment: Alignment.centerLeft,
+            child: TextButton(
+              onPressed: items.isEmpty ? null : () => cubit.clearAll(),
+              child: Text(l10n.notificationClearAll),
             ),
           ),
-        const SidebarActionMenuDivider(),
-        Align(
-          alignment: Alignment.centerLeft,
-          child: TextButton(
-            onPressed: items.isEmpty ? null : () => cubit.clearAll(),
-            child: Text(l10n.notificationClearAll),
-          ),
-        ),
-      ],
+        ],
+      ),
     );
   }
 }

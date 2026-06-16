@@ -18,11 +18,11 @@ void main() {
       storage: ProjectIconStorage(filesystem: LocalFilesystem()),
     );
     final icon = await service.importCustomFromLocalFile(
-      appProjectsDir: '${tmp.path}/projects',
+      projectDir: '${tmp.path}/workspace/projects/abc',
       projectId: 'abc',
       localSourcePath: source.path,
     );
 
-    expect(icon, const ProjectIconCustom('icons/abc.png'));
+    expect(icon, const ProjectIconCustom('assets/icon.png'));
   });
 }

@@ -5,7 +5,7 @@ import '../../models/extension_manifest.dart';
 import '../../models/project_profile.dart';
 import '../../models/skill.dart';
 import '../../models/team_config.dart';
-import '../cli/cli_data_layout.dart';
+import '../storage/runtime_layout.dart';
 import '../extension/extension_detector.dart';
 import '../host/host_execution_environment.dart';
 import '../host/host_script_dialect.dart';
@@ -18,6 +18,7 @@ import '../mcp/mcp_registry_service.dart';
 import '../plugin/cli_plugin_registry_service.dart';
 import '../resource/resource_provisioning_service.dart';
 import '../resource/resource_scope.dart';
+import '../team/claude_team_roster_service.dart';
 import '../storage/app_storage.dart';
 import 'config_profile_infrastructure.dart';
 
@@ -44,7 +45,7 @@ class ConfigProfileService implements ConfigProfileDelegate {
   ConfigProfileService({
     required String basePath,
     Filesystem? fs,
-    CliDataLayout? layout,
+    RuntimeLayout? layout,
     Future<Set<String>> Function({String? teamId, String? projectId})?
     loadEnabledExtensionIds,
     ExtensionDetector? extensionDetector,
@@ -62,7 +63,7 @@ class ConfigProfileService implements ConfigProfileDelegate {
          basePath: basePath,
          layout:
              layout ??
-             CliDataLayout(teampilotRoot: basePath, fs: fs ?? AppStorage.fs),
+             RuntimeLayout(teampilotRoot: basePath, fs: fs ?? AppStorage.fs),
          fs: fs,
          loadEnabledExtensionIds: loadEnabledExtensionIds,
          extensionDetector: extensionDetector,
@@ -96,7 +97,7 @@ class ConfigProfileService implements ConfigProfileDelegate {
   String get basePath => _infra.basePath;
 
   @override
-  CliDataLayout get layout => _infra.layout;
+  RuntimeLayout get layout => _infra.layout;
 
   @override
   Filesystem get fs => _infra.fs;
@@ -104,31 +105,40 @@ class ConfigProfileService implements ConfigProfileDelegate {
   @override
   p.Context get pathContext => _infra.pathContext;
 
-  String get configProfilesDir => layout.configProfilesDir;
+  String get cliDefaultsDir => layout.cliDefaultsDir;
 
-  String teamScopeDir(String teamId) =>
-      pathContext.join(configProfilesDir, 'teams', teamId.trim());
+  String get teamsRuntimeDir => layout.teamsRuntimeDir;
 
-  String sessionProfileDir(String teamId, String sessionId) =>
-      pathContext.join(teamScopeDir(teamId), 'members', sessionId.trim());
+  String teamScopeDir(String teamId) => layout.teamRuntimeDir(teamId);
 
-  String standaloneProjectProfileDir(String projectId) =>
-      pathContext.join(configProfilesDir, 'standalone', 'projects', projectId.trim());
+  String projectConfigDir(String projectId) =>
+      layout.workspace.projectConfigDir(projectId);
 
   String standaloneSessionToolDir(String projectId, String sessionId, String tool) =>
-      layout.standaloneProjectSessionToolDir(projectId, sessionId, tool);
+      layout.sessionRuntimeToolDir(projectId, sessionId, tool);
 
   @override
-  String sessionToolDir(String teamId, String sessionId, String tool) {
+  String sessionToolDir(
+    String projectId,
+    String sessionId,
+    String tool, {
+    String? memberId,
+  }) {
     final scope = _activeStandaloneScope;
     if (scope != null) {
-      return layout.standaloneProjectSessionToolDir(
+      return layout.sessionRuntimeToolDir(
         scope.projectId,
         scope.sessionId,
         tool,
+        memberId: memberId,
       );
     }
-    return _infra.sessionToolDir(teamId, sessionId, tool);
+    return _infra.sessionToolDir(
+      projectId,
+      sessionId,
+      tool,
+      memberId: memberId,
+    );
   }
 
   Future<void> ensureTeamProfile(
@@ -141,29 +151,43 @@ class ConfigProfileService implements ConfigProfileDelegate {
   }
 
   Future<void> ensureSessionProfile(
-    String teamId,
-    String sessionId, {
+    String projectId,
+    String sessionId,
+    String teamId, {
     CliTool cli = CliTool.claude,
     TeamConfig? team,
+    String? memberId,
     Map<String, Map<String, Object?>>? extraMcpServers,
   }) async {
-    final trimmedTeamId = teamId.trim();
+    final trimmedProjectId = effectiveLaunchProjectId(
+      projectId: projectId,
+      teamId: teamId,
+    );
     final trimmedSessionId = sessionId.trim();
-    if (trimmedTeamId.isEmpty || trimmedSessionId.isEmpty) return;
+    final trimmedTeamId = teamId.trim();
+    if (trimmedProjectId.isEmpty ||
+        trimmedSessionId.isEmpty ||
+        trimmedTeamId.isEmpty) {
+      return;
+    }
 
     await ensureTeamProfile(trimmedTeamId, cli: cli);
     String? memberProvisionJson;
     await Future.wait([
-      layout.ensureMemberInheritsTeam(
-        trimmedTeamId,
+      layout.ensureSessionRuntimeInheritsTeam(
+        trimmedProjectId,
         trimmedSessionId,
+        trimmedTeamId,
         cli.value,
+        memberId: memberId,
       ),
       layout
-          .provisionMemberPluginsFromTeam(
-            trimmedTeamId,
+          .provisionSessionPluginsFromTeam(
+            trimmedProjectId,
             trimmedSessionId,
+            trimmedTeamId,
             cli.value,
+            memberId: memberId,
           )
           .then((json) => memberProvisionJson = json),
     ]);
@@ -176,10 +200,12 @@ class ConfigProfileService implements ConfigProfileDelegate {
         layout: layout,
         cliRegistry: _cliRegistry,
       ).writeForSession(
+        projectId: trimmedProjectId,
         teamId: trimmedTeamId,
         sessionId: trimmedSessionId,
         tool: cli,
         team: team,
+        memberId: memberId,
         memberProvisionJson: memberProvisionJson,
       );
     }
@@ -187,17 +213,21 @@ class ConfigProfileService implements ConfigProfileDelegate {
     if (cap != null) {
       await cap.ensureSessionProfile(
         ConfigProfileSessionContext(
+          projectId: trimmedProjectId,
           teamId: trimmedTeamId,
           sessionId: trimmedSessionId,
           members: team?.members ?? const [],
           paths: this,
           team: team,
+          memberId: memberId,
         ),
       );
     }
     await McpRegistryService(fs: fs, layout: layout).writeForSession(
+      projectId: trimmedProjectId,
       teamId: trimmedTeamId,
       sessionId: trimmedSessionId,
+      memberId: memberId,
       extraServers: extraMcpServers,
     );
   }
@@ -208,7 +238,7 @@ class ConfigProfileService implements ConfigProfileDelegate {
   }) async {
     final trimmed = projectId.trim();
     if (trimmed.isEmpty) return;
-    await fs.ensureDir(standaloneProjectProfileDir(trimmed));
+    await layout.ensureProjectConfigInheritsApp(trimmed, cli.value);
   }
 
   Future<void> ensureStandaloneSessionProfile(
@@ -230,13 +260,13 @@ class ConfigProfileService implements ConfigProfileDelegate {
       await ensureStandaloneProjectProfile(trimmedProjectId, cli: cli);
       String? sessionProvisionJson;
       await Future.wait([
-        layout.ensureStandaloneSessionInheritsProject(
+        layout.ensureSessionRuntimeInheritsProject(
           trimmedProjectId,
           trimmedSessionId,
           cli.value,
         ),
         layout
-            .provisionStandaloneSessionPluginsFromProject(
+            .provisionSessionPluginsFromProject(
               trimmedProjectId,
               trimmedSessionId,
               cli.value,
@@ -263,6 +293,7 @@ class ConfigProfileService implements ConfigProfileDelegate {
       if (cap != null) {
         await cap.ensureSessionProfile(
           ConfigProfileSessionContext(
+            projectId: trimmedProjectId,
             teamId: '',
             sessionId: trimmedSessionId,
             members: const [],
@@ -308,6 +339,7 @@ class ConfigProfileService implements ConfigProfileDelegate {
       sessionId: trimmedSessionId,
     );
     final scope = LaunchProfileScope(
+      projectId: trimmedProjectId,
       teamId: trimmedProjectId,
       sessionId: trimmedSessionId,
       cliTeamName: trimmedSessionId,
@@ -330,7 +362,7 @@ class ConfigProfileService implements ConfigProfileDelegate {
       ).provisionForLaunch(
         scope: PersonalResourceScope(profile: profile),
         cli: cli,
-        configDir: layout.standaloneProjectSessionToolDir(
+        configDir: layout.sessionRuntimeToolDir(
           trimmedProjectId,
           trimmedSessionId,
           cli.value,
@@ -351,6 +383,7 @@ class ConfigProfileService implements ConfigProfileDelegate {
       try {
         contribution = await cap.contributeLaunch(
           ConfigProfileLaunchContext(
+            projectId: trimmedProjectId,
             teamId: '',
             sessionId: trimmedSessionId,
             scope: scope,
@@ -394,8 +427,10 @@ class ConfigProfileService implements ConfigProfileDelegate {
   }
 
   Future<TeamLaunchOutcome> prepareTeamLaunch({
+    required String projectId,
+    required String sessionId,
     required String teamId,
-    String runtimeTeamId = '',
+    String cliTeamName = '',
     CliTool cli = CliTool.claude,
     List<TeamMemberConfig> members = const [],
     TeamMemberConfig? member,
@@ -406,8 +441,15 @@ class ConfigProfileService implements ConfigProfileDelegate {
     Map<String, Map<String, Object?>>? extraMcpServers,
     String? busIdleUrl,
   }) async {
+    final trimmedProjectId = effectiveLaunchProjectId(
+      projectId: projectId,
+      teamId: teamId,
+    );
+    final trimmedSessionId = sessionId.trim();
     final trimmedTeamId = teamId.trim();
-    if (trimmedTeamId.isEmpty) {
+    if (trimmedProjectId.isEmpty ||
+        trimmedSessionId.isEmpty ||
+        trimmedTeamId.isEmpty) {
       return const TeamLaunchOutcome(environment: {});
     }
 
@@ -417,27 +459,26 @@ class ConfigProfileService implements ConfigProfileDelegate {
       teamId: trimmedTeamId,
     );
 
-    var scope = resolveLaunchProfileScope(
-      teamId: trimmedTeamId,
-      runtimeTeamId: runtimeTeamId,
-    );
+    String? memberId;
     if (team?.teamMode == TeamMode.mixed && member != null && member.isValid) {
-      scope = LaunchProfileScope(
-        teamId: scope.teamId,
-        sessionId: mixedModeMemberScopeSessionId(
-          pathContext,
-          scope.sessionId,
-          member,
-        ),
-        cliTeamName: scope.cliTeamName,
-      );
+      memberId = ClaudeTeamRosterService.safeClaudePathSegment(member.id);
     }
 
+    final scope = resolveLaunchProfileScope(
+      projectId: trimmedProjectId,
+      teamId: trimmedTeamId,
+      appSessionId: trimmedSessionId,
+      cliTeamName: cliTeamName,
+      memberId: memberId,
+    );
+
     await ensureSessionProfile(
-      scope.teamId,
-      scope.sessionId,
+      trimmedProjectId,
+      trimmedSessionId,
+      trimmedTeamId,
       cli: cli,
       team: team,
+      memberId: memberId,
       extraMcpServers: extraMcpServers,
     );
 
@@ -448,7 +489,12 @@ class ConfigProfileService implements ConfigProfileDelegate {
       ).provisionForLaunch(
         scope: TeamResourceScope(team: team, member: member),
         cli: cli,
-        configDir: layout.memberToolDir(scope.teamId, scope.sessionId, cli.value),
+        configDir: layout.sessionRuntimeToolDir(
+          trimmedProjectId,
+          trimmedSessionId,
+          cli.value,
+          memberId: memberId,
+        ),
         catalog: await _skillCatalog(),
       );
       warnings.addAll(provisionResult.warnings);
@@ -466,6 +512,7 @@ class ConfigProfileService implements ConfigProfileDelegate {
     try {
       contribution = await cap.contributeLaunch(
         ConfigProfileLaunchContext(
+          projectId: trimmedProjectId,
           teamId: scope.teamId,
           sessionId: scope.sessionId,
           scope: scope,
@@ -477,6 +524,7 @@ class ConfigProfileService implements ConfigProfileDelegate {
           paths: this,
           leadSessionId: leadSessionId,
           busIdleUrl: busIdleUrl,
+          memberId: memberId,
         ),
       );
     } on Object catch (e) {

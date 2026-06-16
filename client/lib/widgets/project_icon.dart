@@ -8,6 +8,7 @@ import '../models/project_icon_ref.dart';
 import '../services/project/project_icon_service.dart';
 import '../services/project/project_icon_storage.dart';
 import '../services/storage/app_storage.dart';
+import '../services/storage/workspace_layout.dart';
 import '../utils/project_geometry_catalog.dart';
 import '../utils/project_icon_resolver.dart';
 
@@ -115,7 +116,8 @@ class _CustomProjectIconImageState extends State<_CustomProjectIconImage> {
 
   Future<List<int>?> _loadBytes() {
     return projectIconService.loadCustomBytes(
-      appProjectsDir: AppStorage.paths.appProjectsDir,
+      projectDir: WorkspaceLayout(teampilotRoot: AppStorage.paths.basePath)
+          .projectDir(widget.project.projectId),
       relativePath: widget.relativePath,
     );
   }

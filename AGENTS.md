@@ -66,7 +66,7 @@ Embedded terminals render with **flutter_alacritty** (Alacritty-based Rust engin
 | WSL | `$HOME/.local/share/com.hhoa.teampilot` in chosen distro |
 | SSH / Android | Remote host (`RemoteSshStoragePathResolver`) |
 
-Top-level under `<teampilotRoot>`: `teams/`, `projects/` (+ `sessions/*.json`), `skills/`, `plugins/`, `providers/{tool}/providers.json` (one per CLI), `ssh_profiles/`, `config-profiles/` (CLI runtime trees; layout in `cli_data_layout.dart`). Team skills/plugins link into `config-profiles/teams/…` via `TeamSkillLinkerService` / `TeamPluginLinkerService`.
+Top-level under `<teampilotRoot>`: `teams/`, `workspace/projects/` (per-project `manifest.json` + `sessions/`), `cli-defaults/`, `teams-runtime/`, `skills/`, `plugins/`, `providers/{tool}/providers.json` (one per CLI), `ssh_profiles/`, `ui/`. Canonical map: [docs/workspace-storage-layout.md](docs/workspace-storage-layout.md); code: `WorkspaceLayout` + `RuntimeLayout`. Team skills/plugins link into `teams-runtime/{teamId}/…` via `TeamSkillLinkerService` / `TeamPluginLinkerService`.
 
 ### Supported CLIs
 
@@ -82,7 +82,7 @@ Top-level under `<teampilotRoot>`: `teams/`, `projects/` (+ `sessions/*.json`), 
 
 Each CLI is a `CliToolDefinition` in `client/lib/services/cli/registry/tools/`, composed from **capabilities** under `registry/capabilities/` (launch args, config profile, installer, presence, provider catalog/credentials/models, headless run, transcript probe, terminal behavior, …). The registry is built by `CliToolRegistry.builtIn()` and provisioned via `CliBootstrap`. **To add or change a CLI, add/extend a tool definition + capabilities here** — do not special-case CLIs across the app.
 
-Provider catalogs: `providers/{tool}/providers.json` per CLI (`AppProviderRepository`). Config isolation is **app → team → member**; see `cli_data_layout.dart` (its header comment is the canonical `config-profiles/` map) and `SessionLifecycleService`.
+Provider catalogs: `providers/{tool}/providers.json` per CLI (`AppProviderRepository`). Config isolation is **app → team → project → session**; see `runtime_layout.dart`, `workspace_layout.dart`, and `SessionLifecycleService`.
 
 ### Team modes and TeamBus
 
@@ -109,10 +109,10 @@ Team chat sessions persist:
 | Field | Role |
 |-------|------|
 | `AppSession.sessionId` | UI / routing UUID (unchanged) |
-| `AppSession.cliTeamName` | CLI `--team-name` / config-profiles runtime dir (`{teamId}-{seq}`) |
+| `AppSession.cliTeamName` | CLI `--team-name` argument only (not a disk path) |
 | `AppSession.members[]` | Per-roster `taskId` for CLI `--session-id` / `--resume` |
 
-Allocated in `SessionRepository.createSession` via `SessionTeamCounter` (`config-profiles/teams/{teamId}/session-counter.json`). **No backward compatibility** with old `launchTeam` / chat-UUID runtime paths — users must create new team sessions after upgrade.
+Session runtime dirs live under `workspace/projects/{projectId}/sessions/{sessionId}/runtime/`. `cliTeamName` is allocated in `SessionRepository.createSession` via `SessionTeamCounter` (`teams-runtime/{teamId}/session-counter.json`).
 
 ## Where to change code
 
@@ -133,7 +133,7 @@ Allocated in `SessionRepository.createSession` via `SessionTeamCounter` (`config
 | Launch args / WSL paths | `client/lib/services/session/launch_command_builder.dart` |
 | Paths / Documents default | `client/lib/services/storage/app_storage.dart` |
 | Storage backend switch | `client/lib/services/storage/runtime_storage_context.dart` |
-| CLI directory layout | `client/lib/services/cli/cli_data_layout.dart` |
+| Storage layout | `client/lib/services/storage/workspace_layout.dart`, `runtime_layout.dart` |
 | Session title from prompt | `client/lib/utils/first_user_line_capture.dart`, `session_display_title.dart` |
 | Extensions (install, state, provision) | `client/lib/services/extension/`, `client/lib/repositories/extension_repository.dart`, `client/lib/cubits/extension_cubit.dart` |
 

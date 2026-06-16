@@ -39,7 +39,8 @@ void main() {
     expect(snap.storageIsRemote, isFalse);
   });
 
-  test('SSH snapshot exposes layout under teampilotRoot/config-profiles', () {
+  test('SSH snapshot exposes layout under teampilotRoot cli-defaults and workspace',
+      () {
     const teampilotRoot = '/home/remote/.local/share/com.hhoa.teampilot';
     final snap = StorageRootsSnapshot(
       storageIsRemote: true,
@@ -48,7 +49,7 @@ void main() {
       teamsUiDir: AppPaths.teamsUiDirForTeampilotRoot(teampilotRoot),
       skillsRoot: AppPaths.skillsDirForTeampilotRoot(teampilotRoot),
       skillBackupsDir: AppPaths.skillBackupsDirForTeampilotRoot(teampilotRoot),
-      appProjectsDir: AppPaths.appProjectsDirForTeampilotRoot(teampilotRoot),
+      workspaceDir: AppPaths.workspaceDirForTeampilotRoot(teampilotRoot),
       skillReposConfigPath: AppPaths.skillReposConfigPathForTeampilotRoot(
         teampilotRoot,
       ),
@@ -74,7 +75,7 @@ void main() {
     expect(snap.teampilotRoot, teampilotRoot);
     expect(snap.teamsUiDir, posix.join(teampilotRoot, 'teams'));
     expect(snap.skillsRoot, posix.join(teampilotRoot, 'skills', 'installed'));
-    expect(snap.appProjectsDir, posix.join(teampilotRoot, 'projects'));
+    expect(snap.workspaceDir, posix.join(teampilotRoot, 'workspace'));
     expect(
       snap.skillReposConfigPath,
       posix.join(teampilotRoot, 'skills', 'repos.json'),
@@ -82,23 +83,18 @@ void main() {
 
     expect(
       snap.layout.teamToolDir('team-a', 'flashskyai'),
-      posix.join(
-        teampilotRoot,
-        'config-profiles',
-        'teams',
-        'team-a',
-        'flashskyai',
-      ),
+      posix.join(teampilotRoot, 'teams-runtime', 'team-a', 'flashskyai'),
     );
     expect(
-      snap.layout.memberToolDir('team-a', 'sess-1', 'flashskyai'),
+      snap.layout.sessionRuntimeToolDir('proj-1', 'sess-1', 'flashskyai'),
       posix.join(
         teampilotRoot,
-        'config-profiles',
-        'teams',
-        'team-a',
-        'members',
+        'workspace',
+        'projects',
+        'proj-1',
+        'sessions',
         'sess-1',
+        'runtime',
         'flashskyai',
       ),
     );

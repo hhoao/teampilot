@@ -174,23 +174,31 @@ class _RightToolsPanelState extends State<RightToolsPanel> {
           canViewDetail: chatCubit.activeTab != null,
           onViewDetail: (id) {
             final member = runtimeMembers.firstWhere((m) => m.id == id);
-            final cliTeamName = chatCubit.activeTab?.cliTeamName ?? '';
+            final activeTab = chatCubit.activeTab;
+            final projectId =
+                widget.projectId ?? activeTab?.projectId ?? '';
+            final sessionId = activeTab?.info.id ?? '';
             unawaited(showMemberDetailDialog(
               context,
+              projectId: projectId,
+              sessionId: sessionId,
               team: team,
               member: member,
-              cliTeamName: cliTeamName,
             ));
             maybeDismissDrawer();
           },
           onOpenConfigDir: (id) {
             final member = runtimeMembers.firstWhere((m) => m.id == id);
-            final cliTeamName = chatCubit.activeTab?.cliTeamName ?? '';
+            final activeTab = chatCubit.activeTab;
+            final projectId =
+                widget.projectId ?? activeTab?.projectId ?? '';
+            final sessionId = activeTab?.info.id ?? '';
             unawaited(() async {
               final detail = await MemberConfigInspector().inspect(
+                projectId: projectId,
+                sessionId: sessionId,
                 team: team,
                 member: member,
-                cliTeamName: cliTeamName,
               );
               if (detail.resolvedDir.isNotEmpty) {
                 await SystemFolderOpener().reveal(detail.resolvedDir);

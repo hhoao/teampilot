@@ -61,22 +61,34 @@ final class ClaudeConfigProfileCapability implements ConfigProfileCapability {
 
   static String sessionMetadataFile(
     ConfigProfileDelegate delegate,
-    String teamId,
-    String sessionId,
-  ) =>
+    String projectId,
+    String sessionId, {
+    String? memberId,
+  }) =>
       delegate.pathContext.join(
-        delegate.sessionToolDir(teamId, sessionId, toolId),
+        delegate.sessionToolDir(
+          projectId,
+          sessionId,
+          toolId,
+          memberId: memberId,
+        ),
         metadataFileName,
       );
 
   static String sessionMemberSettingsFile(
     ConfigProfileDelegate delegate,
-    String teamId,
+    String projectId,
     String sessionId,
-    TeamMemberConfig member,
-  ) =>
+    TeamMemberConfig member, {
+    String? memberId,
+  }) =>
       delegate.pathContext.join(
-        delegate.sessionToolDir(teamId, sessionId, toolId),
+        delegate.sessionToolDir(
+          projectId,
+          sessionId,
+          toolId,
+          memberId: memberId,
+        ),
         'settings',
         '${ClaudeTeamRosterService.safeClaudePathSegment(member.id)}.json',
       );
@@ -112,7 +124,12 @@ final class ClaudeConfigProfileCapability implements ConfigProfileCapability {
       );
       return;
     }
-    await _ensureSessionDefaults(ctx.paths, ctx.teamId, ctx.sessionId);
+    await _ensureSessionDefaults(
+      ctx.paths,
+      ctx.projectId,
+      ctx.sessionId,
+      memberId: ctx.memberId,
+    );
   }
 
   @override
@@ -196,9 +213,10 @@ final class ClaudeConfigProfileCapability implements ConfigProfileCapability {
         claude?.settings != null &&
         isOfficialClaudeSettings(claude!.settings!)) {
       final sessionClaudeDir = delegate.sessionToolDir(
-        scope.teamId,
+        scope.projectId,
         scope.sessionId,
         toolId,
+        memberId: scope.memberId,
       );
       final credentials = ClaudeProviderCredentialsService(
         fs: delegate.fs,
@@ -216,16 +234,18 @@ final class ClaudeConfigProfileCapability implements ConfigProfileCapability {
     final member = ctx.member;
     final environment = <String, String>{
       'CLAUDE_CONFIG_DIR': delegate.sessionToolDir(
-        scope.teamId,
+        scope.projectId,
         scope.sessionId,
         toolId,
+        memberId: scope.memberId,
       ),
       if (member != null && member.isValid)
         settingsFileEnvKey: sessionMemberSettingsFile(
           delegate,
-          scope.teamId,
+          scope.projectId,
           scope.sessionId,
           member,
+          memberId: scope.memberId,
         ),
       if (!mixed) 'CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS': '1',
       'CLAUDE_CODE_NO_FLICKER': '1',
@@ -252,12 +272,18 @@ final class ClaudeConfigProfileCapability implements ConfigProfileCapability {
 
   Future<void> _ensureSessionDefaults(
     ConfigProfileDelegate delegate,
-    String teamId,
-    String sessionId,
-  ) async {
+    String projectId,
+    String sessionId, {
+    String? memberId,
+  }) async {
     await _ensureSessionDefaultsAt(
       delegate,
-      delegate.sessionToolDir(teamId, sessionId, toolId),
+      delegate.sessionToolDir(
+        projectId,
+        sessionId,
+        toolId,
+        memberId: memberId,
+      ),
     );
   }
 
@@ -486,7 +512,12 @@ final class ClaudeConfigProfileCapability implements ConfigProfileCapability {
     required bool mixed,
   }) async {
     final file = delegate.pathContext.join(
-      delegate.sessionToolDir(scope.teamId, scope.sessionId, toolId),
+      delegate.sessionToolDir(
+        scope.projectId,
+        scope.sessionId,
+        toolId,
+        memberId: scope.memberId,
+      ),
       'settings.json',
     );
     final settings = _teamSettings(
@@ -499,9 +530,10 @@ final class ClaudeConfigProfileCapability implements ConfigProfileCapability {
       file,
       settings,
       memberToolDir: delegate.sessionToolDir(
-        scope.teamId,
+        scope.projectId,
         scope.sessionId,
         toolId,
+        memberId: scope.memberId,
       ),
       tool: toolId,
       teamId: scope.teamId,
@@ -516,8 +548,9 @@ final class ClaudeConfigProfileCapability implements ConfigProfileCapability {
   }) async {
     final metadataPath = sessionMetadataFile(
       delegate,
-      scope.teamId,
+      scope.projectId,
       scope.sessionId,
+      memberId: scope.memberId,
     );
     final metadata = await delegate.metadataWithTrustedProjects(
       metadataPath: metadataPath,
@@ -541,9 +574,10 @@ final class ClaudeConfigProfileCapability implements ConfigProfileCapability {
     String? leadSessionId,
   }) async {
     final claudeDir = delegate.sessionToolDir(
-      scope.teamId,
+      scope.projectId,
       scope.sessionId,
       toolId,
+      memberId: scope.memberId,
     );
     final rosterDir = delegate.pathContext.join(
       claudeDir,
@@ -637,9 +671,12 @@ final class ClaudeConfigProfileCapability implements ConfigProfileCapability {
     String? idleUrl,
   }) async {
     final memberToolDir = delegate.sessionToolDir(
-      scope.teamId,
+      scope.projectId,
       scope.sessionId,
       toolId,
+      memberId: mixed
+          ? ClaudeTeamRosterService.safeClaudePathSegment(member.id)
+          : null,
     );
     final isLead = TeamMemberNaming.isTeamLead(member);
     await MemberRoleProvision.syncRolePromptFile(
@@ -651,9 +688,12 @@ final class ClaudeConfigProfileCapability implements ConfigProfileCapability {
     );
     final file = sessionMemberSettingsFile(
       delegate,
-      scope.teamId,
+      scope.projectId,
       scope.sessionId,
       member,
+      memberId: mixed
+          ? ClaudeTeamRosterService.safeClaudePathSegment(member.id)
+          : null,
     );
     final effortLevel = _resolveClaudeEffort(
       team: team,

@@ -302,7 +302,7 @@ wire_api = "chat"
         await File(
           p.join(
             appData,
-            'config-profiles',
+            'cli-defaults',
             'flashskyai',
             'llm_config.json',
           ),

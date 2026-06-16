@@ -4,7 +4,7 @@ import 'dart:io';
 import 'package:http/http.dart' as http;
 
 import '../storage/app_storage.dart';
-import '../cli/cli_data_layout.dart';
+import '../storage/runtime_layout.dart';
 import 'mcp_credentials_store.dart';
 import 'mcp_oauth_callback_server.dart';
 import 'mcp_oauth_discovery.dart';
@@ -30,7 +30,7 @@ class McpOAuthFlow {
   final http.Client _http;
 
   static String claudeAppConfigDir() {
-    return CliDataLayout(teampilotRoot: AppStorage.appDataRoot).appToolRoot(
+    return RuntimeLayout(teampilotRoot: AppStorage.appDataRoot).appToolRoot(
       'claude',
     );
   }

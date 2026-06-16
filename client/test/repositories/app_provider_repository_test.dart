@@ -143,7 +143,7 @@ void main() {
     final appFile = File(
       p.join(
         root.path,
-        'config-profiles',
+        'cli-defaults',
         'flashskyai',
         'llm_config.json',
       ),

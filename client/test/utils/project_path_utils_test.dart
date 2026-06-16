@@ -8,12 +8,21 @@ import 'package:teampilot/services/storage/runtime_storage_context.dart';
 import 'package:teampilot/utils/project_path_utils.dart';
 
 void main() {
-  test('session repo style paths join with POSIX separators', () {
-    const root = '/home/hhoa/.local/share/com.hhoa.teampilot/projects';
+  test('workspace layout paths join with POSIX separators', () {
+    const root = '/home/hhoa/.local/share/com.hhoa.teampilot';
     final ctx = AppPaths.pathContextForDataRoot(root);
-    expect(ctx.join(root, 'projects.json'), '$root/projects.json');
-    expect(ctx.join(root, 'sessions', 'id.json'), '$root/sessions/id.json');
-    expect(ctx.join(root, 'projects.json'), isNot(contains(r'\')));
+    expect(
+      ctx.join(root, 'workspace', 'projects', 'p1', 'manifest.json'),
+      '$root/workspace/projects/p1/manifest.json',
+    );
+    expect(
+      ctx.join(root, 'workspace', 'projects', 'p1', 'sessions', 's1', 'session.json'),
+      '$root/workspace/projects/p1/sessions/s1/session.json',
+    );
+    expect(
+      ctx.join(root, 'ui', 'open-project-tabs.json'),
+      isNot(contains(r'\')),
+    );
   });
 
   test('normalizeProjectPath converts Windows paths under WSL storage', () {

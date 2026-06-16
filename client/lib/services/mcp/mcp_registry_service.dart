@@ -1,7 +1,7 @@
 import 'dart:convert';
 
 import '../../models/mcp_registry_source.dart';
-import '../cli/cli_data_layout.dart';
+import '../storage/runtime_layout.dart';
 import '../io/filesystem.dart';
 import '../io/local_filesystem.dart';
 import '../cli/registry/config_profile/claude_config_profile_capability.dart';
@@ -23,18 +23,25 @@ class McpRegistryService {
              teampilotRoot: layout.teampilotRoot,
            );
 
-  final CliDataLayout layout;
+  final RuntimeLayout layout;
   final Filesystem _fs;
   final McpRegistryConfigService _registryConfigService;
 
   Future<void> writeForSession({
+    required String projectId,
     required String teamId,
     required String sessionId,
+    String? memberId,
     Map<String, Map<String, Object?>>? extraServers,
   }) async {
+    final trimmedProjectId = projectId.trim();
     final trimmedTeamId = teamId.trim();
     final trimmedSessionId = sessionId.trim();
-    if (trimmedTeamId.isEmpty || trimmedSessionId.isEmpty) return;
+    if (trimmedProjectId.isEmpty ||
+        trimmedTeamId.isEmpty ||
+        trimmedSessionId.isEmpty) {
+      return;
+    }
 
     Map<String, Map<String, Object?>>? catalogServers;
     final snapshotPath = layout.teamMcpServersFile(trimmedTeamId);
@@ -75,15 +82,17 @@ class McpRegistryService {
     if (mergedServers.isEmpty) return;
 
     await _mergeForTool(
-      teamId: trimmedTeamId,
+      projectId: trimmedProjectId,
       sessionId: trimmedSessionId,
+      memberId: memberId,
       tool: 'claude',
       metadataFileName: ClaudeConfigProfileCapability.metadataFileName,
       catalogServers: mergedServers,
     );
     await _mergeForTool(
-      teamId: trimmedTeamId,
+      projectId: trimmedProjectId,
       sessionId: trimmedSessionId,
+      memberId: memberId,
       tool: 'flashskyai',
       metadataFileName: FlashskyaiConfigProfileCapability.metadataFileName,
       catalogServers: mergedServers,
@@ -92,7 +101,12 @@ class McpRegistryService {
     if (catalogServers != null && catalogServers.isNotEmpty) {
       await McpCredentialsStore(fs: _fs).mergeInto(
         fromConfigDir: layout.appToolRoot('claude'),
-        toConfigDir: layout.memberToolDir(trimmedTeamId, trimmedSessionId, 'claude'),
+        toConfigDir: layout.sessionRuntimeToolDir(
+          trimmedProjectId,
+          trimmedSessionId,
+          'claude',
+          memberId: memberId,
+        ),
       );
     }
   }
@@ -107,7 +121,7 @@ class McpRegistryService {
     if (trimmedProjectId.isEmpty || trimmedSessionId.isEmpty) return;
 
     Map<String, Map<String, Object?>>? catalogServers;
-    final snapshotPath = layout.standaloneProjectMcpServersFile(trimmedProjectId);
+    final snapshotPath = layout.projectConfigMcpServersFile(trimmedProjectId);
     final snapshotStat = await _fs.stat(snapshotPath);
     if (snapshotStat.isFile) {
       final snapshotText = await _fs.readString(snapshotPath);
@@ -162,7 +176,7 @@ class McpRegistryService {
     if (catalogServers != null && catalogServers.isNotEmpty) {
       await McpCredentialsStore(fs: _fs).mergeInto(
         fromConfigDir: layout.appToolRoot('claude'),
-        toConfigDir: layout.standaloneProjectSessionToolDir(
+        toConfigDir: layout.sessionRuntimeToolDir(
           trimmedProjectId,
           trimmedSessionId,
           'claude',
@@ -172,14 +186,20 @@ class McpRegistryService {
   }
 
   Future<void> _mergeForTool({
-    required String teamId,
+    required String projectId,
     required String sessionId,
     required String tool,
     required String metadataFileName,
     required Map<String, Map<String, Object?>> catalogServers,
+    String? memberId,
   }) async {
     final metaPath = _fs.pathContext.join(
-      layout.memberToolDir(teamId, sessionId, tool),
+      layout.sessionRuntimeToolDir(
+        projectId,
+        sessionId,
+        tool,
+        memberId: memberId,
+      ),
       metadataFileName,
     );
     final stat = await _fs.stat(metaPath);
@@ -217,7 +237,7 @@ class McpRegistryService {
     required Map<String, Map<String, Object?>> catalogServers,
   }) async {
     final metaPath = _fs.pathContext.join(
-      layout.standaloneProjectSessionToolDir(projectId, sessionId, tool),
+      layout.sessionRuntimeToolDir(projectId, sessionId, tool),
       metadataFileName,
     );
     final stat = await _fs.stat(metaPath);

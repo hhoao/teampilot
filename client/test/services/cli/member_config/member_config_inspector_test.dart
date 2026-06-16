@@ -1,6 +1,6 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:teampilot/models/team_config.dart';
-import 'package:teampilot/services/cli/cli_data_layout.dart';
+import 'package:teampilot/services/storage/runtime_layout.dart';
 import 'package:teampilot/services/cli/member_config/member_config_detail.dart';
 import 'package:teampilot/services/cli/member_config/member_config_inspector.dart';
 import 'package:teampilot/services/cli/registry/cli_tool_registry.dart';
@@ -9,7 +9,7 @@ import '../../../support/in_memory_filesystem.dart';
 
 void main() {
   late InMemoryFilesystem fs;
-  late CliDataLayout layout;
+  late RuntimeLayout layout;
   late MemberConfigInspector inspector;
 
   const member = TeamMemberConfig(
@@ -28,7 +28,7 @@ void main() {
 
   setUp(() {
     fs = InMemoryFilesystem();
-    layout = CliDataLayout(teampilotRoot: '/tp', fs: fs);
+    layout = RuntimeLayout(teampilotRoot: '/tp', fs: fs);
     inspector = MemberConfigInspector(
       layout: layout,
       fs: fs,
@@ -38,14 +38,20 @@ void main() {
 
   test('prefers the runtime member dir when it exists (mixed mode nests by id)',
       () async {
-    final dir = layout.memberToolDir('team-a', 'team-a-1/m1', 'claude');
+    final dir = layout.sessionRuntimeToolDir(
+      'project-1',
+      'team-a-1',
+      'claude',
+      memberId: 'm1',
+    );
     await fs.ensureDir(dir);
     await fs.writeString('$dir/skills/a/SKILL.md', '---\nname: A\n---');
 
     final detail = await inspector.inspect(
+      projectId: 'project-1',
+      sessionId: 'team-a-1',
       team: team,
       member: member,
-      cliTeamName: 'team-a-1',
     );
 
     expect(detail.sourceLayer, MemberConfigSourceLayer.runtime);
@@ -58,9 +64,10 @@ void main() {
     await fs.ensureDir(teamDir);
 
     final detail = await inspector.inspect(
+      projectId: 'project-1',
+      sessionId: 'team-a-1',
       team: team,
       member: member,
-      cliTeamName: 'team-a-1',
     );
 
     expect(detail.sourceLayer, MemberConfigSourceLayer.team);
@@ -69,9 +76,10 @@ void main() {
 
   test('returns none when neither layer exists', () async {
     final detail = await inspector.inspect(
+      projectId: 'project-1',
+      sessionId: '',
       team: team,
       member: member,
-      cliTeamName: '',
     );
     expect(detail.sourceLayer, MemberConfigSourceLayer.none);
     expect(detail.hasConfig, isFalse);

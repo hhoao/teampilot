@@ -34,16 +34,18 @@ class MemberConfigCubit extends Cubit<MemberConfigState> {
   final MemberConfigInspector _inspector;
 
   Future<void> load({
+    required String projectId,
+    required String sessionId,
     required TeamConfig team,
     required TeamMemberConfig member,
-    required String cliTeamName,
   }) async {
     emit(state.copyWith(status: MemberConfigStatus.loading));
     try {
       final detail = await _inspector.inspect(
+        projectId: projectId,
+        sessionId: sessionId,
         team: team,
         member: member,
-        cliTeamName: cliTeamName,
       );
       if (isClosed) return;
       emit(MemberConfigState(

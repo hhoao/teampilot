@@ -5,7 +5,7 @@ import '../../../io/filesystem.dart';
 import '../../../provider/config_profile_infrastructure.dart';
 import '../../../provider/tool_config_generator.dart';
 import '../../../storage/app_storage.dart';
-import '../../cli_data_layout.dart';
+import '../../../storage/runtime_layout.dart';
 
 /// Shared storage-backed collaborators and JSON helpers for the per-CLI
 /// [HeadlessProvisionCapability] implementations.
@@ -26,7 +26,7 @@ mixin HeadlessProvisionSupport {
 
   ConfigProfileInfrastructure get profileInfra => ConfigProfileInfrastructure(
         basePath: basePath,
-        layout: CliDataLayout(teampilotRoot: basePath, fs: fs),
+        layout: RuntimeLayout(teampilotRoot: basePath, fs: fs),
         fs: fs,
       );
 

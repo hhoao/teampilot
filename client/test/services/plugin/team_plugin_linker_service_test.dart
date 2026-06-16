@@ -60,7 +60,7 @@ void main() {
     expect(result.errors, isEmpty);
     expect(result.linked, ['p1']);
     final teamBundle = Directory(
-      p.join(tmp.path, 'config-profiles', 'teams', 't1', 'flashskyai', 'plugins', 'p1'),
+      p.join(tmp.path, 'teams-runtime', 't1', 'flashskyai', 'plugins', 'p1'),
     );
     expect(teamBundle.existsSync(), isTrue);
     if (Platform.isLinux || Platform.isMacOS) {
@@ -79,7 +79,7 @@ void main() {
 
   test('syncForTeam removes stale links not in pluginIds', () async {
     final teamPluginsDir = Directory(
-      p.join(tmp.path, 'config-profiles', 'teams', 't1', 'flashskyai', 'plugins'),
+      p.join(tmp.path, 'teams-runtime', 't1', 'flashskyai', 'plugins'),
     )..createSync(recursive: true);
     Directory(p.join(teamPluginsDir.path, 'old-plugin')).createSync();
 

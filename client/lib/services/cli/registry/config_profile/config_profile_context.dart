@@ -1,6 +1,6 @@
 import 'package:path/path.dart' as p;
 
-import '../../cli_data_layout.dart';
+import '../../../storage/runtime_layout.dart';
 import '../../../../models/cli_preset.dart';
 import '../../../../models/project_profile.dart';
 import '../../../../models/team_config.dart';
@@ -17,7 +17,7 @@ String standaloneSessionToolDir(
   StandaloneLaunchProfileScope scope,
   String tool,
 ) =>
-    paths.layout.standaloneProjectSessionToolDir(
+    paths.layout.sessionRuntimeToolDir(
       scope.projectId,
       scope.sessionId,
       tool,
@@ -27,6 +27,7 @@ String standaloneSessionToolDir(
 /// [standaloneSessionToolDir] for CONFIG_DIR).
 LaunchProfileScope launchScopeForStandalone(StandaloneLaunchProfileScope scope) =>
     LaunchProfileScope(
+      projectId: scope.projectId,
       teamId: scope.projectId,
       sessionId: scope.sessionId,
       cliTeamName: scope.sessionId,
@@ -113,9 +114,14 @@ abstract interface class ConfigProfilePaths {
 
   p.Context get pathContext;
 
-  CliDataLayout get layout;
+  RuntimeLayout get layout;
 
-  String sessionToolDir(String teamId, String sessionId, String tool);
+  String sessionToolDir(
+    String projectId,
+    String sessionId,
+    String tool, {
+    String? memberId,
+  });
 }
 
 /// Shared profile I/O, extension settings hooks, and team-lead scripts.
@@ -183,6 +189,7 @@ abstract interface class ConfigProfileDelegate implements ConfigProfilePaths {
 
 class ConfigProfileSessionContext {
   const ConfigProfileSessionContext({
+    required this.projectId,
     required this.teamId,
     required this.sessionId,
     required this.members,
@@ -190,8 +197,10 @@ class ConfigProfileSessionContext {
     this.team,
     this.standaloneScope,
     this.profile,
+    this.memberId,
   });
 
+  final String projectId;
   final String teamId;
   final String sessionId;
   final List<TeamMemberConfig> members;
@@ -199,10 +208,12 @@ class ConfigProfileSessionContext {
   final TeamConfig? team;
   final StandaloneLaunchProfileScope? standaloneScope;
   final ProjectProfile? profile;
+  final String? memberId;
 }
 
 class ConfigProfileLaunchContext {
   const ConfigProfileLaunchContext({
+    required this.projectId,
     required this.teamId,
     required this.sessionId,
     required this.scope,
@@ -217,8 +228,10 @@ class ConfigProfileLaunchContext {
     this.standaloneScope,
     this.profile,
     this.preset,
+    this.memberId,
   });
 
+  final String projectId;
   final String teamId;
   final String sessionId;
   final LaunchProfileScope scope;
@@ -233,4 +246,5 @@ class ConfigProfileLaunchContext {
   final StandaloneLaunchProfileScope? standaloneScope;
   final ProjectProfile? profile;
   final CliPreset? preset;
+  final String? memberId;
 }

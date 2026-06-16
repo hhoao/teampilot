@@ -5,13 +5,16 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:path/path.dart' as p;
 import 'package:teampilot/models/team_config.dart';
 import 'package:teampilot/services/storage/app_storage.dart';
-import 'package:teampilot/services/cli/cli_data_layout.dart';
+import 'package:teampilot/services/storage/runtime_layout.dart';
+import 'package:teampilot/services/cli/registry/config_profile/config_profile_scope.dart';
 import 'package:teampilot/services/provider/config_profile_service.dart';
 import 'package:teampilot/services/io/local_filesystem.dart';
 import 'package:teampilot/services/extension/extension_detector.dart';
 import 'package:teampilot/services/host/host_execution_environment.dart';
 import 'package:teampilot/services/host/script_file_hook_provisioner.dart';
 import 'package:teampilot/services/storage/runtime_storage_context.dart';
+
+const _testProjectId = 'project-1';
 
 void main() {
   group('ConfigProfileService extension settings hooks', () {
@@ -25,12 +28,10 @@ void main() {
       service = ConfigProfileService(
         basePath: base.path,
         fs: fs,
-        layout: CliDataLayout(teampilotRoot: base.path, fs: fs),
+        layout: RuntimeLayout(teampilotRoot: base.path, fs: fs),
         loadEnabledExtensionIds: ({teamId, projectId}) async => {'rtk'},
         extensionDetector: ExtensionDetector(
           processRunner: (executable, arguments, {environment}) async {
-            // ExtensionDetector locates binaries via `which` on POSIX and `where`
-            // on Windows, so match on the queried name rather than the locator.
             const locators = {'which', 'where'};
             if (locators.contains(executable) && arguments.first == 'rtk') {
               return ProcessResult(0, 0, '/usr/bin/rtk\n', '');
@@ -69,7 +70,10 @@ void main() {
 
     test('writes PreToolUse hook when RTK extension enabled', () async {
       final outcome = await service.prepareTeamLaunch(
+        projectId: _testProjectId,
+        sessionId: configProfileAdhocSessionId,
         teamId: 'team-a',
+        cliTeamName: 'team-a',
         cli: CliTool.flashskyai,
       );
 
@@ -77,11 +81,12 @@ void main() {
 
       final memberDir = p.join(
         base.path,
-        'config-profiles',
-        'teams',
-        'team-a',
-        'members',
+        'workspace',
+        'projects',
+        _testProjectId,
+        'sessions',
         configProfileAdhocSessionId,
+        'runtime',
         'flashskyai',
       );
       final settingsPath = p.join(memberDir, 'settings.json');
@@ -103,13 +108,16 @@ void main() {
       service = ConfigProfileService(
         basePath: base.path,
         fs: LocalFilesystem(),
-        layout: CliDataLayout(teampilotRoot: base.path, fs: LocalFilesystem()),
+        layout: RuntimeLayout(teampilotRoot: base.path, fs: LocalFilesystem()),
         loadEnabledExtensionIds: ({teamId, projectId}) async => {'rtk'},
         extensionDetector: ExtensionDetector(processRunner: _alwaysMissing),
       );
 
       final outcome = await service.prepareTeamLaunch(
+        projectId: _testProjectId,
+        sessionId: configProfileAdhocSessionId,
         teamId: 'team-b',
+        cliTeamName: 'team-b',
         cli: CliTool.flashskyai,
       );
 

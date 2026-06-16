@@ -11,42 +11,42 @@ class ProjectIconService {
   final ProjectIconStorage _storage;
   final _bytesCache = <String, List<int>>{};
 
-  String _cacheKey(String appProjectsDir, String relativePath) =>
-      '$appProjectsDir|$relativePath';
+  String _cacheKey(String projectDir, String relativePath) =>
+      '$projectDir|$relativePath';
 
   void evictCustomIconCache({
-    required String appProjectsDir,
+    required String projectDir,
     required String relativePath,
   }) {
-    _bytesCache.remove(_cacheKey(appProjectsDir, relativePath));
+    _bytesCache.remove(_cacheKey(projectDir, relativePath));
   }
 
   void evictProjectCustomIcons({
-    required String appProjectsDir,
+    required String projectDir,
     required String projectId,
     ProjectIconRef? icon,
   }) {
     if (icon case ProjectIconCustom(:final relativePath) when relativePath.isNotEmpty) {
       evictCustomIconCache(
-        appProjectsDir: appProjectsDir,
+        projectDir: projectDir,
         relativePath: relativePath,
       );
     }
     _bytesCache.removeWhere(
-      (key, _) => key.startsWith('$appProjectsDir|icons/$projectId.'),
+      (key, _) => key.startsWith('$projectDir|${ProjectIconStorage.assetsDirName}/'),
     );
   }
 
   Future<List<int>?> loadCustomBytes({
-    required String appProjectsDir,
+    required String projectDir,
     required String relativePath,
   }) async {
-    final cacheKey = _cacheKey(appProjectsDir, relativePath);
+    final cacheKey = _cacheKey(projectDir, relativePath);
     final cached = _bytesCache[cacheKey];
     if (cached != null) return cached;
 
     final bytes = await _storage.readBytes(
-      appProjectsDir: appProjectsDir,
+      projectDir: projectDir,
       relativePath: relativePath,
     );
     if (bytes == null || bytes.isEmpty) return null;
@@ -55,7 +55,7 @@ class ProjectIconService {
   }
 
   Future<ProjectIconCustom> importCustomFromLocalFile({
-    required String appProjectsDir,
+    required String projectDir,
     required String projectId,
     required String localSourcePath,
   }) async {
@@ -70,7 +70,7 @@ class ProjectIconService {
     }
 
     final relativePath = await _storage.saveBytes(
-      appProjectsDir: appProjectsDir,
+      projectDir: projectDir,
       projectId: projectId,
       bytes: bytes,
       extension: ext,
@@ -80,14 +80,14 @@ class ProjectIconService {
     }
 
     evictProjectCustomIcons(
-      appProjectsDir: appProjectsDir,
+      projectDir: projectDir,
       projectId: projectId,
     );
     return ProjectIconCustom(relativePath);
   }
 
   Future<void> deleteCustomFilesForTransition({
-    required String appProjectsDir,
+    required String projectDir,
     required String projectId,
     required ProjectIconRef previous,
     required ProjectIconRef next,
@@ -97,32 +97,32 @@ class ProjectIconService {
       return;
     }
     await _storage.deleteFile(
-      appProjectsDir: appProjectsDir,
+      projectDir: projectDir,
       relativePath: previous.relativePath,
     );
     evictCustomIconCache(
-      appProjectsDir: appProjectsDir,
+      projectDir: projectDir,
       relativePath: previous.relativePath,
     );
   }
 
   Future<void> deleteAllCustomFilesForProject({
-    required String appProjectsDir,
+    required String projectDir,
     required String projectId,
     ProjectIconRef? icon,
   }) async {
     if (icon case ProjectIconCustom(:final relativePath) when relativePath.isNotEmpty) {
       await _storage.deleteFile(
-        appProjectsDir: appProjectsDir,
+        projectDir: projectDir,
         relativePath: relativePath,
       );
     }
     await _storage.deleteAllForProject(
-      appProjectsDir: appProjectsDir,
+      projectDir: projectDir,
       projectId: projectId,
     );
     evictProjectCustomIcons(
-      appProjectsDir: appProjectsDir,
+      projectDir: projectDir,
       projectId: projectId,
       icon: icon,
     );

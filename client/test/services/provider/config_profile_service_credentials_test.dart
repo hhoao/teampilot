@@ -75,13 +75,13 @@ void main() {
 
     final workOutcome = await service.prepareTeamLaunch(
       teamId: 'team-a',
-      runtimeTeamId: 'session-a',
+      projectId: 'project-1', sessionId: 'session-a', cliTeamName: 'session-a',
       cli: CliTool.claude,
       team: teamWithProvider('team-a', 'work'),
     );
     final personalOutcome = await service.prepareTeamLaunch(
       teamId: 'team-b',
-      runtimeTeamId: 'session-b',
+      projectId: 'project-1', sessionId: 'session-b', cliTeamName: 'session-b',
       cli: CliTool.claude,
       team: teamWithProvider('team-b', 'personal'),
     );
@@ -111,7 +111,7 @@ void main() {
 
     final outcome = await service.prepareTeamLaunch(
       teamId: 'team-a',
-      runtimeTeamId: 'session-a',
+      projectId: 'project-1', sessionId: 'session-a', cliTeamName: 'session-a',
       cli: CliTool.claude,
       team: teamWithProvider('team-a', 'work'),
     );

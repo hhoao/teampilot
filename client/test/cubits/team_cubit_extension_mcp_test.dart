@@ -8,7 +8,7 @@ import 'package:teampilot/models/plugin.dart';
 import 'package:teampilot/models/team_config.dart';
 import 'package:teampilot/repositories/session_repository.dart';
 import 'package:teampilot/repositories/team_repository.dart';
-import 'package:teampilot/services/cli/cli_data_layout.dart';
+import 'package:teampilot/services/storage/runtime_layout.dart';
 import 'package:teampilot/services/io/local_filesystem.dart';
 import 'package:teampilot/services/mcp/team_mcp_linker_service.dart';
 import 'package:teampilot/services/plugin/team_plugin_linker_service.dart';
@@ -40,7 +40,7 @@ class _RecordingMcpLinker extends TeamMcpLinkerService {
     required String teamId,
     required List<String> mcpServerIds,
     required List<McpServer> catalog,
-    required CliDataLayout layout,
+    required RuntimeLayout layout,
   }) async {
     calls.add((
       teamId: teamId,

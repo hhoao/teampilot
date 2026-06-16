@@ -4,7 +4,7 @@ import 'dart:io';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:path/path.dart' as p;
 import 'package:teampilot/models/team_config.dart';
-import 'package:teampilot/services/cli/cli_data_layout.dart';
+import 'package:teampilot/services/storage/runtime_layout.dart';
 import 'package:teampilot/services/cli/registry/config_profile/flashskyai_config_profile_capability.dart';
 import 'package:teampilot/services/io/local_filesystem.dart';
 import 'package:teampilot/services/provider/config_profile_service.dart';
@@ -20,18 +20,21 @@ void main() {
     final service = ConfigProfileService(
       basePath: base.path,
       fs: fs,
-      layout: CliDataLayout(teampilotRoot: base.path, fs: fs),
+      layout: RuntimeLayout(teampilotRoot: base.path, fs: fs),
     );
     const capability = FlashskyaiConfigProfileCapability();
     const member = TeamMemberConfig(id: 'm1', name: 'Member', model: 'test');
 
     final scope = resolveLaunchProfileScope(
+      projectId: 'project-1',
       teamId: 'team-a',
-      runtimeTeamId: 'session-1',
+      appSessionId: 'session-1',
+      cliTeamName: 'session-1',
     );
 
     final contribution = await capability.contributeLaunch(
       ConfigProfileLaunchContext(
+        projectId: 'project-1',
         teamId: 'team-a',
         sessionId: scope.sessionId,
         scope: scope,
@@ -44,11 +47,12 @@ void main() {
 
     final expectedDir = p.join(
       base.path,
-      'config-profiles',
-      'teams',
-      'team-a',
-      'members',
+      'workspace',
+      'projects',
+      'project-1',
+      'sessions',
       'session-1',
+      'runtime',
       'flashskyai',
     );
     expect(
@@ -67,7 +71,7 @@ void main() {
     final service = ConfigProfileService(
       basePath: base.path,
       fs: fs,
-      layout: CliDataLayout(teampilotRoot: base.path, fs: fs),
+      layout: RuntimeLayout(teampilotRoot: base.path, fs: fs),
     );
     const capability = FlashskyaiConfigProfileCapability();
     const member = TeamMemberConfig(id: 'm1', name: 'Member');
@@ -79,12 +83,16 @@ void main() {
     );
 
     final scope = resolveLaunchProfileScope(
+      projectId: 'project-1',
       teamId: 'team-a',
-      runtimeTeamId: 'session-1',
+      appSessionId: 'session-1',
+      cliTeamName: 'session-1',
+      memberId: 'm1',
     );
 
     await capability.contributeLaunch(
       ConfigProfileLaunchContext(
+        projectId: 'project-1',
         teamId: 'team-a',
         sessionId: scope.sessionId,
         scope: scope,
@@ -99,11 +107,13 @@ void main() {
 
     final settingsPath = p.join(
       base.path,
-      'config-profiles',
-      'teams',
-      'team-a',
-      'members',
+      'workspace',
+      'projects',
+      'project-1',
+      'sessions',
       'session-1',
+      'runtime',
+      'm1',
       'flashskyai',
       'settings.json',
     );

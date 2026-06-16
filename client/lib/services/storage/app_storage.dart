@@ -106,8 +106,11 @@ class AppPaths {
   static String skillBackupsDirForTeampilotRoot(String teampilotRoot) =>
       _pathUnderTeampilotRoot(teampilotRoot, 'skills/backups');
 
-  static String appProjectsDirForTeampilotRoot(String teampilotRoot) =>
-      _pathUnderTeampilotRoot(teampilotRoot, 'projects');
+  static String workspaceDirForTeampilotRoot(String teampilotRoot) =>
+      _pathUnderTeampilotRoot(teampilotRoot, 'workspace');
+
+  static String cliDefaultsDirForTeampilotRoot(String teampilotRoot) =>
+      _pathUnderTeampilotRoot(teampilotRoot, 'cli-defaults');
 
   /// Skill marketplace repo list.
   static String skillReposConfigPathForTeampilotRoot(String teampilotRoot) =>
@@ -168,42 +171,30 @@ class AppPaths {
   static String homeWorkspaceProjectFavoritesJsonForTeampilotRoot(
     String teampilotRoot,
   ) =>
-      _pathUnderTeampilotRoot(
-        teampilotRoot,
-        'home-workspace/project-favorites.json',
-      );
+      _pathUnderTeampilotRoot(teampilotRoot, 'ui/project-favorites.json');
 
   static String homeWorkspaceProjectDisplayPrefsJsonForTeampilotRoot(
     String teampilotRoot,
   ) =>
       _pathUnderTeampilotRoot(
         teampilotRoot,
-        'home-workspace/project-display-prefs.json',
+        'ui/project-display-prefs.json',
       );
 
   static String homeWorkspaceRecentProjectsJsonForTeampilotRoot(
     String teampilotRoot,
   ) =>
-      _pathUnderTeampilotRoot(
-        teampilotRoot,
-        'home-workspace/recent-projects.json',
-      );
+      _pathUnderTeampilotRoot(teampilotRoot, 'ui/recent-projects.json');
 
   static String homeWorkspaceClosedProjectsJsonForTeampilotRoot(
     String teampilotRoot,
   ) =>
-      _pathUnderTeampilotRoot(
-        teampilotRoot,
-        'home-workspace/closed-projects.json',
-      );
+      _pathUnderTeampilotRoot(teampilotRoot, 'ui/closed-projects.json');
 
   static String homeWorkspaceOpenProjectsJsonForTeampilotRoot(
     String teampilotRoot,
   ) =>
-      _pathUnderTeampilotRoot(
-        teampilotRoot,
-        'home-workspace/open-project-tabs.json',
-      );
+      _pathUnderTeampilotRoot(teampilotRoot, 'ui/open-project-tabs.json');
 
   String get skillRepoCacheDir => skillRepoCacheDirForTeampilotRoot(basePath);
 
@@ -222,8 +213,11 @@ class AppPaths {
   String get pluginMarketplacesConfigPath =>
       pluginMarketplacesConfigPathForTeampilotRoot(basePath);
 
-  /// App-owned project/session metadata (`projects.json` + `sessions/`).
-  String get appProjectsDir => _ctx.join(basePath, 'projects');
+  /// Workbench entities: `workspace/projects/{id}/manifest.json`, sessions, bus.
+  String get workspaceDir => _ctx.join(basePath, 'workspace');
+
+  /// App-wide CLI default trees (`cli-defaults/{tool}/`).
+  String get cliDefaultsDir => _ctx.join(basePath, 'cli-defaults');
 
   String get skillReposConfigPath => skillReposConfigPathForTeampilotRoot(basePath);
 
@@ -255,9 +249,6 @@ class AppPaths {
   String get providerConfigFile => _ctx.join(providerConfigDir, 'providers.json');
 
   String get sshProfilesDir => _ctx.join(basePath, 'ssh_profiles');
-
-  /// Team runtime isolation and FlashskyAI / Claude / Codex config profiles.
-  String get configProfilesDir => _ctx.join(basePath, 'config-profiles');
 
   String providerToolDir(String tool, String providerId) =>
       _ctx.join(providerConfigDir, tool.trim(), providerId.trim());

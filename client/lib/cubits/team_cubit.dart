@@ -474,6 +474,12 @@ class TeamCubit extends Cubit<TeamState> implements TeamCubitHost {
   Future<void> deleteSelected() async {
     final selected = state.selectedTeam;
     if (selected == null) return;
+    final teamId = selected.id;
+    for (final project in await _sessionRepository.loadProjects()) {
+      if (project.teamId == teamId) {
+        await _sessionRepository.deleteProject(project.projectId);
+      }
+    }
     await _repository.deleteTeam(selected.name, cliStateTeamId: selected.id);
     var teams = state.teams.where((team) => team.id != selected.id).toList();
     if (teams.isEmpty) teams = [_rosterEditor.defaultTeam()];

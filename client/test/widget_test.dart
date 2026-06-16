@@ -770,7 +770,7 @@ void main() {
             teamsUiDir: p.join(tmp.path, 'teams'),
             skillsRoot: p.join(tmp.path, 'skills', 'installed'),
             skillBackupsDir: p.join(tmp.path, 'skills', 'backups'),
-            appProjectsDir: p.join(tmp.path, 'projects'),
+            workspaceDir: p.join(tmp.path, 'workspace'),
             skillReposConfigPath: p.join(tmp.path, 'skills', 'repos.json'),
             pluginsRoot: p.join(tmp.path, 'plugins', 'installed'),
             pluginBackupsDir: p.join(tmp.path, 'plugins', 'backups'),
@@ -816,43 +816,14 @@ void main() {
       final claudeDir =
           sessions.single.lastExtraEnvironments.single?['CLAUDE_CONFIG_DIR'];
       expect(claudeDir, isNotNull);
-      final sessionId = p.basename(p.dirname(claudeDir!));
-      expect(
-        sessionId,
-        matches(
-          RegExp(
-            r'^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$',
-          ),
-        ),
-      );
-      expect(
-        claudeDir,
-        p.join(
-          tmp.path,
-          'config-profiles',
-          'teams',
-          'test-team',
-          'members',
-          sessionId,
-          'claude',
-        ),
-      );
+      expect(claudeDir, contains(p.join('workspace', 'projects')));
+      expect(claudeDir, endsWith(p.join('runtime', 'claude')));
       expect(
         sessions
             .single
             .lastExtraEnvironments
             .single?[ClaudeConfigProfileCapability.settingsFileEnvKey],
-        p.join(
-          tmp.path,
-          'config-profiles',
-          'teams',
-          'test-team',
-          'members',
-          sessionId,
-          'claude',
-          'settings',
-          'dev.json',
-        ),
+        p.join(claudeDir!, 'settings', 'dev.json'),
       );
     },
   );

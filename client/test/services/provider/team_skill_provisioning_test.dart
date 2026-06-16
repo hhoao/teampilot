@@ -4,7 +4,7 @@ library;
 import 'package:flutter_test/flutter_test.dart';
 import 'package:teampilot/models/skill.dart';
 import 'package:teampilot/models/team_config.dart';
-import 'package:teampilot/services/cli/cli_data_layout.dart';
+import 'package:teampilot/services/storage/runtime_layout.dart';
 import 'package:teampilot/services/provider/config_profile_service.dart';
 import 'package:teampilot/services/storage/app_storage.dart';
 
@@ -17,7 +17,7 @@ void main() {
   test('team launch prep links enabled skill into member leaf CONFIG_DIR', () async {
     final fs = AppStorage.fs;
     final root = AppStorage.paths.basePath;
-    final layout = CliDataLayout(teampilotRoot: root, fs: fs);
+    final layout = RuntimeLayout(teampilotRoot: root, fs: fs);
 
     final skillsRoot = AppPaths.skillsDirForTeampilotRoot(root);
     await fs.ensureDir(fs.pathContext.join(skillsRoot, 'demo-skill'));
@@ -34,14 +34,16 @@ void main() {
     const team = TeamConfig(id: 't1', name: 'T1', cli: CliTool.flashskyai, skillIds: ['demo']);
 
     await service.prepareTeamLaunch(
+      projectId: 'project-1',
+      sessionId: 't1-1',
       teamId: 't1',
-      runtimeTeamId: 't1-1',
+      cliTeamName: 't1-1',
       cli: CliTool.flashskyai,
       team: team,
     );
 
     final leafSkillsDir = fs.pathContext.join(
-      layout.memberToolDir('t1', 't1-1', 'flashskyai'),
+      layout.sessionRuntimeToolDir('project-1', 't1-1', 'flashskyai'),
       'skills',
     );
     final entries = await fs.listDir(leafSkillsDir);

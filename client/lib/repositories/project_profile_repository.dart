@@ -1,18 +1,10 @@
 import 'dart:convert';
 
 import '../models/project_profile.dart';
-import '../models/team_config.dart';
 import '../services/io/filesystem.dart';
 import '../services/storage/app_storage.dart';
 import '../services/storage/storage_resolver.dart';
-
-class _ProjectProfilePaths {
-  _ProjectProfilePaths({required this.profilesDir, Filesystem? fs})
-    : fs = fs ?? AppStorage.fs;
-
-  final String profilesDir;
-  final Filesystem fs;
-}
+import '../services/storage/workspace_layout.dart';
 
 class ProjectProfileRepository {
   ProjectProfileRepository({String? rootDir, StorageRoots? storageRoots})
@@ -22,29 +14,26 @@ class ProjectProfileRepository {
   final String? _rootOverride;
   final StorageRoots? _storageRoots;
 
-  Future<_ProjectProfilePaths> _paths() async {
+  Future<({WorkspaceLayout layout, Filesystem fs})> _paths() async {
     if (_storageRoots != null) {
       final snap = await _storageRoots.resolve();
-      final pathCtx = AppPaths.pathContextForDataRoot(snap.appProjectsDir);
-      return _ProjectProfilePaths(
-        profilesDir: pathCtx.join(snap.appProjectsDir, 'profiles'),
-        fs: snap.fs,
-      );
+      return (layout: snap.workspace, fs: snap.fs);
     }
-    final root = _rootOverride ?? AppStorage.paths.appProjectsDir;
-    final pathCtx = AppPaths.pathContextForDataRoot(root);
-    return _ProjectProfilePaths(
-      profilesDir: pathCtx.join(root, 'profiles'),
+    final root = _rootOverride ?? AppStorage.paths.basePath;
+    final fs = AppStorage.fs;
+    return (
+      layout: WorkspaceLayout(teampilotRoot: root, fs: fs),
+      fs: fs,
     );
   }
 
-  String _profileFile(_ProjectProfilePaths paths, String projectId) {
-    return paths.fs.pathContext.join(paths.profilesDir, '$projectId.json');
+  String _profileFile(WorkspaceLayout layout, String projectId) {
+    return layout.profileFile(projectId);
   }
 
   Future<ProjectProfile?> load(String projectId) async {
     final paths = await _paths();
-    final filePath = _profileFile(paths, projectId);
+    final filePath = _profileFile(paths.layout, projectId);
     final stat = await paths.fs.stat(filePath);
     if (!stat.exists) return null;
 
@@ -62,8 +51,8 @@ class ProjectProfileRepository {
 
   Future<void> save(ProjectProfile profile) async {
     final paths = await _paths();
-    final filePath = _profileFile(paths, profile.projectId);
-    await paths.fs.ensureDir(paths.profilesDir);
+    final filePath = _profileFile(paths.layout, profile.projectId);
+    await paths.fs.ensureDir(paths.layout.projectDir(profile.projectId));
     await paths.fs.atomicWrite(
       filePath,
       const JsonEncoder.withIndent('  ').convert(profile.toJson()),

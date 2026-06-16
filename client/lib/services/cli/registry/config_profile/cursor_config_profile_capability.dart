@@ -41,9 +41,10 @@ final class CursorConfigProfileCapability implements ConfigProfileCapability {
 
     final paths = ctx.paths;
     final cursorDir = paths.sessionToolDir(
-      ctx.scope.teamId,
+      ctx.scope.projectId,
       ctx.scope.sessionId,
       toolId,
+      memberId: ctx.scope.memberId,
     );
     await paths.fs.ensureDir(cursorDir);
 

@@ -181,9 +181,10 @@ final class OpencodeConfigProfileCapability implements ConfigProfileCapability {
   ) async {
     final paths = ctx.paths;
     final opencodeDir = paths.sessionToolDir(
-      ctx.scope.teamId,
+      ctx.scope.projectId,
       ctx.scope.sessionId,
       toolId,
+      memberId: ctx.scope.memberId,
     );
     final team = ctx.team;
     final member = ctx.member;

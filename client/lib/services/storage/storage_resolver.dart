@@ -1,6 +1,7 @@
 import '../../models/ssh_profile.dart';
 import 'app_storage.dart';
-import '../cli/cli_data_layout.dart';
+import 'runtime_layout.dart';
+import 'workspace_layout.dart';
 import '../io/filesystem.dart';
 import '../io/sftp_filesystem.dart';
 import 'remote_file_store.dart';
@@ -12,11 +13,12 @@ class StorageRootsSnapshot {
     bool? storageIsRemote,
     required this.teampilotRoot,
     Filesystem? fs,
-    CliDataLayout? layout,
+    RuntimeLayout? layout,
+    WorkspaceLayout? workspace,
     required this.teamsUiDir,
     required this.skillsRoot,
     required this.skillBackupsDir,
-    required this.appProjectsDir,
+    required this.workspaceDir,
     required this.skillReposConfigPath,
     required this.pluginsRoot,
     required this.pluginBackupsDir,
@@ -27,22 +29,35 @@ class StorageRootsSnapshot {
     required this.mcpServersJsonPath,
     required this.mcpRegistrySourcesConfigPath,
   }) : fs = fs ?? AppStorage.fs,
+       workspace =
+           workspace ??
+           WorkspaceLayout(teampilotRoot: teampilotRoot, fs: fs ?? AppStorage.fs),
        layout =
            layout ??
-           CliDataLayout(teampilotRoot: teampilotRoot, fs: fs ?? AppStorage.fs);
+           RuntimeLayout(
+             teampilotRoot: teampilotRoot,
+             fs: fs ?? AppStorage.fs,
+             workspace: workspace,
+           );
 
   factory StorageRootsSnapshot.fromContext(RuntimeStorageContext context) {
     final root = context.appDataRoot;
     final fs = context.filesystem;
-    final layout = CliDataLayout(teampilotRoot: root, fs: fs);
+    final workspace = WorkspaceLayout(teampilotRoot: root, fs: fs);
+    final layout = RuntimeLayout(
+      teampilotRoot: root,
+      fs: fs,
+      workspace: workspace,
+    );
     return StorageRootsSnapshot(
       teampilotRoot: root,
       fs: fs,
       layout: layout,
+      workspace: workspace,
       teamsUiDir: AppPaths.teamsUiDirForTeampilotRoot(root),
       skillsRoot: AppPaths.skillsDirForTeampilotRoot(root),
       skillBackupsDir: AppPaths.skillBackupsDirForTeampilotRoot(root),
-      appProjectsDir: AppPaths.appProjectsDirForTeampilotRoot(root),
+      workspaceDir: AppPaths.workspaceDirForTeampilotRoot(root),
       skillReposConfigPath: AppPaths.skillReposConfigPathForTeampilotRoot(root),
       pluginsRoot: AppPaths.pluginsDirForTeampilotRoot(root),
       pluginBackupsDir: AppPaths.pluginBackupsDirForTeampilotRoot(root),
@@ -68,8 +83,8 @@ class StorageRootsSnapshot {
   final String skillsRoot;
   final String skillBackupsDir;
 
-  /// `projects.json` + `sessions/` (app session index).
-  final String appProjectsDir;
+  /// `workspace/projects/` — per-project manifest, profile, sessions, bus.
+  final String workspaceDir;
 
   /// Skill marketplace repo list (`skills/repos.json`).
   final String skillReposConfigPath;
@@ -87,8 +102,11 @@ class StorageRootsSnapshot {
   /// Remote registry API sources (`mcp/registry_sources.json`).
   final String mcpRegistrySourcesConfigPath;
 
-  /// CLI runtime layout under `<teampilotRoot>/config-profiles/`.
-  final CliDataLayout layout;
+  /// Workbench path layout under `{teampilotRoot}/workspace/`.
+  final WorkspaceLayout workspace;
+
+  /// CLI runtime layout: `cli-defaults/`, `teams-runtime/`, session runtime dirs.
+  final RuntimeLayout layout;
 
   bool get storageIsRemote => fs is SftpFilesystem;
   RemoteFileStore? get remoteFileStore =>

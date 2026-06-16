@@ -1,17 +1,17 @@
 import 'dart:convert';
 
 import '../../utils/lock_pool.dart';
-import '../cli/cli_data_layout.dart';
+import '../storage/runtime_layout.dart';
 import '../io/filesystem.dart';
 
 /// Allocates monotonic `{teamId}-{seq}` CLI runtime names per team.
 class SessionTeamCounter {
-  SessionTeamCounter({required Filesystem fs, required CliDataLayout layout})
+  SessionTeamCounter({required Filesystem fs, required RuntimeLayout layout})
     : _fs = fs,
       _layout = layout;
 
   final Filesystem _fs;
-  final CliDataLayout _layout;
+  final RuntimeLayout _layout;
   static final _locks = LockPool();
 
   Future<String> nextCliTeamName(String teamId) async {

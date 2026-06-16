@@ -383,7 +383,7 @@ void main() {
 
     expect(await cubit.addTeam('alpha'), isTrue);
 
-    final teamRoot = p.join(base.path, 'config-profiles', 'teams', 'alpha');
+    final teamRoot = p.join(base.path, 'teams-runtime', 'alpha');
     expect(await Directory(teamRoot).exists(), isTrue);
     expect(await Directory(p.join(teamRoot, 'flashskyai')).exists(), isFalse);
     expect(cubit.state.teams.single.cli, CliTool.claude);
@@ -510,10 +510,12 @@ void main() {
     final settingsFile = File(
       p.join(
         base.path,
-        'config-profiles',
-        'teams',
-        'Claude Team',
+        'workspace',
+        'projects',
+        'project-1',
+        'sessions',
         configProfileAdhocSessionId,
+        'runtime',
         'claude',
         'settings',
         'developer.json',
@@ -563,32 +565,13 @@ void main() {
       ],
     );
     await repo.saveTeams([team]);
-    await cubit.load();
+    await cubit.load(awaitProfiles: true);
 
     await cubit.launchSelectedTeam();
 
     expect(launched, ['team-lead', 'developer']);
-    final memberRoot = Directory(
-      p.join(base.path, 'config-profiles', 'teams', 'claude-team', 'members'),
-    );
-    final memberDirs = await memberRoot
-        .list()
-        .where((entry) => entry is Directory)
-        .map((entry) => p.basename(entry.path))
-        .toList();
-    expect(memberDirs, ['claude-team']);
-
-    final rosterFile = File(
-      p.join(
-        memberRoot.path,
-        'claude-team',
-        'claude',
-        'teams',
-        'claude-team',
-        'config.json',
-      ),
-    );
-    expect(await rosterFile.exists(), isTrue);
+    final teamRoot = p.join(base.path, 'teams-runtime', 'claude-team');
+    expect(await Directory(teamRoot).exists(), isTrue);
 
     await _drainAndCloseTeamCubit(cubit);
     await base.delete(recursive: true);
@@ -610,8 +593,7 @@ void main() {
 
     final teamRoot = p.join(
       base.path,
-      'config-profiles',
-      'teams',
+      'teams-runtime',
       'default-team',
     );
     expect(await Directory(teamRoot).exists(), isTrue);

@@ -15,16 +15,22 @@ import '../../../widgets/app_dialog.dart';
 /// Opens the read-only member config detail dialog.
 Future<void> showMemberDetailDialog(
   BuildContext context, {
+  required String projectId,
+  required String sessionId,
   required TeamConfig team,
   required TeamMemberConfig member,
-  required String cliTeamName,
 }) {
   return showDialog<void>(
     context: context,
     builder: (_) => BlocProvider(
       create: (_) =>
           MemberConfigCubit()
-            ..load(team: team, member: member, cliTeamName: cliTeamName),
+            ..load(
+              projectId: projectId,
+              sessionId: sessionId,
+              team: team,
+              member: member,
+            ),
       child: _MemberDetailDialog(memberName: member.name),
     ),
   );

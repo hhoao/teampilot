@@ -68,14 +68,14 @@ class TabTeamBusCoordinator implements MemberMaterializer {
   ) async {
     // 共享任务队列仅 mixed 模式接线：纯 Claude swarm 复用 Claude 原生任务表。
     final taskQueue = team.teamMode == TeamMode.mixed
-        ? TaskQueue(log: TaskLogFactory.forSession(session.sessionId))
+        ? TaskQueue(log: TaskLogFactory.forSession(session.projectId, session.sessionId))
         : null;
     final bus = TeamBus(
       launcher: ChatCubitMemberLauncher(
         materializer: this,
         sessionId: tab.info.id,
       ),
-      messageLog: BusMessageLogFactory.forSession(session.sessionId),
+      messageLog: BusMessageLogFactory.forSession(session.projectId, session.sessionId),
       taskQueue: taskQueue,
     );
     final cliTeamName = session.cliTeamName;

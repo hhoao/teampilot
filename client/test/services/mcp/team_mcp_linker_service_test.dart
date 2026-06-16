@@ -3,17 +3,17 @@ import 'dart:io';
 
 import 'package:flutter_test/flutter_test.dart';
 import 'package:teampilot/models/mcp_server.dart';
-import 'package:teampilot/services/cli/cli_data_layout.dart';
+import 'package:teampilot/services/storage/runtime_layout.dart';
 import 'package:teampilot/services/mcp/team_mcp_linker_service.dart';
 
 void main() {
   late Directory root;
-  late CliDataLayout layout;
+  late RuntimeLayout layout;
   late TeamMcpLinkerService linker;
 
   setUp(() async {
     root = await Directory.systemTemp.createTemp('team_mcp_linker_');
-    layout = CliDataLayout(teampilotRoot: root.path);
+    layout = RuntimeLayout(teampilotRoot: root.path);
     linker = TeamMcpLinkerService();
   });
 

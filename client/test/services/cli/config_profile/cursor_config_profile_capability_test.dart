@@ -2,10 +2,11 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:teampilot/models/app_provider_config.dart';
 import 'package:teampilot/models/team_config.dart';
 import 'package:teampilot/repositories/app_provider_repository.dart';
-import 'package:teampilot/services/cli/cli_data_layout.dart';
+import 'package:teampilot/services/provider/cursor/cursor_home_layout.dart';
+import 'package:teampilot/services/storage/runtime_layout.dart';
 import 'package:teampilot/services/cli/registry/config_profile/cursor_config_profile_capability.dart';
 import 'package:teampilot/services/provider/config_profile_service.dart';
-import 'package:teampilot/services/provider/cursor/cursor_home_layout.dart';
+import 'package:teampilot/services/team/claude_team_roster_service.dart';
 
 import '../../../support/in_memory_filesystem.dart';
 
@@ -28,31 +29,24 @@ void main() {
     paths = ConfigProfileService(
       basePath: base,
       fs: fs,
-      layout: CliDataLayout(teampilotRoot: base, fs: fs),
+      layout: RuntimeLayout(teampilotRoot: base, fs: fs),
     );
   });
 
-  LaunchProfileScope mixedScope() {
-    final scope = resolveLaunchProfileScope(
-      teamId: 'team-a',
-      runtimeTeamId: 'session-1',
-    );
-    return LaunchProfileScope(
-      teamId: scope.teamId,
-      sessionId: mixedModeMemberScopeSessionId(
-        paths.pathContext,
-        scope.sessionId,
-        member,
-      ),
-      cliTeamName: scope.cliTeamName,
-    );
-  }
+  LaunchProfileScope mixedScope() => resolveLaunchProfileScope(
+        projectId: 'project-1',
+        teamId: 'team-a',
+        appSessionId: 'session-1',
+        cliTeamName: 'session-1',
+        memberId: ClaudeTeamRosterService.safeClaudePathSegment(member.id),
+      );
 
   String memberHome(LaunchProfileScope scope) {
     final cursorDir = paths.sessionToolDir(
-      scope.teamId,
+      scope.projectId,
       scope.sessionId,
       CursorConfigProfileCapability.toolId,
+      memberId: scope.memberId,
     );
     return paths.pathContext.join(cursorDir, 'home');
   }
@@ -60,14 +54,12 @@ void main() {
   group('CursorConfigProfileCapability', () {
     test('standalone contributes CURSOR_CONFIG_DIR only', () async {
       const team = TeamConfig(id: 'team-a', name: 'agent', cli: CliTool.cursor);
-      final scope = resolveLaunchProfileScope(
-        teamId: 'team-a',
-        runtimeTeamId: 'session-1',
-      );
+      final scope = resolveLaunchProfileScope(projectId: 'project-1', teamId: 'team-a', appSessionId: 'session-1', cliTeamName: 'session-1');
 
       final contribution = await capability.contributeLaunch(
         ConfigProfileLaunchContext(
-          teamId: scope.teamId,
+        projectId: 'project-1',
+        teamId: scope.teamId,
           sessionId: scope.sessionId,
           scope: scope,
           team: team,
@@ -78,9 +70,10 @@ void main() {
       );
 
       final cursorDir = paths.sessionToolDir(
-        scope.teamId,
+        scope.projectId,
         scope.sessionId,
         CursorConfigProfileCapability.toolId,
+        memberId: scope.memberId,
       );
       expect(contribution.environment, {'CURSOR_CONFIG_DIR': cursorDir});
       expect(contribution.environment, isNot(contains('HOME')));
@@ -99,7 +92,8 @@ void main() {
 
       final contribution = await capability.contributeLaunch(
         ConfigProfileLaunchContext(
-          teamId: scope.teamId,
+        projectId: 'project-1',
+        teamId: scope.teamId,
           sessionId: scope.sessionId,
           scope: scope,
           team: team,
@@ -129,7 +123,8 @@ void main() {
 
       final contribution = await capability.contributeLaunch(
         ConfigProfileLaunchContext(
-          teamId: scope.teamId,
+        projectId: 'project-1',
+        teamId: scope.teamId,
           sessionId: scope.sessionId,
           scope: scope,
           team: team,
@@ -166,7 +161,8 @@ void main() {
 
       final contribution = await capability.contributeLaunch(
         ConfigProfileLaunchContext(
-          teamId: scope.teamId,
+        projectId: 'project-1',
+        teamId: scope.teamId,
           sessionId: scope.sessionId,
           scope: scope,
           team: team,
@@ -193,7 +189,8 @@ void main() {
 
       await capability.contributeLaunch(
         ConfigProfileLaunchContext(
-          teamId: scope.teamId,
+        projectId: 'project-1',
+        teamId: scope.teamId,
           sessionId: scope.sessionId,
           scope: scope,
           team: team,

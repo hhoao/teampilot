@@ -1,6 +1,7 @@
 import 'dart:convert';
 import 'dart:io';
 
+import 'package:path/path.dart' as p;
 import 'package:flutter_test/flutter_test.dart';
 import 'package:teampilot/cubits/chat/session_data_store.dart';
 import 'package:teampilot/models/team_config.dart';
@@ -68,14 +69,17 @@ void main() {
     expect(projects, hasLength(1));
     expect(projects.first.teamId, '');
 
-    final profilesDir = Directory(
-      '${tmp.path}/projects/profiles',
+    final projectDir = p.join(
+      tmp.path,
+      'workspace',
+      'projects',
+      result.projectId,
     );
-    expect(profilesDir.existsSync(), isTrue);
-    final profileFile = File(
-      '${profilesDir.path}/${result.projectId}.json',
-    );
+    expect(Directory(projectDir).existsSync(), isTrue);
+    final profileFile = File(p.join(projectDir, 'profile.json'));
     expect(profileFile.existsSync(), isTrue);
+    final manifestFile = File(p.join(projectDir, 'manifest.json'));
+    expect(manifestFile.existsSync(), isTrue);
     final decoded = jsonDecode(profileFile.readAsStringSync());
     expect(decoded, isA<Map>());
     expect((decoded as Map)['projectId'], result.projectId);

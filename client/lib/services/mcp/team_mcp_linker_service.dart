@@ -1,7 +1,7 @@
 import 'dart:convert';
 
 import '../../models/mcp_server.dart';
-import '../cli/cli_data_layout.dart';
+import '../storage/runtime_layout.dart';
 import '../io/filesystem.dart';
 import '../io/local_filesystem.dart';
 
@@ -30,7 +30,7 @@ class TeamMcpLinkerService {
     required String teamId,
     required List<String> mcpServerIds,
     required List<McpServer> catalog,
-    required CliDataLayout layout,
+    required RuntimeLayout layout,
   }) async {
     final trimmedTeamId = teamId.trim();
     if (trimmedTeamId.isEmpty) {

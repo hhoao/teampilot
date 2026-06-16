@@ -3,7 +3,7 @@ import '../../models/plugin.dart';
 import '../../models/project_profile.dart';
 import '../../models/team_config.dart';
 import '../storage/app_storage.dart';
-import '../cli/cli_data_layout.dart';
+import '../storage/runtime_layout.dart';
 import '../cli/registry/capabilities/plugin_manifest_capability.dart';
 import '../cli/registry/cli_tool_registry.dart';
 import 'cli_plugin_layout.dart';
@@ -20,14 +20,14 @@ class CliPluginRegistryService {
   CliPluginRegistryService({
     required this.fs,
     required this.teampilotRoot,
-    CliDataLayout? layout,
+    RuntimeLayout? layout,
     CliToolRegistry? cliRegistry,
-  }) : _layout = layout ?? CliDataLayout(teampilotRoot: teampilotRoot, fs: fs),
+  }) : _layout = layout ?? RuntimeLayout(teampilotRoot: teampilotRoot, fs: fs),
        _cliRegistry = cliRegistry ?? CliToolRegistry.builtIn();
 
   final Filesystem fs;
   final String teampilotRoot;
-  final CliDataLayout _layout;
+  final RuntimeLayout _layout;
   final CliToolRegistry _cliRegistry;
 
   static String? _cachedCatalogPath;
@@ -40,17 +40,28 @@ class CliPluginRegistryService {
 
   /// After bundles are copied into the member tool dir, register them for the CLI.
   Future<void> writeForSession({
+    required String projectId,
     required String teamId,
     required String sessionId,
     required CliTool tool,
     TeamConfig? team,
+    String? memberId,
     List<Plugin>? installedCatalog,
     String? memberProvisionJson,
   }) async {
     await _writePluginRegistry(
-      configDir: _layout.memberToolDir(teamId, sessionId, tool.value),
-      memberPluginsDir:
-          _layout.memberPluginsDir(teamId, sessionId, tool.value),
+      configDir: _layout.sessionRuntimeToolDir(
+        projectId,
+        sessionId,
+        tool.value,
+        memberId: memberId,
+      ),
+      memberPluginsDir: _layout.sessionRuntimePluginsDir(
+        projectId,
+        sessionId,
+        tool.value,
+        memberId: memberId,
+      ),
       tool: tool,
       enabledIds: team?.pluginIds ?? const <String>[],
       installedCatalog: installedCatalog,
@@ -68,12 +79,12 @@ class CliPluginRegistryService {
     String? memberProvisionJson,
   }) async {
     await _writePluginRegistry(
-      configDir: _layout.standaloneProjectSessionToolDir(
+      configDir: _layout.sessionRuntimeToolDir(
         projectId,
         sessionId,
         tool.value,
       ),
-      memberPluginsDir: _layout.standaloneProjectSessionPluginsDir(
+      memberPluginsDir: _layout.sessionRuntimePluginsDir(
         projectId,
         sessionId,
         tool.value,

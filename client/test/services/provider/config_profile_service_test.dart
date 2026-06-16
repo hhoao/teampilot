@@ -9,7 +9,7 @@ import 'package:teampilot/services/host/host_execution_environment.dart';
 import 'package:teampilot/services/host/script_file_hook_provisioner.dart';
 import 'package:teampilot/services/host/team_pilot_hook_scripts.dart';
 import 'package:teampilot/services/storage/runtime_storage_context.dart';
-import 'package:teampilot/services/cli/cli_data_layout.dart';
+import 'package:teampilot/services/storage/runtime_layout.dart';
 import 'package:teampilot/services/cli/registry/config_profile/claude_config_profile_capability.dart';
 import 'package:teampilot/services/cli/registry/config_profile/flashskyai_config_profile_capability.dart';
 import 'package:teampilot/services/provider/config_profile_service.dart';
@@ -63,33 +63,41 @@ Future<void> _seedCodexProvider(
   ]);
 }
 
-String _sessionClaudeDir(String base, String teamId, String sessionId) =>
-    p.join(
-      base,
-      'config-profiles',
-      'teams',
-      teamId,
-      'members',
-      sessionId,
-      'claude',
-    );
+const _testProjectId = 'project-1';
 
-String _sessionFlashskyaiDir(String base, String teamId, String sessionId) =>
-    p.join(
-      base,
-      'config-profiles',
-      'teams',
-      teamId,
-      'members',
-      sessionId,
-      'flashskyai',
-    );
+String _sessionToolDir(
+  String base,
+  String sessionId,
+  String tool, {
+  String? memberId,
+}) {
+  final root = p.join(
+    base,
+    'workspace',
+    'projects',
+    _testProjectId,
+    'sessions',
+    sessionId,
+    'runtime',
+  );
+  if (memberId != null && memberId.isNotEmpty) {
+    return p.join(root, memberId, tool);
+  }
+  return p.join(root, tool);
+}
+
+String _sessionClaudeDir(String base, String sessionId, {String? memberId}) =>
+    _sessionToolDir(base, sessionId, 'claude', memberId: memberId);
+
+String _sessionFlashskyaiDir(String base, String sessionId, {String? memberId}) =>
+    _sessionToolDir(base, sessionId, 'flashskyai', memberId: memberId);
 
 String _rosterDirName(String cliTeamName) =>
     ClaudeTeamRosterService.safeClaudePathSegment(cliTeamName);
 
 String _appFlashskyaiDirPath(String base) =>
-    p.join(base, 'config-profiles', 'flashskyai');
+    p.join(base, 'cli-defaults', 'flashskyai');
+
 
 void main() {
   late Directory base;
@@ -101,7 +109,7 @@ void main() {
     service = ConfigProfileService(
       basePath: base.path,
       fs: fs,
-      layout: CliDataLayout(teampilotRoot: base.path, fs: fs),
+      layout: RuntimeLayout(teampilotRoot: base.path, fs: fs),
       hostEnvironment: HostExecutionEnvironment.resolve(
         isWindowsHost: false,
         storageMode: StorageBackendMode.native,
@@ -137,7 +145,7 @@ void main() {
     await service.ensureTeamProfile('team-a', cli: CliTool.flashskyai);
 
     final teamRoot = Directory(
-      p.join(base.path, 'config-profiles', 'teams', 'team-a'),
+      p.join(base.path, 'teams-runtime', 'team-a'),
     );
     expect(await teamRoot.exists(), isTrue);
     expect(
@@ -149,19 +157,17 @@ void main() {
 
   test('prepareTeamLaunch for flashskyai uses team adhoc member dir', () async {
     final env = (await service.prepareTeamLaunch(
+      projectId: _testProjectId,
+      sessionId: configProfileAdhocSessionId,
       teamId: 'team-a',
+      cliTeamName: 'team-a',
       cli: CliTool.flashskyai,
       workingDirectory: '/workspace/flashskyai',
     )).environment;
 
-    final memberFlashskyaiDir = p.join(
+    final memberFlashskyaiDir = _sessionFlashskyaiDir(
       base.path,
-      'config-profiles',
-      'teams',
-      'team-a',
-      'members',
       configProfileAdhocSessionId,
-      'flashskyai',
     );
 
     expect(await Directory(_appFlashskyaiDirPath(base.path)).exists(), isTrue);
@@ -186,7 +192,7 @@ void main() {
     );
     expect(
       env['LLM_CONFIG_PATH'],
-      p.join(base.path, 'config-profiles', 'flashskyai', 'llm_config.json'),
+      p.join(base.path, 'cli-defaults', 'flashskyai', 'llm_config.json'),
     );
 
     final metadata = File(
@@ -233,6 +239,8 @@ requires_openai_auth = true
     );
 
     final outcome = await service.prepareTeamLaunch(
+      projectId: _testProjectId,
+      sessionId: configProfileAdhocSessionId,
       teamId: 'team-a',
       cli: CliTool.codex,
       team: TeamConfig(
@@ -251,12 +259,8 @@ requires_openai_auth = true
       ),
     );
 
-    final codexDir = p.join(
+    final codexDir = _sessionToolDir(
       base.path,
-      'config-profiles',
-      'teams',
-      'team-a',
-      'members',
       configProfileAdhocSessionId,
       'codex',
     );
@@ -288,8 +292,10 @@ base_url = "https://api.example.com/v1"
       await _seedCodexProvider(base.path, id: 'p1', configToml: providerToml);
 
       await service.prepareTeamLaunch(
+      projectId: _testProjectId,
+        sessionId: 'sess-mixed-codex',
         teamId: 'team-a',
-        runtimeTeamId: 'sess-mixed-codex',
+        cliTeamName: 'sess-mixed-codex',
         cli: CliTool.codex,
         team: TeamConfig(
           id: 'team-a',
@@ -309,15 +315,11 @@ base_url = "https://api.example.com/v1"
         busIdleUrl: 'http://127.0.0.1:59999/idle',
       );
 
-      final codexDir = p.join(
+      final codexDir = _sessionToolDir(
         base.path,
-        'config-profiles',
-        'teams',
-        'team-a',
-        'members',
         'sess-mixed-codex',
-        'worker',
         'codex',
+        memberId: 'worker',
       );
       final toml = await File(p.join(codexDir, 'config.toml')).readAsString();
       expect(toml, contains('https://api.example.com/v1'));
@@ -334,15 +336,17 @@ base_url = "https://api.example.com/v1"
       prompt: 'Coordinate only; delegate implementation.',
     );
     final env = (await service.prepareTeamLaunch(
+      projectId: _testProjectId,
+      sessionId: sessionId,
       teamId: 'team-a',
-      runtimeTeamId: sessionId,
+      cliTeamName: sessionId,
       cli: CliTool.claude,
       members: const [lead],
       member: lead,
       workingDirectory: '/workspace',
     )).environment;
 
-    final claudeDir = _sessionClaudeDir(base.path, 'team-a', sessionId);
+    final claudeDir = _sessionClaudeDir(base.path, sessionId);
     final roleFile = p.join(
       claudeDir,
       'prompts',
@@ -394,15 +398,17 @@ base_url = "https://api.example.com/v1"
       forceTeamLeadDelegateMode: true,
     );
     final env = (await service.prepareTeamLaunch(
+      projectId: _testProjectId,
+      sessionId: sessionId,
       teamId: team.id,
-      runtimeTeamId: sessionId,
+      cliTeamName: sessionId,
       cli: team.cli,
       members: const [lead],
       member: lead,
       team: team,
     )).environment;
 
-    final claudeDir = _sessionClaudeDir(base.path, team.id, sessionId);
+    final claudeDir = _sessionClaudeDir(base.path, sessionId);
     final roleText = await File(
       p.join(claudeDir, 'prompts', 'team-lead', 'role.md'),
     ).readAsString();
@@ -442,15 +448,17 @@ base_url = "https://api.example.com/v1"
       prompt: 'Coordinate flashskyai teammates.',
     );
     final env = (await service.prepareTeamLaunch(
+      projectId: _testProjectId,
+      sessionId: sessionId,
       teamId: 'team-a',
-      runtimeTeamId: sessionId,
+      cliTeamName: sessionId,
       cli: CliTool.flashskyai,
       members: const [lead],
       member: lead,
       workingDirectory: '/workspace',
     )).environment;
 
-    final flashskyaiDir = _sessionFlashskyaiDir(base.path, 'team-a', sessionId);
+    final flashskyaiDir = _sessionFlashskyaiDir(base.path, sessionId);
     final roleFile = p.join(flashskyaiDir, 'prompts', 'team-lead', 'role.md');
     expect(await File(roleFile).exists(), isTrue);
     expect(
@@ -504,8 +512,10 @@ base_url = "https://api.example.com/v1"
         forceTeamLeadDelegateMode: true,
       );
       await service.prepareTeamLaunch(
+        projectId: _testProjectId,
+        sessionId: sessionId,
         teamId: team.id,
-        runtimeTeamId: sessionId,
+        cliTeamName: sessionId,
         cli: team.cli,
         members: const [lead],
         member: lead,
@@ -513,7 +523,7 @@ base_url = "https://api.example.com/v1"
       );
 
       final flashskyaiDir =
-          _sessionFlashskyaiDir(base.path, team.id, sessionId);
+          _sessionFlashskyaiDir(base.path, sessionId);
       final roleText = await File(
         p.join(flashskyaiDir, 'prompts', 'team-lead', 'role.md'),
       ).readAsString();
@@ -545,8 +555,10 @@ base_url = "https://api.example.com/v1"
     const sessionId = 'sess-dev-only-hook';
     const dev = TeamMemberConfig(id: 'developer', name: 'developer');
     await service.prepareTeamLaunch(
+      projectId: _testProjectId,
+      sessionId: sessionId,
       teamId: 'team-a',
-      runtimeTeamId: sessionId,
+      cliTeamName: sessionId,
       cli: CliTool.claude,
       members: const [
         TeamMemberConfig(id: 'team-lead', name: 'team-lead'),
@@ -555,7 +567,7 @@ base_url = "https://api.example.com/v1"
       member: dev,
     );
 
-    final claudeDir = _sessionClaudeDir(base.path, 'team-a', sessionId);
+    final claudeDir = _sessionClaudeDir(base.path, sessionId);
     final devSettingsPath = p.join(claudeDir, 'settings', 'developer.json');
     final settings =
         jsonDecode(await File(devSettingsPath).readAsString())
@@ -579,8 +591,10 @@ base_url = "https://api.example.com/v1"
   test('prepareTeamLaunch for claude returns env and writes roster', () async {
     const sessionId = '00000000-0000-4000-8000-000000000099';
     final env = (await service.prepareTeamLaunch(
+      projectId: _testProjectId,
+      sessionId: sessionId,
       teamId: 'team-a',
-      runtimeTeamId: sessionId,
+      cliTeamName: sessionId,
       cli: CliTool.claude,
       members: const [
         TeamMemberConfig(
@@ -599,7 +613,7 @@ base_url = "https://api.example.com/v1"
       workingDirectory: '/workspace/project',
     )).environment;
 
-    final claudeDir = _sessionClaudeDir(base.path, 'team-a', sessionId);
+    final claudeDir = _sessionClaudeDir(base.path, sessionId);
     expect(env.keys, [
       'CLAUDE_CONFIG_DIR',
       'CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS',
@@ -669,14 +683,16 @@ base_url = "https://api.example.com/v1"
       TeamMemberConfig(id: 'developer', name: 'researcher', joinedAt: 200),
     ];
     await service.prepareTeamLaunch(
+      projectId: _testProjectId,
+      sessionId: sessionId,
       teamId: 'team-a',
-      runtimeTeamId: sessionId,
+      cliTeamName: sessionId,
       cli: CliTool.claude,
       members: members,
       workingDirectory: '/ws',
     );
     final rosterPath = p.join(
-      _sessionClaudeDir(base.path, 'team-a', sessionId),
+      _sessionClaudeDir(base.path, sessionId),
       'teams',
       _rosterDirName(sessionId),
       'config.json',
@@ -686,8 +702,10 @@ base_url = "https://api.example.com/v1"
     final createdAt = first['createdAt'];
 
     await service.prepareTeamLaunch(
+      projectId: _testProjectId,
+      sessionId: sessionId,
       teamId: 'team-a',
-      runtimeTeamId: sessionId,
+      cliTeamName: sessionId,
       cli: CliTool.claude,
       members: members,
       workingDirectory: '/ws',
@@ -718,8 +736,10 @@ base_url = "https://api.example.com/v1"
         },
       );
       final env = (await service.prepareTeamLaunch(
-        teamId: 'team-a',
-        runtimeTeamId: sessionId,
+      projectId: _testProjectId,
+      sessionId: sessionId,
+      teamId: 'team-a',
+      cliTeamName: sessionId,
         cli: CliTool.claude,
         members: const [
           TeamMemberConfig(id: 'team-lead', name: 'team-lead', model: 'opus'),
@@ -738,7 +758,7 @@ base_url = "https://api.example.com/v1"
         ),
       )).environment;
 
-      final claudeDir = _sessionClaudeDir(base.path, 'team-a', sessionId);
+      final claudeDir = _sessionClaudeDir(base.path, sessionId);
       final developerSettings = p.join(claudeDir, 'settings', 'developer.json');
       expect(env['CLAUDE_CONFIG_DIR'], claudeDir);
       expect(
@@ -772,14 +792,15 @@ base_url = "https://api.example.com/v1"
     'prepareTeamLaunch for claude without runtime uses adhoc session and team roster name',
     () async {
       await service.prepareTeamLaunch(
-        teamId: 'team-a',
+      projectId: _testProjectId,
+      sessionId: configProfileAdhocSessionId,
+      teamId: 'team-a',
         cli: CliTool.claude,
         members: const [TeamMemberConfig(id: 'developer', name: 'developer')],
       );
 
       final claudeDir = _sessionClaudeDir(
         base.path,
-        'team-a',
         configProfileAdhocSessionId,
       );
       final roster = File(p.join(claudeDir, 'teams', 'team-a', 'config.json'));
@@ -792,15 +813,17 @@ base_url = "https://api.example.com/v1"
 
   test('prepareTeamLaunch for claude omits blank model', () async {
     await service.prepareTeamLaunch(
+      projectId: _testProjectId,
+      sessionId: 'sess-1',
       teamId: 'team-a',
-      runtimeTeamId: 'sess-1',
+      cliTeamName: 'sess-1',
       cli: CliTool.claude,
       members: const [TeamMemberConfig(id: 'developer', name: 'developer')],
     );
 
     final roster = File(
       p.join(
-        _sessionClaudeDir(base.path, 'team-a', 'sess-1'),
+        _sessionClaudeDir(base.path, 'sess-1'),
         'teams',
         'sess-1',
         'config.json',
@@ -817,7 +840,7 @@ base_url = "https://api.example.com/v1"
     () async {
       const sessionId = 'sess-trust';
       final metadataPath = p.join(
-        _sessionClaudeDir(base.path, 'team-a', sessionId),
+        _sessionClaudeDir(base.path, sessionId),
         ClaudeConfigProfileCapability.metadataFileName,
       );
       await Directory(p.dirname(metadataPath)).create(recursive: true);
@@ -835,8 +858,10 @@ base_url = "https://api.example.com/v1"
       );
 
       await service.prepareTeamLaunch(
-        teamId: 'team-a',
-        runtimeTeamId: sessionId,
+      projectId: _testProjectId,
+      sessionId: sessionId,
+      teamId: 'team-a',
+      cliTeamName: sessionId,
         cli: CliTool.claude,
         workingDirectory: '/workspace/new',
         additionalDirectories: const ['/workspace/extra'],
@@ -882,14 +907,16 @@ base_url = "https://api.example.com/v1"
 
       const sessionId = 'sess-win-trust';
       await service.prepareTeamLaunch(
-        teamId: 'team-a',
-        runtimeTeamId: sessionId,
+      projectId: _testProjectId,
+      sessionId: sessionId,
+      teamId: 'team-a',
+      cliTeamName: sessionId,
         cli: CliTool.claude,
         workingDirectory: r'C:\Users\haung\Documents',
       );
 
       final metadataPath = p.join(
-        _sessionClaudeDir(base.path, 'team-a', sessionId),
+        _sessionClaudeDir(base.path, sessionId),
         ClaudeConfigProfileCapability.metadataFileName,
       );
       final metadata =
@@ -920,14 +947,16 @@ base_url = "https://api.example.com/v1"
 
       const sessionId = 'sess-flashsky-wsl-trust';
       await service.prepareTeamLaunch(
-        teamId: 'team-a',
-        runtimeTeamId: sessionId,
+      projectId: _testProjectId,
+      sessionId: sessionId,
+      teamId: 'team-a',
+      cliTeamName: sessionId,
         cli: CliTool.flashskyai,
         workingDirectory: r'C:\Users\haung\Documents',
       );
 
       final metadataPath = p.join(
-        _sessionFlashskyaiDir(base.path, 'team-a', sessionId),
+        _sessionFlashskyaiDir(base.path, sessionId),
         FlashskyaiConfigProfileCapability.metadataFileName,
       );
       final metadata =
@@ -943,7 +972,7 @@ base_url = "https://api.example.com/v1"
   test('ensureSessionProfile for claude backfills mcp-only metadata', () async {
     const sessionId = 'sess-mcp-only';
     final metadataPath = p.join(
-      _sessionClaudeDir(base.path, 'team-a', sessionId),
+      _sessionClaudeDir(base.path, sessionId),
       ClaudeConfigProfileCapability.metadataFileName,
     );
     await Directory(p.dirname(metadataPath)).create(recursive: true);
@@ -956,8 +985,9 @@ base_url = "https://api.example.com/v1"
     );
 
     await service.ensureSessionProfile(
-      'team-a',
+      _testProjectId,
       sessionId,
+      'team-a',
       cli: CliTool.claude,
     );
 

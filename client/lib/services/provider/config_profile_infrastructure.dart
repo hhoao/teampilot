@@ -6,7 +6,7 @@ import '../../models/extension_manifest.dart';
 import '../../models/team_config.dart';
 import '../../utils/project_path_utils.dart';
 import '../../utils/team_member_naming.dart';
-import '../cli/cli_data_layout.dart';
+import '../storage/runtime_layout.dart';
 import '../cli/registry/config_profile/config_profile_context.dart';
 import '../extension/builtin_manifests.dart';
 import '../extension/extension_detector.dart';
@@ -54,7 +54,7 @@ final class ConfigProfileInfrastructure implements ConfigProfileDelegate {
   @override
   final String basePath;
   @override
-  final CliDataLayout layout;
+  final RuntimeLayout layout;
   final Filesystem _fs;
   final Future<Set<String>> Function({String? teamId, String? projectId})?
   _loadEnabledExtensionIds;
@@ -75,8 +75,18 @@ final class ConfigProfileInfrastructure implements ConfigProfileDelegate {
   p.Context get pathContext => _fs.pathContext;
 
   @override
-  String sessionToolDir(String teamId, String sessionId, String tool) =>
-      layout.memberToolDir(teamId, sessionId, tool);
+  String sessionToolDir(
+    String projectId,
+    String sessionId,
+    String tool, {
+    String? memberId,
+  }) =>
+      layout.sessionRuntimeToolDir(
+        projectId,
+        sessionId,
+        tool,
+        memberId: memberId,
+      );
 
   @override
   Future<Map<String, Object?>> readMetadataFile(
@@ -242,7 +252,12 @@ final class ConfigProfileInfrastructure implements ConfigProfileDelegate {
     required TeamMemberConfig member,
   }) async {
     final path = MemberRoleProvision.rolePromptPath(
-      sessionToolDir(scope.teamId, scope.sessionId, tool),
+      sessionToolDir(
+        scope.projectId,
+        scope.sessionId,
+        tool,
+        memberId: scope.memberId,
+      ),
       member,
     );
     final stat = await _fs.stat(path);

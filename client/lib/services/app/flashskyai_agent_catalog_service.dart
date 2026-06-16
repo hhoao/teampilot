@@ -1,6 +1,6 @@
 import 'package:flutter/foundation.dart';
 import '../storage/app_storage.dart';
-import '../cli/cli_data_layout.dart';
+import '../storage/runtime_layout.dart';
 import '../io/filesystem.dart';
 import '../storage/storage_resolver.dart';
 
@@ -106,7 +106,7 @@ class FlashskyaiAgentCatalogService {
       return _listWithFs(snap.fs, agentsDir);
     }
     final fs = AppStorage.fs;
-    final layout = CliDataLayout(
+    final layout = RuntimeLayout(
       teampilotRoot: AppStorage.paths.basePath,
       fs: fs,
     );

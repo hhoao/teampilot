@@ -33,11 +33,17 @@ final class FlashskyaiConfigProfileCapability
 
   static String sessionMetadataFile(
     ConfigProfileDelegate delegate,
-    String teamId,
-    String sessionId,
-  ) =>
+    String projectId,
+    String sessionId, {
+    String? memberId,
+  }) =>
       delegate.pathContext.join(
-        delegate.sessionToolDir(teamId, sessionId, toolId),
+        delegate.sessionToolDir(
+          projectId,
+          sessionId,
+          toolId,
+          memberId: memberId,
+        ),
         metadataFileName,
       );
 
@@ -54,7 +60,12 @@ final class FlashskyaiConfigProfileCapability
       );
       return;
     }
-    await _ensureSessionDefaults(delegate, ctx.teamId, ctx.sessionId);
+    await _ensureSessionDefaults(
+      delegate,
+      ctx.projectId,
+      ctx.sessionId,
+      memberId: ctx.memberId,
+    );
   }
 
   @override
@@ -105,12 +116,18 @@ final class FlashskyaiConfigProfileCapability
 
   Future<void> _ensureSessionDefaults(
     ConfigProfileDelegate delegate,
-    String teamId,
-    String sessionId,
-  ) async {
+    String projectId,
+    String sessionId, {
+    String? memberId,
+  }) async {
     await _ensureSessionDefaultsAt(
       delegate,
-      delegate.sessionToolDir(teamId, sessionId, toolId),
+      delegate.sessionToolDir(
+        projectId,
+        sessionId,
+        toolId,
+        memberId: memberId,
+      ),
     );
   }
 
@@ -240,8 +257,9 @@ final class FlashskyaiConfigProfileCapability
   }) async {
     final metadataPath = sessionMetadataFile(
       delegate,
-      scope.teamId,
+      scope.projectId,
       scope.sessionId,
+      memberId: scope.memberId,
     );
     final directories = [workingDirectory, ...additionalDirectories];
     if (await delegate.trustedProjectsAlreadyCurrent(
@@ -289,13 +307,19 @@ final class FlashskyaiConfigProfileCapability
     LaunchProfileScope scope,
   ) async {
     final file = delegate.pathContext.join(
-      delegate.sessionToolDir(scope.teamId, scope.sessionId, toolId),
+      delegate.sessionToolDir(
+        scope.projectId,
+        scope.sessionId,
+        toolId,
+        memberId: scope.memberId,
+      ),
       settingsFileName,
     );
     final memberToolDir = delegate.sessionToolDir(
-      scope.teamId,
+      scope.projectId,
       scope.sessionId,
       toolId,
+      memberId: scope.memberId,
     );
     final teamDefaults = _teamSettings();
     if (await _settingsAlreadyCurrent(delegate, file, teamDefaults) &&
@@ -324,9 +348,10 @@ final class FlashskyaiConfigProfileCapability
     String? idleUrl,
   }) async {
     final memberToolDir = delegate.sessionToolDir(
-      scope.teamId,
+      scope.projectId,
       scope.sessionId,
       toolId,
+      memberId: scope.memberId,
     );
     final isLead = TeamMemberNaming.isTeamLead(member);
     await MemberRoleProvision.syncRolePromptFile(
@@ -365,9 +390,10 @@ final class FlashskyaiConfigProfileCapability
     LaunchProfileScope scope,
   ) {
     final memberDir = delegate.sessionToolDir(
-      scope.teamId,
+      scope.projectId,
       scope.sessionId,
       toolId,
+      memberId: scope.memberId,
     );
     return {
       configDirEnvKey: memberDir,

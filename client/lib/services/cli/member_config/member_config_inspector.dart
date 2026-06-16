@@ -1,44 +1,46 @@
 import '../../../models/team_config.dart';
 import '../../io/filesystem.dart';
 import '../../storage/app_storage.dart';
+import '../../storage/runtime_layout.dart';
 import '../../storage/runtime_storage_context.dart';
-import '../cli_data_layout.dart';
+import '../../team/claude_team_roster_service.dart';
 import '../registry/capabilities/member_config_inspection_capability.dart';
 import '../registry/cli_tool_registry.dart';
-import '../registry/config_profile/config_profile_scope.dart';
 import 'member_config_detail.dart';
 
 /// Resolves a team member's real CLI CONFIG_DIR (runtime dir, with team-layer
 /// fallback) and reads it via the CLI's [MemberConfigInspectionCapability].
 class MemberConfigInspector {
   MemberConfigInspector({
-    CliDataLayout? layout,
+    RuntimeLayout? layout,
     Filesystem? fs,
     CliToolRegistry? registry,
   })  : _fs = fs ?? AppStorage.fs,
         _layout = layout ??
-            CliDataLayout(
+            RuntimeLayout(
               teampilotRoot: RuntimeStorageContext.current.appDataRoot,
               fs: fs ?? AppStorage.fs,
             ),
         _registry = registry ?? CliToolRegistry.builtIn();
 
   final Filesystem _fs;
-  final CliDataLayout _layout;
+  final RuntimeLayout _layout;
   final CliToolRegistry _registry;
 
   Future<MemberConfigDetail> inspect({
+    required String projectId,
+    required String sessionId,
     required TeamConfig team,
     required TeamMemberConfig member,
-    required String cliTeamName,
   }) async {
     final cli = member.cliWithin(team);
     final tool = cli.value;
 
     final resolved = await _resolveDir(
+      projectId: projectId,
+      sessionId: sessionId,
       team: team,
       member: member,
-      cliTeamName: cliTeamName.trim(),
       tool: tool,
     );
     if (resolved == null) {
@@ -63,16 +65,24 @@ class MemberConfigInspector {
   }
 
   Future<_ResolvedDir?> _resolveDir({
+    required String projectId,
+    required String sessionId,
     required TeamConfig team,
     required TeamMemberConfig member,
-    required String cliTeamName,
     required String tool,
   }) async {
-    if (cliTeamName.isNotEmpty) {
-      final dirId = team.teamMode == TeamMode.mixed
-          ? mixedModeMemberScopeSessionId(_fs.pathContext, cliTeamName, member)
-          : cliTeamName;
-      final runtimeDir = _layout.memberToolDir(team.id, dirId, tool);
+    final trimmedProjectId = projectId.trim();
+    final trimmedSessionId = sessionId.trim();
+    if (trimmedProjectId.isNotEmpty && trimmedSessionId.isNotEmpty) {
+      final memberId = team.teamMode == TeamMode.mixed
+          ? ClaudeTeamRosterService.safeClaudePathSegment(member.id)
+          : null;
+      final runtimeDir = _layout.sessionRuntimeToolDir(
+        trimmedProjectId,
+        trimmedSessionId,
+        tool,
+        memberId: memberId,
+      );
       if ((await _fs.stat(runtimeDir)).isDirectory) {
         return _ResolvedDir(runtimeDir, MemberConfigSourceLayer.runtime);
       }

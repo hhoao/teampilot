@@ -78,8 +78,7 @@ void main() {
     final teamPluginDir = Directory(
       p.join(
         tmp.path,
-        'config-profiles',
-        'teams',
+        'teams-runtime',
         'integ-team',
         'flashskyai',
         'plugins',

@@ -8,7 +8,7 @@ import 'package:path/path.dart' as p;
 import 'package:teampilot/models/project_profile.dart';
 import 'package:teampilot/models/skill.dart';
 import 'package:teampilot/models/team_config.dart';
-import 'package:teampilot/services/cli/cli_data_layout.dart';
+import 'package:teampilot/services/storage/runtime_layout.dart';
 import 'package:teampilot/services/provider/config_profile_service.dart';
 import 'package:teampilot/services/storage/app_storage.dart';
 import 'package:teampilot/services/storage/runtime_storage_context.dart';
@@ -32,7 +32,7 @@ void main() {
     () async {
       final root = AppStorage.paths.basePath;
       final fs = AppStorage.fs;
-      final layout = CliDataLayout(teampilotRoot: root, fs: fs);
+      final layout = RuntimeLayout(teampilotRoot: root, fs: fs);
 
       // --- Arrange: install a skill into the global library ---
       final skillsRoot = AppPaths.skillsDirForTeampilotRoot(root);
@@ -77,7 +77,7 @@ void main() {
 
       // --- Assert: the leaf CONFIG_DIR/skills/ must contain demo-skill ---
       final leafToolDir =
-          layout.standaloneProjectSessionToolDir('p1', 's1', 'flashskyai');
+          layout.sessionRuntimeToolDir('p1', 's1', 'flashskyai');
       final skillsLeafDir = p.join(leafToolDir, 'skills');
       final entries = await fs.listDir(skillsLeafDir);
 
@@ -96,7 +96,7 @@ void main() {
     () async {
       final root = AppStorage.paths.basePath;
       final fs = AppStorage.fs;
-      final layout = CliDataLayout(teampilotRoot: root, fs: fs);
+      final layout = RuntimeLayout(teampilotRoot: root, fs: fs);
 
       // --- Construct the service: skill 'ghost' references a non-existent dir ---
       final service = ConfigProfileService(

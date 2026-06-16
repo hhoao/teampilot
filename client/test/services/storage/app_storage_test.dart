@@ -35,10 +35,17 @@ void main() {
       );
     });
 
-    test('configProfilesDir sits under basePath', () {
+    test('cliDefaultsDir sits under basePath', () {
       expect(
-        AppPathsBootstrapper.current.configProfilesDir,
-        p.join(appDataRoot.path, 'config-profiles'),
+        AppPathsBootstrapper.current.cliDefaultsDir,
+        p.join(appDataRoot.path, 'cli-defaults'),
+      );
+    });
+
+    test('workspaceDir sits under basePath', () {
+      expect(
+        AppPathsBootstrapper.current.workspaceDir,
+        p.join(appDataRoot.path, 'workspace'),
       );
     });
 
@@ -58,7 +65,18 @@ void main() {
         AppPaths.skillRepoCacheDirForTeampilotRoot(root),
         '$root/skills/repo-cache',
       );
-      expect(AppPaths.appProjectsDirForTeampilotRoot(root), '$root/projects');
+      expect(
+        AppPaths.workspaceDirForTeampilotRoot(root),
+        '$root/workspace',
+      );
+      expect(
+        AppPaths.cliDefaultsDirForTeampilotRoot(root),
+        '$root/cli-defaults',
+      );
+      expect(
+        AppPaths.homeWorkspaceOpenProjectsJsonForTeampilotRoot(root),
+        '$root/ui/open-project-tabs.json',
+      );
     });
 
     test('defaultTeampilotAppDataDirForHome uses POSIX separators for WSL home', () {

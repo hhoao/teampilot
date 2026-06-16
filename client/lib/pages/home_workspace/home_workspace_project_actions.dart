@@ -15,6 +15,30 @@ import '../../utils/debounce/debounce.dart';
 import '../../utils/project_display_name.dart';
 import '../../widgets/app_dialog.dart';
 
+/// Whether [location] is the workbench route for [projectId].
+bool isViewingProjectRoute(String location, String projectId) {
+  final segments = Uri.parse(location).pathSegments;
+  return segments.length >= 3 &&
+      segments[0] == 'home-v2' &&
+      segments[1] == 'project' &&
+      segments[2] == projectId;
+}
+
+/// Closes a delete confirmation dialog and navigates away from a deleted
+/// project without [Navigator.pop], which can empty GoRouter's stack when the
+/// widget that opened the dialog unmounts during the async delete.
+void completeProjectDeleteNavigation(
+  GoRouter router, {
+  required String deletedProjectId,
+  required String currentLocation,
+}) {
+  if (isViewingProjectRoute(currentLocation, deletedProjectId)) {
+    router.go('/home-v2');
+    return;
+  }
+  router.go(currentLocation);
+}
+
 Future<void> showRenameHomeWorkspaceProjectDialog(
   BuildContext context,
   AppProject project,
@@ -108,8 +132,11 @@ Future<void> confirmDeleteHomeWorkspaceProject(
   final repo = context.read<SessionRepository>();
   final chatCubit = context.read<ChatCubit>();
   final name = project.localizedName(l10n);
+  final router = GoRouter.of(context);
+  final currentLocation = GoRouterState.of(context).uri.toString();
   await showDialog<void>(
     context: context,
+    useRootNavigator: true,
     builder: (ctx) => AppDialog(
       maxWidth: 480,
       child: Column(
@@ -136,8 +163,11 @@ Future<void> confirmDeleteHomeWorkspaceProject(
                       repo,
                       project.projectId,
                     );
-                    if (!ctx.mounted) return;
-                    Navigator.of(ctx).pop();
+                    completeProjectDeleteNavigation(
+                      router,
+                      deletedProjectId: project.projectId,
+                      currentLocation: currentLocation,
+                    );
                   },
                 ),
                 child: Text(l10n.delete),

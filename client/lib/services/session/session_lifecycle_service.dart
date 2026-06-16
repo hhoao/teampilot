@@ -10,10 +10,10 @@ import '../../repositories/project_profile_repository.dart';
 import '../../utils/team_member_naming.dart';
 import '../../utils/logger.dart';
 import '../storage/app_storage.dart';
-import '../cli/cli_data_layout.dart';
+import '../storage/runtime_layout.dart';
 import '../cli/registry/capabilities/transcript_probe_capability.dart';
 import '../cli/registry/cli_tool_registry.dart';
-import '../cli/registry/config_profile/config_profile_context.dart';
+import '../cli/registry/config_profile/config_profile_scope.dart';
 import '../cli/registry/config_profile/flashskyai_config_profile_capability.dart';
 import '../provider/config_profile_service.dart';
 import '../storage/storage_resolver.dart';
@@ -230,12 +230,13 @@ class SessionLifecycleService {
                       layout: roots.layout,
                       projectId: project!.projectId,
                       sessionId: runtimeSessionId,
-                      tools: cli != null ? [cli.value] : cliLayoutDefaultTools,
+                      tools: cli != null ? [cli.value] : runtimeLayoutDefaultTools,
                     )
                   : roots.layout.transcriptSearchRoots(
+                      projectId: session.projectId.trim(),
+                      sessionId: session.sessionId.trim(),
                       teamId: teamId,
-                      runtimeSessionId: runtimeSessionId,
-                      tools: cli != null ? [cli.value] : cliLayoutDefaultTools,
+                      tools: cli != null ? [cli.value] : runtimeLayoutDefaultTools,
                     ),
             );
       final prepared = await _prepareEnv(
@@ -333,27 +334,25 @@ class SessionLifecycleService {
   }
 
   Future<void> destroyCliState({
+    required String projectId,
     required String teamId,
     required String sessionId,
-    String? runtimeSessionId,
   }) async {
+    final trimmedProjectId = projectId.trim();
     final trimmedTeamId = teamId.trim();
     final trimmedSessionId = sessionId.trim();
-    if (trimmedTeamId.isEmpty || trimmedSessionId.isEmpty) return;
-    final runtime = runtimeSessionId?.trim();
-    final memberDirectoryId = runtime != null && runtime.isNotEmpty
-        ? runtime
-        : trimmedSessionId;
+    if (trimmedProjectId.isEmpty ||
+        trimmedTeamId.isEmpty ||
+        trimmedSessionId.isEmpty) {
+      return;
+    }
 
     final roots = await _resolveRoots();
-    final memberRoot = roots.fs.pathContext.dirname(
-      roots.layout.memberToolDir(
-        trimmedTeamId,
-        memberDirectoryId,
-        'flashskyai',
-      ),
+    final sessionRoot = roots.layout.workspace.sessionRuntimeDir(
+      trimmedProjectId,
+      trimmedSessionId,
     );
-    await _removeTree(roots, memberRoot);
+    await _removeTree(roots, sessionRoot);
   }
 
   Future<void> destroyStandaloneCliState({
@@ -365,12 +364,9 @@ class SessionLifecycleService {
     if (trimmedProjectId.isEmpty || trimmedSessionId.isEmpty) return;
 
     final roots = await _resolveRoots();
-    final sessionRoot = roots.fs.pathContext.dirname(
-      roots.layout.standaloneProjectSessionToolDir(
-        trimmedProjectId,
-        trimmedSessionId,
-        'flashskyai',
-      ),
+    final sessionRoot = roots.layout.workspace.sessionRuntimeDir(
+      trimmedProjectId,
+      trimmedSessionId,
     );
     await _removeTree(roots, sessionRoot);
   }
@@ -450,7 +446,7 @@ class SessionLifecycleService {
   }
 
   List<String> _standaloneTranscriptSearchRoots({
-    required CliDataLayout layout,
+    required RuntimeLayout layout,
     required String projectId,
     required String sessionId,
     required Iterable<String> tools,
@@ -458,9 +454,9 @@ class SessionLifecycleService {
     final tt = tools.map((e) => e.trim()).where((e) => e.isNotEmpty).toList();
     return [
       for (final tool in tt) layout.appToolRoot(tool),
-      for (final tool in tt) layout.standaloneProjectToolDir(projectId, tool),
+      for (final tool in tt) layout.projectConfigToolDir(projectId, tool),
       for (final tool in tt)
-        layout.standaloneProjectSessionToolDir(projectId, sessionId, tool),
+        layout.sessionRuntimeToolDir(projectId, sessionId, tool),
     ];
   }
 
@@ -510,8 +506,13 @@ class SessionLifecycleService {
           ? leadTaskId
           : null;
       final outcome = await service.prepareTeamLaunch(
+        projectId: effectiveLaunchProjectId(
+          projectId: session.projectId,
+          teamId: teamId,
+        ),
+        sessionId: session.sessionId.trim(),
         teamId: teamId,
-        runtimeTeamId: runtimeTeamId,
+        cliTeamName: runtimeTeamId,
         cli: launchCli,
         members: team.members,
         member: member,
@@ -585,7 +586,7 @@ class SessionLifecycleService {
       return const _CliStateProbeResult(exists: false);
     }
 
-    final tools = cli != null ? [cli.value] : cliLayoutDefaultTools;
+    final tools = cli != null ? [cli.value] : runtimeLayoutDefaultTools;
     final trimmedProjectId = projectId?.trim() ?? '';
     final toolRoots = trimmedProjectId.isNotEmpty
         ? _standaloneTranscriptSearchRoots(
@@ -595,11 +596,12 @@ class SessionLifecycleService {
             tools: tools,
           )
         : roots.layout.transcriptSearchRoots(
+            projectId: session.projectId.trim(),
+            sessionId: session.sessionId.trim(),
             teamId: teamId,
-            runtimeSessionId: runtimeSessionId,
             tools: tools,
           );
-    final bucket = CliDataLayout.projectBucketForPrimaryPath(
+    final bucket = RuntimeLayout.projectBucketForPrimaryPath(
       session.primaryPath,
     );
     return _findCliStateInFilesystem(

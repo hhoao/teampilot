@@ -1,5 +1,5 @@
 import '../../models/team_config.dart';
-import '../../services/cli/cli_data_layout.dart';
+import '../../services/storage/runtime_layout.dart';
 import '../../services/provider/config_profile_service.dart';
 import '../../services/session/session_lifecycle_service.dart';
 import '../../services/storage/app_storage.dart';
@@ -39,7 +39,7 @@ class TeamProfileProvisioner {
       return ConfigProfileService(
         basePath: _resolvedAppDataBasePath,
         fs: fs,
-        layout: CliDataLayout(teampilotRoot: _resolvedAppDataBasePath, fs: fs),
+        layout: RuntimeLayout(teampilotRoot: _resolvedAppDataBasePath, fs: fs),
       );
     }
     final roots = await resolver();

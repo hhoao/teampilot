@@ -2,7 +2,7 @@ import 'dart:convert';
 import 'dart:io';
 
 import 'package:flutter_test/flutter_test.dart';
-import 'package:teampilot/services/cli/cli_data_layout.dart';
+import 'package:teampilot/services/storage/runtime_layout.dart';
 import 'package:teampilot/services/mcp/mcp_registry_service.dart';
 import 'package:teampilot/models/mcp_registry_source.dart';
 import 'package:teampilot/models/mcp_server.dart';
@@ -13,11 +13,11 @@ import 'package:path/path.dart' as p;
 
 void main() {
   late Directory root;
-  late CliDataLayout layout;
+  late RuntimeLayout layout;
 
   setUp(() async {
     root = await Directory.systemTemp.createTemp('mcp_registry_');
-    layout = CliDataLayout(teampilotRoot: root.path);
+    layout = RuntimeLayout(teampilotRoot: root.path);
   });
 
   tearDown(() async {
@@ -27,7 +27,7 @@ void main() {
   test('merges catalog into claude metadata preserving other servers', () async {
     const teamId = 'team-a';
     const sessionId = 'sess-1';
-    final memberDir = layout.memberToolDir(teamId, sessionId, 'claude');
+    final memberDir = layout.sessionRuntimeToolDir('project-1', sessionId, 'claude');
     await Directory(memberDir).create(recursive: true);
 
     final metaFile = File('$memberDir/.claude.json');
@@ -59,6 +59,7 @@ void main() {
     );
 
     await McpRegistryService(layout: layout).writeForSession(
+      projectId: 'project-1',
       teamId: teamId,
       sessionId: sessionId,
     );
@@ -74,7 +75,7 @@ void main() {
   test('mcp merge preserves hasCompletedOnboarding when defaults ran first', () async {
     const teamId = 'team-a';
     const sessionId = 'sess-2';
-    final memberDir = layout.memberToolDir(teamId, sessionId, 'claude');
+    final memberDir = layout.sessionRuntimeToolDir('project-1', sessionId, 'claude');
     await Directory(memberDir).create(recursive: true);
 
     final metaFile = File('$memberDir/.claude.json');
@@ -98,6 +99,7 @@ void main() {
     );
 
     await McpRegistryService(layout: layout).writeForSession(
+      projectId: 'project-1',
       teamId: teamId,
       sessionId: sessionId,
     );
@@ -111,7 +113,7 @@ void main() {
   test('session merge injects Smithery Bearer only for gateway URLs', () async {
     const teamId = 'team-a';
     const sessionId = 'sess-auth';
-    final memberDir = layout.memberToolDir(teamId, sessionId, 'claude');
+    final memberDir = layout.sessionRuntimeToolDir('project-1', sessionId, 'claude');
     await Directory(memberDir).create(recursive: true);
 
     await Directory(p.join(root.path, 'mcp')).create(recursive: true);
@@ -161,6 +163,7 @@ void main() {
     );
 
     await McpRegistryService(layout: layout).writeForSession(
+      projectId: 'project-1',
       teamId: teamId,
       sessionId: sessionId,
     );
@@ -183,7 +186,7 @@ void main() {
   test('extraServers merge into claude metadata without team catalog', () async {
     const teamId = 'team-a';
     const sessionId = 'sess-bus';
-    final memberDir = layout.memberToolDir(teamId, sessionId, 'claude');
+    final memberDir = layout.sessionRuntimeToolDir('project-1', sessionId, 'claude');
     await Directory(memberDir).create(recursive: true);
 
     final metaFile = File(
@@ -195,6 +198,7 @@ void main() {
 
     const endpoint = 'http://127.0.0.1:4242/mcp';
     await McpRegistryService(layout: layout).writeForSession(
+      projectId: 'project-1',
       teamId: teamId,
       sessionId: sessionId,
       extraServers: {

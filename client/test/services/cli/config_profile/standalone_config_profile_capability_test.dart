@@ -4,7 +4,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:path/path.dart' as p;
 import 'package:teampilot/models/project_profile.dart';
 import 'package:teampilot/models/team_config.dart';
-import 'package:teampilot/services/cli/cli_data_layout.dart';
+import 'package:teampilot/services/storage/runtime_layout.dart';
 import 'package:teampilot/services/cli/registry/config_profile/claude_config_profile_capability.dart';
 import 'package:teampilot/services/cli/registry/config_profile/codex_config_profile_capability.dart';
 import 'package:teampilot/services/cli/registry/config_profile/cursor_config_profile_capability.dart';
@@ -22,24 +22,24 @@ String _standaloneToolDir(
 ) =>
     p.join(
       base,
-      'config-profiles',
-      'standalone',
+      'workspace',
       'projects',
       projectId,
       'sessions',
       sessionId,
+      'runtime',
       tool,
     );
 
 void main() {
   late Directory base;
   late ConfigProfileService service;
-  late CliDataLayout layout;
+  late RuntimeLayout layout;
 
   setUp(() async {
     base = await Directory.systemTemp.createTemp('standalone_cap_');
     final fs = LocalFilesystem();
-    layout = CliDataLayout(teampilotRoot: base.path, fs: fs);
+    layout = RuntimeLayout(teampilotRoot: base.path, fs: fs);
     service = ConfigProfileService(
       basePath: base.path,
       fs: fs,
@@ -61,6 +61,7 @@ void main() {
       sessionId: sessionId,
     );
     return ConfigProfileLaunchContext(
+      projectId: projectId,
       teamId: '',
       sessionId: sessionId,
       scope: launchScopeForStandalone(standaloneScope),

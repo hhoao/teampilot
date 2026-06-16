@@ -38,9 +38,10 @@ final class CodexConfigProfileCapability implements ConfigProfileCapability {
 
     final paths = ctx.paths;
     final codexHome = paths.sessionToolDir(
-      ctx.scope.teamId,
+      ctx.scope.projectId,
       ctx.scope.sessionId,
       toolId,
+      memberId: ctx.scope.memberId,
     );
 
     final member = ctx.member;

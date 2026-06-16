@@ -9,7 +9,7 @@ import 'package:teampilot/models/project_profile.dart';
 import 'package:teampilot/models/team_config.dart';
 import 'package:teampilot/repositories/cli_presets_repository.dart';
 import 'package:teampilot/repositories/project_profile_repository.dart';
-import 'package:teampilot/services/cli/cli_data_layout.dart';
+import 'package:teampilot/services/storage/runtime_layout.dart';
 import 'package:teampilot/services/session/session_lifecycle_service.dart';
 import 'package:teampilot/services/storage/storage_resolver.dart';
 
@@ -22,7 +22,7 @@ StorageRootsSnapshot _roots(String basePath) => StorageRootsSnapshot(
 	  teamsUiDir: p.join(basePath, 'teams'),
 	  skillsRoot: p.join(basePath, 'skills', 'installed'),
 	  skillBackupsDir: p.join(basePath, 'skills', 'backups'),
-	  appProjectsDir: p.join(basePath, 'projects'),
+	  workspaceDir: p.join(basePath, 'workspace'),
 	  skillReposConfigPath: p.join(basePath, 'skills', 'repos.json'),
 	  pluginsRoot: p.join(basePath, 'plugins', 'installed'),
 	  pluginBackupsDir: p.join(basePath, 'plugins', 'backups'),
@@ -72,12 +72,12 @@ Future<CliPresetsRepository> _seededPresetsRepo({
 
 void main() {
   late Directory base;
-  late CliDataLayout layout;
+  late RuntimeLayout layout;
 
   setUp(() async {
     setUpTestAppStorage();
     base = await Directory.systemTemp.createTemp('session_lifecycle_standalone_');
-    layout = CliDataLayout(teampilotRoot: base.path);
+    layout = RuntimeLayout(teampilotRoot: base.path);
   });
 
   tearDown(() async {
@@ -179,7 +179,7 @@ void main() {
         profile: profile,
       );
 
-      final claudeDir = layout.standaloneProjectSessionToolDir(
+      final claudeDir = layout.sessionRuntimeToolDir(
         projectId,
         sessionId,
         'claude',
@@ -267,7 +267,7 @@ void main() {
     const projectId = 'personal-proj';
     const sessionId = 'personal-sess';
     final sessionRoot = p.dirname(
-      layout.standaloneProjectSessionToolDir(projectId, sessionId, 'claude'),
+      layout.sessionRuntimeToolDir(projectId, sessionId, 'claude'),
     );
     await File(
       p.join(sessionRoot, 'claude', 'projects', 'bucket', '$sessionId.jsonl'),

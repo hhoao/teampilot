@@ -1,7 +1,7 @@
 import '../../models/plugin.dart';
 import '../../utils/logger.dart';
 import '../storage/app_storage.dart';
-import '../cli/cli_data_layout.dart';
+import '../storage/runtime_layout.dart';
 import 'cli_plugin_layout.dart';
 import '../cli/registry/capabilities/plugin_manifest_capability.dart';
 import '../storage/storage_resolver.dart';
@@ -59,8 +59,8 @@ class ProjectPluginLinkerService {
     final fs = roots?.fs ?? AppStorage.fs;
     final layout =
         roots?.layout ??
-        CliDataLayout(teampilotRoot: _appPluginsRootParent(), fs: fs);
-    final projectPluginsDir = layout.standaloneProjectPluginsDir(trimmedProjectId);
+        RuntimeLayout(teampilotRoot: _appPluginsRootParent(), fs: fs);
+    final projectPluginsDir = layout.projectConfigPluginsDir(trimmedProjectId);
     final sourceRoot = roots?.pluginsRoot ?? appPluginsDir;
     return _syncWithFilesystem(
       fs: fs,

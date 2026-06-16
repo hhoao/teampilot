@@ -17,6 +17,7 @@ import '../../../widgets/app_dialog.dart';
 import '../../../widgets/project_details_dialog.dart';
 import '../../../widgets/settings/workspace_hub_shell.dart';
 import '../../../widgets/settings/workspace_settings_widgets.dart';
+import '../home_workspace_project_actions.dart';
 import 'home_workspace_project_section.dart';
 import 'project_icon_settings_row.dart';
 
@@ -292,8 +293,11 @@ class _ProjectSettingsDangerSection extends StatelessWidget {
   void _confirmDelete(BuildContext context, String name) {
     final l10n = context.l10n;
     final repo = context.read<SessionRepository>();
+    final router = GoRouter.of(context);
+    final currentLocation = GoRouterState.of(context).uri.toString();
     showDialog<void>(
       context: context,
+      useRootNavigator: true,
       builder: (ctx) => AppDialog(
         maxWidth: 480,
         child: Column(
@@ -320,9 +324,11 @@ class _ProjectSettingsDangerSection extends StatelessWidget {
                         repo,
                         project.projectId,
                       );
-                      if (!context.mounted) return;
-                      Navigator.of(ctx).pop();
-                      context.go('/home-v2');
+                      completeProjectDeleteNavigation(
+                        router,
+                        deletedProjectId: project.projectId,
+                        currentLocation: currentLocation,
+                      );
                     },
                   ),
                   child: Text(l10n.delete),

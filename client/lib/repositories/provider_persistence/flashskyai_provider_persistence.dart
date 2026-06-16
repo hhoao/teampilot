@@ -1,9 +1,10 @@
 import '../../models/app_provider_config.dart';
 import '../../models/llm_config.dart';
+import '../../services/storage/runtime_layout.dart';
 import 'provider_persistence_strategy.dart';
 
 /// Flashskyai: no per-account credential probing; on save, materialize the
-/// merged `config-profiles/flashskyai/llm_config.json`.
+/// merged `cli-defaults/flashskyai/llm_config.json`.
 final class FlashskyaiProviderPersistence extends ProviderPersistenceStrategy {
   const FlashskyaiProviderPersistence();
 
@@ -32,12 +33,7 @@ final class FlashskyaiProviderPersistence extends ProviderPersistenceStrategy {
       unknownFields: unknownFields,
     );
 
-    final configFile = ctx.fs.pathContext.join(
-      ctx.basePath,
-      'config-profiles',
-      'flashskyai',
-      'llm_config.json',
-    );
+    final configFile = RuntimeLayout(teampilotRoot: ctx.basePath).appFlashskyaiLlmConfigFile;
     await ctx.generator.writeJsonAtomic(configFile, config.toJson(), fs: ctx.fs);
   }
 }

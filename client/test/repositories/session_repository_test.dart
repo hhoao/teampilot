@@ -16,9 +16,9 @@ class _RecordingLifecycleService extends SessionLifecycleService {
 
   @override
   Future<void> destroyCliState({
+    required String projectId,
     required String teamId,
     required String sessionId,
-    String? runtimeSessionId,
   }) async {
     destroyed.add((teamId: teamId, sessionId: sessionId));
   }
@@ -94,11 +94,15 @@ void main() {
     expect(await repo.loadProjects(), isEmpty);
     expect(await repo.loadSessions(), isEmpty);
     expect(
-      File('${tmp.path}/sessions/${s1.sessionId}.json').existsSync(),
+      Directory(
+        '${tmp.path}/workspace/projects/${project.projectId}/sessions/${s1.sessionId}',
+      ).existsSync(),
       isFalse,
     );
     expect(
-      File('${tmp.path}/sessions/${s2.sessionId}.json').existsSync(),
+      Directory(
+        '${tmp.path}/workspace/projects/${project.projectId}/sessions/${s2.sessionId}',
+      ).existsSync(),
       isFalse,
     );
   });
@@ -285,7 +289,7 @@ void main() {
     await repo.importCustomProjectIcon(p.projectId, iconFile.path);
 
     var loaded = (await repo.loadProjects()).single;
-    expect(loaded.icon, ProjectIconCustom('icons/${p.projectId}.png'));
+    expect(loaded.icon, ProjectIconCustom('assets/icon.png'));
 
     await repo.applyProjectIcon(p.projectId, const ProjectIconPreset(2));
     loaded = (await repo.loadProjects()).single;
@@ -332,9 +336,11 @@ void main() {
     final repo = SessionRepository(rootDir: tmp.path);
     final project = await repo.createProject('/z', teamId: '');
     final good = await repo.createSession(project.projectId);
-    final badFile = File('${tmp.path}/sessions/bogus.json');
-    await badFile.parent.create(recursive: true);
-    await badFile.writeAsString('{ not json');
+    final badDir = Directory(
+      '${tmp.path}/workspace/projects/${project.projectId}/sessions/bogus',
+    );
+    await badDir.create(recursive: true);
+    await File('${badDir.path}/session.json').writeAsString('{ not json');
 
     final list = await repo.loadSessions();
     expect(list.length, 1);

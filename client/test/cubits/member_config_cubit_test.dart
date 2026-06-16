@@ -1,7 +1,7 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:teampilot/cubits/member_config_cubit.dart';
 import 'package:teampilot/models/team_config.dart';
-import 'package:teampilot/services/cli/cli_data_layout.dart';
+import 'package:teampilot/services/storage/runtime_layout.dart';
 import 'package:teampilot/services/cli/member_config/member_config_detail.dart';
 import 'package:teampilot/services/cli/member_config/member_config_inspector.dart';
 import 'package:teampilot/services/cli/registry/cli_tool_registry.dart';
@@ -14,7 +14,7 @@ class _FakeInspector extends MemberConfigInspector {
   _FakeInspector(this._result, {this.throwIt = false})
       : super(
           fs: LocalFilesystem(),
-          layout: CliDataLayout(
+          layout: RuntimeLayout(
             teampilotRoot: '/tmp/fake',
             fs: LocalFilesystem(),
           ),
@@ -26,9 +26,10 @@ class _FakeInspector extends MemberConfigInspector {
 
   @override
   Future<MemberConfigDetail> inspect({
+    required String projectId,
+    required String sessionId,
     required TeamConfig team,
     required TeamMemberConfig member,
-    required String cliTeamName,
   }) async {
     if (throwIt) throw StateError('boom');
     return _result;
@@ -52,7 +53,12 @@ void main() {
     final states = <MemberConfigStatus>[];
     cubit.stream.listen((s) => states.add(s.status));
 
-    await cubit.load(team: _team, member: _member, cliTeamName: 't-1');
+    await cubit.load(
+      projectId: 'p1',
+      sessionId: 's1',
+      team: _team,
+      member: _member,
+    );
 
     expect(cubit.state.status, MemberConfigStatus.loaded);
     expect(cubit.state.detail?.resolvedDir, '/x');
@@ -66,7 +72,12 @@ void main() {
         throwIt: true,
       ),
     );
-    await cubit.load(team: _team, member: _member, cliTeamName: 't-1');
+    await cubit.load(
+      projectId: 'p1',
+      sessionId: 's1',
+      team: _team,
+      member: _member,
+    );
     expect(cubit.state.status, MemberConfigStatus.error);
   });
 }

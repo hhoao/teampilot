@@ -5,7 +5,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:teampilot/models/app_provider_config.dart';
 import 'package:teampilot/models/team_config.dart';
 import 'package:teampilot/repositories/app_provider_repository.dart';
-import 'package:teampilot/services/cli/cli_data_layout.dart';
+import 'package:teampilot/services/storage/runtime_layout.dart';
 import 'package:teampilot/services/cli/registry/config_profile/opencode_config_profile_capability.dart';
 import 'package:teampilot/services/cli/registry/config_profile/opencode_idle_plugin.dart';
 import 'package:teampilot/services/io/local_filesystem.dart';
@@ -34,7 +34,7 @@ void main() {
       final service = ConfigProfileService(
         basePath: base.path,
         fs: fs,
-        layout: CliDataLayout(teampilotRoot: base.path, fs: fs),
+        layout: RuntimeLayout(teampilotRoot: base.path, fs: fs),
       );
       const capability = OpencodeConfigProfileCapability();
       const member = TeamMemberConfig(id: 'm1', name: 'Member', model: 'test');
@@ -46,12 +46,16 @@ void main() {
       );
 
       final scope = resolveLaunchProfileScope(
+        projectId: 'project-1',
         teamId: 'team-a',
-        runtimeTeamId: 'session-1',
+        appSessionId: 'session-1',
+        cliTeamName: 'session-1',
+        memberId: 'm1',
       );
 
       await capability.contributeLaunch(
         ConfigProfileLaunchContext(
+          projectId: 'project-1',
           teamId: 'team-a',
           sessionId: scope.sessionId,
           scope: scope,
@@ -64,9 +68,10 @@ void main() {
       );
 
       final opencodeDir = service.sessionToolDir(
-        scope.teamId,
+        scope.projectId,
         scope.sessionId,
         'opencode',
+        memberId: scope.memberId,
       );
       final pluginPath = '$opencodeDir/$opencodeIdlePluginFileName';
       expect(await fs.stat(pluginPath), isNotNull);
@@ -149,7 +154,7 @@ void main() {
       final service = ConfigProfileService(
         basePath: base.path,
         fs: fs,
-        layout: CliDataLayout(teampilotRoot: base.path, fs: fs),
+        layout: RuntimeLayout(teampilotRoot: base.path, fs: fs),
       );
 
       await AppProviderRepository(basePath: base.path, fs: fs).saveProviders(
@@ -181,13 +186,17 @@ void main() {
       );
 
       final scope = resolveLaunchProfileScope(
+        projectId: 'project-1',
         teamId: 'team-a',
-        runtimeTeamId: 'session-1',
+        appSessionId: 'session-1',
+        cliTeamName: 'session-1',
+        memberId: 'm1',
       );
 
       final contribution = await const OpencodeConfigProfileCapability()
           .contributeLaunch(
             ConfigProfileLaunchContext(
+              projectId: 'project-1',
               teamId: 'team-a',
               sessionId: scope.sessionId,
               scope: scope,
@@ -200,9 +209,10 @@ void main() {
           );
 
       final opencodeDir = service.sessionToolDir(
-        scope.teamId,
+        scope.projectId,
         scope.sessionId,
         'opencode',
+        memberId: scope.memberId,
       );
 
       expect(contribution.environment['OPENCODE_CONFIG_DIR'], opencodeDir);
