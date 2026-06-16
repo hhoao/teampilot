@@ -3,6 +3,7 @@ import 'dart:async';
 import 'package:flutter/foundation.dart';
 
 import '../../models/app_session.dart';
+import '../../models/member_instance.dart';
 import '../../models/team_config.dart';
 import '../../services/cli/registry/capabilities/terminal_behavior_capability.dart';
 import '../../services/cli/registry/cli_tool_registry.dart';
@@ -91,7 +92,7 @@ class TabTeamBusCoordinator implements MemberMaterializer {
         additionalPaths: session.additionalPaths,
       ),
     );
-    for (final m in team.members) {
+    for (final m in runtimeRosterMembers(team)) {
       final taskId = session.members
           .where((b) => b.rosterMemberId == m.id)
           .map((b) => b.taskId)
@@ -117,7 +118,7 @@ class TabTeamBusCoordinator implements MemberMaterializer {
         forceWaitBeforeStop: team.forceWaitBeforeStop,
         // 成员级解析：cursor 等 push-投递 CLI → false（正常停 + 门铃投递）。
         forceWaitForMember: (memberId) =>
-            team.members
+            runtimeRosterMembers(team)
                 .where((m) => m.id == memberId)
                 .map((m) => m.effectiveForceWaitBeforeStop(team))
                 .firstOrNull ??
