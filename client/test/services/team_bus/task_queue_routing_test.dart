@@ -1,3 +1,4 @@
+import 'package:fake_async/fake_async.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:teampilot/services/team_bus/tasks/task_queue.dart';
 import 'package:teampilot/services/team_bus/tasks/team_task.dart';
@@ -89,5 +90,36 @@ void main() {
     expect(q.reconcile(now, (_) => false).single.routing.stage,
         RoutingStage.open);
     expect(q.claimNext('anyone', const {})!.title, 'a'); // fungible fallback
+  });
+
+  test('waitForClaimable parks a worker with no eligible task (no spin/leak)', () {
+    fakeAsync((async) {
+      final q = makeQueue();
+      q.addTasks('lead', [
+        const TeamTaskDraft(title: 'be', brief: 'b',
+            requiredCapabilities: {'backend'}),
+      ]);
+
+      // Ineligible worker (no 'backend') must PARK, not short-circuit. The
+      // regression: a globally-claimable-but-ineligible task made
+      // waitForClaimable complete immediately → receiveWork spun (CPU) and
+      // leaked an inbox waiter per turn.
+      var ineligibleDone = false;
+      q.waitForClaimable('w1', const {}).then((_) => ineligibleDone = true);
+      async.flushMicrotasks();
+      expect(ineligibleDone, isFalse,
+          reason: 'ineligible worker must park, not spin');
+
+      // An eligible worker short-circuits immediately.
+      var eligibleDone = false;
+      q.waitForClaimable('w2', const {'backend'}).then((_) => eligibleDone = true);
+      async.flushMicrotasks();
+      expect(eligibleDone, isTrue);
+
+      // Enqueuing work the parked worker CAN claim wakes it.
+      q.addTasks('lead', [const TeamTaskDraft(title: 'any', brief: 'b')]);
+      async.flushMicrotasks();
+      expect(ineligibleDone, isTrue);
+    });
   });
 }

@@ -195,15 +195,24 @@ class TaskQueue {
 
   bool get hasClaimable => _tasks.values.any(_isClaimableNow);
 
-  /// 阻塞到有可认领任务（供 `get_work` 合并式实现复用；当前不被 MCP 直接调用）。
-  Future<void> waitForClaimable() {
-    if (hasClaimable) return Future.value();
+  /// 阻塞到**对该成员合格**的可认领任务出现。**必须**与 [claimNext] 共用同一套
+  /// 合格判定([TaskRouter.eligible])：否则不合格 worker 会在 [receiveWork] 里
+  /// claimNext→null、waitForClaimable→立即返回 之间紧凑自旋(烧 CPU)且每圈泄漏一个
+  /// 信箱 waiter。只在「有对本 worker 合格的可认领任务」时短路返回，否则 park 到
+  /// [_wake]（新任务 / reconcile 放宽 / release / reclaim）。
+  Future<void> waitForClaimable(String memberId, Set<String> memberCaps) {
+    if (_hasClaimableFor(memberId, memberCaps)) return Future.value();
     final existing = _waiter;
     if (existing != null && !existing.isCompleted) return existing.future;
     final completer = Completer<void>();
     _waiter = completer;
     return completer.future;
   }
+
+  bool _hasClaimableFor(String memberId, Set<String> memberCaps) =>
+      _tasks.values.any(
+        (t) => _isClaimableNow(t) && TaskRouter.eligible(memberId, memberCaps, t),
+      );
 
   void dispose() {
     final waiter = _waiter;

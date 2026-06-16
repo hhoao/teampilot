@@ -306,7 +306,9 @@ class TeamBus implements CoordinationView {
 
         unawaited(node.inbox.waitForArrival(cancel: cancel).then((_) => signal()));
         if (queue != null) {
-          unawaited(queue.waitForClaimable().then((_) => signal()));
+          unawaited(queue
+              .waitForClaimable(memberId, node.profile.capabilities)
+              .then((_) => signal()));
         }
         if (cancel != null) {
           unawaited(cancel.whenCancelled.then((_) => signal()));
