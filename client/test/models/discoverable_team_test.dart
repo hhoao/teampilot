@@ -72,4 +72,11 @@ void main() {
     expect(member.model, 'claude-opus-4-8');
     expect(member.joinedAt, 42);
   });
+
+  test('member replicas round-trips and flows to TeamMemberConfig', () {
+    const dm = DiscoverableTeamMember(name: 'builder', replicas: 4);
+    expect(dm.replicas, 4);
+    expect(DiscoverableTeamMember.fromJson(dm.toJson()).replicas, 4);
+    expect(dm.toMemberConfig(joinedAt: 1).replicas, 4);
+  });
 }

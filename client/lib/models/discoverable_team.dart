@@ -168,6 +168,7 @@ class DiscoverableTeamMember {
     this.agent = '',
     this.agentType = '',
     this.capabilities = const {},
+    this.replicas = 1,
     this.prompt = '',
     this.playbook = '',
     this.extraArgs = '',
@@ -182,6 +183,9 @@ class DiscoverableTeamMember {
   /// Capability tags for TeamBus task routing — maps to
   /// [TeamMemberConfig.capabilities].
   final Set<String> capabilities;
+
+  /// Pool size for this member type — maps to [TeamMemberConfig.replicas].
+  final int replicas;
 
   /// Responsibilities (WHAT) — maps to [TeamMemberConfig.prompt].
   final String prompt;
@@ -201,6 +205,7 @@ class DiscoverableTeamMember {
           for (final c in (json['capabilities'] as List?) ?? const [])
             if (c is String && c.trim().isNotEmpty) c.trim(),
         },
+        replicas: (json['replicas'] as num?)?.toInt() ?? 1,
         prompt: json['prompt'] as String? ?? '',
         playbook: json['playbook'] as String? ?? '',
         extraArgs: json['extraArgs'] as String? ?? '',
@@ -213,6 +218,7 @@ class DiscoverableTeamMember {
         'agent': agent,
         if (agentType.isNotEmpty) 'agentType': agentType,
         if (capabilities.isNotEmpty) 'capabilities': capabilities.toList(),
+        if (replicas != 1) 'replicas': replicas,
         'prompt': prompt,
         if (playbook.isNotEmpty) 'playbook': playbook,
         'extraArgs': extraArgs,
@@ -230,6 +236,7 @@ class DiscoverableTeamMember {
       agent: agent,
       agentType: agentType,
       capabilities: capabilities,
+      replicas: replicas,
       prompt: prompt,
       playbook: playbook,
       extraArgs: extraArgs,
@@ -247,6 +254,7 @@ class DiscoverableTeamMember {
       agentType == other.agentType &&
       capabilities.length == other.capabilities.length &&
       capabilities.containsAll(other.capabilities) &&
+      replicas == other.replicas &&
       prompt == other.prompt &&
       playbook == other.playbook &&
       extraArgs == other.extraArgs;
@@ -259,6 +267,7 @@ class DiscoverableTeamMember {
         agent,
         agentType,
         Object.hashAllUnordered(capabilities),
+        replicas,
         prompt,
         playbook,
         extraArgs,
