@@ -57,7 +57,7 @@ class _HomeWorkspaceProjectSidebarState
 
   bool get _isPersonal => widget.project.teamId.isEmpty;
 
-  AppSessionSort _sessionSort = AppSessionSort.recentlyUpdated;
+  AppSessionSort _sessionSort = AppSessionSort.manual;
 
   @override
   void initState() {
@@ -138,41 +138,62 @@ class _HomeWorkspaceProjectSidebarState
           Expanded(
             child: sortedSessions.isEmpty
                 ? _EmptyConversations(label: l10n.homeWorkspaceNoConversations)
-                : ReorderableListView.builder(
-                    padding: EdgeInsets.zero,
-                    buildDefaultDragHandles: false,
-                    itemCount: sortedSessions.length,
-                    onReorder: (oldIndex, newIndex) {
-                      final chatCubit = context.read<ChatCubit>();
-                      if (oldIndex < sortedSessions.length) {
-                        unawaited(
-                          chatCubit.touchSession(
-                            sortedSessions[oldIndex].sessionId,
-                          ),
-                        );
-                      }
-                    },
-                    itemBuilder: (context, index) {
-                      final session = sortedSessions[index];
-                      return SidebarSessionTile(
-                        key: ValueKey(
-                          'project-sidebar-session-${session.sessionId}',
-                        ),
-                        session: session,
-                        index: index,
-                        tapThrottleKeyPrefix: 'project_sidebar_session',
-                        onTap: () => unawaited(
-                          openProjectSessionTab(
-                            context,
-                            widget.project,
-                            session,
-                          ),
-                        ),
-                      );
-                    },
-                  ),
+                : _buildSessionList(context, sortedSessions),
           ),
         ],
+      ),
+    );
+  }
+
+  Widget _buildSessionList(
+    BuildContext context,
+    List<AppSession> sessions,
+  ) {
+    // Drag-to-reorder is only meaningful in manual order; the auto-sorted modes
+    // use a plain (crash-safe) ListView so frequent re-sorts never reparent
+    // [ReorderableListView]'s keyed items under the workbench's LayoutBuilders.
+    if (_sessionSort != AppSessionSort.manual) {
+      return ListView.builder(
+        padding: EdgeInsets.zero,
+        itemCount: sessions.length,
+        itemBuilder: (context, index) =>
+            _sessionTile(context, sessions[index]),
+      );
+    }
+    return ReorderableListView.builder(
+      padding: EdgeInsets.zero,
+      buildDefaultDragHandles: false,
+      itemCount: sessions.length,
+      onReorder: (oldIndex, newIndex) {
+        var target = newIndex;
+        if (target > oldIndex) target -= 1;
+        if (target == oldIndex) return;
+        final reordered = List<AppSession>.of(sessions);
+        final moved = reordered.removeAt(oldIndex);
+        reordered.insert(target, moved);
+        unawaited(
+          context.read<ChatCubit>().reorderSessions(
+            [for (final s in reordered) s.sessionId],
+          ),
+        );
+      },
+      itemBuilder: (context, index) =>
+          _sessionTile(context, sessions[index], index: index),
+    );
+  }
+
+  Widget _sessionTile(
+    BuildContext context,
+    AppSession session, {
+    int index = -1,
+  }) {
+    return SidebarSessionTile(
+      key: ValueKey('project-sidebar-session-${session.sessionId}'),
+      session: session,
+      index: index,
+      tapThrottleKeyPrefix: 'project_sidebar_session',
+      onTap: () => unawaited(
+        openProjectSessionTab(context, widget.project, session),
       ),
     );
   }
@@ -442,11 +463,13 @@ class _SessionSortButton extends StatelessWidget {
     AppLocalizations l10n,
   ) =>
       switch (sort) {
+        AppSessionSort.manual => l10n.sessionSortManual,
         AppSessionSort.recentlyUpdated => l10n.sessionSortRecentlyUpdated,
         AppSessionSort.createdDesc => l10n.sessionSortCreatedDesc,
       };
 
   static IconData _iconForSessionSort(AppSessionSort sort) => switch (sort) {
+    AppSessionSort.manual => Icons.drag_indicator_rounded,
     AppSessionSort.recentlyUpdated => Icons.update_rounded,
     AppSessionSort.createdDesc => Icons.event_rounded,
   };

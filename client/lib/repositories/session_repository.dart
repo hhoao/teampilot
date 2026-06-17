@@ -503,6 +503,22 @@ class SessionRepository {
     });
   }
 
+  /// Persists a manual arrangement: stamps each session's [AppSession.sortOrder]
+  /// to its position in [orderedSessionIds] (1-based, so untouched sessions at
+  /// the default `0` keep sorting first). Sessions absent from disk are skipped.
+  Future<void> reorderSessions(List<String> orderedSessionIds) async {
+    for (var i = 0; i < orderedSessionIds.length; i++) {
+      final sessionId = orderedSessionIds[i];
+      final order = i + 1;
+      await _withSessionFile(sessionId, () async {
+        final fs = await _fs();
+        final existing = await _findSession(fs, sessionId);
+        if (existing == null || existing.sortOrder == order) return;
+        await _writeSession(fs, existing.copyWith(sortOrder: order));
+      });
+    }
+  }
+
   Future<void> clearAllSessionTeams() async {
     final fs = await _fs();
     for (final json in await fs.listAllSessionJsonMaps()) {

@@ -21,6 +21,7 @@ class AppSession {
     required this.createdAt,
     this.updatedAt = 0,
     this.pinned = false,
+    this.sortOrder = 0,
   });
 
   factory AppSession.fromJson(Map<String, Object?> json) {
@@ -58,6 +59,7 @@ class AppSession {
       createdAt: json['createdAt'] as int? ?? 0,
       updatedAt: json['updatedAt'] as int? ?? 0,
       pinned: json['pinned'] as bool? ?? false,
+      sortOrder: json['sortOrder'] as int? ?? 0,
     );
   }
 
@@ -83,6 +85,10 @@ class AppSession {
   final int createdAt;
   final int updatedAt;
   final bool pinned;
+
+  /// Manual ordering rank for [AppSessionSort.manual]. Lower sorts first;
+  /// `0` (the default for never-reordered sessions) sorts above stamped rows.
+  final int sortOrder;
 
   String resolveDisplayTitle(String whenDisplayEmpty) =>
       display.isNotEmpty ? display : whenDisplayEmpty;
@@ -112,6 +118,7 @@ class AppSession {
     int? createdAt,
     int? updatedAt,
     bool? pinned,
+    int? sortOrder,
   }) {
     return AppSession(
       sessionId: sessionId ?? this.sessionId,
@@ -127,6 +134,7 @@ class AppSession {
       createdAt: createdAt ?? this.createdAt,
       updatedAt: updatedAt ?? this.updatedAt,
       pinned: pinned ?? this.pinned,
+      sortOrder: sortOrder ?? this.sortOrder,
     );
   }
 
@@ -147,6 +155,7 @@ class AppSession {
       'createdAt': createdAt,
       'updatedAt': updatedAt,
       'pinned': pinned,
+      if (sortOrder != 0) 'sortOrder': sortOrder,
     };
   }
 
@@ -167,7 +176,8 @@ class AppSession {
             launchState == other.launchState &&
             createdAt == other.createdAt &&
             updatedAt == other.updatedAt &&
-            pinned == other.pinned;
+            pinned == other.pinned &&
+            sortOrder == other.sortOrder;
   }
 
   @override
@@ -185,5 +195,6 @@ class AppSession {
     createdAt,
     updatedAt,
     pinned,
+    sortOrder,
   );
 }

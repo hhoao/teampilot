@@ -685,6 +685,32 @@ class ChatCubit extends Cubit<ChatState>
     _emitSnapshot(await _dataStore.loadProjectData(repo));
   }
 
+  /// Persists a manual session arrangement. [orderedSessionIds] is the new
+  /// top-to-bottom order (used by [AppSessionSort.manual]).
+  Future<void> reorderSessions(List<String> orderedSessionIds) async {
+    final repo = _sessionRepository;
+    if (repo == null) return;
+    // Optimistic: stamp the new sortOrder in memory and emit immediately so the
+    // list stays where the user dropped it, then persist on disk in the
+    // background. Awaiting the per-file writes + a full reload first made the
+    // row snap back, then jump once persistence finished (~1-2s later).
+    final orderById = <String, int>{
+      for (var i = 0; i < orderedSessionIds.length; i++)
+        orderedSessionIds[i]: i + 1,
+    };
+    final sessions = [
+      for (final s in state.sessions)
+        orderById.containsKey(s.sessionId)
+            ? s.copyWith(sortOrder: orderById[s.sessionId])
+            : s,
+    ];
+    _emitSnapshot(
+      _dataStore.deriveSnapshot(projects: state.projects, sessions: sessions),
+      base: state.copyWith(sessions: sessions),
+    );
+    await repo.reorderSessions(orderedSessionIds);
+  }
+
   Future<void> toggleSessionPin(String sessionId) async {
     final repo = _sessionRepository;
     if (repo == null) return;

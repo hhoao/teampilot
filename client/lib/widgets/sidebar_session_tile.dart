@@ -10,10 +10,10 @@ import '../models/app_session.dart';
 import '../repositories/session_repository.dart';
 import '../theme/app_icon_sizes.dart';
 import '../theme/app_text_styles.dart';
-import '../utils/app_keys.dart';
 import '../utils/debounce/debounce.dart';
 import 'app_dialog.dart';
 import 'app_icon_button.dart';
+import 'hover_text_tooltip.dart';
 import 'menu/sidebar_action_menu.dart';
 import 'session_working_spinner.dart';
 
@@ -35,8 +35,8 @@ class SidebarSessionTile extends StatefulWidget {
   final String tapThrottleKeyPrefix;
   final double contentLeftInset;
 
-  /// Index in the parent [ReorderableListView]. When >= 0, a drag handle is
-  /// shown on hover so the user can reorder sessions by dragging.
+  /// Index in a parent [ReorderableListView]. When >= 0, a drag handle is shown
+  /// on hover so the user can reorder sessions by dragging.
   final int index;
 
   @override
@@ -57,7 +57,17 @@ class _SidebarSessionTileState extends State<SidebarSessionTile> {
 
   Timer? _deleteArmResetTimer;
 
+  SessionRepository? _repo;
+  ChatCubit? _chatCubit;
+
   static const _deleteArmTimeout = Duration(seconds: 4);
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    _repo = context.read<SessionRepository>();
+    _chatCubit = context.read<ChatCubit>();
+  }
 
   @override
   void dispose() {
@@ -85,18 +95,18 @@ class _SidebarSessionTileState extends State<SidebarSessionTile> {
   void _disarmDelete() {
     _deleteArmResetTimer?.cancel();
     _deleteArmResetTimer = null;
-    if (_deleteArmed) {
-      setState(() => _deleteArmed = false);
-    }
+    if (!_deleteArmed || !mounted) return;
+    setState(() => _deleteArmed = false);
   }
 
   Future<void> _executeDelete() async {
-    if (!mounted) return;
-    final repo = context.read<SessionRepository>();
-    final chatCubit = context.read<ChatCubit>();
-    final sessionId = widget.session.sessionId;
-    _disarmDelete();
-    await chatCubit.deleteSession(repo, sessionId);
+    _deleteArmResetTimer?.cancel();
+    _deleteArmResetTimer = null;
+    _deleteArmed = false;
+    final repo = _repo;
+    final chatCubit = _chatCubit;
+    if (repo == null || chatCubit == null) return;
+    await chatCubit.deleteSession(repo, widget.session.sessionId);
   }
 
   Future<void> _showSessionContextMenuAtTap(TapDownDetails details) async {
@@ -198,6 +208,13 @@ class _SidebarSessionTileState extends State<SidebarSessionTile> {
     final cs = Theme.of(context).colorScheme;
 
     // Leading area: shared 24×24 slot — indicator (idle) ↔ drag handle (hover).
+    final Widget indicator = SessionWorkingIndicator(
+      working: working,
+      size: 13,
+      color: selected ? cs.onPrimaryContainer : cs.primary,
+      idleColor: (selected ? cs.onPrimaryContainer : cs.onSurfaceVariant)
+          .withValues(alpha: 0.5),
+    );
     final Widget leadingWidget;
     if (widget.index >= 0) {
       leadingWidget = ReorderableDragStartListener(
@@ -213,18 +230,7 @@ class _SidebarSessionTileState extends State<SidebarSessionTile> {
                   opacity: _showSessionActions ? 0 : 1,
                   duration: const Duration(milliseconds: 120),
                   curve: Curves.easeOut,
-                  child: Center(
-                    child: SessionWorkingIndicator(
-                      working: working,
-                      size: 13,
-                      color: selected ? cs.onPrimaryContainer : cs.primary,
-                      idleColor:
-                          (selected
-                                  ? cs.onPrimaryContainer
-                                  : cs.onSurfaceVariant)
-                              .withValues(alpha: 0.5),
-                    ),
-                  ),
+                  child: Center(child: indicator),
                 ),
                 AnimatedOpacity(
                   opacity: _showSessionActions ? 0.65 : 0,
@@ -247,90 +253,76 @@ class _SidebarSessionTileState extends State<SidebarSessionTile> {
       leadingWidget = SizedBox(
         width: 24,
         height: 24,
-        child: Center(
-          child: SessionWorkingIndicator(
-            working: working,
-            size: 13,
-            color: selected ? cs.onPrimaryContainer : cs.primary,
-            idleColor: (selected ? cs.onPrimaryContainer : cs.onSurfaceVariant)
-                .withValues(alpha: 0.5),
-          ),
-        ),
+        child: Center(child: indicator),
       );
     }
 
-    // Trailing row: pin, delete, overflow menu (hover-revealed, no gap when
-    // hidden — uses `if` + AnimatedSize instead of AnimatedOpacity).
-    final trailing = AnimatedSize(
-      duration: const Duration(milliseconds: 120),
-      curve: Curves.easeOut,
-      alignment: Alignment.centerRight,
-      child: Row(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          if (session.pinned || _showSessionActions)
-            AppIconButton(
-              icon: session.pinned ? Icons.push_pin : Icons.push_pin_outlined,
-              compact: true,
-              size: AppIconButton.kCompactSize,
-              tooltip: session.pinned
-                  ? l10n.unpinConversation
-                  : l10n.pinConversation,
-              color: session.pinned ? cs.primary : null,
-              onTap: () =>
-                  context.read<ChatCubit>().toggleSessionPin(session.sessionId),
-            ),
-          if (_showSessionActions)
-            _deleteArmed
-                ? _SessionDeleteConfirmButton(
-                    label: l10n.confirm,
-                    onConfirm: throttledAsync(
-                      'sidebar_delete_session',
-                      _executeDelete,
-                    ),
-                  )
-                : AppIconButton(
-                    icon: Icons.delete_outline,
-                    compact: true,
-                    size: AppIconButton.kCompactSize,
-                    tooltip: l10n.deleteConversation,
-                    color: cs.error,
-                    onTap: _armDelete,
+    // Trailing row: pin, delete, overflow menu (hover-revealed). Avoid
+    // [AnimatedSize] here — it conflicts with [ReorderableListView] when items
+    // are removed quickly.
+    final Widget? trailing = session.pinned || _showSessionActions
+        ? Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              if (session.pinned || _showSessionActions)
+                AppIconButton(
+                  icon: session.pinned
+                      ? Icons.push_pin
+                      : Icons.push_pin_outlined,
+                  compact: true,
+                  size: AppIconButton.kCompactSize,
+                  tooltip: session.pinned
+                      ? l10n.unpinConversation
+                      : l10n.pinConversation,
+                  color: session.pinned ? cs.primary : null,
+                  onTap: () => context
+                      .read<ChatCubit>()
+                      .toggleSessionPin(session.sessionId),
+                ),
+              if (_showSessionActions)
+                _SessionDeleteAction(
+                  armed: _deleteArmed,
+                  confirmLabel: l10n.confirm,
+                  deleteTooltip: l10n.deleteConversation,
+                  onArm: _armDelete,
+                  onConfirm: throttledAsync(
+                    'sidebar_delete_session_${session.sessionId}',
+                    _executeDelete,
                   ),
-          if (_showSessionActions)
-            SizedBox(
-              width: AppIconButton.kDefaultSize,
-              height: AppIconButton.kDefaultSize,
-              child: SidebarActionMenuIconAnchor(
-                icon: Icon(Icons.more_horiz, size: context.appIconSizes.md),
-                onOpen: () => setState(() => _menuOpen = true),
-                onClose: () => setState(() => _menuOpen = false),
-                buildMenuChildren: (context, controller) => [
-                  SidebarActionMenuItem(
-                    icon: Icons.drive_file_rename_outline,
-                    label: l10n.renameConversation,
-                    menuController: controller,
-                    onTap: () => _showRenameDialog(context, session, l10n),
+                ),
+              if (_showSessionActions)
+                SizedBox(
+                  width: AppIconButton.kDefaultSize,
+                  height: AppIconButton.kDefaultSize,
+                  child: SidebarActionMenuIconAnchor(
+                    icon: Icon(Icons.more_horiz, size: context.appIconSizes.md),
+                    onOpen: () => setState(() => _menuOpen = true),
+                    onClose: () => setState(() => _menuOpen = false),
+                    buildMenuChildren: (context, controller) => [
+                      SidebarActionMenuItem(
+                        icon: Icons.drive_file_rename_outline,
+                        label: l10n.renameConversation,
+                        menuController: controller,
+                        onTap: () => _showRenameDialog(context, session, l10n),
+                      ),
+                      SidebarActionMenuItem(
+                        icon: Icons.delete_outline,
+                        label: l10n.deleteConversation,
+                        destructive: true,
+                        menuController: controller,
+                        onTap: _armDelete,
+                      ),
+                    ],
                   ),
-                  SidebarActionMenuItem(
-                    icon: Icons.delete_outline,
-                    label: l10n.deleteConversation,
-                    destructive: true,
-                    menuController: controller,
-                    onTap: _armDelete,
-                  ),
-                ],
-              ),
-            ),
-        ],
-      ),
-    );
+                ),
+            ],
+          )
+        : null;
 
-    return MouseRegion(
+    final Widget tile = MouseRegion(
       onEnter: (_) => setState(() => _hovered = true),
       onExit: (_) => setState(() => _hovered = false),
       child: _SidebarTile(
-        key: AppKeys.sessionTile(session.sessionId),
         title: session.resolveDisplayTitle(l10n.defaultNewChatSessionTitle),
         selected: selected,
         rowHovered: _hovered || _menuOpen,
@@ -347,6 +339,15 @@ class _SidebarSessionTileState extends State<SidebarSessionTile> {
         trailing: trailing,
       ),
     );
+
+    // Inside a [ReorderableListView] (index >= 0), suppress action-button
+    // tooltips: any position shift reparents the row via the list's GlobalKey,
+    // and a live [RawTooltip]'s global pointer route then recreates its ticker
+    // on a SingleTickerProviderStateMixin ("multiple tickers were created").
+    // Tooltips stay enabled in every non-reorderable context.
+    return widget.index >= 0
+        ? TooltipVisibility(visible: false, child: tile)
+        : tile;
   }
 
   void _showRenameDialog(
@@ -416,27 +417,33 @@ class _SidebarSessionTileState extends State<SidebarSessionTile> {
 
 }
 
-/// Compact red confirm control shown after the user arms session delete.
-class _SessionDeleteConfirmButton extends StatelessWidget {
-  const _SessionDeleteConfirmButton({
-    required this.label,
+/// Delete control with a stable subtree: first tap arms, second tap confirms.
+class _SessionDeleteAction extends StatelessWidget {
+  const _SessionDeleteAction({
+    required this.armed,
+    required this.confirmLabel,
+    required this.deleteTooltip,
+    required this.onArm,
     required this.onConfirm,
   });
 
-  final String label;
+  final bool armed;
+  final String confirmLabel;
+  final String deleteTooltip;
+  final VoidCallback onArm;
   final VoidCallback onConfirm;
 
   @override
   Widget build(BuildContext context) {
     final cs = Theme.of(context).colorScheme;
     return AppIconButton(
-      icon: Icons.check,
+      icon: armed ? Icons.check : Icons.delete_outline,
       compact: true,
       size: AppIconButton.kCompactSize,
-      tooltip: label,
-      backgroundColor: cs.error,
-      color: cs.onError,
-      onTap: onConfirm,
+      tooltip: armed ? confirmLabel : deleteTooltip,
+      color: armed ? cs.onError : cs.error,
+      backgroundColor: armed ? cs.error : null,
+      onTap: armed ? onConfirm : onArm,
     );
   }
 }
@@ -521,16 +528,19 @@ class _SidebarTile extends StatelessWidget {
                         mainAxisAlignment: MainAxisAlignment.center,
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          Text(
-                            title,
-                            maxLines: 1,
-                            overflow: TextOverflow.ellipsis,
-                            style: Theme.of(context).textTheme.bodyMedium
-                                ?.copyWith(
-                                  fontWeight: selected
-                                      ? FontWeight.w600
-                                      : FontWeight.w400,
-                                ),
+                          HoverTextTooltip(
+                            message: title,
+                            child: Text(
+                              title,
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                              style: Theme.of(context).textTheme.bodyMedium
+                                  ?.copyWith(
+                                    fontWeight: selected
+                                        ? FontWeight.w600
+                                        : FontWeight.w400,
+                                  ),
+                            ),
                           ),
                           if (subtitle.isNotEmpty) ...[
                             const SizedBox(height: 4),
