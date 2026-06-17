@@ -7,7 +7,6 @@ import 'cursor_cli_config_policy.dart';
 import 'cursor_home_bus_overlay.dart';
 import 'cursor_home_layout.dart';
 import 'cursor_provider_credentials_service.dart';
-import 'cursor_workspace_trust.dart';
 
 /// Merges provider auth and mixed-mode team-bus overlay into a member fake HOME.
 final class CursorHomeProvisioner {
@@ -30,7 +29,6 @@ final class CursorHomeProvisioner {
     required int? busPort,
     required bool forceTeamLeadDelegateMode,
     required bool mixed,
-    String workspacePath = '',
   }) async {
     await _ensureCursorDirs(memberHome);
 
@@ -42,7 +40,6 @@ final class CursorHomeProvisioner {
     if (!mixed || !member.isValid) return;
 
     await _mergeTeamBusPermissions(memberHome);
-    await _provisionWorkspaceTrust(memberHome, workspacePath);
 
     if (busPort == null) return;
 
@@ -64,27 +61,6 @@ final class CursorHomeProvisioner {
       _fs.pathContext.join(cursorDir, CursorHomeLayout.hooksDirName),
     );
     await _fs.ensureDir(_layout.configCursorDir(memberHome));
-  }
-
-  /// Replaces a provider cli-config symlink with a merged file that pre-allows
-  /// all teammate-bus MCP tools (`Mcp(teammate-bus:*)`).
-  Future<void> _provisionWorkspaceTrust(
-    String memberHome,
-    String workspacePath,
-  ) async {
-    final normalized = workspacePath.trim();
-    if (normalized.isEmpty) return;
-
-    final trustPath = CursorWorkspaceTrust.trustMarkerPath(
-      memberHome,
-      normalized,
-      pathContext: _fs.pathContext,
-    );
-    await _fs.ensureDir(_fs.pathContext.dirname(trustPath));
-    await _fs.atomicWrite(
-      trustPath,
-      CursorWorkspaceTrust.buildTrustMarkerJson(normalized),
-    );
   }
 
   Future<void> _mergeTeamBusPermissions(String memberHome) async {

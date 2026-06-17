@@ -9,6 +9,7 @@ import 'package:teampilot/services/storage/runtime_layout.dart';
 import 'package:teampilot/services/io/local_filesystem.dart';
 import 'package:teampilot/services/cli/registry/config_profile/flashskyai_config_profile_capability.dart';
 import 'package:teampilot/services/provider/config_profile_service.dart';
+import 'package:teampilot/services/provider/cursor/cursor_workspace_trust.dart';
 import 'package:teampilot/services/host/host_execution_environment.dart';
 import 'package:teampilot/services/storage/runtime_storage_context.dart';
 
@@ -37,6 +38,7 @@ void main() {
     final fs = LocalFilesystem();
     service = ConfigProfileService(
       basePath: base.path,
+      home: p.join(base.path, 'user-home'),
       fs: fs,
       layout: RuntimeLayout(teampilotRoot: base.path, fs: fs),
       hostEnvironment: HostExecutionEnvironment.resolve(
@@ -121,6 +123,56 @@ void main() {
       expect(await Directory(claudeDir).exists(), isTrue);
       expect(outcome.environment['CLAUDE_CONFIG_DIR'], claudeDir);
       expect(outcome.warnings, isEmpty);
+    },
+  );
+
+  test(
+    'prepareProjectLaunch for cursor pre-trusts workspace under runtime home',
+    () async {
+      const projectId = 'proj-standalone-cursor';
+      const sessionId = 'sess-standalone-cursor';
+      const workspace = '/home/hhoa/git/hhoa/teampilot';
+      const profile = ProjectProfile(
+        projectId: projectId,
+        agent: ProjectAgentConfig(agent: 'solo'),
+      );
+      const cursorPreset = CliPreset(
+        id: 'p-cursor',
+        name: 'Cursor',
+        cli: CliTool.cursor,
+        provider: '',
+        model: '',
+        createdAt: 0,
+        updatedAt: 0,
+      );
+
+      final outcome = await service.prepareProjectLaunch(
+        projectId: projectId,
+        sessionId: sessionId,
+        profile: profile,
+        workingDirectory: workspace,
+        preset: cursorPreset,
+      );
+
+      final cursorDir = p.join(
+        base.path,
+        'workspace',
+        'projects',
+        projectId,
+        'sessions',
+        sessionId,
+        'runtime',
+        'cursor',
+      );
+      expect(await Directory(cursorDir).exists(), isTrue);
+      expect(outcome.environment['CURSOR_CONFIG_DIR'], cursorDir);
+      expect(outcome.warnings, isEmpty);
+
+      final trustPath = CursorWorkspaceTrust.trustMarkerPath(
+        p.join(base.path, 'user-home'),
+        workspace,
+      );
+      expect(await File(trustPath).exists(), isTrue);
     },
   );
 }

@@ -51,6 +51,54 @@ class _SidebarSessionTileState extends State<SidebarSessionTile> {
   /// the overflow menu before a menu item can be selected.
   var _menuOpen = false;
 
+  /// First click on delete arms confirmation; second click on [l10n.confirm]
+  /// performs the delete (no dialog).
+  var _deleteArmed = false;
+
+  Timer? _deleteArmResetTimer;
+
+  static const _deleteArmTimeout = Duration(seconds: 4);
+
+  @override
+  void dispose() {
+    _deleteArmResetTimer?.cancel();
+    super.dispose();
+  }
+
+  @override
+  void didUpdateWidget(covariant SidebarSessionTile oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.session.sessionId != widget.session.sessionId) {
+      _disarmDelete();
+    }
+  }
+
+  void _armDelete() {
+    _deleteArmResetTimer?.cancel();
+    setState(() => _deleteArmed = true);
+    _deleteArmResetTimer = Timer(_deleteArmTimeout, () {
+      if (!mounted) return;
+      _disarmDelete();
+    });
+  }
+
+  void _disarmDelete() {
+    _deleteArmResetTimer?.cancel();
+    _deleteArmResetTimer = null;
+    if (_deleteArmed) {
+      setState(() => _deleteArmed = false);
+    }
+  }
+
+  Future<void> _executeDelete() async {
+    if (!mounted) return;
+    final repo = context.read<SessionRepository>();
+    final chatCubit = context.read<ChatCubit>();
+    final sessionId = widget.session.sessionId;
+    _disarmDelete();
+    await chatCubit.deleteSession(repo, sessionId);
+  }
+
   Future<void> _showSessionContextMenuAtTap(TapDownDetails details) async {
     if (!mounted) return;
 
@@ -82,7 +130,7 @@ class _SidebarSessionTileState extends State<SidebarSessionTile> {
       case 'rename':
         _showRenameDialog(context, session, l10n);
       case 'delete':
-        _showDeleteDialog(context, session, l10n);
+        _armDelete();
     }
   }
 
@@ -121,7 +169,7 @@ class _SidebarSessionTileState extends State<SidebarSessionTile> {
       case 'rename':
         _showRenameDialog(context, session, l10n);
       case 'delete':
-        _showDeleteDialog(context, session, l10n);
+        _armDelete();
     }
   }
 
@@ -134,7 +182,8 @@ class _SidebarSessionTileState extends State<SidebarSessionTile> {
     unawaited(_showSessionContextMenu(center));
   }
 
-  bool get _showSessionActions => _hovered || _menuOpen || Platform.isAndroid;
+  bool get _showSessionActions =>
+      _hovered || _menuOpen || _deleteArmed || Platform.isAndroid;
 
   @override
   Widget build(BuildContext context) {
@@ -232,13 +281,22 @@ class _SidebarSessionTileState extends State<SidebarSessionTile> {
                   context.read<ChatCubit>().toggleSessionPin(session.sessionId),
             ),
           if (_showSessionActions)
-            AppIconButton(
-              icon: Icons.delete_outline,
-              compact: true,
-              size: AppIconButton.kCompactSize,
-              tooltip: l10n.deleteConversation,
-              onTap: () => _showDeleteDialog(context, session, l10n),
-            ),
+            _deleteArmed
+                ? _SessionDeleteConfirmButton(
+                    label: l10n.confirm,
+                    onConfirm: throttledAsync(
+                      'sidebar_delete_session',
+                      _executeDelete,
+                    ),
+                  )
+                : AppIconButton(
+                    icon: Icons.delete_outline,
+                    compact: true,
+                    size: AppIconButton.kCompactSize,
+                    tooltip: l10n.deleteConversation,
+                    color: cs.error,
+                    onTap: _armDelete,
+                  ),
           if (_showSessionActions)
             SizedBox(
               width: AppIconButton.kDefaultSize,
@@ -259,7 +317,7 @@ class _SidebarSessionTileState extends State<SidebarSessionTile> {
                     label: l10n.deleteConversation,
                     destructive: true,
                     menuController: controller,
-                    onTap: () => _showDeleteDialog(context, session, l10n),
+                    onTap: _armDelete,
                   ),
                 ],
               ),
@@ -356,46 +414,29 @@ class _SidebarSessionTileState extends State<SidebarSessionTile> {
     );
   }
 
-  void _showDeleteDialog(
-    BuildContext context,
-    AppSession session,
-    AppLocalizations l10n,
-  ) {
-    final repo = context.read<SessionRepository>();
-    final chatCubit = context.read<ChatCubit>();
-    final name = session.resolveDisplayTitle(l10n.defaultNewChatSessionTitle);
-    showDialog<void>(
-      context: context,
-      builder: (ctx) => AppDialog(
-        maxWidth: 480,
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
-            AppDialogHeader(title: l10n.deleteConversation),
-            const SizedBox(height: 16),
-            Text(l10n.deleteConversationConfirm(name)),
-            AppDialogActions(
-              children: [
-                TextButton(
-                  onPressed: () => Navigator.of(ctx).pop(),
-                  child: Text(l10n.cancel),
-                ),
-                FilledButton(
-                  style: FilledButton.styleFrom(
-                    backgroundColor: Theme.of(ctx).colorScheme.error,
-                  ),
-                  onPressed: throttledAsync('sidebar_delete_session', () async {
-                    await chatCubit.deleteSession(repo, session.sessionId);
-                    if (ctx.mounted) Navigator.of(ctx).pop();
-                  }),
-                  child: Text(l10n.delete),
-                ),
-              ],
-            ),
-          ],
-        ),
-      ),
+}
+
+/// Compact red confirm control shown after the user arms session delete.
+class _SessionDeleteConfirmButton extends StatelessWidget {
+  const _SessionDeleteConfirmButton({
+    required this.label,
+    required this.onConfirm,
+  });
+
+  final String label;
+  final VoidCallback onConfirm;
+
+  @override
+  Widget build(BuildContext context) {
+    final cs = Theme.of(context).colorScheme;
+    return AppIconButton(
+      icon: Icons.check,
+      compact: true,
+      size: AppIconButton.kCompactSize,
+      tooltip: label,
+      backgroundColor: cs.error,
+      color: cs.onError,
+      onTap: onConfirm,
     );
   }
 }

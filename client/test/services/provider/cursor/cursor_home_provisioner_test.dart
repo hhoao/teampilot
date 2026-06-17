@@ -4,7 +4,6 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:teampilot/models/claude_credential_link_result.dart';
 import 'package:teampilot/models/team_config.dart';
 import 'package:teampilot/services/provider/cursor/cursor_cli_config_policy.dart';
-import 'package:teampilot/services/provider/cursor/cursor_workspace_trust.dart';
 import 'package:teampilot/services/provider/cursor/cursor_home_layout.dart';
 import 'package:teampilot/services/provider/cursor/cursor_home_provisioner.dart';
 import 'package:teampilot/services/provider/cursor/cursor_provider_credentials_service.dart';
@@ -69,30 +68,6 @@ void main() {
       expect((await fs.stat(layout.hooksConfig(memberHome))).isFile, isTrue);
       expect((await fs.stat(layout.idleScript(memberHome))).isFile, isTrue);
       expect((await fs.stat(layout.mcpConfig(memberHome))).isFile, isTrue);
-    });
-
-    test('provision writes workspace trust marker for project cwd', () async {
-      const memberHome = '/data/tp/members/planner/cursor/home';
-      const workspace = '/home/hhoa/Document/testmixed';
-
-      await provisioner.provision(
-        memberHome: memberHome,
-        providerId: null,
-        member: member,
-        busPort: null,
-        forceTeamLeadDelegateMode: false,
-        mixed: true,
-        workspacePath: workspace,
-      );
-
-      final trustPath = CursorWorkspaceTrust.trustMarkerPath(
-        memberHome,
-        workspace,
-        pathContext: fs.pathContext,
-      );
-      expect((await fs.stat(trustPath)).isFile, isTrue);
-      final trust = jsonDecode((await fs.readString(trustPath))!) as Map;
-      expect(trust['workspacePath'], workspace);
     });
 
     test('provision merges cli-config Mcp allowlist in mixed mode', () async {

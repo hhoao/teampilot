@@ -110,6 +110,10 @@ String _standaloneMemberDisplayName(ProjectAgentConfig agent) {
 abstract interface class ConfigProfilePaths {
   String get basePath;
 
+  /// Runtime user home (`native` / `wsl` / `ssh`), used for global CLI state
+  /// such as Cursor workspace trust markers under `$HOME/.cursor/projects/`.
+  String get home;
+
   Filesystem get fs;
 
   p.Context get pathContext;

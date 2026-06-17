@@ -1,8 +1,10 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:teampilot/models/app_provider_config.dart';
+import 'package:teampilot/models/project_profile.dart';
 import 'package:teampilot/models/team_config.dart';
 import 'package:teampilot/repositories/app_provider_repository.dart';
 import 'package:teampilot/services/provider/cursor/cursor_home_layout.dart';
+import 'package:teampilot/services/provider/cursor/cursor_workspace_trust.dart';
 import 'package:teampilot/services/storage/runtime_layout.dart';
 import 'package:teampilot/services/cli/registry/config_profile/cursor_config_profile_capability.dart';
 import 'package:teampilot/services/provider/config_profile_service.dart';
@@ -28,6 +30,7 @@ void main() {
     layout = CursorHomeLayout(pathContext: fs.pathContext);
     paths = ConfigProfileService(
       basePath: base,
+      home: '/fake/user/home',
       fs: fs,
       layout: RuntimeLayout(teampilotRoot: base, fs: fs),
     );
@@ -55,6 +58,14 @@ void main() {
     test('standalone contributes CURSOR_CONFIG_DIR only', () async {
       const team = TeamConfig(id: 'team-a', name: 'agent', cli: CliTool.cursor);
       final scope = resolveLaunchProfileScope(projectId: 'project-1', teamId: 'team-a', appSessionId: 'session-1', cliTeamName: 'session-1');
+      const profile = ProjectProfile(
+        projectId: 'project-1',
+        agent: ProjectAgentConfig(agent: 'solo'),
+      );
+      const standalone = StandaloneLaunchProfileScope(
+        projectId: 'project-1',
+        sessionId: 'session-1',
+      );
 
       final contribution = await capability.contributeLaunch(
         ConfigProfileLaunchContext(
@@ -66,6 +77,8 @@ void main() {
           member: member,
           members: const [member],
           paths: paths,
+          standaloneScope: standalone,
+          profile: profile,
         ),
       );
 
@@ -78,6 +91,78 @@ void main() {
       expect(contribution.environment, {'CURSOR_CONFIG_DIR': cursorDir});
       expect(contribution.environment, isNot(contains('HOME')));
       expect(contribution.warnings, isEmpty);
+    });
+
+    test('standalone pre-provisions workspace trust under runtime home', () async {
+      const workspace = '/home/hhoa/git/hhoa/teampilot';
+      const profile = ProjectProfile(
+        projectId: 'project-1',
+        agent: ProjectAgentConfig(agent: 'solo'),
+      );
+      const standalone = StandaloneLaunchProfileScope(
+        projectId: 'project-1',
+        sessionId: 'session-1',
+      );
+      final scope = resolveLaunchProfileScope(
+        projectId: 'project-1',
+        teamId: 'project-1',
+        appSessionId: 'session-1',
+        cliTeamName: 'session-1',
+      );
+
+      await capability.contributeLaunch(
+        ConfigProfileLaunchContext(
+          projectId: 'project-1',
+          teamId: '',
+          sessionId: 'session-1',
+          scope: scope,
+          profile: profile,
+          members: const [],
+          paths: paths,
+          standaloneScope: standalone,
+          workingDirectory: workspace,
+        ),
+      );
+
+      final trustPath = CursorWorkspaceTrust.trustMarkerPath(
+        '/fake/user/home',
+        workspace,
+        pathContext: fs.pathContext,
+      );
+      expect((await fs.stat(trustPath)).isFile, isTrue);
+    });
+
+    test('mixed pre-provisions workspace trust under member home', () async {
+      const team = TeamConfig(
+        id: 'team-a',
+        name: 'agent',
+        cli: CliTool.cursor,
+        teamMode: TeamMode.mixed,
+      );
+      final scope = mixedScope();
+      const workspace = '/home/hhoa/Document/testmixed';
+
+      await capability.contributeLaunch(
+        ConfigProfileLaunchContext(
+        projectId: 'project-1',
+        teamId: scope.teamId,
+          sessionId: scope.sessionId,
+          scope: scope,
+          team: team,
+          member: member,
+          members: const [member],
+          paths: paths,
+          busIdleUrl: 'http://127.0.0.1:5050/idle',
+          workingDirectory: workspace,
+        ),
+      );
+
+      final trustPath = CursorWorkspaceTrust.trustMarkerPath(
+        memberHome(scope),
+        workspace,
+        pathContext: fs.pathContext,
+      );
+      expect((await fs.stat(trustPath)).isFile, isTrue);
     });
 
     test('mixed contributes HOME and not CURSOR_CONFIG_DIR or plugin dir key',

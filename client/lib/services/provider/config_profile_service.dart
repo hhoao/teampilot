@@ -44,6 +44,7 @@ class ConfigProfileService implements ConfigProfileDelegate {
 
   ConfigProfileService({
     required String basePath,
+    String? home,
     Filesystem? fs,
     RuntimeLayout? layout,
     Future<Set<String>> Function({String? teamId, String? projectId})?
@@ -61,6 +62,7 @@ class ConfigProfileService implements ConfigProfileDelegate {
     Future<List<Skill>> Function()? loadInstalledSkills,
   }) : _infra = ConfigProfileInfrastructure(
          basePath: basePath,
+         home: home,
          layout:
              layout ??
              RuntimeLayout(teampilotRoot: basePath, fs: fs ?? AppStorage.fs),
@@ -95,6 +97,9 @@ class ConfigProfileService implements ConfigProfileDelegate {
 
   @override
   String get basePath => _infra.basePath;
+
+  @override
+  String get home => _infra.home;
 
   @override
   RuntimeLayout get layout => _infra.layout;

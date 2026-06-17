@@ -6,12 +6,14 @@ import '../../../provider/cursor/cursor_home_provisioner.dart';
 import '../../../provider/cursor/cursor_launch_environment.dart';
 import '../../../provider/cursor/cursor_provider_credentials_service.dart';
 import '../../../provider/cursor/cursor_provider_settings_resolver.dart';
+import '../../../provider/cursor/cursor_workspace_trust_provisioner.dart';
 import '../capabilities/config_profile_capability.dart';
 
 /// Cursor CLI launch profile.
 ///
 /// **Standalone:** isolates config under `$CURSOR_CONFIG_DIR` (auth is global /
-/// keychain, shared across config dirs).
+/// keychain, shared across config dirs) and pre-trusts the project workspace
+/// under the runtime user home.
 ///
 /// **Mixed mode:** isolates each member under a fake `HOME` with native
 /// `~/.cursor/` files (rules, hooks, mcp, cli-config) — see
@@ -31,14 +33,30 @@ final class CursorConfigProfileCapability implements ConfigProfileCapability {
     final standalone = ctx.standaloneScope;
     final profile = ctx.profile;
     if (standalone != null && profile != null) {
-      final paths = ctx.paths;
-      final cursorDir = standaloneSessionToolDir(paths, standalone, toolId);
-      await paths.fs.ensureDir(cursorDir);
-      return ConfigProfileLaunchContribution(
-        environment: CursorLaunchEnvironment.forStandaloneConfigDir(cursorDir),
-      );
+      return _contributeStandaloneLaunch(ctx, standalone);
     }
+    return _contributeTeamLaunch(ctx);
+  }
 
+  Future<ConfigProfileLaunchContribution> _contributeStandaloneLaunch(
+    ConfigProfileLaunchContext ctx,
+    StandaloneLaunchProfileScope standalone,
+  ) async {
+    final paths = ctx.paths;
+    final cursorDir = standaloneSessionToolDir(paths, standalone, toolId);
+    await paths.fs.ensureDir(cursorDir);
+    await _provisionWorkspaceTrust(
+      ctx: ctx,
+      homeRoot: paths.home,
+    );
+    return ConfigProfileLaunchContribution(
+      environment: CursorLaunchEnvironment.forStandaloneConfigDir(cursorDir),
+    );
+  }
+
+  Future<ConfigProfileLaunchContribution> _contributeTeamLaunch(
+    ConfigProfileLaunchContext ctx,
+  ) async {
     final paths = ctx.paths;
     final cursorDir = paths.sessionToolDir(
       ctx.scope.projectId,
@@ -105,8 +123,8 @@ final class CursorConfigProfileCapability implements ConfigProfileCapability {
           busPort: port,
           forceTeamLeadDelegateMode: team?.forceTeamLeadDelegateMode ?? false,
           mixed: true,
-          workspacePath: ctx.workingDirectory ?? '',
         );
+        await _provisionWorkspaceTrust(ctx: ctx, homeRoot: memberHome);
       }
 
       return ConfigProfileLaunchContribution(
@@ -118,9 +136,22 @@ final class CursorConfigProfileCapability implements ConfigProfileCapability {
       );
     }
 
+    await _provisionWorkspaceTrust(ctx: ctx, homeRoot: paths.home);
     return ConfigProfileLaunchContribution(
       environment: CursorLaunchEnvironment.forStandaloneConfigDir(cursorDir),
       warnings: warnings,
     );
+  }
+
+  Future<void> _provisionWorkspaceTrust({
+    required ConfigProfileLaunchContext ctx,
+    required String homeRoot,
+  }) {
+    return CursorWorkspaceTrustProvisioner(fs: ctx.paths.fs)
+        .provisionLaunchWorkspaces(
+          homeRoot: homeRoot,
+          workingDirectory: ctx.workingDirectory,
+          additionalDirectories: ctx.additionalDirectories,
+        );
   }
 }

@@ -28,6 +28,7 @@ final class ConfigProfileInfrastructure implements ConfigProfileDelegate {
   ConfigProfileInfrastructure({
     required this.basePath,
     required this.layout,
+    String? home,
     Filesystem? fs,
     Future<Set<String>> Function({String? teamId, String? projectId})?
     loadEnabledExtensionIds,
@@ -49,10 +50,12 @@ final class ConfigProfileInfrastructure implements ConfigProfileDelegate {
        _loadTeamLeadHookScript = loadTeamLeadHookScript,
        _teamLeadDelegateHookProvisioner = teamLeadDelegateHookProvisioner,
        _loadTeamLeadDelegateHookScript = loadTeamLeadDelegateHookScript,
-       _hostEnvironment = hostEnvironment;
+       _hostEnvironment = hostEnvironment,
+       _homeOverride = home?.trim();
 
   @override
   final String basePath;
+  final String? _homeOverride;
   @override
   final RuntimeLayout layout;
   final Filesystem _fs;
@@ -70,6 +73,17 @@ final class ConfigProfileInfrastructure implements ConfigProfileDelegate {
 
   @override
   Filesystem get fs => _fs;
+
+  @override
+  @override
+  String get home {
+    final override = _homeOverride;
+    if (override != null && override.isNotEmpty) return override;
+    if (RuntimeStorageContext.isInstalled) {
+      return RuntimeStorageContext.current.home;
+    }
+    return '';
+  }
 
   @override
   p.Context get pathContext => _fs.pathContext;

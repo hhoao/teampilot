@@ -146,14 +146,10 @@ bool teamLaunchDefaultsConfigured({
   required CliTool catalogCli,
 }) {
   if (team.activePresetId != null) {
-    CliPreset? activePreset;
     for (final preset in presets) {
-      if (preset.id == team.activePresetId) {
-        activePreset = preset;
-        break;
-      }
+      if (preset.id == team.activePresetId) return true;
     }
-    return activePreset != null && activePreset.cli == catalogCli;
+    return false;
   }
   return team.hasCustomLaunchDefaultsFor(catalogCli);
 }

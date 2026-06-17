@@ -58,6 +58,10 @@ void main() {
     ]);
     expect(roster.every((m) => m.joinedAt == 42), isTrue);
     expect(roster.every((m) => m.prompt.trim().isNotEmpty), isTrue);
+    expect(
+      roster.every((m) => m.activePresetId == TeamConfig.inheritPresetId),
+      isTrue,
+    );
   });
 
   test('TeamMemberConfig.fromJson keeps display name and slugs id', () {

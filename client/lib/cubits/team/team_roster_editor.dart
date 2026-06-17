@@ -82,6 +82,7 @@ class TeamRosterEditor {
       id: id,
       name: TeamMemberNaming.defaultWorkerName,
       joinedAt: now,
+      activePresetId: TeamConfig.inheritPresetId,
     );
     return (
       team: team.copyWith(members: [...team.members, member]),
