@@ -157,6 +157,9 @@ class SessionLaunchService implements MemberConnector {
     internalTab.memberShells[effectiveMember.id] = ts;
     internalTab.selectedMemberId = effectiveMember.id;
     _tabStore.append(internalTab);
+    // 驱动 working 指示器（侧栏 tile + tab spinner）。mixed 模式靠总线 turn 真相，
+    // 简单 / 原生单 CLI 靠 shell 活动检测——两条路径都需要这只 1s 看门狗在跑。
+    _h.busCoordinator.ensureIdleWatch();
     _h.applyState(
       _state.copyWith(
         tabs: [..._state.tabs, info],

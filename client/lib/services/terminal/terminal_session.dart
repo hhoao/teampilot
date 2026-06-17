@@ -128,6 +128,17 @@ class TerminalSession {
   final TerminalEngine engine;
 
   final TerminalActivityTracker activityTracker = TerminalActivityTracker();
+
+  /// Single-CLI working-turn state — mirrors mixed-mode bus turn truth without a
+  /// bus. A turn *begins* on a **send** (the user submitting a line, or a
+  /// programmatic prompt injection) and *ends* when PTY output goes quiet,
+  /// detected as the [activityTracker] falling edge by [TabTeamBusCoordinator].
+  /// Drives the sidebar/tab working spinner in simple & native single-CLI mode.
+  /// Screen output never *enters* working — it only clears it (team-mode parity).
+  bool _userTurnActive = false;
+  bool get userTurnActive => _userTurnActive;
+  void markUserTurnStarted() => _userTurnActive = true;
+  void markUserTurnIdle() => _userTurnActive = false;
   TerminalTransport? _transport;
   var _launchPhase = _LaunchPhase.idle;
   var _startFailed = false;
@@ -141,6 +152,10 @@ class TerminalSession {
   StreamSubscription<Uint8List>? _engineOutputSubscription;
   FirstUserLineCapture? _firstUserLineCapture;
   EveryUserLineCapture? _everyUserLineCapture;
+
+  /// Always-on capture (independent of [onEveryUserLineSubmitted]) marking a
+  /// working turn whenever the user submits a line — the "send → working" edge.
+  EveryUserLineCapture? _turnStartCapture;
   BusUserLineCapture? _busUserLineCapture;
   final StreamController<PendingUserMessage> _parkedSubmissions =
       StreamController<PendingUserMessage>.broadcast();
@@ -368,6 +383,7 @@ class TerminalSession {
     _everyUserLineCapture = onEveryUserLineSubmitted == null
         ? null
         : EveryUserLineCapture(onEveryUserLineSubmitted);
+    _turnStartCapture = EveryUserLineCapture((_) => markUserTurnStarted());
     final incomingRouting = busUserInputRouting;
     _busRouting = incomingRouting;
     _busUserLineCapture = incomingRouting == null
@@ -404,6 +420,7 @@ class TerminalSession {
     _engineOutputSubscription = engine.output.listen((Uint8List data) {
       _firstUserLineCapture?.feed(utf8.decode(data));
       _everyUserLineCapture?.feed(utf8.decode(data));
+      _turnStartCapture?.feed(utf8.decode(data));
       var forward = _busUserLineCapture?.filter(data) ?? data;
       if (!forwardsColorScheme) {
         forward = stripColorSchemeReport(forward);
@@ -767,6 +784,7 @@ class TerminalSession {
     }
     _launchPhase = _LaunchPhase.running;
     activityTracker.reset();
+    _userTurnActive = false;
     _cancelStartupTimers();
     final cliExecutable = _startupExecutable ?? executable;
     appLogger.i(
@@ -813,6 +831,7 @@ class TerminalSession {
     _startupExecutable = null;
     _onProcessStarted = null;
     activityTracker.reset();
+    _userTurnActive = false;
   }
 
   void writeToPty(String text) {
@@ -822,6 +841,7 @@ class TerminalSession {
   }
 
   void writeln(String text) {
+    markUserTurnStarted();
     writeToPty('$text\r');
   }
 
@@ -835,6 +855,7 @@ class TerminalSession {
   /// own so it registers as a discrete Enter. Submissions are serialized through
   /// [_ptySubmitChain] so overlapping injections never interleave their CR.
   Future<void> submitFullScreenInput(String text) {
+    markUserTurnStarted();
     final next = _ptySubmitChain.then((_) async {
       writeToPty('\x1B[200~$text\x1B[201~');
       await Future<void>.delayed(_fullScreenSubmitDelay);

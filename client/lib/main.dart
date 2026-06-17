@@ -122,6 +122,16 @@ class _AppUpdateAutoCheck extends StatefulWidget {
 class _AppUpdateAutoCheckState extends State<_AppUpdateAutoCheck> {
   bool _started = false;
 
+  /// Resolves the shared cubit, or null in harnesses that don't provide it
+  /// (e.g. widget tests that pump [TeamPilotApp] in isolation).
+  AppUpdateCubit? _cubitOrNull(BuildContext context) {
+    try {
+      return context.read<AppUpdateCubit>();
+    } on ProviderNotFoundException {
+      return null;
+    }
+  }
+
   @override
   void initState() {
     super.initState();
@@ -129,12 +139,13 @@ class _AppUpdateAutoCheckState extends State<_AppUpdateAutoCheck> {
       if (!mounted || _started) return;
       _started = true;
       // Fire-and-forget: never blocks startup or surfaces errors.
-      unawaited(context.read<AppUpdateCubit>().autoCheckOnStartup());
+      unawaited(_cubitOrNull(context)?.autoCheckOnStartup());
     });
   }
 
   @override
   Widget build(BuildContext context) {
+    if (_cubitOrNull(context) == null) return widget.child;
     return BlocListener<AppUpdateCubit, AppUpdateState>(
       listenWhen: (prev, next) =>
           prev.promptRelease != next.promptRelease &&

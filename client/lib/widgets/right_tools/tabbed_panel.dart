@@ -3,6 +3,7 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 
 import '../../cubits/workspace_tools_cubit.dart';
 import '../../theme/app_icon_sizes.dart';
+import '../hover_widget.dart';
 import 'tool_view.dart';
 
 /// VSCode-style tool panel: a horizontal row of icon buttons at the top
@@ -102,11 +103,12 @@ class _SwitcherButton extends StatelessWidget {
     final color = active ? cs.primary : cs.onSurfaceVariant;
     return Tooltip(
       message: view.label,
-      child: InkWell(
+      child: HoverWidget(
+        width: 44,
+        height: 40,
+        borderRadius: BorderRadius.zero,
         onTap: onTap,
         child: Container(
-          width: 44,
-          height: 40,
           alignment: Alignment.center,
           decoration: BoxDecoration(
             border: Border(

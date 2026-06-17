@@ -147,6 +147,9 @@ class ChatCubit extends Cubit<ChatState>
   @visibleForTesting
   void updateWorkingSessionsForTest(Set<String> ids) => _updateWorkingSessions(ids);
 
+  @visibleForTesting
+  void debugTickIdleWatch() => _busCoordinator.debugTickIdleWatch();
+
   void _pushPresenceTarget() {
     final cubit = _presenceCubit;
     if (cubit == null) return;

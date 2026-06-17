@@ -61,6 +61,12 @@ class TabTeamBusCoordinator implements MemberMaterializer {
   Timer? _idleWatchTimer;
   final Map<String, bool> _lastWorking = {};
 
+  /// Non-bus (simple / native single-CLI) per-shell flag: has PTY output gone
+  /// active at least once *since the current turn started*. The turn is only
+  /// cleared once we observe active→quiet within the same turn, so a send is
+  /// never wiped by stale activity from the previous turn. Keyed `tabId:memberId`.
+  final Map<String, bool> _turnSawActivity = {};
+
   Future<void> installBusForTab(
     ChatTab tab,
     TeamConfig team,
@@ -215,12 +221,14 @@ class TabTeamBusCoordinator implements MemberMaterializer {
   }
 
   void maybeStopIdleWatch() {
-    final anyBus = _tabStore.tabs.any((t) => t.teamBus != null);
-    if (!anyBus) {
+    // 任何打开的 tab（含简单 / 原生单 CLI）都靠该看门狗驱动 working 指示器，
+    // 故仅在全部关闭后才停表。
+    if (_tabStore.tabs.isEmpty) {
       _idleWatchTimer?.cancel();
       _idleWatchTimer = null;
       _lastWorking.clear();
-      _publishWorkingSessions(const {}); // no buses left → nothing spins.
+      _turnSawActivity.clear();
+      _publishWorkingSessions(const {}); // no tabs left → nothing spins.
     }
   }
 
@@ -246,12 +254,40 @@ class TabTeamBusCoordinator implements MemberMaterializer {
     }
   }
 
+  /// Test seam: synchronously run one idle-watch tick (exposed through
+  /// `ChatCubit.debugTickIdleWatch`).
+  void debugTickIdleWatch() => _tickIdleWatch();
+
   void _tickIdleWatch() {
     if (_isClosed()) return;
     final working = <String>{};
     for (final tab in _tabStore.tabs) {
       final bus = tab.teamBus;
-      if (bus == null) continue;
+      if (bus == null) {
+        // 简单 / 原生单 CLI 无总线：镜像 mixed 的 turn 真相——working 由「发送」点亮
+        // （shell.userTurnActive），屏幕输出仅用于熄灭：在同一回合内由活跃转安静即判
+        // 回合结束。绝不用屏幕输出去*点亮* working（否则 agent 静默思考时会误判空闲、
+        // 且随输出闪烁）。只有当本回合内确实出现过输出再转安静才熄灭，发送后尚无输出
+        // 的窗口保持 working，也不会被上一回合的残留活动误熄。
+        tab.memberShells.forEach((memberId, shell) {
+          if (!shell.isRunning) return;
+          final key = '${tab.info.id}:$memberId';
+          if (!shell.userTurnActive) {
+            _turnSawActivity.remove(key); // 回合外：清空跟踪。
+            return;
+          }
+          if (shell.activityTracker.isWorking) {
+            _turnSawActivity[key] = true; // 本回合已产生输出。
+          } else if (_turnSawActivity[key] ?? false) {
+            // 活跃 → 安静：回合结束。
+            shell.markUserTurnIdle();
+            _turnSawActivity.remove(key);
+            return;
+          }
+          working.add(tab.info.id);
+        });
+        continue;
+      }
       // 租约回收：claimed 超时且认领者掉线的任务退回 pending（仅 mixed 模式有队列）。
       if (bus.hasTaskQueue) bus.reclaimExpiredTasks();
       // 门铃看门狗：补敲首个回车被全屏 TUI 输入框吞掉、卡在 prompt 的 worker。
