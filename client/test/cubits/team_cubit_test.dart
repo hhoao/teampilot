@@ -95,6 +95,7 @@ void main() {
   });
 
   tearDown(() async {
+    await drainPendingAsyncWork();
     RuntimeStorageContext.resetForTesting();
     AppPathsBootstrapper.resetForTesting();
     await _deleteTempDirBestEffort(appDataRoot);
@@ -448,6 +449,8 @@ void main() {
       reloadProjects: () async {},
       executableResolver: () => 'flashskyai',
       pluginLinker: _RecordingPluginLinker(),
+      appDataBasePath: base.path,
+      configProfileService: ConfigProfileService(basePath: base.path),
     );
 
     expect(
@@ -461,8 +464,7 @@ void main() {
       'preset-codex',
       syncCli: CliTool.codex,
     );
-    await Future<void>.delayed(Duration.zero);
-    await Future<void>.delayed(Duration.zero);
+    await drainPendingAsyncWork();
 
     final member = cubit.state.selectedTeam!.members.firstWhere(
       (m) => m.id == memberId,
@@ -471,8 +473,7 @@ void main() {
     expect(member.cli, CliTool.codex);
 
     cubit.setMemberActivePreset(memberId, TeamConfig.inheritPresetId);
-    await Future<void>.delayed(Duration.zero);
-    await Future<void>.delayed(Duration.zero);
+    await drainPendingAsyncWork();
 
     final inherited = cubit.state.selectedTeam!.members.firstWhere(
       (m) => m.id == memberId,
@@ -481,7 +482,7 @@ void main() {
     expect(inherited.cli, CliTool.codex);
 
     await _drainAndCloseTeamCubit(cubit);
-    await base.delete(recursive: true);
+    await deleteTempDirBestEffort(base);
   });
 
   test('previewFor resolves executable from team cli when available', () async {

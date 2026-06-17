@@ -359,6 +359,8 @@ class _FixedResumeLifecycleService extends SessionLifecycleService {
         env: plan.env,
         resume: resume,
         taskId: plan.taskId,
+        createSessionId: resume ? null : plan.taskId,
+        resumeSessionId: resume ? plan.taskId : null,
         cliTeamName: plan.cliTeamName,
         memberConfigDir: plan.memberConfigDir,
         resolvedRoots: plan.resolvedRoots,
