@@ -245,6 +245,84 @@ void main() {
   );
 
   test(
+    'personal session resumes under its pinned CLI even after the active '
+    'preset switches to another CLI',
+    () async {
+      const projectId = 'personal-proj';
+      const sessionId = 'personal-sess';
+      // The project's active preset is now Codex, but the session was created
+      // with (and is pinned to) Claude. Switching the active CLI must not
+      // re-bind the existing session: its launch + resume probe must still
+      // target Claude, or the prior transcript would be orphaned (data loss).
+      final fs = InMemoryFilesystem();
+      final presetsRepo = CliPresetsRepository(
+        fs: fs,
+        presetsPath: '/cli-presets.json',
+      );
+      await presetsRepo.save([
+        CliPreset(
+          id: 'preset-claude',
+          name: 'Claude Work',
+          cli: CliTool.claude,
+          provider: 'anthropic',
+          model: 'sonnet',
+          createdAt: 1,
+          updatedAt: 1,
+        ),
+        CliPreset(
+          id: 'preset-codex',
+          name: 'Codex Work',
+          cli: CliTool.codex,
+          provider: 'openai',
+          model: 'gpt',
+          createdAt: 2,
+          updatedAt: 2,
+        ),
+      ]);
+      const profile = ProjectProfile(
+        projectId: projectId,
+        activePresetId: 'preset-codex',
+      );
+      const project = AppProject(
+        projectId: projectId,
+        primaryPath: '/work/personal',
+        teamId: '',
+        createdAt: 1,
+      );
+      final session = AppSession(
+        sessionId: sessionId,
+        projectId: projectId,
+        primaryPath: '/work/personal',
+        sessionTeam: '',
+        cli: CliTool.claude,
+        createdAt: 1,
+      );
+
+      final plan = await service(
+        cliPresetsRepository: presetsRepo,
+      ).prepareLaunch(
+        session: session,
+        project: project,
+        profile: profile,
+      );
+
+      final claudeDir = layout.sessionRuntimeToolDir(
+        projectId,
+        sessionId,
+        'claude',
+      );
+      // Resolved under Claude (session.cli), not Codex (active preset).
+      expect(plan.env['CLAUDE_CONFIG_DIR'], claudeDir);
+      expect(plan.memberConfigDir, claudeDir);
+      expect(
+        plan.resolvedRoots.any((r) => r.contains('codex')),
+        isFalse,
+        reason: 'must not probe the active preset CLI (codex) for resume',
+      );
+    },
+  );
+
+  test(
     'prepareShellLaunch throws without team and member for non-personal sessions',
     () async {
       final session = AppSession(

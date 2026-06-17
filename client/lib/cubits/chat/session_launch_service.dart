@@ -142,7 +142,10 @@ class SessionLaunchService implements MemberConnector {
     final effectiveTeam = isPersonal ? null : team;
     final ts = _h.shellFactory.newSession(
       isPersonal
-          ? (personalPreset?.cli ?? CliTool.claude)
+          // Honor the session's pinned CLI so an existing simple-mode session
+          // resumes under the CLI it was created with, even when the project's
+          // active preset has since been switched to another CLI.
+          ? (session.cli ?? personalPreset?.cli ?? CliTool.claude)
           : member!.cliWithin(team!),
     );
     final info = ChatTabInfo(

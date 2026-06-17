@@ -78,6 +78,34 @@ class SessionLifecycleService {
     return resolveActivePreset(profile.activePresetId, presets);
   }
 
+  /// Resolves the launch [CliPreset] for a personal-project [session], honoring
+  /// the session's pinned [AppSession.cli].
+  ///
+  /// A simple-mode session is launched — and stores its transcript — under the
+  /// CLI it was created with. Switching the project's active preset to another
+  /// CLI must NOT re-bind an existing session: if it did, the `--resume` probe
+  /// would look under the new tool's runtime dir, find nothing, and start fresh
+  /// (apparent data loss, while the original transcript is still on disk). When
+  /// the session pins a CLI that differs from the active preset, prefer a preset
+  /// for that CLI so the provider/model env matches the resumed conversation.
+  /// Returns `null` when no preset matches the pinned CLI (e.g. it was deleted);
+  /// the caller still resolves the CLI via [AppSession.cli].
+  Future<CliPreset?> _resolvePersonalPreset(
+    AppSession session,
+    ProjectProfile profile,
+  ) async {
+    final repo = _cliPresetsRepository;
+    if (repo == null) return null;
+    final presets = await repo.load();
+    final active = resolveActivePreset(profile.activePresetId, presets);
+    final pinnedCli = session.cli;
+    if (pinnedCli == null || active?.cli == pinnedCli) return active;
+    for (final preset in presets) {
+      if (preset.cli == pinnedCli) return preset;
+    }
+    return null;
+  }
+
   Future<ProjectProfile> loadProjectProfile(
     String projectId, {
     ProjectProfile? override,
@@ -208,17 +236,12 @@ class SessionLifecycleService {
           ? await loadProjectProfile(project!.projectId, override: profile)
           : null;
 
-      // Resolve active preset for personal projects
+      // Resolve the launch preset for personal projects, honoring the session's
+      // pinned CLI so switching the active preset never orphans an existing
+      // session's transcript (see _resolvePersonalPreset).
       CliPreset? activePreset;
       if (isPersonal && resolvedProfile != null) {
-        final repo = _cliPresetsRepository;
-        if (repo != null) {
-          final presets = await repo.load();
-          activePreset = resolveActivePreset(
-            resolvedProfile.activePresetId,
-            presets,
-          );
-        }
+        activePreset = await _resolvePersonalPreset(session, resolvedProfile);
       }
 
       final runtimeTeamId = isPersonal
@@ -242,7 +265,7 @@ class SessionLifecycleService {
       // transcript instead of falling back to `--session-id` (which the running
       // CLI rejects as "Session ID … is already in use").
       final cli = isPersonal
-          ? (activePreset?.cli ?? CliTool.claude)
+          ? (session.cli ?? activePreset?.cli ?? CliTool.claude)
           : (team != null && member != null && member.isValid
               ? member.cliWithin(team)
               : team?.cli);
@@ -342,17 +365,13 @@ class SessionLifecycleService {
     final cliSessionId =
         memberBinding?.taskId.trim() ?? session.sessionId.trim();
     CliTool? resolvedCli;
-    if (isPersonal && profile?.activePresetId != null) {
-      final repo = _cliPresetsRepository;
-      if (repo != null) {
-        final presets = await repo.load();
-        final activePreset = resolveActivePreset(profile!.activePresetId, presets);
-        resolvedCli = activePreset?.cli ?? CliTool.claude;
-      } else {
-        resolvedCli = CliTool.claude;
-      }
+    if (isPersonal) {
+      final preset = profile != null
+          ? await _resolvePersonalPreset(session, profile)
+          : null;
+      resolvedCli = session.cli ?? preset?.cli ?? CliTool.claude;
     } else {
-      resolvedCli = isPersonal ? CliTool.claude : cli;
+      resolvedCli = cli;
     }
     final probe = await _findCliState(
       roots: roots,

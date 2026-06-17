@@ -90,6 +90,20 @@ void main() {
     expect(cubit2.state.preferences.scopeSessionsToSelectedTeam, true);
   });
 
+  test('terminalLinkClickOpensInApp defaults to true and persists toggle',
+      () async {
+    final cubit = await makeCubit(located: null);
+    await cubit.load();
+    expect(cubit.state.preferences.terminalLinkClickOpensInApp, true);
+
+    await cubit.setTerminalLinkClickOpensInApp(false);
+    expect(cubit.state.preferences.terminalLinkClickOpensInApp, false);
+
+    final cubit2 = await makeCubit(located: null);
+    await cubit2.load();
+    expect(cubit2.state.preferences.terminalLinkClickOpensInApp, false);
+  });
+
   test(
     'setDefaultSshWorkingDirectory persists the remote default cwd',
     () async {
