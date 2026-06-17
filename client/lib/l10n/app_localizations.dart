@@ -2228,6 +2228,12 @@ abstract class AppLocalizations {
   /// **'Unpin conversation'**
   String get unpinConversation;
 
+  /// No description provided for @sessionSortManual.
+  ///
+  /// In en, this message translates to:
+  /// **'Manual order'**
+  String get sessionSortManual;
+
   /// No description provided for @sessionSortRecentlyUpdated.
   ///
   /// In en, this message translates to:
@@ -2857,6 +2863,18 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Maximum lines kept in each session terminal buffer'**
   String get terminalScrollbackLinesDescription;
+
+  /// No description provided for @terminalLinkClickOpensInAppTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Open terminal links in app'**
+  String get terminalLinkClickOpensInAppTitle;
+
+  /// No description provided for @terminalLinkClickOpensInAppDescription.
+  ///
+  /// In en, this message translates to:
+  /// **'Left-click links and file paths to open them in TeamPilot instead of the running program. Ctrl/Cmd-click always opens in app.'**
+  String get terminalLinkClickOpensInAppDescription;
 
   /// No description provided for @terminalParkedSendPending.
   ///

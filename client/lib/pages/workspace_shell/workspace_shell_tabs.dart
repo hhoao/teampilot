@@ -111,6 +111,7 @@ class WorkspaceShellTabRow extends StatelessWidget {
                 children: [
                   for (var i = 0; i < tabs.length; i++)
                     WorkspaceShellTabChip(
+                      key: ValueKey(tabs[i].id),
                       title: tabs[i].title,
                       working: tabs[i].working,
                       active: i == activeIndex,

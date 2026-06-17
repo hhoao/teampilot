@@ -11,6 +11,7 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 
 import '../cubits/editor_cubit.dart';
 import '../cubits/layout_cubit.dart';
+import '../cubits/session_preferences_cubit.dart';
 import '../l10n/l10n_extensions.dart';
 import '../models/layout_preferences.dart';
 import '../services/terminal/terminal_fonts.dart';
@@ -346,6 +347,11 @@ class _WorkspaceTerminalView extends StatelessWidget {
         textStyle: appTerminalTextStyle(context),
         autofocus: true,
         linkProviders: entry.session.linkProviders,
+        primaryTapActivatesLink: context
+            .watch<SessionPreferencesCubit>()
+            .state
+            .preferences
+            .terminalLinkClickOpensInApp,
         onViewportResize: entry.session.onViewportResize,
         onLinkActivate: (uri) {
           final editorCubit = context.read<EditorCubit>();

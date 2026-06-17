@@ -1136,6 +1136,9 @@ class AppLocalizationsZh extends AppLocalizations {
   String get unpinConversation => '取消置顶';
 
   @override
+  String get sessionSortManual => '手动排序';
+
+  @override
   String get sessionSortRecentlyUpdated => '最近更新';
 
   @override
@@ -1470,6 +1473,13 @@ class AppLocalizationsZh extends AppLocalizations {
 
   @override
   String get terminalScrollbackLinesDescription => '每个会话终端保留的最大行数';
+
+  @override
+  String get terminalLinkClickOpensInAppTitle => '在应用内打开终端链接';
+
+  @override
+  String get terminalLinkClickOpensInAppDescription =>
+      '左键点击链接和文件路径时在 TeamPilot 内打开，而不是交给正在运行的程序。Ctrl/Cmd+点击始终在应用内打开。';
 
   @override
   String terminalParkedSendPending(String content) {

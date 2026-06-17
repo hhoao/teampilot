@@ -1192,6 +1192,9 @@ class AppLocalizationsEn extends AppLocalizations {
   String get unpinConversation => 'Unpin conversation';
 
   @override
+  String get sessionSortManual => 'Manual order';
+
+  @override
   String get sessionSortRecentlyUpdated => 'Recently updated';
 
   @override
@@ -1532,6 +1535,13 @@ class AppLocalizationsEn extends AppLocalizations {
   @override
   String get terminalScrollbackLinesDescription =>
       'Maximum lines kept in each session terminal buffer';
+
+  @override
+  String get terminalLinkClickOpensInAppTitle => 'Open terminal links in app';
+
+  @override
+  String get terminalLinkClickOpensInAppDescription =>
+      'Left-click links and file paths to open them in TeamPilot instead of the running program. Ctrl/Cmd-click always opens in app.';
 
   @override
   String terminalParkedSendPending(String content) {

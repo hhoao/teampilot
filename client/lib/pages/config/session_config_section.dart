@@ -416,6 +416,17 @@ class _SessionControlsState extends State<_SessionControls> {
                 showDividerBelow: true,
               ),
               SettingsLabeledRow(
+                title: l10n.terminalLinkClickOpensInAppTitle,
+                subtitle: l10n.terminalLinkClickOpensInAppDescription,
+                trailing: Switch(
+                  key: AppKeys.terminalLinkClickOpensInAppSwitch,
+                  value: state.preferences.terminalLinkClickOpensInApp,
+                  onChanged: (value) =>
+                      widget.cubit.setTerminalLinkClickOpensInApp(value),
+                ),
+                showDividerBelow: true,
+              ),
+              SettingsLabeledRow(
                 title: l10n.autoLaunchAllMembersTitle,
                 subtitle: l10n.autoLaunchAllMembersDescription,
                 trailing: Switch(

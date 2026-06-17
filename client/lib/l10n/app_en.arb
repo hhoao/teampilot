@@ -522,6 +522,7 @@
   "deleteConversation": "Delete conversation",
   "pinConversation": "Pin conversation",
   "unpinConversation": "Unpin conversation",
+  "sessionSortManual": "Manual order",
   "sessionSortRecentlyUpdated": "Recently updated",
   "sessionSortCreatedDesc": "Date created",
   "sessionSortTooltip": "Sort conversations",
@@ -665,6 +666,8 @@
   "workspaceTerminalCloseSession": "Close terminal",
   "terminalScrollbackLinesTitle": "Terminal scrollback lines",
   "terminalScrollbackLinesDescription": "Maximum lines kept in each session terminal buffer",
+  "terminalLinkClickOpensInAppTitle": "Open terminal links in app",
+  "terminalLinkClickOpensInAppDescription": "Left-click links and file paths to open them in TeamPilot instead of the running program. Ctrl/Cmd-click always opens in app.",
   "terminalParkedSendPending": "Sent, awaiting receipt: {content}",
   "@terminalParkedSendPending": {
     "placeholders": { "content": { "type": "String" } }

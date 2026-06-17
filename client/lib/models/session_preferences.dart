@@ -12,6 +12,7 @@ class SessionPreferences {
     this.autoLaunchAllMembersOnConnect = true,
     this.scopeSessionsToSelectedTeam = true,
     this.terminalScrollbackLines = 10000,
+    this.terminalLinkClickOpensInApp = true,
     WindowsStorageBackend? windowsStorageBackend,
   }) : connectionMode = connectionMode ?? defaultConnectionMode(),
        windowsStorageBackend =
@@ -48,6 +49,8 @@ class SessionPreferences {
           json['scopeSessionsToSelectedTeam'] as bool? ?? true,
       terminalScrollbackLines:
           (json['terminalScrollbackLines'] as num?)?.toInt() ?? 10000,
+      terminalLinkClickOpensInApp:
+          json['terminalLinkClickOpensInApp'] as bool? ?? true,
       windowsStorageBackend: WindowsStorageBackendJson.fromJson(
         json['windowsStorageBackend'] as String?,
       ),
@@ -85,6 +88,12 @@ class SessionPreferences {
   /// Maximum scrollback lines retained per embedded terminal session.
   final int terminalScrollbackLines;
 
+  /// When true, a plain left-click on a link/file-path in the embedded terminal
+  /// is handled in-app (open in editor / TeamPilot's URI opener) instead of
+  /// being forwarded to the running program (which may launch an external app).
+  /// Ctrl/Cmd-click always opens in-app regardless of this setting.
+  final bool terminalLinkClickOpensInApp;
+
   /// Windows-only: business file I/O via native AppData or WSL home.
   final WindowsStorageBackend windowsStorageBackend;
 
@@ -100,6 +109,7 @@ class SessionPreferences {
     bool? autoLaunchAllMembersOnConnect,
     bool? scopeSessionsToSelectedTeam,
     int? terminalScrollbackLines,
+    bool? terminalLinkClickOpensInApp,
     WindowsStorageBackend? windowsStorageBackend,
   }) {
     return SessionPreferences(
@@ -115,6 +125,8 @@ class SessionPreferences {
           scopeSessionsToSelectedTeam ?? this.scopeSessionsToSelectedTeam,
       terminalScrollbackLines:
           terminalScrollbackLines ?? this.terminalScrollbackLines,
+      terminalLinkClickOpensInApp:
+          terminalLinkClickOpensInApp ?? this.terminalLinkClickOpensInApp,
       windowsStorageBackend:
           windowsStorageBackend ?? this.windowsStorageBackend,
     );
@@ -130,6 +142,7 @@ class SessionPreferences {
       'autoLaunchAllMembersOnConnect': autoLaunchAllMembersOnConnect,
       'scopeSessionsToSelectedTeam': scopeSessionsToSelectedTeam,
       'terminalScrollbackLines': terminalScrollbackLines,
+      'terminalLinkClickOpensInApp': terminalLinkClickOpensInApp,
       'windowsStorageBackend': windowsStorageBackend.toJson(),
     };
   }

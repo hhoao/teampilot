@@ -143,6 +143,12 @@ class SessionPreferencesCubit extends Cubit<SessionPreferencesState> {
     );
   }
 
+  Future<void> setTerminalLinkClickOpensInApp(bool value) {
+    return _save(
+      state.preferences.copyWith(terminalLinkClickOpensInApp: value),
+    );
+  }
+
   Future<void> setWindowsStorageBackend(WindowsStorageBackend backend) {
     return _save(state.preferences.copyWith(windowsStorageBackend: backend));
   }

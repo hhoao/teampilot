@@ -29,6 +29,9 @@ class AppKeys {
   static const scopeSessionsToSelectedTeamSwitch = Key(
     'scope-sessions-to-selected-team-switch',
   );
+  static const terminalLinkClickOpensInAppSwitch = Key(
+    'terminal-link-click-opens-in-app-switch',
+  );
   static const configTeamSectionButton = Key('config-team-section-button');
   static const configMembersSectionButton = Key(
     'config-members-section-button',

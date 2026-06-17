@@ -496,6 +496,7 @@
   "deleteConversation": "删除对话",
   "pinConversation": "置顶对话",
   "unpinConversation": "取消置顶",
+  "sessionSortManual": "手动排序",
   "sessionSortRecentlyUpdated": "最近更新",
   "sessionSortCreatedDesc": "创建时间",
   "sessionSortTooltip": "排序对话",
@@ -604,6 +605,8 @@
   "workspaceTerminalCloseSession": "关闭终端",
   "terminalScrollbackLinesTitle": "终端滚动缓冲行数",
   "terminalScrollbackLinesDescription": "每个会话终端保留的最大行数",
+  "terminalLinkClickOpensInAppTitle": "在应用内打开终端链接",
+  "terminalLinkClickOpensInAppDescription": "左键点击链接和文件路径时在 TeamPilot 内打开，而不是交给正在运行的程序。Ctrl/Cmd+点击始终在应用内打开。",
   "terminalParkedSendPending": "已发送，等待接收：{content}",
   "@terminalParkedSendPending": {
     "placeholders": { "content": { "type": "String" } }
