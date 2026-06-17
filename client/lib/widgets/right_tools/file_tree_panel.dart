@@ -1,6 +1,7 @@
 ﻿import 'dart:async';
 import 'dart:math' as math;
 
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
@@ -13,6 +14,7 @@ import '../../cubits/file_tree_cubit.dart';
 import '../../l10n/l10n_extensions.dart';
 import '../../services/file_tree/file_tree_visible_rows.dart';
 import '../../services/storage/app_storage.dart';
+import '../../services/storage/runtime_storage_context.dart';
 import '../../theme/app_icon_sizes.dart';
 import '../../theme/app_text_styles.dart';
 import '../../utils/app_keys.dart';
@@ -157,8 +159,10 @@ class _FileTreePanelState extends State<FileTreePanel> {
                 LayoutBuilder(
                   builder: (context, constraints) {
                     const actionSlotWidth = 28.0;
+                    final hasExpandedFolders = state.expandedPaths.isNotEmpty;
+                    final actionCount = hasExpandedFolders ? 4 : 3;
                     final showInlineActions =
-                        constraints.maxWidth >= actionSlotWidth * 4;
+                        constraints.maxWidth >= actionSlotWidth * actionCount;
                     return Row(
                       children: [
                         Expanded(
@@ -183,12 +187,11 @@ class _FileTreePanelState extends State<FileTreePanel> {
                           FileTreeHeaderOverflowMenu(
                             l10n: l10n,
                             showHiddenFiles: state.showHiddenFiles,
-                            allFoldersExpanded: _cubit.isAllFoldersExpanded(),
+                            hasExpandedFolders: hasExpandedFolders,
                             canCopy: state.rootPath.isNotEmpty,
                             onReveal: () =>
                                 unawaited(_revealActiveEditorFile()),
-                            onToggleExpandAll: () =>
-                                unawaited(_cubit.toggleExpandAllFolders()),
+                            onCollapseAll: _cubit.collapseAllFolders,
                             onToggleHidden: _cubit.toggleShowHidden,
                             onCopy: () {
                               if (state.rootPath.isNotEmpty) {
@@ -270,23 +273,26 @@ class _FileTreePanelState extends State<FileTreePanel> {
     required AppLocalizations l10n,
     required FileTreeState state,
   }) {
-    final allExpanded = _cubit.isAllFoldersExpanded();
-    return [
+    final actions = <Widget>[
       AppIconButton(
         icon: Icons.my_location_outlined,
         compact: true, size: AppIconButton.kCompactSize,
         tooltip: l10n.fileTreeRevealActiveFile,
         onTap: () => unawaited(_revealActiveEditorFile()),
       ),
-      AppIconButton(
-        icon: allExpanded ? Icons.unfold_less : Icons.unfold_more,
-        compact: true,
-        size: AppIconButton.kCompactSize,
-        tooltip: allExpanded
-            ? l10n.treeCollapseAllFolders
-            : l10n.treeExpandAllFolders,
-        onTap: () => unawaited(_cubit.toggleExpandAllFolders()),
-      ),
+    ];
+    if (state.expandedPaths.isNotEmpty) {
+      actions.add(
+        AppIconButton(
+          icon: Icons.unfold_less,
+          compact: true,
+          size: AppIconButton.kCompactSize,
+          tooltip: l10n.treeCollapseAllFolders,
+          onTap: _cubit.collapseAllFolders,
+        ),
+      );
+    }
+    actions.addAll([
       AppIconButton(
         icon: state.showHiddenFiles
             ? Icons.visibility_off_outlined
@@ -308,7 +314,8 @@ class _FileTreePanelState extends State<FileTreePanel> {
           }
         },
       ),
-    ];
+    ]);
+    return actions;
   }
 
   Widget _buildFileList(FileTreeState state, Color textColor) {
@@ -396,6 +403,7 @@ class _FileTreePanelState extends State<FileTreePanel> {
                           depth: row.depth,
                           cubit: _cubit,
                           textColor: textColor,
+                          desktopShellActions: _desktopShellActions,
                         ),
                       ),
                     );
@@ -407,5 +415,12 @@ class _FileTreePanelState extends State<FileTreePanel> {
         );
       },
     );
+  }
+
+  bool get _desktopShellActions {
+    if (kIsWeb) return false;
+    final mode = AppStorage.context.mode;
+    return mode == StorageBackendMode.native ||
+        mode == StorageBackendMode.wsl;
   }
 }

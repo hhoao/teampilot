@@ -36,10 +36,7 @@ class _AboutConfigWorkspaceState extends State<AboutConfigWorkspace> {
   @override
   void initState() {
     super.initState();
-    final cubit = context.read<AppUpdateCubit>();
-    if (cubit.state.currentVersionLabel.isEmpty) {
-      cubit.loadCurrentVersion();
-    }
+    context.read<AppUpdateCubit>().loadPreferences();
   }
 
   @override
@@ -80,6 +77,18 @@ class _AboutConfigWorkspaceState extends State<AboutConfigWorkspace> {
                             ? l10n.aboutVersionLoading
                             : state.currentVersionLabel,
                         trailing: _VersionUpdateActions(state: state),
+                        showDividerBelow: true,
+                      ),
+                      SettingsLabeledRow(
+                        title: l10n.appUpdateAutoCheck,
+                        subtitle: l10n.appUpdateAutoCheckHint,
+                        trailing: Switch(
+                          key: AppKeys.aboutAutoCheckUpdatesSwitch,
+                          value: state.autoCheckEnabled,
+                          onChanged: (value) => context
+                              .read<AppUpdateCubit>()
+                              .setAutoCheckEnabled(value),
+                        ),
                         showDividerBelow: true,
                       ),
                       if (state.availableRelease != null) ...[

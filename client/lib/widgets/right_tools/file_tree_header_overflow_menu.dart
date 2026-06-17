@@ -5,7 +5,7 @@ import '../../l10n/app_localizations.dart';
 import '../app_icon_button.dart';
 import '../menu/sidebar_action_menu.dart';
 
-enum FileTreeHeaderAction { reveal, toggleExpandAll, toggleHidden, copy }
+enum FileTreeHeaderAction { reveal, collapseAll, toggleHidden, copy }
 
 /// Compact header overflow menu when the file-tree panel is too narrow for
 /// inline action buttons.
@@ -13,10 +13,10 @@ class FileTreeHeaderOverflowMenu extends StatelessWidget {
   const FileTreeHeaderOverflowMenu({
     required this.l10n,
     required this.showHiddenFiles,
-    required this.allFoldersExpanded,
+    required this.hasExpandedFolders,
     required this.canCopy,
     required this.onReveal,
-    required this.onToggleExpandAll,
+    required this.onCollapseAll,
     required this.onToggleHidden,
     required this.onCopy,
     super.key,
@@ -24,10 +24,10 @@ class FileTreeHeaderOverflowMenu extends StatelessWidget {
 
   final AppLocalizations l10n;
   final bool showHiddenFiles;
-  final bool allFoldersExpanded;
+  final bool hasExpandedFolders;
   final bool canCopy;
   final VoidCallback onReveal;
-  final VoidCallback onToggleExpandAll;
+  final VoidCallback onCollapseAll;
   final VoidCallback onToggleHidden;
   final VoidCallback onCopy;
 
@@ -43,13 +43,12 @@ class FileTreeHeaderOverflowMenu extends StatelessWidget {
           icon: Icons.my_location_outlined,
           label: l10n.fileTreeRevealActiveFile,
         ),
-        SidebarActionMenuSpec.item(
-          value: FileTreeHeaderAction.toggleExpandAll,
-          icon: allFoldersExpanded ? Icons.unfold_less : Icons.unfold_more,
-          label: allFoldersExpanded
-              ? l10n.treeCollapseAllFolders
-              : l10n.treeExpandAllFolders,
-        ),
+        if (hasExpandedFolders)
+          SidebarActionMenuSpec.item(
+            value: FileTreeHeaderAction.collapseAll,
+            icon: Icons.unfold_less,
+            label: l10n.treeCollapseAllFolders,
+          ),
         SidebarActionMenuSpec.item(
           value: FileTreeHeaderAction.toggleHidden,
           icon: showHiddenFiles
@@ -68,8 +67,8 @@ class FileTreeHeaderOverflowMenu extends StatelessWidget {
         switch (action as FileTreeHeaderAction) {
           case FileTreeHeaderAction.reveal:
             onReveal();
-          case FileTreeHeaderAction.toggleExpandAll:
-            onToggleExpandAll();
+          case FileTreeHeaderAction.collapseAll:
+            onCollapseAll();
           case FileTreeHeaderAction.toggleHidden:
             onToggleHidden();
           case FileTreeHeaderAction.copy:

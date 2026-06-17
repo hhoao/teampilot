@@ -1,5 +1,7 @@
 import 'dart:io';
 
+import 'package:path/path.dart' as p;
+
 typedef ProcessRunner = Future<void> Function(String exe, List<String> args);
 
 /// Opens a directory in the OS file manager. Desktop-only; the caller hides the
@@ -38,5 +40,12 @@ class SystemFolderOpener {
       exe = 'xdg-open';
     }
     await _runner(exe, [target]);
+  }
+
+  /// Parent directory to reveal when [filePath] is a file.
+  static String revealPathForFile(String filePath) {
+    final trimmed = filePath.trim();
+    if (trimmed.isEmpty) return trimmed;
+    return p.dirname(trimmed);
   }
 }

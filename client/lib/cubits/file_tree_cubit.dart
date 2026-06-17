@@ -1,8 +1,16 @@
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:path/path.dart' as p;
 
+import '../services/file_tree/file_tree_clipboard.dart';
 import '../services/io/filesystem.dart';
 import '../services/io/local_filesystem.dart';
+
+class FileTreeOperationException implements Exception {
+  FileTreeOperationException(this.message);
+  final String message;
+  @override
+  String toString() => message;
+}
 
 class FileTreeState {
   const FileTreeState({
@@ -13,6 +21,7 @@ class FileTreeState {
     this.showHiddenFiles = false,
     this.dirCache = const {},
     this.revealPath,
+    this.clipboard,
   });
 
   final String rootPath;
@@ -25,6 +34,9 @@ class FileTreeState {
   /// Set by [FileTreeCubit.revealPath]; cleared after scroll-into-view.
   final String? revealPath;
 
+  /// In-tree copy/cut source for paste.
+  final FileTreeClipboard? clipboard;
+
   FileTreeState copyWith({
     String? rootPath,
     bool? rootExists,
@@ -33,8 +45,10 @@ class FileTreeState {
     bool? showHiddenFiles,
     Map<String, List<FsDirEntry>>? dirCache,
     String? revealPath,
+    FileTreeClipboard? clipboard,
     bool clearRevealPath = false,
     bool clearFilter = false,
+    bool clearClipboard = false,
   }) {
     return FileTreeState(
       rootPath: rootPath ?? this.rootPath,
@@ -44,6 +58,7 @@ class FileTreeState {
       showHiddenFiles: showHiddenFiles ?? this.showHiddenFiles,
       dirCache: dirCache ?? this.dirCache,
       revealPath: clearRevealPath ? null : (revealPath ?? this.revealPath),
+      clipboard: clearClipboard ? null : (clipboard ?? this.clipboard),
     );
   }
 }
@@ -158,7 +173,7 @@ class FileTreeCubit extends Cubit<FileTreeState> {
 
   Future<void> _loadDirectory(String path) async {
     final entries = await _fetchDirectoryEntries(path);
-    if (entries == null) return;
+    if (isClosed || entries == null) return;
     final cache = Map<String, List<FsDirEntry>>.from(state.dirCache);
     cache[path] = entries;
     emit(state.copyWith(dirCache: cache));
@@ -176,59 +191,8 @@ class FileTreeCubit extends Cubit<FileTreeState> {
     }
   }
 
-  /// True when every visible directory under [rootPath] is expanded.
-  bool isAllFoldersExpanded() {
-    final root = state.rootPath;
-    if (root.isEmpty || !state.rootExists) return false;
-    return _isDirFullyExpanded(root);
-  }
-
-  bool _isDirFullyExpanded(String dirPath) {
-    final entries = state.dirCache[dirPath];
-    if (entries == null) return true;
-    for (final entry in entries) {
-      if (!entry.isDirectory) continue;
-      final childPath = fs.pathContext.join(dirPath, entry.name);
-      if (!state.expandedPaths.contains(childPath)) return false;
-      if (!_isDirFullyExpanded(childPath)) return false;
-    }
-    return true;
-  }
-
-  Future<void> expandAllFolders() async {
-    final root = state.rootPath;
-    if (root.isEmpty || !state.rootExists) return;
-
-    final expanded = <String>{};
-    final cache = Map<String, List<FsDirEntry>>.from(state.dirCache);
-
-    Future<void> walk(String dirPath) async {
-      var entries = cache[dirPath];
-      entries ??= await _fetchDirectoryEntries(dirPath);
-      if (entries == null) return;
-      cache[dirPath] = entries;
-      for (final entry in entries) {
-        if (!entry.isDirectory) continue;
-        final childPath = fs.pathContext.join(dirPath, entry.name);
-        expanded.add(childPath);
-        await walk(childPath);
-      }
-    }
-
-    await walk(root);
-    emit(state.copyWith(expandedPaths: expanded, dirCache: cache));
-  }
-
   void collapseAllFolders() {
     emit(state.copyWith(expandedPaths: const {}));
-  }
-
-  Future<void> toggleExpandAllFolders() async {
-    if (isAllFoldersExpanded()) {
-      collapseAllFolders();
-    } else {
-      await expandAllFolders();
-    }
   }
 
   List<FsDirEntry> entriesFor(String path) {
@@ -254,6 +218,150 @@ class FileTreeCubit extends Cubit<FileTreeState> {
   Future<void> deletePath(String path) async {
     await fs.removeRecursive(path);
     refresh();
+  }
+
+  void copyItem(String path) {
+    emit(
+      state.copyWith(
+        clipboard: FileTreeClipboard(
+          path: path,
+          mode: FileTreeClipboardMode.copy,
+        ),
+      ),
+    );
+  }
+
+  void cutItem(String path) {
+    emit(
+      state.copyWith(
+        clipboard: FileTreeClipboard(
+          path: path,
+          mode: FileTreeClipboardMode.cut,
+        ),
+      ),
+    );
+  }
+
+  Future<void> pasteInto(String destDir) async {
+    final clip = state.clipboard;
+    if (clip == null) return;
+
+    final ctx = fs.pathContext;
+    final dest = ctx.normalize(destDir);
+    final source = ctx.normalize(clip.path);
+    if (!_canPasteInto(ctx, source: source, destDir: dest)) {
+      throw FileTreeOperationException('invalid paste target');
+    }
+
+    final target = ctx.join(dest, ctx.basename(source));
+    if (!_pathsEqual(ctx, source, target)) {
+      final existing = await fs.stat(target);
+      if (existing.exists) {
+        throw FileTreeOperationException('target already exists');
+      }
+    }
+
+    final sourceStat = await fs.stat(source);
+    if (!sourceStat.exists) {
+      emit(state.copyWith(clearClipboard: true));
+      throw FileTreeOperationException('source missing');
+    }
+
+    if (clip.mode == FileTreeClipboardMode.copy) {
+      if (sourceStat.isDirectory) {
+        await fs.copyTree(source: source, destination: target);
+      } else {
+        await fs.copyFile(source, target);
+      }
+    } else {
+      await fs.rename(source, target);
+      emit(state.copyWith(clearClipboard: true));
+    }
+
+    final expanded = Set<String>.from(state.expandedPaths)..add(dest);
+    refresh();
+    emit(state.copyWith(expandedPaths: expanded));
+    await _loadDirectory(dest);
+  }
+
+  Future<void> renameItem(String path, String newName) async {
+    final trimmed = newName.trim();
+    _validateName(trimmed);
+
+    final ctx = fs.pathContext;
+    final parent = ctx.dirname(path);
+    final target = ctx.join(parent, trimmed);
+    if (_pathsEqual(ctx, path, target)) return;
+
+    final existing = await fs.stat(target);
+    if (existing.exists) {
+      throw FileTreeOperationException('target already exists');
+    }
+
+    await fs.rename(path, target);
+    refresh();
+  }
+
+  Future<void> createFile(String parentDir, String name) async {
+    final trimmed = name.trim();
+    _validateName(trimmed);
+
+    final ctx = fs.pathContext;
+    final target = ctx.join(parentDir, trimmed);
+    final existing = await fs.stat(target);
+    if (existing.exists) {
+      throw FileTreeOperationException('target already exists');
+    }
+
+    await fs.writeString(target, '');
+    final expanded = Set<String>.from(state.expandedPaths)..add(parentDir);
+    refresh();
+    emit(state.copyWith(expandedPaths: expanded));
+    await _loadDirectory(parentDir);
+  }
+
+  Future<void> createFolder(String parentDir, String name) async {
+    final trimmed = name.trim();
+    _validateName(trimmed);
+
+    final ctx = fs.pathContext;
+    final target = ctx.join(parentDir, trimmed);
+    final existing = await fs.stat(target);
+    if (existing.exists) {
+      throw FileTreeOperationException('target already exists');
+    }
+
+    await fs.ensureDir(target);
+    final expanded = Set<String>.from(state.expandedPaths)..add(parentDir);
+    refresh();
+    emit(state.copyWith(expandedPaths: expanded));
+    await _loadDirectory(parentDir);
+  }
+
+  static void _validateName(String name) {
+    if (name.isEmpty || name == '.' || name == '..') {
+      throw FileTreeOperationException('invalid name');
+    }
+    if (name.contains('/') || name.contains(r'\')) {
+      throw FileTreeOperationException('invalid name');
+    }
+  }
+
+  static bool _canPasteInto(
+    p.Context ctx, {
+    required String source,
+    required String destDir,
+  }) {
+    if (_pathsEqual(ctx, source, destDir)) return false;
+    try {
+      if (ctx.isWithin(source, destDir)) return false;
+    } catch (_) {
+      final normalizedSource = source.toLowerCase();
+      final normalizedDest = destDir.toLowerCase();
+      final sep = ctx.separator;
+      if (normalizedDest.startsWith('$normalizedSource$sep')) return false;
+    }
+    return true;
   }
 }
 

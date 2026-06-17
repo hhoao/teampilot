@@ -440,6 +440,50 @@ void main() {
     await base.delete(recursive: true);
   });
 
+  test('setMemberActivePreset syncs member cli from preset in mixed mode', () async {
+    final base = await Directory.systemTemp.createTemp('team_member_preset_');
+    final cubit = TeamCubit(
+      repository: _repo(base),
+      sessionRepository: SessionRepository(),
+      reloadProjects: () async {},
+      executableResolver: () => 'flashskyai',
+      pluginLinker: _RecordingPluginLinker(),
+    );
+
+    expect(
+      await cubit.addTeam('mixed', cli: CliTool.claude, teamMode: TeamMode.mixed),
+      isTrue,
+    );
+    final memberId = cubit.state.selectedTeam!.members.first.id;
+
+    cubit.setMemberActivePreset(
+      memberId,
+      'preset-codex',
+      syncCli: CliTool.codex,
+    );
+    await Future<void>.delayed(Duration.zero);
+    await Future<void>.delayed(Duration.zero);
+
+    final member = cubit.state.selectedTeam!.members.firstWhere(
+      (m) => m.id == memberId,
+    );
+    expect(member.activePresetId, 'preset-codex');
+    expect(member.cli, CliTool.codex);
+
+    cubit.setMemberActivePreset(memberId, TeamConfig.inheritPresetId);
+    await Future<void>.delayed(Duration.zero);
+    await Future<void>.delayed(Duration.zero);
+
+    final inherited = cubit.state.selectedTeam!.members.firstWhere(
+      (m) => m.id == memberId,
+    );
+    expect(inherited.activePresetId, TeamConfig.inheritPresetId);
+    expect(inherited.cli, CliTool.codex);
+
+    await _drainAndCloseTeamCubit(cubit);
+    await base.delete(recursive: true);
+  });
+
   test('previewFor resolves executable from team cli when available', () async {
     final base = await Directory.systemTemp.createTemp('team_cli_preview_');
     final cubit = TeamCubit(

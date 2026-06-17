@@ -66,12 +66,15 @@ resolveMemberLaunchConfig({
 /// Presets whose [CliPreset.cli] matches the member's effective CLI.
 ///
 /// Use in member-level preset pickers so only compatible presets are shown.
+/// Pass [catalogCli] when the picker reflects a tentative CLI (e.g. mixed-member
+/// configure dialog before save).
 List<CliPreset> eligiblePresets({
   required TeamConfig team,
   required TeamMemberConfig member,
   required List<CliPreset> allPresets,
+  CliTool? catalogCli,
 }) {
-  final effectiveCli = member.cliWithin(team);
+  final effectiveCli = catalogCli ?? member.cliWithin(team);
   return allPresets.where((p) => p.cli == effectiveCli).toList(growable: false);
 }
 

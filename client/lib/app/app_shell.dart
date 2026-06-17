@@ -557,7 +557,7 @@ Future<AppShell> buildAppShell({
     },
   );
 
-  final appUpdateCubit = AppUpdateCubit();
+  final appUpdateCubit = AppUpdateCubit(settings: appSettings);
   final layoutCubit = LayoutCubit(repository: LayoutRepository(preferences));
   final workspaceToolsCubit = WorkspaceToolsCubit();
   final workspaceTerminalRegistry = WorkspaceTerminalRegistry();

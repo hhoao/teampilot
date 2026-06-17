@@ -78,33 +78,7 @@ class _FakeFilesystem implements Filesystem {
 }
 
 void main() {
-  test('expandAllFolders loads and expands every directory', () async {
-    final root = p.normalize('/proj');
-    final src = p.join(root, 'src');
-    final cubit = FileTreeCubit(
-      fs: _FakeFilesystem({
-        root: [
-          const FsDirEntry(name: 'src', isDirectory: true),
-          const FsDirEntry(name: 'readme.md', isDirectory: false),
-        ],
-        src: [
-          const FsDirEntry(name: 'main.dart', isDirectory: false),
-        ],
-      }),
-    );
-
-    await cubit.setRoot(root);
-    expect(cubit.isAllFoldersExpanded(), isFalse);
-
-    await cubit.expandAllFolders();
-
-    expect(cubit.state.expandedPaths, {src});
-    expect(cubit.isAllFoldersExpanded(), isTrue);
-    expect(cubit.state.dirCache[src], isNotNull);
-    await cubit.close();
-  });
-
-  test('toggleExpandAllFolders expands then collapses', () async {
+  test('collapseAllFolders clears expanded paths', () async {
     final root = p.normalize('/proj');
     final src = p.join(root, 'src');
     final cubit = FileTreeCubit(
@@ -115,11 +89,14 @@ void main() {
     );
 
     await cubit.setRoot(root);
-    await cubit.toggleExpandAllFolders();
+    cubit.toggleExpand(src);
     expect(cubit.state.expandedPaths, {src});
 
-    await cubit.toggleExpandAllFolders();
+    cubit.collapseAllFolders();
     expect(cubit.state.expandedPaths, isEmpty);
+
+    // Let the in-flight directory load finish before closing the cubit.
+    await Future<void>.delayed(const Duration(milliseconds: 20));
     await cubit.close();
   });
 }

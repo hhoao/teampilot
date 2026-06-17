@@ -56,6 +56,9 @@ class AppKeys {
   static const aboutDownloadInstallButton = Key(
     'about-download-install-button',
   );
+  static const aboutAutoCheckUpdatesSwitch = Key(
+    'about-auto-check-updates-switch',
+  );
   static const cliExecutablePathField = Key('cli-executable-path-field');
   static const cliExecutablePathBrowseButton = Key(
     'cli-executable-path-browse-button',

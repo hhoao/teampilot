@@ -1436,6 +1436,66 @@ class AppLocalizationsEn extends AppLocalizations {
   }
 
   @override
+  String get fileTreeNewFile => 'New File';
+
+  @override
+  String get fileTreeNewFolder => 'New Folder';
+
+  @override
+  String get fileTreeCreateNameHint => 'Name';
+
+  @override
+  String get fileTreeCut => 'Cut';
+
+  @override
+  String get fileTreeCopy => 'Copy';
+
+  @override
+  String get fileTreePaste => 'Paste';
+
+  @override
+  String get fileTreeRename => 'Rename';
+
+  @override
+  String get fileTreeRenameTitle => 'Rename';
+
+  @override
+  String get fileTreeOpenInFileManager => 'Reveal in File Manager';
+
+  @override
+  String get fileTreeOpenInTerminal => 'Open in Terminal';
+
+  @override
+  String get fileTreePasteDone => 'Pasted';
+
+  @override
+  String get fileTreeFileCreated => 'File created';
+
+  @override
+  String get fileTreeFolderCreated => 'Folder created';
+
+  @override
+  String get fileTreeRenameDone => 'Renamed';
+
+  @override
+  String get fileTreeDeleteDone => 'Deleted';
+
+  @override
+  String get fileTreeInvalidName => 'Invalid name';
+
+  @override
+  String get fileTreeItemExists => 'An item with that name already exists';
+
+  @override
+  String get fileTreeSourceMissing => 'The copied item no longer exists';
+
+  @override
+  String get fileTreeInvalidPasteTarget => 'Cannot paste here';
+
+  @override
+  String get fileTreeOpenInTerminalFailed => 'Could not open a terminal';
+
+  @override
   String get terminalOpenLink => 'Open link';
 
   @override
@@ -3161,6 +3221,16 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get appUpdateCheck => 'Check for updates';
+
+  @override
+  String get appUpdateAutoCheck => 'Auto-check for updates';
+
+  @override
+  String get appUpdateAutoCheckHint =>
+      'Check GitHub for a newer version each time the app starts.';
+
+  @override
+  String get appUpdateSkipVersion => 'Skip this version';
 
   @override
   String get appUpdateDownloadInstall => 'Download and install';

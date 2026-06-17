@@ -10,6 +10,7 @@ import 'package:toastification/toastification.dart';
 import 'package:window_manager/window_manager.dart';
 
 import 'app/app_shell.dart';
+import 'cubits/app_update_cubit.dart';
 import 'cubits/board_cubit.dart';
 import 'cubits/chat_cubit.dart';
 import 'cubits/layout_cubit.dart';
@@ -41,6 +42,7 @@ import 'pages/system/error_page.dart';
 import 'services/app/windows_keyboard_workaround.dart';
 import 'utils/logger.dart';
 import 'widgets/app_text_scale_boundary.dart';
+import 'widgets/app_update_available_dialog.dart';
 import 'widgets/ui_warmup.dart';
 import 'widgets/ui_zoom.dart';
 
@@ -106,6 +108,48 @@ class _AppShutdownScopeState extends State<_AppShutdownScope> {
 /// Wraps [child] with [DragToResizeArea] only when the window is not maximized
 /// or in fullscreen, so resize cursors don't appear on window edges that can't
 /// be dragged.
+/// Triggers the silent startup update check once the UI is mounted, and shows
+/// the update dialog when [AppUpdateCubit] raises a one-shot prompt.
+class _AppUpdateAutoCheck extends StatefulWidget {
+  const _AppUpdateAutoCheck({required this.child});
+
+  final Widget child;
+
+  @override
+  State<_AppUpdateAutoCheck> createState() => _AppUpdateAutoCheckState();
+}
+
+class _AppUpdateAutoCheckState extends State<_AppUpdateAutoCheck> {
+  bool _started = false;
+
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted || _started) return;
+      _started = true;
+      // Fire-and-forget: never blocks startup or surfaces errors.
+      unawaited(context.read<AppUpdateCubit>().autoCheckOnStartup());
+    });
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return BlocListener<AppUpdateCubit, AppUpdateState>(
+      listenWhen: (prev, next) =>
+          prev.promptRelease != next.promptRelease &&
+          next.promptRelease != null,
+      listener: (context, state) {
+        final release = state.promptRelease;
+        if (release == null) return;
+        context.read<AppUpdateCubit>().consumePrompt();
+        AppUpdateAvailableDialogHelper.show(release);
+      },
+      child: widget.child,
+    );
+  }
+}
+
 class _DragToResizeWrapper extends StatefulWidget {
   const _DragToResizeWrapper({required this.child});
 
@@ -413,7 +457,11 @@ class TeamPilotApp extends StatelessWidget {
               ),
             );
             Widget content = AppTextScaleBoundary(
-              child: UiWarmup(child: child ?? const SizedBox.shrink()),
+              child: UiWarmup(
+                child: _AppUpdateAutoCheck(
+                  child: child ?? const SizedBox.shrink(),
+                ),
+              ),
             );
             // Single global zoom: scales fonts + icons + padding + every
             // control as one. Must sit INSIDE DragToResizeArea so the window

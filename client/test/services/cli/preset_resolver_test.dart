@@ -100,4 +100,50 @@ void main() {
     expect(resolved.model, 'deepseek-v4-pro');
     expect(resolved.sourcePreset, preset);
   });
+
+  test('eligiblePresets filters by member effective CLI by default', () {
+    const claudePreset = CliPreset(
+      id: 'preset-claude',
+      name: 'Claude',
+      cli: CliTool.claude,
+      provider: 'p1',
+      model: 'm1',
+      createdAt: 0,
+      updatedAt: 0,
+    );
+    const codexPreset = CliPreset(
+      id: 'preset-codex',
+      name: 'Codex',
+      cli: CliTool.codex,
+      provider: 'p2',
+      model: 'm2',
+      createdAt: 0,
+      updatedAt: 0,
+    );
+    const team = TeamConfig(
+      id: 'team',
+      name: 'Team',
+      teamMode: TeamMode.mixed,
+      cli: CliTool.claude,
+      members: [
+        TeamMemberConfig(id: 'alice', name: 'Alice'),
+      ],
+    );
+    const member = TeamMemberConfig(id: 'alice', name: 'Alice');
+
+    final inherited = eligiblePresets(
+      team: team,
+      member: member,
+      allPresets: const [claudePreset, codexPreset],
+    );
+    expect(inherited, const [claudePreset]);
+
+    final codexCatalog = eligiblePresets(
+      team: team,
+      member: member,
+      allPresets: const [claudePreset, codexPreset],
+      catalogCli: CliTool.codex,
+    );
+    expect(codexCatalog, const [codexPreset]);
+  });
 }

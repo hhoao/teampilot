@@ -282,7 +282,8 @@ class _MemberLaunchConfigureDialogState
 
   /// Immediately applies a preset choice via the cubit. For inherit/preset
   /// modes this updates activePresetId; for custom it clears to null.
-  void _applyPresetChoice(String token) {
+  /// Mixed teams sync member CLI from the chosen preset.
+  void _applyPresetChoice(String token, List<CliPreset> allPresets) {
     if (token == CliLaunchConfigTokens.presetInherit) {
       widget.cubit.setMemberActivePreset(
         widget.member.id,
@@ -291,7 +292,23 @@ class _MemberLaunchConfigureDialogState
     } else if (token == CliLaunchConfigTokens.presetCustom) {
       widget.cubit.setMemberActivePreset(widget.member.id, null);
     } else {
-      widget.cubit.setMemberActivePreset(widget.member.id, token);
+      CliTool? syncCli;
+      if (widget.team.teamMode == TeamMode.mixed) {
+        for (final preset in allPresets) {
+          if (preset.id == token) {
+            syncCli = preset.cli;
+            break;
+          }
+        }
+      }
+      widget.cubit.setMemberActivePreset(
+        widget.member.id,
+        token,
+        syncCli: syncCli,
+      );
+      if (syncCli != null) {
+        setState(() => _cliToken = syncCli!.value);
+      }
     }
   }
 
@@ -331,11 +348,14 @@ class _MemberLaunchConfigureDialogState
       (m) => m!.id == widget.member.id,
       orElse: () => widget.member,
     )!;
-    final eligiblePresetList = eligiblePresets(
-      team: team,
-      member: member,
-      allPresets: allPresets,
-    );
+    final eligiblePresetList = team.teamMode == TeamMode.mixed
+        ? globalPresetPickerItems(allPresets)
+        : eligiblePresets(
+            team: team,
+            member: member,
+            allPresets: allPresets,
+            catalogCli: catalogCli,
+          );
 
     // Determine current preset state from the updated member.
     final isPresetActive = member.activePresetId != null;
@@ -386,7 +406,7 @@ class _MemberLaunchConfigureDialogState
                   providerState: context.watch<AppProviderCubit>().state,
                   teamPresetName: teamPresetName,
                   decoration: dropdownDeco,
-                  onChanged: _applyPresetChoice,
+                  onChanged: (token) => _applyPresetChoice(token, allPresets),
                 ),
                 if (!isPresetActive)
                   CliLaunchCustomFields(

@@ -2666,6 +2666,126 @@ abstract class AppLocalizations {
   /// **'Delete \"{name}\"?'**
   String fileTreeDeleteItemConfirm(String name);
 
+  /// No description provided for @fileTreeNewFile.
+  ///
+  /// In en, this message translates to:
+  /// **'New File'**
+  String get fileTreeNewFile;
+
+  /// No description provided for @fileTreeNewFolder.
+  ///
+  /// In en, this message translates to:
+  /// **'New Folder'**
+  String get fileTreeNewFolder;
+
+  /// No description provided for @fileTreeCreateNameHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Name'**
+  String get fileTreeCreateNameHint;
+
+  /// No description provided for @fileTreeCut.
+  ///
+  /// In en, this message translates to:
+  /// **'Cut'**
+  String get fileTreeCut;
+
+  /// No description provided for @fileTreeCopy.
+  ///
+  /// In en, this message translates to:
+  /// **'Copy'**
+  String get fileTreeCopy;
+
+  /// No description provided for @fileTreePaste.
+  ///
+  /// In en, this message translates to:
+  /// **'Paste'**
+  String get fileTreePaste;
+
+  /// No description provided for @fileTreeRename.
+  ///
+  /// In en, this message translates to:
+  /// **'Rename'**
+  String get fileTreeRename;
+
+  /// No description provided for @fileTreeRenameTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Rename'**
+  String get fileTreeRenameTitle;
+
+  /// No description provided for @fileTreeOpenInFileManager.
+  ///
+  /// In en, this message translates to:
+  /// **'Reveal in File Manager'**
+  String get fileTreeOpenInFileManager;
+
+  /// No description provided for @fileTreeOpenInTerminal.
+  ///
+  /// In en, this message translates to:
+  /// **'Open in Terminal'**
+  String get fileTreeOpenInTerminal;
+
+  /// No description provided for @fileTreePasteDone.
+  ///
+  /// In en, this message translates to:
+  /// **'Pasted'**
+  String get fileTreePasteDone;
+
+  /// No description provided for @fileTreeFileCreated.
+  ///
+  /// In en, this message translates to:
+  /// **'File created'**
+  String get fileTreeFileCreated;
+
+  /// No description provided for @fileTreeFolderCreated.
+  ///
+  /// In en, this message translates to:
+  /// **'Folder created'**
+  String get fileTreeFolderCreated;
+
+  /// No description provided for @fileTreeRenameDone.
+  ///
+  /// In en, this message translates to:
+  /// **'Renamed'**
+  String get fileTreeRenameDone;
+
+  /// No description provided for @fileTreeDeleteDone.
+  ///
+  /// In en, this message translates to:
+  /// **'Deleted'**
+  String get fileTreeDeleteDone;
+
+  /// No description provided for @fileTreeInvalidName.
+  ///
+  /// In en, this message translates to:
+  /// **'Invalid name'**
+  String get fileTreeInvalidName;
+
+  /// No description provided for @fileTreeItemExists.
+  ///
+  /// In en, this message translates to:
+  /// **'An item with that name already exists'**
+  String get fileTreeItemExists;
+
+  /// No description provided for @fileTreeSourceMissing.
+  ///
+  /// In en, this message translates to:
+  /// **'The copied item no longer exists'**
+  String get fileTreeSourceMissing;
+
+  /// No description provided for @fileTreeInvalidPasteTarget.
+  ///
+  /// In en, this message translates to:
+  /// **'Cannot paste here'**
+  String get fileTreeInvalidPasteTarget;
+
+  /// No description provided for @fileTreeOpenInTerminalFailed.
+  ///
+  /// In en, this message translates to:
+  /// **'Could not open a terminal'**
+  String get fileTreeOpenInTerminalFailed;
+
   /// No description provided for @terminalOpenLink.
   ///
   /// In en, this message translates to:
@@ -5779,6 +5899,24 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Check for updates'**
   String get appUpdateCheck;
+
+  /// No description provided for @appUpdateAutoCheck.
+  ///
+  /// In en, this message translates to:
+  /// **'Auto-check for updates'**
+  String get appUpdateAutoCheck;
+
+  /// No description provided for @appUpdateAutoCheckHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Check GitHub for a newer version each time the app starts.'**
+  String get appUpdateAutoCheckHint;
+
+  /// No description provided for @appUpdateSkipVersion.
+  ///
+  /// In en, this message translates to:
+  /// **'Skip this version'**
+  String get appUpdateSkipVersion;
 
   /// No description provided for @appUpdateDownloadInstall.
   ///

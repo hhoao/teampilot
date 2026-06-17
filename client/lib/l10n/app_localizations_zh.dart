@@ -1376,6 +1376,66 @@ class AppLocalizationsZh extends AppLocalizations {
   }
 
   @override
+  String get fileTreeNewFile => '新建文件';
+
+  @override
+  String get fileTreeNewFolder => '新建文件夹';
+
+  @override
+  String get fileTreeCreateNameHint => '名称';
+
+  @override
+  String get fileTreeCut => '剪切';
+
+  @override
+  String get fileTreeCopy => '复制';
+
+  @override
+  String get fileTreePaste => '粘贴';
+
+  @override
+  String get fileTreeRename => '重命名';
+
+  @override
+  String get fileTreeRenameTitle => '重命名';
+
+  @override
+  String get fileTreeOpenInFileManager => '在文件管理器中打开';
+
+  @override
+  String get fileTreeOpenInTerminal => '在终端中打开';
+
+  @override
+  String get fileTreePasteDone => '已粘贴';
+
+  @override
+  String get fileTreeFileCreated => '已创建文件';
+
+  @override
+  String get fileTreeFolderCreated => '已创建文件夹';
+
+  @override
+  String get fileTreeRenameDone => '已重命名';
+
+  @override
+  String get fileTreeDeleteDone => '已删除';
+
+  @override
+  String get fileTreeInvalidName => '名称无效';
+
+  @override
+  String get fileTreeItemExists => '同名项目已存在';
+
+  @override
+  String get fileTreeSourceMissing => '源文件不存在';
+
+  @override
+  String get fileTreeInvalidPasteTarget => '无法粘贴到此处';
+
+  @override
+  String get fileTreeOpenInTerminalFailed => '无法打开终端';
+
+  @override
   String get terminalOpenLink => '打开链接';
 
   @override
@@ -3048,6 +3108,15 @@ class AppLocalizationsZh extends AppLocalizations {
 
   @override
   String get appUpdateCheck => '检查更新';
+
+  @override
+  String get appUpdateAutoCheck => '自动检查更新';
+
+  @override
+  String get appUpdateAutoCheckHint => '每次启动时自动从 GitHub 检查新版本。';
+
+  @override
+  String get appUpdateSkipVersion => '跳过此版本';
 
   @override
   String get appUpdateDownloadInstall => '下载并安装';

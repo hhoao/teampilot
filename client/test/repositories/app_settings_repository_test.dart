@@ -56,6 +56,46 @@ void main() {
     });
   });
 
+  group('AppSettingsRepository.autoCheckUpdates', () {
+    test('defaults to enabled (opt-out) when nothing stored', () async {
+      final prefs = await SharedPreferences.getInstance();
+      final repo = SharedPrefsAppSettingsRepository(prefs);
+
+      expect(await repo.loadAutoCheckUpdatesEnabled(), isTrue);
+    });
+
+    test('round-trips disabled flag', () async {
+      final prefs = await SharedPreferences.getInstance();
+      final repo = SharedPrefsAppSettingsRepository(prefs);
+
+      await repo.saveAutoCheckUpdatesEnabled(false);
+      expect(await repo.loadAutoCheckUpdatesEnabled(), isFalse);
+
+      await repo.saveAutoCheckUpdatesEnabled(true);
+      expect(await repo.loadAutoCheckUpdatesEnabled(), isTrue);
+    });
+  });
+
+  group('AppSettingsRepository.skippedUpdateVersion', () {
+    test('returns null when nothing stored', () async {
+      final prefs = await SharedPreferences.getInstance();
+      final repo = SharedPrefsAppSettingsRepository(prefs);
+
+      expect(await repo.loadSkippedUpdateVersion(), isNull);
+    });
+
+    test('round-trips a skipped version and clears it', () async {
+      final prefs = await SharedPreferences.getInstance();
+      final repo = SharedPrefsAppSettingsRepository(prefs);
+
+      await repo.saveSkippedUpdateVersion('2.2.0');
+      expect(await repo.loadSkippedUpdateVersion(), '2.2.0');
+
+      await repo.saveSkippedUpdateVersion(null);
+      expect(await repo.loadSkippedUpdateVersion(), isNull);
+    });
+  });
+
   group('AppSettingsRepository.hasCompletedOnboarding', () {
     test('returns false when nothing is stored', () async {
       final prefs = await SharedPreferences.getInstance();
