@@ -37,7 +37,7 @@ final DiscoverableTeam kSuperpowersTrioTeamTemplate = DiscoverableTeam(
   category: 'Workflow',
   author: 'TeamPilot',
   updatedAt: 1_781_654_400_000, // 2026-06-17 — stable sort bump when edited
-  cli: CliTool.flashskyai,
+  cli: CliTool.claude,
   teamMode: TeamMode.mixed,
   members: [
     DiscoverableTeamMember(

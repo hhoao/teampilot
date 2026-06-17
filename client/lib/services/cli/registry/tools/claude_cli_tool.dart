@@ -17,7 +17,8 @@ import '../capabilities/headless_run_capability.dart';
 import '../capabilities/headless_provision_capability.dart';
 import '../capabilities/provider_credential_capability.dart';
 import '../capabilities/provider_model_capability.dart';
-import '../capabilities/transcript_probe_capability.dart';
+import '../capabilities/session_resume_capability.dart';
+import '../capabilities/resume/transcript_resume_strategy.dart';
 import '../config_profile/claude_config_profile_capability.dart';
 import '../headless/claude_headless_run_capability.dart';
 import '../headless/claude_headless_provision_capability.dart';
@@ -35,7 +36,7 @@ final class ClaudeCliTool implements CliToolDefinition {
   ClaudeCliTool({
     this.launchArgs = const ClaudeCodeCliToolAdapter(),
     this.configProfile = const ClaudeConfigProfileCapability(),
-    this.transcriptProbe = const ClaudeTranscriptProbe(),
+    this.sessionResume = const TranscriptResumeStrategy(),
     this.executableResolver = const ClaudeExecutableResolver(),
     this.installer = const ClaudeInstallerCapability(),
     this.presence = const ClaudePresence(),
@@ -59,7 +60,7 @@ final class ClaudeCliTool implements CliToolDefinition {
 
   final LaunchArgsCapability launchArgs;
   final ConfigProfileCapability configProfile;
-  final TranscriptProbeCapability transcriptProbe;
+  final SessionResumeCapability sessionResume;
   final ExecutableResolverCapability executableResolver;
   final InstallerCapability installer;
   final PresenceCapability presence;
@@ -89,7 +90,7 @@ final class ClaudeCliTool implements CliToolDefinition {
     _memberAgentPreset,
     launchArgs,
     configProfile,
-    transcriptProbe,
+    sessionResume,
     executableResolver,
     installer,
     presence,

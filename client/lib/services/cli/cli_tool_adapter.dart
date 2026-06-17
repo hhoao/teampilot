@@ -15,6 +15,7 @@ class CliLaunchContext {
     this.settingsPath,
     this.appendSystemPromptFile,
     this.useWslPaths = false,
+    this.isFreshConversation = true,
   });
 
   final TeamConfig team;
@@ -27,6 +28,12 @@ class CliLaunchContext {
   final String? settingsPath;
   final String? appendSystemPromptFile;
   final bool useWslPaths;
+
+  /// Whether this is the conversation's first launch (no prior history), so
+  /// CLIs that inject identity as the opening prompt should seed it. Even a
+  /// `--resume` into a freshly pre-allocated empty session is "fresh". See
+  /// `docs/session-resume-architecture.md`.
+  final bool isFreshConversation;
 
   String get teamName => sessionTeam ?? team.name.trim();
   String get memberDisplayName => member.name.trim();
@@ -45,6 +52,7 @@ class CliLaunchContext {
     String? settingsPath,
     String? appendSystemPromptFile,
     bool? useWslPaths,
+    bool? isFreshConversation,
   }) {
     return CliLaunchContext(
       team: team ?? this.team,
@@ -58,6 +66,7 @@ class CliLaunchContext {
       appendSystemPromptFile:
           appendSystemPromptFile ?? this.appendSystemPromptFile,
       useWslPaths: useWslPaths ?? this.useWslPaths,
+      isFreshConversation: isFreshConversation ?? this.isFreshConversation,
     );
   }
 }
@@ -200,7 +209,10 @@ class OpencodeCliToolAdapter implements CliToolAdapter {
 /// OpenAI Codex CLI (`codex` TUI). Identity is injected via `$CODEX_HOME/AGENTS.md`
 /// and team-bus wiring via `$CODEX_HOME/config.toml` (see [CodexConfigProfileCapability]),
 /// so — unlike flashskyai — codex takes none of `--team`/`--member`/`--session-id`/
-/// `--append-system-prompt-file`. Working dir is `--cd`, model is `-m`.
+/// `--append-system-prompt-file`. Working dir is `--cd`, model is `-m`. codex
+/// cannot be told an id at creation; to resume we replay the id captured from
+/// its isolated `$CODEX_HOME/sessions` via the `resume <id>` subcommand (see
+/// docs/session-resume-architecture.md).
 class CodexCliToolAdapter implements CliToolAdapter {
   const CodexCliToolAdapter();
 
@@ -209,6 +221,13 @@ class CodexCliToolAdapter implements CliToolAdapter {
     final member = context.member;
     final mixed = context.team.teamMode == TeamMode.mixed;
     final args = <String>[];
+
+    // `resume <id>` must lead the argv (it is a subcommand). codex ignores any
+    // create-time id, so there is no fresh-session prefix.
+    final resume = context.resumeSessionId?.trim() ?? '';
+    if (resume.isNotEmpty) {
+      args.addAll(['resume', resume]);
+    }
 
     final wd = context.workingDirectory ?? '';
     if (wd.isNotEmpty) {
@@ -284,8 +303,10 @@ class CursorCliToolAdapter implements CliToolAdapter {
     _addExtraArgs(args, member.extraArgs);
 
     // Route B: seed identity as the initial prompt only on a fresh standalone
-    // session. In mixed mode the fake HOME role rule owns identity, so skip it.
-    if (resume.isEmpty && !mixed) {
+    // conversation (including a freshly pre-allocated empty chat — see
+    // docs/session-resume-architecture.md). In mixed mode the fake HOME role
+    // rule owns identity, so skip it.
+    if (context.isFreshConversation && !mixed) {
       final rolePrompt = MemberRoleProvision.composeRolePrompt(
         member: member,
         forceTeamLeadDelegateMode: context.team.forceTeamLeadDelegateMode,

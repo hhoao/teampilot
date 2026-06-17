@@ -11,10 +11,8 @@ import '../../utils/team_member_naming.dart';
 import '../../utils/logger.dart';
 import '../storage/app_storage.dart';
 import '../storage/runtime_layout.dart';
-import '../cli/registry/capabilities/transcript_probe_capability.dart';
+import '../cli/registry/capabilities/session_resume_capability.dart';
 import '../cli/registry/cli_tool_registry.dart';
-import '../cli/registry/config_profile/config_profile_scope.dart';
-import '../cli/registry/config_profile/config_profile_context.dart';
 import '../cli/registry/config_profile/flashskyai_config_profile_capability.dart';
 import '../cli/preset_resolver.dart';
 import '../provider/config_profile_service.dart';
@@ -71,7 +69,9 @@ class SessionLifecycleService {
 
   /// Resolves the active [CliPreset] for a personal project profile.
   /// Returns `null` when no preset is active or the repository is unavailable.
-  Future<CliPreset?> resolveActivePresetForProfile(ProjectProfile profile) async {
+  Future<CliPreset?> resolveActivePresetForProfile(
+    ProjectProfile profile,
+  ) async {
     final repo = _cliPresetsRepository;
     if (repo == null) return null;
     final presets = await repo.load();
@@ -195,16 +195,23 @@ class SessionLifecycleService {
         member: resolvedMember,
         preset: prepared.activePreset,
       ),
-      sessionTeam: _resolveSessionTeam(session, prepared.plan, prepared.isPersonal),
+      sessionTeam: _resolveSessionTeam(
+        session,
+        prepared.plan,
+        prepared.isPersonal,
+      ),
     );
   }
 
-  Future<({
-    LaunchPlan plan,
-    bool isPersonal,
-    ProjectProfile? resolvedProfile,
-    CliPreset? activePreset,
-  })> _prepareLaunchPlan({
+  Future<
+    ({
+      LaunchPlan plan,
+      bool isPersonal,
+      ProjectProfile? resolvedProfile,
+      CliPreset? activePreset,
+    })
+  >
+  _prepareLaunchPlan({
     required AppSession session,
     TeamConfig? team,
     TeamMemberConfig? member,
@@ -267,34 +274,26 @@ class SessionLifecycleService {
       final cli = isPersonal
           ? (session.cli ?? activePreset?.cli ?? CliTool.claude)
           : (team != null && member != null && member.isValid
-              ? member.cliWithin(team)
-              : team?.cli);
-      final cliState = session.launchState == AppSessionLaunchState.started
-          ? await _findCliState(
-              roots: roots,
-              session: session,
-              teamId: teamId,
-              runtimeSessionId: runtimeSessionId,
-              cliSessionId: taskId,
-              cli: cli,
-              projectId: isPersonal ? project!.projectId : null,
+                ? member.cliWithin(team)
+                : team?.cli);
+      final tools = cli != null ? [cli.value] : runtimeLayoutDefaultTools;
+      final transcriptRoots = isPersonal
+          ? _standaloneTranscriptSearchRoots(
+              layout: roots.layout,
+              projectId: project!.projectId,
+              sessionId: runtimeSessionId,
+              tools: tools,
             )
-          : _CliStateProbeResult(
-              exists: false,
-              rootsTried: isPersonal
-                  ? _standaloneTranscriptSearchRoots(
-                      layout: roots.layout,
-                      projectId: project!.projectId,
-                      sessionId: runtimeSessionId,
-                      tools: cli != null ? [cli.value] : runtimeLayoutDefaultTools,
-                    )
-                  : roots.layout.transcriptSearchRoots(
-                      projectId: session.projectId.trim(),
-                      sessionId: session.sessionId.trim(),
-                      teamId: teamId,
-                      tools: cli != null ? [cli.value] : runtimeLayoutDefaultTools,
-                    ),
+          : roots.layout.transcriptSearchRoots(
+              projectId: session.projectId.trim(),
+              sessionId: session.sessionId.trim(),
+              teamId: teamId,
+              tools: tools,
             );
+
+      // Env must be prepared first: postCaptured/preAllocated resume strategies
+      // need the isolated config dir it establishes (CODEX_HOME / OPENCODE_DATA_DIR
+      // / CURSOR_CONFIG_DIR). See docs/session-resume-architecture.md.
       final prepared = await _prepareEnv(
         service: service,
         session: session,
@@ -311,15 +310,37 @@ class SessionLifecycleService {
         preset: activePreset,
       );
       final memberConfigDir = _memberConfigDirFromEnv(prepared.env);
+
+      final resume = await _resolveResume(
+        roots: roots,
+        cli: cli,
+        taskId: taskId,
+        env: prepared.env,
+        transcriptRoots: transcriptRoots,
+        bucket: RuntimeLayout.projectBucketForPrimaryPath(session.primaryPath),
+        persistedNativeId: cli == null
+            ? null
+            : (isPersonal
+                  ? session.nativeSessionIds[cli.value]
+                  : memberBinding?.nativeSessionIds[cli.value]),
+        previouslyLaunched:
+            session.launchState == AppSessionLaunchState.started,
+      );
+
       final resolvedRoots = <String>{
-        ...cliState.rootsTried,
+        ...transcriptRoots,
         if (memberConfigDir.isNotEmpty) memberConfigDir,
       }.toList(growable: false);
 
       final plan = LaunchPlan(
         env: prepared.env,
-        resume: cliState.exists,
+        resume: resume.resumeSessionId != null,
         taskId: taskId,
+        createSessionId: resume.createSessionId,
+        resumeSessionId: resume.resumeSessionId,
+        nativeSessionIdToPersist: resume.nativeSessionIdToPersist,
+        isFreshConversation: resume.isFreshConversation,
+        toolValue: cli?.value,
         cliTeamName: runtimeTeamId,
         memberConfigDir: memberConfigDir,
         resolvedRoots: resolvedRoots,
@@ -479,6 +500,7 @@ class SessionLifecycleService {
         sessionTeam: plan.cliTeamName,
         workingDirectory: session.primaryPath,
         additionalDirectories: session.additionalPaths,
+        isFreshConversation: plan.isFreshConversation,
       );
     }
 
@@ -494,6 +516,7 @@ class SessionLifecycleService {
       sessionTeam: _resolveSessionTeam(session, plan, false),
       workingDirectory: session.primaryPath,
       additionalDirectories: session.additionalPaths,
+      isFreshConversation: plan.isFreshConversation,
     );
   }
 
@@ -624,6 +647,54 @@ class SessionLifecycleService {
     return StorageRootsSnapshot.fromContext(RuntimeStorageContext.current);
   }
 
+  /// Resolves the native session id for [cli] via its [SessionResumeCapability]
+  /// (probe / scan / persisted / out-of-band allocate), then derives the
+  /// create-vs-resume ids for the launch plan. See
+  /// docs/session-resume-architecture.md.
+  Future<_ResumeResolution> _resolveResume({
+    required StorageRootsSnapshot roots,
+    required CliTool? cli,
+    required String taskId,
+    required Map<String, String> env,
+    required List<String> transcriptRoots,
+    required String bucket,
+    required String? persistedNativeId,
+    required bool previouslyLaunched,
+  }) async {
+    final cap = cli == null
+        ? null
+        : _cliToolRegistry.capability<SessionResumeCapability>(cli);
+    if (cap == null || cli == null) return const _ResumeResolution();
+
+    final ctx = ResumeContext(
+      fs: roots.fs,
+      toolValue: cli.value,
+      taskId: taskId,
+      env: env,
+      transcriptRoots: transcriptRoots,
+      bucket: bucket,
+      persistedNativeId: persistedNativeId,
+    );
+
+    String? nativeId;
+    if (previouslyLaunched || (persistedNativeId?.trim().isNotEmpty ?? false)) {
+      nativeId = (await cap.detectNativeId(ctx))?.trim();
+      if (nativeId != null && nativeId.isEmpty) nativeId = null;
+    }
+
+    final pinned = cap.binding == ResumeBinding.clientPinned;
+    if (nativeId != null) {
+      return _ResumeResolution(
+        resumeSessionId: nativeId,
+        // clientPinned native id == taskId; nothing extra to persist.
+        nativeSessionIdToPersist: pinned ? null : nativeId,
+        isFreshConversation: false,
+      );
+    }
+    // Fresh launch: clientPinned pins our id; others let the CLI mint one.
+    return _ResumeResolution(createSessionId: pinned ? taskId : null);
+  }
+
   Future<_CliStateProbeResult> _findCliState({
     required StorageRootsSnapshot roots,
     required AppSession session,
@@ -661,12 +732,6 @@ class SessionLifecycleService {
       toolRoots: toolRoots,
       sessionId: id,
       bucket: bucket,
-      probeHistoryFiles:
-          (cli == null
-                  ? null
-                  : _cliToolRegistry.capability<TranscriptProbeCapability>(cli))
-              ?.probeHistoryFiles ??
-          false,
     );
   }
 
@@ -675,7 +740,6 @@ class SessionLifecycleService {
     required Iterable<String> toolRoots,
     required String sessionId,
     required String bucket,
-    required bool probeHistoryFiles,
   }) async {
     final path = fs.pathContext;
     final memberSegment = '${path.separator}members${path.separator}';
@@ -778,4 +842,24 @@ class _CliStateProbeResult {
   final bool exists;
   final List<String> rootsTried;
   final String? matchedPath;
+}
+
+/// Outcome of [SessionLifecycleService._resolveResume]: the ids to pin (create)
+/// or replay (resume), plus any native id to persist onto the binding.
+class _ResumeResolution {
+  const _ResumeResolution({
+    this.createSessionId,
+    this.resumeSessionId,
+    this.nativeSessionIdToPersist,
+    this.isFreshConversation = true,
+  });
+
+  final String? createSessionId;
+  final String? resumeSessionId;
+  final String? nativeSessionIdToPersist;
+
+  /// Whether this launch starts a conversation with no prior history. Drives
+  /// one-time identity seeding for CLIs that inject identity as the opening
+  /// prompt (cursor).
+  final bool isFreshConversation;
 }

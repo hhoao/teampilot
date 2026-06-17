@@ -9,14 +9,44 @@ class LaunchPlan {
     required this.cliTeamName,
     required this.memberConfigDir,
     required this.resolvedRoots,
+    this.createSessionId,
+    this.resumeSessionId,
+    this.nativeSessionIdToPersist,
+    this.isFreshConversation = true,
+    this.toolValue,
     this.warnings = const [],
   });
 
   final Map<String, String> env;
+
+  /// Whether this launch resumes an existing native session
+  /// (`resumeSessionId != null`).
   final bool resume;
 
-  /// CLI `--session-id` / `--resume` id (member [SessionMemberBinding.taskId]).
+  /// Member [SessionMemberBinding.taskId] — our session/member UUID.
   final String taskId;
+
+  /// Native id to pin when **creating** a fresh session (`clientPinned` CLIs'
+  /// `--session-id`). `null` when resuming or when the CLI cannot be told an id.
+  final String? createSessionId;
+
+  /// Native id to **resume** (CLI-specific resume flag). `null` for a fresh
+  /// session. See `docs/session-resume-architecture.md`.
+  final String? resumeSessionId;
+
+  /// Native id the caller should persist onto the session-member binding
+  /// (cursor pre-allocated / codex+opencode captured). `null` for `clientPinned`
+  /// CLIs (native id == [taskId]) and when nothing new was resolved.
+  final String? nativeSessionIdToPersist;
+
+  /// Whether this launch starts a conversation with no prior history. Drives
+  /// one-time identity seeding for CLIs that inject identity as the opening
+  /// prompt (cursor). See `docs/session-resume-architecture.md`.
+  final bool isFreshConversation;
+
+  /// Resolved CLI [CliTool.value] for this launch; keys
+  /// [nativeSessionIdToPersist] on the session/binding.
+  final String? toolValue;
 
   /// CLI `--team-name` and config-profiles member runtime directory.
   final String cliTeamName;

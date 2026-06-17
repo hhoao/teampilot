@@ -157,6 +157,12 @@ final class OpencodeConfigProfileCapability implements ConfigProfileCapability {
   /// global instruction. (The bare `OPENCODE` env is an internal run marker,
   /// not a path — setting it does nothing.)
   static const configDirEnv = 'OPENCODE_CONFIG_DIR';
+
+  /// opencode stores session/message JSON under `$OPENCODE_DATA_DIR/storage`
+  /// (default: the global `~/.local/share/opencode`). We pin it to the
+  /// per-session config dir so the captured `ses_*` id is unambiguous and
+  /// resume never crosses sessions. See docs/session-resume-architecture.md.
+  static const dataDirEnv = 'OPENCODE_DATA_DIR';
   static const authContentEnv = 'OPENCODE_AUTH_CONTENT';
 
   static const _opencodeDataLayout = OpencodeDataLayout();
@@ -252,7 +258,10 @@ final class OpencodeConfigProfileCapability implements ConfigProfileCapability {
       await paths.writeJsonIfChanged(configPath, config);
     }
 
-    final environment = <String, String>{configDirEnv: opencodeDir};
+    final environment = <String, String>{
+      configDirEnv: opencodeDir,
+      dataDirEnv: opencodeDir,
+    };
     final authContent = launchProvider == null
         ? null
         : await _readStoredAuthContent(paths, launchProvider);
@@ -304,7 +313,10 @@ final class OpencodeConfigProfileCapability implements ConfigProfileCapability {
       await paths.writeJsonIfChanged(configPath, config);
     }
 
-    final environment = <String, String>{configDirEnv: opencodeDir};
+    final environment = <String, String>{
+      configDirEnv: opencodeDir,
+      dataDirEnv: opencodeDir,
+    };
     final authContent = provider == null
         ? null
         : await _readStoredAuthContent(paths, provider);

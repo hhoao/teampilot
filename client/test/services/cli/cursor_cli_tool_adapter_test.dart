@@ -46,6 +46,9 @@ void main() {
         member: member,
         workingDirectory: '/work',
         resumeSessionId: 'chat-1',
+        // Resuming a chat that already has history: identity already lives in
+        // the conversation, so it must not be re-seeded.
+        isFreshConversation: false,
       ),
     );
 

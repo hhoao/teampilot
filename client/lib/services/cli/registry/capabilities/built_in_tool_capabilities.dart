@@ -1,29 +1,9 @@
 import '../../../../l10n/app_localizations.dart';
-import '../../../../models/team_config.dart';
 import 'display_capability.dart';
 import 'executable_resolver_capability.dart';
 import 'plugin_manifest_capability.dart';
 import 'presence_capability.dart';
 import 'terminal_behavior_capability.dart';
-import 'transcript_probe_capability.dart';
-
-final class FlashskyaiTranscriptProbe implements TranscriptProbeCapability {
-  const FlashskyaiTranscriptProbe();
-  @override
-  bool get probeHistoryFiles => false;
-}
-
-final class ClaudeTranscriptProbe implements TranscriptProbeCapability {
-  const ClaudeTranscriptProbe();
-  @override
-  bool get probeHistoryFiles => true;
-}
-
-final class CodexTranscriptProbe implements TranscriptProbeCapability {
-  const CodexTranscriptProbe();
-  @override
-  bool get probeHistoryFiles => false;
-}
 
 final class FlashskyaiExecutableResolver implements ExecutableResolverCapability {
   const FlashskyaiExecutableResolver();
@@ -73,12 +53,6 @@ final class CodexPresence implements PresenceCapability {
   bool get usesShellActivity => false;
 }
 
-final class OpencodeTranscriptProbe implements TranscriptProbeCapability {
-  const OpencodeTranscriptProbe();
-  @override
-  bool get probeHistoryFiles => false;
-}
-
 final class OpencodeExecutableResolver implements ExecutableResolverCapability {
   const OpencodeExecutableResolver();
   @override
@@ -93,12 +67,6 @@ final class OpencodePresence implements PresenceCapability {
   bool get usesClaudeRoster => false;
   @override
   bool get usesShellActivity => false;
-}
-
-final class CursorTranscriptProbe implements TranscriptProbeCapability {
-  const CursorTranscriptProbe();
-  @override
-  bool get probeHistoryFiles => false;
 }
 
 final class CursorExecutableResolver implements ExecutableResolverCapability {

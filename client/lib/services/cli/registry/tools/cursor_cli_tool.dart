@@ -14,7 +14,8 @@ import '../../../provider/cursor/cursor_provider_credential_capability.dart';
 import '../../../provider/cursor/cursor_provider_model_capability.dart';
 import '../capabilities/headless_run_capability.dart';
 import '../capabilities/provider_credential_capability.dart';
-import '../capabilities/transcript_probe_capability.dart';
+import '../capabilities/session_resume_capability.dart';
+import '../capabilities/resume/cursor_resume_strategy.dart';
 import '../capabilities/unsupported_installer_capability.dart';
 import '../config_profile/cursor_config_profile_capability.dart';
 import '../headless/cursor_headless_run_capability.dart';
@@ -30,7 +31,7 @@ final class CursorCliTool implements CliToolDefinition {
   CursorCliTool({
     this.launchArgs = const CursorCliToolAdapter(),
     this.configProfile = const CursorConfigProfileCapability(),
-    this.transcriptProbe = const CursorTranscriptProbe(),
+    this.sessionResume = const CursorResumeStrategy(),
     this.executableResolver = const CursorExecutableResolver(),
     this.installer = const UnsupportedInstallerCapability(),
     this.presence = const CursorPresence(),
@@ -52,7 +53,7 @@ final class CursorCliTool implements CliToolDefinition {
 
   final LaunchArgsCapability launchArgs;
   final ConfigProfileCapability configProfile;
-  final TranscriptProbeCapability transcriptProbe;
+  final SessionResumeCapability sessionResume;
   final ExecutableResolverCapability executableResolver;
   final InstallerCapability installer;
   final PresenceCapability presence;
@@ -75,7 +76,7 @@ final class CursorCliTool implements CliToolDefinition {
   Iterable<CliCapability> get capabilities => [
     launchArgs,
     configProfile,
-    transcriptProbe,
+    sessionResume,
     executableResolver,
     installer,
     presence,

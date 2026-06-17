@@ -17,6 +17,7 @@ class AppSession {
     this.cliTeamName = '',
     this.cli,
     this.members = const [],
+    this.nativeSessionIds = const {},
     this.launchState = AppSessionLaunchState.created,
     required this.createdAt,
     this.updatedAt = 0,
@@ -45,6 +46,13 @@ class AppSession {
               )
               .toList()
         : const <SessionMemberBinding>[];
+    final nativeRaw = json['nativeSessionIds'];
+    final native = nativeRaw is Map
+        ? {
+            for (final e in nativeRaw.entries)
+              if (e.value != null) '${e.key}': '${e.value}',
+          }
+        : const <String, String>{};
     return AppSession(
       sessionId: json['sessionId'] as String? ?? '',
       projectId: json['projectId'] as String? ?? '',
@@ -55,6 +63,7 @@ class AppSession {
       cliTeamName: json['cliTeamName'] as String? ?? '',
       cli: CliTool.tryParse(json['cli'] as String?),
       members: members,
+      nativeSessionIds: native,
       launchState: launch,
       createdAt: json['createdAt'] as int? ?? 0,
       updatedAt: json['updatedAt'] as int? ?? 0,
@@ -80,6 +89,22 @@ class AppSession {
 
   /// Per-roster-member CLI `--session-id` / `--resume` task ids.
   final List<SessionMemberBinding> members;
+
+  /// Personal (single-agent) session's CLI-native resume ids keyed by
+  /// [CliTool.value]. Team sessions carry these per member on [members];
+  /// personal sessions have no roster, so they live here. Empty for
+  /// `clientPinned` CLIs (native id == [sessionId]). See
+  /// `docs/session-resume-architecture.md`.
+  final Map<String, String> nativeSessionIds;
+
+  /// Returns this session with [nativeId] recorded for [toolValue], or `this`
+  /// unchanged when already equal.
+  AppSession withNativeSessionId(String toolValue, String nativeId) {
+    final tool = toolValue.trim();
+    final id = nativeId.trim();
+    if (tool.isEmpty || id.isEmpty || nativeSessionIds[tool] == id) return this;
+    return copyWith(nativeSessionIds: {...nativeSessionIds, tool: id});
+  }
 
   final AppSessionLaunchState launchState;
   final int createdAt;
@@ -114,6 +139,7 @@ class AppSession {
     String? cliTeamName,
     CliTool? cli,
     List<SessionMemberBinding>? members,
+    Map<String, String>? nativeSessionIds,
     AppSessionLaunchState? launchState,
     int? createdAt,
     int? updatedAt,
@@ -130,6 +156,7 @@ class AppSession {
       cliTeamName: cliTeamName ?? this.cliTeamName,
       cli: cli ?? this.cli,
       members: members ?? this.members,
+      nativeSessionIds: nativeSessionIds ?? this.nativeSessionIds,
       launchState: launchState ?? this.launchState,
       createdAt: createdAt ?? this.createdAt,
       updatedAt: updatedAt ?? this.updatedAt,
@@ -151,6 +178,7 @@ class AppSession {
       if (cli != null) 'cli': cli!.value,
       if (members.isNotEmpty)
         'members': members.map((m) => m.toJson()).toList(),
+      if (nativeSessionIds.isNotEmpty) 'nativeSessionIds': nativeSessionIds,
       'launchState': launchState.name,
       'createdAt': createdAt,
       'updatedAt': updatedAt,
@@ -173,6 +201,7 @@ class AppSession {
             cliTeamName == other.cliTeamName &&
             cli == other.cli &&
             listEquals(members, other.members) &&
+            mapEquals(nativeSessionIds, other.nativeSessionIds) &&
             launchState == other.launchState &&
             createdAt == other.createdAt &&
             updatedAt == other.updatedAt &&
@@ -191,6 +220,9 @@ class AppSession {
     cliTeamName,
     cli,
     Object.hashAll(members),
+    Object.hashAll(
+      nativeSessionIds.entries.map((e) => Object.hash(e.key, e.value)),
+    ),
     launchState,
     createdAt,
     updatedAt,

@@ -14,7 +14,8 @@ import '../capabilities/headless_run_capability.dart';
 import '../capabilities/provider_catalog_capability.dart';
 import '../capabilities/provider_credential_capability.dart';
 import '../capabilities/provider_model_capability.dart';
-import '../capabilities/transcript_probe_capability.dart';
+import '../capabilities/session_resume_capability.dart';
+import '../capabilities/resume/opencode_resume_strategy.dart';
 import '../capabilities/headless_provision_capability.dart';
 import '../config_profile/opencode_config_profile_capability.dart';
 import '../headless/opencode_headless_run_capability.dart';
@@ -30,7 +31,7 @@ final class OpencodeCliTool implements CliToolDefinition {
   OpencodeCliTool({
     this.launchArgs = const OpencodeCliToolAdapter(),
     this.configProfile = const OpencodeConfigProfileCapability(),
-    this.transcriptProbe = const OpencodeTranscriptProbe(),
+    this.sessionResume = const OpencodeResumeStrategy(),
     this.executableResolver = const OpencodeExecutableResolver(),
     this.installer = const OpencodeInstallerCapability(),
     this.presence = const OpencodePresence(),
@@ -53,7 +54,7 @@ final class OpencodeCliTool implements CliToolDefinition {
 
   final LaunchArgsCapability launchArgs;
   final ConfigProfileCapability configProfile;
-  final TranscriptProbeCapability transcriptProbe;
+  final SessionResumeCapability sessionResume;
   final ExecutableResolverCapability executableResolver;
   final InstallerCapability installer;
   final PresenceCapability presence;
@@ -77,7 +78,7 @@ final class OpencodeCliTool implements CliToolDefinition {
   Iterable<CliCapability> get capabilities => [
     launchArgs,
     configProfile,
-    transcriptProbe,
+    sessionResume,
     executableResolver,
     installer,
     presence,

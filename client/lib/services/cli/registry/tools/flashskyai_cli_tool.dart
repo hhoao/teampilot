@@ -15,7 +15,8 @@ import '../capabilities/headless_run_capability.dart';
 import '../capabilities/launch_args_capability.dart';
 import '../capabilities/presence_capability.dart';
 import '../capabilities/provider_model_capability.dart';
-import '../capabilities/transcript_probe_capability.dart';
+import '../capabilities/session_resume_capability.dart';
+import '../capabilities/resume/transcript_resume_strategy.dart';
 import '../capabilities/headless_provision_capability.dart';
 import '../config_profile/flashskyai_config_profile_capability.dart';
 import '../headless/flashskyai_headless_run_capability.dart';
@@ -30,7 +31,7 @@ final class FlashskyaiCliTool implements CliToolDefinition {
   const FlashskyaiCliTool({
     this.launchArgs = const FlashskyaiCliToolAdapter(),
     this.configProfile = const FlashskyaiConfigProfileCapability(),
-    this.transcriptProbe = const FlashskyaiTranscriptProbe(),
+    this.sessionResume = const TranscriptResumeStrategy(),
     this.executableResolver = const FlashskyaiExecutableResolver(),
     this.installer = const UnsupportedInstallerCapability(),
     this.presence = const FlashskyaiPresence(),
@@ -48,7 +49,7 @@ final class FlashskyaiCliTool implements CliToolDefinition {
 
   final LaunchArgsCapability launchArgs;
   final ConfigProfileCapability configProfile;
-  final TranscriptProbeCapability transcriptProbe;
+  final SessionResumeCapability sessionResume;
   final ExecutableResolverCapability executableResolver;
   final InstallerCapability installer;
   final PresenceCapability presence;
@@ -78,7 +79,7 @@ final class FlashskyaiCliTool implements CliToolDefinition {
     _memberAgentPreset,
     launchArgs,
     configProfile,
-    transcriptProbe,
+    sessionResume,
     executableResolver,
     installer,
     presence,

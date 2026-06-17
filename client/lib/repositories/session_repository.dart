@@ -437,6 +437,48 @@ class SessionRepository {
     });
   }
 
+  /// Records a CLI-native resume id for [sessionId]. Team sessions store it on
+  /// the matching member binding ([rosterMemberId]); personal sessions store it
+  /// at the session level. No-op when already equal. See
+  /// `docs/session-resume-architecture.md`.
+  Future<void> recordNativeSessionId(
+    String sessionId, {
+    required String tool,
+    required String nativeId,
+    String? rosterMemberId,
+  }) {
+    final trimmedTool = tool.trim();
+    final trimmedId = nativeId.trim();
+    if (trimmedTool.isEmpty || trimmedId.isEmpty) return Future.value();
+    return _withSessionFile(sessionId, () async {
+      final fs = await _fs();
+      final existing = await _findSession(fs, sessionId);
+      if (existing == null) return;
+      final memberId = rosterMemberId?.trim() ?? '';
+      AppSession updated;
+      if (memberId.isNotEmpty) {
+        final binding = existing.bindingFor(memberId);
+        if (binding == null) return;
+        final next = binding.withNativeSessionId(trimmedTool, trimmedId);
+        if (identical(next, binding)) return;
+        updated = existing.copyWith(
+          members: [
+            for (final m in existing.members)
+              if (m.rosterMemberId == memberId) next else m,
+          ],
+        );
+      } else {
+        final next = existing.withNativeSessionId(trimmedTool, trimmedId);
+        if (identical(next, existing)) return;
+        updated = next;
+      }
+      await _writeSession(
+        fs,
+        updated.copyWith(updatedAt: DateTime.now().millisecondsSinceEpoch),
+      );
+    });
+  }
+
   Future<void> markSessionStarted(String sessionId) {
     return _withSessionFile(sessionId, () async {
       final fs = await _fs();

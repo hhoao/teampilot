@@ -195,6 +195,32 @@ void main() {
   );
 
   test(
+    'cursor: fresh launch does not resume and is not pinned (postCaptured)',
+    () async {
+      // No cursor chat store yet → cursor mints its own chat (no --resume,
+      // no --session-id), and the conversation is treated as fresh.
+      final plan = await service().prepareLaunch(
+        session: _session(),
+        team: const TeamConfig(
+          id: 'team-a',
+          name: 'Team A',
+          cli: CliTool.cursor,
+          members: [TeamMemberConfig(id: 'team-lead', name: 'team-lead')],
+        ),
+        member: const TeamMemberConfig(id: 'team-lead', name: 'team-lead'),
+        memberBinding: const SessionMemberBinding(
+          rosterMemberId: 'team-lead',
+          taskId: 'session-1',
+        ),
+      );
+      expect(plan.resume, isFalse);
+      expect(plan.resumeSessionId, isNull);
+      expect(plan.createSessionId, isNull);
+      expect(plan.isFreshConversation, isTrue);
+    },
+  );
+
+  test(
     'prepareLaunch mixed member claude override uses claude profile dirs',
     () async {
       const member = TeamMemberConfig(

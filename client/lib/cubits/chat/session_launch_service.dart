@@ -387,6 +387,77 @@ class SessionLaunchService implements MemberConnector {
     _scheduleMemberConnect(team, member, tab);
   }
 
+  /// Persists the CLI-native resume id the launch plan resolved (cursor
+  /// pre-allocated chat id; codex/opencode captured ids), so the next open
+  /// resumes precisely. Updates both disk **and** the in-memory session/tab —
+  /// otherwise a same-run reconnect/reopen would pass a stale session and the
+  /// strategy would re-allocate (losing the conversation). No-op for
+  /// clientPinned CLIs, local-only sessions, and when already recorded.
+  Future<void> _persistNativeSessionId(
+    SessionRepository? repo,
+    ChatTab tab,
+    AppSession session,
+    SessionMemberBinding? binding,
+    LaunchPlan plan,
+  ) async {
+    final id = plan.nativeSessionIdToPersist?.trim() ?? '';
+    final tool = plan.toolValue?.trim() ?? '';
+    final r = repo ?? _h.sessionRepository;
+    if (r == null ||
+        id.isEmpty ||
+        tool.isEmpty ||
+        session.sessionId.startsWith('local-')) {
+      return;
+    }
+
+    AppSession applyNative(AppSession s) {
+      if (binding != null) {
+        return s.copyWith(
+          members: [
+            for (final m in s.members)
+              if (m.rosterMemberId == binding.rosterMemberId)
+                m.withNativeSessionId(tool, id)
+              else
+                m,
+          ],
+        );
+      }
+      return s.withNativeSessionId(tool, id);
+    }
+
+    // Already recorded in memory (e.g. true resume) → nothing to do.
+    final current = tab.persistedSession ?? session;
+    if (identical(applyNative(current), current)) return;
+
+    try {
+      await r.recordNativeSessionId(
+        session.sessionId,
+        tool: tool,
+        nativeId: id,
+        rosterMemberId: binding?.rosterMemberId,
+      );
+    } on Object catch (e, st) {
+      appLogger.w(
+        '[session] persist native session id failed: $e',
+        error: e,
+        stackTrace: st,
+      );
+      return;
+    }
+    if (_h.isClosed) return;
+
+    tab.persistedSession = applyNative(current);
+    final sessions = _state.sessions
+        .map((s) => s.sessionId == session.sessionId ? applyNative(s) : s)
+        .toList();
+    _h.emitSnapshot(
+      _h.dataStore.deriveSnapshot(
+        projects: _state.projects,
+        sessions: sessions,
+      ),
+    );
+  }
+
   Future<void> _persistSessionStarted(
     SessionRepository repo,
     String sessionId,
@@ -567,12 +638,15 @@ class SessionLaunchService implements MemberConnector {
       tab.memberToolConfigDir = configDir;
     }
     _h.emitLaunchWarnings(plan.warnings);
-    final useResume = launched && plan.resume;
+    // The plan already resolved the native create/resume ids per CLI (incl.
+    // cursor pre-allocation on first launch), so map them through directly —
+    // no `launched` gating. See docs/session-resume-architecture.md.
+    await _persistNativeSessionId(repo, tab, activeSession, binding, plan);
     shell.connect(
       workingDirectory: activeSession.primaryPath,
       additionalDirectories: activeSession.additionalPaths,
-      fixedSessionId: useResume ? null : plan.taskId,
-      resumeSessionId: useResume ? plan.taskId : null,
+      fixedSessionId: plan.createSessionId,
+      resumeSessionId: plan.resumeSessionId,
       shellLaunch: shellLaunch,
       extraEnvironment: plan.env.isEmpty ? null : plan.env,
       busUserInputRouting: team != null && member != null
