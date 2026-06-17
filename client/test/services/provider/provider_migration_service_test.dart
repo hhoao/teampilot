@@ -8,6 +8,7 @@ import 'package:teampilot/models/app_provider_config.dart';
 import 'package:teampilot/repositories/app_provider_repository.dart';
 import 'package:teampilot/services/storage/app_storage.dart';
 import 'package:teampilot/services/io/local_filesystem.dart';
+import 'package:teampilot/services/provider/opencode/opencode_data_layout.dart';
 import 'package:teampilot/services/provider/provider_import_service.dart';
 import 'package:teampilot/services/provider/provider_migration_service.dart';
 import 'package:teampilot/services/storage/runtime_storage_context.dart';
@@ -362,16 +363,17 @@ wire_api = "chat"
   );
 
   test('imports opencode providers from global auth.json', () async {
-    final authDir = p.join(home, '.local', 'share', 'opencode');
+    const layout = OpencodeDataLayout();
+    final authDir = layout.globalDataHome(home);
     await _writeJson(
-      p.join(authDir, 'auth.json'),
+      layout.authJsonPath(authDir),
       const {
         'openai': {'type': 'api', 'key': 'sk-openai'},
         'anthropic': {'type': 'api', 'key': 'sk-anthropic'},
       },
     );
     await _writeJson(
-      p.join(home, '.config', 'opencode', 'opencode.json'),
+      layout.opencodeConfigPath(layout.globalConfigHome(home)),
       const {'model': 'openai/gpt-4o'},
     );
 

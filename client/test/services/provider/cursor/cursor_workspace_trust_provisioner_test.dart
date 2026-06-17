@@ -1,7 +1,6 @@
 import 'dart:convert';
 
 import 'package:flutter_test/flutter_test.dart';
-import 'package:path/path.dart' as p;
 import 'package:teampilot/services/provider/cursor/cursor_workspace_trust.dart';
 import 'package:teampilot/services/provider/cursor/cursor_workspace_trust_provisioner.dart';
 
@@ -81,12 +80,10 @@ void main() {
         workspacePaths: [workspace],
       );
 
-      final trustPath = p.join(
+      final trustPath = CursorWorkspaceTrust.trustMarkerPath(
         home,
-        '.cursor',
-        'projects',
-        'home-hhoa-git-hhoa-teampilot',
-        '.workspace-trusted',
+        workspace,
+        pathContext: fs.pathContext,
       );
       expect((await fs.stat(trustPath)).isFile, isTrue);
     });

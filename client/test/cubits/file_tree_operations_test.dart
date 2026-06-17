@@ -1,5 +1,4 @@
 import 'package:flutter_test/flutter_test.dart';
-import 'package:path/path.dart' as p;
 import 'package:teampilot/cubits/file_tree_cubit.dart';
 
 import '../support/in_memory_filesystem.dart';
@@ -62,15 +61,17 @@ void main() {
   test('createFile and createFolder add entries', () async {
     final fs = InMemoryFilesystem();
     const root = '/proj';
+    const srcDir = '/proj/src';
+    const mainFile = '/proj/src/main.dart';
     await fs.ensureDir(root);
 
     final cubit = FileTreeCubit(fs: fs);
     await cubit.setRoot(root);
     await cubit.createFolder(root, 'src');
-    await cubit.createFile(p.join(root, 'src'), 'main.dart');
+    await cubit.createFile(srcDir, 'main.dart');
 
-    expect((await fs.stat('/proj/src')).isDirectory, isTrue);
-    expect(await fs.readString('/proj/src/main.dart'), '');
+    expect((await fs.stat(srcDir)).isDirectory, isTrue);
+    expect(await fs.readString(mainFile), '');
     await cubit.close();
   });
 }
