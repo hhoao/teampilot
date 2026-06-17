@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 
@@ -16,10 +17,32 @@ abstract final class AppFonts {
   /// Bundled terminal / code editor / log viewer face.
   static const String monoFamily = 'JetBrainsMono NFM';
 
-  static const List<String> monoFamilyFallback = [
-    'Ubuntu Sans Mono',
-    'monospace',
-  ];
+  /// Mono fallback chain. The bundled [monoFamily] (JetBrains Mono NFM) has no
+  /// CJK coverage, so CJK runs fall through this list. A **Simplified-Chinese**
+  /// CJK mono face is listed before the generic `monospace` alias on purpose:
+  /// fontconfig maps `monospace` (even under `lang=zh`) to *Noto Sans Mono CJK
+  /// JP*, whose Japanese `locl` forms center 。、 and misplace ，. Resolving to
+  /// the SC face instead gives the Chinese punctuation placement.
+  static List<String> get monoFamilyFallback => switch (defaultTargetPlatform) {
+        TargetPlatform.macOS => const [
+            'Ubuntu Sans Mono',
+            'PingFang SC',
+            'Heiti SC',
+            'monospace',
+          ],
+        TargetPlatform.windows => const [
+            'Ubuntu Sans Mono',
+            'Microsoft YaHei',
+            'monospace',
+          ],
+        _ => const [
+            'Ubuntu Sans Mono',
+            'Noto Sans Mono CJK SC',
+            'Noto Sans CJK SC',
+            'WenQuanYi Zen Hei Mono',
+            'monospace',
+          ],
+      };
 }
 
 /// Font families attached to [ThemeData.extensions] by [buildLightTheme] /
@@ -38,10 +61,10 @@ final class AppFontTheme extends ThemeExtension<AppFontTheme> {
   final String monoFontFamily;
   final List<String> monoFontFamilyFallback;
 
-  static const fallback = AppFontTheme(
-    monoFontFamily: AppFonts.monoFamily,
-    monoFontFamilyFallback: AppFonts.monoFamilyFallback,
-  );
+  static AppFontTheme get fallback => AppFontTheme(
+        monoFontFamily: AppFonts.monoFamily,
+        monoFontFamilyFallback: AppFonts.monoFamilyFallback,
+      );
 
   @override
   AppFontTheme copyWith({
