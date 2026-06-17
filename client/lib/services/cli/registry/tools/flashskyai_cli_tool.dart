@@ -3,6 +3,8 @@ import '../../cli_tool_adapter.dart';
 import '../cli_capability.dart';
 import '../cli_tool_definition.dart';
 import '../capabilities/built_in_tool_capabilities.dart';
+import '../capabilities/flashskyai_provider_catalog_capability.dart';
+import '../capabilities/provider_catalog_capability.dart';
 import '../capabilities/member_agent_preset_capability.dart';
 import '../capabilities/native_team_capability.dart';
 import '../capabilities/config_profile_capability.dart';
@@ -36,7 +38,7 @@ final class FlashskyaiCliTool implements CliToolDefinition {
     this.terminalBehavior = const FlashskyaiTerminalBehavior(),
     this.memberConfigInspection = const DefaultMemberConfigInspection(),
     this.pluginManifest = const FlashskyaiPluginManifest(),
-    this.providerCatalog = const FlashskyaiProviderCatalog(),
+    this.providerCatalog = const FlashskyaiProviderCatalogCapability(),
     this.providerModel = const ProviderRecordModelCapability(),
     this.headlessRun = const FlashskyaiHeadlessRunCapability(),
     this.headlessProvision = const FlashskyaiHeadlessProvisionCapability(),
@@ -54,7 +56,7 @@ final class FlashskyaiCliTool implements CliToolDefinition {
   final FlashskyaiTerminalBehavior terminalBehavior;
   final MemberConfigInspectionCapability memberConfigInspection;
   final FlashskyaiPluginManifest pluginManifest;
-  final FlashskyaiProviderCatalog providerCatalog;
+  final ProviderCatalogCapability providerCatalog;
   final ProviderModelCapability providerModel;
   final HeadlessRunCapability headlessRun;
   final HeadlessProvisionCapability headlessProvision;

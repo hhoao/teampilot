@@ -10,6 +10,33 @@ final class OpencodeDataLayout {
   static const authFileName = 'auth.json';
   static const isolatedDataDirName = 'xdg-data';
 
+  String globalConfigHome(
+    String homeDirectory, {
+    Map<String, String> platformEnv = const {},
+  }) {
+    final home = homeDirectory.trim();
+    final xdg =
+        platformEnv['XDG_CONFIG_HOME']?.trim() ??
+        Platform.environment['XDG_CONFIG_HOME']?.trim() ??
+        '';
+    if (xdg.isNotEmpty) {
+      return p.join(xdg, appDirName);
+    }
+    if (Platform.isWindows) {
+      final appData =
+          platformEnv['APPDATA']?.trim() ??
+          Platform.environment['APPDATA']?.trim() ??
+          '';
+      if (appData.isNotEmpty) {
+        return p.join(appData, appDirName);
+      }
+    }
+    return p.join(home, '.config', appDirName);
+  }
+
+  String opencodeConfigPath(String configHome) =>
+      p.join(configHome, 'opencode.json');
+
   String globalDataHome(
     String homeDirectory, {
     Map<String, String> platformEnv = const {},

@@ -7,6 +7,7 @@ import 'package:sqlite3/sqlite3.dart';
 import 'package:teampilot/models/app_provider_config.dart';
 import 'package:teampilot/repositories/app_provider_repository.dart';
 import 'package:teampilot/services/io/local_filesystem.dart';
+import 'package:teampilot/services/provider/codex/codex_cc_switch_import.dart';
 import 'package:teampilot/services/provider/codex/codex_toml_parser.dart';
 import 'package:teampilot/services/provider/provider_import_service.dart';
 import 'package:teampilot/services/storage/app_storage.dart';
@@ -67,7 +68,7 @@ base_url = "http://127.0.0.1:15721/v1"
       'overlays live config onto current cc-switch provider under proxy takeover',
       () async {
         const rawCurrentId = '7ffd3083-067f-4349-9e7c-716892da85fe';
-        final currentId = ProviderImportService.sanitizeProviderId(rawCurrentId);
+        final currentId = sanitizeImportedProviderId(rawCurrentId);
 
         await _writeJson(p.join(home, '.cc-switch', 'config.json'), {
           'current_provider_codex': rawCurrentId,
@@ -180,7 +181,7 @@ rmcp_client = true
 
       final codex = await repository.loadProviders(CliTool.codex);
       final other = codex.singleWhere(
-        (p) => p.id == ProviderImportService.sanitizeProviderId(otherRaw),
+        (p) => p.id == sanitizeImportedProviderId(otherRaw),
       );
       expect(other.baseUrl, 'https://other.example.com/v1');
       expect(other.config['upstreamConfigToml'], isNull);

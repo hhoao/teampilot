@@ -3,6 +3,8 @@ import '../../cli_tool_adapter.dart';
 import '../cli_capability.dart';
 import '../cli_tool_definition.dart';
 import '../capabilities/built_in_tool_capabilities.dart';
+import '../capabilities/codex_provider_catalog_capability.dart';
+import '../capabilities/provider_catalog_capability.dart';
 import '../capabilities/config_profile_capability.dart';
 import '../capabilities/executable_resolver_capability.dart';
 import '../capabilities/installer_capability.dart';
@@ -38,7 +40,7 @@ final class CodexCliTool implements CliToolDefinition {
     this.terminalBehavior = const CodexTerminalBehavior(),
     this.memberConfigInspection = const DefaultMemberConfigInspection(),
     this.pluginManifest = const CodexPluginManifest(),
-    this.providerCatalog = const CodexProviderCatalog(),
+    this.providerCatalog = const CodexProviderCatalogCapability(),
     this.providerModel = const ProviderRecordModelCapability(),
     this.effort = const CodexEffortCapability(),
     this.headlessRun = const CodexHeadlessRunCapability(),
@@ -62,7 +64,7 @@ final class CodexCliTool implements CliToolDefinition {
   final CodexTerminalBehavior terminalBehavior;
   final MemberConfigInspectionCapability memberConfigInspection;
   final CodexPluginManifest pluginManifest;
-  final CodexProviderCatalog providerCatalog;
+  final ProviderCatalogCapability providerCatalog;
   final ProviderModelCapability providerModel;
   final CliEffortCapability effort;
   final HeadlessRunCapability headlessRun;

@@ -9,6 +9,7 @@ import '../capabilities/installer_capability.dart';
 import '../capabilities/launch_args_capability.dart';
 import '../capabilities/presence_capability.dart';
 import '../../../provider/opencode/opencode_provider_credential_capability.dart';
+import '../../../provider/opencode/opencode_provider_catalog_capability.dart';
 import '../capabilities/headless_run_capability.dart';
 import '../capabilities/provider_catalog_capability.dart';
 import '../capabilities/provider_credential_capability.dart';
@@ -37,7 +38,7 @@ final class OpencodeCliTool implements CliToolDefinition {
     this.terminalBehavior = const OpencodeTerminalBehavior(),
     this.memberConfigInspection = const DefaultMemberConfigInspection(),
     this.pluginManifest = const OpencodePluginManifest(),
-    this.providerCatalog = const OpencodeProviderCatalog(),
+    this.providerCatalog = const OpencodeProviderCatalogCapability(),
     this.providerModel = const OpencodeProviderModelCapability(),
     this.headlessRun = const OpencodeHeadlessRunCapability(),
     this.headlessProvision = const OpencodeHeadlessProvisionCapability(),

@@ -2,7 +2,9 @@ import '../../../../models/team_config.dart';
 import '../../cli_tool_adapter.dart';
 import '../cli_capability.dart';
 import '../cli_tool_definition.dart';
+import '../../../provider/cursor/cursor_provider_catalog_capability.dart';
 import '../capabilities/built_in_tool_capabilities.dart';
+import '../capabilities/provider_catalog_capability.dart';
 import '../capabilities/config_profile_capability.dart';
 import '../capabilities/executable_resolver_capability.dart';
 import '../capabilities/installer_capability.dart';
@@ -36,7 +38,7 @@ final class CursorCliTool implements CliToolDefinition {
     this.terminalBehavior = const CursorTerminalBehavior(),
     this.memberConfigInspection = const DefaultMemberConfigInspection(),
     this.pluginManifest = const CursorPluginManifest(),
-    this.providerCatalog = const CursorProviderCatalog(),
+    this.providerCatalog = const CursorProviderCatalogCapability(),
     CursorProviderModelCapability? providerModel,
     this.headlessRun = const CursorHeadlessRunCapability(),
     this.providerForm = const CursorProviderFormCapability(),
@@ -58,7 +60,7 @@ final class CursorCliTool implements CliToolDefinition {
   final CursorTerminalBehavior terminalBehavior;
   final MemberConfigInspectionCapability memberConfigInspection;
   final CursorPluginManifest pluginManifest;
-  final CursorProviderCatalog providerCatalog;
+  final ProviderCatalogCapability providerCatalog;
   final CursorProviderModelCapability providerModel;
   final HeadlessRunCapability headlessRun;
   final ResourceCapability resource;

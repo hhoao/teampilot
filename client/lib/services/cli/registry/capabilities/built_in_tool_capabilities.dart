@@ -1,11 +1,9 @@
 import '../../../../l10n/app_localizations.dart';
 import '../../../../models/team_config.dart';
-import '../../../provider/provider_import_service.dart';
 import 'display_capability.dart';
 import 'executable_resolver_capability.dart';
 import 'plugin_manifest_capability.dart';
 import 'presence_capability.dart';
-import 'provider_catalog_capability.dart';
 import 'terminal_behavior_capability.dart';
 import 'transcript_probe_capability.dart';
 
@@ -232,64 +230,4 @@ final class CursorPluginManifest implements PluginManifestCapability {
   bool get supportsPluginRegistry => false;
   @override
   PluginManifestPaths? get paths => null;
-}
-
-final class FlashskyaiProviderCatalog implements ProviderCatalogCapability {
-  const FlashskyaiProviderCatalog();
-  @override
-  CliTool get catalogCli => CliTool.flashskyai;
-  @override
-  Future<ProviderImportResult> importForCli({
-    required bool onlyIfEmpty,
-    required ProviderImportService importService,
-  }) =>
-      importService.importFlashskyai(onlyIfEmpty: onlyIfEmpty);
-}
-
-final class ClaudeProviderCatalog implements ProviderCatalogCapability {
-  const ClaudeProviderCatalog();
-  @override
-  CliTool get catalogCli => CliTool.claude;
-  @override
-  Future<ProviderImportResult> importForCli({
-    required bool onlyIfEmpty,
-    required ProviderImportService importService,
-  }) =>
-      importService.importClaude(onlyIfEmpty: onlyIfEmpty);
-}
-
-final class CodexProviderCatalog implements ProviderCatalogCapability {
-  const CodexProviderCatalog();
-  @override
-  CliTool get catalogCli => CliTool.codex;
-  @override
-  Future<ProviderImportResult> importForCli({
-    required bool onlyIfEmpty,
-    required ProviderImportService importService,
-  }) =>
-      importService.importCodex(onlyIfEmpty: onlyIfEmpty);
-}
-
-final class CursorProviderCatalog implements ProviderCatalogCapability {
-  const CursorProviderCatalog();
-  @override
-  CliTool get catalogCli => CliTool.cursor;
-  @override
-  Future<ProviderImportResult> importForCli({
-    required bool onlyIfEmpty,
-    required ProviderImportService importService,
-  }) =>
-      importService.importCursor(onlyIfEmpty: onlyIfEmpty);
-}
-
-final class OpencodeProviderCatalog implements ProviderCatalogCapability {
-  const OpencodeProviderCatalog();
-  @override
-  CliTool get catalogCli => CliTool.opencode;
-  @override
-  Future<ProviderImportResult> importForCli({
-    required bool onlyIfEmpty,
-    required ProviderImportService importService,
-  }) =>
-      importService.importOpencode(onlyIfEmpty: onlyIfEmpty);
 }

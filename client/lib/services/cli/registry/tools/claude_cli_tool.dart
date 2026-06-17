@@ -3,6 +3,8 @@ import '../../cli_tool_adapter.dart';
 import '../cli_capability.dart';
 import '../cli_tool_definition.dart';
 import '../capabilities/built_in_tool_capabilities.dart';
+import '../capabilities/claude_provider_catalog_capability.dart';
+import '../capabilities/provider_catalog_capability.dart';
 import '../capabilities/member_agent_preset_capability.dart';
 import '../capabilities/native_team_capability.dart';
 import '../capabilities/config_profile_capability.dart';
@@ -41,7 +43,7 @@ final class ClaudeCliTool implements CliToolDefinition {
     this.terminalBehavior = const ClaudeTerminalBehavior(),
     this.memberConfigInspection = const DefaultMemberConfigInspection(),
     this.pluginManifest = const ClaudePluginManifest(),
-    this.providerCatalog = const ClaudeProviderCatalog(),
+    this.providerCatalog = const ClaudeProviderCatalogCapability(),
     this.providerModel = const ClaudeProviderModelCapability(),
     this.effort = const ClaudeEffortCapability(),
     this.headlessRun = const ClaudeHeadlessRunCapability(),
@@ -65,7 +67,7 @@ final class ClaudeCliTool implements CliToolDefinition {
   final ClaudeTerminalBehavior terminalBehavior;
   final MemberConfigInspectionCapability memberConfigInspection;
   final ClaudePluginManifest pluginManifest;
-  final ClaudeProviderCatalog providerCatalog;
+  final ProviderCatalogCapability providerCatalog;
   final ProviderModelCapability providerModel;
   final CliEffortCapability effort;
   final HeadlessRunCapability headlessRun;

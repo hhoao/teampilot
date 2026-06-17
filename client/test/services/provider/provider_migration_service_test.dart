@@ -315,6 +315,93 @@ wire_api = "chat"
     },
   );
 
+  test(
+    'imports cursor account from global auth during provider import',
+    () async {
+      await _writeJson(
+        p.join(home, '.config', 'cursor', 'auth.json'),
+        const {
+          'accessToken': 'cursor-at',
+          'refreshToken': 'cursor-rt',
+        },
+      );
+      await _writeJson(
+        p.join(home, '.cursor', 'cli-config.json'),
+        const {
+          'authInfo': {'userId': 'u1', 'authId': 'a1'},
+        },
+      );
+
+      final service = ProviderImportService(repository: repository);
+      final result = await service.importForCli(
+        CliTool.cursor,
+        onlyIfEmpty: false,
+      );
+
+      expect(result.added, 1);
+      final cursor = await repository.loadProviders(CliTool.cursor);
+      final account = cursor.singleWhere((p) => p.id == 'cursor-account');
+      expect(account.isOfficial, isTrue);
+      await repository.loadProviders(CliTool.cursor);
+      expect(
+        await File(
+          p.join(
+            appData,
+            'providers',
+            'cursor',
+            'cursor-account',
+            'home',
+            '.config',
+            'cursor',
+            'auth.json',
+          ),
+        ).exists(),
+        isTrue,
+      );
+    },
+  );
+
+  test('imports opencode providers from global auth.json', () async {
+    final authDir = p.join(home, '.local', 'share', 'opencode');
+    await _writeJson(
+      p.join(authDir, 'auth.json'),
+      const {
+        'openai': {'type': 'api', 'key': 'sk-openai'},
+        'anthropic': {'type': 'api', 'key': 'sk-anthropic'},
+      },
+    );
+    await _writeJson(
+      p.join(home, '.config', 'opencode', 'opencode.json'),
+      const {'model': 'openai/gpt-4o'},
+    );
+
+    final service = ProviderImportService(repository: repository);
+    final result = await service.importForCli(
+      CliTool.opencode,
+      onlyIfEmpty: false,
+    );
+
+    expect(result.added, 2);
+    final opencode = await repository.loadProviders(CliTool.opencode);
+    expect(opencode.map((p) => p.id), containsAll(['openai', 'anthropic']));
+    final openai = opencode.singleWhere((p) => p.id == 'openai');
+    expect(openai.defaultModel, 'gpt-4o');
+    expect(
+      await File(
+        p.join(
+          appData,
+          'providers',
+          'opencode',
+          'openai',
+          'xdg-data',
+          'opencode',
+          'auth.json',
+        ),
+      ).exists(),
+      isTrue,
+    );
+  });
+
   test('startup migration imports only empty cli catalogs', () async {
     await repository.saveProviders(CliTool.claude, [
       const AppProviderConfig(
