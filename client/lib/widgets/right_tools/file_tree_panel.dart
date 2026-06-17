@@ -158,7 +158,7 @@ class _FileTreePanelState extends State<FileTreePanel> {
                   builder: (context, constraints) {
                     const actionSlotWidth = 28.0;
                     final showInlineActions =
-                        constraints.maxWidth >= actionSlotWidth * 3;
+                        constraints.maxWidth >= actionSlotWidth * 4;
                     return Row(
                       children: [
                         Expanded(
@@ -183,9 +183,12 @@ class _FileTreePanelState extends State<FileTreePanel> {
                           FileTreeHeaderOverflowMenu(
                             l10n: l10n,
                             showHiddenFiles: state.showHiddenFiles,
+                            allFoldersExpanded: _cubit.isAllFoldersExpanded(),
                             canCopy: state.rootPath.isNotEmpty,
                             onReveal: () =>
                                 unawaited(_revealActiveEditorFile()),
+                            onToggleExpandAll: () =>
+                                unawaited(_cubit.toggleExpandAllFolders()),
                             onToggleHidden: _cubit.toggleShowHidden,
                             onCopy: () {
                               if (state.rootPath.isNotEmpty) {
@@ -267,12 +270,22 @@ class _FileTreePanelState extends State<FileTreePanel> {
     required AppLocalizations l10n,
     required FileTreeState state,
   }) {
+    final allExpanded = _cubit.isAllFoldersExpanded();
     return [
       AppIconButton(
         icon: Icons.my_location_outlined,
         compact: true, size: AppIconButton.kCompactSize,
         tooltip: l10n.fileTreeRevealActiveFile,
         onTap: () => unawaited(_revealActiveEditorFile()),
+      ),
+      AppIconButton(
+        icon: allExpanded ? Icons.unfold_less : Icons.unfold_more,
+        compact: true,
+        size: AppIconButton.kCompactSize,
+        tooltip: allExpanded
+            ? l10n.treeCollapseAllFolders
+            : l10n.treeExpandAllFolders,
+        onTap: () => unawaited(_cubit.toggleExpandAllFolders()),
       ),
       AppIconButton(
         icon: state.showHiddenFiles

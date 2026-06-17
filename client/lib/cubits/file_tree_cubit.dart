@@ -157,17 +157,77 @@ class FileTreeCubit extends Cubit<FileTreeState> {
   }
 
   Future<void> _loadDirectory(String path) async {
+    final entries = await _fetchDirectoryEntries(path);
+    if (entries == null) return;
+    final cache = Map<String, List<FsDirEntry>>.from(state.dirCache);
+    cache[path] = entries;
+    emit(state.copyWith(dirCache: cache));
+  }
+
+  Future<List<FsDirEntry>?> _fetchDirectoryEntries(String path) async {
     try {
       final stat = await fs.stat(path);
-      if (!stat.exists || !stat.isDirectory) return;
+      if (!stat.exists || !stat.isDirectory) return null;
       final allEntries = await fs.listDir(path);
-      final entries = allEntries.where(_matchesFilter).toList()
+      return allEntries.where(_matchesFilter).toList()
         ..sort(_compareEntries);
-      final cache = Map<String, List<FsDirEntry>>.from(state.dirCache);
-      cache[path] = entries;
-      emit(state.copyWith(dirCache: cache));
     } catch (_) {
-      // Skip directories we can't read
+      return null;
+    }
+  }
+
+  /// True when every visible directory under [rootPath] is expanded.
+  bool isAllFoldersExpanded() {
+    final root = state.rootPath;
+    if (root.isEmpty || !state.rootExists) return false;
+    return _isDirFullyExpanded(root);
+  }
+
+  bool _isDirFullyExpanded(String dirPath) {
+    final entries = state.dirCache[dirPath];
+    if (entries == null) return true;
+    for (final entry in entries) {
+      if (!entry.isDirectory) continue;
+      final childPath = fs.pathContext.join(dirPath, entry.name);
+      if (!state.expandedPaths.contains(childPath)) return false;
+      if (!_isDirFullyExpanded(childPath)) return false;
+    }
+    return true;
+  }
+
+  Future<void> expandAllFolders() async {
+    final root = state.rootPath;
+    if (root.isEmpty || !state.rootExists) return;
+
+    final expanded = <String>{};
+    final cache = Map<String, List<FsDirEntry>>.from(state.dirCache);
+
+    Future<void> walk(String dirPath) async {
+      var entries = cache[dirPath];
+      entries ??= await _fetchDirectoryEntries(dirPath);
+      if (entries == null) return;
+      cache[dirPath] = entries;
+      for (final entry in entries) {
+        if (!entry.isDirectory) continue;
+        final childPath = fs.pathContext.join(dirPath, entry.name);
+        expanded.add(childPath);
+        await walk(childPath);
+      }
+    }
+
+    await walk(root);
+    emit(state.copyWith(expandedPaths: expanded, dirCache: cache));
+  }
+
+  void collapseAllFolders() {
+    emit(state.copyWith(expandedPaths: const {}));
+  }
+
+  Future<void> toggleExpandAllFolders() async {
+    if (isAllFoldersExpanded()) {
+      collapseAllFolders();
+    } else {
+      await expandAllFolders();
     }
   }
 

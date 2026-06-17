@@ -35,11 +35,20 @@ class _FakeGitService extends GitService {
     }
   }
 
-  @override
-  Future<void> stage(String dir, List<String> paths) => _record('stage');
+  final List<List<String>> stagedPaths = [];
+  final List<List<String>> unstagedPaths = [];
 
   @override
-  Future<void> unstage(String dir, List<String> paths) => _record('unstage');
+  Future<void> stage(String dir, List<String> paths) async {
+    stagedPaths.add(paths);
+    await _record('stage');
+  }
+
+  @override
+  Future<void> unstage(String dir, List<String> paths) async {
+    unstagedPaths.add(paths);
+    await _record('unstage');
+  }
 
   @override
   Future<void> commit(String dir, String message) => _record('commit:$message');
@@ -91,6 +100,39 @@ void main() {
     await cubit.stage(_unstaged);
 
     expect(service.calls, ['stage', 'status']);
+    expect(service.stagedPaths, [
+      ['b.txt'],
+    ]);
+    await cubit.close();
+  });
+
+  test('stageFolder passes directory path to service', () async {
+    final service = _FakeGitService(statusToReturn: _repoWith());
+    final cubit = GitCubit(service: service);
+    await cubit.setRepoRoot('/repo');
+    service.calls.clear();
+
+    await cubit.stageFolder('docs');
+
+    expect(service.calls, ['stage', 'status']);
+    expect(service.stagedPaths, [
+      ['docs'],
+    ]);
+    await cubit.close();
+  });
+
+  test('unstageFolder passes directory path to service', () async {
+    final service = _FakeGitService(statusToReturn: _repoWith());
+    final cubit = GitCubit(service: service);
+    await cubit.setRepoRoot('/repo');
+    service.calls.clear();
+
+    await cubit.unstageFolder('src/utils');
+
+    expect(service.calls, ['unstage', 'status']);
+    expect(service.unstagedPaths, [
+      ['src/utils'],
+    ]);
     await cubit.close();
   });
 
@@ -150,6 +192,37 @@ void main() {
 
     expect(cubit.state.errorMessage, 'boom');
     expect(cubit.state.busy, isFalse);
+    await cubit.close();
+  });
+
+  test('toggleExpandAllFolders expands then collapses change folders', () async {
+    final service = _FakeGitService(
+      statusToReturn: _repoWith(
+        unstaged: const [
+          GitFileChange(
+            path: 'src/utils/foo.dart',
+            kind: GitChangeKind.modified,
+            staged: false,
+          ),
+        ],
+      ),
+    );
+    final cubit = GitCubit(service: service);
+    await cubit.setRepoRoot('/repo');
+
+    cubit.collapseAllFolders();
+    expect(cubit.state.expandedFolderPaths, isEmpty);
+
+    cubit.expandAllFolders();
+    expect(cubit.state.expandedFolderPaths, {'src', 'src/utils'});
+    expect(cubit.state.allChangeFoldersExpanded, isTrue);
+
+    cubit.toggleExpandAllFolders();
+    expect(cubit.state.expandedFolderPaths, isEmpty);
+
+    cubit.toggleExpandAllFolders();
+    expect(cubit.state.allChangeFoldersExpanded, isTrue);
+
     await cubit.close();
   });
 

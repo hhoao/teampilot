@@ -42,6 +42,15 @@ class GitState extends Equatable {
 
   bool get isRepository => status.isRepository;
 
+  /// True when every folder in the changes tree is expanded.
+  bool get allChangeFoldersExpanded {
+    final all = gitChangesAllFolderPaths([
+      ...status.staged,
+      ...status.unstaged,
+    ]);
+    return all.isNotEmpty && all.every(expandedFolderPaths.contains);
+  }
+
   GitState copyWith({
     String? repoRoot,
     bool? gitAvailable,
@@ -198,11 +207,38 @@ class GitCubit extends Cubit<GitState> {
     _emit(state.copyWith(expandedFolderPaths: next));
   }
 
+  void expandAllFolders() {
+    final all = gitChangesAllFolderPaths([
+      ...state.status.staged,
+      ...state.status.unstaged,
+    ]);
+    if (all.isEmpty) return;
+    _emit(state.copyWith(expandedFolderPaths: all));
+  }
+
+  void collapseAllFolders() {
+    _emit(state.copyWith(expandedFolderPaths: const {}));
+  }
+
+  void toggleExpandAllFolders() {
+    if (state.allChangeFoldersExpanded) {
+      collapseAllFolders();
+    } else {
+      expandAllFolders();
+    }
+  }
+
   Future<void> stage(GitFileChange change) =>
       _mutate(() => _service.stage(state.repoRoot, [change.path]));
 
   Future<void> unstage(GitFileChange change) =>
       _mutate(() => _service.unstage(state.repoRoot, [change.path]));
+
+  Future<void> stageFolder(String folderPath) =>
+      _mutate(() => _service.stage(state.repoRoot, [folderPath]));
+
+  Future<void> unstageFolder(String folderPath) =>
+      _mutate(() => _service.unstage(state.repoRoot, [folderPath]));
 
   Future<void> stageAll() => _mutate(() => _service.stageAll(state.repoRoot));
 

@@ -385,6 +385,18 @@ class AppLocalizationsEn extends AppLocalizations {
   String get gitUnstageAll => 'Unstage all changes';
 
   @override
+  String get gitStageFolder => 'Stage changes in folder';
+
+  @override
+  String get gitUnstageFolder => 'Unstage changes in folder';
+
+  @override
+  String get treeExpandAllFolders => 'Expand all folders';
+
+  @override
+  String get treeCollapseAllFolders => 'Collapse all folders';
+
+  @override
   String get gitDiscard => 'Discard changes';
 
   @override

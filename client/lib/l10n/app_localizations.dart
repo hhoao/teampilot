@@ -788,6 +788,30 @@ abstract class AppLocalizations {
   /// **'Unstage all changes'**
   String get gitUnstageAll;
 
+  /// No description provided for @gitStageFolder.
+  ///
+  /// In en, this message translates to:
+  /// **'Stage changes in folder'**
+  String get gitStageFolder;
+
+  /// No description provided for @gitUnstageFolder.
+  ///
+  /// In en, this message translates to:
+  /// **'Unstage changes in folder'**
+  String get gitUnstageFolder;
+
+  /// No description provided for @treeExpandAllFolders.
+  ///
+  /// In en, this message translates to:
+  /// **'Expand all folders'**
+  String get treeExpandAllFolders;
+
+  /// No description provided for @treeCollapseAllFolders.
+  ///
+  /// In en, this message translates to:
+  /// **'Collapse all folders'**
+  String get treeCollapseAllFolders;
+
   /// No description provided for @gitDiscard.
   ///
   /// In en, this message translates to:

@@ -230,11 +230,13 @@ class _GitSourceControlPanelState extends State<GitSourceControlPanel> {
             behind: state.status.behind,
             busy: state.busy || state.isLoading,
             treeView: state.changesViewMode == GitChangesViewMode.tree,
+            allFoldersExpanded: state.allChangeFoldersExpanded,
             onRefresh: () => unawaited(_cubit.refresh()),
             onPush: () => unawaited(_cubit.push()),
             onPull: () => unawaited(_cubit.pull()),
             onBranch: () => unawaited(_openBranchSheet(state)),
             onToggleViewMode: _cubit.toggleChangesViewMode,
+            onToggleExpandAll: _cubit.toggleExpandAllFolders,
           ),
           const SizedBox(height: 10),
           _CommitBox(
@@ -432,6 +434,16 @@ class _GitSourceControlPanelState extends State<GitSourceControlPanel> {
                     ),
                     onToggle: () =>
                         _cubit.toggleFolderExpanded(row.folderPath!),
+                    onStage: staged
+                        ? null
+                        : () => unawaited(
+                            _cubit.stageFolder(row.folderPath!),
+                          ),
+                    onUnstage: staged
+                        ? () => unawaited(
+                            _cubit.unstageFolder(row.folderPath!),
+                          )
+                        : null,
                   )
                 : GitChangeTile(
                     change: row.change!,
@@ -484,11 +496,13 @@ class _Header extends StatelessWidget {
     required this.behind,
     required this.busy,
     required this.treeView,
+    required this.allFoldersExpanded,
     required this.onRefresh,
     required this.onPush,
     required this.onPull,
     required this.onBranch,
     required this.onToggleViewMode,
+    required this.onToggleExpandAll,
   });
 
   final String branch;
@@ -496,11 +510,13 @@ class _Header extends StatelessWidget {
   final int behind;
   final bool busy;
   final bool treeView;
+  final bool allFoldersExpanded;
   final VoidCallback onRefresh;
   final VoidCallback onPush;
   final VoidCallback onPull;
   final VoidCallback onBranch;
   final VoidCallback onToggleViewMode;
+  final VoidCallback onToggleExpandAll;
 
   @override
   Widget build(BuildContext context) {
@@ -562,6 +578,18 @@ class _Header extends StatelessWidget {
           tooltip: treeView ? l10n.gitChangesListView : l10n.gitChangesTreeView,
           onTap: onToggleViewMode,
         ),
+        if (treeView)
+          AppIconButton(
+            icon: allFoldersExpanded
+                ? Icons.unfold_less
+                : Icons.unfold_more,
+            compact: true,
+            size: AppIconButton.kCompactSize,
+            tooltip: allFoldersExpanded
+                ? l10n.treeCollapseAllFolders
+                : l10n.treeExpandAllFolders,
+            onTap: onToggleExpandAll,
+          ),
         AppIconButton(
           icon: Icons.download_outlined,
           compact: true, size: AppIconButton.kCompactSize,

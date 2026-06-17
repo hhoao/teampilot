@@ -86,7 +86,8 @@ double gitChangesMinContentWidth({
           kGitChangesLeadingChromeWidth +
           kGitChangesNodePaddingRight +
           kGitChangesRowHorizontalPadding * 2 +
-          painter.width;
+          painter.width +
+          kGitChangesTrailingActionsWidth;
       maxWidth = math.max(maxWidth, rowWidth);
       continue;
     }
@@ -122,6 +123,10 @@ Set<String> gitChangesDefaultExpandedFolders(List<GitFileChange> changes) {
   }
   return paths;
 }
+
+/// Every folder node in the git changes tree (same set as default expansion).
+Set<String> gitChangesAllFolderPaths(List<GitFileChange> changes) =>
+    gitChangesDefaultExpandedFolders(changes);
 
 /// Flatten [changes] into folder + file rows for tree view.
 List<GitChangesVisibleRow> visibleGitChangesRows({
