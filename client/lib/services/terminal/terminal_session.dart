@@ -1,7 +1,6 @@
 import 'dart:async';
 import 'dart:convert';
 import 'dart:io';
-import 'dart:typed_data';
 
 import 'package:flutter/foundation.dart';
 import 'package:flutter_alacritty/flutter_alacritty.dart';
@@ -15,7 +14,10 @@ import '../session/launch_command_builder.dart';
 import '../session/shell_launch_spec.dart';
 import 'local_pty_transport.dart';
 import 'pty_launch_environment.dart';
+import 'terminal_color_scheme_report.dart';
 import 'terminal_transport.dart';
+
+export 'terminal_color_scheme_report.dart' show stripColorSchemeReport;
 import '../team/terminal_activity_tracker.dart';
 import '../team_bus/bus_user_line_capture.dart';
 import 'pending_user_message.dart';
@@ -38,53 +40,8 @@ typedef TransportStarter =
       Map<String, String>? environment,
     });
 
-/// PTY attach → confirm → running. See [_handlePtyOutput] and [_confirmProcessStarted].
+/// PTY attach → confirm → running. See [_feedPtyBytes] and [_confirmProcessStarted].
 enum _LaunchPhase { idle, spawning, confirming, running, failed }
-
-/// Removes OSC 997 color-scheme reports (`ESC ] 997 ; n (BEL | ESC \\)`) from an
-/// engine→PTY write. Used for CLIs whose TUI mishandles the report (cursor): the
-/// embedded terminal answers a mode-2031 subscription with OSC 997, but cursor
-/// leaks it into its input box instead of consuming it. The engine emits each
-/// report as a single write, so a sequence never straddles two chunks.
-@visibleForTesting
-Uint8List stripColorSchemeReport(Uint8List data) {
-  const esc = 0x1b, bel = 0x07, backslash = 0x5c;
-  const marker = [0x1b, 0x5d, 0x39, 0x39, 0x37]; // ESC ] 9 9 7
-  if (data.length < marker.length) return data;
-  final out = BytesBuilder(copy: false);
-  var i = 0;
-  while (i < data.length) {
-    var isMarker = i + marker.length <= data.length;
-    if (isMarker) {
-      for (var k = 0; k < marker.length; k++) {
-        if (data[i + k] != marker[k]) {
-          isMarker = false;
-          break;
-        }
-      }
-    }
-    if (!isMarker) {
-      out.addByte(data[i]);
-      i++;
-      continue;
-    }
-    var j = i + marker.length;
-    while (j < data.length) {
-      final b = data[j];
-      if (b == bel) {
-        j++;
-        break;
-      }
-      if (b == esc && j + 1 < data.length && data[j + 1] == backslash) {
-        j += 2;
-        break;
-      }
-      j++;
-    }
-    i = j;
-  }
-  return out.toBytes();
-}
 
 class TerminalSession {
   TerminalSession({
@@ -148,7 +105,7 @@ class TerminalSession {
   VoidCallback? _onProcessStarted;
   void Function(String message)? _onProcessFailed;
   VoidCallback? _onProcessExited;
-  StreamSubscription<String>? _outputSubscription;
+  StreamSubscription<Uint8List>? _outputSubscription;
   StreamSubscription<Uint8List>? _engineOutputSubscription;
   FirstUserLineCapture? _firstUserLineCapture;
   EveryUserLineCapture? _everyUserLineCapture;
@@ -303,10 +260,12 @@ class TerminalSession {
     void Function(String line)? onEveryUserLineSubmitted,
     BusUserInputRouting? busUserInputRouting,
   }) {
-    if (_running || _starting) {
-      disconnect();
-    }
-    _launchCwd = workingDirectory;
+    _prepareConnect(
+      workingDirectory: workingDirectory,
+      onProcessStarted: onProcessStarted,
+      onProcessFailed: onProcessFailed,
+      onProcessExited: onProcessExited,
+    );
     final invocation = parseExecutable
         ? CliInvocation.fromExecutable(executable)
         : CliInvocation(executable: executable);
@@ -326,10 +285,6 @@ class TerminalSession {
       _extraEnvironment,
       themeBackground: _terminalTheme?.background,
     );
-    _onProcessStarted = onProcessStarted;
-    _onProcessFailed = onProcessFailed;
-    _onProcessExited = onProcessExited;
-    _startFailed = false;
 
     final args = shellLaunch != null
         ? LaunchCommandBuilder.buildShellArguments(
@@ -353,15 +308,8 @@ class TerminalSession {
       environment: _extraEnvironment,
     );
 
-    if (validateLaunch) {
-      final validationError = CliExecutableValidator.validateLaunchSyncFast(
-        executable: invocation.executable,
-        workingDirectory: ptyWorkingDirectory,
-      );
-      if (validationError != null) {
-        _handleStartFailure(validationError);
-        return;
-      }
+    if (!_validateBeforeSpawn(invocation.executable, ptyWorkingDirectory)) {
+      return;
     }
 
     appLogger.i(
@@ -416,18 +364,22 @@ class TerminalSession {
               true
         : true;
 
-    _engineOutputSubscription?.cancel();
-    _engineOutputSubscription = engine.output.listen((Uint8List data) {
-      _firstUserLineCapture?.feed(utf8.decode(data));
-      _everyUserLineCapture?.feed(utf8.decode(data));
-      _turnStartCapture?.feed(utf8.decode(data));
+    _listenEngineOutput((data) {
+      if (_firstUserLineCapture != null ||
+          _everyUserLineCapture != null ||
+          _turnStartCapture != null) {
+        // Decode once and share — the engine may split a multi-byte glyph across
+        // chunks, so allow malformed sequences (PTY output path does the same).
+        final decoded = utf8.decode(data, allowMalformed: true);
+        _firstUserLineCapture?.feed(decoded);
+        _everyUserLineCapture?.feed(decoded);
+        _turnStartCapture?.feed(decoded);
+      }
       var forward = _busUserLineCapture?.filter(data) ?? data;
       if (!forwardsColorScheme) {
         forward = stripColorSchemeReport(forward);
       }
-      if (forward.isNotEmpty && _transportReadyForIo && _transport != null) {
-        _transport!.write(forward);
-      }
+      return forward;
     });
 
     _spawnTransport(
@@ -439,8 +391,9 @@ class TerminalSession {
     );
   }
 
-  /// Interactive login shell for the workspace terminal panel (no CLI flags).
-  void connectShell({
+  /// Shared prologue for [connect] and [connectShell]: tear down any in-flight
+  /// launch, record the launch cwd, and (re)install the lifecycle callbacks.
+  void _prepareConnect({
     required String workingDirectory,
     VoidCallback? onProcessStarted,
     void Function(String message)? onProcessFailed,
@@ -450,37 +403,71 @@ class TerminalSession {
       disconnect();
     }
     _launchCwd = workingDirectory;
+    _onProcessStarted = onProcessStarted;
+    _onProcessFailed = onProcessFailed;
+    _onProcessExited = onProcessExited;
+    _startFailed = false;
+  }
+
+  /// Runs the fast synchronous launch precheck, failing the session and
+  /// returning `false` when the executable/cwd is invalid. Returns `true` (and
+  /// is a no-op) when [validateLaunch] is disabled.
+  bool _validateBeforeSpawn(String executable, String workingDirectory) {
+    if (!validateLaunch) return true;
+    final validationError = CliExecutableValidator.validateLaunchSyncFast(
+      executable: executable,
+      workingDirectory: workingDirectory,
+    );
+    if (validationError != null) {
+      _handleStartFailure(validationError);
+      return false;
+    }
+    return true;
+  }
+
+  /// Subscribes to engine→PTY output. [transform] may run capture side effects
+  /// and return the bytes to forward (e.g. bus filtering, OSC 997 stripping);
+  /// when null the raw bytes are forwarded verbatim (plain interactive shell).
+  void _listenEngineOutput(Uint8List Function(Uint8List data)? transform) {
+    _engineOutputSubscription?.cancel();
+    _engineOutputSubscription = engine.output.listen((Uint8List data) {
+      final forward = transform?.call(data) ?? data;
+      if (forward.isNotEmpty && _transportReadyForIo && _transport != null) {
+        _transport!.write(forward);
+      }
+    });
+  }
+
+  /// Interactive login shell for the workspace terminal panel (no CLI flags).
+  void connectShell({
+    required String workingDirectory,
+    VoidCallback? onProcessStarted,
+    void Function(String message)? onProcessFailed,
+    VoidCallback? onProcessExited,
+  }) {
+    _prepareConnect(
+      workingDirectory: workingDirectory,
+      onProcessStarted: onProcessStarted,
+      onProcessFailed: onProcessFailed,
+      onProcessExited: onProcessExited,
+    );
     final executable = WorkspaceInteractiveShell.executable();
-    final ptyWorkingDirectory = workingDirectory.trim().isNotEmpty
-        ? LaunchCommandBuilder.workingDirectoryForProcess(
-            workingDirectory,
-            useWslPaths: false,
-          )
-        : LaunchCommandBuilder.workingDirectoryForProcess(
-            Directory.current.path,
-            useWslPaths: false,
-          );
+    final ptyWorkingDirectory = LaunchCommandBuilder.workingDirectoryForProcess(
+      workingDirectory.trim().isNotEmpty
+          ? workingDirectory
+          : Directory.current.path,
+      useWslPaths: false,
+    );
     _extraEnvironment = null;
     _ptyEnvironment = buildPtyEnvironment(
       null,
       themeBackground: _terminalTheme?.background,
     );
-    _onProcessStarted = onProcessStarted;
-    _onProcessFailed = onProcessFailed;
-    _onProcessExited = onProcessExited;
-    _startFailed = false;
 
     final launchArgs = WorkspaceInteractiveShell.launchArguments(executable);
 
-    if (validateLaunch) {
-      final validationError = CliExecutableValidator.validateLaunchSyncFast(
-        executable: executable,
-        workingDirectory: ptyWorkingDirectory,
-      );
-      if (validationError != null) {
-        _handleStartFailure(validationError);
-        return;
-      }
+    if (!_validateBeforeSpawn(executable, ptyWorkingDirectory)) {
+      return;
     }
 
     _beginStartup(executable);
@@ -489,12 +476,7 @@ class TerminalSession {
     _everyUserLineCapture = null;
     _busUserLineCapture = null;
 
-    _engineOutputSubscription?.cancel();
-    _engineOutputSubscription = engine.output.listen((Uint8List data) {
-      if (_transportReadyForIo && _transport != null) {
-        _transport!.write(data);
-      }
-    });
+    _listenEngineOutput(null);
 
     _spawnTransport(
       executable: executable,
@@ -629,13 +611,16 @@ class TerminalSession {
     _startupDeadlineTimer = null;
   }
 
-  void _handlePtyOutput(String text, String executable) {
-    _writeOutput(text);
-    if (!_starting || _startFailed) return;
-    if (_looksLikeExecFailure(text)) {
-      _handleStartFailure(_launchFailureMessage(executable));
-      return;
+  /// Feeds raw PTY output bytes into the display engine. Hot path: avoids any
+  /// String/UTF-8 conversion. See [_writeOutput] for the String entry point used
+  /// by synthetic writes (failure/exit notices).
+  void _feedPtyBytes(Uint8List data) {
+    if (data.isEmpty) return;
+    if (isConnected) {
+      activityTracker.markActive();
     }
+    engine.feed(data);
+    _schedulePtyGeometry();
   }
 
   Future<void> _startTransport({
@@ -724,15 +709,22 @@ class TerminalSession {
         _hasPendingLayoutGeometry = false;
       }
 
-      _outputSubscription = transport.output
-          .map<List<int>>((data) => data)
-          .transform(const Utf8Decoder(allowMalformed: true))
-          .listen((text) {
-            _handlePtyOutput(text, executable);
-            if (_starting && !_startFailed && text.isNotEmpty) {
-              _confirmProcessStarted();
-            }
-          });
+      _outputSubscription = transport.output.listen((Uint8List data) {
+        if (data.isEmpty) return;
+        // Feed the engine the raw PTY bytes — alacritty is a full UTF-8 VTE
+        // parser and reassembles multi-byte glyphs split across reads itself,
+        // so the steady-state hot path skips the decode→String→re-encode round
+        // trip entirely. We only decode inside the brief startup window, where
+        // a String is needed for exec-failure detection + first-output confirm.
+        _feedPtyBytes(data);
+        if (!_starting || _startFailed) return;
+        final text = utf8.decode(data, allowMalformed: true);
+        if (_looksLikeExecFailure(text)) {
+          _handleStartFailure(_launchFailureMessage(executable));
+          return;
+        }
+        _confirmProcessStarted();
+      });
 
       transport.done.then((code) {
         if (startGeneration != _transportStartGeneration ||
@@ -879,13 +871,10 @@ class TerminalSession {
     return next;
   }
 
-  void _writeOutput(String text) {
-    if (text.isNotEmpty && isConnected) {
-      activityTracker.markActive();
-    }
-    engine.feed(Uint8List.fromList(utf8.encode(text)));
-    _schedulePtyGeometry();
-  }
+  /// String entry point for synthetic engine writes (failure/exit notices and
+  /// the public [write]). PTY output uses [_feedPtyBytes] directly.
+  void _writeOutput(String text) =>
+      _feedPtyBytes(Uint8List.fromList(utf8.encode(text)));
 
   static bool _looksLikeExecFailure(String text) {
     return text.contains('execvp:') ||
