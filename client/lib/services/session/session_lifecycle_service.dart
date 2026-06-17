@@ -14,6 +14,7 @@ import '../storage/runtime_layout.dart';
 import '../cli/registry/capabilities/transcript_probe_capability.dart';
 import '../cli/registry/cli_tool_registry.dart';
 import '../cli/registry/config_profile/config_profile_scope.dart';
+import '../cli/registry/config_profile/config_profile_context.dart';
 import '../cli/registry/config_profile/flashskyai_config_profile_capability.dart';
 import '../cli/preset_resolver.dart';
 import '../provider/config_profile_service.dart';
@@ -67,6 +68,15 @@ class SessionLifecycleService {
   final Future<List<Skill>> Function()? _loadInstalledSkills;
   final CliPresetsRepository? _cliPresetsRepository;
   final List<CliPreset> Function()? _loadPresets;
+
+  /// Resolves the active [CliPreset] for a personal project profile.
+  /// Returns `null` when no preset is active or the repository is unavailable.
+  Future<CliPreset?> resolveActivePresetForProfile(ProjectProfile profile) async {
+    final repo = _cliPresetsRepository;
+    if (repo == null) return null;
+    final presets = await repo.load();
+    return resolveActivePreset(profile.activePresetId, presets);
+  }
 
   Future<ProjectProfile> loadProjectProfile(
     String projectId, {

@@ -168,11 +168,7 @@ class TerminalSession {
     _osc7Cwd = cwd;
     return [
       UrlLinkProvider(),
-      FilePathLinkProvider(
-        fs: AppStorage.fs,
-        launchCwd: _launchCwd,
-        cwd: cwd,
-      ),
+      FilePathLinkProvider(fs: AppStorage.fs, launchCwd: _launchCwd, cwd: cwd),
     ];
   }
 
@@ -267,7 +263,9 @@ class TerminalSession {
 
   /// Called from [TerminalView.onViewportResize] when the cell grid changes.
   void onViewportResize(int columns, int rows) {
-    if (columns <= 0 || rows <= 0) return;
+    // Below the VT minimum a fullwidth glyph panics the engine; the view clamps
+    // to this floor, but make the invariant explicit at the consumer too.
+    if (columns < kMinTerminalColumns || rows < kMinTerminalRows) return;
     _pendingViewportCols = columns;
     _pendingViewportRows = rows;
     _hasPendingLayoutGeometry = true;
@@ -301,10 +299,11 @@ class TerminalSession {
       workingDirectory,
       useWslPaths: invocation.usesWsl,
     );
-    final normalizedEnvironment = LaunchCommandBuilder.normalizeEnvironmentForCli(
-      extraEnvironment,
-      useWslPaths: invocation.usesWsl,
-    );
+    final normalizedEnvironment =
+        LaunchCommandBuilder.normalizeEnvironmentForCli(
+          extraEnvironment,
+          useWslPaths: invocation.usesWsl,
+        );
     _extraEnvironment = LaunchCommandBuilder.launchEnvironmentForProcess(
       normalizedEnvironment,
     );
@@ -354,7 +353,7 @@ class TerminalSession {
       '--------------------------------\n'
       'Starting transport:\n'
       '--------------------------------\n'
-      'Executable: $invocation.executable,\n'
+      'Executable: ${invocation.executable},\n'
       'Arguments: ${launchArgs.join(' ')},\n'
       'WorkingDirectory: $ptyWorkingDirectory,\n'
       'Environment: ${_extraEnvironment?.entries.map((e) => '${e.key}=${e.value}').join(', ')}\n'
@@ -938,7 +937,10 @@ class TerminalSession {
     };
     PtyLaunchEnvironment.applyHyperlinkIdentity(merged);
     if (themeBackground != null) {
-      PtyLaunchEnvironment.applyColorScheme(merged, background: themeBackground);
+      PtyLaunchEnvironment.applyColorScheme(
+        merged,
+        background: themeBackground,
+      );
     }
     if (Platform.isWindows) {
       final path = merged['Path'] ?? merged['PATH'];

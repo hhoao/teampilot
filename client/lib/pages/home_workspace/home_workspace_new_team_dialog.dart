@@ -8,6 +8,7 @@ import 'package:teampilot/widgets/app_toast/app_toast.dart';
 
 import '../../cubits/ai_feature_settings_cubit.dart';
 import '../../cubits/app_provider_cubit.dart';
+import '../../cubits/cli_presets_cubit.dart';
 import '../../cubits/team_cubit.dart';
 import '../../models/ai_feature_setting.dart';
 import '../../l10n/l10n_extensions.dart';
@@ -208,14 +209,18 @@ class _HomeWorkspaceNewTeamDialogState
     final description = _aiDescription.trim();
     if (mode == null || description.isEmpty || _generating) return;
 
-    final setting = resolveAiFeatureSetting(
-      stored: context.read<AiFeatureSettingsCubit>().state.settingFor(
-        AiFeatureId.teamGenerate,
-      ),
-      appProviders: context.read<AppProviderCubit>().state,
-      registry: CliToolRegistryScope.of(context),
+    final stored = context.read<AiFeatureSettingsCubit>().state.settingFor(
+      AiFeatureId.teamGenerate,
     );
-    if (setting.providerId.isEmpty) {
+    final appProviders = context.read<AppProviderCubit>().state;
+    final registry = CliToolRegistryScope.of(context);
+    final presets = context.read<CliPresetsCubit>().state.presets;
+    if (!aiFeatureIsConfigured(
+      stored: stored,
+      registry: registry,
+      appProviders: appProviders,
+      globalPresets: presets,
+    )) {
       AppToast.show(
         context,
         message: l10n.teamGenNoProvider,
@@ -223,6 +228,12 @@ class _HomeWorkspaceNewTeamDialogState
       );
       return;
     }
+    final setting = resolveAiFeatureSetting(
+      stored: stored,
+      appProviders: appProviders,
+      registry: registry,
+      globalPresets: presets,
+    );
 
     setState(() {
       _generating = true;

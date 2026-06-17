@@ -2,6 +2,7 @@ import 'dart:convert';
 import '../cli/registry/capabilities/plugin_manifest_capability.dart';
 import 'cli_plugin_provision_cache.dart';
 import '../io/filesystem.dart';
+import '../../utils/lock_pool.dart';
 
 /// Claude / FlashskyAI plugin directory layout (one bundle per child under `plugins/`).
 class CliPluginLayout {
@@ -9,6 +10,11 @@ class CliPluginLayout {
 
   static const claudeManifestDirName = '.claude-plugin';
   static const flashskyaiManifestDirName = '.flashskyai-plugin';
+
+  /// Serializes [copyBundlesToMember] per member plugins dir so a concurrent
+  /// launch's `removeRecursive` can't delete an in-flight stamp temp file
+  /// (otherwise the atomic stamp rename fails with PathNotFound / errno 2).
+  static final _memberProvisionLocks = LockPool();
 
   /// Resolves the plugin root inside [dirPath] (handles nested checkout dirs).
   static Future<String?> resolvePluginRoot(
@@ -169,6 +175,23 @@ class CliPluginLayout {
     required String teamPluginsDir,
     required String memberPluginsDir,
     PluginManifestPaths paths = claudePluginManifestPaths,
+  }) {
+    return _memberProvisionLocks.synchronized(
+      memberPluginsDir,
+      () => _copyBundlesToMemberUnlocked(
+        fs: fs,
+        teamPluginsDir: teamPluginsDir,
+        memberPluginsDir: memberPluginsDir,
+        paths: paths,
+      ),
+    );
+  }
+
+  static Future<String?> _copyBundlesToMemberUnlocked({
+    required Filesystem fs,
+    required String teamPluginsDir,
+    required String memberPluginsDir,
+    required PluginManifestPaths paths,
   }) async {
     final ctx = fs.pathContext;
     final teamStat = await fs.stat(teamPluginsDir);

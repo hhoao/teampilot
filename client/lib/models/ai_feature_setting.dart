@@ -22,11 +22,15 @@ enum AiFeatureId {
 /// Which CLI provider/model/effort a single AI feature should use.
 class AiFeatureSetting {
   const AiFeatureSetting({
+    this.activePresetId,
     required this.cli,
     required this.providerId,
     required this.model,
     this.effort = '',
   });
+
+  /// When set, [cli]/[providerId]/[model]/[effort] are resolved from this preset.
+  final String? activePresetId;
 
   final CliTool cli;
   final String providerId;
@@ -36,7 +40,9 @@ class AiFeatureSetting {
   final String effort;
 
   factory AiFeatureSetting.fromJson(Map<String, Object?> json) {
+    final presetRaw = (json['activePresetId'] as String? ?? '').trim();
     return AiFeatureSetting(
+      activePresetId: presetRaw.isEmpty ? null : presetRaw,
       cli: CliTool.parse(json['cli'], fallback: CliTool.claude),
       providerId: (json['providerId'] as String? ?? '').trim(),
       model: (json['model'] as String? ?? '').trim(),
@@ -45,6 +51,7 @@ class AiFeatureSetting {
   }
 
   Map<String, Object?> toJson() => {
+    if (activePresetId != null) 'activePresetId': activePresetId,
     'cli': cli.value,
     'providerId': providerId,
     'model': model,
@@ -52,12 +59,16 @@ class AiFeatureSetting {
   };
 
   AiFeatureSetting copyWith({
+    String? activePresetId,
+    bool clearActivePresetId = false,
     CliTool? cli,
     String? providerId,
     String? model,
     String? effort,
   }) {
     return AiFeatureSetting(
+      activePresetId:
+          clearActivePresetId ? null : (activePresetId ?? this.activePresetId),
       cli: cli ?? this.cli,
       providerId: providerId ?? this.providerId,
       model: model ?? this.model,

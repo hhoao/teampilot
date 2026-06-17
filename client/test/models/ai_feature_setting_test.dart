@@ -11,12 +11,14 @@ void main() {
 
   test('round-trips through json', () {
     const setting = AiFeatureSetting(
+      activePresetId: 'preset-1',
       cli: CliTool.claude,
       providerId: 'claude-official',
       model: 'sonnet',
       effort: 'high',
     );
     final restored = AiFeatureSetting.fromJson(setting.toJson());
+    expect(restored.activePresetId, 'preset-1');
     expect(restored.cli, CliTool.claude);
     expect(restored.providerId, 'claude-official');
     expect(restored.model, 'sonnet');

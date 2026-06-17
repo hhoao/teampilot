@@ -6,14 +6,17 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:teampilot/cubits/ai_feature_settings_cubit.dart';
 import 'package:teampilot/cubits/app_provider_cubit.dart';
+import 'package:teampilot/cubits/cli_presets_cubit.dart';
 import 'package:teampilot/cubits/session_preferences_cubit.dart';
 import 'package:teampilot/l10n/app_localizations.dart';
 import 'package:teampilot/pages/config/ai_features_config_section.dart';
 import 'package:teampilot/repositories/app_settings_repository.dart';
+import 'package:teampilot/repositories/cli_presets_repository.dart';
 import 'package:teampilot/repositories/session_preferences_repository.dart';
 import 'package:teampilot/services/cli/registry/cli_tool_registry.dart';
 import 'package:teampilot/services/cli/registry/cli_tool_registry_scope.dart';
 
+import '../../support/in_memory_filesystem.dart';
 import '../../support/post_frame_test_harness.dart';
 
 void main() {
@@ -28,6 +31,7 @@ void main() {
     late Directory temp;
     late AiFeatureSettingsCubit cubit;
     late AppProviderCubit appProviderCubit;
+    late CliPresetsCubit cliPresetsCubit;
     late SessionPreferencesCubit sessionPreferencesCubit;
 
     await tester.runAsync(() async {
@@ -37,15 +41,23 @@ void main() {
         repository: InMemoryAppSettingsRepository(),
       );
       appProviderCubit = AppProviderCubit(basePath: temp.path);
+      cliPresetsCubit = CliPresetsCubit(
+        repository: CliPresetsRepository(
+          fs: InMemoryFilesystem(),
+          presetsPath: '/cli-presets.json',
+        ),
+      );
       sessionPreferencesCubit = SessionPreferencesCubit(
         repository: SessionPreferencesRepository(prefs),
       );
       await sessionPreferencesCubit.load();
+      await cliPresetsCubit.load();
     });
 
     addTearDown(() async {
       await cubit.close();
       await appProviderCubit.close();
+      await cliPresetsCubit.close();
       await sessionPreferencesCubit.close();
       if (await temp.exists()) await temp.delete(recursive: true);
     });
@@ -60,6 +72,7 @@ void main() {
             providers: [
               BlocProvider.value(value: cubit),
               BlocProvider.value(value: appProviderCubit),
+              BlocProvider.value(value: cliPresetsCubit),
               BlocProvider.value(value: sessionPreferencesCubit),
             ],
             child: const Scaffold(

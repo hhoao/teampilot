@@ -4,25 +4,26 @@ import 'package:teampilot/theme/app_icon_sizes.dart';
 
 import '../../cubits/ai_feature_settings_cubit.dart';
 import '../../cubits/app_provider_cubit.dart';
+import '../../cubits/cli_presets_cubit.dart';
 import '../../l10n/l10n_extensions.dart';
 import '../../models/ai_feature_setting.dart';
 import '../../models/app_provider_config.dart';
 import '../../services/ai/ai_feature_setting_resolver.dart';
 import '../../services/cli/registry/capabilities/provider_model_capability.dart';
-import '../../services/cli/registry/cli_display_name.dart';
 import '../../services/cli/registry/cli_tool_registry_scope.dart';
 import '../../theme/app_text_styles.dart';
 import '../../widgets/app_dialog.dart';
-import '../../widgets/app_provider/brand_dropdown_rows.dart';
-import '../../widgets/app_provider/cli_effort_picker_field.dart';
 import '../../widgets/app_provider/provider_brand_icon.dart';
-import '../../widgets/app_provider/provider_model_picker_field.dart';
 import '../../widgets/cli/cli_brand_icon.dart';
+import '../../widgets/cli_launch_config/cli_launch_config_tokens.dart';
+import '../../widgets/cli_launch_config/cli_launch_custom_fields.dart';
+import '../../widgets/cli_launch_config/preset_launch_picker_field.dart';
 import '../../widgets/dropdown/app_dropdown_decoration.dart';
-import '../../widgets/dropdown/app_dropdown_field.dart';
 import '../../widgets/settings/workspace_settings_widgets.dart';
+import '../home_workspace/project/config/cli_presets_manage_dialog.dart';
 import '../home_workspace/project/config/project_cli_config_helpers.dart';
 import '../home_workspace/project/config/project_cli_effort_helpers.dart';
+import '../../services/cli/registry/cli_display_name.dart';
 
 /// Global "AI Features" settings: per-feature CLI/provider/model/effort.
 class AiFeaturesConfigWorkspace extends StatelessWidget {
@@ -104,11 +105,13 @@ class AiFeatureConfigRow extends StatelessWidget {
     final styles = AppTextStyles.of(context);
     final registry = CliToolRegistryScope.of(context);
     final appProviders = context.watch<AppProviderCubit>().state;
+    final presets = context.watch<CliPresetsCubit>().state.presets;
 
     final resolved = resolveAiFeatureSetting(
       stored: setting,
       appProviders: appProviders,
       registry: registry,
+      globalPresets: presets,
     );
     final cli = resolved.cli;
     final cliDef = registry.tryGet(cli);
@@ -122,17 +125,20 @@ class AiFeatureConfigRow extends StatelessWidget {
       provider,
     );
     final configured = aiFeatureIsConfigured(
-      resolved: resolved,
+      stored: setting,
       registry: registry,
-      provider: provider,
+      appProviders: appProviders,
+      globalPresets: presets,
     );
     final configLine = aiFeatureConfigLine(
       l10n: l10n,
       registry: registry,
       configured: configured,
+      stored: setting,
       resolved: resolved,
       provider: provider,
       hidesModelPicker: hidesModelPicker,
+      globalPresets: presets,
     );
 
     return Column(
@@ -209,7 +215,7 @@ class AiFeatureConfigRow extends StatelessWidget {
                   context,
                   feature: feature,
                   title: title,
-                  initial: resolved,
+                  initial: setting ?? resolved,
                 ),
                 icon: Icon(Icons.tune, size: context.appIconSizes.sm),
                 label: Text(l10n.projectCliConfigure),
@@ -290,31 +296,46 @@ class AiFeatureConfigureDialog extends StatefulWidget {
 }
 
 class _AiFeatureConfigureDialogState extends State<AiFeatureConfigureDialog> {
+  late String? _activePresetId;
   late CliTool _cli;
   late String _providerId;
   late String _modelId;
   late String _effortId;
 
+  static const _cliItems = [
+    CliTool.claude,
+    CliTool.codex,
+    CliTool.flashskyai,
+    CliTool.cursor,
+    CliTool.opencode,
+  ];
+
   @override
   void initState() {
     super.initState();
+    _activePresetId = widget.initial.activePresetId;
     _cli = widget.initial.cli;
     _providerId = widget.initial.providerId;
     _modelId = widget.initial.model;
     _effortId = widget.initial.effort;
   }
 
-  AppProviderConfig? _selectedProvider(Iterable<AppProviderConfig> providers) {
-    for (final provider in providers) {
-      if (provider.id == _providerId) return provider;
+  bool get _isPresetActive =>
+      _activePresetId != null && _activePresetId!.isNotEmpty;
+
+  void _applyPresetChoice(String token) {
+    if (token == CliLaunchConfigTokens.presetCustom) {
+      setState(() => _activePresetId = null);
+      return;
     }
-    return null;
+    setState(() => _activePresetId = token);
   }
 
   Future<void> _save() async {
     await context.read<AiFeatureSettingsCubit>().updateSetting(
       widget.feature,
       AiFeatureSetting(
+        activePresetId: _isPresetActive ? _activePresetId : null,
         cli: _cli,
         providerId: _providerId,
         model: _modelId,
@@ -356,36 +377,39 @@ class _AiFeatureConfigureDialogState extends State<AiFeatureConfigureDialog> {
     });
   }
 
+  void _applyProvider(String value) {
+    final registry = CliToolRegistryScope.of(context);
+    final appProviders = context.read<AppProviderCubit>().state;
+    final providers = aiFeatureProvidersForCli(_cli, appProviders, registry);
+    final nextProvider = providers.where((p) => p.id == value).firstOrNull;
+    final modelCap = registry.capability<ProviderModelCapability>(_cli);
+    final nextModel =
+        modelCap?.defaultModel(provider: nextProvider, providerId: value) ?? '';
+    setState(() {
+      _providerId = value;
+      _modelId = nextModel;
+      _effortId = '';
+    });
+  }
+
   @override
   Widget build(BuildContext context) {
     final l10n = context.l10n;
     final registry = CliToolRegistryScope.of(context);
     final dropdownDeco = AppDropdownDecorations.themed(context);
     final appProviders = context.watch<AppProviderCubit>().state;
+    final allPresets = context.watch<CliPresetsCubit>().state.presets;
+    final eligiblePresets = globalPresetPickerItems(allPresets);
+    final currentPresetToken =
+        _activePresetId ?? CliLaunchConfigTokens.presetCustom;
+    final presetDropdownItems = presetLaunchDropdownItems(
+      mode: PresetLaunchPickerMode.customOnly,
+      eligiblePresets: eligiblePresets,
+    );
     final providers = aiFeatureProvidersForCli(_cli, appProviders, registry);
-    final providerIds = providers.map((p) => p.id).toList();
-    final selectedProvider = _selectedProvider(providers);
-    final hideModelPicker = projectCliHidesModelPicker(
-      registry,
-      _cli,
-      selectedProvider,
-    );
-    final showEffortPicker = projectCliShowsEffortPicker(
-      registry: registry,
-      cli: _cli,
-      provider: selectedProvider,
-      model: _modelId,
-    );
-    final cliItems = [
-      CliTool.claude,
-      CliTool.codex,
-      CliTool.flashskyai,
-      CliTool.cursor,
-      CliTool.opencode,
-    ];
 
     return AppDialog(
-      maxWidth: 480,
+      maxWidth: 680,
       child: Column(
         mainAxisSize: MainAxisSize.min,
         crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -397,145 +421,76 @@ class _AiFeatureConfigureDialogState extends State<AiFeatureConfigureDialog> {
               mainAxisSize: MainAxisSize.min,
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
-                SettingsLabeledRow(
-                  title: l10n.aiFeatureCliLabel,
-                  trailing: _aiFeatureDialogDropdown(
-                    AppDropdownField<CliTool>(
-                      items: cliItems,
-                      initialItem: _cli,
-                      decoration: dropdownDeco,
-                      itemLabel: (c) {
-                        final def = registry.tryGet(c);
-                        return def == null
-                            ? c.value
-                            : cliDisplayName(def, l10n);
-                      },
-                      onChanged: (c) {
-                        if (c == null || c == _cli) return;
-                        _applyCli(c);
-                      },
-                    ),
-                  ),
-                  showDividerBelow: providers.isNotEmpty,
+                PresetLaunchPickerField(
+                  mode: PresetLaunchPickerMode.customOnly,
+                  items: presetDropdownItems,
+                  currentToken: currentPresetToken,
+                  eligiblePresets: eligiblePresets,
+                  registry: registry,
+                  providerState: appProviders,
+                  decoration: dropdownDeco,
+                  onChanged: _applyPresetChoice,
                 ),
-                if (providers.isEmpty)
-                  SettingsLabeledRow(
-                    title: l10n.provider,
-                    trailing: Text(
-                      l10n.onboardingDefaultProviderEmpty,
-                      style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                        color: Theme.of(context).colorScheme.onSurfaceVariant,
-                      ),
-                    ),
-                    showDividerBelow: false,
-                  )
-                else ...[
-                  SettingsLabeledRow(
-                    title: l10n.provider,
-                    trailing: _aiFeatureDialogDropdown(
-                      AppDropdownField<String>(
-                        key: ValueKey(
-                          'ai-feature-dialog-provider-${widget.feature.key}-$_providerId',
-                        ),
-                        items: providerIds,
-                        initialItem: _providerId.isEmpty ? null : _providerId,
-                        hintText: l10n.selectProvider,
-                        decoration: dropdownDeco,
-                        onChanged: (value) {
-                          if (value == null || value.isEmpty) return;
-                          final nextProvider = providers
-                              .where((p) => p.id == value)
-                              .firstOrNull;
-                          final modelCap = registry
-                              .capability<ProviderModelCapability>(_cli);
-                          final nextModel =
-                              modelCap?.defaultModel(
-                                provider: nextProvider,
-                                providerId: value,
-                              ) ??
-                              '';
-                          setState(() {
-                            _providerId = value;
-                            _modelId = nextModel;
-                            _effortId = '';
-                          });
-                        },
-                        itemBuilder: providerDropdownItemBuilder(
-                          providers: providers,
-                          labelFor: (id) =>
-                              providers
-                                  .where((p) => p.id == id)
-                                  .map((p) => p.name)
-                                  .firstOrNull ??
-                              id,
-                        ),
-                      ),
-                    ),
-                    showDividerBelow: !hideModelPicker || showEffortPicker,
+                if (!_isPresetActive)
+                  CliLaunchCustomFields(
+                    catalogCli: _cli,
+                    providers: providers,
+                    providerId: _providerId,
+                    modelId: _modelId,
+                    effortId: _effortId,
+                    registry: registry,
+                    cliFieldKind: CliLaunchCliFieldKind.toolList,
+                    cliItems: _cliItems,
+                    onCliChanged: _applyCli,
+                    effortContext: CliLaunchEffortContext.standalone,
+                    effortSubtitle: l10n.projectCliEffortLevelSubtitle,
+                    effortAllowInherit: true,
+                    effortInheritLabel: l10n.projectCliEffortInheritHint,
+                    providerTitle: l10n.provider,
+                    modelTitle: l10n.aiFeatureModelLabel,
+                    effortTitle: l10n.aiFeatureEffortLabel,
+                    dropdownKeyPrefix: 'ai-feature-${widget.feature.key}',
+                    decoration: dropdownDeco,
+                    onProviderChanged: _applyProvider,
+                    onModelChanged: (value) => setState(() {
+                      _modelId = value.trim();
+                      if (!projectCliShowsEffortPicker(
+                        registry: registry,
+                        cli: _cli,
+                        provider: providers
+                            .where((p) => p.id == _providerId)
+                            .firstOrNull,
+                        model: _modelId,
+                      )) {
+                        _effortId = '';
+                      }
+                    }),
+                    onEffortChanged: (value) =>
+                        setState(() => _effortId = value.trim()),
                   ),
-                  if (!hideModelPicker)
-                    SettingsLabeledRow(
-                      title: l10n.aiFeatureModelLabel,
-                      trailing: _aiFeatureDialogDropdown(
-                        ProviderModelPickerField(
-                          key: ValueKey(
-                            'ai-feature-dialog-model-$_providerId-$_modelId',
-                          ),
-                          cli: _cli,
-                          providerId: _providerId,
-                          provider: selectedProvider,
-                          value: _modelId,
-                          hintText: l10n.selectModel,
-                          decoration: dropdownDeco,
-                          onChanged: (value) => setState(() {
-                            _modelId = value.trim();
-                            if (!projectCliShowsEffortPicker(
-                              registry: registry,
-                              cli: _cli,
-                              provider: selectedProvider,
-                              model: _modelId,
-                            )) {
-                              _effortId = '';
-                            }
-                          }),
-                        ),
-                      ),
-                      showDividerBelow: showEffortPicker,
-                    ),
-                  if (showEffortPicker)
-                    SettingsLabeledRow(
-                      title: l10n.aiFeatureEffortLabel,
-                      subtitle: l10n.projectCliEffortLevelSubtitle,
-                      trailing: _aiFeatureDialogDropdown(
-                        CliEffortPickerField(
-                          key: ValueKey(
-                            'ai-feature-dialog-effort-$_providerId-$_modelId-$_effortId',
-                          ),
-                          cli: _cli,
-                          value: _effortId,
-                          provider: selectedProvider,
-                          model: _modelId,
-                          allowInherit: true,
-                          inheritLabel: l10n.projectCliEffortInheritHint,
-                          decoration: dropdownDeco,
-                          onChanged: (value) =>
-                              setState(() => _effortId = value.trim()),
-                        ),
-                      ),
-                      showDividerBelow: false,
-                    ),
-                ],
               ],
             ),
           ),
           AppDialogActions(
             children: [
               TextButton(
+                onPressed: () {
+                  Navigator.of(context).pop();
+                  showDialog<void>(
+                    context: context,
+                    builder: (_) => const CliPresetsManageDialog(),
+                  );
+                },
+                child: Text(l10n.teamDefaultPresetManage),
+              ),
+              TextButton(
                 onPressed: () => Navigator.of(context).pop(),
                 child: Text(l10n.cancel),
               ),
               FilledButton(
-                onPressed: _providerId.trim().isEmpty ? null : _save,
+                onPressed: _isPresetActive || _providerId.trim().isNotEmpty
+                    ? _save
+                    : null,
                 child: Text(l10n.save),
               ),
             ],
@@ -544,17 +499,6 @@ class _AiFeatureConfigureDialogState extends State<AiFeatureConfigureDialog> {
       ),
     );
   }
-}
-
-const _aiFeatureDialogDropdownMinWidth = 180.0;
-
-Widget _aiFeatureDialogDropdown(Widget child) {
-  return ConstrainedBox(
-    constraints: const BoxConstraints(
-      minWidth: _aiFeatureDialogDropdownMinWidth,
-    ),
-    child: child,
-  );
 }
 
 String _defaultProviderIdForCli(

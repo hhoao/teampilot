@@ -8,6 +8,7 @@ import 'package:teampilot/theme/app_toast_theme.dart';
 import 'package:teampilot/widgets/app_toast/app_toast.dart';
 
 import '../../cubits/ai_feature_settings_cubit.dart';
+import '../../cubits/cli_presets_cubit.dart';
 import '../../cubits/editor_cubit.dart';
 import '../../cubits/git_cubit.dart';
 import '../../cubits/app_provider_cubit.dart';
@@ -248,15 +249,19 @@ class _GitSourceControlPanelState extends State<GitSourceControlPanel> {
               if (ok) _commitController.clear();
             },
             onGenerate: () async {
-              final setting = resolveAiFeatureSetting(
-                stored: context
-                    .read<AiFeatureSettingsCubit>()
-                    .state
-                    .settingFor(AiFeatureId.commitMessage),
-                appProviders: context.read<AppProviderCubit>().state,
-                registry: CliToolRegistryScope.of(context),
-              );
-              if (setting.providerId.isEmpty) {
+              final stored = context
+                  .read<AiFeatureSettingsCubit>()
+                  .state
+                  .settingFor(AiFeatureId.commitMessage);
+              final appProviders = context.read<AppProviderCubit>().state;
+              final registry = CliToolRegistryScope.of(context);
+              final presets = context.read<CliPresetsCubit>().state.presets;
+              if (!aiFeatureIsConfigured(
+                stored: stored,
+                registry: registry,
+                appProviders: appProviders,
+                globalPresets: presets,
+              )) {
                 AppToast.show(
                   context,
                   message: l10n.gitGenerateCommitMessageNoProvider,
@@ -264,6 +269,12 @@ class _GitSourceControlPanelState extends State<GitSourceControlPanel> {
                 );
                 return;
               }
+              final setting = resolveAiFeatureSetting(
+                stored: stored,
+                appProviders: appProviders,
+                registry: registry,
+                globalPresets: presets,
+              );
               await _cubit.generateCommitMessage(setting);
             },
           ),

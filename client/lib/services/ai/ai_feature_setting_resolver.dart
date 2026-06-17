@@ -2,19 +2,41 @@ import '../../cubits/app_provider_cubit.dart';
 import '../../l10n/app_localizations.dart';
 import '../../models/ai_feature_setting.dart';
 import '../../models/app_provider_config.dart';
+import '../../models/cli_preset.dart';
 import '../cli/registry/capabilities/provider_catalog_capability.dart';
 import '../cli/registry/capabilities/provider_model_capability.dart';
 import '../cli/registry/cli_display_name.dart';
 import '../cli/registry/cli_tool_registry.dart';
 
 /// Resolves the effective [AiFeatureSetting] for a feature, filling in CLI,
-/// provider, and model from stored prefs and global provider defaults.
+/// provider, and model from stored prefs, active preset, and global defaults.
 AiFeatureSetting resolveAiFeatureSetting({
   required AiFeatureSetting? stored,
   required AppProviderState appProviders,
   required CliToolRegistry registry,
+  List<CliPreset> globalPresets = const [],
   CliTool defaultCli = CliTool.claude,
 }) {
+  final presetId = stored?.activePresetId?.trim();
+  if (presetId != null && presetId.isNotEmpty) {
+    CliPreset? preset;
+    for (final candidate in globalPresets) {
+      if (candidate.id == presetId) {
+        preset = candidate;
+        break;
+      }
+    }
+    if (preset != null) {
+      return AiFeatureSetting(
+        activePresetId: presetId,
+        cli: preset.cli,
+        providerId: preset.provider,
+        model: preset.model,
+        effort: preset.effort,
+      );
+    }
+  }
+
   final cli = stored?.cli ?? defaultCli;
   final catalogCli = _catalogCli(registry, cli);
   final providers = catalogCli == null
@@ -36,6 +58,7 @@ AiFeatureSetting resolveAiFeatureSetting({
             '');
 
   return AiFeatureSetting(
+    activePresetId: stored?.activePresetId,
     cli: cli,
     providerId: providerId,
     model: model,
@@ -70,35 +93,87 @@ List<AppProviderConfig> aiFeatureProvidersForCli(
   return appProviders.providersFor(catalogCli);
 }
 
-/// Whether [resolved] has enough provider/model to run the feature.
+/// Whether the user has explicitly saved AI feature settings (preset or custom).
+///
+/// [stored] must be non-null — global provider defaults alone do not count.
 bool aiFeatureIsConfigured({
-  required AiFeatureSetting resolved,
+  required AiFeatureSetting? stored,
   required CliToolRegistry registry,
-  AppProviderConfig? provider,
+  required AppProviderState appProviders,
+  List<CliPreset> globalPresets = const [],
 }) {
-  if (resolved.providerId.isEmpty) return false;
+  if (stored == null) return false;
+
+  final presetId = stored.activePresetId?.trim();
+  if (presetId != null && presetId.isNotEmpty) {
+    for (final preset in globalPresets) {
+      if (preset.id == presetId) return true;
+    }
+    return false;
+  }
+
+  final providerId = stored.providerId.trim();
+  if (providerId.isEmpty) return false;
+
+  final providers = aiFeatureProvidersForCli(
+    stored.cli,
+    appProviders,
+    registry,
+  );
+  final provider = providers.where((p) => p.id == providerId).firstOrNull;
+  if (provider == null) return false;
 
   final modelCapability = registry.capability<ProviderModelCapability>(
-    resolved.cli,
+    stored.cli,
   );
   if (modelCapability != null &&
-      provider != null &&
       modelCapability.pickerMode(provider) == ProviderModelPickerMode.hidden) {
     return true;
   }
-  return resolved.model.isNotEmpty;
+  return stored.model.trim().isNotEmpty;
 }
 
-/// Config line under the feature intro (CLI · provider · model, or hint).
+/// Config line under the feature intro (preset name or CLI · provider · model).
 String aiFeatureConfigLine({
   required AppLocalizations l10n,
   required CliToolRegistry registry,
   required bool configured,
+  required AiFeatureSetting? stored,
   required AiFeatureSetting resolved,
   AppProviderConfig? provider,
   required bool hidesModelPicker,
+  List<CliPreset> globalPresets = const [],
 }) {
   if (!configured) return l10n.projectCliNotConfiguredHint;
+
+  final presetId = stored?.activePresetId?.trim();
+  if (presetId != null && presetId.isNotEmpty) {
+    for (final preset in globalPresets) {
+      if (preset.id == presetId) {
+        final def = registry.tryGet(preset.cli);
+        final cliLabel = def == null
+            ? preset.cli.value
+            : cliDisplayName(def, l10n);
+        final providerName = provider?.name.trim() ?? preset.provider.trim();
+        final modelLabel = preset.model.trim();
+        final effortLabel = preset.effort.trim();
+        final head = '${preset.name} · $cliLabel';
+        if (providerName.isEmpty) return head;
+        if (modelLabel.isEmpty && hidesModelPicker) {
+          if (effortLabel.isEmpty) return '$head · $providerName';
+          return '$head · $providerName · $effortLabel';
+        }
+        if (modelLabel.isEmpty) {
+          if (effortLabel.isEmpty) return '$head · $providerName';
+          return '$head · $providerName · $effortLabel';
+        }
+        if (effortLabel.isEmpty) {
+          return '$head · $providerName · $modelLabel';
+        }
+        return '$head · $providerName · $modelLabel · $effortLabel';
+      }
+    }
+  }
 
   final def = registry.tryGet(resolved.cli);
   final cliLabel = def == null

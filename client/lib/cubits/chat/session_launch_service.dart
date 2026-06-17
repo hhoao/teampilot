@@ -4,6 +4,7 @@ import 'package:uuid/uuid.dart';
 
 import '../../models/app_project.dart';
 import '../../models/app_session.dart';
+import '../../models/cli_preset.dart';
 import '../../models/member_instance.dart';
 import '../../models/project_profile.dart';
 import '../../models/session_member_binding.dart';
@@ -121,12 +122,16 @@ class SessionLaunchService implements MemberConnector {
         session.sessionTeam.trim().isEmpty;
     ProjectProfile? personalProfile;
     TeamMemberConfig? personalMember;
+    CliPreset? personalPreset;
     if (isPersonal) {
       personalProfile = _personalProfileForSession(
         session,
         await _h.lifecycle.loadProjectProfile(project.projectId),
       );
-      personalMember = standaloneMemberFromProfile(personalProfile, preset: null);
+      personalPreset =
+          await _h.lifecycle.resolveActivePresetForProfile(personalProfile);
+      personalMember =
+          standaloneMemberFromProfile(personalProfile, preset: personalPreset);
     }
     if (!isPersonal && (team == null || member == null)) {
       throw StateError(
@@ -136,8 +141,9 @@ class SessionLaunchService implements MemberConnector {
     final effectiveMember = isPersonal ? personalMember! : member!;
     final effectiveTeam = isPersonal ? null : team;
     final ts = _h.shellFactory.newSession(
-      // TODO: migrate to presets
-      isPersonal ? CliTool.claude : member!.cliWithin(team!),
+      isPersonal
+          ? (personalPreset?.cli ?? CliTool.claude)
+          : member!.cliWithin(team!),
     );
     final info = ChatTabInfo(
       id: session.sessionId,
