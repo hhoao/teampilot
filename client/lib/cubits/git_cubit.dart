@@ -21,7 +21,7 @@ class GitState extends Equatable {
     this.commitMessage = '',
     this.branches = const [],
     this.errorMessage,
-    this.changesViewMode = GitChangesViewMode.list,
+    this.changesViewMode = GitChangesViewMode.tree,
     this.expandedFolderPaths = const {},
     this.generatingCommitMessage = false,
   });
@@ -103,6 +103,10 @@ class GitCubit extends Cubit<GitState> {
   final GitService _service;
   final HeadlessAiService _headless;
 
+  /// Seeds [GitState.expandedFolderPaths] once after the first status load in
+  /// tree mode (matches [toggleChangesViewMode] when switching from list).
+  bool _treeExpansionInitialized = false;
+
   @visibleForTesting
   void debugSetState(GitState next) => _emit(next);
 
@@ -112,6 +116,7 @@ class GitCubit extends Cubit<GitState> {
 
   Future<void> setRepoRoot(String path) async {
     if (path == state.repoRoot) return;
+    _treeExpansionInitialized = false;
     _emit(state.copyWith(repoRoot: path, clearError: true));
     await refresh();
   }
@@ -141,12 +146,22 @@ class GitCubit extends Cubit<GitState> {
           ? await _service.branches(dir)
           : const <String>[];
       if (isClosed || state.repoRoot != dir) return;
+      var expanded = state.expandedFolderPaths;
+      if (state.changesViewMode == GitChangesViewMode.tree &&
+          !_treeExpansionInitialized) {
+        expanded = gitChangesDefaultExpandedFolders([
+          ...status.staged,
+          ...status.unstaged,
+        ]);
+        _treeExpansionInitialized = true;
+      }
       _emit(
         state.copyWith(
           gitAvailable: true,
           isLoading: false,
           status: status,
           branches: branches,
+          expandedFolderPaths: expanded,
         ),
       );
     } on GitException catch (e) {
