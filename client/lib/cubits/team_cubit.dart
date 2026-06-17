@@ -560,11 +560,11 @@ class TeamCubit extends Cubit<TeamState> implements TeamCubitHost {
   ///
   /// In [TeamMode.mixed], pass [syncCli] when selecting an explicit preset so
   /// the member's CLI matches the preset (launch uses [TeamMemberConfig.cli]).
-  void setMemberActivePreset(
+  Future<void> setMemberActivePreset(
     String memberId,
     String? presetId, {
     CliTool? syncCli,
-  }) {
+  }) async {
     final team = state.selectedTeam;
     if (team == null) return;
     final member = team.members.cast<TeamMemberConfig?>().firstWhere(
@@ -579,7 +579,7 @@ class TeamCubit extends Cubit<TeamState> implements TeamCubitHost {
         effectiveId != null &&
         effectiveId != TeamConfig.inheritPresetId &&
         syncCli != null;
-    updateMember(
+    await updateMember(
       memberId,
       member.copyWith(
         activePresetId: effectiveId,

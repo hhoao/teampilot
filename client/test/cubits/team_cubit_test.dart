@@ -459,12 +459,11 @@ void main() {
     );
     final memberId = cubit.state.selectedTeam!.members.first.id;
 
-    cubit.setMemberActivePreset(
+    await cubit.setMemberActivePreset(
       memberId,
       'preset-codex',
       syncCli: CliTool.codex,
     );
-    await drainPendingAsyncWork();
 
     final member = cubit.state.selectedTeam!.members.firstWhere(
       (m) => m.id == memberId,
@@ -472,8 +471,7 @@ void main() {
     expect(member.activePresetId, 'preset-codex');
     expect(member.cli, CliTool.codex);
 
-    cubit.setMemberActivePreset(memberId, TeamConfig.inheritPresetId);
-    await drainPendingAsyncWork();
+    await cubit.setMemberActivePreset(memberId, TeamConfig.inheritPresetId);
 
     final inherited = cubit.state.selectedTeam!.members.firstWhere(
       (m) => m.id == memberId,
