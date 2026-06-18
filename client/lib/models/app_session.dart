@@ -14,6 +14,7 @@ class AppSession {
     this.additionalPaths = const [],
     this.display = '',
     this.sessionTeam = '',
+    this.identityId = '',
     this.cliTeamName = '',
     this.cli,
     this.members = const [],
@@ -60,6 +61,7 @@ class AppSession {
       additionalPaths: paths,
       display: json['display'] as String? ?? '',
       sessionTeam: json['sessionTeam'] as String? ?? '',
+      identityId: json['identityId'] as String? ?? '',
       cliTeamName: json['cliTeamName'] as String? ?? '',
       cli: CliTool.tryParse(json['cli'] as String?),
       members: members,
@@ -80,6 +82,12 @@ class AppSession {
 
   /// Stable UI team id ([TeamIdentity.id]) for filtering; not the CLI runtime name.
   final String sessionTeam;
+
+  /// Personal-session launch identity ([PersonalIdentity.id]) this session was
+  /// created under. Empty for team sessions and for legacy personal sessions
+  /// that predate per-identity launches (resolved to the default personal at
+  /// launch time). The personal analog of [sessionTeam].
+  final String identityId;
 
   /// CLI `--team-name` / config-profiles member dir (`{teamId}-{seq}`).
   final String cliTeamName;
@@ -136,6 +144,7 @@ class AppSession {
     List<String>? additionalPaths,
     String? display,
     String? sessionTeam,
+    String? identityId,
     String? cliTeamName,
     CliTool? cli,
     List<SessionMemberBinding>? members,
@@ -153,6 +162,7 @@ class AppSession {
       additionalPaths: additionalPaths ?? this.additionalPaths,
       display: display ?? this.display,
       sessionTeam: sessionTeam ?? this.sessionTeam,
+      identityId: identityId ?? this.identityId,
       cliTeamName: cliTeamName ?? this.cliTeamName,
       cli: cli ?? this.cli,
       members: members ?? this.members,
@@ -174,6 +184,7 @@ class AppSession {
       'additionalPaths': additionalPaths,
       'display': display,
       'sessionTeam': sessionTeam,
+      if (identityId.isNotEmpty) 'identityId': identityId,
       if (cliTeamName.isNotEmpty) 'cliTeamName': cliTeamName,
       if (cli != null) 'cli': cli!.value,
       if (members.isNotEmpty)
@@ -198,6 +209,7 @@ class AppSession {
             listEquals(additionalPaths, other.additionalPaths) &&
             display == other.display &&
             sessionTeam == other.sessionTeam &&
+            identityId == other.identityId &&
             cliTeamName == other.cliTeamName &&
             cli == other.cli &&
             listEquals(members, other.members) &&
@@ -217,6 +229,7 @@ class AppSession {
     Object.hashAll(additionalPaths),
     display,
     sessionTeam,
+    identityId,
     cliTeamName,
     cli,
     Object.hashAll(members),

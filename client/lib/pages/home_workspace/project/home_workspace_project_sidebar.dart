@@ -11,10 +11,8 @@ import '../../../l10n/l10n_extensions.dart';
 import '../../../models/app_project.dart';
 import '../../../models/app_session.dart';
 import '../../../models/cli_preset.dart';
-import '../../../models/project_agent_config.dart';
+import '../../../models/personal_identity.dart';
 import '../../../models/team_config.dart';
-import '../../../services/cli/registry/cli_display_name.dart';
-import '../../../services/cli/registry/cli_tool_registry.dart';
 import '../../../services/cli/registry/cli_tool_registry_scope.dart';
 import '../../../theme/app_text_styles.dart';
 import '../../../utils/app_keys.dart';
@@ -45,12 +43,16 @@ class HomeWorkspaceProjectSidebar extends StatefulWidget {
   const HomeWorkspaceProjectSidebar({
     required this.project,
     required this.isPersonalProject,
+    required this.identityId,
     required this.sessionTeamFilter,
     super.key,
   });
 
   final AppProject project;
   final bool isPersonalProject;
+
+  /// The launch identity the project was opened against ([WorkspaceIdentity.id]).
+  final String identityId;
   final String sessionTeamFilter;
 
   @override
@@ -95,7 +97,10 @@ class _HomeWorkspaceProjectSidebarState
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
           if (_isPersonal) ...[
-            _PresetDropdown(projectId: widget.project.projectId),
+            _PresetDropdown(
+              projectId: widget.project.projectId,
+              identityId: widget.identityId,
+            ),
             const SizedBox(height: 12),
           ],
           _SidebarActionTile(
@@ -222,15 +227,17 @@ class _HomeWorkspaceProjectSidebarState
       widget.project,
       isPersonal: widget.isPersonalProject,
       sessionTeamId: widget.sessionTeamFilter,
+      personalIdentityId: widget.identityId,
       cli: cli,
     );
   }
 }
 
 class _PresetDropdown extends StatefulWidget {
-  const _PresetDropdown({required this.projectId});
+  const _PresetDropdown({required this.projectId, required this.identityId});
 
   final String projectId;
+  final String identityId;
 
   @override
   State<_PresetDropdown> createState() => _PresetDropdownState();
@@ -244,7 +251,9 @@ class _PresetDropdownState extends State<_PresetDropdown> {
     final l10n = context.l10n;
     final presetsState = context.watch<CliPresetsCubit>().state;
     final identityCubit = context.watch<IdentityCubit>();
-    final personal = identityCubit.activePersonal;
+    final opened = identityCubit.state.byId(widget.identityId);
+    final personal =
+        opened is PersonalIdentity ? opened : identityCubit.activePersonal;
 
     if (personal == null || presetsState.status == CliPresetsLoadStatus.loading) {
       return const Padding(
@@ -283,7 +292,9 @@ class _PresetDropdownState extends State<_PresetDropdown> {
       _didAutoActivate = true;
       WidgetsBinding.instance.addPostFrameCallback((_) {
         if (!mounted) return;
-        context.read<IdentityCubit>().setActivePersonalPreset(presets.first.id);
+        context
+            .read<IdentityCubit>()
+            .setPersonalPreset(widget.identityId, presets.first.id);
       });
     }
 
@@ -303,7 +314,9 @@ class _PresetDropdownState extends State<_PresetDropdown> {
               decoration: AppDropdownDecorations.themed(context),
               onChanged: (value) {
                 if (value == null) return;
-                context.read<IdentityCubit>().setActivePersonalPreset(value);
+                context
+                    .read<IdentityCubit>()
+                    .setPersonalPreset(widget.identityId, value);
               },
               itemBuilder: (context, presetId) {
                 final preset = presetsState.presetById(presetId);

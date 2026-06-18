@@ -416,4 +416,40 @@ void main() {
     await repo.updateSessionTeam(session.sessionId, 't2');
     expect((await repo.loadSessions()).single.sessionTeam, 't2');
   });
+
+  test('personal session persists its launch identityId', () async {
+    final tmp = await Directory.systemTemp.createTemp('fs_session_repo_');
+    addTearDown(() => tmp.deleteSync(recursive: true));
+
+    final repo = SessionRepository(rootDir: tmp.path);
+    final project = await repo.createProject('/w');
+    final session = await repo.createSession(
+      project.projectId,
+      personalIdentityId: 'writing',
+    );
+
+    // In memory and after reload from disk.
+    expect(session.identityId, 'writing');
+    expect((await repo.loadSessions()).single.identityId, 'writing');
+  });
+
+  test('team session ignores personalIdentityId (identityId stays empty)',
+      () async {
+    final tmp = await Directory.systemTemp.createTemp('fs_session_repo_');
+    addTearDown(() => tmp.deleteSync(recursive: true));
+
+    final repo = SessionRepository(rootDir: tmp.path);
+    final project = await repo.createProject('/w');
+    final session = await repo.createSession(
+      project.projectId,
+      sessionTeam: 'team-a',
+      personalIdentityId: 'writing',
+      rosterMembers: [
+        const TeamMemberConfig(id: 'team-lead', name: 'Lead'),
+      ],
+    );
+
+    expect(session.identityId, '');
+    expect((await repo.loadSessions()).single.identityId, '');
+  });
 }

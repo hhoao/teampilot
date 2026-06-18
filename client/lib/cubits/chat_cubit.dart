@@ -309,6 +309,7 @@ class ChatCubit extends Cubit<ChatState>
     String projectId,
     SessionRepository repo, {
     String sessionTeamId = '',
+    String personalIdentityId = '',
     List<TeamMemberConfig> rosterMembers = const [],
     CliTool? cli,
   }) async {
@@ -316,6 +317,7 @@ class ChatCubit extends Cubit<ChatState>
       projectId,
       repo,
       sessionTeamId: sessionTeamId,
+      personalIdentityId: personalIdentityId,
       rosterMembers: rosterMembers,
       cli: cli,
     );

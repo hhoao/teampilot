@@ -6,7 +6,6 @@ import '../../../cubits/identity_cubit.dart';
 import '../../../l10n/l10n_extensions.dart';
 import '../../../models/app_project.dart';
 import '../../../models/personal_identity.dart';
-import '../../../models/workspace_identity.dart';
 import '../../../models/team_config.dart';
 import '../../../models/workspace_identity.dart';
 import '../../../utils/app_keys.dart';

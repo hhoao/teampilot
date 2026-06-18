@@ -83,12 +83,14 @@ class SessionDataStore {
     String projectId,
     SessionRepository repo, {
     String sessionTeamId = '',
+    String personalIdentityId = '',
     List<TeamMemberConfig> rosterMembers = const [],
     CliTool? cli,
   }) {
     return repo.createSession(
       projectId,
       sessionTeam: sessionTeamId,
+      personalIdentityId: personalIdentityId,
       rosterMembers: rosterMembers,
       cli: cli,
     );

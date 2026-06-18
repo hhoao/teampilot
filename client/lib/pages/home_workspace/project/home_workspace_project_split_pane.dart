@@ -10,12 +10,16 @@ class HomeWorkspaceProjectSplitPane extends StatefulWidget {
   const HomeWorkspaceProjectSplitPane({
     required this.project,
     required this.isPersonalProject,
+    required this.identityId,
     required this.sessionTeamFilter,
     super.key,
   });
 
   final AppProject project;
   final bool isPersonalProject;
+
+  /// The launch identity the project was opened against ([WorkspaceIdentity.id]).
+  final String identityId;
 
   /// Empty for personal mode; team id when opened as a team.
   final String sessionTeamFilter;
@@ -45,6 +49,7 @@ class _HomeWorkspaceProjectSplitPaneState
           first: HomeWorkspaceProjectSidebar(
             project: widget.project,
             isPersonalProject: widget.isPersonalProject,
+            identityId: widget.identityId,
             sessionTeamFilter: widget.sessionTeamFilter,
           ),
           second: ChatPage(

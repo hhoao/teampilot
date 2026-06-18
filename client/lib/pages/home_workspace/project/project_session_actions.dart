@@ -8,10 +8,10 @@ import 'package:teampilot/widgets/app_toast/app_toast.dart';
 import '../../../cubits/chat_cubit.dart';
 import '../../../cubits/cli_presets_cubit.dart';
 import '../../../cubits/identity_cubit.dart';
-import '../../../cubits/identity_cubit.dart';
 import '../../../l10n/l10n_extensions.dart';
 import '../../../models/app_project.dart';
 import '../../../models/app_session.dart';
+import '../../../models/personal_identity.dart';
 import '../../../models/team_config.dart';
 import '../../../repositories/session_repository.dart';
 
@@ -58,6 +58,7 @@ Future<void> createAndOpenProjectConversation(
   AppProject project, {
   required bool isPersonal,
   String sessionTeamId = '',
+  String personalIdentityId = '',
   CliTool? cli,
 }) async {
   final chatCubit = context.read<ChatCubit>();
@@ -69,7 +70,7 @@ Future<void> createAndOpenProjectConversation(
   // resumes under (and stores its transcript with) the CLI the user selected.
   // An explicit [cli] override (e.g. a per-preset "new chat" action) wins.
   final effectiveCli = isPersonal
-      ? (cli ?? _activePresetCli(context) ?? CliTool.claude)
+      ? (cli ?? _activePresetCli(context, personalIdentityId) ?? CliTool.claude)
       : null;
 
   try {
@@ -77,6 +78,7 @@ Future<void> createAndOpenProjectConversation(
       project.projectId,
       repo,
       sessionTeamId: isPersonal ? '' : (team?.id ?? sessionTeamId),
+      personalIdentityId: isPersonal ? personalIdentityId : '',
       rosterMembers: isPersonal ? const [] : (team?.members ?? const []),
       cli: effectiveCli,
     );
@@ -97,10 +99,15 @@ Future<void> createAndOpenProjectConversation(
   }
 }
 
-/// CLI of the project's currently active preset, or `null` when unavailable
-/// (e.g. no preset selected yet). Used to pin a new personal session's CLI.
-CliTool? _activePresetCli(BuildContext context) {
-  final personal = context.read<IdentityCubit>().activePersonal;
+/// CLI of the opened personal identity's active preset, or `null` when
+/// unavailable (e.g. no preset selected yet). Used to pin a new personal
+/// session's CLI. Falls back to the cubit's default personal when
+/// [personalIdentityId] is empty or unknown.
+CliTool? _activePresetCli(BuildContext context, String personalIdentityId) {
+  final cubit = context.read<IdentityCubit>();
+  final byId =
+      personalIdentityId.isEmpty ? null : cubit.state.byId(personalIdentityId);
+  final personal = byId is PersonalIdentity ? byId : cubit.activePersonal;
   final activePresetId = personal?.activePresetId;
   if (activePresetId == null || activePresetId.isEmpty) return null;
   return context.read<CliPresetsCubit>().state.presetById(activePresetId)?.cli;

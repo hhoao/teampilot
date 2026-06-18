@@ -7,7 +7,6 @@ import '../models/mcp_server.dart';
 import '../models/personal_identity.dart';
 import '../models/plugin.dart';
 import '../models/team_config.dart';
-import '../models/project_agent_config.dart';
 import '../models/workspace_identity.dart';
 import '../repositories/mcp_repository.dart';
 import '../repositories/plugin_repository.dart';
@@ -198,6 +197,10 @@ class IdentityCubit extends Cubit<IdentityState> implements IdentityCubitHost {
   Future<void> savePersonal(PersonalIdentity identity) async {
     await _repository.save(identity);
     await _reloadIdentities();
+    // Every save path (skills/mcp/agent/preset and plugins) goes through here,
+    // so relink plugins on save to keep the runtime bundle in sync — the
+    // section widgets call savePersonal directly rather than per-field setters.
+    await _syncPersonalPlugins(identity);
   }
 
   Future<void> deletePersonal(String id) async {
@@ -771,52 +774,14 @@ class IdentityCubit extends Cubit<IdentityState> implements IdentityCubitHost {
     return personals.isEmpty ? null : personals.first;
   }
 
-  Future<void> setActivePersonalSkillIds(List<String> skillIds) async {
-    final personal = activePersonal;
-    if (personal == null) return;
-    await savePersonal(
-      personal.copyWith(
-        bundle: personal.bundle.copyWith(
-          skillIds: List<String>.unmodifiable(skillIds),
-        ),
-      ),
-    );
-  }
-
-  Future<void> setActivePersonalPluginIds(List<String> pluginIds) async {
-    final personal = activePersonal;
-    if (personal == null) return;
-    final next = personal.copyWith(
-      bundle: personal.bundle.copyWith(
-        pluginIds: List<String>.unmodifiable(pluginIds),
-      ),
-    );
-    await savePersonal(next);
-    await _syncPersonalPlugins(next);
-  }
-
-  Future<void> setActivePersonalMcpServerIds(List<String> mcpServerIds) async {
-    final personal = activePersonal;
-    if (personal == null) return;
-    await savePersonal(
-      personal.copyWith(
-        bundle: personal.bundle.copyWith(
-          mcpServerIds: List<String>.unmodifiable(mcpServerIds),
-        ),
-      ),
-    );
-  }
-
-  Future<void> setActivePersonalPreset(String presetId) async {
-    final personal = activePersonal;
+  /// Sets the active preset for a specific personal identity (the one the
+  /// project was opened against). Falls back to [activePersonal] when
+  /// [identityId] is empty or not a personal identity.
+  Future<void> setPersonalPreset(String identityId, String presetId) async {
+    final byId = identityId.isEmpty ? null : state.byId(identityId);
+    final personal = byId is PersonalIdentity ? byId : activePersonal;
     if (personal == null) return;
     await savePersonal(personal.copyWith(activePresetId: presetId.trim()));
-  }
-
-  Future<void> updateActivePersonalAgent(ProjectAgentConfig agent) async {
-    final personal = activePersonal;
-    if (personal == null) return;
-    await savePersonal(personal.copyWith(agent: agent));
   }
 
   Future<void> _syncPersonalPlugins(PersonalIdentity personal) async {

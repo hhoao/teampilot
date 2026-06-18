@@ -280,6 +280,7 @@ class SessionRepository {
   Future<AppSession> createSession(
     String projectId, {
     String sessionTeam = '',
+    String personalIdentityId = '',
     List<TeamMemberConfig> rosterMembers = const [],
     CliTool? cli,
   }) async {
@@ -323,6 +324,7 @@ class SessionRepository {
       additionalPaths: List<String>.from(project.additionalPaths),
       display: '',
       sessionTeam: sessionTeam,
+      identityId: trimmedTeam.isEmpty ? personalIdentityId.trim() : '',
       cliTeamName: cliTeamName,
       cli: trimmedTeam.isEmpty ? cli : null,
       members: members,

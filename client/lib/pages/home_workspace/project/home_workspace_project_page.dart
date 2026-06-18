@@ -235,6 +235,7 @@ class _HomeWorkspaceProjectPageState extends State<HomeWorkspaceProjectPage> {
           key: ValueKey('conversations-${project.projectId}-${workspaceIdentity.id}'),
           project: project,
           isPersonalProject: workspaceIdentity.kind == IdentityKind.personal,
+          identityId: workspaceIdentity.id,
           sessionTeamFilter: sessionTeamFilter,
         ),
         if (_visitedManage)

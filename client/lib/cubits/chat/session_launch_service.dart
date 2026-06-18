@@ -127,13 +127,16 @@ class SessionLaunchService implements MemberConnector {
           'openSessionTab requires project for personal sessions',
         );
       }
-      var identityId = project.defaultIdentityId.trim();
-      if (identityId.isNotEmpty) {
-        final found = await _h.lifecycle.loadWorkspaceIdentity(identityId);
-        if (found == null) {
-          identityId = IdentityProvisioner.defaultPersonalId;
-        }
-      } else {
+      // Prefer the identity the session was created under (persisted on the
+      // session), then the project's remembered default, then the default
+      // personal. Validate existence so a deleted identity falls back cleanly.
+      var identityId = session.identityId.trim();
+      if (identityId.isEmpty) {
+        identityId = project.defaultIdentityId.trim();
+      }
+      if (identityId.isEmpty) {
+        identityId = IdentityProvisioner.defaultPersonalId;
+      } else if (await _h.lifecycle.loadWorkspaceIdentity(identityId) == null) {
         identityId = IdentityProvisioner.defaultPersonalId;
       }
       personalIdentity = await _h.lifecycle.loadPersonalIdentity(identityId);

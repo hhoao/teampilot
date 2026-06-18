@@ -107,21 +107,25 @@ class SessionLifecycleService {
     if (override != null) return override;
     final trimmed = identityId.trim();
     final repo = _identityRepository;
+    PersonalIdentity? defaultPersonal;
     if (repo != null) {
       final all = await repo.loadAll();
       for (final identity in all) {
-        if (identity is PersonalIdentity && identity.id == trimmed) {
-          return identity;
+        if (identity is! PersonalIdentity) continue;
+        if (identity.id == trimmed) return identity;
+        if (identity.id == IdentityProvisioner.defaultPersonalId) {
+          defaultPersonal = identity;
         }
       }
     }
-    if (trimmed == IdentityProvisioner.defaultPersonalId) {
-      return PersonalIdentity(
-        id: IdentityProvisioner.defaultPersonalId,
-        display: 'Personal',
-      );
-    }
-    return PersonalIdentity(id: trimmed, display: trimmed);
+    // Unknown / dangling id (e.g. the identity was deleted after the session
+    // launched): fall back to the default personal identity *with its bundle*
+    // rather than a synthetic empty one.
+    if (defaultPersonal != null) return defaultPersonal;
+    return PersonalIdentity(
+      id: trimmed.isEmpty ? IdentityProvisioner.defaultPersonalId : trimmed,
+      display: trimmed.isEmpty ? 'Personal' : trimmed,
+    );
   }
 
   Future<WorkspaceIdentity?> loadWorkspaceIdentity(String identityId) async {

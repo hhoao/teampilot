@@ -103,17 +103,9 @@ class IdentityRepository {
     final paths = await _paths();
     final dir = paths.fs.pathContext.join(paths.dir, id);
     await paths.fs.ensureDir(dir);
-    final Map<String, Object?> json;
-    if (identity is PersonalIdentity) {
-      json = identity.toJson();
-    } else if (identity is TeamIdentity) {
-      json = identity.toJson();
-    } else {
-      throw ArgumentError('Unknown WorkspaceIdentity: $identity');
-    }
     await paths.fs.atomicWrite(
       _identityFile(paths.fs, paths.dir, id),
-      const JsonEncoder.withIndent('  ').convert(json),
+      const JsonEncoder.withIndent('  ').convert(identity.toJson()),
     );
   }
 
