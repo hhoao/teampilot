@@ -26,7 +26,7 @@ class WorkspaceListTile extends StatefulWidget {
     super.key,
   });
 
-  final AppProject project;
+  final Workspace project;
   final int sessionCount;
   final bool favorited;
   final Future<void> Function() onToggleFavorite;

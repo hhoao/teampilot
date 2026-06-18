@@ -35,7 +35,7 @@ String projectLaunchRoute(String projectId, LaunchIdentity identity) =>
 
 /// When a remembered, well-formed choice exists for [project], the route to
 /// open it directly (skipping the dialog); otherwise null (show the dialog).
-String? rememberedLaunchRoute(AppProject project, ProjectLaunchPref? pref) {
+String? rememberedLaunchRoute(Workspace project, ProjectLaunchPref? pref) {
   if (pref == null || !pref.remember) return null;
   final id = LaunchIdentity.decode(pref.lastIdentity);
   if (id == null) return null;
@@ -44,7 +44,7 @@ String? rememberedLaunchRoute(AppProject project, ProjectLaunchPref? pref) {
 
 Future<void> openWorkspace(
   BuildContext context,
-  AppProject project, {
+  Workspace project, {
   required List<AppSession> sessions,
 }) async {
   final store = WorkspaceLaunchPrefsStore();
@@ -124,7 +124,7 @@ class WorkspacesTab extends StatelessWidget {
     required this.onToggleProjectFavorite,
   });
 
-  final List<AppProject> projects;
+  final List<Workspace> projects;
   final List<AppSession> sessions;
   final bool gridView;
   final ValueChanged<bool> onToggleView;
@@ -433,7 +433,7 @@ class WorkspaceCollection extends StatefulWidget {
     this.preserveOrder = false,
   });
 
-  final List<AppProject> projects;
+  final List<Workspace> projects;
   final List<AppSession> sessions;
   final bool gridView;
   final WorkspaceSort projectSort;
@@ -449,7 +449,7 @@ class WorkspaceCollection extends StatefulWidget {
 class _WorkspaceCollectionState
     extends State<WorkspaceCollection> {
   WorkspaceDisplay? _cached;
-  List<AppProject>? _lastProjects;
+  List<Workspace>? _lastProjects;
   List<AppSession>? _lastSessions;
   WorkspaceSort? _lastSort;
   Set<String>? _lastFavorites;
@@ -509,7 +509,7 @@ class WorkspaceGrid extends StatelessWidget {
     required this.sessions,
   });
 
-  final List<AppProject> projects;
+  final List<Workspace> projects;
   final Map<String, int> sessionCounts;
   final Set<String> favoriteProjectIds;
   final Future<void> Function(String projectId) onToggleProjectFavorite;
@@ -556,7 +556,7 @@ class WorkspaceList extends StatelessWidget {
     required this.sessions,
   });
 
-  final List<AppProject> projects;
+  final List<Workspace> projects;
   final Map<String, int> sessionCounts;
   final Set<String> favoriteProjectIds;
   final Future<void> Function(String projectId) onToggleProjectFavorite;

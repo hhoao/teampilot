@@ -48,7 +48,7 @@ class HomeShell extends StatefulWidget {
 
   @visibleForTesting
   static String formatProjectTabTooltip({
-    required AppProject project,
+    required Workspace project,
     required String personalKindLabel,
     required bool isPersonal,
     String? teamName,
@@ -94,7 +94,7 @@ class _HomeShellState extends State<HomeShell> {
 
   /// Open project ids in tab order; persisted across app restarts.
   List<String> _openIds = const [];
-  List<HomeClosedProjectEntry> _recentlyClosed = const [];
+  List<HomeClosedWorkspaceEntry> _recentlyClosed = const [];
   final Map<String, LaunchIdentity> _identityByProjectId = {};
 
   @override
@@ -267,7 +267,7 @@ class _HomeShellState extends State<HomeShell> {
     // Persist closed/open tab state before teardown so a crash or fast quit
     // cannot drop the recently-closed entry.
     await _closedProjectsStore.recordClosed(
-      HomeClosedProjectEntry(
+      HomeClosedWorkspaceEntry(
         projectId: id,
         displayName: project?.effectiveDisplay ?? id,
         primaryPath: project?.primaryPath ?? '',
@@ -357,7 +357,7 @@ class _HomeShellState extends State<HomeShell> {
 
   @override
   Widget build(BuildContext context) {
-    final projects = context.select<ChatCubit, List<AppProject>>(
+    final projects = context.select<ChatCubit, List<Workspace>>(
       (c) => c.state.projects,
     );
     final activeId = _projectIdFromLocation(widget.location);
@@ -373,7 +373,7 @@ class _HomeShellState extends State<HomeShell> {
     // Show every open project tab across all teams (IDE-style open editors).
     // Selecting a tab switches the active team to the project's team via
     // WorkspacePage, so the sidebar/content stay in sync.
-    final tabs = <HomeProjectTab>[
+    final tabs = <HomeWorkspaceTab>[
       for (final id in _openIds)
         if (_resolve(projects, id) case final p?)
           _projectTab(
@@ -425,9 +425,9 @@ class _HomeShellState extends State<HomeShell> {
     );
   }
 
-  HomeProjectTab _projectTab({
+  HomeWorkspaceTab _projectTab({
     required String id,
-    required AppProject project,
+    required Workspace project,
     required AppLocalizations l10n,
     required List<Identity> identities,
   }) {
@@ -440,10 +440,10 @@ class _HomeShellState extends State<HomeShell> {
             .firstOrNull;
     final isPersonal = workspaceIdentity?.kind == IdentityKind.personal;
     final identityId = identity.identityId;
-    return HomeProjectTab(
+    return HomeWorkspaceTab(
       id: id,
       name: project.localizedName(l10n),
-      kind: isPersonal ? HomeProjectTabKind.personal : HomeProjectTabKind.team,
+      kind: isPersonal ? HomeWorkspaceTabKind.personal : HomeWorkspaceTabKind.team,
       tooltip: HomeShell.formatProjectTabTooltip(
         project: project,
         personalKindLabel: l10n.homeWorkspaceProjectTabKindPersonal,
@@ -467,7 +467,7 @@ class _HomeShellState extends State<HomeShell> {
     return identity.identityId;
   }
 
-  static AppProject? _resolve(List<AppProject> projects, String id) {
+  static Workspace? _resolve(List<Workspace> projects, String id) {
     for (final p in projects) {
       if (p.projectId == id) return p;
     }

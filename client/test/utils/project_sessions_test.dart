@@ -21,7 +21,7 @@ void main() {
   }
 
   test('sessionsForProject preserves project.sessionIds order', () {
-    final project = AppProject(
+    final project = Workspace(
       projectId: 'p1',
       primaryPath: '/tmp',
       sessionIds: const ['s2', 's1'],
@@ -39,7 +39,7 @@ void main() {
   });
 
   test('sessionsForProject appends orphan sessions without duplicates', () {
-    final project = AppProject(
+    final project = Workspace(
       projectId: 'p1',
       primaryPath: '/tmp',
       sessionIds: const ['s1'],

@@ -34,7 +34,7 @@ class WorkspaceConfigPanel extends StatefulWidget {
     super.key,
   });
 
-  final AppProject project;
+  final Workspace project;
   final String identityId;
   final ProjectConfigSection section;
 

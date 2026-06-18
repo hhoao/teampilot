@@ -24,7 +24,7 @@ final class ResolvedProjectCustomIcon extends ResolvedProjectIcon {
   final String relativePath;
 }
 
-ResolvedProjectIcon resolveProjectIcon(AppProject project) {
+ResolvedProjectIcon resolveProjectIcon(Workspace project) {
   return switch (project.icon) {
     ProjectIconAuto() => ResolvedProjectGeometryIcon(
       projectGeometryAssetForProjectId(project.projectId),

@@ -30,7 +30,7 @@ void main() {
 
   test('recordClosed persists and reloads entries', () async {
     await store.recordClosed(
-      const HomeClosedProjectEntry(
+      const HomeClosedWorkspaceEntry(
         projectId: 'proj-a',
         displayName: 'Project A',
         primaryPath: '/tmp/a',
@@ -52,13 +52,13 @@ void main() {
 
   test('remove drops a closed entry', () async {
     await store.recordClosed(
-      const HomeClosedProjectEntry(
+      const HomeClosedWorkspaceEntry(
         projectId: 'proj-a',
         displayName: 'A',
       ),
     );
     await store.recordClosed(
-      const HomeClosedProjectEntry(
+      const HomeClosedWorkspaceEntry(
         projectId: 'proj-b',
         displayName: 'B',
       ),

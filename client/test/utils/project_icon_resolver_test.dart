@@ -4,8 +4,8 @@ import 'package:teampilot/models/project_icon_ref.dart';
 import 'package:teampilot/utils/project_geometry_catalog.dart';
 import 'package:teampilot/utils/project_icon_resolver.dart';
 
-AppProject _project({ProjectIconRef icon = ProjectIconRef.auto}) {
-  return AppProject(
+Workspace _project({ProjectIconRef icon = ProjectIconRef.auto}) {
+  return Workspace(
     projectId: 'project-a',
     primaryPath: '/tmp',
     icon: icon,

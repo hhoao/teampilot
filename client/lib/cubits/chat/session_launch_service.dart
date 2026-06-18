@@ -335,7 +335,7 @@ class SessionLaunchService implements MemberConnector {
     return DefaultTeamProjectService.primaryPathForTeam(team.id);
   }
 
-  AppProject? _projectMatchingPath(String primaryPath) {
+  Workspace? _projectMatchingPath(String primaryPath) {
     for (final project in _state.projects) {
       if (projectPathsEqual(project.primaryPath, primaryPath)) return project;
     }
@@ -351,7 +351,7 @@ class SessionLaunchService implements MemberConnector {
     return null;
   }
 
-  AppProject? _projectById(String projectId) {
+  Workspace? _projectById(String projectId) {
     for (final project in _state.projects) {
       if (project.projectId == projectId) return project;
     }
@@ -575,7 +575,7 @@ class SessionLaunchService implements MemberConnector {
     required bool launched,
     TeamIdentity? team,
     TeamMemberConfig? member,
-    AppProject? project,
+    Workspace? project,
     PersonalIdentity? personal,
   }) async {
     final isPersonal = project != null;

@@ -337,7 +337,7 @@ class _FixedResumeLifecycleService extends SessionLifecycleService {
     TeamIdentity? team,
     TeamMemberConfig? member,
     SessionMemberBinding? memberBinding,
-    AppProject? project,
+    Workspace? project,
     PersonalIdentity? personal,
     String? identityId,
     String? llmConfigPathOverride,
@@ -400,7 +400,7 @@ class TestChatCubit extends ChatCubit {
   final PostFrameTestHarness postFrame;
 
   void seedChatData({
-    List<AppProject> projects = const [],
+    List<Workspace> projects = const [],
     List<AppSession> sessions = const [],
   }) {
     ingestProjectSessionSnapshot(projects: projects, sessions: sessions);
@@ -450,7 +450,7 @@ void main() {
       postFrameScheduler: postFrame.scheduler,
       sessionRepository: _widgetTestSessionRepo,
     );
-    const project = AppProject(
+    const project = Workspace(
       projectId: 'proj-widget-test',
       primaryPath: '/work/current',
       createdAt: 1,

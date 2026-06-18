@@ -835,7 +835,7 @@ class IdentityCubit extends Cubit<IdentityState> implements IdentityCubitHost {
   }
 
   /// Default personal identity for simple-mode project config (Stage 3 bridge
-  /// until [AppProject.defaultIdentityId] in Stage 4).
+  /// until [Workspace.defaultIdentityId] in Stage 4).
   PersonalIdentity? get activePersonal {
     final identity = state.byId(IdentityProvisioner.defaultPersonalId);
     if (identity is PersonalIdentity) return identity;

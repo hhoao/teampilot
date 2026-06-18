@@ -5,7 +5,7 @@ import 'package:teampilot/pages/home_workspace/home_workspace_project_sort.dart'
 import 'package:teampilot/utils/home_workspace_project_display.dart';
 
 void main() {
-  AppProject project(String id, {int updatedAt = 0}) => AppProject(
+  Workspace project(String id, {int updatedAt = 0}) => Workspace(
         projectId: id,
         primaryPath: '/tmp/$id',
         createdAt: 1,

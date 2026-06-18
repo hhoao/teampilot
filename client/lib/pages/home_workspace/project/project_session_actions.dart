@@ -17,7 +17,7 @@ import '../../../repositories/session_repository.dart';
 
 Future<void> openProjectSessionTab(
   BuildContext context,
-  AppProject project,
+  Workspace project,
   AppSession session, {
   required bool isPersonal,
 }) async {
@@ -55,7 +55,7 @@ Future<void> openProjectSessionTab(
 
 Future<void> createAndOpenProjectConversation(
   BuildContext context,
-  AppProject project, {
+  Workspace project, {
   required bool isPersonal,
   String sessionTeamId = '',
   String personalIdentityId = '',

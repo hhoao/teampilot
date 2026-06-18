@@ -2,13 +2,13 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:teampilot/models/app_project.dart';
 import 'package:teampilot/pages/home_workspace/home_workspace_project_sort.dart';
 
-AppProject _project({
+Workspace _project({
   required String id,
   String display = '',
   int updatedAt = 0,
   int createdAt = 0,
 }) {
-  return AppProject(
+  return Workspace(
     projectId: id,
     primaryPath: '/tmp/$id',
     display: display,

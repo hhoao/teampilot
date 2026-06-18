@@ -297,7 +297,7 @@ class ChatCubit extends Cubit<ChatState>
 
   /// Updates persisted-index mirrors in state and recomputes team-scoped sidebar lists.
   void ingestProjectSessionSnapshot({
-    required List<AppProject> projects,
+    required List<Workspace> projects,
     required List<AppSession> sessions,
   }) {
     _emitSnapshot(
@@ -352,7 +352,7 @@ class ChatCubit extends Cubit<ChatState>
 
   Future<void> addProjectDirectory(
     SessionRepository repo,
-    AppProject project,
+    Workspace project,
     String directoryPath,
   ) async {
     final snap = await _dataStore.addProjectDirectory(
@@ -409,7 +409,7 @@ class ChatCubit extends Cubit<ChatState>
   Future<String?> editProjectIcon(
     BuildContext context,
     SessionRepository repo,
-    AppProject project,
+    Workspace project,
   ) async {
     final result = await showProjectIconPickerDialog(context, project: project);
     return switch (result) {
@@ -770,7 +770,7 @@ class ChatCubit extends Cubit<ChatState>
     _emitSnapshot(await _dataStore.deleteSessionRecord(repo, sessionId));
   }
 
-  Future<AppProject> cloneProject(
+  Future<Workspace> cloneProject(
     SessionRepository repo,
     String sourceProjectId, {
     String? display,
@@ -787,7 +787,7 @@ class ChatCubit extends Cubit<ChatState>
   }
 
   Future<void> deleteProject(SessionRepository repo, String projectId) async {
-    AppProject? project;
+    Workspace? project;
     for (final p in state.projects) {
       if (p.projectId == projectId) {
         project = p;

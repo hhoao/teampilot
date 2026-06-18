@@ -7,7 +7,7 @@ import 'package:teampilot/utils/launch_identity_resolver.dart';
 
 void main() {
   test('uses defaultIdentityId when identity exists', () {
-    const project = AppProject(
+    const project = Workspace(
       projectId: 'p1',
       primaryPath: '/tmp/p1',
       createdAt: 0,
@@ -22,7 +22,7 @@ void main() {
   });
 
   test('dangling defaultIdentityId falls back to default personal', () {
-    const project = AppProject(
+    const project = Workspace(
       projectId: 'p1',
       primaryPath: '/tmp/p1',
       createdAt: 0,
@@ -36,7 +36,7 @@ void main() {
   });
 
   test('empty defaultIdentityId falls back to default personal', () {
-    const project = AppProject(
+    const project = Workspace(
       projectId: 'p1',
       primaryPath: '/tmp/p1',
       createdAt: 0,

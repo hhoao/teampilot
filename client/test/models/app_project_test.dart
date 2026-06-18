@@ -3,7 +3,7 @@ import 'package:teampilot/models/app_project.dart';
 
 void main() {
   test('json round-trip carries no teamId', () {
-    final project = AppProject(
+    final project = Workspace(
       projectId: 'p1',
       primaryPath: '/tmp/repo',
       display: 'Repo',
@@ -12,14 +12,14 @@ void main() {
     );
     final json = project.toJson();
     expect(json.containsKey('teamId'), isFalse);
-    final restored = AppProject.fromJson(json);
+    final restored = Workspace.fromJson(json);
     expect(restored.projectId, 'p1');
     expect(restored.primaryPath, '/tmp/repo');
     expect(restored.display, 'Repo');
   });
 
   test('legacy teamId key in json is ignored on read', () {
-    final restored = AppProject.fromJson({
+    final restored = Workspace.fromJson({
       'projectId': 'p1',
       'primaryPath': '/tmp/repo',
       'teamId': 'old-team',
@@ -30,16 +30,16 @@ void main() {
   });
 
   test('defaultIdentityId round-trips and defaults empty', () {
-    const p = AppProject(
+    const p = Workspace(
       projectId: 'p1',
       primaryPath: '/tmp/p1',
       createdAt: 1,
       defaultIdentityId: 'coding',
     );
-    final restored = AppProject.fromJson(p.toJson());
+    final restored = Workspace.fromJson(p.toJson());
     expect(restored.defaultIdentityId, 'coding');
     expect(
-      AppProject.fromJson({'projectId': 'x', 'primaryPath': '/x'})
+      Workspace.fromJson({'projectId': 'x', 'primaryPath': '/x'})
           .defaultIdentityId,
       '',
     );

@@ -2,12 +2,12 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:teampilot/models/app_project.dart';
 import 'package:teampilot/pages/home_workspace/home_workspace_shell.dart';
 
-AppProject _project({
+Workspace _project({
   required String id,
   String display = 'my-app',
   String primaryPath = '/home/user/my-app',
 }) {
-  return AppProject(
+  return Workspace(
     projectId: id,
     primaryPath: primaryPath,
     display: display,

@@ -8,21 +8,21 @@ class WorkspaceDisplay {
     required this.sessionCounts,
   });
 
-  final List<AppProject> sortedProjects;
+  final List<Workspace> sortedProjects;
   final Map<String, int> sessionCounts;
 }
 
 /// Sorts [projects] and counts sessions. Returns the previous [cached] result
 /// when all inputs are unchanged (reference equality on lists/maps).
 WorkspaceDisplay computeWorkspaceDisplay({
-  required List<AppProject> projects,
+  required List<Workspace> projects,
   required List<AppSession> sessions,
   required WorkspaceSort sort,
   required Set<String> favoriteProjectIds,
-  required String Function(AppProject project) displayName,
+  required String Function(Workspace project) displayName,
   bool preserveOrder = false,
   WorkspaceDisplay? cached,
-  List<AppProject>? lastProjects,
+  List<Workspace>? lastProjects,
   List<AppSession>? lastSessions,
   WorkspaceSort? lastSort,
   Set<String>? lastFavorites,

@@ -107,7 +107,7 @@ void main() {
       const projectId = 'p1';
       cubit.ingestProjectSessionSnapshot(
         projects: const [
-          AppProject(
+          Workspace(
             projectId: projectId,
             primaryPath: '/a',
             createdAt: 1,
@@ -136,14 +136,14 @@ void main() {
       const pB = 'p-b';
       cubit.ingestProjectSessionSnapshot(
         projects: const [
-          AppProject(
+          Workspace(
             projectId: pA,
             primaryPath: '/a',
             createdAt: 1,
             updatedAt: 1,
             sessionIds: ['s1', 's2'],
           ),
-          AppProject(
+          Workspace(
             projectId: pB,
             primaryPath: '/b',
             createdAt: 1,
@@ -199,7 +199,7 @@ void main() {
       const pid = 'p1';
       cubit.ingestProjectSessionSnapshot(
         projects: const [
-          AppProject(
+          Workspace(
             projectId: pid,
             primaryPath: '/a',
             createdAt: 1,
@@ -232,7 +232,7 @@ void main() {
       const pid = 'p1';
       cubit.ingestProjectSessionSnapshot(
         projects: const [
-          AppProject(
+          Workspace(
             projectId: pid,
             primaryPath: '/a',
             createdAt: 1,

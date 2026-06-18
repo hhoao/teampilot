@@ -16,9 +16,9 @@ class ChatDataSnapshot extends Equatable {
     required this.visibleSessions,
   });
 
-  final List<AppProject> projects;
+  final List<Workspace> projects;
   final List<AppSession> sessions;
-  final List<AppProject> visibleProjects;
+  final List<Workspace> visibleProjects;
   final List<AppSession> visibleSessions;
 
   @override
@@ -57,10 +57,10 @@ class SessionDataStore {
     return all.where((s) => s.sessionTeam == tid).toList();
   }
 
-  List<AppProject> _computeVisibleProjects(List<AppProject> all) => all;
+  List<Workspace> _computeVisibleProjects(List<Workspace> all) => all;
 
   ChatDataSnapshot deriveSnapshot({
-    required List<AppProject> projects,
+    required List<Workspace> projects,
     required List<AppSession> sessions,
   }) {
     final visS = _computeVisibleSessions(sessions);
@@ -122,7 +122,7 @@ class SessionDataStore {
 
   Future<ChatDataSnapshot?> addProjectDirectory(
     SessionRepository repo,
-    AppProject project,
+    Workspace project,
     String directoryPath,
   ) async {
     final trimmed = directoryPath.trim();
@@ -186,7 +186,7 @@ class SessionDataStore {
     return loadProjectData(repo);
   }
 
-  Future<({AppProject project, ChatDataSnapshot snapshot})> cloneProject(
+  Future<({Workspace project, ChatDataSnapshot snapshot})> cloneProject(
     SessionRepository repo,
     String sourceProjectId, {
     String? display,

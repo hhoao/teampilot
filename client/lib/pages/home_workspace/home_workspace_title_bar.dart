@@ -26,7 +26,7 @@ const double kHomeTitleBarHeight = 58;
 /// minimize/maximize/close controls. Reuses theme tokens only — no hardcoded
 /// brand colors.
 /// Personal vs team discriminator for title-bar project tabs.
-enum HomeProjectTabKind { personal, team }
+enum HomeWorkspaceTabKind { personal, team }
 
 @visibleForTesting
 double homeProjectTabBarAlpha({required bool active, required bool hovered}) {
@@ -44,26 +44,26 @@ Color homeProjectTabComplementColor(Color base) {
 
 @visibleForTesting
 Color homeProjectTabKindAccentColor({
-  required HomeProjectTabKind kind,
+  required HomeWorkspaceTabKind kind,
   required ColorScheme colorScheme,
 }) {
   final personal = colorScheme.primary;
-  return kind == HomeProjectTabKind.personal
+  return kind == HomeWorkspaceTabKind.personal
       ? personal
       : homeProjectTabComplementColor(personal);
 }
 
 @visibleForTesting
-IconData homeProjectTabKindIcon(HomeProjectTabKind kind) {
+IconData homeProjectTabKindIcon(HomeWorkspaceTabKind kind) {
   return switch (kind) {
-    HomeProjectTabKind.personal => Icons.person_outline_rounded,
-    HomeProjectTabKind.team => Icons.groups_2_outlined,
+    HomeWorkspaceTabKind.personal => Icons.person_outline_rounded,
+    HomeWorkspaceTabKind.team => Icons.groups_2_outlined,
   };
 }
 
 @visibleForTesting
 Color homeProjectTabBarColor({
-  required HomeProjectTabKind kind,
+  required HomeWorkspaceTabKind kind,
   required ColorScheme colorScheme,
   required bool active,
   required bool hovered,
@@ -78,7 +78,7 @@ Color homeProjectTabBarColor({
 
 @visibleForTesting
 Color homeProjectTabKindIconColor({
-  required HomeProjectTabKind kind,
+  required HomeWorkspaceTabKind kind,
   required ColorScheme colorScheme,
   required bool active,
   required bool hovered,
@@ -93,8 +93,8 @@ Color homeProjectTabKindIconColor({
 }
 
 /// An open project tab in the title bar.
-class HomeProjectTab {
-  const HomeProjectTab({
+class HomeWorkspaceTab {
+  const HomeWorkspaceTab({
     required this.id,
     required this.name,
     required this.kind,
@@ -104,7 +104,7 @@ class HomeProjectTab {
 
   final String id;
   final String name;
-  final HomeProjectTabKind kind;
+  final HomeWorkspaceTabKind kind;
 
   /// Shown on hover; defaults to [name] when omitted.
   final String? tooltip;
@@ -128,7 +128,7 @@ class HomeTitleBar extends StatefulWidget {
   });
 
   /// Open project tabs, kept until explicitly closed.
-  final List<HomeProjectTab> tabs;
+  final List<HomeWorkspaceTab> tabs;
 
   /// The project currently shown, or null when the Home view is shown.
   final String? activeProjectId;
@@ -137,7 +137,7 @@ class HomeTitleBar extends StatefulWidget {
   final WorkspacePageChrome pageChrome;
 
   /// Recently closed tabs (newest first), excluding currently open ids.
-  final List<HomeClosedProjectEntry> recentlyClosed;
+  final List<HomeClosedWorkspaceEntry> recentlyClosed;
   final Set<String> openProjectIds;
   final VoidCallback? onHomeTap;
   final ValueChanged<String>? onSelectTab;
@@ -415,7 +415,7 @@ class _ProjectTab extends StatefulWidget {
 
   final String label;
   final String tooltip;
-  final HomeProjectTabKind kind;
+  final HomeWorkspaceTabKind kind;
   final bool active;
   final bool closable;
   final VoidCallback? onTap;
@@ -566,7 +566,7 @@ class _TabChromeSlot extends StatelessWidget {
 class _RecentlyClosedOverflowButton extends StatefulWidget {
   const _RecentlyClosedOverflowButton({required this.entries, this.onReopen});
 
-  final List<HomeClosedProjectEntry> entries;
+  final List<HomeClosedWorkspaceEntry> entries;
   final ValueChanged<String>? onReopen;
 
   static const _menuMaxHeight = 320.0;

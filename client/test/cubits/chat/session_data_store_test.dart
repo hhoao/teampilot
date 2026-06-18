@@ -7,7 +7,7 @@ void main() {
   test('unscoped snapshot exposes all', () {
     final store = SessionDataStore();
     final projects = [
-      AppProject(projectId: 'p', primaryPath: '/p', createdAt: 0),
+      Workspace(projectId: 'p', primaryPath: '/p', createdAt: 0),
     ];
     final sessions = [
       AppSession(
@@ -27,8 +27,8 @@ void main() {
     final store = SessionDataStore()
       ..setScope(scopeSessionsToSelectedTeam: true, selectedTeamId: 't1');
     final projects = [
-      AppProject(projectId: 'p1', primaryPath: '/p1', createdAt: 0),
-      AppProject(projectId: 'p2', primaryPath: '/p2', createdAt: 0),
+      Workspace(projectId: 'p1', primaryPath: '/p1', createdAt: 0),
+      Workspace(projectId: 'p2', primaryPath: '/p2', createdAt: 0),
     ];
     final sessions = [
       AppSession(
@@ -55,8 +55,8 @@ void main() {
     final store = SessionDataStore()
       ..setScope(scopeSessionsToSelectedTeam: true, selectedTeamId: '');
     final projects = [
-      AppProject(projectId: 'personal', primaryPath: '/p', createdAt: 0),
-      AppProject(projectId: 'team', primaryPath: '/t', createdAt: 0),
+      Workspace(projectId: 'personal', primaryPath: '/p', createdAt: 0),
+      Workspace(projectId: 'team', primaryPath: '/t', createdAt: 0),
     ];
     final sessions = [
       AppSession(

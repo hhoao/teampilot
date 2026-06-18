@@ -52,13 +52,13 @@ class SessionRepository {
     return SessionRepositoryFs(teampilotRoot: root);
   }
 
-  Future<AppProject?> _readManifest(SessionRepositoryFs fs, String projectId) async {
+  Future<Workspace?> _readManifest(SessionRepositoryFs fs, String projectId) async {
     final raw = await fs.readText(fs.manifestFile(projectId));
     if (raw == null || raw.isEmpty) return null;
     try {
       final json = jsonDecode(raw);
       if (json is Map<String, Object?>) {
-        final project = AppProject.fromJson(json);
+        final project = Workspace.fromJson(json);
         final sessionIds = await fs.listSessionIdsForProject(projectId);
         return project.copyWith(sessionIds: sessionIds);
       }
@@ -68,7 +68,7 @@ class SessionRepository {
     return null;
   }
 
-  Future<void> _writeManifest(SessionRepositoryFs fs, AppProject project) async {
+  Future<void> _writeManifest(SessionRepositoryFs fs, Workspace project) async {
     await fs.ensureProjectDir(project.projectId);
     final withoutSessions = project.copyWith(sessionIds: const []);
     await fs.writeText(
@@ -77,9 +77,9 @@ class SessionRepository {
     );
   }
 
-  Future<List<AppProject>> loadProjects() async {
+  Future<List<Workspace>> loadProjects() async {
     final fs = await _fs();
-    final projects = <AppProject>[];
+    final projects = <Workspace>[];
     for (final projectId in await fs.listProjectIds()) {
       final project = await _readManifest(fs, projectId);
       if (project != null) {
@@ -115,7 +115,7 @@ class SessionRepository {
     return true;
   }
 
-  Future<AppProject> createProject(
+  Future<Workspace> createProject(
     String primaryPath, {
     List<String> additionalPaths = const [],
     String display = '',
@@ -152,7 +152,7 @@ class SessionRepository {
       await _writeManifest(fs, updated);
       return updated;
     }
-    final project = AppProject(
+    final project = Workspace(
       projectId: const Uuid().v4(),
       primaryPath: trimmed,
       additionalPaths: List<String>.from(
@@ -602,7 +602,7 @@ class SessionRepository {
     });
   }
 
-  Future<AppProject> cloneProject(
+  Future<Workspace> cloneProject(
     String sourceProjectId, {
     String? display,
     List<TeamMemberConfig> rosterMembers = const [],
@@ -616,7 +616,7 @@ class SessionRepository {
     final sourceSessions = sessionsForProject(source, await loadSessions());
     final now = DateTime.now().millisecondsSinceEpoch;
     final newProjectId = const Uuid().v4();
-    final newProject = AppProject(
+    final newProject = Workspace(
       projectId: newProjectId,
       primaryPath: source.primaryPath,
       additionalPaths: List<String>.from(source.additionalPaths),

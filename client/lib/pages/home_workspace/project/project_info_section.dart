@@ -20,12 +20,12 @@ import 'project_icon_settings_row.dart';
 class ProjectInfoSection extends StatelessWidget {
   const ProjectInfoSection({required this.project, super.key});
 
-  final AppProject project;
+  final Workspace project;
 
   @override
   Widget build(BuildContext context) {
     final l10n = context.l10n;
-    final live = context.select<ChatCubit, AppProject>(
+    final live = context.select<ChatCubit, Workspace>(
       (c) => c.state.projects.firstWhere(
         (p) => p.projectId == project.projectId,
         orElse: () => project,
@@ -127,7 +127,7 @@ class ProjectInfoSection extends StatelessWidget {
 class ProjectConfigDangerZone extends StatelessWidget {
   const ProjectConfigDangerZone({required this.project, super.key});
 
-  final AppProject project;
+  final Workspace project;
 
   @override
   Widget build(BuildContext context) {

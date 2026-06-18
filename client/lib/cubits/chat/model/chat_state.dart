@@ -46,9 +46,9 @@ class ChatState extends Equatable {
 
   final List<ChatTabInfo> tabs;
   final int activeTabIndex;
-  final List<AppProject> projects;
+  final List<Workspace> projects;
   final List<AppSession> sessions;
-  final List<AppProject> visibleProjects;
+  final List<Workspace> visibleProjects;
   final List<AppSession> visibleSessions;
   final String? activeSessionId;
   final String selectedMemberId;
@@ -73,9 +73,9 @@ class ChatState extends Equatable {
   ChatState copyWith({
     List<ChatTabInfo>? tabs,
     int? activeTabIndex,
-    List<AppProject>? projects,
+    List<Workspace>? projects,
     List<AppSession>? sessions,
-    List<AppProject>? visibleProjects,
+    List<Workspace>? visibleProjects,
     List<AppSession>? visibleSessions,
     String? activeSessionId,
     String? selectedMemberId,

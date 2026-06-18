@@ -42,18 +42,18 @@ Map<String, int> homeWorkspaceSessionCountByProjectId(
   return counts;
 }
 
-List<AppProject> sortWorkspaces({
-  required List<AppProject> projects,
+List<Workspace> sortWorkspaces({
+  required List<Workspace> projects,
   required WorkspaceSort sort,
   required Set<String> favoriteProjectIds,
   required Map<String, int> sessionCountByProjectId,
-  required String Function(AppProject project) displayName,
+  required String Function(Workspace project) displayName,
   bool pinFavorites = true,
   bool preserveOrder = false,
 }) {
-  if (preserveOrder) return List<AppProject>.from(projects);
+  if (preserveOrder) return List<Workspace>.from(projects);
 
-  final sorted = List<AppProject>.from(projects);
+  final sorted = List<Workspace>.from(projects);
   sorted.sort((a, b) {
     if (pinFavorites) {
       final af = favoriteProjectIds.contains(a.projectId);

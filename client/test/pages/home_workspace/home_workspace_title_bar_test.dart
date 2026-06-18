@@ -24,15 +24,15 @@ void main() {
           create: (_) => NotificationCubit(),
           child: const HomeTitleBar(
             tabs: [
-              HomeProjectTab(
+              HomeWorkspaceTab(
                 id: 'personal',
                 name: 'Solo',
-                kind: HomeProjectTabKind.personal,
+                kind: HomeWorkspaceTabKind.personal,
               ),
-              HomeProjectTab(
+              HomeWorkspaceTab(
                 id: 'team',
                 name: 'Shared',
-                kind: HomeProjectTabKind.team,
+                kind: HomeWorkspaceTabKind.team,
               ),
             ],
             activeProjectId: 'personal',

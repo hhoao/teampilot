@@ -14,7 +14,7 @@ void main() {
 
   test('personal tab uses primary at full alpha when active', () {
     final color = homeProjectTabBarColor(
-      kind: HomeProjectTabKind.personal,
+      kind: HomeWorkspaceTabKind.personal,
       colorScheme: cs,
       active: true,
       hovered: false,
@@ -24,7 +24,7 @@ void main() {
 
   test('team tab uses complement of primary at full alpha when active', () {
     final color = homeProjectTabBarColor(
-      kind: HomeProjectTabKind.team,
+      kind: HomeWorkspaceTabKind.team,
       colorScheme: cs,
       active: true,
       hovered: false,
@@ -34,24 +34,24 @@ void main() {
 
   test('kind icons match home sidebar semantics', () {
     expect(
-      homeProjectTabKindIcon(HomeProjectTabKind.personal),
+      homeProjectTabKindIcon(HomeWorkspaceTabKind.personal),
       Icons.person_outline_rounded,
     );
     expect(
-      homeProjectTabKindIcon(HomeProjectTabKind.team),
+      homeProjectTabKindIcon(HomeWorkspaceTabKind.team),
       Icons.groups_2_outlined,
     );
   });
 
   test('inactive tab bar alpha is lower than active', () {
     final inactive = homeProjectTabBarColor(
-      kind: HomeProjectTabKind.personal,
+      kind: HomeWorkspaceTabKind.personal,
       colorScheme: cs,
       active: false,
       hovered: false,
     );
     final active = homeProjectTabBarColor(
-      kind: HomeProjectTabKind.personal,
+      kind: HomeWorkspaceTabKind.personal,
       colorScheme: cs,
       active: true,
       hovered: false,
@@ -62,13 +62,13 @@ void main() {
 
   test('inactive hovered tab bar alpha is between inactive and active', () {
     final hovered = homeProjectTabBarColor(
-      kind: HomeProjectTabKind.team,
+      kind: HomeWorkspaceTabKind.team,
       colorScheme: cs,
       active: false,
       hovered: true,
     );
     final inactive = homeProjectTabBarColor(
-      kind: HomeProjectTabKind.team,
+      kind: HomeWorkspaceTabKind.team,
       colorScheme: cs,
       active: false,
       hovered: false,

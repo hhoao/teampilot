@@ -3,8 +3,8 @@ import 'package:flutter/foundation.dart';
 import 'project_icon_ref.dart';
 
 @immutable
-class AppProject {
-  const AppProject({
+class Workspace {
+  const Workspace({
     required this.projectId,
     required this.primaryPath,
     this.additionalPaths = const [],
@@ -16,7 +16,7 @@ class AppProject {
     this.sessionIds = const [],
   });
 
-  factory AppProject.fromJson(Map<String, Object?> json) {
+  factory Workspace.fromJson(Map<String, Object?> json) {
     final add = json['additionalPaths'];
     final paths = add is List
         ? add.map((e) => '$e').where((s) => s.isNotEmpty).toList()
@@ -25,7 +25,7 @@ class AppProject {
     final sessionIds = ids is List
         ? ids.map((e) => '$e').where((s) => s.isNotEmpty).toList()
         : const <String>[];
-    return AppProject(
+    return Workspace(
       projectId: json['projectId'] as String? ?? '',
       primaryPath: json['primaryPath'] as String? ?? '',
       additionalPaths: paths,
@@ -57,7 +57,7 @@ class AppProject {
     return parts.isEmpty ? path : parts.last;
   }
 
-  AppProject copyWith({
+  Workspace copyWith({
     String? projectId,
     String? primaryPath,
     List<String>? additionalPaths,
@@ -68,7 +68,7 @@ class AppProject {
     int? updatedAt,
     List<String>? sessionIds,
   }) {
-    return AppProject(
+    return Workspace(
       projectId: projectId ?? this.projectId,
       primaryPath: primaryPath ?? this.primaryPath,
       additionalPaths: additionalPaths ?? this.additionalPaths,
@@ -98,7 +98,7 @@ class AppProject {
   @override
   bool operator ==(Object other) {
     return identical(this, other) ||
-        other is AppProject &&
+        other is Workspace &&
             runtimeType == other.runtimeType &&
             projectId == other.projectId &&
             primaryPath == other.primaryPath &&
@@ -125,27 +125,27 @@ class AppProject {
   );
 }
 
-class AppProjectsIndex {
-  const AppProjectsIndex({this.schemaVersion = 1, this.projects = const []});
+class WorkspacesIndex {
+  const WorkspacesIndex({this.schemaVersion = 1, this.projects = const []});
 
-  factory AppProjectsIndex.fromJson(Map<String, Object?> json) {
+  factory WorkspacesIndex.fromJson(Map<String, Object?> json) {
     final raw = json['projects'];
-    final list = <AppProject>[];
+    final list = <Workspace>[];
     if (raw is List) {
       for (final item in raw) {
         if (item is Map<String, Object?>) {
-          list.add(AppProject.fromJson(item));
+          list.add(Workspace.fromJson(item));
         }
       }
     }
-    return AppProjectsIndex(
+    return WorkspacesIndex(
       schemaVersion: json['schemaVersion'] as int? ?? 1,
       projects: list,
     );
   }
 
   final int schemaVersion;
-  final List<AppProject> projects;
+  final List<Workspace> projects;
 
   Map<String, Object?> toJson() {
     return {

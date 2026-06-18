@@ -7,12 +7,12 @@ import 'package:teampilot/services/session/session_lifecycle_service.dart';
 
 class _Svc extends SessionLifecycleService {
   _Svc() : super(appDataBasePath: Directory.systemTemp.path);
-  bool personalFor(AppProject p, AppSession s) =>
+  bool personalFor(Workspace p, AppSession s) =>
       debugIsPersonalLaunch(p, s);
 }
 
 void main() {
-  final project = AppProject(
+  final project = Workspace(
     projectId: 'p1',
     primaryPath: '/tmp/repo',
     createdAt: 0,

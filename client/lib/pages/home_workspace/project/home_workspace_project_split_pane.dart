@@ -15,7 +15,7 @@ class WorkspaceSplitPane extends StatefulWidget {
     super.key,
   });
 
-  final AppProject project;
+  final Workspace project;
   final bool isPersonalProject;
 
   /// The launch identity the project was opened against ([Identity.id]).

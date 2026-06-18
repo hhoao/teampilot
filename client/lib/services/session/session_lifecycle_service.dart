@@ -145,7 +145,7 @@ class SessionLifecycleService {
     TeamIdentity? team,
     TeamMemberConfig? member,
     SessionMemberBinding? memberBinding,
-    AppProject? project,
+    Workspace? project,
     PersonalIdentity? personal,
     String? identityId,
     String? llmConfigPathOverride,
@@ -171,7 +171,7 @@ class SessionLifecycleService {
     TeamIdentity? team,
     TeamMemberConfig? member,
     SessionMemberBinding? memberBinding,
-    AppProject? project,
+    Workspace? project,
     PersonalIdentity? personal,
     String? identityId,
     String? llmConfigPathOverride,
@@ -242,7 +242,7 @@ class SessionLifecycleService {
     TeamIdentity? team,
     TeamMemberConfig? member,
     SessionMemberBinding? memberBinding,
-    AppProject? project,
+    Workspace? project,
     PersonalIdentity? personal,
     String? identityId,
     String? llmConfigPathOverride,
@@ -406,7 +406,7 @@ class SessionLifecycleService {
     String? teamId,
     CliTool? cli,
     SessionMemberBinding? memberBinding,
-    AppProject? project,
+    Workspace? project,
     PersonalIdentity? personal,
   }) async {
     final roots = await _resolveRoots();
@@ -488,12 +488,12 @@ class SessionLifecycleService {
     await _removeTree(roots, teamRoot);
   }
 
-  bool _isPersonalLaunch(AppProject? project, AppSession session) =>
+  bool _isPersonalLaunch(Workspace? project, AppSession session) =>
       project != null && session.sessionTeam.trim().isEmpty;
 
   Future<bool> _resolveIsPersonal({
     required AppSession session,
-    AppProject? project,
+    Workspace? project,
     String? identityId,
   }) async {
     final trimmed = identityId?.trim() ?? '';
@@ -526,7 +526,7 @@ class SessionLifecycleService {
 
   /// Test-only seam for [_isPersonalLaunch].
   @visibleForTesting
-  bool debugIsPersonalLaunch(AppProject project, AppSession session) =>
+  bool debugIsPersonalLaunch(Workspace project, AppSession session) =>
       _isPersonalLaunch(project, session);
 
   String _resolveSessionTeam(
@@ -544,7 +544,7 @@ class SessionLifecycleService {
     required AppSession session,
     required LaunchPlan plan,
     required bool isPersonal,
-    AppProject? project,
+    Workspace? project,
     PersonalIdentity? personal,
     TeamIdentity? team,
     TeamMemberConfig? member,
@@ -611,7 +611,7 @@ class SessionLifecycleService {
     required TeamIdentity? team,
     required TeamMemberConfig? member,
     SessionMemberBinding? memberBinding,
-    AppProject? project,
+    Workspace? project,
     PersonalIdentity? personal,
     required bool isPersonal,
     required String runtimeTeamId,

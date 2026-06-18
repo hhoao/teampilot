@@ -5,8 +5,8 @@ import 'package:teampilot/pages/home_workspace/home_workspace_projects_tab.dart'
 import 'package:teampilot/services/home_workspace/home_workspace_project_launch_prefs_store.dart';
 import 'package:teampilot/services/storage/identity_provisioner.dart';
 
-AppProject _project() =>
-    AppProject(projectId: 'p1', primaryPath: '/tmp/p1', createdAt: 0);
+Workspace _project() =>
+    Workspace(projectId: 'p1', primaryPath: '/tmp/p1', createdAt: 0);
 
 void main() {
   group('projectLaunchRoute', () {

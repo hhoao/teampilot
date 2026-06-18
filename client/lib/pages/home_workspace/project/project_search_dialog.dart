@@ -25,7 +25,7 @@ import 'project_session_actions.dart';
 /// performs the action against the still-mounted [context].
 Future<void> showProjectSearchDialog(
   BuildContext context, {
-  required AppProject project,
+  required Workspace project,
   required bool isPersonal,
   String sessionTeamFilter = '',
 }) {
@@ -75,7 +75,7 @@ class ProjectSearchDialog extends StatefulWidget {
     super.key,
   });
 
-  final AppProject project;
+  final Workspace project;
   final List<AppSession> sessions;
   final String emptyTitleFallback;
   final ValueChanged<AppSession> onOpenSession;

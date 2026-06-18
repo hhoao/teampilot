@@ -3,7 +3,7 @@ import '../models/app_session.dart';
 
 /// Sessions for [project] in project order, then any orphans for that project.
 List<AppSession> sessionsForProject(
-  AppProject project,
+  Workspace project,
   List<AppSession> all,
 ) {
   final byId = {for (final s in all) s.sessionId: s};

@@ -18,7 +18,7 @@ class ProjectIconSettingsRow extends StatelessWidget {
     super.key,
   });
 
-  final AppProject project;
+  final Workspace project;
   final bool showDividerBelow;
 
   @override

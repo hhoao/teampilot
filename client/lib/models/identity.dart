@@ -2,7 +2,7 @@ import 'config_bundle.dart';
 import 'identity_kind.dart';
 import 'project_icon_ref.dart';
 
-/// A named, reusable launch identity. A directory ([AppProject]) is *where*
+/// A named, reusable launch identity. A directory ([Workspace]) is *where*
 /// work happens; a [Identity] is *who/how* — the CLI config bundle a
 /// session launches with. Subtypes: [PersonalIdentity] or [TeamIdentity].
 ///

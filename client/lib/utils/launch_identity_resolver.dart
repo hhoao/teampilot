@@ -8,7 +8,7 @@ import '../services/storage/identity_provisioner.dart';
 /// When [project.defaultIdentityId] is set but no longer exists, falls back to
 /// the provisioned default personal identity.
 LaunchIdentity resolveProjectLaunchIdentity(
-  AppProject project,
+  Workspace project,
   Identity? Function(String id) lookupById,
 ) {
   final preferred = project.defaultIdentityId.trim();

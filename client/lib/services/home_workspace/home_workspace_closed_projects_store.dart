@@ -19,17 +19,17 @@ class HomeClosedWorkspacesStore {
   String get _path =>
       _pathOverride ?? AppStorage.paths.homeWorkspaceClosedProjectsJson;
 
-  Future<List<HomeClosedProjectEntry>> load() async {
+  Future<List<HomeClosedWorkspaceEntry>> load() async {
     try {
       final text = await _fs.readString(_path);
       if (text == null || text.isEmpty) return [];
       final root = (jsonDecode(text) as Map).cast<String, Object?>();
       final entries = root['entries'];
       if (entries is! List) return [];
-      final parsed = <HomeClosedProjectEntry>[];
+      final parsed = <HomeClosedWorkspaceEntry>[];
       for (final raw in entries) {
         if (raw is! Map) continue;
-        final entry = HomeClosedProjectEntry.fromJson(
+        final entry = HomeClosedWorkspaceEntry.fromJson(
           raw.cast<String, Object?>(),
         );
         if (entry.projectId.isNotEmpty) parsed.add(entry);
@@ -41,13 +41,13 @@ class HomeClosedWorkspacesStore {
     }
   }
 
-  Future<void> recordClosed(HomeClosedProjectEntry entry) async {
+  Future<void> recordClosed(HomeClosedWorkspaceEntry entry) async {
     final trimmedId = entry.projectId.trim();
     if (trimmedId.isEmpty) return;
     final existing = await load();
     final now = DateTime.now().millisecondsSinceEpoch;
     final next = [
-      HomeClosedProjectEntry(
+      HomeClosedWorkspaceEntry(
         projectId: trimmedId,
         displayName: entry.displayName,
         primaryPath: entry.primaryPath,
@@ -69,7 +69,7 @@ class HomeClosedWorkspacesStore {
     await _save(next);
   }
 
-  Future<void> _save(List<HomeClosedProjectEntry> entries) async {
+  Future<void> _save(List<HomeClosedWorkspaceEntry> entries) async {
     final ctx = _fs.pathContext;
     await _fs.ensureDir(ctx.dirname(_path));
     await _fs.atomicWrite(

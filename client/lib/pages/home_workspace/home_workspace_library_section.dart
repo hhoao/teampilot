@@ -77,7 +77,7 @@ class _HomeLibrarySectionState extends State<HomeLibrarySection> {
         ? l10n.homeWorkspaceMyFavorites
         : l10n.homeWorkspaceRecentVisits;
 
-    final allProjects = context.select<ChatCubit, List<AppProject>>(
+    final allProjects = context.select<ChatCubit, List<Workspace>>(
       (c) => c.state.projects,
     );
     final sessions = context.select<ChatCubit, List<AppSession>>(
@@ -130,7 +130,7 @@ class _HomeLibrarySectionState extends State<HomeLibrarySection> {
     );
   }
 
-  static AppProject? _findProject(List<AppProject> projects, String id) {
+  static Workspace? _findProject(List<Workspace> projects, String id) {
     for (final p in projects) {
       if (p.projectId == id) return p;
     }

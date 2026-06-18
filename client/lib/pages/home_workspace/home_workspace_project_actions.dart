@@ -40,7 +40,7 @@ void completeProjectDeleteNavigation(
 
 Future<void> showRenameWorkspaceDialog(
   BuildContext context,
-  AppProject project, {
+  Workspace project, {
   String? title,
 }) async {
   final l10n = context.l10n;
@@ -62,7 +62,7 @@ Future<void> showRenameWorkspaceDialog(
 
 Future<void> cloneWorkspace(
   BuildContext context,
-  AppProject project,
+  Workspace project,
 ) async {
   final l10n = context.l10n;
   final repo = context.read<SessionRepository>();
@@ -96,7 +96,7 @@ Future<void> cloneWorkspace(
 
 Future<void> confirmDeleteWorkspace(
   BuildContext context,
-  AppProject project,
+  Workspace project,
 ) async {
   final l10n = context.l10n;
   final repo = context.read<SessionRepository>();

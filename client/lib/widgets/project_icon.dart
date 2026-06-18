@@ -12,7 +12,7 @@ import '../services/storage/workspace_layout.dart';
 import '../utils/project_geometry_catalog.dart';
 import '../utils/project_icon_resolver.dart';
 
-/// Renders a project avatar from [AppProject.icon].
+/// Renders a project avatar from [Workspace.icon].
 class ProjectIcon extends StatelessWidget {
   const ProjectIcon({
     required this.project,
@@ -24,7 +24,7 @@ class ProjectIcon extends StatelessWidget {
   });
 
   factory ProjectIcon.fromProject(
-    AppProject project, {
+    Workspace project, {
     ProjectIconRef? previewIcon,
     double size = 64,
     double borderRadius = 17,
@@ -41,13 +41,13 @@ class ProjectIcon extends StatelessWidget {
     );
   }
 
-  final AppProject project;
+  final Workspace project;
   final ProjectIconRef? previewIcon;
   final double size;
   final double borderRadius;
   final double padding;
 
-  AppProject get _displayProject =>
+  Workspace get _displayProject =>
       previewIcon == null ? project : project.copyWith(icon: previewIcon);
 
   @override
@@ -89,7 +89,7 @@ class _CustomProjectIconImage extends StatefulWidget {
     required this.relativePath,
   });
 
-  final AppProject project;
+  final Workspace project;
   final String relativePath;
 
   @override

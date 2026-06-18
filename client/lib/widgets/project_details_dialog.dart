@@ -15,7 +15,7 @@ import 'app_dialog.dart';
 
 Future<void> showProjectDetailsDialog(
   BuildContext context,
-  AppProject project,
+  Workspace project,
   int sessionCount,
 ) {
   return showDialog<void>(
@@ -31,7 +31,7 @@ class _ProjectDetailsDialog extends StatefulWidget {
     required this.sessionCount,
   });
 
-  final AppProject project;
+  final Workspace project;
   final int sessionCount;
 
   @override

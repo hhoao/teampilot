@@ -12,7 +12,7 @@ import 'project_icon.dart';
 /// Pure UI for choosing a bundled icon; orchestration lives in [ChatCubit].
 Future<ProjectIconPickerResult> showProjectIconPickerDialog(
   BuildContext context, {
-  required AppProject project,
+  required Workspace project,
 }) {
   final l10n = context.l10n;
   return showDialog<ProjectIconPickerResult>(
@@ -38,7 +38,7 @@ class _ProjectIconPickerDialog extends StatefulWidget {
     required this.saveLabel,
   });
 
-  final AppProject project;
+  final Workspace project;
   final String title;
   final String useDefaultLabel;
   final String uploadLabel;

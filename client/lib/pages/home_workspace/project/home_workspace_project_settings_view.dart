@@ -21,7 +21,7 @@ import 'project_icon_settings_row.dart';
 class WorkspaceSettingsView extends StatefulWidget {
   const WorkspaceSettingsView({required this.project, super.key});
 
-  final AppProject project;
+  final Workspace project;
 
   static const double navWidth = 220;
 
@@ -38,7 +38,7 @@ class _WorkspaceSettingsViewState
   Widget build(BuildContext context) {
     final cs = Theme.of(context).colorScheme;
     final l10n = context.l10n;
-    final project = context.select<ChatCubit, AppProject>(
+    final project = context.select<ChatCubit, Workspace>(
       (c) => c.state.projects.firstWhere(
         (p) => p.projectId == widget.project.projectId,
         orElse: () => widget.project,
@@ -124,7 +124,7 @@ class _ProjectSettingsBasicSection extends StatelessWidget {
     required this.sessionCount,
   });
 
-  final AppProject project;
+  final Workspace project;
   final int sessionCount;
 
   @override
@@ -214,7 +214,7 @@ class _ProjectSettingsBasicSection extends StatelessWidget {
 class _ProjectSettingsDangerSection extends StatelessWidget {
   const _ProjectSettingsDangerSection({required this.project});
 
-  final AppProject project;
+  final Workspace project;
 
   @override
   Widget build(BuildContext context) {

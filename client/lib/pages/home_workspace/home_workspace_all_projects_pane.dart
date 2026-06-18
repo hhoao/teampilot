@@ -85,7 +85,7 @@ class _HomeAllWorkspacesPaneState
   Widget build(BuildContext context) {
     final cs = Theme.of(context).colorScheme;
     final l10n = context.l10n;
-    final projects = context.select<ChatCubit, List<AppProject>>(
+    final projects = context.select<ChatCubit, List<Workspace>>(
       (c) => c.state.projects,
     );
     final sessions = context.select<ChatCubit, List<AppSession>>(

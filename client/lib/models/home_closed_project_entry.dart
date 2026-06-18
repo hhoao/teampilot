@@ -1,16 +1,16 @@
 import 'package:flutter/foundation.dart';
 
 @immutable
-class HomeClosedProjectEntry {
-  const HomeClosedProjectEntry({
+class HomeClosedWorkspaceEntry {
+  const HomeClosedWorkspaceEntry({
     required this.projectId,
     required this.displayName,
     this.primaryPath = '',
     this.closedAt = 0,
   });
 
-  factory HomeClosedProjectEntry.fromJson(Map<String, Object?> json) {
-    return HomeClosedProjectEntry(
+  factory HomeClosedWorkspaceEntry.fromJson(Map<String, Object?> json) {
+    return HomeClosedWorkspaceEntry(
       projectId: json['projectId'] as String? ?? '',
       displayName: json['displayName'] as String? ?? '',
       primaryPath: json['primaryPath'] as String? ?? '',

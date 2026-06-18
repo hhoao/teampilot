@@ -121,7 +121,7 @@ void main() {
           ),
         ),
       );
-      const project = AppProject(
+      const project = Workspace(
         projectId: projectId,
         primaryPath: '/work/personal',
         createdAt: 1,
@@ -160,7 +160,7 @@ void main() {
       const profile = PersonalIdentity(id: projectId, display: projectId,
         agent: ProjectAgentConfig(agent: 'solo'),
       );
-      const project = AppProject(
+      const project = Workspace(
         projectId: projectId,
         primaryPath: '/work/personal',
         createdAt: 1,
@@ -212,7 +212,7 @@ void main() {
           agent: 'solo',
         ),
       );
-      const project = AppProject(
+      const project = Workspace(
         projectId: projectId,
         primaryPath: '/work/personal',
         createdAt: 1,
@@ -280,7 +280,7 @@ void main() {
       const profile = PersonalIdentity(id: projectId, display: projectId,
         activePresetId: 'preset-codex',
       );
-      const project = AppProject(
+      const project = Workspace(
         projectId: projectId,
         primaryPath: '/work/personal',
         createdAt: 1,
