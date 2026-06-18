@@ -1,83 +1,8 @@
 import 'package:flutter/foundation.dart';
 
+export 'project_agent_config.dart';
+import 'project_agent_config.dart';
 import 'team_config.dart';
-
-@immutable
-class ProjectAgentConfig {
-  const ProjectAgentConfig({
-    this.agent = '',
-    this.agentType = '',
-    this.extraArgs = '',
-    this.prompt = '',
-    this.dangerouslySkipPermissions = false,
-  });
-
-  factory ProjectAgentConfig.fromJson(Map<String, Object?> json) {
-    return ProjectAgentConfig(
-      agent: json['agent'] as String? ?? '',
-      agentType: json['agentType'] as String? ?? '',
-      extraArgs: json['extraArgs'] as String? ?? '',
-      prompt: json['prompt'] as String? ?? '',
-      dangerouslySkipPermissions: TeamMemberConfig.decodeDangerouslySkipPermissions(
-        json['dangerouslySkipPermissions'],
-      ),
-    );
-  }
-
-  final String agent;
-  final String agentType;
-  final String extraArgs;
-  final String prompt;
-  final bool dangerouslySkipPermissions;
-
-  ProjectAgentConfig copyWith({
-    String? agent,
-    String? agentType,
-    String? extraArgs,
-    String? prompt,
-    bool? dangerouslySkipPermissions,
-  }) {
-    return ProjectAgentConfig(
-      agent: agent ?? this.agent,
-      agentType: agentType ?? this.agentType,
-      extraArgs: extraArgs ?? this.extraArgs,
-      prompt: prompt ?? this.prompt,
-      dangerouslySkipPermissions:
-          dangerouslySkipPermissions ?? this.dangerouslySkipPermissions,
-    );
-  }
-
-  Map<String, Object?> toJson() {
-    return {
-      'agent': agent,
-      if (agentType.isNotEmpty) 'agentType': agentType,
-      'extraArgs': extraArgs,
-      'prompt': prompt,
-      if (dangerouslySkipPermissions) 'dangerouslySkipPermissions': true,
-    };
-  }
-
-  @override
-  bool operator ==(Object other) {
-    return identical(this, other) ||
-        other is ProjectAgentConfig &&
-            runtimeType == other.runtimeType &&
-            agent == other.agent &&
-            agentType == other.agentType &&
-            extraArgs == other.extraArgs &&
-            prompt == other.prompt &&
-            dangerouslySkipPermissions == other.dangerouslySkipPermissions;
-  }
-
-  @override
-  int get hashCode => Object.hash(
-    agent,
-    agentType,
-    extraArgs,
-    prompt,
-    dangerouslySkipPermissions,
-  );
-}
 
 @immutable
 class ProjectProfile {
@@ -100,9 +25,9 @@ class ProjectProfile {
       projectId: json['projectId'] as String? ?? '',
       activePresetId: _nullableTrimmedStr(json['activePresetId']),
       agent: agent,
-      skillIds: TeamConfig.decodeSkillIds(json['skillIds']),
-      pluginIds: TeamConfig.decodePluginIds(json['pluginIds']),
-      mcpServerIds: TeamConfig.decodeMcpServerIds(json['mcpServerIds']),
+      skillIds: TeamIdentity.decodeSkillIds(json['skillIds']),
+      pluginIds: TeamIdentity.decodePluginIds(json['pluginIds']),
+      mcpServerIds: TeamIdentity.decodeMcpServerIds(json['mcpServerIds']),
       updatedAt: (json['updatedAt'] as num?)?.toInt() ?? 0,
     );
   }
@@ -169,12 +94,12 @@ class ProjectProfile {
 
   @override
   int get hashCode => Object.hash(
-    projectId,
-    activePresetId,
-    agent,
-    Object.hashAll(skillIds),
-    Object.hashAll(pluginIds),
-    Object.hashAll(mcpServerIds),
-    updatedAt,
-  );
+        projectId,
+        activePresetId,
+        agent,
+        Object.hashAll(skillIds),
+        Object.hashAll(pluginIds),
+        Object.hashAll(mcpServerIds),
+        updatedAt,
+      );
 }
