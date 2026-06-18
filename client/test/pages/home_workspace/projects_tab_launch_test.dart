@@ -3,17 +3,22 @@ import 'package:teampilot/models/app_project.dart';
 import 'package:teampilot/models/launch_identity.dart';
 import 'package:teampilot/pages/home_workspace/home_workspace_projects_tab.dart';
 import 'package:teampilot/services/home_workspace/home_workspace_project_launch_prefs_store.dart';
+import 'package:teampilot/services/storage/identity_provisioner.dart';
 
 AppProject _project() =>
     AppProject(projectId: 'p1', primaryPath: '/tmp/p1', createdAt: 0);
 
 void main() {
   group('projectLaunchRoute', () {
-    test('encodes personal and team identities', () {
-      expect(projectLaunchRoute('p1', LaunchIdentity.personal),
-          '/home-v2/project/p1?as=personal');
-      expect(projectLaunchRoute('p1', const LaunchIdentity.team('a')),
-          '/home-v2/project/p1?as=team:a');
+    test('encodes bare identity ids', () {
+      expect(
+        projectLaunchRoute('p1', const LaunchIdentity('personal-default')),
+        '/home-v2/project/p1?as=personal-default',
+      );
+      expect(
+        projectLaunchRoute('p1', const LaunchIdentity('squad')),
+        '/home-v2/project/p1?as=squad',
+      );
     });
   });
 
@@ -26,7 +31,7 @@ void main() {
       expect(
         rememberedLaunchRoute(
           _project(),
-          const ProjectLaunchPref(lastIdentity: 'team:a', remember: false),
+          const ProjectLaunchPref(lastIdentity: 'squad', remember: false),
         ),
         isNull,
       );
@@ -36,16 +41,19 @@ void main() {
       expect(
         rememberedLaunchRoute(
           _project(),
-          const ProjectLaunchPref(lastIdentity: 'team:a', remember: true),
+          const ProjectLaunchPref(lastIdentity: 'squad', remember: true),
         ),
-        '/home-v2/project/p1?as=team:a',
+        '/home-v2/project/p1?as=squad',
       );
       expect(
         rememberedLaunchRoute(
           _project(),
-          const ProjectLaunchPref(lastIdentity: 'personal', remember: true),
+          ProjectLaunchPref(
+            lastIdentity: IdentityProvisioner.defaultPersonalId,
+            remember: true,
+          ),
         ),
-        '/home-v2/project/p1?as=personal',
+        '/home-v2/project/p1?as=${IdentityProvisioner.defaultPersonalId}',
       );
     });
 
@@ -53,7 +61,7 @@ void main() {
       expect(
         rememberedLaunchRoute(
           _project(),
-          const ProjectLaunchPref(lastIdentity: 'bogus', remember: true),
+          const ProjectLaunchPref(lastIdentity: '', remember: true),
         ),
         isNull,
       );

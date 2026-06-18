@@ -339,6 +339,7 @@ class _FixedResumeLifecycleService extends SessionLifecycleService {
     SessionMemberBinding? memberBinding,
     AppProject? project,
     PersonalIdentity? personal,
+    String? identityId,
     String? llmConfigPathOverride,
     Map<String, Map<String, Object?>>? extraMcpServers,
     String? busIdleUrl,
@@ -460,7 +461,7 @@ void main() {
     );
     await pumpDesktopApp(tester, teamCubit, chatCubit: chatCubit);
     final teamId = teamCubit.state.selectedTeam!.id;
-    appRouter.go('/home-v2/project/${project.projectId}?as=team:$teamId');
+    appRouter.go('/home-v2/project/${project.projectId}?as=$teamId');
     await tester.pump();
     await pumpPhaseTransitions(tester);
 

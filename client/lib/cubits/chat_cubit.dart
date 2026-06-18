@@ -365,6 +365,7 @@ class ChatCubit extends Cubit<ChatState>
     SessionRepository repo,
     String projectId, {
     String? display,
+    String? defaultIdentityId,
     List<String>? additionalPaths,
   }) async {
     _emitSnapshot(
@@ -372,6 +373,7 @@ class ChatCubit extends Cubit<ChatState>
         repo,
         projectId,
         display: display,
+        defaultIdentityId: defaultIdentityId,
         additionalPaths: additionalPaths,
       ),
     );

@@ -138,11 +138,13 @@ class SessionDataStore {
     SessionRepository repo,
     String projectId, {
     String? display,
+    String? defaultIdentityId,
     List<String>? additionalPaths,
   }) async {
     await repo.updateProjectMetadata(
       projectId,
       display: display,
+      defaultIdentityId: defaultIdentityId,
       additionalPaths: additionalPaths,
     );
     return loadProjectData(repo);

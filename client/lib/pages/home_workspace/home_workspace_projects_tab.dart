@@ -14,6 +14,7 @@ import '../../models/launch_identity.dart';
 import '../../repositories/session_repository.dart';
 import '../../services/home_workspace/home_workspace_project_launch_prefs_store.dart';
 import '../../theme/app_text_styles.dart';
+import '../../utils/launch_identity_resolver.dart';
 import '../../utils/home_workspace_project_display.dart';
 import '../../utils/project_display_name.dart';
 import '../../widgets/menu/sidebar_action_menu.dart';
@@ -68,9 +69,21 @@ Future<void> openHomeWorkspaceProject(
     context,
     projectName: project.effectiveDisplay,
     teams: options,
-    preselected: LaunchIdentity.decode(pref?.lastIdentity ?? ''),
+    preselected: pref != null
+        ? LaunchIdentity.decode(pref.lastIdentity)
+        : resolveProjectLaunchIdentity(
+            project,
+            context.read<IdentityCubit>().byId,
+          ),
   );
   if (choice == null || !context.mounted) return;
+  if (choice.remember) {
+    await context.read<ChatCubit>().updateProjectMetadata(
+      context.read<SessionRepository>(),
+      project.projectId,
+      defaultIdentityId: choice.identity.identityId,
+    );
+  }
   await store.save(
     project.projectId,
     ProjectLaunchPref(

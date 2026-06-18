@@ -3,10 +3,12 @@ import 'package:flutter/foundation.dart';
 import '../../models/app_project.dart';
 import '../../models/app_session.dart';
 import '../../models/cli_preset.dart';
+import '../../models/identity_kind.dart';
 import '../../models/personal_identity.dart';
 import '../../models/session_member_binding.dart';
 import '../../models/skill.dart';
 import '../../models/team_config.dart';
+import '../../models/workspace_identity.dart';
 import '../../repositories/cli_presets_repository.dart';
 import '../../repositories/identity_repository.dart';
 import '../../services/storage/identity_provisioner.dart';
@@ -113,7 +115,25 @@ class SessionLifecycleService {
         }
       }
     }
+    if (trimmed == IdentityProvisioner.defaultPersonalId) {
+      return PersonalIdentity(
+        id: IdentityProvisioner.defaultPersonalId,
+        display: 'Personal',
+      );
+    }
     return PersonalIdentity(id: trimmed, display: trimmed);
+  }
+
+  Future<WorkspaceIdentity?> loadWorkspaceIdentity(String identityId) async {
+    final trimmed = identityId.trim();
+    if (trimmed.isEmpty) return null;
+    final repo = _identityRepository;
+    if (repo == null) return null;
+    final all = await repo.loadAll();
+    for (final identity in all) {
+      if (identity.id == trimmed) return identity;
+    }
+    return null;
   }
 
   Future<LaunchPlan> prepareLaunch({
@@ -123,6 +143,7 @@ class SessionLifecycleService {
     SessionMemberBinding? memberBinding,
     AppProject? project,
     PersonalIdentity? personal,
+    String? identityId,
     String? llmConfigPathOverride,
     Map<String, Map<String, Object?>>? extraMcpServers,
     String? busIdleUrl,
@@ -134,6 +155,7 @@ class SessionLifecycleService {
       memberBinding: memberBinding,
       project: project,
       personal: personal,
+      identityId: identityId,
       llmConfigPathOverride: llmConfigPathOverride,
       extraMcpServers: extraMcpServers,
       busIdleUrl: busIdleUrl,
@@ -147,6 +169,7 @@ class SessionLifecycleService {
     SessionMemberBinding? memberBinding,
     AppProject? project,
     PersonalIdentity? personal,
+    String? identityId,
     String? llmConfigPathOverride,
     Map<String, Map<String, Object?>>? extraMcpServers,
     String? busIdleUrl,
@@ -158,6 +181,7 @@ class SessionLifecycleService {
       memberBinding: memberBinding,
       project: project,
       personal: personal,
+      identityId: identityId,
       llmConfigPathOverride: llmConfigPathOverride,
       extraMcpServers: extraMcpServers,
       busIdleUrl: busIdleUrl,
@@ -216,6 +240,7 @@ class SessionLifecycleService {
     SessionMemberBinding? memberBinding,
     AppProject? project,
     PersonalIdentity? personal,
+    String? identityId,
     String? llmConfigPathOverride,
     Map<String, Map<String, Object?>>? extraMcpServers,
     String? busIdleUrl,
@@ -225,7 +250,15 @@ class SessionLifecycleService {
     final memberName = member?.name.trim() ?? '';
     final cliTeamName = session.cliTeamName.trim();
     final taskId = memberBinding?.taskId.trim() ?? sessionId;
-    final isPersonal = _isPersonalLaunch(project, session);
+    final isPersonal = await _resolveIsPersonal(
+      session: session,
+      project: project,
+      identityId: identityId,
+    );
+    final personalIdentityId = await _resolvePersonalIdentityId(
+      identityId: identityId,
+      isPersonal: isPersonal,
+    );
     appLogger.i(
       '[session-lifecycle] prepareLaunch start '
       'session=$sessionId team=$teamId member=$memberName '
@@ -237,7 +270,6 @@ class SessionLifecycleService {
         roots,
         launchProjectId: isPersonal ? project!.projectId : null,
       );
-      final personalIdentityId = IdentityProvisioner.defaultPersonalId;
       final resolvedPersonal = isPersonal
           ? await loadPersonalIdentity(personalIdentityId, override: personal)
           : null;
@@ -298,6 +330,7 @@ class SessionLifecycleService {
         memberBinding: memberBinding,
         project: project,
         personal: resolvedPersonal,
+        isPersonal: isPersonal,
         runtimeTeamId: runtimeTeamId,
         workingDirectory: session.primaryPath,
         llmConfigPathOverride: llmConfigPathOverride,
@@ -454,6 +487,39 @@ class SessionLifecycleService {
   bool _isPersonalLaunch(AppProject? project, AppSession session) =>
       project != null && session.sessionTeam.trim().isEmpty;
 
+  Future<bool> _resolveIsPersonal({
+    required AppSession session,
+    AppProject? project,
+    String? identityId,
+  }) async {
+    final trimmed = identityId?.trim() ?? '';
+    if (trimmed.isNotEmpty) {
+      final identity = await loadWorkspaceIdentity(trimmed);
+      if (identity != null) {
+        return identity.kind == IdentityKind.personal;
+      }
+      if (trimmed == IdentityProvisioner.defaultPersonalId) {
+        return true;
+      }
+    }
+    return _isPersonalLaunch(project, session);
+  }
+
+  Future<String> _resolvePersonalIdentityId({
+    String? identityId,
+    required bool isPersonal,
+  }) async {
+    if (!isPersonal) return IdentityProvisioner.defaultPersonalId;
+    final trimmed = identityId?.trim() ?? '';
+    if (trimmed.isEmpty) return IdentityProvisioner.defaultPersonalId;
+    final identity = await loadWorkspaceIdentity(trimmed);
+    if (identity is PersonalIdentity) return identity.id;
+    if (trimmed == IdentityProvisioner.defaultPersonalId) {
+      return IdentityProvisioner.defaultPersonalId;
+    }
+    return trimmed;
+  }
+
   /// Test-only seam for [_isPersonalLaunch].
   @visibleForTesting
   bool debugIsPersonalLaunch(AppProject project, AppSession session) =>
@@ -543,6 +609,7 @@ class SessionLifecycleService {
     SessionMemberBinding? memberBinding,
     AppProject? project,
     PersonalIdentity? personal,
+    required bool isPersonal,
     required String runtimeTeamId,
     required String workingDirectory,
     required String? llmConfigPathOverride,
@@ -550,7 +617,7 @@ class SessionLifecycleService {
     String? busIdleUrl,
     CliPreset? preset,
   }) async {
-    if (_isPersonalLaunch(project, session)) {
+    if (isPersonal) {
       final personalProject = project!;
       final resolvedPersonal = personal ??
           await loadPersonalIdentity(IdentityProvisioner.defaultPersonalId);

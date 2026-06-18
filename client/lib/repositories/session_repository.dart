@@ -169,6 +169,7 @@ class SessionRepository {
   Future<void> updateProjectMetadata(
     String projectId, {
     String? display,
+    String? defaultIdentityId,
     List<String>? additionalPaths,
   }) async {
     final fs = await _fs();
@@ -177,6 +178,9 @@ class SessionRepository {
     final now = DateTime.now().millisecondsSinceEpoch;
     final updated = existing.copyWith(
       display: display != null ? display.trim() : existing.display,
+      defaultIdentityId: defaultIdentityId != null
+          ? defaultIdentityId.trim()
+          : existing.defaultIdentityId,
       additionalPaths: additionalPaths != null
           ? List<String>.from(
               additionalPaths

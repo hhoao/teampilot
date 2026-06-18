@@ -28,4 +28,20 @@ void main() {
     expect(restored.projectId, 'p1');
     // No teamId surface exists; the field is simply dropped.
   });
+
+  test('defaultIdentityId round-trips and defaults empty', () {
+    const p = AppProject(
+      projectId: 'p1',
+      primaryPath: '/tmp/p1',
+      createdAt: 1,
+      defaultIdentityId: 'coding',
+    );
+    final restored = AppProject.fromJson(p.toJson());
+    expect(restored.defaultIdentityId, 'coding');
+    expect(
+      AppProject.fromJson({'projectId': 'x', 'primaryPath': '/x'})
+          .defaultIdentityId,
+      '',
+    );
+  });
 }

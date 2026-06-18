@@ -5,6 +5,7 @@ import 'package:go_router/go_router.dart';
 import '../../cubits/chat_cubit.dart';
 import '../../repositories/identity_repository.dart';
 import '../../repositories/session_repository.dart';
+import '../../services/storage/identity_provisioner.dart';
 import '../../theme/app_text_styles.dart';
 import '../../widgets/app_dialog.dart';
 import '../../utils/project_path_picker.dart';
@@ -38,7 +39,9 @@ Future<void> showHomeWorkspaceNewProjectDialog(
         identityRepository ?? context.read<IdentityRepository>(),
   );
   if (!context.mounted) return;
-  context.go('/home-v2/project/$projectId?as=personal');
+  context.go(
+    '/home-v2/project/$projectId?as=${IdentityProvisioner.defaultPersonalId}',
+  );
 }
 
 class HomeWorkspaceNewProjectDialog extends StatefulWidget {

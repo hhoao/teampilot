@@ -9,6 +9,7 @@ class AppProject {
     required this.primaryPath,
     this.additionalPaths = const [],
     this.display = '',
+    this.defaultIdentityId = '',
     this.icon = ProjectIconRef.auto,
     required this.createdAt,
     this.updatedAt = 0,
@@ -29,6 +30,7 @@ class AppProject {
       primaryPath: json['primaryPath'] as String? ?? '',
       additionalPaths: paths,
       display: json['display'] as String? ?? '',
+      defaultIdentityId: json['defaultIdentityId'] as String? ?? '',
       icon: ProjectIconRef.fromJson(json['icon']),
       createdAt: json['createdAt'] as int? ?? 0,
       updatedAt: json['updatedAt'] as int? ?? 0,
@@ -40,6 +42,7 @@ class AppProject {
   final String primaryPath;
   final List<String> additionalPaths;
   final String display;
+  final String defaultIdentityId;
   final ProjectIconRef icon;
   final int createdAt;
   final int updatedAt;
@@ -59,6 +62,7 @@ class AppProject {
     String? primaryPath,
     List<String>? additionalPaths,
     String? display,
+    String? defaultIdentityId,
     ProjectIconRef? icon,
     int? createdAt,
     int? updatedAt,
@@ -69,6 +73,7 @@ class AppProject {
       primaryPath: primaryPath ?? this.primaryPath,
       additionalPaths: additionalPaths ?? this.additionalPaths,
       display: display ?? this.display,
+      defaultIdentityId: defaultIdentityId ?? this.defaultIdentityId,
       icon: icon ?? this.icon,
       createdAt: createdAt ?? this.createdAt,
       updatedAt: updatedAt ?? this.updatedAt,
@@ -82,6 +87,7 @@ class AppProject {
       'primaryPath': primaryPath,
       'additionalPaths': additionalPaths,
       'display': display,
+      if (defaultIdentityId.isNotEmpty) 'defaultIdentityId': defaultIdentityId,
       if (icon.toJson() case final json?) 'icon': json,
       'createdAt': createdAt,
       'updatedAt': updatedAt,
@@ -98,6 +104,7 @@ class AppProject {
             primaryPath == other.primaryPath &&
             listEquals(additionalPaths, other.additionalPaths) &&
             display == other.display &&
+            defaultIdentityId == other.defaultIdentityId &&
             icon == other.icon &&
             createdAt == other.createdAt &&
             updatedAt == other.updatedAt &&
@@ -110,6 +117,7 @@ class AppProject {
     primaryPath,
     Object.hashAll(additionalPaths),
     display,
+    defaultIdentityId,
     icon,
     createdAt,
     updatedAt,
