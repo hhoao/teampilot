@@ -240,8 +240,24 @@ class IdentityCubit extends Cubit<IdentityState> implements IdentityCubitHost {
   Future<void> _reloadIdentities() async {
     final all = await _repository.loadAll();
     final teams = _sortTeams(all.whereType<TeamIdentity>().toList());
-    final personals = all.whereType<PersonalIdentity>().toList();
+    final personals = _sortPersonals(all.whereType<PersonalIdentity>().toList());
     emit(state.copyWith(identities: [...personals, ...teams]));
+  }
+
+  List<PersonalIdentity> _sortPersonals(List<PersonalIdentity> personals) {
+    final hasCustomOrder = personals.any((personal) => personal.sortOrder > 0);
+    final sorted = List<PersonalIdentity>.of(personals);
+    sorted.sort((a, b) {
+      if (hasCustomOrder) {
+        final order = a.sortOrder.compareTo(b.sortOrder);
+        if (order != 0) return order;
+      }
+      if (a.createdAt != b.createdAt) {
+        return a.createdAt.compareTo(b.createdAt);
+      }
+      return a.display.toLowerCase().compareTo(b.display.toLowerCase());
+    });
+    return sorted;
   }
 
   List<TeamIdentity> _sortTeams(List<TeamIdentity> teams) {
@@ -336,7 +352,7 @@ class IdentityCubit extends Cubit<IdentityState> implements IdentityCubitHost {
     emit(state.copyWith(isLoading: true));
     final all = await _repository.loadAll();
     var teams = _sortTeams(all.whereType<TeamIdentity>().toList());
-    final personals = all.whereType<PersonalIdentity>().toList();
+    final personals = _sortPersonals(all.whereType<PersonalIdentity>().toList());
     if (teams.isEmpty) {
       final team = _rosterEditor.defaultTeam();
       teams = [team];
@@ -388,6 +404,31 @@ class IdentityCubit extends Cubit<IdentityState> implements IdentityCubitHost {
     ];
     emit(state.copyWith(teams: stamped));
     await saveTeams(stamped);
+  }
+
+  Future<void> reorderPersonals(int oldIndex, int newIndex) async {
+    final personals = state.personals;
+    if (oldIndex < 0 || oldIndex >= personals.length) return;
+    var targetIndex = newIndex;
+    if (targetIndex < 0 || targetIndex > personals.length) return;
+    if (targetIndex > oldIndex) targetIndex -= 1;
+    if (oldIndex == targetIndex) return;
+
+    final reordered = List<PersonalIdentity>.of(personals);
+    final moved = reordered.removeAt(oldIndex);
+    reordered.insert(targetIndex, moved);
+    final stamped = [
+      for (var i = 0; i < reordered.length; i++)
+        reordered[i].copyWith(sortOrder: i + 1),
+    ];
+    emit(state.copyWith(personals: stamped));
+    await savePersonals(stamped);
+  }
+
+  Future<void> savePersonals(List<PersonalIdentity> personals) async {
+    for (final personal in personals) {
+      await _repository.save(personal);
+    }
   }
 
   Future<void> selectTeam(String id) async {

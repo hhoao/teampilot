@@ -78,12 +78,27 @@ class IdentityRepository {
     return a.name.compareTo(b.name);
   }
 
+  static int _comparePersonals(
+    PersonalIdentity a,
+    PersonalIdentity b, {
+    required bool hasCustomOrder,
+  }) {
+    if (hasCustomOrder) {
+      final order = a.sortOrder.compareTo(b.sortOrder);
+      if (order != 0) return order;
+    }
+    if (a.createdAt != b.createdAt) {
+      return a.createdAt.compareTo(b.createdAt);
+    }
+    return a.display.toLowerCase().compareTo(b.display.toLowerCase());
+  }
+
   static int _compareIdentities(Identity a, Identity b) {
     if (a is TeamIdentity && b is TeamIdentity) {
       return _compareTeams(a, b, hasCustomOrder: false);
     }
     if (a is PersonalIdentity && b is PersonalIdentity) {
-      return a.display.toLowerCase().compareTo(b.display.toLowerCase());
+      return _comparePersonals(a, b, hasCustomOrder: false);
     }
     if (a is TeamIdentity) return -1;
     if (b is TeamIdentity) return 1;
@@ -116,6 +131,15 @@ class IdentityRepository {
       (a, b) => _compareTeams(a, b, hasCustomOrder: hasCustomOrder),
     );
     return List.unmodifiable(teams);
+  }
+
+  Future<List<PersonalIdentity>> loadPersonals() async {
+    final personals = (await loadAll()).whereType<PersonalIdentity>().toList();
+    final hasCustomOrder = personals.any((personal) => personal.sortOrder > 0);
+    personals.sort(
+      (a, b) => _comparePersonals(a, b, hasCustomOrder: hasCustomOrder),
+    );
+    return List.unmodifiable(personals);
   }
 
   Future<void> saveTeams(List<TeamIdentity> teams) async {

@@ -80,4 +80,35 @@ void main() {
     expect(cubit.state.personals.map((p) => p.id), ['a']);
     await cubit.close();
   });
+
+  test('reorderPersonals persists sortOrder for all personals', () async {
+    final cubit = _cubit(tmp, repo);
+    await cubit.load();
+    await cubit.savePersonal(
+      const PersonalIdentity(id: 'first', display: 'First', createdAt: 1),
+    );
+    await cubit.savePersonal(
+      const PersonalIdentity(id: 'second', display: 'Second', createdAt: 2),
+    );
+    await cubit.savePersonal(
+      const PersonalIdentity(id: 'third', display: 'Third', createdAt: 3),
+    );
+
+    await cubit.reorderPersonals(0, 3);
+
+    expect(cubit.state.personals.map((p) => p.display).toList(), [
+      'Second',
+      'Third',
+      'First',
+    ]);
+    expect(cubit.state.personals.map((p) => p.sortOrder).toList(), [1, 2, 3]);
+
+    final reloaded = await repo.loadPersonals();
+    expect(reloaded.map((p) => p.display).toList(), [
+      'Second',
+      'Third',
+      'First',
+    ]);
+    await cubit.close();
+  });
 }

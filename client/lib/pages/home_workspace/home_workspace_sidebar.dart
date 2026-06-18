@@ -13,6 +13,10 @@ import 'home_workspace_global_section.dart';
 import 'home_workspace_library_view.dart';
 import 'home_workspace_new_team_dialog.dart';
 
+const double _kIdentityDragGutterWidth = 28;
+const double _kIdentityGutterGap = 4;
+const double _kIdentityContentPaddingLeft = 12;
+
 /// Left rail of the workspace home: workspace identities plus global management
 /// shortcuts, mirroring the Apifox sidebar. Identity selection drives the
 /// right pane; global shortcuts swap it via [onSelectGlobalView].
@@ -113,24 +117,28 @@ class _HomeWorkspaceSidebarState extends State<HomeWorkspaceSidebar> {
                 if (_teamsExpanded && personals.isNotEmpty)
                   SliverPadding(
                     padding: const EdgeInsets.fromLTRB(0, 8, 0, 0),
-                    sliver: SliverList(
-                      delegate: SliverChildBuilderDelegate(
-                        (context, index) {
-                          final personal = personals[index];
-                          return _IdentityRow(
-                            key: ValueKey(personal.id),
-                            name: personal.display,
-                            isTeam: false,
-                            selected:
-                                !allProjectsActive &&
-                                activeGlobalView == null &&
-                                activeLibraryView == null &&
-                                personal.id == selectedIdentityId,
-                            onTap: () => onIdentity?.call(personal.id),
-                          );
-                        },
-                        childCount: personals.length,
-                      ),
+                    sliver: SliverReorderableList(
+                      itemCount: personals.length,
+                      onReorder: (oldIndex, newIndex) {
+                        unawaited(
+                          identityCubit.reorderPersonals(oldIndex, newIndex),
+                        );
+                      },
+                      itemBuilder: (context, index) {
+                        final personal = personals[index];
+                        return _IdentityRow(
+                          key: ValueKey(personal.id),
+                          index: index,
+                          name: personal.display,
+                          isTeam: false,
+                          selected:
+                              !allProjectsActive &&
+                              activeGlobalView == null &&
+                              activeLibraryView == null &&
+                              personal.id == selectedIdentityId,
+                          onTap: () => onIdentity?.call(personal.id),
+                        );
+                      },
                     ),
                   ),
                 if (_teamsExpanded && teams.isNotEmpty)
@@ -317,14 +325,14 @@ class _SectionHeader extends StatelessWidget {
 class _IdentityRow extends StatefulWidget {
   const _IdentityRow({
     super.key,
-    this.index,
+    required this.index,
     required this.name,
     required this.isTeam,
     required this.selected,
     required this.onTap,
   });
 
-  final int? index;
+  final int index;
   final String name;
   final bool isTeam;
   final bool selected;
@@ -357,32 +365,29 @@ class _IdentityRowState extends State<_IdentityRow> {
         child: Row(
           crossAxisAlignment: CrossAxisAlignment.center,
           children: [
-            if (widget.index != null)
-              ReorderableDragStartListener(
-                index: widget.index!,
-                child: MouseRegion(
-                  cursor: _hovered
-                      ? SystemMouseCursors.grab
-                      : SystemMouseCursors.basic,
-                  child: SizedBox(
-                    width: 28,
-                    height: 40,
-                    child: AnimatedOpacity(
-                      opacity: _hovered ? 0.65 : 0,
-                      duration: const Duration(milliseconds: 120),
-                      curve: Curves.easeOut,
-                      child: Icon(
-                        Icons.drag_indicator_rounded,
-                        size: 18,
-                        color: cs.onSurfaceVariant,
-                      ),
+            ReorderableDragStartListener(
+              index: widget.index,
+              child: MouseRegion(
+                cursor: _hovered
+                    ? SystemMouseCursors.grab
+                    : SystemMouseCursors.basic,
+                child: SizedBox(
+                  width: _kIdentityDragGutterWidth,
+                  height: 40,
+                  child: AnimatedOpacity(
+                    opacity: _hovered ? 0.65 : 0,
+                    duration: const Duration(milliseconds: 120),
+                    curve: Curves.easeOut,
+                    child: Icon(
+                      Icons.drag_indicator_rounded,
+                      size: 18,
+                      color: cs.onSurfaceVariant,
                     ),
                   ),
                 ),
-              )
-            else
-              const SizedBox(width: 32),
-            const SizedBox(width: 4),
+              ),
+            ),
+            const SizedBox(width: _kIdentityGutterGap),
             Expanded(
               child: MouseRegion(
                 cursor: SystemMouseCursors.click,
@@ -445,7 +450,14 @@ class _NewTeamRow extends StatelessWidget {
       onTap: onTap,
       borderRadius: BorderRadius.circular(8),
       child: Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 11, vertical: 10),
+        padding: EdgeInsets.fromLTRB(
+          _kIdentityDragGutterWidth +
+              _kIdentityGutterGap +
+              _kIdentityContentPaddingLeft,
+          10,
+          11,
+          10,
+        ),
         child: Row(
           children: [
             Icon(Icons.add_rounded, size: context.appIconSizes.md, color: cs.primary),

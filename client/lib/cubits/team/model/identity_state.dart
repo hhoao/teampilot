@@ -44,6 +44,7 @@ class IdentityState extends Equatable {
 
   IdentityState copyWith({
     List<Identity>? identities,
+    List<PersonalIdentity>? personals,
     List<TeamIdentity>? teams,
     String? selectedTeamId,
     String? statusMessage,
@@ -54,7 +55,11 @@ class IdentityState extends Equatable {
     bool clearSelectedTeamId = false,
   }) {
     final nextIdentities = identities ??
-        (teams != null ? [...personals, ...teams] : this.identities);
+        (personals != null
+            ? [...personals, ...teams ?? this.teams]
+            : teams != null
+                ? [...this.personals, ...teams]
+                : this.identities);
     return IdentityState(
       identities: nextIdentities,
       selectedTeamId: clearSelectedTeamId

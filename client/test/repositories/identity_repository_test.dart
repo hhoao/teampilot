@@ -41,4 +41,20 @@ void main() {
     await repo.delete('coding');
     expect(await repo.loadAll(), isEmpty);
   });
+
+  test('sorts personals by sortOrder when any has a custom order', () async {
+    await repo.save(const PersonalIdentity(
+      id: 'b',
+      display: 'B',
+      sortOrder: 2,
+    ));
+    await repo.save(const PersonalIdentity(
+      id: 'a',
+      display: 'A',
+      sortOrder: 1,
+    ));
+
+    final personals = await repo.loadPersonals();
+    expect(personals.map((p) => p.id).toList(), ['a', 'b']);
+  });
 }
