@@ -7,33 +7,33 @@ import 'model/chat_tab_info.dart';
 /// Owns the open-tab list and all pure queries/derivations over it.
 /// Never emits — callers read results and update ChatState themselves.
 ///
-/// Tabs are bucketed by `projectId`. Every query/mutation below operates on the
-/// *active* project's bucket ([setActiveProject]); callers keep using the same
-/// flat-list API. Per-project active-tab index is snapshotted on project switch,
+/// Tabs are bucketed by `workspaceId`. Every query/mutation below operates on the
+/// *active* workspace's bucket ([setActiveWorkspace]); callers keep using the same
+/// flat-list API. Per-workspace active-tab index is snapshotted on workspace switch,
 /// not mirrored on every selection, so cubit call sites stay unchanged.
 class ChatTabStore {
-  final Map<String, List<ChatTab>> _byProject = {};
+  final Map<String, List<ChatTab>> _byWorkspace = {};
   final Map<String, int> _savedActiveIndex = {};
-  String _activeProjectId = '';
+  String _activeWorkspaceId = '';
 
-  List<ChatTab> get _active => _byProject.putIfAbsent(_activeProjectId, () => []);
+  List<ChatTab> get _active => _byWorkspace.putIfAbsent(_activeWorkspaceId, () => []);
 
   /// Switches the active bucket. Pass [currentActiveIndex] (the cubit's current
-  /// `ChatState.activeTabIndex`) to snapshot the outgoing project's selection.
-  /// Returns the restored active-tab index for the incoming project (clamped).
-  int setActiveProject(String projectId, {int? currentActiveIndex}) {
-    if (currentActiveIndex != null && _activeProjectId.isNotEmpty) {
-      _savedActiveIndex[_activeProjectId] = currentActiveIndex;
+  /// `ChatState.activeTabIndex`) to snapshot the outgoing workspace's selection.
+  /// Returns the restored active-tab index for the incoming workspace (clamped).
+  int setActiveWorkspace(String workspaceId, {int? currentActiveIndex}) {
+    if (currentActiveIndex != null && _activeWorkspaceId.isNotEmpty) {
+      _savedActiveIndex[_activeWorkspaceId] = currentActiveIndex;
     }
-    _activeProjectId = projectId;
-    _byProject.putIfAbsent(projectId, () => []);
-    final saved = _savedActiveIndex[projectId] ?? 0;
-    final len = _byProject[projectId]!.length;
+    _activeWorkspaceId = workspaceId;
+    _byWorkspace.putIfAbsent(workspaceId, () => []);
+    final saved = _savedActiveIndex[workspaceId] ?? 0;
+    final len = _byWorkspace[workspaceId]!.length;
     if (len == 0) return 0;
     return saved.clamp(0, len - 1);
   }
 
-  String get activeProjectId => _activeProjectId;
+  String get activeWorkspaceId => _activeWorkspaceId;
 
   List<ChatTab> get tabs => _active;
   int get length => _active.length;
@@ -41,29 +41,29 @@ class ChatTabStore {
 
   /// Clears every bucket (used on cubit close).
   void clear() {
-    _byProject.clear();
+    _byWorkspace.clear();
     _savedActiveIndex.clear();
   }
 
-  /// Removes and returns all tabs belonging to [projectId] (for disposal by the
+  /// Removes and returns all tabs belonging to [workspaceId] (for disposal by the
   /// caller). Clears the named bucket and also removes matching tabs from the
-  /// legacy empty-string bucket (tabs added before [setActiveProject] was called).
-  List<ChatTab> removeProject(String projectId) {
-    _savedActiveIndex.remove(projectId);
+  /// legacy empty-string bucket (tabs added before [setActiveWorkspace] was called).
+  List<ChatTab> removeWorkspace(String workspaceId) {
+    _savedActiveIndex.remove(workspaceId);
     final removed = <ChatTab>[];
     // Named bucket.
-    final named = _byProject.remove(projectId);
+    final named = _byWorkspace.remove(workspaceId);
     if (named != null) removed.addAll(named);
-    // Legacy bucket: tabs whose persisted session belongs to this project.
-    if (projectId.isNotEmpty) {
-      final legacy = _byProject[''];
+    // Legacy bucket: tabs whose persisted session belongs to this workspace.
+    if (workspaceId.isNotEmpty) {
+      final legacy = _byWorkspace[''];
       if (legacy != null) {
         final matching =
             legacy
-                .where((t) => t.persistedSession?.projectId == projectId)
+                .where((t) => t.persistedSession?.workspaceId == workspaceId)
                 .toList();
         if (matching.isNotEmpty) {
-          legacy.removeWhere((t) => t.persistedSession?.projectId == projectId);
+          legacy.removeWhere((t) => t.persistedSession?.workspaceId == workspaceId);
           removed.addAll(matching);
         }
       }
@@ -71,27 +71,27 @@ class ChatTabStore {
     return removed;
   }
 
-  /// Session-backed (non-`local-`) tab count for [projectId], across any bucket.
+  /// Session-backed (non-`local-`) tab count for [workspaceId], across any bucket.
   ///
   /// Checks the named bucket first. Also scans the legacy empty-string bucket
-  /// by persisted-session projectId so that tabs opened before [setActiveProject]
-  /// is called (e.g. the connect flow before the UI switches project context)
+  /// by persisted-session workspaceId so that tabs opened before [setActiveWorkspace]
+  /// is called (e.g. the connect flow before the UI switches workspace context)
   /// are counted correctly.
-  int sessionBackedCountForProject(String projectId) {
+  int sessionBackedCountForWorkspace(String workspaceId) {
     int count = 0;
-    // Named bucket: tabs explicitly placed here via setActiveProject.
-    final named = _byProject[projectId];
+    // Named bucket: tabs explicitly placed here via setActiveWorkspace.
+    final named = _byWorkspace[workspaceId];
     if (named != null) {
       count += named.where((t) => !t.info.id.startsWith('local-')).length;
     }
-    // Legacy / no-active-project bucket: check persisted session's projectId.
-    if (projectId.isNotEmpty) {
-      final legacy = _byProject[''];
+    // Legacy / no-active-workspace bucket: check persisted session's workspaceId.
+    if (workspaceId.isNotEmpty) {
+      final legacy = _byWorkspace[''];
       if (legacy != null) {
         count += legacy.where(
           (t) =>
               !t.info.id.startsWith('local-') &&
-              t.persistedSession?.projectId == projectId,
+              t.persistedSession?.workspaceId == workspaceId,
         ).length;
       }
     }
@@ -116,7 +116,7 @@ class ChatTabStore {
   int indexOfSession(String id) => _active.indexWhere((t) => t.info.id == id);
 
   void append(ChatTab tab) {
-    tab.projectId = _activeProjectId;
+    tab.workspaceId = _activeWorkspaceId;
     _active.add(tab);
   }
 
@@ -139,7 +139,7 @@ class ChatTabStore {
       info: localSessionInfo(team),
       cliTeamName: cliTeamName,
       selectedMemberId: defaultMemberId(team),
-      projectId: _activeProjectId,
+      workspaceId: _activeWorkspaceId,
     );
     _active.add(tab);
     return tab;
@@ -181,7 +181,7 @@ class ChatTabStore {
 
   /// Every tab across all buckets (used on cubit close to dispose sessions).
   Iterable<ChatTab> get allTabs sync* {
-    for (final bucket in _byProject.values) {
+    for (final bucket in _byWorkspace.values) {
       yield* bucket;
     }
   }

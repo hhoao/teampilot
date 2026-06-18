@@ -1,35 +1,35 @@
 import '../l10n/app_localizations.dart';
 
-/// Built-in role prompts for the personal-project agent prompt field.
-class ProjectAgentPromptPreset {
-  const ProjectAgentPromptPreset(this.id);
+/// Built-in role prompts for the personal-workspace agent prompt field.
+class WorkspaceAgentPromptPreset {
+  const WorkspaceAgentPromptPreset(this.id);
 
   final String id;
 
-  static const all = <ProjectAgentPromptPreset>[
-    ProjectAgentPromptPreset('general'),
-    ProjectAgentPromptPreset('developer'),
-    ProjectAgentPromptPreset('reviewer'),
-    ProjectAgentPromptPreset('researcher'),
+  static const all = <WorkspaceAgentPromptPreset>[
+    WorkspaceAgentPromptPreset('general'),
+    WorkspaceAgentPromptPreset('developer'),
+    WorkspaceAgentPromptPreset('reviewer'),
+    WorkspaceAgentPromptPreset('researcher'),
   ];
 }
 
-String projectAgentPromptPresetLabel(AppLocalizations l10n, String id) {
+String workspaceAgentPromptPresetLabel(AppLocalizations l10n, String id) {
   return switch (id) {
-    'general' => l10n.projectAgentPromptPresetGeneral,
-    'developer' => l10n.projectAgentPromptPresetDeveloper,
-    'reviewer' => l10n.projectAgentPromptPresetReviewer,
-    'researcher' => l10n.projectAgentPromptPresetResearcher,
+    'general' => l10n.workspaceAgentPromptPresetGeneral,
+    'developer' => l10n.workspaceAgentPromptPresetDeveloper,
+    'reviewer' => l10n.workspaceAgentPromptPresetReviewer,
+    'researcher' => l10n.workspaceAgentPromptPresetResearcher,
     _ => id,
   };
 }
 
-String projectAgentPromptPresetText(AppLocalizations l10n, String id) {
+String workspaceAgentPromptPresetText(AppLocalizations l10n, String id) {
   return switch (id) {
-    'general' => l10n.projectAgentPromptPresetGeneralText,
-    'developer' => l10n.projectAgentPromptPresetDeveloperText,
-    'reviewer' => l10n.projectAgentPromptPresetReviewerText,
-    'researcher' => l10n.projectAgentPromptPresetResearcherText,
+    'general' => l10n.workspaceAgentPromptPresetGeneralText,
+    'developer' => l10n.workspaceAgentPromptPresetDeveloperText,
+    'reviewer' => l10n.workspaceAgentPromptPresetReviewerText,
+    'researcher' => l10n.workspaceAgentPromptPresetResearcherText,
     _ => '',
   };
 }

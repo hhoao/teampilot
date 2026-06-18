@@ -34,7 +34,7 @@ class MemberConfigCubit extends Cubit<MemberConfigState> {
   final MemberConfigInspector _inspector;
 
   Future<void> load({
-    required String projectId,
+    required String workspaceId,
     required String sessionId,
     required TeamIdentity team,
     required TeamMemberConfig member,
@@ -42,7 +42,7 @@ class MemberConfigCubit extends Cubit<MemberConfigState> {
     emit(state.copyWith(status: MemberConfigStatus.loading));
     try {
       final detail = await _inspector.inspect(
-        projectId: projectId,
+        workspaceId: workspaceId,
         sessionId: sessionId,
         team: team,
         member: member,

@@ -8,7 +8,7 @@ import '../../models/team_config.dart';
 import '../../models/identity.dart';
 import '../../theme/workspace_surface_layers.dart';
 import '../team_config/team_config_section.dart';
-import 'home_workspace_all_projects_pane.dart';
+import 'home_workspace_all_workspaces_pane.dart';
 import 'home_workspace_content.dart';
 import 'home_workspace_global_section.dart';
 import 'home_workspace_library_section.dart';
@@ -17,7 +17,7 @@ import 'home_workspace_personal_content.dart';
 import 'home_workspace_sidebar.dart';
 
 /// New Apifox-style workspace home body (workspaces rail + right pane). The
-/// window chrome (title bar + open project tabs) is provided by
+/// window chrome (title bar + open workspace tabs) is provided by
 /// [HomeShell].
 class HomePage extends StatefulWidget {
   const HomePage({
@@ -35,7 +35,7 @@ class HomePage extends StatefulWidget {
   final String? initialMemberId;
 
   /// Global management sidebar entry to open on first build (deep-link from
-  /// project management "manage all" actions).
+  /// workspace management "manage all" actions).
   final HomeGlobalView? initialGlobalView;
 
   @override
@@ -43,7 +43,7 @@ class HomePage extends StatefulWidget {
 }
 
 class _HomePageState extends State<HomePage> {
-  var _allProjectsActive = true;
+  var _allWorkspacesActive = true;
   String? _selectedIdentityId;
 
   /// Null means the team view; otherwise a global management section.
@@ -56,10 +56,10 @@ class _HomePageState extends State<HomePage> {
   void initState() {
     super.initState();
     if (widget.initialGlobalView != null) {
-      _allProjectsActive = false;
+      _allWorkspacesActive = false;
     }
     if (widget.initialSection != null) {
-      _allProjectsActive = false;
+      _allWorkspacesActive = false;
       _selectedIdentityId =
           context.read<IdentityCubit>().state.selectedTeam?.id;
     }
@@ -72,7 +72,7 @@ class _HomePageState extends State<HomePage> {
     setState(() {
       _globalView = widget.initialGlobalView;
       if (widget.initialGlobalView != null) {
-        _allProjectsActive = false;
+        _allWorkspacesActive = false;
         _libraryView = null;
       }
     });
@@ -85,7 +85,7 @@ class _HomePageState extends State<HomePage> {
     }
     setState(() {
       _selectedIdentityId = identityId;
-      _allProjectsActive = false;
+      _allWorkspacesActive = false;
       _globalView = null;
       _libraryView = null;
     });
@@ -100,7 +100,7 @@ class _HomePageState extends State<HomePage> {
           personal: personal,
           cubit: identityCubit,
           onSelectGlobalView: (view) => setState(() {
-            _allProjectsActive = false;
+            _allWorkspacesActive = false;
             _globalView = view;
             _libraryView = null;
           }),
@@ -109,7 +109,7 @@ class _HomePageState extends State<HomePage> {
           initialSection: widget.initialSection,
           initialMemberId: widget.initialMemberId,
           onSelectGlobalView: (view) => setState(() {
-            _allProjectsActive = false;
+            _allWorkspacesActive = false;
             _globalView = view;
             _libraryView = null;
           }),
@@ -129,8 +129,8 @@ class _HomePageState extends State<HomePage> {
     final paneKey = ValueKey(
       globalView?.name ??
           libraryView?.name ??
-          (_allProjectsActive
-              ? 'all-projects'
+          (_allWorkspacesActive
+              ? 'all-workspaces'
               : 'identity-${selectedIdentity?.id ?? 'none'}'),
     );
 
@@ -140,22 +140,22 @@ class _HomePageState extends State<HomePage> {
         HomeSidebar(
           activeGlobalView: globalView,
           activeLibraryView: libraryView,
-          allProjectsActive:
-              _allProjectsActive && globalView == null && libraryView == null,
-          selectedIdentityId: _allProjectsActive ? null : selectedIdentity?.id,
-          onSelectAllProjects: () => setState(() {
-            _allProjectsActive = true;
+          allWorkspacesActive:
+              _allWorkspacesActive && globalView == null && libraryView == null,
+          selectedIdentityId: _allWorkspacesActive ? null : selectedIdentity?.id,
+          onSelectAllWorkspaces: () => setState(() {
+            _allWorkspacesActive = true;
             _globalView = null;
             _libraryView = null;
             _selectedIdentityId = null;
           }),
           onSelectGlobalView: (view) => setState(() {
-            _allProjectsActive = false;
+            _allWorkspacesActive = false;
             _globalView = view;
             _libraryView = null;
           }),
           onSelectLibraryView: (view) => setState(() {
-            _allProjectsActive = false;
+            _allWorkspacesActive = false;
             _libraryView = view;
             _globalView = null;
           }),
@@ -168,7 +168,7 @@ class _HomePageState extends State<HomePage> {
                     ? HomeGlobalSection(view: globalView)
                     : libraryView != null
                     ? HomeLibrarySection(view: libraryView)
-                    : _allProjectsActive
+                    : _allWorkspacesActive
                     ? const HomeAllWorkspacesPane()
                     : selectedIdentity != null
                     ? _identityPane(identityCubit, selectedIdentity)

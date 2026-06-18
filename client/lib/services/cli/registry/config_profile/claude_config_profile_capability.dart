@@ -50,9 +50,9 @@ final class ClaudeConfigProfileCapability implements ConfigProfileCapability {
     'theme': 'auto',
   };
 
-  static const defaultProjectConfig = <String, Object?>{
+  static const defaultWorkspaceConfig = <String, Object?>{
     'hasTrustDialogAccepted': true,
-    'projectOnboardingSeenCount': 1,
+    'workspaceOnboardingSeenCount': 1,
     'hasClaudeMdExternalIncludesApproved': true,
     'hasClaudeMdExternalIncludesWarningShown': true,
     'allowedTools': <Object?>[],
@@ -61,13 +61,13 @@ final class ClaudeConfigProfileCapability implements ConfigProfileCapability {
 
   static String sessionMetadataFile(
     ConfigProfileDelegate delegate,
-    String projectId,
+    String workspaceId,
     String sessionId, {
     String? memberId,
   }) =>
       delegate.pathContext.join(
         delegate.sessionToolDir(
-          projectId,
+          workspaceId,
           sessionId,
           toolId,
           memberId: memberId,
@@ -77,14 +77,14 @@ final class ClaudeConfigProfileCapability implements ConfigProfileCapability {
 
   static String sessionMemberSettingsFile(
     ConfigProfileDelegate delegate,
-    String projectId,
+    String workspaceId,
     String sessionId,
     TeamMemberConfig member, {
     String? memberId,
   }) =>
       delegate.pathContext.join(
         delegate.sessionToolDir(
-          projectId,
+          workspaceId,
           sessionId,
           toolId,
           memberId: memberId,
@@ -126,7 +126,7 @@ final class ClaudeConfigProfileCapability implements ConfigProfileCapability {
     }
     await _ensureSessionDefaults(
       ctx.paths,
-      ctx.projectId,
+      ctx.workspaceId,
       ctx.sessionId,
       memberId: ctx.memberId,
     );
@@ -213,7 +213,7 @@ final class ClaudeConfigProfileCapability implements ConfigProfileCapability {
         claude?.settings != null &&
         isOfficialClaudeSettings(claude!.settings!)) {
       final sessionClaudeDir = delegate.sessionToolDir(
-        scope.projectId,
+        scope.workspaceId,
         scope.sessionId,
         toolId,
         memberId: scope.memberId,
@@ -234,7 +234,7 @@ final class ClaudeConfigProfileCapability implements ConfigProfileCapability {
     final member = ctx.member;
     final environment = <String, String>{
       'CLAUDE_CONFIG_DIR': delegate.sessionToolDir(
-        scope.projectId,
+        scope.workspaceId,
         scope.sessionId,
         toolId,
         memberId: scope.memberId,
@@ -242,7 +242,7 @@ final class ClaudeConfigProfileCapability implements ConfigProfileCapability {
       if (member != null && member.isValid)
         settingsFileEnvKey: sessionMemberSettingsFile(
           delegate,
-          scope.projectId,
+          scope.workspaceId,
           scope.sessionId,
           member,
           memberId: scope.memberId,
@@ -272,14 +272,14 @@ final class ClaudeConfigProfileCapability implements ConfigProfileCapability {
 
   Future<void> _ensureSessionDefaults(
     ConfigProfileDelegate delegate,
-    String projectId,
+    String workspaceId,
     String sessionId, {
     String? memberId,
   }) async {
     await _ensureSessionDefaultsAt(
       delegate,
       delegate.sessionToolDir(
-        projectId,
+        workspaceId,
         sessionId,
         toolId,
         memberId: memberId,
@@ -426,10 +426,10 @@ final class ClaudeConfigProfileCapability implements ConfigProfileCapability {
       memberToolDir,
       metadataFileName,
     );
-    final metadata = await delegate.metadataWithTrustedProjects(
+    final metadata = await delegate.metadataWithTrustedWorkspaces(
       metadataPath: metadataPath,
       defaultMetadata: defaultMetadata,
-      defaultProjectConfig: defaultProjectConfig,
+      defaultWorkspaceConfig: defaultWorkspaceConfig,
       directories: [workingDirectory, ...additionalDirectories],
     );
     await delegate.fs.atomicWrite(
@@ -462,7 +462,7 @@ final class ClaudeConfigProfileCapability implements ConfigProfileCapability {
       memberToolDir: memberToolDir,
       tool: toolId,
       teamId: standalone ? null : scope.teamId,
-      projectId: standalone ? scope.teamId : null,
+      workspaceId: standalone ? scope.teamId : null,
     );
   }
 
@@ -499,7 +499,7 @@ final class ClaudeConfigProfileCapability implements ConfigProfileCapability {
       settings,
       memberToolDir: memberToolDir,
       tool: toolId,
-      projectId: scope.teamId,
+      workspaceId: scope.teamId,
     );
   }
 
@@ -513,7 +513,7 @@ final class ClaudeConfigProfileCapability implements ConfigProfileCapability {
   }) async {
     final file = delegate.pathContext.join(
       delegate.sessionToolDir(
-        scope.projectId,
+        scope.workspaceId,
         scope.sessionId,
         toolId,
         memberId: scope.memberId,
@@ -530,7 +530,7 @@ final class ClaudeConfigProfileCapability implements ConfigProfileCapability {
       file,
       settings,
       memberToolDir: delegate.sessionToolDir(
-        scope.projectId,
+        scope.workspaceId,
         scope.sessionId,
         toolId,
         memberId: scope.memberId,
@@ -548,14 +548,14 @@ final class ClaudeConfigProfileCapability implements ConfigProfileCapability {
   }) async {
     final metadataPath = sessionMetadataFile(
       delegate,
-      scope.projectId,
+      scope.workspaceId,
       scope.sessionId,
       memberId: scope.memberId,
     );
-    final metadata = await delegate.metadataWithTrustedProjects(
+    final metadata = await delegate.metadataWithTrustedWorkspaces(
       metadataPath: metadataPath,
       defaultMetadata: defaultMetadata,
-      defaultProjectConfig: defaultProjectConfig,
+      defaultWorkspaceConfig: defaultWorkspaceConfig,
       directories: [workingDirectory, ...additionalDirectories],
     );
     await delegate.fs.atomicWrite(
@@ -574,7 +574,7 @@ final class ClaudeConfigProfileCapability implements ConfigProfileCapability {
     String? leadSessionId,
   }) async {
     final claudeDir = delegate.sessionToolDir(
-      scope.projectId,
+      scope.workspaceId,
       scope.sessionId,
       toolId,
       memberId: scope.memberId,
@@ -671,7 +671,7 @@ final class ClaudeConfigProfileCapability implements ConfigProfileCapability {
     String? idleUrl,
   }) async {
     final memberToolDir = delegate.sessionToolDir(
-      scope.projectId,
+      scope.workspaceId,
       scope.sessionId,
       toolId,
       memberId: mixed
@@ -688,7 +688,7 @@ final class ClaudeConfigProfileCapability implements ConfigProfileCapability {
     );
     final file = sessionMemberSettingsFile(
       delegate,
-      scope.projectId,
+      scope.workspaceId,
       scope.sessionId,
       member,
       memberId: mixed

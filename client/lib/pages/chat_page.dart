@@ -9,38 +9,38 @@ class ChatPage extends StatelessWidget {
   const ChatPage({
     required this.cwd,
     this.sessionId,
-    this.isPersonalProject = false,
-    this.projectId,
+    this.isPersonalWorkspace = false,
+    this.workspaceId,
     super.key,
   });
 
   final String? sessionId;
 
   /// Working directory the file tree / git tools operate on, supplied by the
-  /// caller (e.g. project path on the v2 project page). [ChatPage] never
+  /// caller (e.g. workspace path on the v2 workspace page). [ChatPage] never
   /// derives it from session state.
   final String cwd;
 
   /// When true, the embedded workbench runs without a selected [TeamIdentity].
-  final bool isPersonalProject;
+  final bool isPersonalWorkspace;
 
-  /// Owning project id; scopes the workspace terminal + right-tools selection.
-  /// Null on chat routes without a project context.
-  final String? projectId;
+  /// Owning workspace id; scopes the workspace terminal + right-tools selection.
+  /// Null on chat routes without a workspace context.
+  final String? workspaceId;
 
   @override
   Widget build(BuildContext context) {
-    if (isPersonalProject) {
+    if (isPersonalWorkspace) {
       return _PersonalChatPage(
         cwd: cwd,
         sessionId: sessionId,
-        projectId: projectId,
+        workspaceId: workspaceId,
       );
     }
     return _TeamChatPage(
       cwd: cwd,
       sessionId: sessionId,
-      projectId: projectId,
+      workspaceId: workspaceId,
     );
   }
 }
@@ -49,20 +49,20 @@ class _PersonalChatPage extends StatelessWidget {
   const _PersonalChatPage({
     required this.cwd,
     this.sessionId,
-    this.projectId,
+    this.workspaceId,
   });
 
   final String cwd;
   final String? sessionId;
-  final String? projectId;
+  final String? workspaceId;
 
   @override
   Widget build(BuildContext context) {
     return ChatPageShell(
       cwd: cwd,
       sessionId: sessionId,
-      isPersonalProject: true,
-      projectId: projectId,
+      isPersonalWorkspace: true,
+      workspaceId: workspaceId,
       team: null,
     );
   }
@@ -72,12 +72,12 @@ class _TeamChatPage extends StatelessWidget {
   const _TeamChatPage({
     required this.cwd,
     this.sessionId,
-    this.projectId,
+    this.workspaceId,
   });
 
   final String cwd;
   final String? sessionId;
-  final String? projectId;
+  final String? workspaceId;
 
   @override
   Widget build(BuildContext context) {
@@ -92,8 +92,8 @@ class _TeamChatPage extends StatelessWidget {
     return ChatPageShell(
       cwd: cwd,
       sessionId: sessionId,
-      isPersonalProject: false,
-      projectId: projectId,
+      isPersonalWorkspace: false,
+      workspaceId: workspaceId,
       team: team,
     );
   }

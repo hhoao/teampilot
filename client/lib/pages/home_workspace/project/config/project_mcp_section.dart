@@ -12,14 +12,14 @@ import '../../home_workspace_global_section.dart';
 import '../../../team_config/team_config_cards.dart';
 import '../../../team_config/team_config_mcp_section.dart';
 
-class ProjectMcpSection extends StatelessWidget {
-  const ProjectMcpSection({
-    required this.projectId,
+class WorkspaceMcpSection extends StatelessWidget {
+  const WorkspaceMcpSection({
+    required this.workspaceId,
     required this.identityId,
     super.key,
   });
 
-  final String projectId;
+  final String workspaceId;
   final String identityId;
 
   @override
@@ -49,14 +49,14 @@ class ProjectMcpSection extends StatelessWidget {
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
                 TeamConfigCardHeader(
-                  title: l10n.projectMcpAssignedCount(
+                  title: l10n.workspaceMcpAssignedCount(
                     assignedCount,
                     enabled.length,
                   ),
                   trailing: OutlinedButton.icon(
                     onPressed: onManage,
                     icon: Icon(Icons.hub_outlined),
-                    label: Text(l10n.projectMcpManage),
+                    label: Text(l10n.workspaceMcpManage),
                   ),
                 ),
                 const SizedBox(height: 14),

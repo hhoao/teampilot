@@ -27,7 +27,7 @@ const _fileTreeRowPadding = EdgeInsets.symmetric(
   vertical: kFileTreeRowVerticalPadding,
 );
 
-/// Project file tree panel.
+/// Workspace file tree panel.
 class FileTreePanel extends StatefulWidget {
   const FileTreePanel({required this.cwd, super.key});
 

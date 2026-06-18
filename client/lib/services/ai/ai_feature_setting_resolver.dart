@@ -144,7 +144,7 @@ String aiFeatureConfigLine({
   required bool hidesModelPicker,
   List<CliPreset> globalPresets = const [],
 }) {
-  if (!configured) return l10n.projectCliNotConfiguredHint;
+  if (!configured) return l10n.workspaceCliNotConfiguredHint;
 
   final presetId = stored?.activePresetId?.trim();
   if (presetId != null && presetId.isNotEmpty) {

@@ -8,7 +8,7 @@ import 'package:path/path.dart' as p;
 abstract final class CursorWorkspaceTrust {
   CursorWorkspaceTrust._();
 
-  static const projectsDirName = 'projects';
+  static const workspacesDirName = 'workspaces';
   static const trustFileName = '.workspace-trusted';
   static const trustMethod = 'teampilot-provisioned';
 
@@ -22,14 +22,14 @@ abstract final class CursorWorkspaceTrust {
     return slug;
   }
 
-  static String projectDir(
+  static String workspaceDir(
     String homeRoot,
     String workspacePath, {
     p.Context? pathContext,
   }) {
     final ctx = pathContext ?? p.context;
     final slug = slugifyWorkspacePath(workspacePath);
-    return ctx.join(homeRoot, '.cursor', projectsDirName, slug);
+    return ctx.join(homeRoot, '.cursor', workspacesDirName, slug);
   }
 
   static String trustMarkerPath(
@@ -38,7 +38,7 @@ abstract final class CursorWorkspaceTrust {
     p.Context? pathContext,
   }) =>
       (pathContext ?? p.context).join(
-        projectDir(
+        workspaceDir(
           homeRoot,
           workspacePath,
           pathContext: pathContext,

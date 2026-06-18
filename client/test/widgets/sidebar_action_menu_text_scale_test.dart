@@ -4,7 +4,7 @@ import 'package:teampilot/theme/app_theme.dart';
 import 'package:teampilot/theme/app_typography_scale.dart';
 import 'package:teampilot/widgets/menu/sidebar_action_menu.dart';
 
-// Regression: context-menu item labels (project / session / member right-click
+// Regression: context-menu item labels (workspace / session / member right-click
 // menus all use SidebarActionMenuItem) must follow the in-app "Text size"
 // (typography) setting instead of a hardcoded font size.
 void main() {

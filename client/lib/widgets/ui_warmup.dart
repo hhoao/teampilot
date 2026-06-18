@@ -85,7 +85,7 @@ class _UiWarmupState extends State<UiWarmup> {
 
   /// Shapes every glyph the UI can render (from the l10n bundles) across the
   /// bundled Noto Sans SC weights, so the engine builds its HarfBuzz faces and
-  /// glyph-layout cache here at startup instead of on the first project tab
+  /// glyph-layout cache here at startup instead of on the first workspace tab
   /// click. No [maxLines] — the whole set must wrap and shape, not truncate.
   void _warmGlyphs() {
     // Use the theme's already-resolved styles, NOT copyWith(fontWeight) on one

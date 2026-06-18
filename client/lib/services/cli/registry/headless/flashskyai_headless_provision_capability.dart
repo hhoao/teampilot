@@ -4,7 +4,7 @@ import '../capabilities/headless_provision_capability.dart';
 import '../config_profile/flashskyai_config_profile_capability.dart';
 import 'headless_provision_support.dart';
 
-/// Provisions an isolated flashskyai config dir (settings + trusted projects)
+/// Provisions an isolated flashskyai config dir (settings + trusted workspaces)
 /// and the env it needs for a one-shot `flashskyai -p` run.
 final class FlashskyaiHeadlessProvisionCapability
     with HeadlessProvisionSupport
@@ -28,11 +28,11 @@ final class FlashskyaiHeadlessProvisionCapability
         ctx.configDir,
         FlashskyaiConfigProfileCapability.metadataFileName,
       );
-      final metadata = await profileInfra.metadataWithTrustedProjects(
+      final metadata = await profileInfra.metadataWithTrustedWorkspaces(
         metadataPath: metadataPath,
         defaultMetadata: FlashskyaiConfigProfileCapability.defaultMetadata,
-        defaultProjectConfig:
-            FlashskyaiConfigProfileCapability.defaultProjectConfig,
+        defaultWorkspaceConfig:
+            FlashskyaiConfigProfileCapability.defaultWorkspaceConfig,
         directories: directories,
       );
       await writeJson(metadataPath, metadata);

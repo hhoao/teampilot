@@ -10,8 +10,8 @@ import '../pages/config/config_workspace.dart';
 import '../pages/home_workspace/home_workspace_global_section.dart';
 import '../pages/home_workspace/home_workspace_page.dart';
 import '../pages/home_workspace/home_workspace_shell.dart';
-import '../pages/home_workspace/project/home_workspace_project_page.dart';
-import '../pages/home_workspace/project/project_config_section.dart';
+import '../pages/home_workspace/workspace/home_workspace_workspace_page.dart';
+import '../pages/home_workspace/workspace/workspace_config_section.dart';
 import '../pages/llm_config/llm_config_workspace.dart';
 import '../pages/extensions/extension_management_page.dart';
 import '../pages/skills/skill_management_page.dart';
@@ -32,50 +32,50 @@ final _workspaceEntryNotifier = ValueNotifier<String>('/home-v2');
 @visibleForTesting
 String workspaceEntryLocationFor({
   required WorkspaceEntryMode mode,
-  String? lastOpenedProjectId,
+  String? lastOpenedWorkspaceId,
 }) {
-  if (mode != WorkspaceEntryMode.lastProject) {
+  if (mode != WorkspaceEntryMode.lastWorkspace) {
     return '/home-v2';
   }
-  final projectId = lastOpenedProjectId?.trim() ?? '';
-  if (projectId.isEmpty) {
+  final workspaceId = lastOpenedWorkspaceId?.trim() ?? '';
+  if (workspaceId.isEmpty) {
     return '/home-v2';
   }
-  return '/home-v2/project/$projectId';
+  return '/home-v2/workspace/$workspaceId';
 }
 
 /// Apply the user's startup view preference. Call after [LayoutCubit.load()]
 /// during bootstrap, before the first route is resolved.
 void applyWorkspaceEntryMode(
   WorkspaceEntryMode mode, {
-  String? lastOpenedProjectId,
+  String? lastOpenedWorkspaceId,
 }) {
   _workspaceEntryNotifier.value = workspaceEntryLocationFor(
     mode: mode,
-    lastOpenedProjectId: lastOpenedProjectId,
+    lastOpenedWorkspaceId: lastOpenedWorkspaceId,
   );
 }
 
-/// Re-apply [lastProject] after project index loads so missing ids fall back.
+/// Re-apply [lastWorkspace] after workspace index loads so missing ids fall back.
 void reapplyWorkspaceEntryFromPreferences(
   LayoutPreferences preferences, {
-  Set<String>? knownProjectIds,
+  Set<String>? knownWorkspaceIds,
 }) {
-  if (preferences.workspaceEntryMode != WorkspaceEntryMode.lastProject) {
+  if (preferences.workspaceEntryMode != WorkspaceEntryMode.lastWorkspace) {
     return;
   }
-  final projectId = preferences.lastOpenedProjectId.trim();
-  if (projectId.isEmpty) {
+  final workspaceId = preferences.lastOpenedWorkspaceId.trim();
+  if (workspaceId.isEmpty) {
     applyWorkspaceEntryMode(WorkspaceEntryMode.home);
     return;
   }
-  if (knownProjectIds != null && !knownProjectIds.contains(projectId)) {
+  if (knownWorkspaceIds != null && !knownWorkspaceIds.contains(workspaceId)) {
     applyWorkspaceEntryMode(WorkspaceEntryMode.home);
     return;
   }
   applyWorkspaceEntryMode(
-    WorkspaceEntryMode.lastProject,
-    lastOpenedProjectId: projectId,
+    WorkspaceEntryMode.lastWorkspace,
+    lastOpenedWorkspaceId: workspaceId,
   );
 }
 
@@ -89,7 +89,7 @@ final appRouter = GoRouter(
       builder: (context, state, child) =>
           OnboardingGate(child: StartupGate(child: child)),
       routes: [
-        // Apifox-style workspace home — title bar + open project tabs live in
+        // Apifox-style workspace home — title bar + open workspace tabs live in
         // [HomeShell]; routed pages render only the body below it.
         ShellRoute(
           builder: (context, state, child) => HomeShell(
@@ -115,9 +115,9 @@ final appRouter = GoRouter(
               },
             ),
             GoRoute(
-              path: '/home-v2/project/:projectId/manage',
+              path: '/home-v2/workspace/:workspaceId/manage',
               redirect: (context, state) {
-                final id = state.pathParameters['projectId'];
+                final id = state.pathParameters['workspaceId'];
                 if (id == null) return '/home-v2';
                 final section = state.uri.queryParameters['section'];
                 final params = <String, String>{'view': 'manage'};
@@ -125,21 +125,21 @@ final appRouter = GoRouter(
                   params['section'] = section;
                 }
                 return Uri(
-                  path: '/home-v2/project/$id',
+                  path: '/home-v2/workspace/$id',
                   queryParameters: params,
                 ).toString();
               },
             ),
             GoRoute(
-              path: '/home-v2/project/:projectId',
+              path: '/home-v2/workspace/:workspaceId',
               pageBuilder: (context, state) {
                 final query = state.uri.queryParameters;
                 return NoTransitionPage(
                   child: WorkspacePage(
-                    projectId: state.pathParameters['projectId']!,
+                    workspaceId: state.pathParameters['workspaceId']!,
                     identity: LaunchIdentity.decode(query['as']),
                     view: query['view'],
-                    configSection: ProjectConfigSection.fromSegment(
+                    configSection: WorkspaceConfigSection.fromSegment(
                       query['section'],
                     ),
                   ),

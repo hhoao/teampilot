@@ -6,7 +6,7 @@ import 'package:teampilot/theme/app_icon_sizes.dart';
 import 'package:window_manager/window_manager.dart';
 
 import '../../l10n/l10n_extensions.dart';
-import '../../models/home_closed_project_entry.dart';
+import '../../models/home_closed_workspace_entry.dart';
 import '../../services/app/desktop_window_actions.dart';
 import '../../services/app/platform_utils.dart';
 import '../../theme/app_text_styles.dart';
@@ -22,14 +22,14 @@ import '../config/config_workspace.dart';
 const double kHomeTitleBarHeight = 58;
 
 /// Custom window title bar for the new workspace home: brand mark, a "Home"
-/// pill, optional open-project tab, decorative action glyphs, and the real
+/// pill, optional open-workspace tab, decorative action glyphs, and the real
 /// minimize/maximize/close controls. Reuses theme tokens only — no hardcoded
 /// brand colors.
-/// Personal vs team discriminator for title-bar project tabs.
+/// Personal vs team discriminator for title-bar workspace tabs.
 enum HomeWorkspaceTabKind { personal, team }
 
 @visibleForTesting
-double homeProjectTabBarAlpha({required bool active, required bool hovered}) {
+double homeWorkspaceTabBarAlpha({required bool active, required bool hovered}) {
   if (active) return 1.0;
   if (hovered) return 0.7;
   return 0.4;
@@ -37,24 +37,24 @@ double homeProjectTabBarAlpha({required bool active, required bool hovered}) {
 
 /// Hue-rotated complement of [base] on the color wheel (反色系).
 @visibleForTesting
-Color homeProjectTabComplementColor(Color base) {
+Color homeWorkspaceTabComplementColor(Color base) {
   final hsl = HSLColor.fromColor(base);
   return hsl.withHue((hsl.hue + 180) % 360).toColor();
 }
 
 @visibleForTesting
-Color homeProjectTabKindAccentColor({
+Color homeWorkspaceTabKindAccentColor({
   required HomeWorkspaceTabKind kind,
   required ColorScheme colorScheme,
 }) {
   final personal = colorScheme.primary;
   return kind == HomeWorkspaceTabKind.personal
       ? personal
-      : homeProjectTabComplementColor(personal);
+      : homeWorkspaceTabComplementColor(personal);
 }
 
 @visibleForTesting
-IconData homeProjectTabKindIcon(HomeWorkspaceTabKind kind) {
+IconData homeWorkspaceTabKindIcon(HomeWorkspaceTabKind kind) {
   return switch (kind) {
     HomeWorkspaceTabKind.personal => Icons.person_outline_rounded,
     HomeWorkspaceTabKind.team => Icons.groups_2_outlined,
@@ -62,28 +62,28 @@ IconData homeProjectTabKindIcon(HomeWorkspaceTabKind kind) {
 }
 
 @visibleForTesting
-Color homeProjectTabBarColor({
+Color homeWorkspaceTabBarColor({
   required HomeWorkspaceTabKind kind,
   required ColorScheme colorScheme,
   required bool active,
   required bool hovered,
 }) {
-  return homeProjectTabKindAccentColor(
+  return homeWorkspaceTabKindAccentColor(
     kind: kind,
     colorScheme: colorScheme,
   ).withValues(
-    alpha: homeProjectTabBarAlpha(active: active, hovered: hovered),
+    alpha: homeWorkspaceTabBarAlpha(active: active, hovered: hovered),
   );
 }
 
 @visibleForTesting
-Color homeProjectTabKindIconColor({
+Color homeWorkspaceTabKindIconColor({
   required HomeWorkspaceTabKind kind,
   required ColorScheme colorScheme,
   required bool active,
   required bool hovered,
 }) {
-  final base = homeProjectTabKindAccentColor(
+  final base = homeWorkspaceTabKindAccentColor(
     kind: kind,
     colorScheme: colorScheme,
   );
@@ -92,7 +92,7 @@ Color homeProjectTabKindIconColor({
   return base.withValues(alpha: alpha);
 }
 
-/// An open project tab in the title bar.
+/// An open workspace tab in the title bar.
 class HomeWorkspaceTab {
   const HomeWorkspaceTab({
     required this.id,
@@ -109,40 +109,40 @@ class HomeWorkspaceTab {
   /// Shown on hover; defaults to [name] when omitted.
   final String? tooltip;
 
-  /// When false (the pinned personal project), no close button is shown.
+  /// When false (the pinned personal workspace), no close button is shown.
   final bool closable;
 }
 
 class HomeTitleBar extends StatefulWidget {
   const HomeTitleBar({
     this.tabs = const [],
-    this.activeProjectId,
+    this.activeWorkspaceId,
     this.pageChrome = WorkspacePageChrome.home,
     this.recentlyClosed = const [],
-    this.openProjectIds = const {},
+    this.openWorkspaceIds = const {},
     this.onHomeTap,
     this.onSelectTab,
     this.onCloseTab,
-    this.onReopenClosedProject,
+    this.onReopenClosedWorkspace,
     super.key,
   });
 
-  /// Open project tabs, kept until explicitly closed.
+  /// Open workspace tabs, kept until explicitly closed.
   final List<HomeWorkspaceTab> tabs;
 
-  /// The project currently shown, or null when the Home view is shown.
-  final String? activeProjectId;
+  /// The workspace currently shown, or null when the Home view is shown.
+  final String? activeWorkspaceId;
 
   /// Page backdrop chrome; matches [HomeShell] scaffold fill.
   final WorkspacePageChrome pageChrome;
 
   /// Recently closed tabs (newest first), excluding currently open ids.
   final List<HomeClosedWorkspaceEntry> recentlyClosed;
-  final Set<String> openProjectIds;
+  final Set<String> openWorkspaceIds;
   final VoidCallback? onHomeTap;
   final ValueChanged<String>? onSelectTab;
   final ValueChanged<String>? onCloseTab;
-  final ValueChanged<String>? onReopenClosedProject;
+  final ValueChanged<String>? onReopenClosedWorkspace;
 
   @override
   State<HomeTitleBar> createState() => _HomeTitleBarState();
@@ -226,7 +226,7 @@ class _HomeTitleBarState extends State<HomeTitleBar>
             const SizedBox(width: 24),
             _HomePill(
               label: l10n.homeWorkspaceMainWindow,
-              active: widget.activeProjectId == null,
+              active: widget.activeWorkspaceId == null,
               onTap: widget.onHomeTap,
             ),
             if (widget.tabs.isEmpty)
@@ -236,7 +236,7 @@ class _HomeTitleBarState extends State<HomeTitleBar>
                     const SizedBox(width: 6),
                     _RecentlyClosedOverflowButton(
                       entries: widget.recentlyClosed,
-                      onReopen: widget.onReopenClosedProject,
+                      onReopen: widget.onReopenClosedWorkspace,
                     ),
                     Expanded(
                       child: showWindowControls
@@ -247,7 +247,7 @@ class _HomeTitleBarState extends State<HomeTitleBar>
                 ),
               )
             else
-              // The open project tabs share the remaining width with a single
+              // The open workspace tabs share the remaining width with a single
               // Expanded spacer that doubles as the window-move area, so the
               // action buttons stay flush right with no dead band.
               //
@@ -280,11 +280,11 @@ class _HomeTitleBarState extends State<HomeTitleBar>
                                 Align(
                                   alignment: Alignment.center,
                                   widthFactor: 1,
-                                  child: _ProjectTab(
+                                  child: _WorkspaceTab(
                                     label: tab.name,
                                     tooltip: tab.tooltip ?? tab.name,
                                     kind: tab.kind,
-                                    active: tab.id == widget.activeProjectId,
+                                    active: tab.id == widget.activeWorkspaceId,
                                     closable: tab.closable,
                                     onTap: () =>
                                         widget.onSelectTab?.call(tab.id),
@@ -299,7 +299,7 @@ class _HomeTitleBarState extends State<HomeTitleBar>
                                 widthFactor: 1,
                                 child: _RecentlyClosedOverflowButton(
                                   entries: widget.recentlyClosed,
-                                  onReopen: widget.onReopenClosedProject,
+                                  onReopen: widget.onReopenClosedWorkspace,
                                 ),
                               ),
                             ],
@@ -402,8 +402,8 @@ class _HomePill extends StatelessWidget {
   }
 }
 
-class _ProjectTab extends StatefulWidget {
-  const _ProjectTab({
+class _WorkspaceTab extends StatefulWidget {
+  const _WorkspaceTab({
     required this.label,
     required this.tooltip,
     required this.kind,
@@ -422,10 +422,10 @@ class _ProjectTab extends StatefulWidget {
   final VoidCallback? onClose;
 
   @override
-  State<_ProjectTab> createState() => _ProjectTabState();
+  State<_WorkspaceTab> createState() => _WorkspaceTabState();
 }
 
-class _ProjectTabState extends State<_ProjectTab> {
+class _WorkspaceTabState extends State<_WorkspaceTab> {
   var _hovered = false;
 
   /// Touch platforms have no hover; keep tab chrome visible on Android.
@@ -437,13 +437,13 @@ class _ProjectTabState extends State<_ProjectTab> {
     final styles = AppTextStyles.of(context);
     final active = widget.active;
     final Color fg = active ? cs.onSurface : cs.onSurfaceVariant;
-    final barColor = homeProjectTabBarColor(
+    final barColor = homeWorkspaceTabBarColor(
       kind: widget.kind,
       colorScheme: cs,
       active: active,
       hovered: _hovered,
     );
-    final kindIconColor = homeProjectTabKindIconColor(
+    final kindIconColor = homeWorkspaceTabKindIconColor(
       kind: widget.kind,
       colorScheme: cs,
       active: active,
@@ -499,7 +499,7 @@ class _ProjectTabState extends State<_ProjectTab> {
                 _TabChromeSlot(
                   visible: _showChrome,
                   child: Icon(
-                    homeProjectTabKindIcon(widget.kind),
+                    homeWorkspaceTabKindIcon(widget.kind),
                     size: context.appIconSizes.md,
                     color: kindIconColor,
                   ),
@@ -562,7 +562,7 @@ class _TabChromeSlot extends StatelessWidget {
   }
 }
 
-/// Overflow menu listing recently closed project tabs; opens on hover.
+/// Overflow menu listing recently closed workspace tabs; opens on hover.
 class _RecentlyClosedOverflowButton extends StatefulWidget {
   const _RecentlyClosedOverflowButton({required this.entries, this.onReopen});
 
@@ -682,7 +682,7 @@ class _RecentlyClosedOverflowButtonState
                                     ),
                                   ),
                             menuController: _menuController,
-                            onTap: () => widget.onReopen?.call(entry.projectId),
+                            onTap: () => widget.onReopen?.call(entry.workspaceId),
                           ),
                       ],
                     ),

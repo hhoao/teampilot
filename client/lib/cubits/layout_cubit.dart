@@ -76,8 +76,8 @@ class LayoutCubit extends Cubit<LayoutState> {
   Future<void> setWorkspaceEntryMode(WorkspaceEntryMode mode) =>
       _save(state.preferences.copyWith(workspaceEntryMode: mode));
 
-  Future<void> setLastOpenedProjectId(String projectId) => _save(
-    state.preferences.copyWith(lastOpenedProjectId: projectId.trim()),
+  Future<void> setLastOpenedWorkspaceId(String workspaceId) => _save(
+    state.preferences.copyWith(lastOpenedWorkspaceId: workspaceId.trim()),
   );
 
   Future<void> setRightToolsWidth(double width) =>

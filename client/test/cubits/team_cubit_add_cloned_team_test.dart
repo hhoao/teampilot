@@ -15,7 +15,7 @@ void main() {
   IdentityCubit build(IdentityRepository repo) => IdentityCubit(
         repository: repo,
         sessionRepository: SessionRepository(),
-        reloadProjects: () async {},
+        reloadWorkspaces: () async {},
         executableResolver: () => 'flashskyai',
       );
 

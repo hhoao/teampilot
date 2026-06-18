@@ -4,31 +4,31 @@ import 'package:teampilot/theme/app_toast_theme.dart';
 import 'package:teampilot/widgets/app_toast/app_toast.dart';
 
 import '../l10n/l10n_extensions.dart';
-import '../utils/project_path_picker.dart';
-import '../utils/project_path_utils.dart';
+import '../utils/workspace_path_picker.dart';
+import '../utils/workspace_path_utils.dart';
 import 'app_dialog.dart';
 
-typedef CreateProjectDraft = ({
+typedef CreateWorkspaceDraft = ({
   String primaryPath,
   List<String> additionalPaths,
   String display,
 });
 
-Future<CreateProjectDraft?> showCreateProjectDialog(BuildContext context) {
-  return showDialog<CreateProjectDraft>(
+Future<CreateWorkspaceDraft?> showCreateWorkspaceDialog(BuildContext context) {
+  return showDialog<CreateWorkspaceDraft>(
     context: context,
-    builder: (ctx) => const _CreateProjectDialog(),
+    builder: (ctx) => const _CreateWorkspaceDialog(),
   );
 }
 
-class _CreateProjectDialog extends StatefulWidget {
-  const _CreateProjectDialog();
+class _CreateWorkspaceDialog extends StatefulWidget {
+  const _CreateWorkspaceDialog();
 
   @override
-  State<_CreateProjectDialog> createState() => _CreateProjectDialogState();
+  State<_CreateWorkspaceDialog> createState() => _CreateWorkspaceDialogState();
 }
 
-class _CreateProjectDialogState extends State<_CreateProjectDialog> {
+class _CreateWorkspaceDialogState extends State<_CreateWorkspaceDialog> {
   final _displayController = TextEditingController();
   String _primaryPath = '';
   final _additionalPaths = <String>[];
@@ -40,28 +40,28 @@ class _CreateProjectDialogState extends State<_CreateProjectDialog> {
   }
 
   Future<void> _pickPrimary() async {
-    final path = await pickProjectDirectoryPath(context);
+    final path = await pickWorkspaceDirectoryPath(context);
     if (path == null || path.trim().isEmpty || !mounted) return;
-    setState(() => _primaryPath = normalizeProjectPath(path));
+    setState(() => _primaryPath = normalizeWorkspacePath(path));
   }
 
   Future<void> _addAdditional() async {
-    final path = await pickProjectDirectoryPath(context);
+    final path = await pickWorkspaceDirectoryPath(context);
     if (path == null || path.trim().isEmpty || !mounted) return;
     final l10n = context.l10n;
-    final trimmed = normalizeProjectPath(path);
-    if (_primaryPath.isNotEmpty && projectPathsEqual(trimmed, _primaryPath)) {
+    final trimmed = normalizeWorkspacePath(path);
+    if (_primaryPath.isNotEmpty && workspacePathsEqual(trimmed, _primaryPath)) {
       AppToast.show(
         context,
-        message: l10n.projectDirectoryAlreadyPrimary,
+        message: l10n.workspaceDirectoryAlreadyPrimary,
         variant: AppToastVariant.warning,
       );
       return;
     }
-    if (projectPathsContains(_additionalPaths, trimmed)) {
+    if (workspacePathsContains(_additionalPaths, trimmed)) {
       AppToast.show(
         context,
-        message: l10n.projectDirectoryAlreadyAdded,
+        message: l10n.workspaceDirectoryAlreadyAdded,
         variant: AppToastVariant.warning,
       );
       return;
@@ -74,7 +74,7 @@ class _CreateProjectDialogState extends State<_CreateProjectDialog> {
     if (_primaryPath.isEmpty) {
       AppToast.show(
         context,
-        message: l10n.projectPrimaryPathRequired,
+        message: l10n.workspacePrimaryPathRequired,
         variant: AppToastVariant.error,
       );
       return;
@@ -98,18 +98,18 @@ class _CreateProjectDialogState extends State<_CreateProjectDialog> {
         mainAxisSize: MainAxisSize.min,
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          AppDialogHeader(title: l10n.newProject),
+          AppDialogHeader(title: l10n.newWorkspace),
           const SizedBox(height: 16),
           TextField(
                 controller: _displayController,
-                decoration: InputDecoration(labelText: l10n.projectDisplayName),
+                decoration: InputDecoration(labelText: l10n.workspaceDisplayName),
               ),
               const SizedBox(height: 16),
-              Text(l10n.projectPrimaryPath, style: theme.textTheme.labelLarge),
+              Text(l10n.workspacePrimaryPath, style: theme.textTheme.labelLarge),
               const SizedBox(height: 6),
               if (_primaryPath.isEmpty)
                 Text(
-                  l10n.projectPrimaryPathNotSelected,
+                  l10n.workspacePrimaryPathNotSelected,
                   style: theme.textTheme.bodySmall?.copyWith(
                     color: theme.colorScheme.onSurfaceVariant,
                   ),
@@ -127,13 +127,13 @@ class _CreateProjectDialogState extends State<_CreateProjectDialog> {
               ),
               const SizedBox(height: 16),
               Text(
-                l10n.projectAdditionalDirectories,
+                l10n.workspaceAdditionalDirectories,
                 style: theme.textTheme.labelLarge,
               ),
               const SizedBox(height: 6),
               if (_additionalPaths.isEmpty)
                 Text(
-                  l10n.projectNoAdditionalDirectories,
+                  l10n.workspaceNoAdditionalDirectories,
                   style: theme.textTheme.bodySmall?.copyWith(
                     color: theme.colorScheme.onSurfaceVariant,
                   ),
@@ -151,7 +151,7 @@ class _CreateProjectDialogState extends State<_CreateProjectDialog> {
                           ),
                         ),
                         IconButton(
-                          tooltip: l10n.removeProjectDirectory,
+                          tooltip: l10n.removeWorkspaceDirectory,
                           icon: Icon(
                             Icons.remove_circle_outline,
                             size: context.appIconSizes.md,
@@ -171,7 +171,7 @@ class _CreateProjectDialogState extends State<_CreateProjectDialog> {
             child: TextButton.icon(
               onPressed: _addAdditional,
               icon: Icon(Icons.create_new_folder_outlined, size: context.appIconSizes.md),
-              label: Text(l10n.addProjectDirectory),
+              label: Text(l10n.addWorkspaceDirectory),
             ),
           ),
           AppDialogActions(

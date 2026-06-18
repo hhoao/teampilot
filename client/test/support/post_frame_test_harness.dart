@@ -36,7 +36,7 @@ void tearDownTestAppStorage() {
   GitService.debugOverrideFactory = null;
   RuntimeStorageContext.resetForTesting();
   AppPathsBootstrapper.resetForTesting();
-  DefaultProjectDirectory.resetForTesting();
+  DefaultWorkspaceDirectory.resetForTesting();
   final dir = _testAppDataDir;
   _testAppDataDir = null;
   if (dir != null && dir.existsSync()) {

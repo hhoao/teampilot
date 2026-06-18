@@ -1,7 +1,7 @@
 import 'package:equatable/equatable.dart';
 import 'package:flutter/widgets.dart';
 
-import '../../../models/app_project.dart';
+import '../../../models/app_workspace.dart';
 import '../../../models/app_session.dart';
 import '../../../models/ssh_profile.dart';
 import '../../../models/team_config.dart';
@@ -30,9 +30,9 @@ class ChatState extends Equatable {
   const ChatState({
     this.tabs = const [],
     this.activeTabIndex = 0,
-    this.projects = const [],
+    this.workspaces = const [],
     this.sessions = const [],
-    this.visibleProjects = const [],
+    this.visibleWorkspaces = const [],
     this.visibleSessions = const [],
     this.activeSessionId,
     this.selectedMemberId = '',
@@ -46,9 +46,9 @@ class ChatState extends Equatable {
 
   final List<ChatTabInfo> tabs;
   final int activeTabIndex;
-  final List<Workspace> projects;
+  final List<Workspace> workspaces;
   final List<AppSession> sessions;
-  final List<Workspace> visibleProjects;
+  final List<Workspace> visibleWorkspaces;
   final List<AppSession> visibleSessions;
   final String? activeSessionId;
   final String selectedMemberId;
@@ -73,9 +73,9 @@ class ChatState extends Equatable {
   ChatState copyWith({
     List<ChatTabInfo>? tabs,
     int? activeTabIndex,
-    List<Workspace>? projects,
+    List<Workspace>? workspaces,
     List<AppSession>? sessions,
-    List<Workspace>? visibleProjects,
+    List<Workspace>? visibleWorkspaces,
     List<AppSession>? visibleSessions,
     String? activeSessionId,
     String? selectedMemberId,
@@ -94,9 +94,9 @@ class ChatState extends Equatable {
     return ChatState(
       tabs: tabs ?? this.tabs,
       activeTabIndex: activeTabIndex ?? this.activeTabIndex,
-      projects: projects ?? this.projects,
+      workspaces: workspaces ?? this.workspaces,
       sessions: sessions ?? this.sessions,
-      visibleProjects: visibleProjects ?? this.visibleProjects,
+      visibleWorkspaces: visibleWorkspaces ?? this.visibleWorkspaces,
       visibleSessions: visibleSessions ?? this.visibleSessions,
       activeSessionId: clearActiveSessionId
           ? null
@@ -121,7 +121,7 @@ class ChatState extends Equatable {
 
   /// Working directory of the active session tab (its cwd), or empty when no
   /// tab is open. Used by chat routes that scope the tools to the active
-  /// session rather than a fixed project.
+  /// session rather than a fixed workspace.
   String get activeCwd {
     if (activeTabIndex >= 0 && activeTabIndex < tabs.length) {
       return tabs[activeTabIndex].subtitle;
@@ -142,9 +142,9 @@ class ChatState extends Equatable {
   List<Object?> get props => [
     tabs,
     activeTabIndex,
-    projects,
+    workspaces,
     sessions,
-    visibleProjects,
+    visibleWorkspaces,
     visibleSessions,
     activeSessionId,
     selectedMemberId,

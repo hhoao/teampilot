@@ -86,7 +86,7 @@ class CliExecutableValidator {
       'Working directory does not exist',
       cwd,
       hint:
-          'Choose another project folder or create the directory before connecting.',
+          'Choose another workspace folder or create the directory before connecting.',
     );
   }
 

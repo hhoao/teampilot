@@ -1,5 +1,5 @@
 import '../../l10n/app_localizations.dart';
-import '../../models/app_project.dart';
+import '../../models/app_workspace.dart';
 import '../../models/app_session.dart';
 
 enum WorkspaceSort {
@@ -13,13 +13,13 @@ enum WorkspaceSort {
 extension WorkspaceSortLabels on WorkspaceSort {
   String label(AppLocalizations l10n) => switch (this) {
     WorkspaceSort.recentlyUpdated =>
-      l10n.homeWorkspaceProjectSortRecentlyUpdated,
-    WorkspaceSort.nameAsc => l10n.homeWorkspaceProjectSortNameAsc,
-    WorkspaceSort.nameDesc => l10n.homeWorkspaceProjectSortNameDesc,
+      l10n.homeWorkspaceWorkspaceSortRecentlyUpdated,
+    WorkspaceSort.nameAsc => l10n.homeWorkspaceWorkspaceSortNameAsc,
+    WorkspaceSort.nameDesc => l10n.homeWorkspaceWorkspaceSortNameDesc,
     WorkspaceSort.createdDesc =>
-      l10n.homeWorkspaceProjectSortCreatedDesc,
+      l10n.homeWorkspaceWorkspaceSortCreatedDesc,
     WorkspaceSort.sessionCountDesc =>
-      l10n.homeWorkspaceProjectSortSessionCountDesc,
+      l10n.homeWorkspaceWorkspaceSortSessionCountDesc,
   };
 
   static WorkspaceSort parse(String? raw) {
@@ -30,12 +30,12 @@ extension WorkspaceSortLabels on WorkspaceSort {
   }
 }
 
-Map<String, int> homeWorkspaceSessionCountByProjectId(
+Map<String, int> homeWorkspaceSessionCountByWorkspaceId(
   List<AppSession> sessions,
 ) {
   final counts = <String, int>{};
   for (final session in sessions) {
-    final id = session.projectId;
+    final id = session.workspaceId;
     if (id.isEmpty) continue;
     counts[id] = (counts[id] ?? 0) + 1;
   }
@@ -43,21 +43,21 @@ Map<String, int> homeWorkspaceSessionCountByProjectId(
 }
 
 List<Workspace> sortWorkspaces({
-  required List<Workspace> projects,
+  required List<Workspace> workspaces,
   required WorkspaceSort sort,
-  required Set<String> favoriteProjectIds,
-  required Map<String, int> sessionCountByProjectId,
-  required String Function(Workspace project) displayName,
+  required Set<String> favoriteWorkspaceIds,
+  required Map<String, int> sessionCountByWorkspaceId,
+  required String Function(Workspace workspace) displayName,
   bool pinFavorites = true,
   bool preserveOrder = false,
 }) {
-  if (preserveOrder) return List<Workspace>.from(projects);
+  if (preserveOrder) return List<Workspace>.from(workspaces);
 
-  final sorted = List<Workspace>.from(projects);
+  final sorted = List<Workspace>.from(workspaces);
   sorted.sort((a, b) {
     if (pinFavorites) {
-      final af = favoriteProjectIds.contains(a.projectId);
-      final bf = favoriteProjectIds.contains(b.projectId);
+      final af = favoriteWorkspaceIds.contains(a.workspaceId);
+      final bf = favoriteWorkspaceIds.contains(b.workspaceId);
       if (af != bf) return af ? -1 : 1;
     }
 
@@ -75,8 +75,8 @@ List<Workspace> sortWorkspaces({
       WorkspaceSort.createdDesc =>
         b.createdAt.compareTo(a.createdAt),
       WorkspaceSort.sessionCountDesc => () {
-        final ac = sessionCountByProjectId[a.projectId] ?? 0;
-        final bc = sessionCountByProjectId[b.projectId] ?? 0;
+        final ac = sessionCountByWorkspaceId[a.workspaceId] ?? 0;
+        final bc = sessionCountByWorkspaceId[b.workspaceId] ?? 0;
         final bySessions = bc.compareTo(ac);
         if (bySessions != 0) return bySessions;
         return b.updatedAt.compareTo(a.updatedAt);

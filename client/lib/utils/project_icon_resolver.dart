@@ -1,41 +1,41 @@
 import 'package:flutter/foundation.dart';
 
-import '../models/app_project.dart';
-import '../models/project_icon_ref.dart';
-import 'project_geometry_catalog.dart';
+import '../models/app_workspace.dart';
+import '../models/workspace_icon_ref.dart';
+import 'workspace_geometry_catalog.dart';
 
-/// Resolved display target for [ProjectIcon].
+/// Resolved display target for [WorkspaceIcon].
 @immutable
-sealed class ResolvedProjectIcon {
-  const ResolvedProjectIcon();
+sealed class ResolvedWorkspaceIcon {
+  const ResolvedWorkspaceIcon();
 }
 
 @immutable
-final class ResolvedProjectGeometryIcon extends ResolvedProjectIcon {
-  const ResolvedProjectGeometryIcon(this.assetPath);
+final class ResolvedWorkspaceGeometryIcon extends ResolvedWorkspaceIcon {
+  const ResolvedWorkspaceGeometryIcon(this.assetPath);
 
   final String assetPath;
 }
 
 @immutable
-final class ResolvedProjectCustomIcon extends ResolvedProjectIcon {
-  const ResolvedProjectCustomIcon(this.relativePath);
+final class ResolvedWorkspaceCustomIcon extends ResolvedWorkspaceIcon {
+  const ResolvedWorkspaceCustomIcon(this.relativePath);
 
   final String relativePath;
 }
 
-ResolvedProjectIcon resolveProjectIcon(Workspace project) {
-  return switch (project.icon) {
-    ProjectIconAuto() => ResolvedProjectGeometryIcon(
-      projectGeometryAssetForProjectId(project.projectId),
+ResolvedWorkspaceIcon resolveWorkspaceIcon(Workspace workspace) {
+  return switch (workspace.icon) {
+    WorkspaceIconAuto() => ResolvedWorkspaceGeometryIcon(
+      workspaceGeometryAssetForWorkspaceId(workspace.workspaceId),
     ),
-    ProjectIconPreset(:final index) => ResolvedProjectGeometryIcon(
-      projectGeometryAssetForIndex(index, projectId: project.projectId),
+    WorkspaceIconPreset(:final index) => ResolvedWorkspaceGeometryIcon(
+      workspaceGeometryAssetForIndex(index, workspaceId: workspace.workspaceId),
     ),
-    ProjectIconCustom(:final relativePath) when relativePath.isNotEmpty =>
-      ResolvedProjectCustomIcon(relativePath),
-    ProjectIconCustom() => ResolvedProjectGeometryIcon(
-      projectGeometryAssetForProjectId(project.projectId),
+    WorkspaceIconCustom(:final relativePath) when relativePath.isNotEmpty =>
+      ResolvedWorkspaceCustomIcon(relativePath),
+    WorkspaceIconCustom() => ResolvedWorkspaceGeometryIcon(
+      workspaceGeometryAssetForWorkspaceId(workspace.workspaceId),
     ),
   };
 }

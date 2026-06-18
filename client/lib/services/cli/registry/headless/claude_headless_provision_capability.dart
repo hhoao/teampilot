@@ -82,11 +82,11 @@ final class ClaudeHeadlessProvisionCapability
         ctx.configDir,
         ClaudeConfigProfileCapability.metadataFileName,
       );
-      final metadata = await profileInfra.metadataWithTrustedProjects(
+      final metadata = await profileInfra.metadataWithTrustedWorkspaces(
         metadataPath: metadataPath,
         defaultMetadata: ClaudeConfigProfileCapability.defaultMetadata,
-        defaultProjectConfig:
-            ClaudeConfigProfileCapability.defaultProjectConfig,
+        defaultWorkspaceConfig:
+            ClaudeConfigProfileCapability.defaultWorkspaceConfig,
         directories: directories,
       );
       await writeJson(metadataPath, metadata);

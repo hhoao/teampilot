@@ -9,7 +9,7 @@ import '../dropdown/app_dropdown_decoration.dart';
 import '../dropdown/app_dropdown_field.dart';
 import '../../pages/team_config/team_config_helpers.dart';
 
-/// Agent preset field for team members and personal projects.
+/// Agent preset field for team members and personal workspaces.
 ///
 /// Rendered only when [cli] registers [MemberAgentPresetCapability].
 class MemberAgentPresetField extends StatelessWidget {

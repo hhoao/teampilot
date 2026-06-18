@@ -23,7 +23,7 @@ import '../../widgets/cli_launch_config/cli_launch_custom_fields.dart';
 import '../../widgets/cli_launch_config/preset_launch_picker_field.dart';
 import '../../widgets/dropdown/app_dropdown_decoration.dart';
 import '../../widgets/settings/workspace_settings_widgets.dart';
-import '../home_workspace/project/config/project_cli_config_helpers.dart';
+import '../home_workspace/workspace/config/workspace_cli_config_helpers.dart';
 import 'team_config_helpers.dart';
 import 'team_member_launch_config_helpers.dart';
 
@@ -71,7 +71,7 @@ class MemberLaunchConfigRow extends StatelessWidget {
         }
       }
     }
-    final hidesModelPicker = projectCliHidesModelPicker(
+    final hidesModelPicker = workspaceCliHidesModelPicker(
       registry,
       catalogCli,
       selectedProvider,
@@ -176,7 +176,7 @@ class MemberLaunchConfigRow extends StatelessWidget {
                   cubit: cubit,
                 ),
                 icon: Icon(Icons.tune, size: context.appIconSizes.sm),
-                label: Text(l10n.projectCliConfigure),
+                label: Text(l10n.workspaceCliConfigure),
                 style: OutlinedButton.styleFrom(
                   visualDensity: VisualDensity.compact,
                   padding: const EdgeInsets.symmetric(

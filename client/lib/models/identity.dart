@@ -1,6 +1,6 @@
 import 'config_bundle.dart';
 import 'identity_kind.dart';
-import 'project_icon_ref.dart';
+import 'workspace_icon_ref.dart';
 
 /// A named, reusable launch identity. A directory ([Workspace]) is *where*
 /// work happens; a [Identity] is *who/how* — the CLI config bundle a
@@ -13,7 +13,7 @@ abstract class Identity {
   String get id;
   IdentityKind get kind;
   String get display;
-  ProjectIconRef get icon;
+  WorkspaceIconRef get icon;
   ConfigBundle get bundle;
 
   /// Serializes the concrete record for persistence by `IdentityRepository`.

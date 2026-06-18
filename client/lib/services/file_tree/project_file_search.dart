@@ -1,8 +1,8 @@
 import '../io/filesystem.dart';
 
-/// A file whose name matched a project search query.
-class ProjectFileMatch {
-  const ProjectFileMatch({
+/// A file whose name matched a workspace search query.
+class WorkspaceFileMatch {
+  const WorkspaceFileMatch({
     required this.path,
     required this.name,
     required this.relativePath,
@@ -18,25 +18,25 @@ class ProjectFileMatch {
   final String relativePath;
 }
 
-/// Outcome of [searchProjectFiles]: the capped result list and whether the
-/// search stopped early because [ProjectFileSearchLimits.maxResults] was hit.
-class ProjectFileSearchResult {
-  const ProjectFileSearchResult({
+/// Outcome of [searchWorkspaceFiles]: the capped result list and whether the
+/// search stopped early because [WorkspaceFileSearchLimits.maxResults] was hit.
+class WorkspaceFileSearchResult {
+  const WorkspaceFileSearchResult({
     required this.matches,
     required this.truncated,
   });
 
-  const ProjectFileSearchResult.empty()
+  const WorkspaceFileSearchResult.empty()
     : matches = const [],
       truncated = false;
 
-  final List<ProjectFileMatch> matches;
+  final List<WorkspaceFileMatch> matches;
   final bool truncated;
 }
 
-/// Tuning knobs for [searchProjectFiles].
-class ProjectFileSearchLimits {
-  const ProjectFileSearchLimits({
+/// Tuning knobs for [searchWorkspaceFiles].
+class WorkspaceFileSearchLimits {
+  const WorkspaceFileSearchLimits({
     this.maxResults = 50,
     this.maxEntriesScanned = 20000,
   });
@@ -68,17 +68,17 @@ const _ignoredDirNames = {
 /// Hidden entries (names starting with `.`) and common build/VCS directories
 /// are skipped. Unreadable directories are silently ignored. Pure and
 /// filesystem-injected so it is unit-testable.
-Future<ProjectFileSearchResult> searchProjectFiles({
+Future<WorkspaceFileSearchResult> searchWorkspaceFiles({
   required Filesystem fs,
   required String root,
   required String query,
-  ProjectFileSearchLimits limits = const ProjectFileSearchLimits(),
+  WorkspaceFileSearchLimits limits = const WorkspaceFileSearchLimits(),
 }) async {
   final q = query.trim().toLowerCase();
-  if (root.isEmpty || q.isEmpty) return const ProjectFileSearchResult.empty();
+  if (root.isEmpty || q.isEmpty) return const WorkspaceFileSearchResult.empty();
 
   final ctx = fs.pathContext;
-  final matches = <ProjectFileMatch>[];
+  final matches = <WorkspaceFileMatch>[];
   final queue = <String>[root];
   var scanned = 0;
   var truncated = false;
@@ -102,7 +102,7 @@ Future<ProjectFileSearchResult> searchProjectFiles({
       }
       if (!entry.name.toLowerCase().contains(q)) continue;
       matches.add(
-        ProjectFileMatch(
+        WorkspaceFileMatch(
           path: full,
           name: entry.name,
           relativePath: ctx.relative(full, from: root),
@@ -110,10 +110,10 @@ Future<ProjectFileSearchResult> searchProjectFiles({
       );
       if (matches.length >= limits.maxResults) {
         truncated = true;
-        return ProjectFileSearchResult(matches: matches, truncated: truncated);
+        return WorkspaceFileSearchResult(matches: matches, truncated: truncated);
       }
     }
   }
 
-  return ProjectFileSearchResult(matches: matches, truncated: truncated);
+  return WorkspaceFileSearchResult(matches: matches, truncated: truncated);
 }

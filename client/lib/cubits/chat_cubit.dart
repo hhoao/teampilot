@@ -5,22 +5,22 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter/widgets.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
-import '../models/app_project.dart';
+import '../models/app_workspace.dart';
 import '../models/connection_mode.dart';
 import '../models/app_session.dart';
 import '../models/member_presence.dart';
-import '../models/project_icon_picker_result.dart';
-import '../models/project_icon_ref.dart';
+import '../models/workspace_icon_picker_result.dart';
+import '../models/workspace_icon_ref.dart';
 import '../models/team_config.dart';
 import '../../repositories/identity_repository.dart';
 import '../repositories/session_repository.dart';
-import '../services/project/project_icon_service.dart';
-import '../services/project/project_icon_storage.dart';
+import '../services/workspace/workspace_icon_service.dart';
+import '../services/workspace/workspace_icon_storage.dart';
 import '../services/storage/app_storage.dart';
 import '../services/session/session_lifecycle_service.dart';
 import '../services/terminal/terminal_session.dart';
 import '../services/terminal/terminal_transport_factory.dart';
-import '../widgets/project_icon_picker_dialog.dart';
+import '../widgets/workspace_icon_picker_dialog.dart';
 import 'chat/chat_connect_state_mixin.dart';
 import 'chat/session_data_store.dart';
 import 'chat/chat_session_shell_factory.dart';
@@ -187,22 +187,22 @@ class ChatCubit extends Cubit<ChatState>
         : MemberWorkload.idle;
   }
 
-  /// Switches the active project bucket and republishes its tabs into state.
-  /// Called by the project page whenever the active project changes.
-  void setActiveProject(String projectId) {
-    final restoredIndex = _tabStore.setActiveProject(
-      projectId,
+  /// Switches the active workspace bucket and republishes its tabs into state.
+  /// Called by the workspace page whenever the active workspace changes.
+  void setActiveWorkspace(String workspaceId) {
+    final restoredIndex = _tabStore.setActiveWorkspace(
+      workspaceId,
       currentActiveIndex: state.activeTabIndex,
     );
-    _publishActiveProjectTabs(restoredIndex);
+    _publishActiveWorkspaceTabs(restoredIndex);
   }
 
-  /// Re-emits the active bucket's tab infos without changing the project, after
+  /// Re-emits the active bucket's tab infos without changing the workspace, after
   /// callers mutate the active bucket directly via [tabStore].
-  void refreshActiveProjectTabs() =>
-      _publishActiveProjectTabs(state.activeTabIndex);
+  void refreshActiveWorkspaceTabs() =>
+      _publishActiveWorkspaceTabs(state.activeTabIndex);
 
-  void _publishActiveProjectTabs(int desiredIndex) {
+  void _publishActiveWorkspaceTabs(int desiredIndex) {
     if (_tabStore.isEmpty) {
       emit(
         state.copyWith(
@@ -244,7 +244,7 @@ class ChatCubit extends Cubit<ChatState>
     }
     _emitSnapshot(
       _dataStore.deriveSnapshot(
-        projects: state.projects,
+        workspaces: state.workspaces,
         sessions: state.sessions,
       ),
     );
@@ -254,9 +254,9 @@ class ChatCubit extends Cubit<ChatState>
     final s = base ?? state;
     emit(
       s.copyWith(
-        projects: snap.projects,
+        workspaces: snap.workspaces,
         sessions: snap.sessions,
-        visibleProjects: snap.visibleProjects,
+        visibleWorkspaces: snap.visibleWorkspaces,
         visibleSessions: snap.visibleSessions,
       ),
     );
@@ -271,7 +271,7 @@ class ChatCubit extends Cubit<ChatState>
     return memberShell ?? tab.resumeSession;
   }
 
-  /// Session project path for the active tab (used to resolve relative file links).
+  /// Session workspace path for the active tab (used to resolve relative file links).
   String get activeTabWorkingDirectory {
     final tab = _activeTab;
     if (tab == null) return AppStorage.cwd;
@@ -291,22 +291,22 @@ class ChatCubit extends Cubit<ChatState>
   }
 
   @override
-  Future<void> loadProjectData(SessionRepository repo) async {
-    _emitSnapshot(await _dataStore.loadProjectData(repo));
+  Future<void> loadWorkspaceData(SessionRepository repo) async {
+    _emitSnapshot(await _dataStore.loadWorkspaceData(repo));
   }
 
   /// Updates persisted-index mirrors in state and recomputes team-scoped sidebar lists.
-  void ingestProjectSessionSnapshot({
-    required List<Workspace> projects,
+  void ingestWorkspaceSessionSnapshot({
+    required List<Workspace> workspaces,
     required List<AppSession> sessions,
   }) {
     _emitSnapshot(
-      _dataStore.deriveSnapshot(projects: projects, sessions: sessions),
+      _dataStore.deriveSnapshot(workspaces: workspaces, sessions: sessions),
     );
   }
 
   Future<AppSession> createSession(
-    String projectId,
+    String workspaceId,
     SessionRepository repo, {
     String sessionTeamId = '',
     String personalIdentityId = '',
@@ -314,21 +314,21 @@ class ChatCubit extends Cubit<ChatState>
     CliTool? cli,
   }) async {
     final session = await _dataStore.createSession(
-      projectId,
+      workspaceId,
       repo,
       sessionTeamId: sessionTeamId,
       personalIdentityId: personalIdentityId,
       rosterMembers: rosterMembers,
       cli: cli,
     );
-    _emitSnapshot(await _dataStore.loadProjectData(repo));
+    _emitSnapshot(await _dataStore.loadWorkspaceData(repo));
     return session;
   }
 
-  /// Creates (or reuses) the project for [primaryPath], seeds a first session,
-  /// reloads project data, and returns the project id so callers can navigate
-  /// straight to the new project.
-  Future<String> createProjectWithFirstSession(
+  /// Creates (or reuses) the workspace for [primaryPath], seeds a first session,
+  /// reloads workspace data, and returns the workspace id so callers can navigate
+  /// straight to the new workspace.
+  Future<String> createWorkspaceWithFirstSession(
     String primaryPath,
     SessionRepository repo, {
     String sessionTeamId = '',
@@ -337,7 +337,7 @@ class ChatCubit extends Cubit<ChatState>
     String display = '',
     IdentityRepository? identityRepository,
   }) async {
-    final result = await _dataStore.createProjectWithFirstSession(
+    final result = await _dataStore.createWorkspaceWithFirstSession(
       primaryPath,
       repo,
       sessionTeamId: sessionTeamId,
@@ -347,33 +347,33 @@ class ChatCubit extends Cubit<ChatState>
       identityRepository: identityRepository,
     );
     _emitSnapshot(result.snapshot);
-    return result.projectId;
+    return result.workspaceId;
   }
 
-  Future<void> addProjectDirectory(
+  Future<void> addWorkspaceDirectory(
     SessionRepository repo,
-    Workspace project,
+    Workspace workspace,
     String directoryPath,
   ) async {
-    final snap = await _dataStore.addProjectDirectory(
+    final snap = await _dataStore.addWorkspaceDirectory(
       repo,
-      project,
+      workspace,
       directoryPath,
     );
     if (snap != null) _emitSnapshot(snap);
   }
 
-  Future<void> updateProjectMetadata(
+  Future<void> updateWorkspaceMetadata(
     SessionRepository repo,
-    String projectId, {
+    String workspaceId, {
     String? display,
     String? defaultIdentityId,
     List<String>? additionalPaths,
   }) async {
     _emitSnapshot(
-      await _dataStore.updateProjectMetadata(
+      await _dataStore.updateWorkspaceMetadata(
         repo,
-        projectId,
+        workspaceId,
         display: display,
         defaultIdentityId: defaultIdentityId,
         additionalPaths: additionalPaths,
@@ -381,23 +381,23 @@ class ChatCubit extends Cubit<ChatState>
     );
   }
 
-  Future<void> applyProjectIcon(
+  Future<void> applyWorkspaceIcon(
     SessionRepository repo,
-    String projectId,
-    ProjectIconRef icon,
+    String workspaceId,
+    WorkspaceIconRef icon,
   ) async {
-    _emitSnapshot(await _dataStore.applyProjectIcon(repo, projectId, icon));
+    _emitSnapshot(await _dataStore.applyWorkspaceIcon(repo, workspaceId, icon));
   }
 
-  Future<void> importCustomProjectIcon(
+  Future<void> importCustomWorkspaceIcon(
     SessionRepository repo,
-    String projectId,
+    String workspaceId,
     String localSourcePath,
   ) async {
     _emitSnapshot(
-      await _dataStore.importCustomProjectIcon(
+      await _dataStore.importCustomWorkspaceIcon(
         repo,
-        projectId,
+        workspaceId,
         localSourcePath,
       ),
     );
@@ -406,21 +406,21 @@ class ChatCubit extends Cubit<ChatState>
   /// Opens the icon picker and applies the user's choice.
   ///
   /// Returns an error message when custom import fails; otherwise `null`.
-  Future<String?> editProjectIcon(
+  Future<String?> editWorkspaceIcon(
     BuildContext context,
     SessionRepository repo,
-    Workspace project,
+    Workspace workspace,
   ) async {
-    final result = await showProjectIconPickerDialog(context, project: project);
+    final result = await showWorkspaceIconPickerDialog(context, workspace: workspace);
     return switch (result) {
-      ProjectIconPickerCancelled() => null,
-      ProjectIconPickerUploadRequested() => _pickAndImportCustomIcon(
+      WorkspaceIconPickerCancelled() => null,
+      WorkspaceIconPickerUploadRequested() => _pickAndImportCustomIcon(
         repo,
-        project.projectId,
+        workspace.workspaceId,
       ),
-      ProjectIconPickerCommitted(:final icon) => _applyCommittedIcon(
+      WorkspaceIconPickerCommitted(:final icon) => _applyCommittedIcon(
         repo,
-        project.projectId,
+        workspace.workspaceId,
         icon,
       ),
     };
@@ -428,11 +428,11 @@ class ChatCubit extends Cubit<ChatState>
 
   Future<String?> _pickAndImportCustomIcon(
     SessionRepository repo,
-    String projectId,
+    String workspaceId,
   ) async {
     final result = await FilePicker.platform.pickFiles(
       type: FileType.custom,
-      allowedExtensions: ProjectIconStorage.allowedExtensions
+      allowedExtensions: WorkspaceIconStorage.allowedExtensions
           .where((ext) => ext != 'jpeg')
           .toList(growable: false),
     );
@@ -441,19 +441,19 @@ class ChatCubit extends Cubit<ChatState>
     if (path == null) return null;
 
     try {
-      await importCustomProjectIcon(repo, projectId, path);
+      await importCustomWorkspaceIcon(repo, workspaceId, path);
       return null;
-    } on ProjectIconImportException catch (error) {
+    } on WorkspaceIconImportException catch (error) {
       return error.message;
     }
   }
 
   Future<String?> _applyCommittedIcon(
     SessionRepository repo,
-    String projectId,
-    ProjectIconRef icon,
+    String workspaceId,
+    WorkspaceIconRef icon,
   ) async {
-    await applyProjectIcon(repo, projectId, icon);
+    await applyWorkspaceIcon(repo, workspaceId, icon);
     return null;
   }
 
@@ -515,15 +515,15 @@ class ChatCubit extends Cubit<ChatState>
     _pushPresenceTarget();
   }
 
-  /// Number of open session-backed tabs in [projectId]'s bucket (excludes
-  /// `local-` scratch tabs, which have no persisted project session).
-  int openTabCountForProject(String projectId) =>
-      _tabStore.sessionBackedCountForProject(projectId);
+  /// Number of open session-backed tabs in [workspaceId]'s bucket (excludes
+  /// `local-` scratch tabs, which have no persisted workspace session).
+  int openTabCountForWorkspace(String workspaceId) =>
+      _tabStore.sessionBackedCountForWorkspace(workspaceId);
 
-  /// Closes (terminates) every open tab belonging to [projectId] by dropping
+  /// Closes (terminates) every open tab belonging to [workspaceId] by dropping
   /// its whole bucket and disposing each tab's sessions and team-bus.
-  void closeTabsForProject(String projectId) {
-    final removed = _tabStore.removeProject(projectId);
+  void closeTabsForWorkspace(String workspaceId) {
+    final removed = _tabStore.removeWorkspace(workspaceId);
     if (removed.isEmpty) return;
     for (final tab in removed) {
       for (final session in tab.sessions) {
@@ -534,13 +534,13 @@ class ChatCubit extends Cubit<ChatState>
     }
     _busCoordinator.maybeStopIdleWatch();
     // Republish whenever the active bucket was affected: either it was the
-    // named bucket for this project, or it is the legacy empty-string bucket
-    // and tabs were removed from it (legacy path before setActiveProject).
+    // named bucket for this workspace, or it is the legacy empty-string bucket
+    // and tabs were removed from it (legacy path before setActiveWorkspace).
     final activeIsAffected =
-        projectId == _tabStore.activeProjectId ||
-        _tabStore.activeProjectId.isEmpty;
+        workspaceId == _tabStore.activeWorkspaceId ||
+        _tabStore.activeWorkspaceId.isEmpty;
     if (activeIsAffected) {
-      _publishActiveProjectTabs(0);
+      _publishActiveWorkspaceTabs(0);
     }
   }
 
@@ -677,7 +677,7 @@ class ChatCubit extends Cubit<ChatState>
       }
     }
     _emitSnapshot(
-      _dataStore.deriveSnapshot(projects: state.projects, sessions: sessions),
+      _dataStore.deriveSnapshot(workspaces: state.workspaces, sessions: sessions),
       base: state.copyWith(sessions: sessions, tabs: tabs),
     );
   }
@@ -686,7 +686,7 @@ class ChatCubit extends Cubit<ChatState>
     final repo = _sessionRepository;
     if (repo == null) return;
     await repo.touchSession(sessionId);
-    _emitSnapshot(await _dataStore.loadProjectData(repo));
+    _emitSnapshot(await _dataStore.loadWorkspaceData(repo));
   }
 
   /// Persists a manual session arrangement. [orderedSessionIds] is the new
@@ -709,7 +709,7 @@ class ChatCubit extends Cubit<ChatState>
             : s,
     ];
     _emitSnapshot(
-      _dataStore.deriveSnapshot(projects: state.projects, sessions: sessions),
+      _dataStore.deriveSnapshot(workspaces: state.workspaces, sessions: sessions),
       base: state.copyWith(sessions: sessions),
     );
     await repo.reorderSessions(orderedSessionIds);
@@ -719,7 +719,7 @@ class ChatCubit extends Cubit<ChatState>
     final repo = _sessionRepository;
     if (repo == null) return;
     await repo.toggleSessionPin(sessionId);
-    _emitSnapshot(await _dataStore.loadProjectData(repo));
+    _emitSnapshot(await _dataStore.loadWorkspaceData(repo));
   }
 
   Future<void> deleteSession(SessionRepository repo, String sessionId) async {
@@ -743,7 +743,7 @@ class ChatCubit extends Cubit<ChatState>
       final newIdx = idx < _tabStore.length ? idx : _tabStore.length - 1;
       final nextTab = _tabStore.tabs[newIdx];
       _emitSnapshot(
-        _dataStore.deriveSnapshot(projects: state.projects, sessions: sessions),
+        _dataStore.deriveSnapshot(workspaces: state.workspaces, sessions: sessions),
         base: state.copyWith(
           tabs: tabs,
           activeTabIndex: newIdx,
@@ -753,7 +753,7 @@ class ChatCubit extends Cubit<ChatState>
       );
     } else if (_tabStore.isEmpty) {
       _emitSnapshot(
-        _dataStore.deriveSnapshot(projects: state.projects, sessions: sessions),
+        _dataStore.deriveSnapshot(workspaces: state.workspaces, sessions: sessions),
         base: state.copyWith(
           tabs: [],
           activeTabIndex: 0,
@@ -762,7 +762,7 @@ class ChatCubit extends Cubit<ChatState>
       );
     } else {
       _emitSnapshot(
-        _dataStore.deriveSnapshot(projects: state.projects, sessions: sessions),
+        _dataStore.deriveSnapshot(workspaces: state.workspaces, sessions: sessions),
         base: state.copyWith(tabs: tabs),
       );
     }
@@ -770,35 +770,35 @@ class ChatCubit extends Cubit<ChatState>
     _emitSnapshot(await _dataStore.deleteSessionRecord(repo, sessionId));
   }
 
-  Future<Workspace> cloneProject(
+  Future<Workspace> cloneWorkspace(
     SessionRepository repo,
-    String sourceProjectId, {
+    String sourceWorkspaceId, {
     String? display,
     List<TeamMemberConfig> rosterMembers = const [],
   }) async {
-    final result = await _dataStore.cloneProject(
+    final result = await _dataStore.cloneWorkspace(
       repo,
-      sourceProjectId,
+      sourceWorkspaceId,
       display: display,
       rosterMembers: rosterMembers,
     );
     _emitSnapshot(result.snapshot);
-    return result.project;
+    return result.workspace;
   }
 
-  Future<void> deleteProject(SessionRepository repo, String projectId) async {
-    Workspace? project;
-    for (final p in state.projects) {
-      if (p.projectId == projectId) {
-        project = p;
+  Future<void> deleteWorkspace(SessionRepository repo, String workspaceId) async {
+    Workspace? workspace;
+    for (final p in state.workspaces) {
+      if (p.workspaceId == workspaceId) {
+        workspace = p;
         break;
       }
     }
-    if (project == null) return;
-    for (final sid in project.sessionIds.toList()) {
+    if (workspace == null) return;
+    for (final sid in workspace.sessionIds.toList()) {
       await deleteSession(repo, sid);
     }
-    _emitSnapshot(await _dataStore.deleteProjectRecord(repo, projectId));
+    _emitSnapshot(await _dataStore.deleteWorkspaceRecord(repo, workspaceId));
   }
 
   void selectSession(String sessionId) {

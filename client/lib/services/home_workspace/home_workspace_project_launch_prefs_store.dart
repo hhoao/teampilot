@@ -3,19 +3,19 @@ import 'dart:convert';
 import '../io/filesystem.dart';
 import '../storage/app_storage.dart';
 
-/// Remembered "open with…" choice for one project.
-class ProjectLaunchPref {
-  const ProjectLaunchPref({required this.lastIdentity, required this.remember});
+/// Remembered "open with…" choice for one workspace.
+class WorkspaceLaunchPref {
+  const WorkspaceLaunchPref({required this.lastIdentity, required this.remember});
 
   /// Encoded launch identity: `personal` or `team:ID`.
   final String lastIdentity;
 
-  /// When true, opening the project skips the dialog and uses [lastIdentity].
+  /// When true, opening the workspace skips the dialog and uses [lastIdentity].
   final bool remember;
 }
 
-/// Persists per-project launch choices at
-/// `ui/project-launch-prefs.json` as `{ projectId: {...} }`.
+/// Persists per-workspace launch choices at
+/// `ui/workspace-launch-prefs.json` as `{ workspaceId: {...} }`.
 class WorkspaceLaunchPrefsStore {
   WorkspaceLaunchPrefsStore({Filesystem? fs, String? pathOverride})
     : _fsOverride = fs,
@@ -26,21 +26,21 @@ class WorkspaceLaunchPrefsStore {
 
   Filesystem get _fs => _fsOverride ?? AppStorage.fs;
   String get _path =>
-      _pathOverride ?? AppStorage.paths.homeWorkspaceProjectLaunchPrefsJson;
+      _pathOverride ?? AppStorage.paths.homeWorkspaceWorkspaceLaunchPrefsJson;
 
-  Future<Map<String, ProjectLaunchPref>> _loadAll() async {
+  Future<Map<String, WorkspaceLaunchPref>> _loadAll() async {
     try {
       final text = await _fs.readString(_path);
       if (text == null || text.isEmpty) return {};
       final root = (jsonDecode(text) as Map).cast<String, Object?>();
-      final out = <String, ProjectLaunchPref>{};
+      final out = <String, WorkspaceLaunchPref>{};
       for (final entry in root.entries) {
         final value = entry.value;
         if (value is Map) {
           final m = value.cast<String, Object?>();
           final id = m['lastIdentity'] as String?;
           if (id == null || id.isEmpty) continue;
-          out[entry.key] = ProjectLaunchPref(
+          out[entry.key] = WorkspaceLaunchPref(
             lastIdentity: id,
             remember: m['remember'] as bool? ?? false,
           );
@@ -52,12 +52,12 @@ class WorkspaceLaunchPrefsStore {
     }
   }
 
-  Future<ProjectLaunchPref?> prefsFor(String projectId) async =>
-      (await _loadAll())[projectId];
+  Future<WorkspaceLaunchPref?> prefsFor(String workspaceId) async =>
+      (await _loadAll())[workspaceId];
 
-  Future<void> save(String projectId, ProjectLaunchPref pref) async {
+  Future<void> save(String workspaceId, WorkspaceLaunchPref pref) async {
     final all = await _loadAll();
-    all[projectId] = pref;
+    all[workspaceId] = pref;
     final ctx = _fs.pathContext;
     await _fs.ensureDir(ctx.dirname(_path));
     await _fs.atomicWrite(

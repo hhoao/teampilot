@@ -12,14 +12,14 @@ import '../../home_workspace_global_section.dart';
 import '../../../team_config/team_config_cards.dart';
 import '../../../team_config/team_config_skills_section.dart';
 
-class ProjectSkillsSection extends StatelessWidget {
-  const ProjectSkillsSection({
-    required this.projectId,
+class WorkspaceSkillsSection extends StatelessWidget {
+  const WorkspaceSkillsSection({
+    required this.workspaceId,
     required this.identityId,
     super.key,
   });
 
-  final String projectId;
+  final String workspaceId;
   final String identityId;
 
   @override
@@ -52,14 +52,14 @@ class ProjectSkillsSection extends StatelessWidget {
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
                 TeamConfigCardHeader(
-                  title: l10n.projectSkillsAssignedCount(
+                  title: l10n.workspaceSkillsAssignedCount(
                     assignedCount,
                     enabled.length,
                   ),
                   trailing: OutlinedButton.icon(
                     onPressed: onManage,
                     icon: Icon(Icons.extension_outlined),
-                    label: Text(l10n.projectSkillsManage),
+                    label: Text(l10n.workspaceSkillsManage),
                   ),
                 ),
                 const SizedBox(height: 14),
@@ -67,7 +67,7 @@ class ProjectSkillsSection extends StatelessWidget {
                   TeamSkillsEmptyBlock(
                     textBase: textBase,
                     onGoSkills: onManage,
-                    manageButtonLabel: l10n.projectSkillsManage,
+                    manageButtonLabel: l10n.workspaceSkillsManage,
                   )
                 else
                   Column(

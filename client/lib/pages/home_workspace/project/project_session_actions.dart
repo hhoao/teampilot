@@ -9,15 +9,15 @@ import '../../../cubits/chat_cubit.dart';
 import '../../../cubits/cli_presets_cubit.dart';
 import '../../../cubits/identity_cubit.dart';
 import '../../../l10n/l10n_extensions.dart';
-import '../../../models/app_project.dart';
+import '../../../models/app_workspace.dart';
 import '../../../models/app_session.dart';
 import '../../../models/personal_identity.dart';
 import '../../../models/team_config.dart';
 import '../../../repositories/session_repository.dart';
 
-Future<void> openProjectSessionTab(
+Future<void> openWorkspaceSessionTab(
   BuildContext context,
-  Workspace project,
+  Workspace workspace,
   AppSession session, {
   required bool isPersonal,
 }) async {
@@ -53,9 +53,9 @@ Future<void> openProjectSessionTab(
   );
 }
 
-Future<void> createAndOpenProjectConversation(
+Future<void> createAndOpenWorkspaceConversation(
   BuildContext context,
-  Workspace project, {
+  Workspace workspace, {
   required bool isPersonal,
   String sessionTeamId = '',
   String personalIdentityId = '',
@@ -75,7 +75,7 @@ Future<void> createAndOpenProjectConversation(
 
   try {
     final session = await chatCubit.createSession(
-      project.projectId,
+      workspace.workspaceId,
       repo,
       sessionTeamId: isPersonal ? '' : (team?.id ?? sessionTeamId),
       personalIdentityId: isPersonal ? personalIdentityId : '',
@@ -83,9 +83,9 @@ Future<void> createAndOpenProjectConversation(
       cli: effectiveCli,
     );
     if (!context.mounted) return;
-    await openProjectSessionTab(
+    await openWorkspaceSessionTab(
       context,
-      project,
+      workspace,
       session,
       isPersonal: isPersonal,
     );

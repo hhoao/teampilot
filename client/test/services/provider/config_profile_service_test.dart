@@ -63,7 +63,7 @@ Future<void> _seedCodexProvider(
   ]);
 }
 
-const _testProjectId = 'project-1';
+const _testWorkspaceId = 'workspace-1';
 
 String _sessionToolDir(
   String base,
@@ -74,8 +74,8 @@ String _sessionToolDir(
   final root = p.join(
     base,
     'workspace',
-    'projects',
-    _testProjectId,
+    'workspaces',
+    _testWorkspaceId,
     'sessions',
     sessionId,
     'runtime',
@@ -157,7 +157,7 @@ void main() {
 
   test('prepareTeamLaunch for flashskyai uses team adhoc member dir', () async {
     final env = (await service.prepareTeamLaunch(
-      projectId: _testProjectId,
+      workspaceId: _testWorkspaceId,
       sessionId: configProfileAdhocSessionId,
       teamId: 'team-a',
       cliTeamName: 'team-a',
@@ -204,10 +204,10 @@ void main() {
     expect(await metadata.exists(), isTrue);
     final metadataJson =
         jsonDecode(await metadata.readAsString()) as Map<String, Object?>;
-    final projects = metadataJson['projects'] as Map<String, Object?>;
-    final projectConfig =
-        projects['/workspace/flashskyai'] as Map<String, Object?>;
-    expect(projectConfig['hasTrustDialogAccepted'], isTrue);
+    final workspaces = metadataJson['workspaces'] as Map<String, Object?>;
+    final workspaceConfig =
+        workspaces['/workspace/flashskyai'] as Map<String, Object?>;
+    expect(workspaceConfig['hasTrustDialogAccepted'], isTrue);
 
     final settings = File(
       p.join(
@@ -239,7 +239,7 @@ requires_openai_auth = true
     );
 
     final outcome = await service.prepareTeamLaunch(
-      projectId: _testProjectId,
+      workspaceId: _testWorkspaceId,
       sessionId: configProfileAdhocSessionId,
       teamId: 'team-a',
       cli: CliTool.codex,
@@ -292,7 +292,7 @@ base_url = "https://api.example.com/v1"
       await _seedCodexProvider(base.path, id: 'p1', configToml: providerToml);
 
       await service.prepareTeamLaunch(
-      projectId: _testProjectId,
+      workspaceId: _testWorkspaceId,
         sessionId: 'sess-mixed-codex',
         teamId: 'team-a',
         cliTeamName: 'sess-mixed-codex',
@@ -336,7 +336,7 @@ base_url = "https://api.example.com/v1"
       prompt: 'Coordinate only; delegate implementation.',
     );
     final env = (await service.prepareTeamLaunch(
-      projectId: _testProjectId,
+      workspaceId: _testWorkspaceId,
       sessionId: sessionId,
       teamId: 'team-a',
       cliTeamName: sessionId,
@@ -398,7 +398,7 @@ base_url = "https://api.example.com/v1"
       forceTeamLeadDelegateMode: true,
     );
     final env = (await service.prepareTeamLaunch(
-      projectId: _testProjectId,
+      workspaceId: _testWorkspaceId,
       sessionId: sessionId,
       teamId: team.id,
       cliTeamName: sessionId,
@@ -448,7 +448,7 @@ base_url = "https://api.example.com/v1"
       prompt: 'Coordinate flashskyai teammates.',
     );
     final env = (await service.prepareTeamLaunch(
-      projectId: _testProjectId,
+      workspaceId: _testWorkspaceId,
       sessionId: sessionId,
       teamId: 'team-a',
       cliTeamName: sessionId,
@@ -512,7 +512,7 @@ base_url = "https://api.example.com/v1"
         forceTeamLeadDelegateMode: true,
       );
       await service.prepareTeamLaunch(
-        projectId: _testProjectId,
+        workspaceId: _testWorkspaceId,
         sessionId: sessionId,
         teamId: team.id,
         cliTeamName: sessionId,
@@ -555,7 +555,7 @@ base_url = "https://api.example.com/v1"
     const sessionId = 'sess-dev-only-hook';
     const dev = TeamMemberConfig(id: 'developer', name: 'developer');
     await service.prepareTeamLaunch(
-      projectId: _testProjectId,
+      workspaceId: _testWorkspaceId,
       sessionId: sessionId,
       teamId: 'team-a',
       cliTeamName: sessionId,
@@ -591,7 +591,7 @@ base_url = "https://api.example.com/v1"
   test('prepareTeamLaunch for claude returns env and writes roster', () async {
     const sessionId = '00000000-0000-4000-8000-000000000099';
     final env = (await service.prepareTeamLaunch(
-      projectId: _testProjectId,
+      workspaceId: _testWorkspaceId,
       sessionId: sessionId,
       teamId: 'team-a',
       cliTeamName: sessionId,
@@ -610,7 +610,7 @@ base_url = "https://api.example.com/v1"
           joinedAt: 200,
         ),
       ],
-      workingDirectory: '/workspace/project',
+      workingDirectory: '/workspace/workspace',
     )).environment;
 
     final claudeDir = _sessionClaudeDir(base.path, sessionId);
@@ -640,12 +640,12 @@ base_url = "https://api.example.com/v1"
               ).readAsString(),
             )
             as Map<String, Object?>;
-    final projects = metadata['projects'] as Map<String, Object?>;
-    final projectConfig =
-        projects['/workspace/project'] as Map<String, Object?>;
-    expect(projectConfig['hasTrustDialogAccepted'], isTrue);
-    expect(projectConfig['hasClaudeMdExternalIncludesApproved'], isTrue);
-    expect(projectConfig['hasClaudeMdExternalIncludesWarningShown'], isTrue);
+    final workspaces = metadata['workspaces'] as Map<String, Object?>;
+    final workspaceConfig =
+        workspaces['/workspace/workspace'] as Map<String, Object?>;
+    expect(workspaceConfig['hasTrustDialogAccepted'], isTrue);
+    expect(workspaceConfig['hasClaudeMdExternalIncludesApproved'], isTrue);
+    expect(workspaceConfig['hasClaudeMdExternalIncludesWarningShown'], isTrue);
 
     final members = decoded['members'] as List<Object?>;
     expect(members, hasLength(2));
@@ -659,7 +659,7 @@ base_url = "https://api.example.com/v1"
     expect(dev['backendType'], 'in-process');
     expect(dev['tmuxPaneId'], 'in-process');
     expect(dev.containsKey('isActive'), isFalse);
-    expect(dev['cwd'], '/workspace/project');
+    expect(dev['cwd'], '/workspace/workspace');
     expect(decoded.containsKey('env'), isFalse);
 
     final inboxDir = Directory(
@@ -683,7 +683,7 @@ base_url = "https://api.example.com/v1"
       TeamMemberConfig(id: 'developer', name: 'researcher', joinedAt: 200),
     ];
     await service.prepareTeamLaunch(
-      projectId: _testProjectId,
+      workspaceId: _testWorkspaceId,
       sessionId: sessionId,
       teamId: 'team-a',
       cliTeamName: sessionId,
@@ -702,7 +702,7 @@ base_url = "https://api.example.com/v1"
     final createdAt = first['createdAt'];
 
     await service.prepareTeamLaunch(
-      projectId: _testProjectId,
+      workspaceId: _testWorkspaceId,
       sessionId: sessionId,
       teamId: 'team-a',
       cliTeamName: sessionId,
@@ -736,7 +736,7 @@ base_url = "https://api.example.com/v1"
         },
       );
       final env = (await service.prepareTeamLaunch(
-      projectId: _testProjectId,
+      workspaceId: _testWorkspaceId,
       sessionId: sessionId,
       teamId: 'team-a',
       cliTeamName: sessionId,
@@ -792,7 +792,7 @@ base_url = "https://api.example.com/v1"
     'prepareTeamLaunch for claude without runtime uses adhoc session and team roster name',
     () async {
       await service.prepareTeamLaunch(
-      projectId: _testProjectId,
+      workspaceId: _testWorkspaceId,
       sessionId: configProfileAdhocSessionId,
       teamId: 'team-a',
         cli: CliTool.claude,
@@ -813,7 +813,7 @@ base_url = "https://api.example.com/v1"
 
   test('prepareTeamLaunch for claude omits blank model', () async {
     await service.prepareTeamLaunch(
-      projectId: _testProjectId,
+      workspaceId: _testWorkspaceId,
       sessionId: 'sess-1',
       teamId: 'team-a',
       cliTeamName: 'sess-1',
@@ -836,7 +836,7 @@ base_url = "https://api.example.com/v1"
   });
 
   test(
-    'prepareTeamLaunch merges trusted projects into existing metadata',
+    'prepareTeamLaunch merges trusted workspaces into existing metadata',
     () async {
       const sessionId = 'sess-trust';
       final metadataPath = p.join(
@@ -848,7 +848,7 @@ base_url = "https://api.example.com/v1"
         const JsonEncoder.withIndent('  ').convert({
           'hasCompletedOnboarding': true,
           'customField': 'keep-me',
-          'projects': {
+          'workspaces': {
             '/workspace/old': {
               'hasTrustDialogAccepted': true,
               'lastOpenedAt': '2024',
@@ -858,7 +858,7 @@ base_url = "https://api.example.com/v1"
       );
 
       await service.prepareTeamLaunch(
-      projectId: _testProjectId,
+      workspaceId: _testWorkspaceId,
       sessionId: sessionId,
       teamId: 'team-a',
       cliTeamName: sessionId,
@@ -871,43 +871,43 @@ base_url = "https://api.example.com/v1"
           jsonDecode(await File(metadataPath).readAsString())
               as Map<String, Object?>;
       expect(metadata['customField'], 'keep-me');
-      final projects = metadata['projects'] as Map<String, Object?>;
-      expect(projects.keys, containsAll(['/workspace/old', '/workspace/new', '/workspace/extra']));
+      final workspaces = metadata['workspaces'] as Map<String, Object?>;
+      expect(workspaces.keys, containsAll(['/workspace/old', '/workspace/new', '/workspace/extra']));
       expect(
-        (projects['/workspace/old'] as Map)['lastOpenedAt'],
+        (workspaces['/workspace/old'] as Map)['lastOpenedAt'],
         '2024',
       );
       expect(
-        (projects['/workspace/new'] as Map)['hasTrustDialogAccepted'],
+        (workspaces['/workspace/new'] as Map)['hasTrustDialogAccepted'],
         isTrue,
       );
       expect(
-        (projects['/workspace/new'] as Map)['projectOnboardingSeenCount'],
+        (workspaces['/workspace/new'] as Map)['workspaceOnboardingSeenCount'],
         1,
       );
       expect(
-        (projects['/workspace/extra'] as Map)['hasTrustDialogAccepted'],
+        (workspaces['/workspace/extra'] as Map)['hasTrustDialogAccepted'],
         isTrue,
       );
       expect(
-        (projects['/workspace/new'] as Map)['hasClaudeMdExternalIncludesApproved'],
+        (workspaces['/workspace/new'] as Map)['hasClaudeMdExternalIncludesApproved'],
         isTrue,
       );
       expect(
-        (projects['/workspace/new'] as Map)['hasClaudeMdExternalIncludesWarningShown'],
+        (workspaces['/workspace/new'] as Map)['hasClaudeMdExternalIncludesWarningShown'],
         isTrue,
       );
     },
   );
 
   test(
-    'prepareTeamLaunch writes Windows path variants for trusted projects',
+    'prepareTeamLaunch writes Windows path variants for trusted workspaces',
     () async {
       if (!Platform.isWindows) return;
 
       const sessionId = 'sess-win-trust';
       await service.prepareTeamLaunch(
-      projectId: _testProjectId,
+      workspaceId: _testWorkspaceId,
       sessionId: sessionId,
       teamId: 'team-a',
       cliTeamName: sessionId,
@@ -922,9 +922,9 @@ base_url = "https://api.example.com/v1"
       final metadata =
           jsonDecode(await File(metadataPath).readAsString())
               as Map<String, Object?>;
-      final projects = metadata['projects'] as Map<String, Object?>;
+      final workspaces = metadata['workspaces'] as Map<String, Object?>;
       expect(
-        projects.keys,
+        workspaces.keys,
         containsAll([
           p.normalize(r'C:\Users\haung\Documents'),
           'C:/Users/haung/Documents',
@@ -932,22 +932,22 @@ base_url = "https://api.example.com/v1"
         ]),
       );
       final forwardSlash =
-          projects['C:/Users/haung/Documents'] as Map<String, Object?>;
+          workspaces['C:/Users/haung/Documents'] as Map<String, Object?>;
       expect(forwardSlash['hasTrustDialogAccepted'], isTrue);
-      expect(forwardSlash['projectOnboardingSeenCount'], 1);
+      expect(forwardSlash['workspaceOnboardingSeenCount'], 1);
       expect(forwardSlash['allowedTools'], isA<List<Object?>>());
       expect(forwardSlash['mcpServers'], isA<Map<String, Object?>>());
     },
   );
 
   test(
-    'prepareTeamLaunch writes WSL path for flashskyai trusted projects',
+    'prepareTeamLaunch writes WSL path for flashskyai trusted workspaces',
     () async {
       if (!Platform.isWindows) return;
 
       const sessionId = 'sess-flashsky-wsl-trust';
       await service.prepareTeamLaunch(
-      projectId: _testProjectId,
+      workspaceId: _testWorkspaceId,
       sessionId: sessionId,
       teamId: 'team-a',
       cliTeamName: sessionId,
@@ -962,8 +962,8 @@ base_url = "https://api.example.com/v1"
       final metadata =
           jsonDecode(await File(metadataPath).readAsString())
               as Map<String, Object?>;
-      final projects = metadata['projects'] as Map<String, Object?>;
-      final wslPath = projects['/mnt/c/Users/haung/Documents'];
+      final workspaces = metadata['workspaces'] as Map<String, Object?>;
+      final wslPath = workspaces['/mnt/c/Users/haung/Documents'];
       expect(wslPath, isA<Map>());
       expect((wslPath! as Map)['hasTrustDialogAccepted'], isTrue);
     },
@@ -985,7 +985,7 @@ base_url = "https://api.example.com/v1"
     );
 
     await service.ensureSessionProfile(
-      _testProjectId,
+      _testWorkspaceId,
       sessionId,
       'team-a',
       cli: CliTool.claude,

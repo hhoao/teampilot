@@ -1,12 +1,12 @@
 import 'package:flutter_test/flutter_test.dart';
-import 'package:teampilot/services/file_tree/project_file_search.dart';
+import 'package:teampilot/services/file_tree/workspace_file_search.dart';
 
 import '../../support/in_memory_filesystem.dart';
 
 void main() {
-  group('searchProjectFiles', () {
+  group('searchWorkspaceFiles', () {
     late InMemoryFilesystem fs;
-    const root = '/project';
+    const root = '/workspace';
 
     setUp(() async {
       fs = InMemoryFilesystem();
@@ -20,7 +20,7 @@ void main() {
     });
 
     test('matches file names case-insensitively across subdirectories', () async {
-      final result = await searchProjectFiles(
+      final result = await searchWorkspaceFiles(
         fs: fs,
         root: root,
         query: 'ROUTER',
@@ -32,7 +32,7 @@ void main() {
     });
 
     test('skips ignored directories and hidden entries', () async {
-      final result = await searchProjectFiles(
+      final result = await searchWorkspaceFiles(
         fs: fs,
         root: root,
         query: 'router',
@@ -44,7 +44,7 @@ void main() {
     });
 
     test('does not match hidden files even by name', () async {
-      final result = await searchProjectFiles(
+      final result = await searchWorkspaceFiles(
         fs: fs,
         root: root,
         query: 'hidden',
@@ -53,7 +53,7 @@ void main() {
     });
 
     test('returns relative paths from the search root', () async {
-      final result = await searchProjectFiles(
+      final result = await searchWorkspaceFiles(
         fs: fs,
         root: root,
         query: 'router_guard',
@@ -62,7 +62,7 @@ void main() {
     });
 
     test('empty query yields no matches', () async {
-      final result = await searchProjectFiles(fs: fs, root: root, query: '  ');
+      final result = await searchWorkspaceFiles(fs: fs, root: root, query: '  ');
       expect(result.matches, isEmpty);
       expect(result.truncated, isFalse);
     });
@@ -71,11 +71,11 @@ void main() {
       for (var i = 0; i < 5; i++) {
         await fs.writeString('$root/match_$i.txt', '');
       }
-      final result = await searchProjectFiles(
+      final result = await searchWorkspaceFiles(
         fs: fs,
         root: root,
         query: 'match_',
-        limits: const ProjectFileSearchLimits(maxResults: 3),
+        limits: const WorkspaceFileSearchLimits(maxResults: 3),
       );
       expect(result.matches, hasLength(3));
       expect(result.truncated, isTrue);

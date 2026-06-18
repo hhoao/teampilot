@@ -9,13 +9,13 @@ import 'task_log.dart';
 abstract final class TaskLogFactory {
   TaskLogFactory._();
 
-  static TaskLog forSession(String projectId, String sessionId) {
+  static TaskLog forSession(String workspaceId, String sessionId) {
     if (sessionId.startsWith('local-')) {
       return InMemoryTaskLog();
     }
     final layout = WorkspaceLayout(teampilotRoot: AppStorage.paths.basePath);
     return FileTaskLog(
-      queueRoot: layout.busTasksDir(projectId, sessionId),
+      queueRoot: layout.busTasksDir(workspaceId, sessionId),
       fs: AppStorage.fs,
     );
   }

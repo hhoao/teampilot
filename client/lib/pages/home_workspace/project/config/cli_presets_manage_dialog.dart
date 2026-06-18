@@ -33,13 +33,13 @@ class CliPresetsManageDialog extends StatelessWidget {
         mainAxisSize: MainAxisSize.min,
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          AppDialogHeader(title: l10n.projectCliPresetsManageTitle),
+          AppDialogHeader(title: l10n.workspaceCliPresetsManageTitle),
           const SizedBox(height: 16),
           if (presets.isEmpty)
             Padding(
               padding: const EdgeInsets.symmetric(vertical: 24),
               child: Text(
-                l10n.projectCliPresetsEmptyHint,
+                l10n.workspaceCliPresetsEmptyHint,
                 textAlign: TextAlign.center,
                 style: AppTextStyles.of(context).body,
               ),
@@ -50,7 +50,7 @@ class CliPresetsManageDialog extends StatelessWidget {
           OutlinedButton.icon(
             onPressed: () => _openAddDialog(context),
             icon: const Icon(Icons.add),
-            label: Text(l10n.projectCliAddPresetTitle),
+            label: Text(l10n.workspaceCliAddPresetTitle),
           ),
           AppDialogActions(
             children: [
@@ -84,8 +84,8 @@ class CliPresetsManageDialog extends StatelessWidget {
     final confirmed = await showDialog<bool>(
       context: context,
       builder: (ctx) => AlertDialog(
-        title: Text(l10n.projectCliDeletePresetTitle),
-        content: Text(l10n.projectCliDeletePresetConfirm(preset.name)),
+        title: Text(l10n.workspaceCliDeletePresetTitle),
+        content: Text(l10n.workspaceCliDeletePresetConfirm(preset.name)),
         actions: [
           TextButton(
             onPressed: () => Navigator.of(ctx).pop(false),

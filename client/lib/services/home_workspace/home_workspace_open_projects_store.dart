@@ -3,7 +3,7 @@ import 'dart:convert';
 import '../io/filesystem.dart';
 import '../storage/app_storage.dart';
 
-/// Persists open title-bar project tab ids in display order.
+/// Persists open title-bar workspace tab ids in display order.
 class HomeOpenWorkspacesStore {
   HomeOpenWorkspacesStore({Filesystem? fs, String? pathOverride})
       : _fsOverride = fs,
@@ -14,14 +14,14 @@ class HomeOpenWorkspacesStore {
 
   Filesystem get _fs => _fsOverride ?? AppStorage.fs;
   String get _path =>
-      _pathOverride ?? AppStorage.paths.homeWorkspaceOpenProjectsJson;
+      _pathOverride ?? AppStorage.paths.homeWorkspaceOpenWorkspacesJson;
 
   Future<List<String>> loadOrderedIds() async {
     try {
       final text = await _fs.readString(_path);
       if (text == null || text.isEmpty) return [];
       final root = (jsonDecode(text) as Map).cast<String, Object?>();
-      final ids = root['projectIds'];
+      final ids = root['workspaceIds'];
       if (ids is! List) return [];
       return ids.map((e) => e.toString()).where((s) => s.isNotEmpty).toList();
     } catch (_) {
@@ -29,13 +29,13 @@ class HomeOpenWorkspacesStore {
     }
   }
 
-  Future<void> saveOrderedIds(List<String> projectIds) async {
+  Future<void> saveOrderedIds(List<String> workspaceIds) async {
     final next = [
-      for (final id in projectIds)
+      for (final id in workspaceIds)
         if (id.trim().isNotEmpty) id.trim(),
     ];
     final ctx = _fs.pathContext;
     await _fs.ensureDir(ctx.dirname(_path));
-    await _fs.atomicWrite(_path, jsonEncode({'projectIds': next}));
+    await _fs.atomicWrite(_path, jsonEncode({'workspaceIds': next}));
   }
 }

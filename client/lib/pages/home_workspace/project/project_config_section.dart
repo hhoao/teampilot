@@ -4,8 +4,8 @@ import '../../../l10n/l10n_extensions.dart';
 import '../../../models/identity_kind.dart';
 import '../../../widgets/settings/workspace_section_navigation.dart';
 
-/// Personal / team project configuration sections (mirrors [TeamConfigSection]).
-enum ProjectConfigSection implements WorkspaceSectionDescriptor {
+/// Personal / team workspace configuration sections (mirrors [TeamConfigSection]).
+enum WorkspaceConfigSection implements WorkspaceSectionDescriptor {
   settings,
   members,
   agent,
@@ -23,20 +23,20 @@ enum ProjectConfigSection implements WorkspaceSectionDescriptor {
     extensions,
   ];
 
-  static List<ProjectConfigSection> forKind(IdentityKind kind) =>
+  static List<WorkspaceConfigSection> forKind(IdentityKind kind) =>
       kind == IdentityKind.team
           ? [...{_bundleSections.first}, members, ..._bundleSections.skip(1)]
           : _bundleSections;
 
   @override
   String get routeSegment => switch (this) {
-        ProjectConfigSection.settings => 'settings',
-        ProjectConfigSection.members => 'members',
-        ProjectConfigSection.agent => 'agent',
-        ProjectConfigSection.skills => 'skills',
-        ProjectConfigSection.plugins => 'plugins',
-        ProjectConfigSection.mcp => 'mcp',
-        ProjectConfigSection.extensions => 'extensions',
+        WorkspaceConfigSection.settings => 'settings',
+        WorkspaceConfigSection.members => 'members',
+        WorkspaceConfigSection.agent => 'agent',
+        WorkspaceConfigSection.skills => 'skills',
+        WorkspaceConfigSection.plugins => 'plugins',
+        WorkspaceConfigSection.mcp => 'mcp',
+        WorkspaceConfigSection.extensions => 'extensions',
       };
 
   @override
@@ -44,19 +44,19 @@ enum ProjectConfigSection implements WorkspaceSectionDescriptor {
 
   @override
   String title(AppLocalizations l10n) => switch (this) {
-        ProjectConfigSection.settings => l10n.homeWorkspaceProjectSettings,
-        ProjectConfigSection.members => l10n.homeWorkspaceProjectMembers,
-        ProjectConfigSection.agent => l10n.homeWorkspaceProjectAgent,
-        ProjectConfigSection.skills => l10n.homeWorkspaceProjectSkills,
-        ProjectConfigSection.plugins => l10n.homeWorkspaceProjectPlugins,
-        ProjectConfigSection.mcp => l10n.homeWorkspaceProjectMcp,
-        ProjectConfigSection.extensions => l10n.homeWorkspaceProjectExtensions,
+        WorkspaceConfigSection.settings => l10n.homeWorkspaceWorkspaceSettings,
+        WorkspaceConfigSection.members => l10n.homeWorkspaceWorkspaceMembers,
+        WorkspaceConfigSection.agent => l10n.homeWorkspaceWorkspaceAgent,
+        WorkspaceConfigSection.skills => l10n.homeWorkspaceWorkspaceSkills,
+        WorkspaceConfigSection.plugins => l10n.homeWorkspaceWorkspacePlugins,
+        WorkspaceConfigSection.mcp => l10n.homeWorkspaceWorkspaceMcp,
+        WorkspaceConfigSection.extensions => l10n.homeWorkspaceWorkspaceExtensions,
       };
 
   @override
-  IconData get icon => projectConfigSectionIcon(this);
+  IconData get icon => workspaceConfigSectionIcon(this);
 
-  static ProjectConfigSection? fromSegment(String? segment) {
+  static WorkspaceConfigSection? fromSegment(String? segment) {
     final value = segment?.trim();
     if (value == null || value.isEmpty) return null;
     for (final section in values) {
@@ -66,13 +66,13 @@ enum ProjectConfigSection implements WorkspaceSectionDescriptor {
   }
 }
 
-IconData projectConfigSectionIcon(ProjectConfigSection section) =>
+IconData workspaceConfigSectionIcon(WorkspaceConfigSection section) =>
     switch (section) {
-      ProjectConfigSection.settings => Icons.tune_outlined,
-      ProjectConfigSection.members => Icons.person_outline,
-      ProjectConfigSection.agent => Icons.smart_toy_outlined,
-      ProjectConfigSection.skills => Icons.extension_outlined,
-      ProjectConfigSection.plugins => Icons.widgets_outlined,
-      ProjectConfigSection.mcp => Icons.hub_outlined,
-      ProjectConfigSection.extensions => Icons.power_outlined,
+      WorkspaceConfigSection.settings => Icons.tune_outlined,
+      WorkspaceConfigSection.members => Icons.person_outline,
+      WorkspaceConfigSection.agent => Icons.smart_toy_outlined,
+      WorkspaceConfigSection.skills => Icons.extension_outlined,
+      WorkspaceConfigSection.plugins => Icons.widgets_outlined,
+      WorkspaceConfigSection.mcp => Icons.hub_outlined,
+      WorkspaceConfigSection.extensions => Icons.power_outlined,
     };

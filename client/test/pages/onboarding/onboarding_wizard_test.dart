@@ -81,7 +81,7 @@ void main() {
       final teamCubit = IdentityCubit(
         repository: teamRepo,
         sessionRepository: SessionRepository(),
-        reloadProjects: () async {},
+        reloadWorkspaces: () async {},
         executableResolver: () => 'claude',
         pluginLinker: _NoopPluginLinker(),
       );

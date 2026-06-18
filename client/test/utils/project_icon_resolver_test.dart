@@ -1,12 +1,12 @@
 import 'package:flutter_test/flutter_test.dart';
-import 'package:teampilot/models/app_project.dart';
-import 'package:teampilot/models/project_icon_ref.dart';
-import 'package:teampilot/utils/project_geometry_catalog.dart';
-import 'package:teampilot/utils/project_icon_resolver.dart';
+import 'package:teampilot/models/app_workspace.dart';
+import 'package:teampilot/models/workspace_icon_ref.dart';
+import 'package:teampilot/utils/workspace_geometry_catalog.dart';
+import 'package:teampilot/utils/workspace_icon_resolver.dart';
 
-Workspace _project({ProjectIconRef icon = ProjectIconRef.auto}) {
+Workspace _workspace({WorkspaceIconRef icon = WorkspaceIconRef.auto}) {
   return Workspace(
-    projectId: 'project-a',
+    workspaceId: 'workspace-a',
     primaryPath: '/tmp',
     icon: icon,
     createdAt: 0,
@@ -14,31 +14,31 @@ Workspace _project({ProjectIconRef icon = ProjectIconRef.auto}) {
 }
 
 void main() {
-  test('resolveProjectIcon uses auto geometry', () {
-    final resolved = resolveProjectIcon(_project());
-    expect(resolved, isA<ResolvedProjectGeometryIcon>());
+  test('resolveWorkspaceIcon uses auto geometry', () {
+    final resolved = resolveWorkspaceIcon(_workspace());
+    expect(resolved, isA<ResolvedWorkspaceGeometryIcon>());
     expect(
-      (resolved as ResolvedProjectGeometryIcon).assetPath,
-      projectGeometryAssetForProjectId('project-a'),
+      (resolved as ResolvedWorkspaceGeometryIcon).assetPath,
+      workspaceGeometryAssetForWorkspaceId('workspace-a'),
     );
   });
 
-  test('resolveProjectIcon uses preset geometry', () {
-    final resolved = resolveProjectIcon(_project(icon: const ProjectIconPreset(3)));
+  test('resolveWorkspaceIcon uses preset geometry', () {
+    final resolved = resolveWorkspaceIcon(_workspace(icon: const WorkspaceIconPreset(3)));
     expect(
-      (resolved as ResolvedProjectGeometryIcon).assetPath,
-      kProjectGeometryIconAssets[3],
+      (resolved as ResolvedWorkspaceGeometryIcon).assetPath,
+      kWorkspaceGeometryIconAssets[3],
     );
   });
 
-  test('resolveProjectIcon uses custom path', () {
-    final resolved = resolveProjectIcon(
-      _project(icon: const ProjectIconCustom('icons/project-a.png')),
+  test('resolveWorkspaceIcon uses custom path', () {
+    final resolved = resolveWorkspaceIcon(
+      _workspace(icon: const WorkspaceIconCustom('icons/workspace-a.png')),
     );
-    expect(resolved, isA<ResolvedProjectCustomIcon>());
+    expect(resolved, isA<ResolvedWorkspaceCustomIcon>());
     expect(
-      (resolved as ResolvedProjectCustomIcon).relativePath,
-      'icons/project-a.png',
+      (resolved as ResolvedWorkspaceCustomIcon).relativePath,
+      'icons/workspace-a.png',
     );
   });
 }

@@ -5,43 +5,43 @@ import 'package:go_router/go_router.dart';
 import '../../../cubits/chat_cubit.dart';
 import '../../../cubits/identity_cubit.dart';
 import '../../../l10n/l10n_extensions.dart';
-import '../../../models/app_project.dart';
+import '../../../models/app_workspace.dart';
 import '../../../models/identity_kind.dart';
 import '../../../models/launch_identity.dart';
 import '../../../models/team_config.dart';
 import '../../../models/identity.dart';
 import '../../../services/storage/identity_provisioner.dart';
 import '../../../theme/workspace_surface_layers.dart';
-import 'home_workspace_project_config_workspace.dart';
-import 'home_workspace_project_rail.dart';
-import 'home_workspace_project_section.dart';
-import 'home_workspace_project_split_pane.dart';
-import 'project_config_section.dart';
+import 'home_workspace_workspace_config_workspace.dart';
+import 'home_workspace_workspace_rail.dart';
+import 'home_workspace_workspace_section.dart';
+import 'home_workspace_workspace_split_pane.dart';
+import 'workspace_config_section.dart';
 
-/// Project work page.
+/// Workspace work page.
 ///
-/// Personal and team projects share the icon rail + floated card layout.
+/// Personal and team workspaces share the icon rail + floated card layout.
 /// Personal [WorkspaceSection.manage] opens the config workspace
 /// with in-page section nav; the rail only switches conversations vs manage.
 class WorkspacePage extends StatefulWidget {
   const WorkspacePage({
-    required this.projectId,
+    required this.workspaceId,
     this.identity,
     this.view,
     this.configSection,
     super.key,
   });
 
-  final String projectId;
+  final String workspaceId;
 
   /// Launch identity from `?as=`. Null means "no identity chosen" → the page
-  /// redirects to the project grid.
+  /// redirects to the workspace grid.
   final LaunchIdentity? identity;
 
-  /// `manage` opens [WorkspaceConfigPanel] (personal projects).
+  /// `manage` opens [WorkspaceConfigPanel] (personal workspaces).
   final String? view;
 
-  final ProjectConfigSection? configSection;
+  final WorkspaceConfigSection? configSection;
 
   @override
   State<WorkspacePage> createState() =>
@@ -52,8 +52,8 @@ class _WorkspacePageState extends State<WorkspacePage> {
   late WorkspaceSection _section = _sectionFromRoute();
   var _visitedManage = false;
 
-  ProjectConfigSection get _configSection =>
-      widget.configSection ?? ProjectConfigSection.settings;
+  WorkspaceConfigSection get _configSection =>
+      widget.configSection ?? WorkspaceConfigSection.settings;
 
   @override
   void initState() {
@@ -61,18 +61,18 @@ class _WorkspacePageState extends State<WorkspacePage> {
     if (widget.view == 'manage') {
       _visitedManage = true;
     }
-    context.read<ChatCubit>().setActiveProject(widget.projectId);
-    WidgetsBinding.instance.addPostFrameCallback((_) => _syncProjectContext());
+    context.read<ChatCubit>().setActiveWorkspace(widget.workspaceId);
+    WidgetsBinding.instance.addPostFrameCallback((_) => _syncWorkspaceContext());
   }
 
   @override
   void didUpdateWidget(covariant WorkspacePage oldWidget) {
     super.didUpdateWidget(oldWidget);
-    if (oldWidget.projectId != widget.projectId ||
+    if (oldWidget.workspaceId != widget.workspaceId ||
         oldWidget.identity != widget.identity) {
-      context.read<ChatCubit>().setActiveProject(widget.projectId);
+      context.read<ChatCubit>().setActiveWorkspace(widget.workspaceId);
       WidgetsBinding.instance.addPostFrameCallback(
-        (_) => _syncProjectContext(),
+        (_) => _syncWorkspaceContext(),
       );
     }
     if (oldWidget.view != widget.view ||
@@ -97,14 +97,14 @@ class _WorkspacePageState extends State<WorkspacePage> {
     return cubit.byId(IdentityProvisioner.defaultPersonalId);
   }
 
-  void _syncProjectContext() {
+  void _syncWorkspaceContext() {
     if (!mounted) return;
     if (widget.identity == null) return;
-    final project = _findProject(
-      context.read<ChatCubit>().state.projects,
-      widget.projectId,
+    final workspace = _findWorkspace(
+      context.read<ChatCubit>().state.workspaces,
+      widget.workspaceId,
     );
-    if (project == null) return;
+    if (workspace == null) return;
     final workspaceIdentity = _resolveIdentity();
     if (workspaceIdentity is TeamIdentity) {
       _syncSelectedTeam(workspaceIdentity.id);
@@ -113,7 +113,7 @@ class _WorkspacePageState extends State<WorkspacePage> {
 
   void _onSectionChanged(
     WorkspaceSection section,
-    Workspace project,
+    Workspace workspace,
     Identity workspaceIdentity,
   ) {
     setState(() {
@@ -124,7 +124,7 @@ class _WorkspacePageState extends State<WorkspacePage> {
     });
 
     final base =
-        '/home-v2/project/${project.projectId}?as=${workspaceIdentity.id}';
+        '/home-v2/workspace/${workspace.workspaceId}?as=${workspaceIdentity.id}';
     final path = switch (section) {
       WorkspaceSection.conversations => base,
       WorkspaceSection.manage => '$base&view=manage',
@@ -139,26 +139,26 @@ class _WorkspacePageState extends State<WorkspacePage> {
   Widget build(BuildContext context) {
     final l10n = context.l10n;
 
-    final project = context.select<ChatCubit, Workspace?>(
-      (c) => _findProject(c.state.projects, widget.projectId),
+    final workspace = context.select<ChatCubit, Workspace?>(
+      (c) => _findWorkspace(c.state.workspaces, widget.workspaceId),
     );
 
-    if (project == null) {
+    if (workspace == null) {
       return WorkspacePageCardShell(
-        chrome: WorkspacePageChrome.project,
-        child: _MissingProject(label: l10n.homeWorkspaceEmptyProjects),
+        chrome: WorkspacePageChrome.workspace,
+        child: _MissingWorkspace(label: l10n.homeWorkspaceEmptyWorkspaces),
       );
     }
 
     final launchIdentity = widget.identity;
     if (launchIdentity == null) {
-      // No identity chosen (e.g. a hand-typed project URL). Bounce back to the
-      // workspace home, which opens on the All Projects pane by default.
+      // No identity chosen (e.g. a hand-typed workspace URL). Bounce back to the
+      // workspace home, which opens on the All Workspaces pane by default.
       WidgetsBinding.instance.addPostFrameCallback((_) {
         if (mounted) context.go('/home-v2');
       });
       return WorkspacePageCardShell(
-        chrome: WorkspacePageChrome.project,
+        chrome: WorkspacePageChrome.workspace,
         child: const SizedBox.shrink(),
       );
     }
@@ -172,8 +172,8 @@ class _WorkspacePageState extends State<WorkspacePage> {
     );
     if (workspaceIdentity == null) {
       return WorkspacePageCardShell(
-        chrome: WorkspacePageChrome.project,
-        child: _MissingProject(label: l10n.homeWorkspaceEmptyProjects),
+        chrome: WorkspacePageChrome.workspace,
+        child: _MissingWorkspace(label: l10n.homeWorkspaceEmptyWorkspaces),
       );
     }
 
@@ -181,21 +181,21 @@ class _WorkspacePageState extends State<WorkspacePage> {
     final sessionTeamFilter =
         isPersonal ? '' : workspaceIdentity.id;
     final cardBody = _buildCardBody(
-      project: project,
+      workspace: workspace,
       workspaceIdentity: workspaceIdentity,
       sessionTeamFilter: sessionTeamFilter,
     );
 
-    return _buildProjectPageWithRail(
-      project: project,
+    return _buildWorkspacePageWithRail(
+      workspace: workspace,
       workspaceIdentity: workspaceIdentity,
       isPersonal: isPersonal,
       cardBody: cardBody,
     );
   }
 
-  Widget _buildProjectPageWithRail({
-    required Workspace project,
+  Widget _buildWorkspacePageWithRail({
+    required Workspace workspace,
     required Identity workspaceIdentity,
     required bool isPersonal,
     required Widget cardBody,
@@ -205,14 +205,14 @@ class _WorkspacePageState extends State<WorkspacePage> {
       children: [
         WorkspaceRail(
           section: _section,
-          isPersonalProject: isPersonal,
+          isPersonalWorkspace: isPersonal,
           onSectionChanged: (section) =>
-              _onSectionChanged(section, project, workspaceIdentity),
+              _onSectionChanged(section, workspace, workspaceIdentity),
           onLogoTap: () => context.go('/home-v2'),
         ),
         Expanded(
           child: WorkspacePageCardShell(
-            chrome: WorkspacePageChrome.project,
+            chrome: WorkspacePageChrome.workspace,
             omitLeftPadding: true,
             child: cardBody,
           ),
@@ -222,7 +222,7 @@ class _WorkspacePageState extends State<WorkspacePage> {
   }
 
   Widget _buildCardBody({
-    required Workspace project,
+    required Workspace workspace,
     required Identity workspaceIdentity,
     required String sessionTeamFilter,
   }) {
@@ -232,15 +232,15 @@ class _WorkspacePageState extends State<WorkspacePage> {
       sizing: StackFit.expand,
       children: [
         WorkspaceSplitPane(
-          key: ValueKey('conversations-${project.projectId}-${workspaceIdentity.id}'),
-          project: project,
-          isPersonalProject: workspaceIdentity.kind == IdentityKind.personal,
+          key: ValueKey('conversations-${workspace.workspaceId}-${workspaceIdentity.id}'),
+          workspace: workspace,
+          isPersonalWorkspace: workspaceIdentity.kind == IdentityKind.personal,
           identityId: workspaceIdentity.id,
           sessionTeamFilter: sessionTeamFilter,
         ),
         if (_visitedManage)
           WorkspaceConfigPanel(
-            project: project,
+            workspace: workspace,
             identityId: workspaceIdentity.id,
             section: _configSection,
           )
@@ -259,16 +259,16 @@ class _WorkspacePageState extends State<WorkspacePage> {
     }
   }
 
-  static Workspace? _findProject(List<Workspace> projects, String id) {
-    for (final p in projects) {
-      if (p.projectId == id) return p;
+  static Workspace? _findWorkspace(List<Workspace> workspaces, String id) {
+    for (final p in workspaces) {
+      if (p.workspaceId == id) return p;
     }
     return null;
   }
 }
 
-class _MissingProject extends StatelessWidget {
-  const _MissingProject({required this.label});
+class _MissingWorkspace extends StatelessWidget {
+  const _MissingWorkspace({required this.label});
 
   final String label;
 

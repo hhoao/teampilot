@@ -140,10 +140,10 @@ class AppKeys {
   );
   static const newChatSidebarTile = Key('new-chat-sidebar-tile');
   static const newChatCliMenuButton = Key('new-chat-cli-menu-button');
-  static const homeWorkspaceProjectManagementTile = Key(
-    'home-workspace-project-management-tile',
+  static const homeWorkspaceWorkspaceManagementTile = Key(
+    'home-workspace-workspace-management-tile',
   );
-  static const projectConfigWorkspace = Key('project-config-workspace');
+  static const workspaceConfigWorkspace = Key('workspace-config-workspace');
   static const teamConfigHub = Key('team-config-hub');
   static const teamConfigWorkspace = Key('team-config-workspace');
   static const skillsHub = Key('skills-hub');

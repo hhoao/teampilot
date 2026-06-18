@@ -27,20 +27,20 @@ class InstalledExtension {
 /// Persistent extension install + enablement state.
 ///
 /// Enablement model: app-level [globalEnabled] is the default;
-/// [teamOverrides] per `(teamId, extensionId)` and [projectOverrides] per
-/// `(projectId, extensionId)` win when present.
+/// [teamOverrides] per `(teamId, extensionId)` and [workspaceOverrides] per
+/// `(workspaceId, extensionId)` win when present.
 class ExtensionState {
   const ExtensionState({
     this.installed = const {},
     this.globalEnabled = const {},
     this.teamOverrides = const {},
-    this.projectOverrides = const {},
+    this.workspaceOverrides = const {},
   });
 
   final Map<String, InstalledExtension> installed;
   final Set<String> globalEnabled;
   final Map<String, Map<String, bool>> teamOverrides;
-  final Map<String, Map<String, bool>> projectOverrides;
+  final Map<String, Map<String, bool>> workspaceOverrides;
 
   bool effectiveEnabled(String teamId, String extensionId) {
     final override = teamOverrides[teamId]?[extensionId];
@@ -48,8 +48,8 @@ class ExtensionState {
     return globalEnabled.contains(extensionId);
   }
 
-  bool effectiveEnabledForProject(String projectId, String extensionId) {
-    final override = projectOverrides[projectId]?[extensionId];
+  bool effectiveEnabledForWorkspace(String workspaceId, String extensionId) {
+    final override = workspaceOverrides[workspaceId]?[extensionId];
     if (override != null) return override;
     return globalEnabled.contains(extensionId);
   }
@@ -81,19 +81,19 @@ class ExtensionState {
   }
 
   /// [value] null clears the override (fall back to global).
-  ExtensionState withProjectOverride(String projectId, String id, bool? value) {
+  ExtensionState withWorkspaceOverride(String workspaceId, String id, bool? value) {
     final next = {
-      for (final entry in projectOverrides.entries)
+      for (final entry in workspaceOverrides.entries)
         entry.key: Map<String, bool>.from(entry.value),
     };
-    final project = next.putIfAbsent(projectId, () => <String, bool>{});
+    final workspace = next.putIfAbsent(workspaceId, () => <String, bool>{});
     if (value == null) {
-      project.remove(id);
+      workspace.remove(id);
     } else {
-      project[id] = value;
+      workspace[id] = value;
     }
-    if (project.isEmpty) next.remove(projectId);
-    return _copy(projectOverrides: next);
+    if (workspace.isEmpty) next.remove(workspaceId);
+    return _copy(workspaceOverrides: next);
   }
 
   ExtensionState withInstalled(String id, String version, int installedAt) {
@@ -111,13 +111,13 @@ class ExtensionState {
     Map<String, InstalledExtension>? installed,
     Set<String>? globalEnabled,
     Map<String, Map<String, bool>>? teamOverrides,
-    Map<String, Map<String, bool>>? projectOverrides,
+    Map<String, Map<String, bool>>? workspaceOverrides,
   }) =>
       ExtensionState(
         installed: installed ?? this.installed,
         globalEnabled: globalEnabled ?? this.globalEnabled,
         teamOverrides: teamOverrides ?? this.teamOverrides,
-        projectOverrides: projectOverrides ?? this.projectOverrides,
+        workspaceOverrides: workspaceOverrides ?? this.workspaceOverrides,
       );
 
   Map<String, Object?> toJson() => {
@@ -129,8 +129,8 @@ class ExtensionState {
           for (final entry in teamOverrides.entries)
             entry.key: Map<String, bool>.from(entry.value),
         },
-        'projectOverrides': {
-          for (final entry in projectOverrides.entries)
+        'workspaceOverrides': {
+          for (final entry in workspaceOverrides.entries)
             entry.key: Map<String, bool>.from(entry.value),
         },
       };
@@ -139,7 +139,7 @@ class ExtensionState {
     final installedRaw = json['installed'];
     final globalRaw = json['globalEnabled'];
     final overridesRaw = json['teamOverrides'];
-    final projectOverridesRaw = json['projectOverrides'];
+    final workspaceOverridesRaw = json['workspaceOverrides'];
     return ExtensionState(
       installed: installedRaw is Map
           ? {
@@ -162,9 +162,9 @@ class ExtensionState {
                 },
             }
           : const {},
-      projectOverrides: projectOverridesRaw is Map
+      workspaceOverrides: workspaceOverridesRaw is Map
           ? {
-              for (final entry in projectOverridesRaw.entries)
+              for (final entry in workspaceOverridesRaw.entries)
                 entry.key.toString(): {
                   if (entry.value is Map)
                     for (final inner in (entry.value as Map).entries)

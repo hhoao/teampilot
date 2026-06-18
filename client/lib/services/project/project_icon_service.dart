@@ -1,52 +1,52 @@
 import 'dart:io';
 
-import '../../models/project_icon_ref.dart';
-import 'project_icon_storage.dart';
+import '../../models/workspace_icon_ref.dart';
+import 'workspace_icon_storage.dart';
 
-/// Applies [ProjectIconRef] transitions and loads custom icon bytes with cache.
-class ProjectIconService {
-  ProjectIconService({ProjectIconStorage? storage})
-    : _storage = storage ?? ProjectIconStorage();
+/// Applies [WorkspaceIconRef] transitions and loads custom icon bytes with cache.
+class WorkspaceIconService {
+  WorkspaceIconService({WorkspaceIconStorage? storage})
+    : _storage = storage ?? WorkspaceIconStorage();
 
-  final ProjectIconStorage _storage;
+  final WorkspaceIconStorage _storage;
   final _bytesCache = <String, List<int>>{};
 
-  String _cacheKey(String projectDir, String relativePath) =>
-      '$projectDir|$relativePath';
+  String _cacheKey(String workspaceDir, String relativePath) =>
+      '$workspaceDir|$relativePath';
 
   void evictCustomIconCache({
-    required String projectDir,
+    required String workspaceDir,
     required String relativePath,
   }) {
-    _bytesCache.remove(_cacheKey(projectDir, relativePath));
+    _bytesCache.remove(_cacheKey(workspaceDir, relativePath));
   }
 
-  void evictProjectCustomIcons({
-    required String projectDir,
-    required String projectId,
-    ProjectIconRef? icon,
+  void evictWorkspaceCustomIcons({
+    required String workspaceDir,
+    required String workspaceId,
+    WorkspaceIconRef? icon,
   }) {
-    if (icon case ProjectIconCustom(:final relativePath) when relativePath.isNotEmpty) {
+    if (icon case WorkspaceIconCustom(:final relativePath) when relativePath.isNotEmpty) {
       evictCustomIconCache(
-        projectDir: projectDir,
+        workspaceDir: workspaceDir,
         relativePath: relativePath,
       );
     }
     _bytesCache.removeWhere(
-      (key, _) => key.startsWith('$projectDir|${ProjectIconStorage.assetsDirName}/'),
+      (key, _) => key.startsWith('$workspaceDir|${WorkspaceIconStorage.assetsDirName}/'),
     );
   }
 
   Future<List<int>?> loadCustomBytes({
-    required String projectDir,
+    required String workspaceDir,
     required String relativePath,
   }) async {
-    final cacheKey = _cacheKey(projectDir, relativePath);
+    final cacheKey = _cacheKey(workspaceDir, relativePath);
     final cached = _bytesCache[cacheKey];
     if (cached != null) return cached;
 
     final bytes = await _storage.readBytes(
-      projectDir: projectDir,
+      workspaceDir: workspaceDir,
       relativePath: relativePath,
     );
     if (bytes == null || bytes.isEmpty) return null;
@@ -54,76 +54,76 @@ class ProjectIconService {
     return bytes;
   }
 
-  Future<ProjectIconCustom> importCustomFromLocalFile({
-    required String projectDir,
-    required String projectId,
+  Future<WorkspaceIconCustom> importCustomFromLocalFile({
+    required String workspaceDir,
+    required String workspaceId,
     required String localSourcePath,
   }) async {
     final ext = _extension(localSourcePath);
-    if (!ProjectIconStorage.isAllowedExtension(ext)) {
-      throw ProjectIconImportException('Unsupported file type: .$ext');
+    if (!WorkspaceIconStorage.isAllowedExtension(ext)) {
+      throw WorkspaceIconImportException('Unsupported file type: .$ext');
     }
 
     final bytes = await File(localSourcePath).readAsBytes();
     if (bytes.isEmpty) {
-      throw ProjectIconImportException('Icon file is empty');
+      throw WorkspaceIconImportException('Icon file is empty');
     }
 
     final relativePath = await _storage.saveBytes(
-      projectDir: projectDir,
-      projectId: projectId,
+      workspaceDir: workspaceDir,
+      workspaceId: workspaceId,
       bytes: bytes,
       extension: ext,
     );
     if (relativePath == null) {
-      throw ProjectIconImportException('Could not save icon file');
+      throw WorkspaceIconImportException('Could not save icon file');
     }
 
-    evictProjectCustomIcons(
-      projectDir: projectDir,
-      projectId: projectId,
+    evictWorkspaceCustomIcons(
+      workspaceDir: workspaceDir,
+      workspaceId: workspaceId,
     );
-    return ProjectIconCustom(relativePath);
+    return WorkspaceIconCustom(relativePath);
   }
 
   Future<void> deleteCustomFilesForTransition({
-    required String projectDir,
-    required String projectId,
-    required ProjectIconRef previous,
-    required ProjectIconRef next,
+    required String workspaceDir,
+    required String workspaceId,
+    required WorkspaceIconRef previous,
+    required WorkspaceIconRef next,
   }) async {
-    if (previous is! ProjectIconCustom || !previous.isValid) return;
-    if (next is ProjectIconCustom && next.relativePath == previous.relativePath) {
+    if (previous is! WorkspaceIconCustom || !previous.isValid) return;
+    if (next is WorkspaceIconCustom && next.relativePath == previous.relativePath) {
       return;
     }
     await _storage.deleteFile(
-      projectDir: projectDir,
+      workspaceDir: workspaceDir,
       relativePath: previous.relativePath,
     );
     evictCustomIconCache(
-      projectDir: projectDir,
+      workspaceDir: workspaceDir,
       relativePath: previous.relativePath,
     );
   }
 
-  Future<void> deleteAllCustomFilesForProject({
-    required String projectDir,
-    required String projectId,
-    ProjectIconRef? icon,
+  Future<void> deleteAllCustomFilesForWorkspace({
+    required String workspaceDir,
+    required String workspaceId,
+    WorkspaceIconRef? icon,
   }) async {
-    if (icon case ProjectIconCustom(:final relativePath) when relativePath.isNotEmpty) {
+    if (icon case WorkspaceIconCustom(:final relativePath) when relativePath.isNotEmpty) {
       await _storage.deleteFile(
-        projectDir: projectDir,
+        workspaceDir: workspaceDir,
         relativePath: relativePath,
       );
     }
-    await _storage.deleteAllForProject(
-      projectDir: projectDir,
-      projectId: projectId,
+    await _storage.deleteAllForWorkspace(
+      workspaceDir: workspaceDir,
+      workspaceId: workspaceId,
     );
-    evictProjectCustomIcons(
-      projectDir: projectDir,
-      projectId: projectId,
+    evictWorkspaceCustomIcons(
+      workspaceDir: workspaceDir,
+      workspaceId: workspaceId,
       icon: icon,
     );
   }
@@ -135,8 +135,8 @@ class ProjectIconService {
   }
 }
 
-class ProjectIconImportException implements Exception {
-  ProjectIconImportException(this.message);
+class WorkspaceIconImportException implements Exception {
+  WorkspaceIconImportException(this.message);
 
   final String message;
 
@@ -145,4 +145,4 @@ class ProjectIconImportException implements Exception {
 }
 
 /// Shared instance for UI reads; repositories may construct their own for tests.
-ProjectIconService projectIconService = ProjectIconService();
+WorkspaceIconService workspaceIconService = WorkspaceIconService();

@@ -21,7 +21,7 @@ class AppStorage {
 
   static String get home => RuntimeStorageContext.current.home;
 
-  /// Default workspace for new projects and CLI sessions (native: app Documents).
+  /// Default workspace for new workspaces and CLI sessions (native: app Documents).
   static String get cwd => RuntimeStorageContext.current.cwd;
 
   static String get appDataRoot => RuntimeStorageContext.current.appDataRoot;
@@ -168,41 +168,41 @@ class AppPaths {
   static String teamHubFavoritesJsonForTeampilotRoot(String teampilotRoot) =>
       _pathUnderTeampilotRoot(teampilotRoot, 'team-hub/favorites.json');
 
-  static String homeWorkspaceProjectFavoritesJsonForTeampilotRoot(
+  static String homeWorkspaceWorkspaceFavoritesJsonForTeampilotRoot(
     String teampilotRoot,
   ) =>
-      _pathUnderTeampilotRoot(teampilotRoot, 'ui/project-favorites.json');
+      _pathUnderTeampilotRoot(teampilotRoot, 'ui/workspace-favorites.json');
 
-  static String homeWorkspaceProjectDisplayPrefsJsonForTeampilotRoot(
+  static String homeWorkspaceWorkspaceDisplayPrefsJsonForTeampilotRoot(
     String teampilotRoot,
   ) =>
       _pathUnderTeampilotRoot(
         teampilotRoot,
-        'ui/project-display-prefs.json',
+        'ui/workspace-display-prefs.json',
       );
 
-  static String homeWorkspaceProjectLaunchPrefsJsonForTeampilotRoot(
+  static String homeWorkspaceWorkspaceLaunchPrefsJsonForTeampilotRoot(
     String teampilotRoot,
   ) =>
       _pathUnderTeampilotRoot(
         teampilotRoot,
-        'ui/project-launch-prefs.json',
+        'ui/workspace-launch-prefs.json',
       );
 
-  static String homeWorkspaceRecentProjectsJsonForTeampilotRoot(
+  static String homeWorkspaceRecentWorkspacesJsonForTeampilotRoot(
     String teampilotRoot,
   ) =>
-      _pathUnderTeampilotRoot(teampilotRoot, 'ui/recent-projects.json');
+      _pathUnderTeampilotRoot(teampilotRoot, 'ui/recent-workspaces.json');
 
-  static String homeWorkspaceClosedProjectsJsonForTeampilotRoot(
+  static String homeWorkspaceClosedWorkspacesJsonForTeampilotRoot(
     String teampilotRoot,
   ) =>
-      _pathUnderTeampilotRoot(teampilotRoot, 'ui/closed-projects.json');
+      _pathUnderTeampilotRoot(teampilotRoot, 'ui/closed-workspaces.json');
 
-  static String homeWorkspaceOpenProjectsJsonForTeampilotRoot(
+  static String homeWorkspaceOpenWorkspacesJsonForTeampilotRoot(
     String teampilotRoot,
   ) =>
-      _pathUnderTeampilotRoot(teampilotRoot, 'ui/open-project-tabs.json');
+      _pathUnderTeampilotRoot(teampilotRoot, 'ui/open-workspace-tabs.json');
 
   String get skillRepoCacheDir => skillRepoCacheDirForTeampilotRoot(basePath);
 
@@ -221,7 +221,7 @@ class AppPaths {
   String get pluginMarketplacesConfigPath =>
       pluginMarketplacesConfigPathForTeampilotRoot(basePath);
 
-  /// Workbench entities: `workspace/projects/{id}/manifest.json`, sessions, bus.
+  /// Workbench entities: `workspace/workspaces/{id}/manifest.json`, sessions, bus.
   String get workspaceDir => _ctx.join(basePath, 'workspace');
 
   /// App-wide CLI default trees (`cli-defaults/{tool}/`).
@@ -236,23 +236,23 @@ class AppPaths {
   String get teamHubFavoritesJson =>
       teamHubFavoritesJsonForTeampilotRoot(basePath);
 
-  String get homeWorkspaceProjectFavoritesJson =>
-      homeWorkspaceProjectFavoritesJsonForTeampilotRoot(basePath);
+  String get homeWorkspaceWorkspaceFavoritesJson =>
+      homeWorkspaceWorkspaceFavoritesJsonForTeampilotRoot(basePath);
 
-  String get homeWorkspaceProjectDisplayPrefsJson =>
-      homeWorkspaceProjectDisplayPrefsJsonForTeampilotRoot(basePath);
+  String get homeWorkspaceWorkspaceDisplayPrefsJson =>
+      homeWorkspaceWorkspaceDisplayPrefsJsonForTeampilotRoot(basePath);
 
-  String get homeWorkspaceProjectLaunchPrefsJson =>
-      homeWorkspaceProjectLaunchPrefsJsonForTeampilotRoot(basePath);
+  String get homeWorkspaceWorkspaceLaunchPrefsJson =>
+      homeWorkspaceWorkspaceLaunchPrefsJsonForTeampilotRoot(basePath);
 
-  String get homeWorkspaceRecentProjectsJson =>
-      homeWorkspaceRecentProjectsJsonForTeampilotRoot(basePath);
+  String get homeWorkspaceRecentWorkspacesJson =>
+      homeWorkspaceRecentWorkspacesJsonForTeampilotRoot(basePath);
 
-  String get homeWorkspaceClosedProjectsJson =>
-      homeWorkspaceClosedProjectsJsonForTeampilotRoot(basePath);
+  String get homeWorkspaceClosedWorkspacesJson =>
+      homeWorkspaceClosedWorkspacesJsonForTeampilotRoot(basePath);
 
-  String get homeWorkspaceOpenProjectsJson =>
-      homeWorkspaceOpenProjectsJsonForTeampilotRoot(basePath);
+  String get homeWorkspaceOpenWorkspacesJson =>
+      homeWorkspaceOpenWorkspacesJsonForTeampilotRoot(basePath);
 
   /// Application-level unified provider catalog (`providers/providers.json`).
   String get providerConfigDir => _ctx.join(basePath, 'providers');
@@ -268,9 +268,9 @@ class AppPaths {
       providerToolDir('codex', providerId);
 }
 
-/// Resolves the platform Documents directory for default project [primaryPath].
-class DefaultProjectDirectory {
-  DefaultProjectDirectory._();
+/// Resolves the platform Documents directory for default workspace [primaryPath].
+class DefaultWorkspaceDirectory {
+  DefaultWorkspaceDirectory._();
 
   static String? _cachedPath;
 
@@ -283,9 +283,9 @@ class DefaultProjectDirectory {
     return dir.path;
   }
 
-  /// Working directory of the built-in personal project: `<Documents>/TeamPilot`.
-  /// Created on first access so the seeded default project always has a real dir.
-  static Future<String> resolveDefaultProjectPath() async {
+  /// Working directory of the built-in personal workspace: `<Documents>/TeamPilot`.
+  /// Created on first access so the seeded default workspace always has a real dir.
+  static Future<String> resolveDefaultWorkspacePath() async {
     final docs = await resolve();
     final path = p.join(docs, 'TeamPilot');
     await Directory(path).create(recursive: true);

@@ -23,8 +23,8 @@ import 'team_config_incomplete_dialog.dart';
 class ChatPageShell extends StatelessWidget {
   const ChatPageShell({
     required this.cwd,
-    required this.isPersonalProject,
-    required this.projectId,
+    required this.isPersonalWorkspace,
+    required this.workspaceId,
     required this.team,
     this.sessionId,
     super.key,
@@ -32,8 +32,8 @@ class ChatPageShell extends StatelessWidget {
 
   final String cwd;
   final String? sessionId;
-  final bool isPersonalProject;
-  final String? projectId;
+  final bool isPersonalWorkspace;
+  final String? workspaceId;
   final TeamIdentity? team;
 
   @override
@@ -47,16 +47,16 @@ class ChatPageShell extends StatelessWidget {
       preferences: preferences,
       panelKey: AppKeys.rightToolsPanel,
       dismissDrawerOnAction: toolsAsDrawer,
-      isPersonalProject: isPersonalProject,
-      projectId: projectId,
+      isPersonalWorkspace: isPersonalWorkspace,
+      workspaceId: workspaceId,
     );
 
     Widget buildWorkspace({Widget? rightTools}) {
       return _ChatWorkspaceShell(
         cwd: cwd,
         sessionId: sessionId,
-        isPersonalProject: isPersonalProject,
-        projectId: projectId,
+        isPersonalWorkspace: isPersonalWorkspace,
+        workspaceId: workspaceId,
         team: team,
         preferences: preferences,
         toolsAsDrawer: toolsAsDrawer,
@@ -72,8 +72,8 @@ class ChatPageShell extends StatelessWidget {
               ? RightToolsPanel(
                   cwd: cwd,
                   preferences: preferences,
-                  isPersonalProject: isPersonalProject,
-                  projectId: projectId,
+                  isPersonalWorkspace: isPersonalWorkspace,
+                  workspaceId: workspaceId,
                   panelKey: AppKeys.rightToolsPanel,
                 )
               : null,
@@ -135,8 +135,8 @@ class _ChatWorkspaceShell extends StatelessWidget {
   const _ChatWorkspaceShell({
     required this.cwd,
     required this.sessionId,
-    required this.isPersonalProject,
-    required this.projectId,
+    required this.isPersonalWorkspace,
+    required this.workspaceId,
     required this.team,
     required this.preferences,
     required this.toolsAsDrawer,
@@ -145,8 +145,8 @@ class _ChatWorkspaceShell extends StatelessWidget {
 
   final String cwd;
   final String? sessionId;
-  final bool isPersonalProject;
-  final String? projectId;
+  final bool isPersonalWorkspace;
+  final String? workspaceId;
   final TeamIdentity? team;
   final LayoutPreferences preferences;
   final bool toolsAsDrawer;
@@ -165,14 +165,14 @@ class _ChatWorkspaceShell extends StatelessWidget {
         final teamConfig = team;
         return WorkspaceShell(
           workspaceTerminalWorkingDirectory: cwd,
-          workspaceProjectId: projectId,
+          workspaceWorkspaceId: workspaceId,
           showHeader: false,
-          breadcrumb: isPersonalProject
+          breadcrumb: isPersonalWorkspace
               ? 'Personal / Chat / Shell chat workbench'
               : '${teamConfig!.name} / Chat / Shell chat workbench',
           title: 'Shell chat workbench',
-          subtitle: isPersonalProject
-              ? 'personal project / shell wrapper mode'
+          subtitle: isPersonalWorkspace
+              ? 'personal workspace / shell wrapper mode'
               : 'target: ${context.read<ChatCubit>().selectedMemberName(teamConfig!)} / shell wrapper mode',
           tabs: model.tabs
               .map(
@@ -197,13 +197,13 @@ class _ChatWorkspaceShell extends StatelessWidget {
           onRightToolsWidthChanged: toolsAsDrawer
               ? null
               : (w) => context.read<LayoutCubit>().setRightToolsWidth(w),
-          actions: isPersonalProject
+          actions: isPersonalWorkspace
               ? const []
               : _chatActions(context, teamConfig!),
           rightTools: rightTools,
           child: ChatWorkbench(
             sessionId: sessionId,
-            isPersonalProject: isPersonalProject,
+            isPersonalWorkspace: isPersonalWorkspace,
           ),
         );
       },

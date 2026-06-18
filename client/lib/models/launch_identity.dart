@@ -1,6 +1,6 @@
 import 'package:flutter/foundation.dart';
 
-/// Which identity a directory is opened against. Encoded on the project route
+/// Which identity a directory is opened against. Encoded on the workspace route
 /// as `?as=<identityId>`. Kind is resolved from the loaded identity record.
 @immutable
 class LaunchIdentity {

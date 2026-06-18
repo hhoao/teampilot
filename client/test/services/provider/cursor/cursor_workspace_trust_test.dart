@@ -5,7 +5,7 @@ import 'package:path/path.dart' as p;
 import 'package:teampilot/services/provider/cursor/cursor_workspace_trust.dart';
 
 void main() {
-  test('slugifyWorkspacePath matches cursor-agent project slug', () {
+  test('slugifyWorkspacePath matches cursor-agent workspace slug', () {
     expect(
       CursorWorkspaceTrust.slugifyWorkspacePath(
         '/home/hhoa/Document/testmixed',
@@ -14,7 +14,7 @@ void main() {
     );
   });
 
-  test('trustMarkerPath is under fake HOME projects dir', () {
+  test('trustMarkerPath is under fake HOME workspaces dir', () {
     expect(
       CursorWorkspaceTrust.trustMarkerPath(
         '/fake/home',
@@ -24,7 +24,7 @@ void main() {
       p.join(
         '/fake/home',
         '.cursor',
-        'projects',
+        'workspaces',
         'home-hhoa-Document-testmixed',
         '.workspace-trusted',
       ),

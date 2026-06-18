@@ -7,8 +7,8 @@ import '../../models/team_config.dart';
 import '../../services/cli/registry/capabilities/cli_effort_capability.dart';
 import '../../services/cli/registry/cli_display_name.dart';
 import '../../services/cli/registry/cli_tool_registry.dart';
-import '../../pages/home_workspace/project/config/project_cli_config_helpers.dart';
-import '../../pages/home_workspace/project/config/project_cli_effort_helpers.dart';
+import '../../pages/home_workspace/workspace/config/workspace_cli_config_helpers.dart';
+import '../../pages/home_workspace/workspace/config/workspace_cli_effort_helpers.dart';
 import '../../pages/team_config/team_config_helpers.dart';
 import '../../widgets/app_provider/brand_dropdown_rows.dart';
 import '../../widgets/app_provider/cli_effort_picker_field.dart';
@@ -110,7 +110,7 @@ class CliLaunchCustomFields extends StatelessWidget {
         providerId: providerId,
     };
     final selectedProvider = _selectedProvider(providers, providerId);
-    final hideModelPicker = projectCliHidesModelPicker(
+    final hideModelPicker = workspaceCliHidesModelPicker(
       registry,
       catalogCli,
       selectedProvider,
@@ -312,7 +312,7 @@ class CliLaunchCustomFields extends StatelessWidget {
         placement: EffortPickerPlacement.member,
         model: modelId,
       ),
-      CliLaunchEffortContext.standalone => projectCliShowsEffortPicker(
+      CliLaunchEffortContext.standalone => workspaceCliShowsEffortPicker(
         registry: registry,
         cli: catalogCli,
         provider: provider,

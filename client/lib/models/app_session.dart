@@ -9,7 +9,7 @@ enum AppSessionLaunchState { created, started }
 class AppSession {
   const AppSession({
     required this.sessionId,
-    required this.projectId,
+    required this.workspaceId,
     required this.primaryPath,
     this.additionalPaths = const [],
     this.display = '',
@@ -56,7 +56,7 @@ class AppSession {
         : const <String, String>{};
     return AppSession(
       sessionId: json['sessionId'] as String? ?? '',
-      projectId: json['projectId'] as String? ?? '',
+      workspaceId: json['workspaceId'] as String? ?? '',
       primaryPath: json['primaryPath'] as String? ?? '',
       additionalPaths: paths,
       display: json['display'] as String? ?? '',
@@ -75,7 +75,7 @@ class AppSession {
   }
 
   final String sessionId;
-  final String projectId;
+  final String workspaceId;
   final String primaryPath;
   final List<String> additionalPaths;
   final String display;
@@ -92,7 +92,7 @@ class AppSession {
   /// CLI `--team-name` / config-profiles member dir (`{teamId}-{seq}`).
   final String cliTeamName;
 
-  /// Personal-project session override; when null, [PersonalIdentity.cli] applies.
+  /// Personal-workspace session override; when null, [PersonalIdentity.cli] applies.
   final CliTool? cli;
 
   /// Per-roster-member CLI `--session-id` / `--resume` task ids.
@@ -139,7 +139,7 @@ class AppSession {
 
   AppSession copyWith({
     String? sessionId,
-    String? projectId,
+    String? workspaceId,
     String? primaryPath,
     List<String>? additionalPaths,
     String? display,
@@ -157,7 +157,7 @@ class AppSession {
   }) {
     return AppSession(
       sessionId: sessionId ?? this.sessionId,
-      projectId: projectId ?? this.projectId,
+      workspaceId: workspaceId ?? this.workspaceId,
       primaryPath: primaryPath ?? this.primaryPath,
       additionalPaths: additionalPaths ?? this.additionalPaths,
       display: display ?? this.display,
@@ -179,7 +179,7 @@ class AppSession {
     return {
       'schemaVersion': 1,
       'sessionId': sessionId,
-      'projectId': projectId,
+      'workspaceId': workspaceId,
       'primaryPath': primaryPath,
       'additionalPaths': additionalPaths,
       'display': display,
@@ -204,7 +204,7 @@ class AppSession {
         other is AppSession &&
             runtimeType == other.runtimeType &&
             sessionId == other.sessionId &&
-            projectId == other.projectId &&
+            workspaceId == other.workspaceId &&
             primaryPath == other.primaryPath &&
             listEquals(additionalPaths, other.additionalPaths) &&
             display == other.display &&
@@ -224,7 +224,7 @@ class AppSession {
   @override
   int get hashCode => Object.hash(
     sessionId,
-    projectId,
+    workspaceId,
     primaryPath,
     Object.hashAll(additionalPaths),
     display,

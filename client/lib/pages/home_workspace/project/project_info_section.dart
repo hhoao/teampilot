@@ -7,33 +7,33 @@ import 'package:teampilot/widgets/app_toast/app_toast.dart';
 
 import '../../../cubits/chat_cubit.dart';
 import '../../../l10n/l10n_extensions.dart';
-import '../../../models/app_project.dart';
+import '../../../models/app_workspace.dart';
 import '../../../theme/app_text_styles.dart';
-import '../../../utils/project_display_name.dart';
-import '../../../widgets/project_details_dialog.dart';
+import '../../../utils/workspace_display_name.dart';
+import '../../../widgets/workspace_details_dialog.dart';
 import '../../../widgets/settings/workspace_settings_widgets.dart';
 import '../../../services/io/system_folder_opener.dart';
-import '../home_workspace_project_actions.dart';
-import 'project_icon_settings_row.dart';
+import '../home_workspace_workspace_actions.dart';
+import 'workspace_icon_settings_row.dart';
 
-/// Project basic settings + danger zone (same layout as [TeamInfoSection]).
-class ProjectInfoSection extends StatelessWidget {
-  const ProjectInfoSection({required this.project, super.key});
+/// Workspace basic settings + danger zone (same layout as [TeamInfoSection]).
+class WorkspaceInfoSection extends StatelessWidget {
+  const WorkspaceInfoSection({required this.workspace, super.key});
 
-  final Workspace project;
+  final Workspace workspace;
 
   @override
   Widget build(BuildContext context) {
     final l10n = context.l10n;
     final live = context.select<ChatCubit, Workspace>(
-      (c) => c.state.projects.firstWhere(
-        (p) => p.projectId == project.projectId,
-        orElse: () => project,
+      (c) => c.state.workspaces.firstWhere(
+        (p) => p.workspaceId == workspace.workspaceId,
+        orElse: () => workspace,
       ),
     );
     final sessionCount = context.select<ChatCubit, int>(
       (c) => c.state.sessions
-          .where((s) => s.projectId == live.projectId)
+          .where((s) => s.workspaceId == live.workspaceId)
           .length,
     );
 
@@ -46,29 +46,29 @@ class ProjectInfoSection extends StatelessWidget {
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
                 SettingsGroupHeader(
-                  title: l10n.homeWorkspaceProjectSettingsBasicInfo,
+                  title: l10n.homeWorkspaceWorkspaceSettingsBasicInfo,
                 ),
-                ProjectIconSettingsRow(project: live),
-                _ProjectSettingsInlineRow(
-                  label: l10n.projectDisplayName,
+                WorkspaceIconSettingsRow(workspace: live),
+                _WorkspaceSettingsInlineRow(
+                  label: l10n.workspaceDisplayName,
                   value: live.localizedName(l10n),
                   onEdit: () => showRenameWorkspaceDialog(
                     context,
                     live,
-                    title: l10n.projectDisplayName,
+                    title: l10n.workspaceDisplayName,
                   ),
                 ),
-                _ProjectSettingsInlineRow(
-                  label: l10n.homeWorkspaceProjectId,
-                  value: live.projectId,
-                  onCopy: () => _copyText(context, live.projectId),
+                _WorkspaceSettingsInlineRow(
+                  label: l10n.homeWorkspaceWorkspaceId,
+                  value: live.workspaceId,
+                  onCopy: () => _copyText(context, live.workspaceId),
                   showDividerBelow: true,
                 ),
-                _ProjectSettingsInlineRow(
-                  label: l10n.projectPrimaryPath,
+                _WorkspaceSettingsInlineRow(
+                  label: l10n.workspacePrimaryPath,
                   value: live.primaryPath.isNotEmpty
                       ? live.primaryPath
-                      : l10n.projectPrimaryPathNotSelected,
+                      : l10n.workspacePrimaryPathNotSelected,
                   onCopy: live.primaryPath.isNotEmpty
                       ? () => _copyText(context, live.primaryPath)
                       : null,
@@ -79,30 +79,30 @@ class ProjectInfoSection extends StatelessWidget {
                         )
                       : null,
                 ),
-                _ProjectSettingsInlineRow(
-                  label: l10n.projectAdditionalDirectories,
+                _WorkspaceSettingsInlineRow(
+                  label: l10n.workspaceAdditionalDirectories,
                   value: live.additionalPaths.isEmpty
-                      ? l10n.projectNoAdditionalDirectories
-                      : l10n.homeWorkspaceProjectAdditionalDirsCount(
+                      ? l10n.workspaceNoAdditionalDirectories
+                      : l10n.homeWorkspaceWorkspaceAdditionalDirsCount(
                           live.additionalPaths.length,
                         ),
-                  onEdit: () => showProjectDetailsDialog(
+                  onEdit: () => showWorkspaceDetailsDialog(
                     context,
                     live,
                     sessionCount,
                   ),
                   showDividerBelow: true,
                 ),
-                _ProjectSettingsInlineRow(
-                  label: l10n.projectSessionCount,
+                _WorkspaceSettingsInlineRow(
+                  label: l10n.workspaceSessionCount,
                   value: '$sessionCount',
                 ),
-                _ProjectSettingsInlineRow(
-                  label: l10n.projectCreatedAt,
+                _WorkspaceSettingsInlineRow(
+                  label: l10n.workspaceCreatedAt,
                   value: _formatTimestamp(live.createdAt),
                 ),
-                _ProjectSettingsInlineRow(
-                  label: l10n.projectUpdatedAt,
+                _WorkspaceSettingsInlineRow(
+                  label: l10n.workspaceUpdatedAt,
                   value: _formatTimestamp(live.updatedAt),
                   showDividerBelow: false,
                 ),
@@ -111,23 +111,23 @@ class ProjectInfoSection extends StatelessWidget {
           ),
           const SizedBox(height: 12),
           Text(
-            l10n.homeWorkspaceProjectSettingsPathsHint,
+            l10n.homeWorkspaceWorkspaceSettingsPathsHint,
             style: AppTextStyles.of(context).caption.copyWith(
               color: Theme.of(context).colorScheme.onSurfaceVariant,
             ),
           ),
           const SizedBox(height: 12),
-          ProjectConfigDangerZone(project: live),
+          WorkspaceConfigDangerZone(workspace: live),
         ],
       ),
     );
   }
 }
 
-class ProjectConfigDangerZone extends StatelessWidget {
-  const ProjectConfigDangerZone({required this.project, super.key});
+class WorkspaceConfigDangerZone extends StatelessWidget {
+  const WorkspaceConfigDangerZone({required this.workspace, super.key});
 
-  final Workspace project;
+  final Workspace workspace;
 
   @override
   Widget build(BuildContext context) {
@@ -137,17 +137,17 @@ class ProjectConfigDangerZone extends StatelessWidget {
     return SettingsSurfaceCard(
       child: SettingsLabeledStackedRow(
         title: l10n.dangerZone,
-        subtitle: l10n.deleteProjectSubtitle,
+        subtitle: l10n.deleteWorkspaceSubtitle,
         body: Align(
           alignment: Alignment.centerLeft,
           child: OutlinedButton.icon(
-            onPressed: () => confirmDeleteWorkspace(context, project),
+            onPressed: () => confirmDeleteWorkspace(context, workspace),
             icon: Icon(
               Icons.delete_outline,
               size: context.appIconSizes.md,
               color: errorColor,
             ),
-            label: Text(l10n.deleteProject, style: TextStyle(color: errorColor)),
+            label: Text(l10n.deleteWorkspace, style: TextStyle(color: errorColor)),
             style: OutlinedButton.styleFrom(
               side: BorderSide(color: errorColor.withValues(alpha: 0.4)),
             ),
@@ -159,8 +159,8 @@ class ProjectConfigDangerZone extends StatelessWidget {
   }
 }
 
-class _ProjectSettingsInlineRow extends StatelessWidget {
-  const _ProjectSettingsInlineRow({
+class _WorkspaceSettingsInlineRow extends StatelessWidget {
+  const _WorkspaceSettingsInlineRow({
     required this.label,
     required this.value,
     this.onEdit,

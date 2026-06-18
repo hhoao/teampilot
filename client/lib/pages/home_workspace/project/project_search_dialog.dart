@@ -6,49 +6,49 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import '../../../cubits/chat_cubit.dart';
 import '../../../cubits/editor_cubit.dart';
 import '../../../l10n/l10n_extensions.dart';
-import '../../../models/app_project.dart';
+import '../../../models/app_workspace.dart';
 import '../../../models/app_session.dart';
-import '../../../services/file_tree/project_file_search.dart';
+import '../../../services/file_tree/workspace_file_search.dart';
 import '../../../services/storage/app_storage.dart';
 import '../../../theme/app_icon_sizes.dart';
 import '../../../theme/app_text_styles.dart';
 import '../../../utils/debounce/debounce.dart';
-import '../../../utils/project_sessions.dart';
+import '../../../utils/workspace_sessions.dart';
 import '../../../widgets/app_dialog.dart';
 import '../../../widgets/app_icon_button.dart';
 import '../../../widgets/sidebar_session_tile.dart';
-import 'project_session_actions.dart';
+import 'workspace_session_actions.dart';
 
-/// Opens the project search dialog, which searches both conversation sessions
-/// and project files by name. Reads the current session list and CLI fallback
+/// Opens the workspace search dialog, which searches both conversation sessions
+/// and workspace files by name. Reads the current session list and CLI fallback
 /// title from [context] up front; selecting a result pops the dialog and
 /// performs the action against the still-mounted [context].
-Future<void> showProjectSearchDialog(
+Future<void> showWorkspaceSearchDialog(
   BuildContext context, {
-  required Workspace project,
+  required Workspace workspace,
   required bool isPersonal,
   String sessionTeamFilter = '',
 }) {
   final chatCubit = context.read<ChatCubit>();
   final editorCubit = context.read<EditorCubit>();
   final fallback = context.l10n.defaultNewChatSessionTitle;
-  final sessions = sessionsForProject(project, chatCubit.state.sessions)
+  final sessions = sessionsForWorkspace(workspace, chatCubit.state.sessions)
       .where((s) => s.sessionTeam.trim() == sessionTeamFilter)
       .toList();
 
   return showDialog<void>(
     context: context,
-    builder: (dialogContext) => ProjectSearchDialog(
-      project: project,
+    builder: (dialogContext) => WorkspaceSearchDialog(
+      workspace: workspace,
       sessions: sessions,
       emptyTitleFallback: fallback,
       onOpenSession: (session) {
         Navigator.of(dialogContext).pop();
         if (!context.mounted) return;
         unawaited(
-          openProjectSessionTab(
+          openWorkspaceSessionTab(
             context,
-            project,
+            workspace,
             session,
             isPersonal: isPersonal,
           ),
@@ -62,12 +62,12 @@ Future<void> showProjectSearchDialog(
   );
 }
 
-/// Centered modal that filters sessions and walks the project tree for file
+/// Centered modal that filters sessions and walks the workspace tree for file
 /// name matches. Pure UI: result actions are delegated to callbacks so the
 /// dialog needs no cubit/navigator wiring of its own.
-class ProjectSearchDialog extends StatefulWidget {
-  const ProjectSearchDialog({
-    required this.project,
+class WorkspaceSearchDialog extends StatefulWidget {
+  const WorkspaceSearchDialog({
+    required this.workspace,
     required this.sessions,
     required this.emptyTitleFallback,
     required this.onOpenSession,
@@ -75,25 +75,25 @@ class ProjectSearchDialog extends StatefulWidget {
     super.key,
   });
 
-  final Workspace project;
+  final Workspace workspace;
   final List<AppSession> sessions;
   final String emptyTitleFallback;
   final ValueChanged<AppSession> onOpenSession;
   final ValueChanged<String> onOpenFile;
 
   @override
-  State<ProjectSearchDialog> createState() => _ProjectSearchDialogState();
+  State<WorkspaceSearchDialog> createState() => _WorkspaceSearchDialogState();
 }
 
-class _ProjectSearchDialogState extends State<ProjectSearchDialog> {
+class _WorkspaceSearchDialogState extends State<WorkspaceSearchDialog> {
   final _controller = TextEditingController();
   late final String _debounceTag =
-      'project_search_${widget.project.projectId}_${identityHashCode(this)}';
+      'workspace_search_${widget.workspace.workspaceId}_${identityHashCode(this)}';
 
   var _query = '';
   var _searchingFiles = false;
   var _fileResultsTruncated = false;
-  List<ProjectFileMatch> _fileMatches = const [];
+  List<WorkspaceFileMatch> _fileMatches = const [];
 
   /// Bumped per file search; stale async results are discarded.
   var _fileSearchSeq = 0;
@@ -117,7 +117,7 @@ class _ProjectSearchDialogState extends State<ProjectSearchDialog> {
   Future<void> _runFileSearch(String value) async {
     final seq = ++_fileSearchSeq;
     final query = value.trim();
-    final root = widget.project.primaryPath;
+    final root = widget.workspace.primaryPath;
     if (query.isEmpty || root.isEmpty) {
       if (!mounted) return;
       setState(() {
@@ -129,7 +129,7 @@ class _ProjectSearchDialogState extends State<ProjectSearchDialog> {
     }
 
     setState(() => _searchingFiles = true);
-    final result = await searchProjectFiles(
+    final result = await searchWorkspaceFiles(
       fs: AppStorage.fs,
       root: root,
       query: query,
@@ -160,11 +160,11 @@ class _ProjectSearchDialogState extends State<ProjectSearchDialog> {
         mainAxisSize: MainAxisSize.min,
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          AppDialogHeader(title: l10n.projectSearchTitle),
+          AppDialogHeader(title: l10n.workspaceSearchTitle),
           const SizedBox(height: 12),
           _SearchField(
             controller: _controller,
-            hint: l10n.projectSearchHint,
+            hint: l10n.workspaceSearchHint,
             onChanged: _onQueryChanged,
             onClear: () {
               _controller.clear();
@@ -176,16 +176,16 @@ class _ProjectSearchDialogState extends State<ProjectSearchDialog> {
             child: !hasQuery
                 ? const SizedBox.shrink()
                 : (!hasResults && !_searchingFiles)
-                ? _EmptyResults(label: l10n.projectSearchNoResults)
+                ? _EmptyResults(label: l10n.workspaceSearchNoResults)
                 : _Results(
                     sessions: filteredSessions,
                     fileMatches: _fileMatches,
                     searchingFiles: _searchingFiles,
                     fileResultsTruncated: _fileResultsTruncated,
                     sessionsHeader: l10n.homeWorkspaceConversationsSection,
-                    filesHeader: l10n.projectSearchFilesSection,
-                    searchingLabel: l10n.projectSearchSearching,
-                    truncatedLabel: l10n.projectSearchFilesTruncated,
+                    filesHeader: l10n.workspaceSearchFilesSection,
+                    searchingLabel: l10n.workspaceSearchSearching,
+                    truncatedLabel: l10n.workspaceSearchFilesTruncated,
                     onOpenSession: widget.onOpenSession,
                     onOpenFile: widget.onOpenFile,
                   ),
@@ -211,7 +211,7 @@ class _Results extends StatelessWidget {
   });
 
   final List<AppSession> sessions;
-  final List<ProjectFileMatch> fileMatches;
+  final List<WorkspaceFileMatch> fileMatches;
   final bool searchingFiles;
   final bool fileResultsTruncated;
   final String sessionsHeader;
@@ -232,7 +232,7 @@ class _Results extends StatelessWidget {
             for (final session in sessions)
               SidebarSessionTile(
                 session: session,
-                tapThrottleKeyPrefix: 'project_search_session',
+                tapThrottleKeyPrefix: 'workspace_search_session',
                 onTap: () => onOpenSession(session),
               ),
             const SizedBox(height: 8),
@@ -298,7 +298,7 @@ class _StatusRow extends StatelessWidget {
 class _FileResultTile extends StatefulWidget {
   const _FileResultTile({required this.match, required this.onTap});
 
-  final ProjectFileMatch match;
+  final WorkspaceFileMatch match;
   final VoidCallback onTap;
 
   @override

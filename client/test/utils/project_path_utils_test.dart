@@ -5,27 +5,27 @@ import 'package:path/path.dart' as p;
 import 'package:teampilot/services/storage/app_storage.dart';
 import 'package:teampilot/services/io/local_filesystem.dart';
 import 'package:teampilot/services/storage/runtime_storage_context.dart';
-import 'package:teampilot/utils/project_path_utils.dart';
+import 'package:teampilot/utils/workspace_path_utils.dart';
 
 void main() {
   test('workspace layout paths join with POSIX separators', () {
     const root = '/home/hhoa/.local/share/com.hhoa.teampilot';
     final ctx = AppPaths.pathContextForDataRoot(root);
     expect(
-      ctx.join(root, 'workspace', 'projects', 'p1', 'manifest.json'),
-      '$root/workspace/projects/p1/manifest.json',
+      ctx.join(root, 'workspace', 'workspaces', 'p1', 'manifest.json'),
+      '$root/workspace/workspaces/p1/manifest.json',
     );
     expect(
-      ctx.join(root, 'workspace', 'projects', 'p1', 'sessions', 's1', 'session.json'),
-      '$root/workspace/projects/p1/sessions/s1/session.json',
+      ctx.join(root, 'workspace', 'workspaces', 'p1', 'sessions', 's1', 'session.json'),
+      '$root/workspace/workspaces/p1/sessions/s1/session.json',
     );
     expect(
-      ctx.join(root, 'ui', 'open-project-tabs.json'),
+      ctx.join(root, 'ui', 'open-workspace-tabs.json'),
       isNot(contains(r'\')),
     );
   });
 
-  test('normalizeProjectPath converts Windows paths under WSL storage', () {
+  test('normalizeWorkspacePath converts Windows paths under WSL storage', () {
     if (!Platform.isWindows) return;
     RuntimeStorageContext.installForTesting(
       filesystem: LocalFilesystem(),
@@ -34,12 +34,12 @@ void main() {
     );
     addTearDown(RuntimeStorageContext.resetForTesting);
 
-    final normalized = normalizeProjectPath(r'C:\Users\dev\repo');
+    final normalized = normalizeWorkspacePath(r'C:\Users\dev\repo');
     expect(normalized, '/mnt/c/Users/dev/repo');
     expect(normalized, isNot(contains(r'\')));
   });
 
-  test('normalizeProjectPath keeps Windows paths under native storage', () {
+  test('normalizeWorkspacePath keeps Windows paths under native storage', () {
     if (!Platform.isWindows) return;
     RuntimeStorageContext.installForTesting(
       filesystem: LocalFilesystem(),
@@ -49,26 +49,26 @@ void main() {
     addTearDown(RuntimeStorageContext.resetForTesting);
 
     expect(
-      normalizeProjectPath(r'C:\Users\dev\repo'),
+      normalizeWorkspacePath(r'C:\Users\dev\repo'),
       p.normalize(r'C:\Users\dev\repo'),
     );
-    expect(normalizeProjectPath(r'C:\Users\dev\repo'), isNot(startsWith('/mnt/')));
+    expect(normalizeWorkspacePath(r'C:\Users\dev\repo'), isNot(startsWith('/mnt/')));
   });
 
-  test('normalizeProjectPath keeps POSIX paths unchanged', () {
+  test('normalizeWorkspacePath keeps POSIX paths unchanged', () {
     RuntimeStorageContext.resetForTesting();
-    expect(normalizeProjectPath('/tmp/work'), '/tmp/work');
+    expect(normalizeWorkspacePath('/tmp/work'), '/tmp/work');
     expect(
-      normalizeProjectPath(r'C:\temp'),
+      normalizeWorkspacePath(r'C:\temp'),
       p.normalize(r'C:\temp'),
     );
   });
 
-  test('projectMetadataKeys includes Windows path separator variants', () {
+  test('workspaceMetadataKeys includes Windows path separator variants', () {
     if (!Platform.isWindows) return;
     RuntimeStorageContext.resetForTesting();
 
-    final keys = projectMetadataKeys(r'C:\Users\haung\Documents');
+    final keys = workspaceMetadataKeys(r'C:\Users\haung\Documents');
     expect(
       keys,
       containsAll([
@@ -80,12 +80,12 @@ void main() {
   });
 
   test(
-    'projectMetadataKeys includes Windows variants for WSL project paths',
+    'workspaceMetadataKeys includes Windows variants for WSL workspace paths',
     () {
       if (!Platform.isWindows) return;
       RuntimeStorageContext.resetForTesting();
 
-      final keys = projectMetadataKeys('/mnt/c/Users/haung/Documents');
+      final keys = workspaceMetadataKeys('/mnt/c/Users/haung/Documents');
       expect(keys, contains('/mnt/c/Users/haung/Documents'));
       expect(
         keys,
@@ -97,8 +97,8 @@ void main() {
     },
   );
 
-  test('projectMetadataKeys keeps single key for POSIX paths', () {
+  test('workspaceMetadataKeys keeps single key for POSIX paths', () {
     if (Platform.isWindows) return;
-    expect(projectMetadataKeys('/tmp/work'), ['/tmp/work']);
+    expect(workspaceMetadataKeys('/tmp/work'), ['/tmp/work']);
   });
 }

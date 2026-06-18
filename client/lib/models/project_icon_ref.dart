@@ -1,34 +1,34 @@
 import 'package:flutter/foundation.dart';
 
-/// How a project avatar is chosen.
+/// How a workspace avatar is chosen.
 @immutable
-sealed class ProjectIconRef {
-  const ProjectIconRef();
+sealed class WorkspaceIconRef {
+  const WorkspaceIconRef();
 
-  static const auto = ProjectIconAuto();
+  static const auto = WorkspaceIconAuto();
 
-  factory ProjectIconRef.fromJson(Object? json) {
+  factory WorkspaceIconRef.fromJson(Object? json) {
     if (json is! Map<String, Object?>) return auto;
     return switch (json['kind']) {
-      'preset' => ProjectIconPreset(_readPresetIndex(json['index'])),
+      'preset' => WorkspaceIconPreset(_readPresetIndex(json['index'])),
       'custom' => _readCustom(json['path']),
       _ => auto,
     };
   }
 
   Object? toJson() => switch (this) {
-    ProjectIconAuto() => null,
-    ProjectIconPreset(:final index) => {'kind': 'preset', 'index': index},
-    ProjectIconCustom(:final relativePath) => {
+    WorkspaceIconAuto() => null,
+    WorkspaceIconPreset(:final index) => {'kind': 'preset', 'index': index},
+    WorkspaceIconCustom(:final relativePath) => {
       'kind': 'custom',
       'path': relativePath,
     },
   };
 
-  static ProjectIconCustom _readCustom(Object? path) {
+  static WorkspaceIconCustom _readCustom(Object? path) {
     final value = path is String ? path.trim() : '';
-    if (value.isEmpty) return const ProjectIconCustom('');
-    return ProjectIconCustom(value);
+    if (value.isEmpty) return const WorkspaceIconCustom('');
+    return WorkspaceIconCustom(value);
   }
 
   static int _readPresetIndex(Object? index) {
@@ -38,33 +38,33 @@ sealed class ProjectIconRef {
 }
 
 @immutable
-final class ProjectIconAuto extends ProjectIconRef {
-  const ProjectIconAuto();
+final class WorkspaceIconAuto extends WorkspaceIconRef {
+  const WorkspaceIconAuto();
 
   @override
-  bool operator ==(Object other) => other is ProjectIconAuto;
+  bool operator ==(Object other) => other is WorkspaceIconAuto;
 
   @override
   int get hashCode => runtimeType.hashCode;
 }
 
 @immutable
-final class ProjectIconPreset extends ProjectIconRef {
-  const ProjectIconPreset(this.index);
+final class WorkspaceIconPreset extends WorkspaceIconRef {
+  const WorkspaceIconPreset(this.index);
 
   final int index;
 
   @override
   bool operator ==(Object other) =>
-      other is ProjectIconPreset && other.index == index;
+      other is WorkspaceIconPreset && other.index == index;
 
   @override
   int get hashCode => index.hashCode;
 }
 
 @immutable
-final class ProjectIconCustom extends ProjectIconRef {
-  const ProjectIconCustom(this.relativePath);
+final class WorkspaceIconCustom extends WorkspaceIconRef {
+  const WorkspaceIconCustom(this.relativePath);
 
   final String relativePath;
 
@@ -72,7 +72,7 @@ final class ProjectIconCustom extends ProjectIconRef {
 
   @override
   bool operator ==(Object other) =>
-      other is ProjectIconCustom && other.relativePath == relativePath;
+      other is WorkspaceIconCustom && other.relativePath == relativePath;
 
   @override
   int get hashCode => relativePath.hashCode;

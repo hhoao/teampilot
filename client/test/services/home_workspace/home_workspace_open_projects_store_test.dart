@@ -1,7 +1,7 @@
 import 'dart:io';
 
 import 'package:flutter_test/flutter_test.dart';
-import 'package:teampilot/services/home_workspace/home_workspace_open_projects_store.dart';
+import 'package:teampilot/services/home_workspace/home_workspace_open_workspaces_store.dart';
 import 'package:teampilot/services/io/local_filesystem.dart';
 import 'package:teampilot/services/storage/app_storage.dart';
 
@@ -10,14 +10,14 @@ void main() {
   late HomeOpenWorkspacesStore store;
 
   setUp(() {
-    root = Directory.systemTemp.createTempSync('open_projects_store_');
+    root = Directory.systemTemp.createTempSync('open_workspaces_store_');
     final paths = AppPaths(root.path);
     final fs = LocalFilesystem(
       pathContext: AppPaths.pathContextForDataRoot(paths.basePath),
     );
     store = HomeOpenWorkspacesStore(
       fs: fs,
-      pathOverride: paths.homeWorkspaceOpenProjectsJson,
+      pathOverride: paths.homeWorkspaceOpenWorkspacesJson,
     );
   });
 
@@ -32,7 +32,7 @@ void main() {
 
     expect(await store.loadOrderedIds(), ['proj-a', 'proj-b']);
 
-    final file = File(AppPaths(root.path).homeWorkspaceOpenProjectsJson);
+    final file = File(AppPaths(root.path).homeWorkspaceOpenWorkspacesJson);
     expect(file.existsSync(), isTrue);
   });
 }

@@ -99,7 +99,7 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get visibilityFileTreeHint =>
-      'Show the project file tree for quick navigation.';
+      'Show the workspace file tree for quick navigation.';
 
   @override
   String get visibilityGitHint =>
@@ -303,7 +303,7 @@ class AppLocalizationsEn extends AppLocalizations {
   String get workspaceEntryModeHome => 'Home';
 
   @override
-  String get workspaceEntryModeLastProject => 'Last project';
+  String get workspaceEntryModeLastWorkspace => 'Last workspace';
 
   @override
   String get theme => 'Theme';
@@ -512,10 +512,10 @@ class AppLocalizationsEn extends AppLocalizations {
   }
 
   @override
-  String get projects => 'Projects';
+  String get workspaces => 'Workspaces';
 
   @override
-  String get newProject => 'New Project';
+  String get newWorkspace => 'New Workspace';
 
   @override
   String get homeWorkspaceMainWindow => 'Workspace';
@@ -545,13 +545,13 @@ class AppLocalizationsEn extends AppLocalizations {
   String get homeWorkspacePersonal => 'Simple mode';
 
   @override
-  String get homeWorkspaceAllProjects => 'All projects';
+  String get homeWorkspaceAllWorkspaces => 'All workspaces';
 
   @override
-  String get homeWorkspaceProjectTabKindPersonal => 'Personal';
+  String get homeWorkspaceWorkspaceTabKindPersonal => 'Personal';
 
   @override
-  String get homeWorkspaceDefaultPersonalProjectName => 'Personal assistant';
+  String get homeWorkspaceDefaultPersonalWorkspaceName => 'Personal assistant';
 
   @override
   String get homeWorkspacePersonalSubtitle =>
@@ -564,7 +564,7 @@ class AppLocalizationsEn extends AppLocalizations {
   String get homeWorkspaceRecentlyClosed => 'Recently closed';
 
   @override
-  String get homeWorkspaceRecentlyClosedEmpty => 'No recently closed projects';
+  String get homeWorkspaceRecentlyClosedEmpty => 'No recently closed workspaces';
 
   @override
   String get homeWorkspaceMyTeams => 'My Teams';
@@ -576,41 +576,41 @@ class AppLocalizationsEn extends AppLocalizations {
   String get homeWorkspaceProviders => 'Providers';
 
   @override
-  String get homeWorkspaceTeamProjects => 'Projects';
+  String get homeWorkspaceTeamWorkspaces => 'Workspaces';
 
   @override
   String get homeWorkspaceOwner => 'Owner';
 
   @override
-  String get homeWorkspaceImportProject => 'Import';
+  String get homeWorkspaceImportWorkspace => 'Import';
 
   @override
   String get homeWorkspaceSessionsLabel => 'sessions';
 
   @override
-  String get homeWorkspaceEmptyProjects => 'No projects in this team yet';
+  String get homeWorkspaceEmptyWorkspaces => 'No workspaces in this team yet';
 
   @override
-  String get homeWorkspaceEmptyProjectsHint =>
-      'Create or import a project to get started';
+  String get homeWorkspaceEmptyWorkspacesHint =>
+      'Create or import a workspace to get started';
 
   @override
-  String get homeWorkspaceProjectSort => 'Sort projects';
+  String get homeWorkspaceWorkspaceSort => 'Sort workspaces';
 
   @override
-  String get homeWorkspaceProjectSortRecentlyUpdated => 'Recently updated';
+  String get homeWorkspaceWorkspaceSortRecentlyUpdated => 'Recently updated';
 
   @override
-  String get homeWorkspaceProjectSortNameAsc => 'Name (A–Z)';
+  String get homeWorkspaceWorkspaceSortNameAsc => 'Name (A–Z)';
 
   @override
-  String get homeWorkspaceProjectSortNameDesc => 'Name (Z–A)';
+  String get homeWorkspaceWorkspaceSortNameDesc => 'Name (Z–A)';
 
   @override
-  String get homeWorkspaceProjectSortCreatedDesc => 'Date created';
+  String get homeWorkspaceWorkspaceSortCreatedDesc => 'Date created';
 
   @override
-  String get homeWorkspaceProjectSortSessionCountDesc => 'Session count';
+  String get homeWorkspaceWorkspaceSortSessionCountDesc => 'Session count';
 
   @override
   String get homeWorkspaceComingSoon => 'Coming soon';
@@ -669,48 +669,48 @@ class AppLocalizationsEn extends AppLocalizations {
       'Members can run different CLIs and collaborate across tools over TeamBus.';
 
   @override
-  String get homeWorkspaceNewProjectSubtitle =>
-      'Choose a working directory and name your project.';
+  String get homeWorkspaceNewWorkspaceSubtitle =>
+      'Choose a working directory and name your workspace.';
 
   @override
-  String get homeWorkspaceNewProjectDirectoryLabel => 'Project directory';
+  String get homeWorkspaceNewWorkspaceDirectoryLabel => 'Workspace directory';
 
   @override
-  String get homeWorkspaceNewProjectChooseDirectory => 'Choose folder';
+  String get homeWorkspaceNewWorkspaceChooseDirectory => 'Choose folder';
 
   @override
-  String get homeWorkspaceNewProjectDirectoryHint =>
+  String get homeWorkspaceNewWorkspaceDirectoryHint =>
       'No directory selected yet';
 
   @override
-  String get homeWorkspaceNewProjectNameHint => 'Defaults to the folder name';
+  String get homeWorkspaceNewWorkspaceNameHint => 'Defaults to the folder name';
 
   @override
-  String get homeWorkspaceCreateProject => 'Create project';
+  String get homeWorkspaceCreateWorkspace => 'Create workspace';
 
   @override
-  String get homeWorkspaceCloseProjectTitle => 'Close project?';
+  String get homeWorkspaceCloseWorkspaceTitle => 'Close workspace?';
 
   @override
-  String homeWorkspaceCloseProjectMessage(int count) {
+  String homeWorkspaceCloseWorkspaceMessage(int count) {
     String _temp0 = intl.Intl.pluralLogic(
       count,
       locale: localeName,
       other:
-          'Closing this tab will end $count running sessions in this project.',
-      one: 'Closing this tab will end 1 running session in this project.',
+          'Closing this tab will end $count running sessions in this workspace.',
+      one: 'Closing this tab will end 1 running session in this workspace.',
     );
     return '$_temp0';
   }
 
   @override
-  String get homeWorkspaceCloseProjectConfirm => 'Close & end sessions';
+  String get homeWorkspaceCloseWorkspaceConfirm => 'Close & end sessions';
 
   @override
-  String get homeWorkspaceProjectManagement => 'Project management';
+  String get homeWorkspaceWorkspaceManagement => 'Workspace management';
 
   @override
-  String get homeWorkspaceProjectList => 'Projects';
+  String get homeWorkspaceWorkspaceList => 'Workspaces';
 
   @override
   String get homeWorkspaceConversations => 'Conversations';
@@ -719,132 +719,132 @@ class AppLocalizationsEn extends AppLocalizations {
   String get homeWorkspaceConversationsSection => 'Conversations';
 
   @override
-  String get homeWorkspaceProjectAgent => 'Agent';
+  String get homeWorkspaceWorkspaceAgent => 'Agent';
 
   @override
-  String get projectAgentBuiltInSubtitle =>
+  String get workspaceAgentBuiltInSubtitle =>
       'Maps to flashskyai --agent when that CLI is active.';
 
   @override
-  String get projectAgentExtraArgs => 'Extra CLI arguments';
+  String get workspaceAgentExtraArgs => 'Extra CLI arguments';
 
   @override
-  String get projectAgentExtraArgsSubtitle =>
-      'Extra flags appended when starting the agent in this project.';
+  String get workspaceAgentExtraArgsSubtitle =>
+      'Extra flags appended when starting the agent in this workspace.';
 
   @override
-  String get projectAdvancedSettingsSubtitle =>
-      'Agent preset and extra CLI flags for this project.';
+  String get workspaceAdvancedSettingsSubtitle =>
+      'Agent preset and extra CLI flags for this workspace.';
 
   @override
-  String get projectAgentPromptSubtitle =>
-      'System prompt defining the agent\'s role and boundaries in this project.';
+  String get workspaceAgentPromptSubtitle =>
+      'System prompt defining the agent\'s role and boundaries in this workspace.';
 
   @override
-  String get projectAgentPromptPresetGeneral => 'General';
+  String get workspaceAgentPromptPresetGeneral => 'General';
 
   @override
-  String get projectAgentPromptPresetGeneralText =>
-      'Help with development in this project end to end. Understand the request and codebase, propose a clear approach, then implement with minimal diffs; summarize changed files and suggested next steps.';
+  String get workspaceAgentPromptPresetGeneralText =>
+      'Help with development in this workspace end to end. Understand the request and codebase, propose a clear approach, then implement with minimal diffs; summarize changed files and suggested next steps.';
 
   @override
-  String get projectAgentPromptPresetDeveloper => 'Developer';
+  String get workspaceAgentPromptPresetDeveloper => 'Developer';
 
   @override
-  String get projectAgentPromptPresetDeveloperText =>
+  String get workspaceAgentPromptPresetDeveloperText =>
       'Focus on implementation and fixes. Prefer minimal diffs, run relevant tests, and briefly explain changed files and rationale.';
 
   @override
-  String get projectAgentPromptPresetReviewer => 'Reviewer';
+  String get workspaceAgentPromptPresetReviewer => 'Reviewer';
 
   @override
-  String get projectAgentPromptPresetReviewerText =>
+  String get workspaceAgentPromptPresetReviewerText =>
       'Review code only; do not modify files unless asked.\nEach finding must include file path, line, issue, and suggested fix.';
 
   @override
-  String get projectAgentPromptPresetResearcher => 'Researcher';
+  String get workspaceAgentPromptPresetResearcher => 'Researcher';
 
   @override
-  String get projectAgentPromptPresetResearcherText =>
+  String get workspaceAgentPromptPresetResearcherText =>
       'Investigate and report only; do not change production code unless asked.\nOutput findings with file paths, relevant symbols, and recommended next steps.';
 
   @override
-  String get projectCliEffortInheritHint => 'Use provider default';
+  String get workspaceCliEffortInheritHint => 'Use provider default';
 
   @override
-  String get projectCliDefaultSubtitle =>
-      'Default CLI for new conversations in this project.';
+  String get workspaceCliDefaultSubtitle =>
+      'Default CLI for new conversations in this workspace.';
 
   @override
-  String get projectCliDefaultsTitle => 'CLI defaults';
+  String get workspaceCliDefaultsTitle => 'CLI defaults';
 
   @override
-  String get projectCliDefaultsSubtitle =>
-      'Set the default provider and model for each CLI used in this project.';
+  String get workspaceCliDefaultsSubtitle =>
+      'Set the default provider and model for each CLI used in this workspace.';
 
   @override
-  String get projectCliProviderModelTitle => 'Provider & model';
+  String get workspaceCliProviderModelTitle => 'Provider & model';
 
   @override
-  String get projectCliEffortLevel => 'Reasoning effort';
+  String get workspaceCliEffortLevel => 'Reasoning effort';
 
   @override
-  String get projectCliEffortLevelSubtitle =>
-      'Default effort for this CLI in the project (leave empty to use provider default).';
+  String get workspaceCliEffortLevelSubtitle =>
+      'Default effort for this CLI in the workspace (leave empty to use provider default).';
 
   @override
-  String get projectCliConfigure => 'Configure';
+  String get workspaceCliConfigure => 'Configure';
 
   @override
-  String get projectCliConfigured => 'Configured';
+  String get workspaceCliConfigured => 'Configured';
 
   @override
-  String get projectCliNotConfigured => 'Not configured';
+  String get workspaceCliNotConfigured => 'Not configured';
 
   @override
-  String get projectCliNotConfiguredHint => 'No default provider selected yet';
+  String get workspaceCliNotConfiguredHint => 'No default provider selected yet';
 
   @override
-  String get projectCliNoProviderCatalog =>
+  String get workspaceCliNoProviderCatalog =>
       'No provider setup required for this CLI';
 
   @override
-  String projectCliConfigSummary(String provider, String model) {
+  String workspaceCliConfigSummary(String provider, String model) {
     return '$provider · $model';
   }
 
   @override
-  String get projectCliAddPresetTitle => 'Add Preset';
+  String get workspaceCliAddPresetTitle => 'Add Preset';
 
   @override
-  String get projectCliEditPresetTitle => 'Edit Preset';
+  String get workspaceCliEditPresetTitle => 'Edit Preset';
 
   @override
-  String get projectCliPresetNameLabel => 'Preset Name';
+  String get workspaceCliPresetNameLabel => 'Preset Name';
 
   @override
-  String get projectCliPresetsManageTitle => 'Manage Presets';
+  String get workspaceCliPresetsManageTitle => 'Manage Presets';
 
   @override
-  String get projectCliPresetsEmptyHint =>
+  String get workspaceCliPresetsEmptyHint =>
       'No presets yet. Create one to get started.';
 
   @override
-  String get projectCliDeletePresetTitle => 'Delete Preset';
+  String get workspaceCliDeletePresetTitle => 'Delete Preset';
 
   @override
-  String projectCliDeletePresetConfirm(String name) {
+  String workspaceCliDeletePresetConfirm(String name) {
     return 'Delete preset \'$name\'? This cannot be undone.';
   }
 
   @override
-  String get projectCliPresetLabel => 'Active Preset';
+  String get workspaceCliPresetLabel => 'Active Preset';
 
   @override
-  String get projectCliNoPresetHint => 'No preset selected';
+  String get workspaceCliNoPresetHint => 'No preset selected';
 
   @override
-  String get projectCliManagePresets => 'Manage';
+  String get workspaceCliManagePresets => 'Manage';
 
   @override
   String get teamDefaultPresetLabel => 'Default Model Preset';
@@ -901,81 +901,81 @@ class AppLocalizationsEn extends AppLocalizations {
   }
 
   @override
-  String get homeWorkspaceProjectSkills => 'Skills';
+  String get homeWorkspaceWorkspaceSkills => 'Skills';
 
   @override
-  String get homeWorkspaceProjectPlugins => 'Plugins';
+  String get homeWorkspaceWorkspacePlugins => 'Plugins';
 
   @override
-  String get homeWorkspaceProjectMcp => 'MCP';
+  String get homeWorkspaceWorkspaceMcp => 'MCP';
 
   @override
-  String get homeWorkspaceProjectExtensions => 'Extensions';
+  String get homeWorkspaceWorkspaceExtensions => 'Extensions';
 
   @override
-  String projectSkillsAssignedCount(int assigned, int total) {
-    return '$assigned of $total enabled for this project';
+  String workspaceSkillsAssignedCount(int assigned, int total) {
+    return '$assigned of $total enabled for this workspace';
   }
 
   @override
-  String get projectSkillsManage => 'Manage skills';
+  String get workspaceSkillsManage => 'Manage skills';
 
   @override
-  String projectMcpAssignedCount(int assigned, int total) {
-    return '$assigned of $total enabled for this project';
+  String workspaceMcpAssignedCount(int assigned, int total) {
+    return '$assigned of $total enabled for this workspace';
   }
 
   @override
-  String get projectMcpManage => 'Manage MCP';
+  String get workspaceMcpManage => 'Manage MCP';
 
   @override
-  String projectPluginsAssignedCount(int assigned, int total) {
-    return '$assigned of $total linked to this project';
+  String workspacePluginsAssignedCount(int assigned, int total) {
+    return '$assigned of $total linked to this workspace';
   }
 
   @override
-  String get projectPluginsManage => 'Manage plugins';
+  String get workspacePluginsManage => 'Manage plugins';
 
   @override
-  String get projectPluginsEmpty => 'No plugins installed';
+  String get workspacePluginsEmpty => 'No plugins installed';
 
   @override
-  String get projectPluginsEmptyHint =>
-      'Install plugins from Discovery to enable them for this project.';
+  String get workspacePluginsEmptyHint =>
+      'Install plugins from Discovery to enable them for this workspace.';
 
   @override
-  String get projectExtensionsTitle => 'Extensions for this project';
+  String get workspaceExtensionsTitle => 'Extensions for this workspace';
 
   @override
-  String get projectExtensionsSubtitle =>
-      'Override which extensions run for this project. Default follows the global setting.';
+  String get workspaceExtensionsSubtitle =>
+      'Override which extensions run for this workspace. Default follows the global setting.';
 
   @override
-  String get projectExtensionEffectiveOn => 'Enabled for this project';
+  String get workspaceExtensionEffectiveOn => 'Enabled for this workspace';
 
   @override
-  String get projectExtensionEffectiveOff => 'Disabled for this project';
+  String get workspaceExtensionEffectiveOff => 'Disabled for this workspace';
 
   @override
   String get homeWorkspaceTeamConfig => 'Team config';
 
   @override
-  String get homeWorkspaceProjectSettings => 'Project settings';
+  String get homeWorkspaceWorkspaceSettings => 'Workspace settings';
 
   @override
-  String get homeWorkspaceProjectMembers => 'Members';
+  String get homeWorkspaceWorkspaceMembers => 'Members';
 
   @override
-  String get homeWorkspaceProjectSettingsSectionBasic => 'Basic';
+  String get homeWorkspaceWorkspaceSettingsSectionBasic => 'Basic';
 
   @override
-  String get homeWorkspaceProjectSettingsBasicInfo => 'Basic information';
+  String get homeWorkspaceWorkspaceSettingsBasicInfo => 'Basic information';
 
   @override
-  String get homeWorkspaceProjectId => 'Project ID';
+  String get homeWorkspaceWorkspaceId => 'Workspace ID';
 
   @override
-  String homeWorkspaceProjectAdditionalDirsCount(int count) {
+  String homeWorkspaceWorkspaceAdditionalDirsCount(int count) {
     String _temp0 = intl.Intl.pluralLogic(
       count,
       locale: localeName,
@@ -986,12 +986,12 @@ class AppLocalizationsEn extends AppLocalizations {
   }
 
   @override
-  String get homeWorkspaceProjectSettingsPathsHint =>
-      'Use Manage on additional directories to add or remove folders in this project.';
+  String get homeWorkspaceWorkspaceSettingsPathsHint =>
+      'Use Manage on additional directories to add or remove folders in this workspace.';
 
   @override
-  String get deleteProjectSubtitle =>
-      'Deletes this project and all conversations in it. This cannot be undone.';
+  String get deleteWorkspaceSubtitle =>
+      'Deletes this workspace and all conversations in it. This cannot be undone.';
 
   @override
   String get homeWorkspaceInviteMembers => 'Invite';
@@ -1005,7 +1005,7 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get homeWorkspaceNoConversations =>
-      'No conversations in this project yet';
+      'No conversations in this workspace yet';
 
   @override
   String get homeWorkspaceSearchHint => 'Search';
@@ -1015,57 +1015,57 @@ class AppLocalizationsEn extends AppLocalizations {
       'No conversations match your search';
 
   @override
-  String get projectSearchTitle => 'Search';
+  String get workspaceSearchTitle => 'Search';
 
   @override
-  String get projectSearchHint => 'Search sessions and files';
+  String get workspaceSearchHint => 'Search sessions and files';
 
   @override
-  String get projectSearchFilesSection => 'Files';
+  String get workspaceSearchFilesSection => 'Files';
 
   @override
-  String get projectSearchSearching => 'Searching files…';
+  String get workspaceSearchSearching => 'Searching files…';
 
   @override
-  String get projectSearchNoResults => 'No matches';
+  String get workspaceSearchNoResults => 'No matches';
 
   @override
-  String get projectSearchFilesTruncated =>
+  String get workspaceSearchFilesTruncated =>
       'More files match — refine your search';
 
   @override
-  String get homeWorkspaceOpenProjectInNewTab => 'Open in new tab';
+  String get homeWorkspaceOpenWorkspaceInNewTab => 'Open in new tab';
 
   @override
-  String get homeWorkspaceFavoriteProject => 'Favorite project';
+  String get homeWorkspaceFavoriteWorkspace => 'Favorite workspace';
 
   @override
-  String get homeWorkspaceUnfavoriteProject => 'Remove from favorites';
+  String get homeWorkspaceUnfavoriteWorkspace => 'Remove from favorites';
 
   @override
-  String get homeWorkspaceRenameProject => 'Rename project';
+  String get homeWorkspaceRenameWorkspace => 'Rename workspace';
 
   @override
-  String get homeWorkspaceCloneProject => 'Clone project';
+  String get homeWorkspaceCloneWorkspace => 'Clone workspace';
 
   @override
-  String homeWorkspaceCloneProjectDisplayName(Object name) {
+  String homeWorkspaceCloneWorkspaceDisplayName(Object name) {
     return '$name (copy)';
   }
 
   @override
-  String homeWorkspaceCloneProjectSuccess(Object name) {
+  String homeWorkspaceCloneWorkspaceSuccess(Object name) {
     return 'Cloned \"$name\".';
   }
 
   @override
-  String get homeWorkspaceCloneProjectFailed => 'Could not clone project';
+  String get homeWorkspaceCloneWorkspaceFailed => 'Could not clone workspace';
 
   @override
-  String get newProjectTooltip => 'Create a project';
+  String get newWorkspaceTooltip => 'Create a workspace';
 
   @override
-  String get switchProjectTooltip => 'Switch project';
+  String get switchWorkspaceTooltip => 'Switch workspace';
 
   @override
   String get create => 'Create';
@@ -1074,13 +1074,13 @@ class AppLocalizationsEn extends AppLocalizations {
   String get pickPrimaryDirectory => 'Pick primary directory';
 
   @override
-  String get projectPrimaryPathRequired => 'Select a primary directory first.';
+  String get workspacePrimaryPathRequired => 'Select a primary directory first.';
 
   @override
-  String get projectPrimaryPathNotSelected => 'No primary directory selected';
+  String get workspacePrimaryPathNotSelected => 'No primary directory selected';
 
   @override
-  String get projectDirectoryAdded => 'Directory added to project';
+  String get workspaceDirectoryAdded => 'Directory added to workspace';
 
   @override
   String get newSessionTooltip => 'New session';
@@ -1096,12 +1096,12 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String sessionReadySubtitle(String memberName) {
-    return 'Start a conversation with $memberName in this project.';
+    return 'Start a conversation with $memberName in this workspace.';
   }
 
   @override
   String get sessionReadySubtitleGeneric =>
-      'Start a conversation in this project.';
+      'Start a conversation in this workspace.';
 
   @override
   String get sessionReadyHint =>
@@ -1128,68 +1128,68 @@ class AppLocalizationsEn extends AppLocalizations {
   }
 
   @override
-  String get projectDetails => 'Project details';
+  String get workspaceDetails => 'Workspace details';
 
   @override
-  String get projectDetailsTitle => 'Project Details';
+  String get workspaceDetailsTitle => 'Workspace Details';
 
   @override
-  String get addProjectDirectory => 'Add directory';
+  String get addWorkspaceDirectory => 'Add directory';
 
   @override
-  String get removeProjectDirectory => 'Remove directory';
+  String get removeWorkspaceDirectory => 'Remove directory';
 
   @override
-  String get projectDisplayName => 'Display name';
+  String get workspaceDisplayName => 'Display name';
 
   @override
-  String get projectIcon => 'Icon';
+  String get workspaceIcon => 'Icon';
 
   @override
-  String get projectIconPickerTitle => 'Choose project icon';
+  String get workspaceIconPickerTitle => 'Choose workspace icon';
 
   @override
-  String get projectIconUseDefault => 'Use default';
+  String get workspaceIconUseDefault => 'Use default';
 
   @override
-  String get projectIconUpload => 'Upload icon';
+  String get workspaceIconUpload => 'Upload icon';
 
   @override
-  String get projectIconUploadFailed =>
+  String get workspaceIconUploadFailed =>
       'Could not save icon. Use PNG, JPG, WEBP, or SVG.';
 
   @override
-  String get projectPrimaryPath => 'Primary directory';
+  String get workspacePrimaryPath => 'Primary directory';
 
   @override
-  String get projectAdditionalDirectories => 'Additional directories';
+  String get workspaceAdditionalDirectories => 'Additional directories';
 
   @override
-  String get projectNoAdditionalDirectories => 'No additional directories';
+  String get workspaceNoAdditionalDirectories => 'No additional directories';
 
   @override
-  String get projectSessionCount => 'Sessions';
+  String get workspaceSessionCount => 'Sessions';
 
   @override
-  String get projectCreatedAt => 'Created';
+  String get workspaceCreatedAt => 'Created';
 
   @override
-  String get projectUpdatedAt => 'Updated';
+  String get workspaceUpdatedAt => 'Updated';
 
   @override
-  String get projectDirectoryAlreadyPrimary =>
+  String get workspaceDirectoryAlreadyPrimary =>
       'This path is already the primary directory.';
 
   @override
-  String get projectDirectoryAlreadyAdded =>
-      'This directory is already in the project.';
+  String get workspaceDirectoryAlreadyAdded =>
+      'This directory is already in the workspace.';
 
   @override
-  String get deleteProject => 'Delete Project';
+  String get deleteWorkspace => 'Delete Workspace';
 
   @override
-  String deleteProjectConfirm(String name) {
-    return 'Delete project \"$name\" and all its sessions? This cannot be undone.';
+  String deleteWorkspaceConfirm(String name) {
+    return 'Delete workspace \"$name\" and all its sessions? This cannot be undone.';
   }
 
   @override
@@ -1283,7 +1283,7 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get sshDefaultWorkingDirectorySubtitle =>
-      'Remote working directory used when the SSH launch has no project path; leave empty to skip changing directory.';
+      'Remote working directory used when the SSH launch has no workspace path; leave empty to skip changing directory.';
 
   @override
   String get cliExecutablePathLabel => 'flashskyai CLI path';
@@ -1621,7 +1621,7 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get windowsStorageBackendDescription =>
-      'Where teams, skills, projects, and config profiles are stored. Switching uses a separate data tree; nothing is migrated automatically.';
+      'Where teams, skills, workspaces, and config profiles are stored. Switching uses a separate data tree; nothing is migrated automatically.';
 
   @override
   String get windowsStorageBackendNative => 'Windows local';
@@ -1640,7 +1640,7 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get windowsStorageBackendSwitchConfirmBody =>
-      'This uses a different data directory. Teams, projects, and skills from the other location will not appear until you switch back.';
+      'This uses a different data directory. Teams, workspaces, and skills from the other location will not appear until you switch back.';
 
   @override
   String get windowsStorageBackendSwitchConfirmAction => 'Switch';
@@ -3807,7 +3807,7 @@ class AppLocalizationsEn extends AppLocalizations {
   String get toolchainNode => 'Node.js';
 
   @override
-  String get homeWorkspaceLaunchProjectTitle => 'Open with…';
+  String get homeWorkspaceLaunchWorkspaceTitle => 'Open with…';
 
   @override
   String get homeWorkspaceSimpleMode => 'Simple mode';

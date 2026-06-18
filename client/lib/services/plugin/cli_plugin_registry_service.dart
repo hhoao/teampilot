@@ -40,7 +40,7 @@ class CliPluginRegistryService {
 
   /// After bundles are copied into the member tool dir, register them for the CLI.
   Future<void> writeForSession({
-    required String projectId,
+    required String workspaceId,
     required String teamId,
     required String sessionId,
     required CliTool tool,
@@ -51,13 +51,13 @@ class CliPluginRegistryService {
   }) async {
     await _writePluginRegistry(
       configDir: _layout.sessionRuntimeToolDir(
-        projectId,
+        workspaceId,
         sessionId,
         tool.value,
         memberId: memberId,
       ),
       memberPluginsDir: _layout.sessionRuntimePluginsDir(
-        projectId,
+        workspaceId,
         sessionId,
         tool.value,
         memberId: memberId,
@@ -69,9 +69,9 @@ class CliPluginRegistryService {
     );
   }
 
-  /// Registers plugins for a standalone personal project session CONFIG_DIR.
+  /// Registers plugins for a standalone personal workspace session CONFIG_DIR.
   Future<void> writeForStandaloneSession({
-    required String projectId,
+    required String workspaceId,
     required String sessionId,
     required CliTool tool,
     PersonalIdentity? personal,
@@ -80,12 +80,12 @@ class CliPluginRegistryService {
   }) async {
     await _writePluginRegistry(
       configDir: _layout.sessionRuntimeToolDir(
-        projectId,
+        workspaceId,
         sessionId,
         tool.value,
       ),
       memberPluginsDir: _layout.sessionRuntimePluginsDir(
-        projectId,
+        workspaceId,
         sessionId,
         tool.value,
       ),

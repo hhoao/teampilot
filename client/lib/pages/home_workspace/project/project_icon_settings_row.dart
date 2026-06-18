@@ -7,18 +7,18 @@ import 'package:teampilot/widgets/app_toast/app_toast.dart';
 
 import '../../../cubits/chat_cubit.dart';
 import '../../../l10n/l10n_extensions.dart';
-import '../../../models/app_project.dart';
+import '../../../models/app_workspace.dart';
 import '../../../repositories/session_repository.dart';
-import '../../../widgets/project_icon.dart';
+import '../../../widgets/workspace_icon.dart';
 
-class ProjectIconSettingsRow extends StatelessWidget {
-  const ProjectIconSettingsRow({
-    required this.project,
+class WorkspaceIconSettingsRow extends StatelessWidget {
+  const WorkspaceIconSettingsRow({
+    required this.workspace,
     this.showDividerBelow = true,
     super.key,
   });
 
-  final Workspace project;
+  final Workspace workspace;
   final bool showDividerBelow;
 
   @override
@@ -38,15 +38,15 @@ class ProjectIconSettingsRow extends StatelessWidget {
               SizedBox(
                 width: 168,
                 child: Text(
-                  l10n.projectIcon,
+                  l10n.workspaceIcon,
                   style: tt.bodyMedium?.copyWith(
                     color: cs.onSurfaceVariant,
                     fontWeight: FontWeight.w500,
                   ),
                 ),
               ),
-              ProjectIcon.fromProject(
-                project,
+              WorkspaceIcon.fromWorkspace(
+                workspace,
                 size: 48,
                 borderRadius: 14,
                 padding: 8,
@@ -70,10 +70,10 @@ class ProjectIconSettingsRow extends StatelessWidget {
   }
 
   Future<void> _editIcon(BuildContext context) async {
-    final error = await context.read<ChatCubit>().editProjectIcon(
+    final error = await context.read<ChatCubit>().editWorkspaceIcon(
       context,
       context.read<SessionRepository>(),
-      project,
+      workspace,
     );
     if (error == null || !context.mounted) return;
     AppToast.show(context, message: error, variant: AppToastVariant.error);

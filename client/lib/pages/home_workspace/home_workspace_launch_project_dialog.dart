@@ -6,8 +6,8 @@ import '../../services/storage/identity_provisioner.dart';
 import '../../widgets/app_dialog.dart';
 
 /// One selectable workspace identity in the launch dialog.
-class LaunchProjectIdentityOption {
-  const LaunchProjectIdentityOption({
+class LaunchWorkspaceIdentityOption {
+  const LaunchWorkspaceIdentityOption({
     required this.id,
     required this.name,
     required this.isTeam,
@@ -19,45 +19,45 @@ class LaunchProjectIdentityOption {
 }
 
 /// Result of the launch dialog.
-class LaunchProjectChoice {
-  const LaunchProjectChoice({required this.identity, required this.remember});
+class LaunchWorkspaceChoice {
+  const LaunchWorkspaceChoice({required this.identity, required this.remember});
   final LaunchIdentity identity;
   final bool remember;
 }
 
-/// Asks which identity to open a project as. Returns null on cancel.
-Future<LaunchProjectChoice?> showHomeLaunchWorkspaceDialog(
+/// Asks which identity to open a workspace as. Returns null on cancel.
+Future<LaunchWorkspaceChoice?> showHomeLaunchWorkspaceDialog(
   BuildContext context, {
-  required String projectName,
-  required List<LaunchProjectIdentityOption> identities,
+  required String workspaceName,
+  required List<LaunchWorkspaceIdentityOption> identities,
   LaunchIdentity? preselected,
 }) {
-  return showDialog<LaunchProjectChoice>(
+  return showDialog<LaunchWorkspaceChoice>(
     context: context,
-    builder: (_) => _LaunchProjectDialog(
-      projectName: projectName,
+    builder: (_) => _LaunchWorkspaceDialog(
+      workspaceName: workspaceName,
       identities: identities,
       preselected: preselected,
     ),
   );
 }
 
-class _LaunchProjectDialog extends StatefulWidget {
-  const _LaunchProjectDialog({
-    required this.projectName,
+class _LaunchWorkspaceDialog extends StatefulWidget {
+  const _LaunchWorkspaceDialog({
+    required this.workspaceName,
     required this.identities,
     this.preselected,
   });
 
-  final String projectName;
-  final List<LaunchProjectIdentityOption> identities;
+  final String workspaceName;
+  final List<LaunchWorkspaceIdentityOption> identities;
   final LaunchIdentity? preselected;
 
   @override
-  State<_LaunchProjectDialog> createState() => _LaunchProjectDialogState();
+  State<_LaunchWorkspaceDialog> createState() => _LaunchWorkspaceDialogState();
 }
 
-class _LaunchProjectDialogState extends State<_LaunchProjectDialog> {
+class _LaunchWorkspaceDialogState extends State<_LaunchWorkspaceDialog> {
   late LaunchIdentity _selected = widget.preselected ??
       const LaunchIdentity(IdentityProvisioner.defaultPersonalId);
   bool _remember = false;
@@ -65,7 +65,7 @@ class _LaunchProjectDialogState extends State<_LaunchProjectDialog> {
   void _choose(LaunchIdentity identity) {
     setState(() => _selected = identity);
     Navigator.of(context).pop(
-      LaunchProjectChoice(identity: identity, remember: _remember),
+      LaunchWorkspaceChoice(identity: identity, remember: _remember),
     );
   }
 
@@ -78,7 +78,7 @@ class _LaunchProjectDialogState extends State<_LaunchProjectDialog> {
         mainAxisSize: MainAxisSize.min,
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          AppDialogHeader(title: l10n.homeWorkspaceLaunchProjectTitle),
+          AppDialogHeader(title: l10n.homeWorkspaceLaunchWorkspaceTitle),
           const SizedBox(height: 12),
           for (final opt in widget.identities)
             ListTile(

@@ -7,7 +7,7 @@ import '../models/board_column.dart';
 import '../services/team_bus/tasks/team_task.dart';
 import '../services/team_bus/team_bus.dart';
 
-/// Immutable projection of a [TeamTask] for display. Derived per tick; never
+/// Immutable workspaceion of a [TeamTask] for display. Derived per tick; never
 /// persisted. Kept as a separate type so the UI doesn't depend on fields it
 /// doesn't render (brief, dependsOn, timestamps).
 class BoardCard extends Equatable {

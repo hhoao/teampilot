@@ -65,7 +65,7 @@ void main() {
       member: member,
       team: team,
       cliTeamName: 'my-team-1',
-      cwd: '/tmp/project',
+      cwd: '/tmp/workspace',
       taskId: 'task-uuid',
     );
 
@@ -73,7 +73,7 @@ void main() {
     expect(profile.agentType, 'implementer');
     expect(profile.cli, 'opencode');
     expect(profile.taskId, 'task-uuid');
-    expect(profile.cwd, '/tmp/project');
+    expect(profile.cwd, '/tmp/workspace');
   });
 
   test('listTeammates reports unread mailbox count', () {

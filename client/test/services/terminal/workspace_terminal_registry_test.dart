@@ -5,7 +5,7 @@ void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
 
   group('WorkspaceTerminalRegistry', () {
-    test('groupFor lazily creates and reuses a group per project', () {
+    test('groupFor lazily creates and reuses a group per workspace', () {
       final reg = WorkspaceTerminalRegistry();
       final a1 = reg.groupFor('A');
       final a2 = reg.groupFor('A');
@@ -15,7 +15,7 @@ void main() {
       reg.disposeAll();
     });
 
-    test('addEntry / entries stays scoped to its project group', () {
+    test('addEntry / entries stays scoped to its workspace group', () {
       final reg = WorkspaceTerminalRegistry();
       final a = reg.groupFor('A');
       final entry = a.addEntry(cwd: '/tmp/a', select: true);
@@ -25,11 +25,11 @@ void main() {
       reg.disposeAll();
     });
 
-    test('disposeProject disposes entries and drops the group', () {
+    test('disposeWorkspace disposes entries and drops the group', () {
       final reg = WorkspaceTerminalRegistry();
       final a = reg.groupFor('A');
       final entry = a.addEntry(cwd: '/tmp/a', select: true);
-      reg.disposeProject('A');
+      reg.disposeWorkspace('A');
       // Disposing the session twice must be safe.
       expect(entry.session.isRunning, isFalse);
       // A fresh group is created on next access (entries empty).

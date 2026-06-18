@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:teampilot/l10n/app_localizations.dart';
 import 'package:teampilot/models/team_config.dart';
-import 'package:teampilot/pages/home_workspace/project/member_detail_dialog.dart';
+import 'package:teampilot/pages/home_workspace/workspace/member_detail_dialog.dart';
 import 'package:teampilot/services/cli/member_config/member_config_detail.dart';
 
 Widget _host(Widget child) => MaterialApp(

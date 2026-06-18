@@ -58,8 +58,8 @@ class MemberPresenceCubit extends Cubit<MemberPresenceState> {
   PresenceTarget? _target;
   int _presencePollGeneration = 0;
 
-  /// Per-owner UI attachment tokens (one [RightToolsPanel] per project page).
-  /// Refcounted instead of a single bool: during a project switch Flutter
+  /// Per-owner UI attachment tokens (one [RightToolsPanel] per workspace page).
+  /// Refcounted instead of a single bool: during a workspace switch Flutter
   /// inflates the new page's panel (attach) BEFORE finalizeTree disposes the
   /// old page's panel (detach). A bool would let that late detach clobber the
   /// new attach, stopping polling and emitting empty presence — every member
@@ -88,7 +88,7 @@ class MemberPresenceCubit extends Cubit<MemberPresenceState> {
 
   void detachPresenceUi([Object? owner]) {
     if (!_presenceUiOwners.remove(owner ?? _defaultUiOwner)) return;
-    // Another panel (e.g. the next project page) is still attached — keep
+    // Another panel (e.g. the next workspace page) is still attached — keep
     // polling and keep the current presence rather than clearing it.
     if (_presenceUiAttached) return;
     _invalidatePresencePolls();

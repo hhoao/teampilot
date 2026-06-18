@@ -815,7 +815,7 @@ void main() {
       });
 
       session.connect(
-        workingDirectory: r'\\wsl.localhost\Ubuntu\home\hhoa\project',
+        workingDirectory: r'\\wsl.localhost\Ubuntu\home\hhoa\workspace',
       );
       session.onViewportResize(80, 24);
       await Future<void>.delayed(const Duration(milliseconds: 300));
@@ -826,12 +826,12 @@ void main() {
           capturedArguments,
           contains('/home/hhoa/flashskyai/dist/flashskyai'),
         );
-        expect(capturedArguments, contains('/home/hhoa/project'));
+        expect(capturedArguments, contains('/home/hhoa/workspace'));
       }
     },
   );
 
-  test('single-slash wsl executable converts Windows project dir', () async {
+  test('single-slash wsl executable converts Windows workspace dir', () async {
     if (!Platform.isWindows) return;
     String? capturedExecutable;
     List<String>? capturedArguments;

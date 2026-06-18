@@ -47,7 +47,7 @@ class ConfigProfileService implements ConfigProfileDelegate {
     String? home,
     Filesystem? fs,
     RuntimeLayout? layout,
-    Future<Set<String>> Function({String? teamId, String? projectId})?
+    Future<Set<String>> Function({String? teamId, String? workspaceId})?
     loadEnabledExtensionIds,
     ExtensionDetector? extensionDetector,
     List<ExtensionManifest>? extensionManifests,
@@ -116,18 +116,18 @@ class ConfigProfileService implements ConfigProfileDelegate {
 
   String teamScopeDir(String teamId) => layout.identityRuntimeDir(teamId);
 
-  String projectConfigDir(String projectId) =>
-      layout.workspace.projectConfigDir(projectId);
+  String workspaceConfigDir(String workspaceId) =>
+      layout.workspace.workspaceConfigDir(workspaceId);
 
   String standaloneSessionToolDir(
-    String projectId,
+    String workspaceId,
     String sessionId,
     String tool,
-  ) => layout.sessionRuntimeToolDir(projectId, sessionId, tool);
+  ) => layout.sessionRuntimeToolDir(workspaceId, sessionId, tool);
 
   @override
   String sessionToolDir(
-    String projectId,
+    String workspaceId,
     String sessionId,
     String tool, {
     String? memberId,
@@ -135,14 +135,14 @@ class ConfigProfileService implements ConfigProfileDelegate {
     final scope = _activeStandaloneScope;
     if (scope != null) {
       return layout.sessionRuntimeToolDir(
-        scope.projectId,
+        scope.workspaceId,
         scope.sessionId,
         tool,
         memberId: memberId,
       );
     }
     return _infra.sessionToolDir(
-      projectId,
+      workspaceId,
       sessionId,
       tool,
       memberId: memberId,
@@ -159,7 +159,7 @@ class ConfigProfileService implements ConfigProfileDelegate {
   }
 
   Future<void> ensureSessionProfile(
-    String projectId,
+    String workspaceId,
     String sessionId,
     String teamId, {
     CliTool cli = CliTool.claude,
@@ -167,13 +167,13 @@ class ConfigProfileService implements ConfigProfileDelegate {
     String? memberId,
     Map<String, Map<String, Object?>>? extraMcpServers,
   }) async {
-    final trimmedProjectId = effectiveLaunchProjectId(
-      projectId: projectId,
+    final trimmedWorkspaceId = effectiveLaunchWorkspaceId(
+      workspaceId: workspaceId,
       teamId: teamId,
     );
     final trimmedSessionId = sessionId.trim();
     final trimmedTeamId = teamId.trim();
-    if (trimmedProjectId.isEmpty ||
+    if (trimmedWorkspaceId.isEmpty ||
         trimmedSessionId.isEmpty ||
         trimmedTeamId.isEmpty) {
       return;
@@ -183,7 +183,7 @@ class ConfigProfileService implements ConfigProfileDelegate {
     String? memberProvisionJson;
     await Future.wait([
       layout.ensureSessionRuntimeInheritsIdentity(
-        trimmedProjectId,
+        trimmedWorkspaceId,
         trimmedSessionId,
         trimmedTeamId,
         cli.value,
@@ -191,7 +191,7 @@ class ConfigProfileService implements ConfigProfileDelegate {
       ),
       layout
           .provisionSessionPluginsFromIdentity(
-            trimmedProjectId,
+            trimmedWorkspaceId,
             trimmedSessionId,
             trimmedTeamId,
             cli.value,
@@ -209,7 +209,7 @@ class ConfigProfileService implements ConfigProfileDelegate {
         layout: layout,
         cliRegistry: _cliRegistry,
       ).writeForSession(
-        projectId: trimmedProjectId,
+        workspaceId: trimmedWorkspaceId,
         teamId: trimmedTeamId,
         sessionId: trimmedSessionId,
         tool: cli,
@@ -222,7 +222,7 @@ class ConfigProfileService implements ConfigProfileDelegate {
     if (cap != null) {
       await cap.ensureSessionProfile(
         ConfigProfileSessionContext(
-          projectId: trimmedProjectId,
+          workspaceId: trimmedWorkspaceId,
           teamId: trimmedTeamId,
           sessionId: trimmedSessionId,
           members: team?.members ?? const [],
@@ -233,7 +233,7 @@ class ConfigProfileService implements ConfigProfileDelegate {
       );
     }
     await McpRegistryService(fs: fs, layout: layout).writeForSession(
-      projectId: trimmedProjectId,
+      workspaceId: trimmedWorkspaceId,
       teamId: trimmedTeamId,
       sessionId: trimmedSessionId,
       memberId: memberId,
@@ -242,41 +242,41 @@ class ConfigProfileService implements ConfigProfileDelegate {
   }
 
   Future<void> ensureStandalonePersonalIdentity(
-    String projectId, {
+    String workspaceId, {
     CliTool cli = CliTool.claude,
   }) async {
-    final trimmed = projectId.trim();
+    final trimmed = workspaceId.trim();
     if (trimmed.isEmpty) return;
-    await layout.ensureProjectConfigInheritsApp(trimmed, cli.value);
+    await layout.ensureWorkspaceConfigInheritsApp(trimmed, cli.value);
   }
 
   Future<void> ensureStandaloneSessionProfile(
-    String projectId,
+    String workspaceId,
     String sessionId, {
     CliTool cli = CliTool.claude,
     PersonalIdentity? personal,
     Map<String, Map<String, Object?>>? extraMcpServers,
   }) async {
-    final trimmedProjectId = projectId.trim();
+    final trimmedWorkspaceId = workspaceId.trim();
     final trimmedSessionId = sessionId.trim();
-    if (trimmedProjectId.isEmpty || trimmedSessionId.isEmpty) return;
+    if (trimmedWorkspaceId.isEmpty || trimmedSessionId.isEmpty) return;
 
     final standaloneScope = StandaloneLaunchProfileScope(
-      projectId: trimmedProjectId,
+      workspaceId: trimmedWorkspaceId,
       sessionId: trimmedSessionId,
     );
     await _withStandaloneScope(standaloneScope, () async {
-      await ensureStandalonePersonalIdentity(trimmedProjectId, cli: cli);
+      await ensureStandalonePersonalIdentity(trimmedWorkspaceId, cli: cli);
       String? sessionProvisionJson;
       await Future.wait([
-        layout.ensureSessionRuntimeInheritsProject(
-          trimmedProjectId,
+        layout.ensureSessionRuntimeInheritsWorkspace(
+          trimmedWorkspaceId,
           trimmedSessionId,
           cli.value,
         ),
         layout
-            .provisionSessionPluginsFromProject(
-              trimmedProjectId,
+            .provisionSessionPluginsFromWorkspace(
+              trimmedWorkspaceId,
               trimmedSessionId,
               cli.value,
             )
@@ -292,7 +292,7 @@ class ConfigProfileService implements ConfigProfileDelegate {
           layout: layout,
           cliRegistry: _cliRegistry,
         ).writeForStandaloneSession(
-          projectId: trimmedProjectId,
+          workspaceId: trimmedWorkspaceId,
           sessionId: trimmedSessionId,
           tool: cli,
           personal: personal,
@@ -303,7 +303,7 @@ class ConfigProfileService implements ConfigProfileDelegate {
       if (cap != null) {
         await cap.ensureSessionProfile(
           ConfigProfileSessionContext(
-            projectId: trimmedProjectId,
+            workspaceId: trimmedWorkspaceId,
             teamId: '',
             sessionId: trimmedSessionId,
             members: const [],
@@ -316,16 +316,16 @@ class ConfigProfileService implements ConfigProfileDelegate {
       await McpRegistryService(
         fs: fs,
         layout: layout,
-      ).writeForStandaloneProject(
-        projectId: trimmedProjectId,
+      ).writeForStandaloneWorkspace(
+        workspaceId: trimmedWorkspaceId,
         sessionId: trimmedSessionId,
         extraServers: extraMcpServers,
       );
     });
   }
 
-  Future<TeamLaunchOutcome> prepareProjectLaunch({
-    required String projectId,
+  Future<TeamLaunchOutcome> prepareWorkspaceLaunch({
+    required String workspaceId,
     required String sessionId,
     required String identityId,
     required PersonalIdentity personal,
@@ -335,9 +335,9 @@ class ConfigProfileService implements ConfigProfileDelegate {
     String? busIdleUrl,
     CliPreset? preset,
   }) async {
-    final trimmedProjectId = projectId.trim();
+    final trimmedWorkspaceId = workspaceId.trim();
     final trimmedSessionId = sessionId.trim();
-    if (trimmedProjectId.isEmpty || trimmedSessionId.isEmpty) {
+    if (trimmedWorkspaceId.isEmpty || trimmedSessionId.isEmpty) {
       return const TeamLaunchOutcome(environment: {});
     }
 
@@ -349,19 +349,19 @@ class ConfigProfileService implements ConfigProfileDelegate {
 
     final cli = preset?.cli ?? CliTool.claude;
     final standaloneScope = StandaloneLaunchProfileScope(
-      projectId: trimmedProjectId,
+      workspaceId: trimmedWorkspaceId,
       sessionId: trimmedSessionId,
     );
     final scope = LaunchProfileScope(
-      projectId: trimmedProjectId,
-      teamId: trimmedProjectId,
+      workspaceId: trimmedWorkspaceId,
+      teamId: trimmedWorkspaceId,
       sessionId: trimmedSessionId,
       cliTeamName: trimmedSessionId,
     );
 
     return _withStandaloneScope(standaloneScope, () async {
       await ensureStandaloneSessionProfile(
-        trimmedProjectId,
+        trimmedWorkspaceId,
         trimmedSessionId,
         cli: cli,
         personal: personal,
@@ -376,7 +376,7 @@ class ConfigProfileService implements ConfigProfileDelegate {
             scope: PersonalResourceScope(personal: personal),
             cli: cli,
             configDir: layout.sessionRuntimeToolDir(
-              trimmedProjectId,
+              trimmedWorkspaceId,
               trimmedSessionId,
               cli.value,
             ),
@@ -396,7 +396,7 @@ class ConfigProfileService implements ConfigProfileDelegate {
       try {
         contribution = await cap.contributeLaunch(
           ConfigProfileLaunchContext(
-            projectId: trimmedProjectId,
+            workspaceId: trimmedWorkspaceId,
             teamId: '',
             sessionId: trimmedSessionId,
             scope: scope,
@@ -440,7 +440,7 @@ class ConfigProfileService implements ConfigProfileDelegate {
   }
 
   Future<TeamLaunchOutcome> prepareTeamLaunch({
-    required String projectId,
+    required String workspaceId,
     required String sessionId,
     required String teamId,
     String cliTeamName = '',
@@ -454,13 +454,13 @@ class ConfigProfileService implements ConfigProfileDelegate {
     Map<String, Map<String, Object?>>? extraMcpServers,
     String? busIdleUrl,
   }) async {
-    final trimmedProjectId = effectiveLaunchProjectId(
-      projectId: projectId,
+    final trimmedWorkspaceId = effectiveLaunchWorkspaceId(
+      workspaceId: workspaceId,
       teamId: teamId,
     );
     final trimmedSessionId = sessionId.trim();
     final trimmedTeamId = teamId.trim();
-    if (trimmedProjectId.isEmpty ||
+    if (trimmedWorkspaceId.isEmpty ||
         trimmedSessionId.isEmpty ||
         trimmedTeamId.isEmpty) {
       return const TeamLaunchOutcome(environment: {});
@@ -475,7 +475,7 @@ class ConfigProfileService implements ConfigProfileDelegate {
     }
 
     final scope = resolveLaunchProfileScope(
-      projectId: trimmedProjectId,
+      workspaceId: trimmedWorkspaceId,
       teamId: trimmedTeamId,
       appSessionId: trimmedSessionId,
       cliTeamName: cliTeamName,
@@ -483,7 +483,7 @@ class ConfigProfileService implements ConfigProfileDelegate {
     );
 
     await ensureSessionProfile(
-      trimmedProjectId,
+      trimmedWorkspaceId,
       trimmedSessionId,
       trimmedTeamId,
       cli: cli,
@@ -501,7 +501,7 @@ class ConfigProfileService implements ConfigProfileDelegate {
             scope: TeamResourceScope(team: team, member: member),
             cli: cli,
             configDir: layout.sessionRuntimeToolDir(
-              trimmedProjectId,
+              trimmedWorkspaceId,
               trimmedSessionId,
               cli.value,
               memberId: memberId,
@@ -523,7 +523,7 @@ class ConfigProfileService implements ConfigProfileDelegate {
     try {
       contribution = await cap.contributeLaunch(
         ConfigProfileLaunchContext(
-          projectId: trimmedProjectId,
+          workspaceId: trimmedWorkspaceId,
           teamId: scope.teamId,
           sessionId: scope.sessionId,
           scope: scope,
@@ -562,15 +562,15 @@ class ConfigProfileService implements ConfigProfileDelegate {
       _infra.writeJsonIfChanged(path, value);
 
   @override
-  Future<Map<String, Object?>> metadataWithTrustedProjects({
+  Future<Map<String, Object?>> metadataWithTrustedWorkspaces({
     required String metadataPath,
     required Map<String, Object?> defaultMetadata,
-    required Map<String, Object?> defaultProjectConfig,
+    required Map<String, Object?> defaultWorkspaceConfig,
     required Iterable<String> directories,
-  }) => _infra.metadataWithTrustedProjects(
+  }) => _infra.metadataWithTrustedWorkspaces(
     metadataPath: metadataPath,
     defaultMetadata: defaultMetadata,
-    defaultProjectConfig: defaultProjectConfig,
+    defaultWorkspaceConfig: defaultWorkspaceConfig,
     directories: directories,
   );
 
@@ -596,25 +596,25 @@ class ConfigProfileService implements ConfigProfileDelegate {
     String? memberToolDir,
     required String tool,
     String? teamId,
-    String? projectId,
+    String? workspaceId,
   }) => _infra.writeSettingsFile(
     path,
     settings,
     memberToolDir: memberToolDir,
     tool: tool,
     teamId: teamId,
-    projectId: projectId,
+    workspaceId: workspaceId,
   );
 
   @override
   Future<bool> hasEnabledExtensionSettingsHooks(
     String tool, {
     String? teamId,
-    String? projectId,
+    String? workspaceId,
   }) => _infra.hasEnabledExtensionSettingsHooks(
     tool,
     teamId: teamId,
-    projectId: projectId,
+    workspaceId: workspaceId,
   );
 
   @override
@@ -623,13 +623,13 @@ class ConfigProfileService implements ConfigProfileDelegate {
     String? memberToolDir, {
     required String tool,
     String? teamId,
-    String? projectId,
+    String? workspaceId,
   }) => _infra.applyExtensionSettings(
     settings,
     memberToolDir,
     tool: tool,
     teamId: teamId,
-    projectId: projectId,
+    workspaceId: workspaceId,
   );
 
   @override

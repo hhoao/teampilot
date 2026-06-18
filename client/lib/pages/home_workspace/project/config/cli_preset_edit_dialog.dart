@@ -16,8 +16,8 @@ import '../../../../widgets/app_provider/provider_model_picker_field.dart';
 import '../../../../widgets/dropdown/app_dropdown_decoration.dart';
 import '../../../../widgets/dropdown/app_dropdown_field.dart';
 import '../../../../widgets/settings/workspace_settings_widgets.dart';
-import 'project_cli_config_helpers.dart';
-import 'project_cli_effort_helpers.dart';
+import 'workspace_cli_config_helpers.dart';
+import 'workspace_cli_effort_helpers.dart';
 
 class CliPresetEditDialog extends StatefulWidget {
   const CliPresetEditDialog({this.existing, this.lockCli, super.key});
@@ -105,12 +105,12 @@ class _CliPresetEditDialogState extends State<CliPresetEditDialog> {
         .providersFor(_cli)
         .toList(growable: false);
     final selectedProvider = _selectedProvider(providers);
-    final hideModelPicker = projectCliHidesModelPicker(
+    final hideModelPicker = workspaceCliHidesModelPicker(
       registry,
       _cli,
       selectedProvider,
     );
-    final showEffortPicker = projectCliShowsEffortPicker(
+    final showEffortPicker = workspaceCliShowsEffortPicker(
       registry: registry,
       cli: _cli,
       provider: selectedProvider,
@@ -125,12 +125,12 @@ class _CliPresetEditDialogState extends State<CliPresetEditDialog> {
         children: [
           AppDialogHeader(
             title: widget.isEditing
-                ? l10n.projectCliEditPresetTitle
-                : l10n.projectCliAddPresetTitle,
+                ? l10n.workspaceCliEditPresetTitle
+                : l10n.workspaceCliAddPresetTitle,
           ),
           const SizedBox(height: 16),
           SettingsLabeledStackedRow(
-            title: l10n.projectCliPresetNameLabel,
+            title: l10n.workspaceCliPresetNameLabel,
             body: TextField(
               controller: _nameCtl,
               decoration: const InputDecoration(),
@@ -206,7 +206,7 @@ class _CliPresetEditDialogState extends State<CliPresetEditDialog> {
                 decoration: dropdownDeco,
                 onChanged: (value) => setState(() {
                   _modelId = value.trim();
-                  if (!projectCliShowsEffortPicker(
+                  if (!workspaceCliShowsEffortPicker(
                     registry: registry,
                     cli: _cli,
                     provider: selectedProvider,
@@ -220,8 +220,8 @@ class _CliPresetEditDialogState extends State<CliPresetEditDialog> {
             ),
           if (showEffortPicker)
             SettingsLabeledRow(
-              title: l10n.projectCliEffortLevel,
-              subtitle: l10n.projectCliEffortLevelSubtitle,
+              title: l10n.workspaceCliEffortLevel,
+              subtitle: l10n.workspaceCliEffortLevelSubtitle,
               trailing: CliEffortPickerField(
                 key: ValueKey(
                   'preset-effort-$_providerId-$_modelId-$_effortId',
@@ -231,7 +231,7 @@ class _CliPresetEditDialogState extends State<CliPresetEditDialog> {
                 provider: selectedProvider,
                 model: _modelId,
                 allowInherit: true,
-                inheritLabel: l10n.projectCliEffortInheritHint,
+                inheritLabel: l10n.workspaceCliEffortInheritHint,
                 decoration: dropdownDeco,
                 onChanged: (value) => setState(() => _effortId = value.trim()),
               ),

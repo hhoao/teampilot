@@ -1,22 +1,22 @@
-import '../models/app_project.dart';
+import '../models/app_workspace.dart';
 import '../models/app_session.dart';
 
-/// Sessions for [project] in project order, then any orphans for that project.
-List<AppSession> sessionsForProject(
-  Workspace project,
+/// Sessions for [workspace] in workspace order, then any orphans for that workspace.
+List<AppSession> sessionsForWorkspace(
+  Workspace workspace,
   List<AppSession> all,
 ) {
   final byId = {for (final s in all) s.sessionId: s};
   final ordered = <AppSession>[];
   final seen = <String>{};
-  for (final id in project.sessionIds) {
+  for (final id in workspace.sessionIds) {
     final s = byId[id];
     if (s == null) continue;
     ordered.add(s);
     seen.add(id);
   }
   for (final s in all) {
-    if (s.projectId != project.projectId) continue;
+    if (s.workspaceId != workspace.workspaceId) continue;
     if (seen.contains(s.sessionId)) continue;
     ordered.add(s);
     seen.add(s.sessionId);
@@ -24,16 +24,16 @@ List<AppSession> sessionsForProject(
   return ordered;
 }
 
-/// All [sessions] grouped by [AppSession.projectId]. Order within each bucket
+/// All [sessions] grouped by [AppSession.workspaceId]. Order within each bucket
 /// matches [all] iteration order.
-Map<String, List<AppSession>> groupSessionsByProjectId(
+Map<String, List<AppSession>> groupSessionsByWorkspaceId(
   List<AppSession> all,
 ) {
   final grouped = <String, List<AppSession>>{};
   for (final session in all) {
-    final projectId = session.projectId;
-    if (projectId.isEmpty) continue;
-    grouped.putIfAbsent(projectId, () => []).add(session);
+    final workspaceId = session.workspaceId;
+    if (workspaceId.isEmpty) continue;
+    grouped.putIfAbsent(workspaceId, () => []).add(session);
   }
   return grouped;
 }

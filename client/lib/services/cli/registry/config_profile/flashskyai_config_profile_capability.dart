@@ -24,22 +24,22 @@ final class FlashskyaiConfigProfileCapability
     'theme': 'auto',
   };
 
-  static const defaultProjectConfig = <String, Object?>{
+  static const defaultWorkspaceConfig = <String, Object?>{
     'hasTrustDialogAccepted': true,
-    'projectOnboardingSeenCount': 1,
+    'workspaceOnboardingSeenCount': 1,
     'allowedTools': <Object?>[],
     'mcpServers': <String, Object?>{},
   };
 
   static String sessionMetadataFile(
     ConfigProfileDelegate delegate,
-    String projectId,
+    String workspaceId,
     String sessionId, {
     String? memberId,
   }) =>
       delegate.pathContext.join(
         delegate.sessionToolDir(
-          projectId,
+          workspaceId,
           sessionId,
           toolId,
           memberId: memberId,
@@ -62,7 +62,7 @@ final class FlashskyaiConfigProfileCapability
     }
     await _ensureSessionDefaults(
       delegate,
-      ctx.projectId,
+      ctx.workspaceId,
       ctx.sessionId,
       memberId: ctx.memberId,
     );
@@ -116,14 +116,14 @@ final class FlashskyaiConfigProfileCapability
 
   Future<void> _ensureSessionDefaults(
     ConfigProfileDelegate delegate,
-    String projectId,
+    String workspaceId,
     String sessionId, {
     String? memberId,
   }) async {
     await _ensureSessionDefaultsAt(
       delegate,
       delegate.sessionToolDir(
-        projectId,
+        workspaceId,
         sessionId,
         toolId,
         memberId: memberId,
@@ -201,10 +201,10 @@ final class FlashskyaiConfigProfileCapability
     )) {
       return;
     }
-    final metadata = await delegate.metadataWithTrustedProjects(
+    final metadata = await delegate.metadataWithTrustedWorkspaces(
       metadataPath: metadataPath,
       defaultMetadata: defaultMetadata,
-      defaultProjectConfig: defaultProjectConfig,
+      defaultWorkspaceConfig: defaultWorkspaceConfig,
       directories: directories,
     );
     await delegate.writeJsonIfChanged(metadataPath, metadata);
@@ -233,7 +233,7 @@ final class FlashskyaiConfigProfileCapability
       settings,
       memberToolDir: memberToolDir,
       tool: toolId,
-      projectId: scope.teamId,
+      workspaceId: scope.teamId,
     );
   }
 
@@ -257,7 +257,7 @@ final class FlashskyaiConfigProfileCapability
   }) async {
     final metadataPath = sessionMetadataFile(
       delegate,
-      scope.projectId,
+      scope.workspaceId,
       scope.sessionId,
       memberId: scope.memberId,
     );
@@ -269,10 +269,10 @@ final class FlashskyaiConfigProfileCapability
     )) {
       return;
     }
-    final metadata = await delegate.metadataWithTrustedProjects(
+    final metadata = await delegate.metadataWithTrustedWorkspaces(
       metadataPath: metadataPath,
       defaultMetadata: defaultMetadata,
-      defaultProjectConfig: defaultProjectConfig,
+      defaultWorkspaceConfig: defaultWorkspaceConfig,
       directories: directories,
     );
     await delegate.writeJsonIfChanged(metadataPath, metadata);
@@ -308,7 +308,7 @@ final class FlashskyaiConfigProfileCapability
   ) async {
     final file = delegate.pathContext.join(
       delegate.sessionToolDir(
-        scope.projectId,
+        scope.workspaceId,
         scope.sessionId,
         toolId,
         memberId: scope.memberId,
@@ -316,7 +316,7 @@ final class FlashskyaiConfigProfileCapability
       settingsFileName,
     );
     final memberToolDir = delegate.sessionToolDir(
-      scope.projectId,
+      scope.workspaceId,
       scope.sessionId,
       toolId,
       memberId: scope.memberId,
@@ -348,7 +348,7 @@ final class FlashskyaiConfigProfileCapability
     String? idleUrl,
   }) async {
     final memberToolDir = delegate.sessionToolDir(
-      scope.projectId,
+      scope.workspaceId,
       scope.sessionId,
       toolId,
       memberId: scope.memberId,
@@ -390,7 +390,7 @@ final class FlashskyaiConfigProfileCapability
     LaunchProfileScope scope,
   ) {
     final memberDir = delegate.sessionToolDir(
-      scope.projectId,
+      scope.workspaceId,
       scope.sessionId,
       toolId,
       memberId: scope.memberId,

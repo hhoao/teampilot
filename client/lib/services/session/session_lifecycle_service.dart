@@ -1,6 +1,6 @@
 import 'package:flutter/foundation.dart';
 
-import '../../models/app_project.dart';
+import '../../models/app_workspace.dart';
 import '../../models/app_session.dart';
 import '../../models/cli_preset.dart';
 import '../../models/identity_kind.dart';
@@ -43,7 +43,7 @@ class SessionLifecycleService {
     String? Function()? llmConfigPathOverride,
     ConfigProfileService? configProfileService,
     StorageRootsResolver? storageRootsResolver,
-    Future<Set<String>> Function({String? teamId, String? projectId})?
+    Future<Set<String>> Function({String? teamId, String? workspaceId})?
     loadEnabledExtensionIds,
     CliToolRegistry? cliToolRegistry,
     IdentityRepository? identityRepository,
@@ -65,7 +65,7 @@ class SessionLifecycleService {
   final String? Function()? _llmConfigPathOverride;
   final ConfigProfileService? _configProfileService;
   final StorageRootsResolver? _storageRootsResolver;
-  final Future<Set<String>> Function({String? teamId, String? projectId})?
+  final Future<Set<String>> Function({String? teamId, String? workspaceId})?
   _loadEnabledExtensionIds;
   final CliToolRegistry _cliToolRegistry;
   final IdentityRepository? _identityRepository;
@@ -73,7 +73,7 @@ class SessionLifecycleService {
   final CliPresetsRepository? _cliPresetsRepository;
   final List<CliPreset> Function()? _loadPresets;
 
-  /// Resolves the active [CliPreset] for a personal project profile.
+  /// Resolves the active [CliPreset] for a personal workspace profile.
   /// Returns `null` when no preset is active or the repository is unavailable.
   Future<CliPreset?> resolveActivePresetForPersonal(
     PersonalIdentity personal,
@@ -145,7 +145,7 @@ class SessionLifecycleService {
     TeamIdentity? team,
     TeamMemberConfig? member,
     SessionMemberBinding? memberBinding,
-    Workspace? project,
+    Workspace? workspace,
     PersonalIdentity? personal,
     String? identityId,
     String? llmConfigPathOverride,
@@ -157,7 +157,7 @@ class SessionLifecycleService {
       team: team,
       member: member,
       memberBinding: memberBinding,
-      project: project,
+      workspace: workspace,
       personal: personal,
       identityId: identityId,
       llmConfigPathOverride: llmConfigPathOverride,
@@ -171,7 +171,7 @@ class SessionLifecycleService {
     TeamIdentity? team,
     TeamMemberConfig? member,
     SessionMemberBinding? memberBinding,
-    Workspace? project,
+    Workspace? workspace,
     PersonalIdentity? personal,
     String? identityId,
     String? llmConfigPathOverride,
@@ -183,7 +183,7 @@ class SessionLifecycleService {
       team: team,
       member: member,
       memberBinding: memberBinding,
-      project: project,
+      workspace: workspace,
       personal: personal,
       identityId: identityId,
       llmConfigPathOverride: llmConfigPathOverride,
@@ -215,7 +215,7 @@ class SessionLifecycleService {
         session: session,
         plan: prepared.plan,
         isPersonal: prepared.isPersonal,
-        project: project,
+        workspace: workspace,
         personal: prepared.resolvedPersonal,
         team: team,
         member: resolvedMember,
@@ -242,7 +242,7 @@ class SessionLifecycleService {
     TeamIdentity? team,
     TeamMemberConfig? member,
     SessionMemberBinding? memberBinding,
-    Workspace? project,
+    Workspace? workspace,
     PersonalIdentity? personal,
     String? identityId,
     String? llmConfigPathOverride,
@@ -256,7 +256,7 @@ class SessionLifecycleService {
     final taskId = memberBinding?.taskId.trim() ?? sessionId;
     final isPersonal = await _resolveIsPersonal(
       session: session,
-      project: project,
+      workspace: workspace,
       identityId: identityId,
     );
     final personalIdentityId = await _resolvePersonalIdentityId(
@@ -272,7 +272,7 @@ class SessionLifecycleService {
       final roots = await _resolveRoots();
       final service = await _configProfileServiceFor(
         roots,
-        launchProjectId: isPersonal ? project!.projectId : null,
+        launchWorkspaceId: isPersonal ? workspace!.workspaceId : null,
       );
       final resolvedPersonal = isPersonal
           ? await loadPersonalIdentity(personalIdentityId, override: personal)
@@ -312,12 +312,12 @@ class SessionLifecycleService {
       final transcriptRoots = isPersonal
           ? _standaloneTranscriptSearchRoots(
               layout: roots.layout,
-              projectId: project!.projectId,
+              workspaceId: workspace!.workspaceId,
               sessionId: runtimeSessionId,
               tools: tools,
             )
           : roots.layout.transcriptSearchRoots(
-              projectId: session.projectId.trim(),
+              workspaceId: session.workspaceId.trim(),
               sessionId: session.sessionId.trim(),
               identityId: teamId,
               tools: tools,
@@ -332,7 +332,7 @@ class SessionLifecycleService {
         team: team,
         member: member,
         memberBinding: memberBinding,
-        project: project,
+        workspace: workspace,
         personal: resolvedPersonal,
         isPersonal: isPersonal,
         runtimeTeamId: runtimeTeamId,
@@ -350,7 +350,7 @@ class SessionLifecycleService {
         taskId: taskId,
         env: prepared.env,
         transcriptRoots: transcriptRoots,
-        bucket: RuntimeLayout.projectBucketForPrimaryPath(session.primaryPath),
+        bucket: RuntimeLayout.workspaceBucketForPrimaryPath(session.primaryPath),
         persistedNativeId: cli == null
             ? null
             : (isPersonal
@@ -406,11 +406,11 @@ class SessionLifecycleService {
     String? teamId,
     CliTool? cli,
     SessionMemberBinding? memberBinding,
-    Workspace? project,
+    Workspace? workspace,
     PersonalIdentity? personal,
   }) async {
     final roots = await _resolveRoots();
-    final isPersonal = _isPersonalLaunch(project, session);
+    final isPersonal = _isPersonalLaunch(workspace, session);
     final runtimeTeamId = isPersonal
         ? session.sessionId.trim()
         : session.cliTeamName.trim().isNotEmpty
@@ -434,20 +434,20 @@ class SessionLifecycleService {
       runtimeSessionId: runtimeTeamId,
       cliSessionId: cliSessionId,
       cli: resolvedCli,
-      projectId: isPersonal ? project!.projectId : null,
+      workspaceId: isPersonal ? workspace!.workspaceId : null,
     );
     return probe.exists;
   }
 
   Future<void> destroyCliState({
-    required String projectId,
+    required String workspaceId,
     required String teamId,
     required String sessionId,
   }) async {
-    final trimmedProjectId = projectId.trim();
+    final trimmedWorkspaceId = workspaceId.trim();
     final trimmedTeamId = teamId.trim();
     final trimmedSessionId = sessionId.trim();
-    if (trimmedProjectId.isEmpty ||
+    if (trimmedWorkspaceId.isEmpty ||
         trimmedTeamId.isEmpty ||
         trimmedSessionId.isEmpty) {
       return;
@@ -455,23 +455,23 @@ class SessionLifecycleService {
 
     final roots = await _resolveRoots();
     final sessionRoot = roots.layout.workspace.sessionRuntimeDir(
-      trimmedProjectId,
+      trimmedWorkspaceId,
       trimmedSessionId,
     );
     await _removeTree(roots, sessionRoot);
   }
 
   Future<void> destroyStandaloneCliState({
-    required String projectId,
+    required String workspaceId,
     required String sessionId,
   }) async {
-    final trimmedProjectId = projectId.trim();
+    final trimmedWorkspaceId = workspaceId.trim();
     final trimmedSessionId = sessionId.trim();
-    if (trimmedProjectId.isEmpty || trimmedSessionId.isEmpty) return;
+    if (trimmedWorkspaceId.isEmpty || trimmedSessionId.isEmpty) return;
 
     final roots = await _resolveRoots();
     final sessionRoot = roots.layout.workspace.sessionRuntimeDir(
-      trimmedProjectId,
+      trimmedWorkspaceId,
       trimmedSessionId,
     );
     await _removeTree(roots, sessionRoot);
@@ -488,12 +488,12 @@ class SessionLifecycleService {
     await _removeTree(roots, teamRoot);
   }
 
-  bool _isPersonalLaunch(Workspace? project, AppSession session) =>
-      project != null && session.sessionTeam.trim().isEmpty;
+  bool _isPersonalLaunch(Workspace? workspace, AppSession session) =>
+      workspace != null && session.sessionTeam.trim().isEmpty;
 
   Future<bool> _resolveIsPersonal({
     required AppSession session,
-    Workspace? project,
+    Workspace? workspace,
     String? identityId,
   }) async {
     final trimmed = identityId?.trim() ?? '';
@@ -506,7 +506,7 @@ class SessionLifecycleService {
         return true;
       }
     }
-    return _isPersonalLaunch(project, session);
+    return _isPersonalLaunch(workspace, session);
   }
 
   Future<String> _resolvePersonalIdentityId({
@@ -526,8 +526,8 @@ class SessionLifecycleService {
 
   /// Test-only seam for [_isPersonalLaunch].
   @visibleForTesting
-  bool debugIsPersonalLaunch(Workspace project, AppSession session) =>
-      _isPersonalLaunch(project, session);
+  bool debugIsPersonalLaunch(Workspace workspace, AppSession session) =>
+      _isPersonalLaunch(workspace, session);
 
   String _resolveSessionTeam(
     AppSession session,
@@ -544,16 +544,16 @@ class SessionLifecycleService {
     required AppSession session,
     required LaunchPlan plan,
     required bool isPersonal,
-    Workspace? project,
+    Workspace? workspace,
     PersonalIdentity? personal,
     TeamIdentity? team,
     TeamMemberConfig? member,
     CliPreset? preset,
   }) {
     if (isPersonal) {
-      if (project == null || personal == null) {
+      if (workspace == null || personal == null) {
         throw StateError(
-          'prepareShellLaunch requires project and personal identity for personal sessions',
+          'prepareShellLaunch requires workspace and personal identity for personal sessions',
         );
       }
       final launchMember =
@@ -592,16 +592,16 @@ class SessionLifecycleService {
 
   List<String> _standaloneTranscriptSearchRoots({
     required RuntimeLayout layout,
-    required String projectId,
+    required String workspaceId,
     required String sessionId,
     required Iterable<String> tools,
   }) {
     final tt = tools.map((e) => e.trim()).where((e) => e.isNotEmpty).toList();
     return [
       for (final tool in tt) layout.appToolRoot(tool),
-      for (final tool in tt) layout.projectConfigToolDir(projectId, tool),
+      for (final tool in tt) layout.workspaceConfigToolDir(workspaceId, tool),
       for (final tool in tt)
-        layout.sessionRuntimeToolDir(projectId, sessionId, tool),
+        layout.sessionRuntimeToolDir(workspaceId, sessionId, tool),
     ];
   }
 
@@ -611,7 +611,7 @@ class SessionLifecycleService {
     required TeamIdentity? team,
     required TeamMemberConfig? member,
     SessionMemberBinding? memberBinding,
-    Workspace? project,
+    Workspace? workspace,
     PersonalIdentity? personal,
     required bool isPersonal,
     required String runtimeTeamId,
@@ -622,11 +622,11 @@ class SessionLifecycleService {
     CliPreset? preset,
   }) async {
     if (isPersonal) {
-      final personalProject = project!;
+      final personalWorkspace = workspace!;
       final resolvedPersonal = personal ??
           await loadPersonalIdentity(IdentityProvisioner.defaultPersonalId);
-      final outcome = await service.prepareProjectLaunch(
-        projectId: personalProject.projectId,
+      final outcome = await service.prepareWorkspaceLaunch(
+        workspaceId: personalWorkspace.workspaceId,
         sessionId: session.sessionId,
         identityId: resolvedPersonal.id,
         personal: resolvedPersonal,
@@ -653,8 +653,8 @@ class SessionLifecycleService {
           ? leadTaskId
           : null;
       final outcome = await service.prepareTeamLaunch(
-        projectId: effectiveLaunchProjectId(
-          projectId: session.projectId,
+        workspaceId: effectiveLaunchWorkspaceId(
+          workspaceId: session.workspaceId,
           teamId: teamId,
         ),
         sessionId: session.sessionId.trim(),
@@ -686,23 +686,23 @@ class SessionLifecycleService {
 
   Future<ConfigProfileService> _configProfileServiceFor(
     StorageRootsSnapshot roots, {
-    String? launchProjectId,
+    String? launchWorkspaceId,
   }) async {
     final injected = _configProfileService;
     if (injected != null) return injected;
     final loader = _loadEnabledExtensionIds;
-    final trimmedProjectId = launchProjectId?.trim() ?? '';
+    final trimmedWorkspaceId = launchWorkspaceId?.trim() ?? '';
     return ConfigProfileService(
       basePath: roots.teampilotRoot,
       fs: roots.fs,
       layout: roots.layout,
       loadEnabledExtensionIds: loader == null
           ? null
-          : ({teamId, projectId}) => loader(
+          : ({teamId, workspaceId}) => loader(
               teamId: teamId,
-              projectId: (projectId?.trim().isNotEmpty ?? false)
-                  ? projectId
-                  : (trimmedProjectId.isNotEmpty ? trimmedProjectId : null),
+              workspaceId: (workspaceId?.trim().isNotEmpty ?? false)
+                  ? workspaceId
+                  : (trimmedWorkspaceId.isNotEmpty ? trimmedWorkspaceId : null),
             ),
       cliRegistry: _cliToolRegistry,
       loadInstalledSkills: _loadInstalledSkills,
@@ -774,7 +774,7 @@ class SessionLifecycleService {
     required String runtimeSessionId,
     required String cliSessionId,
     CliTool? cli,
-    String? projectId,
+    String? workspaceId,
   }) async {
     final id = cliSessionId.trim();
     if (id.isEmpty) {
@@ -782,21 +782,21 @@ class SessionLifecycleService {
     }
 
     final tools = cli != null ? [cli.value] : runtimeLayoutDefaultTools;
-    final trimmedProjectId = projectId?.trim() ?? '';
-    final toolRoots = trimmedProjectId.isNotEmpty
+    final trimmedWorkspaceId = workspaceId?.trim() ?? '';
+    final toolRoots = trimmedWorkspaceId.isNotEmpty
         ? _standaloneTranscriptSearchRoots(
             layout: roots.layout,
-            projectId: trimmedProjectId,
+            workspaceId: trimmedWorkspaceId,
             sessionId: runtimeSessionId,
             tools: tools,
           )
         : roots.layout.transcriptSearchRoots(
-            projectId: session.projectId.trim(),
+            workspaceId: session.workspaceId.trim(),
             sessionId: session.sessionId.trim(),
             identityId: teamId,
             tools: tools,
           );
-    final bucket = RuntimeLayout.projectBucketForPrimaryPath(
+    final bucket = RuntimeLayout.workspaceBucketForPrimaryPath(
       session.primaryPath,
     );
     return _findCliStateInFilesystem(
@@ -824,9 +824,9 @@ class SessionLifecycleService {
     final rootsTried = <String>[];
     for (final root in orderedRoots) {
       rootsTried.add(root);
-      final projectsDir = path.join(root, 'projects');
+      final workspacesDir = path.join(root, 'workspaces');
       if (bucket.isNotEmpty) {
-        final bucketDir = path.join(projectsDir, bucket);
+        final bucketDir = path.join(workspacesDir, bucket);
         final transcriptFile = path.join(bucketDir, '$sessionId.jsonl');
         if ((await fs.stat(transcriptFile)).isFile) {
           return _CliStateProbeResult(
@@ -844,7 +844,7 @@ class SessionLifecycleService {
           );
         }
       }
-      final scanned = await _scanProjects(fs, projectsDir, sessionId);
+      final scanned = await _scanWorkspaces(fs, workspacesDir, sessionId);
       if (scanned != null) {
         return _CliStateProbeResult(
           exists: true,
@@ -856,17 +856,17 @@ class SessionLifecycleService {
     return _CliStateProbeResult(exists: false, rootsTried: rootsTried);
   }
 
-  static Future<String?> _scanProjects(
+  static Future<String?> _scanWorkspaces(
     Filesystem fs,
-    String projectsDir,
+    String workspacesDir,
     String sessionId,
   ) async {
     final path = fs.pathContext;
     try {
-      final buckets = await fs.listDir(projectsDir);
+      final buckets = await fs.listDir(workspacesDir);
       for (final bucket in buckets) {
         if (!bucket.isDirectory) continue;
-        final bucketPath = path.join(projectsDir, bucket.name);
+        final bucketPath = path.join(workspacesDir, bucket.name);
         final transcriptFile = path.join(bucketPath, '$sessionId.jsonl');
         if ((await fs.stat(transcriptFile)).isFile) return transcriptFile;
         final transcriptDir = path.join(bucketPath, sessionId);

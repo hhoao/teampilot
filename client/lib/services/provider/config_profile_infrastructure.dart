@@ -4,7 +4,7 @@ import 'package:path/path.dart' as p;
 
 import '../../models/extension_manifest.dart';
 import '../../models/team_config.dart';
-import '../../utils/project_path_utils.dart';
+import '../../utils/workspace_path_utils.dart';
 import '../../utils/team_member_naming.dart';
 import '../storage/runtime_layout.dart';
 import '../cli/registry/config_profile/config_profile_context.dart';
@@ -23,14 +23,14 @@ import '../storage/runtime_storage_context.dart';
 import '../team/team_lead_delegate_settings_merge.dart';
 import '../team/team_lead_settings_merge.dart';
 
-/// Cross-CLI config profile file I/O, trusted-project metadata, extensions, hooks.
+/// Cross-CLI config profile file I/O, trusted-workspace metadata, extensions, hooks.
 final class ConfigProfileInfrastructure implements ConfigProfileDelegate {
   ConfigProfileInfrastructure({
     required this.basePath,
     required this.layout,
     String? home,
     Filesystem? fs,
-    Future<Set<String>> Function({String? teamId, String? projectId})?
+    Future<Set<String>> Function({String? teamId, String? workspaceId})?
     loadEnabledExtensionIds,
     ExtensionDetector? extensionDetector,
     List<ExtensionManifest>? extensionManifests,
@@ -59,7 +59,7 @@ final class ConfigProfileInfrastructure implements ConfigProfileDelegate {
   @override
   final RuntimeLayout layout;
   final Filesystem _fs;
-  final Future<Set<String>> Function({String? teamId, String? projectId})?
+  final Future<Set<String>> Function({String? teamId, String? workspaceId})?
   _loadEnabledExtensionIds;
   final ExtensionDetector? _extensionDetector;
   final List<ExtensionManifest>? _extensionManifests;
@@ -90,13 +90,13 @@ final class ConfigProfileInfrastructure implements ConfigProfileDelegate {
 
   @override
   String sessionToolDir(
-    String projectId,
+    String workspaceId,
     String sessionId,
     String tool, {
     String? memberId,
   }) =>
       layout.sessionRuntimeToolDir(
-        projectId,
+        workspaceId,
         sessionId,
         tool,
         memberId: memberId,
@@ -114,49 +114,49 @@ final class ConfigProfileInfrastructure implements ConfigProfileDelegate {
       _writeJsonIfChanged(path, value);
 
   @override
-  Future<Map<String, Object?>> metadataWithTrustedProjects({
+  Future<Map<String, Object?>> metadataWithTrustedWorkspaces({
     required String metadataPath,
     required Map<String, Object?> defaultMetadata,
-    required Map<String, Object?> defaultProjectConfig,
+    required Map<String, Object?> defaultWorkspaceConfig,
     required Iterable<String> directories,
   }) async {
     final metadata = await _readMetadataFile(metadataPath, defaultMetadata);
     final trustedKeys = <String>{
-      for (final dir in directories) ...projectMetadataKeys(dir),
+      for (final dir in directories) ...workspaceMetadataKeys(dir),
     };
     if (trustedKeys.isEmpty) {
       return metadata;
     }
 
-    final existingProjects = metadata['projects'];
-    final projects = existingProjects is Map
+    final existingWorkspaces = metadata['workspaces'];
+    final workspaces = existingWorkspaces is Map
         ? Map<String, Object?>.from(
-            existingProjects.map(
+            existingWorkspaces.map(
               (key, value) => MapEntry(key.toString(), value),
             ),
           )
         : <String, Object?>{};
 
     for (final key in trustedKeys) {
-      final existing = projects[key];
-      final projectConfig = existing is Map
+      final existing = workspaces[key];
+      final workspaceConfig = existing is Map
           ? Map<String, Object?>.from(
               existing.map(
                 (entryKey, value) => MapEntry(entryKey.toString(), value),
               ),
             )
-          : <String, Object?>{...defaultProjectConfig};
-      for (final entry in defaultProjectConfig.entries) {
-        projectConfig.putIfAbsent(entry.key, () => entry.value);
+          : <String, Object?>{...defaultWorkspaceConfig};
+      for (final entry in defaultWorkspaceConfig.entries) {
+        workspaceConfig.putIfAbsent(entry.key, () => entry.value);
       }
-      for (final entry in defaultProjectConfig.entries) {
+      for (final entry in defaultWorkspaceConfig.entries) {
         if (entry.value == true) {
-          projectConfig[entry.key] = true;
+          workspaceConfig[entry.key] = true;
         }
       }
-      projects[key] = projectConfig;
+      workspaces[key] = workspaceConfig;
     }
-    metadata['projects'] = projects;
+    metadata['workspaces'] = workspaces;
     return metadata;
   }
 
@@ -167,18 +167,18 @@ final class ConfigProfileInfrastructure implements ConfigProfileDelegate {
     required Map<String, Object?> defaultMetadata,
   }) async {
     final trustedKeys = {
-      for (final dir in directories) ...projectMetadataKeys(dir),
+      for (final dir in directories) ...workspaceMetadataKeys(dir),
     };
     if (trustedKeys.isEmpty) return false;
 
     final metadata = await _readMetadataFile(metadataPath, defaultMetadata);
-    final projects = metadata['projects'];
-    if (projects is! Map) return false;
+    final workspaces = metadata['workspaces'];
+    if (workspaces is! Map) return false;
 
     for (final key in trustedKeys) {
-      final project = projects[key];
-      if (project is! Map) return false;
-      if (project['hasTrustDialogAccepted'] != true) return false;
+      final workspace = workspaces[key];
+      if (workspace is! Map) return false;
+      if (workspace['hasTrustDialogAccepted'] != true) return false;
     }
     return true;
   }
@@ -194,7 +194,7 @@ final class ConfigProfileInfrastructure implements ConfigProfileDelegate {
     String? memberToolDir,
     required String tool,
     String? teamId,
-    String? projectId,
+    String? workspaceId,
   }) =>
       _writeSettingsFile(
         path,
@@ -202,16 +202,16 @@ final class ConfigProfileInfrastructure implements ConfigProfileDelegate {
         memberToolDir: memberToolDir,
         tool: tool,
         teamId: teamId,
-        projectId: projectId,
+        workspaceId: workspaceId,
       );
 
   @override
   Future<bool> hasEnabledExtensionSettingsHooks(
     String tool, {
     String? teamId,
-    String? projectId,
+    String? workspaceId,
   }) =>
-      _extensionProvisioner(teamId: teamId, projectId: projectId)
+      _extensionProvisioner(teamId: teamId, workspaceId: workspaceId)
           .hasEnabledSettingsHooksForTool(tool);
 
   @override
@@ -220,9 +220,9 @@ final class ConfigProfileInfrastructure implements ConfigProfileDelegate {
     String? memberToolDir, {
     required String tool,
     String? teamId,
-    String? projectId,
+    String? workspaceId,
   }) =>
-      _extensionProvisioner(teamId: teamId, projectId: projectId).applySettings(
+      _extensionProvisioner(teamId: teamId, workspaceId: workspaceId).applySettings(
         settings,
         memberToolDir?.trim() ?? '',
         tool: tool,
@@ -267,7 +267,7 @@ final class ConfigProfileInfrastructure implements ConfigProfileDelegate {
   }) async {
     final path = MemberRoleProvision.rolePromptPath(
       sessionToolDir(
-        scope.projectId,
+        scope.workspaceId,
         scope.sessionId,
         tool,
         memberId: scope.memberId,
@@ -293,10 +293,10 @@ final class ConfigProfileInfrastructure implements ConfigProfileDelegate {
   Future<void> collectExtensionWarnings(
     List<String> warnings, {
     String? teamId,
-    String? projectId,
+    String? workspaceId,
   }) async {
     warnings.addAll(
-      await _extensionProvisioner(teamId: teamId, projectId: projectId)
+      await _extensionProvisioner(teamId: teamId, workspaceId: workspaceId)
           .collectWarnings(),
     );
   }
@@ -319,7 +319,7 @@ final class ConfigProfileInfrastructure implements ConfigProfileDelegate {
     String? memberToolDir,
     required String tool,
     String? teamId,
-    String? projectId,
+    String? workspaceId,
   }) async {
     final existing = await _readSettingsFile(path);
     final enabledPlugins = existing['enabledPlugins'];
@@ -332,7 +332,7 @@ final class ConfigProfileInfrastructure implements ConfigProfileDelegate {
       memberToolDir,
       tool: tool,
       teamId: teamId,
-      projectId: projectId,
+      workspaceId: workspaceId,
     );
     await _fs.atomicWrite(
       path,
@@ -342,13 +342,13 @@ final class ConfigProfileInfrastructure implements ConfigProfileDelegate {
 
   ExtensionProvisioner _extensionProvisioner({
     String? teamId,
-    String? projectId,
+    String? workspaceId,
   }) {
     return ExtensionProvisioner(
       manifests: _extensionManifests ?? builtInExtensionManifests(),
       isEnabled: (id) async => (await _enabledExtensionIds(
         teamId: teamId,
-        projectId: projectId,
+        workspaceId: workspaceId,
       )).contains(id),
       detector: _extensionDetector,
       hookProvisionerFor: _hookProvisionerForAsset,
@@ -357,11 +357,11 @@ final class ConfigProfileInfrastructure implements ConfigProfileDelegate {
 
   Future<Set<String>> _enabledExtensionIds({
     String? teamId,
-    String? projectId,
+    String? workspaceId,
   }) async {
     final loader = _loadEnabledExtensionIds;
     if (loader == null) return {};
-    return loader(teamId: teamId, projectId: projectId);
+    return loader(teamId: teamId, workspaceId: workspaceId);
   }
 
   ScriptFileHookProvisioner _hookProvisionerForAsset(String scriptAsset) {

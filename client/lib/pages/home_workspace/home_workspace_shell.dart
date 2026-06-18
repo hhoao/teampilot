@@ -12,26 +12,26 @@ import '../../cubits/identity_cubit.dart';
 import '../../cubits/workspace_tools_cubit.dart';
 import '../../l10n/app_localizations.dart';
 import '../../l10n/l10n_extensions.dart';
-import '../../models/app_project.dart';
+import '../../models/app_workspace.dart';
 import '../../models/launch_identity.dart';
 import '../../models/identity_kind.dart';
 import '../../models/team_config.dart';
 import '../../models/identity.dart';
 import '../../services/storage/identity_provisioner.dart';
-import '../../utils/project_display_name.dart';
-import '../../models/home_closed_project_entry.dart';
+import '../../utils/workspace_display_name.dart';
+import '../../models/home_closed_workspace_entry.dart';
 import '../../theme/workspace_surface_layers.dart';
-import '../../services/home_workspace/home_workspace_closed_projects_store.dart';
-import '../../services/home_workspace/home_workspace_open_projects_store.dart';
-import '../../services/home_workspace/home_workspace_recent_projects_store.dart';
+import '../../services/home_workspace/home_workspace_closed_workspaces_store.dart';
+import '../../services/home_workspace/home_workspace_open_workspaces_store.dart';
+import '../../services/home_workspace/home_workspace_recent_workspaces_store.dart';
 import '../../services/terminal/workspace_terminal_registry.dart';
 import '../../widgets/app_dialog.dart';
 import 'home_workspace_tab_scope.dart';
 import 'home_workspace_title_bar.dart';
 
-/// Persistent chrome for the workspace-home route family. Owns the open project
+/// Persistent chrome for the workspace-home route family. Owns the open workspace
 /// tabs (kept until explicitly closed) and renders the title bar once above the
-/// routed [child] (home view or a project view).
+/// routed [child] (home view or a workspace view).
 class HomeShell extends StatefulWidget {
   const HomeShell({
     required this.location,
@@ -39,7 +39,7 @@ class HomeShell extends StatefulWidget {
     super.key,
   });
 
-  /// Current router location (path + query), e.g. `/home-v2/project/<id>?as=personal`.
+  /// Current router location (path + query), e.g. `/home-v2/workspace/<id>?as=personal`.
   final String location;
   final Widget child;
 
@@ -47,22 +47,22 @@ class HomeShell extends StatefulWidget {
   State<HomeShell> createState() => _HomeShellState();
 
   @visibleForTesting
-  static String formatProjectTabTooltip({
-    required Workspace project,
+  static String formatWorkspaceTabTooltip({
+    required Workspace workspace,
     required String personalKindLabel,
     required bool isPersonal,
     String? teamName,
     String? teamId,
     String? displayName,
   }) {
-    final name = displayName ?? project.effectiveDisplay;
+    final name = displayName ?? workspace.effectiveDisplay;
     final prefix = isPersonal
         ? personalKindLabel
         : ((teamName != null && teamName.isNotEmpty)
               ? teamName
               : teamId ?? '');
     final headline = '$prefix · $name';
-    final path = project.primaryPath.trim();
+    final path = workspace.primaryPath.trim();
     if (path.isEmpty || path == name) return headline;
     return '$headline\n$path';
   }
@@ -88,14 +88,14 @@ class HomeShell extends StatefulWidget {
 }
 
 class _HomeShellState extends State<HomeShell> {
-  final _recentProjectsStore = HomeRecentWorkspacesStore();
-  final _closedProjectsStore = HomeClosedWorkspacesStore();
-  final _openProjectsStore = HomeOpenWorkspacesStore();
+  final _recentWorkspacesStore = HomeRecentWorkspacesStore();
+  final _closedWorkspacesStore = HomeClosedWorkspacesStore();
+  final _openWorkspacesStore = HomeOpenWorkspacesStore();
 
-  /// Open project ids in tab order; persisted across app restarts.
+  /// Open workspace ids in tab order; persisted across app restarts.
   List<String> _openIds = const [];
   List<HomeClosedWorkspaceEntry> _recentlyClosed = const [];
-  final Map<String, LaunchIdentity> _identityByProjectId = {};
+  final Map<String, LaunchIdentity> _identityByWorkspaceId = {};
 
   @override
   void initState() {
@@ -108,24 +108,24 @@ class _HomeShellState extends State<HomeShell> {
   }
 
   Future<void> _bootstrapOpenTabs() async {
-    final initialProjectId = _projectIdFromLocation(widget.location);
+    final initialWorkspaceId = _workspaceIdFromLocation(widget.location);
     final initialIdentity = _identityFromLocation(widget.location);
-    if (initialProjectId != null && initialIdentity != null) {
-      _identityByProjectId[initialProjectId] = initialIdentity;
+    if (initialWorkspaceId != null && initialIdentity != null) {
+      _identityByWorkspaceId[initialWorkspaceId] = initialIdentity;
     }
-    final persisted = await _openProjectsStore.loadOrderedIds();
+    final persisted = await _openWorkspacesStore.loadOrderedIds();
     if (!mounted) return;
     setState(
       () => _openIds = _mergeOpenIds(
         persisted: persisted,
-        routeProjectId: initialProjectId,
+        routeWorkspaceId: initialWorkspaceId,
       ),
     );
-    if (initialProjectId != null) {
-      unawaited(_recentProjectsStore.recordVisit(initialProjectId));
+    if (initialWorkspaceId != null) {
+      unawaited(_recentWorkspacesStore.recordVisit(initialWorkspaceId));
       WidgetsBinding.instance.addPostFrameCallback((_) {
         if (!mounted) return;
-        context.read<LayoutCubit>().setLastOpenedProjectId(initialProjectId);
+        context.read<LayoutCubit>().setLastOpenedWorkspaceId(initialWorkspaceId);
       });
     }
     await _persistOpenIds();
@@ -134,7 +134,7 @@ class _HomeShellState extends State<HomeShell> {
 
   static List<String> _mergeOpenIds({
     required List<String> persisted,
-    required String? routeProjectId,
+    required String? routeWorkspaceId,
   }) {
     final merged = <String>[];
     void add(String raw) {
@@ -146,22 +146,22 @@ class _HomeShellState extends State<HomeShell> {
     for (final id in persisted) {
       add(id);
     }
-    if (routeProjectId != null) add(routeProjectId);
+    if (routeWorkspaceId != null) add(routeWorkspaceId);
     return merged;
   }
 
   Future<void> _persistOpenIds() async {
-    await _openProjectsStore.saveOrderedIds(_openIds);
+    await _openWorkspacesStore.saveOrderedIds(_openIds);
   }
 
   Future<void> _reloadRecentlyClosed() async {
-    final all = await _closedProjectsStore.load();
+    final all = await _closedWorkspacesStore.load();
     if (!mounted) return;
     final open = _openIds.toSet();
     setState(
       () => _recentlyClosed = [
         for (final e in all)
-          if (!open.contains(e.projectId)) e,
+          if (!open.contains(e.workspaceId)) e,
       ],
     );
   }
@@ -170,18 +170,18 @@ class _HomeShellState extends State<HomeShell> {
   void didUpdateWidget(covariant HomeShell oldWidget) {
     super.didUpdateWidget(oldWidget);
     if (oldWidget.location != widget.location) {
-      final id = _projectIdFromLocation(widget.location);
+      final id = _workspaceIdFromLocation(widget.location);
       final identity = _identityFromLocation(widget.location);
       if (id != null) {
         if (identity != null) {
-          _identityByProjectId[id] = identity;
+          _identityByWorkspaceId[id] = identity;
         }
         if (!_openIds.contains(id)) {
           setState(() => _openIds = [..._openIds, id]);
           unawaited(_persistOpenIds());
         }
-        unawaited(_recentProjectsStore.recordVisit(id));
-        context.read<LayoutCubit>().setLastOpenedProjectId(id);
+        unawaited(_recentWorkspacesStore.recordVisit(id));
+        context.read<LayoutCubit>().setLastOpenedWorkspaceId(id);
       }
       WidgetsBinding.instance.addPostFrameCallback((_) {
         if (!mounted) return;
@@ -190,12 +190,12 @@ class _HomeShellState extends State<HomeShell> {
     }
   }
 
-  static String? _projectIdFromLocation(String location) {
+  static String? _workspaceIdFromLocation(String location) {
     final uri = _parseLocationUri(location);
     final segments = uri.pathSegments;
     if (segments.length >= 3 &&
         segments[0] == 'home-v2' &&
-        segments[1] == 'project') {
+        segments[1] == 'workspace') {
       return segments[2];
     }
     return null;
@@ -211,86 +211,86 @@ class _HomeShellState extends State<HomeShell> {
     return Uri.parse('http://local$location');
   }
 
-  LaunchIdentity _identityForProject(String projectId) {
-    final fromRoute = _projectIdFromLocation(widget.location) == projectId
+  LaunchIdentity _identityForWorkspace(String workspaceId) {
+    final fromRoute = _workspaceIdFromLocation(widget.location) == workspaceId
         ? _identityFromLocation(widget.location)
         : null;
     return fromRoute ??
-        _identityByProjectId[projectId] ??
+        _identityByWorkspaceId[workspaceId] ??
         const LaunchIdentity(IdentityProvisioner.defaultPersonalId);
   }
 
-  String _projectRoute(String projectId, LaunchIdentity identity) =>
-      '/home-v2/project/$projectId?as=${identity.encode()}';
+  String _workspaceRoute(String workspaceId, LaunchIdentity identity) =>
+      '/home-v2/workspace/$workspaceId?as=${identity.encode()}';
 
   void _selectTab(String id) {
-    context.go(_projectRoute(id, _identityForProject(id)));
+    context.go(_workspaceRoute(id, _identityForWorkspace(id)));
   }
 
   void _goHome() => context.go('/home-v2');
 
-  void _openProject(String id, {required bool activate}) {
+  void _openWorkspace(String id, {required bool activate}) {
     if (!_openIds.contains(id)) {
       setState(() => _openIds = [..._openIds, id]);
       unawaited(_persistOpenIds());
     }
-    unawaited(_recentProjectsStore.recordVisit(id));
+    unawaited(_recentWorkspacesStore.recordVisit(id));
     if (activate) {
       _selectTab(id);
     }
   }
 
-  Future<void> _reopenClosedProject(String id) async {
-    await _closedProjectsStore.remove(id);
+  Future<void> _reopenClosedWorkspace(String id) async {
+    await _closedWorkspacesStore.remove(id);
     if (!mounted) return;
-    _openProject(id, activate: true);
+    _openWorkspace(id, activate: true);
     await _reloadRecentlyClosed();
   }
 
   Future<void> _closeTab(String id) async {
     if (!_openIds.contains(id)) return;
-    final projects = context.read<ChatCubit>().state.projects;
-    final project = _resolve(projects, id);
-    // Closing a project tab always terminates that project's running sessions;
+    final workspaces = context.read<ChatCubit>().state.workspaces;
+    final workspace = _resolve(workspaces, id);
+    // Closing a workspace tab always terminates that workspace's running sessions;
     // confirm first when there are any so the user can cancel.
     final chat = context.read<ChatCubit>();
     final terminalRegistry = context.read<WorkspaceTerminalRegistry>();
     final workspaceTools = context.read<WorkspaceToolsCubit>();
-    final running = chat.openTabCountForProject(id);
+    final running = chat.openTabCountForWorkspace(id);
     if (running > 0) {
       final confirmed = await _confirmCloseWithSessions(running);
       if (confirmed != true || !mounted) return;
-      chat.closeTabsForProject(id);
+      chat.closeTabsForWorkspace(id);
     }
     final idx = _openIds.indexOf(id);
     if (idx < 0) return;
     // Persist closed/open tab state before teardown so a crash or fast quit
     // cannot drop the recently-closed entry.
-    await _closedProjectsStore.recordClosed(
+    await _closedWorkspacesStore.recordClosed(
       HomeClosedWorkspaceEntry(
-        projectId: id,
-        displayName: project?.effectiveDisplay ?? id,
-        primaryPath: project?.primaryPath ?? '',
+        workspaceId: id,
+        displayName: workspace?.effectiveDisplay ?? id,
+        primaryPath: workspace?.primaryPath ?? '',
       ),
     );
     if (!mounted) return;
-    final wasActive = id == _projectIdFromLocation(widget.location);
+    final wasActive = id == _workspaceIdFromLocation(widget.location);
     final next = [..._openIds]..removeAt(idx);
     setState(() => _openIds = next);
     await _persistOpenIds();
     await _reloadRecentlyClosed();
     if (!mounted) return;
-    // Tear down this project's keep-alive workspace runtime.
-    terminalRegistry.disposeProject(id);
-    workspaceTools.removeProject(id);
+    // Tear down this workspace's keep-alive workspace runtime.
+    terminalRegistry.disposeWorkspace(id);
+    workspaceTools.removeWorkspace(id);
     if (running == 0) {
       // No chat sessions to confirm/close, but still drop any chat bucket.
-      chat.closeTabsForProject(id);
+      chat.closeTabsForWorkspace(id);
     }
     if (wasActive) {
       final candidates = [
         for (final e in next)
-          if (_resolve(projects, e) != null) e,
+          if (_resolve(workspaces, e) != null) e,
       ];
       if (candidates.isEmpty) {
         _goHome();
@@ -299,7 +299,7 @@ class _HomeShellState extends State<HomeShell> {
         _selectTab(candidates[target]);
       }
     }
-    _identityByProjectId.remove(id);
+    _identityByWorkspaceId.remove(id);
   }
 
   Future<bool?> _confirmCloseWithSessions(int running) {
@@ -313,11 +313,11 @@ class _HomeShellState extends State<HomeShell> {
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
             AppDialogHeader(
-              title: l10n.homeWorkspaceCloseProjectTitle,
+              title: l10n.homeWorkspaceCloseWorkspaceTitle,
               onClose: () => Navigator.of(dialogContext).pop(false),
             ),
             const SizedBox(height: 16),
-            Text(l10n.homeWorkspaceCloseProjectMessage(running)),
+            Text(l10n.homeWorkspaceCloseWorkspaceMessage(running)),
             AppDialogActions(
               children: [
                 TextButton(
@@ -326,7 +326,7 @@ class _HomeShellState extends State<HomeShell> {
                 ),
                 FilledButton(
                   onPressed: () => Navigator.of(dialogContext).pop(true),
-                  child: Text(l10n.homeWorkspaceCloseProjectConfirm),
+                  child: Text(l10n.homeWorkspaceCloseWorkspaceConfirm),
                 ),
               ],
             ),
@@ -343,9 +343,9 @@ class _HomeShellState extends State<HomeShell> {
         .preferences
         .scopeSessionsToSelectedTeam;
     final selectedTeam = context.read<IdentityCubit>().state.selectedTeam;
-    final activeId = _projectIdFromLocation(widget.location);
+    final activeId = _workspaceIdFromLocation(widget.location);
     final activeIdentity =
-        activeId != null ? _identityForProject(activeId) : null;
+        activeId != null ? _identityForWorkspace(activeId) : null;
     final scopeTeamId = activeIdentity != null
         ? _sessionTeamScopeId(context, activeIdentity)
         : selectedTeam?.id;
@@ -357,28 +357,28 @@ class _HomeShellState extends State<HomeShell> {
 
   @override
   Widget build(BuildContext context) {
-    final projects = context.select<ChatCubit, List<Workspace>>(
-      (c) => c.state.projects,
+    final workspaces = context.select<ChatCubit, List<Workspace>>(
+      (c) => c.state.workspaces,
     );
-    final activeId = _projectIdFromLocation(widget.location);
+    final activeId = _workspaceIdFromLocation(widget.location);
     final pageChrome = activeId == null
         ? WorkspacePageChrome.home
-        : WorkspacePageChrome.project;
+        : WorkspacePageChrome.workspace;
 
     final cs = Theme.of(context).colorScheme;
     final l10n = context.l10n;
     final identities = context.select<IdentityCubit, List<Identity>>(
       (c) => c.state.identities,
     );
-    // Show every open project tab across all teams (IDE-style open editors).
-    // Selecting a tab switches the active team to the project's team via
+    // Show every open workspace tab across all teams (IDE-style open editors).
+    // Selecting a tab switches the active team to the workspace's team via
     // WorkspacePage, so the sidebar/content stay in sync.
     final tabs = <HomeWorkspaceTab>[
       for (final id in _openIds)
-        if (_resolve(projects, id) case final p?)
-          _projectTab(
+        if (_resolve(workspaces, id) case final p?)
+          _workspaceTab(
             id: id,
-            project: p,
+            workspace: p,
             l10n: l10n,
             identities: identities,
           ),
@@ -399,21 +399,21 @@ class _HomeShellState extends State<HomeShell> {
             children: [
               HomeTitleBar(
             tabs: tabs,
-            activeProjectId: activeId,
+            activeWorkspaceId: activeId,
             pageChrome: pageChrome,
             recentlyClosed: _recentlyClosed,
-            openProjectIds: _openIds.toSet(),
+            openWorkspaceIds: _openIds.toSet(),
             onHomeTap: _goHome,
             onSelectTab: _selectTab,
             onCloseTab: _closeTab,
-            onReopenClosedProject: (id) => unawaited(_reopenClosedProject(id)),
+            onReopenClosedWorkspace: (id) => unawaited(_reopenClosedWorkspace(id)),
           ),
           Expanded(
             child: SafeArea(
               top: false,
               child: HomeTabScope(
-                openProject: (id, {activate = true}) =>
-                    _openProject(id, activate: activate),
+                openWorkspace: (id, {activate = true}) =>
+                    _openWorkspace(id, activate: activate),
                 child: widget.child,
               ),
             ),
@@ -425,13 +425,13 @@ class _HomeShellState extends State<HomeShell> {
     );
   }
 
-  HomeWorkspaceTab _projectTab({
+  HomeWorkspaceTab _workspaceTab({
     required String id,
-    required Workspace project,
+    required Workspace workspace,
     required AppLocalizations l10n,
     required List<Identity> identities,
   }) {
-    final identity = _identityForProject(id);
+    final identity = _identityForWorkspace(id);
     final workspaceIdentity = identities
             .where((e) => e.id == identity.identityId)
             .firstOrNull ??
@@ -442,15 +442,15 @@ class _HomeShellState extends State<HomeShell> {
     final identityId = identity.identityId;
     return HomeWorkspaceTab(
       id: id,
-      name: project.localizedName(l10n),
+      name: workspace.localizedName(l10n),
       kind: isPersonal ? HomeWorkspaceTabKind.personal : HomeWorkspaceTabKind.team,
-      tooltip: HomeShell.formatProjectTabTooltip(
-        project: project,
-        personalKindLabel: l10n.homeWorkspaceProjectTabKindPersonal,
+      tooltip: HomeShell.formatWorkspaceTabTooltip(
+        workspace: workspace,
+        personalKindLabel: l10n.homeWorkspaceWorkspaceTabKindPersonal,
         isPersonal: isPersonal,
         teamName: HomeShell.identityNameFor(identities, identityId),
         teamId: identityId,
-        displayName: project.localizedName(l10n),
+        displayName: workspace.localizedName(l10n),
       ),
       closable: true,
     );
@@ -467,9 +467,9 @@ class _HomeShellState extends State<HomeShell> {
     return identity.identityId;
   }
 
-  static Workspace? _resolve(List<Workspace> projects, String id) {
-    for (final p in projects) {
-      if (p.projectId == id) return p;
+  static Workspace? _resolve(List<Workspace> workspaces, String id) {
+    for (final p in workspaces) {
+      if (p.workspaceId == id) return p;
     }
     return null;
   }

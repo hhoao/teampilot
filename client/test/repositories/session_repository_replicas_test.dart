@@ -11,11 +11,11 @@ void main() {
     addTearDown(() => tmp.deleteSync(recursive: true));
 
     final repo = SessionRepository(rootDir: tmp.path);
-    final project = await repo.createProject('/replicas');
-    final projectId = project.projectId;
+    final workspace = await repo.createWorkspace('/replicas');
+    final workspaceId = workspace.workspaceId;
 
     final session = await repo.createSession(
-      projectId,
+      workspaceId,
       sessionTeam: 'team-1',
       rosterMembers: const [
         TeamMemberConfig(id: 'team-lead', name: 'team-lead'),

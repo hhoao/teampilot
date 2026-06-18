@@ -18,10 +18,10 @@ void main() {
   group('CursorWorkspaceTrustProvisioner', () {
     test('workspacePathKeys dedupes working directory variants', () {
       final keys = CursorWorkspaceTrustProvisioner.workspacePathKeys(
-        workingDirectory: '/workspace/project',
-        additionalDirectories: const ['/workspace/project', ''],
+        workingDirectory: '/workspace/workspace',
+        additionalDirectories: const ['/workspace/workspace', ''],
       );
-      expect(keys, {'/workspace/project'});
+      expect(keys, {'/workspace/workspace'});
     });
 
     test('provision writes trust marker under homeRoot', () async {
@@ -71,7 +71,7 @@ void main() {
       expect(fs.files, isEmpty);
     });
 
-    test('trust marker path uses slugified project dir', () async {
+    test('trust marker path uses slugified workspace dir', () async {
       const home = '/fake/home';
       const workspace = '/home/hhoa/git/hhoa/teampilot';
 

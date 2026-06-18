@@ -48,7 +48,7 @@ void main() {
     final teamCubit = IdentityCubit(
       repository: IdentityRepository(rootDir: appData.path),
       sessionRepository: SessionRepository(rootDir: appData.path),
-      reloadProjects: () async {},
+      reloadWorkspaces: () async {},
       executableResolver: _executable,
       appDataBasePath: appData.path,
       configProfileService: ConfigProfileService(basePath: appData.path),
@@ -89,8 +89,8 @@ void main() {
             ],
             child: const Scaffold(
               body: ChatPage(
-                cwd: '/tmp/personal-project',
-                isPersonalProject: true,
+                cwd: '/tmp/personal-workspace',
+                isPersonalWorkspace: true,
               ),
             ),
           ),

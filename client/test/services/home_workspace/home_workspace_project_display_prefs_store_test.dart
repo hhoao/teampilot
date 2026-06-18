@@ -1,8 +1,8 @@
 import 'dart:io';
 
 import 'package:flutter_test/flutter_test.dart';
-import 'package:teampilot/pages/home_workspace/home_workspace_project_sort.dart';
-import 'package:teampilot/services/home_workspace/home_workspace_project_display_prefs_store.dart';
+import 'package:teampilot/pages/home_workspace/home_workspace_workspace_sort.dart';
+import 'package:teampilot/services/home_workspace/home_workspace_workspace_display_prefs_store.dart';
 import 'package:teampilot/services/io/local_filesystem.dart';
 import 'package:teampilot/services/storage/app_storage.dart';
 
@@ -11,14 +11,14 @@ void main() {
   late WorkspaceDisplayPrefsStore store;
 
   setUp(() {
-    root = Directory.systemTemp.createTempSync('project_display_prefs_');
+    root = Directory.systemTemp.createTempSync('workspace_display_prefs_');
     final paths = AppPaths(root.path);
     final fs = LocalFilesystem(
       pathContext: AppPaths.pathContextForDataRoot(paths.basePath),
     );
     store = WorkspaceDisplayPrefsStore(
       fs: fs,
-      pathOverride: paths.homeWorkspaceProjectDisplayPrefsJson,
+      pathOverride: paths.homeWorkspaceWorkspaceDisplayPrefsJson,
     );
   });
 
@@ -46,7 +46,7 @@ void main() {
     expect(prefs.gridView, isFalse);
     expect(prefs.sort, WorkspaceSort.nameAsc);
 
-    final file = File(AppPaths(root.path).homeWorkspaceProjectDisplayPrefsJson);
+    final file = File(AppPaths(root.path).homeWorkspaceWorkspaceDisplayPrefsJson);
     expect(file.existsSync(), isTrue);
   });
 }

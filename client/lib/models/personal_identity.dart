@@ -2,8 +2,8 @@ import 'package:flutter/foundation.dart';
 
 import 'config_bundle.dart';
 import 'identity_kind.dart';
-import 'project_agent_config.dart';
-import 'project_icon_ref.dart';
+import 'workspace_agent_config.dart';
+import 'workspace_icon_ref.dart';
 import 'identity.dart';
 
 /// A solo (no-roster) launch identity. Owns a [ConfigBundle] plus single-agent
@@ -14,12 +14,12 @@ class PersonalIdentity implements Identity {
   const PersonalIdentity({
     required this.id,
     required this.display,
-    this.icon = ProjectIconRef.auto,
+    this.icon = WorkspaceIconRef.auto,
     this.bundle = const ConfigBundle(),
     this.providerIdsByTool = const {},
     this.modelsByTool = const {},
     this.effortsByTool = const {},
-    this.agent = const ProjectAgentConfig(),
+    this.agent = const WorkspaceAgentConfig(),
     this.activePresetId,
     this.createdAt = 0,
     this.sortOrder = 0,
@@ -30,7 +30,7 @@ class PersonalIdentity implements Identity {
     return PersonalIdentity(
       id: (json['id'] as String? ?? '').trim(),
       display: json['display'] as String? ?? '',
-      icon: ProjectIconRef.fromJson(json['icon']),
+      icon: WorkspaceIconRef.fromJson(json['icon']),
       bundle: ConfigBundle.fromJson(
         json['bundle'] is Map
             ? Map<String, Object?>.from(json['bundle'] as Map)
@@ -40,8 +40,8 @@ class PersonalIdentity implements Identity {
       modelsByTool: _decodeStringMap(json['modelsByTool']),
       effortsByTool: _decodeStringMap(json['effortsByTool']),
       agent: rawAgent is Map
-          ? ProjectAgentConfig.fromJson(Map<String, Object?>.from(rawAgent))
-          : const ProjectAgentConfig(),
+          ? WorkspaceAgentConfig.fromJson(Map<String, Object?>.from(rawAgent))
+          : const WorkspaceAgentConfig(),
       activePresetId: _nullableTrimmed(json['activePresetId']),
       createdAt: (json['createdAt'] as num?)?.toInt() ?? 0,
       sortOrder: (json['sortOrder'] as num?)?.toInt() ?? 0,
@@ -53,14 +53,14 @@ class PersonalIdentity implements Identity {
   @override
   final String display;
   @override
-  final ProjectIconRef icon;
+  final WorkspaceIconRef icon;
   @override
   final ConfigBundle bundle;
 
   final Map<String, String> providerIdsByTool;
   final Map<String, String> modelsByTool;
   final Map<String, String> effortsByTool;
-  final ProjectAgentConfig agent;
+  final WorkspaceAgentConfig agent;
   final String? activePresetId;
   final int createdAt;
   final int sortOrder;
@@ -86,12 +86,12 @@ class PersonalIdentity implements Identity {
 
   PersonalIdentity copyWith({
     String? display,
-    ProjectIconRef? icon,
+    WorkspaceIconRef? icon,
     ConfigBundle? bundle,
     Map<String, String>? providerIdsByTool,
     Map<String, String>? modelsByTool,
     Map<String, String>? effortsByTool,
-    ProjectAgentConfig? agent,
+    WorkspaceAgentConfig? agent,
     String? activePresetId,
     int? createdAt,
     int? sortOrder,

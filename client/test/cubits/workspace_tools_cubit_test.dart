@@ -3,13 +3,13 @@ import 'package:teampilot/cubits/workspace_tools_cubit.dart';
 
 void main() {
   group('WorkspaceToolsCubit', () {
-    test('defaults a project to selected index 0', () {
+    test('defaults a workspace to selected index 0', () {
       final cubit = WorkspaceToolsCubit();
       expect(cubit.selectedIndexFor('p1'), 0);
       addTearDown(cubit.close);
     });
 
-    test('remembers a per-project selected index', () {
+    test('remembers a per-workspace selected index', () {
       final cubit = WorkspaceToolsCubit();
       cubit.setSelectedIndex('p1', 2);
       cubit.setSelectedIndex('p2', 1);
@@ -22,7 +22,7 @@ void main() {
     test('emits a new state when a selection changes', () {
       final cubit = WorkspaceToolsCubit();
       final seen = <Map<String, int>>[];
-      final sub = cubit.stream.listen((s) => seen.add(Map.of(s.selectedByProject)));
+      final sub = cubit.stream.listen((s) => seen.add(Map.of(s.selectedByWorkspace)));
       cubit.setSelectedIndex('p1', 3);
       cubit.setSelectedIndex('p1', 3); // no-op, same value
       return Future<void>.delayed(Duration.zero, () {
@@ -33,10 +33,10 @@ void main() {
       });
     });
 
-    test('removeProject drops the stored selection', () {
+    test('removeWorkspace drops the stored selection', () {
       final cubit = WorkspaceToolsCubit();
       cubit.setSelectedIndex('p1', 2);
-      cubit.removeProject('p1');
+      cubit.removeWorkspace('p1');
       expect(cubit.selectedIndexFor('p1'), 0);
       addTearDown(cubit.close);
     });

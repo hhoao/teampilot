@@ -2,7 +2,7 @@ import 'dart:io';
 
 import 'package:flutter_test/flutter_test.dart';
 import 'package:path/path.dart' as p;
-import 'package:teampilot/models/project_agent_config.dart';
+import 'package:teampilot/models/workspace_agent_config.dart';
 import 'package:teampilot/models/personal_identity.dart';
 import 'package:teampilot/models/team_config.dart';
 import 'package:teampilot/services/storage/runtime_layout.dart';
@@ -17,15 +17,15 @@ import 'package:teampilot/services/provider/config_profile_service.dart';
 
 String _standaloneToolDir(
   String base,
-  String projectId,
+  String workspaceId,
   String sessionId,
   String tool,
 ) =>
     p.join(
       base,
       'workspace',
-      'projects',
-      projectId,
+      'workspaces',
+      workspaceId,
       'sessions',
       sessionId,
       'runtime',
@@ -53,16 +53,16 @@ void main() {
   });
 
   ConfigProfileLaunchContext standaloneContext({
-    required String projectId,
+    required String workspaceId,
     required String sessionId,
     required PersonalIdentity personal,
   }) {
     final standaloneScope = StandaloneLaunchProfileScope(
-      projectId: projectId,
+      workspaceId: workspaceId,
       sessionId: sessionId,
     );
     return ConfigProfileLaunchContext(
-      projectId: projectId,
+      workspaceId: workspaceId,
       teamId: '',
       sessionId: sessionId,
       scope: launchScopeForStandalone(standaloneScope),
@@ -75,14 +75,14 @@ void main() {
 
   test('claude standalone uses standalone session dir without agent-teams env',
       () async {
-    const projectId = 'p-claude';
+    const workspaceId = 'p-claude';
     const sessionId = 's-claude';
-    const profile = PersonalIdentity(id: projectId, display: projectId); // TODO: migrate to presets — cli removed
+    const profile = PersonalIdentity(id: workspaceId, display: workspaceId); // TODO: migrate to presets — cli removed
 
     final contribution = await const ClaudeConfigProfileCapability()
         .contributeLaunch(
           standaloneContext(
-            projectId: projectId,
+            workspaceId: workspaceId,
             sessionId: sessionId,
             personal: profile,
           ),
@@ -90,7 +90,7 @@ void main() {
 
     final expectedDir = _standaloneToolDir(
       base.path,
-      projectId,
+      workspaceId,
       sessionId,
       'claude',
     );
@@ -104,17 +104,17 @@ void main() {
 
   test('flashskyai standalone sets FLASHSKYAI_CONFIG_DIR under standalone path',
       () async {
-    const projectId = 'p-fs';
+    const workspaceId = 'p-fs';
     const sessionId = 's-fs';
-    const profile = PersonalIdentity(id: projectId, display: projectId,
+    const profile = PersonalIdentity(id: workspaceId, display: workspaceId,
       // TODO: migrate to presets — cli removed
-      agent: ProjectAgentConfig(agent: 'solo') // TODO: migrate to presets — model removed,
+      agent: WorkspaceAgentConfig(agent: 'solo') // TODO: migrate to presets — model removed,
     );
 
     final contribution = await const FlashskyaiConfigProfileCapability()
         .contributeLaunch(
           standaloneContext(
-            projectId: projectId,
+            workspaceId: workspaceId,
             sessionId: sessionId,
             personal: profile,
           ),
@@ -122,7 +122,7 @@ void main() {
 
     final expectedDir = _standaloneToolDir(
       base.path,
-      projectId,
+      workspaceId,
       sessionId,
       'flashskyai',
     );
@@ -138,14 +138,14 @@ void main() {
   });
 
   test('cursor standalone uses CURSOR_CONFIG_DIR only', () async {
-    const projectId = 'p-cursor';
+    const workspaceId = 'p-cursor';
     const sessionId = 's-cursor';
-    const profile = PersonalIdentity(id: projectId, display: projectId); // TODO: migrate to presets — cli removed
+    const profile = PersonalIdentity(id: workspaceId, display: workspaceId); // TODO: migrate to presets — cli removed
 
     final contribution = await const CursorConfigProfileCapability()
         .contributeLaunch(
           standaloneContext(
-            projectId: projectId,
+            workspaceId: workspaceId,
             sessionId: sessionId,
             personal: profile,
           ),
@@ -153,7 +153,7 @@ void main() {
 
     final expectedDir = _standaloneToolDir(
       base.path,
-      projectId,
+      workspaceId,
       sessionId,
       'cursor',
     );
@@ -162,14 +162,14 @@ void main() {
   });
 
   test('opencode standalone sets OPENCODE_CONFIG_DIR without idle plugin', () async {
-    const projectId = 'p-oc';
+    const workspaceId = 'p-oc';
     const sessionId = 's-oc';
-    const profile = PersonalIdentity(id: projectId, display: projectId); // TODO: migrate to presets — cli removed
+    const profile = PersonalIdentity(id: workspaceId, display: workspaceId); // TODO: migrate to presets — cli removed
 
     final contribution = await const OpencodeConfigProfileCapability()
         .contributeLaunch(
           standaloneContext(
-            projectId: projectId,
+            workspaceId: workspaceId,
             sessionId: sessionId,
             personal: profile,
           ),
@@ -177,7 +177,7 @@ void main() {
 
     final expectedDir = _standaloneToolDir(
       base.path,
-      projectId,
+      workspaceId,
       sessionId,
       'opencode',
     );
@@ -190,13 +190,13 @@ void main() {
   });
 
   test('codex standalone sets CODEX_HOME without bus overlay', () async {
-    const projectId = 'p-codex';
+    const workspaceId = 'p-codex';
     const sessionId = 's-codex';
-    const profile = PersonalIdentity(id: projectId, display: projectId); // TODO: migrate to presets — cli removed
+    const profile = PersonalIdentity(id: workspaceId, display: workspaceId); // TODO: migrate to presets — cli removed
 
     final contribution = await const CodexConfigProfileCapability().contributeLaunch(
       standaloneContext(
-        projectId: projectId,
+        workspaceId: workspaceId,
         sessionId: sessionId,
         personal: profile,
       ),
@@ -204,7 +204,7 @@ void main() {
 
     final expectedDir = _standaloneToolDir(
       base.path,
-      projectId,
+      workspaceId,
       sessionId,
       'codex',
     );

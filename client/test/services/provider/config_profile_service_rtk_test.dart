@@ -14,7 +14,7 @@ import 'package:teampilot/services/host/host_execution_environment.dart';
 import 'package:teampilot/services/host/script_file_hook_provisioner.dart';
 import 'package:teampilot/services/storage/runtime_storage_context.dart';
 
-const _testProjectId = 'project-1';
+const _testWorkspaceId = 'workspace-1';
 
 void main() {
   group('ConfigProfileService extension settings hooks', () {
@@ -29,7 +29,7 @@ void main() {
         basePath: base.path,
         fs: fs,
         layout: RuntimeLayout(teampilotRoot: base.path, fs: fs),
-        loadEnabledExtensionIds: ({teamId, projectId}) async => {'rtk'},
+        loadEnabledExtensionIds: ({teamId, workspaceId}) async => {'rtk'},
         extensionDetector: ExtensionDetector(
           processRunner: (executable, arguments, {environment}) async {
             const locators = {'which', 'where'};
@@ -70,7 +70,7 @@ void main() {
 
     test('writes PreToolUse hook when RTK extension enabled', () async {
       final outcome = await service.prepareTeamLaunch(
-        projectId: _testProjectId,
+        workspaceId: _testWorkspaceId,
         sessionId: configProfileAdhocSessionId,
         teamId: 'team-a',
         cliTeamName: 'team-a',
@@ -82,8 +82,8 @@ void main() {
       final memberDir = p.join(
         base.path,
         'workspace',
-        'projects',
-        _testProjectId,
+        'workspaces',
+        _testWorkspaceId,
         'sessions',
         configProfileAdhocSessionId,
         'runtime',
@@ -109,12 +109,12 @@ void main() {
         basePath: base.path,
         fs: LocalFilesystem(),
         layout: RuntimeLayout(teampilotRoot: base.path, fs: LocalFilesystem()),
-        loadEnabledExtensionIds: ({teamId, projectId}) async => {'rtk'},
+        loadEnabledExtensionIds: ({teamId, workspaceId}) async => {'rtk'},
         extensionDetector: ExtensionDetector(processRunner: _alwaysMissing),
       );
 
       final outcome = await service.prepareTeamLaunch(
-        projectId: _testProjectId,
+        workspaceId: _testWorkspaceId,
         sessionId: configProfileAdhocSessionId,
         teamId: 'team-b',
         cliTeamName: 'team-b',

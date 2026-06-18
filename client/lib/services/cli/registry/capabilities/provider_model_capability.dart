@@ -16,7 +16,7 @@ abstract interface class RefreshableProviderModelCapability
   });
 }
 
-/// How member / project UI should collect a model id for a provider.
+/// How member / workspace UI should collect a model id for a provider.
 enum ProviderModelPickerMode {
   /// Provider bundles models (e.g. Claude official); no member model field.
   hidden,
@@ -28,7 +28,7 @@ enum ProviderModelPickerMode {
   catalogWithCustomEntry,
 }
 
-/// Per-CLI model catalog and picker rules for team / project configuration UI.
+/// Per-CLI model catalog and picker rules for team / workspace configuration UI.
 abstract interface class ProviderModelCapability implements CliCapability {
   ProviderModelPickerMode pickerMode(AppProviderConfig provider);
 

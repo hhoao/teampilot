@@ -1,8 +1,8 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:path/path.dart' as p;
 import 'package:teampilot/services/storage/app_storage.dart';
-import 'package:teampilot/services/team/default_team_project_service.dart';
-import 'package:teampilot/utils/project_path_utils.dart';
+import 'package:teampilot/services/team/default_team_workspace_service.dart';
+import 'package:teampilot/utils/workspace_path_utils.dart';
 
 import '../../support/post_frame_test_harness.dart';
 
@@ -13,8 +13,8 @@ void main() {
   test('primaryPathForTeam is cwd joined with team id', () {
     final cwd = AppStorage.cwd;
     expect(
-      DefaultTeamProjectService.primaryPathForTeam('alpha-team'),
-      normalizeProjectPath(p.join(cwd, 'alpha-team')),
+      DefaultTeamWorkspaceService.primaryPathForTeam('alpha-team'),
+      normalizeWorkspacePath(p.join(cwd, 'alpha-team')),
     );
   });
 }

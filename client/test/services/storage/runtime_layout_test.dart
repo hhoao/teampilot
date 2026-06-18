@@ -20,7 +20,7 @@ class _NoSymlinkFilesystem extends InMemoryFilesystem {
 }
 
 void main() {
-  const projectId = 'proj-1';
+  const workspaceId = 'proj-1';
 
   group('RuntimeLayout path computation', () {
     final layout = RuntimeLayout(
@@ -45,15 +45,15 @@ void main() {
 
     test('sessionRuntimeToolDir nests under workspace session runtime', () {
       expect(
-        layout.sessionRuntimeToolDir(projectId, 'sess-1', 'flashskyai'),
-        '/tp/workspace/projects/proj-1/sessions/sess-1/runtime/flashskyai',
+        layout.sessionRuntimeToolDir(workspaceId, 'sess-1', 'flashskyai'),
+        '/tp/workspace/workspaces/proj-1/sessions/sess-1/runtime/flashskyai',
       );
     });
 
-    test('transcriptSearchRoots returns app + team + project + session for each tool',
+    test('transcriptSearchRoots returns app + team + workspace + session for each tool',
         () {
       final roots = layout.transcriptSearchRoots(
-        projectId: projectId,
+        workspaceId: workspaceId,
         sessionId: 'sess-1',
         identityId: 'team-a',
       );
@@ -62,15 +62,15 @@ void main() {
         for (final tool in runtimeLayoutDefaultTools)
           '/tp/identities-runtime/team-a/$tool',
         for (final tool in runtimeLayoutDefaultTools)
-          '/tp/workspace/projects/proj-1/config/$tool',
+          '/tp/workspace/workspaces/proj-1/config/$tool',
         for (final tool in runtimeLayoutDefaultTools)
-          '/tp/workspace/projects/proj-1/sessions/sess-1/runtime/$tool',
+          '/tp/workspace/workspaces/proj-1/sessions/sess-1/runtime/$tool',
       ]);
     });
 
     test('transcriptSearchRoots omits session layer when sessionId empty', () {
       final roots = layout.transcriptSearchRoots(
-        projectId: projectId,
+        workspaceId: workspaceId,
         sessionId: '',
         identityId: 'team-a',
         tools: const ['flashskyai'],
@@ -78,7 +78,7 @@ void main() {
       expect(roots, [
         '/tp/cli-defaults/flashskyai',
         '/tp/identities-runtime/team-a/flashskyai',
-        '/tp/workspace/projects/proj-1/config/flashskyai',
+        '/tp/workspace/workspaces/proj-1/config/flashskyai',
       ]);
     });
 
@@ -90,69 +90,69 @@ void main() {
     });
   });
 
-  group('WorkspaceLayout project paths', () {
+  group('WorkspaceLayout workspace paths', () {
     final layout = RuntimeLayout(
       teampilotRoot: '/tp',
       fs: InMemoryFilesystem(),
     );
 
-    test('workspace.projectsDir is workspace/projects', () {
+    test('workspace.workspacesDir is workspace/workspaces', () {
       expect(
-        layout.workspace.projectsDir,
-        '/tp/workspace/projects',
+        layout.workspace.workspacesDir,
+        '/tp/workspace/workspaces',
       );
     });
 
-    test('projectDir nests under workspace/projects/<projectId>', () {
+    test('workspaceDir nests under workspace/workspaces/<workspaceId>', () {
       expect(
-        layout.workspace.projectDir('proj'),
-        '/tp/workspace/projects/proj',
+        layout.workspace.workspaceDir('proj'),
+        '/tp/workspace/workspaces/proj',
       );
     });
 
-    test('projectConfigToolDir nests tool under project config', () {
+    test('workspaceConfigToolDir nests tool under workspace config', () {
       expect(
-        layout.projectConfigToolDir('proj', 'claude'),
-        '/tp/workspace/projects/proj/config/claude',
+        layout.workspaceConfigToolDir('proj', 'claude'),
+        '/tp/workspace/workspaces/proj/config/claude',
       );
     });
 
-    test('projectConfigPluginsDir uses flashskyai tool root', () {
+    test('workspaceConfigPluginsDir uses flashskyai tool root', () {
       expect(
-        layout.projectConfigPluginsDir('proj'),
-        '/tp/workspace/projects/proj/config/flashskyai/plugins',
+        layout.workspaceConfigPluginsDir('proj'),
+        '/tp/workspace/workspaces/proj/config/flashskyai/plugins',
       );
     });
 
-    test('projectConfigMcpDir is under project config', () {
+    test('workspaceConfigMcpDir is under workspace config', () {
       expect(
-        layout.projectConfigMcpDir('proj'),
-        '/tp/workspace/projects/proj/config/mcp',
+        layout.workspaceConfigMcpDir('proj'),
+        '/tp/workspace/workspaces/proj/config/mcp',
       );
     });
 
-    test('projectConfigMcpServersFile is mcp/servers.json', () {
+    test('workspaceConfigMcpServersFile is mcp/servers.json', () {
       expect(
-        layout.projectConfigMcpServersFile('proj'),
-        '/tp/workspace/projects/proj/config/mcp/servers.json',
+        layout.workspaceConfigMcpServersFile('proj'),
+        '/tp/workspace/workspaces/proj/config/mcp/servers.json',
       );
     });
 
     test('sessionRuntimeToolDir nests session and tool', () {
       expect(
         layout.sessionRuntimeToolDir('proj', 'sess', 'claude'),
-        '/tp/workspace/projects/proj/sessions/sess/runtime/claude',
+        '/tp/workspace/workspaces/proj/sessions/sess/runtime/claude',
       );
     });
 
-    test('trims projectId sessionId and tool like team helpers', () {
+    test('trims workspaceId sessionId and tool like team helpers', () {
       expect(
-        layout.workspace.projectDir('  proj  '),
-        layout.workspace.projectDir('proj'),
+        layout.workspace.workspaceDir('  proj  '),
+        layout.workspace.workspaceDir('proj'),
       );
       expect(
-        layout.projectConfigToolDir(' proj ', ' claude '),
-        layout.projectConfigToolDir('proj', 'claude'),
+        layout.workspaceConfigToolDir(' proj ', ' claude '),
+        layout.workspaceConfigToolDir('proj', 'claude'),
       );
       expect(
         layout.sessionRuntimeToolDir(' proj ', ' sess ', ' claude '),
@@ -169,34 +169,34 @@ void main() {
       );
       expect(
         windowsLayout.sessionRuntimeToolDir('proj', 'sess', 'claude'),
-        r'C:\tp\workspace\projects\proj\sessions\sess\runtime\claude',
+        r'C:\tp\workspace\workspaces\proj\sessions\sess\runtime\claude',
       );
     });
   });
 
-  group('projectBucketForPrimaryPath', () {
+  group('workspaceBucketForPrimaryPath', () {
     test('POSIX paths slugify directly', () {
       expect(
-        RuntimeLayout.projectBucketForPrimaryPath('/home/hhoa/agent'),
+        RuntimeLayout.workspaceBucketForPrimaryPath('/home/hhoa/agent'),
         '-home-hhoa-agent',
       );
     });
 
     test('Windows drive paths map to /mnt/<drive>/...', () {
       expect(
-        RuntimeLayout.projectBucketForPrimaryPath(
+        RuntimeLayout.workspaceBucketForPrimaryPath(
           r'D:\a\teampilot\teampilot\client',
         ),
         '-mnt-d-a-teampilot-teampilot-client',
       );
       expect(
-        RuntimeLayout.projectBucketForPrimaryPath(r'C:\Users\hhoa\agent'),
+        RuntimeLayout.workspaceBucketForPrimaryPath(r'C:\Users\hhoa\agent'),
         '-mnt-c-Users-hhoa-agent',
       );
     });
 
     test('empty path returns empty bucket', () {
-      expect(RuntimeLayout.projectBucketForPrimaryPath(''), '');
+      expect(RuntimeLayout.workspaceBucketForPrimaryPath(''), '');
     });
   });
 
@@ -284,14 +284,14 @@ void main() {
         ).writeAsString('top-level');
 
         await layout.ensureSessionRuntimeInheritsIdentity(
-          projectId,
+          workspaceId,
           'sess-1',
           'team-a',
           'flashskyai',
         );
 
         final sessionAgents = _posixPath.join(
-          layout.sessionRuntimeToolDir(projectId, 'sess-1', 'flashskyai'),
+          layout.sessionRuntimeToolDir(workspaceId, 'sess-1', 'flashskyai'),
           'agents',
         );
         expect(_inheritedPathExists(sessionAgents), isTrue);
@@ -301,7 +301,7 @@ void main() {
         );
 
         final sessionSkills = _posixPath.join(
-          layout.sessionRuntimeToolDir(projectId, 'sess-1', 'flashskyai'),
+          layout.sessionRuntimeToolDir(workspaceId, 'sess-1', 'flashskyai'),
           'skills',
         );
         expect(Link(sessionSkills).existsSync(), isFalse,
@@ -328,13 +328,13 @@ void main() {
         await File(p.join(pluginRoot.path, '.mcp.json')).writeAsString('{}');
 
         await layout.provisionSessionPluginsFromIdentity(
-          projectId,
+          workspaceId,
           'sess-1',
           'team-a',
           'flashskyai',
         );
         final sessionPlugins = p.join(
-          layout.sessionRuntimeToolDir(projectId, 'sess-1', 'flashskyai'),
+          layout.sessionRuntimeToolDir(workspaceId, 'sess-1', 'flashskyai'),
           'plugins',
         );
         expect(Link(sessionPlugins).existsSync(), isFalse);
@@ -354,14 +354,14 @@ void main() {
         );
 
         await layout.provisionSessionPluginsFromIdentity(
-          projectId,
+          workspaceId,
           'sess-2',
           'team-a',
           'claude',
         );
         final claudeCopied = Directory(
           p.join(
-            layout.sessionRuntimeToolDir(projectId, 'sess-2', 'claude'),
+            layout.sessionRuntimeToolDir(workspaceId, 'sess-2', 'claude'),
             'plugins',
             'demo-plugin',
           ),
@@ -440,19 +440,19 @@ void main() {
 
         await Future.wait([
           layout.ensureSessionRuntimeInheritsIdentity(
-            projectId,
+            workspaceId,
             'member-1',
             'team-a',
             'flashskyai',
           ),
           layout.ensureSessionRuntimeInheritsIdentity(
-            projectId,
+            workspaceId,
             'member-2',
             'team-a',
             'flashskyai',
           ),
           layout.ensureSessionRuntimeInheritsIdentity(
-            projectId,
+            workspaceId,
             'member-3',
             'team-a',
             'flashskyai',
@@ -461,7 +461,7 @@ void main() {
 
         for (final sessionId in ['member-1', 'member-2', 'member-3']) {
           final sessionAgents = p.join(
-            layout.sessionRuntimeToolDir(projectId, sessionId, 'flashskyai'),
+            layout.sessionRuntimeToolDir(workspaceId, sessionId, 'flashskyai'),
             'agents',
           );
           expect(_inheritedPathExists(sessionAgents), isTrue);
@@ -492,14 +492,14 @@ void main() {
         await expectLater(fs.ensureDir(teamAgents), completes);
 
         await layout.ensureSessionRuntimeInheritsIdentity(
-          projectId,
+          workspaceId,
           'sess-1',
           'team-a',
           'claude',
         );
 
         final sessionAgents = p.join(
-          layout.sessionRuntimeToolDir(projectId, 'sess-1', 'claude'),
+          layout.sessionRuntimeToolDir(workspaceId, 'sess-1', 'claude'),
           'agents',
         );
         expect(_inheritedPathExists(sessionAgents), isTrue);
@@ -511,7 +511,7 @@ void main() {
     );
 
     test(
-      'ensureProjectConfigInheritsApp symlinks agents from app',
+      'ensureWorkspaceConfigInheritsApp symlinks agents from app',
       () async {
         final layout = RuntimeLayout(
           teampilotRoot: base.path,
@@ -524,36 +524,36 @@ void main() {
         await appAgents.create(recursive: true);
         await File(p.join(appAgents.path, 'demo.md')).writeAsString('# demo');
 
-        await layout.ensureProjectConfigInheritsApp('proj-a', 'flashskyai');
+        await layout.ensureWorkspaceConfigInheritsApp('proj-a', 'flashskyai');
 
-        final projectAgents = p.join(
-          layout.projectConfigToolDir('proj-a', 'flashskyai'),
+        final workspaceAgents = p.join(
+          layout.workspaceConfigToolDir('proj-a', 'flashskyai'),
           'agents',
         );
-        expect(_inheritedPathExists(projectAgents), isTrue);
-        if (Link(projectAgents).existsSync()) {
-          expect(Link(projectAgents).targetSync(), appAgents.path);
+        expect(_inheritedPathExists(workspaceAgents), isTrue);
+        if (Link(workspaceAgents).existsSync()) {
+          expect(Link(workspaceAgents).targetSync(), appAgents.path);
         }
         expect(
-          await File(p.join(projectAgents, 'demo.md')).readAsString(),
+          await File(p.join(workspaceAgents, 'demo.md')).readAsString(),
           '# demo',
         );
 
-        final projectSkills = p.join(
-          layout.projectConfigToolDir('proj-a', 'flashskyai'),
+        final workspaceSkills = p.join(
+          layout.workspaceConfigToolDir('proj-a', 'flashskyai'),
           'skills',
         );
         expect(
-          Link(projectSkills).existsSync() ||
-              Directory(projectSkills).existsSync(),
+          Link(workspaceSkills).existsSync() ||
+              Directory(workspaceSkills).existsSync(),
           isFalse,
-          reason: 'project skills/ must not be an inherited symlink or dir',
+          reason: 'workspace skills/ must not be an inherited symlink or dir',
         );
       },
     );
 
     test(
-      'ensureSessionRuntimeInheritsProject chains agents app → project → session',
+      'ensureSessionRuntimeInheritsWorkspace chains agents app → workspace → session',
       () async {
         final layout = RuntimeLayout(
           teampilotRoot: base.path,
@@ -568,7 +568,7 @@ void main() {
           p.join(appAgents.path, 'README.md'),
         ).writeAsString('top-level');
 
-        await layout.ensureSessionRuntimeInheritsProject(
+        await layout.ensureSessionRuntimeInheritsWorkspace(
           'proj-a',
           'sess-1',
           'flashskyai',

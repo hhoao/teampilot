@@ -18,7 +18,7 @@ import 'package:teampilot/cubits/session_preferences_cubit.dart';
 import 'package:teampilot/cubits/identity_cubit.dart';
 import 'package:teampilot/main.dart';
 import 'package:teampilot/models/llm_config.dart';
-import 'package:teampilot/models/app_project.dart';
+import 'package:teampilot/models/app_workspace.dart';
 import 'package:teampilot/models/personal_identity.dart';
 import 'package:teampilot/models/app_session.dart';
 import 'package:teampilot/models/session_member_binding.dart';
@@ -235,7 +235,7 @@ Future<IdentityCubit> createTeamCubit({TeamLauncher? launcher}) async {
   final cubit = IdentityCubit(
     repository: repository,
     sessionRepository: SessionRepository(),
-    reloadProjects: () async {},
+    reloadWorkspaces: () async {},
     executableResolver: _testExecutable,
     launcher: launcher ?? (_, __) async {},
     appDataBasePath: appData.path,
@@ -337,7 +337,7 @@ class _FixedResumeLifecycleService extends SessionLifecycleService {
     TeamIdentity? team,
     TeamMemberConfig? member,
     SessionMemberBinding? memberBinding,
-    Workspace? project,
+    Workspace? workspace,
     PersonalIdentity? personal,
     String? identityId,
     String? llmConfigPathOverride,
@@ -349,7 +349,7 @@ class _FixedResumeLifecycleService extends SessionLifecycleService {
       team: team,
       member: member,
       memberBinding: memberBinding,
-      project: project,
+      workspace: workspace,
       personal: personal,
       llmConfigPathOverride: llmConfigPathOverride,
       extraMcpServers: extraMcpServers,
@@ -400,10 +400,10 @@ class TestChatCubit extends ChatCubit {
   final PostFrameTestHarness postFrame;
 
   void seedChatData({
-    List<Workspace> projects = const [],
+    List<Workspace> workspaces = const [],
     List<AppSession> sessions = const [],
   }) {
-    ingestProjectSessionSnapshot(projects: projects, sessions: sessions);
+    ingestWorkspaceSessionSnapshot(workspaces: workspaces, sessions: sessions);
   }
 }
 
@@ -436,7 +436,7 @@ void main() {
     resetAppRouterLocationForWidgetTests();
   });
 
-  testWidgets('renders chat workbench shell on project route', (tester) async {
+  testWidgets('renders chat workbench shell on workspace route', (tester) async {
     final teamCubit = await createTeamCubitInTest(tester);
     final postFrame = PostFrameTestHarness();
     final chatCubit = ChatCubit(
@@ -450,18 +450,18 @@ void main() {
       postFrameScheduler: postFrame.scheduler,
       sessionRepository: _widgetTestSessionRepo,
     );
-    const project = Workspace(
-      projectId: 'proj-widget-test',
+    const workspace = Workspace(
+      workspaceId: 'proj-widget-test',
       primaryPath: '/work/current',
       createdAt: 1,
     );
-    chatCubit.ingestProjectSessionSnapshot(
-      projects: const [project],
+    chatCubit.ingestWorkspaceSessionSnapshot(
+      workspaces: const [workspace],
       sessions: const [],
     );
     await pumpDesktopApp(tester, teamCubit, chatCubit: chatCubit);
     final teamId = teamCubit.state.selectedTeam!.id;
-    appRouter.go('/home-v2/project/${project.projectId}?as=$teamId');
+    appRouter.go('/home-v2/workspace/${workspace.workspaceId}?as=$teamId');
     await tester.pump();
     await pumpPhaseTransitions(tester);
 
@@ -596,9 +596,9 @@ void main() {
     final repo = SessionRepository(
       rootDir: (await Directory.systemTemp.createTemp('sidebar_sess_')).path,
     );
-    final project = await repo.createProject('/work/current');
+    final workspace = await repo.createWorkspace('/work/current');
     final session = await repo.createSession(
-      project.projectId,
+      workspace.workspaceId,
       sessionTeam: team.id,
       rosterMembers: team.members,
     );
@@ -615,7 +615,7 @@ void main() {
       lifecycleService: _FixedResumeLifecycleService(resume: false),
     );
     addTearDown(chatCubit.close);
-    await chatCubit.loadProjectData(repo);
+    await chatCubit.loadWorkspaceData(repo);
 
     await chatCubit.openSessionTab(
       session,
@@ -654,7 +654,7 @@ void main() {
     final cubit = IdentityCubit(
       repository: repository,
       sessionRepository: SessionRepository(),
-      reloadProjects: () async {},
+      reloadWorkspaces: () async {},
       executableResolver: _testExecutable,
       appDataBasePath: appData.path,
       configProfileService: ConfigProfileService(basePath: appData.path),
@@ -821,7 +821,7 @@ void main() {
       final claudeDir =
           sessions.single.lastExtraEnvironments.single?['CLAUDE_CONFIG_DIR'];
       expect(claudeDir, isNotNull);
-      expect(claudeDir, contains(p.join('workspace', 'projects')));
+      expect(claudeDir, contains(p.join('workspace', 'workspaces')));
       expect(claudeDir, endsWith(p.join('runtime', 'claude')));
       expect(
         sessions
@@ -848,9 +848,9 @@ void main() {
           TeamMemberConfig(id: 'dev', name: 'developer'),
         ],
       );
-      final project = await repo.createProject('/wd');
+      final workspace = await repo.createWorkspace('/wd');
       await repo.createSession(
-        project.projectId,
+        workspace.workspaceId,
         sessionTeam: team.id,
         rosterMembers: team.members,
       );
@@ -867,7 +867,7 @@ void main() {
         autoLaunchAllMembersOnConnect: () => true,
       );
       addTearDown(() => _tearDownChatCubitWithSessionPersist(cubit, postFrame));
-      await cubit.loadProjectData(repo);
+      await cubit.loadWorkspaceData(repo);
 
       cubit.syncTeam(team);
       await cubit.connectSession(team, repo: repo);
@@ -896,9 +896,9 @@ void main() {
           TeamMemberConfig(id: 'dev', name: 'developer'),
         ],
       );
-      final project = await repo.createProject('/wd');
+      final workspace = await repo.createWorkspace('/wd');
       await repo.createSession(
-        project.projectId,
+        workspace.workspaceId,
         sessionTeam: team.id,
         rosterMembers: team.members,
       );
@@ -914,7 +914,7 @@ void main() {
         postFrameScheduler: postFrame.scheduler,
       );
       addTearDown(() => _tearDownChatCubitWithSessionPersist(cubit, postFrame));
-      await cubit.loadProjectData(repo);
+      await cubit.loadWorkspaceData(repo);
 
       cubit.syncTeam(team);
       await cubit.connectSession(team, repo: repo);
@@ -952,7 +952,7 @@ void main() {
       );
       const session = AppSession(
         sessionId: 'session-1',
-        projectId: 'proj-test-2',
+        workspaceId: 'proj-test-2',
         primaryPath: '/tmp',
         display: 'Session One',
         sessionTeam: 'test-team',
@@ -995,9 +995,9 @@ void main() {
       name: 'TName',
       members: const [TeamMemberConfig(id: 'lid', name: 'team-lead')],
     );
-    final project = await repo.createProject('/wd');
+    final workspace = await repo.createWorkspace('/wd');
     await repo.createSession(
-      project.projectId,
+      workspace.workspaceId,
       sessionTeam: team.id,
       rosterMembers: team.members,
     );
@@ -1013,7 +1013,7 @@ void main() {
       postFrameScheduler: postFrame.scheduler,
     );
     addTearDown(() => _tearDownChatCubitWithSessionPersist(cubit, postFrame));
-    await cubit.loadProjectData(repo);
+    await cubit.loadWorkspaceData(repo);
     final rel = cubit.state.sessions.single;
     await cubit.openSessionTab(
       rel,
@@ -1037,9 +1037,9 @@ void main() {
       name: 'TName',
       members: const [TeamMemberConfig(id: 'lid', name: 'team-lead')],
     );
-    final project = await repo.createProject('/wd');
+    final workspace = await repo.createWorkspace('/wd');
     final session = await repo.createSession(
-      project.projectId,
+      workspace.workspaceId,
       sessionTeam: team.id,
       rosterMembers: team.members,
     );
@@ -1058,7 +1058,7 @@ void main() {
       lifecycleService: _FixedResumeLifecycleService(resume: true),
     );
     addTearDown(() => _tearDownChatCubitWithSessionPersist(cubit, postFrame));
-    await cubit.loadProjectData(repo);
+    await cubit.loadWorkspaceData(repo);
     final rel = cubit.state.sessions.single;
     await cubit.openSessionTab(
       rel,
@@ -1082,9 +1082,9 @@ void main() {
         name: 'TName',
         members: const [TeamMemberConfig(id: 'lid', name: 'team-lead')],
       );
-      final project = await repo.createProject('/wd');
+      final workspace = await repo.createWorkspace('/wd');
       final session = await repo.createSession(
-        project.projectId,
+        workspace.workspaceId,
         sessionTeam: team.id,
         rosterMembers: team.members,
       );
@@ -1103,7 +1103,7 @@ void main() {
         lifecycleService: _FixedResumeLifecycleService(resume: false),
       );
       addTearDown(() => _tearDownChatCubitWithSessionPersist(cubit, postFrame));
-      await cubit.loadProjectData(repo);
+      await cubit.loadWorkspaceData(repo);
       final rel = cubit.state.sessions.single;
       await cubit.openSessionTab(
         rel,
@@ -1128,12 +1128,12 @@ void main() {
         name: 'TName',
         members: const [TeamMemberConfig(id: 'lid', name: 'team-lead')],
       );
-      final project = await repo.createProject(
+      final workspace = await repo.createWorkspace(
         '/root',
         additionalPaths: const ['/extra'],
       );
       await repo.createSession(
-        project.projectId,
+        workspace.workspaceId,
         sessionTeam: team.id,
         rosterMembers: team.members,
       );
@@ -1149,7 +1149,7 @@ void main() {
         postFrameScheduler: postFrame.scheduler,
       );
       addTearDown(() => _tearDownChatCubitWithSessionPersist(cubit, postFrame));
-      await cubit.loadProjectData(repo);
+      await cubit.loadWorkspaceData(repo);
       final rel = cubit.state.sessions.single;
       await cubit.openSessionTab(
         rel,

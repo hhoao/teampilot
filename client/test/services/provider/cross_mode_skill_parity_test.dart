@@ -57,8 +57,8 @@ void main() {
         ],
       );
 
-      await service.prepareProjectLaunch(identityId: 'personal-default', 
-        projectId: 'p',
+      await service.prepareWorkspaceLaunch(identityId: 'personal-default', 
+        workspaceId: 'p',
         sessionId: 's',
         personal: const PersonalIdentity(id: 'p', display: 'p',
           bundle: ConfigBundle(skillIds: ['demo']),
@@ -66,7 +66,7 @@ void main() {
       );
 
       await service.prepareTeamLaunch(
-        projectId: 'project-1',
+        workspaceId: 'workspace-1',
         sessionId: 'tn-1',
         teamId: 'tn',
         cliTeamName: 'tn-1',
@@ -81,7 +81,7 @@ void main() {
 
       const mixedMember = TeamMemberConfig(id: 'm1', name: 'M1');
       await service.prepareTeamLaunch(
-        projectId: 'project-1',
+        workspaceId: 'workspace-1',
         sessionId: 'tm-1',
         teamId: 'tm',
         cliTeamName: 'tm-1',
@@ -105,7 +105,7 @@ void main() {
 
       final native = await namesIn(
         fs.pathContext.join(
-          layout.sessionRuntimeToolDir('project-1', 'tn-1', 'flashskyai'),
+          layout.sessionRuntimeToolDir('workspace-1', 'tn-1', 'flashskyai'),
           'skills',
         ),
       );
@@ -128,7 +128,7 @@ void main() {
       final mixed = await namesIn(
         fs.pathContext.join(
           layout.sessionRuntimeToolDir(
-            'project-1',
+            'workspace-1',
             'tm-1',
             'flashskyai',
             memberId: 'm1',

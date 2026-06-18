@@ -3,19 +3,19 @@ import 'dart:typed_data';
 import 'package:flutter/material.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 
-import '../models/app_project.dart';
-import '../models/project_icon_ref.dart';
-import '../services/project/project_icon_service.dart';
-import '../services/project/project_icon_storage.dart';
+import '../models/app_workspace.dart';
+import '../models/workspace_icon_ref.dart';
+import '../services/workspace/workspace_icon_service.dart';
+import '../services/workspace/workspace_icon_storage.dart';
 import '../services/storage/app_storage.dart';
 import '../services/storage/workspace_layout.dart';
-import '../utils/project_geometry_catalog.dart';
-import '../utils/project_icon_resolver.dart';
+import '../utils/workspace_geometry_catalog.dart';
+import '../utils/workspace_icon_resolver.dart';
 
-/// Renders a project avatar from [Workspace.icon].
-class ProjectIcon extends StatelessWidget {
-  const ProjectIcon({
-    required this.project,
+/// Renders a workspace avatar from [Workspace.icon].
+class WorkspaceIcon extends StatelessWidget {
+  const WorkspaceIcon({
+    required this.workspace,
     this.previewIcon,
     this.size = 64,
     this.borderRadius = 17,
@@ -23,17 +23,17 @@ class ProjectIcon extends StatelessWidget {
     super.key,
   });
 
-  factory ProjectIcon.fromProject(
-    Workspace project, {
-    ProjectIconRef? previewIcon,
+  factory WorkspaceIcon.fromWorkspace(
+    Workspace workspace, {
+    WorkspaceIconRef? previewIcon,
     double size = 64,
     double borderRadius = 17,
     double padding = 10,
     Key? key,
   }) {
-    return ProjectIcon(
+    return WorkspaceIcon(
       key: key,
-      project: project,
+      workspace: workspace,
       previewIcon: previewIcon,
       size: size,
       borderRadius: borderRadius,
@@ -41,19 +41,19 @@ class ProjectIcon extends StatelessWidget {
     );
   }
 
-  final Workspace project;
-  final ProjectIconRef? previewIcon;
+  final Workspace workspace;
+  final WorkspaceIconRef? previewIcon;
   final double size;
   final double borderRadius;
   final double padding;
 
-  Workspace get _displayProject =>
-      previewIcon == null ? project : project.copyWith(icon: previewIcon);
+  Workspace get _displayWorkspace =>
+      previewIcon == null ? workspace : workspace.copyWith(icon: previewIcon);
 
   @override
   Widget build(BuildContext context) {
     final cs = Theme.of(context).colorScheme;
-    final resolved = resolveProjectIcon(_displayProject);
+    final resolved = resolveWorkspaceIcon(_displayWorkspace);
 
     return Container(
       width: size,
@@ -68,14 +68,14 @@ class ProjectIcon extends StatelessWidget {
       clipBehavior: Clip.antiAlias,
       padding: EdgeInsets.all(padding),
       child: switch (resolved) {
-        ResolvedProjectGeometryIcon(:final assetPath) => SvgPicture.asset(
+        ResolvedWorkspaceGeometryIcon(:final assetPath) => SvgPicture.asset(
           assetPath,
           fit: BoxFit.contain,
           semanticsLabel: assetPath,
         ),
-        ResolvedProjectCustomIcon(:final relativePath) =>
-          _CustomProjectIconImage(
-            project: project,
+        ResolvedWorkspaceCustomIcon(:final relativePath) =>
+          _CustomWorkspaceIconImage(
+            workspace: workspace,
             relativePath: relativePath,
           ),
       },
@@ -83,21 +83,21 @@ class ProjectIcon extends StatelessWidget {
   }
 }
 
-class _CustomProjectIconImage extends StatefulWidget {
-  const _CustomProjectIconImage({
-    required this.project,
+class _CustomWorkspaceIconImage extends StatefulWidget {
+  const _CustomWorkspaceIconImage({
+    required this.workspace,
     required this.relativePath,
   });
 
-  final Workspace project;
+  final Workspace workspace;
   final String relativePath;
 
   @override
-  State<_CustomProjectIconImage> createState() =>
-      _CustomProjectIconImageState();
+  State<_CustomWorkspaceIconImage> createState() =>
+      _CustomWorkspaceIconImageState();
 }
 
-class _CustomProjectIconImageState extends State<_CustomProjectIconImage> {
+class _CustomWorkspaceIconImageState extends State<_CustomWorkspaceIconImage> {
   late Future<List<int>?> _bytesFuture;
 
   @override
@@ -107,7 +107,7 @@ class _CustomProjectIconImageState extends State<_CustomProjectIconImage> {
   }
 
   @override
-  void didUpdateWidget(covariant _CustomProjectIconImage oldWidget) {
+  void didUpdateWidget(covariant _CustomWorkspaceIconImage oldWidget) {
     super.didUpdateWidget(oldWidget);
     if (oldWidget.relativePath != widget.relativePath) {
       _bytesFuture = _loadBytes();
@@ -115,9 +115,9 @@ class _CustomProjectIconImageState extends State<_CustomProjectIconImage> {
   }
 
   Future<List<int>?> _loadBytes() {
-    return projectIconService.loadCustomBytes(
-      projectDir: WorkspaceLayout(teampilotRoot: AppStorage.paths.basePath)
-          .projectDir(widget.project.projectId),
+    return workspaceIconService.loadCustomBytes(
+      workspaceDir: WorkspaceLayout(teampilotRoot: AppStorage.paths.basePath)
+          .workspaceDir(widget.workspace.workspaceId),
       relativePath: widget.relativePath,
     );
   }
@@ -132,7 +132,7 @@ class _CustomProjectIconImageState extends State<_CustomProjectIconImage> {
           return _geometryFallback();
         }
         final data = Uint8List.fromList(bytes);
-        if (ProjectIconStorage.isSvgPath(widget.relativePath)) {
+        if (WorkspaceIconStorage.isSvgPath(widget.relativePath)) {
           return SvgPicture.memory(
             data,
             fit: BoxFit.contain,
@@ -150,7 +150,7 @@ class _CustomProjectIconImageState extends State<_CustomProjectIconImage> {
   }
 
   Widget _geometryFallback() {
-    final asset = projectGeometryAssetForProjectId(widget.project.projectId);
+    final asset = workspaceGeometryAssetForWorkspaceId(widget.workspace.workspaceId);
     return SvgPicture.asset(
       asset,
       fit: BoxFit.contain,

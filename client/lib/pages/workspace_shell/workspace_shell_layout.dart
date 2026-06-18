@@ -15,7 +15,7 @@ class WorkspaceShellMainWithTerminal extends StatelessWidget {
     required this.rightTools,
     required this.onRightToolsWidthChanged,
     this.workspaceTerminalWorkingDirectory,
-    this.workspaceProjectId,
+    this.workspaceWorkspaceId,
   });
 
   final LayoutPreferences preferences;
@@ -23,7 +23,7 @@ class WorkspaceShellMainWithTerminal extends StatelessWidget {
   final Widget? rightTools;
   final ValueChanged<double>? onRightToolsWidthChanged;
   final String? workspaceTerminalWorkingDirectory;
-  final String? workspaceProjectId;
+  final String? workspaceWorkspaceId;
 
   @override
   Widget build(BuildContext context) {
@@ -33,7 +33,7 @@ class WorkspaceShellMainWithTerminal extends StatelessWidget {
       onRightToolsWidthChanged: onRightToolsWidthChanged,
       child: WorkspaceShellCenterColumnWithTerminal(
         workspaceTerminalWorkingDirectory: workspaceTerminalWorkingDirectory,
-        workspaceProjectId: workspaceProjectId,
+        workspaceWorkspaceId: workspaceWorkspaceId,
         child: child,
       ),
     );
@@ -45,12 +45,12 @@ class WorkspaceShellCenterColumnWithTerminal extends StatelessWidget {
   const WorkspaceShellCenterColumnWithTerminal({super.key, 
     required this.child,
     this.workspaceTerminalWorkingDirectory,
-    this.workspaceProjectId,
+    this.workspaceWorkspaceId,
   });
 
   final Widget child;
   final String? workspaceTerminalWorkingDirectory;
-  final String? workspaceProjectId;
+  final String? workspaceWorkspaceId;
 
   @override
   Widget build(BuildContext context) {
@@ -73,21 +73,21 @@ class WorkspaceShellCenterColumnWithTerminal extends StatelessWidget {
           LayoutPreferences.minWorkspaceTerminalHeight,
           LayoutPreferences.maxWorkspaceTerminalHeight,
         );
-        final projectId = workspaceProjectId?.trim() ?? '';
+        final workspaceId = workspaceWorkspaceId?.trim() ?? '';
         // Key by the registry-group identity only — NOT cwd. Keeping cwd out of
-        // the key means a same-project cwd change keeps the same panel State, so
+        // the key means a same-workspace cwd change keeps the same panel State, so
         // the cwd update flows through didUpdateWidget -> _syncActiveEntryCwd
         // (which updates the active entry + reconnects). Including cwd here would
         // recreate the State, whose bootstrap re-attaches existing terminals
         // without updating their cwd, stranding them at the old path.
-        final terminalGroupId = projectId.isNotEmpty ? projectId : cwd;
+        final terminalGroupId = workspaceId.isNotEmpty ? workspaceId : cwd;
         return ResizableSplitView(
           axis: Axis.vertical,
           primaryAtEnd: true,
           first: child,
           second: WorkspaceTerminalPanel(
             key: ValueKey('workspace-terminal-$terminalGroupId'),
-            projectId: terminalGroupId,
+            workspaceId: terminalGroupId,
             workingDirectory: cwd,
           ),
           initialPrimarySize: terminalHeight,

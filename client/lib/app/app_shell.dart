@@ -216,8 +216,8 @@ Future<AppShell> buildAppShell({
     knownHostRepository: sshKnownHostRepo,
   );
 
-  boot('resolving default project directory');
-  final defaultProjectDirectory = await DefaultProjectDirectory.resolve();
+  boot('resolving default workspace directory');
+  final defaultWorkspaceDirectory = await DefaultWorkspaceDirectory.resolve();
   boot('installing RuntimeStorageContext');
   await RuntimeStorageContext.install(
     isSshMode:
@@ -229,7 +229,7 @@ Future<AppShell> buildAppShell({
     nativeAppDataPath: nativeAppDataPath,
     nativeHome:
         Platform.environment['HOME'] ?? Platform.environment['USERPROFILE'],
-    nativeCwd: defaultProjectDirectory,
+    nativeCwd: defaultWorkspaceDirectory,
     wslDistro: RuntimeStorageContext.parseWslDistro(claudeLocated),
     windowsStorageBackend: windowsStorageBackend(),
   );
@@ -316,7 +316,7 @@ Future<AppShell> buildAppShell({
     nativeAppDataPath: nativeAppDataPath,
     nativeHome:
         Platform.environment['HOME'] ?? Platform.environment['USERPROFILE'],
-    nativeCwd: defaultProjectDirectory,
+    nativeCwd: defaultWorkspaceDirectory,
     wslDistro: wslDistroFromPrefs(),
     windowsStorageBackend: windowsStorageBackend(),
   );
@@ -419,13 +419,13 @@ Future<AppShell> buildAppShell({
   sessionLifecycleService = SessionLifecycleService(
     llmConfigPathOverride: llmConfigPathOverrideForLaunch,
     storageRootsResolver: storageRoots.resolve,
-    loadEnabledExtensionIds: ({teamId, projectId}) async {
+    loadEnabledExtensionIds: ({teamId, workspaceId}) async {
       final trimmedTeamId = teamId?.trim() ?? '';
       if (trimmedTeamId.isNotEmpty) {
         return extensionRepository.effectiveEnabledIds(trimmedTeamId);
       }
-      final trimmedProjectId = projectId?.trim() ?? '';
-      if (trimmedProjectId.isNotEmpty) {
+      final trimmedWorkspaceId = workspaceId?.trim() ?? '';
+      if (trimmedWorkspaceId.isNotEmpty) {
         return extensionRepository.effectiveEnabledIds(
           IdentityProvisioner.defaultPersonalId,
         );
@@ -448,7 +448,7 @@ Future<AppShell> buildAppShell({
   teamCubit = IdentityCubit(
     repository: identityRepository,
     sessionRepository: sessionRepo,
-    reloadProjects: () => chatCubit.loadProjectData(sessionRepo),
+    reloadWorkspaces: () => chatCubit.loadWorkspaceData(sessionRepo),
     executableResolver: () => sessionPreferencesCubit.resolveExecutable(),
     cliExecutableResolver: sessionPreferencesCubit.resolveExecutable,
     llmConfigPathOverride: llmConfigPathOverrideForLaunch,
@@ -591,7 +591,7 @@ Future<AppShell> buildAppShell({
   await layoutCubit.load();
   applyWorkspaceEntryMode(
     layoutCubit.state.preferences.workspaceEntryMode,
-    lastOpenedProjectId: layoutCubit.state.preferences.lastOpenedProjectId,
+    lastOpenedWorkspaceId: layoutCubit.state.preferences.lastOpenedWorkspaceId,
   );
   boot('buildAppShell complete');
 
@@ -618,8 +618,8 @@ Future<AppShell> buildAppShell({
     );
     reapplyWorkspaceEntryFromPreferences(
       layoutCubit.state.preferences,
-      knownProjectIds: {
-        for (final project in chatCubit.state.projects) project.projectId,
+      knownWorkspaceIds: {
+        for (final workspace in chatCubit.state.workspaces) workspace.workspaceId,
       },
     );
   }
@@ -690,7 +690,7 @@ Future<void> reloadRemoteBackedAppData({
     skillCubit.loadAll(),
     mcpCubit.loadAll(),
     extensionCubit.load(force: true),
-    chatCubit.loadProjectData(sessionRepo),
+    chatCubit.loadWorkspaceData(sessionRepo),
     sshProfileCubit.load(notifyActiveProfileChanged: false),
   ]);
   await teamCubit.syncSelectedTeamPlugins(

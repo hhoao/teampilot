@@ -1,11 +1,11 @@
 import 'dart:io';
 
 import 'package:flutter_test/flutter_test.dart';
-import 'package:teampilot/services/home_workspace/home_workspace_project_launch_prefs_store.dart';
+import 'package:teampilot/services/home_workspace/home_workspace_workspace_launch_prefs_store.dart';
 import 'package:teampilot/services/io/local_filesystem.dart';
 
 void main() {
-  test('round-trips per-project launch prefs', () async {
+  test('round-trips per-workspace launch prefs', () async {
     final tmp = await Directory.systemTemp.createTemp('launch_prefs_');
     addTearDown(() => tmp.deleteSync(recursive: true));
     final store = WorkspaceLaunchPrefsStore(
@@ -15,7 +15,7 @@ void main() {
 
     expect(await store.prefsFor('p1'), isNull);
 
-    await store.save('p1', const ProjectLaunchPref(
+    await store.save('p1', const WorkspaceLaunchPref(
       lastIdentity: 'team:abc',
       remember: true,
     ));
@@ -23,7 +23,7 @@ void main() {
     expect(loaded?.lastIdentity, 'team:abc');
     expect(loaded?.remember, isTrue);
 
-    // Unrelated project unaffected.
+    // Unrelated workspace unaffected.
     expect(await store.prefsFor('p2'), isNull);
   });
 }

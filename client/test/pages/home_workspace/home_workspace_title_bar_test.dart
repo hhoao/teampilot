@@ -35,7 +35,7 @@ void main() {
                 kind: HomeWorkspaceTabKind.team,
               ),
             ],
-            activeProjectId: 'personal',
+            activeWorkspaceId: 'personal',
           ),
         ),
       ),

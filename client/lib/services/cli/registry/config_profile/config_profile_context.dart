@@ -3,7 +3,7 @@ import 'package:path/path.dart' as p;
 import '../../../storage/runtime_layout.dart';
 import '../../../../models/cli_preset.dart';
 import '../../../../models/personal_identity.dart';
-import '../../../../models/project_agent_config.dart';
+import '../../../../models/workspace_agent_config.dart';
 import '../../../../models/team_config.dart';
 import '../../../../utils/team_member_naming.dart';
 import '../../../io/filesystem.dart';
@@ -12,14 +12,14 @@ import 'config_profile_scope.dart';
 
 export 'config_profile_scope.dart';
 
-/// Personal project PTY CONFIG_DIR for [tool].
+/// Personal workspace PTY CONFIG_DIR for [tool].
 String standaloneSessionToolDir(
   ConfigProfilePaths paths,
   StandaloneLaunchProfileScope scope,
   String tool,
 ) =>
     paths.layout.sessionRuntimeToolDir(
-      scope.projectId,
+      scope.workspaceId,
       scope.sessionId,
       tool,
     );
@@ -28,13 +28,13 @@ String standaloneSessionToolDir(
 /// [standaloneSessionToolDir] for CONFIG_DIR).
 LaunchProfileScope launchScopeForStandalone(StandaloneLaunchProfileScope scope) =>
     LaunchProfileScope(
-      projectId: scope.projectId,
-      teamId: scope.projectId,
+      workspaceId: scope.workspaceId,
+      teamId: scope.workspaceId,
       sessionId: scope.sessionId,
       cliTeamName: scope.sessionId,
     );
 
-/// Resolve CLI/provider/model/effort for a personal project from its active preset.
+/// Resolve CLI/provider/model/effort for a personal workspace from its active preset.
 /// Returns null if no preset is active, not found, or [activePresetId] is empty.
 CliPreset? resolveActivePreset(String? activePresetId, List<CliPreset> presets) {
   if (activePresetId == null || activePresetId.isEmpty) return null;
@@ -102,13 +102,13 @@ TeamMemberConfig standaloneMemberFromPersonal(
 @Deprecated('Use standaloneTeamFromPersonal')
 TeamIdentity standaloneTeamFromProfile(
   PersonalIdentity personal, {
-  required String projectId,
+  required String workspaceId,
   required String sessionTeamName,
   required CliPreset? preset,
 }) =>
     standaloneTeamFromPersonal(
       personal,
-      identityId: projectId,
+      identityId: workspaceId,
       sessionTeamName: sessionTeamName,
       preset: preset,
     );
@@ -120,7 +120,7 @@ TeamMemberConfig standaloneMemberFromProfile(
 }) =>
     standaloneMemberFromPersonal(personal, preset: preset);
 
-String _standaloneMemberDisplayName(ProjectAgentConfig agent) {
+String _standaloneMemberDisplayName(WorkspaceAgentConfig agent) {
   final fromAgent = agent.agent.trim();
   if (fromAgent.isNotEmpty) return fromAgent;
   final fromType = agent.agentType.trim();
@@ -143,7 +143,7 @@ abstract interface class ConfigProfilePaths {
   RuntimeLayout get layout;
 
   String sessionToolDir(
-    String projectId,
+    String workspaceId,
     String sessionId,
     String tool, {
     String? memberId,
@@ -159,10 +159,10 @@ abstract interface class ConfigProfileDelegate implements ConfigProfilePaths {
 
   Future<void> writeJsonIfChanged(String path, Map<String, Object?> value);
 
-  Future<Map<String, Object?>> metadataWithTrustedProjects({
+  Future<Map<String, Object?>> metadataWithTrustedWorkspaces({
     required String metadataPath,
     required Map<String, Object?> defaultMetadata,
-    required Map<String, Object?> defaultProjectConfig,
+    required Map<String, Object?> defaultWorkspaceConfig,
     required Iterable<String> directories,
   });
 
@@ -180,13 +180,13 @@ abstract interface class ConfigProfileDelegate implements ConfigProfilePaths {
     String? memberToolDir,
     required String tool,
     String? teamId,
-    String? projectId,
+    String? workspaceId,
   });
 
   Future<bool> hasEnabledExtensionSettingsHooks(
     String tool, {
     String? teamId,
-    String? projectId,
+    String? workspaceId,
   });
 
   Future<Map<String, Object?>> applyExtensionSettings(
@@ -194,7 +194,7 @@ abstract interface class ConfigProfileDelegate implements ConfigProfilePaths {
     String? memberToolDir, {
     required String tool,
     String? teamId,
-    String? projectId,
+    String? workspaceId,
   });
 
   Future<Map<String, Object?>> maybeApplyTeamLeadHooks(
@@ -215,7 +215,7 @@ abstract interface class ConfigProfileDelegate implements ConfigProfilePaths {
 
 class ConfigProfileSessionContext {
   const ConfigProfileSessionContext({
-    required this.projectId,
+    required this.workspaceId,
     required this.teamId,
     required this.sessionId,
     required this.members,
@@ -226,7 +226,7 @@ class ConfigProfileSessionContext {
     this.memberId,
   });
 
-  final String projectId;
+  final String workspaceId;
   final String teamId;
   final String sessionId;
   final List<TeamMemberConfig> members;
@@ -239,7 +239,7 @@ class ConfigProfileSessionContext {
 
 class ConfigProfileLaunchContext {
   const ConfigProfileLaunchContext({
-    required this.projectId,
+    required this.workspaceId,
     required this.teamId,
     required this.sessionId,
     required this.scope,
@@ -257,7 +257,7 @@ class ConfigProfileLaunchContext {
     this.memberId,
   });
 
-  final String projectId;
+  final String workspaceId;
   final String teamId;
   final String sessionId;
   final LaunchProfileScope scope;

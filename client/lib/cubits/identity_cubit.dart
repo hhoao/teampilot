@@ -13,7 +13,7 @@ import '../repositories/plugin_repository.dart';
 import '../repositories/identity_repository.dart';
 import '../repositories/session_repository.dart';
 import '../services/cli/registry/cli_tool_registry.dart';
-import '../services/team/default_team_project_service.dart';
+import '../services/team/default_team_workspace_service.dart';
 import '../services/provider/config_profile_service.dart';
 import '../services/session/session_lifecycle_service.dart';
 import '../services/mcp/identity_mcp_linker_service.dart';
@@ -41,7 +41,7 @@ class IdentityCubit extends Cubit<IdentityState> implements IdentityCubitHost {
   IdentityCubit({
     required IdentityRepository repository,
     required SessionRepository sessionRepository,
-    required Future<void> Function() reloadProjects,
+    required Future<void> Function() reloadWorkspaces,
     required String Function() executableResolver,
     CliExecutableResolver? cliExecutableResolver,
     TeamLauncher? launcher,
@@ -59,7 +59,7 @@ class IdentityCubit extends Cubit<IdentityState> implements IdentityCubitHost {
     Future<List<McpServer>> Function(String teamId)? extensionMcpContributor,
   }) : _repository = repository,
        _sessionRepository = sessionRepository,
-       _reloadProjects = reloadProjects,
+       _reloadWorkspaces = reloadWorkspaces,
        _executableResolver = executableResolver,
        _cliExecutableResolver = cliExecutableResolver,
        _appDataBasePath = appDataBasePath,
@@ -90,7 +90,7 @@ class IdentityCubit extends Cubit<IdentityState> implements IdentityCubitHost {
 
   final IdentityRepository _repository;
   final SessionRepository _sessionRepository;
-  final Future<void> Function() _reloadProjects;
+  final Future<void> Function() _reloadWorkspaces;
   final String Function() _executableResolver;
   final CliExecutableResolver? _cliExecutableResolver;
   final String _appDataBasePath;
@@ -357,7 +357,7 @@ class IdentityCubit extends Cubit<IdentityState> implements IdentityCubitHost {
       final team = _rosterEditor.defaultTeam();
       teams = [team];
       await _repository.save(team);
-      await _seedDefaultProject(team);
+      await _seedDefaultWorkspace(team);
     }
     final selectedId = state.selectedTeamId;
     final nextSelected = selectedId != null &&
@@ -497,7 +497,7 @@ class IdentityCubit extends Cubit<IdentityState> implements IdentityCubitHost {
     );
     await saveTeams(teams);
     await _provisioner.ensureTeamProfile(team.id, cli: team.cli);
-    await _seedDefaultProject(team);
+    await _seedDefaultWorkspace(team);
     unawaited(_sync.syncPluginsForSelected());
     return true;
   }
@@ -562,14 +562,14 @@ class IdentityCubit extends Cubit<IdentityState> implements IdentityCubitHost {
     );
     await saveTeams(teams);
     await _provisioner.ensureTeamProfile(team.id, cli: team.cli);
-    await _seedDefaultProject(team);
+    await _seedDefaultWorkspace(team);
     unawaited(_sync.syncPluginsForSelected());
     return team.id;
   }
 
-  Future<void> _seedDefaultProject(TeamIdentity team) async {
-    await DefaultTeamProjectService.seed(_sessionRepository, team);
-    await _reloadProjects();
+  Future<void> _seedDefaultWorkspace(TeamIdentity team) async {
+    await DefaultTeamWorkspaceService.seed(_sessionRepository, team);
+    await _reloadWorkspaces();
   }
 
   /// Renames the selected team and removes persisted files keyed by the old name.
@@ -834,7 +834,7 @@ class IdentityCubit extends Cubit<IdentityState> implements IdentityCubitHost {
     return true;
   }
 
-  /// Default personal identity for simple-mode project config (Stage 3 bridge
+  /// Default personal identity for simple-mode workspace config (Stage 3 bridge
   /// until [Workspace.defaultIdentityId] in Stage 4).
   PersonalIdentity? get activePersonal {
     final identity = state.byId(IdentityProvisioner.defaultPersonalId);
@@ -844,7 +844,7 @@ class IdentityCubit extends Cubit<IdentityState> implements IdentityCubitHost {
   }
 
   /// Sets the active preset for a specific personal identity (the one the
-  /// project was opened against). Falls back to [activePersonal] when
+  /// workspace was opened against). Falls back to [activePersonal] when
   /// [identityId] is empty or not a personal identity.
   Future<void> setPersonalPreset(String identityId, String presetId) async {
     final byId = identityId.isEmpty ? null : state.byId(identityId);

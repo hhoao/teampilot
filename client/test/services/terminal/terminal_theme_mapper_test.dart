@@ -72,12 +72,12 @@ void main() {
       mode: 'adaptive',
       chrome: WorkspacePageChrome.home,
     );
-    final project = teampilotTerminalTheme(
+    final workspace = teampilotTerminalTheme(
       cs,
       isDark: false,
       mode: 'adaptive',
-      chrome: WorkspacePageChrome.project,
+      chrome: WorkspacePageChrome.workspace,
     );
-    expect(home.background, isNot(project.background));
+    expect(home.background, isNot(workspace.background));
   });
 }

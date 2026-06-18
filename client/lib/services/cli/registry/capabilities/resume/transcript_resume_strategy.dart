@@ -41,9 +41,9 @@ Future<bool> _transcriptExists({
       if (!root.contains(memberSegment)) root,
   ];
   for (final root in orderedRoots) {
-    final projectsDir = path.join(root, 'projects');
+    final workspacesDir = path.join(root, 'workspaces');
     if (bucket.isNotEmpty) {
-      final bucketDir = path.join(projectsDir, bucket);
+      final bucketDir = path.join(workspacesDir, bucket);
       if ((await fs.stat(path.join(bucketDir, '$sessionId.jsonl'))).isFile) {
         return true;
       }
@@ -51,22 +51,22 @@ Future<bool> _transcriptExists({
         return true;
       }
     }
-    if (await _scanProjects(fs, projectsDir, sessionId)) return true;
+    if (await _scanWorkspaces(fs, workspacesDir, sessionId)) return true;
   }
   return false;
 }
 
-Future<bool> _scanProjects(
+Future<bool> _scanWorkspaces(
   Filesystem fs,
-  String projectsDir,
+  String workspacesDir,
   String sessionId,
 ) async {
   final path = fs.pathContext;
   try {
-    final buckets = await fs.listDir(projectsDir);
+    final buckets = await fs.listDir(workspacesDir);
     for (final bucket in buckets) {
       if (!bucket.isDirectory) continue;
-      final bucketPath = path.join(projectsDir, bucket.name);
+      final bucketPath = path.join(workspacesDir, bucket.name);
       if ((await fs.stat(path.join(bucketPath, '$sessionId.jsonl'))).isFile) {
         return true;
       }

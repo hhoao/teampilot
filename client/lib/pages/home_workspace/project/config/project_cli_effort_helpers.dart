@@ -3,8 +3,8 @@ import '../../../../models/personal_identity.dart';
 import '../../../../services/cli/registry/capabilities/cli_effort_capability.dart';
 import '../../../../services/cli/registry/cli_tool_registry.dart';
 
-/// Personal-project CLI defaults: show when the tool exposes any effort UI.
-bool projectCliShowsEffortPicker({
+/// Personal-workspace CLI defaults: show when the tool exposes any effort UI.
+bool workspaceCliShowsEffortPicker({
   required CliToolRegistry registry,
   required CliTool cli,
   required AppProviderConfig? provider,
@@ -25,11 +25,11 @@ bool projectCliShowsEffortPicker({
   return capability.isApplicable(model: resolvedModel);
 }
 
-String projectCliEffortId(PersonalIdentity personal, CliTool cli) {
+String workspaceCliEffortId(PersonalIdentity personal, CliTool cli) {
   return personal.effortsByTool[cli.value]?.trim() ?? '';
 }
 
-List<String> projectCliEffortCandidates({
+List<String> workspaceCliEffortCandidates({
   required CliToolRegistry registry,
   required CliTool cli,
   required AppProviderConfig? provider,
@@ -40,7 +40,7 @@ List<String> projectCliEffortCandidates({
   return capability.effortCandidates(model: model, provider: provider);
 }
 
-String projectCliDefaultEffort({
+String workspaceCliDefaultEffort({
   required CliToolRegistry registry,
   required CliTool cli,
   required AppProviderConfig? provider,

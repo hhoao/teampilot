@@ -129,7 +129,7 @@ requires_openai_auth = true
   /// authoritatively from [AppProviderConfig.baseUrl] / `apiKey` /
   /// `defaultModel`, never read back from a frozen `config`. Policy concerns
   /// (permissions, hooks, enabled plugins, teammateMode, effort) are owned by
-  /// the team / project / plugin scopes and merged in by the config-profile
+  /// the team / workspace / plugin scopes and merged in by the config-profile
   /// layer — this never copies them off the provider record.
   Map<String, Object?> buildClaudeSettings(AppProviderConfig provider) {
     final env = <String, String>{};

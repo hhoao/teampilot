@@ -297,7 +297,7 @@ class ManagementCardHeader extends StatelessWidget {
   }
 }
 
-/// Small pill showing configured / not configured (project CLI, AI features, …).
+/// Small pill showing configured / not configured (workspace CLI, AI features, …).
 class SettingsConfiguredBadge extends StatelessWidget {
   const SettingsConfiguredBadge({required this.configured, super.key});
 
@@ -329,8 +329,8 @@ class SettingsConfiguredBadge extends StatelessWidget {
           const SizedBox(width: 4),
           Text(
             configured
-                ? l10n.projectCliConfigured
-                : l10n.projectCliNotConfigured,
+                ? l10n.workspaceCliConfigured
+                : l10n.workspaceCliNotConfigured,
             style: styles.caption.copyWith(
               color: color,
               fontWeight: FontWeight.w600,
@@ -388,7 +388,7 @@ class SettingsCompactDropdown<T extends Object> extends StatelessWidget {
   }
 }
 
-/// Collapsed-by-default panel for infrequently edited member/project options.
+/// Collapsed-by-default panel for infrequently edited member/workspace options.
 class SettingsAdvancedExpansion extends StatelessWidget {
   const SettingsAdvancedExpansion({
     super.key,

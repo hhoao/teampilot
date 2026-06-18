@@ -42,15 +42,15 @@ StorageRootsSnapshot _roots(String basePath) => StorageRootsSnapshot(
   ),
 );
 
-const _projectId = 'project-1';
+const _workspaceId = 'workspace-1';
 
 AppSession _session({
   String id = 'session-1',
   AppSessionLaunchState launchState = AppSessionLaunchState.created,
 }) => AppSession(
   sessionId: id,
-  projectId: _projectId,
-  primaryPath: '/work/project',
+  workspaceId: _workspaceId,
+  primaryPath: '/work/workspace',
   sessionTeam: 'team-a',
   launchState: launchState,
   createdAt: 1,
@@ -109,7 +109,7 @@ void main() {
       );
 
       final memberDir = layout.sessionRuntimeToolDir(
-        _projectId,
+        _workspaceId,
         'session-1',
         'claude',
       );
@@ -140,7 +140,7 @@ void main() {
       );
 
       final memberDir = layout.sessionRuntimeToolDir(
-        _projectId,
+        _workspaceId,
         'session-1',
         'flashskyai',
       );
@@ -182,7 +182,7 @@ void main() {
       );
 
       final cursorDir = layout.sessionRuntimeToolDir(
-        _projectId,
+        _workspaceId,
         'mixed-session',
         'cursor',
         memberId: ClaudeTeamRosterService.safeClaudePathSegment('planner'),
@@ -241,13 +241,13 @@ void main() {
       );
 
       final claudeDir = layout.sessionRuntimeToolDir(
-        _projectId,
+        _workspaceId,
         'mixed-session',
         'claude',
         memberId: ClaudeTeamRosterService.safeClaudePathSegment('team-lead'),
       );
       final flashskyaiDir = layout.sessionRuntimeToolDir(
-        _projectId,
+        _workspaceId,
         'mixed-session',
         'flashskyai',
         memberId: ClaudeTeamRosterService.safeClaudePathSegment('team-lead'),
@@ -276,17 +276,17 @@ void main() {
         id: 'mixed-session',
         launchState: AppSessionLaunchState.started,
       ).copyWith(cliTeamName: 'team-a-4');
-      final bucket = RuntimeLayout.projectBucketForPrimaryPath(
+      final bucket = RuntimeLayout.workspaceBucketForPrimaryPath(
         session.primaryPath,
       );
       final transcript = File(
         p.join(
           layout.sessionRuntimeToolDir(
-            _projectId,
+            _workspaceId,
             'mixed-session',
             'claude',
           ),
-          'projects',
+          'workspaces',
           bucket,
           '$taskId.jsonl',
         ),
@@ -328,19 +328,19 @@ void main() {
     expect(plan.resume, isFalse);
   });
 
-  test('hasCliState finds project transcripts in member roots', () async {
+  test('hasCliState finds workspace transcripts in member roots', () async {
     final session = _session(launchState: AppSessionLaunchState.started);
-    final bucket = RuntimeLayout.projectBucketForPrimaryPath(
+    final bucket = RuntimeLayout.workspaceBucketForPrimaryPath(
       session.primaryPath,
     );
     final transcript = File(
       p.join(
         layout.sessionRuntimeToolDir(
-          _projectId,
+          _workspaceId,
           session.sessionId,
           'flashskyai',
         ),
-        'projects',
+        'workspaces',
         bucket,
         '${session.sessionId}.jsonl',
       ),
@@ -374,17 +374,17 @@ void main() {
       final session = _session(
         launchState: AppSessionLaunchState.started,
       ).copyWith(cliTeamName: 'team-a-3');
-      final bucket = RuntimeLayout.projectBucketForPrimaryPath(
+      final bucket = RuntimeLayout.workspaceBucketForPrimaryPath(
         session.primaryPath,
       );
       final transcript = File(
         p.join(
           layout.sessionRuntimeToolDir(
-            _projectId,
+            _workspaceId,
             session.sessionId,
             'flashskyai',
           ),
-          'projects',
+          'workspaces',
           bucket,
           '$taskId.jsonl',
         ),
@@ -473,14 +473,14 @@ void main() {
 
   test('destroyCliState removes the session runtime tree', () async {
     final sessionRoot = layout.workspace.sessionRuntimeDir(
-      _projectId,
+      _workspaceId,
       'session-1',
     );
     await File(
       p.join(
         sessionRoot,
         'flashskyai',
-        'projects',
+        'workspaces',
         'bucket',
         'session-1.jsonl',
       ),
@@ -495,7 +495,7 @@ void main() {
 
     expect(await Directory(sessionRoot).exists(), isTrue);
     await service().destroyCliState(
-      projectId: _projectId,
+      workspaceId: _workspaceId,
       teamId: 'team-a',
       sessionId: 'session-1',
     );

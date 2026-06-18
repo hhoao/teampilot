@@ -56,7 +56,7 @@ List<double> computeToggleSegmentWidths({
   });
 }
 
-/// Project-default pill [ToggleSwitch] styling (workspace settings look).
+/// Workspace-default pill [ToggleSwitch] styling (workspace settings look).
 class AppToggleSwitch extends StatelessWidget {
   const AppToggleSwitch({
     super.key,

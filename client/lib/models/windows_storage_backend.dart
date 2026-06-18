@@ -1,4 +1,4 @@
-/// Where TeamPilot stores teams/skills/projects on Windows desktop.
+/// Where TeamPilot stores teams/skills/workspaces on Windows desktop.
 enum WindowsStorageBackend {
   /// `%AppData%/com.hhoa.teampilot` via [LocalFilesystem].
   native,

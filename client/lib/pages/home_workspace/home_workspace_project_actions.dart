@@ -9,29 +9,29 @@ import 'package:teampilot/widgets/app_toast/app_toast.dart';
 import '../../cubits/chat_cubit.dart';
 import '../../cubits/identity_cubit.dart';
 import '../../l10n/l10n_extensions.dart';
-import '../../models/app_project.dart';
+import '../../models/app_workspace.dart';
 import '../../repositories/session_repository.dart';
 import '../../utils/debounce/debounce.dart';
-import '../../utils/project_display_name.dart';
+import '../../utils/workspace_display_name.dart';
 import '../../widgets/app_dialog.dart';
 
-/// Whether [location] is the workbench route for [projectId].
-bool isViewingProjectRoute(String location, String projectId) {
+/// Whether [location] is the workbench route for [workspaceId].
+bool isViewingWorkspaceRoute(String location, String workspaceId) {
   final segments = Uri.parse(location).pathSegments;
   return segments.length >= 3 &&
       segments[0] == 'home-v2' &&
-      segments[1] == 'project' &&
-      segments[2] == projectId;
+      segments[1] == 'workspace' &&
+      segments[2] == workspaceId;
 }
 
-/// Navigates away from a deleted project when the workbench route is active.
+/// Navigates away from a deleted workspace when the workbench route is active.
 /// Call after the delete confirmation dialog has been closed.
-void completeProjectDeleteNavigation(
+void completeWorkspaceDeleteNavigation(
   GoRouter router, {
-  required String deletedProjectId,
+  required String deletedWorkspaceId,
   required String currentLocation,
 }) {
-  if (isViewingProjectRoute(currentLocation, deletedProjectId)) {
+  if (isViewingWorkspaceRoute(currentLocation, deletedWorkspaceId)) {
     router.go('/home-v2');
     return;
   }
@@ -40,55 +40,55 @@ void completeProjectDeleteNavigation(
 
 Future<void> showRenameWorkspaceDialog(
   BuildContext context,
-  Workspace project, {
+  Workspace workspace, {
   String? title,
 }) async {
   final l10n = context.l10n;
   final display = await showAppTextPromptDialog(
     context,
-    title: title ?? l10n.homeWorkspaceRenameProject,
-    initialText: project.display,
-    hintText: project.localizedName(l10n),
+    title: title ?? l10n.homeWorkspaceRenameWorkspace,
+    initialText: workspace.display,
+    hintText: workspace.localizedName(l10n),
     confirmLabel: l10n.save,
   );
   if (display == null || !context.mounted) return;
   final repo = context.read<SessionRepository>();
-  await context.read<ChatCubit>().updateProjectMetadata(
+  await context.read<ChatCubit>().updateWorkspaceMetadata(
     repo,
-    project.projectId,
+    workspace.workspaceId,
     display: display,
   );
 }
 
 Future<void> cloneWorkspace(
   BuildContext context,
-  Workspace project,
+  Workspace workspace,
 ) async {
   final l10n = context.l10n;
   final repo = context.read<SessionRepository>();
   final team = context.read<IdentityCubit>().state.selectedTeam;
-  final baseName = project.localizedName(l10n);
-  final display = l10n.homeWorkspaceCloneProjectDisplayName(baseName);
+  final baseName = workspace.localizedName(l10n);
+  final display = l10n.homeWorkspaceCloneWorkspaceDisplayName(baseName);
 
   try {
-    final cloned = await context.read<ChatCubit>().cloneProject(
+    final cloned = await context.read<ChatCubit>().cloneWorkspace(
       repo,
-      project.projectId,
+      workspace.workspaceId,
       display: display,
       rosterMembers: team?.members ?? const [],
     );
     if (!context.mounted) return;
     AppToast.show(
       context,
-      message: l10n.homeWorkspaceCloneProjectSuccess(baseName),
+      message: l10n.homeWorkspaceCloneWorkspaceSuccess(baseName),
       variant: AppToastVariant.success,
     );
-    context.go('/home-v2/project/${cloned.projectId}');
+    context.go('/home-v2/workspace/${cloned.workspaceId}');
   } on Object catch (error) {
     if (!context.mounted) return;
     AppToast.show(
       context,
-      message: '${l10n.homeWorkspaceCloneProjectFailed}: $error',
+      message: '${l10n.homeWorkspaceCloneWorkspaceFailed}: $error',
       variant: AppToastVariant.error,
     );
   }
@@ -96,12 +96,12 @@ Future<void> cloneWorkspace(
 
 Future<void> confirmDeleteWorkspace(
   BuildContext context,
-  Workspace project,
+  Workspace workspace,
 ) async {
   final l10n = context.l10n;
   final repo = context.read<SessionRepository>();
   final chatCubit = context.read<ChatCubit>();
-  final name = project.localizedName(l10n);
+  final name = workspace.localizedName(l10n);
   final router = GoRouter.of(context);
   final currentLocation = GoRouterState.of(context).uri.toString();
   await showDialog<void>(
@@ -113,9 +113,9 @@ Future<void> confirmDeleteWorkspace(
         mainAxisSize: MainAxisSize.min,
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          AppDialogHeader(title: l10n.deleteProject),
+          AppDialogHeader(title: l10n.deleteWorkspace),
           const SizedBox(height: 16),
-          Text(l10n.deleteProjectConfirm(name)),
+          Text(l10n.deleteWorkspaceConfirm(name)),
           AppDialogActions(
             children: [
               TextButton(
@@ -127,18 +127,18 @@ Future<void> confirmDeleteWorkspace(
                   backgroundColor: Theme.of(ctx).colorScheme.error,
                 ),
                 onPressed: throttledAsync(
-                  'home_workspace_card_delete_project',
+                  'home_workspace_card_delete_workspace',
                   () async {
-                    await chatCubit.deleteProject(
+                    await chatCubit.deleteWorkspace(
                       repo,
-                      project.projectId,
+                      workspace.workspaceId,
                     );
                     if (ctx.mounted) {
                       Navigator.of(ctx).pop();
                     }
-                    completeProjectDeleteNavigation(
+                    completeWorkspaceDeleteNavigation(
                       router,
-                      deletedProjectId: project.projectId,
+                      deletedWorkspaceId: workspace.workspaceId,
                       currentLocation: currentLocation,
                     );
                   },

@@ -4,18 +4,18 @@ import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import '../../cubits/chat_cubit.dart';
 import '../../l10n/l10n_extensions.dart';
-import '../../models/app_project.dart';
+import '../../models/app_workspace.dart';
 import '../../models/app_session.dart';
-import '../../services/home_workspace/home_workspace_project_display_prefs_store.dart';
-import '../../services/home_workspace/home_workspace_project_favorites_store.dart';
-import '../../services/home_workspace/home_workspace_recent_projects_store.dart';
-import 'home_workspace_project_sort.dart';
+import '../../services/home_workspace/home_workspace_workspace_display_prefs_store.dart';
+import '../../services/home_workspace/home_workspace_workspace_favorites_store.dart';
+import '../../services/home_workspace/home_workspace_recent_workspaces_store.dart';
+import 'home_workspace_workspace_sort.dart';
 import '../../theme/app_text_styles.dart';
 import '../../theme/workspace_surface_layers.dart';
 import 'home_workspace_library_view.dart';
-import 'home_workspace_projects_tab.dart';
+import 'home_workspace_workspaces_tab.dart';
 
-/// Favorites or recently visited projects in the workspace home right pane.
+/// Favorites or recently visited workspaces in the workspace home right pane.
 class HomeLibrarySection extends StatefulWidget {
   const HomeLibrarySection({required this.view, super.key});
 
@@ -30,9 +30,9 @@ class _HomeLibrarySectionState extends State<HomeLibrarySection> {
   final _favoritesStore = WorkspaceFavoritesStore();
   final _recentStore = HomeRecentWorkspacesStore();
   final _displayPrefsStore = WorkspaceDisplayPrefsStore();
-  Set<String> _favoriteProjectIds = {};
-  List<String> _recentProjectIds = [];
-  var _projectSort = WorkspaceSort.recentlyUpdated;
+  Set<String> _favoriteWorkspaceIds = {};
+  List<String> _recentWorkspaceIds = [];
+  var _workspaceSort = WorkspaceSort.recentlyUpdated;
 
   @override
   void initState() {
@@ -54,14 +54,14 @@ class _HomeLibrarySectionState extends State<HomeLibrarySection> {
     final prefs = await _displayPrefsStore.load();
     if (!mounted) return;
     setState(() {
-      _favoriteProjectIds = favorites;
-      _recentProjectIds = recent;
-      _projectSort = prefs.sort;
+      _favoriteWorkspaceIds = favorites;
+      _recentWorkspaceIds = recent;
+      _workspaceSort = prefs.sort;
     });
   }
 
-  Future<void> _toggleProjectFavorite(String projectId) async {
-    await _favoritesStore.toggle(projectId);
+  Future<void> _toggleWorkspaceFavorite(String workspaceId) async {
+    await _favoritesStore.toggle(workspaceId);
     if (!mounted) return;
     await _reload();
   }
@@ -77,21 +77,21 @@ class _HomeLibrarySectionState extends State<HomeLibrarySection> {
         ? l10n.homeWorkspaceMyFavorites
         : l10n.homeWorkspaceRecentVisits;
 
-    final allProjects = context.select<ChatCubit, List<Workspace>>(
-      (c) => c.state.projects,
+    final allWorkspaces = context.select<ChatCubit, List<Workspace>>(
+      (c) => c.state.workspaces,
     );
     final sessions = context.select<ChatCubit, List<AppSession>>(
       (c) => c.state.sessions,
     );
 
-    final projects = isFavorites
+    final workspaces = isFavorites
         ? [
-            for (final p in allProjects)
-              if (_favoriteProjectIds.contains(p.projectId)) p,
+            for (final p in allWorkspaces)
+              if (_favoriteWorkspaceIds.contains(p.workspaceId)) p,
           ]
         : [
-            for (final id in _recentProjectIds)
-              if (_findProject(allProjects, id) case final p?) p,
+            for (final id in _recentWorkspaceIds)
+              if (_findWorkspace(allWorkspaces, id) case final p?) p,
           ];
 
     return ColoredBox(
@@ -108,7 +108,7 @@ class _HomeLibrarySectionState extends State<HomeLibrarySection> {
           ),
           const SizedBox(height: 20),
           Expanded(
-            child: projects.isEmpty
+            child: workspaces.isEmpty
                 ? _LibraryEmptyState(
                     icon: isFavorites
                         ? Icons.star_outline_rounded
@@ -116,12 +116,12 @@ class _HomeLibrarySectionState extends State<HomeLibrarySection> {
                     label: l10n.homeWorkspaceNoData,
                   )
                 : WorkspaceCollection(
-                    projects: projects,
+                    workspaces: workspaces,
                     sessions: sessions,
                     gridView: true,
-                    projectSort: _projectSort,
-                    favoriteProjectIds: _favoriteProjectIds,
-                    onToggleProjectFavorite: _toggleProjectFavorite,
+                    workspaceSort: _workspaceSort,
+                    favoriteWorkspaceIds: _favoriteWorkspaceIds,
+                    onToggleWorkspaceFavorite: _toggleWorkspaceFavorite,
                     preserveOrder: !isFavorites,
                   ),
           ),
@@ -130,9 +130,9 @@ class _HomeLibrarySectionState extends State<HomeLibrarySection> {
     );
   }
 
-  static Workspace? _findProject(List<Workspace> projects, String id) {
-    for (final p in projects) {
-      if (p.projectId == id) return p;
+  static Workspace? _findWorkspace(List<Workspace> workspaces, String id) {
+    for (final p in workspaces) {
+      if (p.workspaceId == id) return p;
     }
     return null;
   }

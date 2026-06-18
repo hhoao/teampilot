@@ -418,7 +418,7 @@ class LaunchCommandBuilder {
     if (!useWslPaths) return workingDirectory;
     if (!Platform.isWindows) return workingDirectory;
     // Windows PTY wraps `wsl.exe`; CreateProcess cwd must be a native path.
-    // Project dirs are passed separately via CLI args in WSL form.
+    // Workspace dirs are passed separately via CLI args in WSL form.
     final userProfile = Platform.environment['USERPROFILE']?.trim();
     if (userProfile != null && userProfile.isNotEmpty) {
       return userProfile;

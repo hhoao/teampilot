@@ -46,7 +46,7 @@ void main() {
       );
 
       final scope = resolveLaunchProfileScope(
-        projectId: 'project-1',
+        workspaceId: 'workspace-1',
         teamId: 'team-a',
         appSessionId: 'session-1',
         cliTeamName: 'session-1',
@@ -55,7 +55,7 @@ void main() {
 
       await capability.contributeLaunch(
         ConfigProfileLaunchContext(
-          projectId: 'project-1',
+          workspaceId: 'workspace-1',
           teamId: 'team-a',
           sessionId: scope.sessionId,
           scope: scope,
@@ -68,7 +68,7 @@ void main() {
       );
 
       final opencodeDir = service.sessionToolDir(
-        scope.projectId,
+        scope.workspaceId,
         scope.sessionId,
         'opencode',
         memberId: scope.memberId,
@@ -186,7 +186,7 @@ void main() {
       );
 
       final scope = resolveLaunchProfileScope(
-        projectId: 'project-1',
+        workspaceId: 'workspace-1',
         teamId: 'team-a',
         appSessionId: 'session-1',
         cliTeamName: 'session-1',
@@ -196,7 +196,7 @@ void main() {
       final contribution = await const OpencodeConfigProfileCapability()
           .contributeLaunch(
             ConfigProfileLaunchContext(
-              projectId: 'project-1',
+              workspaceId: 'workspace-1',
               teamId: 'team-a',
               sessionId: scope.sessionId,
               scope: scope,
@@ -209,7 +209,7 @@ void main() {
           );
 
       final opencodeDir = service.sessionToolDir(
-        scope.projectId,
+        scope.workspaceId,
         scope.sessionId,
         'opencode',
         memberId: scope.memberId,

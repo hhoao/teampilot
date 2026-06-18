@@ -17,7 +17,7 @@ IdentityCubit _cubit(Directory dir, IdentityRepository repo) => IdentityCubit(
       sessionRepository: SessionRepository(
         lifecycleService: SessionLifecycleService(appDataBasePath: dir.path),
       ),
-      reloadProjects: () async {},
+      reloadWorkspaces: () async {},
       executableResolver: () => 'claude',
     );
 

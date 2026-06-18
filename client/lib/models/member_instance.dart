@@ -4,7 +4,7 @@ import 'team_config.dart';
 /// A runtime instance (Pod) of a member [type] (Deployment). Holds no copy of
 /// the spec — it resolves prompt/playbook/model/cli through [type]. The single
 /// Deployment→Pod fan-out is [expandTeamRoster]; the runtime consumes the
-/// [toMemberConfig] projection via [runtimeRosterMembers].
+/// [toMemberConfig] workspaceion via [runtimeRosterMembers].
 class MemberInstance {
   const MemberInstance({
     required this.type,
@@ -28,14 +28,14 @@ class MemberInstance {
   String get displayName =>
       replicas <= 1 ? type.name : '${type.name} #$ordinal';
 
-  /// Runtime projection: a [TeamMemberConfig] with `id = instanceId` and the
+  /// Runtime workspaceion: a [TeamMemberConfig] with `id = instanceId` and the
   /// type id seeded as a capability so [TaskRouter] routes the pool by type
   /// (and the pod by its own id, via the id-as-capability rule).
   TeamMemberConfig toMemberConfig() => type.copyWith(
         id: instanceId,
         name: displayName,
         capabilities: {type.id, ...type.capabilities},
-        // A projection is a single concrete pod — never itself re-expandable.
+        // A workspaceion is a single concrete pod — never itself re-expandable.
         replicas: 1,
       );
 }
@@ -55,7 +55,7 @@ List<MemberInstance> expandTeamRoster(List<TeamMemberConfig> members) {
   return out;
 }
 
-/// Instance projections the launch/bus layers iterate in place of
+/// Instance workspaceions the launch/bus layers iterate in place of
 /// `team.members`.
 List<TeamMemberConfig> runtimeRosterMembers(TeamIdentity team) =>
     [for (final inst in expandTeamRoster(team.members)) inst.toMemberConfig()];

@@ -1,7 +1,7 @@
 import 'dart:io';
 
 import 'package:teampilot/cubits/chat_cubit.dart';
-import 'package:teampilot/models/app_project.dart';
+import 'package:teampilot/models/app_workspace.dart';
 import 'package:teampilot/models/app_session.dart';
 import 'package:teampilot/models/team_config.dart';
 import 'package:teampilot/repositories/session_repository.dart';
@@ -104,11 +104,11 @@ void main() {
     });
 
     test('visible lists mirror full data when scope is off', () {
-      const projectId = 'p1';
-      cubit.ingestProjectSessionSnapshot(
-        projects: const [
+      const workspaceId = 'p1';
+      cubit.ingestWorkspaceSessionSnapshot(
+        workspaces: const [
           Workspace(
-            projectId: projectId,
+            workspaceId: workspaceId,
             primaryPath: '/a',
             createdAt: 1,
             updatedAt: 1,
@@ -118,7 +118,7 @@ void main() {
         sessions: const [
           AppSession(
             sessionId: 's1',
-            projectId: projectId,
+            workspaceId: workspaceId,
             primaryPath: '/a',
             sessionTeam: 'team-a',
             createdAt: 1,
@@ -126,25 +126,25 @@ void main() {
           ),
         ],
       );
-      expect(cubit.state.projects.length, 1);
-      expect(cubit.state.visibleProjects, cubit.state.projects);
+      expect(cubit.state.workspaces.length, 1);
+      expect(cubit.state.visibleWorkspaces, cubit.state.workspaces);
       expect(cubit.state.visibleSessions, cubit.state.sessions);
     });
 
-    test('scope on filters sessions and projects by selected team id', () {
+    test('scope on filters sessions and workspaces by selected team id', () {
       const pA = 'p-a';
       const pB = 'p-b';
-      cubit.ingestProjectSessionSnapshot(
-        projects: const [
+      cubit.ingestWorkspaceSessionSnapshot(
+        workspaces: const [
           Workspace(
-            projectId: pA,
+            workspaceId: pA,
             primaryPath: '/a',
             createdAt: 1,
             updatedAt: 1,
             sessionIds: ['s1', 's2'],
           ),
           Workspace(
-            projectId: pB,
+            workspaceId: pB,
             primaryPath: '/b',
             createdAt: 1,
             updatedAt: 1,
@@ -154,7 +154,7 @@ void main() {
         sessions: const [
           AppSession(
             sessionId: 's1',
-            projectId: pA,
+            workspaceId: pA,
             primaryPath: '/a',
             sessionTeam: 'tid-1',
             createdAt: 1,
@@ -162,7 +162,7 @@ void main() {
           ),
           AppSession(
             sessionId: 's2',
-            projectId: pA,
+            workspaceId: pA,
             primaryPath: '/a',
             sessionTeam: 'tid-2',
             createdAt: 1,
@@ -170,7 +170,7 @@ void main() {
           ),
           AppSession(
             sessionId: 's3',
-            projectId: pB,
+            workspaceId: pB,
             primaryPath: '/b',
             sessionTeam: 'tid-1',
             createdAt: 1,
@@ -189,7 +189,7 @@ void main() {
         cubit.state.visibleSessions.map((e) => e.sessionId).toList()..sort(),
         ['s1', 's3'],
       );
-      expect(cubit.state.visibleProjects.map((e) => e.projectId).toSet(), {
+      expect(cubit.state.visibleWorkspaces.map((e) => e.workspaceId).toSet(), {
         'p-a',
         'p-b',
       });
@@ -197,10 +197,10 @@ void main() {
 
     test('scope on with no selected team shows personal sessions only', () {
       const pid = 'p1';
-      cubit.ingestProjectSessionSnapshot(
-        projects: const [
+      cubit.ingestWorkspaceSessionSnapshot(
+        workspaces: const [
           Workspace(
-            projectId: pid,
+            workspaceId: pid,
             primaryPath: '/a',
             createdAt: 1,
             updatedAt: 1,
@@ -210,7 +210,7 @@ void main() {
         sessions: const [
           AppSession(
             sessionId: 's1',
-            projectId: pid,
+            workspaceId: pid,
             primaryPath: '/a',
             sessionTeam: 'tid',
             createdAt: 1,
@@ -223,17 +223,17 @@ void main() {
         selectedTeamId: null,
       );
       expect(cubit.state.visibleSessions, isEmpty);
-      expect(cubit.state.visibleProjects.map((e) => e.projectId).toList(), [
+      expect(cubit.state.visibleWorkspaces.map((e) => e.workspaceId).toList(), [
         pid,
       ]);
     });
 
     test('changing scope or team id updates visible lists', () {
       const pid = 'p1';
-      cubit.ingestProjectSessionSnapshot(
-        projects: const [
+      cubit.ingestWorkspaceSessionSnapshot(
+        workspaces: const [
           Workspace(
-            projectId: pid,
+            workspaceId: pid,
             primaryPath: '/a',
             createdAt: 1,
             updatedAt: 1,
@@ -243,7 +243,7 @@ void main() {
         sessions: const [
           AppSession(
             sessionId: 's1',
-            projectId: pid,
+            workspaceId: pid,
             primaryPath: '/a',
             sessionTeam: 'alpha',
             createdAt: 1,
@@ -251,7 +251,7 @@ void main() {
           ),
           AppSession(
             sessionId: 's2',
-            projectId: pid,
+            workspaceId: pid,
             primaryPath: '/a',
             sessionTeam: 'beta',
             createdAt: 1,
@@ -365,9 +365,9 @@ void main() {
         final tmp = await Directory.systemTemp.createTemp('chat_cubit_');
         addTearDown(() => tmp.deleteSync(recursive: true));
         final repo = SessionRepository(rootDir: tmp.path);
-        final project = await repo.createProject('/tmp');
+        final workspace = await repo.createWorkspace('/tmp');
         final session = await repo.createSession(
-          project.projectId,
+          workspace.workspaceId,
           sessionTeam: team.id,
           rosterMembers: team.members,
         );
@@ -407,7 +407,7 @@ void main() {
     );
 
     test(
-      'closeTabsForProject counts and terminates a project\'s open tabs',
+      'closeTabsForWorkspace counts and terminates a workspace\'s open tabs',
       () async {
         const team = TeamIdentity(
           id: 'team-a',
@@ -416,15 +416,15 @@ void main() {
         );
         final tmp = await Directory.systemTemp.createTemp('chat_cubit_close_');
         final repo = SessionRepository(rootDir: tmp.path);
-        final projectA = await repo.createProject('/a');
-        final projectB = await repo.createProject('/b');
+        final workspaceA = await repo.createWorkspace('/a');
+        final workspaceB = await repo.createWorkspace('/b');
         final sessionA = await repo.createSession(
-          projectA.projectId,
+          workspaceA.workspaceId,
           sessionTeam: team.id,
           rosterMembers: team.members,
         );
         final sessionB = await repo.createSession(
-          projectB.projectId,
+          workspaceB.workspaceId,
           sessionTeam: team.id,
           rosterMembers: team.members,
         );
@@ -444,15 +444,15 @@ void main() {
         await postFrame.flush();
 
         expect(cubit.state.tabs.length, 2);
-        expect(cubit.openTabCountForProject(projectA.projectId), 1);
-        expect(cubit.openTabCountForProject(projectB.projectId), 1);
-        expect(cubit.openTabCountForProject('no-such-project'), 0);
+        expect(cubit.openTabCountForWorkspace(workspaceA.workspaceId), 1);
+        expect(cubit.openTabCountForWorkspace(workspaceB.workspaceId), 1);
+        expect(cubit.openTabCountForWorkspace('no-such-workspace'), 0);
 
-        cubit.closeTabsForProject(projectA.projectId);
+        cubit.closeTabsForWorkspace(workspaceA.workspaceId);
 
         expect(cubit.state.tabs.length, 1);
-        expect(cubit.openTabCountForProject(projectA.projectId), 0);
-        expect(cubit.openTabCountForProject(projectB.projectId), 1);
+        expect(cubit.openTabCountForWorkspace(workspaceA.workspaceId), 0);
+        expect(cubit.openTabCountForWorkspace(workspaceB.workspaceId), 1);
       },
     );
 
@@ -516,9 +516,9 @@ void main() {
         final tmp = await Directory.systemTemp.createTemp('chat_cubit_mixed_cli_');
         addTearDown(() => tmp.deleteSync(recursive: true));
         final repo = SessionRepository(rootDir: tmp.path);
-        final project = await repo.createProject('/tmp');
+        final workspace = await repo.createWorkspace('/tmp');
         final session = await repo.createSession(
-          project.projectId,
+          workspace.workspaceId,
           sessionTeam: team.id,
           rosterMembers: team.members,
         );
@@ -569,9 +569,9 @@ void main() {
           'chat_cubit_mixed_lead_connect_',
         );
         final repo = SessionRepository(rootDir: tmp.path);
-        final project = await repo.createProject('/tmp');
+        final workspace = await repo.createWorkspace('/tmp');
         final session = await repo.createSession(
-          project.projectId,
+          workspace.workspaceId,
           sessionTeam: team.id,
           rosterMembers: team.members,
         );
@@ -622,9 +622,9 @@ void main() {
         );
         final tmp = await Directory.systemTemp.createTemp('chat_cubit_mixed_');
         final repo = SessionRepository(rootDir: tmp.path);
-        final project = await repo.createProject('/tmp');
+        final workspace = await repo.createWorkspace('/tmp');
         final session = await repo.createSession(
-          project.projectId,
+          workspace.workspaceId,
           sessionTeam: team.id,
           rosterMembers: team.members,
         );
@@ -680,9 +680,9 @@ void main() {
             TeamMemberConfig(id: 'm-dev', name: 'developer'),
           ],
         );
-        final project = await repo.createProject('/tmp');
+        final workspace = await repo.createWorkspace('/tmp');
         final session = await repo.createSession(
-          project.projectId,
+          workspace.workspaceId,
           sessionTeam: team.id,
           rosterMembers: team.members,
         );
@@ -724,7 +724,7 @@ void main() {
     );
 
     test(
-      'openMemberTab reuses existing team project when workspace cwd is set',
+      'openMemberTab reuses existing team workspace when workspace cwd is set',
       () async {
         const team = TeamIdentity(
           id: 'team-default',
@@ -737,12 +737,12 @@ void main() {
         addTearDown(() => tmp.deleteSync(recursive: true));
         final repo = SessionRepository(rootDir: tmp.path);
         const workspacePath = '/tmp/default-team-workspace';
-        final project = await repo.createProject(
+        final workspace = await repo.createWorkspace(
           workspacePath,
           display: 'Default Team',
         );
         await repo.createSession(
-          project.projectId,
+          workspace.workspaceId,
           sessionTeam: team.id,
           rosterMembers: team.members,
         );
@@ -755,8 +755,8 @@ void main() {
         );
         addTearDown(cubit.close);
 
-        await cubit.loadProjectData(repo);
-        expect(cubit.state.projects, hasLength(1));
+        await cubit.loadWorkspaceData(repo);
+        expect(cubit.state.workspaces, hasLength(1));
 
         await cubit.openMemberTab(
           team,
@@ -766,8 +766,8 @@ void main() {
         );
         await postFrame.flush();
 
-        expect(cubit.state.projects, hasLength(1));
-        expect(cubit.state.projects.single.primaryPath, workspacePath);
+        expect(cubit.state.workspaces, hasLength(1));
+        expect(cubit.state.workspaces.single.primaryPath, workspacePath);
         expect(cubit.state.tabs, hasLength(1));
       },
     );

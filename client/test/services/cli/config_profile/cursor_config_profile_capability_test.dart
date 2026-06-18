@@ -1,6 +1,6 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:teampilot/models/app_provider_config.dart';
-import 'package:teampilot/models/project_agent_config.dart';
+import 'package:teampilot/models/workspace_agent_config.dart';
 import 'package:teampilot/models/personal_identity.dart';
 import 'package:teampilot/models/team_config.dart';
 import 'package:teampilot/repositories/app_provider_repository.dart';
@@ -38,7 +38,7 @@ void main() {
   });
 
   LaunchProfileScope mixedScope() => resolveLaunchProfileScope(
-        projectId: 'project-1',
+        workspaceId: 'workspace-1',
         teamId: 'team-a',
         appSessionId: 'session-1',
         cliTeamName: 'session-1',
@@ -47,7 +47,7 @@ void main() {
 
   String memberHome(LaunchProfileScope scope) {
     final cursorDir = paths.sessionToolDir(
-      scope.projectId,
+      scope.workspaceId,
       scope.sessionId,
       CursorConfigProfileCapability.toolId,
       memberId: scope.memberId,
@@ -59,22 +59,22 @@ void main() {
     test('standalone contributes CURSOR_CONFIG_DIR only', () async {
       const team = TeamIdentity(id: 'team-a', name: 'agent', cli: CliTool.cursor);
       final scope = resolveLaunchProfileScope(
-        projectId: 'project-1',
+        workspaceId: 'workspace-1',
         teamId: 'team-a',
         appSessionId: 'session-1',
         cliTeamName: 'session-1',
       );
-      const profile = PersonalIdentity(id: 'project-1', display: 'project-1',
-        agent: ProjectAgentConfig(agent: 'solo'),
+      const profile = PersonalIdentity(id: 'workspace-1', display: 'workspace-1',
+        agent: WorkspaceAgentConfig(agent: 'solo'),
       );
       const standalone = StandaloneLaunchProfileScope(
-        projectId: 'project-1',
+        workspaceId: 'workspace-1',
         sessionId: 'session-1',
       );
 
       final contribution = await capability.contributeLaunch(
         ConfigProfileLaunchContext(
-        projectId: 'project-1',
+        workspaceId: 'workspace-1',
         teamId: scope.teamId,
           sessionId: scope.sessionId,
           scope: scope,
@@ -88,7 +88,7 @@ void main() {
       );
 
       final cursorDir = paths.sessionToolDir(
-        scope.projectId,
+        scope.workspaceId,
         scope.sessionId,
         CursorConfigProfileCapability.toolId,
         memberId: scope.memberId,
@@ -100,23 +100,23 @@ void main() {
 
     test('standalone pre-provisions workspace trust under runtime home', () async {
       const workspace = '/home/hhoa/git/hhoa/teampilot';
-      const profile = PersonalIdentity(id: 'project-1', display: 'project-1',
-        agent: ProjectAgentConfig(agent: 'solo'),
+      const profile = PersonalIdentity(id: 'workspace-1', display: 'workspace-1',
+        agent: WorkspaceAgentConfig(agent: 'solo'),
       );
       const standalone = StandaloneLaunchProfileScope(
-        projectId: 'project-1',
+        workspaceId: 'workspace-1',
         sessionId: 'session-1',
       );
       final scope = resolveLaunchProfileScope(
-        projectId: 'project-1',
-        teamId: 'project-1',
+        workspaceId: 'workspace-1',
+        teamId: 'workspace-1',
         appSessionId: 'session-1',
         cliTeamName: 'session-1',
       );
 
       await capability.contributeLaunch(
         ConfigProfileLaunchContext(
-          projectId: 'project-1',
+          workspaceId: 'workspace-1',
           teamId: '',
           sessionId: 'session-1',
           scope: scope,
@@ -148,7 +148,7 @@ void main() {
 
       await capability.contributeLaunch(
         ConfigProfileLaunchContext(
-        projectId: 'project-1',
+        workspaceId: 'workspace-1',
         teamId: scope.teamId,
           sessionId: scope.sessionId,
           scope: scope,
@@ -181,7 +181,7 @@ void main() {
 
       final contribution = await capability.contributeLaunch(
         ConfigProfileLaunchContext(
-        projectId: 'project-1',
+        workspaceId: 'workspace-1',
         teamId: scope.teamId,
           sessionId: scope.sessionId,
           scope: scope,
@@ -212,7 +212,7 @@ void main() {
 
       final contribution = await capability.contributeLaunch(
         ConfigProfileLaunchContext(
-        projectId: 'project-1',
+        workspaceId: 'workspace-1',
         teamId: scope.teamId,
           sessionId: scope.sessionId,
           scope: scope,
@@ -250,7 +250,7 @@ void main() {
 
       final contribution = await capability.contributeLaunch(
         ConfigProfileLaunchContext(
-        projectId: 'project-1',
+        workspaceId: 'workspace-1',
         teamId: scope.teamId,
           sessionId: scope.sessionId,
           scope: scope,
@@ -278,7 +278,7 @@ void main() {
 
       await capability.contributeLaunch(
         ConfigProfileLaunchContext(
-        projectId: 'project-1',
+        workspaceId: 'workspace-1',
         teamId: scope.teamId,
           sessionId: scope.sessionId,
           scope: scope,

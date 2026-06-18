@@ -1,24 +1,24 @@
 import 'package:flutter/material.dart';
 
-import '../../../models/app_project.dart';
+import '../../../models/app_workspace.dart';
 import '../../../models/layout_preferences.dart';
 import '../../../widgets/resizable_split_view.dart';
 import '../../chat_page.dart';
-import 'home_workspace_project_sidebar.dart';
+import 'home_workspace_workspace_sidebar.dart';
 
 class WorkspaceSplitPane extends StatefulWidget {
   const WorkspaceSplitPane({
-    required this.project,
-    required this.isPersonalProject,
+    required this.workspace,
+    required this.isPersonalWorkspace,
     required this.identityId,
     required this.sessionTeamFilter,
     super.key,
   });
 
-  final Workspace project;
-  final bool isPersonalProject;
+  final Workspace workspace;
+  final bool isPersonalWorkspace;
 
-  /// The launch identity the project was opened against ([Identity.id]).
+  /// The launch identity the workspace was opened against ([Identity.id]).
   final String identityId;
 
   /// Empty for personal mode; team id when opened as a team.
@@ -47,15 +47,15 @@ class _WorkspaceSplitPaneState
                 .clamp(minSidebar, maxSidebar);
         return ResizableSplitView(
           first: WorkspaceSidebar(
-            project: widget.project,
-            isPersonalProject: widget.isPersonalProject,
+            workspace: widget.workspace,
+            isPersonalWorkspace: widget.isPersonalWorkspace,
             identityId: widget.identityId,
             sessionTeamFilter: widget.sessionTeamFilter,
           ),
           second: ChatPage(
-            cwd: widget.project.primaryPath,
-            projectId: widget.project.projectId,
-            isPersonalProject: widget.isPersonalProject,
+            cwd: widget.workspace.primaryPath,
+            workspaceId: widget.workspace.workspaceId,
+            isPersonalWorkspace: widget.isPersonalWorkspace,
           ),
           initialPrimarySize: initialSidebar,
           minPrimarySize: minSidebar,

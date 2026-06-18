@@ -3,13 +3,13 @@ import '../theme/app_typography_scale.dart';
 
 enum LayoutPreset { workbench, chatFocus, inspector }
 
-enum WorkspaceEntryMode { home, lastProject }
+enum WorkspaceEntryMode { home, lastWorkspace }
 
 class LayoutPreferences {
   const LayoutPreferences({
     this.preset = LayoutPreset.workbench,
     this.workspaceEntryMode = WorkspaceEntryMode.home,
-    this.lastOpenedProjectId = '',
+    this.lastOpenedWorkspaceId = '',
     this.appRailVisible = true,
     this.membersVisible = true,
     this.fileTreeVisible = true,
@@ -41,7 +41,7 @@ class LayoutPreferences {
       workspaceEntryMode: _workspaceEntryModeFromJson(
         json['workspaceEntryMode'] as String?,
       ),
-      lastOpenedProjectId: json['lastOpenedProjectId'] as String? ?? '',
+      lastOpenedWorkspaceId: json['lastOpenedWorkspaceId'] as String? ?? '',
       appRailVisible: json['appRailVisible'] as bool? ?? true,
       membersVisible: json['membersVisible'] as bool? ?? true,
       fileTreeVisible: json['fileTreeVisible'] as bool? ?? true,
@@ -129,7 +129,7 @@ class LayoutPreferences {
 
   final LayoutPreset preset;
   final WorkspaceEntryMode workspaceEntryMode;
-  final String lastOpenedProjectId;
+  final String lastOpenedWorkspaceId;
   final bool appRailVisible;
   final bool membersVisible;
   final bool fileTreeVisible;
@@ -158,7 +158,7 @@ class LayoutPreferences {
   LayoutPreferences copyWith({
     LayoutPreset? preset,
     WorkspaceEntryMode? workspaceEntryMode,
-    String? lastOpenedProjectId,
+    String? lastOpenedWorkspaceId,
     bool? appRailVisible,
     bool? membersVisible,
     bool? fileTreeVisible,
@@ -183,7 +183,7 @@ class LayoutPreferences {
     return LayoutPreferences(
       preset: preset ?? this.preset,
       workspaceEntryMode: workspaceEntryMode ?? this.workspaceEntryMode,
-      lastOpenedProjectId: lastOpenedProjectId ?? this.lastOpenedProjectId,
+      lastOpenedWorkspaceId: lastOpenedWorkspaceId ?? this.lastOpenedWorkspaceId,
       appRailVisible: appRailVisible ?? this.appRailVisible,
       membersVisible: membersVisible ?? this.membersVisible,
       fileTreeVisible: fileTreeVisible ?? this.fileTreeVisible,
@@ -242,7 +242,7 @@ class LayoutPreferences {
     return LayoutPreferences(
       preset: preset,
       workspaceEntryMode: workspaceEntryMode,
-      lastOpenedProjectId: lastOpenedProjectId,
+      lastOpenedWorkspaceId: lastOpenedWorkspaceId,
       appRailVisible: appRailVisible,
       membersVisible: true,
       fileTreeVisible: false,
@@ -272,7 +272,7 @@ class LayoutPreferences {
     return {
       'preset': preset.name,
       'workspaceEntryMode': workspaceEntryMode.name,
-      'lastOpenedProjectId': lastOpenedProjectId,
+      'lastOpenedWorkspaceId': lastOpenedWorkspaceId,
       'appRailVisible': appRailVisible,
       'membersVisible': membersVisible,
       'fileTreeVisible': fileTreeVisible,
@@ -325,8 +325,8 @@ String _terminalThemeModeValue(String? raw) {
 }
 
 WorkspaceEntryMode _workspaceEntryModeFromJson(String? raw) {
-  if (raw == 'lastProject') {
-    return WorkspaceEntryMode.lastProject;
+  if (raw == 'lastWorkspace') {
+    return WorkspaceEntryMode.lastWorkspace;
   }
   // Legacy `hub` and unknown values open home (no redirect shim).
   return WorkspaceEntryMode.home;

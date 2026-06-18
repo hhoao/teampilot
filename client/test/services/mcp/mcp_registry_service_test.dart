@@ -27,7 +27,7 @@ void main() {
   test('merges catalog into claude metadata preserving other servers', () async {
     const teamId = 'team-a';
     const sessionId = 'sess-1';
-    final memberDir = layout.sessionRuntimeToolDir('project-1', sessionId, 'claude');
+    final memberDir = layout.sessionRuntimeToolDir('workspace-1', sessionId, 'claude');
     await Directory(memberDir).create(recursive: true);
 
     final metaFile = File('$memberDir/.claude.json');
@@ -37,7 +37,7 @@ void main() {
         'mcpServers': {
           'plugin-srv': {'type': 'stdio', 'command': 'plugin'},
         },
-        'projects': {
+        'workspaces': {
           '/repo': {'hasTrustDialogAccepted': true},
         },
       }),
@@ -59,7 +59,7 @@ void main() {
     );
 
     await McpRegistryService(layout: layout).writeForSession(
-      projectId: 'project-1',
+      workspaceId: 'workspace-1',
       teamId: teamId,
       sessionId: sessionId,
     );
@@ -69,13 +69,13 @@ void main() {
     final servers = (meta['mcpServers'] as Map).cast<String, Object?>();
     expect(servers['fetch'], isNotNull);
     expect(servers['plugin-srv'], isNotNull);
-    expect((meta['projects'] as Map)['/repo'], isNotNull);
+    expect((meta['workspaces'] as Map)['/repo'], isNotNull);
   });
 
   test('mcp merge preserves hasCompletedOnboarding when defaults ran first', () async {
     const teamId = 'team-a';
     const sessionId = 'sess-2';
-    final memberDir = layout.sessionRuntimeToolDir('project-1', sessionId, 'claude');
+    final memberDir = layout.sessionRuntimeToolDir('workspace-1', sessionId, 'claude');
     await Directory(memberDir).create(recursive: true);
 
     final metaFile = File('$memberDir/.claude.json');
@@ -99,7 +99,7 @@ void main() {
     );
 
     await McpRegistryService(layout: layout).writeForSession(
-      projectId: 'project-1',
+      workspaceId: 'workspace-1',
       teamId: teamId,
       sessionId: sessionId,
     );
@@ -113,7 +113,7 @@ void main() {
   test('session merge injects Smithery Bearer only for gateway URLs', () async {
     const teamId = 'team-a';
     const sessionId = 'sess-auth';
-    final memberDir = layout.sessionRuntimeToolDir('project-1', sessionId, 'claude');
+    final memberDir = layout.sessionRuntimeToolDir('workspace-1', sessionId, 'claude');
     await Directory(memberDir).create(recursive: true);
 
     await Directory(p.join(root.path, 'mcp')).create(recursive: true);
@@ -163,7 +163,7 @@ void main() {
     );
 
     await McpRegistryService(layout: layout).writeForSession(
-      projectId: 'project-1',
+      workspaceId: 'workspace-1',
       teamId: teamId,
       sessionId: sessionId,
     );
@@ -186,7 +186,7 @@ void main() {
   test('extraServers merge into claude metadata without team catalog', () async {
     const teamId = 'team-a';
     const sessionId = 'sess-bus';
-    final memberDir = layout.sessionRuntimeToolDir('project-1', sessionId, 'claude');
+    final memberDir = layout.sessionRuntimeToolDir('workspace-1', sessionId, 'claude');
     await Directory(memberDir).create(recursive: true);
 
     final metaFile = File(
@@ -198,7 +198,7 @@ void main() {
 
     const endpoint = 'http://127.0.0.1:4242/mcp';
     await McpRegistryService(layout: layout).writeForSession(
-      projectId: 'project-1',
+      workspaceId: 'workspace-1',
       teamId: teamId,
       sessionId: sessionId,
       extraServers: {

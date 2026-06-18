@@ -56,9 +56,9 @@ void main() {
     });
 
     test('send lights working; screen going quiet clears it', () async {
-      final project = await repo.createProject('/tmp');
-      final session = await repo.createSession(project.projectId);
-      await cubit.loadProjectData(repo);
+      final workspace = await repo.createWorkspace('/tmp');
+      final session = await repo.createSession(workspace.workspaceId);
+      await cubit.loadWorkspaceData(repo);
 
       await cubit.openSessionTab(
         session,
@@ -93,9 +93,9 @@ void main() {
     });
 
     test('real 1s idle-watch timer is running for a simple-mode tab', () async {
-      final project = await repo.createProject('/tmp');
-      final session = await repo.createSession(project.projectId);
-      await cubit.loadProjectData(repo);
+      final workspace = await repo.createWorkspace('/tmp');
+      final session = await repo.createSession(workspace.workspaceId);
+      await cubit.loadWorkspaceData(repo);
 
       await cubit.openSessionTab(
         session,

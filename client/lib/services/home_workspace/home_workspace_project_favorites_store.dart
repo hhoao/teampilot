@@ -3,7 +3,7 @@ import 'dart:convert';
 import '../io/filesystem.dart';
 import '../storage/app_storage.dart';
 
-/// Persists favorited project ids at `home-workspace/project-favorites.json`.
+/// Persists favorited workspace ids at `home-workspace/workspace-favorites.json`.
 class WorkspaceFavoritesStore {
   WorkspaceFavoritesStore({Filesystem? fs, String? pathOverride})
       : _fsOverride = fs,
@@ -14,14 +14,14 @@ class WorkspaceFavoritesStore {
 
   Filesystem get _fs => _fsOverride ?? AppStorage.fs;
   String get _path =>
-      _pathOverride ?? AppStorage.paths.homeWorkspaceProjectFavoritesJson;
+      _pathOverride ?? AppStorage.paths.homeWorkspaceWorkspaceFavoritesJson;
 
   Future<Set<String>> load() async {
     try {
       final text = await _fs.readString(_path);
       if (text == null || text.isEmpty) return <String>{};
       final root = (jsonDecode(text) as Map).cast<String, Object?>();
-      final ids = root['projectIds'];
+      final ids = root['workspaceIds'];
       if (ids is! List) return <String>{};
       return ids.map((e) => e.toString()).where((s) => s.isNotEmpty).toSet();
     } catch (_) {
@@ -29,19 +29,19 @@ class WorkspaceFavoritesStore {
     }
   }
 
-  Future<void> _save(Set<String> projectIds) async {
+  Future<void> _save(Set<String> workspaceIds) async {
     final ctx = _fs.pathContext;
     await _fs.ensureDir(ctx.dirname(_path));
-    await _fs.atomicWrite(_path, jsonEncode({'projectIds': projectIds.toList()}));
+    await _fs.atomicWrite(_path, jsonEncode({'workspaceIds': workspaceIds.toList()}));
   }
 
-  Future<bool> toggle(String projectId) async {
+  Future<bool> toggle(String workspaceId) async {
     final ids = await load();
-    final nowOn = !ids.contains(projectId);
+    final nowOn = !ids.contains(workspaceId);
     if (nowOn) {
-      ids.add(projectId);
+      ids.add(workspaceId);
     } else {
-      ids.remove(projectId);
+      ids.remove(workspaceId);
     }
     await _save(ids);
     return nowOn;

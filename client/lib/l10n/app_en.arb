@@ -28,7 +28,7 @@
   "toolPlacementDescription": "Dock tool panels on the right or along the bottom edge.",
   "visibilityTeamSessionsHint": "Show the team sessions list in the left sidebar.",
   "visibilityMembersHint": "Show the member list next to tools or terminals.",
-  "visibilityFileTreeHint": "Show the project file tree for quick navigation.",
+  "visibilityFileTreeHint": "Show the workspace file tree for quick navigation.",
   "visibilityGitHint": "Show the source control panel for the current repository.",
   "extensionsSettingsTitle": "Extensions",
   "extensionsSettingsDescription": "Install and enable external tools that augment your agents.",
@@ -112,7 +112,7 @@
   "workspaceEntryModeTitle": "Startup view",
   "workspaceEntryModeDescription": "Where the app opens after launch.",
   "workspaceEntryModeHome": "Home",
-  "workspaceEntryModeLastProject": "Last project",
+  "workspaceEntryModeLastWorkspace": "Last workspace",
   "theme": "Theme",
   "themeSystem": "System",
   "themeDark": "Dark",
@@ -221,8 +221,8 @@
       }
     }
   },
-  "projects": "Projects",
-  "newProject": "New Project",
+  "workspaces": "Workspaces",
+  "newWorkspace": "New Workspace",
   "homeWorkspaceMainWindow": "Workspace",
   "windowControlMinimize": "Minimize",
   "windowControlMaximize": "Maximize",
@@ -232,34 +232,34 @@
   "homeWorkspaceMyFavorites": "My favorites",
   "homeWorkspaceRecentVisits": "Recent",
   "homeWorkspacePersonal": "Simple mode",
-  "homeWorkspaceAllProjects": "All projects",
-  "homeWorkspaceProjectTabKindPersonal": "Personal",
-  "@homeWorkspaceProjectTabKindPersonal": {
-    "description": "Short personal-project label in title-bar tab tooltips."
+  "homeWorkspaceAllWorkspaces": "All workspaces",
+  "homeWorkspaceWorkspaceTabKindPersonal": "Personal",
+  "@homeWorkspaceWorkspaceTabKindPersonal": {
+    "description": "Short personal-workspace label in title-bar tab tooltips."
   },
-  "homeWorkspaceDefaultPersonalProjectName": "Personal assistant",
-  "@homeWorkspaceDefaultPersonalProjectName": {
-    "description": "Name shown for the built-in personal project in simple mode."
+  "homeWorkspaceDefaultPersonalWorkspaceName": "Personal assistant",
+  "@homeWorkspaceDefaultPersonalWorkspaceName": {
+    "description": "Name shown for the built-in personal workspace in simple mode."
   },
   "homeWorkspacePersonalSubtitle": "Skip the team setup — just launch a single CLI and start chatting.",
   "homeWorkspaceNoData": "No data yet",
   "homeWorkspaceRecentlyClosed": "Recently closed",
-  "homeWorkspaceRecentlyClosedEmpty": "No recently closed projects",
+  "homeWorkspaceRecentlyClosedEmpty": "No recently closed workspaces",
   "homeWorkspaceMyTeams": "My Teams",
   "homeWorkspaceNewTeam": "New Team",
   "homeWorkspaceProviders": "Providers",
-  "homeWorkspaceTeamProjects": "Projects",
+  "homeWorkspaceTeamWorkspaces": "Workspaces",
   "homeWorkspaceOwner": "Owner",
-  "homeWorkspaceImportProject": "Import",
+  "homeWorkspaceImportWorkspace": "Import",
   "homeWorkspaceSessionsLabel": "sessions",
-  "homeWorkspaceEmptyProjects": "No projects in this team yet",
-  "homeWorkspaceEmptyProjectsHint": "Create or import a project to get started",
-  "homeWorkspaceProjectSort": "Sort projects",
-  "homeWorkspaceProjectSortRecentlyUpdated": "Recently updated",
-  "homeWorkspaceProjectSortNameAsc": "Name (A–Z)",
-  "homeWorkspaceProjectSortNameDesc": "Name (Z–A)",
-  "homeWorkspaceProjectSortCreatedDesc": "Date created",
-  "homeWorkspaceProjectSortSessionCountDesc": "Session count",
+  "homeWorkspaceEmptyWorkspaces": "No workspaces in this team yet",
+  "homeWorkspaceEmptyWorkspacesHint": "Create or import a workspace to get started",
+  "homeWorkspaceWorkspaceSort": "Sort workspaces",
+  "homeWorkspaceWorkspaceSortRecentlyUpdated": "Recently updated",
+  "homeWorkspaceWorkspaceSortNameAsc": "Name (A–Z)",
+  "homeWorkspaceWorkspaceSortNameDesc": "Name (Z–A)",
+  "homeWorkspaceWorkspaceSortCreatedDesc": "Date created",
+  "homeWorkspaceWorkspaceSortSessionCountDesc": "Session count",
   "homeWorkspaceComingSoon": "Coming soon",
   "homeWorkspaceNewTeamSubtitle": "Pick how the team collaborates, then name it.",
   "homeWorkspaceNewTeamMethodCustom": "Custom",
@@ -277,54 +277,54 @@
   "teamModeMixedTitle": "Mixed mode",
   "teamModeNativeDescription": "All members share one CLI for native, low-config collaboration.",
   "teamModeMixedDescription": "Members can run different CLIs and collaborate across tools over TeamBus.",
-  "homeWorkspaceNewProjectSubtitle": "Choose a working directory and name your project.",
-  "homeWorkspaceNewProjectDirectoryLabel": "Project directory",
-  "homeWorkspaceNewProjectChooseDirectory": "Choose folder",
-  "homeWorkspaceNewProjectDirectoryHint": "No directory selected yet",
-  "homeWorkspaceNewProjectNameHint": "Defaults to the folder name",
-  "homeWorkspaceCreateProject": "Create project",
-  "homeWorkspaceCloseProjectTitle": "Close project?",
-  "homeWorkspaceCloseProjectMessage": "{count, plural, =1{Closing this tab will end 1 running session in this project.} other{Closing this tab will end {count} running sessions in this project.}}",
-  "@homeWorkspaceCloseProjectMessage": {
+  "homeWorkspaceNewWorkspaceSubtitle": "Choose a working directory and name your workspace.",
+  "homeWorkspaceNewWorkspaceDirectoryLabel": "Workspace directory",
+  "homeWorkspaceNewWorkspaceChooseDirectory": "Choose folder",
+  "homeWorkspaceNewWorkspaceDirectoryHint": "No directory selected yet",
+  "homeWorkspaceNewWorkspaceNameHint": "Defaults to the folder name",
+  "homeWorkspaceCreateWorkspace": "Create workspace",
+  "homeWorkspaceCloseWorkspaceTitle": "Close workspace?",
+  "homeWorkspaceCloseWorkspaceMessage": "{count, plural, =1{Closing this tab will end 1 running session in this workspace.} other{Closing this tab will end {count} running sessions in this workspace.}}",
+  "@homeWorkspaceCloseWorkspaceMessage": {
     "placeholders": {
       "count": {
         "type": "int"
       }
     }
   },
-  "homeWorkspaceCloseProjectConfirm": "Close & end sessions",
-  "homeWorkspaceProjectManagement": "Project management",
-  "homeWorkspaceProjectList": "Projects",
+  "homeWorkspaceCloseWorkspaceConfirm": "Close & end sessions",
+  "homeWorkspaceWorkspaceManagement": "Workspace management",
+  "homeWorkspaceWorkspaceList": "Workspaces",
   "homeWorkspaceConversations": "Conversations",
   "homeWorkspaceConversationsSection": "Conversations",
-  "homeWorkspaceProjectAgent": "Agent",
-  "projectAgentBuiltInSubtitle": "Maps to flashskyai --agent when that CLI is active.",
-  "projectAgentExtraArgs": "Extra CLI arguments",
-  "projectAgentExtraArgsSubtitle": "Extra flags appended when starting the agent in this project.",
-  "projectAdvancedSettingsSubtitle": "Agent preset and extra CLI flags for this project.",
-  "projectAgentPromptSubtitle": "System prompt defining the agent's role and boundaries in this project.",
-  "projectAgentPromptPresetGeneral": "General",
-  "projectAgentPromptPresetGeneralText": "Help with development in this project end to end. Understand the request and codebase, propose a clear approach, then implement with minimal diffs; summarize changed files and suggested next steps.",
-  "projectAgentPromptPresetDeveloper": "Developer",
-  "projectAgentPromptPresetDeveloperText": "Focus on implementation and fixes. Prefer minimal diffs, run relevant tests, and briefly explain changed files and rationale.",
-  "projectAgentPromptPresetReviewer": "Reviewer",
-  "projectAgentPromptPresetReviewerText": "Review code only; do not modify files unless asked.\nEach finding must include file path, line, issue, and suggested fix.",
-  "projectAgentPromptPresetResearcher": "Researcher",
-  "projectAgentPromptPresetResearcherText": "Investigate and report only; do not change production code unless asked.\nOutput findings with file paths, relevant symbols, and recommended next steps.",
-  "projectCliEffortInheritHint": "Use provider default",
-  "projectCliDefaultSubtitle": "Default CLI for new conversations in this project.",
-  "projectCliDefaultsTitle": "CLI defaults",
-  "projectCliDefaultsSubtitle": "Set the default provider and model for each CLI used in this project.",
-  "projectCliProviderModelTitle": "Provider & model",
-  "projectCliEffortLevel": "Reasoning effort",
-  "projectCliEffortLevelSubtitle": "Default effort for this CLI in the project (leave empty to use provider default).",
-  "projectCliConfigure": "Configure",
-  "projectCliConfigured": "Configured",
-  "projectCliNotConfigured": "Not configured",
-  "projectCliNotConfiguredHint": "No default provider selected yet",
-  "projectCliNoProviderCatalog": "No provider setup required for this CLI",
-  "projectCliConfigSummary": "{provider} · {model}",
-  "@projectCliConfigSummary": {
+  "homeWorkspaceWorkspaceAgent": "Agent",
+  "workspaceAgentBuiltInSubtitle": "Maps to flashskyai --agent when that CLI is active.",
+  "workspaceAgentExtraArgs": "Extra CLI arguments",
+  "workspaceAgentExtraArgsSubtitle": "Extra flags appended when starting the agent in this workspace.",
+  "workspaceAdvancedSettingsSubtitle": "Agent preset and extra CLI flags for this workspace.",
+  "workspaceAgentPromptSubtitle": "System prompt defining the agent's role and boundaries in this workspace.",
+  "workspaceAgentPromptPresetGeneral": "General",
+  "workspaceAgentPromptPresetGeneralText": "Help with development in this workspace end to end. Understand the request and codebase, propose a clear approach, then implement with minimal diffs; summarize changed files and suggested next steps.",
+  "workspaceAgentPromptPresetDeveloper": "Developer",
+  "workspaceAgentPromptPresetDeveloperText": "Focus on implementation and fixes. Prefer minimal diffs, run relevant tests, and briefly explain changed files and rationale.",
+  "workspaceAgentPromptPresetReviewer": "Reviewer",
+  "workspaceAgentPromptPresetReviewerText": "Review code only; do not modify files unless asked.\nEach finding must include file path, line, issue, and suggested fix.",
+  "workspaceAgentPromptPresetResearcher": "Researcher",
+  "workspaceAgentPromptPresetResearcherText": "Investigate and report only; do not change production code unless asked.\nOutput findings with file paths, relevant symbols, and recommended next steps.",
+  "workspaceCliEffortInheritHint": "Use provider default",
+  "workspaceCliDefaultSubtitle": "Default CLI for new conversations in this workspace.",
+  "workspaceCliDefaultsTitle": "CLI defaults",
+  "workspaceCliDefaultsSubtitle": "Set the default provider and model for each CLI used in this workspace.",
+  "workspaceCliProviderModelTitle": "Provider & model",
+  "workspaceCliEffortLevel": "Reasoning effort",
+  "workspaceCliEffortLevelSubtitle": "Default effort for this CLI in the workspace (leave empty to use provider default).",
+  "workspaceCliConfigure": "Configure",
+  "workspaceCliConfigured": "Configured",
+  "workspaceCliNotConfigured": "Not configured",
+  "workspaceCliNotConfiguredHint": "No default provider selected yet",
+  "workspaceCliNoProviderCatalog": "No provider setup required for this CLI",
+  "workspaceCliConfigSummary": "{provider} · {model}",
+  "@workspaceCliConfigSummary": {
     "placeholders": {
       "provider": {
         "type": "String"
@@ -334,23 +334,23 @@
       }
     }
   },
-  "projectCliAddPresetTitle": "Add Preset",
-  "projectCliEditPresetTitle": "Edit Preset",
-  "projectCliPresetNameLabel": "Preset Name",
-  "projectCliPresetsManageTitle": "Manage Presets",
-  "projectCliPresetsEmptyHint": "No presets yet. Create one to get started.",
-  "projectCliDeletePresetTitle": "Delete Preset",
-  "projectCliDeletePresetConfirm": "Delete preset '{name}'? This cannot be undone.",
-  "@projectCliDeletePresetConfirm": {
+  "workspaceCliAddPresetTitle": "Add Preset",
+  "workspaceCliEditPresetTitle": "Edit Preset",
+  "workspaceCliPresetNameLabel": "Preset Name",
+  "workspaceCliPresetsManageTitle": "Manage Presets",
+  "workspaceCliPresetsEmptyHint": "No presets yet. Create one to get started.",
+  "workspaceCliDeletePresetTitle": "Delete Preset",
+  "workspaceCliDeletePresetConfirm": "Delete preset '{name}'? This cannot be undone.",
+  "@workspaceCliDeletePresetConfirm": {
     "placeholders": {
       "name": {
         "type": "String"
       }
     }
   },
-  "projectCliPresetLabel": "Active Preset",
-  "projectCliNoPresetHint": "No preset selected",
-  "projectCliManagePresets": "Manage",
+  "workspaceCliPresetLabel": "Active Preset",
+  "workspaceCliNoPresetHint": "No preset selected",
+  "workspaceCliManagePresets": "Manage",
   "teamDefaultPresetLabel": "Default Model Preset",
   "teamDefaultPresetSubtitle": "Optional default preset applied to members that don't override it.",
   "teamDefaultPresetNone": "None",
@@ -381,98 +381,98 @@
       }
     }
   },
-  "homeWorkspaceProjectSkills": "Skills",
-  "homeWorkspaceProjectPlugins": "Plugins",
-  "homeWorkspaceProjectMcp": "MCP",
-  "homeWorkspaceProjectExtensions": "Extensions",
-  "projectSkillsAssignedCount": "{assigned} of {total} enabled for this project",
-  "@projectSkillsAssignedCount": {
+  "homeWorkspaceWorkspaceSkills": "Skills",
+  "homeWorkspaceWorkspacePlugins": "Plugins",
+  "homeWorkspaceWorkspaceMcp": "MCP",
+  "homeWorkspaceWorkspaceExtensions": "Extensions",
+  "workspaceSkillsAssignedCount": "{assigned} of {total} enabled for this workspace",
+  "@workspaceSkillsAssignedCount": {
     "placeholders": {
       "assigned": {"type": "int"},
       "total": {"type": "int"}
     }
   },
-  "projectSkillsManage": "Manage skills",
-  "projectMcpAssignedCount": "{assigned} of {total} enabled for this project",
-  "@projectMcpAssignedCount": {
+  "workspaceSkillsManage": "Manage skills",
+  "workspaceMcpAssignedCount": "{assigned} of {total} enabled for this workspace",
+  "@workspaceMcpAssignedCount": {
     "placeholders": {
       "assigned": {"type": "int"},
       "total": {"type": "int"}
     }
   },
-  "projectMcpManage": "Manage MCP",
-  "projectPluginsAssignedCount": "{assigned} of {total} linked to this project",
-  "@projectPluginsAssignedCount": {
+  "workspaceMcpManage": "Manage MCP",
+  "workspacePluginsAssignedCount": "{assigned} of {total} linked to this workspace",
+  "@workspacePluginsAssignedCount": {
     "placeholders": {
       "assigned": {"type": "int"},
       "total": {"type": "int"}
     }
   },
-  "projectPluginsManage": "Manage plugins",
-  "projectPluginsEmpty": "No plugins installed",
-  "projectPluginsEmptyHint": "Install plugins from Discovery to enable them for this project.",
-  "projectExtensionsTitle": "Extensions for this project",
-  "projectExtensionsSubtitle": "Override which extensions run for this project. Default follows the global setting.",
-  "projectExtensionEffectiveOn": "Enabled for this project",
-  "projectExtensionEffectiveOff": "Disabled for this project",
+  "workspacePluginsManage": "Manage plugins",
+  "workspacePluginsEmpty": "No plugins installed",
+  "workspacePluginsEmptyHint": "Install plugins from Discovery to enable them for this workspace.",
+  "workspaceExtensionsTitle": "Extensions for this workspace",
+  "workspaceExtensionsSubtitle": "Override which extensions run for this workspace. Default follows the global setting.",
+  "workspaceExtensionEffectiveOn": "Enabled for this workspace",
+  "workspaceExtensionEffectiveOff": "Disabled for this workspace",
   "homeWorkspaceTeamConfig": "Team config",
-  "homeWorkspaceProjectSettings": "Project settings",
-  "homeWorkspaceProjectMembers": "Members",
-  "homeWorkspaceProjectSettingsSectionBasic": "Basic",
-  "homeWorkspaceProjectSettingsBasicInfo": "Basic information",
-  "homeWorkspaceProjectId": "Project ID",
-  "homeWorkspaceProjectAdditionalDirsCount": "{count, plural, =1{1 additional directory} other{{count} additional directories}}",
-  "@homeWorkspaceProjectAdditionalDirsCount": {
+  "homeWorkspaceWorkspaceSettings": "Workspace settings",
+  "homeWorkspaceWorkspaceMembers": "Members",
+  "homeWorkspaceWorkspaceSettingsSectionBasic": "Basic",
+  "homeWorkspaceWorkspaceSettingsBasicInfo": "Basic information",
+  "homeWorkspaceWorkspaceId": "Workspace ID",
+  "homeWorkspaceWorkspaceAdditionalDirsCount": "{count, plural, =1{1 additional directory} other{{count} additional directories}}",
+  "@homeWorkspaceWorkspaceAdditionalDirsCount": {
     "placeholders": {
       "count": {
         "type": "int"
       }
     }
   },
-  "homeWorkspaceProjectSettingsPathsHint": "Use Manage on additional directories to add or remove folders in this project.",
-  "deleteProjectSubtitle": "Deletes this project and all conversations in it. This cannot be undone.",
+  "homeWorkspaceWorkspaceSettingsPathsHint": "Use Manage on additional directories to add or remove folders in this workspace.",
+  "deleteWorkspaceSubtitle": "Deletes this workspace and all conversations in it. This cannot be undone.",
   "homeWorkspaceInviteMembers": "Invite",
   "homeWorkspaceNewConversation": "New Conversation",
   "homeWorkspaceNewConversationChooseCli": "New conversation with CLI…",
-  "homeWorkspaceNoConversations": "No conversations in this project yet",
+  "homeWorkspaceNoConversations": "No conversations in this workspace yet",
   "homeWorkspaceSearchHint": "Search",
   "homeWorkspaceNoSearchResults": "No conversations match your search",
-  "projectSearchTitle": "Search",
-  "projectSearchHint": "Search sessions and files",
-  "projectSearchFilesSection": "Files",
-  "projectSearchSearching": "Searching files…",
-  "projectSearchNoResults": "No matches",
-  "projectSearchFilesTruncated": "More files match — refine your search",
-  "homeWorkspaceOpenProjectInNewTab": "Open in new tab",
-  "homeWorkspaceFavoriteProject": "Favorite project",
-  "homeWorkspaceUnfavoriteProject": "Remove from favorites",
-  "homeWorkspaceRenameProject": "Rename project",
-  "homeWorkspaceCloneProject": "Clone project",
-  "homeWorkspaceCloneProjectDisplayName": "{name} (copy)",
-  "@homeWorkspaceCloneProjectDisplayName": {
+  "workspaceSearchTitle": "Search",
+  "workspaceSearchHint": "Search sessions and files",
+  "workspaceSearchFilesSection": "Files",
+  "workspaceSearchSearching": "Searching files…",
+  "workspaceSearchNoResults": "No matches",
+  "workspaceSearchFilesTruncated": "More files match — refine your search",
+  "homeWorkspaceOpenWorkspaceInNewTab": "Open in new tab",
+  "homeWorkspaceFavoriteWorkspace": "Favorite workspace",
+  "homeWorkspaceUnfavoriteWorkspace": "Remove from favorites",
+  "homeWorkspaceRenameWorkspace": "Rename workspace",
+  "homeWorkspaceCloneWorkspace": "Clone workspace",
+  "homeWorkspaceCloneWorkspaceDisplayName": "{name} (copy)",
+  "@homeWorkspaceCloneWorkspaceDisplayName": {
     "placeholders": {
       "name": {}
     }
   },
-  "homeWorkspaceCloneProjectSuccess": "Cloned \"{name}\".",
-  "@homeWorkspaceCloneProjectSuccess": {
+  "homeWorkspaceCloneWorkspaceSuccess": "Cloned \"{name}\".",
+  "@homeWorkspaceCloneWorkspaceSuccess": {
     "placeholders": {
       "name": {}
     }
   },
-  "homeWorkspaceCloneProjectFailed": "Could not clone project",
-  "newProjectTooltip": "Create a project",
-  "switchProjectTooltip": "Switch project",
+  "homeWorkspaceCloneWorkspaceFailed": "Could not clone workspace",
+  "newWorkspaceTooltip": "Create a workspace",
+  "switchWorkspaceTooltip": "Switch workspace",
   "create": "Create",
   "pickPrimaryDirectory": "Pick primary directory",
-  "projectPrimaryPathRequired": "Select a primary directory first.",
-  "projectPrimaryPathNotSelected": "No primary directory selected",
-  "projectDirectoryAdded": "Directory added to project",
+  "workspacePrimaryPathRequired": "Select a primary directory first.",
+  "workspacePrimaryPathNotSelected": "No primary directory selected",
+  "workspaceDirectoryAdded": "Directory added to workspace",
   "newSessionTooltip": "New session",
   "defaultNewChatSessionTitle": "New Chat",
   "sessionStarting": "Starting session…",
   "sessionReadyTitle": "Ready to chat",
-  "sessionReadySubtitle": "Start a conversation with {memberName} in this project.",
+  "sessionReadySubtitle": "Start a conversation with {memberName} in this workspace.",
   "@sessionReadySubtitle": {
     "placeholders": {
       "memberName": {
@@ -480,7 +480,7 @@
       }
     }
   },
-  "sessionReadySubtitleGeneric": "Start a conversation in this project.",
+  "sessionReadySubtitleGeneric": "Start a conversation in this workspace.",
   "sessionReadyHint": "Describe what you want in everyday language — no terminal commands needed.",
   "sessionStartButton": "Start conversation",
   "sessionFailedTitle": "Couldn't start session",
@@ -495,27 +495,27 @@
       }
     }
   },
-  "projectDetails": "Project details",
-  "projectDetailsTitle": "Project Details",
-  "addProjectDirectory": "Add directory",
-  "removeProjectDirectory": "Remove directory",
-  "projectDisplayName": "Display name",
-  "projectIcon": "Icon",
-  "projectIconPickerTitle": "Choose project icon",
-  "projectIconUseDefault": "Use default",
-  "projectIconUpload": "Upload icon",
-  "projectIconUploadFailed": "Could not save icon. Use PNG, JPG, WEBP, or SVG.",
-  "projectPrimaryPath": "Primary directory",
-  "projectAdditionalDirectories": "Additional directories",
-  "projectNoAdditionalDirectories": "No additional directories",
-  "projectSessionCount": "Sessions",
-  "projectCreatedAt": "Created",
-  "projectUpdatedAt": "Updated",
-  "projectDirectoryAlreadyPrimary": "This path is already the primary directory.",
-  "projectDirectoryAlreadyAdded": "This directory is already in the project.",
-  "deleteProject": "Delete Project",
-  "deleteProjectConfirm": "Delete project \"{name}\" and all its sessions? This cannot be undone.",
-  "@deleteProjectConfirm": {
+  "workspaceDetails": "Workspace details",
+  "workspaceDetailsTitle": "Workspace Details",
+  "addWorkspaceDirectory": "Add directory",
+  "removeWorkspaceDirectory": "Remove directory",
+  "workspaceDisplayName": "Display name",
+  "workspaceIcon": "Icon",
+  "workspaceIconPickerTitle": "Choose workspace icon",
+  "workspaceIconUseDefault": "Use default",
+  "workspaceIconUpload": "Upload icon",
+  "workspaceIconUploadFailed": "Could not save icon. Use PNG, JPG, WEBP, or SVG.",
+  "workspacePrimaryPath": "Primary directory",
+  "workspaceAdditionalDirectories": "Additional directories",
+  "workspaceNoAdditionalDirectories": "No additional directories",
+  "workspaceSessionCount": "Sessions",
+  "workspaceCreatedAt": "Created",
+  "workspaceUpdatedAt": "Updated",
+  "workspaceDirectoryAlreadyPrimary": "This path is already the primary directory.",
+  "workspaceDirectoryAlreadyAdded": "This directory is already in the workspace.",
+  "deleteWorkspace": "Delete Workspace",
+  "deleteWorkspaceConfirm": "Delete workspace \"{name}\" and all its sessions? This cannot be undone.",
+  "@deleteWorkspaceConfirm": {
     "placeholders": {
       "name": {
         "type": "String"
@@ -557,7 +557,7 @@
   "sshProfileSelectorTooltip": "Switch SSH server",
   "sshProfileSelectorManage": "Manage SSH servers…",
   "sshDefaultWorkingDirectoryTitle": "SSH default working directory",
-  "sshDefaultWorkingDirectorySubtitle": "Remote working directory used when the SSH launch has no project path; leave empty to skip changing directory.",
+  "sshDefaultWorkingDirectorySubtitle": "Remote working directory used when the SSH launch has no workspace path; leave empty to skip changing directory.",
   "cliExecutablePathLabel": "flashskyai CLI path",
   "cliExecutablePathDescription": "Absolute path to the flashskyai executable. Leave empty to use the one on PATH.",
   "cliExecutablePathDescriptionSsh": "Absolute path to flashskyai on the remote SSH host. Leave empty to auto-discover over SSH.",
@@ -694,7 +694,7 @@
   "scopeSessionsToSelectedTeamTitle": "Scope sessions to selected team",
   "scopeSessionsToSelectedTeamDescription": "When enabled, the sidebar shows only sessions assigned to the current team. New sessions are always tagged with the selected team so they appear here if you turn this on later.",
   "windowsStorageBackendTitle": "Data storage location",
-  "windowsStorageBackendDescription": "Where teams, skills, projects, and config profiles are stored. Switching uses a separate data tree; nothing is migrated automatically.",
+  "windowsStorageBackendDescription": "Where teams, skills, workspaces, and config profiles are stored. Switching uses a separate data tree; nothing is migrated automatically.",
   "windowsStorageBackendNative": "Windows local",
   "windowsStorageBackendWsl": "WSL",
   "windowsStorageBackendCurrentRoot": "Current root: {path}",
@@ -706,7 +706,7 @@
     }
   },
   "windowsStorageBackendSwitchConfirmTitle": "Switch storage location?",
-  "windowsStorageBackendSwitchConfirmBody": "This uses a different data directory. Teams, projects, and skills from the other location will not appear until you switch back.",
+  "windowsStorageBackendSwitchConfirmBody": "This uses a different data directory. Teams, workspaces, and skills from the other location will not appear until you switch back.",
   "windowsStorageBackendSwitchConfirmAction": "Switch",
   "windowsStorageBackendWslUnavailable": "WSL is not available. Install or start WSL before using WSL storage.",
   "windowsStorageCliMismatchNativeCli": "CLI runs in WSL but data is stored in Windows AppData. Config may not match.",
@@ -1773,7 +1773,7 @@
   },
   "toolchainGit": "Git",
   "toolchainNode": "Node.js",
-  "homeWorkspaceLaunchProjectTitle": "Open with…",
+  "homeWorkspaceLaunchWorkspaceTitle": "Open with…",
   "homeWorkspaceSimpleMode": "Simple mode",
   "homeWorkspaceRememberLaunchChoice": "Remember my choice"
 }

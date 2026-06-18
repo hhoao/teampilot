@@ -11,7 +11,7 @@ AppSession _session(
 }) {
   return AppSession(
     sessionId: id,
-    projectId: 'p',
+    workspaceId: 'p',
     primaryPath: '/p',
     createdAt: createdAt,
     updatedAt: updatedAt,

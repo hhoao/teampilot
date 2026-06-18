@@ -14,7 +14,7 @@ import '../../support/post_frame_test_harness.dart';
 
 /// Regression lock for the staging-layer pollution bug: the leaf CONFIG_DIR's
 /// `skills/` must be a REAL directory owned by ResourceProvisioningService, NOT
-/// a symlink inherited from the project/team staging layer.
+/// a symlink inherited from the workspace/team staging layer.
 void main() {
   setUp(() {
     setUpTestAppStorage();
@@ -52,8 +52,8 @@ void main() {
       ),
     );
 
-    await buildService(root, layout).prepareProjectLaunch(identityId: 'personal-default', 
-      projectId: 'p',
+    await buildService(root, layout).prepareWorkspaceLaunch(identityId: 'personal-default', 
+      workspaceId: 'p',
       sessionId: 's',
       personal: const PersonalIdentity(id: 'p', display: 'p',
         bundle: ConfigBundle(skillIds: ['demo']),
@@ -89,7 +89,7 @@ void main() {
     );
 
     await buildService(root, layout).prepareTeamLaunch(
-      projectId: 'project-1',
+      workspaceId: 'workspace-1',
       sessionId: 't-1',
       teamId: 't',
       cliTeamName: 't-1',
@@ -103,7 +103,7 @@ void main() {
     );
 
     final leafSkills = fs.pathContext.join(
-      layout.sessionRuntimeToolDir('project-1', 't-1', 'flashskyai'),
+      layout.sessionRuntimeToolDir('workspace-1', 't-1', 'flashskyai'),
       'skills',
     );
     final stat = await fs.stat(leafSkills);

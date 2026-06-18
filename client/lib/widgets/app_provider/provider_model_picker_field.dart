@@ -10,7 +10,7 @@ import '../dropdown/app_dropdown_decoration.dart';
 import '../dropdown/app_dropdown_field.dart';
 import '../dropdown/app_dropdown_with_custom_input.dart';
 
-/// Registry-driven model picker for team members and project CLI defaults.
+/// Registry-driven model picker for team members and workspace CLI defaults.
 class ProviderModelPickerField extends StatefulWidget {
   const ProviderModelPickerField({
     required this.cli,

@@ -1,6 +1,6 @@
 import 'dart:convert';
 
-import '../../pages/home_workspace/home_workspace_project_sort.dart';
+import '../../pages/home_workspace/home_workspace_workspace_sort.dart';
 import '../io/filesystem.dart';
 import '../storage/app_storage.dart';
 
@@ -24,8 +24,8 @@ class WorkspaceDisplayPrefs {
   }
 }
 
-/// Persists project grid/list layout and sort at
-/// `home-workspace/project-display-prefs.json`.
+/// Persists workspace grid/list layout and sort at
+/// `home-workspace/workspace-display-prefs.json`.
 class WorkspaceDisplayPrefsStore {
   WorkspaceDisplayPrefsStore({Filesystem? fs, String? pathOverride})
     : _fsOverride = fs,
@@ -36,7 +36,7 @@ class WorkspaceDisplayPrefsStore {
 
   Filesystem get _fs => _fsOverride ?? AppStorage.fs;
   String get _path =>
-      _pathOverride ?? AppStorage.paths.homeWorkspaceProjectDisplayPrefsJson;
+      _pathOverride ?? AppStorage.paths.homeWorkspaceWorkspaceDisplayPrefsJson;
 
   Future<WorkspaceDisplayPrefs> load() async {
     try {

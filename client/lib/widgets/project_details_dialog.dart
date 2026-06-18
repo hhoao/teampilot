@@ -7,38 +7,38 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 
 import '../cubits/chat_cubit.dart';
 import '../l10n/l10n_extensions.dart';
-import '../models/app_project.dart';
+import '../models/app_workspace.dart';
 import '../repositories/session_repository.dart';
-import '../utils/project_path_picker.dart';
-import '../utils/project_path_utils.dart';
+import '../utils/workspace_path_picker.dart';
+import '../utils/workspace_path_utils.dart';
 import 'app_dialog.dart';
 
-Future<void> showProjectDetailsDialog(
+Future<void> showWorkspaceDetailsDialog(
   BuildContext context,
-  Workspace project,
+  Workspace workspace,
   int sessionCount,
 ) {
   return showDialog<void>(
     context: context,
     builder: (ctx) =>
-        _ProjectDetailsDialog(project: project, sessionCount: sessionCount),
+        _WorkspaceDetailsDialog(workspace: workspace, sessionCount: sessionCount),
   );
 }
 
-class _ProjectDetailsDialog extends StatefulWidget {
-  const _ProjectDetailsDialog({
-    required this.project,
+class _WorkspaceDetailsDialog extends StatefulWidget {
+  const _WorkspaceDetailsDialog({
+    required this.workspace,
     required this.sessionCount,
   });
 
-  final Workspace project;
+  final Workspace workspace;
   final int sessionCount;
 
   @override
-  State<_ProjectDetailsDialog> createState() => _ProjectDetailsDialogState();
+  State<_WorkspaceDetailsDialog> createState() => _WorkspaceDetailsDialogState();
 }
 
-class _ProjectDetailsDialogState extends State<_ProjectDetailsDialog> {
+class _WorkspaceDetailsDialogState extends State<_WorkspaceDetailsDialog> {
   late final TextEditingController _displayController;
   late List<String> _additionalPaths;
   var _saving = false;
@@ -46,8 +46,8 @@ class _ProjectDetailsDialogState extends State<_ProjectDetailsDialog> {
   @override
   void initState() {
     super.initState();
-    _displayController = TextEditingController(text: widget.project.display);
-    _additionalPaths = List<String>.from(widget.project.additionalPaths);
+    _displayController = TextEditingController(text: widget.workspace.display);
+    _additionalPaths = List<String>.from(widget.workspace.additionalPaths);
   }
 
   @override
@@ -76,22 +76,22 @@ class _ProjectDetailsDialogState extends State<_ProjectDetailsDialog> {
   }
 
   Future<void> _addDirectory() async {
-    final path = await pickProjectDirectoryPath(context);
+    final path = await pickWorkspaceDirectoryPath(context);
     if (path == null || path.trim().isEmpty || !mounted) return;
-    final trimmed = normalizeProjectPath(path);
+    final trimmed = normalizeWorkspacePath(path);
     final l10n = context.l10n;
-    if (projectPathsEqual(trimmed, widget.project.primaryPath)) {
+    if (workspacePathsEqual(trimmed, widget.workspace.primaryPath)) {
       AppToast.show(
         context,
-        message: l10n.projectDirectoryAlreadyPrimary,
+        message: l10n.workspaceDirectoryAlreadyPrimary,
         variant: AppToastVariant.warning,
       );
       return;
     }
-    if (projectPathsContains(_additionalPaths, trimmed)) {
+    if (workspacePathsContains(_additionalPaths, trimmed)) {
       AppToast.show(
         context,
-        message: l10n.projectDirectoryAlreadyAdded,
+        message: l10n.workspaceDirectoryAlreadyAdded,
         variant: AppToastVariant.warning,
       );
       return;
@@ -105,9 +105,9 @@ class _ProjectDetailsDialogState extends State<_ProjectDetailsDialog> {
     final repo = context.read<SessionRepository>();
     final cubit = context.read<ChatCubit>();
     try {
-      await cubit.updateProjectMetadata(
+      await cubit.updateWorkspaceMetadata(
         repo,
-        widget.project.projectId,
+        widget.workspace.workspaceId,
         display: _displayController.text,
         additionalPaths: _additionalPaths,
       );
@@ -120,7 +120,7 @@ class _ProjectDetailsDialogState extends State<_ProjectDetailsDialog> {
   @override
   Widget build(BuildContext context) {
     final l10n = context.l10n;
-    final p = widget.project;
+    final p = widget.workspace;
     final theme = Theme.of(context);
 
     return AppDialog(
@@ -130,15 +130,15 @@ class _ProjectDetailsDialogState extends State<_ProjectDetailsDialog> {
         mainAxisSize: MainAxisSize.min,
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          AppDialogHeader(title: l10n.projectDetailsTitle),
+          AppDialogHeader(title: l10n.workspaceDetailsTitle),
           const SizedBox(height: 16),
           TextField(
                 controller: _displayController,
-                decoration: InputDecoration(labelText: l10n.projectDisplayName),
+                decoration: InputDecoration(labelText: l10n.workspaceDisplayName),
               ),
               const SizedBox(height: 16),
               _DetailRow(
-                label: l10n.projectPrimaryPath,
+                label: l10n.workspacePrimaryPath,
                 value: p.primaryPath.isNotEmpty ? p.primaryPath : '—',
                 onCopy: p.primaryPath.isNotEmpty
                     ? () => _copyPath(p.primaryPath)
@@ -146,13 +146,13 @@ class _ProjectDetailsDialogState extends State<_ProjectDetailsDialog> {
               ),
               const SizedBox(height: 12),
               Text(
-                l10n.projectAdditionalDirectories,
+                l10n.workspaceAdditionalDirectories,
                 style: theme.textTheme.labelLarge,
               ),
               const SizedBox(height: 6),
               if (_additionalPaths.isEmpty)
                 Text(
-                  l10n.projectNoAdditionalDirectories,
+                  l10n.workspaceNoAdditionalDirectories,
                   style: theme.textTheme.bodySmall?.copyWith(
                     color: theme.colorScheme.onSurfaceVariant,
                   ),
@@ -176,7 +176,7 @@ class _ProjectDetailsDialogState extends State<_ProjectDetailsDialog> {
                           onPressed: () => _copyPath(path),
                         ),
                         IconButton(
-                          tooltip: l10n.removeProjectDirectory,
+                          tooltip: l10n.removeWorkspaceDirectory,
                           icon: Icon(
                             Icons.remove_circle_outline,
                             size: context.appIconSizes.md,
@@ -200,22 +200,22 @@ class _ProjectDetailsDialogState extends State<_ProjectDetailsDialog> {
                 child: TextButton.icon(
                   onPressed: _saving ? null : _addDirectory,
                   icon: Icon(Icons.create_new_folder_outlined, size: context.appIconSizes.md),
-                  label: Text(l10n.addProjectDirectory),
+                  label: Text(l10n.addWorkspaceDirectory),
                 ),
               ),
               const SizedBox(height: 12),
               _DetailRow(
-                label: l10n.projectSessionCount,
+                label: l10n.workspaceSessionCount,
                 value: '${widget.sessionCount}',
               ),
               const SizedBox(height: 8),
               _DetailRow(
-                label: l10n.projectCreatedAt,
+                label: l10n.workspaceCreatedAt,
                 value: _formatTimestamp(p.createdAt),
               ),
               const SizedBox(height: 8),
           _DetailRow(
-            label: l10n.projectUpdatedAt,
+            label: l10n.workspaceUpdatedAt,
             value: _formatTimestamp(p.updatedAt),
           ),
           AppDialogActions(

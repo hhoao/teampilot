@@ -78,8 +78,8 @@ class LayoutAppearanceInLayoutSection extends StatelessWidget {
                         icon: Icons.home_outlined,
                       ),
                       WorkspaceToggleSegment<WorkspaceEntryMode>(
-                        value: WorkspaceEntryMode.lastProject,
-                        label: l10n.workspaceEntryModeLastProject,
+                        value: WorkspaceEntryMode.lastWorkspace,
+                        label: l10n.workspaceEntryModeLastWorkspace,
                         icon: Icons.history,
                       ),
                     ],

@@ -68,7 +68,7 @@ void main() {
       final teamCubit = IdentityCubit(
         repository: IdentityRepository(rootDir: appData.path),
         sessionRepository: SessionRepository(rootDir: appData.path),
-        reloadProjects: () async {},
+        reloadWorkspaces: () async {},
         executableResolver: _executable,
         appDataBasePath: appData.path,
         configProfileService: ConfigProfileService(basePath: appData.path),
@@ -113,9 +113,9 @@ void main() {
                 body: _ShellRebuildProbe(
                   key: probeKey,
                   child: const ChatPageShell(
-                    cwd: '/tmp/personal-project',
-                    isPersonalProject: true,
-                    projectId: null,
+                    cwd: '/tmp/personal-workspace',
+                    isPersonalWorkspace: true,
+                    workspaceId: null,
                     team: null,
                   ),
                 ),

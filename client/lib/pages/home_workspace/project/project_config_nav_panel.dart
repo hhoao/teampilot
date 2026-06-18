@@ -4,11 +4,11 @@ import '../../../l10n/l10n_extensions.dart';
 import '../../../utils/debounce/debounce.dart';
 import '../../../widgets/settings/workspace_hub_shell.dart';
 import '../../../widgets/settings/workspace_section_host.dart';
-import 'project_config_section.dart';
+import 'workspace_config_section.dart';
 
-/// Middle nav column for project configuration (same role as [TeamConfigNavPanel]).
-class ProjectConfigNavPanel extends StatelessWidget {
-  const ProjectConfigNavPanel({
+/// Middle nav column for workspace configuration (same role as [TeamConfigNavPanel]).
+class WorkspaceConfigNavPanel extends StatelessWidget {
+  const WorkspaceConfigNavPanel({
     required this.sections,
     required this.section,
     required this.onSelect,
@@ -17,9 +17,9 @@ class ProjectConfigNavPanel extends StatelessWidget {
     super.key,
   });
 
-  final List<ProjectConfigSection> sections;
-  final ProjectConfigSection section;
-  final ValueChanged<ProjectConfigSection> onSelect;
+  final List<WorkspaceConfigSection> sections;
+  final WorkspaceConfigSection section;
+  final ValueChanged<WorkspaceConfigSection> onSelect;
   final AppLocalizations l10n;
   final VoidCallback? onOpenTeamConfig;
 
@@ -34,7 +34,7 @@ class ProjectConfigNavPanel extends StatelessWidget {
             selected: section == s,
             density: WorkspaceHubNavDensity.relaxed,
             onTap: throttledTap(
-              'project_config_nav_${s.name}',
+              'workspace_config_nav_${s.name}',
               () => onSelect(s),
             ),
           ),
@@ -47,7 +47,7 @@ class ProjectConfigNavPanel extends StatelessWidget {
             trailingIcon: Icons.open_in_new_rounded,
             density: WorkspaceHubNavDensity.relaxed,
             onTap: throttledTap(
-              'project_config_nav_team',
+              'workspace_config_nav_team',
               onOpenTeamConfig!,
             ),
           ),

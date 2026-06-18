@@ -37,7 +37,7 @@ class WorkspaceTerminalEntry {
   }
 }
 
-/// One project's set of workspace-terminal tabs.
+/// One workspace's set of workspace-terminal tabs.
 class WorkspaceTerminalGroup {
   final List<WorkspaceTerminalEntry> _entries = [];
 
@@ -90,17 +90,17 @@ class WorkspaceTerminalGroup {
   }
 }
 
-/// Owns workspace-terminal groups keyed by `projectId`. Lives in DI so terminal
-/// sessions survive [WorkspaceTerminalPanel] rebuilds on project switch; a
-/// group is torn down only when its project tab is closed ([disposeProject]).
+/// Owns workspace-terminal groups keyed by `workspaceId`. Lives in DI so terminal
+/// sessions survive [WorkspaceTerminalPanel] rebuilds on workspace switch; a
+/// group is torn down only when its workspace tab is closed ([disposeWorkspace]).
 class WorkspaceTerminalRegistry {
   final Map<String, WorkspaceTerminalGroup> _groups = {};
 
-  WorkspaceTerminalGroup groupFor(String projectId) =>
-      _groups.putIfAbsent(projectId, WorkspaceTerminalGroup.new);
+  WorkspaceTerminalGroup groupFor(String workspaceId) =>
+      _groups.putIfAbsent(workspaceId, WorkspaceTerminalGroup.new);
 
-  void disposeProject(String projectId) {
-    _groups.remove(projectId)?.dispose();
+  void disposeWorkspace(String workspaceId) {
+    _groups.remove(workspaceId)?.dispose();
   }
 
   void disposeAll() {

@@ -9,13 +9,13 @@ import 'in_memory_bus_message_log.dart';
 abstract final class BusMessageLogFactory {
   BusMessageLogFactory._();
 
-  static BusMessageLog forSession(String projectId, String sessionId) {
+  static BusMessageLog forSession(String workspaceId, String sessionId) {
     if (sessionId.startsWith('local-')) {
       return InMemoryBusMessageLog();
     }
     final layout = WorkspaceLayout(teampilotRoot: AppStorage.paths.basePath);
     return FileBusMessageLog(
-      mailRoot: layout.busMailDir(projectId, sessionId),
+      mailRoot: layout.busMailDir(workspaceId, sessionId),
       fs: AppStorage.fs,
     );
   }

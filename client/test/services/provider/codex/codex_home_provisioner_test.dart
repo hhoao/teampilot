@@ -98,7 +98,7 @@ base_url = "https://api.deepseek.com"
       expect(toml, contains(':44000/mcp'));
     });
 
-    test('injects project trust for session working directory', () async {
+    test('injects workspace trust for session working directory', () async {
       const provider = AppProviderConfig(
         id: 'p',
         cli: CliTool.codex,
@@ -117,7 +117,7 @@ base_url = "https://api.deepseek.com"
       final toml = await File(p.join(codexHome, 'config.toml')).readAsString();
       expect(
         toml,
-        contains('[projects."/home/user/Document/testmixed"]'),
+        contains('[workspaces."/home/user/Document/testmixed"]'),
       );
       expect(toml, contains('trust_level = "trusted"'));
     });

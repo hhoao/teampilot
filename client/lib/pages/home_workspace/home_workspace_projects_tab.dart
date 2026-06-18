@@ -8,7 +8,7 @@ import 'package:go_router/go_router.dart';
 import '../../cubits/chat_cubit.dart';
 import '../../cubits/identity_cubit.dart';
 import '../../l10n/l10n_extensions.dart';
-import '../../models/app_project.dart';
+import '../../models/app_workspace.dart';
 import '../../models/app_session.dart';
 import '../../models/launch_identity.dart';
 import '../../models/personal_identity.dart';
@@ -16,42 +16,42 @@ import '../../models/team_config.dart';
 import '../../models/identity_kind.dart';
 import '../../models/identity.dart';
 import '../../repositories/session_repository.dart';
-import '../../services/home_workspace/home_workspace_project_launch_prefs_store.dart';
+import '../../services/home_workspace/home_workspace_workspace_launch_prefs_store.dart';
 import '../../theme/app_text_styles.dart';
 import '../../utils/launch_identity_resolver.dart';
-import '../../utils/home_workspace_project_display.dart';
-import '../../utils/project_display_name.dart';
+import '../../utils/home_workspace_workspace_display.dart';
+import '../../utils/workspace_display_name.dart';
 import '../../widgets/menu/sidebar_action_menu.dart';
-import 'home_workspace_launch_project_dialog.dart';
-import 'home_workspace_new_project_dialog.dart';
-import 'home_workspace_project_card.dart';
-import 'home_workspace_project_list_tile.dart';
-import 'home_workspace_project_sort.dart';
-import 'launch_project_team_order.dart';
+import 'home_workspace_launch_workspace_dialog.dart';
+import 'home_workspace_new_workspace_dialog.dart';
+import 'home_workspace_workspace_card.dart';
+import 'home_workspace_workspace_list_tile.dart';
+import 'home_workspace_workspace_sort.dart';
+import 'launch_workspace_team_order.dart';
 
-/// Route for [project] under [identity].
-String projectLaunchRoute(String projectId, LaunchIdentity identity) =>
-    '/home-v2/project/$projectId?as=${identity.encode()}';
+/// Route for [workspace] under [identity].
+String workspaceLaunchRoute(String workspaceId, LaunchIdentity identity) =>
+    '/home-v2/workspace/$workspaceId?as=${identity.encode()}';
 
-/// When a remembered, well-formed choice exists for [project], the route to
+/// When a remembered, well-formed choice exists for [workspace], the route to
 /// open it directly (skipping the dialog); otherwise null (show the dialog).
-String? rememberedLaunchRoute(Workspace project, ProjectLaunchPref? pref) {
+String? rememberedLaunchRoute(Workspace workspace, WorkspaceLaunchPref? pref) {
   if (pref == null || !pref.remember) return null;
   final id = LaunchIdentity.decode(pref.lastIdentity);
   if (id == null) return null;
-  return projectLaunchRoute(project.projectId, id);
+  return workspaceLaunchRoute(workspace.workspaceId, id);
 }
 
 Future<void> openWorkspace(
   BuildContext context,
-  Workspace project, {
+  Workspace workspace, {
   required List<AppSession> sessions,
 }) async {
   final store = WorkspaceLaunchPrefsStore();
-  final pref = await store.prefsFor(project.projectId);
+  final pref = await store.prefsFor(workspace.workspaceId);
   if (!context.mounted) return;
 
-  final remembered = rememberedLaunchRoute(project, pref);
+  final remembered = rememberedLaunchRoute(workspace, pref);
   if (remembered != null) {
     context.go(remembered);
     return;
@@ -62,21 +62,21 @@ Future<void> openWorkspace(
   final personals = identities.whereType<PersonalIdentity>().toList();
   final teams = identities.whereType<TeamIdentity>().toList();
   final orderedTeamIds = orderTeamIdsByRecentUse(
-    projectId: project.projectId,
+    workspaceId: workspace.workspaceId,
     teamIds: teams.map((t) => t.id).toList(),
     sessions: sessions,
   );
   final teamById = {for (final t in teams) t.id: t};
-  final options = <LaunchProjectIdentityOption>[
+  final options = <LaunchWorkspaceIdentityOption>[
     for (final personal in personals)
-      LaunchProjectIdentityOption(
+      LaunchWorkspaceIdentityOption(
         id: personal.id,
         name: personal.display,
         isTeam: false,
       ),
     for (final id in orderedTeamIds)
       if (teamById[id] != null)
-        LaunchProjectIdentityOption(
+        LaunchWorkspaceIdentityOption(
           id: id,
           name: teamById[id]!.name,
           isTeam: true,
@@ -84,54 +84,54 @@ Future<void> openWorkspace(
   ];
   final choice = await showHomeLaunchWorkspaceDialog(
     context,
-    projectName: project.effectiveDisplay,
+    workspaceName: workspace.effectiveDisplay,
     identities: options,
     preselected: pref != null
         ? LaunchIdentity.decode(pref.lastIdentity)
-        : resolveProjectLaunchIdentity(
-            project,
+        : resolveWorkspaceLaunchIdentity(
+            workspace,
             identityCubit.byId,
           ),
   );
   if (choice == null || !context.mounted) return;
   if (choice.remember) {
-    await context.read<ChatCubit>().updateProjectMetadata(
+    await context.read<ChatCubit>().updateWorkspaceMetadata(
       context.read<SessionRepository>(),
-      project.projectId,
+      workspace.workspaceId,
       defaultIdentityId: choice.identity.identityId,
     );
   }
   await store.save(
-    project.projectId,
-    ProjectLaunchPref(
+    workspace.workspaceId,
+    WorkspaceLaunchPref(
       lastIdentity: choice.identity.encode(),
       remember: choice.remember,
     ),
   );
   if (!context.mounted) return;
-  context.go(projectLaunchRoute(project.projectId, choice.identity));
+  context.go(workspaceLaunchRoute(workspace.workspaceId, choice.identity));
 }
 
 class WorkspacesTab extends StatelessWidget {
   const WorkspacesTab({super.key, 
-    required this.projects,
+    required this.workspaces,
     required this.sessions,
     required this.gridView,
     required this.onToggleView,
-    required this.projectSort,
-    required this.onProjectSortChanged,
-    required this.favoriteProjectIds,
-    required this.onToggleProjectFavorite,
+    required this.workspaceSort,
+    required this.onWorkspaceSortChanged,
+    required this.favoriteWorkspaceIds,
+    required this.onToggleWorkspaceFavorite,
   });
 
-  final List<Workspace> projects;
+  final List<Workspace> workspaces;
   final List<AppSession> sessions;
   final bool gridView;
   final ValueChanged<bool> onToggleView;
-  final WorkspaceSort projectSort;
-  final ValueChanged<WorkspaceSort> onProjectSortChanged;
-  final Set<String> favoriteProjectIds;
-  final Future<void> Function(String projectId) onToggleProjectFavorite;
+  final WorkspaceSort workspaceSort;
+  final ValueChanged<WorkspaceSort> onWorkspaceSortChanged;
+  final Set<String> favoriteWorkspaceIds;
+  final Future<void> Function(String workspaceId) onToggleWorkspaceFavorite;
 
   @override
   Widget build(BuildContext context) {
@@ -141,20 +141,20 @@ class WorkspacesTab extends StatelessWidget {
         WorkspacesToolbar(
           gridView: gridView,
           onToggleView: onToggleView,
-          projectSort: projectSort,
-          onProjectSortChanged: onProjectSortChanged,
+          workspaceSort: workspaceSort,
+          onWorkspaceSortChanged: onWorkspaceSortChanged,
         ),
         const SizedBox(height: 16),
         Expanded(
-          child: projects.isEmpty
+          child: workspaces.isEmpty
               ? const HomeEmptyWorkspaces()
               : WorkspaceCollection(
-                  projects: projects,
+                  workspaces: workspaces,
                   sessions: sessions,
                   gridView: gridView,
-                  projectSort: projectSort,
-                  favoriteProjectIds: favoriteProjectIds,
-                  onToggleProjectFavorite: onToggleProjectFavorite,
+                  workspaceSort: workspaceSort,
+                  favoriteWorkspaceIds: favoriteWorkspaceIds,
+                  onToggleWorkspaceFavorite: onToggleWorkspaceFavorite,
                 ),
         ),
       ],
@@ -166,14 +166,14 @@ class WorkspacesToolbar extends StatelessWidget {
   const WorkspacesToolbar({super.key, 
     required this.gridView,
     required this.onToggleView,
-    required this.projectSort,
-    required this.onProjectSortChanged,
+    required this.workspaceSort,
+    required this.onWorkspaceSortChanged,
   });
 
   final bool gridView;
   final ValueChanged<bool> onToggleView;
-  final WorkspaceSort projectSort;
-  final ValueChanged<WorkspaceSort> onProjectSortChanged;
+  final WorkspaceSort workspaceSort;
+  final ValueChanged<WorkspaceSort> onWorkspaceSortChanged;
 
   @override
   Widget build(BuildContext context) {
@@ -186,8 +186,8 @@ class WorkspacesToolbar extends StatelessWidget {
         ),
         const SizedBox(width: 8),
         WorkspacesSortButton(
-          projectSort: projectSort,
-          onProjectSortChanged: onProjectSortChanged,
+          workspaceSort: workspaceSort,
+          onWorkspaceSortChanged: onWorkspaceSortChanged,
         ),
         const Spacer(),
         Flexible(
@@ -202,7 +202,7 @@ class WorkspacesToolbar extends StatelessWidget {
                   const SizedBox(width: 10),
                   WorkspacesPrimaryAction(
                     icon: Icons.add_rounded,
-                    label: l10n.newProject,
+                    label: l10n.newWorkspace,
                     onTap: () => showHomeNewWorkspaceDialog(
                       context,
                       chatCubit: context.read<ChatCubit>(),
@@ -221,12 +221,12 @@ class WorkspacesToolbar extends StatelessWidget {
 
 class WorkspacesSortButton extends StatelessWidget {
   const WorkspacesSortButton({super.key, 
-    required this.projectSort,
-    required this.onProjectSortChanged,
+    required this.workspaceSort,
+    required this.onWorkspaceSortChanged,
   });
 
-  final WorkspaceSort projectSort;
-  final ValueChanged<WorkspaceSort> onProjectSortChanged;
+  final WorkspaceSort workspaceSort;
+  final ValueChanged<WorkspaceSort> onWorkspaceSortChanged;
 
   @override
   Widget build(BuildContext context) {
@@ -236,7 +236,7 @@ class WorkspacesSortButton extends StatelessWidget {
       triggerBuilder: (context, controller) {
         return WorkspacesIconChip(
           icon: Icons.sort_rounded,
-          tooltip: l10n.homeWorkspaceProjectSort,
+          tooltip: l10n.homeWorkspaceWorkspaceSort,
           onTap: () {
             if (controller.isOpen) {
               controller.close();
@@ -252,7 +252,7 @@ class WorkspacesSortButton extends StatelessWidget {
             SidebarActionMenuItem(
               icon: _iconForSort(sort),
               label: sort.label(l10n),
-              trailing: projectSort == sort
+              trailing: workspaceSort == sort
                   ? Icon(
                       Icons.check,
                       size: context.appIconSizes.md,
@@ -262,7 +262,7 @@ class WorkspacesSortButton extends StatelessWidget {
                     )
                   : null,
               menuController: controller,
-              onTap: () => onProjectSortChanged(sort),
+              onTap: () => onWorkspaceSortChanged(sort),
             ),
         ];
       },
@@ -424,21 +424,21 @@ class WorkspacesPrimaryAction extends StatelessWidget {
 
 class WorkspaceCollection extends StatefulWidget {
   const WorkspaceCollection({super.key, 
-    required this.projects,
+    required this.workspaces,
     required this.sessions,
     required this.gridView,
-    required this.projectSort,
-    required this.favoriteProjectIds,
-    required this.onToggleProjectFavorite,
+    required this.workspaceSort,
+    required this.favoriteWorkspaceIds,
+    required this.onToggleWorkspaceFavorite,
     this.preserveOrder = false,
   });
 
-  final List<Workspace> projects;
+  final List<Workspace> workspaces;
   final List<AppSession> sessions;
   final bool gridView;
-  final WorkspaceSort projectSort;
-  final Set<String> favoriteProjectIds;
-  final Future<void> Function(String projectId) onToggleProjectFavorite;
+  final WorkspaceSort workspaceSort;
+  final Set<String> favoriteWorkspaceIds;
+  final Future<void> Function(String workspaceId) onToggleWorkspaceFavorite;
   final bool preserveOrder;
 
   @override
@@ -449,7 +449,7 @@ class WorkspaceCollection extends StatefulWidget {
 class _WorkspaceCollectionState
     extends State<WorkspaceCollection> {
   WorkspaceDisplay? _cached;
-  List<Workspace>? _lastProjects;
+  List<Workspace>? _lastWorkspaces;
   List<AppSession>? _lastSessions;
   WorkspaceSort? _lastSort;
   Set<String>? _lastFavorites;
@@ -460,41 +460,41 @@ class _WorkspaceCollectionState
     final l10n = context.l10n;
     // Cache fields updated in build; inputs are widget props only.
     final display = computeWorkspaceDisplay(
-      projects: widget.projects,
+      workspaces: widget.workspaces,
       sessions: widget.sessions,
-      sort: widget.projectSort,
-      favoriteProjectIds: widget.favoriteProjectIds,
-      displayName: (project) => project.localizedName(l10n),
+      sort: widget.workspaceSort,
+      favoriteWorkspaceIds: widget.favoriteWorkspaceIds,
+      displayName: (workspace) => workspace.localizedName(l10n),
       preserveOrder: widget.preserveOrder,
       cached: _cached,
-      lastProjects: _lastProjects,
+      lastWorkspaces: _lastWorkspaces,
       lastSessions: _lastSessions,
       lastSort: _lastSort,
       lastFavorites: _lastFavorites,
       lastPreserveOrder: _lastPreserveOrder,
     );
     _cached = display;
-    _lastProjects = widget.projects;
+    _lastWorkspaces = widget.workspaces;
     _lastSessions = widget.sessions;
-    _lastSort = widget.projectSort;
-    _lastFavorites = widget.favoriteProjectIds;
+    _lastSort = widget.workspaceSort;
+    _lastFavorites = widget.favoriteWorkspaceIds;
     _lastPreserveOrder = widget.preserveOrder;
 
     if (widget.gridView) {
       return WorkspaceGrid(
-        projects: display.sortedProjects,
+        workspaces: display.sortedWorkspaces,
         sessionCounts: display.sessionCounts,
-        favoriteProjectIds: widget.favoriteProjectIds,
-        onToggleProjectFavorite: widget.onToggleProjectFavorite,
+        favoriteWorkspaceIds: widget.favoriteWorkspaceIds,
+        onToggleWorkspaceFavorite: widget.onToggleWorkspaceFavorite,
         sessions: widget.sessions,
       );
     }
 
     return WorkspaceList(
-      projects: display.sortedProjects,
+      workspaces: display.sortedWorkspaces,
       sessionCounts: display.sessionCounts,
-      favoriteProjectIds: widget.favoriteProjectIds,
-      onToggleProjectFavorite: widget.onToggleProjectFavorite,
+      favoriteWorkspaceIds: widget.favoriteWorkspaceIds,
+      onToggleWorkspaceFavorite: widget.onToggleWorkspaceFavorite,
       sessions: widget.sessions,
     );
   }
@@ -502,17 +502,17 @@ class _WorkspaceCollectionState
 
 class WorkspaceGrid extends StatelessWidget {
   const WorkspaceGrid({super.key, 
-    required this.projects,
+    required this.workspaces,
     required this.sessionCounts,
-    required this.favoriteProjectIds,
-    required this.onToggleProjectFavorite,
+    required this.favoriteWorkspaceIds,
+    required this.onToggleWorkspaceFavorite,
     required this.sessions,
   });
 
-  final List<Workspace> projects;
+  final List<Workspace> workspaces;
   final Map<String, int> sessionCounts;
-  final Set<String> favoriteProjectIds;
-  final Future<void> Function(String projectId) onToggleProjectFavorite;
+  final Set<String> favoriteWorkspaceIds;
+  final Future<void> Function(String workspaceId) onToggleWorkspaceFavorite;
   final List<AppSession> sessions;
 
   @override
@@ -524,20 +524,20 @@ class WorkspaceGrid extends StatelessWidget {
         crossAxisSpacing: 20,
         mainAxisSpacing: 20,
       ),
-      itemCount: projects.length,
+      itemCount: workspaces.length,
       itemBuilder: (context, index) {
-        final project = projects[index];
-        final count = sessionCounts[project.projectId] ?? 0;
+        final workspace = workspaces[index];
+        final count = sessionCounts[workspace.workspaceId] ?? 0;
         return WorkspaceCard(
-          key: ValueKey('project-card-${project.projectId}'),
-          project: project,
+          key: ValueKey('workspace-card-${workspace.workspaceId}'),
+          workspace: workspace,
           sessionCount: count,
-          favorited: favoriteProjectIds.contains(project.projectId),
-          onToggleFavorite: () => onToggleProjectFavorite(project.projectId),
+          favorited: favoriteWorkspaceIds.contains(workspace.workspaceId),
+          onToggleFavorite: () => onToggleWorkspaceFavorite(workspace.workspaceId),
           onTap: () => unawaited(
             openWorkspace(
               context,
-              project,
+              workspace,
               sessions: sessions,
             ),
           ),
@@ -549,37 +549,37 @@ class WorkspaceGrid extends StatelessWidget {
 
 class WorkspaceList extends StatelessWidget {
   const WorkspaceList({super.key, 
-    required this.projects,
+    required this.workspaces,
     required this.sessionCounts,
-    required this.favoriteProjectIds,
-    required this.onToggleProjectFavorite,
+    required this.favoriteWorkspaceIds,
+    required this.onToggleWorkspaceFavorite,
     required this.sessions,
   });
 
-  final List<Workspace> projects;
+  final List<Workspace> workspaces;
   final Map<String, int> sessionCounts;
-  final Set<String> favoriteProjectIds;
-  final Future<void> Function(String projectId) onToggleProjectFavorite;
+  final Set<String> favoriteWorkspaceIds;
+  final Future<void> Function(String workspaceId) onToggleWorkspaceFavorite;
   final List<AppSession> sessions;
 
   @override
   Widget build(BuildContext context) {
     return ListView.separated(
-      itemCount: projects.length,
+      itemCount: workspaces.length,
       separatorBuilder: (_, __) => const SizedBox(height: 10),
       itemBuilder: (context, index) {
-        final project = projects[index];
-        final count = sessionCounts[project.projectId] ?? 0;
+        final workspace = workspaces[index];
+        final count = sessionCounts[workspace.workspaceId] ?? 0;
         return WorkspaceListTile(
-          key: ValueKey('project-list-tile-${project.projectId}'),
-          project: project,
+          key: ValueKey('workspace-list-tile-${workspace.workspaceId}'),
+          workspace: workspace,
           sessionCount: count,
-          favorited: favoriteProjectIds.contains(project.projectId),
-          onToggleFavorite: () => onToggleProjectFavorite(project.projectId),
+          favorited: favoriteWorkspaceIds.contains(workspace.workspaceId),
+          onToggleFavorite: () => onToggleWorkspaceFavorite(workspace.workspaceId),
           onTap: () => unawaited(
             openWorkspace(
               context,
-              project,
+              workspace,
               sessions: sessions,
             ),
           ),
@@ -608,11 +608,11 @@ class HomeEmptyWorkspaces extends StatelessWidget {
           ),
           const SizedBox(height: 14),
           Text(
-            l10n.homeWorkspaceEmptyProjects,
+            l10n.homeWorkspaceEmptyWorkspaces,
             style: styles.body.copyWith(color: cs.onSurfaceVariant),
           ),
           Text(
-            l10n.homeWorkspaceEmptyProjectsHint,
+            l10n.homeWorkspaceEmptyWorkspacesHint,
             style: styles.bodySmall.copyWith(
               color: cs.onSurfaceVariant.withValues(alpha: 0.75),
             ),

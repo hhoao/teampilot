@@ -40,15 +40,15 @@ void main() {
     expect(LaunchCommandBuilder.windowsPathToWsl(r'D:\'), '/mnt/d');
     expect(
       LaunchCommandBuilder.windowsPathToWsl(
-        r'\\wsl.localhost\Ubuntu\home\hhoa\project',
+        r'\\wsl.localhost\Ubuntu\home\hhoa\workspace',
       ),
-      '/home/hhoa/project',
+      '/home/hhoa/workspace',
     );
     expect(
       LaunchCommandBuilder.windowsPathToWsl(
-        r'\wsl.localhost\Ubuntu\home\hhoa\project',
+        r'\wsl.localhost\Ubuntu\home\hhoa\workspace',
       ),
-      '/home/hhoa/project',
+      '/home/hhoa/workspace',
     );
   });
 

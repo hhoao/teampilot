@@ -65,12 +65,12 @@ int terminalThemeFingerprint(TerminalTheme theme) => Object.hash(
 /// Maps TeamPilot layout theme modes to [TerminalTheme] (packed RGB).
 ///
 /// [chrome] selects which workspace card surface seeds the adaptive background
-/// (terminals always live on the project workbench card).
+/// (terminals always live on the workspace workbench card).
 TerminalTheme teampilotTerminalTheme(
   ColorScheme cs, {
   required bool isDark,
   required String mode,
-  WorkspacePageChrome chrome = WorkspacePageChrome.project,
+  WorkspacePageChrome chrome = WorkspacePageChrome.workspace,
 }) {
   if (mode == 'classicDark') {
     return TerminalTheme(

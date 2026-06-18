@@ -12,7 +12,7 @@ import '../../l10n/l10n_extensions.dart';
 import '../../models/layout_preferences.dart';
 import '../../models/member_instance.dart';
 import '../../models/team_config.dart';
-import '../../pages/home_workspace/project/member_detail_dialog.dart';
+import '../../pages/home_workspace/workspace/member_detail_dialog.dart';
 import '../../services/cli/member_config/member_config_inspector.dart';
 import '../../services/io/system_folder_opener.dart';
 import '../../utils/app_keys.dart';
@@ -32,8 +32,8 @@ class RightToolsPanel extends StatefulWidget {
     this.preferences = const LayoutPreferences(),
     this.panelKey = AppKeys.rightToolsPanel,
     this.dismissDrawerOnAction = false,
-    this.isPersonalProject = false,
-    this.projectId,
+    this.isPersonalWorkspace = false,
+    this.workspaceId,
     super.key,
   });
 
@@ -41,17 +41,17 @@ class RightToolsPanel extends StatefulWidget {
   final Key panelKey;
   final bool dismissDrawerOnAction;
 
-  /// Solo project workbench — hide team members / mailbox tooling.
-  final bool isPersonalProject;
+  /// Solo workspace workbench — hide team members / mailbox tooling.
+  final bool isPersonalWorkspace;
 
   /// Working directory the file tree / git panel operate on. Supplied by the
-  /// caller (the project context), decoupling the tools from chat-session tab
+  /// caller (the workspace context), decoupling the tools from chat-session tab
   /// state.
   final String cwd;
 
-  /// Project this tools panel belongs to; scopes per-project UI state
-  /// (selected tool tab). Null on routes without a project context.
-  final String? projectId;
+  /// Workspace this tools panel belongs to; scopes per-workspace UI state
+  /// (selected tool tab). Null on routes without a workspace context.
+  final String? workspaceId;
 
   @override
   State<RightToolsPanel> createState() => _RightToolsPanelState();
@@ -87,7 +87,7 @@ class _RightToolsPanelState extends State<RightToolsPanel> {
     final chatCubit = context.watch<ChatCubit>();
     final team = teamCubit.state.selectedTeam;
     final teamId = team?.id;
-    if (!widget.isPersonalProject && teamId != _syncedPresenceTeamId) {
+    if (!widget.isPersonalWorkspace && teamId != _syncedPresenceTeamId) {
       _syncedPresenceTeamId = teamId;
       final presenceCubit = _presenceCubit;
       final teamSnapshot = team;
@@ -95,7 +95,7 @@ class _RightToolsPanelState extends State<RightToolsPanel> {
         presenceCubit?.syncPresenceTeam(teamSnapshot);
       });
     }
-    if (!widget.isPersonalProject && team == null) {
+    if (!widget.isPersonalWorkspace && team == null) {
       return const SizedBox.shrink();
     }
 
@@ -117,7 +117,7 @@ class _RightToolsPanelState extends State<RightToolsPanel> {
     final mailboxCubit = context.watch<MailboxCubit?>();
     final mailboxState = mailboxCubit?.state ?? const MailboxState();
     final showMailbox =
-        !widget.isPersonalProject &&
+        !widget.isPersonalWorkspace &&
         team != null &&
         mailboxCubit != null &&
         team.teamMode == TeamMode.mixed &&
@@ -131,12 +131,12 @@ class _RightToolsPanelState extends State<RightToolsPanel> {
     // Rebuild when the user switches tool tabs so that the active tool can
     // enable/disable auto-refresh behaviour.
     context.watch<WorkspaceToolsCubit>();
-    final selectedIndex = widget.projectId != null
-        ? context.read<WorkspaceToolsCubit>().selectedIndexFor(widget.projectId!)
+    final selectedIndex = widget.workspaceId != null
+        ? context.read<WorkspaceToolsCubit>().selectedIndexFor(widget.workspaceId!)
         : 0;
 
     final views = <ToolView>[];
-    if (!widget.isPersonalProject &&
+    if (!widget.isPersonalWorkspace &&
         widget.preferences.membersVisible &&
         team != null) {
       views.add(ToolView(
@@ -175,12 +175,12 @@ class _RightToolsPanelState extends State<RightToolsPanel> {
           onViewDetail: (id) {
             final member = runtimeMembers.firstWhere((m) => m.id == id);
             final activeTab = chatCubit.activeTab;
-            final projectId =
-                widget.projectId ?? activeTab?.projectId ?? '';
+            final workspaceId =
+                widget.workspaceId ?? activeTab?.workspaceId ?? '';
             final sessionId = activeTab?.info.id ?? '';
             unawaited(showMemberDetailDialog(
               context,
-              projectId: projectId,
+              workspaceId: workspaceId,
               sessionId: sessionId,
               team: team,
               member: member,
@@ -190,12 +190,12 @@ class _RightToolsPanelState extends State<RightToolsPanel> {
           onOpenConfigDir: (id) {
             final member = runtimeMembers.firstWhere((m) => m.id == id);
             final activeTab = chatCubit.activeTab;
-            final projectId =
-                widget.projectId ?? activeTab?.projectId ?? '';
+            final workspaceId =
+                widget.workspaceId ?? activeTab?.workspaceId ?? '';
             final sessionId = activeTab?.info.id ?? '';
             unawaited(() async {
               final detail = await MemberConfigInspector().inspect(
-                projectId: projectId,
+                workspaceId: workspaceId,
                 sessionId: sessionId,
                 team: team,
                 member: member,
@@ -241,7 +241,7 @@ class _RightToolsPanelState extends State<RightToolsPanel> {
     }
     return Container(
       key: widget.panelKey,
-      child: TabbedPanel(views: views, scopeId: widget.projectId),
+      child: TabbedPanel(views: views, scopeId: widget.workspaceId),
     );
   }
 }

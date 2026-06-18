@@ -2,35 +2,35 @@ import 'package:flutter/material.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 
 import '../l10n/l10n_extensions.dart';
-import '../models/app_project.dart';
-import '../models/project_icon_picker_result.dart';
-import '../models/project_icon_ref.dart';
-import '../utils/project_geometry_catalog.dart';
+import '../models/app_workspace.dart';
+import '../models/workspace_icon_picker_result.dart';
+import '../models/workspace_icon_ref.dart';
+import '../utils/workspace_geometry_catalog.dart';
 import 'app_dialog.dart';
-import 'project_icon.dart';
+import 'workspace_icon.dart';
 
 /// Pure UI for choosing a bundled icon; orchestration lives in [ChatCubit].
-Future<ProjectIconPickerResult> showProjectIconPickerDialog(
+Future<WorkspaceIconPickerResult> showWorkspaceIconPickerDialog(
   BuildContext context, {
-  required Workspace project,
+  required Workspace workspace,
 }) {
   final l10n = context.l10n;
-  return showDialog<ProjectIconPickerResult>(
+  return showDialog<WorkspaceIconPickerResult>(
     context: context,
-    builder: (ctx) => _ProjectIconPickerDialog(
-      project: project,
-      title: l10n.projectIconPickerTitle,
-      useDefaultLabel: l10n.projectIconUseDefault,
-      uploadLabel: l10n.projectIconUpload,
+    builder: (ctx) => _WorkspaceIconPickerDialog(
+      workspace: workspace,
+      title: l10n.workspaceIconPickerTitle,
+      useDefaultLabel: l10n.workspaceIconUseDefault,
+      uploadLabel: l10n.workspaceIconUpload,
       cancelLabel: l10n.cancel,
       saveLabel: l10n.save,
     ),
-  ).then((value) => value ?? const ProjectIconPickerCancelled());
+  ).then((value) => value ?? const WorkspaceIconPickerCancelled());
 }
 
-class _ProjectIconPickerDialog extends StatefulWidget {
-  const _ProjectIconPickerDialog({
-    required this.project,
+class _WorkspaceIconPickerDialog extends StatefulWidget {
+  const _WorkspaceIconPickerDialog({
+    required this.workspace,
     required this.title,
     required this.useDefaultLabel,
     required this.uploadLabel,
@@ -38,7 +38,7 @@ class _ProjectIconPickerDialog extends StatefulWidget {
     required this.saveLabel,
   });
 
-  final Workspace project;
+  final Workspace workspace;
   final String title;
   final String useDefaultLabel;
   final String uploadLabel;
@@ -46,17 +46,17 @@ class _ProjectIconPickerDialog extends StatefulWidget {
   final String saveLabel;
 
   @override
-  State<_ProjectIconPickerDialog> createState() =>
-      _ProjectIconPickerDialogState();
+  State<_WorkspaceIconPickerDialog> createState() =>
+      _WorkspaceIconPickerDialogState();
 }
 
-class _ProjectIconPickerDialogState extends State<_ProjectIconPickerDialog> {
-  late ProjectIconRef _draftIcon;
+class _WorkspaceIconPickerDialogState extends State<_WorkspaceIconPickerDialog> {
+  late WorkspaceIconRef _draftIcon;
 
   @override
   void initState() {
     super.initState();
-    _draftIcon = widget.project.icon;
+    _draftIcon = widget.workspace.icon;
   }
 
   @override
@@ -70,8 +70,8 @@ class _ProjectIconPickerDialogState extends State<_ProjectIconPickerDialog> {
         children: [
           AppDialogHeader(title: widget.title),
           const SizedBox(height: 16),
-          ProjectIcon.fromProject(
-              widget.project,
+          WorkspaceIcon.fromWorkspace(
+              widget.workspace,
               previewIcon: _draftIcon,
               size: 72,
               padding: 12,
@@ -85,10 +85,10 @@ class _ProjectIconPickerDialogState extends State<_ProjectIconPickerDialog> {
                 children: [
                   FilterChip(
                     label: Text(widget.useDefaultLabel),
-                    selected: _draftIcon is ProjectIconAuto,
+                    selected: _draftIcon is WorkspaceIconAuto,
                     onSelected: (selected) {
                       if (!selected) return;
-                      setState(() => _draftIcon = ProjectIconRef.auto);
+                      setState(() => _draftIcon = WorkspaceIconRef.auto);
                     },
                   ),
                   ActionChip(
@@ -99,7 +99,7 @@ class _ProjectIconPickerDialogState extends State<_ProjectIconPickerDialog> {
                     ),
                     label: Text(widget.uploadLabel),
                     onPressed: () => Navigator.of(context).pop(
-                      const ProjectIconPickerUploadRequested(),
+                      const WorkspaceIconPickerUploadRequested(),
                     ),
                   ),
                 ],
@@ -114,14 +114,14 @@ class _ProjectIconPickerDialogState extends State<_ProjectIconPickerDialog> {
                 mainAxisSpacing: 10,
                 crossAxisSpacing: 10,
               ),
-              itemCount: kProjectGeometryIconAssets.length,
+              itemCount: kWorkspaceGeometryIconAssets.length,
               itemBuilder: (context, index) {
-                final selected = _draftIcon is ProjectIconPreset &&
-                    (_draftIcon as ProjectIconPreset).index == index;
+                final selected = _draftIcon is WorkspaceIconPreset &&
+                    (_draftIcon as WorkspaceIconPreset).index == index;
                 return InkWell(
                   borderRadius: BorderRadius.circular(12),
                   onTap: () {
-                    setState(() => _draftIcon = ProjectIconPreset(index));
+                    setState(() => _draftIcon = WorkspaceIconPreset(index));
                   },
                   child: AnimatedContainer(
                     duration: const Duration(milliseconds: 120),
@@ -137,7 +137,7 @@ class _ProjectIconPickerDialogState extends State<_ProjectIconPickerDialog> {
                       ),
                     ),
                     child: SvgPicture.asset(
-                      kProjectGeometryIconAssets[index],
+                      kWorkspaceGeometryIconAssets[index],
                       fit: BoxFit.contain,
                     ),
                   ),
@@ -148,13 +148,13 @@ class _ProjectIconPickerDialogState extends State<_ProjectIconPickerDialog> {
             children: [
               TextButton(
                 onPressed: () => Navigator.of(context).pop(
-                  const ProjectIconPickerCancelled(),
+                  const WorkspaceIconPickerCancelled(),
                 ),
                 child: Text(widget.cancelLabel),
               ),
               FilledButton(
                 onPressed: () => Navigator.of(context).pop(
-                  ProjectIconPickerCommitted(_draftIcon),
+                  WorkspaceIconPickerCommitted(_draftIcon),
                 ),
                 child: Text(widget.saveLabel),
               ),

@@ -1,16 +1,16 @@
 import '../../models/app_session.dart';
 
-/// Orders [teamIds] by the most-recent session for [projectId] whose
+/// Orders [teamIds] by the most-recent session for [workspaceId] whose
 /// `sessionTeam` matches. Teams with no matching session keep their original
 /// relative order, after all used teams.
 List<String> orderTeamIdsByRecentUse({
-  required String projectId,
+  required String workspaceId,
   required List<String> teamIds,
   required List<AppSession> sessions,
 }) {
   final lastUsed = <String, int>{};
   for (final s in sessions) {
-    if (s.projectId != projectId) continue;
+    if (s.workspaceId != workspaceId) continue;
     final team = s.sessionTeam.trim();
     if (team.isEmpty) continue;
     final stamp = s.updatedAt != 0 ? s.updatedAt : s.createdAt;

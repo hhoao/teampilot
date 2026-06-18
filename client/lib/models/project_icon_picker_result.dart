@@ -1,25 +1,25 @@
 import 'package:flutter/foundation.dart';
 
-import 'project_icon_ref.dart';
+import 'workspace_icon_ref.dart';
 
 @immutable
-sealed class ProjectIconPickerResult {
-  const ProjectIconPickerResult();
+sealed class WorkspaceIconPickerResult {
+  const WorkspaceIconPickerResult();
 }
 
 @immutable
-final class ProjectIconPickerCancelled extends ProjectIconPickerResult {
-  const ProjectIconPickerCancelled();
+final class WorkspaceIconPickerCancelled extends WorkspaceIconPickerResult {
+  const WorkspaceIconPickerCancelled();
 }
 
 @immutable
-final class ProjectIconPickerUploadRequested extends ProjectIconPickerResult {
-  const ProjectIconPickerUploadRequested();
+final class WorkspaceIconPickerUploadRequested extends WorkspaceIconPickerResult {
+  const WorkspaceIconPickerUploadRequested();
 }
 
 @immutable
-final class ProjectIconPickerCommitted extends ProjectIconPickerResult {
-  const ProjectIconPickerCommitted(this.icon);
+final class WorkspaceIconPickerCommitted extends WorkspaceIconPickerResult {
+  const WorkspaceIconPickerCommitted(this.icon);
 
-  final ProjectIconRef icon;
+  final WorkspaceIconRef icon;
 }

@@ -60,7 +60,7 @@ void main() {
       jsonEncode({'name': pluginName, 'version': '2.0.0'}),
     );
     await layout.provisionSessionPluginsFromIdentity(
-      'project-1',
+      'workspace-1',
       sessionId,
       teamId,
       tool,
@@ -76,7 +76,7 @@ void main() {
     );
 
     await registry.writeForSession(
-      projectId: 'project-1',
+      workspaceId: 'workspace-1',
       teamId: 't1',
       sessionId: 's1',
       tool: CliTool.flashskyai,
@@ -99,7 +99,7 @@ void main() {
       ],
     );
 
-    final configDir = layout.sessionRuntimeToolDir('project-1', 's1', 'flashskyai');
+    final configDir = layout.sessionRuntimeToolDir('workspace-1', 's1', 'flashskyai');
     final settings = jsonDecode(
       await File(p.join(configDir, 'settings.json')).readAsString(),
     ) as Map<String, Object?>;
@@ -127,13 +127,13 @@ void main() {
     );
 
     await registry.writeForSession(
-      projectId: 'project-1',
+      workspaceId: 'workspace-1',
       teamId: 't1',
       sessionId: 's2',
       tool: CliTool.claude,
     );
 
-    final configDir = layout.sessionRuntimeToolDir('project-1', 's2', 'claude');
+    final configDir = layout.sessionRuntimeToolDir('workspace-1', 's2', 'claude');
     final settings = jsonDecode(
       await File(p.join(configDir, 'settings.json')).readAsString(),
     ) as Map<String, Object?>;
@@ -172,7 +172,7 @@ void main() {
     );
 
     await registry.writeForSession(
-      projectId: 'project-1',
+      workspaceId: 'workspace-1',
       teamId: 't1',
       sessionId: 's3',
       tool: CliTool.flashskyai,
@@ -198,7 +198,7 @@ void main() {
       ],
     );
 
-    final configDir = layout.sessionRuntimeToolDir('project-1', 's3', 'flashskyai');
+    final configDir = layout.sessionRuntimeToolDir('workspace-1', 's3', 'flashskyai');
     final known = jsonDecode(
       await File(p.join(configDir, 'plugins', 'known_marketplaces.json'))
           .readAsString(),
@@ -260,10 +260,10 @@ void main() {
       jsonEncode({'name': 'api-security-testing', 'version': '1.0.0'}),
     );
 
-    await layout.provisionSessionPluginsFromIdentity('project-1', 's4', 't1', 'flashskyai');
+    await layout.provisionSessionPluginsFromIdentity('workspace-1', 's4', 't1', 'flashskyai');
 
     await registry.writeForSession(
-      projectId: 'project-1',
+      workspaceId: 'workspace-1',
       teamId: 't1',
       sessionId: 's4',
       tool: CliTool.flashskyai,
@@ -289,7 +289,7 @@ void main() {
       ],
     );
 
-    final configDir = layout.sessionRuntimeToolDir('project-1', 's4', 'flashskyai');
+    final configDir = layout.sessionRuntimeToolDir('workspace-1', 's4', 'flashskyai');
     final settings = jsonDecode(
       await File(p.join(configDir, 'settings.json')).readAsString(),
     ) as Map<String, Object?>;
@@ -326,7 +326,7 @@ void main() {
     ];
 
     await registry.writeForSession(
-      projectId: 'project-1',
+      workspaceId: 'workspace-1',
       teamId: 't1',
       sessionId: 's5',
       tool: CliTool.flashskyai,
@@ -336,14 +336,14 @@ void main() {
 
     final stampBefore = await File(
       p.join(
-        layout.sessionRuntimeToolDir('project-1', 's5', 'flashskyai'),
+        layout.sessionRuntimeToolDir('workspace-1', 's5', 'flashskyai'),
         'plugins',
         '.teampilot-registry-stamp.json',
       ),
     ).readAsString();
 
     await registry.writeForSession(
-      projectId: 'project-1',
+      workspaceId: 'workspace-1',
       teamId: 't1',
       sessionId: 's5',
       tool: CliTool.flashskyai,
@@ -353,7 +353,7 @@ void main() {
 
     final stampAfter = await File(
       p.join(
-        layout.sessionRuntimeToolDir('project-1', 's5', 'flashskyai'),
+        layout.sessionRuntimeToolDir('workspace-1', 's5', 'flashskyai'),
         'plugins',
         '.teampilot-registry-stamp.json',
       ),

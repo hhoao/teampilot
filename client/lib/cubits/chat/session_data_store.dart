@@ -1,29 +1,29 @@
 import 'package:equatable/equatable.dart';
 
-import '../../models/app_project.dart';
+import '../../models/app_workspace.dart';
 import '../../models/app_session.dart';
-import '../../models/project_icon_ref.dart';
+import '../../models/workspace_icon_ref.dart';
 import '../../models/team_config.dart' show CliTool, TeamMemberConfig;
 import '../../repositories/identity_repository.dart';
 import '../../repositories/session_repository.dart';
-import '../../utils/project_path_utils.dart';
+import '../../utils/workspace_path_utils.dart';
 
 class ChatDataSnapshot extends Equatable {
   const ChatDataSnapshot({
-    required this.projects,
+    required this.workspaces,
     required this.sessions,
-    required this.visibleProjects,
+    required this.visibleWorkspaces,
     required this.visibleSessions,
   });
 
-  final List<Workspace> projects;
+  final List<Workspace> workspaces;
   final List<AppSession> sessions;
-  final List<Workspace> visibleProjects;
+  final List<Workspace> visibleWorkspaces;
   final List<AppSession> visibleSessions;
 
   @override
   List<Object?> get props =>
-      [projects, sessions, visibleProjects, visibleSessions];
+      [workspaces, sessions, visibleWorkspaces, visibleSessions];
 }
 
 /// Owns team-scope flags and wraps SessionRepository. Returns snapshots;
@@ -57,30 +57,30 @@ class SessionDataStore {
     return all.where((s) => s.sessionTeam == tid).toList();
   }
 
-  List<Workspace> _computeVisibleProjects(List<Workspace> all) => all;
+  List<Workspace> _computeVisibleWorkspaces(List<Workspace> all) => all;
 
   ChatDataSnapshot deriveSnapshot({
-    required List<Workspace> projects,
+    required List<Workspace> workspaces,
     required List<AppSession> sessions,
   }) {
     final visS = _computeVisibleSessions(sessions);
-    final visP = _computeVisibleProjects(projects);
+    final visP = _computeVisibleWorkspaces(workspaces);
     return ChatDataSnapshot(
-      projects: projects,
+      workspaces: workspaces,
       sessions: sessions,
-      visibleProjects: visP,
+      visibleWorkspaces: visP,
       visibleSessions: visS,
     );
   }
 
-  Future<ChatDataSnapshot> loadProjectData(SessionRepository repo) async {
-    final projects = await repo.loadProjects();
+  Future<ChatDataSnapshot> loadWorkspaceData(SessionRepository repo) async {
+    final workspaces = await repo.loadWorkspaces();
     final sessions = await repo.loadSessions();
-    return deriveSnapshot(projects: projects, sessions: sessions);
+    return deriveSnapshot(workspaces: workspaces, sessions: sessions);
   }
 
   Future<AppSession> createSession(
-    String projectId,
+    String workspaceId,
     SessionRepository repo, {
     String sessionTeamId = '',
     String personalIdentityId = '',
@@ -88,7 +88,7 @@ class SessionDataStore {
     CliTool? cli,
   }) {
     return repo.createSession(
-      projectId,
+      workspaceId,
       sessionTeam: sessionTeamId,
       personalIdentityId: personalIdentityId,
       rosterMembers: rosterMembers,
@@ -96,8 +96,8 @@ class SessionDataStore {
     );
   }
 
-  Future<({String projectId, ChatDataSnapshot snapshot})>
-  createProjectWithFirstSession(
+  Future<({String workspaceId, ChatDataSnapshot snapshot})>
+  createWorkspaceWithFirstSession(
     String primaryPath,
     SessionRepository repo, {
     String sessionTeamId = '',
@@ -106,68 +106,68 @@ class SessionDataStore {
     String display = '',
     IdentityRepository? identityRepository,
   }) async {
-    final project = await repo.createProject(
+    final workspace = await repo.createWorkspace(
       primaryPath,
       additionalPaths: additionalPaths,
       display: display,
     );
     await repo.createSession(
-      project.projectId,
+      workspace.workspaceId,
       sessionTeam: sessionTeamId,
       rosterMembers: rosterMembers,
     );
-    final snapshot = await loadProjectData(repo);
-    return (projectId: project.projectId, snapshot: snapshot);
+    final snapshot = await loadWorkspaceData(repo);
+    return (workspaceId: workspace.workspaceId, snapshot: snapshot);
   }
 
-  Future<ChatDataSnapshot?> addProjectDirectory(
+  Future<ChatDataSnapshot?> addWorkspaceDirectory(
     SessionRepository repo,
-    Workspace project,
+    Workspace workspace,
     String directoryPath,
   ) async {
     final trimmed = directoryPath.trim();
     if (trimmed.isEmpty) return null;
-    if (projectPathsEqual(trimmed, project.primaryPath)) return null;
-    if (projectPathsContains(project.additionalPaths, trimmed)) return null;
-    await repo.createProject(
-      project.primaryPath,
+    if (workspacePathsEqual(trimmed, workspace.primaryPath)) return null;
+    if (workspacePathsContains(workspace.additionalPaths, trimmed)) return null;
+    await repo.createWorkspace(
+      workspace.primaryPath,
       additionalPaths: [trimmed],
     );
-    return loadProjectData(repo);
+    return loadWorkspaceData(repo);
   }
 
-  Future<ChatDataSnapshot> updateProjectMetadata(
+  Future<ChatDataSnapshot> updateWorkspaceMetadata(
     SessionRepository repo,
-    String projectId, {
+    String workspaceId, {
     String? display,
     String? defaultIdentityId,
     List<String>? additionalPaths,
   }) async {
-    await repo.updateProjectMetadata(
-      projectId,
+    await repo.updateWorkspaceMetadata(
+      workspaceId,
       display: display,
       defaultIdentityId: defaultIdentityId,
       additionalPaths: additionalPaths,
     );
-    return loadProjectData(repo);
+    return loadWorkspaceData(repo);
   }
 
-  Future<ChatDataSnapshot> applyProjectIcon(
+  Future<ChatDataSnapshot> applyWorkspaceIcon(
     SessionRepository repo,
-    String projectId,
-    ProjectIconRef icon,
+    String workspaceId,
+    WorkspaceIconRef icon,
   ) async {
-    await repo.applyProjectIcon(projectId, icon);
-    return loadProjectData(repo);
+    await repo.applyWorkspaceIcon(workspaceId, icon);
+    return loadWorkspaceData(repo);
   }
 
-  Future<ChatDataSnapshot> importCustomProjectIcon(
+  Future<ChatDataSnapshot> importCustomWorkspaceIcon(
     SessionRepository repo,
-    String projectId,
+    String workspaceId,
     String localSourcePath,
   ) async {
-    await repo.importCustomProjectIcon(projectId, localSourcePath);
-    return loadProjectData(repo);
+    await repo.importCustomWorkspaceIcon(workspaceId, localSourcePath);
+    return loadWorkspaceData(repo);
   }
 
   Future<ChatDataSnapshot> deleteSessionRecord(
@@ -175,29 +175,29 @@ class SessionDataStore {
     String sessionId,
   ) async {
     await repo.deleteSession(sessionId);
-    return loadProjectData(repo);
+    return loadWorkspaceData(repo);
   }
 
-  Future<ChatDataSnapshot> deleteProjectRecord(
+  Future<ChatDataSnapshot> deleteWorkspaceRecord(
     SessionRepository repo,
-    String projectId,
+    String workspaceId,
   ) async {
-    await repo.deleteProject(projectId);
-    return loadProjectData(repo);
+    await repo.deleteWorkspace(workspaceId);
+    return loadWorkspaceData(repo);
   }
 
-  Future<({Workspace project, ChatDataSnapshot snapshot})> cloneProject(
+  Future<({Workspace workspace, ChatDataSnapshot snapshot})> cloneWorkspace(
     SessionRepository repo,
-    String sourceProjectId, {
+    String sourceWorkspaceId, {
     String? display,
     List<TeamMemberConfig> rosterMembers = const [],
   }) async {
-    final project = await repo.cloneProject(
-      sourceProjectId,
+    final workspace = await repo.cloneWorkspace(
+      sourceWorkspaceId,
       display: display,
       rosterMembers: rosterMembers,
     );
-    final snapshot = await loadProjectData(repo);
-    return (project: project, snapshot: snapshot);
+    final snapshot = await loadWorkspaceData(repo);
+    return (workspace: workspace, snapshot: snapshot);
   }
 }

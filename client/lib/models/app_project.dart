@@ -1,16 +1,16 @@
 import 'package:flutter/foundation.dart';
 
-import 'project_icon_ref.dart';
+import 'workspace_icon_ref.dart';
 
 @immutable
 class Workspace {
   const Workspace({
-    required this.projectId,
+    required this.workspaceId,
     required this.primaryPath,
     this.additionalPaths = const [],
     this.display = '',
     this.defaultIdentityId = '',
-    this.icon = ProjectIconRef.auto,
+    this.icon = WorkspaceIconRef.auto,
     required this.createdAt,
     this.updatedAt = 0,
     this.sessionIds = const [],
@@ -26,24 +26,24 @@ class Workspace {
         ? ids.map((e) => '$e').where((s) => s.isNotEmpty).toList()
         : const <String>[];
     return Workspace(
-      projectId: json['projectId'] as String? ?? '',
+      workspaceId: json['workspaceId'] as String? ?? '',
       primaryPath: json['primaryPath'] as String? ?? '',
       additionalPaths: paths,
       display: json['display'] as String? ?? '',
       defaultIdentityId: json['defaultIdentityId'] as String? ?? '',
-      icon: ProjectIconRef.fromJson(json['icon']),
+      icon: WorkspaceIconRef.fromJson(json['icon']),
       createdAt: json['createdAt'] as int? ?? 0,
       updatedAt: json['updatedAt'] as int? ?? 0,
       sessionIds: sessionIds,
     );
   }
 
-  final String projectId;
+  final String workspaceId;
   final String primaryPath;
   final List<String> additionalPaths;
   final String display;
   final String defaultIdentityId;
-  final ProjectIconRef icon;
+  final WorkspaceIconRef icon;
   final int createdAt;
   final int updatedAt;
   final List<String> sessionIds;
@@ -58,18 +58,18 @@ class Workspace {
   }
 
   Workspace copyWith({
-    String? projectId,
+    String? workspaceId,
     String? primaryPath,
     List<String>? additionalPaths,
     String? display,
     String? defaultIdentityId,
-    ProjectIconRef? icon,
+    WorkspaceIconRef? icon,
     int? createdAt,
     int? updatedAt,
     List<String>? sessionIds,
   }) {
     return Workspace(
-      projectId: projectId ?? this.projectId,
+      workspaceId: workspaceId ?? this.workspaceId,
       primaryPath: primaryPath ?? this.primaryPath,
       additionalPaths: additionalPaths ?? this.additionalPaths,
       display: display ?? this.display,
@@ -83,7 +83,7 @@ class Workspace {
 
   Map<String, Object?> toJson() {
     return {
-      'projectId': projectId,
+      'workspaceId': workspaceId,
       'primaryPath': primaryPath,
       'additionalPaths': additionalPaths,
       'display': display,
@@ -100,7 +100,7 @@ class Workspace {
     return identical(this, other) ||
         other is Workspace &&
             runtimeType == other.runtimeType &&
-            projectId == other.projectId &&
+            workspaceId == other.workspaceId &&
             primaryPath == other.primaryPath &&
             listEquals(additionalPaths, other.additionalPaths) &&
             display == other.display &&
@@ -113,7 +113,7 @@ class Workspace {
 
   @override
   int get hashCode => Object.hash(
-    projectId,
+    workspaceId,
     primaryPath,
     Object.hashAll(additionalPaths),
     display,
@@ -126,10 +126,10 @@ class Workspace {
 }
 
 class WorkspacesIndex {
-  const WorkspacesIndex({this.schemaVersion = 1, this.projects = const []});
+  const WorkspacesIndex({this.schemaVersion = 1, this.workspaces = const []});
 
   factory WorkspacesIndex.fromJson(Map<String, Object?> json) {
-    final raw = json['projects'];
+    final raw = json['workspaces'];
     final list = <Workspace>[];
     if (raw is List) {
       for (final item in raw) {
@@ -140,17 +140,17 @@ class WorkspacesIndex {
     }
     return WorkspacesIndex(
       schemaVersion: json['schemaVersion'] as int? ?? 1,
-      projects: list,
+      workspaces: list,
     );
   }
 
   final int schemaVersion;
-  final List<Workspace> projects;
+  final List<Workspace> workspaces;
 
   Map<String, Object?> toJson() {
     return {
       'schemaVersion': schemaVersion,
-      'projects': projects.map((p) => p.toJson()).toList(),
+      'workspaces': workspaces.map((p) => p.toJson()).toList(),
     };
   }
 }

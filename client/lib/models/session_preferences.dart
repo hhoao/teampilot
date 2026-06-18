@@ -69,7 +69,7 @@ class SessionPreferences {
   /// configured — callers should fall back to PATH lookup.
   final Map<String, String> toolchainPaths;
 
-  /// Default remote working directory used when an SSH launch has no project
+  /// Default remote working directory used when an SSH launch has no workspace
   /// path yet. Empty means "do not cd before launching".
   final String defaultSshWorkingDirectory;
 

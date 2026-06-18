@@ -83,7 +83,7 @@ class StorageRootsSnapshot {
   final String skillsRoot;
   final String skillBackupsDir;
 
-  /// `workspace/projects/` — per-project manifest, profile, sessions, bus.
+  /// `workspace/workspaces/` — per-workspace manifest, profile, sessions, bus.
   final String workspaceDir;
 
   /// Skill marketplace repo list (`skills/repos.json`).

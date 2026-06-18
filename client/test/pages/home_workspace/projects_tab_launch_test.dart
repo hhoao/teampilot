@@ -1,37 +1,37 @@
 import 'package:flutter_test/flutter_test.dart';
-import 'package:teampilot/models/app_project.dart';
+import 'package:teampilot/models/app_workspace.dart';
 import 'package:teampilot/models/launch_identity.dart';
-import 'package:teampilot/pages/home_workspace/home_workspace_projects_tab.dart';
-import 'package:teampilot/services/home_workspace/home_workspace_project_launch_prefs_store.dart';
+import 'package:teampilot/pages/home_workspace/home_workspace_workspaces_tab.dart';
+import 'package:teampilot/services/home_workspace/home_workspace_workspace_launch_prefs_store.dart';
 import 'package:teampilot/services/storage/identity_provisioner.dart';
 
-Workspace _project() =>
-    Workspace(projectId: 'p1', primaryPath: '/tmp/p1', createdAt: 0);
+Workspace _workspace() =>
+    Workspace(workspaceId: 'p1', primaryPath: '/tmp/p1', createdAt: 0);
 
 void main() {
-  group('projectLaunchRoute', () {
+  group('workspaceLaunchRoute', () {
     test('encodes bare identity ids', () {
       expect(
-        projectLaunchRoute('p1', const LaunchIdentity('personal-default')),
-        '/home-v2/project/p1?as=personal-default',
+        workspaceLaunchRoute('p1', const LaunchIdentity('personal-default')),
+        '/home-v2/workspace/p1?as=personal-default',
       );
       expect(
-        projectLaunchRoute('p1', const LaunchIdentity('squad')),
-        '/home-v2/project/p1?as=squad',
+        workspaceLaunchRoute('p1', const LaunchIdentity('squad')),
+        '/home-v2/workspace/p1?as=squad',
       );
     });
   });
 
   group('rememberedLaunchRoute (skip-dialog decision)', () {
     test('null when no pref', () {
-      expect(rememberedLaunchRoute(_project(), null), isNull);
+      expect(rememberedLaunchRoute(_workspace(), null), isNull);
     });
 
     test('null when remember is false', () {
       expect(
         rememberedLaunchRoute(
-          _project(),
-          const ProjectLaunchPref(lastIdentity: 'squad', remember: false),
+          _workspace(),
+          const WorkspaceLaunchPref(lastIdentity: 'squad', remember: false),
         ),
         isNull,
       );
@@ -40,28 +40,28 @@ void main() {
     test('route when remembered and well-formed', () {
       expect(
         rememberedLaunchRoute(
-          _project(),
-          const ProjectLaunchPref(lastIdentity: 'squad', remember: true),
+          _workspace(),
+          const WorkspaceLaunchPref(lastIdentity: 'squad', remember: true),
         ),
-        '/home-v2/project/p1?as=squad',
+        '/home-v2/workspace/p1?as=squad',
       );
       expect(
         rememberedLaunchRoute(
-          _project(),
-          ProjectLaunchPref(
+          _workspace(),
+          WorkspaceLaunchPref(
             lastIdentity: IdentityProvisioner.defaultPersonalId,
             remember: true,
           ),
         ),
-        '/home-v2/project/p1?as=${IdentityProvisioner.defaultPersonalId}',
+        '/home-v2/workspace/p1?as=${IdentityProvisioner.defaultPersonalId}',
       );
     });
 
     test('null when remembered identity is malformed (falls back to dialog)', () {
       expect(
         rememberedLaunchRoute(
-          _project(),
-          const ProjectLaunchPref(lastIdentity: '', remember: true),
+          _workspace(),
+          const WorkspaceLaunchPref(lastIdentity: '', remember: true),
         ),
         isNull,
       );

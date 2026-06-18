@@ -3,7 +3,7 @@ import 'package:flutter/foundation.dart';
 import '../utils/team_member_naming.dart';
 import 'config_bundle.dart';
 import 'identity_kind.dart';
-import 'project_icon_ref.dart';
+import 'workspace_icon_ref.dart';
 import 'identity.dart';
 
 /// Backend CLI identity (`flashskyai`, `codex`, `claude`, `opencode`, or
@@ -610,7 +610,7 @@ class TeamIdentity implements Identity {
   String get display => name;
 
   @override
-  ProjectIconRef get icon => ProjectIconRef.auto;
+  WorkspaceIconRef get icon => WorkspaceIconRef.auto;
 
   @override
   ConfigBundle get bundle => ConfigBundle(

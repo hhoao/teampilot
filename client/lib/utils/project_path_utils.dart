@@ -10,7 +10,7 @@ import '../services/storage/runtime_storage_context.dart';
 ///
 /// Remote/SSH paths starting with `~` are kept as trimmed text only.
 /// On Windows + WSL storage, Windows picker paths are converted to `/mnt/...`.
-String normalizeProjectPath(String path) {
+String normalizeWorkspacePath(String path) {
   final trimmed = path.trim();
   if (trimmed.isEmpty || trimmed.startsWith('~')) return trimmed;
   final String normalized;
@@ -30,35 +30,35 @@ String normalizeProjectPath(String path) {
   return normalized;
 }
 
-bool projectPathsEqual(String a, String b) {
-  return normalizeProjectPath(a) == normalizeProjectPath(b);
+bool workspacePathsEqual(String a, String b) {
+  return normalizeWorkspacePath(a) == normalizeWorkspacePath(b);
 }
 
-bool projectPathsContains(Iterable<String> paths, String target) {
-  final normalized = normalizeProjectPath(target);
+bool workspacePathsContains(Iterable<String> paths, String target) {
+  final normalized = normalizeWorkspacePath(target);
   for (final existing in paths) {
-    if (normalizeProjectPath(existing) == normalized) return true;
+    if (normalizeWorkspacePath(existing) == normalized) return true;
   }
   return false;
 }
 
-/// All `projects` keys a CLI may use for [path] in metadata JSON.
+/// All `workspaces` keys a CLI may use for [path] in metadata JSON.
 ///
 /// On Windows, CLIs may run natively (`C:\foo`, `C:/foo`) or under WSL
 /// (`/mnt/c/foo`). Returns every common variant so workspace trust matches
 /// either runtime.
-Iterable<String> projectMetadataKeys(String path) {
+Iterable<String> workspaceMetadataKeys(String path) {
   final trimmed = path.trim();
   if (trimmed.isEmpty) return const [];
 
   if (!Platform.isWindows) {
-    return [normalizeProjectPath(path)];
+    return [normalizeWorkspacePath(path)];
   }
 
-  return _windowsProjectMetadataKeys(trimmed, path);
+  return _windowsWorkspaceMetadataKeys(trimmed, path);
 }
 
-Set<String> _windowsProjectMetadataKeys(String trimmed, String original) {
+Set<String> _windowsWorkspaceMetadataKeys(String trimmed, String original) {
   final keys = <String>{};
 
   void addWindowsPathKeys(String windowsPath) {
@@ -90,7 +90,7 @@ Set<String> _windowsProjectMetadataKeys(String trimmed, String original) {
     addWindowsPathKeys(trimmed);
   }
 
-  final normalized = normalizeProjectPath(original);
+  final normalized = normalizeWorkspacePath(original);
   if (normalized.startsWith('/')) {
     addPosixPathKeys(normalized);
   } else if (normalized.isNotEmpty) {

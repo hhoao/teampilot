@@ -8,13 +8,13 @@ import '../../repositories/session_repository.dart';
 import '../../services/storage/identity_provisioner.dart';
 import '../../theme/app_text_styles.dart';
 import '../../widgets/app_dialog.dart';
-import '../../utils/project_path_picker.dart';
-import '../../utils/project_path_utils.dart';
+import '../../utils/workspace_path_picker.dart';
+import '../../utils/workspace_path_utils.dart';
 import '../../l10n/l10n_extensions.dart';
 import 'package:teampilot/theme/app_icon_sizes.dart';
 
-/// Large centered "create project" modal launched from the workspace projects
-/// toolbar. A project is one or more working directories plus an optional
+/// Large centered "create workspace" modal launched from the workspace workspaces
+/// toolbar. A workspace is one or more working directories plus an optional
 /// display name: the first folder is the primary path and the rest become
 /// additional directories.
 Future<void> showHomeNewWorkspaceDialog(
@@ -29,7 +29,7 @@ Future<void> showHomeNewWorkspaceDialog(
   );
   if (result == null || !context.mounted || result.directories.isEmpty) return;
 
-  final projectId = await chatCubit.createProjectWithFirstSession(
+  final workspaceId = await chatCubit.createWorkspaceWithFirstSession(
     result.directories.first,
     repository,
     sessionTeamId: '',
@@ -40,7 +40,7 @@ Future<void> showHomeNewWorkspaceDialog(
   );
   if (!context.mounted) return;
   context.go(
-    '/home-v2/project/$projectId?as=${IdentityProvisioner.defaultPersonalId}',
+    '/home-v2/workspace/$workspaceId?as=${IdentityProvisioner.defaultPersonalId}',
   );
 }
 
@@ -76,10 +76,10 @@ class _HomeNewWorkspaceDialogState
   }
 
   Future<void> _addDirectory() async {
-    final picked = await pickProjectDirectoryPath(context);
+    final picked = await pickWorkspaceDirectoryPath(context);
     final trimmed = picked?.trim() ?? '';
     if (trimmed.isEmpty) return;
-    if (projectPathsContains(_directories, trimmed)) return;
+    if (workspacePathsContains(_directories, trimmed)) return;
     setState(() => _directories.add(trimmed));
   }
 
@@ -107,10 +107,10 @@ class _HomeNewWorkspaceDialogState
         mainAxisSize: MainAxisSize.min,
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          AppDialogHeader(title: l10n.newProject),
+          AppDialogHeader(title: l10n.newWorkspace),
           const SizedBox(height: 8),
           Text(
-            l10n.homeWorkspaceNewProjectSubtitle,
+            l10n.homeWorkspaceNewWorkspaceSubtitle,
             textAlign: TextAlign.center,
             style: styles.body.copyWith(color: cs.onSurfaceVariant),
           ),
@@ -125,7 +125,7 @@ class _HomeNewWorkspaceDialogState
             controller: _nameController,
             hint: hasDirectory
                 ? _basename(_directories.first)
-                : l10n.homeWorkspaceNewProjectNameHint,
+                : l10n.homeWorkspaceNewWorkspaceNameHint,
             onSubmitted: (_) => _submit(),
           ),
           const SizedBox(height: 28),
@@ -145,7 +145,7 @@ class _HomeNewWorkspaceDialogState
                     vertical: 14,
                   ),
                 ),
-                child: Text(l10n.homeWorkspaceCreateProject),
+                child: Text(l10n.homeWorkspaceCreateWorkspace),
               ),
             ],
           ),
@@ -212,7 +212,7 @@ class _DirectoryPicker extends StatelessWidget {
               const SizedBox(width: 14),
               Expanded(
                 child: Text(
-                  l10n.homeWorkspaceNewProjectDirectoryLabel,
+                  l10n.homeWorkspaceNewWorkspaceDirectoryLabel,
                   style: styles.bodyStrong.copyWith(color: cs.onSurface),
                 ),
               ),
@@ -223,7 +223,7 @@ class _DirectoryPicker extends StatelessWidget {
                   Icons.drive_folder_upload_outlined,
                   size: context.appIconSizes.md,
                 ),
-                label: Text(l10n.homeWorkspaceNewProjectChooseDirectory),
+                label: Text(l10n.homeWorkspaceNewWorkspaceChooseDirectory),
               ),
             ],
           ),
@@ -232,7 +232,7 @@ class _DirectoryPicker extends StatelessWidget {
             Padding(
               padding: const EdgeInsets.only(left: 58),
               child: Text(
-                l10n.homeWorkspaceNewProjectDirectoryHint,
+                l10n.homeWorkspaceNewWorkspaceDirectoryHint,
                 style: styles.body.copyWith(
                   color: cs.onSurfaceVariant.withValues(alpha: 0.7),
                 ),
@@ -288,7 +288,7 @@ class _DirectoryRow extends StatelessWidget {
             ),
           ),
           IconButton(
-            tooltip: l10n.removeProjectDirectory,
+            tooltip: l10n.removeWorkspaceDirectory,
             visualDensity: VisualDensity.compact,
             icon: Icon(
               Icons.close_rounded,
@@ -331,7 +331,7 @@ class _NameField extends StatelessWidget {
         mainAxisSize: MainAxisSize.min,
         children: [
           Text(
-            l10n.projectDisplayName,
+            l10n.workspaceDisplayName,
             style: styles.caption.copyWith(color: cs.onSurfaceVariant),
           ),
           const SizedBox(height: 6),

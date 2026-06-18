@@ -16,18 +16,18 @@ import 'package:teampilot/services/app/connection_mode_service.dart';
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
 
-  test('lastProject entry mode resolves project route', () {
+  test('lastWorkspace entry mode resolves workspace route', () {
     expect(
       workspaceEntryLocationFor(
-        mode: WorkspaceEntryMode.lastProject,
-        lastOpenedProjectId: 'proj-42',
+        mode: WorkspaceEntryMode.lastWorkspace,
+        lastOpenedWorkspaceId: 'proj-42',
       ),
-      '/home-v2/project/proj-42',
+      '/home-v2/workspace/proj-42',
     );
     expect(
       workspaceEntryLocationFor(
-        mode: WorkspaceEntryMode.lastProject,
-        lastOpenedProjectId: '',
+        mode: WorkspaceEntryMode.lastWorkspace,
+        lastOpenedWorkspaceId: '',
       ),
       '/home-v2',
     );

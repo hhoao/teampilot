@@ -7,17 +7,17 @@ import '../../../../theme/app_text_styles.dart';
 import '../../../team_config/team_config_cards.dart';
 import '../../../team_config/team_config_extensions_section.dart';
 
-class ProjectExtensionsSection extends StatefulWidget {
-  const ProjectExtensionsSection({required this.projectId, super.key});
+class WorkspaceExtensionsSection extends StatefulWidget {
+  const WorkspaceExtensionsSection({required this.workspaceId, super.key});
 
-  final String projectId;
+  final String workspaceId;
 
   @override
-  State<ProjectExtensionsSection> createState() =>
-      _ProjectExtensionsSectionState();
+  State<WorkspaceExtensionsSection> createState() =>
+      _WorkspaceExtensionsSectionState();
 }
 
-class _ProjectExtensionsSectionState extends State<ProjectExtensionsSection> {
+class _WorkspaceExtensionsSectionState extends State<WorkspaceExtensionsSection> {
   Map<String, bool> _overrides = const {};
 
   @override
@@ -27,14 +27,14 @@ class _ProjectExtensionsSectionState extends State<ProjectExtensionsSection> {
   }
 
   @override
-  void didUpdateWidget(covariant ProjectExtensionsSection oldWidget) {
+  void didUpdateWidget(covariant WorkspaceExtensionsSection oldWidget) {
     super.didUpdateWidget(oldWidget);
-    if (oldWidget.projectId != widget.projectId) _loadOverrides();
+    if (oldWidget.workspaceId != widget.workspaceId) _loadOverrides();
   }
 
   Future<void> _loadOverrides() async {
-    final map = await context.read<ExtensionCubit>().projectOverrides(
-      widget.projectId,
+    final map = await context.read<ExtensionCubit>().workspaceOverrides(
+      widget.workspaceId,
     );
     if (!mounted) return;
     setState(() => _overrides = map);
@@ -58,8 +58,8 @@ class _ProjectExtensionsSectionState extends State<ProjectExtensionsSection> {
       ExtensionOverrideChoice.forceOn => true,
       ExtensionOverrideChoice.forceOff => false,
     };
-    await context.read<ExtensionCubit>().setProjectOverride(
-      widget.projectId,
+    await context.read<ExtensionCubit>().setWorkspaceOverride(
+      widget.workspaceId,
       id,
       value,
     );
@@ -78,10 +78,10 @@ class _ProjectExtensionsSectionState extends State<ProjectExtensionsSection> {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
-                TeamConfigCardHeader(title: l10n.projectExtensionsTitle),
+                TeamConfigCardHeader(title: l10n.workspaceExtensionsTitle),
                 const SizedBox(height: 6),
                 Text(
-                  l10n.projectExtensionsSubtitle,
+                  l10n.workspaceExtensionsSubtitle,
                   style: AppTextStyles.of(context).bodySmall.copyWith(
                     color: Theme.of(
                       context,
@@ -95,8 +95,8 @@ class _ProjectExtensionsSectionState extends State<ProjectExtensionsSection> {
                     choice: _choiceFor(row.id),
                     effective: _effective(row),
                     onChoice: (c) => _setChoice(row.id, c),
-                    effectiveOnLabel: l10n.projectExtensionEffectiveOn,
-                    effectiveOffLabel: l10n.projectExtensionEffectiveOff,
+                    effectiveOnLabel: l10n.workspaceExtensionEffectiveOn,
+                    effectiveOffLabel: l10n.workspaceExtensionEffectiveOff,
                   ),
               ],
             ),

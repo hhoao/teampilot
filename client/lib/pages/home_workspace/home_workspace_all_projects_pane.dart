@@ -6,15 +6,15 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 
 import '../../cubits/chat_cubit.dart';
 import '../../l10n/l10n_extensions.dart';
-import '../../models/app_project.dart';
+import '../../models/app_workspace.dart';
 import '../../models/app_session.dart';
-import '../../services/home_workspace/home_workspace_project_display_prefs_store.dart';
-import '../../services/home_workspace/home_workspace_project_favorites_store.dart';
+import '../../services/home_workspace/home_workspace_workspace_display_prefs_store.dart';
+import '../../services/home_workspace/home_workspace_workspace_favorites_store.dart';
 import '../../theme/workspace_surface_layers.dart';
-import 'home_workspace_project_sort.dart';
-import 'home_workspace_projects_tab.dart';
+import 'home_workspace_workspace_sort.dart';
+import 'home_workspace_workspaces_tab.dart';
 
-/// Right-hand pane listing every project (no team filter).
+/// Right-hand pane listing every workspace (no team filter).
 class HomeAllWorkspacesPane extends StatefulWidget {
   const HomeAllWorkspacesPane({super.key});
 
@@ -25,23 +25,23 @@ class HomeAllWorkspacesPane extends StatefulWidget {
 
 class _HomeAllWorkspacesPaneState
     extends State<HomeAllWorkspacesPane> {
-  final _projectFavoritesStore = WorkspaceFavoritesStore();
+  final _workspaceFavoritesStore = WorkspaceFavoritesStore();
   final _displayPrefsStore = WorkspaceDisplayPrefsStore();
-  Set<String> _favoriteProjectIds = {};
+  Set<String> _favoriteWorkspaceIds = {};
   var _gridView = true;
-  var _projectSort = WorkspaceSort.recentlyUpdated;
+  var _workspaceSort = WorkspaceSort.recentlyUpdated;
 
   @override
   void initState() {
     super.initState();
-    unawaited(_loadProjectFavorites());
+    unawaited(_loadWorkspaceFavorites());
     unawaited(_loadDisplayPrefs());
   }
 
-  Future<void> _loadProjectFavorites() async {
-    final ids = await _projectFavoritesStore.load();
+  Future<void> _loadWorkspaceFavorites() async {
+    final ids = await _workspaceFavoritesStore.load();
     if (!mounted) return;
-    setState(() => _favoriteProjectIds = ids);
+    setState(() => _favoriteWorkspaceIds = ids);
   }
 
   Future<void> _loadDisplayPrefs() async {
@@ -49,35 +49,35 @@ class _HomeAllWorkspacesPaneState
     if (!mounted) return;
     setState(() {
       _gridView = prefs.gridView;
-      _projectSort = prefs.sort;
+      _workspaceSort = prefs.sort;
     });
   }
 
   Future<void> _setGridView(bool gridView) async {
     setState(() => _gridView = gridView);
     await _displayPrefsStore.save(
-      WorkspaceDisplayPrefs(gridView: gridView, sort: _projectSort),
+      WorkspaceDisplayPrefs(gridView: gridView, sort: _workspaceSort),
     );
   }
 
-  Future<void> _setProjectSort(WorkspaceSort sort) async {
-    setState(() => _projectSort = sort);
+  Future<void> _setWorkspaceSort(WorkspaceSort sort) async {
+    setState(() => _workspaceSort = sort);
     await _displayPrefsStore.save(
       WorkspaceDisplayPrefs(gridView: _gridView, sort: sort),
     );
   }
 
-  Future<void> _toggleProjectFavorite(String projectId) async {
-    final nowOn = await _projectFavoritesStore.toggle(projectId);
+  Future<void> _toggleWorkspaceFavorite(String workspaceId) async {
+    final nowOn = await _workspaceFavoritesStore.toggle(workspaceId);
     if (!mounted) return;
     setState(() {
-      final next = {..._favoriteProjectIds};
+      final next = {..._favoriteWorkspaceIds};
       if (nowOn) {
-        next.add(projectId);
+        next.add(workspaceId);
       } else {
-        next.remove(projectId);
+        next.remove(workspaceId);
       }
-      _favoriteProjectIds = next;
+      _favoriteWorkspaceIds = next;
     });
   }
 
@@ -85,8 +85,8 @@ class _HomeAllWorkspacesPaneState
   Widget build(BuildContext context) {
     final cs = Theme.of(context).colorScheme;
     final l10n = context.l10n;
-    final projects = context.select<ChatCubit, List<Workspace>>(
-      (c) => c.state.projects,
+    final workspaces = context.select<ChatCubit, List<Workspace>>(
+      (c) => c.state.workspaces,
     );
     final sessions = context.select<ChatCubit, List<AppSession>>(
       (c) => c.state.sessions,
@@ -98,7 +98,7 @@ class _HomeAllWorkspacesPaneState
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
           Text(
-            l10n.homeWorkspaceAllProjects,
+            l10n.homeWorkspaceAllWorkspaces,
             style: Theme.of(
               context,
             ).textTheme.titleLarge?.copyWith(color: cs.onSurface),
@@ -108,16 +108,16 @@ class _HomeAllWorkspacesPaneState
           const SizedBox(height: 16),
           Expanded(
             child: WorkspacesTab(
-              projects: projects,
+              workspaces: workspaces,
               sessions: sessions,
               gridView: _gridView,
               onToggleView: _setGridView,
-              projectSort: _projectSort,
-              onProjectSortChanged: _setProjectSort,
-              favoriteProjectIds: _favoriteProjectIds,
-              onToggleProjectFavorite: _toggleProjectFavorite,
+              workspaceSort: _workspaceSort,
+              onWorkspaceSortChanged: _setWorkspaceSort,
+              favoriteWorkspaceIds: _favoriteWorkspaceIds,
+              onToggleWorkspaceFavorite: _toggleWorkspaceFavorite,
             )
-                .animate(key: const ValueKey('home-all-projects'))
+                .animate(key: const ValueKey('home-all-workspaces'))
                 .fadeIn(duration: 180.ms, curve: Curves.easeOut)
                 .slideX(
                   begin: 0.025,

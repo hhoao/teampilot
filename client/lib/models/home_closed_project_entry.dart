@@ -3,7 +3,7 @@ import 'package:flutter/foundation.dart';
 @immutable
 class HomeClosedWorkspaceEntry {
   const HomeClosedWorkspaceEntry({
-    required this.projectId,
+    required this.workspaceId,
     required this.displayName,
     this.primaryPath = '',
     this.closedAt = 0,
@@ -11,20 +11,20 @@ class HomeClosedWorkspaceEntry {
 
   factory HomeClosedWorkspaceEntry.fromJson(Map<String, Object?> json) {
     return HomeClosedWorkspaceEntry(
-      projectId: json['projectId'] as String? ?? '',
+      workspaceId: json['workspaceId'] as String? ?? '',
       displayName: json['displayName'] as String? ?? '',
       primaryPath: json['primaryPath'] as String? ?? '',
       closedAt: json['closedAt'] as int? ?? 0,
     );
   }
 
-  final String projectId;
+  final String workspaceId;
   final String displayName;
   final String primaryPath;
   final int closedAt;
 
   Map<String, Object?> toJson() => {
-    'projectId': projectId,
+    'workspaceId': workspaceId,
     'displayName': displayName,
     'primaryPath': primaryPath,
     'closedAt': closedAt,

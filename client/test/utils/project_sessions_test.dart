@@ -1,65 +1,65 @@
 import 'package:flutter_test/flutter_test.dart';
-import 'package:teampilot/models/app_project.dart';
+import 'package:teampilot/models/app_workspace.dart';
 import 'package:teampilot/models/app_session.dart';
-import 'package:teampilot/utils/project_sessions.dart';
+import 'package:teampilot/utils/workspace_sessions.dart';
 
 void main() {
   const fallback = 'New chat';
 
   AppSession session({
     required String id,
-    required String projectId,
+    required String workspaceId,
     String display = '',
   }) {
     return AppSession(
       sessionId: id,
-      projectId: projectId,
+      workspaceId: workspaceId,
       primaryPath: '/tmp',
       display: display,
       createdAt: 1,
     );
   }
 
-  test('sessionsForProject preserves project.sessionIds order', () {
-    final project = Workspace(
-      projectId: 'p1',
+  test('sessionsForWorkspace preserves workspace.sessionIds order', () {
+    final workspace = Workspace(
+      workspaceId: 'p1',
       primaryPath: '/tmp',
       sessionIds: const ['s2', 's1'],
       createdAt: 1,
     );
     final all = [
-      session(id: 's1', projectId: 'p1', display: 'Alpha'),
-      session(id: 's2', projectId: 'p1', display: 'Beta'),
-      session(id: 's3', projectId: 'p2', display: 'Other'),
+      session(id: 's1', workspaceId: 'p1', display: 'Alpha'),
+      session(id: 's2', workspaceId: 'p1', display: 'Beta'),
+      session(id: 's3', workspaceId: 'p2', display: 'Other'),
     ];
 
-    final ordered = sessionsForProject(project, all);
+    final ordered = sessionsForWorkspace(workspace, all);
 
     expect(ordered.map((s) => s.sessionId).toList(), ['s2', 's1']);
   });
 
-  test('sessionsForProject appends orphan sessions without duplicates', () {
-    final project = Workspace(
-      projectId: 'p1',
+  test('sessionsForWorkspace appends orphan sessions without duplicates', () {
+    final workspace = Workspace(
+      workspaceId: 'p1',
       primaryPath: '/tmp',
       sessionIds: const ['s1'],
       createdAt: 1,
     );
     final all = [
-      session(id: 's1', projectId: 'p1', display: 'Listed'),
-      session(id: 's2', projectId: 'p1', display: 'Orphan'),
-      session(id: 's3', projectId: 'p2', display: 'Other'),
+      session(id: 's1', workspaceId: 'p1', display: 'Listed'),
+      session(id: 's2', workspaceId: 'p1', display: 'Orphan'),
+      session(id: 's3', workspaceId: 'p2', display: 'Other'),
     ];
 
-    final ordered = sessionsForProject(project, all);
+    final ordered = sessionsForWorkspace(workspace, all);
 
     expect(ordered.map((s) => s.sessionId).toList(), ['s1', 's2']);
   });
 
   test('filterSessionsByQuery matches display title case-insensitively', () {
     final sessions = [
-      session(id: 's1', projectId: 'p1', display: 'Fix Login Bug'),
-      session(id: 's2', projectId: 'p1', display: 'Docs'),
+      session(id: 's1', workspaceId: 'p1', display: 'Fix Login Bug'),
+      session(id: 's2', workspaceId: 'p1', display: 'Docs'),
     ];
 
     final filtered = filterSessionsByQuery(
@@ -73,8 +73,8 @@ void main() {
 
   test('filterSessionsByQuery matches session id', () {
     final sessions = [
-      session(id: 'abc-123', projectId: 'p1'),
-      session(id: 'xyz-999', projectId: 'p1'),
+      session(id: 'abc-123', workspaceId: 'p1'),
+      session(id: 'xyz-999', workspaceId: 'p1'),
     ];
 
     final filtered = filterSessionsByQuery(
@@ -86,14 +86,14 @@ void main() {
     expect(filtered.map((s) => s.sessionId).toList(), ['abc-123']);
   });
 
-  test('groupSessionsByProjectId buckets sessions by projectId', () {
+  test('groupSessionsByWorkspaceId buckets sessions by workspaceId', () {
     final all = [
-      session(id: 's1', projectId: 'p1'),
-      session(id: 's2', projectId: 'p1'),
-      session(id: 's3', projectId: 'p2'),
+      session(id: 's1', workspaceId: 'p1'),
+      session(id: 's2', workspaceId: 'p1'),
+      session(id: 's3', workspaceId: 'p2'),
     ];
 
-    final grouped = groupSessionsByProjectId(all);
+    final grouped = groupSessionsByWorkspaceId(all);
 
     expect(grouped['p1']!.map((s) => s.sessionId).toList(), ['s1', 's2']);
     expect(grouped['p2']!.map((s) => s.sessionId).toList(), ['s3']);
@@ -101,8 +101,8 @@ void main() {
 
   test('filterSessionsByQuery returns all sessions when query is blank', () {
     final sessions = [
-      session(id: 's1', projectId: 'p1', display: 'One'),
-      session(id: 's2', projectId: 'p1', display: 'Two'),
+      session(id: 's1', workspaceId: 'p1', display: 'One'),
+      session(id: 's2', workspaceId: 'p1', display: 'Two'),
     ];
 
     final filtered = filterSessionsByQuery(

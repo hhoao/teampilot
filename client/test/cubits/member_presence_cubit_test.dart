@@ -148,10 +148,10 @@ void main() {
       });
     });
 
-    // ── project switch: overlapping panel attach/detach must not drop UI ──
+    // ── workspace switch: overlapping panel attach/detach must not drop UI ──
 
     test(
-        'survives project switch: new panel attaches before old panel detaches',
+        'survives workspace switch: new panel attaches before old panel detaches',
         () {
       fakeAsync((async) {
         final service = _DelayedPresenceService({
@@ -183,12 +183,12 @@ void main() {
           SchedulerBinding.instance.handleDrawFrame();
         }
 
-        // Two RightToolsPanel instances (one per project page) share the single
+        // Two RightToolsPanel instances (one per workspace page) share the single
         // global cubit. Each panel owns its attach/detach.
         final panelA = Object();
         final panelB = Object();
 
-        // Project A page mounted → polling starts, presence populated.
+        // Workspace A page mounted → polling starts, presence populated.
         cubit.attachPresenceUi(panelA);
         cubit.syncPresenceTeam(team);
         cubit.updateTarget(target());
@@ -202,8 +202,8 @@ void main() {
         );
         final callsAfterA = service.computeCalls;
 
-        // Switch to project B. Flutter inflates project B's panel (attach)
-        // during the build, then finalizeTree disposes project A's panel
+        // Switch to workspace B. Flutter inflates workspace B's panel (attach)
+        // during the build, then finalizeTree disposes workspace A's panel
         // (detach) AFTER. The cubit must stay attached throughout.
         cubit.attachPresenceUi(panelB);
         cubit.updateTarget(target());
@@ -213,10 +213,10 @@ void main() {
         expect(
           cubit.state.presence,
           isNotEmpty,
-          reason: 'project switch must not drop member presence to offline',
+          reason: 'workspace switch must not drop member presence to offline',
         );
 
-        // Polling must keep running for the still-mounted project B panel.
+        // Polling must keep running for the still-mounted workspace B panel.
         pumpFrame();
         async.elapse(const Duration(seconds: 2));
         async.flushMicrotasks();
@@ -224,7 +224,7 @@ void main() {
         expect(
           service.computeCalls,
           greaterThan(callsAfterA),
-          reason: 'polling must keep running after a project switch',
+          reason: 'polling must keep running after a workspace switch',
         );
         expect(
           cubit.state.presence['m-lead']?.connection,
@@ -413,8 +413,8 @@ void main() {
         async.flushMicrotasks();
 
         unawaited(
-          repo.createProject('/tmp').then((project) async {
-            final localSession = await repo.createSession(project.projectId);
+          repo.createWorkspace('/tmp').then((workspace) async {
+            final localSession = await repo.createSession(workspace.workspaceId);
             await chatCubit.openSessionTab(localSession, connectImmediately: false);
             async.flushMicrotasks();
             unawaited(harness.flush());

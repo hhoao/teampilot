@@ -6,40 +6,40 @@ import '../../../team/claude_team_roster_service.dart';
 /// Profile directory key when launching without a chat [AppSession].
 const configProfileAdhocSessionId = '_adhoc';
 
-/// Workspace project id for local (`local-*`) team shells with no persisted project.
-String effectiveLaunchProjectId({
-  required String projectId,
+/// Workspace workspace id for local (`local-*`) team shells with no persisted workspace.
+String effectiveLaunchWorkspaceId({
+  required String workspaceId,
   required String teamId,
 }) {
-  final trimmed = projectId.trim();
+  final trimmed = workspaceId.trim();
   if (trimmed.isNotEmpty) return trimmed;
   final team = teamId.trim();
   if (team.isEmpty) return '';
   return '_adhoc-$team';
 }
 
-/// Resolved launch path scope for a personal project session.
+/// Resolved launch path scope for a personal workspace session.
 class StandaloneLaunchProfileScope {
   const StandaloneLaunchProfileScope({
-    required this.projectId,
+    required this.workspaceId,
     required this.sessionId,
   });
 
-  final String projectId;
+  final String workspaceId;
   final String sessionId;
 }
 
 /// Resolved launch path scope for a team session.
 class LaunchProfileScope {
   const LaunchProfileScope({
-    required this.projectId,
+    required this.workspaceId,
     required this.teamId,
     required this.sessionId,
     required this.cliTeamName,
     this.memberId,
   });
 
-  final String projectId;
+  final String workspaceId;
   final String teamId;
   final String sessionId;
   final String cliTeamName;
@@ -47,7 +47,7 @@ class LaunchProfileScope {
 }
 
 LaunchProfileScope resolveLaunchProfileScope({
-  required String projectId,
+  required String workspaceId,
   required String teamId,
   required String appSessionId,
   required String cliTeamName,
@@ -56,7 +56,7 @@ LaunchProfileScope resolveLaunchProfileScope({
   final trimmedSession = appSessionId.trim();
   final trimmedCliTeam = cliTeamName.trim();
   return LaunchProfileScope(
-    projectId: projectId.trim(),
+    workspaceId: workspaceId.trim(),
     teamId: teamId.trim(),
     sessionId: trimmedSession.isNotEmpty ? trimmedSession : configProfileAdhocSessionId,
     cliTeamName: trimmedCliTeam.isNotEmpty ? trimmedCliTeam : teamId.trim(),

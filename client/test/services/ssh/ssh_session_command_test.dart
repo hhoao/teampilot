@@ -37,7 +37,7 @@ void main() {
     final remoteCommand = const RemoteFlashskyaiCommandBuilder().buildCommand(
       remoteExecutablePath: '/opt/flash sky/flashskyai',
       arguments: ['--session-id', "abc'123"],
-      workingDirectory: '/home/me/project dir',
+      workingDirectory: '/home/me/workspace dir',
       environment: {'FLASHSKYAI_TEAM': 'core team'},
     );
 

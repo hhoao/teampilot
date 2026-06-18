@@ -15,7 +15,7 @@ class TabbedPanel extends StatefulWidget {
   final List<ToolView> views;
 
   /// When set, the selected tool index is persisted per-scope in
-  /// [WorkspaceToolsCubit] (one scope == one projectId) so it survives project
+  /// [WorkspaceToolsCubit] (one scope == one workspaceId) so it survives workspace
   /// switches. When null, selection is local widget state.
   final String? scopeId;
 

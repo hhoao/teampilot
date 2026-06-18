@@ -107,7 +107,7 @@ void main() {
     final cubit = IdentityCubit(
       repository: repo,
       sessionRepository: SessionRepository(),
-      reloadProjects: () async {},
+      reloadWorkspaces: () async {},
       executableResolver: () => 'flashskyai',
       pluginLinker: _RecordingPluginLinker(),
     );
@@ -138,7 +138,7 @@ void main() {
     final cubit = IdentityCubit(
       repository: repo,
       sessionRepository: SessionRepository(),
-      reloadProjects: () async {},
+      reloadWorkspaces: () async {},
       executableResolver: () => 'flashskyai',
       pluginLinker: linker,
       installedPluginsLoader: () async => [],
@@ -189,7 +189,7 @@ void main() {
     final cubit = IdentityCubit(
       repository: repo,
       sessionRepository: SessionRepository(),
-      reloadProjects: () async {},
+      reloadWorkspaces: () async {},
       executableResolver: () => 'flashskyai',
       pluginLinker: linker,
       installedPluginsLoader: () async => [plugin],
@@ -221,7 +221,7 @@ void main() {
     final cubit = IdentityCubit(
       repository: repo,
       sessionRepository: SessionRepository(),
-      reloadProjects: () async {},
+      reloadWorkspaces: () async {},
       executableResolver: () => 'flashskyai',
       pluginLinker: linker,
       installedPluginsLoader: () async => [],
@@ -255,7 +255,7 @@ void main() {
     final cubit = IdentityCubit(
       repository: repo,
       sessionRepository: SessionRepository(),
-      reloadProjects: () async {},
+      reloadWorkspaces: () async {},
       executableResolver: () => 'flashskyai',
       pluginLinker: _RecordingPluginLinker(),
     );
@@ -287,7 +287,7 @@ void main() {
     final cubit = IdentityCubit(
       repository: _repo(dir),
       sessionRepository: SessionRepository(),
-      reloadProjects: () async {},
+      reloadWorkspaces: () async {},
       executableResolver: () => 'flashskyai',
       pluginLinker: _RecordingPluginLinker(),
     );
@@ -317,7 +317,7 @@ void main() {
       final cubit = IdentityCubit(
         repository: repo,
         sessionRepository: SessionRepository(),
-        reloadProjects: () async {},
+        reloadWorkspaces: () async {},
         executableResolver: () => 'flashskyai',
         pluginLinker: _RecordingPluginLinker(),
       );
@@ -345,14 +345,14 @@ void main() {
     },
   );
 
-  test('load seeds default project when creating Default Team', () async {
-    final base = await Directory.systemTemp.createTemp('team_default_project_');
+  test('load seeds default workspace when creating Default Team', () async {
+    final base = await Directory.systemTemp.createTemp('team_default_workspace_');
     final sessionRepo = SessionRepository();
     var reloadCount = 0;
     final cubit = IdentityCubit(
       repository: _repo(base),
       sessionRepository: sessionRepo,
-      reloadProjects: () async => reloadCount++,
+      reloadWorkspaces: () async => reloadCount++,
       executableResolver: () => 'flashskyai',
       pluginLinker: _RecordingPluginLinker(),
     );
@@ -362,9 +362,9 @@ void main() {
     final team = cubit.state.teams.single;
     expect(team.name, 'Default Team');
     expect(reloadCount, 1);
-    final projects = await sessionRepo.loadProjects();
-    expect(projects, hasLength(1));
-    expect(projects.single.display, 'Default Team');
+    final workspaces = await sessionRepo.loadWorkspaces();
+    expect(workspaces, hasLength(1));
+    expect(workspaces.single.display, 'Default Team');
     final sessions = await sessionRepo.loadSessions();
     expect(sessions.where((s) => s.sessionTeam == team.id), hasLength(1));
 
@@ -377,7 +377,7 @@ void main() {
     final cubit = IdentityCubit(
       repository: _repo(base),
       sessionRepository: SessionRepository(),
-      reloadProjects: () async {},
+      reloadWorkspaces: () async {},
       executableResolver: () => 'flashskyai',
       pluginLinker: _RecordingPluginLinker(),
       appDataBasePath: base.path,
@@ -400,7 +400,7 @@ void main() {
     final cubit = IdentityCubit(
       repository: _repo(base),
       sessionRepository: SessionRepository(),
-      reloadProjects: () async {},
+      reloadWorkspaces: () async {},
       executableResolver: () => 'flashskyai',
       pluginLinker: _RecordingPluginLinker(),
       appDataBasePath: base.path,
@@ -423,7 +423,7 @@ void main() {
     final cubit = IdentityCubit(
       repository: _repo(base),
       sessionRepository: SessionRepository(),
-      reloadProjects: () async {},
+      reloadWorkspaces: () async {},
       executableResolver: () => 'flashskyai',
       pluginLinker: _RecordingPluginLinker(),
       appDataBasePath: base.path,
@@ -446,7 +446,7 @@ void main() {
     final cubit = IdentityCubit(
       repository: _repo(base),
       sessionRepository: SessionRepository(),
-      reloadProjects: () async {},
+      reloadWorkspaces: () async {},
       executableResolver: () => 'flashskyai',
       pluginLinker: _RecordingPluginLinker(),
       appDataBasePath: base.path,
@@ -488,7 +488,7 @@ void main() {
     final cubit = IdentityCubit(
       repository: _repo(base),
       sessionRepository: SessionRepository(),
-      reloadProjects: () async {},
+      reloadWorkspaces: () async {},
       executableResolver: () => 'flashskyai',
       pluginLinker: _RecordingPluginLinker(),
       cliExecutableResolver: (cli) =>
@@ -521,7 +521,7 @@ void main() {
     final cubit = IdentityCubit(
       repository: repo,
       sessionRepository: SessionRepository(),
-      reloadProjects: () async {},
+      reloadWorkspaces: () async {},
       executableResolver: () => 'claude',
       pluginLinker: _RecordingPluginLinker(),
       appDataBasePath: base.path,
@@ -552,8 +552,8 @@ void main() {
       p.join(
         base.path,
         'workspace',
-        'projects',
-        'project-1',
+        'workspaces',
+        'workspace-1',
         'sessions',
         configProfileAdhocSessionId,
         'runtime',
@@ -586,7 +586,7 @@ void main() {
     final cubit = IdentityCubit(
       repository: repo,
       sessionRepository: SessionRepository(),
-      reloadProjects: () async {},
+      reloadWorkspaces: () async {},
       executableResolver: () => 'claude',
       pluginLinker: _RecordingPluginLinker(),
       appDataBasePath: base.path,
@@ -621,7 +621,7 @@ void main() {
     final cubit = IdentityCubit(
       repository: _repo(base),
       sessionRepository: SessionRepository(),
-      reloadProjects: () async {},
+      reloadWorkspaces: () async {},
       executableResolver: () => 'flashskyai',
       pluginLinker: _RecordingPluginLinker(),
       appDataBasePath: base.path,
@@ -646,7 +646,7 @@ void main() {
       final cubit = IdentityCubit(
         repository: repo,
         sessionRepository: SessionRepository(),
-        reloadProjects: () async {},
+        reloadWorkspaces: () async {},
         executableResolver: () => 'claude',
         pluginLinker: _RecordingPluginLinker(),
       );
@@ -679,7 +679,7 @@ void main() {
       final cubit = IdentityCubit(
         repository: repo,
         sessionRepository: SessionRepository(),
-        reloadProjects: () async {},
+        reloadWorkspaces: () async {},
         executableResolver: () => 'claude',
         pluginLinker: _RecordingPluginLinker(),
       );
@@ -709,7 +709,7 @@ void main() {
     final cubit = IdentityCubit(
       repository: repo,
       sessionRepository: SessionRepository(),
-      reloadProjects: () async {},
+      reloadWorkspaces: () async {},
       executableResolver: () => 'flashskyai',
       pluginLinker: _RecordingPluginLinker(),
     );

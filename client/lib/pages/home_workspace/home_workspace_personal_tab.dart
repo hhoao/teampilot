@@ -6,11 +6,11 @@ import '../../cubits/extension_cubit.dart';
 import '../../models/personal_identity.dart';
 import '../team_config/team_config_extensions_section.dart';
 import 'home_workspace_global_section.dart';
-import 'project/config/project_agent_section.dart';
-import 'project/config/project_mcp_section.dart';
-import 'project/config/project_plugins_section.dart';
-import 'project/config/project_skills_section.dart';
-import 'project/project_config_section.dart';
+import 'workspace/config/workspace_agent_section.dart';
+import 'workspace/config/workspace_mcp_section.dart';
+import 'workspace/config/workspace_plugins_section.dart';
+import 'workspace/config/workspace_skills_section.dart';
+import 'workspace/workspace_config_section.dart';
 
 /// Embeds personal-identity config sections inside the workspace-home tab.
 class HomePersonalTab extends StatelessWidget {
@@ -22,7 +22,7 @@ class HomePersonalTab extends StatelessWidget {
     super.key,
   });
 
-  final ProjectConfigSection section;
+  final WorkspaceConfigSection section;
   final PersonalIdentity personal;
   final IdentityCubit cubit;
   final ValueChanged<HomeGlobalView>? onSelectGlobalView;
@@ -30,23 +30,23 @@ class HomePersonalTab extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final body = switch (section) {
-      ProjectConfigSection.agent => ProjectAgentSection(
-          projectId: '',
+      WorkspaceConfigSection.agent => WorkspaceAgentSection(
+          workspaceId: '',
           identityId: personal.id,
         ),
-      ProjectConfigSection.skills => ProjectSkillsSection(
-          projectId: '',
+      WorkspaceConfigSection.skills => WorkspaceSkillsSection(
+          workspaceId: '',
           identityId: personal.id,
         ),
-      ProjectConfigSection.plugins => ProjectPluginsSection(
-          projectId: '',
+      WorkspaceConfigSection.plugins => WorkspacePluginsSection(
+          workspaceId: '',
           identityId: personal.id,
         ),
-      ProjectConfigSection.mcp => ProjectMcpSection(
-          projectId: '',
+      WorkspaceConfigSection.mcp => WorkspaceMcpSection(
+          workspaceId: '',
           identityId: personal.id,
         ),
-      ProjectConfigSection.extensions => _IdentityExtensionsSection(
+      WorkspaceConfigSection.extensions => _IdentityExtensionsSection(
           identityId: personal.id,
         ),
       _ => const SizedBox.shrink(),

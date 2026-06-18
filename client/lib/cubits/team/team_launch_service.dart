@@ -47,7 +47,7 @@ class TeamLaunchService {
     final plan = await _lifecycle.prepareLaunch(
       session: AppSession(
         sessionId: const Uuid().v4(),
-        projectId: '',
+        workspaceId: '',
         primaryPath: AppStorage.cwd,
         sessionTeam: team.id,
         cliTeamName: team.id,

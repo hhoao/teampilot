@@ -26,7 +26,7 @@ class _FakeInspector extends MemberConfigInspector {
 
   @override
   Future<MemberConfigDetail> inspect({
-    required String projectId,
+    required String workspaceId,
     required String sessionId,
     required TeamIdentity team,
     required TeamMemberConfig member,
@@ -54,7 +54,7 @@ void main() {
     cubit.stream.listen((s) => states.add(s.status));
 
     await cubit.load(
-      projectId: 'p1',
+      workspaceId: 'p1',
       sessionId: 's1',
       team: _team,
       member: _member,
@@ -73,7 +73,7 @@ void main() {
       ),
     );
     await cubit.load(
-      projectId: 'p1',
+      workspaceId: 'p1',
       sessionId: 's1',
       team: _team,
       member: _member,

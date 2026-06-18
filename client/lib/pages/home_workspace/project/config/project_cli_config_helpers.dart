@@ -4,21 +4,21 @@ import '../../../../services/cli/registry/capabilities/provider_catalog_capabili
 import '../../../../services/cli/registry/capabilities/provider_model_capability.dart';
 import '../../../../services/cli/registry/cli_tool_registry.dart';
 
-bool projectCliSupportsProviderCatalog(
+bool workspaceCliSupportsProviderCatalog(
   CliTool cli,
   CliToolRegistry registry,
 ) =>
     registry.capability<ProviderCatalogCapability>(cli) != null;
 
-String projectCliProviderId(PersonalIdentity personal, CliTool cli) {
+String workspaceCliProviderId(PersonalIdentity personal, CliTool cli) {
   return personal.providerIdsByTool[cli.value]?.trim() ?? '';
 }
 
-String projectCliModelId(PersonalIdentity personal, CliTool cli) {
+String workspaceCliModelId(PersonalIdentity personal, CliTool cli) {
   return personal.modelsByTool[cli.value]?.trim() ?? '';
 }
 
-bool projectCliIsConfigured(
+bool workspaceCliIsConfigured(
   PersonalIdentity personal,
   CliTool cli,
   CliToolRegistry registry, {
@@ -26,7 +26,7 @@ bool projectCliIsConfigured(
   bool supportsProviderCatalog = true,
 }) {
   if (!supportsProviderCatalog) return true;
-  final providerId = projectCliProviderId(personal, cli);
+  final providerId = workspaceCliProviderId(personal, cli);
   if (providerId.isEmpty) return false;
 
   final modelCapability = registry.capability<ProviderModelCapability>(cli);
@@ -36,15 +36,15 @@ bool projectCliIsConfigured(
           ProviderModelPickerMode.hidden) {
     return true;
   }
-  return projectCliModelId(personal, cli).isNotEmpty;
+  return workspaceCliModelId(personal, cli).isNotEmpty;
 }
 
-AppProviderConfig? projectCliSelectedProvider(
+AppProviderConfig? workspaceCliSelectedProvider(
   PersonalIdentity personal,
   CliTool cli,
   Iterable<AppProviderConfig> providers,
 ) {
-  final id = projectCliProviderId(personal, cli);
+  final id = workspaceCliProviderId(personal, cli);
   if (id.isEmpty) return null;
   for (final provider in providers) {
     if (provider.id == id) return provider;
@@ -52,7 +52,7 @@ AppProviderConfig? projectCliSelectedProvider(
   return null;
 }
 
-List<String> projectCliModelCandidates({
+List<String> workspaceCliModelCandidates({
   required CliToolRegistry registry,
   required CliTool cli,
   required String providerId,
@@ -68,7 +68,7 @@ List<String> projectCliModelCandidates({
   );
 }
 
-String projectCliDefaultModelForProvider(
+String workspaceCliDefaultModelForProvider(
   CliToolRegistry registry,
   CliTool cli,
   AppProviderConfig? provider, {
@@ -79,7 +79,7 @@ String projectCliDefaultModelForProvider(
   return capability.defaultModel(provider: provider, providerId: providerId);
 }
 
-bool projectCliHidesModelPicker(
+bool workspaceCliHidesModelPicker(
   CliToolRegistry registry,
   CliTool cli,
   AppProviderConfig? provider,

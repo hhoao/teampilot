@@ -90,7 +90,7 @@ void main() {
       posix.join(
         teampilotRoot,
         'workspace',
-        'projects',
+        'workspaces',
         'proj-1',
         'sessions',
         'sess-1',

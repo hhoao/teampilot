@@ -1,5 +1,5 @@
-/// Bundled geometric project avatars.
-const kProjectGeometryIconAssets = <String>[
+/// Bundled geometric workspace avatars.
+const kWorkspaceGeometryIconAssets = <String>[
   'assets/geometry/img1.svg',
   'assets/geometry/img2.svg',
   'assets/geometry/img3.svg',
@@ -26,19 +26,19 @@ const kProjectGeometryIconAssets = <String>[
   'assets/geometry/img24.svg',
 ];
 
-int projectGeometryIndexForProjectId(String projectId) {
-  final assets = kProjectGeometryIconAssets;
+int workspaceGeometryIndexForWorkspaceId(String workspaceId) {
+  final assets = kWorkspaceGeometryIconAssets;
   if (assets.isEmpty) return 0;
-  return projectId.hashCode.abs() % assets.length;
+  return workspaceId.hashCode.abs() % assets.length;
 }
 
-String projectGeometryAssetForProjectId(String projectId) {
-  return kProjectGeometryIconAssets[projectGeometryIndexForProjectId(projectId)];
+String workspaceGeometryAssetForWorkspaceId(String workspaceId) {
+  return kWorkspaceGeometryIconAssets[workspaceGeometryIndexForWorkspaceId(workspaceId)];
 }
 
-String projectGeometryAssetForIndex(int index, {required String projectId}) {
-  final assets = kProjectGeometryIconAssets;
+String workspaceGeometryAssetForIndex(int index, {required String workspaceId}) {
+  final assets = kWorkspaceGeometryIconAssets;
   if (assets.isEmpty) return 'assets/geometry/img1.svg';
   if (index >= 0 && index < assets.length) return assets[index];
-  return projectGeometryAssetForProjectId(projectId);
+  return workspaceGeometryAssetForWorkspaceId(workspaceId);
 }

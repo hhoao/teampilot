@@ -10,7 +10,7 @@ import '../../theme/workspace_surface_layers.dart';
 import 'home_workspace_content_header.dart';
 import 'home_workspace_global_section.dart';
 import 'home_workspace_personal_tab.dart';
-import 'project/project_config_section.dart';
+import 'workspace/workspace_config_section.dart';
 
 /// Right-hand content pane for a selected [PersonalIdentity] on the home
 /// workspace (skills/plugins/MCP/agent — no roster).
@@ -35,9 +35,9 @@ class _HomePersonalContentState
     extends State<HomePersonalContent> {
   late int _tabIndex = 0;
 
-  List<ProjectConfigSection> get _sections =>
-      ProjectConfigSection.forKind(IdentityKind.personal)
-          .where((s) => s != ProjectConfigSection.settings)
+  List<WorkspaceConfigSection> get _sections =>
+      WorkspaceConfigSection.forKind(IdentityKind.personal)
+          .where((s) => s != WorkspaceConfigSection.settings)
           .toList(growable: false);
 
   @override

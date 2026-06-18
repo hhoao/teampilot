@@ -69,8 +69,8 @@ void main() {
       );
 
       // --- Act: run personal-mode launch prep ---
-      await service.prepareProjectLaunch(identityId: 'personal-default', 
-        projectId: 'p1',
+      await service.prepareWorkspaceLaunch(identityId: 'personal-default', 
+        workspaceId: 'p1',
         sessionId: 's1',
         personal: profile,
       );
@@ -126,8 +126,8 @@ void main() {
       );
 
       // --- Act ---
-      final outcome = await service.prepareProjectLaunch(identityId: 'personal-default', 
-        projectId: 'p2',
+      final outcome = await service.prepareWorkspaceLaunch(identityId: 'personal-default', 
+        workspaceId: 'p2',
         sessionId: 's2',
         personal: profile,
       );

@@ -28,16 +28,16 @@ class McpRegistryService {
   final McpRegistryConfigService _registryConfigService;
 
   Future<void> writeForSession({
-    required String projectId,
+    required String workspaceId,
     required String teamId,
     required String sessionId,
     String? memberId,
     Map<String, Map<String, Object?>>? extraServers,
   }) async {
-    final trimmedProjectId = projectId.trim();
+    final trimmedWorkspaceId = workspaceId.trim();
     final trimmedTeamId = teamId.trim();
     final trimmedSessionId = sessionId.trim();
-    if (trimmedProjectId.isEmpty ||
+    if (trimmedWorkspaceId.isEmpty ||
         trimmedTeamId.isEmpty ||
         trimmedSessionId.isEmpty) {
       return;
@@ -82,7 +82,7 @@ class McpRegistryService {
     if (mergedServers.isEmpty) return;
 
     await _mergeForTool(
-      projectId: trimmedProjectId,
+      workspaceId: trimmedWorkspaceId,
       sessionId: trimmedSessionId,
       memberId: memberId,
       tool: 'claude',
@@ -90,7 +90,7 @@ class McpRegistryService {
       catalogServers: mergedServers,
     );
     await _mergeForTool(
-      projectId: trimmedProjectId,
+      workspaceId: trimmedWorkspaceId,
       sessionId: trimmedSessionId,
       memberId: memberId,
       tool: 'flashskyai',
@@ -102,7 +102,7 @@ class McpRegistryService {
       await McpCredentialsStore(fs: _fs).mergeInto(
         fromConfigDir: layout.appToolRoot('claude'),
         toConfigDir: layout.sessionRuntimeToolDir(
-          trimmedProjectId,
+          trimmedWorkspaceId,
           trimmedSessionId,
           'claude',
           memberId: memberId,
@@ -111,17 +111,17 @@ class McpRegistryService {
     }
   }
 
-  Future<void> writeForStandaloneProject({
-    required String projectId,
+  Future<void> writeForStandaloneWorkspace({
+    required String workspaceId,
     required String sessionId,
     Map<String, Map<String, Object?>>? extraServers,
   }) async {
-    final trimmedProjectId = projectId.trim();
+    final trimmedWorkspaceId = workspaceId.trim();
     final trimmedSessionId = sessionId.trim();
-    if (trimmedProjectId.isEmpty || trimmedSessionId.isEmpty) return;
+    if (trimmedWorkspaceId.isEmpty || trimmedSessionId.isEmpty) return;
 
     Map<String, Map<String, Object?>>? catalogServers;
-    final snapshotPath = layout.projectConfigMcpServersFile(trimmedProjectId);
+    final snapshotPath = layout.workspaceConfigMcpServersFile(trimmedWorkspaceId);
     final snapshotStat = await _fs.stat(snapshotPath);
     if (snapshotStat.isFile) {
       final snapshotText = await _fs.readString(snapshotPath);
@@ -159,14 +159,14 @@ class McpRegistryService {
     if (mergedServers.isEmpty) return;
 
     await _mergeForStandaloneTool(
-      projectId: trimmedProjectId,
+      workspaceId: trimmedWorkspaceId,
       sessionId: trimmedSessionId,
       tool: 'claude',
       metadataFileName: ClaudeConfigProfileCapability.metadataFileName,
       catalogServers: mergedServers,
     );
     await _mergeForStandaloneTool(
-      projectId: trimmedProjectId,
+      workspaceId: trimmedWorkspaceId,
       sessionId: trimmedSessionId,
       tool: 'flashskyai',
       metadataFileName: FlashskyaiConfigProfileCapability.metadataFileName,
@@ -177,7 +177,7 @@ class McpRegistryService {
       await McpCredentialsStore(fs: _fs).mergeInto(
         fromConfigDir: layout.appToolRoot('claude'),
         toConfigDir: layout.sessionRuntimeToolDir(
-          trimmedProjectId,
+          trimmedWorkspaceId,
           trimmedSessionId,
           'claude',
         ),
@@ -186,7 +186,7 @@ class McpRegistryService {
   }
 
   Future<void> _mergeForTool({
-    required String projectId,
+    required String workspaceId,
     required String sessionId,
     required String tool,
     required String metadataFileName,
@@ -195,7 +195,7 @@ class McpRegistryService {
   }) async {
     final metaPath = _fs.pathContext.join(
       layout.sessionRuntimeToolDir(
-        projectId,
+        workspaceId,
         sessionId,
         tool,
         memberId: memberId,
@@ -230,14 +230,14 @@ class McpRegistryService {
   }
 
   Future<void> _mergeForStandaloneTool({
-    required String projectId,
+    required String workspaceId,
     required String sessionId,
     required String tool,
     required String metadataFileName,
     required Map<String, Map<String, Object?>> catalogServers,
   }) async {
     final metaPath = _fs.pathContext.join(
-      layout.sessionRuntimeToolDir(projectId, sessionId, tool),
+      layout.sessionRuntimeToolDir(workspaceId, sessionId, tool),
       metadataFileName,
     );
     final stat = await _fs.stat(metaPath);

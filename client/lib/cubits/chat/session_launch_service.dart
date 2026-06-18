@@ -2,7 +2,7 @@ import 'dart:async';
 
 import 'package:uuid/uuid.dart';
 
-import '../../models/app_project.dart';
+import '../../models/app_workspace.dart';
 import '../../models/app_session.dart';
 import '../../models/cli_preset.dart';
 import '../../models/member_instance.dart';
@@ -13,14 +13,14 @@ import '../../models/team_config.dart';
 import '../../repositories/session_repository.dart';
 import '../../services/cli/registry/config_profile/config_profile_context.dart';
 import '../../services/session/session_lifecycle_service.dart';
-import '../../services/team/default_team_project_service.dart';
+import '../../services/team/default_team_workspace_service.dart';
 import '../../services/team/team_config_launch_validator.dart';
 import '../../services/storage/runtime_storage_context.dart';
 import '../../services/team_bus/mcp/bus_bridge_locator.dart';
 import '../../services/team_bus/mcp/teammate_bus_mcp_config.dart';
 import '../../services/terminal/terminal_session.dart';
 import '../../utils/logger.dart';
-import '../../utils/project_path_utils.dart';
+import '../../utils/workspace_path_utils.dart';
 import '../../utils/session_display_title.dart';
 import '../../utils/team_member_naming.dart';
 import 'chat_session_shell_factory.dart';
@@ -59,7 +59,7 @@ abstract interface class SessionLaunchHost {
     String sessionId,
     String newName,
   );
-  Future<void> loadProjectData(SessionRepository repo);
+  Future<void> loadWorkspaceData(SessionRepository repo);
   void pushPresenceTarget();
 
   ChatTab? get activeTab;
@@ -116,23 +116,23 @@ class SessionLaunchService implements MemberConnector {
       );
       return;
     }
-    final project = _projectById(session.projectId);
+    final workspace = _workspaceById(session.workspaceId);
     final isPersonal = session.sessionTeam.trim().isEmpty;
     PersonalIdentity? personalIdentity;
     TeamMemberConfig? personalMember;
     CliPreset? personalPreset;
     if (isPersonal) {
-      if (project == null) {
+      if (workspace == null) {
         throw StateError(
-          'openSessionTab requires project for personal sessions',
+          'openSessionTab requires workspace for personal sessions',
         );
       }
       // Prefer the identity the session was created under (persisted on the
-      // session), then the project's remembered default, then the default
+      // session), then the workspace's remembered default, then the default
       // personal. Validate existence so a deleted identity falls back cleanly.
       var identityId = session.identityId.trim();
       if (identityId.isEmpty) {
-        identityId = project.defaultIdentityId.trim();
+        identityId = workspace.defaultIdentityId.trim();
       }
       if (identityId.isEmpty) {
         identityId = IdentityProvisioner.defaultPersonalId;
@@ -157,7 +157,7 @@ class SessionLaunchService implements MemberConnector {
     final ts = _h.shellFactory.newSession(
       isPersonal
           // Honor the session's pinned CLI so an existing simple-mode session
-          // resumes under the CLI it was created with, even when the project's
+          // resumes under the CLI it was created with, even when the workspace's
           // active preset has since been switched to another CLI.
           ? (session.cli ?? personalPreset?.cli ?? CliTool.claude)
           : member!.cliWithin(team!),
@@ -218,7 +218,7 @@ class SessionLaunchService implements MemberConnector {
             launched: launched,
             team: isPersonal ? null : team,
             member: isPersonal ? null : member,
-            project: isPersonal ? project : null,
+            workspace: isPersonal ? workspace : null,
             personal: isPersonal ? personalIdentity : null,
           );
           if (!isPersonal &&
@@ -289,14 +289,14 @@ class SessionLaunchService implements MemberConnector {
     }
 
     final primaryPath = _materializePrimaryPath(team, workspaceCwd: workspaceCwd);
-    final project = await repo.createProject(primaryPath);
-    var session = _firstSessionForProject(project.projectId);
+    final workspace = await repo.createWorkspace(primaryPath);
+    var session = _firstSessionForWorkspace(workspace.workspaceId);
     session ??= await repo.createSession(
-      project.projectId,
+      workspace.workspaceId,
       sessionTeam: team.id,
       rosterMembers: team.members,
     );
-    await _h.loadProjectData(repo);
+    await _h.loadWorkspaceData(repo);
     if (_h.isClosed) return;
     await openSessionTab(
       session,
@@ -312,10 +312,10 @@ class SessionLaunchService implements MemberConnector {
     String? workspaceCwd,
   }) {
     if (workspaceCwd != null && workspaceCwd.trim().isNotEmpty) {
-      final project = _projectMatchingPath(workspaceCwd);
-      if (project != null) {
-        final session = _firstSessionForProjectAndTeam(
-          project.projectId,
+      final workspace = _workspaceMatchingPath(workspaceCwd);
+      if (workspace != null) {
+        final session = _firstSessionForWorkspaceAndTeam(
+          workspace.workspaceId,
           team.id,
         );
         if (session != null) return session;
@@ -330,37 +330,37 @@ class SessionLaunchService implements MemberConnector {
 
   String _materializePrimaryPath(TeamIdentity team, {String? workspaceCwd}) {
     if (workspaceCwd != null && workspaceCwd.trim().isNotEmpty) {
-      return normalizeProjectPath(workspaceCwd);
+      return normalizeWorkspacePath(workspaceCwd);
     }
-    return DefaultTeamProjectService.primaryPathForTeam(team.id);
+    return DefaultTeamWorkspaceService.primaryPathForTeam(team.id);
   }
 
-  Workspace? _projectMatchingPath(String primaryPath) {
-    for (final project in _state.projects) {
-      if (projectPathsEqual(project.primaryPath, primaryPath)) return project;
+  Workspace? _workspaceMatchingPath(String primaryPath) {
+    for (final workspace in _state.workspaces) {
+      if (workspacePathsEqual(workspace.primaryPath, primaryPath)) return workspace;
     }
     return null;
   }
 
-  AppSession? _firstSessionForProjectAndTeam(String projectId, String teamId) {
+  AppSession? _firstSessionForWorkspaceAndTeam(String workspaceId, String teamId) {
     for (final session in _state.sessions) {
-      if (session.projectId != projectId) continue;
+      if (session.workspaceId != workspaceId) continue;
       if (session.sessionTeam.trim() != teamId) continue;
       return session;
     }
     return null;
   }
 
-  Workspace? _projectById(String projectId) {
-    for (final project in _state.projects) {
-      if (project.projectId == projectId) return project;
+  Workspace? _workspaceById(String workspaceId) {
+    for (final workspace in _state.workspaces) {
+      if (workspace.workspaceId == workspaceId) return workspace;
     }
     return null;
   }
 
-  AppSession? _firstSessionForProject(String projectId) {
+  AppSession? _firstSessionForWorkspace(String workspaceId) {
     for (final session in _state.sessions) {
-      if (session.projectId == projectId) return session;
+      if (session.workspaceId == workspaceId) return session;
     }
     return null;
   }
@@ -467,7 +467,7 @@ class SessionLaunchService implements MemberConnector {
         .toList();
     _h.emitSnapshot(
       _h.dataStore.deriveSnapshot(
-        projects: _state.projects,
+        workspaces: _state.workspaces,
         sessions: sessions,
       ),
     );
@@ -489,7 +489,7 @@ class SessionLaunchService implements MemberConnector {
     }).toList();
     _h.emitSnapshot(
       _h.dataStore.deriveSnapshot(
-        projects: _state.projects,
+        workspaces: _state.workspaces,
         sessions: sessions,
       ),
     );
@@ -530,7 +530,7 @@ class SessionLaunchService implements MemberConnector {
         tab.persistedSession ??
         AppSession(
           sessionId: tab.info.id,
-          projectId: '',
+          workspaceId: '',
           primaryPath: launch.$1,
           additionalPaths: launch.$2,
           sessionTeam: team.id,
@@ -575,10 +575,10 @@ class SessionLaunchService implements MemberConnector {
     required bool launched,
     TeamIdentity? team,
     TeamMemberConfig? member,
-    Workspace? project,
+    Workspace? workspace,
     PersonalIdentity? personal,
   }) async {
-    final isPersonal = project != null;
+    final isPersonal = workspace != null;
     if (isPersonal) {
       if (personal == null) {
         _h.failSessionConnect(
@@ -634,7 +634,7 @@ class SessionLaunchService implements MemberConnector {
       team: team,
       member: launchMember,
       memberBinding: binding,
-      project: project,
+      workspace: workspace,
       personal: personal,
       extraMcpServers: mixedBus
           ? {

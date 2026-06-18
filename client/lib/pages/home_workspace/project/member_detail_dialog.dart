@@ -15,7 +15,7 @@ import '../../../widgets/app_dialog.dart';
 /// Opens the read-only member config detail dialog.
 Future<void> showMemberDetailDialog(
   BuildContext context, {
-  required String projectId,
+  required String workspaceId,
   required String sessionId,
   required TeamIdentity team,
   required TeamMemberConfig member,
@@ -26,7 +26,7 @@ Future<void> showMemberDetailDialog(
       create: (_) =>
           MemberConfigCubit()
             ..load(
-              projectId: projectId,
+              workspaceId: workspaceId,
               sessionId: sessionId,
               team: team,
               member: member,

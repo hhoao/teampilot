@@ -19,7 +19,7 @@ final List<String> runtimeLayoutDefaultTools =
 ///
 /// See [docs/workspace-storage-layout.md] for the full tree. [WorkspaceLayout]
 /// owns UI metadata; this class owns `cli-defaults/`, `identities-runtime/`, and
-/// session/runtime inheritance under each project session.
+/// session/runtime inheritance under each workspace session.
 class RuntimeLayout {
   RuntimeLayout({
     required this.teampilotRoot,
@@ -33,7 +33,7 @@ class RuntimeLayout {
   final WorkspaceLayout workspace;
 
   static final _identityInheritLocks = LockPool();
-  static final _projectInheritLocks = LockPool();
+  static final _workspaceInheritLocks = LockPool();
 
   p.Context get _pathContext => _fs.pathContext;
 
@@ -63,39 +63,39 @@ class RuntimeLayout {
   String identityMcpServersFile(String identityId) =>
       _pathContext.join(identityMcpDir(identityId), 'servers.json');
 
-  String projectConfigToolDir(String projectId, String tool) =>
-      workspace.projectConfigToolDir(projectId, tool);
+  String workspaceConfigToolDir(String workspaceId, String tool) =>
+      workspace.workspaceConfigToolDir(workspaceId, tool);
 
-  String projectConfigPluginsDir(String projectId) =>
-      workspace.projectConfigPluginsDir(projectId);
+  String workspaceConfigPluginsDir(String workspaceId) =>
+      workspace.workspaceConfigPluginsDir(workspaceId);
 
-  String projectConfigMcpDir(String projectId) =>
-      workspace.projectConfigMcpDir(projectId);
+  String workspaceConfigMcpDir(String workspaceId) =>
+      workspace.workspaceConfigMcpDir(workspaceId);
 
-  String projectConfigMcpServersFile(String projectId) =>
-      workspace.projectConfigMcpServersFile(projectId);
+  String workspaceConfigMcpServersFile(String workspaceId) =>
+      workspace.workspaceConfigMcpServersFile(workspaceId);
 
   String sessionRuntimeToolDir(
-    String projectId,
+    String workspaceId,
     String sessionId,
     String tool, {
     String? memberId,
   }) =>
       workspace.sessionRuntimeToolDir(
-        projectId,
+        workspaceId,
         sessionId,
         tool,
         memberId: memberId,
       );
 
   String sessionRuntimePluginsDir(
-    String projectId,
+    String workspaceId,
     String sessionId,
     String tool, {
     String? memberId,
   }) =>
       workspace.sessionRuntimePluginsDir(
-        projectId,
+        workspaceId,
         sessionId,
         tool,
         memberId: memberId,
@@ -105,14 +105,14 @@ class RuntimeLayout {
       _pathContext.join(appToolRoot('flashskyai'), 'llm_config.json');
 
   List<String> transcriptSearchRoots({
-    required String projectId,
+    required String workspaceId,
     required String sessionId,
     String? identityId,
     String? memberId,
     Iterable<String>? tools,
   }) {
     final trimmedIdentity = identityId?.trim() ?? '';
-    final trimmedProject = projectId.trim();
+    final trimmedWorkspace = workspaceId.trim();
     final trimmedSession = sessionId.trim();
     final trimmedMember = memberId?.trim() ?? '';
     final tt = (tools ?? runtimeLayoutDefaultTools)
@@ -123,12 +123,12 @@ class RuntimeLayout {
       for (final tool in tt) appToolRoot(tool),
       if (trimmedIdentity.isNotEmpty)
         for (final tool in tt) identityToolDir(trimmedIdentity, tool),
-      if (trimmedProject.isNotEmpty)
-        for (final tool in tt) projectConfigToolDir(trimmedProject, tool),
-      if (trimmedProject.isNotEmpty && trimmedSession.isNotEmpty)
+      if (trimmedWorkspace.isNotEmpty)
+        for (final tool in tt) workspaceConfigToolDir(trimmedWorkspace, tool),
+      if (trimmedWorkspace.isNotEmpty && trimmedSession.isNotEmpty)
         for (final tool in tt)
           sessionRuntimeToolDir(
-            trimmedProject,
+            trimmedWorkspace,
             trimmedSession,
             tool,
             memberId: trimmedMember.isNotEmpty ? trimmedMember : null,
@@ -136,7 +136,7 @@ class RuntimeLayout {
     ];
   }
 
-  static String projectBucketForPrimaryPath(String primaryPath) {
+  static String workspaceBucketForPrimaryPath(String primaryPath) {
     var s = primaryPath.trim().replaceAll('\\', '/');
     if (s.isEmpty) return '';
     final wslStyle = LaunchCommandBuilder.windowsPathToWsl(s);
@@ -156,8 +156,8 @@ class RuntimeLayout {
   static String _identityInheritLockKey(String identityId, String tool) =>
       '${identityId.trim()}|${tool.trim()}';
 
-  static String _projectInheritLockKey(String projectId, String tool) =>
-      'project|${projectId.trim()}|${tool.trim()}';
+  static String _workspaceInheritLockKey(String workspaceId, String tool) =>
+      'workspace|${workspaceId.trim()}|${tool.trim()}';
 
   Future<void> ensureIdentityInheritsApp(String identityId, String tool) async {
     final trimmedIdentity = identityId.trim();
@@ -183,62 +183,62 @@ class RuntimeLayout {
     );
   }
 
-  Future<void> ensureProjectConfigInheritsApp(
-    String projectId,
+  Future<void> ensureWorkspaceConfigInheritsApp(
+    String workspaceId,
     String tool,
   ) async {
-    final trimmedProject = projectId.trim();
+    final trimmedWorkspace = workspaceId.trim();
     final trimmedTool = tool.trim();
-    if (trimmedProject.isEmpty || trimmedTool.isEmpty) return;
-    await _projectInheritLocks.synchronized(
-      _projectInheritLockKey(trimmedProject, trimmedTool),
-      () => _ensureProjectConfigInheritsAppUnlocked(trimmedProject, trimmedTool),
+    if (trimmedWorkspace.isEmpty || trimmedTool.isEmpty) return;
+    await _workspaceInheritLocks.synchronized(
+      _workspaceInheritLockKey(trimmedWorkspace, trimmedTool),
+      () => _ensureWorkspaceConfigInheritsAppUnlocked(trimmedWorkspace, trimmedTool),
     );
   }
 
-  Future<void> _ensureProjectConfigInheritsAppUnlocked(
-    String trimmedProject,
+  Future<void> _ensureWorkspaceConfigInheritsAppUnlocked(
+    String trimmedWorkspace,
     String trimmedTool,
   ) async {
     await ensureAppToolLayout(trimmedTool);
-    final projectRoot = projectConfigToolDir(trimmedProject, trimmedTool);
-    await _fs.ensureDir(projectRoot);
+    final workspaceRoot = workspaceConfigToolDir(trimmedWorkspace, trimmedTool);
+    await _fs.ensureDir(workspaceRoot);
     await _ensureInheritedChild(
       childName: 'agents',
       parentToolRoot: appToolRoot(trimmedTool),
-      ownToolRoot: projectRoot,
+      ownToolRoot: workspaceRoot,
     );
   }
 
-  Future<void> ensureSessionRuntimeInheritsProject(
-    String projectId,
+  Future<void> ensureSessionRuntimeInheritsWorkspace(
+    String workspaceId,
     String sessionId,
     String tool, {
     String? memberId,
   }) async {
-    final trimmedProject = projectId.trim();
+    final trimmedWorkspace = workspaceId.trim();
     final trimmedSession = sessionId.trim();
     final trimmedTool = tool.trim();
-    if (trimmedProject.isEmpty ||
+    if (trimmedWorkspace.isEmpty ||
         trimmedSession.isEmpty ||
         trimmedTool.isEmpty) {
       return;
     }
-    await _projectInheritLocks.synchronized(
-      _projectInheritLockKey(trimmedProject, trimmedTool),
+    await _workspaceInheritLocks.synchronized(
+      _workspaceInheritLockKey(trimmedWorkspace, trimmedTool),
       () async {
-        await _ensureProjectConfigInheritsAppUnlocked(trimmedProject, trimmedTool);
+        await _ensureWorkspaceConfigInheritsAppUnlocked(trimmedWorkspace, trimmedTool);
         final sessionRoot = sessionRuntimeToolDir(
-          trimmedProject,
+          trimmedWorkspace,
           trimmedSession,
           trimmedTool,
           memberId: memberId,
         );
         await _fs.ensureDir(sessionRoot);
-        final projectRoot = projectConfigToolDir(trimmedProject, trimmedTool);
+        final workspaceRoot = workspaceConfigToolDir(trimmedWorkspace, trimmedTool);
         await _ensureInheritedChild(
           childName: 'agents',
-          parentToolRoot: projectRoot,
+          parentToolRoot: workspaceRoot,
           ownToolRoot: sessionRoot,
         );
       },
@@ -246,17 +246,17 @@ class RuntimeLayout {
   }
 
   Future<void> ensureSessionRuntimeInheritsIdentity(
-    String projectId,
+    String workspaceId,
     String sessionId,
     String identityId,
     String tool, {
     String? memberId,
   }) async {
-    final trimmedProject = projectId.trim();
+    final trimmedWorkspace = workspaceId.trim();
     final trimmedSession = sessionId.trim();
     final trimmedIdentity = identityId.trim();
     final trimmedTool = tool.trim();
-    if (trimmedProject.isEmpty ||
+    if (trimmedWorkspace.isEmpty ||
         trimmedSession.isEmpty ||
         trimmedIdentity.isEmpty ||
         trimmedTool.isEmpty) {
@@ -267,7 +267,7 @@ class RuntimeLayout {
       () async {
         await _ensureIdentityInheritsAppUnlocked(trimmedIdentity, trimmedTool);
         final sessionRoot = sessionRuntimeToolDir(
-          trimmedProject,
+          trimmedWorkspace,
           trimmedSession,
           trimmedTool,
           memberId: memberId,
@@ -284,17 +284,17 @@ class RuntimeLayout {
   }
 
   Future<String?> provisionSessionPluginsFromIdentity(
-    String projectId,
+    String workspaceId,
     String sessionId,
     String identityId,
     String tool, {
     String? memberId,
   }) async {
-    final trimmedProject = projectId.trim();
+    final trimmedWorkspace = workspaceId.trim();
     final trimmedSession = sessionId.trim();
     final trimmedIdentity = identityId.trim();
     final trimmedTool = tool.trim();
-    if (trimmedProject.isEmpty ||
+    if (trimmedWorkspace.isEmpty ||
         trimmedSession.isEmpty ||
         trimmedIdentity.isEmpty ||
         trimmedTool.isEmpty) {
@@ -309,7 +309,7 @@ class RuntimeLayout {
       fs: _fs,
       teamPluginsDir: identityPluginsDir(trimmedIdentity),
       memberPluginsDir: sessionRuntimePluginsDir(
-        trimmedProject,
+        trimmedWorkspace,
         trimmedSession,
         trimmedTool,
         memberId: memberId,
@@ -318,16 +318,16 @@ class RuntimeLayout {
     );
   }
 
-  Future<String?> provisionSessionPluginsFromProject(
-    String projectId,
+  Future<String?> provisionSessionPluginsFromWorkspace(
+    String workspaceId,
     String sessionId,
     String tool, {
     String? memberId,
   }) async {
-    final trimmedProject = projectId.trim();
+    final trimmedWorkspace = workspaceId.trim();
     final trimmedSession = sessionId.trim();
     final trimmedTool = tool.trim();
-    if (trimmedProject.isEmpty ||
+    if (trimmedWorkspace.isEmpty ||
         trimmedSession.isEmpty ||
         trimmedTool.isEmpty) {
       return null;
@@ -339,9 +339,9 @@ class RuntimeLayout {
         claudePluginManifestPaths;
     return CliPluginLayout.copyBundlesToMember(
       fs: _fs,
-      teamPluginsDir: projectConfigPluginsDir(trimmedProject),
+      teamPluginsDir: workspaceConfigPluginsDir(trimmedWorkspace),
       memberPluginsDir: sessionRuntimePluginsDir(
-        trimmedProject,
+        trimmedWorkspace,
         trimmedSession,
         trimmedTool,
         memberId: memberId,

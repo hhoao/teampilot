@@ -26,7 +26,7 @@ void main() {
     const member = TeamMemberConfig(id: 'm1', name: 'Member', model: 'test');
 
     final scope = resolveLaunchProfileScope(
-      projectId: 'project-1',
+      workspaceId: 'workspace-1',
       teamId: 'team-a',
       appSessionId: 'session-1',
       cliTeamName: 'session-1',
@@ -34,13 +34,13 @@ void main() {
 
     final contribution = await capability.contributeLaunch(
       ConfigProfileLaunchContext(
-        projectId: 'project-1',
+        workspaceId: 'workspace-1',
         teamId: 'team-a',
         sessionId: scope.sessionId,
         scope: scope,
         member: member,
         members: const [member],
-        workingDirectory: '/workspace/project',
+        workingDirectory: '/workspace/workspace',
         paths: service,
       ),
     );
@@ -48,8 +48,8 @@ void main() {
     final expectedDir = p.join(
       base.path,
       'workspace',
-      'projects',
-      'project-1',
+      'workspaces',
+      'workspace-1',
       'sessions',
       'session-1',
       'runtime',
@@ -83,7 +83,7 @@ void main() {
     );
 
     final scope = resolveLaunchProfileScope(
-      projectId: 'project-1',
+      workspaceId: 'workspace-1',
       teamId: 'team-a',
       appSessionId: 'session-1',
       cliTeamName: 'session-1',
@@ -92,14 +92,14 @@ void main() {
 
     await capability.contributeLaunch(
       ConfigProfileLaunchContext(
-        projectId: 'project-1',
+        workspaceId: 'workspace-1',
         teamId: 'team-a',
         sessionId: scope.sessionId,
         scope: scope,
         team: team,
         member: member,
         members: const [member],
-        workingDirectory: '/workspace/project',
+        workingDirectory: '/workspace/workspace',
         paths: service,
         busIdleUrl: 'http://127.0.0.1:54321/idle',
       ),
@@ -108,8 +108,8 @@ void main() {
     final settingsPath = p.join(
       base.path,
       'workspace',
-      'projects',
-      'project-1',
+      'workspaces',
+      'workspace-1',
       'sessions',
       'session-1',
       'runtime',

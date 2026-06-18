@@ -3,23 +3,23 @@ import 'package:teampilot/theme/app_icon_sizes.dart';
 
 import '../../../l10n/l10n_extensions.dart';
 import '../../../widgets/team_pilot_brand_logo.dart';
-import 'home_workspace_project_section.dart';
+import 'home_workspace_workspace_section.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import '../../../cubits/layout_cubit.dart';
 
-/// Narrow vertical icon rail on the left of the project page (mirrors Apifox's
+/// Narrow vertical icon rail on the left of the workspace page (mirrors Apifox's
 /// 接口管理 / 自动化测试 / … rail).
 class WorkspaceRail extends StatelessWidget {
   const WorkspaceRail({
     required this.section,
-    required this.isPersonalProject,
+    required this.isPersonalWorkspace,
     required this.onSectionChanged,
     required this.onLogoTap,
     super.key,
   });
 
   final WorkspaceSection section;
-  final bool isPersonalProject;
+  final bool isPersonalWorkspace;
   final ValueChanged<WorkspaceSection> onSectionChanged;
   final VoidCallback onLogoTap;
 
@@ -28,7 +28,7 @@ class WorkspaceRail extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final l10n = context.l10n;
-    final items = isPersonalProject
+    final items = isPersonalWorkspace
         ? _personalItems(l10n)
         : _teamItems(l10n, context);
 
@@ -78,7 +78,7 @@ class WorkspaceRail extends StatelessWidget {
       ),
       _sectionItem(
         icon: Icons.tune_outlined,
-        label: l10n.homeWorkspaceProjectManagement,
+        label: l10n.homeWorkspaceWorkspaceManagement,
         value: WorkspaceSection.manage,
       ),
     ];
@@ -93,7 +93,7 @@ class WorkspaceRail extends StatelessWidget {
       ),
       _sectionItem(
         icon: Icons.tune_outlined,
-        label: l10n.homeWorkspaceProjectManagement,
+        label: l10n.homeWorkspaceWorkspaceManagement,
         value: WorkspaceSection.manage,
       ),
     ];

@@ -3,8 +3,8 @@ import 'package:flutter/foundation.dart';
 import 'team_config.dart'; // for TeamMemberConfig.decodeDangerouslySkipPermissions
 
 @immutable
-class ProjectAgentConfig {
-  const ProjectAgentConfig({
+class WorkspaceAgentConfig {
+  const WorkspaceAgentConfig({
     this.agent = '',
     this.agentType = '',
     this.extraArgs = '',
@@ -12,8 +12,8 @@ class ProjectAgentConfig {
     this.dangerouslySkipPermissions = false,
   });
 
-  factory ProjectAgentConfig.fromJson(Map<String, Object?> json) {
-    return ProjectAgentConfig(
+  factory WorkspaceAgentConfig.fromJson(Map<String, Object?> json) {
+    return WorkspaceAgentConfig(
       agent: json['agent'] as String? ?? '',
       agentType: json['agentType'] as String? ?? '',
       extraArgs: json['extraArgs'] as String? ?? '',
@@ -32,14 +32,14 @@ class ProjectAgentConfig {
   final String prompt;
   final bool dangerouslySkipPermissions;
 
-  ProjectAgentConfig copyWith({
+  WorkspaceAgentConfig copyWith({
     String? agent,
     String? agentType,
     String? extraArgs,
     String? prompt,
     bool? dangerouslySkipPermissions,
   }) {
-    return ProjectAgentConfig(
+    return WorkspaceAgentConfig(
       agent: agent ?? this.agent,
       agentType: agentType ?? this.agentType,
       extraArgs: extraArgs ?? this.extraArgs,
@@ -62,7 +62,7 @@ class ProjectAgentConfig {
   @override
   bool operator ==(Object other) {
     return identical(this, other) ||
-        other is ProjectAgentConfig &&
+        other is WorkspaceAgentConfig &&
             runtimeType == other.runtimeType &&
             agent == other.agent &&
             agentType == other.agentType &&

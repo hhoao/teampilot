@@ -12,14 +12,14 @@ import '../../home_workspace_global_section.dart';
 import '../../../team_config/team_config_cards.dart';
 import '../../../team_config/team_config_plugins_section.dart';
 
-class ProjectPluginsSection extends StatelessWidget {
-  const ProjectPluginsSection({
-    required this.projectId,
+class WorkspacePluginsSection extends StatelessWidget {
+  const WorkspacePluginsSection({
+    required this.workspaceId,
     required this.identityId,
     super.key,
   });
 
-  final String projectId;
+  final String workspaceId;
   final String identityId;
 
   @override
@@ -51,14 +51,14 @@ class ProjectPluginsSection extends StatelessWidget {
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
                 TeamConfigCardHeader(
-                  title: l10n.projectPluginsAssignedCount(
+                  title: l10n.workspacePluginsAssignedCount(
                     assignedCount,
                     installed.length,
                   ),
                   trailing: OutlinedButton.icon(
                     onPressed: onManage,
                     icon: Icon(Icons.widgets_outlined),
-                    label: Text(l10n.projectPluginsManage),
+                    label: Text(l10n.workspacePluginsManage),
                   ),
                 ),
                 if (syncing) ...[
@@ -70,9 +70,9 @@ class ProjectPluginsSection extends StatelessWidget {
                   TeamPluginsEmptyBlock(
                     textBase: textBase,
                     onGoPlugins: onManage,
-                    emptyTitle: l10n.projectPluginsEmpty,
-                    emptyHint: l10n.projectPluginsEmptyHint,
-                    actionLabel: l10n.projectPluginsManage,
+                    emptyTitle: l10n.workspacePluginsEmpty,
+                    emptyHint: l10n.workspacePluginsEmptyHint,
+                    actionLabel: l10n.workspacePluginsManage,
                   )
                 else
                   Column(

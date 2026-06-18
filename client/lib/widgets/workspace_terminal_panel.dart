@@ -33,12 +33,12 @@ const Key kWorkspaceTerminalViewKey = ValueKey('workspace-terminal-view');
 /// VS Code–style bottom panel: main terminal + session list (not chat agent PTY).
 class WorkspaceTerminalPanel extends StatefulWidget {
   const WorkspaceTerminalPanel({
-    required this.projectId,
+    required this.workspaceId,
     required this.workingDirectory,
     super.key,
   });
 
-  final String projectId;
+  final String workspaceId;
   final String workingDirectory;
 
   @override
@@ -48,7 +48,7 @@ class WorkspaceTerminalPanel extends StatefulWidget {
 class _WorkspaceTerminalPanelState extends State<WorkspaceTerminalPanel> {
   WorkspaceTerminalRegistry get _registry =>
       context.read<WorkspaceTerminalRegistry>();
-  WorkspaceTerminalGroup get _group => _registry.groupFor(widget.projectId);
+  WorkspaceTerminalGroup get _group => _registry.groupFor(widget.workspaceId);
 
   var _bootstrapped = false;
 
@@ -64,20 +64,20 @@ class _WorkspaceTerminalPanelState extends State<WorkspaceTerminalPanel> {
   void didUpdateWidget(WorkspaceTerminalPanel oldWidget) {
     super.didUpdateWidget(oldWidget);
     if (oldWidget.workingDirectory != widget.workingDirectory ||
-        oldWidget.projectId != widget.projectId) {
+        oldWidget.workspaceId != widget.workspaceId) {
       _syncActiveEntryCwd();
     }
   }
 
   // NOTE: no dispose() of sessions here — the registry owns their lifetime and
-  // tears them down via disposeProject when the project tab is closed.
+  // tears them down via disposeWorkspace when the workspace tab is closed.
 
   WorkspaceTerminalEntry? get _activeEntry => _group.activeEntry;
 
   void _ensureDefaultEntry() {
     final cwd = widget.workingDirectory.trim();
     if (_group.entries.isNotEmpty) {
-      // Revisiting a project: re-attach controllers to live sessions.
+      // Revisiting a workspace: re-attach controllers to live sessions.
       for (final entry in _group.entries) {
         if (entry.connected && entry.controller.engine == null) {
           entry.controller.attach(entry.session.engine);
@@ -134,7 +134,7 @@ class _WorkspaceTerminalPanelState extends State<WorkspaceTerminalPanel> {
       cs,
       isDark: isDark,
       mode: mode,
-      chrome: WorkspacePageChrome.project,
+      chrome: WorkspacePageChrome.workspace,
     );
   }
 

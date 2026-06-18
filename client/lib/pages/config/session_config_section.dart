@@ -341,7 +341,7 @@ class _SessionControlsState extends State<_SessionControls> {
                         teamCubit.load(),
                         skillCubit.loadAll(),
                         mcpCubit.loadAll(),
-                        chatCubit.loadProjectData(sessionRepo),
+                        chatCubit.loadWorkspaceData(sessionRepo),
                       ]);
                       await teamCubit.syncSelectedTeamPlugins(
                         installed: pluginCubit.state.installed,
@@ -365,7 +365,7 @@ class _SessionControlsState extends State<_SessionControls> {
                           controller: _sshCwdController,
                           focusNode: _sshCwdFocus,
                           decoration: InputDecoration(
-                            hintText: '~/work/project',
+                            hintText: '~/work/workspace',
                             hintMaxLines: 1,
                             floatingLabelBehavior: FloatingLabelBehavior.never,
                           ),

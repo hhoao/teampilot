@@ -2,7 +2,7 @@ import 'dart:convert';
 
 import 'package:uuid/uuid.dart';
 
-import '../models/app_project.dart';
+import '../models/app_workspace.dart';
 import '../models/app_session.dart';
 import '../models/member_instance.dart';
 import '../models/session_member_binding.dart';
@@ -12,13 +12,13 @@ import '../services/io/filesystem.dart';
 import '../services/session/session_team_counter.dart';
 import '../services/storage/app_storage.dart';
 import '../services/storage/storage_resolver.dart';
-import '../models/project_icon_ref.dart';
-import '../services/project/project_icon_service.dart';
-import '../services/project/project_icon_storage.dart';
+import '../models/workspace_icon_ref.dart';
+import '../services/workspace/workspace_icon_service.dart';
+import '../services/workspace/workspace_icon_storage.dart';
 import '../services/session/session_lifecycle_service.dart';
 import '../utils/lock_pool.dart';
-import '../utils/project_path_utils.dart';
-import '../utils/project_sessions.dart';
+import '../utils/workspace_path_utils.dart';
+import '../utils/workspace_sessions.dart';
 import 'session_repository_fs.dart';
 
 class SessionRepository {
@@ -52,15 +52,15 @@ class SessionRepository {
     return SessionRepositoryFs(teampilotRoot: root);
   }
 
-  Future<Workspace?> _readManifest(SessionRepositoryFs fs, String projectId) async {
-    final raw = await fs.readText(fs.manifestFile(projectId));
+  Future<Workspace?> _readManifest(SessionRepositoryFs fs, String workspaceId) async {
+    final raw = await fs.readText(fs.manifestFile(workspaceId));
     if (raw == null || raw.isEmpty) return null;
     try {
       final json = jsonDecode(raw);
       if (json is Map<String, Object?>) {
-        final project = Workspace.fromJson(json);
-        final sessionIds = await fs.listSessionIdsForProject(projectId);
-        return project.copyWith(sessionIds: sessionIds);
+        final workspace = Workspace.fromJson(json);
+        final sessionIds = await fs.listSessionIdsForWorkspace(workspaceId);
+        return workspace.copyWith(sessionIds: sessionIds);
       }
     } on Object {
       // ignore
@@ -68,25 +68,25 @@ class SessionRepository {
     return null;
   }
 
-  Future<void> _writeManifest(SessionRepositoryFs fs, Workspace project) async {
-    await fs.ensureProjectDir(project.projectId);
-    final withoutSessions = project.copyWith(sessionIds: const []);
+  Future<void> _writeManifest(SessionRepositoryFs fs, Workspace workspace) async {
+    await fs.ensureWorkspaceDir(workspace.workspaceId);
+    final withoutSessions = workspace.copyWith(sessionIds: const []);
     await fs.writeText(
-      fs.manifestFile(project.projectId),
+      fs.manifestFile(workspace.workspaceId),
       const JsonEncoder.withIndent('  ').convert(withoutSessions.toJson()),
     );
   }
 
-  Future<List<Workspace>> loadProjects() async {
+  Future<List<Workspace>> loadWorkspaces() async {
     final fs = await _fs();
-    final projects = <Workspace>[];
-    for (final projectId in await fs.listProjectIds()) {
-      final project = await _readManifest(fs, projectId);
-      if (project != null) {
-        projects.add(project);
+    final workspaces = <Workspace>[];
+    for (final workspaceId in await fs.listWorkspaceIds()) {
+      final workspace = await _readManifest(fs, workspaceId);
+      if (workspace != null) {
+        workspaces.add(workspace);
       }
     }
-    return projects;
+    return workspaces;
   }
 
   Future<List<AppSession>> loadSessions() async {
@@ -115,21 +115,21 @@ class SessionRepository {
     return true;
   }
 
-  Future<Workspace> createProject(
+  Future<Workspace> createWorkspace(
     String primaryPath, {
     List<String> additionalPaths = const [],
     String display = '',
   }) async {
     final fs = await _fs();
-    final trimmed = normalizeProjectPath(primaryPath);
+    final trimmed = normalizeWorkspacePath(primaryPath);
     final now = DateTime.now().millisecondsSinceEpoch;
-    final projects = await loadProjects();
-    for (final existing in projects) {
-      if (!projectPathsEqual(existing.primaryPath, trimmed)) {
+    final workspaces = await loadWorkspaces();
+    for (final existing in workspaces) {
+      if (!workspacePathsEqual(existing.primaryPath, trimmed)) {
         continue;
       }
       final newAdd = additionalPaths
-          .map(normalizeProjectPath)
+          .map(normalizeWorkspacePath)
           .where((e) => e.isNotEmpty)
           .toList();
       final mergedPaths = List<String>.from(existing.additionalPaths);
@@ -152,28 +152,28 @@ class SessionRepository {
       await _writeManifest(fs, updated);
       return updated;
     }
-    final project = Workspace(
-      projectId: const Uuid().v4(),
+    final workspace = Workspace(
+      workspaceId: const Uuid().v4(),
       primaryPath: trimmed,
       additionalPaths: List<String>.from(
-        additionalPaths.map(normalizeProjectPath).where((e) => e.isNotEmpty),
+        additionalPaths.map(normalizeWorkspacePath).where((e) => e.isNotEmpty),
       ),
       display: display.trim(),
       createdAt: now,
       updatedAt: now,
     );
-    await _writeManifest(fs, project);
-    return project;
+    await _writeManifest(fs, workspace);
+    return workspace;
   }
 
-  Future<void> updateProjectMetadata(
-    String projectId, {
+  Future<void> updateWorkspaceMetadata(
+    String workspaceId, {
     String? display,
     String? defaultIdentityId,
     List<String>? additionalPaths,
   }) async {
     final fs = await _fs();
-    final existing = await _readManifest(fs, projectId);
+    final existing = await _readManifest(fs, workspaceId);
     if (existing == null) return;
     final now = DateTime.now().millisecondsSinceEpoch;
     final updated = existing.copyWith(
@@ -184,7 +184,7 @@ class SessionRepository {
       additionalPaths: additionalPaths != null
           ? List<String>.from(
               additionalPaths
-                  .map(normalizeProjectPath)
+                  .map(normalizeWorkspacePath)
                   .where((e) => e.isNotEmpty),
             )
           : existing.additionalPaths,
@@ -193,18 +193,18 @@ class SessionRepository {
     await _writeManifest(fs, updated);
   }
 
-  Future<void> applyProjectIcon(String projectId, ProjectIconRef icon) async {
+  Future<void> applyWorkspaceIcon(String workspaceId, WorkspaceIconRef icon) async {
     final fs = await _fs();
-    final existing = await _readManifest(fs, projectId);
+    final existing = await _readManifest(fs, workspaceId);
     if (existing == null) return;
     final now = DateTime.now().millisecondsSinceEpoch;
-    final projectDir = fs.projectDir(projectId);
-    final iconService = ProjectIconService(
-      storage: ProjectIconStorage(filesystem: fs.fs),
+    final workspaceDir = fs.workspaceDir(workspaceId);
+    final iconService = WorkspaceIconService(
+      storage: WorkspaceIconStorage(filesystem: fs.fs),
     );
     await iconService.deleteCustomFilesForTransition(
-      projectDir: projectDir,
-      projectId: projectId,
+      workspaceDir: workspaceDir,
+      workspaceId: workspaceId,
       previous: existing.icon,
       next: icon,
     );
@@ -214,26 +214,26 @@ class SessionRepository {
     );
   }
 
-  Future<void> importCustomProjectIcon(
-    String projectId,
+  Future<void> importCustomWorkspaceIcon(
+    String workspaceId,
     String localSourcePath,
   ) async {
     final fs = await _fs();
-    final existing = await _readManifest(fs, projectId);
+    final existing = await _readManifest(fs, workspaceId);
     if (existing == null) return;
     final now = DateTime.now().millisecondsSinceEpoch;
-    final projectDir = fs.projectDir(projectId);
-    final iconService = ProjectIconService(
-      storage: ProjectIconStorage(filesystem: fs.fs),
+    final workspaceDir = fs.workspaceDir(workspaceId);
+    final iconService = WorkspaceIconService(
+      storage: WorkspaceIconStorage(filesystem: fs.fs),
     );
     final customIcon = await iconService.importCustomFromLocalFile(
-      projectDir: projectDir,
-      projectId: projectId,
+      workspaceDir: workspaceDir,
+      workspaceId: workspaceId,
       localSourcePath: localSourcePath,
     );
     await iconService.deleteCustomFilesForTransition(
-      projectDir: projectDir,
-      projectId: projectId,
+      workspaceDir: workspaceDir,
+      workspaceId: workspaceId,
       previous: existing.icon,
       next: customIcon,
     );
@@ -243,21 +243,21 @@ class SessionRepository {
     );
   }
 
-  Future<void> updateProjectPaths(
-    String projectId,
+  Future<void> updateWorkspacePaths(
+    String workspaceId,
     String primaryPath,
     List<String> additionalPaths,
   ) async {
     final fs = await _fs();
-    final existing = await _readManifest(fs, projectId);
+    final existing = await _readManifest(fs, workspaceId);
     if (existing == null) return;
     final now = DateTime.now().millisecondsSinceEpoch;
     await _writeManifest(
       fs,
       existing.copyWith(
-        primaryPath: normalizeProjectPath(primaryPath),
+        primaryPath: normalizeWorkspacePath(primaryPath),
         additionalPaths: List<String>.from(
-          additionalPaths.map(normalizeProjectPath).where((e) => e.isNotEmpty),
+          additionalPaths.map(normalizeWorkspacePath).where((e) => e.isNotEmpty),
         ),
         updatedAt: now,
       ),
@@ -278,16 +278,16 @@ class SessionRepository {
   }
 
   Future<AppSession> createSession(
-    String projectId, {
+    String workspaceId, {
     String sessionTeam = '',
     String personalIdentityId = '',
     List<TeamMemberConfig> rosterMembers = const [],
     CliTool? cli,
   }) async {
     final fs = await _fs();
-    final project = await _readManifest(fs, projectId);
-    if (project == null) {
-      throw StateError('Unknown projectId: $projectId');
+    final workspace = await _readManifest(fs, workspaceId);
+    if (workspace == null) {
+      throw StateError('Unknown workspaceId: $workspaceId');
     }
     final trimmedTeam = sessionTeam.trim();
     var cliTeamName = '';
@@ -319,9 +319,9 @@ class SessionRepository {
     final now = DateTime.now().millisecondsSinceEpoch;
     final session = AppSession(
       sessionId: sessionId,
-      projectId: projectId,
-      primaryPath: project.primaryPath,
-      additionalPaths: List<String>.from(project.additionalPaths),
+      workspaceId: workspaceId,
+      primaryPath: workspace.primaryPath,
+      additionalPaths: List<String>.from(workspace.additionalPaths),
       display: '',
       sessionTeam: sessionTeam,
       identityId: trimmedTeam.isEmpty ? personalIdentityId.trim() : '',
@@ -332,9 +332,9 @@ class SessionRepository {
       createdAt: now,
       updatedAt: now,
     );
-    await fs.ensureSessionDir(projectId, sessionId);
+    await fs.ensureSessionDir(workspaceId, sessionId);
     await fs.writeText(
-      fs.sessionFile(projectId, sessionId),
+      fs.sessionFile(workspaceId, sessionId),
       jsonEncode(session.toJson()),
     );
     return session;
@@ -342,10 +342,10 @@ class SessionRepository {
 
   Future<AppSession?> _readSession(
     SessionRepositoryFs fs,
-    String projectId,
+    String workspaceId,
     String sessionId,
   ) async {
-    final raw = await fs.readText(fs.sessionFile(projectId, sessionId));
+    final raw = await fs.readText(fs.sessionFile(workspaceId, sessionId));
     if (raw == null || raw.isEmpty) return null;
     try {
       final json = jsonDecode(raw);
@@ -359,8 +359,8 @@ class SessionRepository {
   }
 
   Future<AppSession?> _findSession(SessionRepositoryFs fs, String sessionId) async {
-    for (final projectId in await fs.listProjectIds()) {
-      final session = await _readSession(fs, projectId, sessionId);
+    for (final workspaceId in await fs.listWorkspaceIds()) {
+      final session = await _readSession(fs, workspaceId, sessionId);
       if (session != null) return session;
     }
     return null;
@@ -370,12 +370,12 @@ class SessionRepository {
     SessionRepositoryFs fs,
     AppSession session,
   ) async {
-    final projectId = session.projectId.trim();
-    if (projectId.isEmpty) {
-      throw StateError('Session ${session.sessionId} missing projectId');
+    final workspaceId = session.workspaceId.trim();
+    if (workspaceId.isEmpty) {
+      throw StateError('Session ${session.sessionId} missing workspaceId');
     }
     await fs.writeText(
-      fs.sessionFile(projectId, session.sessionId),
+      fs.sessionFile(workspaceId, session.sessionId),
       jsonEncode(session.toJson()),
     );
   }
@@ -577,47 +577,47 @@ class SessionRepository {
       final fs = await _fs();
       final existing = await _findSession(fs, sessionId);
       if (existing == null) return;
-      final projectId = existing.projectId.trim();
+      final workspaceId = existing.workspaceId.trim();
       final teamId = existing.sessionTeam.trim();
       if (teamId.isNotEmpty) {
         await _lifecycleService?.destroyCliState(
-          projectId: projectId,
+          workspaceId: workspaceId,
           teamId: teamId,
           sessionId: sessionId,
         );
-      } else if (projectId.isNotEmpty) {
+      } else if (workspaceId.isNotEmpty) {
         await _lifecycleService?.destroyStandaloneCliState(
-          projectId: projectId,
+          workspaceId: workspaceId,
           sessionId: sessionId,
         );
       }
-      await fs.deleteSessionDir(projectId, sessionId);
-      final project = await _readManifest(fs, projectId);
-      if (project != null) {
+      await fs.deleteSessionDir(workspaceId, sessionId);
+      final workspace = await _readManifest(fs, workspaceId);
+      if (workspace != null) {
         await _writeManifest(
           fs,
-          project.copyWith(updatedAt: DateTime.now().millisecondsSinceEpoch),
+          workspace.copyWith(updatedAt: DateTime.now().millisecondsSinceEpoch),
         );
       }
     });
   }
 
-  Future<Workspace> cloneProject(
-    String sourceProjectId, {
+  Future<Workspace> cloneWorkspace(
+    String sourceWorkspaceId, {
     String? display,
     List<TeamMemberConfig> rosterMembers = const [],
   }) async {
     final fs = await _fs();
-    final source = await _readManifest(fs, sourceProjectId);
+    final source = await _readManifest(fs, sourceWorkspaceId);
     if (source == null) {
-      throw StateError('Unknown projectId: $sourceProjectId');
+      throw StateError('Unknown workspaceId: $sourceWorkspaceId');
     }
 
-    final sourceSessions = sessionsForProject(source, await loadSessions());
+    final sourceSessions = sessionsForWorkspace(source, await loadSessions());
     final now = DateTime.now().millisecondsSinceEpoch;
-    final newProjectId = const Uuid().v4();
-    final newProject = Workspace(
-      projectId: newProjectId,
+    final newWorkspaceId = const Uuid().v4();
+    final newWorkspace = Workspace(
+      workspaceId: newWorkspaceId,
       primaryPath: source.primaryPath,
       additionalPaths: List<String>.from(source.additionalPaths),
       display: (display ?? source.display).trim(),
@@ -625,24 +625,24 @@ class SessionRepository {
       createdAt: now,
       updatedAt: now,
     );
-    await _writeManifest(fs, newProject);
+    await _writeManifest(fs, newWorkspace);
 
     for (final old in sourceSessions) {
       await _cloneSessionRecord(
         fs,
         old,
-        newProjectId,
+        newWorkspaceId,
         rosterMembers: rosterMembers,
       );
     }
 
-    return (await _readManifest(fs, newProjectId)) ?? newProject;
+    return (await _readManifest(fs, newWorkspaceId)) ?? newWorkspace;
   }
 
   Future<AppSession> _cloneSessionRecord(
     SessionRepositoryFs fs,
     AppSession source,
-    String targetProjectId, {
+    String targetWorkspaceId, {
     required List<TeamMemberConfig> rosterMembers,
   }) async {
     final now = DateTime.now().millisecondsSinceEpoch;
@@ -672,7 +672,7 @@ class SessionRepository {
     final sessionId = const Uuid().v4();
     final session = AppSession(
       sessionId: sessionId,
-      projectId: targetProjectId,
+      workspaceId: targetWorkspaceId,
       primaryPath: source.primaryPath,
       additionalPaths: List<String>.from(source.additionalPaths),
       display: source.display,
@@ -683,29 +683,29 @@ class SessionRepository {
       createdAt: now,
       updatedAt: now,
     );
-    await fs.ensureSessionDir(targetProjectId, sessionId);
+    await fs.ensureSessionDir(targetWorkspaceId, sessionId);
     await _writeSession(fs, session);
     return session;
   }
 
-  Future<void> deleteProject(String projectId) async {
+  Future<void> deleteWorkspace(String workspaceId) async {
     final fs = await _fs();
-    final project = await _readManifest(fs, projectId);
-    if (project == null) return;
+    final workspace = await _readManifest(fs, workspaceId);
+    if (workspace == null) return;
 
-    final sessions = sessionsForProject(project, await loadSessions());
+    final sessions = sessionsForWorkspace(workspace, await loadSessions());
     for (final session in sessions) {
       await deleteSession(session.sessionId);
     }
 
-    await ProjectIconService(
-      storage: ProjectIconStorage(filesystem: fs.fs),
-    ).deleteAllCustomFilesForProject(
-      projectDir: fs.projectDir(projectId),
-      projectId: projectId,
-      icon: project.icon,
+    await WorkspaceIconService(
+      storage: WorkspaceIconStorage(filesystem: fs.fs),
+    ).deleteAllCustomFilesForWorkspace(
+      workspaceDir: fs.workspaceDir(workspaceId),
+      workspaceId: workspaceId,
+      icon: workspace.icon,
     );
 
-    await fs.deleteProjectDir(projectId);
+    await fs.deleteWorkspaceDir(workspaceId);
   }
 }

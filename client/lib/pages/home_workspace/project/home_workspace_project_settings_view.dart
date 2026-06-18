@@ -7,21 +7,21 @@ import 'package:teampilot/theme/app_toast_theme.dart';
 import 'package:teampilot/widgets/app_toast/app_toast.dart';
 import '../../../cubits/chat_cubit.dart';
 import '../../../l10n/l10n_extensions.dart';
-import '../../../models/app_project.dart';
+import '../../../models/app_workspace.dart';
 import '../../../theme/app_text_styles.dart';
-import '../../../utils/project_display_name.dart';
-import '../../../widgets/project_details_dialog.dart';
+import '../../../utils/workspace_display_name.dart';
+import '../../../widgets/workspace_details_dialog.dart';
 import '../../../widgets/settings/workspace_hub_shell.dart';
 import '../../../widgets/settings/workspace_settings_widgets.dart';
-import '../home_workspace_project_actions.dart';
-import 'home_workspace_project_section.dart';
-import 'project_icon_settings_row.dart';
+import '../home_workspace_workspace_actions.dart';
+import 'home_workspace_workspace_section.dart';
+import 'workspace_icon_settings_row.dart';
 
-/// Apifox-style project settings: section nav + scrollable detail cards.
+/// Apifox-style workspace settings: section nav + scrollable detail cards.
 class WorkspaceSettingsView extends StatefulWidget {
-  const WorkspaceSettingsView({required this.project, super.key});
+  const WorkspaceSettingsView({required this.workspace, super.key});
 
-  final Workspace project;
+  final Workspace workspace;
 
   static const double navWidth = 220;
 
@@ -32,21 +32,21 @@ class WorkspaceSettingsView extends StatefulWidget {
 
 class _WorkspaceSettingsViewState
     extends State<WorkspaceSettingsView> {
-  ProjectSettingsSection _section = ProjectSettingsSection.basic;
+  WorkspaceSettingsSection _section = WorkspaceSettingsSection.basic;
 
   @override
   Widget build(BuildContext context) {
     final cs = Theme.of(context).colorScheme;
     final l10n = context.l10n;
-    final project = context.select<ChatCubit, Workspace>(
-      (c) => c.state.projects.firstWhere(
-        (p) => p.projectId == widget.project.projectId,
-        orElse: () => widget.project,
+    final workspace = context.select<ChatCubit, Workspace>(
+      (c) => c.state.workspaces.firstWhere(
+        (p) => p.workspaceId == widget.workspace.workspaceId,
+        orElse: () => widget.workspace,
       ),
     );
     final sessionCount = context.select<ChatCubit, int>(
       (c) => c.state.sessions
-          .where((s) => s.projectId == project.projectId)
+          .where((s) => s.workspaceId == workspace.workspaceId)
           .length,
     );
 
@@ -68,20 +68,20 @@ class _WorkspaceSettingsViewState
               shrinkWrap: true,
               entries: [
                 WorkspaceHubEntry(
-                  title: l10n.homeWorkspaceProjectSettingsSectionBasic,
+                  title: l10n.homeWorkspaceWorkspaceSettingsSectionBasic,
                   icon: Icons.tune_outlined,
-                  selected: _section == ProjectSettingsSection.basic,
+                  selected: _section == WorkspaceSettingsSection.basic,
                   density: WorkspaceHubNavDensity.relaxed,
                   onTap: () =>
-                      setState(() => _section = ProjectSettingsSection.basic),
+                      setState(() => _section = WorkspaceSettingsSection.basic),
                 ),
                 WorkspaceHubEntry(
                   title: l10n.dangerZone,
                   icon: Icons.warning_amber_outlined,
-                  selected: _section == ProjectSettingsSection.danger,
+                  selected: _section == WorkspaceSettingsSection.danger,
                   density: WorkspaceHubNavDensity.relaxed,
                   onTap: () =>
-                      setState(() => _section = ProjectSettingsSection.danger),
+                      setState(() => _section = WorkspaceSettingsSection.danger),
                 ),
               ],
             ),
@@ -92,20 +92,20 @@ class _WorkspaceSettingsViewState
               children: [
                 WorkspaceHubTitleBar(
                   compact: true,
-                  title: l10n.homeWorkspaceProjectSettings,
-                  subtitle: project.localizedName(l10n),
+                  title: l10n.homeWorkspaceWorkspaceSettings,
+                  subtitle: workspace.localizedName(l10n),
                 ),
                 Expanded(
                   child: SingleChildScrollView(
                     padding: const EdgeInsets.fromLTRB(24, 8, 24, 32),
                     child: switch (_section) {
-                      ProjectSettingsSection.basic =>
-                        _ProjectSettingsBasicSection(
-                          project: project,
+                      WorkspaceSettingsSection.basic =>
+                        _WorkspaceSettingsBasicSection(
+                          workspace: workspace,
                           sessionCount: sessionCount,
                         ),
-                      ProjectSettingsSection.danger =>
-                        _ProjectSettingsDangerSection(project: project),
+                      WorkspaceSettingsSection.danger =>
+                        _WorkspaceSettingsDangerSection(workspace: workspace),
                     },
                   ),
                 ),
@@ -118,13 +118,13 @@ class _WorkspaceSettingsViewState
   }
 }
 
-class _ProjectSettingsBasicSection extends StatelessWidget {
-  const _ProjectSettingsBasicSection({
-    required this.project,
+class _WorkspaceSettingsBasicSection extends StatelessWidget {
+  const _WorkspaceSettingsBasicSection({
+    required this.workspace,
     required this.sessionCount,
   });
 
-  final Workspace project;
+  final Workspace workspace;
   final int sessionCount;
 
   @override
@@ -141,61 +141,61 @@ class _ProjectSettingsBasicSection extends StatelessWidget {
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
               SettingsGroupHeader(
-                title: l10n.homeWorkspaceProjectSettingsBasicInfo,
+                title: l10n.homeWorkspaceWorkspaceSettingsBasicInfo,
               ),
-              ProjectIconSettingsRow(project: project),
-              _ProjectSettingsInlineRow(
-                label: l10n.projectDisplayName,
-                value: project.localizedName(l10n),
+              WorkspaceIconSettingsRow(workspace: workspace),
+              _WorkspaceSettingsInlineRow(
+                label: l10n.workspaceDisplayName,
+                value: workspace.localizedName(l10n),
                 onEdit: () => showRenameWorkspaceDialog(
                   context,
-                  project,
-                  title: l10n.projectDisplayName,
+                  workspace,
+                  title: l10n.workspaceDisplayName,
                 ),
               ),
-              _ProjectSettingsInlineRow(
-                label: l10n.homeWorkspaceProjectId,
-                value: project.projectId,
-                onCopy: () => _copyText(context, project.projectId),
+              _WorkspaceSettingsInlineRow(
+                label: l10n.homeWorkspaceWorkspaceId,
+                value: workspace.workspaceId,
+                onCopy: () => _copyText(context, workspace.workspaceId),
                 showDividerBelow: true,
               ),
-              _ProjectSettingsInlineRow(
-                label: l10n.projectPrimaryPath,
-                value: project.primaryPath.isNotEmpty
-                    ? project.primaryPath
-                    : l10n.projectPrimaryPathNotSelected,
-                onCopy: project.primaryPath.isNotEmpty
-                    ? () => _copyText(context, project.primaryPath)
+              _WorkspaceSettingsInlineRow(
+                label: l10n.workspacePrimaryPath,
+                value: workspace.primaryPath.isNotEmpty
+                    ? workspace.primaryPath
+                    : l10n.workspacePrimaryPathNotSelected,
+                onCopy: workspace.primaryPath.isNotEmpty
+                    ? () => _copyText(context, workspace.primaryPath)
                     : null,
-                trailing: project.primaryPath.isNotEmpty
+                trailing: workspace.primaryPath.isNotEmpty
                     ? TextButton(
-                        onPressed: () => _openFolder(project.primaryPath),
+                        onPressed: () => _openFolder(workspace.primaryPath),
                         child: Text(l10n.openFolder),
                       )
                     : null,
               ),
-              _ProjectSettingsInlineRow(
-                label: l10n.projectAdditionalDirectories,
-                value: project.additionalPaths.isEmpty
-                    ? l10n.projectNoAdditionalDirectories
-                    : l10n.homeWorkspaceProjectAdditionalDirsCount(
-                        project.additionalPaths.length,
+              _WorkspaceSettingsInlineRow(
+                label: l10n.workspaceAdditionalDirectories,
+                value: workspace.additionalPaths.isEmpty
+                    ? l10n.workspaceNoAdditionalDirectories
+                    : l10n.homeWorkspaceWorkspaceAdditionalDirsCount(
+                        workspace.additionalPaths.length,
                       ),
                 onEdit: () =>
-                    showProjectDetailsDialog(context, project, sessionCount),
+                    showWorkspaceDetailsDialog(context, workspace, sessionCount),
                 showDividerBelow: true,
               ),
-              _ProjectSettingsInlineRow(
-                label: l10n.projectSessionCount,
+              _WorkspaceSettingsInlineRow(
+                label: l10n.workspaceSessionCount,
                 value: '$sessionCount',
               ),
-              _ProjectSettingsInlineRow(
-                label: l10n.projectCreatedAt,
-                value: _formatTimestamp(project.createdAt),
+              _WorkspaceSettingsInlineRow(
+                label: l10n.workspaceCreatedAt,
+                value: _formatTimestamp(workspace.createdAt),
               ),
-              _ProjectSettingsInlineRow(
-                label: l10n.projectUpdatedAt,
-                value: _formatTimestamp(project.updatedAt),
+              _WorkspaceSettingsInlineRow(
+                label: l10n.workspaceUpdatedAt,
+                value: _formatTimestamp(workspace.updatedAt),
                 showDividerBelow: false,
               ),
             ],
@@ -203,7 +203,7 @@ class _ProjectSettingsBasicSection extends StatelessWidget {
         ),
         const SizedBox(height: 12),
         Text(
-          l10n.homeWorkspaceProjectSettingsPathsHint,
+          l10n.homeWorkspaceWorkspaceSettingsPathsHint,
           style: styles.caption.copyWith(color: cs.onSurfaceVariant),
         ),
       ],
@@ -211,10 +211,10 @@ class _ProjectSettingsBasicSection extends StatelessWidget {
   }
 }
 
-class _ProjectSettingsDangerSection extends StatelessWidget {
-  const _ProjectSettingsDangerSection({required this.project});
+class _WorkspaceSettingsDangerSection extends StatelessWidget {
+  const _WorkspaceSettingsDangerSection({required this.workspace});
 
-  final Workspace project;
+  final Workspace workspace;
 
   @override
   Widget build(BuildContext context) {
@@ -224,7 +224,7 @@ class _ProjectSettingsDangerSection extends StatelessWidget {
     return SettingsSurfaceCard(
       child: SettingsLabeledStackedRow(
         title: l10n.dangerZone,
-        subtitle: l10n.deleteProjectSubtitle,
+        subtitle: l10n.deleteWorkspaceSubtitle,
         showDividerBelow: false,
         body: Align(
           alignment: Alignment.centerLeft,
@@ -233,8 +233,8 @@ class _ProjectSettingsDangerSection extends StatelessWidget {
               backgroundColor: cs.error,
               foregroundColor: cs.onError,
             ),
-            onPressed: () => confirmDeleteWorkspace(context, project),
-            child: Text(l10n.deleteProject),
+            onPressed: () => confirmDeleteWorkspace(context, workspace),
+            child: Text(l10n.deleteWorkspace),
           ),
         ),
       ),
@@ -242,8 +242,8 @@ class _ProjectSettingsDangerSection extends StatelessWidget {
   }
 }
 
-class _ProjectSettingsInlineRow extends StatelessWidget {
-  const _ProjectSettingsInlineRow({
+class _WorkspaceSettingsInlineRow extends StatelessWidget {
+  const _WorkspaceSettingsInlineRow({
     required this.label,
     required this.value,
     this.onEdit,

@@ -157,7 +157,7 @@ void main() {
       final cubit = IdentityCubit(
         repository: repo,
         sessionRepository: SessionRepository(),
-        reloadProjects: () async {},
+        reloadWorkspaces: () async {},
         executableResolver: () => 'flashskyai',
         mcpLinker: linker,
         pluginLinker: _NoopPluginLinker(),
@@ -200,7 +200,7 @@ void main() {
       final cubit = IdentityCubit(
         repository: repo,
         sessionRepository: SessionRepository(),
-        reloadProjects: () async {},
+        reloadWorkspaces: () async {},
         executableResolver: () => 'flashskyai',
         mcpLinker: linker,
         pluginLinker: _NoopPluginLinker(),

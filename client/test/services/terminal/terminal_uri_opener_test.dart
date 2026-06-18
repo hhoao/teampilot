@@ -53,7 +53,7 @@ void main() {
     });
 
     test('joins relative file path with working directory', () {
-      final wd = Platform.isWindows ? r'C:\project' : '/project';
+      final wd = Platform.isWindows ? r'C:\workspace' : '/workspace';
       expect(
         TerminalUriOpener.resolveLocalFilePath(
           'file:/src/main.dart',
@@ -76,9 +76,9 @@ void main() {
       expect(
         TerminalUriOpener.resolveLocalFilePath(
           'src/main.dart',
-          workingDirectory: '/project',
+          workingDirectory: '/workspace',
         ),
-        '/project/src/main.dart',
+        '/workspace/src/main.dart',
       );
     });
   });

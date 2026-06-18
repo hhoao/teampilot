@@ -5,20 +5,20 @@ import 'package:flutter/material.dart';
 import 'package:teampilot/theme/app_icon_sizes.dart';
 
 import '../../l10n/l10n_extensions.dart';
-import '../../models/app_project.dart';
+import '../../models/app_workspace.dart';
 import '../../theme/app_text_styles.dart';
 import '../../theme/workspace_surface_layers.dart';
-import '../../utils/project_display_name.dart';
+import '../../utils/workspace_display_name.dart';
 import '../../widgets/app_icon_button.dart';
 import '../../widgets/menu/sidebar_action_menu.dart';
-import '../../widgets/project_icon.dart';
-import 'home_workspace_project_actions.dart';
+import '../../widgets/workspace_icon.dart';
+import 'home_workspace_workspace_actions.dart';
 import 'home_workspace_tab_scope.dart';
 
-/// Compact horizontal project row for list layout in the workspace home.
+/// Compact horizontal workspace row for list layout in the workspace home.
 class WorkspaceListTile extends StatefulWidget {
   const WorkspaceListTile({
-    required this.project,
+    required this.workspace,
     required this.sessionCount,
     required this.favorited,
     required this.onToggleFavorite,
@@ -26,7 +26,7 @@ class WorkspaceListTile extends StatefulWidget {
     super.key,
   });
 
-  final Workspace project;
+  final Workspace workspace;
   final int sessionCount;
   final bool favorited;
   final Future<void> Function() onToggleFavorite;
@@ -46,7 +46,7 @@ class _WorkspaceListTileState extends State<WorkspaceListTile> {
   void _openInNewTab() {
     HomeTabScope.openInTab(
       context,
-      widget.project.projectId,
+      widget.workspace.workspaceId,
       activate: false,
     );
   }
@@ -56,7 +56,7 @@ class _WorkspaceListTileState extends State<WorkspaceListTile> {
     final cs = Theme.of(context).colorScheme;
     final styles = AppTextStyles.of(context);
     final l10n = context.l10n;
-    final project = widget.project;
+    final workspace = widget.workspace;
 
     return MouseRegion(
       cursor: SystemMouseCursors.click,
@@ -84,7 +84,7 @@ class _WorkspaceListTileState extends State<WorkspaceListTile> {
               ),
           child: Row(
             children: [
-              ProjectIcon.fromProject(project, size: 40, borderRadius: 10),
+              WorkspaceIcon.fromWorkspace(workspace, size: 40, borderRadius: 10),
               const SizedBox(width: 14),
               Expanded(
                 child: Column(
@@ -92,7 +92,7 @@ class _WorkspaceListTileState extends State<WorkspaceListTile> {
                   mainAxisAlignment: MainAxisAlignment.center,
                   children: [
                     Text(
-                      project.localizedName(l10n),
+                      workspace.localizedName(l10n),
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
                       style: styles.body.copyWith(fontWeight: FontWeight.w600),
@@ -115,7 +115,7 @@ class _WorkspaceListTileState extends State<WorkspaceListTile> {
                   children: [
                     AppIconButton(
                       icon: Icons.open_in_new_rounded,
-                      tooltip: l10n.homeWorkspaceOpenProjectInNewTab,
+                      tooltip: l10n.homeWorkspaceOpenWorkspaceInNewTab,
                       size: AppIconButton.kCompactSize,
                       compact: true, onTap: _openInNewTab,
                     ),
@@ -125,8 +125,8 @@ class _WorkspaceListTileState extends State<WorkspaceListTile> {
                           : Icons.star_outline_rounded,
                       color: widget.favorited ? cs.primary : null,
                       tooltip: widget.favorited
-                          ? l10n.homeWorkspaceUnfavoriteProject
-                          : l10n.homeWorkspaceFavoriteProject,
+                          ? l10n.homeWorkspaceUnfavoriteWorkspace
+                          : l10n.homeWorkspaceFavoriteWorkspace,
                       size: AppIconButton.kCompactSize,
                       compact: true, onTap: () => unawaited(widget.onToggleFavorite()),
                     ),
@@ -143,32 +143,32 @@ class _WorkspaceListTileState extends State<WorkspaceListTile> {
                         buildMenuChildren: (context, controller) => [
                           SidebarActionMenuItem(
                             icon: Icons.drive_file_rename_outline,
-                            label: l10n.homeWorkspaceRenameProject,
+                            label: l10n.homeWorkspaceRenameWorkspace,
                             menuController: controller,
                             onTap: () => unawaited(
                               showRenameWorkspaceDialog(
                                 context,
-                                project,
+                                workspace,
                               ),
                             ),
                           ),
                           SidebarActionMenuItem(
                             icon: Icons.copy_all_outlined,
-                            label: l10n.homeWorkspaceCloneProject,
+                            label: l10n.homeWorkspaceCloneWorkspace,
                             menuController: controller,
                             onTap: () => unawaited(
-                              cloneWorkspace(context, project),
+                              cloneWorkspace(context, workspace),
                             ),
                           ),
                           SidebarActionMenuItem(
                             icon: Icons.delete_outline,
-                            label: l10n.deleteProject,
+                            label: l10n.deleteWorkspace,
                             destructive: true,
                             menuController: controller,
                             onTap: () => unawaited(
                               confirmDeleteWorkspace(
                                 context,
-                                project,
+                                workspace,
                               ),
                             ),
                           ),

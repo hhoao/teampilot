@@ -34,7 +34,7 @@ void main() {
     const team = TeamIdentity(id: 't1', name: 'T1', cli: CliTool.flashskyai, skillIds: ['demo']);
 
     await service.prepareTeamLaunch(
-      projectId: 'project-1',
+      workspaceId: 'workspace-1',
       sessionId: 't1-1',
       teamId: 't1',
       cliTeamName: 't1-1',
@@ -43,7 +43,7 @@ void main() {
     );
 
     final leafSkillsDir = fs.pathContext.join(
-      layout.sessionRuntimeToolDir('project-1', 't1-1', 'flashskyai'),
+      layout.sessionRuntimeToolDir('workspace-1', 't1-1', 'flashskyai'),
       'skills',
     );
     final entries = await fs.listDir(leafSkillsDir);

@@ -4,39 +4,39 @@ import 'package:go_router/go_router.dart';
 
 import '../../../cubits/identity_cubit.dart';
 import '../../../l10n/l10n_extensions.dart';
-import '../../../models/app_project.dart';
+import '../../../models/app_workspace.dart';
 import '../../../models/personal_identity.dart';
 import '../../../models/team_config.dart';
 import '../../../models/identity.dart';
 import '../../../utils/app_keys.dart';
-import '../../../utils/project_display_name.dart';
+import '../../../utils/workspace_display_name.dart';
 import '../../../widgets/settings/workspace_section_host.dart';
 import '../home_workspace_global_section.dart';
 import '../home_workspace_team_tab.dart';
-import 'config/project_agent_section.dart';
-import 'config/project_extensions_section.dart';
-import 'config/project_mcp_section.dart';
-import 'config/project_plugins_section.dart';
-import 'config/project_skills_section.dart';
-import 'project_config_nav_panel.dart';
-import 'project_config_section.dart';
-import 'project_info_section.dart';
+import 'config/workspace_agent_section.dart';
+import 'config/workspace_extensions_section.dart';
+import 'config/workspace_mcp_section.dart';
+import 'config/workspace_plugins_section.dart';
+import 'config/workspace_skills_section.dart';
+import 'workspace_config_nav_panel.dart';
+import 'workspace_config_section.dart';
+import 'workspace_info_section.dart';
 import '../../team_config/team_config_info_section.dart';
 import '../../team_config/team_config_section.dart';
 
-/// Project configuration workspace — identity-driven sections for personal and
+/// Workspace configuration workspace — identity-driven sections for personal and
 /// team launch identities.
 class WorkspaceConfigPanel extends StatefulWidget {
   const WorkspaceConfigPanel({
-    required this.project,
+    required this.workspace,
     required this.identityId,
     required this.section,
     super.key,
   });
 
-  final Workspace project;
+  final Workspace workspace;
   final String identityId;
-  final ProjectConfigSection section;
+  final WorkspaceConfigSection section;
 
   @override
   State<WorkspaceConfigPanel> createState() =>
@@ -45,9 +45,9 @@ class WorkspaceConfigPanel extends StatefulWidget {
 
 class _WorkspaceConfigPanelState
     extends State<WorkspaceConfigPanel> {
-  String _managePath(ProjectConfigSection section) {
+  String _managePath(WorkspaceConfigSection section) {
     return Uri(
-      path: '/home-v2/project/${widget.project.projectId}',
+      path: '/home-v2/workspace/${widget.workspace.workspaceId}',
       queryParameters: {
         'as': widget.identityId,
         'view': 'manage',
@@ -70,65 +70,65 @@ class _WorkspaceConfigPanelState
       return const Center(child: CircularProgressIndicator());
     }
 
-    final sections = ProjectConfigSection.forKind(identity.kind);
+    final sections = WorkspaceConfigSection.forKind(identity.kind);
     final section = sections.contains(widget.section)
         ? widget.section
-        : ProjectConfigSection.settings;
+        : WorkspaceConfigSection.settings;
     final identityCubit = context.read<IdentityCubit>();
     final team = identity is TeamIdentity ? identity : null;
 
     final body = switch (section) {
-      ProjectConfigSection.settings => ProjectInfoSection(project: widget.project),
-      ProjectConfigSection.members when team != null => HomeTeamTab(
+      WorkspaceConfigSection.settings => WorkspaceInfoSection(workspace: widget.workspace),
+      WorkspaceConfigSection.members when team != null => HomeTeamTab(
           section: TeamConfigSection.members,
           team: team,
           cubit: identityCubit,
         ),
-      ProjectConfigSection.agent when identity is PersonalIdentity =>
-        ProjectAgentSection(
-          projectId: widget.project.projectId,
+      WorkspaceConfigSection.agent when identity is PersonalIdentity =>
+        WorkspaceAgentSection(
+          workspaceId: widget.workspace.workspaceId,
           identityId: identity.id,
         ),
-      ProjectConfigSection.agent when team != null => TeamInfoSection(
+      WorkspaceConfigSection.agent when team != null => TeamInfoSection(
           team: team,
           cubit: identityCubit,
         ),
-      ProjectConfigSection.skills when identity is PersonalIdentity =>
-        ProjectSkillsSection(
-          projectId: widget.project.projectId,
+      WorkspaceConfigSection.skills when identity is PersonalIdentity =>
+        WorkspaceSkillsSection(
+          workspaceId: widget.workspace.workspaceId,
           identityId: identity.id,
         ),
-      ProjectConfigSection.skills when team != null => HomeTeamTab(
+      WorkspaceConfigSection.skills when team != null => HomeTeamTab(
           section: TeamConfigSection.skills,
           team: team,
           cubit: identityCubit,
           onSelectGlobalView: _openGlobalView,
         ),
-      ProjectConfigSection.plugins when identity is PersonalIdentity =>
-        ProjectPluginsSection(
-          projectId: widget.project.projectId,
+      WorkspaceConfigSection.plugins when identity is PersonalIdentity =>
+        WorkspacePluginsSection(
+          workspaceId: widget.workspace.workspaceId,
           identityId: identity.id,
         ),
-      ProjectConfigSection.plugins when team != null => HomeTeamTab(
+      WorkspaceConfigSection.plugins when team != null => HomeTeamTab(
           section: TeamConfigSection.plugins,
           team: team,
           cubit: identityCubit,
           onSelectGlobalView: _openGlobalView,
         ),
-      ProjectConfigSection.mcp when identity is PersonalIdentity =>
-        ProjectMcpSection(
-          projectId: widget.project.projectId,
+      WorkspaceConfigSection.mcp when identity is PersonalIdentity =>
+        WorkspaceMcpSection(
+          workspaceId: widget.workspace.workspaceId,
           identityId: identity.id,
         ),
-      ProjectConfigSection.mcp when team != null => HomeTeamTab(
+      WorkspaceConfigSection.mcp when team != null => HomeTeamTab(
           section: TeamConfigSection.mcp,
           team: team,
           cubit: identityCubit,
           onSelectGlobalView: _openGlobalView,
         ),
-      ProjectConfigSection.extensions when identity is PersonalIdentity =>
-        ProjectExtensionsSection(projectId: widget.project.projectId),
-      ProjectConfigSection.extensions when team != null => HomeTeamTab(
+      WorkspaceConfigSection.extensions when identity is PersonalIdentity =>
+        WorkspaceExtensionsSection(workspaceId: widget.workspace.workspaceId),
+      WorkspaceConfigSection.extensions when team != null => HomeTeamTab(
           section: TeamConfigSection.extensions,
           team: team,
           cubit: identityCubit,
@@ -137,13 +137,13 @@ class _WorkspaceConfigPanelState
     };
 
     return WorkspaceAdaptiveSectionPage(
-      pageKey: AppKeys.projectConfigWorkspace,
-      title: l10n.homeWorkspaceProjectManagement,
-      subtitle: widget.project.localizedName(l10n),
+      pageKey: AppKeys.workspaceConfigWorkspace,
+      title: l10n.homeWorkspaceWorkspaceManagement,
+      subtitle: widget.workspace.localizedName(l10n),
       bodyAnimationKey: ValueKey(
-        'project-config-body-${section.name}-${widget.project.projectId}-${identity.id}',
+        'workspace-config-body-${section.name}-${widget.workspace.workspaceId}-${identity.id}',
       ),
-      nav: ProjectConfigNavPanel(
+      nav: WorkspaceConfigNavPanel(
         sections: sections,
         section: section,
         l10n: l10n,

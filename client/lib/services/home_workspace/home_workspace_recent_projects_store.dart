@@ -3,7 +3,7 @@ import 'dart:convert';
 import '../io/filesystem.dart';
 import '../storage/app_storage.dart';
 
-/// Persists recently opened project ids (most recent first).
+/// Persists recently opened workspace ids (most recent first).
 class HomeRecentWorkspacesStore {
   HomeRecentWorkspacesStore({Filesystem? fs, String? pathOverride})
       : _fsOverride = fs,
@@ -16,14 +16,14 @@ class HomeRecentWorkspacesStore {
 
   Filesystem get _fs => _fsOverride ?? AppStorage.fs;
   String get _path =>
-      _pathOverride ?? AppStorage.paths.homeWorkspaceRecentProjectsJson;
+      _pathOverride ?? AppStorage.paths.homeWorkspaceRecentWorkspacesJson;
 
   Future<List<String>> loadOrderedIds() async {
     try {
       final text = await _fs.readString(_path);
       if (text == null || text.isEmpty) return [];
       final root = (jsonDecode(text) as Map).cast<String, Object?>();
-      final ids = root['projectIds'];
+      final ids = root['workspaceIds'];
       if (ids is! List) return [];
       return ids.map((e) => e.toString()).where((s) => s.isNotEmpty).toList();
     } catch (_) {
@@ -31,8 +31,8 @@ class HomeRecentWorkspacesStore {
     }
   }
 
-  Future<void> recordVisit(String projectId) async {
-    final trimmed = projectId.trim();
+  Future<void> recordVisit(String workspaceId) async {
+    final trimmed = workspaceId.trim();
     if (trimmed.isEmpty) return;
     final existing = await loadOrderedIds();
     final next = [
@@ -42,6 +42,6 @@ class HomeRecentWorkspacesStore {
     ].take(maxEntries).toList();
     final ctx = _fs.pathContext;
     await _fs.ensureDir(ctx.dirname(_path));
-    await _fs.atomicWrite(_path, jsonEncode({'projectIds': next}));
+    await _fs.atomicWrite(_path, jsonEncode({'workspaceIds': next}));
   }
 }

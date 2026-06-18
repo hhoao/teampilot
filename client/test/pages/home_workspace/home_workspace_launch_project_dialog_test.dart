@@ -2,13 +2,13 @@ import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:teampilot/l10n/app_localizations.dart';
 import 'package:teampilot/models/launch_identity.dart';
-import 'package:teampilot/pages/home_workspace/home_workspace_launch_project_dialog.dart';
+import 'package:teampilot/pages/home_workspace/home_workspace_launch_workspace_dialog.dart';
 import 'package:teampilot/services/storage/identity_provisioner.dart';
 
 void main() {
   testWidgets('returns selected personal identity from the list',
       (tester) async {
-    LaunchProjectChoice? result;
+    LaunchWorkspaceChoice? result;
     await tester.pumpWidget(MaterialApp(
       localizationsDelegates: AppLocalizations.localizationsDelegates,
       supportedLocales: AppLocalizations.supportedLocales,
@@ -19,14 +19,14 @@ void main() {
               onPressed: () async {
                 result = await showHomeLaunchWorkspaceDialog(
                   context,
-                  projectName: 'Repo',
-                  identities: const <LaunchProjectIdentityOption>[
-                    LaunchProjectIdentityOption(
+                  workspaceName: 'Repo',
+                  identities: const <LaunchWorkspaceIdentityOption>[
+                    LaunchWorkspaceIdentityOption(
                       id: IdentityProvisioner.defaultPersonalId,
                       name: 'Default',
                       isTeam: false,
                     ),
-                    LaunchProjectIdentityOption(
+                    LaunchWorkspaceIdentityOption(
                       id: 't1',
                       name: 'Backend',
                       isTeam: true,

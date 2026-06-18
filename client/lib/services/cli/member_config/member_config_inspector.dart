@@ -28,7 +28,7 @@ class MemberConfigInspector {
   final CliToolRegistry _registry;
 
   Future<MemberConfigDetail> inspect({
-    required String projectId,
+    required String workspaceId,
     required String sessionId,
     required TeamIdentity team,
     required TeamMemberConfig member,
@@ -37,7 +37,7 @@ class MemberConfigInspector {
     final tool = cli.value;
 
     final resolved = await _resolveDir(
-      projectId: projectId,
+      workspaceId: workspaceId,
       sessionId: sessionId,
       team: team,
       member: member,
@@ -65,20 +65,20 @@ class MemberConfigInspector {
   }
 
   Future<_ResolvedDir?> _resolveDir({
-    required String projectId,
+    required String workspaceId,
     required String sessionId,
     required TeamIdentity team,
     required TeamMemberConfig member,
     required String tool,
   }) async {
-    final trimmedProjectId = projectId.trim();
+    final trimmedWorkspaceId = workspaceId.trim();
     final trimmedSessionId = sessionId.trim();
-    if (trimmedProjectId.isNotEmpty && trimmedSessionId.isNotEmpty) {
+    if (trimmedWorkspaceId.isNotEmpty && trimmedSessionId.isNotEmpty) {
       final memberId = team.teamMode == TeamMode.mixed
           ? ClaudeTeamRosterService.safeClaudePathSegment(member.id)
           : null;
       final runtimeDir = _layout.sessionRuntimeToolDir(
-        trimmedProjectId,
+        trimmedWorkspaceId,
         trimmedSessionId,
         tool,
         memberId: memberId,

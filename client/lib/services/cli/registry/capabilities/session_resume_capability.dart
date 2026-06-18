@@ -39,7 +39,7 @@ class ResumeContext {
   /// claude-style transcript search roots (for `clientPinned` probing).
   final List<String> transcriptRoots;
 
-  /// Project bucket derived from the working dir (claude transcript layout).
+  /// Workspace bucket derived from the working dir (claude transcript layout).
   final String bucket;
 
   /// The native id already recorded on the session-member binding, if any.

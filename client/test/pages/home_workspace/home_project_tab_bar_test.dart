@@ -13,7 +13,7 @@ void main() {
   });
 
   test('personal tab uses primary at full alpha when active', () {
-    final color = homeProjectTabBarColor(
+    final color = homeWorkspaceTabBarColor(
       kind: HomeWorkspaceTabKind.personal,
       colorScheme: cs,
       active: true,
@@ -23,34 +23,34 @@ void main() {
   });
 
   test('team tab uses complement of primary at full alpha when active', () {
-    final color = homeProjectTabBarColor(
+    final color = homeWorkspaceTabBarColor(
       kind: HomeWorkspaceTabKind.team,
       colorScheme: cs,
       active: true,
       hovered: false,
     );
-    expect(color, homeProjectTabComplementColor(cs.primary));
+    expect(color, homeWorkspaceTabComplementColor(cs.primary));
   });
 
   test('kind icons match home sidebar semantics', () {
     expect(
-      homeProjectTabKindIcon(HomeWorkspaceTabKind.personal),
+      homeWorkspaceTabKindIcon(HomeWorkspaceTabKind.personal),
       Icons.person_outline_rounded,
     );
     expect(
-      homeProjectTabKindIcon(HomeWorkspaceTabKind.team),
+      homeWorkspaceTabKindIcon(HomeWorkspaceTabKind.team),
       Icons.groups_2_outlined,
     );
   });
 
   test('inactive tab bar alpha is lower than active', () {
-    final inactive = homeProjectTabBarColor(
+    final inactive = homeWorkspaceTabBarColor(
       kind: HomeWorkspaceTabKind.personal,
       colorScheme: cs,
       active: false,
       hovered: false,
     );
-    final active = homeProjectTabBarColor(
+    final active = homeWorkspaceTabBarColor(
       kind: HomeWorkspaceTabKind.personal,
       colorScheme: cs,
       active: true,
@@ -61,13 +61,13 @@ void main() {
   });
 
   test('inactive hovered tab bar alpha is between inactive and active', () {
-    final hovered = homeProjectTabBarColor(
+    final hovered = homeWorkspaceTabBarColor(
       kind: HomeWorkspaceTabKind.team,
       colorScheme: cs,
       active: false,
       hovered: true,
     );
-    final inactive = homeProjectTabBarColor(
+    final inactive = homeWorkspaceTabBarColor(
       kind: HomeWorkspaceTabKind.team,
       colorScheme: cs,
       active: false,

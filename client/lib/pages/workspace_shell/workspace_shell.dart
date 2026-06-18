@@ -30,7 +30,7 @@ class WorkspaceShell extends StatelessWidget {
     this.rightTools,
     this.showRightToolsVisibilityToggle = false,
     this.workspaceTerminalWorkingDirectory,
-    this.workspaceProjectId,
+    this.workspaceWorkspaceId,
     super.key,
   });
 
@@ -51,14 +51,14 @@ class WorkspaceShell extends StatelessWidget {
   final Widget? rightTools;
   final bool showRightToolsVisibilityToggle;
 
-  /// When set (e.g. home-v2 project page), the bottom shell terminal follows
+  /// When set (e.g. home-v2 workspace page), the bottom shell terminal follows
   /// this path instead of [ChatCubit.activeTabWorkingDirectory].
   final String? workspaceTerminalWorkingDirectory;
 
-  /// When set, the workspace terminal panel is keyed by this project ID so it
-  /// is recreated when switching between projects. Falls back to keying by
+  /// When set, the workspace terminal panel is keyed by this workspace ID so it
+  /// is recreated when switching between workspaces. Falls back to keying by
   /// [workspaceTerminalWorkingDirectory] / active tab cwd when null.
-  final String? workspaceProjectId;
+  final String? workspaceWorkspaceId;
 
   @override
   Widget build(BuildContext context) {
@@ -153,7 +153,7 @@ class WorkspaceShell extends StatelessWidget {
             onRightToolsWidthChanged: onRightToolsWidthChanged,
             workspaceTerminalWorkingDirectory:
                 workspaceTerminalWorkingDirectory,
-            workspaceProjectId: workspaceProjectId,
+            workspaceWorkspaceId: workspaceWorkspaceId,
             child: child,
           ),
         ),

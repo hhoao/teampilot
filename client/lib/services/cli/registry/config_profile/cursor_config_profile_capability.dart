@@ -12,7 +12,7 @@ import '../capabilities/config_profile_capability.dart';
 /// Cursor CLI launch profile.
 ///
 /// **Standalone:** isolates config under `$CURSOR_CONFIG_DIR` (auth is global /
-/// keychain, shared across config dirs) and pre-trusts the project workspace
+/// keychain, shared across config dirs) and pre-trusts the workspace workspace
 /// under the runtime user home.
 ///
 /// **Mixed mode:** isolates each member under a fake `HOME` with native
@@ -59,7 +59,7 @@ final class CursorConfigProfileCapability implements ConfigProfileCapability {
   ) async {
     final paths = ctx.paths;
     final cursorDir = paths.sessionToolDir(
-      ctx.scope.projectId,
+      ctx.scope.workspaceId,
       ctx.scope.sessionId,
       toolId,
       memberId: ctx.scope.memberId,

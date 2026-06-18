@@ -1,10 +1,10 @@
 import 'dart:convert';
 
-import '../../models/home_closed_project_entry.dart';
+import '../../models/home_closed_workspace_entry.dart';
 import '../io/filesystem.dart';
 import '../storage/app_storage.dart';
 
-/// Persists recently closed title-bar project tabs (most recent first).
+/// Persists recently closed title-bar workspace tabs (most recent first).
 class HomeClosedWorkspacesStore {
   HomeClosedWorkspacesStore({Filesystem? fs, String? pathOverride})
       : _fsOverride = fs,
@@ -17,7 +17,7 @@ class HomeClosedWorkspacesStore {
 
   Filesystem get _fs => _fsOverride ?? AppStorage.fs;
   String get _path =>
-      _pathOverride ?? AppStorage.paths.homeWorkspaceClosedProjectsJson;
+      _pathOverride ?? AppStorage.paths.homeWorkspaceClosedWorkspacesJson;
 
   Future<List<HomeClosedWorkspaceEntry>> load() async {
     try {
@@ -32,7 +32,7 @@ class HomeClosedWorkspacesStore {
         final entry = HomeClosedWorkspaceEntry.fromJson(
           raw.cast<String, Object?>(),
         );
-        if (entry.projectId.isNotEmpty) parsed.add(entry);
+        if (entry.workspaceId.isNotEmpty) parsed.add(entry);
       }
       parsed.sort((a, b) => b.closedAt.compareTo(a.closedAt));
       return parsed;
@@ -42,29 +42,29 @@ class HomeClosedWorkspacesStore {
   }
 
   Future<void> recordClosed(HomeClosedWorkspaceEntry entry) async {
-    final trimmedId = entry.projectId.trim();
+    final trimmedId = entry.workspaceId.trim();
     if (trimmedId.isEmpty) return;
     final existing = await load();
     final now = DateTime.now().millisecondsSinceEpoch;
     final next = [
       HomeClosedWorkspaceEntry(
-        projectId: trimmedId,
+        workspaceId: trimmedId,
         displayName: entry.displayName,
         primaryPath: entry.primaryPath,
         closedAt: now,
       ),
       for (final e in existing)
-        if (e.projectId != trimmedId) e,
+        if (e.workspaceId != trimmedId) e,
     ].take(maxEntries).toList();
     await _save(next);
   }
 
-  Future<void> remove(String projectId) async {
-    final trimmed = projectId.trim();
+  Future<void> remove(String workspaceId) async {
+    final trimmed = workspaceId.trim();
     if (trimmed.isEmpty) return;
     final next = [
       for (final e in await load())
-        if (e.projectId != trimmed) e,
+        if (e.workspaceId != trimmed) e,
     ];
     await _save(next);
   }

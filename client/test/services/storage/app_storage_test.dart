@@ -74,8 +74,8 @@ void main() {
         '$root/cli-defaults',
       );
       expect(
-        AppPaths.homeWorkspaceOpenProjectsJsonForTeampilotRoot(root),
-        '$root/ui/open-project-tabs.json',
+        AppPaths.homeWorkspaceOpenWorkspacesJsonForTeampilotRoot(root),
+        '$root/ui/open-workspace-tabs.json',
       );
     });
 

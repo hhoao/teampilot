@@ -1,10 +1,10 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:teampilot/models/app_session.dart';
-import 'package:teampilot/pages/home_workspace/launch_project_team_order.dart';
+import 'package:teampilot/pages/home_workspace/launch_workspace_team_order.dart';
 
 AppSession _s(String team, int updatedAt) => AppSession(
       sessionId: 's-$team-$updatedAt',
-      projectId: 'p1',
+      workspaceId: 'p1',
       primaryPath: '/tmp/p1',
       sessionTeam: team,
       createdAt: 0,
@@ -12,9 +12,9 @@ AppSession _s(String team, int updatedAt) => AppSession(
     );
 
 void main() {
-  test('sorts team ids by most recent session for the project', () {
+  test('sorts team ids by most recent session for the workspace', () {
     final order = orderTeamIdsByRecentUse(
-      projectId: 'p1',
+      workspaceId: 'p1',
       teamIds: const ['a', 'b', 'c'],
       sessions: [_s('b', 10), _s('a', 30), _s('b', 5)],
     );
@@ -24,7 +24,7 @@ void main() {
 
   test('teams without sessions keep input order after used ones', () {
     final order = orderTeamIdsByRecentUse(
-      projectId: 'p1',
+      workspaceId: 'p1',
       teamIds: const ['x', 'y', 'z'],
       sessions: [_s('z', 100)],
     );

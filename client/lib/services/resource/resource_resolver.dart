@@ -23,7 +23,7 @@ class ResourceResolver {
     };
     if (ids.isEmpty) return const [];
     // Honor the global enable toggle: a skill disabled in the library is an
-    // "off switch" everywhere, even if a project/team still lists it in skillIds.
+    // "off switch" everywhere, even if a workspace/team still lists it in skillIds.
     final byId = {
       for (final s in catalog.skills)
         if (s.enabled) s.id: s,

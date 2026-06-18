@@ -2,9 +2,9 @@ import 'package:flutter/material.dart';
 
 /// Which workspace-home route family chrome paints with.
 ///
-/// Home and project views swap page vs card surfaces so the floated card reads
+/// Home and workspace views swap page vs card surfaces so the floated card reads
 /// against a contrasting backdrop on each route.
-enum WorkspacePageChrome { home, project }
+enum WorkspacePageChrome { home, workspace }
 
 /// Material 3 surface nesting for workspace-style UI.
 ///
@@ -28,12 +28,12 @@ extension WorkspaceSurfaceLayers on ColorScheme {
 
   Color workspacePageChrome(WorkspacePageChrome chrome) => switch (chrome) {
     WorkspacePageChrome.home => surface,
-    WorkspacePageChrome.project => surfaceContainer,
+    WorkspacePageChrome.workspace => surfaceContainer,
   };
 
   Color workspaceCardChrome(WorkspacePageChrome chrome) => switch (chrome) {
     WorkspacePageChrome.home => surfaceContainer,
-    WorkspacePageChrome.project => surface,
+    WorkspacePageChrome.workspace => surface,
   };
 }
 
@@ -67,7 +67,7 @@ BoxDecoration workspaceCodeDecoration(ColorScheme cs, {double radius = 8}) {
 /// Floats [child] as a single rounded card on the workspace page backdrop.
 ///
 /// Used by [HomePage] and [WorkspacePage] so home and
-/// project views share the same outer chrome (padding, shadow, border).
+/// workspace views share the same outer chrome (padding, shadow, border).
 class WorkspacePageCardShell extends StatelessWidget {
   const WorkspacePageCardShell({
     required this.child,

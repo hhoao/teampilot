@@ -20,9 +20,9 @@ import '../../widgets/cli_launch_config/cli_launch_custom_fields.dart';
 import '../../widgets/cli_launch_config/preset_launch_picker_field.dart';
 import '../../widgets/dropdown/app_dropdown_decoration.dart';
 import '../../widgets/settings/workspace_settings_widgets.dart';
-import '../home_workspace/project/config/cli_presets_manage_dialog.dart';
-import '../home_workspace/project/config/project_cli_config_helpers.dart';
-import '../home_workspace/project/config/project_cli_effort_helpers.dart';
+import '../home_workspace/workspace/config/cli_presets_manage_dialog.dart';
+import '../home_workspace/workspace/config/workspace_cli_config_helpers.dart';
+import '../home_workspace/workspace/config/workspace_cli_effort_helpers.dart';
 import '../../services/cli/registry/cli_display_name.dart';
 
 /// Global "AI Features" settings: per-feature CLI/provider/model/effort.
@@ -119,7 +119,7 @@ class AiFeatureConfigRow extends StatelessWidget {
     final provider = providers
         .where((p) => p.id == resolved.providerId)
         .firstOrNull;
-    final hidesModelPicker = projectCliHidesModelPicker(
+    final hidesModelPicker = workspaceCliHidesModelPicker(
       registry,
       cli,
       provider,
@@ -218,7 +218,7 @@ class AiFeatureConfigRow extends StatelessWidget {
                   initial: setting ?? resolved,
                 ),
                 icon: Icon(Icons.tune, size: context.appIconSizes.sm),
-                label: Text(l10n.projectCliConfigure),
+                label: Text(l10n.workspaceCliConfigure),
                 style: OutlinedButton.styleFrom(
                   visualDensity: VisualDensity.compact,
                   padding: const EdgeInsets.symmetric(
@@ -443,9 +443,9 @@ class _AiFeatureConfigureDialogState extends State<AiFeatureConfigureDialog> {
                     cliItems: _cliItems,
                     onCliChanged: _applyCli,
                     effortContext: CliLaunchEffortContext.standalone,
-                    effortSubtitle: l10n.projectCliEffortLevelSubtitle,
+                    effortSubtitle: l10n.workspaceCliEffortLevelSubtitle,
                     effortAllowInherit: true,
-                    effortInheritLabel: l10n.projectCliEffortInheritHint,
+                    effortInheritLabel: l10n.workspaceCliEffortInheritHint,
                     providerTitle: l10n.provider,
                     modelTitle: l10n.aiFeatureModelLabel,
                     effortTitle: l10n.aiFeatureEffortLabel,
@@ -454,7 +454,7 @@ class _AiFeatureConfigureDialogState extends State<AiFeatureConfigureDialog> {
                     onProviderChanged: _applyProvider,
                     onModelChanged: (value) => setState(() {
                       _modelId = value.trim();
-                      if (!projectCliShowsEffortPicker(
+                      if (!workspaceCliShowsEffortPicker(
                         registry: registry,
                         cli: _cli,
                         provider: providers

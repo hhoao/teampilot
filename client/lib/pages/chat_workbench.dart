@@ -23,12 +23,12 @@ import 'chat/chat_workbench_terminal.dart';
 class ChatWorkbench extends StatefulWidget {
   const ChatWorkbench({
     this.sessionId,
-    this.isPersonalProject = false,
+    this.isPersonalWorkspace = false,
     super.key,
   });
 
   final String? sessionId;
-  final bool isPersonalProject;
+  final bool isPersonalWorkspace;
 
   @override
   State<ChatWorkbench> createState() => _ChatWorkbenchState();
@@ -196,14 +196,14 @@ class _ChatWorkbenchState extends State<ChatWorkbench> {
       cs,
       isDark: isDark,
       mode: terminalThemeMode,
-      chrome: WorkspacePageChrome.project,
+      chrome: WorkspacePageChrome.workspace,
     );
     final terminalBackground = Color(0xFF000000 | terminalTheme.background);
     final teamCubit = context.watch<IdentityCubit>();
     final chatCubit = context.watch<ChatCubit>();
     final team = teamCubit.state.selectedTeam;
     final sessionConnectInProgress = chatCubit.state.isActiveSessionConnecting;
-    final isPersonal = widget.isPersonalProject;
+    final isPersonal = widget.isPersonalWorkspace;
 
     if (!isPersonal && team == null) {
       return const Center(child: CircularProgressIndicator());
@@ -232,7 +232,7 @@ class _ChatWorkbenchState extends State<ChatWorkbench> {
                     ),
                     connectDisabled: sessionConnectInProgress,
                     memberName: isPersonal
-                        ? context.l10n.homeWorkspaceProjectAgent
+                        ? context.l10n.homeWorkspaceWorkspaceAgent
                         : chatCubit.selectedMemberName(team!),
                     launchError: chatCubit.activeLaunchError,
                   ),
@@ -306,7 +306,7 @@ class _ChatWorkbenchState extends State<ChatWorkbench> {
                   ),
                   connectDisabled: sessionConnectInProgress,
                   memberName: isPersonal
-                      ? context.l10n.homeWorkspaceProjectAgent
+                      ? context.l10n.homeWorkspaceWorkspaceAgent
                       : chatCubit.selectedMemberName(team!),
                   launchError: chatCubit.activeLaunchError,
                 ),

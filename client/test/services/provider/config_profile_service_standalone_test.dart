@@ -3,7 +3,7 @@ import 'dart:io';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:path/path.dart' as p;
 import 'package:teampilot/models/cli_preset.dart';
-import 'package:teampilot/models/project_agent_config.dart';
+import 'package:teampilot/models/workspace_agent_config.dart';
 import 'package:teampilot/models/personal_identity.dart';
 import 'package:teampilot/models/team_config.dart';
 import 'package:teampilot/services/storage/runtime_layout.dart';
@@ -16,14 +16,14 @@ import 'package:teampilot/services/storage/runtime_storage_context.dart';
 
 String _standaloneSessionClaudeDir(
   String base,
-  String projectId,
+  String workspaceId,
   String sessionId,
 ) =>
     p.join(
       base,
       'workspace',
-      'projects',
-      projectId,
+      'workspaces',
+      workspaceId,
       'sessions',
       sessionId,
       'runtime',
@@ -54,12 +54,12 @@ void main() {
   });
 
   test(
-    'prepareProjectLaunch for flashskyai sets FLASHSKYAI_CONFIG_DIR under session runtime',
+    'prepareWorkspaceLaunch for flashskyai sets FLASHSKYAI_CONFIG_DIR under session runtime',
     () async {
-      const projectId = 'proj-standalone-fs';
+      const workspaceId = 'proj-standalone-fs';
       const sessionId = 'sess-standalone-fs';
-      const profile = PersonalIdentity(id: projectId, display: projectId,
-        agent: ProjectAgentConfig(agent: 'solo'),
+      const profile = PersonalIdentity(id: workspaceId, display: workspaceId,
+        agent: WorkspaceAgentConfig(agent: 'solo'),
       );
       const flashskyaiPreset = CliPreset(
         id: 'p-fs',
@@ -71,8 +71,8 @@ void main() {
         updatedAt: 0,
       );
 
-      final outcome = await service.prepareProjectLaunch(identityId: 'personal-default', 
-        projectId: projectId,
+      final outcome = await service.prepareWorkspaceLaunch(identityId: 'personal-default', 
+        workspaceId: workspaceId,
         sessionId: sessionId,
         personal: profile,
         workingDirectory: '/workspace/personal',
@@ -82,8 +82,8 @@ void main() {
       final flashskyaiDir = p.join(
         base.path,
         'workspace',
-        'projects',
-        projectId,
+        'workspaces',
+        workspaceId,
         'sessions',
         sessionId,
         'runtime',
@@ -99,16 +99,16 @@ void main() {
   );
 
   test(
-    'prepareProjectLaunch for claude sets CLAUDE_CONFIG_DIR under session runtime',
+    'prepareWorkspaceLaunch for claude sets CLAUDE_CONFIG_DIR under session runtime',
     () async {
-      const projectId = 'proj-standalone';
+      const workspaceId = 'proj-standalone';
       const sessionId = 'sess-standalone';
-      const profile = PersonalIdentity(id: projectId, display: projectId,
+      const profile = PersonalIdentity(id: workspaceId, display: workspaceId,
         // TODO: migrate to presets — cli removed
       );
 
-      final outcome = await service.prepareProjectLaunch(identityId: 'personal-default', 
-        projectId: projectId,
+      final outcome = await service.prepareWorkspaceLaunch(identityId: 'personal-default', 
+        workspaceId: workspaceId,
         sessionId: sessionId,
         personal: profile,
         workingDirectory: '/workspace/personal',
@@ -116,7 +116,7 @@ void main() {
 
       final claudeDir = _standaloneSessionClaudeDir(
         base.path,
-        projectId,
+        workspaceId,
         sessionId,
       );
       expect(await Directory(claudeDir).exists(), isTrue);
@@ -126,13 +126,13 @@ void main() {
   );
 
   test(
-    'prepareProjectLaunch for cursor pre-trusts workspace under runtime home',
+    'prepareWorkspaceLaunch for cursor pre-trusts workspace under runtime home',
     () async {
-      const projectId = 'proj-standalone-cursor';
+      const workspaceId = 'proj-standalone-cursor';
       const sessionId = 'sess-standalone-cursor';
       const workspace = '/home/hhoa/git/hhoa/teampilot';
-      const profile = PersonalIdentity(id: projectId, display: projectId,
-        agent: ProjectAgentConfig(agent: 'solo'),
+      const profile = PersonalIdentity(id: workspaceId, display: workspaceId,
+        agent: WorkspaceAgentConfig(agent: 'solo'),
       );
       const cursorPreset = CliPreset(
         id: 'p-cursor',
@@ -144,8 +144,8 @@ void main() {
         updatedAt: 0,
       );
 
-      final outcome = await service.prepareProjectLaunch(identityId: 'personal-default', 
-        projectId: projectId,
+      final outcome = await service.prepareWorkspaceLaunch(identityId: 'personal-default', 
+        workspaceId: workspaceId,
         sessionId: sessionId,
         personal: profile,
         workingDirectory: workspace,
@@ -155,8 +155,8 @@ void main() {
       final cursorDir = p.join(
         base.path,
         'workspace',
-        'projects',
-        projectId,
+        'workspaces',
+        workspaceId,
         'sessions',
         sessionId,
         'runtime',

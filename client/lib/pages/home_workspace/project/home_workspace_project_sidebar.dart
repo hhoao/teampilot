@@ -8,7 +8,7 @@ import '../../../cubits/chat_cubit.dart';
 import '../../../cubits/cli_presets_cubit.dart';
 import '../../../cubits/identity_cubit.dart';
 import '../../../l10n/l10n_extensions.dart';
-import '../../../models/app_project.dart';
+import '../../../models/app_workspace.dart';
 import '../../../models/app_session.dart';
 import '../../../models/cli_preset.dart';
 import '../../../models/personal_identity.dart';
@@ -18,7 +18,7 @@ import '../../../theme/app_text_styles.dart';
 import '../../../utils/app_keys.dart';
 import '../../../utils/app_session_sort.dart';
 import '../../../utils/debounce/debounce.dart';
-import '../../../utils/project_sessions.dart';
+import '../../../utils/workspace_sessions.dart';
 import '../../../widgets/app_icon_button.dart';
 import '../../../widgets/cli/cli_brand_icon.dart';
 import '../../../widgets/menu/sidebar_action_menu.dart';
@@ -26,8 +26,8 @@ import 'config/cli_presets_manage_dialog.dart';
 import '../../../widgets/dropdown/app_dropdown_decoration.dart';
 import '../../../widgets/dropdown/app_dropdown_field.dart';
 import '../../../widgets/sidebar_session_tile.dart';
-import 'project_search_dialog.dart';
-import 'project_session_actions.dart';
+import 'workspace_search_dialog.dart';
+import 'workspace_session_actions.dart';
 
 /// Shared resize limits for [WorkspaceSidebar].
 class WorkspaceSidebarLayout {
@@ -38,20 +38,20 @@ class WorkspaceSidebarLayout {
   static const double maxWidth = 480;
 }
 
-/// Project conversation sidebar (personal and team workbenches).
+/// Workspace conversation sidebar (personal and team workbenches).
 class WorkspaceSidebar extends StatefulWidget {
   const WorkspaceSidebar({
-    required this.project,
-    required this.isPersonalProject,
+    required this.workspace,
+    required this.isPersonalWorkspace,
     required this.identityId,
     required this.sessionTeamFilter,
     super.key,
   });
 
-  final Workspace project;
-  final bool isPersonalProject;
+  final Workspace workspace;
+  final bool isPersonalWorkspace;
 
-  /// The launch identity the project was opened against ([Identity.id]).
+  /// The launch identity the workspace was opened against ([Identity.id]).
   final String identityId;
   final String sessionTeamFilter;
 
@@ -64,7 +64,7 @@ class _WorkspaceSidebarState
     extends State<WorkspaceSidebar> {
   static const _emptySessions = <AppSession>[];
 
-  bool get _isPersonal => widget.isPersonalProject;
+  bool get _isPersonal => widget.isPersonalWorkspace;
 
   AppSessionSort _sessionSort = AppSessionSort.manual;
 
@@ -78,14 +78,14 @@ class _WorkspaceSidebarState
     final cs = Theme.of(context).colorScheme;
     final l10n = context.l10n;
     final rawSessions = context.select<ChatCubit, List<AppSession>>((c) {
-      final grouped = groupSessionsByProjectId(c.state.sessions);
-      final bucket = grouped[widget.project.projectId];
+      final grouped = groupSessionsByWorkspaceId(c.state.sessions);
+      final bucket = grouped[widget.workspace.workspaceId];
       if (bucket == null || bucket.isEmpty) {
-        return sessionsForProject(widget.project, _emptySessions)
+        return sessionsForWorkspace(widget.workspace, _emptySessions)
             .where((s) => s.sessionTeam.trim() == widget.sessionTeamFilter)
             .toList();
       }
-      return sessionsForProject(widget.project, bucket)
+      return sessionsForWorkspace(widget.workspace, bucket)
           .where((s) => s.sessionTeam.trim() == widget.sessionTeamFilter)
           .toList();
     });
@@ -98,7 +98,7 @@ class _WorkspaceSidebarState
         children: [
           if (_isPersonal) ...[
             _PresetDropdown(
-              projectId: widget.project.projectId,
+              workspaceId: widget.workspace.workspaceId,
               identityId: widget.identityId,
             ),
             const SizedBox(height: 12),
@@ -108,7 +108,7 @@ class _WorkspaceSidebarState
             icon: Icons.edit_outlined,
             label: l10n.homeWorkspaceNewConversation,
             onTap: throttledAsync(
-              'project_sidebar_new_chat',
+              'workspace_sidebar_new_chat',
               () => _startNewConversation(context),
             ),
           ),
@@ -134,14 +134,14 @@ class _WorkspaceSidebarState
                 AppIconButton(
                   icon: Icons.search_rounded,
                   compact: true, size: AppIconButton.kCompactSize,
-                  tooltip: l10n.projectSearchTitle,
+                  tooltip: l10n.workspaceSearchTitle,
                   onTap: throttledTap(
-                    'project_sidebar_search',
+                    'workspace_sidebar_search',
                     () => unawaited(
-                      showProjectSearchDialog(
+                      showWorkspaceSearchDialog(
                         context,
-                        project: widget.project,
-                        isPersonal: widget.isPersonalProject,
+                        workspace: widget.workspace,
+                        isPersonal: widget.isPersonalWorkspace,
                         sessionTeamFilter: widget.sessionTeamFilter,
                       ),
                     ),
@@ -203,16 +203,16 @@ class _WorkspaceSidebarState
     int index = -1,
   }) {
     return SidebarSessionTile(
-      key: ValueKey('project-sidebar-session-${session.sessionId}'),
+      key: ValueKey('workspace-sidebar-session-${session.sessionId}'),
       session: session,
       index: index,
-      tapThrottleKeyPrefix: 'project_sidebar_session',
+      tapThrottleKeyPrefix: 'workspace_sidebar_session',
       onTap: () => unawaited(
-        openProjectSessionTab(
+        openWorkspaceSessionTab(
           context,
-          widget.project,
+          widget.workspace,
           session,
-          isPersonal: widget.isPersonalProject,
+          isPersonal: widget.isPersonalWorkspace,
         ),
       ),
     );
@@ -222,10 +222,10 @@ class _WorkspaceSidebarState
     BuildContext context, {
     CliTool? cli,
   }) async {
-    await createAndOpenProjectConversation(
+    await createAndOpenWorkspaceConversation(
       context,
-      widget.project,
-      isPersonal: widget.isPersonalProject,
+      widget.workspace,
+      isPersonal: widget.isPersonalWorkspace,
       sessionTeamId: widget.sessionTeamFilter,
       personalIdentityId: widget.identityId,
       cli: cli,
@@ -234,9 +234,9 @@ class _WorkspaceSidebarState
 }
 
 class _PresetDropdown extends StatefulWidget {
-  const _PresetDropdown({required this.projectId, required this.identityId});
+  const _PresetDropdown({required this.workspaceId, required this.identityId});
 
-  final String projectId;
+  final String workspaceId;
   final String identityId;
 
   @override
@@ -276,7 +276,7 @@ class _PresetDropdownState extends State<_PresetDropdown> {
             );
           },
           icon: const Icon(Icons.add, size: 18),
-          label: Text(l10n.projectCliAddPresetTitle),
+          label: Text(l10n.workspaceCliAddPresetTitle),
           style: OutlinedButton.styleFrom(
             visualDensity: VisualDensity.compact,
           ),
@@ -308,7 +308,7 @@ class _PresetDropdownState extends State<_PresetDropdown> {
         children: [
           Expanded(
             child: AppDropdownField<String>(
-              key: ValueKey('project-sidebar-preset-${widget.projectId}-$initialId'),
+              key: ValueKey('workspace-sidebar-preset-${widget.workspaceId}-$initialId'),
               items: presetNames,
               initialItem: initialId,
               decoration: AppDropdownDecorations.themed(context),
@@ -330,9 +330,9 @@ class _PresetDropdownState extends State<_PresetDropdown> {
           const SizedBox(width: 4),
           AppIconButton(
             icon: Icons.tune_outlined,
-            tooltip: l10n.projectCliPresetsManageTitle,
+            tooltip: l10n.workspaceCliPresetsManageTitle,
             onTap: throttledTap(
-              'project_sidebar_presets_manage',
+              'workspace_sidebar_presets_manage',
               () => unawaited(
                 showDialog<void>(
                   context: context,

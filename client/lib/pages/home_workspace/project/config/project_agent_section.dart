@@ -8,8 +8,8 @@ import '../../../../cubits/identity_cubit.dart';
 import '../../../../l10n/l10n_extensions.dart';
 import '../../../../models/cli_preset.dart';
 import '../../../../models/personal_identity.dart';
-import '../../../../models/project_agent_config.dart';
-import '../../../../models/project_agent_prompt_presets.dart';
+import '../../../../models/workspace_agent_config.dart';
+import '../../../../models/workspace_agent_prompt_presets.dart';
 import '../../../../models/team_config.dart';
 import '../../../../services/app/flashskyai_agent_catalog_service.dart';
 import '../../../../services/cli/registry/cli_display_name.dart';
@@ -23,15 +23,15 @@ import 'cli_presets_manage_dialog.dart';
 
 const _kAgentCardGap = 12.0;
 
-/// Personal-project agent + CLI defaults (backed by [IdentityCubit]).
-class ProjectAgentSection extends StatelessWidget {
-  const ProjectAgentSection({
-    required this.projectId,
+/// Personal-workspace agent + CLI defaults (backed by [IdentityCubit]).
+class WorkspaceAgentSection extends StatelessWidget {
+  const WorkspaceAgentSection({
+    required this.workspaceId,
     required this.identityId,
     super.key,
   });
 
-  final String projectId;
+  final String workspaceId;
   final String identityId;
 
   @override
@@ -41,7 +41,7 @@ class ProjectAgentSection extends StatelessWidget {
     if (personal is! PersonalIdentity) {
       return const Center(child: CircularProgressIndicator());
     }
-    return ProjectAgentConfigForm(
+    return WorkspaceAgentConfigForm(
       key: ValueKey(personal.id),
       personal: personal,
       cubit: context.read<IdentityCubit>(),
@@ -49,8 +49,8 @@ class ProjectAgentSection extends StatelessWidget {
   }
 }
 
-class ProjectAgentConfigForm extends StatefulWidget {
-  const ProjectAgentConfigForm({
+class WorkspaceAgentConfigForm extends StatefulWidget {
+  const WorkspaceAgentConfigForm({
     super.key,
     required this.personal,
     required this.cubit,
@@ -60,10 +60,10 @@ class ProjectAgentConfigForm extends StatefulWidget {
   final IdentityCubit cubit;
 
   @override
-  State<ProjectAgentConfigForm> createState() => ProjectAgentConfigFormState();
+  State<WorkspaceAgentConfigForm> createState() => WorkspaceAgentConfigFormState();
 }
 
-class ProjectAgentConfigFormState extends State<ProjectAgentConfigForm> {
+class WorkspaceAgentConfigFormState extends State<WorkspaceAgentConfigForm> {
   late TextEditingController _agentCtl;
   late TextEditingController _argsCtl;
   late TextEditingController _promptCtl;
@@ -80,7 +80,7 @@ class ProjectAgentConfigFormState extends State<ProjectAgentConfigForm> {
   }
 
   @override
-  void didUpdateWidget(covariant ProjectAgentConfigForm oldWidget) {
+  void didUpdateWidget(covariant WorkspaceAgentConfigForm oldWidget) {
     super.didUpdateWidget(oldWidget);
     if (oldWidget.personal.id != widget.personal.id ||
         oldWidget.personal.agent != widget.personal.agent) {
@@ -97,7 +97,7 @@ class ProjectAgentConfigFormState extends State<ProjectAgentConfigForm> {
     setState(() => _userAgentIds = ids);
   }
 
-  void _syncControllers(ProjectAgentConfig agent) {
+  void _syncControllers(WorkspaceAgentConfig agent) {
     if (_agentCtl.text != agent.agent) {
       _agentCtl.text = agent.agent;
     }
@@ -117,13 +117,13 @@ class ProjectAgentConfigFormState extends State<ProjectAgentConfigForm> {
     super.dispose();
   }
 
-  Future<void> _updateAgent(ProjectAgentConfig next) async {
+  Future<void> _updateAgent(WorkspaceAgentConfig next) async {
     await widget.cubit.savePersonal(widget.personal.copyWith(agent: next));
   }
 
   void _applyPromptPreset(String presetId) {
     final l10n = context.l10n;
-    final text = projectAgentPromptPresetText(l10n, presetId);
+    final text = workspaceAgentPromptPresetText(l10n, presetId);
     if (text.isEmpty) return;
     _promptCtl.text = text;
     _promptCtl.selection = TextSelection.collapsed(offset: text.length);
@@ -153,7 +153,7 @@ class ProjectAgentConfigFormState extends State<ProjectAgentConfigForm> {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
-                SettingsGroupHeader(title: l10n.homeWorkspaceProjectAgent),
+                SettingsGroupHeader(title: l10n.homeWorkspaceWorkspaceAgent),
                 SettingsLabeledRow(
                   title: l10n.memberDangerouslySkipPermissions,
                   subtitle: l10n.memberDangerouslySkipPermissionsHint,
@@ -167,7 +167,7 @@ class ProjectAgentConfigFormState extends State<ProjectAgentConfigForm> {
                 ),
                 SettingsLabeledStackedRow(
                   title: l10n.prompt,
-                  subtitle: l10n.projectAgentPromptSubtitle,
+                  subtitle: l10n.workspaceAgentPromptSubtitle,
                   body: Column(
                     crossAxisAlignment: CrossAxisAlignment.stretch,
                     children: [
@@ -175,10 +175,10 @@ class ProjectAgentConfigFormState extends State<ProjectAgentConfigForm> {
                         spacing: 6,
                         runSpacing: 6,
                         children: [
-                          for (final preset in ProjectAgentPromptPreset.all)
+                          for (final preset in WorkspaceAgentPromptPreset.all)
                             ActionChip(
                               label: Text(
-                                projectAgentPromptPresetLabel(l10n, preset.id),
+                                workspaceAgentPromptPresetLabel(l10n, preset.id),
                                 style: AppTextStyles.of(context).bodySmall,
                               ),
                               visualDensity: VisualDensity.compact,
@@ -202,7 +202,7 @@ class ProjectAgentConfigFormState extends State<ProjectAgentConfigForm> {
                 ),
                 SettingsAdvancedExpansion(
                   title: l10n.workspaceAdvancedSettings,
-                  subtitle: l10n.projectAdvancedSettingsSubtitle,
+                  subtitle: l10n.workspaceAdvancedSettingsSubtitle,
                   children: [
                     if (showAgentPreset && agentPresetStyle != null)
                       SettingsLabeledStackedRow(
@@ -216,15 +216,15 @@ class ProjectAgentConfigFormState extends State<ProjectAgentConfigForm> {
                           agent: agent.agent,
                           userAgentIds: _userAgentIds,
                           customAgentController: _agentCtl,
-                          fieldKeyPrefix: 'project-${personal.id}',
+                          fieldKeyPrefix: 'workspace-${personal.id}',
                           onAgentChanged: (value) =>
                               _updateAgent(agent.copyWith(agent: value)),
                         ),
                         showDividerBelow: true,
                       ),
                     SettingsLabeledStackedRow(
-                      title: l10n.projectAgentExtraArgs,
-                      subtitle: l10n.projectAgentExtraArgsSubtitle,
+                      title: l10n.workspaceAgentExtraArgs,
+                      subtitle: l10n.workspaceAgentExtraArgsSubtitle,
                       body: TextField(
                         controller: _argsCtl,
                         decoration: const InputDecoration(),
@@ -258,10 +258,10 @@ class _PresetInfoRow extends StatelessWidget {
 
     return SettingsSurfaceCard(
       child: SettingsLabeledRow(
-        title: l10n.projectCliPresetLabel,
+        title: l10n.workspaceCliPresetLabel,
         subtitle: preset != null
             ? _presetSubtitle(preset, registry, l10n)
-            : l10n.projectCliNoPresetHint,
+            : l10n.workspaceCliNoPresetHint,
         trailing: TextButton(
           onPressed: () {
             showDialog<void>(
@@ -269,7 +269,7 @@ class _PresetInfoRow extends StatelessWidget {
               builder: (_) => const CliPresetsManageDialog(),
             );
           },
-          child: Text(l10n.projectCliManagePresets),
+          child: Text(l10n.workspaceCliManagePresets),
         ),
         showDividerBelow: false,
       ),

@@ -5,7 +5,7 @@ import '../../models/team_config.dart';
 import '../../services/cli/preset_resolver.dart';
 import '../../services/cli/registry/cli_display_name.dart';
 import '../../services/cli/registry/cli_tool_registry.dart';
-import '../home_workspace/project/config/project_cli_config_helpers.dart';
+import '../home_workspace/workspace/config/workspace_cli_config_helpers.dart';
 
 /// Catalog CLI used for provider/model pickers (member override → team default).
 CliTool memberCatalogCliFor(TeamIdentity team, TeamMemberConfig member) {
@@ -26,7 +26,7 @@ bool memberLaunchIsConfigured({
     globalPresets: presets,
   );
   if (resolved.provider.trim().isEmpty) return false;
-  return projectCliHidesModelPicker(registry, catalogCli, provider) ||
+  return workspaceCliHidesModelPicker(registry, catalogCli, provider) ||
       resolved.model.trim().isNotEmpty;
 }
 
@@ -106,7 +106,7 @@ String _rawConfigLine({
   required bool hidesModelPicker,
   List<CliPreset> presets = const [],
 }) {
-  if (!configured) return l10n.projectCliNotConfiguredHint;
+  if (!configured) return l10n.workspaceCliNotConfiguredHint;
 
   final catalogCli = memberCatalogCliFor(team, member);
   final def = registry.tryGet(catalogCli);

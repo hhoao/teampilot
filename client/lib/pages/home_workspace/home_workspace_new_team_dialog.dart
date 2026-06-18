@@ -43,7 +43,7 @@ typedef _NewTeamDialogResult = ({
 });
 
 /// Large centered "create team" modal launched from the workspace sidebar's
-/// "New Team" row. Mirrors the Apifox project-creation modal: centered title +
+/// "New Team" row. Mirrors the Apifox workspace-creation modal: centered title +
 /// close, optional Native / Mixed mode cards (team flows), a named form row,
 /// and a single primary create action.
 Future<void> showHomeNewTeamDialog(

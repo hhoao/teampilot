@@ -1,11 +1,11 @@
-import '../../../utils/project_path_utils.dart';
+import '../../../utils/workspace_path_utils.dart';
 import '../../io/filesystem.dart';
 import 'cursor_workspace_trust.dart';
 
 /// Writes Cursor CLI `.workspace-trusted` markers under `$HOME/.cursor/projects/`.
 ///
 /// Used for personal / native team launches (real [homeRoot]) and mixed mode
-/// (isolated fake [homeRoot]). Path variants follow [projectMetadataKeys] so
+/// (isolated fake [homeRoot]). Path variants follow [workspaceMetadataKeys] so
 /// Windows / WSL slug lookups match `cursor-agent --workspace`.
 final class CursorWorkspaceTrustProvisioner {
   CursorWorkspaceTrustProvisioner({required Filesystem fs}) : _fs = fs;
@@ -21,7 +21,7 @@ final class CursorWorkspaceTrustProvisioner {
     void add(String raw) {
       final trimmed = raw.trim();
       if (trimmed.isEmpty) return;
-      keys.addAll(projectMetadataKeys(trimmed));
+      keys.addAll(workspaceMetadataKeys(trimmed));
     }
 
     add(workingDirectory ?? '');

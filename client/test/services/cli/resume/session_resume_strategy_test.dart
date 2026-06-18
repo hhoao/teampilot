@@ -119,9 +119,9 @@ void main() {
 
   group('TranscriptResumeStrategy', () {
     test('detects the pinned transcript file and returns the taskId', () async {
-      final projects = p.join(base.path, 'projects', 'home-me-proj');
-      await Directory(projects).create(recursive: true);
-      await File(p.join(projects, 'task-1.jsonl')).writeAsString('{}');
+      final workspaces = p.join(base.path, 'workspaces', 'home-me-proj');
+      await Directory(workspaces).create(recursive: true);
+      await File(p.join(workspaces, 'task-1.jsonl')).writeAsString('{}');
 
       final got = await const TranscriptResumeStrategy().detectNativeId(
         ctx(transcriptRoots: [base.path], bucket: 'home-me-proj'),

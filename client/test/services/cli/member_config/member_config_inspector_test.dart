@@ -39,7 +39,7 @@ void main() {
   test('prefers the runtime member dir when it exists (mixed mode nests by id)',
       () async {
     final dir = layout.sessionRuntimeToolDir(
-      'project-1',
+      'workspace-1',
       'team-a-1',
       'claude',
       memberId: 'm1',
@@ -48,7 +48,7 @@ void main() {
     await fs.writeString('$dir/skills/a/SKILL.md', '---\nname: A\n---');
 
     final detail = await inspector.inspect(
-      projectId: 'project-1',
+      workspaceId: 'workspace-1',
       sessionId: 'team-a-1',
       team: team,
       member: member,
@@ -64,7 +64,7 @@ void main() {
     await fs.ensureDir(teamDir);
 
     final detail = await inspector.inspect(
-      projectId: 'project-1',
+      workspaceId: 'workspace-1',
       sessionId: 'team-a-1',
       team: team,
       member: member,
@@ -76,7 +76,7 @@ void main() {
 
   test('returns none when neither layer exists', () async {
     final detail = await inspector.inspect(
-      projectId: 'project-1',
+      workspaceId: 'workspace-1',
       sessionId: '',
       team: team,
       member: member,
