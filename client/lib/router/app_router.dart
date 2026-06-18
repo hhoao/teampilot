@@ -5,6 +5,7 @@ import 'package:go_router/go_router.dart';
 
 import '../cubits/config_cubit.dart';
 import '../models/app_provider_config.dart';
+import '../models/launch_identity.dart';
 import '../pages/config/config_workspace.dart';
 import '../pages/home_workspace/home_workspace_global_section.dart';
 import '../pages/home_workspace/home_workspace_page.dart';
@@ -91,8 +92,10 @@ final appRouter = GoRouter(
         // Apifox-style workspace home — title bar + open project tabs live in
         // [HomeWorkspaceShell]; routed pages render only the body below it.
         ShellRoute(
-          builder: (context, state, child) =>
-              HomeWorkspaceShell(location: state.uri.path, child: child),
+          builder: (context, state, child) => HomeWorkspaceShell(
+            location: state.uri.toString(),
+            child: child,
+          ),
           routes: [
             GoRoute(
               path: '/home-v2',
@@ -134,6 +137,7 @@ final appRouter = GoRouter(
                 return NoTransitionPage(
                   child: HomeWorkspaceProjectPage(
                     projectId: state.pathParameters['projectId']!,
+                    identity: LaunchIdentity.decode(query['as']),
                     view: query['view'],
                     configSection: ProjectConfigSection.fromSegment(
                       query['section'],

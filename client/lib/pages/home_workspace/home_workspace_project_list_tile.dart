@@ -160,19 +160,18 @@ class _HomeWorkspaceProjectListTileState extends State<HomeWorkspaceProjectListT
                               cloneHomeWorkspaceProject(context, project),
                             ),
                           ),
-                          if (!project.isDefaultPersonal)
-                            SidebarActionMenuItem(
-                              icon: Icons.delete_outline,
-                              label: l10n.deleteProject,
-                              destructive: true,
-                              menuController: controller,
-                              onTap: () => unawaited(
-                                confirmDeleteHomeWorkspaceProject(
-                                  context,
-                                  project,
-                                ),
+                          SidebarActionMenuItem(
+                            icon: Icons.delete_outline,
+                            label: l10n.deleteProject,
+                            destructive: true,
+                            menuController: controller,
+                            onTap: () => unawaited(
+                              confirmDeleteHomeWorkspaceProject(
+                                context,
+                                project,
                               ),
                             ),
+                          ),
                         ],
                       ),
                     ),

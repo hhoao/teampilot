@@ -216,6 +216,7 @@
   "homeWorkspaceMyFavorites": "我的收藏",
   "homeWorkspaceRecentVisits": "最近访问",
   "homeWorkspacePersonal": "简单模式",
+  "homeWorkspaceAllProjects": "全部项目",
   "homeWorkspaceProjectTabKindPersonal": "个人",
   "homeWorkspaceDefaultPersonalProjectName": "个人助手",
   "homeWorkspacePersonalSubtitle": "不用组队，直接拉起一个 CLI 开聊。",
@@ -1389,5 +1390,8 @@
   "cliCursorExecutablePathLabel": "Cursor CLI 路径",
   "toolchainInstallProgressChecking": "正在检查 {tool}...",
   "toolchainGit": "Git",
-  "toolchainNode": "Node.js"
+  "toolchainNode": "Node.js",
+  "homeWorkspaceLaunchProjectTitle": "选择启动方式",
+  "homeWorkspaceSimpleMode": "简单模式",
+  "homeWorkspaceRememberLaunchChoice": "记住选择"
 }

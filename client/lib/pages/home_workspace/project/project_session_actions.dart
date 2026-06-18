@@ -18,12 +18,12 @@ import '../../../repositories/session_repository.dart';
 Future<void> openProjectSessionTab(
   BuildContext context,
   AppProject project,
-  AppSession session,
-) async {
+  AppSession session, {
+  required bool isPersonal,
+}) async {
   final chatCubit = context.read<ChatCubit>();
   final repo = context.read<SessionRepository>();
   final fallback = context.l10n.defaultNewChatSessionTitle;
-  final isPersonal = project.teamId.isEmpty;
 
   chatCubit.selectSession(session.sessionId);
 
@@ -56,14 +56,14 @@ Future<void> openProjectSessionTab(
 Future<void> createAndOpenProjectConversation(
   BuildContext context,
   AppProject project, {
+  required bool isPersonal,
+  String sessionTeamId = '',
   CliTool? cli,
 }) async {
   final chatCubit = context.read<ChatCubit>();
   final repo = context.read<SessionRepository>();
   final l10n = context.l10n;
-  final isPersonal = project.teamId.isEmpty;
   final team = isPersonal ? null : context.read<TeamCubit>().state.selectedTeam;
-  final teamId = isPersonal ? '' : (team?.id ?? project.teamId);
 
   // A new personal conversation pins its CLI to the active preset's CLI so it
   // resumes under (and stores its transcript with) the CLI the user selected.
@@ -76,12 +76,17 @@ Future<void> createAndOpenProjectConversation(
     final session = await chatCubit.createSession(
       project.projectId,
       repo,
-      sessionTeamId: teamId,
+      sessionTeamId: isPersonal ? '' : (team?.id ?? sessionTeamId),
       rosterMembers: isPersonal ? const [] : (team?.members ?? const []),
       cli: effectiveCli,
     );
     if (!context.mounted) return;
-    await openProjectSessionTab(context, project, session);
+    await openProjectSessionTab(
+      context,
+      project,
+      session,
+      isPersonal: isPersonal,
+    );
   } on Object catch (error) {
     if (!context.mounted) return;
     AppToast.show(

@@ -41,7 +41,7 @@ void main() {
       addTearDown(() => tmp.deleteSync(recursive: true));
 
       final repo = SessionRepository(rootDir: tmp.path);
-      final project = await repo.createProject('/tmp/my-project', teamId: '');
+      final project = await repo.createProject('/tmp/my-project');
       expect(project.primaryPath, '/tmp/my-project');
 
       final session = await repo.createSession(project.projectId);
@@ -71,7 +71,7 @@ void main() {
     addTearDown(() => tmp.deleteSync(recursive: true));
 
     final repo = SessionRepository(rootDir: tmp.path);
-    final project = await repo.createProject('/a', teamId: '');
+    final project = await repo.createProject('/a');
     final s1 = await repo.createSession(project.projectId);
     final afterFirst = (await repo.loadProjects()).single;
     final s2 = await repo.createSession(project.projectId);
@@ -86,7 +86,7 @@ void main() {
     addTearDown(() => tmp.deleteSync(recursive: true));
 
     final repo = SessionRepository(rootDir: tmp.path);
-    final project = await repo.createProject('/a', teamId: '');
+    final project = await repo.createProject('/a');
     final s1 = await repo.createSession(project.projectId);
     final s2 = await repo.createSession(project.projectId);
 
@@ -107,40 +107,6 @@ void main() {
     );
   });
 
-  test('ensureDefaultPersonalProject seeds fixed id once, idempotently',
-      () async {
-    final tmp = await Directory.systemTemp.createTemp('fs_session_repo_');
-    addTearDown(() => tmp.deleteSync(recursive: true));
-
-    final repo = SessionRepository(rootDir: tmp.path);
-    final first = await repo.ensureDefaultPersonalProject('/docs/TeamPilot');
-    expect(first.projectId, AppProject.defaultPersonalId);
-    expect(first.isDefaultPersonal, isTrue);
-    expect(first.teamId, isEmpty);
-
-    // Second call must be a no-op (no duplicate, keeps the original record).
-    final second = await repo.ensureDefaultPersonalProject('/other/path');
-    expect(second.projectId, AppProject.defaultPersonalId);
-    expect(second.primaryPath, first.primaryPath);
-    final projects = await repo.loadProjects();
-    expect(
-      projects.where((p) => p.projectId == AppProject.defaultPersonalId).length,
-      1,
-    );
-  });
-
-  test('deleteProject is a no-op for the default personal project', () async {
-    final tmp = await Directory.systemTemp.createTemp('fs_session_repo_');
-    addTearDown(() => tmp.deleteSync(recursive: true));
-
-    final repo = SessionRepository(rootDir: tmp.path);
-    await repo.ensureDefaultPersonalProject('/docs/TeamPilot');
-
-    await repo.deleteProject(AppProject.defaultPersonalId);
-    final projects = await repo.loadProjects();
-    expect(projects.any((p) => p.isDefaultPersonal), isTrue);
-  });
-
   test(
     'deleteSession destroys CLI state before removing session metadata',
     () async {
@@ -151,7 +117,7 @@ void main() {
         rootDir: tmp.path,
         lifecycleService: lifecycle,
       );
-      final project = await repo.createProject('/a', teamId: '');
+      final project = await repo.createProject('/a');
       final session = await repo.createSession(
         project.projectId,
         sessionTeam: 'team-a',
@@ -176,7 +142,7 @@ void main() {
       rootDir: tmp.path,
       lifecycleService: lifecycle,
     );
-    final project = await repo.createProject('/a', teamId: '');
+    final project = await repo.createProject('/a');
     const roster = [TeamMemberConfig(id: 'team-lead', name: 'team-lead')];
     final s1 = await repo.createSession(
       project.projectId,
@@ -206,13 +172,13 @@ void main() {
 
       final repo = SessionRepository(rootDir: tmp.path);
       final p1 = await repo.createProject(
-        '/root', teamId: '',
+        '/root',
         additionalPaths: const ['/a'],
       );
       expect(p1.additionalPaths, ['/a']);
 
       final p2 = await repo.createProject(
-        '/root', teamId: '',
+        '/root',
         additionalPaths: const ['/b', '/a'],
         display: 'My display',
       );
@@ -222,34 +188,24 @@ void main() {
     },
   );
 
-  test(
-    'createProject keeps same path in different teams as separate projects',
-    () async {
-      final tmp = await Directory.systemTemp.createTemp('fs_session_repo_');
-      addTearDown(() => tmp.deleteSync(recursive: true));
+  test('createProject reuses same primary path', () async {
+    final tmp = await Directory.systemTemp.createTemp('fs_session_repo_');
+    addTearDown(() => tmp.deleteSync(recursive: true));
 
-      final repo = SessionRepository(rootDir: tmp.path);
-      final a = await repo.createProject('/shared', teamId: 'team-a');
-      final b = await repo.createProject('/shared', teamId: 'team-b');
+    final repo = SessionRepository(rootDir: tmp.path);
+    final a = await repo.createProject('/shared');
+    final b = await repo.createProject('/shared');
 
-      expect(a.projectId, isNot(b.projectId));
-      expect(a.teamId, 'team-a');
-      expect(b.teamId, 'team-b');
-      expect((await repo.loadProjects()).length, 2);
-
-      // Same path + same team reuses the existing project.
-      final aAgain = await repo.createProject('/shared', teamId: 'team-a');
-      expect(aAgain.projectId, a.projectId);
-      expect((await repo.loadProjects()).length, 2);
-    },
-  );
+    expect(a.projectId, b.projectId);
+    expect((await repo.loadProjects()).length, 1);
+  });
 
   test('updateProjectMetadata updates display and additionalPaths', () async {
     final tmp = await Directory.systemTemp.createTemp('fs_session_repo_');
     addTearDown(() => tmp.deleteSync(recursive: true));
 
     final repo = SessionRepository(rootDir: tmp.path);
-    final p = await repo.createProject('/base', teamId: '', additionalPaths: const ['/a']);
+    final p = await repo.createProject('/base', additionalPaths: const ['/a']);
     await repo.updateProjectMetadata(
       p.projectId,
       display: 'My App',
@@ -265,7 +221,7 @@ void main() {
     addTearDown(() => tmp.deleteSync(recursive: true));
 
     final repo = SessionRepository(rootDir: tmp.path);
-    final p = await repo.createProject('/base', teamId: '');
+    final p = await repo.createProject('/base');
     expect(p.icon, ProjectIconRef.auto);
 
     await repo.applyProjectIcon(p.projectId, const ProjectIconPreset(5));
@@ -285,7 +241,7 @@ void main() {
     await iconFile.writeAsBytes([0x89, 0x50, 0x4E, 0x47]);
 
     final repo = SessionRepository(rootDir: tmp.path);
-    final p = await repo.createProject('/base', teamId: '');
+    final p = await repo.createProject('/base');
     await repo.importCustomProjectIcon(p.projectId, iconFile.path);
 
     var loaded = (await repo.loadProjects()).single;
@@ -301,7 +257,7 @@ void main() {
     addTearDown(() => tmp.deleteSync(recursive: true));
 
     final repo = SessionRepository(rootDir: tmp.path);
-    final p = await repo.createProject('/old', teamId: '');
+    final p = await repo.createProject('/old');
     await repo.updateProjectPaths(p.projectId, '/new', ['/x']);
     final loaded = await repo.loadProjects();
     expect(loaded.single.primaryPath, '/new');
@@ -315,7 +271,7 @@ void main() {
       addTearDown(() => tmp.deleteSync(recursive: true));
 
       final repo = SessionRepository(rootDir: tmp.path);
-      final p = await repo.createProject('/p', teamId: '', additionalPaths: const ['/q']);
+      final p = await repo.createProject('/p', additionalPaths: const ['/q']);
       final s1 = await repo.createSession(p.projectId);
       expect(s1.additionalPaths, ['/q']);
 
@@ -334,7 +290,7 @@ void main() {
     addTearDown(() => tmp.deleteSync(recursive: true));
 
     final repo = SessionRepository(rootDir: tmp.path);
-    final project = await repo.createProject('/z', teamId: '');
+    final project = await repo.createProject('/z');
     final good = await repo.createSession(project.projectId);
     final badDir = Directory(
       '${tmp.path}/workspace/projects/${project.projectId}/sessions/bogus',
@@ -352,7 +308,7 @@ void main() {
     addTearDown(() => tmp.deleteSync(recursive: true));
 
     final repo = SessionRepository(rootDir: tmp.path);
-    final project = await repo.createProject('/w', teamId: '');
+    final project = await repo.createProject('/w');
     final session = await repo.createSession(project.projectId);
     await repo.markSessionLaunched(session.sessionId);
 
@@ -367,7 +323,7 @@ void main() {
     addTearDown(() => tmp.deleteSync(recursive: true));
 
     final repo = SessionRepository(rootDir: tmp.path);
-    final project = await repo.createProject('/w', teamId: '');
+    final project = await repo.createProject('/w');
     final session = await repo.createSession(
       project.projectId,
       sessionTeam: 'team-config-id-1',
@@ -390,7 +346,7 @@ void main() {
       addTearDown(() => tmp.deleteSync(recursive: true));
 
       final repo = SessionRepository(rootDir: tmp.path);
-      final project = await repo.createProject('/w', teamId: '');
+      final project = await repo.createProject('/w');
       const roster = [
         TeamMemberConfig(id: 'team-lead', name: 'team-lead'),
         TeamMemberConfig(id: 'worker', name: 'worker'),
@@ -411,7 +367,7 @@ void main() {
     addTearDown(() => tmp.deleteSync(recursive: true));
 
     final repo = SessionRepository(rootDir: tmp.path);
-    final project = await repo.createProject('/w', teamId: '');
+    final project = await repo.createProject('/w');
     final session = await repo.createSession(
       project.projectId,
       sessionTeam: 'team-a',
@@ -437,7 +393,7 @@ void main() {
       addTearDown(() => tmp.deleteSync(recursive: true));
 
       final repo = SessionRepository(rootDir: tmp.path);
-      final project = await repo.createProject('/w', teamId: '');
+      final project = await repo.createProject('/w');
       final session = await repo.createSession(project.projectId);
       await Future.wait([
         repo.updateSessionTeam(session.sessionId, 'team-x'),
@@ -454,7 +410,7 @@ void main() {
     addTearDown(() => tmp.deleteSync(recursive: true));
 
     final repo = SessionRepository(rootDir: tmp.path);
-    final project = await repo.createProject('/w', teamId: '');
+    final project = await repo.createProject('/w');
     final session = await repo.createSession(project.projectId);
     await repo.updateSessionTeam(session.sessionId, 't1');
     expect((await repo.loadSessions()).single.sessionTeam, 't1');

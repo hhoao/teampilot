@@ -4,14 +4,9 @@ import 'project_icon_ref.dart';
 
 @immutable
 class AppProject {
-  /// Reserved [projectId] for the built-in personal workspace project. Seeded at
-  /// bootstrap, pinned first in the title bar, and not deletable/closable.
-  static const String defaultPersonalId = 'default-personal';
-
   const AppProject({
     required this.projectId,
     required this.primaryPath,
-    this.teamId = '',
     this.additionalPaths = const [],
     this.display = '',
     this.icon = ProjectIconRef.auto,
@@ -32,7 +27,6 @@ class AppProject {
     return AppProject(
       projectId: json['projectId'] as String? ?? '',
       primaryPath: json['primaryPath'] as String? ?? '',
-      teamId: json['teamId'] as String? ?? '',
       additionalPaths: paths,
       display: json['display'] as String? ?? '',
       icon: ProjectIconRef.fromJson(json['icon']),
@@ -44,17 +38,12 @@ class AppProject {
 
   final String projectId;
   final String primaryPath;
-  final String teamId;
   final List<String> additionalPaths;
   final String display;
   final ProjectIconRef icon;
   final int createdAt;
   final int updatedAt;
   final List<String> sessionIds;
-
-  /// The built-in personal project: pinned in the title bar, never deletable.
-  bool get isDefaultPersonal =>
-      projectId == defaultPersonalId && teamId.isEmpty;
 
   String get effectiveDisplay =>
       display.isNotEmpty ? display : _basename(primaryPath);
@@ -68,7 +57,6 @@ class AppProject {
   AppProject copyWith({
     String? projectId,
     String? primaryPath,
-    String? teamId,
     List<String>? additionalPaths,
     String? display,
     ProjectIconRef? icon,
@@ -79,7 +67,6 @@ class AppProject {
     return AppProject(
       projectId: projectId ?? this.projectId,
       primaryPath: primaryPath ?? this.primaryPath,
-      teamId: teamId ?? this.teamId,
       additionalPaths: additionalPaths ?? this.additionalPaths,
       display: display ?? this.display,
       icon: icon ?? this.icon,
@@ -93,7 +80,6 @@ class AppProject {
     return {
       'projectId': projectId,
       'primaryPath': primaryPath,
-      'teamId': teamId,
       'additionalPaths': additionalPaths,
       'display': display,
       if (icon.toJson() case final json?) 'icon': json,
@@ -110,7 +96,6 @@ class AppProject {
             runtimeType == other.runtimeType &&
             projectId == other.projectId &&
             primaryPath == other.primaryPath &&
-            teamId == other.teamId &&
             listEquals(additionalPaths, other.additionalPaths) &&
             display == other.display &&
             icon == other.icon &&
@@ -123,7 +108,6 @@ class AppProject {
   int get hashCode => Object.hash(
     projectId,
     primaryPath,
-    teamId,
     Object.hashAll(additionalPaths),
     display,
     icon,

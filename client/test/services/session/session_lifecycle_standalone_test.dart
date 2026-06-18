@@ -124,7 +124,6 @@ void main() {
       const project = AppProject(
         projectId: projectId,
         primaryPath: '/work/personal',
-        teamId: '',
         createdAt: 1,
       );
       final session = AppSession(
@@ -162,7 +161,6 @@ void main() {
       const project = AppProject(
         projectId: projectId,
         primaryPath: '/work/personal',
-        teamId: '',
         createdAt: 1,
       );
       final session = AppSession(
@@ -216,7 +214,6 @@ void main() {
       const project = AppProject(
         projectId: projectId,
         primaryPath: '/work/personal',
-        teamId: '',
         createdAt: 1,
       );
       final session = AppSession(
@@ -286,7 +283,6 @@ void main() {
       const project = AppProject(
         projectId: projectId,
         primaryPath: '/work/personal',
-        teamId: '',
         createdAt: 1,
       );
       final session = AppSession(

@@ -362,11 +362,10 @@ void main() {
     expect(team.name, 'Default Team');
     expect(reloadCount, 1);
     final projects = await sessionRepo.loadProjects();
-    expect(projects.where((p) => p.teamId == team.id), hasLength(1));
-    expect(
-      projects.singleWhere((p) => p.teamId == team.id).display,
-      'Default Team',
-    );
+    expect(projects, hasLength(1));
+    expect(projects.single.display, 'Default Team');
+    final sessions = await sessionRepo.loadSessions();
+    expect(sessions.where((s) => s.sessionTeam == team.id), hasLength(1));
 
     await _drainAndCloseTeamCubit(cubit);
     await base.delete(recursive: true);

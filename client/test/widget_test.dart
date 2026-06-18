@@ -1,5 +1,6 @@
 import 'dart:io';
 
+import 'package:google_fonts/google_fonts.dart';
 import 'package:teampilot/l10n/app_localizations.dart';
 import 'package:teampilot/cubits/ai_feature_settings_cubit.dart';
 import 'package:teampilot/cubits/app_provider_cubit.dart';
@@ -406,6 +407,7 @@ class TestChatCubit extends ChatCubit {
 }
 
 void main() {
+  GoogleFonts.config.allowRuntimeFetching = false;
   setUpAll(() async {
     _widgetTestSessionRepoDir = await Directory.systemTemp.createTemp(
       'widget_sess_repo_',
@@ -450,7 +452,6 @@ void main() {
     const project = AppProject(
       projectId: 'proj-widget-test',
       primaryPath: '/work/current',
-      teamId: 'default-team',
       createdAt: 1,
     );
     chatCubit.ingestProjectSessionSnapshot(
@@ -458,7 +459,8 @@ void main() {
       sessions: const [],
     );
     await pumpDesktopApp(tester, teamCubit, chatCubit: chatCubit);
-    appRouter.go('/home-v2/project/${project.projectId}');
+    final teamId = teamCubit.state.selectedTeam!.id;
+    appRouter.go('/home-v2/project/${project.projectId}?as=team:$teamId');
     await tester.pump();
     await pumpPhaseTransitions(tester);
 
@@ -593,7 +595,7 @@ void main() {
     final repo = SessionRepository(
       rootDir: (await Directory.systemTemp.createTemp('sidebar_sess_')).path,
     );
-    final project = await repo.createProject('/work/current', teamId: '');
+    final project = await repo.createProject('/work/current');
     final session = await repo.createSession(
       project.projectId,
       sessionTeam: team.id,
@@ -845,7 +847,7 @@ void main() {
           TeamMemberConfig(id: 'dev', name: 'developer'),
         ],
       );
-      final project = await repo.createProject('/wd', teamId: '');
+      final project = await repo.createProject('/wd');
       await repo.createSession(
         project.projectId,
         sessionTeam: team.id,
@@ -893,7 +895,7 @@ void main() {
           TeamMemberConfig(id: 'dev', name: 'developer'),
         ],
       );
-      final project = await repo.createProject('/wd', teamId: '');
+      final project = await repo.createProject('/wd');
       await repo.createSession(
         project.projectId,
         sessionTeam: team.id,
@@ -992,7 +994,7 @@ void main() {
       name: 'TName',
       members: const [TeamMemberConfig(id: 'lid', name: 'team-lead')],
     );
-    final project = await repo.createProject('/wd', teamId: team.id);
+    final project = await repo.createProject('/wd');
     await repo.createSession(
       project.projectId,
       sessionTeam: team.id,
@@ -1034,7 +1036,7 @@ void main() {
       name: 'TName',
       members: const [TeamMemberConfig(id: 'lid', name: 'team-lead')],
     );
-    final project = await repo.createProject('/wd', teamId: team.id);
+    final project = await repo.createProject('/wd');
     final session = await repo.createSession(
       project.projectId,
       sessionTeam: team.id,
@@ -1079,7 +1081,7 @@ void main() {
         name: 'TName',
         members: const [TeamMemberConfig(id: 'lid', name: 'team-lead')],
       );
-      final project = await repo.createProject('/wd', teamId: team.id);
+      final project = await repo.createProject('/wd');
       final session = await repo.createSession(
         project.projectId,
         sessionTeam: team.id,
@@ -1127,7 +1129,6 @@ void main() {
       );
       final project = await repo.createProject(
         '/root',
-        teamId: team.id,
         additionalPaths: const ['/extra'],
       );
       await repo.createSession(

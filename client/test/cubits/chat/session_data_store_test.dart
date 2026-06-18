@@ -23,12 +23,12 @@ void main() {
     expect(snap.visibleProjects, projects);
   });
 
-  test('team scope filters sessions by sessionTeam and projects by teamId', () {
+  test('team scope filters sessions by sessionTeam; projects stay unscoped', () {
     final store = SessionDataStore()
       ..setScope(scopeSessionsToSelectedTeam: true, selectedTeamId: 't1');
     final projects = [
-      AppProject(projectId: 'p1', primaryPath: '/p1', teamId: 't1', createdAt: 0),
-      AppProject(projectId: 'p2', primaryPath: '/p2', teamId: 't2', createdAt: 0),
+      AppProject(projectId: 'p1', primaryPath: '/p1', createdAt: 0),
+      AppProject(projectId: 'p2', primaryPath: '/p2', createdAt: 0),
     ];
     final sessions = [
       AppSession(
@@ -48,21 +48,15 @@ void main() {
     ];
     final snap = store.deriveSnapshot(projects: projects, sessions: sessions);
     expect(snap.visibleSessions.map((s) => s.sessionId).toList(), ['s1']);
-    expect(snap.visibleProjects.map((p) => p.projectId).toList(), ['p1']);
+    expect(snap.visibleProjects, projects);
   });
 
-  test('team scope with empty team id shows personal sessions and projects',
-      () {
+  test('team scope with empty team id shows personal sessions only', () {
     final store = SessionDataStore()
       ..setScope(scopeSessionsToSelectedTeam: true, selectedTeamId: '');
     final projects = [
       AppProject(projectId: 'personal', primaryPath: '/p', createdAt: 0),
-      AppProject(
-        projectId: 'team',
-        primaryPath: '/t',
-        teamId: 't1',
-        createdAt: 0,
-      ),
+      AppProject(projectId: 'team', primaryPath: '/t', createdAt: 0),
     ];
     final sessions = [
       AppSession(
@@ -82,6 +76,6 @@ void main() {
     ];
     final snap = store.deriveSnapshot(projects: projects, sessions: sessions);
     expect(snap.visibleSessions.map((s) => s.sessionId).toList(), ['solo']);
-    expect(snap.visibleProjects.map((p) => p.projectId).toList(), ['personal']);
+    expect(snap.visibleProjects, projects);
   });
 }

@@ -4,14 +4,12 @@ import 'package:teampilot/pages/home_workspace/home_workspace_shell.dart';
 
 AppProject _project({
   required String id,
-  String teamId = '',
   String display = 'my-app',
   String primaryPath = '/home/user/my-app',
 }) {
   return AppProject(
     projectId: id,
     primaryPath: primaryPath,
-    teamId: teamId,
     display: display,
     createdAt: 1,
   );
@@ -20,8 +18,9 @@ AppProject _project({
 void main() {
   test('personal tooltip prefixes kind label', () {
     final tooltip = HomeWorkspaceShell.formatProjectTabTooltip(
-      project: _project(id: 'p1', teamId: '', display: 'solo'),
+      project: _project(id: 'p1', display: 'solo'),
       personalKindLabel: 'Personal',
+      isPersonal: true,
       teamName: null,
     );
     expect(tooltip, 'Personal · solo\n/home/user/my-app');
@@ -29,18 +28,22 @@ void main() {
 
   test('team tooltip uses team name prefix', () {
     final tooltip = HomeWorkspaceShell.formatProjectTabTooltip(
-      project: _project(id: 't1', teamId: 'team-1', display: 'shared'),
+      project: _project(id: 't1', display: 'shared'),
       personalKindLabel: 'Personal',
+      isPersonal: false,
       teamName: 'Alpha Team',
+      teamId: 'team-1',
     );
     expect(tooltip, 'Alpha Team · shared\n/home/user/my-app');
   });
 
   test('team tooltip falls back to teamId when name missing', () {
     final tooltip = HomeWorkspaceShell.formatProjectTabTooltip(
-      project: _project(id: 't1', teamId: 'team-1', display: 'shared'),
+      project: _project(id: 't1', display: 'shared'),
       personalKindLabel: 'Personal',
+      isPersonal: false,
       teamName: null,
+      teamId: 'team-1',
     );
     expect(tooltip, 'team-1 · shared\n/home/user/my-app');
   });
@@ -54,6 +57,7 @@ void main() {
           primaryPath: '',
         ),
         personalKindLabel: 'Personal',
+        isPersonal: true,
         teamName: null,
       ),
       'Personal · solo',

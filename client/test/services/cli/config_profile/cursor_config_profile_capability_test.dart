@@ -57,7 +57,12 @@ void main() {
   group('CursorConfigProfileCapability', () {
     test('standalone contributes CURSOR_CONFIG_DIR only', () async {
       const team = TeamConfig(id: 'team-a', name: 'agent', cli: CliTool.cursor);
-      final scope = resolveLaunchProfileScope(projectId: 'project-1', teamId: 'team-a', appSessionId: 'session-1', cliTeamName: 'session-1');
+      final scope = resolveLaunchProfileScope(
+        projectId: 'project-1',
+        teamId: 'team-a',
+        appSessionId: 'session-1',
+        cliTeamName: 'session-1',
+      );
       const profile = ProjectProfile(
         projectId: 'project-1',
         agent: ProjectAgentConfig(agent: 'solo'),

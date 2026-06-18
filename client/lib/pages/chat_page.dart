@@ -11,6 +11,7 @@ class ChatPage extends StatelessWidget {
     this.sessionId,
     this.isPersonalProject = false,
     this.projectId,
+    this.sessionTeamFilter = '',
     super.key,
   });
 
@@ -28,21 +29,40 @@ class ChatPage extends StatelessWidget {
   /// Null on chat routes without a project context.
   final String? projectId;
 
+  /// Filters sessions to this team id (empty string = personal/simple mode).
+  final String sessionTeamFilter;
+
   @override
   Widget build(BuildContext context) {
     if (isPersonalProject) {
-      return _PersonalChatPage(cwd: cwd, sessionId: sessionId, projectId: projectId);
+      return _PersonalChatPage(
+        cwd: cwd,
+        sessionId: sessionId,
+        projectId: projectId,
+        sessionTeamFilter: sessionTeamFilter,
+      );
     }
-    return _TeamChatPage(cwd: cwd, sessionId: sessionId, projectId: projectId);
+    return _TeamChatPage(
+      cwd: cwd,
+      sessionId: sessionId,
+      projectId: projectId,
+      sessionTeamFilter: sessionTeamFilter,
+    );
   }
 }
 
 class _PersonalChatPage extends StatelessWidget {
-  const _PersonalChatPage({required this.cwd, this.sessionId, this.projectId});
+  const _PersonalChatPage({
+    required this.cwd,
+    this.sessionId,
+    this.projectId,
+    required this.sessionTeamFilter,
+  });
 
   final String cwd;
   final String? sessionId;
   final String? projectId;
+  final String sessionTeamFilter;
 
   @override
   Widget build(BuildContext context) {
@@ -52,16 +72,23 @@ class _PersonalChatPage extends StatelessWidget {
       isPersonalProject: true,
       projectId: projectId,
       team: null,
+      sessionTeamFilter: sessionTeamFilter,
     );
   }
 }
 
 class _TeamChatPage extends StatelessWidget {
-  const _TeamChatPage({required this.cwd, this.sessionId, this.projectId});
+  const _TeamChatPage({
+    required this.cwd,
+    this.sessionId,
+    this.projectId,
+    required this.sessionTeamFilter,
+  });
 
   final String cwd;
   final String? sessionId;
   final String? projectId;
+  final String sessionTeamFilter;
 
   @override
   Widget build(BuildContext context) {
@@ -79,6 +106,7 @@ class _TeamChatPage extends StatelessWidget {
       isPersonalProject: false,
       projectId: projectId,
       team: team,
+      sessionTeamFilter: sessionTeamFilter,
     );
   }
 }

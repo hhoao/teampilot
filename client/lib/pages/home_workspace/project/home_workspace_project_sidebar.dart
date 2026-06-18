@@ -42,9 +42,16 @@ class HomeWorkspaceProjectSidebarLayout {
 
 /// Project conversation sidebar (personal and team workbenches).
 class HomeWorkspaceProjectSidebar extends StatefulWidget {
-  const HomeWorkspaceProjectSidebar({required this.project, super.key});
+  const HomeWorkspaceProjectSidebar({
+    required this.project,
+    required this.isPersonalProject,
+    required this.sessionTeamFilter,
+    super.key,
+  });
 
   final AppProject project;
+  final bool isPersonalProject;
+  final String sessionTeamFilter;
 
   @override
   State<HomeWorkspaceProjectSidebar> createState() =>
@@ -55,7 +62,7 @@ class _HomeWorkspaceProjectSidebarState
     extends State<HomeWorkspaceProjectSidebar> {
   static const _emptySessions = <AppSession>[];
 
-  bool get _isPersonal => widget.project.teamId.isEmpty;
+  bool get _isPersonal => widget.isPersonalProject;
 
   AppSessionSort _sessionSort = AppSessionSort.manual;
 
@@ -78,9 +85,13 @@ class _HomeWorkspaceProjectSidebarState
       final grouped = groupSessionsByProjectId(c.state.sessions);
       final bucket = grouped[widget.project.projectId];
       if (bucket == null || bucket.isEmpty) {
-        return sessionsForProject(widget.project, _emptySessions);
+        return sessionsForProject(widget.project, _emptySessions)
+            .where((s) => s.sessionTeam.trim() == widget.sessionTeamFilter)
+            .toList();
       }
-      return sessionsForProject(widget.project, bucket);
+      return sessionsForProject(widget.project, bucket)
+          .where((s) => s.sessionTeam.trim() == widget.sessionTeamFilter)
+          .toList();
     });
     final sortedSessions = sortAppSessions(rawSessions, sort: _sessionSort);
 
@@ -128,7 +139,12 @@ class _HomeWorkspaceProjectSidebarState
                   onTap: throttledTap(
                     'project_sidebar_search',
                     () => unawaited(
-                      showProjectSearchDialog(context, project: widget.project),
+                      showProjectSearchDialog(
+                        context,
+                        project: widget.project,
+                        isPersonal: widget.isPersonalProject,
+                        sessionTeamFilter: widget.sessionTeamFilter,
+                      ),
                     ),
                   ),
                 ),
@@ -193,7 +209,12 @@ class _HomeWorkspaceProjectSidebarState
       index: index,
       tapThrottleKeyPrefix: 'project_sidebar_session',
       onTap: () => unawaited(
-        openProjectSessionTab(context, widget.project, session),
+        openProjectSessionTab(
+          context,
+          widget.project,
+          session,
+          isPersonal: widget.isPersonalProject,
+        ),
       ),
     );
   }
@@ -202,7 +223,13 @@ class _HomeWorkspaceProjectSidebarState
     BuildContext context, {
     CliTool? cli,
   }) async {
-    await createAndOpenProjectConversation(context, widget.project, cli: cli);
+    await createAndOpenProjectConversation(
+      context,
+      widget.project,
+      isPersonal: widget.isPersonalProject,
+      sessionTeamId: widget.sessionTeamFilter,
+      cli: cli,
+    );
   }
 }
 

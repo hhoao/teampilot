@@ -1,4 +1,6 @@
-﻿import 'package:flutter/material.dart';
+﻿import 'dart:async';
+
+import 'package:flutter/material.dart';
 import 'package:teampilot/theme/app_icon_sizes.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
@@ -8,15 +10,66 @@ import '../../cubits/team_cubit.dart';
 import '../../l10n/l10n_extensions.dart';
 import '../../models/app_project.dart';
 import '../../models/app_session.dart';
+import '../../models/launch_identity.dart';
 import '../../repositories/session_repository.dart';
+import '../../services/home_workspace/home_workspace_project_launch_prefs_store.dart';
 import '../../theme/app_text_styles.dart';
 import '../../utils/home_workspace_project_display.dart';
 import '../../utils/project_display_name.dart';
 import '../../widgets/menu/sidebar_action_menu.dart';
+import 'home_workspace_launch_project_dialog.dart';
 import 'home_workspace_new_project_dialog.dart';
 import 'home_workspace_project_card.dart';
 import 'home_workspace_project_list_tile.dart';
 import 'home_workspace_project_sort.dart';
+import 'launch_project_team_order.dart';
+
+Future<void> openHomeWorkspaceProject(
+  BuildContext context,
+  AppProject project, {
+  required List<AppSession> sessions,
+}) async {
+  final store = HomeWorkspaceProjectLaunchPrefsStore();
+  final pref = await store.prefsFor(project.projectId);
+  if (!context.mounted) return;
+
+  if (pref != null && pref.remember) {
+    final id = LaunchIdentity.decode(pref.lastIdentity);
+    if (id != null) {
+      context.go('/home-v2/project/${project.projectId}?as=${id.encode()}');
+      return;
+    }
+  }
+
+  final teams = context.read<TeamCubit>().state.teams;
+  final orderedIds = orderTeamIdsByRecentUse(
+    projectId: project.projectId,
+    teamIds: teams.map((t) => t.id).toList(),
+    sessions: sessions,
+  );
+  final byId = {for (final t in teams) t.id: t};
+  final options = [
+    for (final id in orderedIds)
+      if (byId[id] != null)
+        LaunchProjectTeamOption(id: id, name: byId[id]!.name),
+  ];
+  final choice = await showHomeWorkspaceLaunchProjectDialog(
+    context,
+    projectName: project.effectiveDisplay,
+    teams: options,
+    preselected: LaunchIdentity.decode(pref?.lastIdentity ?? ''),
+  );
+  if (choice == null || !context.mounted) return;
+  await store.save(
+    project.projectId,
+    ProjectLaunchPref(
+      lastIdentity: choice.identity.encode(),
+      remember: choice.remember,
+    ),
+  );
+  if (!context.mounted) return;
+  context.go('/home-v2/project/${project.projectId}?as=${choice.identity.encode()}');
+}
 
 class HomeWorkspaceProjectsTab extends StatelessWidget {
   const HomeWorkspaceProjectsTab({super.key, 
@@ -28,7 +81,6 @@ class HomeWorkspaceProjectsTab extends StatelessWidget {
     required this.onProjectSortChanged,
     required this.favoriteProjectIds,
     required this.onToggleProjectFavorite,
-    this.personalScope = false,
   });
 
   final List<AppProject> projects;
@@ -39,7 +91,6 @@ class HomeWorkspaceProjectsTab extends StatelessWidget {
   final ValueChanged<HomeWorkspaceProjectSort> onProjectSortChanged;
   final Set<String> favoriteProjectIds;
   final Future<void> Function(String projectId) onToggleProjectFavorite;
-  final bool personalScope;
 
   @override
   Widget build(BuildContext context) {
@@ -51,7 +102,6 @@ class HomeWorkspaceProjectsTab extends StatelessWidget {
           onToggleView: onToggleView,
           projectSort: projectSort,
           onProjectSortChanged: onProjectSortChanged,
-          personalScope: personalScope,
         ),
         const SizedBox(height: 16),
         Expanded(
@@ -77,14 +127,12 @@ class HomeWorkspaceProjectsToolbar extends StatelessWidget {
     required this.onToggleView,
     required this.projectSort,
     required this.onProjectSortChanged,
-    this.personalScope = false,
   });
 
   final bool gridView;
   final ValueChanged<bool> onToggleView;
   final HomeWorkspaceProjectSort projectSort;
   final ValueChanged<HomeWorkspaceProjectSort> onProjectSortChanged;
-  final bool personalScope;
 
   @override
   Widget build(BuildContext context) {
@@ -118,10 +166,6 @@ class HomeWorkspaceProjectsToolbar extends StatelessWidget {
                       context,
                       chatCubit: context.read<ChatCubit>(),
                       repository: context.read<SessionRepository>(),
-                      teamCubit: personalScope
-                          ? null
-                          : context.read<TeamCubit>(),
-                      sessionTeamId: personalScope ? '' : null,
                     ),
                   ),
                 ],
@@ -401,6 +445,7 @@ class _HomeWorkspaceProjectCollectionState
         sessionCounts: display.sessionCounts,
         favoriteProjectIds: widget.favoriteProjectIds,
         onToggleProjectFavorite: widget.onToggleProjectFavorite,
+        sessions: widget.sessions,
       );
     }
 
@@ -409,6 +454,7 @@ class _HomeWorkspaceProjectCollectionState
       sessionCounts: display.sessionCounts,
       favoriteProjectIds: widget.favoriteProjectIds,
       onToggleProjectFavorite: widget.onToggleProjectFavorite,
+      sessions: widget.sessions,
     );
   }
 }
@@ -419,12 +465,14 @@ class HomeWorkspaceProjectGrid extends StatelessWidget {
     required this.sessionCounts,
     required this.favoriteProjectIds,
     required this.onToggleProjectFavorite,
+    required this.sessions,
   });
 
   final List<AppProject> projects;
   final Map<String, int> sessionCounts;
   final Set<String> favoriteProjectIds;
   final Future<void> Function(String projectId) onToggleProjectFavorite;
+  final List<AppSession> sessions;
 
   @override
   Widget build(BuildContext context) {
@@ -445,7 +493,13 @@ class HomeWorkspaceProjectGrid extends StatelessWidget {
           sessionCount: count,
           favorited: favoriteProjectIds.contains(project.projectId),
           onToggleFavorite: () => onToggleProjectFavorite(project.projectId),
-          onTap: () => context.go('/home-v2/project/${project.projectId}'),
+          onTap: () => unawaited(
+            openHomeWorkspaceProject(
+              context,
+              project,
+              sessions: sessions,
+            ),
+          ),
         );
       },
     );
@@ -458,12 +512,14 @@ class HomeWorkspaceProjectList extends StatelessWidget {
     required this.sessionCounts,
     required this.favoriteProjectIds,
     required this.onToggleProjectFavorite,
+    required this.sessions,
   });
 
   final List<AppProject> projects;
   final Map<String, int> sessionCounts;
   final Set<String> favoriteProjectIds;
   final Future<void> Function(String projectId) onToggleProjectFavorite;
+  final List<AppSession> sessions;
 
   @override
   Widget build(BuildContext context) {
@@ -479,7 +535,13 @@ class HomeWorkspaceProjectList extends StatelessWidget {
           sessionCount: count,
           favorited: favoriteProjectIds.contains(project.projectId),
           onToggleFavorite: () => onToggleProjectFavorite(project.projectId),
-          onTap: () => context.go('/home-v2/project/${project.projectId}'),
+          onTap: () => unawaited(
+            openHomeWorkspaceProject(
+              context,
+              project,
+              sessions: sessions,
+            ),
+          ),
         );
       },
     );

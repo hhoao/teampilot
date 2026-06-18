@@ -28,7 +28,12 @@ void main() {
     const member = TeamMemberConfig(id: 'm1', name: 'Member', model: 'test');
     const team = TeamConfig(id: 'team-a', name: 'agent', cli: CliTool.claude);
 
-    final scope = resolveLaunchProfileScope(projectId: 'project-1', teamId: 'team-a', appSessionId: 'session-1', cliTeamName: 'session-1');
+    final scope = resolveLaunchProfileScope(
+      projectId: 'project-1',
+      teamId: 'team-a',
+      appSessionId: 'session-1',
+      cliTeamName: 'session-1',
+    );
 
     final contribution = await capability.contributeLaunch(
       ConfigProfileLaunchContext(

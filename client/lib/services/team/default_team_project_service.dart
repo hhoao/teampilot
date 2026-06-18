@@ -30,7 +30,6 @@ abstract final class DefaultTeamProjectService {
     await Directory(primaryPath).create(recursive: true);
     final project = await repository.createProject(
       primaryPath,
-      teamId: team.id,
       display: team.name,
     );
     await repository.createSession(

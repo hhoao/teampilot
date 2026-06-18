@@ -232,6 +232,7 @@
   "homeWorkspaceMyFavorites": "My favorites",
   "homeWorkspaceRecentVisits": "Recent",
   "homeWorkspacePersonal": "Simple mode",
+  "homeWorkspaceAllProjects": "All projects",
   "homeWorkspaceProjectTabKindPersonal": "Personal",
   "@homeWorkspaceProjectTabKindPersonal": {
     "description": "Short personal-project label in title-bar tab tooltips."
@@ -1764,5 +1765,8 @@
     }
   },
   "toolchainGit": "Git",
-  "toolchainNode": "Node.js"
+  "toolchainNode": "Node.js",
+  "homeWorkspaceLaunchProjectTitle": "Open with…",
+  "homeWorkspaceSimpleMode": "Simple mode",
+  "homeWorkspaceRememberLaunchChoice": "Remember my choice"
 }

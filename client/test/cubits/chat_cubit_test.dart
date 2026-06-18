@@ -139,7 +139,6 @@ void main() {
           AppProject(
             projectId: pA,
             primaryPath: '/a',
-            teamId: 'tid-1',
             createdAt: 1,
             updatedAt: 1,
             sessionIds: ['s1', 's2'],
@@ -147,7 +146,6 @@ void main() {
           AppProject(
             projectId: pB,
             primaryPath: '/b',
-            teamId: 'tid-1',
             createdAt: 1,
             updatedAt: 1,
             sessionIds: ['s3'],
@@ -197,14 +195,13 @@ void main() {
       });
     });
 
-    test('scope on with no selected team yields empty visible lists', () {
+    test('scope on with no selected team shows personal sessions only', () {
       const pid = 'p1';
       cubit.ingestProjectSessionSnapshot(
         projects: const [
           AppProject(
             projectId: pid,
             primaryPath: '/a',
-            teamId: 'tid',
             createdAt: 1,
             updatedAt: 1,
             sessionIds: ['s1'],
@@ -226,7 +223,9 @@ void main() {
         selectedTeamId: null,
       );
       expect(cubit.state.visibleSessions, isEmpty);
-      expect(cubit.state.visibleProjects, isEmpty);
+      expect(cubit.state.visibleProjects.map((e) => e.projectId).toList(), [
+        pid,
+      ]);
     });
 
     test('changing scope or team id updates visible lists', () {
@@ -366,7 +365,7 @@ void main() {
         final tmp = await Directory.systemTemp.createTemp('chat_cubit_');
         addTearDown(() => tmp.deleteSync(recursive: true));
         final repo = SessionRepository(rootDir: tmp.path);
-        final project = await repo.createProject('/tmp', teamId: '');
+        final project = await repo.createProject('/tmp');
         final session = await repo.createSession(
           project.projectId,
           sessionTeam: team.id,
@@ -417,8 +416,8 @@ void main() {
         );
         final tmp = await Directory.systemTemp.createTemp('chat_cubit_close_');
         final repo = SessionRepository(rootDir: tmp.path);
-        final projectA = await repo.createProject('/a', teamId: 'team-a');
-        final projectB = await repo.createProject('/b', teamId: 'team-a');
+        final projectA = await repo.createProject('/a');
+        final projectB = await repo.createProject('/b');
         final sessionA = await repo.createSession(
           projectA.projectId,
           sessionTeam: team.id,
@@ -517,7 +516,7 @@ void main() {
         final tmp = await Directory.systemTemp.createTemp('chat_cubit_mixed_cli_');
         addTearDown(() => tmp.deleteSync(recursive: true));
         final repo = SessionRepository(rootDir: tmp.path);
-        final project = await repo.createProject('/tmp', teamId: '');
+        final project = await repo.createProject('/tmp');
         final session = await repo.createSession(
           project.projectId,
           sessionTeam: team.id,
@@ -570,7 +569,7 @@ void main() {
           'chat_cubit_mixed_lead_connect_',
         );
         final repo = SessionRepository(rootDir: tmp.path);
-        final project = await repo.createProject('/tmp', teamId: '');
+        final project = await repo.createProject('/tmp');
         final session = await repo.createSession(
           project.projectId,
           sessionTeam: team.id,
@@ -623,7 +622,7 @@ void main() {
         );
         final tmp = await Directory.systemTemp.createTemp('chat_cubit_mixed_');
         final repo = SessionRepository(rootDir: tmp.path);
-        final project = await repo.createProject('/tmp', teamId: '');
+        final project = await repo.createProject('/tmp');
         final session = await repo.createSession(
           project.projectId,
           sessionTeam: team.id,
@@ -681,7 +680,7 @@ void main() {
             TeamMemberConfig(id: 'm-dev', name: 'developer'),
           ],
         );
-        final project = await repo.createProject('/tmp', teamId: '');
+        final project = await repo.createProject('/tmp');
         final session = await repo.createSession(
           project.projectId,
           sessionTeam: team.id,
@@ -740,7 +739,6 @@ void main() {
         const workspacePath = '/tmp/default-team-workspace';
         final project = await repo.createProject(
           workspacePath,
-          teamId: team.id,
           display: 'Default Team',
         );
         await repo.createSession(

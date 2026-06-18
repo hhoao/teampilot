@@ -1,4 +1,5 @@
 ﻿import 'dart:async';
+import 'dart:io' show Platform;
 
 import 'package:flutter/material.dart';
 import 'package:flutter_alacritty/flutter_alacritty.dart';
@@ -44,22 +45,32 @@ class _UiWarmupState extends State<UiWarmup> {
 
   Future<void> _runWarmup() async {
     if (!mounted) return;
-    // Load the non-Regular Noto Sans SC weights (each ~10MB, lazy-loaded by
-    // GoogleFonts) now, after first paint but before the user can click a
-    // project tab — otherwise the first title/button/label using w500–w800
-    // pays a synchronous 10MB font parse on the UI thread (~100ms jank).
-    try {
-      await GoogleFonts.pendingFonts([
-        GoogleFonts.notoSansSc(fontWeight: FontWeight.w500),
-        GoogleFonts.notoSansSc(fontWeight: FontWeight.w600),
-        GoogleFonts.notoSansSc(fontWeight: FontWeight.w700),
-        GoogleFonts.notoSansSc(fontWeight: FontWeight.w800),
-      ]);
-    } on Object {
-      // Missing bundled weights: see tool/sync_bundled_google_fonts.dart.
+    // Widget tests stub HTTP and often lack bundled Noto weights; skip font IO.
+    final inTest = () {
+      try {
+        return Platform.environment.containsKey('FLUTTER_TEST');
+      } on Object {
+        return false;
+      }
+    }();
+    if (!inTest) {
+      try {
+        await GoogleFonts.pendingFonts([
+          GoogleFonts.notoSansSc(fontWeight: FontWeight.w500),
+          GoogleFonts.notoSansSc(fontWeight: FontWeight.w600),
+          GoogleFonts.notoSansSc(fontWeight: FontWeight.w700),
+          GoogleFonts.notoSansSc(fontWeight: FontWeight.w800),
+        ]);
+      } on Object {
+        // Missing bundled weights: see tool/sync_bundled_google_fonts.dart.
+      }
+      if (!mounted) return;
+      try {
+        _warmGlyphs();
+      } on Object {
+        // Font assets may be absent in dev trees without sync.
+      }
     }
-    if (!mounted) return;
-    _warmGlyphs();
     setState(() => _stage = 1);
     await WidgetsBinding.instance.endOfFrame;
     if (!mounted) return;

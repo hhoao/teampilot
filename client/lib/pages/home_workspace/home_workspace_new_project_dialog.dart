@@ -1,31 +1,25 @@
 ﻿import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
-import 'package:teampilot/theme/app_icon_sizes.dart';
 
 import '../../cubits/chat_cubit.dart';
-import '../../cubits/team_cubit.dart';
-import '../../models/team_config.dart';
-import '../../l10n/l10n_extensions.dart';
 import '../../repositories/project_profile_repository.dart';
 import '../../repositories/session_repository.dart';
 import '../../theme/app_text_styles.dart';
 import '../../widgets/app_dialog.dart';
 import '../../utils/project_path_picker.dart';
 import '../../utils/project_path_utils.dart';
+import '../../l10n/l10n_extensions.dart';
+import 'package:teampilot/theme/app_icon_sizes.dart';
 
 /// Large centered "create project" modal launched from the workspace projects
 /// toolbar. A project is one or more working directories plus an optional
 /// display name: the first folder is the primary path and the rest become
-/// additional directories. The modal pairs a multi-folder picker with a name
-/// field, then registers the project (with a first session for the selected
-/// team) on create.
+/// additional directories.
 Future<void> showHomeWorkspaceNewProjectDialog(
   BuildContext context, {
   required ChatCubit chatCubit,
   required SessionRepository repository,
-  TeamCubit? teamCubit,
-  String? sessionTeamId,
   ProjectProfileRepository? projectProfileRepository,
 }) async {
   final result = await showDialog<({List<String> directories, String display})>(
@@ -34,29 +28,17 @@ Future<void> showHomeWorkspaceNewProjectDialog(
   );
   if (result == null || !context.mounted || result.directories.isEmpty) return;
 
-  final resolvedTeamId =
-      sessionTeamId ?? teamCubit?.state.selectedTeam?.id ?? '';
-  final rosterMembers = resolvedTeamId.isEmpty
-      ? const <TeamMemberConfig>[]
-      : teamCubit?.state.selectedTeam?.members ?? const [];
-
-  final profileRepo =
-      projectProfileRepository ??
-      (resolvedTeamId.isEmpty
-          ? context.read<ProjectProfileRepository>()
-          : null);
-
   final projectId = await chatCubit.createProjectWithFirstSession(
     result.directories.first,
     repository,
-    sessionTeamId: resolvedTeamId,
-    rosterMembers: rosterMembers,
+    sessionTeamId: '',
     additionalPaths: result.directories.skip(1).toList(growable: false),
     display: result.display,
-    projectProfileRepository: profileRepo,
+    projectProfileRepository:
+        projectProfileRepository ?? context.read<ProjectProfileRepository>(),
   );
   if (!context.mounted) return;
-  context.go('/home-v2/project/$projectId');
+  context.go('/home-v2/project/$projectId?as=personal');
 }
 
 class HomeWorkspaceNewProjectDialog extends StatefulWidget {

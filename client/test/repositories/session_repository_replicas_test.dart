@@ -11,7 +11,7 @@ void main() {
     addTearDown(() => tmp.deleteSync(recursive: true));
 
     final repo = SessionRepository(rootDir: tmp.path);
-    final project = await repo.createProject('/replicas', teamId: '');
+    final project = await repo.createProject('/replicas');
     final projectId = project.projectId;
 
     final session = await repo.createSession(

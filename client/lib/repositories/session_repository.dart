@@ -115,26 +115,8 @@ class SessionRepository {
     return true;
   }
 
-  Future<AppProject> ensureDefaultPersonalProject(String primaryPath) async {
-    final fs = await _fs();
-    final existing = await _readManifest(fs, AppProject.defaultPersonalId);
-    if (existing != null) {
-      return existing;
-    }
-    final now = DateTime.now().millisecondsSinceEpoch;
-    final project = AppProject(
-      projectId: AppProject.defaultPersonalId,
-      primaryPath: normalizeProjectPath(primaryPath),
-      createdAt: now,
-      updatedAt: now,
-    );
-    await _writeManifest(fs, project);
-    return project;
-  }
-
   Future<AppProject> createProject(
     String primaryPath, {
-    required String teamId,
     List<String> additionalPaths = const [],
     String display = '',
   }) async {
@@ -143,8 +125,7 @@ class SessionRepository {
     final now = DateTime.now().millisecondsSinceEpoch;
     final projects = await loadProjects();
     for (final existing in projects) {
-      if (existing.teamId != teamId ||
-          !projectPathsEqual(existing.primaryPath, trimmed)) {
+      if (!projectPathsEqual(existing.primaryPath, trimmed)) {
         continue;
       }
       final newAdd = additionalPaths
@@ -174,7 +155,6 @@ class SessionRepository {
     final project = AppProject(
       projectId: const Uuid().v4(),
       primaryPath: trimmed,
-      teamId: teamId,
       additionalPaths: List<String>.from(
         additionalPaths.map(normalizeProjectPath).where((e) => e.isNotEmpty),
       ),
@@ -633,7 +613,6 @@ class SessionRepository {
     final newProject = AppProject(
       projectId: newProjectId,
       primaryPath: source.primaryPath,
-      teamId: source.teamId,
       additionalPaths: List<String>.from(source.additionalPaths),
       display: (display ?? source.display).trim(),
       icon: source.icon,
@@ -704,7 +683,6 @@ class SessionRepository {
   }
 
   Future<void> deleteProject(String projectId) async {
-    if (projectId == AppProject.defaultPersonalId) return;
     final fs = await _fs();
     final project = await _readManifest(fs, projectId);
     if (project == null) return;

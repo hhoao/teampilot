@@ -9,6 +9,7 @@ import '../../../cubits/project_profile_cubit.dart';
 import '../../../cubits/team_cubit.dart';
 import '../../../l10n/l10n_extensions.dart';
 import '../../../models/app_project.dart';
+import '../../../models/launch_identity.dart';
 import '../../../theme/workspace_surface_layers.dart';
 import 'home_workspace_project_config_workspace.dart';
 import 'home_workspace_project_rail.dart';
@@ -25,12 +26,17 @@ import 'project_config_section.dart';
 class HomeWorkspaceProjectPage extends StatefulWidget {
   const HomeWorkspaceProjectPage({
     required this.projectId,
+    this.identity,
     this.view,
     this.configSection,
     super.key,
   });
 
   final String projectId;
+
+  /// Launch identity from `?as=`. Null means "no identity chosen" → the page
+  /// redirects to the project grid.
+  final LaunchIdentity? identity;
 
   /// `manage` opens [HomeWorkspaceProjectConfigWorkspace] (personal projects).
   final String? view;
@@ -62,7 +68,8 @@ class _HomeWorkspaceProjectPageState extends State<HomeWorkspaceProjectPage> {
   @override
   void didUpdateWidget(covariant HomeWorkspaceProjectPage oldWidget) {
     super.didUpdateWidget(oldWidget);
-    if (oldWidget.projectId != widget.projectId) {
+    if (oldWidget.projectId != widget.projectId ||
+        oldWidget.identity != widget.identity) {
       context.read<ChatCubit>().setActiveProject(widget.projectId);
       WidgetsBinding.instance.addPostFrameCallback(
         (_) => _syncProjectContext(),
@@ -83,16 +90,18 @@ class _HomeWorkspaceProjectPageState extends State<HomeWorkspaceProjectPage> {
 
   void _syncProjectContext() {
     if (!mounted) return;
+    final identity = widget.identity;
+    if (identity == null) return;
     final project = _findProject(
       context.read<ChatCubit>().state.projects,
       widget.projectId,
     );
     if (project == null) return;
-    if (project.teamId.isEmpty) {
+    if (identity.isPersonal) {
       _loadPersonalProfile(project.projectId);
       return;
     }
-    _syncSelectedTeam(project.teamId);
+    _syncSelectedTeam(identity.teamId);
   }
 
   void _loadPersonalProfile(String projectId) {
@@ -114,12 +123,12 @@ class _HomeWorkspaceProjectPageState extends State<HomeWorkspaceProjectPage> {
         _visitedManage = true;
       }
     });
-    if (project.teamId.isNotEmpty) return;
+    if (widget.identity?.isPersonal != true) return;
 
-    final base = '/home-v2/project/${project.projectId}';
+    final base = '/home-v2/project/${project.projectId}?as=personal';
     final path = switch (section) {
       HomeWorkspaceProjectSection.conversations => base,
-      HomeWorkspaceProjectSection.manage => '$base?view=manage',
+      HomeWorkspaceProjectSection.manage => '$base&view=manage',
       _ => base,
     };
     if (GoRouterState.of(context).uri.toString() != path) {
@@ -142,10 +151,22 @@ class _HomeWorkspaceProjectPageState extends State<HomeWorkspaceProjectPage> {
       );
     }
 
-    final isPersonal = project.teamId.isEmpty;
+    final identity = widget.identity;
+    if (identity == null) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (mounted) context.go('/home-v2?projects=1');
+      });
+      return WorkspacePageCardShell(
+        chrome: WorkspacePageChrome.project,
+        child: const SizedBox.shrink(),
+      );
+    }
+
+    final isPersonal = identity.isPersonal;
+    final sessionTeamFilter = identity.teamId;
     final cardBody = isPersonal
-        ? _buildPersonalCardBody(project)
-        : _buildTeamCardBody(project);
+        ? _buildPersonalCardBody(project, sessionTeamFilter: sessionTeamFilter)
+        : _buildTeamCardBody(project, sessionTeamFilter: sessionTeamFilter);
 
     return _buildProjectPageWithRail(
       project: project,
@@ -179,7 +200,10 @@ class _HomeWorkspaceProjectPageState extends State<HomeWorkspaceProjectPage> {
     );
   }
 
-  Widget _buildPersonalCardBody(AppProject project) {
+  Widget _buildPersonalCardBody(
+    AppProject project, {
+    required String sessionTeamFilter,
+  }) {
     final showManage = _section == HomeWorkspaceProjectSection.manage;
     return IndexedStack(
       index: showManage ? 1 : 0,
@@ -189,11 +213,13 @@ class _HomeWorkspaceProjectPageState extends State<HomeWorkspaceProjectPage> {
           key: ValueKey('personal-conversations-${project.projectId}'),
           project: project,
           isPersonalProject: true,
+          sessionTeamFilter: sessionTeamFilter,
         ),
         if (_visitedManage)
           HomeWorkspaceProjectConfigWorkspace(
             project: project,
             section: _configSection,
+            isPersonalProject: true,
           )
         else
           const SizedBox.shrink(),
@@ -201,11 +227,15 @@ class _HomeWorkspaceProjectPageState extends State<HomeWorkspaceProjectPage> {
     );
   }
 
-  Widget _buildTeamCardBody(AppProject project) {
+  Widget _buildTeamCardBody(
+    AppProject project, {
+    required String sessionTeamFilter,
+  }) {
     if (_section == HomeWorkspaceProjectSection.conversations) {
       return HomeWorkspaceProjectSplitPane(
         project: project,
         isPersonalProject: false,
+        sessionTeamFilter: sessionTeamFilter,
       );
     }
 

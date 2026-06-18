@@ -9,8 +9,10 @@ import '../../cubits/layout_cubit.dart';
 import '../../cubits/session_preferences_cubit.dart';
 import '../../cubits/team_cubit.dart';
 import '../../cubits/workspace_tools_cubit.dart';
+import '../../l10n/app_localizations.dart';
 import '../../l10n/l10n_extensions.dart';
 import '../../models/app_project.dart';
+import '../../models/launch_identity.dart';
 import '../../utils/project_display_name.dart';
 import '../../models/team_config.dart';
 import '../../models/home_closed_project_entry.dart';
@@ -33,7 +35,7 @@ class HomeWorkspaceShell extends StatefulWidget {
     super.key,
   });
 
-  /// Current router location (e.g. `/home-v2` or `/home-v2/project/<id>`).
+  /// Current router location (path + query), e.g. `/home-v2/project/<id>?as=personal`.
   final String location;
   final Widget child;
 
@@ -44,15 +46,17 @@ class HomeWorkspaceShell extends StatefulWidget {
   static String formatProjectTabTooltip({
     required AppProject project,
     required String personalKindLabel,
+    required bool isPersonal,
     String? teamName,
+    String? teamId,
     String? displayName,
   }) {
     final name = displayName ?? project.effectiveDisplay;
-    final prefix = project.teamId.isEmpty
+    final prefix = isPersonal
         ? personalKindLabel
         : ((teamName != null && teamName.isNotEmpty)
               ? teamName
-              : project.teamId);
+              : teamId ?? '');
     final headline = '$prefix · $name';
     final path = project.primaryPath.trim();
     if (path.isEmpty || path == name) return headline;
@@ -73,10 +77,10 @@ class _HomeWorkspaceShellState extends State<HomeWorkspaceShell> {
   final _closedProjectsStore = HomeWorkspaceClosedProjectsStore();
   final _openProjectsStore = HomeWorkspaceOpenProjectsStore();
 
-  /// Open project ids in tab order; persisted across app restarts. The built-in
-  /// personal project is always pinned first and cannot be closed.
-  List<String> _openIds = const [AppProject.defaultPersonalId];
+  /// Open project ids in tab order; persisted across app restarts.
+  List<String> _openIds = const [];
   List<HomeClosedProjectEntry> _recentlyClosed = const [];
+  final Map<String, LaunchIdentity> _identityByProjectId = {};
 
   @override
   void initState() {
@@ -90,6 +94,10 @@ class _HomeWorkspaceShellState extends State<HomeWorkspaceShell> {
 
   Future<void> _bootstrapOpenTabs() async {
     final initialProjectId = _projectIdFromLocation(widget.location);
+    final initialIdentity = _identityFromLocation(widget.location);
+    if (initialProjectId != null && initialIdentity != null) {
+      _identityByProjectId[initialProjectId] = initialIdentity;
+    }
     final persisted = await _openProjectsStore.loadOrderedIds();
     if (!mounted) return;
     setState(
@@ -113,7 +121,7 @@ class _HomeWorkspaceShellState extends State<HomeWorkspaceShell> {
     required List<String> persisted,
     required String? routeProjectId,
   }) {
-    final merged = <String>[AppProject.defaultPersonalId];
+    final merged = <String>[];
     void add(String raw) {
       final id = raw.trim();
       if (id.isEmpty || merged.contains(id)) return;
@@ -121,7 +129,7 @@ class _HomeWorkspaceShellState extends State<HomeWorkspaceShell> {
     }
 
     for (final id in persisted) {
-      if (id != AppProject.defaultPersonalId) add(id);
+      add(id);
     }
     if (routeProjectId != null) add(routeProjectId);
     return merged;
@@ -148,7 +156,11 @@ class _HomeWorkspaceShellState extends State<HomeWorkspaceShell> {
     super.didUpdateWidget(oldWidget);
     if (oldWidget.location != widget.location) {
       final id = _projectIdFromLocation(widget.location);
+      final identity = _identityFromLocation(widget.location);
       if (id != null) {
+        if (identity != null) {
+          _identityByProjectId[id] = identity;
+        }
         if (!_openIds.contains(id)) {
           setState(() => _openIds = [..._openIds, id]);
           unawaited(_persistOpenIds());
@@ -164,7 +176,8 @@ class _HomeWorkspaceShellState extends State<HomeWorkspaceShell> {
   }
 
   static String? _projectIdFromLocation(String location) {
-    final segments = Uri.parse(location).pathSegments;
+    final uri = _parseLocationUri(location);
+    final segments = uri.pathSegments;
     if (segments.length >= 3 &&
         segments[0] == 'home-v2' &&
         segments[1] == 'project') {
@@ -173,8 +186,28 @@ class _HomeWorkspaceShellState extends State<HomeWorkspaceShell> {
     return null;
   }
 
+  static LaunchIdentity? _identityFromLocation(String location) =>
+      LaunchIdentity.decode(_parseLocationUri(location).queryParameters['as']);
+
+  static Uri _parseLocationUri(String location) {
+    if (location.startsWith('http://') || location.startsWith('https://')) {
+      return Uri.parse(location);
+    }
+    return Uri.parse('http://local$location');
+  }
+
+  LaunchIdentity _identityForProject(String projectId) {
+    final fromRoute = _projectIdFromLocation(widget.location) == projectId
+        ? _identityFromLocation(widget.location)
+        : null;
+    return fromRoute ?? _identityByProjectId[projectId] ?? LaunchIdentity.personal;
+  }
+
+  String _projectRoute(String projectId, LaunchIdentity identity) =>
+      '/home-v2/project/$projectId?as=${identity.encode()}';
+
   void _selectTab(String id) {
-    context.go('/home-v2/project/$id');
+    context.go(_projectRoute(id, _identityForProject(id)));
   }
 
   void _goHome() => context.go('/home-v2');
@@ -198,8 +231,6 @@ class _HomeWorkspaceShellState extends State<HomeWorkspaceShell> {
   }
 
   Future<void> _closeTab(String id) async {
-    // The pinned personal project is permanent — never closes.
-    if (id == AppProject.defaultPersonalId) return;
     if (!_openIds.contains(id)) return;
     final projects = context.read<ChatCubit>().state.projects;
     final project = _resolve(projects, id);
@@ -240,9 +271,6 @@ class _HomeWorkspaceShellState extends State<HomeWorkspaceShell> {
       chat.closeTabsForProject(id);
     }
     if (wasActive) {
-      // Fall back to the nearest still-resolvable tab. The pinned personal id
-      // can be a phantom (SSH/Android, where it is not seeded), so skip ids that
-      // resolve to no project and land on Home instead of an empty page.
       final candidates = [
         for (final e in next)
           if (_resolve(projects, e) != null) e,
@@ -254,6 +282,7 @@ class _HomeWorkspaceShellState extends State<HomeWorkspaceShell> {
         _selectTab(candidates[target]);
       }
     }
+    _identityByProjectId.remove(id);
   }
 
   Future<bool?> _confirmCloseWithSessions(int running) {
@@ -297,12 +326,11 @@ class _HomeWorkspaceShellState extends State<HomeWorkspaceShell> {
         .preferences
         .scopeSessionsToSelectedTeam;
     final selectedTeam = context.read<TeamCubit>().state.selectedTeam;
-    final projects = context.read<ChatCubit>().state.projects;
     final activeId = _projectIdFromLocation(widget.location);
-    final activeProject =
-        activeId != null ? _resolve(projects, activeId) : null;
-    final scopeTeamId = activeProject != null
-        ? (activeProject.teamId.isNotEmpty ? activeProject.teamId : '')
+    final activeIdentity =
+        activeId != null ? _identityForProject(activeId) : null;
+    final scopeTeamId = activeIdentity != null
+        ? activeIdentity.teamId
         : selectedTeam?.id;
     context.read<ChatCubit>().setTeamSessionScope(
       scopeSessionsToSelectedTeam: scopeOn,
@@ -331,19 +359,11 @@ class _HomeWorkspaceShellState extends State<HomeWorkspaceShell> {
     final tabs = <HomeProjectTab>[
       for (final id in _openIds)
         if (_resolve(projects, id) case final p?)
-          HomeProjectTab(
+          _projectTab(
             id: id,
-            name: p.localizedName(l10n),
-            kind: p.teamId.isEmpty
-                ? HomeProjectTabKind.personal
-                : HomeProjectTabKind.team,
-            tooltip: HomeWorkspaceShell.formatProjectTabTooltip(
-              project: p,
-              personalKindLabel: l10n.homeWorkspaceProjectTabKindPersonal,
-              teamName: HomeWorkspaceShell.teamNameFor(teams, p.teamId),
-              displayName: p.localizedName(l10n),
-            ),
-            closable: !p.isDefaultPersonal,
+            project: p,
+            l10n: l10n,
+            teams: teams,
           ),
     ];
 
@@ -385,6 +405,31 @@ class _HomeWorkspaceShellState extends State<HomeWorkspaceShell> {
           ),
         ),
       ),
+    );
+  }
+
+  HomeProjectTab _projectTab({
+    required String id,
+    required AppProject project,
+    required AppLocalizations l10n,
+    required List<TeamConfig> teams,
+  }) {
+    final identity = _identityForProject(id);
+    final isPersonal = identity.isPersonal;
+    final teamId = identity.teamId;
+    return HomeProjectTab(
+      id: id,
+      name: project.localizedName(l10n),
+      kind: isPersonal ? HomeProjectTabKind.personal : HomeProjectTabKind.team,
+      tooltip: HomeWorkspaceShell.formatProjectTabTooltip(
+        project: project,
+        personalKindLabel: l10n.homeWorkspaceProjectTabKindPersonal,
+        isPersonal: isPersonal,
+        teamName: HomeWorkspaceShell.teamNameFor(teams, teamId),
+        teamId: teamId,
+        displayName: project.localizedName(l10n),
+      ),
+      closable: true,
     );
   }
 

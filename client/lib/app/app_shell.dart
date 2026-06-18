@@ -616,14 +616,6 @@ Future<AppShell> buildAppShell({
       await reinstallStorageContext();
       storageRoots.invalidate();
     }
-    // Seed the built-in personal project (Documents/TeamPilot) before loading
-    // project data so it shows on first frame. Native only — Documents has no
-    // meaning on remote/SSH backends.
-    if (!connectionModeService.isSshMode) {
-      await sessionRepo.ensureDefaultPersonalProject(
-        await DefaultProjectDirectory.resolveDefaultProjectPath(),
-      );
-    }
     await reloadRemoteBackedAppData(
       storageRoots: storageRoots,
       llmConfigCubit: llmConfigCubit,

@@ -1,3 +1,5 @@
+import 'package:flutter/foundation.dart';
+
 import '../../models/app_project.dart';
 import '../../models/app_session.dart';
 import '../../models/cli_preset.dart';
@@ -456,9 +458,12 @@ class SessionLifecycleService {
   }
 
   bool _isPersonalLaunch(AppProject? project, AppSession session) =>
-      project != null &&
-      project.teamId.isEmpty &&
-      session.sessionTeam.trim().isEmpty;
+      project != null && session.sessionTeam.trim().isEmpty;
+
+  /// Test-only seam for [_isPersonalLaunch].
+  @visibleForTesting
+  bool debugIsPersonalLaunch(AppProject project, AppSession session) =>
+      _isPersonalLaunch(project, session);
 
   String _resolveSessionTeam(
     AppSession session,

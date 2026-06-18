@@ -10,11 +10,15 @@ class HomeWorkspaceProjectSplitPane extends StatefulWidget {
   const HomeWorkspaceProjectSplitPane({
     required this.project,
     required this.isPersonalProject,
+    required this.sessionTeamFilter,
     super.key,
   });
 
   final AppProject project;
   final bool isPersonalProject;
+
+  /// Empty for personal mode; team id when opened as a team.
+  final String sessionTeamFilter;
 
   @override
   State<HomeWorkspaceProjectSplitPane> createState() =>
@@ -38,11 +42,16 @@ class _HomeWorkspaceProjectSplitPaneState
             (_sidebarWidth ?? HomeWorkspaceProjectSidebarLayout.defaultWidth)
                 .clamp(minSidebar, maxSidebar);
         return ResizableSplitView(
-          first: HomeWorkspaceProjectSidebar(project: widget.project),
+          first: HomeWorkspaceProjectSidebar(
+            project: widget.project,
+            isPersonalProject: widget.isPersonalProject,
+            sessionTeamFilter: widget.sessionTeamFilter,
+          ),
           second: ChatPage(
             cwd: widget.project.primaryPath,
             projectId: widget.project.projectId,
             isPersonalProject: widget.isPersonalProject,
+            sessionTeamFilter: widget.sessionTeamFilter,
           ),
           initialPrimarySize: initialSidebar,
           minPrimarySize: minSidebar,

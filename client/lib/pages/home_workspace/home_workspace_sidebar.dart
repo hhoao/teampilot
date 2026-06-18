@@ -20,8 +20,8 @@ class HomeWorkspaceSidebar extends StatefulWidget {
   const HomeWorkspaceSidebar({
     this.activeGlobalView,
     this.activeLibraryView,
-    this.personalActive = false,
-    this.onSelectPersonal,
+    this.allProjectsActive = false,
+    this.onSelectAllProjects,
     this.onSelectGlobalView,
     this.onSelectLibraryView,
     this.onSelectTeam,
@@ -31,8 +31,8 @@ class HomeWorkspaceSidebar extends StatefulWidget {
   /// Currently shown global section, or null when a team is shown.
   final HomeWorkspaceGlobalView? activeGlobalView;
   final HomeWorkspaceLibraryView? activeLibraryView;
-  final bool personalActive;
-  final VoidCallback? onSelectPersonal;
+  final bool allProjectsActive;
+  final VoidCallback? onSelectAllProjects;
   final ValueChanged<HomeWorkspaceGlobalView>? onSelectGlobalView;
   final ValueChanged<HomeWorkspaceLibraryView>? onSelectLibraryView;
   final ValueChanged<String>? onSelectTeam;
@@ -54,12 +54,12 @@ class _HomeWorkspaceSidebarState extends State<HomeWorkspaceSidebar> {
     final teams = teamCubit.state.teams;
     final selected = teamCubit.state.selectedTeam;
     final onTeam = widget.onSelectTeam;
-    final onPersonal = widget.onSelectPersonal;
+    final onAllProjects = widget.onSelectAllProjects;
     final onGlobal = widget.onSelectGlobalView;
     final onLibrary = widget.onSelectLibraryView;
     final activeGlobalView = widget.activeGlobalView;
     final activeLibraryView = widget.activeLibraryView;
-    final personalActive = widget.personalActive;
+    final allProjectsActive = widget.allProjectsActive;
 
     return Container(
       width: HomeWorkspaceSidebar.width,
@@ -90,10 +90,10 @@ class _HomeWorkspaceSidebarState extends State<HomeWorkspaceSidebar> {
           Divider(height: 1, color: cs.outlineVariant.withValues(alpha: 0.5)),
           const SizedBox(height: 8),
           _ShortcutRow(
-            icon: Icons.person_outline_rounded,
-            label: l10n.homeWorkspacePersonal,
-            active: personalActive,
-            onTap: () => onPersonal?.call(),
+            icon: Icons.folder_copy_outlined,
+            label: l10n.homeWorkspaceAllProjects,
+            active: allProjectsActive,
+            onTap: () => onAllProjects?.call(),
           ),
           const SizedBox(height: 12),
           Divider(height: 1, color: cs.outlineVariant.withValues(alpha: 0.5)),
@@ -122,7 +122,7 @@ class _HomeWorkspaceSidebarState extends State<HomeWorkspaceSidebar> {
                           index: index,
                           team: team,
                           selected:
-                              !personalActive &&
+                              !allProjectsActive &&
                               activeGlobalView == null &&
                               activeLibraryView == null &&
                               team.id == selected?.id,

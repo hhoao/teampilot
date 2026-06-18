@@ -116,14 +116,16 @@ class SessionLaunchService implements MemberConnector {
       return;
     }
     final project = _projectById(session.projectId);
-    final isPersonal =
-        project != null &&
-        project.teamId.isEmpty &&
-        session.sessionTeam.trim().isEmpty;
+    final isPersonal = session.sessionTeam.trim().isEmpty;
     ProjectProfile? personalProfile;
     TeamMemberConfig? personalMember;
     CliPreset? personalPreset;
     if (isPersonal) {
+      if (project == null) {
+        throw StateError(
+          'openSessionTab requires project for personal sessions',
+        );
+      }
       personalProfile = _personalProfileForSession(
         session,
         await _h.lifecycle.loadProjectProfile(project.projectId),
@@ -275,7 +277,7 @@ class SessionLaunchService implements MemberConnector {
     }
 
     final primaryPath = _materializePrimaryPath(team, workspaceCwd: workspaceCwd);
-    final project = await repo.createProject(primaryPath, teamId: team.id);
+    final project = await repo.createProject(primaryPath);
     var session = _firstSessionForProject(project.projectId);
     session ??= await repo.createSession(
       project.projectId,
@@ -298,15 +300,18 @@ class SessionLaunchService implements MemberConnector {
     String? workspaceCwd,
   }) {
     if (workspaceCwd != null && workspaceCwd.trim().isNotEmpty) {
-      final project = _projectMatchingPath(workspaceCwd, teamId: team.id);
+      final project = _projectMatchingPath(workspaceCwd);
       if (project != null) {
-        final session = _firstSessionForProject(project.projectId);
+        final session = _firstSessionForProjectAndTeam(
+          project.projectId,
+          team.id,
+        );
         if (session != null) return session;
       }
     }
     for (final session in _state.sessions) {
-      final project = _projectById(session.projectId);
-      if (project?.teamId == team.id) return session;
+      if (session.sessionTeam.trim() != team.id) continue;
+      return session;
     }
     return null;
   }
@@ -318,10 +323,18 @@ class SessionLaunchService implements MemberConnector {
     return DefaultTeamProjectService.primaryPathForTeam(team.id);
   }
 
-  AppProject? _projectMatchingPath(String primaryPath, {required String teamId}) {
+  AppProject? _projectMatchingPath(String primaryPath) {
     for (final project in _state.projects) {
-      if (project.teamId != teamId) continue;
       if (projectPathsEqual(project.primaryPath, primaryPath)) return project;
+    }
+    return null;
+  }
+
+  AppSession? _firstSessionForProjectAndTeam(String projectId, String teamId) {
+    for (final session in _state.sessions) {
+      if (session.projectId != projectId) continue;
+      if (session.sessionTeam.trim() != teamId) continue;
+      return session;
     }
     return null;
   }

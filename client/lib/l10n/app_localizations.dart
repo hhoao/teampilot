@@ -1088,6 +1088,12 @@ abstract class AppLocalizations {
   /// **'Simple mode'**
   String get homeWorkspacePersonal;
 
+  /// No description provided for @homeWorkspaceAllProjects.
+  ///
+  /// In en, this message translates to:
+  /// **'All projects'**
+  String get homeWorkspaceAllProjects;
+
   /// Short personal-project label in title-bar tab tooltips.
   ///
   /// In en, this message translates to:
@@ -6889,6 +6895,24 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Node.js'**
   String get toolchainNode;
+
+  /// No description provided for @homeWorkspaceLaunchProjectTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Open with…'**
+  String get homeWorkspaceLaunchProjectTitle;
+
+  /// No description provided for @homeWorkspaceSimpleMode.
+  ///
+  /// In en, this message translates to:
+  /// **'Simple mode'**
+  String get homeWorkspaceSimpleMode;
+
+  /// No description provided for @homeWorkspaceRememberLaunchChoice.
+  ///
+  /// In en, this message translates to:
+  /// **'Remember my choice'**
+  String get homeWorkspaceRememberLaunchChoice;
 }
 
 class _AppLocalizationsDelegate

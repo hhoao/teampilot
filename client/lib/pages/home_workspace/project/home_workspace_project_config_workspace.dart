@@ -20,11 +20,13 @@ class HomeWorkspaceProjectConfigWorkspace extends StatefulWidget {
   const HomeWorkspaceProjectConfigWorkspace({
     required this.project,
     required this.section,
+    this.isPersonalProject = true,
     super.key,
   });
 
   final AppProject project;
   final ProjectConfigSection section;
+  final bool isPersonalProject;
 
   @override
   State<HomeWorkspaceProjectConfigWorkspace> createState() =>
@@ -34,18 +36,20 @@ class HomeWorkspaceProjectConfigWorkspace extends StatefulWidget {
 class _HomeWorkspaceProjectConfigWorkspaceState
     extends State<HomeWorkspaceProjectConfigWorkspace> {
   String _managePath(ProjectConfigSection section) {
-    final base = '/home-v2/project/${widget.project.projectId}';
-    final params = <String, String>{
-      'view': 'manage',
-      'section': section.routeSegment,
-    };
-    return Uri(path: base, queryParameters: params).toString();
+    return Uri(
+      path: '/home-v2/project/${widget.project.projectId}',
+      queryParameters: {
+        'as': 'personal',
+        'view': 'manage',
+        'section': section.routeSegment,
+      },
+    ).toString();
   }
 
   @override
   Widget build(BuildContext context) {
     final l10n = context.l10n;
-    final isPersonal = widget.project.teamId.isEmpty;
+    final isPersonal = widget.isPersonalProject;
     final sections = isPersonal
         ? ProjectConfigSection.personalSections
         : ProjectConfigSection.teamSections;

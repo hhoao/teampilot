@@ -27,6 +27,7 @@ class ChatPageShell extends StatelessWidget {
     required this.projectId,
     required this.team,
     this.sessionId,
+    this.sessionTeamFilter = '',
     super.key,
   });
 
@@ -35,6 +36,7 @@ class ChatPageShell extends StatelessWidget {
   final bool isPersonalProject;
   final String? projectId;
   final TeamConfig? team;
+  final String sessionTeamFilter;
 
   @override
   Widget build(BuildContext context) {

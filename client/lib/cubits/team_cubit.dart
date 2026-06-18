@@ -474,9 +474,9 @@ class TeamCubit extends Cubit<TeamState> implements TeamCubitHost {
     final selected = state.selectedTeam;
     if (selected == null) return;
     final teamId = selected.id;
-    for (final project in await _sessionRepository.loadProjects()) {
-      if (project.teamId == teamId) {
-        await _sessionRepository.deleteProject(project.projectId);
+    for (final session in await _sessionRepository.loadSessions()) {
+      if (session.sessionTeam.trim() == teamId) {
+        await _sessionRepository.deleteSession(session.sessionId);
       }
     }
     await _repository.deleteTeam(selected.name, cliStateTeamId: selected.id);

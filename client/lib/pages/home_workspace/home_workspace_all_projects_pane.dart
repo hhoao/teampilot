@@ -10,30 +10,26 @@ import '../../models/app_project.dart';
 import '../../models/app_session.dart';
 import '../../services/home_workspace/home_workspace_project_display_prefs_store.dart';
 import '../../services/home_workspace/home_workspace_project_favorites_store.dart';
-import 'home_workspace_project_sort.dart';
-import '../../theme/app_text_styles.dart';
 import '../../theme/workspace_surface_layers.dart';
+import 'home_workspace_project_sort.dart';
 import 'home_workspace_projects_tab.dart';
 
-/// Right-hand pane for the personal workspace: heading plus a project grid
-/// filtered to `teamId == ''`.
-class HomeWorkspacePersonalContent extends StatefulWidget {
-  const HomeWorkspacePersonalContent({super.key});
+/// Right-hand pane listing every project (no team filter).
+class HomeWorkspaceAllProjectsPane extends StatefulWidget {
+  const HomeWorkspaceAllProjectsPane({super.key});
 
   @override
-  State<HomeWorkspacePersonalContent> createState() =>
-      _HomeWorkspacePersonalContentState();
+  State<HomeWorkspaceAllProjectsPane> createState() =>
+      _HomeWorkspaceAllProjectsPaneState();
 }
 
-class _HomeWorkspacePersonalContentState
-    extends State<HomeWorkspacePersonalContent> {
+class _HomeWorkspaceAllProjectsPaneState
+    extends State<HomeWorkspaceAllProjectsPane> {
   final _projectFavoritesStore = HomeWorkspaceProjectFavoritesStore();
   final _displayPrefsStore = HomeWorkspaceProjectDisplayPrefsStore();
   Set<String> _favoriteProjectIds = {};
   var _gridView = true;
   var _projectSort = HomeWorkspaceProjectSort.recentlyUpdated;
-  List<AppProject>? _lastAllProjects;
-  List<AppProject>? _personalProjects;
 
   @override
   void initState() {
@@ -89,16 +85,9 @@ class _HomeWorkspacePersonalContentState
   Widget build(BuildContext context) {
     final cs = Theme.of(context).colorScheme;
     final l10n = context.l10n;
-    final styles = AppTextStyles.of(context);
-
-    final allProjects = context.select<ChatCubit, List<AppProject>>(
+    final projects = context.select<ChatCubit, List<AppProject>>(
       (c) => c.state.projects,
     );
-    final projects = identical(allProjects, _lastAllProjects)
-        ? _personalProjects!
-        : (_personalProjects =
-              allProjects.where((p) => p.teamId.isEmpty).toList());
-    _lastAllProjects = allProjects;
     final sessions = context.select<ChatCubit, List<AppSession>>(
       (c) => c.state.sessions,
     );
@@ -109,15 +98,10 @@ class _HomeWorkspacePersonalContentState
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
           Text(
-            l10n.homeWorkspacePersonal,
+            l10n.homeWorkspaceAllProjects,
             style: Theme.of(
               context,
             ).textTheme.titleLarge?.copyWith(color: cs.onSurface),
-          ),
-          const SizedBox(height: 6),
-          Text(
-            l10n.homeWorkspacePersonalSubtitle,
-            style: styles.body.copyWith(color: cs.onSurfaceVariant),
           ),
           const SizedBox(height: 16),
           Divider(height: 1, color: cs.outlineVariant.withValues(alpha: 0.5)),
@@ -132,9 +116,8 @@ class _HomeWorkspacePersonalContentState
               onProjectSortChanged: _setProjectSort,
               favoriteProjectIds: _favoriteProjectIds,
               onToggleProjectFavorite: _toggleProjectFavorite,
-              personalScope: true,
             )
-                .animate(key: const ValueKey('home-personal-projects'))
+                .animate(key: const ValueKey('home-all-projects'))
                 .fadeIn(duration: 180.ms, curve: Curves.easeOut)
                 .slideX(
                   begin: 0.025,

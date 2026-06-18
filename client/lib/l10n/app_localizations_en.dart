@@ -545,6 +545,9 @@ class AppLocalizationsEn extends AppLocalizations {
   String get homeWorkspacePersonal => 'Simple mode';
 
   @override
+  String get homeWorkspaceAllProjects => 'All projects';
+
+  @override
   String get homeWorkspaceProjectTabKindPersonal => 'Personal';
 
   @override
@@ -3779,4 +3782,13 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get toolchainNode => 'Node.js';
+
+  @override
+  String get homeWorkspaceLaunchProjectTitle => 'Open with…';
+
+  @override
+  String get homeWorkspaceSimpleMode => 'Simple mode';
+
+  @override
+  String get homeWorkspaceRememberLaunchChoice => 'Remember my choice';
 }

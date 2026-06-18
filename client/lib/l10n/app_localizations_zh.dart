@@ -526,6 +526,9 @@ class AppLocalizationsZh extends AppLocalizations {
   String get homeWorkspacePersonal => '简单模式';
 
   @override
+  String get homeWorkspaceAllProjects => '全部项目';
+
+  @override
   String get homeWorkspaceProjectTabKindPersonal => '个人';
 
   @override
@@ -3643,4 +3646,13 @@ class AppLocalizationsZh extends AppLocalizations {
 
   @override
   String get toolchainNode => 'Node.js';
+
+  @override
+  String get homeWorkspaceLaunchProjectTitle => '选择启动方式';
+
+  @override
+  String get homeWorkspaceSimpleMode => '简单模式';
+
+  @override
+  String get homeWorkspaceRememberLaunchChoice => '记住选择';
 }

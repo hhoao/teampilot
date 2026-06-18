@@ -26,11 +26,15 @@ import 'project_session_actions.dart';
 Future<void> showProjectSearchDialog(
   BuildContext context, {
   required AppProject project,
+  required bool isPersonal,
+  String sessionTeamFilter = '',
 }) {
   final chatCubit = context.read<ChatCubit>();
   final editorCubit = context.read<EditorCubit>();
   final fallback = context.l10n.defaultNewChatSessionTitle;
-  final sessions = sessionsForProject(project, chatCubit.state.sessions);
+  final sessions = sessionsForProject(project, chatCubit.state.sessions)
+      .where((s) => s.sessionTeam.trim() == sessionTeamFilter)
+      .toList();
 
   return showDialog<void>(
     context: context,
@@ -41,7 +45,14 @@ Future<void> showProjectSearchDialog(
       onOpenSession: (session) {
         Navigator.of(dialogContext).pop();
         if (!context.mounted) return;
-        unawaited(openProjectSessionTab(context, project, session));
+        unawaited(
+          openProjectSessionTab(
+            context,
+            project,
+            session,
+            isPersonal: isPersonal,
+          ),
+        );
       },
       onOpenFile: (path) {
         Navigator.of(dialogContext).pop();

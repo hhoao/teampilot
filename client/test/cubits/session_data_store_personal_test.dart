@@ -67,7 +67,6 @@ void main() {
         .where((p) => p.projectId == result.projectId)
         .toList();
     expect(projects, hasLength(1));
-    expect(projects.first.teamId, '');
 
     final projectDir = p.join(
       tmp.path,
