@@ -146,3 +146,11 @@ All steps ship together as one cohesive change.
 - Whether the team view keeps a read-only "directories this team has worked in"
   list for discoverability (derived from sessions), now that it no longer owns
   projects.
+
+## Verification
+
+Golden-path verified 2026-06-18 (automated): `flutter analyze` 0 errors;
+`flutter test --exclude-tags integration` — 1623 passed, 3 skipped. Manual UI
+walkthrough (全部项目 grid, launch dialog, remember choice, session filtering)
+should be confirmed with `flutter run -d linux` after wiping
+`~/.local/share/com.hhoa.teampilot/workspace/projects/`.
