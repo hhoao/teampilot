@@ -9,7 +9,7 @@ import '../theme/app_text_styles.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
 import '../cubits/session_preferences_cubit.dart';
-import '../cubits/identity_cubit.dart';
+import '../cubits/launch_profile_cubit.dart';
 import '../models/team_config.dart';
 import 'warmup_glyphs.g.dart';
 
@@ -166,7 +166,7 @@ class _WarmupStage extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final team = context.select<IdentityCubit, TeamIdentity?>(
+    final team = context.select<LaunchProfileCubit, TeamProfile?>(
       (cubit) => cubit.state.selectedTeam,
     );
 
@@ -190,7 +190,7 @@ class _WarmupStage extends StatelessWidget {
 class _SettingsWarmup extends StatelessWidget {
   const _SettingsWarmup({required this.team});
 
-  final TeamIdentity? team;
+  final TeamProfile? team;
 
   @override
   Widget build(BuildContext context) {

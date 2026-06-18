@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
-import '../cubits/identity_cubit.dart';
+import '../cubits/launch_profile_cubit.dart';
 import '../models/team_config.dart';
 import 'chat/chat_page_shell.dart';
 
@@ -21,7 +21,7 @@ class ChatPage extends StatelessWidget {
   /// derives it from session state.
   final String cwd;
 
-  /// When true, the embedded workbench runs without a selected [TeamIdentity].
+  /// When true, the embedded workbench runs without a selected [TeamProfile].
   final bool isPersonalWorkspace;
 
   /// Owning workspace id; scopes the workspace terminal + right-tools selection.
@@ -81,7 +81,7 @@ class _TeamChatPage extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final team = context.select<IdentityCubit, TeamIdentity?>(
+    final team = context.select<LaunchProfileCubit, TeamProfile?>(
       (c) => c.state.selectedTeam,
     );
 

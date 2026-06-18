@@ -21,7 +21,7 @@ final class OpencodeProviderSettingsResolver {
   }
 
   Future<String?> resolveProviderId(
-    TeamIdentity team, {
+    TeamProfile team, {
     TeamMemberConfig? member,
   }) async {
     final fromTeam = team.providerIdsByTool['opencode']?.trim() ?? '';
@@ -48,7 +48,7 @@ final class OpencodeProviderSettingsResolver {
 
   /// Provider for the process about to launch: member binding, then team default.
   Future<AppProviderConfig?> resolveForLaunch({
-    required TeamIdentity team,
+    required TeamProfile team,
     TeamMemberConfig? member,
   }) async {
     final selected = member;

@@ -39,7 +39,7 @@ abstract final class TeamMemberNaming {
     return formatAgentId(memberId, cliTeamName);
   }
 
-  /// Stable key for [TeamIdentity.id], config paths, and `sessionTeam` / `cliTeamName` prefix.
+  /// Stable key for [TeamProfile.id], config paths, and `sessionTeam` / `cliTeamName` prefix.
   static String slugTeamId(String raw) {
     var s = sanitizeAgentName(raw);
     s = s.replaceAll(RegExp(r'\s+'), '-');

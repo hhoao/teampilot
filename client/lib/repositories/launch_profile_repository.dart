@@ -1,18 +1,18 @@
 import 'dart:convert';
 
-import '../models/identity_kind.dart';
-import '../models/personal_identity.dart';
+import '../models/launch_profile_kind.dart';
+import '../models/personal_profile.dart';
 import '../models/team_config.dart';
-import '../models/identity.dart';
+import '../models/launch_profile.dart';
 import '../services/io/filesystem.dart';
 import '../services/session/session_lifecycle_service.dart';
 import '../services/storage/app_storage.dart';
 import '../services/storage/storage_resolver.dart';
 
-/// Persists [Identity] records (both kinds) at
-/// `identities/{id}/identity.json`.
-class IdentityRepository {
-  IdentityRepository({
+/// Persists [LaunchProfile] records (both kinds) at
+/// `launch-profiles/{id}/profile.json`.
+class LaunchProfileRepository {
+  LaunchProfileRepository({
     String? rootDir,
     StorageRoots? storageRoots,
     SessionLifecycleService? lifecycleService,
@@ -27,25 +27,25 @@ class IdentityRepository {
   Future<({String dir, Filesystem fs})> _paths() async {
     if (_storageRoots != null) {
       final snap = await _storageRoots.resolve();
-      return (dir: snap.identitiesUiDir, fs: snap.fs);
+      return (dir: snap.launchProfilesDir, fs: snap.fs);
     }
     return (
-      dir: _rootDirOverride ?? AppPathsBootstrapper.current.identitiesDir,
+      dir: _rootDirOverride ?? AppPathsBootstrapper.current.launchProfilesDir,
       fs: AppStorage.fs,
     );
   }
 
-  String _identityFile(Filesystem fs, String dir, String id) =>
-      fs.pathContext.join(dir, id.trim(), 'identity.json');
+  String _profileFile(Filesystem fs, String dir, String id) =>
+      fs.pathContext.join(dir, id.trim(), 'profile.json');
 
-  Future<List<Identity>> loadAll() async {
+  Future<List<LaunchProfile>> loadAll() async {
     final paths = await _paths();
-    final out = <Identity>[];
+    final out = <LaunchProfile>[];
     try {
       final entries = await paths.fs.listDir(paths.dir);
       for (final entry in entries) {
         if (!entry.isDirectory) continue;
-        final file = _identityFile(paths.fs, paths.dir, entry.name);
+        final file = _profileFile(paths.fs, paths.dir, entry.name);
         final content = await paths.fs.readString(file);
         if (content == null || content.isEmpty) continue;
         try {
@@ -59,13 +59,13 @@ class IdentityRepository {
     } on Object {
       return const [];
     }
-    final sorted = List<Identity>.of(out)..sort(_compareIdentities);
+    final sorted = List<LaunchProfile>.of(out)..sort(_compareProfiles);
     return List.unmodifiable(sorted);
   }
 
   static int _compareTeams(
-    TeamIdentity a,
-    TeamIdentity b, {
+    TeamProfile a,
+    TeamProfile b, {
     required bool hasCustomOrder,
   }) {
     if (hasCustomOrder) {
@@ -79,8 +79,8 @@ class IdentityRepository {
   }
 
   static int _comparePersonals(
-    PersonalIdentity a,
-    PersonalIdentity b, {
+    PersonalProfile a,
+    PersonalProfile b, {
     required bool hasCustomOrder,
   }) {
     if (hasCustomOrder) {
@@ -93,39 +93,39 @@ class IdentityRepository {
     return a.display.toLowerCase().compareTo(b.display.toLowerCase());
   }
 
-  static int _compareIdentities(Identity a, Identity b) {
-    if (a is TeamIdentity && b is TeamIdentity) {
+  static int _compareProfiles(LaunchProfile a, LaunchProfile b) {
+    if (a is TeamProfile && b is TeamProfile) {
       return _compareTeams(a, b, hasCustomOrder: false);
     }
-    if (a is PersonalIdentity && b is PersonalIdentity) {
+    if (a is PersonalProfile && b is PersonalProfile) {
       return _comparePersonals(a, b, hasCustomOrder: false);
     }
-    if (a is TeamIdentity) return -1;
-    if (b is TeamIdentity) return 1;
+    if (a is TeamProfile) return -1;
+    if (b is TeamProfile) return 1;
     return a.display.toLowerCase().compareTo(b.display.toLowerCase());
   }
 
-  Identity _decode(Map<String, Object?> json) {
-    return switch (IdentityKind.decode(json['kind'])) {
-      IdentityKind.personal => PersonalIdentity.fromJson(json),
-      IdentityKind.team => TeamIdentity.fromJson(json),
+  LaunchProfile _decode(Map<String, Object?> json) {
+    return switch (LaunchProfileKind.decode(json['kind'])) {
+      LaunchProfileKind.personal => PersonalProfile.fromJson(json),
+      LaunchProfileKind.team => TeamProfile.fromJson(json),
     };
   }
 
-  Future<void> save(Identity identity) async {
+  Future<void> save(LaunchProfile identity) async {
     final id = identity.id.trim();
     if (id.isEmpty) return;
     final paths = await _paths();
     final dir = paths.fs.pathContext.join(paths.dir, id);
     await paths.fs.ensureDir(dir);
     await paths.fs.atomicWrite(
-      _identityFile(paths.fs, paths.dir, id),
+      _profileFile(paths.fs, paths.dir, id),
       const JsonEncoder.withIndent('  ').convert(identity.toJson()),
     );
   }
 
-  Future<List<TeamIdentity>> loadTeams() async {
-    final teams = (await loadAll()).whereType<TeamIdentity>().toList();
+  Future<List<TeamProfile>> loadTeamProfiles() async {
+    final teams = (await loadAll()).whereType<TeamProfile>().toList();
     final hasCustomOrder = teams.any((team) => team.sortOrder > 0);
     teams.sort(
       (a, b) => _compareTeams(a, b, hasCustomOrder: hasCustomOrder),
@@ -133,8 +133,8 @@ class IdentityRepository {
     return List.unmodifiable(teams);
   }
 
-  Future<List<PersonalIdentity>> loadPersonals() async {
-    final personals = (await loadAll()).whereType<PersonalIdentity>().toList();
+  Future<List<PersonalProfile>> loadPersonalProfiles() async {
+    final personals = (await loadAll()).whereType<PersonalProfile>().toList();
     final hasCustomOrder = personals.any((personal) => personal.sortOrder > 0);
     personals.sort(
       (a, b) => _comparePersonals(a, b, hasCustomOrder: hasCustomOrder),
@@ -142,7 +142,7 @@ class IdentityRepository {
     return List.unmodifiable(personals);
   }
 
-  Future<void> saveTeams(List<TeamIdentity> teams) async {
+  Future<void> saveTeamProfiles(List<TeamProfile> teams) async {
     for (final team in teams) {
       await save(team);
     }

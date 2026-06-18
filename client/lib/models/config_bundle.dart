@@ -1,7 +1,7 @@
 import 'package:flutter/foundation.dart';
 
 /// The shared skills/plugins/mcp enable-lists carried by every
-/// [Identity]. Extensions are tracked separately in
+/// [LaunchProfile]. Extensions are tracked separately in
 /// ExtensionRepository, keyed by identity id.
 @immutable
 class ConfigBundle {

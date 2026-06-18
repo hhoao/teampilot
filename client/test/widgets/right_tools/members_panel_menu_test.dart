@@ -12,7 +12,7 @@ import 'package:teampilot/widgets/right_tools/members_panel.dart';
 import '../../support/post_frame_test_harness.dart';
 
 const _member = TeamMemberConfig(id: 'm1', name: 'Backend');
-const _team = TeamIdentity(id: 't', name: 'T', cli: CliTool.claude, members: [_member]);
+const _team = TeamProfile(id: 't', name: 'T', cli: CliTool.claude, members: [_member]);
 
 Widget _host(Widget child, AppProviderCubit providerCubit) => MaterialApp(
       localizationsDelegates: AppLocalizations.localizationsDelegates,

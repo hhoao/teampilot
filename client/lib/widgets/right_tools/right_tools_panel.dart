@@ -6,7 +6,7 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import '../../cubits/chat_cubit.dart';
 import '../../cubits/mailbox_cubit.dart';
 import '../../cubits/member_presence_cubit.dart';
-import '../../cubits/identity_cubit.dart';
+import '../../cubits/launch_profile_cubit.dart';
 import '../../cubits/workspace_tools_cubit.dart';
 import '../../l10n/l10n_extensions.dart';
 import '../../models/layout_preferences.dart';
@@ -83,7 +83,7 @@ class _RightToolsPanelState extends State<RightToolsPanel> {
 
   @override
   Widget build(BuildContext context) {
-    final teamCubit = context.watch<IdentityCubit>();
+    final teamCubit = context.watch<LaunchProfileCubit>();
     final chatCubit = context.watch<ChatCubit>();
     final team = teamCubit.state.selectedTeam;
     final teamId = team?.id;

@@ -2,10 +2,10 @@ import 'package:flutter/material.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
-import '../../cubits/identity_cubit.dart';
-import '../../models/personal_identity.dart';
+import '../../cubits/launch_profile_cubit.dart';
+import '../../models/personal_profile.dart';
 import '../../models/team_config.dart';
-import '../../models/identity.dart';
+import '../../models/launch_profile.dart';
 import '../../theme/workspace_surface_layers.dart';
 import '../team_config/team_config_section.dart';
 import 'home_all_workspaces_pane.dart';
@@ -61,7 +61,7 @@ class _HomePageState extends State<HomePage> {
     if (widget.initialSection != null) {
       _allWorkspacesActive = false;
       _selectedIdentityId =
-          context.read<IdentityCubit>().state.selectedTeam?.id;
+          context.read<LaunchProfileCubit>().state.selectedTeam?.id;
     }
   }
 
@@ -78,13 +78,13 @@ class _HomePageState extends State<HomePage> {
     });
   }
 
-  void _selectIdentity(String identityId) {
-    final identity = context.read<IdentityCubit>().byId(identityId);
-    if (identity is TeamIdentity) {
-      context.read<IdentityCubit>().selectTeam(identityId);
+  void _selectIdentity(String profileId) {
+    final identity = context.read<LaunchProfileCubit>().byId(profileId);
+    if (identity is TeamProfile) {
+      context.read<LaunchProfileCubit>().selectTeam(profileId);
     }
     setState(() {
-      _selectedIdentityId = identityId;
+      _selectedIdentityId = profileId;
       _allWorkspacesActive = false;
       _globalView = null;
       _libraryView = null;
@@ -92,11 +92,11 @@ class _HomePageState extends State<HomePage> {
   }
 
   Widget _identityPane(
-    IdentityCubit identityCubit,
-    Identity identity,
+    LaunchProfileCubit identityCubit,
+    LaunchProfile identity,
   ) {
     return switch (identity) {
-      PersonalIdentity personal => HomePersonalContent(
+      PersonalProfile personal => HomePersonalContent(
           personal: personal,
           cubit: identityCubit,
           onSelectGlobalView: (view) => setState(() {
@@ -105,7 +105,7 @@ class _HomePageState extends State<HomePage> {
             _libraryView = null;
           }),
         ),
-      TeamIdentity _ => HomeContent(
+      TeamProfile _ => HomeContent(
           initialSection: widget.initialSection,
           initialMemberId: widget.initialMemberId,
           onSelectGlobalView: (view) => setState(() {
@@ -122,7 +122,7 @@ class _HomePageState extends State<HomePage> {
   Widget build(BuildContext context) {
     final globalView = _globalView;
     final libraryView = _libraryView;
-    final identityCubit = context.watch<IdentityCubit>();
+    final identityCubit = context.watch<LaunchProfileCubit>();
     final selectedIdentity = _selectedIdentityId != null
         ? identityCubit.byId(_selectedIdentityId!)
         : identityCubit.state.selectedTeam;

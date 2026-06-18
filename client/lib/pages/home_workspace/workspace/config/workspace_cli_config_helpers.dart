@@ -1,5 +1,5 @@
 import '../../../../models/app_provider_config.dart';
-import '../../../../models/personal_identity.dart';
+import '../../../../models/personal_profile.dart';
 import '../../../../services/cli/registry/capabilities/provider_catalog_capability.dart';
 import '../../../../services/cli/registry/capabilities/provider_model_capability.dart';
 import '../../../../services/cli/registry/cli_tool_registry.dart';
@@ -10,16 +10,16 @@ bool workspaceCliSupportsProviderCatalog(
 ) =>
     registry.capability<ProviderCatalogCapability>(cli) != null;
 
-String workspaceCliProviderId(PersonalIdentity personal, CliTool cli) {
+String workspaceCliProviderId(PersonalProfile personal, CliTool cli) {
   return personal.providerIdsByTool[cli.value]?.trim() ?? '';
 }
 
-String workspaceCliModelId(PersonalIdentity personal, CliTool cli) {
+String workspaceCliModelId(PersonalProfile personal, CliTool cli) {
   return personal.modelsByTool[cli.value]?.trim() ?? '';
 }
 
 bool workspaceCliIsConfigured(
-  PersonalIdentity personal,
+  PersonalProfile personal,
   CliTool cli,
   CliToolRegistry registry, {
   AppProviderConfig? selectedProvider,
@@ -40,7 +40,7 @@ bool workspaceCliIsConfigured(
 }
 
 AppProviderConfig? workspaceCliSelectedProvider(
-  PersonalIdentity personal,
+  PersonalProfile personal,
   CliTool cli,
   Iterable<AppProviderConfig> providers,
 ) {

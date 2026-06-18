@@ -3,7 +3,7 @@ import 'package:teampilot/models/team_config.dart';
 import 'package:teampilot/services/cli/cli_tool_adapter.dart';
 
 void main() {
-  const team = TeamIdentity(id: 't', name: 'agent', cli: CliTool.opencode);
+  const team = TeamProfile(id: 't', name: 'agent', cli: CliTool.opencode);
 
   test('builds --model provider/model, --agent, and --session on resume', () {
     const member = TeamMemberConfig(

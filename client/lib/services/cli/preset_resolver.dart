@@ -8,7 +8,7 @@ import '../../models/team_config.dart';
 /// member flat fields merged with team custom defaults per effective CLI.
 ({String provider, String model, String effort, CliPreset? sourcePreset})
 resolveMemberLaunchConfig({
-  required TeamIdentity team,
+  required TeamProfile team,
   required TeamMemberConfig member,
   required List<CliPreset> globalPresets,
 }) {
@@ -69,7 +69,7 @@ resolveMemberLaunchConfig({
 /// Pass [catalogCli] when the picker reflects a tentative CLI (e.g. mixed-member
 /// configure dialog before save).
 List<CliPreset> eligiblePresets({
-  required TeamIdentity team,
+  required TeamProfile team,
   required TeamMemberConfig member,
   required List<CliPreset> allPresets,
   CliTool? catalogCli,
@@ -91,7 +91,7 @@ List<CliPreset> teamEligiblePresets({
 /// Presets for a team-level picker; mixed teams see all presets, native teams
 /// are filtered to [team.cli].
 List<CliPreset> teamPresetPickerItems({
-  required TeamIdentity team,
+  required TeamProfile team,
   required List<CliPreset> allPresets,
   CliTool? catalogCli,
 }) {

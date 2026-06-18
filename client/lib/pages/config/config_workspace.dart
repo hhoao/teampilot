@@ -3,7 +3,7 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../cubits/config_cubit.dart';
-import '../../cubits/identity_cubit.dart';
+import '../../cubits/launch_profile_cubit.dart';
 import '../../l10n/l10n_extensions.dart';
 import '../../utils/app_keys.dart';
 import '../../utils/debounce/debounce.dart';
@@ -86,7 +86,7 @@ class ConfigSettingsHubPage extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final l10n = context.l10n;
-    if (context.watch<IdentityCubit>().state.selectedTeam == null) {
+    if (context.watch<LaunchProfileCubit>().state.selectedTeam == null) {
       return const Center(child: CircularProgressIndicator());
     }
 
@@ -165,7 +165,7 @@ class ConfigWorkspace extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final configCubit = context.watch<ConfigCubit>();
-    final team = context.watch<IdentityCubit>().state.selectedTeam;
+    final team = context.watch<LaunchProfileCubit>().state.selectedTeam;
     final l10n = context.l10n;
 
     if (configCubit.state.section != section) {

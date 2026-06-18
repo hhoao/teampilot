@@ -1,5 +1,5 @@
 import '../../../../models/app_provider_config.dart';
-import '../../../../models/personal_identity.dart';
+import '../../../../models/personal_profile.dart';
 import '../../../../services/cli/registry/capabilities/cli_effort_capability.dart';
 import '../../../../services/cli/registry/cli_tool_registry.dart';
 
@@ -25,7 +25,7 @@ bool workspaceCliShowsEffortPicker({
   return capability.isApplicable(model: resolvedModel);
 }
 
-String workspaceCliEffortId(PersonalIdentity personal, CliTool cli) {
+String workspaceCliEffortId(PersonalProfile personal, CliTool cli) {
   return personal.effortsByTool[cli.value]?.trim() ?? '';
 }
 

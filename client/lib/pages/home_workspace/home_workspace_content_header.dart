@@ -7,7 +7,7 @@ import '../../l10n/l10n_extensions.dart';
 class HomeTeamHeader extends StatelessWidget {
   const HomeTeamHeader({super.key, required this.team});
 
-  final TeamIdentity team;
+  final TeamProfile team;
 
   @override
   Widget build(BuildContext context) {

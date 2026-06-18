@@ -4,7 +4,7 @@ import '../../models/workspace.dart';
 import '../../models/app_session.dart';
 import '../../models/workspace_icon_ref.dart';
 import '../../models/team_config.dart' show CliTool, TeamMemberConfig;
-import '../../repositories/identity_repository.dart';
+import '../../repositories/launch_profile_repository.dart';
 import '../../repositories/session_repository.dart';
 import '../../utils/workspace_path_utils.dart';
 
@@ -104,7 +104,7 @@ class SessionDataStore {
     List<TeamMemberConfig> rosterMembers = const [],
     List<String> additionalPaths = const [],
     String display = '',
-    IdentityRepository? identityRepository,
+    LaunchProfileRepository? identityRepository,
   }) async {
     final workspace = await repo.createWorkspace(
       primaryPath,
@@ -140,13 +140,13 @@ class SessionDataStore {
     SessionRepository repo,
     String workspaceId, {
     String? display,
-    String? defaultIdentityId,
+    String? defaultProfileId,
     List<String>? additionalPaths,
   }) async {
     await repo.updateWorkspaceMetadata(
       workspaceId,
       display: display,
-      defaultIdentityId: defaultIdentityId,
+      defaultProfileId: defaultProfileId,
       additionalPaths: additionalPaths,
     );
     return loadWorkspaceData(repo);

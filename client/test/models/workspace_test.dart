@@ -29,18 +29,18 @@ void main() {
     // No teamId surface exists; the field is simply dropped.
   });
 
-  test('defaultIdentityId round-trips and defaults empty', () {
+  test('defaultProfileId round-trips and defaults empty', () {
     const p = Workspace(
       workspaceId: 'p1',
       primaryPath: '/tmp/p1',
       createdAt: 1,
-      defaultIdentityId: 'coding',
+      defaultProfileId: 'coding',
     );
     final restored = Workspace.fromJson(p.toJson());
-    expect(restored.defaultIdentityId, 'coding');
+    expect(restored.defaultProfileId, 'coding');
     expect(
       Workspace.fromJson({'workspaceId': 'x', 'primaryPath': '/x'})
-          .defaultIdentityId,
+          .defaultProfileId,
       '',
     );
   });

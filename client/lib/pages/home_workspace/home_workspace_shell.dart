@@ -8,16 +8,16 @@ import 'package:go_router/go_router.dart';
 import '../../cubits/chat_cubit.dart';
 import '../../cubits/layout_cubit.dart';
 import '../../cubits/session_preferences_cubit.dart';
-import '../../cubits/identity_cubit.dart';
+import '../../cubits/launch_profile_cubit.dart';
 import '../../cubits/workspace_tools_cubit.dart';
 import '../../l10n/app_localizations.dart';
 import '../../l10n/l10n_extensions.dart';
 import '../../models/workspace.dart';
-import '../../models/launch_identity.dart';
-import '../../models/identity_kind.dart';
+import '../../models/launch_profile_ref.dart';
+import '../../models/launch_profile_kind.dart';
 import '../../models/team_config.dart';
-import '../../models/identity.dart';
-import '../../services/storage/identity_provisioner.dart';
+import '../../models/launch_profile.dart';
+import '../../services/storage/launch_profile_provisioner.dart';
 import '../../utils/workspace_display_name.dart';
 import '../../models/home_closed_workspace_entry.dart';
 import '../../theme/workspace_surface_layers.dart';
@@ -68,13 +68,13 @@ class HomeShell extends StatefulWidget {
   }
 
   static String? identityNameFor(
-    List<Identity> identities,
-    String identityId,
+    List<LaunchProfile> identities,
+    String profileId,
   ) {
-    if (identityId.isEmpty) return null;
+    if (profileId.isEmpty) return null;
     for (final identity in identities) {
-      if (identity.id == identityId) {
-        return identity is TeamIdentity
+      if (identity.id == profileId) {
+        return identity is TeamProfile
             ? identity.name
             : identity.display;
       }
@@ -83,7 +83,7 @@ class HomeShell extends StatefulWidget {
   }
 
   @Deprecated('Use identityNameFor')
-  static String? teamNameFor(List<TeamIdentity> teams, String teamId) =>
+  static String? teamNameFor(List<TeamProfile> teams, String teamId) =>
       identityNameFor(teams, teamId);
 }
 
@@ -95,7 +95,7 @@ class _HomeShellState extends State<HomeShell> {
   /// Open workspace ids in tab order; persisted across app restarts.
   List<String> _openIds = const [];
   List<HomeClosedWorkspaceEntry> _recentlyClosed = const [];
-  final Map<String, LaunchIdentity> _identityByWorkspaceId = {};
+  final Map<String, LaunchProfileRef> _identityByWorkspaceId = {};
 
   @override
   void initState() {
@@ -201,8 +201,8 @@ class _HomeShellState extends State<HomeShell> {
     return null;
   }
 
-  static LaunchIdentity? _identityFromLocation(String location) =>
-      LaunchIdentity.decode(_parseLocationUri(location).queryParameters['as']);
+  static LaunchProfileRef? _identityFromLocation(String location) =>
+      LaunchProfileRef.decode(_parseLocationUri(location).queryParameters['as']);
 
   static Uri _parseLocationUri(String location) {
     if (location.startsWith('http://') || location.startsWith('https://')) {
@@ -211,16 +211,16 @@ class _HomeShellState extends State<HomeShell> {
     return Uri.parse('http://local$location');
   }
 
-  LaunchIdentity _identityForWorkspace(String workspaceId) {
+  LaunchProfileRef _identityForWorkspace(String workspaceId) {
     final fromRoute = _workspaceIdFromLocation(widget.location) == workspaceId
         ? _identityFromLocation(widget.location)
         : null;
     return fromRoute ??
         _identityByWorkspaceId[workspaceId] ??
-        const LaunchIdentity(IdentityProvisioner.defaultPersonalId);
+        const LaunchProfileRef(LaunchProfileProvisioner.defaultPersonalId);
   }
 
-  String _workspaceRoute(String workspaceId, LaunchIdentity identity) =>
+  String _workspaceRoute(String workspaceId, LaunchProfileRef identity) =>
       '/home-v2/workspace/$workspaceId?as=${identity.encode()}';
 
   void _selectTab(String id) {
@@ -342,7 +342,7 @@ class _HomeShellState extends State<HomeShell> {
         .state
         .preferences
         .scopeSessionsToSelectedTeam;
-    final selectedTeam = context.read<IdentityCubit>().state.selectedTeam;
+    final selectedTeam = context.read<LaunchProfileCubit>().state.selectedTeam;
     final activeId = _workspaceIdFromLocation(widget.location);
     final activeIdentity =
         activeId != null ? _identityForWorkspace(activeId) : null;
@@ -367,7 +367,7 @@ class _HomeShellState extends State<HomeShell> {
 
     final cs = Theme.of(context).colorScheme;
     final l10n = context.l10n;
-    final identities = context.select<IdentityCubit, List<Identity>>(
+    final identities = context.select<LaunchProfileCubit, List<LaunchProfile>>(
       (c) => c.state.identities,
     );
     // Show every open workspace tab across all teams (IDE-style open editors).
@@ -389,7 +389,7 @@ class _HomeShellState extends State<HomeShell> {
           previous.preferences.scopeSessionsToSelectedTeam !=
           next.preferences.scopeSessionsToSelectedTeam,
       listener: (context, _) => _syncTeamSessionScope(context),
-      child: BlocListener<IdentityCubit, IdentityState>(
+      child: BlocListener<LaunchProfileCubit, LaunchProfileState>(
         listenWhen: (previous, next) =>
             previous.selectedTeam?.id != next.selectedTeam?.id,
         listener: (context, _) => _syncTeamSessionScope(context),
@@ -429,17 +429,17 @@ class _HomeShellState extends State<HomeShell> {
     required String id,
     required Workspace workspace,
     required AppLocalizations l10n,
-    required List<Identity> identities,
+    required List<LaunchProfile> identities,
   }) {
     final identity = _identityForWorkspace(id);
     final workspaceIdentity = identities
-            .where((e) => e.id == identity.identityId)
+            .where((e) => e.id == identity.profileId)
             .firstOrNull ??
         identities
-            .where((e) => e.id == IdentityProvisioner.defaultPersonalId)
+            .where((e) => e.id == LaunchProfileProvisioner.defaultPersonalId)
             .firstOrNull;
-    final isPersonal = workspaceIdentity?.kind == IdentityKind.personal;
-    final identityId = identity.identityId;
+    final isPersonal = workspaceIdentity?.kind == LaunchProfileKind.personal;
+    final profileId = identity.profileId;
     return HomeWorkspaceTab(
       id: id,
       name: workspace.localizedName(l10n),
@@ -448,8 +448,8 @@ class _HomeShellState extends State<HomeShell> {
         workspace: workspace,
         personalKindLabel: l10n.homeWorkspaceWorkspaceTabKindPersonal,
         isPersonal: isPersonal,
-        teamName: HomeShell.identityNameFor(identities, identityId),
-        teamId: identityId,
+        teamName: HomeShell.identityNameFor(identities, profileId),
+        teamId: profileId,
         displayName: workspace.localizedName(l10n),
       ),
       closable: true,
@@ -458,13 +458,13 @@ class _HomeShellState extends State<HomeShell> {
 
   static String _sessionTeamScopeId(
     BuildContext context,
-    LaunchIdentity identity,
+    LaunchProfileRef identity,
   ) {
-    final workspaceIdentity = context.read<IdentityCubit>().byId(
-          identity.identityId,
+    final workspaceIdentity = context.read<LaunchProfileCubit>().byId(
+          identity.profileId,
         );
-    if (workspaceIdentity?.kind == IdentityKind.personal) return '';
-    return identity.identityId;
+    if (workspaceIdentity?.kind == LaunchProfileKind.personal) return '';
+    return identity.profileId;
   }
 
   static Workspace? _resolve(List<Workspace> workspaces, String id) {

@@ -4,7 +4,7 @@ import 'package:teampilot/theme/app_icon_sizes.dart';
 
 import '../../cubits/app_provider_cubit.dart';
 import '../../cubits/cli_presets_cubit.dart';
-import '../../cubits/identity_cubit.dart';
+import '../../cubits/launch_profile_cubit.dart';
 import '../../l10n/l10n_extensions.dart';
 import '../../models/cli_preset.dart';
 import '../../models/app_provider_config.dart';
@@ -37,9 +37,9 @@ class MemberLaunchConfigRow extends StatelessWidget {
     super.key,
   });
 
-  final TeamIdentity team;
+  final TeamProfile team;
   final TeamMemberConfig member;
-  final IdentityCubit cubit;
+  final LaunchProfileCubit cubit;
   final bool showDividerBelow;
 
   @override
@@ -218,9 +218,9 @@ class _LaunchIcon extends StatelessWidget {
 
 Future<void> _openMemberLaunchConfigureDialog(
   BuildContext context, {
-  required TeamIdentity team,
+  required TeamProfile team,
   required TeamMemberConfig member,
-  required IdentityCubit cubit,
+  required LaunchProfileCubit cubit,
 }) {
   return showDialog<void>(
     context: context,
@@ -237,9 +237,9 @@ class MemberLaunchConfigureDialog extends StatefulWidget {
     super.key,
   });
 
-  final TeamIdentity team;
+  final TeamProfile team;
   final TeamMemberConfig member;
-  final IdentityCubit cubit;
+  final LaunchProfileCubit cubit;
 
   @override
   State<MemberLaunchConfigureDialog> createState() =>
@@ -287,7 +287,7 @@ class _MemberLaunchConfigureDialogState
     if (token == CliLaunchConfigTokens.presetInherit) {
       widget.cubit.setMemberActivePreset(
         widget.member.id,
-        TeamIdentity.inheritPresetId,
+        TeamProfile.inheritPresetId,
       );
     } else if (token == CliLaunchConfigTokens.presetCustom) {
       widget.cubit.setMemberActivePreset(widget.member.id, null);
@@ -340,7 +340,7 @@ class _MemberLaunchConfigureDialogState
     final dropdownDeco = AppDropdownDecorations.themed(context);
     final catalogCli = _catalogCli;
     final allPresets = context.watch<CliPresetsCubit>().state.presets;
-    final team = context.watch<IdentityCubit>().state.teams.firstWhere(
+    final team = context.watch<LaunchProfileCubit>().state.teams.firstWhere(
       (t) => t.id == widget.team.id,
       orElse: () => widget.team,
     );

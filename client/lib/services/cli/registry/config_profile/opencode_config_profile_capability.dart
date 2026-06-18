@@ -1,7 +1,7 @@
 import 'package:flutter/foundation.dart';
 
 import '../../../../models/app_provider_config.dart';
-import '../../../../models/personal_identity.dart';
+import '../../../../models/personal_profile.dart';
 import '../../../../models/team_config.dart';
 import '../../../../repositories/app_provider_repository.dart';
 import '../../../provider/opencode/opencode_auth_artifacts.dart';
@@ -278,7 +278,7 @@ final class OpencodeConfigProfileCapability implements ConfigProfileCapability {
   Future<ConfigProfileLaunchContribution> _contributeStandaloneLaunch(
     ConfigProfileLaunchContext ctx,
     StandaloneLaunchProfileScope standalone,
-    PersonalIdentity personal,
+    PersonalProfile personal,
   ) async {
     final paths = ctx.paths;
     final opencodeDir = standaloneSessionToolDir(paths, standalone, toolId);

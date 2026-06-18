@@ -18,7 +18,7 @@ void main() {
     provider: 'anthropic',
     model: 'claude-opus-4-8',
   );
-  const team = TeamIdentity(
+  const team = TeamProfile(
     id: 'team-a',
     name: 'Team A',
     cli: CliTool.claude,

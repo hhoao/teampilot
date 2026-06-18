@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
 
-import '../../cubits/identity_cubit.dart';
+import '../../cubits/launch_profile_cubit.dart';
 import '../../l10n/l10n_extensions.dart';
 import '../../models/team_config.dart';
 import '../../services/app/platform_utils.dart';
@@ -29,7 +29,7 @@ class TeamConfigHubPage extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final l10n = context.l10n;
-    final teamCubit = context.watch<IdentityCubit>();
+    final teamCubit = context.watch<LaunchProfileCubit>();
     final team = teamCubit.state.selectedTeam;
 
     if (team == null) {
@@ -116,14 +116,14 @@ class TeamConfigPage extends StatelessWidget {
   final TeamConfigSection section;
   final String? memberId;
 
-  String? _memberRouteId(TeamIdentity team, {String? preferred}) {
+  String? _memberRouteId(TeamProfile team, {String? preferred}) {
     if (team.members.isEmpty) return null;
     final sid = preferred;
     if (sid != null && team.members.any((m) => m.id == sid)) return sid;
     return team.members.first.id;
   }
 
-  String? _effectiveMemberId(TeamIdentity team) {
+  String? _effectiveMemberId(TeamProfile team) {
     if (section != TeamConfigSection.members) return null;
     return _memberRouteId(team, preferred: memberId);
   }
@@ -131,7 +131,7 @@ class TeamConfigPage extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final l10n = context.l10n;
-    final teamCubit = context.watch<IdentityCubit>();
+    final teamCubit = context.watch<LaunchProfileCubit>();
     final team = teamCubit.state.selectedTeam;
 
     if (team == null) {

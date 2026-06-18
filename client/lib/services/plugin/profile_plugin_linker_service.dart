@@ -24,11 +24,11 @@ class IdentityPluginSyncResult {
 }
 
 /// Provisions identity-scope plugin bundles under
-/// `identities-runtime/<identityId>/flashskyai/plugins/<manifest-name>/`.
+/// `identities-runtime/<profileId>/flashskyai/plugins/<manifest-name>/`.
 ///
 /// Each entry is a symlink (or copy fallback) to the app-level plugin root.
-class IdentityPluginLinkerService {
-  IdentityPluginLinkerService({String? appPluginsRoot, StorageRoots? storageRoots})
+class ProfilePluginLinkerService {
+  ProfilePluginLinkerService({String? appPluginsRoot, StorageRoots? storageRoots})
     : _appPluginsRoot = appPluginsRoot,
       _storageRoots = storageRoots;
 
@@ -39,7 +39,7 @@ class IdentityPluginLinkerService {
     final root = _appPluginsRoot;
     if (root != null) return root;
     throw StateError(
-      'IdentityPluginLinkerService requires appPluginsRoot or storageRoots.',
+      'ProfilePluginLinkerService requires appPluginsRoot or storageRoots.',
     );
   }
 
@@ -47,11 +47,11 @@ class IdentityPluginLinkerService {
       AppStorage.fs.pathContext.join(appPluginsDir, plugin.directory);
 
   Future<IdentityPluginSyncResult> syncForIdentity({
-    required String identityId,
+    required String profileId,
     required List<String> pluginIds,
     required List<Plugin> installed,
   }) async {
-    final trimmedIdentityId = identityId.trim();
+    final trimmedIdentityId = profileId.trim();
     if (trimmedIdentityId.isEmpty) {
       return const IdentityPluginSyncResult();
     }

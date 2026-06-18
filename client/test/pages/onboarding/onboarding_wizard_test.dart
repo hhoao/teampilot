@@ -4,17 +4,17 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:path/path.dart' as p;
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:teampilot/cubits/app_provider_cubit.dart';
-import 'package:teampilot/cubits/identity_cubit.dart';
+import 'package:teampilot/cubits/launch_profile_cubit.dart';
 import 'package:teampilot/models/app_provider_config.dart';
 import 'package:teampilot/models/team_config.dart';
 import 'package:teampilot/pages/onboarding/onboarding_wizard.dart';
 import 'package:teampilot/repositories/app_settings_repository.dart';
 import 'package:teampilot/repositories/session_repository.dart';
-import 'package:teampilot/repositories/identity_repository.dart';
+import 'package:teampilot/repositories/launch_profile_repository.dart';
 import 'package:teampilot/services/app/onboarding_service.dart';
-import 'package:teampilot/services/plugin/identity_plugin_linker_service.dart';
+import 'package:teampilot/services/plugin/profile_plugin_linker_service.dart';
 
-class _NoopPluginLinker extends IdentityPluginLinkerService {
+class _NoopPluginLinker extends ProfilePluginLinkerService {
   _NoopPluginLinker() : super(appPluginsRoot: '/tmp');
 }
 
@@ -69,16 +69,16 @@ void main() {
   group('OnboardingService.applyDefaultClaudeProviderBinding', () {
     test('binds selected claude provider to teams without team binding', () async {
       final dir = await Directory.systemTemp.createTemp('onboarding-provider-bind_');
-      final teamRepo = IdentityRepository(rootDir: p.join(dir.path, 'identities'));
-      const team = TeamIdentity(
+      final teamRepo = LaunchProfileRepository(rootDir: p.join(dir.path, 'launch-profiles'));
+      const team = TeamProfile(
         id: 'default-team',
         name: 'Default Team',
         cli: CliTool.claude,
         members: [TeamMemberConfig(id: 'team-lead', name: 'team-lead')],
       );
-      await teamRepo.saveTeams([team]);
+      await teamRepo.saveTeamProfiles([team]);
 
-      final teamCubit = IdentityCubit(
+      final teamCubit = LaunchProfileCubit(
         repository: teamRepo,
         sessionRepository: SessionRepository(),
         reloadWorkspaces: () async {},

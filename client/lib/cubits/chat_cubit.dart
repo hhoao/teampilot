@@ -12,7 +12,7 @@ import '../models/member_presence.dart';
 import '../models/workspace_icon_picker_result.dart';
 import '../models/workspace_icon_ref.dart';
 import '../models/team_config.dart';
-import '../../repositories/identity_repository.dart';
+import '../../repositories/launch_profile_repository.dart';
 import '../repositories/session_repository.dart';
 import '../services/workspace/workspace_icon_service.dart';
 import '../services/workspace/workspace_icon_storage.dart';
@@ -81,7 +81,7 @@ class ChatCubit extends Cubit<ChatState>
     onWorkingSessionsChanged: _updateWorkingSessions,
   );
   MemberPresenceCubit? _presenceCubit;
-  TeamIdentity? _activeTeam;
+  TeamProfile? _activeTeam;
   final ChatSessionShellFactory _shellFactory;
   final PostFrameScheduler _postFrameScheduler;
   final bool Function()? _autoLaunchAllMembersOnConnect;
@@ -109,7 +109,7 @@ class ChatCubit extends Cubit<ChatState>
   ChatTab? get activeTab => _activeTab;
 
   @override
-  set activeTeam(TeamIdentity? team) => _activeTeam = team;
+  set activeTeam(TeamProfile? team) => _activeTeam = team;
 
   @override
   ChatSessionShellFactory get shellFactory => _shellFactory;
@@ -335,7 +335,7 @@ class ChatCubit extends Cubit<ChatState>
     List<TeamMemberConfig> rosterMembers = const [],
     List<String> additionalPaths = const [],
     String display = '',
-    IdentityRepository? identityRepository,
+    LaunchProfileRepository? identityRepository,
   }) async {
     final result = await _dataStore.createWorkspaceWithFirstSession(
       primaryPath,
@@ -367,7 +367,7 @@ class ChatCubit extends Cubit<ChatState>
     SessionRepository repo,
     String workspaceId, {
     String? display,
-    String? defaultIdentityId,
+    String? defaultProfileId,
     List<String>? additionalPaths,
   }) async {
     _emitSnapshot(
@@ -375,7 +375,7 @@ class ChatCubit extends Cubit<ChatState>
         repo,
         workspaceId,
         display: display,
-        defaultIdentityId: defaultIdentityId,
+        defaultProfileId: defaultProfileId,
         additionalPaths: additionalPaths,
       ),
     );
@@ -459,7 +459,7 @@ class ChatCubit extends Cubit<ChatState>
 
   Future<void> openSessionTab(
     AppSession session, {
-    TeamIdentity? team,
+    TeamProfile? team,
     TeamMemberConfig? member,
     SessionRepository? repo,
     String emptyDisplayTitleFallback = 'New Chat',
@@ -474,7 +474,7 @@ class ChatCubit extends Cubit<ChatState>
   );
 
   Future<void> openMemberTab(
-    TeamIdentity team,
+    TeamProfile team,
     TeamMemberConfig member, {
     SessionRepository? repo,
     String? workspaceCwd,
@@ -604,7 +604,7 @@ class ChatCubit extends Cubit<ChatState>
     _pushPresenceTarget();
   }
 
-  void syncTeam(TeamIdentity team) {
+  void syncTeam(TeamProfile team) {
     if (team.members.isEmpty) {
       emit(state.copyWith(selectedMemberId: ''));
       return;
@@ -629,7 +629,7 @@ class ChatCubit extends Cubit<ChatState>
   }
 
   Future<void> launchAllMembers(
-    TeamIdentity team, {
+    TeamProfile team, {
     SessionRepository? repo,
     String? workspaceCwd,
   }) => _launchService.launchAllMembers(
@@ -638,22 +638,22 @@ class ChatCubit extends Cubit<ChatState>
     workspaceCwd: workspaceCwd,
   );
 
-  String selectedMemberName(TeamIdentity team) {
+  String selectedMemberName(TeamProfile team) {
     for (final m in team.members) {
       if (m.id == state.selectedMemberId) return m.name;
     }
     return team.members.isEmpty ? 'member' : team.members.first.name;
   }
 
-  TerminalSession? ensureSession(TeamIdentity team) =>
+  TerminalSession? ensureSession(TeamProfile team) =>
       _launchService.ensureSession(team);
 
-  Future<void> connectSession(TeamIdentity team, {SessionRepository? repo}) =>
+  Future<void> connectSession(TeamProfile team, {SessionRepository? repo}) =>
       _launchService.connectSession(team, repo: repo);
 
   void disconnectSession() => _launchService.disconnectSession();
 
-  Future<void> restartSession(TeamIdentity team, {SessionRepository? repo}) =>
+  Future<void> restartSession(TeamProfile team, {SessionRepository? repo}) =>
       _launchService.restartSession(team, repo: repo);
 
   @override

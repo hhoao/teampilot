@@ -2,16 +2,16 @@ import 'dart:io';
 
 import 'package:flutter_test/flutter_test.dart';
 import 'package:path/path.dart' as p;
-import 'package:teampilot/cubits/identity_cubit.dart';
+import 'package:teampilot/cubits/launch_profile_cubit.dart';
 import 'package:teampilot/models/mcp_server.dart';
 import 'package:teampilot/models/plugin.dart';
 import 'package:teampilot/models/team_config.dart';
 import 'package:teampilot/repositories/session_repository.dart';
-import 'package:teampilot/repositories/identity_repository.dart';
+import 'package:teampilot/repositories/launch_profile_repository.dart';
 import 'package:teampilot/services/storage/runtime_layout.dart';
 import 'package:teampilot/services/io/local_filesystem.dart';
-import 'package:teampilot/services/mcp/identity_mcp_linker_service.dart';
-import 'package:teampilot/services/plugin/identity_plugin_linker_service.dart';
+import 'package:teampilot/services/mcp/profile_mcp_linker_service.dart';
+import 'package:teampilot/services/plugin/profile_plugin_linker_service.dart';
 import 'package:teampilot/services/storage/app_storage.dart';
 import 'package:teampilot/services/storage/runtime_storage_context.dart';
 
@@ -27,29 +27,29 @@ const _extServer = McpServer(
 );
 
 /// Records every `syncForIdentity` call and returns queued results in order.
-class _RecordingMcpLinker extends IdentityMcpLinkerService {
+class _RecordingMcpLinker extends ProfileMcpLinkerService {
   _RecordingMcpLinker({this.resultsQueue = const []});
 
-  final List<IdentityMcpSyncResult> resultsQueue;
+  final List<ProfileMcpSyncResult> resultsQueue;
   final calls =
-      <({String identityId, List<String> mcpServerIds, List<McpServer> catalog})>[];
+      <({String profileId, List<String> mcpServerIds, List<McpServer> catalog})>[];
   int _index = 0;
 
   @override
-  Future<IdentityMcpSyncResult> syncForIdentity({
-    required String identityId,
+  Future<ProfileMcpSyncResult> syncForIdentity({
+    required String profileId,
     required List<String> mcpServerIds,
     required List<McpServer> catalog,
     required RuntimeLayout layout,
   }) async {
     calls.add((
-      identityId: identityId,
+      profileId: profileId,
       mcpServerIds: List.of(mcpServerIds),
       catalog: List.of(catalog),
     ));
     final result = _index < resultsQueue.length
         ? resultsQueue[_index]
-        : const IdentityMcpSyncResult();
+        : const ProfileMcpSyncResult();
     _index++;
     return result;
   }
@@ -57,20 +57,20 @@ class _RecordingMcpLinker extends IdentityMcpLinkerService {
 
 /// No-op plugin linker so `selectTeam` doesn't touch the real catalogs
 /// (keeps test output free of benign linker errors).
-class _NoopPluginLinker extends IdentityPluginLinkerService {
+class _NoopPluginLinker extends ProfilePluginLinkerService {
   _NoopPluginLinker() : super(appPluginsRoot: '/tmp');
 
   @override
   Future<IdentityPluginSyncResult> syncForIdentity({
-    required String identityId,
+    required String profileId,
     required List<String> pluginIds,
     required List<Plugin> installed,
   }) async =>
       const IdentityPluginSyncResult();
 }
 
-IdentityRepository _repo(Directory dir) =>
-    IdentityRepository(rootDir: p.join(dir.path, 'identities'));
+LaunchProfileRepository _repo(Directory dir) =>
+    LaunchProfileRepository(rootDir: p.join(dir.path, 'launch-profiles'));
 
 void main() {
   group('mergeExtensionMcp', () {
@@ -154,7 +154,7 @@ void main() {
       final dir = await Directory.systemTemp.createTemp('team-ext-mcp-');
       final repo = _repo(dir);
       final linker = _RecordingMcpLinker();
-      final cubit = IdentityCubit(
+      final cubit = LaunchProfileCubit(
         repository: repo,
         sessionRepository: SessionRepository(),
         reloadWorkspaces: () async {},
@@ -166,13 +166,13 @@ void main() {
         extensionMcpContributor: (teamId) async => [_extServer],
       );
 
-      const team = TeamIdentity(
+      const team = TeamProfile(
         id: 't',
         name: 'T',
         members: [TeamMemberConfig(id: 'm', name: 'm')],
         mcpServerIds: ['user-mcp'],
       );
-      await repo.saveTeams([team]);
+      await repo.saveTeamProfiles([team]);
       await cubit.load();
 
       linker.calls.clear();
@@ -194,10 +194,10 @@ void main() {
       // First sync reports a missing user id → cubit prunes and re-syncs.
       final linker = _RecordingMcpLinker(
         resultsQueue: const [
-          IdentityMcpSyncResult(skippedMissingIds: ['ghost']),
+          ProfileMcpSyncResult(skippedMissingIds: ['ghost']),
         ],
       );
-      final cubit = IdentityCubit(
+      final cubit = LaunchProfileCubit(
         repository: repo,
         sessionRepository: SessionRepository(),
         reloadWorkspaces: () async {},
@@ -209,13 +209,13 @@ void main() {
         extensionMcpContributor: (teamId) async => [_extServer],
       );
 
-      const team = TeamIdentity(
+      const team = TeamProfile(
         id: 't',
         name: 'T',
         members: [TeamMemberConfig(id: 'm', name: 'm')],
         mcpServerIds: ['user-mcp', 'ghost'],
       );
-      await repo.saveTeams([team]);
+      await repo.saveTeamProfiles([team]);
       await cubit.load();
 
       linker.calls.clear();

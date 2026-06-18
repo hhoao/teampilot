@@ -27,7 +27,7 @@ class CliEffortPickerField extends StatelessWidget {
   final CliTool cli;
   final String value;
   final ValueChanged<String> onChanged;
-  final TeamIdentity? team;
+  final TeamProfile? team;
   final TeamMemberConfig? member;
   final AppProviderConfig? provider;
   final String model;

@@ -3,7 +3,7 @@ library;
 
 import 'package:flutter_test/flutter_test.dart';
 import 'package:teampilot/models/config_bundle.dart';
-import 'package:teampilot/models/personal_identity.dart';
+import 'package:teampilot/models/personal_profile.dart';
 import 'package:teampilot/models/skill.dart';
 import 'package:teampilot/models/team_config.dart';
 import 'package:teampilot/services/cli/registry/config_profile/config_profile_scope.dart';
@@ -57,10 +57,10 @@ void main() {
         ],
       );
 
-      await service.prepareWorkspaceLaunch(identityId: 'personal-default', 
+      await service.prepareWorkspaceLaunch(profileId: 'personal-default', 
         workspaceId: 'p',
         sessionId: 's',
-        personal: const PersonalIdentity(id: 'p', display: 'p',
+        personal: const PersonalProfile(id: 'p', display: 'p',
           bundle: ConfigBundle(skillIds: ['demo']),
         ),
       );
@@ -71,7 +71,7 @@ void main() {
         teamId: 'tn',
         cliTeamName: 'tn-1',
         cli: CliTool.flashskyai,
-        team: const TeamIdentity(
+        team: const TeamProfile(
           id: 'tn',
           name: 'TN',
           cli: CliTool.flashskyai,
@@ -87,7 +87,7 @@ void main() {
         cliTeamName: 'tm-1',
         cli: CliTool.flashskyai,
         member: mixedMember,
-        team: const TeamIdentity(
+        team: const TeamProfile(
           id: 'tm',
           name: 'TM',
           cli: CliTool.flashskyai,

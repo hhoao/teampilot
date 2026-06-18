@@ -3,15 +3,15 @@ import 'package:flutter/foundation.dart';
 import '../../models/workspace.dart';
 import '../../models/app_session.dart';
 import '../../models/cli_preset.dart';
-import '../../models/identity_kind.dart';
-import '../../models/personal_identity.dart';
+import '../../models/launch_profile_kind.dart';
+import '../../models/personal_profile.dart';
 import '../../models/session_member_binding.dart';
 import '../../models/skill.dart';
 import '../../models/team_config.dart';
-import '../../models/identity.dart';
+import '../../models/launch_profile.dart';
 import '../../repositories/cli_presets_repository.dart';
-import '../../repositories/identity_repository.dart';
-import '../../services/storage/identity_provisioner.dart';
+import '../../repositories/launch_profile_repository.dart';
+import '../../services/storage/launch_profile_provisioner.dart';
 import '../cli/registry/config_profile/config_profile_context.dart';
 import '../../utils/team_member_naming.dart';
 import '../../utils/logger.dart';
@@ -46,7 +46,7 @@ class SessionLifecycleService {
     Future<Set<String>> Function({String? teamId, String? workspaceId})?
     loadEnabledExtensionIds,
     CliToolRegistry? cliToolRegistry,
-    IdentityRepository? identityRepository,
+    LaunchProfileRepository? identityRepository,
     Future<List<Skill>> Function()? loadInstalledSkills,
     CliPresetsRepository? cliPresetsRepository,
     List<CliPreset> Function()? loadPresets,
@@ -68,7 +68,7 @@ class SessionLifecycleService {
   final Future<Set<String>> Function({String? teamId, String? workspaceId})?
   _loadEnabledExtensionIds;
   final CliToolRegistry _cliToolRegistry;
-  final IdentityRepository? _identityRepository;
+  final LaunchProfileRepository? _identityRepository;
   final Future<List<Skill>> Function()? _loadInstalledSkills;
   final CliPresetsRepository? _cliPresetsRepository;
   final List<CliPreset> Function()? _loadPresets;
@@ -76,7 +76,7 @@ class SessionLifecycleService {
   /// Resolves the active [CliPreset] for a personal workspace profile.
   /// Returns `null` when no preset is active or the repository is unavailable.
   Future<CliPreset?> resolveActivePresetForPersonal(
-    PersonalIdentity personal,
+    PersonalProfile personal,
   ) async {
     final repo = _cliPresetsRepository;
     if (repo == null) return null;
@@ -86,7 +86,7 @@ class SessionLifecycleService {
 
   Future<CliPreset?> _resolvePersonalPreset(
     AppSession session,
-    PersonalIdentity personal,
+    PersonalProfile personal,
   ) async {
     final repo = _cliPresetsRepository;
     if (repo == null) return null;
@@ -100,20 +100,20 @@ class SessionLifecycleService {
     return null;
   }
 
-  Future<PersonalIdentity> loadPersonalIdentity(
-    String identityId, {
-    PersonalIdentity? override,
+  Future<PersonalProfile> loadPersonalProfile(
+    String profileId, {
+    PersonalProfile? override,
   }) async {
     if (override != null) return override;
-    final trimmed = identityId.trim();
+    final trimmed = profileId.trim();
     final repo = _identityRepository;
-    PersonalIdentity? defaultPersonal;
+    PersonalProfile? defaultPersonal;
     if (repo != null) {
       final all = await repo.loadAll();
       for (final identity in all) {
-        if (identity is! PersonalIdentity) continue;
+        if (identity is! PersonalProfile) continue;
         if (identity.id == trimmed) return identity;
-        if (identity.id == IdentityProvisioner.defaultPersonalId) {
+        if (identity.id == LaunchProfileProvisioner.defaultPersonalId) {
           defaultPersonal = identity;
         }
       }
@@ -122,14 +122,14 @@ class SessionLifecycleService {
     // launched): fall back to the default personal identity *with its bundle*
     // rather than a synthetic empty one.
     if (defaultPersonal != null) return defaultPersonal;
-    return PersonalIdentity(
-      id: trimmed.isEmpty ? IdentityProvisioner.defaultPersonalId : trimmed,
+    return PersonalProfile(
+      id: trimmed.isEmpty ? LaunchProfileProvisioner.defaultPersonalId : trimmed,
       display: trimmed.isEmpty ? 'Personal' : trimmed,
     );
   }
 
-  Future<Identity?> loadIdentity(String identityId) async {
-    final trimmed = identityId.trim();
+  Future<LaunchProfile?> loadIdentity(String profileId) async {
+    final trimmed = profileId.trim();
     if (trimmed.isEmpty) return null;
     final repo = _identityRepository;
     if (repo == null) return null;
@@ -142,12 +142,12 @@ class SessionLifecycleService {
 
   Future<LaunchPlan> prepareLaunch({
     required AppSession session,
-    TeamIdentity? team,
+    TeamProfile? team,
     TeamMemberConfig? member,
     SessionMemberBinding? memberBinding,
     Workspace? workspace,
-    PersonalIdentity? personal,
-    String? identityId,
+    PersonalProfile? personal,
+    String? profileId,
     String? llmConfigPathOverride,
     Map<String, Map<String, Object?>>? extraMcpServers,
     String? busIdleUrl,
@@ -159,7 +159,7 @@ class SessionLifecycleService {
       memberBinding: memberBinding,
       workspace: workspace,
       personal: personal,
-      identityId: identityId,
+      profileId: profileId,
       llmConfigPathOverride: llmConfigPathOverride,
       extraMcpServers: extraMcpServers,
       busIdleUrl: busIdleUrl,
@@ -168,12 +168,12 @@ class SessionLifecycleService {
 
   Future<ShellLaunchSpec> prepareShellLaunch({
     required AppSession session,
-    TeamIdentity? team,
+    TeamProfile? team,
     TeamMemberConfig? member,
     SessionMemberBinding? memberBinding,
     Workspace? workspace,
-    PersonalIdentity? personal,
-    String? identityId,
+    PersonalProfile? personal,
+    String? profileId,
     String? llmConfigPathOverride,
     Map<String, Map<String, Object?>>? extraMcpServers,
     String? busIdleUrl,
@@ -185,7 +185,7 @@ class SessionLifecycleService {
       memberBinding: memberBinding,
       workspace: workspace,
       personal: personal,
-      identityId: identityId,
+      profileId: profileId,
       llmConfigPathOverride: llmConfigPathOverride,
       extraMcpServers: extraMcpServers,
       busIdleUrl: busIdleUrl,
@@ -233,18 +233,18 @@ class SessionLifecycleService {
     ({
       LaunchPlan plan,
       bool isPersonal,
-      PersonalIdentity? resolvedPersonal,
+      PersonalProfile? resolvedPersonal,
       CliPreset? activePreset,
     })
   >
   _prepareLaunchPlan({
     required AppSession session,
-    TeamIdentity? team,
+    TeamProfile? team,
     TeamMemberConfig? member,
     SessionMemberBinding? memberBinding,
     Workspace? workspace,
-    PersonalIdentity? personal,
-    String? identityId,
+    PersonalProfile? personal,
+    String? profileId,
     String? llmConfigPathOverride,
     Map<String, Map<String, Object?>>? extraMcpServers,
     String? busIdleUrl,
@@ -257,10 +257,10 @@ class SessionLifecycleService {
     final isPersonal = await _resolveIsPersonal(
       session: session,
       workspace: workspace,
-      identityId: identityId,
+      profileId: profileId,
     );
-    final personalIdentityId = await _resolvePersonalIdentityId(
-      identityId: identityId,
+    final personalIdentityId = await _resolvePersonalProfileId(
+      profileId: profileId,
       isPersonal: isPersonal,
     );
     appLogger.i(
@@ -275,7 +275,7 @@ class SessionLifecycleService {
         launchWorkspaceId: isPersonal ? workspace!.workspaceId : null,
       );
       final resolvedPersonal = isPersonal
-          ? await loadPersonalIdentity(personalIdentityId, override: personal)
+          ? await loadPersonalProfile(personalIdentityId, override: personal)
           : null;
 
       CliPreset? activePreset;
@@ -319,7 +319,7 @@ class SessionLifecycleService {
           : roots.layout.transcriptSearchRoots(
               workspaceId: session.workspaceId.trim(),
               sessionId: session.sessionId.trim(),
-              identityId: teamId,
+              profileId: teamId,
               tools: tools,
             );
 
@@ -407,7 +407,7 @@ class SessionLifecycleService {
     CliTool? cli,
     SessionMemberBinding? memberBinding,
     Workspace? workspace,
-    PersonalIdentity? personal,
+    PersonalProfile? personal,
   }) async {
     final roots = await _resolveRoots();
     final isPersonal = _isPersonalLaunch(workspace, session);
@@ -494,32 +494,32 @@ class SessionLifecycleService {
   Future<bool> _resolveIsPersonal({
     required AppSession session,
     Workspace? workspace,
-    String? identityId,
+    String? profileId,
   }) async {
-    final trimmed = identityId?.trim() ?? '';
+    final trimmed = profileId?.trim() ?? '';
     if (trimmed.isNotEmpty) {
       final identity = await loadIdentity(trimmed);
       if (identity != null) {
-        return identity.kind == IdentityKind.personal;
+        return identity.kind == LaunchProfileKind.personal;
       }
-      if (trimmed == IdentityProvisioner.defaultPersonalId) {
+      if (trimmed == LaunchProfileProvisioner.defaultPersonalId) {
         return true;
       }
     }
     return _isPersonalLaunch(workspace, session);
   }
 
-  Future<String> _resolvePersonalIdentityId({
-    String? identityId,
+  Future<String> _resolvePersonalProfileId({
+    String? profileId,
     required bool isPersonal,
   }) async {
-    if (!isPersonal) return IdentityProvisioner.defaultPersonalId;
-    final trimmed = identityId?.trim() ?? '';
-    if (trimmed.isEmpty) return IdentityProvisioner.defaultPersonalId;
+    if (!isPersonal) return LaunchProfileProvisioner.defaultPersonalId;
+    final trimmed = profileId?.trim() ?? '';
+    if (trimmed.isEmpty) return LaunchProfileProvisioner.defaultPersonalId;
     final identity = await loadIdentity(trimmed);
-    if (identity is PersonalIdentity) return identity.id;
-    if (trimmed == IdentityProvisioner.defaultPersonalId) {
-      return IdentityProvisioner.defaultPersonalId;
+    if (identity is PersonalProfile) return identity.id;
+    if (trimmed == LaunchProfileProvisioner.defaultPersonalId) {
+      return LaunchProfileProvisioner.defaultPersonalId;
     }
     return trimmed;
   }
@@ -545,8 +545,8 @@ class SessionLifecycleService {
     required LaunchPlan plan,
     required bool isPersonal,
     Workspace? workspace,
-    PersonalIdentity? personal,
-    TeamIdentity? team,
+    PersonalProfile? personal,
+    TeamProfile? team,
     TeamMemberConfig? member,
     CliPreset? preset,
   }) {
@@ -560,7 +560,7 @@ class SessionLifecycleService {
           standaloneMemberFromPersonal(personal, preset: preset);
       final launchTeam = standaloneTeamFromPersonal(
         personal,
-        identityId: personal.id,
+        profileId: personal.id,
         sessionTeamName: plan.cliTeamName,
         preset: preset,
       );
@@ -608,11 +608,11 @@ class SessionLifecycleService {
   Future<_PreparedLaunch> _prepareEnv({
     required ConfigProfileService service,
     required AppSession session,
-    required TeamIdentity? team,
+    required TeamProfile? team,
     required TeamMemberConfig? member,
     SessionMemberBinding? memberBinding,
     Workspace? workspace,
-    PersonalIdentity? personal,
+    PersonalProfile? personal,
     required bool isPersonal,
     required String runtimeTeamId,
     required String workingDirectory,
@@ -624,11 +624,11 @@ class SessionLifecycleService {
     if (isPersonal) {
       final personalWorkspace = workspace!;
       final resolvedPersonal = personal ??
-          await loadPersonalIdentity(IdentityProvisioner.defaultPersonalId);
+          await loadPersonalProfile(LaunchProfileProvisioner.defaultPersonalId);
       final outcome = await service.prepareWorkspaceLaunch(
         workspaceId: personalWorkspace.workspaceId,
         sessionId: session.sessionId,
-        identityId: resolvedPersonal.id,
+        profileId: resolvedPersonal.id,
         personal: resolvedPersonal,
         workingDirectory: workingDirectory,
         additionalDirectories: session.additionalPaths,
@@ -793,7 +793,7 @@ class SessionLifecycleService {
         : roots.layout.transcriptSearchRoots(
             workspaceId: session.workspaceId.trim(),
             sessionId: session.sessionId.trim(),
-            identityId: teamId,
+            profileId: teamId,
             tools: tools,
           );
     final bucket = RuntimeLayout.workspaceBucketForPrimaryPath(

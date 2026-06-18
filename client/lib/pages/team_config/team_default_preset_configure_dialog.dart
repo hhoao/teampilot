@@ -3,7 +3,7 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 
 import '../../cubits/app_provider_cubit.dart';
 import '../../cubits/cli_presets_cubit.dart';
-import '../../cubits/identity_cubit.dart';
+import '../../cubits/launch_profile_cubit.dart';
 import '../../l10n/l10n_extensions.dart';
 import '../../models/app_provider_config.dart';
 import '../../models/team_config.dart';
@@ -21,8 +21,8 @@ import 'team_config_helpers.dart';
 
 Future<void> openTeamDefaultPresetConfigureDialog(
   BuildContext context, {
-  required TeamIdentity team,
-  required IdentityCubit cubit,
+  required TeamProfile team,
+  required LaunchProfileCubit cubit,
 }) {
   return showDialog<void>(
     context: context,
@@ -37,8 +37,8 @@ class TeamDefaultPresetConfigureDialog extends StatefulWidget {
     super.key,
   });
 
-  final TeamIdentity team;
-  final IdentityCubit cubit;
+  final TeamProfile team;
+  final LaunchProfileCubit cubit;
 
   @override
   State<TeamDefaultPresetConfigureDialog> createState() =>
@@ -73,7 +73,7 @@ class _TeamDefaultPresetConfigureDialogState
     });
   }
 
-  TeamIdentity get _currentTeam {
+  TeamProfile get _currentTeam {
     return widget.cubit.state.teams.firstWhere(
       (t) => t.id == widget.team.id,
       orElse: () => widget.team,
@@ -114,7 +114,7 @@ class _TeamDefaultPresetConfigureDialogState
     final l10n = context.l10n;
     final registry = CliToolRegistryScope.of(context);
     final dropdownDeco = AppDropdownDecorations.themed(context);
-    context.watch<IdentityCubit>();
+    context.watch<LaunchProfileCubit>();
     final team = _currentTeam;
     final allPresets = context.watch<CliPresetsCubit>().state.presets;
     final eligiblePresetList = teamPresetPickerItems(

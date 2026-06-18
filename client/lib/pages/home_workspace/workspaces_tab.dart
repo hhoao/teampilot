@@ -6,19 +6,19 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../cubits/chat_cubit.dart';
-import '../../cubits/identity_cubit.dart';
+import '../../cubits/launch_profile_cubit.dart';
 import '../../l10n/l10n_extensions.dart';
 import '../../models/workspace.dart';
 import '../../models/app_session.dart';
-import '../../models/launch_identity.dart';
-import '../../models/personal_identity.dart';
+import '../../models/launch_profile_ref.dart';
+import '../../models/personal_profile.dart';
 import '../../models/team_config.dart';
-import '../../models/identity_kind.dart';
-import '../../models/identity.dart';
+import '../../models/launch_profile_kind.dart';
+import '../../models/launch_profile.dart';
 import '../../repositories/session_repository.dart';
 import '../../services/home_workspace/workspace_launch_prefs_store.dart';
 import '../../theme/app_text_styles.dart';
-import '../../utils/launch_identity_resolver.dart';
+import '../../utils/launch_profile_resolver.dart';
 import '../../utils/home_workspace_display.dart';
 import '../../utils/workspace_display_name.dart';
 import '../../widgets/menu/sidebar_action_menu.dart';
@@ -30,14 +30,14 @@ import 'workspace_sort.dart';
 import 'launch_workspace_team_order.dart';
 
 /// Route for [workspace] under [identity].
-String workspaceLaunchRoute(String workspaceId, LaunchIdentity identity) =>
+String workspaceLaunchRoute(String workspaceId, LaunchProfileRef identity) =>
     '/home-v2/workspace/$workspaceId?as=${identity.encode()}';
 
 /// When a remembered, well-formed choice exists for [workspace], the route to
 /// open it directly (skipping the dialog); otherwise null (show the dialog).
 String? rememberedLaunchRoute(Workspace workspace, WorkspaceLaunchPref? pref) {
   if (pref == null || !pref.remember) return null;
-  final id = LaunchIdentity.decode(pref.lastIdentity);
+  final id = LaunchProfileRef.decode(pref.lastIdentity);
   if (id == null) return null;
   return workspaceLaunchRoute(workspace.workspaceId, id);
 }
@@ -57,10 +57,10 @@ Future<void> openWorkspace(
     return;
   }
 
-  final identityCubit = context.read<IdentityCubit>();
+  final identityCubit = context.read<LaunchProfileCubit>();
   final identities = identityCubit.state.identities;
-  final personals = identities.whereType<PersonalIdentity>().toList();
-  final teams = identities.whereType<TeamIdentity>().toList();
+  final personals = identities.whereType<PersonalProfile>().toList();
+  final teams = identities.whereType<TeamProfile>().toList();
   final orderedTeamIds = orderTeamIdsByRecentUse(
     workspaceId: workspace.workspaceId,
     teamIds: teams.map((t) => t.id).toList(),
@@ -87,8 +87,8 @@ Future<void> openWorkspace(
     workspaceName: workspace.effectiveDisplay,
     identities: options,
     preselected: pref != null
-        ? LaunchIdentity.decode(pref.lastIdentity)
-        : resolveWorkspaceLaunchIdentity(
+        ? LaunchProfileRef.decode(pref.lastIdentity)
+        : resolveWorkspaceLaunchProfileRef(
             workspace,
             identityCubit.byId,
           ),
@@ -98,7 +98,7 @@ Future<void> openWorkspace(
     await context.read<ChatCubit>().updateWorkspaceMetadata(
       context.read<SessionRepository>(),
       workspace.workspaceId,
-      defaultIdentityId: choice.identity.identityId,
+      defaultProfileId: choice.identity.profileId,
     );
   }
   await store.save(

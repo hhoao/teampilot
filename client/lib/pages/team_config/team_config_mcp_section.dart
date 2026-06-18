@@ -4,7 +4,7 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../cubits/mcp_cubit.dart';
-import '../../cubits/identity_cubit.dart';
+import '../../cubits/launch_profile_cubit.dart';
 import '../../l10n/l10n_extensions.dart';
 import '../../models/mcp_server.dart';
 import '../../models/team_config.dart';
@@ -20,8 +20,8 @@ class TeamMcpSection extends StatelessWidget {
     this.onManageGlobal,
   });
 
-  final TeamIdentity team;
-  final IdentityCubit cubit;
+  final TeamProfile team;
+  final LaunchProfileCubit cubit;
 
   /// Opens global MCP management. When null, falls back to the v1 `/mcp`
   /// route so this section stays usable outside the v2 workspace.

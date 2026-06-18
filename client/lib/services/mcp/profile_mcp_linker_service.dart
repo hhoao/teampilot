@@ -5,8 +5,8 @@ import '../storage/runtime_layout.dart';
 import '../io/filesystem.dart';
 import '../io/local_filesystem.dart';
 
-class IdentityMcpSyncResult {
-  const IdentityMcpSyncResult({
+class ProfileMcpSyncResult {
+  const ProfileMcpSyncResult({
     this.linked = const [],
     this.skippedMissingIds = const [],
     this.errors = const [],
@@ -20,21 +20,21 @@ class IdentityMcpSyncResult {
 }
 
 /// Writes identity MCP snapshot to
-/// `identities-runtime/{identityId}/mcp/servers.json`.
-class IdentityMcpLinkerService {
-  IdentityMcpLinkerService({Filesystem? fs}) : _fs = fs ?? LocalFilesystem();
+/// `identities-runtime/{profileId}/mcp/servers.json`.
+class ProfileMcpLinkerService {
+  ProfileMcpLinkerService({Filesystem? fs}) : _fs = fs ?? LocalFilesystem();
 
   final Filesystem _fs;
 
-  Future<IdentityMcpSyncResult> syncForIdentity({
-    required String identityId,
+  Future<ProfileMcpSyncResult> syncForIdentity({
+    required String profileId,
     required List<String> mcpServerIds,
     required List<McpServer> catalog,
     required RuntimeLayout layout,
   }) async {
-    final trimmedIdentityId = identityId.trim();
+    final trimmedIdentityId = profileId.trim();
     if (trimmedIdentityId.isEmpty) {
-      return const IdentityMcpSyncResult();
+      return const ProfileMcpSyncResult();
     }
 
     final byId = {for (final s in catalog) s.id: s};
@@ -69,9 +69,9 @@ class IdentityMcpLinkerService {
             'smitheryServerKeys': smitheryServerKeys,
         }),
       );
-      return IdentityMcpSyncResult(linked: linked, skippedMissingIds: skipped);
+      return ProfileMcpSyncResult(linked: linked, skippedMissingIds: skipped);
     } catch (e) {
-      return IdentityMcpSyncResult(
+      return ProfileMcpSyncResult(
         linked: linked,
         skippedMissingIds: skipped,
         errors: ['Failed to write identity MCP snapshot: $e'],

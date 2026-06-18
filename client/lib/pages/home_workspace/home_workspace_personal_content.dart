@@ -2,17 +2,17 @@ import 'package:flutter/material.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
-import '../../cubits/identity_cubit.dart';
+import '../../cubits/launch_profile_cubit.dart';
 import '../../l10n/l10n_extensions.dart';
-import '../../models/identity_kind.dart';
-import '../../models/personal_identity.dart';
+import '../../models/launch_profile_kind.dart';
+import '../../models/personal_profile.dart';
 import '../../theme/workspace_surface_layers.dart';
 import 'home_workspace_content_header.dart';
 import 'home_workspace_global_section.dart';
 import 'home_workspace_personal_tab.dart';
 import 'workspace/workspace_config_section.dart';
 
-/// Right-hand content pane for a selected [PersonalIdentity] on the home
+/// Right-hand content pane for a selected [PersonalProfile] on the home
 /// workspace (skills/plugins/MCP/agent — no roster).
 class HomePersonalContent extends StatefulWidget {
   const HomePersonalContent({
@@ -22,8 +22,8 @@ class HomePersonalContent extends StatefulWidget {
     super.key,
   });
 
-  final PersonalIdentity personal;
-  final IdentityCubit cubit;
+  final PersonalProfile personal;
+  final LaunchProfileCubit cubit;
   final ValueChanged<HomeGlobalView>? onSelectGlobalView;
 
   @override
@@ -34,7 +34,7 @@ class _HomePersonalContentState extends State<HomePersonalContent> {
   late int _tabIndex = 0;
 
   List<WorkspaceConfigSection> get _sections => WorkspaceConfigSection.forKind(
-    IdentityKind.personal,
+    LaunchProfileKind.personal,
   ).where((s) => s != WorkspaceConfigSection.settings).toList(growable: false);
 
   @override
@@ -89,7 +89,7 @@ class _HomePersonalContentState extends State<HomePersonalContent> {
 class HomePersonalHeader extends StatelessWidget {
   const HomePersonalHeader({required this.personal, super.key});
 
-  final PersonalIdentity personal;
+  final PersonalProfile personal;
 
   @override
   Widget build(BuildContext context) {

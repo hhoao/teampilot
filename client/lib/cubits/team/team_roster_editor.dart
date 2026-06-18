@@ -9,7 +9,7 @@ class MemberMutation {
     : assert(team != null);
   const MemberMutation.reject(this.statusMessage) : team = null;
 
-  final TeamIdentity? team;
+  final TeamProfile? team;
   final String? statusMessage;
 
   bool get isRejected => team == null;
@@ -20,10 +20,10 @@ class MemberMutation {
 class TeamRosterEditor {
   const TeamRosterEditor();
 
-  TeamIdentity defaultTeam() {
+  TeamProfile defaultTeam() {
     const name = 'Default Team';
     final now = DateTime.now().millisecondsSinceEpoch;
-    return TeamIdentity(
+    return TeamProfile(
       id: TeamMemberNaming.slugTeamId(name),
       name: name,
       createdAt: now,
@@ -37,7 +37,7 @@ class TeamRosterEditor {
   }
 
   /// Ensures the roster contains a team-lead, prepending a default one if not.
-  TeamIdentity normalizeTeam(TeamIdentity team) {
+  TeamProfile normalizeTeam(TeamProfile team) {
     final hasLead = team.members.any(TeamMemberNaming.isTeamLead);
     if (hasLead) return team;
     final now = DateTime.now().millisecondsSinceEpoch;
@@ -51,7 +51,7 @@ class TeamRosterEditor {
 
   TeamMemberConfig normalizeMember(TeamMemberConfig member) => member;
 
-  String uniqueMemberSlug(TeamIdentity team, String base) {
+  String uniqueMemberSlug(TeamProfile team, String base) {
     final existing = team.members.map((m) => m.id).toSet();
     final first = TeamMemberNaming.slugMemberName(base);
     if (!existing.contains(first)) return first;
@@ -75,14 +75,14 @@ class TeamRosterEditor {
   }
 
   /// Appends a fresh default-worker member to [team].
-  ({TeamIdentity team, TeamMemberConfig added}) addMember(TeamIdentity team) {
+  ({TeamProfile team, TeamMemberConfig added}) addMember(TeamProfile team) {
     final id = uniqueMemberSlug(team, TeamMemberNaming.defaultWorkerName);
     final now = DateTime.now().millisecondsSinceEpoch;
     final member = TeamMemberConfig(
       id: id,
       name: TeamMemberNaming.defaultWorkerName,
       joinedAt: now,
-      activePresetId: TeamIdentity.inheritPresetId,
+      activePresetId: TeamProfile.inheritPresetId,
     );
     return (
       team: team.copyWith(members: [...team.members, member]),
@@ -92,7 +92,7 @@ class TeamRosterEditor {
 
   /// Validates and applies an update to the member with [memberId].
   MemberMutation updateMember(
-    TeamIdentity team,
+    TeamProfile team,
     String memberId,
     TeamMemberConfig updated,
   ) {
@@ -116,7 +116,7 @@ class TeamRosterEditor {
   }
 
   /// Validates and removes the member with [memberId] from [team].
-  MemberMutation removeMember(TeamIdentity team, String memberId) {
+  MemberMutation removeMember(TeamProfile team, String memberId) {
     TeamMemberConfig? target;
     for (final m in team.members) {
       if (m.id == memberId) {

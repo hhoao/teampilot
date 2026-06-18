@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../../../l10n/l10n_extensions.dart';
-import '../../../models/identity_kind.dart';
+import '../../../models/launch_profile_kind.dart';
 import '../../../widgets/settings/workspace_section_navigation.dart';
 
 /// Personal / team workspace configuration sections (mirrors [TeamConfigSection]).
@@ -23,8 +23,8 @@ enum WorkspaceConfigSection implements WorkspaceSectionDescriptor {
     extensions,
   ];
 
-  static List<WorkspaceConfigSection> forKind(IdentityKind kind) =>
-      kind == IdentityKind.team
+  static List<WorkspaceConfigSection> forKind(LaunchProfileKind kind) =>
+      kind == LaunchProfileKind.team
           ? [...{_bundleSections.first}, members, ..._bundleSections.skip(1)]
           : _bundleSections;
 

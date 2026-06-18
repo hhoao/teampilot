@@ -1,9 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
-import '../../cubits/identity_cubit.dart';
+import '../../cubits/launch_profile_cubit.dart';
 import '../../cubits/extension_cubit.dart';
-import '../../models/personal_identity.dart';
+import '../../models/personal_profile.dart';
 import '../team_config/team_config_extensions_section.dart';
 import 'home_workspace_global_section.dart';
 import 'workspace/config/workspace_agent_section.dart';
@@ -23,8 +23,8 @@ class HomePersonalTab extends StatelessWidget {
   });
 
   final WorkspaceConfigSection section;
-  final PersonalIdentity personal;
-  final IdentityCubit cubit;
+  final PersonalProfile personal;
+  final LaunchProfileCubit cubit;
   final ValueChanged<HomeGlobalView>? onSelectGlobalView;
 
   @override
@@ -32,22 +32,22 @@ class HomePersonalTab extends StatelessWidget {
     final body = switch (section) {
       WorkspaceConfigSection.agent => WorkspaceAgentSection(
         workspaceId: '',
-        identityId: personal.id,
+        profileId: personal.id,
       ),
       WorkspaceConfigSection.skills => WorkspaceSkillsSection(
         workspaceId: '',
-        identityId: personal.id,
+        profileId: personal.id,
       ),
       WorkspaceConfigSection.plugins => WorkspacePluginsSection(
         workspaceId: '',
-        identityId: personal.id,
+        profileId: personal.id,
       ),
       WorkspaceConfigSection.mcp => WorkspaceMcpSection(
         workspaceId: '',
-        identityId: personal.id,
+        profileId: personal.id,
       ),
       WorkspaceConfigSection.extensions => _IdentityExtensionsSection(
-        identityId: personal.id,
+        profileId: personal.id,
       ),
       _ => const SizedBox.shrink(),
     };
@@ -60,9 +60,9 @@ class HomePersonalTab extends StatelessWidget {
 }
 
 class _IdentityExtensionsSection extends StatefulWidget {
-  const _IdentityExtensionsSection({required this.identityId});
+  const _IdentityExtensionsSection({required this.profileId});
 
-  final String identityId;
+  final String profileId;
 
   @override
   State<_IdentityExtensionsSection> createState() =>
@@ -82,12 +82,12 @@ class _IdentityExtensionsSectionState
   @override
   void didUpdateWidget(covariant _IdentityExtensionsSection oldWidget) {
     super.didUpdateWidget(oldWidget);
-    if (oldWidget.identityId != widget.identityId) _loadOverrides();
+    if (oldWidget.profileId != widget.profileId) _loadOverrides();
   }
 
   Future<void> _loadOverrides() async {
     final map = await context.read<ExtensionCubit>().teamOverrides(
-      widget.identityId,
+      widget.profileId,
     );
     if (!mounted) return;
     setState(() => _overrides = map);
@@ -113,7 +113,7 @@ class _IdentityExtensionsSectionState
       ExtensionOverrideChoice.forceOff => false,
     };
     await context.read<ExtensionCubit>().setTeamOverride(
-      widget.identityId,
+      widget.profileId,
       id,
       value,
     );

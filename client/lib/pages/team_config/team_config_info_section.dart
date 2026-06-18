@@ -4,7 +4,7 @@ import 'package:teampilot/theme/app_icon_sizes.dart';
 
 import '../../cubits/app_provider_cubit.dart';
 import '../../cubits/cli_presets_cubit.dart';
-import '../../cubits/identity_cubit.dart';
+import '../../cubits/launch_profile_cubit.dart';
 import '../../l10n/l10n_extensions.dart';
 import '../../models/app_provider_config.dart';
 import '../../models/cli_preset.dart';
@@ -27,8 +27,8 @@ import 'team_default_preset_configure_dialog.dart';
 class TeamInfoSection extends StatefulWidget {
   const TeamInfoSection({super.key, required this.team, required this.cubit});
 
-  final TeamIdentity team;
-  final IdentityCubit cubit;
+  final TeamProfile team;
+  final LaunchProfileCubit cubit;
 
   @override
   State<TeamInfoSection> createState() => TeamInfoSectionState();
@@ -257,8 +257,8 @@ class _TeamDefaultPresetRow extends StatelessWidget {
     required this.showDividerBelow,
   });
 
-  final TeamIdentity team;
-  final IdentityCubit cubit;
+  final TeamProfile team;
+  final LaunchProfileCubit cubit;
   final bool showDividerBelow;
 
   @override
@@ -268,7 +268,7 @@ class _TeamDefaultPresetRow extends StatelessWidget {
     final styles = AppTextStyles.of(context);
     final registry = CliToolRegistryScope.of(context);
     final presets = context.watch<CliPresetsCubit>().state.presets;
-    final currentTeam = context.watch<IdentityCubit>().state.teams.firstWhere(
+    final currentTeam = context.watch<LaunchProfileCubit>().state.teams.firstWhere(
       (t) => t.id == team.id,
       orElse: () => team,
     );
@@ -481,8 +481,8 @@ class TeamConfigDangerZone extends StatelessWidget {
     required this.cubit,
   });
 
-  final TeamIdentity team;
-  final IdentityCubit cubit;
+  final TeamProfile team;
+  final LaunchProfileCubit cubit;
 
   Future<void> _confirmDelete(BuildContext context) async {
     final l10n = context.l10n;

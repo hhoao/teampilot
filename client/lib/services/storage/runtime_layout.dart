@@ -45,23 +45,23 @@ class RuntimeLayout {
   String appToolRoot(String tool) =>
       _pathContext.join(cliDefaultsDir, tool.trim());
 
-  String identityRuntimeDir(String identityId) =>
-      _pathContext.join(identitiesRuntimeDir, identityId.trim());
+  String identityRuntimeDir(String profileId) =>
+      _pathContext.join(identitiesRuntimeDir, profileId.trim());
 
-  String identityToolDir(String identityId, String tool) =>
-      _pathContext.join(identityRuntimeDir(identityId), tool.trim());
+  String identityToolDir(String profileId, String tool) =>
+      _pathContext.join(identityRuntimeDir(profileId), tool.trim());
 
-  String identitySessionCounterFile(String identityId) =>
-      _pathContext.join(identityRuntimeDir(identityId), 'session-counter.json');
+  String identitySessionCounterFile(String profileId) =>
+      _pathContext.join(identityRuntimeDir(profileId), 'session-counter.json');
 
-  String identityPluginsDir(String identityId) =>
-      _pathContext.join(identityToolDir(identityId, 'flashskyai'), 'plugins');
+  String identityPluginsDir(String profileId) =>
+      _pathContext.join(identityToolDir(profileId, 'flashskyai'), 'plugins');
 
-  String identityMcpDir(String identityId) =>
-      _pathContext.join(identityRuntimeDir(identityId), 'mcp');
+  String identityMcpDir(String profileId) =>
+      _pathContext.join(identityRuntimeDir(profileId), 'mcp');
 
-  String identityMcpServersFile(String identityId) =>
-      _pathContext.join(identityMcpDir(identityId), 'servers.json');
+  String identityMcpServersFile(String profileId) =>
+      _pathContext.join(identityMcpDir(profileId), 'servers.json');
 
   String workspaceConfigToolDir(String workspaceId, String tool) =>
       workspace.workspaceConfigToolDir(workspaceId, tool);
@@ -107,11 +107,11 @@ class RuntimeLayout {
   List<String> transcriptSearchRoots({
     required String workspaceId,
     required String sessionId,
-    String? identityId,
+    String? profileId,
     String? memberId,
     Iterable<String>? tools,
   }) {
-    final trimmedIdentity = identityId?.trim() ?? '';
+    final trimmedIdentity = profileId?.trim() ?? '';
     final trimmedWorkspace = workspaceId.trim();
     final trimmedSession = sessionId.trim();
     final trimmedMember = memberId?.trim() ?? '';
@@ -153,14 +153,14 @@ class RuntimeLayout {
     await _fs.ensureDir(appToolRoot(tool));
   }
 
-  static String _identityInheritLockKey(String identityId, String tool) =>
-      '${identityId.trim()}|${tool.trim()}';
+  static String _identityInheritLockKey(String profileId, String tool) =>
+      '${profileId.trim()}|${tool.trim()}';
 
   static String _workspaceInheritLockKey(String workspaceId, String tool) =>
       'workspace|${workspaceId.trim()}|${tool.trim()}';
 
-  Future<void> ensureIdentityInheritsApp(String identityId, String tool) async {
-    final trimmedIdentity = identityId.trim();
+  Future<void> ensureIdentityInheritsApp(String profileId, String tool) async {
+    final trimmedIdentity = profileId.trim();
     final trimmedTool = tool.trim();
     if (trimmedIdentity.isEmpty || trimmedTool.isEmpty) return;
     await _identityInheritLocks.synchronized(
@@ -248,13 +248,13 @@ class RuntimeLayout {
   Future<void> ensureSessionRuntimeInheritsIdentity(
     String workspaceId,
     String sessionId,
-    String identityId,
+    String profileId,
     String tool, {
     String? memberId,
   }) async {
     final trimmedWorkspace = workspaceId.trim();
     final trimmedSession = sessionId.trim();
-    final trimmedIdentity = identityId.trim();
+    final trimmedIdentity = profileId.trim();
     final trimmedTool = tool.trim();
     if (trimmedWorkspace.isEmpty ||
         trimmedSession.isEmpty ||
@@ -286,13 +286,13 @@ class RuntimeLayout {
   Future<String?> provisionSessionPluginsFromIdentity(
     String workspaceId,
     String sessionId,
-    String identityId,
+    String profileId,
     String tool, {
     String? memberId,
   }) async {
     final trimmedWorkspace = workspaceId.trim();
     final trimmedSession = sessionId.trim();
-    final trimmedIdentity = identityId.trim();
+    final trimmedIdentity = profileId.trim();
     final trimmedTool = tool.trim();
     if (trimmedWorkspace.isEmpty ||
         trimmedSession.isEmpty ||

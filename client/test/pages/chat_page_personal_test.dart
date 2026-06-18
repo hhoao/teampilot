@@ -7,13 +7,13 @@ import 'package:teampilot/cubits/chat_cubit.dart';
 import 'package:teampilot/cubits/editor_cubit.dart';
 import 'package:teampilot/cubits/layout_cubit.dart';
 import 'package:teampilot/cubits/member_presence_cubit.dart';
-import 'package:teampilot/cubits/identity_cubit.dart';
+import 'package:teampilot/cubits/launch_profile_cubit.dart';
 import 'package:teampilot/cubits/workspace_tools_cubit.dart';
 import 'package:teampilot/l10n/app_localizations.dart';
 import 'package:teampilot/pages/chat_page.dart';
 import 'package:teampilot/pages/workspace_shell/workspace_shell.dart';
 import 'package:teampilot/repositories/session_repository.dart';
-import 'package:teampilot/repositories/identity_repository.dart';
+import 'package:teampilot/repositories/launch_profile_repository.dart';
 import 'package:teampilot/services/io/local_filesystem.dart';
 import 'package:teampilot/services/provider/config_profile_service.dart';
 
@@ -45,8 +45,8 @@ void main() {
       if (appData.existsSync()) appData.deleteSync(recursive: true);
     });
 
-    final teamCubit = IdentityCubit(
-      repository: IdentityRepository(rootDir: appData.path),
+    final teamCubit = LaunchProfileCubit(
+      repository: LaunchProfileRepository(rootDir: appData.path),
       sessionRepository: SessionRepository(rootDir: appData.path),
       reloadWorkspaces: () async {},
       executableResolver: _executable,

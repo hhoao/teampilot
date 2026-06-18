@@ -3,14 +3,14 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../../cubits/chat_cubit.dart';
-import '../../../cubits/identity_cubit.dart';
+import '../../../cubits/launch_profile_cubit.dart';
 import '../../../l10n/l10n_extensions.dart';
 import '../../../models/workspace.dart';
-import '../../../models/identity_kind.dart';
-import '../../../models/launch_identity.dart';
+import '../../../models/launch_profile_kind.dart';
+import '../../../models/launch_profile_ref.dart';
 import '../../../models/team_config.dart';
-import '../../../models/identity.dart';
-import '../../../services/storage/identity_provisioner.dart';
+import '../../../models/launch_profile.dart';
+import '../../../services/storage/launch_profile_provisioner.dart';
 import '../../../theme/workspace_surface_layers.dart';
 import 'workspace_config_workspace.dart';
 import 'workspace_rail.dart';
@@ -36,7 +36,7 @@ class WorkspacePage extends StatefulWidget {
 
   /// Launch identity from `?as=`. Null means "no identity chosen" → the page
   /// redirects to the workspace grid.
-  final LaunchIdentity? identity;
+  final LaunchProfileRef? identity;
 
   /// `manage` opens [WorkspaceConfigPanel] (personal workspaces).
   final String? view;
@@ -88,13 +88,13 @@ class _WorkspacePageState extends State<WorkspacePage> {
     return WorkspaceSection.conversations;
   }
 
-  Identity? _resolveIdentity() {
+  LaunchProfile? _resolveIdentity() {
     final launchIdentity = widget.identity;
     if (launchIdentity == null) return null;
-    final cubit = context.read<IdentityCubit>();
-    final resolved = cubit.byId(launchIdentity.identityId);
+    final cubit = context.read<LaunchProfileCubit>();
+    final resolved = cubit.byId(launchIdentity.profileId);
     if (resolved != null) return resolved;
-    return cubit.byId(IdentityProvisioner.defaultPersonalId);
+    return cubit.byId(LaunchProfileProvisioner.defaultPersonalId);
   }
 
   void _syncWorkspaceContext() {
@@ -106,7 +106,7 @@ class _WorkspacePageState extends State<WorkspacePage> {
     );
     if (workspace == null) return;
     final workspaceIdentity = _resolveIdentity();
-    if (workspaceIdentity is TeamIdentity) {
+    if (workspaceIdentity is TeamProfile) {
       _syncSelectedTeam(workspaceIdentity.id);
     }
   }
@@ -114,7 +114,7 @@ class _WorkspacePageState extends State<WorkspacePage> {
   void _onSectionChanged(
     WorkspaceSection section,
     Workspace workspace,
-    Identity workspaceIdentity,
+    LaunchProfile workspaceIdentity,
   ) {
     setState(() {
       _section = section;
@@ -163,11 +163,11 @@ class _WorkspacePageState extends State<WorkspacePage> {
       );
     }
 
-    final workspaceIdentity = context.select<IdentityCubit, Identity?>(
+    final workspaceIdentity = context.select<LaunchProfileCubit, LaunchProfile?>(
       (c) {
-        final resolved = c.byId(launchIdentity.identityId);
+        final resolved = c.byId(launchIdentity.profileId);
         if (resolved != null) return resolved;
-        return c.byId(IdentityProvisioner.defaultPersonalId);
+        return c.byId(LaunchProfileProvisioner.defaultPersonalId);
       },
     );
     if (workspaceIdentity == null) {
@@ -177,7 +177,7 @@ class _WorkspacePageState extends State<WorkspacePage> {
       );
     }
 
-    final isPersonal = workspaceIdentity.kind == IdentityKind.personal;
+    final isPersonal = workspaceIdentity.kind == LaunchProfileKind.personal;
     final sessionTeamFilter =
         isPersonal ? '' : workspaceIdentity.id;
     final cardBody = _buildCardBody(
@@ -196,7 +196,7 @@ class _WorkspacePageState extends State<WorkspacePage> {
 
   Widget _buildWorkspacePageWithRail({
     required Workspace workspace,
-    required Identity workspaceIdentity,
+    required LaunchProfile workspaceIdentity,
     required bool isPersonal,
     required Widget cardBody,
   }) {
@@ -223,7 +223,7 @@ class _WorkspacePageState extends State<WorkspacePage> {
 
   Widget _buildCardBody({
     required Workspace workspace,
-    required Identity workspaceIdentity,
+    required LaunchProfile workspaceIdentity,
     required String sessionTeamFilter,
   }) {
     final showManage = _section == WorkspaceSection.manage;
@@ -234,14 +234,14 @@ class _WorkspacePageState extends State<WorkspacePage> {
         WorkspaceSplitPane(
           key: ValueKey('conversations-${workspace.workspaceId}-${workspaceIdentity.id}'),
           workspace: workspace,
-          isPersonalWorkspace: workspaceIdentity.kind == IdentityKind.personal,
-          identityId: workspaceIdentity.id,
+          isPersonalWorkspace: workspaceIdentity.kind == LaunchProfileKind.personal,
+          profileId: workspaceIdentity.id,
           sessionTeamFilter: sessionTeamFilter,
         ),
         if (_visitedManage)
           WorkspaceConfigPanel(
             workspace: workspace,
-            identityId: workspaceIdentity.id,
+            profileId: workspaceIdentity.id,
             section: _configSection,
           )
         else
@@ -252,7 +252,7 @@ class _WorkspacePageState extends State<WorkspacePage> {
 
   void _syncSelectedTeam(String teamId) {
     if (teamId.isEmpty) return;
-    final teamCubit = context.read<IdentityCubit>();
+    final teamCubit = context.read<LaunchProfileCubit>();
     if (teamCubit.state.selectedTeam?.id == teamId) return;
     if (teamCubit.state.selectedTeam?.id != teamId) {
       teamCubit.selectTeam(teamId);

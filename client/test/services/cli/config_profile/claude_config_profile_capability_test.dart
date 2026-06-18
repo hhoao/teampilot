@@ -26,7 +26,7 @@ void main() {
     );
     const capability = ClaudeConfigProfileCapability();
     const member = TeamMemberConfig(id: 'm1', name: 'Member', model: 'test');
-    const team = TeamIdentity(id: 'team-a', name: 'agent', cli: CliTool.claude);
+    const team = TeamProfile(id: 'team-a', name: 'agent', cli: CliTool.claude);
 
     final scope = resolveLaunchProfileScope(
       workspaceId: 'workspace-1',
@@ -87,7 +87,7 @@ void main() {
           },
         ),
       ]);
-      const team = TeamIdentity(
+      const team = TeamProfile(
         id: 'team-a',
         name: 'agent',
         cli: CliTool.claude,
@@ -196,7 +196,7 @@ void main() {
         name: 'Member',
         model: 'member-main',
       );
-      const team = TeamIdentity(
+      const team = TeamProfile(
         id: 'team-a',
         name: 'agent',
         cli: CliTool.claude,

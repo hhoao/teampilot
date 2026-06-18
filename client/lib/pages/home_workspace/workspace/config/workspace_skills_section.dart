@@ -4,8 +4,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
 
-import '../../../../models/personal_identity.dart';
-import '../../../../cubits/identity_cubit.dart';
+import '../../../../models/personal_profile.dart';
+import '../../../../cubits/launch_profile_cubit.dart';
 import '../../../../cubits/skill_cubit.dart';
 import '../../../../l10n/l10n_extensions.dart';
 import '../../home_workspace_global_section.dart';
@@ -15,18 +15,18 @@ import '../../../team_config/team_config_skills_section.dart';
 class WorkspaceSkillsSection extends StatelessWidget {
   const WorkspaceSkillsSection({
     required this.workspaceId,
-    required this.identityId,
+    required this.profileId,
     super.key,
   });
 
   final String workspaceId;
-  final String identityId;
+  final String profileId;
 
   @override
   Widget build(BuildContext context) {
-    final identityCubit = context.watch<IdentityCubit>();
-    final personal = identityCubit.byId(identityId);
-    if (personal is! PersonalIdentity) {
+    final identityCubit = context.watch<LaunchProfileCubit>();
+    final personal = identityCubit.byId(profileId);
+    if (personal is! PersonalProfile) {
       return const Center(child: CircularProgressIndicator());
     }
 

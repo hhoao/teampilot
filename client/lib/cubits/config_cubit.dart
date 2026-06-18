@@ -51,7 +51,7 @@ class ConfigCubit extends Cubit<ConfigState> {
     emit(state.copyWith(section: section));
   }
 
-  void syncTeam(TeamIdentity team) {
+  void syncTeam(TeamProfile team) {
     if (team.members.isEmpty) {
       if (state.selectedMemberId.isEmpty) return;
       emit(state.copyWith(selectedMemberId: ''));

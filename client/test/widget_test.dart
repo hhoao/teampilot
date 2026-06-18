@@ -15,11 +15,11 @@ import 'package:teampilot/cubits/workspace_tools_cubit.dart';
 import 'package:teampilot/services/terminal/workspace_terminal_registry.dart';
 import 'package:teampilot/cubits/llm_config_cubit.dart';
 import 'package:teampilot/cubits/session_preferences_cubit.dart';
-import 'package:teampilot/cubits/identity_cubit.dart';
+import 'package:teampilot/cubits/launch_profile_cubit.dart';
 import 'package:teampilot/main.dart';
 import 'package:teampilot/models/llm_config.dart';
 import 'package:teampilot/models/workspace.dart';
-import 'package:teampilot/models/personal_identity.dart';
+import 'package:teampilot/models/personal_profile.dart';
 import 'package:teampilot/models/app_session.dart';
 import 'package:teampilot/models/session_member_binding.dart';
 import 'package:teampilot/models/team_config.dart';
@@ -29,7 +29,7 @@ import 'package:teampilot/repositories/layout_repository.dart';
 import 'package:teampilot/repositories/session_preferences_repository.dart';
 import 'package:teampilot/repositories/session_repository.dart';
 import 'package:teampilot/repositories/extension_repository.dart';
-import 'package:teampilot/repositories/identity_repository.dart';
+import 'package:teampilot/repositories/launch_profile_repository.dart';
 import 'package:teampilot/services/extension/builtin_manifests.dart';
 import 'package:teampilot/services/extension/extension_acquisition_engine.dart';
 import 'package:teampilot/services/extension/extension_detector.dart';
@@ -93,7 +93,7 @@ late Directory _widgetTestSessionRepoDir;
 late SessionRepository _widgetTestSessionRepo;
 
 Widget buildTestApp({
-  required IdentityCubit teamCubit,
+  required LaunchProfileCubit teamCubit,
   required SessionPreferencesCubit sessionPreferencesCubit,
   ChatCubit? chatCubit,
   MemberPresenceCubit? memberPresenceCubit,
@@ -173,7 +173,7 @@ Future<void> pumpPhaseTransitions(WidgetTester tester) async {
 
 Future<void> pumpDesktopApp(
   WidgetTester tester,
-  IdentityCubit teamCubit, {
+  LaunchProfileCubit teamCubit, {
   ChatCubit? chatCubit,
   LayoutCubit? layoutCubit,
   LlmConfigCubit? llmConfigCubit,
@@ -228,11 +228,11 @@ Future<SessionPreferencesCubit> testSessionPreferencesCubit() async {
   );
 }
 
-Future<IdentityCubit> createTeamCubit({TeamLauncher? launcher}) async {
+Future<LaunchProfileCubit> createTeamCubit({TeamLauncher? launcher}) async {
   final tmp = await Directory.systemTemp.createTemp('teams_widget_');
   final appData = await Directory.systemTemp.createTemp('teams_widget_app_');
-  final repository = IdentityRepository(rootDir: tmp.path);
-  final cubit = IdentityCubit(
+  final repository = LaunchProfileRepository(rootDir: tmp.path);
+  final cubit = LaunchProfileCubit(
     repository: repository,
     sessionRepository: SessionRepository(),
     reloadWorkspaces: () async {},
@@ -247,7 +247,7 @@ Future<IdentityCubit> createTeamCubit({TeamLauncher? launcher}) async {
 
 /// [testWidgets] uses a fake-async zone; futures from real disk I/O (temp dirs,
 /// team JSON) must be created inside [WidgetTester.runAsync] or they never complete.
-Future<IdentityCubit> createTeamCubitInTest(
+Future<LaunchProfileCubit> createTeamCubitInTest(
   WidgetTester tester, {
   TeamLauncher? launcher,
 }) async {
@@ -334,12 +334,12 @@ class _FixedResumeLifecycleService extends SessionLifecycleService {
   @override
   Future<ShellLaunchSpec> prepareShellLaunch({
     required AppSession session,
-    TeamIdentity? team,
+    TeamProfile? team,
     TeamMemberConfig? member,
     SessionMemberBinding? memberBinding,
     Workspace? workspace,
-    PersonalIdentity? personal,
-    String? identityId,
+    PersonalProfile? personal,
+    String? profileId,
     String? llmConfigPathOverride,
     Map<String, Map<String, Object?>>? extraMcpServers,
     String? busIdleUrl,
@@ -587,7 +587,7 @@ void main() {
   });
 
   test('opening a team session tab starts team-lead member shell', () async {
-    final team = TeamIdentity(
+    final team = TeamProfile(
       id: 'default-team',
       name: 'Default Team',
       members: TeamMemberNaming.defaultRoster(),
@@ -650,8 +650,8 @@ void main() {
   test('team cubit manages teams', () async {
     final tmp = await Directory.systemTemp.createTemp('teams_cubit_');
     final appData = await Directory.systemTemp.createTemp('teams_cubit_app_');
-    final repository = IdentityRepository(rootDir: tmp.path);
-    final cubit = IdentityCubit(
+    final repository = LaunchProfileRepository(rootDir: tmp.path);
+    final cubit = LaunchProfileCubit(
       repository: repository,
       sessionRepository: SessionRepository(),
       reloadWorkspaces: () async {},
@@ -704,7 +704,7 @@ void main() {
     expect(cubit.state.tabs, isEmpty);
     expect(cubit.state.selectedMemberId, isEmpty);
 
-    final team = TeamIdentity(
+    final team = TeamProfile(
       id: 'test-team',
       name: 'Test',
       members: const [
@@ -732,7 +732,7 @@ void main() {
               ),
       postFrameScheduler: postFrame.scheduler,
     );
-    final team = TeamIdentity(
+    final team = TeamProfile(
       id: 'test-team',
       name: 'Test',
       members: const [
@@ -772,7 +772,7 @@ void main() {
           storageRootsResolver: () async => StorageRootsSnapshot(
             storageIsRemote: false,
             teampilotRoot: tmp.path,
-            identitiesUiDir: p.join(tmp.path, 'identities'),
+            launchProfilesDir: p.join(tmp.path, 'launch-profiles'),
             skillsRoot: p.join(tmp.path, 'skills', 'installed'),
             skillBackupsDir: p.join(tmp.path, 'skills', 'backups'),
             workspaceDir: p.join(tmp.path, 'workspace'),
@@ -804,7 +804,7 @@ void main() {
           ),
         ),
       );
-      const team = TeamIdentity(
+      const team = TeamProfile(
         id: 'test-team',
         name: 'Test',
         cli: CliTool.claude,
@@ -840,7 +840,7 @@ void main() {
       addTearDown(() => _deleteTempDirBestEffort(tmp));
       final repo = SessionRepository(rootDir: tmp.path);
       final postFrame = PostFrameTestHarness();
-      final team = TeamIdentity(
+      final team = TeamProfile(
         id: 'test-team',
         name: 'Test',
         members: const [
@@ -888,7 +888,7 @@ void main() {
       addTearDown(() => _deleteTempDirBestEffort(tmp));
       final repo = SessionRepository(rootDir: tmp.path);
       final postFrame = PostFrameTestHarness();
-      final team = TeamIdentity(
+      final team = TeamProfile(
         id: 'test-team',
         name: 'Test',
         members: const [
@@ -942,7 +942,7 @@ void main() {
                 ),
         postFrameScheduler: postFrame.scheduler,
       );
-      final team = TeamIdentity(
+      final team = TeamProfile(
         id: 'test-team',
         name: 'Test',
         members: const [
@@ -990,7 +990,7 @@ void main() {
     final tmp = await Directory.systemTemp.createTemp('open_sess_');
     addTearDown(() => _deleteTempDirBestEffort(tmp));
     final repo = SessionRepository(rootDir: tmp.path);
-    final team = TeamIdentity(
+    final team = TeamProfile(
       id: 'tid',
       name: 'TName',
       members: const [TeamMemberConfig(id: 'lid', name: 'team-lead')],
@@ -1032,7 +1032,7 @@ void main() {
     final tmp = await Directory.systemTemp.createTemp('open_sess_');
     addTearDown(() => _deleteTempDirBestEffort(tmp));
     final repo = SessionRepository(rootDir: tmp.path);
-    final team = TeamIdentity(
+    final team = TeamProfile(
       id: 'tid',
       name: 'TName',
       members: const [TeamMemberConfig(id: 'lid', name: 'team-lead')],
@@ -1077,7 +1077,7 @@ void main() {
       final tmp = await Directory.systemTemp.createTemp('open_sess_');
       addTearDown(() => _deleteTempDirBestEffort(tmp));
       final repo = SessionRepository(rootDir: tmp.path);
-      final team = TeamIdentity(
+      final team = TeamProfile(
         id: 'tid',
         name: 'TName',
         members: const [TeamMemberConfig(id: 'lid', name: 'team-lead')],
@@ -1123,7 +1123,7 @@ void main() {
       final tmp = await Directory.systemTemp.createTemp('open_sess_');
       addTearDown(() => _deleteTempDirBestEffort(tmp));
       final repo = SessionRepository(rootDir: tmp.path);
-      final team = TeamIdentity(
+      final team = TeamProfile(
         id: 'tid',
         name: 'TName',
         members: const [TeamMemberConfig(id: 'lid', name: 'team-lead')],

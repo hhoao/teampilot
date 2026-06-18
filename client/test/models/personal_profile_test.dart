@@ -1,17 +1,17 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:teampilot/models/config_bundle.dart';
-import 'package:teampilot/models/identity_kind.dart';
-import 'package:teampilot/models/personal_identity.dart';
+import 'package:teampilot/models/launch_profile_kind.dart';
+import 'package:teampilot/models/personal_profile.dart';
 import 'package:teampilot/models/workspace_agent_config.dart';
 
 void main() {
   test('kind is always personal', () {
-    expect(const PersonalIdentity(id: 'x', display: 'X').kind,
-        IdentityKind.personal);
+    expect(const PersonalProfile(id: 'x', display: 'X').kind,
+        LaunchProfileKind.personal);
   });
 
   test('json round-trip preserves bundle, tiering and agent', () {
-    const identity = PersonalIdentity(
+    const identity = PersonalProfile(
       id: 'coding',
       display: 'Coding',
       bundle: const ConfigBundle(skillIds: ['s1'], mcpServerIds: ['m1']),
@@ -21,7 +21,7 @@ void main() {
       agent: WorkspaceAgentConfig(prompt: 'hi'),
       activePresetId: 'preset-1',
     );
-    final restored = PersonalIdentity.fromJson(identity.toJson());
+    final restored = PersonalProfile.fromJson(identity.toJson());
     expect(restored, identity);
   });
 }

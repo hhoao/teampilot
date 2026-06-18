@@ -2,9 +2,9 @@ import 'package:flutter/foundation.dart';
 
 import '../utils/team_member_naming.dart';
 import 'config_bundle.dart';
-import 'identity_kind.dart';
+import 'launch_profile_kind.dart';
 import 'workspace_icon_ref.dart';
-import 'identity.dart';
+import 'launch_profile.dart';
 
 /// Backend CLI identity (`flashskyai`, `codex`, `claude`, `opencode`, or
 /// `cursor`).
@@ -158,7 +158,7 @@ class TeamMemberConfig {
   /// When true, launch passes `--dangerously-skip-permissions` (CLI flag).
   final bool dangerouslySkipPermissions;
 
-  /// 成员 CLI 覆盖（仅 mixed 模式生效）；null 回退 [TeamIdentity.cli]。
+  /// 成员 CLI 覆盖（仅 mixed 模式生效）；null 回退 [TeamProfile.cli]。
   final CliTool? cli;
 
   /// Optional per-member effort override (`effortLevel` / `model_reasoning_effort`).
@@ -169,37 +169,37 @@ class TeamMemberConfig {
   /// [MemberInstance] / `expandTeamRoster`.
   final int replicas;
 
-  /// 成员级 [TeamIdentity.forceWaitBeforeStop] 覆盖（null=未设，回退 CLI 默认/团队值）。
+  /// 成员级 [TeamProfile.forceWaitBeforeStop] 覆盖（null=未设，回退 CLI 默认/团队值）。
   /// 见 [effectiveForceWaitBeforeStop]。
   final bool? forceWaitBeforeStop;
 
   /// Active preset id for this member.
   /// - `null` ⇒ member uses custom config (no preset).
-  /// - `TeamIdentity.inheritPresetId` ⇒ inherits the team's [TeamIdentity.activePresetId].
+  /// - `TeamProfile.inheritPresetId` ⇒ inherits the team's [TeamProfile.activePresetId].
   /// - any other value ⇒ member has an explicit preset override.
   final String? activePresetId;
 
-  /// Whether this member inherits the team's active preset ([TeamIdentity.activePresetId]).
-  bool get inheritsTeamPreset => activePresetId == TeamIdentity.inheritPresetId;
+  /// Whether this member inherits the team's active preset ([TeamProfile.activePresetId]).
+  bool get inheritsTeamPreset => activePresetId == TeamProfile.inheritPresetId;
 
   /// Whether this member has an explicit, non-inherit preset id.
   bool get hasExplicitPreset =>
-      activePresetId != null && activePresetId != TeamIdentity.inheritPresetId;
+      activePresetId != null && activePresetId != TeamProfile.inheritPresetId;
 
   /// Whether this member uses fully custom config (no preset at all).
   bool get usesCustomConfig => activePresetId == null;
 
   /// 成员有效 CLI：native 一律 team.cli；mixed 用成员覆盖、否则 team 默认。
-  CliTool cliWithin(TeamIdentity team) =>
+  CliTool cliWithin(TeamProfile team) =>
       team.teamMode == TeamMode.mixed ? (cli ?? team.cli) : team.cli;
 
   /// turn 结束时是否强制把该成员推回 `wait_for_message`（mixed 协议）。优先级：
-  /// 成员显式覆盖 [forceWaitBeforeStop] > CLI 默认 > 团队 [TeamIdentity.forceWaitBeforeStop]。
+  /// 成员显式覆盖 [forceWaitBeforeStop] > CLI 默认 > 团队 [TeamProfile.forceWaitBeforeStop]。
   ///
   /// CLI 默认：**cursor 为 false** —— cursor 的 MCP 工具调用有 ~60s agent 层硬限
   /// （不可配、progress 不续），无法阻塞在 `wait_for_message` 里；改为正常停到
   /// idle-at-prompt，由门铃（stdin 注入 + `read_messages`）push 投递。
-  bool effectiveForceWaitBeforeStop(TeamIdentity team) {
+  bool effectiveForceWaitBeforeStop(TeamProfile team) {
     if (forceWaitBeforeStop != null) return forceWaitBeforeStop!;
     if (cliWithin(team) == CliTool.cursor) return false;
     return team.forceWaitBeforeStop;
@@ -327,12 +327,12 @@ class TeamMemberConfig {
 }
 
 @immutable
-class TeamIdentity implements Identity {
+class TeamProfile implements LaunchProfile {
   /// Sentinel value for [TeamMemberConfig.activePresetId] meaning "inherit the
   /// team's [activePresetId]".
   static const inheritPresetId = '__inherit__';
 
-  const TeamIdentity({
+  const TeamProfile({
     required this.id,
     required this.name,
     this.description = '',
@@ -408,7 +408,7 @@ class TeamIdentity implements Identity {
     return null;
   }
 
-  factory TeamIdentity.fromJson(Map<String, Object?> json) {
+  factory TeamProfile.fromJson(Map<String, Object?> json) {
     final rawMembers = json['members'];
     final members = rawMembers is List
         ? rawMembers
@@ -421,7 +421,7 @@ class TeamIdentity implements Identity {
         : const <TeamMemberConfig>[];
 
     final name = json['name'] as String? ?? '';
-    return TeamIdentity(
+    return TeamProfile(
       id: TeamMemberNaming.slugTeamId(json['id'] as String? ?? name),
       name: name,
       description: json['description'] as String? ?? '',
@@ -503,7 +503,7 @@ class TeamIdentity implements Identity {
       (activePresetId != null && presetExists) ||
       hasCustomLaunchDefaultsFor(cli);
 
-  TeamIdentity withLaunchDefaultsForCli({
+  TeamProfile withLaunchDefaultsForCli({
     required CliTool cli,
     required String providerId,
     required String model,
@@ -529,7 +529,7 @@ class TeamIdentity implements Identity {
     );
   }
 
-  TeamIdentity withEffortForCli(CliTool cli, String effort) {
+  TeamProfile withEffortForCli(CliTool cli, String effort) {
     final trimmed = effort.trim();
     final next = Map<String, String>.from(cliEffortLevels);
     if (trimmed.isEmpty) {
@@ -604,7 +604,7 @@ class TeamIdentity implements Identity {
   final String? activePresetId;
 
   @override
-  IdentityKind get kind => IdentityKind.team;
+  LaunchProfileKind get kind => LaunchProfileKind.team;
 
   @override
   String get display => name;
@@ -621,7 +621,7 @@ class TeamIdentity implements Identity {
 
   bool get isValid => name.trim().isNotEmpty;
 
-  TeamIdentity copyWith({
+  TeamProfile copyWith({
     String? id,
     String? name,
     String? description,
@@ -650,7 +650,7 @@ class TeamIdentity implements Identity {
     String? activePresetId,
     bool updateActivePresetId = false,
   }) {
-    return TeamIdentity(
+    return TeamProfile(
       id: id ?? this.id,
       name: name ?? this.name,
       description: description ?? this.description,
@@ -717,7 +717,7 @@ class TeamIdentity implements Identity {
   @override
   bool operator ==(Object other) {
     return identical(this, other) ||
-        other is TeamIdentity &&
+        other is TeamProfile &&
             runtimeType == other.runtimeType &&
             id == other.id &&
             name == other.name &&

@@ -3,9 +3,9 @@
 import 'package:flutter/material.dart';
 import 'package:teampilot/theme/app_icon_sizes.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
-import '../../cubits/identity_cubit.dart';
+import '../../cubits/launch_profile_cubit.dart';
 import '../../l10n/l10n_extensions.dart';
-import '../../models/personal_identity.dart';
+import '../../models/personal_profile.dart';
 import '../../theme/app_text_styles.dart';
 import '../../theme/workspace_surface_layers.dart';
 import '../../utils/app_keys.dart';
@@ -18,7 +18,7 @@ const double _kIdentityGutterGap = 4;
 const double _kIdentityContentPaddingLeft = 12;
 
 /// Left rail of the workspace home: workspace identities plus global management
-/// shortcuts, mirroring the Apifox sidebar. Identity selection drives the
+/// shortcuts, mirroring the Apifox sidebar. LaunchProfile selection drives the
 /// right pane; global shortcuts swap it via [onSelectGlobalView].
 class HomeSidebar extends StatefulWidget {
   const HomeSidebar({
@@ -56,7 +56,7 @@ class _HomeSidebarState extends State<HomeSidebar> {
   Widget build(BuildContext context) {
     final cs = Theme.of(context).colorScheme;
     final l10n = context.l10n;
-    final identityCubit = context.watch<IdentityCubit>();
+    final identityCubit = context.watch<LaunchProfileCubit>();
     final personals = identityCubit.state.personals;
     final teams = identityCubit.state.teams;
     final selectedIdentityId = widget.selectedIdentityId;

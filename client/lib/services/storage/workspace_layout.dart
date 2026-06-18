@@ -11,7 +11,7 @@ import 'app_storage.dart';
 /// ```
 /// workspace/workspaces/{workspaceId}/
 ///   manifest.json       # Workspace
-///   profile.json        # PersonalIdentity (personal workspaces)
+///   profile.json        # PersonalProfile (personal workspaces)
 ///   assets/icon.*       # custom workspace icon
 ///   config/             # workspace-level CLI overrides
 ///     mcp/servers.json

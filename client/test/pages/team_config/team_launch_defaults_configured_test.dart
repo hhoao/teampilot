@@ -17,7 +17,7 @@ void main() {
 
   test('teamLaunchDefaultsConfigured accepts mixed-team preset for non-default CLI',
       () {
-    const team = TeamIdentity(
+    const team = TeamProfile(
       id: 'team',
       name: 'Mixed',
       teamMode: TeamMode.mixed,
@@ -36,7 +36,7 @@ void main() {
   });
 
   test('teamLaunchDefaultsConfigured still requires preset to exist', () {
-    const team = TeamIdentity(
+    const team = TeamProfile(
       id: 'team',
       name: 'Mixed',
       teamMode: TeamMode.mixed,

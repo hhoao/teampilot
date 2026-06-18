@@ -2,12 +2,12 @@ import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
 
-import '../../../cubits/identity_cubit.dart';
+import '../../../cubits/launch_profile_cubit.dart';
 import '../../../l10n/l10n_extensions.dart';
 import '../../../models/workspace.dart';
-import '../../../models/personal_identity.dart';
+import '../../../models/personal_profile.dart';
 import '../../../models/team_config.dart';
-import '../../../models/identity.dart';
+import '../../../models/launch_profile.dart';
 import '../../../utils/app_keys.dart';
 import '../../../utils/workspace_display_name.dart';
 import '../../../widgets/settings/workspace_section_host.dart';
@@ -29,13 +29,13 @@ import '../../team_config/team_config_section.dart';
 class WorkspaceConfigPanel extends StatefulWidget {
   const WorkspaceConfigPanel({
     required this.workspace,
-    required this.identityId,
+    required this.profileId,
     required this.section,
     super.key,
   });
 
   final Workspace workspace;
-  final String identityId;
+  final String profileId;
   final WorkspaceConfigSection section;
 
   @override
@@ -49,7 +49,7 @@ class _WorkspaceConfigPanelState
     return Uri(
       path: '/home-v2/workspace/${widget.workspace.workspaceId}',
       queryParameters: {
-        'as': widget.identityId,
+        'as': widget.profileId,
         'view': 'manage',
         'section': section.routeSegment,
       },
@@ -63,8 +63,8 @@ class _WorkspaceConfigPanelState
   @override
   Widget build(BuildContext context) {
     final l10n = context.l10n;
-    final identity = context.select<IdentityCubit, Identity?>(
-      (c) => c.byId(widget.identityId),
+    final identity = context.select<LaunchProfileCubit, LaunchProfile?>(
+      (c) => c.byId(widget.profileId),
     );
     if (identity == null) {
       return const Center(child: CircularProgressIndicator());
@@ -74,8 +74,8 @@ class _WorkspaceConfigPanelState
     final section = sections.contains(widget.section)
         ? widget.section
         : WorkspaceConfigSection.settings;
-    final identityCubit = context.read<IdentityCubit>();
-    final team = identity is TeamIdentity ? identity : null;
+    final identityCubit = context.read<LaunchProfileCubit>();
+    final team = identity is TeamProfile ? identity : null;
 
     final body = switch (section) {
       WorkspaceConfigSection.settings => WorkspaceInfoSection(workspace: widget.workspace),
@@ -84,19 +84,19 @@ class _WorkspaceConfigPanelState
           team: team,
           cubit: identityCubit,
         ),
-      WorkspaceConfigSection.agent when identity is PersonalIdentity =>
+      WorkspaceConfigSection.agent when identity is PersonalProfile =>
         WorkspaceAgentSection(
           workspaceId: widget.workspace.workspaceId,
-          identityId: identity.id,
+          profileId: identity.id,
         ),
       WorkspaceConfigSection.agent when team != null => TeamInfoSection(
           team: team,
           cubit: identityCubit,
         ),
-      WorkspaceConfigSection.skills when identity is PersonalIdentity =>
+      WorkspaceConfigSection.skills when identity is PersonalProfile =>
         WorkspaceSkillsSection(
           workspaceId: widget.workspace.workspaceId,
-          identityId: identity.id,
+          profileId: identity.id,
         ),
       WorkspaceConfigSection.skills when team != null => HomeTeamTab(
           section: TeamConfigSection.skills,
@@ -104,10 +104,10 @@ class _WorkspaceConfigPanelState
           cubit: identityCubit,
           onSelectGlobalView: _openGlobalView,
         ),
-      WorkspaceConfigSection.plugins when identity is PersonalIdentity =>
+      WorkspaceConfigSection.plugins when identity is PersonalProfile =>
         WorkspacePluginsSection(
           workspaceId: widget.workspace.workspaceId,
-          identityId: identity.id,
+          profileId: identity.id,
         ),
       WorkspaceConfigSection.plugins when team != null => HomeTeamTab(
           section: TeamConfigSection.plugins,
@@ -115,10 +115,10 @@ class _WorkspaceConfigPanelState
           cubit: identityCubit,
           onSelectGlobalView: _openGlobalView,
         ),
-      WorkspaceConfigSection.mcp when identity is PersonalIdentity =>
+      WorkspaceConfigSection.mcp when identity is PersonalProfile =>
         WorkspaceMcpSection(
           workspaceId: widget.workspace.workspaceId,
-          identityId: identity.id,
+          profileId: identity.id,
         ),
       WorkspaceConfigSection.mcp when team != null => HomeTeamTab(
           section: TeamConfigSection.mcp,
@@ -126,7 +126,7 @@ class _WorkspaceConfigPanelState
           cubit: identityCubit,
           onSelectGlobalView: _openGlobalView,
         ),
-      WorkspaceConfigSection.extensions when identity is PersonalIdentity =>
+      WorkspaceConfigSection.extensions when identity is PersonalProfile =>
         WorkspaceExtensionsSection(workspaceId: widget.workspace.workspaceId),
       WorkspaceConfigSection.extensions when team != null => HomeTeamTab(
           section: TeamConfigSection.extensions,

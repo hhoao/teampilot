@@ -22,15 +22,15 @@ import '../cubits/session_preferences_cubit.dart';
 import '../cubits/extension_cubit.dart';
 import '../cubits/mcp_cubit.dart';
 import '../cubits/plugin_cubit.dart';
-import '../repositories/identity_repository.dart';
-import '../services/storage/identity_provisioner.dart';
+import '../repositories/launch_profile_repository.dart';
+import '../services/storage/launch_profile_provisioner.dart';
 import '../cubits/cli_presets_cubit.dart';
 import '../repositories/cli_presets_repository.dart';
 import '../cubits/skill_cubit.dart';
 import '../repositories/mcp_repository.dart';
-import '../services/mcp/identity_mcp_linker_service.dart';
+import '../services/mcp/profile_mcp_linker_service.dart';
 import '../cubits/ssh_profile_cubit.dart';
-import '../cubits/identity_cubit.dart';
+import '../cubits/launch_profile_cubit.dart';
 import '../cubits/team_hub_cubit.dart';
 import '../models/connection_mode.dart';
 import '../models/team_config.dart';
@@ -46,7 +46,7 @@ import '../repositories/ssh_credential_store.dart';
 import '../repositories/ssh_known_host_repository.dart';
 import '../repositories/ssh_profile_repository.dart';
 import '../repositories/extension_repository.dart';
-import '../repositories/identity_repository.dart';
+import '../repositories/launch_profile_repository.dart';
 import '../router/app_router.dart';
 import '../services/extension/builtin_manifests.dart';
 import '../services/extension/extension_acquisition_engine.dart';
@@ -81,7 +81,7 @@ import '../services/skill/skill_repo_disk_cache_service.dart';
 import '../services/skill/skill_repo_git_service.dart';
 import '../services/skill/skill_repo_service.dart';
 import '../services/ssh/ssh_client_factory.dart';
-import '../services/plugin/identity_plugin_linker_service.dart';
+import '../services/plugin/profile_plugin_linker_service.dart';
 import '../services/terminal/terminal_transport_factory.dart';
 import '../services/terminal/workspace_terminal_registry.dart';
 import '../utils/logger.dart';
@@ -143,8 +143,8 @@ class AppShell {
   final SshClientFactory sshClientFactory;
   final ConnectionModeService connectionModeService;
   final StorageRoots storageRoots;
-  final IdentityRepository identityRepository;
-  final IdentityCubit teamCubit;
+  final LaunchProfileRepository identityRepository;
+  final LaunchProfileCubit teamCubit;
   final ConfigCubit configCubit;
   final AppProviderCubit appProviderCubit;
   final LlmConfigCubit llmConfigCubit;
@@ -253,10 +253,10 @@ Future<AppShell> buildAppShell({
 
   late final LlmConfigCubit llmConfigCubit;
   late final AppProviderCubit appProviderCubit;
-  late final IdentityCubit teamCubit;
+  late final LaunchProfileCubit teamCubit;
   late final PluginCubit pluginCubit;
-  late final IdentityRepository identityRepository;
-  late final IdentityProvisioner identityProvisioner;
+  late final LaunchProfileRepository identityRepository;
+  late final LaunchProfileProvisioner identityProvisioner;
   late final CliPresetsCubit cliPresetsCubit;
   late final SkillCubit skillCubit;
   late final McpCubit mcpCubit;
@@ -410,7 +410,7 @@ Future<AppShell> buildAppShell({
     ExtensionAcquisitionEngine(),
   );
 
-  identityRepository = IdentityRepository(storageRoots: storageRoots);
+  identityRepository = LaunchProfileRepository(storageRoots: storageRoots);
 
   final cliPresetsRepo = CliPresetsRepository(
     fs: AppStorage.fs,
@@ -427,7 +427,7 @@ Future<AppShell> buildAppShell({
       final trimmedWorkspaceId = workspaceId?.trim() ?? '';
       if (trimmedWorkspaceId.isNotEmpty) {
         return extensionRepository.effectiveEnabledIds(
-          IdentityProvisioner.defaultPersonalId,
+          LaunchProfileProvisioner.defaultPersonalId,
         );
       }
       return (await extensionRepository.load(forceReload: true)).globalEnabled;
@@ -444,8 +444,8 @@ Future<AppShell> buildAppShell({
   );
   final pluginRepository = PluginRepository(storageRoots: storageRoots);
   final mcpRepository = McpRepository(storageRoots: storageRoots);
-  identityProvisioner = IdentityProvisioner(repository: identityRepository);
-  teamCubit = IdentityCubit(
+  identityProvisioner = LaunchProfileProvisioner(repository: identityRepository);
+  teamCubit = LaunchProfileCubit(
     repository: identityRepository,
     sessionRepository: sessionRepo,
     reloadWorkspaces: () => chatCubit.loadWorkspaceData(sessionRepo),
@@ -454,10 +454,10 @@ Future<AppShell> buildAppShell({
     llmConfigPathOverride: llmConfigPathOverrideForLaunch,
     storageRootsResolver: storageRoots.resolve,
     lifecycleService: sessionLifecycleService,
-    pluginLinker: IdentityPluginLinkerService(storageRoots: storageRoots),
+    pluginLinker: ProfilePluginLinkerService(storageRoots: storageRoots),
     pluginRepository: pluginRepository,
     installedPluginsLoader: () => pluginRepository.loadAll(),
-    mcpLinker: IdentityMcpLinkerService(),
+    mcpLinker: ProfileMcpLinkerService(),
     mcpRepository: mcpRepository,
     installedMcpLoader: () => mcpRepository.loadAll(),
     extensionMcpContributor: (teamId) async {
@@ -670,8 +670,8 @@ Future<void> reloadRemoteBackedAppData({
   required StorageRoots storageRoots,
   required LlmConfigCubit llmConfigCubit,
   required AppProviderCubit appProviderCubit,
-  required IdentityProvisioner identityProvisioner,
-  required IdentityCubit teamCubit,
+  required LaunchProfileProvisioner identityProvisioner,
+  required LaunchProfileCubit teamCubit,
   required PluginCubit pluginCubit,
   required SkillCubit skillCubit,
   required McpCubit mcpCubit,

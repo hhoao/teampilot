@@ -5,7 +5,7 @@ import 'package:go_router/go_router.dart';
 
 import '../cubits/config_cubit.dart';
 import '../models/app_provider_config.dart';
-import '../models/launch_identity.dart';
+import '../models/launch_profile_ref.dart';
 import '../pages/config/config_workspace.dart';
 import '../pages/home_workspace/home_workspace_global_section.dart';
 import '../pages/home_workspace/home_workspace_page.dart';
@@ -135,7 +135,7 @@ final appRouter = GoRouter(
                 return NoTransitionPage(
                   child: WorkspacePage(
                     workspaceId: state.pathParameters['workspaceId']!,
-                    identity: LaunchIdentity.decode(query['as']),
+                    identity: LaunchProfileRef.decode(query['as']),
                     view: query['view'],
                     configSection: WorkspaceConfigSection.fromSegment(
                       query['section'],

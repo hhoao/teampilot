@@ -54,7 +54,7 @@ void main() {
     late ChatCubit cubit;
     late PostFrameTestHarness postFrame;
 
-    const team = TeamIdentity(
+    const team = TeamProfile(
       id: 'team-mixed',
       name: 'Mixed',
       teamMode: TeamMode.mixed,

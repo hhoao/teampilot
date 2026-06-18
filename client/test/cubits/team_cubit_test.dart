@@ -2,35 +2,35 @@ import 'dart:io';
 
 import 'package:flutter_test/flutter_test.dart';
 import 'package:path/path.dart' as p;
-import 'package:teampilot/cubits/identity_cubit.dart';
+import 'package:teampilot/cubits/launch_profile_cubit.dart';
 import 'package:teampilot/models/plugin.dart';
 import 'package:teampilot/models/team_config.dart';
 import 'package:teampilot/repositories/session_repository.dart';
-import 'package:teampilot/repositories/identity_repository.dart';
+import 'package:teampilot/repositories/launch_profile_repository.dart';
 import 'package:teampilot/services/storage/app_storage.dart';
 import 'package:teampilot/services/provider/config_profile_service.dart';
 import 'package:teampilot/services/io/local_filesystem.dart';
 import 'package:teampilot/services/storage/runtime_storage_context.dart';
 import 'package:teampilot/services/session/session_lifecycle_service.dart';
-import 'package:teampilot/services/plugin/identity_plugin_linker_service.dart';
+import 'package:teampilot/services/plugin/profile_plugin_linker_service.dart';
 import 'package:teampilot/utils/team_member_naming.dart';
 
 import '../support/post_frame_test_harness.dart';
 
-class _RecordingPluginLinker extends IdentityPluginLinkerService {
+class _RecordingPluginLinker extends ProfilePluginLinkerService {
   _RecordingPluginLinker() : super(appPluginsRoot: '/tmp');
 
   final syncs =
-      <({String identityId, List<String> pluginIds, List<Plugin> installed})>[];
+      <({String profileId, List<String> pluginIds, List<Plugin> installed})>[];
 
   @override
   Future<IdentityPluginSyncResult> syncForIdentity({
-    required String identityId,
+    required String profileId,
     required List<String> pluginIds,
     required List<Plugin> installed,
   }) async {
     syncs.add((
-      identityId: identityId,
+      profileId: profileId,
       pluginIds: List.of(pluginIds),
       installed: List.of(installed),
     ));
@@ -50,8 +50,8 @@ class _RecordingLifecycleService extends SessionLifecycleService {
   }
 }
 
-IdentityRepository _repo(Directory dir) =>
-    IdentityRepository(rootDir: p.join(dir.path, 'identities'));
+LaunchProfileRepository _repo(Directory dir) =>
+    LaunchProfileRepository(rootDir: p.join(dir.path, 'launch-profiles'));
 
 Future<void> _deleteTempDirBestEffort(Directory dir) async {
   for (var attempt = 0; attempt < 8; attempt++) {
@@ -67,9 +67,9 @@ Future<void> _deleteTempDirBestEffort(Directory dir) async {
   }
 }
 
-/// [IdentityCubit.addTeam] / [IdentityCubit.deleteSelected] schedule skill/plugin sync
-/// with [unawaited]; drain microtasks before [IdentityCubit.close].
-Future<void> _drainAndCloseTeamCubit(IdentityCubit cubit) async {
+/// [LaunchProfileCubit.addTeam] / [LaunchProfileCubit.deleteSelected] schedule skill/plugin sync
+/// with [unawaited]; drain microtasks before [LaunchProfileCubit.close].
+Future<void> _drainAndCloseTeamCubit(LaunchProfileCubit cubit) async {
   await Future<void>.delayed(Duration.zero);
   await Future<void>.delayed(Duration.zero);
   if (!cubit.isClosed) {
@@ -104,7 +104,7 @@ void main() {
   test('removeSkillFromAllTeams prunes skillIds without linker sync', () async {
     final dir = await Directory.systemTemp.createTemp('team-cubit-');
     final repo = _repo(dir);
-    final cubit = IdentityCubit(
+    final cubit = LaunchProfileCubit(
       repository: repo,
       sessionRepository: SessionRepository(),
       reloadWorkspaces: () async {},
@@ -112,20 +112,20 @@ void main() {
       pluginLinker: _RecordingPluginLinker(),
     );
 
-    const team = TeamIdentity(
+    const team = TeamProfile(
       id: 't',
       name: 'T',
       members: [TeamMemberConfig(id: 'm', name: 'm')],
       skillIds: ['gone'],
     );
-    await repo.saveTeams([team]);
+    await repo.saveTeamProfiles([team]);
     await cubit.load();
     expect(cubit.state.teams.single.skillIds, ['gone']);
 
     await cubit.removeSkillFromAllTeams('gone');
 
     expect(cubit.state.selectedTeam?.skillIds, isEmpty);
-    final persisted = await repo.loadTeams();
+    final persisted = await repo.loadTeamProfiles();
     expect(persisted.single.skillIds, isEmpty);
 
     await dir.delete(recursive: true);
@@ -135,7 +135,7 @@ void main() {
     final dir = await Directory.systemTemp.createTemp('team-cubit-');
     final repo = _repo(dir);
     final linker = _RecordingPluginLinker();
-    final cubit = IdentityCubit(
+    final cubit = LaunchProfileCubit(
       repository: repo,
       sessionRepository: SessionRepository(),
       reloadWorkspaces: () async {},
@@ -144,19 +144,19 @@ void main() {
       installedPluginsLoader: () async => [],
     );
 
-    const teamA = TeamIdentity(
+    const teamA = TeamProfile(
       id: 'a',
       name: 'A',
       members: [TeamMemberConfig(id: 'm', name: 'm')],
       pluginIds: ['acme/market/p1'],
     );
-    const teamB = TeamIdentity(
+    const teamB = TeamProfile(
       id: 'b',
       name: 'B',
       members: [TeamMemberConfig(id: 'm', name: 'm')],
       pluginIds: ['acme/market/p1'],
     );
-    await repo.saveTeams([teamA, teamB]);
+    await repo.saveTeamProfiles([teamA, teamB]);
     await cubit.load();
     await cubit.selectTeam('b');
     linker.syncs.clear();
@@ -167,7 +167,7 @@ void main() {
       cubit.state.teams.every((t) => !t.pluginIds.contains('acme/market/p1')),
       isTrue,
     );
-    expect(linker.syncs.map((s) => s.identityId).toSet(), {'a', 'b'});
+    expect(linker.syncs.map((s) => s.profileId).toSet(), {'a', 'b'});
 
     await dir.delete(recursive: true);
   });
@@ -186,7 +186,7 @@ void main() {
       installedAt: 1,
       updatedAt: 1,
     );
-    final cubit = IdentityCubit(
+    final cubit = LaunchProfileCubit(
       repository: repo,
       sessionRepository: SessionRepository(),
       reloadWorkspaces: () async {},
@@ -195,12 +195,12 @@ void main() {
       installedPluginsLoader: () async => [plugin],
     );
 
-    const team = TeamIdentity(
+    const team = TeamProfile(
       id: 't',
       name: 'T',
       members: [TeamMemberConfig(id: 'm', name: 'm')],
     );
-    await repo.saveTeams([team]);
+    await repo.saveTeamProfiles([team]);
     await cubit.load();
     linker.syncs.clear();
 
@@ -218,7 +218,7 @@ void main() {
     final dir = await Directory.systemTemp.createTemp('team-cubit-');
     final repo = _repo(dir);
     final linker = _RecordingPluginLinker();
-    final cubit = IdentityCubit(
+    final cubit = LaunchProfileCubit(
       repository: repo,
       sessionRepository: SessionRepository(),
       reloadWorkspaces: () async {},
@@ -227,32 +227,32 @@ void main() {
       installedPluginsLoader: () async => [],
     );
 
-    const teamA = TeamIdentity(
+    const teamA = TeamProfile(
       id: 'a',
       name: 'A',
       members: [TeamMemberConfig(id: 'm', name: 'm')],
       pluginIds: ['acme/market/p1'],
     );
-    const teamB = TeamIdentity(
+    const teamB = TeamProfile(
       id: 'b',
       name: 'B',
       members: [TeamMemberConfig(id: 'm', name: 'm')],
       pluginIds: ['acme/market/p1', 'other/p2'],
     );
-    await repo.saveTeams([teamA, teamB]);
+    await repo.saveTeamProfiles([teamA, teamB]);
     await cubit.load();
     linker.syncs.clear();
 
     await cubit.syncTeamsUsingPlugin('acme/market/p1');
 
-    expect(linker.syncs.map((s) => s.identityId).toSet(), {'a', 'b'});
+    expect(linker.syncs.map((s) => s.profileId).toSet(), {'a', 'b'});
     await dir.delete(recursive: true);
   });
 
   test('addTeam requires non-empty unique name', () async {
     final dir = await Directory.systemTemp.createTemp('team-cubit-');
     final repo = _repo(dir);
-    final cubit = IdentityCubit(
+    final cubit = LaunchProfileCubit(
       repository: repo,
       sessionRepository: SessionRepository(),
       reloadWorkspaces: () async {},
@@ -284,7 +284,7 @@ void main() {
 
   test('deleteMember cannot remove team-lead', () async {
     final dir = await Directory.systemTemp.createTemp('team-cubit-');
-    final cubit = IdentityCubit(
+    final cubit = LaunchProfileCubit(
       repository: _repo(dir),
       sessionRepository: SessionRepository(),
       reloadWorkspaces: () async {},
@@ -310,35 +310,35 @@ void main() {
     () async {
       final dir = await Directory.systemTemp.createTemp('team-cubit-');
       final lifecycle = _RecordingLifecycleService();
-      final repo = IdentityRepository(
-        rootDir: p.join(dir.path, 'identities'),
+      final repo = LaunchProfileRepository(
+        rootDir: p.join(dir.path, 'launch-profiles'),
         lifecycleService: lifecycle,
       );
-      final cubit = IdentityCubit(
+      final cubit = LaunchProfileCubit(
         repository: repo,
         sessionRepository: SessionRepository(),
         reloadWorkspaces: () async {},
         executableResolver: () => 'flashskyai',
         pluginLinker: _RecordingPluginLinker(),
       );
-      const team = TeamIdentity(
+      const team = TeamProfile(
         id: 'old',
         name: 'Old',
         members: [TeamMemberConfig(id: 'team-lead', name: 'team-lead')],
       );
-      await repo.saveTeams([team]);
+      await repo.saveTeamProfiles([team]);
       await cubit.load();
 
       expect(await cubit.renameSelectedTeamName('New'), isTrue);
       expect(cubit.state.selectedTeam?.name, 'New');
-      final identityFile = p.join(dir.path, 'identities', 'old', 'identity.json');
+      final identityFile = p.join(dir.path, 'launch-profiles', 'old', 'profile.json');
       expect(File(identityFile).existsSync(), isTrue);
       expect(File(identityFile).readAsStringSync(), contains('"name": "New"'));
       expect(lifecycle.destroyedTeams, isEmpty);
 
       await cubit.deleteSelected();
       expect(lifecycle.destroyedTeams, ['old']);
-      expect(Directory(p.join(dir.path, 'identities', 'old')).existsSync(), isFalse);
+      expect(Directory(p.join(dir.path, 'launch-profiles', 'old')).existsSync(), isFalse);
 
       await _drainAndCloseTeamCubit(cubit);
       await dir.delete(recursive: true);
@@ -349,7 +349,7 @@ void main() {
     final base = await Directory.systemTemp.createTemp('team_default_workspace_');
     final sessionRepo = SessionRepository();
     var reloadCount = 0;
-    final cubit = IdentityCubit(
+    final cubit = LaunchProfileCubit(
       repository: _repo(base),
       sessionRepository: sessionRepo,
       reloadWorkspaces: () async => reloadCount++,
@@ -374,7 +374,7 @@ void main() {
 
   test('addTeam creates team runtime profile directories', () async {
     final base = await Directory.systemTemp.createTemp('team_profile_');
-    final cubit = IdentityCubit(
+    final cubit = LaunchProfileCubit(
       repository: _repo(base),
       sessionRepository: SessionRepository(),
       reloadWorkspaces: () async {},
@@ -397,7 +397,7 @@ void main() {
 
   test('addTeam rejects codex in native team mode', () async {
     final base = await Directory.systemTemp.createTemp('team_profile_cli_');
-    final cubit = IdentityCubit(
+    final cubit = LaunchProfileCubit(
       repository: _repo(base),
       sessionRepository: SessionRepository(),
       reloadWorkspaces: () async {},
@@ -420,7 +420,7 @@ void main() {
 
   test('addTeam accepts codex in mixed team mode', () async {
     final base = await Directory.systemTemp.createTemp('team_profile_cli_');
-    final cubit = IdentityCubit(
+    final cubit = LaunchProfileCubit(
       repository: _repo(base),
       sessionRepository: SessionRepository(),
       reloadWorkspaces: () async {},
@@ -443,7 +443,7 @@ void main() {
 
   test('setMemberActivePreset syncs member cli from preset in mixed mode', () async {
     final base = await Directory.systemTemp.createTemp('team_member_preset_');
-    final cubit = IdentityCubit(
+    final cubit = LaunchProfileCubit(
       repository: _repo(base),
       sessionRepository: SessionRepository(),
       reloadWorkspaces: () async {},
@@ -471,12 +471,12 @@ void main() {
     expect(member.activePresetId, 'preset-codex');
     expect(member.cli, CliTool.codex);
 
-    await cubit.setMemberActivePreset(memberId, TeamIdentity.inheritPresetId);
+    await cubit.setMemberActivePreset(memberId, TeamProfile.inheritPresetId);
 
     final inherited = cubit.state.selectedTeam!.members.firstWhere(
       (m) => m.id == memberId,
     );
-    expect(inherited.activePresetId, TeamIdentity.inheritPresetId);
+    expect(inherited.activePresetId, TeamProfile.inheritPresetId);
     expect(inherited.cli, CliTool.codex);
 
     await _drainAndCloseTeamCubit(cubit);
@@ -485,7 +485,7 @@ void main() {
 
   test('previewFor resolves executable from team cli when available', () async {
     final base = await Directory.systemTemp.createTemp('team_cli_preview_');
-    final cubit = IdentityCubit(
+    final cubit = LaunchProfileCubit(
       repository: _repo(base),
       sessionRepository: SessionRepository(),
       reloadWorkspaces: () async {},
@@ -497,13 +497,13 @@ void main() {
       configProfileService: ConfigProfileService(basePath: base.path),
     );
     const member = TeamMemberConfig(id: 'team-lead', name: 'team-lead');
-    const team = TeamIdentity(
+    const team = TeamProfile(
       id: 'claude-team',
       name: 'Claude Team',
       cli: CliTool.claude,
       members: [member],
     );
-    await _repo(base).saveTeams([team]);
+    await _repo(base).saveTeamProfiles([team]);
     await cubit.load(awaitProfiles: true);
 
     expect(cubit.previewFor(member), startsWith('/opt/bin/claude '));
@@ -518,7 +518,7 @@ void main() {
       'team_claude_member_metadata_',
     );
     final repo = _repo(base);
-    final cubit = IdentityCubit(
+    final cubit = LaunchProfileCubit(
       repository: repo,
       sessionRepository: SessionRepository(),
       reloadWorkspaces: () async {},
@@ -534,13 +534,13 @@ void main() {
       provider: 'deepseek',
       model: 'deepseek-chat',
     );
-    const team = TeamIdentity(
+    const team = TeamProfile(
       id: 'claude-team',
       name: 'Claude Team',
       cli: CliTool.claude,
       members: [member],
     );
-    await repo.saveTeams([team]);
+    await repo.saveTeamProfiles([team]);
     await cubit.load();
 
     await cubit.updateMember(
@@ -583,7 +583,7 @@ void main() {
     );
     final repo = _repo(base);
     final launched = <String>[];
-    final cubit = IdentityCubit(
+    final cubit = LaunchProfileCubit(
       repository: repo,
       sessionRepository: SessionRepository(),
       reloadWorkspaces: () async {},
@@ -594,7 +594,7 @@ void main() {
       launcher: (_, member) async => launched.add(member.name),
     );
 
-    const team = TeamIdentity(
+    const team = TeamProfile(
       id: 'claude-team',
       name: 'Claude Team',
       cli: CliTool.claude,
@@ -603,7 +603,7 @@ void main() {
         TeamMemberConfig(id: 'developer', name: 'developer'),
       ],
     );
-    await repo.saveTeams([team]);
+    await repo.saveTeamProfiles([team]);
     await cubit.load(awaitProfiles: true);
 
     await cubit.launchSelectedTeam();
@@ -618,7 +618,7 @@ void main() {
 
   test('load creates runtime profile directories for default team', () async {
     final base = await Directory.systemTemp.createTemp('team_profile_load_');
-    final cubit = IdentityCubit(
+    final cubit = LaunchProfileCubit(
       repository: _repo(base),
       sessionRepository: SessionRepository(),
       reloadWorkspaces: () async {},
@@ -643,7 +643,7 @@ void main() {
     () async {
       final dir = await Directory.systemTemp.createTemp('team-bind-provider-');
       final repo = _repo(dir);
-      final cubit = IdentityCubit(
+      final cubit = LaunchProfileCubit(
         repository: repo,
         sessionRepository: SessionRepository(),
         reloadWorkspaces: () async {},
@@ -651,19 +651,19 @@ void main() {
         pluginLinker: _RecordingPluginLinker(),
       );
 
-      const team = TeamIdentity(
+      const team = TeamProfile(
         id: 'default-team',
         name: 'Default Team',
         cli: CliTool.claude,
         members: [TeamMemberConfig(id: 'team-lead', name: 'team-lead')],
       );
-      await repo.saveTeams([team]);
+      await repo.saveTeamProfiles([team]);
       await cubit.load();
 
       await cubit.bindClaudeProviderForTeamsWithoutBinding('deepseek');
 
       expect(cubit.state.selectedTeam!.providerIdsByTool['claude'], 'deepseek');
-      final reloaded = await repo.loadTeams();
+      final reloaded = await repo.loadTeamProfiles();
       expect(reloaded.single.providerIdsByTool['claude'], 'deepseek');
 
       await _drainAndCloseTeamCubit(cubit);
@@ -676,7 +676,7 @@ void main() {
     () async {
       final dir = await Directory.systemTemp.createTemp('team-bind-existing-');
       final repo = _repo(dir);
-      final cubit = IdentityCubit(
+      final cubit = LaunchProfileCubit(
         repository: repo,
         sessionRepository: SessionRepository(),
         reloadWorkspaces: () async {},
@@ -684,14 +684,14 @@ void main() {
         pluginLinker: _RecordingPluginLinker(),
       );
 
-      const team = TeamIdentity(
+      const team = TeamProfile(
         id: 'default-team',
         name: 'Default Team',
         cli: CliTool.claude,
         members: [TeamMemberConfig(id: 'team-lead', name: 'team-lead')],
         providerIdsByTool: {'claude': 'official'},
       );
-      await repo.saveTeams([team]);
+      await repo.saveTeamProfiles([team]);
       await cubit.load();
 
       await cubit.bindClaudeProviderForTeamsWithoutBinding('deepseek');
@@ -706,7 +706,7 @@ void main() {
   test('reorderTeams persists sortOrder for all teams', () async {
     final dir = await Directory.systemTemp.createTemp('team-reorder-');
     final repo = _repo(dir);
-    final cubit = IdentityCubit(
+    final cubit = LaunchProfileCubit(
       repository: repo,
       sessionRepository: SessionRepository(),
       reloadWorkspaces: () async {},
@@ -714,20 +714,20 @@ void main() {
       pluginLinker: _RecordingPluginLinker(),
     );
 
-    await repo.saveTeams(const [
-      TeamIdentity(
+    await repo.saveTeamProfiles(const [
+      TeamProfile(
         id: 'first',
         name: 'First',
         createdAt: 1,
         members: [TeamMemberConfig(id: 'm', name: 'm')],
       ),
-      TeamIdentity(
+      TeamProfile(
         id: 'second',
         name: 'Second',
         createdAt: 2,
         members: [TeamMemberConfig(id: 'm', name: 'm')],
       ),
-      TeamIdentity(
+      TeamProfile(
         id: 'third',
         name: 'Third',
         createdAt: 3,
@@ -745,7 +745,7 @@ void main() {
     ]);
     expect(cubit.state.teams.map((t) => t.sortOrder).toList(), [1, 2, 3]);
 
-    final reloaded = await repo.loadTeams();
+    final reloaded = await repo.loadTeamProfiles();
     expect(reloaded.map((t) => t.name).toList(), ['Second', 'Third', 'First']);
 
     await _drainAndCloseTeamCubit(cubit);

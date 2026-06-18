@@ -18,7 +18,7 @@ class CliLaunchContext {
     this.isFreshConversation = true,
   });
 
-  final TeamIdentity team;
+  final TeamProfile team;
   final TeamMemberConfig member;
   final String? sessionTeam;
   final String? workingDirectory;
@@ -42,7 +42,7 @@ class CliLaunchContext {
   String get memberCliId => member.id.trim();
 
   CliLaunchContext copyWith({
-    TeamIdentity? team,
+    TeamProfile? team,
     TeamMemberConfig? member,
     String? sessionTeam,
     String? workingDirectory,
@@ -206,7 +206,7 @@ class OpencodeCliToolAdapter implements CliToolAdapter {
   }
 }
 
-/// OpenAI Codex CLI (`codex` TUI). Identity is injected via `$CODEX_HOME/AGENTS.md`
+/// OpenAI Codex CLI (`codex` TUI). LaunchProfile is injected via `$CODEX_HOME/AGENTS.md`
 /// and team-bus wiring via `$CODEX_HOME/config.toml` (see [CodexConfigProfileCapability]),
 /// so — unlike flashskyai — codex takes none of `--team`/`--member`/`--session-id`/
 /// `--append-system-prompt-file`. Working dir is `--cd`, model is `-m`. codex

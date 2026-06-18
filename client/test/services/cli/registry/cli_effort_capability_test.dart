@@ -15,7 +15,7 @@ void main() {
 
   test('resolveLaunchEffort prefers member over team', () {
     const capability = ClaudeEffortCapability();
-    final team = TeamIdentity(
+    final team = TeamProfile(
       id: 't1',
       name: 'Team',
       cli: CliTool.claude,
@@ -43,7 +43,7 @@ void main() {
 
   test('resolveLaunchEffort falls back to team then default', () {
     const capability = CodexEffortCapability();
-    final team = TeamIdentity(
+    final team = TeamProfile(
       id: 't1',
       name: 'Team',
       cli: CliTool.codex,

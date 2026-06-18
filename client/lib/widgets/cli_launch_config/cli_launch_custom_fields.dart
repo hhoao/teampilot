@@ -74,7 +74,7 @@ class CliLaunchCustomFields extends StatelessWidget {
   final ValueChanged<CliTool>? onCliChanged;
   final ValueChanged<String>? onMixedCliTokenChanged;
   final String? cliSubtitle;
-  final TeamIdentity? team;
+  final TeamProfile? team;
   final TeamMemberConfig? member;
   final CliLaunchEffortContext effortContext;
   final String? effortSubtitle;

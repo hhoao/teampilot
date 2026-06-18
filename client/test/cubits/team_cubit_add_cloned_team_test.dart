@@ -1,10 +1,10 @@
 import 'dart:io';
 
 import 'package:flutter_test/flutter_test.dart';
-import 'package:teampilot/cubits/identity_cubit.dart';
+import 'package:teampilot/cubits/launch_profile_cubit.dart';
 import 'package:teampilot/models/team_config.dart';
 import 'package:teampilot/repositories/session_repository.dart';
-import 'package:teampilot/repositories/identity_repository.dart';
+import 'package:teampilot/repositories/launch_profile_repository.dart';
 
 import '../support/post_frame_test_harness.dart';
 
@@ -12,7 +12,7 @@ void main() {
   setUp(setUpTestAppStorage);
   tearDown(tearDownTestAppStorage);
 
-  IdentityCubit build(IdentityRepository repo) => IdentityCubit(
+  LaunchProfileCubit build(LaunchProfileRepository repo) => LaunchProfileCubit(
         repository: repo,
         sessionRepository: SessionRepository(),
         reloadWorkspaces: () async {},
@@ -22,7 +22,7 @@ void main() {
   test('addClonedTeam persists ids, members, and selects the new team',
       () async {
     final dir = await Directory.systemTemp.createTemp('clone-team-');
-    final repo = IdentityRepository(rootDir: dir.path);
+    final repo = LaunchProfileRepository(rootDir: dir.path);
     final cubit = build(repo);
     await cubit.load();
 
@@ -47,7 +47,7 @@ void main() {
     expect(team.mcpServerIds, ['context7']);
     expect(cubit.state.selectedTeamId, id);
 
-    final reloaded = await repo.loadTeams();
+    final reloaded = await repo.loadTeamProfiles();
     expect(reloaded.any((t) => t.id == id), isTrue);
 
     await dir.delete(recursive: true);
@@ -55,7 +55,7 @@ void main() {
 
   test('addClonedTeam auto-renames on display-name collision', () async {
     final dir = await Directory.systemTemp.createTemp('clone-team-2-');
-    final repo = IdentityRepository(rootDir: dir.path);
+    final repo = LaunchProfileRepository(rootDir: dir.path);
     final cubit = build(repo);
     await cubit.load();
 

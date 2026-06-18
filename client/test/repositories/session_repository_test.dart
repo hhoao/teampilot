@@ -417,7 +417,7 @@ void main() {
     expect((await repo.loadSessions()).single.sessionTeam, 't2');
   });
 
-  test('personal session persists its launch identityId', () async {
+  test('personal session persists its launch profileId', () async {
     final tmp = await Directory.systemTemp.createTemp('fs_session_repo_');
     addTearDown(() => tmp.deleteSync(recursive: true));
 
@@ -429,11 +429,11 @@ void main() {
     );
 
     // In memory and after reload from disk.
-    expect(session.identityId, 'writing');
-    expect((await repo.loadSessions()).single.identityId, 'writing');
+    expect(session.profileId, 'writing');
+    expect((await repo.loadSessions()).single.profileId, 'writing');
   });
 
-  test('team session ignores personalIdentityId (identityId stays empty)',
+  test('team session ignores personalIdentityId (profileId stays empty)',
       () async {
     final tmp = await Directory.systemTemp.createTemp('fs_session_repo_');
     addTearDown(() => tmp.deleteSync(recursive: true));
@@ -449,7 +449,7 @@ void main() {
       ],
     );
 
-    expect(session.identityId, '');
-    expect((await repo.loadSessions()).single.identityId, '');
+    expect(session.profileId, '');
+    expect((await repo.loadSessions()).single.profileId, '');
   });
 }

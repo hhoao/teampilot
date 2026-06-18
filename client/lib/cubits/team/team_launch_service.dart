@@ -5,18 +5,18 @@ import '../../models/team_config.dart';
 import '../../services/session/launch_command_builder.dart';
 import '../../services/session/session_lifecycle_service.dart';
 import '../../services/storage/app_storage.dart';
-import 'identity_cubit_host.dart';
+import 'launch_profile_cubit_host.dart';
 import 'team_resource_sync_service.dart';
 
 typedef TeamLauncher =
-    Future<void> Function(TeamIdentity team, TeamMemberConfig member);
+    Future<void> Function(TeamProfile team, TeamMemberConfig member);
 typedef CliExecutableResolver = String Function(CliTool cli);
 
 /// Builds launch environments and previews, and drives single-member /
 /// whole-team launches. Plugin state is re-synced before each launch.
 class TeamLaunchService {
   TeamLaunchService({
-    required IdentityCubitHost host,
+    required LaunchProfileCubitHost host,
     required SessionLifecycleService lifecycle,
     required TeamResourceSyncService sync,
     required String Function() executableResolver,
@@ -29,7 +29,7 @@ class TeamLaunchService {
        _cliExecutableResolver = cliExecutableResolver,
        _launcher = launcher;
 
-  final IdentityCubitHost _h;
+  final LaunchProfileCubitHost _h;
   final SessionLifecycleService _lifecycle;
   final TeamResourceSyncService _sync;
   final String Function() _executableResolver;
@@ -41,7 +41,7 @@ class TeamLaunchService {
   }
 
   Future<Map<String, String>?> _buildLaunchEnvironment(
-    TeamIdentity team, {
+    TeamProfile team, {
     TeamMemberConfig? member,
   }) async {
     final plan = await _lifecycle.prepareLaunch(
@@ -59,7 +59,7 @@ class TeamLaunchService {
     return plan.env.isEmpty ? null : plan.env;
   }
 
-  Future<void> _runLaunch(TeamIdentity team, TeamMemberConfig member) async {
+  Future<void> _runLaunch(TeamProfile team, TeamMemberConfig member) async {
     final env = await _buildLaunchEnvironment(team, member: member);
     final launch =
         _launcher ??

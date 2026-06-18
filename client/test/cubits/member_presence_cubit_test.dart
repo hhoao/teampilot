@@ -88,7 +88,7 @@ void main() {
       final cubit = MemberPresenceCubit(memberPresenceService: service);
       addTearDown(cubit.close);
 
-      const team = TeamIdentity(
+      const team = TeamProfile(
         id: 'team-a',
         name: 'A',
         members: [TeamMemberConfig(id: 'm-lead', name: 'team-lead')],
@@ -119,7 +119,7 @@ void main() {
         );
         chatCubit.bindPresenceCubit(presenceCubit);
 
-        const team = TeamIdentity(
+        const team = TeamProfile(
           id: 'team-a',
           name: 'A',
           members: [TeamMemberConfig(id: 'm-lead', name: 'team-lead')],
@@ -165,7 +165,7 @@ void main() {
           await cubit.close();
         });
 
-        const team = TeamIdentity(
+        const team = TeamProfile(
           id: 'team-a',
           name: 'A',
           members: [TeamMemberConfig(id: 'm-lead', name: 'team-lead')],
@@ -249,7 +249,7 @@ void main() {
           await cubit.close();
         });
 
-        const team = TeamIdentity(
+        const team = TeamProfile(
           id: 'team-a',
           name: 'A',
           members: [TeamMemberConfig(id: 'm-lead', name: 'team-lead')],
@@ -325,7 +325,7 @@ void main() {
           await cubit.close();
         });
 
-        const team = TeamIdentity(
+        const team = TeamProfile(
           id: 'team-a',
           name: 'A',
           members: [TeamMemberConfig(id: 'm-lead', name: 'team-lead')],
@@ -360,7 +360,7 @@ void main() {
           await cubit.close();
         });
 
-        const team = TeamIdentity(
+        const team = TeamProfile(
           id: 'team-a',
           name: 'A',
           members: [TeamMemberConfig(id: 'm-lead', name: 'team-lead')],
@@ -401,7 +401,7 @@ void main() {
         );
         chatCubit.bindPresenceCubit(presenceCubit);
 
-        const team = TeamIdentity(
+        const team = TeamProfile(
           id: 'team-a',
           name: 'A',
           members: [TeamMemberConfig(id: 'm-lead', name: 'team-lead')],

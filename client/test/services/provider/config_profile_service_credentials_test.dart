@@ -22,7 +22,7 @@ void main() {
 
   tearDown(() => tearDownTestAppStorage());
 
-  TeamIdentity teamWithProvider(String teamId, String providerId) => TeamIdentity(
+  TeamProfile teamWithProvider(String teamId, String providerId) => TeamProfile(
     id: teamId,
     name: teamId,
     cli: CliTool.claude,

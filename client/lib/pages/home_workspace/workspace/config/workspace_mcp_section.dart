@@ -4,10 +4,10 @@ import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
 
-import '../../../../cubits/identity_cubit.dart';
+import '../../../../cubits/launch_profile_cubit.dart';
 import '../../../../cubits/mcp_cubit.dart';
 import '../../../../l10n/l10n_extensions.dart';
-import '../../../../models/personal_identity.dart';
+import '../../../../models/personal_profile.dart';
 import '../../home_workspace_global_section.dart';
 import '../../../team_config/team_config_cards.dart';
 import '../../../team_config/team_config_mcp_section.dart';
@@ -15,18 +15,18 @@ import '../../../team_config/team_config_mcp_section.dart';
 class WorkspaceMcpSection extends StatelessWidget {
   const WorkspaceMcpSection({
     required this.workspaceId,
-    required this.identityId,
+    required this.profileId,
     super.key,
   });
 
   final String workspaceId;
-  final String identityId;
+  final String profileId;
 
   @override
   Widget build(BuildContext context) {
-    final identityCubit = context.watch<IdentityCubit>();
-    final personal = identityCubit.byId(identityId);
-    if (personal is! PersonalIdentity) {
+    final identityCubit = context.watch<LaunchProfileCubit>();
+    final personal = identityCubit.byId(profileId);
+    if (personal is! PersonalProfile) {
       return const Center(child: CircularProgressIndicator());
     }
 

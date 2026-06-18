@@ -6,7 +6,7 @@ import 'dart:io';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:path/path.dart' as p;
 import 'package:teampilot/models/config_bundle.dart';
-import 'package:teampilot/models/personal_identity.dart';
+import 'package:teampilot/models/personal_profile.dart';
 import 'package:teampilot/models/skill.dart';
 import 'package:teampilot/models/team_config.dart';
 import 'package:teampilot/services/storage/runtime_layout.dart';
@@ -63,13 +63,13 @@ void main() {
       );
 
       // --- Profile with skill 'demo' enabled ---
-      const profile = PersonalIdentity(id: 'p1', display: 'p1',
+      const profile = PersonalProfile(id: 'p1', display: 'p1',
         // TODO: migrate to presets — cli removed
         bundle: ConfigBundle(skillIds: ['demo']),
       );
 
       // --- Act: run personal-mode launch prep ---
-      await service.prepareWorkspaceLaunch(identityId: 'personal-default', 
+      await service.prepareWorkspaceLaunch(profileId: 'personal-default', 
         workspaceId: 'p1',
         sessionId: 's1',
         personal: profile,
@@ -120,13 +120,13 @@ void main() {
       );
 
       // --- Profile with skill 'ghost' enabled ---
-      const profile = PersonalIdentity(id: 'p2', display: 'p2',
+      const profile = PersonalProfile(id: 'p2', display: 'p2',
         // TODO: migrate to presets — cli removed
         bundle: ConfigBundle(skillIds: ['ghost']),
       );
 
       // --- Act ---
-      final outcome = await service.prepareWorkspaceLaunch(identityId: 'personal-default', 
+      final outcome = await service.prepareWorkspaceLaunch(profileId: 'personal-default', 
         workspaceId: 'p2',
         sessionId: 's2',
         personal: profile,

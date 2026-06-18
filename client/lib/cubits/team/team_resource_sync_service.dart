@@ -3,10 +3,10 @@ import '../../models/plugin.dart';
 import '../../models/team_config.dart';
 import '../../repositories/mcp_repository.dart';
 import '../../repositories/plugin_repository.dart';
-import '../../services/mcp/identity_mcp_linker_service.dart';
-import '../../services/plugin/identity_plugin_linker_service.dart';
+import '../../services/mcp/profile_mcp_linker_service.dart';
+import '../../services/plugin/profile_plugin_linker_service.dart';
 import '../../utils/logger.dart';
-import 'identity_cubit_host.dart';
+import 'launch_profile_cubit_host.dart';
 import 'team_profile_provisioner.dart';
 
 typedef InstalledPluginsLoader = Future<List<Plugin>> Function();
@@ -37,10 +37,10 @@ typedef InstalledMcpLoader = Future<List<McpServer>> Function();
 /// cross-team resource-removal flows.
 class TeamResourceSyncService {
   TeamResourceSyncService({
-    required IdentityCubitHost host,
+    required LaunchProfileCubitHost host,
     required TeamProfileProvisioner provisioner,
-    required IdentityPluginLinkerService pluginLinker,
-    required IdentityMcpLinkerService mcpLinker,
+    required ProfilePluginLinkerService pluginLinker,
+    required ProfileMcpLinkerService mcpLinker,
     required PluginRepository pluginRepository,
     required McpRepository mcpRepository,
     InstalledPluginsLoader? installedPluginsLoader,
@@ -57,10 +57,10 @@ class TeamResourceSyncService {
        _installedMcpLoader = installedMcpLoader,
        _extensionMcpContributor = extensionMcpContributor;
 
-  final IdentityCubitHost _h;
+  final LaunchProfileCubitHost _h;
   final TeamProfileProvisioner _provisioner;
-  final IdentityPluginLinkerService _pluginLinker;
-  final IdentityMcpLinkerService _mcpLinker;
+  final ProfilePluginLinkerService _pluginLinker;
+  final ProfileMcpLinkerService _mcpLinker;
   final PluginRepository _pluginRepository;
   final McpRepository _mcpRepository;
   final InstalledPluginsLoader? _installedPluginsLoader;
@@ -89,7 +89,7 @@ class TeamResourceSyncService {
     ];
     if (!changed) return;
     _h.applyState(_h.state.copyWith(teams: teams));
-    await _h.saveTeams(teams);
+    await _h.saveTeamProfiles(teams);
     if (syncNeeded) {
       await syncMcp();
     }
@@ -113,7 +113,7 @@ class TeamResourceSyncService {
     ];
     if (!changed) return;
     _h.applyState(_h.state.copyWith(teams: teams));
-    await _h.saveTeams(teams);
+    await _h.saveTeamProfiles(teams);
   }
 
   Future<void> removePluginFromAllTeams(String pluginId) async {
@@ -135,7 +135,7 @@ class TeamResourceSyncService {
           team,
     ];
     _h.applyState(_h.state.copyWith(teams: teams));
-    await _h.saveTeams(teams);
+    await _h.saveTeamProfiles(teams);
     await syncPluginsForTeamIds(affectedTeamIds);
   }
 
@@ -174,7 +174,7 @@ class TeamResourceSyncService {
       final layout = (await _provisioner.service()).layout;
 
       var result = await _mcpLinker.syncForIdentity(
-        identityId: team.id,
+        profileId: team.id,
         mcpServerIds: mergedIds,
         catalog: mergedCatalog,
         layout: layout,
@@ -191,14 +191,14 @@ class TeamResourceSyncService {
               if (t.id == team.id) prunedTeam else t,
           ];
           _h.applyState(_h.state.copyWith(teams: teams));
-          await _h.saveTeams(teams);
+          await _h.saveTeamProfiles(teams);
           final (_, prunedMergedIds) = mergeExtensionMcp(
             catalog: enabled,
             ids: prunedIds,
             contributions: contributions,
           );
           result = await _mcpLinker.syncForIdentity(
-            identityId: team.id,
+            profileId: team.id,
             mcpServerIds: prunedMergedIds,
             catalog: mergedCatalog,
             layout: layout,
@@ -239,7 +239,7 @@ class TeamResourceSyncService {
 
       var conflicts = _h.state.pluginSyncConflicts;
       for (final teamId in ids) {
-        TeamIdentity? team;
+        TeamProfile? team;
         for (final candidate in _h.state.teams) {
           if (candidate.id == teamId) {
             team = candidate;
@@ -249,7 +249,7 @@ class TeamResourceSyncService {
         if (team == null) continue;
 
         final result = await _pluginLinker.syncForIdentity(
-          identityId: team.id,
+          profileId: team.id,
           pluginIds: team.pluginIds,
           installed: catalog,
         );

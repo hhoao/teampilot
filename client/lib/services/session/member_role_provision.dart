@@ -32,7 +32,7 @@ abstract final class MemberRoleProvision {
 # Team Leader (Swarm)
 You are the **team lead** (display name: `team-lead`). You run in the leader session; teammates are separate agents sharing the same task list and team config.
 
-## Identity
+## LaunchProfile
 - **Role**: Team Leader — orchestration, synthesis, user-facing communication
 - **Not a teammate**: you do not claim tasks meant for workers unless no teammate is available
 - Teammates report to you; the user primarily interacts with you
@@ -112,7 +112,7 @@ Your CLI cannot block inside a tool call, so **never call `wait_for_message`** �
 You are event-driven: spend no turns polling. Stopping when idle is correct and expected — the bus wakes you.
 ''';
 
-  /// When [TeamIdentity.forceTeamLeadDelegateMode] is on (also enforced via PreToolUse hook).
+  /// When [TeamProfile.forceTeamLeadDelegateMode] is on (also enforced via PreToolUse hook).
   static const teamLeadDelegateModeAddendum = '''
 ## Delegate-only mode (enforced)
 

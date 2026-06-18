@@ -1,9 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:teampilot/l10n/app_localizations.dart';
-import 'package:teampilot/models/launch_identity.dart';
+import 'package:teampilot/models/launch_profile_ref.dart';
 import 'package:teampilot/pages/home_workspace/home_launch_workspace_dialog.dart';
-import 'package:teampilot/services/storage/identity_provisioner.dart';
+import 'package:teampilot/services/storage/launch_profile_provisioner.dart';
 
 void main() {
   testWidgets('returns selected personal identity from the list',
@@ -22,7 +22,7 @@ void main() {
                   workspaceName: 'Repo',
                   identities: const <LaunchWorkspaceIdentityOption>[
                     LaunchWorkspaceIdentityOption(
-                      id: IdentityProvisioner.defaultPersonalId,
+                      id: LaunchProfileProvisioner.defaultPersonalId,
                       name: 'Default',
                       isTeam: false,
                     ),
@@ -49,7 +49,7 @@ void main() {
     expect(result, isNotNull);
     expect(
       result!.identity,
-      const LaunchIdentity(IdentityProvisioner.defaultPersonalId),
+      const LaunchProfileRef(LaunchProfileProvisioner.defaultPersonalId),
     );
     expect(result!.remember, isFalse);
   });

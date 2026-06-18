@@ -37,7 +37,7 @@ class AppPaths {
 
   p.Context get _ctx => pathContextForDataRoot(basePath);
 
-  String get identitiesDir => _ctx.join(basePath, 'identities');
+  String get launchProfilesDir => _ctx.join(basePath, 'launch-profiles');
 
   String get extensionsStateJson =>
       _ctx.join(basePath, 'extensions', 'state.json');
@@ -95,9 +95,9 @@ class AppPaths {
     return p.join(teampilotRoot, segment);
   }
 
-  /// UI identity JSON under a TeamPilot app-data root ([identitiesDir] layout).
-  static String identitiesUiDirForTeampilotRoot(String teampilotRoot) =>
-      _pathUnderTeampilotRoot(teampilotRoot, 'identities');
+  /// UI identity JSON under a TeamPilot app-data root ([launchProfilesDir] layout).
+  static String launchProfilesDirForTeampilotRoot(String teampilotRoot) =>
+      _pathUnderTeampilotRoot(teampilotRoot, 'launch-profiles');
 
   /// Installed skill packages (`manifest.json` + per-skill dirs).
   static String skillsDirForTeampilotRoot(String teampilotRoot) =>

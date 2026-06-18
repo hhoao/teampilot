@@ -21,7 +21,7 @@ class TeamConfigNavPanel extends StatelessWidget {
     required this.l10n,
   });
 
-  final TeamIdentity team;
+  final TeamProfile team;
   final TeamConfigSection section;
   final String? selectedMemberId;
   final ValueChanged<TeamConfigSection> onSelect;

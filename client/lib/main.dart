@@ -18,7 +18,7 @@ import 'cubits/mailbox_cubit.dart';
 import 'cubits/notification_cubit.dart';
 import 'l10n/l10n_extensions.dart';
 import 'repositories/app_settings_repository.dart';
-import 'repositories/identity_repository.dart';
+import 'repositories/launch_profile_repository.dart';
 import 'repositories/session_repository.dart';
 import 'repositories/ssh_credential_store.dart';
 import 'repositories/ssh_known_host_repository.dart';
@@ -302,7 +302,7 @@ void main() async {
               RepositoryProvider<SessionRepository>.value(
                 value: shell.sessionRepo,
               ),
-              RepositoryProvider<IdentityRepository>.value(
+              RepositoryProvider<LaunchProfileRepository>.value(
                 value: shell.identityRepository,
               ),
               RepositoryProvider<SshProfileRepository>.value(

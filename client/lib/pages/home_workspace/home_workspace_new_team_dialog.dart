@@ -9,7 +9,7 @@ import 'package:teampilot/widgets/app_toast/app_toast.dart';
 import '../../cubits/ai_feature_settings_cubit.dart';
 import '../../cubits/app_provider_cubit.dart';
 import '../../cubits/cli_presets_cubit.dart';
-import '../../cubits/identity_cubit.dart';
+import '../../cubits/launch_profile_cubit.dart';
 import '../../models/ai_feature_setting.dart';
 import '../../l10n/l10n_extensions.dart';
 import '../../models/app_provider_config.dart';
@@ -48,7 +48,7 @@ typedef _NewTeamDialogResult = ({
 /// and a single primary create action.
 Future<void> showHomeNewTeamDialog(
   BuildContext context,
-  IdentityCubit teamCubit,
+  LaunchProfileCubit teamCubit,
 ) async {
   final l10n = context.l10n;
   final result = await showDialog<_NewTeamDialogResult>(

@@ -7,12 +7,12 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:path/path.dart' as p;
 import 'package:teampilot/models/team_config.dart';
 import 'package:teampilot/repositories/plugin_repository.dart';
-import 'package:teampilot/repositories/team_repository.dart';
+import 'package:teampilot/repositories/launch_profile_repository.dart';
 import 'package:teampilot/services/storage/app_storage.dart';
 import 'package:teampilot/services/io/local_filesystem.dart';
 import 'package:teampilot/services/plugin/plugin_install_service.dart';
 import 'package:teampilot/services/storage/runtime_storage_context.dart';
-import 'package:teampilot/services/plugin/identity_plugin_linker_service.dart';
+import 'package:teampilot/services/plugin/profile_plugin_linker_service.dart';
 
 void main() {
   late Directory tmp;
@@ -56,20 +56,20 @@ void main() {
     expect(installed.any((p) => p.id == plugin.id), isTrue);
 
     // 4. Create a team with this plugin enabled
-    final teamRepo = TeamRepository(rootDir: p.join(tmp.path, 'identities'));
-    final team = TeamIdentity(
+    final profileRepo = LaunchProfileRepository(rootDir: p.join(tmp.path, 'launch-profiles'));
+    final team = TeamProfile(
       id: 'integ-team',
       name: 'Integration Team',
       pluginIds: [plugin.id],
     );
-    await teamRepo.saveTeams([team]);
+    await profileRepo.saveTeamProfiles([team]);
 
     // 5. Sync plugins via linker
-    final linker = IdentityPluginLinkerService(
+    final linker = ProfilePluginLinkerService(
       appPluginsRoot: p.join(tmp.path, 'plugins', 'installed'),
     );
     final result = await linker.syncForIdentity(
-      identityId: 'integ-team',
+      profileId: 'integ-team',
       pluginIds: team.pluginIds,
       installed: installed,
     );
@@ -89,7 +89,7 @@ void main() {
 
     // 6. Remove plugin from team, sync again
     await linker.syncForIdentity(
-      identityId: 'integ-team',
+      profileId: 'integ-team',
       pluginIds: const [],
       installed: installed,
     );

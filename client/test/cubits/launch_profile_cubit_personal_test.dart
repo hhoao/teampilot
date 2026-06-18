@@ -1,18 +1,18 @@
 import 'dart:io';
 
 import 'package:flutter_test/flutter_test.dart';
-import 'package:teampilot/cubits/identity_cubit.dart';
+import 'package:teampilot/cubits/launch_profile_cubit.dart';
 import 'package:teampilot/models/config_bundle.dart';
-import 'package:teampilot/models/personal_identity.dart';
-import 'package:teampilot/repositories/identity_repository.dart';
+import 'package:teampilot/models/personal_profile.dart';
+import 'package:teampilot/repositories/launch_profile_repository.dart';
 import 'package:teampilot/repositories/session_repository.dart';
 import 'package:teampilot/services/session/session_lifecycle_service.dart';
 
 import '../support/post_frame_test_harness.dart';
 
-IdentityRepository _repo(Directory dir) => IdentityRepository(rootDir: dir.path);
+LaunchProfileRepository _repo(Directory dir) => LaunchProfileRepository(rootDir: dir.path);
 
-IdentityCubit _cubit(Directory dir, IdentityRepository repo) => IdentityCubit(
+LaunchProfileCubit _cubit(Directory dir, LaunchProfileRepository repo) => LaunchProfileCubit(
       repository: repo,
       sessionRepository: SessionRepository(
         lifecycleService: SessionLifecycleService(appDataBasePath: dir.path),
@@ -26,7 +26,7 @@ void main() {
   tearDown(tearDownTestAppStorage);
 
   late Directory tmp;
-  late IdentityRepository repo;
+  late LaunchProfileRepository repo;
 
   setUp(() async {
     tmp = await Directory.systemTemp.createTemp('identity_cubit_personal_');
@@ -38,7 +38,7 @@ void main() {
     final cubit = _cubit(tmp, repo);
     await cubit.load();
     await cubit.savePersonal(
-      const PersonalIdentity(id: 'coding', display: 'Coding'),
+      const PersonalProfile(id: 'coding', display: 'Coding'),
     );
     expect(cubit.state.personals.map((p) => p.id), contains('coding'));
     await cubit.close();
@@ -47,7 +47,7 @@ void main() {
   test('deleting the only personal is a no-op', () async {
     final cubit = _cubit(tmp, repo);
     await cubit.savePersonal(
-      const PersonalIdentity(id: 'only', display: 'Only'),
+      const PersonalProfile(id: 'only', display: 'Only'),
     );
     await cubit.deletePersonal('only');
     expect(cubit.state.personals, isNotEmpty);
@@ -66,10 +66,10 @@ void main() {
   test('deleting when more than one removes the identity', () async {
     final cubit = _cubit(tmp, repo);
     await cubit.savePersonal(
-      const PersonalIdentity(id: 'a', display: 'A'),
+      const PersonalProfile(id: 'a', display: 'A'),
     );
     await cubit.savePersonal(
-      const PersonalIdentity(
+      const PersonalProfile(
         id: 'b',
         display: 'B',
         bundle: const ConfigBundle(skillIds: ['s']),
@@ -85,13 +85,13 @@ void main() {
     final cubit = _cubit(tmp, repo);
     await cubit.load();
     await cubit.savePersonal(
-      const PersonalIdentity(id: 'first', display: 'First', createdAt: 1),
+      const PersonalProfile(id: 'first', display: 'First', createdAt: 1),
     );
     await cubit.savePersonal(
-      const PersonalIdentity(id: 'second', display: 'Second', createdAt: 2),
+      const PersonalProfile(id: 'second', display: 'Second', createdAt: 2),
     );
     await cubit.savePersonal(
-      const PersonalIdentity(id: 'third', display: 'Third', createdAt: 3),
+      const PersonalProfile(id: 'third', display: 'Third', createdAt: 3),
     );
 
     await cubit.reorderPersonals(0, 3);
@@ -103,7 +103,7 @@ void main() {
     ]);
     expect(cubit.state.personals.map((p) => p.sortOrder).toList(), [1, 2, 3]);
 
-    final reloaded = await repo.loadPersonals();
+    final reloaded = await repo.loadPersonalProfiles();
     expect(reloaded.map((p) => p.display).toList(), [
       'Second',
       'Third',

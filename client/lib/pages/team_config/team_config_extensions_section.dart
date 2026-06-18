@@ -13,7 +13,7 @@ enum ExtensionOverrideChoice { followGlobal, forceOn, forceOff }
 class TeamExtensionsSection extends StatefulWidget {
   const TeamExtensionsSection({super.key, required this.team});
 
-  final TeamIdentity team;
+  final TeamProfile team;
 
   @override
   State<TeamExtensionsSection> createState() => TeamExtensionsSectionState();

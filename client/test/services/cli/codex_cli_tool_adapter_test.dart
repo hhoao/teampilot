@@ -3,7 +3,7 @@ import 'package:teampilot/models/team_config.dart';
 import 'package:teampilot/services/cli/cli_tool_adapter.dart';
 
 void main() {
-  const team = TeamIdentity(
+  const team = TeamProfile(
     id: 't',
     name: 'team',
     cli: CliTool.codex,

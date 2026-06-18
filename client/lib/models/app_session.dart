@@ -14,7 +14,7 @@ class AppSession {
     this.additionalPaths = const [],
     this.display = '',
     this.sessionTeam = '',
-    this.identityId = '',
+    this.profileId = '',
     this.cliTeamName = '',
     this.cli,
     this.members = const [],
@@ -61,7 +61,7 @@ class AppSession {
       additionalPaths: paths,
       display: json['display'] as String? ?? '',
       sessionTeam: json['sessionTeam'] as String? ?? '',
-      identityId: json['identityId'] as String? ?? '',
+      profileId: json['profileId'] as String? ?? '',
       cliTeamName: json['cliTeamName'] as String? ?? '',
       cli: CliTool.tryParse(json['cli'] as String?),
       members: members,
@@ -80,19 +80,19 @@ class AppSession {
   final List<String> additionalPaths;
   final String display;
 
-  /// Stable UI team id ([TeamIdentity.id]) for filtering; not the CLI runtime name.
+  /// Stable UI team id ([TeamProfile.id]) for filtering; not the CLI runtime name.
   final String sessionTeam;
 
-  /// Personal-session launch identity ([PersonalIdentity.id]) this session was
+  /// Personal-session launch identity ([PersonalProfile.id]) this session was
   /// created under. Empty for team sessions and for legacy personal sessions
   /// that predate per-identity launches (resolved to the default personal at
   /// launch time). The personal analog of [sessionTeam].
-  final String identityId;
+  final String profileId;
 
   /// CLI `--team-name` / config-profiles member dir (`{teamId}-{seq}`).
   final String cliTeamName;
 
-  /// Personal-workspace session override; when null, [PersonalIdentity.cli] applies.
+  /// Personal-workspace session override; when null, [PersonalProfile.cli] applies.
   final CliTool? cli;
 
   /// Per-roster-member CLI `--session-id` / `--resume` task ids.
@@ -144,7 +144,7 @@ class AppSession {
     List<String>? additionalPaths,
     String? display,
     String? sessionTeam,
-    String? identityId,
+    String? profileId,
     String? cliTeamName,
     CliTool? cli,
     List<SessionMemberBinding>? members,
@@ -162,7 +162,7 @@ class AppSession {
       additionalPaths: additionalPaths ?? this.additionalPaths,
       display: display ?? this.display,
       sessionTeam: sessionTeam ?? this.sessionTeam,
-      identityId: identityId ?? this.identityId,
+      profileId: profileId ?? this.profileId,
       cliTeamName: cliTeamName ?? this.cliTeamName,
       cli: cli ?? this.cli,
       members: members ?? this.members,
@@ -184,7 +184,7 @@ class AppSession {
       'additionalPaths': additionalPaths,
       'display': display,
       'sessionTeam': sessionTeam,
-      if (identityId.isNotEmpty) 'identityId': identityId,
+      if (profileId.isNotEmpty) 'profileId': profileId,
       if (cliTeamName.isNotEmpty) 'cliTeamName': cliTeamName,
       if (cli != null) 'cli': cli!.value,
       if (members.isNotEmpty)
@@ -209,7 +209,7 @@ class AppSession {
             listEquals(additionalPaths, other.additionalPaths) &&
             display == other.display &&
             sessionTeam == other.sessionTeam &&
-            identityId == other.identityId &&
+            profileId == other.profileId &&
             cliTeamName == other.cliTeamName &&
             cli == other.cli &&
             listEquals(members, other.members) &&
@@ -229,7 +229,7 @@ class AppSession {
     Object.hashAll(additionalPaths),
     display,
     sessionTeam,
-    identityId,
+    profileId,
     cliTeamName,
     cli,
     Object.hashAll(members),

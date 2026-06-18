@@ -18,7 +18,7 @@ final class CursorProviderSettingsResolver {
   }
 
   Future<String?> resolveProviderId(
-    TeamIdentity team, {
+    TeamProfile team, {
     TeamMemberConfig? member,
   }) async {
     final selected = member;
@@ -47,7 +47,7 @@ final class CursorProviderSettingsResolver {
 
   /// Provider for the process about to launch: member binding, then team default.
   Future<AppProviderConfig?> resolveForLaunch({
-    required TeamIdentity team,
+    required TeamProfile team,
     TeamMemberConfig? member,
   }) async {
     final selected = member;

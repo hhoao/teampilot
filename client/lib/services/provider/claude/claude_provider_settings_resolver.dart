@@ -24,7 +24,7 @@ class ClaudeProviderSettingsResolver {
     return _generator.buildClaudeSettings(provider);
   }
 
-  Future<String?> resolveProviderId(TeamIdentity team) async {
+  Future<String?> resolveProviderId(TeamProfile team) async {
     final fromTeam = team.providerIdsByTool['claude']?.trim() ?? '';
     if (fromTeam.isNotEmpty) return fromTeam;
 
@@ -46,7 +46,7 @@ class ClaudeProviderSettingsResolver {
 
   /// Team-level Claude settings: team tool binding, then any member id, then sole claude provider.
   Future<Map<String, Object?>?> resolveTeamClaudeSettings(
-    TeamIdentity team,
+    TeamProfile team,
   ) async {
     final fromTeam = await resolve(team.providerIdsByTool['claude']);
     if (fromTeam != null) return fromTeam;
@@ -65,7 +65,7 @@ class ClaudeProviderSettingsResolver {
 
   /// Member settings: member provider, then [teamClaudeSettings], then team-level fallbacks.
   Future<Map<String, Object?>?> resolveMemberClaudeSettings({
-    required TeamIdentity team,
+    required TeamProfile team,
     required TeamMemberConfig member,
     Map<String, Object?>? teamClaudeSettings,
   }) async {

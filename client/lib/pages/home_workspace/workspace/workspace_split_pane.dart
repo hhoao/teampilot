@@ -10,7 +10,7 @@ class WorkspaceSplitPane extends StatefulWidget {
   const WorkspaceSplitPane({
     required this.workspace,
     required this.isPersonalWorkspace,
-    required this.identityId,
+    required this.profileId,
     required this.sessionTeamFilter,
     super.key,
   });
@@ -18,8 +18,8 @@ class WorkspaceSplitPane extends StatefulWidget {
   final Workspace workspace;
   final bool isPersonalWorkspace;
 
-  /// The launch identity the workspace was opened against ([Identity.id]).
-  final String identityId;
+  /// The launch identity the workspace was opened against ([LaunchProfile.id]).
+  final String profileId;
 
   /// Empty for personal mode; team id when opened as a team.
   final String sessionTeamFilter;
@@ -49,7 +49,7 @@ class _WorkspaceSplitPaneState
           first: WorkspaceSidebar(
             workspace: widget.workspace,
             isPersonalWorkspace: widget.isPersonalWorkspace,
-            identityId: widget.identityId,
+            profileId: widget.profileId,
             sessionTeamFilter: widget.sessionTeamFilter,
           ),
           second: ChatPage(

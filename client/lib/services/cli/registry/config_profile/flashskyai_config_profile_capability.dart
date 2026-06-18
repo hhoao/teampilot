@@ -1,4 +1,4 @@
-import '../../../../models/personal_identity.dart';
+import '../../../../models/personal_profile.dart';
 import '../../../../models/team_config.dart';
 import '../../../../utils/team_member_naming.dart';
 import '../../../session/member_role_provision.dart';
@@ -146,7 +146,7 @@ final class FlashskyaiConfigProfileCapability
   Future<ConfigProfileLaunchContribution> _contributeStandaloneLaunch(
     ConfigProfileLaunchContext ctx,
     StandaloneLaunchProfileScope standalone,
-    PersonalIdentity personal,
+    PersonalProfile personal,
   ) async {
     final delegate = ctx.paths;
     final member = standaloneMemberFromPersonal(personal, preset: ctx.preset);

@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
 
-import '../cubits/identity_cubit.dart';
+import '../cubits/launch_profile_cubit.dart';
 import '../l10n/l10n_extensions.dart';
 import '../pages/mcp/mcp_routes.dart';
 import '../pages/mcp/mcp_management_page.dart';
@@ -154,7 +154,7 @@ class AndroidShellChrome {
 
   static String? _memberTitle(BuildContext context, String path) {
     final id = path.split('/').last;
-    final team = context.read<IdentityCubit>().state.selectedTeam;
+    final team = context.read<LaunchProfileCubit>().state.selectedTeam;
     if (team == null) return null;
     for (final member in team.members) {
       if (member.id == id) {

@@ -31,7 +31,7 @@ void main() {
       const AppProviderConfig(id: 'team-p', cli: CliTool.cursor, name: 'Team'),
     ]);
 
-    const team = TeamIdentity(
+    const team = TeamProfile(
       id: 't1',
       name: 'T1',
       providerIdsByTool: {'cursor': 'team-p'},
@@ -56,7 +56,7 @@ void main() {
       const AppProviderConfig(id: 'team-p', cli: CliTool.cursor, name: 'Team'),
     ]);
 
-    const team = TeamIdentity(
+    const team = TeamProfile(
       id: 't1',
       name: 'T1',
       providerIdsByTool: {'cursor': 'team-p'},
@@ -71,7 +71,7 @@ void main() {
       const AppProviderConfig(id: 'roster-p', cli: CliTool.cursor, name: 'Roster'),
     ]);
 
-    const team = TeamIdentity(
+    const team = TeamProfile(
       id: 't1',
       name: 'T1',
       members: [
@@ -88,7 +88,7 @@ void main() {
       const AppProviderConfig(id: 'only', cli: CliTool.cursor, name: 'Only'),
     ]);
 
-    const team = TeamIdentity(
+    const team = TeamProfile(
       id: 't1',
       name: 'T1',
       members: [TeamMemberConfig(id: 'worker', name: 'worker')],
@@ -103,7 +103,7 @@ void main() {
       const AppProviderConfig(id: 'b', cli: CliTool.cursor, name: 'B'),
     ]);
 
-    const team = TeamIdentity(
+    const team = TeamProfile(
       id: 't1',
       name: 'T1',
       members: [TeamMemberConfig(id: 'worker', name: 'worker')],
@@ -123,7 +123,7 @@ void main() {
       const AppProviderConfig(id: 'team-p', cli: CliTool.cursor, name: 'Team'),
     ]);
 
-    const team = TeamIdentity(
+    const team = TeamProfile(
       id: 't1',
       name: 'T1',
       providerIdsByTool: {'cursor': 'team-p'},

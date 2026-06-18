@@ -7,11 +7,11 @@ import 'package:teampilot/widgets/app_toast/app_toast.dart';
 
 import '../../../cubits/chat_cubit.dart';
 import '../../../cubits/cli_presets_cubit.dart';
-import '../../../cubits/identity_cubit.dart';
+import '../../../cubits/launch_profile_cubit.dart';
 import '../../../l10n/l10n_extensions.dart';
 import '../../../models/workspace.dart';
 import '../../../models/app_session.dart';
-import '../../../models/personal_identity.dart';
+import '../../../models/personal_profile.dart';
 import '../../../models/team_config.dart';
 import '../../../repositories/session_repository.dart';
 
@@ -38,7 +38,7 @@ Future<void> openWorkspaceSessionTab(
     return;
   }
 
-  final team = context.read<IdentityCubit>().state.selectedTeam;
+  final team = context.read<LaunchProfileCubit>().state.selectedTeam;
   final leads =
       team?.members.where((m) => m.id == 'team-lead').toList() ??
       const <TeamMemberConfig>[];
@@ -64,7 +64,7 @@ Future<void> createAndOpenWorkspaceConversation(
   final chatCubit = context.read<ChatCubit>();
   final repo = context.read<SessionRepository>();
   final l10n = context.l10n;
-  final team = isPersonal ? null : context.read<IdentityCubit>().state.selectedTeam;
+  final team = isPersonal ? null : context.read<LaunchProfileCubit>().state.selectedTeam;
 
   // A new personal conversation pins its CLI to the active preset's CLI so it
   // resumes under (and stores its transcript with) the CLI the user selected.
@@ -104,10 +104,10 @@ Future<void> createAndOpenWorkspaceConversation(
 /// session's CLI. Falls back to the cubit's default personal when
 /// [personalIdentityId] is empty or unknown.
 CliTool? _activePresetCli(BuildContext context, String personalIdentityId) {
-  final cubit = context.read<IdentityCubit>();
+  final cubit = context.read<LaunchProfileCubit>();
   final byId =
       personalIdentityId.isEmpty ? null : cubit.state.byId(personalIdentityId);
-  final personal = byId is PersonalIdentity ? byId : cubit.activePersonal;
+  final personal = byId is PersonalProfile ? byId : cubit.activePersonal;
   final activePresetId = personal?.activePresetId;
   if (activePresetId == null || activePresetId.isEmpty) return null;
   return context.read<CliPresetsCubit>().state.presetById(activePresetId)?.cli;

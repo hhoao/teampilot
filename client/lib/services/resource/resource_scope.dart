@@ -1,6 +1,6 @@
 import 'package:path/path.dart' as p;
 
-import '../../models/personal_identity.dart';
+import '../../models/personal_profile.dart';
 import '../../models/skill.dart';
 import '../../models/team_config.dart';
 
@@ -10,18 +10,18 @@ sealed class ResourceScope {
   const ResourceScope();
 }
 
-/// Personal / simple mode: enable lists come from a [PersonalIdentity].
+/// Personal / simple mode: enable lists come from a [PersonalProfile].
 class PersonalResourceScope extends ResourceScope {
   const PersonalResourceScope({required this.personal});
-  final PersonalIdentity personal;
+  final PersonalProfile personal;
 }
 
-/// Native or mixed team mode: enable lists come from [TeamIdentity].
+/// Native or mixed team mode: enable lists come from [TeamProfile].
 /// Members inherit the team set (there is no per-member skill list), so
 /// [member] is carried only for future per-kind needs.
 class TeamResourceScope extends ResourceScope {
   const TeamResourceScope({required this.team, this.member});
-  final TeamIdentity team;
+  final TeamProfile team;
   final TeamMemberConfig? member;
 }
 

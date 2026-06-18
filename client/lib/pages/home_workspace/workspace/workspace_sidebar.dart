@@ -6,12 +6,12 @@ import 'package:teampilot/theme/app_icon_sizes.dart';
 
 import '../../../cubits/chat_cubit.dart';
 import '../../../cubits/cli_presets_cubit.dart';
-import '../../../cubits/identity_cubit.dart';
+import '../../../cubits/launch_profile_cubit.dart';
 import '../../../l10n/l10n_extensions.dart';
 import '../../../models/workspace.dart';
 import '../../../models/app_session.dart';
 import '../../../models/cli_preset.dart';
-import '../../../models/personal_identity.dart';
+import '../../../models/personal_profile.dart';
 import '../../../models/team_config.dart';
 import '../../../services/cli/registry/cli_tool_registry_scope.dart';
 import '../../../theme/app_text_styles.dart';
@@ -43,7 +43,7 @@ class WorkspaceSidebar extends StatefulWidget {
   const WorkspaceSidebar({
     required this.workspace,
     required this.isPersonalWorkspace,
-    required this.identityId,
+    required this.profileId,
     required this.sessionTeamFilter,
     super.key,
   });
@@ -51,8 +51,8 @@ class WorkspaceSidebar extends StatefulWidget {
   final Workspace workspace;
   final bool isPersonalWorkspace;
 
-  /// The launch identity the workspace was opened against ([Identity.id]).
-  final String identityId;
+  /// The launch identity the workspace was opened against ([LaunchProfile.id]).
+  final String profileId;
   final String sessionTeamFilter;
 
   @override
@@ -99,7 +99,7 @@ class _WorkspaceSidebarState
           if (_isPersonal) ...[
             _PresetDropdown(
               workspaceId: widget.workspace.workspaceId,
-              identityId: widget.identityId,
+              profileId: widget.profileId,
             ),
             const SizedBox(height: 12),
           ],
@@ -227,17 +227,17 @@ class _WorkspaceSidebarState
       widget.workspace,
       isPersonal: widget.isPersonalWorkspace,
       sessionTeamId: widget.sessionTeamFilter,
-      personalIdentityId: widget.identityId,
+      personalIdentityId: widget.profileId,
       cli: cli,
     );
   }
 }
 
 class _PresetDropdown extends StatefulWidget {
-  const _PresetDropdown({required this.workspaceId, required this.identityId});
+  const _PresetDropdown({required this.workspaceId, required this.profileId});
 
   final String workspaceId;
-  final String identityId;
+  final String profileId;
 
   @override
   State<_PresetDropdown> createState() => _PresetDropdownState();
@@ -250,10 +250,10 @@ class _PresetDropdownState extends State<_PresetDropdown> {
   Widget build(BuildContext context) {
     final l10n = context.l10n;
     final presetsState = context.watch<CliPresetsCubit>().state;
-    final identityCubit = context.watch<IdentityCubit>();
-    final opened = identityCubit.state.byId(widget.identityId);
+    final identityCubit = context.watch<LaunchProfileCubit>();
+    final opened = identityCubit.state.byId(widget.profileId);
     final personal =
-        opened is PersonalIdentity ? opened : identityCubit.activePersonal;
+        opened is PersonalProfile ? opened : identityCubit.activePersonal;
 
     if (personal == null || presetsState.status == CliPresetsLoadStatus.loading) {
       return const Padding(
@@ -293,8 +293,8 @@ class _PresetDropdownState extends State<_PresetDropdown> {
       WidgetsBinding.instance.addPostFrameCallback((_) {
         if (!mounted) return;
         context
-            .read<IdentityCubit>()
-            .setPersonalPreset(widget.identityId, presets.first.id);
+            .read<LaunchProfileCubit>()
+            .setPersonalPreset(widget.profileId, presets.first.id);
       });
     }
 
@@ -315,8 +315,8 @@ class _PresetDropdownState extends State<_PresetDropdown> {
               onChanged: (value) {
                 if (value == null) return;
                 context
-                    .read<IdentityCubit>()
-                    .setPersonalPreset(widget.identityId, value);
+                    .read<LaunchProfileCubit>()
+                    .setPersonalPreset(widget.profileId, value);
               },
               itemBuilder: (context, presetId) {
                 final preset = presetsState.presetById(presetId);

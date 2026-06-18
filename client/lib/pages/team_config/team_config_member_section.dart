@@ -2,7 +2,7 @@
 import 'package:teampilot/theme/app_icon_sizes.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
-import '../../cubits/identity_cubit.dart';
+import '../../cubits/launch_profile_cubit.dart';
 import '../../l10n/l10n_extensions.dart';
 import '../../models/team_config.dart';
 import '../../models/team_member_prompt_presets.dart';
@@ -27,8 +27,8 @@ class TeamMemberDetailSection extends StatelessWidget {
     required this.selectedMemberId,
   });
 
-  final TeamIdentity team;
-  final IdentityCubit cubit;
+  final TeamProfile team;
+  final LaunchProfileCubit cubit;
   final String? selectedMemberId;
 
   TeamMemberConfig? _memberOrNull() {
@@ -77,9 +77,9 @@ class TeamMemberConfigForm extends StatefulWidget {
     required this.cubit,
   });
 
-  final TeamIdentity team;
+  final TeamProfile team;
   final TeamMemberConfig member;
-  final IdentityCubit cubit;
+  final LaunchProfileCubit cubit;
 
   @override
   State<TeamMemberConfigForm> createState() => TeamMemberConfigFormState();

@@ -75,7 +75,7 @@ void main() {
     );
     const capability = FlashskyaiConfigProfileCapability();
     const member = TeamMemberConfig(id: 'm1', name: 'Member');
-    const team = TeamIdentity(
+    const team = TeamProfile(
       id: 'team-a',
       name: 'Team A',
       teamMode: TeamMode.mixed,

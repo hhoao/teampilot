@@ -1,7 +1,7 @@
 ﻿import 'package:flutter/material.dart';
 import 'package:teampilot/theme/app_icon_sizes.dart';
 
-import '../../cubits/identity_cubit.dart';
+import '../../cubits/launch_profile_cubit.dart';
 import '../../models/team_config.dart';
 import '../../theme/app_text_styles.dart';
 import '../../utils/team_member_naming.dart';
@@ -28,8 +28,8 @@ class HomeTeamTab extends StatefulWidget {
   });
 
   final TeamConfigSection section;
-  final TeamIdentity team;
-  final IdentityCubit cubit;
+  final TeamProfile team;
+  final LaunchProfileCubit cubit;
 
   /// Member to pre-select in the Members section (deep-link); null picks the
   /// first member.
@@ -129,8 +129,8 @@ class _MemberPicker extends StatelessWidget {
     required this.onSelect,
   });
 
-  final TeamIdentity team;
-  final IdentityCubit cubit;
+  final TeamProfile team;
+  final LaunchProfileCubit cubit;
   final String? selectedMemberId;
   final ValueChanged<String> onSelect;
 
@@ -225,7 +225,7 @@ class _MemberChip extends StatelessWidget {
 class _AddMemberChip extends StatelessWidget {
   const _AddMemberChip({required this.cubit, required this.onAdded});
 
-  final IdentityCubit cubit;
+  final LaunchProfileCubit cubit;
   final ValueChanged<String> onAdded;
 
   @override

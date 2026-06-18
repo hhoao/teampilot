@@ -1,6 +1,6 @@
 import 'dart:convert';
 import '../../models/plugin.dart';
-import '../../models/personal_identity.dart';
+import '../../models/personal_profile.dart';
 import '../../models/team_config.dart';
 import '../storage/app_storage.dart';
 import '../storage/runtime_layout.dart';
@@ -44,7 +44,7 @@ class CliPluginRegistryService {
     required String teamId,
     required String sessionId,
     required CliTool tool,
-    TeamIdentity? team,
+    TeamProfile? team,
     String? memberId,
     List<Plugin>? installedCatalog,
     String? memberProvisionJson,
@@ -74,7 +74,7 @@ class CliPluginRegistryService {
     required String workspaceId,
     required String sessionId,
     required CliTool tool,
-    PersonalIdentity? personal,
+    PersonalProfile? personal,
     List<Plugin>? installedCatalog,
     String? memberProvisionJson,
   }) async {

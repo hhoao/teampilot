@@ -55,7 +55,7 @@ void main() {
       final roots = layout.transcriptSearchRoots(
         workspaceId: workspaceId,
         sessionId: 'sess-1',
-        identityId: 'team-a',
+        profileId: 'team-a',
       );
       expect(roots, [
         for (final tool in runtimeLayoutDefaultTools) '/tp/cli-defaults/$tool',
@@ -72,7 +72,7 @@ void main() {
       final roots = layout.transcriptSearchRoots(
         workspaceId: workspaceId,
         sessionId: '',
-        identityId: 'team-a',
+        profileId: 'team-a',
         tools: const ['flashskyai'],
       );
       expect(roots, [

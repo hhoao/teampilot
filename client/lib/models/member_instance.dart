@@ -57,5 +57,5 @@ List<MemberInstance> expandTeamRoster(List<TeamMemberConfig> members) {
 
 /// Instance workspaceions the launch/bus layers iterate in place of
 /// `team.members`.
-List<TeamMemberConfig> runtimeRosterMembers(TeamIdentity team) =>
+List<TeamMemberConfig> runtimeRosterMembers(TeamProfile team) =>
     [for (final inst in expandTeamRoster(team.members)) inst.toMemberConfig()];

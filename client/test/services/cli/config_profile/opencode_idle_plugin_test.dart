@@ -38,7 +38,7 @@ void main() {
       );
       const capability = OpencodeConfigProfileCapability();
       const member = TeamMemberConfig(id: 'm1', name: 'Member', model: 'test');
-      const team = TeamIdentity(
+      const team = TeamProfile(
         id: 'team-a',
         name: 'agent',
         cli: CliTool.opencode,
@@ -177,7 +177,7 @@ void main() {
         provider: 'team-openai',
         prompt: 'You are the reviewer.',
       );
-      const team = TeamIdentity(
+      const team = TeamProfile(
         id: 'team-a',
         name: 'agent',
         cli: CliTool.opencode,

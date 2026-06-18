@@ -6,7 +6,7 @@ import 'package:teampilot/services/storage/runtime_layout.dart';
 import 'package:teampilot/services/mcp/mcp_registry_service.dart';
 import 'package:teampilot/models/mcp_registry_source.dart';
 import 'package:teampilot/models/mcp_server.dart';
-import 'package:teampilot/services/mcp/identity_mcp_linker_service.dart';
+import 'package:teampilot/services/mcp/profile_mcp_linker_service.dart';
 import 'package:teampilot/services/cli/registry/config_profile/claude_config_profile_capability.dart';
 import 'package:teampilot/services/team_bus/mcp/teammate_bus_mcp_config.dart';
 import 'package:path/path.dart' as p;
@@ -43,8 +43,8 @@ void main() {
       }),
     );
 
-    await IdentityMcpLinkerService().syncForIdentity(
-      identityId: teamId,
+    await ProfileMcpLinkerService().syncForIdentity(
+      profileId: teamId,
       mcpServerIds: const ['fetch'],
       catalog: [
         McpServer(
@@ -83,8 +83,8 @@ void main() {
       jsonEncode({'hasCompletedOnboarding': true}),
     );
 
-    await IdentityMcpLinkerService().syncForIdentity(
-      identityId: teamId,
+    await ProfileMcpLinkerService().syncForIdentity(
+      profileId: teamId,
       mcpServerIds: const ['fetch'],
       catalog: [
         McpServer(
@@ -133,8 +133,8 @@ void main() {
       ),
     );
 
-    await IdentityMcpLinkerService().syncForIdentity(
-      identityId: teamId,
+    await ProfileMcpLinkerService().syncForIdentity(
+      profileId: teamId,
       mcpServerIds: const ['ctx', 'deploy'],
       catalog: [
         McpServer(

@@ -3,9 +3,9 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../cubits/chat_cubit.dart';
-import '../../repositories/identity_repository.dart';
+import '../../repositories/launch_profile_repository.dart';
 import '../../repositories/session_repository.dart';
-import '../../services/storage/identity_provisioner.dart';
+import '../../services/storage/launch_profile_provisioner.dart';
 import '../../theme/app_text_styles.dart';
 import '../../widgets/app_dialog.dart';
 import '../../utils/workspace_path_picker.dart';
@@ -21,7 +21,7 @@ Future<void> showHomeNewWorkspaceDialog(
   BuildContext context, {
   required ChatCubit chatCubit,
   required SessionRepository repository,
-  IdentityRepository? identityRepository,
+  LaunchProfileRepository? identityRepository,
 }) async {
   final result = await showDialog<({List<String> directories, String display})>(
     context: context,
@@ -36,11 +36,11 @@ Future<void> showHomeNewWorkspaceDialog(
     additionalPaths: result.directories.skip(1).toList(growable: false),
     display: result.display,
     identityRepository:
-        identityRepository ?? context.read<IdentityRepository>(),
+        identityRepository ?? context.read<LaunchProfileRepository>(),
   );
   if (!context.mounted) return;
   context.go(
-    '/home-v2/workspace/$workspaceId?as=${IdentityProvisioner.defaultPersonalId}',
+    '/home-v2/workspace/$workspaceId?as=${LaunchProfileProvisioner.defaultPersonalId}',
   );
 }
 

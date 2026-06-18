@@ -1,7 +1,7 @@
 import 'dart:io';
 
 import 'package:teampilot/models/workspace_agent_config.dart';
-import 'package:teampilot/models/personal_identity.dart';
+import 'package:teampilot/models/personal_profile.dart';
 import 'package:teampilot/services/cli/cli_tool_adapter.dart';
 import 'package:teampilot/services/cli/registry/config_profile/config_profile_context.dart';
 import 'package:teampilot/services/session/launch_command_builder.dart';
@@ -22,7 +22,7 @@ void main() {
   );
 
   test('builds required flashskyai arguments for a member', () {
-    const team = TeamIdentity(id: '1', name: 'agent', cli: CliTool.flashskyai);
+    const team = TeamProfile(id: '1', name: 'agent', cli: CliTool.flashskyai);
 
     expect(
       LaunchCommandBuilder.buildArguments(
@@ -48,7 +48,7 @@ void main() {
   });
 
   test('omits --dir when workingDirectory is empty', () {
-    const team = TeamIdentity(id: '1', name: 'agent', cli: CliTool.flashskyai);
+    const team = TeamProfile(id: '1', name: 'agent', cli: CliTool.flashskyai);
 
     expect(LaunchCommandBuilder.buildArguments(team, member), [
       '--team',
@@ -65,7 +65,7 @@ void main() {
   });
 
   test('adds --loop after --member when team.loop is set', () {
-    const team = TeamIdentity(
+    const team = TeamProfile(
       id: '1',
       name: 'agent',
       cli: CliTool.flashskyai,
@@ -89,7 +89,7 @@ void main() {
   });
 
   test('adds --dangerously-skip-permissions when member requests it', () {
-    const team = TeamIdentity(id: '1', name: 'agent', cli: CliTool.flashskyai);
+    const team = TeamProfile(id: '1', name: 'agent', cli: CliTool.flashskyai);
     const risky = TeamMemberConfig(
       id: 'member-1',
       name: 'planner',
@@ -115,7 +115,7 @@ void main() {
   });
 
   test('merges team and member extra arguments', () {
-    const team = TeamIdentity(
+    const team = TeamProfile(
       id: '1',
       name: 'agent',
       cli: CliTool.flashskyai,
@@ -151,7 +151,7 @@ void main() {
   });
 
   test('quotes command preview for display', () {
-    const team = TeamIdentity(
+    const team = TeamProfile(
       id: '1',
       name: 'hello team',
       cli: CliTool.flashskyai,
@@ -165,7 +165,7 @@ void main() {
   });
 
   test('preview honours the supplied executable path', () {
-    const team = TeamIdentity(id: '1', name: 'agent', cli: CliTool.flashskyai);
+    const team = TeamProfile(id: '1', name: 'agent', cli: CliTool.flashskyai);
     const planner = TeamMemberConfig(id: 'm', name: 'planner', dangerouslySkipPermissions: false);
 
     expect(
@@ -187,8 +187,8 @@ void main() {
       agent: 'builder',
       cli: CliTool.flashskyai,
     );
-    const nativeClaude = TeamIdentity(id: '1', name: 'agent', cli: CliTool.claude);
-    const mixedClaude = TeamIdentity(
+    const nativeClaude = TeamProfile(id: '1', name: 'agent', cli: CliTool.claude);
+    const mixedClaude = TeamProfile(
       id: '1',
       name: 'agent',
       cli: CliTool.claude,
@@ -209,7 +209,7 @@ void main() {
   });
 
   test('preview delegates argument construction for Claude teams', () {
-    const team = TeamIdentity(id: '1', name: 'agent', cli: CliTool.claude);
+    const team = TeamProfile(id: '1', name: 'agent', cli: CliTool.claude);
     const planner = TeamMemberConfig(
       id: 'm',
       name: 'planner',
@@ -229,7 +229,7 @@ void main() {
   test(
     'launch passes Claude settings as argument and strips internal env',
     () async {
-      const team = TeamIdentity(id: '1', name: 'agent', cli: CliTool.claude);
+      const team = TeamProfile(id: '1', name: 'agent', cli: CliTool.claude);
       List<String>? capturedArgs;
       Map<String, String>? capturedEnv;
 
@@ -282,7 +282,7 @@ void main() {
   test(
     'launch passes append-system-prompt-file and strips internal env',
     () async {
-      const team = TeamIdentity(id: '1', name: 'agent', cli: CliTool.claude);
+      const team = TeamProfile(id: '1', name: 'agent', cli: CliTool.claude);
       List<String>? capturedArgs;
       Map<String, String>? capturedEnv;
 
@@ -394,7 +394,7 @@ void main() {
 
   test('ShellLaunchSpec builds full personal CLI launch args', () {
     // TODO: migrate to presets — cli, model, providerIdsByTool removed
-    const profile = PersonalIdentity(id: 'proj-1', display: 'proj-1',
+    const profile = PersonalProfile(id: 'proj-1', display: 'proj-1',
       agent: WorkspaceAgentConfig(agent: 'builder'),
     );
     const sessionTeam = 'sess-personal-1';

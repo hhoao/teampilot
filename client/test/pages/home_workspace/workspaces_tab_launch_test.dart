@@ -1,9 +1,9 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:teampilot/models/workspace.dart';
-import 'package:teampilot/models/launch_identity.dart';
+import 'package:teampilot/models/launch_profile_ref.dart';
 import 'package:teampilot/pages/home_workspace/workspaces_tab.dart';
 import 'package:teampilot/services/home_workspace/workspace_launch_prefs_store.dart';
-import 'package:teampilot/services/storage/identity_provisioner.dart';
+import 'package:teampilot/services/storage/launch_profile_provisioner.dart';
 
 Workspace _workspace() =>
     Workspace(workspaceId: 'p1', primaryPath: '/tmp/p1', createdAt: 0);
@@ -12,11 +12,11 @@ void main() {
   group('workspaceLaunchRoute', () {
     test('encodes bare identity ids', () {
       expect(
-        workspaceLaunchRoute('p1', const LaunchIdentity('personal-default')),
+        workspaceLaunchRoute('p1', const LaunchProfileRef('personal-default')),
         '/home-v2/workspace/p1?as=personal-default',
       );
       expect(
-        workspaceLaunchRoute('p1', const LaunchIdentity('squad')),
+        workspaceLaunchRoute('p1', const LaunchProfileRef('squad')),
         '/home-v2/workspace/p1?as=squad',
       );
     });
@@ -49,11 +49,11 @@ void main() {
         rememberedLaunchRoute(
           _workspace(),
           WorkspaceLaunchPref(
-            lastIdentity: IdentityProvisioner.defaultPersonalId,
+            lastIdentity: LaunchProfileProvisioner.defaultPersonalId,
             remember: true,
           ),
         ),
-        '/home-v2/workspace/p1?as=${IdentityProvisioner.defaultPersonalId}',
+        '/home-v2/workspace/p1?as=${LaunchProfileProvisioner.defaultPersonalId}',
       );
     });
 

@@ -1,7 +1,7 @@
 import 'dart:convert';
 
 import '../../../../models/claude_credential_link_result.dart';
-import '../../../../models/personal_identity.dart';
+import '../../../../models/personal_profile.dart';
 import '../../../../models/team_config.dart';
 import '../../../../utils/team_member_naming.dart';
 import '../../../provider/claude/claude_effort_capability.dart';
@@ -94,7 +94,7 @@ final class ClaudeConfigProfileCapability implements ConfigProfileCapability {
       );
 
   Future<ClaudeLaunchExtras> resolveLaunchExtras({
-    required TeamIdentity team,
+    required TeamProfile team,
     required TeamMemberConfig? member,
     required ClaudeProviderSettingsResolver resolver,
   }) async {
@@ -302,7 +302,7 @@ final class ClaudeConfigProfileCapability implements ConfigProfileCapability {
   Future<ConfigProfileLaunchContribution> _contributeStandaloneLaunch(
     ConfigProfileLaunchContext ctx,
     StandaloneLaunchProfileScope standalone,
-    PersonalIdentity personal,
+    PersonalProfile personal,
   ) async {
     final delegate = ctx.paths;
     final member = standaloneMemberFromPersonal(personal, preset: ctx.preset);
@@ -472,7 +472,7 @@ final class ClaudeConfigProfileCapability implements ConfigProfileCapability {
     required LaunchProfileScope scope,
     required TeamMemberConfig member,
     required Map<String, Object?>? providerSettings,
-    required TeamIdentity? team,
+    required TeamProfile? team,
     required String effortLevel,
   }) async {
     await MemberRoleProvision.syncRolePromptFile(
@@ -625,7 +625,7 @@ final class ClaudeConfigProfileCapability implements ConfigProfileCapability {
   Future<void> _writeMemberProfiles({
     required ConfigProfileDelegate delegate,
     required LaunchProfileScope scope,
-    required TeamIdentity? team,
+    required TeamProfile? team,
     required List<TeamMemberConfig> members,
     required TeamMemberConfig? launchedMember,
     required Map<String, Object?>? providerSettings,
@@ -663,7 +663,7 @@ final class ClaudeConfigProfileCapability implements ConfigProfileCapability {
   Future<void> _writeMemberProfile({
     required ConfigProfileDelegate delegate,
     required LaunchProfileScope scope,
-    required TeamIdentity? team,
+    required TeamProfile? team,
     required TeamMemberConfig member,
     required Map<String, Object?>? providerSettings,
     required bool forceTeamLeadDelegateMode,
@@ -727,7 +727,7 @@ final class ClaudeConfigProfileCapability implements ConfigProfileCapability {
 
   Future<Map<String, Map<String, Object?>>> _loadMemberProviderSettings({
     required ClaudeProviderSettingsResolver resolver,
-    required TeamIdentity team,
+    required TeamProfile team,
     required Map<String, Object?>? teamClaudeSettings,
     required TeamMemberConfig? launchedMember,
   }) async {
@@ -794,7 +794,7 @@ final class ClaudeConfigProfileCapability implements ConfigProfileCapability {
   }
 
   static String _resolveClaudeEffort({
-    required TeamIdentity? team,
+    required TeamProfile? team,
     required TeamMemberConfig? member,
     required String model,
     String? profileEffort,

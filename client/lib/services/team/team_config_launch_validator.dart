@@ -76,7 +76,7 @@ class TeamConfigLaunchValidator {
   final OfficialProviderResolver _isOfficialProvider;
 
   Future<TeamConfigValidation> validate(
-    TeamIdentity team, {
+    TeamProfile team, {
     List<CliPreset> globalPresets = const [],
   }) async {
     final members = team.members

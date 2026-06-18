@@ -2,7 +2,7 @@ import 'package:path/path.dart' as p;
 
 import '../../models/cli_preset.dart';
 import '../../models/extension_manifest.dart';
-import '../../models/personal_identity.dart';
+import '../../models/personal_profile.dart';
 import '../../models/skill.dart';
 import '../../models/team_config.dart';
 import '../storage/runtime_layout.dart';
@@ -163,7 +163,7 @@ class ConfigProfileService implements ConfigProfileDelegate {
     String sessionId,
     String teamId, {
     CliTool cli = CliTool.claude,
-    TeamIdentity? team,
+    TeamProfile? team,
     String? memberId,
     Map<String, Map<String, Object?>>? extraMcpServers,
   }) async {
@@ -241,7 +241,7 @@ class ConfigProfileService implements ConfigProfileDelegate {
     );
   }
 
-  Future<void> ensureStandalonePersonalIdentity(
+  Future<void> ensureStandalonePersonalProfile(
     String workspaceId, {
     CliTool cli = CliTool.claude,
   }) async {
@@ -254,7 +254,7 @@ class ConfigProfileService implements ConfigProfileDelegate {
     String workspaceId,
     String sessionId, {
     CliTool cli = CliTool.claude,
-    PersonalIdentity? personal,
+    PersonalProfile? personal,
     Map<String, Map<String, Object?>>? extraMcpServers,
   }) async {
     final trimmedWorkspaceId = workspaceId.trim();
@@ -266,7 +266,7 @@ class ConfigProfileService implements ConfigProfileDelegate {
       sessionId: trimmedSessionId,
     );
     await _withStandaloneScope(standaloneScope, () async {
-      await ensureStandalonePersonalIdentity(trimmedWorkspaceId, cli: cli);
+      await ensureStandalonePersonalProfile(trimmedWorkspaceId, cli: cli);
       String? sessionProvisionJson;
       await Future.wait([
         layout.ensureSessionRuntimeInheritsWorkspace(
@@ -327,8 +327,8 @@ class ConfigProfileService implements ConfigProfileDelegate {
   Future<TeamLaunchOutcome> prepareWorkspaceLaunch({
     required String workspaceId,
     required String sessionId,
-    required String identityId,
-    required PersonalIdentity personal,
+    required String profileId,
+    required PersonalProfile personal,
     String workingDirectory = '',
     List<String> additionalDirectories = const [],
     Map<String, Map<String, Object?>>? extraMcpServers,
@@ -344,7 +344,7 @@ class ConfigProfileService implements ConfigProfileDelegate {
     final warnings = <String>[];
     await _infra.collectExtensionWarnings(
       warnings,
-      teamId: identityId.trim(),
+      teamId: profileId.trim(),
     );
 
     final cli = preset?.cli ?? CliTool.claude;
@@ -449,7 +449,7 @@ class ConfigProfileService implements ConfigProfileDelegate {
     TeamMemberConfig? member,
     String workingDirectory = '',
     List<String> additionalDirectories = const [],
-    TeamIdentity? team,
+    TeamProfile? team,
     String? leadSessionId,
     Map<String, Map<String, Object?>>? extraMcpServers,
     String? busIdleUrl,

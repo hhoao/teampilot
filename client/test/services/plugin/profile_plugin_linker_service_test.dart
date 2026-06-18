@@ -6,7 +6,7 @@ import 'package:teampilot/models/plugin.dart';
 import 'package:teampilot/services/storage/app_storage.dart';
 import 'package:teampilot/services/io/local_filesystem.dart';
 import 'package:teampilot/services/storage/runtime_storage_context.dart';
-import 'package:teampilot/services/plugin/identity_plugin_linker_service.dart';
+import 'package:teampilot/services/plugin/profile_plugin_linker_service.dart';
 
 void main() {
   late Directory tmp;
@@ -39,9 +39,9 @@ void main() {
       p.join(pluginDir.path, '.claude-plugin', 'plugin.json'),
     ).writeAsStringSync('{"name":"p1","version":"1.0.0"}');
 
-    final svc = IdentityPluginLinkerService(appPluginsRoot: pluginsRoot.path);
+    final svc = ProfilePluginLinkerService(appPluginsRoot: pluginsRoot.path);
     final result = await svc.syncForIdentity(
-      identityId: 't1',
+      profileId: 't1',
       pluginIds: ['acme/market/p1'],
       installed: const [
         Plugin(
@@ -83,11 +83,11 @@ void main() {
     )..createSync(recursive: true);
     Directory(p.join(teamPluginsDir.path, 'old-plugin')).createSync();
 
-    final svc = IdentityPluginLinkerService(
+    final svc = ProfilePluginLinkerService(
       appPluginsRoot: p.join(tmp.path, 'plugins', 'installed'),
     );
     final result = await svc.syncForIdentity(
-      identityId: 't1',
+      profileId: 't1',
       pluginIds: const [],
       installed: const [],
     );
@@ -100,11 +100,11 @@ void main() {
 
   test('syncForIdentity reports skippedMissingIds when plugin source is missing',
       () async {
-    final svc = IdentityPluginLinkerService(
+    final svc = ProfilePluginLinkerService(
       appPluginsRoot: p.join(tmp.path, 'plugins', 'installed'),
     );
     final result = await svc.syncForIdentity(
-      identityId: 't1',
+      profileId: 't1',
       pluginIds: ['gone/market/p'],
       installed: const [],
     );
@@ -129,9 +129,9 @@ void main() {
       ..createSync();
     writeBundle(dirB, 'shared');
 
-    final svc = IdentityPluginLinkerService(appPluginsRoot: pluginsRoot.path);
+    final svc = ProfilePluginLinkerService(appPluginsRoot: pluginsRoot.path);
     final result = await svc.syncForIdentity(
-      identityId: 't1',
+      profileId: 't1',
       pluginIds: ['acmeA/market/shared', 'acmeB/market/shared'],
       installed: [
         const Plugin(

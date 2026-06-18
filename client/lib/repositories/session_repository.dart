@@ -169,7 +169,7 @@ class SessionRepository {
   Future<void> updateWorkspaceMetadata(
     String workspaceId, {
     String? display,
-    String? defaultIdentityId,
+    String? defaultProfileId,
     List<String>? additionalPaths,
   }) async {
     final fs = await _fs();
@@ -178,9 +178,9 @@ class SessionRepository {
     final now = DateTime.now().millisecondsSinceEpoch;
     final updated = existing.copyWith(
       display: display != null ? display.trim() : existing.display,
-      defaultIdentityId: defaultIdentityId != null
-          ? defaultIdentityId.trim()
-          : existing.defaultIdentityId,
+      defaultProfileId: defaultProfileId != null
+          ? defaultProfileId.trim()
+          : existing.defaultProfileId,
       additionalPaths: additionalPaths != null
           ? List<String>.from(
               additionalPaths
@@ -324,7 +324,7 @@ class SessionRepository {
       additionalPaths: List<String>.from(workspace.additionalPaths),
       display: '',
       sessionTeam: sessionTeam,
-      identityId: trimmedTeam.isEmpty ? personalIdentityId.trim() : '',
+      profileId: trimmedTeam.isEmpty ? personalIdentityId.trim() : '',
       cliTeamName: cliTeamName,
       cli: trimmedTeam.isEmpty ? cli : null,
       members: members,

@@ -4,31 +4,31 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
 import '../models/mcp_server.dart';
-import '../models/personal_identity.dart';
+import '../models/personal_profile.dart';
 import '../models/plugin.dart';
 import '../models/team_config.dart';
-import '../models/identity.dart';
+import '../models/launch_profile.dart';
 import '../repositories/mcp_repository.dart';
 import '../repositories/plugin_repository.dart';
-import '../repositories/identity_repository.dart';
+import '../repositories/launch_profile_repository.dart';
 import '../repositories/session_repository.dart';
 import '../services/cli/registry/cli_tool_registry.dart';
 import '../services/team/default_team_workspace_service.dart';
 import '../services/provider/config_profile_service.dart';
 import '../services/session/session_lifecycle_service.dart';
-import '../services/mcp/identity_mcp_linker_service.dart';
-import '../services/storage/identity_provisioner.dart';
-import '../services/plugin/identity_plugin_linker_service.dart';
+import '../services/mcp/profile_mcp_linker_service.dart';
+import '../services/storage/launch_profile_provisioner.dart';
+import '../services/plugin/profile_plugin_linker_service.dart';
 import '../utils/logger.dart';
 import '../utils/team_member_naming.dart';
-import 'team/identity_cubit_host.dart';
-import 'team/model/identity_state.dart';
+import 'team/launch_profile_cubit_host.dart';
+import 'team/model/launch_profile_state.dart';
 import 'team/team_launch_service.dart';
 import 'team/team_profile_provisioner.dart';
 import 'team/team_resource_sync_service.dart';
 import 'team/team_roster_editor.dart';
 
-export 'team/model/identity_state.dart';
+export 'team/model/launch_profile_state.dart';
 export 'team/team_launch_service.dart' show TeamLauncher, CliExecutableResolver;
 export 'team/team_resource_sync_service.dart'
     show mergeExtensionMcp, InstalledPluginsLoader, InstalledMcpLoader;
@@ -37,9 +37,9 @@ export 'team/team_resource_sync_service.dart'
 /// linking ([TeamResourceSyncService]), launching ([TeamLaunchService]) and
 /// config-profile provisioning ([TeamProfileProvisioner]). Roster transforms
 /// live in [TeamRosterEditor]; this cubit persists and emits.
-class IdentityCubit extends Cubit<IdentityState> implements IdentityCubitHost {
-  IdentityCubit({
-    required IdentityRepository repository,
+class LaunchProfileCubit extends Cubit<LaunchProfileState> implements LaunchProfileCubitHost {
+  LaunchProfileCubit({
+    required LaunchProfileRepository repository,
     required SessionRepository sessionRepository,
     required Future<void> Function() reloadWorkspaces,
     required String Function() executableResolver,
@@ -50,10 +50,10 @@ class IdentityCubit extends Cubit<IdentityState> implements IdentityCubitHost {
     ConfigProfileService? configProfileService,
     StorageRootsResolver? storageRootsResolver,
     SessionLifecycleService? lifecycleService,
-    IdentityPluginLinkerService? pluginLinker,
+    ProfilePluginLinkerService? pluginLinker,
     PluginRepository? pluginRepository,
     InstalledPluginsLoader? installedPluginsLoader,
-    IdentityMcpLinkerService? mcpLinker,
+    ProfileMcpLinkerService? mcpLinker,
     McpRepository? mcpRepository,
     InstalledMcpLoader? installedMcpLoader,
     Future<List<McpServer>> Function(String teamId)? extensionMcpContributor,
@@ -75,20 +75,20 @@ class IdentityCubit extends Cubit<IdentityState> implements IdentityCubitHost {
              configProfileService: configProfileService,
              storageRootsResolver: storageRootsResolver,
            ),
-       _pluginLinker = pluginLinker ?? IdentityPluginLinkerService(),
+       _pluginLinker = pluginLinker ?? ProfilePluginLinkerService(),
        _pluginRepository = pluginRepository ?? PluginRepository(),
        _installedPluginsLoader = installedPluginsLoader,
-       _mcpLinker = mcpLinker ?? IdentityMcpLinkerService(),
+       _mcpLinker = mcpLinker ?? ProfileMcpLinkerService(),
        _mcpRepository = mcpRepository ?? McpRepository(),
        _installedMcpLoader = installedMcpLoader,
        _extensionMcpContributor = extensionMcpContributor ?? _noExtensionMcp,
        _launcher = launcher,
-       super(const IdentityState());
+       super(const LaunchProfileState());
 
   static Future<List<McpServer>> _noExtensionMcp(String teamId) async =>
       const <McpServer>[];
 
-  final IdentityRepository _repository;
+  final LaunchProfileRepository _repository;
   final SessionRepository _sessionRepository;
   final Future<void> Function() _reloadWorkspaces;
   final String Function() _executableResolver;
@@ -97,10 +97,10 @@ class IdentityCubit extends Cubit<IdentityState> implements IdentityCubitHost {
   final ConfigProfileService? _configProfileService;
   final StorageRootsResolver? _storageRootsResolver;
   final SessionLifecycleService _lifecycle;
-  final IdentityPluginLinkerService _pluginLinker;
+  final ProfilePluginLinkerService _pluginLinker;
   final PluginRepository _pluginRepository;
   final InstalledPluginsLoader? _installedPluginsLoader;
-  final IdentityMcpLinkerService _mcpLinker;
+  final ProfileMcpLinkerService _mcpLinker;
   final McpRepository _mcpRepository;
   final InstalledMcpLoader? _installedMcpLoader;
   final Future<List<McpServer>> Function(String teamId)
@@ -136,21 +136,21 @@ class IdentityCubit extends Cubit<IdentityState> implements IdentityCubitHost {
     launcher: _launcher,
   );
 
-  // ===== IdentityCubitHost =====
+  // ===== LaunchProfileCubitHost =====
 
   @override
-  void applyState(IdentityState next) {
+  void applyState(LaunchProfileState next) {
     if (!isClosed) emit(next);
   }
 
   @override
-  Future<void> saveTeams(List<TeamIdentity> teams) async {
+  Future<void> saveTeamProfiles(List<TeamProfile> teams) async {
     for (final team in teams) {
       await _repository.save(team);
     }
   }
 
-  Identity? byId(String id) => state.byId(id);
+  LaunchProfile? byId(String id) => state.byId(id);
 
   // ===== Launch / preview (delegated) =====
 
@@ -194,7 +194,7 @@ class IdentityCubit extends Cubit<IdentityState> implements IdentityCubitHost {
 
   // ===== Personal identities =====
 
-  Future<void> savePersonal(PersonalIdentity identity) async {
+  Future<void> savePersonal(PersonalProfile identity) async {
     await _repository.save(identity);
     await _reloadIdentities();
     // Every save path (skills/mcp/agent/preset and plugins) goes through here,
@@ -226,7 +226,7 @@ class IdentityCubit extends Cubit<IdentityState> implements IdentityCubitHost {
       state.identities.map((identity) => identity.id),
     );
     await savePersonal(
-      PersonalIdentity(
+      PersonalProfile(
         id: id,
         display: trimmed,
         createdAt: now,
@@ -239,14 +239,14 @@ class IdentityCubit extends Cubit<IdentityState> implements IdentityCubitHost {
 
   Future<void> _reloadIdentities() async {
     final all = await _repository.loadAll();
-    final teams = _sortTeams(all.whereType<TeamIdentity>().toList());
-    final personals = _sortPersonals(all.whereType<PersonalIdentity>().toList());
+    final teams = _sortTeams(all.whereType<TeamProfile>().toList());
+    final personals = _sortPersonals(all.whereType<PersonalProfile>().toList());
     emit(state.copyWith(identities: [...personals, ...teams]));
   }
 
-  List<PersonalIdentity> _sortPersonals(List<PersonalIdentity> personals) {
+  List<PersonalProfile> _sortPersonals(List<PersonalProfile> personals) {
     final hasCustomOrder = personals.any((personal) => personal.sortOrder > 0);
-    final sorted = List<PersonalIdentity>.of(personals);
+    final sorted = List<PersonalProfile>.of(personals);
     sorted.sort((a, b) {
       if (hasCustomOrder) {
         final order = a.sortOrder.compareTo(b.sortOrder);
@@ -260,9 +260,9 @@ class IdentityCubit extends Cubit<IdentityState> implements IdentityCubitHost {
     return sorted;
   }
 
-  List<TeamIdentity> _sortTeams(List<TeamIdentity> teams) {
+  List<TeamProfile> _sortTeams(List<TeamProfile> teams) {
     final hasCustomOrder = teams.any((team) => team.sortOrder > 0);
-    final sorted = List<TeamIdentity>.of(teams);
+    final sorted = List<TeamProfile>.of(teams);
     sorted.sort((a, b) {
       if (hasCustomOrder) {
         final order = a.sortOrder.compareTo(b.sortOrder);
@@ -278,9 +278,9 @@ class IdentityCubit extends Cubit<IdentityState> implements IdentityCubitHost {
 
   Future<void> _pruneSkillFromPersonals(String skillId) async {
     var changed = false;
-    final next = <Identity>[];
+    final next = <LaunchProfile>[];
     for (final identity in state.identities) {
-      if (identity is PersonalIdentity &&
+      if (identity is PersonalProfile &&
           identity.bundle.skillIds.contains(skillId)) {
         changed = true;
         final pruned = identity.copyWith(
@@ -301,9 +301,9 @@ class IdentityCubit extends Cubit<IdentityState> implements IdentityCubitHost {
 
   Future<void> _prunePluginFromPersonals(String pluginId) async {
     var changed = false;
-    final next = <Identity>[];
+    final next = <LaunchProfile>[];
     for (final identity in state.identities) {
-      if (identity is PersonalIdentity &&
+      if (identity is PersonalProfile &&
           identity.bundle.pluginIds.contains(pluginId)) {
         changed = true;
         final pruned = identity.copyWith(
@@ -324,9 +324,9 @@ class IdentityCubit extends Cubit<IdentityState> implements IdentityCubitHost {
 
   Future<void> _pruneMcpFromPersonals(String mcpId) async {
     var changed = false;
-    final next = <Identity>[];
+    final next = <LaunchProfile>[];
     for (final identity in state.identities) {
-      if (identity is PersonalIdentity &&
+      if (identity is PersonalProfile &&
           identity.bundle.mcpServerIds.contains(mcpId)) {
         changed = true;
         final pruned = identity.copyWith(
@@ -348,11 +348,11 @@ class IdentityCubit extends Cubit<IdentityState> implements IdentityCubitHost {
   // ===== Team lifecycle =====
 
   Future<void> load({bool awaitProfiles = false}) async {
-    appLogger.i('IdentityCubit loading identities...');
+    appLogger.i('LaunchProfileCubit loading identities...');
     emit(state.copyWith(isLoading: true));
     final all = await _repository.loadAll();
-    var teams = _sortTeams(all.whereType<TeamIdentity>().toList());
-    final personals = _sortPersonals(all.whereType<PersonalIdentity>().toList());
+    var teams = _sortTeams(all.whereType<TeamProfile>().toList());
+    final personals = _sortPersonals(all.whereType<PersonalProfile>().toList());
     if (teams.isEmpty) {
       final team = _rosterEditor.defaultTeam();
       teams = [team];
@@ -373,7 +373,7 @@ class IdentityCubit extends Cubit<IdentityState> implements IdentityCubitHost {
       ),
     );
     appLogger.i(
-      'IdentityCubit loaded ${teams.length} teams, ${personals.length} personals',
+      'LaunchProfileCubit loaded ${teams.length} teams, ${personals.length} personals',
     );
     final profiles = _provisioner.ensureForTeams(teams);
     if (awaitProfiles) {
@@ -381,7 +381,7 @@ class IdentityCubit extends Cubit<IdentityState> implements IdentityCubitHost {
     } else {
       unawaited(
         profiles.catchError((Object e) {
-          appLogger.w('[IdentityCubit] background profile ensure failed: $e');
+          appLogger.w('[LaunchProfileCubit] background profile ensure failed: $e');
         }),
       );
     }
@@ -395,7 +395,7 @@ class IdentityCubit extends Cubit<IdentityState> implements IdentityCubitHost {
     if (targetIndex > oldIndex) targetIndex -= 1;
     if (oldIndex == targetIndex) return;
 
-    final reordered = List<TeamIdentity>.of(teams);
+    final reordered = List<TeamProfile>.of(teams);
     final moved = reordered.removeAt(oldIndex);
     reordered.insert(targetIndex, moved);
     final stamped = [
@@ -403,7 +403,7 @@ class IdentityCubit extends Cubit<IdentityState> implements IdentityCubitHost {
         reordered[i].copyWith(sortOrder: i + 1),
     ];
     emit(state.copyWith(teams: stamped));
-    await saveTeams(stamped);
+    await saveTeamProfiles(stamped);
   }
 
   Future<void> reorderPersonals(int oldIndex, int newIndex) async {
@@ -414,7 +414,7 @@ class IdentityCubit extends Cubit<IdentityState> implements IdentityCubitHost {
     if (targetIndex > oldIndex) targetIndex -= 1;
     if (oldIndex == targetIndex) return;
 
-    final reordered = List<PersonalIdentity>.of(personals);
+    final reordered = List<PersonalProfile>.of(personals);
     final moved = reordered.removeAt(oldIndex);
     reordered.insert(targetIndex, moved);
     final stamped = [
@@ -425,7 +425,7 @@ class IdentityCubit extends Cubit<IdentityState> implements IdentityCubitHost {
     await savePersonals(stamped);
   }
 
-  Future<void> savePersonals(List<PersonalIdentity> personals) async {
+  Future<void> savePersonals(List<PersonalProfile> personals) async {
     for (final personal in personals) {
       await _repository.save(personal);
     }
@@ -476,7 +476,7 @@ class IdentityCubit extends Cubit<IdentityState> implements IdentityCubitHost {
       trimmed,
       state.teams.map((t) => t.id),
     );
-    final team = TeamIdentity(
+    final team = TeamProfile(
       id: teamId,
       name: trimmed,
       description: description.trim(),
@@ -495,7 +495,7 @@ class IdentityCubit extends Cubit<IdentityState> implements IdentityCubitHost {
         statusMessage: 'Added ${team.name}.',
       ),
     );
-    await saveTeams(teams);
+    await saveTeamProfiles(teams);
     await _provisioner.ensureTeamProfile(team.id, cli: team.cli);
     await _seedDefaultWorkspace(team);
     unawaited(_sync.syncPluginsForSelected());
@@ -539,7 +539,7 @@ class IdentityCubit extends Cubit<IdentityState> implements IdentityCubitHost {
     final roster = members.isEmpty
         ? TeamMemberNaming.defaultRoster(joinedAt: now)
         : members;
-    final team = TeamIdentity(
+    final team = TeamProfile(
       id: teamId,
       name: displayName,
       description: description,
@@ -560,14 +560,14 @@ class IdentityCubit extends Cubit<IdentityState> implements IdentityCubitHost {
         statusMessage: 'Cloned ${team.name}.',
       ),
     );
-    await saveTeams(teams);
+    await saveTeamProfiles(teams);
     await _provisioner.ensureTeamProfile(team.id, cli: team.cli);
     await _seedDefaultWorkspace(team);
     unawaited(_sync.syncPluginsForSelected());
     return team.id;
   }
 
-  Future<void> _seedDefaultWorkspace(TeamIdentity team) async {
+  Future<void> _seedDefaultWorkspace(TeamProfile team) async {
     await DefaultTeamWorkspaceService.seed(_sessionRepository, team);
     await _reloadWorkspaces();
   }
@@ -599,7 +599,7 @@ class IdentityCubit extends Cubit<IdentityState> implements IdentityCubitHost {
         statusMessage: 'Renamed team to $trimmed.',
       ),
     );
-    await saveTeams(teams);
+    await saveTeamProfiles(teams);
     return true;
   }
 
@@ -612,7 +612,7 @@ class IdentityCubit extends Cubit<IdentityState> implements IdentityCubitHost {
     if (trimmed.isEmpty) return;
 
     var changed = false;
-    final teams = <TeamIdentity>[];
+    final teams = <TeamProfile>[];
     for (final team in state.teams) {
       if (team.cli != CliTool.claude) {
         teams.add(team);
@@ -633,10 +633,10 @@ class IdentityCubit extends Cubit<IdentityState> implements IdentityCubitHost {
     if (!changed) return;
 
     emit(state.copyWith(teams: teams));
-    await saveTeams(teams);
+    await saveTeamProfiles(teams);
   }
 
-  Future<void> updateSelected(TeamIdentity updated) async {
+  Future<void> updateSelected(TeamProfile updated) async {
     final selected = state.selectedTeam;
     if (selected == null) return;
     final pluginsChanged = !listEquals(selected.pluginIds, updated.pluginIds);
@@ -659,7 +659,7 @@ class IdentityCubit extends Cubit<IdentityState> implements IdentityCubitHost {
             : 'Name is required.',
       ),
     );
-    await saveTeams(teams);
+    await saveTeamProfiles(teams);
     if (pluginsChanged) {
       await _sync.syncPluginsForSelected();
     }
@@ -687,7 +687,7 @@ class IdentityCubit extends Cubit<IdentityState> implements IdentityCubitHost {
         statusMessage: 'Deleted ${selected.name}.',
       ),
     );
-    await saveTeams(teams);
+    await saveTeamProfiles(teams);
     unawaited(_sync.syncPluginsForSelected());
   }
 
@@ -753,7 +753,7 @@ class IdentityCubit extends Cubit<IdentityState> implements IdentityCubitHost {
   /// Sets the active preset for a member of the selected team.
   ///
   /// [presetId] may be a preset UUID ([CliPreset.id]),
-  /// [TeamIdentity.inheritPresetId] to inherit the team default, `null` (clear),
+  /// [TeamProfile.inheritPresetId] to inherit the team default, `null` (clear),
   /// or empty (clear).
   ///
   /// In [TeamMode.mixed], pass [syncCli] when selecting an explicit preset so
@@ -775,7 +775,7 @@ class IdentityCubit extends Cubit<IdentityState> implements IdentityCubitHost {
         : presetId.trim();
     final syncCliFromPreset = team.teamMode == TeamMode.mixed &&
         effectiveId != null &&
-        effectiveId != TeamIdentity.inheritPresetId &&
+        effectiveId != TeamProfile.inheritPresetId &&
         syncCli != null;
     await updateMember(
       memberId,
@@ -804,7 +804,7 @@ class IdentityCubit extends Cubit<IdentityState> implements IdentityCubitHost {
   Future<void> renameLlmProviderReference(String from, String to) async {
     if (from == to) return;
     var changed = false;
-    final teams = <TeamIdentity>[];
+    final teams = <TeamProfile>[];
     for (final team in state.teams) {
       var teamChanged = false;
       final members = <TeamMemberConfig>[];
@@ -821,7 +821,7 @@ class IdentityCubit extends Cubit<IdentityState> implements IdentityCubitHost {
     }
     if (!changed) return;
     emit(state.copyWith(teams: teams));
-    await saveTeams(teams);
+    await saveTeamProfiles(teams);
   }
 
   bool _teamCliAllowed({required CliTool cli, required TeamMode teamMode}) {
@@ -835,31 +835,31 @@ class IdentityCubit extends Cubit<IdentityState> implements IdentityCubitHost {
   }
 
   /// Default personal identity for simple-mode workspace config (Stage 3 bridge
-  /// until [Workspace.defaultIdentityId] in Stage 4).
-  PersonalIdentity? get activePersonal {
-    final identity = state.byId(IdentityProvisioner.defaultPersonalId);
-    if (identity is PersonalIdentity) return identity;
+  /// until [Workspace.defaultProfileId] in Stage 4).
+  PersonalProfile? get activePersonal {
+    final identity = state.byId(LaunchProfileProvisioner.defaultPersonalId);
+    if (identity is PersonalProfile) return identity;
     final personals = state.personals;
     return personals.isEmpty ? null : personals.first;
   }
 
   /// Sets the active preset for a specific personal identity (the one the
   /// workspace was opened against). Falls back to [activePersonal] when
-  /// [identityId] is empty or not a personal identity.
-  Future<void> setPersonalPreset(String identityId, String presetId) async {
-    final byId = identityId.isEmpty ? null : state.byId(identityId);
-    final personal = byId is PersonalIdentity ? byId : activePersonal;
+  /// [profileId] is empty or not a personal identity.
+  Future<void> setPersonalPreset(String profileId, String presetId) async {
+    final byId = profileId.isEmpty ? null : state.byId(profileId);
+    final personal = byId is PersonalProfile ? byId : activePersonal;
     if (personal == null) return;
     await savePersonal(personal.copyWith(activePresetId: presetId.trim()));
   }
 
-  Future<void> _syncPersonalPlugins(PersonalIdentity personal) async {
+  Future<void> _syncPersonalPlugins(PersonalProfile personal) async {
     emit(state.copyWith(isSyncingPlugins: true));
     try {
       final catalog =
           await (_installedPluginsLoader?.call() ?? _pluginRepository.loadAll());
       await _pluginLinker.syncForIdentity(
-        identityId: personal.id,
+        profileId: personal.id,
         pluginIds: personal.bundle.pluginIds,
         installed: catalog,
       );

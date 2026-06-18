@@ -6,8 +6,8 @@ import '../../models/workspace.dart';
 import '../../models/app_session.dart';
 import '../../models/cli_preset.dart';
 import '../../models/member_instance.dart';
-import '../../models/personal_identity.dart';
-import '../../services/storage/identity_provisioner.dart';
+import '../../models/personal_profile.dart';
+import '../../services/storage/launch_profile_provisioner.dart';
 import '../../models/session_member_binding.dart';
 import '../../models/team_config.dart';
 import '../../repositories/session_repository.dart';
@@ -63,7 +63,7 @@ abstract interface class SessionLaunchHost {
   void pushPresenceTarget();
 
   ChatTab? get activeTab;
-  set activeTeam(TeamIdentity? team);
+  set activeTeam(TeamProfile? team);
 
   // Collaborators.
   ChatTabStore get tabStore;
@@ -97,7 +97,7 @@ class SessionLaunchService implements MemberConnector {
 
   Future<void> openSessionTab(
     AppSession session, {
-    TeamIdentity? team,
+    TeamProfile? team,
     TeamMemberConfig? member,
     SessionRepository? repo,
     String emptyDisplayTitleFallback = 'New Chat',
@@ -118,7 +118,7 @@ class SessionLaunchService implements MemberConnector {
     }
     final workspace = _workspaceById(session.workspaceId);
     final isPersonal = session.sessionTeam.trim().isEmpty;
-    PersonalIdentity? personalIdentity;
+    PersonalProfile? personalIdentity;
     TeamMemberConfig? personalMember;
     CliPreset? personalPreset;
     if (isPersonal) {
@@ -130,16 +130,16 @@ class SessionLaunchService implements MemberConnector {
       // Prefer the identity the session was created under (persisted on the
       // session), then the workspace's remembered default, then the default
       // personal. Validate existence so a deleted identity falls back cleanly.
-      var identityId = session.identityId.trim();
-      if (identityId.isEmpty) {
-        identityId = workspace.defaultIdentityId.trim();
+      var profileId = session.profileId.trim();
+      if (profileId.isEmpty) {
+        profileId = workspace.defaultProfileId.trim();
       }
-      if (identityId.isEmpty) {
-        identityId = IdentityProvisioner.defaultPersonalId;
-      } else if (await _h.lifecycle.loadIdentity(identityId) == null) {
-        identityId = IdentityProvisioner.defaultPersonalId;
+      if (profileId.isEmpty) {
+        profileId = LaunchProfileProvisioner.defaultPersonalId;
+      } else if (await _h.lifecycle.loadIdentity(profileId) == null) {
+        profileId = LaunchProfileProvisioner.defaultPersonalId;
       }
-      personalIdentity = await _h.lifecycle.loadPersonalIdentity(identityId);
+      personalIdentity = await _h.lifecycle.loadPersonalProfile(profileId);
       personalPreset =
           await _h.lifecycle.resolveActivePresetForPersonal(personalIdentity);
       personalMember = standaloneMemberFromPersonal(
@@ -242,7 +242,7 @@ class SessionLaunchService implements MemberConnector {
     }
   }
 
-  Future<void> _emitTeamConfigValidation(TeamIdentity team) async {
+  Future<void> _emitTeamConfigValidation(TeamProfile team) async {
     if (_h.isClosed) return;
     final validation = await _teamConfigValidator.validate(team);
     if (_h.isClosed) return;
@@ -250,7 +250,7 @@ class SessionLaunchService implements MemberConnector {
   }
 
   void _launchRemainingMembersForTab(
-    TeamIdentity team,
+    TeamProfile team,
     String keepSelectedMemberId,
     ChatTab tab,
   ) {
@@ -265,7 +265,7 @@ class SessionLaunchService implements MemberConnector {
   }
 
   Future<void> _materializeDefaultWorkspaceSession(
-    TeamIdentity team,
+    TeamProfile team,
     SessionRepository repo, {
     required bool connectImmediately,
     required TeamMemberConfig memberForInitialShell,
@@ -308,7 +308,7 @@ class SessionLaunchService implements MemberConnector {
   }
 
   AppSession? _existingSessionForMaterialize(
-    TeamIdentity team, {
+    TeamProfile team, {
     String? workspaceCwd,
   }) {
     if (workspaceCwd != null && workspaceCwd.trim().isNotEmpty) {
@@ -328,7 +328,7 @@ class SessionLaunchService implements MemberConnector {
     return null;
   }
 
-  String _materializePrimaryPath(TeamIdentity team, {String? workspaceCwd}) {
+  String _materializePrimaryPath(TeamProfile team, {String? workspaceCwd}) {
     if (workspaceCwd != null && workspaceCwd.trim().isNotEmpty) {
       return normalizeWorkspacePath(workspaceCwd);
     }
@@ -366,7 +366,7 @@ class SessionLaunchService implements MemberConnector {
   }
 
   Future<void> openMemberTab(
-    TeamIdentity team,
+    TeamProfile team,
     TeamMemberConfig member, {
     SessionRepository? repo,
     String? workspaceCwd,
@@ -518,7 +518,7 @@ class SessionLaunchService implements MemberConnector {
     return binding;
   }
 
-  AppSession? _sessionForMemberConnect(ChatTab tab, TeamIdentity team) {
+  AppSession? _sessionForMemberConnect(ChatTab tab, TeamProfile team) {
     final cached = _tabStore.sessionForTab(tab, _state.sessions);
     if (cached != null) return cached;
     if (!tab.info.id.startsWith('local-')) return null;
@@ -543,7 +543,7 @@ class SessionLaunchService implements MemberConnector {
 
   @override
   void scheduleMemberConnect(
-    TeamIdentity team,
+    TeamProfile team,
     TeamMemberConfig member,
     ChatTab tab,
   ) =>
@@ -552,7 +552,7 @@ class SessionLaunchService implements MemberConnector {
   Future<void> _connectMemberShell({
     required ChatTab tab,
     required AppSession session,
-    required TeamIdentity team,
+    required TeamProfile team,
     required TeamMemberConfig member,
     required TerminalSession shell,
     SessionRepository? repo,
@@ -573,10 +573,10 @@ class SessionLaunchService implements MemberConnector {
     required TerminalSession shell,
     SessionRepository? repo,
     required bool launched,
-    TeamIdentity? team,
+    TeamProfile? team,
     TeamMemberConfig? member,
     Workspace? workspace,
-    PersonalIdentity? personal,
+    PersonalProfile? personal,
   }) async {
     final isPersonal = workspace != null;
     if (isPersonal) {
@@ -723,7 +723,7 @@ class SessionLaunchService implements MemberConnector {
   }
 
   void _scheduleMemberConnect(
-    TeamIdentity team,
+    TeamProfile team,
     TeamMemberConfig member,
     ChatTab tab,
   ) {
@@ -788,7 +788,7 @@ class SessionLaunchService implements MemberConnector {
   }
 
   Future<void> launchAllMembers(
-    TeamIdentity team, {
+    TeamProfile team, {
     SessionRepository? repo,
     String? workspaceCwd,
   }) async {
@@ -827,7 +827,7 @@ class SessionLaunchService implements MemberConnector {
     }
   }
 
-  TerminalSession? ensureSession(TeamIdentity team) {
+  TerminalSession? ensureSession(TeamProfile team) {
     var tab = _activeTab;
     if (tab == null && _h.sessionRepository == null) {
       tab = _appendLocalTab(team, emitChange: false);
@@ -849,7 +849,7 @@ class SessionLaunchService implements MemberConnector {
   }
 
   Future<void> connectSession(
-    TeamIdentity team, {
+    TeamProfile team, {
     SessionRepository? repo,
   }) async {
     if (_state.isActiveSessionConnecting) return;
@@ -906,7 +906,7 @@ class SessionLaunchService implements MemberConnector {
   }
 
   Future<void> restartSession(
-    TeamIdentity team, {
+    TeamProfile team, {
     SessionRepository? repo,
   }) async {
     final r = repo ?? _h.sessionRepository;
@@ -986,7 +986,7 @@ class SessionLaunchService implements MemberConnector {
     await _h.renameSession(repo, sessionId, title);
   }
 
-  ChatTab _appendLocalTab(TeamIdentity team, {required bool emitChange}) {
+  ChatTab _appendLocalTab(TeamProfile team, {required bool emitChange}) {
     final tab = _tabStore.appendLocalTab(team, cliTeamName: _uuid.v4());
     if (emitChange) {
       _h.applyState(
@@ -1002,7 +1002,7 @@ class SessionLaunchService implements MemberConnector {
   }
 
   ChatTab _ensureActiveSessionTab(
-    TeamIdentity team, {
+    TeamProfile team, {
     required bool emitChange,
   }) {
     final existing = _activeTab;

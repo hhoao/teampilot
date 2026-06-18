@@ -9,7 +9,7 @@ class Workspace {
     required this.primaryPath,
     this.additionalPaths = const [],
     this.display = '',
-    this.defaultIdentityId = '',
+    this.defaultProfileId = '',
     this.icon = WorkspaceIconRef.auto,
     required this.createdAt,
     this.updatedAt = 0,
@@ -30,7 +30,7 @@ class Workspace {
       primaryPath: json['primaryPath'] as String? ?? '',
       additionalPaths: paths,
       display: json['display'] as String? ?? '',
-      defaultIdentityId: json['defaultIdentityId'] as String? ?? '',
+      defaultProfileId: json['defaultProfileId'] as String? ?? '',
       icon: WorkspaceIconRef.fromJson(json['icon']),
       createdAt: json['createdAt'] as int? ?? 0,
       updatedAt: json['updatedAt'] as int? ?? 0,
@@ -42,7 +42,7 @@ class Workspace {
   final String primaryPath;
   final List<String> additionalPaths;
   final String display;
-  final String defaultIdentityId;
+  final String defaultProfileId;
   final WorkspaceIconRef icon;
   final int createdAt;
   final int updatedAt;
@@ -62,7 +62,7 @@ class Workspace {
     String? primaryPath,
     List<String>? additionalPaths,
     String? display,
-    String? defaultIdentityId,
+    String? defaultProfileId,
     WorkspaceIconRef? icon,
     int? createdAt,
     int? updatedAt,
@@ -73,7 +73,7 @@ class Workspace {
       primaryPath: primaryPath ?? this.primaryPath,
       additionalPaths: additionalPaths ?? this.additionalPaths,
       display: display ?? this.display,
-      defaultIdentityId: defaultIdentityId ?? this.defaultIdentityId,
+      defaultProfileId: defaultProfileId ?? this.defaultProfileId,
       icon: icon ?? this.icon,
       createdAt: createdAt ?? this.createdAt,
       updatedAt: updatedAt ?? this.updatedAt,
@@ -87,7 +87,7 @@ class Workspace {
       'primaryPath': primaryPath,
       'additionalPaths': additionalPaths,
       'display': display,
-      if (defaultIdentityId.isNotEmpty) 'defaultIdentityId': defaultIdentityId,
+      if (defaultProfileId.isNotEmpty) 'defaultProfileId': defaultProfileId,
       if (icon.toJson() case final json?) 'icon': json,
       'createdAt': createdAt,
       'updatedAt': updatedAt,
@@ -104,7 +104,7 @@ class Workspace {
             primaryPath == other.primaryPath &&
             listEquals(additionalPaths, other.additionalPaths) &&
             display == other.display &&
-            defaultIdentityId == other.defaultIdentityId &&
+            defaultProfileId == other.defaultProfileId &&
             icon == other.icon &&
             createdAt == other.createdAt &&
             updatedAt == other.updatedAt &&
@@ -117,7 +117,7 @@ class Workspace {
     primaryPath,
     Object.hashAll(additionalPaths),
     display,
-    defaultIdentityId,
+    defaultProfileId,
     icon,
     createdAt,
     updatedAt,

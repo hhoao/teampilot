@@ -1,8 +1,8 @@
 import 'package:flutter/material.dart';
 
 import '../../l10n/l10n_extensions.dart';
-import '../../models/launch_identity.dart';
-import '../../services/storage/identity_provisioner.dart';
+import '../../models/launch_profile_ref.dart';
+import '../../services/storage/launch_profile_provisioner.dart';
 import '../../widgets/app_dialog.dart';
 
 /// One selectable workspace identity in the launch dialog.
@@ -21,7 +21,7 @@ class LaunchWorkspaceIdentityOption {
 /// Result of the launch dialog.
 class LaunchWorkspaceChoice {
   const LaunchWorkspaceChoice({required this.identity, required this.remember});
-  final LaunchIdentity identity;
+  final LaunchProfileRef identity;
   final bool remember;
 }
 
@@ -30,7 +30,7 @@ Future<LaunchWorkspaceChoice?> showHomeLaunchWorkspaceDialog(
   BuildContext context, {
   required String workspaceName,
   required List<LaunchWorkspaceIdentityOption> identities,
-  LaunchIdentity? preselected,
+  LaunchProfileRef? preselected,
 }) {
   return showDialog<LaunchWorkspaceChoice>(
     context: context,
@@ -51,18 +51,18 @@ class _LaunchWorkspaceDialog extends StatefulWidget {
 
   final String workspaceName;
   final List<LaunchWorkspaceIdentityOption> identities;
-  final LaunchIdentity? preselected;
+  final LaunchProfileRef? preselected;
 
   @override
   State<_LaunchWorkspaceDialog> createState() => _LaunchWorkspaceDialogState();
 }
 
 class _LaunchWorkspaceDialogState extends State<_LaunchWorkspaceDialog> {
-  late LaunchIdentity _selected = widget.preselected ??
-      const LaunchIdentity(IdentityProvisioner.defaultPersonalId);
+  late LaunchProfileRef _selected = widget.preselected ??
+      const LaunchProfileRef(LaunchProfileProvisioner.defaultPersonalId);
   bool _remember = false;
 
-  void _choose(LaunchIdentity identity) {
+  void _choose(LaunchProfileRef identity) {
     setState(() => _selected = identity);
     Navigator.of(context).pop(
       LaunchWorkspaceChoice(identity: identity, remember: _remember),
@@ -88,8 +88,8 @@ class _LaunchWorkspaceDialogState extends State<_LaunchWorkspaceDialog> {
                     : Icons.person_outline_rounded,
               ),
               title: Text(opt.name),
-              selected: _selected == LaunchIdentity(opt.id),
-              onTap: () => _choose(LaunchIdentity(opt.id)),
+              selected: _selected == LaunchProfileRef(opt.id),
+              onTap: () => _choose(LaunchProfileRef(opt.id)),
             ),
           const SizedBox(height: 8),
           CheckboxListTile(

@@ -2,7 +2,7 @@ import 'package:path/path.dart' as p;
 
 import '../../../storage/runtime_layout.dart';
 import '../../../../models/cli_preset.dart';
-import '../../../../models/personal_identity.dart';
+import '../../../../models/personal_profile.dart';
 import '../../../../models/workspace_agent_config.dart';
 import '../../../../models/team_config.dart';
 import '../../../../utils/team_member_naming.dart';
@@ -56,16 +56,16 @@ CliTool standaloneCli(CliPreset? preset, {CliTool fallback = CliTool.claude}) {
   return preset?.cli ?? fallback;
 }
 
-/// Minimal [TeamIdentity] for personal / standalone PTY launch args.
-TeamIdentity standaloneTeamFromPersonal(
-  PersonalIdentity personal, {
-  required String identityId,
+/// Minimal [TeamProfile] for personal / standalone PTY launch args.
+TeamProfile standaloneTeamFromPersonal(
+  PersonalProfile personal, {
+  required String profileId,
   required String sessionTeamName,
   required CliPreset? preset,
 }) {
   final member = standaloneMemberFromPersonal(personal, preset: preset);
-  return TeamIdentity(
-    id: identityId.trim(),
+  return TeamProfile(
+    id: profileId.trim(),
     name: sessionTeamName.trim(),
     cli: preset?.cli ?? CliTool.claude,
     members: [member],
@@ -77,9 +77,9 @@ TeamIdentity standaloneTeamFromPersonal(
   );
 }
 
-/// Single-agent stand-in from [PersonalIdentity.agent] for standalone launch.
+/// Single-agent stand-in from [PersonalProfile.agent] for standalone launch.
 TeamMemberConfig standaloneMemberFromPersonal(
-  PersonalIdentity personal, {
+  PersonalProfile personal, {
   required CliPreset? preset,
 }) {
   final agent = personal.agent;
@@ -100,22 +100,22 @@ TeamMemberConfig standaloneMemberFromPersonal(
 }
 
 @Deprecated('Use standaloneTeamFromPersonal')
-TeamIdentity standaloneTeamFromProfile(
-  PersonalIdentity personal, {
+TeamProfile standaloneTeamFromProfile(
+  PersonalProfile personal, {
   required String workspaceId,
   required String sessionTeamName,
   required CliPreset? preset,
 }) =>
     standaloneTeamFromPersonal(
       personal,
-      identityId: workspaceId,
+      profileId: workspaceId,
       sessionTeamName: sessionTeamName,
       preset: preset,
     );
 
 @Deprecated('Use standaloneMemberFromPersonal')
 TeamMemberConfig standaloneMemberFromProfile(
-  PersonalIdentity personal, {
+  PersonalProfile personal, {
   required CliPreset? preset,
 }) =>
     standaloneMemberFromPersonal(personal, preset: preset);
@@ -231,9 +231,9 @@ class ConfigProfileSessionContext {
   final String sessionId;
   final List<TeamMemberConfig> members;
   final ConfigProfileDelegate paths;
-  final TeamIdentity? team;
+  final TeamProfile? team;
   final StandaloneLaunchProfileScope? standaloneScope;
-  final PersonalIdentity? personal;
+  final PersonalProfile? personal;
   final String? memberId;
 }
 
@@ -261,7 +261,7 @@ class ConfigProfileLaunchContext {
   final String teamId;
   final String sessionId;
   final LaunchProfileScope scope;
-  final TeamIdentity? team;
+  final TeamProfile? team;
   final TeamMemberConfig? member;
   final List<TeamMemberConfig> members;
   final String? workingDirectory;
@@ -270,7 +270,7 @@ class ConfigProfileLaunchContext {
   final String? leadSessionId;
   final String? busIdleUrl;
   final StandaloneLaunchProfileScope? standaloneScope;
-  final PersonalIdentity? personal;
+  final PersonalProfile? personal;
   final CliPreset? preset;
   final String? memberId;
 }

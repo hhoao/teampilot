@@ -6,10 +6,10 @@ import 'package:teampilot/models/workspace.dart';
 import 'package:teampilot/models/app_session.dart';
 import 'package:teampilot/models/cli_preset.dart';
 import 'package:teampilot/models/workspace_agent_config.dart';
-import 'package:teampilot/models/personal_identity.dart';
+import 'package:teampilot/models/personal_profile.dart';
 import 'package:teampilot/models/team_config.dart';
 import 'package:teampilot/repositories/cli_presets_repository.dart';
-import 'package:teampilot/repositories/identity_repository.dart';
+import 'package:teampilot/repositories/launch_profile_repository.dart';
 import 'package:teampilot/services/storage/runtime_layout.dart';
 import 'package:teampilot/services/session/session_lifecycle_service.dart';
 import 'package:teampilot/services/storage/storage_resolver.dart';
@@ -20,7 +20,7 @@ import '../../support/post_frame_test_harness.dart';
 StorageRootsSnapshot _roots(String basePath) => StorageRootsSnapshot(
 	  storageIsRemote: false,
 	  teampilotRoot: basePath,
-	  identitiesUiDir: p.join(basePath, 'identities'),
+	  launchProfilesDir: p.join(basePath, 'launch-profiles'),
 	  skillsRoot: p.join(basePath, 'skills', 'installed'),
 	  skillBackupsDir: p.join(basePath, 'skills', 'backups'),
 	  workspaceDir: p.join(basePath, 'workspace'),
@@ -45,7 +45,7 @@ StorageRootsSnapshot _roots(String basePath) => StorageRootsSnapshot(
 
 /// Creates an [InMemoryFilesystem]-backed [CliPresetsRepository] seeded with
 /// a single preset so that [SessionLifecycleService] can resolve it via
-/// [PersonalIdentity.activePresetId].
+/// [PersonalProfile.activePresetId].
 Future<CliPresetsRepository> _seededPresetsRepo({
   required String presetId,
   required String name,
@@ -89,7 +89,7 @@ void main() {
   });
 
   SessionLifecycleService service({
-    IdentityRepository? identityRepository,
+    LaunchProfileRepository? identityRepository,
     CliPresetsRepository? cliPresetsRepository,
   }) => SessionLifecycleService(
     appDataBasePath: base.path,
@@ -103,7 +103,7 @@ void main() {
     () async {
       const workspaceId = 'personal-proj';
       const sessionId = 'personal-sess';
-      final repo = IdentityRepository(rootDir: base.path);
+      final repo = LaunchProfileRepository(rootDir: base.path);
       // Seed a preset for flashskyai so the resolved member/provider/model/cli
       // come from the active preset instead of the (now-removed) profile fields.
       final presetsRepo = await _seededPresetsRepo(
@@ -114,7 +114,7 @@ void main() {
         model: 'opus',
       );
       await repo.save(
-        PersonalIdentity(id: workspaceId, display: workspaceId,
+        PersonalProfile(id: workspaceId, display: workspaceId,
           activePresetId: 'preset-fs',
           agent: const WorkspaceAgentConfig(
             agent: 'persisted-agent',
@@ -141,7 +141,7 @@ void main() {
         session: session,
         workspace: workspace,
         personal: (await repo.loadAll())
-            .whereType<PersonalIdentity>()
+            .whereType<PersonalProfile>()
             .firstWhere((p) => p.id == workspaceId),
       );
 
@@ -157,7 +157,7 @@ void main() {
     () async {
       const workspaceId = 'personal-proj';
       const sessionId = 'personal-sess';
-      const profile = PersonalIdentity(id: workspaceId, display: workspaceId,
+      const profile = PersonalProfile(id: workspaceId, display: workspaceId,
         agent: WorkspaceAgentConfig(agent: 'solo'),
       );
       const workspace = Workspace(
@@ -206,7 +206,7 @@ void main() {
         provider: 'anthropic',
         model: 'sonnet',
       );
-      const profile = PersonalIdentity(id: workspaceId, display: workspaceId,
+      const profile = PersonalProfile(id: workspaceId, display: workspaceId,
         activePresetId: 'preset-claude',
         agent: WorkspaceAgentConfig(
           agent: 'solo',
@@ -277,7 +277,7 @@ void main() {
           updatedAt: 2,
         ),
       ]);
-      const profile = PersonalIdentity(id: workspaceId, display: workspaceId,
+      const profile = PersonalProfile(id: workspaceId, display: workspaceId,
         activePresetId: 'preset-codex',
       );
       const workspace = Workspace(

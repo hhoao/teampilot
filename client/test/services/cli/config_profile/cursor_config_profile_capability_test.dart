@@ -1,7 +1,7 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:teampilot/models/app_provider_config.dart';
 import 'package:teampilot/models/workspace_agent_config.dart';
-import 'package:teampilot/models/personal_identity.dart';
+import 'package:teampilot/models/personal_profile.dart';
 import 'package:teampilot/models/team_config.dart';
 import 'package:teampilot/repositories/app_provider_repository.dart';
 import 'package:teampilot/services/provider/cursor/cursor_home_layout.dart';
@@ -57,14 +57,14 @@ void main() {
 
   group('CursorConfigProfileCapability', () {
     test('standalone contributes CURSOR_CONFIG_DIR only', () async {
-      const team = TeamIdentity(id: 'team-a', name: 'agent', cli: CliTool.cursor);
+      const team = TeamProfile(id: 'team-a', name: 'agent', cli: CliTool.cursor);
       final scope = resolveLaunchProfileScope(
         workspaceId: 'workspace-1',
         teamId: 'team-a',
         appSessionId: 'session-1',
         cliTeamName: 'session-1',
       );
-      const profile = PersonalIdentity(id: 'workspace-1', display: 'workspace-1',
+      const profile = PersonalProfile(id: 'workspace-1', display: 'workspace-1',
         agent: WorkspaceAgentConfig(agent: 'solo'),
       );
       const standalone = StandaloneLaunchProfileScope(
@@ -100,7 +100,7 @@ void main() {
 
     test('standalone pre-provisions workspace trust under runtime home', () async {
       const workspace = '/home/hhoa/git/hhoa/teampilot';
-      const profile = PersonalIdentity(id: 'workspace-1', display: 'workspace-1',
+      const profile = PersonalProfile(id: 'workspace-1', display: 'workspace-1',
         agent: WorkspaceAgentConfig(agent: 'solo'),
       );
       const standalone = StandaloneLaunchProfileScope(
@@ -137,7 +137,7 @@ void main() {
     });
 
     test('mixed pre-provisions workspace trust under member home', () async {
-      const team = TeamIdentity(
+      const team = TeamProfile(
         id: 'team-a',
         name: 'agent',
         cli: CliTool.cursor,
@@ -171,7 +171,7 @@ void main() {
 
     test('mixed contributes HOME and not CURSOR_CONFIG_DIR or plugin dir key',
         () async {
-      const team = TeamIdentity(
+      const team = TeamProfile(
         id: 'team-a',
         name: 'agent',
         cli: CliTool.cursor,
@@ -202,7 +202,7 @@ void main() {
 
     test('mixed warns when provider, credentials, and bus port are missing',
         () async {
-      const team = TeamIdentity(
+      const team = TeamProfile(
         id: 'team-a',
         name: 'agent',
         cli: CliTool.cursor,
@@ -239,7 +239,7 @@ void main() {
           config: {},
         ),
       ]);
-      const team = TeamIdentity(
+      const team = TeamProfile(
         id: 'team-a',
         name: 'agent',
         cli: CliTool.cursor,
@@ -267,7 +267,7 @@ void main() {
     });
 
     test('mixed provisions bus overlay under member home when port set', () async {
-      const team = TeamIdentity(
+      const team = TeamProfile(
         id: 'team-a',
         name: 'agent',
         cli: CliTool.cursor,

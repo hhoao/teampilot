@@ -1,17 +1,17 @@
 import 'package:flutter/foundation.dart';
 
 import 'config_bundle.dart';
-import 'identity_kind.dart';
+import 'launch_profile_kind.dart';
 import 'workspace_agent_config.dart';
 import 'workspace_icon_ref.dart';
-import 'identity.dart';
+import 'launch_profile.dart';
 
 /// A solo (no-roster) launch identity. Owns a [ConfigBundle] plus single-agent
 /// per-tool tiering and an agent config. Replaces the per-directory
-/// `PersonalIdentity`.
+/// `PersonalProfile`.
 @immutable
-class PersonalIdentity implements Identity {
-  const PersonalIdentity({
+class PersonalProfile implements LaunchProfile {
+  const PersonalProfile({
     required this.id,
     required this.display,
     this.icon = WorkspaceIconRef.auto,
@@ -25,9 +25,9 @@ class PersonalIdentity implements Identity {
     this.sortOrder = 0,
   });
 
-  factory PersonalIdentity.fromJson(Map<String, Object?> json) {
+  factory PersonalProfile.fromJson(Map<String, Object?> json) {
     final rawAgent = json['agent'];
-    return PersonalIdentity(
+    return PersonalProfile(
       id: (json['id'] as String? ?? '').trim(),
       display: json['display'] as String? ?? '',
       icon: WorkspaceIconRef.fromJson(json['icon']),
@@ -66,7 +66,7 @@ class PersonalIdentity implements Identity {
   final int sortOrder;
 
   @override
-  IdentityKind get kind => IdentityKind.personal;
+  LaunchProfileKind get kind => LaunchProfileKind.personal;
 
   static Map<String, String> _decodeStringMap(Object? raw) {
     if (raw is! Map) return const {};
@@ -84,7 +84,7 @@ class PersonalIdentity implements Identity {
     return s.isEmpty ? null : s;
   }
 
-  PersonalIdentity copyWith({
+  PersonalProfile copyWith({
     String? display,
     WorkspaceIconRef? icon,
     ConfigBundle? bundle,
@@ -96,7 +96,7 @@ class PersonalIdentity implements Identity {
     int? createdAt,
     int? sortOrder,
   }) =>
-      PersonalIdentity(
+      PersonalProfile(
         id: id,
         display: display ?? this.display,
         icon: icon ?? this.icon,
@@ -129,7 +129,7 @@ class PersonalIdentity implements Identity {
   @override
   bool operator ==(Object other) =>
       identical(this, other) ||
-      other is PersonalIdentity &&
+      other is PersonalProfile &&
           id == other.id &&
           display == other.display &&
           icon == other.icon &&

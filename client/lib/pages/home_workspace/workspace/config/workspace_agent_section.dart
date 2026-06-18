@@ -4,10 +4,10 @@ import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
 import '../../../../cubits/cli_presets_cubit.dart';
-import '../../../../cubits/identity_cubit.dart';
+import '../../../../cubits/launch_profile_cubit.dart';
 import '../../../../l10n/l10n_extensions.dart';
 import '../../../../models/cli_preset.dart';
-import '../../../../models/personal_identity.dart';
+import '../../../../models/personal_profile.dart';
 import '../../../../models/workspace_agent_config.dart';
 import '../../../../models/workspace_agent_prompt_presets.dart';
 import '../../../../models/team_config.dart';
@@ -23,28 +23,28 @@ import 'cli_presets_manage_dialog.dart';
 
 const _kAgentCardGap = 12.0;
 
-/// Personal-workspace agent + CLI defaults (backed by [IdentityCubit]).
+/// Personal-workspace agent + CLI defaults (backed by [LaunchProfileCubit]).
 class WorkspaceAgentSection extends StatelessWidget {
   const WorkspaceAgentSection({
     required this.workspaceId,
-    required this.identityId,
+    required this.profileId,
     super.key,
   });
 
   final String workspaceId;
-  final String identityId;
+  final String profileId;
 
   @override
   Widget build(BuildContext context) {
-    final identityCubit = context.watch<IdentityCubit>();
-    final personal = identityCubit.byId(identityId);
-    if (personal is! PersonalIdentity) {
+    final identityCubit = context.watch<LaunchProfileCubit>();
+    final personal = identityCubit.byId(profileId);
+    if (personal is! PersonalProfile) {
       return const Center(child: CircularProgressIndicator());
     }
     return WorkspaceAgentConfigForm(
       key: ValueKey(personal.id),
       personal: personal,
-      cubit: context.read<IdentityCubit>(),
+      cubit: context.read<LaunchProfileCubit>(),
     );
   }
 }
@@ -56,8 +56,8 @@ class WorkspaceAgentConfigForm extends StatefulWidget {
     required this.cubit,
   });
 
-  final PersonalIdentity personal;
-  final IdentityCubit cubit;
+  final PersonalProfile personal;
+  final LaunchProfileCubit cubit;
 
   @override
   State<WorkspaceAgentConfigForm> createState() => WorkspaceAgentConfigFormState();
@@ -247,7 +247,7 @@ class WorkspaceAgentConfigFormState extends State<WorkspaceAgentConfigForm> {
 class _PresetInfoRow extends StatelessWidget {
   const _PresetInfoRow({required this.personal});
 
-  final PersonalIdentity personal;
+  final PersonalProfile personal;
 
   @override
   Widget build(BuildContext context) {

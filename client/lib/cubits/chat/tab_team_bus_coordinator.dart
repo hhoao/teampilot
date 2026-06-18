@@ -26,7 +26,7 @@ import 'model/chat_tab.dart';
 /// from the bus (materialize) path.
 abstract interface class MemberConnector {
   void scheduleMemberConnect(
-    TeamIdentity team,
+    TeamProfile team,
     TeamMemberConfig member,
     ChatTab tab,
   );
@@ -39,7 +39,7 @@ class TabTeamBusCoordinator implements MemberMaterializer {
     required ChatTabStore tabStore,
     required ChatSessionShellFactory shellFactory,
     required MemberConnector connector,
-    required TeamIdentity? Function() activeTeam,
+    required TeamProfile? Function() activeTeam,
     required bool Function() isClosed,
     void Function(Set<String> workingSessionIds)? onWorkingSessionsChanged,
   })  : _tabStore = tabStore,
@@ -52,7 +52,7 @@ class TabTeamBusCoordinator implements MemberMaterializer {
   final ChatTabStore _tabStore;
   final ChatSessionShellFactory _shellFactory;
   final MemberConnector _connector;
-  final TeamIdentity? Function() _activeTeam;
+  final TeamProfile? Function() _activeTeam;
   final bool Function() _isClosed;
   final void Function(Set<String> workingSessionIds)? _onWorkingSessionsChanged;
   Set<String> _lastWorkingSessions = const {};
@@ -69,7 +69,7 @@ class TabTeamBusCoordinator implements MemberMaterializer {
 
   Future<void> installBusForTab(
     ChatTab tab,
-    TeamIdentity team,
+    TeamProfile team,
     AppSession session,
   ) async {
     // 共享任务队列仅 mixed 模式接线：纯 Claude swarm 复用 Claude 原生任务表。
@@ -139,7 +139,7 @@ class TabTeamBusCoordinator implements MemberMaterializer {
 
   BusUserInputRouting? busUserInputRouting(
     ChatTab tab,
-    TeamIdentity team,
+    TeamProfile team,
     TeamMemberConfig member,
   ) {
     final bus = tab.teamBus;

@@ -3,7 +3,7 @@ import 'dart:io';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:path/path.dart' as p;
 import 'package:teampilot/models/workspace_agent_config.dart';
-import 'package:teampilot/models/personal_identity.dart';
+import 'package:teampilot/models/personal_profile.dart';
 import 'package:teampilot/models/team_config.dart';
 import 'package:teampilot/services/storage/runtime_layout.dart';
 import 'package:teampilot/services/cli/registry/config_profile/claude_config_profile_capability.dart';
@@ -55,7 +55,7 @@ void main() {
   ConfigProfileLaunchContext standaloneContext({
     required String workspaceId,
     required String sessionId,
-    required PersonalIdentity personal,
+    required PersonalProfile personal,
   }) {
     final standaloneScope = StandaloneLaunchProfileScope(
       workspaceId: workspaceId,
@@ -77,7 +77,7 @@ void main() {
       () async {
     const workspaceId = 'p-claude';
     const sessionId = 's-claude';
-    const profile = PersonalIdentity(id: workspaceId, display: workspaceId); // TODO: migrate to presets — cli removed
+    const profile = PersonalProfile(id: workspaceId, display: workspaceId); // TODO: migrate to presets — cli removed
 
     final contribution = await const ClaudeConfigProfileCapability()
         .contributeLaunch(
@@ -106,7 +106,7 @@ void main() {
       () async {
     const workspaceId = 'p-fs';
     const sessionId = 's-fs';
-    const profile = PersonalIdentity(id: workspaceId, display: workspaceId,
+    const profile = PersonalProfile(id: workspaceId, display: workspaceId,
       // TODO: migrate to presets — cli removed
       agent: WorkspaceAgentConfig(agent: 'solo') // TODO: migrate to presets — model removed,
     );
@@ -140,7 +140,7 @@ void main() {
   test('cursor standalone uses CURSOR_CONFIG_DIR only', () async {
     const workspaceId = 'p-cursor';
     const sessionId = 's-cursor';
-    const profile = PersonalIdentity(id: workspaceId, display: workspaceId); // TODO: migrate to presets — cli removed
+    const profile = PersonalProfile(id: workspaceId, display: workspaceId); // TODO: migrate to presets — cli removed
 
     final contribution = await const CursorConfigProfileCapability()
         .contributeLaunch(
@@ -164,7 +164,7 @@ void main() {
   test('opencode standalone sets OPENCODE_CONFIG_DIR without idle plugin', () async {
     const workspaceId = 'p-oc';
     const sessionId = 's-oc';
-    const profile = PersonalIdentity(id: workspaceId, display: workspaceId); // TODO: migrate to presets — cli removed
+    const profile = PersonalProfile(id: workspaceId, display: workspaceId); // TODO: migrate to presets — cli removed
 
     final contribution = await const OpencodeConfigProfileCapability()
         .contributeLaunch(
@@ -192,7 +192,7 @@ void main() {
   test('codex standalone sets CODEX_HOME without bus overlay', () async {
     const workspaceId = 'p-codex';
     const sessionId = 's-codex';
-    const profile = PersonalIdentity(id: workspaceId, display: workspaceId); // TODO: migrate to presets — cli removed
+    const profile = PersonalProfile(id: workspaceId, display: workspaceId); // TODO: migrate to presets — cli removed
 
     final contribution = await const CodexConfigProfileCapability().contributeLaunch(
       standaloneContext(

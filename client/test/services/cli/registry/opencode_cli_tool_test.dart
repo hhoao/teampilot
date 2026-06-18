@@ -22,7 +22,7 @@ void main() {
   });
 
   test('LaunchCommandBuilder builds opencode args end-to-end', () {
-    const team = TeamIdentity(id: 't', name: 'agent', cli: CliTool.opencode);
+    const team = TeamProfile(id: 't', name: 'agent', cli: CliTool.opencode);
     const member = TeamMemberConfig(
       id: 'm',
       name: 'planner',

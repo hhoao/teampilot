@@ -54,7 +54,7 @@ class MemberPresenceCubit extends Cubit<MemberPresenceState> {
 
   final MemberPresenceService _memberPresenceService;
   Timer? _presencePollTimer;
-  TeamIdentity? _presenceTeam;
+  TeamProfile? _presenceTeam;
   PresenceTarget? _target;
   int _presencePollGeneration = 0;
 
@@ -108,7 +108,7 @@ class MemberPresenceCubit extends Cubit<MemberPresenceState> {
     _presencePollTimer = null;
   }
 
-  void syncPresenceTeam(TeamIdentity? team) {
+  void syncPresenceTeam(TeamProfile? team) {
     if (_samePresenceTeam(_presenceTeam, team)) return;
     _presenceTeam = team;
     _schedulePresencePollingRestart();
@@ -138,7 +138,7 @@ class MemberPresenceCubit extends Cubit<MemberPresenceState> {
     return target.eligible;
   }
 
-  static bool _samePresenceTeam(TeamIdentity? a, TeamIdentity? b) {
+  static bool _samePresenceTeam(TeamProfile? a, TeamProfile? b) {
     if (a == null || b == null) return a == b;
     if (a.id != b.id || a.cli != b.cli) return false;
     if (a.members.length != b.members.length) return false;
@@ -167,7 +167,7 @@ class MemberPresenceCubit extends Cubit<MemberPresenceState> {
     unawaited(_tickMemberPresence(team, generation));
   }
 
-  Future<void> _tickMemberPresence(TeamIdentity team, int generation) async {
+  Future<void> _tickMemberPresence(TeamProfile team, int generation) async {
     if (isClosed || generation != _presencePollGeneration) return;
     if (!_shouldPollPresence()) return;
     if (_presenceTickInFlight) return;
