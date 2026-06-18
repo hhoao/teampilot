@@ -10,7 +10,7 @@ import 'workspace_identity.dart';
 /// per-tool tiering and an agent config. Replaces the per-directory
 /// `PersonalIdentity`.
 @immutable
-class PersonalIdentity implements WorkspaceIdentity {
+class PersonalIdentity implements Identity {
   const PersonalIdentity({
     required this.id,
     required this.display,

@@ -3,13 +3,13 @@ import 'identity_kind.dart';
 import 'project_icon_ref.dart';
 
 /// A named, reusable launch identity. A directory ([AppProject]) is *where*
-/// work happens; a [WorkspaceIdentity] is *who/how* — the CLI config bundle a
+/// work happens; a [Identity] is *who/how* — the CLI config bundle a
 /// session launches with. Subtypes: [PersonalIdentity] or [TeamIdentity].
 ///
 /// Not `sealed` because the subtypes live in separate libraries; callers that
 /// need to discriminate switch on [kind] (an exhaustive enum) rather than the
 /// runtime type.
-abstract class WorkspaceIdentity {
+abstract class Identity {
   String get id;
   IdentityKind get kind;
   String get display;

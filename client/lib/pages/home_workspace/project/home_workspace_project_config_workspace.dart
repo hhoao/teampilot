@@ -63,7 +63,7 @@ class _HomeWorkspaceProjectConfigWorkspaceState
   @override
   Widget build(BuildContext context) {
     final l10n = context.l10n;
-    final identity = context.select<IdentityCubit, WorkspaceIdentity?>(
+    final identity = context.select<IdentityCubit, Identity?>(
       (c) => c.byId(widget.identityId),
     );
     if (identity == null) {

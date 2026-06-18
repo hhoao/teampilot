@@ -16,7 +16,7 @@ class IdentityState extends Equatable {
     this.pluginSyncConflicts = const {},
   });
 
-  final List<WorkspaceIdentity> identities;
+  final List<Identity> identities;
   final String? selectedTeamId;
   final String statusMessage;
   final bool isLoading;
@@ -32,7 +32,7 @@ class IdentityState extends Equatable {
   List<PersonalIdentity> get personals =>
       identities.whereType<PersonalIdentity>().toList(growable: false);
 
-  WorkspaceIdentity? byId(String id) =>
+  Identity? byId(String id) =>
       identities.where((e) => e.id == id).firstOrNull;
 
   TeamIdentity? get selectedTeam {
@@ -43,7 +43,7 @@ class IdentityState extends Equatable {
   }
 
   IdentityState copyWith({
-    List<WorkspaceIdentity>? identities,
+    List<Identity>? identities,
     List<TeamIdentity>? teams,
     String? selectedTeamId,
     String? statusMessage,

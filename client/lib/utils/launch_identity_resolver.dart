@@ -9,7 +9,7 @@ import '../services/storage/identity_provisioner.dart';
 /// the provisioned default personal identity.
 LaunchIdentity resolveProjectLaunchIdentity(
   AppProject project,
-  WorkspaceIdentity? Function(String id) lookupById,
+  Identity? Function(String id) lookupById,
 ) {
   final preferred = project.defaultIdentityId.trim();
   if (preferred.isNotEmpty && lookupById(preferred) != null) {

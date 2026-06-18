@@ -9,7 +9,7 @@ import '../services/session/session_lifecycle_service.dart';
 import '../services/storage/app_storage.dart';
 import '../services/storage/storage_resolver.dart';
 
-/// Persists [WorkspaceIdentity] records (both kinds) at
+/// Persists [Identity] records (both kinds) at
 /// `identities/{id}/identity.json`.
 class IdentityRepository {
   IdentityRepository({
@@ -38,9 +38,9 @@ class IdentityRepository {
   String _identityFile(Filesystem fs, String dir, String id) =>
       fs.pathContext.join(dir, id.trim(), 'identity.json');
 
-  Future<List<WorkspaceIdentity>> loadAll() async {
+  Future<List<Identity>> loadAll() async {
     final paths = await _paths();
-    final out = <WorkspaceIdentity>[];
+    final out = <Identity>[];
     try {
       final entries = await paths.fs.listDir(paths.dir);
       for (final entry in entries) {
@@ -59,7 +59,7 @@ class IdentityRepository {
     } on Object {
       return const [];
     }
-    final sorted = List<WorkspaceIdentity>.of(out)..sort(_compareIdentities);
+    final sorted = List<Identity>.of(out)..sort(_compareIdentities);
     return List.unmodifiable(sorted);
   }
 
@@ -78,7 +78,7 @@ class IdentityRepository {
     return a.name.compareTo(b.name);
   }
 
-  static int _compareIdentities(WorkspaceIdentity a, WorkspaceIdentity b) {
+  static int _compareIdentities(Identity a, Identity b) {
     if (a is TeamIdentity && b is TeamIdentity) {
       return _compareTeams(a, b, hasCustomOrder: false);
     }
@@ -90,14 +90,14 @@ class IdentityRepository {
     return a.display.toLowerCase().compareTo(b.display.toLowerCase());
   }
 
-  WorkspaceIdentity _decode(Map<String, Object?> json) {
+  Identity _decode(Map<String, Object?> json) {
     return switch (IdentityKind.decode(json['kind'])) {
       IdentityKind.personal => PersonalIdentity.fromJson(json),
       IdentityKind.team => TeamIdentity.fromJson(json),
     };
   }
 
-  Future<void> save(WorkspaceIdentity identity) async {
+  Future<void> save(Identity identity) async {
     final id = identity.id.trim();
     if (id.isEmpty) return;
     final paths = await _paths();

@@ -327,7 +327,7 @@ class TeamMemberConfig {
 }
 
 @immutable
-class TeamIdentity implements WorkspaceIdentity {
+class TeamIdentity implements Identity {
   /// Sentinel value for [TeamMemberConfig.activePresetId] meaning "inherit the
   /// team's [activePresetId]".
   static const inheritPresetId = '__inherit__';

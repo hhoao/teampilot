@@ -136,7 +136,7 @@ class SessionLaunchService implements MemberConnector {
       }
       if (identityId.isEmpty) {
         identityId = IdentityProvisioner.defaultPersonalId;
-      } else if (await _h.lifecycle.loadWorkspaceIdentity(identityId) == null) {
+      } else if (await _h.lifecycle.loadIdentity(identityId) == null) {
         identityId = IdentityProvisioner.defaultPersonalId;
       }
       personalIdentity = await _h.lifecycle.loadPersonalIdentity(identityId);

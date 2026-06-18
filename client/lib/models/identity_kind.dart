@@ -1,4 +1,4 @@
-/// Discriminator for [WorkspaceIdentity]: a solo personal setup or a team.
+/// Discriminator for [Identity]: a solo personal setup or a team.
 enum IdentityKind {
   personal('personal'),
   team('team');

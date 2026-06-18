@@ -51,7 +51,7 @@ class HomeWorkspaceProjectSidebar extends StatefulWidget {
   final AppProject project;
   final bool isPersonalProject;
 
-  /// The launch identity the project was opened against ([WorkspaceIdentity.id]).
+  /// The launch identity the project was opened against ([Identity.id]).
   final String identityId;
   final String sessionTeamFilter;
 

@@ -128,7 +128,7 @@ class SessionLifecycleService {
     );
   }
 
-  Future<WorkspaceIdentity?> loadWorkspaceIdentity(String identityId) async {
+  Future<Identity?> loadIdentity(String identityId) async {
     final trimmed = identityId.trim();
     if (trimmed.isEmpty) return null;
     final repo = _identityRepository;
@@ -498,7 +498,7 @@ class SessionLifecycleService {
   }) async {
     final trimmed = identityId?.trim() ?? '';
     if (trimmed.isNotEmpty) {
-      final identity = await loadWorkspaceIdentity(trimmed);
+      final identity = await loadIdentity(trimmed);
       if (identity != null) {
         return identity.kind == IdentityKind.personal;
       }
@@ -516,7 +516,7 @@ class SessionLifecycleService {
     if (!isPersonal) return IdentityProvisioner.defaultPersonalId;
     final trimmed = identityId?.trim() ?? '';
     if (trimmed.isEmpty) return IdentityProvisioner.defaultPersonalId;
-    final identity = await loadWorkspaceIdentity(trimmed);
+    final identity = await loadIdentity(trimmed);
     if (identity is PersonalIdentity) return identity.id;
     if (trimmed == IdentityProvisioner.defaultPersonalId) {
       return IdentityProvisioner.defaultPersonalId;

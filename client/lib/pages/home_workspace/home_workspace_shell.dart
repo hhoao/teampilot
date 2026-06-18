@@ -68,7 +68,7 @@ class HomeWorkspaceShell extends StatefulWidget {
   }
 
   static String? identityNameFor(
-    List<WorkspaceIdentity> identities,
+    List<Identity> identities,
     String identityId,
   ) {
     if (identityId.isEmpty) return null;
@@ -367,7 +367,7 @@ class _HomeWorkspaceShellState extends State<HomeWorkspaceShell> {
 
     final cs = Theme.of(context).colorScheme;
     final l10n = context.l10n;
-    final identities = context.select<IdentityCubit, List<WorkspaceIdentity>>(
+    final identities = context.select<IdentityCubit, List<Identity>>(
       (c) => c.state.identities,
     );
     // Show every open project tab across all teams (IDE-style open editors).
@@ -429,7 +429,7 @@ class _HomeWorkspaceShellState extends State<HomeWorkspaceShell> {
     required String id,
     required AppProject project,
     required AppLocalizations l10n,
-    required List<WorkspaceIdentity> identities,
+    required List<Identity> identities,
   }) {
     final identity = _identityForProject(id);
     final workspaceIdentity = identities

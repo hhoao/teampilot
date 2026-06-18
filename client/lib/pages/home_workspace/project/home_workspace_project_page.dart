@@ -88,7 +88,7 @@ class _HomeWorkspaceProjectPageState extends State<HomeWorkspaceProjectPage> {
     return HomeWorkspaceProjectSection.conversations;
   }
 
-  WorkspaceIdentity? _resolveWorkspaceIdentity() {
+  Identity? _resolveIdentity() {
     final launchIdentity = widget.identity;
     if (launchIdentity == null) return null;
     final cubit = context.read<IdentityCubit>();
@@ -105,7 +105,7 @@ class _HomeWorkspaceProjectPageState extends State<HomeWorkspaceProjectPage> {
       widget.projectId,
     );
     if (project == null) return;
-    final workspaceIdentity = _resolveWorkspaceIdentity();
+    final workspaceIdentity = _resolveIdentity();
     if (workspaceIdentity is TeamIdentity) {
       _syncSelectedTeam(workspaceIdentity.id);
     }
@@ -114,7 +114,7 @@ class _HomeWorkspaceProjectPageState extends State<HomeWorkspaceProjectPage> {
   void _onSectionChanged(
     HomeWorkspaceProjectSection section,
     AppProject project,
-    WorkspaceIdentity workspaceIdentity,
+    Identity workspaceIdentity,
   ) {
     setState(() {
       _section = section;
@@ -163,7 +163,7 @@ class _HomeWorkspaceProjectPageState extends State<HomeWorkspaceProjectPage> {
       );
     }
 
-    final workspaceIdentity = context.select<IdentityCubit, WorkspaceIdentity?>(
+    final workspaceIdentity = context.select<IdentityCubit, Identity?>(
       (c) {
         final resolved = c.byId(launchIdentity.identityId);
         if (resolved != null) return resolved;
@@ -196,7 +196,7 @@ class _HomeWorkspaceProjectPageState extends State<HomeWorkspaceProjectPage> {
 
   Widget _buildProjectPageWithRail({
     required AppProject project,
-    required WorkspaceIdentity workspaceIdentity,
+    required Identity workspaceIdentity,
     required bool isPersonal,
     required Widget cardBody,
   }) {
@@ -223,7 +223,7 @@ class _HomeWorkspaceProjectPageState extends State<HomeWorkspaceProjectPage> {
 
   Widget _buildCardBody({
     required AppProject project,
-    required WorkspaceIdentity workspaceIdentity,
+    required Identity workspaceIdentity,
     required String sessionTeamFilter,
   }) {
     final showManage = _section == HomeWorkspaceProjectSection.manage;

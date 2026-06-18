@@ -18,7 +18,7 @@ class HomeWorkspaceProjectSplitPane extends StatefulWidget {
   final AppProject project;
   final bool isPersonalProject;
 
-  /// The launch identity the project was opened against ([WorkspaceIdentity.id]).
+  /// The launch identity the project was opened against ([Identity.id]).
   final String identityId;
 
   /// Empty for personal mode; team id when opened as a team.

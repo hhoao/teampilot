@@ -93,7 +93,7 @@ class _HomeWorkspacePageState extends State<HomeWorkspacePage> {
 
   Widget _identityPane(
     IdentityCubit identityCubit,
-    WorkspaceIdentity identity,
+    Identity identity,
   ) {
     return switch (identity) {
       PersonalIdentity personal => HomeWorkspacePersonalContent(

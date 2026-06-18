@@ -150,7 +150,7 @@ class IdentityCubit extends Cubit<IdentityState> implements IdentityCubitHost {
     }
   }
 
-  WorkspaceIdentity? byId(String id) => state.byId(id);
+  Identity? byId(String id) => state.byId(id);
 
   // ===== Launch / preview (delegated) =====
 
@@ -262,7 +262,7 @@ class IdentityCubit extends Cubit<IdentityState> implements IdentityCubitHost {
 
   Future<void> _pruneSkillFromPersonals(String skillId) async {
     var changed = false;
-    final next = <WorkspaceIdentity>[];
+    final next = <Identity>[];
     for (final identity in state.identities) {
       if (identity is PersonalIdentity &&
           identity.bundle.skillIds.contains(skillId)) {
@@ -285,7 +285,7 @@ class IdentityCubit extends Cubit<IdentityState> implements IdentityCubitHost {
 
   Future<void> _prunePluginFromPersonals(String pluginId) async {
     var changed = false;
-    final next = <WorkspaceIdentity>[];
+    final next = <Identity>[];
     for (final identity in state.identities) {
       if (identity is PersonalIdentity &&
           identity.bundle.pluginIds.contains(pluginId)) {
@@ -308,7 +308,7 @@ class IdentityCubit extends Cubit<IdentityState> implements IdentityCubitHost {
 
   Future<void> _pruneMcpFromPersonals(String mcpId) async {
     var changed = false;
-    final next = <WorkspaceIdentity>[];
+    final next = <Identity>[];
     for (final identity in state.identities) {
       if (identity is PersonalIdentity &&
           identity.bundle.mcpServerIds.contains(mcpId)) {
