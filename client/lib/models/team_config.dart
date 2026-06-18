@@ -1,6 +1,10 @@
 import 'package:flutter/foundation.dart';
 
 import '../utils/team_member_naming.dart';
+import 'config_bundle.dart';
+import 'identity_kind.dart';
+import 'project_icon_ref.dart';
+import 'workspace_identity.dart';
 
 /// Backend CLI identity (`flashskyai`, `codex`, `claude`, `opencode`, or
 /// `cursor`).
@@ -154,7 +158,7 @@ class TeamMemberConfig {
   /// When true, launch passes `--dangerously-skip-permissions` (CLI flag).
   final bool dangerouslySkipPermissions;
 
-  /// 成员 CLI 覆盖（仅 mixed 模式生效）；null 回退 [TeamConfig.cli]。
+  /// 成员 CLI 覆盖（仅 mixed 模式生效）；null 回退 [TeamIdentity.cli]。
   final CliTool? cli;
 
   /// Optional per-member effort override (`effortLevel` / `model_reasoning_effort`).
@@ -165,37 +169,37 @@ class TeamMemberConfig {
   /// [MemberInstance] / `expandTeamRoster`.
   final int replicas;
 
-  /// 成员级 [TeamConfig.forceWaitBeforeStop] 覆盖（null=未设，回退 CLI 默认/团队值）。
+  /// 成员级 [TeamIdentity.forceWaitBeforeStop] 覆盖（null=未设，回退 CLI 默认/团队值）。
   /// 见 [effectiveForceWaitBeforeStop]。
   final bool? forceWaitBeforeStop;
 
   /// Active preset id for this member.
   /// - `null` ⇒ member uses custom config (no preset).
-  /// - `TeamConfig.inheritPresetId` ⇒ inherits the team's [TeamConfig.activePresetId].
+  /// - `TeamIdentity.inheritPresetId` ⇒ inherits the team's [TeamIdentity.activePresetId].
   /// - any other value ⇒ member has an explicit preset override.
   final String? activePresetId;
 
-  /// Whether this member inherits the team's active preset ([TeamConfig.activePresetId]).
-  bool get inheritsTeamPreset => activePresetId == TeamConfig.inheritPresetId;
+  /// Whether this member inherits the team's active preset ([TeamIdentity.activePresetId]).
+  bool get inheritsTeamPreset => activePresetId == TeamIdentity.inheritPresetId;
 
   /// Whether this member has an explicit, non-inherit preset id.
   bool get hasExplicitPreset =>
-      activePresetId != null && activePresetId != TeamConfig.inheritPresetId;
+      activePresetId != null && activePresetId != TeamIdentity.inheritPresetId;
 
   /// Whether this member uses fully custom config (no preset at all).
   bool get usesCustomConfig => activePresetId == null;
 
   /// 成员有效 CLI：native 一律 team.cli；mixed 用成员覆盖、否则 team 默认。
-  CliTool cliWithin(TeamConfig team) =>
+  CliTool cliWithin(TeamIdentity team) =>
       team.teamMode == TeamMode.mixed ? (cli ?? team.cli) : team.cli;
 
   /// turn 结束时是否强制把该成员推回 `wait_for_message`（mixed 协议）。优先级：
-  /// 成员显式覆盖 [forceWaitBeforeStop] > CLI 默认 > 团队 [TeamConfig.forceWaitBeforeStop]。
+  /// 成员显式覆盖 [forceWaitBeforeStop] > CLI 默认 > 团队 [TeamIdentity.forceWaitBeforeStop]。
   ///
   /// CLI 默认：**cursor 为 false** —— cursor 的 MCP 工具调用有 ~60s agent 层硬限
   /// （不可配、progress 不续），无法阻塞在 `wait_for_message` 里；改为正常停到
   /// idle-at-prompt，由门铃（stdin 注入 + `read_messages`）push 投递。
-  bool effectiveForceWaitBeforeStop(TeamConfig team) {
+  bool effectiveForceWaitBeforeStop(TeamIdentity team) {
     if (forceWaitBeforeStop != null) return forceWaitBeforeStop!;
     if (cliWithin(team) == CliTool.cursor) return false;
     return team.forceWaitBeforeStop;
@@ -323,12 +327,12 @@ class TeamMemberConfig {
 }
 
 @immutable
-class TeamConfig {
+class TeamIdentity implements WorkspaceIdentity {
   /// Sentinel value for [TeamMemberConfig.activePresetId] meaning "inherit the
   /// team's [activePresetId]".
   static const inheritPresetId = '__inherit__';
 
-  const TeamConfig({
+  const TeamIdentity({
     required this.id,
     required this.name,
     this.description = '',
@@ -404,7 +408,7 @@ class TeamConfig {
     return null;
   }
 
-  factory TeamConfig.fromJson(Map<String, Object?> json) {
+  factory TeamIdentity.fromJson(Map<String, Object?> json) {
     final rawMembers = json['members'];
     final members = rawMembers is List
         ? rawMembers
@@ -417,7 +421,7 @@ class TeamConfig {
         : const <TeamMemberConfig>[];
 
     final name = json['name'] as String? ?? '';
-    return TeamConfig(
+    return TeamIdentity(
       id: TeamMemberNaming.slugTeamId(json['id'] as String? ?? name),
       name: name,
       description: json['description'] as String? ?? '',
@@ -499,7 +503,7 @@ class TeamConfig {
       (activePresetId != null && presetExists) ||
       hasCustomLaunchDefaultsFor(cli);
 
-  TeamConfig withLaunchDefaultsForCli({
+  TeamIdentity withLaunchDefaultsForCli({
     required CliTool cli,
     required String providerId,
     required String model,
@@ -525,7 +529,7 @@ class TeamConfig {
     );
   }
 
-  TeamConfig withEffortForCli(CliTool cli, String effort) {
+  TeamIdentity withEffortForCli(CliTool cli, String effort) {
     final trimmed = effort.trim();
     final next = Map<String, String>.from(cliEffortLevels);
     if (trimmed.isEmpty) {
@@ -599,9 +603,25 @@ class TeamConfig {
   /// Active preset id for this team. `null` means no preset is active.
   final String? activePresetId;
 
+  @override
+  IdentityKind get kind => IdentityKind.team;
+
+  @override
+  String get display => name;
+
+  @override
+  ProjectIconRef get icon => ProjectIconRef.auto;
+
+  @override
+  ConfigBundle get bundle => ConfigBundle(
+        skillIds: skillIds,
+        pluginIds: pluginIds,
+        mcpServerIds: mcpServerIds,
+      );
+
   bool get isValid => name.trim().isNotEmpty;
 
-  TeamConfig copyWith({
+  TeamIdentity copyWith({
     String? id,
     String? name,
     String? description,
@@ -630,7 +650,7 @@ class TeamConfig {
     String? activePresetId,
     bool updateActivePresetId = false,
   }) {
-    return TeamConfig(
+    return TeamIdentity(
       id: id ?? this.id,
       name: name ?? this.name,
       description: description ?? this.description,
@@ -667,6 +687,7 @@ class TeamConfig {
   Map<String, Object?> toJson() {
     return {
       'id': id,
+      'kind': kind.value,
       'name': name,
       if (description.isNotEmpty) 'description': description,
       'extraArgs': extraArgs,
@@ -696,7 +717,7 @@ class TeamConfig {
   @override
   bool operator ==(Object other) {
     return identical(this, other) ||
-        other is TeamConfig &&
+        other is TeamIdentity &&
             runtimeType == other.runtimeType &&
             id == other.id &&
             name == other.name &&

@@ -168,7 +168,7 @@ void main() {
     final developer = AgentNode(
       profile: TeammateRosterProfile.fromMember(
         member: const TeamMemberConfig(id: 'developer', name: 'Dev'),
-        team: const TeamConfig(id: 'testmixed', name: 'TestMixed'),
+        team: const TeamIdentity(id: 'testmixed', name: 'TestMixed'),
         cliTeamName: 'testmixed-23',
         cwd: '/tmp',
       ),

@@ -45,7 +45,7 @@ void main() {
   });
 
   test('fromMember builds Claude-style agentId and agentType', () {
-    const team = TeamConfig(
+    const team = TeamIdentity(
       id: 'my-team',
       name: 'My Team',
       cli: CliTool.claude,
@@ -138,7 +138,7 @@ void main() {
               model: 'claude-opus-4',
               agentType: 'team-lead',
             ),
-            team: const TeamConfig(id: 'demo', name: 'Demo Team', teamMode: TeamMode.mixed),
+            team: const TeamIdentity(id: 'demo', name: 'Demo Team', teamMode: TeamMode.mixed),
             cliTeamName: 'demo-1',
             cwd: '/tmp/ws',
             taskId: 'lead-task',
@@ -155,7 +155,7 @@ void main() {
               cli: CliTool.opencode,
               agentType: 'implementer',
             ),
-            team: const TeamConfig(id: 'demo', name: 'Demo Team', teamMode: TeamMode.mixed),
+            team: const TeamIdentity(id: 'demo', name: 'Demo Team', teamMode: TeamMode.mixed),
             cliTeamName: 'demo-1',
             cwd: '/tmp/ws',
           ),

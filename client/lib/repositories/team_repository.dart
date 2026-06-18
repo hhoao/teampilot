@@ -6,7 +6,7 @@ import '../services/storage/storage_resolver.dart';
 import '../services/io/filesystem.dart';
 import '../services/session/session_lifecycle_service.dart';
 
-/// Persists [TeamConfig] objects in TeamPilot's own metadata directory.
+/// Persists [TeamIdentity] objects in TeamPilot's own metadata directory.
 ///
 /// - UI dir ([AppStorage.teamsDir]): one `<name>.json` per team, holding the
 ///   full UI schema (provider, model, agent, extraArgs, prompt, ...).
@@ -46,9 +46,9 @@ class TeamRepository {
     );
   }
 
-  Future<List<TeamConfig>> loadTeams() async {
+  Future<List<TeamIdentity>> loadTeams() async {
     final paths = await _paths();
-    final teams = List<TeamConfig>.of(await _readUiDir(paths));
+    final teams = List<TeamIdentity>.of(await _readUiDir(paths));
 
     final hasCustomOrder = teams.any((team) => team.sortOrder > 0);
     teams.sort((a, b) {
@@ -64,8 +64,8 @@ class TeamRepository {
     return List.unmodifiable(teams);
   }
 
-  Future<void> saveTeams(List<TeamConfig> teams) async {
-    final stamped = <TeamConfig>[];
+  Future<void> saveTeams(List<TeamIdentity> teams) async {
+    final stamped = <TeamIdentity>[];
     final now = DateTime.now().millisecondsSinceEpoch;
     for (final team in teams) {
       final name = team.name.trim();
@@ -76,8 +76,8 @@ class TeamRepository {
     await _writeUiDir(paths, stamped);
   }
 
-  Future<List<TeamConfig>> _readUiDir(_TeamPaths paths) async {
-    final teams = <TeamConfig>[];
+  Future<List<TeamIdentity>> _readUiDir(_TeamPaths paths) async {
+    final teams = <TeamIdentity>[];
     try {
       final entries = await paths.fs.listDir(paths.teamsUiDir);
       for (final entry in entries) {
@@ -89,7 +89,7 @@ class TeamRepository {
         try {
           final decoded = jsonDecode(content);
           if (decoded is! Map) continue;
-          teams.add(TeamConfig.fromJson(Map<String, Object?>.from(decoded)));
+          teams.add(TeamIdentity.fromJson(Map<String, Object?>.from(decoded)));
         } on FormatException {
           continue;
         }
@@ -100,7 +100,7 @@ class TeamRepository {
     return teams;
   }
 
-  Future<void> _writeUiDir(_TeamPaths paths, List<TeamConfig> teams) async {
+  Future<void> _writeUiDir(_TeamPaths paths, List<TeamIdentity> teams) async {
     await paths.fs.ensureDir(paths.teamsUiDir);
     final keepFiles = <String>{};
     for (final team in teams) {

@@ -27,7 +27,7 @@ import 'team_default_preset_configure_dialog.dart';
 class TeamInfoSection extends StatefulWidget {
   const TeamInfoSection({super.key, required this.team, required this.cubit});
 
-  final TeamConfig team;
+  final TeamIdentity team;
   final TeamCubit cubit;
 
   @override
@@ -255,7 +255,7 @@ class _TeamDefaultPresetRow extends StatelessWidget {
     required this.showDividerBelow,
   });
 
-  final TeamConfig team;
+  final TeamIdentity team;
   final TeamCubit cubit;
   final bool showDividerBelow;
 
@@ -479,7 +479,7 @@ class TeamConfigDangerZone extends StatelessWidget {
     required this.cubit,
   });
 
-  final TeamConfig team;
+  final TeamIdentity team;
   final TeamCubit cubit;
 
   Future<void> _confirmDelete(BuildContext context) async {

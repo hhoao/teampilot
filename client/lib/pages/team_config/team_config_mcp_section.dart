@@ -20,7 +20,7 @@ class TeamMcpSection extends StatelessWidget {
     this.onManageGlobal,
   });
 
-  final TeamConfig team;
+  final TeamIdentity team;
   final TeamCubit cubit;
 
   /// Opens global MCP management. When null, falls back to the v1 `/mcp`

@@ -70,7 +70,7 @@ void main() {
     test('binds selected claude provider to teams without team binding', () async {
       final dir = await Directory.systemTemp.createTemp('onboarding-provider-bind_');
       final teamRepo = TeamRepository(rootDir: p.join(dir.path, 'teams'));
-      const team = TeamConfig(
+      const team = TeamIdentity(
         id: 'default-team',
         name: 'Default Team',
         cli: CliTool.claude,

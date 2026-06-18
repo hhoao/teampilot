@@ -28,7 +28,7 @@ class _FakeInspector extends MemberConfigInspector {
   Future<MemberConfigDetail> inspect({
     required String projectId,
     required String sessionId,
-    required TeamConfig team,
+    required TeamIdentity team,
     required TeamMemberConfig member,
   }) async {
     if (throwIt) throw StateError('boom');
@@ -37,7 +37,7 @@ class _FakeInspector extends MemberConfigInspector {
 }
 
 const _member = TeamMemberConfig(id: 'm1', name: 'Backend');
-const _team = TeamConfig(id: 't', name: 'T', cli: CliTool.claude, members: [_member]);
+const _team = TeamIdentity(id: 't', name: 'T', cli: CliTool.claude, members: [_member]);
 
 void main() {
   test('emits loading then loaded', () async {

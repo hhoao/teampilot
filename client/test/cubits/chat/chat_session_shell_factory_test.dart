@@ -29,7 +29,7 @@ void main() {
       terminalSessionFactory: ({required executable, scrollbackLines = 10000}) =>
           TerminalSession(executable: executable),
     );
-    const team = TeamConfig(id: 't', name: 'T', members: []);
+    const team = TeamIdentity(id: 't', name: 'T', members: []);
 
     expect(factory.cliForMember(team, 'missing'), team.cli);
   });

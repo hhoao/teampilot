@@ -239,7 +239,7 @@ class TeamResourceSyncService {
 
       var conflicts = _h.state.pluginSyncConflicts;
       for (final teamId in ids) {
-        TeamConfig? team;
+        TeamIdentity? team;
         for (final candidate in _h.state.teams) {
           if (candidate.id == teamId) {
             team = candidate;

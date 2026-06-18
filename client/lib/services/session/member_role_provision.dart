@@ -112,7 +112,7 @@ Your CLI cannot block inside a tool call, so **never call `wait_for_message`** â
 You are event-driven: spend no turns polling. Stopping when idle is correct and expected â€” the bus wakes you.
 ''';
 
-  /// When [TeamConfig.forceTeamLeadDelegateMode] is on (also enforced via PreToolUse hook).
+  /// When [TeamIdentity.forceTeamLeadDelegateMode] is on (also enforced via PreToolUse hook).
   static const teamLeadDelegateModeAddendum = '''
 ## Delegate-only mode (enforced)
 

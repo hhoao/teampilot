@@ -153,7 +153,7 @@ class _ChatWorkbenchState extends State<ChatWorkbench> {
     );
   }
 
-  Future<void> _connectSession(TeamConfig team) async {
+  Future<void> _connectSession(TeamIdentity team) async {
     final chatCubit = _chatCubit;
     if (chatCubit == null) return;
     await chatCubit.connectSession(team);

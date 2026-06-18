@@ -31,7 +31,7 @@ void main() {
       ],
     );
 
-    const team = TeamConfig(id: 't1', name: 'T1', cli: CliTool.flashskyai, skillIds: ['demo']);
+    const team = TeamIdentity(id: 't1', name: 'T1', cli: CliTool.flashskyai, skillIds: ['demo']);
 
     await service.prepareTeamLaunch(
       projectId: 'project-1',

@@ -63,7 +63,7 @@ class HomeWorkspaceShell extends StatefulWidget {
     return '$headline\n$path';
   }
 
-  static String? teamNameFor(List<TeamConfig> teams, String teamId) {
+  static String? teamNameFor(List<TeamIdentity> teams, String teamId) {
     if (teamId.isEmpty) return null;
     for (final team in teams) {
       if (team.id == teamId) return team.name;
@@ -350,7 +350,7 @@ class _HomeWorkspaceShellState extends State<HomeWorkspaceShell> {
 
     final cs = Theme.of(context).colorScheme;
     final l10n = context.l10n;
-    final teams = context.select<TeamCubit, List<TeamConfig>>(
+    final teams = context.select<TeamCubit, List<TeamIdentity>>(
       (c) => c.state.teams,
     );
     // Show every open project tab across all teams (IDE-style open editors).
@@ -412,7 +412,7 @@ class _HomeWorkspaceShellState extends State<HomeWorkspaceShell> {
     required String id,
     required AppProject project,
     required AppLocalizations l10n,
-    required List<TeamConfig> teams,
+    required List<TeamIdentity> teams,
   }) {
     final identity = _identityForProject(id);
     final isPersonal = identity.isPersonal;

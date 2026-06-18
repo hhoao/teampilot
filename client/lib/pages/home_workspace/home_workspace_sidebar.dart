@@ -296,7 +296,7 @@ class _TeamRow extends StatefulWidget {
   });
 
   final int index;
-  final TeamConfig team;
+  final TeamIdentity team;
   final bool selected;
   final VoidCallback onTap;
 

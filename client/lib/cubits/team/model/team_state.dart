@@ -13,7 +13,7 @@ class TeamState extends Equatable {
     this.pluginSyncConflicts = const {},
   });
 
-  final List<TeamConfig> teams;
+  final List<TeamIdentity> teams;
   final String? selectedTeamId;
   final String statusMessage;
   final bool isLoading;
@@ -23,7 +23,7 @@ class TeamState extends Equatable {
   /// Plugin ids on the selected team that were linked under a fallback dir name.
   final Map<String, String> pluginSyncConflicts;
 
-  TeamConfig? get selectedTeam {
+  TeamIdentity? get selectedTeam {
     for (final team in teams) {
       if (team.id == selectedTeamId) return team;
     }
@@ -31,7 +31,7 @@ class TeamState extends Equatable {
   }
 
   TeamState copyWith({
-    List<TeamConfig>? teams,
+    List<TeamIdentity>? teams,
     String? selectedTeamId,
     String? statusMessage,
     bool? isLoading,

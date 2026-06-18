@@ -7,7 +7,7 @@ void main() {
       cli == CliTool.claude || cli == CliTool.flashskyai;
 
   test('mixed mode hides agent preset until member CLI is chosen', () {
-    const mixedTeam = TeamConfig(
+    const mixedTeam = TeamIdentity(
       id: 't',
       name: 'T',
       cli: CliTool.claude,
@@ -52,8 +52,8 @@ void main() {
   });
 
   test('native mode follows team CLI for agent preset visibility', () {
-    const nativeClaude = TeamConfig(id: 't', name: 'T', cli: CliTool.claude);
-    const nativeCodex = TeamConfig(id: 't', name: 'T', cli: CliTool.codex);
+    const nativeClaude = TeamIdentity(id: 't', name: 'T', cli: CliTool.claude);
+    const nativeCodex = TeamIdentity(id: 't', name: 'T', cli: CliTool.codex);
     const member = TeamMemberConfig(id: 'm', name: 'dev');
 
     expect(

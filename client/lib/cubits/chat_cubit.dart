@@ -81,7 +81,7 @@ class ChatCubit extends Cubit<ChatState>
     onWorkingSessionsChanged: _updateWorkingSessions,
   );
   MemberPresenceCubit? _presenceCubit;
-  TeamConfig? _activeTeam;
+  TeamIdentity? _activeTeam;
   final ChatSessionShellFactory _shellFactory;
   final PostFrameScheduler _postFrameScheduler;
   final bool Function()? _autoLaunchAllMembersOnConnect;
@@ -109,7 +109,7 @@ class ChatCubit extends Cubit<ChatState>
   ChatTab? get activeTab => _activeTab;
 
   @override
-  set activeTeam(TeamConfig? team) => _activeTeam = team;
+  set activeTeam(TeamIdentity? team) => _activeTeam = team;
 
   @override
   ChatSessionShellFactory get shellFactory => _shellFactory;
@@ -455,7 +455,7 @@ class ChatCubit extends Cubit<ChatState>
 
   Future<void> openSessionTab(
     AppSession session, {
-    TeamConfig? team,
+    TeamIdentity? team,
     TeamMemberConfig? member,
     SessionRepository? repo,
     String emptyDisplayTitleFallback = 'New Chat',
@@ -470,7 +470,7 @@ class ChatCubit extends Cubit<ChatState>
   );
 
   Future<void> openMemberTab(
-    TeamConfig team,
+    TeamIdentity team,
     TeamMemberConfig member, {
     SessionRepository? repo,
     String? workspaceCwd,
@@ -600,7 +600,7 @@ class ChatCubit extends Cubit<ChatState>
     _pushPresenceTarget();
   }
 
-  void syncTeam(TeamConfig team) {
+  void syncTeam(TeamIdentity team) {
     if (team.members.isEmpty) {
       emit(state.copyWith(selectedMemberId: ''));
       return;
@@ -625,7 +625,7 @@ class ChatCubit extends Cubit<ChatState>
   }
 
   Future<void> launchAllMembers(
-    TeamConfig team, {
+    TeamIdentity team, {
     SessionRepository? repo,
     String? workspaceCwd,
   }) => _launchService.launchAllMembers(
@@ -634,22 +634,22 @@ class ChatCubit extends Cubit<ChatState>
     workspaceCwd: workspaceCwd,
   );
 
-  String selectedMemberName(TeamConfig team) {
+  String selectedMemberName(TeamIdentity team) {
     for (final m in team.members) {
       if (m.id == state.selectedMemberId) return m.name;
     }
     return team.members.isEmpty ? 'member' : team.members.first.name;
   }
 
-  TerminalSession? ensureSession(TeamConfig team) =>
+  TerminalSession? ensureSession(TeamIdentity team) =>
       _launchService.ensureSession(team);
 
-  Future<void> connectSession(TeamConfig team, {SessionRepository? repo}) =>
+  Future<void> connectSession(TeamIdentity team, {SessionRepository? repo}) =>
       _launchService.connectSession(team, repo: repo);
 
   void disconnectSession() => _launchService.disconnectSession();
 
-  Future<void> restartSession(TeamConfig team, {SessionRepository? repo}) =>
+  Future<void> restartSession(TeamIdentity team, {SessionRepository? repo}) =>
       _launchService.restartSession(team, repo: repo);
 
   @override

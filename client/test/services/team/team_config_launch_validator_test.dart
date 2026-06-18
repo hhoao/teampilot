@@ -25,7 +25,7 @@ void main() {
 
   group('native mode', () {
     test('passes when team has an explicit default provider and model', () async {
-      final team = TeamConfig(
+      final team = TeamIdentity(
         id: 'team',
         name: 'Team',
         cli: CliTool.claude,
@@ -41,7 +41,7 @@ void main() {
     });
 
     test('passes when every member supplies provider + model', () async {
-      final team = TeamConfig(
+      final team = TeamIdentity(
         id: 'team',
         name: 'Team',
         cli: CliTool.claude,
@@ -58,7 +58,7 @@ void main() {
     });
 
     test('flags team default + provider when nothing is configured', () async {
-      final team = TeamConfig(
+      final team = TeamIdentity(
         id: 'team',
         name: 'Team',
         cli: CliTool.claude,
@@ -86,7 +86,7 @@ void main() {
 
     test('uses strict default: global sole provider is not counted', () async {
       // Only providerIdsByTool[cli] counts; an empty map is "no default".
-      final team = TeamConfig(
+      final team = TeamIdentity(
         id: 'team',
         name: 'Team',
         cli: CliTool.claude,
@@ -103,7 +103,7 @@ void main() {
     });
 
     test('passes when team custom defaults satisfy empty members', () async {
-      final team = TeamConfig(
+      final team = TeamIdentity(
         id: 'team',
         name: 'Team',
         cli: CliTool.claude,
@@ -119,7 +119,7 @@ void main() {
     });
 
     test('flags missing model for a non-official member provider', () async {
-      final team = TeamConfig(
+      final team = TeamIdentity(
         id: 'team',
         name: 'Team',
         cli: CliTool.claude,
@@ -137,7 +137,7 @@ void main() {
     });
 
     test('official member provider does not require a model', () async {
-      final team = TeamConfig(
+      final team = TeamIdentity(
         id: 'team',
         name: 'Team',
         cli: CliTool.claude,
@@ -153,7 +153,7 @@ void main() {
 
   group('mixed mode', () {
     test('flags missing provider when team and member defaults are empty', () async {
-      final team = TeamConfig(
+      final team = TeamIdentity(
         id: 'team',
         name: 'Team',
         cli: CliTool.flashskyai,
@@ -174,7 +174,7 @@ void main() {
     });
 
     test('passes when member is empty but team custom defaults apply', () async {
-      final team = TeamConfig(
+      final team = TeamIdentity(
         id: 'team',
         name: 'Team',
         cli: CliTool.claude,
@@ -190,7 +190,7 @@ void main() {
     });
 
     test('flags missing model for a non-official member provider', () async {
-      final team = TeamConfig(
+      final team = TeamIdentity(
         id: 'team',
         name: 'Team',
         cli: CliTool.flashskyai,
@@ -207,7 +207,7 @@ void main() {
     });
 
     test('official member provider does not require a model', () async {
-      final team = TeamConfig(
+      final team = TeamIdentity(
         id: 'team',
         name: 'Team',
         cli: CliTool.flashskyai,
@@ -223,7 +223,7 @@ void main() {
     });
 
     test('passes when each member has cli + provider + model', () async {
-      final team = TeamConfig(
+      final team = TeamIdentity(
         id: 'team',
         name: 'Team',
         cli: CliTool.flashskyai,
@@ -240,7 +240,7 @@ void main() {
   });
 
   test('ignores invalid (unnamed) members', () async {
-    final team = TeamConfig(
+    final team = TeamIdentity(
       id: 'team',
       name: 'Team',
       cli: CliTool.claude,

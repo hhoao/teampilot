@@ -34,7 +34,7 @@ class ChatPageShell extends StatelessWidget {
   final String? sessionId;
   final bool isPersonalProject;
   final String? projectId;
-  final TeamConfig? team;
+  final TeamIdentity? team;
 
   @override
   Widget build(BuildContext context) {
@@ -147,7 +147,7 @@ class _ChatWorkspaceShell extends StatelessWidget {
   final String? sessionId;
   final bool isPersonalProject;
   final String? projectId;
-  final TeamConfig? team;
+  final TeamIdentity? team;
   final LayoutPreferences preferences;
   final bool toolsAsDrawer;
   final Widget? rightTools;
@@ -210,7 +210,7 @@ class _ChatWorkspaceShell extends StatelessWidget {
     );
   }
 
-  List<Widget> _chatActions(BuildContext context, TeamConfig team) {
+  List<Widget> _chatActions(BuildContext context, TeamIdentity team) {
     return [
       IconButton.filledTonal(
         key: AppKeys.openTeamLeadButton,

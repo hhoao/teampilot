@@ -27,7 +27,7 @@ class TeamMemberDetailSection extends StatelessWidget {
     required this.selectedMemberId,
   });
 
-  final TeamConfig team;
+  final TeamIdentity team;
   final TeamCubit cubit;
   final String? selectedMemberId;
 
@@ -77,7 +77,7 @@ class TeamMemberConfigForm extends StatefulWidget {
     required this.cubit,
   });
 
-  final TeamConfig team;
+  final TeamIdentity team;
   final TeamMemberConfig member;
   final TeamCubit cubit;
 

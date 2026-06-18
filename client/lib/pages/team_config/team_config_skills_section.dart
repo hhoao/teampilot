@@ -22,7 +22,7 @@ class TeamSkillsSection extends StatelessWidget {
     this.onManageGlobal,
   });
 
-  final TeamConfig team;
+  final TeamIdentity team;
   final TeamCubit cubit;
 
   /// Opens global skill management. When null, falls back to the v1

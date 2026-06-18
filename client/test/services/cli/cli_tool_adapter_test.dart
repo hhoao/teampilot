@@ -16,7 +16,7 @@ void main() {
     dangerouslySkipPermissions: true,
   );
 
-  const flashskyaiTeam = TeamConfig(
+  const flashskyaiTeam = TeamIdentity(
     id: 'team-1',
     name: 'agent',
     extraArgs: '--permission-mode acceptEdits',
@@ -68,7 +68,7 @@ void main() {
   test('claude adapter uses member id for --agent-name', () {
     final args = ClaudeCodeCliToolAdapter().buildArguments(
       CliLaunchContext(
-        team: const TeamConfig(
+        team: const TeamIdentity(
           id: 'team-1',
           name: 'agent',
           cli: CliTool.claude,
@@ -91,7 +91,7 @@ void main() {
     expect(
       adapter.buildArguments(
         CliLaunchContext(
-          team: const TeamConfig(
+          team: const TeamIdentity(
             id: 'team-1',
             name: 'agent',
             cli: CliTool.claude,
@@ -130,7 +130,7 @@ void main() {
   test('claude adapter uses bare team-lead agent id for leader tab', () {
     final args = ClaudeCodeCliToolAdapter().buildArguments(
       CliLaunchContext(
-        team: const TeamConfig(
+        team: const TeamIdentity(
           id: 'team-1',
           name: 'agent',
           cli: CliTool.claude,
@@ -179,7 +179,7 @@ void main() {
   test('claude adapter appends role system prompt file when set', () {
     final args = ClaudeCodeCliToolAdapter().buildArguments(
       CliLaunchContext(
-        team: const TeamConfig(
+        team: const TeamIdentity(
           id: 'team-1',
           name: 'agent',
           cli: CliTool.claude,
@@ -201,7 +201,7 @@ void main() {
   test('claude adapter appends member settings file argument', () {
     final args = ClaudeCodeCliToolAdapter().buildArguments(
       CliLaunchContext(
-        team: const TeamConfig(
+        team: const TeamIdentity(
           id: 'team-1',
           name: 'agent',
           cli: CliTool.claude,
@@ -223,7 +223,7 @@ void main() {
   test('claude adapter relies on env instead of unsupported --agent-teams', () {
     final args = ClaudeCodeCliToolAdapter().buildArguments(
       CliLaunchContext(
-        team: const TeamConfig(
+        team: const TeamIdentity(
           id: 'team-1',
           name: 'agent',
           cli: CliTool.claude,
@@ -238,7 +238,7 @@ void main() {
   test('claude adapter does not pass unsupported --dir option', () {
     final args = ClaudeCodeCliToolAdapter().buildArguments(
       CliLaunchContext(
-        team: const TeamConfig(
+        team: const TeamIdentity(
           id: 'team-1',
           name: 'agent',
           cli: CliTool.claude,
@@ -255,7 +255,7 @@ void main() {
   test('claude adapter omits flashskyai-only flags', () {
     final args = ClaudeCodeCliToolAdapter().buildArguments(
       CliLaunchContext(
-        team: const TeamConfig(
+        team: const TeamIdentity(
           id: 'team-1',
           name: 'agent',
           cli: CliTool.claude,
@@ -292,7 +292,7 @@ void main() {
 
   test('codex adapter emits codex-native flags, not flashskyai team flags', () {
     const adapter = CodexCliToolAdapter();
-    const mixedTeam = TeamConfig(
+    const mixedTeam = TeamIdentity(
       id: 'team-x',
       name: 'mixers',
       teamMode: TeamMode.mixed,

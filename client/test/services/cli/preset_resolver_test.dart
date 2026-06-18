@@ -16,7 +16,7 @@ void main() {
   );
 
   test('resolveMemberLaunchConfig merges team custom defaults for empty member', () {
-    const team = TeamConfig(
+    const team = TeamIdentity(
       id: 'team',
       name: 'Team',
       teamMode: TeamMode.mixed,
@@ -42,7 +42,7 @@ void main() {
   });
 
   test('inherits team preset only when CLI matches member effective CLI', () {
-    const team = TeamConfig(
+    const team = TeamIdentity(
       id: 'team',
       name: 'Team',
       teamMode: TeamMode.mixed,
@@ -53,7 +53,7 @@ void main() {
           id: 'alice',
           name: 'Alice',
           cli: CliTool.codex,
-          activePresetId: TeamConfig.inheritPresetId,
+          activePresetId: TeamIdentity.inheritPresetId,
         ),
       ],
     );
@@ -61,7 +61,7 @@ void main() {
       id: 'alice',
       name: 'Alice',
       cli: CliTool.codex,
-      activePresetId: TeamConfig.inheritPresetId,
+      activePresetId: TeamIdentity.inheritPresetId,
     );
 
     final resolved = resolveMemberLaunchConfig(
@@ -75,7 +75,7 @@ void main() {
   });
 
   test('inherits team preset when CLI matches', () {
-    const team = TeamConfig(
+    const team = TeamIdentity(
       id: 'team',
       name: 'Team',
       teamMode: TeamMode.mixed,
@@ -85,7 +85,7 @@ void main() {
         TeamMemberConfig(
           id: 'alice',
           name: 'Alice',
-          activePresetId: TeamConfig.inheritPresetId,
+          activePresetId: TeamIdentity.inheritPresetId,
         ),
       ],
     );
@@ -120,7 +120,7 @@ void main() {
       createdAt: 0,
       updatedAt: 0,
     );
-    const team = TeamConfig(
+    const team = TeamIdentity(
       id: 'team',
       name: 'Team',
       teamMode: TeamMode.mixed,

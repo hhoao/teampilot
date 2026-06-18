@@ -4,7 +4,7 @@ import 'package:teampilot/services/team/claude_team_roster_service.dart';
 import 'package:teampilot/utils/team_member_naming.dart';
 
 void main() {
-  test('slugTeamId normalizes display names for TeamConfig.id', () {
+  test('slugTeamId normalizes display names for TeamIdentity.id', () {
     expect(TeamMemberNaming.slugTeamId('My Cool Team'), 'my-cool-team');
     expect(TeamMemberNaming.slugTeamId('Default Team'), 'default-team');
     expect(TeamMemberNaming.slugTeamId(''), 'team');
@@ -59,7 +59,7 @@ void main() {
     expect(roster.every((m) => m.joinedAt == 42), isTrue);
     expect(roster.every((m) => m.prompt.trim().isNotEmpty), isTrue);
     expect(
-      roster.every((m) => m.activePresetId == TeamConfig.inheritPresetId),
+      roster.every((m) => m.activePresetId == TeamIdentity.inheritPresetId),
       isTrue,
     );
   });

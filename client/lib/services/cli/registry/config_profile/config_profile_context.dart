@@ -55,15 +55,15 @@ CliTool standaloneCli(CliPreset? preset, {CliTool fallback = CliTool.claude}) {
   return preset?.cli ?? fallback;
 }
 
-/// Minimal [TeamConfig] for personal / standalone PTY launch args.
-TeamConfig standaloneTeamFromProfile(
+/// Minimal [TeamIdentity] for personal / standalone PTY launch args.
+TeamIdentity standaloneTeamFromProfile(
   ProjectProfile profile, {
   required String projectId,
   required String sessionTeamName,
   required CliPreset? preset,
 }) {
   final member = standaloneMemberFromProfile(profile, preset: preset);
-  return TeamConfig(
+  return TeamIdentity(
     id: projectId.trim(),
     name: sessionTeamName.trim(),
     cli: preset?.cli ?? CliTool.claude,
@@ -209,7 +209,7 @@ class ConfigProfileSessionContext {
   final String sessionId;
   final List<TeamMemberConfig> members;
   final ConfigProfileDelegate paths;
-  final TeamConfig? team;
+  final TeamIdentity? team;
   final StandaloneLaunchProfileScope? standaloneScope;
   final ProjectProfile? profile;
   final String? memberId;
@@ -239,7 +239,7 @@ class ConfigProfileLaunchContext {
   final String teamId;
   final String sessionId;
   final LaunchProfileScope scope;
-  final TeamConfig? team;
+  final TeamIdentity? team;
   final TeamMemberConfig? member;
   final List<TeamMemberConfig> members;
   final String? workingDirectory;

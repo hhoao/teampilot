@@ -163,7 +163,7 @@ class ConfigProfileService implements ConfigProfileDelegate {
     String sessionId,
     String teamId, {
     CliTool cli = CliTool.claude,
-    TeamConfig? team,
+    TeamIdentity? team,
     String? memberId,
     Map<String, Map<String, Object?>>? extraMcpServers,
   }) async {
@@ -450,7 +450,7 @@ class ConfigProfileService implements ConfigProfileDelegate {
     TeamMemberConfig? member,
     String workingDirectory = '',
     List<String> additionalDirectories = const [],
-    TeamConfig? team,
+    TeamIdentity? team,
     String? leadSessionId,
     Map<String, Map<String, Object?>>? extraMcpServers,
     String? busIdleUrl,

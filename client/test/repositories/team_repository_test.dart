@@ -50,12 +50,12 @@ void main() {
 
     test('saves and reloads multiple teams from UI dir only', () async {
       const teams = [
-        TeamConfig(
+        TeamIdentity(
           id: 'hhoa',
           name: 'hhoa',
           members: [TeamMemberConfig(id: 'planner', name: 'planner')],
         ),
-        TeamConfig(
+        TeamIdentity(
           id: 'agent',
           name: 'agent',
           members: [
@@ -86,7 +86,7 @@ void main() {
 
     test('does not let CLI files override UI metadata', () async {
       await repo().saveTeams(const [
-        TeamConfig(
+        TeamIdentity(
           id: 'shared',
           name: 'shared',
           createdAt: 100,
@@ -121,7 +121,7 @@ void main() {
     });
 
     test('writes one json file per team in the UI dir', () async {
-      const team = TeamConfig(
+      const team = TeamIdentity(
         id: 'demo',
         name: 'demo',
         members: [TeamMemberConfig(id: 'team-lead', name: 'team-lead')],
@@ -136,7 +136,7 @@ void main() {
 
     test('does not write CLI team config files on save', () async {
       await repo().saveTeams(const [
-        TeamConfig(
+        TeamIdentity(
           id: 't',
           name: 't',
           createdAt: 42,
@@ -159,14 +159,14 @@ void main() {
 
     test('sorts by sortOrder when any team has a custom order', () async {
       await repo().saveTeams(const [
-        TeamConfig(
+        TeamIdentity(
           id: 'b',
           name: 'b',
           createdAt: 200,
           sortOrder: 2,
           members: [TeamMemberConfig(id: 'm', name: 'm')],
         ),
-        TeamConfig(
+        TeamIdentity(
           id: 'a',
           name: 'a',
           createdAt: 100,
@@ -180,7 +180,7 @@ void main() {
     });
 
     test('stamps createdAt on first save', () async {
-      const team = TeamConfig(
+      const team = TeamIdentity(
         id: 'demo',
         name: 'demo',
         members: [TeamMemberConfig(id: 'm', name: 'm')],
@@ -195,12 +195,12 @@ void main() {
 
     test('removes UI files for teams no longer in the list', () async {
       await repo().saveTeams(const [
-        TeamConfig(
+        TeamIdentity(
           id: 'keep',
           name: 'keep',
           members: [TeamMemberConfig(id: 'm', name: 'm')],
         ),
-        TeamConfig(
+        TeamIdentity(
           id: 'drop',
           name: 'drop',
           members: [TeamMemberConfig(id: 'm', name: 'm')],
@@ -208,7 +208,7 @@ void main() {
       ]);
 
       await repo().saveTeams(const [
-        TeamConfig(
+        TeamIdentity(
           id: 'keep',
           name: 'keep',
           members: [TeamMemberConfig(id: 'm', name: 'm')],
@@ -220,7 +220,7 @@ void main() {
     });
 
     test('concurrent saves do not fail when replacing the same UI file', () async {
-      const team = TeamConfig(
+      const team = TeamIdentity(
         id: 'default',
         name: 'Default Team',
         members: [TeamMemberConfig(id: 'm', name: 'm')],
@@ -254,7 +254,7 @@ void main() {
 
     test('removes only the UI file', () async {
       await repo().saveTeams(const [
-        TeamConfig(
+        TeamIdentity(
           id: 'gone',
           name: 'gone',
           members: [TeamMemberConfig(id: 'm', name: 'm')],
@@ -277,7 +277,7 @@ void main() {
         lifecycleService: lifecycle,
       );
       await repository.saveTeams(const [
-        TeamConfig(
+        TeamIdentity(
           id: 'gone',
           name: 'gone',
           members: [TeamMemberConfig(id: 'm', name: 'm')],

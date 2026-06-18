@@ -64,7 +64,7 @@ class LaunchCommandBuilder {
   }();
 
   static List<String> buildArguments(
-    TeamConfig team,
+    TeamIdentity team,
     TeamMemberConfig member, {
     String? sessionTeam,
     String? workingDirectory,
@@ -131,7 +131,7 @@ class LaunchCommandBuilder {
   }
 
   static String preview(
-    TeamConfig team,
+    TeamIdentity team,
     TeamMemberConfig member, {
     String? sessionTeam,
     required String executable,
@@ -205,7 +205,7 @@ class LaunchCommandBuilder {
   }
 
   static Future<void> launch(
-    TeamConfig team, {
+    TeamIdentity team, {
     required TeamMemberConfig member,
     required String executable,
     String? sessionTeam,

@@ -37,7 +37,7 @@ class MemberLaunchConfigRow extends StatelessWidget {
     super.key,
   });
 
-  final TeamConfig team;
+  final TeamIdentity team;
   final TeamMemberConfig member;
   final TeamCubit cubit;
   final bool showDividerBelow;
@@ -218,7 +218,7 @@ class _LaunchIcon extends StatelessWidget {
 
 Future<void> _openMemberLaunchConfigureDialog(
   BuildContext context, {
-  required TeamConfig team,
+  required TeamIdentity team,
   required TeamMemberConfig member,
   required TeamCubit cubit,
 }) {
@@ -237,7 +237,7 @@ class MemberLaunchConfigureDialog extends StatefulWidget {
     super.key,
   });
 
-  final TeamConfig team;
+  final TeamIdentity team;
   final TeamMemberConfig member;
   final TeamCubit cubit;
 
@@ -287,7 +287,7 @@ class _MemberLaunchConfigureDialogState
     if (token == CliLaunchConfigTokens.presetInherit) {
       widget.cubit.setMemberActivePreset(
         widget.member.id,
-        TeamConfig.inheritPresetId,
+        TeamIdentity.inheritPresetId,
       );
     } else if (token == CliLaunchConfigTokens.presetCustom) {
       widget.cubit.setMemberActivePreset(widget.member.id, null);

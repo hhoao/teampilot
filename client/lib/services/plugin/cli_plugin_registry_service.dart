@@ -44,7 +44,7 @@ class CliPluginRegistryService {
     required String teamId,
     required String sessionId,
     required CliTool tool,
-    TeamConfig? team,
+    TeamIdentity? team,
     String? memberId,
     List<Plugin>? installedCatalog,
     String? memberProvisionJson,

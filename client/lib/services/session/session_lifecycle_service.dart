@@ -122,7 +122,7 @@ class SessionLifecycleService {
 
   Future<LaunchPlan> prepareLaunch({
     required AppSession session,
-    TeamConfig? team,
+    TeamIdentity? team,
     TeamMemberConfig? member,
     SessionMemberBinding? memberBinding,
     AppProject? project,
@@ -146,7 +146,7 @@ class SessionLifecycleService {
 
   Future<ShellLaunchSpec> prepareShellLaunch({
     required AppSession session,
-    TeamConfig? team,
+    TeamIdentity? team,
     TeamMemberConfig? member,
     SessionMemberBinding? memberBinding,
     AppProject? project,
@@ -215,7 +215,7 @@ class SessionLifecycleService {
   >
   _prepareLaunchPlan({
     required AppSession session,
-    TeamConfig? team,
+    TeamIdentity? team,
     TeamMemberConfig? member,
     SessionMemberBinding? memberBinding,
     AppProject? project,
@@ -482,7 +482,7 @@ class SessionLifecycleService {
     required bool isPersonal,
     AppProject? project,
     ProjectProfile? profile,
-    TeamConfig? team,
+    TeamIdentity? team,
     TeamMemberConfig? member,
     CliPreset? preset,
   }) {
@@ -543,7 +543,7 @@ class SessionLifecycleService {
   Future<_PreparedLaunch> _prepareEnv({
     required ConfigProfileService service,
     required AppSession session,
-    required TeamConfig? team,
+    required TeamIdentity? team,
     required TeamMemberConfig? member,
     SessionMemberBinding? memberBinding,
     AppProject? project,

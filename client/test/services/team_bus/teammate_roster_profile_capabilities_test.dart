@@ -3,7 +3,7 @@ import 'package:teampilot/models/team_config.dart';
 import 'package:teampilot/services/team_bus/teammate_roster_profile.dart';
 
 void main() {
-  TeamConfig team() => const TeamConfig(
+  TeamIdentity team() => const TeamIdentity(
         id: 'team-1',
         name: 'Team One',
         cli: CliTool.claude,

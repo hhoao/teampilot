@@ -15,5 +15,5 @@ abstract interface class TeamCubitHost {
   void applyState(TeamState next);
 
   /// Persists [teams] to the team repository.
-  Future<void> saveTeams(List<TeamConfig> teams);
+  Future<void> saveTeams(List<TeamIdentity> teams);
 }

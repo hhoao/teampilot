@@ -18,7 +18,7 @@ class CliLaunchContext {
     this.isFreshConversation = true,
   });
 
-  final TeamConfig team;
+  final TeamIdentity team;
   final TeamMemberConfig member;
   final String? sessionTeam;
   final String? workingDirectory;
@@ -42,7 +42,7 @@ class CliLaunchContext {
   String get memberCliId => member.id.trim();
 
   CliLaunchContext copyWith({
-    TeamConfig? team,
+    TeamIdentity? team,
     TeamMemberConfig? member,
     String? sessionTeam,
     String? workingDirectory,

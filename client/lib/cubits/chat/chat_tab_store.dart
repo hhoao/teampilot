@@ -122,19 +122,19 @@ class ChatTabStore {
 
   ChatTab removeAt(int index) => _active.removeAt(index);
 
-  String defaultMemberId(TeamConfig team) {
+  String defaultMemberId(TeamIdentity team) {
     if (team.members.isEmpty) return '';
     final lead = team.members.where((m) => m.id == 'team-lead');
     return lead.isEmpty ? team.members.first.id : lead.first.id;
   }
 
-  ChatTabInfo localSessionInfo(TeamConfig team) => ChatTabInfo(
+  ChatTabInfo localSessionInfo(TeamIdentity team) => ChatTabInfo(
     id: 'local-${team.id}',
     title: team.name,
     subtitle: 'local session',
   );
 
-  ChatTab appendLocalTab(TeamConfig team, {required String cliTeamName}) {
+  ChatTab appendLocalTab(TeamIdentity team, {required String cliTeamName}) {
     final tab = ChatTab(
       info: localSessionInfo(team),
       cliTeamName: cliTeamName,

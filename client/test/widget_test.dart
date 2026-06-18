@@ -334,7 +334,7 @@ class _FixedResumeLifecycleService extends SessionLifecycleService {
   @override
   Future<ShellLaunchSpec> prepareShellLaunch({
     required AppSession session,
-    TeamConfig? team,
+    TeamIdentity? team,
     TeamMemberConfig? member,
     SessionMemberBinding? memberBinding,
     AppProject? project,
@@ -586,7 +586,7 @@ void main() {
   });
 
   test('opening a team session tab starts team-lead member shell', () async {
-    final team = TeamConfig(
+    final team = TeamIdentity(
       id: 'default-team',
       name: 'Default Team',
       members: TeamMemberNaming.defaultRoster(),
@@ -703,7 +703,7 @@ void main() {
     expect(cubit.state.tabs, isEmpty);
     expect(cubit.state.selectedMemberId, isEmpty);
 
-    final team = TeamConfig(
+    final team = TeamIdentity(
       id: 'test-team',
       name: 'Test',
       members: const [
@@ -731,7 +731,7 @@ void main() {
               ),
       postFrameScheduler: postFrame.scheduler,
     );
-    final team = TeamConfig(
+    final team = TeamIdentity(
       id: 'test-team',
       name: 'Test',
       members: const [
@@ -803,7 +803,7 @@ void main() {
           ),
         ),
       );
-      const team = TeamConfig(
+      const team = TeamIdentity(
         id: 'test-team',
         name: 'Test',
         cli: CliTool.claude,
@@ -839,7 +839,7 @@ void main() {
       addTearDown(() => _deleteTempDirBestEffort(tmp));
       final repo = SessionRepository(rootDir: tmp.path);
       final postFrame = PostFrameTestHarness();
-      final team = TeamConfig(
+      final team = TeamIdentity(
         id: 'test-team',
         name: 'Test',
         members: const [
@@ -887,7 +887,7 @@ void main() {
       addTearDown(() => _deleteTempDirBestEffort(tmp));
       final repo = SessionRepository(rootDir: tmp.path);
       final postFrame = PostFrameTestHarness();
-      final team = TeamConfig(
+      final team = TeamIdentity(
         id: 'test-team',
         name: 'Test',
         members: const [
@@ -941,7 +941,7 @@ void main() {
                 ),
         postFrameScheduler: postFrame.scheduler,
       );
-      final team = TeamConfig(
+      final team = TeamIdentity(
         id: 'test-team',
         name: 'Test',
         members: const [
@@ -989,7 +989,7 @@ void main() {
     final tmp = await Directory.systemTemp.createTemp('open_sess_');
     addTearDown(() => _deleteTempDirBestEffort(tmp));
     final repo = SessionRepository(rootDir: tmp.path);
-    final team = TeamConfig(
+    final team = TeamIdentity(
       id: 'tid',
       name: 'TName',
       members: const [TeamMemberConfig(id: 'lid', name: 'team-lead')],
@@ -1031,7 +1031,7 @@ void main() {
     final tmp = await Directory.systemTemp.createTemp('open_sess_');
     addTearDown(() => _deleteTempDirBestEffort(tmp));
     final repo = SessionRepository(rootDir: tmp.path);
-    final team = TeamConfig(
+    final team = TeamIdentity(
       id: 'tid',
       name: 'TName',
       members: const [TeamMemberConfig(id: 'lid', name: 'team-lead')],
@@ -1076,7 +1076,7 @@ void main() {
       final tmp = await Directory.systemTemp.createTemp('open_sess_');
       addTearDown(() => _deleteTempDirBestEffort(tmp));
       final repo = SessionRepository(rootDir: tmp.path);
-      final team = TeamConfig(
+      final team = TeamIdentity(
         id: 'tid',
         name: 'TName',
         members: const [TeamMemberConfig(id: 'lid', name: 'team-lead')],
@@ -1122,7 +1122,7 @@ void main() {
       final tmp = await Directory.systemTemp.createTemp('open_sess_');
       addTearDown(() => _deleteTempDirBestEffort(tmp));
       final repo = SessionRepository(rootDir: tmp.path);
-      final team = TeamConfig(
+      final team = TeamIdentity(
         id: 'tid',
         name: 'TName',
         members: const [TeamMemberConfig(id: 'lid', name: 'team-lead')],

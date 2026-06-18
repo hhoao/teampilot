@@ -30,7 +30,7 @@ void main() {
 
   test('defaultMemberId prefers team-lead', () {
     final store = ChatTabStore();
-    const team = TeamConfig(
+    const team = TeamIdentity(
       id: 't',
       name: 'T',
       members: [

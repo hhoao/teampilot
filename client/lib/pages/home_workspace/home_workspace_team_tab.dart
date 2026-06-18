@@ -28,7 +28,7 @@ class HomeWorkspaceTeamTab extends StatefulWidget {
   });
 
   final TeamConfigSection section;
-  final TeamConfig team;
+  final TeamIdentity team;
   final TeamCubit cubit;
 
   /// Member to pre-select in the Members section (deep-link); null picks the
@@ -129,7 +129,7 @@ class _MemberPicker extends StatelessWidget {
     required this.onSelect,
   });
 
-  final TeamConfig team;
+  final TeamIdentity team;
   final TeamCubit cubit;
   final String? selectedMemberId;
   final ValueChanged<String> onSelect;

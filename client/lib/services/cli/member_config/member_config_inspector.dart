@@ -30,7 +30,7 @@ class MemberConfigInspector {
   Future<MemberConfigDetail> inspect({
     required String projectId,
     required String sessionId,
-    required TeamConfig team,
+    required TeamIdentity team,
     required TeamMemberConfig member,
   }) async {
     final cli = member.cliWithin(team);
@@ -67,7 +67,7 @@ class MemberConfigInspector {
   Future<_ResolvedDir?> _resolveDir({
     required String projectId,
     required String sessionId,
-    required TeamConfig team,
+    required TeamIdentity team,
     required TeamMemberConfig member,
     required String tool,
   }) async {

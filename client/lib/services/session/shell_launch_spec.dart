@@ -59,7 +59,7 @@ class LaunchPlan {
 ///
 /// Built by [SessionLifecycleService.prepareShellLaunch]. Personal and team
 /// sessions share this type; [launchContext] holds the adapter-facing
-/// `TeamConfig` / `TeamMemberConfig` pair (standalone profiles are converted
+/// `TeamIdentity` / `TeamMemberConfig` pair (standalone profiles are converted
 /// in the lifecycle layer, not at the terminal boundary).
 class ShellLaunchSpec {
   const ShellLaunchSpec({
@@ -76,7 +76,7 @@ class ShellLaunchSpec {
 
   /// Lightweight spec when only CLI argv matter (tests, external-terminal preview).
   factory ShellLaunchSpec.teamMember({
-    required TeamConfig team,
+    required TeamIdentity team,
     required TeamMemberConfig member,
     String? sessionTeam,
     String workingDirectory = '',

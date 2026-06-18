@@ -21,7 +21,7 @@ import 'team_config_helpers.dart';
 
 Future<void> openTeamDefaultPresetConfigureDialog(
   BuildContext context, {
-  required TeamConfig team,
+  required TeamIdentity team,
   required TeamCubit cubit,
 }) {
   return showDialog<void>(
@@ -37,7 +37,7 @@ class TeamDefaultPresetConfigureDialog extends StatefulWidget {
     super.key,
   });
 
-  final TeamConfig team;
+  final TeamIdentity team;
   final TeamCubit cubit;
 
   @override
@@ -73,7 +73,7 @@ class _TeamDefaultPresetConfigureDialogState
     });
   }
 
-  TeamConfig get _currentTeam {
+  TeamIdentity get _currentTeam {
     return widget.cubit.state.teams.firstWhere(
       (t) => t.id == widget.team.id,
       orElse: () => widget.team,

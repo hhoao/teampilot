@@ -166,7 +166,7 @@ class _WarmupStage extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final team = context.select<TeamCubit, TeamConfig?>(
+    final team = context.select<TeamCubit, TeamIdentity?>(
       (cubit) => cubit.state.selectedTeam,
     );
 
@@ -190,7 +190,7 @@ class _WarmupStage extends StatelessWidget {
 class _SettingsWarmup extends StatelessWidget {
   const _SettingsWarmup({required this.team});
 
-  final TeamConfig? team;
+  final TeamIdentity? team;
 
   @override
   Widget build(BuildContext context) {

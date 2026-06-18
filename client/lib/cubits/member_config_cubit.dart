@@ -36,7 +36,7 @@ class MemberConfigCubit extends Cubit<MemberConfigState> {
   Future<void> load({
     required String projectId,
     required String sessionId,
-    required TeamConfig team,
+    required TeamIdentity team,
     required TeamMemberConfig member,
   }) async {
     emit(state.copyWith(status: MemberConfigStatus.loading));

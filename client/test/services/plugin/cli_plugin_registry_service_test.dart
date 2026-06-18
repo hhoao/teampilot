@@ -80,7 +80,7 @@ void main() {
       teamId: 't1',
       sessionId: 's1',
       tool: CliTool.flashskyai,
-      team: const TeamConfig(
+      team: const TeamIdentity(
         id: 't1',
         name: 'Team',
         pluginIds: ['local/demo'],
@@ -176,7 +176,7 @@ void main() {
       teamId: 't1',
       sessionId: 's3',
       tool: CliTool.flashskyai,
-      team: const TeamConfig(
+      team: const TeamIdentity(
         id: 't1',
         name: 'Team',
         pluginIds: ['anthropics/claude-plugins-official/context7'],
@@ -267,7 +267,7 @@ void main() {
       teamId: 't1',
       sessionId: 's4',
       tool: CliTool.flashskyai,
-      team: const TeamConfig(
+      team: const TeamIdentity(
         id: 't1',
         name: 'Team',
         pluginIds: ['anthropics/claude-plugins-official/api-security-testing'],
@@ -307,7 +307,7 @@ void main() {
       pluginName: 'demo',
     );
 
-    const team = TeamConfig(
+    const team = TeamIdentity(
       id: 't1',
       name: 'Team',
       pluginIds: ['local/demo'],

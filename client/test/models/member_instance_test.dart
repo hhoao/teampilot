@@ -2,7 +2,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:teampilot/models/member_instance.dart';
 import 'package:teampilot/models/team_config.dart';
 
-TeamConfig team(List<TeamMemberConfig> members) => TeamConfig(
+TeamIdentity team(List<TeamMemberConfig> members) => TeamIdentity(
       id: 'team-1',
       name: 'T',
       cli: CliTool.claude,

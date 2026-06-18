@@ -78,7 +78,7 @@ class AppSession {
   final List<String> additionalPaths;
   final String display;
 
-  /// Stable UI team id ([TeamConfig.id]) for filtering; not the CLI runtime name.
+  /// Stable UI team id ([TeamIdentity.id]) for filtering; not the CLI runtime name.
   final String sessionTeam;
 
   /// CLI `--team-name` / config-profiles member dir (`{teamId}-{seq}`).

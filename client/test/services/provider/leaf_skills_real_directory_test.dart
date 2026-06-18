@@ -94,7 +94,7 @@ void main() {
       teamId: 't',
       cliTeamName: 't-1',
       cli: CliTool.flashskyai,
-      team: const TeamConfig(
+      team: const TeamIdentity(
         id: 't',
         name: 'T',
         cli: CliTool.flashskyai,

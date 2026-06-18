@@ -57,7 +57,7 @@ void main() {
       pollInterval: const Duration(minutes: 1),
     );
 
-    final team = TeamConfig(
+    final team = TeamIdentity(
       id: 't1',
       name: 'Team',
       cli: CliTool.claude,
@@ -92,7 +92,7 @@ void main() {
     await tester.pumpWidget(_host(
       boardCubit: boardCubit,
       child: BoardPanel(
-        team: TeamConfig(
+        team: TeamIdentity(
           id: 't1', name: 'Team', cli: CliTool.claude,
           teamMode: TeamMode.mixed, members: const [],
         ),

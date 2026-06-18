@@ -112,7 +112,7 @@ void main() {
       pluginLinker: _RecordingPluginLinker(),
     );
 
-    const team = TeamConfig(
+    const team = TeamIdentity(
       id: 't',
       name: 'T',
       members: [TeamMemberConfig(id: 'm', name: 'm')],
@@ -144,13 +144,13 @@ void main() {
       installedPluginsLoader: () async => [],
     );
 
-    const teamA = TeamConfig(
+    const teamA = TeamIdentity(
       id: 'a',
       name: 'A',
       members: [TeamMemberConfig(id: 'm', name: 'm')],
       pluginIds: ['acme/market/p1'],
     );
-    const teamB = TeamConfig(
+    const teamB = TeamIdentity(
       id: 'b',
       name: 'B',
       members: [TeamMemberConfig(id: 'm', name: 'm')],
@@ -195,7 +195,7 @@ void main() {
       installedPluginsLoader: () async => [plugin],
     );
 
-    const team = TeamConfig(
+    const team = TeamIdentity(
       id: 't',
       name: 'T',
       members: [TeamMemberConfig(id: 'm', name: 'm')],
@@ -227,13 +227,13 @@ void main() {
       installedPluginsLoader: () async => [],
     );
 
-    const teamA = TeamConfig(
+    const teamA = TeamIdentity(
       id: 'a',
       name: 'A',
       members: [TeamMemberConfig(id: 'm', name: 'm')],
       pluginIds: ['acme/market/p1'],
     );
-    const teamB = TeamConfig(
+    const teamB = TeamIdentity(
       id: 'b',
       name: 'B',
       members: [TeamMemberConfig(id: 'm', name: 'm')],
@@ -321,7 +321,7 @@ void main() {
         executableResolver: () => 'flashskyai',
         pluginLinker: _RecordingPluginLinker(),
       );
-      const team = TeamConfig(
+      const team = TeamIdentity(
         id: 'old',
         name: 'Old',
         members: [TeamMemberConfig(id: 'team-lead', name: 'team-lead')],
@@ -470,12 +470,12 @@ void main() {
     expect(member.activePresetId, 'preset-codex');
     expect(member.cli, CliTool.codex);
 
-    await cubit.setMemberActivePreset(memberId, TeamConfig.inheritPresetId);
+    await cubit.setMemberActivePreset(memberId, TeamIdentity.inheritPresetId);
 
     final inherited = cubit.state.selectedTeam!.members.firstWhere(
       (m) => m.id == memberId,
     );
-    expect(inherited.activePresetId, TeamConfig.inheritPresetId);
+    expect(inherited.activePresetId, TeamIdentity.inheritPresetId);
     expect(inherited.cli, CliTool.codex);
 
     await _drainAndCloseTeamCubit(cubit);
@@ -496,7 +496,7 @@ void main() {
       configProfileService: ConfigProfileService(basePath: base.path),
     );
     const member = TeamMemberConfig(id: 'team-lead', name: 'team-lead');
-    const team = TeamConfig(
+    const team = TeamIdentity(
       id: 'claude-team',
       name: 'Claude Team',
       cli: CliTool.claude,
@@ -533,7 +533,7 @@ void main() {
       provider: 'deepseek',
       model: 'deepseek-chat',
     );
-    const team = TeamConfig(
+    const team = TeamIdentity(
       id: 'claude-team',
       name: 'Claude Team',
       cli: CliTool.claude,
@@ -593,7 +593,7 @@ void main() {
       launcher: (_, member) async => launched.add(member.name),
     );
 
-    const team = TeamConfig(
+    const team = TeamIdentity(
       id: 'claude-team',
       name: 'Claude Team',
       cli: CliTool.claude,
@@ -650,7 +650,7 @@ void main() {
         pluginLinker: _RecordingPluginLinker(),
       );
 
-      const team = TeamConfig(
+      const team = TeamIdentity(
         id: 'default-team',
         name: 'Default Team',
         cli: CliTool.claude,
@@ -683,7 +683,7 @@ void main() {
         pluginLinker: _RecordingPluginLinker(),
       );
 
-      const team = TeamConfig(
+      const team = TeamIdentity(
         id: 'default-team',
         name: 'Default Team',
         cli: CliTool.claude,
@@ -714,19 +714,19 @@ void main() {
     );
 
     await repo.saveTeams(const [
-      TeamConfig(
+      TeamIdentity(
         id: 'first',
         name: 'First',
         createdAt: 1,
         members: [TeamMemberConfig(id: 'm', name: 'm')],
       ),
-      TeamConfig(
+      TeamIdentity(
         id: 'second',
         name: 'Second',
         createdAt: 2,
         members: [TeamMemberConfig(id: 'm', name: 'm')],
       ),
-      TeamConfig(
+      TeamIdentity(
         id: 'third',
         name: 'Third',
         createdAt: 3,

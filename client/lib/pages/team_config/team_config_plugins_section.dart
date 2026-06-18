@@ -23,7 +23,7 @@ class TeamPluginsSection extends StatelessWidget {
     this.onManageGlobal,
   });
 
-  final TeamConfig team;
+  final TeamIdentity team;
   final TeamCubit cubit;
 
   /// Opens global plugin management. When null, falls back to the v1

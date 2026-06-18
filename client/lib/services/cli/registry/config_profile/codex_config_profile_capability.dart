@@ -212,7 +212,7 @@ final class CodexConfigProfileCapability implements ConfigProfileCapability {
   }
 
   static String _resolveCodexEffort({
-    required TeamConfig? team,
+    required TeamIdentity? team,
     required TeamMemberConfig? member,
     required AppProviderConfig provider,
     String? profileEffort,

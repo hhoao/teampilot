@@ -166,7 +166,7 @@ void main() {
         extensionMcpContributor: (teamId) async => [_extServer],
       );
 
-      const team = TeamConfig(
+      const team = TeamIdentity(
         id: 't',
         name: 'T',
         members: [TeamMemberConfig(id: 'm', name: 'm')],
@@ -209,7 +209,7 @@ void main() {
         extensionMcpContributor: (teamId) async => [_extServer],
       );
 
-      const team = TeamConfig(
+      const team = TeamIdentity(
         id: 't',
         name: 'T',
         members: [TeamMemberConfig(id: 'm', name: 'm')],

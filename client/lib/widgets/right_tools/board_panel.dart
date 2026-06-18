@@ -16,7 +16,7 @@ import '../../services/team_bus/tasks/team_task.dart';
 class BoardPanel extends StatefulWidget {
   const BoardPanel({required this.team, required this.cwd, super.key});
 
-  final TeamConfig team;
+  final TeamIdentity team;
   final String cwd;
 
   @override

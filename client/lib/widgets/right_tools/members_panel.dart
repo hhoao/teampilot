@@ -35,7 +35,7 @@ class MembersPanel extends StatelessWidget {
     super.key,
   });
 
-  final TeamConfig team;
+  final TeamIdentity team;
   final List<TeamMemberConfig> members;
   final Map<String, MemberPresence> memberPresence;
   final String selectedMemberId;

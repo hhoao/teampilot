@@ -116,14 +116,14 @@ class TeamConfigPage extends StatelessWidget {
   final TeamConfigSection section;
   final String? memberId;
 
-  String? _memberRouteId(TeamConfig team, {String? preferred}) {
+  String? _memberRouteId(TeamIdentity team, {String? preferred}) {
     if (team.members.isEmpty) return null;
     final sid = preferred;
     if (sid != null && team.members.any((m) => m.id == sid)) return sid;
     return team.members.first.id;
   }
 
-  String? _effectiveMemberId(TeamConfig team) {
+  String? _effectiveMemberId(TeamIdentity team) {
     if (section != TeamConfigSection.members) return null;
     return _memberRouteId(team, preferred: memberId);
   }

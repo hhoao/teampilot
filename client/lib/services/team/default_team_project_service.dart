@@ -19,7 +19,7 @@ abstract final class DefaultTeamProjectService {
 
   static Future<void> seed(
     SessionRepository repository,
-    TeamConfig team,
+    TeamIdentity team,
   ) async {
     final root = AppStorage.cwd.trim();
     if (root.isEmpty) {

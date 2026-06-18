@@ -38,7 +38,7 @@ void main() {
 
   test('team scope resolves from team.skillIds; unknown ids are dropped', () {
     final scope = TeamResourceScope(
-      team: const TeamConfig(id: 't', name: 'T', skillIds: ['b', 'missing']),
+      team: const TeamIdentity(id: 't', name: 'T', skillIds: ['b', 'missing']),
     );
     final set = resolver.resolve(scope: scope, catalog: catalog);
     expect(set.of(ResourceKind.skill).map((r) => r.linkName), ['skill-b']);

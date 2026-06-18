@@ -16,12 +16,12 @@ class PersonalResourceScope extends ResourceScope {
   final ProjectProfile profile;
 }
 
-/// Native or mixed team mode: enable lists come from [TeamConfig].
+/// Native or mixed team mode: enable lists come from [TeamIdentity].
 /// Members inherit the team set (there is no per-member skill list), so
 /// [member] is carried only for future per-kind needs.
 class TeamResourceScope extends ResourceScope {
   const TeamResourceScope({required this.team, this.member});
-  final TeamConfig team;
+  final TeamIdentity team;
   final TeamMemberConfig? member;
 }
 

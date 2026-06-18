@@ -15,7 +15,7 @@ import '../../services/team_bus/team_bus.dart';
 class MailboxPanel extends StatefulWidget {
   const MailboxPanel({required this.team, required this.cwd, super.key});
 
-  final TeamConfig team;
+  final TeamIdentity team;
   final String cwd;
 
   @override

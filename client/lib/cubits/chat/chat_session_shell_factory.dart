@@ -53,7 +53,7 @@ class ChatSessionShellFactory {
   String _resolveExecutableFor(CliTool cli) =>
       _cliExecutableResolver?.call(cli) ?? _executableResolver();
 
-  CliTool cliForMember(TeamConfig team, String memberId) {
+  CliTool cliForMember(TeamIdentity team, String memberId) {
     for (final m in team.members) {
       if (m.id == memberId) return m.cliWithin(team);
     }

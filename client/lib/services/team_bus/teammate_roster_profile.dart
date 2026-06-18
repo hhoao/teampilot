@@ -46,7 +46,7 @@ class TeammateRosterProfile {
 
   factory TeammateRosterProfile.fromMember({
     required TeamMemberConfig member,
-    required TeamConfig team,
+    required TeamIdentity team,
     required String cliTeamName,
     required String cwd,
     String? taskId,

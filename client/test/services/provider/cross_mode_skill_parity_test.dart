@@ -71,7 +71,7 @@ void main() {
         teamId: 'tn',
         cliTeamName: 'tn-1',
         cli: CliTool.flashskyai,
-        team: const TeamConfig(
+        team: const TeamIdentity(
           id: 'tn',
           name: 'TN',
           cli: CliTool.flashskyai,
@@ -87,7 +87,7 @@ void main() {
         cliTeamName: 'tm-1',
         cli: CliTool.flashskyai,
         member: mixedMember,
-        team: const TeamConfig(
+        team: const TeamIdentity(
           id: 'tm',
           name: 'TM',
           cli: CliTool.flashskyai,

@@ -94,7 +94,7 @@ final class ClaudeConfigProfileCapability implements ConfigProfileCapability {
       );
 
   Future<ClaudeLaunchExtras> resolveLaunchExtras({
-    required TeamConfig team,
+    required TeamIdentity team,
     required TeamMemberConfig? member,
     required ClaudeProviderSettingsResolver resolver,
   }) async {
@@ -472,7 +472,7 @@ final class ClaudeConfigProfileCapability implements ConfigProfileCapability {
     required LaunchProfileScope scope,
     required TeamMemberConfig member,
     required Map<String, Object?>? providerSettings,
-    required TeamConfig? team,
+    required TeamIdentity? team,
     required String effortLevel,
   }) async {
     await MemberRoleProvision.syncRolePromptFile(
@@ -625,7 +625,7 @@ final class ClaudeConfigProfileCapability implements ConfigProfileCapability {
   Future<void> _writeMemberProfiles({
     required ConfigProfileDelegate delegate,
     required LaunchProfileScope scope,
-    required TeamConfig? team,
+    required TeamIdentity? team,
     required List<TeamMemberConfig> members,
     required TeamMemberConfig? launchedMember,
     required Map<String, Object?>? providerSettings,
@@ -663,7 +663,7 @@ final class ClaudeConfigProfileCapability implements ConfigProfileCapability {
   Future<void> _writeMemberProfile({
     required ConfigProfileDelegate delegate,
     required LaunchProfileScope scope,
-    required TeamConfig? team,
+    required TeamIdentity? team,
     required TeamMemberConfig member,
     required Map<String, Object?>? providerSettings,
     required bool forceTeamLeadDelegateMode,
@@ -727,7 +727,7 @@ final class ClaudeConfigProfileCapability implements ConfigProfileCapability {
 
   Future<Map<String, Map<String, Object?>>> _loadMemberProviderSettings({
     required ClaudeProviderSettingsResolver resolver,
-    required TeamConfig team,
+    required TeamIdentity team,
     required Map<String, Object?>? teamClaudeSettings,
     required TeamMemberConfig? launchedMember,
   }) async {
@@ -794,7 +794,7 @@ final class ClaudeConfigProfileCapability implements ConfigProfileCapability {
   }
 
   static String _resolveClaudeEffort({
-    required TeamConfig? team,
+    required TeamIdentity? team,
     required TeamMemberConfig? member,
     required String model,
     String? profileEffort,

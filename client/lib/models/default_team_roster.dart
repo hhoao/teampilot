@@ -42,21 +42,21 @@ abstract final class DefaultTeamRoster {
         name: TeamMemberNaming.teamLeadName,
         prompt: teamLeadPrompt,
         joinedAt: ts,
-        activePresetId: TeamConfig.inheritPresetId,
+        activePresetId: TeamIdentity.inheritPresetId,
       ),
       TeamMemberConfig(
         id: developerMemberId,
         name: developerName,
         prompt: developerPrompt,
         joinedAt: ts,
-        activePresetId: TeamConfig.inheritPresetId,
+        activePresetId: TeamIdentity.inheritPresetId,
       ),
       TeamMemberConfig(
         id: reviewerMemberId,
         name: reviewerName,
         prompt: reviewerPrompt,
         joinedAt: ts,
-        activePresetId: TeamConfig.inheritPresetId,
+        activePresetId: TeamIdentity.inheritPresetId,
       ),
     ];
   }

@@ -310,7 +310,7 @@ void main() {
     });
 
     test('materializes tab when selectedMemberId is empty', () async {
-      const team = TeamConfig(
+      const team = TeamIdentity(
         id: 'team-a',
         name: 'A',
         members: [TeamMemberConfig(id: 'm-lead', name: 'team-lead')],
@@ -337,7 +337,7 @@ void main() {
         postFrameScheduler: postFrame.scheduler,
       );
       addTearDown(cubit.close);
-      const team = TeamConfig(
+      const team = TeamIdentity(
         id: 'team-a',
         name: 'A',
         cli: CliTool.claude,
@@ -354,7 +354,7 @@ void main() {
       'openSessionTab starts all members when auto-launch enabled',
       () async {
         final fakeSessions = <_FakeTerminalSession>[];
-        const team = TeamConfig(
+        const team = TeamIdentity(
           id: 'team-a',
           name: 'A',
           members: [
@@ -409,7 +409,7 @@ void main() {
     test(
       'closeTabsForProject counts and terminates a project\'s open tabs',
       () async {
-        const team = TeamConfig(
+        const team = TeamIdentity(
           id: 'team-a',
           name: 'A',
           members: [TeamMemberConfig(id: 'm-lead', name: 'team-lead')],
@@ -474,7 +474,7 @@ void main() {
           autoLaunchAllMembersOnConnect: () => true,
         );
         addTearDown(cubit.close);
-        const team = TeamConfig(
+        const team = TeamIdentity(
           id: 'team-a',
           name: 'A',
           members: [
@@ -500,7 +500,7 @@ void main() {
       'mixed openSessionTab seeds member shell with member cli executable',
       () async {
         final fakeSessions = <_FakeTerminalSession>[];
-        const team = TeamConfig(
+        const team = TeamIdentity(
           id: 'team-a',
           name: 'A',
           cli: CliTool.flashskyai,
@@ -556,7 +556,7 @@ void main() {
       'mixed openSessionTab auto-connects team-lead',
       () async {
         final fakeSessions = <_FakeTerminalSession>[];
-        const team = TeamConfig(
+        const team = TeamIdentity(
           id: 'team-a',
           name: 'A',
           teamMode: TeamMode.mixed,
@@ -611,7 +611,7 @@ void main() {
       'mixed openSessionTab does not connect non-lead until user connect',
       () async {
         final fakeSessions = <_FakeTerminalSession>[];
-        const team = TeamConfig(
+        const team = TeamIdentity(
           id: 'team-a',
           name: 'A',
           teamMode: TeamMode.mixed,
@@ -672,7 +672,7 @@ void main() {
       () async {
         final scheduled = <void Function()>[];
         final fakeSessions = <_FakeTerminalSession>[];
-        const team = TeamConfig(
+        const team = TeamIdentity(
           id: 'team-a',
           name: 'A',
           members: [
@@ -726,7 +726,7 @@ void main() {
     test(
       'openMemberTab reuses existing team project when workspace cwd is set',
       () async {
-        const team = TeamConfig(
+        const team = TeamIdentity(
           id: 'team-default',
           name: 'Default Team',
           members: [TeamMemberConfig(id: 'team-lead', name: 'team-lead')],

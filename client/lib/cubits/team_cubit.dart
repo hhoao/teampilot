@@ -141,7 +141,7 @@ class TeamCubit extends Cubit<TeamState> implements TeamCubitHost {
   }
 
   @override
-  Future<void> saveTeams(List<TeamConfig> teams) =>
+  Future<void> saveTeams(List<TeamIdentity> teams) =>
       _repository.saveTeams(teams);
 
   // ===== Launch / preview (delegated) =====
@@ -219,7 +219,7 @@ class TeamCubit extends Cubit<TeamState> implements TeamCubitHost {
     if (targetIndex > oldIndex) targetIndex -= 1;
     if (oldIndex == targetIndex) return;
 
-    final reordered = List<TeamConfig>.of(teams);
+    final reordered = List<TeamIdentity>.of(teams);
     final moved = reordered.removeAt(oldIndex);
     reordered.insert(targetIndex, moved);
     final stamped = [
@@ -275,7 +275,7 @@ class TeamCubit extends Cubit<TeamState> implements TeamCubitHost {
       trimmed,
       state.teams.map((t) => t.id),
     );
-    final team = TeamConfig(
+    final team = TeamIdentity(
       id: teamId,
       name: trimmed,
       description: description.trim(),
@@ -338,7 +338,7 @@ class TeamCubit extends Cubit<TeamState> implements TeamCubitHost {
     final roster = members.isEmpty
         ? TeamMemberNaming.defaultRoster(joinedAt: now)
         : members;
-    final team = TeamConfig(
+    final team = TeamIdentity(
       id: teamId,
       name: displayName,
       description: description,
@@ -366,7 +366,7 @@ class TeamCubit extends Cubit<TeamState> implements TeamCubitHost {
     return team.id;
   }
 
-  Future<void> _seedDefaultProject(TeamConfig team) async {
+  Future<void> _seedDefaultProject(TeamIdentity team) async {
     await DefaultTeamProjectService.seed(_sessionRepository, team);
     await _reloadProjects();
   }
@@ -414,7 +414,7 @@ class TeamCubit extends Cubit<TeamState> implements TeamCubitHost {
     if (trimmed.isEmpty) return;
 
     var changed = false;
-    final teams = <TeamConfig>[];
+    final teams = <TeamIdentity>[];
     for (final team in state.teams) {
       if (team.cli != CliTool.claude) {
         teams.add(team);
@@ -438,7 +438,7 @@ class TeamCubit extends Cubit<TeamState> implements TeamCubitHost {
     await _repository.saveTeams(teams);
   }
 
-  Future<void> updateSelected(TeamConfig updated) async {
+  Future<void> updateSelected(TeamIdentity updated) async {
     final selected = state.selectedTeam;
     if (selected == null) return;
     final pluginsChanged = !listEquals(selected.pluginIds, updated.pluginIds);
@@ -555,7 +555,7 @@ class TeamCubit extends Cubit<TeamState> implements TeamCubitHost {
   /// Sets the active preset for a member of the selected team.
   ///
   /// [presetId] may be a preset UUID ([CliPreset.id]),
-  /// [TeamConfig.inheritPresetId] to inherit the team default, `null` (clear),
+  /// [TeamIdentity.inheritPresetId] to inherit the team default, `null` (clear),
   /// or empty (clear).
   ///
   /// In [TeamMode.mixed], pass [syncCli] when selecting an explicit preset so
@@ -577,7 +577,7 @@ class TeamCubit extends Cubit<TeamState> implements TeamCubitHost {
         : presetId.trim();
     final syncCliFromPreset = team.teamMode == TeamMode.mixed &&
         effectiveId != null &&
-        effectiveId != TeamConfig.inheritPresetId &&
+        effectiveId != TeamIdentity.inheritPresetId &&
         syncCli != null;
     await updateMember(
       memberId,
@@ -606,7 +606,7 @@ class TeamCubit extends Cubit<TeamState> implements TeamCubitHost {
   Future<void> renameLlmProviderReference(String from, String to) async {
     if (from == to) return;
     var changed = false;
-    final teams = <TeamConfig>[];
+    final teams = <TeamIdentity>[];
     for (final team in state.teams) {
       var teamChanged = false;
       final members = <TeamMemberConfig>[];

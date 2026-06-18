@@ -8,12 +8,12 @@ import '../../services/cli/registry/cli_tool_registry.dart';
 import '../home_workspace/project/config/project_cli_config_helpers.dart';
 
 /// Catalog CLI used for provider/model pickers (member override → team default).
-CliTool memberCatalogCliFor(TeamConfig team, TeamMemberConfig member) {
+CliTool memberCatalogCliFor(TeamIdentity team, TeamMemberConfig member) {
   return member.cliWithin(team);
 }
 
 bool memberLaunchIsConfigured({
-  required TeamConfig team,
+  required TeamIdentity team,
   required TeamMemberConfig member,
   required CliToolRegistry registry,
   required CliTool catalogCli,
@@ -33,7 +33,7 @@ bool memberLaunchIsConfigured({
 String memberLaunchConfigLine({
   required AppLocalizations l10n,
   required CliToolRegistry registry,
-  required TeamConfig team,
+  required TeamIdentity team,
   required TeamMemberConfig member,
   required bool configured,
   AppProviderConfig? provider,
@@ -64,7 +64,7 @@ String memberLaunchConfigLine({
 /// custom config (no preset).
 String? memberPresetSummaryLine({
   required AppLocalizations l10n,
-  required TeamConfig team,
+  required TeamIdentity team,
   required TeamMemberConfig member,
   required List<CliPreset> presets,
 }) {
@@ -99,7 +99,7 @@ CliPreset? _findPreset(List<CliPreset> presets, String id) {
 String _rawConfigLine({
   required AppLocalizations l10n,
   required CliToolRegistry registry,
-  required TeamConfig team,
+  required TeamIdentity team,
   required TeamMemberConfig member,
   required bool configured,
   AppProviderConfig? provider,

@@ -19,7 +19,7 @@ class EffortResolveContext {
     this.model = '',
   });
 
-  final TeamConfig? team;
+  final TeamIdentity? team;
   final TeamMemberConfig? member;
   final AppProviderConfig? provider;
   final String model;

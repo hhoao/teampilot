@@ -17,7 +17,7 @@ Future<void> showMemberDetailDialog(
   BuildContext context, {
   required String projectId,
   required String sessionId,
-  required TeamConfig team,
+  required TeamIdentity team,
   required TeamMemberConfig member,
 }) {
   return showDialog<void>(

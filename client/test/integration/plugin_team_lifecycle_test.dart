@@ -57,7 +57,7 @@ void main() {
 
     // 4. Create a team with this plugin enabled
     final teamRepo = TeamRepository(rootDir: p.join(tmp.path, 'teams'));
-    final team = TeamConfig(
+    final team = TeamIdentity(
       id: 'integ-team',
       name: 'Integration Team',
       pluginIds: [plugin.id],

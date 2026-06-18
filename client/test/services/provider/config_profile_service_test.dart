@@ -243,7 +243,7 @@ requires_openai_auth = true
       sessionId: configProfileAdhocSessionId,
       teamId: 'team-a',
       cli: CliTool.codex,
-      team: TeamConfig(
+      team: TeamIdentity(
         id: 'team-a',
         name: 'team-a',
         cli: CliTool.codex,
@@ -297,7 +297,7 @@ base_url = "https://api.example.com/v1"
         teamId: 'team-a',
         cliTeamName: 'sess-mixed-codex',
         cli: CliTool.codex,
-        team: TeamConfig(
+        team: TeamIdentity(
           id: 'team-a',
           name: 'team-a',
           cli: CliTool.codex,
@@ -391,7 +391,7 @@ base_url = "https://api.example.com/v1"
   test('prepareTeamLaunch adds delegate-only hook when team flag is on', () async {
     const sessionId = 'sess-delegate-only';
     const lead = TeamMemberConfig(id: 'team-lead', name: 'team-lead');
-    const team = TeamConfig(
+    const team = TeamIdentity(
       id: 'team-a',
       name: 'agent',
       cli: CliTool.claude,
@@ -505,7 +505,7 @@ base_url = "https://api.example.com/v1"
     () async {
       const sessionId = 'sess-fs-delegate';
       const lead = TeamMemberConfig(id: 'team-lead', name: 'team-lead');
-      const team = TeamConfig(
+      const team = TeamIdentity(
         id: 'team-a',
         name: 'agent',
         cli: CliTool.flashskyai,
@@ -709,7 +709,7 @@ base_url = "https://api.example.com/v1"
       cli: CliTool.claude,
       members: members,
       workingDirectory: '/ws',
-      team: const TeamConfig(
+      team: const TeamIdentity(
         id: 'team-a',
         name: 'team-a',
         description: 'Research squad',
@@ -750,7 +750,7 @@ base_url = "https://api.example.com/v1"
           name: 'developer',
           model: 'sonnet',
         ),
-        team: TeamConfig(
+        team: TeamIdentity(
           id: 'team-a',
           name: 'team-a',
           cli: CliTool.claude,

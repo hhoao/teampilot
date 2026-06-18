@@ -403,7 +403,7 @@ void main() {
   test(
     'independent Claude sessions spawn concurrently with distinct agent args',
     () async {
-    const team = TeamConfig(
+    const team = TeamIdentity(
       id: 'team',
       name: 'default-team-0',
       cli: CliTool.claude,
@@ -476,7 +476,7 @@ void main() {
   test(
     'independent flashskyai sessions use --team and --member per member',
     () async {
-    const team = TeamConfig(
+    const team = TeamIdentity(
       id: 'team',
       name: 'default-team-0',
       cli: CliTool.flashskyai,
@@ -901,7 +901,7 @@ void main() {
       await handle.outputController.close();
     });
 
-    const team = TeamConfig(
+    const team = TeamIdentity(
       id: 'team',
       name: 'default-team-0',
       cli: CliTool.flashskyai,

@@ -56,7 +56,7 @@ void main() {
 
   group('CursorConfigProfileCapability', () {
     test('standalone contributes CURSOR_CONFIG_DIR only', () async {
-      const team = TeamConfig(id: 'team-a', name: 'agent', cli: CliTool.cursor);
+      const team = TeamIdentity(id: 'team-a', name: 'agent', cli: CliTool.cursor);
       final scope = resolveLaunchProfileScope(
         projectId: 'project-1',
         teamId: 'team-a',
@@ -138,7 +138,7 @@ void main() {
     });
 
     test('mixed pre-provisions workspace trust under member home', () async {
-      const team = TeamConfig(
+      const team = TeamIdentity(
         id: 'team-a',
         name: 'agent',
         cli: CliTool.cursor,
@@ -172,7 +172,7 @@ void main() {
 
     test('mixed contributes HOME and not CURSOR_CONFIG_DIR or plugin dir key',
         () async {
-      const team = TeamConfig(
+      const team = TeamIdentity(
         id: 'team-a',
         name: 'agent',
         cli: CliTool.cursor,
@@ -203,7 +203,7 @@ void main() {
 
     test('mixed warns when provider, credentials, and bus port are missing',
         () async {
-      const team = TeamConfig(
+      const team = TeamIdentity(
         id: 'team-a',
         name: 'agent',
         cli: CliTool.cursor,
@@ -240,7 +240,7 @@ void main() {
           config: {},
         ),
       ]);
-      const team = TeamConfig(
+      const team = TeamIdentity(
         id: 'team-a',
         name: 'agent',
         cli: CliTool.cursor,
@@ -268,7 +268,7 @@ void main() {
     });
 
     test('mixed provisions bus overlay under member home when port set', () async {
-      const team = TeamConfig(
+      const team = TeamIdentity(
         id: 'team-a',
         name: 'agent',
         cli: CliTool.cursor,

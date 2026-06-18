@@ -9,7 +9,7 @@ import 'team_cubit_host.dart';
 import 'team_resource_sync_service.dart';
 
 typedef TeamLauncher =
-    Future<void> Function(TeamConfig team, TeamMemberConfig member);
+    Future<void> Function(TeamIdentity team, TeamMemberConfig member);
 typedef CliExecutableResolver = String Function(CliTool cli);
 
 /// Builds launch environments and previews, and drives single-member /
@@ -41,7 +41,7 @@ class TeamLaunchService {
   }
 
   Future<Map<String, String>?> _buildLaunchEnvironment(
-    TeamConfig team, {
+    TeamIdentity team, {
     TeamMemberConfig? member,
   }) async {
     final plan = await _lifecycle.prepareLaunch(
@@ -59,7 +59,7 @@ class TeamLaunchService {
     return plan.env.isEmpty ? null : plan.env;
   }
 
-  Future<void> _runLaunch(TeamConfig team, TeamMemberConfig member) async {
+  Future<void> _runLaunch(TeamIdentity team, TeamMemberConfig member) async {
     final env = await _buildLaunchEnvironment(team, member: member);
     final launch =
         _launcher ??

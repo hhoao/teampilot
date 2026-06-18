@@ -4,7 +4,7 @@ import 'package:teampilot/services/cli/cli_tool_adapter.dart';
 import 'package:teampilot/services/session/member_role_provision.dart';
 
 void main() {
-  const team = TeamConfig(id: 't', name: 'agent', cli: CliTool.cursor);
+  const team = TeamIdentity(id: 't', name: 'agent', cli: CliTool.cursor);
 
   test('fresh launch: --workspace, --model, --force, identity prompt last', () {
     const member = TeamMemberConfig(
@@ -72,7 +72,7 @@ void main() {
   });
 
   test('mixed: no plugin-dir, identity NOT seeded as initial prompt', () {
-    const mixedTeam = TeamConfig(
+    const mixedTeam = TeamIdentity(
       id: 't',
       name: 'agent',
       cli: CliTool.cursor,

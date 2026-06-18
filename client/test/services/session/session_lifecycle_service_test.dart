@@ -99,7 +99,7 @@ void main() {
     () async {
       final plan = await service().prepareLaunch(
         session: _session(),
-        team: const TeamConfig(
+        team: const TeamIdentity(
           id: 'team-a',
           name: 'Team A',
           cli: CliTool.claude,
@@ -130,7 +130,7 @@ void main() {
     () async {
       final plan = await service().prepareLaunch(
         session: _session(),
-        team: const TeamConfig(
+        team: const TeamIdentity(
           id: 'team-a',
           name: 'Team A',
           cli: CliTool.flashskyai,
@@ -170,7 +170,7 @@ void main() {
       const member = TeamMemberConfig(id: 'planner', name: 'Planner');
       final plan = await service().prepareLaunch(
         session: _session(id: 'mixed-session'),
-        team: const TeamConfig(
+        team: const TeamIdentity(
           id: 'team-a',
           name: 'Team A',
           cli: CliTool.cursor,
@@ -201,7 +201,7 @@ void main() {
       // no --session-id), and the conversation is treated as fresh.
       final plan = await service().prepareLaunch(
         session: _session(),
-        team: const TeamConfig(
+        team: const TeamIdentity(
           id: 'team-a',
           name: 'Team A',
           cli: CliTool.cursor,
@@ -230,7 +230,7 @@ void main() {
       );
       final plan = await service().prepareLaunch(
         session: _session(id: 'mixed-session'),
-        team: const TeamConfig(
+        team: const TeamIdentity(
           id: 'team-a',
           name: 'Team A',
           cli: CliTool.flashskyai,
@@ -300,7 +300,7 @@ void main() {
       );
       final plan = await service().prepareLaunch(
         session: session,
-        team: const TeamConfig(
+        team: const TeamIdentity(
           id: 'team-a',
           name: 'Team A',
           cli: CliTool.flashskyai,
@@ -358,7 +358,7 @@ void main() {
     );
     final plan = await service().prepareLaunch(
       session: session,
-      team: const TeamConfig(
+      team: const TeamIdentity(
         id: 'team-a',
         name: 'Team A',
         cli: CliTool.flashskyai,
@@ -407,7 +407,7 @@ void main() {
       );
       final plan = await service().prepareLaunch(
         session: session,
-        team: const TeamConfig(
+        team: const TeamIdentity(
           id: 'team-a',
           name: 'Team A',
           cli: CliTool.flashskyai,
@@ -435,7 +435,7 @@ void main() {
       ]);
       final plan = await service().prepareLaunch(
         session: _session(id: 'claude-session-1'),
-        team: const TeamConfig(
+        team: const TeamIdentity(
           id: 'team-a',
           name: 'Team A',
           cli: CliTool.claude,

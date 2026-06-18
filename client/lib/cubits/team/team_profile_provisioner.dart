@@ -55,7 +55,7 @@ class TeamProfileProvisioner {
     await profileService.ensureTeamProfile(teamId, cli: cli);
   }
 
-  Future<void> ensureForTeams(List<TeamConfig> teams) async {
+  Future<void> ensureForTeams(List<TeamIdentity> teams) async {
     final profileService = await service();
     for (final team in teams) {
       await profileService.ensureTeamProfile(team.id, cli: team.cli);
