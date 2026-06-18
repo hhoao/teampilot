@@ -52,7 +52,7 @@ class ProjectInfoSection extends StatelessWidget {
                 _ProjectSettingsInlineRow(
                   label: l10n.projectDisplayName,
                   value: live.localizedName(l10n),
-                  onEdit: () => showRenameHomeWorkspaceProjectDialog(
+                  onEdit: () => showRenameWorkspaceDialog(
                     context,
                     live,
                     title: l10n.projectDisplayName,
@@ -141,7 +141,7 @@ class ProjectConfigDangerZone extends StatelessWidget {
         body: Align(
           alignment: Alignment.centerLeft,
           child: OutlinedButton.icon(
-            onPressed: () => confirmDeleteHomeWorkspaceProject(context, project),
+            onPressed: () => confirmDeleteWorkspace(context, project),
             icon: Icon(
               Icons.delete_outline,
               size: context.appIconSizes.md,

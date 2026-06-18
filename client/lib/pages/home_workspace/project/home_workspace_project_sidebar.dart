@@ -29,9 +29,9 @@ import '../../../widgets/sidebar_session_tile.dart';
 import 'project_search_dialog.dart';
 import 'project_session_actions.dart';
 
-/// Shared resize limits for [HomeWorkspaceProjectSidebar].
-class HomeWorkspaceProjectSidebarLayout {
-  const HomeWorkspaceProjectSidebarLayout._();
+/// Shared resize limits for [WorkspaceSidebar].
+class WorkspaceSidebarLayout {
+  const WorkspaceSidebarLayout._();
 
   static const double defaultWidth = 280;
   static const double minWidth = 220;
@@ -39,8 +39,8 @@ class HomeWorkspaceProjectSidebarLayout {
 }
 
 /// Project conversation sidebar (personal and team workbenches).
-class HomeWorkspaceProjectSidebar extends StatefulWidget {
-  const HomeWorkspaceProjectSidebar({
+class WorkspaceSidebar extends StatefulWidget {
+  const WorkspaceSidebar({
     required this.project,
     required this.isPersonalProject,
     required this.identityId,
@@ -56,12 +56,12 @@ class HomeWorkspaceProjectSidebar extends StatefulWidget {
   final String sessionTeamFilter;
 
   @override
-  State<HomeWorkspaceProjectSidebar> createState() =>
-      _HomeWorkspaceProjectSidebarState();
+  State<WorkspaceSidebar> createState() =>
+      _WorkspaceSidebarState();
 }
 
-class _HomeWorkspaceProjectSidebarState
-    extends State<HomeWorkspaceProjectSidebar> {
+class _WorkspaceSidebarState
+    extends State<WorkspaceSidebar> {
   static const _emptySessions = <AppSession>[];
 
   bool get _isPersonal => widget.isPersonalProject;

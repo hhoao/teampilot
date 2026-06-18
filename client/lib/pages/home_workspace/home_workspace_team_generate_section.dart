@@ -7,8 +7,8 @@ typedef TeamDescriptionChanged = void Function(String description);
 /// AI description input inside the new-team dialog. The dialog owns generation,
 /// mode selection, and the primary "生成" action; this widget only collects the
 /// description and renders streaming progress.
-class HomeWorkspaceTeamGenerateSection extends StatefulWidget {
-  const HomeWorkspaceTeamGenerateSection({
+class HomeTeamGenerateSection extends StatefulWidget {
+  const HomeTeamGenerateSection({
     required this.onDescriptionChanged,
     this.enabled = true,
     this.progress,
@@ -22,12 +22,12 @@ class HomeWorkspaceTeamGenerateSection extends StatefulWidget {
   final TeamDescriptionChanged onDescriptionChanged;
 
   @override
-  State<HomeWorkspaceTeamGenerateSection> createState() =>
-      _HomeWorkspaceTeamGenerateSectionState();
+  State<HomeTeamGenerateSection> createState() =>
+      _HomeTeamGenerateSectionState();
 }
 
-class _HomeWorkspaceTeamGenerateSectionState
-    extends State<HomeWorkspaceTeamGenerateSection> {
+class _HomeTeamGenerateSectionState
+    extends State<HomeTeamGenerateSection> {
   final _controller = TextEditingController();
 
   @override

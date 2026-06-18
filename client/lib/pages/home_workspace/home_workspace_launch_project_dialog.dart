@@ -26,7 +26,7 @@ class LaunchProjectChoice {
 }
 
 /// Asks which identity to open a project as. Returns null on cancel.
-Future<LaunchProjectChoice?> showHomeWorkspaceLaunchProjectDialog(
+Future<LaunchProjectChoice?> showHomeLaunchWorkspaceDialog(
   BuildContext context, {
   required String projectName,
   required List<LaunchProjectIdentityOption> identities,

@@ -31,7 +31,7 @@ class ProjectMcpSection extends StatelessWidget {
     }
 
     final l10n = context.l10n;
-    void onManage() => context.go(HomeWorkspaceGlobalView.mcp.homeLocation);
+    void onManage() => context.go(HomeGlobalView.mcp.homeLocation);
     final isDark = Theme.of(context).brightness == Brightness.dark;
     final textBase = isDark ? Colors.white : const Color(0xFF111827);
     final mcpState = context.watch<McpCubit>().state;

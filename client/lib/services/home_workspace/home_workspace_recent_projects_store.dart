@@ -4,8 +4,8 @@ import '../io/filesystem.dart';
 import '../storage/app_storage.dart';
 
 /// Persists recently opened project ids (most recent first).
-class HomeWorkspaceRecentProjectsStore {
-  HomeWorkspaceRecentProjectsStore({Filesystem? fs, String? pathOverride})
+class HomeRecentWorkspacesStore {
+  HomeRecentWorkspacesStore({Filesystem? fs, String? pathOverride})
       : _fsOverride = fs,
         _pathOverride = pathOverride;
 

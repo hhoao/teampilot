@@ -90,9 +90,9 @@ final appRouter = GoRouter(
           OnboardingGate(child: StartupGate(child: child)),
       routes: [
         // Apifox-style workspace home — title bar + open project tabs live in
-        // [HomeWorkspaceShell]; routed pages render only the body below it.
+        // [HomeShell]; routed pages render only the body below it.
         ShellRoute(
-          builder: (context, state, child) => HomeWorkspaceShell(
+          builder: (context, state, child) => HomeShell(
             location: state.uri.toString(),
             child: child,
           ),
@@ -102,13 +102,13 @@ final appRouter = GoRouter(
               pageBuilder: (context, state) {
                 final query = state.uri.queryParameters;
                 return NoTransitionPage(
-                  child: HomeWorkspacePage(
+                  child: HomePage(
                     initialSection: TeamConfigSection.fromSegment(
                       query['section'],
                     ),
                     initialMemberId: query['member'],
-                    initialGlobalView: HomeWorkspaceGlobalView.fromSegment(
-                      query[HomeWorkspaceGlobalView.globalQueryParam],
+                    initialGlobalView: HomeGlobalView.fromSegment(
+                      query[HomeGlobalView.globalQueryParam],
                     ),
                   ),
                 );
@@ -135,7 +135,7 @@ final appRouter = GoRouter(
               pageBuilder: (context, state) {
                 final query = state.uri.queryParameters;
                 return NoTransitionPage(
-                  child: HomeWorkspaceProjectPage(
+                  child: WorkspacePage(
                     projectId: state.pathParameters['projectId']!,
                     identity: LaunchIdentity.decode(query['as']),
                     view: query['view'],

@@ -18,20 +18,20 @@ import 'home_workspace_project_section.dart';
 import 'project_icon_settings_row.dart';
 
 /// Apifox-style project settings: section nav + scrollable detail cards.
-class HomeWorkspaceProjectSettingsView extends StatefulWidget {
-  const HomeWorkspaceProjectSettingsView({required this.project, super.key});
+class WorkspaceSettingsView extends StatefulWidget {
+  const WorkspaceSettingsView({required this.project, super.key});
 
   final AppProject project;
 
   static const double navWidth = 220;
 
   @override
-  State<HomeWorkspaceProjectSettingsView> createState() =>
-      _HomeWorkspaceProjectSettingsViewState();
+  State<WorkspaceSettingsView> createState() =>
+      _WorkspaceSettingsViewState();
 }
 
-class _HomeWorkspaceProjectSettingsViewState
-    extends State<HomeWorkspaceProjectSettingsView> {
+class _WorkspaceSettingsViewState
+    extends State<WorkspaceSettingsView> {
   ProjectSettingsSection _section = ProjectSettingsSection.basic;
 
   @override
@@ -55,7 +55,7 @@ class _HomeWorkspaceProjectSettingsViewState
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
           Container(
-            width: HomeWorkspaceProjectSettingsView.navWidth,
+            width: WorkspaceSettingsView.navWidth,
             decoration: BoxDecoration(
               border: Border(
                 right: BorderSide(
@@ -147,7 +147,7 @@ class _ProjectSettingsBasicSection extends StatelessWidget {
               _ProjectSettingsInlineRow(
                 label: l10n.projectDisplayName,
                 value: project.localizedName(l10n),
-                onEdit: () => showRenameHomeWorkspaceProjectDialog(
+                onEdit: () => showRenameWorkspaceDialog(
                   context,
                   project,
                   title: l10n.projectDisplayName,
@@ -233,7 +233,7 @@ class _ProjectSettingsDangerSection extends StatelessWidget {
               backgroundColor: cs.error,
               foregroundColor: cs.onError,
             ),
-            onPressed: () => confirmDeleteHomeWorkspaceProject(context, project),
+            onPressed: () => confirmDeleteWorkspace(context, project),
             child: Text(l10n.deleteProject),
           ),
         ),

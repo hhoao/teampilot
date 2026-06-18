@@ -17,7 +17,7 @@ void main() {
           body: Center(
             child: ElevatedButton(
               onPressed: () async {
-                result = await showHomeWorkspaceLaunchProjectDialog(
+                result = await showHomeLaunchWorkspaceDialog(
                   context,
                   projectName: 'Repo',
                   identities: const <LaunchProjectIdentityOption>[

@@ -26,8 +26,8 @@ import '../../team_config/team_config_section.dart';
 
 /// Project configuration workspace — identity-driven sections for personal and
 /// team launch identities.
-class HomeWorkspaceProjectConfigWorkspace extends StatefulWidget {
-  const HomeWorkspaceProjectConfigWorkspace({
+class WorkspaceConfigPanel extends StatefulWidget {
+  const WorkspaceConfigPanel({
     required this.project,
     required this.identityId,
     required this.section,
@@ -39,12 +39,12 @@ class HomeWorkspaceProjectConfigWorkspace extends StatefulWidget {
   final ProjectConfigSection section;
 
   @override
-  State<HomeWorkspaceProjectConfigWorkspace> createState() =>
-      _HomeWorkspaceProjectConfigWorkspaceState();
+  State<WorkspaceConfigPanel> createState() =>
+      _WorkspaceConfigPanelState();
 }
 
-class _HomeWorkspaceProjectConfigWorkspaceState
-    extends State<HomeWorkspaceProjectConfigWorkspace> {
+class _WorkspaceConfigPanelState
+    extends State<WorkspaceConfigPanel> {
   String _managePath(ProjectConfigSection section) {
     return Uri(
       path: '/home-v2/project/${widget.project.projectId}',
@@ -56,7 +56,7 @@ class _HomeWorkspaceProjectConfigWorkspaceState
     ).toString();
   }
 
-  void _openGlobalView(HomeWorkspaceGlobalView view) {
+  void _openGlobalView(HomeGlobalView view) {
     context.go(view.homeLocation);
   }
 
@@ -79,7 +79,7 @@ class _HomeWorkspaceProjectConfigWorkspaceState
 
     final body = switch (section) {
       ProjectConfigSection.settings => ProjectInfoSection(project: widget.project),
-      ProjectConfigSection.members when team != null => HomeWorkspaceTeamTab(
+      ProjectConfigSection.members when team != null => HomeTeamTab(
           section: TeamConfigSection.members,
           team: team,
           cubit: identityCubit,
@@ -98,7 +98,7 @@ class _HomeWorkspaceProjectConfigWorkspaceState
           projectId: widget.project.projectId,
           identityId: identity.id,
         ),
-      ProjectConfigSection.skills when team != null => HomeWorkspaceTeamTab(
+      ProjectConfigSection.skills when team != null => HomeTeamTab(
           section: TeamConfigSection.skills,
           team: team,
           cubit: identityCubit,
@@ -109,7 +109,7 @@ class _HomeWorkspaceProjectConfigWorkspaceState
           projectId: widget.project.projectId,
           identityId: identity.id,
         ),
-      ProjectConfigSection.plugins when team != null => HomeWorkspaceTeamTab(
+      ProjectConfigSection.plugins when team != null => HomeTeamTab(
           section: TeamConfigSection.plugins,
           team: team,
           cubit: identityCubit,
@@ -120,7 +120,7 @@ class _HomeWorkspaceProjectConfigWorkspaceState
           projectId: widget.project.projectId,
           identityId: identity.id,
         ),
-      ProjectConfigSection.mcp when team != null => HomeWorkspaceTeamTab(
+      ProjectConfigSection.mcp when team != null => HomeTeamTab(
           section: TeamConfigSection.mcp,
           team: team,
           cubit: identityCubit,
@@ -128,7 +128,7 @@ class _HomeWorkspaceProjectConfigWorkspaceState
         ),
       ProjectConfigSection.extensions when identity is PersonalIdentity =>
         ProjectExtensionsSection(projectId: widget.project.projectId),
-      ProjectConfigSection.extensions when team != null => HomeWorkspaceTeamTab(
+      ProjectConfigSection.extensions when team != null => HomeTeamTab(
           section: TeamConfigSection.extensions,
           team: team,
           cubit: identityCubit,

@@ -2,8 +2,8 @@ import '../models/app_project.dart';
 import '../models/app_session.dart';
 import '../pages/home_workspace/home_workspace_project_sort.dart';
 
-class HomeWorkspaceProjectDisplay {
-  const HomeWorkspaceProjectDisplay({
+class WorkspaceDisplay {
+  const WorkspaceDisplay({
     required this.sortedProjects,
     required this.sessionCounts,
   });
@@ -14,17 +14,17 @@ class HomeWorkspaceProjectDisplay {
 
 /// Sorts [projects] and counts sessions. Returns the previous [cached] result
 /// when all inputs are unchanged (reference equality on lists/maps).
-HomeWorkspaceProjectDisplay computeHomeWorkspaceProjectDisplay({
+WorkspaceDisplay computeWorkspaceDisplay({
   required List<AppProject> projects,
   required List<AppSession> sessions,
-  required HomeWorkspaceProjectSort sort,
+  required WorkspaceSort sort,
   required Set<String> favoriteProjectIds,
   required String Function(AppProject project) displayName,
   bool preserveOrder = false,
-  HomeWorkspaceProjectDisplay? cached,
+  WorkspaceDisplay? cached,
   List<AppProject>? lastProjects,
   List<AppSession>? lastSessions,
-  HomeWorkspaceProjectSort? lastSort,
+  WorkspaceSort? lastSort,
   Set<String>? lastFavorites,
   bool? lastPreserveOrder,
 }) {
@@ -38,7 +38,7 @@ HomeWorkspaceProjectDisplay computeHomeWorkspaceProjectDisplay({
   }
 
   final sessionCounts = homeWorkspaceSessionCountByProjectId(sessions);
-  final sortedProjects = sortHomeWorkspaceProjects(
+  final sortedProjects = sortWorkspaces(
     projects: projects,
     sort: sort,
     favoriteProjectIds: favoriteProjectIds,
@@ -46,7 +46,7 @@ HomeWorkspaceProjectDisplay computeHomeWorkspaceProjectDisplay({
     displayName: displayName,
     preserveOrder: preserveOrder,
   );
-  return HomeWorkspaceProjectDisplay(
+  return WorkspaceDisplay(
     sortedProjects: sortedProjects,
     sessionCounts: sessionCounts,
   );

@@ -12,8 +12,8 @@ import 'home_workspace_team_tab.dart';
 
 /// Right-hand content pane: team header, config tabs (Members / Skills / …),
 /// and the selected team-config section. Read-only — actions show hints.
-class HomeWorkspaceContent extends StatefulWidget {
-  const HomeWorkspaceContent({
+class HomeContent extends StatefulWidget {
+  const HomeContent({
     this.initialSection,
     this.initialMemberId,
     this.onSelectGlobalView,
@@ -28,13 +28,13 @@ class HomeWorkspaceContent extends StatefulWidget {
 
   /// Switches the workspace right pane to a global management view, used by the
   /// embedded team skills/plugins/MCP tabs to jump to global management.
-  final ValueChanged<HomeWorkspaceGlobalView>? onSelectGlobalView;
+  final ValueChanged<HomeGlobalView>? onSelectGlobalView;
 
   @override
-  State<HomeWorkspaceContent> createState() => _HomeWorkspaceContentState();
+  State<HomeContent> createState() => _HomeContentState();
 }
 
-class _HomeWorkspaceContentState extends State<HomeWorkspaceContent> {
+class _HomeContentState extends State<HomeContent> {
   static const _sections = <TeamConfigSection>[
     TeamConfigSection.members,
     TeamConfigSection.skills,
@@ -75,9 +75,9 @@ class _HomeWorkspaceContentState extends State<HomeWorkspaceContent> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          HomeWorkspaceTeamHeader(team: team),
+          HomeTeamHeader(team: team),
           const SizedBox(height: 14),
-          HomeWorkspaceContentTabBar(
+          HomeContentTabBar(
             tabs: tabs,
             selectedIndex: _tabIndex,
             onSelect: (i) => setState(() => _tabIndex = i),
@@ -85,7 +85,7 @@ class _HomeWorkspaceContentState extends State<HomeWorkspaceContent> {
           Divider(height: 1, color: cs.outlineVariant.withValues(alpha: 0.5)),
           const SizedBox(height: 16),
           Expanded(
-            child: HomeWorkspaceTeamTab(
+            child: HomeTeamTab(
               key: ValueKey('home-team-tab-${activeSection.name}'),
               section: activeSection,
               team: team,

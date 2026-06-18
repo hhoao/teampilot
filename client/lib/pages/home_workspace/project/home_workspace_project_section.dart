@@ -1,9 +1,9 @@
 /// Left icon rail sections on the project detail page.
-enum HomeWorkspaceProjectSection {
+enum WorkspaceSection {
   conversations,
   settings,
 
-  /// Personal projects only — [HomeWorkspaceProjectConfigWorkspace] with in-page nav.
+  /// Personal projects only — [WorkspaceConfigPanel] with in-page nav.
   manage,
 
   /// Sub-sections inside [manage]; not top-level rail entries.

@@ -8,7 +8,7 @@ void main() {
   test('round-trips per-project launch prefs', () async {
     final tmp = await Directory.systemTemp.createTemp('launch_prefs_');
     addTearDown(() => tmp.deleteSync(recursive: true));
-    final store = HomeWorkspaceProjectLaunchPrefsStore(
+    final store = WorkspaceLaunchPrefsStore(
       fs: LocalFilesystem(),
       pathOverride: '${tmp.path}/launch-prefs.json',
     );

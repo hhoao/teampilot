@@ -66,7 +66,7 @@ BoxDecoration workspaceCodeDecoration(ColorScheme cs, {double radius = 8}) {
 
 /// Floats [child] as a single rounded card on the workspace page backdrop.
 ///
-/// Used by [HomeWorkspacePage] and [HomeWorkspaceProjectPage] so home and
+/// Used by [HomePage] and [WorkspacePage] so home and
 /// project views share the same outer chrome (padding, shadow, border).
 class WorkspacePageCardShell extends StatelessWidget {
   const WorkspacePageCardShell({
@@ -79,7 +79,7 @@ class WorkspacePageCardShell extends StatelessWidget {
   final Widget child;
   final WorkspacePageChrome chrome;
 
-  /// When true, drops the left inset so a sibling [HomeWorkspaceProjectRail]
+  /// When true, drops the left inset so a sibling [WorkspaceRail]
   /// can sit flush against the card edge.
   final bool omitLeftPadding;
 

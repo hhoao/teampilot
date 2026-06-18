@@ -19,20 +19,20 @@ void main() {
         createdAt: 1,
       );
 
-  test('computeHomeWorkspaceProjectDisplay is stable when inputs unchanged', () {
+  test('computeWorkspaceDisplay is stable when inputs unchanged', () {
     final projects = [project('a', updatedAt: 2), project('b', updatedAt: 1)];
     final sessions = [session('s1', 'a')];
     const favorites = <String>{};
-    const sort = HomeWorkspaceProjectSort.recentlyUpdated;
+    const sort = WorkspaceSort.recentlyUpdated;
 
-    final first = computeHomeWorkspaceProjectDisplay(
+    final first = computeWorkspaceDisplay(
       projects: projects,
       sessions: sessions,
       sort: sort,
       favoriteProjectIds: favorites,
       displayName: (p) => p.projectId,
     );
-    final second = computeHomeWorkspaceProjectDisplay(
+    final second = computeWorkspaceDisplay(
       projects: projects,
       sessions: sessions,
       sort: sort,
@@ -52,18 +52,18 @@ void main() {
     expect(first.sessionCounts['a'], 1);
   });
 
-  test('computeHomeWorkspaceProjectDisplay recomputes when sessions change', () {
+  test('computeWorkspaceDisplay recomputes when sessions change', () {
     final projects = [project('a')];
-    const sort = HomeWorkspaceProjectSort.recentlyUpdated;
+    const sort = WorkspaceSort.recentlyUpdated;
 
-    final before = computeHomeWorkspaceProjectDisplay(
+    final before = computeWorkspaceDisplay(
       projects: projects,
       sessions: const [],
       sort: sort,
       favoriteProjectIds: const {},
       displayName: (p) => p.projectId,
     );
-    final after = computeHomeWorkspaceProjectDisplay(
+    final after = computeWorkspaceDisplay(
       projects: projects,
       sessions: [session('s1', 'a')],
       sort: sort,
@@ -75,14 +75,14 @@ void main() {
     expect(after.sessionCounts['a'], 1);
   });
 
-  test('computeHomeWorkspaceProjectDisplay preserves input order when requested', () {
+  test('computeWorkspaceDisplay preserves input order when requested', () {
     final projects = [
       project('b', updatedAt: 1),
       project('a', updatedAt: 99),
     ];
-    const sort = HomeWorkspaceProjectSort.recentlyUpdated;
+    const sort = WorkspaceSort.recentlyUpdated;
 
-    final display = computeHomeWorkspaceProjectDisplay(
+    final display = computeWorkspaceDisplay(
       projects: projects,
       sessions: const [],
       sort: sort,

@@ -16,8 +16,8 @@ class ProjectLaunchPref {
 
 /// Persists per-project launch choices at
 /// `ui/project-launch-prefs.json` as `{ projectId: {...} }`.
-class HomeWorkspaceProjectLaunchPrefsStore {
-  HomeWorkspaceProjectLaunchPrefsStore({Filesystem? fs, String? pathOverride})
+class WorkspaceLaunchPrefsStore {
+  WorkspaceLaunchPrefsStore({Filesystem? fs, String? pathOverride})
     : _fsOverride = fs,
       _pathOverride = pathOverride;
 

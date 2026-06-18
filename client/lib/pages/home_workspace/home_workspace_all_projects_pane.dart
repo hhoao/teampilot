@@ -15,21 +15,21 @@ import 'home_workspace_project_sort.dart';
 import 'home_workspace_projects_tab.dart';
 
 /// Right-hand pane listing every project (no team filter).
-class HomeWorkspaceAllProjectsPane extends StatefulWidget {
-  const HomeWorkspaceAllProjectsPane({super.key});
+class HomeAllWorkspacesPane extends StatefulWidget {
+  const HomeAllWorkspacesPane({super.key});
 
   @override
-  State<HomeWorkspaceAllProjectsPane> createState() =>
-      _HomeWorkspaceAllProjectsPaneState();
+  State<HomeAllWorkspacesPane> createState() =>
+      _HomeAllWorkspacesPaneState();
 }
 
-class _HomeWorkspaceAllProjectsPaneState
-    extends State<HomeWorkspaceAllProjectsPane> {
-  final _projectFavoritesStore = HomeWorkspaceProjectFavoritesStore();
-  final _displayPrefsStore = HomeWorkspaceProjectDisplayPrefsStore();
+class _HomeAllWorkspacesPaneState
+    extends State<HomeAllWorkspacesPane> {
+  final _projectFavoritesStore = WorkspaceFavoritesStore();
+  final _displayPrefsStore = WorkspaceDisplayPrefsStore();
   Set<String> _favoriteProjectIds = {};
   var _gridView = true;
-  var _projectSort = HomeWorkspaceProjectSort.recentlyUpdated;
+  var _projectSort = WorkspaceSort.recentlyUpdated;
 
   @override
   void initState() {
@@ -56,14 +56,14 @@ class _HomeWorkspaceAllProjectsPaneState
   Future<void> _setGridView(bool gridView) async {
     setState(() => _gridView = gridView);
     await _displayPrefsStore.save(
-      HomeWorkspaceProjectDisplayPrefs(gridView: gridView, sort: _projectSort),
+      WorkspaceDisplayPrefs(gridView: gridView, sort: _projectSort),
     );
   }
 
-  Future<void> _setProjectSort(HomeWorkspaceProjectSort sort) async {
+  Future<void> _setProjectSort(WorkspaceSort sort) async {
     setState(() => _projectSort = sort);
     await _displayPrefsStore.save(
-      HomeWorkspaceProjectDisplayPrefs(gridView: _gridView, sort: sort),
+      WorkspaceDisplayPrefs(gridView: _gridView, sort: sort),
     );
   }
 
@@ -107,7 +107,7 @@ class _HomeWorkspaceAllProjectsPaneState
           Divider(height: 1, color: cs.outlineVariant.withValues(alpha: 0.5)),
           const SizedBox(height: 16),
           Expanded(
-            child: HomeWorkspaceProjectsTab(
+            child: WorkspacesTab(
               projects: projects,
               sessions: sessions,
               gridView: _gridView,

@@ -8,7 +8,7 @@ import '../llm_config/llm_config_workspace.dart';
 import '../team_hub/team_hub_page.dart';
 
 /// Which global management view is shown in the workspace-home right pane.
-enum HomeWorkspaceGlobalView {
+enum HomeGlobalView {
   skills,
   plugins,
   mcp,
@@ -29,7 +29,7 @@ enum HomeWorkspaceGlobalView {
       ).toString();
 
   /// Resolves [globalQueryParam] (e.g. `skills`, `mcp`) back to a view.
-  static HomeWorkspaceGlobalView? fromSegment(String? segment) {
+  static HomeGlobalView? fromSegment(String? segment) {
     final value = segment?.trim();
     if (value == null || value.isEmpty) return null;
     for (final view in values) {
@@ -43,18 +43,18 @@ enum HomeWorkspaceGlobalView {
 /// team Extensions section — inside the workspace-home right pane. Sub-section
 /// navigation stays local (via [onSelectSection] overrides) so it never breaks
 /// out of the home shell.
-class HomeWorkspaceGlobalSection extends StatefulWidget {
-  const HomeWorkspaceGlobalSection({required this.view, super.key});
+class HomeGlobalSection extends StatefulWidget {
+  const HomeGlobalSection({required this.view, super.key});
 
-  final HomeWorkspaceGlobalView view;
+  final HomeGlobalView view;
 
   @override
-  State<HomeWorkspaceGlobalSection> createState() =>
-      _HomeWorkspaceGlobalSectionState();
+  State<HomeGlobalSection> createState() =>
+      _HomeGlobalSectionState();
 }
 
-class _HomeWorkspaceGlobalSectionState
-    extends State<HomeWorkspaceGlobalSection> {
+class _HomeGlobalSectionState
+    extends State<HomeGlobalSection> {
   SkillSection _skill = SkillSection.installed;
   PluginSection _plugin = PluginSection.installed;
   McpSection _mcp = McpSection.installed;
@@ -63,24 +63,24 @@ class _HomeWorkspaceGlobalSectionState
   @override
   Widget build(BuildContext context) {
     return switch (widget.view) {
-      HomeWorkspaceGlobalView.skills => SkillManagementPage(
+      HomeGlobalView.skills => SkillManagementPage(
           section: _skill,
           onSelectSection: (s) => setState(() => _skill = s),
         ),
-      HomeWorkspaceGlobalView.plugins => PluginManagementPage(
+      HomeGlobalView.plugins => PluginManagementPage(
           section: _plugin,
           onSelectSection: (s) => setState(() => _plugin = s),
         ),
-      HomeWorkspaceGlobalView.mcp => McpManagementPage(
+      HomeGlobalView.mcp => McpManagementPage(
           section: _mcp,
           onSelectSection: (s) => setState(() => _mcp = s),
         ),
-      HomeWorkspaceGlobalView.extensions => ExtensionManagementPage(
+      HomeGlobalView.extensions => ExtensionManagementPage(
           section: _extension,
           onSelectSection: (s) => setState(() => _extension = s),
         ),
-      HomeWorkspaceGlobalView.teamHub => const TeamHubPage(),
-      HomeWorkspaceGlobalView.providers => const LlmConfigWorkspace(),
+      HomeGlobalView.teamHub => const TeamHubPage(),
+      HomeGlobalView.providers => const LlmConfigWorkspace(),
     };
   }
 }

@@ -46,13 +46,13 @@ typedef _NewTeamDialogResult = ({
 /// "New Team" row. Mirrors the Apifox project-creation modal: centered title +
 /// close, optional Native / Mixed mode cards (team flows), a named form row,
 /// and a single primary create action.
-Future<void> showHomeWorkspaceNewTeamDialog(
+Future<void> showHomeNewTeamDialog(
   BuildContext context,
   IdentityCubit teamCubit,
 ) async {
   final l10n = context.l10n;
   final result = await showDialog<_NewTeamDialogResult>(
-      context: context, builder: (_) => const HomeWorkspaceNewTeamDialog());
+      context: context, builder: (_) => const HomeNewTeamDialog());
   if (result == null || !context.mounted) return;
   if (result.isSolo) {
     await teamCubit.addPersonal(result.name);
@@ -73,16 +73,16 @@ Future<void> showHomeWorkspaceNewTeamDialog(
   );
 }
 
-class HomeWorkspaceNewTeamDialog extends StatefulWidget {
-  const HomeWorkspaceNewTeamDialog({super.key});
+class HomeNewTeamDialog extends StatefulWidget {
+  const HomeNewTeamDialog({super.key});
 
   @override
-  State<HomeWorkspaceNewTeamDialog> createState() =>
-      _HomeWorkspaceNewTeamDialogState();
+  State<HomeNewTeamDialog> createState() =>
+      _HomeNewTeamDialogState();
 }
 
-class _HomeWorkspaceNewTeamDialogState
-    extends State<HomeWorkspaceNewTeamDialog> {
+class _HomeNewTeamDialogState
+    extends State<HomeNewTeamDialog> {
   late final TextEditingController _nameController;
   _TeamCreationMethod _creationMethod = _TeamCreationMethod.custom;
   TeamMode? _mode;
@@ -463,7 +463,7 @@ class _HomeWorkspaceNewTeamDialogState
             ),
           ] else ...[
             const SizedBox(height: 24),
-            HomeWorkspaceTeamGenerateSection(
+            HomeTeamGenerateSection(
               enabled: _mode != null,
               progress: _genProgress,
               onDescriptionChanged: (v) => setState(() => _aiDescription = v),

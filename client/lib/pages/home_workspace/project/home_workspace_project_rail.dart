@@ -9,8 +9,8 @@ import '../../../cubits/layout_cubit.dart';
 
 /// Narrow vertical icon rail on the left of the project page (mirrors Apifox's
 /// 接口管理 / 自动化测试 / … rail).
-class HomeWorkspaceProjectRail extends StatelessWidget {
-  const HomeWorkspaceProjectRail({
+class WorkspaceRail extends StatelessWidget {
+  const WorkspaceRail({
     required this.section,
     required this.isPersonalProject,
     required this.onSectionChanged,
@@ -18,9 +18,9 @@ class HomeWorkspaceProjectRail extends StatelessWidget {
     super.key,
   });
 
-  final HomeWorkspaceProjectSection section;
+  final WorkspaceSection section;
   final bool isPersonalProject;
-  final ValueChanged<HomeWorkspaceProjectSection> onSectionChanged;
+  final ValueChanged<WorkspaceSection> onSectionChanged;
   final VoidCallback onLogoTap;
 
   static const double width = 58;
@@ -74,12 +74,12 @@ class HomeWorkspaceProjectRail extends StatelessWidget {
       _sectionItem(
         icon: Icons.forum_outlined,
         label: l10n.homeWorkspaceConversations,
-        value: HomeWorkspaceProjectSection.conversations,
+        value: WorkspaceSection.conversations,
       ),
       _sectionItem(
         icon: Icons.tune_outlined,
         label: l10n.homeWorkspaceProjectManagement,
-        value: HomeWorkspaceProjectSection.manage,
+        value: WorkspaceSection.manage,
       ),
     ];
   }
@@ -89,12 +89,12 @@ class HomeWorkspaceProjectRail extends StatelessWidget {
       _sectionItem(
         icon: Icons.forum_outlined,
         label: l10n.homeWorkspaceConversations,
-        value: HomeWorkspaceProjectSection.conversations,
+        value: WorkspaceSection.conversations,
       ),
       _sectionItem(
         icon: Icons.tune_outlined,
         label: l10n.homeWorkspaceProjectManagement,
-        value: HomeWorkspaceProjectSection.manage,
+        value: WorkspaceSection.manage,
       ),
     ];
   }
@@ -102,7 +102,7 @@ class HomeWorkspaceProjectRail extends StatelessWidget {
   Widget _sectionItem({
     required IconData icon,
     required String label,
-    required HomeWorkspaceProjectSection value,
+    required WorkspaceSection value,
   }) {
     return _RailItem(
       icon: icon,

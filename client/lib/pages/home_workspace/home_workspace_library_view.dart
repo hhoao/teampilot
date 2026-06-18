@@ -1,5 +1,5 @@
 /// Right-pane library sections reachable from the workspace home sidebar.
-enum HomeWorkspaceLibraryView {
+enum HomeLibraryView {
   favorites,
   recent,
 }

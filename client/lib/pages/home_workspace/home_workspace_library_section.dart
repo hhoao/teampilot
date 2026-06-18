@@ -16,23 +16,23 @@ import 'home_workspace_library_view.dart';
 import 'home_workspace_projects_tab.dart';
 
 /// Favorites or recently visited projects in the workspace home right pane.
-class HomeWorkspaceLibrarySection extends StatefulWidget {
-  const HomeWorkspaceLibrarySection({required this.view, super.key});
+class HomeLibrarySection extends StatefulWidget {
+  const HomeLibrarySection({required this.view, super.key});
 
-  final HomeWorkspaceLibraryView view;
+  final HomeLibraryView view;
 
   @override
-  State<HomeWorkspaceLibrarySection> createState() =>
-      _HomeWorkspaceLibrarySectionState();
+  State<HomeLibrarySection> createState() =>
+      _HomeLibrarySectionState();
 }
 
-class _HomeWorkspaceLibrarySectionState extends State<HomeWorkspaceLibrarySection> {
-  final _favoritesStore = HomeWorkspaceProjectFavoritesStore();
-  final _recentStore = HomeWorkspaceRecentProjectsStore();
-  final _displayPrefsStore = HomeWorkspaceProjectDisplayPrefsStore();
+class _HomeLibrarySectionState extends State<HomeLibrarySection> {
+  final _favoritesStore = WorkspaceFavoritesStore();
+  final _recentStore = HomeRecentWorkspacesStore();
+  final _displayPrefsStore = WorkspaceDisplayPrefsStore();
   Set<String> _favoriteProjectIds = {};
   List<String> _recentProjectIds = [];
-  var _projectSort = HomeWorkspaceProjectSort.recentlyUpdated;
+  var _projectSort = WorkspaceSort.recentlyUpdated;
 
   @override
   void initState() {
@@ -41,7 +41,7 @@ class _HomeWorkspaceLibrarySectionState extends State<HomeWorkspaceLibrarySectio
   }
 
   @override
-  void didUpdateWidget(covariant HomeWorkspaceLibrarySection oldWidget) {
+  void didUpdateWidget(covariant HomeLibrarySection oldWidget) {
     super.didUpdateWidget(oldWidget);
     if (oldWidget.view != widget.view) {
       unawaited(_reload());
@@ -71,7 +71,7 @@ class _HomeWorkspaceLibrarySectionState extends State<HomeWorkspaceLibrarySectio
     final cs = Theme.of(context).colorScheme;
     final styles = AppTextStyles.of(context);
     final l10n = context.l10n;
-    final isFavorites = widget.view == HomeWorkspaceLibraryView.favorites;
+    final isFavorites = widget.view == HomeLibraryView.favorites;
 
     final title = isFavorites
         ? l10n.homeWorkspaceMyFavorites
@@ -115,7 +115,7 @@ class _HomeWorkspaceLibrarySectionState extends State<HomeWorkspaceLibrarySectio
                         : Icons.history_rounded,
                     label: l10n.homeWorkspaceNoData,
                   )
-                : HomeWorkspaceProjectCollection(
+                : WorkspaceCollection(
                     projects: projects,
                     sessions: sessions,
                     gridView: true,

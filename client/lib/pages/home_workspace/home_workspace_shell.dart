@@ -32,8 +32,8 @@ import 'home_workspace_title_bar.dart';
 /// Persistent chrome for the workspace-home route family. Owns the open project
 /// tabs (kept until explicitly closed) and renders the title bar once above the
 /// routed [child] (home view or a project view).
-class HomeWorkspaceShell extends StatefulWidget {
-  const HomeWorkspaceShell({
+class HomeShell extends StatefulWidget {
+  const HomeShell({
     required this.location,
     required this.child,
     super.key,
@@ -44,7 +44,7 @@ class HomeWorkspaceShell extends StatefulWidget {
   final Widget child;
 
   @override
-  State<HomeWorkspaceShell> createState() => _HomeWorkspaceShellState();
+  State<HomeShell> createState() => _HomeShellState();
 
   @visibleForTesting
   static String formatProjectTabTooltip({
@@ -87,10 +87,10 @@ class HomeWorkspaceShell extends StatefulWidget {
       identityNameFor(teams, teamId);
 }
 
-class _HomeWorkspaceShellState extends State<HomeWorkspaceShell> {
-  final _recentProjectsStore = HomeWorkspaceRecentProjectsStore();
-  final _closedProjectsStore = HomeWorkspaceClosedProjectsStore();
-  final _openProjectsStore = HomeWorkspaceOpenProjectsStore();
+class _HomeShellState extends State<HomeShell> {
+  final _recentProjectsStore = HomeRecentWorkspacesStore();
+  final _closedProjectsStore = HomeClosedWorkspacesStore();
+  final _openProjectsStore = HomeOpenWorkspacesStore();
 
   /// Open project ids in tab order; persisted across app restarts.
   List<String> _openIds = const [];
@@ -167,7 +167,7 @@ class _HomeWorkspaceShellState extends State<HomeWorkspaceShell> {
   }
 
   @override
-  void didUpdateWidget(covariant HomeWorkspaceShell oldWidget) {
+  void didUpdateWidget(covariant HomeShell oldWidget) {
     super.didUpdateWidget(oldWidget);
     if (oldWidget.location != widget.location) {
       final id = _projectIdFromLocation(widget.location);
@@ -372,7 +372,7 @@ class _HomeWorkspaceShellState extends State<HomeWorkspaceShell> {
     );
     // Show every open project tab across all teams (IDE-style open editors).
     // Selecting a tab switches the active team to the project's team via
-    // HomeWorkspaceProjectPage, so the sidebar/content stay in sync.
+    // WorkspacePage, so the sidebar/content stay in sync.
     final tabs = <HomeProjectTab>[
       for (final id in _openIds)
         if (_resolve(projects, id) case final p?)
@@ -397,7 +397,7 @@ class _HomeWorkspaceShellState extends State<HomeWorkspaceShell> {
           backgroundColor: cs.workspacePageChrome(pageChrome),
           body: Column(
             children: [
-              HomeWorkspaceTitleBar(
+              HomeTitleBar(
             tabs: tabs,
             activeProjectId: activeId,
             pageChrome: pageChrome,
@@ -411,7 +411,7 @@ class _HomeWorkspaceShellState extends State<HomeWorkspaceShell> {
           Expanded(
             child: SafeArea(
               top: false,
-              child: HomeWorkspaceTabScope(
+              child: HomeTabScope(
                 openProject: (id, {activate = true}) =>
                     _openProject(id, activate: activate),
                 child: widget.child,
@@ -444,11 +444,11 @@ class _HomeWorkspaceShellState extends State<HomeWorkspaceShell> {
       id: id,
       name: project.localizedName(l10n),
       kind: isPersonal ? HomeProjectTabKind.personal : HomeProjectTabKind.team,
-      tooltip: HomeWorkspaceShell.formatProjectTabTooltip(
+      tooltip: HomeShell.formatProjectTabTooltip(
         project: project,
         personalKindLabel: l10n.homeWorkspaceProjectTabKindPersonal,
         isPersonal: isPersonal,
-        teamName: HomeWorkspaceShell.identityNameFor(identities, identityId),
+        teamName: HomeShell.identityNameFor(identities, identityId),
         teamId: identityId,
         displayName: project.localizedName(l10n),
       ),

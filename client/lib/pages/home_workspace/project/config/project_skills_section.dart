@@ -32,7 +32,7 @@ class ProjectSkillsSection extends StatelessWidget {
 
     final l10n = context.l10n;
     void onManage() =>
-        context.go(HomeWorkspaceGlobalView.skills.homeLocation);
+        context.go(HomeGlobalView.skills.homeLocation);
     final isDark = Theme.of(context).brightness == Brightness.dark;
     final textBase = isDark ? Colors.white : const Color(0xFF111827);
     final skillState = context.watch<SkillCubit>().state;

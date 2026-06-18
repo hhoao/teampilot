@@ -14,8 +14,8 @@ import 'project/project_config_section.dart';
 
 /// Right-hand content pane for a selected [PersonalIdentity] on the home
 /// workspace (skills/plugins/MCP/agent — no roster).
-class HomeWorkspacePersonalContent extends StatefulWidget {
-  const HomeWorkspacePersonalContent({
+class HomePersonalContent extends StatefulWidget {
+  const HomePersonalContent({
     required this.personal,
     required this.cubit,
     this.onSelectGlobalView,
@@ -24,15 +24,15 @@ class HomeWorkspacePersonalContent extends StatefulWidget {
 
   final PersonalIdentity personal;
   final IdentityCubit cubit;
-  final ValueChanged<HomeWorkspaceGlobalView>? onSelectGlobalView;
+  final ValueChanged<HomeGlobalView>? onSelectGlobalView;
 
   @override
-  State<HomeWorkspacePersonalContent> createState() =>
-      _HomeWorkspacePersonalContentState();
+  State<HomePersonalContent> createState() =>
+      _HomePersonalContentState();
 }
 
-class _HomeWorkspacePersonalContentState
-    extends State<HomeWorkspacePersonalContent> {
+class _HomePersonalContentState
+    extends State<HomePersonalContent> {
   late int _tabIndex = 0;
 
   List<ProjectConfigSection> get _sections =>
@@ -56,9 +56,9 @@ class _HomeWorkspacePersonalContentState
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          HomeWorkspacePersonalHeader(personal: widget.personal),
+          HomePersonalHeader(personal: widget.personal),
           const SizedBox(height: 14),
-          HomeWorkspaceContentTabBar(
+          HomeContentTabBar(
             tabs: tabs,
             selectedIndex: _tabIndex,
             onSelect: (i) => setState(() => _tabIndex = i),
@@ -66,7 +66,7 @@ class _HomeWorkspacePersonalContentState
           Divider(height: 1, color: cs.outlineVariant.withValues(alpha: 0.5)),
           const SizedBox(height: 16),
           Expanded(
-            child: HomeWorkspacePersonalTab(
+            child: HomePersonalTab(
               key: ValueKey('home-personal-tab-${active.name}'),
               section: active,
               personal: widget.personal,
@@ -88,8 +88,8 @@ class _HomeWorkspacePersonalContentState
   }
 }
 
-class HomeWorkspacePersonalHeader extends StatelessWidget {
-  const HomeWorkspacePersonalHeader({required this.personal, super.key});
+class HomePersonalHeader extends StatelessWidget {
+  const HomePersonalHeader({required this.personal, super.key});
 
   final PersonalIdentity personal;
 

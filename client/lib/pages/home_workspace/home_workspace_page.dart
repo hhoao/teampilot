@@ -18,9 +18,9 @@ import 'home_workspace_sidebar.dart';
 
 /// New Apifox-style workspace home body (workspaces rail + right pane). The
 /// window chrome (title bar + open project tabs) is provided by
-/// [HomeWorkspaceShell].
-class HomeWorkspacePage extends StatefulWidget {
-  const HomeWorkspacePage({
+/// [HomeShell].
+class HomePage extends StatefulWidget {
+  const HomePage({
     this.initialSection,
     this.initialMemberId,
     this.initialGlobalView,
@@ -36,21 +36,21 @@ class HomeWorkspacePage extends StatefulWidget {
 
   /// Global management sidebar entry to open on first build (deep-link from
   /// project management "manage all" actions).
-  final HomeWorkspaceGlobalView? initialGlobalView;
+  final HomeGlobalView? initialGlobalView;
 
   @override
-  State<HomeWorkspacePage> createState() => _HomeWorkspacePageState();
+  State<HomePage> createState() => _HomePageState();
 }
 
-class _HomeWorkspacePageState extends State<HomeWorkspacePage> {
+class _HomePageState extends State<HomePage> {
   var _allProjectsActive = true;
   String? _selectedIdentityId;
 
   /// Null means the team view; otherwise a global management section.
-  late HomeWorkspaceGlobalView? _globalView = widget.initialGlobalView;
+  late HomeGlobalView? _globalView = widget.initialGlobalView;
 
   /// Favorites / recent library pane; mutually exclusive with [_globalView].
-  HomeWorkspaceLibraryView? _libraryView;
+  HomeLibraryView? _libraryView;
 
   @override
   void initState() {
@@ -66,7 +66,7 @@ class _HomeWorkspacePageState extends State<HomeWorkspacePage> {
   }
 
   @override
-  void didUpdateWidget(covariant HomeWorkspacePage oldWidget) {
+  void didUpdateWidget(covariant HomePage oldWidget) {
     super.didUpdateWidget(oldWidget);
     if (widget.initialGlobalView == oldWidget.initialGlobalView) return;
     setState(() {
@@ -96,7 +96,7 @@ class _HomeWorkspacePageState extends State<HomeWorkspacePage> {
     Identity identity,
   ) {
     return switch (identity) {
-      PersonalIdentity personal => HomeWorkspacePersonalContent(
+      PersonalIdentity personal => HomePersonalContent(
           personal: personal,
           cubit: identityCubit,
           onSelectGlobalView: (view) => setState(() {
@@ -105,7 +105,7 @@ class _HomeWorkspacePageState extends State<HomeWorkspacePage> {
             _libraryView = null;
           }),
         ),
-      TeamIdentity _ => HomeWorkspaceContent(
+      TeamIdentity _ => HomeContent(
           initialSection: widget.initialSection,
           initialMemberId: widget.initialMemberId,
           onSelectGlobalView: (view) => setState(() {
@@ -137,7 +137,7 @@ class _HomeWorkspacePageState extends State<HomeWorkspacePage> {
     final body = Row(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        HomeWorkspaceSidebar(
+        HomeSidebar(
           activeGlobalView: globalView,
           activeLibraryView: libraryView,
           allProjectsActive:
@@ -165,14 +165,14 @@ class _HomeWorkspacePageState extends State<HomeWorkspacePage> {
           child: Padding(
             padding: const EdgeInsets.fromLTRB(44, 48, 42, 18),
             child: (globalView != null
-                    ? HomeWorkspaceGlobalSection(view: globalView)
+                    ? HomeGlobalSection(view: globalView)
                     : libraryView != null
-                    ? HomeWorkspaceLibrarySection(view: libraryView)
+                    ? HomeLibrarySection(view: libraryView)
                     : _allProjectsActive
-                    ? const HomeWorkspaceAllProjectsPane()
+                    ? const HomeAllWorkspacesPane()
                     : selectedIdentity != null
                     ? _identityPane(identityCubit, selectedIdentity)
-                    : const HomeWorkspaceAllProjectsPane())
+                    : const HomeAllWorkspacesPane())
                 .animate(key: paneKey)
                 .fadeIn(duration: 180.ms, curve: Curves.easeOut)
                 .slideX(

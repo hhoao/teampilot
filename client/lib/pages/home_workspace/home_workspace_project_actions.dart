@@ -38,7 +38,7 @@ void completeProjectDeleteNavigation(
   router.go(currentLocation);
 }
 
-Future<void> showRenameHomeWorkspaceProjectDialog(
+Future<void> showRenameWorkspaceDialog(
   BuildContext context,
   AppProject project, {
   String? title,
@@ -60,7 +60,7 @@ Future<void> showRenameHomeWorkspaceProjectDialog(
   );
 }
 
-Future<void> cloneHomeWorkspaceProject(
+Future<void> cloneWorkspace(
   BuildContext context,
   AppProject project,
 ) async {
@@ -94,7 +94,7 @@ Future<void> cloneHomeWorkspaceProject(
   }
 }
 
-Future<void> confirmDeleteHomeWorkspaceProject(
+Future<void> confirmDeleteWorkspace(
   BuildContext context,
   AppProject project,
 ) async {

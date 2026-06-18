@@ -19,7 +19,7 @@ import '../../widgets/window_drag_area.dart';
 import '../config/config_workspace.dart';
 
 /// Height of the Apifox-style workspace title bar.
-const double kHomeWorkspaceTitleBarHeight = 58;
+const double kHomeTitleBarHeight = 58;
 
 /// Custom window title bar for the new workspace home: brand mark, a "Home"
 /// pill, optional open-project tab, decorative action glyphs, and the real
@@ -113,8 +113,8 @@ class HomeProjectTab {
   final bool closable;
 }
 
-class HomeWorkspaceTitleBar extends StatefulWidget {
-  const HomeWorkspaceTitleBar({
+class HomeTitleBar extends StatefulWidget {
+  const HomeTitleBar({
     this.tabs = const [],
     this.activeProjectId,
     this.pageChrome = WorkspacePageChrome.home,
@@ -133,7 +133,7 @@ class HomeWorkspaceTitleBar extends StatefulWidget {
   /// The project currently shown, or null when the Home view is shown.
   final String? activeProjectId;
 
-  /// Page backdrop chrome; matches [HomeWorkspaceShell] scaffold fill.
+  /// Page backdrop chrome; matches [HomeShell] scaffold fill.
   final WorkspacePageChrome pageChrome;
 
   /// Recently closed tabs (newest first), excluding currently open ids.
@@ -145,10 +145,10 @@ class HomeWorkspaceTitleBar extends StatefulWidget {
   final ValueChanged<String>? onReopenClosedProject;
 
   @override
-  State<HomeWorkspaceTitleBar> createState() => _HomeWorkspaceTitleBarState();
+  State<HomeTitleBar> createState() => _HomeTitleBarState();
 }
 
-class _HomeWorkspaceTitleBarState extends State<HomeWorkspaceTitleBar>
+class _HomeTitleBarState extends State<HomeTitleBar>
     with WindowListener {
   bool _isMaximized = false;
 
@@ -197,7 +197,7 @@ class _HomeWorkspaceTitleBarState extends State<HomeWorkspaceTitleBar>
 
   Widget _buildWindowControls() {
     return WindowChromeControls(
-      height: kHomeWorkspaceTitleBarHeight,
+      height: kHomeTitleBarHeight,
       isMaximized: _isMaximized,
       onMinimize: () => windowManagerCall(windowManager.minimize),
       onToggleMaximize: _toggleMaximize,
@@ -215,7 +215,7 @@ class _HomeWorkspaceTitleBarState extends State<HomeWorkspaceTitleBar>
     return Material(
       color: cs.workspacePageChrome(widget.pageChrome),
       child: SizedBox(
-        height: kHomeWorkspaceTitleBarHeight,
+        height: kHomeTitleBarHeight,
         child: Row(
           children: [
             SizedBox(width: 8),

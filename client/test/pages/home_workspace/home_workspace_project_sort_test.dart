@@ -18,16 +18,16 @@ AppProject _project({
 }
 
 void main() {
-  group('sortHomeWorkspaceProjects', () {
+  group('sortWorkspaces', () {
     test('pins favorites before applying sort mode', () {
       final projects = [
         _project(id: 'a', display: 'Alpha', updatedAt: 100),
         _project(id: 'b', display: 'Beta', updatedAt: 200),
       ];
 
-      final sorted = sortHomeWorkspaceProjects(
+      final sorted = sortWorkspaces(
         projects: projects,
-        sort: HomeWorkspaceProjectSort.nameAsc,
+        sort: WorkspaceSort.nameAsc,
         favoriteProjectIds: {'a'},
         sessionCountByProjectId: const {},
         displayName: (project) => project.display,
@@ -42,9 +42,9 @@ void main() {
         _project(id: 'a', display: 'Alpha'),
       ];
 
-      final sorted = sortHomeWorkspaceProjects(
+      final sorted = sortWorkspaces(
         projects: projects,
-        sort: HomeWorkspaceProjectSort.nameAsc,
+        sort: WorkspaceSort.nameAsc,
         favoriteProjectIds: const {},
         sessionCountByProjectId: const {},
         displayName: (project) => project.display,
@@ -60,9 +60,9 @@ void main() {
         _project(id: 'a', display: 'Alpha', updatedAt: 99),
       ];
 
-      final sorted = sortHomeWorkspaceProjects(
+      final sorted = sortWorkspaces(
         projects: projects,
-        sort: HomeWorkspaceProjectSort.recentlyUpdated,
+        sort: WorkspaceSort.recentlyUpdated,
         favoriteProjectIds: const {},
         sessionCountByProjectId: const {},
         displayName: (project) => project.display,

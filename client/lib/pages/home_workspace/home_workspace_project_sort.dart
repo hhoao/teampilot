@@ -2,7 +2,7 @@ import '../../l10n/app_localizations.dart';
 import '../../models/app_project.dart';
 import '../../models/app_session.dart';
 
-enum HomeWorkspaceProjectSort {
+enum WorkspaceSort {
   recentlyUpdated,
   nameAsc,
   nameDesc,
@@ -10,23 +10,23 @@ enum HomeWorkspaceProjectSort {
   sessionCountDesc,
 }
 
-extension HomeWorkspaceProjectSortLabels on HomeWorkspaceProjectSort {
+extension WorkspaceSortLabels on WorkspaceSort {
   String label(AppLocalizations l10n) => switch (this) {
-    HomeWorkspaceProjectSort.recentlyUpdated =>
+    WorkspaceSort.recentlyUpdated =>
       l10n.homeWorkspaceProjectSortRecentlyUpdated,
-    HomeWorkspaceProjectSort.nameAsc => l10n.homeWorkspaceProjectSortNameAsc,
-    HomeWorkspaceProjectSort.nameDesc => l10n.homeWorkspaceProjectSortNameDesc,
-    HomeWorkspaceProjectSort.createdDesc =>
+    WorkspaceSort.nameAsc => l10n.homeWorkspaceProjectSortNameAsc,
+    WorkspaceSort.nameDesc => l10n.homeWorkspaceProjectSortNameDesc,
+    WorkspaceSort.createdDesc =>
       l10n.homeWorkspaceProjectSortCreatedDesc,
-    HomeWorkspaceProjectSort.sessionCountDesc =>
+    WorkspaceSort.sessionCountDesc =>
       l10n.homeWorkspaceProjectSortSessionCountDesc,
   };
 
-  static HomeWorkspaceProjectSort parse(String? raw) {
-    for (final value in HomeWorkspaceProjectSort.values) {
+  static WorkspaceSort parse(String? raw) {
+    for (final value in WorkspaceSort.values) {
       if (value.name == raw) return value;
     }
-    return HomeWorkspaceProjectSort.recentlyUpdated;
+    return WorkspaceSort.recentlyUpdated;
   }
 }
 
@@ -42,9 +42,9 @@ Map<String, int> homeWorkspaceSessionCountByProjectId(
   return counts;
 }
 
-List<AppProject> sortHomeWorkspaceProjects({
+List<AppProject> sortWorkspaces({
   required List<AppProject> projects,
-  required HomeWorkspaceProjectSort sort,
+  required WorkspaceSort sort,
   required Set<String> favoriteProjectIds,
   required Map<String, int> sessionCountByProjectId,
   required String Function(AppProject project) displayName,
@@ -62,19 +62,19 @@ List<AppProject> sortHomeWorkspaceProjects({
     }
 
     final primary = switch (sort) {
-      HomeWorkspaceProjectSort.recentlyUpdated =>
+      WorkspaceSort.recentlyUpdated =>
         b.updatedAt.compareTo(a.updatedAt),
-      HomeWorkspaceProjectSort.nameAsc => _compareIgnoreCase(
+      WorkspaceSort.nameAsc => _compareIgnoreCase(
         displayName(a),
         displayName(b),
       ),
-      HomeWorkspaceProjectSort.nameDesc => _compareIgnoreCase(
+      WorkspaceSort.nameDesc => _compareIgnoreCase(
         displayName(b),
         displayName(a),
       ),
-      HomeWorkspaceProjectSort.createdDesc =>
+      WorkspaceSort.createdDesc =>
         b.createdAt.compareTo(a.createdAt),
-      HomeWorkspaceProjectSort.sessionCountDesc => () {
+      WorkspaceSort.sessionCountDesc => () {
         final ac = sessionCountByProjectId[a.projectId] ?? 0;
         final bc = sessionCountByProjectId[b.projectId] ?? 0;
         final bySessions = bc.compareTo(ac);

@@ -5,8 +5,8 @@ import '../io/filesystem.dart';
 import '../storage/app_storage.dart';
 
 /// Persists recently closed title-bar project tabs (most recent first).
-class HomeWorkspaceClosedProjectsStore {
-  HomeWorkspaceClosedProjectsStore({Filesystem? fs, String? pathOverride})
+class HomeClosedWorkspacesStore {
+  HomeClosedWorkspacesStore({Filesystem? fs, String? pathOverride})
       : _fsOverride = fs,
         _pathOverride = pathOverride;
 

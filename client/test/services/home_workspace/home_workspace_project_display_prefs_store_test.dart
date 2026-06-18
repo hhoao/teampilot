@@ -8,7 +8,7 @@ import 'package:teampilot/services/storage/app_storage.dart';
 
 void main() {
   late Directory root;
-  late HomeWorkspaceProjectDisplayPrefsStore store;
+  late WorkspaceDisplayPrefsStore store;
 
   setUp(() {
     root = Directory.systemTemp.createTempSync('project_display_prefs_');
@@ -16,7 +16,7 @@ void main() {
     final fs = LocalFilesystem(
       pathContext: AppPaths.pathContextForDataRoot(paths.basePath),
     );
-    store = HomeWorkspaceProjectDisplayPrefsStore(
+    store = WorkspaceDisplayPrefsStore(
       fs: fs,
       pathOverride: paths.homeWorkspaceProjectDisplayPrefsJson,
     );
@@ -31,20 +31,20 @@ void main() {
   test('load returns defaults when file is missing', () async {
     final prefs = await store.load();
     expect(prefs.gridView, isTrue);
-    expect(prefs.sort, HomeWorkspaceProjectSort.recentlyUpdated);
+    expect(prefs.sort, WorkspaceSort.recentlyUpdated);
   });
 
   test('save persists grid view and sort mode', () async {
     await store.save(
-      const HomeWorkspaceProjectDisplayPrefs(
+      const WorkspaceDisplayPrefs(
         gridView: false,
-        sort: HomeWorkspaceProjectSort.nameAsc,
+        sort: WorkspaceSort.nameAsc,
       ),
     );
 
     final prefs = await store.load();
     expect(prefs.gridView, isFalse);
-    expect(prefs.sort, HomeWorkspaceProjectSort.nameAsc);
+    expect(prefs.sort, WorkspaceSort.nameAsc);
 
     final file = File(AppPaths(root.path).homeWorkspaceProjectDisplayPrefsJson);
     expect(file.existsSync(), isTrue);

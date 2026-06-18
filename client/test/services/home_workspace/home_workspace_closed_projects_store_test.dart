@@ -8,7 +8,7 @@ import 'package:teampilot/services/storage/app_storage.dart';
 
 void main() {
   late Directory root;
-  late HomeWorkspaceClosedProjectsStore store;
+  late HomeClosedWorkspacesStore store;
 
   setUp(() {
     root = Directory.systemTemp.createTempSync('closed_projects_store_');
@@ -16,7 +16,7 @@ void main() {
     final fs = LocalFilesystem(
       pathContext: AppPaths.pathContextForDataRoot(paths.basePath),
     );
-    store = HomeWorkspaceClosedProjectsStore(
+    store = HomeClosedWorkspacesStore(
       fs: fs,
       pathOverride: paths.homeWorkspaceClosedProjectsJson,
     );

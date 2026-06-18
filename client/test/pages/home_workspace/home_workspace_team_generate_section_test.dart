@@ -11,7 +11,7 @@ Widget _host({
     localizationsDelegates: AppLocalizations.localizationsDelegates,
     supportedLocales: AppLocalizations.supportedLocales,
     home: Scaffold(
-      body: HomeWorkspaceTeamGenerateSection(
+      body: HomeTeamGenerateSection(
         progress: progress,
         onDescriptionChanged: onDescriptionChanged,
       ),

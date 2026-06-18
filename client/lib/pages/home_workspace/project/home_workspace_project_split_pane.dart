@@ -6,8 +6,8 @@ import '../../../widgets/resizable_split_view.dart';
 import '../../chat_page.dart';
 import 'home_workspace_project_sidebar.dart';
 
-class HomeWorkspaceProjectSplitPane extends StatefulWidget {
-  const HomeWorkspaceProjectSplitPane({
+class WorkspaceSplitPane extends StatefulWidget {
+  const WorkspaceSplitPane({
     required this.project,
     required this.isPersonalProject,
     required this.identityId,
@@ -25,12 +25,12 @@ class HomeWorkspaceProjectSplitPane extends StatefulWidget {
   final String sessionTeamFilter;
 
   @override
-  State<HomeWorkspaceProjectSplitPane> createState() =>
-      _HomeWorkspaceProjectSplitPaneState();
+  State<WorkspaceSplitPane> createState() =>
+      _WorkspaceSplitPaneState();
 }
 
-class _HomeWorkspaceProjectSplitPaneState
-    extends State<HomeWorkspaceProjectSplitPane> {
+class _WorkspaceSplitPaneState
+    extends State<WorkspaceSplitPane> {
   double? _sidebarWidth;
 
   @override
@@ -39,14 +39,14 @@ class _HomeWorkspaceProjectSplitPaneState
       builder: (context, constraints) {
         final maxW = constraints.maxWidth;
         const minMain = LayoutPreferences.minWorkbenchMainWidth;
-        const minSidebar = HomeWorkspaceProjectSidebarLayout.minWidth;
-        const maxSidebarCap = HomeWorkspaceProjectSidebarLayout.maxWidth;
+        const minSidebar = WorkspaceSidebarLayout.minWidth;
+        const maxSidebarCap = WorkspaceSidebarLayout.maxWidth;
         final maxSidebar = (maxW - minMain).clamp(minSidebar, maxSidebarCap);
         final initialSidebar =
-            (_sidebarWidth ?? HomeWorkspaceProjectSidebarLayout.defaultWidth)
+            (_sidebarWidth ?? WorkspaceSidebarLayout.defaultWidth)
                 .clamp(minSidebar, maxSidebar);
         return ResizableSplitView(
-          first: HomeWorkspaceProjectSidebar(
+          first: WorkspaceSidebar(
             project: widget.project,
             isPersonalProject: widget.isPersonalProject,
             identityId: widget.identityId,

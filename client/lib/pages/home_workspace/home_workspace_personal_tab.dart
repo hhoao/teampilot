@@ -13,8 +13,8 @@ import 'project/config/project_skills_section.dart';
 import 'project/project_config_section.dart';
 
 /// Embeds personal-identity config sections inside the workspace-home tab.
-class HomeWorkspacePersonalTab extends StatelessWidget {
-  const HomeWorkspacePersonalTab({
+class HomePersonalTab extends StatelessWidget {
+  const HomePersonalTab({
     required this.section,
     required this.personal,
     required this.cubit,
@@ -25,7 +25,7 @@ class HomeWorkspacePersonalTab extends StatelessWidget {
   final ProjectConfigSection section;
   final PersonalIdentity personal;
   final IdentityCubit cubit;
-  final ValueChanged<HomeWorkspaceGlobalView>? onSelectGlobalView;
+  final ValueChanged<HomeGlobalView>? onSelectGlobalView;
 
   @override
   Widget build(BuildContext context) {

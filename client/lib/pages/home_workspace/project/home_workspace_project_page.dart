@@ -21,10 +21,10 @@ import 'project_config_section.dart';
 /// Project work page.
 ///
 /// Personal and team projects share the icon rail + floated card layout.
-/// Personal [HomeWorkspaceProjectSection.manage] opens the config workspace
+/// Personal [WorkspaceSection.manage] opens the config workspace
 /// with in-page section nav; the rail only switches conversations vs manage.
-class HomeWorkspaceProjectPage extends StatefulWidget {
-  const HomeWorkspaceProjectPage({
+class WorkspacePage extends StatefulWidget {
+  const WorkspacePage({
     required this.projectId,
     this.identity,
     this.view,
@@ -38,18 +38,18 @@ class HomeWorkspaceProjectPage extends StatefulWidget {
   /// redirects to the project grid.
   final LaunchIdentity? identity;
 
-  /// `manage` opens [HomeWorkspaceProjectConfigWorkspace] (personal projects).
+  /// `manage` opens [WorkspaceConfigPanel] (personal projects).
   final String? view;
 
   final ProjectConfigSection? configSection;
 
   @override
-  State<HomeWorkspaceProjectPage> createState() =>
-      _HomeWorkspaceProjectPageState();
+  State<WorkspacePage> createState() =>
+      _WorkspacePageState();
 }
 
-class _HomeWorkspaceProjectPageState extends State<HomeWorkspaceProjectPage> {
-  late HomeWorkspaceProjectSection _section = _sectionFromRoute();
+class _WorkspacePageState extends State<WorkspacePage> {
+  late WorkspaceSection _section = _sectionFromRoute();
   var _visitedManage = false;
 
   ProjectConfigSection get _configSection =>
@@ -66,7 +66,7 @@ class _HomeWorkspaceProjectPageState extends State<HomeWorkspaceProjectPage> {
   }
 
   @override
-  void didUpdateWidget(covariant HomeWorkspaceProjectPage oldWidget) {
+  void didUpdateWidget(covariant WorkspacePage oldWidget) {
     super.didUpdateWidget(oldWidget);
     if (oldWidget.projectId != widget.projectId ||
         oldWidget.identity != widget.identity) {
@@ -81,11 +81,11 @@ class _HomeWorkspaceProjectPageState extends State<HomeWorkspaceProjectPage> {
     }
   }
 
-  HomeWorkspaceProjectSection _sectionFromRoute() {
+  WorkspaceSection _sectionFromRoute() {
     if (widget.view == 'manage') {
-      return HomeWorkspaceProjectSection.manage;
+      return WorkspaceSection.manage;
     }
-    return HomeWorkspaceProjectSection.conversations;
+    return WorkspaceSection.conversations;
   }
 
   Identity? _resolveIdentity() {
@@ -112,13 +112,13 @@ class _HomeWorkspaceProjectPageState extends State<HomeWorkspaceProjectPage> {
   }
 
   void _onSectionChanged(
-    HomeWorkspaceProjectSection section,
+    WorkspaceSection section,
     AppProject project,
     Identity workspaceIdentity,
   ) {
     setState(() {
       _section = section;
-      if (section == HomeWorkspaceProjectSection.manage) {
+      if (section == WorkspaceSection.manage) {
         _visitedManage = true;
       }
     });
@@ -126,8 +126,8 @@ class _HomeWorkspaceProjectPageState extends State<HomeWorkspaceProjectPage> {
     final base =
         '/home-v2/project/${project.projectId}?as=${workspaceIdentity.id}';
     final path = switch (section) {
-      HomeWorkspaceProjectSection.conversations => base,
-      HomeWorkspaceProjectSection.manage => '$base&view=manage',
+      WorkspaceSection.conversations => base,
+      WorkspaceSection.manage => '$base&view=manage',
       _ => base,
     };
     if (GoRouterState.of(context).uri.toString() != path) {
@@ -203,7 +203,7 @@ class _HomeWorkspaceProjectPageState extends State<HomeWorkspaceProjectPage> {
     return Row(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        HomeWorkspaceProjectRail(
+        WorkspaceRail(
           section: _section,
           isPersonalProject: isPersonal,
           onSectionChanged: (section) =>
@@ -226,12 +226,12 @@ class _HomeWorkspaceProjectPageState extends State<HomeWorkspaceProjectPage> {
     required Identity workspaceIdentity,
     required String sessionTeamFilter,
   }) {
-    final showManage = _section == HomeWorkspaceProjectSection.manage;
+    final showManage = _section == WorkspaceSection.manage;
     return IndexedStack(
       index: showManage ? 1 : 0,
       sizing: StackFit.expand,
       children: [
-        HomeWorkspaceProjectSplitPane(
+        WorkspaceSplitPane(
           key: ValueKey('conversations-${project.projectId}-${workspaceIdentity.id}'),
           project: project,
           isPersonalProject: workspaceIdentity.kind == IdentityKind.personal,
@@ -239,7 +239,7 @@ class _HomeWorkspaceProjectPageState extends State<HomeWorkspaceProjectPage> {
           sessionTeamFilter: sessionTeamFilter,
         ),
         if (_visitedManage)
-          HomeWorkspaceProjectConfigWorkspace(
+          WorkspaceConfigPanel(
             project: project,
             identityId: workspaceIdentity.id,
             section: _configSection,

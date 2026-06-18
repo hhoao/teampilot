@@ -20,8 +20,8 @@ const double _kIdentityContentPaddingLeft = 12;
 /// Left rail of the workspace home: workspace identities plus global management
 /// shortcuts, mirroring the Apifox sidebar. Identity selection drives the
 /// right pane; global shortcuts swap it via [onSelectGlobalView].
-class HomeWorkspaceSidebar extends StatefulWidget {
-  const HomeWorkspaceSidebar({
+class HomeSidebar extends StatefulWidget {
+  const HomeSidebar({
     this.activeGlobalView,
     this.activeLibraryView,
     this.allProjectsActive = false,
@@ -34,22 +34,22 @@ class HomeWorkspaceSidebar extends StatefulWidget {
   });
 
   /// Currently shown global section, or null when a workspace identity is shown.
-  final HomeWorkspaceGlobalView? activeGlobalView;
-  final HomeWorkspaceLibraryView? activeLibraryView;
+  final HomeGlobalView? activeGlobalView;
+  final HomeLibraryView? activeLibraryView;
   final bool allProjectsActive;
   final String? selectedIdentityId;
   final VoidCallback? onSelectAllProjects;
-  final ValueChanged<HomeWorkspaceGlobalView>? onSelectGlobalView;
-  final ValueChanged<HomeWorkspaceLibraryView>? onSelectLibraryView;
+  final ValueChanged<HomeGlobalView>? onSelectGlobalView;
+  final ValueChanged<HomeLibraryView>? onSelectLibraryView;
   final ValueChanged<String>? onSelectIdentity;
 
   static const double width = 420;
 
   @override
-  State<HomeWorkspaceSidebar> createState() => _HomeWorkspaceSidebarState();
+  State<HomeSidebar> createState() => _HomeSidebarState();
 }
 
-class _HomeWorkspaceSidebarState extends State<HomeWorkspaceSidebar> {
+class _HomeSidebarState extends State<HomeSidebar> {
   bool _teamsExpanded = true;
 
   @override
@@ -69,7 +69,7 @@ class _HomeWorkspaceSidebarState extends State<HomeWorkspaceSidebar> {
     final allProjectsActive = widget.allProjectsActive;
 
     return Container(
-      width: HomeWorkspaceSidebar.width,
+      width: HomeSidebar.width,
       decoration: BoxDecoration(
         color: cs.workspaceCard,
         border: Border(
@@ -83,15 +83,15 @@ class _HomeWorkspaceSidebarState extends State<HomeWorkspaceSidebar> {
           _ShortcutRow(
             icon: Icons.star_outline_rounded,
             label: l10n.homeWorkspaceMyFavorites,
-            active: activeLibraryView == HomeWorkspaceLibraryView.favorites,
-            onTap: () => onLibrary?.call(HomeWorkspaceLibraryView.favorites),
+            active: activeLibraryView == HomeLibraryView.favorites,
+            onTap: () => onLibrary?.call(HomeLibraryView.favorites),
           ),
           const SizedBox(height: 4),
           _ShortcutRow(
             icon: Icons.history_rounded,
             label: l10n.homeWorkspaceRecentVisits,
-            active: activeLibraryView == HomeWorkspaceLibraryView.recent,
-            onTap: () => onLibrary?.call(HomeWorkspaceLibraryView.recent),
+            active: activeLibraryView == HomeLibraryView.recent,
+            onTap: () => onLibrary?.call(HomeLibraryView.recent),
           ),
           const SizedBox(height: 12),
           Divider(height: 1, color: cs.outlineVariant.withValues(alpha: 0.5)),
@@ -181,7 +181,7 @@ class _HomeWorkspaceSidebarState extends State<HomeWorkspaceSidebar> {
                                   const SizedBox(height: 8),
                                 _NewTeamRow(
                                   label: l10n.homeWorkspaceNewTeam,
-                                  onTap: () => showHomeWorkspaceNewTeamDialog(
+                                  onTap: () => showHomeNewTeamDialog(
                                     context,
                                     identityCubit,
                                   ),
@@ -210,9 +210,9 @@ class _HomeWorkspaceSidebarState extends State<HomeWorkspaceSidebar> {
                           label: l10n.teamHubNav,
                           active:
                               activeGlobalView ==
-                              HomeWorkspaceGlobalView.teamHub,
+                              HomeGlobalView.teamHub,
                           onTap: () =>
-                              onGlobal?.call(HomeWorkspaceGlobalView.teamHub),
+                              onGlobal?.call(HomeGlobalView.teamHub),
                         ),
                         const SizedBox(height: 8),
                         Divider(
@@ -225,9 +225,9 @@ class _HomeWorkspaceSidebarState extends State<HomeWorkspaceSidebar> {
                           label: l10n.teamSkillsNav,
                           active:
                               activeGlobalView ==
-                              HomeWorkspaceGlobalView.skills,
+                              HomeGlobalView.skills,
                           onTap: () =>
-                              onGlobal?.call(HomeWorkspaceGlobalView.skills),
+                              onGlobal?.call(HomeGlobalView.skills),
                         ),
                         const SizedBox(height: 4),
                         _ShortcutRow(
@@ -235,18 +235,18 @@ class _HomeWorkspaceSidebarState extends State<HomeWorkspaceSidebar> {
                           label: l10n.teamPluginsNav,
                           active:
                               activeGlobalView ==
-                              HomeWorkspaceGlobalView.plugins,
+                              HomeGlobalView.plugins,
                           onTap: () =>
-                              onGlobal?.call(HomeWorkspaceGlobalView.plugins),
+                              onGlobal?.call(HomeGlobalView.plugins),
                         ),
                         const SizedBox(height: 4),
                         _ShortcutRow(
                           icon: Icons.hub_outlined,
                           label: l10n.teamMcpNav,
                           active:
-                              activeGlobalView == HomeWorkspaceGlobalView.mcp,
+                              activeGlobalView == HomeGlobalView.mcp,
                           onTap: () =>
-                              onGlobal?.call(HomeWorkspaceGlobalView.mcp),
+                              onGlobal?.call(HomeGlobalView.mcp),
                         ),
                         const SizedBox(height: 4),
                         _ShortcutRow(
@@ -254,9 +254,9 @@ class _HomeWorkspaceSidebarState extends State<HomeWorkspaceSidebar> {
                           label: l10n.teamExtensionsNav,
                           active:
                               activeGlobalView ==
-                              HomeWorkspaceGlobalView.extensions,
+                              HomeGlobalView.extensions,
                           onTap: () => onGlobal?.call(
-                            HomeWorkspaceGlobalView.extensions,
+                            HomeGlobalView.extensions,
                           ),
                         ),
                       ],
@@ -270,8 +270,8 @@ class _HomeWorkspaceSidebarState extends State<HomeWorkspaceSidebar> {
           _ProvidersButton(
             key: AppKeys.homeWorkspaceProvidersButton,
             label: l10n.homeWorkspaceProviders,
-            active: activeGlobalView == HomeWorkspaceGlobalView.providers,
-            onTap: () => onGlobal?.call(HomeWorkspaceGlobalView.providers),
+            active: activeGlobalView == HomeGlobalView.providers,
+            onTap: () => onGlobal?.call(HomeGlobalView.providers),
           ),
         ],
       ),

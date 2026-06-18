@@ -22,7 +22,7 @@ void main() {
         supportedLocales: AppLocalizations.supportedLocales,
         home: BlocProvider(
           create: (_) => NotificationCubit(),
-          child: const HomeWorkspaceTitleBar(
+          child: const HomeTitleBar(
             tabs: [
               HomeProjectTab(
                 id: 'personal',
@@ -43,6 +43,6 @@ void main() {
 
     expect(find.text('Solo'), findsOneWidget);
     expect(find.text('Shared'), findsOneWidget);
-    expect(find.byType(HomeWorkspaceTitleBar), findsOneWidget);
+    expect(find.byType(HomeTitleBar), findsOneWidget);
   });
 }

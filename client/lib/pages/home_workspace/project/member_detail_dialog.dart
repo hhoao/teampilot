@@ -169,7 +169,7 @@ class _MemberDetailDialogBodyState extends State<MemberDetailDialogBody> {
           title: '${l10n.memberDetailTitle} · ${widget.memberName}',
           showDividerBelow: false,
         ),
-        HomeWorkspaceContentTabBar(
+        HomeContentTabBar(
           tabs: tabs,
           selectedIndex: _selectedTabIndex,
           onSelect: (i) => setState(() => _selectedTabIndex = i),

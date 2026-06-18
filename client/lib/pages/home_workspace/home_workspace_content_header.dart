@@ -4,8 +4,8 @@ import '../../models/team_config.dart';
 import '../../theme/app_text_styles.dart';
 import '../../l10n/l10n_extensions.dart';
 
-class HomeWorkspaceTeamHeader extends StatelessWidget {
-  const HomeWorkspaceTeamHeader({super.key, required this.team});
+class HomeTeamHeader extends StatelessWidget {
+  const HomeTeamHeader({super.key, required this.team});
 
   final TeamIdentity team;
 
@@ -43,8 +43,8 @@ class HomeWorkspaceTeamHeader extends StatelessWidget {
   }
 }
 
-class HomeWorkspaceContentTabBar extends StatelessWidget {
-  const HomeWorkspaceContentTabBar({super.key, 
+class HomeContentTabBar extends StatelessWidget {
+  const HomeContentTabBar({super.key, 
     required this.tabs,
     required this.selectedIndex,
     required this.onSelect,
@@ -61,7 +61,7 @@ class HomeWorkspaceContentTabBar extends StatelessWidget {
       child: Row(
         children: [
           for (var i = 0; i < tabs.length; i++)
-            HomeWorkspaceContentTabItem(
+            HomeContentTabItem(
               label: tabs[i],
               selected: i == selectedIndex,
               onTap: () => onSelect(i),
@@ -72,8 +72,8 @@ class HomeWorkspaceContentTabBar extends StatelessWidget {
   }
 }
 
-class HomeWorkspaceContentTabItem extends StatefulWidget {
-  const HomeWorkspaceContentTabItem({super.key, 
+class HomeContentTabItem extends StatefulWidget {
+  const HomeContentTabItem({super.key, 
     required this.label,
     required this.selected,
     required this.onTap,
@@ -84,10 +84,10 @@ class HomeWorkspaceContentTabItem extends StatefulWidget {
   final VoidCallback onTap;
 
   @override
-  State<HomeWorkspaceContentTabItem> createState() => HomeWorkspaceContentTabItemState();
+  State<HomeContentTabItem> createState() => HomeContentTabItemState();
 }
 
-class HomeWorkspaceContentTabItemState extends State<HomeWorkspaceContentTabItem> {
+class HomeContentTabItemState extends State<HomeContentTabItem> {
   bool _hovered = false;
 
   @override

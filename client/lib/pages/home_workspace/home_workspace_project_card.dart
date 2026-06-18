@@ -17,8 +17,8 @@ import 'home_workspace_tab_scope.dart';
 
 /// A single project tile in the workspace home grid: icon, name, session count,
 /// and hover actions (new tab, favorite, overflow menu).
-class HomeWorkspaceProjectCard extends StatefulWidget {
-  const HomeWorkspaceProjectCard({
+class WorkspaceCard extends StatefulWidget {
+  const WorkspaceCard({
     required this.project,
     required this.sessionCount,
     required this.favorited,
@@ -34,18 +34,18 @@ class HomeWorkspaceProjectCard extends StatefulWidget {
   final VoidCallback? onTap;
 
   @override
-  State<HomeWorkspaceProjectCard> createState() =>
-      _HomeWorkspaceProjectCardState();
+  State<WorkspaceCard> createState() =>
+      _WorkspaceCardState();
 }
 
-class _HomeWorkspaceProjectCardState extends State<HomeWorkspaceProjectCard> {
+class _WorkspaceCardState extends State<WorkspaceCard> {
   var _hovered = false;
   var _menuOpen = false;
 
   bool get _showActions => _hovered || _menuOpen || Platform.isAndroid;
 
   void _openInNewTab() {
-    HomeWorkspaceTabScope.openInTab(
+    HomeTabScope.openInTab(
       context,
       widget.project.projectId,
       activate: false,
@@ -149,7 +149,7 @@ class _HomeWorkspaceProjectCardState extends State<HomeWorkspaceProjectCard> {
                               label: l10n.homeWorkspaceRenameProject,
                               menuController: controller,
                               onTap: () => unawaited(
-                                showRenameHomeWorkspaceProjectDialog(
+                                showRenameWorkspaceDialog(
                                   context,
                                   project,
                                 ),
@@ -160,7 +160,7 @@ class _HomeWorkspaceProjectCardState extends State<HomeWorkspaceProjectCard> {
                               label: l10n.homeWorkspaceCloneProject,
                               menuController: controller,
                               onTap: () => unawaited(
-                                cloneHomeWorkspaceProject(context, project),
+                                cloneWorkspace(context, project),
                               ),
                             ),
                             SidebarActionMenuItem(
@@ -169,7 +169,7 @@ class _HomeWorkspaceProjectCardState extends State<HomeWorkspaceProjectCard> {
                               destructive: true,
                               menuController: controller,
                               onTap: () => unawaited(
-                                confirmDeleteHomeWorkspaceProject(
+                                confirmDeleteWorkspace(
                                   context,
                                   project,
                                 ),

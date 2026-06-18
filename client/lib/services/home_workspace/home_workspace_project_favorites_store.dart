@@ -4,8 +4,8 @@ import '../io/filesystem.dart';
 import '../storage/app_storage.dart';
 
 /// Persists favorited project ids at `home-workspace/project-favorites.json`.
-class HomeWorkspaceProjectFavoritesStore {
-  HomeWorkspaceProjectFavoritesStore({Filesystem? fs, String? pathOverride})
+class WorkspaceFavoritesStore {
+  WorkspaceFavoritesStore({Filesystem? fs, String? pathOverride})
       : _fsOverride = fs,
         _pathOverride = pathOverride;
 

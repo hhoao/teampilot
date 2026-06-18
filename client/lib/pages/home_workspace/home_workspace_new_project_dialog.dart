@@ -17,7 +17,7 @@ import 'package:teampilot/theme/app_icon_sizes.dart';
 /// toolbar. A project is one or more working directories plus an optional
 /// display name: the first folder is the primary path and the rest become
 /// additional directories.
-Future<void> showHomeWorkspaceNewProjectDialog(
+Future<void> showHomeNewWorkspaceDialog(
   BuildContext context, {
   required ChatCubit chatCubit,
   required SessionRepository repository,
@@ -25,7 +25,7 @@ Future<void> showHomeWorkspaceNewProjectDialog(
 }) async {
   final result = await showDialog<({List<String> directories, String display})>(
     context: context,
-    builder: (_) => const HomeWorkspaceNewProjectDialog(),
+    builder: (_) => const HomeNewWorkspaceDialog(),
   );
   if (result == null || !context.mounted || result.directories.isEmpty) return;
 
@@ -44,16 +44,16 @@ Future<void> showHomeWorkspaceNewProjectDialog(
   );
 }
 
-class HomeWorkspaceNewProjectDialog extends StatefulWidget {
-  const HomeWorkspaceNewProjectDialog({super.key});
+class HomeNewWorkspaceDialog extends StatefulWidget {
+  const HomeNewWorkspaceDialog({super.key});
 
   @override
-  State<HomeWorkspaceNewProjectDialog> createState() =>
-      _HomeWorkspaceNewProjectDialogState();
+  State<HomeNewWorkspaceDialog> createState() =>
+      _HomeNewWorkspaceDialogState();
 }
 
-class _HomeWorkspaceNewProjectDialogState
-    extends State<HomeWorkspaceNewProjectDialog> {
+class _HomeNewWorkspaceDialogState
+    extends State<HomeNewWorkspaceDialog> {
   late final TextEditingController _nameController;
   final List<String> _directories = [];
 

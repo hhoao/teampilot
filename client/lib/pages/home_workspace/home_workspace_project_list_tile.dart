@@ -16,8 +16,8 @@ import 'home_workspace_project_actions.dart';
 import 'home_workspace_tab_scope.dart';
 
 /// Compact horizontal project row for list layout in the workspace home.
-class HomeWorkspaceProjectListTile extends StatefulWidget {
-  const HomeWorkspaceProjectListTile({
+class WorkspaceListTile extends StatefulWidget {
+  const WorkspaceListTile({
     required this.project,
     required this.sessionCount,
     required this.favorited,
@@ -33,18 +33,18 @@ class HomeWorkspaceProjectListTile extends StatefulWidget {
   final VoidCallback? onTap;
 
   @override
-  State<HomeWorkspaceProjectListTile> createState() =>
-      _HomeWorkspaceProjectListTileState();
+  State<WorkspaceListTile> createState() =>
+      _WorkspaceListTileState();
 }
 
-class _HomeWorkspaceProjectListTileState extends State<HomeWorkspaceProjectListTile> {
+class _WorkspaceListTileState extends State<WorkspaceListTile> {
   var _hovered = false;
   var _menuOpen = false;
 
   bool get _showActions => _hovered || _menuOpen || Platform.isAndroid;
 
   void _openInNewTab() {
-    HomeWorkspaceTabScope.openInTab(
+    HomeTabScope.openInTab(
       context,
       widget.project.projectId,
       activate: false,
@@ -146,7 +146,7 @@ class _HomeWorkspaceProjectListTileState extends State<HomeWorkspaceProjectListT
                             label: l10n.homeWorkspaceRenameProject,
                             menuController: controller,
                             onTap: () => unawaited(
-                              showRenameHomeWorkspaceProjectDialog(
+                              showRenameWorkspaceDialog(
                                 context,
                                 project,
                               ),
@@ -157,7 +157,7 @@ class _HomeWorkspaceProjectListTileState extends State<HomeWorkspaceProjectListT
                             label: l10n.homeWorkspaceCloneProject,
                             menuController: controller,
                             onTap: () => unawaited(
-                              cloneHomeWorkspaceProject(context, project),
+                              cloneWorkspace(context, project),
                             ),
                           ),
                           SidebarActionMenuItem(
@@ -166,7 +166,7 @@ class _HomeWorkspaceProjectListTileState extends State<HomeWorkspaceProjectListT
                             destructive: true,
                             menuController: controller,
                             onTap: () => unawaited(
-                              confirmDeleteHomeWorkspaceProject(
+                              confirmDeleteWorkspace(
                                 context,
                                 project,
                               ),

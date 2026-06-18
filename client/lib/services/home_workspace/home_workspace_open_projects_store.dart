@@ -4,8 +4,8 @@ import '../io/filesystem.dart';
 import '../storage/app_storage.dart';
 
 /// Persists open title-bar project tab ids in display order.
-class HomeWorkspaceOpenProjectsStore {
-  HomeWorkspaceOpenProjectsStore({Filesystem? fs, String? pathOverride})
+class HomeOpenWorkspacesStore {
+  HomeOpenWorkspacesStore({Filesystem? fs, String? pathOverride})
       : _fsOverride = fs,
         _pathOverride = pathOverride;
 

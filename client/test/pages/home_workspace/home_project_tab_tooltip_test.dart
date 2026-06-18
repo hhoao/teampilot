@@ -17,7 +17,7 @@ AppProject _project({
 
 void main() {
   test('personal tooltip prefixes kind label', () {
-    final tooltip = HomeWorkspaceShell.formatProjectTabTooltip(
+    final tooltip = HomeShell.formatProjectTabTooltip(
       project: _project(id: 'p1', display: 'solo'),
       personalKindLabel: 'Personal',
       isPersonal: true,
@@ -27,7 +27,7 @@ void main() {
   });
 
   test('team tooltip uses team name prefix', () {
-    final tooltip = HomeWorkspaceShell.formatProjectTabTooltip(
+    final tooltip = HomeShell.formatProjectTabTooltip(
       project: _project(id: 't1', display: 'shared'),
       personalKindLabel: 'Personal',
       isPersonal: false,
@@ -38,7 +38,7 @@ void main() {
   });
 
   test('team tooltip falls back to teamId when name missing', () {
-    final tooltip = HomeWorkspaceShell.formatProjectTabTooltip(
+    final tooltip = HomeShell.formatProjectTabTooltip(
       project: _project(id: 't1', display: 'shared'),
       personalKindLabel: 'Personal',
       isPersonal: false,
@@ -50,7 +50,7 @@ void main() {
 
   test('omits path line when empty or same as display name', () {
     expect(
-      HomeWorkspaceShell.formatProjectTabTooltip(
+      HomeShell.formatProjectTabTooltip(
         project: _project(
           id: 'p1',
           display: 'solo',
