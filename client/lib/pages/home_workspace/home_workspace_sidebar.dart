@@ -5,7 +5,7 @@ import 'package:teampilot/theme/app_icon_sizes.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import '../../cubits/identity_cubit.dart';
 import '../../l10n/l10n_extensions.dart';
-import '../../models/team_config.dart';
+import '../../models/personal_identity.dart';
 import '../../theme/app_text_styles.dart';
 import '../../theme/workspace_surface_layers.dart';
 import '../../utils/app_keys.dart';
@@ -13,29 +13,31 @@ import 'home_workspace_global_section.dart';
 import 'home_workspace_library_view.dart';
 import 'home_workspace_new_team_dialog.dart';
 
-/// Left rail of the workspace home: "My Teams" list plus global management
-/// shortcuts, mirroring the Apifox sidebar. Team selection drives the global
-/// [IdentityCubit]; global shortcuts swap the right pane via [onSelectGlobalView].
+/// Left rail of the workspace home: workspace identities plus global management
+/// shortcuts, mirroring the Apifox sidebar. Identity selection drives the
+/// right pane; global shortcuts swap it via [onSelectGlobalView].
 class HomeWorkspaceSidebar extends StatefulWidget {
   const HomeWorkspaceSidebar({
     this.activeGlobalView,
     this.activeLibraryView,
     this.allProjectsActive = false,
+    this.selectedIdentityId,
     this.onSelectAllProjects,
     this.onSelectGlobalView,
     this.onSelectLibraryView,
-    this.onSelectTeam,
+    this.onSelectIdentity,
     super.key,
   });
 
-  /// Currently shown global section, or null when a team is shown.
+  /// Currently shown global section, or null when a workspace identity is shown.
   final HomeWorkspaceGlobalView? activeGlobalView;
   final HomeWorkspaceLibraryView? activeLibraryView;
   final bool allProjectsActive;
+  final String? selectedIdentityId;
   final VoidCallback? onSelectAllProjects;
   final ValueChanged<HomeWorkspaceGlobalView>? onSelectGlobalView;
   final ValueChanged<HomeWorkspaceLibraryView>? onSelectLibraryView;
-  final ValueChanged<String>? onSelectTeam;
+  final ValueChanged<String>? onSelectIdentity;
 
   static const double width = 420;
 
@@ -50,10 +52,11 @@ class _HomeWorkspaceSidebarState extends State<HomeWorkspaceSidebar> {
   Widget build(BuildContext context) {
     final cs = Theme.of(context).colorScheme;
     final l10n = context.l10n;
-    final teamCubit = context.watch<IdentityCubit>();
-    final teams = teamCubit.state.teams;
-    final selected = teamCubit.state.selectedTeam;
-    final onTeam = widget.onSelectTeam;
+    final identityCubit = context.watch<IdentityCubit>();
+    final personals = identityCubit.state.personals;
+    final teams = identityCubit.state.teams;
+    final selectedIdentityId = widget.selectedIdentityId;
+    final onIdentity = widget.onSelectIdentity;
     final onAllProjects = widget.onSelectAllProjects;
     final onGlobal = widget.onSelectGlobalView;
     final onLibrary = widget.onSelectLibraryView;
@@ -99,7 +102,7 @@ class _HomeWorkspaceSidebarState extends State<HomeWorkspaceSidebar> {
           Divider(height: 1, color: cs.outlineVariant.withValues(alpha: 0.5)),
           const SizedBox(height: 8),
           _SectionHeader(
-            icon: Icons.groups_2_outlined,
+            icon: Icons.workspaces_outlined,
             label: l10n.homeWorkspaceMyTeams,
             expanded: _teamsExpanded,
             onToggle: () => setState(() => _teamsExpanded = !_teamsExpanded),
@@ -107,26 +110,50 @@ class _HomeWorkspaceSidebarState extends State<HomeWorkspaceSidebar> {
           Expanded(
             child: CustomScrollView(
               slivers: [
-                if (_teamsExpanded && teams.isNotEmpty)
+                if (_teamsExpanded && personals.isNotEmpty)
                   SliverPadding(
                     padding: const EdgeInsets.fromLTRB(0, 8, 0, 0),
+                    sliver: SliverList(
+                      delegate: SliverChildBuilderDelegate(
+                        (context, index) {
+                          final personal = personals[index];
+                          return _IdentityRow(
+                            key: ValueKey(personal.id),
+                            name: personal.display,
+                            isTeam: false,
+                            selected:
+                                !allProjectsActive &&
+                                activeGlobalView == null &&
+                                activeLibraryView == null &&
+                                personal.id == selectedIdentityId,
+                            onTap: () => onIdentity?.call(personal.id),
+                          );
+                        },
+                        childCount: personals.length,
+                      ),
+                    ),
+                  ),
+                if (_teamsExpanded && teams.isNotEmpty)
+                  SliverPadding(
+                    padding: EdgeInsets.fromLTRB(0, personals.isEmpty ? 8 : 0, 0, 0),
                     sliver: SliverReorderableList(
                       itemCount: teams.length,
                       onReorder: (oldIndex, newIndex) {
-                        unawaited(teamCubit.reorderTeams(oldIndex, newIndex));
+                        unawaited(identityCubit.reorderTeams(oldIndex, newIndex));
                       },
                       itemBuilder: (context, index) {
                         final team = teams[index];
-                        return _TeamRow(
+                        return _IdentityRow(
                           key: ValueKey(team.id),
                           index: index,
-                          team: team,
+                          name: team.name,
+                          isTeam: true,
                           selected:
                               !allProjectsActive &&
                               activeGlobalView == null &&
                               activeLibraryView == null &&
-                              team.id == selected?.id,
-                          onTap: () => onTeam?.call(team.id),
+                              team.id == selectedIdentityId,
+                          onTap: () => onIdentity?.call(team.id),
                         );
                       },
                     ),
@@ -142,12 +169,13 @@ class _HomeWorkspaceSidebarState extends State<HomeWorkspaceSidebar> {
                           ? Column(
                               crossAxisAlignment: CrossAxisAlignment.stretch,
                               children: [
-                                if (teams.isEmpty) const SizedBox(height: 8),
+                                if (personals.isEmpty && teams.isEmpty)
+                                  const SizedBox(height: 8),
                                 _NewTeamRow(
                                   label: l10n.homeWorkspaceNewTeam,
                                   onTap: () => showHomeWorkspaceNewTeamDialog(
                                     context,
-                                    teamCubit,
+                                    identityCubit,
                                   ),
                                 ),
                                 const SizedBox(height: 10),
@@ -286,25 +314,27 @@ class _SectionHeader extends StatelessWidget {
   }
 }
 
-class _TeamRow extends StatefulWidget {
-  const _TeamRow({
+class _IdentityRow extends StatefulWidget {
+  const _IdentityRow({
     super.key,
-    required this.index,
-    required this.team,
+    this.index,
+    required this.name,
+    required this.isTeam,
     required this.selected,
     required this.onTap,
   });
 
-  final int index;
-  final TeamIdentity team;
+  final int? index;
+  final String name;
+  final bool isTeam;
   final bool selected;
   final VoidCallback onTap;
 
   @override
-  State<_TeamRow> createState() => _TeamRowState();
+  State<_IdentityRow> createState() => _IdentityRowState();
 }
 
-class _TeamRowState extends State<_TeamRow> {
+class _IdentityRowState extends State<_IdentityRow> {
   bool _hovered = false;
 
   @override
@@ -327,28 +357,31 @@ class _TeamRowState extends State<_TeamRow> {
         child: Row(
           crossAxisAlignment: CrossAxisAlignment.center,
           children: [
-            ReorderableDragStartListener(
-              index: widget.index,
-              child: MouseRegion(
-                cursor: _hovered
-                    ? SystemMouseCursors.grab
-                    : SystemMouseCursors.basic,
-                child: SizedBox(
-                  width: 28,
-                  height: 40,
-                  child: AnimatedOpacity(
-                    opacity: _hovered ? 0.65 : 0,
-                    duration: const Duration(milliseconds: 120),
-                    curve: Curves.easeOut,
-                    child: Icon(
-                      Icons.drag_indicator_rounded,
-                      size: 18,
-                      color: cs.onSurfaceVariant,
+            if (widget.index != null)
+              ReorderableDragStartListener(
+                index: widget.index!,
+                child: MouseRegion(
+                  cursor: _hovered
+                      ? SystemMouseCursors.grab
+                      : SystemMouseCursors.basic,
+                  child: SizedBox(
+                    width: 28,
+                    height: 40,
+                    child: AnimatedOpacity(
+                      opacity: _hovered ? 0.65 : 0,
+                      duration: const Duration(milliseconds: 120),
+                      curve: Curves.easeOut,
+                      child: Icon(
+                        Icons.drag_indicator_rounded,
+                        size: 18,
+                        color: cs.onSurfaceVariant,
+                      ),
                     ),
                   ),
                 ),
-              ),
-            ),
+              )
+            else
+              const SizedBox(width: 32),
             const SizedBox(width: 4),
             Expanded(
               child: MouseRegion(
@@ -362,16 +395,30 @@ class _TeamRowState extends State<_TeamRow> {
                       color: background,
                       borderRadius: BorderRadius.circular(8),
                     ),
-                    child: Text(
-                      widget.team.name,
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                      style: styles.prominent.copyWith(
-                        color: selected ? cs.primary : cs.onSurface,
-                        fontWeight: selected
-                            ? FontWeight.w600
-                            : FontWeight.w400,
-                      ),
+                    child: Row(
+                      children: [
+                        Icon(
+                          widget.isTeam
+                              ? Icons.groups_2_outlined
+                              : Icons.person_outline_rounded,
+                          size: context.appIconSizes.md,
+                          color: selected ? cs.primary : cs.onSurfaceVariant,
+                        ),
+                        const SizedBox(width: 8),
+                        Expanded(
+                          child: Text(
+                            widget.name,
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                            style: styles.prominent.copyWith(
+                              color: selected ? cs.primary : cs.onSurface,
+                              fontWeight: selected
+                                  ? FontWeight.w600
+                                  : FontWeight.w400,
+                            ),
+                          ),
+                        ),
+                      ],
                     ),
                   ),
                 ),

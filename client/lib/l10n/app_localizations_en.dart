@@ -567,7 +567,7 @@ class AppLocalizationsEn extends AppLocalizations {
   String get homeWorkspaceRecentlyClosedEmpty => 'No recently closed projects';
 
   @override
-  String get homeWorkspaceMyTeams => 'My Teams';
+  String get homeWorkspaceMyTeams => 'Workspaces';
 
   @override
   String get homeWorkspaceNewTeam => 'New Team';

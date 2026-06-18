@@ -3,6 +3,9 @@ import 'package:flutter_animate/flutter_animate.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
 import '../../cubits/identity_cubit.dart';
+import '../../models/personal_identity.dart';
+import '../../models/team_config.dart';
+import '../../models/workspace_identity.dart';
 import '../../theme/workspace_surface_layers.dart';
 import '../team_config/team_config_section.dart';
 import 'home_workspace_all_projects_pane.dart';
@@ -10,12 +13,12 @@ import 'home_workspace_content.dart';
 import 'home_workspace_global_section.dart';
 import 'home_workspace_library_section.dart';
 import 'home_workspace_library_view.dart';
+import 'home_workspace_personal_content.dart';
 import 'home_workspace_sidebar.dart';
 
-/// New Apifox-style workspace home body (teams rail + right pane). The window
-/// chrome (title bar + open project tabs) is provided by [HomeWorkspaceShell].
-/// The right pane shows either all projects, the selected team config, or a
-/// global management section (Skills / Plugins / MCP / Extensions).
+/// New Apifox-style workspace home body (workspaces rail + right pane). The
+/// window chrome (title bar + open project tabs) is provided by
+/// [HomeWorkspaceShell].
 class HomeWorkspacePage extends StatefulWidget {
   const HomeWorkspacePage({
     this.initialSection,
@@ -41,6 +44,7 @@ class HomeWorkspacePage extends StatefulWidget {
 
 class _HomeWorkspacePageState extends State<HomeWorkspacePage> {
   var _allProjectsActive = true;
+  String? _selectedIdentityId;
 
   /// Null means the team view; otherwise a global management section.
   late HomeWorkspaceGlobalView? _globalView = widget.initialGlobalView;
@@ -56,6 +60,8 @@ class _HomeWorkspacePageState extends State<HomeWorkspacePage> {
     }
     if (widget.initialSection != null) {
       _allProjectsActive = false;
+      _selectedIdentityId =
+          context.read<IdentityCubit>().state.selectedTeam?.id;
     }
   }
 
@@ -72,15 +78,60 @@ class _HomeWorkspacePageState extends State<HomeWorkspacePage> {
     });
   }
 
+  void _selectIdentity(String identityId) {
+    final identity = context.read<IdentityCubit>().byId(identityId);
+    if (identity is TeamIdentity) {
+      context.read<IdentityCubit>().selectTeam(identityId);
+    }
+    setState(() {
+      _selectedIdentityId = identityId;
+      _allProjectsActive = false;
+      _globalView = null;
+      _libraryView = null;
+    });
+  }
+
+  Widget _identityPane(
+    IdentityCubit identityCubit,
+    WorkspaceIdentity identity,
+  ) {
+    return switch (identity) {
+      PersonalIdentity personal => HomeWorkspacePersonalContent(
+          personal: personal,
+          cubit: identityCubit,
+          onSelectGlobalView: (view) => setState(() {
+            _allProjectsActive = false;
+            _globalView = view;
+            _libraryView = null;
+          }),
+        ),
+      TeamIdentity _ => HomeWorkspaceContent(
+          initialSection: widget.initialSection,
+          initialMemberId: widget.initialMemberId,
+          onSelectGlobalView: (view) => setState(() {
+            _allProjectsActive = false;
+            _globalView = view;
+            _libraryView = null;
+          }),
+        ),
+      _ => const Center(child: CircularProgressIndicator()),
+    };
+  }
+
   @override
   Widget build(BuildContext context) {
     final globalView = _globalView;
     final libraryView = _libraryView;
-    final teamId = context.watch<IdentityCubit>().state.selectedTeam?.id ?? 'none';
+    final identityCubit = context.watch<IdentityCubit>();
+    final selectedIdentity = _selectedIdentityId != null
+        ? identityCubit.byId(_selectedIdentityId!)
+        : identityCubit.state.selectedTeam;
     final paneKey = ValueKey(
       globalView?.name ??
           libraryView?.name ??
-          (_allProjectsActive ? 'all-projects' : 'team-$teamId'),
+          (_allProjectsActive
+              ? 'all-projects'
+              : 'identity-${selectedIdentity?.id ?? 'none'}'),
     );
 
     final body = Row(
@@ -91,10 +142,12 @@ class _HomeWorkspacePageState extends State<HomeWorkspacePage> {
           activeLibraryView: libraryView,
           allProjectsActive:
               _allProjectsActive && globalView == null && libraryView == null,
+          selectedIdentityId: _allProjectsActive ? null : selectedIdentity?.id,
           onSelectAllProjects: () => setState(() {
             _allProjectsActive = true;
             _globalView = null;
             _libraryView = null;
+            _selectedIdentityId = null;
           }),
           onSelectGlobalView: (view) => setState(() {
             _allProjectsActive = false;
@@ -106,14 +159,7 @@ class _HomeWorkspacePageState extends State<HomeWorkspacePage> {
             _libraryView = view;
             _globalView = null;
           }),
-          onSelectTeam: (teamId) {
-            context.read<IdentityCubit>().selectTeam(teamId);
-            setState(() {
-              _allProjectsActive = false;
-              _globalView = null;
-              _libraryView = null;
-            });
-          },
+          onSelectIdentity: _selectIdentity,
         ),
         Expanded(
           child: Padding(
@@ -124,15 +170,9 @@ class _HomeWorkspacePageState extends State<HomeWorkspacePage> {
                     ? HomeWorkspaceLibrarySection(view: libraryView)
                     : _allProjectsActive
                     ? const HomeWorkspaceAllProjectsPane()
-                    : HomeWorkspaceContent(
-                        initialSection: widget.initialSection,
-                        initialMemberId: widget.initialMemberId,
-                        onSelectGlobalView: (view) => setState(() {
-                          _allProjectsActive = false;
-                          _globalView = view;
-                          _libraryView = null;
-                        }),
-                      ))
+                    : selectedIdentity != null
+                    ? _identityPane(identityCubit, selectedIdentity)
+                    : const HomeWorkspaceAllProjectsPane())
                 .animate(key: paneKey)
                 .fadeIn(duration: 180.ms, curve: Curves.easeOut)
                 .slideX(

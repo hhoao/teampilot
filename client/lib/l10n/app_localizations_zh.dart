@@ -547,7 +547,7 @@ class AppLocalizationsZh extends AppLocalizations {
   String get homeWorkspaceRecentlyClosedEmpty => '暂无最近关闭的项目';
 
   @override
-  String get homeWorkspaceMyTeams => '我的团队';
+  String get homeWorkspaceMyTeams => '工作区';
 
   @override
   String get homeWorkspaceNewTeam => '新建团队';

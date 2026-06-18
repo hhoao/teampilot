@@ -1133,7 +1133,7 @@ abstract class AppLocalizations {
   /// No description provided for @homeWorkspaceMyTeams.
   ///
   /// In en, this message translates to:
-  /// **'My Teams'**
+  /// **'Workspaces'**
   String get homeWorkspaceMyTeams;
 
   /// No description provided for @homeWorkspaceNewTeam.
