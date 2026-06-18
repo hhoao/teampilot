@@ -1,5 +1,6 @@
 import 'dart:async';
 
+import 'package:collection/collection.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
@@ -13,8 +14,11 @@ import '../../l10n/app_localizations.dart';
 import '../../l10n/l10n_extensions.dart';
 import '../../models/app_project.dart';
 import '../../models/launch_identity.dart';
-import '../../utils/project_display_name.dart';
+import '../../models/identity_kind.dart';
 import '../../models/team_config.dart';
+import '../../models/workspace_identity.dart';
+import '../../services/storage/identity_provisioner.dart';
+import '../../utils/project_display_name.dart';
 import '../../models/home_closed_project_entry.dart';
 import '../../theme/workspace_surface_layers.dart';
 import '../../services/home_workspace/home_workspace_closed_projects_store.dart';
@@ -63,13 +67,24 @@ class HomeWorkspaceShell extends StatefulWidget {
     return '$headline\n$path';
   }
 
-  static String? teamNameFor(List<TeamIdentity> teams, String teamId) {
-    if (teamId.isEmpty) return null;
-    for (final team in teams) {
-      if (team.id == teamId) return team.name;
+  static String? identityNameFor(
+    List<WorkspaceIdentity> identities,
+    String identityId,
+  ) {
+    if (identityId.isEmpty) return null;
+    for (final identity in identities) {
+      if (identity.id == identityId) {
+        return identity is TeamIdentity
+            ? identity.name
+            : identity.display;
+      }
     }
     return null;
   }
+
+  @Deprecated('Use identityNameFor')
+  static String? teamNameFor(List<TeamIdentity> teams, String teamId) =>
+      identityNameFor(teams, teamId);
 }
 
 class _HomeWorkspaceShellState extends State<HomeWorkspaceShell> {
@@ -200,7 +215,9 @@ class _HomeWorkspaceShellState extends State<HomeWorkspaceShell> {
     final fromRoute = _projectIdFromLocation(widget.location) == projectId
         ? _identityFromLocation(widget.location)
         : null;
-    return fromRoute ?? _identityByProjectId[projectId] ?? LaunchIdentity.personal;
+    return fromRoute ??
+        _identityByProjectId[projectId] ??
+        const LaunchIdentity(IdentityProvisioner.defaultPersonalId);
   }
 
   String _projectRoute(String projectId, LaunchIdentity identity) =>
@@ -330,7 +347,7 @@ class _HomeWorkspaceShellState extends State<HomeWorkspaceShell> {
     final activeIdentity =
         activeId != null ? _identityForProject(activeId) : null;
     final scopeTeamId = activeIdentity != null
-        ? activeIdentity.teamId
+        ? _sessionTeamScopeId(context, activeIdentity)
         : selectedTeam?.id;
     context.read<ChatCubit>().setTeamSessionScope(
       scopeSessionsToSelectedTeam: scopeOn,
@@ -350,8 +367,8 @@ class _HomeWorkspaceShellState extends State<HomeWorkspaceShell> {
 
     final cs = Theme.of(context).colorScheme;
     final l10n = context.l10n;
-    final teams = context.select<IdentityCubit, List<TeamIdentity>>(
-      (c) => c.state.teams,
+    final identities = context.select<IdentityCubit, List<WorkspaceIdentity>>(
+      (c) => c.state.identities,
     );
     // Show every open project tab across all teams (IDE-style open editors).
     // Selecting a tab switches the active team to the project's team via
@@ -363,7 +380,7 @@ class _HomeWorkspaceShellState extends State<HomeWorkspaceShell> {
             id: id,
             project: p,
             l10n: l10n,
-            teams: teams,
+            identities: identities,
           ),
     ];
 
@@ -412,11 +429,17 @@ class _HomeWorkspaceShellState extends State<HomeWorkspaceShell> {
     required String id,
     required AppProject project,
     required AppLocalizations l10n,
-    required List<TeamIdentity> teams,
+    required List<WorkspaceIdentity> identities,
   }) {
     final identity = _identityForProject(id);
-    final isPersonal = identity.isPersonal;
-    final teamId = identity.teamId;
+    final workspaceIdentity = identities
+            .where((e) => e.id == identity.identityId)
+            .firstOrNull ??
+        identities
+            .where((e) => e.id == IdentityProvisioner.defaultPersonalId)
+            .firstOrNull;
+    final isPersonal = workspaceIdentity?.kind == IdentityKind.personal;
+    final identityId = identity.identityId;
     return HomeProjectTab(
       id: id,
       name: project.localizedName(l10n),
@@ -425,12 +448,23 @@ class _HomeWorkspaceShellState extends State<HomeWorkspaceShell> {
         project: project,
         personalKindLabel: l10n.homeWorkspaceProjectTabKindPersonal,
         isPersonal: isPersonal,
-        teamName: HomeWorkspaceShell.teamNameFor(teams, teamId),
-        teamId: teamId,
+        teamName: HomeWorkspaceShell.identityNameFor(identities, identityId),
+        teamId: identityId,
         displayName: project.localizedName(l10n),
       ),
       closable: true,
     );
+  }
+
+  static String _sessionTeamScopeId(
+    BuildContext context,
+    LaunchIdentity identity,
+  ) {
+    final workspaceIdentity = context.read<IdentityCubit>().byId(
+          identity.identityId,
+        );
+    if (workspaceIdentity?.kind == IdentityKind.personal) return '';
+    return identity.identityId;
   }
 
   static AppProject? _resolve(List<AppProject> projects, String id) {
