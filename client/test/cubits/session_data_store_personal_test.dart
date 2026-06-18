@@ -4,7 +4,6 @@ import 'dart:io';
 import 'package:path/path.dart' as p;
 import 'package:flutter_test/flutter_test.dart';
 import 'package:teampilot/cubits/chat/session_data_store.dart';
-import 'package:teampilot/models/team_config.dart';
 import 'package:teampilot/repositories/project_profile_repository.dart';
 import 'package:teampilot/repositories/session_repository.dart';
 import 'package:teampilot/services/io/local_filesystem.dart';

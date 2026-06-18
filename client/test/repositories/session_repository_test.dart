@@ -1,6 +1,5 @@
 import 'dart:io';
 
-import 'package:teampilot/models/app_project.dart';
 import 'package:teampilot/models/app_session.dart';
 import 'package:teampilot/models/project_icon_ref.dart';
 import 'package:teampilot/models/team_config.dart';

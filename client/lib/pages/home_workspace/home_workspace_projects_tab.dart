@@ -24,6 +24,19 @@ import 'home_workspace_project_list_tile.dart';
 import 'home_workspace_project_sort.dart';
 import 'launch_project_team_order.dart';
 
+/// Route for [project] under [identity].
+String projectLaunchRoute(String projectId, LaunchIdentity identity) =>
+    '/home-v2/project/$projectId?as=${identity.encode()}';
+
+/// When a remembered, well-formed choice exists for [project], the route to
+/// open it directly (skipping the dialog); otherwise null (show the dialog).
+String? rememberedLaunchRoute(AppProject project, ProjectLaunchPref? pref) {
+  if (pref == null || !pref.remember) return null;
+  final id = LaunchIdentity.decode(pref.lastIdentity);
+  if (id == null) return null;
+  return projectLaunchRoute(project.projectId, id);
+}
+
 Future<void> openHomeWorkspaceProject(
   BuildContext context,
   AppProject project, {
@@ -33,12 +46,10 @@ Future<void> openHomeWorkspaceProject(
   final pref = await store.prefsFor(project.projectId);
   if (!context.mounted) return;
 
-  if (pref != null && pref.remember) {
-    final id = LaunchIdentity.decode(pref.lastIdentity);
-    if (id != null) {
-      context.go('/home-v2/project/${project.projectId}?as=${id.encode()}');
-      return;
-    }
+  final remembered = rememberedLaunchRoute(project, pref);
+  if (remembered != null) {
+    context.go(remembered);
+    return;
   }
 
   final teams = context.read<TeamCubit>().state.teams;
@@ -68,7 +79,7 @@ Future<void> openHomeWorkspaceProject(
     ),
   );
   if (!context.mounted) return;
-  context.go('/home-v2/project/${project.projectId}?as=${choice.identity.encode()}');
+  context.go(projectLaunchRoute(project.projectId, choice.identity));
 }
 
 class HomeWorkspaceProjectsTab extends StatelessWidget {

@@ -7,7 +7,7 @@ import '../storage/app_storage.dart';
 class ProjectLaunchPref {
   const ProjectLaunchPref({required this.lastIdentity, required this.remember});
 
-  /// Encoded [LaunchIdentity] ("personal" | "team:<id>").
+  /// Encoded launch identity: `personal` or `team:ID`.
   final String lastIdentity;
 
   /// When true, opening the project skips the dialog and uses [lastIdentity].

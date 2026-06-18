@@ -51,7 +51,6 @@ class _HomeWorkspaceProjectSplitPaneState
             cwd: widget.project.primaryPath,
             projectId: widget.project.projectId,
             isPersonalProject: widget.isPersonalProject,
-            sessionTeamFilter: widget.sessionTeamFilter,
           ),
           initialPrimarySize: initialSidebar,
           minPrimarySize: minSidebar,

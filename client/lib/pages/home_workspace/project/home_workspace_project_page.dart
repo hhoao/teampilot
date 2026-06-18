@@ -153,8 +153,10 @@ class _HomeWorkspaceProjectPageState extends State<HomeWorkspaceProjectPage> {
 
     final identity = widget.identity;
     if (identity == null) {
+      // No identity chosen (e.g. a hand-typed project URL). Bounce back to the
+      // workspace home, which opens on the All Projects pane by default.
       WidgetsBinding.instance.addPostFrameCallback((_) {
-        if (mounted) context.go('/home-v2?projects=1');
+        if (mounted) context.go('/home-v2');
       });
       return WorkspacePageCardShell(
         chrome: WorkspacePageChrome.project,
