@@ -30,30 +30,34 @@ import '../../widgets/settings/workspace_settings_toggle_strip.dart';
 import '../../widgets/settings/workspace_settings_widgets.dart';
 import 'home_workspace_team_generate_section.dart';
 
-enum _TeamCreationMethod { custom, ai }
+enum _TeamCreationMethod { custom, ai, solo }
+
+typedef _NewTeamDialogResult = ({
+  bool isSolo,
+  String name,
+  TeamMode mode,
+  CliTool cli,
+  Map<String, String> providerIdsByTool,
+  List<TeamMemberConfig>? members,
+  String description,
+});
 
 /// Large centered "create team" modal launched from the workspace sidebar's
 /// "New Team" row. Mirrors the Apifox project-creation modal: centered title +
-/// close, two big selectable mode cards (Native / Mixed), a named form row, and
-/// a single primary create action. The chosen [TeamMode] is the headline
-/// decision; the CLI backend defaults to [CliTool.claude].
+/// close, optional Native / Mixed mode cards (team flows), a named form row,
+/// and a single primary create action.
 Future<void> showHomeWorkspaceNewTeamDialog(
   BuildContext context,
   IdentityCubit teamCubit,
 ) async {
   final l10n = context.l10n;
-  final result =
-      await showDialog<
-        ({
-          String name,
-          TeamMode mode,
-          CliTool cli,
-          Map<String, String> providerIdsByTool,
-          List<TeamMemberConfig>? members,
-          String description,
-        })
-      >(context: context, builder: (_) => const HomeWorkspaceNewTeamDialog());
+  final result = await showDialog<_NewTeamDialogResult>(
+      context: context, builder: (_) => const HomeWorkspaceNewTeamDialog());
   if (result == null || !context.mounted) return;
+  if (result.isSolo) {
+    await teamCubit.addPersonal(result.name);
+    return;
+  }
   await teamCubit.addTeam(
     result.name,
     cli: result.cli,
@@ -118,6 +122,11 @@ class _HomeWorkspaceNewTeamDialogState
   }
 
   void _syncCanCreate() {
+    if (_creationMethod == _TeamCreationMethod.solo) {
+      final canCreate = _nameController.text.trim().isNotEmpty;
+      if (canCreate != _canCreate) setState(() => _canCreate = canCreate);
+      return;
+    }
     if (_mode == null) {
       if (_canCreate) setState(() => _canCreate = false);
       return;
@@ -129,7 +138,8 @@ class _HomeWorkspaceNewTeamDialogState
   }
 
   String _teamNameForSubmit() {
-    if (_creationMethod == _TeamCreationMethod.custom) {
+    if (_creationMethod == _TeamCreationMethod.custom ||
+        _creationMethod == _TeamCreationMethod.solo) {
       return _nameController.text.trim();
     }
     final draftName = _draft?.teamName?.trim();
@@ -174,26 +184,52 @@ class _HomeWorkspaceNewTeamDialogState
   }
 
   Map<String, String> _providerIdsByToolForSubmit() {
-    if (_mode != TeamMode.native) return const {};
+    if (_mode != TeamMode.native) return const <String, String>{};
     final catalogCli = _providerCatalogCli(_cli);
     final providerId = _providerId.trim();
-    if (catalogCli == null || providerId.isEmpty) return const {};
+    if (catalogCli == null || providerId.isEmpty) return const <String, String>{};
     return {catalogCli.value: providerId};
   }
 
+  _NewTeamDialogResult _buildDialogResult({
+    required bool isSolo,
+    required String name,
+    required TeamMode mode,
+    List<TeamMemberConfig>? members,
+    String description = '',
+    Map<String, String>? providerIdsByTool,
+  }) =>
+      (
+        isSolo: isSolo,
+        name: name,
+        mode: mode,
+        cli: _cli,
+        providerIdsByTool: providerIdsByTool ?? const <String, String>{},
+        members: members,
+        description: description,
+      );
+
   void _submit() {
-    final mode = _mode;
-    if (mode == null) return;
     final name = _teamNameForSubmit().trim();
     if (name.isEmpty) return;
-    Navigator.of(context).pop((
-      name: name,
-      mode: mode,
-      cli: _cli,
-      providerIdsByTool: _providerIdsByToolForSubmit(),
-      members: _draft?.members,
-      description: _draft?.description?.trim() ?? '',
-    ));
+    if (_creationMethod == _TeamCreationMethod.solo) {
+      Navigator.of(context).pop(
+        _buildDialogResult(isSolo: true, name: name, mode: TeamMode.native),
+      );
+      return;
+    }
+    final mode = _mode;
+    if (mode == null) return;
+    Navigator.of(context).pop(
+      _buildDialogResult(
+        isSolo: false,
+        name: name,
+        mode: mode,
+        providerIdsByTool: _providerIdsByToolForSubmit(),
+        members: _draft?.members,
+        description: _draft?.description?.trim() ?? '',
+      ),
+    );
   }
 
   bool get _canGenerate =>
@@ -307,7 +343,6 @@ class _HomeWorkspaceNewTeamDialogState
           const SizedBox(height: 20),
           WorkspaceSettingsToggleStrip<_TeamCreationMethod>(
             alignment: Alignment.center,
-            customWidths: const [156, 120],
             segments: [
               WorkspaceToggleSegment(
                 value: _TeamCreationMethod.custom,
@@ -319,13 +354,22 @@ class _HomeWorkspaceNewTeamDialogState
                 label: l10n.homeWorkspaceNewTeamMethodAi,
                 icon: Icons.auto_awesome_outlined,
               ),
+              WorkspaceToggleSegment(
+                value: _TeamCreationMethod.solo,
+                label: l10n.homeWorkspaceNewTeamMethodSolo,
+                icon: Icons.person_outline_rounded,
+              ),
             ],
             selected: _creationMethod,
             onChanged: (method) {
               setState(() {
                 _creationMethod = method;
-                if (method == _TeamCreationMethod.custom) {
+                if (method == _TeamCreationMethod.custom ||
+                    method == _TeamCreationMethod.solo) {
                   _draft = null;
+                }
+                if (method == _TeamCreationMethod.solo) {
+                  _mode = null;
                 }
               });
               _syncCanCreate();
@@ -333,58 +377,61 @@ class _HomeWorkspaceNewTeamDialogState
           ),
           const SizedBox(height: 12),
           Text(
-            _creationMethod == _TeamCreationMethod.custom
-                ? l10n.homeWorkspaceNewTeamSubtitle
-                : l10n.homeWorkspaceNewTeamSubtitleAi,
+            switch (_creationMethod) {
+              _TeamCreationMethod.custom => l10n.homeWorkspaceNewTeamSubtitle,
+              _TeamCreationMethod.ai => l10n.homeWorkspaceNewTeamSubtitleAi,
+              _TeamCreationMethod.solo => l10n.homeWorkspaceNewTeamSubtitleSolo,
+            },
             textAlign: TextAlign.center,
             style: styles.body.copyWith(color: cs.onSurfaceVariant),
           ),
-          const SizedBox(height: 28),
-          // Team mode is a fundamental decision for both the custom and AI
-          // flows, so the mode cards render regardless of creation method.
-          IntrinsicHeight(
-            child: Row(
-              crossAxisAlignment: CrossAxisAlignment.stretch,
-              children: [
-                Expanded(
-                  child: _ModeCard(
-                    icon: Icons.dashboard_customize_outlined,
-                    title: l10n.teamModeNativeTitle,
-                    description: l10n.teamModeNativeDescription,
-                    badge: l10n.homeWorkspaceNewTeamRecommended,
-                    badgeIsPrimary: true,
-                    selected: _mode == TeamMode.native,
-                    onTap: () {
-                      setState(() {
-                        _mode = TeamMode.native;
-                        _draft = null;
-                      });
-                      _ensureNativeTeamCli();
-                      _syncCanCreate();
-                    },
+          if (_creationMethod != _TeamCreationMethod.solo) ...[
+            const SizedBox(height: 28),
+            // Team mode is a fundamental decision for custom and AI team flows.
+            IntrinsicHeight(
+              child: Row(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  Expanded(
+                    child: _ModeCard(
+                      icon: Icons.dashboard_customize_outlined,
+                      title: l10n.teamModeNativeTitle,
+                      description: l10n.teamModeNativeDescription,
+                      badge: l10n.homeWorkspaceNewTeamRecommended,
+                      badgeIsPrimary: true,
+                      selected: _mode == TeamMode.native,
+                      onTap: () {
+                        setState(() {
+                          _mode = TeamMode.native;
+                          _draft = null;
+                        });
+                        _ensureNativeTeamCli();
+                        _syncCanCreate();
+                      },
+                    ),
                   ),
-                ),
-                const SizedBox(width: 16),
-                Expanded(
-                  child: _ModeCard(
-                    icon: Icons.hub_outlined,
-                    title: l10n.teamModeMixedTitle,
-                    description: l10n.teamModeMixedDescription,
-                    badge: l10n.homeWorkspaceNewTeamModeBeta,
-                    badgeIsPrimary: false,
-                    selected: _mode == TeamMode.mixed,
-                    onTap: () {
-                      setState(() {
-                        _mode = TeamMode.mixed;
-                        _draft = null;
-                      });
-                      _syncCanCreate();
-                    },
+                  const SizedBox(width: 16),
+                  Expanded(
+                    child: _ModeCard(
+                      icon: Icons.hub_outlined,
+                      title: l10n.teamModeMixedTitle,
+                      description: l10n.teamModeMixedDescription,
+                      badge: l10n.homeWorkspaceNewTeamModeBeta,
+                      badgeIsPrimary: false,
+                      selected: _mode == TeamMode.mixed,
+                      onTap: () {
+                        setState(() {
+                          _mode = TeamMode.mixed;
+                          _draft = null;
+                        });
+                        _syncCanCreate();
+                      },
+                    ),
                   ),
-                ),
-              ],
+                ],
+              ),
             ),
-          ),
+          ],
           if (_creationMethod == _TeamCreationMethod.custom) ...[
             if (_mode == TeamMode.native) ...[
               const SizedBox(height: 20),
@@ -407,6 +454,13 @@ class _HomeWorkspaceNewTeamDialogState
               controller: _nameController,
               onSubmitted: (_) => _submit(),
             ),
+          ] else if (_creationMethod == _TeamCreationMethod.solo) ...[
+            const SizedBox(height: 28),
+            _NameField(
+              controller: _nameController,
+              onSubmitted: (_) => _submit(),
+              solo: true,
+            ),
           ] else ...[
             const SizedBox(height: 24),
             HomeWorkspaceTeamGenerateSection(
@@ -427,6 +481,7 @@ class _HomeWorkspaceNewTeamDialogState
               Builder(
                 builder: (context) {
                   final isAi = _creationMethod == _TeamCreationMethod.ai;
+                  final isSolo = _creationMethod == _TeamCreationMethod.solo;
                   final enabled = isAi
                       ? _canGenerate
                       : (_canCreate && !_generating);
@@ -449,6 +504,8 @@ class _HomeWorkspaceNewTeamDialogState
                         : Text(
                             isAi
                                 ? l10n.teamGenButton
+                                : isSolo
+                                ? l10n.homeWorkspaceCreateSolo
                                 : l10n.homeWorkspaceCreateTeam,
                           ),
                   );
@@ -699,10 +756,15 @@ class _NativeTeamOptionsCard extends StatelessWidget {
 }
 
 class _NameField extends StatelessWidget {
-  const _NameField({required this.controller, required this.onSubmitted});
+  const _NameField({
+    required this.controller,
+    required this.onSubmitted,
+    this.solo = false,
+  });
 
   final TextEditingController controller;
   final ValueChanged<String> onSubmitted;
+  final bool solo;
 
   @override
   Widget build(BuildContext context) {
@@ -733,7 +795,7 @@ class _NameField extends StatelessWidget {
               borderRadius: BorderRadius.circular(10),
             ),
             child: Icon(
-              Icons.groups_2_rounded,
+              solo ? Icons.person_outline_rounded : Icons.groups_2_rounded,
               size: context.appIconSizes.lg,
               color: cs.onPrimary,
             ),
@@ -745,7 +807,7 @@ class _NameField extends StatelessWidget {
               mainAxisSize: MainAxisSize.min,
               children: [
                 Text(
-                  l10n.teamName,
+                  solo ? l10n.homeWorkspaceNewTeamMethodSolo : l10n.teamName,
                   style: styles.caption.copyWith(color: cs.onSurfaceVariant),
                 ),
                 const SizedBox(height: 6),
@@ -755,7 +817,9 @@ class _NameField extends StatelessWidget {
                   onSubmitted: onSubmitted,
                   style: styles.prominent.copyWith(color: cs.onSurface),
                   decoration: InputDecoration(
-                    hintText: l10n.homeWorkspaceNewTeamNameHint,
+                    hintText: solo
+                        ? l10n.homeWorkspaceNewSoloNameHint
+                        : l10n.homeWorkspaceNewTeamNameHint,
                     isDense: true,
                   ),
                 ),

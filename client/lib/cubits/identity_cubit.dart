@@ -209,6 +209,34 @@ class IdentityCubit extends Cubit<IdentityState> implements IdentityCubitHost {
     await _reloadIdentities();
   }
 
+  Future<bool> addPersonal(String display) async {
+    final trimmed = display.trim();
+    if (trimmed.isEmpty) {
+      emit(state.copyWith(statusMessage: 'Workspace name is required.'));
+      return false;
+    }
+    if (state.personals.any((p) => p.display == trimmed) ||
+        state.teams.any((t) => t.name == trimmed)) {
+      emit(state.copyWith(statusMessage: 'Workspace "$trimmed" already exists.'));
+      return false;
+    }
+    final now = DateTime.now().millisecondsSinceEpoch;
+    final id = TeamMemberNaming.uniqueTeamId(
+      trimmed,
+      state.identities.map((identity) => identity.id),
+    );
+    await savePersonal(
+      PersonalIdentity(
+        id: id,
+        display: trimmed,
+        createdAt: now,
+        sortOrder: state.personals.length + 1,
+      ),
+    );
+    emit(state.copyWith(statusMessage: 'Added $trimmed.'));
+    return true;
+  }
+
   Future<void> _reloadIdentities() async {
     final all = await _repository.loadAll();
     final teams = _sortTeams(all.whereType<TeamIdentity>().toList());

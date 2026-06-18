@@ -567,7 +567,7 @@ class AppLocalizationsEn extends AppLocalizations {
   String get homeWorkspaceRecentlyClosedEmpty => 'No recently closed projects';
 
   @override
-  String get homeWorkspaceMyTeams => 'Workspaces';
+  String get homeWorkspaceMyTeams => 'My Teams';
 
   @override
   String get homeWorkspaceNewTeam => 'New Team';
@@ -626,8 +626,21 @@ class AppLocalizationsEn extends AppLocalizations {
   String get homeWorkspaceNewTeamMethodAi => 'AI generate';
 
   @override
+  String get homeWorkspaceNewTeamMethodSolo => 'Solo';
+
+  @override
   String get homeWorkspaceNewTeamSubtitleAi =>
       'Describe your team and generate a draft with AI.';
+
+  @override
+  String get homeWorkspaceNewTeamSubtitleSolo =>
+      'Simple single-CLI chat — switch CLI, model, and provider freely.';
+
+  @override
+  String get homeWorkspaceNewSoloNameHint => 'Enter a workspace name';
+
+  @override
+  String get homeWorkspaceCreateSolo => 'Create solo workspace';
 
   @override
   String get homeWorkspaceNewTeamRecommended => 'Recommended';

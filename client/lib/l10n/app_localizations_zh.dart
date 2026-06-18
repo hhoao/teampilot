@@ -547,7 +547,7 @@ class AppLocalizationsZh extends AppLocalizations {
   String get homeWorkspaceRecentlyClosedEmpty => '暂无最近关闭的项目';
 
   @override
-  String get homeWorkspaceMyTeams => '工作区';
+  String get homeWorkspaceMyTeams => '我的团队';
 
   @override
   String get homeWorkspaceNewTeam => '新建团队';
@@ -604,7 +604,20 @@ class AppLocalizationsZh extends AppLocalizations {
   String get homeWorkspaceNewTeamMethodAi => 'AI 生成';
 
   @override
+  String get homeWorkspaceNewTeamMethodSolo => '单人团队';
+
+  @override
   String get homeWorkspaceNewTeamSubtitleAi => '描述团队需求，用 AI 生成团队配置草稿。';
+
+  @override
+  String get homeWorkspaceNewTeamSubtitleSolo =>
+      '简单的单 CLI 对话，但可自由切换 CLI、模型与供应商。';
+
+  @override
+  String get homeWorkspaceNewSoloNameHint => '请输入工作区名称';
+
+  @override
+  String get homeWorkspaceCreateSolo => '创建单人团队';
 
   @override
   String get homeWorkspaceNewTeamRecommended => '推荐';

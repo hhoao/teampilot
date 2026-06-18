@@ -54,6 +54,15 @@ void main() {
     await cubit.close();
   });
 
+  test('addPersonal creates a named personal identity', () async {
+    final cubit = _cubit(tmp, repo);
+    await cubit.load();
+    final ok = await cubit.addPersonal('Writing');
+    expect(ok, isTrue);
+    expect(cubit.state.personals.map((p) => p.display), contains('Writing'));
+    await cubit.close();
+  });
+
   test('deleting when more than one removes the identity', () async {
     final cubit = _cubit(tmp, repo);
     await cubit.savePersonal(
