@@ -26,7 +26,7 @@ class ProfileMcpLinkerService {
 
   final Filesystem _fs;
 
-  Future<ProfileMcpSyncResult> syncForIdentity({
+  Future<ProfileMcpSyncResult> syncForProfile({
     required String profileId,
     required List<String> mcpServerIds,
     required List<McpServer> catalog,

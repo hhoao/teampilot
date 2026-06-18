@@ -858,7 +858,7 @@ class LaunchProfileCubit extends Cubit<LaunchProfileState> implements LaunchProf
     try {
       final catalog =
           await (_installedPluginsLoader?.call() ?? _pluginRepository.loadAll());
-      await _pluginLinker.syncForIdentity(
+      await _pluginLinker.syncForProfile(
         profileId: personal.id,
         pluginIds: personal.bundle.pluginIds,
         installed: catalog,

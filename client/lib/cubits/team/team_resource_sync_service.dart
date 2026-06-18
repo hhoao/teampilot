@@ -173,7 +173,7 @@ class TeamResourceSyncService {
       );
       final layout = (await _provisioner.service()).layout;
 
-      var result = await _mcpLinker.syncForIdentity(
+      var result = await _mcpLinker.syncForProfile(
         profileId: team.id,
         mcpServerIds: mergedIds,
         catalog: mergedCatalog,
@@ -197,7 +197,7 @@ class TeamResourceSyncService {
             ids: prunedIds,
             contributions: contributions,
           );
-          result = await _mcpLinker.syncForIdentity(
+          result = await _mcpLinker.syncForProfile(
             profileId: team.id,
             mcpServerIds: prunedMergedIds,
             catalog: mergedCatalog,
@@ -248,7 +248,7 @@ class TeamResourceSyncService {
         }
         if (team == null) continue;
 
-        final result = await _pluginLinker.syncForIdentity(
+        final result = await _pluginLinker.syncForProfile(
           profileId: team.id,
           pluginIds: team.pluginIds,
           installed: catalog,

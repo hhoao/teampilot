@@ -68,7 +68,7 @@ void main() {
     final linker = ProfilePluginLinkerService(
       appPluginsRoot: p.join(tmp.path, 'plugins', 'installed'),
     );
-    final result = await linker.syncForIdentity(
+    final result = await linker.syncForProfile(
       profileId: 'integ-team',
       pluginIds: team.pluginIds,
       installed: installed,
@@ -88,7 +88,7 @@ void main() {
     expect(await teamPluginDir.exists(), isTrue);
 
     // 6. Remove plugin from team, sync again
-    await linker.syncForIdentity(
+    await linker.syncForProfile(
       profileId: 'integ-team',
       pluginIds: const [],
       installed: installed,

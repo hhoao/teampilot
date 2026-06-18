@@ -24,7 +24,7 @@ class _RecordingPluginLinker extends ProfilePluginLinkerService {
       <({String profileId, List<String> pluginIds, List<Plugin> installed})>[];
 
   @override
-  Future<IdentityPluginSyncResult> syncForIdentity({
+  Future<ProfilePluginSyncResult> syncForProfile({
     required String profileId,
     required List<String> pluginIds,
     required List<Plugin> installed,
@@ -34,7 +34,7 @@ class _RecordingPluginLinker extends ProfilePluginLinkerService {
       pluginIds: List.of(pluginIds),
       installed: List.of(installed),
     ));
-    return const IdentityPluginSyncResult();
+    return const ProfilePluginSyncResult();
   }
 }
 

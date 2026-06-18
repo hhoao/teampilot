@@ -26,7 +26,7 @@ const _extServer = McpServer(
   server: {'command': 'codegraph', 'args': ['serve', '--mcp']},
 );
 
-/// Records every `syncForIdentity` call and returns queued results in order.
+/// Records every `syncForProfile` call and returns queued results in order.
 class _RecordingMcpLinker extends ProfileMcpLinkerService {
   _RecordingMcpLinker({this.resultsQueue = const []});
 
@@ -36,7 +36,7 @@ class _RecordingMcpLinker extends ProfileMcpLinkerService {
   int _index = 0;
 
   @override
-  Future<ProfileMcpSyncResult> syncForIdentity({
+  Future<ProfileMcpSyncResult> syncForProfile({
     required String profileId,
     required List<String> mcpServerIds,
     required List<McpServer> catalog,
@@ -61,12 +61,12 @@ class _NoopPluginLinker extends ProfilePluginLinkerService {
   _NoopPluginLinker() : super(appPluginsRoot: '/tmp');
 
   @override
-  Future<IdentityPluginSyncResult> syncForIdentity({
+  Future<ProfilePluginSyncResult> syncForProfile({
     required String profileId,
     required List<String> pluginIds,
     required List<Plugin> installed,
   }) async =>
-      const IdentityPluginSyncResult();
+      const ProfilePluginSyncResult();
 }
 
 LaunchProfileRepository _repo(Directory dir) =>

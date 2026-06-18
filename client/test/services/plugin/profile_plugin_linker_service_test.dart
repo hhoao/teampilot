@@ -29,7 +29,7 @@ void main() {
     tmp.deleteSync(recursive: true);
   });
 
-  test('syncForIdentity links CLI bundles under team plugin dir on Unix', () async {
+  test('syncForProfile links CLI bundles under team plugin dir on Unix', () async {
     final pluginsRoot = Directory(p.join(tmp.path, 'plugins', 'installed'))
       ..createSync(recursive: true);
     final pluginDir = Directory(p.join(pluginsRoot.path, 'acme__market__p1'))
@@ -40,7 +40,7 @@ void main() {
     ).writeAsStringSync('{"name":"p1","version":"1.0.0"}');
 
     final svc = ProfilePluginLinkerService(appPluginsRoot: pluginsRoot.path);
-    final result = await svc.syncForIdentity(
+    final result = await svc.syncForProfile(
       profileId: 't1',
       pluginIds: ['acme/market/p1'],
       installed: const [
@@ -77,7 +77,7 @@ void main() {
     );
   });
 
-  test('syncForIdentity removes stale links not in pluginIds', () async {
+  test('syncForProfile removes stale links not in pluginIds', () async {
     final teamPluginsDir = Directory(
       p.join(tmp.path, 'identities-runtime', 't1', 'flashskyai', 'plugins'),
     )..createSync(recursive: true);
@@ -86,7 +86,7 @@ void main() {
     final svc = ProfilePluginLinkerService(
       appPluginsRoot: p.join(tmp.path, 'plugins', 'installed'),
     );
-    final result = await svc.syncForIdentity(
+    final result = await svc.syncForProfile(
       profileId: 't1',
       pluginIds: const [],
       installed: const [],
@@ -98,12 +98,12 @@ void main() {
     );
   });
 
-  test('syncForIdentity reports skippedMissingIds when plugin source is missing',
+  test('syncForProfile reports skippedMissingIds when plugin source is missing',
       () async {
     final svc = ProfilePluginLinkerService(
       appPluginsRoot: p.join(tmp.path, 'plugins', 'installed'),
     );
-    final result = await svc.syncForIdentity(
+    final result = await svc.syncForProfile(
       profileId: 't1',
       pluginIds: ['gone/market/p'],
       installed: const [],
@@ -111,7 +111,7 @@ void main() {
     expect(result.skippedMissingIds, ['gone/market/p']);
   });
 
-  test('syncForIdentity resolves plugin-name collision with owner__name fallback',
+  test('syncForProfile resolves plugin-name collision with owner__name fallback',
       () async {
     final pluginsRoot = Directory(p.join(tmp.path, 'plugins', 'installed'))
       ..createSync(recursive: true);
@@ -130,7 +130,7 @@ void main() {
     writeBundle(dirB, 'shared');
 
     final svc = ProfilePluginLinkerService(appPluginsRoot: pluginsRoot.path);
-    final result = await svc.syncForIdentity(
+    final result = await svc.syncForProfile(
       profileId: 't1',
       pluginIds: ['acmeA/market/shared', 'acmeB/market/shared'],
       installed: [

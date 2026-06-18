@@ -7,8 +7,8 @@ import '../cli/registry/capabilities/plugin_manifest_capability.dart';
 import '../storage/storage_resolver.dart';
 import '../io/filesystem.dart';
 
-class IdentityPluginSyncResult {
-  const IdentityPluginSyncResult({
+class ProfilePluginSyncResult {
+  const ProfilePluginSyncResult({
     this.linked = const [],
     this.skippedMissingIds = const [],
     this.errors = const [],
@@ -46,14 +46,14 @@ class ProfilePluginLinkerService {
   String sourceDirFor(Plugin plugin) =>
       AppStorage.fs.pathContext.join(appPluginsDir, plugin.directory);
 
-  Future<IdentityPluginSyncResult> syncForIdentity({
+  Future<ProfilePluginSyncResult> syncForProfile({
     required String profileId,
     required List<String> pluginIds,
     required List<Plugin> installed,
   }) async {
     final trimmedIdentityId = profileId.trim();
     if (trimmedIdentityId.isEmpty) {
-      return const IdentityPluginSyncResult();
+      return const ProfilePluginSyncResult();
     }
 
     final byId = {for (final p in installed) p.id: p};
@@ -90,7 +90,7 @@ class ProfilePluginLinkerService {
     return AppPaths.teampilotRootFromInstalledScopeDir(root);
   }
 
-  Future<IdentityPluginSyncResult> _syncWithFilesystem({
+  Future<ProfilePluginSyncResult> _syncWithFilesystem({
     required Filesystem fs,
     required String sourceRoot,
     required String identityPluginsDir,
@@ -109,7 +109,7 @@ class ProfilePluginLinkerService {
         await fs.removeRecursive(path.join(identityPluginsDir, entry.name));
       }
     } catch (e) {
-      return IdentityPluginSyncResult(
+      return ProfilePluginSyncResult(
         skippedMissingIds: skipped,
         errors: ['Failed to clear identity plugins dir: $e'],
       );
@@ -162,7 +162,7 @@ class ProfilePluginLinkerService {
       }
     }
 
-    return IdentityPluginSyncResult(
+    return ProfilePluginSyncResult(
       linked: linked,
       skippedMissingIds: skipped,
       errors: errors,

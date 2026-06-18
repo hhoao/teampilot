@@ -29,7 +29,7 @@ void main() {
       createdAt: 1,
       updatedAt: 1,
     );
-    final result = await linker.syncForIdentity(
+    final result = await linker.syncForProfile(
       profileId: 'team-a',
       mcpServerIds: const ['fetch', 'missing'],
       catalog: [server],
@@ -58,7 +58,7 @@ void main() {
       createdAt: 1,
       updatedAt: 1,
     );
-    await linker.syncForIdentity(
+    await linker.syncForProfile(
       profileId: 'team-a',
       mcpServerIds: const ['github'],
       catalog: [server],
@@ -79,7 +79,7 @@ void main() {
       createdAt: 1,
       updatedAt: 1,
     );
-    await linker.syncForIdentity(
+    await linker.syncForProfile(
       profileId: 'team-a',
       mcpServerIds: const ['off'],
       catalog: [server],

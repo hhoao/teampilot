@@ -43,7 +43,7 @@ void main() {
       }),
     );
 
-    await ProfileMcpLinkerService().syncForIdentity(
+    await ProfileMcpLinkerService().syncForProfile(
       profileId: teamId,
       mcpServerIds: const ['fetch'],
       catalog: [
@@ -83,7 +83,7 @@ void main() {
       jsonEncode({'hasCompletedOnboarding': true}),
     );
 
-    await ProfileMcpLinkerService().syncForIdentity(
+    await ProfileMcpLinkerService().syncForProfile(
       profileId: teamId,
       mcpServerIds: const ['fetch'],
       catalog: [
@@ -133,7 +133,7 @@ void main() {
       ),
     );
 
-    await ProfileMcpLinkerService().syncForIdentity(
+    await ProfileMcpLinkerService().syncForProfile(
       profileId: teamId,
       mcpServerIds: const ['ctx', 'deploy'],
       catalog: [
