@@ -4,7 +4,7 @@ import 'config_bundle.dart';
 import 'identity_kind.dart';
 import 'project_agent_config.dart';
 import 'project_icon_ref.dart';
-import 'workspace_identity.dart';
+import 'identity.dart';
 
 /// A solo (no-roster) launch identity. Owns a [ConfigBundle] plus single-agent
 /// per-tool tiering and an agent config. Replaces the per-directory

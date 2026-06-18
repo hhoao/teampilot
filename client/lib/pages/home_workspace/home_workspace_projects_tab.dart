@@ -14,7 +14,7 @@ import '../../models/launch_identity.dart';
 import '../../models/personal_identity.dart';
 import '../../models/team_config.dart';
 import '../../models/identity_kind.dart';
-import '../../models/workspace_identity.dart';
+import '../../models/identity.dart';
 import '../../repositories/session_repository.dart';
 import '../../services/home_workspace/home_workspace_project_launch_prefs_store.dart';
 import '../../theme/app_text_styles.dart';

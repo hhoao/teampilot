@@ -7,7 +7,7 @@ import '../models/mcp_server.dart';
 import '../models/personal_identity.dart';
 import '../models/plugin.dart';
 import '../models/team_config.dart';
-import '../models/workspace_identity.dart';
+import '../models/identity.dart';
 import '../repositories/mcp_repository.dart';
 import '../repositories/plugin_repository.dart';
 import '../repositories/identity_repository.dart';

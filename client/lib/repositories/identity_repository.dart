@@ -3,7 +3,7 @@ import 'dart:convert';
 import '../models/identity_kind.dart';
 import '../models/personal_identity.dart';
 import '../models/team_config.dart';
-import '../models/workspace_identity.dart';
+import '../models/identity.dart';
 import '../services/io/filesystem.dart';
 import '../services/session/session_lifecycle_service.dart';
 import '../services/storage/app_storage.dart';

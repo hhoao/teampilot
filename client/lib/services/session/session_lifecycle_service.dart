@@ -8,7 +8,7 @@ import '../../models/personal_identity.dart';
 import '../../models/session_member_binding.dart';
 import '../../models/skill.dart';
 import '../../models/team_config.dart';
-import '../../models/workspace_identity.dart';
+import '../../models/identity.dart';
 import '../../repositories/cli_presets_repository.dart';
 import '../../repositories/identity_repository.dart';
 import '../../services/storage/identity_provisioner.dart';

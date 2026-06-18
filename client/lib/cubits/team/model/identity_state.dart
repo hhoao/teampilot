@@ -3,7 +3,7 @@ import 'package:equatable/equatable.dart';
 
 import '../../../models/personal_identity.dart';
 import '../../../models/team_config.dart';
-import '../../../models/workspace_identity.dart';
+import '../../../models/identity.dart';
 
 class IdentityState extends Equatable {
   const IdentityState({

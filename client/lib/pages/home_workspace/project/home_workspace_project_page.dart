@@ -9,7 +9,7 @@ import '../../../models/app_project.dart';
 import '../../../models/identity_kind.dart';
 import '../../../models/launch_identity.dart';
 import '../../../models/team_config.dart';
-import '../../../models/workspace_identity.dart';
+import '../../../models/identity.dart';
 import '../../../services/storage/identity_provisioner.dart';
 import '../../../theme/workspace_surface_layers.dart';
 import 'home_workspace_project_config_workspace.dart';

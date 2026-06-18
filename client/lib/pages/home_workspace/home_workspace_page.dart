@@ -5,7 +5,7 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import '../../cubits/identity_cubit.dart';
 import '../../models/personal_identity.dart';
 import '../../models/team_config.dart';
-import '../../models/workspace_identity.dart';
+import '../../models/identity.dart';
 import '../../theme/workspace_surface_layers.dart';
 import '../team_config/team_config_section.dart';
 import 'home_workspace_all_projects_pane.dart';

@@ -1,6 +1,6 @@
 import '../models/app_project.dart';
 import '../models/launch_identity.dart';
-import '../models/workspace_identity.dart';
+import '../models/identity.dart';
 import '../services/storage/identity_provisioner.dart';
 
 /// Resolves which identity to use when opening [project].
