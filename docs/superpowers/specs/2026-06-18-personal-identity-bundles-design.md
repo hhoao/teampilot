@@ -95,12 +95,16 @@ TeamIdentity extends WorkspaceIdentity        // kind == team  (renamed from Tea
 
 ## Library / home surface
 
-- Identities are listed in the workspace home as one collection, visually grouped or filtered by kind (Personal / Teams), both peers.
-- Open-with lists all identities; "New personal setup" (name + optional icon) and "New team" both create `identities/{id}`.
+- Identities are presented as **one unified collection**, not split into Personal/Teams groups. The existing "我的团队 / My Teams" navigation is **renamed to "工作区 / Workspaces"** — matching the model name (`WorkspaceIdentity`); each row is one Workspace, with a **kind badge/icon** distinguishing a solo (personal) setup from a team.
+- Open-with lists every Workspace; "New personal setup" (name + optional icon) and "New team" both create `identities/{id}` and append to the same list.
+
+> Naming note: "workspace" is overloaded with `HomeWorkspaceShell` (the whole home container) at the code layer. The user-facing label is "Workspaces"; internally the entity stays `WorkspaceIdentity`. The home-shell types keep their names — the overload is tolerated, not resolved here.
 
 ## First-run provisioning (not migration)
 
 On a **fresh** install with no identities, auto-provision one **Default** `PersonalIdentity` so the simple path is one click and stays nameless to casual users. This is initialization of empty state, not migration of old state — there is no old state to read.
+
+The Default is a **normal, editable identity** (name, icon, skills, MCP, etc. all editable like any other) — it is special only in that it cannot be deleted while it is the *only* personal identity. Once a second personal identity exists, the Default loses its undeletable status.
 
 ## Data flow
 
@@ -124,7 +128,7 @@ config edit (skills/plugins/mcp/extensions/agent/provider tiering)
 - **Id collision on create** — reject with a localized error; ids generated stable + unique.
 - **Launch against a deleted identity** (`AppProject.defaultIdentityId` dangles) — fall back to the Default personal identity, surface a notice, never hard-fail the launch.
 - **Deleting an identity referenced by a directory's `defaultIdentityId`** — clear the reference; the directory falls back to Default.
-- **Deleting the last/Default personal identity** — disallowed while it is the only personal identity; re-provisioned if the store is empty.
+- **Deleting the only personal identity** — disallowed (the launch surface must always have at least one personal Workspace); re-provisioned if the store is somehow empty.
 
 ## Testing
 
@@ -162,8 +166,8 @@ Golden-path manual checks (document per AGENTS.md; CI cannot cover PTY launch en
 | Open-with dialog | `client/lib/pages/home_workspace/home_workspace_launch_project_dialog.dart` |
 | Extensions re-key | `client/lib/repositories/extension_repository.dart`, `extension_cubit.dart` |
 
-## Open questions (resolve during planning)
+## Resolved decisions
 
-1. Whether `AppProject.defaultIdentityId` is worth keeping, or open-with always defaults to the global Default personal identity (simpler, but forgets per-directory choice).
-2. Home-surface presentation: two labeled groups (Personal / Teams) in one list vs a kind toggle.
-3. Whether the Default personal identity is a hidden/implicit record or a normal editable one that merely cannot be deleted while alone.
+1. **Per-directory memory kept.** `AppProject.defaultIdentityId` is retained; open-with preselects the directory's last-used Workspace, falling back to the Default personal identity.
+2. **One unified, renamed list.** No Personal/Teams split; the "My Teams" nav becomes "工作区 / Workspaces" with a per-row kind badge (see Library / home surface).
+3. **Default is a normal record.** The Default personal identity is fully editable and special only in being undeletable while it is the sole personal identity.
