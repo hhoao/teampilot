@@ -1802,6 +1802,12 @@ abstract class AppLocalizations {
   /// **'Project settings'**
   String get homeWorkspaceProjectSettings;
 
+  /// No description provided for @homeWorkspaceProjectMembers.
+  ///
+  /// In en, this message translates to:
+  /// **'Members'**
+  String get homeWorkspaceProjectMembers;
+
   /// No description provided for @homeWorkspaceProjectSettingsSectionBasic.
   ///
   /// In en, this message translates to:

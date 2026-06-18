@@ -413,6 +413,7 @@
   "projectExtensionEffectiveOff": "Disabled for this project",
   "homeWorkspaceTeamConfig": "Team config",
   "homeWorkspaceProjectSettings": "Project settings",
+  "homeWorkspaceProjectMembers": "Members",
   "homeWorkspaceProjectSettingsSectionBasic": "Basic",
   "homeWorkspaceProjectSettingsBasicInfo": "Basic information",
   "homeWorkspaceProjectId": "Project ID",

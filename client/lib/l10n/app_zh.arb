@@ -394,6 +394,7 @@
   "projectExtensionEffectiveOff": "本项目未启用",
   "homeWorkspaceTeamConfig": "团队配置",
   "homeWorkspaceProjectSettings": "项目设置",
+  "homeWorkspaceProjectMembers": "成员",
   "homeWorkspaceProjectSettingsSectionBasic": "基本设置",
   "homeWorkspaceProjectSettingsBasicInfo": "基本信息",
   "homeWorkspaceProjectId": "项目 ID",

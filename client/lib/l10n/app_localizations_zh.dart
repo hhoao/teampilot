@@ -910,6 +910,9 @@ class AppLocalizationsZh extends AppLocalizations {
   String get homeWorkspaceProjectSettings => '项目设置';
 
   @override
+  String get homeWorkspaceProjectMembers => '成员';
+
+  @override
   String get homeWorkspaceProjectSettingsSectionBasic => '基本设置';
 
   @override

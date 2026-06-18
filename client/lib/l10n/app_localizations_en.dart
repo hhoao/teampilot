@@ -950,6 +950,9 @@ class AppLocalizationsEn extends AppLocalizations {
   String get homeWorkspaceProjectSettings => 'Project settings';
 
   @override
+  String get homeWorkspaceProjectMembers => 'Members';
+
+  @override
   String get homeWorkspaceProjectSettingsSectionBasic => 'Basic';
 
   @override
