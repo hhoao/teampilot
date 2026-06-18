@@ -93,7 +93,7 @@ class AppLocalizationsZh extends AppLocalizations {
   String get visibilityMembersHint => '在工具或终端旁显示成员列表。';
 
   @override
-  String get visibilityFileTreeHint => '显示项目文件树以便快速浏览。';
+  String get visibilityFileTreeHint => '显示工作区文件树以便快速浏览。';
 
   @override
   String get visibilityGitHint => '显示当前仓库的源代码管理面板。';
@@ -288,7 +288,7 @@ class AppLocalizationsZh extends AppLocalizations {
   String get workspaceEntryModeHome => '主页';
 
   @override
-  String get workspaceEntryModeLastWorkspace => '恢复上次项目';
+  String get workspaceEntryModeLastWorkspace => '恢复上次工作区';
 
   @override
   String get theme => '主题';
@@ -493,10 +493,10 @@ class AppLocalizationsZh extends AppLocalizations {
   }
 
   @override
-  String get workspaces => '项目';
+  String get workspaces => '工作区';
 
   @override
-  String get newWorkspace => '新建项目';
+  String get newWorkspace => '新建工作区';
 
   @override
   String get homeWorkspaceMainWindow => '主窗口';
@@ -526,7 +526,7 @@ class AppLocalizationsZh extends AppLocalizations {
   String get homeWorkspacePersonal => '简单模式';
 
   @override
-  String get homeWorkspaceAllWorkspaces => '全部项目';
+  String get homeWorkspaceAllWorkspaces => '全部工作区';
 
   @override
   String get homeWorkspaceWorkspaceTabKindPersonal => '个人';
@@ -544,7 +544,7 @@ class AppLocalizationsZh extends AppLocalizations {
   String get homeWorkspaceRecentlyClosed => '最近关闭';
 
   @override
-  String get homeWorkspaceRecentlyClosedEmpty => '暂无最近关闭的项目';
+  String get homeWorkspaceRecentlyClosedEmpty => '暂无最近关闭的工作区';
 
   @override
   String get homeWorkspaceMyTeams => '我的团队';
@@ -556,25 +556,25 @@ class AppLocalizationsZh extends AppLocalizations {
   String get homeWorkspaceProviders => '供应商';
 
   @override
-  String get homeWorkspaceTeamWorkspaces => '团队项目';
+  String get homeWorkspaceTeamWorkspaces => '团队工作区';
 
   @override
   String get homeWorkspaceOwner => '团队所有者';
 
   @override
-  String get homeWorkspaceImportWorkspace => '导入项目';
+  String get homeWorkspaceImportWorkspace => '导入工作区';
 
   @override
   String get homeWorkspaceSessionsLabel => '会话';
 
   @override
-  String get homeWorkspaceEmptyWorkspaces => '该团队还没有项目';
+  String get homeWorkspaceEmptyWorkspaces => '该团队还没有工作区';
 
   @override
-  String get homeWorkspaceEmptyWorkspacesHint => '新建或导入一个项目开始吧';
+  String get homeWorkspaceEmptyWorkspacesHint => '新建或导入一个工作区开始吧';
 
   @override
-  String get homeWorkspaceWorkspaceSort => '排序项目';
+  String get homeWorkspaceWorkspaceSort => '排序工作区';
 
   @override
   String get homeWorkspaceWorkspaceSortRecentlyUpdated => '最近更新';
@@ -644,10 +644,10 @@ class AppLocalizationsZh extends AppLocalizations {
   String get teamModeMixedDescription => '不同成员可使用不同 CLI，通过 TeamBus 跨工具协作。';
 
   @override
-  String get homeWorkspaceNewWorkspaceSubtitle => '选择项目的工作目录，并为它命名。';
+  String get homeWorkspaceNewWorkspaceSubtitle => '选择工作区的工作目录，并为它命名。';
 
   @override
-  String get homeWorkspaceNewWorkspaceDirectoryLabel => '项目目录';
+  String get homeWorkspaceNewWorkspaceDirectoryLabel => '工作区目录';
 
   @override
   String get homeWorkspaceNewWorkspaceChooseDirectory => '选择文件夹';
@@ -659,18 +659,18 @@ class AppLocalizationsZh extends AppLocalizations {
   String get homeWorkspaceNewWorkspaceNameHint => '默认使用文件夹名';
 
   @override
-  String get homeWorkspaceCreateWorkspace => '创建项目';
+  String get homeWorkspaceCreateWorkspace => '创建工作区';
 
   @override
-  String get homeWorkspaceCloseWorkspaceTitle => '关闭项目？';
+  String get homeWorkspaceCloseWorkspaceTitle => '关闭工作区？';
 
   @override
   String homeWorkspaceCloseWorkspaceMessage(int count) {
     String _temp0 = intl.Intl.pluralLogic(
       count,
       locale: localeName,
-      other: '关闭该标签会终止此项目中 $count 个运行中的会话。',
-      one: '关闭该标签会终止此项目中 1 个运行中的会话。',
+      other: '关闭该标签会终止此工作区中 $count 个运行中的会话。',
+      one: '关闭该标签会终止此工作区中 1 个运行中的会话。',
     );
     return '$_temp0';
   }
@@ -679,10 +679,10 @@ class AppLocalizationsZh extends AppLocalizations {
   String get homeWorkspaceCloseWorkspaceConfirm => '关闭并终止会话';
 
   @override
-  String get homeWorkspaceWorkspaceManagement => '项目管理';
+  String get homeWorkspaceWorkspaceManagement => '工作区管理';
 
   @override
-  String get homeWorkspaceWorkspaceList => '项目列表';
+  String get homeWorkspaceWorkspaceList => '工作区列表';
 
   @override
   String get homeWorkspaceConversations => '对话管理';
@@ -701,21 +701,21 @@ class AppLocalizationsZh extends AppLocalizations {
   String get workspaceAgentExtraArgs => '额外 CLI 参数';
 
   @override
-  String get workspaceAgentExtraArgsSubtitle => '附加在本项目 Agent 启动时的 CLI 参数。';
+  String get workspaceAgentExtraArgsSubtitle => '附加在本工作区 Agent 启动时的 CLI 参数。';
 
   @override
   String get workspaceWorkbenchAdvancedSettingsSubtitle =>
-      '本项目的 Agent 预设与额外 CLI 参数。';
+      '本工作区的 Agent 预设与额外 CLI 参数。';
 
   @override
-  String get workspaceAgentPromptSubtitle => '编写系统提示词，定义 Agent 在本项目中的职责与行为边界。';
+  String get workspaceAgentPromptSubtitle => '编写系统提示词，定义 Agent 在本工作区中的职责与行为边界。';
 
   @override
   String get workspaceAgentPromptPresetGeneral => '通用';
 
   @override
   String get workspaceAgentPromptPresetGeneralText =>
-      '全面协助完成本项目中的开发任务。先理解需求与现有代码，再给出清晰方案并实施；优先小范围改动，完成后说明涉及文件与后续建议。';
+      '全面协助完成本工作区中的开发任务。先理解需求与现有代码，再给出清晰方案并实施；优先小范围改动，完成后说明涉及文件与后续建议。';
 
   @override
   String get workspaceAgentPromptPresetDeveloper => '开发';
@@ -742,13 +742,13 @@ class AppLocalizationsZh extends AppLocalizations {
   String get workspaceCliEffortInheritHint => '使用提供商默认';
 
   @override
-  String get workspaceCliDefaultSubtitle => '本项目新建对话时使用的默认 CLI。';
+  String get workspaceCliDefaultSubtitle => '本工作区新建对话时使用的默认 CLI。';
 
   @override
   String get workspaceCliDefaultsTitle => 'CLI 默认配置';
 
   @override
-  String get workspaceCliDefaultsSubtitle => '为本项目使用的每个 CLI 设置默认提供商与模型。';
+  String get workspaceCliDefaultsSubtitle => '为本工作区使用的每个 CLI 设置默认提供商与模型。';
 
   @override
   String get workspaceCliProviderModelTitle => '提供商与模型';
@@ -758,7 +758,7 @@ class AppLocalizationsZh extends AppLocalizations {
 
   @override
   String get workspaceCliEffortLevelSubtitle =>
-      '本项目使用该 CLI 时的默认力度（留空则使用提供商默认）。';
+      '本工作区使用该 CLI 时的默认力度（留空则使用提供商默认）。';
 
   @override
   String get workspaceCliConfigure => '配置';
@@ -878,7 +878,7 @@ class AppLocalizationsZh extends AppLocalizations {
 
   @override
   String workspaceSkillsAssignedCount(int assigned, int total) {
-    return '已为本项目启用 $assigned/$total';
+    return '已为本工作区启用 $assigned/$total';
   }
 
   @override
@@ -886,7 +886,7 @@ class AppLocalizationsZh extends AppLocalizations {
 
   @override
   String workspaceMcpAssignedCount(int assigned, int total) {
-    return '已为本项目启用 $assigned/$total';
+    return '已为本工作区启用 $assigned/$total';
   }
 
   @override
@@ -894,7 +894,7 @@ class AppLocalizationsZh extends AppLocalizations {
 
   @override
   String workspacePluginsAssignedCount(int assigned, int total) {
-    return '已为本项目选用 $assigned/$total';
+    return '已为本工作区选用 $assigned/$total';
   }
 
   @override
@@ -904,25 +904,25 @@ class AppLocalizationsZh extends AppLocalizations {
   String get workspacePluginsEmpty => '尚未安装插件';
 
   @override
-  String get workspacePluginsEmptyHint => '在「发现」中安装插件后，可在此处为本项目启用。';
+  String get workspacePluginsEmptyHint => '在「发现」中安装插件后，可在此处为本工作区启用。';
 
   @override
-  String get workspaceExtensionsTitle => '本项目的扩展';
+  String get workspaceExtensionsTitle => '本工作区的扩展';
 
   @override
-  String get workspaceExtensionsSubtitle => '覆盖本项目启用哪些扩展，默认跟随全局设置。';
+  String get workspaceExtensionsSubtitle => '覆盖本工作区启用哪些扩展，默认跟随全局设置。';
 
   @override
-  String get workspaceExtensionEffectiveOn => '本项目已启用';
+  String get workspaceExtensionEffectiveOn => '本工作区已启用';
 
   @override
-  String get workspaceExtensionEffectiveOff => '本项目未启用';
+  String get workspaceExtensionEffectiveOff => '本工作区未启用';
 
   @override
   String get homeWorkspaceTeamConfig => '团队配置';
 
   @override
-  String get homeWorkspaceWorkspaceSettings => '项目设置';
+  String get homeWorkspaceWorkspaceSettings => '工作区设置';
 
   @override
   String get homeWorkspaceWorkspaceMembers => '成员';
@@ -934,7 +934,7 @@ class AppLocalizationsZh extends AppLocalizations {
   String get homeWorkspaceWorkspaceSettingsBasicInfo => '基本信息';
 
   @override
-  String get homeWorkspaceWorkspaceId => '项目 ID';
+  String get homeWorkspaceWorkspaceId => '工作区 ID';
 
   @override
   String homeWorkspaceWorkspaceAdditionalDirsCount(int count) {
@@ -943,10 +943,10 @@ class AppLocalizationsZh extends AppLocalizations {
 
   @override
   String get homeWorkspaceWorkspaceSettingsPathsHint =>
-      '在「附加目录」行点击编辑，可添加或移除项目附加目录。';
+      '在「附加目录」行点击编辑，可添加或移除工作区附加目录。';
 
   @override
-  String get deleteWorkspaceSubtitle => '将删除该项目及其下所有会话，且无法恢复。';
+  String get deleteWorkspaceSubtitle => '将删除该工作区及其下所有会话，且无法恢复。';
 
   @override
   String get homeWorkspaceInviteMembers => '邀请成员';
@@ -958,7 +958,7 @@ class AppLocalizationsZh extends AppLocalizations {
   String get homeWorkspaceNewConversationChooseCli => '选择 CLI 新建对话';
 
   @override
-  String get homeWorkspaceNoConversations => '该项目还没有对话';
+  String get homeWorkspaceNoConversations => '该工作区还没有对话';
 
   @override
   String get homeWorkspaceSearchHint => '搜索';
@@ -988,7 +988,7 @@ class AppLocalizationsZh extends AppLocalizations {
   String get homeWorkspaceOpenWorkspaceInNewTab => '在新标签页中打开';
 
   @override
-  String get homeWorkspaceFavoriteWorkspace => '收藏项目';
+  String get homeWorkspaceFavoriteWorkspace => '收藏工作区';
 
   @override
   String get homeWorkspaceUnfavoriteWorkspace => '取消收藏';
@@ -997,7 +997,7 @@ class AppLocalizationsZh extends AppLocalizations {
   String get homeWorkspaceRenameWorkspace => '修改名称';
 
   @override
-  String get homeWorkspaceCloneWorkspace => '克隆项目';
+  String get homeWorkspaceCloneWorkspace => '克隆工作区';
 
   @override
   String homeWorkspaceCloneWorkspaceDisplayName(Object name) {
@@ -1010,13 +1010,13 @@ class AppLocalizationsZh extends AppLocalizations {
   }
 
   @override
-  String get homeWorkspaceCloneWorkspaceFailed => '无法克隆项目';
+  String get homeWorkspaceCloneWorkspaceFailed => '无法克隆工作区';
 
   @override
-  String get newWorkspaceTooltip => '创建项目';
+  String get newWorkspaceTooltip => '创建工作区';
 
   @override
-  String get switchWorkspaceTooltip => '切换项目';
+  String get switchWorkspaceTooltip => '切换工作区';
 
   @override
   String get create => '创建';
@@ -1031,7 +1031,7 @@ class AppLocalizationsZh extends AppLocalizations {
   String get workspacePrimaryPathNotSelected => '尚未选择主目录';
 
   @override
-  String get workspaceDirectoryAdded => '已添加目录到项目';
+  String get workspaceDirectoryAdded => '已添加目录到工作区';
 
   @override
   String get newSessionTooltip => '新建会话';
@@ -1047,11 +1047,11 @@ class AppLocalizationsZh extends AppLocalizations {
 
   @override
   String sessionReadySubtitle(String memberName) {
-    return '与 $memberName 在此项目中开始对话';
+    return '与 $memberName 在此工作区中开始对话';
   }
 
   @override
-  String get sessionReadySubtitleGeneric => '在此项目中开始新对话';
+  String get sessionReadySubtitleGeneric => '在此工作区中开始新对话';
 
   @override
   String get sessionReadyHint => '用日常语言描述你想做的事即可，无需输入命令。';
@@ -1077,10 +1077,10 @@ class AppLocalizationsZh extends AppLocalizations {
   }
 
   @override
-  String get workspaceDetails => '项目详情';
+  String get workspaceDetails => '工作区详情';
 
   @override
-  String get workspaceDetailsTitle => '项目详情';
+  String get workspaceDetailsTitle => '工作区详情';
 
   @override
   String get addWorkspaceDirectory => '添加目录';
@@ -1095,7 +1095,7 @@ class AppLocalizationsZh extends AppLocalizations {
   String get workspaceIcon => '图标';
 
   @override
-  String get workspaceIconPickerTitle => '选择项目图标';
+  String get workspaceIconPickerTitle => '选择工作区图标';
 
   @override
   String get workspaceIconUseDefault => '使用默认';
@@ -1125,17 +1125,17 @@ class AppLocalizationsZh extends AppLocalizations {
   String get workspaceUpdatedAt => '更新时间';
 
   @override
-  String get workspaceDirectoryAlreadyPrimary => '该路径已是项目主目录。';
+  String get workspaceDirectoryAlreadyPrimary => '该路径已是工作区主目录。';
 
   @override
-  String get workspaceDirectoryAlreadyAdded => '该目录已在项目中。';
+  String get workspaceDirectoryAlreadyAdded => '该目录已在工作区中。';
 
   @override
-  String get deleteWorkspace => '删除项目';
+  String get deleteWorkspace => '删除工作区';
 
   @override
   String deleteWorkspaceConfirm(String name) {
-    return '删除项目 \"$name\" 及其所有会话？此操作不可撤销。';
+    return '删除工作区 \"$name\" 及其所有会话？此操作不可撤销。';
   }
 
   @override
@@ -1227,7 +1227,7 @@ class AppLocalizationsZh extends AppLocalizations {
 
   @override
   String get sshDefaultWorkingDirectorySubtitle =>
-      'SSH 启动没有项目路径时使用的远端工作目录；留空则不切换目录。';
+      'SSH 启动没有工作区路径时使用的远端工作目录；留空则不切换目录。';
 
   @override
   String get cliExecutablePathLabel => 'flashskyai CLI 路径';
@@ -1560,7 +1560,7 @@ class AppLocalizationsZh extends AppLocalizations {
 
   @override
   String get windowsStorageBackendDescription =>
-      '团队、技能、项目与配置文件的读写位置。切换会使用另一套数据目录，不会自动迁移。';
+      '团队、技能、工作区与配置文件的读写位置。切换会使用另一套数据目录，不会自动迁移。';
 
   @override
   String get windowsStorageBackendNative => 'Windows 本地';
@@ -1578,7 +1578,7 @@ class AppLocalizationsZh extends AppLocalizations {
 
   @override
   String get windowsStorageBackendSwitchConfirmBody =>
-      '将使用另一套数据目录。另一位置下的团队、项目与技能需切回后才能看到。';
+      '将使用另一套数据目录。另一位置下的团队、工作区与技能需切回后才能看到。';
 
   @override
   String get windowsStorageBackendSwitchConfirmAction => '切换';
