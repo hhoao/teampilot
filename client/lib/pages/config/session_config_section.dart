@@ -355,8 +355,8 @@ class _SessionControlsState extends State<_SessionControls> {
                 ),
               if (isSshMode) ...[
                 SettingsLabeledStackedRow(
-                  title: 'SSH 默认工作目录',
-                  subtitle: 'SSH 启动没有项目路径时使用的远端工作目录；留空则不切换目录。',
+                  title: l10n.sshDefaultWorkingDirectoryTitle,
+                  subtitle: l10n.sshDefaultWorkingDirectorySubtitle,
                   body: Row(
                     crossAxisAlignment: CrossAxisAlignment.center,
                     children: [

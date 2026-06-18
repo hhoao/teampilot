@@ -269,7 +269,7 @@ abstract class AppLocalizations {
   /// No description provided for @visibilityFileTreeHint.
   ///
   /// In en, this message translates to:
-  /// **'Show the project file tree for quick navigation.'**
+  /// **'Show the workspace file tree for quick navigation.'**
   String get visibilityFileTreeHint;
 
   /// No description provided for @visibilityGitHint.
@@ -635,7 +635,7 @@ abstract class AppLocalizations {
   /// No description provided for @workspaceEntryModeLastProject.
   ///
   /// In en, this message translates to:
-  /// **'Last project'**
+  /// **'Last workspace'**
   String get workspaceEntryModeLastProject;
 
   /// No description provided for @theme.
@@ -1025,13 +1025,13 @@ abstract class AppLocalizations {
   /// No description provided for @projects.
   ///
   /// In en, this message translates to:
-  /// **'Projects'**
+  /// **'Workspaces'**
   String get projects;
 
   /// No description provided for @newProject.
   ///
   /// In en, this message translates to:
-  /// **'New Project'**
+  /// **'New Workspace'**
   String get newProject;
 
   /// No description provided for @homeWorkspaceMainWindow.
@@ -1091,7 +1091,7 @@ abstract class AppLocalizations {
   /// No description provided for @homeWorkspaceAllProjects.
   ///
   /// In en, this message translates to:
-  /// **'All projects'**
+  /// **'All workspaces'**
   String get homeWorkspaceAllProjects;
 
   /// Short personal-project label in title-bar tab tooltips.
@@ -1127,7 +1127,7 @@ abstract class AppLocalizations {
   /// No description provided for @homeWorkspaceRecentlyClosedEmpty.
   ///
   /// In en, this message translates to:
-  /// **'No recently closed projects'**
+  /// **'No recently closed workspaces'**
   String get homeWorkspaceRecentlyClosedEmpty;
 
   /// No description provided for @homeWorkspaceMyTeams.
@@ -1151,7 +1151,7 @@ abstract class AppLocalizations {
   /// No description provided for @homeWorkspaceTeamProjects.
   ///
   /// In en, this message translates to:
-  /// **'Projects'**
+  /// **'Workspaces'**
   String get homeWorkspaceTeamProjects;
 
   /// No description provided for @homeWorkspaceOwner.
@@ -1175,19 +1175,19 @@ abstract class AppLocalizations {
   /// No description provided for @homeWorkspaceEmptyProjects.
   ///
   /// In en, this message translates to:
-  /// **'No projects in this team yet'**
+  /// **'No workspaces in this team yet'**
   String get homeWorkspaceEmptyProjects;
 
   /// No description provided for @homeWorkspaceEmptyProjectsHint.
   ///
   /// In en, this message translates to:
-  /// **'Create or import a project to get started'**
+  /// **'Create or import a workspace to get started'**
   String get homeWorkspaceEmptyProjectsHint;
 
   /// No description provided for @homeWorkspaceProjectSort.
   ///
   /// In en, this message translates to:
-  /// **'Sort projects'**
+  /// **'Sort workspaces'**
   String get homeWorkspaceProjectSort;
 
   /// No description provided for @homeWorkspaceProjectSortRecentlyUpdated.
@@ -1325,13 +1325,13 @@ abstract class AppLocalizations {
   /// No description provided for @homeWorkspaceNewProjectSubtitle.
   ///
   /// In en, this message translates to:
-  /// **'Choose a working directory and name your project.'**
+  /// **'Choose a directory and name your workspace.'**
   String get homeWorkspaceNewProjectSubtitle;
 
   /// No description provided for @homeWorkspaceNewProjectDirectoryLabel.
   ///
   /// In en, this message translates to:
-  /// **'Project directory'**
+  /// **'Workspace directory'**
   String get homeWorkspaceNewProjectDirectoryLabel;
 
   /// No description provided for @homeWorkspaceNewProjectChooseDirectory.
@@ -1355,19 +1355,19 @@ abstract class AppLocalizations {
   /// No description provided for @homeWorkspaceCreateProject.
   ///
   /// In en, this message translates to:
-  /// **'Create project'**
+  /// **'Create workspace'**
   String get homeWorkspaceCreateProject;
 
   /// No description provided for @homeWorkspaceCloseProjectTitle.
   ///
   /// In en, this message translates to:
-  /// **'Close project?'**
+  /// **'Close workspace?'**
   String get homeWorkspaceCloseProjectTitle;
 
   /// No description provided for @homeWorkspaceCloseProjectMessage.
   ///
   /// In en, this message translates to:
-  /// **'{count, plural, =1{Closing this tab will end 1 running session in this project.} other{Closing this tab will end {count} running sessions in this project.}}'**
+  /// **'{count, plural, =1{Closing this tab will end 1 running session in this workspace.} other{Closing this tab will end {count} running sessions in this workspace.}}'**
   String homeWorkspaceCloseProjectMessage(int count);
 
   /// No description provided for @homeWorkspaceCloseProjectConfirm.
@@ -1379,13 +1379,13 @@ abstract class AppLocalizations {
   /// No description provided for @homeWorkspaceProjectManagement.
   ///
   /// In en, this message translates to:
-  /// **'Project management'**
+  /// **'Workspace management'**
   String get homeWorkspaceProjectManagement;
 
   /// No description provided for @homeWorkspaceProjectList.
   ///
   /// In en, this message translates to:
-  /// **'Projects'**
+  /// **'Workspaces'**
   String get homeWorkspaceProjectList;
 
   /// No description provided for @homeWorkspaceConversations.
@@ -1421,19 +1421,19 @@ abstract class AppLocalizations {
   /// No description provided for @projectAgentExtraArgsSubtitle.
   ///
   /// In en, this message translates to:
-  /// **'Extra flags appended when starting the agent in this project.'**
+  /// **'Extra flags appended when starting the agent in this workspace.'**
   String get projectAgentExtraArgsSubtitle;
 
   /// No description provided for @projectAdvancedSettingsSubtitle.
   ///
   /// In en, this message translates to:
-  /// **'Agent preset and extra CLI flags for this project.'**
+  /// **'Agent preset and extra CLI flags for this workspace.'**
   String get projectAdvancedSettingsSubtitle;
 
   /// No description provided for @projectAgentPromptSubtitle.
   ///
   /// In en, this message translates to:
-  /// **'System prompt defining the agent\'s role and boundaries in this project.'**
+  /// **'System prompt defining the agent\'s role and boundaries in this workspace.'**
   String get projectAgentPromptSubtitle;
 
   /// No description provided for @projectAgentPromptPresetGeneral.
@@ -1445,7 +1445,7 @@ abstract class AppLocalizations {
   /// No description provided for @projectAgentPromptPresetGeneralText.
   ///
   /// In en, this message translates to:
-  /// **'Help with development in this project end to end. Understand the request and codebase, propose a clear approach, then implement with minimal diffs; summarize changed files and suggested next steps.'**
+  /// **'Help with development in this workspace end to end. Understand the request and codebase, propose a clear approach, then implement with minimal diffs; summarize changed files and suggested next steps.'**
   String get projectAgentPromptPresetGeneralText;
 
   /// No description provided for @projectAgentPromptPresetDeveloper.
@@ -1493,7 +1493,7 @@ abstract class AppLocalizations {
   /// No description provided for @projectCliDefaultSubtitle.
   ///
   /// In en, this message translates to:
-  /// **'Default CLI for new conversations in this project.'**
+  /// **'Default CLI for new conversations in this workspace.'**
   String get projectCliDefaultSubtitle;
 
   /// No description provided for @projectCliDefaultsTitle.
@@ -1505,7 +1505,7 @@ abstract class AppLocalizations {
   /// No description provided for @projectCliDefaultsSubtitle.
   ///
   /// In en, this message translates to:
-  /// **'Set the default provider and model for each CLI used in this project.'**
+  /// **'Set the default provider and model for each CLI used in this workspace.'**
   String get projectCliDefaultsSubtitle;
 
   /// No description provided for @projectCliProviderModelTitle.
@@ -1523,7 +1523,7 @@ abstract class AppLocalizations {
   /// No description provided for @projectCliEffortLevelSubtitle.
   ///
   /// In en, this message translates to:
-  /// **'Default effort for this CLI in the project (leave empty to use provider default).'**
+  /// **'Default effort for this CLI in the workspace (leave empty to use provider default).'**
   String get projectCliEffortLevelSubtitle;
 
   /// No description provided for @projectCliConfigure.
@@ -1745,7 +1745,7 @@ abstract class AppLocalizations {
   /// No description provided for @projectSkillsAssignedCount.
   ///
   /// In en, this message translates to:
-  /// **'{assigned} of {total} enabled for this project'**
+  /// **'{assigned} of {total} enabled for this workspace'**
   String projectSkillsAssignedCount(int assigned, int total);
 
   /// No description provided for @projectSkillsManage.
@@ -1757,7 +1757,7 @@ abstract class AppLocalizations {
   /// No description provided for @projectMcpAssignedCount.
   ///
   /// In en, this message translates to:
-  /// **'{assigned} of {total} enabled for this project'**
+  /// **'{assigned} of {total} enabled for this workspace'**
   String projectMcpAssignedCount(int assigned, int total);
 
   /// No description provided for @projectMcpManage.
@@ -1769,7 +1769,7 @@ abstract class AppLocalizations {
   /// No description provided for @projectPluginsAssignedCount.
   ///
   /// In en, this message translates to:
-  /// **'{assigned} of {total} linked to this project'**
+  /// **'{assigned} of {total} linked to this workspace'**
   String projectPluginsAssignedCount(int assigned, int total);
 
   /// No description provided for @projectPluginsManage.
@@ -1787,31 +1787,31 @@ abstract class AppLocalizations {
   /// No description provided for @projectPluginsEmptyHint.
   ///
   /// In en, this message translates to:
-  /// **'Install plugins from Discovery to enable them for this project.'**
+  /// **'Install plugins from Discovery to enable them for this workspace.'**
   String get projectPluginsEmptyHint;
 
   /// No description provided for @projectExtensionsTitle.
   ///
   /// In en, this message translates to:
-  /// **'Extensions for this project'**
+  /// **'Extensions for this workspace'**
   String get projectExtensionsTitle;
 
   /// No description provided for @projectExtensionsSubtitle.
   ///
   /// In en, this message translates to:
-  /// **'Override which extensions run for this project. Default follows the global setting.'**
+  /// **'Override which extensions run for this workspace. Default follows the global setting.'**
   String get projectExtensionsSubtitle;
 
   /// No description provided for @projectExtensionEffectiveOn.
   ///
   /// In en, this message translates to:
-  /// **'Enabled for this project'**
+  /// **'Enabled for this workspace'**
   String get projectExtensionEffectiveOn;
 
   /// No description provided for @projectExtensionEffectiveOff.
   ///
   /// In en, this message translates to:
-  /// **'Disabled for this project'**
+  /// **'Disabled for this workspace'**
   String get projectExtensionEffectiveOff;
 
   /// No description provided for @homeWorkspaceTeamConfig.
@@ -1823,7 +1823,7 @@ abstract class AppLocalizations {
   /// No description provided for @homeWorkspaceProjectSettings.
   ///
   /// In en, this message translates to:
-  /// **'Project settings'**
+  /// **'Workspace settings'**
   String get homeWorkspaceProjectSettings;
 
   /// No description provided for @homeWorkspaceProjectMembers.
@@ -1847,7 +1847,7 @@ abstract class AppLocalizations {
   /// No description provided for @homeWorkspaceProjectId.
   ///
   /// In en, this message translates to:
-  /// **'Project ID'**
+  /// **'Workspace ID'**
   String get homeWorkspaceProjectId;
 
   /// No description provided for @homeWorkspaceProjectAdditionalDirsCount.
@@ -1865,7 +1865,7 @@ abstract class AppLocalizations {
   /// No description provided for @deleteProjectSubtitle.
   ///
   /// In en, this message translates to:
-  /// **'Deletes this project and all conversations in it. This cannot be undone.'**
+  /// **'Deletes this workspace and all conversations in it. This cannot be undone.'**
   String get deleteProjectSubtitle;
 
   /// No description provided for @homeWorkspaceInviteMembers.
@@ -1889,7 +1889,7 @@ abstract class AppLocalizations {
   /// No description provided for @homeWorkspaceNoConversations.
   ///
   /// In en, this message translates to:
-  /// **'No conversations in this project yet'**
+  /// **'No conversations in this workspace yet'**
   String get homeWorkspaceNoConversations;
 
   /// No description provided for @homeWorkspaceSearchHint.
@@ -1949,7 +1949,7 @@ abstract class AppLocalizations {
   /// No description provided for @homeWorkspaceFavoriteProject.
   ///
   /// In en, this message translates to:
-  /// **'Favorite project'**
+  /// **'Favorite workspace'**
   String get homeWorkspaceFavoriteProject;
 
   /// No description provided for @homeWorkspaceUnfavoriteProject.
@@ -1961,13 +1961,13 @@ abstract class AppLocalizations {
   /// No description provided for @homeWorkspaceRenameProject.
   ///
   /// In en, this message translates to:
-  /// **'Rename project'**
+  /// **'Rename workspace'**
   String get homeWorkspaceRenameProject;
 
   /// No description provided for @homeWorkspaceCloneProject.
   ///
   /// In en, this message translates to:
-  /// **'Clone project'**
+  /// **'Clone workspace'**
   String get homeWorkspaceCloneProject;
 
   /// No description provided for @homeWorkspaceCloneProjectDisplayName.
@@ -1985,19 +1985,19 @@ abstract class AppLocalizations {
   /// No description provided for @homeWorkspaceCloneProjectFailed.
   ///
   /// In en, this message translates to:
-  /// **'Could not clone project'**
+  /// **'Could not clone workspace'**
   String get homeWorkspaceCloneProjectFailed;
 
   /// No description provided for @newProjectTooltip.
   ///
   /// In en, this message translates to:
-  /// **'Create a project'**
+  /// **'Create a workspace'**
   String get newProjectTooltip;
 
   /// No description provided for @switchProjectTooltip.
   ///
   /// In en, this message translates to:
-  /// **'Switch project'**
+  /// **'Switch workspace'**
   String get switchProjectTooltip;
 
   /// No description provided for @create.
@@ -2027,7 +2027,7 @@ abstract class AppLocalizations {
   /// No description provided for @projectDirectoryAdded.
   ///
   /// In en, this message translates to:
-  /// **'Directory added to project'**
+  /// **'Directory added to workspace'**
   String get projectDirectoryAdded;
 
   /// No description provided for @newSessionTooltip.
@@ -2111,13 +2111,13 @@ abstract class AppLocalizations {
   /// No description provided for @projectDetails.
   ///
   /// In en, this message translates to:
-  /// **'Project details'**
+  /// **'Workspace details'**
   String get projectDetails;
 
   /// No description provided for @projectDetailsTitle.
   ///
   /// In en, this message translates to:
-  /// **'Project Details'**
+  /// **'Workspace Details'**
   String get projectDetailsTitle;
 
   /// No description provided for @addProjectDirectory.
@@ -2147,7 +2147,7 @@ abstract class AppLocalizations {
   /// No description provided for @projectIconPickerTitle.
   ///
   /// In en, this message translates to:
-  /// **'Choose project icon'**
+  /// **'Choose workspace icon'**
   String get projectIconPickerTitle;
 
   /// No description provided for @projectIconUseDefault.
@@ -2213,19 +2213,19 @@ abstract class AppLocalizations {
   /// No description provided for @projectDirectoryAlreadyAdded.
   ///
   /// In en, this message translates to:
-  /// **'This directory is already in the project.'**
+  /// **'This directory is already in the workspace.'**
   String get projectDirectoryAlreadyAdded;
 
   /// No description provided for @deleteProject.
   ///
   /// In en, this message translates to:
-  /// **'Delete Project'**
+  /// **'Delete Workspace'**
   String get deleteProject;
 
   /// No description provided for @deleteProjectConfirm.
   ///
   /// In en, this message translates to:
-  /// **'Delete project \"{name}\" and all its sessions? This cannot be undone.'**
+  /// **'Delete workspace \"{name}\" and all its sessions? This cannot be undone.'**
   String deleteProjectConfirm(String name);
 
   /// No description provided for @noSessions.
@@ -2389,6 +2389,18 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Manage SSH servers…'**
   String get sshProfileSelectorManage;
+
+  /// No description provided for @sshDefaultWorkingDirectoryTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'SSH default working directory'**
+  String get sshDefaultWorkingDirectoryTitle;
+
+  /// No description provided for @sshDefaultWorkingDirectorySubtitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Remote working directory used when the SSH launch has no workspace path; leave empty to skip changing directory.'**
+  String get sshDefaultWorkingDirectorySubtitle;
 
   /// No description provided for @cliExecutablePathLabel.
   ///
@@ -3005,7 +3017,7 @@ abstract class AppLocalizations {
   /// No description provided for @windowsStorageBackendDescription.
   ///
   /// In en, this message translates to:
-  /// **'Where teams, skills, projects, and config profiles are stored. Switching uses a separate data tree; nothing is migrated automatically.'**
+  /// **'Where teams, skills, workspaces, and config profiles are stored. Switching uses a separate data tree; nothing is migrated automatically.'**
   String get windowsStorageBackendDescription;
 
   /// No description provided for @windowsStorageBackendNative.
@@ -3035,7 +3047,7 @@ abstract class AppLocalizations {
   /// No description provided for @windowsStorageBackendSwitchConfirmBody.
   ///
   /// In en, this message translates to:
-  /// **'This uses a different data directory. Teams, projects, and skills from the other location will not appear until you switch back.'**
+  /// **'This uses a different data directory. Teams, workspaces, and skills from the other location will not appear until you switch back.'**
   String get windowsStorageBackendSwitchConfirmBody;
 
   /// No description provided for @windowsStorageBackendSwitchConfirmAction.
