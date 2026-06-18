@@ -2,11 +2,11 @@ import 'dart:io';
 
 import 'package:flutter_test/flutter_test.dart';
 import 'package:path/path.dart' as p;
-import 'package:teampilot/cubits/team_cubit.dart';
+import 'package:teampilot/cubits/identity_cubit.dart';
 import 'package:teampilot/models/plugin.dart';
 import 'package:teampilot/models/team_config.dart';
 import 'package:teampilot/repositories/session_repository.dart';
-import 'package:teampilot/repositories/team_repository.dart';
+import 'package:teampilot/repositories/identity_repository.dart';
 import 'package:teampilot/services/storage/app_storage.dart';
 import 'package:teampilot/services/provider/config_profile_service.dart';
 import 'package:teampilot/services/io/local_filesystem.dart';
@@ -50,8 +50,8 @@ class _RecordingLifecycleService extends SessionLifecycleService {
   }
 }
 
-TeamRepository _repo(Directory dir) =>
-    TeamRepository(rootDir: p.join(dir.path, 'identities'));
+IdentityRepository _repo(Directory dir) =>
+    IdentityRepository(rootDir: p.join(dir.path, 'identities'));
 
 Future<void> _deleteTempDirBestEffort(Directory dir) async {
   for (var attempt = 0; attempt < 8; attempt++) {
@@ -67,9 +67,9 @@ Future<void> _deleteTempDirBestEffort(Directory dir) async {
   }
 }
 
-/// [TeamCubit.addTeam] / [TeamCubit.deleteSelected] schedule skill/plugin sync
-/// with [unawaited]; drain microtasks before [TeamCubit.close].
-Future<void> _drainAndCloseTeamCubit(TeamCubit cubit) async {
+/// [IdentityCubit.addTeam] / [IdentityCubit.deleteSelected] schedule skill/plugin sync
+/// with [unawaited]; drain microtasks before [IdentityCubit.close].
+Future<void> _drainAndCloseTeamCubit(IdentityCubit cubit) async {
   await Future<void>.delayed(Duration.zero);
   await Future<void>.delayed(Duration.zero);
   if (!cubit.isClosed) {
@@ -104,7 +104,7 @@ void main() {
   test('removeSkillFromAllTeams prunes skillIds without linker sync', () async {
     final dir = await Directory.systemTemp.createTemp('team-cubit-');
     final repo = _repo(dir);
-    final cubit = TeamCubit(
+    final cubit = IdentityCubit(
       repository: repo,
       sessionRepository: SessionRepository(),
       reloadProjects: () async {},
@@ -135,7 +135,7 @@ void main() {
     final dir = await Directory.systemTemp.createTemp('team-cubit-');
     final repo = _repo(dir);
     final linker = _RecordingPluginLinker();
-    final cubit = TeamCubit(
+    final cubit = IdentityCubit(
       repository: repo,
       sessionRepository: SessionRepository(),
       reloadProjects: () async {},
@@ -186,7 +186,7 @@ void main() {
       installedAt: 1,
       updatedAt: 1,
     );
-    final cubit = TeamCubit(
+    final cubit = IdentityCubit(
       repository: repo,
       sessionRepository: SessionRepository(),
       reloadProjects: () async {},
@@ -218,7 +218,7 @@ void main() {
     final dir = await Directory.systemTemp.createTemp('team-cubit-');
     final repo = _repo(dir);
     final linker = _RecordingPluginLinker();
-    final cubit = TeamCubit(
+    final cubit = IdentityCubit(
       repository: repo,
       sessionRepository: SessionRepository(),
       reloadProjects: () async {},
@@ -252,7 +252,7 @@ void main() {
   test('addTeam requires non-empty unique name', () async {
     final dir = await Directory.systemTemp.createTemp('team-cubit-');
     final repo = _repo(dir);
-    final cubit = TeamCubit(
+    final cubit = IdentityCubit(
       repository: repo,
       sessionRepository: SessionRepository(),
       reloadProjects: () async {},
@@ -284,7 +284,7 @@ void main() {
 
   test('deleteMember cannot remove team-lead', () async {
     final dir = await Directory.systemTemp.createTemp('team-cubit-');
-    final cubit = TeamCubit(
+    final cubit = IdentityCubit(
       repository: _repo(dir),
       sessionRepository: SessionRepository(),
       reloadProjects: () async {},
@@ -310,11 +310,11 @@ void main() {
     () async {
       final dir = await Directory.systemTemp.createTemp('team-cubit-');
       final lifecycle = _RecordingLifecycleService();
-      final repo = TeamRepository(
+      final repo = IdentityRepository(
         rootDir: p.join(dir.path, 'identities'),
         lifecycleService: lifecycle,
       );
-      final cubit = TeamCubit(
+      final cubit = IdentityCubit(
         repository: repo,
         sessionRepository: SessionRepository(),
         reloadProjects: () async {},
@@ -331,13 +331,14 @@ void main() {
 
       expect(await cubit.renameSelectedTeamName('New'), isTrue);
       expect(cubit.state.selectedTeam?.name, 'New');
-      expect(File(p.join(dir.path, 'identities', 'New.json')).existsSync(), isTrue);
-      expect(File(p.join(dir.path, 'identities', 'Old.json')).existsSync(), isFalse);
+      final identityFile = p.join(dir.path, 'identities', 'old', 'identity.json');
+      expect(File(identityFile).existsSync(), isTrue);
+      expect(File(identityFile).readAsStringSync(), contains('"name": "New"'));
       expect(lifecycle.destroyedTeams, isEmpty);
 
       await cubit.deleteSelected();
       expect(lifecycle.destroyedTeams, ['old']);
-      expect(File(p.join(dir.path, 'identities', 'New.json')).existsSync(), isFalse);
+      expect(Directory(p.join(dir.path, 'identities', 'old')).existsSync(), isFalse);
 
       await _drainAndCloseTeamCubit(cubit);
       await dir.delete(recursive: true);
@@ -348,7 +349,7 @@ void main() {
     final base = await Directory.systemTemp.createTemp('team_default_project_');
     final sessionRepo = SessionRepository();
     var reloadCount = 0;
-    final cubit = TeamCubit(
+    final cubit = IdentityCubit(
       repository: _repo(base),
       sessionRepository: sessionRepo,
       reloadProjects: () async => reloadCount++,
@@ -373,7 +374,7 @@ void main() {
 
   test('addTeam creates team runtime profile directories', () async {
     final base = await Directory.systemTemp.createTemp('team_profile_');
-    final cubit = TeamCubit(
+    final cubit = IdentityCubit(
       repository: _repo(base),
       sessionRepository: SessionRepository(),
       reloadProjects: () async {},
@@ -396,7 +397,7 @@ void main() {
 
   test('addTeam rejects codex in native team mode', () async {
     final base = await Directory.systemTemp.createTemp('team_profile_cli_');
-    final cubit = TeamCubit(
+    final cubit = IdentityCubit(
       repository: _repo(base),
       sessionRepository: SessionRepository(),
       reloadProjects: () async {},
@@ -419,7 +420,7 @@ void main() {
 
   test('addTeam accepts codex in mixed team mode', () async {
     final base = await Directory.systemTemp.createTemp('team_profile_cli_');
-    final cubit = TeamCubit(
+    final cubit = IdentityCubit(
       repository: _repo(base),
       sessionRepository: SessionRepository(),
       reloadProjects: () async {},
@@ -442,7 +443,7 @@ void main() {
 
   test('setMemberActivePreset syncs member cli from preset in mixed mode', () async {
     final base = await Directory.systemTemp.createTemp('team_member_preset_');
-    final cubit = TeamCubit(
+    final cubit = IdentityCubit(
       repository: _repo(base),
       sessionRepository: SessionRepository(),
       reloadProjects: () async {},
@@ -484,7 +485,7 @@ void main() {
 
   test('previewFor resolves executable from team cli when available', () async {
     final base = await Directory.systemTemp.createTemp('team_cli_preview_');
-    final cubit = TeamCubit(
+    final cubit = IdentityCubit(
       repository: _repo(base),
       sessionRepository: SessionRepository(),
       reloadProjects: () async {},
@@ -517,7 +518,7 @@ void main() {
       'team_claude_member_metadata_',
     );
     final repo = _repo(base);
-    final cubit = TeamCubit(
+    final cubit = IdentityCubit(
       repository: repo,
       sessionRepository: SessionRepository(),
       reloadProjects: () async {},
@@ -582,7 +583,7 @@ void main() {
     );
     final repo = _repo(base);
     final launched = <String>[];
-    final cubit = TeamCubit(
+    final cubit = IdentityCubit(
       repository: repo,
       sessionRepository: SessionRepository(),
       reloadProjects: () async {},
@@ -617,7 +618,7 @@ void main() {
 
   test('load creates runtime profile directories for default team', () async {
     final base = await Directory.systemTemp.createTemp('team_profile_load_');
-    final cubit = TeamCubit(
+    final cubit = IdentityCubit(
       repository: _repo(base),
       sessionRepository: SessionRepository(),
       reloadProjects: () async {},
@@ -642,7 +643,7 @@ void main() {
     () async {
       final dir = await Directory.systemTemp.createTemp('team-bind-provider-');
       final repo = _repo(dir);
-      final cubit = TeamCubit(
+      final cubit = IdentityCubit(
         repository: repo,
         sessionRepository: SessionRepository(),
         reloadProjects: () async {},
@@ -675,7 +676,7 @@ void main() {
     () async {
       final dir = await Directory.systemTemp.createTemp('team-bind-existing-');
       final repo = _repo(dir);
-      final cubit = TeamCubit(
+      final cubit = IdentityCubit(
         repository: repo,
         sessionRepository: SessionRepository(),
         reloadProjects: () async {},
@@ -705,7 +706,7 @@ void main() {
   test('reorderTeams persists sortOrder for all teams', () async {
     final dir = await Directory.systemTemp.createTemp('team-reorder-');
     final repo = _repo(dir);
-    final cubit = TeamCubit(
+    final cubit = IdentityCubit(
       repository: repo,
       sessionRepository: SessionRepository(),
       reloadProjects: () async {},

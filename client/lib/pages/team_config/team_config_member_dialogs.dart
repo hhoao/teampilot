@@ -1,13 +1,13 @@
 import 'package:flutter/material.dart';
 
-import '../../cubits/team_cubit.dart';
+import '../../cubits/identity_cubit.dart';
 import '../../l10n/l10n_extensions.dart';
 import '../../models/team_config.dart';
 import '../../widgets/app_dialog.dart';
 
 Future<void> confirmDeleteTeamMember(
   BuildContext context,
-  TeamCubit cubit,
+  IdentityCubit cubit,
   TeamMemberConfig member,
   AppLocalizations l10n,
 ) async {

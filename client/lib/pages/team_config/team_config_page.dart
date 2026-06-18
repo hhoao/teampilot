@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
 
-import '../../cubits/team_cubit.dart';
+import '../../cubits/identity_cubit.dart';
 import '../../l10n/l10n_extensions.dart';
 import '../../models/team_config.dart';
 import '../../services/app/platform_utils.dart';
@@ -29,7 +29,7 @@ class TeamConfigHubPage extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final l10n = context.l10n;
-    final teamCubit = context.watch<TeamCubit>();
+    final teamCubit = context.watch<IdentityCubit>();
     final team = teamCubit.state.selectedTeam;
 
     if (team == null) {
@@ -131,7 +131,7 @@ class TeamConfigPage extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final l10n = context.l10n;
-    final teamCubit = context.watch<TeamCubit>();
+    final teamCubit = context.watch<IdentityCubit>();
     final team = teamCubit.state.selectedTeam;
 
     if (team == null) {

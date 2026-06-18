@@ -3,7 +3,7 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 
 import '../../cubits/app_provider_cubit.dart';
 import '../../cubits/cli_presets_cubit.dart';
-import '../../cubits/team_cubit.dart';
+import '../../cubits/identity_cubit.dart';
 import '../../l10n/l10n_extensions.dart';
 import '../../models/app_provider_config.dart';
 import '../../models/team_config.dart';
@@ -22,7 +22,7 @@ import 'team_config_helpers.dart';
 Future<void> openTeamDefaultPresetConfigureDialog(
   BuildContext context, {
   required TeamIdentity team,
-  required TeamCubit cubit,
+  required IdentityCubit cubit,
 }) {
   return showDialog<void>(
     context: context,
@@ -38,7 +38,7 @@ class TeamDefaultPresetConfigureDialog extends StatefulWidget {
   });
 
   final TeamIdentity team;
-  final TeamCubit cubit;
+  final IdentityCubit cubit;
 
   @override
   State<TeamDefaultPresetConfigureDialog> createState() =>
@@ -113,7 +113,7 @@ class _TeamDefaultPresetConfigureDialogState
     final l10n = context.l10n;
     final registry = CliToolRegistryScope.of(context);
     final dropdownDeco = AppDropdownDecorations.themed(context);
-    context.watch<TeamCubit>();
+    context.watch<IdentityCubit>();
     final team = _currentTeam;
     final allPresets = context.watch<CliPresetsCubit>().state.presets;
     final eligiblePresetList = teamPresetPickerItems(

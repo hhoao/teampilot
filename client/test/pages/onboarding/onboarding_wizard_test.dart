@@ -4,13 +4,13 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:path/path.dart' as p;
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:teampilot/cubits/app_provider_cubit.dart';
-import 'package:teampilot/cubits/team_cubit.dart';
+import 'package:teampilot/cubits/identity_cubit.dart';
 import 'package:teampilot/models/app_provider_config.dart';
 import 'package:teampilot/models/team_config.dart';
 import 'package:teampilot/pages/onboarding/onboarding_wizard.dart';
 import 'package:teampilot/repositories/app_settings_repository.dart';
 import 'package:teampilot/repositories/session_repository.dart';
-import 'package:teampilot/repositories/team_repository.dart';
+import 'package:teampilot/repositories/identity_repository.dart';
 import 'package:teampilot/services/app/onboarding_service.dart';
 import 'package:teampilot/services/plugin/identity_plugin_linker_service.dart';
 
@@ -69,7 +69,7 @@ void main() {
   group('OnboardingService.applyDefaultClaudeProviderBinding', () {
     test('binds selected claude provider to teams without team binding', () async {
       final dir = await Directory.systemTemp.createTemp('onboarding-provider-bind_');
-      final teamRepo = TeamRepository(rootDir: p.join(dir.path, 'identities'));
+      final teamRepo = IdentityRepository(rootDir: p.join(dir.path, 'identities'));
       const team = TeamIdentity(
         id: 'default-team',
         name: 'Default Team',
@@ -78,7 +78,7 @@ void main() {
       );
       await teamRepo.saveTeams([team]);
 
-      final teamCubit = TeamCubit(
+      final teamCubit = IdentityCubit(
         repository: teamRepo,
         sessionRepository: SessionRepository(),
         reloadProjects: () async {},

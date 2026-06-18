@@ -5,7 +5,7 @@ import '../../services/session/session_lifecycle_service.dart';
 import '../../services/storage/app_storage.dart';
 
 /// Builds [ConfigProfileService] instances and ensures config-profile trees
-/// exist for teams. Shared between [TeamCubit] CRUD and resource sync.
+/// exist for teams. Shared between [IdentityCubit] CRUD and resource sync.
 class TeamProfileProvisioner {
   TeamProfileProvisioner({
     ConfigProfileService? configProfileService,

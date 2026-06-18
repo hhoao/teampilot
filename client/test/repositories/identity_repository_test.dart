@@ -26,7 +26,7 @@ void main() {
     await repo.save(const PersonalIdentity(
       id: 'coding',
       display: 'Coding',
-      bundle: ConfigBundle(skillIds: ['s']),
+      bundle: const ConfigBundle(skillIds: ['s']),
     ));
     await repo.save(const TeamIdentity(id: 'squad', name: 'Squad'));
 

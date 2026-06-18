@@ -6,7 +6,7 @@ import 'package:teampilot/theme/app_icon_sizes.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
 import '../../cubits/plugin_cubit.dart';
-import '../../cubits/team_cubit.dart';
+import '../../cubits/identity_cubit.dart';
 import '../../l10n/l10n_extensions.dart';
 import '../../models/plugin.dart';
 import '../../theme/app_text_styles.dart';
@@ -340,7 +340,7 @@ class PluginInstalledRow extends StatelessWidget {
     AppLocalizations l10n,
     PluginCubit cubit,
   ) async {
-    final teams = context.read<TeamCubit>().state.teams;
+    final teams = context.read<IdentityCubit>().state.teams;
     final impacted = teams
         .where((t) => t.pluginIds.contains(plugin.id))
         .toList();

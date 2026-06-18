@@ -7,7 +7,7 @@ import 'package:flutter_alacritty/flutter_alacritty.dart';
 import '../cubits/chat_cubit.dart';
 import '../cubits/editor_cubit.dart';
 import '../cubits/layout_cubit.dart';
-import '../cubits/team_cubit.dart';
+import '../cubits/identity_cubit.dart';
 import '../l10n/l10n_extensions.dart';
 import '../models/app_session.dart';
 import '../models/team_config.dart';
@@ -49,7 +49,7 @@ class _ChatWorkbenchState extends State<ChatWorkbench> {
   TerminalSession? _themeSyncedSession;
   String? _lastThemeSyncedMemberId;
   ChatCubit? _chatCubit;
-  TeamCubit? _teamCubit;
+  IdentityCubit? _teamCubit;
   SessionRepository? _sessionRepo;
   EditorCubit? _editorCubit;
 
@@ -67,7 +67,7 @@ class _ChatWorkbenchState extends State<ChatWorkbench> {
   void didChangeDependencies() {
     super.didChangeDependencies();
     _chatCubit = context.read<ChatCubit>();
-    _teamCubit = context.read<TeamCubit>();
+    _teamCubit = context.read<IdentityCubit>();
     _sessionRepo = context.read<SessionRepository>();
     _editorCubit = context.read<EditorCubit>();
   }
@@ -199,7 +199,7 @@ class _ChatWorkbenchState extends State<ChatWorkbench> {
       chrome: WorkspacePageChrome.project,
     );
     final terminalBackground = Color(0xFF000000 | terminalTheme.background);
-    final teamCubit = context.watch<TeamCubit>();
+    final teamCubit = context.watch<IdentityCubit>();
     final chatCubit = context.watch<ChatCubit>();
     final team = teamCubit.state.selectedTeam;
     final sessionConnectInProgress = chatCubit.state.isActiveSessionConnecting;

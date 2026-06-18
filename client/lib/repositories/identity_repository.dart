@@ -59,10 +59,35 @@ class IdentityRepository {
     } on Object {
       return const [];
     }
-    out.sort(
-      (a, b) => a.display.toLowerCase().compareTo(b.display.toLowerCase()),
-    );
-    return List.unmodifiable(out);
+    final sorted = List<WorkspaceIdentity>.of(out)..sort(_compareIdentities);
+    return List.unmodifiable(sorted);
+  }
+
+  static int _compareTeams(
+    TeamIdentity a,
+    TeamIdentity b, {
+    required bool hasCustomOrder,
+  }) {
+    if (hasCustomOrder) {
+      final order = a.sortOrder.compareTo(b.sortOrder);
+      if (order != 0) return order;
+    }
+    if (a.createdAt != b.createdAt) {
+      return a.createdAt.compareTo(b.createdAt);
+    }
+    return a.name.compareTo(b.name);
+  }
+
+  static int _compareIdentities(WorkspaceIdentity a, WorkspaceIdentity b) {
+    if (a is TeamIdentity && b is TeamIdentity) {
+      return _compareTeams(a, b, hasCustomOrder: false);
+    }
+    if (a is PersonalIdentity && b is PersonalIdentity) {
+      return a.display.toLowerCase().compareTo(b.display.toLowerCase());
+    }
+    if (a is TeamIdentity) return -1;
+    if (b is TeamIdentity) return 1;
+    return a.display.toLowerCase().compareTo(b.display.toLowerCase());
   }
 
   WorkspaceIdentity _decode(Map<String, Object?> json) {
@@ -90,6 +115,21 @@ class IdentityRepository {
       _identityFile(paths.fs, paths.dir, id),
       const JsonEncoder.withIndent('  ').convert(json),
     );
+  }
+
+  Future<List<TeamIdentity>> loadTeams() async {
+    final teams = (await loadAll()).whereType<TeamIdentity>().toList();
+    final hasCustomOrder = teams.any((team) => team.sortOrder > 0);
+    teams.sort(
+      (a, b) => _compareTeams(a, b, hasCustomOrder: hasCustomOrder),
+    );
+    return List.unmodifiable(teams);
+  }
+
+  Future<void> saveTeams(List<TeamIdentity> teams) async {
+    for (final team in teams) {
+      await save(team);
+    }
   }
 
   Future<void> delete(String id, {bool destroyCliState = true}) async {

@@ -6,7 +6,7 @@ import '../../repositories/plugin_repository.dart';
 import '../../services/mcp/identity_mcp_linker_service.dart';
 import '../../services/plugin/identity_plugin_linker_service.dart';
 import '../../utils/logger.dart';
-import 'team_cubit_host.dart';
+import 'identity_cubit_host.dart';
 import 'team_profile_provisioner.dart';
 
 typedef InstalledPluginsLoader = Future<List<Plugin>> Function();
@@ -37,7 +37,7 @@ typedef InstalledMcpLoader = Future<List<McpServer>> Function();
 /// cross-team resource-removal flows.
 class TeamResourceSyncService {
   TeamResourceSyncService({
-    required TeamCubitHost host,
+    required IdentityCubitHost host,
     required TeamProfileProvisioner provisioner,
     required IdentityPluginLinkerService pluginLinker,
     required IdentityMcpLinkerService mcpLinker,
@@ -57,7 +57,7 @@ class TeamResourceSyncService {
        _installedMcpLoader = installedMcpLoader,
        _extensionMcpContributor = extensionMcpContributor;
 
-  final TeamCubitHost _h;
+  final IdentityCubitHost _h;
   final TeamProfileProvisioner _provisioner;
   final IdentityPluginLinkerService _pluginLinker;
   final IdentityMcpLinkerService _mcpLinker;

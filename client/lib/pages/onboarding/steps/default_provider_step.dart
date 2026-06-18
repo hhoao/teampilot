@@ -4,7 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
 import '../../../cubits/app_provider_cubit.dart';
-import '../../../cubits/team_cubit.dart';
+import '../../../cubits/identity_cubit.dart';
 import '../../../l10n/l10n_extensions.dart';
 import '../../../services/app/onboarding_service.dart';
 import '../../../models/app_provider_config.dart';
@@ -29,7 +29,7 @@ class _OnboardingDefaultProviderStepState
   String? _selectedProviderId;
   String _defaultModel = '';
   AppProviderCubit? _appProviderCubit;
-  TeamCubit? _teamCubit;
+  IdentityCubit? _teamCubit;
 
   @override
   void initState() {
@@ -41,7 +41,7 @@ class _OnboardingDefaultProviderStepState
   void didChangeDependencies() {
     super.didChangeDependencies();
     _appProviderCubit = context.read<AppProviderCubit>();
-    _teamCubit = context.read<TeamCubit>();
+    _teamCubit = context.read<IdentityCubit>();
   }
 
   @override

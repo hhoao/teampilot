@@ -1,5 +1,5 @@
 import '../../cubits/app_provider_cubit.dart';
-import '../../cubits/team_cubit.dart';
+import '../../cubits/identity_cubit.dart';
 import '../../models/app_provider_config.dart';
 import '../../repositories/app_settings_repository.dart';
 
@@ -22,7 +22,7 @@ class OnboardingService {
   /// team-level provider yet so [SessionLifecycleService] can resolve settings.
   static Future<void> applyDefaultClaudeProviderBinding({
     required AppProviderCubit appProviderCubit,
-    required TeamCubit teamCubit,
+    required IdentityCubit teamCubit,
   }) async {
     final providerId =
         appProviderCubit.state.selectedProviderIdByCli[CliTool.claude]

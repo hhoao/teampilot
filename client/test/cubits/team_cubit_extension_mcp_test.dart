@@ -2,12 +2,12 @@ import 'dart:io';
 
 import 'package:flutter_test/flutter_test.dart';
 import 'package:path/path.dart' as p;
-import 'package:teampilot/cubits/team_cubit.dart';
+import 'package:teampilot/cubits/identity_cubit.dart';
 import 'package:teampilot/models/mcp_server.dart';
 import 'package:teampilot/models/plugin.dart';
 import 'package:teampilot/models/team_config.dart';
 import 'package:teampilot/repositories/session_repository.dart';
-import 'package:teampilot/repositories/team_repository.dart';
+import 'package:teampilot/repositories/identity_repository.dart';
 import 'package:teampilot/services/storage/runtime_layout.dart';
 import 'package:teampilot/services/io/local_filesystem.dart';
 import 'package:teampilot/services/mcp/identity_mcp_linker_service.dart';
@@ -69,8 +69,8 @@ class _NoopPluginLinker extends IdentityPluginLinkerService {
       const IdentityPluginSyncResult();
 }
 
-TeamRepository _repo(Directory dir) =>
-    TeamRepository(rootDir: p.join(dir.path, 'identities'));
+IdentityRepository _repo(Directory dir) =>
+    IdentityRepository(rootDir: p.join(dir.path, 'identities'));
 
 void main() {
   group('mergeExtensionMcp', () {
@@ -154,7 +154,7 @@ void main() {
       final dir = await Directory.systemTemp.createTemp('team-ext-mcp-');
       final repo = _repo(dir);
       final linker = _RecordingMcpLinker();
-      final cubit = TeamCubit(
+      final cubit = IdentityCubit(
         repository: repo,
         sessionRepository: SessionRepository(),
         reloadProjects: () async {},
@@ -197,7 +197,7 @@ void main() {
           IdentityMcpSyncResult(skippedMissingIds: ['ghost']),
         ],
       );
-      final cubit = TeamCubit(
+      final cubit = IdentityCubit(
         repository: repo,
         sessionRepository: SessionRepository(),
         reloadProjects: () async {},

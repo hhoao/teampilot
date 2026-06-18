@@ -5,7 +5,7 @@ import '../../models/team_config.dart';
 import '../../services/session/launch_command_builder.dart';
 import '../../services/session/session_lifecycle_service.dart';
 import '../../services/storage/app_storage.dart';
-import 'team_cubit_host.dart';
+import 'identity_cubit_host.dart';
 import 'team_resource_sync_service.dart';
 
 typedef TeamLauncher =
@@ -16,7 +16,7 @@ typedef CliExecutableResolver = String Function(CliTool cli);
 /// whole-team launches. Plugin state is re-synced before each launch.
 class TeamLaunchService {
   TeamLaunchService({
-    required TeamCubitHost host,
+    required IdentityCubitHost host,
     required SessionLifecycleService lifecycle,
     required TeamResourceSyncService sync,
     required String Function() executableResolver,
@@ -29,7 +29,7 @@ class TeamLaunchService {
        _cliExecutableResolver = cliExecutableResolver,
        _launcher = launcher;
 
-  final TeamCubitHost _h;
+  final IdentityCubitHost _h;
   final SessionLifecycleService _lifecycle;
   final TeamResourceSyncService _sync;
   final String Function() _executableResolver;

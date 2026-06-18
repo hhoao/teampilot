@@ -1,10 +1,10 @@
 import 'dart:io';
 
 import 'package:flutter_test/flutter_test.dart';
-import 'package:teampilot/cubits/team_cubit.dart';
+import 'package:teampilot/cubits/identity_cubit.dart';
 import 'package:teampilot/models/team_config.dart';
 import 'package:teampilot/repositories/session_repository.dart';
-import 'package:teampilot/repositories/team_repository.dart';
+import 'package:teampilot/repositories/identity_repository.dart';
 
 import '../support/post_frame_test_harness.dart';
 
@@ -12,7 +12,7 @@ void main() {
   setUp(setUpTestAppStorage);
   tearDown(tearDownTestAppStorage);
 
-  TeamCubit build(TeamRepository repo) => TeamCubit(
+  IdentityCubit build(IdentityRepository repo) => IdentityCubit(
         repository: repo,
         sessionRepository: SessionRepository(),
         reloadProjects: () async {},
@@ -22,7 +22,7 @@ void main() {
   test('addClonedTeam persists ids, members, and selects the new team',
       () async {
     final dir = await Directory.systemTemp.createTemp('clone-team-');
-    final repo = TeamRepository(rootDir: dir.path);
+    final repo = IdentityRepository(rootDir: dir.path);
     final cubit = build(repo);
     await cubit.load();
 
@@ -55,7 +55,7 @@ void main() {
 
   test('addClonedTeam auto-renames on display-name collision', () async {
     final dir = await Directory.systemTemp.createTemp('clone-team-2-');
-    final repo = TeamRepository(rootDir: dir.path);
+    final repo = IdentityRepository(rootDir: dir.path);
     final cubit = build(repo);
     await cubit.load();
 

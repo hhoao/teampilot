@@ -4,7 +4,7 @@ import 'package:teampilot/theme/app_icon_sizes.dart';
 
 import '../../cubits/app_provider_cubit.dart';
 import '../../cubits/cli_presets_cubit.dart';
-import '../../cubits/team_cubit.dart';
+import '../../cubits/identity_cubit.dart';
 import '../../l10n/l10n_extensions.dart';
 import '../../models/cli_preset.dart';
 import '../../models/app_provider_config.dart';
@@ -39,7 +39,7 @@ class MemberLaunchConfigRow extends StatelessWidget {
 
   final TeamIdentity team;
   final TeamMemberConfig member;
-  final TeamCubit cubit;
+  final IdentityCubit cubit;
   final bool showDividerBelow;
 
   @override
@@ -220,7 +220,7 @@ Future<void> _openMemberLaunchConfigureDialog(
   BuildContext context, {
   required TeamIdentity team,
   required TeamMemberConfig member,
-  required TeamCubit cubit,
+  required IdentityCubit cubit,
 }) {
   return showDialog<void>(
     context: context,
@@ -239,7 +239,7 @@ class MemberLaunchConfigureDialog extends StatefulWidget {
 
   final TeamIdentity team;
   final TeamMemberConfig member;
-  final TeamCubit cubit;
+  final IdentityCubit cubit;
 
   @override
   State<MemberLaunchConfigureDialog> createState() =>
@@ -340,7 +340,7 @@ class _MemberLaunchConfigureDialogState
     final dropdownDeco = AppDropdownDecorations.themed(context);
     final catalogCli = _catalogCli;
     final allPresets = context.watch<CliPresetsCubit>().state.presets;
-    final team = context.watch<TeamCubit>().state.teams.firstWhere(
+    final team = context.watch<IdentityCubit>().state.teams.firstWhere(
       (t) => t.id == widget.team.id,
       orElse: () => widget.team,
     );

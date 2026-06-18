@@ -4,7 +4,7 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../cubits/plugin_cubit.dart';
-import '../../cubits/team_cubit.dart';
+import '../../cubits/identity_cubit.dart';
 import '../../l10n/l10n_extensions.dart';
 import '../../models/plugin.dart';
 import '../../models/team_config.dart';
@@ -24,7 +24,7 @@ class TeamPluginsSection extends StatelessWidget {
   });
 
   final TeamIdentity team;
-  final TeamCubit cubit;
+  final IdentityCubit cubit;
 
   /// Opens global plugin management. When null, falls back to the v1
   /// `/plugins` routes so this section stays usable outside the v2 workspace.
@@ -37,7 +37,7 @@ class TeamPluginsSection extends StatelessWidget {
     final isDark = Theme.of(context).brightness == Brightness.dark;
     final textBase = isDark ? Colors.white : const Color(0xFF111827);
     final pluginState = context.watch<PluginCubit>().state;
-    final teamState = context.watch<TeamCubit>().state;
+    final teamState = context.watch<IdentityCubit>().state;
     final syncing = teamState.isSyncingPlugins;
     final conflicts = teamState.pluginSyncConflicts;
     final installed = pluginState.installed;

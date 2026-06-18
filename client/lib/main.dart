@@ -18,7 +18,7 @@ import 'cubits/mailbox_cubit.dart';
 import 'cubits/notification_cubit.dart';
 import 'l10n/l10n_extensions.dart';
 import 'repositories/app_settings_repository.dart';
-import 'repositories/project_profile_repository.dart';
+import 'repositories/identity_repository.dart';
 import 'repositories/session_repository.dart';
 import 'repositories/ssh_credential_store.dart';
 import 'repositories/ssh_known_host_repository.dart';
@@ -302,8 +302,8 @@ void main() async {
               RepositoryProvider<SessionRepository>.value(
                 value: shell.sessionRepo,
               ),
-              RepositoryProvider<ProjectProfileRepository>.value(
-                value: shell.projectProfileRepository,
+              RepositoryProvider<IdentityRepository>.value(
+                value: shell.identityRepository,
               ),
               RepositoryProvider<SshProfileRepository>.value(
                 value: shell.sshProfileRepo,
@@ -344,7 +344,6 @@ void main() async {
                 BlocProvider.value(value: shell.workspaceToolsCubit),
                 BlocProvider.value(value: shell.sessionPreferencesCubit),
                 BlocProvider.value(value: shell.pluginCubit),
-                BlocProvider.value(value: shell.projectProfileCubit),
                 BlocProvider.value(value: shell.skillCubit),
                 BlocProvider.value(value: shell.mcpCubit),
                 BlocProvider.value(value: shell.teamHubCubit),

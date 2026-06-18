@@ -1,10 +1,13 @@
+import 'package:collection/collection.dart';
 import 'package:equatable/equatable.dart';
 
+import '../../../models/personal_identity.dart';
 import '../../../models/team_config.dart';
+import '../../../models/workspace_identity.dart';
 
 class IdentityState extends Equatable {
   const IdentityState({
-    this.teams = const [],
+    this.identities = const [],
     this.selectedTeamId,
     this.statusMessage = '',
     this.isLoading = true,
@@ -13,7 +16,7 @@ class IdentityState extends Equatable {
     this.pluginSyncConflicts = const {},
   });
 
-  final List<TeamIdentity> teams;
+  final List<WorkspaceIdentity> identities;
   final String? selectedTeamId;
   final String statusMessage;
   final bool isLoading;
@@ -23,6 +26,15 @@ class IdentityState extends Equatable {
   /// Plugin ids on the selected team that were linked under a fallback dir name.
   final Map<String, String> pluginSyncConflicts;
 
+  List<TeamIdentity> get teams =>
+      identities.whereType<TeamIdentity>().toList(growable: false);
+
+  List<PersonalIdentity> get personals =>
+      identities.whereType<PersonalIdentity>().toList(growable: false);
+
+  WorkspaceIdentity? byId(String id) =>
+      identities.where((e) => e.id == id).firstOrNull;
+
   TeamIdentity? get selectedTeam {
     for (final team in teams) {
       if (team.id == selectedTeamId) return team;
@@ -31,6 +43,7 @@ class IdentityState extends Equatable {
   }
 
   IdentityState copyWith({
+    List<WorkspaceIdentity>? identities,
     List<TeamIdentity>? teams,
     String? selectedTeamId,
     String? statusMessage,
@@ -40,8 +53,10 @@ class IdentityState extends Equatable {
     Map<String, String>? pluginSyncConflicts,
     bool clearSelectedTeamId = false,
   }) {
+    final nextIdentities = identities ??
+        (teams != null ? [...personals, ...teams] : this.identities);
     return IdentityState(
-      teams: teams ?? this.teams,
+      identities: nextIdentities,
       selectedTeamId: clearSelectedTeamId
           ? null
           : (selectedTeamId ?? this.selectedTeamId),
@@ -55,12 +70,12 @@ class IdentityState extends Equatable {
 
   @override
   List<Object?> get props => [
-    teams,
-    selectedTeamId,
-    statusMessage,
-    isLoading,
-    isLaunching,
-    isSyncingPlugins,
-    pluginSyncConflicts,
-  ];
+        identities,
+        selectedTeamId,
+        statusMessage,
+        isLoading,
+        isLaunching,
+        isSyncingPlugins,
+        pluginSyncConflicts,
+      ];
 }

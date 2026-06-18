@@ -8,7 +8,7 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import '../../cubits/chat_cubit.dart';
 import '../../cubits/editor_cubit.dart';
 import '../../cubits/session_preferences_cubit.dart';
-import '../../cubits/team_cubit.dart';
+import '../../cubits/identity_cubit.dart';
 import '../../l10n/l10n_extensions.dart';
 import '../../models/app_session.dart';
 import '../../models/team_config.dart';
@@ -157,7 +157,7 @@ void consumeChatWorkbenchRouteSession({
   required bool handledRouteSession,
   required ChatState state,
   required ChatCubit chatCubit,
-  required TeamCubit teamCubit,
+  required IdentityCubit teamCubit,
   required SessionRepository sessionRepo,
   required AppLocalizations l10n,
   required void Function(bool handled) onHandled,
