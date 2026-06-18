@@ -92,9 +92,9 @@ class HomeWorkspaceProjectRail extends StatelessWidget {
         value: HomeWorkspaceProjectSection.conversations,
       ),
       _sectionItem(
-        icon: Icons.settings_outlined,
-        label: l10n.homeWorkspaceProjectSettings,
-        value: HomeWorkspaceProjectSection.settings,
+        icon: Icons.tune_outlined,
+        label: l10n.homeWorkspaceProjectManagement,
+        value: HomeWorkspaceProjectSection.manage,
       ),
     ];
   }

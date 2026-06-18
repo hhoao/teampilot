@@ -25,14 +25,20 @@ const _kAgentCardGap = 12.0;
 
 /// Personal-project agent + CLI defaults (backed by [IdentityCubit]).
 class ProjectAgentSection extends StatelessWidget {
-  const ProjectAgentSection({required this.projectId, super.key});
+  const ProjectAgentSection({
+    required this.projectId,
+    required this.identityId,
+    super.key,
+  });
 
   final String projectId;
+  final String identityId;
 
   @override
   Widget build(BuildContext context) {
-    final personal = context.watch<IdentityCubit>().activePersonal;
-    if (personal == null) {
+    final identityCubit = context.watch<IdentityCubit>();
+    final personal = identityCubit.byId(identityId);
+    if (personal is! PersonalIdentity) {
       return const Center(child: CircularProgressIndicator());
     }
     return ProjectAgentConfigForm(
@@ -112,7 +118,7 @@ class ProjectAgentConfigFormState extends State<ProjectAgentConfigForm> {
   }
 
   Future<void> _updateAgent(ProjectAgentConfig next) async {
-    await widget.cubit.updateActivePersonalAgent(next);
+    await widget.cubit.savePersonal(widget.personal.copyWith(agent: next));
   }
 
   void _applyPromptPreset(String presetId) {

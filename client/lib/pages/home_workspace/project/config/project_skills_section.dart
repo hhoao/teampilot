@@ -1,7 +1,10 @@
-﻿import 'package:flutter/material.dart';
+﻿import 'dart:async';
+
+import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
 
+import '../../../../models/personal_identity.dart';
 import '../../../../cubits/identity_cubit.dart';
 import '../../../../cubits/skill_cubit.dart';
 import '../../../../l10n/l10n_extensions.dart';
@@ -10,14 +13,20 @@ import '../../../team_config/team_config_cards.dart';
 import '../../../team_config/team_config_skills_section.dart';
 
 class ProjectSkillsSection extends StatelessWidget {
-  const ProjectSkillsSection({required this.projectId, super.key});
+  const ProjectSkillsSection({
+    required this.projectId,
+    required this.identityId,
+    super.key,
+  });
 
   final String projectId;
+  final String identityId;
 
   @override
   Widget build(BuildContext context) {
-    final personal = context.watch<IdentityCubit>().activePersonal;
-    if (personal == null) {
+    final identityCubit = context.watch<IdentityCubit>();
+    final personal = identityCubit.byId(identityId);
+    if (personal is! PersonalIdentity) {
       return const Center(child: CircularProgressIndicator());
     }
 
@@ -33,7 +42,6 @@ class ProjectSkillsSection extends StatelessWidget {
     final skillIds = personal.bundle.skillIds;
     final assignedCount =
         enabled.where((s) => skillIds.contains(s.id)).length;
-    final cubit = context.read<IdentityCubit>();
 
     return SingleChildScrollView(
       child: Column(
@@ -76,7 +84,15 @@ class ProjectSkillsSection extends StatelessWidget {
                             } else {
                               ids.remove(skill.id);
                             }
-                            cubit.setActivePersonalSkillIds(ids);
+                            unawaited(
+                              identityCubit.savePersonal(
+                                personal.copyWith(
+                                  bundle: personal.bundle.copyWith(
+                                    skillIds: List<String>.unmodifiable(ids),
+                                  ),
+                                ),
+                              ),
+                            );
                           },
                         ),
                     ],

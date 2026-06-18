@@ -127,9 +127,16 @@ class SessionLaunchService implements MemberConnector {
           'openSessionTab requires project for personal sessions',
         );
       }
-      personalIdentity = await _h.lifecycle.loadPersonalIdentity(
-        IdentityProvisioner.defaultPersonalId,
-      );
+      var identityId = project.defaultIdentityId.trim();
+      if (identityId.isNotEmpty) {
+        final found = await _h.lifecycle.loadWorkspaceIdentity(identityId);
+        if (found == null) {
+          identityId = IdentityProvisioner.defaultPersonalId;
+        }
+      } else {
+        identityId = IdentityProvisioner.defaultPersonalId;
+      }
+      personalIdentity = await _h.lifecycle.loadPersonalIdentity(identityId);
       personalPreset =
           await _h.lifecycle.resolveActivePresetForPersonal(personalIdentity);
       personalMember = standaloneMemberFromPersonal(

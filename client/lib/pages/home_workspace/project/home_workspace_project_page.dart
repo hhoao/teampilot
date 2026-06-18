@@ -15,7 +15,6 @@ import '../../../theme/workspace_surface_layers.dart';
 import 'home_workspace_project_config_workspace.dart';
 import 'home_workspace_project_rail.dart';
 import 'home_workspace_project_section.dart';
-import 'home_workspace_project_settings_view.dart';
 import 'home_workspace_project_split_pane.dart';
 import 'project_config_section.dart';
 
@@ -123,7 +122,6 @@ class _HomeWorkspaceProjectPageState extends State<HomeWorkspaceProjectPage> {
         _visitedManage = true;
       }
     });
-    if (workspaceIdentity.kind != IdentityKind.personal) return;
 
     final base =
         '/home-v2/project/${project.projectId}?as=${workspaceIdentity.id}';
@@ -182,9 +180,11 @@ class _HomeWorkspaceProjectPageState extends State<HomeWorkspaceProjectPage> {
     final isPersonal = workspaceIdentity.kind == IdentityKind.personal;
     final sessionTeamFilter =
         isPersonal ? '' : workspaceIdentity.id;
-    final cardBody = isPersonal
-        ? _buildPersonalCardBody(project, sessionTeamFilter: sessionTeamFilter)
-        : _buildTeamCardBody(project, sessionTeamFilter: sessionTeamFilter);
+    final cardBody = _buildCardBody(
+      project: project,
+      workspaceIdentity: workspaceIdentity,
+      sessionTeamFilter: sessionTeamFilter,
+    );
 
     return _buildProjectPageWithRail(
       project: project,
@@ -221,8 +221,9 @@ class _HomeWorkspaceProjectPageState extends State<HomeWorkspaceProjectPage> {
     );
   }
 
-  Widget _buildPersonalCardBody(
-    AppProject project, {
+  Widget _buildCardBody({
+    required AppProject project,
+    required WorkspaceIdentity workspaceIdentity,
     required String sessionTeamFilter,
   }) {
     final showManage = _section == HomeWorkspaceProjectSection.manage;
@@ -231,38 +232,20 @@ class _HomeWorkspaceProjectPageState extends State<HomeWorkspaceProjectPage> {
       sizing: StackFit.expand,
       children: [
         HomeWorkspaceProjectSplitPane(
-          key: ValueKey('personal-conversations-${project.projectId}'),
+          key: ValueKey('conversations-${project.projectId}-${workspaceIdentity.id}'),
           project: project,
-          isPersonalProject: true,
+          isPersonalProject: workspaceIdentity.kind == IdentityKind.personal,
           sessionTeamFilter: sessionTeamFilter,
         ),
         if (_visitedManage)
           HomeWorkspaceProjectConfigWorkspace(
             project: project,
+            identityId: workspaceIdentity.id,
             section: _configSection,
-            isPersonalProject: true,
           )
         else
           const SizedBox.shrink(),
       ],
-    );
-  }
-
-  Widget _buildTeamCardBody(
-    AppProject project, {
-    required String sessionTeamFilter,
-  }) {
-    if (_section == HomeWorkspaceProjectSection.conversations) {
-      return HomeWorkspaceProjectSplitPane(
-        project: project,
-        isPersonalProject: false,
-        sessionTeamFilter: sessionTeamFilter,
-      );
-    }
-
-    return Row(
-      crossAxisAlignment: CrossAxisAlignment.stretch,
-      children: [HomeWorkspaceProjectSettingsView(project: project)],
     );
   }
 
