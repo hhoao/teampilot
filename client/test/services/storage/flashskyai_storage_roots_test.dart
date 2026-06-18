@@ -82,8 +82,8 @@ void main() {
     );
 
     expect(
-      snap.layout.teamToolDir('team-a', 'flashskyai'),
-      posix.join(teampilotRoot, 'teams-runtime', 'team-a', 'flashskyai'),
+      snap.layout.identityToolDir('team-a', 'flashskyai'),
+      posix.join(teampilotRoot, 'identities-runtime', 'team-a', 'flashskyai'),
     );
     expect(
       snap.layout.sessionRuntimeToolDir('proj-1', 'sess-1', 'flashskyai'),

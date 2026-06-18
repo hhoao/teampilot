@@ -289,7 +289,7 @@ class SessionLifecycleService {
           : roots.layout.transcriptSearchRoots(
               projectId: session.projectId.trim(),
               sessionId: session.sessionId.trim(),
-              teamId: teamId,
+              identityId: teamId,
               tools: tools,
             );
 
@@ -452,7 +452,7 @@ class SessionLifecycleService {
 
     final roots = await _resolveRoots();
     final teamRoot = roots.fs.pathContext.dirname(
-      roots.layout.teamToolDir(trimmedTeamId, 'flashskyai'),
+      roots.layout.identityToolDir(trimmedTeamId, 'flashskyai'),
     );
     await _removeTree(roots, teamRoot);
   }
@@ -632,7 +632,7 @@ class SessionLifecycleService {
       loadEnabledExtensionIds: loader == null
           ? null
           : ({teamId, projectId}) => loader(
-              teamId: teamId,
+              identityId: teamId,
               projectId: (projectId?.trim().isNotEmpty ?? false)
                   ? projectId
                   : (trimmedProjectId.isNotEmpty ? trimmedProjectId : null),

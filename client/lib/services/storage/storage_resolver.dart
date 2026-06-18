@@ -105,7 +105,7 @@ class StorageRootsSnapshot {
   /// Workbench path layout under `{teampilotRoot}/workspace/`.
   final WorkspaceLayout workspace;
 
-  /// CLI runtime layout: `cli-defaults/`, `teams-runtime/`, session runtime dirs.
+  /// CLI runtime layout: `cli-defaults/`, `identities-runtime/`, session runtime dirs.
   final RuntimeLayout layout;
 
   bool get storageIsRemote => fs is SftpFilesystem;

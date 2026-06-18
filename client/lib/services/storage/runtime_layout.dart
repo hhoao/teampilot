@@ -18,7 +18,7 @@ final List<String> runtimeLayoutDefaultTools =
 /// Canonical paths for CLI **runtime config** under TeamPilot app data.
 ///
 /// See [docs/workspace-storage-layout.md] for the full tree. [WorkspaceLayout]
-/// owns UI metadata; this class owns `cli-defaults/`, `teams-runtime/`, and
+/// owns UI metadata; this class owns `cli-defaults/`, `identities-runtime/`, and
 /// session/runtime inheritance under each project session.
 class RuntimeLayout {
   RuntimeLayout({
@@ -32,35 +32,36 @@ class RuntimeLayout {
   final Filesystem _fs;
   final WorkspaceLayout workspace;
 
-  static final _teamInheritLocks = LockPool();
+  static final _identityInheritLocks = LockPool();
   static final _projectInheritLocks = LockPool();
 
   p.Context get _pathContext => _fs.pathContext;
 
   String get cliDefaultsDir => _pathContext.join(teampilotRoot, 'cli-defaults');
 
-  String get teamsRuntimeDir => _pathContext.join(teampilotRoot, 'teams-runtime');
+  String get identitiesRuntimeDir =>
+      _pathContext.join(teampilotRoot, 'identities-runtime');
 
   String appToolRoot(String tool) =>
       _pathContext.join(cliDefaultsDir, tool.trim());
 
-  String teamRuntimeDir(String teamId) =>
-      _pathContext.join(teamsRuntimeDir, teamId.trim());
+  String identityRuntimeDir(String identityId) =>
+      _pathContext.join(identitiesRuntimeDir, identityId.trim());
 
-  String teamToolDir(String teamId, String tool) =>
-      _pathContext.join(teamRuntimeDir(teamId), tool.trim());
+  String identityToolDir(String identityId, String tool) =>
+      _pathContext.join(identityRuntimeDir(identityId), tool.trim());
 
-  String teamSessionCounterFile(String teamId) =>
-      _pathContext.join(teamRuntimeDir(teamId), 'session-counter.json');
+  String identitySessionCounterFile(String identityId) =>
+      _pathContext.join(identityRuntimeDir(identityId), 'session-counter.json');
 
-  String teamPluginsDir(String teamId) =>
-      _pathContext.join(teamToolDir(teamId, 'flashskyai'), 'plugins');
+  String identityPluginsDir(String identityId) =>
+      _pathContext.join(identityToolDir(identityId, 'flashskyai'), 'plugins');
 
-  String teamMcpDir(String teamId) =>
-      _pathContext.join(teamRuntimeDir(teamId), 'mcp');
+  String identityMcpDir(String identityId) =>
+      _pathContext.join(identityRuntimeDir(identityId), 'mcp');
 
-  String teamMcpServersFile(String teamId) =>
-      _pathContext.join(teamMcpDir(teamId), 'servers.json');
+  String identityMcpServersFile(String identityId) =>
+      _pathContext.join(identityMcpDir(identityId), 'servers.json');
 
   String projectConfigToolDir(String projectId, String tool) =>
       workspace.projectConfigToolDir(projectId, tool);
@@ -106,11 +107,11 @@ class RuntimeLayout {
   List<String> transcriptSearchRoots({
     required String projectId,
     required String sessionId,
-    String? teamId,
+    String? identityId,
     String? memberId,
     Iterable<String>? tools,
   }) {
-    final trimmedTeam = teamId?.trim() ?? '';
+    final trimmedIdentity = identityId?.trim() ?? '';
     final trimmedProject = projectId.trim();
     final trimmedSession = sessionId.trim();
     final trimmedMember = memberId?.trim() ?? '';
@@ -120,8 +121,8 @@ class RuntimeLayout {
         .toList();
     return [
       for (final tool in tt) appToolRoot(tool),
-      if (trimmedTeam.isNotEmpty)
-        for (final tool in tt) teamToolDir(trimmedTeam, tool),
+      if (trimmedIdentity.isNotEmpty)
+        for (final tool in tt) identityToolDir(trimmedIdentity, tool),
       if (trimmedProject.isNotEmpty)
         for (final tool in tt) projectConfigToolDir(trimmedProject, tool),
       if (trimmedProject.isNotEmpty && trimmedSession.isNotEmpty)
@@ -152,33 +153,33 @@ class RuntimeLayout {
     await _fs.ensureDir(appToolRoot(tool));
   }
 
-  static String _teamInheritLockKey(String teamId, String tool) =>
-      '${teamId.trim()}|${tool.trim()}';
+  static String _identityInheritLockKey(String identityId, String tool) =>
+      '${identityId.trim()}|${tool.trim()}';
 
   static String _projectInheritLockKey(String projectId, String tool) =>
       'project|${projectId.trim()}|${tool.trim()}';
 
-  Future<void> ensureTeamInheritsApp(String teamId, String tool) async {
-    final trimmedTeam = teamId.trim();
+  Future<void> ensureIdentityInheritsApp(String identityId, String tool) async {
+    final trimmedIdentity = identityId.trim();
     final trimmedTool = tool.trim();
-    if (trimmedTeam.isEmpty || trimmedTool.isEmpty) return;
-    await _teamInheritLocks.synchronized(
-      _teamInheritLockKey(trimmedTeam, trimmedTool),
-      () => _ensureTeamInheritsAppUnlocked(trimmedTeam, trimmedTool),
+    if (trimmedIdentity.isEmpty || trimmedTool.isEmpty) return;
+    await _identityInheritLocks.synchronized(
+      _identityInheritLockKey(trimmedIdentity, trimmedTool),
+      () => _ensureIdentityInheritsAppUnlocked(trimmedIdentity, trimmedTool),
     );
   }
 
-  Future<void> _ensureTeamInheritsAppUnlocked(
-    String trimmedTeam,
+  Future<void> _ensureIdentityInheritsAppUnlocked(
+    String trimmedIdentity,
     String trimmedTool,
   ) async {
     await ensureAppToolLayout(trimmedTool);
-    final teamRoot = teamToolDir(trimmedTeam, trimmedTool);
-    await _fs.ensureDir(teamRoot);
+    final identityRoot = identityToolDir(trimmedIdentity, trimmedTool);
+    await _fs.ensureDir(identityRoot);
     await _ensureInheritedChild(
       childName: 'agents',
       parentToolRoot: appToolRoot(trimmedTool),
-      ownToolRoot: teamRoot,
+      ownToolRoot: identityRoot,
     );
   }
 
@@ -244,27 +245,27 @@ class RuntimeLayout {
     );
   }
 
-  Future<void> ensureSessionRuntimeInheritsTeam(
+  Future<void> ensureSessionRuntimeInheritsIdentity(
     String projectId,
     String sessionId,
-    String teamId,
+    String identityId,
     String tool, {
     String? memberId,
   }) async {
     final trimmedProject = projectId.trim();
     final trimmedSession = sessionId.trim();
-    final trimmedTeam = teamId.trim();
+    final trimmedIdentity = identityId.trim();
     final trimmedTool = tool.trim();
     if (trimmedProject.isEmpty ||
         trimmedSession.isEmpty ||
-        trimmedTeam.isEmpty ||
+        trimmedIdentity.isEmpty ||
         trimmedTool.isEmpty) {
       return;
     }
-    await _teamInheritLocks.synchronized(
-      _teamInheritLockKey(trimmedTeam, trimmedTool),
+    await _identityInheritLocks.synchronized(
+      _identityInheritLockKey(trimmedIdentity, trimmedTool),
       () async {
-        await _ensureTeamInheritsAppUnlocked(trimmedTeam, trimmedTool);
+        await _ensureIdentityInheritsAppUnlocked(trimmedIdentity, trimmedTool);
         final sessionRoot = sessionRuntimeToolDir(
           trimmedProject,
           trimmedSession,
@@ -272,30 +273,30 @@ class RuntimeLayout {
           memberId: memberId,
         );
         await _fs.ensureDir(sessionRoot);
-        final teamRoot = teamToolDir(trimmedTeam, trimmedTool);
+        final identityRoot = identityToolDir(trimmedIdentity, trimmedTool);
         await _ensureInheritedChild(
           childName: 'agents',
-          parentToolRoot: teamRoot,
+          parentToolRoot: identityRoot,
           ownToolRoot: sessionRoot,
         );
       },
     );
   }
 
-  Future<String?> provisionSessionPluginsFromTeam(
+  Future<String?> provisionSessionPluginsFromIdentity(
     String projectId,
     String sessionId,
-    String teamId,
+    String identityId,
     String tool, {
     String? memberId,
   }) async {
     final trimmedProject = projectId.trim();
     final trimmedSession = sessionId.trim();
-    final trimmedTeam = teamId.trim();
+    final trimmedIdentity = identityId.trim();
     final trimmedTool = tool.trim();
     if (trimmedProject.isEmpty ||
         trimmedSession.isEmpty ||
-        trimmedTeam.isEmpty ||
+        trimmedIdentity.isEmpty ||
         trimmedTool.isEmpty) {
       return null;
     }
@@ -306,7 +307,7 @@ class RuntimeLayout {
         claudePluginManifestPaths;
     return CliPluginLayout.copyBundlesToMember(
       fs: _fs,
-      teamPluginsDir: teamPluginsDir(trimmedTeam),
+      teamPluginsDir: identityPluginsDir(trimmedIdentity),
       memberPluginsDir: sessionRuntimePluginsDir(
         trimmedProject,
         trimmedSession,

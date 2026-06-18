@@ -49,7 +49,7 @@ void main() {
     required String tool,
     required String pluginName,
   }) async {
-    final teamPlugins = Directory(layout.teamPluginsDir(teamId))
+    final teamPlugins = Directory(layout.identityPluginsDir(teamId))
       ..createSync(recursive: true);
     final bundle = Directory(p.join(teamPlugins.path, pluginName))
       ..createSync();
@@ -59,7 +59,7 @@ void main() {
     ).writeAsString(
       jsonEncode({'name': pluginName, 'version': '2.0.0'}),
     );
-    await layout.provisionSessionPluginsFromTeam(
+    await layout.provisionSessionPluginsFromIdentity(
       'project-1',
       sessionId,
       teamId,
@@ -249,7 +249,7 @@ void main() {
       }),
     );
 
-    final teamPlugins = Directory(layout.teamPluginsDir('t1'))
+    final teamPlugins = Directory(layout.identityPluginsDir('t1'))
       ..createSync(recursive: true);
     final bundle = Directory(p.join(teamPlugins.path, 'api-security-testing'))
       ..createSync();
@@ -260,7 +260,7 @@ void main() {
       jsonEncode({'name': 'api-security-testing', 'version': '1.0.0'}),
     );
 
-    await layout.provisionSessionPluginsFromTeam('project-1', 's4', 't1', 'flashskyai');
+    await layout.provisionSessionPluginsFromIdentity('project-1', 's4', 't1', 'flashskyai');
 
     await registry.writeForSession(
       projectId: 'project-1',

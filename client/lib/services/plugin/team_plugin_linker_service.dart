@@ -73,12 +73,12 @@ class TeamPluginLinkerService {
     final layout =
         roots?.layout ??
         RuntimeLayout(teampilotRoot: _appPluginsRootParent(), fs: fs);
-    final teamPluginsDir = layout.teamPluginsDir(trimmedTeamId);
+    final identityPluginsDir = layout.identityPluginsDir(trimmedTeamId);
     final sourceRoot = roots?.pluginsRoot ?? appPluginsDir;
     return _syncWithFilesystem(
       fs: fs,
       sourceRoot: sourceRoot,
-      teamPluginsDir: teamPluginsDir,
+      identityPluginsDir: identityPluginsDir,
       toLink: toLink,
       skipped: skipped,
     );
@@ -93,7 +93,7 @@ class TeamPluginLinkerService {
   Future<TeamPluginSyncResult> _syncWithFilesystem({
     required Filesystem fs,
     required String sourceRoot,
-    required String teamPluginsDir,
+    required String identityPluginsDir,
     required List<Plugin> toLink,
     required List<String> skipped,
   }) async {
@@ -104,9 +104,9 @@ class TeamPluginLinkerService {
     final usedNames = <String>{};
 
     try {
-      await fs.ensureDir(teamPluginsDir);
-      for (final entry in await fs.listDir(teamPluginsDir)) {
-        await fs.removeRecursive(path.join(teamPluginsDir, entry.name));
+      await fs.ensureDir(identityPluginsDir);
+      for (final entry in await fs.listDir(identityPluginsDir)) {
+        await fs.removeRecursive(path.join(identityPluginsDir, entry.name));
       }
     } catch (e) {
       return TeamPluginSyncResult(
@@ -148,7 +148,7 @@ class TeamPluginLinkerService {
         }
         usedNames.add(targetName);
 
-        final target = path.join(teamPluginsDir, targetName);
+        final target = path.join(identityPluginsDir, targetName);
         await CliPluginLayout.linkOrCopyTree(
           fs: fs,
           source: pluginRoot,

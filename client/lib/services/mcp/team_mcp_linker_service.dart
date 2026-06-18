@@ -58,9 +58,9 @@ class TeamMcpLinkerService {
       linked.add(id);
     }
 
-    final outPath = layout.teamMcpServersFile(trimmedTeamId);
+    final outPath = layout.identityMcpServersFile(trimmedTeamId);
     try {
-      await _fs.ensureDir(layout.teamMcpDir(trimmedTeamId));
+      await _fs.ensureDir(layout.identityMcpDir(trimmedTeamId));
       await _fs.atomicWrite(
         outPath,
         const JsonEncoder.withIndent('  ').convert({

@@ -504,7 +504,7 @@ void main() {
   });
 
   test('destroyCliToolState removes the whole team runtime tree', () async {
-    final teamRoot = layout.teamRuntimeDir('team-a');
+    final teamRoot = layout.identityRuntimeDir('team-a');
     await File(
       p.join(teamRoot, 'flashskyai', 'skills', 'demo'),
     ).create(recursive: true);

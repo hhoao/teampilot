@@ -112,9 +112,9 @@ class ConfigProfileService implements ConfigProfileDelegate {
 
   String get cliDefaultsDir => layout.cliDefaultsDir;
 
-  String get teamsRuntimeDir => layout.teamsRuntimeDir;
+  String get identitiesRuntimeDir => layout.identitiesRuntimeDir;
 
-  String teamScopeDir(String teamId) => layout.teamRuntimeDir(teamId);
+  String teamScopeDir(String teamId) => layout.identityRuntimeDir(teamId);
 
   String projectConfigDir(String projectId) =>
       layout.workspace.projectConfigDir(projectId);
@@ -182,7 +182,7 @@ class ConfigProfileService implements ConfigProfileDelegate {
     await ensureTeamProfile(trimmedTeamId, cli: cli);
     String? memberProvisionJson;
     await Future.wait([
-      layout.ensureSessionRuntimeInheritsTeam(
+      layout.ensureSessionRuntimeInheritsIdentity(
         trimmedProjectId,
         trimmedSessionId,
         trimmedTeamId,
@@ -190,7 +190,7 @@ class ConfigProfileService implements ConfigProfileDelegate {
         memberId: memberId,
       ),
       layout
-          .provisionSessionPluginsFromTeam(
+          .provisionSessionPluginsFromIdentity(
             trimmedProjectId,
             trimmedSessionId,
             trimmedTeamId,

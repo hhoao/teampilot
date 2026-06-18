@@ -20,7 +20,7 @@ class SessionTeamCounter {
       throw ArgumentError.value(teamId, 'teamId', 'must not be empty');
     }
     return _locks.synchronized(trimmed, () async {
-      final path = _layout.teamSessionCounterFile(trimmed);
+      final path = _layout.identitySessionCounterFile(trimmed);
       var nextSeq = 0;
       final raw = await _fs.readString(path);
       if (raw != null && raw.trim().isNotEmpty) {

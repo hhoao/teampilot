@@ -38,7 +38,7 @@ void main() {
     expect(result.linked, ['fetch']);
     expect(result.skippedMissingIds, ['missing']);
 
-    final file = File(layout.teamMcpServersFile('team-a'));
+    final file = File(layout.identityMcpServersFile('team-a'));
     expect(await file.exists(), isTrue);
     final json = jsonDecode(await file.readAsString()) as Map<String, Object?>;
     final servers = json['mcpServers'] as Map<String, Object?>;
@@ -65,7 +65,7 @@ void main() {
       layout: layout,
     );
     final json = jsonDecode(
-      await File(layout.teamMcpServersFile('team-a')).readAsString(),
+      await File(layout.identityMcpServersFile('team-a')).readAsString(),
     ) as Map<String, Object?>;
     expect(json['smitheryServerKeys'], ['GitHub']);
   });
@@ -86,7 +86,7 @@ void main() {
       layout: layout,
     );
     final json = jsonDecode(
-      await File(layout.teamMcpServersFile('team-a')).readAsString(),
+      await File(layout.identityMcpServersFile('team-a')).readAsString(),
     ) as Map<String, Object?>;
     expect((json['mcpServers'] as Map).isEmpty, isTrue);
   });

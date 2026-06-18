@@ -60,7 +60,7 @@ void main() {
   });
 
   test('falls back to the team dir when runtime dir is absent', () async {
-    final teamDir = layout.teamToolDir('team-a', 'claude');
+    final teamDir = layout.identityToolDir('team-a', 'claude');
     await fs.ensureDir(teamDir);
 
     final detail = await inspector.inspect(

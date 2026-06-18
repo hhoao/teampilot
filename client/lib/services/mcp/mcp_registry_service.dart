@@ -44,7 +44,7 @@ class McpRegistryService {
     }
 
     Map<String, Map<String, Object?>>? catalogServers;
-    final snapshotPath = layout.teamMcpServersFile(trimmedTeamId);
+    final snapshotPath = layout.identityMcpServersFile(trimmedTeamId);
     final snapshotStat = await _fs.stat(snapshotPath);
     if (snapshotStat.isFile) {
       final snapshotText = await _fs.readString(snapshotPath);

@@ -56,7 +56,7 @@ class MemberConfigInspector {
         cli: cli,
         configDir: resolved.dir,
         sourceLayer: resolved.layer,
-        mcpSnapshotPath: _layout.teamMcpServersFile(team.id),
+        mcpSnapshotPath: _layout.identityMcpServersFile(team.id),
         provider: member.provider,
         model: member.model,
         fs: _fs,
@@ -87,7 +87,7 @@ class MemberConfigInspector {
         return _ResolvedDir(runtimeDir, MemberConfigSourceLayer.runtime);
       }
     }
-    final teamDir = _layout.teamToolDir(team.id, tool);
+    final teamDir = _layout.identityToolDir(team.id, tool);
     if ((await _fs.stat(teamDir)).isDirectory) {
       return _ResolvedDir(teamDir, MemberConfigSourceLayer.team);
     }

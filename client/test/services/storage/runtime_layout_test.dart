@@ -36,10 +36,10 @@ void main() {
       expect(layout.appToolRoot('claude'), '/tp/cli-defaults/claude');
     });
 
-    test('teamToolDir is teams-runtime/<id>/<tool>', () {
+    test('identityToolDir is identities-runtime/<id>/<tool>', () {
       expect(
-        layout.teamToolDir('team-a', 'flashskyai'),
-        '/tp/teams-runtime/team-a/flashskyai',
+        layout.identityToolDir('team-a', 'flashskyai'),
+        '/tp/identities-runtime/team-a/flashskyai',
       );
     });
 
@@ -55,12 +55,12 @@ void main() {
       final roots = layout.transcriptSearchRoots(
         projectId: projectId,
         sessionId: 'sess-1',
-        teamId: 'team-a',
+        identityId: 'team-a',
       );
       expect(roots, [
         for (final tool in runtimeLayoutDefaultTools) '/tp/cli-defaults/$tool',
         for (final tool in runtimeLayoutDefaultTools)
-          '/tp/teams-runtime/team-a/$tool',
+          '/tp/identities-runtime/team-a/$tool',
         for (final tool in runtimeLayoutDefaultTools)
           '/tp/workspace/projects/proj-1/config/$tool',
         for (final tool in runtimeLayoutDefaultTools)
@@ -72,12 +72,12 @@ void main() {
       final roots = layout.transcriptSearchRoots(
         projectId: projectId,
         sessionId: '',
-        teamId: 'team-a',
+        identityId: 'team-a',
         tools: const ['flashskyai'],
       );
       expect(roots, [
         '/tp/cli-defaults/flashskyai',
-        '/tp/teams-runtime/team-a/flashskyai',
+        '/tp/identities-runtime/team-a/flashskyai',
         '/tp/workspace/projects/proj-1/config/flashskyai',
       ]);
     });
@@ -226,7 +226,7 @@ void main() {
     });
 
     test(
-      'ensureTeamInheritsApp symlinks agents from app level',
+      'ensureIdentityInheritsApp symlinks agents from app level',
       () async {
         final layout = RuntimeLayout(
           teampilotRoot: base.path,
@@ -239,10 +239,10 @@ void main() {
         await appAgents.create(recursive: true);
         await File(p.join(appAgents.path, 'demo.md')).writeAsString('# demo');
 
-        await layout.ensureTeamInheritsApp('team-a', 'flashskyai');
+        await layout.ensureIdentityInheritsApp('team-a', 'flashskyai');
 
         final teamAgents = p.join(
-          layout.teamToolDir('team-a', 'flashskyai'),
+          layout.identityToolDir('team-a', 'flashskyai'),
           'agents',
         );
         expect(_inheritedPathExists(teamAgents), isTrue);
@@ -256,7 +256,7 @@ void main() {
         );
 
         final teamSkills = p.join(
-          layout.teamToolDir('team-a', 'flashskyai'),
+          layout.identityToolDir('team-a', 'flashskyai'),
           'skills',
         );
         expect(
@@ -268,7 +268,7 @@ void main() {
     );
 
     test(
-      'ensureSessionRuntimeInheritsTeam chains agents app → team → session symlinks',
+      'ensureSessionRuntimeInheritsIdentity chains agents app → team → session symlinks',
       () async {
         final layout = RuntimeLayout(
           teampilotRoot: base.path,
@@ -283,7 +283,7 @@ void main() {
           p.join(appAgents.path, 'README.md'),
         ).writeAsString('top-level');
 
-        await layout.ensureSessionRuntimeInheritsTeam(
+        await layout.ensureSessionRuntimeInheritsIdentity(
           projectId,
           'sess-1',
           'team-a',
@@ -310,14 +310,14 @@ void main() {
     );
 
     test(
-      'provisionSessionPluginsFromTeam copies team bundles into session CONFIG_DIR',
+      'provisionSessionPluginsFromIdentity copies team bundles into session CONFIG_DIR',
       () async {
         final layout = RuntimeLayout(
           teampilotRoot: base.path,
           fs: LocalFilesystem(),
         );
         final teamPlugins = Directory(
-          p.join(layout.teamPluginsDir('team-a')),
+          p.join(layout.identityPluginsDir('team-a')),
         )..createSync(recursive: true);
         final pluginRoot = Directory(p.join(teamPlugins.path, 'demo-plugin'))
           ..createSync();
@@ -327,7 +327,7 @@ void main() {
         ).writeAsString('{"name":"demo-plugin","version":"1.0.0"}');
         await File(p.join(pluginRoot.path, '.mcp.json')).writeAsString('{}');
 
-        await layout.provisionSessionPluginsFromTeam(
+        await layout.provisionSessionPluginsFromIdentity(
           projectId,
           'sess-1',
           'team-a',
@@ -353,7 +353,7 @@ void main() {
           isTrue,
         );
 
-        await layout.provisionSessionPluginsFromTeam(
+        await layout.provisionSessionPluginsFromIdentity(
           projectId,
           'sess-2',
           'team-a',
@@ -392,10 +392,10 @@ void main() {
       await fs.ensureDir(appAgents);
       await fs.writeString(_posixPath.join(appAgents, 'demo.md'), 'hello');
 
-      await layout.ensureTeamInheritsApp('team-a', 'flashskyai');
+      await layout.ensureIdentityInheritsApp('team-a', 'flashskyai');
 
       final teamAgentsPath = _posixPath.join(
-        layout.teamToolDir('team-a', 'flashskyai'),
+        layout.identityToolDir('team-a', 'flashskyai'),
         'agents',
       );
       expect(fs.symlinks.containsKey(teamAgentsPath), isFalse);
@@ -407,7 +407,7 @@ void main() {
     });
 
     test(
-      'concurrent ensureTeamInheritsApp does not throw PathExistsException',
+      'concurrent ensureIdentityInheritsApp does not throw PathExistsException',
       () async {
         final layout = RuntimeLayout(
           teampilotRoot: base.path,
@@ -416,13 +416,13 @@ void main() {
         await layout.ensureAppToolLayout('flashskyai');
 
         await Future.wait([
-          layout.ensureTeamInheritsApp('team-a', 'flashskyai'),
-          layout.ensureTeamInheritsApp('team-a', 'flashskyai'),
-          layout.ensureTeamInheritsApp('team-a', 'flashskyai'),
+          layout.ensureIdentityInheritsApp('team-a', 'flashskyai'),
+          layout.ensureIdentityInheritsApp('team-a', 'flashskyai'),
+          layout.ensureIdentityInheritsApp('team-a', 'flashskyai'),
         ]);
 
         final teamAgents = p.join(
-          layout.teamToolDir('team-a', 'flashskyai'),
+          layout.identityToolDir('team-a', 'flashskyai'),
           'agents',
         );
         expect(_inheritedPathExists(teamAgents), isTrue);
@@ -430,7 +430,7 @@ void main() {
     );
 
     test(
-      'concurrent ensureSessionRuntimeInheritsTeam for multiple sessions succeeds',
+      'concurrent ensureSessionRuntimeInheritsIdentity for multiple sessions succeeds',
       () async {
         final layout = RuntimeLayout(
           teampilotRoot: base.path,
@@ -439,19 +439,19 @@ void main() {
         await layout.ensureAppToolLayout('flashskyai');
 
         await Future.wait([
-          layout.ensureSessionRuntimeInheritsTeam(
+          layout.ensureSessionRuntimeInheritsIdentity(
             projectId,
             'member-1',
             'team-a',
             'flashskyai',
           ),
-          layout.ensureSessionRuntimeInheritsTeam(
+          layout.ensureSessionRuntimeInheritsIdentity(
             projectId,
             'member-2',
             'team-a',
             'flashskyai',
           ),
-          layout.ensureSessionRuntimeInheritsTeam(
+          layout.ensureSessionRuntimeInheritsIdentity(
             projectId,
             'member-3',
             'team-a',
@@ -470,7 +470,7 @@ void main() {
     );
 
     test(
-      'ensureSessionRuntimeInheritsTeam tolerates existing team agents symlinks on Windows',
+      'ensureSessionRuntimeInheritsIdentity tolerates existing team agents symlinks on Windows',
       () async {
         if (!Platform.isWindows) return;
 
@@ -484,14 +484,14 @@ void main() {
         await File(p.join(appAgents.path, 'probe.md')).writeAsString('ok');
 
         final teamAgents = p.join(
-          layout.teamToolDir('team-a', 'claude'),
+          layout.identityToolDir('team-a', 'claude'),
           'agents',
         );
         await Directory(p.dirname(teamAgents)).create(recursive: true);
         await Link(teamAgents).create(appAgents.path);
         await expectLater(fs.ensureDir(teamAgents), completes);
 
-        await layout.ensureSessionRuntimeInheritsTeam(
+        await layout.ensureSessionRuntimeInheritsIdentity(
           projectId,
           'sess-1',
           'team-a',

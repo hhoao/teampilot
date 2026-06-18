@@ -64,7 +64,7 @@ def migrate_file(path: Path) -> bool:
     )
     # default project id 'p' for generic layout tests; override in session tests via project-1
     text = PROVISION_RE.sub(
-        r".provisionSessionPluginsFromTeam('project-1', '\2', '\1', '\3')",
+        r".provisionSessionPluginsFromIdentity('project-1', '\2', '\1', '\3')",
         text,
     )
 
