@@ -10,7 +10,7 @@ import '../../theme/workspace_surface_layers.dart';
 import 'home_workspace_content_header.dart';
 import 'home_workspace_global_section.dart';
 import 'home_workspace_personal_tab.dart';
-import 'project/workspace_config_section.dart';
+import 'workspace/workspace_config_section.dart';
 
 /// Right-hand content pane for a selected [PersonalIdentity] on the home
 /// workspace (skills/plugins/MCP/agent — no roster).
@@ -27,18 +27,15 @@ class HomePersonalContent extends StatefulWidget {
   final ValueChanged<HomeGlobalView>? onSelectGlobalView;
 
   @override
-  State<HomePersonalContent> createState() =>
-      _HomePersonalContentState();
+  State<HomePersonalContent> createState() => _HomePersonalContentState();
 }
 
-class _HomePersonalContentState
-    extends State<HomePersonalContent> {
+class _HomePersonalContentState extends State<HomePersonalContent> {
   late int _tabIndex = 0;
 
-  List<WorkspaceConfigSection> get _sections =>
-      WorkspaceConfigSection.forKind(IdentityKind.personal)
-          .where((s) => s != WorkspaceConfigSection.settings)
-          .toList(growable: false);
+  List<WorkspaceConfigSection> get _sections => WorkspaceConfigSection.forKind(
+    IdentityKind.personal,
+  ).where((s) => s != WorkspaceConfigSection.settings).toList(growable: false);
 
   @override
   Widget build(BuildContext context) {
@@ -66,21 +63,22 @@ class _HomePersonalContentState
           Divider(height: 1, color: cs.outlineVariant.withValues(alpha: 0.5)),
           const SizedBox(height: 16),
           Expanded(
-            child: HomePersonalTab(
-              key: ValueKey('home-personal-tab-${active.name}'),
-              section: active,
-              personal: widget.personal,
-              cubit: widget.cubit,
-              onSelectGlobalView: widget.onSelectGlobalView,
-            )
-                .animate(key: ValueKey('home-personal-content-$_tabIndex'))
-                .fadeIn(duration: 180.ms, curve: Curves.easeOut)
-                .slideX(
-                  begin: 0.025,
-                  end: 0,
-                  duration: 220.ms,
-                  curve: Curves.easeOutCubic,
-                ),
+            child:
+                HomePersonalTab(
+                      key: ValueKey('home-personal-tab-${active.name}'),
+                      section: active,
+                      personal: widget.personal,
+                      cubit: widget.cubit,
+                      onSelectGlobalView: widget.onSelectGlobalView,
+                    )
+                    .animate(key: ValueKey('home-personal-content-$_tabIndex'))
+                    .fadeIn(duration: 180.ms, curve: Curves.easeOut)
+                    .slideX(
+                      begin: 0.025,
+                      end: 0,
+                      duration: 220.ms,
+                      curve: Curves.easeOutCubic,
+                    ),
           ),
         ],
       ),

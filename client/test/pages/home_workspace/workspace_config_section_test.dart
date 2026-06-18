@@ -1,6 +1,6 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:teampilot/models/identity_kind.dart';
-import 'package:teampilot/pages/home_workspace/project/workspace_config_section.dart';
+import 'package:teampilot/pages/home_workspace/workspace/workspace_config_section.dart';
 
 void main() {
   test('personal shows full bundle surface without members', () {

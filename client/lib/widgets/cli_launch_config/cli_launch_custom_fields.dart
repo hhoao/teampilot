@@ -7,8 +7,8 @@ import '../../models/team_config.dart';
 import '../../services/cli/registry/capabilities/cli_effort_capability.dart';
 import '../../services/cli/registry/cli_display_name.dart';
 import '../../services/cli/registry/cli_tool_registry.dart';
-import '../../pages/home_workspace/project/config/workspace_cli_config_helpers.dart';
-import '../../pages/home_workspace/project/config/workspace_cli_effort_helpers.dart';
+import '../../pages/home_workspace/workspace/config/workspace_cli_config_helpers.dart';
+import '../../pages/home_workspace/workspace/config/workspace_cli_effort_helpers.dart';
 import '../../pages/team_config/team_config_helpers.dart';
 import '../../widgets/app_provider/brand_dropdown_rows.dart';
 import '../../widgets/app_provider/cli_effort_picker_field.dart';
@@ -20,19 +20,10 @@ import 'cli_launch_config_dropdown.dart';
 import 'cli_launch_config_tokens.dart';
 
 /// How the effort picker resolves visibility and labels.
-enum CliLaunchEffortContext {
-  team,
-  member,
-  standalone,
-}
+enum CliLaunchEffortContext { team, member, standalone }
 
 /// CLI row variants for launch configure dialogs.
-enum CliLaunchCliFieldKind {
-  hidden,
-  toolList,
-  mixedTeam,
-  mixedMember,
-}
+enum CliLaunchCliFieldKind { hidden, toolList, mixedTeam, mixedMember }
 
 /// Provider / model / effort fields shared by launch configure dialogs.
 class CliLaunchCustomFields extends StatelessWidget {
@@ -98,8 +89,7 @@ class CliLaunchCustomFields extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final l10n = context.l10n;
-    final dropdownDeco =
-        decoration ?? AppDropdownDecorations.themed(context);
+    final dropdownDeco = decoration ?? AppDropdownDecorations.themed(context);
     final providerIds = providers.map((p) => p.id).toList()..sort();
     if (providerId.isNotEmpty && !providerIds.contains(providerId)) {
       providerIds.add(providerId);

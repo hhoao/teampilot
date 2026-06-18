@@ -16,7 +16,7 @@ import '../../widgets/cli_launch_config/cli_launch_custom_fields.dart';
 import '../../widgets/cli_launch_config/preset_launch_picker_field.dart';
 import '../../widgets/dropdown/app_dropdown_decoration.dart';
 import '../../widgets/settings/workspace_settings_widgets.dart';
-import '../home_workspace/project/config/cli_presets_manage_dialog.dart';
+import '../home_workspace/workspace/config/cli_presets_manage_dialog.dart';
 import 'team_config_helpers.dart';
 
 Future<void> openTeamDefaultPresetConfigureDialog(
@@ -98,8 +98,9 @@ class _TeamDefaultPresetConfigureDialogState
     if (!_isPresetActive) {
       widget.cubit.updateTeamCustomLaunch(
         catalogCli: _catalogCli,
-        defaultCli:
-            _currentTeam.teamMode == TeamMode.mixed ? _catalogCli : null,
+        defaultCli: _currentTeam.teamMode == TeamMode.mixed
+            ? _catalogCli
+            : null,
         providerId: _providerId,
         model: _modelId,
         effort: _effortId,
@@ -173,7 +174,9 @@ class _TeamDefaultPresetConfigureDialogState
                         ? CliLaunchCliFieldKind.mixedTeam
                         : CliLaunchCliFieldKind.hidden,
                     cliItems: cliItems,
-                    cliSubtitle: mixed ? l10n.teamDefaultCliMixedSubtitle : null,
+                    cliSubtitle: mixed
+                        ? l10n.teamDefaultCliMixedSubtitle
+                        : null,
                     onCliChanged: _applyCatalogCliChange,
                     team: team,
                     effortContext: CliLaunchEffortContext.team,

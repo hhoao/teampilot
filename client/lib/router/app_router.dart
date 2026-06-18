@@ -10,8 +10,8 @@ import '../pages/config/config_workspace.dart';
 import '../pages/home_workspace/home_workspace_global_section.dart';
 import '../pages/home_workspace/home_workspace_page.dart';
 import '../pages/home_workspace/home_workspace_shell.dart';
-import '../pages/home_workspace/project/workspace_page.dart';
-import '../pages/home_workspace/project/workspace_config_section.dart';
+import '../pages/home_workspace/workspace/workspace_page.dart';
+import '../pages/home_workspace/workspace/workspace_config_section.dart';
 import '../pages/llm_config/llm_config_workspace.dart';
 import '../pages/extensions/extension_management_page.dart';
 import '../pages/skills/skill_management_page.dart';
@@ -92,10 +92,8 @@ final appRouter = GoRouter(
         // Apifox-style workspace home — title bar + open workspace tabs live in
         // [HomeShell]; routed pages render only the body below it.
         ShellRoute(
-          builder: (context, state, child) => HomeShell(
-            location: state.uri.toString(),
-            child: child,
-          ),
+          builder: (context, state, child) =>
+              HomeShell(location: state.uri.toString(), child: child),
           routes: [
             GoRoute(
               path: '/home-v2',

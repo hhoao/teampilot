@@ -6,11 +6,11 @@ import '../../cubits/extension_cubit.dart';
 import '../../models/personal_identity.dart';
 import '../team_config/team_config_extensions_section.dart';
 import 'home_workspace_global_section.dart';
-import 'project/config/workspace_agent_section.dart';
-import 'project/config/workspace_mcp_section.dart';
-import 'project/config/workspace_plugins_section.dart';
-import 'project/config/workspace_skills_section.dart';
-import 'project/workspace_config_section.dart';
+import 'workspace/config/workspace_agent_section.dart';
+import 'workspace/config/workspace_mcp_section.dart';
+import 'workspace/config/workspace_plugins_section.dart';
+import 'workspace/config/workspace_skills_section.dart';
+import 'workspace/workspace_config_section.dart';
 
 /// Embeds personal-identity config sections inside the workspace-home tab.
 class HomePersonalTab extends StatelessWidget {
@@ -31,24 +31,24 @@ class HomePersonalTab extends StatelessWidget {
   Widget build(BuildContext context) {
     final body = switch (section) {
       WorkspaceConfigSection.agent => WorkspaceAgentSection(
-          workspaceId: '',
-          identityId: personal.id,
-        ),
+        workspaceId: '',
+        identityId: personal.id,
+      ),
       WorkspaceConfigSection.skills => WorkspaceSkillsSection(
-          workspaceId: '',
-          identityId: personal.id,
-        ),
+        workspaceId: '',
+        identityId: personal.id,
+      ),
       WorkspaceConfigSection.plugins => WorkspacePluginsSection(
-          workspaceId: '',
-          identityId: personal.id,
-        ),
+        workspaceId: '',
+        identityId: personal.id,
+      ),
       WorkspaceConfigSection.mcp => WorkspaceMcpSection(
-          workspaceId: '',
-          identityId: personal.id,
-        ),
+        workspaceId: '',
+        identityId: personal.id,
+      ),
       WorkspaceConfigSection.extensions => _IdentityExtensionsSection(
-          identityId: personal.id,
-        ),
+        identityId: personal.id,
+      ),
       _ => const SizedBox.shrink(),
     };
 
@@ -69,7 +69,8 @@ class _IdentityExtensionsSection extends StatefulWidget {
       _IdentityExtensionsSectionState();
 }
 
-class _IdentityExtensionsSectionState extends State<_IdentityExtensionsSection> {
+class _IdentityExtensionsSectionState
+    extends State<_IdentityExtensionsSection> {
   Map<String, bool> _overrides = const {};
 
   @override
@@ -85,15 +86,16 @@ class _IdentityExtensionsSectionState extends State<_IdentityExtensionsSection> 
   }
 
   Future<void> _loadOverrides() async {
-    final map = await context
-        .read<ExtensionCubit>()
-        .teamOverrides(widget.identityId);
+    final map = await context.read<ExtensionCubit>().teamOverrides(
+      widget.identityId,
+    );
     if (!mounted) return;
     setState(() => _overrides = map);
   }
 
   ExtensionOverrideChoice _choiceFor(String id) {
-    if (!_overrides.containsKey(id)) return ExtensionOverrideChoice.followGlobal;
+    if (!_overrides.containsKey(id))
+      return ExtensionOverrideChoice.followGlobal;
     return _overrides[id]!
         ? ExtensionOverrideChoice.forceOn
         : ExtensionOverrideChoice.forceOff;
@@ -110,9 +112,11 @@ class _IdentityExtensionsSectionState extends State<_IdentityExtensionsSection> 
       ExtensionOverrideChoice.forceOn => true,
       ExtensionOverrideChoice.forceOff => false,
     };
-    await context
-        .read<ExtensionCubit>()
-        .setTeamOverride(widget.identityId, id, value);
+    await context.read<ExtensionCubit>().setTeamOverride(
+      widget.identityId,
+      id,
+      value,
+    );
     await _loadOverrides();
   }
 
