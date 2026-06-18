@@ -8,7 +8,7 @@ import 'workspace_identity.dart';
 
 /// A solo (no-roster) launch identity. Owns a [ConfigBundle] plus single-agent
 /// per-tool tiering and an agent config. Replaces the per-directory
-/// `ProjectProfile`.
+/// `PersonalIdentity`.
 @immutable
 class PersonalIdentity implements WorkspaceIdentity {
   const PersonalIdentity({

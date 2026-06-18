@@ -3,7 +3,7 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../cubits/chat_cubit.dart';
-import '../../repositories/project_profile_repository.dart';
+import '../../repositories/identity_repository.dart';
 import '../../repositories/session_repository.dart';
 import '../../theme/app_text_styles.dart';
 import '../../widgets/app_dialog.dart';
@@ -20,7 +20,7 @@ Future<void> showHomeWorkspaceNewProjectDialog(
   BuildContext context, {
   required ChatCubit chatCubit,
   required SessionRepository repository,
-  ProjectProfileRepository? projectProfileRepository,
+  IdentityRepository? identityRepository,
 }) async {
   final result = await showDialog<({List<String> directories, String display})>(
     context: context,
@@ -34,8 +34,8 @@ Future<void> showHomeWorkspaceNewProjectDialog(
     sessionTeamId: '',
     additionalPaths: result.directories.skip(1).toList(growable: false),
     display: result.display,
-    projectProfileRepository:
-        projectProfileRepository ?? context.read<ProjectProfileRepository>(),
+    identityRepository:
+        identityRepository ?? context.read<IdentityRepository>(),
   );
   if (!context.mounted) return;
   context.go('/home-v2/project/$projectId?as=personal');

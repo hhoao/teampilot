@@ -1,4 +1,4 @@
-import '../../../../models/project_profile.dart';
+import '../../../../models/personal_identity.dart';
 import '../../../../models/team_config.dart';
 import '../../../../utils/team_member_naming.dart';
 import '../../../session/member_role_provision.dart';
@@ -52,8 +52,8 @@ final class FlashskyaiConfigProfileCapability
     final delegate = ctx.paths;
     await delegate.layout.ensureAppToolLayout(toolId);
     final standalone = ctx.standaloneScope;
-    final profile = ctx.profile;
-    if (standalone != null && profile != null) {
+    final personal = ctx.personal;
+    if (standalone != null && personal != null) {
       await _ensureSessionDefaultsAt(
         delegate,
         standaloneSessionToolDir(delegate, standalone, toolId),
@@ -73,9 +73,9 @@ final class FlashskyaiConfigProfileCapability
     ConfigProfileLaunchContext ctx,
   ) async {
     final standalone = ctx.standaloneScope;
-    final profile = ctx.profile;
-    if (standalone != null && profile != null) {
-      return _contributeStandaloneLaunch(ctx, standalone, profile);
+    final personal = ctx.personal;
+    if (standalone != null && personal != null) {
+      return _contributeStandaloneLaunch(ctx, standalone, personal);
     }
 
     final delegate = ctx.paths;
@@ -146,10 +146,10 @@ final class FlashskyaiConfigProfileCapability
   Future<ConfigProfileLaunchContribution> _contributeStandaloneLaunch(
     ConfigProfileLaunchContext ctx,
     StandaloneLaunchProfileScope standalone,
-    ProjectProfile profile,
+    PersonalIdentity personal,
   ) async {
     final delegate = ctx.paths;
-    final member = standaloneMemberFromProfile(profile, preset: ctx.preset);
+    final member = standaloneMemberFromPersonal(personal, preset: ctx.preset);
     final memberToolDir = standaloneSessionToolDir(delegate, standalone, toolId);
     final scope = launchScopeForStandalone(standalone);
     final workingDirectory = ctx.workingDirectory ?? '';

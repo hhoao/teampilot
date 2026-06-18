@@ -2,7 +2,7 @@
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
 
-import '../../../../cubits/project_profile_cubit.dart';
+import '../../../../cubits/identity_cubit.dart';
 import '../../../../cubits/skill_cubit.dart';
 import '../../../../l10n/l10n_extensions.dart';
 import '../../home_workspace_global_section.dart';
@@ -16,19 +16,8 @@ class ProjectSkillsSection extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final profileState = context.watch<ProjectProfileCubit>().state;
-    if (profileState.projectId != projectId ||
-        profileState.status == ProjectProfileLoadStatus.loading ||
-        profileState.status == ProjectProfileLoadStatus.idle) {
-      return const Center(child: CircularProgressIndicator());
-    }
-    if (profileState.status == ProjectProfileLoadStatus.error) {
-      return Center(
-        child: Text(profileState.errorMessage ?? 'Failed to load profile'),
-      );
-    }
-    final profile = profileState.profile;
-    if (profile == null) {
+    final personal = context.watch<IdentityCubit>().activePersonal;
+    if (personal == null) {
       return const Center(child: CircularProgressIndicator());
     }
 
@@ -41,10 +30,10 @@ class ProjectSkillsSection extends StatelessWidget {
     final enabled = skillState.installed
         .where((s) => s.enabled)
         .toList(growable: false);
-    final assignedCount = enabled
-        .where((s) => profile.skillIds.contains(s.id))
-        .length;
-    final cubit = context.read<ProjectProfileCubit>();
+    final skillIds = personal.bundle.skillIds;
+    final assignedCount =
+        enabled.where((s) => skillIds.contains(s.id)).length;
+    final cubit = context.read<IdentityCubit>();
 
     return SingleChildScrollView(
       child: Column(
@@ -79,15 +68,15 @@ class ProjectSkillsSection extends StatelessWidget {
                       for (final skill in enabled)
                         TeamSkillRow(
                           skill: skill,
-                          assigned: profile.skillIds.contains(skill.id),
+                          assigned: skillIds.contains(skill.id),
                           onAssignedChanged: (assigned) {
-                            final ids = List<String>.from(profile.skillIds);
+                            final ids = List<String>.from(skillIds);
                             if (assigned) {
                               if (!ids.contains(skill.id)) ids.add(skill.id);
                             } else {
                               ids.remove(skill.id);
                             }
-                            cubit.setSkillIds(ids);
+                            cubit.setActivePersonalSkillIds(ids);
                           },
                         ),
                     ],

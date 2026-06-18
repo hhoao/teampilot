@@ -5,10 +5,11 @@ import 'package:path/path.dart' as p;
 import 'package:teampilot/models/app_project.dart';
 import 'package:teampilot/models/app_session.dart';
 import 'package:teampilot/models/cli_preset.dart';
-import 'package:teampilot/models/project_profile.dart';
+import 'package:teampilot/models/project_agent_config.dart';
+import 'package:teampilot/models/personal_identity.dart';
 import 'package:teampilot/models/team_config.dart';
 import 'package:teampilot/repositories/cli_presets_repository.dart';
-import 'package:teampilot/repositories/project_profile_repository.dart';
+import 'package:teampilot/repositories/identity_repository.dart';
 import 'package:teampilot/services/storage/runtime_layout.dart';
 import 'package:teampilot/services/session/session_lifecycle_service.dart';
 import 'package:teampilot/services/storage/storage_resolver.dart';
@@ -44,7 +45,7 @@ StorageRootsSnapshot _roots(String basePath) => StorageRootsSnapshot(
 
 /// Creates an [InMemoryFilesystem]-backed [CliPresetsRepository] seeded with
 /// a single preset so that [SessionLifecycleService] can resolve it via
-/// [ProjectProfile.activePresetId].
+/// [PersonalIdentity.activePresetId].
 Future<CliPresetsRepository> _seededPresetsRepo({
   required String presetId,
   required String name,
@@ -88,12 +89,12 @@ void main() {
   });
 
   SessionLifecycleService service({
-    ProjectProfileRepository? projectProfileRepository,
+    IdentityRepository? identityRepository,
     CliPresetsRepository? cliPresetsRepository,
   }) => SessionLifecycleService(
     appDataBasePath: base.path,
     storageRootsResolver: () async => _roots(base.path),
-    projectProfileRepository: projectProfileRepository,
+    identityRepository: identityRepository,
     cliPresetsRepository: cliPresetsRepository,
   );
 
@@ -102,7 +103,7 @@ void main() {
     () async {
       const projectId = 'personal-proj';
       const sessionId = 'personal-sess';
-      final repo = ProjectProfileRepository(rootDir: base.path);
+      final repo = IdentityRepository(rootDir: base.path);
       // Seed a preset for flashskyai so the resolved member/provider/model/cli
       // come from the active preset instead of the (now-removed) profile fields.
       final presetsRepo = await _seededPresetsRepo(
@@ -113,8 +114,7 @@ void main() {
         model: 'opus',
       );
       await repo.save(
-        ProjectProfile(
-          projectId: projectId,
+        PersonalIdentity(id: projectId, display: projectId,
           activePresetId: 'preset-fs',
           agent: const ProjectAgentConfig(
             agent: 'persisted-agent',
@@ -135,11 +135,14 @@ void main() {
       );
 
       final shellLaunch = await service(
-        projectProfileRepository: repo,
+        identityRepository: repo,
         cliPresetsRepository: presetsRepo,
       ).prepareShellLaunch(
         session: session,
         project: project,
+        personal: (await repo.loadAll())
+            .whereType<PersonalIdentity>()
+            .firstWhere((p) => p.id == projectId),
       );
 
       expect(shellLaunch.launchContext.member.model, 'opus');
@@ -154,8 +157,7 @@ void main() {
     () async {
       const projectId = 'personal-proj';
       const sessionId = 'personal-sess';
-      const profile = ProjectProfile(
-        projectId: projectId,
+      const profile = PersonalIdentity(id: projectId, display: projectId,
         agent: ProjectAgentConfig(agent: 'solo'),
       );
       const project = AppProject(
@@ -174,7 +176,7 @@ void main() {
       final plan = await service().prepareLaunch(
         session: session,
         project: project,
-        profile: profile,
+        personal: profile,
       );
 
       final claudeDir = layout.sessionRuntimeToolDir(
@@ -204,8 +206,7 @@ void main() {
         provider: 'anthropic',
         model: 'sonnet',
       );
-      const profile = ProjectProfile(
-        projectId: projectId,
+      const profile = PersonalIdentity(id: projectId, display: projectId,
         activePresetId: 'preset-claude',
         agent: ProjectAgentConfig(
           agent: 'solo',
@@ -229,7 +230,7 @@ void main() {
       ).prepareShellLaunch(
         session: session,
         project: project,
-        profile: profile,
+        personal: profile,
       );
 
       expect(shellLaunch.sessionTeam, sessionId);
@@ -276,8 +277,7 @@ void main() {
           updatedAt: 2,
         ),
       ]);
-      const profile = ProjectProfile(
-        projectId: projectId,
+      const profile = PersonalIdentity(id: projectId, display: projectId,
         activePresetId: 'preset-codex',
       );
       const project = AppProject(
@@ -299,7 +299,7 @@ void main() {
       ).prepareLaunch(
         session: session,
         project: project,
-        profile: profile,
+        personal: profile,
       );
 
       final claudeDir = layout.sessionRuntimeToolDir(

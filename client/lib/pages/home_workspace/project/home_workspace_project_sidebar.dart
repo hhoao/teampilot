@@ -6,12 +6,12 @@ import 'package:teampilot/theme/app_icon_sizes.dart';
 
 import '../../../cubits/chat_cubit.dart';
 import '../../../cubits/cli_presets_cubit.dart';
-import '../../../cubits/project_profile_cubit.dart';
+import '../../../cubits/identity_cubit.dart';
 import '../../../l10n/l10n_extensions.dart';
 import '../../../models/app_project.dart';
 import '../../../models/app_session.dart';
 import '../../../models/cli_preset.dart';
-import '../../../models/project_profile.dart';
+import '../../../models/project_agent_config.dart';
 import '../../../models/team_config.dart';
 import '../../../services/cli/registry/cli_display_name.dart';
 import '../../../services/cli/registry/cli_tool_registry.dart';
@@ -69,12 +69,6 @@ class _HomeWorkspaceProjectSidebarState
   @override
   void initState() {
     super.initState();
-    if (_isPersonal) {
-      WidgetsBinding.instance.addPostFrameCallback((_) {
-        if (!mounted) return;
-        context.read<ProjectProfileCubit>().load(widget.project.projectId);
-      });
-    }
   }
 
   @override
@@ -249,20 +243,18 @@ class _PresetDropdownState extends State<_PresetDropdown> {
   Widget build(BuildContext context) {
     final l10n = context.l10n;
     final presetsState = context.watch<CliPresetsCubit>().state;
-    final profileState = context.watch<ProjectProfileCubit>().state;
-    final ready = profileState.status == ProjectProfileLoadStatus.ready &&
-        profileState.profile != null;
+    final identityCubit = context.watch<IdentityCubit>();
+    final personal = identityCubit.activePersonal;
 
-    if (!ready || presetsState.status == CliPresetsLoadStatus.loading) {
+    if (personal == null || presetsState.status == CliPresetsLoadStatus.loading) {
       return const Padding(
         padding: EdgeInsets.fromLTRB(4, 0, 4, 0),
         child: LinearProgressIndicator(minHeight: 2),
       );
     }
 
-    final profile = profileState.profile!;
     final presets = presetsState.presets;
-    final activePreset = presetsState.presetById(profile.activePresetId ?? '');
+    final activePreset = presetsState.presetById(personal.activePresetId ?? '');
 
     if (presets.isEmpty) {
       return Padding(
@@ -291,7 +283,7 @@ class _PresetDropdownState extends State<_PresetDropdown> {
       _didAutoActivate = true;
       WidgetsBinding.instance.addPostFrameCallback((_) {
         if (!mounted) return;
-        context.read<ProjectProfileCubit>().setActivePreset(presets.first.id);
+        context.read<IdentityCubit>().setActivePersonalPreset(presets.first.id);
       });
     }
 
@@ -311,7 +303,7 @@ class _PresetDropdownState extends State<_PresetDropdown> {
               decoration: AppDropdownDecorations.themed(context),
               onChanged: (value) {
                 if (value == null) return;
-                context.read<ProjectProfileCubit>().setActivePreset(value);
+                context.read<IdentityCubit>().setActivePersonalPreset(value);
               },
               itemBuilder: (context, presetId) {
                 final preset = presetsState.presetById(presetId);

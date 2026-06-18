@@ -84,7 +84,7 @@ class AppSession {
   /// CLI `--team-name` / config-profiles member dir (`{teamId}-{seq}`).
   final String cliTeamName;
 
-  /// Personal-project session override; when null, [ProjectProfile.cli] applies.
+  /// Personal-project session override; when null, [PersonalIdentity.cli] applies.
   final CliTool? cli;
 
   /// Per-roster-member CLI `--session-id` / `--resume` task ids.

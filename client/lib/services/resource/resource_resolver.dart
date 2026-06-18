@@ -18,7 +18,7 @@ class ResourceResolver {
 
   List<ResourceRef> _skills(ResourceScope scope, ResourceCatalog catalog) {
     final ids = switch (scope) {
-      PersonalResourceScope(:final profile) => profile.skillIds,
+      PersonalResourceScope(:final personal) => personal.bundle.skillIds,
       TeamResourceScope(:final team) => team.skillIds,
     };
     if (ids.isEmpty) return const [];

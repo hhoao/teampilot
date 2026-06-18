@@ -4,7 +4,7 @@ import '../../models/app_project.dart';
 import '../../models/app_session.dart';
 import '../../models/project_icon_ref.dart';
 import '../../models/team_config.dart' show CliTool, TeamMemberConfig;
-import '../../repositories/project_profile_repository.dart';
+import '../../repositories/identity_repository.dart';
 import '../../repositories/session_repository.dart';
 import '../../utils/project_path_utils.dart';
 
@@ -102,19 +102,13 @@ class SessionDataStore {
     List<TeamMemberConfig> rosterMembers = const [],
     List<String> additionalPaths = const [],
     String display = '',
-    ProjectProfileRepository? projectProfileRepository,
+    IdentityRepository? identityRepository,
   }) async {
     final project = await repo.createProject(
       primaryPath,
       additionalPaths: additionalPaths,
       display: display,
     );
-    if (projectProfileRepository != null) {
-      final profile = await projectProfileRepository.createDefault(
-        project.projectId,
-      );
-      await projectProfileRepository.save(profile);
-    }
     await repo.createSession(
       project.projectId,
       sessionTeam: sessionTeamId,

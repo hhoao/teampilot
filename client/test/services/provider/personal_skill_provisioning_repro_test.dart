@@ -5,7 +5,8 @@ import 'dart:io';
 
 import 'package:flutter_test/flutter_test.dart';
 import 'package:path/path.dart' as p;
-import 'package:teampilot/models/project_profile.dart';
+import 'package:teampilot/models/config_bundle.dart';
+import 'package:teampilot/models/personal_identity.dart';
 import 'package:teampilot/models/skill.dart';
 import 'package:teampilot/models/team_config.dart';
 import 'package:teampilot/services/storage/runtime_layout.dart';
@@ -62,17 +63,16 @@ void main() {
       );
 
       // --- Profile with skill 'demo' enabled ---
-      const profile = ProjectProfile(
-        projectId: 'p1',
+      const profile = PersonalIdentity(id: 'p1', display: 'p1',
         // TODO: migrate to presets — cli removed
-        skillIds: ['demo'],
+        bundle: ConfigBundle(skillIds: ['demo']),
       );
 
       // --- Act: run personal-mode launch prep ---
-      await service.prepareProjectLaunch(
+      await service.prepareProjectLaunch(identityId: 'personal-default', 
         projectId: 'p1',
         sessionId: 's1',
-        profile: profile,
+        personal: profile,
       );
 
       // --- Assert: the leaf CONFIG_DIR/skills/ must contain demo-skill ---
@@ -120,17 +120,16 @@ void main() {
       );
 
       // --- Profile with skill 'ghost' enabled ---
-      const profile = ProjectProfile(
-        projectId: 'p2',
+      const profile = PersonalIdentity(id: 'p2', display: 'p2',
         // TODO: migrate to presets — cli removed
-        skillIds: ['ghost'],
+        bundle: ConfigBundle(skillIds: ['ghost']),
       );
 
       // --- Act ---
-      final outcome = await service.prepareProjectLaunch(
+      final outcome = await service.prepareProjectLaunch(identityId: 'personal-default', 
         projectId: 'p2',
         sessionId: 's2',
-        profile: profile,
+        personal: profile,
       );
 
       // --- Assert: warning mentioning the missing skill id must surface ---

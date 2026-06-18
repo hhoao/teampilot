@@ -1,6 +1,7 @@
 import 'dart:io';
 
-import 'package:teampilot/models/project_profile.dart';
+import 'package:teampilot/models/project_agent_config.dart';
+import 'package:teampilot/models/personal_identity.dart';
 import 'package:teampilot/services/cli/cli_tool_adapter.dart';
 import 'package:teampilot/services/cli/registry/config_profile/config_profile_context.dart';
 import 'package:teampilot/services/session/launch_command_builder.dart';
@@ -393,8 +394,7 @@ void main() {
 
   test('ShellLaunchSpec builds full personal CLI launch args', () {
     // TODO: migrate to presets — cli, model, providerIdsByTool removed
-    const profile = ProjectProfile(
-      projectId: 'proj-1',
+    const profile = PersonalIdentity(id: 'proj-1', display: 'proj-1',
       agent: ProjectAgentConfig(agent: 'builder'),
     );
     const sessionTeam = 'sess-personal-1';
@@ -412,7 +412,7 @@ void main() {
       launchContext: CliLaunchContext(
         team: standaloneTeamFromProfile(
           profile,
-          projectId: profile.projectId,
+          projectId: profile.id,
           sessionTeamName: sessionTeam,
           preset: null,
         ),

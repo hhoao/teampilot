@@ -2,7 +2,7 @@ import 'package:path/path.dart' as p;
 
 import '../../models/cli_preset.dart';
 import '../../models/extension_manifest.dart';
-import '../../models/project_profile.dart';
+import '../../models/personal_identity.dart';
 import '../../models/skill.dart';
 import '../../models/team_config.dart';
 import '../storage/runtime_layout.dart';
@@ -241,7 +241,7 @@ class ConfigProfileService implements ConfigProfileDelegate {
     );
   }
 
-  Future<void> ensureStandaloneProjectProfile(
+  Future<void> ensureStandalonePersonalIdentity(
     String projectId, {
     CliTool cli = CliTool.claude,
   }) async {
@@ -254,7 +254,7 @@ class ConfigProfileService implements ConfigProfileDelegate {
     String projectId,
     String sessionId, {
     CliTool cli = CliTool.claude,
-    ProjectProfile? profile,
+    PersonalIdentity? personal,
     Map<String, Map<String, Object?>>? extraMcpServers,
   }) async {
     final trimmedProjectId = projectId.trim();
@@ -266,7 +266,7 @@ class ConfigProfileService implements ConfigProfileDelegate {
       sessionId: trimmedSessionId,
     );
     await _withStandaloneScope(standaloneScope, () async {
-      await ensureStandaloneProjectProfile(trimmedProjectId, cli: cli);
+      await ensureStandalonePersonalIdentity(trimmedProjectId, cli: cli);
       String? sessionProvisionJson;
       await Future.wait([
         layout.ensureSessionRuntimeInheritsProject(
@@ -295,7 +295,7 @@ class ConfigProfileService implements ConfigProfileDelegate {
           projectId: trimmedProjectId,
           sessionId: trimmedSessionId,
           tool: cli,
-          profile: profile,
+          personal: personal,
           memberProvisionJson: sessionProvisionJson,
         );
       }
@@ -309,7 +309,7 @@ class ConfigProfileService implements ConfigProfileDelegate {
             members: const [],
             paths: this,
             standaloneScope: standaloneScope,
-            profile: profile,
+            personal: personal,
           ),
         );
       }
@@ -327,7 +327,8 @@ class ConfigProfileService implements ConfigProfileDelegate {
   Future<TeamLaunchOutcome> prepareProjectLaunch({
     required String projectId,
     required String sessionId,
-    required ProjectProfile profile,
+    required String identityId,
+    required PersonalIdentity personal,
     String workingDirectory = '',
     List<String> additionalDirectories = const [],
     Map<String, Map<String, Object?>>? extraMcpServers,
@@ -343,7 +344,7 @@ class ConfigProfileService implements ConfigProfileDelegate {
     final warnings = <String>[];
     await _infra.collectExtensionWarnings(
       warnings,
-      projectId: trimmedProjectId,
+      teamId: identityId.trim(),
     );
 
     final cli = preset?.cli ?? CliTool.claude;
@@ -363,18 +364,16 @@ class ConfigProfileService implements ConfigProfileDelegate {
         trimmedProjectId,
         trimmedSessionId,
         cli: cli,
-        profile: profile,
+        personal: personal,
         extraMcpServers: extraMcpServers,
       );
 
-      // Provision skills/plugins into the leaf CONFIG_DIR and collect any
-      // "source missing" / "link failed" warnings so callers can surface them.
       final provisionResult =
           await ResourceProvisioningService(
             fs: fs,
             registry: _cliRegistry,
           ).provisionForLaunch(
-            scope: PersonalResourceScope(profile: profile),
+            scope: PersonalResourceScope(personal: personal),
             cli: cli,
             configDir: layout.sessionRuntimeToolDir(
               trimmedProjectId,
@@ -401,7 +400,7 @@ class ConfigProfileService implements ConfigProfileDelegate {
             teamId: '',
             sessionId: trimmedSessionId,
             scope: scope,
-            profile: profile,
+            personal: personal,
             standaloneScope: standaloneScope,
             members: const [],
             workingDirectory: workingDirectory,

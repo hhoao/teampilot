@@ -7,7 +7,7 @@ import 'package:go_router/go_router.dart';
 import '../../cubits/chat_cubit.dart';
 import '../../cubits/layout_cubit.dart';
 import '../../cubits/session_preferences_cubit.dart';
-import '../../cubits/team_cubit.dart';
+import '../../cubits/identity_cubit.dart';
 import '../../cubits/workspace_tools_cubit.dart';
 import '../../l10n/app_localizations.dart';
 import '../../l10n/l10n_extensions.dart';
@@ -325,7 +325,7 @@ class _HomeWorkspaceShellState extends State<HomeWorkspaceShell> {
         .state
         .preferences
         .scopeSessionsToSelectedTeam;
-    final selectedTeam = context.read<TeamCubit>().state.selectedTeam;
+    final selectedTeam = context.read<IdentityCubit>().state.selectedTeam;
     final activeId = _projectIdFromLocation(widget.location);
     final activeIdentity =
         activeId != null ? _identityForProject(activeId) : null;
@@ -350,7 +350,7 @@ class _HomeWorkspaceShellState extends State<HomeWorkspaceShell> {
 
     final cs = Theme.of(context).colorScheme;
     final l10n = context.l10n;
-    final teams = context.select<TeamCubit, List<TeamIdentity>>(
+    final teams = context.select<IdentityCubit, List<TeamIdentity>>(
       (c) => c.state.teams,
     );
     // Show every open project tab across all teams (IDE-style open editors).
@@ -372,7 +372,7 @@ class _HomeWorkspaceShellState extends State<HomeWorkspaceShell> {
           previous.preferences.scopeSessionsToSelectedTeam !=
           next.preferences.scopeSessionsToSelectedTeam,
       listener: (context, _) => _syncTeamSessionScope(context),
-      child: BlocListener<TeamCubit, TeamState>(
+      child: BlocListener<IdentityCubit, IdentityState>(
         listenWhen: (previous, next) =>
             previous.selectedTeam?.id != next.selectedTeam?.id,
         listener: (context, _) => _syncTeamSessionScope(context),

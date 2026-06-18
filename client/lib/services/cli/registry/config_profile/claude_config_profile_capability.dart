@@ -1,7 +1,7 @@
 import 'dart:convert';
 
 import '../../../../models/claude_credential_link_result.dart';
-import '../../../../models/project_profile.dart';
+import '../../../../models/personal_identity.dart';
 import '../../../../models/team_config.dart';
 import '../../../../utils/team_member_naming.dart';
 import '../../../provider/claude/claude_effort_capability.dart';
@@ -116,8 +116,8 @@ final class ClaudeConfigProfileCapability implements ConfigProfileCapability {
   @override
   Future<void> ensureSessionProfile(ConfigProfileSessionContext ctx) async {
     final standalone = ctx.standaloneScope;
-    final profile = ctx.profile;
-    if (standalone != null && profile != null) {
+    final personal = ctx.personal;
+    if (standalone != null && personal != null) {
       await _ensureSessionDefaultsAt(
         ctx.paths,
         standaloneSessionToolDir(ctx.paths, standalone, toolId),
@@ -137,9 +137,9 @@ final class ClaudeConfigProfileCapability implements ConfigProfileCapability {
     ConfigProfileLaunchContext ctx,
   ) async {
     final standalone = ctx.standaloneScope;
-    final profile = ctx.profile;
-    if (standalone != null && profile != null) {
-      return _contributeStandaloneLaunch(ctx, standalone, profile);
+    final personal = ctx.personal;
+    if (standalone != null && personal != null) {
+      return _contributeStandaloneLaunch(ctx, standalone, personal);
     }
 
     final delegate = ctx.paths;
@@ -302,10 +302,10 @@ final class ClaudeConfigProfileCapability implements ConfigProfileCapability {
   Future<ConfigProfileLaunchContribution> _contributeStandaloneLaunch(
     ConfigProfileLaunchContext ctx,
     StandaloneLaunchProfileScope standalone,
-    ProjectProfile profile,
+    PersonalIdentity personal,
   ) async {
     final delegate = ctx.paths;
-    final member = standaloneMemberFromProfile(profile, preset: ctx.preset);
+    final member = standaloneMemberFromPersonal(personal, preset: ctx.preset);
     final memberToolDir = standaloneSessionToolDir(delegate, standalone, toolId);
     final scope = launchScopeForStandalone(standalone);
     final workingDirectory = ctx.workingDirectory ?? '';

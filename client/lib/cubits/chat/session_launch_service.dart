@@ -6,7 +6,8 @@ import '../../models/app_project.dart';
 import '../../models/app_session.dart';
 import '../../models/cli_preset.dart';
 import '../../models/member_instance.dart';
-import '../../models/project_profile.dart';
+import '../../models/personal_identity.dart';
+import '../../services/storage/identity_provisioner.dart';
 import '../../models/session_member_binding.dart';
 import '../../models/team_config.dart';
 import '../../repositories/session_repository.dart';
@@ -117,7 +118,7 @@ class SessionLaunchService implements MemberConnector {
     }
     final project = _projectById(session.projectId);
     final isPersonal = session.sessionTeam.trim().isEmpty;
-    ProjectProfile? personalProfile;
+    PersonalIdentity? personalIdentity;
     TeamMemberConfig? personalMember;
     CliPreset? personalPreset;
     if (isPersonal) {
@@ -126,14 +127,15 @@ class SessionLaunchService implements MemberConnector {
           'openSessionTab requires project for personal sessions',
         );
       }
-      personalProfile = _personalProfileForSession(
-        session,
-        await _h.lifecycle.loadProjectProfile(project.projectId),
+      personalIdentity = await _h.lifecycle.loadPersonalIdentity(
+        IdentityProvisioner.defaultPersonalId,
       );
       personalPreset =
-          await _h.lifecycle.resolveActivePresetForProfile(personalProfile);
-      personalMember =
-          standaloneMemberFromProfile(personalProfile, preset: personalPreset);
+          await _h.lifecycle.resolveActivePresetForPersonal(personalIdentity);
+      personalMember = standaloneMemberFromPersonal(
+        personalIdentity,
+        preset: personalPreset,
+      );
     }
     if (!isPersonal && (team == null || member == null)) {
       throw StateError(
@@ -207,7 +209,7 @@ class SessionLaunchService implements MemberConnector {
             team: isPersonal ? null : team,
             member: isPersonal ? null : member,
             project: isPersonal ? project : null,
-            profile: isPersonal ? personalProfile : null,
+            personal: isPersonal ? personalIdentity : null,
           );
           if (!isPersonal &&
               _h.autoLaunchAllMembersOnConnect?.call() == true) {
@@ -344,16 +346,6 @@ class SessionLaunchService implements MemberConnector {
       if (project.projectId == projectId) return project;
     }
     return null;
-  }
-
-  // TODO: migrate to presets — CLI/provider/model resolution now from active preset
-  ProjectProfile _personalProfileForSession(
-    AppSession session,
-    ProjectProfile profile,
-  ) {
-    // With presets, CLI selection is handled by activePresetId.
-    // The session's cli field is no longer used for provider/model resolution.
-    return profile;
   }
 
   AppSession? _firstSessionForProject(String projectId) {
@@ -574,14 +566,14 @@ class SessionLaunchService implements MemberConnector {
     TeamIdentity? team,
     TeamMemberConfig? member,
     AppProject? project,
-    ProjectProfile? profile,
+    PersonalIdentity? personal,
   }) async {
     final isPersonal = project != null;
     if (isPersonal) {
-      if (profile == null) {
+      if (personal == null) {
         _h.failSessionConnect(
           tab.info.id,
-          'Personal session is missing project profile.',
+          'Personal session is missing personal identity.',
         );
         return;
       }
@@ -633,7 +625,7 @@ class SessionLaunchService implements MemberConnector {
       member: launchMember,
       memberBinding: binding,
       project: project,
-      profile: profile,
+      personal: personal,
       extraMcpServers: mixedBus
           ? {
               teammateBusMcpServerName: _busMcpServerConfig(

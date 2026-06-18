@@ -31,8 +31,8 @@ final class CursorConfigProfileCapability implements ConfigProfileCapability {
     ConfigProfileLaunchContext ctx,
   ) async {
     final standalone = ctx.standaloneScope;
-    final profile = ctx.profile;
-    if (standalone != null && profile != null) {
+    final personal = ctx.personal;
+    if (standalone != null && personal != null) {
       return _contributeStandaloneLaunch(ctx, standalone);
     }
     return _contributeTeamLaunch(ctx);

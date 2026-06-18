@@ -3,7 +3,8 @@ import 'dart:io';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:path/path.dart' as p;
 import 'package:teampilot/models/cli_preset.dart';
-import 'package:teampilot/models/project_profile.dart';
+import 'package:teampilot/models/project_agent_config.dart';
+import 'package:teampilot/models/personal_identity.dart';
 import 'package:teampilot/models/team_config.dart';
 import 'package:teampilot/services/storage/runtime_layout.dart';
 import 'package:teampilot/services/io/local_filesystem.dart';
@@ -57,8 +58,7 @@ void main() {
     () async {
       const projectId = 'proj-standalone-fs';
       const sessionId = 'sess-standalone-fs';
-      const profile = ProjectProfile(
-        projectId: projectId,
+      const profile = PersonalIdentity(id: projectId, display: projectId,
         agent: ProjectAgentConfig(agent: 'solo'),
       );
       const flashskyaiPreset = CliPreset(
@@ -71,10 +71,10 @@ void main() {
         updatedAt: 0,
       );
 
-      final outcome = await service.prepareProjectLaunch(
+      final outcome = await service.prepareProjectLaunch(identityId: 'personal-default', 
         projectId: projectId,
         sessionId: sessionId,
-        profile: profile,
+        personal: profile,
         workingDirectory: '/workspace/personal',
         preset: flashskyaiPreset,
       );
@@ -103,15 +103,14 @@ void main() {
     () async {
       const projectId = 'proj-standalone';
       const sessionId = 'sess-standalone';
-      const profile = ProjectProfile(
-        projectId: projectId,
+      const profile = PersonalIdentity(id: projectId, display: projectId,
         // TODO: migrate to presets — cli removed
       );
 
-      final outcome = await service.prepareProjectLaunch(
+      final outcome = await service.prepareProjectLaunch(identityId: 'personal-default', 
         projectId: projectId,
         sessionId: sessionId,
-        profile: profile,
+        personal: profile,
         workingDirectory: '/workspace/personal',
       );
 
@@ -132,8 +131,7 @@ void main() {
       const projectId = 'proj-standalone-cursor';
       const sessionId = 'sess-standalone-cursor';
       const workspace = '/home/hhoa/git/hhoa/teampilot';
-      const profile = ProjectProfile(
-        projectId: projectId,
+      const profile = PersonalIdentity(id: projectId, display: projectId,
         agent: ProjectAgentConfig(agent: 'solo'),
       );
       const cursorPreset = CliPreset(
@@ -146,10 +144,10 @@ void main() {
         updatedAt: 0,
       );
 
-      final outcome = await service.prepareProjectLaunch(
+      final outcome = await service.prepareProjectLaunch(identityId: 'personal-default', 
         projectId: projectId,
         sessionId: sessionId,
-        profile: profile,
+        personal: profile,
         workingDirectory: workspace,
         preset: cursorPreset,
       );

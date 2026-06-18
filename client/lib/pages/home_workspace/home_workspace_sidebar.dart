@@ -3,7 +3,7 @@
 import 'package:flutter/material.dart';
 import 'package:teampilot/theme/app_icon_sizes.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
-import '../../cubits/team_cubit.dart';
+import '../../cubits/identity_cubit.dart';
 import '../../l10n/l10n_extensions.dart';
 import '../../models/team_config.dart';
 import '../../theme/app_text_styles.dart';
@@ -15,7 +15,7 @@ import 'home_workspace_new_team_dialog.dart';
 
 /// Left rail of the workspace home: "My Teams" list plus global management
 /// shortcuts, mirroring the Apifox sidebar. Team selection drives the global
-/// [TeamCubit]; global shortcuts swap the right pane via [onSelectGlobalView].
+/// [IdentityCubit]; global shortcuts swap the right pane via [onSelectGlobalView].
 class HomeWorkspaceSidebar extends StatefulWidget {
   const HomeWorkspaceSidebar({
     this.activeGlobalView,
@@ -50,7 +50,7 @@ class _HomeWorkspaceSidebarState extends State<HomeWorkspaceSidebar> {
   Widget build(BuildContext context) {
     final cs = Theme.of(context).colorScheme;
     final l10n = context.l10n;
-    final teamCubit = context.watch<TeamCubit>();
+    final teamCubit = context.watch<IdentityCubit>();
     final teams = teamCubit.state.teams;
     final selected = teamCubit.state.selectedTeam;
     final onTeam = widget.onSelectTeam;

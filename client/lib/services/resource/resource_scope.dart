@@ -1,6 +1,6 @@
 import 'package:path/path.dart' as p;
 
-import '../../models/project_profile.dart';
+import '../../models/personal_identity.dart';
 import '../../models/skill.dart';
 import '../../models/team_config.dart';
 
@@ -10,10 +10,10 @@ sealed class ResourceScope {
   const ResourceScope();
 }
 
-/// Personal / simple mode: enable lists come from the project's [ProjectProfile].
+/// Personal / simple mode: enable lists come from a [PersonalIdentity].
 class PersonalResourceScope extends ResourceScope {
-  const PersonalResourceScope({required this.profile});
-  final ProjectProfile profile;
+  const PersonalResourceScope({required this.personal});
+  final PersonalIdentity personal;
 }
 
 /// Native or mixed team mode: enable lists come from [TeamIdentity].

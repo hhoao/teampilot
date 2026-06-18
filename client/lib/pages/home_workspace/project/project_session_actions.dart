@@ -7,8 +7,8 @@ import 'package:teampilot/widgets/app_toast/app_toast.dart';
 
 import '../../../cubits/chat_cubit.dart';
 import '../../../cubits/cli_presets_cubit.dart';
-import '../../../cubits/project_profile_cubit.dart';
-import '../../../cubits/team_cubit.dart';
+import '../../../cubits/identity_cubit.dart';
+import '../../../cubits/identity_cubit.dart';
 import '../../../l10n/l10n_extensions.dart';
 import '../../../models/app_project.dart';
 import '../../../models/app_session.dart';
@@ -38,7 +38,7 @@ Future<void> openProjectSessionTab(
     return;
   }
 
-  final team = context.read<TeamCubit>().state.selectedTeam;
+  final team = context.read<IdentityCubit>().state.selectedTeam;
   final leads =
       team?.members.where((m) => m.id == 'team-lead').toList() ??
       const <TeamMemberConfig>[];
@@ -63,7 +63,7 @@ Future<void> createAndOpenProjectConversation(
   final chatCubit = context.read<ChatCubit>();
   final repo = context.read<SessionRepository>();
   final l10n = context.l10n;
-  final team = isPersonal ? null : context.read<TeamCubit>().state.selectedTeam;
+  final team = isPersonal ? null : context.read<IdentityCubit>().state.selectedTeam;
 
   // A new personal conversation pins its CLI to the active preset's CLI so it
   // resumes under (and stores its transcript with) the CLI the user selected.
@@ -100,8 +100,8 @@ Future<void> createAndOpenProjectConversation(
 /// CLI of the project's currently active preset, or `null` when unavailable
 /// (e.g. no preset selected yet). Used to pin a new personal session's CLI.
 CliTool? _activePresetCli(BuildContext context) {
-  final profile = context.read<ProjectProfileCubit>().state.profile;
-  final activePresetId = profile?.activePresetId;
+  final personal = context.read<IdentityCubit>().activePersonal;
+  final activePresetId = personal?.activePresetId;
   if (activePresetId == null || activePresetId.isEmpty) return null;
   return context.read<CliPresetsCubit>().state.presetById(activePresetId)?.cli;
 }

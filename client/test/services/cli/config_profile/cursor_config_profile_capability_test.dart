@@ -1,6 +1,7 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:teampilot/models/app_provider_config.dart';
-import 'package:teampilot/models/project_profile.dart';
+import 'package:teampilot/models/project_agent_config.dart';
+import 'package:teampilot/models/personal_identity.dart';
 import 'package:teampilot/models/team_config.dart';
 import 'package:teampilot/repositories/app_provider_repository.dart';
 import 'package:teampilot/services/provider/cursor/cursor_home_layout.dart';
@@ -63,8 +64,7 @@ void main() {
         appSessionId: 'session-1',
         cliTeamName: 'session-1',
       );
-      const profile = ProjectProfile(
-        projectId: 'project-1',
+      const profile = PersonalIdentity(id: 'project-1', display: 'project-1',
         agent: ProjectAgentConfig(agent: 'solo'),
       );
       const standalone = StandaloneLaunchProfileScope(
@@ -83,7 +83,7 @@ void main() {
           members: const [member],
           paths: paths,
           standaloneScope: standalone,
-          profile: profile,
+          personal: profile,
         ),
       );
 
@@ -100,8 +100,7 @@ void main() {
 
     test('standalone pre-provisions workspace trust under runtime home', () async {
       const workspace = '/home/hhoa/git/hhoa/teampilot';
-      const profile = ProjectProfile(
-        projectId: 'project-1',
+      const profile = PersonalIdentity(id: 'project-1', display: 'project-1',
         agent: ProjectAgentConfig(agent: 'solo'),
       );
       const standalone = StandaloneLaunchProfileScope(
@@ -121,7 +120,7 @@ void main() {
           teamId: '',
           sessionId: 'session-1',
           scope: scope,
-          profile: profile,
+          personal: profile,
           members: const [],
           paths: paths,
           standaloneScope: standalone,

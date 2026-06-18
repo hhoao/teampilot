@@ -1,7 +1,7 @@
 import 'package:flutter/foundation.dart';
 
 import '../../../../models/app_provider_config.dart';
-import '../../../../models/project_profile.dart';
+import '../../../../models/personal_identity.dart';
 import '../../../../models/team_config.dart';
 import '../../../../repositories/app_provider_repository.dart';
 import '../../../provider/codex/codex_auth_artifacts.dart';
@@ -31,9 +31,9 @@ final class CodexConfigProfileCapability implements ConfigProfileCapability {
     ConfigProfileLaunchContext ctx,
   ) async {
     final standalone = ctx.standaloneScope;
-    final profile = ctx.profile;
-    if (standalone != null && profile != null) {
-      return _contributeStandaloneLaunch(ctx, standalone, profile);
+    final personal = ctx.personal;
+    if (standalone != null && personal != null) {
+      return _contributeStandaloneLaunch(ctx, standalone, personal);
     }
 
     final paths = ctx.paths;
@@ -121,10 +121,10 @@ final class CodexConfigProfileCapability implements ConfigProfileCapability {
   Future<ConfigProfileLaunchContribution> _contributeStandaloneLaunch(
     ConfigProfileLaunchContext ctx,
     StandaloneLaunchProfileScope standalone,
-    ProjectProfile profile,
+    PersonalIdentity personal,
   ) async {
     final paths = ctx.paths;
-    final member = standaloneMemberFromProfile(profile, preset: ctx.preset);
+    final member = standaloneMemberFromPersonal(personal, preset: ctx.preset);
     final codexHome = standaloneSessionToolDir(paths, standalone, toolId);
     final warnings = <String>[];
 

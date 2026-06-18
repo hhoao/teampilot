@@ -12,7 +12,7 @@ import '../models/member_presence.dart';
 import '../models/project_icon_picker_result.dart';
 import '../models/project_icon_ref.dart';
 import '../models/team_config.dart';
-import '../repositories/project_profile_repository.dart';
+import '../../repositories/identity_repository.dart';
 import '../repositories/session_repository.dart';
 import '../services/project/project_icon_service.dart';
 import '../services/project/project_icon_storage.dart';
@@ -333,7 +333,7 @@ class ChatCubit extends Cubit<ChatState>
     List<TeamMemberConfig> rosterMembers = const [],
     List<String> additionalPaths = const [],
     String display = '',
-    ProjectProfileRepository? projectProfileRepository,
+    IdentityRepository? identityRepository,
   }) async {
     final result = await _dataStore.createProjectWithFirstSession(
       primaryPath,
@@ -342,7 +342,7 @@ class ChatCubit extends Cubit<ChatState>
       rosterMembers: rosterMembers,
       additionalPaths: additionalPaths,
       display: display,
-      projectProfileRepository: projectProfileRepository,
+      identityRepository: identityRepository,
     );
     _emitSnapshot(result.snapshot);
     return result.projectId;

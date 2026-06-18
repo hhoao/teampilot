@@ -5,8 +5,8 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../../cubits/chat_cubit.dart';
-import '../../../cubits/project_profile_cubit.dart';
-import '../../../cubits/team_cubit.dart';
+import '../../../cubits/identity_cubit.dart';
+import '../../../cubits/identity_cubit.dart';
 import '../../../l10n/l10n_extensions.dart';
 import '../../../models/app_project.dart';
 import '../../../models/launch_identity.dart';
@@ -98,19 +98,9 @@ class _HomeWorkspaceProjectPageState extends State<HomeWorkspaceProjectPage> {
     );
     if (project == null) return;
     if (identity.isPersonal) {
-      _loadPersonalProfile(project.projectId);
       return;
     }
     _syncSelectedTeam(identity.teamId);
-  }
-
-  void _loadPersonalProfile(String projectId) {
-    final cubit = context.read<ProjectProfileCubit>();
-    if (cubit.state.projectId == projectId &&
-        cubit.state.status == ProjectProfileLoadStatus.ready) {
-      return;
-    }
-    unawaited(cubit.load(projectId));
   }
 
   void _onSectionChanged(
@@ -249,7 +239,7 @@ class _HomeWorkspaceProjectPageState extends State<HomeWorkspaceProjectPage> {
 
   void _syncSelectedTeam(String teamId) {
     if (teamId.isEmpty) return;
-    final teamCubit = context.read<TeamCubit>();
+    final teamCubit = context.read<IdentityCubit>();
     if (teamCubit.state.selectedTeam?.id == teamId) return;
     if (teamCubit.state.selectedTeam?.id != teamId) {
       teamCubit.selectTeam(teamId);

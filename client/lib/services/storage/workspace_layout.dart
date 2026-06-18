@@ -11,7 +11,7 @@ import 'app_storage.dart';
 /// ```
 /// workspace/projects/{projectId}/
 ///   manifest.json       # AppProject
-///   profile.json        # ProjectProfile (personal projects)
+///   profile.json        # PersonalIdentity (personal projects)
 ///   assets/icon.*       # custom project icon
 ///   config/             # project-level CLI overrides
 ///     mcp/servers.json

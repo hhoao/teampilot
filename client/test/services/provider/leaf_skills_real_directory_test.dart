@@ -2,7 +2,8 @@
 library;
 
 import 'package:flutter_test/flutter_test.dart';
-import 'package:teampilot/models/project_profile.dart';
+import 'package:teampilot/models/config_bundle.dart';
+import 'package:teampilot/models/personal_identity.dart';
 import 'package:teampilot/models/skill.dart';
 import 'package:teampilot/models/team_config.dart';
 import 'package:teampilot/services/provider/config_profile_service.dart';
@@ -51,12 +52,11 @@ void main() {
       ),
     );
 
-    await buildService(root, layout).prepareProjectLaunch(
+    await buildService(root, layout).prepareProjectLaunch(identityId: 'personal-default', 
       projectId: 'p',
       sessionId: 's',
-      profile: const ProjectProfile(
-        projectId: 'p',
-        skillIds: ['demo'],
+      personal: const PersonalIdentity(id: 'p', display: 'p',
+        bundle: ConfigBundle(skillIds: ['demo']),
       ),
     );
 

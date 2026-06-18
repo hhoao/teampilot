@@ -1,6 +1,6 @@
 import 'dart:convert';
 import '../../models/plugin.dart';
-import '../../models/project_profile.dart';
+import '../../models/personal_identity.dart';
 import '../../models/team_config.dart';
 import '../storage/app_storage.dart';
 import '../storage/runtime_layout.dart';
@@ -74,7 +74,7 @@ class CliPluginRegistryService {
     required String projectId,
     required String sessionId,
     required CliTool tool,
-    ProjectProfile? profile,
+    PersonalIdentity? personal,
     List<Plugin>? installedCatalog,
     String? memberProvisionJson,
   }) async {
@@ -90,7 +90,7 @@ class CliPluginRegistryService {
         tool.value,
       ),
       tool: tool,
-      enabledIds: profile?.pluginIds ?? const <String>[],
+      enabledIds: personal?.bundle.pluginIds ?? const <String>[],
       installedCatalog: installedCatalog,
       memberProvisionJson: memberProvisionJson,
     );

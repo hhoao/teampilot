@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
-import '../../cubits/team_cubit.dart';
+import '../../cubits/identity_cubit.dart';
 import '../../theme/workspace_surface_layers.dart';
 import '../team_config/team_config_section.dart';
 import 'home_workspace_all_projects_pane.dart';
@@ -76,7 +76,7 @@ class _HomeWorkspacePageState extends State<HomeWorkspacePage> {
   Widget build(BuildContext context) {
     final globalView = _globalView;
     final libraryView = _libraryView;
-    final teamId = context.watch<TeamCubit>().state.selectedTeam?.id ?? 'none';
+    final teamId = context.watch<IdentityCubit>().state.selectedTeam?.id ?? 'none';
     final paneKey = ValueKey(
       globalView?.name ??
           libraryView?.name ??
@@ -107,7 +107,7 @@ class _HomeWorkspacePageState extends State<HomeWorkspacePage> {
             _globalView = null;
           }),
           onSelectTeam: (teamId) {
-            context.read<TeamCubit>().selectTeam(teamId);
+            context.read<IdentityCubit>().selectTeam(teamId);
             setState(() {
               _allProjectsActive = false;
               _globalView = null;

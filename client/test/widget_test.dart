@@ -15,11 +15,11 @@ import 'package:teampilot/cubits/workspace_tools_cubit.dart';
 import 'package:teampilot/services/terminal/workspace_terminal_registry.dart';
 import 'package:teampilot/cubits/llm_config_cubit.dart';
 import 'package:teampilot/cubits/session_preferences_cubit.dart';
-import 'package:teampilot/cubits/team_cubit.dart';
+import 'package:teampilot/cubits/identity_cubit.dart';
 import 'package:teampilot/main.dart';
 import 'package:teampilot/models/llm_config.dart';
 import 'package:teampilot/models/app_project.dart';
-import 'package:teampilot/models/project_profile.dart';
+import 'package:teampilot/models/personal_identity.dart';
 import 'package:teampilot/models/app_session.dart';
 import 'package:teampilot/models/session_member_binding.dart';
 import 'package:teampilot/models/team_config.dart';
@@ -29,7 +29,7 @@ import 'package:teampilot/repositories/layout_repository.dart';
 import 'package:teampilot/repositories/session_preferences_repository.dart';
 import 'package:teampilot/repositories/session_repository.dart';
 import 'package:teampilot/repositories/extension_repository.dart';
-import 'package:teampilot/repositories/team_repository.dart';
+import 'package:teampilot/repositories/identity_repository.dart';
 import 'package:teampilot/services/extension/builtin_manifests.dart';
 import 'package:teampilot/services/extension/extension_acquisition_engine.dart';
 import 'package:teampilot/services/extension/extension_detector.dart';
@@ -93,7 +93,7 @@ late Directory _widgetTestSessionRepoDir;
 late SessionRepository _widgetTestSessionRepo;
 
 Widget buildTestApp({
-  required TeamCubit teamCubit,
+  required IdentityCubit teamCubit,
   required SessionPreferencesCubit sessionPreferencesCubit,
   ChatCubit? chatCubit,
   MemberPresenceCubit? memberPresenceCubit,
@@ -173,7 +173,7 @@ Future<void> pumpPhaseTransitions(WidgetTester tester) async {
 
 Future<void> pumpDesktopApp(
   WidgetTester tester,
-  TeamCubit teamCubit, {
+  IdentityCubit teamCubit, {
   ChatCubit? chatCubit,
   LayoutCubit? layoutCubit,
   LlmConfigCubit? llmConfigCubit,
@@ -228,11 +228,11 @@ Future<SessionPreferencesCubit> testSessionPreferencesCubit() async {
   );
 }
 
-Future<TeamCubit> createTeamCubit({TeamLauncher? launcher}) async {
+Future<IdentityCubit> createTeamCubit({TeamLauncher? launcher}) async {
   final tmp = await Directory.systemTemp.createTemp('teams_widget_');
   final appData = await Directory.systemTemp.createTemp('teams_widget_app_');
-  final repository = TeamRepository(rootDir: tmp.path);
-  final cubit = TeamCubit(
+  final repository = IdentityRepository(rootDir: tmp.path);
+  final cubit = IdentityCubit(
     repository: repository,
     sessionRepository: SessionRepository(),
     reloadProjects: () async {},
@@ -247,7 +247,7 @@ Future<TeamCubit> createTeamCubit({TeamLauncher? launcher}) async {
 
 /// [testWidgets] uses a fake-async zone; futures from real disk I/O (temp dirs,
 /// team JSON) must be created inside [WidgetTester.runAsync] or they never complete.
-Future<TeamCubit> createTeamCubitInTest(
+Future<IdentityCubit> createTeamCubitInTest(
   WidgetTester tester, {
   TeamLauncher? launcher,
 }) async {
@@ -338,7 +338,7 @@ class _FixedResumeLifecycleService extends SessionLifecycleService {
     TeamMemberConfig? member,
     SessionMemberBinding? memberBinding,
     AppProject? project,
-    ProjectProfile? profile,
+    PersonalIdentity? personal,
     String? llmConfigPathOverride,
     Map<String, Map<String, Object?>>? extraMcpServers,
     String? busIdleUrl,
@@ -349,7 +349,7 @@ class _FixedResumeLifecycleService extends SessionLifecycleService {
       member: member,
       memberBinding: memberBinding,
       project: project,
-      profile: profile,
+      personal: personal,
       llmConfigPathOverride: llmConfigPathOverride,
       extraMcpServers: extraMcpServers,
       busIdleUrl: busIdleUrl,
@@ -649,8 +649,8 @@ void main() {
   test('team cubit manages teams', () async {
     final tmp = await Directory.systemTemp.createTemp('teams_cubit_');
     final appData = await Directory.systemTemp.createTemp('teams_cubit_app_');
-    final repository = TeamRepository(rootDir: tmp.path);
-    final cubit = TeamCubit(
+    final repository = IdentityRepository(rootDir: tmp.path);
+    final cubit = IdentityCubit(
       repository: repository,
       sessionRepository: SessionRepository(),
       reloadProjects: () async {},

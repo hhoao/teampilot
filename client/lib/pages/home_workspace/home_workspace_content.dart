@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
-import '../../cubits/team_cubit.dart';
+import '../../cubits/identity_cubit.dart';
 import '../../l10n/l10n_extensions.dart';
 import '../../theme/workspace_surface_layers.dart';
 import '../team_config/team_config_section.dart';
@@ -57,7 +57,7 @@ class _HomeWorkspaceContentState extends State<HomeWorkspaceContent> {
   Widget build(BuildContext context) {
     final cs = Theme.of(context).colorScheme;
     final l10n = context.l10n;
-    final teamCubit = context.watch<TeamCubit>();
+    final teamCubit = context.watch<IdentityCubit>();
     final team = teamCubit.state.selectedTeam;
 
     if (team == null) {

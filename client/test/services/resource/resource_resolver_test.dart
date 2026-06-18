@@ -1,6 +1,7 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:path/path.dart' as p;
-import 'package:teampilot/models/project_profile.dart';
+import 'package:teampilot/models/config_bundle.dart';
+import 'package:teampilot/models/personal_identity.dart';
 import 'package:teampilot/models/skill.dart';
 import 'package:teampilot/models/team_config.dart';
 import 'package:teampilot/services/resource/resource_kind.dart';
@@ -27,7 +28,7 @@ void main() {
 
   test('personal scope resolves enabled skillIds to refs', () {
     const scope = PersonalResourceScope(
-      profile: ProjectProfile(projectId: 'p', skillIds: ['a']),
+      personal: PersonalIdentity(id: 'p', display: 'p', bundle: ConfigBundle(skillIds: ['a'])),
     );
     final set = resolver.resolve(scope: scope, catalog: catalog);
     final refs = set.of(ResourceKind.skill);
@@ -51,7 +52,7 @@ void main() {
       pathContext: p.posix,
     );
     const scope = PersonalResourceScope(
-      profile: ProjectProfile(projectId: 'p', skillIds: ['a', 'b']),
+      personal: PersonalIdentity(id: 'p', display: 'p', bundle: ConfigBundle(skillIds: ['a', 'b'])),
     );
     final set = resolver.resolve(scope: scope, catalog: disabledCatalog);
     expect(set.of(ResourceKind.skill).map((r) => r.linkName), ['skill-b']);

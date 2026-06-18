@@ -2,8 +2,8 @@
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
 
+import '../../../../cubits/identity_cubit.dart';
 import '../../../../cubits/mcp_cubit.dart';
-import '../../../../cubits/project_profile_cubit.dart';
 import '../../../../l10n/l10n_extensions.dart';
 import '../../home_workspace_global_section.dart';
 import '../../../team_config/team_config_cards.dart';
@@ -16,19 +16,9 @@ class ProjectMcpSection extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final profileState = context.watch<ProjectProfileCubit>().state;
-    if (profileState.projectId != projectId ||
-        profileState.status == ProjectProfileLoadStatus.loading ||
-        profileState.status == ProjectProfileLoadStatus.idle) {
-      return const Center(child: CircularProgressIndicator());
-    }
-    if (profileState.status == ProjectProfileLoadStatus.error) {
-      return Center(
-        child: Text(profileState.errorMessage ?? 'Failed to load profile'),
-      );
-    }
-    final profile = profileState.profile;
-    if (profile == null) {
+    final identityCubit = context.watch<IdentityCubit>();
+    final personal = identityCubit.activePersonal;
+    if (personal == null) {
       return const Center(child: CircularProgressIndicator());
     }
 
@@ -38,10 +28,9 @@ class ProjectMcpSection extends StatelessWidget {
     final textBase = isDark ? Colors.white : const Color(0xFF111827);
     final mcpState = context.watch<McpCubit>().state;
     final enabled = mcpState.servers.where((s) => s.enabled).toList();
-    final assignedCount = enabled
-        .where((s) => profile.mcpServerIds.contains(s.id))
-        .length;
-    final cubit = context.read<ProjectProfileCubit>();
+    final mcpIds = personal.bundle.mcpServerIds;
+    final assignedCount =
+        enabled.where((s) => mcpIds.contains(s.id)).length;
 
     return SingleChildScrollView(
       child: Column(
@@ -79,15 +68,15 @@ class ProjectMcpSection extends StatelessWidget {
                   for (final server in enabled)
                     TeamMcpRow(
                       server: server,
-                      assigned: profile.mcpServerIds.contains(server.id),
+                      assigned: mcpIds.contains(server.id),
                       onAssignedChanged: (assigned) {
-                        final ids = List<String>.from(profile.mcpServerIds);
+                        final ids = List<String>.from(mcpIds);
                         if (assigned) {
                           if (!ids.contains(server.id)) ids.add(server.id);
                         } else {
                           ids.remove(server.id);
                         }
-                        cubit.setMcpServerIds(ids);
+                        identityCubit.setActivePersonalMcpServerIds(ids);
                       },
                     ),
               ],

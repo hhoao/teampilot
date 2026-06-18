@@ -1,5 +1,5 @@
 import '../../../../models/app_provider_config.dart';
-import '../../../../models/project_profile.dart';
+import '../../../../models/personal_identity.dart';
 import '../../../../services/cli/registry/capabilities/provider_catalog_capability.dart';
 import '../../../../services/cli/registry/capabilities/provider_model_capability.dart';
 import '../../../../services/cli/registry/cli_tool_registry.dart';
@@ -10,25 +10,23 @@ bool projectCliSupportsProviderCatalog(
 ) =>
     registry.capability<ProviderCatalogCapability>(cli) != null;
 
-// TODO: migrate to presets — profile.providerIdsByTool / profile.cli / agent.provider removed
-String projectCliProviderId(ProjectProfile profile, CliTool cli) {
-  return '';
+String projectCliProviderId(PersonalIdentity personal, CliTool cli) {
+  return personal.providerIdsByTool[cli.value]?.trim() ?? '';
 }
 
-// TODO: migrate to presets — profile.modelsByTool / profile.cli / agent.model removed
-String projectCliModelId(ProjectProfile profile, CliTool cli) {
-  return '';
+String projectCliModelId(PersonalIdentity personal, CliTool cli) {
+  return personal.modelsByTool[cli.value]?.trim() ?? '';
 }
 
 bool projectCliIsConfigured(
-  ProjectProfile profile,
+  PersonalIdentity personal,
   CliTool cli,
   CliToolRegistry registry, {
   AppProviderConfig? selectedProvider,
   bool supportsProviderCatalog = true,
 }) {
   if (!supportsProviderCatalog) return true;
-  final providerId = projectCliProviderId(profile, cli);
+  final providerId = projectCliProviderId(personal, cli);
   if (providerId.isEmpty) return false;
 
   final modelCapability = registry.capability<ProviderModelCapability>(cli);
@@ -38,15 +36,15 @@ bool projectCliIsConfigured(
           ProviderModelPickerMode.hidden) {
     return true;
   }
-  return projectCliModelId(profile, cli).isNotEmpty;
+  return projectCliModelId(personal, cli).isNotEmpty;
 }
 
 AppProviderConfig? projectCliSelectedProvider(
-  ProjectProfile profile,
+  PersonalIdentity personal,
   CliTool cli,
   Iterable<AppProviderConfig> providers,
 ) {
-  final id = projectCliProviderId(profile, cli);
+  final id = projectCliProviderId(personal, cli);
   if (id.isEmpty) return null;
   for (final provider in providers) {
     if (provider.id == id) return provider;

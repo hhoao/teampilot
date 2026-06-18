@@ -6,7 +6,7 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../cubits/chat_cubit.dart';
-import '../../cubits/team_cubit.dart';
+import '../../cubits/identity_cubit.dart';
 import '../../l10n/l10n_extensions.dart';
 import '../../models/app_project.dart';
 import '../../models/app_session.dart';
@@ -52,7 +52,7 @@ Future<void> openHomeWorkspaceProject(
     return;
   }
 
-  final teams = context.read<TeamCubit>().state.teams;
+  final teams = context.read<IdentityCubit>().state.teams;
   final orderedIds = orderTeamIdsByRecentUse(
     projectId: project.projectId,
     teamIds: teams.map((t) => t.id).toList(),

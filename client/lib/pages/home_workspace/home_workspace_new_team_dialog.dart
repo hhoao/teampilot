@@ -9,7 +9,7 @@ import 'package:teampilot/widgets/app_toast/app_toast.dart';
 import '../../cubits/ai_feature_settings_cubit.dart';
 import '../../cubits/app_provider_cubit.dart';
 import '../../cubits/cli_presets_cubit.dart';
-import '../../cubits/team_cubit.dart';
+import '../../cubits/identity_cubit.dart';
 import '../../models/ai_feature_setting.dart';
 import '../../l10n/l10n_extensions.dart';
 import '../../models/app_provider_config.dart';
@@ -39,7 +39,7 @@ enum _TeamCreationMethod { custom, ai }
 /// decision; the CLI backend defaults to [CliTool.claude].
 Future<void> showHomeWorkspaceNewTeamDialog(
   BuildContext context,
-  TeamCubit teamCubit,
+  IdentityCubit teamCubit,
 ) async {
   final l10n = context.l10n;
   final result =

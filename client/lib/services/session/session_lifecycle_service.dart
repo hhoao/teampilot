@@ -3,12 +3,14 @@ import 'package:flutter/foundation.dart';
 import '../../models/app_project.dart';
 import '../../models/app_session.dart';
 import '../../models/cli_preset.dart';
-import '../../models/project_profile.dart';
+import '../../models/personal_identity.dart';
 import '../../models/session_member_binding.dart';
 import '../../models/skill.dart';
 import '../../models/team_config.dart';
 import '../../repositories/cli_presets_repository.dart';
-import '../../repositories/project_profile_repository.dart';
+import '../../repositories/identity_repository.dart';
+import '../../services/storage/identity_provisioner.dart';
+import '../cli/registry/config_profile/config_profile_context.dart';
 import '../../utils/team_member_naming.dart';
 import '../../utils/logger.dart';
 import '../storage/app_storage.dart';
@@ -42,7 +44,7 @@ class SessionLifecycleService {
     Future<Set<String>> Function({String? teamId, String? projectId})?
     loadEnabledExtensionIds,
     CliToolRegistry? cliToolRegistry,
-    ProjectProfileRepository? projectProfileRepository,
+    IdentityRepository? identityRepository,
     Future<List<Skill>> Function()? loadInstalledSkills,
     CliPresetsRepository? cliPresetsRepository,
     List<CliPreset> Function()? loadPresets,
@@ -52,7 +54,7 @@ class SessionLifecycleService {
        _storageRootsResolver = storageRootsResolver,
        _loadEnabledExtensionIds = loadEnabledExtensionIds,
        _cliToolRegistry = cliToolRegistry ?? _defaultCliRegistry,
-       _projectProfileRepository = projectProfileRepository,
+       _identityRepository = identityRepository,
        _loadInstalledSkills = loadInstalledSkills,
        _cliPresetsRepository = cliPresetsRepository,
        _loadPresets = loadPresets;
@@ -64,42 +66,30 @@ class SessionLifecycleService {
   final Future<Set<String>> Function({String? teamId, String? projectId})?
   _loadEnabledExtensionIds;
   final CliToolRegistry _cliToolRegistry;
-  final ProjectProfileRepository? _projectProfileRepository;
+  final IdentityRepository? _identityRepository;
   final Future<List<Skill>> Function()? _loadInstalledSkills;
   final CliPresetsRepository? _cliPresetsRepository;
   final List<CliPreset> Function()? _loadPresets;
 
   /// Resolves the active [CliPreset] for a personal project profile.
   /// Returns `null` when no preset is active or the repository is unavailable.
-  Future<CliPreset?> resolveActivePresetForProfile(
-    ProjectProfile profile,
+  Future<CliPreset?> resolveActivePresetForPersonal(
+    PersonalIdentity personal,
   ) async {
     final repo = _cliPresetsRepository;
     if (repo == null) return null;
     final presets = await repo.load();
-    return resolveActivePreset(profile.activePresetId, presets);
+    return resolveActivePreset(personal.activePresetId, presets);
   }
 
-  /// Resolves the launch [CliPreset] for a personal-project [session], honoring
-  /// the session's pinned [AppSession.cli].
-  ///
-  /// A simple-mode session is launched — and stores its transcript — under the
-  /// CLI it was created with. Switching the project's active preset to another
-  /// CLI must NOT re-bind an existing session: if it did, the `--resume` probe
-  /// would look under the new tool's runtime dir, find nothing, and start fresh
-  /// (apparent data loss, while the original transcript is still on disk). When
-  /// the session pins a CLI that differs from the active preset, prefer a preset
-  /// for that CLI so the provider/model env matches the resumed conversation.
-  /// Returns `null` when no preset matches the pinned CLI (e.g. it was deleted);
-  /// the caller still resolves the CLI via [AppSession.cli].
   Future<CliPreset?> _resolvePersonalPreset(
     AppSession session,
-    ProjectProfile profile,
+    PersonalIdentity personal,
   ) async {
     final repo = _cliPresetsRepository;
     if (repo == null) return null;
     final presets = await repo.load();
-    final active = resolveActivePreset(profile.activePresetId, presets);
+    final active = resolveActivePreset(personal.activePresetId, presets);
     final pinnedCli = session.cli;
     if (pinnedCli == null || active?.cli == pinnedCli) return active;
     for (final preset in presets) {
@@ -108,16 +98,22 @@ class SessionLifecycleService {
     return null;
   }
 
-  Future<ProjectProfile> loadProjectProfile(
-    String projectId, {
-    ProjectProfile? override,
+  Future<PersonalIdentity> loadPersonalIdentity(
+    String identityId, {
+    PersonalIdentity? override,
   }) async {
     if (override != null) return override;
-    final repo = _projectProfileRepository;
+    final trimmed = identityId.trim();
+    final repo = _identityRepository;
     if (repo != null) {
-      return repo.loadOrCreate(projectId);
+      final all = await repo.loadAll();
+      for (final identity in all) {
+        if (identity is PersonalIdentity && identity.id == trimmed) {
+          return identity;
+        }
+      }
     }
-    return ProjectProfile(projectId: projectId);
+    return PersonalIdentity(id: trimmed, display: trimmed);
   }
 
   Future<LaunchPlan> prepareLaunch({
@@ -126,7 +122,7 @@ class SessionLifecycleService {
     TeamMemberConfig? member,
     SessionMemberBinding? memberBinding,
     AppProject? project,
-    ProjectProfile? profile,
+    PersonalIdentity? personal,
     String? llmConfigPathOverride,
     Map<String, Map<String, Object?>>? extraMcpServers,
     String? busIdleUrl,
@@ -137,7 +133,7 @@ class SessionLifecycleService {
       member: member,
       memberBinding: memberBinding,
       project: project,
-      profile: profile,
+      personal: personal,
       llmConfigPathOverride: llmConfigPathOverride,
       extraMcpServers: extraMcpServers,
       busIdleUrl: busIdleUrl,
@@ -150,7 +146,7 @@ class SessionLifecycleService {
     TeamMemberConfig? member,
     SessionMemberBinding? memberBinding,
     AppProject? project,
-    ProjectProfile? profile,
+    PersonalIdentity? personal,
     String? llmConfigPathOverride,
     Map<String, Map<String, Object?>>? extraMcpServers,
     String? busIdleUrl,
@@ -161,7 +157,7 @@ class SessionLifecycleService {
       member: member,
       memberBinding: memberBinding,
       project: project,
-      profile: profile,
+      personal: personal,
       llmConfigPathOverride: llmConfigPathOverride,
       extraMcpServers: extraMcpServers,
       busIdleUrl: busIdleUrl,
@@ -192,7 +188,7 @@ class SessionLifecycleService {
         plan: prepared.plan,
         isPersonal: prepared.isPersonal,
         project: project,
-        profile: prepared.resolvedProfile,
+        personal: prepared.resolvedPersonal,
         team: team,
         member: resolvedMember,
         preset: prepared.activePreset,
@@ -209,7 +205,7 @@ class SessionLifecycleService {
     ({
       LaunchPlan plan,
       bool isPersonal,
-      ProjectProfile? resolvedProfile,
+      PersonalIdentity? resolvedPersonal,
       CliPreset? activePreset,
     })
   >
@@ -219,7 +215,7 @@ class SessionLifecycleService {
     TeamMemberConfig? member,
     SessionMemberBinding? memberBinding,
     AppProject? project,
-    ProjectProfile? profile,
+    PersonalIdentity? personal,
     String? llmConfigPathOverride,
     Map<String, Map<String, Object?>>? extraMcpServers,
     String? busIdleUrl,
@@ -241,16 +237,14 @@ class SessionLifecycleService {
         roots,
         launchProjectId: isPersonal ? project!.projectId : null,
       );
-      final resolvedProfile = isPersonal
-          ? await loadProjectProfile(project!.projectId, override: profile)
+      final personalIdentityId = IdentityProvisioner.defaultPersonalId;
+      final resolvedPersonal = isPersonal
+          ? await loadPersonalIdentity(personalIdentityId, override: personal)
           : null;
 
-      // Resolve the launch preset for personal projects, honoring the session's
-      // pinned CLI so switching the active preset never orphans an existing
-      // session's transcript (see _resolvePersonalPreset).
       CliPreset? activePreset;
-      if (isPersonal && resolvedProfile != null) {
-        activePreset = await _resolvePersonalPreset(session, resolvedProfile);
+      if (isPersonal && resolvedPersonal != null) {
+        activePreset = await _resolvePersonalPreset(session, resolvedPersonal);
       }
 
       final runtimeTeamId = isPersonal
@@ -303,7 +297,7 @@ class SessionLifecycleService {
         member: member,
         memberBinding: memberBinding,
         project: project,
-        profile: resolvedProfile,
+        personal: resolvedPersonal,
         runtimeTeamId: runtimeTeamId,
         workingDirectory: session.primaryPath,
         llmConfigPathOverride: llmConfigPathOverride,
@@ -356,7 +350,7 @@ class SessionLifecycleService {
       return (
         plan: plan,
         isPersonal: isPersonal,
-        resolvedProfile: resolvedProfile,
+        resolvedPersonal: resolvedPersonal,
         activePreset: activePreset,
       );
     } on Object catch (e, st) {
@@ -376,7 +370,7 @@ class SessionLifecycleService {
     CliTool? cli,
     SessionMemberBinding? memberBinding,
     AppProject? project,
-    ProjectProfile? profile,
+    PersonalIdentity? personal,
   }) async {
     final roots = await _resolveRoots();
     final isPersonal = _isPersonalLaunch(project, session);
@@ -389,8 +383,8 @@ class SessionLifecycleService {
         memberBinding?.taskId.trim() ?? session.sessionId.trim();
     CliTool? resolvedCli;
     if (isPersonal) {
-      final preset = profile != null
-          ? await _resolvePersonalPreset(session, profile)
+      final preset = personal != null
+          ? await _resolvePersonalPreset(session, personal)
           : null;
       resolvedCli = session.cli ?? preset?.cli ?? CliTool.claude;
     } else {
@@ -481,21 +475,22 @@ class SessionLifecycleService {
     required LaunchPlan plan,
     required bool isPersonal,
     AppProject? project,
-    ProjectProfile? profile,
+    PersonalIdentity? personal,
     TeamIdentity? team,
     TeamMemberConfig? member,
     CliPreset? preset,
   }) {
     if (isPersonal) {
-      if (project == null || profile == null) {
+      if (project == null || personal == null) {
         throw StateError(
-          'prepareShellLaunch requires project and profile for personal sessions',
+          'prepareShellLaunch requires project and personal identity for personal sessions',
         );
       }
-      final launchMember = standaloneMemberFromProfile(profile, preset: preset);
-      final launchTeam = standaloneTeamFromProfile(
-        profile,
-        projectId: project.projectId,
+      final launchMember =
+          standaloneMemberFromPersonal(personal, preset: preset);
+      final launchTeam = standaloneTeamFromPersonal(
+        personal,
+        identityId: personal.id,
         sessionTeamName: plan.cliTeamName,
         preset: preset,
       );
@@ -547,7 +542,7 @@ class SessionLifecycleService {
     required TeamMemberConfig? member,
     SessionMemberBinding? memberBinding,
     AppProject? project,
-    ProjectProfile? profile,
+    PersonalIdentity? personal,
     required String runtimeTeamId,
     required String workingDirectory,
     required String? llmConfigPathOverride,
@@ -557,12 +552,13 @@ class SessionLifecycleService {
   }) async {
     if (_isPersonalLaunch(project, session)) {
       final personalProject = project!;
-      final resolvedProfile =
-          profile ?? await loadProjectProfile(personalProject.projectId);
+      final resolvedPersonal = personal ??
+          await loadPersonalIdentity(IdentityProvisioner.defaultPersonalId);
       final outcome = await service.prepareProjectLaunch(
         projectId: personalProject.projectId,
         sessionId: session.sessionId,
-        profile: resolvedProfile,
+        identityId: resolvedPersonal.id,
+        personal: resolvedPersonal,
         workingDirectory: workingDirectory,
         additionalDirectories: session.additionalPaths,
         extraMcpServers: extraMcpServers,

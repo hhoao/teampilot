@@ -1,5 +1,5 @@
 import '../../../../models/app_provider_config.dart';
-import '../../../../models/project_profile.dart';
+import '../../../../models/personal_identity.dart';
 import '../../../../services/cli/registry/capabilities/cli_effort_capability.dart';
 import '../../../../services/cli/registry/cli_tool_registry.dart';
 
@@ -25,9 +25,8 @@ bool projectCliShowsEffortPicker({
   return capability.isApplicable(model: resolvedModel);
 }
 
-// TODO: migrate to presets — profile.effortsByTool / profile.cli / agent.effort removed
-String projectCliEffortId(ProjectProfile profile, CliTool cli) {
-  return '';
+String projectCliEffortId(PersonalIdentity personal, CliTool cli) {
+  return personal.effortsByTool[cli.value]?.trim() ?? '';
 }
 
 List<String> projectCliEffortCandidates({

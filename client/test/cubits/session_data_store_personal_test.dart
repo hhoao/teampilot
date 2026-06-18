@@ -1,10 +1,8 @@
-import 'dart:convert';
 import 'dart:io';
 
-import 'package:path/path.dart' as p;
 import 'package:flutter_test/flutter_test.dart';
 import 'package:teampilot/cubits/chat/session_data_store.dart';
-import 'package:teampilot/repositories/project_profile_repository.dart';
+import 'package:teampilot/repositories/identity_repository.dart';
 import 'package:teampilot/repositories/session_repository.dart';
 import 'package:teampilot/services/io/local_filesystem.dart';
 import 'package:teampilot/services/storage/app_storage.dart';
@@ -13,7 +11,7 @@ import 'package:teampilot/services/storage/runtime_storage_context.dart';
 void main() {
   late Directory tmp;
   late SessionRepository sessionRepo;
-  late ProjectProfileRepository profileRepo;
+  late IdentityRepository identityRepo;
 
   setUp(() async {
     tmp = await Directory.systemTemp.createTemp('session_data_personal_');
@@ -27,7 +25,7 @@ void main() {
       cwd: tmp.path,
     );
     sessionRepo = SessionRepository();
-    profileRepo = ProjectProfileRepository();
+    identityRepo = IdentityRepository();
   });
 
   tearDown(() {
@@ -35,7 +33,7 @@ void main() {
     tmp.deleteSync(recursive: true);
   });
 
-  test('createProjectWithFirstSession seeds profile for personal projects',
+  test('createProjectWithFirstSession creates personal session without profile.json',
       () async {
     const primaryPath = '/tmp/personal-project';
     final store = SessionDataStore();
@@ -45,14 +43,8 @@ void main() {
       sessionRepo,
       sessionTeamId: '',
       rosterMembers: const [],
-      projectProfileRepository: profileRepo,
+      identityRepository: identityRepo,
     );
-
-    final profile = await profileRepo.load(result.projectId);
-    expect(profile, isNotNull);
-    expect(profile!.projectId, result.projectId);
-    // TODO: migrate to presets — .cli removed
-    // expect(profile.cli, CliTool.claude);
 
     final sessions = result.snapshot.sessions
         .where((s) => s.projectId == result.projectId)
@@ -66,20 +58,10 @@ void main() {
         .where((p) => p.projectId == result.projectId)
         .toList();
     expect(projects, hasLength(1));
-
-    final projectDir = p.join(
-      tmp.path,
-      'workspace',
-      'projects',
-      result.projectId,
+    expect(
+      File('${tmp.path}/workspace/projects/${result.projectId}/profile.json')
+          .existsSync(),
+      isFalse,
     );
-    expect(Directory(projectDir).existsSync(), isTrue);
-    final profileFile = File(p.join(projectDir, 'profile.json'));
-    expect(profileFile.existsSync(), isTrue);
-    final manifestFile = File(p.join(projectDir, 'manifest.json'));
-    expect(manifestFile.existsSync(), isTrue);
-    final decoded = jsonDecode(profileFile.readAsStringSync());
-    expect(decoded, isA<Map>());
-    expect((decoded as Map)['projectId'], result.projectId);
   });
 }

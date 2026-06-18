@@ -2,7 +2,8 @@ import 'dart:io';
 
 import 'package:flutter_test/flutter_test.dart';
 import 'package:path/path.dart' as p;
-import 'package:teampilot/models/project_profile.dart';
+import 'package:teampilot/models/project_agent_config.dart';
+import 'package:teampilot/models/personal_identity.dart';
 import 'package:teampilot/models/team_config.dart';
 import 'package:teampilot/services/storage/runtime_layout.dart';
 import 'package:teampilot/services/cli/registry/config_profile/claude_config_profile_capability.dart';
@@ -54,7 +55,7 @@ void main() {
   ConfigProfileLaunchContext standaloneContext({
     required String projectId,
     required String sessionId,
-    required ProjectProfile profile,
+    required PersonalIdentity personal,
   }) {
     final standaloneScope = StandaloneLaunchProfileScope(
       projectId: projectId,
@@ -66,7 +67,7 @@ void main() {
       sessionId: sessionId,
       scope: launchScopeForStandalone(standaloneScope),
       standaloneScope: standaloneScope,
-      profile: profile,
+      personal: personal,
       members: const [],
       paths: service,
     );
@@ -76,14 +77,14 @@ void main() {
       () async {
     const projectId = 'p-claude';
     const sessionId = 's-claude';
-    const profile = ProjectProfile(projectId: projectId); // TODO: migrate to presets — cli removed
+    const profile = PersonalIdentity(id: projectId, display: projectId); // TODO: migrate to presets — cli removed
 
     final contribution = await const ClaudeConfigProfileCapability()
         .contributeLaunch(
           standaloneContext(
             projectId: projectId,
             sessionId: sessionId,
-            profile: profile,
+            personal: profile,
           ),
         );
 
@@ -105,8 +106,7 @@ void main() {
       () async {
     const projectId = 'p-fs';
     const sessionId = 's-fs';
-    const profile = ProjectProfile(
-      projectId: projectId,
+    const profile = PersonalIdentity(id: projectId, display: projectId,
       // TODO: migrate to presets — cli removed
       agent: ProjectAgentConfig(agent: 'solo') // TODO: migrate to presets — model removed,
     );
@@ -116,7 +116,7 @@ void main() {
           standaloneContext(
             projectId: projectId,
             sessionId: sessionId,
-            profile: profile,
+            personal: profile,
           ),
         );
 
@@ -140,14 +140,14 @@ void main() {
   test('cursor standalone uses CURSOR_CONFIG_DIR only', () async {
     const projectId = 'p-cursor';
     const sessionId = 's-cursor';
-    const profile = ProjectProfile(projectId: projectId); // TODO: migrate to presets — cli removed
+    const profile = PersonalIdentity(id: projectId, display: projectId); // TODO: migrate to presets — cli removed
 
     final contribution = await const CursorConfigProfileCapability()
         .contributeLaunch(
           standaloneContext(
             projectId: projectId,
             sessionId: sessionId,
-            profile: profile,
+            personal: profile,
           ),
         );
 
@@ -164,14 +164,14 @@ void main() {
   test('opencode standalone sets OPENCODE_CONFIG_DIR without idle plugin', () async {
     const projectId = 'p-oc';
     const sessionId = 's-oc';
-    const profile = ProjectProfile(projectId: projectId); // TODO: migrate to presets — cli removed
+    const profile = PersonalIdentity(id: projectId, display: projectId); // TODO: migrate to presets — cli removed
 
     final contribution = await const OpencodeConfigProfileCapability()
         .contributeLaunch(
           standaloneContext(
             projectId: projectId,
             sessionId: sessionId,
-            profile: profile,
+            personal: profile,
           ),
         );
 
@@ -192,13 +192,13 @@ void main() {
   test('codex standalone sets CODEX_HOME without bus overlay', () async {
     const projectId = 'p-codex';
     const sessionId = 's-codex';
-    const profile = ProjectProfile(projectId: projectId); // TODO: migrate to presets — cli removed
+    const profile = PersonalIdentity(id: projectId, display: projectId); // TODO: migrate to presets — cli removed
 
     final contribution = await const CodexConfigProfileCapability().contributeLaunch(
       standaloneContext(
         projectId: projectId,
         sessionId: sessionId,
-        profile: profile,
+        personal: profile,
       ),
     );
 

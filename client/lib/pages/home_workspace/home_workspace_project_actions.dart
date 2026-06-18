@@ -7,7 +7,7 @@ import 'package:teampilot/theme/app_toast_theme.dart';
 import 'package:teampilot/widgets/app_toast/app_toast.dart';
 
 import '../../cubits/chat_cubit.dart';
-import '../../cubits/team_cubit.dart';
+import '../../cubits/identity_cubit.dart';
 import '../../l10n/l10n_extensions.dart';
 import '../../models/app_project.dart';
 import '../../repositories/session_repository.dart';
@@ -96,7 +96,7 @@ Future<void> cloneHomeWorkspaceProject(
 ) async {
   final l10n = context.l10n;
   final repo = context.read<SessionRepository>();
-  final team = context.read<TeamCubit>().state.selectedTeam;
+  final team = context.read<IdentityCubit>().state.selectedTeam;
   final baseName = project.localizedName(l10n);
   final display = l10n.homeWorkspaceCloneProjectDisplayName(baseName);
 

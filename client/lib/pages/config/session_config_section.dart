@@ -7,6 +7,8 @@ import 'package:teampilot/theme/app_toast_theme.dart';
 import 'package:teampilot/widgets/app_toast/app_toast.dart';
 
 import '../../app/app_shell.dart';
+import '../../repositories/identity_repository.dart';
+import '../../services/storage/identity_provisioner.dart';
 import '../../cubits/app_provider_cubit.dart';
 import '../../cubits/chat_cubit.dart';
 import '../../cubits/extension_cubit.dart';
@@ -15,7 +17,7 @@ import '../../cubits/mcp_cubit.dart';
 import '../../cubits/plugin_cubit.dart';
 import '../../cubits/session_preferences_cubit.dart';
 import '../../cubits/skill_cubit.dart';
-import '../../cubits/team_cubit.dart';
+import '../../cubits/identity_cubit.dart';
 import '../../l10n/l10n_extensions.dart';
 import '../../widgets/app_dialog.dart';
 import '../../models/connection_mode.dart';
@@ -174,7 +176,7 @@ class _SessionControlsState extends State<_SessionControls> {
   Future<void> _reloadAfterStorageBackendChange() async {
     final storageRoots = context.read<StorageRoots>();
     final llmCubit = context.read<LlmConfigCubit>();
-    final teamCubit = context.read<TeamCubit>();
+    final teamCubit = context.read<IdentityCubit>();
     final skillCubit = context.read<SkillCubit>();
     final mcpCubit = context.read<McpCubit>();
     final chatCubit = context.read<ChatCubit>();
@@ -189,6 +191,9 @@ class _SessionControlsState extends State<_SessionControls> {
       storageRoots: storageRoots,
       llmConfigCubit: llmCubit,
       appProviderCubit: appProviderCubit,
+      identityProvisioner: IdentityProvisioner(
+        repository: context.read<IdentityRepository>(),
+      ),
       teamCubit: teamCubit,
       pluginCubit: pluginCubit,
       skillCubit: skillCubit,
@@ -320,7 +325,7 @@ class _SessionControlsState extends State<_SessionControls> {
                     selected: {state.preferences.connectionMode},
                     onSelectionChanged: (selected) async {
                       final llmCubit = context.read<LlmConfigCubit>();
-                      final teamCubit = context.read<TeamCubit>();
+                      final teamCubit = context.read<IdentityCubit>();
                       final skillCubit = context.read<SkillCubit>();
                       final mcpCubit = context.read<McpCubit>();
                       final chatCubit = context.read<ChatCubit>();

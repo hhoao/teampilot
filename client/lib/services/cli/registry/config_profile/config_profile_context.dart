@@ -2,7 +2,8 @@ import 'package:path/path.dart' as p;
 
 import '../../../storage/runtime_layout.dart';
 import '../../../../models/cli_preset.dart';
-import '../../../../models/project_profile.dart';
+import '../../../../models/personal_identity.dart';
+import '../../../../models/project_agent_config.dart';
 import '../../../../models/team_config.dart';
 import '../../../../utils/team_member_naming.dart';
 import '../../../io/filesystem.dart';
@@ -56,32 +57,32 @@ CliTool standaloneCli(CliPreset? preset, {CliTool fallback = CliTool.claude}) {
 }
 
 /// Minimal [TeamIdentity] for personal / standalone PTY launch args.
-TeamIdentity standaloneTeamFromProfile(
-  ProjectProfile profile, {
-  required String projectId,
+TeamIdentity standaloneTeamFromPersonal(
+  PersonalIdentity personal, {
+  required String identityId,
   required String sessionTeamName,
   required CliPreset? preset,
 }) {
-  final member = standaloneMemberFromProfile(profile, preset: preset);
+  final member = standaloneMemberFromPersonal(personal, preset: preset);
   return TeamIdentity(
-    id: projectId.trim(),
+    id: identityId.trim(),
     name: sessionTeamName.trim(),
     cli: preset?.cli ?? CliTool.claude,
     members: [member],
-    skillIds: profile.skillIds,
-    pluginIds: profile.pluginIds,
-    mcpServerIds: profile.mcpServerIds,
+    skillIds: personal.bundle.skillIds,
+    pluginIds: personal.bundle.pluginIds,
+    mcpServerIds: personal.bundle.mcpServerIds,
     teamMode: TeamMode.native,
     forceTeamLeadDelegateMode: false,
   );
 }
 
-/// Single-agent stand-in from [ProjectProfile.agent] for standalone launch.
-TeamMemberConfig standaloneMemberFromProfile(
-  ProjectProfile profile, {
+/// Single-agent stand-in from [PersonalIdentity.agent] for standalone launch.
+TeamMemberConfig standaloneMemberFromPersonal(
+  PersonalIdentity personal, {
   required CliPreset? preset,
 }) {
-  final agent = profile.agent;
+  final agent = personal.agent;
   final name = _standaloneMemberDisplayName(agent);
   return TeamMemberConfig(
     id: TeamMemberNaming.slugMemberName(name),
@@ -97,6 +98,27 @@ TeamMemberConfig standaloneMemberFromProfile(
     effort: preset?.effort.trim() ?? '',
   );
 }
+
+@Deprecated('Use standaloneTeamFromPersonal')
+TeamIdentity standaloneTeamFromProfile(
+  PersonalIdentity personal, {
+  required String projectId,
+  required String sessionTeamName,
+  required CliPreset? preset,
+}) =>
+    standaloneTeamFromPersonal(
+      personal,
+      identityId: projectId,
+      sessionTeamName: sessionTeamName,
+      preset: preset,
+    );
+
+@Deprecated('Use standaloneMemberFromPersonal')
+TeamMemberConfig standaloneMemberFromProfile(
+  PersonalIdentity personal, {
+  required CliPreset? preset,
+}) =>
+    standaloneMemberFromPersonal(personal, preset: preset);
 
 String _standaloneMemberDisplayName(ProjectAgentConfig agent) {
   final fromAgent = agent.agent.trim();
@@ -200,7 +222,7 @@ class ConfigProfileSessionContext {
     required this.paths,
     this.team,
     this.standaloneScope,
-    this.profile,
+    this.personal,
     this.memberId,
   });
 
@@ -211,7 +233,7 @@ class ConfigProfileSessionContext {
   final ConfigProfileDelegate paths;
   final TeamIdentity? team;
   final StandaloneLaunchProfileScope? standaloneScope;
-  final ProjectProfile? profile;
+  final PersonalIdentity? personal;
   final String? memberId;
 }
 
@@ -230,7 +252,7 @@ class ConfigProfileLaunchContext {
     this.leadSessionId,
     this.busIdleUrl,
     this.standaloneScope,
-    this.profile,
+    this.personal,
     this.preset,
     this.memberId,
   });
@@ -248,7 +270,7 @@ class ConfigProfileLaunchContext {
   final String? leadSessionId;
   final String? busIdleUrl;
   final StandaloneLaunchProfileScope? standaloneScope;
-  final ProjectProfile? profile;
+  final PersonalIdentity? personal;
   final CliPreset? preset;
   final String? memberId;
 }

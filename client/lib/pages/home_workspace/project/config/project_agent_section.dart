@@ -4,11 +4,12 @@ import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
 import '../../../../cubits/cli_presets_cubit.dart';
-import '../../../../cubits/project_profile_cubit.dart';
+import '../../../../cubits/identity_cubit.dart';
 import '../../../../l10n/l10n_extensions.dart';
 import '../../../../models/cli_preset.dart';
+import '../../../../models/personal_identity.dart';
+import '../../../../models/project_agent_config.dart';
 import '../../../../models/project_agent_prompt_presets.dart';
-import '../../../../models/project_profile.dart';
 import '../../../../models/team_config.dart';
 import '../../../../services/app/flashskyai_agent_catalog_service.dart';
 import '../../../../services/cli/registry/cli_display_name.dart';
@@ -22,7 +23,7 @@ import 'cli_presets_manage_dialog.dart';
 
 const _kAgentCardGap = 12.0;
 
-/// Personal-project agent + CLI defaults (backed by [ProjectProfileCubit]).
+/// Personal-project agent + CLI defaults (backed by [IdentityCubit]).
 class ProjectAgentSection extends StatelessWidget {
   const ProjectAgentSection({required this.projectId, super.key});
 
@@ -30,23 +31,14 @@ class ProjectAgentSection extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final state = context.watch<ProjectProfileCubit>().state;
-    if (state.projectId != projectId ||
-        state.status == ProjectProfileLoadStatus.loading ||
-        state.status == ProjectProfileLoadStatus.idle) {
-      return const Center(child: CircularProgressIndicator());
-    }
-    if (state.status == ProjectProfileLoadStatus.error) {
-      return Center(child: Text(state.errorMessage ?? 'Failed to load profile'));
-    }
-    final profile = state.profile;
-    if (profile == null) {
+    final personal = context.watch<IdentityCubit>().activePersonal;
+    if (personal == null) {
       return const Center(child: CircularProgressIndicator());
     }
     return ProjectAgentConfigForm(
-      key: ValueKey(profile.projectId),
-      profile: profile,
-      cubit: context.read<ProjectProfileCubit>(),
+      key: ValueKey(personal.id),
+      personal: personal,
+      cubit: context.read<IdentityCubit>(),
     );
   }
 }
@@ -54,12 +46,12 @@ class ProjectAgentSection extends StatelessWidget {
 class ProjectAgentConfigForm extends StatefulWidget {
   const ProjectAgentConfigForm({
     super.key,
-    required this.profile,
+    required this.personal,
     required this.cubit,
   });
 
-  final ProjectProfile profile;
-  final ProjectProfileCubit cubit;
+  final PersonalIdentity personal;
+  final IdentityCubit cubit;
 
   @override
   State<ProjectAgentConfigForm> createState() => ProjectAgentConfigFormState();
@@ -74,7 +66,7 @@ class ProjectAgentConfigFormState extends State<ProjectAgentConfigForm> {
   @override
   void initState() {
     super.initState();
-    final agent = widget.profile.agent;
+    final agent = widget.personal.agent;
     _agentCtl = TextEditingController(text: agent.agent);
     _argsCtl = TextEditingController(text: agent.extraArgs);
     _promptCtl = TextEditingController(text: agent.prompt);
@@ -84,9 +76,9 @@ class ProjectAgentConfigFormState extends State<ProjectAgentConfigForm> {
   @override
   void didUpdateWidget(covariant ProjectAgentConfigForm oldWidget) {
     super.didUpdateWidget(oldWidget);
-    if (oldWidget.profile.projectId != widget.profile.projectId ||
-        oldWidget.profile.agent != widget.profile.agent) {
-      _syncControllers(widget.profile.agent);
+    if (oldWidget.personal.id != widget.personal.id ||
+        oldWidget.personal.agent != widget.personal.agent) {
+      _syncControllers(widget.personal.agent);
     }
   }
 
@@ -120,7 +112,7 @@ class ProjectAgentConfigFormState extends State<ProjectAgentConfigForm> {
   }
 
   Future<void> _updateAgent(ProjectAgentConfig next) async {
-    await widget.cubit.updateAgent(next);
+    await widget.cubit.updateActivePersonalAgent(next);
   }
 
   void _applyPromptPreset(String presetId) {
@@ -129,17 +121,18 @@ class ProjectAgentConfigFormState extends State<ProjectAgentConfigForm> {
     if (text.isEmpty) return;
     _promptCtl.text = text;
     _promptCtl.selection = TextSelection.collapsed(offset: text.length);
-    unawaited(_updateAgent(widget.profile.agent.copyWith(prompt: text)));
+    unawaited(_updateAgent(widget.personal.agent.copyWith(prompt: text)));
   }
 
   @override
   Widget build(BuildContext context) {
     final l10n = context.l10n;
-    final profile = widget.profile;
-    final agent = profile.agent;
+    final personal = widget.personal;
+    final agent = personal.agent;
     final cliRegistry = CliToolRegistryScope.of(context);
     final presetsCubit = context.read<CliPresetsCubit>();
-    final activePreset = presetsCubit.state.presetById(profile.activePresetId ?? '');
+    final activePreset =
+        presetsCubit.state.presetById(personal.activePresetId ?? '');
     final effectiveCli = activePreset?.cli ?? CliTool.claude;
     final showAgentPreset = cliRegistry.supportsMemberAgentPreset(effectiveCli);
     final agentPresetStyle = cliRegistry.memberAgentPresetStyle(effectiveCli);
@@ -148,7 +141,7 @@ class ProjectAgentConfigFormState extends State<ProjectAgentConfigForm> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          _PresetInfoRow(profile: profile),
+          _PresetInfoRow(personal: personal),
           const SizedBox(height: _kAgentCardGap),
           SettingsSurfaceCard(
             child: Column(
@@ -217,7 +210,7 @@ class ProjectAgentConfigFormState extends State<ProjectAgentConfigForm> {
                           agent: agent.agent,
                           userAgentIds: _userAgentIds,
                           customAgentController: _agentCtl,
-                          fieldKeyPrefix: 'project-${profile.projectId}',
+                          fieldKeyPrefix: 'project-${personal.id}',
                           onAgentChanged: (value) =>
                               _updateAgent(agent.copyWith(agent: value)),
                         ),
@@ -246,15 +239,15 @@ class ProjectAgentConfigFormState extends State<ProjectAgentConfigForm> {
 }
 
 class _PresetInfoRow extends StatelessWidget {
-  const _PresetInfoRow({required this.profile});
+  const _PresetInfoRow({required this.personal});
 
-  final ProjectProfile profile;
+  final PersonalIdentity personal;
 
   @override
   Widget build(BuildContext context) {
     final l10n = context.l10n;
     final presetsCubit = context.watch<CliPresetsCubit>();
-    final preset = presetsCubit.state.presetById(profile.activePresetId ?? '');
+    final preset = presetsCubit.state.presetById(personal.activePresetId ?? '');
     final registry = CliToolRegistryScope.of(context);
 
     return SettingsSurfaceCard(
