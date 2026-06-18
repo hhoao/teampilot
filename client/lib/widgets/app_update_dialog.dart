@@ -48,9 +48,11 @@ class _AppUpdateDialogState extends State<AppUpdateDialog> {
   String _downloadSavePath = '';
   bool _installInProgress = false;
   bool _localized = false;
+  final _changelogScrollController = ScrollController();
 
   @override
   void dispose() {
+    _changelogScrollController.dispose();
     _downloadService.dispose();
     super.dispose();
   }
@@ -208,7 +210,9 @@ class _AppUpdateDialogState extends State<AppUpdateDialog> {
                   SizedBox(
                     height: 200,
                     child: Scrollbar(
+                      controller: _changelogScrollController,
                       child: SingleChildScrollView(
+                        controller: _changelogScrollController,
                         child: Column(
                           children: [
                             for (final changelog in _changelogs) ...[

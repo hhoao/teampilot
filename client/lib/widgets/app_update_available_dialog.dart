@@ -26,6 +26,13 @@ class AppUpdateAvailableDialog extends StatefulWidget {
 
 class _AppUpdateAvailableDialogState extends State<AppUpdateAvailableDialog> {
   bool _changelogExpanded = false;
+  final _changelogScrollController = ScrollController();
+
+  @override
+  void dispose() {
+    _changelogScrollController.dispose();
+    super.dispose();
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -177,7 +184,9 @@ class _AppUpdateAvailableDialogState extends State<AppUpdateAvailableDialog> {
           ConstrainedBox(
             constraints: const BoxConstraints(maxHeight: 220),
             child: Scrollbar(
+              controller: _changelogScrollController,
               child: SingleChildScrollView(
+                controller: _changelogScrollController,
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
