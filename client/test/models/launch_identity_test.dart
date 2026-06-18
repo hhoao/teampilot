@@ -2,26 +2,15 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:teampilot/models/launch_identity.dart';
 
 void main() {
-  test('personal round-trips through query encoding', () {
-    expect(LaunchIdentity.personal.encode(), 'personal');
-    expect(LaunchIdentity.decode('personal'), LaunchIdentity.personal);
+  test('encode/decode a bare identity id', () {
+    const li = LaunchIdentity('coding');
+    expect(li.encode(), 'coding');
+    expect(LaunchIdentity.decode('coding'), li);
   });
 
-  test('team encodes/decodes with id', () {
-    const id = LaunchIdentity.team('abc');
-    expect(id.encode(), 'team:abc');
-    expect(LaunchIdentity.decode('team:abc'), id);
-  });
-
-  test('decode returns null for missing or malformed input', () {
-    expect(LaunchIdentity.decode(null), isNull);
+  test('decode trims and rejects empty', () {
+    expect(LaunchIdentity.decode('  squad '), const LaunchIdentity('squad'));
     expect(LaunchIdentity.decode(''), isNull);
-    expect(LaunchIdentity.decode('team:'), isNull);
-    expect(LaunchIdentity.decode('bogus'), isNull);
-  });
-
-  test('teamId is empty for personal and the id for team', () {
-    expect(LaunchIdentity.personal.teamId, '');
-    expect(const LaunchIdentity.team('abc').teamId, 'abc');
+    expect(LaunchIdentity.decode(null), isNull);
   });
 }

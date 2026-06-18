@@ -1,36 +1,19 @@
 import 'package:flutter/foundation.dart';
 
-/// How a project is opened: simple/personal mode, or as a specific team.
-/// Encoded on the project route as `?as=personal` or `?as=team:<teamId>`.
+/// Which identity a directory is opened against. Encoded on the project route
+/// as `?as=<identityId>`. Kind is resolved from the loaded identity record.
 @immutable
 class LaunchIdentity {
-  const LaunchIdentity._(this.teamId);
+  const LaunchIdentity(this.identityId);
 
-  /// Simple mode — no team. [teamId] is empty.
-  static const personal = LaunchIdentity._('');
+  final String identityId;
 
-  /// Team mode for [teamId] (must be non-empty).
-  const LaunchIdentity.team(this.teamId);
+  String encode() => identityId;
 
-  /// Stable team id, or empty string for personal.
-  final String teamId;
-
-  bool get isPersonal => teamId.isEmpty;
-
-  String encode() => isPersonal ? 'personal' : 'team:$teamId';
-
-  /// Parses the `?as=` query value. Returns null when absent or malformed.
   static LaunchIdentity? decode(String? raw) {
     final value = raw?.trim() ?? '';
     if (value.isEmpty) return null;
-    if (value == 'personal') return LaunchIdentity.personal;
-    const prefix = 'team:';
-    if (value.startsWith(prefix)) {
-      final id = value.substring(prefix.length).trim();
-      if (id.isEmpty) return null;
-      return LaunchIdentity.team(id);
-    }
-    return null;
+    return LaunchIdentity(value);
   }
 
   @override
@@ -38,11 +21,11 @@ class LaunchIdentity {
       identical(this, other) ||
       other is LaunchIdentity &&
           runtimeType == other.runtimeType &&
-          teamId == other.teamId;
+          identityId == other.identityId;
 
   @override
-  int get hashCode => teamId.hashCode;
+  int get hashCode => identityId.hashCode;
 
   @override
-  String toString() => 'LaunchIdentity(${encode()})';
+  String toString() => 'LaunchIdentity($identityId)';
 }

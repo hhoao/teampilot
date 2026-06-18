@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 
 import '../../l10n/l10n_extensions.dart';
 import '../../models/launch_identity.dart';
+import '../../services/storage/identity_provisioner.dart';
 import '../../widgets/app_dialog.dart';
 
 /// One selectable team in the launch dialog (already sorted by the caller).
@@ -51,9 +52,12 @@ class _LaunchProjectDialog extends StatefulWidget {
 }
 
 class _LaunchProjectDialogState extends State<_LaunchProjectDialog> {
-  late LaunchIdentity _selected =
-      widget.preselected ?? LaunchIdentity.personal;
+  late LaunchIdentity _selected = widget.preselected ??
+      const LaunchIdentity(IdentityProvisioner.defaultPersonalId);
   bool _remember = false;
+
+  static const _defaultPersonal =
+      LaunchIdentity(IdentityProvisioner.defaultPersonalId);
 
   void _choose(LaunchIdentity identity) {
     Navigator.of(context).pop(
@@ -75,15 +79,15 @@ class _LaunchProjectDialogState extends State<_LaunchProjectDialog> {
           ListTile(
             leading: const Icon(Icons.person_outline_rounded),
             title: Text(l10n.homeWorkspaceSimpleMode),
-            selected: _selected == LaunchIdentity.personal,
-            onTap: () => _choose(LaunchIdentity.personal),
+            selected: _selected == _defaultPersonal,
+            onTap: () => _choose(_defaultPersonal),
           ),
           for (final team in widget.teams)
             ListTile(
               leading: const Icon(Icons.groups_2_outlined),
               title: Text(team.name),
-              selected: _selected == LaunchIdentity.team(team.id),
-              onTap: () => _choose(LaunchIdentity.team(team.id)),
+              selected: _selected == LaunchIdentity(team.id),
+              onTap: () => _choose(LaunchIdentity(team.id)),
             ),
           const SizedBox(height: 8),
           CheckboxListTile(
