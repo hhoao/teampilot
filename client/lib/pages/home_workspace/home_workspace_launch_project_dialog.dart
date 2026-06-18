@@ -5,11 +5,17 @@ import '../../models/launch_identity.dart';
 import '../../services/storage/identity_provisioner.dart';
 import '../../widgets/app_dialog.dart';
 
-/// One selectable team in the launch dialog (already sorted by the caller).
-class LaunchProjectTeamOption {
-  const LaunchProjectTeamOption({required this.id, required this.name});
+/// One selectable workspace identity in the launch dialog.
+class LaunchProjectIdentityOption {
+  const LaunchProjectIdentityOption({
+    required this.id,
+    required this.name,
+    required this.isTeam,
+  });
+
   final String id;
   final String name;
+  final bool isTeam;
 }
 
 /// Result of the launch dialog.
@@ -23,14 +29,14 @@ class LaunchProjectChoice {
 Future<LaunchProjectChoice?> showHomeWorkspaceLaunchProjectDialog(
   BuildContext context, {
   required String projectName,
-  required List<LaunchProjectTeamOption> teams,
+  required List<LaunchProjectIdentityOption> identities,
   LaunchIdentity? preselected,
 }) {
   return showDialog<LaunchProjectChoice>(
     context: context,
     builder: (_) => _LaunchProjectDialog(
       projectName: projectName,
-      teams: teams,
+      identities: identities,
       preselected: preselected,
     ),
   );
@@ -39,12 +45,12 @@ Future<LaunchProjectChoice?> showHomeWorkspaceLaunchProjectDialog(
 class _LaunchProjectDialog extends StatefulWidget {
   const _LaunchProjectDialog({
     required this.projectName,
-    required this.teams,
+    required this.identities,
     this.preselected,
   });
 
   final String projectName;
-  final List<LaunchProjectTeamOption> teams;
+  final List<LaunchProjectIdentityOption> identities;
   final LaunchIdentity? preselected;
 
   @override
@@ -56,10 +62,8 @@ class _LaunchProjectDialogState extends State<_LaunchProjectDialog> {
       const LaunchIdentity(IdentityProvisioner.defaultPersonalId);
   bool _remember = false;
 
-  static const _defaultPersonal =
-      LaunchIdentity(IdentityProvisioner.defaultPersonalId);
-
   void _choose(LaunchIdentity identity) {
+    setState(() => _selected = identity);
     Navigator.of(context).pop(
       LaunchProjectChoice(identity: identity, remember: _remember),
     );
@@ -76,18 +80,16 @@ class _LaunchProjectDialogState extends State<_LaunchProjectDialog> {
         children: [
           AppDialogHeader(title: l10n.homeWorkspaceLaunchProjectTitle),
           const SizedBox(height: 12),
-          ListTile(
-            leading: const Icon(Icons.person_outline_rounded),
-            title: Text(l10n.homeWorkspaceSimpleMode),
-            selected: _selected == _defaultPersonal,
-            onTap: () => _choose(_defaultPersonal),
-          ),
-          for (final team in widget.teams)
+          for (final opt in widget.identities)
             ListTile(
-              leading: const Icon(Icons.groups_2_outlined),
-              title: Text(team.name),
-              selected: _selected == LaunchIdentity(team.id),
-              onTap: () => _choose(LaunchIdentity(team.id)),
+              leading: Icon(
+                opt.isTeam
+                    ? Icons.groups_2_outlined
+                    : Icons.person_outline_rounded,
+              ),
+              title: Text(opt.name),
+              selected: _selected == LaunchIdentity(opt.id),
+              onTap: () => _choose(LaunchIdentity(opt.id)),
             ),
           const SizedBox(height: 8),
           CheckboxListTile(

@@ -6,7 +6,7 @@ import 'package:teampilot/pages/home_workspace/home_workspace_launch_project_dia
 import 'package:teampilot/services/storage/identity_provisioner.dart';
 
 void main() {
-  testWidgets('returns personal identity when simple mode is chosen',
+  testWidgets('returns selected personal identity from the list',
       (tester) async {
     LaunchProjectChoice? result;
     await tester.pumpWidget(MaterialApp(
@@ -20,8 +20,17 @@ void main() {
                 result = await showHomeWorkspaceLaunchProjectDialog(
                   context,
                   projectName: 'Repo',
-                  teams: const <LaunchProjectTeamOption>[
-                    LaunchProjectTeamOption(id: 't1', name: 'Backend'),
+                  identities: const <LaunchProjectIdentityOption>[
+                    LaunchProjectIdentityOption(
+                      id: IdentityProvisioner.defaultPersonalId,
+                      name: 'Default',
+                      isTeam: false,
+                    ),
+                    LaunchProjectIdentityOption(
+                      id: 't1',
+                      name: 'Backend',
+                      isTeam: true,
+                    ),
                   ],
                 );
               },
@@ -34,7 +43,7 @@ void main() {
     await tester.tap(find.text('open'));
     await tester.pumpAndSettle();
 
-    await tester.tap(find.text('Simple mode'));
+    await tester.tap(find.text('Default'));
     await tester.pumpAndSettle();
 
     expect(result, isNotNull);

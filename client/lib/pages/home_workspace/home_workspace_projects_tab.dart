@@ -11,6 +11,10 @@ import '../../l10n/l10n_extensions.dart';
 import '../../models/app_project.dart';
 import '../../models/app_session.dart';
 import '../../models/launch_identity.dart';
+import '../../models/personal_identity.dart';
+import '../../models/team_config.dart';
+import '../../models/identity_kind.dart';
+import '../../models/workspace_identity.dart';
 import '../../repositories/session_repository.dart';
 import '../../services/home_workspace/home_workspace_project_launch_prefs_store.dart';
 import '../../theme/app_text_styles.dart';
@@ -53,27 +57,40 @@ Future<void> openHomeWorkspaceProject(
     return;
   }
 
-  final teams = context.read<IdentityCubit>().state.teams;
-  final orderedIds = orderTeamIdsByRecentUse(
+  final identityCubit = context.read<IdentityCubit>();
+  final identities = identityCubit.state.identities;
+  final personals = identities.whereType<PersonalIdentity>().toList();
+  final teams = identities.whereType<TeamIdentity>().toList();
+  final orderedTeamIds = orderTeamIdsByRecentUse(
     projectId: project.projectId,
     teamIds: teams.map((t) => t.id).toList(),
     sessions: sessions,
   );
-  final byId = {for (final t in teams) t.id: t};
-  final options = [
-    for (final id in orderedIds)
-      if (byId[id] != null)
-        LaunchProjectTeamOption(id: id, name: byId[id]!.name),
+  final teamById = {for (final t in teams) t.id: t};
+  final options = <LaunchProjectIdentityOption>[
+    for (final personal in personals)
+      LaunchProjectIdentityOption(
+        id: personal.id,
+        name: personal.display,
+        isTeam: false,
+      ),
+    for (final id in orderedTeamIds)
+      if (teamById[id] != null)
+        LaunchProjectIdentityOption(
+          id: id,
+          name: teamById[id]!.name,
+          isTeam: true,
+        ),
   ];
   final choice = await showHomeWorkspaceLaunchProjectDialog(
     context,
     projectName: project.effectiveDisplay,
-    teams: options,
+    identities: options,
     preselected: pref != null
         ? LaunchIdentity.decode(pref.lastIdentity)
         : resolveProjectLaunchIdentity(
             project,
-            context.read<IdentityCubit>().byId,
+            identityCubit.byId,
           ),
   );
   if (choice == null || !context.mounted) return;
