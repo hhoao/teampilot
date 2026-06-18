@@ -18,7 +18,7 @@ void main() {
   test('hasConfig is true when source layer is runtime or team', () {
     const detail = MemberConfigDetail(
       cli: CliTool.claude,
-      resolvedDir: '/tp/teams-runtime/t/claude',
+      resolvedDir: '/tp/identities-runtime/t/claude',
       sourceLayer: MemberConfigSourceLayer.team,
     );
     expect(detail.hasConfig, isTrue);

@@ -632,7 +632,7 @@ class SessionLifecycleService {
       loadEnabledExtensionIds: loader == null
           ? null
           : ({teamId, projectId}) => loader(
-              identityId: teamId,
+              teamId: teamId,
               projectId: (projectId?.trim().isNotEmpty ?? false)
                   ? projectId
                   : (trimmedProjectId.isNotEmpty ? trimmedProjectId : null),
@@ -726,7 +726,7 @@ class SessionLifecycleService {
         : roots.layout.transcriptSearchRoots(
             projectId: session.projectId.trim(),
             sessionId: session.sessionId.trim(),
-            teamId: teamId,
+            identityId: teamId,
             tools: tools,
           );
     final bucket = RuntimeLayout.projectBucketForPrimaryPath(

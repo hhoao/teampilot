@@ -114,7 +114,7 @@ void main() {
     );
     await writeLoggedInProvider('work');
 
-    const memberHome = '/data/tp/teams-runtime/t1/members/s1/cursor/home';
+    const memberHome = '/data/tp/identities-runtime/t1/members/s1/cursor/home';
     final result = await service.syncAuthToMemberHome('work', memberHome);
     expect(result, CredentialLinkResult.linked);
     expect(

@@ -10,8 +10,8 @@ import 'package:teampilot/repositories/session_repository.dart';
 import 'package:teampilot/repositories/team_repository.dart';
 import 'package:teampilot/services/storage/runtime_layout.dart';
 import 'package:teampilot/services/io/local_filesystem.dart';
-import 'package:teampilot/services/mcp/team_mcp_linker_service.dart';
-import 'package:teampilot/services/plugin/team_plugin_linker_service.dart';
+import 'package:teampilot/services/mcp/identity_mcp_linker_service.dart';
+import 'package:teampilot/services/plugin/identity_plugin_linker_service.dart';
 import 'package:teampilot/services/storage/app_storage.dart';
 import 'package:teampilot/services/storage/runtime_storage_context.dart';
 
@@ -26,30 +26,30 @@ const _extServer = McpServer(
   server: {'command': 'codegraph', 'args': ['serve', '--mcp']},
 );
 
-/// Records every `syncForTeam` call and returns queued results in order.
-class _RecordingMcpLinker extends TeamMcpLinkerService {
+/// Records every `syncForIdentity` call and returns queued results in order.
+class _RecordingMcpLinker extends IdentityMcpLinkerService {
   _RecordingMcpLinker({this.resultsQueue = const []});
 
-  final List<TeamMcpSyncResult> resultsQueue;
+  final List<IdentityMcpSyncResult> resultsQueue;
   final calls =
-      <({String teamId, List<String> mcpServerIds, List<McpServer> catalog})>[];
+      <({String identityId, List<String> mcpServerIds, List<McpServer> catalog})>[];
   int _index = 0;
 
   @override
-  Future<TeamMcpSyncResult> syncForTeam({
-    required String teamId,
+  Future<IdentityMcpSyncResult> syncForIdentity({
+    required String identityId,
     required List<String> mcpServerIds,
     required List<McpServer> catalog,
     required RuntimeLayout layout,
   }) async {
     calls.add((
-      teamId: teamId,
+      identityId: identityId,
       mcpServerIds: List.of(mcpServerIds),
       catalog: List.of(catalog),
     ));
     final result = _index < resultsQueue.length
         ? resultsQueue[_index]
-        : const TeamMcpSyncResult();
+        : const IdentityMcpSyncResult();
     _index++;
     return result;
   }
@@ -57,20 +57,20 @@ class _RecordingMcpLinker extends TeamMcpLinkerService {
 
 /// No-op plugin linker so `selectTeam` doesn't touch the real catalogs
 /// (keeps test output free of benign linker errors).
-class _NoopPluginLinker extends TeamPluginLinkerService {
+class _NoopPluginLinker extends IdentityPluginLinkerService {
   _NoopPluginLinker() : super(appPluginsRoot: '/tmp');
 
   @override
-  Future<TeamPluginSyncResult> syncForTeam({
-    required String teamId,
+  Future<IdentityPluginSyncResult> syncForIdentity({
+    required String identityId,
     required List<String> pluginIds,
     required List<Plugin> installed,
   }) async =>
-      const TeamPluginSyncResult();
+      const IdentityPluginSyncResult();
 }
 
 TeamRepository _repo(Directory dir) =>
-    TeamRepository(rootDir: p.join(dir.path, 'teams'));
+    TeamRepository(rootDir: p.join(dir.path, 'identities'));
 
 void main() {
   group('mergeExtensionMcp', () {
@@ -194,7 +194,7 @@ void main() {
       // First sync reports a missing user id → cubit prunes and re-syncs.
       final linker = _RecordingMcpLinker(
         resultsQueue: const [
-          TeamMcpSyncResult(skippedMissingIds: ['ghost']),
+          IdentityMcpSyncResult(skippedMissingIds: ['ghost']),
         ],
       );
       final cubit = TeamCubit(

@@ -12,7 +12,7 @@ import 'package:teampilot/services/storage/app_storage.dart';
 import 'package:teampilot/services/io/local_filesystem.dart';
 import 'package:teampilot/services/plugin/plugin_install_service.dart';
 import 'package:teampilot/services/storage/runtime_storage_context.dart';
-import 'package:teampilot/services/plugin/team_plugin_linker_service.dart';
+import 'package:teampilot/services/plugin/identity_plugin_linker_service.dart';
 
 void main() {
   late Directory tmp;
@@ -56,7 +56,7 @@ void main() {
     expect(installed.any((p) => p.id == plugin.id), isTrue);
 
     // 4. Create a team with this plugin enabled
-    final teamRepo = TeamRepository(rootDir: p.join(tmp.path, 'teams'));
+    final teamRepo = TeamRepository(rootDir: p.join(tmp.path, 'identities'));
     final team = TeamIdentity(
       id: 'integ-team',
       name: 'Integration Team',
@@ -65,11 +65,11 @@ void main() {
     await teamRepo.saveTeams([team]);
 
     // 5. Sync plugins via linker
-    final linker = TeamPluginLinkerService(
+    final linker = IdentityPluginLinkerService(
       appPluginsRoot: p.join(tmp.path, 'plugins', 'installed'),
     );
-    final result = await linker.syncForTeam(
-      teamId: 'integ-team',
+    final result = await linker.syncForIdentity(
+      identityId: 'integ-team',
       pluginIds: team.pluginIds,
       installed: installed,
     );
@@ -78,7 +78,7 @@ void main() {
     final teamPluginDir = Directory(
       p.join(
         tmp.path,
-        'teams-runtime',
+        'identities-runtime',
         'integ-team',
         'flashskyai',
         'plugins',
@@ -88,8 +88,8 @@ void main() {
     expect(await teamPluginDir.exists(), isTrue);
 
     // 6. Remove plugin from team, sync again
-    await linker.syncForTeam(
-      teamId: 'integ-team',
+    await linker.syncForIdentity(
+      identityId: 'integ-team',
       pluginIds: const [],
       installed: installed,
     );

@@ -12,9 +12,9 @@ import 'package:teampilot/repositories/app_settings_repository.dart';
 import 'package:teampilot/repositories/session_repository.dart';
 import 'package:teampilot/repositories/team_repository.dart';
 import 'package:teampilot/services/app/onboarding_service.dart';
-import 'package:teampilot/services/plugin/team_plugin_linker_service.dart';
+import 'package:teampilot/services/plugin/identity_plugin_linker_service.dart';
 
-class _NoopPluginLinker extends TeamPluginLinkerService {
+class _NoopPluginLinker extends IdentityPluginLinkerService {
   _NoopPluginLinker() : super(appPluginsRoot: '/tmp');
 }
 
@@ -69,7 +69,7 @@ void main() {
   group('OnboardingService.applyDefaultClaudeProviderBinding', () {
     test('binds selected claude provider to teams without team binding', () async {
       final dir = await Directory.systemTemp.createTemp('onboarding-provider-bind_');
-      final teamRepo = TeamRepository(rootDir: p.join(dir.path, 'teams'));
+      final teamRepo = TeamRepository(rootDir: p.join(dir.path, 'identities'));
       const team = TeamIdentity(
         id: 'default-team',
         name: 'Default Team',

@@ -4,17 +4,17 @@ import 'dart:io';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:teampilot/models/mcp_server.dart';
 import 'package:teampilot/services/storage/runtime_layout.dart';
-import 'package:teampilot/services/mcp/team_mcp_linker_service.dart';
+import 'package:teampilot/services/mcp/identity_mcp_linker_service.dart';
 
 void main() {
   late Directory root;
   late RuntimeLayout layout;
-  late TeamMcpLinkerService linker;
+  late IdentityMcpLinkerService linker;
 
   setUp(() async {
     root = await Directory.systemTemp.createTemp('team_mcp_linker_');
     layout = RuntimeLayout(teampilotRoot: root.path);
-    linker = TeamMcpLinkerService();
+    linker = IdentityMcpLinkerService();
   });
 
   tearDown(() async {
@@ -29,8 +29,8 @@ void main() {
       createdAt: 1,
       updatedAt: 1,
     );
-    final result = await linker.syncForTeam(
-      teamId: 'team-a',
+    final result = await linker.syncForIdentity(
+      identityId: 'team-a',
       mcpServerIds: const ['fetch', 'missing'],
       catalog: [server],
       layout: layout,
@@ -58,8 +58,8 @@ void main() {
       createdAt: 1,
       updatedAt: 1,
     );
-    await linker.syncForTeam(
-      teamId: 'team-a',
+    await linker.syncForIdentity(
+      identityId: 'team-a',
       mcpServerIds: const ['github'],
       catalog: [server],
       layout: layout,
@@ -79,8 +79,8 @@ void main() {
       createdAt: 1,
       updatedAt: 1,
     );
-    await linker.syncForTeam(
-      teamId: 'team-a',
+    await linker.syncForIdentity(
+      identityId: 'team-a',
       mcpServerIds: const ['off'],
       catalog: [server],
       layout: layout,

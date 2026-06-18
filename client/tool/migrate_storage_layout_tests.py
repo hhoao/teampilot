@@ -32,9 +32,9 @@ SUBS = [
     ("posix.join(teampilotRoot, 'projects')", "posix.join(teampilotRoot, 'workspace')"),
 ]
 
-# config-profiles -> cli-defaults / teams-runtime (order matters)
+# config-profiles -> cli-defaults / identities-runtime (order matters)
 PATH_SUBS = [
-    ("config-profiles/teams/", "teams-runtime/"),
+    ("config-profiles/teams/", "identities-runtime/"),
     ("config-profiles/standalone/projects/", "workspace/projects/"),
     ("config-profiles/", "cli-defaults/"),
     ("'/projects'", "'/workspace'"),

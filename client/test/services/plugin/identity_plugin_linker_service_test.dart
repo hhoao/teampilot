@@ -6,7 +6,7 @@ import 'package:teampilot/models/plugin.dart';
 import 'package:teampilot/services/storage/app_storage.dart';
 import 'package:teampilot/services/io/local_filesystem.dart';
 import 'package:teampilot/services/storage/runtime_storage_context.dart';
-import 'package:teampilot/services/plugin/team_plugin_linker_service.dart';
+import 'package:teampilot/services/plugin/identity_plugin_linker_service.dart';
 
 void main() {
   late Directory tmp;
@@ -29,7 +29,7 @@ void main() {
     tmp.deleteSync(recursive: true);
   });
 
-  test('syncForTeam links CLI bundles under team plugin dir on Unix', () async {
+  test('syncForIdentity links CLI bundles under team plugin dir on Unix', () async {
     final pluginsRoot = Directory(p.join(tmp.path, 'plugins', 'installed'))
       ..createSync(recursive: true);
     final pluginDir = Directory(p.join(pluginsRoot.path, 'acme__market__p1'))
@@ -39,9 +39,9 @@ void main() {
       p.join(pluginDir.path, '.claude-plugin', 'plugin.json'),
     ).writeAsStringSync('{"name":"p1","version":"1.0.0"}');
 
-    final svc = TeamPluginLinkerService(appPluginsRoot: pluginsRoot.path);
-    final result = await svc.syncForTeam(
-      teamId: 't1',
+    final svc = IdentityPluginLinkerService(appPluginsRoot: pluginsRoot.path);
+    final result = await svc.syncForIdentity(
+      identityId: 't1',
       pluginIds: ['acme/market/p1'],
       installed: const [
         Plugin(
@@ -60,7 +60,7 @@ void main() {
     expect(result.errors, isEmpty);
     expect(result.linked, ['p1']);
     final teamBundle = Directory(
-      p.join(tmp.path, 'teams-runtime', 't1', 'flashskyai', 'plugins', 'p1'),
+      p.join(tmp.path, 'identities-runtime', 't1', 'flashskyai', 'plugins', 'p1'),
     );
     expect(teamBundle.existsSync(), isTrue);
     if (Platform.isLinux || Platform.isMacOS) {
@@ -77,17 +77,17 @@ void main() {
     );
   });
 
-  test('syncForTeam removes stale links not in pluginIds', () async {
+  test('syncForIdentity removes stale links not in pluginIds', () async {
     final teamPluginsDir = Directory(
-      p.join(tmp.path, 'teams-runtime', 't1', 'flashskyai', 'plugins'),
+      p.join(tmp.path, 'identities-runtime', 't1', 'flashskyai', 'plugins'),
     )..createSync(recursive: true);
     Directory(p.join(teamPluginsDir.path, 'old-plugin')).createSync();
 
-    final svc = TeamPluginLinkerService(
+    final svc = IdentityPluginLinkerService(
       appPluginsRoot: p.join(tmp.path, 'plugins', 'installed'),
     );
-    final result = await svc.syncForTeam(
-      teamId: 't1',
+    final result = await svc.syncForIdentity(
+      identityId: 't1',
       pluginIds: const [],
       installed: const [],
     );
@@ -98,20 +98,20 @@ void main() {
     );
   });
 
-  test('syncForTeam reports skippedMissingIds when plugin source is missing',
+  test('syncForIdentity reports skippedMissingIds when plugin source is missing',
       () async {
-    final svc = TeamPluginLinkerService(
+    final svc = IdentityPluginLinkerService(
       appPluginsRoot: p.join(tmp.path, 'plugins', 'installed'),
     );
-    final result = await svc.syncForTeam(
-      teamId: 't1',
+    final result = await svc.syncForIdentity(
+      identityId: 't1',
       pluginIds: ['gone/market/p'],
       installed: const [],
     );
     expect(result.skippedMissingIds, ['gone/market/p']);
   });
 
-  test('syncForTeam resolves plugin-name collision with owner__name fallback',
+  test('syncForIdentity resolves plugin-name collision with owner__name fallback',
       () async {
     final pluginsRoot = Directory(p.join(tmp.path, 'plugins', 'installed'))
       ..createSync(recursive: true);
@@ -129,9 +129,9 @@ void main() {
       ..createSync();
     writeBundle(dirB, 'shared');
 
-    final svc = TeamPluginLinkerService(appPluginsRoot: pluginsRoot.path);
-    final result = await svc.syncForTeam(
-      teamId: 't1',
+    final svc = IdentityPluginLinkerService(appPluginsRoot: pluginsRoot.path);
+    final result = await svc.syncForIdentity(
+      identityId: 't1',
       pluginIds: ['acmeA/market/shared', 'acmeB/market/shared'],
       installed: [
         const Plugin(

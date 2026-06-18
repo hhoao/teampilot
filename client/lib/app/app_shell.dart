@@ -27,7 +27,7 @@ import '../cubits/cli_presets_cubit.dart';
 import '../repositories/cli_presets_repository.dart';
 import '../cubits/skill_cubit.dart';
 import '../repositories/mcp_repository.dart';
-import '../services/mcp/team_mcp_linker_service.dart';
+import '../services/mcp/identity_mcp_linker_service.dart';
 import '../cubits/ssh_profile_cubit.dart';
 import '../cubits/team_cubit.dart';
 import '../cubits/team_hub_cubit.dart';
@@ -82,7 +82,7 @@ import '../services/skill/skill_repo_git_service.dart';
 import '../services/skill/skill_repo_service.dart';
 import '../services/ssh/ssh_client_factory.dart';
 import '../services/plugin/project_plugin_linker_service.dart';
-import '../services/plugin/team_plugin_linker_service.dart';
+import '../services/plugin/identity_plugin_linker_service.dart';
 import '../services/terminal/terminal_transport_factory.dart';
 import '../services/terminal/workspace_terminal_registry.dart';
 import '../utils/logger.dart';
@@ -463,10 +463,10 @@ Future<AppShell> buildAppShell({
     llmConfigPathOverride: llmConfigPathOverrideForLaunch,
     storageRootsResolver: storageRoots.resolve,
     lifecycleService: sessionLifecycleService,
-    pluginLinker: TeamPluginLinkerService(storageRoots: storageRoots),
+    pluginLinker: IdentityPluginLinkerService(storageRoots: storageRoots),
     pluginRepository: pluginRepository,
     installedPluginsLoader: () => pluginRepository.loadAll(),
-    mcpLinker: TeamMcpLinkerService(),
+    mcpLinker: IdentityMcpLinkerService(),
     mcpRepository: mcpRepository,
     installedMcpLoader: () => mcpRepository.loadAll(),
     extensionMcpContributor: (teamId) async {

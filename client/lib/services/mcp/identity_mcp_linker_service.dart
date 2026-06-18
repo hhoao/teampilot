@@ -5,8 +5,8 @@ import '../storage/runtime_layout.dart';
 import '../io/filesystem.dart';
 import '../io/local_filesystem.dart';
 
-class TeamMcpSyncResult {
-  const TeamMcpSyncResult({
+class IdentityMcpSyncResult {
+  const IdentityMcpSyncResult({
     this.linked = const [],
     this.skippedMissingIds = const [],
     this.errors = const [],
@@ -19,22 +19,22 @@ class TeamMcpSyncResult {
   bool get ok => errors.isEmpty;
 }
 
-/// Writes team MCP snapshot to
-/// `config-profiles/teams/{teamId}/mcp/servers.json`.
-class TeamMcpLinkerService {
-  TeamMcpLinkerService({Filesystem? fs}) : _fs = fs ?? LocalFilesystem();
+/// Writes identity MCP snapshot to
+/// `identities-runtime/{identityId}/mcp/servers.json`.
+class IdentityMcpLinkerService {
+  IdentityMcpLinkerService({Filesystem? fs}) : _fs = fs ?? LocalFilesystem();
 
   final Filesystem _fs;
 
-  Future<TeamMcpSyncResult> syncForTeam({
-    required String teamId,
+  Future<IdentityMcpSyncResult> syncForIdentity({
+    required String identityId,
     required List<String> mcpServerIds,
     required List<McpServer> catalog,
     required RuntimeLayout layout,
   }) async {
-    final trimmedTeamId = teamId.trim();
-    if (trimmedTeamId.isEmpty) {
-      return const TeamMcpSyncResult();
+    final trimmedIdentityId = identityId.trim();
+    if (trimmedIdentityId.isEmpty) {
+      return const IdentityMcpSyncResult();
     }
 
     final byId = {for (final s in catalog) s.id: s};
@@ -58,9 +58,9 @@ class TeamMcpLinkerService {
       linked.add(id);
     }
 
-    final outPath = layout.identityMcpServersFile(trimmedTeamId);
+    final outPath = layout.identityMcpServersFile(trimmedIdentityId);
     try {
-      await _fs.ensureDir(layout.identityMcpDir(trimmedTeamId));
+      await _fs.ensureDir(layout.identityMcpDir(trimmedIdentityId));
       await _fs.atomicWrite(
         outPath,
         const JsonEncoder.withIndent('  ').convert({
@@ -69,12 +69,12 @@ class TeamMcpLinkerService {
             'smitheryServerKeys': smitheryServerKeys,
         }),
       );
-      return TeamMcpSyncResult(linked: linked, skippedMissingIds: skipped);
+      return IdentityMcpSyncResult(linked: linked, skippedMissingIds: skipped);
     } catch (e) {
-      return TeamMcpSyncResult(
+      return IdentityMcpSyncResult(
         linked: linked,
         skippedMissingIds: skipped,
-        errors: ['Failed to write team MCP snapshot: $e'],
+        errors: ['Failed to write identity MCP snapshot: $e'],
       );
     }
   }

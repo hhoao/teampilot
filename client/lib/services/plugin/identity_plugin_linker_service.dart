@@ -7,8 +7,8 @@ import '../cli/registry/capabilities/plugin_manifest_capability.dart';
 import '../storage/storage_resolver.dart';
 import '../io/filesystem.dart';
 
-class TeamPluginSyncResult {
-  const TeamPluginSyncResult({
+class IdentityPluginSyncResult {
+  const IdentityPluginSyncResult({
     this.linked = const [],
     this.skippedMissingIds = const [],
     this.errors = const [],
@@ -23,12 +23,12 @@ class TeamPluginSyncResult {
   bool get ok => errors.isEmpty;
 }
 
-/// Provisions team-scope plugin bundles under
-/// `config-profiles/teams/<teamId>/flashskyai/plugins/<manifest-name>/`.
+/// Provisions identity-scope plugin bundles under
+/// `identities-runtime/<identityId>/flashskyai/plugins/<manifest-name>/`.
 ///
 /// Each entry is a symlink (or copy fallback) to the app-level plugin root.
-class TeamPluginLinkerService {
-  TeamPluginLinkerService({String? appPluginsRoot, StorageRoots? storageRoots})
+class IdentityPluginLinkerService {
+  IdentityPluginLinkerService({String? appPluginsRoot, StorageRoots? storageRoots})
     : _appPluginsRoot = appPluginsRoot,
       _storageRoots = storageRoots;
 
@@ -39,21 +39,21 @@ class TeamPluginLinkerService {
     final root = _appPluginsRoot;
     if (root != null) return root;
     throw StateError(
-      'TeamPluginLinkerService requires appPluginsRoot or storageRoots.',
+      'IdentityPluginLinkerService requires appPluginsRoot or storageRoots.',
     );
   }
 
   String sourceDirFor(Plugin plugin) =>
       AppStorage.fs.pathContext.join(appPluginsDir, plugin.directory);
 
-  Future<TeamPluginSyncResult> syncForTeam({
-    required String teamId,
+  Future<IdentityPluginSyncResult> syncForIdentity({
+    required String identityId,
     required List<String> pluginIds,
     required List<Plugin> installed,
   }) async {
-    final trimmedTeamId = teamId.trim();
-    if (trimmedTeamId.isEmpty) {
-      return const TeamPluginSyncResult();
+    final trimmedIdentityId = identityId.trim();
+    if (trimmedIdentityId.isEmpty) {
+      return const IdentityPluginSyncResult();
     }
 
     final byId = {for (final p in installed) p.id: p};
@@ -73,7 +73,7 @@ class TeamPluginLinkerService {
     final layout =
         roots?.layout ??
         RuntimeLayout(teampilotRoot: _appPluginsRootParent(), fs: fs);
-    final identityPluginsDir = layout.identityPluginsDir(trimmedTeamId);
+    final identityPluginsDir = layout.identityPluginsDir(trimmedIdentityId);
     final sourceRoot = roots?.pluginsRoot ?? appPluginsDir;
     return _syncWithFilesystem(
       fs: fs,
@@ -90,7 +90,7 @@ class TeamPluginLinkerService {
     return AppPaths.teampilotRootFromInstalledScopeDir(root);
   }
 
-  Future<TeamPluginSyncResult> _syncWithFilesystem({
+  Future<IdentityPluginSyncResult> _syncWithFilesystem({
     required Filesystem fs,
     required String sourceRoot,
     required String identityPluginsDir,
@@ -109,9 +109,9 @@ class TeamPluginLinkerService {
         await fs.removeRecursive(path.join(identityPluginsDir, entry.name));
       }
     } catch (e) {
-      return TeamPluginSyncResult(
+      return IdentityPluginSyncResult(
         skippedMissingIds: skipped,
-        errors: ['Failed to clear team plugins dir: $e'],
+        errors: ['Failed to clear identity plugins dir: $e'],
       );
     }
 
@@ -158,11 +158,11 @@ class TeamPluginLinkerService {
         linked.add(targetName);
       } catch (e) {
         errors.add('${plugin.name}: $e');
-        appLogger.w('[team-plugins] link failed for ${plugin.id}: $e');
+        appLogger.w('[identity-plugins] link failed for ${plugin.id}: $e');
       }
     }
 
-    return TeamPluginSyncResult(
+    return IdentityPluginSyncResult(
       linked: linked,
       skippedMissingIds: skipped,
       errors: errors,

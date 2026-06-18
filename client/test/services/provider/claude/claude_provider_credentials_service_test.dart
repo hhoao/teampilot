@@ -97,7 +97,7 @@ void main() {
       fs.pathContext.join(base, 'providers', 'claude', 'work', '.credentials.json'),
       '{"claudeAiOauth":{"accessToken":"work"}}',
     );
-    const sessionDir = '/data/tp/teams-runtime/t1/members/s1/claude';
+    const sessionDir = '/data/tp/identities-runtime/t1/members/s1/claude';
     final result = await service.ensureLinked(sessionDir, 'work');
     expect(result, CredentialLinkResult.linked);
     expect(
@@ -113,7 +113,7 @@ void main() {
       fs.pathContext.join(base, 'providers', 'claude', 'work', '.credentials.json'),
       '{"claudeAiOauth":{"accessToken":"work"}}',
     );
-    const sessionDir = '/data/tp/teams-runtime/t1/members/s1/claude';
+    const sessionDir = '/data/tp/identities-runtime/t1/members/s1/claude';
     await fs.writeString(
       fs.pathContext.join(sessionDir, '.credentials.json'),
       '{"claudeAiOauth":{"accessToken":"existing"}}',
@@ -123,7 +123,7 @@ void main() {
   });
 
   test('ensureLinked returns missing when provider has no cred', () async {
-    const sessionDir = '/data/tp/teams-runtime/t1/members/s1/claude';
+    const sessionDir = '/data/tp/identities-runtime/t1/members/s1/claude';
     final result = await service.ensureLinked(sessionDir, 'work');
     expect(result, CredentialLinkResult.missing);
   });

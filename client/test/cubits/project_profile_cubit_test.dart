@@ -7,7 +7,7 @@ import 'package:teampilot/models/project_profile.dart';
 import 'package:teampilot/models/team_config.dart';
 import 'package:teampilot/repositories/project_profile_repository.dart';
 import 'package:teampilot/services/plugin/project_plugin_linker_service.dart';
-import 'package:teampilot/services/plugin/team_plugin_linker_service.dart';
+import 'package:teampilot/services/plugin/identity_plugin_linker_service.dart';
 
 void main() {
   late Directory tmp;
@@ -134,7 +134,7 @@ class _RecordingPluginLinker extends ProjectPluginLinkerService {
   List<String> lastPluginIds = const [];
 
   @override
-  Future<TeamPluginSyncResult> syncForProject({
+  Future<IdentityPluginSyncResult> syncForProject({
     required String projectId,
     required List<String> pluginIds,
     required List<Plugin> installed,
@@ -142,6 +142,6 @@ class _RecordingPluginLinker extends ProjectPluginLinkerService {
     syncCalls += 1;
     lastProjectId = projectId;
     lastPluginIds = List<String>.from(pluginIds);
-    return const TeamPluginSyncResult(linked: ['a']);
+    return const IdentityPluginSyncResult(linked: ['a']);
   }
 }

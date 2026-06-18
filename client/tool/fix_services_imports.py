@@ -53,7 +53,7 @@ FILE_TO_SUBDIR: dict[str, str] = {
     "cli_plugin_manifest_flavor.dart": "plugin",
     "cli_plugin_provision_cache.dart": "plugin",
     "plugin_repo_disk_cache_service.dart": "plugin",
-    "team_plugin_linker_service.dart": "plugin",
+    "identity_plugin_linker_service.dart": "plugin",
     "skill_repo_service.dart": "skill",
     "skill_fetch_service.dart": "skill",
     "skill_manifest_service.dart": "skill",

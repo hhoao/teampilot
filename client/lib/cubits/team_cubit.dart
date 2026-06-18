@@ -14,8 +14,8 @@ import '../services/cli/registry/cli_tool_registry.dart';
 import '../services/team/default_team_project_service.dart';
 import '../services/provider/config_profile_service.dart';
 import '../services/session/session_lifecycle_service.dart';
-import '../services/mcp/team_mcp_linker_service.dart';
-import '../services/plugin/team_plugin_linker_service.dart';
+import '../services/mcp/identity_mcp_linker_service.dart';
+import '../services/plugin/identity_plugin_linker_service.dart';
 import '../utils/logger.dart';
 import '../utils/team_member_naming.dart';
 import 'team/model/team_state.dart';
@@ -47,10 +47,10 @@ class TeamCubit extends Cubit<TeamState> implements TeamCubitHost {
     ConfigProfileService? configProfileService,
     StorageRootsResolver? storageRootsResolver,
     SessionLifecycleService? lifecycleService,
-    TeamPluginLinkerService? pluginLinker,
+    IdentityPluginLinkerService? pluginLinker,
     PluginRepository? pluginRepository,
     InstalledPluginsLoader? installedPluginsLoader,
-    TeamMcpLinkerService? mcpLinker,
+    IdentityMcpLinkerService? mcpLinker,
     McpRepository? mcpRepository,
     InstalledMcpLoader? installedMcpLoader,
     Future<List<McpServer>> Function(String teamId)? extensionMcpContributor,
@@ -72,10 +72,10 @@ class TeamCubit extends Cubit<TeamState> implements TeamCubitHost {
              configProfileService: configProfileService,
              storageRootsResolver: storageRootsResolver,
            ),
-       _pluginLinker = pluginLinker ?? TeamPluginLinkerService(),
+       _pluginLinker = pluginLinker ?? IdentityPluginLinkerService(),
        _pluginRepository = pluginRepository ?? PluginRepository(),
        _installedPluginsLoader = installedPluginsLoader,
-       _mcpLinker = mcpLinker ?? TeamMcpLinkerService(),
+       _mcpLinker = mcpLinker ?? IdentityMcpLinkerService(),
        _mcpRepository = mcpRepository ?? McpRepository(),
        _installedMcpLoader = installedMcpLoader,
        _extensionMcpContributor = extensionMcpContributor ?? _noExtensionMcp,
@@ -94,10 +94,10 @@ class TeamCubit extends Cubit<TeamState> implements TeamCubitHost {
   final ConfigProfileService? _configProfileService;
   final StorageRootsResolver? _storageRootsResolver;
   final SessionLifecycleService _lifecycle;
-  final TeamPluginLinkerService _pluginLinker;
+  final IdentityPluginLinkerService _pluginLinker;
   final PluginRepository _pluginRepository;
   final InstalledPluginsLoader? _installedPluginsLoader;
-  final TeamMcpLinkerService _mcpLinker;
+  final IdentityMcpLinkerService _mcpLinker;
   final McpRepository _mcpRepository;
   final InstalledMcpLoader? _installedMcpLoader;
   final Future<List<McpServer>> Function(String teamId)

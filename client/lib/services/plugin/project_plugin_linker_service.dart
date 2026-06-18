@@ -6,7 +6,7 @@ import 'cli_plugin_layout.dart';
 import '../cli/registry/capabilities/plugin_manifest_capability.dart';
 import '../storage/storage_resolver.dart';
 import '../io/filesystem.dart';
-import 'team_plugin_linker_service.dart';
+import 'identity_plugin_linker_service.dart';
 
 /// Provisions personal-project plugin bundles under
 /// `config-profiles/standalone/projects/<projectId>/flashskyai/plugins/<manifest-name>/`.
@@ -33,14 +33,14 @@ class ProjectPluginLinkerService {
   String sourceDirFor(Plugin plugin) =>
       AppStorage.fs.pathContext.join(appPluginsDir, plugin.directory);
 
-  Future<TeamPluginSyncResult> syncForProject({
+  Future<IdentityPluginSyncResult> syncForProject({
     required String projectId,
     required List<String> pluginIds,
     required List<Plugin> installed,
   }) async {
     final trimmedProjectId = projectId.trim();
     if (trimmedProjectId.isEmpty) {
-      return const TeamPluginSyncResult();
+      return const IdentityPluginSyncResult();
     }
 
     final byId = {for (final p in installed) p.id: p};
@@ -77,7 +77,7 @@ class ProjectPluginLinkerService {
     return AppPaths.teampilotRootFromInstalledScopeDir(root);
   }
 
-  Future<TeamPluginSyncResult> _syncWithFilesystem({
+  Future<IdentityPluginSyncResult> _syncWithFilesystem({
     required Filesystem fs,
     required String sourceRoot,
     required String projectPluginsDir,
@@ -96,7 +96,7 @@ class ProjectPluginLinkerService {
         await fs.removeRecursive(path.join(projectPluginsDir, entry.name));
       }
     } catch (e) {
-      return TeamPluginSyncResult(
+      return IdentityPluginSyncResult(
         skippedMissingIds: skipped,
         errors: ['Failed to clear project plugins dir: $e'],
       );
@@ -149,7 +149,7 @@ class ProjectPluginLinkerService {
       }
     }
 
-    return TeamPluginSyncResult(
+    return IdentityPluginSyncResult(
       linked: linked,
       skippedMissingIds: skipped,
       errors: errors,

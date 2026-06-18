@@ -145,7 +145,7 @@ void main() {
     await service.ensureTeamProfile('team-a', cli: CliTool.flashskyai);
 
     final teamRoot = Directory(
-      p.join(base.path, 'teams-runtime', 'team-a'),
+      p.join(base.path, 'identities-runtime', 'team-a'),
     );
     expect(await teamRoot.exists(), isTrue);
     expect(

@@ -12,29 +12,29 @@ import 'package:teampilot/services/provider/config_profile_service.dart';
 import 'package:teampilot/services/io/local_filesystem.dart';
 import 'package:teampilot/services/storage/runtime_storage_context.dart';
 import 'package:teampilot/services/session/session_lifecycle_service.dart';
-import 'package:teampilot/services/plugin/team_plugin_linker_service.dart';
+import 'package:teampilot/services/plugin/identity_plugin_linker_service.dart';
 import 'package:teampilot/utils/team_member_naming.dart';
 
 import '../support/post_frame_test_harness.dart';
 
-class _RecordingPluginLinker extends TeamPluginLinkerService {
+class _RecordingPluginLinker extends IdentityPluginLinkerService {
   _RecordingPluginLinker() : super(appPluginsRoot: '/tmp');
 
   final syncs =
-      <({String teamId, List<String> pluginIds, List<Plugin> installed})>[];
+      <({String identityId, List<String> pluginIds, List<Plugin> installed})>[];
 
   @override
-  Future<TeamPluginSyncResult> syncForTeam({
-    required String teamId,
+  Future<IdentityPluginSyncResult> syncForIdentity({
+    required String identityId,
     required List<String> pluginIds,
     required List<Plugin> installed,
   }) async {
     syncs.add((
-      teamId: teamId,
+      identityId: identityId,
       pluginIds: List.of(pluginIds),
       installed: List.of(installed),
     ));
-    return const TeamPluginSyncResult();
+    return const IdentityPluginSyncResult();
   }
 }
 
@@ -51,7 +51,7 @@ class _RecordingLifecycleService extends SessionLifecycleService {
 }
 
 TeamRepository _repo(Directory dir) =>
-    TeamRepository(rootDir: p.join(dir.path, 'teams'));
+    TeamRepository(rootDir: p.join(dir.path, 'identities'));
 
 Future<void> _deleteTempDirBestEffort(Directory dir) async {
   for (var attempt = 0; attempt < 8; attempt++) {
@@ -167,7 +167,7 @@ void main() {
       cubit.state.teams.every((t) => !t.pluginIds.contains('acme/market/p1')),
       isTrue,
     );
-    expect(linker.syncs.map((s) => s.teamId).toSet(), {'a', 'b'});
+    expect(linker.syncs.map((s) => s.identityId).toSet(), {'a', 'b'});
 
     await dir.delete(recursive: true);
   });
@@ -245,7 +245,7 @@ void main() {
 
     await cubit.syncTeamsUsingPlugin('acme/market/p1');
 
-    expect(linker.syncs.map((s) => s.teamId).toSet(), {'a', 'b'});
+    expect(linker.syncs.map((s) => s.identityId).toSet(), {'a', 'b'});
     await dir.delete(recursive: true);
   });
 
@@ -311,7 +311,7 @@ void main() {
       final dir = await Directory.systemTemp.createTemp('team-cubit-');
       final lifecycle = _RecordingLifecycleService();
       final repo = TeamRepository(
-        rootDir: p.join(dir.path, 'teams'),
+        rootDir: p.join(dir.path, 'identities'),
         lifecycleService: lifecycle,
       );
       final cubit = TeamCubit(
@@ -331,13 +331,13 @@ void main() {
 
       expect(await cubit.renameSelectedTeamName('New'), isTrue);
       expect(cubit.state.selectedTeam?.name, 'New');
-      expect(File(p.join(dir.path, 'teams', 'New.json')).existsSync(), isTrue);
-      expect(File(p.join(dir.path, 'teams', 'Old.json')).existsSync(), isFalse);
+      expect(File(p.join(dir.path, 'identities', 'New.json')).existsSync(), isTrue);
+      expect(File(p.join(dir.path, 'identities', 'Old.json')).existsSync(), isFalse);
       expect(lifecycle.destroyedTeams, isEmpty);
 
       await cubit.deleteSelected();
       expect(lifecycle.destroyedTeams, ['old']);
-      expect(File(p.join(dir.path, 'teams', 'New.json')).existsSync(), isFalse);
+      expect(File(p.join(dir.path, 'identities', 'New.json')).existsSync(), isFalse);
 
       await _drainAndCloseTeamCubit(cubit);
       await dir.delete(recursive: true);
@@ -385,7 +385,7 @@ void main() {
 
     expect(await cubit.addTeam('alpha'), isTrue);
 
-    final teamRoot = p.join(base.path, 'teams-runtime', 'alpha');
+    final teamRoot = p.join(base.path, 'identities-runtime', 'alpha');
     expect(await Directory(teamRoot).exists(), isTrue);
     expect(await Directory(p.join(teamRoot, 'flashskyai')).exists(), isFalse);
     expect(cubit.state.teams.single.cli, CliTool.claude);
@@ -608,7 +608,7 @@ void main() {
     await cubit.launchSelectedTeam();
 
     expect(launched, ['team-lead', 'developer']);
-    final teamRoot = p.join(base.path, 'teams-runtime', 'claude-team');
+    final teamRoot = p.join(base.path, 'identities-runtime', 'claude-team');
     expect(await Directory(teamRoot).exists(), isTrue);
 
     await _drainAndCloseTeamCubit(cubit);
@@ -629,7 +629,7 @@ void main() {
 
     await cubit.load(awaitProfiles: true);
 
-    final teamRoot = p.join(base.path, 'teams-runtime', 'default-team');
+    final teamRoot = p.join(base.path, 'identities-runtime', 'default-team');
     expect(await Directory(teamRoot).exists(), isTrue);
     expect(await Directory(p.join(teamRoot, 'flashskyai')).exists(), isFalse);
 
