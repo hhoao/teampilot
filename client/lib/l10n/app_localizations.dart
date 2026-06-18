@@ -49,9 +49,9 @@ import 'app_localizations_zh.dart';
 /// To configure the locales supported by your app, you’ll need to edit this
 /// file.
 ///
-/// First, open your workspace’s ios/Runner.xcworkspace Xcode workspace file.
-/// Then, in the Workspace Navigator, open the Info.plist file under the Runner
-/// workspace’s Runner folder.
+/// First, open your project’s ios/Runner.xcworkspace Xcode workspace file.
+/// Then, in the Project Navigator, open the Info.plist file under the Runner
+/// project’s Runner folder.
 ///
 /// Next, select the Information Property List item, select Add Item from the
 /// Editor menu, then select Localizations from the pop-up menu.
@@ -1424,11 +1424,11 @@ abstract class AppLocalizations {
   /// **'Extra flags appended when starting the agent in this workspace.'**
   String get workspaceAgentExtraArgsSubtitle;
 
-  /// No description provided for @workspaceAdvancedSettingsSubtitle.
+  /// No description provided for @workspaceWorkbenchAdvancedSettingsSubtitle.
   ///
   /// In en, this message translates to:
   /// **'Agent preset and extra CLI flags for this workspace.'**
-  String get workspaceAdvancedSettingsSubtitle;
+  String get workspaceWorkbenchAdvancedSettingsSubtitle;
 
   /// No description provided for @workspaceAgentPromptSubtitle.
   ///

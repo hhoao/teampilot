@@ -1,0 +1,52 @@
+import 'dart:io';
+
+import 'package:flutter_test/flutter_test.dart';
+import 'package:teampilot/pages/home_workspace/workspace_sort.dart';
+import 'package:teampilot/services/home_workspace/workspace_display_prefs_store.dart';
+import 'package:teampilot/services/io/local_filesystem.dart';
+import 'package:teampilot/services/storage/app_storage.dart';
+
+void main() {
+  late Directory root;
+  late WorkspaceDisplayPrefsStore store;
+
+  setUp(() {
+    root = Directory.systemTemp.createTempSync('workspace_display_prefs_');
+    final paths = AppPaths(root.path);
+    final fs = LocalFilesystem(
+      pathContext: AppPaths.pathContextForDataRoot(paths.basePath),
+    );
+    store = WorkspaceDisplayPrefsStore(
+      fs: fs,
+      pathOverride: paths.homeWorkspaceWorkspaceDisplayPrefsJson,
+    );
+  });
+
+  tearDown(() {
+    if (root.existsSync()) {
+      root.deleteSync(recursive: true);
+    }
+  });
+
+  test('load returns defaults when file is missing', () async {
+    final prefs = await store.load();
+    expect(prefs.gridView, isTrue);
+    expect(prefs.sort, WorkspaceSort.recentlyUpdated);
+  });
+
+  test('save persists grid view and sort mode', () async {
+    await store.save(
+      const WorkspaceDisplayPrefs(
+        gridView: false,
+        sort: WorkspaceSort.nameAsc,
+      ),
+    );
+
+    final prefs = await store.load();
+    expect(prefs.gridView, isFalse);
+    expect(prefs.sort, WorkspaceSort.nameAsc);
+
+    final file = File(AppPaths(root.path).homeWorkspaceWorkspaceDisplayPrefsJson);
+    expect(file.existsSync(), isTrue);
+  });
+}

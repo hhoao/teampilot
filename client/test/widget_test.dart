@@ -18,7 +18,7 @@ import 'package:teampilot/cubits/session_preferences_cubit.dart';
 import 'package:teampilot/cubits/identity_cubit.dart';
 import 'package:teampilot/main.dart';
 import 'package:teampilot/models/llm_config.dart';
-import 'package:teampilot/models/app_workspace.dart';
+import 'package:teampilot/models/workspace.dart';
 import 'package:teampilot/models/personal_identity.dart';
 import 'package:teampilot/models/app_session.dart';
 import 'package:teampilot/models/session_member_binding.dart';

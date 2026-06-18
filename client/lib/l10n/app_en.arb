@@ -301,7 +301,7 @@
   "workspaceAgentBuiltInSubtitle": "Maps to flashskyai --agent when that CLI is active.",
   "workspaceAgentExtraArgs": "Extra CLI arguments",
   "workspaceAgentExtraArgsSubtitle": "Extra flags appended when starting the agent in this workspace.",
-  "workspaceAdvancedSettingsSubtitle": "Agent preset and extra CLI flags for this workspace.",
+  "workspaceWorkbenchAdvancedSettingsSubtitle": "Agent preset and extra CLI flags for this workspace.",
   "workspaceAgentPromptSubtitle": "System prompt defining the agent's role and boundaries in this workspace.",
   "workspaceAgentPromptPresetGeneral": "General",
   "workspaceAgentPromptPresetGeneralText": "Help with development in this workspace end to end. Understand the request and codebase, propose a clear approach, then implement with minimal diffs; summarize changed files and suggested next steps.",

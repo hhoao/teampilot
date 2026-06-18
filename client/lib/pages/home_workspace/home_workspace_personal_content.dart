@@ -10,7 +10,7 @@ import '../../theme/workspace_surface_layers.dart';
 import 'home_workspace_content_header.dart';
 import 'home_workspace_global_section.dart';
 import 'home_workspace_personal_tab.dart';
-import 'workspace/workspace_config_section.dart';
+import 'project/workspace_config_section.dart';
 
 /// Right-hand content pane for a selected [PersonalIdentity] on the home
 /// workspace (skills/plugins/MCP/agent — no roster).

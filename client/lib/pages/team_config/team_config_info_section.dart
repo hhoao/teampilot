@@ -20,7 +20,7 @@ import '../../widgets/cli/cli_brand_icon.dart';
 import '../../widgets/dropdown/app_dropdown_decoration.dart';
 import '../../widgets/app_dialog.dart';
 import '../../widgets/settings/workspace_settings_widgets.dart';
-import '../home_workspace/workspace/config/workspace_cli_config_helpers.dart';
+import '../home_workspace/project/config/workspace_cli_config_helpers.dart';
 import 'team_config_helpers.dart';
 import 'team_default_preset_configure_dialog.dart';
 

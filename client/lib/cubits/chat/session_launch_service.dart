@@ -2,7 +2,7 @@ import 'dart:async';
 
 import 'package:uuid/uuid.dart';
 
-import '../../models/app_workspace.dart';
+import '../../models/workspace.dart';
 import '../../models/app_session.dart';
 import '../../models/cli_preset.dart';
 import '../../models/member_instance.dart';

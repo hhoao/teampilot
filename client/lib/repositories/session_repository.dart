@@ -2,7 +2,7 @@ import 'dart:convert';
 
 import 'package:uuid/uuid.dart';
 
-import '../models/app_workspace.dart';
+import '../models/workspace.dart';
 import '../models/app_session.dart';
 import '../models/member_instance.dart';
 import '../models/session_member_binding.dart';

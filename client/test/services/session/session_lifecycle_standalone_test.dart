@@ -2,7 +2,7 @@ import 'dart:io';
 
 import 'package:flutter_test/flutter_test.dart';
 import 'package:path/path.dart' as p;
-import 'package:teampilot/models/app_workspace.dart';
+import 'package:teampilot/models/workspace.dart';
 import 'package:teampilot/models/app_session.dart';
 import 'package:teampilot/models/cli_preset.dart';
 import 'package:teampilot/models/workspace_agent_config.dart';

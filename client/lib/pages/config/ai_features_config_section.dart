@@ -20,9 +20,9 @@ import '../../widgets/cli_launch_config/cli_launch_custom_fields.dart';
 import '../../widgets/cli_launch_config/preset_launch_picker_field.dart';
 import '../../widgets/dropdown/app_dropdown_decoration.dart';
 import '../../widgets/settings/workspace_settings_widgets.dart';
-import '../home_workspace/workspace/config/cli_presets_manage_dialog.dart';
-import '../home_workspace/workspace/config/workspace_cli_config_helpers.dart';
-import '../home_workspace/workspace/config/workspace_cli_effort_helpers.dart';
+import '../home_workspace/project/config/cli_presets_manage_dialog.dart';
+import '../home_workspace/project/config/workspace_cli_config_helpers.dart';
+import '../home_workspace/project/config/workspace_cli_effort_helpers.dart';
 import '../../services/cli/registry/cli_display_name.dart';
 
 /// Global "AI Features" settings: per-feature CLI/provider/model/effort.

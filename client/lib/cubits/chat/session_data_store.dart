@@ -1,6 +1,6 @@
 import 'package:equatable/equatable.dart';
 
-import '../../models/app_workspace.dart';
+import '../../models/workspace.dart';
 import '../../models/app_session.dart';
 import '../../models/workspace_icon_ref.dart';
 import '../../models/team_config.dart' show CliTool, TeamMemberConfig;

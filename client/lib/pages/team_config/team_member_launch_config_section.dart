@@ -23,7 +23,7 @@ import '../../widgets/cli_launch_config/cli_launch_custom_fields.dart';
 import '../../widgets/cli_launch_config/preset_launch_picker_field.dart';
 import '../../widgets/dropdown/app_dropdown_decoration.dart';
 import '../../widgets/settings/workspace_settings_widgets.dart';
-import '../home_workspace/workspace/config/workspace_cli_config_helpers.dart';
+import '../home_workspace/project/config/workspace_cli_config_helpers.dart';
 import 'team_config_helpers.dart';
 import 'team_member_launch_config_helpers.dart';
 

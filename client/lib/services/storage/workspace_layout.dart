@@ -32,9 +32,9 @@ class WorkspaceLayout {
 
   p.Context get _ctx => _fs.pathContext;
 
-  String get workspaceDir => _ctx.join(teampilotRoot, 'workspace');
+  String get workspaceRootDir => _ctx.join(teampilotRoot, 'workspace');
 
-  String get workspacesDir => _ctx.join(workspaceDir, 'workspaces');
+  String get workspacesDir => _ctx.join(workspaceRootDir, 'workspaces');
 
   String workspaceDir(String workspaceId) =>
       _ctx.join(workspacesDir, workspaceId.trim());

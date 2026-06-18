@@ -5,7 +5,7 @@ import '../../models/team_config.dart';
 import '../../services/cli/preset_resolver.dart';
 import '../../services/cli/registry/cli_display_name.dart';
 import '../../services/cli/registry/cli_tool_registry.dart';
-import '../home_workspace/workspace/config/workspace_cli_config_helpers.dart';
+import '../home_workspace/project/config/workspace_cli_config_helpers.dart';
 
 /// Catalog CLI used for provider/model pickers (member override → team default).
 CliTool memberCatalogCliFor(TeamIdentity team, TeamMemberConfig member) {

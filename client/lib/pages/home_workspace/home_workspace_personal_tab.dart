@@ -6,11 +6,11 @@ import '../../cubits/extension_cubit.dart';
 import '../../models/personal_identity.dart';
 import '../team_config/team_config_extensions_section.dart';
 import 'home_workspace_global_section.dart';
-import 'workspace/config/workspace_agent_section.dart';
-import 'workspace/config/workspace_mcp_section.dart';
-import 'workspace/config/workspace_plugins_section.dart';
-import 'workspace/config/workspace_skills_section.dart';
-import 'workspace/workspace_config_section.dart';
+import 'project/config/workspace_agent_section.dart';
+import 'project/config/workspace_mcp_section.dart';
+import 'project/config/workspace_plugins_section.dart';
+import 'project/config/workspace_skills_section.dart';
+import 'project/workspace_config_section.dart';
 
 /// Embeds personal-identity config sections inside the workspace-home tab.
 class HomePersonalTab extends StatelessWidget {

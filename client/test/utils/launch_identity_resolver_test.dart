@@ -1,5 +1,5 @@
 import 'package:flutter_test/flutter_test.dart';
-import 'package:teampilot/models/app_workspace.dart';
+import 'package:teampilot/models/workspace.dart';
 import 'package:teampilot/models/launch_identity.dart';
 import 'package:teampilot/models/personal_identity.dart';
 import 'package:teampilot/services/storage/identity_provisioner.dart';

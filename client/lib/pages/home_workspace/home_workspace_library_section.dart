@@ -4,16 +4,16 @@ import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import '../../cubits/chat_cubit.dart';
 import '../../l10n/l10n_extensions.dart';
-import '../../models/app_workspace.dart';
+import '../../models/workspace.dart';
 import '../../models/app_session.dart';
-import '../../services/home_workspace/home_workspace_workspace_display_prefs_store.dart';
-import '../../services/home_workspace/home_workspace_workspace_favorites_store.dart';
-import '../../services/home_workspace/home_workspace_recent_workspaces_store.dart';
-import 'home_workspace_workspace_sort.dart';
+import '../../services/home_workspace/workspace_display_prefs_store.dart';
+import '../../services/home_workspace/workspace_favorites_store.dart';
+import '../../services/home_workspace/home_recent_workspaces_store.dart';
+import 'workspace_sort.dart';
 import '../../theme/app_text_styles.dart';
 import '../../theme/workspace_surface_layers.dart';
 import 'home_workspace_library_view.dart';
-import 'home_workspace_workspaces_tab.dart';
+import 'workspaces_tab.dart';
 
 /// Favorites or recently visited workspaces in the workspace home right pane.
 class HomeLibrarySection extends StatefulWidget {

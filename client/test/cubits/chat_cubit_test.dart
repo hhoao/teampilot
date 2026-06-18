@@ -1,7 +1,7 @@
 import 'dart:io';
 
 import 'package:teampilot/cubits/chat_cubit.dart';
-import 'package:teampilot/models/app_workspace.dart';
+import 'package:teampilot/models/workspace.dart';
 import 'package:teampilot/models/app_session.dart';
 import 'package:teampilot/models/team_config.dart';
 import 'package:teampilot/repositories/session_repository.dart';

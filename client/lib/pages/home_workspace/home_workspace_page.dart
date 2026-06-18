@@ -8,7 +8,7 @@ import '../../models/team_config.dart';
 import '../../models/identity.dart';
 import '../../theme/workspace_surface_layers.dart';
 import '../team_config/team_config_section.dart';
-import 'home_workspace_all_workspaces_pane.dart';
+import 'home_all_workspaces_pane.dart';
 import 'home_workspace_content.dart';
 import 'home_workspace_global_section.dart';
 import 'home_workspace_library_section.dart';

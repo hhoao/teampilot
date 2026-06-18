@@ -564,7 +564,8 @@ class AppLocalizationsEn extends AppLocalizations {
   String get homeWorkspaceRecentlyClosed => 'Recently closed';
 
   @override
-  String get homeWorkspaceRecentlyClosedEmpty => 'No recently closed workspaces';
+  String get homeWorkspaceRecentlyClosedEmpty =>
+      'No recently closed workspaces';
 
   @override
   String get homeWorkspaceMyTeams => 'My Teams';
@@ -733,7 +734,7 @@ class AppLocalizationsEn extends AppLocalizations {
       'Extra flags appended when starting the agent in this workspace.';
 
   @override
-  String get workspaceAdvancedSettingsSubtitle =>
+  String get workspaceWorkbenchAdvancedSettingsSubtitle =>
       'Agent preset and extra CLI flags for this workspace.';
 
   @override
@@ -802,7 +803,8 @@ class AppLocalizationsEn extends AppLocalizations {
   String get workspaceCliNotConfigured => 'Not configured';
 
   @override
-  String get workspaceCliNotConfiguredHint => 'No default provider selected yet';
+  String get workspaceCliNotConfiguredHint =>
+      'No default provider selected yet';
 
   @override
   String get workspaceCliNoProviderCatalog =>
@@ -1074,7 +1076,8 @@ class AppLocalizationsEn extends AppLocalizations {
   String get pickPrimaryDirectory => 'Pick primary directory';
 
   @override
-  String get workspacePrimaryPathRequired => 'Select a primary directory first.';
+  String get workspacePrimaryPathRequired =>
+      'Select a primary directory first.';
 
   @override
   String get workspacePrimaryPathNotSelected => 'No primary directory selected';

@@ -1,6 +1,6 @@
 import 'package:flutter/foundation.dart';
 
-import '../../models/app_workspace.dart';
+import '../../models/workspace.dart';
 import '../../models/app_session.dart';
 import '../../models/cli_preset.dart';
 import '../../models/identity_kind.dart';

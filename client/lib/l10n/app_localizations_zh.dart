@@ -704,7 +704,8 @@ class AppLocalizationsZh extends AppLocalizations {
   String get workspaceAgentExtraArgsSubtitle => '附加在本项目 Agent 启动时的 CLI 参数。';
 
   @override
-  String get workspaceAdvancedSettingsSubtitle => '本项目的 Agent 预设与额外 CLI 参数。';
+  String get workspaceWorkbenchAdvancedSettingsSubtitle =>
+      '本项目的 Agent 预设与额外 CLI 参数。';
 
   @override
   String get workspaceAgentPromptSubtitle => '编写系统提示词，定义 Agent 在本项目中的职责与行为边界。';
@@ -756,7 +757,8 @@ class AppLocalizationsZh extends AppLocalizations {
   String get workspaceCliEffortLevel => '推理力度';
 
   @override
-  String get workspaceCliEffortLevelSubtitle => '本项目使用该 CLI 时的默认力度（留空则使用提供商默认）。';
+  String get workspaceCliEffortLevelSubtitle =>
+      '本项目使用该 CLI 时的默认力度（留空则使用提供商默认）。';
 
   @override
   String get workspaceCliConfigure => '配置';

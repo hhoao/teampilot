@@ -12,7 +12,7 @@ import '../../l10n/l10n_extensions.dart';
 import '../../models/layout_preferences.dart';
 import '../../models/member_instance.dart';
 import '../../models/team_config.dart';
-import '../../pages/home_workspace/workspace/member_detail_dialog.dart';
+import '../../pages/home_workspace/project/member_detail_dialog.dart';
 import '../../services/cli/member_config/member_config_inspector.dart';
 import '../../services/io/system_folder_opener.dart';
 import '../../utils/app_keys.dart';

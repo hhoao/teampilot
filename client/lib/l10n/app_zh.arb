@@ -279,7 +279,7 @@
   "workspaceAgentBuiltInSubtitle": "当前 CLI 为 flashskyai 时，对应其 --agent 参数。",
   "workspaceAgentExtraArgs": "额外 CLI 参数",
   "workspaceAgentExtraArgsSubtitle": "附加在本项目 Agent 启动时的 CLI 参数。",
-  "workspaceAdvancedSettingsSubtitle": "本项目的 Agent 预设与额外 CLI 参数。",
+  "workspaceWorkbenchAdvancedSettingsSubtitle": "本项目的 Agent 预设与额外 CLI 参数。",
   "workspaceAgentPromptSubtitle": "编写系统提示词，定义 Agent 在本项目中的职责与行为边界。",
   "workspaceAgentPromptPresetGeneral": "通用",
   "workspaceAgentPromptPresetGeneralText": "全面协助完成本项目中的开发任务。先理解需求与现有代码，再给出清晰方案并实施；优先小范围改动，完成后说明涉及文件与后续建议。",

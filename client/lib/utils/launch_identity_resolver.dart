@@ -1,4 +1,4 @@
-import '../models/app_workspace.dart';
+import '../models/workspace.dart';
 import '../models/launch_identity.dart';
 import '../models/identity.dart';
 import '../services/storage/identity_provisioner.dart';
