@@ -46,7 +46,7 @@ void main() {
       storageIsRemote: true,
       teampilotRoot: teampilotRoot,
       fs: LocalFilesystem(pathContext: AppPaths.posixPathContext),
-      teamsUiDir: AppPaths.teamsUiDirForTeampilotRoot(teampilotRoot),
+      identitiesUiDir: AppPaths.identitiesUiDirForTeampilotRoot(teampilotRoot),
       skillsRoot: AppPaths.skillsDirForTeampilotRoot(teampilotRoot),
       skillBackupsDir: AppPaths.skillBackupsDirForTeampilotRoot(teampilotRoot),
       workspaceDir: AppPaths.workspaceDirForTeampilotRoot(teampilotRoot),
@@ -73,7 +73,7 @@ void main() {
     );
     final posix = AppPaths.posixPathContext;
     expect(snap.teampilotRoot, teampilotRoot);
-    expect(snap.teamsUiDir, posix.join(teampilotRoot, 'teams'));
+    expect(snap.identitiesUiDir, posix.join(teampilotRoot, 'identities'));
     expect(snap.skillsRoot, posix.join(teampilotRoot, 'skills', 'installed'));
     expect(snap.workspaceDir, posix.join(teampilotRoot, 'workspace'));
     expect(

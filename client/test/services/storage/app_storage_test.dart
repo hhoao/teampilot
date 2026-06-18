@@ -28,10 +28,10 @@ void main() {
       }
     });
 
-    test('teamsDir sits next to basePath', () {
+    test('identitiesDir sits next to basePath', () {
       expect(
-        AppPathsBootstrapper.current.teamsDir,
-        p.join(appDataRoot.path, 'teams'),
+        AppPathsBootstrapper.current.identitiesDir,
+        p.join(appDataRoot.path, 'identities'),
       );
     });
 
@@ -51,7 +51,7 @@ void main() {
 
     test('teamPilot teampilotRoot helpers join under root', () {
       const root = '/remote/.local/share/com.hhoa.teampilot';
-      expect(AppPaths.teamsUiDirForTeampilotRoot(root), '$root/teams');
+      expect(AppPaths.identitiesUiDirForTeampilotRoot(root), '$root/identities');
       expect(AppPaths.skillsDirForTeampilotRoot(root), '$root/skills/installed');
       expect(
         AppPaths.skillBackupsDirForTeampilotRoot(root),

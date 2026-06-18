@@ -8,16 +8,16 @@ import '../services/session/session_lifecycle_service.dart';
 
 /// Persists [TeamIdentity] objects in TeamPilot's own metadata directory.
 ///
-/// - UI dir ([AppStorage.teamsDir]): one `<name>.json` per team, holding the
+/// - UI dir ([AppStorage.identitiesDir]): one `<name>.json` per team, holding the
 ///   full UI schema (provider, model, agent, extraArgs, prompt, ...).
 ///
 /// CLI-specific files are launch-time artifacts and are generated outside this
 /// repository path.
 class _TeamPaths {
-  _TeamPaths({required this.teamsUiDir, Filesystem? fs})
+  _TeamPaths({required this.identitiesUiDir, Filesystem? fs})
     : fs = fs ?? AppStorage.fs;
 
-  final String teamsUiDir;
+  final String identitiesUiDir;
   final Filesystem fs;
 }
 
@@ -34,15 +34,15 @@ class TeamRepository {
   final StorageRoots? _storageRoots;
   final SessionLifecycleService? _lifecycleService;
 
-  String get rootDir => _rootDirOverride ?? AppStorage.paths.teamsDir;
+  String get rootDir => _rootDirOverride ?? AppStorage.paths.identitiesDir;
 
   Future<_TeamPaths> _paths() async {
     if (_storageRoots != null) {
       final snap = await _storageRoots.resolve();
-      return _TeamPaths(teamsUiDir: snap.teamsUiDir, fs: snap.fs);
+      return _TeamPaths(identitiesUiDir: snap.identitiesUiDir, fs: snap.fs);
     }
     return _TeamPaths(
-      teamsUiDir: _rootDirOverride ?? AppPathsBootstrapper.current.teamsDir,
+      identitiesUiDir: _rootDirOverride ?? AppPathsBootstrapper.current.identitiesDir,
     );
   }
 
@@ -79,11 +79,11 @@ class TeamRepository {
   Future<List<TeamIdentity>> _readUiDir(_TeamPaths paths) async {
     final teams = <TeamIdentity>[];
     try {
-      final entries = await paths.fs.listDir(paths.teamsUiDir);
+      final entries = await paths.fs.listDir(paths.identitiesUiDir);
       for (final entry in entries) {
         if (entry.isDirectory || !entry.name.endsWith('.json')) continue;
         final content = await paths.fs.readString(
-          paths.fs.pathContext.join(paths.teamsUiDir, entry.name),
+          paths.fs.pathContext.join(paths.identitiesUiDir, entry.name),
         );
         if (content == null || content.isEmpty) continue;
         try {
@@ -101,24 +101,24 @@ class TeamRepository {
   }
 
   Future<void> _writeUiDir(_TeamPaths paths, List<TeamIdentity> teams) async {
-    await paths.fs.ensureDir(paths.teamsUiDir);
+    await paths.fs.ensureDir(paths.identitiesUiDir);
     final keepFiles = <String>{};
     for (final team in teams) {
       final filename = '${team.name}.json';
       keepFiles.add(filename);
       await paths.fs.atomicWrite(
-        paths.fs.pathContext.join(paths.teamsUiDir, filename),
+        paths.fs.pathContext.join(paths.identitiesUiDir, filename),
         const JsonEncoder.withIndent('  ').convert(team.toJson()),
       );
     }
     try {
-      final entries = await paths.fs.listDir(paths.teamsUiDir);
+      final entries = await paths.fs.listDir(paths.identitiesUiDir);
       for (final entry in entries) {
         if (entry.isDirectory) continue;
         if (!entry.name.endsWith('.json')) continue;
         if (keepFiles.contains(entry.name)) continue;
         await paths.fs.removeRecursive(
-          paths.fs.pathContext.join(paths.teamsUiDir, entry.name),
+          paths.fs.pathContext.join(paths.identitiesUiDir, entry.name),
         );
       }
     } on Object {
@@ -147,7 +147,7 @@ class TeamRepository {
     final paths = await _paths();
     try {
       await paths.fs.removeRecursive(
-        paths.fs.pathContext.join(paths.teamsUiDir, '$trimmed.json'),
+        paths.fs.pathContext.join(paths.identitiesUiDir, '$trimmed.json'),
       );
     } on Object {
       // best effort

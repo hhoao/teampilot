@@ -15,7 +15,7 @@ class StorageRootsSnapshot {
     Filesystem? fs,
     RuntimeLayout? layout,
     WorkspaceLayout? workspace,
-    required this.teamsUiDir,
+    required this.identitiesUiDir,
     required this.skillsRoot,
     required this.skillBackupsDir,
     required this.workspaceDir,
@@ -54,7 +54,7 @@ class StorageRootsSnapshot {
       fs: fs,
       layout: layout,
       workspace: workspace,
-      teamsUiDir: AppPaths.teamsUiDirForTeampilotRoot(root),
+      identitiesUiDir: AppPaths.identitiesUiDirForTeampilotRoot(root),
       skillsRoot: AppPaths.skillsDirForTeampilotRoot(root),
       skillBackupsDir: AppPaths.skillBackupsDirForTeampilotRoot(root),
       workspaceDir: AppPaths.workspaceDirForTeampilotRoot(root),
@@ -79,7 +79,7 @@ class StorageRootsSnapshot {
   final String teampilotRoot;
   final Filesystem fs;
 
-  final String teamsUiDir;
+  final String identitiesUiDir;
   final String skillsRoot;
   final String skillBackupsDir;
 

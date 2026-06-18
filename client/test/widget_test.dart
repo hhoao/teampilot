@@ -771,7 +771,7 @@ void main() {
           storageRootsResolver: () async => StorageRootsSnapshot(
             storageIsRemote: false,
             teampilotRoot: tmp.path,
-            teamsUiDir: p.join(tmp.path, 'teams'),
+            identitiesUiDir: p.join(tmp.path, 'identities'),
             skillsRoot: p.join(tmp.path, 'skills', 'installed'),
             skillBackupsDir: p.join(tmp.path, 'skills', 'backups'),
             workspaceDir: p.join(tmp.path, 'workspace'),

@@ -19,7 +19,7 @@ import '../../support/post_frame_test_harness.dart';
 StorageRootsSnapshot _roots(String basePath) => StorageRootsSnapshot(
   storageIsRemote: false,
   teampilotRoot: basePath,
-  teamsUiDir: p.join(basePath, 'teams'),
+  identitiesUiDir: p.join(basePath, 'identities'),
   skillsRoot: p.join(basePath, 'skills', 'installed'),
   skillBackupsDir: p.join(basePath, 'skills', 'backups'),
   workspaceDir: p.join(basePath, 'workspace'),
