@@ -226,3 +226,108 @@ class AppDialogHeader extends StatelessWidget {
     );
   }
 }
+
+/// Single-line text prompt dialog with correct [TextEditingController] lifecycle.
+///
+/// Returns the entered text on confirm, or `null` on cancel/close.
+Future<String?> showAppTextPromptDialog(
+  BuildContext context, {
+  required String title,
+  String initialText = '',
+  String? hintText,
+  String? labelText,
+  required String confirmLabel,
+  double maxWidth = 480,
+}) {
+  return showDialog<String>(
+    context: context,
+    builder: (ctx) => AppTextPromptDialog(
+      title: title,
+      initialText: initialText,
+      hintText: hintText,
+      labelText: labelText,
+      confirmLabel: confirmLabel,
+      maxWidth: maxWidth,
+    ),
+  );
+}
+
+class AppTextPromptDialog extends StatefulWidget {
+  const AppTextPromptDialog({
+    super.key,
+    required this.title,
+    this.initialText = '',
+    this.hintText,
+    this.labelText,
+    required this.confirmLabel,
+    this.maxWidth = 480,
+  });
+
+  final String title;
+  final String initialText;
+  final String? hintText;
+  final String? labelText;
+  final String confirmLabel;
+  final double maxWidth;
+
+  @override
+  State<AppTextPromptDialog> createState() => _AppTextPromptDialogState();
+}
+
+class _AppTextPromptDialogState extends State<AppTextPromptDialog> {
+  late final TextEditingController _controller;
+
+  @override
+  void initState() {
+    super.initState();
+    _controller = TextEditingController(text: widget.initialText);
+  }
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  void _submit() => Navigator.of(context).pop(_controller.text);
+
+  @override
+  Widget build(BuildContext context) {
+    final l10n = context.l10n;
+    return AppDialog(
+      maxWidth: widget.maxWidth,
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          AppDialogHeader(
+            title: widget.title,
+            onClose: () => Navigator.of(context).pop(),
+          ),
+          const SizedBox(height: 16),
+          TextField(
+            controller: _controller,
+            autofocus: true,
+            decoration: InputDecoration(
+              hintText: widget.hintText,
+              labelText: widget.labelText,
+            ),
+            onSubmitted: (_) => _submit(),
+          ),
+          AppDialogActions(
+            children: [
+              TextButton(
+                onPressed: () => Navigator.of(context).pop(),
+                child: Text(l10n.cancel),
+              ),
+              FilledButton(
+                onPressed: _submit,
+                child: Text(widget.confirmLabel),
+              ),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+}

@@ -72,57 +72,12 @@ class PluginMarketplacesSection extends StatelessWidget {
 
   Future<void> _onAdd(BuildContext context, PluginCubit cubit) async {
     final l10n = context.l10n;
-    final urlCtrl = TextEditingController();
-    final branchCtrl = TextEditingController(text: 'main');
-
-    final result = await showDialog<bool>(
+    final draft = await showDialog<({String url, String branch})>(
       context: context,
-      builder: (ctx) => AppDialog(
-        maxWidth: 480,
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
-            AppDialogHeader(title: l10n.pluginsMarketplaceAdd),
-            const SizedBox(height: 16),
-            Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                TextField(
-                  controller: urlCtrl,
-                  decoration: InputDecoration(
-                    hintText: l10n.pluginsMarketplaceUrlHint,
-                    labelText: l10n.pluginsMarketplaceUrl,
-                  ),
-                ),
-                const SizedBox(height: 12),
-                TextField(
-                  controller: branchCtrl,
-                  decoration: InputDecoration(
-                    labelText: l10n.pluginsMarketplaceBranch,
-                  ),
-                ),
-              ],
-            ),
-            AppDialogActions(
-              children: [
-                TextButton(
-                  onPressed: () => Navigator.of(ctx).pop(false),
-                  child: Text(l10n.cancel),
-                ),
-                FilledButton(
-                  onPressed: () => Navigator.of(ctx).pop(true),
-                  child: Text(l10n.pluginsMarketplaceAdd),
-                ),
-              ],
-            ),
-          ],
-        ),
-      ),
+      builder: (ctx) => const _AddPluginMarketplaceDialog(),
     );
-
-    if (result != true) return;
-    final parsed = parseGithubRepoUrl(urlCtrl.text.trim());
+    if (draft == null) return;
+    final parsed = parseGithubRepoUrl(draft.url.trim());
     if (parsed == null) {
       if (context.mounted) {
         showPluginSnack(context, l10n.pluginsMarketplaceInvalidUrl);
@@ -134,9 +89,89 @@ class PluginMarketplacesSection extends StatelessWidget {
       PluginMarketplace(
         owner: parsed.owner,
         name: parsed.name,
-        branch: branchCtrl.text.trim().isNotEmpty
-            ? branchCtrl.text.trim()
-            : 'main',
+        branch: draft.branch.trim().isNotEmpty ? draft.branch.trim() : 'main',
+      ),
+    );
+  }
+}
+
+class _AddPluginMarketplaceDialog extends StatefulWidget {
+  const _AddPluginMarketplaceDialog();
+
+  @override
+  State<_AddPluginMarketplaceDialog> createState() =>
+      _AddPluginMarketplaceDialogState();
+}
+
+class _AddPluginMarketplaceDialogState extends State<_AddPluginMarketplaceDialog> {
+  late final TextEditingController _urlCtrl;
+  late final TextEditingController _branchCtrl;
+
+  @override
+  void initState() {
+    super.initState();
+    _urlCtrl = TextEditingController();
+    _branchCtrl = TextEditingController(text: 'main');
+  }
+
+  @override
+  void dispose() {
+    _urlCtrl.dispose();
+    _branchCtrl.dispose();
+    super.dispose();
+  }
+
+  void _submit() {
+    Navigator.of(context).pop((url: _urlCtrl.text, branch: _branchCtrl.text));
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final l10n = context.l10n;
+    return AppDialog(
+      maxWidth: 480,
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          AppDialogHeader(
+            title: l10n.pluginsMarketplaceAdd,
+            onClose: () => Navigator.of(context).pop(),
+          ),
+          const SizedBox(height: 16),
+          Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              TextField(
+                controller: _urlCtrl,
+                autofocus: true,
+                decoration: InputDecoration(
+                  hintText: l10n.pluginsMarketplaceUrlHint,
+                  labelText: l10n.pluginsMarketplaceUrl,
+                ),
+              ),
+              const SizedBox(height: 12),
+              TextField(
+                controller: _branchCtrl,
+                decoration: InputDecoration(
+                  labelText: l10n.pluginsMarketplaceBranch,
+                ),
+              ),
+            ],
+          ),
+          AppDialogActions(
+            children: [
+              TextButton(
+                onPressed: () => Navigator.of(context).pop(),
+                child: Text(l10n.cancel),
+              ),
+              FilledButton(
+                onPressed: _submit,
+                child: Text(l10n.pluginsMarketplaceAdd),
+              ),
+            ],
+          ),
+        ],
       ),
     );
   }

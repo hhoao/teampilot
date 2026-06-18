@@ -138,7 +138,7 @@ class _SidebarSessionTileState extends State<SidebarSessionTile> {
     if (selected == null) return;
     switch (selected) {
       case 'rename':
-        _showRenameDialog(context, session, l10n);
+        unawaited(_showRenameDialog(context, session, l10n));
       case 'delete':
         _armDelete();
     }
@@ -177,7 +177,7 @@ class _SidebarSessionTileState extends State<SidebarSessionTile> {
     if (selected == null) return;
     switch (selected) {
       case 'rename':
-        _showRenameDialog(context, session, l10n);
+        unawaited(_showRenameDialog(context, session, l10n));
       case 'delete':
         _armDelete();
     }
@@ -303,7 +303,8 @@ class _SidebarSessionTileState extends State<SidebarSessionTile> {
                         icon: Icons.drive_file_rename_outline,
                         label: l10n.renameConversation,
                         menuController: controller,
-                        onTap: () => _showRenameDialog(context, session, l10n),
+                        onTap: () =>
+                            unawaited(_showRenameDialog(context, session, l10n)),
                       ),
                       SidebarActionMenuItem(
                         icon: Icons.delete_outline,
@@ -350,69 +351,22 @@ class _SidebarSessionTileState extends State<SidebarSessionTile> {
         : tile;
   }
 
-  void _showRenameDialog(
+  Future<void> _showRenameDialog(
     BuildContext context,
     AppSession session,
     AppLocalizations l10n,
-  ) {
+  ) async {
     final repo = context.read<SessionRepository>();
     final chatCubit = context.read<ChatCubit>();
-    final controller = TextEditingController(
-      text: session.resolveDisplayTitle(l10n.defaultNewChatSessionTitle),
+    final name = await showAppTextPromptDialog(
+      context,
+      title: l10n.renameConversationTitle,
+      initialText: session.resolveDisplayTitle(l10n.defaultNewChatSessionTitle),
+      labelText: l10n.conversationName,
+      confirmLabel: l10n.save,
     );
-    showDialog<void>(
-      context: context,
-      builder: (ctx) => AppDialog(
-        maxWidth: 480,
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
-            AppDialogHeader(title: l10n.renameConversationTitle),
-            const SizedBox(height: 16),
-            TextField(
-              controller: controller,
-              autofocus: true,
-              decoration: InputDecoration(labelText: l10n.conversationName),
-              onSubmitted: (value) {
-                if (value.trim().isNotEmpty) {
-                  unawaited(
-                    chatCubit.renameSession(
-                      repo,
-                      session.sessionId,
-                      value.trim(),
-                    ),
-                  );
-                }
-                Navigator.of(ctx).pop();
-              },
-            ),
-            AppDialogActions(
-              children: [
-                TextButton(
-                  onPressed: () => Navigator.of(ctx).pop(),
-                  child: Text(l10n.cancel),
-                ),
-                FilledButton(
-                  onPressed: throttledAsync('sidebar_rename_session', () async {
-                    final value = controller.text.trim();
-                    if (value.isNotEmpty) {
-                      await chatCubit.renameSession(
-                        repo,
-                        session.sessionId,
-                        value,
-                      );
-                    }
-                    if (ctx.mounted) Navigator.of(ctx).pop();
-                  }),
-                  child: Text(l10n.save),
-                ),
-              ],
-            ),
-          ],
-        ),
-      ),
-    );
+    if (name == null || name.trim().isEmpty || !context.mounted) return;
+    await chatCubit.renameSession(repo, session.sessionId, name.trim());
   }
 
 }

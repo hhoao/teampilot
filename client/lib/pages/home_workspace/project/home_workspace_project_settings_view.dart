@@ -3,17 +3,13 @@ import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
-import 'package:go_router/go_router.dart';
 import 'package:teampilot/theme/app_toast_theme.dart';
 import 'package:teampilot/widgets/app_toast/app_toast.dart';
 import '../../../cubits/chat_cubit.dart';
 import '../../../l10n/l10n_extensions.dart';
 import '../../../models/app_project.dart';
-import '../../../repositories/session_repository.dart';
 import '../../../theme/app_text_styles.dart';
-import '../../../utils/debounce/debounce.dart';
 import '../../../utils/project_display_name.dart';
-import '../../../widgets/app_dialog.dart';
 import '../../../widgets/project_details_dialog.dart';
 import '../../../widgets/settings/workspace_hub_shell.dart';
 import '../../../widgets/settings/workspace_settings_widgets.dart';
@@ -151,7 +147,11 @@ class _ProjectSettingsBasicSection extends StatelessWidget {
               _ProjectSettingsInlineRow(
                 label: l10n.projectDisplayName,
                 value: project.localizedName(l10n),
-                onEdit: () => _editDisplayName(context, project),
+                onEdit: () => showRenameHomeWorkspaceProjectDialog(
+                  context,
+                  project,
+                  title: l10n.projectDisplayName,
+                ),
               ),
               _ProjectSettingsInlineRow(
                 label: l10n.homeWorkspaceProjectId,
@@ -209,54 +209,6 @@ class _ProjectSettingsBasicSection extends StatelessWidget {
       ],
     );
   }
-
-  Future<void> _editDisplayName(
-    BuildContext context,
-    AppProject project,
-  ) async {
-    final l10n = context.l10n;
-    final controller = TextEditingController(text: project.display);
-    final saved = await showDialog<bool>(
-      context: context,
-      builder: (ctx) => AppDialog(
-        maxWidth: 480,
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
-            AppDialogHeader(title: l10n.projectDisplayName),
-            const SizedBox(height: 16),
-            TextField(
-              controller: controller,
-              autofocus: true,
-              decoration: InputDecoration(hintText: project.localizedName(l10n)),
-            ),
-            AppDialogActions(
-              children: [
-                TextButton(
-                  onPressed: () => Navigator.of(ctx).pop(false),
-                  child: Text(l10n.cancel),
-                ),
-                FilledButton(
-                  onPressed: () => Navigator.of(ctx).pop(true),
-                  child: Text(l10n.save),
-                ),
-              ],
-            ),
-          ],
-        ),
-      ),
-    );
-    final display = controller.text;
-    controller.dispose();
-    if (saved != true || !context.mounted) return;
-    final repo = context.read<SessionRepository>();
-    await context.read<ChatCubit>().updateProjectMetadata(
-      repo,
-      project.projectId,
-      display: display,
-    );
-  }
 }
 
 class _ProjectSettingsDangerSection extends StatelessWidget {
@@ -268,7 +220,6 @@ class _ProjectSettingsDangerSection extends StatelessWidget {
   Widget build(BuildContext context) {
     final l10n = context.l10n;
     final cs = Theme.of(context).colorScheme;
-    final name = project.localizedName(l10n);
 
     return SettingsSurfaceCard(
       child: SettingsLabeledStackedRow(
@@ -282,60 +233,9 @@ class _ProjectSettingsDangerSection extends StatelessWidget {
               backgroundColor: cs.error,
               foregroundColor: cs.onError,
             ),
-            onPressed: () => _confirmDelete(context, name),
+            onPressed: () => confirmDeleteHomeWorkspaceProject(context, project),
             child: Text(l10n.deleteProject),
           ),
-        ),
-      ),
-    );
-  }
-
-  void _confirmDelete(BuildContext context, String name) {
-    final l10n = context.l10n;
-    final repo = context.read<SessionRepository>();
-    final router = GoRouter.of(context);
-    final currentLocation = GoRouterState.of(context).uri.toString();
-    showDialog<void>(
-      context: context,
-      useRootNavigator: true,
-      builder: (ctx) => AppDialog(
-        maxWidth: 480,
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
-            AppDialogHeader(title: l10n.deleteProject),
-            const SizedBox(height: 16),
-            Text(l10n.deleteProjectConfirm(name)),
-            AppDialogActions(
-              children: [
-                TextButton(
-                  onPressed: () => Navigator.of(ctx).pop(),
-                  child: Text(l10n.cancel),
-                ),
-                FilledButton(
-                  style: FilledButton.styleFrom(
-                    backgroundColor: Theme.of(ctx).colorScheme.error,
-                  ),
-                  onPressed: throttledAsync(
-                    'home_workspace_delete_project',
-                    () async {
-                      await context.read<ChatCubit>().deleteProject(
-                        repo,
-                        project.projectId,
-                      );
-                      completeProjectDeleteNavigation(
-                        router,
-                        deletedProjectId: project.projectId,
-                        currentLocation: currentLocation,
-                      );
-                    },
-                  ),
-                  child: Text(l10n.delete),
-                ),
-              ],
-            ),
-          ],
         ),
       ),
     );

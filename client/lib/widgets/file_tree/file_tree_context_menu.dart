@@ -162,42 +162,12 @@ abstract final class FileTreeContextMenu {
     required bool isFolder,
   }) async {
     final l10n = context.l10n;
-    final controller = TextEditingController();
-    final name = await showDialog<String>(
-      context: context,
-      builder: (ctx) => AppDialog(
-        maxWidth: 480,
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
-            AppDialogHeader(
-              title: isFolder ? l10n.fileTreeNewFolder : l10n.fileTreeNewFile,
-            ),
-            const SizedBox(height: 16),
-            TextField(
-              controller: controller,
-              autofocus: true,
-              decoration: InputDecoration(hintText: l10n.fileTreeCreateNameHint),
-              onSubmitted: (value) => Navigator.pop(ctx, value),
-            ),
-            AppDialogActions(
-              children: [
-                TextButton(
-                  onPressed: () => Navigator.pop(ctx),
-                  child: Text(l10n.cancel),
-                ),
-                FilledButton(
-                  onPressed: () => Navigator.pop(ctx, controller.text),
-                  child: Text(l10n.create),
-                ),
-              ],
-            ),
-          ],
-        ),
-      ),
+    final name = await showAppTextPromptDialog(
+      context,
+      title: isFolder ? l10n.fileTreeNewFolder : l10n.fileTreeNewFile,
+      hintText: l10n.fileTreeCreateNameHint,
+      confirmLabel: l10n.create,
     );
-    controller.dispose();
     if (!context.mounted || name == null || name.trim().isEmpty) return;
 
     await _runOp(
@@ -224,40 +194,13 @@ abstract final class FileTreeContextMenu {
     required String currentName,
   }) async {
     final l10n = context.l10n;
-    final controller = TextEditingController(text: currentName);
-    final name = await showDialog<String>(
-      context: context,
-      builder: (ctx) => AppDialog(
-        maxWidth: 480,
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
-            AppDialogHeader(title: l10n.fileTreeRenameTitle),
-            const SizedBox(height: 16),
-            TextField(
-              controller: controller,
-              autofocus: true,
-              decoration: InputDecoration(hintText: l10n.fileTreeCreateNameHint),
-              onSubmitted: (value) => Navigator.pop(ctx, value),
-            ),
-            AppDialogActions(
-              children: [
-                TextButton(
-                  onPressed: () => Navigator.pop(ctx),
-                  child: Text(l10n.cancel),
-                ),
-                FilledButton(
-                  onPressed: () => Navigator.pop(ctx, controller.text),
-                  child: Text(l10n.fileTreeRename),
-                ),
-              ],
-            ),
-          ],
-        ),
-      ),
+    final name = await showAppTextPromptDialog(
+      context,
+      title: l10n.fileTreeRenameTitle,
+      initialText: currentName,
+      hintText: l10n.fileTreeCreateNameHint,
+      confirmLabel: l10n.fileTreeRename,
     );
-    controller.dispose();
     if (!context.mounted || name == null || name.trim().isEmpty) return;
 
     await _runOp(

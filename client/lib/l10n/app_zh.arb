@@ -207,7 +207,7 @@
   "teamNameAlreadyExists": "已存在名为「{name}」的团队。",
   "projects": "项目",
   "newProject": "新建项目",
-  "homeWorkspaceMainWindow": "工作区",
+  "homeWorkspaceMainWindow": "主窗口",
   "windowControlMinimize": "最小化",
   "windowControlMaximize": "最大化",
   "windowControlRestore": "还原",

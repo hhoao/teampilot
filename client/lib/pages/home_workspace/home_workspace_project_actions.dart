@@ -24,9 +24,8 @@ bool isViewingProjectRoute(String location, String projectId) {
       segments[2] == projectId;
 }
 
-/// Closes a delete confirmation dialog and navigates away from a deleted
-/// project without [Navigator.pop], which can empty GoRouter's stack when the
-/// widget that opened the dialog unmounts during the async delete.
+/// Navigates away from a deleted project when the workbench route is active.
+/// Call after the delete confirmation dialog has been closed.
 void completeProjectDeleteNavigation(
   GoRouter router, {
   required String deletedProjectId,
@@ -41,47 +40,18 @@ void completeProjectDeleteNavigation(
 
 Future<void> showRenameHomeWorkspaceProjectDialog(
   BuildContext context,
-  AppProject project,
-) async {
+  AppProject project, {
+  String? title,
+}) async {
   final l10n = context.l10n;
-  final controller = TextEditingController(text: project.display);
-  final saved = await showDialog<bool>(
-    context: context,
-    builder: (ctx) => AppDialog(
-      maxWidth: 480,
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: [
-          AppDialogHeader(
-            title: l10n.homeWorkspaceRenameProject,
-            onClose: () => Navigator.of(ctx).pop(false),
-          ),
-          const SizedBox(height: 16),
-          TextField(
-            controller: controller,
-            autofocus: true,
-            decoration: InputDecoration(hintText: project.localizedName(l10n)),
-          ),
-          AppDialogActions(
-            children: [
-              TextButton(
-                onPressed: () => Navigator.of(ctx).pop(false),
-                child: Text(l10n.cancel),
-              ),
-              FilledButton(
-                onPressed: () => Navigator.of(ctx).pop(true),
-                child: Text(l10n.save),
-              ),
-            ],
-          ),
-        ],
-      ),
-    ),
+  final display = await showAppTextPromptDialog(
+    context,
+    title: title ?? l10n.homeWorkspaceRenameProject,
+    initialText: project.display,
+    hintText: project.localizedName(l10n),
+    confirmLabel: l10n.save,
   );
-  final display = controller.text;
-  controller.dispose();
-  if (saved != true || !context.mounted) return;
+  if (display == null || !context.mounted) return;
   final repo = context.read<SessionRepository>();
   await context.read<ChatCubit>().updateProjectMetadata(
     repo,
@@ -163,6 +133,9 @@ Future<void> confirmDeleteHomeWorkspaceProject(
                       repo,
                       project.projectId,
                     );
+                    if (ctx.mounted) {
+                      Navigator.of(ctx).pop();
+                    }
                     completeProjectDeleteNavigation(
                       router,
                       deletedProjectId: project.projectId,

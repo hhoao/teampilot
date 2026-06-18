@@ -499,7 +499,7 @@ class AppLocalizationsZh extends AppLocalizations {
   String get newProject => '新建项目';
 
   @override
-  String get homeWorkspaceMainWindow => '工作区';
+  String get homeWorkspaceMainWindow => '主窗口';
 
   @override
   String get windowControlMinimize => '最小化';
