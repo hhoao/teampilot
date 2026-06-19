@@ -1,5 +1,6 @@
 import 'dart:convert';
 import '../../models/plugin.dart';
+import '../cli/registry/capabilities/plugin_provisioner_capability.dart';
 import '../io/filesystem.dart';
 import '../io/local_filesystem.dart';
 import 'plugin_exceptions.dart';
@@ -26,15 +27,15 @@ class PluginManifestService {
   final Filesystem _fs;
 
   Future<ParsedPlugin> parseDirectory(String pluginDir) async {
-    final manifestPath =
-        _fs.pathContext.join(pluginDir, '.claude-plugin', 'plugin.json');
     Map<String, Object?>? manifest;
-    if ((await _fs.stat(manifestPath)).isFile) {
+    for (final rel in neutralPluginManifestPaths.manifestCandidates()) {
+      final manifestPath = _fs.pathContext.join(pluginDir, rel);
+      if (!(await _fs.stat(manifestPath)).isFile) continue;
       try {
         final content = await _fs.readString(manifestPath);
         if (content != null) {
-          manifest =
-              (jsonDecode(content) as Map).cast<String, Object?>();
+          manifest = (jsonDecode(content) as Map).cast<String, Object?>();
+          break;
         }
       } catch (e) {
         throw PluginManifestException(manifestPath, cause: e);

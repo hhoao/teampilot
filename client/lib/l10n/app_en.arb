@@ -1145,6 +1145,40 @@
     }
   },
   "pluginsUninstallImpactList": "Affected teams:",
+  "pluginCliSupportFully": "{cli}: Fully supported",
+  "@pluginCliSupportFully": {
+    "placeholders": {
+      "cli": {
+        "type": "String"
+      }
+    }
+  },
+  "pluginCliSupportPartial": "{cli}: Partially supported ({dropped} dropped)",
+  "@pluginCliSupportPartial": {
+    "placeholders": {
+      "cli": {
+        "type": "String"
+      },
+      "dropped": {
+        "type": "String"
+      }
+    }
+  },
+  "pluginCliSupportNotApplicable": "{cli}: Not applicable",
+  "@pluginCliSupportNotApplicable": {
+    "placeholders": {
+      "cli": {
+        "type": "String"
+      }
+    }
+  },
+  "pluginComponentSkills": "skills",
+  "pluginComponentAgents": "agents",
+  "pluginComponentCommands": "commands",
+  "pluginComponentHooks": "hooks",
+  "pluginComponentMcp": "MCP",
+  "pluginComponentRules": "rules",
+  "pluginComponentApps": "apps",
   "pluginsUninstallSuccess": "Uninstalled {name}",
   "@pluginsUninstallSuccess": {
     "placeholders": {

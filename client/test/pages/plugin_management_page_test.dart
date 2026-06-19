@@ -62,6 +62,36 @@ void main() {
     expect(find.text('No plugins installed'), findsOneWidget);
   });
 
+  testWidgets('Installed row shows per-CLI support disclosure', (tester) async {
+    tester.view.physicalSize = const Size(2400, 1800);
+    tester.view.devicePixelRatio = 1.0;
+    final now = DateTime.utc(2026, 1, 1).millisecondsSinceEpoch;
+    await tester.pumpWidget(wrap(
+      PluginState(
+        installed: [
+          Plugin(
+            id: 'p-hooks',
+            name: 'hooks-only',
+            description: 'test plugin',
+            version: '1.0.0',
+            directory: '/tmp/p',
+            capabilities: const PluginCapabilities(
+              hooks: [PluginHook(event: 'Stop', matcher: '.*')],
+            ),
+            installedAt: now,
+            updatedAt: now,
+          ),
+        ],
+        marketplaces: const [],
+        status: PluginLoadStatus.ready,
+      ),
+      const PluginManagementPage(section: PluginSection.installed),
+    ));
+    await tester.pumpAndSettle();
+    expect(find.textContaining('Fully supported'), findsWidgets);
+    expect(find.textContaining('Not applicable'), findsWidgets);
+  });
+
   testWidgets('Marketplaces section lists default marketplace', (tester) async {
     tester.view.physicalSize = const Size(2400, 1800);
     tester.view.devicePixelRatio = 1.0;

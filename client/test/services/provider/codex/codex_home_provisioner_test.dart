@@ -121,5 +121,35 @@ base_url = "https://api.deepseek.com"
       );
       expect(toml, contains('trust_level = "trusted"'));
     });
+
+    test('preserves plugins and catalog mcp when rewriting provider config', () async {
+      const provider = AppProviderConfig(
+        id: 'p',
+        cli: CliTool.codex,
+        name: 'p',
+        config: {'configToml': 'model = "m1"\n'},
+      );
+
+      final codexHome = p.join(root.path, 'codex-preserve');
+      final configPath = p.join(codexHome, 'config.toml');
+      await Directory(codexHome).create(recursive: true);
+      await File(configPath).writeAsString('''
+[plugins."demo@local"]
+enabled = true
+
+[mcp_servers.time]
+command = "npx"
+''');
+
+      await CodexHomeProvisioner(fs: LocalFilesystem()).provision(
+        codexHome: codexHome,
+        provider: provider,
+      );
+
+      final toml = await File(configPath).readAsString();
+      expect(toml, contains("model = 'm1'"));
+      expect(toml, contains("[plugins.'demo@local']"));
+      expect(toml, contains('[mcp_servers.time]'));
+    });
   });
 }

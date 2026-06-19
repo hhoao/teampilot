@@ -27,6 +27,8 @@ void main() {
       '/work',
       '--model',
       'gpt-5.2',
+      '--reasoning-effort',
+      'medium',
       '--force',
       MemberRoleProvision.composeRolePrompt(member: member).trim(),
     ]);
@@ -59,6 +61,8 @@ void main() {
       'chat-1',
       '--model',
       'gpt-5.2',
+      '--reasoning-effort',
+      'medium',
     ]);
   });
 
@@ -98,6 +102,8 @@ void main() {
       '/work',
       '--model',
       'gpt-5.2',
+      '--reasoning-effort',
+      'medium',
       '--approve-mcps',
     ]);
     expect(args, isNot(contains('--plugin-dir')));

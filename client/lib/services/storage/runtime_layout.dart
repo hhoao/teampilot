@@ -4,7 +4,7 @@ import 'package:path/path.dart' as p;
 
 import '../../models/team_config.dart';
 import '../../utils/lock_pool.dart';
-import '../cli/registry/capabilities/plugin_manifest_capability.dart';
+import '../cli/registry/capabilities/plugin_provisioner_capability.dart';
 import '../io/filesystem.dart';
 import '../plugin/cli_plugin_layout.dart';
 import '../session/launch_command_builder.dart';
@@ -300,11 +300,10 @@ class RuntimeLayout {
         trimmedTool.isEmpty) {
       return null;
     }
-    final paths =
-        pluginManifestPathsForTool(
-          CliTool.tryParse(trimmedTool) ?? CliTool.claude,
-        ) ??
-        claudePluginManifestPaths;
+    final paths = pluginManifestPathsForTool(
+      CliTool.tryParse(trimmedTool) ?? CliTool.claude,
+    );
+    if (paths == null) return null;
     return CliPluginLayout.copyBundlesToMember(
       fs: _fs,
       teamPluginsDir: identityPluginsDir(trimmedIdentity),
@@ -332,11 +331,10 @@ class RuntimeLayout {
         trimmedTool.isEmpty) {
       return null;
     }
-    final paths =
-        pluginManifestPathsForTool(
-          CliTool.tryParse(trimmedTool) ?? CliTool.claude,
-        ) ??
-        claudePluginManifestPaths;
+    final paths = pluginManifestPathsForTool(
+      CliTool.tryParse(trimmedTool) ?? CliTool.claude,
+    );
+    if (paths == null) return null;
     return CliPluginLayout.copyBundlesToMember(
       fs: _fs,
       teamPluginsDir: workspaceConfigPluginsDir(trimmedWorkspace),

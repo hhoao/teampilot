@@ -77,4 +77,33 @@ void main() {
       isTrue,
     );
   });
+
+  test('mergeOAuthEnvInto writes bearer env vars for codex indirection', () async {
+    final store = McpCredentialsStore();
+    final appDir = Directory('${root.path}/app')..createSync();
+    final sessionDir = Directory('${root.path}/session')..createSync();
+
+    await store.saveOAuthTokens(
+      configDir: appDir.path,
+      serverName: 'Context7',
+      serverConfig: const {
+        'type': 'http',
+        'url': 'https://context7-mcp--upstash.run.tools',
+      },
+      accessToken: 'access-xyz',
+      expiresAtMs: 1,
+    );
+
+    final serverEnvVars = await store.mergeOAuthEnvInto(
+      fromConfigDir: appDir.path,
+      toConfigDir: sessionDir.path,
+    );
+
+    expect(
+      serverEnvVars,
+      {'Context7': McpCredentialsStore.bearerTokenEnvVarName('Context7')},
+    );
+    final env = await store.readOAuthEnv(sessionDir.path);
+    expect(env[McpCredentialsStore.bearerTokenEnvVarName('Context7')], 'access-xyz');
+  });
 }

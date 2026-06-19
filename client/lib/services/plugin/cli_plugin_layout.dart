@@ -1,5 +1,6 @@
 import 'dart:convert';
-import '../cli/registry/capabilities/plugin_manifest_capability.dart';
+import '../cli/registry/capabilities/plugin_provisioner_capability.dart';
+import '../cli/registry/capabilities/plugin_manifest_paths.dart';
 import 'cli_plugin_provision_cache.dart';
 import '../io/filesystem.dart';
 import '../../utils/lock_pool.dart';
@@ -20,7 +21,7 @@ class CliPluginLayout {
   static Future<String?> resolvePluginRoot(
     Filesystem fs,
     String dirPath, {
-    PluginManifestPaths paths = claudePluginManifestPaths,
+    PluginManifestPaths paths = neutralPluginManifestPaths,
   }) async {
     final primary = await _resolveWithManifest(fs, dirPath, paths.manifestRelativePath);
     if (primary != null) return primary;
@@ -91,55 +92,102 @@ class CliPluginLayout {
     return fs.pathContext.basename(pluginRoot);
   }
 
-  /// Ensures FlashskyAI manifest exists (mirror `.claude-plugin` when needed).
-  static Future<void> normalizeBundleForFlavor(
+  /// Writes [target] manifest tree projected from the neutral `.plugin/` bundle.
+  static Future<void> projectBundleToFlavor(
+    Filesystem fs,
+    String pluginRoot,
+    PluginManifestPaths target,
+  ) async {
+    if (target.manifestDirName == neutralPluginManifestPaths.manifestDirName) {
+      return;
+    }
+    final sourceRel = await _firstExistingManifestRel(
+      fs,
+      pluginRoot,
+      neutralPluginManifestPaths,
+    );
+    final ctx = fs.pathContext;
+    final sourceDir = sourceRel != null
+        ? ctx.dirname(ctx.join(pluginRoot, sourceRel))
+        : await _firstExistingManifestDir(fs, pluginRoot, neutralPluginManifestPaths);
+    if (sourceDir == null) return;
+    final targetDir = ctx.join(pluginRoot, target.manifestDirName);
+    if (sourceDir == targetDir) return;
+    if ((await fs.stat(targetDir)).exists) {
+      await fs.removeRecursive(targetDir);
+    }
+    await fs.copyTree(source: sourceDir, destination: targetDir);
+  }
+
+  /// Ensures a neutral `.plugin/plugin.json` exists in the install pool bundle.
+  static Future<void> ensureNeutralPoolBundle(
+    Filesystem fs,
+    String installDir,
+  ) async {
+    final root =
+        await resolvePluginRoot(fs, installDir, paths: neutralPluginManifestPaths) ??
+        await resolvePluginRoot(fs, installDir, paths: claudePluginManifestPaths) ??
+        installDir;
+    final ctx = fs.pathContext;
+    final neutralManifest = ctx.join(
+      root,
+      neutralPluginManifestPaths.manifestRelativePath,
+    );
+    if ((await fs.stat(neutralManifest)).isFile) return;
+
+    for (final paths in [
+      neutralPluginManifestPaths,
+      claudePluginManifestPaths,
+      cursorPluginManifestPaths,
+      codexPluginManifestPaths,
+      flashskyaiPluginManifestPaths,
+    ]) {
+      for (final rel in paths.manifestCandidates()) {
+        final src = ctx.join(root, rel);
+        if (!(await fs.stat(src)).isFile) continue;
+        final content = await fs.readString(src);
+        if (content == null || content.trim().isEmpty) continue;
+        final neutralDir = ctx.join(root, neutralPluginManifestPaths.manifestDirName);
+        await fs.ensureDir(neutralDir);
+        await fs.atomicWrite(neutralManifest, content);
+        return;
+      }
+    }
+  }
+
+  static Future<String?> _firstExistingManifestDir(
     Filesystem fs,
     String pluginRoot,
     PluginManifestPaths paths,
   ) async {
-    if (paths.manifestDirName != '.flashskyai-plugin') return;
-    await _ensureFlashskyaiPluginManifest(fs, pluginRoot);
-  }
-
-  /// Removes FlashskyAI-only manifest paths from a physical member bundle copy.
-  static Future<void> stripFlashskyaiManifest(Filesystem fs, String pluginRoot) async {
-    final flashDir = fs.pathContext.join(
-      pluginRoot,
-      flashskyaiManifestDirName,
-    );
-    if ((await fs.stat(flashDir)).exists) {
-      await fs.removeRecursive(flashDir);
+    for (final rel in paths.manifestCandidates()) {
+      final dir = fs.pathContext.dirname(fs.pathContext.join(pluginRoot, rel));
+      if ((await fs.stat(dir)).isDirectory) return dir;
     }
+    return null;
   }
 
-  static Future<void> _ensureFlashskyaiPluginManifest(
+  static Future<String?> _firstExistingManifestRel(
     Filesystem fs,
     String pluginRoot,
+    PluginManifestPaths paths,
   ) async {
-    final ctx = fs.pathContext;
-    final flashskyaiManifest = ctx.join(
-      pluginRoot,
-      flashskyaiPluginManifestPaths.manifestRelativePath,
-    );
-    if ((await fs.stat(flashskyaiManifest)).isFile) return;
-
-    final claudeDir = ctx.join(pluginRoot, claudeManifestDirName);
-    final hasClaudeManifest =
-        (await fs.stat(ctx.join(claudeDir, 'plugin.json'))).isFile ||
-        (await fs.stat(ctx.join(claudeDir, 'marketplace.json'))).isFile;
-    if (!hasClaudeManifest) return;
-
-    final flashskyaiDir = ctx.join(pluginRoot, flashskyaiManifestDirName);
-    if ((await fs.stat(flashskyaiDir)).exists) {
-      await fs.removeRecursive(flashskyaiDir);
+    for (final rel in paths.manifestCandidates()) {
+      if ((await fs.stat(fs.pathContext.join(pluginRoot, rel))).isFile) {
+        return rel;
+      }
     }
+    return null;
+  }
 
-    final linked = await fs.createSymlink(
-      target: claudeDir,
-      linkPath: flashskyaiDir,
-    );
-    if (!linked) {
-      await fs.copyTree(source: claudeDir, destination: flashskyaiDir);
+  static Future<void> _removeManifestDir(
+    Filesystem fs,
+    String pluginRoot,
+    String manifestDirName,
+  ) async {
+    final dir = fs.pathContext.join(pluginRoot, manifestDirName);
+    if ((await fs.stat(dir)).exists) {
+      await fs.removeRecursive(dir);
     }
   }
 
@@ -238,21 +286,14 @@ class CliPluginLayout {
           source: root,
           destination: dest,
         );
-        // Claude members must not inherit `.flashskyai-plugin` added on the team
-        // root for symlinked FlashskyAI sessions — use an isolated copy instead.
-        if (paths.manifestDirName == '.claude-plugin') {
-          if (linked) {
-            await fs.removeRecursive(dest);
-            linked = false;
-            await fs.copyTree(source: root, destination: dest);
-          }
-          await stripFlashskyaiManifest(fs, dest);
-        } else if (linked) {
-          // Symlinked member bundles share the team plugin root. FlashskyAI manifest
-          // mirroring is a cheap symlink on the team root (also done at team install).
-          await normalizeBundleForFlavor(fs, root, paths);
-        } else {
-          await normalizeBundleForFlavor(fs, dest, paths);
+        if (linked) {
+          await fs.removeRecursive(dest);
+          linked = false;
+          await fs.copyTree(source: root, destination: dest);
+        }
+        await projectBundleToFlavor(fs, dest, paths);
+        if (paths.manifestDirName == claudePluginManifestPaths.manifestDirName) {
+          await _removeManifestDir(fs, dest, flashskyaiManifestDirName);
         }
         final manifest = await readManifest(fs, root, paths: paths);
         final rootStat = await fs.stat(root);

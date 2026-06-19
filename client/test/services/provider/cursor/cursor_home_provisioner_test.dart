@@ -116,6 +116,34 @@ void main() {
       expect((await fs.stat(layout.authJson(memberHome))).isFile, isTrue);
     });
 
+    test('provision merges team-bus MCP into existing mcp.json', () async {
+      const memberHome = '/data/tp/members/planner/cursor/home';
+      await fs.writeString(
+        layout.mcpConfig(memberHome),
+        jsonEncode({
+          'mcpServers': {
+            'context7': {'command': 'npx'},
+          },
+        }),
+      );
+
+      await provisioner.provision(
+        memberHome: memberHome,
+        providerId: null,
+        member: member,
+        busPort: 4321,
+        forceTeamLeadDelegateMode: false,
+        mixed: true,
+      );
+
+      final servers =
+          (jsonDecode((await fs.readString(layout.mcpConfig(memberHome)))!)
+                  as Map)['mcpServers']
+              as Map;
+      expect(servers.containsKey('context7'), isTrue);
+      expect(servers.containsKey(teammateBusMcpServerName), isTrue);
+    });
+
     test('bus files contain expected content', () async {
       const memberHome = '/data/tp/members/planner/cursor/home';
 

@@ -14,6 +14,7 @@ import '../../utils/debounce/debounce.dart';
 import '../../utils/github_source_url.dart';
 import '../../widgets/app_dialog.dart';
 import '../../widgets/github_details_button.dart';
+import '../../widgets/plugins/plugin_cli_support_disclosure.dart';
 import '../../widgets/settings/workspace_settings_widgets.dart';
 import 'plugin_management_cards.dart';
 
@@ -303,6 +304,9 @@ class PluginInstalledRow extends StatelessWidget {
                     ),
                   ),
                 ],
+                PluginCliSupportDisclosure(
+                  capabilities: plugin.capabilities,
+                ),
               ],
             ),
           ),

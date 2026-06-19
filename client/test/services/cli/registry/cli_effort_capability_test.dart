@@ -6,13 +6,6 @@ import 'package:teampilot/services/provider/claude/claude_effort_capability.dart
 import 'package:teampilot/services/provider/codex/codex_effort_capability.dart';
 
 void main() {
-  test('built-in claude and codex register CliEffortCapability', () {
-    final registry = CliToolRegistry.builtIn();
-    expect(registry.capability<CliEffortCapability>(CliTool.claude), isNotNull);
-    expect(registry.capability<CliEffortCapability>(CliTool.codex), isNotNull);
-    expect(registry.capability<CliEffortCapability>(CliTool.opencode), isNull);
-  });
-
   test('resolveLaunchEffort prefers member over team', () {
     const capability = ClaudeEffortCapability();
     final team = TeamProfile(

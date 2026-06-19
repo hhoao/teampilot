@@ -51,6 +51,10 @@ void main() {
     final installedDir =
         Directory(p.join(tmp.path, 'plugins', 'installed', installed.directory));
     expect(installedDir.existsSync(), isTrue);
+    expect(
+      File(p.join(installedDir.path, '.plugin', 'plugin.json')).existsSync(),
+      isTrue,
+    );
 
     final jsonFile = File(p.join(tmp.path, 'plugins', 'plugins.json'));
     expect(jsonFile.existsSync(), isTrue);

@@ -11,6 +11,7 @@ import '../capabilities/config_profile_capability.dart';
 import '../capabilities/executable_resolver_capability.dart';
 import '../capabilities/installer_capability.dart';
 import '../capabilities/unsupported_installer_capability.dart';
+import '../capabilities/cli_effort_capability.dart';
 import '../capabilities/headless_run_capability.dart';
 import '../capabilities/launch_args_capability.dart';
 import '../capabilities/presence_capability.dart';
@@ -21,10 +22,13 @@ import '../capabilities/headless_provision_capability.dart';
 import '../config_profile/flashskyai_config_profile_capability.dart';
 import '../headless/flashskyai_headless_run_capability.dart';
 import '../headless/flashskyai_headless_provision_capability.dart';
+import '../../../provider/flashskyai/flashskyai_effort_capability.dart';
 import '../../../provider/flashskyai/flashskyai_provider_form_capability.dart';
 import '../capabilities/member_config_inspection_capability.dart';
 import '../capabilities/provider_form_capability.dart';
 import '../capabilities/resource_capability.dart';
+import '../mcp_writers/claude_mcp_config_writer.dart';
+import '../plugin_provisioners/flashskyai_plugin_provisioner.dart';
 import '../resources/default_resource_capability.dart';
 
 final class FlashskyaiCliTool implements CliToolDefinition {
@@ -38,13 +42,15 @@ final class FlashskyaiCliTool implements CliToolDefinition {
     this.display = const FlashskyaiDisplay(),
     this.terminalBehavior = const FlashskyaiTerminalBehavior(),
     this.memberConfigInspection = const DefaultMemberConfigInspection(),
-    this.pluginManifest = const FlashskyaiPluginManifest(),
+    this.pluginProvisioner = const FlashskyaiPluginProvisioner(),
     this.providerCatalog = const FlashskyaiProviderCatalogCapability(),
     this.providerModel = const ProviderRecordModelCapability(),
+    this.effort = const FlashskyaiEffortCapability(),
     this.headlessRun = const FlashskyaiHeadlessRunCapability(),
     this.headlessProvision = const FlashskyaiHeadlessProvisionCapability(),
     this.providerForm = const FlashskyaiProviderFormCapability(),
     this.resource = const DefaultResourceCapability(),
+    this.mcpConfigWriter = const FlashskyaiMcpConfigWriter(),
   });
 
   final LaunchArgsCapability launchArgs;
@@ -56,13 +62,15 @@ final class FlashskyaiCliTool implements CliToolDefinition {
   final FlashskyaiDisplay display;
   final FlashskyaiTerminalBehavior terminalBehavior;
   final MemberConfigInspectionCapability memberConfigInspection;
-  final FlashskyaiPluginManifest pluginManifest;
+  final FlashskyaiPluginProvisioner pluginProvisioner;
   final ProviderCatalogCapability providerCatalog;
   final ProviderModelCapability providerModel;
+  final CliEffortCapability effort;
   final HeadlessRunCapability headlessRun;
   final HeadlessProvisionCapability headlessProvision;
   final ProviderFormCapability providerForm;
   final ResourceCapability resource;
+  final FlashskyaiMcpConfigWriter mcpConfigWriter;
 
   @override
   CliTool get id => CliTool.flashskyai;
@@ -86,12 +94,14 @@ final class FlashskyaiCliTool implements CliToolDefinition {
     display,
     terminalBehavior,
     memberConfigInspection,
-    pluginManifest,
+    pluginProvisioner,
     providerCatalog,
     providerModel,
     providerForm,
+    effort,
     headlessRun,
     headlessProvision,
     resource,
+    mcpConfigWriter,
   ];
 }

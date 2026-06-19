@@ -1,7 +1,9 @@
 import '../../../../models/personal_profile.dart';
 import '../../../../models/team_config.dart';
 import '../../../../utils/team_member_naming.dart';
+import '../../../provider/flashskyai/flashskyai_effort_capability.dart';
 import '../../../session/member_role_provision.dart';
+import '../capabilities/cli_effort_capability.dart';
 import '../capabilities/config_profile_capability.dart';
 import 'bus_idle_stop_hook.dart';
 
@@ -90,11 +92,17 @@ final class FlashskyaiConfigProfileCapability
     await _writeMemberProfiles(
       delegate: delegate,
       scope: scope,
+      team: ctx.team,
       members: ctx.members,
       launchedMember: ctx.member,
       forceTeamLeadDelegateMode: ctx.team?.forceTeamLeadDelegateMode ?? false,
       mixed: ctx.team?.teamMode == TeamMode.mixed,
       idleUrl: ctx.busIdleUrl,
+      effortLevel: _resolveFlashskyaiEffort(
+        team: ctx.team,
+        member: ctx.member,
+        model: ctx.member?.model ?? '',
+      ),
     );
 
     final environment = _teamLaunchEnvironment(delegate, scope);
@@ -165,6 +173,12 @@ final class FlashskyaiConfigProfileCapability
       memberToolDir: memberToolDir,
       scope: scope,
       member: member,
+      effortLevel: _resolveFlashskyaiEffort(
+        team: null,
+        member: member,
+        model: member.model,
+        profileEffort: ctx.preset?.effort ?? '',
+      ),
     );
 
     final environment = _standaloneLaunchEnvironment(delegate, memberToolDir);
@@ -215,6 +229,7 @@ final class FlashskyaiConfigProfileCapability
     required String memberToolDir,
     required LaunchProfileScope scope,
     required TeamMemberConfig member,
+    required String effortLevel,
   }) async {
     await MemberRoleProvision.syncRolePromptFile(
       fs: delegate.fs,
@@ -227,7 +242,7 @@ final class FlashskyaiConfigProfileCapability
       memberToolDir,
       settingsFileName,
     );
-    final settings = _memberSettings(member);
+    final settings = _memberSettings(member, effortLevel: effortLevel);
     await delegate.writeSettingsFile(
       settingsFile,
       settings,
@@ -281,15 +296,17 @@ final class FlashskyaiConfigProfileCapability
   Future<void> _writeMemberProfiles({
     required ConfigProfileDelegate delegate,
     required LaunchProfileScope scope,
+    required TeamProfile? team,
     required List<TeamMemberConfig> members,
     required TeamMemberConfig? launchedMember,
     required bool forceTeamLeadDelegateMode,
     required bool mixed,
     String? idleUrl,
+    required String effortLevel,
   }) async {
     final selected = launchedMember;
     if (selected == null || !selected.isValid) {
-      await _writeTeamSettings(delegate, scope);
+      await _writeTeamSettings(delegate, scope, effortLevel: effortLevel);
       return;
     }
     await _writeMemberProfile(
@@ -299,13 +316,15 @@ final class FlashskyaiConfigProfileCapability
       forceTeamLeadDelegateMode: forceTeamLeadDelegateMode,
       mixed: mixed,
       idleUrl: idleUrl,
+      effortLevel: effortLevel,
     );
   }
 
   Future<void> _writeTeamSettings(
     ConfigProfileDelegate delegate,
-    LaunchProfileScope scope,
-  ) async {
+    LaunchProfileScope scope, {
+    required String effortLevel,
+  }) async {
     final file = delegate.pathContext.join(
       delegate.sessionToolDir(
         scope.workspaceId,
@@ -321,7 +340,7 @@ final class FlashskyaiConfigProfileCapability
       toolId,
       memberId: scope.memberId,
     );
-    final teamDefaults = _teamSettings();
+    final teamDefaults = _teamSettings(effortLevel: effortLevel);
     if (await _settingsAlreadyCurrent(delegate, file, teamDefaults) &&
         !await delegate.hasEnabledExtensionSettingsHooks(
           toolId,
@@ -329,7 +348,7 @@ final class FlashskyaiConfigProfileCapability
         )) {
       return;
     }
-    var merged = await _teamSettingsMerged(delegate, file);
+    var merged = await _teamSettingsMerged(delegate, file, effortLevel: effortLevel);
     merged = await delegate.applyExtensionSettings(
       merged,
       memberToolDir,
@@ -346,6 +365,7 @@ final class FlashskyaiConfigProfileCapability
     required bool forceTeamLeadDelegateMode,
     required bool mixed,
     String? idleUrl,
+    required String effortLevel,
   }) async {
     final memberToolDir = delegate.sessionToolDir(
       scope.workspaceId,
@@ -365,7 +385,7 @@ final class FlashskyaiConfigProfileCapability
       memberToolDir,
       settingsFileName,
     );
-    var settings = _memberSettings(member);
+    var settings = _memberSettings(member, effortLevel: effortLevel);
     settings = MemberRoleProvision.applyTeamSessionPolicy(settings, mixed: mixed);
     if (mixed && idleUrl != null && idleUrl.isNotEmpty) {
       settings = mergeStopIdleHook(settings, member.id, idleUrl);
@@ -419,10 +439,11 @@ final class FlashskyaiConfigProfileCapability
 
   Future<Map<String, Object?>> _teamSettingsMerged(
     ConfigProfileDelegate delegate,
-    String path,
-  ) async {
+    String path, {
+    required String effortLevel,
+  }) async {
     final existing = await delegate.readSettingsFile(path);
-    final merged = Map<String, Object?>.from(_teamSettings());
+    final merged = Map<String, Object?>.from(_teamSettings(effortLevel: effortLevel));
     final enabledPlugins = existing['enabledPlugins'];
     if (enabledPlugins is Map && enabledPlugins.isNotEmpty) {
       merged['enabledPlugins'] = enabledPlugins;
@@ -430,11 +451,38 @@ final class FlashskyaiConfigProfileCapability
     return merged;
   }
 
-  static Map<String, Object?> _teamSettings() {
-    return <String, Object?>{'skipDangerousModePermissionPrompt': true};
+  static Map<String, Object?> _teamSettings({required String effortLevel}) {
+    return <String, Object?>{
+      'skipDangerousModePermissionPrompt': true,
+      if (effortLevel.isNotEmpty) 'effortLevel': effortLevel,
+    };
   }
 
-  static Map<String, Object?> _memberSettings(TeamMemberConfig member) {
-    return Map<String, Object?>.from(_teamSettings());
+  static Map<String, Object?> _memberSettings(
+    TeamMemberConfig member, {
+    required String effortLevel,
+  }) {
+    return Map<String, Object?>.from(_teamSettings(effortLevel: effortLevel));
+  }
+
+  static String _resolveFlashskyaiEffort({
+    required TeamProfile? team,
+    required TeamMemberConfig? member,
+    required String model,
+    String? profileEffort,
+  }) {
+    if (profileEffort != null && profileEffort.trim().isNotEmpty) {
+      return profileEffort.trim();
+    }
+    const capability = FlashskyaiEffortCapability();
+    return resolveLaunchEffort(
+      capability: capability,
+      cli: CliTool.flashskyai,
+      context: EffortResolveContext(
+        team: team,
+        member: member,
+        model: model,
+      ),
+    );
   }
 }

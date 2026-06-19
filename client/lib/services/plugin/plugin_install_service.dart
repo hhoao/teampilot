@@ -12,6 +12,7 @@ import 'plugin_exceptions.dart';
 import 'plugin_fetch_service.dart';
 import 'plugin_manifest_service.dart';
 import 'plugin_repo_disk_cache_service.dart';
+import 'cli_plugin_layout.dart';
 import '../storage/remote_file_store.dart';
 
 class _PluginStorage {
@@ -118,6 +119,7 @@ class PluginInstallService {
       await storage.fs.removeRecursive(installDir);
     }
     await storage.fs.copyTree(source: source.path, destination: installDir);
+    await CliPluginLayout.ensureNeutralPoolBundle(storage.fs, installDir);
 
     final now = DateTime.now().millisecondsSinceEpoch;
     final version =

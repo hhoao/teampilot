@@ -5,6 +5,7 @@ import '../../../../models/personal_profile.dart';
 import '../../../../models/team_config.dart';
 import '../../../../repositories/app_provider_repository.dart';
 import '../../../provider/codex/codex_auth_artifacts.dart';
+import '../../../mcp/mcp_credentials_store.dart';
 import '../../../provider/codex/codex_effort_capability.dart';
 import '../../../provider/codex/codex_home_provisioner.dart';
 import '../capabilities/cli_effort_capability.dart';
@@ -113,7 +114,10 @@ final class CodexConfigProfileCapability implements ConfigProfileCapability {
     }
 
     return ConfigProfileLaunchContribution(
-      environment: {'CODEX_HOME': codexHome},
+      environment: {
+        'CODEX_HOME': codexHome,
+        ...await McpCredentialsStore(fs: paths.fs).readOAuthEnv(codexHome),
+      },
       warnings: warnings,
     );
   }
@@ -180,7 +184,10 @@ final class CodexConfigProfileCapability implements ConfigProfileCapability {
     }
 
     return ConfigProfileLaunchContribution(
-      environment: {'CODEX_HOME': codexHome},
+      environment: {
+        'CODEX_HOME': codexHome,
+        ...await McpCredentialsStore(fs: paths.fs).readOAuthEnv(codexHome),
+      },
       warnings: warnings,
     );
   }

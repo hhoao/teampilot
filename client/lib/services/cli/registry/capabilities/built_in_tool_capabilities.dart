@@ -1,7 +1,7 @@
 import '../../../../l10n/app_localizations.dart';
 import 'display_capability.dart';
 import 'executable_resolver_capability.dart';
-import 'plugin_manifest_capability.dart';
+import 'plugin_manifest_paths.dart';
 import 'presence_capability.dart';
 import 'terminal_behavior_capability.dart';
 
@@ -155,47 +155,3 @@ final class CursorTerminalBehavior implements TerminalBehaviorCapability {
   bool get forwardsColorSchemeReport => false;
 }
 
-final class ClaudePluginManifest implements PluginManifestCapability {
-  const ClaudePluginManifest();
-  @override
-  bool get supportsPluginRegistry => true;
-  @override
-  PluginManifestPaths? get paths => const PluginManifestPaths(
-    manifestDirName: '.claude-plugin',
-  );
-}
-
-final class FlashskyaiPluginManifest implements PluginManifestCapability {
-  const FlashskyaiPluginManifest();
-  @override
-  bool get supportsPluginRegistry => true;
-  @override
-  PluginManifestPaths? get paths => const PluginManifestPaths(
-    manifestDirName: '.flashskyai-plugin',
-    fallbackManifestDirName: '.claude-plugin',
-  );
-}
-
-final class CodexPluginManifest implements PluginManifestCapability {
-  const CodexPluginManifest();
-  @override
-  bool get supportsPluginRegistry => false;
-  @override
-  PluginManifestPaths? get paths => null;
-}
-
-final class OpencodePluginManifest implements PluginManifestCapability {
-  const OpencodePluginManifest();
-  @override
-  bool get supportsPluginRegistry => false;
-  @override
-  PluginManifestPaths? get paths => null;
-}
-
-final class CursorPluginManifest implements PluginManifestCapability {
-  const CursorPluginManifest();
-  @override
-  bool get supportsPluginRegistry => false;
-  @override
-  PluginManifestPaths? get paths => null;
-}

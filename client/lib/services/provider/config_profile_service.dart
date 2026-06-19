@@ -11,14 +11,14 @@ import '../host/host_execution_environment.dart';
 import '../host/host_script_dialect.dart';
 import '../host/script_file_hook_provisioner.dart';
 import '../cli/registry/capabilities/config_profile_capability.dart';
-import '../cli/registry/capabilities/plugin_manifest_capability.dart';
+import '../cli/registry/capabilities/plugin_provisioner_capability.dart';
 import '../cli/registry/cli_tool_registry.dart';
 import '../io/filesystem.dart';
 import '../mcp/mcp_registry_service.dart';
-import '../plugin/cli_plugin_registry_service.dart';
 import '../resource/resource_provisioning_service.dart';
 import '../resource/resource_scope.dart';
 import '../team/claude_team_roster_service.dart';
+import 'cursor/cursor_session_config_dir.dart';
 import '../storage/app_storage.dart';
 import 'config_profile_infrastructure.dart';
 
@@ -149,6 +149,28 @@ class ConfigProfileService implements ConfigProfileDelegate {
     );
   }
 
+  String _launchResourceConfigDir({
+    required CliTool cli,
+    required String workspaceId,
+    required String sessionId,
+    String? memberId,
+  }) {
+    if (cli == CliTool.cursor) {
+      return CursorSessionConfigDir.resolve(
+        layout,
+        workspaceId: workspaceId,
+        sessionId: sessionId,
+        memberId: memberId,
+      );
+    }
+    return layout.sessionRuntimeToolDir(
+      workspaceId,
+      sessionId,
+      cli.value,
+      memberId: memberId,
+    );
+  }
+
   Future<void> ensureTeamProfile(
     String teamId, {
     CliTool cli = CliTool.claude,
@@ -199,23 +221,32 @@ class ConfigProfileService implements ConfigProfileDelegate {
           )
           .then((json) => memberProvisionJson = json),
     ]);
-    final pluginManifest = _cliRegistry.capability<PluginManifestCapability>(
+    final pluginProvisioner = _cliRegistry.capability<PluginProvisionerCapability>(
       cli,
     );
-    if (pluginManifest?.supportsPluginRegistry == true) {
-      await CliPluginRegistryService(
-        fs: fs,
-        teampilotRoot: basePath,
-        layout: layout,
-        cliRegistry: _cliRegistry,
-      ).writeForSession(
-        workspaceId: trimmedWorkspaceId,
-        teamId: trimmedTeamId,
-        sessionId: trimmedSessionId,
-        tool: cli,
-        team: team,
-        memberId: memberId,
-        memberProvisionJson: memberProvisionJson,
+    if (pluginProvisioner != null) {
+      await pluginProvisioner.provision(
+        PluginProvisionContext(
+          fs: fs,
+          teampilotRoot: basePath,
+          configDir: _launchResourceConfigDir(
+            cli: cli,
+            workspaceId: trimmedWorkspaceId,
+            sessionId: trimmedSessionId,
+            memberId: memberId,
+          ),
+          bundlePoolDir: layout.sessionRuntimePluginsDir(
+            trimmedWorkspaceId,
+            trimmedSessionId,
+            cli.value,
+            memberId: memberId,
+          ),
+          enabledPluginIds: team?.pluginIds ?? const <String>[],
+          installedCatalog: const [],
+          layout: layout,
+          tool: cli,
+          memberProvisionJson: memberProvisionJson,
+        ),
       );
     }
     final cap = _cliRegistry.capability<ConfigProfileCapability>(cli);
@@ -282,21 +313,29 @@ class ConfigProfileService implements ConfigProfileDelegate {
             )
             .then((json) => sessionProvisionJson = json),
       ]);
-      final pluginManifest = _cliRegistry.capability<PluginManifestCapability>(
-        cli,
-      );
-      if (pluginManifest?.supportsPluginRegistry == true) {
-        await CliPluginRegistryService(
-          fs: fs,
-          teampilotRoot: basePath,
-          layout: layout,
-          cliRegistry: _cliRegistry,
-        ).writeForStandaloneSession(
-          workspaceId: trimmedWorkspaceId,
-          sessionId: trimmedSessionId,
-          tool: cli,
-          personal: personal,
-          memberProvisionJson: sessionProvisionJson,
+      final pluginProvisioner =
+          _cliRegistry.capability<PluginProvisionerCapability>(cli);
+      if (pluginProvisioner != null) {
+        await pluginProvisioner.provision(
+          PluginProvisionContext(
+            fs: fs,
+            teampilotRoot: basePath,
+            configDir: _launchResourceConfigDir(
+              cli: cli,
+              workspaceId: trimmedWorkspaceId,
+              sessionId: trimmedSessionId,
+            ),
+            bundlePoolDir: layout.sessionRuntimePluginsDir(
+              trimmedWorkspaceId,
+              trimmedSessionId,
+              cli.value,
+            ),
+            enabledPluginIds: personal?.bundle.pluginIds ?? const <String>[],
+            installedCatalog: const [],
+            layout: layout,
+            tool: cli,
+            memberProvisionJson: sessionProvisionJson,
+          ),
         );
       }
       final cap = _cliRegistry.capability<ConfigProfileCapability>(cli);
@@ -375,10 +414,10 @@ class ConfigProfileService implements ConfigProfileDelegate {
           ).provisionForLaunch(
             scope: PersonalResourceScope(personal: personal),
             cli: cli,
-            configDir: layout.sessionRuntimeToolDir(
-              trimmedWorkspaceId,
-              trimmedSessionId,
-              cli.value,
+            configDir: _launchResourceConfigDir(
+              cli: cli,
+              workspaceId: trimmedWorkspaceId,
+              sessionId: trimmedSessionId,
             ),
             catalog: await _skillCatalog(),
           );
@@ -500,10 +539,10 @@ class ConfigProfileService implements ConfigProfileDelegate {
           ).provisionForLaunch(
             scope: TeamResourceScope(team: team, member: member),
             cli: cli,
-            configDir: layout.sessionRuntimeToolDir(
-              trimmedWorkspaceId,
-              trimmedSessionId,
-              cli.value,
+            configDir: _launchResourceConfigDir(
+              cli: cli,
+              workspaceId: trimmedWorkspaceId,
+              sessionId: trimmedSessionId,
               memberId: memberId,
             ),
             catalog: await _skillCatalog(),

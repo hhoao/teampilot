@@ -4,7 +4,7 @@ import 'dart:io';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:path/path.dart' as p;
 import 'package:teampilot/services/plugin/cli_plugin_layout.dart';
-import 'package:teampilot/services/cli/registry/capabilities/plugin_manifest_capability.dart';
+import 'package:teampilot/services/cli/registry/capabilities/plugin_manifest_paths.dart';
 import 'package:teampilot/services/plugin/cli_plugin_provision_cache.dart';
 import 'package:teampilot/services/io/local_filesystem.dart';
 

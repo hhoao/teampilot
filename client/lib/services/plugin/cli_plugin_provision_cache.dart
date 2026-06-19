@@ -1,7 +1,10 @@
 import 'dart:convert';
+import 'package:crypto/crypto.dart';
+import 'package:path/path.dart' as p;
+
 import '../../models/plugin.dart';
 import 'cli_plugin_layout.dart';
-import '../cli/registry/capabilities/plugin_manifest_capability.dart';
+import '../cli/registry/capabilities/plugin_manifest_paths.dart';
 import '../io/filesystem.dart';
 
 /// Fingerprints for skipping redundant plugin copy / registry writes on session launch.
@@ -14,6 +17,79 @@ class CliPluginProvisionCache {
       '.teampilot-marketplace-source-stamp.json';
   static const pluginCacheMetaFileName = '.teampilot-plugin-cache-meta.json';
   static const stampVersion = 1;
+
+  /// Per-CLI registry artifact fingerprint (codex toml, cursor local dir, opencode decomposed dirs).
+  static Future<String> registryArtifactsFingerprint({
+    required Filesystem fs,
+    required String configDir,
+    required String tool,
+  }) async {
+    final ctx = fs.pathContext;
+    switch (tool) {
+      case 'codex':
+        return _fileContentSha256(fs, ctx.join(configDir, 'config.toml'));
+      case 'cursor':
+        final settings = await _fileContentSha256(
+          fs,
+          ctx.join(configDir, 'settings.json'),
+        );
+        final local = await _directoryTreeSha256(
+          fs,
+          ctx.join(configDir, 'plugins', 'local'),
+        );
+        return '$settings:$local';
+      case 'opencode':
+        final skills = await _directoryTreeSha256(
+          fs,
+          ctx.join(configDir, 'skills'),
+        );
+        final agents = await _directoryTreeSha256(
+          fs,
+          ctx.join(configDir, 'agent'),
+        );
+        return '$skills:$agents';
+      default:
+         return '';
+    }
+  }
+
+  static Future<String> _fileContentSha256(Filesystem fs, String path) async {
+    final text = await fs.readString(path);
+    if (text == null || text.isEmpty) return '';
+    return sha256.convert(utf8.encode(text)).toString();
+  }
+
+  static Future<String> _directoryTreeSha256(Filesystem fs, String root) async {
+    final stat = await fs.stat(root);
+    if (!stat.isDirectory) return '';
+    final ctx = fs.pathContext;
+    final entries = <String>[];
+    await _collectDirEntries(fs, ctx, root, root, entries);
+    entries.sort();
+    return sha256.convert(utf8.encode(entries.join('\n'))).toString();
+  }
+
+  static Future<void> _collectDirEntries(
+    Filesystem fs,
+    p.Context ctx,
+    String root,
+    String dir,
+    List<String> entries,
+  ) async {
+    for (final entry in await fs.listDir(dir)) {
+      if (entry.name.startsWith('.')) continue;
+      final path = ctx.join(dir, entry.name);
+      final rel = ctx.relative(path, from: root);
+      final entryStat = await fs.stat(path);
+      if (entryStat.isDirectory) {
+        await _collectDirEntries(fs, ctx, root, path, entries);
+      } else if (entryStat.isFile) {
+        entries.add(
+          '$rel:${entryStat.mtime?.millisecondsSinceEpoch ?? 0}:${entryStat.size ?? 0}',
+        );
+      }
+    }
+  }
 
   static String? _cachedTeamStampKey;
   static Map<String, Object?>? _cachedTeamStamp;
@@ -360,6 +436,11 @@ class CliPluginProvisionCache {
       return false;
     }
 
+    final registryArtifacts = await registryArtifactsFingerprint(
+      fs: fs,
+      configDir: configDir,
+      tool: tool,
+    );
     final current = buildRegistryStamp(
       tool: tool,
       paths: paths,
@@ -367,6 +448,7 @@ class CliPluginProvisionCache {
       enabledPluginIds: enabledPluginIds,
       catalog: catalog,
       marketplaceSourceStamps: marketplaceSourceStamps,
+      registryArtifacts: registryArtifacts,
     );
     if (!_stampsEqual(_registryStampForCompare(saved), current)) {
       return false;
@@ -388,6 +470,7 @@ class CliPluginProvisionCache {
   static Future<void> writeRegistryStamp({
     required Filesystem fs,
     required String pluginsDir,
+    required String configDir,
     required String tool,
     required PluginManifestPaths paths,
     required String memberProvisionStampJson,
@@ -395,6 +478,11 @@ class CliPluginProvisionCache {
     required List<Plugin> catalog,
     required List<Map<String, Object?>> marketplaceSourceStamps,
   }) async {
+    final registryArtifacts = await registryArtifactsFingerprint(
+      fs: fs,
+      configDir: configDir,
+      tool: tool,
+    );
     await fs.ensureDir(pluginsDir);
     await fs.atomicWrite(
       fs.pathContext.join(pluginsDir, registryStampFileName),
@@ -406,6 +494,7 @@ class CliPluginProvisionCache {
           enabledPluginIds: enabledPluginIds,
           catalog: catalog,
           marketplaceSourceStamps: marketplaceSourceStamps,
+          registryArtifacts: registryArtifacts,
         ),
       ),
     );
@@ -418,6 +507,7 @@ class CliPluginProvisionCache {
     required List<String> enabledPluginIds,
     required List<Plugin> catalog,
     required List<Map<String, Object?>> marketplaceSourceStamps,
+    String registryArtifacts = '',
   }) {
     final ids = [...enabledPluginIds]..sort();
     final catalogLines = catalog
@@ -434,6 +524,7 @@ class CliPluginProvisionCache {
       'enabledPluginIds': ids,
       'catalog': catalogLines,
       'marketplaces': markets,
+      'registryArtifacts': registryArtifacts,
     };
   }
 

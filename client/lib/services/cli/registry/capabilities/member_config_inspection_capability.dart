@@ -7,7 +7,7 @@ import '../../../../models/team_config.dart';
 import '../../../io/filesystem.dart';
 import '../../member_config/member_config_detail.dart';
 import '../cli_capability.dart';
-import 'plugin_manifest_capability.dart';
+import 'plugin_provisioner_capability.dart';
 
 /// Inputs for [MemberConfigInspectionCapability.inspect], resolved by
 /// `MemberConfigInspector` before delegating to the CLI.
@@ -74,7 +74,9 @@ class DefaultMemberConfigInspection
     MemberConfigContext ctx,
     List<SectionWarning> warnings,
   ) async {
-    final dir = _pc(ctx).join(ctx.configDir, 'skills');
+    final skillsSubdir =
+        ctx.cli == CliTool.cursor ? 'skills-cursor' : 'skills';
+    final dir = _pc(ctx).join(ctx.configDir, skillsSubdir);
     if (!(await ctx.fs.stat(dir)).isDirectory) return const [];
     final out = <SkillEntry>[];
     try {
@@ -106,10 +108,12 @@ class DefaultMemberConfigInspection
     MemberConfigContext ctx,
     List<SectionWarning> warnings,
   ) async {
-    final dir = _pc(ctx).join(ctx.configDir, 'plugins');
+    final dir = ctx.cli == CliTool.cursor
+        ? _pc(ctx).join(ctx.configDir, 'plugins', 'local')
+        : _pc(ctx).join(ctx.configDir, 'plugins');
     if (!(await ctx.fs.stat(dir)).isDirectory) return const [];
     final candidates = (pluginManifestPathsForTool(ctx.cli) ??
-            claudePluginManifestPaths)
+            neutralPluginManifestPaths)
         .manifestCandidates()
         .toList();
     final out = <PluginEntry>[];

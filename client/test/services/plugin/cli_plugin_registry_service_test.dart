@@ -213,7 +213,7 @@ void main() {
       isTrue,
     );
     if (Platform.isLinux || Platform.isMacOS) {
-      expect(Link(installLocation).existsSync(), isTrue);
+      expect(Link(installLocation).existsSync(), isFalse);
     }
     expect((entry['source'] as Map)['source'], 'directory');
   });

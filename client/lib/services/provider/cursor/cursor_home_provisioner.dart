@@ -105,10 +105,42 @@ final class CursorHomeProvisioner {
         CursorHomeBusOverlay.hooksConfig(idleScriptPath: idleScriptPath),
       ),
     );
-    await _fs.atomicWrite(
-      _layout.mcpConfig(memberHome),
-      CursorHomeBusOverlay.buildMcpJson(memberId: member.id, port: port),
+    await _mergeTeamBusMcp(
+      memberHome: memberHome,
+      memberId: member.id,
+      port: port,
     );
+  }
+
+  Future<void> _mergeTeamBusMcp({
+    required String memberHome,
+    required String memberId,
+    required int port,
+  }) async {
+    final path = _layout.mcpConfig(memberHome);
+    final raw = await _fs.readString(path);
+    Map<String, Object?> existing;
+    if (raw != null && raw.trim().isNotEmpty) {
+      existing = (jsonDecode(raw) as Map).cast<String, Object?>();
+    } else {
+      existing = <String, Object?>{};
+    }
+
+    final mergedServers = <String, Object?>{
+      ...((existing['mcpServers'] as Map?)?.cast<String, Object?>() ??
+          const <String, Object?>{}),
+      ...((jsonDecode(
+                CursorHomeBusOverlay.buildMcpJson(
+                  memberId: memberId,
+                  port: port,
+                ),
+              ) as Map)
+              .cast<String, Object?>()['mcpServers'] as Map)
+          .cast<String, Object?>(),
+    };
+    existing['mcpServers'] = mergedServers;
+
+    await _fs.atomicWrite(path, _jsonPretty(existing));
   }
 
   static String _jsonPretty(Map<String, Object?> value) {

@@ -880,6 +880,40 @@
   "pluginsDiscoverySyncing": "正在后台检查 marketplace 更新并同步插件…",
   "pluginsUninstallConfirm": "确认卸载 {name}？将影响 {n} 个团队。",
   "pluginsUninstallImpactList": "受影响的团队：",
+  "pluginCliSupportFully": "{cli}：完全支持",
+  "@pluginCliSupportFully": {
+    "placeholders": {
+      "cli": {
+        "type": "String"
+      }
+    }
+  },
+  "pluginCliSupportPartial": "{cli}：部分支持（丢弃 {dropped}）",
+  "@pluginCliSupportPartial": {
+    "placeholders": {
+      "cli": {
+        "type": "String"
+      },
+      "dropped": {
+        "type": "String"
+      }
+    }
+  },
+  "pluginCliSupportNotApplicable": "{cli}：不适用",
+  "@pluginCliSupportNotApplicable": {
+    "placeholders": {
+      "cli": {
+        "type": "String"
+      }
+    }
+  },
+  "pluginComponentSkills": "技能",
+  "pluginComponentAgents": "代理",
+  "pluginComponentCommands": "命令",
+  "pluginComponentHooks": "钩子",
+  "pluginComponentMcp": "MCP",
+  "pluginComponentRules": "规则",
+  "pluginComponentApps": "应用",
   "pluginsUninstallSuccess": "已卸载 {name}",
   "members": "成员",
   "teamSessions": "团队会话",

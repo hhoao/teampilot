@@ -3,7 +3,7 @@ import 'dart:io';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:path/path.dart' as p;
 import 'package:teampilot/services/plugin/cli_plugin_layout.dart';
-import 'package:teampilot/services/cli/registry/capabilities/plugin_manifest_capability.dart';
+import 'package:teampilot/services/cli/registry/capabilities/plugin_manifest_paths.dart';
 import 'package:teampilot/services/io/local_filesystem.dart';
 
 import '../../support/in_memory_filesystem.dart';
@@ -19,48 +19,48 @@ class _NoSymlinkFilesystem extends InMemoryFilesystem {
 }
 
 void main() {
-  group('normalizeBundleForFlavor flashskyai', () {
-    test('symlinks .flashskyai-plugin to .claude-plugin when missing', () async {
+  group('projectBundleToFlavor flashskyai', () {
+    test('writes .flashskyai-plugin from neutral .plugin manifest', () async {
       final fs = InMemoryFilesystem();
       const root = '/bundle';
-      await fs.ensureDir('$root/.claude-plugin');
       await fs.writeString(
-        '$root/.claude-plugin/plugin.json',
+        '$root/.plugin/plugin.json',
         '{"name":"demo"}',
       );
 
-      await CliPluginLayout.normalizeBundleForFlavor(
+      await CliPluginLayout.projectBundleToFlavor(
         fs,
         root,
         flashskyaiPluginManifestPaths,
       );
 
-      expect(fs.symlinks['$root/.flashskyai-plugin'], '$root/.claude-plugin');
-    });
-
-    test('copies manifest dir when symlink is unavailable', () async {
-      final fs = _NoSymlinkFilesystem();
-      const root = '/bundle';
-      await fs.ensureDir('$root/.claude-plugin');
-      await fs.writeString(
-        '$root/.claude-plugin/plugin.json',
-        '{"name":"demo"}',
-      );
-
-      await CliPluginLayout.normalizeBundleForFlavor(
-        fs,
-        root,
-        flashskyaiPluginManifestPaths,
-      );
-
-      expect(fs.symlinks.containsKey('$root/.flashskyai-plugin'), isFalse);
       expect(
         await fs.readString('$root/.flashskyai-plugin/plugin.json'),
         '{"name":"demo"}',
       );
     });
 
-    test('skips when .flashskyai-plugin already exists', () async {
+    test('falls back to .claude-plugin source manifest', () async {
+      final fs = InMemoryFilesystem();
+      const root = '/bundle';
+      await fs.writeString(
+        '$root/.claude-plugin/plugin.json',
+        '{"name":"claude"}',
+      );
+
+      await CliPluginLayout.projectBundleToFlavor(
+        fs,
+        root,
+        flashskyaiPluginManifestPaths,
+      );
+
+      expect(
+        await fs.readString('$root/.flashskyai-plugin/plugin.json'),
+        '{"name":"claude"}',
+      );
+    });
+
+    test('overwrites existing target manifest from neutral source', () async {
       final fs = InMemoryFilesystem();
       const root = '/bundle';
       await fs.writeString(
@@ -68,11 +68,11 @@ void main() {
         '{"name":"native"}',
       );
       await fs.writeString(
-        '$root/.claude-plugin/plugin.json',
-        '{"name":"claude"}',
+        '$root/.plugin/plugin.json',
+        '{"name":"neutral"}',
       );
 
-      await CliPluginLayout.normalizeBundleForFlavor(
+      await CliPluginLayout.projectBundleToFlavor(
         fs,
         root,
         flashskyaiPluginManifestPaths,
@@ -80,9 +80,8 @@ void main() {
 
       expect(
         await fs.readString('$root/.flashskyai-plugin/plugin.json'),
-        '{"name":"native"}',
+        '{"name":"neutral"}',
       );
-      expect(fs.symlinks.containsKey('$root/.flashskyai-plugin'), isFalse);
     });
   });
 
@@ -165,7 +164,7 @@ void main() {
       );
     });
 
-    test('symlinks flashskyai bundles when symlinks are available', () async {
+    test('always copies member bundles (no member symlink)', () async {
       final fs = LocalFilesystem();
       final teamPlugins = Directory(p.join(base.path, 'team', 'plugins'))
         ..createSync(recursive: true);
@@ -186,14 +185,10 @@ void main() {
       final memberBundle = p.join(memberPlugins, 'demo');
       expect(Directory(memberBundle).existsSync(), isTrue);
       if (Platform.isLinux || Platform.isMacOS) {
-        expect(Link(memberBundle).existsSync(), isTrue);
+        expect(Link(memberBundle).existsSync(), isFalse);
       }
       expect(
         File(p.join(memberBundle, '.flashskyai-plugin', 'plugin.json')).existsSync(),
-        isTrue,
-      );
-      expect(
-        Link(p.join(bundle.path, '.flashskyai-plugin')).existsSync(),
         isTrue,
       );
     });

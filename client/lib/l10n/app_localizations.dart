@@ -4448,6 +4448,66 @@ abstract class AppLocalizations {
   /// **'Affected teams:'**
   String get pluginsUninstallImpactList;
 
+  /// No description provided for @pluginCliSupportFully.
+  ///
+  /// In en, this message translates to:
+  /// **'{cli}: Fully supported'**
+  String pluginCliSupportFully(String cli);
+
+  /// No description provided for @pluginCliSupportPartial.
+  ///
+  /// In en, this message translates to:
+  /// **'{cli}: Partially supported ({dropped} dropped)'**
+  String pluginCliSupportPartial(String cli, String dropped);
+
+  /// No description provided for @pluginCliSupportNotApplicable.
+  ///
+  /// In en, this message translates to:
+  /// **'{cli}: Not applicable'**
+  String pluginCliSupportNotApplicable(String cli);
+
+  /// No description provided for @pluginComponentSkills.
+  ///
+  /// In en, this message translates to:
+  /// **'skills'**
+  String get pluginComponentSkills;
+
+  /// No description provided for @pluginComponentAgents.
+  ///
+  /// In en, this message translates to:
+  /// **'agents'**
+  String get pluginComponentAgents;
+
+  /// No description provided for @pluginComponentCommands.
+  ///
+  /// In en, this message translates to:
+  /// **'commands'**
+  String get pluginComponentCommands;
+
+  /// No description provided for @pluginComponentHooks.
+  ///
+  /// In en, this message translates to:
+  /// **'hooks'**
+  String get pluginComponentHooks;
+
+  /// No description provided for @pluginComponentMcp.
+  ///
+  /// In en, this message translates to:
+  /// **'MCP'**
+  String get pluginComponentMcp;
+
+  /// No description provided for @pluginComponentRules.
+  ///
+  /// In en, this message translates to:
+  /// **'rules'**
+  String get pluginComponentRules;
+
+  /// No description provided for @pluginComponentApps.
+  ///
+  /// In en, this message translates to:
+  /// **'apps'**
+  String get pluginComponentApps;
+
   /// No description provided for @pluginsUninstallSuccess.
   ///
   /// In en, this message translates to:

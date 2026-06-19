@@ -17,14 +17,21 @@ void main() {
     }
   });
 
-  test('opencode uses "skill" subdir; others use "skills"', () {
+  test('opencode uses "skill" subdir; cursor uses "skills-cursor"; others use "skills"', () {
     final registry = buildRegistry();
     expect(
       registry.capability<ResourceCapability>(CliTool.opencode)!
           .subdirFor(ResourceKind.skill),
       'skill',
     );
-    for (final cli in CliTool.values.where((c) => c != CliTool.opencode)) {
+    expect(
+      registry.capability<ResourceCapability>(CliTool.cursor)!
+          .subdirFor(ResourceKind.skill),
+      'skills-cursor',
+    );
+    for (final cli in CliTool.values.where(
+      (c) => c != CliTool.opencode && c != CliTool.cursor,
+    )) {
       expect(
         registry.capability<ResourceCapability>(cli)!.subdirFor(ResourceKind.skill),
         'skills',

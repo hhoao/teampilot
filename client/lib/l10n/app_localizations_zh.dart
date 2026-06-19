@@ -2345,6 +2345,42 @@ class AppLocalizationsZh extends AppLocalizations {
   String get pluginsUninstallImpactList => '受影响的团队：';
 
   @override
+  String pluginCliSupportFully(String cli) {
+    return '$cli：完全支持';
+  }
+
+  @override
+  String pluginCliSupportPartial(String cli, String dropped) {
+    return '$cli：部分支持（丢弃 $dropped）';
+  }
+
+  @override
+  String pluginCliSupportNotApplicable(String cli) {
+    return '$cli：不适用';
+  }
+
+  @override
+  String get pluginComponentSkills => '技能';
+
+  @override
+  String get pluginComponentAgents => '代理';
+
+  @override
+  String get pluginComponentCommands => '命令';
+
+  @override
+  String get pluginComponentHooks => '钩子';
+
+  @override
+  String get pluginComponentMcp => 'MCP';
+
+  @override
+  String get pluginComponentRules => '规则';
+
+  @override
+  String get pluginComponentApps => '应用';
+
+  @override
   String pluginsUninstallSuccess(String name) {
     return '已卸载 $name';
   }

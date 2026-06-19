@@ -3,7 +3,8 @@ import '../../utils/logger.dart';
 import '../storage/app_storage.dart';
 import '../storage/runtime_layout.dart';
 import 'cli_plugin_layout.dart';
-import '../cli/registry/capabilities/plugin_manifest_capability.dart';
+import '../cli/registry/capabilities/plugin_manifest_paths.dart';
+import '../cli/registry/capabilities/plugin_provisioner_capability.dart';
 import '../storage/storage_resolver.dart';
 import '../io/filesystem.dart';
 
@@ -122,7 +123,7 @@ class ProfilePluginLinkerService {
           errors.add('${plugin.name}: source missing at $rawSource');
           continue;
         }
-        const paths = flashskyaiPluginManifestPaths;
+        const paths = neutralPluginManifestPaths;
         final pluginRoot = await CliPluginLayout.resolvePluginRoot(
           fs,
           rawSource,
@@ -154,7 +155,11 @@ class ProfilePluginLinkerService {
           source: pluginRoot,
           destination: target,
         );
-        await CliPluginLayout.normalizeBundleForFlavor(fs, target, paths);
+        await CliPluginLayout.projectBundleToFlavor(
+          fs,
+          target,
+          flashskyaiPluginManifestPaths,
+        );
         linked.add(targetName);
       } catch (e) {
         errors.add('${plugin.name}: $e');

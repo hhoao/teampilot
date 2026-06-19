@@ -7,10 +7,12 @@ import '../../../../repositories/app_provider_repository.dart';
 import '../../../provider/opencode/opencode_auth_artifacts.dart';
 import '../../../provider/opencode/opencode_data_layout.dart';
 import '../../../provider/opencode/opencode_provider_settings_resolver.dart';
+import '../../../provider/opencode/opencode_effort_capability.dart';
 import '../../../session/member_role_provision.dart';
 import '../../../storage/runtime_storage_context.dart';
 import '../../../team_bus/mcp/bus_bridge_locator.dart';
 import '../../../team_bus/mcp/teammate_bus_mcp_config.dart';
+import '../capabilities/cli_effort_capability.dart';
 import '../capabilities/config_profile_capability.dart';
 import 'opencode_idle_plugin.dart';
 
@@ -142,6 +144,51 @@ Map<String, Object?> mergeOpencodeProvider(
   return {...config, 'provider': providers};
 }
 
+/// Writes `provider.<id>.models.<model>.options.reasoningEffort` for launch.
+@visibleForTesting
+Map<String, Object?> mergeOpencodeReasoningEffort(
+  Map<String, Object?> config,
+  AppProviderConfig provider,
+  String reasoningEffort, {
+  String? memberModel,
+}) {
+  final effort = reasoningEffort.trim();
+  if (effort.isEmpty) return config;
+
+  final providerId = provider.id.trim();
+  final modelId = (memberModel?.trim().isNotEmpty ?? false)
+      ? memberModel!.trim()
+      : provider.defaultModel.trim();
+  if (providerId.isEmpty || modelId.isEmpty) return config;
+
+  final providers = <String, Object?>{
+    ...((config['provider'] as Map?)?.cast<String, Object?>() ??
+        const <String, Object?>{}),
+  };
+  final existing =
+      (providers[providerId] as Map?)?.cast<String, Object?>() ??
+      <String, Object?>{};
+  final entry = <String, Object?>{...existing};
+  final models = <String, Object?>{
+    ...((existing['models'] as Map?)?.cast<String, Object?>() ??
+        const <String, Object?>{}),
+  };
+  final modelEntry = <String, Object?>{
+    ...((models[modelId] as Map?)?.cast<String, Object?>() ??
+        const <String, Object?>{}),
+  };
+  final options = <String, Object?>{
+    ...((modelEntry['options'] as Map?)?.cast<String, Object?>() ??
+        const <String, Object?>{}),
+  };
+  options['reasoningEffort'] = effort;
+  modelEntry['options'] = options;
+  models[modelId] = modelEntry;
+  entry['models'] = models;
+  providers[providerId] = entry;
+  return {...config, 'provider': providers};
+}
+
 /// opencode CLI launch: provisions a per-session config dir (`OPENCODE_CONFIG_DIR`)
 /// holding `opencode.json` (provider credentials, member identity via `AGENTS.md`,
 /// and in mixed mode the team-bus idle plugin + teammate-bus MCP server).
@@ -216,6 +263,20 @@ final class OpencodeConfigProfileCapability implements ConfigProfileCapability {
         warnings.add('opencode_provider_missing');
       } else {
         config = mergeOpencodeProvider(config, launchProvider);
+        final effort = _resolveOpencodeEffort(
+          team: team,
+          member: member,
+          provider: launchProvider,
+          profileEffort: '',
+        );
+        if (effort.isNotEmpty) {
+          config = mergeOpencodeReasoningEffort(
+            config,
+            launchProvider,
+            effort,
+            memberModel: member?.model,
+          );
+        }
         changed = true;
       }
     }
@@ -296,6 +357,21 @@ final class OpencodeConfigProfileCapability implements ConfigProfileCapability {
     provider ??= await resolver.resolveSole();
     if (provider != null) {
       config = mergeOpencodeProvider(config, provider);
+      final member = standaloneMemberFromPersonal(personal, preset: ctx.preset);
+      final effort = _resolveOpencodeEffort(
+        team: null,
+        member: member,
+        provider: provider,
+        profileEffort: ctx.preset?.effort ?? '',
+      );
+      if (effort.isNotEmpty) {
+        config = mergeOpencodeReasoningEffort(
+          config,
+          provider,
+          effort,
+          memberModel: member.model,
+        );
+      }
       changed = true;
     }
 
@@ -395,5 +471,29 @@ final class OpencodeConfigProfileCapability implements ConfigProfileCapability {
       return;
     }
     await paths.fs.atomicWrite(pluginPath, opencodeIdlePluginSource);
+  }
+
+  static String _resolveOpencodeEffort({
+    required TeamProfile? team,
+    required TeamMemberConfig? member,
+    required AppProviderConfig provider,
+    String? profileEffort,
+  }) {
+    if (profileEffort != null && profileEffort.trim().isNotEmpty) {
+      return profileEffort.trim();
+    }
+    const capability = OpencodeEffortCapability();
+    return resolveLaunchEffort(
+      capability: capability,
+      cli: CliTool.opencode,
+      context: EffortResolveContext(
+        team: team,
+        member: member,
+        provider: provider,
+        model: member?.model.isNotEmpty == true
+            ? member!.model
+            : provider.defaultModel,
+      ),
+    );
   }
 }

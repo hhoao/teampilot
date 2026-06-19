@@ -12,6 +12,7 @@ import '../capabilities/launch_args_capability.dart';
 import '../capabilities/presence_capability.dart';
 import '../../../provider/cursor/cursor_provider_credential_capability.dart';
 import '../../../provider/cursor/cursor_provider_model_capability.dart';
+import '../capabilities/cli_effort_capability.dart';
 import '../capabilities/headless_run_capability.dart';
 import '../capabilities/provider_credential_capability.dart';
 import '../capabilities/session_resume_capability.dart';
@@ -19,11 +20,14 @@ import '../capabilities/resume/cursor_resume_strategy.dart';
 import '../capabilities/unsupported_installer_capability.dart';
 import '../config_profile/cursor_config_profile_capability.dart';
 import '../headless/cursor_headless_run_capability.dart';
+import '../../../provider/cursor/cursor_effort_capability.dart';
 import '../../../provider/cursor/cursor_provider_form_capability.dart';
 import '../capabilities/member_config_inspection_capability.dart';
 import '../capabilities/provider_form_capability.dart';
 import '../capabilities/resource_capability.dart';
-import '../resources/default_resource_capability.dart';
+import '../mcp_writers/cursor_mcp_config_writer.dart';
+import '../plugin_provisioners/cursor_plugin_provisioner.dart';
+import '../resources/cursor_resource_capability.dart';
 
 /// Cursor CLI (`cursor-agent`). Standalone and mixed-mode (HOME isolation +
 /// provider auth) embedded terminal.
@@ -38,12 +42,14 @@ final class CursorCliTool implements CliToolDefinition {
     this.display = const CursorDisplay(),
     this.terminalBehavior = const CursorTerminalBehavior(),
     this.memberConfigInspection = const DefaultMemberConfigInspection(),
-    this.pluginManifest = const CursorPluginManifest(),
+    this.pluginProvisioner = const CursorPluginProvisioner(),
     this.providerCatalog = const CursorProviderCatalogCapability(),
     CursorProviderModelCapability? providerModel,
+    this.effort = const CursorEffortCapability(),
     this.headlessRun = const CursorHeadlessRunCapability(),
     this.providerForm = const CursorProviderFormCapability(),
-    this.resource = const DefaultResourceCapability(),
+    this.resource = const CursorResourceCapability(),
+    this.mcpConfigWriter = const CursorMcpConfigWriter(),
     ProviderCredentialCapability? providerCredential,
   }) : providerModel = providerModel ?? CursorProviderModelCapability(),
        providerCredential = providerCredential ?? CursorProviderCredentialCapability();
@@ -60,11 +66,13 @@ final class CursorCliTool implements CliToolDefinition {
   final CursorDisplay display;
   final CursorTerminalBehavior terminalBehavior;
   final MemberConfigInspectionCapability memberConfigInspection;
-  final CursorPluginManifest pluginManifest;
+  final CursorPluginProvisioner pluginProvisioner;
   final ProviderCatalogCapability providerCatalog;
   final CursorProviderModelCapability providerModel;
+  final CliEffortCapability effort;
   final HeadlessRunCapability headlessRun;
   final ResourceCapability resource;
+  final CursorMcpConfigWriter mcpConfigWriter;
 
   @override
   CliTool get id => CliTool.cursor;
@@ -83,12 +91,14 @@ final class CursorCliTool implements CliToolDefinition {
     display,
     terminalBehavior,
     memberConfigInspection,
-    pluginManifest,
+    pluginProvisioner,
     providerCatalog,
     providerModel,
     providerCredential,
     providerForm,
+    effort,
     headlessRun,
     resource,
+    mcpConfigWriter,
   ];
 }

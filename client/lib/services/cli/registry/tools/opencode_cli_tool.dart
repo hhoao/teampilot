@@ -10,6 +10,7 @@ import '../capabilities/launch_args_capability.dart';
 import '../capabilities/presence_capability.dart';
 import '../../../provider/opencode/opencode_provider_credential_capability.dart';
 import '../../../provider/opencode/opencode_provider_catalog_capability.dart';
+import '../capabilities/cli_effort_capability.dart';
 import '../capabilities/headless_run_capability.dart';
 import '../capabilities/provider_catalog_capability.dart';
 import '../capabilities/provider_credential_capability.dart';
@@ -21,10 +22,14 @@ import '../config_profile/opencode_config_profile_capability.dart';
 import '../headless/opencode_headless_run_capability.dart';
 import '../headless/opencode_headless_provision_capability.dart';
 import '../installer/opencode_installer_capability.dart';
+import '../../../provider/opencode/opencode_effort_capability.dart';
 import '../../../provider/opencode/opencode_provider_form_capability.dart';
 import '../capabilities/member_config_inspection_capability.dart';
 import '../capabilities/provider_form_capability.dart';
 import '../capabilities/resource_capability.dart';
+import '../mcp_writers/opencode_mcp_config_writer.dart';
+import '../mcp_writers/opencode_mcp_config_writer.dart';
+import '../plugin_provisioners/opencode_plugin_provisioner.dart';
 import '../resources/opencode_resource_capability.dart';
 
 final class OpencodeCliTool implements CliToolDefinition {
@@ -38,13 +43,15 @@ final class OpencodeCliTool implements CliToolDefinition {
     this.display = const OpencodeDisplay(),
     this.terminalBehavior = const OpencodeTerminalBehavior(),
     this.memberConfigInspection = const DefaultMemberConfigInspection(),
-    this.pluginManifest = const OpencodePluginManifest(),
+    this.pluginProvisioner = const OpencodePluginProvisioner(),
     this.providerCatalog = const OpencodeProviderCatalogCapability(),
     this.providerModel = const OpencodeProviderModelCapability(),
+    this.effort = const OpencodeEffortCapability(),
     this.headlessRun = const OpencodeHeadlessRunCapability(),
     this.headlessProvision = const OpencodeHeadlessProvisionCapability(),
     this.providerForm = const OpencodeProviderFormCapability(),
     this.resource = const OpencodeResourceCapability(),
+    this.mcpConfigWriter = const OpencodeMcpConfigWriter(),
     ProviderCredentialCapability? providerCredential,
   }) : providerCredential =
            providerCredential ?? OpencodeProviderCredentialCapability();
@@ -61,12 +68,14 @@ final class OpencodeCliTool implements CliToolDefinition {
   final OpencodeDisplay display;
   final OpencodeTerminalBehavior terminalBehavior;
   final MemberConfigInspectionCapability memberConfigInspection;
-  final OpencodePluginManifest pluginManifest;
+  final OpencodePluginProvisioner pluginProvisioner;
   final ProviderCatalogCapability providerCatalog;
   final ProviderModelCapability providerModel;
+  final CliEffortCapability effort;
   final HeadlessRunCapability headlessRun;
   final HeadlessProvisionCapability headlessProvision;
   final ResourceCapability resource;
+  final OpencodeMcpConfigWriter mcpConfigWriter;
 
   @override
   CliTool get id => CliTool.opencode;
@@ -85,13 +94,15 @@ final class OpencodeCliTool implements CliToolDefinition {
     display,
     terminalBehavior,
     memberConfigInspection,
-    pluginManifest,
+    pluginProvisioner,
     providerCatalog,
     providerModel,
     providerCredential,
     providerForm,
+    effort,
     headlessRun,
     headlessProvision,
     resource,
+    mcpConfigWriter,
   ];
 }

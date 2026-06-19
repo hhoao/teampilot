@@ -2422,6 +2422,42 @@ class AppLocalizationsEn extends AppLocalizations {
   String get pluginsUninstallImpactList => 'Affected teams:';
 
   @override
+  String pluginCliSupportFully(String cli) {
+    return '$cli: Fully supported';
+  }
+
+  @override
+  String pluginCliSupportPartial(String cli, String dropped) {
+    return '$cli: Partially supported ($dropped dropped)';
+  }
+
+  @override
+  String pluginCliSupportNotApplicable(String cli) {
+    return '$cli: Not applicable';
+  }
+
+  @override
+  String get pluginComponentSkills => 'skills';
+
+  @override
+  String get pluginComponentAgents => 'agents';
+
+  @override
+  String get pluginComponentCommands => 'commands';
+
+  @override
+  String get pluginComponentHooks => 'hooks';
+
+  @override
+  String get pluginComponentMcp => 'MCP';
+
+  @override
+  String get pluginComponentRules => 'rules';
+
+  @override
+  String get pluginComponentApps => 'apps';
+
+  @override
   String pluginsUninstallSuccess(String name) {
     return 'Uninstalled $name';
   }

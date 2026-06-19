@@ -1,6 +1,8 @@
 import '../../models/team_config.dart';
 import '../../utils/team_member_naming.dart';
+import '../provider/cursor/cursor_effort_capability.dart';
 import '../session/member_role_provision.dart';
+import 'registry/capabilities/cli_effort_capability.dart';
 import 'registry/capabilities/launch_args_capability.dart';
 
 class CliLaunchContext {
@@ -287,6 +289,20 @@ class CursorCliToolAdapter implements CliToolAdapter {
     final model = member.model.trim();
     if (model.isNotEmpty) {
       args.addAll(['--model', model]);
+    }
+
+    const effortCapability = CursorEffortCapability();
+    final effort = resolveLaunchEffort(
+      capability: effortCapability,
+      cli: CliTool.cursor,
+      context: EffortResolveContext(
+        team: context.team,
+        member: member,
+        model: model,
+      ),
+    );
+    if (effort.isNotEmpty) {
+      args.addAll(['--reasoning-effort', effort]);
     }
 
     if (member.dangerouslySkipPermissions) {

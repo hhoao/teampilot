@@ -95,6 +95,11 @@ String _providerConfiguredEffort(AppProviderConfig? provider) {
   if (provider == null) return '';
   final fromConfig = provider.config['model_reasoning_effort']?.toString().trim();
   if (fromConfig != null && fromConfig.isNotEmpty) return fromConfig;
+  final reasoningEffort =
+      provider.config['reasoningEffort']?.toString().trim();
+  if (reasoningEffort != null && reasoningEffort.isNotEmpty) {
+    return reasoningEffort;
+  }
   final effort = provider.config['effort']?.toString().trim();
   if (effort != null && effort.isNotEmpty) return effort;
   return '';

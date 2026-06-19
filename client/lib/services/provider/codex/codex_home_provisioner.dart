@@ -5,6 +5,7 @@ import '../../io/filesystem.dart';
 import 'codex_auth_artifacts.dart';
 import 'codex_config_toml_composer.dart';
 import 'codex_proxy_launch_auth.dart';
+import '../../cli/registry/mcp_writers/codex_toml_merge.dart';
 import '../tool_config_generator.dart';
 
 /// Materializes `auth.json` and `config.toml` under a Codex `CODEX_HOME`.
@@ -60,11 +61,18 @@ final class CodexHomeProvisioner {
         }
       }
     }
-    final toml = _composer.compose(
+    final configPath = store.pathContext.join(codexHome, configFileName);
+    final existingToml = await store.readString(configPath) ?? '';
+
+    var toml = _composer.compose(
       provider: provider,
       busOverlayToml: busOverlayToml,
       trustedProjectDirectories: trustedProjectDirectories,
       reasoningEffortOverride: reasoningEffortOverride,
+    );
+    toml = CodexTomlMerge.preserveManagedTables(
+      existingToml: existingToml,
+      composedToml: toml,
     );
 
     final error = _generator.validateCodexToml(toml);

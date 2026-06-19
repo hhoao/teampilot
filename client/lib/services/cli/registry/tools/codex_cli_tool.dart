@@ -27,6 +27,8 @@ import '../../../provider/codex/codex_provider_form_capability.dart';
 import '../capabilities/member_config_inspection_capability.dart';
 import '../capabilities/provider_form_capability.dart';
 import '../capabilities/resource_capability.dart';
+import '../mcp_writers/codex_mcp_config_writer.dart';
+import '../plugin_provisioners/codex_plugin_provisioner.dart';
 import '../resources/default_resource_capability.dart';
 
 final class CodexCliTool implements CliToolDefinition {
@@ -40,7 +42,7 @@ final class CodexCliTool implements CliToolDefinition {
     this.display = const CodexDisplay(),
     this.terminalBehavior = const CodexTerminalBehavior(),
     this.memberConfigInspection = const DefaultMemberConfigInspection(),
-    this.pluginManifest = const CodexPluginManifest(),
+    this.pluginProvisioner = const CodexPluginProvisioner(),
     this.providerCatalog = const CodexProviderCatalogCapability(),
     this.providerModel = const ProviderRecordModelCapability(),
     this.effort = const CodexEffortCapability(),
@@ -48,6 +50,7 @@ final class CodexCliTool implements CliToolDefinition {
     this.headlessProvision = const CodexHeadlessProvisionCapability(),
     this.providerForm = const CodexProviderFormCapability(),
     this.resource = const DefaultResourceCapability(),
+    this.mcpConfigWriter = const CodexMcpConfigWriter(),
     ProviderCredentialCapability? providerCredential,
   }) : providerCredential =
            providerCredential ?? CodexProviderCredentialCapability();
@@ -64,13 +67,14 @@ final class CodexCliTool implements CliToolDefinition {
   final CodexDisplay display;
   final CodexTerminalBehavior terminalBehavior;
   final MemberConfigInspectionCapability memberConfigInspection;
-  final CodexPluginManifest pluginManifest;
+  final CodexPluginProvisioner pluginProvisioner;
   final ProviderCatalogCapability providerCatalog;
   final ProviderModelCapability providerModel;
   final CliEffortCapability effort;
   final HeadlessRunCapability headlessRun;
   final HeadlessProvisionCapability headlessProvision;
   final ResourceCapability resource;
+  final CodexMcpConfigWriter mcpConfigWriter;
 
   @override
   CliTool get id => CliTool.codex;
@@ -89,7 +93,7 @@ final class CodexCliTool implements CliToolDefinition {
     display,
     terminalBehavior,
     memberConfigInspection,
-    pluginManifest,
+    pluginProvisioner,
     providerCatalog,
     providerModel,
     providerCredential,
@@ -98,5 +102,6 @@ final class CodexCliTool implements CliToolDefinition {
     headlessRun,
     headlessProvision,
     resource,
+    mcpConfigWriter,
   ];
 }
