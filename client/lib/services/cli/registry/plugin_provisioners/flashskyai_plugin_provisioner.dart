@@ -10,6 +10,9 @@ final class FlashskyaiPluginProvisioner implements PluginProvisionerCapability {
   PluginManifestPaths? get manifestPaths => flashskyaiPluginManifestPaths;
 
   @override
+  List<String> get memberPluginsSubpath => const ['plugins'];
+
+  @override
   Set<PluginComponentKind> get supported => const {
     PluginComponentKind.skills,
     PluginComponentKind.agents,

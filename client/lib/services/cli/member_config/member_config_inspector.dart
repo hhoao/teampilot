@@ -4,7 +4,7 @@ import '../../storage/app_storage.dart';
 import '../../storage/runtime_layout.dart';
 import '../../storage/runtime_storage_context.dart';
 import '../../team/claude_team_roster_service.dart';
-import '../../provider/cursor/cursor_session_config_dir.dart';
+import '../registry/capabilities/cli_config_layout_capability.dart';
 import '../registry/capabilities/member_config_inspection_capability.dart';
 import '../registry/cli_tool_registry.dart';
 import 'member_config_detail.dart';
@@ -78,26 +78,23 @@ class MemberConfigInspector {
       final memberId = team.teamMode == TeamMode.mixed
           ? ClaudeTeamRosterService.safeClaudePathSegment(member.id)
           : null;
-      if (tool == CliTool.cursor.value) {
-        final configDir = CursorSessionConfigDir.resolve(
-          _layout,
-          workspaceId: trimmedWorkspaceId,
-          sessionId: trimmedSessionId,
-          memberId: memberId,
-        );
-        if ((await _fs.stat(configDir)).isDirectory) {
-          return _ResolvedDir(configDir, MemberConfigSourceLayer.runtime);
-        }
-      } else {
-        final runtimeDir = _layout.sessionRuntimeToolDir(
-          trimmedWorkspaceId,
-          trimmedSessionId,
-          tool,
-          memberId: memberId,
-        );
-        if ((await _fs.stat(runtimeDir)).isDirectory) {
-          return _ResolvedDir(runtimeDir, MemberConfigSourceLayer.runtime);
-        }
+      final cli = CliTool.tryParse(tool);
+      final runtimeDir = cli != null
+          ? sessionConfigDirForTool(
+              cli,
+              _layout,
+              workspaceId: trimmedWorkspaceId,
+              sessionId: trimmedSessionId,
+              memberId: memberId,
+            )
+          : _layout.sessionRuntimeToolDir(
+              trimmedWorkspaceId,
+              trimmedSessionId,
+              tool,
+              memberId: memberId,
+            );
+      if ((await _fs.stat(runtimeDir)).isDirectory) {
+        return _ResolvedDir(runtimeDir, MemberConfigSourceLayer.runtime);
       }
     }
     final teamDir = _layout.identityToolDir(team.id, tool);

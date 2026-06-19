@@ -19,6 +19,10 @@ final class OpencodePluginProvisioner implements PluginProvisionerCapability {
   @override
   PluginManifestPaths? get manifestPaths => null;
 
+  // Opencode decomposes bundles (no plugins dir); inspection finds nothing here.
+  @override
+  List<String> get memberPluginsSubpath => const ['plugins'];
+
   @override
   Set<PluginComponentKind> get supported => const {
     PluginComponentKind.skills,

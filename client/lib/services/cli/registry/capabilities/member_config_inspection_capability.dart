@@ -5,9 +5,12 @@ import 'package:path/path.dart' as p;
 
 import '../../../../models/team_config.dart';
 import '../../../io/filesystem.dart';
+import '../../../resource/resource_kind.dart';
 import '../../member_config/member_config_detail.dart';
 import '../cli_capability.dart';
+import '../cli_tool_registry.dart';
 import 'plugin_provisioner_capability.dart';
+import 'resource_capability.dart';
 
 /// Inputs for [MemberConfigInspectionCapability.inspect], resolved by
 /// `MemberConfigInspector` before delegating to the CLI.
@@ -74,8 +77,13 @@ class DefaultMemberConfigInspection
     MemberConfigContext ctx,
     List<SectionWarning> warnings,
   ) async {
+    final resource = CliToolRegistry.builtIn().capability<ResourceCapability>(
+      ctx.cli,
+    );
     final skillsSubdir =
-        ctx.cli == CliTool.cursor ? 'skills-cursor' : 'skills';
+        resource != null && resource.supportedKinds.contains(ResourceKind.skill)
+            ? resource.subdirFor(ResourceKind.skill)
+            : 'skills';
     final dir = _pc(ctx).join(ctx.configDir, skillsSubdir);
     if (!(await ctx.fs.stat(dir)).isDirectory) return const [];
     final out = <SkillEntry>[];
@@ -108,9 +116,10 @@ class DefaultMemberConfigInspection
     MemberConfigContext ctx,
     List<SectionWarning> warnings,
   ) async {
-    final dir = ctx.cli == CliTool.cursor
-        ? _pc(ctx).join(ctx.configDir, 'plugins', 'local')
-        : _pc(ctx).join(ctx.configDir, 'plugins');
+    final segments =
+        pluginProvisionerForTool(ctx.cli)?.memberPluginsSubpath ??
+            const ['plugins'];
+    final dir = _pc(ctx).joinAll([ctx.configDir, ...segments]);
     if (!(await ctx.fs.stat(dir)).isDirectory) return const [];
     final candidates = (pluginManifestPathsForTool(ctx.cli) ??
             neutralPluginManifestPaths)

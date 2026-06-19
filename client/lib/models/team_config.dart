@@ -349,7 +349,6 @@ class TeamProfile implements LaunchProfile {
     this.sortOrder = 0,
     this.loop,
     this.claudeTeammateMode = 'in-process',
-    this.claudeEffortLevel = 'high',
     this.cliEffortLevels = const {},
     this.autoLaunchMembers,
     this.forceTeamLeadDelegateMode = true,
@@ -440,11 +439,7 @@ class TeamProfile implements LaunchProfile {
       sortOrder: (json['sortOrder'] as num?)?.toInt() ?? 0,
       loop: decodeLoop(json['loop']),
       claudeTeammateMode: json['claudeTeammateMode'] as String? ?? 'in-process',
-      claudeEffortLevel: json['claudeEffortLevel'] as String? ?? 'high',
-      cliEffortLevels: _mergeCliEffortLevels(
-        _decodeProviderIdsByTool(json['cliEffortLevels']),
-        json['claudeEffortLevel'] as String? ?? 'high',
-      ),
+      cliEffortLevels: _decodeProviderIdsByTool(json['cliEffortLevels']),
       autoLaunchMembers: json['autoLaunchMembers'] as bool?,
       forceTeamLeadDelegateMode: decodeForceTeamLeadDelegateMode(
         json['forceTeamLeadDelegateMode'],
@@ -467,22 +462,9 @@ class TeamProfile implements LaunchProfile {
     };
   }
 
-  static Map<String, String> _mergeCliEffortLevels(
-    Map<String, String> fromJson,
-    String claudeEffortLevel,
-  ) {
-    if (fromJson.isEmpty) return const {};
-    final merged = Map<String, String>.from(fromJson);
-    merged.putIfAbsent(CliTool.claude.value, () => claudeEffortLevel.trim());
-    return merged;
-  }
-
-  String effortForCli(CliTool cli) {
-    final fromMap = cliEffortLevels[cli.value]?.trim() ?? '';
-    if (fromMap.isNotEmpty) return fromMap;
-    if (cli == CliTool.claude) return claudeEffortLevel;
-    return '';
-  }
+  /// Team-level effort for [cli], or empty when unset (the CLI's
+  /// [CliEffortCapability.defaultEffort] supplies the launch fallback).
+  String effortForCli(CliTool cli) => cliEffortLevels[cli.value]?.trim() ?? '';
 
   /// App-level provider id for [cli] from team custom defaults.
   String providerForCli(CliTool cli) =>
@@ -537,12 +519,7 @@ class TeamProfile implements LaunchProfile {
     } else {
       next[cli.value] = trimmed;
     }
-    return copyWith(
-      cliEffortLevels: next,
-      claudeEffortLevel: cli == CliTool.claude
-          ? (trimmed.isEmpty ? 'high' : trimmed)
-          : null,
-    );
+    return copyWith(cliEffortLevels: next);
   }
 
   /// Canonical slug ([TeamMemberNaming.slugTeamId]); used for paths and [AppSession.sessionTeam].
@@ -582,9 +559,6 @@ class TeamProfile implements LaunchProfile {
 
   /// Claude `settings.json` `teammateMode` (`in-process`, `tmux`, …).
   final String claudeTeammateMode;
-
-  /// Claude `settings.json` `effortLevel`.
-  final String claudeEffortLevel;
 
   /// Per-CLI effort defaults (`claude` → effortLevel, `codex` → reasoning effort).
   final Map<String, String> cliEffortLevels;
@@ -639,7 +613,6 @@ class TeamProfile implements LaunchProfile {
     bool? loop,
     bool updateLoop = false,
     String? claudeTeammateMode,
-    String? claudeEffortLevel,
     Map<String, String>? cliEffortLevels,
     bool? autoLaunchMembers,
     bool updateAutoLaunchMembers = false,
@@ -667,7 +640,6 @@ class TeamProfile implements LaunchProfile {
       sortOrder: sortOrder ?? this.sortOrder,
       loop: updateLoop ? loop : this.loop,
       claudeTeammateMode: claudeTeammateMode ?? this.claudeTeammateMode,
-      claudeEffortLevel: claudeEffortLevel ?? this.claudeEffortLevel,
       cliEffortLevels: cliEffortLevels ?? this.cliEffortLevels,
       autoLaunchMembers: updateAutoLaunchMembers
           ? autoLaunchMembers
@@ -704,7 +676,6 @@ class TeamProfile implements LaunchProfile {
       if (loop != null) 'loop': loop!,
       if (claudeTeammateMode != 'in-process')
         'claudeTeammateMode': claudeTeammateMode,
-      if (claudeEffortLevel != 'high') 'claudeEffortLevel': claudeEffortLevel,
       if (cliEffortLevels.isNotEmpty) 'cliEffortLevels': cliEffortLevels,
       if (autoLaunchMembers != null) 'autoLaunchMembers': autoLaunchMembers!,
       if (forceTeamLeadDelegateMode)
@@ -735,7 +706,6 @@ class TeamProfile implements LaunchProfile {
             sortOrder == other.sortOrder &&
             loop == other.loop &&
             claudeTeammateMode == other.claudeTeammateMode &&
-            claudeEffortLevel == other.claudeEffortLevel &&
             mapEquals(cliEffortLevels, other.cliEffortLevels) &&
             autoLaunchMembers == other.autoLaunchMembers &&
             forceTeamLeadDelegateMode == other.forceTeamLeadDelegateMode &&
@@ -764,7 +734,6 @@ class TeamProfile implements LaunchProfile {
     loop,
     Object.hash(
       claudeTeammateMode,
-      claudeEffortLevel,
       Object.hashAll(cliEffortLevels.entries),
       autoLaunchMembers,
       forceTeamLeadDelegateMode,

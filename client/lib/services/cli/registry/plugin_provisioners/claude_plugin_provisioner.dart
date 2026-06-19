@@ -10,6 +10,9 @@ final class ClaudePluginProvisioner implements PluginProvisionerCapability {
   PluginManifestPaths? get manifestPaths => claudePluginManifestPaths;
 
   @override
+  List<String> get memberPluginsSubpath => const ['plugins'];
+
+  @override
   Set<PluginComponentKind> get supported => const {
     PluginComponentKind.skills,
     PluginComponentKind.agents,

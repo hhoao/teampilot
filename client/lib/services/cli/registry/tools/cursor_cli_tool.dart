@@ -2,7 +2,9 @@ import '../../../../models/team_config.dart';
 import '../../cli_tool_adapter.dart';
 import '../cli_capability.dart';
 import '../cli_tool_definition.dart';
+import '../../../provider/cursor/cursor_cli_config_layout.dart';
 import '../../../provider/cursor/cursor_provider_catalog_capability.dart';
+import '../capabilities/cli_config_layout_capability.dart';
 import '../capabilities/built_in_tool_capabilities.dart';
 import '../capabilities/provider_catalog_capability.dart';
 import '../capabilities/config_profile_capability.dart';
@@ -49,6 +51,7 @@ final class CursorCliTool implements CliToolDefinition {
     this.headlessRun = const CursorHeadlessRunCapability(),
     this.providerForm = const CursorProviderFormCapability(),
     this.resource = const CursorResourceCapability(),
+    this.configLayout = const CursorCliConfigLayout(),
     this.mcpConfigWriter = const CursorMcpConfigWriter(),
     ProviderCredentialCapability? providerCredential,
   }) : providerModel = providerModel ?? CursorProviderModelCapability(),
@@ -72,6 +75,7 @@ final class CursorCliTool implements CliToolDefinition {
   final CliEffortCapability effort;
   final HeadlessRunCapability headlessRun;
   final ResourceCapability resource;
+  final CliConfigLayoutCapability configLayout;
   final CursorMcpConfigWriter mcpConfigWriter;
 
   @override
@@ -99,6 +103,7 @@ final class CursorCliTool implements CliToolDefinition {
     effort,
     headlessRun,
     resource,
+    configLayout,
     mcpConfigWriter,
   ];
 }

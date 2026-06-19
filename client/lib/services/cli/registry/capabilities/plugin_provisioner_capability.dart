@@ -50,6 +50,11 @@ abstract interface class PluginProvisionerCapability implements CliCapability {
   /// On-disk manifest layout this CLI reads. `null` ⇒ decomposition only.
   PluginManifestPaths? get manifestPaths;
 
+  /// Path segments (relative to the CONFIG_DIR) of the directory holding
+  /// materialized plugin bundles — e.g. `['plugins']`, or cursor's
+  /// `['plugins', 'local']`. Used by member-config inspection to list bundles.
+  List<String> get memberPluginsSubpath;
+
   /// Components this CLI loads from a bundle.
   Set<PluginComponentKind> get supported;
 

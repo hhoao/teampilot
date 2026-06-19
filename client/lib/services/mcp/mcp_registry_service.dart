@@ -4,8 +4,7 @@ import '../../models/mcp_registry_source.dart';
 import '../../models/team_config.dart';
 import '../cli/registry/capabilities/mcp_config_writer_capability.dart';
 import '../cli/registry/cli_tool_registry.dart';
-import '../provider/cursor/cursor_session_config_dir.dart';
-import '../provider/codex/codex_session_config_dir.dart';
+import '../cli/registry/capabilities/cli_config_layout_capability.dart';
 import '../storage/runtime_layout.dart';
 import '../io/filesystem.dart';
 import '../io/local_filesystem.dart';
@@ -201,26 +200,11 @@ class McpRegistryService {
     required String sessionId,
     String? memberId,
   }) {
-    if (tool == CliTool.cursor) {
-      return CursorSessionConfigDir.resolve(
-        layout,
-        workspaceId: workspaceId,
-        sessionId: sessionId,
-        memberId: memberId,
-      );
-    }
-    if (tool == CliTool.codex) {
-      return CodexSessionConfigDir.resolve(
-        layout,
-        workspaceId: workspaceId,
-        sessionId: sessionId,
-        memberId: memberId,
-      );
-    }
-    return layout.sessionRuntimeToolDir(
-      workspaceId,
-      sessionId,
-      tool.value,
+    return sessionConfigDirForTool(
+      tool,
+      layout,
+      workspaceId: workspaceId,
+      sessionId: sessionId,
       memberId: memberId,
     );
   }

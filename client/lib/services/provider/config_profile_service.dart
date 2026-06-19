@@ -18,7 +18,7 @@ import '../mcp/mcp_registry_service.dart';
 import '../resource/resource_provisioning_service.dart';
 import '../resource/resource_scope.dart';
 import '../team/claude_team_roster_service.dart';
-import 'cursor/cursor_session_config_dir.dart';
+import '../cli/registry/capabilities/cli_config_layout_capability.dart';
 import '../storage/app_storage.dart';
 import 'config_profile_infrastructure.dart';
 
@@ -154,22 +154,14 @@ class ConfigProfileService implements ConfigProfileDelegate {
     required String workspaceId,
     required String sessionId,
     String? memberId,
-  }) {
-    if (cli == CliTool.cursor) {
-      return CursorSessionConfigDir.resolve(
+  }) =>
+      sessionConfigDirForTool(
+        cli,
         layout,
         workspaceId: workspaceId,
         sessionId: sessionId,
         memberId: memberId,
       );
-    }
-    return layout.sessionRuntimeToolDir(
-      workspaceId,
-      sessionId,
-      cli.value,
-      memberId: memberId,
-    );
-  }
 
   Future<void> ensureTeamProfile(
     String teamId, {

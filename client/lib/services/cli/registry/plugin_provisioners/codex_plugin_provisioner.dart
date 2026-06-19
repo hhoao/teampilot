@@ -18,6 +18,9 @@ final class CodexPluginProvisioner implements PluginProvisionerCapability {
   PluginManifestPaths? get manifestPaths => codexPluginManifestPaths;
 
   @override
+  List<String> get memberPluginsSubpath => const ['plugins'];
+
+  @override
   Set<PluginComponentKind> get supported => const {
     PluginComponentKind.skills,
     PluginComponentKind.hooks,

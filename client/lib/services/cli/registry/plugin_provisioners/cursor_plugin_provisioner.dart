@@ -18,6 +18,9 @@ final class CursorPluginProvisioner implements PluginProvisionerCapability {
   PluginManifestPaths? get manifestPaths => cursorPluginManifestPaths;
 
   @override
+  List<String> get memberPluginsSubpath => const ['plugins', localPluginsSegment];
+
+  @override
   Set<PluginComponentKind> get supported => const {
     PluginComponentKind.rules,
     PluginComponentKind.skills,
