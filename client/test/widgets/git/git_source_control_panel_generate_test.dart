@@ -34,6 +34,40 @@ class _RepoGitStub extends GitService {
   Future<List<String>> branches(String dir) async => const ['main'];
 }
 
+/// Reports a per-root change count derived from the folder name's last digit,
+/// so the selector badges can be asserted independently per repo.
+class _MultiRepoGitStub extends GitService {
+  _MultiRepoGitStub()
+    : super(
+        runner: (executable, arguments, {stdoutEncoding, stderrEncoding}) async =>
+            ProcessResult(0, 0, '/usr/bin/git\n', ''),
+      );
+
+  @override
+  Future<bool> get isAvailable async => true;
+
+  @override
+  Future<GitRepoStatus> status(String dir) async {
+    final count = dir.endsWith('repoB') ? 3 : 1;
+    return GitRepoStatus(
+      isRepository: true,
+      staged: [
+        for (var i = 0; i < count; i++)
+          GitFileChange(
+            path: 'f$i.txt',
+            kind: GitChangeKind.modified,
+            staged: true,
+          ),
+      ],
+      unstaged: const [],
+      branch: 'main',
+    );
+  }
+
+  @override
+  Future<List<String>> branches(String dir) async => const ['main'];
+}
+
 void main() {
   setUp(() {
     GitService.debugOverrideFactory = _RepoGitStub.new;
@@ -67,6 +101,54 @@ void main() {
       find.byKey(const ValueKey('git-generate-commit-button')),
       findsOneWidget,
     );
+
+    await aiSettingsCubit.close();
+  });
+
+  testWidgets('multi-root shows a repo selector with per-repo change badges',
+      (tester) async {
+    GitService.debugOverrideFactory = _MultiRepoGitStub.new;
+    final aiSettingsCubit = AiFeatureSettingsCubit(
+      repository: InMemoryAppSettingsRepository(),
+    );
+
+    await tester.pumpWidget(
+      MaterialApp(
+        localizationsDelegates: AppLocalizations.localizationsDelegates,
+        supportedLocales: AppLocalizations.supportedLocales,
+        home: BlocProvider.value(
+          value: aiSettingsCubit,
+          child: const Scaffold(
+            body: GitSourceControlPanel(
+              roots: ['/work/repoA', '/work/repoB'],
+              isActive: true,
+            ),
+          ),
+        ),
+      ),
+    );
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 100));
+
+    // One selector chip per workspace folder.
+    expect(find.byType(ChoiceChip), findsNWidgets(2));
+    expect(find.text('repoA'), findsOneWidget);
+    expect(find.text('repoB'), findsOneWidget);
+
+    // repoB's badge reflects its 3 staged changes.
+    expect(find.text('3'), findsWidgets);
+
+    // Switching repos updates the selection.
+    await tester.tap(find.text('repoB'));
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 100));
+    final selectedB = tester.widget<ChoiceChip>(
+      find.ancestor(
+        of: find.text('repoB'),
+        matching: find.byType(ChoiceChip),
+      ),
+    );
+    expect(selectedB.selected, isTrue);
 
     await aiSettingsCubit.close();
   });

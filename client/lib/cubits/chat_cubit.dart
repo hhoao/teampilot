@@ -336,6 +336,7 @@ class ChatCubit extends Cubit<ChatState>
     List<TeamMemberConfig> rosterMembers = const [],
     List<String> additionalPaths = const [],
     String display = '',
+    bool allowDuplicate = false,
     LaunchProfileRepository? identityRepository,
   }) async {
     final result = await _dataStore.createWorkspaceWithFirstSession(
@@ -345,6 +346,7 @@ class ChatCubit extends Cubit<ChatState>
       rosterMembers: rosterMembers,
       additionalPaths: additionalPaths,
       display: display,
+      allowDuplicate: allowDuplicate,
       identityRepository: identityRepository,
     );
     _emitSnapshot(result.snapshot);

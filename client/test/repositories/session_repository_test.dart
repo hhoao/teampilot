@@ -199,6 +199,26 @@ void main() {
     expect((await repo.loadWorkspaces()).length, 1);
   });
 
+  test('createWorkspace allowDuplicate creates distinct same-path workspace',
+      () async {
+    final tmp = await Directory.systemTemp.createTemp('fs_session_repo_');
+    addTearDown(() => tmp.deleteSync(recursive: true));
+
+    final repo = SessionRepository(rootDir: tmp.path);
+    final a = await repo.createWorkspace('/shared', display: 'First');
+    final b = await repo.createWorkspace(
+      '/shared',
+      display: 'Second',
+      allowDuplicate: true,
+    );
+
+    expect(a.workspaceId, isNot(b.workspaceId));
+    expect(a.primaryPath, b.primaryPath);
+    final loaded = await repo.loadWorkspaces();
+    expect(loaded.length, 2);
+    expect(loaded.map((w) => w.display).toSet(), {'First', 'Second'});
+  });
+
   test('updateWorkspaceMetadata updates display and additionalPaths', () async {
     final tmp = await Directory.systemTemp.createTemp('fs_session_repo_');
     addTearDown(() => tmp.deleteSync(recursive: true));

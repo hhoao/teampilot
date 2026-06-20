@@ -35,6 +35,10 @@ Future<void> showHomeNewWorkspaceDialog(
     sessionTeamId: '',
     additionalPaths: result.directories.skip(1).toList(growable: false),
     display: result.display,
+    // Explicit "New Workspace" always creates a distinct workspace, even when
+    // one already points at this directory — multiple workspaces per directory
+    // are allowed.
+    allowDuplicate: true,
     identityRepository:
         identityRepository ?? context.read<LaunchProfileRepository>(),
   );

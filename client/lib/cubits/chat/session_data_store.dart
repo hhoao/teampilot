@@ -104,12 +104,14 @@ class SessionDataStore {
     List<TeamMemberConfig> rosterMembers = const [],
     List<String> additionalPaths = const [],
     String display = '',
+    bool allowDuplicate = false,
     LaunchProfileRepository? identityRepository,
   }) async {
     final workspace = await repo.createWorkspace(
       primaryPath,
       additionalPaths: additionalPaths,
       display: display,
+      allowDuplicate: allowDuplicate,
     );
     await repo.createSession(
       workspace.workspaceId,

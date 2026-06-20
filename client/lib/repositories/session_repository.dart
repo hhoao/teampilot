@@ -116,16 +116,26 @@ class SessionRepository {
     return true;
   }
 
+  /// Creates a workspace for [primaryPath].
+  ///
+  /// By default, an existing workspace with the same normalized [primaryPath]
+  /// is reused: its [additionalPaths]/[display] are merged and it is returned
+  /// instead of creating a duplicate. This keeps folder-merge
+  /// ([SessionDataStore.addWorkspaceDirectory]) and bootstrap seeding
+  /// idempotent. Pass [allowDuplicate] to skip reuse and always create a new,
+  /// independent workspace on the same directory (the explicit "New Workspace"
+  /// action) — multiple workspaces may then point at one directory.
   Future<Workspace> createWorkspace(
     String primaryPath, {
     List<String> additionalPaths = const [],
     String display = '',
+    bool allowDuplicate = false,
   }) async {
     final fs = await _fs();
     final trimmed = normalizeWorkspacePath(primaryPath);
     final now = DateTime.now().millisecondsSinceEpoch;
     final workspaces = await loadWorkspaces();
-    for (final existing in workspaces) {
+    for (final existing in allowDuplicate ? const <Workspace>[] : workspaces) {
       if (!workspacePathsEqual(existing.primaryPath, trimmed)) {
         continue;
       }

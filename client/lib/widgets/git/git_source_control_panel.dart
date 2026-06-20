@@ -1,6 +1,7 @@
 ﻿import 'dart:async';
 import 'dart:math' as math;
 
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:path/path.dart' as p;
@@ -18,6 +19,7 @@ import '../../services/cli/registry/cli_tool_registry_scope.dart';
 import '../../l10n/l10n_extensions.dart';
 import '../../models/git_status.dart';
 import '../../services/git/git_changes_visible_rows.dart';
+import '../../services/git/git_service.dart';
 import '../../services/io/workspace_fs_watcher.dart';
 import '../../theme/app_text_styles.dart';
 import '../app_dialog.dart';
@@ -59,6 +61,14 @@ class GitSourceControlPanel extends StatefulWidget {
 class _GitSourceControlPanelState extends State<GitSourceControlPanel> {
   String? _selectedRoot;
 
+  final GitService _git =
+      GitService.debugOverrideFactory?.call() ?? GitService();
+
+  /// Change counts per root (staged + unstaged), for the selector badges.
+  /// Absent = unknown / not a repo; the badge only shows for positive counts.
+  Map<String, int> _changeCounts = const {};
+  StreamSubscription<void>? _watchSub;
+
   /// Folders that exist and are non-empty, deduped, primary first.
   List<String> get _roots =>
       widget.roots.where((p) => p.isNotEmpty).toList(growable: false);
@@ -69,6 +79,63 @@ class _GitSourceControlPanelState extends State<GitSourceControlPanel> {
     final selected = _selectedRoot;
     if (selected != null && roots.contains(selected)) return selected;
     return roots.first;
+  }
+
+  @override
+  void initState() {
+    super.initState();
+    _subscribeWatcher();
+    if (widget.isActive) unawaited(_probeBadges());
+  }
+
+  @override
+  void didUpdateWidget(covariant GitSourceControlPanel oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (!listEquals(widget.roots, oldWidget.roots)) {
+      unawaited(_probeBadges());
+    }
+    if (!identical(widget.watcher, oldWidget.watcher)) {
+      _subscribeWatcher();
+    }
+    if (widget.isActive && !oldWidget.isActive) {
+      unawaited(_probeBadges());
+    }
+  }
+
+  @override
+  void dispose() {
+    _watchSub?.cancel();
+    super.dispose();
+  }
+
+  void _subscribeWatcher() {
+    _watchSub?.cancel();
+    _watchSub = widget.watcher?.onChanged.listen((_) {
+      if (widget.isActive) unawaited(_probeBadges());
+    });
+  }
+
+  /// Reads `git status` for each root (multi-root only) to drive the selector
+  /// badges. Single-root has no selector, so it skips the probe entirely.
+  Future<void> _probeBadges() async {
+    final roots = _roots;
+    if (roots.length <= 1) return;
+    if (!await _git.isAvailable) return;
+    final counts = <String, int>{};
+    await Future.wait(
+      roots.map((root) async {
+        try {
+          final status = await _git.status(root);
+          if (status.isRepository) {
+            counts[root] = status.staged.length + status.unstaged.length;
+          }
+        } on GitException {
+          // Leave this root without a badge.
+        }
+      }),
+    );
+    if (!mounted) return;
+    setState(() => _changeCounts = counts);
   }
 
   @override
@@ -88,6 +155,7 @@ class _GitSourceControlPanelState extends State<GitSourceControlPanel> {
         _RepoSelector(
           roots: roots,
           selected: active,
+          changeCounts: _changeCounts,
           onSelect: (root) => setState(() => _selectedRoot = root),
         ),
         Expanded(
@@ -97,6 +165,9 @@ class _GitSourceControlPanelState extends State<GitSourceControlPanel> {
             cwd: active,
             isActive: widget.isActive,
             watcher: widget.watcher,
+            // Refresh badges whenever this repo's own status changes (commit,
+            // stage, discard, …) so the selector stays in sync.
+            onStatusChanged: () => unawaited(_probeBadges()),
           ),
         ),
       ],
@@ -109,11 +180,15 @@ class _RepoSelector extends StatelessWidget {
   const _RepoSelector({
     required this.roots,
     required this.selected,
+    required this.changeCounts,
     required this.onSelect,
   });
 
   final List<String> roots;
   final String selected;
+
+  /// Per-root change count (staged + unstaged); a positive value shows a badge.
+  final Map<String, int> changeCounts;
   final ValueChanged<String> onSelect;
 
   @override
@@ -127,9 +202,24 @@ class _RepoSelector extends StatelessWidget {
         children: [
           for (final root in roots)
             ChoiceChip(
-              label: Text(
-                p.basename(root).isEmpty ? root : p.basename(root),
-                style: AppTextStyles.of(context).bodySmall,
+              label: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Flexible(
+                    child: Text(
+                      p.basename(root).isEmpty ? root : p.basename(root),
+                      overflow: TextOverflow.ellipsis,
+                      style: AppTextStyles.of(context).bodySmall,
+                    ),
+                  ),
+                  if ((changeCounts[root] ?? 0) > 0) ...[
+                    const SizedBox(width: 6),
+                    _DirtyBadge(
+                      count: changeCounts[root]!,
+                      selected: root == selected,
+                    ),
+                  ],
+                ],
               ),
               selected: root == selected,
               visualDensity: VisualDensity.compact,
@@ -147,6 +237,33 @@ class _RepoSelector extends StatelessWidget {
   }
 }
 
+/// Small count pill on a repo chip indicating uncommitted changes.
+class _DirtyBadge extends StatelessWidget {
+  const _DirtyBadge({required this.count, required this.selected});
+
+  final int count;
+  final bool selected;
+
+  @override
+  Widget build(BuildContext context) {
+    final cs = Theme.of(context).colorScheme;
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 1),
+      decoration: BoxDecoration(
+        color: selected ? cs.onSecondaryContainer.withValues(alpha: 0.18) : cs.primaryContainer,
+        borderRadius: BorderRadius.circular(9),
+      ),
+      child: Text(
+        '$count',
+        style: AppTextStyles.of(context).caption.copyWith(
+          color: selected ? cs.onSecondaryContainer : cs.onPrimaryContainer,
+          fontWeight: FontWeight.w600,
+        ),
+      ),
+    );
+  }
+}
+
 /// Source-control body for a single repository root. Self-contained: builds its
 /// own [GitCubit] and tracks [cwd]. Desktop-local git only.
 class _GitRepoView extends StatefulWidget {
@@ -154,12 +271,17 @@ class _GitRepoView extends StatefulWidget {
     required this.cwd,
     this.isActive = false,
     this.watcher,
+    this.onStatusChanged,
     super.key,
   });
 
   final String cwd;
   final bool isActive;
   final WorkspaceFsWatcher? watcher;
+
+  /// Called when this repo's git status changes, so the parent selector can
+  /// refresh its badges. Null for the single-root (no-selector) case.
+  final VoidCallback? onStatusChanged;
 
   @override
   State<_GitRepoView> createState() => _GitRepoViewState();
@@ -319,7 +441,8 @@ class _GitRepoViewState extends State<_GitRepoView> {
         listenWhen: (prev, next) =>
             (prev.errorMessage != next.errorMessage &&
                 next.errorMessage != null) ||
-            prev.commitMessage != next.commitMessage,
+            prev.commitMessage != next.commitMessage ||
+            prev.status != next.status,
         listener: (context, state) {
           if (state.errorMessage != null) {
             AppToast.show(
@@ -331,6 +454,7 @@ class _GitRepoViewState extends State<_GitRepoView> {
           if (_commitController.text != state.commitMessage) {
             _commitController.text = state.commitMessage;
           }
+          widget.onStatusChanged?.call();
         },
         builder: (context, state) => _buildBody(context, state),
       ),
