@@ -25,6 +25,8 @@ class FileTreeNode extends StatefulWidget {
     required this.textColor,
     this.desktopShellActions = false,
     this.hoverEnabled = true,
+    this.isRoot = false,
+    this.rootMissing = false,
     super.key,
   });
 
@@ -35,6 +37,13 @@ class FileTreeNode extends StatefulWidget {
   final Color textColor;
   final bool desktopShellActions;
   final bool hoverEnabled;
+
+  /// True for a workspace-folder header row in a multi-root tree (rendered with
+  /// a stronger label, like VSCode's folder headers).
+  final bool isRoot;
+
+  /// True when this root row points at a directory that no longer exists.
+  final bool rootMissing;
 
   @override
   State<FileTreeNode> createState() => _FileTreeNodeState();
@@ -172,7 +181,9 @@ class _FileTreeNodeState extends State<FileTreeNode> {
                       child: Center(
                         child: isDir
                             ? Icon(
-                                isExpanded
+                                widget.rootMissing
+                                    ? Icons.folder_off_outlined
+                                    : isExpanded
                                     ? Icons.folder_open
                                     : Icons.folder_outlined,
                                 size: context.appIconSizes.md,
@@ -188,8 +199,15 @@ class _FileTreeNodeState extends State<FileTreeNode> {
                       widget.entry.name,
                       maxLines: 1,
                       style: AppTextStyles.of(context).body.copyWith(
-                        fontWeight: isActive ? FontWeight.w600 : FontWeight.w500,
-                        color: labelColor,
+                        fontWeight: widget.isRoot
+                            ? FontWeight.w700
+                            : isActive
+                            ? FontWeight.w600
+                            : FontWeight.w500,
+                        letterSpacing: widget.isRoot ? 0.4 : null,
+                        color: widget.rootMissing
+                            ? cs.onSurfaceVariant.withValues(alpha: 0.5)
+                            : labelColor,
                       ),
                     ),
                   ],

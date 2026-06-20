@@ -94,7 +94,7 @@ void main() {
       }),
     );
 
-    final state = FileTreeState(
+    final state = FileTreeState.single(
       rootPath: root,
       rootExists: true,
       expandedPaths: {p.join(root, 'src')},
@@ -116,6 +116,64 @@ void main() {
     final target = p.join(root, 'src', 'main.dart');
     final index = visibleRowIndexForPath(rows, target, cubit.fs.pathContext);
     expect(index, 1);
+  });
+
+  test('multi-root tree emits a header row per folder, contents nested', () {
+    final a = p.normalize('/projA');
+    final b = p.normalize('/projB');
+    final ctx = p.Context();
+
+    final state = FileTreeState(
+      roots: [
+        FileTreeRoot(path: a, exists: true),
+        FileTreeRoot(path: b, exists: true),
+      ],
+      expandedPaths: {a, b},
+      dirCache: {
+        a: [const FsDirEntry(name: 'a.dart', isDirectory: false)],
+        b: [const FsDirEntry(name: 'b.dart', isDirectory: false)],
+      },
+    );
+
+    final rows = visibleFileTreeRows(state: state, pathContext: ctx);
+
+    // Header A (depth 0), a.dart (depth 1), Header B (depth 0), b.dart (depth 1).
+    expect(rows.length, 4);
+    expect(rows[0].isRoot, isTrue);
+    expect(rows[0].path, a);
+    expect(rows[0].depth, 0);
+    expect(rows[1].isRoot, isFalse);
+    expect(rows[1].entry.name, 'a.dart');
+    expect(rows[1].depth, 1);
+    expect(rows[2].isRoot, isTrue);
+    expect(rows[2].path, b);
+    expect(rows[3].entry.name, 'b.dart');
+  });
+
+  test('collapsed multi-root folder hides its contents', () {
+    final a = p.normalize('/projA');
+    final b = p.normalize('/projB');
+    final ctx = p.Context();
+
+    final state = FileTreeState(
+      roots: [
+        FileTreeRoot(path: a, exists: true),
+        FileTreeRoot(path: b, exists: true),
+      ],
+      // Only A is expanded.
+      expandedPaths: {a},
+      dirCache: {
+        a: [const FsDirEntry(name: 'a.dart', isDirectory: false)],
+        b: [const FsDirEntry(name: 'b.dart', isDirectory: false)],
+      },
+    );
+
+    final rows = visibleFileTreeRows(state: state, pathContext: ctx);
+
+    // Header A, a.dart, Header B (collapsed → no child rows).
+    expect(rows.length, 3);
+    expect(rows[2].path, b);
+    expect(rows.where((r) => r.entry.name == 'b.dart'), isEmpty);
   });
 
   test('fileTreeMinContentWidth accounts for depth and label length', () {

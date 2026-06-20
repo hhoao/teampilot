@@ -29,17 +29,20 @@ import 'git_diff_view.dart';
 
 /// VSCode-style "Source Control" panel for the editor workbench left rail.
 ///
-/// Self-contained like `_FileTreePanel`: builds its own [GitCubit] and tracks
-/// the active session cwd via [cwd]. Desktop-local git only.
+/// Supports multi-folder workspaces: when more than one [roots] folder is
+/// mounted, a repo selector lets the user switch which folder's source control
+/// is shown (each folder may be its own git repository). A single folder shows
+/// its source control directly. Desktop-local git only.
 class GitSourceControlPanel extends StatefulWidget {
   const GitSourceControlPanel({
-    required this.cwd,
+    required this.roots,
     this.isActive = false,
     this.watcher,
     super.key,
   });
 
-  final String cwd;
+  /// Workspace folders (first = primary). Each may be an independent git repo.
+  final List<String> roots;
 
   /// When true, the panel auto-refreshes git status. The caller sets this when
   /// this tool tab is the currently selected tab in the right-tools panel.
@@ -54,6 +57,115 @@ class GitSourceControlPanel extends StatefulWidget {
 }
 
 class _GitSourceControlPanelState extends State<GitSourceControlPanel> {
+  String? _selectedRoot;
+
+  /// Folders that exist and are non-empty, deduped, primary first.
+  List<String> get _roots =>
+      widget.roots.where((p) => p.isNotEmpty).toList(growable: false);
+
+  String get _activeRoot {
+    final roots = _roots;
+    if (roots.isEmpty) return '';
+    final selected = _selectedRoot;
+    if (selected != null && roots.contains(selected)) return selected;
+    return roots.first;
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final roots = _roots;
+    if (roots.length <= 1) {
+      return _GitRepoView(
+        cwd: roots.isEmpty ? '' : roots.first,
+        isActive: widget.isActive,
+        watcher: widget.watcher,
+      );
+    }
+    final active = _activeRoot;
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        _RepoSelector(
+          roots: roots,
+          selected: active,
+          onSelect: (root) => setState(() => _selectedRoot = root),
+        ),
+        Expanded(
+          child: _GitRepoView(
+            // Keying by root rebuilds the cubit when switching repos.
+            key: ValueKey('git-repo:$active'),
+            cwd: active,
+            isActive: widget.isActive,
+            watcher: widget.watcher,
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+/// Repo picker shown above the source-control body for multi-folder workspaces.
+class _RepoSelector extends StatelessWidget {
+  const _RepoSelector({
+    required this.roots,
+    required this.selected,
+    required this.onSelect,
+  });
+
+  final List<String> roots;
+  final String selected;
+  final ValueChanged<String> onSelect;
+
+  @override
+  Widget build(BuildContext context) {
+    final cs = Theme.of(context).colorScheme;
+    return Container(
+      padding: const EdgeInsets.fromLTRB(10, 10, 10, 0),
+      child: Wrap(
+        spacing: 6,
+        runSpacing: 6,
+        children: [
+          for (final root in roots)
+            ChoiceChip(
+              label: Text(
+                p.basename(root).isEmpty ? root : p.basename(root),
+                style: AppTextStyles.of(context).bodySmall,
+              ),
+              selected: root == selected,
+              visualDensity: VisualDensity.compact,
+              onSelected: (_) => onSelect(root),
+              tooltip: root,
+              labelStyle: TextStyle(
+                color: root == selected
+                    ? cs.onSecondaryContainer
+                    : cs.onSurfaceVariant,
+              ),
+            ),
+        ],
+      ),
+    );
+  }
+}
+
+/// Source-control body for a single repository root. Self-contained: builds its
+/// own [GitCubit] and tracks [cwd]. Desktop-local git only.
+class _GitRepoView extends StatefulWidget {
+  const _GitRepoView({
+    required this.cwd,
+    this.isActive = false,
+    this.watcher,
+    super.key,
+  });
+
+  final String cwd;
+  final bool isActive;
+  final WorkspaceFsWatcher? watcher;
+
+  @override
+  State<_GitRepoView> createState() => _GitRepoViewState();
+}
+
+class _GitRepoViewState extends State<_GitRepoView> {
   final _cubit = GitCubit();
   final _commitController = TextEditingController();
   final _changesScrollController = ScrollController();
@@ -78,7 +190,7 @@ class _GitSourceControlPanelState extends State<GitSourceControlPanel> {
   }
 
   @override
-  void didUpdateWidget(covariant GitSourceControlPanel oldWidget) {
+  void didUpdateWidget(covariant _GitRepoView oldWidget) {
     super.didUpdateWidget(oldWidget);
     if (widget.cwd != oldWidget.cwd) {
       unawaited(_cubit.setRepoRoot(widget.cwd));

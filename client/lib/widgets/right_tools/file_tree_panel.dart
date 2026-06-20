@@ -25,10 +25,14 @@ import '../file_tree_node.dart';
 import 'file_tree_header_overflow_menu.dart';
 
 /// Workspace file tree panel.
+///
+/// Renders one or more workspace folders ([roots]; first = primary). A single
+/// folder shows its children directly; multiple folders each get a collapsible
+/// header (VSCode multi-root layout).
 class FileTreePanel extends StatefulWidget {
-  const FileTreePanel({required this.cwd, this.watcher, super.key});
+  const FileTreePanel({required this.roots, this.watcher, super.key});
 
-  final String cwd;
+  final List<String> roots;
 
   /// Shared workspace watcher; when present, the tree refreshes live on disk
   /// changes. Null on backends without watch support (the tree stays manual).
@@ -62,7 +66,7 @@ class _FileTreePanelState extends State<FileTreePanel> {
   @override
   void didUpdateWidget(covariant FileTreePanel oldWidget) {
     super.didUpdateWidget(oldWidget);
-    if (widget.cwd != oldWidget.cwd) {
+    if (!listEquals(widget.roots, oldWidget.roots)) {
       _syncRoot();
     }
     if (!identical(widget.watcher, oldWidget.watcher)) {
@@ -71,7 +75,7 @@ class _FileTreePanelState extends State<FileTreePanel> {
   }
 
   void _syncRoot() {
-    _cubit.setRoot(widget.cwd);
+    _cubit.setRoots(widget.roots);
   }
 
   void _subscribeWatcher() {
@@ -266,11 +270,15 @@ class _FileTreePanelState extends State<FileTreePanel> {
                     },
                   ),
                   const SizedBox(height: 10),
-                  BlocSelector<FileTreeCubit, FileTreeState, (bool, String)>(
-                    selector: (state) => (state.rootExists, state.rootPath),
+                  // Single-root: show the folder path. Multi-root: each root
+                  // gets its own header row, so the single path line is hidden.
+                  BlocSelector<FileTreeCubit, FileTreeState, (bool, bool, String)>(
+                    selector: (state) =>
+                        (state.isMultiRoot, state.anyRootExists, state.rootPath),
                     builder: (context, root) {
-                      final (rootExists, rootPath) = root;
-                      if (rootExists) {
+                      final (isMultiRoot, anyRootExists, rootPath) = root;
+                      if (isMultiRoot) return const SizedBox.shrink();
+                      if (anyRootExists) {
                         return Text(
                           rootPath,
                           maxLines: 1,
@@ -293,26 +301,22 @@ class _FileTreePanelState extends State<FileTreePanel> {
                     child: BlocSelector<
                       FileTreeCubit,
                       FileTreeState,
-                      (bool, String, Set<String>, Map<String, List<FsDirEntry>>)
+                      (
+                        List<FileTreeRoot>,
+                        Set<String>,
+                        Map<String, List<FsDirEntry>>,
+                      )
                     >(
-                      selector: (state) => (
-                        state.rootExists,
-                        state.rootPath,
-                        state.expandedPaths,
-                        state.dirCache,
-                      ),
+                      selector: (state) =>
+                          (state.roots, state.expandedPaths, state.dirCache),
                       builder: (context, selected) {
-                        final (
-                          rootExists,
-                          rootPath,
-                          expandedPaths,
-                          dirCache,
-                        ) = selected;
-                        if (!rootExists) return const SizedBox.shrink();
+                        final (roots, expandedPaths, dirCache) = selected;
+                        if (!roots.any((r) => r.exists)) {
+                          return const SizedBox.shrink();
+                        }
                         return _FileTreeList(
                           treeState: FileTreeState(
-                            rootPath: rootPath,
-                            rootExists: true,
+                            roots: roots,
                             expandedPaths: expandedPaths,
                             dirCache: dirCache,
                           ),
@@ -527,7 +531,7 @@ class _FileTreeListState extends State<_FileTreeList> {
                     return SizedBox(
                       width: contentWidth,
                       child: FileTreeNode(
-                        key: ValueKey(row.path),
+                        key: ValueKey(row.isRoot ? 'root:${row.path}' : row.path),
                         path: row.path,
                         entry: row.entry,
                         depth: row.depth,
@@ -535,6 +539,8 @@ class _FileTreeListState extends State<_FileTreeList> {
                         textColor: widget.textColor,
                         desktopShellActions: widget.desktopShellActions,
                         hoverEnabled: _hoverEnabled,
+                        isRoot: row.isRoot,
+                        rootMissing: row.rootMissing,
                       ),
                     );
                   },

@@ -54,6 +54,7 @@ class _WorkspaceSplitPaneState
           ),
           second: ChatPage(
             cwd: widget.workspace.primaryPath,
+            additionalPaths: widget.workspace.additionalPaths,
             workspaceId: widget.workspace.workspaceId,
             isPersonalWorkspace: widget.isPersonalWorkspace,
           ),

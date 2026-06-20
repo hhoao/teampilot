@@ -26,11 +26,15 @@ class ChatPageShell extends StatelessWidget {
     required this.isPersonalWorkspace,
     required this.workspaceId,
     required this.team,
+    this.additionalPaths = const [],
     this.sessionId,
     super.key,
   });
 
   final String cwd;
+
+  /// Extra workspace folders for the multi-root file tree / source control.
+  final List<String> additionalPaths;
   final String? sessionId;
   final bool isPersonalWorkspace;
   final String? workspaceId;
@@ -44,6 +48,7 @@ class ChatPageShell extends StatelessWidget {
     final toolsAsDrawer = useRightToolsAsDrawer(context);
     final rightToolsPanel = RightToolsPanel(
       cwd: cwd,
+      additionalPaths: additionalPaths,
       preferences: preferences,
       panelKey: AppKeys.rightToolsPanel,
       dismissDrawerOnAction: toolsAsDrawer,
@@ -71,6 +76,7 @@ class ChatPageShell extends StatelessWidget {
           rightTools: preferences.rightToolsVisible
               ? RightToolsPanel(
                   cwd: cwd,
+                  additionalPaths: additionalPaths,
                   preferences: preferences,
                   isPersonalWorkspace: isPersonalWorkspace,
                   workspaceId: workspaceId,

@@ -8,6 +8,7 @@ import 'chat/chat_page_shell.dart';
 class ChatPage extends StatelessWidget {
   const ChatPage({
     required this.cwd,
+    this.additionalPaths = const [],
     this.sessionId,
     this.isPersonalWorkspace = false,
     this.workspaceId,
@@ -21,6 +22,9 @@ class ChatPage extends StatelessWidget {
   /// derives it from session state.
   final String cwd;
 
+  /// Extra workspace folders for the multi-root file tree / source control.
+  final List<String> additionalPaths;
+
   /// When true, the embedded workbench runs without a selected [TeamProfile].
   final bool isPersonalWorkspace;
 
@@ -33,12 +37,14 @@ class ChatPage extends StatelessWidget {
     if (isPersonalWorkspace) {
       return _PersonalChatPage(
         cwd: cwd,
+        additionalPaths: additionalPaths,
         sessionId: sessionId,
         workspaceId: workspaceId,
       );
     }
     return _TeamChatPage(
       cwd: cwd,
+      additionalPaths: additionalPaths,
       sessionId: sessionId,
       workspaceId: workspaceId,
     );
@@ -48,11 +54,13 @@ class ChatPage extends StatelessWidget {
 class _PersonalChatPage extends StatelessWidget {
   const _PersonalChatPage({
     required this.cwd,
+    this.additionalPaths = const [],
     this.sessionId,
     this.workspaceId,
   });
 
   final String cwd;
+  final List<String> additionalPaths;
   final String? sessionId;
   final String? workspaceId;
 
@@ -60,6 +68,7 @@ class _PersonalChatPage extends StatelessWidget {
   Widget build(BuildContext context) {
     return ChatPageShell(
       cwd: cwd,
+      additionalPaths: additionalPaths,
       sessionId: sessionId,
       isPersonalWorkspace: true,
       workspaceId: workspaceId,
@@ -71,11 +80,13 @@ class _PersonalChatPage extends StatelessWidget {
 class _TeamChatPage extends StatelessWidget {
   const _TeamChatPage({
     required this.cwd,
+    this.additionalPaths = const [],
     this.sessionId,
     this.workspaceId,
   });
 
   final String cwd;
+  final List<String> additionalPaths;
   final String? sessionId;
   final String? workspaceId;
 
@@ -91,6 +102,7 @@ class _TeamChatPage extends StatelessWidget {
 
     return ChatPageShell(
       cwd: cwd,
+      additionalPaths: additionalPaths,
       sessionId: sessionId,
       isPersonalWorkspace: false,
       workspaceId: workspaceId,

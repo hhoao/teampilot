@@ -55,7 +55,7 @@ void main() {
         home: BlocProvider.value(
           value: aiSettingsCubit,
           child: const Scaffold(
-            body: GitSourceControlPanel(cwd: '/repo'),
+            body: GitSourceControlPanel(roots: ['/repo']),
           ),
         ),
       ),

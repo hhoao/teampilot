@@ -31,6 +31,7 @@ import 'tool_view.dart';
 class RightToolsPanel extends StatefulWidget {
   const RightToolsPanel({
     required this.cwd,
+    this.additionalPaths = const [],
     this.preferences = const LayoutPreferences(),
     this.panelKey = AppKeys.rightToolsPanel,
     this.dismissDrawerOnAction = false,
@@ -50,6 +51,10 @@ class RightToolsPanel extends StatefulWidget {
   /// caller (the workspace context), decoupling the tools from chat-session tab
   /// state.
   final String cwd;
+
+  /// Extra workspace folders (beyond [cwd]) for multi-root file tree / source
+  /// control. Empty for single-folder workspaces.
+  final List<String> additionalPaths;
 
   /// Workspace this tools panel belongs to; scopes per-workspace UI state
   /// (selected tool tab). Null on routes without a workspace context.
@@ -78,6 +83,17 @@ class _RightToolsPanelState extends State<RightToolsPanel> {
   void initState() {
     super.initState();
     _rebuildWatcher();
+  }
+
+  /// Workspace folders for the file tree / source control panels: the primary
+  /// [RightToolsPanel.cwd] first, then any [RightToolsPanel.additionalPaths]
+  /// (deduped, empties dropped).
+  List<String> get _workspaceRoots {
+    final roots = <String>[];
+    for (final path in [widget.cwd, ...widget.additionalPaths]) {
+      if (path.isNotEmpty && !roots.contains(path)) roots.add(path);
+    }
+    return roots;
   }
 
   void _rebuildWatcher() {
@@ -266,7 +282,7 @@ class _RightToolsPanelState extends State<RightToolsPanel> {
         ToolView(
           icon: Icons.folder_outlined,
           label: context.l10n.fileTree,
-          child: FileTreePanel(cwd: widget.cwd, watcher: _fsWatcher),
+          child: FileTreePanel(roots: _workspaceRoots, watcher: _fsWatcher),
         ),
       );
     }
@@ -277,7 +293,7 @@ class _RightToolsPanelState extends State<RightToolsPanel> {
           icon: Icons.account_tree_outlined,
           label: context.l10n.sourceControl,
           child: GitSourceControlPanel(
-            cwd: widget.cwd,
+            roots: _workspaceRoots,
             isActive: isGitActive,
             watcher: _fsWatcher,
           ),

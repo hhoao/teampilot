@@ -140,4 +140,48 @@ void main() {
     await sub.cancel();
     await cubit.close();
   });
+
+  test('setRoots mounts multiple workspace folders, each expanded by default',
+      () async {
+    final a = p.normalize('/projA');
+    final b = p.normalize('/projB');
+    final cubit = FileTreeCubit(
+      fs: _FakeFilesystem({
+        a: [const FsDirEntry(name: 'a.dart', isDirectory: false)],
+        b: [const FsDirEntry(name: 'b.dart', isDirectory: false)],
+      }),
+    );
+
+    await cubit.setRoots([a, b]);
+    await Future<void>.delayed(const Duration(milliseconds: 20));
+
+    expect(cubit.state.isMultiRoot, isTrue);
+    expect(cubit.state.rootPaths, [a, b]);
+    // Both existing roots start expanded so their contents are visible.
+    expect(cubit.state.expandedPaths, {a, b});
+    expect(cubit.entriesFor(a).map((e) => e.name), ['a.dart']);
+    expect(cubit.entriesFor(b).map((e) => e.name), ['b.dart']);
+
+    await cubit.close();
+  });
+
+  test('setRoots with a single folder stays single-root (no header expansion)',
+      () async {
+    final root = p.normalize('/solo');
+    final cubit = FileTreeCubit(
+      fs: _FakeFilesystem({
+        root: [const FsDirEntry(name: 'x.dart', isDirectory: false)],
+      }),
+    );
+
+    await cubit.setRoots([root]);
+    await Future<void>.delayed(const Duration(milliseconds: 20));
+
+    expect(cubit.state.isMultiRoot, isFalse);
+    expect(cubit.state.rootPath, root);
+    // Single root renders children directly; the root is not in expandedPaths.
+    expect(cubit.state.expandedPaths, isEmpty);
+
+    await cubit.close();
+  });
 }

@@ -13,12 +13,20 @@ class FileTreeVisibleRow {
     required this.entry,
     required this.depth,
     this.isEmptyPlaceholder = false,
+    this.isRoot = false,
+    this.rootMissing = false,
   });
 
   final String path;
   final FsDirEntry entry;
   final int depth;
   final bool isEmptyPlaceholder;
+
+  /// True for a workspace-folder header row in a multi-root tree.
+  final bool isRoot;
+
+  /// True when this root row points at a directory that no longer exists.
+  final bool rootMissing;
 }
 
 /// Inner content height of a tree row (excluding outer vertical padding).
@@ -187,10 +195,34 @@ List<FileTreeVisibleRow> visibleFileTreeRows({
     }
   }
 
-  if (state.rootPath.isNotEmpty) {
+  if (state.isMultiRoot) {
+    // Each workspace folder is a collapsible header; its contents nest one
+    // level in. A single folder (below) renders its children at the top level.
+    for (final root in state.roots) {
+      rows.add(
+        FileTreeVisibleRow(
+          path: root.path,
+          entry: FsDirEntry(name: _rootLabel(ctx, root.path), isDirectory: true),
+          depth: 0,
+          isRoot: true,
+          rootMissing: !root.exists,
+        ),
+      );
+      if (root.exists && state.expandedPaths.contains(root.path)) {
+        walk(root.path, 1);
+      }
+    }
+  } else if (state.rootPath.isNotEmpty) {
     walk(state.rootPath, 0);
   }
   return rows;
+}
+
+/// Header label for a root row: the folder's basename, falling back to the
+/// full path when basename resolution yields nothing.
+String _rootLabel(p.Context ctx, String path) {
+  final name = ctx.basename(path);
+  return name.isEmpty ? path : name;
 }
 
 /// Index in [visibleFileTreeRows] for a file path, or null if not visible.

@@ -1,5 +1,6 @@
 import 'dart:async';
 
+import 'package:flutter/foundation.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:path/path.dart' as p;
 
@@ -14,10 +15,26 @@ class FileTreeOperationException implements Exception {
   String toString() => message;
 }
 
+/// One workspace folder root shown in the tree. A multi-folder workspace
+/// (`Workspace.primaryPath` + `additionalPaths`) yields several of these.
+@immutable
+class FileTreeRoot {
+  const FileTreeRoot({required this.path, required this.exists});
+
+  final String path;
+  final bool exists;
+
+  @override
+  bool operator ==(Object other) =>
+      other is FileTreeRoot && other.path == path && other.exists == exists;
+
+  @override
+  int get hashCode => Object.hash(path, exists);
+}
+
 class FileTreeState {
   const FileTreeState({
-    this.rootPath = '',
-    this.rootExists = false,
+    this.roots = const [],
     this.expandedPaths = const {},
     this.filterText = '',
     this.showHiddenFiles = false,
@@ -26,8 +43,31 @@ class FileTreeState {
     this.clipboard,
   });
 
-  final String rootPath;
-  final bool rootExists;
+  /// Single-root convenience constructor (most callers/tests).
+  factory FileTreeState.single({
+    required String rootPath,
+    required bool rootExists,
+    Set<String> expandedPaths = const {},
+    String filterText = '',
+    bool showHiddenFiles = false,
+    Map<String, List<FsDirEntry>> dirCache = const {},
+    String? revealPath,
+    FileTreeClipboard? clipboard,
+  }) {
+    return FileTreeState(
+      roots: rootPath.isEmpty
+          ? const []
+          : [FileTreeRoot(path: rootPath, exists: rootExists)],
+      expandedPaths: expandedPaths,
+      filterText: filterText,
+      showHiddenFiles: showHiddenFiles,
+      dirCache: dirCache,
+      revealPath: revealPath,
+      clipboard: clipboard,
+    );
+  }
+
+  final List<FileTreeRoot> roots;
   final Set<String> expandedPaths;
   final String filterText;
   final bool showHiddenFiles;
@@ -39,9 +79,22 @@ class FileTreeState {
   /// In-tree copy/cut source for paste.
   final FileTreeClipboard? clipboard;
 
+  /// More than one workspace folder is mounted → render per-root header rows.
+  bool get isMultiRoot => roots.length > 1;
+
+  /// True when at least one root directory exists on disk.
+  bool get anyRootExists => roots.any((r) => r.exists);
+
+  List<String> get rootPaths => [for (final r in roots) r.path];
+
+  /// Primary (first) root path; empty when no roots. Single-root convenience.
+  String get rootPath => roots.isEmpty ? '' : roots.first.path;
+
+  /// Whether the primary root exists. Single-root convenience.
+  bool get rootExists => roots.isNotEmpty && roots.first.exists;
+
   FileTreeState copyWith({
-    String? rootPath,
-    bool? rootExists,
+    List<FileTreeRoot>? roots,
     Set<String>? expandedPaths,
     String? filterText,
     bool? showHiddenFiles,
@@ -53,8 +106,7 @@ class FileTreeState {
     bool clearClipboard = false,
   }) {
     return FileTreeState(
-      rootPath: rootPath ?? this.rootPath,
-      rootExists: rootExists ?? this.rootExists,
+      roots: roots ?? this.roots,
       expandedPaths: expandedPaths ?? this.expandedPaths,
       filterText: clearFilter ? '' : (filterText ?? this.filterText),
       showHiddenFiles: showHiddenFiles ?? this.showHiddenFiles,
@@ -72,17 +124,35 @@ class FileTreeCubit extends Cubit<FileTreeState> {
 
   final Filesystem fs;
 
-  Future<void> setRoot(String path) async {
-    if (path == state.rootPath) return;
-    if (path.isEmpty) {
+  /// Single-root convenience wrapper around [setRoots].
+  Future<void> setRoot(String path) =>
+      setRoots(path.isEmpty ? const [] : [path]);
+
+  /// Mounts [paths] as the tree's workspace folders (first = primary). When
+  /// more than one folder is mounted, each root renders as a collapsible
+  /// header and starts expanded; a single folder shows its children directly.
+  Future<void> setRoots(List<String> paths) async {
+    final wanted = paths.where((p) => p.isNotEmpty).toList(growable: false);
+    if (listEquals(wanted, state.rootPaths)) return;
+    if (wanted.isEmpty) {
       emit(const FileTreeState());
       return;
     }
-    final stat = await fs.stat(path);
-    final exists = stat.exists && stat.isDirectory;
-    emit(FileTreeState(rootPath: path, rootExists: exists));
-    if (exists) {
-      await _loadDirectory(path);
+    final roots = <FileTreeRoot>[];
+    for (final path in wanted) {
+      final stat = await fs.stat(path);
+      roots.add(
+        FileTreeRoot(path: path, exists: stat.exists && stat.isDirectory),
+      );
+    }
+    // Multi-root: expand every existing root by default so its contents show.
+    // Single-root: no header row, so the root is implicitly expanded.
+    final expanded = roots.length > 1
+        ? {for (final r in roots) if (r.exists) r.path}
+        : <String>{};
+    emit(FileTreeState(roots: roots, expandedPaths: expanded));
+    for (final root in roots) {
+      if (root.exists) await _loadDirectory(root.path);
     }
   }
 
@@ -112,7 +182,7 @@ class FileTreeCubit extends Cubit<FileTreeState> {
   /// emits once. Used by the manual refresh action and full-scope change hints.
   Future<void> refresh() {
     return _reloadDirectories({
-      if (state.rootPath.isNotEmpty) state.rootPath,
+      ...state.rootPaths.where((p) => p.isNotEmpty),
       ...state.expandedPaths,
     });
   }
@@ -123,7 +193,9 @@ class FileTreeCubit extends Cubit<FileTreeState> {
   /// instead of the whole tree.
   Future<void> refreshPaths(Set<String> changedDirs) {
     final relevant = changedDirs
-        .where((d) => d == state.rootPath || state.dirCache.containsKey(d))
+        .where(
+          (d) => state.rootPaths.contains(d) || state.dirCache.containsKey(d),
+        )
         .toSet();
     if (relevant.isEmpty) return Future<void>.value();
     return _reloadDirectories(relevant);
@@ -165,18 +237,24 @@ class FileTreeCubit extends Cubit<FileTreeState> {
     final normalized = ctx.normalize(filePath.trim());
     if (normalized.isEmpty) return false;
 
-    final root = state.rootPath;
-    if (root.isEmpty || !state.rootExists) return false;
-
-    final rootNorm = ctx.normalize(root);
-    if (!_isPathUnderRoot(ctx, rootNorm, normalized)) {
-      return false;
+    // Find the mounted root that contains the target path.
+    String? rootNorm;
+    for (final root in state.roots) {
+      if (!root.exists) continue;
+      final candidate = ctx.normalize(root.path);
+      if (_isPathUnderRoot(ctx, candidate, normalized)) {
+        rootNorm = candidate;
+        break;
+      }
     }
+    if (rootNorm == null) return false;
 
     final stat = await fs.stat(normalized);
     if (!stat.exists || stat.isDirectory) return false;
 
     final expanded = Set<String>.from(state.expandedPaths);
+    // In multi-root mode the containing root must be expanded to reveal it.
+    if (state.isMultiRoot) expanded.add(rootNorm);
     var parent = ctx.dirname(normalized);
     while (!_pathsEqual(ctx, parent, rootNorm) &&
         _isPathUnderRoot(ctx, rootNorm, parent)) {
