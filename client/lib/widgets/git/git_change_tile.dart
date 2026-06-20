@@ -23,6 +23,7 @@ class GitChangeTile extends StatefulWidget {
     required this.onDiscard,
     this.depth = 0,
     this.treeLayout = false,
+    this.hoverEnabled = true,
     super.key,
   });
 
@@ -33,6 +34,7 @@ class GitChangeTile extends StatefulWidget {
   final VoidCallback onDiscard;
   final int depth;
   final bool treeLayout;
+  final bool hoverEnabled;
 
   @override
   State<GitChangeTile> createState() => _GitChangeTileState();
@@ -40,6 +42,19 @@ class GitChangeTile extends StatefulWidget {
 
 class _GitChangeTileState extends State<GitChangeTile> {
   var _hovered = false;
+
+  @override
+  void didUpdateWidget(covariant GitChangeTile oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (!widget.hoverEnabled && _hovered) {
+      _hovered = false;
+    }
+  }
+
+  void _setHovered(bool value) {
+    if (!widget.hoverEnabled || _hovered == value) return;
+    setState(() => _hovered = value);
+  }
 
   Color _badgeColor(ColorScheme cs) => switch (widget.change.kind) {
     GitChangeKind.added => const Color(0xFF2EA043),
@@ -60,36 +75,43 @@ class _GitChangeTileState extends State<GitChangeTile> {
     final showDir = !widget.treeLayout && dir != '.' && dir.isNotEmpty;
     final rowColor = _hovered ? HoverWidget.defaultHoverColor(context) : null;
     final leftPadding = widget.treeLayout
-        ? widget.depth * kGitChangesIndentWidth + kGitChangesNodePaddingLeft
-        : kGitChangesNodePaddingLeft;
+        ? widget.depth * kGitChangesIndentWidth +
+              kGitChangesNodePaddingLeft +
+              kGitChangesRowHorizontalPadding
+        : kGitChangesNodePaddingLeft + kGitChangesRowHorizontalPadding;
 
-    return MouseRegion(
-      onEnter: (_) => setState(() => _hovered = true),
-      onExit: (_) => setState(() => _hovered = false),
-      cursor: SystemMouseCursors.click,
-      child: GestureDetector(
-        behavior: HitTestBehavior.opaque,
-        onTap: widget.onOpenDiff,
-        child: AnimatedContainer(
-          duration: const Duration(milliseconds: 120),
-          width: widget.treeLayout ? double.infinity : null,
-          height: widget.treeLayout ? double.infinity : null,
-          clipBehavior: Clip.none,
-          decoration: rowColor != null
-              ? BoxDecoration(
-                  color: rowColor,
-                  borderRadius: BorderRadius.circular(6),
-                )
-              : null,
-          padding: EdgeInsets.only(
-            left: leftPadding,
-            right: kGitChangesNodePaddingRight,
-            top: widget.treeLayout ? 0 : 4,
-            bottom: widget.treeLayout ? 0 : 4,
+    return RepaintBoundary(
+      child: MouseRegion(
+        onEnter: (_) => _setHovered(true),
+        onExit: (_) => _setHovered(false),
+        cursor: SystemMouseCursors.click,
+        child: GestureDetector(
+          behavior: HitTestBehavior.opaque,
+          onTap: widget.onOpenDiff,
+          child: Container(
+            width: widget.treeLayout ? double.infinity : null,
+            height: widget.treeLayout ? double.infinity : null,
+            clipBehavior: Clip.none,
+            decoration: rowColor != null
+                ? BoxDecoration(
+                    color: rowColor,
+                    borderRadius: BorderRadius.circular(6),
+                  )
+                : null,
+            padding: EdgeInsets.fromLTRB(
+              leftPadding,
+              widget.treeLayout
+                  ? kGitChangesRowVerticalPadding
+                  : kGitChangesRowVerticalPadding,
+              kGitChangesNodePaddingRight + kGitChangesRowHorizontalPadding,
+              widget.treeLayout
+                  ? kGitChangesRowVerticalPadding
+                  : kGitChangesRowVerticalPadding,
+            ),
+            child: widget.treeLayout
+                ? _buildTreeRow(context, cs, l10n, change, name)
+                : _buildListRow(context, cs, l10n, change, name, showDir, dir),
           ),
-          child: widget.treeLayout
-              ? _buildTreeRow(context, cs, l10n, change, name)
-              : _buildListRow(context, cs, l10n, change, name, showDir, dir),
         ),
       ),
     );
@@ -105,17 +127,20 @@ class _GitChangeTileState extends State<GitChangeTile> {
     return OverflowBox(
       maxWidth: double.infinity,
       alignment: Alignment.centerLeft,
-      child: Row(
-        crossAxisAlignment: CrossAxisAlignment.center,
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          const SizedBox(width: 16),
-          FileIconWidget(fileName: name),
-          const SizedBox(width: 6),
-          Text(name, maxLines: 1, style: AppTextStyles.of(context).body),
-          const SizedBox(width: 8),
-          if (_hovered) ..._actions(l10n) else _badge(cs),
-        ],
+      child: SizedBox(
+        height: kGitChangesNodeHeight,
+        child: Row(
+          crossAxisAlignment: CrossAxisAlignment.center,
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            const SizedBox(width: 16),
+            FileIconWidget(fileName: name),
+            const SizedBox(width: 6),
+            Text(name, maxLines: 1, style: AppTextStyles.of(context).body),
+            const SizedBox(width: 8),
+            if (_hovered) ..._actions(l10n) else _badge(cs),
+          ],
+        ),
       ),
     );
   }

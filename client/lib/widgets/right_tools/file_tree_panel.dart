@@ -13,6 +13,7 @@ import '../../cubits/file_tree_cubit.dart';
 
 import '../../l10n/l10n_extensions.dart';
 import '../../services/file_tree/file_tree_visible_rows.dart';
+import '../../services/io/filesystem.dart';
 import '../../services/io/workspace_fs_watcher.dart';
 import '../../services/storage/app_storage.dart';
 import '../../services/storage/runtime_storage_context.dart';
@@ -167,18 +168,23 @@ class _FileTreePanelState extends State<FileTreePanel> {
 
     return BlocProvider.value(
       value: _cubit,
-      child: BlocBuilder<FileTreeCubit, FileTreeState>(
-        builder: (context, state) {
-          return Container(
-            key: AppKeys.fileTreePanel,
-            padding: const EdgeInsets.all(13),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.stretch,
-              children: [
-                LayoutBuilder(
+      child: Container(
+        key: AppKeys.fileTreePanel,
+        padding: const EdgeInsets.all(13),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            BlocSelector<FileTreeCubit, FileTreeState, (bool, bool, String)>(
+              selector: (state) => (
+                state.expandedPaths.isNotEmpty,
+                state.showHiddenFiles,
+                state.rootPath,
+              ),
+              builder: (context, header) {
+                final (hasExpandedFolders, showHiddenFiles, rootPath) = header;
+                return LayoutBuilder(
                   builder: (context, constraints) {
                     const actionSlotWidth = 28.0;
-                    final hasExpandedFolders = state.expandedPaths.isNotEmpty;
                     final actionCount = hasExpandedFolders ? 5 : 4;
                     final showInlineActions =
                         constraints.maxWidth >= actionSlotWidth * actionCount;
@@ -200,23 +206,24 @@ class _FileTreePanelState extends State<FileTreePanel> {
                         if (showInlineActions)
                           ..._buildFileTreeHeaderActions(
                             l10n: l10n,
-                            state: state,
+                            showHiddenFiles: showHiddenFiles,
+                            rootPath: rootPath,
                           )
                         else
                           FileTreeHeaderOverflowMenu(
                             l10n: l10n,
-                            showHiddenFiles: state.showHiddenFiles,
+                            showHiddenFiles: showHiddenFiles,
                             hasExpandedFolders: hasExpandedFolders,
-                            canCopy: state.rootPath.isNotEmpty,
+                            canCopy: rootPath.isNotEmpty,
                             onRefresh: _cubit.refresh,
                             onReveal: () =>
                                 unawaited(_revealActiveEditorFile()),
                             onCollapseAll: _cubit.collapseAllFolders,
                             onToggleHidden: _cubit.toggleShowHidden,
                             onCopy: () {
-                              if (state.rootPath.isNotEmpty) {
+                              if (rootPath.isNotEmpty) {
                                 Clipboard.setData(
-                                  ClipboardData(text: state.rootPath),
+                                  ClipboardData(text: rootPath),
                                 );
                               }
                             },
@@ -224,75 +231,114 @@ class _FileTreePanelState extends State<FileTreePanel> {
                       ],
                     );
                   },
-                ),
-                const SizedBox(height: 8),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.stretch,
-                    children: [
-                      TextField(
-                        controller: _filterController,
-                        decoration: InputDecoration(
-                          hintText: l10n.filterFiles,
-                          prefixIcon: Icon(
-                            Icons.search,
-                            size: context.appIconSizes.md,
-                          ),
-                          floatingLabelBehavior: FloatingLabelBehavior.never,
-                          suffixIcon: _filterController.text.isNotEmpty
-                              ? AppIconButton(
-                                  icon: Icons.clear,
-                                  compact: true,
-                                  size: AppIconButton.kCompactSize,
-                                  onTap: () {
-                                    _filterController.clear();
-                                    _cubit.setFilter('');
-                                  },
-                                )
-                              : null,
-                        ),
-                        onChanged: (v) {
-                          _cubit.setFilter(v);
-                          setState(() {});
-                        },
+                );
+              },
+            ),
+            const SizedBox(height: 8),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  TextField(
+                    controller: _filterController,
+                    decoration: InputDecoration(
+                      hintText: l10n.filterFiles,
+                      prefixIcon: Icon(
+                        Icons.search,
+                        size: context.appIconSizes.md,
                       ),
-                      const SizedBox(height: 10),
-                      if (state.rootExists)
-                        Text(
-                          state.rootPath,
+                      floatingLabelBehavior: FloatingLabelBehavior.never,
+                      suffixIcon: _filterController.text.isNotEmpty
+                          ? AppIconButton(
+                              icon: Icons.clear,
+                              compact: true,
+                              size: AppIconButton.kCompactSize,
+                              onTap: () {
+                                _filterController.clear();
+                                _cubit.setFilter('');
+                              },
+                            )
+                          : null,
+                    ),
+                    onChanged: (v) {
+                      _cubit.setFilter(v);
+                      setState(() {});
+                    },
+                  ),
+                  const SizedBox(height: 10),
+                  BlocSelector<FileTreeCubit, FileTreeState, (bool, String)>(
+                    selector: (state) => (state.rootExists, state.rootPath),
+                    builder: (context, root) {
+                      final (rootExists, rootPath) = root;
+                      if (rootExists) {
+                        return Text(
+                          rootPath,
                           maxLines: 1,
                           overflow: TextOverflow.ellipsis,
                           style: AppTextStyles.of(
                             context,
                           ).bodySmall.copyWith(color: cs.onSurfaceVariant),
-                        )
-                      else
-                        Text(
-                          'Directory unavailable',
-                          style: AppTextStyles.of(context).bodySmall.copyWith(
-                            color: cs.onSurfaceVariant.withValues(alpha: 0.7),
-                          ),
+                        );
+                      }
+                      return Text(
+                        'Directory unavailable',
+                        style: AppTextStyles.of(context).bodySmall.copyWith(
+                          color: cs.onSurfaceVariant.withValues(alpha: 0.7),
                         ),
-                      const SizedBox(height: 10),
-                      Expanded(
-                        child: state.rootExists
-                            ? _buildFileList(state, cs.onSurface)
-                            : const SizedBox.shrink(),
-                      ),
-                    ],
+                      );
+                    },
                   ),
-                ),
-              ],
+                  const SizedBox(height: 10),
+                  Expanded(
+                    child: BlocSelector<
+                      FileTreeCubit,
+                      FileTreeState,
+                      (bool, String, Set<String>, Map<String, List<FsDirEntry>>)
+                    >(
+                      selector: (state) => (
+                        state.rootExists,
+                        state.rootPath,
+                        state.expandedPaths,
+                        state.dirCache,
+                      ),
+                      builder: (context, selected) {
+                        final (
+                          rootExists,
+                          rootPath,
+                          expandedPaths,
+                          dirCache,
+                        ) = selected;
+                        if (!rootExists) return const SizedBox.shrink();
+                        return _FileTreeList(
+                          treeState: FileTreeState(
+                            rootPath: rootPath,
+                            rootExists: true,
+                            expandedPaths: expandedPaths,
+                            dirCache: dirCache,
+                          ),
+                          cubit: _cubit,
+                          textColor: cs.onSurface,
+                          listScrollController: _listScrollController,
+                          horizontalScrollController:
+                              _horizontalScrollController,
+                          desktopShellActions: _desktopShellActions,
+                        );
+                      },
+                    ),
+                  ),
+                ],
+              ),
             ),
-          );
-        },
+          ],
+        ),
       ),
     );
   }
 
   List<Widget> _buildFileTreeHeaderActions({
     required AppLocalizations l10n,
-    required FileTreeState state,
+    required bool showHiddenFiles,
+    required String rootPath,
   }) {
     final actions = <Widget>[
       AppIconButton(
@@ -321,12 +367,12 @@ class _FileTreePanelState extends State<FileTreePanel> {
     );
     actions.addAll([
       AppIconButton(
-        icon: state.showHiddenFiles
+        icon: showHiddenFiles
             ? Icons.visibility_off_outlined
             : Icons.visibility_outlined,
         compact: true,
         size: AppIconButton.kCompactSize,
-        tooltip: state.showHiddenFiles
+        tooltip: showHiddenFiles
             ? 'Hide hidden files'
             : 'Show hidden files',
         onTap: _cubit.toggleShowHidden,
@@ -337,8 +383,8 @@ class _FileTreePanelState extends State<FileTreePanel> {
         size: AppIconButton.kCompactSize,
         tooltip: l10n.copy,
         onTap: () {
-          if (state.rootPath.isNotEmpty) {
-            Clipboard.setData(ClipboardData(text: state.rootPath));
+          if (rootPath.isNotEmpty) {
+            Clipboard.setData(ClipboardData(text: rootPath));
           }
         },
       ),
@@ -346,17 +392,66 @@ class _FileTreePanelState extends State<FileTreePanel> {
     return actions;
   }
 
-  Widget _buildFileList(FileTreeState state, Color textColor) {
+  bool get _desktopShellActions {
+    if (kIsWeb) return false;
+    final mode = AppStorage.context.mode;
+    return mode == StorageBackendMode.native || mode == StorageBackendMode.wsl;
+  }
+}
+
+class _FileTreeList extends StatefulWidget {
+  const _FileTreeList({
+    required this.treeState,
+    required this.cubit,
+    required this.textColor,
+    required this.listScrollController,
+    required this.horizontalScrollController,
+    required this.desktopShellActions,
+  });
+
+  final FileTreeState treeState;
+  final FileTreeCubit cubit;
+  final Color textColor;
+  final ScrollController listScrollController;
+  final ScrollController horizontalScrollController;
+  final bool desktopShellActions;
+
+  @override
+  State<_FileTreeList> createState() => _FileTreeListState();
+}
+
+class _FileTreeListState extends State<_FileTreeList> {
+  var _hoverEnabled = true;
+  var _activeScrolls = 0;
+
+  bool _onScrollNotification(ScrollNotification notification) {
+    if (notification.depth != 0) return false;
+    if (notification is ScrollStartNotification) {
+      _activeScrolls++;
+      if (_hoverEnabled) setState(() => _hoverEnabled = false);
+      return false;
+    }
+    if (notification is ScrollEndNotification) {
+      _activeScrolls = (_activeScrolls - 1).clamp(0, 1 << 30);
+      if (_activeScrolls == 0 && !_hoverEnabled) {
+        setState(() => _hoverEnabled = true);
+      }
+    }
+    return false;
+  }
+
+  @override
+  Widget build(BuildContext context) {
     final rows = visibleFileTreeRows(
-      state: state,
-      pathContext: _cubit.fs.pathContext,
+      state: widget.treeState,
+      pathContext: widget.cubit.fs.pathContext,
     );
     if (rows.isEmpty) {
       return Text(
         '(empty)',
         style: AppTextStyles.of(
           context,
-        ).bodySmall.copyWith(color: textColor.withValues(alpha: 0.35)),
+        ).bodySmall.copyWith(color: widget.textColor.withValues(alpha: 0.35)),
       );
     }
     return LayoutBuilder(
@@ -376,24 +471,27 @@ class _FileTreePanelState extends State<FileTreePanel> {
         );
 
         return Scrollbar(
-          controller: _horizontalScrollController,
+          controller: widget.horizontalScrollController,
           thumbVisibility: true,
           notificationPredicate: (notification) =>
               notification.metrics.axis == Axis.horizontal,
           child: SingleChildScrollView(
-            controller: _horizontalScrollController,
+            controller: widget.horizontalScrollController,
             scrollDirection: Axis.horizontal,
             child: SizedBox(
               width: contentWidth,
               height: constraints.maxHeight,
               child: Scrollbar(
-                controller: _listScrollController,
+                controller: widget.listScrollController,
                 thumbVisibility: true,
-                child: ListView.builder(
-                  controller: _listScrollController,
-                  itemCount: rows.length,
-                  itemExtent: kFileTreeRowExtent,
-                  itemBuilder: (context, index) {
+                child: NotificationListener<ScrollNotification>(
+                  onNotification: _onScrollNotification,
+                  child: ListView.builder(
+                    controller: widget.listScrollController,
+                    cacheExtent: 400,
+                    itemCount: rows.length,
+                    itemExtent: kFileTreeRowExtent,
+                    itemBuilder: (context, index) {
                     final row = rows[index];
                     if (row.isEmptyPlaceholder) {
                       return SizedBox(
@@ -416,7 +514,9 @@ class _FileTreePanelState extends State<FileTreePanel> {
                                 '(empty)',
                                 style: AppTextStyles.of(context).caption
                                     .copyWith(
-                                      color: textColor.withValues(alpha: 0.35),
+                                      color: widget.textColor.withValues(
+                                        alpha: 0.35,
+                                      ),
                                     ),
                               ),
                             ),
@@ -427,16 +527,18 @@ class _FileTreePanelState extends State<FileTreePanel> {
                     return SizedBox(
                       width: contentWidth,
                       child: FileTreeNode(
-                          key: ValueKey(row.path),
-                          path: row.path,
-                          entry: row.entry,
-                          depth: row.depth,
-                          cubit: _cubit,
-                          textColor: textColor,
-                          desktopShellActions: _desktopShellActions,
-                        ),
+                        key: ValueKey(row.path),
+                        path: row.path,
+                        entry: row.entry,
+                        depth: row.depth,
+                        cubit: widget.cubit,
+                        textColor: widget.textColor,
+                        desktopShellActions: widget.desktopShellActions,
+                        hoverEnabled: _hoverEnabled,
+                      ),
                     );
                   },
+                ),
                 ),
               ),
             ),
@@ -444,11 +546,5 @@ class _FileTreePanelState extends State<FileTreePanel> {
         );
       },
     );
-  }
-
-  bool get _desktopShellActions {
-    if (kIsWeb) return false;
-    final mode = AppStorage.context.mode;
-    return mode == StorageBackendMode.native || mode == StorageBackendMode.wsl;
   }
 }

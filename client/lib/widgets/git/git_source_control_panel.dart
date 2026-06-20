@@ -27,11 +27,6 @@ import 'git_change_folder_tile.dart';
 import 'git_change_tile.dart';
 import 'git_diff_view.dart';
 
-const _gitChangesRowPadding = EdgeInsets.symmetric(
-  horizontal: kGitChangesRowHorizontalPadding,
-  vertical: kGitChangesRowVerticalPadding,
-);
-
 /// VSCode-style "Source Control" panel for the editor workbench left rail.
 ///
 /// Self-contained like `_FileTreePanel`: builds its own [GitCubit] and tracks
@@ -314,7 +309,43 @@ class _GitSourceControlPanelState extends State<GitSourceControlPanel> {
           const SizedBox(height: 12),
           Expanded(
             child: state.status.hasChanges
-                ? _buildChangesBody(context, state)
+                ? BlocSelector<
+                    GitCubit,
+                    GitState,
+                    (
+                      GitChangesViewMode,
+                      List<GitFileChange>,
+                      List<GitFileChange>,
+                      Set<String>,
+                    )
+                  >(
+                    selector: (state) => (
+                      state.changesViewMode,
+                      state.status.staged,
+                      state.status.unstaged,
+                      state.expandedFolderPaths,
+                    ),
+                    builder: (context, changesData) {
+                      final (
+                        viewMode,
+                        staged,
+                        unstaged,
+                        expandedFolderPaths,
+                      ) = changesData;
+                      return _GitChangesScrollBody(
+                        viewMode: viewMode,
+                        staged: staged,
+                        unstaged: unstaged,
+                        expandedFolderPaths: expandedFolderPaths,
+                        cubit: _cubit,
+                        changesScrollController: _changesScrollController,
+                        horizontalScrollController: _horizontalScrollController,
+                        onOpenDiff: (change) => unawaited(_openDiff(change)),
+                        onConfirmDiscard: (change) =>
+                            unawaited(_confirmDiscard(change)),
+                      );
+                    },
+                  )
                 : Center(
                     child: Text(
                       l10n.gitNoChanges,
@@ -327,173 +358,6 @@ class _GitSourceControlPanelState extends State<GitSourceControlPanel> {
         ],
       ),
     );
-  }
-
-  Widget _buildChangesBody(BuildContext context, GitState state) {
-    final l10n = context.l10n;
-    final sections = <Widget>[
-      if (state.status.staged.isNotEmpty)
-        _Section(
-          title: l10n.gitStagedChanges,
-          count: state.status.staged.length,
-          action: AppIconButton(
-            icon: Icons.remove,
-            compact: true, size: AppIconButton.kCompactSize,
-            tooltip: l10n.gitUnstageAll,
-            onTap: () => unawaited(_cubit.unstageAll()),
-          ),
-          children: _buildSectionChildren(
-            context,
-            state,
-            state.status.staged,
-            staged: true,
-          ),
-        ),
-      if (state.status.unstaged.isNotEmpty)
-        _Section(
-          title: l10n.gitChanges,
-          count: state.status.unstaged.length,
-          action: AppIconButton(
-            icon: Icons.add,
-            compact: true, size: AppIconButton.kCompactSize,
-            tooltip: l10n.gitStageAll,
-            onTap: () => unawaited(_cubit.stageAll()),
-          ),
-          children: _buildSectionChildren(
-            context,
-            state,
-            state.status.unstaged,
-            staged: false,
-          ),
-        ),
-    ];
-
-    if (state.changesViewMode == GitChangesViewMode.list) {
-      return ListView(children: sections);
-    }
-
-    return LayoutBuilder(
-      builder: (context, constraints) {
-        final fileLabelStyle = AppTextStyles.of(context).bodySmall;
-        final folderLabelStyle = AppTextStyles.of(
-          context,
-        ).bodySmall.copyWith(fontWeight: FontWeight.w500);
-        final treeRows = [
-          ...visibleGitChangesRows(
-            changes: state.status.staged,
-            expandedFolderPaths: state.expandedFolderPaths,
-          ),
-          ...visibleGitChangesRows(
-            changes: state.status.unstaged,
-            expandedFolderPaths: state.expandedFolderPaths,
-          ),
-        ];
-        final contentWidth = math.max(
-          constraints.maxWidth,
-          gitChangesMinContentWidth(
-            rows: treeRows,
-            fileLabelStyle: fileLabelStyle,
-            folderLabelStyle: folderLabelStyle,
-            textScaler: MediaQuery.textScalerOf(context),
-          ),
-        );
-
-        return Scrollbar(
-          controller: _horizontalScrollController,
-          thumbVisibility: true,
-          notificationPredicate: (notification) =>
-              notification.metrics.axis == Axis.horizontal,
-          child: SingleChildScrollView(
-            controller: _horizontalScrollController,
-            scrollDirection: Axis.horizontal,
-            child: SizedBox(
-              width: contentWidth,
-              height: constraints.maxHeight,
-              child: Scrollbar(
-                controller: _changesScrollController,
-                thumbVisibility: true,
-                child: ListView(
-                  controller: _changesScrollController,
-                  children: sections,
-                ),
-              ),
-            ),
-          ),
-        );
-      },
-    );
-  }
-
-  List<Widget> _buildSectionChildren(
-    BuildContext context,
-    GitState state,
-    List<GitFileChange> changes, {
-    required bool staged,
-  }) {
-    if (state.changesViewMode == GitChangesViewMode.list) {
-      return [
-        for (final change in changes)
-          GitChangeTile(
-            change: change,
-            onOpenDiff: () => unawaited(_openDiff(change)),
-            onStage: staged ? () {} : () => unawaited(_cubit.stage(change)),
-            onUnstage: staged ? () => unawaited(_cubit.unstage(change)) : () {},
-            onDiscard: staged
-                ? () {}
-                : () => unawaited(_confirmDiscard(change)),
-          ),
-      ];
-    }
-
-    final rows = visibleGitChangesRows(
-      changes: changes,
-      expandedFolderPaths: state.expandedFolderPaths,
-    );
-    return [
-      for (final row in rows)
-        SizedBox(
-          width: double.infinity,
-          height: kGitChangesRowExtent,
-          child: Padding(
-            padding: _gitChangesRowPadding,
-            child: row.isFolder
-                ? GitChangeFolderTile(
-                    name: row.name!,
-                    depth: row.depth,
-                    isExpanded: state.expandedFolderPaths.contains(
-                      row.folderPath,
-                    ),
-                    onToggle: () =>
-                        _cubit.toggleFolderExpanded(row.folderPath!),
-                    onStage: staged
-                        ? null
-                        : () => unawaited(
-                            _cubit.stageFolder(row.folderPath!),
-                          ),
-                    onUnstage: staged
-                        ? () => unawaited(
-                            _cubit.unstageFolder(row.folderPath!),
-                          )
-                        : null,
-                  )
-                : GitChangeTile(
-                    change: row.change!,
-                    depth: row.depth,
-                    treeLayout: true,
-                    onOpenDiff: () => unawaited(_openDiff(row.change!)),
-                    onStage: staged
-                        ? () {}
-                        : () => unawaited(_cubit.stage(row.change!)),
-                    onUnstage: staged
-                        ? () => unawaited(_cubit.unstage(row.change!))
-                        : () {},
-                    onDiscard: staged
-                        ? () {}
-                        : () => unawaited(_confirmDiscard(row.change!)),
-                  ),
-          ),
-        ),
-    ];
   }
 
   Widget _centeredHint(BuildContext context, IconData icon, String text) {
@@ -515,6 +379,302 @@ class _GitSourceControlPanelState extends State<GitSourceControlPanel> {
             ),
           ],
         ),
+      ),
+    );
+  }
+}
+
+class _GitChangesScrollBody extends StatefulWidget {
+  const _GitChangesScrollBody({
+    required this.viewMode,
+    required this.staged,
+    required this.unstaged,
+    required this.expandedFolderPaths,
+    required this.cubit,
+    required this.changesScrollController,
+    required this.horizontalScrollController,
+    required this.onOpenDiff,
+    required this.onConfirmDiscard,
+  });
+
+  final GitChangesViewMode viewMode;
+  final List<GitFileChange> staged;
+  final List<GitFileChange> unstaged;
+  final Set<String> expandedFolderPaths;
+  final GitCubit cubit;
+  final ScrollController changesScrollController;
+  final ScrollController horizontalScrollController;
+  final ValueChanged<GitFileChange> onOpenDiff;
+  final ValueChanged<GitFileChange> onConfirmDiscard;
+
+  @override
+  State<_GitChangesScrollBody> createState() => _GitChangesScrollBodyState();
+}
+
+class _GitChangesScrollBodyState extends State<_GitChangesScrollBody> {
+  var _hoverEnabled = true;
+  var _activeScrolls = 0;
+
+  bool _onScrollNotification(ScrollNotification notification) {
+    if (notification.depth != 0) return false;
+    if (notification is ScrollStartNotification) {
+      _activeScrolls++;
+      if (_hoverEnabled) setState(() => _hoverEnabled = false);
+      return false;
+    }
+    if (notification is ScrollEndNotification) {
+      _activeScrolls = (_activeScrolls - 1).clamp(0, 1 << 30);
+      if (_activeScrolls == 0 && !_hoverEnabled) {
+        setState(() => _hoverEnabled = true);
+      }
+    }
+    return false;
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final l10n = context.l10n;
+    if (widget.viewMode == GitChangesViewMode.list) {
+      final sections = <Widget>[
+        if (widget.staged.isNotEmpty)
+          _Section(
+            title: l10n.gitStagedChanges,
+            count: widget.staged.length,
+            action: AppIconButton(
+              icon: Icons.remove,
+              compact: true,
+              size: AppIconButton.kCompactSize,
+              tooltip: l10n.gitUnstageAll,
+              onTap: () => unawaited(widget.cubit.unstageAll()),
+            ),
+            children: [
+              for (final change in widget.staged)
+                GitChangeTile(
+                  key: ValueKey('staged:${change.path}'),
+                  change: change,
+                  hoverEnabled: _hoverEnabled,
+                  onOpenDiff: () => widget.onOpenDiff(change),
+                  onStage: () {},
+                  onUnstage: () => unawaited(widget.cubit.unstage(change)),
+                  onDiscard: () {},
+                ),
+            ],
+          ),
+        if (widget.unstaged.isNotEmpty)
+          _Section(
+            title: l10n.gitChanges,
+            count: widget.unstaged.length,
+            action: AppIconButton(
+              icon: Icons.add,
+              compact: true,
+              size: AppIconButton.kCompactSize,
+              tooltip: l10n.gitStageAll,
+              onTap: () => unawaited(widget.cubit.stageAll()),
+            ),
+            children: [
+              for (final change in widget.unstaged)
+                GitChangeTile(
+                  key: ValueKey('unstaged:${change.path}'),
+                  change: change,
+                  hoverEnabled: _hoverEnabled,
+                  onOpenDiff: () => widget.onOpenDiff(change),
+                  onStage: () => unawaited(widget.cubit.stage(change)),
+                  onUnstage: () {},
+                  onDiscard: () => widget.onConfirmDiscard(change),
+                ),
+            ],
+          ),
+      ];
+      return NotificationListener<ScrollNotification>(
+        onNotification: _onScrollNotification,
+        child: ListView(
+          controller: widget.changesScrollController,
+          cacheExtent: 400,
+          children: sections,
+        ),
+      );
+    }
+
+    final stagedRows = visibleGitChangesRows(
+      changes: widget.staged,
+      expandedFolderPaths: widget.expandedFolderPaths,
+    );
+    final unstagedRows = visibleGitChangesRows(
+      changes: widget.unstaged,
+      expandedFolderPaths: widget.expandedFolderPaths,
+    );
+
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final fileLabelStyle = AppTextStyles.of(context).bodySmall;
+        final folderLabelStyle = AppTextStyles.of(
+          context,
+        ).bodySmall.copyWith(fontWeight: FontWeight.w500);
+        final contentWidth = math.max(
+          constraints.maxWidth,
+          gitChangesMinContentWidth(
+            rows: [...stagedRows, ...unstagedRows],
+            fileLabelStyle: fileLabelStyle,
+            folderLabelStyle: folderLabelStyle,
+            textScaler: MediaQuery.textScalerOf(context),
+          ),
+        );
+
+        return Scrollbar(
+          controller: widget.horizontalScrollController,
+          thumbVisibility: true,
+          notificationPredicate: (notification) =>
+              notification.metrics.axis == Axis.horizontal,
+          child: SingleChildScrollView(
+            controller: widget.horizontalScrollController,
+            scrollDirection: Axis.horizontal,
+            child: SizedBox(
+              width: contentWidth,
+              height: constraints.maxHeight,
+              child: Scrollbar(
+                controller: widget.changesScrollController,
+                thumbVisibility: true,
+                child: NotificationListener<ScrollNotification>(
+                  onNotification: _onScrollNotification,
+                  child: CustomScrollView(
+                    controller: widget.changesScrollController,
+                    cacheExtent: 400,
+                    slivers: [
+                      if (widget.staged.isNotEmpty) ...[
+                        SliverToBoxAdapter(
+                          child: _SectionHeader(
+                            title: l10n.gitStagedChanges,
+                            count: widget.staged.length,
+                            action: AppIconButton(
+                              icon: Icons.remove,
+                              compact: true,
+                              size: AppIconButton.kCompactSize,
+                              tooltip: l10n.gitUnstageAll,
+                              onTap: () => unawaited(widget.cubit.unstageAll()),
+                            ),
+                          ),
+                        ),
+                        SliverFixedExtentList(
+                          itemExtent: kGitChangesRowExtent,
+                          delegate: SliverChildBuilderDelegate(
+                            (context, index) => SizedBox(
+                              width: contentWidth,
+                              child: _buildTreeRow(
+                                row: stagedRows[index],
+                                staged: true,
+                              ),
+                            ),
+                            childCount: stagedRows.length,
+                          ),
+                        ),
+                      ],
+                      if (widget.unstaged.isNotEmpty) ...[
+                        SliverToBoxAdapter(
+                          child: _SectionHeader(
+                            title: l10n.gitChanges,
+                            count: widget.unstaged.length,
+                            action: AppIconButton(
+                              icon: Icons.add,
+                              compact: true,
+                              size: AppIconButton.kCompactSize,
+                              tooltip: l10n.gitStageAll,
+                              onTap: () => unawaited(widget.cubit.stageAll()),
+                            ),
+                          ),
+                        ),
+                        SliverFixedExtentList(
+                          itemExtent: kGitChangesRowExtent,
+                          delegate: SliverChildBuilderDelegate(
+                            (context, index) => SizedBox(
+                              width: contentWidth,
+                              child: _buildTreeRow(
+                                row: unstagedRows[index],
+                                staged: false,
+                              ),
+                            ),
+                            childCount: unstagedRows.length,
+                          ),
+                        ),
+                      ],
+                    ],
+                  ),
+                ),
+              ),
+            ),
+          ),
+        );
+      },
+    );
+  }
+
+  Widget _buildTreeRow({
+    required GitChangesVisibleRow row,
+    required bool staged,
+  }) {
+    if (row.isFolder) {
+      return GitChangeFolderTile(
+        key: ValueKey('folder:${row.folderPath}'),
+        name: row.name!,
+        depth: row.depth,
+        isExpanded: widget.expandedFolderPaths.contains(row.folderPath),
+        hoverEnabled: _hoverEnabled,
+        onToggle: () => widget.cubit.toggleFolderExpanded(row.folderPath!),
+        onStage: staged
+            ? null
+            : () => unawaited(widget.cubit.stageFolder(row.folderPath!)),
+        onUnstage: staged
+            ? () => unawaited(widget.cubit.unstageFolder(row.folderPath!))
+            : null,
+      );
+    }
+
+    final change = row.change!;
+    return GitChangeTile(
+      key: ValueKey('${staged ? 'staged' : 'unstaged'}:${change.path}'),
+      change: change,
+      depth: row.depth,
+      treeLayout: true,
+      hoverEnabled: _hoverEnabled,
+      onOpenDiff: () => widget.onOpenDiff(change),
+      onStage: staged ? () {} : () => unawaited(widget.cubit.stage(change)),
+      onUnstage: staged ? () => unawaited(widget.cubit.unstage(change)) : () {},
+      onDiscard: staged ? () {} : () => widget.onConfirmDiscard(change),
+    );
+  }
+}
+
+class _SectionHeader extends StatelessWidget {
+  const _SectionHeader({
+    required this.title,
+    required this.count,
+    required this.action,
+  });
+
+  final String title;
+  final int count;
+  final Widget action;
+
+  @override
+  Widget build(BuildContext context) {
+    final cs = Theme.of(context).colorScheme;
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(4, 6, 0, 2),
+      child: Row(
+        children: [
+          Expanded(
+            child: Text(
+              title,
+              style: Theme.of(context).textTheme.labelSmall?.copyWith(
+                color: cs.onSurfaceVariant,
+                fontWeight: FontWeight.w700,
+                letterSpacing: 0.8,
+              ),
+            ),
+          ),
+          action,
+          const SizedBox(width: 2),
+          _CountBadge(count: count),
+        ],
       ),
     );
   }
@@ -725,30 +885,10 @@ class _Section extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final cs = Theme.of(context).colorScheme;
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        Padding(
-          padding: const EdgeInsets.fromLTRB(4, 6, 0, 2),
-          child: Row(
-            children: [
-              Expanded(
-                child: Text(
-                  title,
-                  style: Theme.of(context).textTheme.labelSmall?.copyWith(
-                    color: cs.onSurfaceVariant,
-                    fontWeight: FontWeight.w700,
-                    letterSpacing: 0.8,
-                  ),
-                ),
-              ),
-              action,
-              const SizedBox(width: 2),
-              _CountBadge(count: count),
-            ],
-          ),
-        ),
+        _SectionHeader(title: title, count: count, action: action),
         ...children,
       ],
     );
