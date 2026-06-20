@@ -24,7 +24,10 @@ class _FakeGitService extends GitService {
   }
 
   @override
-  Future<List<String>> branches(String dir) async => ['main', 'dev'];
+  Future<List<String>> branches(String dir) async {
+    calls.add('branches');
+    return ['main', 'dev'];
+  }
 
   Future<void> _record(String op) async {
     calls.add(op);
@@ -78,7 +81,7 @@ const _unstaged = GitFileChange(
 );
 
 void main() {
-  test('setRepoRoot refreshes status and branches', () async {
+  test('setRepoRoot refreshes status only; branches load lazily', () async {
     final service = _FakeGitService(statusToReturn: _repoWith());
     final cubit = GitCubit(service: service);
 
@@ -86,8 +89,15 @@ void main() {
 
     expect(cubit.state.repoRoot, '/repo');
     expect(cubit.state.isRepository, isTrue);
-    expect(cubit.state.branches, ['main', 'dev']);
     expect(service.calls, contains('status'));
+    // Branches are off the hot path — not fetched until requested.
+    expect(cubit.state.branches, isEmpty);
+    expect(service.calls, isNot(contains('branches')));
+
+    await cubit.ensureBranches();
+    expect(cubit.state.branches, ['main', 'dev']);
+    expect(service.calls, contains('branches'));
+
     await cubit.close();
   });
 
@@ -233,6 +243,41 @@ void main() {
     await cubit.close();
     await refreshFuture;
   });
+
+  test('concurrent ensureBranches share a single git branch call', () async {
+    final service = _SlowBranchesGitService(statusToReturn: _repoWith());
+    final cubit = GitCubit(service: service);
+    await cubit.setRepoRoot('/repo');
+
+    // Rapid picker opens while the first load is in flight.
+    await Future.wait([
+      cubit.ensureBranches(force: true),
+      cubit.ensureBranches(force: true),
+      cubit.ensureBranches(force: true),
+    ]);
+
+    expect(service.calls.where((c) => c == 'branches').length, 1);
+    expect(cubit.state.branches, ['main', 'dev']);
+
+    await cubit.close();
+  });
+
+  test('concurrent refreshes coalesce into at most one trailing run', () async {
+    final service = _SlowGitService(statusToReturn: _repoWith());
+    final cubit = GitCubit(service: service);
+    // First refresh (via setRepoRoot) is in flight; pile on more calls.
+    final first = cubit.setRepoRoot('/repo');
+    final second = cubit.refresh();
+    final third = cubit.refresh();
+    await Future.wait([first, second, third]);
+
+    // The initial run plus a single trailing run that catches up the queued
+    // calls — never one status call per refresh().
+    final statusCalls = service.calls.where((c) => c == 'status').length;
+    expect(statusCalls, 2);
+
+    await cubit.close();
+  });
 }
 
 class _SlowGitService extends _FakeGitService {
@@ -242,5 +287,15 @@ class _SlowGitService extends _FakeGitService {
   Future<GitRepoStatus> status(String dir) async {
     await Future<void>.delayed(const Duration(milliseconds: 20));
     return super.status(dir);
+  }
+}
+
+class _SlowBranchesGitService extends _FakeGitService {
+  _SlowBranchesGitService({required super.statusToReturn});
+
+  @override
+  Future<List<String>> branches(String dir) async {
+    await Future<void>.delayed(const Duration(milliseconds: 20));
+    return super.branches(dir);
   }
 }

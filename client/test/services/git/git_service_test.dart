@@ -49,6 +49,10 @@ const _inRepo = 'rev-parse --is-inside-work-tree';
 ProcessResult _ok([String stdout = '']) => ProcessResult(0, 0, stdout, '');
 
 void main() {
+  // The located git path is cached process-wide; reset it so each case's
+  // scripted runner controls location independently.
+  setUp(GitService.debugResetExecutableCache);
+
   group('GitService.status', () {
     test('parses porcelain v2 into staged/unstaged/branch/ahead-behind', () async {
       const statusOut = '# branch.oid abcdef\n'

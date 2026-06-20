@@ -126,17 +126,60 @@ class GitCubit extends Cubit<GitState> {
   Future<void> setRepoRoot(String path) async {
     if (path == state.repoRoot) return;
     _treeExpansionInitialized = false;
-    _emit(state.copyWith(repoRoot: path, clearError: true));
+    _branchesLoaded = false;
+    _branchesInFlight = null;
+    // Clear the previous repo's branch list so a reused cubit never shows a
+    // stale picker before the lazy reload lands.
+    _emit(state.copyWith(repoRoot: path, branches: const [], clearError: true));
     await refresh();
   }
 
+  /// True while a `_runRefresh` chain is executing; a second [refresh] call sets
+  /// [_refreshQueued] so exactly one trailing run catches up afterward.
+  bool _refreshInFlight = false;
+  bool _refreshQueued = false;
+
+  /// Branch list is loaded lazily (see [ensureBranches]); reset per repo root.
+  bool _branchesLoaded = false;
+
+  /// Shared in-flight branch load, so concurrent [ensureBranches] calls (rapid
+  /// picker opens / branch mutations) reuse one `git branch` instead of racing.
+  Future<void>? _branchesInFlight;
+
+  /// Refreshes git status, coalescing concurrent calls: at most one subprocess
+  /// chain runs at a time, with a single trailing run if calls arrived while it
+  /// was busy. On large repos `git status` can outlast the poll interval, so
+  /// this prevents process pile-ups (mirrors orca's coalesced poll runner).
   Future<void> refresh() async {
+    if (_refreshInFlight) {
+      _refreshQueued = true;
+      return;
+    }
+    _refreshInFlight = true;
+    try {
+      await _runRefresh();
+    } finally {
+      _refreshInFlight = false;
+      if (_refreshQueued) {
+        _refreshQueued = false;
+        await refresh();
+      }
+    }
+  }
+
+  Future<void> _runRefresh() async {
     final dir = state.repoRoot;
     if (dir.isEmpty) {
       _emit(state.copyWith(status: GitRepoStatus.notARepository));
       return;
     }
-    _emit(state.copyWith(isLoading: true, clearError: true));
+    // Only flag loading on the very first fetch for this root; background polls
+    // refresh in place so a warm panel never flashes a spinner.
+    if (state.status == GitRepoStatus.notARepository && !_treeExpansionInitialized) {
+      _emit(state.copyWith(isLoading: true, clearError: true));
+    } else {
+      _emit(state.copyWith(clearError: true));
+    }
     try {
       if (!await _service.isAvailable) {
         if (isClosed || state.repoRoot != dir) return;
@@ -149,11 +192,9 @@ class GitCubit extends Cubit<GitState> {
         );
         return;
       }
+      // Status is the hot path; branches load lazily on demand (ensureBranches)
+      // so the panel paints without waiting on a second subprocess.
       final status = await _service.status(dir);
-      if (isClosed || state.repoRoot != dir) return;
-      final branches = status.isRepository
-          ? await _service.branches(dir)
-          : const <String>[];
       if (isClosed || state.repoRoot != dir) return;
       var expanded = state.expandedFolderPaths;
       if (state.changesViewMode == GitChangesViewMode.tree &&
@@ -169,13 +210,39 @@ class GitCubit extends Cubit<GitState> {
           gitAvailable: true,
           isLoading: false,
           status: status,
-          branches: branches,
           expandedFolderPaths: expanded,
         ),
       );
     } on GitException catch (e) {
       if (isClosed || state.repoRoot != dir) return;
       _emit(state.copyWith(isLoading: false, errorMessage: e.message));
+    }
+  }
+
+  /// Lazily loads the branch list for the current repo (first call only, unless
+  /// [force]). Called when the branch picker opens — the header only needs
+  /// [GitRepoStatus.branch], which already comes from `refresh`. Concurrent
+  /// calls share one in-flight load.
+  Future<void> ensureBranches({bool force = false}) {
+    final dir = state.repoRoot;
+    if (dir.isEmpty || !state.status.isRepository) {
+      return Future<void>.value();
+    }
+    if (_branchesLoaded && !force) return Future<void>.value();
+    return _branchesInFlight ??= _loadBranches(
+      dir,
+    ).whenComplete(() => _branchesInFlight = null);
+  }
+
+  Future<void> _loadBranches(String dir) async {
+    try {
+      final branches = await _service.branches(dir);
+      if (isClosed || state.repoRoot != dir) return;
+      _branchesLoaded = true;
+      _emit(state.copyWith(branches: branches));
+    } on GitException catch (e) {
+      if (isClosed || state.repoRoot != dir) return;
+      _emit(state.copyWith(errorMessage: e.message));
     }
   }
 
@@ -266,11 +333,17 @@ class GitCubit extends Cubit<GitState> {
 
   Future<void> pull() => _mutate(() => _service.pull(state.repoRoot));
 
-  Future<void> checkoutBranch(String name) =>
-      _mutate(() => _service.checkout(state.repoRoot, name));
+  Future<void> checkoutBranch(String name) async {
+    if (await _mutate(() => _service.checkout(state.repoRoot, name))) {
+      await ensureBranches(force: true);
+    }
+  }
 
-  Future<void> createBranch(String name) =>
-      _mutate(() => _service.createBranch(state.repoRoot, name.trim()));
+  Future<void> createBranch(String name) async {
+    if (await _mutate(() => _service.createBranch(state.repoRoot, name.trim()))) {
+      await ensureBranches(force: true);
+    }
+  }
 
   /// Generates a commit message draft from the staged diff via [setting].
   /// Fills [GitState.commitMessage]; never commits.

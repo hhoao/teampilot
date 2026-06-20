@@ -31,6 +31,7 @@ import 'services/app/desktop_window_actions.dart';
 import 'services/storage/storage_resolver.dart';
 import 'services/ssh/ssh_client_factory.dart';
 import 'services/terminal/terminal_transport_factory.dart';
+import 'services/git/git_repo_store.dart';
 import 'services/terminal/workspace_terminal_registry.dart';
 import 'services/notification/notification_recorder.dart';
 import 'services/terminal/terminal_fonts.dart';
@@ -47,9 +48,14 @@ import 'widgets/ui_warmup.dart';
 import 'widgets/ui_zoom.dart';
 
 class _CleanupWindowListener extends WindowListener {
-  _CleanupWindowListener(this.chatCubit, this.workspaceTerminalRegistry);
+  _CleanupWindowListener(
+    this.chatCubit,
+    this.workspaceTerminalRegistry,
+    this.gitRepoStore,
+  );
   final ChatCubit chatCubit;
   final WorkspaceTerminalRegistry workspaceTerminalRegistry;
+  final GitRepoStore gitRepoStore;
 
   @override
   void onWindowClose() {
@@ -60,6 +66,7 @@ class _CleanupWindowListener extends WindowListener {
     try {
       await chatCubit.close();
       workspaceTerminalRegistry.disposeAll();
+      gitRepoStore.dispose();
     } finally {
       await windowManager.destroy();
     }
@@ -75,6 +82,7 @@ class _AppShutdownScope extends StatefulWidget {
     required this.boardCubit,
     required this.notificationCubit,
     required this.workspaceTerminalRegistry,
+    required this.gitRepoStore,
     required this.child,
   });
 
@@ -83,6 +91,7 @@ class _AppShutdownScope extends StatefulWidget {
   final BoardCubit boardCubit;
   final NotificationCubit notificationCubit;
   final WorkspaceTerminalRegistry workspaceTerminalRegistry;
+  final GitRepoStore gitRepoStore;
   final Widget child;
 
   @override
@@ -98,6 +107,7 @@ class _AppShutdownScopeState extends State<_AppShutdownScope> {
     unawaited(widget.notificationCubit.close());
     NotificationRecorder.install(null);
     widget.workspaceTerminalRegistry.disposeAll();
+    widget.gitRepoStore.dispose();
     super.dispose();
   }
 
@@ -284,6 +294,7 @@ void main() async {
             _CleanupWindowListener(
               shell.chatCubit,
               shell.workspaceTerminalRegistry,
+              shell.gitRepoStore,
             ),
           );
         }
@@ -293,6 +304,7 @@ void main() async {
           boardCubit: shell.boardCubit,
           notificationCubit: shell.notificationCubit,
           workspaceTerminalRegistry: shell.workspaceTerminalRegistry,
+          gitRepoStore: shell.gitRepoStore,
           child: MultiRepositoryProvider(
             providers: [
               RepositoryProvider<SharedPreferences>.value(value: preferences),
@@ -326,6 +338,9 @@ void main() async {
               RepositoryProvider<StorageRoots>.value(value: shell.storageRoots),
               RepositoryProvider<WorkspaceTerminalRegistry>.value(
                 value: shell.workspaceTerminalRegistry,
+              ),
+              RepositoryProvider<GitRepoStore>.value(
+                value: shell.gitRepoStore,
               ),
             ],
             child: MultiBlocProvider(

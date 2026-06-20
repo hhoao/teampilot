@@ -51,12 +51,19 @@ class GitService {
     'core.quotePath=false',
   ];
 
-  String? _gitExecutable;
+  /// Located `git` path, cached process-wide. Locating git can fork a login
+  /// shell (sparse GUI environments / macOS), which is slow — doing it once and
+  /// sharing it across every [GitService] instance keeps the source-control
+  /// panel from re-paying that cost each time it remounts.
+  static Future<String?>? _locateFuture;
 
-  Future<String?> get _git async {
-    _gitExecutable ??= await _gitLocator.locate(runner: _runner);
-    return _gitExecutable;
-  }
+  /// Resets the static cache. Tests that swap the locator/runner call this so a
+  /// path located by an earlier case never leaks into the next.
+  static void debugResetExecutableCache() => _locateFuture = null;
+
+  Future<String?> get _git => _locateFuture ??= _gitLocator.locate(
+    runner: _runner,
+  );
 
   Future<bool> get isAvailable async => (await _git) != null;
 

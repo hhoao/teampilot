@@ -7,6 +7,7 @@ import 'package:teampilot/cubits/ai_feature_settings_cubit.dart';
 import 'package:teampilot/l10n/app_localizations.dart';
 import 'package:teampilot/models/git_status.dart';
 import 'package:teampilot/repositories/app_settings_repository.dart';
+import 'package:teampilot/services/git/git_repo_store.dart';
 import 'package:teampilot/services/git/git_service.dart';
 import 'package:teampilot/widgets/git/git_source_control_panel.dart';
 
@@ -69,13 +70,33 @@ class _MultiRepoGitStub extends GitService {
 }
 
 void main() {
+  late GitRepoStore store;
+
   setUp(() {
     GitService.debugOverrideFactory = _RepoGitStub.new;
+    GitService.debugResetExecutableCache();
+    store = GitRepoStore();
   });
 
   tearDown(() {
+    store.dispose();
     GitService.debugOverrideFactory = null;
+    GitService.debugResetExecutableCache();
   });
+
+  Widget wrap(AiFeatureSettingsCubit aiSettingsCubit, Widget child) {
+    return MaterialApp(
+      localizationsDelegates: AppLocalizations.localizationsDelegates,
+      supportedLocales: AppLocalizations.supportedLocales,
+      home: RepositoryProvider<GitRepoStore>.value(
+        value: store,
+        child: BlocProvider.value(
+          value: aiSettingsCubit,
+          child: Scaffold(body: child),
+        ),
+      ),
+    );
+  }
 
   testWidgets('shows a generate-commit action button', (tester) async {
     final aiSettingsCubit = AiFeatureSettingsCubit(
@@ -83,16 +104,7 @@ void main() {
     );
 
     await tester.pumpWidget(
-      MaterialApp(
-        localizationsDelegates: AppLocalizations.localizationsDelegates,
-        supportedLocales: AppLocalizations.supportedLocales,
-        home: BlocProvider.value(
-          value: aiSettingsCubit,
-          child: const Scaffold(
-            body: GitSourceControlPanel(roots: ['/repo']),
-          ),
-        ),
-      ),
+      wrap(aiSettingsCubit, const GitSourceControlPanel(roots: ['/repo'])),
     );
     await tester.pump();
     await tester.pump(const Duration(milliseconds: 100));
@@ -113,18 +125,9 @@ void main() {
     );
 
     await tester.pumpWidget(
-      MaterialApp(
-        localizationsDelegates: AppLocalizations.localizationsDelegates,
-        supportedLocales: AppLocalizations.supportedLocales,
-        home: BlocProvider.value(
-          value: aiSettingsCubit,
-          child: const Scaffold(
-            body: GitSourceControlPanel(
-              roots: ['/work/repoA', '/work/repoB'],
-              isActive: true,
-            ),
-          ),
-        ),
+      wrap(
+        aiSettingsCubit,
+        const GitSourceControlPanel(roots: ['/work/repoA', '/work/repoB']),
       ),
     );
     await tester.pump();

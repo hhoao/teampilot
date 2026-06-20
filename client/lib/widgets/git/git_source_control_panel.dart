@@ -1,7 +1,6 @@
 ﻿import 'dart:async';
 import 'dart:math' as math;
 
-import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:path/path.dart' as p;
@@ -19,8 +18,7 @@ import '../../services/cli/registry/cli_tool_registry_scope.dart';
 import '../../l10n/l10n_extensions.dart';
 import '../../models/git_status.dart';
 import '../../services/git/git_changes_visible_rows.dart';
-import '../../services/git/git_service.dart';
-import '../../services/io/workspace_fs_watcher.dart';
+import '../../services/git/git_repo_store.dart';
 import '../../theme/app_text_styles.dart';
 import '../app_dialog.dart';
 import '../app_icon_button.dart';
@@ -31,28 +29,19 @@ import 'git_diff_view.dart';
 
 /// VSCode-style "Source Control" panel for the editor workbench left rail.
 ///
-/// Supports multi-folder workspaces: when more than one [roots] folder is
-/// mounted, a repo selector lets the user switch which folder's source control
-/// is shown (each folder may be its own git repository). A single folder shows
-/// its source control directly. Desktop-local git only.
+/// A pure view over [GitRepoStore]: the per-root [GitCubit]s live in the store
+/// (app-level), so reopening this tab paints the last-known status instantly
+/// while [RightToolsPanel]'s poller keeps it fresh. The panel never spawns git
+/// itself — switching to it is free.
+///
+/// Multi-folder workspaces: when more than one [roots] folder is mounted, a
+/// repo selector switches which folder's source control is shown (each folder
+/// may be its own git repository). A single folder shows it directly.
 class GitSourceControlPanel extends StatefulWidget {
-  const GitSourceControlPanel({
-    required this.roots,
-    this.isActive = false,
-    this.watcher,
-    super.key,
-  });
+  const GitSourceControlPanel({required this.roots, super.key});
 
   /// Workspace folders (first = primary). Each may be an independent git repo.
   final List<String> roots;
-
-  /// When true, the panel auto-refreshes git status. The caller sets this when
-  /// this tool tab is the currently selected tab in the right-tools panel.
-  final bool isActive;
-
-  /// Shared workspace watcher. When present and supported, status refreshes
-  /// live on disk changes; otherwise the panel falls back to periodic polling.
-  final WorkspaceFsWatcher? watcher;
 
   @override
   State<GitSourceControlPanel> createState() => _GitSourceControlPanelState();
@@ -61,15 +50,7 @@ class GitSourceControlPanel extends StatefulWidget {
 class _GitSourceControlPanelState extends State<GitSourceControlPanel> {
   String? _selectedRoot;
 
-  final GitService _git =
-      GitService.debugOverrideFactory?.call() ?? GitService();
-
-  /// Change counts per root (staged + unstaged), for the selector badges.
-  /// Absent = unknown / not a repo; the badge only shows for positive counts.
-  Map<String, int> _changeCounts = const {};
-  StreamSubscription<void>? _watchSub;
-
-  /// Folders that exist and are non-empty, deduped, primary first.
+  /// Non-empty workspace folders, primary first.
   List<String> get _roots =>
       widget.roots.where((p) => p.isNotEmpty).toList(growable: false);
 
@@ -81,93 +62,49 @@ class _GitSourceControlPanelState extends State<GitSourceControlPanel> {
     return roots.first;
   }
 
+  GitRepoStore get _store => context.read<GitRepoStore>();
+
   @override
   void initState() {
     super.initState();
-    _subscribeWatcher();
-    if (widget.isActive) unawaited(_probeBadges());
-  }
-
-  @override
-  void didUpdateWidget(covariant GitSourceControlPanel oldWidget) {
-    super.didUpdateWidget(oldWidget);
-    if (!listEquals(widget.roots, oldWidget.roots)) {
-      unawaited(_probeBadges());
-    }
-    if (!identical(widget.watcher, oldWidget.watcher)) {
-      _subscribeWatcher();
-    }
-    if (widget.isActive && !oldWidget.isActive) {
-      unawaited(_probeBadges());
-    }
-  }
-
-  @override
-  void dispose() {
-    _watchSub?.cancel();
-    super.dispose();
-  }
-
-  void _subscribeWatcher() {
-    _watchSub?.cancel();
-    _watchSub = widget.watcher?.onChanged.listen((_) {
-      if (widget.isActive) unawaited(_probeBadges());
+    // Opening the tab nudges a coalesced refresh of the visible repo so it is
+    // current even if the background poll just missed a change.
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      final active = _activeRoot;
+      if (active.isNotEmpty) _store.cubitFor(active).refresh();
     });
-  }
-
-  /// Reads `git status` for each root (multi-root only) to drive the selector
-  /// badges. Single-root has no selector, so it skips the probe entirely.
-  Future<void> _probeBadges() async {
-    final roots = _roots;
-    if (roots.length <= 1) return;
-    if (!await _git.isAvailable) return;
-    final counts = <String, int>{};
-    await Future.wait(
-      roots.map((root) async {
-        try {
-          final status = await _git.status(root);
-          if (status.isRepository) {
-            counts[root] = status.staged.length + status.unstaged.length;
-          }
-        } on GitException {
-          // Leave this root without a badge.
-        }
-      }),
-    );
-    if (!mounted) return;
-    setState(() => _changeCounts = counts);
   }
 
   @override
   Widget build(BuildContext context) {
     final roots = _roots;
-    if (roots.length <= 1) {
-      return _GitRepoView(
-        cwd: roots.isEmpty ? '' : roots.first,
-        isActive: widget.isActive,
-        watcher: widget.watcher,
+    if (roots.isEmpty) {
+      // No folder mounted: show a hint without creating an empty store entry.
+      return _GitCenteredHint(
+        icon: Icons.source_outlined,
+        text: context.l10n.gitNotARepository,
       );
+    }
+    if (roots.length == 1) {
+      return _GitRepoBody(cubit: _store.cubitFor(roots.first));
     }
     final active = _activeRoot;
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
         _RepoSelector(
+          store: _store,
           roots: roots,
           selected: active,
-          changeCounts: _changeCounts,
-          onSelect: (root) => setState(() => _selectedRoot = root),
+          onSelect: (root) {
+            setState(() => _selectedRoot = root);
+            _store.cubitFor(root).refresh();
+          },
         ),
         Expanded(
-          child: _GitRepoView(
-            // Keying by root rebuilds the cubit when switching repos.
+          child: _GitRepoBody(
             key: ValueKey('git-repo:$active'),
-            cwd: active,
-            isActive: widget.isActive,
-            watcher: widget.watcher,
-            // Refresh badges whenever this repo's own status changes (commit,
-            // stage, discard, …) so the selector stays in sync.
-            onStatusChanged: () => unawaited(_probeBadges()),
+            cubit: _store.cubitFor(active),
           ),
         ),
       ],
@@ -176,24 +113,22 @@ class _GitSourceControlPanelState extends State<GitSourceControlPanel> {
 }
 
 /// Repo picker shown above the source-control body for multi-folder workspaces.
+/// Each chip's change badge is driven live by that root's store [GitCubit].
 class _RepoSelector extends StatelessWidget {
   const _RepoSelector({
+    required this.store,
     required this.roots,
     required this.selected,
-    required this.changeCounts,
     required this.onSelect,
   });
 
+  final GitRepoStore store;
   final List<String> roots;
   final String selected;
-
-  /// Per-root change count (staged + unstaged); a positive value shows a badge.
-  final Map<String, int> changeCounts;
   final ValueChanged<String> onSelect;
 
   @override
   Widget build(BuildContext context) {
-    final cs = Theme.of(context).colorScheme;
     return Container(
       padding: const EdgeInsets.fromLTRB(10, 10, 10, 0),
       child: Wrap(
@@ -201,37 +136,67 @@ class _RepoSelector extends StatelessWidget {
         runSpacing: 6,
         children: [
           for (final root in roots)
-            ChoiceChip(
-              label: Row(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  Flexible(
-                    child: Text(
-                      p.basename(root).isEmpty ? root : p.basename(root),
-                      overflow: TextOverflow.ellipsis,
-                      style: AppTextStyles.of(context).bodySmall,
-                    ),
-                  ),
-                  if ((changeCounts[root] ?? 0) > 0) ...[
-                    const SizedBox(width: 6),
-                    _DirtyBadge(
-                      count: changeCounts[root]!,
-                      selected: root == selected,
-                    ),
-                  ],
-                ],
-              ),
+            _RepoChip(
+              cubit: store.cubitFor(root),
+              root: root,
               selected: root == selected,
-              visualDensity: VisualDensity.compact,
-              onSelected: (_) => onSelect(root),
-              tooltip: root,
-              labelStyle: TextStyle(
-                color: root == selected
-                    ? cs.onSecondaryContainer
-                    : cs.onSurfaceVariant,
-              ),
+              onTap: () => onSelect(root),
             ),
         ],
+      ),
+    );
+  }
+}
+
+/// One selector chip; rebuilds its dirty badge from the root's [GitCubit].
+class _RepoChip extends StatelessWidget {
+  const _RepoChip({
+    required this.cubit,
+    required this.root,
+    required this.selected,
+    required this.onTap,
+  });
+
+  final GitCubit cubit;
+  final String root;
+  final bool selected;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    final cs = Theme.of(context).colorScheme;
+    final name = p.basename(root).isEmpty ? root : p.basename(root);
+    return BlocProvider.value(
+      value: cubit,
+      child: BlocSelector<GitCubit, GitState, int>(
+        selector: (state) => state.status.isRepository
+            ? state.status.staged.length + state.status.unstaged.length
+            : 0,
+        builder: (context, count) => ChoiceChip(
+          label: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Flexible(
+                child: Text(
+                  name,
+                  overflow: TextOverflow.ellipsis,
+                  style: AppTextStyles.of(context).bodySmall,
+                ),
+              ),
+              if (count > 0) ...[
+                const SizedBox(width: 6),
+                _DirtyBadge(count: count, selected: selected),
+              ],
+            ],
+          ),
+          selected: selected,
+          visualDensity: VisualDensity.compact,
+          onSelected: (_) => onTap(),
+          tooltip: root,
+          labelStyle: TextStyle(
+            color: selected ? cs.onSecondaryContainer : cs.onSurfaceVariant,
+          ),
+        ),
       ),
     );
   }
@@ -264,102 +229,36 @@ class _DirtyBadge extends StatelessWidget {
   }
 }
 
-/// Source-control body for a single repository root. Self-contained: builds its
-/// own [GitCubit] and tracks [cwd]. Desktop-local git only.
-class _GitRepoView extends StatefulWidget {
-  const _GitRepoView({
-    required this.cwd,
-    this.isActive = false,
-    this.watcher,
-    this.onStatusChanged,
-    super.key,
-  });
+/// Source-control body for a single repository root. View-only: the [cubit]
+/// lives in [GitRepoStore] and outlives this widget, so the body never owns,
+/// refreshes, or disposes it — switching tabs just rebinds to warm state.
+class _GitRepoBody extends StatefulWidget {
+  const _GitRepoBody({required this.cubit, super.key});
 
-  final String cwd;
-  final bool isActive;
-  final WorkspaceFsWatcher? watcher;
-
-  /// Called when this repo's git status changes, so the parent selector can
-  /// refresh its badges. Null for the single-root (no-selector) case.
-  final VoidCallback? onStatusChanged;
+  final GitCubit cubit;
 
   @override
-  State<_GitRepoView> createState() => _GitRepoViewState();
+  State<_GitRepoBody> createState() => _GitRepoBodyState();
 }
 
-class _GitRepoViewState extends State<_GitRepoView> {
-  final _cubit = GitCubit();
+class _GitRepoBodyState extends State<_GitRepoBody> {
+  GitCubit get _cubit => widget.cubit;
+
   final _commitController = TextEditingController();
   final _changesScrollController = ScrollController();
   final _horizontalScrollController = ScrollController();
 
-  static const _refreshInterval = Duration(seconds: 15);
-  Timer? _refreshTimer;
-  StreamSubscription<void>? _watchSub;
-
-  /// True when live disk watching can drive refresh, so the polling timer is
-  /// unnecessary. Falls back to polling on backends without watch support.
-  bool get _watchDriven => widget.watcher?.isSupported ?? false;
-
   @override
   void initState() {
     super.initState();
-    unawaited(_cubit.setRepoRoot(widget.cwd));
-    _subscribeWatcher();
-    if (widget.isActive) {
-      _startAutoRefresh();
-    }
-  }
-
-  @override
-  void didUpdateWidget(covariant _GitRepoView oldWidget) {
-    super.didUpdateWidget(oldWidget);
-    if (widget.cwd != oldWidget.cwd) {
-      unawaited(_cubit.setRepoRoot(widget.cwd));
-    }
-    if (!identical(widget.watcher, oldWidget.watcher)) {
-      _subscribeWatcher();
-    }
-    if (widget.isActive && !oldWidget.isActive) {
-      _cubit.refresh();
-      _startAutoRefresh();
-    } else if (!widget.isActive && oldWidget.isActive) {
-      _cancelAutoRefresh();
-    }
-  }
-
-  void _subscribeWatcher() {
-    _watchSub?.cancel();
-    _watchSub = widget.watcher?.onChanged.listen((_) {
-      // Only refresh while this tab is visible; switching to it refreshes via
-      // didUpdateWidget, so background git calls aren't needed.
-      if (widget.isActive) _cubit.refresh();
-    });
-    // A live watch makes the polling timer redundant.
-    if (_watchDriven) _cancelAutoRefresh();
-  }
-
-  void _startAutoRefresh() {
-    if (_watchDriven) return;
-    _cancelAutoRefresh();
-    _refreshTimer = Timer.periodic(_refreshInterval, (_) {
-      _cubit.refresh();
-    });
-  }
-
-  void _cancelAutoRefresh() {
-    _refreshTimer?.cancel();
-    _refreshTimer = null;
+    _commitController.text = _cubit.state.commitMessage;
   }
 
   @override
   void dispose() {
-    _watchSub?.cancel();
-    _cancelAutoRefresh();
     _commitController.dispose();
     _changesScrollController.dispose();
     _horizontalScrollController.dispose();
-    _cubit.close();
     super.dispose();
   }
 
@@ -419,11 +318,15 @@ class _GitRepoViewState extends State<_GitRepoView> {
     }
   }
 
-  Future<void> _openBranchSheet(GitState state) async {
+  Future<void> _openBranchSheet() async {
+    // Branches load lazily — fetch fresh on open (force) so a branch created or
+    // checked out in the terminal shows up, not on every status poll.
+    await _cubit.ensureBranches(force: true);
+    if (!mounted) return;
     final action = await GitBranchSheet.show(
       context,
-      branches: state.branches,
-      current: state.status.branch,
+      branches: _cubit.state.branches,
+      current: _cubit.state.status.branch,
     );
     if (action == null) return;
     if (action.checkout != null) {
@@ -454,7 +357,6 @@ class _GitRepoViewState extends State<_GitRepoView> {
           if (_commitController.text != state.commitMessage) {
             _commitController.text = state.commitMessage;
           }
-          widget.onStatusChanged?.call();
         },
         builder: (context, state) => _buildBody(context, state),
       ),
@@ -496,7 +398,7 @@ class _GitRepoViewState extends State<_GitRepoView> {
             onRefresh: () => unawaited(_cubit.refresh()),
             onPush: () => unawaited(_cubit.push()),
             onPull: () => unawaited(_cubit.pull()),
-            onBranch: () => unawaited(_openBranchSheet(state)),
+            onBranch: () => unawaited(_openBranchSheet()),
             onToggleViewMode: _cubit.toggleChangesViewMode,
             onToggleExpandAll: _cubit.toggleExpandAllFolders,
           ),
@@ -596,7 +498,20 @@ class _GitRepoViewState extends State<_GitRepoView> {
     );
   }
 
-  Widget _centeredHint(BuildContext context, IconData icon, String text) {
+  Widget _centeredHint(BuildContext context, IconData icon, String text) =>
+      _GitCenteredHint(icon: icon, text: text);
+}
+
+/// Centered icon + message used for the panel's empty / not-installed /
+/// not-a-repository states.
+class _GitCenteredHint extends StatelessWidget {
+  const _GitCenteredHint({required this.icon, required this.text});
+
+  final IconData icon;
+  final String text;
+
+  @override
+  Widget build(BuildContext context) {
     final cs = Theme.of(context).colorScheme;
     return Center(
       child: Padding(

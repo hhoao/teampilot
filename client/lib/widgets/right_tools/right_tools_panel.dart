@@ -1,5 +1,6 @@
 import 'dart:async';
 
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
@@ -7,7 +8,6 @@ import '../../cubits/chat_cubit.dart';
 import '../../cubits/mailbox_cubit.dart';
 import '../../cubits/member_presence_cubit.dart';
 import '../../cubits/launch_profile_cubit.dart';
-import '../../cubits/workspace_tools_cubit.dart';
 import '../../l10n/l10n_extensions.dart';
 import '../../models/layout_preferences.dart';
 import '../../models/member_instance.dart';
@@ -15,6 +15,7 @@ import '../../models/team_config.dart';
 import '../../pages/home_workspace/workspace/member_detail_dialog.dart';
 import '../../services/cli/member_config/member_config_inspector.dart';
 import '../../services/io/system_folder_opener.dart';
+import '../../services/git/git_repo_store.dart';
 import '../../services/io/workspace_fs_watcher.dart';
 import '../../services/storage/app_storage.dart';
 import '../../utils/app_keys.dart';
@@ -79,6 +80,14 @@ class _RightToolsPanelState extends State<RightToolsPanel> {
   /// (SSH/Android), where disk events never arrive.
   Set<String> _prevWorkingSessionIds = const {};
 
+  /// App-level git status cache. The source-control panel reads warm state from
+  /// here; this panel (which outlives tool-tab switches) keeps it fresh so the
+  /// tab opens instantly. Null in harnesses without the provider.
+  GitRepoStore? _gitStore;
+  StreamSubscription<void>? _gitWatchSub;
+  Timer? _gitPollTimer;
+  static const _gitPollInterval = Duration(seconds: 15);
+
   @override
   void initState() {
     super.initState();
@@ -109,6 +118,11 @@ class _RightToolsPanelState extends State<RightToolsPanel> {
     if (widget.cwd != oldWidget.cwd) {
       _rebuildWatcher();
     }
+    if (widget.cwd != oldWidget.cwd ||
+        !listEquals(widget.additionalPaths, oldWidget.additionalPaths) ||
+        widget.preferences.gitVisible != oldWidget.preferences.gitVisible) {
+      _setupGitPolling();
+    }
   }
 
   @override
@@ -122,7 +136,44 @@ class _RightToolsPanelState extends State<RightToolsPanel> {
       _presenceCubit = presenceCubit;
       presenceCubit.attachPresenceUi(this);
     }
+    final gitStore = context.read<GitRepoStore?>();
+    if (!identical(_gitStore, gitStore)) {
+      _gitStore = gitStore;
+      _setupGitPolling();
+    }
   }
+
+  /// Warms the workspace's git repos and keeps them fresh while the git tool is
+  /// enabled, so opening the source-control tab shows up-to-date state with no
+  /// per-open subprocess wait. Uses the disk watcher when available, else a
+  /// periodic poll (SSH/Android).
+  ///
+  /// Deliberate perf tradeoff: this polls while the git tool is *enabled*
+  /// (`gitVisible`), not only while its tab is selected — so multi-root badges
+  /// stay live and reopening is instant. The cost is bounded: each watcher
+  /// burst / tick fans out to [GitRepoStore.refreshAll], and every per-root
+  /// [GitCubit.refresh] coalesces (one in-flight + one trailing run), so status
+  /// subprocesses never pile up regardless of event rate. If profiling ever
+  /// flags this, narrow it to the active root + a refreshAll on tab open.
+  void _setupGitPolling() {
+    _gitWatchSub?.cancel();
+    _gitWatchSub = null;
+    _gitPollTimer?.cancel();
+    _gitPollTimer = null;
+
+    final store = _gitStore;
+    if (store == null || !widget.preferences.gitVisible) return;
+
+    _warmGit();
+    final watcher = _fsWatcher;
+    if (watcher?.isSupported ?? false) {
+      _gitWatchSub = watcher!.onChanged.listen((_) => _warmGit());
+    } else {
+      _gitPollTimer = Timer.periodic(_gitPollInterval, (_) => _warmGit());
+    }
+  }
+
+  void _warmGit() => _gitStore?.refreshAll(_workspaceRoots);
 
   /// Pokes the watcher when any session leaves the working set (a turn ended,
   /// so the agent has likely just written files). Cheap no-op on watch-capable
@@ -135,6 +186,8 @@ class _RightToolsPanelState extends State<RightToolsPanel> {
 
   @override
   void dispose() {
+    _gitWatchSub?.cancel();
+    _gitPollTimer?.cancel();
     _fsWatcher?.dispose();
     _presenceCubit?.detachPresenceUi(this);
     super.dispose();
@@ -189,15 +242,6 @@ class _RightToolsPanelState extends State<RightToolsPanel> {
     // shares mailbox's gate (the unread badge is mailbox-specific and doesn't
     // affect whether the bus exists). Also gated on the layout preference.
     final showBoard = showMailbox && widget.preferences.boardVisible;
-
-    // Rebuild when the user switches tool tabs so that the active tool can
-    // enable/disable auto-refresh behaviour.
-    context.watch<WorkspaceToolsCubit>();
-    final selectedIndex = widget.workspaceId != null
-        ? context.read<WorkspaceToolsCubit>().selectedIndexFor(
-            widget.workspaceId!,
-          )
-        : 0;
 
     final views = <ToolView>[];
     if (!widget.isPersonalWorkspace &&
@@ -287,16 +331,11 @@ class _RightToolsPanelState extends State<RightToolsPanel> {
       );
     }
     if (widget.preferences.gitVisible) {
-      final isGitActive = selectedIndex == views.length;
       views.add(
         ToolView(
           icon: Icons.account_tree_outlined,
           label: context.l10n.sourceControl,
-          child: GitSourceControlPanel(
-            roots: _workspaceRoots,
-            isActive: isGitActive,
-            watcher: _fsWatcher,
-          ),
+          child: GitSourceControlPanel(roots: _workspaceRoots),
         ),
       );
     }
