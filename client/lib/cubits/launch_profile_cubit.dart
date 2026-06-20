@@ -198,9 +198,13 @@ class LaunchProfileCubit extends Cubit<LaunchProfileState> implements LaunchProf
     await _repository.save(identity);
     await _reloadIdentities();
     // Every save path (skills/mcp/agent/preset and plugins) goes through here,
-    // so relink plugins on save to keep the runtime bundle in sync — the
-    // section widgets call savePersonal directly rather than per-field setters.
-    await _syncPersonalPlugins(identity);
+    // so relink plugins AND snapshot MCP on save to keep the runtime bundle in
+    // sync — the section widgets call savePersonal directly rather than
+    // per-field setters.
+    await Future.wait([
+      _syncPersonalPlugins(identity),
+      _syncPersonalMcp(identity),
+    ]);
   }
 
   Future<void> deletePersonal(String id) async {
@@ -867,6 +871,26 @@ class LaunchProfileCubit extends Cubit<LaunchProfileState> implements LaunchProf
       appLogger.e('[personal-plugins] sync failed: $e');
     } finally {
       emit(state.copyWith(isSyncingPlugins: false));
+    }
+  }
+
+  /// Snapshots the personal bundle's enabled MCP servers into the profile's
+  /// identity pool (`identityMcpServersFile`) — the source standalone launch
+  /// provisions from. Mirror of [_syncPersonalPlugins] for MCP (team MCP sync
+  /// only covers the selected team, never personal profiles).
+  Future<void> _syncPersonalMcp(PersonalProfile personal) async {
+    try {
+      final catalog =
+          await (_installedMcpLoader?.call() ?? _mcpRepository.loadAll());
+      final layout = (await _provisioner.service()).layout;
+      await _mcpLinker.syncForProfile(
+        profileId: personal.id,
+        mcpServerIds: personal.bundle.mcpServerIds,
+        catalog: catalog,
+        layout: layout,
+      );
+    } catch (e) {
+      appLogger.e('[personal-mcp] sync failed: $e');
     }
   }
 }
