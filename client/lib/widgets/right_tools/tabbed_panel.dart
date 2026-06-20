@@ -69,16 +69,16 @@ class _TabbedPanelState extends State<TabbedPanel> {
         ),
         Divider(height: 1, thickness: 1, color: cs.outlineVariant),
         Expanded(
-          child: AnimatedSwitcher(
-            duration: const Duration(milliseconds: 200),
-            switchInCurve: Curves.easeOut,
-            switchOutCurve: Curves.easeIn,
-            transitionBuilder: (child, animation) =>
-                FadeTransition(opacity: animation, child: child),
-            child: KeyedSubtree(
-              key: ValueKey(selected),
-              child: widget.views[selected].child,
-            ),
+          // Keep every tool view mounted so panel-local state (file-tree scroll/
+          // filter field, members selection, …) and injected cubits stay warm
+          // across tab switches. AnimatedSwitcher used to dispose the inactive
+          // tab, which made a lifted FileTreeCubit look like it had no effect:
+          // expand/filter/dirCache lived in the cubit but scroll + filter UI reset
+          // and the ListView rebuilt from scratch on every return.
+          child: IndexedStack(
+            index: selected,
+            sizing: StackFit.expand,
+            children: [for (final view in widget.views) view.child],
           ),
         ),
       ],

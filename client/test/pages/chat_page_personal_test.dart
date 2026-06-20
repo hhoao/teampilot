@@ -14,6 +14,8 @@ import 'package:teampilot/pages/chat_page.dart';
 import 'package:teampilot/pages/workspace_shell/workspace_shell.dart';
 import 'package:teampilot/repositories/session_repository.dart';
 import 'package:teampilot/repositories/launch_profile_repository.dart';
+import 'package:teampilot/services/file_tree/workspace_file_tree_store.dart';
+import 'package:teampilot/services/git/git_repo_store.dart';
 import 'package:teampilot/services/io/local_filesystem.dart';
 import 'package:teampilot/services/provider/config_profile_service.dart';
 
@@ -75,8 +77,14 @@ void main() {
       MaterialApp(
         localizationsDelegates: AppLocalizations.localizationsDelegates,
         supportedLocales: AppLocalizations.supportedLocales,
-        home: RepositoryProvider<SessionRepository>.value(
-          value: sessionRepo,
+        home: MultiRepositoryProvider(
+          providers: [
+            RepositoryProvider<GitRepoStore>(create: (_) => GitRepoStore()),
+            RepositoryProvider<WorkspaceFileTreeStore>(
+              create: (_) => WorkspaceFileTreeStore(),
+            ),
+            RepositoryProvider<SessionRepository>.value(value: sessionRepo),
+          ],
           child: MultiBlocProvider(
             providers: [
               BlocProvider.value(value: teamCubit),
@@ -89,6 +97,7 @@ void main() {
             child: const Scaffold(
               body: ChatPage(
                 cwd: '/tmp/personal-workspace',
+                workspaceId: 'personal-test',
                 isPersonalWorkspace: true,
               ),
             ),

@@ -9,7 +9,8 @@ import '../../widgets/resizable_split_view.dart';
 import '../../widgets/workspace_terminal_panel.dart';
 
 class WorkspaceShellMainWithTerminal extends StatelessWidget {
-  const WorkspaceShellMainWithTerminal({super.key, 
+  const WorkspaceShellMainWithTerminal({
+    super.key,
     required this.preferences,
     required this.child,
     required this.rightTools,
@@ -42,7 +43,8 @@ class WorkspaceShellMainWithTerminal extends StatelessWidget {
 
 /// Bottom terminal under the center workbench only (not under right tools).
 class WorkspaceShellCenterColumnWithTerminal extends StatelessWidget {
-  const WorkspaceShellCenterColumnWithTerminal({super.key, 
+  const WorkspaceShellCenterColumnWithTerminal({
+    super.key,
     required this.child,
     this.workspaceTerminalWorkingDirectory,
     this.workspaceWorkspaceId,
@@ -104,7 +106,8 @@ class WorkspaceShellCenterColumnWithTerminal extends StatelessWidget {
 }
 
 class WorkspaceShellBody extends StatefulWidget {
-  const WorkspaceShellBody({super.key,
+  const WorkspaceShellBody({
+    super.key,
     required this.preferences,
     required this.child,
     required this.rightTools,
@@ -132,10 +135,7 @@ class _WorkspaceShellBodyState extends State<WorkspaceShellBody>
   @override
   void initState() {
     super.initState();
-    _controller = AnimationController(
-      duration: 250.ms,
-      vsync: this,
-    );
+    _controller = AnimationController(duration: 250.ms, vsync: this);
     _fadeAnimation = CurvedAnimation(
       parent: _controller,
       curve: Curves.easeOutCubic,
@@ -143,10 +143,7 @@ class _WorkspaceShellBodyState extends State<WorkspaceShellBody>
     _slideAnimation = Tween<Offset>(
       begin: const Offset(0.1, 0.0),
       end: Offset.zero,
-    ).animate(CurvedAnimation(
-      parent: _controller,
-      curve: Curves.easeOutCubic,
-    ));
+    ).animate(CurvedAnimation(parent: _controller, curve: Curves.easeOutCubic));
 
     _panelVisible = _hasPanel && widget.preferences.rightToolsVisible;
     if (_panelVisible) {
@@ -210,10 +207,7 @@ class _WorkspaceShellBodyState extends State<WorkspaceShellBody>
           builder: (context, child) {
             return SlideTransition(
               position: _slideAnimation,
-              child: FadeTransition(
-                opacity: _fadeAnimation,
-                child: child,
-              ),
+              child: FadeTransition(opacity: _fadeAnimation, child: child),
             );
           },
           child: splitView,

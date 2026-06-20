@@ -88,10 +88,19 @@ class AppProviderRepository {
         save: saveProviders,
       );
 
-  Future<List<AppProviderConfig>> loadProviders(CliTool cli) async {
-    final providers = await _loadProvidersFromDisk(cli);
+  Future<List<AppProviderConfig>> loadProviders(
+    CliTool cli, {
+    bool importCredentialsFromGlobal = false,
+  }) async {
+    var providers = await _loadProvidersFromDisk(cli);
     final strategy = _strategies[cli];
     if (strategy == null) return providers;
+    if (importCredentialsFromGlobal && strategy is CredentialProbeSupport) {
+      providers = await strategy.importOfficialCredentialsFromGlobal(
+        _persistenceContext,
+        providers,
+      );
+    }
     return strategy.reconcileLoaded(_persistenceContext, providers);
   }
 

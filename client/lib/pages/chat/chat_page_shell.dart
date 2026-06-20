@@ -37,7 +37,7 @@ class ChatPageShell extends StatelessWidget {
   final List<String> additionalPaths;
   final String? sessionId;
   final bool isPersonalWorkspace;
-  final String? workspaceId;
+  final String workspaceId;
   final TeamProfile? team;
 
   @override
@@ -70,20 +70,11 @@ class ChatPageShell extends StatelessWidget {
     }
 
     if (!toolsAsDrawer) {
+      // Always mount the panel; [WorkspaceShellBody] owns show/hide animation via
+      // [LayoutPreferences.rightToolsVisible] and drops it from the tree once dismissed.
       return _chatLaunchListener(
         context,
-        buildWorkspace(
-          rightTools: preferences.rightToolsVisible
-              ? RightToolsPanel(
-                  cwd: cwd,
-                  additionalPaths: additionalPaths,
-                  preferences: preferences,
-                  isPersonalWorkspace: isPersonalWorkspace,
-                  workspaceId: workspaceId,
-                  panelKey: AppKeys.rightToolsPanel,
-                )
-              : null,
-        ),
+        buildWorkspace(rightTools: rightToolsPanel),
       );
     }
 
@@ -152,7 +143,7 @@ class _ChatWorkspaceShell extends StatelessWidget {
   final String cwd;
   final String? sessionId;
   final bool isPersonalWorkspace;
-  final String? workspaceId;
+  final String workspaceId;
   final TeamProfile? team;
   final LayoutPreferences preferences;
   final bool toolsAsDrawer;
@@ -245,9 +236,9 @@ class _ChatWorkspaceShell extends StatelessWidget {
         onPressed: throttledAsync(
           'chat_launch_all_members',
           () => context.read<ChatCubit>().launchAllMembers(
-                team,
-                workspaceCwd: cwd,
-              ),
+            team,
+            workspaceCwd: cwd,
+          ),
         ),
         icon: Icon(Icons.groups_outlined),
       ),

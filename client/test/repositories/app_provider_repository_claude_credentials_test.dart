@@ -93,7 +93,7 @@ void main() {
   });
 
   test(
-    'load imports global credentials for official provider when missing locally',
+    'load does not import global credentials unless explicitly requested',
     () async {
       const home = '/home/user';
       RuntimeStorageContext.installForTesting(
@@ -123,6 +123,56 @@ void main() {
       );
 
       final providers = await repository.loadProviders(CliTool.claude);
+      expect(providers.single.hasClaudeCredentialsReady, isFalse);
+      expect(
+        (await fs.stat(
+          fs.pathContext.join(
+            base,
+            'providers',
+            'claude',
+            'default',
+            '.credentials.json',
+          ),
+        )).exists,
+        isFalse,
+      );
+    },
+  );
+
+  test(
+    'load imports global credentials when importCredentialsFromGlobal is true',
+    () async {
+      const home = '/home/user';
+      RuntimeStorageContext.installForTesting(
+        filesystem: fs,
+        paths: AppPaths(base),
+        home: home,
+        cwd: '/tmp',
+      );
+      await fs.writeString(
+        fs.pathContext.join(base, 'providers', 'claude', 'providers.json'),
+        jsonEncode({
+          'providers': {
+            'default': {
+              'id': 'default',
+              'cli': 'claude',
+              'name': 'Default',
+              'category': 'official',
+              'config': {'env': {}},
+              'credentialStatus': 'missing',
+            },
+          },
+        }),
+      );
+      await fs.writeString(
+        fs.pathContext.join(home, '.claude', '.credentials.json'),
+        '{"claudeAiOauth":{"accessToken":"global"}}',
+      );
+
+      final providers = await repository.loadProviders(
+        CliTool.claude,
+        importCredentialsFromGlobal: true,
+      );
       expect(providers.single.hasClaudeCredentialsReady, isTrue);
       expect(
         (await fs.stat(

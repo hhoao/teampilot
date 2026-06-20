@@ -25,24 +25,25 @@ import '../../theme/workspace_surface_layers.dart';
 import '../../services/home_workspace/home_closed_workspaces_store.dart';
 import '../../services/home_workspace/home_open_workspaces_store.dart';
 import '../../services/home_workspace/home_recent_workspaces_store.dart';
+import '../../services/file_tree/workspace_file_tree_store.dart';
 import '../../services/terminal/workspace_terminal_registry.dart';
 import '../../widgets/app_dialog.dart';
+import 'home_workspace_body_stack.dart';
+import 'home_workspace_route.dart';
 import 'home_workspace_tab_scope.dart';
 import 'home_workspace_title_bar.dart';
 
 /// Persistent chrome for the workspace-home route family. Owns the open workspace
-/// tabs (kept until explicitly closed) and renders the title bar once above the
-/// routed [child] (home view or a workspace view).
+/// tabs (kept until explicitly closed), the title bar, and [HomeWorkspaceBodyStack]
+/// (GoRouter supplies the URL only — not the body widget tree).
 class HomeShell extends StatefulWidget {
   const HomeShell({
     required this.location,
-    required this.child,
     super.key,
   });
 
   /// Current router location (path + query), e.g. `/home-v2/workspace/<id>?as=personal`.
   final String location;
-  final Widget child;
 
   @override
   State<HomeShell> createState() => _HomeShellState();
@@ -187,26 +188,11 @@ class _HomeShellState extends State<HomeShell> {
     }
   }
 
-  static String? _workspaceIdFromLocation(String location) {
-    final uri = _parseLocationUri(location);
-    final segments = uri.pathSegments;
-    if (segments.length >= 3 &&
-        segments[0] == 'home-v2' &&
-        segments[1] == 'workspace') {
-      return segments[2];
-    }
-    return null;
-  }
+  static String? _workspaceIdFromLocation(String location) =>
+      HomeWorkspaceRoute.workspaceId(location);
 
   static LaunchProfileRef? _identityFromLocation(String location) =>
-      LaunchProfileRef.decode(_parseLocationUri(location).queryParameters['as']);
-
-  static Uri _parseLocationUri(String location) {
-    if (location.startsWith('http://') || location.startsWith('https://')) {
-      return Uri.parse(location);
-    }
-    return Uri.parse('http://local$location');
-  }
+      HomeWorkspaceRoute.identity(location);
 
   LaunchProfileRef _identityForWorkspace(String workspaceId) {
     final fromRoute = _workspaceIdFromLocation(widget.location) == workspaceId
@@ -280,6 +266,7 @@ class _HomeShellState extends State<HomeShell> {
     // Tear down this workspace's keep-alive workspace runtime.
     terminalRegistry.disposeWorkspace(id);
     workspaceTools.removeWorkspace(id);
+    context.read<WorkspaceFileTreeStore>().removeWorkspace(id);
     if (running == 0) {
       // No chat sessions to confirm/close, but still drop any chat bucket.
       chat.closeTabsForWorkspace(id);
@@ -411,7 +398,11 @@ class _HomeShellState extends State<HomeShell> {
               child: HomeTabScope(
                 openWorkspace: (id, {activate = true}) =>
                     _openWorkspace(id, activate: activate),
-                child: widget.child,
+                child: HomeWorkspaceBodyStack(
+                  location: widget.location,
+                  openWorkspaceIds: _openIds,
+                  identityForWorkspace: _identityForWorkspace,
+                ),
               ),
             ),
           ),

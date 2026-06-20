@@ -25,12 +25,10 @@ class WorkspaceSplitPane extends StatefulWidget {
   final String sessionTeamFilter;
 
   @override
-  State<WorkspaceSplitPane> createState() =>
-      _WorkspaceSplitPaneState();
+  State<WorkspaceSplitPane> createState() => _WorkspaceSplitPaneState();
 }
 
-class _WorkspaceSplitPaneState
-    extends State<WorkspaceSplitPane> {
+class _WorkspaceSplitPaneState extends State<WorkspaceSplitPane> {
   double? _sidebarWidth;
 
   @override
@@ -43,8 +41,10 @@ class _WorkspaceSplitPaneState
         const maxSidebarCap = WorkspaceSidebarLayout.maxWidth;
         final maxSidebar = (maxW - minMain).clamp(minSidebar, maxSidebarCap);
         final initialSidebar =
-            (_sidebarWidth ?? WorkspaceSidebarLayout.defaultWidth)
-                .clamp(minSidebar, maxSidebar);
+            (_sidebarWidth ?? WorkspaceSidebarLayout.defaultWidth).clamp(
+              minSidebar,
+              maxSidebar,
+            );
         return ResizableSplitView(
           first: WorkspaceSidebar(
             workspace: widget.workspace,

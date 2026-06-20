@@ -8,10 +8,10 @@ import 'chat/chat_page_shell.dart';
 class ChatPage extends StatelessWidget {
   const ChatPage({
     required this.cwd,
+    required this.workspaceId,
     this.additionalPaths = const [],
     this.sessionId,
     this.isPersonalWorkspace = false,
-    this.workspaceId,
     super.key,
   });
 
@@ -29,8 +29,7 @@ class ChatPage extends StatelessWidget {
   final bool isPersonalWorkspace;
 
   /// Owning workspace id; scopes the workspace terminal + right-tools selection.
-  /// Null on chat routes without a workspace context.
-  final String? workspaceId;
+  final String workspaceId;
 
   @override
   Widget build(BuildContext context) {
@@ -54,15 +53,15 @@ class ChatPage extends StatelessWidget {
 class _PersonalChatPage extends StatelessWidget {
   const _PersonalChatPage({
     required this.cwd,
+    required this.workspaceId,
     this.additionalPaths = const [],
     this.sessionId,
-    this.workspaceId,
   });
 
   final String cwd;
+  final String workspaceId;
   final List<String> additionalPaths;
   final String? sessionId;
-  final String? workspaceId;
 
   @override
   Widget build(BuildContext context) {
@@ -80,15 +79,15 @@ class _PersonalChatPage extends StatelessWidget {
 class _TeamChatPage extends StatelessWidget {
   const _TeamChatPage({
     required this.cwd,
+    required this.workspaceId,
     this.additionalPaths = const [],
     this.sessionId,
-    this.workspaceId,
   });
 
   final String cwd;
+  final String workspaceId;
   final List<String> additionalPaths;
   final String? sessionId;
-  final String? workspaceId;
 
   @override
   Widget build(BuildContext context) {

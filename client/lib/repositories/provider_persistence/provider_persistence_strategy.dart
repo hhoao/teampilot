@@ -83,8 +83,39 @@ mixin CredentialProbeSupport on ProviderPersistenceStrategy {
   CredentialProbeFn get credentialProbe;
   CredentialImportFn get credentialImport;
 
-  /// Probes each applicable provider, importing from the global home dir when
-  /// not yet ready, and persists refreshed credential status when it changes.
+  /// Imports official-account credentials from the global home dir when not
+  /// yet ready locally. Only call from explicit user/wizard import flows.
+  Future<List<AppProviderConfig>> importOfficialCredentialsFromGlobal(
+    ProviderPersistenceContext ctx,
+    List<AppProviderConfig> providers, {
+    bool replace = false,
+  }) async {
+    final home = ctx.resolveHome();
+    if (home.isEmpty) return providers;
+
+    for (final provider in providers) {
+      if (!appliesToProbe(provider)) continue;
+      final probe = await credentialProbe(provider.id);
+      if (probe.isReady) continue;
+      final importResult = await credentialImport(
+        provider.id,
+        homeDirectory: home,
+        replace: replace,
+      );
+      if (!importResult.ok) {
+        AppLogger.instance.d(
+          'Credential import failed for ${provider.id}: '
+          '${importResult.failure?.code.name}'
+          '${importResult.failure?.path == null ? '' : ' (${importResult.failure!.path})'}',
+        );
+      }
+    }
+    return providers;
+  }
+
+  /// Probes each applicable provider and persists refreshed credential status
+  /// when it changes. Does not import from global home — use
+  /// [importOfficialCredentialsFromGlobal] for that.
   Future<List<AppProviderConfig>> probeOfficialCredentials(
     ProviderPersistenceContext ctx,
     List<AppProviderConfig> providers,
@@ -96,25 +127,7 @@ mixin CredentialProbeSupport on ProviderPersistenceStrategy {
         probed.add(provider);
         continue;
       }
-      var probe = await credentialProbe(provider.id);
-      if (!probe.isReady) {
-        final home = ctx.resolveHome();
-        if (home.isNotEmpty) {
-          final importResult = await credentialImport(
-            provider.id,
-            homeDirectory: home,
-            replace: false,
-          );
-          if (!importResult.ok) {
-            AppLogger.instance.d(
-              'Auto credential import failed for ${provider.id}: '
-              '${importResult.failure?.code.name}'
-              '${importResult.failure?.path == null ? '' : ' (${importResult.failure!.path})'}',
-            );
-          }
-          probe = await credentialProbe(provider.id);
-        }
-      }
+      final probe = await credentialProbe(provider.id);
       final next = provider.withCredentialProbe(probe);
       if (next.credentialStatus != provider.credentialStatus ||
           next.credentialUpdatedAt != provider.credentialUpdatedAt) {

@@ -453,7 +453,10 @@ class AppProviderCubit extends Cubit<AppProviderState> {
       state.selectedProviderIdByCli,
     );
     for (final item in CliTool.values) {
-      final providers = await _repository.loadProviders(item);
+      final providers = await _repository.loadProviders(
+        item,
+        importCredentialsFromGlobal: true,
+      );
       byCli[item] = providers;
       final selected = selectedByCli[item];
       selectedByCli[item] =

@@ -111,8 +111,8 @@ Widget buildTestApp({
   final settings =
       appSettings ??
       InMemoryAppSettingsRepository(hasCompletedOnboarding: true);
-  final aiFeatures = aiFeatureSettingsCubit ??
-      AiFeatureSettingsCubit(repository: settings);
+  final aiFeatures =
+      aiFeatureSettingsCubit ?? AiFeatureSettingsCubit(repository: settings);
   final chat = chatCubit ?? ChatCubit(executableResolver: _testExecutable);
   final presence = memberPresenceCubit ?? MemberPresenceCubit();
   chat.bindPresenceCubit(presence);
@@ -435,7 +435,9 @@ void main() {
     resetAppRouterLocationForWidgetTests();
   });
 
-  testWidgets('renders chat workbench shell on workspace route', (tester) async {
+  testWidgets('renders chat workbench shell on workspace route', (
+    tester,
+  ) async {
     final teamCubit = await createTeamCubitInTest(tester);
     final postFrame = PostFrameTestHarness();
     final chatCubit = ChatCubit(
@@ -466,13 +468,9 @@ void main() {
     expect(find.byKey(AppKeys.chatWorkspace), findsOneWidget);
     expect(find.byKey(AppKeys.rightToolsPanel), findsOneWidget);
     expect(find.byKey(AppKeys.membersPanel), findsOneWidget);
-    // Tabbed right-tools layout uses AnimatedSwitcher: only the selected tab
-    // is built; the file tree panel is behind its tab and not in the tree
-    // until selected.
-    expect(
-      find.byKey(AppKeys.fileTreePanel, skipOffstage: false),
-      findsNothing,
-    );
+    // Tabbed right-tools layout keeps every tool view mounted (IndexedStack);
+    // the file tree panel is offstage until its tab is selected.
+    expect(find.byKey(AppKeys.fileTreePanel), findsNothing);
     expect(find.text('team-lead'), findsWidgets);
     expect(chatCubit.state.tabs.length, 0);
     final workbenchCtx = tester.element(find.byKey(AppKeys.chatWorkspace));
@@ -502,7 +500,8 @@ void main() {
     appRouter.go('/config');
     await pumpPhaseTransitions(tester);
 
-    expect(find.text('Manage FlashskyAI team and model settings.'),
+    expect(
+      find.text('Manage FlashskyAI team and model settings.'),
       findsOneWidget,
     );
     expect(find.byIcon(Icons.dashboard_customize_outlined), findsWidgets);
@@ -551,9 +550,7 @@ void main() {
     expect(find.byType(DraggableScrollableSheet), findsNothing);
   });
 
-  testWidgets('cli settings configure Claude Code CLI path', (
-    tester,
-  ) async {
+  testWidgets('cli settings configure Claude Code CLI path', (tester) async {
     final teamCubit = await createTeamCubitInTest(tester);
     final sessionCubit = await tester.runAsync(testSessionPreferencesCubit);
     expect(sessionCubit, isNotNull);

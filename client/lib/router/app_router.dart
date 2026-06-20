@@ -5,13 +5,8 @@ import 'package:go_router/go_router.dart';
 
 import '../cubits/config_cubit.dart';
 import '../models/app_provider_config.dart';
-import '../models/launch_profile_ref.dart';
 import '../pages/config/config_workspace.dart';
-import '../pages/home_workspace/home_workspace_global_section.dart';
-import '../pages/home_workspace/home_workspace_page.dart';
 import '../pages/home_workspace/home_workspace_shell.dart';
-import '../pages/home_workspace/workspace/workspace_page.dart';
-import '../pages/home_workspace/workspace/workspace_config_section.dart';
 import '../pages/llm_config/llm_config_workspace.dart';
 import '../pages/extensions/extension_management_page.dart';
 import '../pages/skills/skill_management_page.dart';
@@ -92,27 +87,16 @@ final appRouter = GoRouter(
       ),
       routes: [
         // Apifox-style workspace home — title bar + open workspace tabs live in
-        // [HomeShell]; routed pages render only the body below it.
+        // [HomeShell]; [HomeWorkspaceBodyStack] owns the visible body.
         ShellRoute(
           builder: (context, state, child) =>
-              HomeShell(location: state.uri.toString(), child: child),
+              HomeShell(location: state.uri.toString()),
           routes: [
             GoRoute(
               path: '/home-v2',
-              pageBuilder: (context, state) {
-                final query = state.uri.queryParameters;
-                return NoTransitionPage(
-                  child: HomePage(
-                    initialSection: TeamConfigSection.fromSegment(
-                      query['section'],
-                    ),
-                    initialMemberId: query['member'],
-                    initialGlobalView: HomeGlobalView.fromSegment(
-                      query[HomeGlobalView.globalQueryParam],
-                    ),
-                  ),
-                );
-              },
+              pageBuilder: (context, state) => const NoTransitionPage(
+                child: SizedBox.shrink(),
+              ),
             ),
             GoRoute(
               path: '/home-v2/workspace/:workspaceId/manage',
@@ -132,19 +116,9 @@ final appRouter = GoRouter(
             ),
             GoRoute(
               path: '/home-v2/workspace/:workspaceId',
-              pageBuilder: (context, state) {
-                final query = state.uri.queryParameters;
-                return NoTransitionPage(
-                  child: WorkspacePage(
-                    workspaceId: state.pathParameters['workspaceId']!,
-                    identity: LaunchProfileRef.decode(query['as']),
-                    view: query['view'],
-                    configSection: WorkspaceConfigSection.fromSegment(
-                      query['section'],
-                    ),
-                  ),
-                );
-              },
+              pageBuilder: (context, state) => const NoTransitionPage(
+                child: SizedBox.shrink(),
+              ),
             ),
           ],
         ),

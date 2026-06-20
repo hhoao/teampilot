@@ -14,7 +14,6 @@ import '../../cubits/file_tree_cubit.dart';
 import '../../l10n/l10n_extensions.dart';
 import '../../services/file_tree/file_tree_visible_rows.dart';
 import '../../services/io/filesystem.dart';
-import '../../services/io/workspace_fs_watcher.dart';
 import '../../services/storage/app_storage.dart';
 import '../../services/storage/runtime_storage_context.dart';
 import '../../theme/app_icon_sizes.dart';
@@ -26,69 +25,38 @@ import 'file_tree_header_overflow_menu.dart';
 
 /// Workspace file tree panel.
 ///
-/// Renders one or more workspace folders ([roots]; first = primary). A single
-/// folder shows its children directly; multiple folders each get a collapsible
-/// header (VSCode multi-root layout).
+/// Pure view over an injected [FileTreeCubit] from [WorkspaceFileTreeStore].
+///
+/// A single workspace folder shows its children directly; multiple folders each
+/// get a collapsible header (VSCode multi-root layout).
 class FileTreePanel extends StatefulWidget {
-  const FileTreePanel({required this.roots, this.watcher, super.key});
+  const FileTreePanel({required this.cubit, super.key});
 
-  final List<String> roots;
-
-  /// Shared workspace watcher; when present, the tree refreshes live on disk
-  /// changes. Null on backends without watch support (the tree stays manual).
-  final WorkspaceFsWatcher? watcher;
+  final FileTreeCubit cubit;
 
   @override
   State<FileTreePanel> createState() => _FileTreePanelState();
 }
 
 class _FileTreePanelState extends State<FileTreePanel> {
-  final _cubit = FileTreeCubit(fs: AppStorage.fs);
   final _filterController = TextEditingController();
   final _listScrollController = ScrollController();
   final _horizontalScrollController = ScrollController();
   EditorCubit? _editorCubit;
-  StreamSubscription<void>? _watchSub;
+
+  FileTreeCubit get _cubit => widget.cubit;
 
   @override
   void initState() {
     super.initState();
-    _syncRoot();
-    _subscribeWatcher();
+    // Filter lives in the cubit; sync the text field when the panel remounts.
+    _filterController.text = _cubit.state.filterText;
   }
 
   @override
   void didChangeDependencies() {
     super.didChangeDependencies();
     _editorCubit = context.read<EditorCubit>();
-  }
-
-  @override
-  void didUpdateWidget(covariant FileTreePanel oldWidget) {
-    super.didUpdateWidget(oldWidget);
-    if (!listEquals(widget.roots, oldWidget.roots)) {
-      _syncRoot();
-    }
-    if (!identical(widget.watcher, oldWidget.watcher)) {
-      _subscribeWatcher();
-    }
-  }
-
-  void _syncRoot() {
-    _cubit.setRoots(widget.roots);
-  }
-
-  void _subscribeWatcher() {
-    _watchSub?.cancel();
-    _watchSub = widget.watcher?.onChanged.listen((changedDirs) {
-      // Empty set = unknown scope (e.g. a terminal turn-end poke) → full
-      // refresh; otherwise reload only the directories that actually changed.
-      if (changedDirs.isEmpty) {
-        unawaited(_cubit.refresh());
-      } else {
-        unawaited(_cubit.refreshPaths(changedDirs));
-      }
-    });
   }
 
   Future<void> _revealActiveEditorFile() async {
@@ -157,11 +125,9 @@ class _FileTreePanelState extends State<FileTreePanel> {
 
   @override
   void dispose() {
-    _watchSub?.cancel();
     _filterController.dispose();
     _listScrollController.dispose();
     _horizontalScrollController.dispose();
-    _cubit.close();
     super.dispose();
   }
 

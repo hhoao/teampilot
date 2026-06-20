@@ -84,6 +84,7 @@ import '../services/skill/skill_repo_service.dart';
 import '../services/ssh/ssh_client_factory.dart';
 import '../services/plugin/profile_plugin_linker_service.dart';
 import '../services/terminal/terminal_transport_factory.dart';
+import '../services/file_tree/workspace_file_tree_store.dart';
 import '../services/git/git_repo_store.dart';
 import '../services/terminal/workspace_terminal_registry.dart';
 import '../utils/logger.dart';
@@ -104,6 +105,7 @@ class AppShell {
     required this.transportFactory,
     required this.workspaceTerminalRegistry,
     required this.gitRepoStore,
+    required this.workspaceFileTreeStore,
     required this.sshClientFactory,
     required this.connectionModeService,
     required this.storageRoots,
@@ -144,6 +146,7 @@ class AppShell {
   final TerminalTransportFactory transportFactory;
   final WorkspaceTerminalRegistry workspaceTerminalRegistry;
   final GitRepoStore gitRepoStore;
+  final WorkspaceFileTreeStore workspaceFileTreeStore;
   final SshClientFactory sshClientFactory;
   final ConnectionModeService connectionModeService;
   final StorageRoots storageRoots;
@@ -551,6 +554,7 @@ Future<AppShell> buildAppShell({
   final workspaceToolsCubit = WorkspaceToolsCubit();
   final workspaceTerminalRegistry = WorkspaceTerminalRegistry();
   final gitRepoStore = GitRepoStore();
+  final workspaceFileTreeStore = WorkspaceFileTreeStore();
   final configCubit = ConfigCubit();
 
   final transportFactory = TerminalTransportFactory(
@@ -644,6 +648,7 @@ Future<AppShell> buildAppShell({
     transportFactory: transportFactory,
     workspaceTerminalRegistry: workspaceTerminalRegistry,
     gitRepoStore: gitRepoStore,
+    workspaceFileTreeStore: workspaceFileTreeStore,
     sshClientFactory: sshClientFactory,
     connectionModeService: connectionModeService,
     storageRoots: storageRoots,

@@ -29,6 +29,7 @@ class WorkspacePage extends StatefulWidget {
     this.identity,
     this.view,
     this.configSection,
+    required this.routeActive,
     super.key,
   });
 
@@ -42,6 +43,10 @@ class WorkspacePage extends StatefulWidget {
   final String? view;
 
   final WorkspaceConfigSection? configSection;
+
+  /// True when this page matches the current route (see [HomeWorkspaceBodyStack]).
+  /// Only the active page may call [ChatCubit.setActiveWorkspace].
+  final bool routeActive;
 
   @override
   State<WorkspacePage> createState() =>
@@ -61,22 +66,28 @@ class _WorkspacePageState extends State<WorkspacePage> {
     if (widget.view == 'manage') {
       _visitedManage = true;
     }
-    context.read<ChatCubit>().setActiveWorkspace(widget.workspaceId);
-    WidgetsBinding.instance.addPostFrameCallback((_) => _syncWorkspaceContext());
+    if (widget.routeActive) {
+      context.read<ChatCubit>().setActiveWorkspace(widget.workspaceId);
+      WidgetsBinding.instance.addPostFrameCallback((_) => _syncWorkspaceContext());
+    }
   }
 
   @override
   void didUpdateWidget(covariant WorkspacePage oldWidget) {
     super.didUpdateWidget(oldWidget);
-    if (oldWidget.workspaceId != widget.workspaceId ||
-        oldWidget.identity != widget.identity) {
+    final becameActive = widget.routeActive && !oldWidget.routeActive;
+    if (becameActive ||
+        (widget.routeActive &&
+            (oldWidget.workspaceId != widget.workspaceId ||
+                oldWidget.identity != widget.identity))) {
       context.read<ChatCubit>().setActiveWorkspace(widget.workspaceId);
       WidgetsBinding.instance.addPostFrameCallback(
         (_) => _syncWorkspaceContext(),
       );
     }
-    if (oldWidget.view != widget.view ||
-        oldWidget.configSection != widget.configSection) {
+    if (widget.routeActive &&
+        (oldWidget.view != widget.view ||
+            oldWidget.configSection != widget.configSection)) {
       setState(() => _section = _sectionFromRoute());
     }
   }

@@ -5,6 +5,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
 import '../../cubits/chat_cubit.dart';
+import '../../cubits/file_tree_cubit.dart';
 import '../../cubits/mailbox_cubit.dart';
 import '../../cubits/member_presence_cubit.dart';
 import '../../cubits/launch_profile_cubit.dart';
@@ -15,6 +16,7 @@ import '../../models/team_config.dart';
 import '../../pages/home_workspace/workspace/member_detail_dialog.dart';
 import '../../services/cli/member_config/member_config_inspector.dart';
 import '../../services/io/system_folder_opener.dart';
+import '../../services/file_tree/workspace_file_tree_store.dart';
 import '../../services/git/git_repo_store.dart';
 import '../../services/io/workspace_fs_watcher.dart';
 import '../../services/storage/app_storage.dart';
@@ -32,12 +34,12 @@ import 'tool_view.dart';
 class RightToolsPanel extends StatefulWidget {
   const RightToolsPanel({
     required this.cwd,
+    required this.workspaceId,
     this.additionalPaths = const [],
     this.preferences = const LayoutPreferences(),
     this.panelKey = AppKeys.rightToolsPanel,
     this.dismissDrawerOnAction = false,
     this.isPersonalWorkspace = false,
-    this.workspaceId,
     super.key,
   });
 
@@ -58,8 +60,8 @@ class RightToolsPanel extends StatefulWidget {
   final List<String> additionalPaths;
 
   /// Workspace this tools panel belongs to; scopes per-workspace UI state
-  /// (selected tool tab). Null on routes without a workspace context.
-  final String? workspaceId;
+  /// (selected tool tab) and [WorkspaceFileTreeStore] retention.
+  final String workspaceId;
 
   @override
   State<RightToolsPanel> createState() => _RightToolsPanelState();
@@ -80,27 +82,30 @@ class _RightToolsPanelState extends State<RightToolsPanel> {
   /// (SSH/Android), where disk events never arrive.
   Set<String> _prevWorkingSessionIds = const {};
 
-  /// App-level git status cache. The source-control panel reads warm state from
-  /// here; this panel (which outlives tool-tab switches) keeps it fresh so the
-  /// tab opens instantly. Null in harnesses without the provider.
-  GitRepoStore? _gitStore;
-  StreamSubscription<void>? _gitWatchSub;
-  Timer? _gitPollTimer;
-  static const _gitPollInterval = Duration(seconds: 15);
+  FileTreeCubit get _fileTreeCubit =>
+      context.read<WorkspaceFileTreeStore>().cubitFor(widget.workspaceId);
+  StreamSubscription<Set<String>>? _diskWatchSub;
+  Timer? _diskPollTimer;
+  static const _diskPollInterval = Duration(seconds: 15);
 
   @override
   void initState() {
     super.initState();
     _rebuildWatcher();
+    unawaited(_fileTreeCubit.setRoots(_workspaceRoots));
+    _setupDiskRefresh();
   }
 
   /// Workspace folders for the file tree / source control panels: the primary
   /// [RightToolsPanel.cwd] first, then any [RightToolsPanel.additionalPaths]
   /// (deduped, empties dropped).
   List<String> get _workspaceRoots {
+    final ctx = AppStorage.fs.pathContext;
     final roots = <String>[];
     for (final path in [widget.cwd, ...widget.additionalPaths]) {
-      if (path.isNotEmpty && !roots.contains(path)) roots.add(path);
+      if (path.isEmpty) continue;
+      final normalized = ctx.normalize(path);
+      if (!roots.contains(normalized)) roots.add(normalized);
     }
     return roots;
   }
@@ -118,10 +123,19 @@ class _RightToolsPanelState extends State<RightToolsPanel> {
     if (widget.cwd != oldWidget.cwd) {
       _rebuildWatcher();
     }
+    final rootsChanged =
+        widget.cwd != oldWidget.cwd ||
+        !listEquals(widget.additionalPaths, oldWidget.additionalPaths);
+    if (rootsChanged ||
+        widget.workspaceId != oldWidget.workspaceId) {
+      unawaited(_fileTreeCubit.setRoots(_workspaceRoots));
+    }
     if (widget.cwd != oldWidget.cwd ||
-        !listEquals(widget.additionalPaths, oldWidget.additionalPaths) ||
-        widget.preferences.gitVisible != oldWidget.preferences.gitVisible) {
-      _setupGitPolling();
+        rootsChanged ||
+        widget.preferences.gitVisible != oldWidget.preferences.gitVisible ||
+        widget.preferences.fileTreeVisible !=
+            oldWidget.preferences.fileTreeVisible) {
+      _setupDiskRefresh();
     }
   }
 
@@ -136,44 +150,79 @@ class _RightToolsPanelState extends State<RightToolsPanel> {
       _presenceCubit = presenceCubit;
       presenceCubit.attachPresenceUi(this);
     }
-    final gitStore = context.read<GitRepoStore?>();
-    if (!identical(_gitStore, gitStore)) {
-      _gitStore = gitStore;
-      _setupGitPolling();
-    }
   }
 
-  /// Warms the workspace's git repos and keeps them fresh while the git tool is
-  /// enabled, so opening the source-control tab shows up-to-date state with no
-  /// per-open subprocess wait. Uses the disk watcher when available, else a
-  /// periodic poll (SSH/Android).
-  ///
-  /// Deliberate perf tradeoff: this polls while the git tool is *enabled*
-  /// (`gitVisible`), not only while its tab is selected — so multi-root badges
-  /// stay live and reopening is instant. The cost is bounded: each watcher
-  /// burst / tick fans out to [GitRepoStore.refreshAll], and every per-root
-  /// [GitCubit.refresh] coalesces (one in-flight + one trailing run), so status
-  /// subprocesses never pile up regardless of event rate. If profiling ever
-  /// flags this, narrow it to the active root + a refreshAll on tab open.
-  void _setupGitPolling() {
-    _gitWatchSub?.cancel();
-    _gitWatchSub = null;
-    _gitPollTimer?.cancel();
-    _gitPollTimer = null;
+  /// Keeps the file tree and git panels warm while their tools are enabled.
+  /// Uses the shared [_fsWatcher] when available, else a periodic poll
+  /// (SSH/Android). One subscription serves both consumers.
+  void _setupDiskRefresh() {
+    _diskWatchSub?.cancel();
+    _diskWatchSub = null;
+    _diskPollTimer?.cancel();
+    _diskPollTimer = null;
 
-    final store = _gitStore;
-    if (store == null || !widget.preferences.gitVisible) return;
+    final needsFileTree = widget.preferences.fileTreeVisible;
+    final needsGit = widget.preferences.gitVisible;
+    if (!needsFileTree && !needsGit) return;
 
-    _warmGit();
+    if (needsFileTree) _warmFileTree();
+    if (needsGit) _warmGit();
+
     final watcher = _fsWatcher;
     if (watcher?.isSupported ?? false) {
-      _gitWatchSub = watcher!.onChanged.listen((_) => _warmGit());
+      _diskWatchSub = watcher!.onChanged.listen(_onDiskChanged);
     } else {
-      _gitPollTimer = Timer.periodic(_gitPollInterval, (_) => _warmGit());
+      _diskPollTimer = Timer.periodic(
+        _diskPollInterval,
+        (_) => _onDiskPoll(),
+      );
     }
   }
 
-  void _warmGit() => _gitStore?.refreshAll(_workspaceRoots);
+  void _onDiskChanged(Set<String> changedDirs) {
+    if (widget.preferences.fileTreeVisible) {
+      _refreshFileTree(changedDirs);
+    }
+    if (widget.preferences.gitVisible) {
+      _warmGit();
+    }
+  }
+
+  void _onDiskPoll() {
+    if (widget.preferences.fileTreeVisible) {
+      _warmFileTree();
+    }
+    if (widget.preferences.gitVisible) {
+      _warmGit();
+    }
+  }
+
+  /// Empty [changedDirs] = unknown scope (e.g. turn-end poke) → full refresh.
+  void _refreshFileTree(Set<String> changedDirs) {
+    if (changedDirs.isEmpty) {
+      unawaited(_fileTreeCubit.refresh());
+    } else {
+      unawaited(_fileTreeCubit.refreshPaths(changedDirs));
+    }
+  }
+
+  void _warmFileTree() {
+    final state = _fileTreeCubit.state;
+    // Cold start: mount roots first; refresh only when root listings are missing.
+    if (state.rootPaths.isEmpty) {
+      unawaited(_fileTreeCubit.setRoots(_workspaceRoots));
+      return;
+    }
+    final cold = state.rootPaths.any(
+      (root) => state.dirCache[root] == null,
+    );
+    if (cold) {
+      unawaited(_fileTreeCubit.refresh());
+    }
+  }
+
+  void _warmGit() =>
+      context.read<GitRepoStore>().refreshAll(_workspaceRoots);
 
   /// Pokes the watcher when any session leaves the working set (a turn ended,
   /// so the agent has likely just written files). Cheap no-op on watch-capable
@@ -186,8 +235,8 @@ class _RightToolsPanelState extends State<RightToolsPanel> {
 
   @override
   void dispose() {
-    _gitWatchSub?.cancel();
-    _gitPollTimer?.cancel();
+    _diskWatchSub?.cancel();
+    _diskPollTimer?.cancel();
     _fsWatcher?.dispose();
     _presenceCubit?.detachPresenceUi(this);
     super.dispose();
@@ -284,8 +333,7 @@ class _RightToolsPanelState extends State<RightToolsPanel> {
             onViewDetail: (id) {
               final member = runtimeMembers.firstWhere((m) => m.id == id);
               final activeTab = chatCubit.activeTab;
-              final workspaceId =
-                  widget.workspaceId ?? activeTab?.workspaceId ?? '';
+              final workspaceId = widget.workspaceId;
               final sessionId = activeTab?.info.id ?? '';
               unawaited(
                 showMemberDetailDialog(
@@ -301,8 +349,7 @@ class _RightToolsPanelState extends State<RightToolsPanel> {
             onOpenConfigDir: (id) {
               final member = runtimeMembers.firstWhere((m) => m.id == id);
               final activeTab = chatCubit.activeTab;
-              final workspaceId =
-                  widget.workspaceId ?? activeTab?.workspaceId ?? '';
+              final workspaceId = widget.workspaceId;
               final sessionId = activeTab?.info.id ?? '';
               unawaited(() async {
                 final detail = await MemberConfigInspector().inspect(
@@ -326,7 +373,10 @@ class _RightToolsPanelState extends State<RightToolsPanel> {
         ToolView(
           icon: Icons.folder_outlined,
           label: context.l10n.fileTree,
-          child: FileTreePanel(roots: _workspaceRoots, watcher: _fsWatcher),
+          child: FileTreePanel(
+            key: const ValueKey('workspace-file-tree'),
+            cubit: _fileTreeCubit,
+          ),
         ),
       );
     }

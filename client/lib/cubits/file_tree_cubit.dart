@@ -132,7 +132,11 @@ class FileTreeCubit extends Cubit<FileTreeState> {
   /// more than one folder is mounted, each root renders as a collapsible
   /// header and starts expanded; a single folder shows its children directly.
   Future<void> setRoots(List<String> paths) async {
-    final wanted = paths.where((p) => p.isNotEmpty).toList(growable: false);
+    final ctx = fs.pathContext;
+    final wanted = paths
+        .where((p) => p.isNotEmpty)
+        .map((p) => ctx.normalize(p))
+        .toList(growable: false);
     if (listEquals(wanted, state.rootPaths)) return;
     if (wanted.isEmpty) {
       emit(const FileTreeState());
