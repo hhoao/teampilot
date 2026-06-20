@@ -1,5 +1,6 @@
 import '../../../models/app_provider_config.dart';
 import '../../../models/claude_credential_link_result.dart';
+import '../../../models/credential_action_result.dart';
 import '../../cli/registry/capabilities/provider_credential_capability.dart';
 import 'cursor_provider_credentials_service.dart';
 
@@ -53,13 +54,13 @@ final class CursorProviderCredentialCapability
   }
 
   @override
-  Future<bool> execute({
+  Future<CredentialActionResult> execute({
     required String providerId,
     required ProviderCredentialActionKind kind,
     ProviderCredentialActionInput input = const ProviderCredentialActionInput(),
   }) async {
     final service = _service;
-    if (service == null) return false;
+    if (service == null) return CredentialActionResult.serviceUnavailable();
     final path = input.pickedPath?.trim() ?? '';
     return switch (kind) {
       ProviderCredentialActionKind.login => service.runAuthLogin(providerId),
@@ -70,7 +71,11 @@ final class CursorProviderCredentialCapability
       ),
       ProviderCredentialActionKind.importDirectory =>
         path.isEmpty
-            ? false
+            ? CredentialActionResult.failure(
+                const CredentialActionFailure(
+                  code: CredentialActionFailureCode.pathRequired,
+                ),
+              )
             : _importCursorPath(
                 service,
                 providerId: providerId,
@@ -79,7 +84,11 @@ final class CursorProviderCredentialCapability
               ),
       ProviderCredentialActionKind.importFile =>
         path.isEmpty
-            ? false
+            ? CredentialActionResult.failure(
+                const CredentialActionFailure(
+                  code: CredentialActionFailureCode.pathRequired,
+                ),
+              )
             : service.importAuthJsonFile(
                 providerId,
                 path,
@@ -92,7 +101,7 @@ final class CursorProviderCredentialCapability
   }
 }
 
-Future<bool> _importCursorPath(
+Future<CredentialActionResult> _importCursorPath(
   CursorProviderCredentialsService service, {
   required String providerId,
   required String path,

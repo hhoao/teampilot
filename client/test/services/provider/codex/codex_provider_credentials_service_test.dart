@@ -35,11 +35,11 @@ void main() {
 
       expect((await service.probe('openai-official')).isReady, isFalse);
 
-      final ok = await service.importFromGlobal(
+      final result = await service.importFromGlobal(
         'openai-official',
         homeDirectory: home.path,
       );
-      expect(ok, isTrue);
+      expect(result.ok, isTrue);
       expect((await service.probe('openai-official')).isReady, isTrue);
     } finally {
       await home.delete(recursive: true);

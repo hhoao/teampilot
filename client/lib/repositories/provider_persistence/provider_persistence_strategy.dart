@@ -1,7 +1,9 @@
 import '../../models/app_provider_config.dart';
 import '../../models/claude_credential_link_result.dart';
+import '../../models/credential_action_result.dart';
 import '../../services/io/filesystem.dart';
 import '../../services/provider/tool_config_generator.dart';
+import '../../utils/logger_utils.dart';
 
 /// Thrown when persisting a provider's native tool config fails (e.g. an
 /// invalid Codex `config.toml`).
@@ -22,7 +24,7 @@ typedef SaveProviders =
 typedef CredentialProbeFn = Future<CredentialProbe> Function(String providerId);
 
 typedef CredentialImportFn =
-    Future<bool> Function(
+    Future<CredentialActionResult> Function(
       String providerId, {
       required String homeDirectory,
       bool replace,
@@ -98,11 +100,18 @@ mixin CredentialProbeSupport on ProviderPersistenceStrategy {
       if (!probe.isReady) {
         final home = ctx.resolveHome();
         if (home.isNotEmpty) {
-          await credentialImport(
+          final importResult = await credentialImport(
             provider.id,
             homeDirectory: home,
             replace: false,
           );
+          if (!importResult.ok) {
+            AppLogger.instance.d(
+              'Auto credential import failed for ${provider.id}: '
+              '${importResult.failure?.code.name}'
+              '${importResult.failure?.path == null ? '' : ' (${importResult.failure!.path})'}',
+            );
+          }
           probe = await credentialProbe(provider.id);
         }
       }

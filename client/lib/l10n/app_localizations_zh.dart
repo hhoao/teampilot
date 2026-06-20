@@ -1884,6 +1884,76 @@ class AppLocalizationsZh extends AppLocalizations {
   String get opencodeCredentialsActionFailed => '凭据更新失败';
 
   @override
+  String get providerCredentialsFailureUnsupported => '不支持此凭据操作';
+
+  @override
+  String get providerCredentialsFailureServiceUnavailable => '凭据服务不可用';
+
+  @override
+  String get providerCredentialsFailureProviderNotFound => '未找到 Provider';
+
+  @override
+  String get providerCredentialsFailurePathRequired => '请先选择文件或目录';
+
+  @override
+  String providerCredentialsFailureSourceMissing(String path) {
+    return '未找到凭据文件：$path';
+  }
+
+  @override
+  String providerCredentialsFailureSourceUnreadable(String path) {
+    return '无法读取凭据文件：$path';
+  }
+
+  @override
+  String providerCredentialsFailureProviderEntryMissing(
+    String providerId,
+    String path,
+  ) {
+    return '在 $path 中未找到 \"$providerId\" 的凭据';
+  }
+
+  @override
+  String providerCredentialsFailureProviderEntryMissingWithKeys(
+    String providerId,
+    String path,
+    String keys,
+  ) {
+    return '在 $path 中未找到 \"$providerId\" 的凭据。已有：$keys';
+  }
+
+  @override
+  String get providerCredentialsFailureInvalidCredential => '凭据格式无效或不完整';
+
+  @override
+  String get providerCredentialsFailureDestinationExists =>
+      '凭据已存在。请先退出登录，或再次导入以覆盖。';
+
+  @override
+  String providerCredentialsFailureRequiredFileMissing(String path) {
+    return '缺少必需文件：$path';
+  }
+
+  @override
+  String providerCredentialsFailureLoginFailed(int exitCode) {
+    return '登录失败（退出码 $exitCode）';
+  }
+
+  @override
+  String providerCredentialsFailureLoginProcessError(String detail) {
+    return '无法运行登录命令：$detail';
+  }
+
+  @override
+  String get providerCredentialsFailureRevokeFailed => '无法退出登录或删除凭据';
+
+  @override
+  String get providerCredentialsFailureVerifyFailed => '凭据已写入但校验失败';
+
+  @override
+  String get providerCredentialsFailureStatusRefreshFailed => '凭据已更新但状态刷新失败';
+
+  @override
   String get claudeLaunchCredentialsMissingWarning =>
       '该 Team 绑定的 Claude Official Provider 缺少凭据，请在 Providers 设置中登录。';
 

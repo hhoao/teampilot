@@ -3602,6 +3602,109 @@ abstract class AppLocalizations {
   /// **'Could not update credentials'**
   String get opencodeCredentialsActionFailed;
 
+  /// No description provided for @providerCredentialsFailureUnsupported.
+  ///
+  /// In en, this message translates to:
+  /// **'This credential action is not supported'**
+  String get providerCredentialsFailureUnsupported;
+
+  /// No description provided for @providerCredentialsFailureServiceUnavailable.
+  ///
+  /// In en, this message translates to:
+  /// **'Credential service is not available'**
+  String get providerCredentialsFailureServiceUnavailable;
+
+  /// No description provided for @providerCredentialsFailureProviderNotFound.
+  ///
+  /// In en, this message translates to:
+  /// **'Provider not found'**
+  String get providerCredentialsFailureProviderNotFound;
+
+  /// No description provided for @providerCredentialsFailurePathRequired.
+  ///
+  /// In en, this message translates to:
+  /// **'Choose a file or directory first'**
+  String get providerCredentialsFailurePathRequired;
+
+  /// No description provided for @providerCredentialsFailureSourceMissing.
+  ///
+  /// In en, this message translates to:
+  /// **'Credential file not found: {path}'**
+  String providerCredentialsFailureSourceMissing(String path);
+
+  /// No description provided for @providerCredentialsFailureSourceUnreadable.
+  ///
+  /// In en, this message translates to:
+  /// **'Could not read credential file: {path}'**
+  String providerCredentialsFailureSourceUnreadable(String path);
+
+  /// No description provided for @providerCredentialsFailureProviderEntryMissing.
+  ///
+  /// In en, this message translates to:
+  /// **'No credential for \"{providerId}\" in {path}'**
+  String providerCredentialsFailureProviderEntryMissing(
+    String providerId,
+    String path,
+  );
+
+  /// No description provided for @providerCredentialsFailureProviderEntryMissingWithKeys.
+  ///
+  /// In en, this message translates to:
+  /// **'No credential for \"{providerId}\" in {path}. Available: {keys}'**
+  String providerCredentialsFailureProviderEntryMissingWithKeys(
+    String providerId,
+    String path,
+    String keys,
+  );
+
+  /// No description provided for @providerCredentialsFailureInvalidCredential.
+  ///
+  /// In en, this message translates to:
+  /// **'Credential format is invalid or incomplete'**
+  String get providerCredentialsFailureInvalidCredential;
+
+  /// No description provided for @providerCredentialsFailureDestinationExists.
+  ///
+  /// In en, this message translates to:
+  /// **'Credentials already exist. Sign out first or import again to replace.'**
+  String get providerCredentialsFailureDestinationExists;
+
+  /// No description provided for @providerCredentialsFailureRequiredFileMissing.
+  ///
+  /// In en, this message translates to:
+  /// **'Required file missing: {path}'**
+  String providerCredentialsFailureRequiredFileMissing(String path);
+
+  /// No description provided for @providerCredentialsFailureLoginFailed.
+  ///
+  /// In en, this message translates to:
+  /// **'Login failed (exit code {exitCode})'**
+  String providerCredentialsFailureLoginFailed(int exitCode);
+
+  /// No description provided for @providerCredentialsFailureLoginProcessError.
+  ///
+  /// In en, this message translates to:
+  /// **'Could not run login command: {detail}'**
+  String providerCredentialsFailureLoginProcessError(String detail);
+
+  /// No description provided for @providerCredentialsFailureRevokeFailed.
+  ///
+  /// In en, this message translates to:
+  /// **'Could not sign out or remove credentials'**
+  String get providerCredentialsFailureRevokeFailed;
+
+  /// No description provided for @providerCredentialsFailureVerifyFailed.
+  ///
+  /// In en, this message translates to:
+  /// **'Credentials were saved but verification failed'**
+  String get providerCredentialsFailureVerifyFailed;
+
+  /// No description provided for @providerCredentialsFailureStatusRefreshFailed.
+  ///
+  /// In en, this message translates to:
+  /// **'Credentials updated but status could not be refreshed'**
+  String get providerCredentialsFailureStatusRefreshFailed;
+
   /// No description provided for @claudeLaunchCredentialsMissingWarning.
   ///
   /// In en, this message translates to:

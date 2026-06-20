@@ -2,8 +2,10 @@ import 'dart:convert';
 import 'dart:io';
 
 import '../../../models/claude_credential_link_result.dart';
+import '../../../models/credential_action_result.dart';
 import '../../cli/cli_invocation.dart';
 import '../../io/filesystem.dart';
+import '../credential_process_result.dart';
 import 'cursor_auth_artifacts.dart';
 import 'cursor_home_layout.dart';
 import 'cursor_launch_environment.dart';
@@ -40,7 +42,7 @@ class CursorProviderCredentialsService {
     String executable,
     List<String> arguments, {
     Map<String, String>? environment,
-  }) {
+    }) {
     return Process.run(
       executable,
       arguments,
@@ -81,17 +83,17 @@ class CursorProviderCredentialsService {
     );
   }
 
-  Future<bool> importFromGlobal(
+  Future<CredentialActionResult> importFromGlobal(
     String providerId, {
     required String homeDirectory,
     bool replace = false,
   }) async {
-    final okCursor = await importFromCursorDirectory(
+    final cursorResult = await importFromCursorDirectory(
       providerId,
       _layout.cursorDir(homeDirectory),
       replace: replace,
     );
-    if (!okCursor) return false;
+    if (!cursorResult.ok) return cursorResult;
 
     final globalAuth = _layout.authJson(homeDirectory);
     final destAuth = _layout.authJson(providerHome(providerId));
@@ -101,25 +103,32 @@ class CursorProviderCredentialsService {
       replace: replace,
       required: true,
     );
-    if (!authCopied) return false;
-    return (await probe(providerId)).isReady;
+    if (!authCopied.ok) return authCopied;
+    if (!(await probe(providerId)).isReady) {
+      return CredentialActionResult.failure(
+        const CredentialActionFailure(
+          code: CredentialActionFailureCode.verifyFailed,
+        ),
+      );
+    }
+    return CredentialActionResult.success;
   }
 
-  Future<bool> importFromCursorDirectory(
+  Future<CredentialActionResult> importFromCursorDirectory(
     String providerId,
     String sourceCursorDir, {
     bool replace = false,
   }) async {
     final destCursorDir = providerCursorDir(providerId);
     for (final relativePath in CursorAuthArtifacts.cursorDirRequired) {
-      final ok = await _importCursorDirFile(
+      final result = await _importCursorDirFile(
         sourceCursorDir: sourceCursorDir,
         destCursorDir: destCursorDir,
         relativePath: relativePath,
         replace: replace,
         required: true,
       );
-      if (!ok) return false;
+      if (!result.ok) return result;
     }
     for (final relativePath in CursorAuthArtifacts.cursorDirOptional) {
       await _importCursorDirFile(
@@ -130,27 +139,34 @@ class CursorProviderCredentialsService {
         required: false,
       );
     }
-    return true;
+    return CredentialActionResult.success;
   }
 
   /// Imports `$HOME/.config/cursor/auth.json` from [sourceAuthJsonPath].
-  Future<bool> importAuthJsonFile(
+  Future<CredentialActionResult> importAuthJsonFile(
     String providerId,
     String sourceAuthJsonPath, {
     bool replace = false,
   }) async {
     final destAuth = _layout.authJson(providerHome(providerId));
-    final ok = await _copyFile(
+    final copied = await _copyFile(
       src: sourceAuthJsonPath,
       dest: destAuth,
       replace: replace,
       required: true,
     );
-    if (!ok) return false;
-    return (await probe(providerId)).isReady;
+    if (!copied.ok) return copied;
+    if (!(await probe(providerId)).isReady) {
+      return CredentialActionResult.failure(
+        const CredentialActionFailure(
+          code: CredentialActionFailureCode.invalidCredential,
+        ),
+      );
+    }
+    return CredentialActionResult.success;
   }
 
-  Future<bool> _importCursorDirFile({
+  Future<CredentialActionResult> _importCursorDirFile({
     required String sourceCursorDir,
     required String destCursorDir,
     required String relativePath,
@@ -162,22 +178,44 @@ class CursorProviderCredentialsService {
     return _copyFile(src: src, dest: dest, replace: replace, required: required);
   }
 
-  Future<bool> _copyFile({
+  Future<CredentialActionResult> _copyFile({
     required String src,
     required String dest,
     required bool replace,
     required bool required,
   }) async {
     final srcStat = await _fs.stat(src);
-    if (!srcStat.isFile) return !required;
+    if (!srcStat.isFile) {
+      if (!required) return CredentialActionResult.success;
+      return CredentialActionResult.failure(
+        CredentialActionFailure(
+          code: CredentialActionFailureCode.requiredFileMissing,
+          path: src,
+        ),
+      );
+    }
 
-    if (!replace && (await _fs.stat(dest)).isFile) return false;
+    if (!replace && (await _fs.stat(dest)).isFile) {
+      return CredentialActionResult.failure(
+        const CredentialActionFailure(
+          code: CredentialActionFailureCode.destinationExists,
+        ),
+      );
+    }
 
     await _fs.ensureDir(_fs.pathContext.dirname(dest));
     final bytes = await _fs.readBytes(src);
-    if (bytes == null) return !required;
+    if (bytes == null) {
+      if (!required) return CredentialActionResult.success;
+      return CredentialActionResult.failure(
+        CredentialActionFailure(
+          code: CredentialActionFailureCode.sourceUnreadable,
+          path: src,
+        ),
+      );
+    }
     await _fs.writeBytes(dest, bytes);
-    return true;
+    return CredentialActionResult.success;
   }
 
   Future<CredentialLinkResult> syncAuthToMemberHome(
@@ -221,12 +259,13 @@ class CursorProviderCredentialsService {
     final destAuthStat = await _fs.stat(destAuth);
     if (!destAuthStat.isFile) {
       allAlreadyPresent = false;
-      if (await _copyFile(
+      final copied = await _copyFile(
         src: srcAuth,
         dest: destAuth,
         replace: true,
         required: true,
-      )) {
+      );
+      if (copied.ok) {
         anyCopied = true;
       }
     }
@@ -300,28 +339,39 @@ class CursorProviderCredentialsService {
     );
   }
 
-  Future<bool> runAuthLogin(
+  Future<CredentialActionResult> runAuthLogin(
     String providerId, {
     Map<String, String> platformEnv = const {},
   }) async {
     await _fs.ensureDir(providerHome(providerId));
+    final executable = _resolvedCursorExecutable();
     try {
       final result = await _runCursor(
         const ['login'],
         providerId: providerId,
         platformEnv: platformEnv,
       );
-      return result.exitCode == 0 && (await probe(providerId)).isReady;
+      return loginCommandResult(
+        result: result,
+        ready: (await probe(providerId)).isReady,
+        executable: executable,
+      );
     } on ProcessException {
-      return false;
+      return loginProcessError(executable);
     }
   }
 
-  Future<bool> revokeCredentials(
+  Future<CredentialActionResult> revokeCredentials(
     String providerId, {
     Map<String, String> platformEnv = const {},
   }) async {
-    if (!(await probe(providerId)).isReady) return false;
+    if (!(await probe(providerId)).isReady) {
+      return CredentialActionResult.failure(
+        const CredentialActionFailure(
+          code: CredentialActionFailureCode.revokeFailed,
+        ),
+      );
+    }
     try {
       await _runCursor(
         const ['logout'],
@@ -346,6 +396,6 @@ class CursorProviderCredentialsService {
     if ((await _fs.stat(authPath)).exists) {
       await _fs.removeRecursive(authPath);
     }
-    return !(await probe(providerId)).isReady;
+    return revokeVerifyResult(!(await probe(providerId)).isReady);
   }
 }

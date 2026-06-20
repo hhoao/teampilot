@@ -2,9 +2,11 @@ import 'dart:convert';
 import 'dart:io';
 
 import '../../../models/claude_credential_link_result.dart';
+import '../../../models/credential_action_result.dart';
 import '../../cli/cli_invocation.dart';
 import '../../io/filesystem.dart';
 import '../../session/launch_command_builder.dart';
+import '../credential_process_result.dart';
 
 typedef ClaudeCredentialProcessRunner =
     Future<ProcessResult> Function(
@@ -66,7 +68,7 @@ class ClaudeProviderCredentialsService {
     );
   }
 
-  Future<bool> importFromGlobal(
+  Future<CredentialActionResult> importFromGlobal(
     String providerId, {
     required String homeDirectory,
     bool replace = false,
@@ -79,7 +81,7 @@ class ClaudeProviderCredentialsService {
     return _importCopy(providerId, src, replace: replace);
   }
 
-  Future<bool> importFromFile(
+  Future<CredentialActionResult> importFromFile(
     String providerId,
     String sourcePath, {
     bool replace = false,
@@ -87,20 +89,54 @@ class ClaudeProviderCredentialsService {
     return _importCopy(providerId, sourcePath, replace: replace);
   }
 
-  Future<bool> _importCopy(
+  Future<CredentialActionResult> _importCopy(
     String providerId,
     String src, {
     required bool replace,
   }) async {
     final srcStat = await _fs.stat(src);
-    if (!srcStat.isFile) return false;
+    if (!srcStat.isFile) {
+      return CredentialActionResult.failure(
+        CredentialActionFailure(
+          code: CredentialActionFailureCode.sourceMissing,
+          path: src,
+        ),
+      );
+    }
     final dest = credentialPath(providerId);
-    if (!replace && (await _fs.stat(dest)).isFile) return false;
+    if (!replace && (await _fs.stat(dest)).isFile) {
+      return CredentialActionResult.failure(
+        const CredentialActionFailure(
+          code: CredentialActionFailureCode.destinationExists,
+        ),
+      );
+    }
     await _fs.ensureDir(providerDir(providerId));
     final bytes = await _fs.readBytes(src);
-    if (bytes == null) return false;
+    if (bytes == null) {
+      return CredentialActionResult.failure(
+        CredentialActionFailure(
+          code: CredentialActionFailureCode.sourceUnreadable,
+          path: src,
+        ),
+      );
+    }
+    if (!_validateCredentialBytes(bytes)) {
+      return CredentialActionResult.failure(
+        const CredentialActionFailure(
+          code: CredentialActionFailureCode.invalidCredential,
+        ),
+      );
+    }
     await _fs.writeBytes(dest, bytes);
-    return _validateCredentialBytes(bytes);
+    if (!(await probe(providerId)).isReady) {
+      return CredentialActionResult.failure(
+        const CredentialActionFailure(
+          code: CredentialActionFailureCode.verifyFailed,
+        ),
+      );
+    }
+    return CredentialActionResult.success;
   }
 
   bool _validateCredentialBytes(List<int> bytes) {
@@ -184,42 +220,61 @@ class ClaudeProviderCredentialsService {
     );
   }
 
-  Future<bool> runAuthLogin(
+  Future<CredentialActionResult> runAuthLogin(
     String providerId, {
     Map<String, String> platformEnv = const {},
   }) async {
     await _fs.ensureDir(providerDir(providerId));
+    final executable = _resolvedClaudeExecutable();
     try {
       final result = await _runClaude(
         const ['auth', 'login'],
         providerId: providerId,
         platformEnv: platformEnv,
       );
-      return result.exitCode == 0 && (await probe(providerId)).isReady;
+      return loginCommandResult(
+        result: result,
+        ready: (await probe(providerId)).isReady,
+        executable: executable,
+      );
     } on ProcessException {
-      return false;
+      return loginProcessError(executable);
     }
   }
 
-  Future<bool> revokeCredentials(
+  Future<CredentialActionResult> revokeCredentials(
     String providerId, {
     Map<String, String> platformEnv = const {},
   }) async {
-    if (!(await probe(providerId)).isReady) return false;
+    if (!(await probe(providerId)).isReady) {
+      return CredentialActionResult.failure(
+        const CredentialActionFailure(
+          code: CredentialActionFailureCode.revokeFailed,
+        ),
+      );
+    }
+    final executable = _resolvedClaudeExecutable();
     try {
       final result = await _runClaude(
         const ['auth', 'logout'],
         providerId: providerId,
         platformEnv: platformEnv,
       );
-      if (result.exitCode != 0) return false;
+      if (result.exitCode != 0) {
+        return CredentialActionResult.failure(
+          CredentialActionFailure(
+            code: CredentialActionFailureCode.revokeFailed,
+            exitCode: result.exitCode,
+          ),
+        );
+      }
     } on ProcessException {
-      return false;
+      return loginProcessError(executable);
     }
     final path = credentialPath(providerId);
     if ((await _fs.stat(path)).exists) {
       await _fs.removeRecursive(path);
     }
-    return !(await probe(providerId)).isReady;
+    return revokeVerifyResult(!(await probe(providerId)).isReady);
   }
 }

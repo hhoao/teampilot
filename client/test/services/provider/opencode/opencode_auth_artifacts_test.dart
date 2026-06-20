@@ -1,4 +1,5 @@
 import 'package:flutter_test/flutter_test.dart';
+import 'package:teampilot/models/credential_action_result.dart';
 import 'package:teampilot/services/provider/opencode/opencode_auth_artifacts.dart';
 
 void main() {
@@ -31,6 +32,20 @@ void main() {
         ),
         isFalse,
       );
+    });
+  });
+
+  group('CredentialActionResult', () {
+    test('failure carries code and path', () {
+      final result = CredentialActionResult.failure(
+        const CredentialActionFailure(
+          code: CredentialActionFailureCode.sourceMissing,
+          path: '/tmp/auth.json',
+        ),
+      );
+      expect(result.ok, isFalse);
+      expect(result.failure?.code, CredentialActionFailureCode.sourceMissing);
+      expect(result.failure?.path, '/tmp/auth.json');
     });
   });
 }

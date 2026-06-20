@@ -9,10 +9,12 @@ import '../app_dialog.dart';
 import '../../cubits/app_provider_cubit.dart';
 import '../../l10n/l10n_extensions.dart';
 import '../../models/app_provider_config.dart';
+import '../../models/credential_action_result.dart';
 import '../../services/cli/registry/capabilities/provider_credential_capability.dart';
 import '../../services/cli/registry/cli_tool_registry_scope.dart';
 import '../../services/storage/app_storage.dart';
 import '../../utils/debounce/debounce.dart';
+import 'provider_credential_messages.dart';
 
 /// Registry-driven login / import actions for official account providers.
 class ProviderCredentialActionBar extends StatefulWidget {
@@ -149,14 +151,14 @@ class _ProviderCredentialActionBarState extends State<ProviderCredentialActionBa
       }
 
       final cubit = context.read<AppProviderCubit>();
-      final ok = await cubit.runProviderCredentialAction(
+      final actionResult = await cubit.runProviderCredentialAction(
         provider: provider,
         kind: kind,
         replace: ready,
         homeDirectory: AppStorage.home,
       );
       if (!mounted) return;
-      _showResult(ok);
+      _showResult(actionResult);
     } finally {
       if (mounted) setState(() => _running = false);
     }
@@ -176,14 +178,14 @@ class _ProviderCredentialActionBarState extends State<ProviderCredentialActionBa
     final path = result?.files.single.path;
     if (path == null || path.trim().isEmpty || !mounted) return;
     final cubit = context.read<AppProviderCubit>();
-    final ok = await cubit.runProviderCredentialAction(
+    final actionResult = await cubit.runProviderCredentialAction(
       provider: provider,
       kind: ProviderCredentialActionKind.importFile,
       pickedPath: path,
       replace: ready,
     );
     if (!mounted) return;
-    _showResult(ok);
+    _showResult(actionResult);
   }
 
   Future<void> _importDirectory(
@@ -203,14 +205,14 @@ class _ProviderCredentialActionBarState extends State<ProviderCredentialActionBa
       final path = _resolveCursorImportPath(normalized);
       if (path == null || !mounted) return;
       final cubit = context.read<AppProviderCubit>();
-      final ok = await cubit.runProviderCredentialAction(
+      final actionResult = await cubit.runProviderCredentialAction(
         provider: provider,
         kind: ProviderCredentialActionKind.importDirectory,
         pickedPath: path,
         replace: ready,
       );
       if (!mounted) return;
-      _showResult(ok);
+      _showResult(actionResult);
       return;
     }
 
@@ -228,14 +230,14 @@ class _ProviderCredentialActionBarState extends State<ProviderCredentialActionBa
     final resolved = _resolveCursorImportPath(p.normalize(path.trim()));
     if (resolved == null) return;
     final cubit = context.read<AppProviderCubit>();
-    final ok = await cubit.runProviderCredentialAction(
+    final actionResult = await cubit.runProviderCredentialAction(
       provider: provider,
       kind: ProviderCredentialActionKind.importDirectory,
       pickedPath: resolved,
       replace: ready,
     );
     if (!mounted) return;
-    _showResult(ok);
+    _showResult(actionResult);
   }
 
   String? _resolveCursorImportPath(String normalized) {
@@ -295,22 +297,26 @@ class _ProviderCredentialActionBarState extends State<ProviderCredentialActionBa
     );
     if (confirmed != true || !mounted) return;
     final cubit = context.read<AppProviderCubit>();
-    final ok = await cubit.runProviderCredentialAction(
+    final actionResult = await cubit.runProviderCredentialAction(
       provider: provider,
       kind: ProviderCredentialActionKind.revoke,
     );
     if (!mounted) return;
-    _showResult(ok);
+    _showResult(actionResult);
   }
 
-  void _showResult(bool ok) {
+  void _showResult(CredentialActionResult result) {
     final l10n = context.l10n;
     AppToast.show(
       context,
-      message: ok
-          ? _successMessage(l10n, widget.provider.cli)
-          : _failureMessage(l10n, widget.provider.cli),
-      variant: ok ? AppToastVariant.success : AppToastVariant.error,
+      message: result.ok
+          ? providerCredentialSuccessMessage(l10n, widget.provider.cli)
+          : providerCredentialFailureMessage(
+              l10n,
+              widget.provider.cli,
+              result,
+            ),
+      variant: result.ok ? AppToastVariant.success : AppToastVariant.error,
     );
   }
 }
@@ -416,26 +422,6 @@ String _unauthenticatedLabel(AppLocalizations l10n, CliTool cli) {
     CliTool.claude => l10n.claudeOfficialCredentialsUnauthenticated,
     CliTool.cursor => l10n.cursorCredentialsUnauthenticated,
     _ => l10n.claudeOfficialCredentialsUnauthenticated,
-  };
-}
-
-String _successMessage(AppLocalizations l10n, CliTool cli) {
-  return switch (cli) {
-    CliTool.claude => l10n.claudeOfficialCredentialsActionSuccess,
-    CliTool.cursor => l10n.cursorCredentialsActionSuccess,
-    CliTool.codex => l10n.codexCredentialsActionSuccess,
-    CliTool.opencode => l10n.opencodeCredentialsActionSuccess,
-    _ => l10n.claudeOfficialCredentialsActionSuccess,
-  };
-}
-
-String _failureMessage(AppLocalizations l10n, CliTool cli) {
-  return switch (cli) {
-    CliTool.claude => l10n.claudeOfficialCredentialsActionFailed,
-    CliTool.cursor => l10n.cursorCredentialsActionFailed,
-    CliTool.codex => l10n.codexCredentialsActionFailed,
-    CliTool.opencode => l10n.opencodeCredentialsActionFailed,
-    _ => l10n.claudeOfficialCredentialsActionFailed,
   };
 }
 

@@ -1,5 +1,6 @@
 import '../../../../models/app_provider_config.dart';
 import '../../../../models/claude_credential_link_result.dart';
+import '../../../../models/credential_action_result.dart';
 import '../cli_capability.dart';
 
 /// Credential actions exposed in provider add/edit/detail UI.
@@ -50,7 +51,7 @@ abstract interface class ProviderCredentialCapability implements CliCapability {
 
   Future<CredentialProbe> probe(String providerId);
 
-  Future<bool> execute({
+  Future<CredentialActionResult> execute({
     required String providerId,
     required ProviderCredentialActionKind kind,
     ProviderCredentialActionInput input = const ProviderCredentialActionInput(),

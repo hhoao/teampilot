@@ -54,11 +54,11 @@ void main() {
       fs.pathContext.join(home, '.claude', '.credentials.json'),
       '{"claudeAiOauth":{"accessToken":"global"}}',
     );
-    final ok = await service.importFromGlobal(
+    final result = await service.importFromGlobal(
       'work',
       homeDirectory: home,
     );
-    expect(ok, isTrue);
+    expect(result.ok, isTrue);
     expect((await service.probe('work')).isReady, isTrue);
   });
 
@@ -67,8 +67,8 @@ void main() {
       '/ext/creds.json',
       '{"claudeAiOauth":{"accessToken":"file"}}',
     );
-    final ok = await service.importFromFile('work', '/ext/creds.json');
-    expect(ok, isTrue);
+    final result = await service.importFromFile('work', '/ext/creds.json');
+    expect(result.ok, isTrue);
     expect((await service.probe('work')).isReady, isTrue);
   });
 
@@ -82,7 +82,7 @@ void main() {
       '{"claudeAiOauth":{"accessToken":"new"}}',
     );
     expect(
-      await service.importFromFile('work', '/ext/new.json', replace: true),
+      (await service.importFromFile('work', '/ext/new.json', replace: true)).ok,
       isTrue,
     );
     final bytes = await fs.readBytes(
@@ -149,8 +149,8 @@ void main() {
       'wsl.exe /home/user/.local/bin/claude',
     );
 
-    final ok = await wslService.runAuthLogin('work');
-    expect(ok, isFalse);
+    final loginResult = await wslService.runAuthLogin('work');
+    expect(loginResult.ok, isFalse);
     expect(capturedExecutable, 'wsl.exe');
     expect(capturedArgs, isNotNull);
     expect(capturedArgs, containsAll(const ['auth', 'login']));

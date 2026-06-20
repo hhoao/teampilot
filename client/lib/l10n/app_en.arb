@@ -885,6 +885,60 @@
   },
   "opencodeCredentialsActionSuccess": "Credentials updated",
   "opencodeCredentialsActionFailed": "Could not update credentials",
+  "providerCredentialsFailureUnsupported": "This credential action is not supported",
+  "providerCredentialsFailureServiceUnavailable": "Credential service is not available",
+  "providerCredentialsFailureProviderNotFound": "Provider not found",
+  "providerCredentialsFailurePathRequired": "Choose a file or directory first",
+  "providerCredentialsFailureSourceMissing": "Credential file not found: {path}",
+  "@providerCredentialsFailureSourceMissing": {
+    "placeholders": {
+      "path": { "type": "String" }
+    }
+  },
+  "providerCredentialsFailureSourceUnreadable": "Could not read credential file: {path}",
+  "@providerCredentialsFailureSourceUnreadable": {
+    "placeholders": {
+      "path": { "type": "String" }
+    }
+  },
+  "providerCredentialsFailureProviderEntryMissing": "No credential for \"{providerId}\" in {path}",
+  "@providerCredentialsFailureProviderEntryMissing": {
+    "placeholders": {
+      "providerId": { "type": "String" },
+      "path": { "type": "String" }
+    }
+  },
+  "providerCredentialsFailureProviderEntryMissingWithKeys": "No credential for \"{providerId}\" in {path}. Available: {keys}",
+  "@providerCredentialsFailureProviderEntryMissingWithKeys": {
+    "placeholders": {
+      "providerId": { "type": "String" },
+      "path": { "type": "String" },
+      "keys": { "type": "String" }
+    }
+  },
+  "providerCredentialsFailureInvalidCredential": "Credential format is invalid or incomplete",
+  "providerCredentialsFailureDestinationExists": "Credentials already exist. Sign out first or import again to replace.",
+  "providerCredentialsFailureRequiredFileMissing": "Required file missing: {path}",
+  "@providerCredentialsFailureRequiredFileMissing": {
+    "placeholders": {
+      "path": { "type": "String" }
+    }
+  },
+  "providerCredentialsFailureLoginFailed": "Login failed (exit code {exitCode})",
+  "@providerCredentialsFailureLoginFailed": {
+    "placeholders": {
+      "exitCode": { "type": "int" }
+    }
+  },
+  "providerCredentialsFailureLoginProcessError": "Could not run login command: {detail}",
+  "@providerCredentialsFailureLoginProcessError": {
+    "placeholders": {
+      "detail": { "type": "String" }
+    }
+  },
+  "providerCredentialsFailureRevokeFailed": "Could not sign out or remove credentials",
+  "providerCredentialsFailureVerifyFailed": "Credentials were saved but verification failed",
+  "providerCredentialsFailureStatusRefreshFailed": "Credentials updated but status could not be refreshed",
   "claudeLaunchCredentialsMissingWarning": "Claude Official credentials are missing for this team provider. Sign in from Providers settings.",
   "teamConfigIncompleteTitle": "Team configuration incomplete",
   "teamConfigIncompleteBody": "Team \"{team}\" is missing settings needed to launch. The session still starts, but agents may fail without them:",

@@ -1,5 +1,6 @@
 import '../../../models/app_provider_config.dart';
 import '../../../models/claude_credential_link_result.dart';
+import '../../../models/credential_action_result.dart';
 import '../../cli/registry/capabilities/provider_credential_capability.dart';
 import 'claude_official_provider.dart';
 import 'claude_provider_credentials_service.dart';
@@ -52,13 +53,13 @@ final class ClaudeProviderCredentialCapability
   }
 
   @override
-  Future<bool> execute({
+  Future<CredentialActionResult> execute({
     required String providerId,
     required ProviderCredentialActionKind kind,
     ProviderCredentialActionInput input = const ProviderCredentialActionInput(),
   }) async {
     final service = _service;
-    if (service == null) return false;
+    if (service == null) return CredentialActionResult.serviceUnavailable();
     return switch (kind) {
       ProviderCredentialActionKind.login => service.runAuthLogin(providerId),
       ProviderCredentialActionKind.importGlobal => service.importFromGlobal(
@@ -71,7 +72,8 @@ final class ClaudeProviderCredentialCapability
         input.pickedPath?.trim() ?? '',
         replace: input.replace,
       ),
-      ProviderCredentialActionKind.importDirectory => false,
+      ProviderCredentialActionKind.importDirectory =>
+        CredentialActionResult.unsupported(),
       ProviderCredentialActionKind.revoke => service.revokeCredentials(
         providerId,
       ),

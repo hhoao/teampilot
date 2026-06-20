@@ -728,6 +728,60 @@
   "opencodeCredentialsRevokeConfirm": "退出登录并删除 {name} 的已保存凭据？",
   "opencodeCredentialsActionSuccess": "凭据已更新",
   "opencodeCredentialsActionFailed": "凭据更新失败",
+  "providerCredentialsFailureUnsupported": "不支持此凭据操作",
+  "providerCredentialsFailureServiceUnavailable": "凭据服务不可用",
+  "providerCredentialsFailureProviderNotFound": "未找到 Provider",
+  "providerCredentialsFailurePathRequired": "请先选择文件或目录",
+  "providerCredentialsFailureSourceMissing": "未找到凭据文件：{path}",
+  "@providerCredentialsFailureSourceMissing": {
+    "placeholders": {
+      "path": { "type": "String" }
+    }
+  },
+  "providerCredentialsFailureSourceUnreadable": "无法读取凭据文件：{path}",
+  "@providerCredentialsFailureSourceUnreadable": {
+    "placeholders": {
+      "path": { "type": "String" }
+    }
+  },
+  "providerCredentialsFailureProviderEntryMissing": "在 {path} 中未找到 \"{providerId}\" 的凭据",
+  "@providerCredentialsFailureProviderEntryMissing": {
+    "placeholders": {
+      "providerId": { "type": "String" },
+      "path": { "type": "String" }
+    }
+  },
+  "providerCredentialsFailureProviderEntryMissingWithKeys": "在 {path} 中未找到 \"{providerId}\" 的凭据。已有：{keys}",
+  "@providerCredentialsFailureProviderEntryMissingWithKeys": {
+    "placeholders": {
+      "providerId": { "type": "String" },
+      "path": { "type": "String" },
+      "keys": { "type": "String" }
+    }
+  },
+  "providerCredentialsFailureInvalidCredential": "凭据格式无效或不完整",
+  "providerCredentialsFailureDestinationExists": "凭据已存在。请先退出登录，或再次导入以覆盖。",
+  "providerCredentialsFailureRequiredFileMissing": "缺少必需文件：{path}",
+  "@providerCredentialsFailureRequiredFileMissing": {
+    "placeholders": {
+      "path": { "type": "String" }
+    }
+  },
+  "providerCredentialsFailureLoginFailed": "登录失败（退出码 {exitCode}）",
+  "@providerCredentialsFailureLoginFailed": {
+    "placeholders": {
+      "exitCode": { "type": "int" }
+    }
+  },
+  "providerCredentialsFailureLoginProcessError": "无法运行登录命令：{detail}",
+  "@providerCredentialsFailureLoginProcessError": {
+    "placeholders": {
+      "detail": { "type": "String" }
+    }
+  },
+  "providerCredentialsFailureRevokeFailed": "无法退出登录或删除凭据",
+  "providerCredentialsFailureVerifyFailed": "凭据已写入但校验失败",
+  "providerCredentialsFailureStatusRefreshFailed": "凭据已更新但状态刷新失败",
   "claudeLaunchCredentialsMissingWarning": "该 Team 绑定的 Claude Official Provider 缺少凭据，请在 Providers 设置中登录。",
   "teamConfigIncompleteTitle": "团队配置不完整",
   "teamConfigIncompleteBody": "团队“{team}”缺少启动所需的配置。会话仍会启动，但缺少这些配置时智能体可能无法正常工作：",

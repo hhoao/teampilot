@@ -2,9 +2,11 @@ import 'dart:convert';
 import 'dart:io';
 
 import '../../../models/claude_credential_link_result.dart';
+import '../../../models/credential_action_result.dart';
 import '../../cli/cli_invocation.dart';
 import '../../io/filesystem.dart';
 import '../../session/launch_command_builder.dart';
+import '../credential_process_result.dart';
 import 'opencode_auth_artifacts.dart';
 import 'opencode_data_layout.dart';
 
@@ -81,7 +83,7 @@ class OpencodeProviderCredentialsService {
     );
   }
 
-  Future<bool> importFromGlobal(
+  Future<CredentialActionResult> importFromGlobal(
     String providerId, {
     required String homeDirectory,
     bool replace = false,
@@ -92,17 +94,40 @@ class OpencodeProviderCredentialsService {
     return importFromFile(providerId, src, replace: replace);
   }
 
-  Future<bool> importFromFile(
+  Future<CredentialActionResult> importFromFile(
     String providerId,
     String sourcePath, {
     bool replace = false,
   }) async {
     final srcStat = await _fs.stat(sourcePath);
-    if (!srcStat.isFile) return false;
+    if (!srcStat.isFile) {
+      return CredentialActionResult.failure(
+        CredentialActionFailure(
+          code: CredentialActionFailureCode.sourceMissing,
+          path: sourcePath,
+        ),
+      );
+    }
     final raw = await _readText(sourcePath);
-    if (raw == null) return false;
+    if (raw == null) {
+      return CredentialActionResult.failure(
+        CredentialActionFailure(
+          code: CredentialActionFailureCode.sourceUnreadable,
+          path: sourcePath,
+        ),
+      );
+    }
     final entry = _extractProviderEntry(raw, providerId);
-    if (entry == null) return false;
+    if (entry == null) {
+      return CredentialActionResult.failure(
+        CredentialActionFailure(
+          code: CredentialActionFailureCode.providerEntryMissing,
+          path: sourcePath,
+          providerId: providerId,
+          availableProviderIds: _providerKeysInAuth(raw),
+        ),
+      );
+    }
     return _writeProviderEntry(
       providerId,
       entry,
@@ -127,23 +152,53 @@ class OpencodeProviderCredentialsService {
     }
   }
 
-  Future<bool> _writeProviderEntry(
+  List<String> _providerKeysInAuth(String raw) {
+    try {
+      final decoded = jsonDecode(raw);
+      if (decoded is! Map) return const [];
+      return decoded.keys
+          .map((key) => key.toString().trim())
+          .where((key) => key.isNotEmpty && key != 'version')
+          .toList();
+    } on Object {
+      return const [];
+    }
+  }
+
+  Future<CredentialActionResult> _writeProviderEntry(
     String providerId,
     Map<String, Object?> entry, {
     required bool replace,
   }) async {
     if (!OpencodeAuthArtifacts.entryIndicatesReady({providerId: entry}, providerId)) {
-      return false;
+      return CredentialActionResult.failure(
+        const CredentialActionFailure(
+          code: CredentialActionFailureCode.invalidCredential,
+        ),
+      );
     }
     final dest = credentialPath(providerId);
-    if (!replace && (await _fs.stat(dest)).isFile) return false;
+    if (!replace && (await _fs.stat(dest)).isFile) {
+      return CredentialActionResult.failure(
+        const CredentialActionFailure(
+          code: CredentialActionFailureCode.destinationExists,
+        ),
+      );
+    }
     await _fs.ensureDir(_layout.providerDataHome(providerDir(providerId)));
     final payload = <String, Object?>{providerId: entry};
     await _fs.atomicWrite(
       dest,
       const JsonEncoder.withIndent('  ').convert(payload),
     );
-    return (await probe(providerId)).isReady;
+    if (!(await probe(providerId)).isReady) {
+      return CredentialActionResult.failure(
+        const CredentialActionFailure(
+          code: CredentialActionFailureCode.verifyFailed,
+        ),
+      );
+    }
+    return CredentialActionResult.success;
   }
 
   Future<String?> readAuthContentForLaunch(String providerId) async {
@@ -200,30 +255,41 @@ class OpencodeProviderCredentialsService {
     );
   }
 
-  Future<bool> runAuthLogin(
+  Future<CredentialActionResult> runAuthLogin(
     String providerId, {
     Map<String, String> platformEnv = const {},
   }) async {
     await _fs.ensureDir(_layout.providerDataHome(providerDir(providerId)));
+    final executable = _resolvedOpencodeExecutable();
     try {
       final result = await _runOpencode(
         ['providers', 'login', '-p', providerId],
         providerId: providerId,
         platformEnv: platformEnv,
       );
-      return result.exitCode == 0 && (await probe(providerId)).isReady;
+      return loginCommandResult(
+        result: result,
+        ready: (await probe(providerId)).isReady,
+        executable: executable,
+      );
     } on ProcessException {
-      return false;
+      return loginProcessError(executable);
     }
   }
 
-  Future<bool> revokeCredentials(String providerId) async {
-    if (!(await probe(providerId)).isReady) return false;
+  Future<CredentialActionResult> revokeCredentials(String providerId) async {
+    if (!(await probe(providerId)).isReady) {
+      return CredentialActionResult.failure(
+        const CredentialActionFailure(
+          code: CredentialActionFailureCode.revokeFailed,
+        ),
+      );
+    }
     final path = credentialPath(providerId);
     if ((await _fs.stat(path)).exists) {
       await _fs.removeRecursive(path);
     }
-    return !(await probe(providerId)).isReady;
+    return revokeVerifyResult(!(await probe(providerId)).isReady);
   }
 
   Future<String?> _readText(String path) async {

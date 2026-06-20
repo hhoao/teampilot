@@ -1955,6 +1955,83 @@ class AppLocalizationsEn extends AppLocalizations {
   String get opencodeCredentialsActionFailed => 'Could not update credentials';
 
   @override
+  String get providerCredentialsFailureUnsupported =>
+      'This credential action is not supported';
+
+  @override
+  String get providerCredentialsFailureServiceUnavailable =>
+      'Credential service is not available';
+
+  @override
+  String get providerCredentialsFailureProviderNotFound => 'Provider not found';
+
+  @override
+  String get providerCredentialsFailurePathRequired =>
+      'Choose a file or directory first';
+
+  @override
+  String providerCredentialsFailureSourceMissing(String path) {
+    return 'Credential file not found: $path';
+  }
+
+  @override
+  String providerCredentialsFailureSourceUnreadable(String path) {
+    return 'Could not read credential file: $path';
+  }
+
+  @override
+  String providerCredentialsFailureProviderEntryMissing(
+    String providerId,
+    String path,
+  ) {
+    return 'No credential for \"$providerId\" in $path';
+  }
+
+  @override
+  String providerCredentialsFailureProviderEntryMissingWithKeys(
+    String providerId,
+    String path,
+    String keys,
+  ) {
+    return 'No credential for \"$providerId\" in $path. Available: $keys';
+  }
+
+  @override
+  String get providerCredentialsFailureInvalidCredential =>
+      'Credential format is invalid or incomplete';
+
+  @override
+  String get providerCredentialsFailureDestinationExists =>
+      'Credentials already exist. Sign out first or import again to replace.';
+
+  @override
+  String providerCredentialsFailureRequiredFileMissing(String path) {
+    return 'Required file missing: $path';
+  }
+
+  @override
+  String providerCredentialsFailureLoginFailed(int exitCode) {
+    return 'Login failed (exit code $exitCode)';
+  }
+
+  @override
+  String providerCredentialsFailureLoginProcessError(String detail) {
+    return 'Could not run login command: $detail';
+  }
+
+  @override
+  String get providerCredentialsFailureRevokeFailed =>
+      'Could not sign out or remove credentials';
+
+  @override
+  String get providerCredentialsFailureVerifyFailed =>
+      'Credentials were saved but verification failed';
+
+  @override
+  String get providerCredentialsFailureStatusRefreshFailed =>
+      'Credentials updated but status could not be refreshed';
+
+  @override
   String get claudeLaunchCredentialsMissingWarning =>
       'Claude Official credentials are missing for this team provider. Sign in from Providers settings.';
 

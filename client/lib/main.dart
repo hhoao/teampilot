@@ -446,57 +446,57 @@ class TeamPilotApp extends StatelessWidget {
         return ToastificationWrapper(
           config: buildAppToastificationConfig(),
           child: MaterialApp.router(
-          debugShowCheckedModeBanner: false,
-          title: 'TeamPilot',
-          theme: buildLightTheme(colorPreset, textScale, iconScale),
-          darkTheme: buildDarkTheme(colorPreset, textScale, iconScale),
-          themeMode: themeModeFromPrefs(themeMode),
-          localizationsDelegates: AppLocalizations.localizationsDelegates,
-          supportedLocales: AppLocalizations.supportedLocales,
-          locale: savedLocale.isNotEmpty ? Locale(savedLocale) : null,
-          builder: (context, child) {
-            // Interface zoom: `standard` == the per-display baseline (1/dpr,
-            // compensating for OS display scaling); compact/comfortable/custom
-            // are relative to it.
-            final dpr = MediaQuery.of(context).devicePixelRatio;
-            final effectiveZoom = clampUiZoom(
-              resolveRelativeScale(
-                scaleId: uiZoomScaleId,
-                customMultiplier: uiZoomCustomMultiplier,
-                baseline: autoUiZoomForDevicePixelRatio(dpr),
-              ),
-            );
-            Widget content = AppTextScaleBoundary(
-              child: UiWarmup(
-                child: _AppUpdateAutoCheck(
-                  child: child ?? const SizedBox.shrink(),
+            debugShowCheckedModeBanner: false,
+            title: 'TeamPilot',
+            theme: buildLightTheme(colorPreset, textScale, iconScale),
+            darkTheme: buildDarkTheme(colorPreset, textScale, iconScale),
+            themeMode: themeModeFromPrefs(themeMode),
+            localizationsDelegates: AppLocalizations.localizationsDelegates,
+            supportedLocales: AppLocalizations.supportedLocales,
+            locale: savedLocale.isNotEmpty ? Locale(savedLocale) : null,
+            builder: (context, child) {
+              // Interface zoom: `standard` == the per-display baseline (1/dpr,
+              // compensating for OS display scaling); compact/comfortable/custom
+              // are relative to it.
+              final dpr = MediaQuery.of(context).devicePixelRatio;
+              final effectiveZoom = clampUiZoom(
+                resolveRelativeScale(
+                  scaleId: uiZoomScaleId,
+                  customMultiplier: uiZoomCustomMultiplier,
+                  baseline: autoUiZoomForDevicePixelRatio(dpr),
                 ),
-              ),
-            );
-            // Single global zoom: scales fonts + icons + padding + every
-            // control as one. Must sit INSIDE DragToResizeArea so the window
-            // resize handles stay mapped to the real (unscaled) window edges.
-            content = UiZoom(scale: effectiveZoom, child: content);
-            // The native title bar is hidden (TitleBarStyle.hidden), which on
-            // Linux/GTK also strips the resize-border grips. DragToResizeArea
-            // re-adds invisible resize handles on all edges/corners so the
-            // frameless window can still be resized from its borders.
-            if (!Platform.isAndroid) {
-              content = _DragToResizeWrapper(child: content);
-            }
-            return content;
-          },
-          localeResolutionCallback: (locale, supportedLocales) {
-            if (savedLocale.isNotEmpty) return Locale(savedLocale);
-            for (final supportedLocale in supportedLocales) {
-              if (supportedLocale.languageCode == locale?.languageCode) {
-                return supportedLocale;
+              );
+              Widget content = AppTextScaleBoundary(
+                child: UiWarmup(
+                  child: _AppUpdateAutoCheck(
+                    child: child ?? const SizedBox.shrink(),
+                  ),
+                ),
+              );
+              // Single global zoom: scales fonts + icons + padding + every
+              // control as one. Must sit INSIDE DragToResizeArea so the window
+              // resize handles stay mapped to the real (unscaled) window edges.
+              content = UiZoom(scale: effectiveZoom, child: content);
+              // The native title bar is hidden (TitleBarStyle.hidden), which on
+              // Linux/GTK also strips the resize-border grips. DragToResizeArea
+              // re-adds invisible resize handles on all edges/corners so the
+              // frameless window can still be resized from its borders.
+              if (!Platform.isAndroid) {
+                content = _DragToResizeWrapper(child: content);
               }
-            }
-            return const Locale('en');
-          },
-          routerConfig: appRouter,
-        ),
+              return content;
+            },
+            localeResolutionCallback: (locale, supportedLocales) {
+              if (savedLocale.isNotEmpty) return Locale(savedLocale);
+              for (final supportedLocale in supportedLocales) {
+                if (supportedLocale.languageCode == locale?.languageCode) {
+                  return supportedLocale;
+                }
+              }
+              return const Locale('en');
+            },
+            routerConfig: appRouter,
+          ),
         );
       },
     );

@@ -75,11 +75,11 @@ void main() {
     const home = '/home/user';
     await fs.writeString(layout.cliConfig(home), loggedInCliConfig);
     await fs.writeString(layout.authJson(home), loggedInAuthJson);
-    final ok = await service.importFromGlobal(
+    final result = await service.importFromGlobal(
       'work',
       homeDirectory: home,
     );
-    expect(ok, isTrue);
+    expect(result.ok, isTrue);
     expect((await service.probe('work')).isReady, isTrue);
     final providerHome = fs.pathContext.join(
       base,
@@ -99,8 +99,8 @@ void main() {
   test('importAuthJsonFile copies auth.json only', () async {
     const source = '/tmp/auth.json';
     await fs.writeString(source, loggedInAuthJson);
-    final ok = await service.importAuthJsonFile('work', source);
-    expect(ok, isTrue);
+    final result = await service.importAuthJsonFile('work', source);
+    expect(result.ok, isTrue);
     expect((await service.probe('work')).isReady, isTrue);
   });
 
@@ -164,8 +164,8 @@ void main() {
       },
     );
 
-    final ok = await loginService.runAuthLogin('work');
-    expect(ok, isTrue);
+    final loginResult = await loginService.runAuthLogin('work');
+    expect(loginResult.ok, isTrue);
     expect((await loginService.probe('work')).isReady, isTrue);
   });
 }

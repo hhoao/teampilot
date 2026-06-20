@@ -3,6 +3,7 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 
 import '../models/app_provider_config.dart';
 import '../models/claude_credential_link_result.dart';
+import '../models/credential_action_result.dart';
 import '../models/llm_config.dart';
 import '../repositories/app_provider_repository.dart';
 import '../services/storage/app_storage.dart';
@@ -262,7 +263,7 @@ class AppProviderCubit extends Cubit<AppProviderState> {
     );
   }
 
-  Future<bool> runProviderCredentialAction({
+  Future<CredentialActionResult> runProviderCredentialAction({
     required AppProviderConfig provider,
     required ProviderCredentialActionKind kind,
     String? pickedPath,
@@ -272,11 +273,11 @@ class AppProviderCubit extends Cubit<AppProviderState> {
     final capability = CliToolRegistry.builtIn().capability<
         ProviderCredentialCapability>(provider.cli);
     if (capability == null || !capability.appliesTo(provider)) {
-      return false;
+      return CredentialActionResult.unsupported();
     }
 
     await upsertProvider(provider);
-    final ok = await capability.execute(
+    final result = await capability.execute(
       providerId: provider.id,
       kind: kind,
       input: ProviderCredentialActionInput(
@@ -285,8 +286,16 @@ class AppProviderCubit extends Cubit<AppProviderState> {
         homeDirectory: homeDirectory ?? AppStorage.home,
       ),
     );
-    if (!ok) return false;
-    return _refreshCredentialStatus(provider.cli, provider.id);
+    if (!result.ok) return result;
+    final refreshed = await _refreshCredentialStatus(provider.cli, provider.id);
+    if (!refreshed) {
+      return CredentialActionResult.failure(
+        const CredentialActionFailure(
+          code: CredentialActionFailureCode.statusRefreshFailed,
+        ),
+      );
+    }
+    return CredentialActionResult.success;
   }
 
   Future<CredentialProbe> probeClaudeCredentials(String providerId) async {
@@ -301,7 +310,7 @@ class AppProviderCubit extends Cubit<AppProviderState> {
     return runProviderCredentialAction(
       provider: provider,
       kind: ProviderCredentialActionKind.login,
-    );
+    ).then((result) => result.ok);
   }
 
   Future<bool> importClaudeCredentialsFromGlobal(
@@ -316,7 +325,7 @@ class AppProviderCubit extends Cubit<AppProviderState> {
       provider: provider,
       kind: ProviderCredentialActionKind.importGlobal,
       replace: replace,
-    );
+    ).then((result) => result.ok);
   }
 
   Future<bool> importClaudeCredentialsFromFile(
@@ -333,7 +342,7 @@ class AppProviderCubit extends Cubit<AppProviderState> {
       kind: ProviderCredentialActionKind.importFile,
       pickedPath: path,
       replace: replace,
-    );
+    ).then((result) => result.ok);
   }
 
   Future<bool> revokeClaudeOfficialProvider(String providerId) async {
@@ -344,7 +353,7 @@ class AppProviderCubit extends Cubit<AppProviderState> {
     return runProviderCredentialAction(
       provider: provider,
       kind: ProviderCredentialActionKind.revoke,
-    );
+    ).then((result) => result.ok);
   }
 
   Future<CredentialProbe> probeCursorCredentials(String providerId) async {
@@ -359,7 +368,7 @@ class AppProviderCubit extends Cubit<AppProviderState> {
     return runProviderCredentialAction(
       provider: provider,
       kind: ProviderCredentialActionKind.login,
-    );
+    ).then((result) => result.ok);
   }
 
   Future<bool> importCursorCredentialsFromGlobal(
@@ -374,7 +383,7 @@ class AppProviderCubit extends Cubit<AppProviderState> {
       provider: provider,
       kind: ProviderCredentialActionKind.importGlobal,
       replace: replace,
-    );
+    ).then((result) => result.ok);
   }
 
   Future<bool> importCursorCredentialsFromDirectory(
@@ -391,7 +400,7 @@ class AppProviderCubit extends Cubit<AppProviderState> {
       kind: ProviderCredentialActionKind.importDirectory,
       pickedPath: sourceCursorDir,
       replace: replace,
-    );
+    ).then((result) => result.ok);
   }
 
   Future<bool> importCursorAuthJsonFile(
@@ -408,7 +417,7 @@ class AppProviderCubit extends Cubit<AppProviderState> {
       kind: ProviderCredentialActionKind.importDirectory,
       pickedPath: sourceAuthJsonPath,
       replace: replace,
-    );
+    ).then((result) => result.ok);
   }
 
   Future<bool> revokeCursorProvider(String providerId) async {
@@ -419,7 +428,7 @@ class AppProviderCubit extends Cubit<AppProviderState> {
     return runProviderCredentialAction(
       provider: provider,
       kind: ProviderCredentialActionKind.revoke,
-    );
+    ).then((result) => result.ok);
   }
 
   Future<bool> _refreshCredentialStatus(CliTool cli, String providerId) async {

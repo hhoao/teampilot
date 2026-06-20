@@ -145,7 +145,8 @@ class ChatCubit extends Cubit<ChatState>
   }
 
   @visibleForTesting
-  void updateWorkingSessionsForTest(Set<String> ids) => _updateWorkingSessions(ids);
+  void updateWorkingSessionsForTest(Set<String> ids) =>
+      _updateWorkingSessions(ids);
 
   @visibleForTesting
   void debugTickIdleWatch() => _busCoordinator.debugTickIdleWatch();
@@ -411,7 +412,10 @@ class ChatCubit extends Cubit<ChatState>
     SessionRepository repo,
     Workspace workspace,
   ) async {
-    final result = await showWorkspaceIconPickerDialog(context, workspace: workspace);
+    final result = await showWorkspaceIconPickerDialog(
+      context,
+      workspace: workspace,
+    );
     return switch (result) {
       WorkspaceIconPickerCancelled() => null,
       WorkspaceIconPickerUploadRequested() => _pickAndImportCustomIcon(
@@ -677,7 +681,10 @@ class ChatCubit extends Cubit<ChatState>
       }
     }
     _emitSnapshot(
-      _dataStore.deriveSnapshot(workspaces: state.workspaces, sessions: sessions),
+      _dataStore.deriveSnapshot(
+        workspaces: state.workspaces,
+        sessions: sessions,
+      ),
       base: state.copyWith(sessions: sessions, tabs: tabs),
     );
   }
@@ -709,7 +716,10 @@ class ChatCubit extends Cubit<ChatState>
             : s,
     ];
     _emitSnapshot(
-      _dataStore.deriveSnapshot(workspaces: state.workspaces, sessions: sessions),
+      _dataStore.deriveSnapshot(
+        workspaces: state.workspaces,
+        sessions: sessions,
+      ),
       base: state.copyWith(sessions: sessions),
     );
     await repo.reorderSessions(orderedSessionIds);
@@ -743,7 +753,10 @@ class ChatCubit extends Cubit<ChatState>
       final newIdx = idx < _tabStore.length ? idx : _tabStore.length - 1;
       final nextTab = _tabStore.tabs[newIdx];
       _emitSnapshot(
-        _dataStore.deriveSnapshot(workspaces: state.workspaces, sessions: sessions),
+        _dataStore.deriveSnapshot(
+          workspaces: state.workspaces,
+          sessions: sessions,
+        ),
         base: state.copyWith(
           tabs: tabs,
           activeTabIndex: newIdx,
@@ -753,7 +766,10 @@ class ChatCubit extends Cubit<ChatState>
       );
     } else if (_tabStore.isEmpty) {
       _emitSnapshot(
-        _dataStore.deriveSnapshot(workspaces: state.workspaces, sessions: sessions),
+        _dataStore.deriveSnapshot(
+          workspaces: state.workspaces,
+          sessions: sessions,
+        ),
         base: state.copyWith(
           tabs: [],
           activeTabIndex: 0,
@@ -762,7 +778,10 @@ class ChatCubit extends Cubit<ChatState>
       );
     } else {
       _emitSnapshot(
-        _dataStore.deriveSnapshot(workspaces: state.workspaces, sessions: sessions),
+        _dataStore.deriveSnapshot(
+          workspaces: state.workspaces,
+          sessions: sessions,
+        ),
         base: state.copyWith(tabs: tabs),
       );
     }
@@ -786,7 +805,10 @@ class ChatCubit extends Cubit<ChatState>
     return result.workspace;
   }
 
-  Future<void> deleteWorkspace(SessionRepository repo, String workspaceId) async {
+  Future<void> deleteWorkspace(
+    SessionRepository repo,
+    String workspaceId,
+  ) async {
     Workspace? workspace;
     for (final p in state.workspaces) {
       if (p.workspaceId == workspaceId) {
@@ -826,12 +848,14 @@ class ChatCubit extends Cubit<ChatState>
   Future<void> close() async {
     if (isClosed) return;
     _busCoordinator.disposeIdleWatch();
+    final busDisposals = <Future<void>>[];
     for (final tab in _tabStore.allTabs) {
       for (final session in tab.sessions) {
         session.dispose();
       }
-      await tab.disposeBus();
+      busDisposals.add(tab.disposeBus());
     }
+    await Future.wait(busDisposals);
     _tabStore.clear();
     await super.close();
   }
