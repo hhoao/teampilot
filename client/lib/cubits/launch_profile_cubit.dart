@@ -840,6 +840,39 @@ class LaunchProfileCubit extends Cubit<LaunchProfileState> implements LaunchProf
     return personals.isEmpty ? null : personals.first;
   }
 
+  /// Sets [presetId] as the active preset on every personal identity and team.
+  Future<void> applyDefaultPresetToAllIdentities(String presetId) async {
+    final trimmed = presetId.trim();
+    if (trimmed.isEmpty) return;
+
+    final personals = [
+      for (final personal in state.personals)
+        personal.activePresetId == trimmed
+            ? personal
+            : personal.copyWith(activePresetId: trimmed),
+    ];
+    if (personals.isNotEmpty) {
+      await savePersonals(personals);
+    }
+
+    var teamsChanged = false;
+    final teams = <TeamProfile>[];
+    for (final team in state.teams) {
+      if (team.activePresetId == trimmed) {
+        teams.add(team);
+        continue;
+      }
+      teamsChanged = true;
+      teams.add(
+        team.copyWith(activePresetId: trimmed, updateActivePresetId: true),
+      );
+    }
+    if (teamsChanged) {
+      emit(state.copyWith(teams: teams));
+      await saveTeamProfiles(teams);
+    }
+  }
+
   /// Sets the active preset for a specific personal identity (the one the
   /// workspace was opened against). Falls back to [activePersonal] when
   /// [profileId] is empty or not a personal identity.

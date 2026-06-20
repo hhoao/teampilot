@@ -8,7 +8,7 @@ import '../../l10n/l10n_extensions.dart';
 import '../../theme/workspace_surface_layers.dart';
 import 'steps/appearance_step.dart';
 import 'steps/cli_step.dart';
-import 'steps/default_provider_step.dart';
+import 'steps/default_preset_step.dart';
 import 'steps/provider_import_step.dart';
 import 'steps/ssh_step.dart';
 
@@ -17,7 +17,7 @@ enum OnboardingStepKind {
   ssh,
   cli,
   providerImport,
-  defaultProvider,
+  defaultPreset,
 }
 
 List<OnboardingStepKind> onboardingStepsForPlatform() {
@@ -27,14 +27,14 @@ List<OnboardingStepKind> onboardingStepsForPlatform() {
       OnboardingStepKind.ssh,
       OnboardingStepKind.cli,
       OnboardingStepKind.providerImport,
-      OnboardingStepKind.defaultProvider,
+      OnboardingStepKind.defaultPreset,
     ];
   }
   return const [
     OnboardingStepKind.appearance,
     OnboardingStepKind.cli,
     OnboardingStepKind.providerImport,
-    OnboardingStepKind.defaultProvider,
+    OnboardingStepKind.defaultPreset,
   ];
 }
 
@@ -253,8 +253,8 @@ class _OnboardingWizardState extends State<OnboardingWizard> {
       OnboardingStepKind.cli => const OnboardingCliStep(),
       OnboardingStepKind.providerImport =>
         const OnboardingProviderImportStep(),
-      OnboardingStepKind.defaultProvider =>
-        const OnboardingDefaultProviderStep(),
+      OnboardingStepKind.defaultPreset =>
+        const OnboardingDefaultPresetStep(),
     };
   }
 }

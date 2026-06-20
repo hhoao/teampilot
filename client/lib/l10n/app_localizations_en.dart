@@ -3530,7 +3530,7 @@ class AppLocalizationsEn extends AppLocalizations {
   String get onboardingStepProviderImport => 'Import providers';
 
   @override
-  String get onboardingStepDefaultProvider => 'Default provider';
+  String get onboardingStepDefaultPreset => 'Default preset';
 
   @override
   String get onboardingAppearanceTitle => 'Choose language and appearance';
@@ -3583,23 +3583,25 @@ class AppLocalizationsEn extends AppLocalizations {
   String get onboardingProviderImportRescan => 'Scan again';
 
   @override
-  String get onboardingDefaultProviderTitle => 'Choose default Claude provider';
+  String get onboardingDefaultPresetTitle => 'Configure default launch preset';
 
   @override
-  String get onboardingDefaultProviderSubtitle =>
-      'New sessions will use this provider and default model.';
+  String get onboardingDefaultPresetSubtitle =>
+      'Personal workspaces and team default launch configs will use this CLI preset.';
 
   @override
-  String get onboardingDefaultProviderEmpty =>
+  String get onboardingDefaultPresetEmpty =>
       'No providers to choose from. Skip this step or add providers in Settings.';
 
   @override
-  String get onboardingDefaultProviderPick =>
-      'Select the default Claude Code provider';
+  String get onboardingDefaultPresetSelectExisting => 'Use existing preset';
 
   @override
-  String get onboardingDefaultProviderModelHint =>
-      'Primary model id for this provider';
+  String get onboardingDefaultPresetDefaultName => 'Default';
+
+  @override
+  String get onboardingDefaultPresetModelHint =>
+      'Primary model for this preset';
 
   @override
   String get onboardingRerunSetup => 'Run setup wizard again';

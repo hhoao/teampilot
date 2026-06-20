@@ -3405,7 +3405,7 @@ class AppLocalizationsZh extends AppLocalizations {
   String get onboardingStepProviderImport => '导入 Provider';
 
   @override
-  String get onboardingStepDefaultProvider => '默认 Provider';
+  String get onboardingStepDefaultPreset => '默认预设';
 
   @override
   String get onboardingAppearanceTitle => '选择语言与外观';
@@ -3454,19 +3454,22 @@ class AppLocalizationsZh extends AppLocalizations {
   String get onboardingProviderImportRescan => '重新扫描';
 
   @override
-  String get onboardingDefaultProviderTitle => '选择默认 Claude Provider';
+  String get onboardingDefaultPresetTitle => '配置默认启动预设';
 
   @override
-  String get onboardingDefaultProviderSubtitle => '新建会话时将使用此 Provider 与默认模型。';
+  String get onboardingDefaultPresetSubtitle => '个人工作区与团队默认启动配置将共用此 CLI 预设。';
 
   @override
-  String get onboardingDefaultProviderEmpty => '暂无可选 Provider，可跳过或在设置中添加。';
+  String get onboardingDefaultPresetEmpty => '暂无可选 Provider，可跳过或在设置中添加。';
 
   @override
-  String get onboardingDefaultProviderPick => '选择 Claude Code 默认 Provider';
+  String get onboardingDefaultPresetSelectExisting => '使用已有预设';
 
   @override
-  String get onboardingDefaultProviderModelHint => '该 Provider 的主模型 ID';
+  String get onboardingDefaultPresetDefaultName => '默认';
+
+  @override
+  String get onboardingDefaultPresetModelHint => '该预设的主模型';
 
   @override
   String get onboardingRerunSetup => '重新运行设置向导';

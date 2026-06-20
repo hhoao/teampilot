@@ -6411,11 +6411,11 @@ abstract class AppLocalizations {
   /// **'Import providers'**
   String get onboardingStepProviderImport;
 
-  /// No description provided for @onboardingStepDefaultProvider.
+  /// No description provided for @onboardingStepDefaultPreset.
   ///
   /// In en, this message translates to:
-  /// **'Default provider'**
-  String get onboardingStepDefaultProvider;
+  /// **'Default preset'**
+  String get onboardingStepDefaultPreset;
 
   /// No description provided for @onboardingAppearanceTitle.
   ///
@@ -6507,35 +6507,41 @@ abstract class AppLocalizations {
   /// **'Scan again'**
   String get onboardingProviderImportRescan;
 
-  /// No description provided for @onboardingDefaultProviderTitle.
+  /// No description provided for @onboardingDefaultPresetTitle.
   ///
   /// In en, this message translates to:
-  /// **'Choose default Claude provider'**
-  String get onboardingDefaultProviderTitle;
+  /// **'Configure default launch preset'**
+  String get onboardingDefaultPresetTitle;
 
-  /// No description provided for @onboardingDefaultProviderSubtitle.
+  /// No description provided for @onboardingDefaultPresetSubtitle.
   ///
   /// In en, this message translates to:
-  /// **'New sessions will use this provider and default model.'**
-  String get onboardingDefaultProviderSubtitle;
+  /// **'Personal workspaces and team default launch configs will use this CLI preset.'**
+  String get onboardingDefaultPresetSubtitle;
 
-  /// No description provided for @onboardingDefaultProviderEmpty.
+  /// No description provided for @onboardingDefaultPresetEmpty.
   ///
   /// In en, this message translates to:
   /// **'No providers to choose from. Skip this step or add providers in Settings.'**
-  String get onboardingDefaultProviderEmpty;
+  String get onboardingDefaultPresetEmpty;
 
-  /// No description provided for @onboardingDefaultProviderPick.
+  /// No description provided for @onboardingDefaultPresetSelectExisting.
   ///
   /// In en, this message translates to:
-  /// **'Select the default Claude Code provider'**
-  String get onboardingDefaultProviderPick;
+  /// **'Use existing preset'**
+  String get onboardingDefaultPresetSelectExisting;
 
-  /// No description provided for @onboardingDefaultProviderModelHint.
+  /// No description provided for @onboardingDefaultPresetDefaultName.
   ///
   /// In en, this message translates to:
-  /// **'Primary model id for this provider'**
-  String get onboardingDefaultProviderModelHint;
+  /// **'Default'**
+  String get onboardingDefaultPresetDefaultName;
+
+  /// No description provided for @onboardingDefaultPresetModelHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Primary model for this preset'**
+  String get onboardingDefaultPresetModelHint;
 
   /// No description provided for @onboardingRerunSetup.
   ///

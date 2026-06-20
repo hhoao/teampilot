@@ -728,7 +728,7 @@ class _NativeTeamOptionsCard extends StatelessWidget {
                   const SizedBox.shrink(),
               trailing: providerEntries.isEmpty
                   ? Text(
-                      l10n.onboardingDefaultProviderEmpty,
+                      l10n.onboardingDefaultPresetEmpty,
                       style: Theme.of(context).textTheme.bodySmall?.copyWith(
                         color: Theme.of(context).colorScheme.onSurfaceVariant,
                       ),

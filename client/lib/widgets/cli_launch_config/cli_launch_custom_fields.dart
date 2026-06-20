@@ -117,7 +117,7 @@ class CliLaunchCustomFields extends StatelessWidget {
           SettingsLabeledRow(
             title: providerTitle ?? l10n.provider,
             trailing: Text(
-              l10n.onboardingDefaultProviderEmpty,
+              l10n.onboardingDefaultPresetEmpty,
               style: Theme.of(context).textTheme.bodySmall?.copyWith(
                 color: Theme.of(context).colorScheme.onSurfaceVariant,
               ),
