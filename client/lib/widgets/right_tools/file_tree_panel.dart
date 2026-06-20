@@ -23,11 +23,6 @@ import '../app_icon_button.dart';
 import '../file_tree_node.dart';
 import 'file_tree_header_overflow_menu.dart';
 
-const _fileTreeRowPadding = EdgeInsets.symmetric(
-  horizontal: kFileTreeRowHorizontalPadding,
-  vertical: kFileTreeRowVerticalPadding,
-);
-
 /// Workspace file tree panel.
 class FileTreePanel extends StatefulWidget {
   const FileTreePanel({required this.cwd, this.watcher, super.key});
@@ -247,7 +242,8 @@ class _FileTreePanelState extends State<FileTreePanel> {
                           suffixIcon: _filterController.text.isNotEmpty
                               ? AppIconButton(
                                   icon: Icons.clear,
-                                  compact: true, size: AppIconButton.kCompactSize,
+                                  compact: true,
+                                  size: AppIconButton.kCompactSize,
                                   onTap: () {
                                     _filterController.clear();
                                     _cubit.setFilter('');
@@ -301,34 +297,35 @@ class _FileTreePanelState extends State<FileTreePanel> {
     final actions = <Widget>[
       AppIconButton(
         icon: Icons.refresh,
-        compact: true, size: AppIconButton.kCompactSize,
+        compact: true,
+        size: AppIconButton.kCompactSize,
         tooltip: l10n.fileTreeRefresh,
         onTap: _cubit.refresh,
       ),
       AppIconButton(
         icon: Icons.my_location_outlined,
-        compact: true, size: AppIconButton.kCompactSize,
+        compact: true,
+        size: AppIconButton.kCompactSize,
         tooltip: l10n.fileTreeRevealActiveFile,
         onTap: () => unawaited(_revealActiveEditorFile()),
       ),
     ];
-    if (state.expandedPaths.isNotEmpty) {
-      actions.add(
-        AppIconButton(
-          icon: Icons.unfold_less,
-          compact: true,
-          size: AppIconButton.kCompactSize,
-          tooltip: l10n.treeCollapseAllFolders,
-          onTap: _cubit.collapseAllFolders,
-        ),
-      );
-    }
+    actions.add(
+      AppIconButton(
+        icon: Icons.unfold_less,
+        compact: true,
+        size: AppIconButton.kCompactSize,
+        tooltip: l10n.treeCollapseAllFolders,
+        onTap: _cubit.collapseAllFolders,
+      ),
+    );
     actions.addAll([
       AppIconButton(
         icon: state.showHiddenFiles
             ? Icons.visibility_off_outlined
             : Icons.visibility_outlined,
-        compact: true, size: AppIconButton.kCompactSize,
+        compact: true,
+        size: AppIconButton.kCompactSize,
         tooltip: state.showHiddenFiles
             ? 'Hide hidden files'
             : 'Show hidden files',
@@ -402,7 +399,10 @@ class _FileTreePanelState extends State<FileTreePanel> {
                       return SizedBox(
                         width: contentWidth,
                         child: Padding(
-                          padding: _fileTreeRowPadding,
+                          padding: const EdgeInsets.symmetric(
+                            vertical: kFileTreeRowVerticalPadding,
+                            horizontal: kFileTreeRowHorizontalPadding,
+                          ),
                           child: Align(
                             alignment: Alignment.centerLeft,
                             child: Padding(
@@ -410,7 +410,7 @@ class _FileTreePanelState extends State<FileTreePanel> {
                                 left:
                                     row.depth * kFileTreeIndentWidth +
                                     kFileTreeNodePaddingLeft +
-                                    18,
+                                    kFileTreeChevronSlotWidth,
                               ),
                               child: Text(
                                 '(empty)',
@@ -426,9 +426,8 @@ class _FileTreePanelState extends State<FileTreePanel> {
                     }
                     return SizedBox(
                       width: contentWidth,
-                      child: Padding(
-                        padding: _fileTreeRowPadding,
-                        child: FileTreeNode(
+                      child: FileTreeNode(
+                          key: ValueKey(row.path),
                           path: row.path,
                           entry: row.entry,
                           depth: row.depth,
@@ -436,7 +435,6 @@ class _FileTreePanelState extends State<FileTreePanel> {
                           textColor: textColor,
                           desktopShellActions: _desktopShellActions,
                         ),
-                      ),
                     );
                   },
                 ),
@@ -451,7 +449,6 @@ class _FileTreePanelState extends State<FileTreePanel> {
   bool get _desktopShellActions {
     if (kIsWeb) return false;
     final mode = AppStorage.context.mode;
-    return mode == StorageBackendMode.native ||
-        mode == StorageBackendMode.wsl;
+    return mode == StorageBackendMode.native || mode == StorageBackendMode.wsl;
   }
 }

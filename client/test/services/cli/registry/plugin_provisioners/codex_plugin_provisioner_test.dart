@@ -1,7 +1,6 @@
 import 'dart:convert';
 
 import 'package:flutter_test/flutter_test.dart';
-import 'package:path/path.dart' as p;
 import 'package:teampilot/models/plugin.dart';
 import 'package:teampilot/models/team_config.dart';
 import 'package:teampilot/services/cli/registry/capabilities/plugin_provisioner_capability.dart';
@@ -56,19 +55,27 @@ void main() {
         ),
       );
 
+      final pathCtx = fs.pathContext;
       final cacheRoot = CodexSessionConfigDir.localPluginCacheRoot(
         configDir,
         'demo',
         version: '1.0.0',
+        pathContext: pathCtx,
       );
       expect(
-        (await fs.stat(p.join(cacheRoot, '.codex-plugin', 'plugin.json'))).isFile,
+        (await fs.stat(
+          pathCtx.join(cacheRoot, '.codex-plugin', 'plugin.json'),
+        )).isFile,
         isTrue,
       );
       expect(
         (await fs.stat(
-          p.join(
-            CodexSessionConfigDir.localPluginSourceRoot(configDir, 'demo'),
+          pathCtx.join(
+            CodexSessionConfigDir.localPluginSourceRoot(
+              configDir,
+              'demo',
+              pathContext: pathCtx,
+            ),
             '.codex-plugin',
             'plugin.json',
           ),
@@ -77,7 +84,10 @@ void main() {
       );
 
       final marketplaceText = await fs.readString(
-        CodexSessionConfigDir.localMarketplaceManifestPath(configDir),
+        CodexSessionConfigDir.localMarketplaceManifestPath(
+          configDir,
+          pathContext: pathCtx,
+        ),
       );
       final marketplace = (jsonDecode(marketplaceText!) as Map).cast<String, Object?>();
       final entries = (marketplace['plugins'] as List).cast<Map>();
@@ -130,12 +140,16 @@ void main() {
         ),
       );
 
+      final pathCtx = fs.pathContext;
       final cacheRoot = CodexSessionConfigDir.localPluginCacheRoot(
         configDir,
         'context7',
+        pathContext: pathCtx,
       );
       expect(
-        (await fs.stat(p.join(cacheRoot, '.codex-plugin', 'plugin.json'))).isFile,
+        (await fs.stat(
+          pathCtx.join(cacheRoot, '.codex-plugin', 'plugin.json'),
+        )).isFile,
         isTrue,
       );
     });

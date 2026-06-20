@@ -112,55 +112,70 @@ class _FileTreeNodeState extends State<FileTreeNode> {
                   borderRadius: BorderRadius.circular(6),
                 )
               : null,
-          padding: EdgeInsets.only(
-            left: widget.depth * kFileTreeIndentWidth + kFileTreeNodePaddingLeft,
-            right: kFileTreeNodePaddingRight,
+          padding: EdgeInsets.fromLTRB(
+            widget.depth * kFileTreeIndentWidth +
+                kFileTreeNodePaddingLeft +
+                kFileTreeRowHorizontalPadding,
+            kFileTreeRowVerticalPadding,
+            kFileTreeNodePaddingRight + kFileTreeRowHorizontalPadding,
+            kFileTreeRowVerticalPadding,
           ),
           child: OverflowBox(
             maxWidth: double.infinity,
             alignment: Alignment.centerLeft,
-            child: Row(
-              crossAxisAlignment: CrossAxisAlignment.center,
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                if (isDir)
+            child: SizedBox(
+              height: kFileTreeNodeHeight,
+              child: Row(
+                crossAxisAlignment: CrossAxisAlignment.center,
+                mainAxisSize: MainAxisSize.min,
+                children: [
                   SizedBox(
-                    width: 18,
-                    height: 18,
-                    child: AnimatedRotation(
-                      turns: isExpanded ? 0.25 : 0.0,
-                      duration: const Duration(milliseconds: 150),
-                      child: Icon(
-                        Icons.chevron_right,
-                        size: context.appIconSizes.md,
-                        color: isActive
-                            ? iconMuted
-                            : widget.textColor.withValues(alpha: 0.55),
-                      ),
+                    width: kFileTreeChevronSlotWidth,
+                    child: Center(
+                      child: isDir
+                          ? AnimatedRotation(
+                              turns: isExpanded ? 0.25 : 0.0,
+                              duration: const Duration(milliseconds: 150),
+                              child: Icon(
+                                Icons.chevron_right,
+                                size: context.appIconSizes.md,
+                                color: isActive
+                                    ? iconMuted
+                                    : widget.textColor.withValues(alpha: 0.55),
+                              ),
+                            )
+                          : null,
                     ),
-                  )
-                else
-                  const SizedBox(width: 18),
-                if (isDir)
-                  Icon(
-                    isExpanded ? Icons.folder_open : Icons.folder_outlined,
-                    size: context.appIconSizes.md,
-                  )
-                else
-                  FileIconWidget(
-                    fileName: widget.entry.name,
-                    size: context.appIconSizes.md,
                   ),
-                const SizedBox(width: 6),
-                Text(
-                  widget.entry.name,
-                  maxLines: 1,
-                  style: AppTextStyles.of(context).body.copyWith(
-                    fontWeight: isActive ? FontWeight.w600 : FontWeight.w500,
-                    color: labelColor,
+                  const SizedBox(width: kFileTreeChevronIconGap),
+                  SizedBox(
+                    width: context.appIconSizes.md,
+                    height: context.appIconSizes.md,
+                    child: Center(
+                      child: isDir
+                          ? Icon(
+                              isExpanded
+                                  ? Icons.folder_open
+                                  : Icons.folder_outlined,
+                              size: context.appIconSizes.md,
+                            )
+                          : FileIconWidget(
+                              fileName: widget.entry.name,
+                              size: context.appIconSizes.md,
+                            ),
+                    ),
                   ),
-                ),
-              ],
+                  const SizedBox(width: kFileTreeIconLabelGap),
+                  Text(
+                    widget.entry.name,
+                    maxLines: 1,
+                    style: AppTextStyles.of(context).body.copyWith(
+                      fontWeight: isActive ? FontWeight.w600 : FontWeight.w500,
+                      color: labelColor,
+                    ),
+                  ),
+                ],
+              ),
             ),
           ),
         ),

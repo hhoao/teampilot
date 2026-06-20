@@ -3,6 +3,7 @@ import 'dart:io';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:teampilot/services/io/local_filesystem.dart';
 import 'package:teampilot/utils/trusted_project_paths.dart';
+import 'package:teampilot/utils/workspace_path_utils.dart';
 
 void main() {
   test('findCanonicalGitRoot returns repo root when cwd is nested', () async {
@@ -38,7 +39,7 @@ void main() {
       directories: [nested.path],
     );
 
-    expect(keys, contains(root.path));
-    expect(keys, contains(nested.path));
+    expect(workspacePathsContains(keys, root.path), isTrue);
+    expect(workspacePathsContains(keys, nested.path), isTrue);
   });
 }

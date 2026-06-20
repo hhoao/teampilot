@@ -87,9 +87,10 @@ class OpencodeProviderCredentialsService {
     String providerId, {
     required String homeDirectory,
     bool replace = false,
+    Map<String, String> platformEnv = const {},
   }) async {
     final src = _layout.authJsonPath(
-      _layout.globalDataHome(homeDirectory),
+      _layout.globalDataHome(homeDirectory, platformEnv: platformEnv),
     );
     return importFromFile(providerId, src, replace: replace);
   }

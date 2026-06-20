@@ -27,10 +27,13 @@ class WorkspaceFsWatcher {
     required Filesystem fs,
     required this.root,
     this.debounce = const Duration(milliseconds: 400),
-  }) : _watcher = fs is FsWatcher ? fs as FsWatcher : null,
+  }) : _watcher = debugDisable || fs is! FsWatcher ? null : fs as FsWatcher,
        _pathContext = fs.pathContext {
-    if (root.isNotEmpty) _start();
+    if (!debugDisable && root.isNotEmpty) _start();
   }
+
+  /// When true, skips native watch setup (widget tests use a process-free fs).
+  static bool debugDisable = false;
 
   final String root;
   final Duration debounce;

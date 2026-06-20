@@ -29,13 +29,22 @@ abstract final class CodexSessionConfigDir {
   static const localMarketplaceName = 'local';
 
   /// Personal marketplace manifest: `.agents/plugins/marketplace.json`.
-  static String localMarketplaceManifestPath(String configDir) {
-    return p.join(configDir, '.agents', 'plugins', 'marketplace.json');
+  static String localMarketplaceManifestPath(
+    String configDir, {
+    p.Context? pathContext,
+  }) {
+    final ctx = pathContext ?? p.context;
+    return ctx.join(configDir, '.agents', 'plugins', 'marketplace.json');
   }
 
   /// Source tree Codex reads from the local marketplace entry (`./plugins/<name>/`).
-  static String localPluginSourceRoot(String configDir, String pluginName) {
-    return p.join(configDir, 'plugins', pluginName);
+  static String localPluginSourceRoot(
+    String configDir,
+    String pluginName, {
+    p.Context? pathContext,
+  }) {
+    final ctx = pathContext ?? p.context;
+    return ctx.join(configDir, 'plugins', pluginName);
   }
 
   /// Installed copy Codex loads at runtime:
@@ -44,8 +53,10 @@ abstract final class CodexSessionConfigDir {
     String configDir,
     String pluginName, {
     String version = 'local',
+    p.Context? pathContext,
   }) {
-    return p.join(
+    final ctx = pathContext ?? p.context;
+    return ctx.join(
       configDir,
       'plugins',
       'cache',

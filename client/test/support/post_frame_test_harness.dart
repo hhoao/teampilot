@@ -4,6 +4,7 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:teampilot/cubits/chat_cubit.dart';
 import 'package:teampilot/services/git/git_service.dart';
+import 'package:teampilot/services/io/workspace_fs_watcher.dart';
 import 'package:teampilot/services/storage/app_storage.dart';
 import 'package:teampilot/services/io/local_filesystem.dart';
 import 'package:teampilot/services/storage/runtime_storage_context.dart';
@@ -30,10 +31,12 @@ void setUpTestAppStorage() {
     runner: (executable, arguments, {stdoutEncoding, stderrEncoding}) async =>
         ProcessResult(0, 1, '', ''),
   );
+  WorkspaceFsWatcher.debugDisable = true;
 }
 
 void tearDownTestAppStorage() {
   GitService.debugOverrideFactory = null;
+  WorkspaceFsWatcher.debugDisable = false;
   RuntimeStorageContext.resetForTesting();
   AppPathsBootstrapper.resetForTesting();
   DefaultWorkspaceDirectory.resetForTesting();

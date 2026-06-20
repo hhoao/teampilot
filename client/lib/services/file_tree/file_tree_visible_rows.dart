@@ -41,9 +41,21 @@ const double kFileTreeRowHorizontalPadding = 2;
 const double kFileTreeNodePaddingLeft = 4;
 const double kFileTreeNodePaddingRight = 8;
 
-/// Fixed leading chrome before the file label (chevron slot + icon + gap).
+/// Width reserved for expand/collapse chevron (files keep the slot for alignment).
+const double kFileTreeChevronSlotWidth = 18;
+
+/// Gap between chevron and folder/file icon.
+const double kFileTreeChevronIconGap = 4;
+
+/// Gap between icon and label.
+const double kFileTreeIconLabelGap = 6;
+
+/// Fixed leading chrome before the file label (chevron slot + gaps + icon).
 const double kFileTreeLeadingChromeWidth =
-    18 + 22 + 6; // chevron slot + context.appIconSizes.md + gap
+    kFileTreeChevronSlotWidth +
+    kFileTreeChevronIconGap +
+    18 + // [AppIconSizes.mdBase]
+    kFileTreeIconLabelGap;
 
 /// Extra width so measured labels do not clip due to font metrics drift.
 const double kFileTreeContentWidthSlack = 12;

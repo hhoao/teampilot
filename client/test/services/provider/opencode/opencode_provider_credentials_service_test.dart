@@ -62,9 +62,14 @@ void main() {
   test('importFromGlobal reports missing source file', () async {
     final home = await Directory.systemTemp.createTemp('opencode-home-empty-');
     try {
+      final isolatedDataHome = p.join(home.path, '.local', 'share');
       final result = await service.importFromGlobal(
         'openai',
         homeDirectory: home.path,
+        platformEnv: {
+          'XDG_DATA_HOME': isolatedDataHome,
+          'APPDATA': p.join(home.path, 'AppData', 'Roaming'),
+        },
       );
       expect(result.ok, isFalse);
       expect(

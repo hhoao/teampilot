@@ -99,11 +99,13 @@ final class CodexPluginProvisioner implements PluginProvisionerCapability {
       final sourceRoot = CodexSessionConfigDir.localPluginSourceRoot(
         ctx.configDir,
         pluginName,
+        pathContext: fsCtx,
       );
       final cacheRoot = CodexSessionConfigDir.localPluginCacheRoot(
         ctx.configDir,
         pluginName,
         version: cacheVersion,
+        pathContext: fsCtx,
       );
 
       for (final dir in [sourceRoot, cacheRoot]) {
@@ -139,6 +141,7 @@ final class CodexPluginProvisioner implements PluginProvisionerCapability {
         .toList(growable: false);
     final manifestPath = CodexSessionConfigDir.localMarketplaceManifestPath(
       configDir,
+      pathContext: fs.pathContext,
     );
     await fs.ensureDir(fs.pathContext.dirname(manifestPath));
     await fs.atomicWrite(
