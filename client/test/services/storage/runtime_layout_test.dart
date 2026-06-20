@@ -117,27 +117,6 @@ void main() {
       );
     });
 
-    test('workspaceConfigPluginsDir uses flashskyai tool root', () {
-      expect(
-        layout.workspaceConfigPluginsDir('proj'),
-        '/tp/workspace/workspaces/proj/config/flashskyai/plugins',
-      );
-    });
-
-    test('workspaceConfigMcpDir is under workspace config', () {
-      expect(
-        layout.workspaceConfigMcpDir('proj'),
-        '/tp/workspace/workspaces/proj/config/mcp',
-      );
-    });
-
-    test('workspaceConfigMcpServersFile is mcp/servers.json', () {
-      expect(
-        layout.workspaceConfigMcpServersFile('proj'),
-        '/tp/workspace/workspaces/proj/config/mcp/servers.json',
-      );
-    });
-
     test('sessionRuntimeToolDir nests session and tool', () {
       expect(
         layout.sessionRuntimeToolDir('proj', 'sess', 'claude'),

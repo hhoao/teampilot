@@ -66,15 +66,6 @@ class RuntimeLayout {
   String workspaceConfigToolDir(String workspaceId, String tool) =>
       workspace.workspaceConfigToolDir(workspaceId, tool);
 
-  String workspaceConfigPluginsDir(String workspaceId) =>
-      workspace.workspaceConfigPluginsDir(workspaceId);
-
-  String workspaceConfigMcpDir(String workspaceId) =>
-      workspace.workspaceConfigMcpDir(workspaceId);
-
-  String workspaceConfigMcpServersFile(String workspaceId) =>
-      workspace.workspaceConfigMcpServersFile(workspaceId);
-
   String sessionRuntimeToolDir(
     String workspaceId,
     String sessionId,
@@ -307,37 +298,6 @@ class RuntimeLayout {
     return CliPluginLayout.copyBundlesToMember(
       fs: _fs,
       teamPluginsDir: identityPluginsDir(trimmedIdentity),
-      memberPluginsDir: sessionRuntimePluginsDir(
-        trimmedWorkspace,
-        trimmedSession,
-        trimmedTool,
-        memberId: memberId,
-      ),
-      paths: paths,
-    );
-  }
-
-  Future<String?> provisionSessionPluginsFromWorkspace(
-    String workspaceId,
-    String sessionId,
-    String tool, {
-    String? memberId,
-  }) async {
-    final trimmedWorkspace = workspaceId.trim();
-    final trimmedSession = sessionId.trim();
-    final trimmedTool = tool.trim();
-    if (trimmedWorkspace.isEmpty ||
-        trimmedSession.isEmpty ||
-        trimmedTool.isEmpty) {
-      return null;
-    }
-    final paths = pluginManifestPathsForTool(
-      CliTool.tryParse(trimmedTool) ?? CliTool.claude,
-    );
-    if (paths == null) return null;
-    return CliPluginLayout.copyBundlesToMember(
-      fs: _fs,
-      teamPluginsDir: workspaceConfigPluginsDir(trimmedWorkspace),
       memberPluginsDir: sessionRuntimePluginsDir(
         trimmedWorkspace,
         trimmedSession,

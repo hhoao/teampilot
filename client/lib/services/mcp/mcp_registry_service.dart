@@ -73,13 +73,22 @@ class McpRegistryService {
   Future<void> writeForStandaloneWorkspace({
     required String workspaceId,
     required String sessionId,
+    required String profileId,
     Map<String, Map<String, Object?>>? extraServers,
   }) async {
     final trimmedWorkspaceId = workspaceId.trim();
     final trimmedSessionId = sessionId.trim();
-    if (trimmedWorkspaceId.isEmpty || trimmedSessionId.isEmpty) return;
+    final trimmedProfileId = profileId.trim();
+    if (trimmedWorkspaceId.isEmpty ||
+        trimmedSessionId.isEmpty ||
+        trimmedProfileId.isEmpty) {
+      return;
+    }
 
-    final snapshotPath = layout.workspaceConfigMcpServersFile(trimmedWorkspaceId);
+    // Personal-profile MCP servers are snapshotted into the profile's identity
+    // file (ProfileMcpLinkerService → identityMcpServersFile), matching the
+    // team flow's identity-scoped snapshot.
+    final snapshotPath = layout.identityMcpServersFile(trimmedProfileId);
     final specs = await _resolveSpecs(
       snapshotPath: snapshotPath,
       extraServers: extraServers,

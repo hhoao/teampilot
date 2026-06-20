@@ -288,6 +288,7 @@ class ConfigProfileService implements ConfigProfileDelegate {
       workspaceId: trimmedWorkspaceId,
       sessionId: trimmedSessionId,
     );
+    final profileId = personal?.id.trim() ?? '';
     await _withStandaloneScope(standaloneScope, () async {
       await ensureStandalonePersonalProfile(trimmedWorkspaceId, cli: cli);
       String? sessionProvisionJson;
@@ -297,10 +298,14 @@ class ConfigProfileService implements ConfigProfileDelegate {
           trimmedSessionId,
           cli.value,
         ),
+        // Personal-profile plugins are linked into the profile's identity pool
+        // (ProfilePluginLinkerService → identityPluginsDir), so provision the
+        // session from there — same identity-scoped path the team flow uses.
         layout
-            .provisionSessionPluginsFromWorkspace(
+            .provisionSessionPluginsFromIdentity(
               trimmedWorkspaceId,
               trimmedSessionId,
+              profileId,
               cli.value,
             )
             .then((json) => sessionProvisionJson = json),
@@ -350,6 +355,7 @@ class ConfigProfileService implements ConfigProfileDelegate {
       ).writeForStandaloneWorkspace(
         workspaceId: trimmedWorkspaceId,
         sessionId: trimmedSessionId,
+        profileId: profileId,
         extraServers: extraMcpServers,
       );
     });

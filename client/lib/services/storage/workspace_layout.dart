@@ -54,17 +54,6 @@ class WorkspaceLayout {
   String workspaceConfigToolDir(String workspaceId, String tool) =>
       _ctx.join(workspaceConfigDir(workspaceId), tool.trim());
 
-  String workspaceConfigPluginsDir(String workspaceId) => _ctx.join(
-    workspaceConfigToolDir(workspaceId, 'flashskyai'),
-    'plugins',
-  );
-
-  String workspaceConfigMcpDir(String workspaceId) =>
-      _ctx.join(workspaceConfigDir(workspaceId), 'mcp');
-
-  String workspaceConfigMcpServersFile(String workspaceId) =>
-      _ctx.join(workspaceConfigMcpDir(workspaceId), 'servers.json');
-
   String sessionsDir(String workspaceId) =>
       _ctx.join(workspaceDir(workspaceId), 'sessions');
 
