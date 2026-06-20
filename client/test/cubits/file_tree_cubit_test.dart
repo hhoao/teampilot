@@ -99,4 +99,45 @@ void main() {
     await Future<void>.delayed(const Duration(milliseconds: 20));
     await cubit.close();
   });
+
+  test('refreshPaths reloads only relevant directories without flashing',
+      () async {
+    final root = p.normalize('/proj');
+    final src = p.join(root, 'src');
+    final fs = _FakeFilesystem({
+      root: [const FsDirEntry(name: 'src', isDirectory: true)],
+      src: [const FsDirEntry(name: 'main.dart', isDirectory: false)],
+    });
+    final cubit = FileTreeCubit(fs: fs);
+
+    await cubit.setRoot(root);
+    cubit.toggleExpand(src);
+    await Future<void>.delayed(const Duration(milliseconds: 10));
+    expect(cubit.entriesFor(src).map((e) => e.name), ['main.dart']);
+
+    // A new file lands in src on disk.
+    fs._dirs[src] = const [
+      FsDirEntry(name: 'main.dart', isDirectory: false),
+      FsDirEntry(name: 'extra.dart', isDirectory: false),
+    ];
+
+    final states = <FileTreeState>[];
+    final sub = cubit.stream.listen(states.add);
+
+    // Targeting an unloaded/irrelevant dir is a no-op (no emit, no reload).
+    await cubit.refreshPaths({p.join(root, 'unrelated')});
+    await Future<void>.delayed(const Duration(milliseconds: 5));
+    expect(states, isEmpty);
+
+    // Targeting the loaded dir reloads it in a single emit, and the cache entry
+    // is never cleared to empty in between (no flash).
+    await cubit.refreshPaths({src});
+    await Future<void>.delayed(const Duration(milliseconds: 5));
+    expect(states.length, 1);
+    expect(states.every((s) => s.dirCache[src]?.isNotEmpty ?? false), isTrue);
+    expect(cubit.entriesFor(src).map((e) => e.name), ['extra.dart', 'main.dart']);
+
+    await sub.cancel();
+    await cubit.close();
+  });
 }

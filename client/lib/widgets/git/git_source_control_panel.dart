@@ -18,6 +18,7 @@ import '../../services/cli/registry/cli_tool_registry_scope.dart';
 import '../../l10n/l10n_extensions.dart';
 import '../../models/git_status.dart';
 import '../../services/git/git_changes_visible_rows.dart';
+import '../../services/io/workspace_fs_watcher.dart';
 import '../../theme/app_text_styles.dart';
 import '../app_dialog.dart';
 import '../app_icon_button.dart';
@@ -36,14 +37,22 @@ const _gitChangesRowPadding = EdgeInsets.symmetric(
 /// Self-contained like `_FileTreePanel`: builds its own [GitCubit] and tracks
 /// the active session cwd via [cwd]. Desktop-local git only.
 class GitSourceControlPanel extends StatefulWidget {
-  const GitSourceControlPanel({required this.cwd, this.isActive = false, super.key});
+  const GitSourceControlPanel({
+    required this.cwd,
+    this.isActive = false,
+    this.watcher,
+    super.key,
+  });
 
   final String cwd;
 
-  /// When true, the panel automatically refreshes git status on a periodic
-  /// timer. The caller should set this to true when this tool tab is the
-  /// currently selected tab in the right-tools panel.
+  /// When true, the panel auto-refreshes git status. The caller sets this when
+  /// this tool tab is the currently selected tab in the right-tools panel.
   final bool isActive;
+
+  /// Shared workspace watcher. When present and supported, status refreshes
+  /// live on disk changes; otherwise the panel falls back to periodic polling.
+  final WorkspaceFsWatcher? watcher;
 
   @override
   State<GitSourceControlPanel> createState() => _GitSourceControlPanelState();
@@ -57,11 +66,17 @@ class _GitSourceControlPanelState extends State<GitSourceControlPanel> {
 
   static const _refreshInterval = Duration(seconds: 15);
   Timer? _refreshTimer;
+  StreamSubscription<void>? _watchSub;
+
+  /// True when live disk watching can drive refresh, so the polling timer is
+  /// unnecessary. Falls back to polling on backends without watch support.
+  bool get _watchDriven => widget.watcher?.isSupported ?? false;
 
   @override
   void initState() {
     super.initState();
     unawaited(_cubit.setRepoRoot(widget.cwd));
+    _subscribeWatcher();
     if (widget.isActive) {
       _startAutoRefresh();
     }
@@ -73,6 +88,9 @@ class _GitSourceControlPanelState extends State<GitSourceControlPanel> {
     if (widget.cwd != oldWidget.cwd) {
       unawaited(_cubit.setRepoRoot(widget.cwd));
     }
+    if (!identical(widget.watcher, oldWidget.watcher)) {
+      _subscribeWatcher();
+    }
     if (widget.isActive && !oldWidget.isActive) {
       _cubit.refresh();
       _startAutoRefresh();
@@ -81,7 +99,19 @@ class _GitSourceControlPanelState extends State<GitSourceControlPanel> {
     }
   }
 
+  void _subscribeWatcher() {
+    _watchSub?.cancel();
+    _watchSub = widget.watcher?.onChanged.listen((_) {
+      // Only refresh while this tab is visible; switching to it refreshes via
+      // didUpdateWidget, so background git calls aren't needed.
+      if (widget.isActive) _cubit.refresh();
+    });
+    // A live watch makes the polling timer redundant.
+    if (_watchDriven) _cancelAutoRefresh();
+  }
+
   void _startAutoRefresh() {
+    if (_watchDriven) return;
     _cancelAutoRefresh();
     _refreshTimer = Timer.periodic(_refreshInterval, (_) {
       _cubit.refresh();
@@ -95,6 +125,7 @@ class _GitSourceControlPanelState extends State<GitSourceControlPanel> {
 
   @override
   void dispose() {
+    _watchSub?.cancel();
     _cancelAutoRefresh();
     _commitController.dispose();
     _changesScrollController.dispose();

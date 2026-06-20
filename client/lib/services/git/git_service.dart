@@ -38,9 +38,18 @@ class GitService {
   /// UTF-8, tolerating malformed bytes so a non-UTF-8 file's diff never throws.
   static const Encoding _textEncoding = Utf8Codec(allowMalformed: true);
 
-  /// Prepended to every invocation so non-ASCII paths arrive as literal UTF-8
-  /// instead of git's default octal-escaped `"\344\270\255…"` quoting.
-  static const List<String> _quotePathOff = ['-c', 'core.quotePath=false'];
+  /// Prepended to every invocation:
+  /// - `--no-optional-locks`: never take optional locks, so read commands like
+  ///   `status` don't opportunistically rewrite `.git/index`. Without this, a
+  ///   filesystem watcher observing `.git` sees status's own index write and
+  ///   re-triggers a refresh, which writes again — a self-feeding loop.
+  /// - `core.quotePath=false`: non-ASCII paths arrive as literal UTF-8 instead
+  ///   of git's default octal-escaped `"\344\270\255…"` quoting.
+  static const List<String> _globalFlags = [
+    '--no-optional-locks',
+    '-c',
+    'core.quotePath=false',
+  ];
 
   String? _gitExecutable;
 
@@ -59,7 +68,7 @@ class GitService {
     }
     final result = await _runner(
       git,
-      [..._quotePathOff, '-C', dir, ...args],
+      [..._globalFlags, '-C', dir, ...args],
       stdoutEncoding: _textEncoding,
       stderrEncoding: _textEncoding,
     );

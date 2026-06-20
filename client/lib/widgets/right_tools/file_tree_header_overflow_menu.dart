@@ -5,7 +5,7 @@ import '../../l10n/app_localizations.dart';
 import '../app_icon_button.dart';
 import '../menu/sidebar_action_menu.dart';
 
-enum FileTreeHeaderAction { reveal, collapseAll, toggleHidden, copy }
+enum FileTreeHeaderAction { refresh, reveal, collapseAll, toggleHidden, copy }
 
 /// Compact header overflow menu when the file-tree panel is too narrow for
 /// inline action buttons.
@@ -15,6 +15,7 @@ class FileTreeHeaderOverflowMenu extends StatelessWidget {
     required this.showHiddenFiles,
     required this.hasExpandedFolders,
     required this.canCopy,
+    required this.onRefresh,
     required this.onReveal,
     required this.onCollapseAll,
     required this.onToggleHidden,
@@ -26,6 +27,7 @@ class FileTreeHeaderOverflowMenu extends StatelessWidget {
   final bool showHiddenFiles;
   final bool hasExpandedFolders;
   final bool canCopy;
+  final VoidCallback onRefresh;
   final VoidCallback onReveal;
   final VoidCallback onCollapseAll;
   final VoidCallback onToggleHidden;
@@ -38,6 +40,11 @@ class FileTreeHeaderOverflowMenu extends StatelessWidget {
       icon: Icon(Icons.more_vert, size: context.appIconSizes.sm),
       size: AppIconButton.kCompactSize,
       specs: [
+        SidebarActionMenuSpec.item(
+          value: FileTreeHeaderAction.refresh,
+          icon: Icons.refresh,
+          label: l10n.fileTreeRefresh,
+        ),
         SidebarActionMenuSpec.item(
           value: FileTreeHeaderAction.reveal,
           icon: Icons.my_location_outlined,
@@ -65,6 +72,8 @@ class FileTreeHeaderOverflowMenu extends StatelessWidget {
       ],
       onSelected: (action) {
         switch (action as FileTreeHeaderAction) {
+          case FileTreeHeaderAction.refresh:
+            onRefresh();
           case FileTreeHeaderAction.reveal:
             onReveal();
           case FileTreeHeaderAction.collapseAll:

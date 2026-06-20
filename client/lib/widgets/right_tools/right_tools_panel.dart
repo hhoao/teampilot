@@ -15,6 +15,8 @@ import '../../models/team_config.dart';
 import '../../pages/home_workspace/workspace/member_detail_dialog.dart';
 import '../../services/cli/member_config/member_config_inspector.dart';
 import '../../services/io/system_folder_opener.dart';
+import '../../services/io/workspace_fs_watcher.dart';
+import '../../services/storage/app_storage.dart';
 import '../../utils/app_keys.dart';
 import '../../utils/debounce/debounce.dart';
 import '../../utils/team_member_naming.dart';
@@ -62,6 +64,37 @@ class _RightToolsPanelState extends State<RightToolsPanel> {
   ChatCubit? _chatCubit;
   MemberPresenceCubit? _presenceCubit;
 
+  /// Single recursive watch on the workspace cwd, shared by the file-tree and
+  /// source-control panels so they refresh live on disk changes (e.g. files an
+  /// agent writes in the terminal) instead of going stale.
+  WorkspaceFsWatcher? _fsWatcher;
+
+  /// Last-seen set of in-turn sessions; a session leaving it (turn end) is the
+  /// activity signal we use to refresh on backends without a native FS watch
+  /// (SSH/Android), where disk events never arrive.
+  Set<String> _prevWorkingSessionIds = const {};
+
+  @override
+  void initState() {
+    super.initState();
+    _rebuildWatcher();
+  }
+
+  void _rebuildWatcher() {
+    _fsWatcher?.dispose();
+    _fsWatcher = widget.cwd.isEmpty
+        ? null
+        : WorkspaceFsWatcher(fs: AppStorage.fs, root: widget.cwd);
+  }
+
+  @override
+  void didUpdateWidget(covariant RightToolsPanel oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (widget.cwd != oldWidget.cwd) {
+      _rebuildWatcher();
+    }
+  }
+
   @override
   void didChangeDependencies() {
     super.didChangeDependencies();
@@ -75,8 +108,18 @@ class _RightToolsPanelState extends State<RightToolsPanel> {
     }
   }
 
+  /// Pokes the watcher when any session leaves the working set (a turn ended,
+  /// so the agent has likely just written files). Cheap no-op on watch-capable
+  /// backends; the real change path for SSH/Android where no disk events fire.
+  void _pokeOnTurnEnd(Set<String> working) {
+    final ended = _prevWorkingSessionIds.difference(working).isNotEmpty;
+    _prevWorkingSessionIds = working;
+    if (ended) _fsWatcher?.poke();
+  }
+
   @override
   void dispose() {
+    _fsWatcher?.dispose();
     _presenceCubit?.detachPresenceUi(this);
     super.dispose();
   }
@@ -85,6 +128,7 @@ class _RightToolsPanelState extends State<RightToolsPanel> {
   Widget build(BuildContext context) {
     final teamCubit = context.watch<LaunchProfileCubit>();
     final chatCubit = context.watch<ChatCubit>();
+    _pokeOnTurnEnd(chatCubit.state.workingSessionIds);
     final team = teamCubit.state.selectedTeam;
     final teamId = team?.id;
     if (!widget.isPersonalWorkspace && teamId != _syncedPresenceTeamId) {
@@ -222,7 +266,7 @@ class _RightToolsPanelState extends State<RightToolsPanel> {
         ToolView(
           icon: Icons.folder_outlined,
           label: context.l10n.fileTree,
-          child: FileTreePanel(cwd: widget.cwd),
+          child: FileTreePanel(cwd: widget.cwd, watcher: _fsWatcher),
         ),
       );
     }
@@ -232,7 +276,11 @@ class _RightToolsPanelState extends State<RightToolsPanel> {
         ToolView(
           icon: Icons.account_tree_outlined,
           label: context.l10n.sourceControl,
-          child: GitSourceControlPanel(cwd: widget.cwd, isActive: isGitActive),
+          child: GitSourceControlPanel(
+            cwd: widget.cwd,
+            isActive: isGitActive,
+            watcher: _fsWatcher,
+          ),
         ),
       );
     }

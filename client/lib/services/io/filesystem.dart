@@ -23,6 +23,27 @@ class FsDirEntry {
   final bool isDirectory;
 }
 
+enum FsChangeType { created, modified, deleted, unknown }
+
+class FsChangeEvent {
+  const FsChangeEvent({required this.path, required this.type});
+
+  final String path;
+  final FsChangeType type;
+}
+
+/// Optional [Filesystem] capability: backends that can push change
+/// notifications for a directory subtree implement this.
+///
+/// Backends without a native watch primitive (e.g. SFTP) deliberately do NOT
+/// implement it, so callers must feature-detect (`fs is FsWatcher`) and fall
+/// back to manual / activity-driven refresh. Treat emitted events as coarse
+/// hints — re-read the affected state rather than trusting the payload exactly.
+abstract interface class FsWatcher {
+  /// Emits change events for anything under [path], recursively.
+  Stream<FsChangeEvent> watchTree(String path);
+}
+
 abstract interface class Filesystem {
   p.Context get pathContext;
 

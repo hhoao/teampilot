@@ -184,11 +184,16 @@ void main() {
 
       await service.status('/repo');
 
-      // Non-ASCII paths must arrive literally, not octal-escaped.
+      // Global flags arrive before `-C`: no optional locks (so status never
+      // rewrites the index), and non-ASCII paths literal rather than octal.
       expect(runner.lastArgs, isNotNull);
       final argv = runner.lastArgs!;
       final cIdx = argv.indexOf('-C');
-      expect(argv.sublist(0, cIdx), ['-c', 'core.quotePath=false']);
+      expect(argv.sublist(0, cIdx), [
+        '--no-optional-locks',
+        '-c',
+        'core.quotePath=false',
+      ]);
 
       // Output decoded as UTF-8 (git emits UTF-8, not the host ANSI codepage)…
       final enc = runner.lastStdoutEncoding;

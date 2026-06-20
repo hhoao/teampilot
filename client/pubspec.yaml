@@ -58,6 +58,7 @@ dependencies:
   meta: ^1.16.0
   flutter_svg: ^2.3.0
   intl: any
+  watcher: ^1.2.0
 dependency_overrides:
   flutter_pty:
     path: packages/flutter_pty

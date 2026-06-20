@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:path/path.dart' as p;
 
@@ -100,30 +102,53 @@ class FileTreeCubit extends Cubit<FileTreeState> {
   }
 
   void toggleShowHidden() {
-    final show = !state.showHiddenFiles;
-    final cache = Map<String, List<FsDirEntry>>.from(state.dirCache);
-    for (final key in cache.keys.toList()) {
-      cache.remove(key);
-    }
-    emit(state.copyWith(showHiddenFiles: show, dirCache: cache));
-    if (state.rootPath.isNotEmpty) {
-      _loadDirectory(state.rootPath);
-    }
-    for (final p in state.expandedPaths) {
-      _loadDirectory(p);
-    }
+    // Flip the flag, then re-read visible directories in place. The new filter
+    // is applied by [_fetchDirectoryEntries]; no need to flash the cache empty.
+    emit(state.copyWith(showHiddenFiles: !state.showHiddenFiles));
+    unawaited(refresh());
   }
 
-  void refresh() {
+  /// Re-reads every currently-visible directory (root + expanded) in place and
+  /// emits once. Used by the manual refresh action and full-scope change hints.
+  Future<void> refresh() {
+    return _reloadDirectories({
+      if (state.rootPath.isNotEmpty) state.rootPath,
+      ...state.expandedPaths,
+    });
+  }
+
+  /// Re-reads only the [changedDirs] that are actually visible (root or already
+  /// loaded), skipping unloaded/collapsed folders. This is the targeted path
+  /// for filesystem change hints — a single file write reloads just its folder
+  /// instead of the whole tree.
+  Future<void> refreshPaths(Set<String> changedDirs) {
+    final relevant = changedDirs
+        .where((d) => d == state.rootPath || state.dirCache.containsKey(d))
+        .toSet();
+    if (relevant.isEmpty) return Future<void>.value();
+    return _reloadDirectories(relevant);
+  }
+
+  /// Reloads [paths] concurrently and applies all results in a single [emit] —
+  /// no intermediate empty state (no flicker), one rebuild. A directory that no
+  /// longer exists is dropped from the cache.
+  Future<void> _reloadDirectories(Set<String> paths) async {
+    if (paths.isEmpty) return;
+    final loaded = await Future.wait(
+      paths.map(
+        (path) async => MapEntry(path, await _fetchDirectoryEntries(path)),
+      ),
+    );
+    if (isClosed) return;
     final cache = Map<String, List<FsDirEntry>>.from(state.dirCache);
-    cache.clear();
+    for (final entry in loaded) {
+      if (entry.value != null) {
+        cache[entry.key] = entry.value!;
+      } else {
+        cache.remove(entry.key);
+      }
+    }
     emit(state.copyWith(dirCache: cache));
-    if (state.rootPath.isNotEmpty) {
-      _loadDirectory(state.rootPath);
-    }
-    for (final p in state.expandedPaths) {
-      _loadDirectory(p);
-    }
   }
 
   void clearRevealPath() {
@@ -217,7 +242,7 @@ class FileTreeCubit extends Cubit<FileTreeState> {
   /// Deletes a file or directory at [path] and refreshes the tree.
   Future<void> deletePath(String path) async {
     await fs.removeRecursive(path);
-    refresh();
+    await refresh();
   }
 
   void copyItem(String path) {
@@ -279,9 +304,8 @@ class FileTreeCubit extends Cubit<FileTreeState> {
     }
 
     final expanded = Set<String>.from(state.expandedPaths)..add(dest);
-    refresh();
     emit(state.copyWith(expandedPaths: expanded));
-    await _loadDirectory(dest);
+    await refresh();
   }
 
   Future<void> renameItem(String path, String newName) async {
@@ -299,7 +323,7 @@ class FileTreeCubit extends Cubit<FileTreeState> {
     }
 
     await fs.rename(path, target);
-    refresh();
+    await refresh();
   }
 
   Future<void> createFile(String parentDir, String name) async {
@@ -315,9 +339,8 @@ class FileTreeCubit extends Cubit<FileTreeState> {
 
     await fs.writeString(target, '');
     final expanded = Set<String>.from(state.expandedPaths)..add(parentDir);
-    refresh();
     emit(state.copyWith(expandedPaths: expanded));
-    await _loadDirectory(parentDir);
+    await refresh();
   }
 
   Future<void> createFolder(String parentDir, String name) async {
@@ -333,9 +356,8 @@ class FileTreeCubit extends Cubit<FileTreeState> {
 
     await fs.ensureDir(target);
     final expanded = Set<String>.from(state.expandedPaths)..add(parentDir);
-    refresh();
     emit(state.copyWith(expandedPaths: expanded));
-    await _loadDirectory(parentDir);
+    await refresh();
   }
 
   static void _validateName(String name) {

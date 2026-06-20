@@ -1393,6 +1393,9 @@ class AppLocalizationsZh extends AppLocalizations {
   String get fileTreeRevealActiveFile => '定位当前文件';
 
   @override
+  String get fileTreeRefresh => '刷新';
+
+  @override
   String get fileTreeRevealFailed => '无法在文件树中定位该文件';
 
   @override

@@ -1,10 +1,11 @@
 import 'dart:io';
 import 'package:path/path.dart' as p;
+import 'package:watcher/watcher.dart';
 
 import '../../utils/lock_pool.dart';
 import 'filesystem.dart';
 
-class LocalFilesystem implements Filesystem {
+class LocalFilesystem implements Filesystem, FsWatcher {
   LocalFilesystem({p.Context? pathContext})
     : pathContext = pathContext ?? p.context;
 
@@ -386,5 +387,24 @@ class LocalFilesystem implements Filesystem {
   Future<void> appendString(String path, String content) async {
     await ensureDir(pathContext.dirname(path));
     await File(path).writeAsString(content, mode: FileMode.append);
+  }
+
+  /// Recursive directory watch via `package:watcher`, which picks the best
+  /// native backend per platform (inotify / FSEvents / ReadDirectoryChangesW)
+  /// and falls back to polling elsewhere — more reliable than `Directory.watch`
+  /// whose recursive support is uneven across platforms.
+  @override
+  Stream<FsChangeEvent> watchTree(String path) {
+    return DirectoryWatcher(path).events.map(
+      (event) => FsChangeEvent(
+        path: event.path,
+        type: switch (event.type) {
+          ChangeType.ADD => FsChangeType.created,
+          ChangeType.MODIFY => FsChangeType.modified,
+          ChangeType.REMOVE => FsChangeType.deleted,
+          _ => FsChangeType.unknown,
+        },
+      ),
+    );
   }
 }

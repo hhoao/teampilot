@@ -634,6 +634,7 @@
     }
   },
   "fileTreeRevealActiveFile": "Reveal active file",
+  "fileTreeRefresh": "Refresh",
   "fileTreeRevealFailed": "Cannot reveal this file in the file tree",
   "fileTreeOpenWithSystemApp": "Open with system app",
   "fileTreeCopyPath": "Copy path",

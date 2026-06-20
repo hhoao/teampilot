@@ -13,6 +13,7 @@ import '../../cubits/file_tree_cubit.dart';
 
 import '../../l10n/l10n_extensions.dart';
 import '../../services/file_tree/file_tree_visible_rows.dart';
+import '../../services/io/workspace_fs_watcher.dart';
 import '../../services/storage/app_storage.dart';
 import '../../services/storage/runtime_storage_context.dart';
 import '../../theme/app_icon_sizes.dart';
@@ -29,9 +30,13 @@ const _fileTreeRowPadding = EdgeInsets.symmetric(
 
 /// Workspace file tree panel.
 class FileTreePanel extends StatefulWidget {
-  const FileTreePanel({required this.cwd, super.key});
+  const FileTreePanel({required this.cwd, this.watcher, super.key});
 
   final String cwd;
+
+  /// Shared workspace watcher; when present, the tree refreshes live on disk
+  /// changes. Null on backends without watch support (the tree stays manual).
+  final WorkspaceFsWatcher? watcher;
 
   @override
   State<FileTreePanel> createState() => _FileTreePanelState();
@@ -43,11 +48,13 @@ class _FileTreePanelState extends State<FileTreePanel> {
   final _listScrollController = ScrollController();
   final _horizontalScrollController = ScrollController();
   EditorCubit? _editorCubit;
+  StreamSubscription<void>? _watchSub;
 
   @override
   void initState() {
     super.initState();
     _syncRoot();
+    _subscribeWatcher();
   }
 
   @override
@@ -62,10 +69,26 @@ class _FileTreePanelState extends State<FileTreePanel> {
     if (widget.cwd != oldWidget.cwd) {
       _syncRoot();
     }
+    if (!identical(widget.watcher, oldWidget.watcher)) {
+      _subscribeWatcher();
+    }
   }
 
   void _syncRoot() {
     _cubit.setRoot(widget.cwd);
+  }
+
+  void _subscribeWatcher() {
+    _watchSub?.cancel();
+    _watchSub = widget.watcher?.onChanged.listen((changedDirs) {
+      // Empty set = unknown scope (e.g. a terminal turn-end poke) → full
+      // refresh; otherwise reload only the directories that actually changed.
+      if (changedDirs.isEmpty) {
+        unawaited(_cubit.refresh());
+      } else {
+        unawaited(_cubit.refreshPaths(changedDirs));
+      }
+    });
   }
 
   Future<void> _revealActiveEditorFile() async {
@@ -134,6 +157,7 @@ class _FileTreePanelState extends State<FileTreePanel> {
 
   @override
   void dispose() {
+    _watchSub?.cancel();
     _filterController.dispose();
     _listScrollController.dispose();
     _horizontalScrollController.dispose();
@@ -160,7 +184,7 @@ class _FileTreePanelState extends State<FileTreePanel> {
                   builder: (context, constraints) {
                     const actionSlotWidth = 28.0;
                     final hasExpandedFolders = state.expandedPaths.isNotEmpty;
-                    final actionCount = hasExpandedFolders ? 4 : 3;
+                    final actionCount = hasExpandedFolders ? 5 : 4;
                     final showInlineActions =
                         constraints.maxWidth >= actionSlotWidth * actionCount;
                     return Row(
@@ -189,6 +213,7 @@ class _FileTreePanelState extends State<FileTreePanel> {
                             showHiddenFiles: state.showHiddenFiles,
                             hasExpandedFolders: hasExpandedFolders,
                             canCopy: state.rootPath.isNotEmpty,
+                            onRefresh: _cubit.refresh,
                             onReveal: () =>
                                 unawaited(_revealActiveEditorFile()),
                             onCollapseAll: _cubit.collapseAllFolders,
@@ -274,6 +299,12 @@ class _FileTreePanelState extends State<FileTreePanel> {
     required FileTreeState state,
   }) {
     final actions = <Widget>[
+      AppIconButton(
+        icon: Icons.refresh,
+        compact: true, size: AppIconButton.kCompactSize,
+        tooltip: l10n.fileTreeRefresh,
+        onTap: _cubit.refresh,
+      ),
       AppIconButton(
         icon: Icons.my_location_outlined,
         compact: true, size: AppIconButton.kCompactSize,
