@@ -299,6 +299,9 @@ void main() {
             ({required String executable, int scrollbackLines = 10000}) =>
                 _FakeTerminalSession(executable: executable),
       );
+      final workspace = await repo.createWorkspace('/tmp');
+      await cubit.loadWorkspaceData(repo);
+      cubit.setActiveWorkspace(workspace.workspaceId);
     });
 
     tearDown(() async {
@@ -482,6 +485,9 @@ void main() {
             TeamMemberConfig(id: 'm-dev', name: 'developer'),
           ],
         );
+        final workspace = await repo.createWorkspace('/tmp/auto-launch');
+        await cubit.loadWorkspaceData(repo);
+        cubit.setActiveWorkspace(workspace.workspaceId);
 
         await cubit.connectSession(team);
         await drainPostFrameQueue(scheduled);

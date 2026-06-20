@@ -82,7 +82,6 @@ void main() {
 
   test('reorderPersonals persists sortOrder for all personals', () async {
     final cubit = _cubit(tmp, repo);
-    await cubit.load();
     await cubit.savePersonal(
       const PersonalProfile(id: 'first', display: 'First', createdAt: 1),
     );

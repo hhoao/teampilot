@@ -449,15 +449,14 @@ void main() {
       postFrameScheduler: postFrame.scheduler,
       sessionRepository: _widgetTestSessionRepo,
     );
-    const workspace = Workspace(
-      workspaceId: 'proj-widget-test',
-      primaryPath: '/work/current',
-      createdAt: 1,
-    );
-    chatCubit.ingestWorkspaceSessionSnapshot(
-      workspaces: const [workspace],
-      sessions: const [],
-    );
+    late final Workspace workspace;
+    await tester.runAsync(() async {
+      workspace = await _widgetTestSessionRepo.createWorkspace('/work/current');
+      chatCubit.ingestWorkspaceSessionSnapshot(
+        workspaces: [workspace],
+        sessions: const [],
+      );
+    });
     await pumpDesktopApp(tester, teamCubit, chatCubit: chatCubit);
     final teamId = teamCubit.state.selectedTeam!.id;
     appRouter.go('/home-v2/workspace/${workspace.workspaceId}?as=$teamId');
@@ -483,6 +482,7 @@ void main() {
 
     final selectedTeam = teamCubit.state.selectedTeam;
     expect(selectedTeam, isNotNull);
+    chatCubit.setActiveWorkspace(workspace.workspaceId);
     // Real repository I/O must run inside runAsync in widget tests.
     await tester.runAsync(() => chatCubit.connectSession(selectedTeam!));
     await tester.pump();
