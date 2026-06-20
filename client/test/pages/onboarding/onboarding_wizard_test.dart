@@ -81,7 +81,6 @@ void main() {
       final teamCubit = LaunchProfileCubit(
         repository: teamRepo,
         sessionRepository: SessionRepository(),
-        reloadWorkspaces: () async {},
         executableResolver: () => 'claude',
         pluginLinker: _NoopPluginLinker(),
       );

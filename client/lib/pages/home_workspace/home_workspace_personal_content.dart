@@ -6,6 +6,7 @@ import '../../cubits/launch_profile_cubit.dart';
 import '../../l10n/l10n_extensions.dart';
 import '../../models/launch_profile_kind.dart';
 import '../../models/personal_profile.dart';
+import '../../utils/launch_profile_display_name.dart';
 import '../../theme/workspace_surface_layers.dart';
 import 'home_workspace_content_header.dart';
 import 'home_workspace_global_section.dart';
@@ -100,7 +101,7 @@ class HomePersonalHeader extends StatelessWidget {
         const SizedBox(width: 10),
         Expanded(
           child: Text(
-            personal.display,
+            launchProfileDisplayName(context.l10n, personal),
             maxLines: 1,
             overflow: TextOverflow.ellipsis,
             style: Theme.of(context).textTheme.titleLarge,

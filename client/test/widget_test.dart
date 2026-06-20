@@ -235,7 +235,6 @@ Future<LaunchProfileCubit> createTeamCubit({TeamLauncher? launcher}) async {
   final cubit = LaunchProfileCubit(
     repository: repository,
     sessionRepository: SessionRepository(),
-    reloadWorkspaces: () async {},
     executableResolver: _testExecutable,
     launcher: launcher ?? (_, __) async {},
     appDataBasePath: appData.path,
@@ -654,7 +653,6 @@ void main() {
     final cubit = LaunchProfileCubit(
       repository: repository,
       sessionRepository: SessionRepository(),
-      reloadWorkspaces: () async {},
       executableResolver: _testExecutable,
       appDataBasePath: appData.path,
       configProfileService: ConfigProfileService(basePath: appData.path),

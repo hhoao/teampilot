@@ -554,6 +554,9 @@ class AppLocalizationsEn extends AppLocalizations {
   String get homeWorkspaceDefaultPersonalWorkspaceName => 'Personal assistant';
 
   @override
+  String get homeWorkspaceDefaultTeamName => 'Default Team';
+
+  @override
   String get homeWorkspacePersonalSubtitle =>
       'Skip the team setup — just launch a single CLI and start chatting.';
 

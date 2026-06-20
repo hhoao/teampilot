@@ -68,7 +68,6 @@ void main() {
       final teamCubit = LaunchProfileCubit(
         repository: LaunchProfileRepository(rootDir: appData.path),
         sessionRepository: SessionRepository(rootDir: appData.path),
-        reloadWorkspaces: () async {},
         executableResolver: _executable,
         appDataBasePath: appData.path,
         configProfileService: ConfigProfileService(basePath: appData.path),

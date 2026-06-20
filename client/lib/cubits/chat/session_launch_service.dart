@@ -13,7 +13,6 @@ import '../../models/team_config.dart';
 import '../../repositories/session_repository.dart';
 import '../../services/cli/registry/config_profile/config_profile_context.dart';
 import '../../services/session/session_lifecycle_service.dart';
-import '../../services/team/default_team_workspace_service.dart';
 import '../../services/team/team_config_launch_validator.dart';
 import '../../services/storage/runtime_storage_context.dart';
 import '../../services/team_bus/mcp/bus_bridge_locator.dart';
@@ -273,9 +272,10 @@ class SessionLaunchService implements MemberConnector {
   }) async {
     if (!_tabStore.isEmpty) return;
 
+    final cwd = _resolveWorkspaceCwd(workspaceCwd);
     final existingSession = _existingSessionForMaterialize(
       team,
-      workspaceCwd: workspaceCwd,
+      workspaceCwd: cwd,
     );
     if (existingSession != null) {
       await openSessionTab(
@@ -288,9 +288,22 @@ class SessionLaunchService implements MemberConnector {
       return;
     }
 
-    final primaryPath = _materializePrimaryPath(team, workspaceCwd: workspaceCwd);
-    final workspace = await repo.createWorkspace(primaryPath);
-    var session = _firstSessionForWorkspace(workspace.workspaceId);
+    if (cwd == null || cwd.isEmpty) {
+      const message = 'Open a workspace before starting a team session.';
+      appLogger.w('[session] $message');
+      _h.failSessionConnect('pending', message);
+      return;
+    }
+
+    final workspace = _workspaceMatchingPath(cwd);
+    if (workspace == null) {
+      final message = 'Workspace not found for $cwd.';
+      appLogger.w('[session] $message');
+      _h.failSessionConnect('pending', message);
+      return;
+    }
+
+    var session = _firstSessionForWorkspaceAndTeam(workspace.workspaceId, team.id);
     session ??= await repo.createSession(
       workspace.workspaceId,
       sessionTeam: team.id,
@@ -305,6 +318,14 @@ class SessionLaunchService implements MemberConnector {
       repo: repo,
       connectImmediately: connectImmediately,
     );
+  }
+
+  String? _resolveWorkspaceCwd(String? workspaceCwd) {
+    final explicit = workspaceCwd?.trim() ?? '';
+    if (explicit.isNotEmpty) return explicit;
+    final workspaceId = _tabStore.activeWorkspaceId.trim();
+    if (workspaceId.isEmpty) return null;
+    return _workspaceById(workspaceId)?.primaryPath;
   }
 
   AppSession? _existingSessionForMaterialize(
@@ -328,13 +349,6 @@ class SessionLaunchService implements MemberConnector {
     return null;
   }
 
-  String _materializePrimaryPath(TeamProfile team, {String? workspaceCwd}) {
-    if (workspaceCwd != null && workspaceCwd.trim().isNotEmpty) {
-      return normalizeWorkspacePath(workspaceCwd);
-    }
-    return DefaultTeamWorkspaceService.primaryPathForTeam(team.id);
-  }
-
   Workspace? _workspaceMatchingPath(String primaryPath) {
     for (final workspace in _state.workspaces) {
       if (workspacePathsEqual(workspace.primaryPath, primaryPath)) return workspace;
@@ -354,13 +368,6 @@ class SessionLaunchService implements MemberConnector {
   Workspace? _workspaceById(String workspaceId) {
     for (final workspace in _state.workspaces) {
       if (workspace.workspaceId == workspaceId) return workspace;
-    }
-    return null;
-  }
-
-  AppSession? _firstSessionForWorkspace(String workspaceId) {
-    for (final session in _state.sessions) {
-      if (session.workspaceId == workspaceId) return session;
     }
     return null;
   }

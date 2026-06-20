@@ -535,6 +535,9 @@ class AppLocalizationsZh extends AppLocalizations {
   String get homeWorkspaceDefaultPersonalWorkspaceName => '个人助手';
 
   @override
+  String get homeWorkspaceDefaultTeamName => '默认团队';
+
+  @override
   String get homeWorkspacePersonalSubtitle => '不用组队，直接拉起一个 CLI 开聊。';
 
   @override

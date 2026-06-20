@@ -19,6 +19,7 @@ import '../../repositories/session_repository.dart';
 import '../../services/home_workspace/workspace_launch_prefs_store.dart';
 import '../../theme/app_text_styles.dart';
 import '../../utils/launch_profile_resolver.dart';
+import '../../utils/launch_profile_display_name.dart';
 import '../../utils/home_workspace_display.dart';
 import '../../utils/workspace_display_name.dart';
 import '../../widgets/menu/sidebar_action_menu.dart';
@@ -51,6 +52,7 @@ Future<void> openWorkspace(
   final pref = await store.prefsFor(workspace.workspaceId);
   if (!context.mounted) return;
 
+  final l10n = context.l10n;
   final remembered = rememberedLaunchRoute(workspace, pref);
   if (remembered != null) {
     context.go(remembered);
@@ -71,14 +73,14 @@ Future<void> openWorkspace(
     for (final personal in personals)
       LaunchWorkspaceIdentityOption(
         id: personal.id,
-        name: personal.display,
+        name: launchProfileDisplayName(l10n, personal),
         isTeam: false,
       ),
     for (final id in orderedTeamIds)
       if (teamById[id] != null)
         LaunchWorkspaceIdentityOption(
           id: id,
-          name: teamById[id]!.name,
+          name: launchProfileDisplayName(l10n, teamById[id]!),
           isTeam: true,
         ),
   ];

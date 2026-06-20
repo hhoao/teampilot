@@ -13,6 +13,7 @@ import 'package:teampilot/services/io/local_filesystem.dart';
 import 'package:teampilot/services/storage/runtime_storage_context.dart';
 import 'package:teampilot/services/session/session_lifecycle_service.dart';
 import 'package:teampilot/services/plugin/profile_plugin_linker_service.dart';
+import 'package:teampilot/services/storage/launch_profile_provisioner.dart';
 import 'package:teampilot/utils/team_member_naming.dart';
 
 import '../support/post_frame_test_harness.dart';
@@ -107,7 +108,6 @@ void main() {
     final cubit = LaunchProfileCubit(
       repository: repo,
       sessionRepository: SessionRepository(),
-      reloadWorkspaces: () async {},
       executableResolver: () => 'flashskyai',
       pluginLinker: _RecordingPluginLinker(),
     );
@@ -138,7 +138,6 @@ void main() {
     final cubit = LaunchProfileCubit(
       repository: repo,
       sessionRepository: SessionRepository(),
-      reloadWorkspaces: () async {},
       executableResolver: () => 'flashskyai',
       pluginLinker: linker,
       installedPluginsLoader: () async => [],
@@ -189,7 +188,6 @@ void main() {
     final cubit = LaunchProfileCubit(
       repository: repo,
       sessionRepository: SessionRepository(),
-      reloadWorkspaces: () async {},
       executableResolver: () => 'flashskyai',
       pluginLinker: linker,
       installedPluginsLoader: () async => [plugin],
@@ -221,7 +219,6 @@ void main() {
     final cubit = LaunchProfileCubit(
       repository: repo,
       sessionRepository: SessionRepository(),
-      reloadWorkspaces: () async {},
       executableResolver: () => 'flashskyai',
       pluginLinker: linker,
       installedPluginsLoader: () async => [],
@@ -255,7 +252,6 @@ void main() {
     final cubit = LaunchProfileCubit(
       repository: repo,
       sessionRepository: SessionRepository(),
-      reloadWorkspaces: () async {},
       executableResolver: () => 'flashskyai',
       pluginLinker: _RecordingPluginLinker(),
     );
@@ -287,7 +283,6 @@ void main() {
     final cubit = LaunchProfileCubit(
       repository: _repo(dir),
       sessionRepository: SessionRepository(),
-      reloadWorkspaces: () async {},
       executableResolver: () => 'flashskyai',
       pluginLinker: _RecordingPluginLinker(),
     );
@@ -317,7 +312,6 @@ void main() {
       final cubit = LaunchProfileCubit(
         repository: repo,
         sessionRepository: SessionRepository(),
-        reloadWorkspaces: () async {},
         executableResolver: () => 'flashskyai',
         pluginLinker: _RecordingPluginLinker(),
       );
@@ -345,28 +339,23 @@ void main() {
     },
   );
 
-  test('load seeds default workspace when creating Default Team', () async {
+  test('load creates Default Team without seeding a workspace', () async {
     final base = await Directory.systemTemp.createTemp('team_default_workspace_');
     final sessionRepo = SessionRepository();
-    var reloadCount = 0;
     final cubit = LaunchProfileCubit(
       repository: _repo(base),
       sessionRepository: sessionRepo,
-      reloadWorkspaces: () async => reloadCount++,
       executableResolver: () => 'flashskyai',
       pluginLinker: _RecordingPluginLinker(),
     );
 
     await cubit.load();
 
+    expect(cubit.state.personals, hasLength(1));
+    expect(cubit.state.personals.single.id, LaunchProfileProvisioner.defaultPersonalId);
     final team = cubit.state.teams.single;
     expect(team.name, 'Default Team');
-    expect(reloadCount, 1);
-    final workspaces = await sessionRepo.loadWorkspaces();
-    expect(workspaces, hasLength(1));
-    expect(workspaces.single.display, 'Default Team');
-    final sessions = await sessionRepo.loadSessions();
-    expect(sessions.where((s) => s.sessionTeam == team.id), hasLength(1));
+    expect(await sessionRepo.loadWorkspaces(), isEmpty);
 
     await _drainAndCloseTeamCubit(cubit);
     await base.delete(recursive: true);
@@ -377,7 +366,6 @@ void main() {
     final cubit = LaunchProfileCubit(
       repository: _repo(base),
       sessionRepository: SessionRepository(),
-      reloadWorkspaces: () async {},
       executableResolver: () => 'flashskyai',
       pluginLinker: _RecordingPluginLinker(),
       appDataBasePath: base.path,
@@ -400,7 +388,6 @@ void main() {
     final cubit = LaunchProfileCubit(
       repository: _repo(base),
       sessionRepository: SessionRepository(),
-      reloadWorkspaces: () async {},
       executableResolver: () => 'flashskyai',
       pluginLinker: _RecordingPluginLinker(),
       appDataBasePath: base.path,
@@ -423,7 +410,6 @@ void main() {
     final cubit = LaunchProfileCubit(
       repository: _repo(base),
       sessionRepository: SessionRepository(),
-      reloadWorkspaces: () async {},
       executableResolver: () => 'flashskyai',
       pluginLinker: _RecordingPluginLinker(),
       appDataBasePath: base.path,
@@ -446,7 +432,6 @@ void main() {
     final cubit = LaunchProfileCubit(
       repository: _repo(base),
       sessionRepository: SessionRepository(),
-      reloadWorkspaces: () async {},
       executableResolver: () => 'flashskyai',
       pluginLinker: _RecordingPluginLinker(),
       appDataBasePath: base.path,
@@ -488,7 +473,6 @@ void main() {
     final cubit = LaunchProfileCubit(
       repository: _repo(base),
       sessionRepository: SessionRepository(),
-      reloadWorkspaces: () async {},
       executableResolver: () => 'flashskyai',
       pluginLinker: _RecordingPluginLinker(),
       cliExecutableResolver: (cli) =>
@@ -521,7 +505,6 @@ void main() {
     final cubit = LaunchProfileCubit(
       repository: repo,
       sessionRepository: SessionRepository(),
-      reloadWorkspaces: () async {},
       executableResolver: () => 'claude',
       pluginLinker: _RecordingPluginLinker(),
       appDataBasePath: base.path,
@@ -586,7 +569,6 @@ void main() {
     final cubit = LaunchProfileCubit(
       repository: repo,
       sessionRepository: SessionRepository(),
-      reloadWorkspaces: () async {},
       executableResolver: () => 'claude',
       pluginLinker: _RecordingPluginLinker(),
       appDataBasePath: base.path,
@@ -621,7 +603,6 @@ void main() {
     final cubit = LaunchProfileCubit(
       repository: _repo(base),
       sessionRepository: SessionRepository(),
-      reloadWorkspaces: () async {},
       executableResolver: () => 'flashskyai',
       pluginLinker: _RecordingPluginLinker(),
       appDataBasePath: base.path,
@@ -646,7 +627,6 @@ void main() {
       final cubit = LaunchProfileCubit(
         repository: repo,
         sessionRepository: SessionRepository(),
-        reloadWorkspaces: () async {},
         executableResolver: () => 'claude',
         pluginLinker: _RecordingPluginLinker(),
       );
@@ -679,7 +659,6 @@ void main() {
       final cubit = LaunchProfileCubit(
         repository: repo,
         sessionRepository: SessionRepository(),
-        reloadWorkspaces: () async {},
         executableResolver: () => 'claude',
         pluginLinker: _RecordingPluginLinker(),
       );
@@ -709,7 +688,6 @@ void main() {
     final cubit = LaunchProfileCubit(
       repository: repo,
       sessionRepository: SessionRepository(),
-      reloadWorkspaces: () async {},
       executableResolver: () => 'flashskyai',
       pluginLinker: _RecordingPluginLinker(),
     );

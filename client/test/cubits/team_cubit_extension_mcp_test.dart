@@ -157,7 +157,6 @@ void main() {
       final cubit = LaunchProfileCubit(
         repository: repo,
         sessionRepository: SessionRepository(),
-        reloadWorkspaces: () async {},
         executableResolver: () => 'flashskyai',
         mcpLinker: linker,
         pluginLinker: _NoopPluginLinker(),
@@ -200,7 +199,6 @@ void main() {
       final cubit = LaunchProfileCubit(
         repository: repo,
         sessionRepository: SessionRepository(),
-        reloadWorkspaces: () async {},
         executableResolver: () => 'flashskyai',
         mcpLinker: linker,
         pluginLinker: _NoopPluginLinker(),

@@ -15,7 +15,6 @@ void main() {
   LaunchProfileCubit build(LaunchProfileRepository repo) => LaunchProfileCubit(
         repository: repo,
         sessionRepository: SessionRepository(),
-        reloadWorkspaces: () async {},
         executableResolver: () => 'flashskyai',
       );
 

@@ -13,7 +13,6 @@ import '../repositories/plugin_repository.dart';
 import '../repositories/launch_profile_repository.dart';
 import '../repositories/session_repository.dart';
 import '../services/cli/registry/cli_tool_registry.dart';
-import '../services/team/default_team_workspace_service.dart';
 import '../services/provider/config_profile_service.dart';
 import '../services/session/session_lifecycle_service.dart';
 import '../services/mcp/profile_mcp_linker_service.dart';
@@ -41,7 +40,6 @@ class LaunchProfileCubit extends Cubit<LaunchProfileState> implements LaunchProf
   LaunchProfileCubit({
     required LaunchProfileRepository repository,
     required SessionRepository sessionRepository,
-    required Future<void> Function() reloadWorkspaces,
     required String Function() executableResolver,
     CliExecutableResolver? cliExecutableResolver,
     TeamLauncher? launcher,
@@ -57,9 +55,11 @@ class LaunchProfileCubit extends Cubit<LaunchProfileState> implements LaunchProf
     McpRepository? mcpRepository,
     InstalledMcpLoader? installedMcpLoader,
     Future<List<McpServer>> Function(String teamId)? extensionMcpContributor,
+    LaunchProfileProvisioner? identityProvisioner,
   }) : _repository = repository,
        _sessionRepository = sessionRepository,
-       _reloadWorkspaces = reloadWorkspaces,
+       _identityProvisioner = identityProvisioner ??
+           LaunchProfileProvisioner(repository: repository),
        _executableResolver = executableResolver,
        _cliExecutableResolver = cliExecutableResolver,
        _appDataBasePath = appDataBasePath,
@@ -90,7 +90,7 @@ class LaunchProfileCubit extends Cubit<LaunchProfileState> implements LaunchProf
 
   final LaunchProfileRepository _repository;
   final SessionRepository _sessionRepository;
-  final Future<void> Function() _reloadWorkspaces;
+  final LaunchProfileProvisioner _identityProvisioner;
   final String Function() _executableResolver;
   final CliExecutableResolver? _cliExecutableResolver;
   final String _appDataBasePath;
@@ -354,6 +354,7 @@ class LaunchProfileCubit extends Cubit<LaunchProfileState> implements LaunchProf
   Future<void> load({bool awaitProfiles = false}) async {
     appLogger.i('LaunchProfileCubit loading identities...');
     emit(state.copyWith(isLoading: true));
+    await _identityProvisioner.ensureDefaultPersonal();
     final all = await _repository.loadAll();
     var teams = _sortTeams(all.whereType<TeamProfile>().toList());
     final personals = _sortPersonals(all.whereType<PersonalProfile>().toList());
@@ -361,7 +362,6 @@ class LaunchProfileCubit extends Cubit<LaunchProfileState> implements LaunchProf
       final team = _rosterEditor.defaultTeam();
       teams = [team];
       await _repository.save(team);
-      await _seedDefaultWorkspace(team);
     }
     final selectedId = state.selectedTeamId;
     final nextSelected = selectedId != null &&
@@ -501,7 +501,6 @@ class LaunchProfileCubit extends Cubit<LaunchProfileState> implements LaunchProf
     );
     await saveTeamProfiles(teams);
     await _provisioner.ensureTeamProfile(team.id, cli: team.cli);
-    await _seedDefaultWorkspace(team);
     unawaited(_sync.syncPluginsForSelected());
     return true;
   }
@@ -566,14 +565,8 @@ class LaunchProfileCubit extends Cubit<LaunchProfileState> implements LaunchProf
     );
     await saveTeamProfiles(teams);
     await _provisioner.ensureTeamProfile(team.id, cli: team.cli);
-    await _seedDefaultWorkspace(team);
     unawaited(_sync.syncPluginsForSelected());
     return team.id;
-  }
-
-  Future<void> _seedDefaultWorkspace(TeamProfile team) async {
-    await DefaultTeamWorkspaceService.seed(_sessionRepository, team);
-    await _reloadWorkspaces();
   }
 
   /// Renames the selected team and removes persisted files keyed by the old name.

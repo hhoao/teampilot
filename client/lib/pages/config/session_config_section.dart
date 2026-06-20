@@ -7,8 +7,6 @@ import 'package:teampilot/theme/app_toast_theme.dart';
 import 'package:teampilot/widgets/app_toast/app_toast.dart';
 
 import '../../app/app_shell.dart';
-import '../../repositories/launch_profile_repository.dart';
-import '../../services/storage/launch_profile_provisioner.dart';
 import '../../cubits/app_provider_cubit.dart';
 import '../../cubits/chat_cubit.dart';
 import '../../cubits/extension_cubit.dart';
@@ -191,9 +189,6 @@ class _SessionControlsState extends State<_SessionControls> {
       storageRoots: storageRoots,
       llmConfigCubit: llmCubit,
       appProviderCubit: appProviderCubit,
-      identityProvisioner: LaunchProfileProvisioner(
-        repository: context.read<LaunchProfileRepository>(),
-      ),
       teamCubit: teamCubit,
       pluginCubit: pluginCubit,
       skillCubit: skillCubit,

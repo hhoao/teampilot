@@ -18,6 +18,7 @@ import '../../models/launch_profile_kind.dart';
 import '../../models/team_config.dart';
 import '../../models/launch_profile.dart';
 import '../../services/storage/launch_profile_provisioner.dart';
+import '../../utils/launch_profile_display_name.dart';
 import '../../utils/workspace_display_name.dart';
 import '../../models/home_closed_workspace_entry.dart';
 import '../../theme/workspace_surface_layers.dart';
@@ -68,23 +69,19 @@ class HomeShell extends StatefulWidget {
   }
 
   static String? identityNameFor(
+    AppLocalizations l10n,
     List<LaunchProfile> identities,
     String profileId,
-  ) {
-    if (profileId.isEmpty) return null;
-    for (final identity in identities) {
-      if (identity.id == profileId) {
-        return identity is TeamProfile
-            ? identity.name
-            : identity.display;
-      }
+  ) =>
+      launchProfileDisplayNameForId(l10n, identities, profileId);
+
+  @Deprecated('Use identityNameFor')
+  static String? teamNameFor(List<TeamProfile> teams, String teamId) {
+    for (final team in teams) {
+      if (team.id == teamId) return team.name;
     }
     return null;
   }
-
-  @Deprecated('Use identityNameFor')
-  static String? teamNameFor(List<TeamProfile> teams, String teamId) =>
-      identityNameFor(teams, teamId);
 }
 
 class _HomeShellState extends State<HomeShell> {
@@ -448,7 +445,7 @@ class _HomeShellState extends State<HomeShell> {
         workspace: workspace,
         personalKindLabel: l10n.homeWorkspaceWorkspaceTabKindPersonal,
         isPersonal: isPersonal,
-        teamName: HomeShell.identityNameFor(identities, profileId),
+        teamName: HomeShell.identityNameFor(l10n, identities, profileId),
         teamId: profileId,
         displayName: workspace.localizedName(l10n),
       ),

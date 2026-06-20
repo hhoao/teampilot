@@ -219,6 +219,7 @@
   "homeWorkspaceAllWorkspaces": "全部工作区",
   "homeWorkspaceWorkspaceTabKindPersonal": "个人",
   "homeWorkspaceDefaultPersonalWorkspaceName": "个人助手",
+  "homeWorkspaceDefaultTeamName": "默认团队",
   "homeWorkspacePersonalSubtitle": "不用组队，直接拉起一个 CLI 开聊。",
   "homeWorkspaceNoData": "暂无数据",
   "homeWorkspaceRecentlyClosed": "最近关闭",

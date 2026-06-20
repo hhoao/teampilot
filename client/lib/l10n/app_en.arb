@@ -241,6 +241,10 @@
   "@homeWorkspaceDefaultPersonalWorkspaceName": {
     "description": "Name shown for the built-in personal workspace in simple mode."
   },
+  "homeWorkspaceDefaultTeamName": "Default Team",
+  "@homeWorkspaceDefaultTeamName": {
+    "description": "Name shown for the built-in default team created on first launch."
+  },
   "homeWorkspacePersonalSubtitle": "Skip the team setup — just launch a single CLI and start chatting.",
   "homeWorkspaceNoData": "No data yet",
   "homeWorkspaceRecentlyClosed": "Recently closed",

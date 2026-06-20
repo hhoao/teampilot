@@ -5,7 +5,7 @@ import 'package:teampilot/theme/app_icon_sizes.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import '../../cubits/launch_profile_cubit.dart';
 import '../../l10n/l10n_extensions.dart';
-import '../../models/personal_profile.dart';
+import '../../utils/launch_profile_display_name.dart';
 import '../../theme/app_text_styles.dart';
 import '../../theme/workspace_surface_layers.dart';
 import '../../utils/app_keys.dart';
@@ -129,7 +129,7 @@ class _HomeSidebarState extends State<HomeSidebar> {
                         return _IdentityRow(
                           key: ValueKey(personal.id),
                           index: index,
-                          name: personal.display,
+                          name: launchProfileDisplayName(l10n, personal),
                           isTeam: false,
                           selected:
                               !allWorkspacesActive &&
@@ -154,7 +154,7 @@ class _HomeSidebarState extends State<HomeSidebar> {
                         return _IdentityRow(
                           key: ValueKey(team.id),
                           index: index,
-                          name: team.name,
+                          name: launchProfileDisplayName(l10n, team),
                           isTeam: true,
                           selected:
                               !allWorkspacesActive &&

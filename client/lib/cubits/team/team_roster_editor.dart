@@ -1,3 +1,4 @@
+import '../../services/storage/launch_profile_provisioner.dart';
 import '../../models/team_config.dart';
 import '../../utils/team_member_naming.dart';
 
@@ -24,7 +25,7 @@ class TeamRosterEditor {
     const name = 'Default Team';
     final now = DateTime.now().millisecondsSinceEpoch;
     return TeamProfile(
-      id: TeamMemberNaming.slugTeamId(name),
+      id: LaunchProfileProvisioner.defaultTeamId,
       name: name,
       createdAt: now,
       members: TeamMemberNaming.defaultRoster(joinedAt: now),

@@ -17,7 +17,6 @@ LaunchProfileCubit _cubit(Directory dir, LaunchProfileRepository repo) => Launch
       sessionRepository: SessionRepository(
         lifecycleService: SessionLifecycleService(appDataBasePath: dir.path),
       ),
-      reloadWorkspaces: () async {},
       executableResolver: () => 'claude',
     );
 

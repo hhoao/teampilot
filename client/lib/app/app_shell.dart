@@ -2,6 +2,7 @@ import 'dart:async';
 import 'dart:convert';
 import 'dart:io';
 
+import 'package:collection/collection.dart';
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
@@ -24,6 +25,7 @@ import '../cubits/mcp_cubit.dart';
 import '../cubits/plugin_cubit.dart';
 import '../repositories/launch_profile_repository.dart';
 import '../services/storage/launch_profile_provisioner.dart';
+import '../services/team/default_workspace_service.dart';
 import '../cubits/cli_presets_cubit.dart';
 import '../repositories/cli_presets_repository.dart';
 import '../cubits/skill_cubit.dart';
@@ -46,7 +48,6 @@ import '../repositories/ssh_credential_store.dart';
 import '../repositories/ssh_known_host_repository.dart';
 import '../repositories/ssh_profile_repository.dart';
 import '../repositories/extension_repository.dart';
-import '../repositories/launch_profile_repository.dart';
 import '../router/app_router.dart';
 import '../services/extension/builtin_manifests.dart';
 import '../services/extension/extension_acquisition_engine.dart';
@@ -290,7 +291,6 @@ Future<AppShell> buildAppShell({
         storageRoots: storageRoots,
         llmConfigCubit: llmConfigCubit,
         appProviderCubit: appProviderCubit,
-        identityProvisioner: identityProvisioner,
         teamCubit: teamCubit,
         pluginCubit: pluginCubit,
         skillCubit: skillCubit,
@@ -448,7 +448,7 @@ Future<AppShell> buildAppShell({
   teamCubit = LaunchProfileCubit(
     repository: identityRepository,
     sessionRepository: sessionRepo,
-    reloadWorkspaces: () => chatCubit.loadWorkspaceData(sessionRepo),
+    identityProvisioner: identityProvisioner,
     executableResolver: () => sessionPreferencesCubit.resolveExecutable(),
     cliExecutableResolver: sessionPreferencesCubit.resolveExecutable,
     llmConfigPathOverride: llmConfigPathOverrideForLaunch,
@@ -606,7 +606,6 @@ Future<AppShell> buildAppShell({
       storageRoots: storageRoots,
       llmConfigCubit: llmConfigCubit,
       appProviderCubit: appProviderCubit,
-      identityProvisioner: identityProvisioner,
       teamCubit: teamCubit,
       pluginCubit: pluginCubit,
       skillCubit: skillCubit,
@@ -670,7 +669,6 @@ Future<void> reloadRemoteBackedAppData({
   required StorageRoots storageRoots,
   required LlmConfigCubit llmConfigCubit,
   required AppProviderCubit appProviderCubit,
-  required LaunchProfileProvisioner identityProvisioner,
   required LaunchProfileCubit teamCubit,
   required PluginCubit pluginCubit,
   required SkillCubit skillCubit,
@@ -681,18 +679,23 @@ Future<void> reloadRemoteBackedAppData({
   required SshProfileCubit sshProfileCubit,
 }) async {
   await storageRoots.resolve();
-    await Future.wait([
-      llmConfigCubit.load(),
-      appProviderCubit.load(),
-      identityProvisioner.ensureDefaultPersonal(),
-      teamCubit.load(),
+  await Future.wait([
+    llmConfigCubit.load(),
+    appProviderCubit.load(),
+    teamCubit.load(),
     pluginCubit.load(),
     skillCubit.loadAll(),
     mcpCubit.loadAll(),
     extensionCubit.load(force: true),
-    chatCubit.loadWorkspaceData(sessionRepo),
     sshProfileCubit.load(notifyActiveProfileChanged: false),
   ]);
+  final defaultTeam = teamCubit.state.teams
+      .where((t) => t.id == LaunchProfileProvisioner.defaultTeamId)
+      .firstOrNull;
+  if (defaultTeam != null) {
+    await DefaultWorkspaceService.seed(sessionRepo, defaultTeam: defaultTeam);
+  }
+  await chatCubit.loadWorkspaceData(sessionRepo);
   await teamCubit.syncSelectedTeamPlugins(
     installed: pluginCubit.state.installed,
   );

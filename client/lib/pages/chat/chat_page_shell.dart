@@ -223,7 +223,13 @@ class _ChatWorkspaceShell extends StatelessWidget {
             );
             return;
           }
-          unawaited(context.read<ChatCubit>().openMemberTab(team, lead.first));
+          unawaited(
+            context.read<ChatCubit>().openMemberTab(
+              team,
+              lead.first,
+              workspaceCwd: cwd,
+            ),
+          );
         }),
         icon: Icon(Icons.person_outline),
       ),
@@ -232,7 +238,10 @@ class _ChatWorkspaceShell extends StatelessWidget {
         tooltip: 'Open Team',
         onPressed: throttledAsync(
           'chat_launch_all_members',
-          () => context.read<ChatCubit>().launchAllMembers(team),
+          () => context.read<ChatCubit>().launchAllMembers(
+                team,
+                workspaceCwd: cwd,
+              ),
         ),
         icon: Icon(Icons.groups_outlined),
       ),

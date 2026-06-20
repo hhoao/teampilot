@@ -10,6 +10,7 @@ class LaunchProfileProvisioner {
       : _repository = repository;
 
   static const defaultPersonalId = 'personal-default';
+  static const defaultTeamId = 'default-team';
 
   final LaunchProfileRepository _repository;
 
