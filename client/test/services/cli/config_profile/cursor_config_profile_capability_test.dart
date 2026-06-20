@@ -56,7 +56,7 @@ void main() {
   }
 
   group('CursorConfigProfileCapability', () {
-    test('standalone contributes CURSOR_CONFIG_DIR only', () async {
+    test('standalone HOME-isolates with CURSOR_CONFIG_DIR at .cursor', () async {
       const team = TeamProfile(id: 'team-a', name: 'agent', cli: CliTool.cursor);
       final scope = resolveLaunchProfileScope(
         workspaceId: 'workspace-1',
@@ -87,18 +87,15 @@ void main() {
         ),
       );
 
-      final cursorDir = paths.sessionToolDir(
-        scope.workspaceId,
-        scope.sessionId,
-        CursorConfigProfileCapability.toolId,
-        memberId: scope.memberId,
-      );
-      expect(contribution.environment, {'CURSOR_CONFIG_DIR': cursorDir});
-      expect(contribution.environment, isNot(contains('HOME')));
+      final env = contribution.environment;
+      final home = env['HOME']!;
+      expect(env['USERPROFILE'], home);
+      expect(home, endsWith('${paths.pathContext.separator}home'));
+      expect(env['CURSOR_CONFIG_DIR'], paths.pathContext.join(home, '.cursor'));
       expect(contribution.warnings, isEmpty);
     });
 
-    test('standalone pre-provisions workspace trust under runtime home', () async {
+    test('standalone pre-provisions workspace trust under isolated home', () async {
       const workspace = '/home/hhoa/git/hhoa/teampilot';
       const profile = PersonalProfile(id: 'workspace-1', display: 'workspace-1',
         agent: WorkspaceAgentConfig(agent: 'solo'),
@@ -114,7 +111,7 @@ void main() {
         cliTeamName: 'session-1',
       );
 
-      await capability.contributeLaunch(
+      final contribution = await capability.contributeLaunch(
         ConfigProfileLaunchContext(
           workspaceId: 'workspace-1',
           teamId: '',
@@ -129,7 +126,7 @@ void main() {
       );
 
       final trustPath = CursorWorkspaceTrust.trustMarkerPath(
-        '/fake/user/home',
+        contribution.environment['HOME']!,
         workspace,
         pathContext: fs.pathContext,
       );

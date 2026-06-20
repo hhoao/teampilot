@@ -137,7 +137,7 @@ void main() {
     expect(contribution.environment['LLM_CONFIG_PATH'], isNotEmpty);
   });
 
-  test('cursor standalone uses CURSOR_CONFIG_DIR only', () async {
+  test('cursor standalone HOME-isolates with CURSOR_CONFIG_DIR at .cursor', () async {
     const workspaceId = 'p-cursor';
     const sessionId = 's-cursor';
     const profile = PersonalProfile(id: workspaceId, display: workspaceId); // TODO: migrate to presets — cli removed
@@ -151,14 +151,16 @@ void main() {
           ),
         );
 
-    final expectedDir = _standaloneToolDir(
+    final toolDir = _standaloneToolDir(
       base.path,
       workspaceId,
       sessionId,
       'cursor',
     );
-    expect(contribution.environment, {'CURSOR_CONFIG_DIR': expectedDir});
-    expect(contribution.environment, isNot(contains('HOME')));
+    final home = p.join(toolDir, 'home');
+    expect(contribution.environment['HOME'], home);
+    expect(contribution.environment['USERPROFILE'], home);
+    expect(contribution.environment['CURSOR_CONFIG_DIR'], p.join(home, '.cursor'));
   });
 
   test('opencode standalone sets OPENCODE_CONFIG_DIR without idle plugin', () async {

@@ -27,7 +27,7 @@ void main() {
     );
   });
 
-  test('standalone cursor uses toolDir as config root', () {
+  test('standalone cursor uses toolDir/home/.cursor as config root', () {
     final fs = InMemoryFilesystem();
     final layout = RuntimeLayout(teampilotRoot: '/tp', fs: fs);
     final toolDir = layout.sessionRuntimeToolDir('ws', 'sess', 'cursor');
@@ -38,7 +38,7 @@ void main() {
         workspaceId: 'ws',
         sessionId: 'sess',
       ),
-      toolDir,
+      p.join(toolDir, 'home', '.cursor'),
     );
   });
 }

@@ -6,6 +6,7 @@ import '../../../provider/cursor/cursor_home_provisioner.dart';
 import '../../../provider/cursor/cursor_launch_environment.dart';
 import '../../../provider/cursor/cursor_provider_credentials_service.dart';
 import '../../../provider/cursor/cursor_provider_settings_resolver.dart';
+import '../../../provider/cursor/cursor_session_config_dir.dart';
 import '../../../provider/cursor/cursor_workspace_trust_provisioner.dart';
 import '../capabilities/config_profile_capability.dart';
 
@@ -43,14 +44,46 @@ final class CursorConfigProfileCapability implements ConfigProfileCapability {
     StandaloneLaunchProfileScope standalone,
   ) async {
     final paths = ctx.paths;
-    final cursorDir = standaloneSessionToolDir(paths, standalone, toolId);
-    await paths.fs.ensureDir(cursorDir);
-    await _provisionWorkspaceTrust(
-      ctx: ctx,
-      homeRoot: paths.home,
+    final personal = ctx.personal;
+    // Isolate under a fake `$HOME` (like mixed mode) so cursor reads the
+    // session's `~/.cursor` — plugins/MCP/skills are materialized there.
+    // CURSOR_CONFIG_DIR alone does NOT relocate the `.cursor` data dir.
+    final toolDir = standaloneSessionToolDir(paths, standalone, toolId);
+    final home = paths.pathContext.join(
+      toolDir,
+      CursorSessionConfigDir.homeSegment,
     );
+    final layout = CursorHomeLayout(pathContext: paths.pathContext);
+    final cursorDir = layout.cursorDir(home);
+    await paths.fs.ensureDir(cursorDir);
+
+    // Provision provider auth into the isolated home so cursor can authenticate
+    // (real `~/.cursor` auth is no longer visible once HOME is isolated).
+    if (personal != null) {
+      final providerId = standaloneProviderId(ctx.preset);
+      await CursorHomeProvisioner(
+        fs: paths.fs,
+        credentials: CursorProviderCredentialsService(
+          fs: paths.fs,
+          basePath: paths.basePath,
+        ),
+        layout: layout,
+      ).provision(
+        memberHome: home,
+        providerId: providerId.isEmpty ? null : providerId,
+        member: standaloneMemberFromPersonal(personal, preset: ctx.preset),
+        busPort: null,
+        forceTeamLeadDelegateMode: false,
+        mixed: false,
+      );
+    }
+
+    await _provisionWorkspaceTrust(ctx: ctx, homeRoot: home);
     return ConfigProfileLaunchContribution(
-      environment: CursorLaunchEnvironment.forStandaloneConfigDir(cursorDir),
+      environment: CursorLaunchEnvironment.forStandalone(
+        homeRoot: home,
+        cursorConfigDir: cursorDir,
+      ),
     );
   }
 
@@ -136,9 +169,22 @@ final class CursorConfigProfileCapability implements ConfigProfileCapability {
       );
     }
 
-    await _provisionWorkspaceTrust(ctx: ctx, homeRoot: paths.home);
+    // Non-mixed team fallback (cursor is not native-team-launchable, so this is
+    // effectively unreachable) — still HOME-isolate for consistency.
+    final home = paths.pathContext.join(
+      cursorDir,
+      CursorSessionConfigDir.homeSegment,
+    );
+    final cursorConfigDir = CursorHomeLayout(
+      pathContext: paths.pathContext,
+    ).cursorDir(home);
+    await paths.fs.ensureDir(cursorConfigDir);
+    await _provisionWorkspaceTrust(ctx: ctx, homeRoot: home);
     return ConfigProfileLaunchContribution(
-      environment: CursorLaunchEnvironment.forStandaloneConfigDir(cursorDir),
+      environment: CursorLaunchEnvironment.forStandalone(
+        homeRoot: home,
+        cursorConfigDir: cursorConfigDir,
+      ),
       warnings: warnings,
     );
   }

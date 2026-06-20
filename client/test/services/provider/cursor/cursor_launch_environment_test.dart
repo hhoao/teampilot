@@ -15,12 +15,18 @@ void main() {
       expect(env['USERPROFILE'], homeRoot);
     });
 
-    test('forStandaloneConfigDir sets CURSOR_CONFIG_DIR', () {
-      const configDir = '/fake/config';
+    test('forStandalone HOME-isolates and sets CURSOR_CONFIG_DIR to .cursor', () {
+      const homeRoot = '/fake/home';
+      const cursorConfigDir = '/fake/home/.cursor';
 
-      final env = CursorLaunchEnvironment.forStandaloneConfigDir(configDir);
+      final env = CursorLaunchEnvironment.forStandalone(
+        homeRoot: homeRoot,
+        cursorConfigDir: cursorConfigDir,
+      );
 
-      expect(env['CURSOR_CONFIG_DIR'], configDir);
+      expect(env['HOME'], homeRoot);
+      expect(env['USERPROFILE'], homeRoot);
+      expect(env['CURSOR_CONFIG_DIR'], cursorConfigDir);
     });
   });
 }

@@ -5,10 +5,11 @@ import 'cursor_home_layout.dart';
 
 /// Resolves the on-disk config root cursor-agent reads for a session.
 ///
-/// - **Mixed mode** (`HOME=<toolDir>/home`): cursor-agent loads
-///   `~/.cursor/*` → `<toolDir>/home/.cursor/`.
-/// - **Standalone** (`CURSOR_CONFIG_DIR=<toolDir>`): the tool dir *is* the
-///   config root (equivalent to `~/.cursor` on a real machine).
+/// Both standalone and mixed mode isolate cursor under a fake `$HOME`, so the
+/// config root is always `<toolDir>/home/.cursor/` — cursor reads `~/.cursor/*`
+/// from there. (`CURSOR_CONFIG_DIR` only relocates `cli-config.json`/`chats`,
+/// NOT the `.cursor` data dir where plugins/MCP/skills live, so HOME isolation
+/// is required for those to take effect.)
 abstract final class CursorSessionConfigDir {
   CursorSessionConfigDir._();
 
@@ -27,8 +28,6 @@ abstract final class CursorSessionConfigDir {
       toolId,
       memberId: memberId,
     );
-    final trimmedMember = memberId?.trim() ?? '';
-    if (trimmedMember.isEmpty) return toolDir;
     return p.join(toolDir, homeSegment, CursorHomeLayout.cursorDirName);
   }
 

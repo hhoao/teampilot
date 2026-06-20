@@ -11,6 +11,16 @@ abstract final class CursorLaunchEnvironment {
     return {'HOME': home, 'USERPROFILE': home};
   }
 
-  static Map<String, String> forStandaloneConfigDir(String configDir) =>
-      {'CURSOR_CONFIG_DIR': configDir};
+  /// Standalone personal launch: isolate under a fake `$HOME` (so cursor reads
+  /// the session's `~/.cursor` plugins/MCP/skills) AND point `CURSOR_CONFIG_DIR`
+  /// at that same `.cursor` dir (so `cli-config.json`/`chats` — and resume —
+  /// stay isolated too).
+  static Map<String, String> forStandalone({
+    required String homeRoot,
+    required String cursorConfigDir,
+  }) => {
+    'HOME': homeRoot,
+    'USERPROFILE': homeRoot,
+    'CURSOR_CONFIG_DIR': cursorConfigDir,
+  };
 }

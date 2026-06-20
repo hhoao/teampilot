@@ -162,14 +162,13 @@ void main() {
         'runtime',
         'cursor',
       );
+      final home = p.join(cursorDir, 'home');
       expect(await Directory(cursorDir).exists(), isTrue);
-      expect(outcome.environment['CURSOR_CONFIG_DIR'], cursorDir);
+      expect(outcome.environment['HOME'], home);
+      expect(outcome.environment['CURSOR_CONFIG_DIR'], p.join(home, '.cursor'));
       expect(outcome.warnings, isEmpty);
 
-      final trustPath = CursorWorkspaceTrust.trustMarkerPath(
-        p.join(base.path, 'user-home'),
-        workspace,
-      );
+      final trustPath = CursorWorkspaceTrust.trustMarkerPath(home, workspace);
       expect(await File(trustPath).exists(), isTrue);
     },
   );
