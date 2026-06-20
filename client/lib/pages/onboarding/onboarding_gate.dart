@@ -10,6 +10,9 @@ import '../../services/app/onboarding_service.dart';
 import '../../theme/workspace_surface_layers.dart';
 import 'onboarding_wizard.dart';
 
+/// App-wide handle for [OnboardingGateState]; wired in [appRouter].
+final onboardingGateKey = GlobalKey<OnboardingGateState>();
+
 class OnboardingGate extends StatefulWidget {
   const OnboardingGate({super.key, required this.child});
 
@@ -81,6 +84,14 @@ class OnboardingGateState extends State<OnboardingGate> {
 }
 
 /// Allows settings UI to re-open the setup wizard without restarting the app.
-Future<void> resetOnboardingWizard(BuildContext context) async {
-  await context.findAncestorStateOfType<OnboardingGateState>()?.reopenWizard();
+///
+/// When [context] sits under a modal [Dialog] (e.g. the workspace settings
+/// dialog), the dialog is closed first so the wizard is not hidden behind it.
+Future<void> resetOnboardingWizard([BuildContext? context]) async {
+  if (context != null &&
+      context.findAncestorWidgetOfExactType<Dialog>() != null &&
+      Navigator.of(context).canPop()) {
+    Navigator.of(context).pop();
+  }
+  await onboardingGateKey.currentState?.reopenWizard();
 }

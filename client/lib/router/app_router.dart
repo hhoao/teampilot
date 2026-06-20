@@ -86,8 +86,10 @@ final appRouter = GoRouter(
     // App-wide gates run once above both workspace shells so first-run setup
     // and SSH startup checks apply regardless of entry mode.
     ShellRoute(
-      builder: (context, state, child) =>
-          OnboardingGate(child: StartupGate(child: child)),
+      builder: (context, state, child) => OnboardingGate(
+        key: onboardingGateKey,
+        child: StartupGate(child: child),
+      ),
       routes: [
         // Apifox-style workspace home — title bar + open workspace tabs live in
         // [HomeShell]; routed pages render only the body below it.
