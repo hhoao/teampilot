@@ -14,6 +14,9 @@ import '../cli/registry/capabilities/config_profile_capability.dart';
 import '../cli/registry/capabilities/plugin_provisioner_capability.dart';
 import '../cli/registry/cli_tool_registry.dart';
 import '../plugin/installed_plugin_catalog.dart';
+import '../mcp/profile_mcp_linker_service.dart';
+import '../../repositories/mcp_repository.dart';
+import '../../utils/logger.dart';
 import '../io/filesystem.dart';
 import '../mcp/mcp_registry_service.dart';
 import '../resource/resource_provisioning_service.dart';
@@ -292,6 +295,22 @@ class ConfigProfileService implements ConfigProfileDelegate {
     final profileId = personal?.id.trim() ?? '';
     await _withStandaloneScope(standaloneScope, () async {
       await ensureStandalonePersonalProfile(trimmedWorkspaceId, cli: cli);
+      // Self-heal the personal MCP snapshot at launch from the bundle + catalog
+      // (like personal skills/plugins resolve from the bundle), so MCP works
+      // without requiring a prior re-save. writeForStandaloneWorkspace below
+      // provisions from this snapshot.
+      if (personal != null && profileId.isNotEmpty) {
+        try {
+          await ProfileMcpLinkerService(fs: fs).syncForProfile(
+            profileId: profileId,
+            mcpServerIds: personal.bundle.mcpServerIds,
+            catalog: await McpRepository().loadAll(),
+            layout: layout,
+          );
+        } catch (e) {
+          appLogger.w('[standalone-mcp] snapshot refresh failed: $e');
+        }
+      }
       String? sessionProvisionJson;
       await Future.wait([
         layout.ensureSessionRuntimeInheritsWorkspace(
