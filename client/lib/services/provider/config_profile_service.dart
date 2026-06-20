@@ -13,6 +13,7 @@ import '../host/script_file_hook_provisioner.dart';
 import '../cli/registry/capabilities/config_profile_capability.dart';
 import '../cli/registry/capabilities/plugin_provisioner_capability.dart';
 import '../cli/registry/cli_tool_registry.dart';
+import '../plugin/installed_plugin_catalog.dart';
 import '../io/filesystem.dart';
 import '../mcp/mcp_registry_service.dart';
 import '../resource/resource_provisioning_service.dart';
@@ -234,7 +235,7 @@ class ConfigProfileService implements ConfigProfileDelegate {
             memberId: memberId,
           ),
           enabledPluginIds: team?.pluginIds ?? const <String>[],
-          installedCatalog: const [],
+          installedCatalog: await InstalledPluginCatalog.load(fs, basePath),
           layout: layout,
           tool: cli,
           memberProvisionJson: memberProvisionJson,
@@ -328,7 +329,7 @@ class ConfigProfileService implements ConfigProfileDelegate {
               cli.value,
             ),
             enabledPluginIds: personal?.bundle.pluginIds ?? const <String>[],
-            installedCatalog: const [],
+            installedCatalog: await InstalledPluginCatalog.load(fs, basePath),
             layout: layout,
             tool: cli,
             memberProvisionJson: sessionProvisionJson,

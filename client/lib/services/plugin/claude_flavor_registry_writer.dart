@@ -8,6 +8,7 @@ import '../storage/app_storage.dart';
 import '../../utils/logger.dart';
 import 'cli_plugin_layout.dart';
 import 'cli_plugin_provision_cache.dart';
+import 'installed_plugin_catalog.dart';
 
 /// Shared Claude-flavor plugin registry writer (installed_plugins v2, enabledPlugins).
 ///
@@ -197,20 +198,8 @@ class ClaudeFlavorRegistryWriter {
     );
   }
 
-  Future<List<Plugin>> _loadInstalledCatalog() async {
-    final path = AppPaths.pluginsJsonForTeampilotRoot(teampilotRoot);
-    final text = await fs.readString(path);
-    if (text == null || text.trim().isEmpty) return const [];
-    try {
-      final root = (jsonDecode(text) as Map).cast<String, Object?>();
-      return (root['plugins'] as List? ?? const [])
-          .whereType<Map>()
-          .map((m) => Plugin.fromJson(m.cast<String, Object?>()))
-          .toList();
-    } catch (_) {
-      return const [];
-    }
-  }
+  Future<List<Plugin>> _loadInstalledCatalog() =>
+      InstalledPluginCatalog.load(fs, teampilotRoot);
 
   /// CLI `enabledPlugins` keys use marketplace catalog names, not bundle manifest names.
   ///
