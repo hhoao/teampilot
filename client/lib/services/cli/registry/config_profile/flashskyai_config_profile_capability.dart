@@ -5,6 +5,7 @@ import '../../../provider/flashskyai/flashskyai_effort_capability.dart';
 import '../../../session/member_role_provision.dart';
 import '../capabilities/cli_effort_capability.dart';
 import '../capabilities/config_profile_capability.dart';
+import '../../../provider/workspace_trust_provisioner.dart';
 import 'bus_idle_stop_hook.dart';
 
 final class FlashskyaiConfigProfileCapability
@@ -26,9 +27,10 @@ final class FlashskyaiConfigProfileCapability
     'theme': 'auto',
   };
 
-  static const defaultWorkspaceConfig = <String, Object?>{
+  static const defaultProjectConfig = <String, Object?>{
     'hasTrustDialogAccepted': true,
-    'workspaceOnboardingSeenCount': 1,
+    'hasCompletedProjectOnboarding': true,
+    'projectOnboardingSeenCount': 1,
     'allowedTools': <Object?>[],
     'mcpServers': <String, Object?>{},
   };
@@ -83,6 +85,12 @@ final class FlashskyaiConfigProfileCapability
     final delegate = ctx.paths;
     final scope = ctx.scope;
     final workingDirectory = ctx.workingDirectory ?? '';
+    await _provisionWorkspaceTrust(
+      delegate: delegate,
+      workspaceId: scope.workspaceId,
+      workingDirectory: workingDirectory,
+      additionalDirectories: ctx.additionalDirectories,
+    );
     await _writeMetadata(
       delegate,
       scope,
@@ -162,6 +170,12 @@ final class FlashskyaiConfigProfileCapability
     final scope = launchScopeForStandalone(standalone);
     final workingDirectory = ctx.workingDirectory ?? '';
 
+    await _provisionWorkspaceTrust(
+      delegate: delegate,
+      workspaceId: scope.workspaceId,
+      workingDirectory: workingDirectory,
+      additionalDirectories: ctx.additionalDirectories,
+    );
     await _writeMetadataAt(
       delegate,
       memberToolDir,
@@ -215,10 +229,10 @@ final class FlashskyaiConfigProfileCapability
     )) {
       return;
     }
-    final metadata = await delegate.metadataWithTrustedWorkspaces(
+    final metadata = await delegate.metadataWithTrustedProjects(
       metadataPath: metadataPath,
       defaultMetadata: defaultMetadata,
-      defaultWorkspaceConfig: defaultWorkspaceConfig,
+      defaultProjectConfig: defaultProjectConfig,
       directories: directories,
     );
     await delegate.writeJsonIfChanged(metadataPath, metadata);
@@ -284,10 +298,10 @@ final class FlashskyaiConfigProfileCapability
     )) {
       return;
     }
-    final metadata = await delegate.metadataWithTrustedWorkspaces(
+    final metadata = await delegate.metadataWithTrustedProjects(
       metadataPath: metadataPath,
       defaultMetadata: defaultMetadata,
-      defaultWorkspaceConfig: defaultWorkspaceConfig,
+      defaultProjectConfig: defaultProjectConfig,
       directories: directories,
     );
     await delegate.writeJsonIfChanged(metadataPath, metadata);
@@ -483,6 +497,26 @@ final class FlashskyaiConfigProfileCapability
         member: member,
         model: model,
       ),
+    );
+  }
+
+  Future<void> _provisionWorkspaceTrust({
+    required ConfigProfileDelegate delegate,
+    required String workspaceId,
+    required String workingDirectory,
+    List<String> additionalDirectories = const [],
+  }) {
+    return WorkspaceTrustProvisioner(
+      layout: delegate.layout,
+      fs: delegate.fs,
+    ).provisionWorkspace(
+      workspaceId: workspaceId,
+      directories: [
+        if (workingDirectory.trim().isNotEmpty) workingDirectory.trim(),
+        for (final directory in additionalDirectories)
+          if (directory.trim().isNotEmpty) directory.trim(),
+      ],
+      tools: const [FlashskyaiConfigProfileCapability.toolId],
     );
   }
 }

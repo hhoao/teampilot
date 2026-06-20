@@ -28,11 +28,11 @@ final class FlashskyaiHeadlessProvisionCapability
         ctx.configDir,
         FlashskyaiConfigProfileCapability.metadataFileName,
       );
-      final metadata = await profileInfra.metadataWithTrustedWorkspaces(
+      final metadata = await profileInfra.metadataWithTrustedProjects(
         metadataPath: metadataPath,
         defaultMetadata: FlashskyaiConfigProfileCapability.defaultMetadata,
-        defaultWorkspaceConfig:
-            FlashskyaiConfigProfileCapability.defaultWorkspaceConfig,
+        defaultProjectConfig:
+            FlashskyaiConfigProfileCapability.defaultProjectConfig,
         directories: directories,
       );
       await writeJson(metadataPath, metadata);

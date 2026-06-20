@@ -619,15 +619,15 @@ class ConfigProfileService implements ConfigProfileDelegate {
       _infra.writeJsonIfChanged(path, value);
 
   @override
-  Future<Map<String, Object?>> metadataWithTrustedWorkspaces({
+  Future<Map<String, Object?>> metadataWithTrustedProjects({
     required String metadataPath,
     required Map<String, Object?> defaultMetadata,
-    required Map<String, Object?> defaultWorkspaceConfig,
+    required Map<String, Object?> defaultProjectConfig,
     required Iterable<String> directories,
-  }) => _infra.metadataWithTrustedWorkspaces(
+  }) => _infra.metadataWithTrustedProjects(
     metadataPath: metadataPath,
     defaultMetadata: defaultMetadata,
-    defaultWorkspaceConfig: defaultWorkspaceConfig,
+    defaultProjectConfig: defaultProjectConfig,
     directories: directories,
   );
 

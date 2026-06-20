@@ -2,15 +2,16 @@ import '../../../utils/workspace_path_utils.dart';
 
 /// Injects Codex workspace trust tables into `config.toml`.
 ///
-/// Codex prompts for directory trust when `[workspaces."<path>"]` is missing or
-/// not marked trusted. See upstream `config.toml` examples:
+/// Codex prompts for directory trust when `[projects."<path>"]` is missing or
+/// not marked trusted. See upstream `~/.codex/config.toml` examples:
 /// `trust_level = "trusted"`.
 abstract final class CodexProjectTrustToml {
   CodexProjectTrustToml._();
 
   static const trustLevel = 'trusted';
+  static const projectsTablePrefix = 'projects';
 
-  /// Appends `[workspaces."…"]` blocks for [directories] not already trusted.
+  /// Appends `[projects."…"]` blocks for [directories] not already trusted.
   static String applyTrustedDirectories(
     String toml,
     Iterable<String> directories,
@@ -48,6 +49,6 @@ abstract final class CodexProjectTrustToml {
 
   static String _tableHeader(String path) {
     final escaped = path.replaceAll(r'\', r'\\').replaceAll('"', r'\"');
-    return '[workspaces."$escaped"]';
+    return '[$projectsTablePrefix."$escaped"]';
   }
 }

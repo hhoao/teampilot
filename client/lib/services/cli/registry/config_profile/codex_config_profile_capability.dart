@@ -12,7 +12,9 @@ import '../capabilities/cli_effort_capability.dart';
 import '../../../provider/codex/codex_official_provider.dart';
 import '../../../provider/codex/codex_provider_settings_resolver.dart';
 import '../../../provider/codex/codex_team_bus_overlay.dart';
+import '../../../provider/workspace_trust_provisioner.dart';
 import '../../../session/member_role_provision.dart';
+import '../../../../utils/trusted_project_paths.dart';
 import '../capabilities/config_profile_capability.dart';
 
 /// Codex CLI launch: provisions provider `auth.json` + `config.toml` under
@@ -51,6 +53,12 @@ final class CodexConfigProfileCapability implements ConfigProfileCapability {
     final warnings = <String>[];
 
     await paths.fs.ensureDir(codexHome);
+    await _provisionWorkspaceTrust(
+      paths: paths,
+      workspaceId: ctx.scope.workspaceId,
+      workingDirectory: ctx.workingDirectory ?? '',
+      additionalDirectories: ctx.additionalDirectories,
+    );
 
     if (team != null) {
       final resolver = CodexProviderSettingsResolver(
@@ -72,12 +80,11 @@ final class CodexConfigProfileCapability implements ConfigProfileCapability {
             mixed && port != null && member != null && member.isValid
             ? CodexTeamBusOverlay.build(memberId: member.id, port: port)
             : null;
-        final trustedDirectories = <String>[
-          if ((ctx.workingDirectory ?? '').trim().isNotEmpty)
-            ctx.workingDirectory!.trim(),
-          for (final dir in ctx.additionalDirectories)
-            if (dir.trim().isNotEmpty) dir.trim(),
-        ];
+        final trustedDirectories = await _trustedProjectDirectories(
+          paths: paths,
+          workingDirectory: ctx.workingDirectory ?? '',
+          additionalDirectories: ctx.additionalDirectories,
+        );
         try {
           await CodexHomeProvisioner(fs: paths.fs).provision(
             codexHome: codexHome,
@@ -133,6 +140,12 @@ final class CodexConfigProfileCapability implements ConfigProfileCapability {
     final warnings = <String>[];
 
     await paths.fs.ensureDir(codexHome);
+    await _provisionWorkspaceTrust(
+      paths: paths,
+      workspaceId: standalone.workspaceId,
+      workingDirectory: ctx.workingDirectory ?? '',
+      additionalDirectories: ctx.additionalDirectories,
+    );
 
     final resolver = CodexProviderSettingsResolver(
       basePath: paths.basePath,
@@ -146,12 +159,11 @@ final class CodexConfigProfileCapability implements ConfigProfileCapability {
     if (provider == null) {
       warnings.add('codex_provider_missing');
     } else {
-      final trustedDirectories = <String>[
-        if ((ctx.workingDirectory ?? '').trim().isNotEmpty)
-          ctx.workingDirectory!.trim(),
-        for (final dir in ctx.additionalDirectories)
-          if (dir.trim().isNotEmpty) dir.trim(),
-      ];
+      final trustedDirectories = await _trustedProjectDirectories(
+        paths: paths,
+        workingDirectory: ctx.workingDirectory ?? '',
+        additionalDirectories: ctx.additionalDirectories,
+      );
       try {
         await CodexHomeProvisioner(fs: paths.fs).provision(
           codexHome: codexHome,
@@ -254,5 +266,41 @@ final class CodexConfigProfileCapability implements ConfigProfileCapability {
       provider.id,
       CodexAuthArtifacts.authFileName,
     );
+  }
+
+  Future<void> _provisionWorkspaceTrust({
+    required ConfigProfileDelegate paths,
+    required String workspaceId,
+    required String workingDirectory,
+    List<String> additionalDirectories = const [],
+  }) {
+    return WorkspaceTrustProvisioner(
+      layout: paths.layout,
+      fs: paths.fs,
+    ).provisionWorkspace(
+      workspaceId: workspaceId,
+      directories: [
+        if (workingDirectory.trim().isNotEmpty) workingDirectory.trim(),
+        for (final directory in additionalDirectories)
+          if (directory.trim().isNotEmpty) directory.trim(),
+      ],
+      tools: const [CodexConfigProfileCapability.toolId],
+    );
+  }
+
+  Future<List<String>> _trustedProjectDirectories({
+    required ConfigProfileDelegate paths,
+    required String workingDirectory,
+    List<String> additionalDirectories = const [],
+  }) async {
+    final keys = await collectTrustedProjectKeys(
+      fs: paths.fs,
+      directories: [
+        if (workingDirectory.trim().isNotEmpty) workingDirectory.trim(),
+        for (final directory in additionalDirectories)
+          if (directory.trim().isNotEmpty) directory.trim(),
+      ],
+    );
+    return keys.toList(growable: false);
   }
 }

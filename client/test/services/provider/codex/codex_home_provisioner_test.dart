@@ -117,7 +117,7 @@ base_url = "https://api.deepseek.com"
       final toml = await File(p.join(codexHome, 'config.toml')).readAsString();
       expect(
         toml,
-        contains('[workspaces."/home/user/Document/testmixed"]'),
+        contains('[projects."/home/user/Document/testmixed"]'),
       );
       expect(toml, contains('trust_level = "trusted"'));
     });

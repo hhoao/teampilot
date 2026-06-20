@@ -8,7 +8,8 @@ import 'package:path/path.dart' as p;
 abstract final class CursorWorkspaceTrust {
   CursorWorkspaceTrust._();
 
-  static const workspacesDirName = 'workspaces';
+  /// cursor-agent stores trust markers under `$HOME/.cursor/projects/<slug>/`.
+  static const projectsDirName = 'projects';
   static const trustFileName = '.workspace-trusted';
   static const trustMethod = 'teampilot-provisioned';
 
@@ -29,7 +30,7 @@ abstract final class CursorWorkspaceTrust {
   }) {
     final ctx = pathContext ?? p.context;
     final slug = slugifyWorkspacePath(workspacePath);
-    return ctx.join(homeRoot, '.cursor', workspacesDirName, slug);
+    return ctx.join(homeRoot, '.cursor', projectsDirName, slug);
   }
 
   static String trustMarkerPath(

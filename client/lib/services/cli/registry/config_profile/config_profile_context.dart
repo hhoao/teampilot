@@ -159,10 +159,10 @@ abstract interface class ConfigProfileDelegate implements ConfigProfilePaths {
 
   Future<void> writeJsonIfChanged(String path, Map<String, Object?> value);
 
-  Future<Map<String, Object?>> metadataWithTrustedWorkspaces({
+  Future<Map<String, Object?>> metadataWithTrustedProjects({
     required String metadataPath,
     required Map<String, Object?> defaultMetadata,
-    required Map<String, Object?> defaultWorkspaceConfig,
+    required Map<String, Object?> defaultProjectConfig,
     required Iterable<String> directories,
   });
 

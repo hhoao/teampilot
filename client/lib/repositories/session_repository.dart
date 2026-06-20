@@ -16,6 +16,7 @@ import '../models/workspace_icon_ref.dart';
 import '../services/workspace/workspace_icon_service.dart';
 import '../services/workspace/workspace_icon_storage.dart';
 import '../services/session/session_lifecycle_service.dart';
+import '../services/provider/workspace_trust_provisioner.dart';
 import '../utils/lock_pool.dart';
 import '../utils/workspace_path_utils.dart';
 import '../utils/workspace_sessions.dart';
@@ -163,6 +164,7 @@ class SessionRepository {
       updatedAt: now,
     );
     await _writeManifest(fs, workspace);
+    await _provisionWorkspaceTrust(fs, workspace);
     return workspace;
   }
 
@@ -252,15 +254,28 @@ class SessionRepository {
     final existing = await _readManifest(fs, workspaceId);
     if (existing == null) return;
     final now = DateTime.now().millisecondsSinceEpoch;
-    await _writeManifest(
-      fs,
-      existing.copyWith(
-        primaryPath: normalizeWorkspacePath(primaryPath),
-        additionalPaths: List<String>.from(
-          additionalPaths.map(normalizeWorkspacePath).where((e) => e.isNotEmpty),
-        ),
-        updatedAt: now,
+    final updated = existing.copyWith(
+      primaryPath: normalizeWorkspacePath(primaryPath),
+      additionalPaths: List<String>.from(
+        additionalPaths.map(normalizeWorkspacePath).where((e) => e.isNotEmpty),
       ),
+      updatedAt: now,
+    );
+    await _writeManifest(fs, updated);
+    await _provisionWorkspaceTrust(fs, updated);
+  }
+
+  Future<void> _provisionWorkspaceTrust(
+    SessionRepositoryFs fs,
+    Workspace workspace,
+  ) async {
+    final layout = RuntimeLayout(teampilotRoot: fs.teampilotRoot, fs: fs.fs);
+    await WorkspaceTrustProvisioner(layout: layout, fs: fs.fs).provisionWorkspace(
+      workspaceId: workspace.workspaceId,
+      directories: [
+        workspace.primaryPath,
+        ...workspace.additionalPaths,
+      ],
     );
   }
 

@@ -7,6 +7,7 @@ import '../../../provider/cursor/cursor_launch_environment.dart';
 import '../../../provider/cursor/cursor_provider_credentials_service.dart';
 import '../../../provider/cursor/cursor_provider_settings_resolver.dart';
 import '../../../provider/cursor/cursor_session_config_dir.dart';
+import '../../../provider/workspace_trust_provisioner.dart';
 import '../../../provider/cursor/cursor_workspace_trust_provisioner.dart';
 import '../capabilities/config_profile_capability.dart';
 
@@ -192,8 +193,24 @@ final class CursorConfigProfileCapability implements ConfigProfileCapability {
   Future<void> _provisionWorkspaceTrust({
     required ConfigProfileLaunchContext ctx,
     required String homeRoot,
-  }) {
-    return CursorWorkspaceTrustProvisioner(fs: ctx.paths.fs)
+  }) async {
+    final directories = [
+      if ((ctx.workingDirectory ?? '').trim().isNotEmpty)
+        ctx.workingDirectory!.trim(),
+      for (final directory in ctx.additionalDirectories)
+        if (directory.trim().isNotEmpty) directory.trim(),
+    ];
+    if (directories.isNotEmpty) {
+      await WorkspaceTrustProvisioner(
+        layout: ctx.paths.layout,
+        fs: ctx.paths.fs,
+      ).provisionWorkspace(
+        workspaceId: ctx.scope.workspaceId,
+        directories: directories,
+        tools: const [CursorConfigProfileCapability.toolId],
+      );
+    }
+    await CursorWorkspaceTrustProvisioner(fs: ctx.paths.fs)
         .provisionLaunchWorkspaces(
           homeRoot: homeRoot,
           workingDirectory: ctx.workingDirectory,

@@ -1,3 +1,4 @@
+import '../../../utils/trusted_project_paths.dart';
 import '../../../utils/workspace_path_utils.dart';
 import '../../io/filesystem.dart';
 import 'cursor_workspace_trust.dart';
@@ -6,7 +7,8 @@ import 'cursor_workspace_trust.dart';
 ///
 /// Used for personal / native team launches (real [homeRoot]) and mixed mode
 /// (isolated fake [homeRoot]). Path variants follow [workspaceMetadataKeys] so
-/// Windows / WSL slug lookups match `cursor-agent --workspace`.
+/// Path variants follow [workspaceMetadataKeys] so Windows / WSL slug lookups
+/// match `cursor-agent --workspace`. Markers live under `.cursor/projects/`.
 final class CursorWorkspaceTrustProvisioner {
   CursorWorkspaceTrustProvisioner({required Filesystem fs}) : _fs = fs;
 
@@ -35,13 +37,17 @@ final class CursorWorkspaceTrustProvisioner {
     required String homeRoot,
     String? workingDirectory,
     Iterable<String> additionalDirectories = const [],
-  }) => provision(
-    homeRoot: homeRoot,
-    workspacePaths: workspacePathKeys(
-      workingDirectory: workingDirectory,
-      additionalDirectories: additionalDirectories,
-    ),
-  );
+  }) async {
+    final keys = await collectTrustedProjectKeys(
+      fs: _fs,
+      directories: [
+        if (workingDirectory?.trim().isNotEmpty ?? false) workingDirectory!.trim(),
+        for (final directory in additionalDirectories)
+          if (directory.trim().isNotEmpty) directory.trim(),
+      ],
+    );
+    await provision(homeRoot: homeRoot, workspacePaths: keys);
+  }
 
   Future<void> provision({
     required String homeRoot,

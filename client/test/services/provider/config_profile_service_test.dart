@@ -204,9 +204,9 @@ void main() {
     expect(await metadata.exists(), isTrue);
     final metadataJson =
         jsonDecode(await metadata.readAsString()) as Map<String, Object?>;
-    final workspaces = metadataJson['workspaces'] as Map<String, Object?>;
+    final projects = metadataJson['projects'] as Map<String, Object?>;
     final workspaceConfig =
-        workspaces['/workspace/flashskyai'] as Map<String, Object?>;
+        projects['/workspace/flashskyai'] as Map<String, Object?>;
     expect(workspaceConfig['hasTrustDialogAccepted'], isTrue);
 
     final settings = File(
@@ -640,9 +640,9 @@ base_url = "https://api.example.com/v1"
               ).readAsString(),
             )
             as Map<String, Object?>;
-    final workspaces = metadata['workspaces'] as Map<String, Object?>;
+    final projects = metadata['projects'] as Map<String, Object?>;
     final workspaceConfig =
-        workspaces['/workspace/workspace'] as Map<String, Object?>;
+        projects['/workspace/workspace'] as Map<String, Object?>;
     expect(workspaceConfig['hasTrustDialogAccepted'], isTrue);
     expect(workspaceConfig['hasClaudeMdExternalIncludesApproved'], isTrue);
     expect(workspaceConfig['hasClaudeMdExternalIncludesWarningShown'], isTrue);
@@ -836,7 +836,7 @@ base_url = "https://api.example.com/v1"
   });
 
   test(
-    'prepareTeamLaunch merges trusted workspaces into existing metadata',
+    'prepareTeamLaunch merges trusted projects into existing metadata',
     () async {
       const sessionId = 'sess-trust';
       final metadataPath = p.join(
@@ -848,7 +848,7 @@ base_url = "https://api.example.com/v1"
         const JsonEncoder.withIndent('  ').convert({
           'hasCompletedOnboarding': true,
           'customField': 'keep-me',
-          'workspaces': {
+          'projects': {
             '/workspace/old': {
               'hasTrustDialogAccepted': true,
               'lastOpenedAt': '2024',
@@ -871,30 +871,31 @@ base_url = "https://api.example.com/v1"
           jsonDecode(await File(metadataPath).readAsString())
               as Map<String, Object?>;
       expect(metadata['customField'], 'keep-me');
-      final workspaces = metadata['workspaces'] as Map<String, Object?>;
-      expect(workspaces.keys, containsAll(['/workspace/old', '/workspace/new', '/workspace/extra']));
+      expect(metadata.containsKey('workspaces'), isFalse);
+      final projects = metadata['projects'] as Map<String, Object?>;
+      expect(projects.keys, containsAll(['/workspace/old', '/workspace/new', '/workspace/extra']));
       expect(
-        (workspaces['/workspace/old'] as Map)['lastOpenedAt'],
+        (projects['/workspace/old'] as Map)['lastOpenedAt'],
         '2024',
       );
       expect(
-        (workspaces['/workspace/new'] as Map)['hasTrustDialogAccepted'],
+        (projects['/workspace/new'] as Map)['hasTrustDialogAccepted'],
         isTrue,
       );
       expect(
-        (workspaces['/workspace/new'] as Map)['workspaceOnboardingSeenCount'],
+        (projects['/workspace/new'] as Map)['projectOnboardingSeenCount'],
         1,
       );
       expect(
-        (workspaces['/workspace/extra'] as Map)['hasTrustDialogAccepted'],
+        (projects['/workspace/extra'] as Map)['hasTrustDialogAccepted'],
         isTrue,
       );
       expect(
-        (workspaces['/workspace/new'] as Map)['hasClaudeMdExternalIncludesApproved'],
+        (projects['/workspace/new'] as Map)['hasClaudeMdExternalIncludesApproved'],
         isTrue,
       );
       expect(
-        (workspaces['/workspace/new'] as Map)['hasClaudeMdExternalIncludesWarningShown'],
+        (projects['/workspace/new'] as Map)['hasClaudeMdExternalIncludesWarningShown'],
         isTrue,
       );
     },
@@ -922,9 +923,9 @@ base_url = "https://api.example.com/v1"
       final metadata =
           jsonDecode(await File(metadataPath).readAsString())
               as Map<String, Object?>;
-      final workspaces = metadata['workspaces'] as Map<String, Object?>;
+      final projects = metadata['projects'] as Map<String, Object?>;
       expect(
-        workspaces.keys,
+        projects.keys,
         containsAll([
           p.normalize(r'C:\Users\haung\Documents'),
           'C:/Users/haung/Documents',
@@ -932,9 +933,9 @@ base_url = "https://api.example.com/v1"
         ]),
       );
       final forwardSlash =
-          workspaces['C:/Users/haung/Documents'] as Map<String, Object?>;
+          projects['C:/Users/haung/Documents'] as Map<String, Object?>;
       expect(forwardSlash['hasTrustDialogAccepted'], isTrue);
-      expect(forwardSlash['workspaceOnboardingSeenCount'], 1);
+      expect(forwardSlash['projectOnboardingSeenCount'], 1);
       expect(forwardSlash['allowedTools'], isA<List<Object?>>());
       expect(forwardSlash['mcpServers'], isA<Map<String, Object?>>());
     },
@@ -962,8 +963,8 @@ base_url = "https://api.example.com/v1"
       final metadata =
           jsonDecode(await File(metadataPath).readAsString())
               as Map<String, Object?>;
-      final workspaces = metadata['workspaces'] as Map<String, Object?>;
-      final wslPath = workspaces['/mnt/c/Users/haung/Documents'];
+      final projects = metadata['projects'] as Map<String, Object?>;
+      final wslPath = projects['/mnt/c/Users/haung/Documents'];
       expect(wslPath, isA<Map>());
       expect((wslPath! as Map)['hasTrustDialogAccepted'], isTrue);
     },

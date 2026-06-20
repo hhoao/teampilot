@@ -13,6 +13,7 @@ import '../../../provider/claude/claude_provider_settings_resolver.dart';
 import '../../../session/member_role_provision.dart';
 import '../../../team/claude_team_roster_service.dart';
 import '../capabilities/config_profile_capability.dart';
+import '../../../provider/workspace_trust_provisioner.dart';
 import 'bus_idle_stop_hook.dart';
 
 class ClaudeLaunchExtras {
@@ -50,9 +51,10 @@ final class ClaudeConfigProfileCapability implements ConfigProfileCapability {
     'theme': 'auto',
   };
 
-  static const defaultWorkspaceConfig = <String, Object?>{
+  static const defaultProjectConfig = <String, Object?>{
     'hasTrustDialogAccepted': true,
-    'workspaceOnboardingSeenCount': 1,
+    'hasCompletedProjectOnboarding': true,
+    'projectOnboardingSeenCount': 1,
     'hasClaudeMdExternalIncludesApproved': true,
     'hasClaudeMdExternalIncludesWarningShown': true,
     'allowedTools': <Object?>[],
@@ -165,6 +167,12 @@ final class ClaudeConfigProfileCapability implements ConfigProfileCapability {
       );
     }
 
+    await _provisionWorkspaceTrust(
+      delegate: delegate,
+      workspaceId: scope.workspaceId,
+      workingDirectory: workingDirectory,
+      additionalDirectories: ctx.additionalDirectories,
+    );
     await _writeMetadata(
       delegate,
       scope,
@@ -328,6 +336,12 @@ final class ClaudeConfigProfileCapability implements ConfigProfileCapability {
               ? (await _resolveSoleClaudeProviderId(delegate))
               : null);
 
+    await _provisionWorkspaceTrust(
+      delegate: delegate,
+      workspaceId: scope.workspaceId,
+      workingDirectory: workingDirectory,
+      additionalDirectories: ctx.additionalDirectories,
+    );
     await _writeMetadataAt(
       delegate,
       memberToolDir,
@@ -426,10 +440,10 @@ final class ClaudeConfigProfileCapability implements ConfigProfileCapability {
       memberToolDir,
       metadataFileName,
     );
-    final metadata = await delegate.metadataWithTrustedWorkspaces(
+    final metadata = await delegate.metadataWithTrustedProjects(
       metadataPath: metadataPath,
       defaultMetadata: defaultMetadata,
-      defaultWorkspaceConfig: defaultWorkspaceConfig,
+      defaultProjectConfig: defaultProjectConfig,
       directories: [workingDirectory, ...additionalDirectories],
     );
     await delegate.fs.atomicWrite(
@@ -552,10 +566,10 @@ final class ClaudeConfigProfileCapability implements ConfigProfileCapability {
       scope.sessionId,
       memberId: scope.memberId,
     );
-    final metadata = await delegate.metadataWithTrustedWorkspaces(
+    final metadata = await delegate.metadataWithTrustedProjects(
       metadataPath: metadataPath,
       defaultMetadata: defaultMetadata,
-      defaultWorkspaceConfig: defaultWorkspaceConfig,
+      defaultProjectConfig: defaultProjectConfig,
       directories: [workingDirectory, ...additionalDirectories],
     );
     await delegate.fs.atomicWrite(
@@ -849,5 +863,25 @@ final class ClaudeConfigProfileCapability implements ConfigProfileCapability {
       settings['env'] = env;
     }
     return settings;
+  }
+
+  Future<void> _provisionWorkspaceTrust({
+    required ConfigProfileDelegate delegate,
+    required String workspaceId,
+    required String workingDirectory,
+    List<String> additionalDirectories = const [],
+  }) {
+    return WorkspaceTrustProvisioner(
+      layout: delegate.layout,
+      fs: delegate.fs,
+    ).provisionWorkspace(
+      workspaceId: workspaceId,
+      directories: [
+        if (workingDirectory.trim().isNotEmpty) workingDirectory.trim(),
+        for (final directory in additionalDirectories)
+          if (directory.trim().isNotEmpty) directory.trim(),
+      ],
+      tools: const [ClaudeConfigProfileCapability.toolId],
+    );
   }
 }

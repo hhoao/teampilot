@@ -14,7 +14,7 @@ void main() {
     );
   });
 
-  test('trustMarkerPath is under fake HOME workspaces dir', () {
+  test('trustMarkerPath is under fake HOME projects dir', () {
     expect(
       CursorWorkspaceTrust.trustMarkerPath(
         '/fake/home',
@@ -24,7 +24,7 @@ void main() {
       p.join(
         '/fake/home',
         '.cursor',
-        'workspaces',
+        'projects',
         'home-hhoa-Document-testmixed',
         '.workspace-trusted',
       ),

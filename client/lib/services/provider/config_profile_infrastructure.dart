@@ -4,7 +4,7 @@ import 'package:path/path.dart' as p;
 
 import '../../models/extension_manifest.dart';
 import '../../models/team_config.dart';
-import '../../utils/workspace_path_utils.dart';
+import '../../utils/trusted_project_paths.dart';
 import '../../utils/team_member_naming.dart';
 import '../storage/runtime_layout.dart';
 import '../cli/registry/config_profile/config_profile_context.dart';
@@ -22,6 +22,9 @@ import '../storage/app_storage.dart';
 import '../storage/runtime_storage_context.dart';
 import '../team/team_lead_delegate_settings_merge.dart';
 import '../team/team_lead_settings_merge.dart';
+
+/// Claude / flashskyai global metadata key for per-project trust flags.
+const claudeProjectsMetadataKey = 'projects';
 
 /// Cross-CLI config profile file I/O, trusted-workspace metadata, extensions, hooks.
 final class ConfigProfileInfrastructure implements ConfigProfileDelegate {
@@ -75,7 +78,6 @@ final class ConfigProfileInfrastructure implements ConfigProfileDelegate {
   Filesystem get fs => _fs;
 
   @override
-  @override
   String get home {
     final override = _homeOverride;
     if (override != null && override.isNotEmpty) return override;
@@ -114,50 +116,56 @@ final class ConfigProfileInfrastructure implements ConfigProfileDelegate {
       _writeJsonIfChanged(path, value);
 
   @override
-  Future<Map<String, Object?>> metadataWithTrustedWorkspaces({
+  @override
+  Future<Map<String, Object?>> metadataWithTrustedProjects({
     required String metadataPath,
     required Map<String, Object?> defaultMetadata,
-    required Map<String, Object?> defaultWorkspaceConfig,
+    required Map<String, Object?> defaultProjectConfig,
     required Iterable<String> directories,
   }) async {
     final metadata = await _readMetadataFile(metadataPath, defaultMetadata);
-    final trustedKeys = <String>{
-      for (final dir in directories) ...workspaceMetadataKeys(dir),
-    };
+    final trustedKeys = await collectTrustedProjectKeys(
+      fs: _fs,
+      directories: directories,
+    );
     if (trustedKeys.isEmpty) {
       return metadata;
     }
 
-    final existingWorkspaces = metadata['workspaces'];
-    final workspaces = existingWorkspaces is Map
-        ? Map<String, Object?>.from(
-            existingWorkspaces.map(
-              (key, value) => MapEntry(key.toString(), value),
-            ),
-          )
-        : <String, Object?>{};
-
+    final projects = _projectsMapFromMetadata(metadata);
     for (final key in trustedKeys) {
-      final existing = workspaces[key];
-      final workspaceConfig = existing is Map
-          ? Map<String, Object?>.from(
-              existing.map(
-                (entryKey, value) => MapEntry(entryKey.toString(), value),
-              ),
-            )
-          : <String, Object?>{...defaultWorkspaceConfig};
-      for (final entry in defaultWorkspaceConfig.entries) {
-        workspaceConfig.putIfAbsent(entry.key, () => entry.value);
-      }
-      for (final entry in defaultWorkspaceConfig.entries) {
-        if (entry.value == true) {
-          workspaceConfig[entry.key] = true;
-        }
-      }
-      workspaces[key] = workspaceConfig;
+      projects[key] = _mergeProjectTrustConfig(
+        projects[key],
+        defaultProjectConfig,
+      );
     }
-    metadata['workspaces'] = workspaces;
+    metadata[claudeProjectsMetadataKey] = projects;
     return metadata;
+  }
+
+  /// Persists trusted [directories] into workspace-level CLI metadata.
+  Future<void> writeWorkspaceTrustedProjectsMetadata({
+    required String workspaceId,
+    required String tool,
+    required String metadataFileName,
+    required Map<String, Object?> defaultMetadata,
+    required Map<String, Object?> defaultProjectConfig,
+    required Iterable<String> directories,
+  }) async {
+    final trimmedWorkspace = workspaceId.trim();
+    final trimmedTool = tool.trim();
+    if (trimmedWorkspace.isEmpty || trimmedTool.isEmpty) return;
+
+    final toolDir = layout.workspaceConfigToolDir(trimmedWorkspace, trimmedTool);
+    await _fs.ensureDir(toolDir);
+    final metadataPath = pathContext.join(toolDir, metadataFileName);
+    final metadata = await metadataWithTrustedProjects(
+      metadataPath: metadataPath,
+      defaultMetadata: defaultMetadata,
+      defaultProjectConfig: defaultProjectConfig,
+      directories: directories,
+    );
+    await _writeJsonIfChanged(metadataPath, metadata);
   }
 
   @override
@@ -166,21 +174,56 @@ final class ConfigProfileInfrastructure implements ConfigProfileDelegate {
     Iterable<String> directories, {
     required Map<String, Object?> defaultMetadata,
   }) async {
-    final trustedKeys = {
-      for (final dir in directories) ...workspaceMetadataKeys(dir),
-    };
+    final trustedKeys = await collectTrustedProjectKeys(
+      fs: _fs,
+      directories: directories,
+    );
     if (trustedKeys.isEmpty) return false;
 
     final metadata = await _readMetadataFile(metadataPath, defaultMetadata);
-    final workspaces = metadata['workspaces'];
-    if (workspaces is! Map) return false;
+    final projects = _projectsMapFromMetadata(metadata);
 
     for (final key in trustedKeys) {
-      final workspace = workspaces[key];
-      if (workspace is! Map) return false;
-      if (workspace['hasTrustDialogAccepted'] != true) return false;
+      final project = projects[key];
+      if (project is! Map) return false;
+      if (project['hasTrustDialogAccepted'] != true) return false;
     }
     return true;
+  }
+
+  static Map<String, Object?> _projectsMapFromMetadata(
+    Map<String, Object?> metadata,
+  ) {
+    return _castStringObjectMap(metadata[claudeProjectsMetadataKey]);
+  }
+
+  static Map<String, Object?> _castStringObjectMap(Object? raw) {
+    if (raw is! Map) return <String, Object?>{};
+    return Map<String, Object?>.from(
+      raw.map((key, value) => MapEntry(key.toString(), value)),
+    );
+  }
+
+  static Map<String, Object?> _mergeProjectTrustConfig(
+    Object? existing,
+    Map<String, Object?> defaultProjectConfig,
+  ) {
+    final projectConfig = existing is Map
+        ? Map<String, Object?>.from(
+            existing.map(
+              (entryKey, value) => MapEntry(entryKey.toString(), value),
+            ),
+          )
+        : <String, Object?>{...defaultProjectConfig};
+    for (final entry in defaultProjectConfig.entries) {
+      projectConfig.putIfAbsent(entry.key, () => entry.value);
+    }
+    for (final entry in defaultProjectConfig.entries) {
+      if (entry.value == true) {
+        projectConfig[entry.key] = true;
+      }
+    }
+    return projectConfig;
   }
 
   @override
