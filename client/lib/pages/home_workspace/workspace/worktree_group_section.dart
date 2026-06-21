@@ -110,19 +110,22 @@ class WorktreeGroupSection extends StatelessWidget {
                   if (wt != null)
                     _GroupMenu(
                       worktreePath: wt.path,
-                      branchLabel: label,
-                      sessionCount: group.sessions.length,
                       manageable: manageable,
-                      onNewConversation: () => unawaited(
-                        createSessionInWorktree(
-                          context,
-                          workspace,
-                          isPersonal: isPersonal,
-                          worktreePath: wt.path,
-                          sessionTeamId: sessionTeamFilter,
-                          personalIdentityId: profileId,
-                        ),
-                      ),
+                      onNewConversation: () {
+                        context
+                            .read<WorktreeCubit>()
+                            .setCurrentWorktree(wt.path);
+                        unawaited(
+                          createSessionInWorktree(
+                            context,
+                            workspace,
+                            isPersonal: isPersonal,
+                            worktreePath: wt.path,
+                            sessionTeamId: sessionTeamFilter,
+                            personalIdentityId: profileId,
+                          ),
+                        );
+                      },
                       onDelete: () => unawaited(
                         _confirmAndRemove(context, wt.path, label),
                       ),
@@ -139,14 +142,21 @@ class WorktreeGroupSection extends StatelessWidget {
               session: session,
               contentLeftInset: 18,
               tapThrottleKeyPrefix: 'worktree_sidebar_session',
-              onTap: () => unawaited(
-                openWorkspaceSessionTab(
-                  context,
-                  workspace,
-                  session,
-                  isPersonal: isPersonal,
-                ),
-              ),
+              onTap: () {
+                // Selecting a session makes its worktree the current one so the
+                // terminal, file tree and source control all reflect it (§7).
+                if (wt != null) {
+                  context.read<WorktreeCubit>().setCurrentWorktree(wt.path);
+                }
+                unawaited(
+                  openWorkspaceSessionTab(
+                    context,
+                    workspace,
+                    session,
+                    isPersonal: isPersonal,
+                  ),
+                );
+              },
             ),
           ),
       ],
@@ -197,16 +207,12 @@ class WorktreeGroupSection extends StatelessWidget {
 class _GroupMenu extends StatelessWidget {
   const _GroupMenu({
     required this.worktreePath,
-    required this.branchLabel,
-    required this.sessionCount,
     required this.manageable,
     required this.onNewConversation,
     required this.onDelete,
   });
 
   final String worktreePath;
-  final String branchLabel;
-  final int sessionCount;
   final bool manageable;
   final VoidCallback onNewConversation;
   final VoidCallback onDelete;

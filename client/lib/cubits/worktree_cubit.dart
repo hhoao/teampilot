@@ -2,6 +2,7 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 
 import '../models/git_worktree.dart';
 import '../services/git/git_worktree_service.dart';
+import '../utils/workspace_path_utils.dart';
 
 /// Narrow seam so tests inject a fake without a real GitWorktreeService.
 abstract class WorktreeLister {
@@ -62,9 +63,10 @@ class WorktreeCubit extends Cubit<WorktreeState> {
   Future<void> load(String repoPath) async {
     emit(state.copyWith(repoPath: repoPath, loading: true));
     final list = await _lister.list(repoPath);
-    final current = list.any((w) => w.path == state.currentWorktreePath)
-        ? state.currentWorktreePath
-        : (list.isNotEmpty ? list.first.path : repoPath);
+    final current =
+        list.any((w) => workspacePathsEqual(w.path, state.currentWorktreePath))
+            ? state.currentWorktreePath
+            : (list.isNotEmpty ? list.first.path : repoPath);
     emit(state.copyWith(
       worktrees: list,
       currentWorktreePath: current,
@@ -73,7 +75,7 @@ class WorktreeCubit extends Cubit<WorktreeState> {
   }
 
   void setCurrentWorktree(String path) =>
-      emit(state.copyWith(currentWorktreePath: path));
+      emit(state.copyWith(currentWorktreePath: normalizeWorkspacePath(path)));
 
   void toggleCollapsed(String path) {
     final next = {...state.collapsed};

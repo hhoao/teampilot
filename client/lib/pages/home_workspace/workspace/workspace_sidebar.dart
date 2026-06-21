@@ -19,6 +19,7 @@ import '../../../services/git/git_worktree_service.dart';
 import '../../../services/storage/app_storage.dart';
 import '../../../services/storage/workspace_layout.dart';
 import '../../../utils/session_worktree_grouping.dart';
+import '../../../utils/workspace_path_utils.dart';
 import '../../../widgets/app_toast/app_toast.dart';
 import '../../../theme/app_toast_theme.dart';
 import 'worktree_create_dialog.dart';
@@ -209,7 +210,11 @@ class _WorkspaceSidebarState
             sessionTeamFilter: widget.sessionTeamFilter,
             collapsed:
                 wtState.collapsed.contains(worktreeGroupCollapseKey(group)),
-            isCurrent: group.worktree?.path == wtState.currentWorktreePath,
+            isCurrent: group.worktree != null &&
+                workspacePathsEqual(
+                  group.worktree!.path,
+                  wtState.currentWorktreePath,
+                ),
           ),
       ],
     );

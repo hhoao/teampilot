@@ -25,6 +25,7 @@ import '../../services/storage/app_storage.dart';
 import '../../utils/app_keys.dart';
 import '../../utils/debounce/debounce.dart';
 import '../../utils/team_member_naming.dart';
+import '../../utils/workspace_path_utils.dart';
 import '../git/git_source_control_panel.dart';
 import 'file_tree_panel.dart';
 import 'board_panel.dart';
@@ -434,7 +435,9 @@ class _RightToolsPanelState extends State<RightToolsPanel> {
 
   static String? _currentWorktreeBranch(WorktreeState state) {
     for (final w in state.worktrees) {
-      if (w.path == state.currentWorktreePath) return w.shortBranch;
+      if (workspacePathsEqual(w.path, state.currentWorktreePath)) {
+        return w.shortBranch;
+      }
     }
     return null;
   }
