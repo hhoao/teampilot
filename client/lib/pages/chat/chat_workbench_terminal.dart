@@ -17,8 +17,10 @@ import '../../services/terminal/terminal_session.dart';
 import '../../services/terminal/terminal_uri_opener.dart';
 import '../../services/terminal/terminal_fonts.dart';
 import '../../services/workspace_dnd/terminal_drop_ingestor.dart';
+import '../../services/workspace_dnd/workspace_drop_target.dart';
 import '../../widgets/terminal/parked_send_overlay.dart';
 import '../../widgets/terminal_find_bar.dart';
+import '../../widgets/workspace_dnd/external_file_drop_region.dart';
 import '../../widgets/workspace_dnd/workspace_file_drop_region.dart';
 import 'chat_workbench_context_menu.dart';
 
@@ -46,6 +48,22 @@ class ChatWorkbenchRunningTerminal extends StatelessWidget {
   final VoidCallback onDisconnect;
   final Future<void> Function() onRestart;
 
+  /// Fresh per-build ingestor for a drop region — stateless, captures the
+  /// session's current namespace + CLI paste behavior.
+  TerminalDropIngestor _dropIngestor() => TerminalDropIngestor(
+    sink: session,
+    target: session.runtimeTarget,
+    behavior: session.pathDropBehavior,
+  );
+
+  void _showDropOutcome(BuildContext context, DropOutcome outcome) {
+    if (outcome.anyRejected && context.mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(context.l10n.terminalDropCrossMachineRejected)),
+      );
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     return TerminalFindShortcuts(
@@ -65,23 +83,12 @@ class ChatWorkbenchRunningTerminal extends StatelessWidget {
       },
       child: Stack(
         children: [
-          WorkspaceFileDropRegion(
-            target: TerminalDropIngestor(
-              sink: session,
-              target: session.runtimeTarget,
-              behavior: session.pathDropBehavior,
-            ),
-            onOutcome: (outcome) {
-              if (outcome.anyRejected && context.mounted) {
-                ScaffoldMessenger.of(context).showSnackBar(
-                  SnackBar(
-                    content: Text(
-                      context.l10n.terminalDropCrossMachineRejected,
-                    ),
-                  ),
-                );
-              }
-            },
+          ExternalFileDropRegion(
+            target: _dropIngestor(),
+            onOutcome: (outcome) => _showDropOutcome(context, outcome),
+            child: WorkspaceFileDropRegion(
+            target: _dropIngestor(),
+            onOutcome: (outcome) => _showDropOutcome(context, outcome),
             child: TerminalView(
               session.engine,
               controller: terminalController,
@@ -129,6 +136,7 @@ class ChatWorkbenchRunningTerminal extends StatelessWidget {
               );
             },
             ),
+          ),
           ),
           if (findVisible)
             Positioned(

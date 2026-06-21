@@ -233,7 +233,7 @@ packages:
     source: path
     version: "2.17.1"
   desktop_drop:
-    dependency: transitive
+    dependency: "direct main"
     description:
       name: desktop_drop
       sha256: aa1e797255bfbc76f9eb5aa4f61e5b68dbf69962ab1be6495816d2f251bc0d1f
