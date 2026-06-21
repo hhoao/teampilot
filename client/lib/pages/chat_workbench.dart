@@ -12,11 +12,11 @@ import '../cubits/launch_profile_cubit.dart';
 import '../l10n/l10n_extensions.dart';
 import '../models/team_config.dart';
 import '../repositories/session_repository.dart';
+import '../services/terminal/terminal_layout_coordinator.dart';
 import '../services/terminal/terminal_session.dart';
 import '../services/terminal/terminal_theme_mapper.dart';
 import '../theme/workspace_surface_layers.dart';
 import '../utils/app_keys.dart';
-import '../widgets/file_editor_panel.dart';
 import 'chat/chat_workbench_placeholders.dart';
 import 'chat/chat_workbench_terminal.dart';
 
@@ -38,6 +38,8 @@ class ChatWorkbench extends StatefulWidget {
 
 class _ChatWorkbenchState extends State<ChatWorkbench> {
   TerminalController _terminalController = TerminalController();
+  TerminalResizeController? _resizeController;
+  TerminalLayoutCoordinator? _coordinator;
 
   var _findVisible = false;
   var _handledRouteSession = false;
@@ -109,6 +111,8 @@ class _ChatWorkbenchState extends State<ChatWorkbench> {
 
   @override
   void dispose() {
+    _coordinator?.dispose();
+    _resizeController?.dispose();
     _terminalController.dispose();
     _chatSub?.cancel();
     super.dispose();
@@ -222,24 +226,22 @@ class _ChatWorkbenchState extends State<ChatWorkbench> {
       return Container(
         key: AppKeys.chatWorkspace,
         color: cs.surface,
-        child: WorkspaceEditorOverlay(
-          terminalChild: Container(
-            color: terminalBackground,
-            child: sessionConnectInProgress
-                ? ChatWorkbenchSessionLoadingView(
-                    message: context.l10n.sessionStarting,
-                  )
-                : ChatWorkbenchTerminalPlaceholder(
-                    onConnect: () => unawaited(
-                      _connectWorkspace(isPersonal: isPersonal, team: team),
-                    ),
-                    connectDisabled: sessionConnectInProgress,
-                    memberName: isPersonal
-                        ? context.l10n.homeWorkspaceWorkspaceAgent
-                        : chatCubit.selectedMemberName(team!),
-                    launchError: chatCubit.activeLaunchError,
+        child: Container(
+          color: terminalBackground,
+          child: sessionConnectInProgress
+              ? ChatWorkbenchSessionLoadingView(
+                  message: context.l10n.sessionStarting,
+                )
+              : ChatWorkbenchTerminalPlaceholder(
+                  onConnect: () => unawaited(
+                    _connectWorkspace(isPersonal: isPersonal, team: team),
                   ),
-          ),
+                  connectDisabled: sessionConnectInProgress,
+                  memberName: isPersonal
+                      ? context.l10n.homeWorkspaceWorkspaceAgent
+                      : chatCubit.selectedMemberName(team!),
+                  launchError: chatCubit.activeLaunchError,
+                ),
         ),
       );
     }
@@ -259,16 +261,15 @@ class _ChatWorkbenchState extends State<ChatWorkbench> {
     return Container(
       key: AppKeys.chatWorkspace,
       color: cs.surface,
-      child: WorkspaceEditorOverlay(
-        terminalChild: AnimatedSwitcher(
-          duration: const Duration(milliseconds: 180),
-          child: Container(
-            key: chatWorkbenchTerminalViewKey(
-              loading: sessionConnectInProgress,
-              running: session.isRunning,
-            ),
-            color: terminalBackground,
-            child: sessionConnectInProgress
+      child: AnimatedSwitcher(
+        duration: const Duration(milliseconds: 180),
+        child: Container(
+          key: chatWorkbenchTerminalViewKey(
+            loading: sessionConnectInProgress,
+            running: session.isRunning,
+          ),
+          color: terminalBackground,
+          child: sessionConnectInProgress
               ? ChatWorkbenchSessionLoadingView(
                   message: context.l10n.sessionStarting,
                 )
@@ -278,10 +279,19 @@ class _ChatWorkbenchState extends State<ChatWorkbench> {
                     _terminalController,
                     session.engine,
                   );
+                  // Create/swap resize controller for the new session engine.
+                  _resizeController?.dispose();
+                  _resizeController = TerminalResizeController(
+                    engine: session.engine,
+                  );
+                  session.attachResizeController(_resizeController!);
+                  _coordinator ??= TerminalLayoutCoordinator();
+                  _coordinator!.register(_resizeController!);
                   return ChatWorkbenchRunningTerminal(
                     session: session,
                     terminalTheme: terminalTheme,
                     terminalController: _terminalController,
+                    resizeController: _resizeController,
                     findVisible: _findVisible,
                     onFindVisibleChanged: (visible) =>
                         setState(() => _findVisible = visible),
@@ -310,7 +320,6 @@ class _ChatWorkbenchState extends State<ChatWorkbench> {
                   launchError: chatCubit.activeLaunchError,
                 ),
         ),
-      ),
       ),
     );
   }

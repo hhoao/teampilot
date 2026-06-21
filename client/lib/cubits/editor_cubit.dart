@@ -85,14 +85,13 @@ class _OpenFileHandle {
   String? savedText;
   VoidCallback? _listener;
 
-  /// Stable per-file identity for the [CodeEditor] element. A [GlobalKey] makes
-  /// Flutter *move* (reparent) the existing editor when its host subtree is
-  /// swapped — e.g. the chat workbench switching `WorkspaceEditorOverlay`
-  /// branches as a session connects — instead of disposing the old editor and
-  /// inflating a new one. Without this, the old and new editors briefly share
-  /// this file's controller in one frame, and re_editor notifies the
-  /// deactivated editor's listener during the new editor's `initState`
-  /// (`setState() called during build`).
+  /// Stable per-file identity for the [CodeEditor] element. A [GlobalKey] keeps
+  /// Flutter from disposing and re-inflating the editor when the host subtree
+  /// rebuilds, so this file's controller is never bound to two editors in one
+  /// frame — re_editor otherwise notifies the deactivated editor's listener
+  /// during the new editor's `initState` (`setState() called during build`).
+  /// The editor is hosted once (see `WorkspaceFloatingEditor`), never inside a
+  /// per-tab workbench, so this key is never present in two tabs at once.
   final GlobalKey editorKey = GlobalKey(debugLabel: 'file-editor');
 
   void attachListener() {

@@ -40,11 +40,11 @@ void main() {
   });
 
   test('editorKeyFor is a stable, per-file GlobalKey', () async {
-    // The editor uses this GlobalKey so a host-subtree swap (e.g. the chat
-    // workbench switching WorkspaceEditorOverlay branches as a session
-    // connects) MOVES the CodeEditor instead of remounting it — otherwise the
-    // old + new editor briefly share the file's controller in one frame and
-    // re_editor calls setState() during build.
+    // The editor uses this GlobalKey so a host-subtree rebuild keeps the
+    // CodeEditor mounted instead of remounting it — otherwise the old + new
+    // editor briefly share the file's controller in one frame and re_editor
+    // calls setState() during build. The editor is hosted once (see
+    // WorkspaceFloatingEditor), so this key is never present in two tabs.
     final dir = await Directory.systemTemp.createTemp('teampilot_editor_key_');
     addTearDown(() => dir.delete(recursive: true));
     final a = File('${dir.path}/a.txt')..writeAsStringSync('a');

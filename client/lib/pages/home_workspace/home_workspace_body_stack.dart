@@ -4,6 +4,7 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import '../../cubits/chat_cubit.dart';
 import '../../models/launch_profile_ref.dart';
 import '../../models/workspace.dart';
+import '../../widgets/file_editor_panel.dart';
 import 'home_workspace_page.dart';
 import 'home_workspace_route.dart';
 import 'workspace/workspace_page.dart';
@@ -64,10 +65,25 @@ class HomeWorkspaceBodyStack extends StatelessWidget {
       }
     }
 
-    return IndexedStack(
-      index: index.clamp(0, children.length - 1),
-      sizing: StackFit.expand,
-      children: children,
+    // The floating file editor is hosted once, above the workspace-tab stack —
+    // never inside a per-tab ChatWorkbench. EditorCubit (controller + per-file
+    // GlobalKey) is app-global, so mounting it in every kept-alive tab would
+    // raise "Duplicate GlobalKey" / reparent it across tabs' LayoutBuilders.
+    // Show it only when a workspace tab is foreground and on its conversations
+    // view (not the home page or a manage/config view).
+    final showEditor =
+        activeId != null && HomeWorkspaceRoute.view(location) != 'manage';
+
+    return Stack(
+      fit: StackFit.expand,
+      children: [
+        IndexedStack(
+          index: index.clamp(0, children.length - 1),
+          sizing: StackFit.expand,
+          children: children,
+        ),
+        if (showEditor) const Positioned.fill(child: WorkspaceFloatingEditor()),
+      ],
     );
   }
 

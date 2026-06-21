@@ -139,28 +139,35 @@ class _FileEditorBody extends StatelessWidget {
   }
 }
 
-/// Overlays a draggable floating editor above [terminalChild] when files are open.
-class WorkspaceEditorOverlay extends StatelessWidget {
-  const WorkspaceEditorOverlay({required this.terminalChild, super.key});
-
-  final Widget terminalChild;
+/// Single app-level host for the draggable floating file editor.
+///
+/// Mounted exactly once, above the workspace-tab `IndexedStack` — never inside a
+/// per-tab `ChatWorkbench`. The editor's controller and per-file [GlobalKey]
+/// (see `EditorCubit`) are app-global, so building it in more than one mounted
+/// tab raises "Duplicate GlobalKey", and reparenting it across the tabs' nested
+/// `LayoutBuilder`s throws "RenderFlex was mutated in performLayout". A single
+/// stable host avoids both: the keyed editor lives in one `LayoutBuilder` and is
+/// only ever swapped within its own subtree (on file switch / open / close).
+///
+/// Returns an empty box when no file is open, so it is safe to keep in the tree.
+class WorkspaceFloatingEditor extends StatelessWidget {
+  const WorkspaceFloatingEditor({super.key});
 
   @override
   Widget build(BuildContext context) {
     final hasOpen = context.select<EditorCubit, bool>(
       (c) => c.state.hasOpenFiles,
     );
+    if (!hasOpen) return const SizedBox.shrink();
     return LayoutBuilder(
       builder: (context, constraints) {
         return Stack(
           fit: StackFit.expand,
           children: [
-            terminalChild,
-            if (hasOpen)
-              _FloatingEditorWindow(
-                areaWidth: constraints.maxWidth,
-                areaHeight: constraints.maxHeight,
-              ),
+            _FloatingEditorWindow(
+              areaWidth: constraints.maxWidth,
+              areaHeight: constraints.maxHeight,
+            ),
           ],
         );
       },

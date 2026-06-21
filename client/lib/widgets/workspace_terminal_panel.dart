@@ -18,6 +18,7 @@ import '../services/terminal/terminal_fonts.dart';
 import '../services/terminal/terminal_theme_mapper.dart';
 import '../theme/workspace_surface_layers.dart';
 import '../services/terminal/terminal_uri_opener.dart';
+import '../services/terminal/terminal_layout_coordinator.dart';
 import '../services/terminal/workspace_terminal_registry.dart';
 import '../utils/app_keys.dart';
 import 'app_icon_button.dart';
@@ -51,6 +52,38 @@ class _WorkspaceTerminalPanelState extends State<WorkspaceTerminalPanel> {
   WorkspaceTerminalGroup get _group => _registry.groupFor(widget.workspaceId);
 
   var _bootstrapped = false;
+
+  /// Owns resize for the active terminal entry. Created lazily on first use,
+  /// re-created when the active entry changes (different engine).
+  TerminalResizeController? _resizeController;
+
+  /// Coordinates resize across entries. Single instance per panel.
+  TerminalLayoutCoordinator? _coordinator;
+
+  /// The entry id the current [_resizeController] was created for.
+  String? _controllerEntryId;
+
+  TerminalResizeController _ensureResizeController() {
+    final active = _activeEntry;
+    if (active == null) {
+      throw StateError('_ensureResizeController called with no active entry');
+    }
+    // Invalidate when the active entry changes identity (tab switch).
+    if (_resizeController != null && _controllerEntryId == active.id) {
+      return _resizeController!;
+    }
+    // Dispose old controller (bound to wrong engine).
+    _resizeController?.dispose();
+    final c = TerminalResizeController(
+      engine: active.session.engine,
+    );
+    _resizeController = c;
+    _controllerEntryId = active.id;
+    _coordinator ??= TerminalLayoutCoordinator();
+    _coordinator!.register(c);
+    active.session.attachResizeController(c);
+    return c;
+  }
 
   @override
   void didChangeDependencies() {
@@ -280,6 +313,7 @@ class _WorkspaceTerminalPanelState extends State<WorkspaceTerminalPanel> {
         : _WorkspaceTerminalView(
             entry: active,
             theme: theme,
+            resizeController: _ensureResizeController(),
             onContextMenu: (position, cell) =>
                 _showContextMenu(context, active, position, cell),
           );
@@ -316,6 +350,8 @@ class _WorkspaceTerminalPanelState extends State<WorkspaceTerminalPanel> {
             width,
           );
         },
+        onDragStart: () => _coordinator?.beginAllTransactions(),
+        onDragEnd: () => _coordinator?.endAllTransactions(flush: true),
       ),
     );
   }
@@ -326,11 +362,13 @@ class _WorkspaceTerminalView extends StatelessWidget {
     required this.entry,
     required this.theme,
     required this.onContextMenu,
+    this.resizeController,
   });
 
   final WorkspaceTerminalEntry entry;
   final TerminalTheme theme;
   final void Function(Offset globalPosition, CellOffset? cell) onContextMenu;
+  final TerminalResizeController? resizeController;
 
   @override
   Widget build(BuildContext context) {
@@ -352,7 +390,7 @@ class _WorkspaceTerminalView extends StatelessWidget {
             .state
             .preferences
             .terminalLinkClickOpensInApp,
-        onViewportResize: entry.session.onViewportResize,
+        resizeController: resizeController,
         onLinkActivate: (uri) {
           final editorCubit = context.read<EditorCubit>();
           unawaited(
