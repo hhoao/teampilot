@@ -76,6 +76,22 @@ void main() {
     expect(cubit.state.currentWorktreePath, '/wt/a');
   });
 
+  test('syncCurrentForSessionPath updates current to the containing worktree', () async {
+    final svc = _FakeWorktreeService([_wt('/repo', main: true), _wt('/wt/a')]);
+    final cubit = WorktreeCubit(lister: svc);
+    await cubit.load('/repo');
+    cubit.syncCurrentForSessionPath('/wt/a/src/foo.dart');
+    expect(cubit.state.currentWorktreePath, '/wt/a');
+  });
+
+  test('syncCurrentForSessionPath is a no-op for orphan session paths', () async {
+    final svc = _FakeWorktreeService([_wt('/repo', main: true)]);
+    final cubit = WorktreeCubit(lister: svc);
+    await cubit.load('/repo');
+    cubit.syncCurrentForSessionPath('/gone/dir');
+    expect(cubit.state.currentWorktreePath, '/repo');
+  });
+
   test('persists collapse + current and rehydrates on a fresh cubit', () async {
     final svc = _FakeWorktreeService([_wt('/repo', main: true), _wt('/wt/a')]);
     final store = WorktreeUiPrefsStore(

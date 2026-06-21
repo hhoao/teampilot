@@ -86,4 +86,13 @@ void main() {
     expect(groups.first.worktree!.isMainWorktree, true);
     expect(groups.last.worktree, isNull);
   });
+
+  test('worktreePathForSessionPath picks longest prefix', () {
+    expect(
+      worktreePathForSessionPath('/wt/feat/lib/main.dart', worktrees),
+      '/wt/feat',
+    );
+    expect(worktreePathForSessionPath('/repo', worktrees), '/repo');
+    expect(worktreePathForSessionPath('/gone', worktrees), isNull);
+  });
 }

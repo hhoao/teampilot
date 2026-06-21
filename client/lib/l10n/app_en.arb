@@ -1897,6 +1897,7 @@
   "@worktreeDeleteFailed": { "placeholders": { "error": {} } },
   "worktreeOrphanGroup": "Other",
   "worktreeNewWorktreeTooltip": "New worktree",
+  "worktreeRefreshTooltip": "Refresh worktrees",
   "worktreeNewConversationHere": "New conversation here",
   "worktreeMenuCopyPath": "Copy path",
   "worktreeMenuRemove": "Remove worktree",

@@ -26,16 +26,7 @@ List<WorktreeGroup> groupSessionsByWorktree({
   final orphans = <AppSession>[];
 
   for (final session in sessions) {
-    final sessionPath = normalizeWorkspacePath(session.primaryPath);
-    String? bestPath;
-    var bestLen = -1;
-    for (final w in ordered) {
-      final wPath = normalizeWorkspacePath(w.path);
-      if (_isUnderOrEqual(sessionPath, wPath) && wPath.length > bestLen) {
-        bestPath = w.path;
-        bestLen = wPath.length;
-      }
-    }
+    final bestPath = worktreePathForSessionPath(session.primaryPath, ordered);
     if (bestPath == null) {
       orphans.add(session);
     } else {
@@ -51,6 +42,25 @@ List<WorktreeGroup> groupSessionsByWorktree({
     groups.add(WorktreeGroup(worktree: null, sessions: orphans));
   }
   return groups;
+}
+
+/// Returns the worktree whose normalized path is the longest prefix of
+/// [sessionPrimaryPath], or null when no worktree contains the path.
+String? worktreePathForSessionPath(
+  String sessionPrimaryPath,
+  List<GitWorktree> worktrees,
+) {
+  final sessionPath = normalizeWorkspacePath(sessionPrimaryPath);
+  String? bestPath;
+  var bestLen = -1;
+  for (final w in worktrees) {
+    final wPath = normalizeWorkspacePath(w.path);
+    if (_isUnderOrEqual(sessionPath, wPath) && wPath.length > bestLen) {
+      bestPath = w.path;
+      bestLen = wPath.length;
+    }
+  }
+  return bestPath;
 }
 
 bool _isUnderOrEqual(String child, String parent) {

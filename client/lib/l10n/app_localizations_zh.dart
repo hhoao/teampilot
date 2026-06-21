@@ -3865,6 +3865,9 @@ class AppLocalizationsZh extends AppLocalizations {
   String get worktreeNewWorktreeTooltip => '新建 worktree';
 
   @override
+  String get worktreeRefreshTooltip => '刷新 worktree 列表';
+
+  @override
   String get worktreeNewConversationHere => '在此新建会话';
 
   @override

@@ -1,6 +1,9 @@
 import 'package:flutter/material.dart';
 
 import '../../../l10n/l10n_extensions.dart';
+import '../../../services/git/git_service.dart';
+import '../../../widgets/dropdown/app_dropdown_decoration.dart';
+import '../../../widgets/dropdown/app_dropdown_field.dart';
 
 /// Result of [showWorktreeCreateDialog]; null when the user cancels.
 class WorktreeCreateResult {
@@ -28,17 +31,39 @@ class WorktreeCreateResult {
   final bool startConversation;
 }
 
+/// Loads local branch names for the existing-branch picker.
+typedef BranchListLoader = Future<List<String>> Function(String repoPath);
+
 /// Collects inputs for creating a git worktree. Pure UI — it does NOT run git;
 /// the caller performs `git worktree add` with the returned result.
 Future<WorktreeCreateResult?> showWorktreeCreateDialog(
   BuildContext context, {
   required String repoName,
+  required String repoPath,
   required WorktreeLayoutPathResolver layout,
+  BranchListLoader? branchLoader,
 }) {
   return showDialog<WorktreeCreateResult>(
     context: context,
-    builder: (_) => _WorktreeCreateDialog(repoName: repoName, layout: layout),
+    builder: (_) => _WorktreeCreateDialog(
+      repoName: repoName,
+      repoPath: repoPath,
+      layout: layout,
+      branchLoader: branchLoader ?? _defaultBranchLoader,
+    ),
   );
+}
+
+Future<List<String>> _defaultBranchLoader(String repoPath) async {
+  final git = GitService.debugOverrideFactory?.call() ?? GitService();
+  return git.branches(repoPath);
+}
+
+/// Suggest a new worktree branch name from the repo's current/default branch.
+String suggestWorktreeBranchName(String? currentBranch) {
+  final base = (currentBranch ?? '').trim();
+  if (base.isEmpty) return 'worktree';
+  return '$base-wt';
 }
 
 /// Minimal seam over [WorkspaceLayout.worktreePathFor] so the dialog can preview
@@ -49,10 +74,17 @@ typedef WorktreeLayoutPathResolver = String Function({
 });
 
 class _WorktreeCreateDialog extends StatefulWidget {
-  const _WorktreeCreateDialog({required this.repoName, required this.layout});
+  const _WorktreeCreateDialog({
+    required this.repoName,
+    required this.repoPath,
+    required this.layout,
+    required this.branchLoader,
+  });
 
   final String repoName;
+  final String repoPath;
   final WorktreeLayoutPathResolver layout;
+  final BranchListLoader branchLoader;
 
   @override
   State<_WorktreeCreateDialog> createState() => _WorktreeCreateDialogState();
@@ -63,11 +95,30 @@ class _WorktreeCreateDialogState extends State<_WorktreeCreateDialog> {
   final _base = TextEditingController();
   bool _existingBranch = false;
   bool _startConversation = true;
+  List<String> _branches = const [];
+  bool _loadingBranches = true;
 
   @override
   void initState() {
     super.initState();
     _branch.addListener(() => setState(() {}));
+    _loadBranches();
+  }
+
+  Future<void> _loadBranches() async {
+    try {
+      final list = await widget.branchLoader(widget.repoPath);
+      if (!mounted) return;
+      setState(() {
+        _branches = list;
+        _loadingBranches = false;
+        if (_branch.text.trim().isEmpty && list.isNotEmpty) {
+          _branch.text = suggestWorktreeBranchName(list.first);
+        }
+      });
+    } on Object {
+      if (mounted) setState(() => _loadingBranches = false);
+    }
   }
 
   @override
@@ -101,14 +152,48 @@ class _WorktreeCreateDialogState extends State<_WorktreeCreateDialog> {
                 ButtonSegment(value: true, label: Text(l10n.worktreeModeExistingBranch)),
               ],
               selected: {_existingBranch},
-              onSelectionChanged: (s) => setState(() => _existingBranch = s.first),
+              onSelectionChanged: (s) {
+                setState(() {
+                  _existingBranch = s.first;
+                  if (_existingBranch &&
+                      _branches.isNotEmpty &&
+                      !_branches.contains(_branch.text.trim())) {
+                    _branch.text = _branches.first;
+                  }
+                });
+              },
             ),
             const SizedBox(height: 12),
-            TextField(
-              controller: _branch,
-              autofocus: true,
-              decoration: InputDecoration(labelText: l10n.worktreeBranchLabel),
-            ),
+            if (_existingBranch && _branches.isNotEmpty)
+              AppDropdownField<String>(
+                items: _branches,
+                initialItem: _branches.contains(_branch.text.trim())
+                    ? _branch.text.trim()
+                    : _branches.first,
+                decoration: AppDropdownDecorations.themed(context),
+                onChanged: (value) {
+                  if (value != null) _branch.text = value;
+                },
+                itemBuilder: (context, branch) => Text(branch),
+              )
+            else
+              TextField(
+                controller: _branch,
+                autofocus: !_existingBranch,
+                decoration: InputDecoration(
+                  labelText: l10n.worktreeBranchLabel,
+                  suffixIcon: _loadingBranches
+                      ? const Padding(
+                          padding: EdgeInsets.all(12),
+                          child: SizedBox(
+                            width: 16,
+                            height: 16,
+                            child: CircularProgressIndicator(strokeWidth: 2),
+                          ),
+                        )
+                      : null,
+                ),
+              ),
             if (!_existingBranch) ...[
               const SizedBox(height: 12),
               TextField(

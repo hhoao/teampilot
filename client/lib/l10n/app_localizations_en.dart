@@ -4011,6 +4011,9 @@ class AppLocalizationsEn extends AppLocalizations {
   String get worktreeNewWorktreeTooltip => 'New worktree';
 
   @override
+  String get worktreeRefreshTooltip => 'Refresh worktrees';
+
+  @override
   String get worktreeNewConversationHere => 'New conversation here';
 
   @override

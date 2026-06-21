@@ -1509,6 +1509,7 @@
   "worktreeDeleteFailed": "删除 worktree 失败：{error}",
   "worktreeOrphanGroup": "其他",
   "worktreeNewWorktreeTooltip": "新建 worktree",
+  "worktreeRefreshTooltip": "刷新 worktree 列表",
   "worktreeNewConversationHere": "在此新建会话",
   "worktreeMenuCopyPath": "复制路径",
   "worktreeMenuRemove": "删除 worktree",

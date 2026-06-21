@@ -2,18 +2,21 @@ import 'dart:async';
 
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:provider/provider.dart';
 import 'package:teampilot/theme/app_toast_theme.dart';
 import 'package:teampilot/widgets/app_toast/app_toast.dart';
 
 import '../../../cubits/chat_cubit.dart';
 import '../../../cubits/cli_presets_cubit.dart';
 import '../../../cubits/launch_profile_cubit.dart';
+import '../../../cubits/worktree_cubit.dart';
 import '../../../l10n/l10n_extensions.dart';
 import '../../../models/workspace.dart';
 import '../../../models/app_session.dart';
 import '../../../models/personal_profile.dart';
 import '../../../models/team_config.dart';
 import '../../../repositories/session_repository.dart';
+import '../../../utils/app_session_sort.dart';
 
 Future<void> openWorkspaceSessionTab(
   BuildContext context,
@@ -21,6 +24,8 @@ Future<void> openWorkspaceSessionTab(
   AppSession session, {
   required bool isPersonal,
 }) async {
+  _syncWorktreeForSession(context, session);
+
   final chatCubit = context.read<ChatCubit>();
   final repo = context.read<SessionRepository>();
   final fallback = context.l10n.defaultNewChatSessionTitle;
@@ -58,6 +63,48 @@ Future<void> openWorkspaceSessionTab(
     repo: repo,
     emptyDisplayTitleFallback: fallback,
   );
+}
+
+/// Makes [worktreePath] the workspace current worktree (§7) and opens a session
+/// in that group — the active one when it already belongs here, otherwise the
+/// most recently updated. Empty groups only switch cwd (inline CTA handles new).
+Future<void> activateWorktreeGroup(
+  BuildContext context,
+  Workspace workspace, {
+  required bool isPersonal,
+  required String worktreePath,
+  required List<AppSession> groupSessions,
+}) async {
+  context.read<WorktreeCubit>().setCurrentWorktree(worktreePath);
+  if (groupSessions.isEmpty) return;
+
+  final activeId = context.read<ChatCubit>().state.activeSessionId;
+  AppSession? target;
+  for (final session in groupSessions) {
+    if (session.sessionId == activeId) {
+      target = session;
+      break;
+    }
+  }
+  target ??=
+      sortAppSessions(groupSessions, sort: AppSessionSort.recentlyUpdated).first;
+
+  await openWorkspaceSessionTab(
+    context,
+    workspace,
+    target,
+    isPersonal: isPersonal,
+  );
+}
+
+void _syncWorktreeForSession(BuildContext context, AppSession session) {
+  try {
+    context
+        .read<WorktreeCubit>()
+        .syncCurrentForSessionPath(session.primaryPath);
+  } on ProviderNotFoundException {
+    // Outside the workspace split pane — no worktree scope to sync.
+  }
 }
 
 Future<void> createAndOpenWorkspaceConversation(

@@ -161,6 +161,18 @@ class _WorkspaceSidebarState
                 if (worktreeManagementEnabled()) ...[
                   const SizedBox(width: 2),
                   AppIconButton(
+                    icon: Icons.refresh_rounded,
+                    compact: true, size: AppIconButton.kCompactSize,
+                    tooltip: l10n.worktreeRefreshTooltip,
+                    onTap: throttledTap(
+                      'workspace_sidebar_refresh_worktrees',
+                      () => unawaited(
+                        context.read<WorktreeCubit>().load(widget.workspace.primaryPath),
+                      ),
+                    ),
+                  ),
+                  const SizedBox(width: 2),
+                  AppIconButton(
                     icon: Icons.account_tree_outlined,
                     compact: true, size: AppIconButton.kCompactSize,
                     tooltip: l10n.worktreeNewWorktreeTooltip,
@@ -230,11 +242,12 @@ class _WorkspaceSidebarState
     final result = await showWorktreeCreateDialog(
       context,
       repoName: _basename(repoPath),
+      repoPath: repoPath,
       layout: layout.worktreePathFor,
     );
     if (result == null) return;
     try {
-      await GitWorktreeService().add(
+      await GitWorktreeService.resolve().add(
         repoPath,
         result.worktreePath,
         branch: result.branch,

@@ -20,6 +20,10 @@ class GitWorktreeService {
   /// [GitService.debugOverrideFactory]). See `setUpTestAppStorage`.
   static GitWorktreeService Function()? debugOverrideFactory;
 
+  /// Resolves the process-backed service, honoring [debugOverrideFactory] in tests.
+  static GitWorktreeService resolve() =>
+      debugOverrideFactory?.call() ?? GitWorktreeService();
+
   final ProcessRunner _runner;
   final CliToolLocator _gitLocator;
 

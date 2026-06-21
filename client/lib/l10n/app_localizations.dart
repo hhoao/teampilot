@@ -7257,6 +7257,12 @@ abstract class AppLocalizations {
   /// **'New worktree'**
   String get worktreeNewWorktreeTooltip;
 
+  /// No description provided for @worktreeRefreshTooltip.
+  ///
+  /// In en, this message translates to:
+  /// **'Refresh worktrees'**
+  String get worktreeRefreshTooltip;
+
   /// No description provided for @worktreeNewConversationHere.
   ///
   /// In en, this message translates to:

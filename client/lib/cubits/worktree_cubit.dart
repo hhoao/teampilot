@@ -5,6 +5,7 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import '../models/git_worktree.dart';
 import '../services/git/git_worktree_service.dart';
 import '../services/home_workspace/worktree_ui_prefs_store.dart';
+import '../utils/session_worktree_grouping.dart';
 import '../utils/workspace_path_utils.dart';
 
 /// Narrow seam so tests inject a fake without a real GitWorktreeService.
@@ -132,20 +133,18 @@ class WorktreeCubit extends Cubit<WorktreeState> {
     String repoPath,
   ) {
     if (preferPath != null && preferPath.isNotEmpty) {
-      final wanted = normalizeWorkspacePath(preferPath);
-      String? best;
-      var bestLen = -1;
-      for (final w in list) {
-        final p = normalizeWorkspacePath(w.path);
-        final under = wanted == p || wanted.startsWith('$p/');
-        if (under && p.length > bestLen) {
-          best = w.path;
-          bestLen = p.length;
-        }
-      }
+      final best = worktreePathForSessionPath(preferPath, list);
       if (best != null) return best;
     }
     return list.isNotEmpty ? list.first.path : repoPath;
+  }
+
+  /// Sets [currentWorktreePath] to the worktree that contains [sessionPrimaryPath].
+  /// No-op when the list is empty or the session is orphaned.
+  void syncCurrentForSessionPath(String sessionPrimaryPath) {
+    if (state.worktrees.isEmpty) return;
+    final path = worktreePathForSessionPath(sessionPrimaryPath, state.worktrees);
+    if (path != null) setCurrentWorktree(path);
   }
 
   void setCurrentWorktree(String path) {
