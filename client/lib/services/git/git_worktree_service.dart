@@ -1,8 +1,8 @@
 import 'dart:convert';
 
 import '../../models/git_worktree.dart';
+import '../../utils/logger.dart';
 import '../cli/cli_tool_locator.dart';
-// ignore: unused_import — GitException is used by list/add/remove in a later task.
 import 'git_service.dart' show GitException;
 
 /// Runs `git worktree …` for the worktree sidebar. Desktop-local only;
@@ -15,14 +15,10 @@ class GitWorktreeService {
   })  : _runner = runner,
         _gitLocator = gitLocator ?? const CliToolLocator('git');
 
-  // ignore: unused_field — used by list/add/remove in a later task.
   final ProcessRunner _runner;
-  // ignore: unused_field — used by list/add/remove in a later task.
   final CliToolLocator _gitLocator;
 
-  // ignore: unused_field — used by list/add/remove in a later task.
   static const Encoding _textEncoding = Utf8Codec(allowMalformed: true);
-  // ignore: unused_field — used by list/add/remove in a later task.
   static const List<String> _globalFlags = [
     '--no-optional-locks',
     '-c',
@@ -96,5 +92,89 @@ class GitWorktreeService {
     }
     if (current.isNotEmpty) blocks.add(current);
     return blocks;
+  }
+
+  String? _gitExecutable;
+  Future<String?> get _git async {
+    _gitExecutable ??= await _gitLocator.locate(runner: _runner);
+    return _gitExecutable;
+  }
+
+  Future<String> _run(String dir, List<String> args) async {
+    final git = await _git;
+    if (git == null) throw GitException('git executable not found on PATH');
+    final result = await _runner(
+      git,
+      [..._globalFlags, '-C', dir, ...args],
+      stdoutEncoding: _textEncoding,
+      stderrEncoding: _textEncoding,
+    );
+    if (result.exitCode != 0) {
+      final err = (result.stderr as String?)?.trim();
+      final out = (result.stdout as String?)?.trim();
+      final detail = (err == null || err.isEmpty) ? (out ?? '') : err;
+      appLogger.d('[GitWorktree] ${args.join(' ')} exit ${result.exitCode}: $detail');
+      throw GitException(detail.isEmpty ? 'git ${args.first} failed' : detail);
+    }
+    return (result.stdout as String?) ?? '';
+  }
+
+  /// List worktrees; empty list when [repoPath] is not a git repo.
+  Future<List<GitWorktree>> list(String repoPath) async {
+    try {
+      final out = await _run(repoPath, ['worktree', 'list', '--porcelain', '-z']);
+      return parseWorktreeList(out, nulDelimited: true);
+    } on GitException catch (e) {
+      // git <2.36 rejects -z; retry the plain form before giving up.
+      if (_isUnknownZOption(e.message)) {
+        final out = await _run(repoPath, ['worktree', 'list', '--porcelain']);
+        return parseWorktreeList(out, nulDelimited: false);
+      }
+      appLogger.d('[GitWorktree] list failed for $repoPath: ${e.message}');
+      return const [];
+    }
+  }
+
+  static bool _isUnknownZOption(String message) =>
+      RegExp(r'(unknown|invalid) (switch|option).*z', caseSensitive: false)
+          .hasMatch(message);
+
+  /// Create a worktree. New branch (`--no-track -b`) unless [existingBranch].
+  Future<void> add(
+    String repoPath,
+    String worktreePath, {
+    required String branch,
+    String? baseRef,
+    bool existingBranch = false,
+  }) async {
+    final args = <String>['worktree', 'add'];
+    if (existingBranch) {
+      args.addAll([worktreePath, branch]);
+    } else {
+      args.addAll(['--no-track', '-b', branch, worktreePath]);
+      if (baseRef != null && baseRef.isNotEmpty) args.add(baseRef);
+    }
+    await _run(repoPath, args);
+  }
+
+  /// Remove a worktree; optionally safe-delete its branch (`-d`).
+  Future<void> remove(
+    String repoPath,
+    String worktreePath, {
+    bool force = false,
+    String? deleteBranch,
+  }) async {
+    final args = <String>['worktree', 'remove'];
+    if (force) args.add('--force');
+    args.add(worktreePath);
+    await _run(repoPath, args);
+    if (deleteBranch != null && deleteBranch.isNotEmpty) {
+      try {
+        await _run(repoPath, ['branch', '-d', '--', deleteBranch]);
+      } on GitException catch (e) {
+        // -d refuses unmerged branches: preserve work, don't fail the remove.
+        appLogger.d('[GitWorktree] kept branch $deleteBranch: ${e.message}');
+      }
+    }
   }
 }
