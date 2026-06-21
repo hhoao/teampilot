@@ -37,6 +37,19 @@ void main() {
     expect(featGroup.sessions.single.sessionId, 'c');
   });
 
+  test('sibling-prefix path does NOT match (/wt/feat vs /wt/feature)', () {
+    final wts = [_wt('/repo', main: true), _wt('/wt/feat')];
+    final groups = groupSessionsByWorktree(
+      worktrees: wts,
+      sessions: [_session('s', '/wt/feature/lib')],
+    );
+    // /wt/feat must not swallow /wt/feature; the session is an orphan.
+    expect(groups.firstWhere((g) => g.worktree?.path == '/wt/feat').sessions,
+        isEmpty);
+    expect(groups.last.isOrphan, true);
+    expect(groups.last.sessions.single.sessionId, 's');
+  });
+
   test('empty worktree still produces an empty group', () {
     final groups = groupSessionsByWorktree(
       worktrees: worktrees,

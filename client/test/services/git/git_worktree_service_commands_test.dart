@@ -33,6 +33,10 @@ class _FakeRunner {
 }
 
 void main() {
+  // The located git path is cached process-wide; reset it so each case's
+  // scripted runner controls location independently.
+  setUp(GitWorktreeService.debugResetExecutableCache);
+
   test('list parses -z porcelain output', () async {
     final runner = _FakeRunner(
       listOutput: 'worktree /repo\x00HEAD abc\x00branch refs/heads/main\x00\x00',

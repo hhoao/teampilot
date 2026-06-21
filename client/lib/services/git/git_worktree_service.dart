@@ -94,11 +94,15 @@ class GitWorktreeService {
     return blocks;
   }
 
-  String? _gitExecutable;
-  Future<String?> get _git async {
-    _gitExecutable ??= await _gitLocator.locate(runner: _runner);
-    return _gitExecutable;
-  }
+  /// Located git path, cached process-wide like [GitService] — locating git can
+  /// fork a login shell, so every [GitWorktreeService] instance shares one probe.
+  static Future<String?>? _locateFuture;
+  Future<String?> get _git =>
+      _locateFuture ??= _gitLocator.locate(runner: _runner);
+
+  /// Resets the static cache so tests with scripted locators don't leak a path
+  /// across cases (mirrors [GitService.debugResetExecutableCache]).
+  static void debugResetExecutableCache() => _locateFuture = null;
 
   Future<String> _run(String dir, List<String> args) async {
     final git = await _git;
