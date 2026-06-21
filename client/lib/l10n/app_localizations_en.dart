@@ -3942,4 +3942,37 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get homeWorkspaceRememberLaunchChoice => 'Remember my choice';
+
+  @override
+  String get worktreeCreateTitle => 'New worktree';
+
+  @override
+  String get worktreeBranchLabel => 'Branch name';
+
+  @override
+  String get worktreeModeNewBranch => 'New branch';
+
+  @override
+  String get worktreeModeExistingBranch => 'Existing branch';
+
+  @override
+  String get worktreeBaseRefLabel => 'Base (optional)';
+
+  @override
+  String get worktreeBaseRefHint => 'Defaults to current HEAD';
+
+  @override
+  String get worktreePathLabel => 'Location';
+
+  @override
+  String get worktreeStartConversation =>
+      'Start a conversation here after creating';
+
+  @override
+  String get worktreeCreateAction => 'Create';
+
+  @override
+  String worktreeCreateFailed(Object error) {
+    return 'Failed to create worktree: $error';
+  }
 }

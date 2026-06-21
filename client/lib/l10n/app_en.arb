@@ -1873,5 +1873,16 @@
   "toolchainNode": "Node.js",
   "homeWorkspaceLaunchWorkspaceTitle": "Open with…",
   "homeWorkspaceSimpleMode": "Simple mode",
-  "homeWorkspaceRememberLaunchChoice": "Remember my choice"
+  "homeWorkspaceRememberLaunchChoice": "Remember my choice",
+  "worktreeCreateTitle": "New worktree",
+  "worktreeBranchLabel": "Branch name",
+  "worktreeModeNewBranch": "New branch",
+  "worktreeModeExistingBranch": "Existing branch",
+  "worktreeBaseRefLabel": "Base (optional)",
+  "worktreeBaseRefHint": "Defaults to current HEAD",
+  "worktreePathLabel": "Location",
+  "worktreeStartConversation": "Start a conversation here after creating",
+  "worktreeCreateAction": "Create",
+  "worktreeCreateFailed": "Failed to create worktree: {error}",
+  "@worktreeCreateFailed": { "placeholders": { "error": {} } }
 }

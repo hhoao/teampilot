@@ -1489,5 +1489,15 @@
   "toolchainNode": "Node.js",
   "homeWorkspaceLaunchWorkspaceTitle": "选择启动方式",
   "homeWorkspaceSimpleMode": "简单模式",
-  "homeWorkspaceRememberLaunchChoice": "记住选择"
+  "homeWorkspaceRememberLaunchChoice": "记住选择",
+  "worktreeCreateTitle": "新建 worktree",
+  "worktreeBranchLabel": "分支名",
+  "worktreeModeNewBranch": "新建分支",
+  "worktreeModeExistingBranch": "已有分支",
+  "worktreeBaseRefLabel": "基线（可选）",
+  "worktreeBaseRefHint": "默认当前 HEAD",
+  "worktreePathLabel": "位置",
+  "worktreeStartConversation": "创建后在此开始一个会话",
+  "worktreeCreateAction": "创建",
+  "worktreeCreateFailed": "创建 worktree 失败：{error}"
 }

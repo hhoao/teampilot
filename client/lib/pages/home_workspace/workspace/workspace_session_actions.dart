@@ -106,6 +106,46 @@ Future<void> createAndOpenWorkspaceConversation(
   }
 }
 
+/// Like [createAndOpenWorkspaceConversation] but pins the new session's working
+/// directory to [worktreePath] (a git worktree under the workspace's repo).
+Future<void> createSessionInWorktree(
+  BuildContext context,
+  Workspace workspace, {
+  required bool isPersonal,
+  required String worktreePath,
+  String sessionTeamId = '',
+  String personalIdentityId = '',
+  CliTool? cli,
+}) async {
+  final chatCubit = context.read<ChatCubit>();
+  final repo = context.read<SessionRepository>();
+  final l10n = context.l10n;
+  final team = isPersonal ? null : context.read<LaunchProfileCubit>().state.selectedTeam;
+  final effectiveCli = isPersonal
+      ? (cli ?? _activePresetCli(context, personalIdentityId) ?? CliTool.claude)
+      : null;
+  try {
+    final session = await chatCubit.createSession(
+      workspace.workspaceId,
+      repo,
+      sessionTeamId: isPersonal ? '' : (team?.id ?? sessionTeamId),
+      personalIdentityId: isPersonal ? personalIdentityId : '',
+      rosterMembers: isPersonal ? const [] : (team?.members ?? const []),
+      cli: effectiveCli,
+      workingDirectory: worktreePath,
+    );
+    if (!context.mounted) return;
+    await openWorkspaceSessionTab(context, workspace, session, isPersonal: isPersonal);
+  } on Object catch (error) {
+    if (!context.mounted) return;
+    AppToast.show(
+      context,
+      message: '${l10n.homeWorkspaceNewConversation}: $error',
+      variant: AppToastVariant.error,
+    );
+  }
+}
+
 /// CLI of the opened personal identity's active preset, or `null` when
 /// unavailable (e.g. no preset selected yet). Used to pin a new personal
 /// session's CLI. Falls back to the cubit's default personal when
