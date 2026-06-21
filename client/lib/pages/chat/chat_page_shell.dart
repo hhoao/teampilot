@@ -197,6 +197,7 @@ class _ChatWorkspaceShell extends StatelessWidget {
               ? const []
               : _chatActions(context, teamConfig!),
           child: ChatWorkbench(
+            workspaceId: workspaceId,
             sessionId: sessionId,
             isPersonalWorkspace: isPersonalWorkspace,
           ),

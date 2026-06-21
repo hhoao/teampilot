@@ -1,5 +1,6 @@
 import 'dart:io';
 
+import 'package:teampilot/cubits/chat/model/session_connect_request.dart';
 import 'package:teampilot/cubits/chat_cubit.dart';
 import 'package:teampilot/models/workspace.dart';
 import 'package:teampilot/models/app_session.dart';
@@ -280,7 +281,7 @@ void main() {
     });
   });
 
-  group('connectSession', () {
+  group('connectWorkspaceSession', () {
     late Directory tmp;
     late SessionRepository repo;
     late ChatCubit cubit;
@@ -319,11 +320,30 @@ void main() {
         members: [TeamMemberConfig(id: 'm-lead', name: 'team-lead')],
       );
       expect(cubit.state.selectedMemberId, '');
-      await cubit.connectSession(team);
+      await cubit.connectWorkspaceSession(TeamSessionConnect(team));
       await postFrame.flush();
       await drainPendingAsyncWork();
       expect(cubit.state.tabs.length, 1);
       expect(cubit.state.selectedMemberId, 'm-lead');
+    });
+
+    test('personal connect materializes first session when tabs empty', () async {
+      setUpTestAppStorage();
+      addTearDown(tearDownTestAppStorage);
+      final workspace = await repo.createWorkspace('/tmp/personal-connect');
+      await cubit.loadWorkspaceData(repo);
+      cubit.setActiveWorkspace(workspace.workspaceId);
+      expect(cubit.state.tabs, isEmpty);
+
+      await cubit.connectWorkspaceSession(
+        PersonalSessionConnect(workspaceId: workspace.workspaceId),
+        repo: repo,
+      );
+      await postFrame.flush();
+      await drainPendingAsyncWork();
+
+      expect(cubit.state.tabs.length, 1);
+      expect(cubit.state.sessions.single.sessionTeam, '');
     });
 
     test('uses team cli executable for member shell', () async {
@@ -347,7 +367,7 @@ void main() {
         members: [TeamMemberConfig(id: 'm-lead', name: 'team-lead')],
       );
 
-      await cubit.connectSession(team);
+      await cubit.connectWorkspaceSession(TeamSessionConnect(team));
       await postFrame.flush();
 
       expect(executables, contains('/opt/bin/claude'));
@@ -489,7 +509,7 @@ void main() {
         await cubit.loadWorkspaceData(repo);
         cubit.setActiveWorkspace(workspace.workspaceId);
 
-        await cubit.connectSession(team);
+        await cubit.connectWorkspaceSession(TeamSessionConnect(team));
         await drainPostFrameQueue(scheduled);
 
         final connectedMembers = fakeSessions
@@ -662,7 +682,7 @@ void main() {
         expect(cubit.isMemberRunning('m-dev'), isFalse);
         expect(fakeSessions.expand((s) => s.connectedMembers), isEmpty);
 
-        await cubit.connectSession(team, repo: repo);
+        await cubit.connectWorkspaceSession(TeamSessionConnect(team), repo: repo);
         await postFrame.flush();
 
         expect(cubit.isMemberRunning('m-dev'), isTrue);

@@ -4,12 +4,12 @@ import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:flutter_alacritty/flutter_alacritty.dart';
 
+import '../cubits/chat/model/session_connect_request.dart';
 import '../cubits/chat_cubit.dart';
 import '../cubits/editor_cubit.dart';
 import '../cubits/layout_cubit.dart';
 import '../cubits/launch_profile_cubit.dart';
 import '../l10n/l10n_extensions.dart';
-import '../models/app_session.dart';
 import '../models/team_config.dart';
 import '../repositories/session_repository.dart';
 import '../services/terminal/terminal_session.dart';
@@ -22,11 +22,13 @@ import 'chat/chat_workbench_terminal.dart';
 
 class ChatWorkbench extends StatefulWidget {
   const ChatWorkbench({
+    required this.workspaceId,
     this.sessionId,
     this.isPersonalWorkspace = false,
     super.key,
   });
 
+  final String workspaceId;
   final String? sessionId;
   final bool isPersonalWorkspace;
 
@@ -153,34 +155,37 @@ class _ChatWorkbenchState extends State<ChatWorkbench> {
     );
   }
 
-  Future<void> _connectSession(TeamProfile team) async {
-    final chatCubit = _chatCubit;
-    if (chatCubit == null) return;
-    await chatCubit.connectSession(team);
-    if (mounted) setState(() {});
+  SessionConnectRequest _connectRequest({required bool isPersonal, TeamProfile? team}) {
+    if (isPersonal) {
+      return PersonalSessionConnect(workspaceId: widget.workspaceId);
+    }
+    return TeamSessionConnect(team!);
   }
 
-  Future<void> _reconnectPersonalSession() async {
+  Future<void> _connectWorkspace({
+    required bool isPersonal,
+    TeamProfile? team,
+  }) async {
     final chatCubit = _chatCubit;
     final repo = _sessionRepo;
     if (chatCubit == null || repo == null) return;
-    final sessionId = chatCubit.state.activeSessionId;
-    if (sessionId == null) return;
-    AppSession? session;
-    for (final s in chatCubit.state.sessions) {
-      if (s.sessionId == sessionId) {
-        session = s;
-        break;
-      }
-    }
-    if (session == null) return;
-    chatCubit.disconnectSession();
-    await chatCubit.openSessionTab(
-      session,
-      team: null,
-      member: null,
+    await chatCubit.connectWorkspaceSession(
+      _connectRequest(isPersonal: isPersonal, team: team),
       repo: repo,
-      emptyDisplayTitleFallback: context.l10n.defaultNewChatSessionTitle,
+    );
+    if (mounted) setState(() {});
+  }
+
+  Future<void> _restartWorkspace({
+    required bool isPersonal,
+    TeamProfile? team,
+  }) async {
+    final chatCubit = _chatCubit;
+    final repo = _sessionRepo;
+    if (chatCubit == null || repo == null) return;
+    await chatCubit.restartWorkspaceSession(
+      _connectRequest(isPersonal: isPersonal, team: team),
+      repo: repo,
     );
     if (mounted) setState(() {});
   }
@@ -226,9 +231,7 @@ class _ChatWorkbenchState extends State<ChatWorkbench> {
                   )
                 : ChatWorkbenchTerminalPlaceholder(
                     onConnect: () => unawaited(
-                      isPersonal
-                          ? _reconnectPersonalSession()
-                          : _connectSession(team!),
+                      _connectWorkspace(isPersonal: isPersonal, team: team),
                     ),
                     connectDisabled: sessionConnectInProgress,
                     memberName: isPersonal
@@ -289,20 +292,16 @@ class _ChatWorkbenchState extends State<ChatWorkbench> {
                       setState(() {});
                     },
                     onRestart: () async {
-                      if (isPersonal) {
-                        await _reconnectPersonalSession();
-                      } else {
-                        await chatCubit.restartSession(team!);
-                      }
-                      if (mounted) setState(() {});
+                      await _restartWorkspace(
+                        isPersonal: isPersonal,
+                        team: team,
+                      );
                     },
                   );
                 }()
               : ChatWorkbenchTerminalPlaceholder(
                   onConnect: () => unawaited(
-                    isPersonal
-                        ? _reconnectPersonalSession()
-                        : _connectSession(team!),
+                    _connectWorkspace(isPersonal: isPersonal, team: team),
                   ),
                   connectDisabled: sessionConnectInProgress,
                   memberName: isPersonal

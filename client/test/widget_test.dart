@@ -4,6 +4,7 @@ import 'package:google_fonts/google_fonts.dart';
 import 'package:teampilot/l10n/app_localizations.dart';
 import 'package:teampilot/cubits/ai_feature_settings_cubit.dart';
 import 'package:teampilot/cubits/app_provider_cubit.dart';
+import 'package:teampilot/cubits/chat/model/session_connect_request.dart';
 import 'package:teampilot/cubits/chat_cubit.dart';
 import 'package:teampilot/cubits/notification_cubit.dart';
 import 'package:teampilot/cubits/member_presence_cubit.dart';
@@ -488,7 +489,9 @@ void main() {
     expect(selectedTeam, isNotNull);
     chatCubit.setActiveWorkspace(workspace.workspaceId);
     // Real repository I/O must run inside runAsync in widget tests.
-    await tester.runAsync(() => chatCubit.connectSession(selectedTeam!));
+    await tester.runAsync(
+      () => chatCubit.connectWorkspaceSession(TeamSessionConnect(selectedTeam!)),
+    );
     await tester.pump();
     await tester.runAsync(postFrame.flush);
     await tester.pump();
@@ -871,7 +874,7 @@ void main() {
       await cubit.loadWorkspaceData(repo);
 
       cubit.syncTeam(team);
-      await cubit.connectSession(team, repo: repo);
+      await cubit.connectWorkspaceSession(TeamSessionConnect(team), repo: repo);
       await postFrame.flush();
       await drainPendingAsyncWork();
 
@@ -918,7 +921,7 @@ void main() {
       await cubit.loadWorkspaceData(repo);
 
       cubit.syncTeam(team);
-      await cubit.connectSession(team, repo: repo);
+      await cubit.connectWorkspaceSession(TeamSessionConnect(team), repo: repo);
       await postFrame.flush();
       await drainPendingAsyncWork();
 

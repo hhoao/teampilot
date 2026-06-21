@@ -1,4 +1,5 @@
 import 'package:flutter_test/flutter_test.dart';
+import 'package:teampilot/models/cli_preset.dart';
 import 'package:teampilot/models/team_config.dart';
 import 'package:teampilot/services/team/team_config_launch_validator.dart';
 
@@ -114,6 +115,44 @@ void main() {
       );
 
       final result = await validator.validate(team);
+
+      expect(result.hasIssues, isFalse);
+    });
+
+    test('passes when members inherit team preset via globalPresets', () async {
+      const preset = CliPreset(
+        id: 'preset-team',
+        name: 'Team Default',
+        cli: CliTool.claude,
+        provider: 'prov-1',
+        model: 'sonnet',
+        createdAt: 0,
+        updatedAt: 0,
+      );
+      final team = TeamProfile(
+        id: 'team',
+        name: 'Team',
+        cli: CliTool.claude,
+        teamMode: TeamMode.native,
+        activePresetId: 'preset-team',
+        members: const [
+          TeamMemberConfig(
+            id: 'alice',
+            name: 'alice',
+            activePresetId: TeamProfile.inheritPresetId,
+          ),
+          TeamMemberConfig(
+            id: 'bob',
+            name: 'bob',
+            activePresetId: TeamProfile.inheritPresetId,
+          ),
+        ],
+      );
+
+      final result = await validator.validate(
+        team,
+        globalPresets: const [preset],
+      );
 
       expect(result.hasIssues, isFalse);
     });

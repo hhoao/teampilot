@@ -73,6 +73,9 @@ class SessionLifecycleService {
   final CliPresetsRepository? _cliPresetsRepository;
   final List<CliPreset> Function()? _loadPresets;
 
+  /// Global CLI presets used by [resolveMemberLaunchConfig] and launch validation.
+  List<CliPreset> get globalPresets => _loadPresets?.call() ?? const [];
+
   /// Resolves the active [CliPreset] for a personal workspace profile.
   /// Returns `null` when no preset is active or the repository is unavailable.
   Future<CliPreset?> resolveActivePresetForPersonal(

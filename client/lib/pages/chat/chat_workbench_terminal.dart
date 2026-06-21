@@ -209,6 +209,7 @@ void consumeChatWorkbenchRouteSession({
       ? team.members.where((m) => m.id == 'team-lead').toList()
       : <TeamMemberConfig>[];
   if (team != null && lead.isNotEmpty) {
+    unawaited(chatCubit.scheduleTeamConfigValidation(team));
     unawaited(
       chatCubit.openSessionTab(
         session,

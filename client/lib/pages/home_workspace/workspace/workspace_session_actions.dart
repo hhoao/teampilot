@@ -27,6 +27,13 @@ Future<void> openWorkspaceSessionTab(
 
   chatCubit.selectSession(session.sessionId);
 
+  if (!isPersonal) {
+    final team = context.read<LaunchProfileCubit>().state.selectedTeam;
+    if (team != null) {
+      unawaited(chatCubit.scheduleTeamConfigValidation(team));
+    }
+  }
+
   if (isPersonal) {
     await chatCubit.openSessionTab(
       session,

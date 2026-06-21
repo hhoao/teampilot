@@ -4,6 +4,7 @@ import 'dart:io';
 import 'package:fake_async/fake_async.dart';
 import 'package:flutter/scheduler.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:teampilot/cubits/chat/model/session_connect_request.dart';
 import 'package:teampilot/cubits/chat_cubit.dart';
 import 'package:teampilot/cubits/member_presence_cubit.dart';
 import 'package:teampilot/models/member_presence.dart';
@@ -125,7 +126,7 @@ void main() {
           members: [TeamMemberConfig(id: 'm-lead', name: 'team-lead')],
         );
 
-        unawaited(chatCubit.connectSession(team));
+        unawaited(chatCubit.connectWorkspaceSession(TeamSessionConnect(team)));
         async.flushMicrotasks();
         unawaited(harness.flush());
         async.flushMicrotasks();
@@ -407,7 +408,7 @@ void main() {
           members: [TeamMemberConfig(id: 'm-lead', name: 'team-lead')],
         );
 
-        unawaited(chatCubit.connectSession(team));
+        unawaited(chatCubit.connectWorkspaceSession(TeamSessionConnect(team)));
         async.flushMicrotasks();
         unawaited(harness.flush());
         async.flushMicrotasks();

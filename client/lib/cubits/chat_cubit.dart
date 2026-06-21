@@ -30,6 +30,7 @@ import 'chat/tab_team_bus_coordinator.dart';
 import 'member_presence_cubit.dart';
 import 'chat/model/chat_state.dart';
 import 'chat/model/chat_tab.dart';
+import 'chat/model/session_connect_request.dart';
 
 export 'chat/model/chat_state.dart';
 export 'chat/model/chat_tab_info.dart';
@@ -479,16 +480,21 @@ class ChatCubit extends Cubit<ChatState>
     connectImmediately: connectImmediately,
   );
 
+  Future<void> scheduleTeamConfigValidation(TeamProfile team) =>
+      _launchService.scheduleTeamConfigValidation(team);
+
   Future<void> openMemberTab(
     TeamProfile team,
     TeamMemberConfig member, {
     SessionRepository? repo,
     String? workspaceCwd,
+    bool scheduleTeamConfigValidation = true,
   }) => _launchService.openMemberTab(
     team,
     member,
     repo: repo,
     workspaceCwd: workspaceCwd,
+    scheduleTeamConfigValidation: scheduleTeamConfigValidation,
   );
 
   void closeTab(int index) {
@@ -654,13 +660,17 @@ class ChatCubit extends Cubit<ChatState>
   TerminalSession? ensureSession(TeamProfile team) =>
       _launchService.ensureSession(team);
 
-  Future<void> connectSession(TeamProfile team, {SessionRepository? repo}) =>
-      _launchService.connectSession(team, repo: repo);
+  Future<void> connectWorkspaceSession(
+    SessionConnectRequest request, {
+    SessionRepository? repo,
+  }) => _launchService.connectWorkspaceSession(request, repo: repo);
 
   void disconnectSession() => _launchService.disconnectSession();
 
-  Future<void> restartSession(TeamProfile team, {SessionRepository? repo}) =>
-      _launchService.restartSession(team, repo: repo);
+  Future<void> restartWorkspaceSession(
+    SessionConnectRequest request, {
+    SessionRepository? repo,
+  }) => _launchService.restartWorkspaceSession(request, repo: repo);
 
   @override
   Future<void> renameSession(
