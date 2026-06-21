@@ -2552,6 +2552,12 @@ abstract class AppLocalizations {
   /// **'No results'**
   String get terminalFindNoResults;
 
+  /// Shown when a dragged file lives on a different machine than the terminal it was dropped on.
+  ///
+  /// In en, this message translates to:
+  /// **'Can\'t drop a local file onto a remote terminal'**
+  String get terminalDropCrossMachineRejected;
+
   /// No description provided for @editorTitle.
   ///
   /// In en, this message translates to:

@@ -16,8 +16,10 @@ import '../../repositories/session_repository.dart';
 import '../../services/terminal/terminal_session.dart';
 import '../../services/terminal/terminal_uri_opener.dart';
 import '../../services/terminal/terminal_fonts.dart';
+import '../../services/workspace_dnd/terminal_drop_ingestor.dart';
 import '../../widgets/terminal/parked_send_overlay.dart';
 import '../../widgets/terminal_find_bar.dart';
+import '../../widgets/workspace_dnd/workspace_file_drop_region.dart';
 import 'chat_workbench_context_menu.dart';
 
 class ChatWorkbenchRunningTerminal extends StatelessWidget {
@@ -63,9 +65,26 @@ class ChatWorkbenchRunningTerminal extends StatelessWidget {
       },
       child: Stack(
         children: [
-          TerminalView(
-            session.engine,
-            controller: terminalController,
+          WorkspaceFileDropRegion(
+            target: TerminalDropIngestor(
+              sink: session,
+              target: session.runtimeTarget,
+              behavior: session.pathDropBehavior,
+            ),
+            onOutcome: (outcome) {
+              if (outcome.anyRejected && context.mounted) {
+                ScaffoldMessenger.of(context).showSnackBar(
+                  SnackBar(
+                    content: Text(
+                      context.l10n.terminalDropCrossMachineRejected,
+                    ),
+                  ),
+                );
+              }
+            },
+            child: TerminalView(
+              session.engine,
+              controller: terminalController,
             theme: terminalTheme,
             backgroundOpacity: 0.98,
             padding: const EdgeInsets.symmetric(horizontal: 36, vertical: 16),
@@ -109,6 +128,7 @@ class ChatWorkbenchRunningTerminal extends StatelessWidget {
                 ),
               );
             },
+            ),
           ),
           if (findVisible)
             Positioned(

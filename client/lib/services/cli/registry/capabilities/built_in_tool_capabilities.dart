@@ -121,6 +121,9 @@ final class FlashskyaiTerminalBehavior implements TerminalBehaviorCapability {
   bool get usesFullScreenInput => false;
   @override
   bool get forwardsColorSchemeReport => true;
+  @override
+  TerminalPathDropBehavior get pathDropBehavior =>
+      TerminalPathDropBehavior.defaultFor(usesFullScreenInput: false);
 }
 
 final class ClaudeTerminalBehavior implements TerminalBehaviorCapability {
@@ -129,6 +132,9 @@ final class ClaudeTerminalBehavior implements TerminalBehaviorCapability {
   bool get usesFullScreenInput => true;
   @override
   bool get forwardsColorSchemeReport => true;
+  @override
+  TerminalPathDropBehavior get pathDropBehavior =>
+      TerminalPathDropBehavior.defaultFor(usesFullScreenInput: true);
 }
 
 final class CodexTerminalBehavior implements TerminalBehaviorCapability {
@@ -137,6 +143,9 @@ final class CodexTerminalBehavior implements TerminalBehaviorCapability {
   bool get usesFullScreenInput => true;
   @override
   bool get forwardsColorSchemeReport => true;
+  @override
+  TerminalPathDropBehavior get pathDropBehavior =>
+      TerminalPathDropBehavior.defaultFor(usesFullScreenInput: true);
 }
 
 final class OpencodeTerminalBehavior implements TerminalBehaviorCapability {
@@ -145,6 +154,9 @@ final class OpencodeTerminalBehavior implements TerminalBehaviorCapability {
   bool get usesFullScreenInput => false;
   @override
   bool get forwardsColorSchemeReport => true;
+  @override
+  TerminalPathDropBehavior get pathDropBehavior =>
+      TerminalPathDropBehavior.defaultFor(usesFullScreenInput: false);
 }
 
 final class CursorTerminalBehavior implements TerminalBehaviorCapability {
@@ -153,5 +165,8 @@ final class CursorTerminalBehavior implements TerminalBehaviorCapability {
   bool get usesFullScreenInput => true;
   @override
   bool get forwardsColorSchemeReport => false;
+  @override
+  TerminalPathDropBehavior get pathDropBehavior =>
+      TerminalPathDropBehavior.defaultFor(usesFullScreenInput: true);
 }
 

@@ -27,6 +27,8 @@ import '../../utils/logger.dart';
 import 'terminal_theme_mapper.dart';
 import 'workspace_interactive_shell.dart';
 import '../storage/app_storage.dart';
+import '../workspace_dnd/runtime_target.dart';
+import '../workspace_dnd/terminal_text_sink.dart';
 import 'file_path_link_provider.dart';
 import 'terminal_uri_opener.dart';
 
@@ -43,7 +45,7 @@ typedef TransportStarter =
 /// PTY attach → confirm → running. See [_feedPtyBytes] and [_confirmProcessStarted].
 enum _LaunchPhase { idle, spawning, confirming, running, failed }
 
-class TerminalSession {
+class TerminalSession implements TerminalTextSink {
   TerminalSession({
     required this.executable,
     this.validateLaunch = true,
@@ -53,8 +55,10 @@ class TerminalSession {
     TransportStarter? transportStarter,
     int scrollbackLines = 10000,
     TerminalTheme? terminalTheme,
+    RuntimeTarget? runtimeTarget,
     @Deprecated('Use transportStarter instead') dynamic ptyStarter,
   }) : _transportStarter = transportStarter ?? _defaultTransportStarter,
+       _runtimeTarget = runtimeTarget,
        _scrollbackLines = scrollbackLines,
        engine = TerminalEngine(
          config: terminalTheme == null
@@ -122,6 +126,28 @@ class TerminalSession {
   /// [FilePathLinkProvider.launchCwd] so file-path links resolve correctly.
   /// Empty string until the first [connect] call.
   String _launchCwd = '';
+
+  /// The execution namespace this terminal's process lives in. SSH sessions are
+  /// tagged at construction (the factory knows the remote); local sessions are
+  /// resolved at [connect] from the platform + whether the launch wraps WSL.
+  /// Drives drag-and-drop path projection (see `workspace_dnd/`).
+  RuntimeTarget? _runtimeTarget;
+
+  /// The terminal's runtime namespace, defaulting to the local host when a
+  /// session has not been connected yet.
+  RuntimeTarget get runtimeTarget => _runtimeTarget ?? _localRuntimeTarget('');
+
+  /// How a dropped file path is quoted and injected for this session's CLI,
+  /// resolved from the terminal-behavior capability at [connect]. Falls back to
+  /// the line-edited default before the first connect (or for shell-only specs).
+  TerminalPathDropBehavior _pathDropBehavior =
+      TerminalPathDropBehavior.defaultFor(usesFullScreenInput: false);
+  TerminalPathDropBehavior get pathDropBehavior => _pathDropBehavior;
+
+  static RuntimeTarget _localRuntimeTarget(String workingDirectory) =>
+      Platform.isWindows
+      ? RuntimeTarget.localWindows(workingDirectory: workingDirectory)
+      : RuntimeTarget.localPosix(workingDirectory: workingDirectory);
 
   List<TerminalLinkProvider>? _linkProviders;
   ValueNotifier<String?>? _osc7Cwd;
@@ -269,6 +295,14 @@ class TerminalSession {
     final invocation = parseExecutable
         ? CliInvocation.fromExecutable(executable)
         : CliInvocation(executable: executable);
+    // Resolve the drag-and-drop path namespace for local sessions. SSH sessions
+    // are tagged at construction (the factory knows the remote) and kept as-is;
+    // a local launch is WSL when it wraps `wsl.exe`, else the host platform.
+    if (!(_runtimeTarget?.namespace.isSsh ?? false)) {
+      _runtimeTarget = invocation.usesWsl
+          ? RuntimeTarget.wsl(workingDirectory: workingDirectory)
+          : _localRuntimeTarget(workingDirectory);
+    }
     final ptyWorkingDirectory = LaunchCommandBuilder.workingDirectoryForProcess(
       workingDirectory,
       useWslPaths: invocation.usesWsl,
@@ -353,16 +387,18 @@ class TerminalSession {
             ),
           );
 
-    final forwardsColorScheme = shellLaunch != null
-        ? CliToolRegistry.builtIn()
-                  .capability<TerminalBehaviorCapability>(
-                    shellLaunch.launchContext.member.cliWithin(
-                      shellLaunch.launchContext.team,
-                    ),
-                  )
-                  ?.forwardsColorSchemeReport ??
-              true
-        : true;
+    final terminalBehavior = shellLaunch != null
+        ? CliToolRegistry.builtIn().capability<TerminalBehaviorCapability>(
+            shellLaunch.launchContext.member.cliWithin(
+              shellLaunch.launchContext.team,
+            ),
+          )
+        : null;
+    final forwardsColorScheme =
+        terminalBehavior?.forwardsColorSchemeReport ?? true;
+    if (terminalBehavior != null) {
+      _pathDropBehavior = terminalBehavior.pathDropBehavior;
+    }
 
     _listenEngineOutput((data) {
       if (_firstUserLineCapture != null ||
@@ -830,6 +866,26 @@ class TerminalSession {
     if (_transportReadyForIo && _transport != null) {
       _transport!.write(Uint8List.fromList(utf8.encode(text)));
     }
+  }
+
+  /// [TerminalTextSink]: append raw text at the cursor with no submit.
+  @override
+  void appendText(String text) => writeToPty(text);
+
+  /// [TerminalTextSink]: stage text in a full-screen TUI without submitting.
+  @override
+  Future<void> pasteWithoutSubmit(String text) => pasteText(text);
+
+  /// Insert [text] into a full-screen TUI's input box via bracketed paste,
+  /// sending no CR so it is staged (e.g. a dropped file path) but not submitted.
+  /// Serialized through [_ptySubmitChain] so it never interleaves with a
+  /// [submitFullScreenInput] burst's standalone CR.
+  Future<void> pasteText(String text) {
+    final next = _ptySubmitChain.then((_) async {
+      writeToPty('\x1B[200~$text\x1B[201~');
+    });
+    _ptySubmitChain = next.catchError((_) {});
+    return next;
   }
 
   void writeln(String text) {

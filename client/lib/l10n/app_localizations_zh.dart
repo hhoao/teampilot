@@ -1315,6 +1315,9 @@ class AppLocalizationsZh extends AppLocalizations {
   String get terminalFindNoResults => '无匹配';
 
   @override
+  String get terminalDropCrossMachineRejected => '无法将本地文件拖入远程终端';
+
+  @override
   String get editorTitle => '编辑器';
 
   @override

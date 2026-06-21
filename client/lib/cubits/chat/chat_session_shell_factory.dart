@@ -3,6 +3,7 @@ import '../../models/launch_target.dart';
 import '../../models/team_config.dart';
 import '../../services/terminal/terminal_session.dart';
 import '../../services/terminal/terminal_transport_factory.dart';
+import '../../services/workspace_dnd/runtime_target.dart';
 import 'model/chat_state.dart';
 
 /// Builds [TerminalSession]s with the right executable / transport for the
@@ -76,6 +77,9 @@ class ChatSessionShellFactory {
         scrollbackLines: scrollback,
         validateLaunch: false,
         parseExecutable: false,
+        // Tag the namespace so dropped local files are recognised as
+        // cross-machine (and refused) rather than pasted as unreachable paths.
+        runtimeTarget: const RuntimeTarget.ssh(),
         transportStarter:
             (
               String executable, {

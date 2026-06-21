@@ -550,6 +550,7 @@
   "shellSession": "Shell 会话",
   "terminalFind": "在终端中查找",
   "terminalFindNoResults": "无匹配",
+  "terminalDropCrossMachineRejected": "无法将本地文件拖入远程终端",
   "editorTitle": "编辑器",
   "editorSave": "保存",
   "editorCut": "剪切",

@@ -1374,6 +1374,10 @@ class AppLocalizationsEn extends AppLocalizations {
   String get terminalFindNoResults => 'No results';
 
   @override
+  String get terminalDropCrossMachineRejected =>
+      'Can\'t drop a local file onto a remote terminal';
+
+  @override
   String get editorTitle => 'Editor';
 
   @override

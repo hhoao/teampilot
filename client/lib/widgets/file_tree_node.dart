@@ -10,10 +10,13 @@ import '../cubits/file_tree_cubit.dart';
 import '../services/editor/file_editor_theme.dart';
 import '../services/file_tree/file_tree_visible_rows.dart';
 import '../services/io/filesystem.dart';
+import '../services/workspace_dnd/path_namespace.dart';
+import '../services/workspace_dnd/workspace_file_ref.dart';
 import '../theme/app_text_styles.dart';
 import 'file_icon_widget.dart';
 import 'file_tree/file_tree_context_menu.dart';
 import 'hover_widget.dart';
+import 'workspace_dnd/draggable_file_row.dart';
 
 /// Single row in the flattened file tree (no nested children).
 class FileTreeNode extends StatefulWidget {
@@ -109,8 +112,18 @@ class _FileTreeNodeState extends State<FileTreeNode> {
         onEnter: (_) => _setHovered(true),
         onExit: (_) => _setHovered(false),
         cursor: SystemMouseCursors.click,
-        child: GestureDetector(
-          behavior: HitTestBehavior.opaque,
+        child: DraggableFileRow(
+          enabled: !widget.isRoot && !widget.rootMissing,
+          label: widget.entry.name,
+          payload: WorkspaceDragPayload.singleFile(
+            WorkspaceFileRef(
+              nativePath: widget.path,
+              namespace: PathNamespace.ofCurrentStorage(),
+              isDirectory: isDir,
+            ),
+          ),
+          child: GestureDetector(
+            behavior: HitTestBehavior.opaque,
           onTap: () {
             if (isDir) {
               widget.cubit.toggleExpand(widget.path);
@@ -214,6 +227,7 @@ class _FileTreeNodeState extends State<FileTreeNode> {
                 ),
               ),
             ),
+          ),
           ),
         ),
       ),
