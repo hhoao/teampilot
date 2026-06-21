@@ -118,7 +118,11 @@ class _FileEditorBody extends StatelessWidget {
 
     final readOnly = editor.isReadOnly(path);
     return CodeEditor(
-      key: ValueKey(path),
+      // Stable per-file GlobalKey: reparents (moves) the editor instead of
+      // remounting when the host subtree is swapped, so this file's shared
+      // controller is never bound to two editors in one frame (which made
+      // re_editor setState() during build).
+      key: editor.editorKeyFor(path) ?? ValueKey(path),
       controller: controller,
       readOnly: readOnly,
       toolbarController: const FileEditorContextMenuController(),

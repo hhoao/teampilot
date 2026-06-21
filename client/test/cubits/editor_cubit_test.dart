@@ -1,5 +1,6 @@
 import 'dart:io';
 
+import 'package:flutter/widgets.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:teampilot/cubits/editor_cubit.dart';
 import 'package:teampilot/services/io/local_filesystem.dart';
@@ -36,5 +37,39 @@ void main() {
     expect(cubit.controllerFor(file.path)?.text, 'hello world');
 
     await dir.delete(recursive: true);
+  });
+
+  test('editorKeyFor is a stable, per-file GlobalKey', () async {
+    // The editor uses this GlobalKey so a host-subtree swap (e.g. the chat
+    // workbench switching WorkspaceEditorOverlay branches as a session
+    // connects) MOVES the CodeEditor instead of remounting it — otherwise the
+    // old + new editor briefly share the file's controller in one frame and
+    // re_editor calls setState() during build.
+    final dir = await Directory.systemTemp.createTemp('teampilot_editor_key_');
+    addTearDown(() => dir.delete(recursive: true));
+    final a = File('${dir.path}/a.txt')..writeAsStringSync('a');
+    final b = File('${dir.path}/b.txt')..writeAsStringSync('b');
+
+    final cubit = EditorCubit(fs: LocalFilesystem());
+    addTearDown(cubit.close);
+
+    await cubit.openFile(a.path);
+    await cubit.openFile(b.path);
+
+    final keyA = cubit.editorKeyFor(a.path);
+    final keyB = cubit.editorKeyFor(b.path);
+
+    expect(keyA, isA<GlobalKey>());
+    expect(keyB, isA<GlobalKey>());
+    // Stable across calls (would re-mount the editor every rebuild otherwise).
+    expect(identical(cubit.editorKeyFor(a.path), keyA), isTrue);
+    // Distinct per file so switching the active file remounts the right editor.
+    expect(identical(keyA, keyB), isFalse);
+
+    // Closing the file releases its key; reopening allocates a fresh one.
+    cubit.closeFile(cubit.state.openPaths.indexOf(a.path), force: true);
+    expect(cubit.editorKeyFor(a.path), isNull);
+    await cubit.openFile(a.path);
+    expect(identical(cubit.editorKeyFor(a.path), keyA), isFalse);
   });
 }

@@ -1,5 +1,5 @@
 import 'package:equatable/equatable.dart';
-import 'package:flutter/foundation.dart';
+import 'package:flutter/widgets.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:path/path.dart' as p;
 import 'package:re_editor/re_editor.dart';
@@ -85,6 +85,16 @@ class _OpenFileHandle {
   String? savedText;
   VoidCallback? _listener;
 
+  /// Stable per-file identity for the [CodeEditor] element. A [GlobalKey] makes
+  /// Flutter *move* (reparent) the existing editor when its host subtree is
+  /// swapped — e.g. the chat workbench switching `WorkspaceEditorOverlay`
+  /// branches as a session connects — instead of disposing the old editor and
+  /// inflating a new one. Without this, the old and new editors briefly share
+  /// this file's controller in one frame, and re_editor notifies the
+  /// deactivated editor's listener during the new editor's `initState`
+  /// (`setState() called during build`).
+  final GlobalKey editorKey = GlobalKey(debugLabel: 'file-editor');
+
   void attachListener() {
     _listener ??= () {
       if (savedText != null && controller.text != savedText) {
@@ -110,6 +120,9 @@ class EditorCubit extends Cubit<EditorState> {
 
   CodeLineEditingController? controllerFor(String path) =>
       _handles[path]?.controller;
+
+  /// Stable [GlobalKey] for the file's editor element; see [_OpenFileHandle].
+  GlobalKey? editorKeyFor(String path) => _handles[path]?.editorKey;
 
   bool isReadOnly(String path) => state.readOnlyPaths.contains(path);
 
