@@ -9,7 +9,9 @@ import '../../cubits/file_tree_cubit.dart';
 import '../../cubits/mailbox_cubit.dart';
 import '../../cubits/member_presence_cubit.dart';
 import '../../cubits/launch_profile_cubit.dart';
+import '../../cubits/worktree_cubit.dart';
 import '../../l10n/l10n_extensions.dart';
+import '../../theme/app_text_styles.dart';
 import '../../models/layout_preferences.dart';
 import '../../models/member_instance.dart';
 import '../../models/team_config.dart';
@@ -408,9 +410,70 @@ class _RightToolsPanelState extends State<RightToolsPanel> {
         ),
       );
     }
+    // Breadcrumb: current worktree branch, so the file tree / source control
+    // make clear which worktree they reflect. Nullable lookup — absent on
+    // routes/tests that build the panel without a WorktreeCubit ancestor.
+    final wtState = context.watch<WorktreeCubit?>()?.state;
+    final branchLabel = (wtState != null && wtState.hasMultipleWorktrees)
+        ? _currentWorktreeBranch(wtState)
+        : null;
+    final panel = TabbedPanel(views: views, scopeId: widget.workspaceId);
     return Container(
       key: widget.panelKey,
-      child: TabbedPanel(views: views, scopeId: widget.workspaceId),
+      child: branchLabel == null
+          ? panel
+          : Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                _WorktreeBreadcrumb(branch: branchLabel),
+                Expanded(child: panel),
+              ],
+            ),
+    );
+  }
+
+  static String? _currentWorktreeBranch(WorktreeState state) {
+    for (final w in state.worktrees) {
+      if (w.path == state.currentWorktreePath) return w.shortBranch;
+    }
+    return null;
+  }
+}
+
+/// Thin header above the right tools showing the current worktree's branch.
+class _WorktreeBreadcrumb extends StatelessWidget {
+  const _WorktreeBreadcrumb({required this.branch});
+
+  final String branch;
+
+  @override
+  Widget build(BuildContext context) {
+    final cs = Theme.of(context).colorScheme;
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+      decoration: BoxDecoration(
+        color: cs.surfaceContainerHighest.withValues(alpha: 0.4),
+        border: Border(
+          bottom: BorderSide(color: cs.outlineVariant.withValues(alpha: 0.5)),
+        ),
+      ),
+      child: Row(
+        children: [
+          Icon(Icons.account_tree_outlined, size: 14, color: cs.onSurfaceVariant),
+          const SizedBox(width: 6),
+          Expanded(
+            child: Text(
+              branch,
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              style: AppTextStyles.of(context).bodySmall.copyWith(
+                color: cs.onSurfaceVariant,
+                fontWeight: FontWeight.w600,
+              ),
+            ),
+          ),
+        ],
+      ),
     );
   }
 }

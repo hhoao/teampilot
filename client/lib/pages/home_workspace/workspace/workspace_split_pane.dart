@@ -61,11 +61,22 @@ class _WorkspaceSplitPaneState extends State<WorkspaceSplitPane> {
             profileId: widget.profileId,
             sessionTeamFilter: widget.sessionTeamFilter,
           ),
-          second: ChatPage(
-            cwd: widget.workspace.primaryPath,
-            additionalPaths: widget.workspace.additionalPaths,
-            workspaceId: widget.workspace.workspaceId,
-            isPersonalWorkspace: widget.isPersonalWorkspace,
+          second: BlocBuilder<WorktreeCubit, WorktreeState>(
+            buildWhen: (a, b) =>
+                a.currentWorktreePath != b.currentWorktreePath,
+            builder: (context, wt) {
+              // File tree + source control follow the current worktree; fall
+              // back to the repo root (main worktree) when none is selected.
+              final cwd = wt.currentWorktreePath.isNotEmpty
+                  ? wt.currentWorktreePath
+                  : widget.workspace.primaryPath;
+              return ChatPage(
+                cwd: cwd,
+                additionalPaths: widget.workspace.additionalPaths,
+                workspaceId: widget.workspace.workspaceId,
+                isPersonalWorkspace: widget.isPersonalWorkspace,
+              );
+            },
           ),
           initialPrimarySize: initialSidebar,
           minPrimarySize: minSidebar,
