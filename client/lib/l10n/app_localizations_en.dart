@@ -3975,4 +3975,32 @@ class AppLocalizationsEn extends AppLocalizations {
   String worktreeCreateFailed(Object error) {
     return 'Failed to create worktree: $error';
   }
+
+  @override
+  String get worktreeDeleteTitle => 'Remove worktree';
+
+  @override
+  String worktreeDeleteBody(Object branch) {
+    return 'Remove the worktree for $branch?';
+  }
+
+  @override
+  String get worktreeDeleteForce =>
+      'Force-remove even if it has uncommitted changes';
+
+  @override
+  String get worktreeDeleteBranchToo => 'Also delete the branch';
+
+  @override
+  String worktreeDeleteSessionsToo(Object count) {
+    return 'Also delete the $count conversations in this worktree';
+  }
+
+  @override
+  String get worktreeDeleteAction => 'Remove';
+
+  @override
+  String worktreeDeleteFailed(Object error) {
+    return 'Failed to remove worktree: $error';
+  }
 }

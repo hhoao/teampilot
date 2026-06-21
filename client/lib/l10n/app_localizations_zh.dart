@@ -3830,4 +3830,31 @@ class AppLocalizationsZh extends AppLocalizations {
   String worktreeCreateFailed(Object error) {
     return '创建 worktree 失败：$error';
   }
+
+  @override
+  String get worktreeDeleteTitle => '删除 worktree';
+
+  @override
+  String worktreeDeleteBody(Object branch) {
+    return '删除 $branch 的 worktree？';
+  }
+
+  @override
+  String get worktreeDeleteForce => '即使有未提交改动也强制删除';
+
+  @override
+  String get worktreeDeleteBranchToo => '同时删除分支';
+
+  @override
+  String worktreeDeleteSessionsToo(Object count) {
+    return '同时删除该 worktree 下的 $count 个会话';
+  }
+
+  @override
+  String get worktreeDeleteAction => '删除';
+
+  @override
+  String worktreeDeleteFailed(Object error) {
+    return '删除 worktree 失败：$error';
+  }
 }

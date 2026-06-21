@@ -1884,5 +1884,15 @@
   "worktreeStartConversation": "Start a conversation here after creating",
   "worktreeCreateAction": "Create",
   "worktreeCreateFailed": "Failed to create worktree: {error}",
-  "@worktreeCreateFailed": { "placeholders": { "error": {} } }
+  "@worktreeCreateFailed": { "placeholders": { "error": {} } },
+  "worktreeDeleteTitle": "Remove worktree",
+  "worktreeDeleteBody": "Remove the worktree for {branch}?",
+  "@worktreeDeleteBody": { "placeholders": { "branch": {} } },
+  "worktreeDeleteForce": "Force-remove even if it has uncommitted changes",
+  "worktreeDeleteBranchToo": "Also delete the branch",
+  "worktreeDeleteSessionsToo": "Also delete the {count} conversations in this worktree",
+  "@worktreeDeleteSessionsToo": { "placeholders": { "count": {} } },
+  "worktreeDeleteAction": "Remove",
+  "worktreeDeleteFailed": "Failed to remove worktree: {error}",
+  "@worktreeDeleteFailed": { "placeholders": { "error": {} } }
 }

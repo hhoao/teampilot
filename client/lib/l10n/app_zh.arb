@@ -1499,5 +1499,12 @@
   "worktreePathLabel": "位置",
   "worktreeStartConversation": "创建后在此开始一个会话",
   "worktreeCreateAction": "创建",
-  "worktreeCreateFailed": "创建 worktree 失败：{error}"
+  "worktreeCreateFailed": "创建 worktree 失败：{error}",
+  "worktreeDeleteTitle": "删除 worktree",
+  "worktreeDeleteBody": "删除 {branch} 的 worktree？",
+  "worktreeDeleteForce": "即使有未提交改动也强制删除",
+  "worktreeDeleteBranchToo": "同时删除分支",
+  "worktreeDeleteSessionsToo": "同时删除该 worktree 下的 {count} 个会话",
+  "worktreeDeleteAction": "删除",
+  "worktreeDeleteFailed": "删除 worktree 失败：{error}"
 }

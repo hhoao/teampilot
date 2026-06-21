@@ -7202,6 +7202,48 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Failed to create worktree: {error}'**
   String worktreeCreateFailed(Object error);
+
+  /// No description provided for @worktreeDeleteTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Remove worktree'**
+  String get worktreeDeleteTitle;
+
+  /// No description provided for @worktreeDeleteBody.
+  ///
+  /// In en, this message translates to:
+  /// **'Remove the worktree for {branch}?'**
+  String worktreeDeleteBody(Object branch);
+
+  /// No description provided for @worktreeDeleteForce.
+  ///
+  /// In en, this message translates to:
+  /// **'Force-remove even if it has uncommitted changes'**
+  String get worktreeDeleteForce;
+
+  /// No description provided for @worktreeDeleteBranchToo.
+  ///
+  /// In en, this message translates to:
+  /// **'Also delete the branch'**
+  String get worktreeDeleteBranchToo;
+
+  /// No description provided for @worktreeDeleteSessionsToo.
+  ///
+  /// In en, this message translates to:
+  /// **'Also delete the {count} conversations in this worktree'**
+  String worktreeDeleteSessionsToo(Object count);
+
+  /// No description provided for @worktreeDeleteAction.
+  ///
+  /// In en, this message translates to:
+  /// **'Remove'**
+  String get worktreeDeleteAction;
+
+  /// No description provided for @worktreeDeleteFailed.
+  ///
+  /// In en, this message translates to:
+  /// **'Failed to remove worktree: {error}'**
+  String worktreeDeleteFailed(Object error);
 }
 
 class _AppLocalizationsDelegate
