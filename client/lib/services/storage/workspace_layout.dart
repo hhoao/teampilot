@@ -114,4 +114,10 @@ class WorkspaceLayout {
         ),
         'plugins',
       );
+
+  /// App-managed location for a created git worktree:
+  /// `<teampilotRoot>/worktrees/<repoName>/<branch>`. Branch slashes become
+  /// nested directories (git accepts the path verbatim).
+  String worktreePathFor({required String repoName, required String branch}) =>
+      _ctx.join(teampilotRoot, 'worktrees', repoName.trim(), branch.trim());
 }
