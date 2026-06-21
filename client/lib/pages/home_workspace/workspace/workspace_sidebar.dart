@@ -158,16 +158,18 @@ class _WorkspaceSidebarState
                     ),
                   ),
                 ),
-                const SizedBox(width: 2),
-                AppIconButton(
-                  icon: Icons.account_tree_outlined,
-                  compact: true, size: AppIconButton.kCompactSize,
-                  tooltip: l10n.worktreeNewWorktreeTooltip,
-                  onTap: throttledTap(
-                    'workspace_sidebar_new_worktree',
-                    () => unawaited(_createWorktree(context)),
+                if (worktreeManagementEnabled()) ...[
+                  const SizedBox(width: 2),
+                  AppIconButton(
+                    icon: Icons.account_tree_outlined,
+                    compact: true, size: AppIconButton.kCompactSize,
+                    tooltip: l10n.worktreeNewWorktreeTooltip,
+                    onTap: throttledTap(
+                      'workspace_sidebar_new_worktree',
+                      () => unawaited(_createWorktree(context)),
+                    ),
                   ),
-                ),
+                ],
               ],
             ),
           ),

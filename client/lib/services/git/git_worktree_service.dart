@@ -160,6 +160,20 @@ class GitWorktreeService {
       RegExp(r'(unknown|invalid) (switch|option).*z', caseSensitive: false)
           .hasMatch(message);
 
+  /// True when [worktreePath] has uncommitted or untracked changes. Returns
+  /// false on any error (never blocks the UI on a probe failure).
+  Future<bool> isDirty(String worktreePath) async {
+    try {
+      final out = await _run(
+        worktreePath,
+        ['status', '--porcelain', '--untracked-files=all'],
+      );
+      return out.trim().isNotEmpty;
+    } on Object {
+      return false;
+    }
+  }
+
   /// Create a worktree. New branch (`--no-track -b`) unless [existingBranch].
   Future<void> add(
     String repoPath,

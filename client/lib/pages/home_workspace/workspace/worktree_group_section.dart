@@ -7,9 +7,11 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import '../../../cubits/chat_cubit.dart';
 import '../../../cubits/worktree_cubit.dart';
 import '../../../l10n/l10n_extensions.dart';
+import '../../../models/app_session.dart';
 import '../../../models/workspace.dart';
 import '../../../repositories/session_repository.dart';
 import '../../../services/git/git_worktree_service.dart';
+import '../../../services/storage/runtime_storage_context.dart';
 import '../../../theme/app_text_styles.dart';
 import '../../../utils/session_worktree_grouping.dart';
 import '../../../widgets/app_icon_button.dart';
@@ -25,6 +27,12 @@ import 'workspace_session_actions.dart';
 /// section agree on the key.
 String worktreeGroupCollapseKey(WorktreeGroup group) =>
     group.worktree?.path ?? '<orphan>';
+
+/// Worktree create/remove run local `git`, so management is desktop-local only
+/// (v1). On WSL/SSH/Android backends the management affordances are hidden.
+bool worktreeManagementEnabled() =>
+    RuntimeStorageContext.isInstalled &&
+    RuntimeStorageContext.current.mode == StorageBackendMode.native;
 
 /// One collapsible worktree group in [WorkspaceSidebar]: a branch header (with
 /// management menu) plus its session tiles. Selecting the header makes the
@@ -56,8 +64,10 @@ class WorktreeGroupSection extends StatelessWidget {
     final styles = AppTextStyles.of(context);
     final wt = group.worktree;
     final label = wt == null ? l10n.worktreeOrphanGroup : wt.shortBranch;
-    // Only linked (non-main, non-orphan) worktrees can be removed and started in.
-    final manageable = wt != null && !wt.isMainWorktree;
+    // Only linked (non-main, non-orphan) worktrees can be removed, and only on
+    // desktop-local backends where local `git worktree remove` is meaningful.
+    final manageable =
+        wt != null && !wt.isMainWorktree && worktreeManagementEnabled();
     final selectable = wt != null;
 
     return Column(
@@ -135,29 +145,13 @@ class WorktreeGroupSection extends StatelessWidget {
             ),
           ),
         ),
-        if (!collapsed)
-          ...group.sessions.map(
-            (session) => SidebarSessionTile(
-              key: ValueKey('worktree-session-${session.sessionId}'),
-              session: session,
-              contentLeftInset: 18,
-              tapThrottleKeyPrefix: 'worktree_sidebar_session',
-              onTap: () {
-                // Selecting a session makes its worktree the current one so the
-                // terminal, file tree and source control all reflect it (§7).
-                if (wt != null) {
-                  context.read<WorktreeCubit>().setCurrentWorktree(wt.path);
-                }
-                unawaited(
-                  openWorkspaceSessionTab(
-                    context,
-                    workspace,
-                    session,
-                    isPersonal: isPersonal,
-                  ),
-                );
-              },
-            ),
+        if (!collapsed && group.sessions.isNotEmpty)
+          _GroupSessionList(
+            key: ValueKey('wt-sessions-${worktreeGroupCollapseKey(group)}'),
+            sessions: group.sessions,
+            workspace: workspace,
+            isPersonal: isPersonal,
+            worktreePath: wt?.path,
           ),
       ],
     );
@@ -172,10 +166,25 @@ class WorktreeGroupSection extends StatelessWidget {
     final repo = context.read<SessionRepository>();
     final cubit = context.read<WorktreeCubit>();
     final l10n = context.l10n;
+    // A running agent's cwd would vanish under it — make the user stop first.
+    final working = chatCubit.state.workingSessionIds;
+    final hasBusy =
+        group.sessions.any((s) => working.contains(s.sessionId));
+    if (hasBusy) {
+      AppToast.show(
+        context,
+        message: l10n.worktreeDeleteBusyWarning,
+        variant: AppToastVariant.error,
+      );
+      return;
+    }
+    final dirty = await GitWorktreeService().isDirty(worktreePath);
+    if (!context.mounted) return;
     final result = await showWorktreeDeleteDialog(
       context,
       branchLabel: branchLabel,
       sessionCount: group.sessions.length,
+      requireForce: dirty,
     );
     if (result == null) return;
     try {
@@ -248,6 +257,84 @@ class _GroupMenu extends StatelessWidget {
             label: l10n.worktreeMenuRemove,
             menuController: controller,
             onTap: onDelete,
+          ),
+      ],
+    );
+  }
+}
+
+/// Session tiles for one worktree group, capped at [_cap] with a "show
+/// more / show less" toggle so a busy worktree doesn't flood the sidebar.
+/// Selecting a tile makes the group's worktree current (§7).
+class _GroupSessionList extends StatefulWidget {
+  const _GroupSessionList({
+    required this.sessions,
+    required this.workspace,
+    required this.isPersonal,
+    required this.worktreePath,
+    super.key,
+  });
+
+  final List<AppSession> sessions;
+  final Workspace workspace;
+  final bool isPersonal;
+
+  /// The group's worktree path; null for the orphan group (no current to set).
+  final String? worktreePath;
+
+  @override
+  State<_GroupSessionList> createState() => _GroupSessionListState();
+}
+
+class _GroupSessionListState extends State<_GroupSessionList> {
+  static const _cap = 5;
+  bool _showAll = false;
+
+  @override
+  Widget build(BuildContext context) {
+    final l10n = context.l10n;
+    final cs = Theme.of(context).colorScheme;
+    final all = widget.sessions;
+    final overflow = all.length - _cap;
+    final visible = (_showAll || overflow <= 0) ? all : all.take(_cap).toList();
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        for (final session in visible)
+          SidebarSessionTile(
+            key: ValueKey('worktree-session-${session.sessionId}'),
+            session: session,
+            contentLeftInset: 18,
+            tapThrottleKeyPrefix: 'worktree_sidebar_session',
+            onTap: () {
+              final path = widget.worktreePath;
+              if (path != null) {
+                context.read<WorktreeCubit>().setCurrentWorktree(path);
+              }
+              unawaited(
+                openWorkspaceSessionTab(
+                  context,
+                  widget.workspace,
+                  session,
+                  isPersonal: widget.isPersonal,
+                ),
+              );
+            },
+          ),
+        if (overflow > 0)
+          InkWell(
+            onTap: () => setState(() => _showAll = !_showAll),
+            child: Padding(
+              padding: const EdgeInsets.fromLTRB(22, 6, 8, 6),
+              child: Text(
+                _showAll ? l10n.worktreeShowLess : l10n.worktreeShowMore(overflow),
+                style: AppTextStyles.of(context).bodySmall.copyWith(
+                  color: cs.primary,
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
+            ),
           ),
       ],
     );

@@ -3872,4 +3872,15 @@ class AppLocalizationsZh extends AppLocalizations {
 
   @override
   String get worktreeMenuRemove => '删除 worktree';
+
+  @override
+  String worktreeShowMore(Object count) {
+    return '显示更多 $count 个';
+  }
+
+  @override
+  String get worktreeShowLess => '收起';
+
+  @override
+  String get worktreeDeleteBusyWarning => '请先停止该 worktree 下正在运行的会话，再删除。';
 }

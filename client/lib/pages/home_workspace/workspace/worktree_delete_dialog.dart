@@ -28,12 +28,14 @@ Future<WorktreeDeleteResult?> showWorktreeDeleteDialog(
   BuildContext context, {
   required String branchLabel,
   required int sessionCount,
+  bool requireForce = false,
 }) {
   return showDialog<WorktreeDeleteResult>(
     context: context,
     builder: (_) => _WorktreeDeleteDialog(
       branchLabel: branchLabel,
       sessionCount: sessionCount,
+      requireForce: requireForce,
     ),
   );
 }
@@ -42,10 +44,14 @@ class _WorktreeDeleteDialog extends StatefulWidget {
   const _WorktreeDeleteDialog({
     required this.branchLabel,
     required this.sessionCount,
+    required this.requireForce,
   });
 
   final String branchLabel;
   final int sessionCount;
+
+  /// True when the worktree is dirty: force must be checked to confirm.
+  final bool requireForce;
 
   @override
   State<_WorktreeDeleteDialog> createState() => _WorktreeDeleteDialogState();
@@ -55,6 +61,8 @@ class _WorktreeDeleteDialogState extends State<_WorktreeDeleteDialog> {
   bool _force = false;
   bool _deleteBranch = false;
   bool _deleteSessions = false;
+
+  bool get _canConfirm => !widget.requireForce || _force;
 
   @override
   Widget build(BuildContext context) {
@@ -97,11 +105,13 @@ class _WorktreeDeleteDialogState extends State<_WorktreeDeleteDialog> {
           style: FilledButton.styleFrom(
             backgroundColor: Theme.of(context).colorScheme.error,
           ),
-          onPressed: () => Navigator.of(context).pop(WorktreeDeleteResult(
-            force: _force,
-            deleteBranch: _deleteBranch,
-            deleteSessions: _deleteSessions,
-          )),
+          onPressed: _canConfirm
+              ? () => Navigator.of(context).pop(WorktreeDeleteResult(
+                  force: _force,
+                  deleteBranch: _deleteBranch,
+                  deleteSessions: _deleteSessions,
+                ))
+              : null,
           child: Text(l10n.worktreeDeleteAction),
         ),
       ],

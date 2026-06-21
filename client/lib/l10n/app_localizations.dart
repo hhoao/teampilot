@@ -7274,6 +7274,24 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Remove worktree'**
   String get worktreeMenuRemove;
+
+  /// No description provided for @worktreeShowMore.
+  ///
+  /// In en, this message translates to:
+  /// **'Show {count} more'**
+  String worktreeShowMore(Object count);
+
+  /// No description provided for @worktreeShowLess.
+  ///
+  /// In en, this message translates to:
+  /// **'Show less'**
+  String get worktreeShowLess;
+
+  /// No description provided for @worktreeDeleteBusyWarning.
+  ///
+  /// In en, this message translates to:
+  /// **'Stop the running conversations in this worktree before removing it.'**
+  String get worktreeDeleteBusyWarning;
 }
 
 class _AppLocalizationsDelegate

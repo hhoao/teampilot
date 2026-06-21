@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
+import '../../../cubits/chat_cubit.dart';
 import '../../../cubits/worktree_cubit.dart';
 import '../../../models/workspace.dart';
 import '../../../models/layout_preferences.dart';
@@ -33,6 +34,21 @@ class WorkspaceSplitPane extends StatefulWidget {
 class _WorkspaceSplitPaneState extends State<WorkspaceSplitPane> {
   double? _sidebarWidth;
 
+  /// Working directory of the active session if it belongs to this workspace,
+  /// used to seed the initial current worktree. Null when none applies.
+  String? _activeSessionPath(BuildContext ctx) {
+    final chat = ctx.read<ChatCubit>().state;
+    final activeId = chat.activeSessionId;
+    if (activeId == null || activeId.isEmpty) return null;
+    for (final s in chat.sessions) {
+      if (s.sessionId == activeId &&
+          s.workspaceId == widget.workspace.workspaceId) {
+        return s.primaryPath;
+      }
+    }
+    return null;
+  }
+
   @override
   Widget build(BuildContext context) {
     // One WorktreeCubit per opened workspace, shared by the sidebar (grouping +
@@ -40,8 +56,13 @@ class _WorkspaceSplitPaneState extends State<WorkspaceSplitPane> {
     // so switching workspaces rebuilds it against the new repo root.
     return BlocProvider<WorktreeCubit>(
       key: ValueKey('worktree-${widget.workspace.workspaceId}'),
-      create: (_) =>
-          WorktreeCubit()..load(widget.workspace.primaryPath),
+      create: (ctx) => WorktreeCubit(workspaceId: widget.workspace.workspaceId)
+        ..load(
+          widget.workspace.primaryPath,
+          // Default the current worktree to the active session's directory so
+          // the file tree / source control open on the worktree being resumed.
+          preferCurrentPath: _activeSessionPath(ctx),
+        ),
       child: LayoutBuilder(
         builder: (context, constraints) {
         final maxW = constraints.maxWidth;

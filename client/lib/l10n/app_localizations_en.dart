@@ -4018,4 +4018,16 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get worktreeMenuRemove => 'Remove worktree';
+
+  @override
+  String worktreeShowMore(Object count) {
+    return 'Show $count more';
+  }
+
+  @override
+  String get worktreeShowLess => 'Show less';
+
+  @override
+  String get worktreeDeleteBusyWarning =>
+      'Stop the running conversations in this worktree before removing it.';
 }

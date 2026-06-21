@@ -1899,5 +1899,9 @@
   "worktreeNewWorktreeTooltip": "New worktree",
   "worktreeNewConversationHere": "New conversation here",
   "worktreeMenuCopyPath": "Copy path",
-  "worktreeMenuRemove": "Remove worktree"
+  "worktreeMenuRemove": "Remove worktree",
+  "worktreeShowMore": "Show {count} more",
+  "@worktreeShowMore": { "placeholders": { "count": {} } },
+  "worktreeShowLess": "Show less",
+  "worktreeDeleteBusyWarning": "Stop the running conversations in this worktree before removing it."
 }

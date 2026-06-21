@@ -254,6 +254,12 @@ class AppPaths {
   String get homeWorkspaceOpenWorkspacesJson =>
       homeWorkspaceOpenWorkspacesJsonForTeampilotRoot(basePath);
 
+  static String worktreeUiPrefsJsonForTeampilotRoot(String teampilotRoot) =>
+      _pathUnderTeampilotRoot(teampilotRoot, 'ui/worktree-ui-prefs.json');
+
+  String get worktreeUiPrefsJson =>
+      worktreeUiPrefsJsonForTeampilotRoot(basePath);
+
   /// Application-level unified provider catalog (`providers/providers.json`).
   String get providerConfigDir => _ctx.join(basePath, 'providers');
 

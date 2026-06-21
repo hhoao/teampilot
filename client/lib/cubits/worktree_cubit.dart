@@ -1,7 +1,10 @@
+import 'dart:async';
+
 import 'package:flutter_bloc/flutter_bloc.dart';
 
 import '../models/git_worktree.dart';
 import '../services/git/git_worktree_service.dart';
+import '../services/home_workspace/worktree_ui_prefs_store.dart';
 import '../utils/workspace_path_utils.dart';
 
 /// Narrow seam so tests inject a fake without a real GitWorktreeService.
@@ -51,35 +54,109 @@ class WorktreeState {
 }
 
 class WorktreeCubit extends Cubit<WorktreeState> {
-  WorktreeCubit({WorktreeLister? lister, GitWorktreeService? service})
-      : _lister = lister ??
+  WorktreeCubit({
+    WorktreeLister? lister,
+    GitWorktreeService? service,
+    this.workspaceId = '',
+    WorktreeUiPrefsStore? prefsStore,
+  })  : _lister = lister ??
             _ServiceLister(service ??
                 GitWorktreeService.debugOverrideFactory?.call() ??
                 GitWorktreeService()),
+        _prefsStore = prefsStore ?? WorktreeUiPrefsStore(),
         super(const WorktreeState());
 
   final WorktreeLister _lister;
+  final WorktreeUiPrefsStore _prefsStore;
 
-  Future<void> load(String repoPath) async {
+  /// Scopes persisted UI state (collapse + current worktree). Empty disables
+  /// persistence (e.g. in unit tests that don't exercise it).
+  final String workspaceId;
+
+  bool _hydrated = false;
+
+  /// Loads the worktree list. Selection priority: an existing valid in-memory
+  /// selection (across reload) → the persisted last current worktree → the one
+  /// containing [preferCurrentPath] (e.g. the active session's directory, §7) →
+  /// the main worktree. Collapse state is hydrated from disk on first load.
+  Future<void> load(String repoPath, {String? preferCurrentPath}) async {
     emit(state.copyWith(repoPath: repoPath, loading: true));
     final list = await _lister.list(repoPath);
-    final current =
-        list.any((w) => workspacePathsEqual(w.path, state.currentWorktreePath))
-            ? state.currentWorktreePath
-            : (list.isNotEmpty ? list.first.path : repoPath);
+
+    var collapsed = state.collapsed;
+    String? persistedCurrent;
+    if (!_hydrated && workspaceId.isNotEmpty) {
+      _hydrated = true;
+      final pref = await _prefsStore.prefsFor(workspaceId);
+      if (pref != null) {
+        collapsed = pref.collapsed;
+        persistedCurrent = pref.currentPath;
+      }
+    }
+
+    bool inList(String path) =>
+        path.isNotEmpty && list.any((w) => workspacePathsEqual(w.path, path));
+
+    final String current;
+    if (inList(state.currentWorktreePath)) {
+      current = state.currentWorktreePath;
+    } else if (persistedCurrent != null && inList(persistedCurrent)) {
+      current = persistedCurrent;
+    } else {
+      current = _initialCurrent(list, preferCurrentPath, repoPath);
+    }
     emit(state.copyWith(
       worktrees: list,
       currentWorktreePath: current,
+      collapsed: collapsed,
       loading: false,
     ));
   }
 
-  void setCurrentWorktree(String path) =>
-      emit(state.copyWith(currentWorktreePath: normalizeWorkspacePath(path)));
+  void _persist() {
+    if (workspaceId.isEmpty) return;
+    unawaited(_prefsStore.save(
+      workspaceId,
+      WorktreeUiPref(
+        collapsed: state.collapsed,
+        currentPath: state.currentWorktreePath,
+      ),
+    ));
+  }
+
+  /// Worktree whose path is the longest prefix of [preferPath]; else the main
+  /// (first) worktree; else [repoPath] when the list is empty.
+  static String _initialCurrent(
+    List<GitWorktree> list,
+    String? preferPath,
+    String repoPath,
+  ) {
+    if (preferPath != null && preferPath.isNotEmpty) {
+      final wanted = normalizeWorkspacePath(preferPath);
+      String? best;
+      var bestLen = -1;
+      for (final w in list) {
+        final p = normalizeWorkspacePath(w.path);
+        final under = wanted == p || wanted.startsWith('$p/');
+        if (under && p.length > bestLen) {
+          best = w.path;
+          bestLen = p.length;
+        }
+      }
+      if (best != null) return best;
+    }
+    return list.isNotEmpty ? list.first.path : repoPath;
+  }
+
+  void setCurrentWorktree(String path) {
+    emit(state.copyWith(currentWorktreePath: normalizeWorkspacePath(path)));
+    _persist();
+  }
 
   void toggleCollapsed(String path) {
     final next = {...state.collapsed};
     next.contains(path) ? next.remove(path) : next.add(path);
     emit(state.copyWith(collapsed: next));
+    _persist();
   }
 }
