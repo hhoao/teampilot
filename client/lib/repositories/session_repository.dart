@@ -308,6 +308,7 @@ class SessionRepository {
     String personalIdentityId = '',
     List<TeamMemberConfig> rosterMembers = const [],
     CliTool? cli,
+    String? workingDirectory,
   }) async {
     final fs = await _fs();
     final workspace = await _readManifest(fs, workspaceId);
@@ -345,7 +346,9 @@ class SessionRepository {
     final session = AppSession(
       sessionId: sessionId,
       workspaceId: workspaceId,
-      primaryPath: workspace.primaryPath,
+      primaryPath: (workingDirectory != null && workingDirectory.trim().isNotEmpty)
+          ? normalizeWorkspacePath(workingDirectory)
+          : workspace.primaryPath,
       additionalPaths: List<String>.from(workspace.additionalPaths),
       display: '',
       sessionTeam: sessionTeam,

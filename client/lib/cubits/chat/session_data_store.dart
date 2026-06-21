@@ -86,6 +86,7 @@ class SessionDataStore {
     String personalIdentityId = '',
     List<TeamMemberConfig> rosterMembers = const [],
     CliTool? cli,
+    String? workingDirectory,
   }) {
     return repo.createSession(
       workspaceId,
@@ -93,6 +94,7 @@ class SessionDataStore {
       personalIdentityId: personalIdentityId,
       rosterMembers: rosterMembers,
       cli: cli,
+      workingDirectory: workingDirectory,
     );
   }
 

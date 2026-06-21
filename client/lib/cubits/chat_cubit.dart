@@ -314,6 +314,7 @@ class ChatCubit extends Cubit<ChatState>
     String personalIdentityId = '',
     List<TeamMemberConfig> rosterMembers = const [],
     CliTool? cli,
+    String? workingDirectory,
   }) async {
     final session = await _dataStore.createSession(
       workspaceId,
@@ -322,6 +323,7 @@ class ChatCubit extends Cubit<ChatState>
       personalIdentityId: personalIdentityId,
       rosterMembers: rosterMembers,
       cli: cli,
+      workingDirectory: workingDirectory,
     );
     _emitSnapshot(await _dataStore.loadWorkspaceData(repo));
     return session;
