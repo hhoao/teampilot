@@ -1,14 +1,14 @@
 import '../session_resume_capability.dart';
 import 'pinned_transcript_probe.dart';
 
-/// `clientPinned` strategy for flashskyai: we pin our UUID with
-/// `--session-id` at creation, so the native id == [ResumeContext.taskId] and a
-/// resumable session is detected by the presence of the CLI's transcript file
-/// `<taskId>.jsonl` (or `<taskId>/` dir) under `workspaces/{bucket}/`.
-final class TranscriptResumeStrategy implements SessionResumeCapability {
-  const TranscriptResumeStrategy();
+/// `clientPinned` strategy for Claude Code: we pin our UUID with
+/// `--session-id` at creation, so the native id == [ResumeContext.taskId].
+/// Claude stores transcripts under `{config}/projects/{cwd-bucket}/{id}.jsonl`
+/// (not flashskyai's `workspaces/` layout).
+final class ClaudeResumeStrategy implements SessionResumeCapability {
+  const ClaudeResumeStrategy();
 
-  static const _layoutSegments = ['workspaces'];
+  static const _layoutSegments = ['projects'];
 
   @override
   ResumeBinding get binding => ResumeBinding.clientPinned;

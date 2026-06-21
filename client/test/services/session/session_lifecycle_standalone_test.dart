@@ -319,6 +319,52 @@ void main() {
   );
 
   test(
+    'personal claude session resumes when transcript lives under projects/',
+    () async {
+      const workspaceId = 'personal-proj';
+      const sessionId = 'personal-sess';
+      const profile = PersonalProfile(id: workspaceId, display: workspaceId);
+      const workspace = Workspace(
+        workspaceId: workspaceId,
+        primaryPath: '/home/hhoa/git/hhoa/teampilot',
+        createdAt: 1,
+      );
+      final session = AppSession(
+        sessionId: sessionId,
+        workspaceId: workspaceId,
+        primaryPath: '/home/hhoa/git/hhoa/teampilot',
+        sessionTeam: '',
+        cli: CliTool.claude,
+        launchState: AppSessionLaunchState.started,
+        createdAt: 1,
+      );
+      final bucket = RuntimeLayout.workspaceBucketForPrimaryPath(
+        session.primaryPath,
+      );
+      final transcript = File(
+        p.join(
+          layout.sessionRuntimeToolDir(workspaceId, sessionId, 'claude'),
+          'projects',
+          bucket,
+          '$sessionId.jsonl',
+        ),
+      );
+      await transcript.parent.create(recursive: true);
+      await transcript.writeAsString('{}\n');
+
+      final plan = await service().prepareLaunch(
+        session: session,
+        workspace: workspace,
+        personal: profile,
+      );
+
+      expect(plan.resume, isTrue);
+      expect(plan.resumeSessionId, sessionId);
+      expect(plan.createSessionId, isNull);
+    },
+  );
+
+  test(
     'prepareShellLaunch throws without team and member for non-personal sessions',
     () async {
       final session = AppSession(

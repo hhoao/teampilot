@@ -5,7 +5,7 @@ import '../cli_capability.dart';
 /// `docs/session-resume-architecture.md`.
 enum ResumeBinding {
   /// We choose the id and pin it at creation (`--session-id`); native id ==
-  /// our taskId. claude, flashskyai.
+  /// our taskId. claude (`projects/`), flashskyai (`workspaces/`).
   clientPinned,
 
   /// The CLI mints the id and stores it in its per-session-isolated store; we
@@ -37,6 +37,7 @@ class ResumeContext {
   final Map<String, String> env;
 
   /// claude-style transcript search roots (for `clientPinned` probing).
+  /// Claude stores under `projects/`; flashskyai under `workspaces/`.
   final List<String> transcriptRoots;
 
   /// Workspace bucket derived from the working dir (claude transcript layout).

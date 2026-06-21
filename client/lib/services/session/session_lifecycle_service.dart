@@ -17,6 +17,7 @@ import '../../utils/team_member_naming.dart';
 import '../../utils/logger.dart';
 import '../storage/app_storage.dart';
 import '../storage/runtime_layout.dart';
+import '../cli/registry/capabilities/resume/pinned_transcript_probe.dart';
 import '../cli/registry/capabilities/session_resume_capability.dart';
 import '../cli/registry/cli_tool_registry.dart';
 import '../cli/registry/config_profile/flashskyai_config_profile_capability.dart';
@@ -816,69 +817,22 @@ class SessionLifecycleService {
     required String sessionId,
     required String bucket,
   }) async {
-    final path = fs.pathContext;
-    final memberSegment = '${path.separator}members${path.separator}';
-    final orderedRoots = [
-      for (final root in toolRoots)
-        if (root.contains(memberSegment)) root,
-      for (final root in toolRoots)
-        if (!root.contains(memberSegment)) root,
-    ];
-    final rootsTried = <String>[];
-    for (final root in orderedRoots) {
-      rootsTried.add(root);
-      final workspacesDir = path.join(root, 'workspaces');
-      if (bucket.isNotEmpty) {
-        final bucketDir = path.join(workspacesDir, bucket);
-        final transcriptFile = path.join(bucketDir, '$sessionId.jsonl');
-        if ((await fs.stat(transcriptFile)).isFile) {
-          return _CliStateProbeResult(
-            exists: true,
-            rootsTried: rootsTried,
-            matchedPath: transcriptFile,
-          );
-        }
-        final transcriptDir = path.join(bucketDir, sessionId);
-        if ((await fs.stat(transcriptDir)).isDirectory) {
-          return _CliStateProbeResult(
-            exists: true,
-            rootsTried: rootsTried,
-            matchedPath: transcriptDir,
-          );
-        }
-      }
-      final scanned = await _scanWorkspaces(fs, workspacesDir, sessionId);
-      if (scanned != null) {
-        return _CliStateProbeResult(
-          exists: true,
-          rootsTried: rootsTried,
-          matchedPath: scanned,
-        );
-      }
+    final probe = await probePinnedTranscript(
+      fs: fs,
+      toolRoots: toolRoots,
+      sessionId: sessionId,
+      bucket: bucket,
+      // Claude uses `projects/`; flashskyai uses `workspaces/`.
+      layoutSegments: const ['projects', 'workspaces'],
+    );
+    if (!probe.exists) {
+      return const _CliStateProbeResult(exists: false);
     }
-    return _CliStateProbeResult(exists: false, rootsTried: rootsTried);
-  }
-
-  static Future<String?> _scanWorkspaces(
-    Filesystem fs,
-    String workspacesDir,
-    String sessionId,
-  ) async {
-    final path = fs.pathContext;
-    try {
-      final buckets = await fs.listDir(workspacesDir);
-      for (final bucket in buckets) {
-        if (!bucket.isDirectory) continue;
-        final bucketPath = path.join(workspacesDir, bucket.name);
-        final transcriptFile = path.join(bucketPath, '$sessionId.jsonl');
-        if ((await fs.stat(transcriptFile)).isFile) return transcriptFile;
-        final transcriptDir = path.join(bucketPath, sessionId);
-        if ((await fs.stat(transcriptDir)).isDirectory) return transcriptDir;
-      }
-    } on Object {
-      return null;
-    }
-    return null;
+    return _CliStateProbeResult(
+      exists: true,
+      rootsTried: toolRoots.toList(growable: false),
+      matchedPath: probe.matchedPath,
+    );
   }
 
   Future<void> _removeTree(StorageRootsSnapshot roots, String path) async {

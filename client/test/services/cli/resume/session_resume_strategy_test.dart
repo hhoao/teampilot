@@ -1,6 +1,7 @@
 import 'dart:io';
 
 import 'package:path/path.dart' as p;
+import 'package:teampilot/services/cli/registry/capabilities/resume/claude_resume_strategy.dart';
 import 'package:teampilot/services/cli/registry/capabilities/resume/codex_resume_strategy.dart';
 import 'package:teampilot/services/cli/registry/capabilities/resume/cursor_resume_strategy.dart';
 import 'package:teampilot/services/cli/registry/capabilities/resume/opencode_resume_strategy.dart';
@@ -113,6 +114,37 @@ void main() {
     test('returns null when there is no chats dir', () async {
       final got = await const CursorResumeStrategy()
           .detectNativeId(ctx(env: {'CURSOR_CONFIG_DIR': base.path}));
+      expect(got, isNull);
+    });
+  });
+
+  group('ClaudeResumeStrategy', () {
+    test('detects transcript under projects/{bucket}/', () async {
+      final projects = p.join(base.path, 'projects', 'home-me-proj');
+      await Directory(projects).create(recursive: true);
+      await File(p.join(projects, 'task-1.jsonl')).writeAsString('{}');
+
+      final got = await const ClaudeResumeStrategy().detectNativeId(
+        ctx(transcriptRoots: [base.path], bucket: 'home-me-proj'),
+      );
+      expect(got, 'task-1');
+    });
+
+    test('ignores flashskyai workspaces layout', () async {
+      final workspaces = p.join(base.path, 'workspaces', 'home-me-proj');
+      await Directory(workspaces).create(recursive: true);
+      await File(p.join(workspaces, 'task-1.jsonl')).writeAsString('{}');
+
+      final got = await const ClaudeResumeStrategy().detectNativeId(
+        ctx(transcriptRoots: [base.path], bucket: 'home-me-proj'),
+      );
+      expect(got, isNull);
+    });
+
+    test('returns null when no transcript exists', () async {
+      final got = await const ClaudeResumeStrategy().detectNativeId(
+        ctx(transcriptRoots: [base.path], bucket: 'home-me-proj'),
+      );
       expect(got, isNull);
     });
   });

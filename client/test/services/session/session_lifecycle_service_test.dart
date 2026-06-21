@@ -286,7 +286,7 @@ void main() {
             'mixed-session',
             'claude',
           ),
-          'workspaces',
+          'projects',
           bucket,
           '$taskId.jsonl',
         ),
