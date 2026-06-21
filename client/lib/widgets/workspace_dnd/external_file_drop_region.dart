@@ -67,9 +67,21 @@ class _ExternalFileDropRegionState extends State<ExternalFileDropRegion> {
 
   @override
   Widget build(BuildContext context) {
+    // Mobile never wraps (constant, no remount churn).
     if (!ExternalFileDropRegion._isDesktop) return widget.child;
+
+    // desktop_drop dispatches one OS drop to *every* mounted DropTarget whose
+    // bounds contain the point (Flutter's own DragTarget hit-tests to a single
+    // visible target instead). Background workspace tabs are kept alive in an
+    // IndexedStack, all laid out at the same rect, so without gating each would
+    // fire and the path would be injected once per open tab. The shell marks
+    // only the foreground workspace's subtree with TickerMode.enabled, so use
+    // that to keep exactly one region listening. The DropTarget always stays in
+    // the tree (only `enable` toggles) so the wrapped TerminalView never remounts.
+    final enabled = TickerMode.valuesOf(context).enabled;
     final cs = Theme.of(context).colorScheme;
     return DropTarget(
+      enable: enabled,
       onDragEntered: (_) {
         if (!_highlighted) setState(() => _highlighted = true);
       },
@@ -81,7 +93,7 @@ class _ExternalFileDropRegionState extends State<ExternalFileDropRegion> {
         fit: StackFit.passthrough,
         children: [
           widget.child,
-          if (_highlighted)
+          if (enabled && _highlighted)
             Positioned.fill(
               child: IgnorePointer(
                 child: DecoratedBox(
