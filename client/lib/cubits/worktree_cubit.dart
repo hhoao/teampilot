@@ -51,7 +51,10 @@ class WorktreeState {
 
 class WorktreeCubit extends Cubit<WorktreeState> {
   WorktreeCubit({WorktreeLister? lister, GitWorktreeService? service})
-      : _lister = lister ?? _ServiceLister(service ?? GitWorktreeService()),
+      : _lister = lister ??
+            _ServiceLister(service ??
+                GitWorktreeService.debugOverrideFactory?.call() ??
+                GitWorktreeService()),
         super(const WorktreeState());
 
   final WorktreeLister _lister;

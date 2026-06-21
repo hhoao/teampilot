@@ -7,6 +7,7 @@ import 'package:teampilot/theme/app_icon_sizes.dart';
 import '../../../cubits/chat_cubit.dart';
 import '../../../cubits/cli_presets_cubit.dart';
 import '../../../cubits/launch_profile_cubit.dart';
+import '../../../cubits/worktree_cubit.dart';
 import '../../../l10n/l10n_extensions.dart';
 import '../../../models/workspace.dart';
 import '../../../models/app_session.dart';
@@ -14,6 +15,14 @@ import '../../../models/cli_preset.dart';
 import '../../../models/personal_profile.dart';
 import '../../../models/team_config.dart';
 import '../../../services/cli/registry/cli_tool_registry_scope.dart';
+import '../../../services/git/git_worktree_service.dart';
+import '../../../services/storage/app_storage.dart';
+import '../../../services/storage/workspace_layout.dart';
+import '../../../utils/session_worktree_grouping.dart';
+import '../../../widgets/app_toast/app_toast.dart';
+import '../../../theme/app_toast_theme.dart';
+import 'worktree_create_dialog.dart';
+import 'worktree_group_section.dart';
 import '../../../theme/app_text_styles.dart';
 import '../../../utils/app_keys.dart';
 import '../../../utils/app_session_sort.dart';
@@ -90,6 +99,7 @@ class _WorkspaceSidebarState
           .toList();
     });
     final sortedSessions = sortAppSessions(rawSessions, sort: _sessionSort);
+    final wtState = context.watch<WorktreeCubit>().state;
 
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 18),
@@ -147,17 +157,109 @@ class _WorkspaceSidebarState
                     ),
                   ),
                 ),
+                const SizedBox(width: 2),
+                AppIconButton(
+                  icon: Icons.account_tree_outlined,
+                  compact: true, size: AppIconButton.kCompactSize,
+                  tooltip: l10n.worktreeNewWorktreeTooltip,
+                  onTap: throttledTap(
+                    'workspace_sidebar_new_worktree',
+                    () => unawaited(_createWorktree(context)),
+                  ),
+                ),
               ],
             ),
           ),
           Expanded(
-            child: sortedSessions.isEmpty
-                ? _EmptyConversations(label: l10n.homeWorkspaceNoConversations)
-                : _buildSessionList(context, sortedSessions),
+            child: _buildBody(context, sortedSessions, wtState),
           ),
         ],
       ),
     );
+  }
+
+  /// Flat session list when the repo has only its main worktree; otherwise a
+  /// collapsible worktree-grouped list. The "+ new worktree" header action is
+  /// always available regardless of this branch.
+  Widget _buildBody(
+    BuildContext context,
+    List<AppSession> sortedSessions,
+    WorktreeState wtState,
+  ) {
+    final l10n = context.l10n;
+    if (!wtState.hasMultipleWorktrees) {
+      return sortedSessions.isEmpty
+          ? _EmptyConversations(label: l10n.homeWorkspaceNoConversations)
+          : _buildSessionList(context, sortedSessions);
+    }
+    final groups = groupSessionsByWorktree(
+      worktrees: wtState.worktrees,
+      sessions: sortedSessions,
+    );
+    return ListView(
+      padding: EdgeInsets.zero,
+      children: [
+        for (final group in groups)
+          WorktreeGroupSection(
+            key: ValueKey('wt-group-${worktreeGroupCollapseKey(group)}'),
+            group: group,
+            workspace: widget.workspace,
+            isPersonal: widget.isPersonalWorkspace,
+            profileId: widget.profileId,
+            sessionTeamFilter: widget.sessionTeamFilter,
+            collapsed:
+                wtState.collapsed.contains(worktreeGroupCollapseKey(group)),
+            isCurrent: group.worktree?.path == wtState.currentWorktreePath,
+          ),
+      ],
+    );
+  }
+
+  Future<void> _createWorktree(BuildContext context) async {
+    final cubit = context.read<WorktreeCubit>();
+    final l10n = context.l10n;
+    final repoPath = widget.workspace.primaryPath;
+    final layout = WorkspaceLayout(teampilotRoot: AppStorage.paths.basePath);
+    final result = await showWorktreeCreateDialog(
+      context,
+      repoName: _basename(repoPath),
+      layout: layout.worktreePathFor,
+    );
+    if (result == null) return;
+    try {
+      await GitWorktreeService().add(
+        repoPath,
+        result.worktreePath,
+        branch: result.branch,
+        baseRef: result.baseRef,
+        existingBranch: result.existingBranch,
+      );
+      await cubit.load(repoPath);
+      cubit.setCurrentWorktree(result.worktreePath);
+      if (result.startConversation && context.mounted) {
+        await createSessionInWorktree(
+          context,
+          widget.workspace,
+          isPersonal: widget.isPersonalWorkspace,
+          worktreePath: result.worktreePath,
+          sessionTeamId: widget.sessionTeamFilter,
+          personalIdentityId: widget.profileId,
+        );
+      }
+    } on Object catch (error) {
+      if (!context.mounted) return;
+      AppToast.show(
+        context,
+        message: l10n.worktreeCreateFailed(error.toString()),
+        variant: AppToastVariant.error,
+      );
+    }
+  }
+
+  static String _basename(String path) {
+    final parts = path.replaceAll(r'\', '/').split('/')
+      ..removeWhere((e) => e.isEmpty);
+    return parts.isEmpty ? path : parts.last;
   }
 
   Widget _buildSessionList(

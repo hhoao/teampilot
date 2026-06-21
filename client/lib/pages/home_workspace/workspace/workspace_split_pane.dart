@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_bloc/flutter_bloc.dart';
 
+import '../../../cubits/worktree_cubit.dart';
 import '../../../models/workspace.dart';
 import '../../../models/layout_preferences.dart';
 import '../../../widgets/resizable_split_view.dart';
@@ -33,8 +35,15 @@ class _WorkspaceSplitPaneState extends State<WorkspaceSplitPane> {
 
   @override
   Widget build(BuildContext context) {
-    return LayoutBuilder(
-      builder: (context, constraints) {
+    // One WorktreeCubit per opened workspace, shared by the sidebar (grouping +
+    // create/delete) and ChatPage (current-worktree cwd). Keyed by workspace id
+    // so switching workspaces rebuilds it against the new repo root.
+    return BlocProvider<WorktreeCubit>(
+      key: ValueKey('worktree-${widget.workspace.workspaceId}'),
+      create: (_) =>
+          WorktreeCubit()..load(widget.workspace.primaryPath),
+      child: LayoutBuilder(
+        builder: (context, constraints) {
         final maxW = constraints.maxWidth;
         const minMain = LayoutPreferences.minWorkbenchMainWidth;
         const minSidebar = WorkspaceSidebarLayout.minWidth;
@@ -64,7 +73,8 @@ class _WorkspaceSplitPaneState extends State<WorkspaceSplitPane> {
           maxPrimarySize: maxSidebar,
           onPrimarySizeChanged: (width) => _sidebarWidth = width,
         );
-      },
+        },
+      ),
     );
   }
 }

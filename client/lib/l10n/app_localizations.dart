@@ -7244,6 +7244,36 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Failed to remove worktree: {error}'**
   String worktreeDeleteFailed(Object error);
+
+  /// No description provided for @worktreeOrphanGroup.
+  ///
+  /// In en, this message translates to:
+  /// **'Other'**
+  String get worktreeOrphanGroup;
+
+  /// No description provided for @worktreeNewWorktreeTooltip.
+  ///
+  /// In en, this message translates to:
+  /// **'New worktree'**
+  String get worktreeNewWorktreeTooltip;
+
+  /// No description provided for @worktreeNewConversationHere.
+  ///
+  /// In en, this message translates to:
+  /// **'New conversation here'**
+  String get worktreeNewConversationHere;
+
+  /// No description provided for @worktreeMenuCopyPath.
+  ///
+  /// In en, this message translates to:
+  /// **'Copy path'**
+  String get worktreeMenuCopyPath;
+
+  /// No description provided for @worktreeMenuRemove.
+  ///
+  /// In en, this message translates to:
+  /// **'Remove worktree'**
+  String get worktreeMenuRemove;
 }
 
 class _AppLocalizationsDelegate

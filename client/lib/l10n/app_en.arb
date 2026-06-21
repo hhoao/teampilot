@@ -1894,5 +1894,10 @@
   "@worktreeDeleteSessionsToo": { "placeholders": { "count": {} } },
   "worktreeDeleteAction": "Remove",
   "worktreeDeleteFailed": "Failed to remove worktree: {error}",
-  "@worktreeDeleteFailed": { "placeholders": { "error": {} } }
+  "@worktreeDeleteFailed": { "placeholders": { "error": {} } },
+  "worktreeOrphanGroup": "Other",
+  "worktreeNewWorktreeTooltip": "New worktree",
+  "worktreeNewConversationHere": "New conversation here",
+  "worktreeMenuCopyPath": "Copy path",
+  "worktreeMenuRemove": "Remove worktree"
 }

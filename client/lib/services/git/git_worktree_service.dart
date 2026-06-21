@@ -15,6 +15,11 @@ class GitWorktreeService {
   })  : _runner = runner,
         _gitLocator = gitLocator ?? const CliToolLocator('git');
 
+  /// Test seam: when set, [WorktreeCubit] builds this instead of a real
+  /// process-backed service, so widget tests never spawn `git` (mirrors
+  /// [GitService.debugOverrideFactory]). See `setUpTestAppStorage`.
+  static GitWorktreeService Function()? debugOverrideFactory;
+
   final ProcessRunner _runner;
   final CliToolLocator _gitLocator;
 
@@ -123,7 +128,10 @@ class GitWorktreeService {
     return (result.stdout as String?) ?? '';
   }
 
-  /// List worktrees; empty list when [repoPath] is not a git repo.
+  /// List worktrees; empty list when [repoPath] is not a git repo or git is
+  /// unavailable. Never throws — the sidebar treats "no worktrees" as the safe
+  /// default (e.g. non-git workspaces, or test/sandbox hosts where locating git
+  /// raises a [ProcessException]).
   Future<List<GitWorktree>> list(String repoPath) async {
     try {
       final out = await _run(repoPath, ['worktree', 'list', '--porcelain', '-z']);
@@ -131,10 +139,19 @@ class GitWorktreeService {
     } on GitException catch (e) {
       // git <2.36 rejects -z; retry the plain form before giving up.
       if (_isUnknownZOption(e.message)) {
-        final out = await _run(repoPath, ['worktree', 'list', '--porcelain']);
-        return parseWorktreeList(out, nulDelimited: false);
+        try {
+          final out = await _run(repoPath, ['worktree', 'list', '--porcelain']);
+          return parseWorktreeList(out, nulDelimited: false);
+        } on Object catch (e2) {
+          appLogger.d('[GitWorktree] list (no -z) failed for $repoPath: $e2');
+          return const [];
+        }
       }
       appLogger.d('[GitWorktree] list failed for $repoPath: ${e.message}');
+      return const [];
+    } on Object catch (e) {
+      // e.g. ProcessException when git cannot be spawned at all.
+      appLogger.d('[GitWorktree] list errored for $repoPath: $e');
       return const [];
     }
   }

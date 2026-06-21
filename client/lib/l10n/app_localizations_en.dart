@@ -4003,4 +4003,19 @@ class AppLocalizationsEn extends AppLocalizations {
   String worktreeDeleteFailed(Object error) {
     return 'Failed to remove worktree: $error';
   }
+
+  @override
+  String get worktreeOrphanGroup => 'Other';
+
+  @override
+  String get worktreeNewWorktreeTooltip => 'New worktree';
+
+  @override
+  String get worktreeNewConversationHere => 'New conversation here';
+
+  @override
+  String get worktreeMenuCopyPath => 'Copy path';
+
+  @override
+  String get worktreeMenuRemove => 'Remove worktree';
 }

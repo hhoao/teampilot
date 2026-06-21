@@ -3857,4 +3857,19 @@ class AppLocalizationsZh extends AppLocalizations {
   String worktreeDeleteFailed(Object error) {
     return '删除 worktree 失败：$error';
   }
+
+  @override
+  String get worktreeOrphanGroup => '其他';
+
+  @override
+  String get worktreeNewWorktreeTooltip => '新建 worktree';
+
+  @override
+  String get worktreeNewConversationHere => '在此新建会话';
+
+  @override
+  String get worktreeMenuCopyPath => '复制路径';
+
+  @override
+  String get worktreeMenuRemove => '删除 worktree';
 }

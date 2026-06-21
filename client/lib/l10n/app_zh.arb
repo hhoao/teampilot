@@ -1506,5 +1506,10 @@
   "worktreeDeleteBranchToo": "同时删除分支",
   "worktreeDeleteSessionsToo": "同时删除该 worktree 下的 {count} 个会话",
   "worktreeDeleteAction": "删除",
-  "worktreeDeleteFailed": "删除 worktree 失败：{error}"
+  "worktreeDeleteFailed": "删除 worktree 失败：{error}",
+  "worktreeOrphanGroup": "其他",
+  "worktreeNewWorktreeTooltip": "新建 worktree",
+  "worktreeNewConversationHere": "在此新建会话",
+  "worktreeMenuCopyPath": "复制路径",
+  "worktreeMenuRemove": "删除 worktree"
 }
