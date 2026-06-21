@@ -238,25 +238,36 @@ class _WorkspacePageState extends State<WorkspacePage> {
     required String sessionTeamFilter,
   }) {
     final showManage = _section == WorkspaceSection.manage;
+    // Mirror the outer workspace-tab IndexedStack: gate each kept-alive child
+    // with TickerMode so only the visible pane's subtree is "active". This
+    // composes with the foreground-workspace gate, so a terminal sees
+    // TickerMode.enabled only when its workspace is foreground *and* the
+    // conversations pane is showing — which is what scopes OS file drops to the
+    // single visible terminal (config view no longer steals the drop).
     return IndexedStack(
       index: showManage ? 1 : 0,
       sizing: StackFit.expand,
       children: [
-        WorkspaceSplitPane(
-          key: ValueKey('conversations-${workspace.workspaceId}-${workspaceIdentity.id}'),
-          workspace: workspace,
-          isPersonalWorkspace: workspaceIdentity.kind == LaunchProfileKind.personal,
-          profileId: workspaceIdentity.id,
-          sessionTeamFilter: sessionTeamFilter,
-        ),
-        if (_visitedManage)
-          WorkspaceConfigPanel(
+        TickerMode(
+          enabled: !showManage,
+          child: WorkspaceSplitPane(
+            key: ValueKey('conversations-${workspace.workspaceId}-${workspaceIdentity.id}'),
             workspace: workspace,
+            isPersonalWorkspace: workspaceIdentity.kind == LaunchProfileKind.personal,
             profileId: workspaceIdentity.id,
-            section: _configSection,
-          )
-        else
-          const SizedBox.shrink(),
+            sessionTeamFilter: sessionTeamFilter,
+          ),
+        ),
+        TickerMode(
+          enabled: showManage,
+          child: _visitedManage
+              ? WorkspaceConfigPanel(
+                  workspace: workspace,
+                  profileId: workspaceIdentity.id,
+                  section: _configSection,
+                )
+              : const SizedBox.shrink(),
+        ),
       ],
     );
   }
