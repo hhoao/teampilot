@@ -18,6 +18,7 @@ import '../../utils/debounce/debounce.dart';
 import '../../widgets/right_tools/right_tools_panel.dart';
 import '../chat_workbench.dart';
 import '../workspace_shell/workspace_shell.dart';
+import 'right_tools_host.dart';
 import 'team_config_incomplete_dialog.dart';
 
 class ChatPageShell extends StatelessWidget {
@@ -56,25 +57,30 @@ class ChatPageShell extends StatelessWidget {
       workspaceId: workspaceId,
     );
 
-    Widget buildWorkspace({Widget? rightTools}) {
-      return _ChatWorkspaceShell(
-        cwd: cwd,
-        sessionId: sessionId,
-        isPersonalWorkspace: isPersonalWorkspace,
-        workspaceId: workspaceId,
-        team: team,
-        preferences: preferences,
-        toolsAsDrawer: toolsAsDrawer,
-        rightTools: rightTools,
-      );
-    }
+    final centerShell = _ChatWorkspaceShell(
+      cwd: cwd,
+      sessionId: sessionId,
+      isPersonalWorkspace: isPersonalWorkspace,
+      workspaceId: workspaceId,
+      team: team,
+      preferences: preferences,
+    );
 
     if (!toolsAsDrawer) {
-      // Always mount the panel; [WorkspaceShellBody] owns show/hide animation via
-      // [LayoutPreferences.rightToolsVisible] and drops it from the tree once dismissed.
+      // Right tools is a full-height, project-page-level column (peer of the
+      // left workspace sidebar) rather than a child of [WorkspaceShell].
+      // [RightToolsHost] keeps the center subtree structurally stable, so
+      // toggling the panel never reparents/remounts the terminal. It owns the
+      // show/hide animation and the resize gutter.
       return _chatLaunchListener(
         context,
-        buildWorkspace(rightTools: rightToolsPanel),
+        RightToolsHost(
+          preferences: preferences,
+          rightTools: rightToolsPanel,
+          onRightToolsWidthChanged: (w) =>
+              context.read<LayoutCubit>().setRightToolsWidth(w),
+          child: centerShell,
+        ),
       );
     }
 
@@ -87,7 +93,7 @@ class ChatPageShell extends StatelessWidget {
                 child: SafeArea(child: rightToolsPanel),
               )
             : null,
-        body: buildWorkspace(rightTools: null),
+        body: centerShell,
       ),
     );
   }
@@ -136,8 +142,6 @@ class _ChatWorkspaceShell extends StatelessWidget {
     required this.workspaceId,
     required this.team,
     required this.preferences,
-    required this.toolsAsDrawer,
-    required this.rightTools,
   });
 
   final String cwd;
@@ -146,8 +150,6 @@ class _ChatWorkspaceShell extends StatelessWidget {
   final String workspaceId;
   final TeamProfile? team;
   final LayoutPreferences preferences;
-  final bool toolsAsDrawer;
-  final Widget? rightTools;
 
   @override
   Widget build(BuildContext context) {
@@ -191,13 +193,9 @@ class _ChatWorkspaceShell extends StatelessWidget {
               context.read<ChatCubit>().closeRightTabs(index),
           layoutPreferences: preferences,
           showRightToolsVisibilityToggle: true,
-          onRightToolsWidthChanged: toolsAsDrawer
-              ? null
-              : (w) => context.read<LayoutCubit>().setRightToolsWidth(w),
           actions: isPersonalWorkspace
               ? const []
               : _chatActions(context, teamConfig!),
-          rightTools: rightTools,
           child: ChatWorkbench(
             sessionId: sessionId,
             isPersonalWorkspace: isPersonalWorkspace,

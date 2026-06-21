@@ -26,8 +26,6 @@ class WorkspaceShell extends StatelessWidget {
     this.onTabCloseOthers,
     this.onTabCloseRight,
     this.layoutPreferences = const LayoutPreferences(),
-    this.onRightToolsWidthChanged,
-    this.rightTools,
     this.showRightToolsVisibilityToggle = false,
     this.workspaceTerminalWorkingDirectory,
     this.workspaceWorkspaceId,
@@ -47,8 +45,6 @@ class WorkspaceShell extends StatelessWidget {
   final ValueChanged<int>? onTabCloseOthers;
   final ValueChanged<int>? onTabCloseRight;
   final LayoutPreferences layoutPreferences;
-  final ValueChanged<double>? onRightToolsWidthChanged;
-  final Widget? rightTools;
   final bool showRightToolsVisibilityToggle;
 
   /// When set (e.g. home-v2 workspace page), the bottom shell terminal follows
@@ -149,8 +145,6 @@ class WorkspaceShell extends StatelessWidget {
         Expanded(
           child: WorkspaceShellMainWithTerminal(
             preferences: layoutPreferences,
-            rightTools: rightTools,
-            onRightToolsWidthChanged: onRightToolsWidthChanged,
             workspaceTerminalWorkingDirectory:
                 workspaceTerminalWorkingDirectory,
             workspaceWorkspaceId: workspaceWorkspaceId,

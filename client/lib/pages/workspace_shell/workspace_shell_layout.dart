@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:flutter_animate/flutter_animate.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
 import '../../cubits/chat_cubit.dart';
@@ -8,35 +7,30 @@ import '../../models/layout_preferences.dart';
 import '../../widgets/resizable_split_view.dart';
 import '../../widgets/workspace_terminal_panel.dart';
 
+/// Center column of the workspace shell: the workbench [child] with the optional
+/// bottom workspace terminal beneath it. The right tools panel is NOT laid out
+/// here — it is a project-page-level sibling (see `RightToolsHost`), so toggling
+/// it never restructures this subtree.
 class WorkspaceShellMainWithTerminal extends StatelessWidget {
   const WorkspaceShellMainWithTerminal({
     super.key,
     required this.preferences,
     required this.child,
-    required this.rightTools,
-    required this.onRightToolsWidthChanged,
     this.workspaceTerminalWorkingDirectory,
     this.workspaceWorkspaceId,
   });
 
   final LayoutPreferences preferences;
   final Widget child;
-  final Widget? rightTools;
-  final ValueChanged<double>? onRightToolsWidthChanged;
   final String? workspaceTerminalWorkingDirectory;
   final String? workspaceWorkspaceId;
 
   @override
   Widget build(BuildContext context) {
-    return WorkspaceShellBody(
-      preferences: preferences,
-      rightTools: rightTools,
-      onRightToolsWidthChanged: onRightToolsWidthChanged,
-      child: WorkspaceShellCenterColumnWithTerminal(
-        workspaceTerminalWorkingDirectory: workspaceTerminalWorkingDirectory,
-        workspaceWorkspaceId: workspaceWorkspaceId,
-        child: child,
-      ),
+    return WorkspaceShellCenterColumnWithTerminal(
+      workspaceTerminalWorkingDirectory: workspaceTerminalWorkingDirectory,
+      workspaceWorkspaceId: workspaceWorkspaceId,
+      child: child,
     );
   }
 }
@@ -99,118 +93,6 @@ class WorkspaceShellCenterColumnWithTerminal extends StatelessWidget {
           onPrimarySizeChanged: (height) {
             context.read<LayoutCubit>().setWorkspaceTerminalHeight(height);
           },
-        );
-      },
-    );
-  }
-}
-
-class WorkspaceShellBody extends StatefulWidget {
-  const WorkspaceShellBody({
-    super.key,
-    required this.preferences,
-    required this.child,
-    required this.rightTools,
-    required this.onRightToolsWidthChanged,
-  });
-
-  final LayoutPreferences preferences;
-  final Widget child;
-  final Widget? rightTools;
-  final ValueChanged<double>? onRightToolsWidthChanged;
-
-  @override
-  State<WorkspaceShellBody> createState() => _WorkspaceShellBodyState();
-}
-
-class _WorkspaceShellBodyState extends State<WorkspaceShellBody>
-    with SingleTickerProviderStateMixin {
-  late final AnimationController _controller;
-  late final Animation<double> _fadeAnimation;
-  late final Animation<Offset> _slideAnimation;
-  bool _panelVisible = false;
-
-  bool get _hasPanel => widget.rightTools != null;
-
-  @override
-  void initState() {
-    super.initState();
-    _controller = AnimationController(duration: 250.ms, vsync: this);
-    _fadeAnimation = CurvedAnimation(
-      parent: _controller,
-      curve: Curves.easeOutCubic,
-    );
-    _slideAnimation = Tween<Offset>(
-      begin: const Offset(0.1, 0.0),
-      end: Offset.zero,
-    ).animate(CurvedAnimation(parent: _controller, curve: Curves.easeOutCubic));
-
-    _panelVisible = _hasPanel && widget.preferences.rightToolsVisible;
-    if (_panelVisible) {
-      _controller.value = 1.0;
-    }
-  }
-
-  @override
-  void didUpdateWidget(WorkspaceShellBody oldWidget) {
-    super.didUpdateWidget(oldWidget);
-    final visible = _hasPanel && widget.preferences.rightToolsVisible;
-    if (visible != _panelVisible) {
-      _panelVisible = visible;
-      if (visible) {
-        _controller.forward();
-      } else {
-        _controller.reverse();
-      }
-    }
-  }
-
-  @override
-  void dispose() {
-    _controller.dispose();
-    super.dispose();
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    // When the panel is not visible and the dismiss animation has finished,
-    // render only the center child — nothing else in the tree.
-    if (!_panelVisible && _controller.isDismissed) {
-      return widget.child;
-    }
-
-    final rightWidth = widget.preferences.rightToolsWidth;
-    return LayoutBuilder(
-      builder: (context, constraints) {
-        final maxW = constraints.maxWidth;
-        const minCenter = 150.0;
-        final minTools = LayoutPreferences.minRightToolsWidth;
-        // Build the split view unconditionally while animating so the panel
-        // widget stays alive during the exit transition.
-        final splitView = ResizableSplitView(
-          first: widget.child,
-          second: widget.rightTools!,
-          initialPrimarySize: (maxW - rightWidth).clamp(
-            minCenter,
-            maxW - minTools,
-          ),
-          minPrimarySize: minCenter,
-          minSecondarySize: minTools,
-          maxPrimarySize: (maxW - minTools).clamp(minCenter, maxW),
-          onPrimarySizeChanged: (leftWidth) {
-            widget.onRightToolsWidthChanged?.call(maxW - leftWidth);
-          },
-        );
-
-        return AnimatedBuilder(
-          animation: _controller,
-          builder: (context, child) {
-            return SlideTransition(
-              position: _slideAnimation,
-              child: FadeTransition(opacity: _fadeAnimation, child: child),
-            );
-          },
-          child: splitView,
         );
       },
     );
