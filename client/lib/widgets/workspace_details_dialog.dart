@@ -47,7 +47,7 @@ class _WorkspaceDetailsDialogState extends State<_WorkspaceDetailsDialog> {
   void initState() {
     super.initState();
     _displayController = TextEditingController(text: widget.workspace.display);
-    _additionalPaths = List<String>.from(widget.workspace.additionalPaths);
+    _additionalPaths = List<String>.from(widget.workspace.extraFolderPaths);
   }
 
   @override
@@ -80,7 +80,7 @@ class _WorkspaceDetailsDialogState extends State<_WorkspaceDetailsDialog> {
     if (path == null || path.trim().isEmpty || !mounted) return;
     final trimmed = normalizeWorkspacePath(path);
     final l10n = context.l10n;
-    if (workspacePathsEqual(trimmed, widget.workspace.primaryPath)) {
+    if (workspacePathsEqual(trimmed, widget.workspace.firstFolderPath)) {
       AppToast.show(
         context,
         message: l10n.workspaceDirectoryAlreadyPrimary,
@@ -139,9 +139,9 @@ class _WorkspaceDetailsDialogState extends State<_WorkspaceDetailsDialog> {
               const SizedBox(height: 16),
               _DetailRow(
                 label: l10n.workspacePrimaryPath,
-                value: p.primaryPath.isNotEmpty ? p.primaryPath : '—',
-                onCopy: p.primaryPath.isNotEmpty
-                    ? () => _copyPath(p.primaryPath)
+                value: p.firstFolderPath.isNotEmpty ? p.firstFolderPath : '—',
+                onCopy: p.firstFolderPath.isNotEmpty
+                    ? () => _copyPath(p.firstFolderPath)
                     : null,
               ),
               const SizedBox(height: 12),

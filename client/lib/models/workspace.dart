@@ -1,13 +1,13 @@
 import 'package:flutter/foundation.dart';
 
+import 'workspace_folder.dart';
 import 'workspace_icon_ref.dart';
 
 @immutable
 class Workspace {
-  const Workspace({
+  const Workspace._({
     required this.workspaceId,
-    required this.primaryPath,
-    this.additionalPaths = const [],
+    required this.folders,
     this.display = '',
     this.defaultProfileId = '',
     this.icon = WorkspaceIconRef.auto,
@@ -16,19 +16,36 @@ class Workspace {
     this.sessionIds = const [],
   });
 
+  factory Workspace({
+    required String workspaceId,
+    List<WorkspaceFolder> folders = const [],
+    String display = '',
+    String defaultProfileId = '',
+    WorkspaceIconRef icon = WorkspaceIconRef.auto,
+    required int createdAt,
+    int updatedAt = 0,
+    List<String> sessionIds = const [],
+  }) {
+    return Workspace._(
+      workspaceId: workspaceId,
+      folders: List.unmodifiable(folders),
+      display: display,
+      defaultProfileId: defaultProfileId,
+      icon: icon,
+      createdAt: createdAt,
+      updatedAt: updatedAt,
+      sessionIds: sessionIds,
+    );
+  }
+
   factory Workspace.fromJson(Map<String, Object?> json) {
-    final add = json['additionalPaths'];
-    final paths = add is List
-        ? add.map((e) => '$e').where((s) => s.isNotEmpty).toList()
-        : const <String>[];
     final ids = json['sessionIds'];
     final sessionIds = ids is List
         ? ids.map((e) => '$e').where((s) => s.isNotEmpty).toList()
         : const <String>[];
     return Workspace(
       workspaceId: json['workspaceId'] as String? ?? '',
-      primaryPath: json['primaryPath'] as String? ?? '',
-      additionalPaths: paths,
+      folders: foldersFromLegacyJson(json),
       display: json['display'] as String? ?? '',
       defaultProfileId: json['defaultProfileId'] as String? ?? '',
       icon: WorkspaceIconRef.fromJson(json['icon']),
@@ -39,8 +56,7 @@ class Workspace {
   }
 
   final String workspaceId;
-  final String primaryPath;
-  final List<String> additionalPaths;
+  final List<WorkspaceFolder> folders;
   final String display;
   final String defaultProfileId;
   final WorkspaceIconRef icon;
@@ -48,8 +64,15 @@ class Workspace {
   final int updatedAt;
   final List<String> sessionIds;
 
+  String get firstFolderPath => folders.isEmpty ? '' : folders.first.path;
+  List<String> get extraFolderPaths => folders.length <= 1
+      ? const []
+      : folders.skip(1).map((f) => f.path).toList(growable: false);
+  List<String> get folderPaths =>
+      folders.map((f) => f.path).toList(growable: false);
+
   String get effectiveDisplay =>
-      display.isNotEmpty ? display : _basename(primaryPath);
+      display.isNotEmpty ? display : _basename(firstFolderPath);
 
   static String _basename(String path) {
     if (path.isEmpty) return '';
@@ -59,8 +82,7 @@ class Workspace {
 
   Workspace copyWith({
     String? workspaceId,
-    String? primaryPath,
-    List<String>? additionalPaths,
+    List<WorkspaceFolder>? folders,
     String? display,
     String? defaultProfileId,
     WorkspaceIconRef? icon,
@@ -70,8 +92,7 @@ class Workspace {
   }) {
     return Workspace(
       workspaceId: workspaceId ?? this.workspaceId,
-      primaryPath: primaryPath ?? this.primaryPath,
-      additionalPaths: additionalPaths ?? this.additionalPaths,
+      folders: folders ?? this.folders,
       display: display ?? this.display,
       defaultProfileId: defaultProfileId ?? this.defaultProfileId,
       icon: icon ?? this.icon,
@@ -84,8 +105,10 @@ class Workspace {
   Map<String, Object?> toJson() {
     return {
       'workspaceId': workspaceId,
-      'primaryPath': primaryPath,
-      'additionalPaths': additionalPaths,
+      'folders': folders.map((f) => f.toJson()).toList(),
+      // SCAFFOLD dual-write (one version cycle; removed next version):
+      'primaryPath': firstFolderPath,
+      'additionalPaths': extraFolderPaths,
       'display': display,
       if (defaultProfileId.isNotEmpty) 'defaultProfileId': defaultProfileId,
       if (icon.toJson() case final json?) 'icon': json,
@@ -101,8 +124,7 @@ class Workspace {
         other is Workspace &&
             runtimeType == other.runtimeType &&
             workspaceId == other.workspaceId &&
-            primaryPath == other.primaryPath &&
-            listEquals(additionalPaths, other.additionalPaths) &&
+            listEquals(folders, other.folders) &&
             display == other.display &&
             defaultProfileId == other.defaultProfileId &&
             icon == other.icon &&
@@ -114,8 +136,7 @@ class Workspace {
   @override
   int get hashCode => Object.hash(
     workspaceId,
-    primaryPath,
-    Object.hashAll(additionalPaths),
+    Object.hashAll(folders),
     display,
     defaultProfileId,
     icon,
@@ -126,7 +147,7 @@ class Workspace {
 }
 
 class WorkspacesIndex {
-  const WorkspacesIndex({this.schemaVersion = 1, this.workspaces = const []});
+  const WorkspacesIndex({this.schemaVersion = 2, this.workspaces = const []});
 
   factory WorkspacesIndex.fromJson(Map<String, Object?> json) {
     final raw = json['workspaces'];
@@ -139,7 +160,7 @@ class WorkspacesIndex {
       }
     }
     return WorkspacesIndex(
-      schemaVersion: json['schemaVersion'] as int? ?? 1,
+      schemaVersion: json['schemaVersion'] as int? ?? 2,
       workspaces: list,
     );
   }

@@ -26,7 +26,7 @@ List<WorktreeGroup> groupSessionsByWorktree({
   final orphans = <AppSession>[];
 
   for (final session in sessions) {
-    final bestPath = worktreePathForSessionPath(session.primaryPath, ordered);
+    final bestPath = worktreePathForSessionPath(session.firstFolderPath, ordered);
     if (bestPath == null) {
       orphans.add(session);
     } else {

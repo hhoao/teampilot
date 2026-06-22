@@ -161,25 +161,25 @@ class _WorkspaceSettingsBasicSection extends StatelessWidget {
               ),
               _WorkspaceSettingsInlineRow(
                 label: l10n.workspacePrimaryPath,
-                value: workspace.primaryPath.isNotEmpty
-                    ? workspace.primaryPath
+                value: workspace.firstFolderPath.isNotEmpty
+                    ? workspace.firstFolderPath
                     : l10n.workspacePrimaryPathNotSelected,
-                onCopy: workspace.primaryPath.isNotEmpty
-                    ? () => _copyText(context, workspace.primaryPath)
+                onCopy: workspace.firstFolderPath.isNotEmpty
+                    ? () => _copyText(context, workspace.firstFolderPath)
                     : null,
-                trailing: workspace.primaryPath.isNotEmpty
+                trailing: workspace.firstFolderPath.isNotEmpty
                     ? TextButton(
-                        onPressed: () => _openFolder(workspace.primaryPath),
+                        onPressed: () => _openFolder(workspace.firstFolderPath),
                         child: Text(l10n.openFolder),
                       )
                     : null,
               ),
               _WorkspaceSettingsInlineRow(
                 label: l10n.workspaceAdditionalDirectories,
-                value: workspace.additionalPaths.isEmpty
+                value: workspace.extraFolderPaths.isEmpty
                     ? l10n.workspaceNoAdditionalDirectories
                     : l10n.homeWorkspaceWorkspaceAdditionalDirsCount(
-                        workspace.additionalPaths.length,
+                        workspace.extraFolderPaths.length,
                       ),
                 onEdit: () =>
                     showWorkspaceDetailsDialog(context, workspace, sessionCount),

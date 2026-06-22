@@ -2,18 +2,23 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:teampilot/cubits/chat/session_data_store.dart';
 import 'package:teampilot/models/workspace.dart';
 import 'package:teampilot/models/app_session.dart';
+import 'package:teampilot/models/workspace_folder.dart';
 
 void main() {
   test('unscoped snapshot exposes all', () {
     final store = SessionDataStore();
     final workspaces = [
-      Workspace(workspaceId: 'p', primaryPath: '/p', createdAt: 0),
+      Workspace(
+        workspaceId: 'p',
+        folders: [WorkspaceFolder(path: '/p')],
+        createdAt: 0,
+      ),
     ];
     final sessions = [
       AppSession(
         sessionId: 's',
         workspaceId: 'p',
-        primaryPath: '/p',
+        folders: [WorkspaceFolder(path: '/p')],
         sessionTeam: 't1',
         createdAt: 0,
       ),
@@ -27,21 +32,29 @@ void main() {
     final store = SessionDataStore()
       ..setScope(scopeSessionsToSelectedTeam: true, selectedTeamId: 't1');
     final workspaces = [
-      Workspace(workspaceId: 'p1', primaryPath: '/p1', createdAt: 0),
-      Workspace(workspaceId: 'p2', primaryPath: '/p2', createdAt: 0),
+      Workspace(
+        workspaceId: 'p1',
+        folders: [WorkspaceFolder(path: '/p1')],
+        createdAt: 0,
+      ),
+      Workspace(
+        workspaceId: 'p2',
+        folders: [WorkspaceFolder(path: '/p2')],
+        createdAt: 0,
+      ),
     ];
     final sessions = [
       AppSession(
         sessionId: 's1',
         workspaceId: 'p1',
-        primaryPath: '/p1',
+        folders: [WorkspaceFolder(path: '/p1')],
         sessionTeam: 't1',
         createdAt: 0,
       ),
       AppSession(
         sessionId: 's2',
         workspaceId: 'p2',
-        primaryPath: '/p2',
+        folders: [WorkspaceFolder(path: '/p2')],
         sessionTeam: 't2',
         createdAt: 0,
       ),
@@ -55,21 +68,29 @@ void main() {
     final store = SessionDataStore()
       ..setScope(scopeSessionsToSelectedTeam: true, selectedTeamId: '');
     final workspaces = [
-      Workspace(workspaceId: 'personal', primaryPath: '/p', createdAt: 0),
-      Workspace(workspaceId: 'team', primaryPath: '/t', createdAt: 0),
+      Workspace(
+        workspaceId: 'personal',
+        folders: [WorkspaceFolder(path: '/p')],
+        createdAt: 0,
+      ),
+      Workspace(
+        workspaceId: 'team',
+        folders: [WorkspaceFolder(path: '/t')],
+        createdAt: 0,
+      ),
     ];
     final sessions = [
       AppSession(
         sessionId: 'solo',
         workspaceId: 'personal',
-        primaryPath: '/p',
+        folders: [WorkspaceFolder(path: '/p')],
         sessionTeam: '',
         createdAt: 0,
       ),
       AppSession(
         sessionId: 'team',
         workspaceId: 'team',
-        primaryPath: '/t',
+        folders: [WorkspaceFolder(path: '/t')],
         sessionTeam: 't1',
         createdAt: 0,
       ),

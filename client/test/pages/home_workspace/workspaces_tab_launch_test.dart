@@ -1,12 +1,15 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:teampilot/models/workspace.dart';
+import 'package:teampilot/models/workspace_folder.dart';
 import 'package:teampilot/models/launch_profile_ref.dart';
 import 'package:teampilot/pages/home_workspace/workspaces_tab.dart';
 import 'package:teampilot/services/home_workspace/workspace_launch_prefs_store.dart';
 import 'package:teampilot/services/storage/launch_profile_provisioner.dart';
 
-Workspace _workspace() =>
-    Workspace(workspaceId: 'p1', primaryPath: '/tmp/p1', createdAt: 0);
+Workspace _workspace() => Workspace(
+    workspaceId: 'p1',
+    folders: [WorkspaceFolder(path: '/tmp/p1')],
+    createdAt: 0);
 
 void main() {
   group('workspaceLaunchRoute', () {

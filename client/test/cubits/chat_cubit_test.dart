@@ -4,6 +4,7 @@ import 'package:teampilot/cubits/chat/model/session_connect_request.dart';
 import 'package:teampilot/cubits/chat_cubit.dart';
 import 'package:teampilot/models/workspace.dart';
 import 'package:teampilot/models/app_session.dart';
+import 'package:teampilot/models/workspace_folder.dart';
 import 'package:teampilot/models/team_config.dart';
 import 'package:teampilot/repositories/session_repository.dart';
 import 'package:teampilot/services/team_bus/bus_user_line_capture.dart';
@@ -107,20 +108,20 @@ void main() {
     test('visible lists mirror full data when scope is off', () {
       const workspaceId = 'p1';
       cubit.ingestWorkspaceSessionSnapshot(
-        workspaces: const [
+        workspaces: [
           Workspace(
             workspaceId: workspaceId,
-            primaryPath: '/a',
+            folders: [WorkspaceFolder(path: '/a')],
             createdAt: 1,
             updatedAt: 1,
             sessionIds: ['s1'],
           ),
         ],
-        sessions: const [
+        sessions: [
           AppSession(
             sessionId: 's1',
             workspaceId: workspaceId,
-            primaryPath: '/a',
+            folders: [WorkspaceFolder(path: '/a')],
             sessionTeam: 'team-a',
             createdAt: 1,
             updatedAt: 1,
@@ -136,27 +137,27 @@ void main() {
       const pA = 'p-a';
       const pB = 'p-b';
       cubit.ingestWorkspaceSessionSnapshot(
-        workspaces: const [
+        workspaces: [
           Workspace(
             workspaceId: pA,
-            primaryPath: '/a',
+            folders: [WorkspaceFolder(path: '/a')],
             createdAt: 1,
             updatedAt: 1,
             sessionIds: ['s1', 's2'],
           ),
           Workspace(
             workspaceId: pB,
-            primaryPath: '/b',
+            folders: [WorkspaceFolder(path: '/b')],
             createdAt: 1,
             updatedAt: 1,
             sessionIds: ['s3'],
           ),
         ],
-        sessions: const [
+        sessions: [
           AppSession(
             sessionId: 's1',
             workspaceId: pA,
-            primaryPath: '/a',
+            folders: [WorkspaceFolder(path: '/a')],
             sessionTeam: 'tid-1',
             createdAt: 1,
             updatedAt: 1,
@@ -164,7 +165,7 @@ void main() {
           AppSession(
             sessionId: 's2',
             workspaceId: pA,
-            primaryPath: '/a',
+            folders: [WorkspaceFolder(path: '/a')],
             sessionTeam: 'tid-2',
             createdAt: 1,
             updatedAt: 1,
@@ -172,7 +173,7 @@ void main() {
           AppSession(
             sessionId: 's3',
             workspaceId: pB,
-            primaryPath: '/b',
+            folders: [WorkspaceFolder(path: '/b')],
             sessionTeam: 'tid-1',
             createdAt: 1,
             updatedAt: 1,
@@ -199,20 +200,20 @@ void main() {
     test('scope on with no selected team shows personal sessions only', () {
       const pid = 'p1';
       cubit.ingestWorkspaceSessionSnapshot(
-        workspaces: const [
+        workspaces: [
           Workspace(
             workspaceId: pid,
-            primaryPath: '/a',
+            folders: [WorkspaceFolder(path: '/a')],
             createdAt: 1,
             updatedAt: 1,
             sessionIds: ['s1'],
           ),
         ],
-        sessions: const [
+        sessions: [
           AppSession(
             sessionId: 's1',
             workspaceId: pid,
-            primaryPath: '/a',
+            folders: [WorkspaceFolder(path: '/a')],
             sessionTeam: 'tid',
             createdAt: 1,
             updatedAt: 1,
@@ -232,20 +233,20 @@ void main() {
     test('changing scope or team id updates visible lists', () {
       const pid = 'p1';
       cubit.ingestWorkspaceSessionSnapshot(
-        workspaces: const [
+        workspaces: [
           Workspace(
             workspaceId: pid,
-            primaryPath: '/a',
+            folders: [WorkspaceFolder(path: '/a')],
             createdAt: 1,
             updatedAt: 1,
             sessionIds: ['s1', 's2'],
           ),
         ],
-        sessions: const [
+        sessions: [
           AppSession(
             sessionId: 's1',
             workspaceId: pid,
-            primaryPath: '/a',
+            folders: [WorkspaceFolder(path: '/a')],
             sessionTeam: 'alpha',
             createdAt: 1,
             updatedAt: 1,
@@ -253,7 +254,7 @@ void main() {
           AppSession(
             sessionId: 's2',
             workspaceId: pid,
-            primaryPath: '/a',
+            folders: [WorkspaceFolder(path: '/a')],
             sessionTeam: 'beta',
             createdAt: 1,
             updatedAt: 1,
@@ -793,7 +794,7 @@ void main() {
         await postFrame.flush();
 
         expect(cubit.state.workspaces, hasLength(1));
-        expect(cubit.state.workspaces.single.primaryPath, workspacePath);
+        expect(cubit.state.workspaces.single.firstFolderPath, workspacePath);
         expect(cubit.state.tabs, hasLength(1));
       },
     );

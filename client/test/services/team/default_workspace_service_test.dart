@@ -36,7 +36,7 @@ void main() {
 
     expect(workspace.display, DefaultWorkspaceService.defaultDisplay);
     expect(
-      workspace.primaryPath,
+      workspace.firstFolderPath,
       normalizeWorkspacePath(p.join(base.path, 'Documents', 'TeamPilot')),
     );
     expect(

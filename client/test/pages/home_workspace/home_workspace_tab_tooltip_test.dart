@@ -1,5 +1,6 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:teampilot/models/workspace.dart';
+import 'package:teampilot/models/workspace_folder.dart';
 import 'package:teampilot/pages/home_workspace/home_workspace_shell.dart';
 
 Workspace _workspace({
@@ -9,7 +10,7 @@ Workspace _workspace({
 }) {
   return Workspace(
     workspaceId: id,
-    primaryPath: primaryPath,
+    folders: [WorkspaceFolder(path: primaryPath)],
     display: display,
     createdAt: 1,
   );

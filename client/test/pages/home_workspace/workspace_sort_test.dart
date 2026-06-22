@@ -1,5 +1,6 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:teampilot/models/workspace.dart';
+import 'package:teampilot/models/workspace_folder.dart';
 import 'package:teampilot/pages/home_workspace/workspace_sort.dart';
 
 Workspace _workspace({
@@ -10,7 +11,7 @@ Workspace _workspace({
 }) {
   return Workspace(
     workspaceId: id,
-    primaryPath: '/tmp/$id',
+    folders: [WorkspaceFolder(path: '/tmp/$id')],
     display: display,
     createdAt: createdAt,
     updatedAt: updatedAt,

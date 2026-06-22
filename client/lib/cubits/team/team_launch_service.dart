@@ -2,6 +2,7 @@ import 'package:uuid/uuid.dart';
 
 import '../../models/app_session.dart';
 import '../../models/team_config.dart';
+import '../../models/workspace_folder.dart';
 import '../../services/session/launch_command_builder.dart';
 import '../../services/session/session_lifecycle_service.dart';
 import '../../services/storage/app_storage.dart';
@@ -48,7 +49,7 @@ class TeamLaunchService {
       session: AppSession(
         sessionId: const Uuid().v4(),
         workspaceId: '',
-        primaryPath: AppStorage.cwd,
+        folders: [WorkspaceFolder(path: AppStorage.cwd)],
         sessionTeam: team.id,
         cliTeamName: team.id,
         createdAt: DateTime.now().millisecondsSinceEpoch,

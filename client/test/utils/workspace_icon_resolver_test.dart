@@ -1,5 +1,6 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:teampilot/models/workspace.dart';
+import 'package:teampilot/models/workspace_folder.dart';
 import 'package:teampilot/models/workspace_icon_ref.dart';
 import 'package:teampilot/utils/workspace_geometry_catalog.dart';
 import 'package:teampilot/utils/workspace_icon_resolver.dart';
@@ -7,7 +8,7 @@ import 'package:teampilot/utils/workspace_icon_resolver.dart';
 Workspace _workspace({WorkspaceIconRef icon = WorkspaceIconRef.auto}) {
   return Workspace(
     workspaceId: 'workspace-a',
-    primaryPath: '/tmp',
+    folders: const [WorkspaceFolder(path: '/tmp')],
     icon: icon,
     createdAt: 0,
   );

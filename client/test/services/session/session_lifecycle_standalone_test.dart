@@ -4,6 +4,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:path/path.dart' as p;
 import 'package:teampilot/models/workspace.dart';
 import 'package:teampilot/models/app_session.dart';
+import 'package:teampilot/models/workspace_folder.dart';
 import 'package:teampilot/models/cli_preset.dart';
 import 'package:teampilot/models/workspace_agent_config.dart';
 import 'package:teampilot/models/personal_profile.dart';
@@ -121,15 +122,15 @@ void main() {
         agent: const WorkspaceAgentConfig(agent: 'persisted-agent'),
       ),
     );
-    const workspace = Workspace(
+    final workspace = Workspace(
       workspaceId: workspaceId,
-      primaryPath: '/work/personal',
+      folders: const [WorkspaceFolder(path: '/work/personal')],
       createdAt: 1,
     );
     final session = AppSession(
       sessionId: sessionId,
       workspaceId: workspaceId,
-      primaryPath: '/work/personal',
+      folders: const [WorkspaceFolder(path: '/work/personal')],
       sessionTeam: '',
       createdAt: 1,
     );
@@ -162,15 +163,15 @@ void main() {
         display: workspaceId,
         agent: WorkspaceAgentConfig(agent: 'solo'),
       );
-      const workspace = Workspace(
+      final workspace = Workspace(
         workspaceId: workspaceId,
-        primaryPath: '/work/personal',
+        folders: const [WorkspaceFolder(path: '/work/personal')],
         createdAt: 1,
       );
       final session = AppSession(
         sessionId: sessionId,
         workspaceId: workspaceId,
-        primaryPath: '/work/personal',
+        folders: const [WorkspaceFolder(path: '/work/personal')],
         sessionTeam: '',
         createdAt: 1,
       );
@@ -214,15 +215,15 @@ void main() {
         activePresetId: 'preset-claude',
         agent: WorkspaceAgentConfig(agent: 'solo'),
       );
-      const workspace = Workspace(
+      final workspace = Workspace(
         workspaceId: workspaceId,
-        primaryPath: '/work/personal',
+        folders: const [WorkspaceFolder(path: '/work/personal')],
         createdAt: 1,
       );
       final session = AppSession(
         sessionId: sessionId,
         workspaceId: workspaceId,
-        primaryPath: '/work/personal',
+        folders: const [WorkspaceFolder(path: '/work/personal')],
         sessionTeam: '',
         createdAt: 1,
       );
@@ -281,15 +282,15 @@ void main() {
       display: workspaceId,
       activePresetId: 'preset-codex',
     );
-    const workspace = Workspace(
+    final workspace = Workspace(
       workspaceId: workspaceId,
-      primaryPath: '/work/personal',
+      folders: const [WorkspaceFolder(path: '/work/personal')],
       createdAt: 1,
     );
     final session = AppSession(
       sessionId: sessionId,
       workspaceId: workspaceId,
-      primaryPath: '/work/personal',
+      folders: const [WorkspaceFolder(path: '/work/personal')],
       sessionTeam: '',
       cli: CliTool.claude,
       createdAt: 1,
@@ -320,22 +321,22 @@ void main() {
       const workspaceId = 'personal-proj';
       const sessionId = 'personal-sess';
       const profile = PersonalProfile(id: workspaceId, display: workspaceId);
-      const workspace = Workspace(
+      final workspace = Workspace(
         workspaceId: workspaceId,
-        primaryPath: '/home/hhoa/git/hhoa/teampilot',
+        folders: const [WorkspaceFolder(path: '/home/hhoa/git/hhoa/teampilot')],
         createdAt: 1,
       );
       final session = AppSession(
         sessionId: sessionId,
         workspaceId: workspaceId,
-        primaryPath: '/home/hhoa/git/hhoa/teampilot',
+        folders: const [WorkspaceFolder(path: '/home/hhoa/git/hhoa/teampilot')],
         sessionTeam: '',
         cli: CliTool.claude,
         launchState: AppSessionLaunchState.started,
         createdAt: 1,
       );
       final bucket = RuntimeLayout.workspaceBucketForPrimaryPath(
-        session.primaryPath,
+        session.firstFolderPath,
       );
       final transcript = File(
         p.join(
@@ -366,7 +367,7 @@ void main() {
       final session = AppSession(
         sessionId: 'team-sess',
         workspaceId: 'proj',
-        primaryPath: '/work/team',
+        folders: const [WorkspaceFolder(path: '/work/team')],
         sessionTeam: 'tid',
         cliTeamName: 'tid-1',
         createdAt: 1,

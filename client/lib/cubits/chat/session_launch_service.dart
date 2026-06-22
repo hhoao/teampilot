@@ -3,6 +3,7 @@ import 'dart:async';
 import 'package:uuid/uuid.dart';
 
 import '../../models/workspace.dart';
+import '../../models/workspace_folder.dart';
 import '../../models/app_session.dart';
 import '../../models/cli_preset.dart';
 import '../../models/member_instance.dart';
@@ -164,7 +165,7 @@ class SessionLaunchService implements MemberConnector {
     final info = ChatTabInfo(
       id: session.sessionId,
       title: session.resolveDisplayTitle(emptyDisplayTitleFallback),
-      subtitle: session.primaryPath,
+      subtitle: session.firstFolderPath,
     );
     final launched = session.launchState == AppSessionLaunchState.started;
     final cliTeamName = session.cliTeamName;
@@ -339,7 +340,7 @@ class SessionLaunchService implements MemberConnector {
     if (bucketKey.isEmpty) return null;
     final tab = WorkspaceTabRef.decodeTabKey(bucketKey);
     final workspaceId = tab?.workspaceId ?? bucketKey;
-    return _workspaceById(workspaceId)?.primaryPath;
+    return _workspaceById(workspaceId)?.firstFolderPath;
   }
 
   AppSession? _existingSessionForMaterialize(
@@ -365,7 +366,7 @@ class SessionLaunchService implements MemberConnector {
 
   Workspace? _workspaceMatchingPath(String primaryPath) {
     for (final workspace in _state.workspaces) {
-      if (workspacePathsEqual(workspace.primaryPath, primaryPath)) return workspace;
+      if (workspacePathsEqual(workspace.firstFolderPath, primaryPath)) return workspace;
     }
     return null;
   }
@@ -444,7 +445,10 @@ class SessionLaunchService implements MemberConnector {
       session: AppSession(
         sessionId: '',
         workspaceId: workspace.workspaceId,
-        primaryPath: workspace.primaryPath,
+        folders: [
+          if (workspace.firstFolderPath.isNotEmpty)
+            WorkspaceFolder(path: workspace.firstFolderPath),
+        ],
         sessionTeam: '',
         cliTeamName: '',
         createdAt: 0,
@@ -732,8 +736,11 @@ class SessionLaunchService implements MemberConnector {
         AppSession(
           sessionId: tab.info.id,
           workspaceId: '',
-          primaryPath: launch.$1,
-          additionalPaths: launch.$2,
+          folders: [
+            if (launch.$1.isNotEmpty) WorkspaceFolder(path: launch.$1),
+            for (final p in launch.$2)
+              if (p.isNotEmpty) WorkspaceFolder(path: p),
+          ],
           sessionTeam: team.id,
           cliTeamName: tab.cliTeamName,
           createdAt: DateTime.now().millisecondsSinceEpoch,
@@ -859,8 +866,8 @@ class SessionLaunchService implements MemberConnector {
     // no `launched` gating. See docs/session-resume-architecture.md.
     await _persistNativeSessionId(repo, tab, activeSession, binding, plan);
     shell.connect(
-      workingDirectory: activeSession.primaryPath,
-      additionalDirectories: activeSession.additionalPaths,
+      workingDirectory: activeSession.firstFolderPath,
+      additionalDirectories: activeSession.extraFolderPaths,
       fixedSessionId: plan.createSessionId,
       resumeSessionId: plan.resumeSessionId,
       shellLaunch: shellLaunch,

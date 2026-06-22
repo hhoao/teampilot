@@ -47,7 +47,7 @@ class _WorkspaceSplitPaneState extends State<WorkspaceSplitPane> {
     for (final s in chat.sessions) {
       if (s.sessionId == activeId &&
           s.workspaceId == widget.workspace.workspaceId) {
-        return s.primaryPath;
+        return s.firstFolderPath;
       }
     }
     return null;
@@ -62,7 +62,7 @@ class _WorkspaceSplitPaneState extends State<WorkspaceSplitPane> {
       key: ValueKey('worktree-${widget.workspace.workspaceId}'),
       create: (ctx) => WorktreeCubit(workspaceId: widget.workspace.workspaceId)
         ..load(
-          widget.workspace.primaryPath,
+          widget.workspace.firstFolderPath,
           // Default the current worktree to the active session's directory so
           // the file tree / source control open on the worktree being resumed.
           preferCurrentPath: _activeSessionPath(ctx),
@@ -94,10 +94,10 @@ class _WorkspaceSplitPaneState extends State<WorkspaceSplitPane> {
               // back to the repo root (main worktree) when none is selected.
               final cwd = wt.currentWorktreePath.isNotEmpty
                   ? wt.currentWorktreePath
-                  : widget.workspace.primaryPath;
+                  : widget.workspace.firstFolderPath;
               return ChatPage(
                 cwd: cwd,
-                additionalPaths: widget.workspace.additionalPaths,
+                additionalPaths: widget.workspace.extraFolderPaths,
                 workspaceId: widget.workspace.workspaceId,
                 tabScopeId: widget.tabScopeId,
                 isPersonalWorkspace: widget.isPersonalWorkspace,

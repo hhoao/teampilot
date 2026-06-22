@@ -155,8 +155,8 @@ class ChatTabStore {
     }
     for (final s in sessions) {
       if (s.sessionId != tabId) continue;
-      final wd = s.primaryPath.trim();
-      final addl = s.additionalPaths
+      final wd = s.firstFolderPath.trim();
+      final addl = s.extraFolderPaths
           .map((e) => e.trim())
           .where((e) => e.isNotEmpty)
           .toList();

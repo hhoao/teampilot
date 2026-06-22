@@ -91,11 +91,11 @@ class TabTeamBusCoordinator implements MemberMaterializer {
         teamId: team.id,
         teamName: team.name,
         description: team.description,
-        workingDirectory: session.primaryPath,
+        workingDirectory: session.firstFolderPath,
         teamMode: team.teamMode.value,
         leadAgentId: TeamMemberNaming.leadAgentId(cliTeamName),
         appSessionId: session.sessionId,
-        additionalPaths: session.additionalPaths,
+        additionalPaths: session.extraFolderPaths,
       ),
     );
     for (final m in runtimeRosterMembers(team)) {
@@ -110,7 +110,7 @@ class TabTeamBusCoordinator implements MemberMaterializer {
             member: m,
             team: team,
             cliTeamName: cliTeamName,
-            cwd: session.primaryPath,
+            cwd: session.firstFolderPath,
             taskId: taskId,
           ),
           lifecycle: MemberLifecycle.declared,

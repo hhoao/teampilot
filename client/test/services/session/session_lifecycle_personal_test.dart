@@ -3,6 +3,7 @@ import 'dart:io';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:teampilot/models/workspace.dart';
 import 'package:teampilot/models/app_session.dart';
+import 'package:teampilot/models/workspace_folder.dart';
 import 'package:teampilot/services/session/session_lifecycle_service.dart';
 
 class _Svc extends SessionLifecycleService {
@@ -14,7 +15,7 @@ class _Svc extends SessionLifecycleService {
 void main() {
   final workspace = Workspace(
     workspaceId: 'p1',
-    primaryPath: '/tmp/repo',
+    folders: const [WorkspaceFolder(path: '/tmp/repo')],
     createdAt: 0,
   );
 
@@ -22,7 +23,7 @@ void main() {
     final session = AppSession(
       sessionId: 's1',
       workspaceId: 'p1',
-      primaryPath: '/tmp/repo',
+      folders: const [WorkspaceFolder(path: '/tmp/repo')],
       sessionTeam: '',
       createdAt: 0,
     );
@@ -33,7 +34,7 @@ void main() {
     final session = AppSession(
       sessionId: 's1',
       workspaceId: 'p1',
-      primaryPath: '/tmp/repo',
+      folders: const [WorkspaceFolder(path: '/tmp/repo')],
       sessionTeam: 'team-x',
       createdAt: 0,
     );

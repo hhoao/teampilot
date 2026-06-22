@@ -348,7 +348,7 @@ class SessionLifecycleService {
         personal: resolvedPersonal,
         isPersonal: isPersonal,
         runtimeTeamId: runtimeTeamId,
-        workingDirectory: session.primaryPath,
+        workingDirectory: session.firstFolderPath,
         llmConfigPathOverride: llmConfigPathOverride,
         extraMcpServers: extraMcpServers,
         busIdleUrl: busIdleUrl,
@@ -370,7 +370,7 @@ class SessionLifecycleService {
         env: prepared.env,
         transcriptRoots: rootsForResume,
         bucket: RuntimeLayout.workspaceBucketForPrimaryPath(
-          session.primaryPath,
+          session.firstFolderPath,
         ),
         persistedNativeId: cli == null
             ? null
@@ -589,8 +589,8 @@ class SessionLifecycleService {
         team: launchTeam,
         member: launchMember,
         sessionTeam: plan.cliTeamName,
-        workingDirectory: session.primaryPath,
-        additionalDirectories: session.additionalPaths,
+        workingDirectory: session.firstFolderPath,
+        additionalDirectories: session.extraFolderPaths,
         isFreshConversation: plan.isFreshConversation,
       );
     }
@@ -605,8 +605,8 @@ class SessionLifecycleService {
       team: team,
       member: member,
       sessionTeam: _resolveSessionTeam(session, plan, false),
-      workingDirectory: session.primaryPath,
-      additionalDirectories: session.additionalPaths,
+      workingDirectory: session.firstFolderPath,
+      additionalDirectories: session.extraFolderPaths,
       isFreshConversation: plan.isFreshConversation,
     );
   }
@@ -653,7 +653,7 @@ class SessionLifecycleService {
         profileId: resolvedPersonal.id,
         personal: resolvedPersonal,
         workingDirectory: workingDirectory,
-        additionalDirectories: session.additionalPaths,
+        additionalDirectories: session.extraFolderPaths,
         extraMcpServers: extraMcpServers,
         busIdleUrl: busIdleUrl,
         preset: preset,
@@ -686,7 +686,7 @@ class SessionLifecycleService {
         members: team.members,
         member: member,
         workingDirectory: workingDirectory,
-        additionalDirectories: session.additionalPaths,
+        additionalDirectories: session.extraFolderPaths,
         team: team,
         leadSessionId: leadSessionId,
         extraMcpServers: extraMcpServers,
@@ -819,7 +819,7 @@ class SessionLifecycleService {
             tools: tools,
           );
     final bucket = RuntimeLayout.workspaceBucketForPrimaryPath(
-      session.primaryPath,
+      session.firstFolderPath,
     );
     return _findCliStateInFilesystem(
       fs: roots.fs,

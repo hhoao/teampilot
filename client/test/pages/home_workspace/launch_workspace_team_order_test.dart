@@ -1,11 +1,12 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:teampilot/models/app_session.dart';
+import 'package:teampilot/models/workspace_folder.dart';
 import 'package:teampilot/pages/home_workspace/launch_workspace_team_order.dart';
 
 AppSession _s(String team, int updatedAt) => AppSession(
       sessionId: 's-$team-$updatedAt',
       workspaceId: 'p1',
-      primaryPath: '/tmp/p1',
+      folders: [WorkspaceFolder(path: '/tmp/p1')],
       sessionTeam: team,
       createdAt: 0,
       updatedAt: updatedAt,

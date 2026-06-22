@@ -1,5 +1,6 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:teampilot/models/workspace.dart';
+import 'package:teampilot/models/workspace_folder.dart';
 import 'package:teampilot/models/app_session.dart';
 import 'package:teampilot/utils/workspace_sessions.dart';
 
@@ -14,7 +15,7 @@ void main() {
     return AppSession(
       sessionId: id,
       workspaceId: workspaceId,
-      primaryPath: '/tmp',
+      folders: const [WorkspaceFolder(path: '/tmp')],
       display: display,
       createdAt: 1,
     );
@@ -23,7 +24,7 @@ void main() {
   test('sessionsForWorkspace preserves workspace.sessionIds order', () {
     final workspace = Workspace(
       workspaceId: 'p1',
-      primaryPath: '/tmp',
+      folders: const [WorkspaceFolder(path: '/tmp')],
       sessionIds: const ['s2', 's1'],
       createdAt: 1,
     );
@@ -41,7 +42,7 @@ void main() {
   test('sessionsForWorkspace appends orphan sessions without duplicates', () {
     final workspace = Workspace(
       workspaceId: 'p1',
-      primaryPath: '/tmp',
+      folders: const [WorkspaceFolder(path: '/tmp')],
       sessionIds: const ['s1'],
       createdAt: 1,
     );

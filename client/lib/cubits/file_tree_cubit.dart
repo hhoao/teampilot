@@ -16,7 +16,7 @@ class FileTreeOperationException implements Exception {
 }
 
 /// One workspace folder root shown in the tree. A multi-folder workspace
-/// (`Workspace.primaryPath` + `additionalPaths`) yields several of these.
+/// (`Workspace.folders` / `folderPaths`) yields several of these.
 @immutable
 class FileTreeRoot {
   const FileTreeRoot({required this.path, required this.exists});

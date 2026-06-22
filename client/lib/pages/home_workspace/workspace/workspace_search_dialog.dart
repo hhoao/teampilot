@@ -117,7 +117,7 @@ class _WorkspaceSearchDialogState extends State<WorkspaceSearchDialog> {
   Future<void> _runFileSearch(String value) async {
     final seq = ++_fileSearchSeq;
     final query = value.trim();
-    final root = widget.workspace.primaryPath;
+    final root = widget.workspace.firstFolderPath;
     if (query.isEmpty || root.isEmpty) {
       if (!mounted) return;
       setState(() {

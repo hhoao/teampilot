@@ -64,7 +64,7 @@ class HomeShell extends StatefulWidget {
               ? teamName
               : teamId ?? '');
     final headline = '$prefix · $name';
-    final path = workspace.primaryPath.trim();
+    final path = workspace.firstFolderPath.trim();
     if (path.isEmpty || path == name) return headline;
     return '$headline\n$path';
   }
@@ -266,7 +266,7 @@ class _HomeShellState extends State<HomeShell> {
       HomeClosedWorkspaceEntry.fromTab(
         tab,
         displayName: workspace?.effectiveDisplay ?? tab.workspaceId,
-        primaryPath: workspace?.primaryPath ?? '',
+        primaryPath: workspace?.firstFolderPath ?? '',
       ),
     );
     if (!mounted) return;

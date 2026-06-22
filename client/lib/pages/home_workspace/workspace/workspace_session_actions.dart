@@ -101,7 +101,7 @@ void _syncWorktreeForSession(BuildContext context, AppSession session) {
   try {
     context
         .read<WorktreeCubit>()
-        .syncCurrentForSessionPath(session.primaryPath);
+        .syncCurrentForSessionPath(session.firstFolderPath);
   } on ProviderNotFoundException {
     // Outside the workspace split pane — no worktree scope to sync.
   }

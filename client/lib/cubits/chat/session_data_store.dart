@@ -131,10 +131,12 @@ class SessionDataStore {
   ) async {
     final trimmed = directoryPath.trim();
     if (trimmed.isEmpty) return null;
-    if (workspacePathsEqual(trimmed, workspace.primaryPath)) return null;
-    if (workspacePathsContains(workspace.additionalPaths, trimmed)) return null;
+    if (workspacePathsEqual(trimmed, workspace.firstFolderPath)) return null;
+    if (workspacePathsContains(workspace.extraFolderPaths, trimmed)) {
+      return null;
+    }
     await repo.createWorkspace(
-      workspace.primaryPath,
+      workspace.firstFolderPath,
       additionalPaths: [trimmed],
     );
     return loadWorkspaceData(repo);

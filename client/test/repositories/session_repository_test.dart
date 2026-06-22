@@ -41,11 +41,11 @@ void main() {
 
       final repo = SessionRepository(rootDir: tmp.path);
       final workspace = await repo.createWorkspace('/tmp/my-workspace');
-      expect(workspace.primaryPath, '/tmp/my-workspace');
+      expect(workspace.firstFolderPath, '/tmp/my-workspace');
 
       final session = await repo.createSession(workspace.workspaceId);
       expect(session.workspaceId, workspace.workspaceId);
-      expect(session.primaryPath, '/tmp/my-workspace');
+      expect(session.firstFolderPath, '/tmp/my-workspace');
       expect(session.launchState, AppSessionLaunchState.created);
 
       var workspaces = await repo.loadWorkspaces();
@@ -174,7 +174,7 @@ void main() {
         '/root',
         additionalPaths: const ['/a'],
       );
-      expect(p1.additionalPaths, ['/a']);
+      expect(p1.extraFolderPaths, ['/a']);
 
       final p2 = await repo.createWorkspace(
         '/root',
@@ -182,7 +182,7 @@ void main() {
         display: 'My display',
       );
       expect(p2.workspaceId, p1.workspaceId);
-      expect(p2.additionalPaths, ['/a', '/b']);
+      expect(p2.extraFolderPaths, ['/a', '/b']);
       expect(p2.display, 'My display');
     },
   );
@@ -213,7 +213,7 @@ void main() {
     );
 
     expect(a.workspaceId, isNot(b.workspaceId));
-    expect(a.primaryPath, b.primaryPath);
+    expect(a.firstFolderPath, b.firstFolderPath);
     final loaded = await repo.loadWorkspaces();
     expect(loaded.length, 2);
     expect(loaded.map((w) => w.display).toSet(), {'First', 'Second'});
@@ -232,7 +232,7 @@ void main() {
     );
     final loaded = await repo.loadWorkspaces();
     expect(loaded.single.display, 'My App');
-    expect(loaded.single.additionalPaths, ['/b']);
+    expect(loaded.single.extraFolderPaths, ['/b']);
   });
 
   test('applyWorkspaceIcon persists preset and auto icons', () async {
@@ -279,8 +279,8 @@ void main() {
     final p = await repo.createWorkspace('/old');
     await repo.updateWorkspacePaths(p.workspaceId, '/new', ['/x']);
     final loaded = await repo.loadWorkspaces();
-    expect(loaded.single.primaryPath, '/new');
-    expect(loaded.single.additionalPaths, ['/x']);
+    expect(loaded.single.firstFolderPath, '/new');
+    expect(loaded.single.extraFolderPaths, ['/x']);
   });
 
   test(
@@ -292,15 +292,15 @@ void main() {
       final repo = SessionRepository(rootDir: tmp.path);
       final p = await repo.createWorkspace('/p', additionalPaths: const ['/q']);
       final s1 = await repo.createSession(p.workspaceId);
-      expect(s1.additionalPaths, ['/q']);
+      expect(s1.extraFolderPaths, ['/q']);
 
       await repo.updateWorkspacePaths(p.workspaceId, '/p', ['/r']);
       final s2 = await repo.createSession(p.workspaceId);
-      expect(s2.additionalPaths, ['/r']);
+      expect(s2.extraFolderPaths, ['/r']);
       final s1Reload = (await repo.loadSessions()).firstWhere(
         (e) => e.sessionId == s1.sessionId,
       );
-      expect(s1Reload.additionalPaths, ['/q']);
+      expect(s1Reload.extraFolderPaths, ['/q']);
     },
   );
 

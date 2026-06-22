@@ -167,7 +167,7 @@ class _WorkspaceSidebarState
                     onTap: throttledTap(
                       'workspace_sidebar_refresh_worktrees',
                       () => unawaited(
-                        context.read<WorktreeCubit>().load(widget.workspace.primaryPath),
+                        context.read<WorktreeCubit>().load(widget.workspace.firstFolderPath),
                       ),
                     ),
                   ),
@@ -237,7 +237,7 @@ class _WorkspaceSidebarState
   Future<void> _createWorktree(BuildContext context) async {
     final cubit = context.read<WorktreeCubit>();
     final l10n = context.l10n;
-    final repoPath = widget.workspace.primaryPath;
+    final repoPath = widget.workspace.firstFolderPath;
     final layout = WorkspaceLayout(teampilotRoot: AppStorage.paths.basePath);
     final result = await showWorktreeCreateDialog(
       context,

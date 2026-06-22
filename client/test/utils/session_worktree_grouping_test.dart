@@ -1,5 +1,6 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:teampilot/models/app_session.dart';
+import 'package:teampilot/models/workspace_folder.dart';
 import 'package:teampilot/models/git_worktree.dart';
 import 'package:teampilot/utils/session_worktree_grouping.dart';
 
@@ -11,8 +12,12 @@ GitWorktree _wt(String path, {bool main = false}) => GitWorktree(
       isMainWorktree: main,
     );
 
-AppSession _session(String id, String primary) =>
-    AppSession(sessionId: id, workspaceId: 'w', primaryPath: primary, createdAt: 0);
+AppSession _session(String id, String primary) => AppSession(
+      sessionId: id,
+      workspaceId: 'w',
+      folders: [WorkspaceFolder(path: primary)],
+      createdAt: 0,
+    );
 
 void main() {
   final worktrees = [_wt('/repo', main: true), _wt('/wt/feat')];

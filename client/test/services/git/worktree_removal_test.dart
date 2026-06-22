@@ -1,11 +1,16 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:teampilot/models/app_session.dart';
 import 'package:teampilot/models/git_worktree.dart';
+import 'package:teampilot/models/workspace_folder.dart';
 import 'package:teampilot/services/git/git_worktree_service.dart';
 import 'package:teampilot/services/git/worktree_removal.dart';
 
-AppSession _session(String id) =>
-    AppSession(sessionId: id, workspaceId: 'w', primaryPath: '/wt', createdAt: 0);
+AppSession _session(String id) => AppSession(
+  sessionId: id,
+  workspaceId: 'w',
+  folders: const [WorkspaceFolder(path: '/wt')],
+  createdAt: 0,
+);
 
 class _FakeWorktreeService extends GitWorktreeService {
   _FakeWorktreeService(this._onRemove);

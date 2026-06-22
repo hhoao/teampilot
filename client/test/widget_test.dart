@@ -22,6 +22,7 @@ import 'package:teampilot/cubits/launch_profile_cubit.dart';
 import 'package:teampilot/main.dart';
 import 'package:teampilot/models/llm_config.dart';
 import 'package:teampilot/models/workspace.dart';
+import 'package:teampilot/models/workspace_folder.dart';
 import 'package:teampilot/models/personal_profile.dart';
 import 'package:teampilot/models/app_session.dart';
 import 'package:teampilot/models/session_member_binding.dart';
@@ -954,10 +955,10 @@ void main() {
           TeamMemberConfig(id: 'dev', name: 'developer'),
         ],
       );
-      const session = AppSession(
+      final session = AppSession(
         sessionId: 'session-1',
         workspaceId: 'proj-test-2',
-        primaryPath: '/tmp',
+        folders: const [WorkspaceFolder(path: '/tmp')],
         display: 'Session One',
         sessionTeam: 'test-team',
         cliTeamName: 'test-team-1',

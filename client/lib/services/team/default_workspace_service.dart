@@ -30,7 +30,7 @@ abstract final class DefaultWorkspaceService {
     final primaryPath = await resolvePrimaryPath();
     final workspaces = await repository.loadWorkspaces();
     var workspace = workspaces
-        .where((w) => workspacePathsEqual(w.primaryPath, primaryPath))
+        .where((w) => workspacePathsEqual(w.firstFolderPath, primaryPath))
         .firstOrNull;
 
     workspace ??= await repository.createWorkspace(

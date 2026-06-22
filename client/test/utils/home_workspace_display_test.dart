@@ -1,5 +1,6 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:teampilot/models/workspace.dart';
+import 'package:teampilot/models/workspace_folder.dart';
 import 'package:teampilot/models/app_session.dart';
 import 'package:teampilot/pages/home_workspace/workspace_sort.dart';
 import 'package:teampilot/utils/home_workspace_display.dart';
@@ -7,7 +8,7 @@ import 'package:teampilot/utils/home_workspace_display.dart';
 void main() {
   Workspace workspace(String id, {int updatedAt = 0}) => Workspace(
         workspaceId: id,
-        primaryPath: '/tmp/$id',
+        folders: [WorkspaceFolder(path: '/tmp/$id')],
         createdAt: 1,
         updatedAt: updatedAt,
       );
@@ -15,7 +16,7 @@ void main() {
   AppSession session(String id, String workspaceId) => AppSession(
         sessionId: id,
         workspaceId: workspaceId,
-        primaryPath: '/tmp',
+        folders: const [WorkspaceFolder(path: '/tmp')],
         createdAt: 1,
       );
 

@@ -5,6 +5,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:path/path.dart' as p;
 import 'package:teampilot/models/app_provider_config.dart';
 import 'package:teampilot/models/app_session.dart';
+import 'package:teampilot/models/workspace_folder.dart';
 import 'package:teampilot/models/session_member_binding.dart';
 import 'package:teampilot/models/team_config.dart';
 import 'package:teampilot/services/storage/runtime_layout.dart';
@@ -50,7 +51,7 @@ AppSession _session({
 }) => AppSession(
   sessionId: id,
   workspaceId: _workspaceId,
-  primaryPath: '/work/workspace',
+  folders: const [WorkspaceFolder(path: '/work/workspace')],
   sessionTeam: 'team-a',
   launchState: launchState,
   createdAt: 1,
@@ -277,7 +278,7 @@ void main() {
         launchState: AppSessionLaunchState.started,
       ).copyWith(cliTeamName: 'team-a-4');
       final bucket = RuntimeLayout.workspaceBucketForPrimaryPath(
-        session.primaryPath,
+        session.firstFolderPath,
       );
       final transcript = File(
         p.join(
@@ -333,7 +334,7 @@ void main() {
   test('hasCliState finds workspace transcripts in member roots', () async {
     final session = _session(launchState: AppSessionLaunchState.started);
     final bucket = RuntimeLayout.workspaceBucketForPrimaryPath(
-      session.primaryPath,
+      session.firstFolderPath,
     );
     final transcript = File(
       p.join(
@@ -377,7 +378,7 @@ void main() {
         launchState: AppSessionLaunchState.started,
       ).copyWith(cliTeamName: 'team-a-3');
       final bucket = RuntimeLayout.workspaceBucketForPrimaryPath(
-        session.primaryPath,
+        session.firstFolderPath,
       );
       final transcript = File(
         p.join(

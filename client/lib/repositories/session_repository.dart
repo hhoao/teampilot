@@ -3,6 +3,7 @@ import 'dart:convert';
 import 'package:uuid/uuid.dart';
 
 import '../models/workspace.dart';
+import '../models/workspace_folder.dart';
 import '../models/app_session.dart';
 import '../models/member_instance.dart';
 import '../models/session_member_binding.dart';
@@ -136,14 +137,14 @@ class SessionRepository {
     final now = DateTime.now().millisecondsSinceEpoch;
     final workspaces = await loadWorkspaces();
     for (final existing in allowDuplicate ? const <Workspace>[] : workspaces) {
-      if (!workspacePathsEqual(existing.primaryPath, trimmed)) {
+      if (!workspacePathsEqual(existing.firstFolderPath, trimmed)) {
         continue;
       }
       final newAdd = additionalPaths
           .map(normalizeWorkspacePath)
           .where((e) => e.isNotEmpty)
           .toList();
-      final mergedPaths = List<String>.from(existing.additionalPaths);
+      final mergedPaths = List<String>.from(existing.extraFolderPaths);
       for (final p in newAdd) {
         if (!mergedPaths.contains(p)) mergedPaths.add(p);
       }
@@ -151,12 +152,15 @@ class SessionRepository {
       final displayOut = trimmedDisplay.isNotEmpty
           ? trimmedDisplay
           : existing.display;
-      if (_pathsEqual(mergedPaths, existing.additionalPaths) &&
+      if (_pathsEqual(mergedPaths, existing.extraFolderPaths) &&
           displayOut == existing.display) {
         return existing;
       }
       final updated = existing.copyWith(
-        additionalPaths: mergedPaths,
+        folders: [
+          WorkspaceFolder(path: existing.firstFolderPath),
+          for (final p in mergedPaths) WorkspaceFolder(path: p),
+        ],
         display: displayOut,
         updatedAt: now,
       );
@@ -165,10 +169,13 @@ class SessionRepository {
     }
     final workspace = Workspace(
       workspaceId: const Uuid().v4(),
-      primaryPath: trimmed,
-      additionalPaths: List<String>.from(
-        additionalPaths.map(normalizeWorkspacePath).where((e) => e.isNotEmpty),
-      ),
+      folders: [
+        WorkspaceFolder(path: trimmed),
+        for (final p in additionalPaths
+            .map(normalizeWorkspacePath)
+            .where((e) => e.isNotEmpty))
+          WorkspaceFolder(path: p),
+      ],
       display: display.trim(),
       createdAt: now,
       updatedAt: now,
@@ -193,13 +200,15 @@ class SessionRepository {
       defaultProfileId: defaultProfileId != null
           ? defaultProfileId.trim()
           : existing.defaultProfileId,
-      additionalPaths: additionalPaths != null
-          ? List<String>.from(
-              additionalPaths
+      folders: additionalPaths != null
+          ? [
+              WorkspaceFolder(path: existing.firstFolderPath),
+              for (final p in additionalPaths
                   .map(normalizeWorkspacePath)
-                  .where((e) => e.isNotEmpty),
-            )
-          : existing.additionalPaths,
+                  .where((e) => e.isNotEmpty))
+                WorkspaceFolder(path: p),
+            ]
+          : existing.folders,
       updatedAt: now,
     );
     await _writeManifest(fs, updated);
@@ -265,10 +274,13 @@ class SessionRepository {
     if (existing == null) return;
     final now = DateTime.now().millisecondsSinceEpoch;
     final updated = existing.copyWith(
-      primaryPath: normalizeWorkspacePath(primaryPath),
-      additionalPaths: List<String>.from(
-        additionalPaths.map(normalizeWorkspacePath).where((e) => e.isNotEmpty),
-      ),
+      folders: [
+        WorkspaceFolder(path: normalizeWorkspacePath(primaryPath)),
+        for (final p in additionalPaths
+            .map(normalizeWorkspacePath)
+            .where((e) => e.isNotEmpty))
+          WorkspaceFolder(path: p),
+      ],
       updatedAt: now,
     );
     await _writeManifest(fs, updated);
@@ -282,10 +294,7 @@ class SessionRepository {
     final layout = RuntimeLayout(teampilotRoot: fs.teampilotRoot, fs: fs.fs);
     await WorkspaceTrustProvisioner(layout: layout, fs: fs.fs).provisionWorkspace(
       workspaceId: workspace.workspaceId,
-      directories: [
-        workspace.primaryPath,
-        ...workspace.additionalPaths,
-      ],
+      directories: workspace.folderPaths,
     );
   }
 
@@ -346,10 +355,17 @@ class SessionRepository {
     final session = AppSession(
       sessionId: sessionId,
       workspaceId: workspaceId,
-      primaryPath: (workingDirectory != null && workingDirectory.trim().isNotEmpty)
-          ? normalizeWorkspacePath(workingDirectory)
-          : workspace.primaryPath,
-      additionalPaths: List<String>.from(workspace.additionalPaths),
+      folders: (workingDirectory != null && workingDirectory.trim().isNotEmpty)
+          ? [
+              WorkspaceFolder(
+                path: normalizeWorkspacePath(workingDirectory),
+                targetId: workspace.folders.isEmpty
+                    ? WorkspaceFolder.localTargetId
+                    : workspace.folders.first.targetId,
+              ),
+              ...workspace.folders.skip(1),
+            ]
+          : workspace.folders,
       display: '',
       sessionTeam: sessionTeam,
       profileId: trimmedTeam.isEmpty ? personalIdentityId.trim() : '',
@@ -646,8 +662,7 @@ class SessionRepository {
     final newWorkspaceId = const Uuid().v4();
     final newWorkspace = Workspace(
       workspaceId: newWorkspaceId,
-      primaryPath: source.primaryPath,
-      additionalPaths: List<String>.from(source.additionalPaths),
+      folders: List.of(source.folders),
       display: (display ?? source.display).trim(),
       icon: source.icon,
       createdAt: now,
@@ -701,8 +716,7 @@ class SessionRepository {
     final session = AppSession(
       sessionId: sessionId,
       workspaceId: targetWorkspaceId,
-      primaryPath: source.primaryPath,
-      additionalPaths: List<String>.from(source.additionalPaths),
+      folders: List.of(source.folders),
       display: source.display,
       sessionTeam: source.sessionTeam,
       cliTeamName: cliTeamName,

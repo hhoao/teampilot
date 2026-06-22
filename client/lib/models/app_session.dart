@@ -2,16 +2,16 @@ import 'package:flutter/foundation.dart';
 
 import 'session_member_binding.dart';
 import 'team_config.dart';
+import 'workspace_folder.dart';
 
 enum AppSessionLaunchState { created, started }
 
 @immutable
 class AppSession {
-  const AppSession({
+  const AppSession._({
     required this.sessionId,
     required this.workspaceId,
-    required this.primaryPath,
-    this.additionalPaths = const [],
+    required this.folders,
     this.display = '',
     this.sessionTeam = '',
     this.profileId = '',
@@ -26,16 +26,48 @@ class AppSession {
     this.sortOrder = 0,
   });
 
+  factory AppSession({
+    required String sessionId,
+    required String workspaceId,
+    List<WorkspaceFolder> folders = const [],
+    String display = '',
+    String sessionTeam = '',
+    String profileId = '',
+    String cliTeamName = '',
+    CliTool? cli,
+    List<SessionMemberBinding> members = const [],
+    Map<String, String> nativeSessionIds = const {},
+    AppSessionLaunchState launchState = AppSessionLaunchState.created,
+    required int createdAt,
+    int updatedAt = 0,
+    bool pinned = false,
+    int sortOrder = 0,
+  }) {
+    return AppSession._(
+      sessionId: sessionId,
+      workspaceId: workspaceId,
+      folders: List.unmodifiable(folders),
+      display: display,
+      sessionTeam: sessionTeam,
+      profileId: profileId,
+      cliTeamName: cliTeamName,
+      cli: cli,
+      members: members,
+      nativeSessionIds: nativeSessionIds,
+      launchState: launchState,
+      createdAt: createdAt,
+      updatedAt: updatedAt,
+      pinned: pinned,
+      sortOrder: sortOrder,
+    );
+  }
+
   factory AppSession.fromJson(Map<String, Object?> json) {
     final launchRaw = json['launchState'] as String? ?? 'created';
     final launch = AppSessionLaunchState.values.firstWhere(
       (e) => e.name == launchRaw,
       orElse: () => AppSessionLaunchState.created,
     );
-    final add = json['additionalPaths'];
-    final paths = add is List
-        ? add.map((e) => '$e').where((s) => s.isNotEmpty).toList()
-        : const <String>[];
     final membersRaw = json['members'];
     final members = membersRaw is List
         ? membersRaw
@@ -57,8 +89,7 @@ class AppSession {
     return AppSession(
       sessionId: json['sessionId'] as String? ?? '',
       workspaceId: json['workspaceId'] as String? ?? '',
-      primaryPath: json['primaryPath'] as String? ?? '',
-      additionalPaths: paths,
+      folders: foldersFromLegacyJson(json),
       display: json['display'] as String? ?? '',
       sessionTeam: json['sessionTeam'] as String? ?? '',
       profileId: json['profileId'] as String? ?? '',
@@ -76,9 +107,16 @@ class AppSession {
 
   final String sessionId;
   final String workspaceId;
-  final String primaryPath;
-  final List<String> additionalPaths;
+  final List<WorkspaceFolder> folders;
   final String display;
+
+  String get firstFolderPath => folders.isEmpty ? '' : folders.first.path;
+  List<String> get extraFolderPaths => folders.length <= 1
+      ? const []
+      : folders.skip(1).map((f) => f.path).toList(growable: false);
+  List<String> get folderPaths =>
+      folders.map((f) => f.path).toList(growable: false);
+
 
   /// Stable UI team id ([TeamProfile.id]) for filtering; not the CLI runtime name.
   final String sessionTeam;
@@ -140,8 +178,7 @@ class AppSession {
   AppSession copyWith({
     String? sessionId,
     String? workspaceId,
-    String? primaryPath,
-    List<String>? additionalPaths,
+    List<WorkspaceFolder>? folders,
     String? display,
     String? sessionTeam,
     String? profileId,
@@ -158,8 +195,7 @@ class AppSession {
     return AppSession(
       sessionId: sessionId ?? this.sessionId,
       workspaceId: workspaceId ?? this.workspaceId,
-      primaryPath: primaryPath ?? this.primaryPath,
-      additionalPaths: additionalPaths ?? this.additionalPaths,
+      folders: folders ?? this.folders,
       display: display ?? this.display,
       sessionTeam: sessionTeam ?? this.sessionTeam,
       profileId: profileId ?? this.profileId,
@@ -177,11 +213,13 @@ class AppSession {
 
   Map<String, Object?> toJson() {
     return {
-      'schemaVersion': 1,
+      'schemaVersion': 2,
       'sessionId': sessionId,
       'workspaceId': workspaceId,
-      'primaryPath': primaryPath,
-      'additionalPaths': additionalPaths,
+      'folders': folders.map((f) => f.toJson()).toList(),
+      // SCAFFOLD dual-write (one version cycle; removed next version):
+      'primaryPath': firstFolderPath,
+      'additionalPaths': extraFolderPaths,
       'display': display,
       'sessionTeam': sessionTeam,
       if (profileId.isNotEmpty) 'profileId': profileId,
@@ -205,8 +243,7 @@ class AppSession {
             runtimeType == other.runtimeType &&
             sessionId == other.sessionId &&
             workspaceId == other.workspaceId &&
-            primaryPath == other.primaryPath &&
-            listEquals(additionalPaths, other.additionalPaths) &&
+            listEquals(folders, other.folders) &&
             display == other.display &&
             sessionTeam == other.sessionTeam &&
             profileId == other.profileId &&
@@ -225,8 +262,7 @@ class AppSession {
   int get hashCode => Object.hash(
     sessionId,
     workspaceId,
-    primaryPath,
-    Object.hashAll(additionalPaths),
+    Object.hashAll(folders),
     display,
     sessionTeam,
     profileId,
