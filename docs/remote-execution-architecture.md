@@ -71,12 +71,15 @@
 ```dart
 enum RuntimeKind { local, wsl, ssh }
 
+enum RemoteOs { posix, windows }   // ssh target 在 connect 时探测
+
 class RuntimeTarget {
   final String id;            // 'local' | 'wsl:Ubuntu' | 'ssh:<profileId>'
   final String label;         // UI 显示名
   final RuntimeKind kind;
   final String? sshProfileId; // kind == ssh
   final String? wslDistro;    // kind == wsl
+  final RemoteOs? remoteOs;   // kind == ssh：连上后探测，决定 fs/shell/relay/symlink 分支
 
   // 派生（由 RuntimeContextRegistry 物化，见 §6）：
   //   Filesystem   fs        — Local / Wsl / Sftp
@@ -86,6 +89,7 @@ class RuntimeTarget {
 ```
 
 - `RuntimeTarget` 本质就是今天 `RuntimeStorageContext` 算出来的东西，**外加 transport 的归属**。统一后 `ConnectionMode`/`StorageBackendMode`/active profile/wsl distro 不再是四个独立旋钮，而是 `RuntimeTarget` 的字段。
+- **远程 OS 不限 POSIX**：ssh target 在 connect 时探测 `remoteOs`。Windows 远程在几处走不同分支——symlink 继承退化为 copy（§5.2）、relay 用 windows 静态二进制（§7.1）、登录 shell / 路径语义不同（§5.3）。其余抽象（控制面/工作面、隧道、物化）不变。
 - **`local` 与 `wsl:*` 是隐式条目**（按平台自动存在）；`ssh:*` 由现有 `ssh_profiles/` 升级而来的 **targets 注册表**提供。即：现有 `SshProfile` 列表 → 通用 target 列表的一个子集。
 
 ### 3.1 与现有类型的映射
@@ -162,7 +166,10 @@ member 的机器 = 其所分配目录(ProjectFolder)的 targetId
 
 能力面：新增 teammate-bus MCP 工具 `publish_artifact` / `fetch_artifact` / `list_artifacts`，能力化（每 CLI 一致，见 AGENTS.md）。
 
----
+已定（2026-06-22）：
+- **单文件为核心**，`fetch_artifact` 一次一文件。**目录/树走 tar 流**作为后续增量（`publish_artifact` 标 `kind: dir` → App 在源端 tar、流式到目的端解包），不在首版。
+- **落点冲突默认报错**：`destPath` 已存在则失败，需显式 `overwrite: true` 才覆盖。
+- **inbox 生命周期**：产物句柄与落点是 **session 作用域**，会话结束随 runtime 树回收；另设 **TTL** 清理长期未取的句柄，避免 inbox 无限堆积。
 
 ## 5. 控制面 vs 工作面：存储职责拆分
 
@@ -211,6 +218,7 @@ CLI 运行时树是**按 launch 惰性物化**的（`ConfigProfileService` / `Re
 - **物理路径**：各机同一套相对布局、只是根不同——`<machineRoot>/cli-defaults/…`、`<machineRoot>/workspace/projects/{wsId}/sessions/{sId}/runtime/members/{memberId}/…`。layout 方法全 root-relative，故"免费"成立。
 - 于是一个 session 在 mixed 工作区里物理上被劈成 **home 上 1 条元数据 + 跨 N 台机的 N 棵自包含 runtime 子树**。
 - **接受陈旧**：在 home 改 app 默认/workspace config **不实时同步**到远程副本，下次 launch 重物化时才更新（launch 本就是物化点，类似 build cache）。
+- **Windows 远程**（`remoteOs == windows`，§3）：symlink 不可靠，继承退化为 **copy**——`_ensureInheritedChild` 现成的 copyTree 兜底正好覆盖；代价是改 app 默认后远程重物化要重拷而非重链。POSIX 远程仍走 symlink。
 
 ### 5.3 远程 target 的初始化 preflight
 
@@ -297,6 +305,12 @@ TeamBus 仍是**本地进程内**（`team_bus.dart:27`），MCP 绑死 `127.0.0.
 
 **推荐：bus 增开 raw socket 传输**（行分隔 JSON-RPC，即 stdio MCP 的线格式，复用现有 `wait_for_message` 逻辑、只换 framing 入口），远程只放一个 dumb relay：`socat STDIO TCP:127.0.0.1:<P>`（或 bundle 的微型静态 relay，随 §5.1/§5.2 物化按 arch 下发）。全程无 HTTP → 无 fetch 超时；stdio↔TCP 全持久流。反向隧道在三方案中**都不变**。
 
+已定（2026-06-22）：
+
+- **鉴权（必做）**：隧道的远程 `127.0.0.1:<P>` 对**该远程机所有本地用户可见**，而成员身份只是 `--member` 头——共享主机上同机用户可冒充/窃听。故 bus 为**每个 session 生成随机 token**，隧道建立时下发、注入该成员 relay 的连接参数（`--token`），bus 校验后才接受该 socket。token 随 session 失效。
+- **relay 分发（分层）**：① 先探测远程主机的 `socat`/`nc`（零分发）；② 缺则用 **bundle 的微型静态 relay**，按远程 arch/OS 物化（覆盖 linux-x64/arm64、macos、**windows-x64**——Windows 远程通常没有 socat，故静态 relay 是其必需路径）；③ 都没有 → 清晰报错。
+- **逐 CLI 才配 relay（§5）**：给 CLI 加一个能力位"是否长阻塞 `wait_for_message`"。长阻塞的（claude / flashskyai / codex / opencode）需要 relay；**门铃式的 cursor**（idle-at-prompt、不长阻塞）**不需要**——它远程时直接 HTTP 短请求即可，省掉 relay。能力化判定，不散落 `if (cli==)`。
+
 ---
 
 ## 8. 端到端解析时序（启动一个会话/成员）
@@ -350,10 +364,11 @@ openSessionTab / scheduleMemberConnect
 
 ## 11. 风险与开放问题
 
-- **连接弹性（倾向已定，待最终确认）**：某远程 target 主机掉线时，**只降级该主机上的会话/成员，其余团队继续**（§1.4 决策 5）。注册表持有多个 `SSHClient`，需要心跳/重连/超时、per-target 连接状态 UI、掉线后会话可 resume。今天是"单连接掉=全 App 降级"，需改为按 target 隔离。**这块体量不小，建议单列一期（P4 或横切项）、不塞进 P3**；P3 先接受"远程掉线=该成员会话降级、无自动重连"。
+- **连接弹性（已定：要做自动重连 + 会话恢复）**：某远程 target 主机掉线时，**只降级该主机上的会话/成员，其余团队继续**（§1.4 决策 5）。注册表持有多个 `SSHClient`，需心跳/超时、**自动重连 + 掉线后会话自动 resume**（含重建反向隧道、重注 MCP 端口、重发门铃）、per-target 连接状态 UI。今天是"单连接掉=全 App 降级"，改为按 target 隔离。**单列一期 P4（见 §12）**，非"先不做"。
 - **凭证推远程的信任边界**：§5.1 的凭证物化应是 **per-target 显式 opt-in + UI 明示**（而非默认把 key 铺到任何远程机）；密钥轮换需重推已 opt-in 的 N 台。
 - **远程 CLI 定位缺口**：今天只有 flashskyai 有远程 locator（`RemoteFlashskyaiCliLocator`）；需泛化成走 target transport 的 capability、覆盖全 5 CLI，并接入缺失→SSH 安装 opt-in（见 §5.3 Q1）。
-- **relay / 桥的按-arch 分发**：远程 stdio relay 需按远程 arch 物化（随 §5.1/§5.2 物化管线）；首选主机已有的 `socat`/`nc`，缺则回退到 bundle 的微型静态 relay（见 §7.1）。bus 侧需新增一个 raw socket（行分隔 JSON-RPC）传输。
+- **relay/token 与按-arch 分发（已定，见 §7.1）**：bus 新增 raw socket（行分隔 JSON-RPC）传输 + per-session token 鉴权；远程 relay 分层分发（探测 `socat`/`nc` → bundle 静态 relay 按 arch/OS 物化，含 windows-x64 → 报错）；relay 仅为长阻塞 CLI 配（cursor 门铃式免）。
+- **非 POSIX（Windows）远程（已定要支持，见 §3）**：ssh target connect 时探测 `remoteOs`；Windows 远程在 symlink→copy（§5.2）、relay 走 windows 静态二进制（§7.1）、登录 shell/路径语义（§5.3）三处分支。其余抽象不变。远程仍**仅限 local/wsl/ssh 三 kind**，不引入新后端。
 - **跨机产物传输的边界（§4.2）**：写入对方机限定 session inbox；大文件流式 + 大小上限；双远程经本地中转一跳（暂不做 host-to-host 直传）；publish/fetch 受 per-target 信任约束。
 - **跨机协调边界**：成员远程的反向隧道方案假设"总线在本地、成员够得着即可"。若未来要"无本地 App 常驻、纯远程团队自治"，则需把总线本身做成可独立部署的 broker——本设计**显式不纳入**，避免过度工程。
 - **控制面在远端（Android）时的 home target**：home 也可能是 ssh。需确认 §5 的"控制面永远在 home"在 Android 下与今天 `RemoteSshStoragePathResolver` 行为一致。
@@ -371,9 +386,10 @@ openSessionTab / scheduleMemberConnect
 | **P0** 重构（行为不变） | 四旋钮 → `RuntimeTarget` + targets 注册表 | §3、§9 前半；单 target = 今天行为 | 现有 local/wsl/ssh/Android 全路径回归通过；`isSshMode` 单一来源 | 消除耦合 |
 | **P1** home target 收尾 | home target 归一 | 清理 `install/reinstall`；UI 从"选 profile"升级为"选 target" | Android（home=ssh）在新模型下等价归一；桌面 home 由平台定为 `local` | 整体远程（Android） |
 | **P2** 去单例 | 控制面/工作面拆分 + 注册表 | §5、§6、§10；`AppProject.folders[].targetId` | 两个工作区同时分别落 local 与 ssh，互不影响；远程机离线时项目列表仍可读 | **项目远程** |
-| **P3** 成员远程（**含修复现网已坏的 Android mixed**） | 启动时成员→目录分配 + 反向隧道 + 远程初始化 | §4.1/§4.2、§5.3、§7/§7.1；`AppSession.folderAssignments`；反向隧道(启用桌面成员远程 + 修复 Android mixed)；bus raw-socket 传输 + 远程 relay 物化；跨机产物传输 MCP | 混合工作区单成员在远程机自己目录跑，门铃/读信/协调正常；Android mixed 消息真正送达；A↔B 跨机 publish/fetch 产物可用 | **成员远程** + Android mixed 修复 |
+| **P3** 成员远程（**含修复现网已坏的 Android mixed**） | 启动时成员→目录分配 + 反向隧道 + 远程初始化 | §4.1/§4.2、§5.3、§7/§7.1；`AppSession.folderAssignments`；反向隧道(启用桌面成员远程 + 修复 Android mixed)；bus raw-socket 传输 + per-session token + 远程 relay 物化(仅长阻塞 CLI)；跨机产物传输 MCP；Windows 远程分支(§3) | 混合工作区单成员在远程机自己目录跑，门铃/读信/协调正常；Android mixed 消息真正送达；A↔B 跨机 publish/fetch 产物可用；POSIX 与 Windows 远程各通一条路 | **成员远程** + Android mixed 修复 |
+| **P4** 连接弹性 | per-target 掉线隔离 + 自动重连/恢复 | §11 首条；心跳/超时；重连后重建隧道+重注 MCP 端口+重发门铃；掉线会话自动 resume；per-target 状态 UI | 拔掉一台远程机：仅其成员降级、自动重连后会话恢复，其余团队不受影响 | 远程**可用性**（生产级） |
 
-预备/P0/P1 风险低、顺手修掉现有耦合；P2 是分水岭（动存储单例）；P3 最重，建立在 P2 之上。
+预备/P0/P1 风险低、顺手修掉现有耦合；P2 是分水岭（动存储单例）；P3 最重，建立在 P2 之上；P4 把远程从"能跑"抬到"生产级可用"。
 
 > **桌面"整体远程"（把 home/控制面也搬到 ssh 服务器）暂不做**：那等于把项目列表/团队配置都挪到远程，更像多设备同步需求，且引入"桌面控制面离线"失败模式。桌面的一切远程在 **folder 层**表达（项目/成员远程，home 仍 `local`）。将来真有"桌面接管开发服务器当 home"的需求再加，不占 P1。
 
