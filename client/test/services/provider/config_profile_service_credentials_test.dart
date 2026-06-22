@@ -1,4 +1,3 @@
-import 'package:path/path.dart' as p;
 import 'package:flutter_test/flutter_test.dart';
 import 'package:teampilot/models/app_provider_config.dart';
 import 'package:teampilot/models/team_config.dart';
@@ -146,7 +145,7 @@ void main() {
         ),
       ]);
       await fs.writeString(
-        p.join(home, '.claude', '.credentials.json'),
+        fs.pathContext.join(home, '.claude', '.credentials.json'),
         '{"claudeAiOauth":{"accessToken":"global"}}',
       );
 
@@ -173,8 +172,8 @@ void main() {
 
       final sessionDir = outcome.environment['CLAUDE_CONFIG_DIR']!;
       expect(
-        fs.symlinks[p.join(sessionDir, '.credentials.json')],
-        p.join(home, '.claude', '.credentials.json'),
+        fs.symlinks[fs.pathContext.join(sessionDir, '.credentials.json')],
+        fs.pathContext.join(home, '.claude', '.credentials.json'),
       );
       expect(outcome.warnings, isNot(contains('claude_credentials_missing')));
     },
