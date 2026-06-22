@@ -1952,6 +1952,12 @@ abstract class AppLocalizations {
   /// **'Open in new tab'**
   String get homeWorkspaceOpenWorkspaceInNewTab;
 
+  /// No description provided for @homeWorkspaceOpenInNewTabWithOtherIdentity.
+  ///
+  /// In en, this message translates to:
+  /// **'Open in new tab with other identity…'**
+  String get homeWorkspaceOpenInNewTabWithOtherIdentity;
+
   /// No description provided for @homeWorkspaceFavoriteWorkspace.
   ///
   /// In en, this message translates to:
@@ -6086,6 +6092,36 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Select the authentication environment variable written to settings.'**
   String get appProviderClaudeAuthFieldHint;
+
+  /// No description provided for @appProviderClaudeCredentialBinding.
+  ///
+  /// In en, this message translates to:
+  /// **'OAuth credential source'**
+  String get appProviderClaudeCredentialBinding;
+
+  /// No description provided for @appProviderClaudeCredentialBindingLinked.
+  ///
+  /// In en, this message translates to:
+  /// **'Follow global (~/.claude)'**
+  String get appProviderClaudeCredentialBindingLinked;
+
+  /// No description provided for @appProviderClaudeCredentialBindingIsolated.
+  ///
+  /// In en, this message translates to:
+  /// **'Isolated copy (TeamPilot only)'**
+  String get appProviderClaudeCredentialBindingIsolated;
+
+  /// No description provided for @appProviderClaudeCredentialBindingLinkedHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Shares the same OAuth session as Claude Code in your terminal. Refreshes stay in sync.'**
+  String get appProviderClaudeCredentialBindingLinkedHint;
+
+  /// No description provided for @appProviderClaudeCredentialBindingIsolatedHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Keeps a separate credential copy under TeamPilot. Use when this provider must not share login with global Claude Code.'**
+  String get appProviderClaudeCredentialBindingIsolatedHint;
 
   /// No description provided for @notes.
   ///

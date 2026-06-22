@@ -1042,6 +1042,10 @@ class AppLocalizationsEn extends AppLocalizations {
   String get homeWorkspaceOpenWorkspaceInNewTab => 'Open in new tab';
 
   @override
+  String get homeWorkspaceOpenInNewTabWithOtherIdentity =>
+      'Open in new tab with other identity…';
+
+  @override
   String get homeWorkspaceFavoriteWorkspace => 'Favorite workspace';
 
   @override
@@ -3353,6 +3357,25 @@ class AppLocalizationsEn extends AppLocalizations {
   @override
   String get appProviderClaudeAuthFieldHint =>
       'Select the authentication environment variable written to settings.';
+
+  @override
+  String get appProviderClaudeCredentialBinding => 'OAuth credential source';
+
+  @override
+  String get appProviderClaudeCredentialBindingLinked =>
+      'Follow global (~/.claude)';
+
+  @override
+  String get appProviderClaudeCredentialBindingIsolated =>
+      'Isolated copy (TeamPilot only)';
+
+  @override
+  String get appProviderClaudeCredentialBindingLinkedHint =>
+      'Shares the same OAuth session as Claude Code in your terminal. Refreshes stay in sync.';
+
+  @override
+  String get appProviderClaudeCredentialBindingIsolatedHint =>
+      'Keeps a separate credential copy under TeamPilot. Use when this provider must not share login with global Claude Code.';
 
   @override
   String get notes => 'Notes';

@@ -2,17 +2,25 @@ import 'dart:async';
 
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:go_router/go_router.dart';
+
 import '../../cubits/chat_cubit.dart';
+import '../../cubits/launch_profile_cubit.dart';
 import '../../l10n/l10n_extensions.dart';
-import '../../models/workspace.dart';
 import '../../models/app_session.dart';
+import '../../models/launch_profile.dart';
+import '../../models/launch_profile_ref.dart';
+import '../../models/workspace.dart';
+import '../../models/workspace_tab_ref.dart';
+import '../../services/home_workspace/home_recent_workspaces_store.dart';
 import '../../services/home_workspace/workspace_display_prefs_store.dart';
 import '../../services/home_workspace/workspace_favorites_store.dart';
-import '../../services/home_workspace/home_recent_workspaces_store.dart';
-import 'workspace_sort.dart';
 import '../../theme/app_text_styles.dart';
 import '../../theme/workspace_surface_layers.dart';
 import 'home_workspace_library_view.dart';
+import 'open_workspace_tab_actions.dart';
+import 'workspace_card.dart';
+import 'workspace_sort.dart';
 import 'workspaces_tab.dart';
 
 /// Favorites or recently visited workspaces in the workspace home right pane.
@@ -31,7 +39,7 @@ class _HomeLibrarySectionState extends State<HomeLibrarySection> {
   final _recentStore = HomeRecentWorkspacesStore();
   final _displayPrefsStore = WorkspaceDisplayPrefsStore();
   Set<String> _favoriteWorkspaceIds = {};
-  List<String> _recentWorkspaceIds = [];
+  List<WorkspaceTabRef> _recentTabs = const [];
   var _workspaceSort = WorkspaceSort.recentlyUpdated;
 
   @override
@@ -50,12 +58,12 @@ class _HomeLibrarySectionState extends State<HomeLibrarySection> {
 
   Future<void> _reload() async {
     final favorites = await _favoritesStore.load();
-    final recent = await _recentStore.loadOrderedIds();
+    final recent = await _recentStore.loadOrderedTabs();
     final prefs = await _displayPrefsStore.load();
     if (!mounted) return;
     setState(() {
       _favoriteWorkspaceIds = favorites;
-      _recentWorkspaceIds = recent;
+      _recentTabs = recent;
       _workspaceSort = prefs.sort;
     });
   }
@@ -83,16 +91,27 @@ class _HomeLibrarySectionState extends State<HomeLibrarySection> {
     final sessions = context.select<ChatCubit, List<AppSession>>(
       (c) => c.state.sessions,
     );
+    final identities = context.select<LaunchProfileCubit, List<LaunchProfile>>(
+      (c) => c.state.identities,
+    );
 
     final workspaces = isFavorites
         ? [
             for (final p in allWorkspaces)
               if (_favoriteWorkspaceIds.contains(p.workspaceId)) p,
           ]
+        : const <Workspace>[];
+
+    final recentEntries = isFavorites
+        ? const <({Workspace workspace, WorkspaceTabRef tab})>[]
         : [
-            for (final id in _recentWorkspaceIds)
-              if (_findWorkspace(allWorkspaces, id) case final p?) p,
+            for (final tab in _recentTabs)
+              if (_findWorkspace(allWorkspaces, tab.workspaceId)
+                  case final workspace?)
+                (workspace: workspace, tab: tab),
           ];
+
+    final isEmpty = isFavorites ? workspaces.isEmpty : recentEntries.isEmpty;
 
     return ColoredBox(
       color: cs.workspaceCard,
@@ -108,22 +127,30 @@ class _HomeLibrarySectionState extends State<HomeLibrarySection> {
           ),
           const SizedBox(height: 20),
           Expanded(
-            child: workspaces.isEmpty
+            child: isEmpty
                 ? _LibraryEmptyState(
                     icon: isFavorites
                         ? Icons.star_outline_rounded
                         : Icons.history_rounded,
                     label: l10n.homeWorkspaceNoData,
                   )
-                : WorkspaceCollection(
-                    workspaces: workspaces,
-                    sessions: sessions,
-                    gridView: true,
-                    workspaceSort: _workspaceSort,
-                    favoriteWorkspaceIds: _favoriteWorkspaceIds,
-                    onToggleWorkspaceFavorite: _toggleWorkspaceFavorite,
-                    preserveOrder: !isFavorites,
-                  ),
+                : isFavorites
+                    ? WorkspaceCollection(
+                        workspaces: workspaces,
+                        sessions: sessions,
+                        gridView: true,
+                        workspaceSort: _workspaceSort,
+                        favoriteWorkspaceIds: _favoriteWorkspaceIds,
+                        onToggleWorkspaceFavorite: _toggleWorkspaceFavorite,
+                        preserveOrder: false,
+                      )
+                    : _RecentWorkspaceGrid(
+                        entries: recentEntries,
+                        sessions: sessions,
+                        identities: identities,
+                        favoriteWorkspaceIds: _favoriteWorkspaceIds,
+                        onToggleWorkspaceFavorite: _toggleWorkspaceFavorite,
+                      ),
           ),
         ],
       ),
@@ -135,6 +162,65 @@ class _HomeLibrarySectionState extends State<HomeLibrarySection> {
       if (p.workspaceId == id) return p;
     }
     return null;
+  }
+}
+
+class _RecentWorkspaceGrid extends StatelessWidget {
+  const _RecentWorkspaceGrid({
+    required this.entries,
+    required this.sessions,
+    required this.identities,
+    required this.favoriteWorkspaceIds,
+    required this.onToggleWorkspaceFavorite,
+  });
+
+  final List<({Workspace workspace, WorkspaceTabRef tab})> entries;
+  final List<AppSession> sessions;
+  final List<LaunchProfile> identities;
+  final Set<String> favoriteWorkspaceIds;
+  final Future<void> Function(String workspaceId) onToggleWorkspaceFavorite;
+
+  @override
+  Widget build(BuildContext context) {
+    final l10n = context.l10n;
+    final sessionCounts = <String, int>{};
+    for (final s in sessions) {
+      final id = s.workspaceId;
+      if (id.isEmpty) continue;
+      sessionCounts[id] = (sessionCounts[id] ?? 0) + 1;
+    }
+
+    return GridView.builder(
+      gridDelegate: const SliverGridDelegateWithMaxCrossAxisExtent(
+        maxCrossAxisExtent: 460,
+        mainAxisExtent: 244,
+        crossAxisSpacing: 20,
+        mainAxisSpacing: 20,
+      ),
+      itemCount: entries.length,
+      itemBuilder: (context, index) {
+        final entry = entries[index];
+        final workspace = entry.workspace;
+        final tab = entry.tab;
+        return WorkspaceCard(
+          key: ValueKey('recent-${tab.tabKey}'),
+          workspace: workspace,
+          sessionCount: sessionCounts[workspace.workspaceId] ?? 0,
+          favorited: favoriteWorkspaceIds.contains(workspace.workspaceId),
+          onToggleFavorite: () => onToggleWorkspaceFavorite(workspace.workspaceId),
+          displayNameOverride: workspaceTabDisplayLabel(
+            l10n: l10n,
+            workspace: workspace,
+            identity: tab.identity,
+            identities: identities,
+            alwaysShowIdentity: true,
+          ),
+          tabIdentity: tab.identity,
+          onTap: () => context.go(tab.route),
+          sessions: sessions,
+        );
+      },
+    );
   }
 }
 

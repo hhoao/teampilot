@@ -13,6 +13,7 @@ import '../../theme/app_text_styles.dart';
 import '../../theme/workspace_surface_layers.dart';
 import '../../widgets/menu/sidebar_action_menu.dart';
 import '../../widgets/notification/notification_bell_button.dart';
+import '../../utils/context_menu_position.dart';
 import '../../widgets/team_pilot_brand_logo.dart';
 import '../../widgets/window_chrome_controls.dart';
 import '../../widgets/window_drag_area.dart';
@@ -116,33 +117,33 @@ class HomeWorkspaceTab {
 class HomeTitleBar extends StatefulWidget {
   const HomeTitleBar({
     this.tabs = const [],
-    this.activeWorkspaceId,
+    this.activeTabKey,
     this.pageChrome = WorkspacePageChrome.home,
     this.recentlyClosed = const [],
-    this.openWorkspaceIds = const {},
     this.onHomeTap,
     this.onSelectTab,
     this.onCloseTab,
-    this.onReopenClosedWorkspace,
+    this.onReopenClosedTab,
+    this.onOpenTabWithOtherIdentity,
     super.key,
   });
 
   /// Open workspace tabs, kept until explicitly closed.
   final List<HomeWorkspaceTab> tabs;
 
-  /// The workspace currently shown, or null when the Home view is shown.
-  final String? activeWorkspaceId;
+  /// The workspace tab currently shown, or null when the Home view is shown.
+  final String? activeTabKey;
 
   /// Page backdrop chrome; matches [HomeShell] scaffold fill.
   final WorkspacePageChrome pageChrome;
 
   /// Recently closed tabs (newest first), excluding currently open ids.
   final List<HomeClosedWorkspaceEntry> recentlyClosed;
-  final Set<String> openWorkspaceIds;
   final VoidCallback? onHomeTap;
   final ValueChanged<String>? onSelectTab;
   final ValueChanged<String>? onCloseTab;
-  final ValueChanged<String>? onReopenClosedWorkspace;
+  final ValueChanged<String>? onReopenClosedTab;
+  final ValueChanged<String>? onOpenTabWithOtherIdentity;
 
   @override
   State<HomeTitleBar> createState() => _HomeTitleBarState();
@@ -226,7 +227,7 @@ class _HomeTitleBarState extends State<HomeTitleBar>
             const SizedBox(width: 24),
             _HomePill(
               label: l10n.homeWorkspaceMainWindow,
-              active: widget.activeWorkspaceId == null,
+              active: widget.activeTabKey == null,
               onTap: widget.onHomeTap,
             ),
             if (widget.tabs.isEmpty)
@@ -236,7 +237,7 @@ class _HomeTitleBarState extends State<HomeTitleBar>
                     const SizedBox(width: 6),
                     _RecentlyClosedOverflowButton(
                       entries: widget.recentlyClosed,
-                      onReopen: widget.onReopenClosedWorkspace,
+                      onReopen: widget.onReopenClosedTab,
                     ),
                     Expanded(
                       child: showWindowControls
@@ -284,12 +285,15 @@ class _HomeTitleBarState extends State<HomeTitleBar>
                                     label: tab.name,
                                     tooltip: tab.tooltip ?? tab.name,
                                     kind: tab.kind,
-                                    active: tab.id == widget.activeWorkspaceId,
+                                    active: tab.id == widget.activeTabKey,
                                     closable: tab.closable,
                                     onTap: () =>
                                         widget.onSelectTab?.call(tab.id),
                                     onClose: () =>
                                         widget.onCloseTab?.call(tab.id),
+                                    onOpenWithOtherIdentity: () => widget
+                                        .onOpenTabWithOtherIdentity
+                                        ?.call(tab.id),
                                   ),
                                 ),
                               ],
@@ -299,7 +303,7 @@ class _HomeTitleBarState extends State<HomeTitleBar>
                                 widthFactor: 1,
                                 child: _RecentlyClosedOverflowButton(
                                   entries: widget.recentlyClosed,
-                                  onReopen: widget.onReopenClosedWorkspace,
+                                  onReopen: widget.onReopenClosedTab,
                                 ),
                               ),
                             ],
@@ -411,6 +415,7 @@ class _WorkspaceTab extends StatefulWidget {
     this.closable = true,
     this.onTap,
     this.onClose,
+    this.onOpenWithOtherIdentity,
   });
 
   final String label;
@@ -420,6 +425,7 @@ class _WorkspaceTab extends StatefulWidget {
   final bool closable;
   final VoidCallback? onTap;
   final VoidCallback? onClose;
+  final VoidCallback? onOpenWithOtherIdentity;
 
   @override
   State<_WorkspaceTab> createState() => _WorkspaceTabState();
@@ -430,6 +436,54 @@ class _WorkspaceTabState extends State<_WorkspaceTab> {
 
   /// Touch platforms have no hover; keep tab chrome visible on Android.
   bool get _showChrome => widget.active || _hovered || Platform.isAndroid;
+
+  Future<void> _showTabContextMenuAtGlobal(Offset globalPosition) async {
+    if (widget.onOpenWithOtherIdentity == null) return;
+    final l10n = context.l10n;
+    final selected = await showSidebarActionMenuFromSpecs<String>(
+      context: context,
+      globalPosition: globalPosition,
+      specs: [
+        SidebarActionMenuSpec.item(
+          value: 'otherIdentity',
+          icon: Icons.badge_outlined,
+          label: l10n.homeWorkspaceOpenInNewTabWithOtherIdentity,
+        ),
+        if (widget.closable && widget.onClose != null)
+          SidebarActionMenuSpec.item(
+            value: 'close',
+            icon: Icons.close,
+            label: l10n.closeTab,
+          ),
+      ],
+    );
+    if (!mounted || selected == null) return;
+    switch (selected) {
+      case 'otherIdentity':
+        widget.onOpenWithOtherIdentity?.call();
+      case 'close':
+        widget.onClose?.call();
+    }
+  }
+
+  Future<void> _showTabContextMenuAtTap(TapDownDetails details) async {
+    await _showTabContextMenuAtGlobal(
+      contextMenuGlobalPosition(context, details),
+    );
+  }
+
+  void _showTabContextMenuFromTap(TapDownDetails details) {
+    unawaited(_showTabContextMenuAtTap(details));
+  }
+
+  void _showTabContextMenuAtChipCenter() {
+    final box = context.findRenderObject();
+    if (box is! RenderBox || !box.hasSize) return;
+    final center = box.localToGlobal(
+      Offset(box.size.width / 2, box.size.height / 2),
+    );
+    unawaited(_showTabContextMenuAtGlobal(center));
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -455,8 +509,17 @@ class _WorkspaceTabState extends State<_WorkspaceTab> {
       child: MouseRegion(
         onEnter: (_) => setState(() => _hovered = true),
         onExit: (_) => setState(() => _hovered = false),
-        child: InkWell(
+        child: GestureDetector(
+          behavior: HitTestBehavior.opaque,
           onTap: widget.onTap,
+          onSecondaryTapDown: widget.onOpenWithOtherIdentity == null
+              ? null
+              : _showTabContextMenuFromTap,
+          onLongPress: widget.onOpenWithOtherIdentity == null || !Platform.isAndroid
+              ? null
+              : _showTabContextMenuAtChipCenter,
+          child: InkWell(
+            onTap: widget.onTap,
           borderRadius: BorderRadius.circular(8),
           child: Container(
             constraints: const BoxConstraints(maxWidth: 200),
@@ -535,6 +598,7 @@ class _WorkspaceTabState extends State<_WorkspaceTab> {
               ],
             ),
           ),
+        ),
         ),
       ),
     );
@@ -682,7 +746,7 @@ class _RecentlyClosedOverflowButtonState
                                     ),
                                   ),
                             menuController: _menuController,
-                            onTap: () => widget.onReopen?.call(entry.workspaceId),
+                            onTap: () => widget.onReopen?.call(entry.tabKey),
                           ),
                       ],
                     ),

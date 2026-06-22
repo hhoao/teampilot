@@ -5,6 +5,8 @@ import 'package:flutter/material.dart';
 import 'package:teampilot/theme/app_icon_sizes.dart';
 
 import '../../l10n/l10n_extensions.dart';
+import '../../models/app_session.dart';
+import '../../models/launch_profile_ref.dart';
 import '../../models/workspace.dart';
 import '../../theme/app_text_styles.dart';
 import '../../theme/workspace_surface_layers.dart';
@@ -12,6 +14,7 @@ import '../../utils/workspace_display_name.dart';
 import '../../widgets/app_icon_button.dart';
 import '../../widgets/menu/sidebar_action_menu.dart';
 import '../../widgets/workspace_icon.dart';
+import 'open_workspace_tab_actions.dart';
 import 'workspace_actions.dart';
 import 'home_workspace_tab_scope.dart';
 
@@ -23,6 +26,9 @@ class WorkspaceListTile extends StatefulWidget {
     required this.favorited,
     required this.onToggleFavorite,
     this.onTap,
+    this.sessions = const [],
+    this.tabIdentity,
+    this.displayNameOverride,
     super.key,
   });
 
@@ -31,6 +37,9 @@ class WorkspaceListTile extends StatefulWidget {
   final bool favorited;
   final Future<void> Function() onToggleFavorite;
   final VoidCallback? onTap;
+  final List<AppSession> sessions;
+  final LaunchProfileRef? tabIdentity;
+  final String? displayNameOverride;
 
   @override
   State<WorkspaceListTile> createState() =>
@@ -48,6 +57,16 @@ class _WorkspaceListTileState extends State<WorkspaceListTile> {
       context,
       widget.workspace.workspaceId,
       activate: false,
+      identity: widget.tabIdentity,
+    );
+  }
+
+  Future<void> _openWithOtherIdentity() {
+    return openWorkspaceInNewTabWithIdentityPicker(
+      context,
+      workspace: widget.workspace,
+      sessions: widget.sessions,
+      excludeIdentity: widget.tabIdentity,
     );
   }
 
@@ -57,6 +76,8 @@ class _WorkspaceListTileState extends State<WorkspaceListTile> {
     final styles = AppTextStyles.of(context);
     final l10n = context.l10n;
     final workspace = widget.workspace;
+    final displayName =
+        widget.displayNameOverride ?? workspace.localizedName(l10n);
 
     return MouseRegion(
       cursor: SystemMouseCursors.click,
@@ -65,6 +86,7 @@ class _WorkspaceListTileState extends State<WorkspaceListTile> {
       child: GestureDetector(
         behavior: HitTestBehavior.opaque,
         onTap: widget.onTap,
+        onSecondaryTapUp: (details) => unawaited(_showContextMenu(details)),
         child: AnimatedContainer(
           duration: const Duration(milliseconds: 160),
           curve: Curves.easeOut,
@@ -92,8 +114,8 @@ class _WorkspaceListTileState extends State<WorkspaceListTile> {
                   mainAxisAlignment: MainAxisAlignment.center,
                   children: [
                     Text(
-                      workspace.localizedName(l10n),
-                      maxLines: 1,
+                      displayName,
+                      maxLines: 2,
                       overflow: TextOverflow.ellipsis,
                       style: styles.body.copyWith(fontWeight: FontWeight.w600),
                     ),
@@ -117,7 +139,8 @@ class _WorkspaceListTileState extends State<WorkspaceListTile> {
                       icon: Icons.open_in_new_rounded,
                       tooltip: l10n.homeWorkspaceOpenWorkspaceInNewTab,
                       size: AppIconButton.kCompactSize,
-                      compact: true, onTap: _openInNewTab,
+                      compact: true,
+                      onTap: _openInNewTab,
                     ),
                     AppIconButton(
                       icon: widget.favorited
@@ -128,7 +151,8 @@ class _WorkspaceListTileState extends State<WorkspaceListTile> {
                           ? l10n.homeWorkspaceUnfavoriteWorkspace
                           : l10n.homeWorkspaceFavoriteWorkspace,
                       size: AppIconButton.kCompactSize,
-                      compact: true, onTap: () => unawaited(widget.onToggleFavorite()),
+                      compact: true,
+                      onTap: () => unawaited(widget.onToggleFavorite()),
                     ),
                     SizedBox(
                       width: AppIconButton.kCompactSize,
@@ -141,6 +165,12 @@ class _WorkspaceListTileState extends State<WorkspaceListTile> {
                         onOpen: () => setState(() => _menuOpen = true),
                         onClose: () => setState(() => _menuOpen = false),
                         buildMenuChildren: (context, controller) => [
+                          SidebarActionMenuItem(
+                            icon: Icons.badge_outlined,
+                            label: l10n.homeWorkspaceOpenInNewTabWithOtherIdentity,
+                            menuController: controller,
+                            onTap: () => unawaited(_openWithOtherIdentity()),
+                          ),
                           SidebarActionMenuItem(
                             icon: Icons.drive_file_rename_outline,
                             label: l10n.homeWorkspaceRenameWorkspace,
@@ -188,5 +218,32 @@ class _WorkspaceListTileState extends State<WorkspaceListTile> {
         ),
       ),
     );
+  }
+
+  Future<void> _showContextMenu(TapUpDetails details) async {
+    final l10n = context.l10n;
+    final selected = await showSidebarActionMenuFromSpecsAtTap<String>(
+      context: context,
+      tapDetails: TapDownDetails(globalPosition: details.globalPosition),
+      specs: [
+        SidebarActionMenuSpec.item(
+          value: 'otherIdentity',
+          icon: Icons.badge_outlined,
+          label: l10n.homeWorkspaceOpenInNewTabWithOtherIdentity,
+        ),
+        SidebarActionMenuSpec.item(
+          value: 'newTab',
+          icon: Icons.open_in_new_rounded,
+          label: l10n.homeWorkspaceOpenWorkspaceInNewTab,
+        ),
+      ],
+    );
+    if (!mounted || selected == null) return;
+    switch (selected) {
+      case 'otherIdentity':
+        await _openWithOtherIdentity();
+      case 'newTab':
+        _openInNewTab();
+    }
   }
 }

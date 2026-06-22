@@ -11,24 +11,19 @@ import '../../l10n/l10n_extensions.dart';
 import '../../models/workspace.dart';
 import '../../models/app_session.dart';
 import '../../models/launch_profile_ref.dart';
-import '../../models/personal_profile.dart';
-import '../../models/team_config.dart';
-import '../../models/launch_profile_kind.dart';
-import '../../models/launch_profile.dart';
 import '../../repositories/session_repository.dart';
 import '../../services/home_workspace/workspace_launch_prefs_store.dart';
 import '../../theme/app_text_styles.dart';
 import '../../utils/launch_profile_resolver.dart';
-import '../../utils/launch_profile_display_name.dart';
 import '../../utils/home_workspace_display.dart';
 import '../../utils/workspace_display_name.dart';
 import '../../widgets/menu/sidebar_action_menu.dart';
 import 'home_launch_workspace_dialog.dart';
 import 'home_new_workspace_dialog.dart';
+import 'open_workspace_tab_actions.dart';
 import 'workspace_card.dart';
 import 'workspace_list_tile.dart';
 import 'workspace_sort.dart';
-import 'launch_workspace_team_order.dart';
 
 /// Route for [workspace] under [identity].
 String workspaceLaunchRoute(String workspaceId, LaunchProfileRef identity) =>
@@ -60,30 +55,12 @@ Future<void> openWorkspace(
   }
 
   final identityCubit = context.read<LaunchProfileCubit>();
-  final identities = identityCubit.state.identities;
-  final personals = identities.whereType<PersonalProfile>().toList();
-  final teams = identities.whereType<TeamProfile>().toList();
-  final orderedTeamIds = orderTeamIdsByRecentUse(
-    workspaceId: workspace.workspaceId,
-    teamIds: teams.map((t) => t.id).toList(),
+  final options = buildLaunchIdentityOptions(
+    l10n: l10n,
+    identities: identityCubit.state.identities,
+    workspace: workspace,
     sessions: sessions,
   );
-  final teamById = {for (final t in teams) t.id: t};
-  final options = <LaunchWorkspaceIdentityOption>[
-    for (final personal in personals)
-      LaunchWorkspaceIdentityOption(
-        id: personal.id,
-        name: launchProfileDisplayName(l10n, personal),
-        isTeam: false,
-      ),
-    for (final id in orderedTeamIds)
-      if (teamById[id] != null)
-        LaunchWorkspaceIdentityOption(
-          id: id,
-          name: launchProfileDisplayName(l10n, teamById[id]!),
-          isTeam: true,
-        ),
-  ];
   final choice = await showHomeLaunchWorkspaceDialog(
     context,
     workspaceName: workspace.effectiveDisplay,
@@ -536,6 +513,7 @@ class WorkspaceGrid extends StatelessWidget {
           sessionCount: count,
           favorited: favoriteWorkspaceIds.contains(workspace.workspaceId),
           onToggleFavorite: () => onToggleWorkspaceFavorite(workspace.workspaceId),
+          sessions: sessions,
           onTap: () => unawaited(
             openWorkspace(
               context,
@@ -578,6 +556,7 @@ class WorkspaceList extends StatelessWidget {
           sessionCount: count,
           favorited: favoriteWorkspaceIds.contains(workspace.workspaceId),
           onToggleFavorite: () => onToggleWorkspaceFavorite(workspace.workspaceId),
+          sessions: sessions,
           onTap: () => unawaited(
             openWorkspace(
               context,

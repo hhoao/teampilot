@@ -991,6 +991,9 @@ class AppLocalizationsZh extends AppLocalizations {
   String get homeWorkspaceOpenWorkspaceInNewTab => '在新标签页中打开';
 
   @override
+  String get homeWorkspaceOpenInNewTabWithOtherIdentity => '以其他身份在新标签页打开…';
+
+  @override
   String get homeWorkspaceFavoriteWorkspace => '收藏工作区';
 
   @override
@@ -3231,6 +3234,23 @@ class AppLocalizationsZh extends AppLocalizations {
 
   @override
   String get appProviderClaudeAuthFieldHint => '选择写入 settings 的认证环境变量。';
+
+  @override
+  String get appProviderClaudeCredentialBinding => 'OAuth 凭证来源';
+
+  @override
+  String get appProviderClaudeCredentialBindingLinked => '跟随全局（~/.claude）';
+
+  @override
+  String get appProviderClaudeCredentialBindingIsolated => '隔离副本（仅 TeamPilot）';
+
+  @override
+  String get appProviderClaudeCredentialBindingLinkedHint =>
+      '与终端里 Claude Code 共用同一份 OAuth 会话，刷新会自动保持同步。';
+
+  @override
+  String get appProviderClaudeCredentialBindingIsolatedHint =>
+      '在 TeamPilot 目录保存独立凭证副本；适用于不能与全局 Claude Code 共用登录的场景。';
 
   @override
   String get notes => '备注';
