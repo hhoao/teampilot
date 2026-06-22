@@ -35,6 +35,7 @@ import '../cubits/ssh_profile_cubit.dart';
 import '../cubits/launch_profile_cubit.dart';
 import '../cubits/team_hub_cubit.dart';
 import '../models/connection_mode.dart';
+import '../models/runtime_target.dart';
 import '../models/team_config.dart';
 import '../models/windows_storage_backend.dart';
 import '../l10n/app_localizations.dart';
@@ -72,6 +73,8 @@ import '../services/storage/storage_resolver.dart';
 import '../services/provider/provider_migration_service.dart';
 import '../services/cli/remote_flashskyai_cli_locator.dart';
 import '../services/storage/runtime_storage_context.dart';
+import '../services/storage/runtime_target_registry.dart';
+import '../services/storage/targets_repository.dart';
 import '../services/notification/notification_recorder.dart';
 import '../services/session/session_lifecycle_service.dart';
 import '../services/skill/skill_fetch_service.dart';
@@ -309,23 +312,72 @@ Future<AppShell> buildAppShell({
     },
   );
 
+  // P0: fold the four legacy runtime knobs (connection mode, ssh profile,
+  // windows backend, wsl distro) into a single RuntimeTarget. `targets.json`
+  // is the persisted registry (seeded once via migrateIfNeeded, mirrored on
+  // every reinstall); the *live* resolver derives the target from the legacy
+  // prefs so isSshMode/storage/transport behave identically to before this
+  // change (the legacy knobs stay the user-facing controls — Q5).
+  final runtimeTargetRegistry = RuntimeTargetRegistry(
+    repo: TargetsRepository(),
+    sshProfileRepo: sshProfileRepo,
+    isWindows: Platform.isWindows,
+    isAndroid: Platform.isAndroid,
+  );
+  await runtimeTargetRegistry.migrateIfNeeded(
+    legacyMode: sessionPreferencesCubit.state.preferences.connectionMode,
+    legacyBackend: windowsStorageBackend(),
+    parsedWslDistro: wslDistroFromPrefs(),
+  );
+
+  // Canonical id for the current legacy state. ssh kind reflects *intent*
+  // (connectionMode == ssh) regardless of whether a profile is selected yet —
+  // installForTarget + resolve()'s existing profile/Android guards then decide
+  // the effective backend, exactly as the legacy code did.
+  String currentLegacyTargetId() {
+    final mode = sessionPreferencesCubit.state.preferences.connectionMode;
+    if (mode == ConnectionMode.ssh) {
+      return 'ssh:${sshProfileCubit.state.selectedProfile?.id ?? ''}';
+    }
+    final distro = (wslDistroFromPrefs() ?? '').trim();
+    if (Platform.isWindows &&
+        windowsStorageBackend() == WindowsStorageBackend.wsl &&
+        distro.isNotEmpty) {
+      return 'wsl:$distro';
+    }
+    return RuntimeTarget.localId;
+  }
+
+  RuntimeTarget synthTarget(String id) => switch (runtimeKindOfId(id)) {
+    RuntimeKind.ssh => RuntimeTarget.ssh(
+      sshProfileIdOfId(id) ?? '',
+      label: sshProfileCubit.state.selectedProfile?.name ?? 'SSH',
+    ),
+    RuntimeKind.wsl => RuntimeTarget.wsl(wslDistroOfId(id) ?? ''),
+    RuntimeKind.local => RuntimeTarget.local(),
+  };
+
+  RuntimeTarget defaultTargetResolver() => synthTarget(currentLegacyTargetId());
+
   connectionModeService = ConnectionModeService(
-    readPreferredMode: () =>
-        sessionPreferencesCubit.state.preferences.connectionMode,
+    defaultTargetResolver: defaultTargetResolver,
     hasSshProfiles: () => sshProfileCubit.state.hasProfiles,
   );
 
-  reinstallStorageContext = () => RuntimeStorageContext.install(
-    isSshMode: connectionModeService.isSshMode,
-    sshProfile: sshProfileCubit.state.selectedProfile,
-    sshClientFactory: sshClientFactory,
-    nativeAppDataPath: nativeAppDataPath,
-    nativeHome:
-        Platform.environment['HOME'] ?? Platform.environment['USERPROFILE'],
-    nativeCwd: defaultWorkspaceDirectory,
-    wslDistro: wslDistroFromPrefs(),
-    windowsStorageBackend: windowsStorageBackend(),
-  );
+  reinstallStorageContext = () async {
+    // Funnel: mirror the current legacy state into targets.json so the
+    // persisted defaultTargetId stays in sync (Q5/Q7 dual-write window).
+    await runtimeTargetRegistry.setDefaultTargetId(currentLegacyTargetId());
+    return RuntimeStorageContext.installForTarget(
+      defaultTargetResolver(),
+      sshProfile: sshProfileCubit.state.selectedProfile,
+      sshClientFactory: sshClientFactory,
+      nativeAppDataPath: nativeAppDataPath,
+      nativeHome:
+          Platform.environment['HOME'] ?? Platform.environment['USERPROFILE'],
+      nativeCwd: defaultWorkspaceDirectory,
+    );
+  };
 
   storageRoots = StorageRoots(
     isSshMode: () => connectionModeService.isSshMode,
@@ -577,7 +629,7 @@ Future<AppShell> buildAppShell({
         sessionPreferencesCubit.state.preferences.defaultSshWorkingDirectory,
     sshUseLoginShellResolver: () =>
         sessionPreferencesCubit.state.preferences.sshUseLoginShell,
-    connectionModeResolver: () => connectionModeService.effectiveMode,
+    defaultTargetResolver: defaultTargetResolver,
     terminalScrollbackLinesResolver: () =>
         sessionPreferencesCubit.state.preferences.terminalScrollbackLines,
   );

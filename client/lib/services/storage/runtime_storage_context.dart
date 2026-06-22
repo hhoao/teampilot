@@ -1,5 +1,6 @@
 import 'dart:io';
 import 'package:flutter/foundation.dart';
+import '../../models/runtime_target.dart';
 import '../../models/ssh_profile.dart';
 import '../../models/windows_storage_backend.dart';
 import 'app_storage.dart';
@@ -77,6 +78,33 @@ class RuntimeStorageContext {
     _current = ctx;
     AppPathsBootstrapper.syncPaths(ctx.paths);
     return ctx;
+  }
+
+  /// Installs the storage context for [target] by mapping its kind onto the
+  /// existing [install] parameters. Single source of truth for P0; [resolve]
+  /// and the singleton are unchanged.
+  static Future<RuntimeStorageContext> installForTarget(
+    RuntimeTarget target, {
+    SshProfile? sshProfile,
+    SshClientFactory? sshClientFactory,
+    RemoteSshStoragePathResolver? remotePathResolver,
+    required String nativeAppDataPath,
+    String? nativeHome,
+    String? nativeCwd,
+  }) {
+    return install(
+      isSshMode: target.kind == RuntimeKind.ssh,
+      sshProfile: sshProfile,
+      sshClientFactory: sshClientFactory,
+      remotePathResolver: remotePathResolver,
+      nativeAppDataPath: nativeAppDataPath,
+      nativeHome: nativeHome,
+      nativeCwd: nativeCwd,
+      wslDistro: target.wslDistro,
+      windowsStorageBackend: target.kind == RuntimeKind.wsl
+          ? WindowsStorageBackend.wsl
+          : WindowsStorageBackend.native,
+    );
   }
 
   static Future<RuntimeStorageContext> resolve({

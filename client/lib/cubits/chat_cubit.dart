@@ -6,7 +6,7 @@ import 'package:flutter/widgets.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
 import '../models/workspace.dart';
-import '../models/connection_mode.dart';
+import '../models/runtime_target.dart';
 import '../models/app_session.dart';
 import '../models/member_presence.dart';
 import '../models/workspace_icon_picker_result.dart';
@@ -51,7 +51,7 @@ class ChatCubit extends Cubit<ChatState>
     SshActiveProfileResolver? sshProfileResolver,
     String Function()? sshDefaultWorkingDirectoryResolver,
     bool Function()? sshUseLoginShellResolver,
-    ConnectionMode Function()? connectionModeResolver,
+    RuntimeTarget Function()? defaultTargetResolver,
     int Function()? terminalScrollbackLinesResolver,
   }) : _shellFactory = ChatSessionShellFactory(
          executableResolver: executableResolver,
@@ -61,7 +61,7 @@ class ChatCubit extends Cubit<ChatState>
          sshProfileResolver: sshProfileResolver,
          sshDefaultWorkingDirectoryResolver: sshDefaultWorkingDirectoryResolver,
          sshUseLoginShellResolver: sshUseLoginShellResolver,
-         connectionModeResolver: connectionModeResolver,
+         defaultTargetResolver: defaultTargetResolver,
          terminalScrollbackLinesResolver: terminalScrollbackLinesResolver,
        ),
        _postFrameScheduler = postFrameScheduler ?? _defaultPostFrameScheduler,

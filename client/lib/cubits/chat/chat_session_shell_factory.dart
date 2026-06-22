@@ -1,5 +1,5 @@
-import '../../models/connection_mode.dart';
 import '../../models/launch_target.dart';
+import '../../models/runtime_target.dart' as rt;
 import '../../models/team_config.dart';
 import '../../services/terminal/terminal_session.dart';
 import '../../services/terminal/terminal_transport_factory.dart';
@@ -18,7 +18,7 @@ class ChatSessionShellFactory {
     SshActiveProfileResolver? sshProfileResolver,
     String Function()? sshDefaultWorkingDirectoryResolver,
     bool Function()? sshUseLoginShellResolver,
-    ConnectionMode Function()? connectionModeResolver,
+    rt.RuntimeTarget Function()? defaultTargetResolver,
     int Function()? terminalScrollbackLinesResolver,
   }) : _executableResolver = executableResolver,
        _cliExecutableResolver = cliExecutableResolver,
@@ -27,7 +27,7 @@ class ChatSessionShellFactory {
        _sshProfileResolver = sshProfileResolver,
        _sshDefaultWorkingDirectoryResolver = sshDefaultWorkingDirectoryResolver,
        _sshUseLoginShellResolver = sshUseLoginShellResolver,
-       _connectionModeResolver = connectionModeResolver,
+       _defaultTargetResolver = defaultTargetResolver,
        _terminalScrollbackLinesResolver = terminalScrollbackLinesResolver;
 
   final String Function() _executableResolver;
@@ -37,14 +37,14 @@ class ChatSessionShellFactory {
   final SshActiveProfileResolver? _sshProfileResolver;
   final String Function()? _sshDefaultWorkingDirectoryResolver;
   final bool Function()? _sshUseLoginShellResolver;
-  final ConnectionMode Function()? _connectionModeResolver;
+  final rt.RuntimeTarget Function()? _defaultTargetResolver;
   final int Function()? _terminalScrollbackLinesResolver;
 
-  ConnectionMode get _connectionMode =>
-      _connectionModeResolver?.call() ?? ConnectionMode.localPty;
+  rt.RuntimeTarget get _target =>
+      _defaultTargetResolver?.call() ?? rt.RuntimeTarget.local();
 
   bool get _useSsh =>
-      _connectionMode == ConnectionMode.ssh &&
+      _target.kind == rt.RuntimeKind.ssh &&
       _transportFactory != null &&
       _sshProfileResolver != null &&
       _sshProfileResolver() != null;

@@ -267,6 +267,10 @@ class AppPaths {
 
   String get sshProfilesDir => _ctx.join(basePath, 'ssh_profiles');
 
+  /// Control-plane runtime targets registry (`targets.json`). Holds the
+  /// authoritative `defaultTargetId`, persisted ssh targets, and WSL distro.
+  String get targetsFile => _ctx.join(basePath, 'targets.json');
+
   String providerToolDir(String tool, String providerId) =>
       _ctx.join(providerConfigDir, tool.trim(), providerId.trim());
 

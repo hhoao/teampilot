@@ -38,7 +38,7 @@ import 'package:teampilot/services/extension/builtin_manifests.dart';
 import 'package:teampilot/services/extension/extension_acquisition_engine.dart';
 import 'package:teampilot/services/extension/extension_detector.dart';
 import 'package:teampilot/services/cli/installer_types.dart';
-import 'package:teampilot/models/connection_mode.dart';
+import 'package:teampilot/models/runtime_target.dart';
 import 'package:teampilot/services/cli/registry/cli_tool_registry.dart';
 import 'package:teampilot/services/cli/registry/cli_tool_registry_scope.dart';
 import 'package:teampilot/services/cli/registry/config_profile/claude_config_profile_capability.dart';
@@ -109,7 +109,7 @@ Widget buildTestApp({
   ExtensionCubit? extensionCubit,
 }) {
   final connectionModeService = ConnectionModeService(
-    readPreferredMode: () => ConnectionMode.localPty,
+    defaultTargetResolver: RuntimeTarget.local,
     hasSshProfiles: () => true,
   );
   final settings =
