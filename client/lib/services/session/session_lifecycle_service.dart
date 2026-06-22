@@ -12,7 +12,6 @@ import '../../models/launch_profile.dart';
 import '../../repositories/cli_presets_repository.dart';
 import '../../repositories/launch_profile_repository.dart';
 import '../../services/storage/launch_profile_provisioner.dart';
-import '../cli/registry/config_profile/config_profile_context.dart';
 import '../../utils/team_member_naming.dart';
 import '../../utils/logger.dart';
 import '../storage/app_storage.dart';
@@ -127,7 +126,9 @@ class SessionLifecycleService {
     // rather than a synthetic empty one.
     if (defaultPersonal != null) return defaultPersonal;
     return PersonalProfile(
-      id: trimmed.isEmpty ? LaunchProfileProvisioner.defaultPersonalId : trimmed,
+      id: trimmed.isEmpty
+          ? LaunchProfileProvisioner.defaultPersonalId
+          : trimmed,
       display: trimmed.isEmpty ? 'Personal' : trimmed,
     );
   }
@@ -195,24 +196,6 @@ class SessionLifecycleService {
       busIdleUrl: busIdleUrl,
     );
 
-    // Resolve preset for team sessions so the CLI launches with the
-    // preset's provider/model/effort rather than the member's raw fields.
-    TeamMemberConfig? resolvedMember = member;
-    if (!prepared.isPersonal && team != null && member != null) {
-      final presets = _loadPresets?.call() ?? [];
-      final resolved = resolveMemberLaunchConfig(
-        team: team,
-        member: member,
-        globalPresets: presets,
-      );
-      resolvedMember = member.copyWith(
-        provider: resolved.provider,
-        model: resolved.model,
-        effort: resolved.effort,
-        updateEffort: true,
-      );
-    }
-
     return ShellLaunchSpec(
       plan: prepared.plan,
       launchContext: _buildShellLaunchContext(
@@ -222,7 +205,7 @@ class SessionLifecycleService {
         workspace: workspace,
         personal: prepared.resolvedPersonal,
         team: team,
-        member: resolvedMember,
+        member: prepared.resolvedMember ?? member,
         preset: prepared.activePreset,
       ),
       sessionTeam: _resolveSessionTeam(
@@ -233,12 +216,31 @@ class SessionLifecycleService {
     );
   }
 
+  TeamMemberConfig? _resolveTeamMemberForLaunch(
+    TeamProfile team,
+    TeamMemberConfig member,
+  ) {
+    final presets = _loadPresets?.call() ?? [];
+    final resolved = resolveMemberLaunchConfig(
+      team: team,
+      member: member,
+      globalPresets: presets,
+    );
+    return member.copyWith(
+      provider: resolved.provider,
+      model: resolved.model,
+      effort: resolved.effort,
+      updateEffort: true,
+    );
+  }
+
   Future<
     ({
       LaunchPlan plan,
       bool isPersonal,
       PersonalProfile? resolvedPersonal,
       CliPreset? activePreset,
+      TeamMemberConfig? resolvedMember,
     })
   >
   _prepareLaunchPlan({
@@ -263,6 +265,10 @@ class SessionLifecycleService {
       workspace: workspace,
       profileId: profileId,
     );
+    TeamMemberConfig? launchMember = member;
+    if (!isPersonal && team != null && member != null) {
+      launchMember = _resolveTeamMemberForLaunch(team, member);
+    }
     final personalIdentityId = await _resolvePersonalProfileId(
       profileId: profileId,
       isPersonal: isPersonal,
@@ -294,11 +300,13 @@ class SessionLifecycleService {
       // transcripts / --resume probes must target the same nested runtime dir.
       final runtimeSessionId = isPersonal
           ? sessionId
-          : team?.teamMode == TeamMode.mixed && member != null && member.isValid
+          : team?.teamMode == TeamMode.mixed &&
+                launchMember != null &&
+                launchMember.isValid
           ? mixedModeMemberScopeSessionId(
               roots.fs.pathContext,
               runtimeTeamId,
-              member,
+              launchMember,
             )
           : runtimeTeamId;
       // Mixed-mode members run (and store transcripts) under their own
@@ -309,8 +317,8 @@ class SessionLifecycleService {
       // CLI rejects as "Session ID … is already in use").
       final cli = isPersonal
           ? (session.cli ?? activePreset?.cli ?? CliTool.claude)
-          : (team != null && member != null && member.isValid
-                ? member.cliWithin(team)
+          : (team != null && launchMember != null && launchMember.isValid
+                ? launchMember.cliWithin(team)
                 : team?.cli);
       final tools = cli != null ? [cli.value] : runtimeLayoutDefaultTools;
       final transcriptRoots = isPersonal
@@ -334,7 +342,7 @@ class SessionLifecycleService {
         service: service,
         session: session,
         team: team,
-        member: member,
+        member: launchMember,
         memberBinding: memberBinding,
         workspace: workspace,
         personal: resolvedPersonal,
@@ -347,14 +355,23 @@ class SessionLifecycleService {
         preset: activePreset,
       );
       final memberConfigDir = _memberConfigDirFromEnv(prepared.env);
+      // Mixed members store transcripts under their isolated CONFIG_DIR
+      // (`runtime/{memberId}/{tool}`), which is not in [transcriptRoots] until
+      // launch env is prepared.
+      final rootsForResume = <String>{
+        ...transcriptRoots,
+        if (memberConfigDir.isNotEmpty) memberConfigDir,
+      }.toList(growable: false);
 
       final resume = await _resolveResume(
         roots: roots,
         cli: cli,
         taskId: taskId,
         env: prepared.env,
-        transcriptRoots: transcriptRoots,
-        bucket: RuntimeLayout.workspaceBucketForPrimaryPath(session.primaryPath),
+        transcriptRoots: rootsForResume,
+        bucket: RuntimeLayout.workspaceBucketForPrimaryPath(
+          session.primaryPath,
+        ),
         persistedNativeId: cli == null
             ? null
             : (isPersonal
@@ -364,10 +381,7 @@ class SessionLifecycleService {
             session.launchState == AppSessionLaunchState.started,
       );
 
-      final resolvedRoots = <String>{
-        ...transcriptRoots,
-        if (memberConfigDir.isNotEmpty) memberConfigDir,
-      }.toList(growable: false);
+      final resolvedRoots = rootsForResume;
 
       final plan = LaunchPlan(
         env: prepared.env,
@@ -393,6 +407,7 @@ class SessionLifecycleService {
         isPersonal: isPersonal,
         resolvedPersonal: resolvedPersonal,
         activePreset: activePreset,
+        resolvedMember: launchMember,
       );
     } on Object catch (e, st) {
       appLogger.e(
@@ -560,8 +575,10 @@ class SessionLifecycleService {
           'prepareShellLaunch requires workspace and personal identity for personal sessions',
         );
       }
-      final launchMember =
-          standaloneMemberFromPersonal(personal, preset: preset);
+      final launchMember = standaloneMemberFromPersonal(
+        personal,
+        preset: preset,
+      );
       final launchTeam = standaloneTeamFromPersonal(
         personal,
         profileId: personal.id,
@@ -627,7 +644,8 @@ class SessionLifecycleService {
   }) async {
     if (isPersonal) {
       final personalWorkspace = workspace!;
-      final resolvedPersonal = personal ??
+      final resolvedPersonal =
+          personal ??
           await loadPersonalProfile(LaunchProfileProvisioner.defaultPersonalId);
       final outcome = await service.prepareWorkspaceLaunch(
         workspaceId: personalWorkspace.workspaceId,

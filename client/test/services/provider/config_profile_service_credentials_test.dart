@@ -1,3 +1,4 @@
+import 'package:path/path.dart' as p;
 import 'package:flutter_test/flutter_test.dart';
 import 'package:teampilot/models/app_provider_config.dart';
 import 'package:teampilot/models/team_config.dart';
@@ -120,4 +121,62 @@ void main() {
     expect(outcome.warnings, contains('claude_credentials_missing'));
     expect(outcome.environment['CLAUDE_CONFIG_DIR'], isNotEmpty);
   });
+
+  test(
+    'mixed launch links global credentials for official member provider',
+    () async {
+      const home = '/home/user';
+      service = ConfigProfileService(basePath: base, fs: fs, home: home);
+      await repository.saveProviders(CliTool.claude, [
+        const AppProviderConfig(
+          id: 'leaky',
+          cli: CliTool.claude,
+          name: 'leaky',
+          category: AppProviderCategory.thirdParty,
+          config: {
+            'env': {'ANTHROPIC_BASE_URL': 'https://api.example.com/anthropic'},
+          },
+        ),
+        AppProviderConfig(
+          id: 'official',
+          cli: CliTool.claude,
+          name: 'official',
+          category: AppProviderCategory.official,
+          config: withCredentialBinding({'env': {}}, CredentialBindingKind.linked),
+        ),
+      ]);
+      await fs.writeString(
+        p.join(home, '.claude', '.credentials.json'),
+        '{"claudeAiOauth":{"accessToken":"global"}}',
+      );
+
+      final outcome = await service.prepareTeamLaunch(
+        teamId: 'team-a',
+        workspaceId: 'workspace-1',
+        sessionId: 'session-a',
+        cliTeamName: 'session-a',
+        cli: CliTool.claude,
+        team: TeamProfile(
+          id: 'team-a',
+          name: 'team-a',
+          cli: CliTool.claude,
+          teamMode: TeamMode.mixed,
+          providerIdsByTool: const {'claude': 'leaky'},
+        ),
+        member: const TeamMemberConfig(
+          id: 'member',
+          name: 'Member',
+          provider: 'official',
+          model: 'sonnet',
+        ),
+      );
+
+      final sessionDir = outcome.environment['CLAUDE_CONFIG_DIR']!;
+      expect(
+        fs.symlinks[p.join(sessionDir, '.credentials.json')],
+        p.join(home, '.claude', '.credentials.json'),
+      );
+      expect(outcome.warnings, isNot(contains('claude_credentials_missing')));
+    },
+  );
 }

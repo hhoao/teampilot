@@ -8,6 +8,7 @@ import 'package:teampilot/services/storage/runtime_layout.dart';
 import 'package:teampilot/services/cli/registry/config_profile/claude_config_profile_capability.dart';
 import 'package:teampilot/services/io/local_filesystem.dart';
 import 'package:teampilot/models/app_provider_config.dart';
+import 'package:teampilot/services/provider/credential_binding.dart';
 import 'package:teampilot/repositories/app_provider_repository.dart';
 import 'package:teampilot/services/provider/config_profile_service.dart';
 
@@ -248,6 +249,95 @@ void main() {
       expect(env['ANTHROPIC_DEFAULT_OPUS_MODEL'], 'member-main');
       // ... while the provider's background model survives on the haiku tier.
       expect(env['ANTHROPIC_DEFAULT_HAIKU_MODEL'], 'cheap-model');
+    },
+  );
+
+  test(
+    'mixed member official provider links credentials from member binding',
+    () async {
+      final base = await Directory.systemTemp.createTemp('claude_cap_cred_');
+      addTearDown(() async {
+        if (await base.exists()) await base.delete(recursive: true);
+      });
+
+      final fs = LocalFilesystem();
+      final home = p.join(base.path, 'home');
+      final service = ConfigProfileService(
+        basePath: base.path,
+        fs: fs,
+        home: home,
+        layout: RuntimeLayout(teampilotRoot: base.path, fs: fs),
+      );
+      const capability = ClaudeConfigProfileCapability();
+      final repository = AppProviderRepository(basePath: base.path, fs: fs);
+      await repository.saveProviders(CliTool.claude, [
+        const AppProviderConfig(
+          id: 'leaky',
+          cli: CliTool.claude,
+          name: 'leaky',
+          category: AppProviderCategory.thirdParty,
+          config: {
+            'env': {'ANTHROPIC_BASE_URL': 'https://api.example.com/anthropic'},
+          },
+        ),
+        AppProviderConfig(
+          id: 'official',
+          cli: CliTool.claude,
+          name: 'official',
+          category: AppProviderCategory.official,
+          config: withCredentialBinding({'env': {}}, CredentialBindingKind.linked),
+        ),
+      ]);
+      await fs.writeString(
+        p.join(home, '.claude', '.credentials.json'),
+        '{"claudeAiOauth":{"accessToken":"global"}}',
+      );
+
+      const member = TeamMemberConfig(
+        id: 'member',
+        name: 'Member',
+        provider: 'official',
+        model: 'sonnet',
+      );
+      const team = TeamProfile(
+        id: 'team-a',
+        name: 'agent',
+        cli: CliTool.claude,
+        teamMode: TeamMode.mixed,
+        providerIdsByTool: {'claude': 'leaky'},
+      );
+
+      final scope = resolveLaunchProfileScope(
+        workspaceId: 'workspace-1',
+        teamId: 'team-a',
+        appSessionId: 'session-1',
+        cliTeamName: 'session-1',
+        memberId: 'member',
+      );
+
+      final contribution = await capability.contributeLaunch(
+        ConfigProfileLaunchContext(
+          workspaceId: 'workspace-1',
+          teamId: 'team-a',
+          sessionId: scope.sessionId,
+          scope: scope,
+          team: team,
+          member: member,
+          members: const [member],
+          workingDirectory: '/workspace/workspace',
+          paths: service,
+        ),
+      );
+
+      expect(contribution.warnings, isNot(contains('claude_credentials_missing')));
+      final claudeDir = contribution.environment['CLAUDE_CONFIG_DIR']!;
+      final credPath = p.join(claudeDir, '.credentials.json');
+      expect(await File(credPath).exists(), isTrue);
+      final linkTarget = await Link(credPath).target();
+      expect(
+        p.normalize(linkTarget),
+        p.normalize(p.join(home, '.claude', '.credentials.json')),
+      );
     },
   );
 }

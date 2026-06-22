@@ -217,35 +217,13 @@ final class ClaudeConfigProfileCapability implements ConfigProfileCapability {
       idleUrl: ctx.busIdleUrl,
     );
 
-    final providerId = claude?.providerId?.trim() ?? '';
-    if (providerId.isNotEmpty &&
-        claude?.settings != null &&
-        isOfficialClaudeSettings(claude!.settings!)) {
-      final sessionClaudeDir = delegate.sessionToolDir(
-        scope.workspaceId,
-        scope.sessionId,
-        toolId,
-        memberId: scope.memberId,
-      );
-      final credentials = ClaudeProviderCredentialsService(
-        fs: delegate.fs,
-        basePath: delegate.basePath,
-        resolveHomeDirectory: () => delegate.home,
-      );
-      final binding = await _resolveClaudeCredentialBinding(
-        delegate,
-        providerId,
-      );
-      final link = await credentials.ensureLinked(
-        sessionClaudeDir,
-        providerId,
-        binding: binding,
-        homeDirectory: delegate.home,
-      );
-      if (link == CredentialLinkResult.missing) {
-        warnings.add('claude_credentials_missing');
-      }
-    }
+    await _maybeLinkOfficialCredentials(
+      delegate: delegate,
+      scope: scope,
+      claude: claude,
+      launchedMember: ctx.member,
+      warnings: warnings,
+    );
 
     final member = ctx.member;
     final environment = <String, String>{
@@ -443,6 +421,65 @@ final class ClaudeConfigProfileCapability implements ConfigProfileCapability {
     ).loadProviders(CliTool.claude);
     if (providers.length == 1) return providers.first.id;
     return null;
+  }
+
+  Future<void> _maybeLinkOfficialCredentials({
+    required ConfigProfileDelegate delegate,
+    required LaunchProfileScope scope,
+    required ClaudeLaunchExtras? claude,
+    required TeamMemberConfig? launchedMember,
+    required List<String> warnings,
+  }) async {
+    final providerId = _credentialProviderId(claude, launchedMember);
+    if (providerId.isEmpty) return;
+
+    final settings = _credentialSettings(claude, launchedMember);
+    if (settings == null || !isOfficialClaudeSettings(settings)) return;
+
+    final sessionClaudeDir = delegate.sessionToolDir(
+      scope.workspaceId,
+      scope.sessionId,
+      toolId,
+      memberId: scope.memberId,
+    );
+    final credentials = ClaudeProviderCredentialsService(
+      fs: delegate.fs,
+      basePath: delegate.basePath,
+      resolveHomeDirectory: () => delegate.home,
+    );
+    final binding = await _resolveClaudeCredentialBinding(delegate, providerId);
+    final link = await credentials.ensureLinked(
+      sessionClaudeDir,
+      providerId,
+      binding: binding,
+      homeDirectory: delegate.home,
+    );
+    if (link == CredentialLinkResult.missing) {
+      warnings.add('claude_credentials_missing');
+    }
+  }
+
+  /// Official credential linking follows the launched member's provider in
+  /// mixed teams (per-member presets), not only the team-level Claude binding.
+  static String _credentialProviderId(
+    ClaudeLaunchExtras? claude,
+    TeamMemberConfig? launchedMember,
+  ) {
+    if (launchedMember != null && launchedMember.isValid) {
+      final fromMember = launchedMember.provider.trim();
+      if (fromMember.isNotEmpty) return fromMember;
+    }
+    return claude?.providerId?.trim() ?? '';
+  }
+
+  static Map<String, Object?>? _credentialSettings(
+    ClaudeLaunchExtras? claude,
+    TeamMemberConfig? launchedMember,
+  ) {
+    if (launchedMember != null && launchedMember.isValid) {
+      return claude?.settingsByMember[launchedMember.id] ?? claude?.settings;
+    }
+    return claude?.settings;
   }
 
   Future<CredentialBindingKind> _resolveClaudeCredentialBinding(

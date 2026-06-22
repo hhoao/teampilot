@@ -285,6 +285,7 @@ void main() {
             _workspaceId,
             'mixed-session',
             'claude',
+            memberId: ClaudeTeamRosterService.safeClaudePathSegment('team-lead'),
           ),
           'projects',
           bucket,
@@ -313,6 +314,7 @@ void main() {
 
       expect(plan.resume, isTrue);
       expect(plan.taskId, taskId);
+      expect(plan.resumeSessionId, taskId);
     },
   );
 
