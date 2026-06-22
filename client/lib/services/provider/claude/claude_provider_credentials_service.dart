@@ -6,6 +6,7 @@ import '../../../models/credential_action_result.dart';
 import '../../cli/cli_invocation.dart';
 import '../../io/filesystem.dart';
 import '../../session/launch_command_builder.dart';
+import '../credential_binding.dart';
 import '../credential_process_result.dart';
 
 typedef ClaudeCredentialProcessRunner =
@@ -21,10 +22,12 @@ class ClaudeProviderCredentialsService {
     required String basePath,
     this.claudeExecutable = 'claude',
     String? Function()? resolveClaudeExecutable,
+    String? Function()? resolveHomeDirectory,
     ClaudeCredentialProcessRunner? processRunner,
   }) : _fs = fs,
        _basePath = basePath.trim(),
        _resolveClaudeExecutable = resolveClaudeExecutable,
+       _resolveHomeDirectory = resolveHomeDirectory,
        _processRunner = processRunner ?? _defaultProcessRunner;
 
   static const credentialsFileName = '.credentials.json';
@@ -33,6 +36,7 @@ class ClaudeProviderCredentialsService {
   final String _basePath;
   final String claudeExecutable;
   final String? Function()? _resolveClaudeExecutable;
+  final String? Function()? _resolveHomeDirectory;
   final ClaudeCredentialProcessRunner _processRunner;
 
   static Future<ProcessResult> _defaultProcessRunner(
@@ -57,12 +61,45 @@ class ClaudeProviderCredentialsService {
   String credentialPath(String providerId) =>
       _fs.pathContext.join(providerDir(providerId), credentialsFileName);
 
-  Future<CredentialProbe> probe(String providerId) async {
-    final path = credentialPath(providerId);
+  String globalCredentialPath(String homeDirectory) =>
+      globalClaudeCredentialPath(homeDirectory, _fs.pathContext);
+
+  String globalClaudeConfigDir(String homeDirectory) =>
+      _fs.pathContext.join(homeDirectory.trim(), '.claude');
+
+  String _resolvedHome([String? homeDirectory]) {
+    final explicit = homeDirectory?.trim() ?? '';
+    if (explicit.isNotEmpty) return explicit;
+    return _resolveHomeDirectory?.call()?.trim() ?? '';
+  }
+
+  String effectiveCredentialPath(
+    String providerId, {
+    CredentialBindingKind binding = CredentialBindingKind.linked,
+    String? homeDirectory,
+  }) {
+    final home = _resolvedHome(homeDirectory);
+    if (binding == CredentialBindingKind.linked && home.isNotEmpty) {
+      return globalCredentialPath(home);
+    }
+    return credentialPath(providerId);
+  }
+
+  Future<CredentialProbe> probe(
+    String providerId, {
+    CredentialBindingKind binding = CredentialBindingKind.linked,
+    String? homeDirectory,
+  }) async {
+    final path = effectiveCredentialPath(
+      providerId,
+      binding: binding,
+      homeDirectory: homeDirectory,
+    );
     final stat = await _fs.stat(path);
+    final ready = await _credentialExistsAt(path);
     return CredentialProbe(
       providerId: providerId,
-      status: stat.isFile ? CredentialStatus.ready : CredentialStatus.missing,
+      status: ready ? CredentialStatus.ready : CredentialStatus.missing,
       credentialPath: path,
       updatedAt: stat.mtime,
     );
@@ -72,12 +109,16 @@ class ClaudeProviderCredentialsService {
     String providerId, {
     required String homeDirectory,
     bool replace = false,
+    CredentialBindingKind binding = CredentialBindingKind.linked,
   }) async {
-    final src = _fs.pathContext.join(
-      homeDirectory,
-      '.claude',
-      credentialsFileName,
-    );
+    if (binding == CredentialBindingKind.linked) {
+      return materializeLinkedBinding(
+        providerId,
+        homeDirectory: homeDirectory,
+        replace: replace,
+      );
+    }
+    final src = globalCredentialPath(homeDirectory);
     return _importCopy(providerId, src, replace: replace);
   }
 
@@ -86,13 +127,59 @@ class ClaudeProviderCredentialsService {
     String sourcePath, {
     bool replace = false,
   }) async {
-    return _importCopy(providerId, sourcePath, replace: replace);
+    return _importCopy(
+      providerId,
+      sourcePath,
+      replace: replace,
+      binding: CredentialBindingKind.isolated,
+    );
+  }
+
+  Future<CredentialActionResult> materializeLinkedBinding(
+    String providerId, {
+    required String homeDirectory,
+    bool replace = true,
+  }) async {
+    final global = globalCredentialPath(homeDirectory);
+    if (!(await _credentialExistsAt(global))) {
+      return CredentialActionResult.failure(
+        CredentialActionFailure(
+          code: CredentialActionFailureCode.sourceMissing,
+          path: global,
+        ),
+      );
+    }
+    await _fs.ensureDir(providerDir(providerId));
+    final dest = credentialPath(providerId);
+    final destStat = await _fs.stat(dest);
+    if (destStat.isSymlink) {
+      return CredentialActionResult.success;
+    }
+    if (destStat.exists && !replace) {
+      return CredentialActionResult.failure(
+        const CredentialActionFailure(
+          code: CredentialActionFailureCode.destinationExists,
+        ),
+      );
+    }
+    if (destStat.exists) {
+      await _fs.removeRecursive(dest);
+    }
+    if (await _fs.createSymlink(target: global, linkPath: dest)) {
+      return CredentialActionResult.success;
+    }
+    return CredentialActionResult.failure(
+      const CredentialActionFailure(
+        code: CredentialActionFailureCode.verifyFailed,
+      ),
+    );
   }
 
   Future<CredentialActionResult> _importCopy(
     String providerId,
     String src, {
     required bool replace,
+    CredentialBindingKind binding = CredentialBindingKind.isolated,
   }) async {
     final srcStat = await _fs.stat(src);
     if (!srcStat.isFile) {
@@ -104,12 +191,16 @@ class ClaudeProviderCredentialsService {
       );
     }
     final dest = credentialPath(providerId);
-    if (!replace && (await _fs.stat(dest)).isFile) {
+    final destStat = await _fs.stat(dest);
+    if (!replace && await _credentialExistsAt(dest)) {
       return CredentialActionResult.failure(
         const CredentialActionFailure(
           code: CredentialActionFailureCode.destinationExists,
         ),
       );
+    }
+    if (destStat.exists) {
+      await _fs.removeRecursive(dest);
     }
     await _fs.ensureDir(providerDir(providerId));
     final bytes = await _fs.readBytes(src);
@@ -129,7 +220,7 @@ class ClaudeProviderCredentialsService {
       );
     }
     await _fs.writeBytes(dest, bytes);
-    if (!(await probe(providerId)).isReady) {
+    if (!(await probe(providerId, binding: binding)).isReady) {
       return CredentialActionResult.failure(
         const CredentialActionFailure(
           code: CredentialActionFailureCode.verifyFailed,
@@ -150,20 +241,43 @@ class ClaudeProviderCredentialsService {
 
   Future<CredentialLinkResult> ensureLinked(
     String sessionClaudeDir,
-    String providerId,
-  ) async {
+    String providerId, {
+    CredentialBindingKind binding = CredentialBindingKind.linked,
+    String? homeDirectory,
+  }) async {
+    final home = _resolvedHome(homeDirectory);
+    if (binding == CredentialBindingKind.linked && home.isNotEmpty) {
+      final materialize = await materializeLinkedBinding(
+        providerId,
+        homeDirectory: home,
+        replace: true,
+      );
+      if (!materialize.ok) {
+        return CredentialLinkResult.missing;
+      }
+    }
+
     final sessionPath = _fs.pathContext.join(
       sessionClaudeDir,
       credentialsFileName,
     );
-    final sessionStat = await _fs.stat(sessionPath);
-    if (sessionStat.isFile || sessionStat.isSymlink) {
-      return CredentialLinkResult.alreadyPresent;
-    }
-    final src = credentialPath(providerId);
-    if (!(await _fs.stat(src)).isFile) {
+    final src = effectiveCredentialPath(
+      providerId,
+      binding: binding,
+      homeDirectory: home,
+    );
+    if (!(await _credentialExistsAt(src))) {
       return CredentialLinkResult.missing;
     }
+
+    final sessionStat = await _fs.stat(sessionPath);
+    if (sessionStat.isFile || sessionStat.isSymlink) {
+      if (!await _sessionCredentialNeedsRelink(sessionPath, src)) {
+        return CredentialLinkResult.alreadyPresent;
+      }
+      await _fs.removeRecursive(sessionPath);
+    }
+
     await _fs.ensureDir(sessionClaudeDir);
     if (await _fs.createSymlink(target: src, linkPath: sessionPath)) {
       return CredentialLinkResult.linked;
@@ -174,11 +288,43 @@ class ClaudeProviderCredentialsService {
     return CredentialLinkResult.copied;
   }
 
+  Future<bool> _credentialExistsAt(String path) async {
+    final stat = await _fs.stat(path);
+    if (stat.isFile) return true;
+    if (!stat.isSymlink) return false;
+    final target = await _fs.readSymlinkTarget(path);
+    if (target == null || target.trim().isEmpty) return false;
+    return (await _fs.stat(target)).isFile;
+  }
+
+  Future<bool> _sessionCredentialNeedsRelink(
+    String sessionPath,
+    String srcPath,
+  ) async {
+    final sessionStat = await _fs.stat(sessionPath);
+    if (!sessionStat.isFile && !sessionStat.isSymlink) return true;
+    if (sessionStat.isSymlink) {
+      final target = await _fs.readSymlinkTarget(sessionPath);
+      return target != srcPath;
+    }
+    final srcStat = await _fs.stat(srcPath);
+    if (!srcStat.isFile && !srcStat.isSymlink) return true;
+    final sessionMtime = sessionStat.mtime;
+    final srcMtime = srcStat.mtime;
+    if (sessionMtime == null || srcMtime == null) return false;
+    return srcMtime.isAfter(sessionMtime);
+  }
+
   Map<String, String> loginEnvironment(
     String providerId, {
     bool useWslPaths = false,
+    CredentialBindingKind binding = CredentialBindingKind.linked,
+    String? homeDirectory,
   }) {
-    var configDir = providerDir(providerId);
+    final home = _resolvedHome(homeDirectory);
+    var configDir = binding == CredentialBindingKind.linked && home.isNotEmpty
+        ? globalClaudeConfigDir(home)
+        : providerDir(providerId);
     if (useWslPaths) {
       configDir = LaunchCommandBuilder.normalizePathForCli(
         configDir,
@@ -201,12 +347,19 @@ class ClaudeProviderCredentialsService {
     List<String> subcommand, {
     required String providerId,
     Map<String, String> platformEnv = const {},
+    CredentialBindingKind binding = CredentialBindingKind.linked,
+    String? homeDirectory,
   }) async {
     final executable = _resolvedClaudeExecutable();
     final invocation = CliInvocation.fromExecutable(executable);
     final env = {
       ...platformEnv,
-      ...loginEnvironment(providerId, useWslPaths: invocation.usesWsl),
+      ...loginEnvironment(
+        providerId,
+        useWslPaths: invocation.usesWsl,
+        binding: binding,
+        homeDirectory: homeDirectory,
+      ),
     };
     final launch = CliInvocation.resolveProcessLaunch(
       executable: executable,
@@ -223,6 +376,8 @@ class ClaudeProviderCredentialsService {
   Future<CredentialActionResult> runAuthLogin(
     String providerId, {
     Map<String, String> platformEnv = const {},
+    CredentialBindingKind binding = CredentialBindingKind.linked,
+    String? homeDirectory,
   }) async {
     await _fs.ensureDir(providerDir(providerId));
     final executable = _resolvedClaudeExecutable();
@@ -231,10 +386,26 @@ class ClaudeProviderCredentialsService {
         const ['auth', 'login'],
         providerId: providerId,
         platformEnv: platformEnv,
+        binding: binding,
+        homeDirectory: homeDirectory,
       );
+      if (binding == CredentialBindingKind.linked) {
+        final home = _resolvedHome(homeDirectory);
+        if (home.isNotEmpty) {
+          await materializeLinkedBinding(
+            providerId,
+            homeDirectory: home,
+            replace: true,
+          );
+        }
+      }
       return loginCommandResult(
         result: result,
-        ready: (await probe(providerId)).isReady,
+        ready: (await probe(
+          providerId,
+          binding: binding,
+          homeDirectory: homeDirectory,
+        )).isReady,
         executable: executable,
       );
     } on ProcessException {
@@ -245,8 +416,14 @@ class ClaudeProviderCredentialsService {
   Future<CredentialActionResult> revokeCredentials(
     String providerId, {
     Map<String, String> platformEnv = const {},
+    CredentialBindingKind binding = CredentialBindingKind.linked,
+    String? homeDirectory,
   }) async {
-    if (!(await probe(providerId)).isReady) {
+    if (!(await probe(
+      providerId,
+      binding: binding,
+      homeDirectory: homeDirectory,
+    )).isReady) {
       return CredentialActionResult.failure(
         const CredentialActionFailure(
           code: CredentialActionFailureCode.revokeFailed,
@@ -259,6 +436,8 @@ class ClaudeProviderCredentialsService {
         const ['auth', 'logout'],
         providerId: providerId,
         platformEnv: platformEnv,
+        binding: binding,
+        homeDirectory: homeDirectory,
       );
       if (result.exitCode != 0) {
         return CredentialActionResult.failure(
@@ -271,10 +450,21 @@ class ClaudeProviderCredentialsService {
     } on ProcessException {
       return loginProcessError(executable);
     }
-    final path = credentialPath(providerId);
-    if ((await _fs.stat(path)).exists) {
-      await _fs.removeRecursive(path);
+    if (binding == CredentialBindingKind.linked) {
+      final linkPath = credentialPath(providerId);
+      if ((await _fs.stat(linkPath)).isSymlink) {
+        await _fs.removeRecursive(linkPath);
+      }
+    } else {
+      final path = credentialPath(providerId);
+      if ((await _fs.stat(path)).exists) {
+        await _fs.removeRecursive(path);
+      }
     }
-    return revokeVerifyResult(!(await probe(providerId)).isReady);
+    return revokeVerifyResult(!(await probe(
+      providerId,
+      binding: binding,
+      homeDirectory: homeDirectory,
+    )).isReady);
   }
 }

@@ -2,8 +2,10 @@ import 'package:path/path.dart' as p;
 
 import '../../../../models/claude_credential_link_result.dart';
 import '../../../provider/claude/claude_official_provider.dart';
+import '../../../provider/credential_binding.dart';
 import '../../../provider/claude/claude_provider_credentials_service.dart';
 import '../../../provider/claude/claude_provider_settings_resolver.dart';
+import '../../../storage/app_storage.dart';
 import '../capabilities/headless_provision_capability.dart';
 import '../config_profile/claude_config_profile_capability.dart';
 import 'headless_provision_support.dart';
@@ -97,8 +99,17 @@ final class ClaudeHeadlessProvisionCapability
       final credentials = ClaudeProviderCredentialsService(
         fs: fs,
         basePath: basePath,
+        resolveHomeDirectory: () => AppStorage.home,
       );
-      final link = await credentials.ensureLinked(ctx.configDir, ctx.providerId);
+      final binding = ctx.provider == null
+          ? CredentialBindingKind.linked
+          : resolveCredentialBinding(ctx.provider!);
+      final link = await credentials.ensureLinked(
+        ctx.configDir,
+        ctx.providerId,
+        binding: binding,
+        homeDirectory: AppStorage.home,
+      );
       if (link == CredentialLinkResult.missing) {
         credentialsReady = false;
         warnings.add('claude_credentials_missing');

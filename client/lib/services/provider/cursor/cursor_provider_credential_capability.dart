@@ -41,16 +41,16 @@ final class CursorProviderCredentialCapability
   }
 
   @override
-  Future<CredentialProbe> probe(String providerId) async {
+  Future<CredentialProbe> probe(AppProviderConfig provider) async {
     final service = _service;
     if (service == null) {
       return CredentialProbe(
-        providerId: providerId,
+        providerId: provider.id,
         status: CredentialStatus.missing,
         credentialPath: '',
       );
     }
-    return service.probe(providerId);
+    return service.probe(provider.id);
   }
 
   @override

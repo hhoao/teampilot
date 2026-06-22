@@ -2,6 +2,7 @@ import 'dart:convert';
 
 import '../models/app_provider_config.dart';
 import '../services/storage/app_storage.dart';
+import '../services/storage/runtime_storage_context.dart';
 import '../services/provider/claude/claude_provider_credentials_service.dart';
 import '../services/provider/codex/codex_provider_credentials_service.dart';
 import '../services/provider/cursor/cursor_provider_credentials_service.dart';
@@ -84,9 +85,18 @@ class AppProviderRepository {
         fs: _fs,
         basePath: _basePath,
         generator: _generator,
-        resolveHome: () => AppStorage.home.trim(),
+        resolveHome: _resolveHomeForPersistence,
         save: saveProviders,
       );
+
+  static String _resolveHomeForPersistence() {
+    if (!RuntimeStorageContext.isInstalled) return '';
+    try {
+      return AppStorage.home.trim();
+    } on Object {
+      return '';
+    }
+  }
 
   Future<List<AppProviderConfig>> loadProviders(
     CliTool cli, {

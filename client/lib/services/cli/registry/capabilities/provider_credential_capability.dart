@@ -33,11 +33,13 @@ class ProviderCredentialActionSpec {
 /// Optional inputs for file/directory credential imports.
 class ProviderCredentialActionInput {
   const ProviderCredentialActionInput({
+    this.provider,
     this.pickedPath,
     this.replace = false,
     this.homeDirectory,
   });
 
+  final AppProviderConfig? provider;
   final String? pickedPath;
   final bool replace;
   final String? homeDirectory;
@@ -49,7 +51,7 @@ abstract interface class ProviderCredentialCapability implements CliCapability {
 
   List<ProviderCredentialActionSpec> actionsFor(AppProviderConfig provider);
 
-  Future<CredentialProbe> probe(String providerId);
+  Future<CredentialProbe> probe(AppProviderConfig provider);
 
   Future<CredentialActionResult> execute({
     required String providerId,

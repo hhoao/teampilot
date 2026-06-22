@@ -21,10 +21,17 @@ final class CodexProviderPersistence extends ProviderPersistenceStrategy
       isOfficialCodexOAuthProvider(provider);
 
   @override
-  CredentialProbeFn get credentialProbe => _credentials.probe;
+  CredentialProbeFn get credentialProbe =>
+      (provider) => _credentials.probe(provider.id);
 
   @override
-  CredentialImportFn get credentialImport => _credentials.importFromGlobal;
+  CredentialImportFn get credentialImport =>
+      (provider, {required homeDirectory, replace = false}) =>
+          _credentials.importFromGlobal(
+            provider.id,
+            homeDirectory: homeDirectory,
+            replace: replace,
+          );
 
   @override
   Future<List<AppProviderConfig>> reconcileLoaded(

@@ -14,12 +14,15 @@ import '../../services/cli/registry/capabilities/provider_form_capability.dart';
 import '../../services/cli/registry/capabilities/provider_model_capability.dart';
 import '../../services/cli/registry/cli_tool_registry.dart';
 import '../../services/cli/registry/cli_tool_registry_scope.dart';
+import '../../services/provider/claude/claude_official_provider.dart';
 import '../../services/provider/codex/codex_provider_form_capability.dart';
+import '../../services/provider/credential_binding.dart';
 import '../../theme/workspace_surface_layers.dart';
 import '../../utils/debounce/debounce.dart';
 import '../app_icon_button.dart';
 import 'brand_dropdown_rows.dart';
 import 'cli_effort_picker_field.dart';
+import 'claude_credential_binding_field.dart';
 import 'provider_credential_action_bar.dart';
 import 'provider_model_picker_field.dart';
 import 'provider_models_editor.dart';
@@ -66,6 +69,7 @@ class _AppProviderFormPageState extends State<AppProviderFormPage> {
   late List<String> _endpointCandidates;
   late Map<String, Object?> _config;
   late Map<String, Object?> _extra;
+  late CredentialBindingKind _credentialBinding;
   late bool _showAdvancedJson;
 
   bool get _isEditing => widget.existing != null;
@@ -104,6 +108,9 @@ class _AppProviderFormPageState extends State<AppProviderFormPage> {
     _config = Map<String, Object?>.from(
       e?.config ?? formCap.defaultConfig(),
     );
+    _credentialBinding = e != null
+        ? resolveCredentialBinding(e)
+        : CredentialBindingKind.linked;
     _extra = formCap.extraFromExisting(e);
     _showAdvancedJson = false;
     _jsonCtl = TextEditingController(
@@ -190,7 +197,11 @@ class _AppProviderFormPageState extends State<AppProviderFormPage> {
     final name = _nameCtl.text.trim();
     final baseId = widget.existing?.id ?? AppProviderCubit.slugifyId(name);
     final now = DateTime.now().toUtc().millisecondsSinceEpoch;
-    final config = _formCap().buildConfig(_formInput());
+    var config = _formCap().buildConfig(_formInput());
+    if (widget.cli == CliTool.claude &&
+        _category == AppProviderCategory.official) {
+      config = withCredentialBinding(config, _credentialBinding);
+    }
     return AppProviderConfig(
       id: baseId,
       cli: widget.cli,
@@ -332,6 +343,15 @@ class _AppProviderFormPageState extends State<AppProviderFormPage> {
                 ),
                 const SizedBox(height: 14),
                 if (!_showAdvancedJson && _usesCredentialSetup(context)) ...[
+                  if (_showsClaudeCredentialBinding(context)) ...[
+                    ClaudeCredentialBindingField(
+                      value: _credentialBinding,
+                      onChanged: (binding) {
+                        setState(() => _credentialBinding = binding);
+                      },
+                    ),
+                    const SizedBox(height: 14),
+                  ],
                   BlocBuilder<AppProviderCubit, AppProviderState>(
                     builder: (context, state) {
                       return ProviderCredentialActionBar(
@@ -529,6 +549,11 @@ class _AppProviderFormPageState extends State<AppProviderFormPage> {
     if (capability.appliesTo(draft)) return true;
     final existing = widget.existing;
     return existing != null && capability.appliesTo(existing);
+  }
+
+  bool _showsClaudeCredentialBinding(BuildContext context) {
+    if (widget.cli != CliTool.claude) return false;
+    return isOfficialClaudeProvider(_buildNormalDraft());
   }
 
   bool _showsProviderEffortPicker(BuildContext context) {

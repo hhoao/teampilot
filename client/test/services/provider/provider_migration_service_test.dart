@@ -340,10 +340,13 @@ wire_api = "chat"
       );
 
       expect(result.added, 1);
+      await repository.loadProviders(
+        CliTool.cursor,
+        importCredentialsFromGlobal: true,
+      );
       final cursor = await repository.loadProviders(CliTool.cursor);
       final account = cursor.singleWhere((p) => p.id == 'cursor-account');
       expect(account.isOfficial, isTrue);
-      await repository.loadProviders(CliTool.cursor);
       expect(
         await File(
           p.join(
@@ -384,6 +387,10 @@ wire_api = "chat"
     );
 
     expect(result.added, 2);
+    await repository.loadProviders(
+      CliTool.opencode,
+      importCredentialsFromGlobal: true,
+    );
     final opencode = await repository.loadProviders(CliTool.opencode);
     expect(opencode.map((p) => p.id), containsAll(['openai', 'anthropic']));
     final openai = opencode.singleWhere((p) => p.id == 'openai');

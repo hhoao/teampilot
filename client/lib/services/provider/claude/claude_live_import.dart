@@ -5,6 +5,7 @@ import '../../cli/registry/capabilities/provider_catalog_capability.dart';
 import '../../io/filesystem.dart';
 import '../cc_switch_catalog_import.dart';
 import 'claude_official_provider.dart';
+import '../credential_binding.dart';
 import '../codex/codex_cc_switch_import.dart';
 
 /// Scans `~/.claude` settings profiles and CC Switch rows.
@@ -134,6 +135,8 @@ abstract final class ClaudeLiveImport {
       isOfficial: resolvedCategory == AppProviderCategory.official,
       config: {
         ...config,
+        if (resolvedCategory == AppProviderCategory.official)
+          credentialBindingConfigKey: CredentialBindingKind.linked.value,
         if (meta != null && meta.isNotEmpty) 'meta': meta,
       },
       createdAt: createdAt > 0 ? createdAt : now,

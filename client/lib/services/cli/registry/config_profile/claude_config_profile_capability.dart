@@ -9,6 +9,7 @@ import '../../../provider/claude/claude_official_provider.dart';
 import '../capabilities/cli_effort_capability.dart';
 import '../../../../repositories/app_provider_repository.dart';
 import '../../../provider/claude/claude_provider_credentials_service.dart';
+import '../../../provider/credential_binding.dart';
 import '../../../provider/claude/claude_provider_settings_resolver.dart';
 import '../../../session/member_role_provision.dart';
 import '../../../team/claude_team_roster_service.dart';
@@ -229,10 +230,17 @@ final class ClaudeConfigProfileCapability implements ConfigProfileCapability {
       final credentials = ClaudeProviderCredentialsService(
         fs: delegate.fs,
         basePath: delegate.basePath,
+        resolveHomeDirectory: () => delegate.home,
+      );
+      final binding = await _resolveClaudeCredentialBinding(
+        delegate,
+        providerId,
       );
       final link = await credentials.ensureLinked(
         sessionClaudeDir,
         providerId,
+        binding: binding,
+        homeDirectory: delegate.home,
       );
       if (link == CredentialLinkResult.missing) {
         warnings.add('claude_credentials_missing');
@@ -379,10 +387,17 @@ final class ClaudeConfigProfileCapability implements ConfigProfileCapability {
       final credentials = ClaudeProviderCredentialsService(
         fs: delegate.fs,
         basePath: delegate.basePath,
+        resolveHomeDirectory: () => delegate.home,
+      );
+      final binding = await _resolveClaudeCredentialBinding(
+        delegate,
+        trimmedProviderId,
       );
       final link = await credentials.ensureLinked(
         memberToolDir,
         trimmedProviderId,
+        binding: binding,
+        homeDirectory: delegate.home,
       );
       if (link == CredentialLinkResult.missing) {
         warnings.add('claude_credentials_missing');
@@ -428,6 +443,19 @@ final class ClaudeConfigProfileCapability implements ConfigProfileCapability {
     ).loadProviders(CliTool.claude);
     if (providers.length == 1) return providers.first.id;
     return null;
+  }
+
+  Future<CredentialBindingKind> _resolveClaudeCredentialBinding(
+    ConfigProfileDelegate delegate,
+    String providerId,
+  ) async {
+    final providers = await AppProviderRepository(
+      basePath: delegate.basePath,
+      fs: delegate.fs,
+    ).loadProviders(CliTool.claude);
+    final provider = providers.where((p) => p.id == providerId).firstOrNull;
+    if (provider == null) return CredentialBindingKind.linked;
+    return resolveCredentialBinding(provider);
   }
 
   Future<void> _writeMetadataAt(

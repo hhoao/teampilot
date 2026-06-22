@@ -8,6 +8,7 @@ import '../models/llm_config.dart';
 import '../repositories/app_provider_repository.dart';
 import '../services/storage/app_storage.dart';
 import '../services/provider/claude/claude_provider_credentials_service.dart';
+import '../services/provider/credential_binding.dart';
 import '../services/provider/cursor/cursor_provider_credentials_service.dart';
 import '../services/cli/registry/capabilities/provider_credential_capability.dart';
 import '../services/cli/registry/cli_tool_registry.dart';
@@ -281,6 +282,7 @@ class AppProviderCubit extends Cubit<AppProviderState> {
       providerId: provider.id,
       kind: kind,
       input: ProviderCredentialActionInput(
+        provider: provider,
         pickedPath: pickedPath,
         replace: replace,
         homeDirectory: homeDirectory ?? AppStorage.home,
@@ -298,8 +300,34 @@ class AppProviderCubit extends Cubit<AppProviderState> {
     return CredentialActionResult.success;
   }
 
+  Future<bool> setClaudeCredentialBinding(
+    AppProviderConfig provider,
+    CredentialBindingKind binding,
+  ) async {
+    if (provider.cli != CliTool.claude) return false;
+    final updated = provider.copyWith(
+      config: withCredentialBinding(provider.config, binding),
+    );
+    return upsertProvider(updated);
+  }
+
   Future<CredentialProbe> probeClaudeCredentials(String providerId) async {
-    return _claudeCredentials.probe(providerId);
+    final provider = state.providers
+        .where((p) => p.id == providerId)
+        .firstOrNull;
+    if (provider == null) {
+      return CredentialProbe(
+        providerId: providerId,
+        status: CredentialStatus.missing,
+        credentialPath: '',
+      );
+    }
+    final binding = resolveCredentialBinding(provider);
+    return _claudeCredentials.probe(
+      providerId,
+      binding: binding,
+      homeDirectory: AppStorage.home,
+    );
   }
 
   Future<bool> loginClaudeOfficialProvider(String providerId) async {
@@ -435,11 +463,11 @@ class AppProviderCubit extends Cubit<AppProviderState> {
     final capability = CliToolRegistry.builtIn().capability<
         ProviderCredentialCapability>(cli);
     if (capability == null) return false;
-    final probe = await capability.probe(providerId);
     final provider = state.providersFor(cli)
         .where((p) => p.id == providerId)
         .firstOrNull;
     if (provider == null) return false;
+    final probe = await capability.probe(provider);
     return upsertProvider(provider.withCredentialProbe(probe));
   }
 

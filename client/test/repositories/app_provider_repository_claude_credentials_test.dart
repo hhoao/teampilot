@@ -5,6 +5,7 @@ import 'package:teampilot/models/app_provider_config.dart';
 import 'package:teampilot/repositories/app_provider_repository.dart';
 import 'package:teampilot/services/storage/app_storage.dart';
 import 'package:teampilot/services/provider/claude/claude_provider_credentials_service.dart';
+import 'package:teampilot/services/provider/credential_binding.dart';
 import 'package:teampilot/services/storage/runtime_storage_context.dart';
 
 import '../support/in_memory_filesystem.dart';
@@ -22,6 +23,7 @@ void main() {
       claudeCredentialsService: ClaudeProviderCredentialsService(
         fs: fs,
         basePath: base,
+        resolveHomeDirectory: () => '/home/user',
       ),
     );
   });
@@ -67,7 +69,14 @@ void main() {
     );
   });
 
-  test('load probes official provider credential status from disk', () async {
+  test('load probes linked official credentials from global home', () async {
+    const home = '/home/user';
+    RuntimeStorageContext.installForTesting(
+      filesystem: fs,
+      paths: AppPaths(base),
+      home: home,
+      cwd: '/tmp',
+    );
     await fs.writeString(
       fs.pathContext.join(base, 'providers', 'claude', 'providers.json'),
       jsonEncode({
@@ -77,19 +86,32 @@ void main() {
             'cli': 'claude',
             'name': 'Work',
             'category': 'official',
-            'config': {'env': {}},
+            'config': {
+              'env': {},
+              credentialBindingConfigKey: 'linked',
+            },
             'credentialStatus': 'missing',
           },
         },
       }),
     );
     await fs.writeString(
-      fs.pathContext.join(base, 'providers', 'claude', 'work', '.credentials.json'),
+      fs.pathContext.join(home, '.claude', '.credentials.json'),
       '{"claudeAiOauth":{"accessToken":"work"}}',
     );
 
     final providers = await repository.loadProviders(CliTool.claude);
     expect(providers.single.hasClaudeCredentialsReady, isTrue);
+    expect(
+      fs.symlinks[fs.pathContext.join(
+        base,
+        'providers',
+        'claude',
+        'work',
+        '.credentials.json',
+      )],
+      fs.pathContext.join(home, '.claude', '.credentials.json'),
+    );
   });
 
   test(
@@ -111,7 +133,10 @@ void main() {
               'cli': 'claude',
               'name': 'Default',
               'category': 'official',
-              'config': {'env': {}},
+              'config': {
+                'env': {},
+                credentialBindingConfigKey: 'isolated',
+              },
               'credentialStatus': 'missing',
             },
           },
@@ -158,7 +183,10 @@ void main() {
               'cli': 'claude',
               'name': 'Default',
               'category': 'official',
-              'config': {'env': {}},
+              'config': {
+                'env': {},
+                credentialBindingConfigKey: 'linked',
+              },
               'credentialStatus': 'missing',
             },
           },
@@ -175,21 +203,19 @@ void main() {
       );
       expect(providers.single.hasClaudeCredentialsReady, isTrue);
       expect(
-        (await fs.stat(
-          fs.pathContext.join(
-            base,
-            'providers',
-            'claude',
-            'default',
-            '.credentials.json',
-          ),
-        )).isFile,
-        isTrue,
+        fs.symlinks[fs.pathContext.join(
+          base,
+          'providers',
+          'claude',
+          'default',
+          '.credentials.json',
+        )],
+        fs.pathContext.join(home, '.claude', '.credentials.json'),
       );
     },
   );
 
-  test('load does not overwrite existing provider credentials from global', () async {
+  test('load does not overwrite isolated provider credentials from global', () async {
     const home = '/home/user';
     RuntimeStorageContext.installForTesting(
       filesystem: fs,
@@ -206,7 +232,10 @@ void main() {
             'cli': 'claude',
             'name': 'Default',
             'category': 'official',
-            'config': {'env': {}},
+            'config': {
+              'env': {},
+              credentialBindingConfigKey: 'isolated',
+            },
             'credentialStatus': 'ready',
           },
         },

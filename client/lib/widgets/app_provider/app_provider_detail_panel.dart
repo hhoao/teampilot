@@ -12,10 +12,12 @@ import '../../models/app_provider_config.dart';
 import '../../models/llm_config.dart';
 import '../../services/provider/claude/claude_official_provider.dart';
 import '../../services/provider/codex/codex_official_provider.dart';
+import '../../services/provider/credential_binding.dart';
 import '../../services/provider/tool_config_generator.dart';
 import '../../theme/workspace_surface_layers.dart';
 import '../app_icon_button.dart';
 import 'provider_brand_icon.dart';
+import 'claude_credential_binding_field.dart';
 import 'provider_credential_action_bar.dart';
 
 class AppProviderDetailPanel extends StatelessWidget {
@@ -107,6 +109,37 @@ class AppProviderDetailPanel extends StatelessWidget {
             _InfoRow(label: l10n.baseUrl, value: provider.baseUrl),
           if (provider.defaultModel.isNotEmpty)
             _InfoRow(label: l10n.defaultModel, value: provider.defaultModel),
+          if (isOfficialClaudeProvider(provider))
+            BlocBuilder<AppProviderCubit, AppProviderState>(
+              buildWhen: (prev, next) {
+                final before = prev.providersFor(provider.cli)
+                    .where((p) => p.id == provider.id)
+                    .firstOrNull;
+                final after = next.providersFor(provider.cli)
+                    .where((p) => p.id == provider.id)
+                    .firstOrNull;
+                return before?.config != after?.config ||
+                    before?.updatedAt != after?.updatedAt;
+              },
+              builder: (context, state) {
+                final current = state.providersFor(provider.cli)
+                        .where((p) => p.id == provider.id)
+                        .firstOrNull ??
+                    provider;
+                return Padding(
+                  padding: const EdgeInsets.only(top: 16),
+                  child: ClaudeCredentialBindingField(
+                    value: resolveCredentialBinding(current),
+                    onChanged: (binding) {
+                      context.read<AppProviderCubit>().setClaudeCredentialBinding(
+                        current,
+                        binding,
+                      );
+                    },
+                  ),
+                );
+              },
+            ),
           const SizedBox(height: 24),
           ProviderCredentialActionBar(provider: provider),
           const SizedBox(height: 24),

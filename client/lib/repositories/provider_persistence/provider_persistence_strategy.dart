@@ -21,11 +21,12 @@ class AppProviderRepositoryException implements Exception {
 typedef SaveProviders =
     Future<void> Function(CliTool cli, List<AppProviderConfig> providers);
 
-typedef CredentialProbeFn = Future<CredentialProbe> Function(String providerId);
+typedef CredentialProbeFn =
+    Future<CredentialProbe> Function(AppProviderConfig provider);
 
 typedef CredentialImportFn =
     Future<CredentialActionResult> Function(
-      String providerId, {
+      AppProviderConfig provider, {
       required String homeDirectory,
       bool replace,
     });
@@ -95,10 +96,10 @@ mixin CredentialProbeSupport on ProviderPersistenceStrategy {
 
     for (final provider in providers) {
       if (!appliesToProbe(provider)) continue;
-      final probe = await credentialProbe(provider.id);
+      final probe = await credentialProbe(provider);
       if (probe.isReady) continue;
       final importResult = await credentialImport(
-        provider.id,
+        provider,
         homeDirectory: home,
         replace: replace,
       );
@@ -127,7 +128,7 @@ mixin CredentialProbeSupport on ProviderPersistenceStrategy {
         probed.add(provider);
         continue;
       }
-      final probe = await credentialProbe(provider.id);
+      final probe = await credentialProbe(provider);
       final next = provider.withCredentialProbe(probe);
       if (next.credentialStatus != provider.credentialStatus ||
           next.credentialUpdatedAt != provider.credentialUpdatedAt) {
