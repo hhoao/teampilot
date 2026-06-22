@@ -39,7 +39,7 @@
 1. **三级形态都做**（整体 / 项目 / 成员远程）。
 2. **成员位置 = 启动时分到的目录**（修订自原"target + 工作目录"）：每个成员分到一组同机目录，远程成员的目录在远程、本地成员的在本地。**不共享同一份文件系统**，成员间协作纯走 TeamBus 消息（见 §4.1）。天然契合 per-member git worktree。
 3. **凭证可推送到远程主机**：远程 target 的 CLI 凭证由本地生成后物化到远程 `providers/` 树，信任边界已接受（见 §5.1；落地建议 per-target 显式 opt-in，见 §11）。
-4. **symlink 在远程可用**（澄清纠错）：SFTP 协议支持、dartssh2 `SftpClient.link` 已实现、`SftpFilesystem.createSymlink` 已接通。**不需要**为远程强制 copy 或加 manifest 缓存；只需补 `SftpFilesystem.readSymlinkTarget`（当前恒返回 null，破坏物化幂等）。
+4. **symlink 在远程可用**（澄清纠错；限 **POSIX/SFTP 远程**）：SFTP 协议支持、dartssh2 `SftpClient.link` 已实现、`SftpFilesystem.createSymlink` 已接通。POSIX 远程**不需要**强制 copy 或加 manifest 缓存；只需补 `SftpFilesystem.readSymlinkTarget`（当前恒返回 null，破坏物化幂等）。**Windows 远程例外**：symlink 不可靠，继承退化为 copy（2026-06-22 决定支持 Windows 远程，见 §3 / §5.2）。
 5. **连接弹性倾向**：某远程主机掉线时，只降级该主机上的会话/成员，其余团队继续（待最终确认，见 §11）。
 
 ---
@@ -170,6 +170,8 @@ member 的机器 = 其所分配目录(ProjectFolder)的 targetId
 - **单文件为核心**，`fetch_artifact` 一次一文件。**目录/树走 tar 流**作为后续增量（`publish_artifact` 标 `kind: dir` → App 在源端 tar、流式到目的端解包），不在首版。
 - **落点冲突默认报错**：`destPath` 已存在则失败，需显式 `overwrite: true` 才覆盖。
 - **inbox 生命周期**：产物句柄与落点是 **session 作用域**，会话结束随 runtime 树回收；另设 **TTL** 清理长期未取的句柄，避免 inbox 无限堆积。
+
+---
 
 ## 5. 控制面 vs 工作面：存储职责拆分
 
@@ -322,7 +324,8 @@ openSessionTab / scheduleMemberConnect
         ├─ local : LocalFilesystem + LocalPty
         ├─ wsl   : WslFilesystem(distro) + wsl exec
         └─ ssh   : 复用/新建 SSHClient → SftpFilesystem + SshPty
-  → 若 ssh 且需协调：建立反向隧道，MCP endpoint=127.0.0.1:PORT    // §7
+  → 若 ssh：preflight（连接 / CLI 就位 / 物化 ancestry+凭证+relay）  // §5.3
+  → 若需协调：bus 起 → 反向隧道拿 <P> → 经 relay 写成员 MCP 配置     // §7.1/§7
   → SessionLifecycleService.prepareLaunch(workDir = 工作面解析)    // §5
   → TerminalSession.connect(ctx.transport)
 ```
