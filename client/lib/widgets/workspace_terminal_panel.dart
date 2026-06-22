@@ -72,8 +72,12 @@ class _WorkspaceTerminalPanelState extends State<WorkspaceTerminalPanel> {
     if (_resizeController != null && _controllerEntryId == active.id) {
       return _resizeController!;
     }
-    // Dispose old controller (bound to wrong engine).
-    _resizeController?.dispose();
+    // Dispose old controller (bound to wrong engine), unregistering it first so
+    // the coordinator never keeps a dead controller in its set.
+    if (_resizeController != null) {
+      _coordinator?.unregister(_resizeController!);
+      _resizeController!.dispose();
+    }
     final c = TerminalResizeController(
       engine: active.session.engine,
     );
@@ -103,7 +107,17 @@ class _WorkspaceTerminalPanelState extends State<WorkspaceTerminalPanel> {
   }
 
   // NOTE: no dispose() of sessions here — the registry owns their lifetime and
-  // tears them down via disposeWorkspace when the workspace tab is closed.
+  // tears them down via disposeWorkspace when the workspace tab is closed. We
+  // DO own the resize controller + coordinator, so those are torn down below.
+  @override
+  void dispose() {
+    if (_resizeController != null) {
+      _coordinator?.unregister(_resizeController!);
+      _resizeController!.dispose();
+    }
+    _coordinator?.dispose();
+    super.dispose();
+  }
 
   WorkspaceTerminalEntry? get _activeEntry => _group.activeEntry;
 
@@ -336,8 +350,14 @@ class _WorkspaceTerminalPanelState extends State<WorkspaceTerminalPanel> {
             if (dir.isEmpty) return;
             _addEntry(dir, select: true);
           },
-          onClosePanel: () =>
-              context.read<LayoutCubit>().setWorkspaceTerminalVisible(false),
+          onClosePanel: () {
+            _coordinator?.beginAllTransactions();
+            context.read<LayoutCubit>().setWorkspaceTerminalVisible(false);
+            // Flush after the next frame's layout settles.
+            WidgetsBinding.instance.addPostFrameCallback((_) {
+              _coordinator?.endAllTransactions(flush: true);
+            });
+          },
         ),
         initialPrimarySize: sessionSidebarWidth,
         minPrimarySize:
@@ -350,8 +370,13 @@ class _WorkspaceTerminalPanelState extends State<WorkspaceTerminalPanel> {
             width,
           );
         },
-        onDragStart: () => _coordinator?.beginAllTransactions(),
-        onDragEnd: () => _coordinator?.endAllTransactions(flush: true),
+        // Divider drag: let StableFrameCommitPolicy gate naturally.
+        // flushAllImmediate at drag end forces a synchronous engine.resize
+        // which can trigger MirrorGrid snapshot + CustomPaint repaint while
+        // the ResizableSplitView is still settling from its own setState.
+        // The settle timer (150ms) handles the final commit reliably.
+        onDragStart: () {},
+        onDragEnd: () {},
       ),
     );
   }

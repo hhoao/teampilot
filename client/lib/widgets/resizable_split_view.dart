@@ -21,6 +21,8 @@ class ResizableSplitView extends StatefulWidget {
     this.dividerThickness = 1,
     this.dividerHitBuffer = 5,
     this.onPrimarySizeChanged,
+    this.onDragStart,
+    this.onDragEnd,
   });
 
   final Axis axis;
@@ -47,6 +49,13 @@ class ResizableSplitView extends StatefulWidget {
   final double dividerHitBuffer;
   final ValueChanged<double>? onPrimarySizeChanged;
 
+  /// Fired when the divider drag begins. Bracket with [onDragEnd] to hold
+  /// PTY resizes during continuous resize (TerminalLayoutCoordinator).
+  final VoidCallback? onDragStart;
+
+  /// Fired when the divider drag ends (pointer up or cancel).
+  final VoidCallback? onDragEnd;
+
   bool get _isHorizontal => axis == Axis.horizontal;
 
   @override
@@ -67,11 +76,30 @@ class _ResizableSplitViewState extends State<ResizableSplitView> {
   double? _draggingPrimarySize;
   bool _isDragging = false;
 
+  /// Cached from the last LayoutBuilder frame. Used in [didUpdateWidget] to
+  /// detect when `initialPrimarySize` changed because the user dragged the
+  /// divider (onPrimarySizeChanged → cubit → parent rebuild). When the
+  /// current fraction already produces the same primary size as the new
+  /// `initialPrimarySize`, resetting is a no-op mathematically but can
+  /// diverge if the available space changed between frames.
+  double? _lastLayoutAvailable;
+
   @override
   void didUpdateWidget(ResizableSplitView oldWidget) {
     super.didUpdateWidget(oldWidget);
     if (widget.initialPrimarySize != oldWidget.initialPrimarySize ||
         widget.initialPrimaryFraction != oldWidget.initialPrimaryFraction) {
+      // When the user just dragged the divider, the new initialPrimarySize
+      // matches _fraction * _lastLayoutAvailable. Don't reset — the
+      // recomputed fraction can diverge if the available space changed.
+      if (_initialized && _fraction != null && _lastLayoutAvailable != null) {
+        final currentPrimary = (_lastLayoutAvailable! * _fraction!)
+            .clamp(_minPrimarySize(_lastLayoutAvailable!),
+                    _maxPrimarySize(_lastLayoutAvailable!));
+        if ((currentPrimary - widget.initialPrimarySize).abs() < 1.0) {
+          return; // Drag position matches new initial size — preserve.
+        }
+      }
       _initialized = false;
       _fraction = null;
     }
@@ -204,6 +232,7 @@ class _ResizableSplitViewState extends State<ResizableSplitView> {
         _draggingPrimarySize = primarySize;
         _isDragging = true;
       });
+      widget.onDragStart?.call();
     }
 
     void onDragEnd() {
@@ -212,6 +241,7 @@ class _ResizableSplitViewState extends State<ResizableSplitView> {
         _isDragging = false;
       });
       widget.onPrimarySizeChanged?.call(_primarySize(available));
+      widget.onDragEnd?.call();
     }
 
     void onDragCancel() {
@@ -219,6 +249,7 @@ class _ResizableSplitViewState extends State<ResizableSplitView> {
         _draggingPrimarySize = null;
         _isDragging = false;
       });
+      widget.onDragEnd?.call();
     }
 
     // Hot path: only update notifier, no setState — ValueListenableBuilder
@@ -261,6 +292,7 @@ class _ResizableSplitViewState extends State<ResizableSplitView> {
     return LayoutBuilder(
       builder: (context, constraints) {
         final available = _availableSize(constraints);
+        _lastLayoutAvailable = available;
         final maxPrimary = _maxPrimarySize(available);
 
         // ValueListenableBuilder confines drag-update rebuilds to this subtree.

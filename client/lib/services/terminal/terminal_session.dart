@@ -193,15 +193,14 @@ class TerminalSession implements TerminalTextSink {
 
   Timer? _confirmFallbackTimer;
   Timer? _startupDeadlineTimer;
-  Timer? _ptyGeometryTimer;
-  Timer? _ptyGeometrySettleTimer;
   var _spawnRequested = false;
   var _transportStartGeneration = 0;
-  var _hasPendingLayoutGeometry = false;
   int _pendingViewportCols = 80;
   int _pendingViewportRows = 24;
-  int _lastSyncedCols = 0;
-  int _lastSyncedRows = 0;
+
+  /// The attached resize controller. When non-null, PTY geometry is driven by
+  /// the controller's stability-gated policy instead of the legacy timer path.
+  TerminalResizeController? _resizeController;
 
   /// Serializes [submitFullScreenInput] so overlapping bracketed-paste + CR
   /// injections never interleave their carriage returns.
@@ -211,12 +210,17 @@ class TerminalSession implements TerminalTextSink {
   /// full-screen TUI CLIs, matching Claude Code's own ~10ms child-PTY delay.
   static const _fullScreenSubmitDelay = Duration(milliseconds: 10);
 
-  int get viewWidth => _pendingViewportCols;
-  int get viewHeight => _pendingViewportRows;
-
-  /// Trailing settle after layout resize (apps may react to SIGWINCH in two phases).
-  static const _layoutGeometrySettleMs = 80;
-  static const _outputGeometryDebounceMs = 80;
+  // Prefer the committed grid (what the PTY actually has) over the proposed
+  // `current`, which can lead the engine mid-drag. Before the first commit
+  // `committed` is null, so spawn-time reads fall back to the fresh proposal.
+  int get viewWidth =>
+      _resizeController?.committed?.cols ??
+      _resizeController?.current.cols ??
+      _pendingViewportCols;
+  int get viewHeight =>
+      _resizeController?.committed?.rows ??
+      _resizeController?.current.rows ??
+      _pendingViewportRows;
 
   bool get isRunning =>
       (_launchPhase == _LaunchPhase.running ||
@@ -260,16 +264,55 @@ class TerminalSession implements TerminalTextSink {
   }
 
   /// Called from [TerminalView.onViewportResize] when the cell grid changes.
+  ///
+  /// **Deprecated.** Use [attachResizeController] instead. This path uses
+  /// wall-clock timers and is kept only for callers that haven't migrated.
+  /// When a controller is attached, this is a no-op.
+  @Deprecated('Use attachResizeController instead')
   void onViewportResize(int columns, int rows) {
-    // Below the VT minimum a fullwidth glyph panics the engine; the view clamps
-    // to this floor, but make the invariant explicit at the consumer too.
+    if (_resizeController != null) return; // controller handles it
     if (columns < kMinTerminalColumns || rows < kMinTerminalRows) return;
     _pendingViewportCols = columns;
     _pendingViewportRows = rows;
-    _hasPendingLayoutGeometry = true;
     engine.resize(columns: columns, rows: rows);
     _syncPtyGeometryNow(columns, rows);
     _scheduleLayoutPtyGeometrySettle();
+  }
+
+  /// Attach a [TerminalResizeController] so the session follows its
+  /// stability-gated PTY commits instead of the legacy timer-based path.
+  ///
+  /// After this call, [onViewportResize] becomes a no-op and the controller
+  /// handles all PTY geometry via its policy.
+  void attachResizeController(TerminalResizeController controller) {
+    _resizeController = controller;
+    controller.onPtyResize = (cols, rows) {
+      _pendingViewportCols = cols;
+      _pendingViewportRows = rows;
+      if (!_transportReadyForIo || _transport == null) {
+        // Transport not ready yet (still spawning). Remember the size and flush
+        // it when the transport comes up, instead of silently dropping it.
+        _pendingPtyResizeCols = cols;
+        _pendingPtyResizeRows = rows;
+        return;
+      }
+      _transport!.resize(rows, cols);
+    };
+  }
+
+  /// A PTY resize that arrived before the transport was ready. Flushed by
+  /// [_flushPendingPtyResize] once the transport enters the confirming phase.
+  int? _pendingPtyResizeCols;
+  int? _pendingPtyResizeRows;
+
+  void _flushPendingPtyResize() {
+    final cols = _pendingPtyResizeCols;
+    final rows = _pendingPtyResizeRows;
+    _pendingPtyResizeCols = null;
+    _pendingPtyResizeRows = null;
+    if (cols == null || rows == null) return;
+    if (!_transportReadyForIo || _transport == null) return;
+    _transport!.resize(rows, cols);
   }
 
   void connect({
@@ -523,67 +566,22 @@ class TerminalSession implements TerminalTextSink {
     );
   }
 
-  void _schedulePtyGeometry({int? cols, int? rows}) {
-    if (cols != null && rows != null) {
-      onViewportResize(cols, rows);
-      return;
-    }
-    if (_transport == null) {
-      return;
-    }
-    if (!_transportReadyForIo) return;
-
-    _ptyGeometryTimer?.cancel();
-    _ptyGeometryTimer = Timer(
-      Duration(milliseconds: _outputGeometryDebounceMs),
-      () {
-        _ptyGeometryTimer = null;
-        _applyOutputPtyGeometry();
-      },
-    );
-  }
-
+  /// Direct PTY resize — no timers, no settle, no debounce. Called only from
+  /// the legacy [onViewportResize] path. When a controller is attached, all
+  /// PTY geometry flows through the controller's policy instead.
   void _syncPtyGeometryNow(int cols, int rows) {
-    if (cols <= 0 || rows <= 0) return;
-    if (_transport == null) {
-      return;
-    }
-    if (!_transportReadyForIo) return;
-    if (cols == _lastSyncedCols && rows == _lastSyncedRows) return;
-    _lastSyncedCols = cols;
-    _lastSyncedRows = rows;
-    _transport!.resize(rows, cols);
-  }
-
-  void _scheduleLayoutPtyGeometrySettle() {
-    if (_transport == null || !_transportReadyForIo) return;
-    _ptyGeometrySettleTimer?.cancel();
-    _ptyGeometrySettleTimer = Timer(
-      const Duration(milliseconds: _layoutGeometrySettleMs),
-      () {
-        _ptyGeometrySettleTimer = null;
-        if (_transport == null || !_transportReadyForIo) return;
-        final cols = _hasPendingLayoutGeometry
-            ? _pendingViewportCols
-            : viewWidth;
-        final rows = _hasPendingLayoutGeometry
-            ? _pendingViewportRows
-            : viewHeight;
-        _hasPendingLayoutGeometry = false;
-        _syncPtyGeometryNow(cols, rows);
-      },
-    );
-  }
-
-  void _applyOutputPtyGeometry() {
-    final cols = _hasPendingLayoutGeometry ? _pendingViewportCols : viewWidth;
-    final rows = _hasPendingLayoutGeometry ? _pendingViewportRows : viewHeight;
-    _hasPendingLayoutGeometry = false;
-
     if (cols <= 0 || rows <= 0) return;
     if (_transport == null) return;
     if (!_transportReadyForIo) return;
-    _syncPtyGeometryNow(cols, rows);
+    _transport!.resize(rows, cols);
+  }
+
+  /// 80ms settle after a legacy layout resize; kept for [onViewportResize].
+  void _scheduleLayoutPtyGeometrySettle() {
+    Timer(const Duration(milliseconds: 80), () {
+      if (_transport == null || !_transportReadyForIo) return;
+      _syncPtyGeometryNow(_pendingViewportCols, _pendingViewportRows);
+    });
   }
 
   void _spawnTransport({
@@ -620,6 +618,9 @@ class TerminalSession implements TerminalTextSink {
   void _enterConfirmingPhase() {
     if (_launchPhase != _LaunchPhase.spawning) return;
     _launchPhase = _LaunchPhase.confirming;
+    // Transport is now ready for I/O — flush any resize that arrived while it
+    // was still spawning.
+    _flushPendingPtyResize();
     _confirmFallbackTimer?.cancel();
     _confirmFallbackTimer = Timer(confirmFallback, _confirmProcessStarted);
   }
@@ -656,7 +657,8 @@ class TerminalSession implements TerminalTextSink {
       activityTracker.markActive();
     }
     engine.feed(data);
-    _schedulePtyGeometry();
+    // PTY geometry is managed by TerminalResizeController when attached,
+    // or by the legacy onViewportResize path. No output-driven re-sync.
   }
 
   Future<void> _startTransport({
@@ -673,21 +675,12 @@ class TerminalSession implements TerminalTextSink {
       await Future<void>.delayed(Duration.zero);
       if (startGeneration != _transportStartGeneration || !_starting) return;
 
-      // The view's first post-frame onViewportResize fires at the end of the
-      // mount frame, BEFORE this deferred body runs (this is a Timer(0) that
-      // only resumes once the event loop continues). So by now
-      // _pendingViewportCols/Rows already hold the real cell grid, while the
-      // cols/rows captured at spawn time are still the host's 80×24 guess.
-      // Start the engine at the freshest size — otherwise initializeEmpty would
-      // clobber the grid the view just sized, and nothing reconciles it until a
-      // window resize (engine stuck small → new output renders into the top
-      // rows with dead space below, looking like it can't scroll to the bottom).
-      final startCols = _hasPendingLayoutGeometry && _pendingViewportCols > 0
-          ? _pendingViewportCols
-          : cols;
-      final startRows = _hasPendingLayoutGeometry && _pendingViewportRows > 0
-          ? _pendingViewportRows
-          : rows;
+      // By now the view has mounted and the controller (if attached) has
+      // proposed the real grid. Use the controller's authoritative size;
+      // fall back to the captured cols/rows for legacy callers.
+      final ctrl = _resizeController;
+      final startCols = ctrl?.current.cols ?? _pendingViewportCols;
+      final startRows = ctrl?.current.rows ?? _pendingViewportRows;
       engine.resize(columns: startCols, rows: startRows);
       engine.initializeEmpty(startRows, startCols);
       final theme = _terminalTheme;
@@ -728,21 +721,21 @@ class TerminalSession implements TerminalTextSink {
       _transport = transport;
       _enterConfirmingPhase();
 
-      if (_hasPendingLayoutGeometry &&
-          _pendingViewportCols > 0 &&
-          _pendingViewportRows > 0) {
-        _lastSyncedCols = _pendingViewportCols;
-        _lastSyncedRows = _pendingViewportRows;
-        // Resize BOTH the engine grid and the PTY: if onViewportResize landed
-        // during the awaits above (or its size differs from startCols/Rows),
-        // the engine grid must follow too — not just the PTY — or the painter
-        // draws a grid that's the wrong height for the viewport.
-        engine.resize(
-          columns: _pendingViewportCols,
-          rows: _pendingViewportRows,
-        );
-        transport.resize(_pendingViewportRows, _pendingViewportCols);
-        _hasPendingLayoutGeometry = false;
+      // Reconcile: if the controller has a current grid that differs from
+      // spawn time, push it to engine + PTY now. This handles the case where
+      // the view's first LayoutBuilder fired during the awaits above.
+      if (ctrl != null) {
+        final current = ctrl.current;
+        if (current.cols != startCols || current.rows != startRows) {
+          _pendingViewportCols = current.cols;
+          _pendingViewportRows = current.rows;
+          engine.resize(columns: current.cols, rows: current.rows);
+          transport.resize(current.rows, current.cols);
+        }
+        // Force first PTY commit through the controller now that transport is
+        // ready — the initial proposal may have been gated by the policy while
+        // the transport wasn't ready yet.
+        ctrl.commitNow();
       }
 
       _outputSubscription = transport.output.listen((Uint8List data) {
@@ -848,11 +841,9 @@ class TerminalSession implements TerminalTextSink {
 
   void _teardownPtyState() {
     _spawnRequested = false;
+    _pendingPtyResizeCols = null;
+    _pendingPtyResizeRows = null;
     _cancelStartupTimers();
-    _ptyGeometryTimer?.cancel();
-    _ptyGeometryTimer = null;
-    _ptyGeometrySettleTimer?.cancel();
-    _ptyGeometrySettleTimer = null;
     _outputSubscription?.cancel();
     _outputSubscription = null;
     _launchPhase = _LaunchPhase.idle;
@@ -962,7 +953,6 @@ class TerminalSession implements TerminalTextSink {
     _transportStartGeneration++;
     _startFailed = false;
     _spawnRequested = false;
-    _hasPendingLayoutGeometry = false;
     _teardownPtyState();
     _onProcessFailed = null;
     _onProcessExited = null;
