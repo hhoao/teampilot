@@ -338,8 +338,8 @@ class SessionLaunchService implements MemberConnector {
     final bucketKey = _tabStore.activeWorkspaceId.trim();
     if (bucketKey.isEmpty) return null;
     final tab = WorkspaceTabRef.decodeTabKey(bucketKey);
-    if (tab == null) return null;
-    return _workspaceById(tab.workspaceId)?.primaryPath;
+    final workspaceId = tab?.workspaceId ?? bucketKey;
+    return _workspaceById(workspaceId)?.primaryPath;
   }
 
   AppSession? _existingSessionForMaterialize(

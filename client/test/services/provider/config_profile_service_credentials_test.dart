@@ -3,6 +3,7 @@ import 'package:teampilot/models/app_provider_config.dart';
 import 'package:teampilot/models/team_config.dart';
 import 'package:teampilot/repositories/app_provider_repository.dart';
 import 'package:teampilot/services/provider/config_profile_service.dart';
+import 'package:teampilot/services/provider/credential_binding.dart';
 
 import '../../support/in_memory_filesystem.dart';
 import '../../support/post_frame_test_harness.dart';
@@ -43,19 +44,19 @@ void main() {
 
   test('official launch links provider credentials into session dir', () async {
     await repository.saveProviders(CliTool.claude, [
-      const AppProviderConfig(
+      AppProviderConfig(
         id: 'work',
         cli: CliTool.claude,
         name: 'work',
         category: AppProviderCategory.official,
-        config: {'env': {}},
+        config: withCredentialBinding({'env': {}}, CredentialBindingKind.isolated),
       ),
-      const AppProviderConfig(
+      AppProviderConfig(
         id: 'personal',
         cli: CliTool.claude,
         name: 'personal',
         category: AppProviderCategory.official,
-        config: {'env': {}},
+        config: withCredentialBinding({'env': {}}, CredentialBindingKind.isolated),
       ),
     ]);
     await fs.writeString(
