@@ -29,10 +29,14 @@ class HomeClosedWorkspacesStore {
       final parsed = <HomeClosedWorkspaceEntry>[];
       for (final raw in entries) {
         if (raw is! Map) continue;
-        final entry = HomeClosedWorkspaceEntry.fromJson(
-          raw.cast<String, Object?>(),
-        );
-        if (entry.workspaceId.isNotEmpty) parsed.add(entry);
+        try {
+          final entry = HomeClosedWorkspaceEntry.fromJson(
+            raw.cast<String, Object?>(),
+          );
+          parsed.add(entry);
+        } catch (_) {
+          continue;
+        }
       }
       parsed.sort((a, b) => b.closedAt.compareTo(a.closedAt));
       return parsed;
@@ -52,19 +56,20 @@ class HomeClosedWorkspacesStore {
         displayName: entry.displayName,
         primaryPath: entry.primaryPath,
         closedAt: now,
+        identity: entry.identity,
       ),
       for (final e in existing)
-        if (e.workspaceId != trimmedId) e,
+        if (e.tabKey != entry.tabKey) e,
     ].take(maxEntries).toList();
     await _save(next);
   }
 
-  Future<void> remove(String workspaceId) async {
-    final trimmed = workspaceId.trim();
+  Future<void> remove(String tabKey) async {
+    final trimmed = tabKey.trim();
     if (trimmed.isEmpty) return;
     final next = [
       for (final e in await load())
-        if (e.workspaceId != trimmed) e,
+        if (e.tabKey != trimmed) e,
     ];
     await _save(next);
   }

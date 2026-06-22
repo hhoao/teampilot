@@ -1,9 +1,10 @@
 import 'dart:convert';
 
+import '../../models/workspace_tab_ref.dart';
 import '../io/filesystem.dart';
 import '../storage/app_storage.dart';
 
-/// Persists open title-bar workspace tab ids in display order.
+/// Persists open title-bar workspace tabs in display order.
 class HomeOpenWorkspacesStore {
   HomeOpenWorkspacesStore({Filesystem? fs, String? pathOverride})
       : _fsOverride = fs,
@@ -16,26 +17,40 @@ class HomeOpenWorkspacesStore {
   String get _path =>
       _pathOverride ?? AppStorage.paths.homeWorkspaceOpenWorkspacesJson;
 
-  Future<List<String>> loadOrderedIds() async {
+  Future<List<WorkspaceTabRef>> loadOrderedTabs() async {
     try {
       final text = await _fs.readString(_path);
       if (text == null || text.isEmpty) return [];
       final root = (jsonDecode(text) as Map).cast<String, Object?>();
-      final ids = root['workspaceIds'];
-      if (ids is! List) return [];
-      return ids.map((e) => e.toString()).where((s) => s.isNotEmpty).toList();
+      final tabsRaw = root['tabs'];
+      if (tabsRaw is! List) return [];
+      final parsed = <WorkspaceTabRef>[];
+      for (final entry in tabsRaw) {
+        if (entry is! Map) continue;
+        try {
+          parsed.add(
+            WorkspaceTabRef.fromJson(entry.cast<String, Object?>()),
+          );
+        } catch (_) {
+          continue;
+        }
+      }
+      return parsed;
     } catch (_) {
       return [];
     }
   }
 
-  Future<void> saveOrderedIds(List<String> workspaceIds) async {
+  Future<void> saveOrderedTabs(List<WorkspaceTabRef> tabs) async {
     final next = [
-      for (final id in workspaceIds)
-        if (id.trim().isNotEmpty) id.trim(),
+      for (final tab in tabs)
+        if (tab.workspaceId.trim().isNotEmpty) tab,
     ];
     final ctx = _fs.pathContext;
     await _fs.ensureDir(ctx.dirname(_path));
-    await _fs.atomicWrite(_path, jsonEncode({'workspaceIds': next}));
+    await _fs.atomicWrite(
+      _path,
+      jsonEncode({'tabs': next.map((t) => t.toJson()).toList()}),
+    );
   }
 }
