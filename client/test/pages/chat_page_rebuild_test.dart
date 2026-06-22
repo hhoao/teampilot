@@ -123,6 +123,7 @@ void main() {
                     cwd: '/tmp/personal-workspace',
                     isPersonalWorkspace: true,
                     workspaceId: 'personal-test',
+                    tabScopeId: 'personal-test',
                     team: null,
                   ),
                 ),

@@ -26,6 +26,7 @@ class ChatPageShell extends StatelessWidget {
     required this.cwd,
     required this.isPersonalWorkspace,
     required this.workspaceId,
+    required this.tabScopeId,
     required this.team,
     this.additionalPaths = const [],
     this.sessionId,
@@ -39,6 +40,7 @@ class ChatPageShell extends StatelessWidget {
   final String? sessionId;
   final bool isPersonalWorkspace;
   final String workspaceId;
+  final String tabScopeId;
   final TeamProfile? team;
 
   @override
@@ -55,6 +57,7 @@ class ChatPageShell extends StatelessWidget {
       dismissDrawerOnAction: toolsAsDrawer,
       isPersonalWorkspace: isPersonalWorkspace,
       workspaceId: workspaceId,
+      toolsScopeId: tabScopeId,
     );
 
     final centerShell = _ChatWorkspaceShell(
@@ -62,6 +65,7 @@ class ChatPageShell extends StatelessWidget {
       sessionId: sessionId,
       isPersonalWorkspace: isPersonalWorkspace,
       workspaceId: workspaceId,
+      tabScopeId: tabScopeId,
       team: team,
       preferences: preferences,
     );
@@ -140,6 +144,7 @@ class _ChatWorkspaceShell extends StatelessWidget {
     required this.sessionId,
     required this.isPersonalWorkspace,
     required this.workspaceId,
+    required this.tabScopeId,
     required this.team,
     required this.preferences,
   });
@@ -148,6 +153,7 @@ class _ChatWorkspaceShell extends StatelessWidget {
   final String? sessionId;
   final bool isPersonalWorkspace;
   final String workspaceId;
+  final String tabScopeId;
   final TeamProfile? team;
   final LayoutPreferences preferences;
 
@@ -164,7 +170,7 @@ class _ChatWorkspaceShell extends StatelessWidget {
         final teamConfig = team;
         return WorkspaceShell(
           workspaceTerminalWorkingDirectory: cwd,
-          workspaceWorkspaceId: workspaceId,
+          workspaceWorkspaceId: tabScopeId,
           showHeader: false,
           breadcrumb: isPersonalWorkspace
               ? 'Personal / Chat / Shell chat workbench'

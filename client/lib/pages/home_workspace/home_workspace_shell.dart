@@ -15,8 +15,8 @@ import '../../l10n/l10n_extensions.dart';
 import '../../models/workspace.dart';
 import '../../models/launch_profile_ref.dart';
 import '../../models/launch_profile_kind.dart';
-import '../../models/team_config.dart';
 import '../../models/launch_profile.dart';
+import '../../models/workspace_tab_ref.dart';
 import '../../services/storage/launch_profile_provisioner.dart';
 import '../../utils/launch_profile_display_name.dart';
 import '../../utils/workspace_display_name.dart';
@@ -29,9 +29,9 @@ import '../../services/file_tree/workspace_file_tree_store.dart';
 import '../../services/terminal/workspace_terminal_registry.dart';
 import '../../widgets/app_dialog.dart';
 import 'home_workspace_body_stack.dart';
-import 'home_workspace_route.dart';
 import 'home_workspace_tab_scope.dart';
 import 'home_workspace_title_bar.dart';
+import 'open_workspace_tab_actions.dart';
 
 /// Persistent chrome for the workspace-home route family. Owns the open workspace
 /// tabs (kept until explicitly closed), the title bar, and [HomeWorkspaceBodyStack]
@@ -76,12 +76,23 @@ class HomeShell extends StatefulWidget {
   ) =>
       launchProfileDisplayNameForId(l10n, identities, profileId);
 
-  @Deprecated('Use identityNameFor')
-  static String? teamNameFor(List<TeamProfile> teams, String teamId) {
-    for (final team in teams) {
-      if (team.id == teamId) return team.name;
+  @visibleForTesting
+  static List<WorkspaceTabRef> mergeOpenTabs({
+    required List<WorkspaceTabRef> persisted,
+    required WorkspaceTabRef? routeTab,
+  }) {
+    final merged = <WorkspaceTabRef>[];
+    void add(WorkspaceTabRef tab) {
+      if (tab.workspaceId.trim().isEmpty) return;
+      if (merged.any((e) => e.tabKey == tab.tabKey)) return;
+      merged.add(tab);
     }
-    return null;
+
+    for (final tab in persisted) {
+      add(tab);
+    }
+    if (routeTab != null) add(routeTab);
+    return merged;
   }
 }
 
@@ -90,10 +101,9 @@ class _HomeShellState extends State<HomeShell> {
   final _closedWorkspacesStore = HomeClosedWorkspacesStore();
   final _openWorkspacesStore = HomeOpenWorkspacesStore();
 
-  /// Open workspace ids in tab order; persisted across app restarts.
-  List<String> _openIds = const [];
+  /// Open workspace tabs in display order; persisted across app restarts.
+  List<WorkspaceTabRef> _openTabs = const [];
   List<HomeClosedWorkspaceEntry> _recentlyClosed = const [];
-  final Map<String, LaunchProfileRef> _identityByWorkspaceId = {};
 
   @override
   void initState() {
@@ -106,60 +116,40 @@ class _HomeShellState extends State<HomeShell> {
   }
 
   Future<void> _bootstrapOpenTabs() async {
-    final initialWorkspaceId = _workspaceIdFromLocation(widget.location);
-    final initialIdentity = _identityFromLocation(widget.location);
-    if (initialWorkspaceId != null && initialIdentity != null) {
-      _identityByWorkspaceId[initialWorkspaceId] = initialIdentity;
-    }
-    final persisted = await _openWorkspacesStore.loadOrderedIds();
+    final routeTab = WorkspaceTabRef.fromLocation(widget.location);
+    final persisted = await _openWorkspacesStore.loadOrderedTabs();
     if (!mounted) return;
     setState(
-      () => _openIds = _mergeOpenIds(
+      () => _openTabs = HomeShell.mergeOpenTabs(
         persisted: persisted,
-        routeWorkspaceId: initialWorkspaceId,
+        routeTab: routeTab,
       ),
     );
-    if (initialWorkspaceId != null) {
-      unawaited(_recentWorkspacesStore.recordVisit(initialWorkspaceId));
+    if (routeTab != null) {
+      unawaited(_recentWorkspacesStore.recordVisit(routeTab));
       WidgetsBinding.instance.addPostFrameCallback((_) {
         if (!mounted) return;
-        context.read<LayoutCubit>().setLastOpenedWorkspaceId(initialWorkspaceId);
+        context
+            .read<LayoutCubit>()
+            .setLastOpenedWorkspaceId(routeTab.workspaceId);
       });
     }
-    await _persistOpenIds();
+    await _persistOpenTabs();
     await _reloadRecentlyClosed();
   }
 
-  static List<String> _mergeOpenIds({
-    required List<String> persisted,
-    required String? routeWorkspaceId,
-  }) {
-    final merged = <String>[];
-    void add(String raw) {
-      final id = raw.trim();
-      if (id.isEmpty || merged.contains(id)) return;
-      merged.add(id);
-    }
-
-    for (final id in persisted) {
-      add(id);
-    }
-    if (routeWorkspaceId != null) add(routeWorkspaceId);
-    return merged;
-  }
-
-  Future<void> _persistOpenIds() async {
-    await _openWorkspacesStore.saveOrderedIds(_openIds);
+  Future<void> _persistOpenTabs() async {
+    await _openWorkspacesStore.saveOrderedTabs(_openTabs);
   }
 
   Future<void> _reloadRecentlyClosed() async {
     final all = await _closedWorkspacesStore.load();
     if (!mounted) return;
-    final open = _openIds.toSet();
+    final open = _openTabs.map((t) => t.tabKey).toSet();
     setState(
       () => _recentlyClosed = [
         for (final e in all)
-          if (!open.contains(e.workspaceId)) e,
+          if (!open.contains(e.tabKey)) e,
       ],
     );
   }
@@ -168,18 +158,16 @@ class _HomeShellState extends State<HomeShell> {
   void didUpdateWidget(covariant HomeShell oldWidget) {
     super.didUpdateWidget(oldWidget);
     if (oldWidget.location != widget.location) {
-      final id = _workspaceIdFromLocation(widget.location);
-      final identity = _identityFromLocation(widget.location);
-      if (id != null) {
-        if (identity != null) {
-          _identityByWorkspaceId[id] = identity;
+      final routeTab = WorkspaceTabRef.fromLocation(widget.location);
+      if (routeTab != null) {
+        if (!_openTabs.any((t) => t.tabKey == routeTab.tabKey)) {
+          setState(() => _openTabs = [..._openTabs, routeTab]);
+          unawaited(_persistOpenTabs());
         }
-        if (!_openIds.contains(id)) {
-          setState(() => _openIds = [..._openIds, id]);
-          unawaited(_persistOpenIds());
-        }
-        unawaited(_recentWorkspacesStore.recordVisit(id));
-        context.read<LayoutCubit>().setLastOpenedWorkspaceId(id);
+        unawaited(_recentWorkspacesStore.recordVisit(routeTab));
+        context
+            .read<LayoutCubit>()
+            .setLastOpenedWorkspaceId(routeTab.workspaceId);
       }
       WidgetsBinding.instance.addPostFrameCallback((_) {
         if (!mounted) return;
@@ -188,102 +176,132 @@ class _HomeShellState extends State<HomeShell> {
     }
   }
 
-  static String? _workspaceIdFromLocation(String location) =>
-      HomeWorkspaceRoute.workspaceId(location);
-
-  static LaunchProfileRef? _identityFromLocation(String location) =>
-      HomeWorkspaceRoute.identity(location);
-
-  LaunchProfileRef _identityForWorkspace(String workspaceId) {
-    final fromRoute = _workspaceIdFromLocation(widget.location) == workspaceId
-        ? _identityFromLocation(widget.location)
-        : null;
-    return fromRoute ??
-        _identityByWorkspaceId[workspaceId] ??
-        const LaunchProfileRef(LaunchProfileProvisioner.defaultPersonalId);
-  }
-
-  String _workspaceRoute(String workspaceId, LaunchProfileRef identity) =>
-      '/home-v2/workspace/$workspaceId?as=${identity.encode()}';
-
-  void _selectTab(String id) {
-    context.go(_workspaceRoute(id, _identityForWorkspace(id)));
-  }
+  void _selectTab(WorkspaceTabRef tab) => context.go(tab.route);
 
   void _goHome() => context.go('/home-v2');
 
-  void _openWorkspace(String id, {required bool activate}) {
-    if (!_openIds.contains(id)) {
-      setState(() => _openIds = [..._openIds, id]);
-      unawaited(_persistOpenIds());
+  void _openTab(WorkspaceTabRef tab, {required bool activate}) {
+    if (!_openTabs.any((t) => t.tabKey == tab.tabKey)) {
+      setState(() => _openTabs = [..._openTabs, tab]);
+      unawaited(_persistOpenTabs());
     }
-    unawaited(_recentWorkspacesStore.recordVisit(id));
+    unawaited(_recentWorkspacesStore.recordVisit(tab));
     if (activate) {
-      _selectTab(id);
+      _selectTab(tab);
     }
   }
 
-  Future<void> _reopenClosedWorkspace(String id) async {
-    await _closedWorkspacesStore.remove(id);
+  void _openWorkspace(
+    String workspaceId, {
+    required bool activate,
+    LaunchProfileRef? identity,
+  }) {
+    final resolved = identity ?? _defaultIdentityFor(workspaceId);
+    _openTab(
+      WorkspaceTabRef(workspaceId: workspaceId, identity: resolved),
+      activate: activate,
+    );
+  }
+
+  LaunchProfileRef _defaultIdentityFor(String workspaceId) {
+    final workspace = _resolve(
+      context.read<ChatCubit>().state.workspaces,
+      workspaceId,
+    );
+    final profileId = workspace?.defaultProfileId.trim() ?? '';
+    if (profileId.isNotEmpty) {
+      return LaunchProfileRef(profileId);
+    }
+    return const LaunchProfileRef(LaunchProfileProvisioner.defaultPersonalId);
+  }
+
+  Future<void> _openTabWithOtherIdentity(String tabKey) async {
+    final tab = _openTabs.where((t) => t.tabKey == tabKey).firstOrNull;
+    if (tab == null) return;
+    final chat = context.read<ChatCubit>();
+    final workspace = _resolve(chat.state.workspaces, tab.workspaceId);
+    if (workspace == null) return;
+    await openWorkspaceInNewTabWithIdentityPicker(
+      context,
+      workspace: workspace,
+      sessions: chat.state.sessions,
+      excludeIdentity: tab.identity,
+    );
+  }
+
+  Future<void> _reopenClosedTab(String tabKey) async {
+    final entry = _recentlyClosed
+        .where((e) => e.tabKey == tabKey)
+        .firstOrNull;
+    if (entry == null) return;
+    await _closedWorkspacesStore.remove(tabKey);
     if (!mounted) return;
-    _openWorkspace(id, activate: true);
+    _openTab(
+      WorkspaceTabRef(
+        workspaceId: entry.workspaceId,
+        identity: entry.identity,
+      ),
+      activate: true,
+    );
     await _reloadRecentlyClosed();
   }
 
-  Future<void> _closeTab(String id) async {
-    if (!_openIds.contains(id)) return;
+  Future<void> _closeTab(String tabKey) async {
+    final tab = _openTabs.where((t) => t.tabKey == tabKey).firstOrNull;
+    if (tab == null) return;
     final workspaces = context.read<ChatCubit>().state.workspaces;
-    final workspace = _resolve(workspaces, id);
-    // Closing a workspace tab always terminates that workspace's running sessions;
-    // confirm first when there are any so the user can cancel.
+    final workspace = _resolve(workspaces, tab.workspaceId);
     final chat = context.read<ChatCubit>();
     final terminalRegistry = context.read<WorkspaceTerminalRegistry>();
     final workspaceTools = context.read<WorkspaceToolsCubit>();
-    final running = chat.openTabCountForWorkspace(id);
+    final running = chat.openTabCountForWorkspace(tab.tabKey);
     if (running > 0) {
       final confirmed = await _confirmCloseWithSessions(running);
       if (confirmed != true || !mounted) return;
-      chat.closeTabsForWorkspace(id);
+      chat.closeTabsForWorkspace(tab.tabKey);
     }
-    final idx = _openIds.indexOf(id);
+    final idx = _openTabs.indexWhere((t) => t.tabKey == tabKey);
     if (idx < 0) return;
-    // Persist closed/open tab state before teardown so a crash or fast quit
-    // cannot drop the recently-closed entry.
     await _closedWorkspacesStore.recordClosed(
-      HomeClosedWorkspaceEntry(
-        workspaceId: id,
-        displayName: workspace?.effectiveDisplay ?? id,
+      HomeClosedWorkspaceEntry.fromTab(
+        tab,
+        displayName: workspace?.effectiveDisplay ?? tab.workspaceId,
         primaryPath: workspace?.primaryPath ?? '',
       ),
     );
     if (!mounted) return;
-    final wasActive = id == _workspaceIdFromLocation(widget.location);
-    final next = [..._openIds]..removeAt(idx);
-    setState(() => _openIds = next);
-    await _persistOpenIds();
+    final activeTab = WorkspaceTabRef.fromLocation(widget.location);
+    final wasActive = activeTab?.tabKey == tabKey;
+    final next = [..._openTabs]..removeAt(idx);
+    setState(() => _openTabs = next);
+    await _persistOpenTabs();
     await _reloadRecentlyClosed();
     if (!mounted) return;
-    // Tear down this workspace's keep-alive workspace runtime.
-    terminalRegistry.disposeWorkspace(id);
-    workspaceTools.removeWorkspace(id);
-    context.read<WorkspaceFileTreeStore>().removeWorkspace(id);
+
+    terminalRegistry.disposeWorkspace(tab.tabKey);
+    workspaceTools.removeWorkspace(tab.tabKey);
+
+    final stillOpenSameDirectory = next.any(
+      (t) => t.workspaceId == tab.workspaceId,
+    );
+    if (!stillOpenSameDirectory) {
+      context.read<WorkspaceFileTreeStore>().removeWorkspace(tab.workspaceId);
+    }
     if (running == 0) {
-      // No chat sessions to confirm/close, but still drop any chat bucket.
-      chat.closeTabsForWorkspace(id);
+      chat.closeTabsForWorkspace(tab.tabKey);
     }
     if (wasActive) {
       final candidates = [
-        for (final e in next)
-          if (_resolve(workspaces, e) != null) e,
+        for (final candidate in next)
+          if (_resolve(workspaces, candidate.workspaceId) != null) candidate,
       ];
       if (candidates.isEmpty) {
         _goHome();
       } else {
-        final target = idx.clamp(0, candidates.length - 1);
-        _selectTab(candidates[target]);
+        final target = candidates[idx.clamp(0, candidates.length - 1)];
+        _selectTab(target);
       }
     }
-    _identityByWorkspaceId.remove(id);
   }
 
   Future<bool?> _confirmCloseWithSessions(int running) {
@@ -327,11 +345,9 @@ class _HomeShellState extends State<HomeShell> {
         .preferences
         .scopeSessionsToSelectedTeam;
     final selectedTeam = context.read<LaunchProfileCubit>().state.selectedTeam;
-    final activeId = _workspaceIdFromLocation(widget.location);
-    final activeIdentity =
-        activeId != null ? _identityForWorkspace(activeId) : null;
-    final scopeTeamId = activeIdentity != null
-        ? _sessionTeamScopeId(context, activeIdentity)
+    final activeTab = WorkspaceTabRef.fromLocation(widget.location);
+    final scopeTeamId = activeTab != null
+        ? _sessionTeamScopeId(context, activeTab.identity)
         : selectedTeam?.id;
     context.read<ChatCubit>().setTeamSessionScope(
       scopeSessionsToSelectedTeam: scopeOn,
@@ -339,13 +355,16 @@ class _HomeShellState extends State<HomeShell> {
     );
   }
 
+  bool _hasDuplicateDirectory(WorkspaceTabRef tab) =>
+      _openTabs.where((t) => t.workspaceId == tab.workspaceId).length > 1;
+
   @override
   Widget build(BuildContext context) {
     final workspaces = context.select<ChatCubit, List<Workspace>>(
       (c) => c.state.workspaces,
     );
-    final activeId = _workspaceIdFromLocation(widget.location);
-    final pageChrome = activeId == null
+    final activeTab = WorkspaceTabRef.fromLocation(widget.location);
+    final pageChrome = activeTab == null
         ? WorkspacePageChrome.home
         : WorkspacePageChrome.workspace;
 
@@ -354,15 +373,12 @@ class _HomeShellState extends State<HomeShell> {
     final identities = context.select<LaunchProfileCubit, List<LaunchProfile>>(
       (c) => c.state.identities,
     );
-    // Show every open workspace tab across all teams (IDE-style open editors).
-    // Selecting a tab switches the active team to the workspace's team via
-    // WorkspacePage, so the sidebar/content stay in sync.
     final tabs = <HomeWorkspaceTab>[
-      for (final id in _openIds)
-        if (_resolve(workspaces, id) case final p?)
+      for (final tab in _openTabs)
+        if (_resolve(workspaces, tab.workspaceId) case final workspace?)
           _workspaceTab(
-            id: id,
-            workspace: p,
+            tab: tab,
+            workspace: workspace,
             l10n: l10n,
             identities: identities,
           ),
@@ -382,30 +398,38 @@ class _HomeShellState extends State<HomeShell> {
           body: Column(
             children: [
               HomeTitleBar(
-            tabs: tabs,
-            activeWorkspaceId: activeId,
-            pageChrome: pageChrome,
-            recentlyClosed: _recentlyClosed,
-            openWorkspaceIds: _openIds.toSet(),
-            onHomeTap: _goHome,
-            onSelectTab: _selectTab,
-            onCloseTab: _closeTab,
-            onReopenClosedWorkspace: (id) => unawaited(_reopenClosedWorkspace(id)),
-          ),
-          Expanded(
-            child: SafeArea(
-              top: false,
-              child: HomeTabScope(
-                openWorkspace: (id, {activate = true}) =>
-                    _openWorkspace(id, activate: activate),
-                child: HomeWorkspaceBodyStack(
-                  location: widget.location,
-                  openWorkspaceIds: _openIds,
-                  identityForWorkspace: _identityForWorkspace,
+                tabs: tabs,
+                activeTabKey: activeTab?.tabKey,
+                pageChrome: pageChrome,
+                recentlyClosed: _recentlyClosed,
+                onHomeTap: _goHome,
+                onSelectTab: (tabKey) {
+                  final tab =
+                      _openTabs.where((t) => t.tabKey == tabKey).firstOrNull;
+                  if (tab != null) _selectTab(tab);
+                },
+                onCloseTab: (tabKey) => unawaited(_closeTab(tabKey)),
+                onReopenClosedTab: (tabKey) => unawaited(_reopenClosedTab(tabKey)),
+                onOpenTabWithOtherIdentity: (tabKey) =>
+                    unawaited(_openTabWithOtherIdentity(tabKey)),
+              ),
+              Expanded(
+                child: SafeArea(
+                  top: false,
+                  child: HomeTabScope(
+                    openWorkspace: (id, {activate = true, identity}) =>
+                        _openWorkspace(
+                          id,
+                          activate: activate,
+                          identity: identity,
+                        ),
+                    child: HomeWorkspaceBodyStack(
+                      location: widget.location,
+                      openTabs: _openTabs,
+                    ),
+                  ),
                 ),
               ),
-            ),
-          ),
             ],
           ),
         ),
@@ -414,23 +438,29 @@ class _HomeShellState extends State<HomeShell> {
   }
 
   HomeWorkspaceTab _workspaceTab({
-    required String id,
+    required WorkspaceTabRef tab,
     required Workspace workspace,
     required AppLocalizations l10n,
     required List<LaunchProfile> identities,
   }) {
-    final identity = _identityForWorkspace(id);
     final workspaceIdentity = identities
-            .where((e) => e.id == identity.profileId)
+            .where((e) => e.id == tab.identity.profileId)
             .firstOrNull ??
         identities
             .where((e) => e.id == LaunchProfileProvisioner.defaultPersonalId)
             .firstOrNull;
     final isPersonal = workspaceIdentity?.kind == LaunchProfileKind.personal;
-    final profileId = identity.profileId;
+    final profileId = tab.identity.profileId;
+    final identityLabel = isPersonal
+        ? l10n.homeWorkspaceWorkspaceTabKindPersonal
+        : (HomeShell.identityNameFor(l10n, identities, profileId) ?? profileId);
+    final workspaceName = workspace.localizedName(l10n);
+    final showIdentityInLabel = _hasDuplicateDirectory(tab);
     return HomeWorkspaceTab(
-      id: id,
-      name: workspace.localizedName(l10n),
+      id: tab.tabKey,
+      name: showIdentityInLabel
+          ? '$identityLabel · $workspaceName'
+          : workspaceName,
       kind: isPersonal ? HomeWorkspaceTabKind.personal : HomeWorkspaceTabKind.team,
       tooltip: HomeShell.formatWorkspaceTabTooltip(
         workspace: workspace,
@@ -438,7 +468,7 @@ class _HomeShellState extends State<HomeShell> {
         isPersonal: isPersonal,
         teamName: HomeShell.identityNameFor(l10n, identities, profileId),
         teamId: profileId,
-        displayName: workspace.localizedName(l10n),
+        displayName: workspaceName,
       ),
       closable: true,
     );
@@ -461,5 +491,4 @@ class _HomeShellState extends State<HomeShell> {
     }
     return null;
   }
-
 }

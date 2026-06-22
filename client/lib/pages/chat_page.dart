@@ -9,6 +9,7 @@ class ChatPage extends StatelessWidget {
   const ChatPage({
     required this.cwd,
     required this.workspaceId,
+    this.tabScopeId,
     this.additionalPaths = const [],
     this.sessionId,
     this.isPersonalWorkspace = false,
@@ -28,8 +29,13 @@ class ChatPage extends StatelessWidget {
   /// When true, the embedded workbench runs without a selected [TeamProfile].
   final bool isPersonalWorkspace;
 
-  /// Owning workspace id; scopes the workspace terminal + right-tools selection.
+  /// Owning workspace id for persisted sessions and the file tree.
   final String workspaceId;
+
+  /// Scopes workspace terminals and right-tools selection; defaults to [workspaceId].
+  final String? tabScopeId;
+
+  String get _tabScopeId => tabScopeId ?? workspaceId;
 
   @override
   Widget build(BuildContext context) {
@@ -39,6 +45,7 @@ class ChatPage extends StatelessWidget {
         additionalPaths: additionalPaths,
         sessionId: sessionId,
         workspaceId: workspaceId,
+        tabScopeId: _tabScopeId,
       );
     }
     return _TeamChatPage(
@@ -46,6 +53,7 @@ class ChatPage extends StatelessWidget {
       additionalPaths: additionalPaths,
       sessionId: sessionId,
       workspaceId: workspaceId,
+      tabScopeId: _tabScopeId,
     );
   }
 }
@@ -54,12 +62,14 @@ class _PersonalChatPage extends StatelessWidget {
   const _PersonalChatPage({
     required this.cwd,
     required this.workspaceId,
+    required this.tabScopeId,
     this.additionalPaths = const [],
     this.sessionId,
   });
 
   final String cwd;
   final String workspaceId;
+  final String tabScopeId;
   final List<String> additionalPaths;
   final String? sessionId;
 
@@ -71,6 +81,7 @@ class _PersonalChatPage extends StatelessWidget {
       sessionId: sessionId,
       isPersonalWorkspace: true,
       workspaceId: workspaceId,
+      tabScopeId: tabScopeId,
       team: null,
     );
   }
@@ -80,12 +91,14 @@ class _TeamChatPage extends StatelessWidget {
   const _TeamChatPage({
     required this.cwd,
     required this.workspaceId,
+    required this.tabScopeId,
     this.additionalPaths = const [],
     this.sessionId,
   });
 
   final String cwd;
   final String workspaceId;
+  final String tabScopeId;
   final List<String> additionalPaths;
   final String? sessionId;
 
@@ -105,6 +118,7 @@ class _TeamChatPage extends StatelessWidget {
       sessionId: sessionId,
       isPersonalWorkspace: false,
       workspaceId: workspaceId,
+      tabScopeId: tabScopeId,
       team: team,
     );
   }

@@ -38,6 +38,7 @@ class RightToolsPanel extends StatefulWidget {
   const RightToolsPanel({
     required this.cwd,
     required this.workspaceId,
+    this.toolsScopeId,
     this.additionalPaths = const [],
     this.preferences = const LayoutPreferences(),
     this.panelKey = AppKeys.rightToolsPanel,
@@ -62,9 +63,13 @@ class RightToolsPanel extends StatefulWidget {
   /// control. Empty for single-folder workspaces.
   final List<String> additionalPaths;
 
-  /// Workspace this tools panel belongs to; scopes per-workspace UI state
-  /// (selected tool tab) and [WorkspaceFileTreeStore] retention.
+  /// Workspace this tools panel belongs to; scopes [WorkspaceFileTreeStore] retention.
   final String workspaceId;
+
+  /// Per title-bar tab scope for tool-tab selection; defaults to [workspaceId].
+  final String? toolsScopeId;
+
+  String get _toolsScopeId => toolsScopeId ?? workspaceId;
 
   @override
   State<RightToolsPanel> createState() => _RightToolsPanelState();
@@ -418,7 +423,7 @@ class _RightToolsPanelState extends State<RightToolsPanel> {
     final branchLabel = (wtState != null && wtState.hasMultipleWorktrees)
         ? _currentWorktreeBranch(wtState)
         : null;
-    final panel = TabbedPanel(views: views, scopeId: widget.workspaceId);
+    final panel = TabbedPanel(views: views, scopeId: widget._toolsScopeId);
     return Container(
       key: widget.panelKey,
       child: branchLabel == null

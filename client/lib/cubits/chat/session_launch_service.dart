@@ -10,6 +10,7 @@ import '../../models/personal_profile.dart';
 import '../../services/storage/launch_profile_provisioner.dart';
 import '../../models/session_member_binding.dart';
 import '../../models/team_config.dart';
+import '../../models/workspace_tab_ref.dart';
 import '../../repositories/session_repository.dart';
 import '../../services/cli/registry/config_profile/config_profile_context.dart';
 import '../../services/session/session_lifecycle_service.dart';
@@ -334,9 +335,11 @@ class SessionLaunchService implements MemberConnector {
   String? _resolveWorkspaceCwd(String? workspaceCwd) {
     final explicit = workspaceCwd?.trim() ?? '';
     if (explicit.isNotEmpty) return explicit;
-    final workspaceId = _tabStore.activeWorkspaceId.trim();
-    if (workspaceId.isEmpty) return null;
-    return _workspaceById(workspaceId)?.primaryPath;
+    final bucketKey = _tabStore.activeWorkspaceId.trim();
+    if (bucketKey.isEmpty) return null;
+    final tab = WorkspaceTabRef.decodeTabKey(bucketKey);
+    if (tab == null) return null;
+    return _workspaceById(tab.workspaceId)?.primaryPath;
   }
 
   AppSession? _existingSessionForMaterialize(

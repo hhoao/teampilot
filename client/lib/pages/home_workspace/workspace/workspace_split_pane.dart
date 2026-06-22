@@ -12,6 +12,7 @@ import 'workspace_sidebar.dart';
 class WorkspaceSplitPane extends StatefulWidget {
   const WorkspaceSplitPane({
     required this.workspace,
+    required this.tabScopeId,
     required this.isPersonalWorkspace,
     required this.profileId,
     required this.sessionTeamFilter,
@@ -19,6 +20,9 @@ class WorkspaceSplitPane extends StatefulWidget {
   });
 
   final Workspace workspace;
+
+  /// Scopes chat terminals and right-tools UI for this title-bar tab.
+  final String tabScopeId;
   final bool isPersonalWorkspace;
 
   /// The launch identity the workspace was opened against ([LaunchProfile.id]).
@@ -95,6 +99,7 @@ class _WorkspaceSplitPaneState extends State<WorkspaceSplitPane> {
                 cwd: cwd,
                 additionalPaths: widget.workspace.additionalPaths,
                 workspaceId: widget.workspace.workspaceId,
+                tabScopeId: widget.tabScopeId,
                 isPersonalWorkspace: widget.isPersonalWorkspace,
               );
             },

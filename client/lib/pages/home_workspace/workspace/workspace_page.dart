@@ -26,6 +26,7 @@ import 'workspace_config_section.dart';
 class WorkspacePage extends StatefulWidget {
   const WorkspacePage({
     required this.workspaceId,
+    required this.tabKey,
     this.identity,
     this.view,
     this.configSection,
@@ -34,6 +35,9 @@ class WorkspacePage extends StatefulWidget {
   });
 
   final String workspaceId;
+
+  /// Stable scope for chat buckets, terminals, and tool-panel state.
+  final String tabKey;
 
   /// Launch identity from `?as=`. Null means "no identity chosen" → the page
   /// redirects to the workspace grid.
@@ -67,7 +71,7 @@ class _WorkspacePageState extends State<WorkspacePage> {
       _visitedManage = true;
     }
     if (widget.routeActive) {
-      context.read<ChatCubit>().setActiveWorkspace(widget.workspaceId);
+      context.read<ChatCubit>().setActiveWorkspace(widget.tabKey);
       WidgetsBinding.instance.addPostFrameCallback((_) => _syncWorkspaceContext());
     }
   }
@@ -78,9 +82,9 @@ class _WorkspacePageState extends State<WorkspacePage> {
     final becameActive = widget.routeActive && !oldWidget.routeActive;
     if (becameActive ||
         (widget.routeActive &&
-            (oldWidget.workspaceId != widget.workspaceId ||
+            (oldWidget.tabKey != widget.tabKey ||
                 oldWidget.identity != widget.identity))) {
-      context.read<ChatCubit>().setActiveWorkspace(widget.workspaceId);
+      context.read<ChatCubit>().setActiveWorkspace(widget.tabKey);
       WidgetsBinding.instance.addPostFrameCallback(
         (_) => _syncWorkspaceContext(),
       );
@@ -251,8 +255,9 @@ class _WorkspacePageState extends State<WorkspacePage> {
         TickerMode(
           enabled: !showManage,
           child: WorkspaceSplitPane(
-            key: ValueKey('conversations-${workspace.workspaceId}-${workspaceIdentity.id}'),
+            key: ValueKey('conversations-${widget.tabKey}'),
             workspace: workspace,
+            tabScopeId: widget.tabKey,
             isPersonalWorkspace: workspaceIdentity.kind == LaunchProfileKind.personal,
             profileId: workspaceIdentity.id,
             sessionTeamFilter: sessionTeamFilter,

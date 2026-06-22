@@ -2,11 +2,11 @@ import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
 import '../../cubits/chat_cubit.dart';
-import '../../models/launch_profile_ref.dart';
 import '../../models/workspace.dart';
+import '../../models/workspace_tab_ref.dart';
 import '../../widgets/file_editor_panel.dart';
-import 'home_workspace_page.dart';
 import 'home_workspace_route.dart';
+import 'home_workspace_page.dart';
 import 'workspace/workspace_page.dart';
 
 /// Keeps the home page and every open workspace tab mounted (Orca-style).
@@ -17,21 +17,19 @@ import 'workspace/workspace_page.dart';
 class HomeWorkspaceBodyStack extends StatelessWidget {
   const HomeWorkspaceBodyStack({
     required this.location,
-    required this.openWorkspaceIds,
-    required this.identityForWorkspace,
+    required this.openTabs,
     super.key,
   });
 
   final String location;
-  final List<String> openWorkspaceIds;
-  final LaunchProfileRef Function(String workspaceId) identityForWorkspace;
+  final List<WorkspaceTabRef> openTabs;
 
   @override
   Widget build(BuildContext context) {
     final workspaces = context.select<ChatCubit, List<Workspace>>(
       (c) => c.state.workspaces,
     );
-    final activeId = HomeWorkspaceRoute.workspaceId(location);
+    final activeTab = WorkspaceTabRef.fromLocation(location);
     final children = <Widget>[
       HomePage(
         key: const ValueKey('home-v2-body'),
@@ -39,27 +37,30 @@ class HomeWorkspaceBodyStack extends StatelessWidget {
         initialMemberId: HomeWorkspaceRoute.homeMemberId(location),
         initialGlobalView: HomeWorkspaceRoute.homeGlobalView(location),
       ),
-      for (final id in openWorkspaceIds)
-        if (_resolve(workspaces, id) != null)
+      for (final tab in openTabs)
+        if (_resolve(workspaces, tab.workspaceId) != null)
           TickerMode(
-            key: ValueKey('workspace-ticker-$id'),
-            enabled: id == activeId,
+            key: ValueKey('workspace-ticker-${tab.tabKey}'),
+            enabled: activeTab?.tabKey == tab.tabKey,
             child: WorkspacePage(
-              key: ValueKey('workspace-body-$id'),
-              workspaceId: id,
-              identity: identityForWorkspace(id),
-              view: activeId == id ? HomeWorkspaceRoute.view(location) : null,
-              configSection: activeId == id
+              key: ValueKey('workspace-body-${tab.tabKey}'),
+              workspaceId: tab.workspaceId,
+              tabKey: tab.tabKey,
+              identity: tab.identity,
+              view: activeTab?.tabKey == tab.tabKey
+                  ? HomeWorkspaceRoute.view(location)
+                  : null,
+              configSection: activeTab?.tabKey == tab.tabKey
                   ? HomeWorkspaceRoute.workspaceConfigSection(location)
                   : null,
-              routeActive: id == activeId,
+              routeActive: activeTab?.tabKey == tab.tabKey,
             ),
           ),
     ];
 
     var index = 0;
-    if (activeId != null) {
-      final wsIndex = openWorkspaceIds.indexOf(activeId);
+    if (activeTab != null) {
+      final wsIndex = openTabs.indexWhere((t) => t.tabKey == activeTab.tabKey);
       if (wsIndex >= 0) {
         index = wsIndex + 1;
       }
@@ -72,17 +73,17 @@ class HomeWorkspaceBodyStack extends StatelessWidget {
     // Show it only when a workspace tab is foreground and on its conversations
     // view (not the home page or a manage/config view).
     final showEditor =
-        activeId != null && HomeWorkspaceRoute.view(location) != 'manage';
+        activeTab != null && HomeWorkspaceRoute.view(location) != 'manage';
 
     return Stack(
       fit: StackFit.expand,
       children: [
         IndexedStack(
-          index: index.clamp(0, children.length - 1),
+          index: index,
           sizing: StackFit.expand,
           children: children,
         ),
-        if (showEditor) const Positioned.fill(child: WorkspaceFloatingEditor()),
+        if (showEditor) const WorkspaceFloatingEditor(),
       ],
     );
   }
