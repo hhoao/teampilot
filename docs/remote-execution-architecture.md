@@ -3,7 +3,7 @@
 > 状态：**设计稿（待评审）** · 适用范围：目录远程（每目录带 target）+ home target（控制面默认）；整体 / 项目 / 成员远程是其不同粒度
 > 关联代码：`services/storage/runtime_storage_context.dart`、`services/terminal/`、`services/team_bus/`、`models/`
 
-> **数据模型已修订（2026-06-18）。** 机器（target）挂在**目录**上、成员位置 = 启动时的目录分配——数据模型以 [workspace-folders spec](superpowers/specs/2026-06-18-workspace-folders-and-remote-dirs.md) 为 canonical。**命名以代码现实为准（2026-06-22 核对）**：实体是 `Workspace`（`models/workspace.dart`，字段 `workspaceId`），目录类型 `WorkspaceFolder`；spec 旧称 `AppProject` / `ProjectFolder` 已过时。本文 §4 / §8 / §9 / §12 已按该模型重写；§3 / §5 / §6 / §7 的机制（`RuntimeTarget`、控制面/工作面、反向隧道）不变。
+> **数据模型已修订（2026-06-18）。** 机器（target）挂在**目录**上、成员位置 = 启动时的目录分配。**本文 §4 / §9 即数据模型权威**（原独立的 2026-06-18 workspace-folders spec 已不在仓库）。**命名以代码现实为准（2026-06-22 核对）**：实体是 `Workspace`（`models/workspace.dart`，字段 `workspaceId`），目录类型 `WorkspaceFolder`；旧称 `AppProject` / `ProjectFolder` 已过时。§3 / §5 / §6 / §7 的机制（`RuntimeTarget`、控制面/工作面、反向隧道）不变。
 
 本文统一 TeamPilot 中"远程"的概念，使"整体远程""项目远程""成员远程"三种场景归结到**同一套抽象**——工作面的**目录远程**（每个目录带 `target`）加控制面的 **home target**——而不是三套散落的 `if` 分支。文档先描述现状与问题，再给出目标模型，最后给出数据模型变更、单例迁移清单与分期落地计划。
 
@@ -137,7 +137,7 @@ member 的机器 = 其所分配目录(WorkspaceFolder)的 targetId
 
 ### 4.1 成员位置与跨主机协作语义
 
-成员的位置 = **它被分到的目录**（启动时分配，存 `AppSession.folderAssignments`，**不存在 team 上**）：每个成员分到一组目录（必须同机），第一个是工作目录、其余作 `--add-dir`，缺省继承工作区主目录。一个成员**只能被分到同一台机上的目录**（一个 agent 一台机，见 spec §2）。
+成员的位置 = **它被分到的目录**（启动时分配，存 `AppSession.folderAssignments`，**不存在 team 上**）：每个成员分到一组目录（必须同机），第一个是工作目录、其余作 `--add-dir`，缺省继承工作区主目录。一个成员**只能被分到同一台机上的目录**（一个 agent 一台机）。
 
 由此**跨主机"共享文件系统"的难题被消解**——成员之间**不假装共享同一份盘**：
 
@@ -341,10 +341,10 @@ openSessionTab / scheduleMemberConnect
 | 新增 `RuntimeTarget` + `RuntimeKind` | 见 §3 | P0 |
 | 新增 targets 注册表（升级 `ssh_profiles/`） | `SshProfile` 成为 ssh-kind target 的载荷 | P0 |
 | `SessionPreferences` | `connectionMode`/`windowsStorageBackend` → `defaultTargetId`（保留迁移读旧字段） | P0/P1 |
-| `Workspace` (`models/workspace.dart`) | `primaryPath` + `additionalPaths: List<String>` → `folders: List<WorkspaceFolder>`（每项带 `path` + `targetId`，见 spec §3） | P2 |
+| `Workspace` (`models/workspace.dart`) | `primaryPath` + `additionalPaths: List<String>` → `folders: List<WorkspaceFolder>`（每项带 `path` + `targetId`） | P2 |
 | `AppSession` (`app_session.dart`) | + `folderAssignments: Map<memberId, List<folderPath>>`（启动态：成员→目录分配，便于 resume 时定位，见 §4.1） | P2/P3 |
 
-**team 不带任何 target**：保持 machine-agnostic、可跨工作区复用；成员机器纯由启动分配决定（见 §4.1、spec §6）。
+**team 不带任何 target**：保持 machine-agnostic、可跨工作区复用；成员机器纯由启动分配决定（见 §4.1）。
 
 **兼容**：旧 `connectionMode/ssh profile` 在加载时映射成 `defaultTargetId`。旧 `Workspace.primaryPath`+`additionalPaths` 迁移为 `folders`，每项 `targetId = 'local'`（单机工作区，等价今天）。
 
@@ -385,7 +385,7 @@ openSessionTab / scheduleMemberConnect
 
 | 期 | 目标 | 核心改动 | 验收点 | 解锁 |
 |---|---|---|---|---|
-| **预备**（可独立先行，不依赖 target） | folders 值对象 | `Workspace.primaryPath`+`additionalPaths: List<String>` → `folders: List<WorkspaceFolder>`（全 `local`）；收敛 `session_repository` 那 ~6 处 `List<String>` 变异点（见 spec §9） | 多目录工作区 + `--add-dir` 可用；旧数据无损迁移；行为不变 | 给 §9 的 `targetId` 上车铺路 |
+| **预备**（可独立先行，不依赖 target） | folders 值对象 | `Workspace.primaryPath`+`additionalPaths: List<String>` → `folders: List<WorkspaceFolder>`（全 `local`）；收敛 `session_repository` 那 ~6 处 `List<String>` 变异点 | 多目录工作区 + `--add-dir` 可用；旧数据无损迁移；行为不变 | 给 §9 的 `targetId` 上车铺路 |
 | **P0** 重构（行为不变） | 四旋钮 → `RuntimeTarget` + targets 注册表 | §3、§9 前半；单 target = 今天行为 | 现有 local/wsl/ssh/Android 全路径回归通过；`isSshMode` 单一来源 | 消除耦合 |
 | **P1** home target 收尾 | home target 归一 | 清理 `install/reinstall`；UI 从"选 profile"升级为"选 target" | Android（home=ssh）在新模型下等价归一；桌面 home 由平台定为 `local` | 整体远程（Android） |
 | **P2** 去单例 | 控制面/工作面拆分 + 注册表 | §5、§6、§10；`Workspace.folders[].targetId` | 两个工作区同时分别落 local 与 ssh，互不影响；远程机离线时项目列表仍可读 | **项目远程** |

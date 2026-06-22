@@ -5,7 +5,7 @@
 **范围:** 仅 **预备**（WorkspaceFolder 值对象）+ **P0**（`RuntimeTarget` + targets 注册表）。后续 P1–P4 等这两期落定再展开。
 **关联:**
 - 设计: [../../remote-execution-architecture.md](../../remote-execution-architecture.md)（§3、§9、§12）
-- 模型: [2026-06-18-workspace-folders-and-remote-dirs.md](2026-06-18-workspace-folders-and-remote-dirs.md)（§3 folders、§5 runtime-dir MCP、§9 sequencing）
+- 模型: 见设计文档 §4 / §9（原独立的 2026-06-18 workspace-folders spec 已不在仓库，设计文档为权威）
 
 ---
 
@@ -20,14 +20,14 @@
 | `TeamConfig` | **`TeamIdentity`**（rename 已落，提交 `62f68b4`） |
 | `TeamMemberConfig`（`team_config.dart`） | 仍是 `TeamMemberConfig`，仍在 `team_config.dart`（未改）|
 
-**本计划一律用代码现实的名字。** 设计文档的命名滞后是另一项清理（建议单独一个 commit 把 `remote-execution-architecture.md` 的 `AppProject`/`ProjectFolder` 全局替换为 `Workspace`/`WorkspaceFolder`），不阻塞本实现。
+**本计划一律用代码现实的名字。** 设计文档 `remote-execution-architecture.md` 的命名**已于 2026-06-22 修正**为 `Workspace`/`WorkspaceFolder`（并删除了对已不在仓库的 2026-06-18 workspace-folders spec 的链接，改为自含权威）。
 
 ---
 
 ## 1. 预备 — `WorkspaceFolder` 值对象
 
 ### 1.1 为什么先做这个
-- **不依赖 `RuntimeTarget`**：folder 先全 `targetId == 'local'`，单机形态即可落地、行为不变（spec §9）。
+- **不依赖 `RuntimeTarget`**：folder 先全 `targetId == 'local'`，单机形态即可落地、行为不变（设计文档 §9）。
 - **独立有价值**：多目录工作区 + `--add-dir`、未来 per-folder 机器都建立在它上面。
 - **解耦后续**：把散落的 `primaryPath` + `additionalPaths: List<String>` 收敛成一个带机器/显示名的值对象，给 P0 的 `targetId` 上车铺路。
 
@@ -59,7 +59,7 @@ class WorkspaceFolder {
 ```
 
 - `targetId` 复用 P0 的 `RuntimeTarget` id 空间；预备期注入恒 `'local'`，P0 落地后才会出现 `ssh:*`。
-- 是值对象（非裸 String）的理由见 spec §3：folder 要携带机器 + 显示名 + 运行时增删（§1.6）。
+- 是值对象（非裸 String）的理由（见设计文档 §4.1）：folder 要携带机器 + 显示名 + 运行时增删（§1.6）。
 
 ### 1.4 `Workspace` 模型改造（`models/workspace.dart`）
 
@@ -93,7 +93,7 @@ class WorkspaceFolder {
 
 读侧（file_tree_cubit、chat 启动、git、worktree 分组、session_lifecycle 等 ~25 处）**先靠派生 getter 不动**；后续按需逐个迁移到 `folders`（享受 per-folder name/targetId 时再改）。
 
-### 1.6 运行时增删目录 MCP（可选子任务，spec §5）
+### 1.6 运行时增删目录 MCP（可选子任务，见设计文档 §4.2）
 单机形态可顺带落 `list_workspace_folders` / `add_workspace_folder(path)` / `remove_workspace_folder(path)`：
 - 经 Workspace 仓库/cubit 改 `folders`（单一数据源，UI 响应式更新）。
 - `WorkspaceFoldersCapability`（每 CLI 一致，AGENTS.md "加能力别 `if(cli==)`"）：claude 走运行时 `/add-dir`（stdin 注入，复用 `FirstUserLineCapture`/门铃）；其余 CLI 退化为"改模型 + relaunch(resume)"。
