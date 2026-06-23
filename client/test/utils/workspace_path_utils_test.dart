@@ -4,7 +4,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:path/path.dart' as p;
 import 'package:teampilot/services/storage/app_storage.dart';
 import 'package:teampilot/services/io/local_filesystem.dart';
-import 'package:teampilot/services/storage/runtime_storage_context.dart';
+import 'package:teampilot/services/io/wsl_filesystem.dart';
 import 'package:teampilot/utils/workspace_path_utils.dart';
 
 void main() {
@@ -27,12 +27,11 @@ void main() {
 
   test('normalizeWorkspacePath converts Windows paths under WSL storage', () {
     if (!Platform.isWindows) return;
-    RuntimeStorageContext.installForTesting(
-      filesystem: LocalFilesystem(),
+    AppStorage.installForTesting(
+      filesystem: WslFilesystem(),
       paths: AppPaths('/home/hhoa/.local/share/com.hhoa.teampilot'),
-      mode: StorageBackendMode.wsl,
     );
-    addTearDown(RuntimeStorageContext.resetForTesting);
+    addTearDown(AppStorage.resetForTesting);
 
     final normalized = normalizeWorkspacePath(r'C:\Users\dev\repo');
     expect(normalized, '/mnt/c/Users/dev/repo');
@@ -41,12 +40,11 @@ void main() {
 
   test('normalizeWorkspacePath keeps Windows paths under native storage', () {
     if (!Platform.isWindows) return;
-    RuntimeStorageContext.installForTesting(
+    AppStorage.installForTesting(
       filesystem: LocalFilesystem(),
       paths: AppPaths(r'C:\Users\dev\AppData\Roaming\com.hhoa.teampilot'),
-      mode: StorageBackendMode.native,
     );
-    addTearDown(RuntimeStorageContext.resetForTesting);
+    addTearDown(AppStorage.resetForTesting);
 
     expect(
       normalizeWorkspacePath(r'C:\Users\dev\repo'),
@@ -56,7 +54,7 @@ void main() {
   });
 
   test('normalizeWorkspacePath keeps POSIX paths unchanged', () {
-    RuntimeStorageContext.resetForTesting();
+    AppStorage.resetForTesting();
     expect(normalizeWorkspacePath('/tmp/work'), '/tmp/work');
     expect(
       normalizeWorkspacePath(r'C:\temp'),
@@ -66,7 +64,7 @@ void main() {
 
   test('workspaceMetadataKeys includes Windows path separator variants', () {
     if (!Platform.isWindows) return;
-    RuntimeStorageContext.resetForTesting();
+    AppStorage.resetForTesting();
 
     final keys = workspaceMetadataKeys(r'C:\Users\haung\Documents');
     expect(
@@ -83,7 +81,7 @@ void main() {
     'workspaceMetadataKeys includes Windows variants for WSL workspace paths',
     () {
       if (!Platform.isWindows) return;
-      RuntimeStorageContext.resetForTesting();
+      AppStorage.resetForTesting();
 
       final keys = workspaceMetadataKeys('/mnt/c/Users/haung/Documents');
       expect(keys, contains('/mnt/c/Users/haung/Documents'));

@@ -3032,6 +3032,36 @@ abstract class AppLocalizations {
   /// **'When enabled, the sidebar shows only sessions assigned to the current team. New sessions are always tagged with the selected team so they appear here if you turn this on later.'**
   String get scopeSessionsToSelectedTeamDescription;
 
+  /// No description provided for @workspaceTargetTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Workspace machine'**
+  String get workspaceTargetTitle;
+
+  /// No description provided for @workspaceTargetSubtitle.
+  ///
+  /// In en, this message translates to:
+  /// **'The machine this workspace\'s folders live and run on. Sessions launch on this target; switching does not move files.'**
+  String get workspaceTargetSubtitle;
+
+  /// No description provided for @homeTargetTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Home device'**
+  String get homeTargetTitle;
+
+  /// No description provided for @homeTargetSubtitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Where TeamPilot stores teams, workspaces, and config (the control plane). Switching uses a separate data tree; nothing is migrated automatically.'**
+  String get homeTargetSubtitle;
+
+  /// No description provided for @homeTargetSingleOptionHint.
+  ///
+  /// In en, this message translates to:
+  /// **'This is the only available home on this platform.'**
+  String get homeTargetSingleOptionHint;
+
   /// No description provided for @windowsStorageBackendTitle.
   ///
   /// In en, this message translates to:

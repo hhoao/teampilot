@@ -6,7 +6,7 @@ import 'package:teampilot/repositories/launch_profile_repository.dart';
 import 'package:teampilot/repositories/session_repository.dart';
 import 'package:teampilot/services/io/local_filesystem.dart';
 import 'package:teampilot/services/storage/app_storage.dart';
-import 'package:teampilot/services/storage/runtime_storage_context.dart';
+import 'package:teampilot/services/storage/runtime_context.dart';
 
 void main() {
   late Directory tmp;
@@ -16,7 +16,7 @@ void main() {
   setUp(() async {
     tmp = await Directory.systemTemp.createTemp('session_data_personal_');
     final paths = AppPaths(tmp.path);
-    RuntimeStorageContext.installForTesting(
+    AppStorage.installForTesting(
       filesystem: LocalFilesystem(
         pathContext: AppPaths.pathContextForDataRoot(paths.basePath),
       ),
@@ -29,7 +29,7 @@ void main() {
   });
 
   tearDown(() {
-    RuntimeStorageContext.resetForTesting();
+    AppStorage.resetForTesting();
     tmp.deleteSync(recursive: true);
   });
 

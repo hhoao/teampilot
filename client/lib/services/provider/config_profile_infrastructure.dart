@@ -19,7 +19,7 @@ import '../host/team_pilot_hook_scripts.dart';
 import '../io/filesystem.dart';
 import '../session/member_role_provision.dart';
 import '../storage/app_storage.dart';
-import '../storage/runtime_storage_context.dart';
+import '../storage/runtime_context.dart';
 import '../team/team_lead_delegate_settings_merge.dart';
 import '../team/team_lead_settings_merge.dart';
 
@@ -81,8 +81,8 @@ final class ConfigProfileInfrastructure implements ConfigProfileDelegate {
   String get home {
     final override = _homeOverride;
     if (override != null && override.isNotEmpty) return override;
-    if (RuntimeStorageContext.isInstalled) {
-      return RuntimeStorageContext.current.home;
+    if (AppStorage.isInstalled) {
+      return AppStorage.home;
     }
     return '';
   }
@@ -327,8 +327,8 @@ final class ConfigProfileInfrastructure implements ConfigProfileDelegate {
   @override
   HostExecutionEnvironment hostEnvironmentForProvision() {
     if (_hostEnvironment != null) return _hostEnvironment;
-    if (RuntimeStorageContext.isInstalled) {
-      return HostExecutionEnvironment.fromStorage(RuntimeStorageContext.current);
+    if (AppStorage.isInstalled) {
+      return HostExecutionEnvironment.fromStorage(AppStorage.context);
     }
     return HostExecutionEnvironment.resolve();
   }

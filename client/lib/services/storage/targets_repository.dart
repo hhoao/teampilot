@@ -4,28 +4,18 @@ import '../../models/runtime_target.dart';
 import '../io/filesystem.dart';
 import 'app_storage.dart';
 
-/// On-disk shape of `targets.json` (control plane). Holds the authoritative
-/// [defaultTargetId], the explicit WSL [wslDistro], and persisted ssh targets.
+/// On-disk shape of `targets.json` (control plane). A pure target catalog —
+/// the home target authority lives device-local in [HomeTargetStore], not here.
 class TargetsRegistryFile {
-  const TargetsRegistryFile({
-    this.schemaVersion = 1,
-    this.defaultTargetId = RuntimeTarget.localId,
-    this.wslDistro = '',
-    this.targets = const [],
-  });
+  const TargetsRegistryFile({this.schemaVersion = 1, this.targets = const []});
 
   final int schemaVersion;
-  final String defaultTargetId;
-  final String wslDistro;
   final List<RuntimeTarget> targets;
 
   factory TargetsRegistryFile.fromJson(Map<String, Object?> json) {
     final raw = json['targets'];
     return TargetsRegistryFile(
       schemaVersion: (json['schemaVersion'] as num?)?.toInt() ?? 1,
-      defaultTargetId:
-          json['defaultTargetId'] as String? ?? RuntimeTarget.localId,
-      wslDistro: json['wslDistro'] as String? ?? '',
       targets: raw is List
           ? [
               for (final e in raw)
@@ -37,21 +27,14 @@ class TargetsRegistryFile {
 
   Map<String, Object?> toJson() => {
     'schemaVersion': schemaVersion,
-    'defaultTargetId': defaultTargetId,
-    'wslDistro': wslDistro,
     'targets': targets.map((t) => t.toJson()).toList(),
   };
 
-  TargetsRegistryFile copyWith({
-    String? defaultTargetId,
-    String? wslDistro,
-    List<RuntimeTarget>? targets,
-  }) => TargetsRegistryFile(
-    schemaVersion: schemaVersion,
-    defaultTargetId: defaultTargetId ?? this.defaultTargetId,
-    wslDistro: wslDistro ?? this.wslDistro,
-    targets: targets ?? this.targets,
-  );
+  TargetsRegistryFile copyWith({List<RuntimeTarget>? targets}) =>
+      TargetsRegistryFile(
+        schemaVersion: schemaVersion,
+        targets: targets ?? this.targets,
+      );
 }
 
 /// Reads/writes `targets.json`. Mirrors [SshProfileRepository]'s injection

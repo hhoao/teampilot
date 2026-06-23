@@ -9,7 +9,8 @@ import '../../../provider/opencode/opencode_data_layout.dart';
 import '../../../provider/opencode/opencode_provider_settings_resolver.dart';
 import '../../../provider/opencode/opencode_effort_capability.dart';
 import '../../../session/member_role_provision.dart';
-import '../../../storage/runtime_storage_context.dart';
+import '../../../storage/runtime_context.dart';
+import '../../../storage/app_storage.dart';
 import '../../../team_bus/mcp/bus_bridge_locator.dart';
 import '../../../team_bus/mcp/teammate_bus_mcp_config.dart';
 import '../capabilities/cli_effort_capability.dart';
@@ -302,8 +303,8 @@ final class OpencodeConfigProfileCapability implements ConfigProfileCapability {
         await _writeIdlePlugin(paths: paths, opencodeDir: opencodeDir);
         config = mergeOpencodeIdlePlugin(config, member.id, port);
         // 本地 PTY（native 后端）+ 桥接 exe 可用 → stdio（真无限阻塞）；否则 remote。
-        final localNative = !RuntimeStorageContext.isInstalled ||
-            RuntimeStorageContext.current.mode == StorageBackendMode.native;
+        final localNative = !AppStorage.isInstalled ||
+            AppStorage.context.mode == StorageBackendMode.native;
         final bridgePath = localNative ? BusBridgeLocator.resolve() : null;
         config = mergeOpencodeTeammateBusMcp(
           config,

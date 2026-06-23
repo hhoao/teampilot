@@ -27,8 +27,8 @@ import 'router/app_router.dart';
 import 'services/cli/registry/cli_tool_registry_scope.dart';
 import 'services/storage/app_storage.dart';
 import 'services/app/connection_mode_service.dart';
+import 'services/storage/home_target_controller.dart';
 import 'services/app/desktop_window_actions.dart';
-import 'services/storage/storage_resolver.dart';
 import 'services/ssh/ssh_client_factory.dart';
 import 'services/terminal/terminal_transport_factory.dart';
 import 'services/file_tree/workspace_file_tree_store.dart';
@@ -344,7 +344,9 @@ void main() async {
               RepositoryProvider<ConnectionModeService>.value(
                 value: shell.connectionModeService,
               ),
-              RepositoryProvider<StorageRoots>.value(value: shell.storageRoots),
+              RepositoryProvider<HomeTargetController>.value(
+                value: shell.homeTargetController,
+              ),
               RepositoryProvider<WorkspaceTerminalRegistry>.value(
                 value: shell.workspaceTerminalRegistry,
               ),

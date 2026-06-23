@@ -5,7 +5,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:path/path.dart' as p;
 import 'package:teampilot/services/storage/app_storage.dart';
 import 'package:teampilot/services/io/local_filesystem.dart';
-import 'package:teampilot/services/storage/runtime_storage_context.dart';
+import 'package:teampilot/services/storage/runtime_context.dart';
 import 'package:teampilot/services/skill/skill_install_service.dart';
 import 'package:teampilot/services/skill/skill_manifest_service.dart';
 
@@ -17,7 +17,7 @@ void main() {
   setUp(() {
     tmp = Directory.systemTemp.createTempSync('skill_install_test_');
     final paths = AppPaths(tmp.path);
-    RuntimeStorageContext.installForTesting(
+    AppStorage.installForTesting(
       filesystem: LocalFilesystem(
         pathContext: AppPaths.pathContextForDataRoot(paths.basePath),
       ),
@@ -30,7 +30,7 @@ void main() {
   });
 
   tearDown(() {
-    RuntimeStorageContext.resetForTesting();
+    AppStorage.resetForTesting();
     AppPathsBootstrapper.resetForTesting();
     if (tmp.existsSync()) tmp.deleteSync(recursive: true);
   });

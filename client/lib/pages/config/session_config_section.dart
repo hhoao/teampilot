@@ -19,14 +19,14 @@ import '../../cubits/launch_profile_cubit.dart';
 import '../../l10n/l10n_extensions.dart';
 import '../../widgets/app_dialog.dart';
 import '../../models/connection_mode.dart';
-import '../../models/windows_storage_backend.dart';
 import '../../repositories/session_repository.dart';
 import '../../cubits/ssh_profile_cubit.dart';
-import '../../services/storage/storage_resolver.dart';
-import '../../services/storage/runtime_storage_context.dart';
+import '../../services/app/connection_mode_service.dart';
+import '../../services/storage/runtime_context.dart';
 import '../../utils/app_keys.dart';
 import '../../utils/debounce/debounce.dart';
 import '../../widgets/settings/workspace_settings_widgets.dart';
+import 'runtime_target_picker.dart';
 import 'session_config_constants.dart';
 import 'session_llm_path_settings_row.dart';
 
@@ -171,104 +171,13 @@ class _SessionControlsState extends State<_SessionControls> {
     await widget.cubit.setDefaultSshWorkingDirectory('');
   }
 
-  Future<void> _reloadAfterStorageBackendChange() async {
-    final storageRoots = context.read<StorageRoots>();
-    final llmCubit = context.read<LlmConfigCubit>();
-    final teamCubit = context.read<LaunchProfileCubit>();
-    final skillCubit = context.read<SkillCubit>();
-    final mcpCubit = context.read<McpCubit>();
-    final chatCubit = context.read<ChatCubit>();
-    final sessionRepo = context.read<SessionRepository>();
-    final appProviderCubit = context.read<AppProviderCubit>();
-    final pluginCubit = context.read<PluginCubit>();
-    final extensionCubit = context.read<ExtensionCubit>();
-    final sshProfileCubit = context.read<SshProfileCubit>();
-    storageRoots.invalidate();
-    await storageRoots.reinstallAndResolve();
-    await reloadRemoteBackedAppData(
-      storageRoots: storageRoots,
-      llmConfigCubit: llmCubit,
-      appProviderCubit: appProviderCubit,
-      teamCubit: teamCubit,
-      pluginCubit: pluginCubit,
-      skillCubit: skillCubit,
-      mcpCubit: mcpCubit,
-      extensionCubit: extensionCubit,
-      chatCubit: chatCubit,
-      sessionRepo: sessionRepo,
-      sshProfileCubit: sshProfileCubit,
-    );
-  }
-
-  Future<void> _onWindowsStorageBackendChanged(
-    WindowsStorageBackend selected,
-  ) async {
-    final l10n = context.l10n;
-    final current = widget.cubit.state.preferences.windowsStorageBackend;
-    if (selected == current) return;
-
-    if (selected == WindowsStorageBackend.wsl) {
-      final distro = RuntimeStorageContext.parseWslDistro(
-        widget.cubit.resolveExecutable(),
-      );
-      final available = await RuntimeStorageContext.probeWslAvailable(
-        distro: distro,
-      );
-      if (!available) {
-        if (!mounted) return;
-        AppToast.show(
-          context,
-          message: l10n.windowsStorageBackendWslUnavailable,
-          variant: AppToastVariant.error,
-        );
-        return;
-      }
-    }
-
-    if (!mounted) return;
-    final confirmed = await showDialog<bool>(
-      context: context,
-      builder: (ctx) => AppDialog(
-        maxWidth: 480,
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
-            AppDialogHeader(
-              title: l10n.windowsStorageBackendSwitchConfirmTitle,
-              onClose: () => Navigator.pop(ctx, false),
-            ),
-            const SizedBox(height: 16),
-            Text(l10n.windowsStorageBackendSwitchConfirmBody),
-            AppDialogActions(
-              children: [
-                TextButton(
-                  onPressed: () => Navigator.pop(ctx, false),
-                  child: Text(l10n.cancel),
-                ),
-                FilledButton(
-                  onPressed: () => Navigator.pop(ctx, true),
-                  child: Text(l10n.windowsStorageBackendSwitchConfirmAction),
-                ),
-              ],
-            ),
-          ],
-        ),
-      ),
-    );
-    if (confirmed != true || !mounted) return;
-
-    await widget.cubit.setWindowsStorageBackend(selected);
-    if (!mounted) return;
-    await _reloadAfterStorageBackendChange();
-  }
 
   @override
   Widget build(BuildContext context) {
     final l10n = context.l10n;
     final state = widget.cubit.state;
     _syncFromState(state.preferences.defaultSshWorkingDirectory);
-    final isSshMode = widget.cubit.isSshMode;
+    final isSshMode = context.watch<ConnectionModeService>().isSshMode;
 
     return Expanded(
       child: SingleChildScrollView(
@@ -276,78 +185,7 @@ class _SessionControlsState extends State<_SessionControls> {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
-              if (Platform.isWindows) ...[
-                SettingsLabeledStackedRow(
-                  title: l10n.windowsStorageBackendTitle,
-                  subtitle: l10n.windowsStorageBackendDescription,
-                  body: SegmentedButton<WindowsStorageBackend>(
-                    segments: [
-                      ButtonSegment(
-                        value: WindowsStorageBackend.native,
-                        label: Text(l10n.windowsStorageBackendNative),
-                        icon: Icon(Icons.folder_outlined),
-                      ),
-                      ButtonSegment(
-                        value: WindowsStorageBackend.wsl,
-                        label: Text(l10n.windowsStorageBackendWsl),
-                        icon: Icon(Icons.terminal),
-                      ),
-                    ],
-                    selected: {state.preferences.windowsStorageBackend},
-                    onSelectionChanged: (selected) =>
-                        _onWindowsStorageBackendChanged(selected.first),
-                  ),
-                  showDividerBelow: true,
-                ),
-              ],
-              if (kShowConnectionModeSetting)
-                SettingsLabeledStackedRow(
-                  title: l10n.connectionModeLabel,
-                  subtitle: l10n.connectionModeDescription,
-                  body: SegmentedButton<ConnectionMode>(
-                    segments: [
-                      ButtonSegment(
-                        value: ConnectionMode.localPty,
-                        label: Text(l10n.connectionModeLocal),
-                        icon: Icon(Icons.computer_outlined),
-                      ),
-                      ButtonSegment(
-                        value: ConnectionMode.ssh,
-                        label: Text(l10n.connectionModeSsh),
-                        icon: Icon(Icons.dns_outlined),
-                      ),
-                    ],
-                    selected: {state.preferences.connectionMode},
-                    onSelectionChanged: (selected) async {
-                      final llmCubit = context.read<LlmConfigCubit>();
-                      final teamCubit = context.read<LaunchProfileCubit>();
-                      final skillCubit = context.read<SkillCubit>();
-                      final mcpCubit = context.read<McpCubit>();
-                      final chatCubit = context.read<ChatCubit>();
-                      final sessionRepo = context.read<SessionRepository>();
-                      final storageRoots = context.read<StorageRoots>();
-                      final pluginCubit = context.read<PluginCubit>();
-                      await widget.cubit.setConnectionMode(selected.first);
-                      if (!context.mounted) return;
-                      storageRoots.invalidate();
-                      await storageRoots.resolve();
-                      await Future.wait([
-                        llmCubit.load(),
-                        teamCubit.load(),
-                        skillCubit.loadAll(),
-                        mcpCubit.loadAll(),
-                        chatCubit.loadWorkspaceData(sessionRepo),
-                      ]);
-                      await teamCubit.syncSelectedTeamPlugins(
-                        installed: pluginCubit.state.installed,
-                      );
-                      await teamCubit.syncSelectedTeamMcp(
-                        installed: mcpCubit.state.servers,
-                      );
-                    },
-                  ),
-                  showDividerBelow: true,
-                ),
+              const RuntimeTargetPicker(),
               if (isSshMode) ...[
                 SettingsLabeledStackedRow(
                   title: l10n.sshDefaultWorkingDirectoryTitle,

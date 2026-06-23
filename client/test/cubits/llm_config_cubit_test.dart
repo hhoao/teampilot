@@ -9,7 +9,7 @@ import 'package:teampilot/repositories/llm_config_store.dart';
 import 'package:teampilot/services/storage/app_storage.dart';
 import 'package:teampilot/services/io/local_filesystem.dart';
 import 'package:teampilot/services/provider/llm_config_path_resolver.dart';
-import 'package:teampilot/services/storage/runtime_storage_context.dart';
+import 'package:teampilot/services/storage/runtime_context.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
@@ -20,7 +20,7 @@ void main() {
     SharedPreferences.setMockInitialValues({});
     tmp = await Directory.systemTemp.createTemp('llm_cubit_test_');
     final paths = AppPaths(tmp.path);
-    RuntimeStorageContext.installForTesting(
+    AppStorage.installForTesting(
       filesystem: LocalFilesystem(
         pathContext: AppPaths.pathContextForDataRoot(paths.basePath),
       ),
@@ -31,7 +31,7 @@ void main() {
   });
 
   tearDown(() async {
-    RuntimeStorageContext.resetForTesting();
+    AppStorage.resetForTesting();
     AppPathsBootstrapper.resetForTesting();
     if (await tmp.exists()) await tmp.delete(recursive: true);
   });
@@ -192,7 +192,7 @@ void main() {
     expect(cubit.state.config.providers.containsKey('a'), isTrue);
   });
 
-  test('load follows RuntimeStorageContext home for tilde override paths', () async {
+  test('load follows AppStorage home home for tilde override paths', () async {
     final homeA = await Directory.systemTemp.createTemp('llm_home_a_');
     final homeB = await Directory.systemTemp.createTemp('llm_home_b_');
     addTearDown(() async {
@@ -200,7 +200,7 @@ void main() {
       if (await homeB.exists()) await homeB.delete(recursive: true);
     });
 
-    RuntimeStorageContext.installForTesting(
+    AppStorage.installForTesting(
       filesystem: LocalFilesystem(
         pathContext: AppPaths.pathContextForDataRoot(homeA.path),
       ),
@@ -233,7 +233,7 @@ void main() {
     );
     expect(cubit.state.config.providers.keys, ['a']);
 
-    RuntimeStorageContext.installForTesting(
+    AppStorage.installForTesting(
       filesystem: LocalFilesystem(
         pathContext: AppPaths.pathContextForDataRoot(homeB.path),
       ),

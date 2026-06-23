@@ -5,7 +5,6 @@ import '../../provider/codex/codex_provider_credentials_service.dart';
 import '../../provider/cursor/cursor_agent_models_service.dart';
 import '../../provider/cursor/cursor_provider_credentials_service.dart';
 import '../../provider/opencode/opencode_provider_credentials_service.dart';
-import '../../storage/storage_resolver.dart';
 
 /// Runtime services wired into [CliToolRegistry] after [AppStorage] is ready.
 ///
@@ -19,14 +18,6 @@ class CliBootstrap {
     this.codexCredentialsService,
     this.opencodeCredentialsService,
   });
-
-  factory CliBootstrap.fromStorageRoots(StorageRoots storageRoots) {
-    return CliBootstrap(
-      cursorAgentModelsService: CursorAgentModelsService(
-        storageRoots: storageRoots,
-      ),
-    );
-  }
 
   final CursorAgentModelsService? cursorAgentModelsService;
   final ClaudeProviderCredentialsService? claudeCredentialsService;

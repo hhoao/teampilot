@@ -3,7 +3,8 @@ import 'dart:io';
 import '../../models/extension_manifest.dart';
 import '../host/host_executable_locator.dart';
 import '../host/host_execution_environment.dart';
-import '../storage/runtime_storage_context.dart';
+import '../storage/runtime_context.dart';
+import '../storage/app_storage.dart';
 import 'extension_probe.dart';
 
 typedef ExtensionProcessRunner = Future<ProcessResult> Function(
@@ -102,8 +103,8 @@ class ExtensionDetector {
   }
 
   HostExecutableLocator _pathLocator() {
-    final env = RuntimeStorageContext.isInstalled
-        ? HostExecutionEnvironment.fromStorage(RuntimeStorageContext.current)
+    final env = AppStorage.isInstalled
+        ? HostExecutionEnvironment.fromStorage(AppStorage.context)
         : HostExecutionEnvironment.resolve();
     return HostExecutableLocator(env);
   }

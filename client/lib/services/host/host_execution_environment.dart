@@ -1,6 +1,7 @@
 import 'dart:io' show Platform;
 
-import '../storage/runtime_storage_context.dart';
+import '../storage/runtime_context.dart';
+import '../storage/app_storage.dart';
 import 'host_script_dialect.dart';
 import 'host_script_runner.dart';
 
@@ -42,7 +43,7 @@ final class HostExecutionEnvironment {
     );
   }
 
-  static HostExecutionEnvironment fromStorage(RuntimeStorageContext ctx) {
+  static HostExecutionEnvironment fromStorage(RuntimeContext ctx) {
     return resolve(
       storageMode: ctx.mode,
       isWindowsHost: Platform.isWindows,
@@ -64,7 +65,7 @@ final class HostExecutionEnvironment {
 
   static StorageBackendMode? _currentStorageMode() {
     try {
-      return RuntimeStorageContext.current.mode;
+      return AppStorage.context.mode;
     } on Object {
       return null;
     }

@@ -2,18 +2,14 @@ import '../models/mcp_server.dart';
 import '../services/mcp/mcp_catalog_service.dart';
 import '../services/mcp/mcp_server_validator.dart';
 import '../services/storage/app_storage.dart';
-import '../services/storage/storage_resolver.dart';
 
 class McpRepository {
   McpRepository({
-    StorageRoots? storageRoots,
     McpCatalogService? catalog,
     McpServerValidator? validator,
-  }) : _storageRoots = storageRoots,
-       _catalog = catalog,
+  }) : _catalog = catalog,
        _validator = validator ?? McpServerValidator();
 
-  final StorageRoots? _storageRoots;
   final McpCatalogService? _catalog;
   final McpServerValidator _validator;
 
@@ -24,8 +20,8 @@ class McpRepository {
   Future<McpCatalogService> _resolveCatalog() async {
     final injected = _catalog;
     if (injected != null) return injected;
-    if (_storageRoots != null) {
-      final roots = await _storageRoots.resolve();
+    if (AppStorage.isInstalled) {
+      final roots = AppStorage.context;
       return McpCatalogService(
         catalogPath: roots.mcpServersJsonPath,
         fs: roots.fs,

@@ -3,7 +3,7 @@ import '../../../models/claude_credential_link_result.dart';
 import '../../../models/credential_action_result.dart';
 import '../../cli/registry/capabilities/provider_credential_capability.dart';
 import '../../storage/app_storage.dart';
-import '../../storage/runtime_storage_context.dart';
+import '../../storage/runtime_context.dart';
 import '../credential_binding.dart';
 import 'claude_official_provider.dart';
 import 'claude_provider_credentials_service.dart';
@@ -61,7 +61,7 @@ final class ClaudeProviderCredentialCapability
   }
 
   static String _resolveHomeDirectory() {
-    if (!RuntimeStorageContext.isInstalled) return '';
+    if (!AppStorage.isInstalled) return '';
     try {
       return AppStorage.home;
     } on Object {

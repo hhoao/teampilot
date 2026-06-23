@@ -6,7 +6,6 @@ import 'package:path/path.dart' as p;
 import '../../models/plugin.dart';
 import '../../utils/logger.dart';
 import '../storage/app_storage.dart';
-import '../storage/storage_resolver.dart';
 import '../io/filesystem.dart';
 import 'plugin_exceptions.dart';
 import 'plugin_fetch_service.dart';
@@ -38,21 +37,17 @@ class PluginInstallService {
     PluginManifestService? manifestService,
     PluginFetchService? fetchService,
     PluginRepoDiskCacheService? diskCache,
-    StorageRoots? storageRoots,
   }) : _manifest = manifestService ?? PluginManifestService(),
        _fetch = fetchService ?? PluginFetchService(),
-       _diskCache =
-           diskCache ?? PluginRepoDiskCacheService(storageRoots: storageRoots),
-       _storageRoots = storageRoots;
+       _diskCache = diskCache ?? PluginRepoDiskCacheService();
 
   final PluginManifestService _manifest;
   final PluginFetchService _fetch;
   final PluginRepoDiskCacheService _diskCache;
-  final StorageRoots? _storageRoots;
 
   Future<_PluginStorage> _storage() async {
-    if (_storageRoots != null) {
-      final snap = await _storageRoots.resolve();
+    if (AppStorage.isInstalled) {
+      final snap = AppStorage.context;
       return _PluginStorage(
         fs: snap.fs,
         ctx: snap.fs.pathContext,

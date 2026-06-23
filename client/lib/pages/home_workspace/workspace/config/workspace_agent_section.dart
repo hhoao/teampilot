@@ -15,7 +15,6 @@ import '../../../../services/app/flashskyai_agent_catalog_service.dart';
 import '../../../../services/cli/registry/cli_display_name.dart';
 import '../../../../services/cli/registry/cli_tool_registry.dart';
 import '../../../../services/cli/registry/cli_tool_registry_scope.dart';
-import '../../../../services/storage/storage_resolver.dart';
 import '../../../../theme/app_text_styles.dart';
 import '../../../../widgets/cli/member_agent_preset_field.dart';
 import '../../../../widgets/settings/workspace_settings_widgets.dart';
@@ -89,10 +88,7 @@ class WorkspaceAgentConfigFormState extends State<WorkspaceAgentConfigForm> {
   }
 
   Future<void> _loadUserAgents() async {
-    final storageRoots = context.read<StorageRoots>();
-    final ids = await FlashskyaiAgentCatalogService(
-      storageRoots: storageRoots,
-    ).listUserAgentIds();
+    final ids = await FlashskyaiAgentCatalogService().listUserAgentIds();
     if (!mounted) return;
     setState(() => _userAgentIds = ids);
   }

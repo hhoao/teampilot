@@ -16,7 +16,8 @@ import '../../repositories/session_repository.dart';
 import '../../services/cli/registry/config_profile/config_profile_context.dart';
 import '../../services/session/session_lifecycle_service.dart';
 import '../../services/team/team_config_launch_validator.dart';
-import '../../services/storage/runtime_storage_context.dart';
+import '../../services/storage/app_storage.dart';
+import '../../services/storage/runtime_context.dart';
 import '../../services/team_bus/mcp/bus_bridge_locator.dart';
 import '../../services/team_bus/mcp/teammate_bus_mcp_config.dart';
 import '../../services/terminal/terminal_session.dart';
@@ -915,8 +916,8 @@ class SessionLaunchService implements MemberConnector {
     required String memberId,
     required CliTool cli,
   }) {
-    final localNative = !RuntimeStorageContext.isInstalled ||
-        RuntimeStorageContext.current.mode == StorageBackendMode.native;
+    final localNative = !AppStorage.isInstalled ||
+        AppStorage.context.mode == StorageBackendMode.native;
     if (cli == CliTool.claude && localNative) {
       final bridge = BusBridgeLocator.resolve();
       if (bridge != null) {

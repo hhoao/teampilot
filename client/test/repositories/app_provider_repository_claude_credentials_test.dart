@@ -6,7 +6,7 @@ import 'package:teampilot/repositories/app_provider_repository.dart';
 import 'package:teampilot/services/storage/app_storage.dart';
 import 'package:teampilot/services/provider/claude/claude_provider_credentials_service.dart';
 import 'package:teampilot/services/provider/credential_binding.dart';
-import 'package:teampilot/services/storage/runtime_storage_context.dart';
+import 'package:teampilot/services/storage/runtime_context.dart';
 
 import '../support/in_memory_filesystem.dart';
 
@@ -29,7 +29,7 @@ void main() {
   });
 
   tearDown(() {
-    RuntimeStorageContext.resetForTesting();
+    AppStorage.resetForTesting();
   });
 
   test('removes stale claude provider credential dirs on save', () async {
@@ -71,7 +71,7 @@ void main() {
 
   test('load probes linked official credentials from global home', () async {
     const home = '/home/user';
-    RuntimeStorageContext.installForTesting(
+    AppStorage.installForTesting(
       filesystem: fs,
       paths: AppPaths(base),
       home: home,
@@ -118,7 +118,7 @@ void main() {
     'load does not import global credentials unless explicitly requested',
     () async {
       const home = '/home/user';
-      RuntimeStorageContext.installForTesting(
+      AppStorage.installForTesting(
         filesystem: fs,
         paths: AppPaths(base),
         home: home,
@@ -168,7 +168,7 @@ void main() {
     'load imports global credentials when importCredentialsFromGlobal is true',
     () async {
       const home = '/home/user';
-      RuntimeStorageContext.installForTesting(
+      AppStorage.installForTesting(
         filesystem: fs,
         paths: AppPaths(base),
         home: home,
@@ -217,7 +217,7 @@ void main() {
 
   test('load does not overwrite isolated provider credentials from global', () async {
     const home = '/home/user';
-    RuntimeStorageContext.installForTesting(
+    AppStorage.installForTesting(
       filesystem: fs,
       paths: AppPaths(base),
       home: home,

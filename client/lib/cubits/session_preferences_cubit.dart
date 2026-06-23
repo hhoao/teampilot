@@ -7,7 +7,6 @@ import '../services/cli/cli_tool_locator.dart';
 import '../services/cli/registry/capabilities/executable_resolver_capability.dart';
 import '../services/cli/registry/cli_tool_registry.dart';
 import '../models/team_config.dart';
-import '../models/windows_storage_backend.dart';
 import '../repositories/session_preferences_repository.dart';
 
 class SessionPreferencesState extends Equatable {
@@ -66,12 +65,6 @@ class SessionPreferencesCubit extends Cubit<SessionPreferencesState> {
     emit(state.copyWith(preferences: preferences));
     await _repository.save(preferences);
   }
-
-  Future<void> setConnectionMode(ConnectionMode mode) {
-    return _save(state.preferences.copyWith(connectionMode: mode));
-  }
-
-  bool get isSshMode => state.preferences.connectionMode == ConnectionMode.ssh;
 
   Future<void> setCliExecutablePathFor(CliTool cli, String value) {
     final pathKey = _cliToolRegistry
@@ -147,10 +140,6 @@ class SessionPreferencesCubit extends Cubit<SessionPreferencesState> {
     return _save(
       state.preferences.copyWith(terminalLinkClickOpensInApp: value),
     );
-  }
-
-  Future<void> setWindowsStorageBackend(WindowsStorageBackend backend) {
-    return _save(state.preferences.copyWith(windowsStorageBackend: backend));
   }
 
   /// Returns the actual executable string to invoke for [cli]:

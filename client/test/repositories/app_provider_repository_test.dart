@@ -4,10 +4,10 @@ import 'dart:io';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:path/path.dart' as p;
 import 'package:teampilot/models/app_provider_config.dart';
-import 'package:teampilot/models/windows_storage_backend.dart';
 import 'package:teampilot/repositories/app_provider_repository.dart';
 import 'package:teampilot/services/storage/app_storage.dart';
-import 'package:teampilot/services/storage/runtime_storage_context.dart';
+import 'package:teampilot/services/storage/runtime_context.dart';
+import '../support/test_runtime_context.dart';
 
 import '../support/post_frame_test_harness.dart';
 
@@ -154,7 +154,7 @@ void main() {
   });
 
   test(
-    'load follows RuntimeStorageContext when basePath is not overridden',
+    'load follows AppStorage home when basePath is not overridden',
     () async {
       final rootA = await Directory.systemTemp.createTemp('providers_a_');
       final rootB = await Directory.systemTemp.createTemp('providers_b_');
@@ -165,17 +165,11 @@ void main() {
         if (await rootB.exists()) {
           await rootB.delete(recursive: true);
         }
-        RuntimeStorageContext.resetForTesting();
+        AppStorage.resetForTesting();
         AppPathsBootstrapper.resetForTesting();
       });
 
-      await RuntimeStorageContext.install(
-        isSshMode: false,
-        nativeAppDataPath: rootA.path,
-        nativeHome: rootA.path,
-        nativeCwd: rootA.path,
-        windowsStorageBackend: WindowsStorageBackend.native,
-      );
+      bindTestNativeHome(rootA.path);
 
       final dynamicRepo = AppProviderRepository();
       const provider = AppProviderConfig(
@@ -186,23 +180,11 @@ void main() {
       await dynamicRepo.saveProviders(CliTool.claude, [provider]);
       expect(await dynamicRepo.loadProviders(CliTool.claude), hasLength(1));
 
-      await RuntimeStorageContext.install(
-        isSshMode: false,
-        nativeAppDataPath: rootB.path,
-        nativeHome: rootB.path,
-        nativeCwd: rootB.path,
-        windowsStorageBackend: WindowsStorageBackend.native,
-      );
+      bindTestNativeHome(rootB.path);
 
       expect(await dynamicRepo.loadProviders(CliTool.claude), isEmpty);
 
-      await RuntimeStorageContext.install(
-        isSshMode: false,
-        nativeAppDataPath: rootA.path,
-        nativeHome: rootA.path,
-        nativeCwd: rootA.path,
-        windowsStorageBackend: WindowsStorageBackend.native,
-      );
+      bindTestNativeHome(rootA.path);
 
       expect(await dynamicRepo.loadProviders(CliTool.claude), hasLength(1));
     },

@@ -5,7 +5,7 @@ import 'package:teampilot/repositories/plugin_repository.dart';
 import 'package:teampilot/services/storage/app_storage.dart';
 import 'package:teampilot/services/io/local_filesystem.dart';
 import 'package:teampilot/services/plugin/plugin_repo_service.dart';
-import 'package:teampilot/services/storage/runtime_storage_context.dart';
+import 'package:teampilot/services/storage/runtime_context.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:path/path.dart' as p;
 
@@ -15,7 +15,7 @@ void main() {
   setUp(() {
     tmp = Directory.systemTemp.createTempSync('plugin-cubit-');
     final paths = AppPaths(tmp.path);
-    RuntimeStorageContext.installForTesting(
+    AppStorage.installForTesting(
       filesystem: LocalFilesystem(
         pathContext: AppPaths.pathContextForDataRoot(paths.basePath),
       ),
@@ -26,7 +26,7 @@ void main() {
   });
 
   tearDown(() {
-    RuntimeStorageContext.resetForTesting();
+    AppStorage.resetForTesting();
     tmp.deleteSync(recursive: true);
   });
 

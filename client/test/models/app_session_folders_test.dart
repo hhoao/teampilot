@@ -20,19 +20,21 @@ void main() {
     expect(restored.folders.map((f) => f.path), ['/main', '/x']);
   });
 
-  test('reads legacy session manifest', () {
+  test('reads folders-only session manifest', () {
     final restored = AppSession.fromJson({
       'sessionId': 's1',
       'workspaceId': 'w1',
-      'primaryPath': '/main',
-      'additionalPaths': ['/x'],
+      'folders': const [
+        {'path': '/main', 'targetId': 'local'},
+        {'path': '/x', 'targetId': 'local'},
+      ],
       'createdAt': 1,
     });
     expect(restored.firstFolderPath, '/main');
     expect(restored.extraFolderPaths, ['/x']);
   });
 
-  test('toJson dual-writes legacy fields and bumps schemaVersion', () {
+  test('toJson writes only folders (no legacy path keys)', () {
     final s = AppSession(
       sessionId: 's1',
       workspaceId: 'w1',
@@ -40,9 +42,8 @@ void main() {
       createdAt: 1,
     );
     final json = s.toJson();
-    expect(json['schemaVersion'], 2);
-    expect(json['primaryPath'], '/main');
-    expect(json['additionalPaths'], <String>[]);
     expect((json['folders'] as List).length, 1);
+    expect(json.containsKey('primaryPath'), isFalse);
+    expect(json.containsKey('additionalPaths'), isFalse);
   });
 }

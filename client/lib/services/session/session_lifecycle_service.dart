@@ -22,15 +22,16 @@ import '../cli/registry/cli_tool_registry.dart';
 import '../cli/registry/config_profile/flashskyai_config_profile_capability.dart';
 import '../cli/preset_resolver.dart';
 import '../provider/config_profile_service.dart';
-import '../storage/storage_resolver.dart';
+import '../../models/runtime_target.dart';
+import '../io/local_filesystem.dart';
+import '../storage/runtime_context.dart';
 import '../io/filesystem.dart';
-import '../storage/runtime_storage_context.dart';
 import '../cli/cli_tool_adapter.dart';
 import 'shell_launch_spec.dart';
 
 export 'shell_launch_spec.dart';
 
-typedef StorageRootsResolver = Future<StorageRootsSnapshot> Function();
+typedef StorageRootsResolver = Future<RuntimeContext> Function();
 
 class SessionLifecycleService {
   static final _defaultCliRegistry = () {
@@ -43,6 +44,7 @@ class SessionLifecycleService {
     String? Function()? llmConfigPathOverride,
     ConfigProfileService? configProfileService,
     StorageRootsResolver? storageRootsResolver,
+    Future<RuntimeContext> Function(RuntimeTarget target)? workContextResolver,
     Future<Set<String>> Function({String? teamId, String? workspaceId})?
     loadEnabledExtensionIds,
     CliToolRegistry? cliToolRegistry,
@@ -54,6 +56,7 @@ class SessionLifecycleService {
        _llmConfigPathOverride = llmConfigPathOverride,
        _configProfileService = configProfileService,
        _storageRootsResolver = storageRootsResolver,
+       _workContextResolver = workContextResolver,
        _loadEnabledExtensionIds = loadEnabledExtensionIds,
        _cliToolRegistry = cliToolRegistry ?? _defaultCliRegistry,
        _identityRepository = identityRepository,
@@ -65,6 +68,12 @@ class SessionLifecycleService {
   final String? Function()? _llmConfigPathOverride;
   final ConfigProfileService? _configProfileService;
   final StorageRootsResolver? _storageRootsResolver;
+
+  /// P2: resolves the work-plane context for a workspace's target (local/wsl/
+  /// ssh). When set, launch resolves runtime trees on the workspace's machine;
+  /// session metadata still lives on home.
+  final Future<RuntimeContext> Function(RuntimeTarget target)?
+  _workContextResolver;
   final Future<Set<String>> Function({String? teamId, String? workspaceId})?
   _loadEnabledExtensionIds;
   final CliToolRegistry _cliToolRegistry;
@@ -279,7 +288,7 @@ class SessionLifecycleService {
       'cliTeam=$cliTeamName task=$taskId personal=$isPersonal',
     );
     try {
-      final roots = await _resolveRoots();
+      final roots = await _resolveRoots(session: session);
       final service = await _configProfileServiceFor(
         roots,
         launchWorkspaceId: isPersonal ? workspace!.workspaceId : null,
@@ -707,7 +716,7 @@ class SessionLifecycleService {
   }
 
   Future<ConfigProfileService> _configProfileServiceFor(
-    StorageRootsSnapshot roots, {
+    RuntimeContext roots, {
     String? launchWorkspaceId,
   }) async {
     final injected = _configProfileService;
@@ -731,14 +740,49 @@ class SessionLifecycleService {
     );
   }
 
-  Future<StorageRootsSnapshot> _resolveRoots() async {
+  /// Test seam: resolve the work-plane context for [session] (exercises the
+  /// folder-target → forTarget path).
+  @visibleForTesting
+  Future<RuntimeContext> debugResolveWorkContext(AppSession session) =>
+      _resolveRoots(session: session);
+
+  /// Resolves the context for launch. When [session] is given and a work-plane
+  /// resolver is wired, the workspace's folder target decides the machine
+  /// (P2 project-remote); otherwise the control-plane/home context is used.
+  Future<RuntimeContext> _resolveRoots({AppSession? session}) async {
+    final workResolver = _workContextResolver;
+    if (session != null && workResolver != null) {
+      return workResolver(_workTargetFor(session));
+    }
     final resolver = _storageRootsResolver;
     if (resolver != null) return resolver();
     return _localRoots(_appDataBasePath ?? AppStorage.paths.basePath);
   }
 
-  StorageRootsSnapshot _localRoots(String basePath) {
-    return StorageRootsSnapshot.fromContext(RuntimeStorageContext.current);
+  /// The runtime target of a session's workspace (P2: whole workspace = one
+  /// target = `folders.first.targetId`).
+  RuntimeTarget _workTargetFor(AppSession session) {
+    final id = session.folders.isEmpty
+        ? RuntimeTarget.localId
+        : session.folders.first.targetId;
+    return switch (runtimeKindOfId(id)) {
+      RuntimeKind.ssh => RuntimeTarget.ssh(sshProfileIdOfId(id) ?? '', label: ''),
+      RuntimeKind.wsl => RuntimeTarget.wsl(wslDistroOfId(id) ?? ''),
+      RuntimeKind.local => RuntimeTarget.local(),
+    };
+  }
+
+  RuntimeContext _localRoots(String basePath) {
+    return RuntimeContext(
+      target: RuntimeTarget.local(),
+      filesystem: LocalFilesystem(
+        pathContext: AppPaths.pathContextForDataRoot(basePath),
+      ),
+      home: basePath,
+      cwd: basePath,
+      appDataRoot: basePath,
+      paths: AppPaths(basePath),
+    );
   }
 
   /// Resolves the native session id for [cli] via its [SessionResumeCapability]
@@ -746,7 +790,7 @@ class SessionLifecycleService {
   /// create-vs-resume ids for the launch plan. See
   /// docs/session-resume-architecture.md.
   Future<_ResumeResolution> _resolveResume({
-    required StorageRootsSnapshot roots,
+    required RuntimeContext roots,
     required CliTool? cli,
     required String taskId,
     required Map<String, String> env,
@@ -790,7 +834,7 @@ class SessionLifecycleService {
   }
 
   Future<_CliStateProbeResult> _findCliState({
-    required StorageRootsSnapshot roots,
+    required RuntimeContext roots,
     required AppSession session,
     required String teamId,
     required String runtimeSessionId,
@@ -853,7 +897,7 @@ class SessionLifecycleService {
     );
   }
 
-  Future<void> _removeTree(StorageRootsSnapshot roots, String path) async {
+  Future<void> _removeTree(RuntimeContext roots, String path) async {
     try {
       await roots.fs.removeRecursive(path);
     } on Object catch (e, st) {

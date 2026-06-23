@@ -12,7 +12,7 @@ import 'package:teampilot/services/cli/registry/config_profile/flashskyai_config
 import 'package:teampilot/services/provider/config_profile_service.dart';
 import 'package:teampilot/services/provider/cursor/cursor_workspace_trust.dart';
 import 'package:teampilot/services/host/host_execution_environment.dart';
-import 'package:teampilot/services/storage/runtime_storage_context.dart';
+import 'package:teampilot/services/storage/runtime_context.dart';
 
 String _standaloneSessionClaudeDir(
   String base,

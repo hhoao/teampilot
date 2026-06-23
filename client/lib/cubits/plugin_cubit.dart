@@ -8,7 +8,6 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import '../models/plugin.dart';
 import '../repositories/plugin_repository.dart';
 import '../services/plugin/plugin_install_service.dart';
-import '../services/storage/storage_resolver.dart';
 import '../services/plugin/plugin_external_fetch_service.dart';
 import '../services/plugin/plugin_repo_disk_cache_service.dart';
 import '../services/plugin/plugin_repo_service.dart';
@@ -99,12 +98,8 @@ class PluginCubit extends Cubit<PluginState> {
     PluginExternalFetchService? externalFetch,
     PluginUninstalledHandler? onPluginUninstalled,
     PluginUpdatedHandler? onPluginUpdated,
-    StorageRoots? storageRoots,
-  }) : _diskCache =
-           diskCache ?? PluginRepoDiskCacheService(storageRoots: storageRoots),
-       _externalFetch =
-           externalFetch ??
-           PluginExternalFetchService(storageRoots: storageRoots),
+  }) : _diskCache = diskCache ?? PluginRepoDiskCacheService(),
+       _externalFetch = externalFetch ?? PluginExternalFetchService(),
        _onPluginUninstalled = onPluginUninstalled,
        _onPluginUpdated = onPluginUpdated,
        super(const PluginState());

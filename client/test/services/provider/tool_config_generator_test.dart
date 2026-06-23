@@ -6,7 +6,7 @@ import 'package:path/path.dart' as p;
 import 'package:teampilot/models/app_provider_config.dart';
 import 'package:teampilot/services/storage/app_storage.dart';
 import 'package:teampilot/services/io/local_filesystem.dart';
-import 'package:teampilot/services/storage/runtime_storage_context.dart';
+import 'package:teampilot/services/storage/runtime_context.dart';
 import 'package:teampilot/services/provider/tool_config_generator.dart';
 
 void main() {
@@ -16,7 +16,7 @@ void main() {
   setUp(() async {
     generator = const ToolConfigGenerator();
     temp = await Directory.systemTemp.createTemp('tool_cfg_gen_');
-    RuntimeStorageContext.installForTesting(
+    AppStorage.installForTesting(
       filesystem: LocalFilesystem(),
       paths: AppPaths(temp.path),
       home: temp.path,
@@ -25,7 +25,7 @@ void main() {
   });
 
   tearDown(() async {
-    RuntimeStorageContext.resetForTesting();
+    AppStorage.resetForTesting();
     if (await temp.exists()) await temp.delete(recursive: true);
   });
 

@@ -13,7 +13,7 @@ import 'package:teampilot/services/io/local_filesystem.dart';
 import 'package:teampilot/services/mcp/profile_mcp_linker_service.dart';
 import 'package:teampilot/services/plugin/profile_plugin_linker_service.dart';
 import 'package:teampilot/services/storage/app_storage.dart';
-import 'package:teampilot/services/storage/runtime_storage_context.dart';
+import 'package:teampilot/services/storage/runtime_context.dart';
 
 const _userServer = McpServer(
   id: 'user-mcp',
@@ -127,7 +127,7 @@ void main() {
       appDataRoot =
           await Directory.systemTemp.createTemp('teampilot_ext_mcp_');
       final paths = AppPaths(appDataRoot.path);
-      RuntimeStorageContext.installForTesting(
+      AppStorage.installForTesting(
         filesystem: LocalFilesystem(
           pathContext: AppPaths.pathContextForDataRoot(paths.basePath),
         ),
@@ -138,7 +138,7 @@ void main() {
     });
 
     tearDown(() async {
-      RuntimeStorageContext.resetForTesting();
+      AppStorage.resetForTesting();
       AppPathsBootstrapper.resetForTesting();
       if (await appDataRoot.exists()) {
         try {

@@ -45,7 +45,7 @@ class Workspace {
         : const <String>[];
     return Workspace(
       workspaceId: json['workspaceId'] as String? ?? '',
-      folders: foldersFromLegacyJson(json),
+      folders: foldersFromJson(json['folders']),
       display: json['display'] as String? ?? '',
       defaultProfileId: json['defaultProfileId'] as String? ?? '',
       icon: WorkspaceIconRef.fromJson(json['icon']),
@@ -106,9 +106,6 @@ class Workspace {
     return {
       'workspaceId': workspaceId,
       'folders': folders.map((f) => f.toJson()).toList(),
-      // SCAFFOLD dual-write (one version cycle; removed next version):
-      'primaryPath': firstFolderPath,
-      'additionalPaths': extraFolderPaths,
       'display': display,
       if (defaultProfileId.isNotEmpty) 'defaultProfileId': defaultProfileId,
       if (icon.toJson() case final json?) 'icon': json,

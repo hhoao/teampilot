@@ -16,49 +16,18 @@ void main() {
     expect(json['targetId'], 'local');
   });
 
-  test('foldersFromLegacyJson prefers new folders array', () {
-    final folders = foldersFromLegacyJson({
-      'folders': [
-        {'path': '/a', 'targetId': 'local'},
-        {'path': '/b', 'targetId': 'local'},
-      ],
-      'primaryPath': '/ignored',
-      'additionalPaths': ['/ignored2'],
-    });
+  test('foldersFromJson reads the folders array', () {
+    final folders = foldersFromJson([
+      {'path': '/a', 'targetId': 'local'},
+      {'path': '/b', 'targetId': 'ssh:p1'},
+    ]);
     expect(folders.map((f) => f.path), ['/a', '/b']);
+    expect(folders.last.targetId, 'ssh:p1');
   });
 
-  test('foldersFromLegacyJson upgrades legacy primaryPath + additionalPaths', () {
-    final folders = foldersFromLegacyJson({
-      'primaryPath': '/main',
-      'additionalPaths': ['/x', '/y'],
-    });
-    expect(folders.map((f) => f.path), ['/main', '/x', '/y']);
-    expect(folders.every((f) => f.targetId == 'local'), isTrue);
-  });
-
-  test('foldersFromLegacyJson tolerates empty primaryPath', () {
-    final folders = foldersFromLegacyJson({
-      'primaryPath': '',
-      'additionalPaths': ['/only'],
-    });
-    expect(folders.map((f) => f.path), ['/only']);
-  });
-
-  test('foldersFromLegacyJson returns empty when nothing present', () {
-    expect(foldersFromLegacyJson(<String, Object?>{}), isEmpty);
-  });
-
-  test('foldersFromLegacyJson falls through to legacy when folders is empty', () {
-    final folders = foldersFromLegacyJson({
-      'folders': <Object?>[],
-      'primaryPath': '/main',
-      'additionalPaths': ['/x'],
-    });
-    expect(folders.map((f) => f.path), ['/main', '/x']);
-  });
-
-  test('foldersFromLegacyJson returns empty for empty folders and no legacy', () {
-    expect(foldersFromLegacyJson({'folders': <Object?>[]}), isEmpty);
+  test('foldersFromJson returns empty for null / non-list', () {
+    expect(foldersFromJson(null), isEmpty);
+    expect(foldersFromJson('nope'), isEmpty);
+    expect(foldersFromJson(const <Object?>[]), isEmpty);
   });
 }

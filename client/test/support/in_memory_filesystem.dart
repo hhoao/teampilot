@@ -136,6 +136,10 @@ class InMemoryFilesystem implements Filesystem {
       symlinks[linkPath];
 
   @override
+  Future<String?> resolveSymlink(String path) async =>
+      symlinks[path] ?? path;
+
+  @override
   Future<void> copyTree({
     required String source,
     required String destination,

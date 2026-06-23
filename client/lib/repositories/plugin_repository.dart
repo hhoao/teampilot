@@ -3,7 +3,6 @@ import 'dart:io';
 
 import '../models/plugin.dart';
 import '../services/storage/app_storage.dart';
-import '../services/storage/storage_resolver.dart';
 import '../services/plugin/plugin_fetch_service.dart';
 import '../services/plugin/plugin_install_service.dart';
 import '../services/plugin/plugin_manifest_service.dart';
@@ -13,7 +12,6 @@ import '../services/plugin/plugin_repo_service.dart';
 
 class PluginRepository {
   factory PluginRepository({
-    StorageRoots? storageRoots,
     PluginManifestService? manifest,
     PluginFetchService? fetch,
     PluginRepoDiskCacheService? diskCache,
@@ -27,38 +25,33 @@ class PluginRepository {
         diskCache ??
         PluginRepoDiskCacheService(
           gitService: resolvedGit,
-          storageRoots: storageRoots,
         );
     return PluginRepository._(
-      storageRoots: storageRoots,
       install:
           install ??
           PluginInstallService(
             manifestService: resolvedManifest,
             fetchService: resolvedFetch,
             diskCache: resolvedCache,
-            storageRoots: storageRoots,
           ),
-      repos: repos ?? PluginRepoService(storageRoots: storageRoots),
+      repos: repos ?? PluginRepoService(),
     );
   }
 
   PluginRepository._({
-    StorageRoots? storageRoots,
     required this.install,
     required this.repos,
-  }) : _storageRoots = storageRoots;
+  });
 
-  final StorageRoots? _storageRoots;
   final PluginInstallService install;
   final PluginRepoService repos;
 
   Future<List<Plugin>> loadAll() async {
-    final path = _storageRoots != null
-        ? (await _storageRoots.resolve()).pluginsJsonPath
+    final path = AppStorage.isInstalled
+        ? AppStorage.context.pluginsJsonPath
         : AppStorage.paths.pluginsJson;
-    final fs = _storageRoots != null
-        ? (await _storageRoots.resolve()).fs
+    final fs = AppStorage.isInstalled
+        ? AppStorage.context.fs
         : AppStorage.fs;
     final stat = await fs.stat(path);
     if (!stat.isFile) return const [];

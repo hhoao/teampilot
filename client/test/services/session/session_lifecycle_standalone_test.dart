@@ -13,36 +13,13 @@ import 'package:teampilot/repositories/cli_presets_repository.dart';
 import 'package:teampilot/repositories/launch_profile_repository.dart';
 import 'package:teampilot/services/storage/runtime_layout.dart';
 import 'package:teampilot/services/session/session_lifecycle_service.dart';
-import 'package:teampilot/services/storage/storage_resolver.dart';
+import 'package:teampilot/services/storage/runtime_context.dart';
+import '../../support/test_runtime_context.dart';
 
 import '../../support/in_memory_filesystem.dart';
 import '../../support/post_frame_test_harness.dart';
 
-StorageRootsSnapshot _roots(String basePath) => StorageRootsSnapshot(
-  storageIsRemote: false,
-  teampilotRoot: basePath,
-  launchProfilesDir: p.join(basePath, 'launch-profiles'),
-  skillsRoot: p.join(basePath, 'skills', 'installed'),
-  skillBackupsDir: p.join(basePath, 'skills', 'backups'),
-  workspaceDir: p.join(basePath, 'workspace'),
-  skillReposConfigPath: p.join(basePath, 'skills', 'repos.json'),
-  pluginsRoot: p.join(basePath, 'plugins', 'installed'),
-  pluginBackupsDir: p.join(basePath, 'plugins', 'backups'),
-  pluginsJsonPath: p.join(basePath, 'plugins', 'plugins.json'),
-  pluginMarketplacesConfigPath: p.join(
-    basePath,
-    'plugins',
-    'marketplaces.json',
-  ),
-  pluginMarketplaceCacheDir: p.join(basePath, 'plugins', 'marketplace-cache'),
-  pluginExternalCacheDir: p.join(basePath, 'plugins', 'external-cache'),
-  mcpServersJsonPath: p.join(basePath, 'mcp', 'mcp_servers.json'),
-  mcpRegistrySourcesConfigPath: p.join(
-    basePath,
-    'mcp',
-    'registry_sources.json',
-  ),
-);
+RuntimeContext _roots(String basePath) => testRuntimeContext(basePath);
 
 /// Creates an [InMemoryFilesystem]-backed [CliPresetsRepository] seeded with
 /// a single preset so that [SessionLifecycleService] can resolve it via

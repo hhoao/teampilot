@@ -4,7 +4,6 @@ import 'package:path/path.dart' as p;
 
 import '../../models/skill.dart';
 import '../storage/app_storage.dart';
-import '../storage/storage_resolver.dart';
 import '../storage/remote_file_store.dart';
 
 class SkillManifestException implements Exception {
@@ -32,16 +31,13 @@ class _SkillPaths {
 }
 
 class SkillManifestService {
-  SkillManifestService({String? rootDir, StorageRoots? storageRoots})
-    : _rootDir = rootDir,
-      _storageRoots = storageRoots;
+  SkillManifestService({String? rootDir}) : _rootDir = rootDir;
 
   final String? _rootDir;
-  final StorageRoots? _storageRoots;
 
   Future<_SkillPaths> _paths() async {
-    if (_storageRoots != null) {
-      final snap = await _storageRoots.resolve();
+    if (_rootDir == null && AppStorage.isInstalled) {
+      final snap = AppStorage.context;
       if (snap.storageIsRemote && snap.remoteFileStore != null) {
         final posix = p.Context(style: p.Style.posix);
         return _SkillPaths(

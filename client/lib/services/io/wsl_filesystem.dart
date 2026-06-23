@@ -188,6 +188,18 @@ class WslFilesystem implements Filesystem {
   }
 
   @override
+  Future<String?> resolveSymlink(String path) async {
+    try {
+      final result = await _run(['readlink', '-f', '--', path]);
+      if (result.exitCode != 0) return null;
+      final resolved = result.stdout.toString().trim();
+      return resolved.isEmpty ? null : resolved;
+    } on Object {
+      return null;
+    }
+  }
+
+  @override
   Future<void> copyTree({
     required String source,
     required String destination,

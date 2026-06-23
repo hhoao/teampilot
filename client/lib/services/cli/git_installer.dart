@@ -2,7 +2,8 @@ import 'dart:io';
 
 import '../host/host_executable_locator.dart';
 import '../host/host_execution_environment.dart';
-import '../storage/runtime_storage_context.dart';
+import '../storage/runtime_context.dart';
+import '../storage/app_storage.dart';
 
 /// Result of a git detection or installation operation.
 class GitInstallResult {
@@ -93,8 +94,8 @@ final class GitInstaller {
   // ---- platform helpers -----------------------------------------------------
 
   HostExecutionEnvironment get _hostEnv {
-    if (RuntimeStorageContext.isInstalled) {
-      return HostExecutionEnvironment.fromStorage(RuntimeStorageContext.current);
+    if (AppStorage.isInstalled) {
+      return HostExecutionEnvironment.fromStorage(AppStorage.context);
     }
     return HostExecutionEnvironment.resolve(
       isWindowsHost: _isWindowsOverride,

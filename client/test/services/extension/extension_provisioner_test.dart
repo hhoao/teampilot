@@ -7,7 +7,7 @@ import 'package:teampilot/services/extension/extension_provisioner.dart';
 import 'package:teampilot/services/host/host_execution_environment.dart';
 import 'package:teampilot/services/host/host_script_runner.dart';
 import 'package:teampilot/services/host/script_file_hook_provisioner.dart';
-import 'package:teampilot/services/storage/runtime_storage_context.dart';
+import 'package:teampilot/services/storage/runtime_context.dart';
 import '../../support/in_memory_filesystem.dart';
 
 ProcessResult _ok(String stdout) => ProcessResult(0, 0, stdout, '');

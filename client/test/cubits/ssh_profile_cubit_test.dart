@@ -6,7 +6,8 @@ import 'package:teampilot/models/ssh_profile.dart';
 import 'package:teampilot/repositories/ssh_credential_store.dart';
 import 'package:teampilot/repositories/ssh_profile_repository.dart';
 import 'package:teampilot/services/storage/app_storage.dart';
-import 'package:teampilot/services/storage/runtime_storage_context.dart';
+import 'package:teampilot/services/storage/runtime_context.dart';
+import '../support/test_runtime_context.dart';
 
 void main() {
   test('selected SSH profile persists across cubit reloads', () async {
@@ -88,22 +89,17 @@ void main() {
     expect(appliedPath, '/remote/bin/flashskyai');
   });
 
-  test('load follows RuntimeStorageContext when repository root is dynamic', () async {
+  test('load follows AppStorage home when repository root is dynamic', () async {
     final rootA = await Directory.systemTemp.createTemp('ssh_cubit_a_');
     final rootB = await Directory.systemTemp.createTemp('ssh_cubit_b_');
     addTearDown(() async {
       if (await rootA.exists()) await rootA.delete(recursive: true);
       if (await rootB.exists()) await rootB.delete(recursive: true);
-      RuntimeStorageContext.resetForTesting();
+      AppStorage.resetForTesting();
       AppPathsBootstrapper.resetForTesting();
     });
 
-    await RuntimeStorageContext.install(
-      isSshMode: false,
-      nativeAppDataPath: rootA.path,
-      nativeHome: rootA.path,
-      nativeCwd: rootA.path,
-    );
+    bindTestNativeHome(rootA.path);
 
     final repository = SshProfileRepository();
     final cubit = SshProfileCubit(
@@ -123,12 +119,7 @@ void main() {
     await cubit.load(notifyActiveProfileChanged: false);
     expect(cubit.state.profiles, hasLength(1));
 
-    await RuntimeStorageContext.install(
-      isSshMode: false,
-      nativeAppDataPath: rootB.path,
-      nativeHome: rootB.path,
-      nativeCwd: rootB.path,
-    );
+    bindTestNativeHome(rootB.path);
 
     await cubit.load(notifyActiveProfileChanged: false);
     expect(cubit.state.profiles, isEmpty);

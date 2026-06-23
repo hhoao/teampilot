@@ -11,7 +11,7 @@ import 'package:teampilot/services/io/local_filesystem.dart';
 import 'package:teampilot/services/provider/opencode/opencode_data_layout.dart';
 import 'package:teampilot/services/provider/provider_import_service.dart';
 import 'package:teampilot/services/provider/provider_migration_service.dart';
-import 'package:teampilot/services/storage/runtime_storage_context.dart';
+import 'package:teampilot/services/storage/runtime_context.dart';
 
 void main() {
   late Directory root;
@@ -24,7 +24,7 @@ void main() {
     appData = p.join(root.path, 'app-data');
     home = p.join(root.path, 'home');
     await Directory(home).create(recursive: true);
-    RuntimeStorageContext.installForTesting(
+    AppStorage.installForTesting(
       filesystem: LocalFilesystem(),
       paths: AppPaths(appData),
       home: home,
@@ -34,7 +34,7 @@ void main() {
   });
 
   tearDown(() async {
-    RuntimeStorageContext.resetForTesting();
+    AppStorage.resetForTesting();
     if (await root.exists()) {
       await root.delete(recursive: true);
     }

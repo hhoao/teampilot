@@ -204,7 +204,7 @@ class CliExecutablePathSettingsRowState
     final stored = _storedPath();
     _syncFromState(stored);
 
-    final isSshMode = widget.cubit.isSshMode;
+    final isSshMode = context.watch<ConnectionModeService>().isSshMode;
     final effective = widget.cubit.resolveExecutable(widget.cli);
     final isFallback = stored.trim().isEmpty;
     final fieldEmpty = _controller.text.trim().isEmpty;

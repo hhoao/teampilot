@@ -1,11 +1,7 @@
-import '../../models/connection_mode.dart';
 import '../../models/runtime_target.dart';
 
-/// Resolves the active [ConnectionMode] and derived flags for startup gating,
-/// transport selection, and remote CLI discovery.
-///
-/// P0: the single source of truth is the default [RuntimeTarget]; `isSshMode`
-/// derives from its kind (no separate connection-mode knob).
+/// Derived flags for startup gating and transport selection. The single source
+/// of truth is the home [RuntimeTarget]; `isSshMode` derives from its kind.
 class ConnectionModeService {
   const ConnectionModeService({
     required RuntimeTarget Function() defaultTargetResolver,
@@ -15,11 +11,6 @@ class ConnectionModeService {
 
   final RuntimeTarget Function() _defaultTargetResolver;
   final bool Function() _hasSshProfiles;
-
-  ConnectionMode get effectiveMode =>
-      isSshMode ? ConnectionMode.ssh : ConnectionMode.localPty;
-
-  ConnectionMode get preferredMode => effectiveMode;
 
   bool get isSshMode => _defaultTargetResolver().kind == RuntimeKind.ssh;
 

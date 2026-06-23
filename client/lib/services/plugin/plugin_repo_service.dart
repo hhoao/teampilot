@@ -4,22 +4,18 @@ import 'package:path/path.dart' as p;
 import '../../models/plugin.dart';
 import '../../utils/logger.dart';
 import '../storage/app_storage.dart';
-import '../storage/storage_resolver.dart';
 import '../storage/remote_file_store.dart';
 
 class PluginRepoService {
-  PluginRepoService({StorageRoots? storageRoots})
-    : _storageRoots = storageRoots;
-
-  final StorageRoots? _storageRoots;
+  PluginRepoService();
 
   static const _defaults = [
     PluginMarketplace(owner: 'anthropics', name: 'claude-plugins-official'),
   ];
 
   Future<String> _configPath() async {
-    if (_storageRoots != null) {
-      return (await _storageRoots.resolve()).pluginMarketplacesConfigPath;
+    if (AppStorage.isInstalled) {
+      return AppStorage.context.pluginMarketplacesConfigPath;
     }
     return AppPathsBootstrapper.current.pluginMarketplacesConfigPath;
   }
@@ -68,8 +64,8 @@ class PluginRepoService {
   }
 
   Future<RemoteFileStore?> _remote() async {
-    if (_storageRoots == null) return null;
-    final snap = await _storageRoots.resolve();
+    if (!AppStorage.isInstalled) return null;
+    final snap = AppStorage.context;
     return snap.storageIsRemote ? snap.remoteFileStore : null;
   }
 

@@ -5,6 +5,7 @@ import '../../cubits/session_preferences_cubit.dart';
 import '../../l10n/l10n_extensions.dart';
 import '../../models/session_preferences.dart';
 import '../../models/team_config.dart';
+import '../../services/app/connection_mode_service.dart';
 import '../../utils/app_keys.dart';
 import '../../widgets/settings/workspace_settings_widgets.dart';
 import 'cli_executable_path_settings_row.dart';
@@ -73,7 +74,7 @@ class _CliControls extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final l10n = context.l10n;
-    final isSshMode = cubit.isSshMode;
+    final isSshMode = context.watch<ConnectionModeService>().isSshMode;
 
     return Expanded(
       child: SingleChildScrollView(

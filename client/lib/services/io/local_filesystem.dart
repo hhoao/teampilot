@@ -334,6 +334,15 @@ class LocalFilesystem implements Filesystem, FsWatcher {
   }
 
   @override
+  Future<String?> resolveSymlink(String path) async {
+    try {
+      return await File(path).resolveSymbolicLinks();
+    } on FileSystemException {
+      return null;
+    }
+  }
+
+  @override
   Future<void> copyTree({
     required String source,
     required String destination,

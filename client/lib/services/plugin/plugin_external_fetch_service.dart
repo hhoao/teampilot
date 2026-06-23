@@ -3,7 +3,6 @@ import 'package:path/path.dart' as p;
 
 import '../../models/plugin_external_source.dart';
 import '../storage/app_storage.dart';
-import '../storage/storage_resolver.dart';
 import '../io/filesystem.dart';
 import 'plugin_exceptions.dart';
 import 'plugin_repo_git_service.dart';
@@ -12,21 +11,18 @@ import 'plugin_repo_git_service.dart';
 class PluginExternalFetchService {
   PluginExternalFetchService({
     PluginRepoGitService? gitService,
-    StorageRoots? storageRoots,
     Filesystem? filesystem,
   }) : _git = gitService ?? PluginRepoGitService(),
-       _storageRoots = storageRoots,
        _fsOverride = filesystem;
 
   final PluginRepoGitService _git;
-  final StorageRoots? _storageRoots;
   final Filesystem? _fsOverride;
 
   Filesystem get _fs => _fsOverride ?? AppStorage.fs;
 
   Future<String> _cacheRoot() async {
-    if (_storageRoots != null) {
-      return (await _storageRoots.resolve()).pluginExternalCacheDir;
+    if (AppStorage.isInstalled) {
+      return AppStorage.context.pluginExternalCacheDir;
     }
     return AppStorage.paths.pluginExternalCacheDir;
   }

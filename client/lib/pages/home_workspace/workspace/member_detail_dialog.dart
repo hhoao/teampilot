@@ -8,7 +8,8 @@ import '../../../models/team_config.dart';
 import '../../../services/cli/member_config/member_config_detail.dart';
 import '../../../services/io/sftp_filesystem.dart';
 import '../../../services/io/system_folder_opener.dart';
-import '../../../services/storage/runtime_storage_context.dart';
+import '../../../services/storage/app_storage.dart';
+import '../../../services/storage/runtime_context.dart';
 import '../home_workspace_content_header.dart';
 import '../../../widgets/app_dialog.dart';
 
@@ -41,7 +42,7 @@ class _MemberDetailDialog extends StatelessWidget {
   final String memberName;
 
   bool get _canRevealLocally =>
-      RuntimeStorageContext.current.filesystem is! SftpFilesystem;
+      AppStorage.fs is! SftpFilesystem;
 
   @override
   Widget build(BuildContext context) {

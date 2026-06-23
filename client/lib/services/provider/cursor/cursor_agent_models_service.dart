@@ -5,7 +5,6 @@ import 'package:flutter/foundation.dart';
 
 import '../../io/filesystem.dart';
 import '../../storage/app_storage.dart';
-import '../../storage/storage_resolver.dart';
 import 'cursor_agent_models_parser.dart';
 import 'cursor_home_layout.dart';
 import 'cursor_launch_environment.dart';
@@ -70,20 +69,17 @@ class _ResolvedStorage {
 /// Fetches and caches `cursor-agent models` for provider model pickers.
 class CursorAgentModelsService {
   CursorAgentModelsService({
-    StorageRoots? storageRoots,
     @visibleForTesting Filesystem? fs,
     @visibleForTesting String? basePath,
     this.cursorExecutable = 'cursor-agent',
     CursorAgentModelsProcessRunner? processRunner,
     this.cacheTtl = const Duration(hours: 6),
-  }) : _storageRoots = storageRoots,
-       _fsOverride = fs,
+  }) : _fsOverride = fs,
        _basePathOverride = basePath?.trim(),
        _processRunner = processRunner ?? _defaultProcessRunner;
 
   static const _globalCacheKey = '_global';
 
-  final StorageRoots? _storageRoots;
   final Filesystem? _fsOverride;
   final String? _basePathOverride;
   final String cursorExecutable;
@@ -169,17 +165,16 @@ class CursorAgentModelsService {
   }
 
   Future<_ResolvedStorage> _resolveStorage() async {
-    final storageRoots = _storageRoots;
-    if (storageRoots != null) {
-      final snap = await storageRoots.resolve();
-      _syncMemoryForBasePath(snap.teampilotRoot);
-      return _ResolvedStorage(fs: snap.fs, basePath: snap.teampilotRoot);
-    }
     final fsOverride = _fsOverride;
     final basePathOverride = _basePathOverride;
     if (fsOverride != null && basePathOverride != null) {
       _syncMemoryForBasePath(basePathOverride);
       return _ResolvedStorage(fs: fsOverride, basePath: basePathOverride);
+    }
+    if (AppStorage.isInstalled) {
+      final snap = AppStorage.context;
+      _syncMemoryForBasePath(snap.teampilotRoot);
+      return _ResolvedStorage(fs: snap.fs, basePath: snap.teampilotRoot);
     }
     _syncMemoryForBasePath(AppStorage.appDataRoot);
     return _ResolvedStorage(fs: AppStorage.fs, basePath: AppStorage.appDataRoot);

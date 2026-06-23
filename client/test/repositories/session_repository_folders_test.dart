@@ -49,4 +49,33 @@ void main() {
     final reloaded = (await repo.loadWorkspaces()).single;
     expect(reloaded.folders.map((f) => f.path), ['/main2', '/y', '/z']);
   });
+
+  test('setWorkspaceTarget stamps all folders with the target id', () async {
+    final tmp = await Directory.systemTemp.createTemp('fs_repo_folders_');
+    addTearDown(() => tmp.deleteSync(recursive: true));
+    final repo = SessionRepository(rootDir: tmp.path);
+
+    final ws = await repo.createWorkspace('/main', additionalPaths: ['/x']);
+    expect(ws.folders.every((f) => f.targetId == 'local'), isTrue);
+
+    await repo.setWorkspaceTarget(ws.workspaceId, 'ssh:p1');
+    final reloaded = (await repo.loadWorkspaces()).single;
+    expect(reloaded.folders.map((f) => f.path), ['/main', '/x']);
+    expect(reloaded.folders.every((f) => f.targetId == 'ssh:p1'), isTrue);
+  });
+
+  test('updateWorkspaceFolders replaces folders wholesale', () async {
+    final tmp = await Directory.systemTemp.createTemp('fs_repo_folders_');
+    addTearDown(() => tmp.deleteSync(recursive: true));
+    final repo = SessionRepository(rootDir: tmp.path);
+
+    final ws = await repo.createWorkspace('/main');
+    await repo.updateWorkspaceFolders(ws.workspaceId, [
+      const WorkspaceFolder(path: '/a', targetId: 'wsl:Ubuntu'),
+      const WorkspaceFolder(path: '/b', targetId: 'wsl:Ubuntu'),
+    ]);
+    final reloaded = (await repo.loadWorkspaces()).single;
+    expect(reloaded.folders.map((f) => f.path), ['/a', '/b']);
+    expect(reloaded.folders.every((f) => f.targetId == 'wsl:Ubuntu'), isTrue);
+  });
 }

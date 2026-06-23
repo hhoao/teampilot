@@ -12,7 +12,6 @@ import '../services/storage/runtime_layout.dart';
 import '../services/io/filesystem.dart';
 import '../services/session/session_team_counter.dart';
 import '../services/storage/app_storage.dart';
-import '../services/storage/storage_resolver.dart';
 import '../models/workspace_icon_ref.dart';
 import '../services/workspace/workspace_icon_service.dart';
 import '../services/workspace/workspace_icon_storage.dart';
@@ -26,14 +25,11 @@ import 'session_repository_fs.dart';
 class SessionRepository {
   SessionRepository({
     String? rootDir,
-    StorageRoots? storageRoots,
     SessionLifecycleService? lifecycleService,
   }) : _rootOverride = rootDir,
-       _storageRoots = storageRoots,
        _lifecycleService = lifecycleService;
 
   final String? _rootOverride;
-  final StorageRoots? _storageRoots;
   final SessionLifecycleService? _lifecycleService;
   final _sessionFileLocks = LockPool();
 
@@ -42,16 +38,19 @@ class SessionRepository {
   }
 
   Future<SessionRepositoryFs> _fs() async {
-    if (_storageRoots != null) {
-      final snap = await _storageRoots.resolve();
+    // Explicit rootDir override (tests) wins; otherwise the home control plane.
+    if (_rootOverride != null) {
+      return SessionRepositoryFs(teampilotRoot: _rootOverride);
+    }
+    if (AppStorage.isInstalled) {
+      final snap = AppStorage.context;
       return SessionRepositoryFs(
         teampilotRoot: snap.teampilotRoot,
         fs: snap.fs,
         layout: snap.workspace,
       );
     }
-    final root = _rootOverride ?? AppStorage.paths.basePath;
-    return SessionRepositoryFs(teampilotRoot: root);
+    return SessionRepositoryFs(teampilotRoot: AppStorage.paths.basePath);
   }
 
   Future<Workspace?> _readManifest(SessionRepositoryFs fs, String workspaceId) async {
@@ -287,6 +286,40 @@ class SessionRepository {
     await _provisionWorkspaceTrust(fs, updated);
   }
 
+  /// P2: replace a workspace's folders wholesale (path + per-folder targetId).
+  /// Used by the workspace target picker to move a workspace onto another
+  /// machine (sets [WorkspaceFolder.targetId] on all folders).
+  Future<void> updateWorkspaceFolders(
+    String workspaceId,
+    List<WorkspaceFolder> folders,
+  ) async {
+    final fs = await _fs();
+    final existing = await _readManifest(fs, workspaceId);
+    if (existing == null) return;
+    final now = DateTime.now().millisecondsSinceEpoch;
+    final updated = existing.copyWith(
+      folders: [
+        for (final f in folders)
+          if (f.path.trim().isNotEmpty)
+            f.copyWith(path: normalizeWorkspacePath(f.path)),
+      ],
+      updatedAt: now,
+    );
+    await _writeManifest(fs, updated);
+    await _provisionWorkspaceTrust(fs, updated);
+  }
+
+  /// Sets the target machine for all folders of [workspaceId] (P2: whole
+  /// workspace on one target).
+  Future<void> setWorkspaceTarget(String workspaceId, String targetId) async {
+    final fs = await _fs();
+    final existing = await _readManifest(fs, workspaceId);
+    if (existing == null) return;
+    await updateWorkspaceFolders(workspaceId, [
+      for (final f in existing.folders) f.copyWith(targetId: targetId),
+    ]);
+  }
+
   Future<void> _provisionWorkspaceTrust(
     SessionRepositoryFs fs,
     Workspace workspace,
@@ -299,8 +332,8 @@ class SessionRepository {
   }
 
   Future<({Filesystem fs, RuntimeLayout layout})> _counterContext() async {
-    if (_storageRoots != null) {
-      final snap = await _storageRoots.resolve();
+    if (_rootOverride == null && AppStorage.isInstalled) {
+      final snap = AppStorage.context;
       return (fs: snap.fs, layout: snap.layout);
     }
     final teampilotRoot = _rootOverride ?? AppStorage.paths.basePath;

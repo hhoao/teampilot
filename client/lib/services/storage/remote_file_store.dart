@@ -47,6 +47,28 @@ class RemoteFileStore {
     }
   }
 
+  /// Reads the immediate target of a symlink, or null if not a link / missing.
+  Future<String?> readlink(String path) async {
+    try {
+      final sftp = await _ensureConnected();
+      final resolved = await expandHome(path);
+      return await sftp.readlink(resolved);
+    } on SftpStatusError {
+      return null;
+    }
+  }
+
+  /// Fully resolves [path] to its canonical absolute path, or null on failure.
+  Future<String?> realpath(String path) async {
+    try {
+      final sftp = await _ensureConnected();
+      final resolved = await expandHome(path);
+      return await sftp.absolute(resolved);
+    } on SftpStatusError {
+      return null;
+    }
+  }
+
   Future<bool> fileExists(String path) async {
     try {
       final sftp = await _ensureConnected();

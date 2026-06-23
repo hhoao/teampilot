@@ -10,7 +10,7 @@ import 'package:teampilot/models/plugin.dart';
 import 'package:teampilot/pages/plugins/plugin_management_page.dart';
 import 'package:teampilot/services/storage/app_storage.dart';
 import 'package:teampilot/services/io/local_filesystem.dart';
-import 'package:teampilot/services/storage/runtime_storage_context.dart';
+import 'package:teampilot/services/storage/runtime_context.dart';
 
 void main() {
   late Directory tmp;
@@ -18,7 +18,7 @@ void main() {
   setUp(() {
     tmp = Directory.systemTemp.createTempSync('plugin-page-');
     final paths = AppPaths(tmp.path);
-    RuntimeStorageContext.installForTesting(
+    AppStorage.installForTesting(
       filesystem: LocalFilesystem(
         pathContext: AppPaths.pathContextForDataRoot(paths.basePath),
       ),
@@ -29,7 +29,7 @@ void main() {
   });
 
   tearDown(() {
-    RuntimeStorageContext.resetForTesting();
+    AppStorage.resetForTesting();
     tmp.deleteSync(recursive: true);
   });
 

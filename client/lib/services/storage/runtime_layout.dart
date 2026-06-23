@@ -335,9 +335,9 @@ class RuntimeLayout {
   Future<bool> _inheritedPathIsAccessible(String path) async {
     try {
       if (!(await _fs.stat(path)).exists) return false;
-      await Directory(path).list(followLinks: true).take(1).drain();
+      await _fs.listDir(path);
       return true;
-    } on FileSystemException {
+    } on Object {
       return false;
     }
   }
@@ -358,14 +358,9 @@ class RuntimeLayout {
           normalizedSource;
     }
     if (Platform.isWindows && targetStat.isDirectory) {
-      try {
-        final resolved = _pathContext.normalize(
-          await Directory(target).resolveSymbolicLinks(),
-        );
-        return resolved == normalizedSource;
-      } on FileSystemException {
-        return false;
-      }
+      final resolvedTarget = await _fs.resolveSymlink(target);
+      if (resolvedTarget == null) return false;
+      return _pathContext.normalize(resolvedTarget) == normalizedSource;
     }
     return false;
   }

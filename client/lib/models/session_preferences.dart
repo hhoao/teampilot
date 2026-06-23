@@ -1,10 +1,5 @@
-import 'connection_mode.dart';
-import 'windows_storage_backend.dart';
-import '../services/app/platform_utils.dart';
-
 class SessionPreferences {
   SessionPreferences({
-    ConnectionMode? connectionMode,
     Map<String, String> cliExecutablePaths = const {},
     Map<String, String> toolchainPaths = const {},
     this.defaultSshWorkingDirectory = '',
@@ -13,11 +8,7 @@ class SessionPreferences {
     this.scopeSessionsToSelectedTeam = true,
     this.terminalScrollbackLines = 10000,
     this.terminalLinkClickOpensInApp = true,
-    WindowsStorageBackend? windowsStorageBackend,
-  }) : connectionMode = connectionMode ?? defaultConnectionMode(),
-       windowsStorageBackend =
-           windowsStorageBackend ?? WindowsStorageBackend.native,
-       cliExecutablePaths = Map.unmodifiable(
+  }) : cliExecutablePaths = Map.unmodifiable(
          _normalizeCliExecutablePaths(cliExecutablePaths),
        ),
        toolchainPaths = Map.unmodifiable(
@@ -30,10 +21,6 @@ class SessionPreferences {
 
   factory SessionPreferences.fromJson(Map<String, Object?> json) {
     return SessionPreferences(
-      connectionMode: ConnectionModeJson.fromJson(
-        json['connectionMode'] as String?,
-        fallback: defaultConnectionMode(),
-      ),
       cliExecutablePaths: _cliExecutablePathsFromJson(
         json['cliExecutablePaths'],
       ),
@@ -51,14 +38,8 @@ class SessionPreferences {
           (json['terminalScrollbackLines'] as num?)?.toInt() ?? 10000,
       terminalLinkClickOpensInApp:
           json['terminalLinkClickOpensInApp'] as bool? ?? true,
-      windowsStorageBackend: WindowsStorageBackendJson.fromJson(
-        json['windowsStorageBackend'] as String?,
-      ),
     );
   }
-
-  /// Local PTY vs remote SSH transport for launching [flashskyai].
-  final ConnectionMode connectionMode;
 
   /// CLI executable paths keyed by [CliTool.value]. Empty value means fall
   /// back to startup discovery, then the tool name on PATH.
@@ -94,14 +75,10 @@ class SessionPreferences {
   /// Ctrl/Cmd-click always opens in-app regardless of this setting.
   final bool terminalLinkClickOpensInApp;
 
-  /// Windows-only: business file I/O via native AppData or WSL home.
-  final WindowsStorageBackend windowsStorageBackend;
-
   String cliExecutablePathFor(String toolId) =>
       cliExecutablePaths[toolId]?.trim() ?? '';
 
   SessionPreferences copyWith({
-    ConnectionMode? connectionMode,
     Map<String, String>? cliExecutablePaths,
     Map<String, String>? toolchainPaths,
     String? defaultSshWorkingDirectory,
@@ -110,10 +87,8 @@ class SessionPreferences {
     bool? scopeSessionsToSelectedTeam,
     int? terminalScrollbackLines,
     bool? terminalLinkClickOpensInApp,
-    WindowsStorageBackend? windowsStorageBackend,
   }) {
     return SessionPreferences(
-      connectionMode: connectionMode ?? this.connectionMode,
       cliExecutablePaths: cliExecutablePaths ?? this.cliExecutablePaths,
       toolchainPaths: toolchainPaths ?? this.toolchainPaths,
       defaultSshWorkingDirectory:
@@ -127,14 +102,11 @@ class SessionPreferences {
           terminalScrollbackLines ?? this.terminalScrollbackLines,
       terminalLinkClickOpensInApp:
           terminalLinkClickOpensInApp ?? this.terminalLinkClickOpensInApp,
-      windowsStorageBackend:
-          windowsStorageBackend ?? this.windowsStorageBackend,
     );
   }
 
   Map<String, Object?> toJson() {
     return <String, Object?>{
-      'connectionMode': connectionMode.toJson(),
       'cliExecutablePaths': cliExecutablePaths,
       'toolchainPaths': toolchainPaths,
       'defaultSshWorkingDirectory': defaultSshWorkingDirectory,
@@ -143,7 +115,6 @@ class SessionPreferences {
       'scopeSessionsToSelectedTeam': scopeSessionsToSelectedTeam,
       'terminalScrollbackLines': terminalScrollbackLines,
       'terminalLinkClickOpensInApp': terminalLinkClickOpensInApp,
-      'windowsStorageBackend': windowsStorageBackend.toJson(),
     };
   }
 

@@ -59,6 +59,9 @@ class _FakeFilesystem implements Filesystem {
   Future<String?> readSymlinkTarget(String linkPath) async => null;
 
   @override
+  Future<String?> resolveSymlink(String path) async => null;
+
+  @override
   Future<void> copyTree({
     required String source,
     required String destination,

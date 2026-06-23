@@ -14,7 +14,8 @@ import '../host/host_execution_environment.dart';
 import '../host/host_login_shell_lookup.dart';
 import '../host/host_script_runner.dart';
 import '../host/macos_npm_path_candidates.dart';
-import '../storage/runtime_storage_context.dart';
+import '../storage/runtime_context.dart';
+import '../storage/app_storage.dart';
 import '../ssh/ssh_client_factory.dart';
 
 export 'installer_types.dart';
@@ -31,9 +32,9 @@ class CliInstallerService {
        _sshRunner = sshRunner ?? _SshCommandRunner(sshClientFactory).run,
        _hostEnvironment =
            hostEnvironment ??
-           (RuntimeStorageContext.isInstalled
+           (AppStorage.isInstalled
                ? HostExecutionEnvironment.fromStorage(
-                   RuntimeStorageContext.current,
+                   AppStorage.context,
                  )
                : HostExecutionEnvironment.resolve(
                    isWindowsHost: isWindowsOverride ?? Platform.isWindows,

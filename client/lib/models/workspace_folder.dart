@@ -40,23 +40,10 @@ class WorkspaceFolder {
   int get hashCode => Object.hash(path, targetId);
 }
 
-/// Reads `folders` if present, else upgrades legacy `primaryPath` +
-/// `additionalPaths` into an all-`local` folder list (primaryPath first).
-List<WorkspaceFolder> foldersFromLegacyJson(Map<String, Object?> json) {
-  final raw = json['folders'];
-  if (raw is List && raw.isNotEmpty) {
-    return [
-      for (final e in raw)
-        if (e is Map<String, Object?>) WorkspaceFolder.fromJson(e),
-    ];
-  }
-  final primary = (json['primaryPath'] as String? ?? '').trim();
-  final add = json['additionalPaths'];
-  final extra = add is List
-      ? add.map((e) => '$e').where((s) => s.isNotEmpty)
-      : const <String>[];
-  return [
-    if (primary.isNotEmpty) WorkspaceFolder(path: primary),
-    for (final p in extra) WorkspaceFolder(path: p),
-  ];
-}
+/// Strict reader for the `folders` array — the only on-disk shape.
+List<WorkspaceFolder> foldersFromJson(Object? raw) => raw is List
+    ? [
+        for (final e in raw)
+          if (e is Map<String, Object?>) WorkspaceFolder.fromJson(e),
+      ]
+    : const [];

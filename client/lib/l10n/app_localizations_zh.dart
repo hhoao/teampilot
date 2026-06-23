@@ -1568,6 +1568,23 @@ class AppLocalizationsZh extends AppLocalizations {
       '开启后，侧边栏仅显示归属当前团队的会话。新建会话仍会写入当前所选团队，之后开启本选项即可看到它们。';
 
   @override
+  String get workspaceTargetTitle => '工作区所在机器';
+
+  @override
+  String get workspaceTargetSubtitle =>
+      '该工作区的目录所在并运行的机器。会话在此 target 上启动；切换不会移动文件。';
+
+  @override
+  String get homeTargetTitle => '主设备';
+
+  @override
+  String get homeTargetSubtitle =>
+      'TeamPilot 存放团队、工作区与配置的位置（控制面）。切换会使用独立的数据目录，不会自动迁移。';
+
+  @override
+  String get homeTargetSingleOptionHint => '当前平台只有这一个可用的主设备。';
+
+  @override
   String get windowsStorageBackendTitle => '数据存储位置';
 
   @override

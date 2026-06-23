@@ -1,7 +1,5 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:teampilot/models/session_preferences.dart';
-import 'package:teampilot/models/connection_mode.dart';
-import 'package:teampilot/models/windows_storage_backend.dart';
 
 void main() {
   group('SessionPreferences', () {
@@ -12,12 +10,10 @@ void main() {
       expect(prefs.sshUseLoginShell, false);
       expect(prefs.autoLaunchAllMembersOnConnect, true);
       expect(prefs.scopeSessionsToSelectedTeam, true);
-      expect(prefs.windowsStorageBackend, WindowsStorageBackend.native);
     });
 
     test('toJson/fromJson round-trips', () {
       final prefs = SessionPreferences(
-        connectionMode: ConnectionMode.ssh,
         cliExecutablePaths: const {
           'flashskyai': '/opt/bin/flashskyai',
           'claude': '/opt/bin/claude',
@@ -27,10 +23,8 @@ void main() {
         sshUseLoginShell: true,
         autoLaunchAllMembersOnConnect: true,
         scopeSessionsToSelectedTeam: true,
-        windowsStorageBackend: WindowsStorageBackend.wsl,
       );
       final restored = SessionPreferences.fromJson(prefs.toJson());
-      expect(restored.connectionMode, ConnectionMode.ssh);
       expect(restored.cliExecutablePaths, {
         'flashskyai': '/opt/bin/flashskyai',
         'claude': '/opt/bin/claude',
@@ -40,7 +34,12 @@ void main() {
       expect(restored.sshUseLoginShell, true);
       expect(restored.autoLaunchAllMembersOnConnect, true);
       expect(restored.scopeSessionsToSelectedTeam, true);
-      expect(restored.windowsStorageBackend, WindowsStorageBackend.wsl);
+    });
+
+    test('toJson is free of legacy runtime knobs', () {
+      final json = SessionPreferences().toJson();
+      expect(json.containsKey('connectionMode'), isFalse);
+      expect(json.containsKey('windowsStorageBackend'), isFalse);
     });
 
     test('fromJson falls back to defaults when keys are missing', () {
@@ -50,36 +49,19 @@ void main() {
       expect(restored.sshUseLoginShell, false);
       expect(restored.autoLaunchAllMembersOnConnect, true);
       expect(restored.scopeSessionsToSelectedTeam, true);
-      expect(restored.windowsStorageBackend, WindowsStorageBackend.native);
     });
 
     test('copyWith updates only specified fields', () {
       final prefs = SessionPreferences();
       final next = prefs.copyWith(
-        cliExecutablePaths: const {
-          'flashskyai': '/a/b',
-          'claude': '/c/d',
-        },
+        cliExecutablePaths: const {'flashskyai': '/a/b', 'claude': '/c/d'},
       );
       expect(next.cliExecutablePathFor('flashskyai'), '/a/b');
-      expect(next.cliExecutablePaths, {
-        'flashskyai': '/a/b',
-        'claude': '/c/d',
-      });
+      expect(next.cliExecutablePaths, {'flashskyai': '/a/b', 'claude': '/c/d'});
       expect(next.defaultSshWorkingDirectory, '');
       expect(next.sshUseLoginShell, false);
       expect(next.autoLaunchAllMembersOnConnect, true);
       expect(next.scopeSessionsToSelectedTeam, true);
-      final next2 = prefs.copyWith(scopeSessionsToSelectedTeam: true);
-      expect(next2.scopeSessionsToSelectedTeam, true);
-      expect(next2.cliExecutablePaths, isEmpty);
-    });
-
-    test('copyWith updates windowsStorageBackend', () {
-      final prefs = SessionPreferences();
-      final next = prefs.copyWith(windowsStorageBackend: WindowsStorageBackend.wsl);
-      expect(next.windowsStorageBackend, WindowsStorageBackend.wsl);
-      expect(prefs.windowsStorageBackend, WindowsStorageBackend.native);
     });
 
     test('fromJson ignores non-string cli executable path entries', () {

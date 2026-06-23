@@ -12,7 +12,7 @@ import 'package:teampilot/services/io/local_filesystem.dart';
 import 'package:teampilot/services/extension/extension_detector.dart';
 import 'package:teampilot/services/host/host_execution_environment.dart';
 import 'package:teampilot/services/host/script_file_hook_provisioner.dart';
-import 'package:teampilot/services/storage/runtime_storage_context.dart';
+import 'package:teampilot/services/storage/runtime_context.dart';
 
 const _testWorkspaceId = 'workspace-1';
 

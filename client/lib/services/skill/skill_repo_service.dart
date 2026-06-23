@@ -4,13 +4,10 @@ import 'package:path/path.dart' as p;
 import '../../models/skill.dart';
 import '../../utils/logger.dart';
 import '../storage/app_storage.dart';
-import '../storage/storage_resolver.dart';
 import '../storage/remote_file_store.dart';
 
 class SkillRepoService {
-  SkillRepoService({StorageRoots? storageRoots}) : _storageRoots = storageRoots;
-
-  final StorageRoots? _storageRoots;
+  SkillRepoService();
 
   static const _defaultRepos = [
     SkillRepo(owner: 'anthropics', name: 'skills', branch: 'main'),
@@ -24,8 +21,8 @@ class SkillRepoService {
   ];
 
   Future<String> _configPath() async {
-    if (_storageRoots != null) {
-      return (await _storageRoots.resolve()).skillReposConfigPath;
+    if (AppStorage.isInstalled) {
+      return AppStorage.context.skillReposConfigPath;
     }
     return AppStorage.paths.skillReposConfigPath;
   }
@@ -87,8 +84,8 @@ class SkillRepoService {
   }
 
   Future<RemoteFileStore?> _remote() async {
-    if (_storageRoots == null) return null;
-    final snap = await _storageRoots.resolve();
+    if (!AppStorage.isInstalled) return null;
+    final snap = AppStorage.context;
     return snap.storageIsRemote ? snap.remoteFileStore : null;
   }
 

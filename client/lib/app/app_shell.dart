@@ -36,8 +36,8 @@ import '../cubits/launch_profile_cubit.dart';
 import '../cubits/team_hub_cubit.dart';
 import '../models/connection_mode.dart';
 import '../models/runtime_target.dart';
+import '../models/ssh_profile.dart';
 import '../models/team_config.dart';
-import '../models/windows_storage_backend.dart';
 import '../l10n/app_localizations.dart';
 import '../repositories/app_settings_repository.dart';
 import '../repositories/layout_repository.dart';
@@ -69,10 +69,13 @@ import '../services/provider/cursor/cursor_agent_models_service.dart';
 import '../services/provider/cursor/cursor_provider_credentials_service.dart';
 import '../services/app/connection_mode_service.dart';
 import '../services/cli/flashskyai_cli_locator.dart';
-import '../services/storage/storage_resolver.dart';
 import '../services/provider/provider_migration_service.dart';
 import '../services/cli/remote_flashskyai_cli_locator.dart';
-import '../services/storage/runtime_storage_context.dart';
+import '../services/storage/runtime_context.dart';
+import '../services/storage/runtime_context_resolver.dart';
+import '../services/storage/runtime_context_registry.dart';
+import '../services/storage/home_target_controller.dart';
+import '../services/storage/home_target_store.dart';
 import '../services/storage/runtime_target_registry.dart';
 import '../services/storage/targets_repository.dart';
 import '../services/notification/notification_recorder.dart';
@@ -95,6 +98,7 @@ import '../utils/logger.dart';
 /// Fully wired app dependencies produced after async bootstrap.
 class AppShell {
   AppShell({
+    required this.homeTargetController,
     required this.chatCubit,
     required this.memberPresenceCubit,
     required this.mailboxCubit,
@@ -111,7 +115,6 @@ class AppShell {
     required this.workspaceFileTreeStore,
     required this.sshClientFactory,
     required this.connectionModeService,
-    required this.storageRoots,
     required this.identityRepository,
     required this.teamCubit,
     required this.configCubit,
@@ -136,6 +139,7 @@ class AppShell {
   });
 
   final CliToolRegistry cliToolRegistry;
+  final HomeTargetController homeTargetController;
   final ChatCubit chatCubit;
   final MemberPresenceCubit memberPresenceCubit;
   final MailboxCubit mailboxCubit;
@@ -152,7 +156,6 @@ class AppShell {
   final WorkspaceFileTreeStore workspaceFileTreeStore;
   final SshClientFactory sshClientFactory;
   final ConnectionModeService connectionModeService;
-  final StorageRoots storageRoots;
   final LaunchProfileRepository identityRepository;
   final LaunchProfileCubit teamCubit;
   final ConfigCubit configCubit;
@@ -171,7 +174,7 @@ class AppShell {
   final SshProfileCubit sshProfileCubit;
   final AppSettingsRepository appSettings;
   final AiFeatureSettingsCubit aiFeatureSettingsCubit;
-  final Future<RuntimeStorageContext> Function() reinstallStorageContext;
+  final Future<void> Function() reinstallStorageContext;
   final Future<void> Function() bootstrapAppData;
 }
 
@@ -210,13 +213,6 @@ Future<AppShell> buildAppShell({
   await sessionPreferencesCubit.load();
   boot('session preferences loaded');
 
-  WindowsStorageBackend windowsStorageBackend() =>
-      sessionPreferencesCubit.state.preferences.windowsStorageBackend;
-
-  String? wslDistroFromPrefs() => RuntimeStorageContext.parseWslDistro(
-    sessionPreferencesCubit.resolveExecutable(),
-  );
-
   final sshCredentialStore = const SecureSshCredentialStore(
     FlutterSecureKeyValueStore(),
   );
@@ -226,35 +222,23 @@ Future<AppShell> buildAppShell({
     knownHostRepository: sshKnownHostRepo,
   );
 
+  // P1: the home target (the machine the control plane runs on) is the single
+  // authority, stored device-local in HomeTargetStore. distro/profile are
+  // encoded in the id; there is no connectionMode/windowsStorageBackend knob.
+  final homeTargetStore = HomeTargetStore(preferences);
+  RuntimeTarget homeTargetFromId(String id) => switch (runtimeKindOfId(id)) {
+    RuntimeKind.ssh => RuntimeTarget.ssh(sshProfileIdOfId(id) ?? '', label: 'SSH'),
+    RuntimeKind.wsl => RuntimeTarget.wsl(wslDistroOfId(id) ?? ''),
+    RuntimeKind.local => RuntimeTarget.local(),
+  };
+  // Stored id wins; otherwise platform default. Desktop home is always local
+  // (Windows can pick wsl in the picker); Android with no stored ssh home falls
+  // to local and is held at the create-profile gate until a home is chosen.
+  var homeTarget = homeTargetFromId(homeTargetStore.load());
+  RuntimeTarget defaultTargetResolver() => homeTarget;
+
   boot('resolving default workspace directory');
   final defaultWorkspaceDirectory = await DefaultWorkspaceDirectory.resolve();
-  boot('installing RuntimeStorageContext');
-  await RuntimeStorageContext.install(
-    isSshMode:
-        Platform.isAndroid ||
-        sessionPreferencesCubit.state.preferences.connectionMode ==
-            ConnectionMode.ssh,
-    sshProfile: null,
-    sshClientFactory: sshClientFactory,
-    nativeAppDataPath: nativeAppDataPath,
-    nativeHome:
-        Platform.environment['HOME'] ?? Platform.environment['USERPROFILE'],
-    nativeCwd: defaultWorkspaceDirectory,
-    wslDistro: RuntimeStorageContext.parseWslDistro(claudeLocated),
-    windowsStorageBackend: windowsStorageBackend(),
-  );
-  boot(
-    'RuntimeStorageContext installed '
-    '(${RuntimeStorageContext.current.mode}, '
-    'backend=${windowsStorageBackend().name}, '
-    'root=${RuntimeStorageContext.current.appDataRoot})',
-  );
-
-  if (!Platform.isAndroid) {
-    unawaited(
-      ProviderMigrationService(cliExecutablePath: flashskyaiLocated).migrateIfNeeded(),
-    );
-  }
 
   final sshProfileRepo = SshProfileRepository();
   final remoteCliLocator = RemoteFlashskyaiCliLocator(
@@ -276,10 +260,9 @@ Future<AppShell> buildAppShell({
   late final ChatCubit chatCubit;
   late final MemberPresenceCubit memberPresenceCubit;
   late final EditorCubit editorCubit;
-  late final StorageRoots storageRoots;
   late final SessionLifecycleService sessionLifecycleService;
   late final ConnectionModeService connectionModeService;
-  late final Future<RuntimeStorageContext> Function() reinstallStorageContext;
+  late final Future<void> Function() reinstallStorageContext;
 
   late final SshProfileCubit sshProfileCubit;
   sshProfileCubit = SshProfileCubit(
@@ -291,13 +274,10 @@ Future<AppShell> buildAppShell({
     invalidateProfileConnection: sshClientFactory.disconnectProfile,
     enableRemoteCliDiscovery: () =>
         Platform.isAndroid &&
-        sessionPreferencesCubit.state.preferences.connectionMode ==
-            ConnectionMode.ssh,
+        defaultTargetResolver().kind == RuntimeKind.ssh,
     onActiveProfileChanged: () async {
       await reinstallStorageContext();
-      storageRoots.invalidate();
       await reloadRemoteBackedAppData(
-        storageRoots: storageRoots,
         llmConfigCubit: llmConfigCubit,
         appProviderCubit: appProviderCubit,
         teamCubit: teamCubit,
@@ -312,82 +292,81 @@ Future<AppShell> buildAppShell({
     },
   );
 
-  // P0: fold the four legacy runtime knobs (connection mode, ssh profile,
-  // windows backend, wsl distro) into a single RuntimeTarget. `targets.json`
-  // is the persisted registry (seeded once via migrateIfNeeded, mirrored on
-  // every reinstall); the *live* resolver derives the target from the legacy
-  // prefs so isSshMode/storage/transport behave identically to before this
-  // change (the legacy knobs stay the user-facing controls — Q5).
+  // P1: targets.json is a pure target catalog (no default/migrate); the home
+  // target authority is the device-local homeTargetStore read above. The
+  // registry is used by the picker UI to list selectable targets.
   final runtimeTargetRegistry = RuntimeTargetRegistry(
     repo: TargetsRepository(),
     sshProfileRepo: sshProfileRepo,
     isWindows: Platform.isWindows,
     isAndroid: Platform.isAndroid,
   );
-  await runtimeTargetRegistry.migrateIfNeeded(
-    legacyMode: sessionPreferencesCubit.state.preferences.connectionMode,
-    legacyBackend: windowsStorageBackend(),
-    parsedWslDistro: wslDistroFromPrefs(),
+
+  SshProfile? sshProfileById(String id) =>
+      sshProfileCubit.state.profiles.where((p) => p.id == id).firstOrNull;
+
+  // P2: de-singleton. One resolver + a per-target context registry. The home
+  // context (control plane) is materialized once and pushed onto AppStorage;
+  // work-plane contexts are resolved lazily per workspace target id.
+  final runtimeContextResolver = RuntimeContextResolver(
+    sshClientFactory: sshClientFactory,
+    nativeAppDataPath: nativeAppDataPath,
+    nativeHome:
+        Platform.environment['HOME'] ?? Platform.environment['USERPROFILE'],
+    nativeCwd: defaultWorkspaceDirectory,
+  );
+  final runtimeContextRegistry = RuntimeContextRegistry(
+    resolver: runtimeContextResolver,
+    homeTarget: defaultTargetResolver(),
+    sshProfileById: sshProfileById,
+    onEvict: (targetId) async {
+      final pid = sshProfileIdOfId(targetId);
+      if (pid != null) sshClientFactory.disconnectProfile(pid);
+    },
+  );
+  boot('installing home runtime context');
+  await runtimeContextRegistry.ensureHome();
+  AppStorage.bindHome(runtimeContextRegistry.home());
+  boot(
+    'home context installed '
+    '(${AppStorage.context.mode}, home=${homeTarget.id}, '
+    'root=${AppStorage.appDataRoot})',
   );
 
-  // Canonical id for the current legacy state. ssh kind reflects *intent*
-  // (connectionMode == ssh) regardless of whether a profile is selected yet —
-  // installForTarget + resolve()'s existing profile/Android guards then decide
-  // the effective backend, exactly as the legacy code did.
-  String currentLegacyTargetId() {
-    final mode = sessionPreferencesCubit.state.preferences.connectionMode;
-    if (mode == ConnectionMode.ssh) {
-      return 'ssh:${sshProfileCubit.state.selectedProfile?.id ?? ''}';
-    }
-    final distro = (wslDistroFromPrefs() ?? '').trim();
-    if (Platform.isWindows &&
-        windowsStorageBackend() == WindowsStorageBackend.wsl &&
-        distro.isNotEmpty) {
-      return 'wsl:$distro';
-    }
-    return RuntimeTarget.localId;
+  if (!Platform.isAndroid) {
+    unawaited(
+      ProviderMigrationService(
+        cliExecutablePath: flashskyaiLocated,
+      ).migrateIfNeeded(),
+    );
   }
 
-  RuntimeTarget synthTarget(String id) => switch (runtimeKindOfId(id)) {
-    RuntimeKind.ssh => RuntimeTarget.ssh(
-      sshProfileIdOfId(id) ?? '',
-      label: sshProfileCubit.state.selectedProfile?.name ?? 'SSH',
-    ),
-    RuntimeKind.wsl => RuntimeTarget.wsl(wslDistroOfId(id) ?? ''),
-    RuntimeKind.local => RuntimeTarget.local(),
-  };
-
-  RuntimeTarget defaultTargetResolver() => synthTarget(currentLegacyTargetId());
+  // Persists the chosen home id, rebinds the registry home, and republishes it
+  // on AppStorage.
+  Future<void> setHomeTarget(String id) async {
+    await homeTargetStore.save(id);
+    homeTarget = homeTargetFromId(id);
+    await runtimeContextRegistry.dispose(id);
+    await runtimeContextRegistry.rebindHome(homeTarget);
+    AppStorage.bindHome(runtimeContextRegistry.home());
+  }
 
   connectionModeService = ConnectionModeService(
     defaultTargetResolver: defaultTargetResolver,
     hasSshProfiles: () => sshProfileCubit.state.hasProfiles,
   );
 
+  // Re-resolve the home context (e.g. after an ssh profile's details change):
+  // evict the cached context for the home id, rebind, republish.
   reinstallStorageContext = () async {
-    // Funnel: mirror the current legacy state into targets.json so the
-    // persisted defaultTargetId stays in sync (Q5/Q7 dual-write window).
-    await runtimeTargetRegistry.setDefaultTargetId(currentLegacyTargetId());
-    return RuntimeStorageContext.installForTarget(
-      defaultTargetResolver(),
-      sshProfile: sshProfileCubit.state.selectedProfile,
-      sshClientFactory: sshClientFactory,
-      nativeAppDataPath: nativeAppDataPath,
-      nativeHome:
-          Platform.environment['HOME'] ?? Platform.environment['USERPROFILE'],
-      nativeCwd: defaultWorkspaceDirectory,
-    );
+    await runtimeContextRegistry.dispose(defaultTargetResolver().id);
+    await runtimeContextRegistry.rebindHome(defaultTargetResolver());
+    AppStorage.bindHome(runtimeContextRegistry.home());
   };
 
-  storageRoots = StorageRoots(
-    isSshMode: () => connectionModeService.isSshMode,
-    sshProfileResolver: () => sshProfileCubit.state.selectedProfile,
-    reinstallContext: reinstallStorageContext,
-  );
   cliToolRegistry.configure(
     CliBootstrap(
       cursorAgentModelsService: CursorAgentModelsService(
-        storageRoots: storageRoots,
       ),
       claudeCredentialsService: ClaudeProviderCredentialsService(
         fs: AppStorage.fs,
@@ -416,7 +395,7 @@ Future<AppShell> buildAppShell({
     ),
   );
 
-  final skillManifest = SkillManifestService(storageRoots: storageRoots);
+  final skillManifest = SkillManifestService();
   final skillGit = SkillRepoGitService();
   final skillFetch = SkillFetchService(git: skillGit);
   final skillRepoCache = SkillRepoDiskCacheService(fetch: skillFetch);
@@ -429,7 +408,7 @@ Future<AppShell> buildAppShell({
       fetch: skillFetch,
       repoCache: skillRepoCache,
     ),
-    repos: SkillRepoService(storageRoots: storageRoots),
+    repos: SkillRepoService(),
   );
 
   appProviderCubit = AppProviderCubit(
@@ -468,7 +447,7 @@ Future<AppShell> buildAppShell({
     ExtensionAcquisitionEngine(),
   );
 
-  identityRepository = LaunchProfileRepository(storageRoots: storageRoots);
+  identityRepository = LaunchProfileRepository();
 
   final cliPresetsRepo = CliPresetsRepository(
     fs: AppStorage.fs,
@@ -476,7 +455,9 @@ Future<AppShell> buildAppShell({
   );
   sessionLifecycleService = SessionLifecycleService(
     llmConfigPathOverride: llmConfigPathOverrideForLaunch,
-    storageRootsResolver: storageRoots.resolve,
+    storageRootsResolver: () async => AppStorage.context,
+    // P2: launch resolves the work-plane on the workspace's target machine.
+    workContextResolver: runtimeContextRegistry.forTarget,
     loadEnabledExtensionIds: ({teamId, workspaceId}) async {
       final trimmedTeamId = teamId?.trim() ?? '';
       if (trimmedTeamId.isNotEmpty) {
@@ -497,11 +478,10 @@ Future<AppShell> buildAppShell({
     loadPresets: () => cliPresetsCubit.state.presets,
   );
   sessionRepo = SessionRepository(
-    storageRoots: storageRoots,
     lifecycleService: sessionLifecycleService,
   );
-  final pluginRepository = PluginRepository(storageRoots: storageRoots);
-  final mcpRepository = McpRepository(storageRoots: storageRoots);
+  final pluginRepository = PluginRepository();
+  final mcpRepository = McpRepository();
   identityProvisioner = LaunchProfileProvisioner(repository: identityRepository);
   teamCubit = LaunchProfileCubit(
     repository: identityRepository,
@@ -510,9 +490,9 @@ Future<AppShell> buildAppShell({
     executableResolver: () => sessionPreferencesCubit.resolveExecutable(),
     cliExecutableResolver: sessionPreferencesCubit.resolveExecutable,
     llmConfigPathOverride: llmConfigPathOverrideForLaunch,
-    storageRootsResolver: storageRoots.resolve,
+    storageRootsResolver: () async => AppStorage.context,
     lifecycleService: sessionLifecycleService,
-    pluginLinker: ProfilePluginLinkerService(storageRoots: storageRoots),
+    pluginLinker: ProfilePluginLinkerService(),
     pluginRepository: pluginRepository,
     installedPluginsLoader: () => pluginRepository.loadAll(),
     mcpLinker: ProfileMcpLinkerService(),
@@ -535,8 +515,7 @@ Future<AppShell> buildAppShell({
     repository: pluginRepository,
     installService: pluginRepository.install,
     repoService: pluginRepository.repos,
-    diskCache: PluginRepoDiskCacheService(storageRoots: storageRoots),
-    storageRoots: storageRoots,
+    diskCache: PluginRepoDiskCacheService(),
     onPluginUninstalled: teamCubit.removePluginFromAllTeams,
     onPluginUpdated: teamCubit.syncTeamsUsingPlugin,
   );
@@ -552,7 +531,6 @@ Future<AppShell> buildAppShell({
   );
   final teamHubFavorites = TeamHubFavoritesStore();
   final pluginDiskCache = PluginRepoDiskCacheService(
-    storageRoots: storageRoots,
   );
   final teamCloneService = TeamCloneService(
     installSkill: skillInstallerFor(skillRepo.install),
@@ -657,13 +635,15 @@ Future<AppShell> buildAppShell({
 
   Future<void> bootstrapAppData() async {
     await sshProfileCubit.load(notifyActiveProfileChanged: false);
+    // Home is ssh and its profile is now loaded → reinstall the home context
+    // against the real remote (the first install fell back to native).
+    final homeSshProfileId = defaultTargetResolver().sshProfileId;
     if (connectionModeService.isSshMode &&
-        sshProfileCubit.state.selectedProfile != null) {
+        homeSshProfileId != null &&
+        sshProfileById(homeSshProfileId) != null) {
       await reinstallStorageContext();
-      storageRoots.invalidate();
     }
     await reloadRemoteBackedAppData(
-      storageRoots: storageRoots,
       llmConfigCubit: llmConfigCubit,
       appProviderCubit: appProviderCubit,
       teamCubit: teamCubit,
@@ -685,8 +665,34 @@ Future<AppShell> buildAppShell({
 
   editorCubit = EditorCubit();
 
+  // P1: switching the home target persists the id, rebinds the home context,
+  // then reinstalls + reloads all remote-backed app data (same chain the old
+  // backend/profile switches used).
+  Future<void> switchHomeTarget(String id) async {
+    await setHomeTarget(id); // persists + rebinds home + republishes AppStorage
+    await reloadRemoteBackedAppData(
+      llmConfigCubit: llmConfigCubit,
+      appProviderCubit: appProviderCubit,
+      teamCubit: teamCubit,
+      pluginCubit: pluginCubit,
+      skillCubit: skillCubit,
+      mcpCubit: mcpCubit,
+      extensionCubit: extensionCubit,
+      chatCubit: chatCubit,
+      sessionRepo: sessionRepo,
+      sshProfileCubit: sshProfileCubit,
+    );
+  }
+
+  final homeTargetController = HomeTargetController(
+    registry: runtimeTargetRegistry,
+    current: defaultTargetResolver,
+    switchTo: switchHomeTarget,
+  );
+
   return AppShell(
     cliToolRegistry: cliToolRegistry,
+    homeTargetController: homeTargetController,
     chatCubit: chatCubit,
     memberPresenceCubit: memberPresenceCubit,
     mailboxCubit: mailboxCubit,
@@ -703,7 +709,6 @@ Future<AppShell> buildAppShell({
     workspaceFileTreeStore: workspaceFileTreeStore,
     sshClientFactory: sshClientFactory,
     connectionModeService: connectionModeService,
-    storageRoots: storageRoots,
     identityRepository: identityRepository,
     teamCubit: teamCubit,
     configCubit: configCubit,
@@ -728,7 +733,6 @@ Future<AppShell> buildAppShell({
 }
 
 Future<void> reloadRemoteBackedAppData({
-  required StorageRoots storageRoots,
   required LlmConfigCubit llmConfigCubit,
   required AppProviderCubit appProviderCubit,
   required LaunchProfileCubit teamCubit,
@@ -740,7 +744,6 @@ Future<void> reloadRemoteBackedAppData({
   required SessionRepository sessionRepo,
   required SshProfileCubit sshProfileCubit,
 }) async {
-  await storageRoots.resolve();
   await Future.wait([
     llmConfigCubit.load(),
     appProviderCubit.load(),
@@ -824,30 +827,16 @@ class _TeamPilotBootstrapState extends State<TeamPilotBootstrap> {
   Future<void> _switchToNativeStorageAndRetry() async {
     if (_retrying) return;
     setState(() => _retrying = true);
-    final repo = SessionPreferencesRepository(widget.preferences);
-    final prefs = await repo.load();
-    await repo.save(
-      prefs.copyWith(windowsStorageBackend: WindowsStorageBackend.native),
-    );
+    // Home target failed to install (e.g. WSL unavailable) — fall back to the
+    // local device as home and retry bootstrap.
+    await HomeTargetStore(widget.preferences).save(RuntimeTarget.localId);
     await _start();
   }
 
   bool get _canFallbackToNativeStorage {
     if (!Platform.isWindows || _error == null) return false;
-    try {
-      final raw = widget.preferences.getString(
-        SessionPreferencesRepository.storageKey,
-      );
-      if (raw == null || raw.isEmpty) return true;
-      final decoded = jsonDecode(raw);
-      if (decoded is! Map) return true;
-      return WindowsStorageBackendJson.fromJson(
-            decoded['windowsStorageBackend'] as String?,
-          ) ==
-          WindowsStorageBackend.wsl;
-    } on Object {
-      return true;
-    }
+    return runtimeKindOfId(HomeTargetStore(widget.preferences).load()) ==
+        RuntimeKind.wsl;
   }
 
   @override

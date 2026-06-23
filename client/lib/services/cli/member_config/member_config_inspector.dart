@@ -2,7 +2,7 @@ import '../../../models/team_config.dart';
 import '../../io/filesystem.dart';
 import '../../storage/app_storage.dart';
 import '../../storage/runtime_layout.dart';
-import '../../storage/runtime_storage_context.dart';
+import '../../storage/runtime_context.dart';
 import '../../team/claude_team_roster_service.dart';
 import '../registry/capabilities/cli_config_layout_capability.dart';
 import '../registry/capabilities/member_config_inspection_capability.dart';
@@ -19,7 +19,7 @@ class MemberConfigInspector {
   })  : _fs = fs ?? AppStorage.fs,
         _layout = layout ??
             RuntimeLayout(
-              teampilotRoot: RuntimeStorageContext.current.appDataRoot,
+              teampilotRoot: AppStorage.appDataRoot,
               fs: fs ?? AppStorage.fs,
             ),
         _registry = registry ?? CliToolRegistry.builtIn();

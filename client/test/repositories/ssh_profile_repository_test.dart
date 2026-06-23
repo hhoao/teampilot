@@ -4,25 +4,21 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:teampilot/models/ssh_profile.dart';
 import 'package:teampilot/repositories/ssh_profile_repository.dart';
 import 'package:teampilot/services/storage/app_storage.dart';
-import 'package:teampilot/services/storage/runtime_storage_context.dart';
+import 'package:teampilot/services/storage/runtime_context.dart';
+import '../support/test_runtime_context.dart';
 
 void main() {
-  test('load follows RuntimeStorageContext when rootDir is not overridden', () async {
+  test('load follows AppStorage home when rootDir is not overridden', () async {
     final rootA = await Directory.systemTemp.createTemp('ssh_profiles_a_');
     final rootB = await Directory.systemTemp.createTemp('ssh_profiles_b_');
     addTearDown(() async {
       if (await rootA.exists()) await rootA.delete(recursive: true);
       if (await rootB.exists()) await rootB.delete(recursive: true);
-      RuntimeStorageContext.resetForTesting();
+      AppStorage.resetForTesting();
       AppPathsBootstrapper.resetForTesting();
     });
 
-    await RuntimeStorageContext.install(
-      isSshMode: false,
-      nativeAppDataPath: rootA.path,
-      nativeHome: rootA.path,
-      nativeCwd: rootA.path,
-    );
+    bindTestNativeHome(rootA.path);
 
     const profile = SshProfile(
       id: 'p1',
@@ -34,21 +30,11 @@ void main() {
     await repo.save(profile);
     expect(await repo.loadAll(), hasLength(1));
 
-    await RuntimeStorageContext.install(
-      isSshMode: false,
-      nativeAppDataPath: rootB.path,
-      nativeHome: rootB.path,
-      nativeCwd: rootB.path,
-    );
+    bindTestNativeHome(rootB.path);
 
     expect(await repo.loadAll(), isEmpty);
 
-    await RuntimeStorageContext.install(
-      isSshMode: false,
-      nativeAppDataPath: rootA.path,
-      nativeHome: rootA.path,
-      nativeCwd: rootA.path,
-    );
+    bindTestNativeHome(rootA.path);
 
     expect(await repo.loadAll(), hasLength(1));
     expect((await repo.loadAll()).single.name, 'Server A');
@@ -60,7 +46,7 @@ void main() {
     addTearDown(() async {
       if (await pinnedRoot.exists()) await pinnedRoot.delete(recursive: true);
       if (await otherRoot.exists()) await otherRoot.delete(recursive: true);
-      RuntimeStorageContext.resetForTesting();
+      AppStorage.resetForTesting();
       AppPathsBootstrapper.resetForTesting();
     });
 
@@ -74,12 +60,7 @@ void main() {
       ),
     );
 
-    await RuntimeStorageContext.install(
-      isSshMode: false,
-      nativeAppDataPath: otherRoot.path,
-      nativeHome: pinnedRoot.path,
-      nativeCwd: pinnedRoot.path,
-    );
+    bindTestNativeHome(otherRoot.path);
 
     expect(await repo.loadAll(), hasLength(1));
     expect((await repo.loadAll()).single.name, 'Pinned');

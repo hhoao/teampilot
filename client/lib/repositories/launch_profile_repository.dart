@@ -7,32 +7,29 @@ import '../models/launch_profile.dart';
 import '../services/io/filesystem.dart';
 import '../services/session/session_lifecycle_service.dart';
 import '../services/storage/app_storage.dart';
-import '../services/storage/storage_resolver.dart';
 
 /// Persists [LaunchProfile] records (both kinds) at
 /// `launch-profiles/{id}/profile.json`.
 class LaunchProfileRepository {
   LaunchProfileRepository({
     String? rootDir,
-    StorageRoots? storageRoots,
     SessionLifecycleService? lifecycleService,
   })  : _rootDirOverride = rootDir,
-        _storageRoots = storageRoots,
         _lifecycleService = lifecycleService;
 
   final String? _rootDirOverride;
-  final StorageRoots? _storageRoots;
   final SessionLifecycleService? _lifecycleService;
 
   Future<({String dir, Filesystem fs})> _paths() async {
-    if (_storageRoots != null) {
-      final snap = await _storageRoots.resolve();
+    // Explicit rootDir override (tests) wins; otherwise the home control plane.
+    if (_rootDirOverride != null) {
+      return (dir: _rootDirOverride, fs: AppStorage.fs);
+    }
+    if (AppStorage.isInstalled) {
+      final snap = AppStorage.context;
       return (dir: snap.launchProfilesDir, fs: snap.fs);
     }
-    return (
-      dir: _rootDirOverride ?? AppPathsBootstrapper.current.launchProfilesDir,
-      fs: AppStorage.fs,
-    );
+    return (dir: AppPathsBootstrapper.current.launchProfilesDir, fs: AppStorage.fs);
   }
 
   String _profileFile(Filesystem fs, String dir, String id) =>

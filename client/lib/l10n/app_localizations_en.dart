@@ -1634,6 +1634,24 @@ class AppLocalizationsEn extends AppLocalizations {
       'When enabled, the sidebar shows only sessions assigned to the current team. New sessions are always tagged with the selected team so they appear here if you turn this on later.';
 
   @override
+  String get workspaceTargetTitle => 'Workspace machine';
+
+  @override
+  String get workspaceTargetSubtitle =>
+      'The machine this workspace\'s folders live and run on. Sessions launch on this target; switching does not move files.';
+
+  @override
+  String get homeTargetTitle => 'Home device';
+
+  @override
+  String get homeTargetSubtitle =>
+      'Where TeamPilot stores teams, workspaces, and config (the control plane). Switching uses a separate data tree; nothing is migrated automatically.';
+
+  @override
+  String get homeTargetSingleOptionHint =>
+      'This is the only available home on this platform.';
+
+  @override
   String get windowsStorageBackendTitle => 'Data storage location';
 
   @override

@@ -89,7 +89,7 @@ class AppSession {
     return AppSession(
       sessionId: json['sessionId'] as String? ?? '',
       workspaceId: json['workspaceId'] as String? ?? '',
-      folders: foldersFromLegacyJson(json),
+      folders: foldersFromJson(json['folders']),
       display: json['display'] as String? ?? '',
       sessionTeam: json['sessionTeam'] as String? ?? '',
       profileId: json['profileId'] as String? ?? '',
@@ -217,9 +217,6 @@ class AppSession {
       'sessionId': sessionId,
       'workspaceId': workspaceId,
       'folders': folders.map((f) => f.toJson()).toList(),
-      // SCAFFOLD dual-write (one version cycle; removed next version):
-      'primaryPath': firstFolderPath,
-      'additionalPaths': extraFolderPaths,
       'display': display,
       'sessionTeam': sessionTeam,
       if (profileId.isNotEmpty) 'profileId': profileId,

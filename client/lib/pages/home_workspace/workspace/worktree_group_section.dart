@@ -12,7 +12,8 @@ import '../../../models/workspace.dart';
 import '../../../repositories/session_repository.dart';
 import '../../../services/git/git_worktree_service.dart';
 import '../../../services/git/worktree_removal.dart';
-import '../../../services/storage/runtime_storage_context.dart';
+import '../../../services/storage/app_storage.dart';
+import '../../../services/storage/runtime_context.dart';
 import '../../../theme/app_text_styles.dart';
 import '../../../utils/session_worktree_grouping.dart';
 import '../../../widgets/app_icon_button.dart';
@@ -32,9 +33,9 @@ String worktreeGroupCollapseKey(WorktreeGroup group) =>
 /// Worktree create/remove run local `git`, so management is desktop-local only
 /// (v1). Native and WSL backends can spawn local git; SSH/Android hide controls.
 bool worktreeManagementEnabled() =>
-    RuntimeStorageContext.isInstalled &&
-    (RuntimeStorageContext.current.mode == StorageBackendMode.native ||
-        RuntimeStorageContext.current.mode == StorageBackendMode.wsl);
+    AppStorage.isInstalled &&
+    (AppStorage.context.mode == StorageBackendMode.native ||
+        AppStorage.context.mode == StorageBackendMode.wsl);
 
 /// One collapsible worktree group in [WorkspaceSidebar]: a branch header (with
 /// management menu) plus its session tiles. Selecting the header makes the

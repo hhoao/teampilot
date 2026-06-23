@@ -67,6 +67,10 @@ abstract interface class Filesystem {
   /// Resolved target path when [linkPath] is a symlink; otherwise `null`.
   Future<String?> readSymlinkTarget(String linkPath);
 
+  /// Canonical absolute path of [path] with all symlinks resolved, or `null`
+  /// when it cannot be resolved.
+  Future<String?> resolveSymlink(String path);
+
   Future<void> copyTree({required String source, required String destination});
 
   Future<void> copyFile(String source, String destination);

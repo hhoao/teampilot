@@ -10,7 +10,7 @@ import 'package:teampilot/repositories/launch_profile_repository.dart';
 import 'package:teampilot/services/storage/app_storage.dart';
 import 'package:teampilot/services/provider/config_profile_service.dart';
 import 'package:teampilot/services/io/local_filesystem.dart';
-import 'package:teampilot/services/storage/runtime_storage_context.dart';
+import 'package:teampilot/services/storage/runtime_context.dart';
 import 'package:teampilot/services/session/session_lifecycle_service.dart';
 import 'package:teampilot/services/plugin/profile_plugin_linker_service.dart';
 import 'package:teampilot/services/storage/launch_profile_provisioner.dart';
@@ -85,7 +85,7 @@ void main() {
     TestWidgetsFlutterBinding.ensureInitialized();
     appDataRoot = await Directory.systemTemp.createTemp('teampilot_app_data_');
     final paths = AppPaths(appDataRoot.path);
-    RuntimeStorageContext.installForTesting(
+    AppStorage.installForTesting(
       filesystem: LocalFilesystem(
         pathContext: AppPaths.pathContextForDataRoot(paths.basePath),
       ),
@@ -97,7 +97,7 @@ void main() {
 
   tearDown(() async {
     await drainPendingAsyncWork();
-    RuntimeStorageContext.resetForTesting();
+    AppStorage.resetForTesting();
     AppPathsBootstrapper.resetForTesting();
     await _deleteTempDirBestEffort(appDataRoot);
   });

@@ -11,7 +11,7 @@ import 'package:teampilot/repositories/launch_profile_repository.dart';
 import 'package:teampilot/services/storage/app_storage.dart';
 import 'package:teampilot/services/io/local_filesystem.dart';
 import 'package:teampilot/services/plugin/plugin_install_service.dart';
-import 'package:teampilot/services/storage/runtime_storage_context.dart';
+import 'package:teampilot/services/storage/runtime_context.dart';
 import 'package:teampilot/services/plugin/profile_plugin_linker_service.dart';
 
 void main() {
@@ -20,7 +20,7 @@ void main() {
   setUp(() {
     tmp = Directory.systemTemp.createTempSync('plugin-integ-');
     final paths = AppPaths(tmp.path);
-    RuntimeStorageContext.installForTesting(
+    AppStorage.installForTesting(
       filesystem: LocalFilesystem(
         pathContext: AppPaths.pathContextForDataRoot(paths.basePath),
       ),
@@ -31,7 +31,7 @@ void main() {
   });
 
   tearDown(() {
-    RuntimeStorageContext.resetForTesting();
+    AppStorage.resetForTesting();
     AppPathsBootstrapper.resetForTesting();
     tmp.deleteSync(recursive: true);
   });

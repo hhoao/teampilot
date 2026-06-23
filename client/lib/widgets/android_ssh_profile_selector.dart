@@ -8,7 +8,9 @@ import 'package:go_router/go_router.dart';
 import '../cubits/session_preferences_cubit.dart';
 import '../cubits/ssh_profile_cubit.dart';
 import '../l10n/l10n_extensions.dart';
+import '../models/runtime_target.dart';
 import '../services/app/connection_mode_service.dart';
+import '../services/storage/home_target_controller.dart';
 import 'menu/sidebar_action_menu.dart';
 
 /// Android app-bar control: shows the active SSH server and switches profiles.
@@ -30,7 +32,12 @@ class AndroidSshProfileSelector extends StatelessWidget {
       return const SizedBox.shrink();
     }
 
-    final selected = sshState.selectedProfile ?? sshState.profiles.first;
+    final homeController = context.read<HomeTargetController>();
+    final homeProfileId = sshProfileIdOfId(homeController.currentId);
+    final selected = sshState.profiles
+            .where((p) => p.id == homeProfileId)
+            .firstOrNull ??
+        sshState.profiles.first;
     final l10n = context.l10n;
 
     return SidebarActionMenuIconAnchor(
@@ -96,7 +103,9 @@ class AndroidSshProfileSelector extends StatelessWidget {
               return;
             }
             if (value is String) {
-              context.read<SshProfileCubit>().selectProfile(value);
+              // Android quick-switch selects the home target (the device the
+              // control plane + sessions run on).
+              context.read<HomeTargetController>().select('ssh:$value');
             }
           },
         );

@@ -1,9 +1,12 @@
+import 'dart:io';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
 import '../cubits/session_preferences_cubit.dart';
 import '../cubits/ssh_profile_cubit.dart';
 import '../services/app/connection_mode_service.dart';
+import '../services/storage/home_target_controller.dart';
 import '../repositories/ssh_credential_store.dart';
 import '../repositories/ssh_profile_repository.dart';
 import '../services/ssh/ssh_profile_connection_tester.dart';
@@ -19,7 +22,10 @@ class StartupGate extends StatelessWidget {
   Widget build(BuildContext context) {
     context.watch<SessionPreferencesCubit>();
     final mode = context.read<ConnectionModeService>();
-    if (!mode.isSshMode) return child;
+    // Android can only run over SSH: it must have an ssh home target. Desktop
+    // with a local/wsl home needs no gate.
+    final androidNeedsSshHome = Platform.isAndroid && !mode.isSshMode;
+    if (!mode.isSshMode && !androidNeedsSshHome) return child;
 
     final sshState = context.watch<SshProfileCubit>().state;
 
@@ -27,7 +33,7 @@ class StartupGate extends StatelessWidget {
       return const Scaffold(body: Center(child: CircularProgressIndicator()));
     }
 
-    if (mode.requiresSshProfileSetup) {
+    if (mode.requiresSshProfileSetup || androidNeedsSshHome) {
       return SshProfileSetupPage(
         profileRepository: context.read<SshProfileRepository>(),
         credentialStore: context.read<SshCredentialStore>(),
@@ -36,8 +42,14 @@ class StartupGate extends StatelessWidget {
               .read<TerminalTransportFactory>()
               .sshClientFactory,
         ),
-        onProfileSaved: () {
-          context.read<SshProfileCubit>().load();
+        onProfileSaved: () async {
+          final sshCubit = context.read<SshProfileCubit>();
+          final homeController = context.read<HomeTargetController>();
+          await sshCubit.load();
+          // On Android the freshly created profile becomes the home target.
+          if (Platform.isAndroid && sshCubit.state.profiles.isNotEmpty) {
+            await homeController.select('ssh:${sshCubit.state.profiles.first.id}');
+          }
         },
       );
     }

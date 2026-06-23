@@ -45,7 +45,7 @@ import 'package:teampilot/services/cli/registry/config_profile/claude_config_pro
 import 'package:teampilot/services/provider/config_profile_service.dart';
 import 'package:teampilot/services/app/connection_mode_service.dart';
 import 'package:teampilot/services/io/local_filesystem.dart';
-import 'package:teampilot/services/storage/storage_resolver.dart';
+import 'support/test_runtime_context.dart';
 import 'package:teampilot/services/session/session_lifecycle_service.dart';
 import 'package:teampilot/services/team_bus/bus_user_line_capture.dart';
 import 'package:teampilot/services/terminal/terminal_session.dart';
@@ -774,39 +774,7 @@ void main() {
             },
         postFrameScheduler: postFrame.scheduler,
         lifecycleService: SessionLifecycleService(
-          storageRootsResolver: () async => StorageRootsSnapshot(
-            storageIsRemote: false,
-            teampilotRoot: tmp.path,
-            launchProfilesDir: p.join(tmp.path, 'launch-profiles'),
-            skillsRoot: p.join(tmp.path, 'skills', 'installed'),
-            skillBackupsDir: p.join(tmp.path, 'skills', 'backups'),
-            workspaceDir: p.join(tmp.path, 'workspace'),
-            skillReposConfigPath: p.join(tmp.path, 'skills', 'repos.json'),
-            pluginsRoot: p.join(tmp.path, 'plugins', 'installed'),
-            pluginBackupsDir: p.join(tmp.path, 'plugins', 'backups'),
-            pluginsJsonPath: p.join(tmp.path, 'plugins', 'plugins.json'),
-            pluginMarketplacesConfigPath: p.join(
-              tmp.path,
-              'plugins',
-              'marketplaces.json',
-            ),
-            pluginMarketplaceCacheDir: p.join(
-              tmp.path,
-              'plugins',
-              'marketplace-cache',
-            ),
-            pluginExternalCacheDir: p.join(
-              tmp.path,
-              'plugins',
-              'external-cache',
-            ),
-            mcpServersJsonPath: p.join(tmp.path, 'mcp', 'mcp_servers.json'),
-            mcpRegistrySourcesConfigPath: p.join(
-              tmp.path,
-              'mcp',
-              'registry_sources.json',
-            ),
-          ),
+          storageRootsResolver: () async => testRuntimeContext(tmp.path),
         ),
       );
       const team = TeamProfile(

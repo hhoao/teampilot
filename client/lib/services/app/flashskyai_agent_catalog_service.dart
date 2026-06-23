@@ -2,7 +2,6 @@ import 'package:flutter/foundation.dart';
 import '../storage/app_storage.dart';
 import '../storage/runtime_layout.dart';
 import '../io/filesystem.dart';
-import '../storage/storage_resolver.dart';
 
 /// Built-in `--agent` ids (subset of `flashskyai agents` / CLI presets).
 @immutable
@@ -83,10 +82,7 @@ abstract final class FlashskyaiAgentCatalog {
 
 /// Lists user-defined agent ids from `config-profiles/flashskyai/agents/*.md`.
 class FlashskyaiAgentCatalogService {
-  FlashskyaiAgentCatalogService({StorageRoots? storageRoots})
-    : _storageRoots = storageRoots;
-
-  final StorageRoots? _storageRoots;
+  FlashskyaiAgentCatalogService();
 
   /// Agent id from `image-analyzer.md` → `image-analyzer`.
   static String? agentIdFromMdFilename(String filename) {
@@ -97,8 +93,8 @@ class FlashskyaiAgentCatalogService {
   }
 
   Future<List<String>> listUserAgentIds() async {
-    if (_storageRoots != null) {
-      final snap = await _storageRoots.resolve();
+    if (AppStorage.isInstalled) {
+      final snap = AppStorage.context;
       final agentsDir = snap.fs.pathContext.join(
         snap.layout.appToolRoot('flashskyai'),
         'agents',

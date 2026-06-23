@@ -8,7 +8,7 @@ import 'package:teampilot/services/git/git_worktree_service.dart';
 import 'package:teampilot/services/io/workspace_fs_watcher.dart';
 import 'package:teampilot/services/storage/app_storage.dart';
 import 'package:teampilot/services/io/local_filesystem.dart';
-import 'package:teampilot/services/storage/runtime_storage_context.dart';
+import 'package:teampilot/services/storage/runtime_context.dart';
 
 Directory? _testAppDataDir;
 
@@ -17,7 +17,7 @@ void setUpTestAppStorage() {
   TestWidgetsFlutterBinding.ensureInitialized();
   _testAppDataDir = Directory.systemTemp.createTempSync('test_app_data_');
   final paths = AppPaths(_testAppDataDir!.path);
-  RuntimeStorageContext.installForTesting(
+  AppStorage.installForTesting(
     filesystem: LocalFilesystem(
       pathContext: AppPaths.pathContextForDataRoot(paths.basePath),
     ),
@@ -46,7 +46,7 @@ void tearDownTestAppStorage() {
   GitService.debugOverrideFactory = null;
   GitWorktreeService.debugOverrideFactory = null;
   WorkspaceFsWatcher.debugDisable = false;
-  RuntimeStorageContext.resetForTesting();
+  AppStorage.resetForTesting();
   AppPathsBootstrapper.resetForTesting();
   DefaultWorkspaceDirectory.resetForTesting();
   final dir = _testAppDataDir;

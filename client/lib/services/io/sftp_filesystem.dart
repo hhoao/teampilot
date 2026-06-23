@@ -83,7 +83,10 @@ class SftpFilesystem implements Filesystem {
   }
 
   @override
-  Future<String?> readSymlinkTarget(String linkPath) async => null;
+  Future<String?> readSymlinkTarget(String linkPath) => store.readlink(linkPath);
+
+  @override
+  Future<String?> resolveSymlink(String path) => store.realpath(path);
 
   @override
   Future<void> copyTree({
