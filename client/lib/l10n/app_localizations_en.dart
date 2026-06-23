@@ -1267,19 +1267,6 @@ class AppLocalizationsEn extends AppLocalizations {
       'Configure AI agent CLI executable paths and install missing tools.';
 
   @override
-  String get connectionModeLabel => 'Runtime mode';
-
-  @override
-  String get connectionModeDescription =>
-      'Local runs flashskyai on this device. SSH runs it on the selected remote server.';
-
-  @override
-  String get connectionModeLocal => 'Local';
-
-  @override
-  String get connectionModeSsh => 'SSH';
-
-  @override
   String get sshProfilesSettingsTitle => 'SSH servers';
 
   @override
@@ -1650,39 +1637,6 @@ class AppLocalizationsEn extends AppLocalizations {
   @override
   String get homeTargetSingleOptionHint =>
       'This is the only available home on this platform.';
-
-  @override
-  String get windowsStorageBackendTitle => 'Data storage location';
-
-  @override
-  String get windowsStorageBackendDescription =>
-      'Where teams, skills, workspaces, and config profiles are stored. Switching uses a separate data tree; nothing is migrated automatically.';
-
-  @override
-  String get windowsStorageBackendNative => 'Windows local';
-
-  @override
-  String get windowsStorageBackendWsl => 'WSL';
-
-  @override
-  String windowsStorageBackendCurrentRoot(String path) {
-    return 'Current root: $path';
-  }
-
-  @override
-  String get windowsStorageBackendSwitchConfirmTitle =>
-      'Switch storage location?';
-
-  @override
-  String get windowsStorageBackendSwitchConfirmBody =>
-      'This uses a different data directory. Teams, workspaces, and skills from the other location will not appear until you switch back.';
-
-  @override
-  String get windowsStorageBackendSwitchConfirmAction => 'Switch';
-
-  @override
-  String get windowsStorageBackendWslUnavailable =>
-      'WSL is not available. Install or start WSL before using WSL storage.';
 
   @override
   String get windowsStorageCliMismatchNativeCli =>

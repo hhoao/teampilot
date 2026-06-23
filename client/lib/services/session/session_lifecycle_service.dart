@@ -437,7 +437,7 @@ class SessionLifecycleService {
     Workspace? workspace,
     PersonalProfile? personal,
   }) async {
-    final roots = await _resolveRoots();
+    final roots = await _resolveRoots(session: session);
     final isPersonal = _isPersonalLaunch(workspace, session);
     final runtimeTeamId = isPersonal
         ? session.sessionId.trim()
@@ -471,6 +471,7 @@ class SessionLifecycleService {
     required String workspaceId,
     required String teamId,
     required String sessionId,
+    AppSession? session,
   }) async {
     final trimmedWorkspaceId = workspaceId.trim();
     final trimmedTeamId = teamId.trim();
@@ -481,7 +482,9 @@ class SessionLifecycleService {
       return;
     }
 
-    final roots = await _resolveRoots();
+    // P2: clean the runtime tree on the *workspace's* machine (work plane),
+    // resolved from the session's folder target, not always home.
+    final roots = await _resolveRoots(session: session);
     final sessionRoot = roots.layout.workspace.sessionRuntimeDir(
       trimmedWorkspaceId,
       trimmedSessionId,
@@ -492,12 +495,13 @@ class SessionLifecycleService {
   Future<void> destroyStandaloneCliState({
     required String workspaceId,
     required String sessionId,
+    AppSession? session,
   }) async {
     final trimmedWorkspaceId = workspaceId.trim();
     final trimmedSessionId = sessionId.trim();
     if (trimmedWorkspaceId.isEmpty || trimmedSessionId.isEmpty) return;
 
-    final roots = await _resolveRoots();
+    final roots = await _resolveRoots(session: session);
     final sessionRoot = roots.layout.workspace.sessionRuntimeDir(
       trimmedWorkspaceId,
       trimmedSessionId,

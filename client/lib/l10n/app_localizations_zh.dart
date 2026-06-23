@@ -1207,19 +1207,6 @@ class AppLocalizationsZh extends AppLocalizations {
   String get cliConfigPageSubtitle => '配置 AI 代理 CLI 可执行文件路径，并安装缺失的工具。';
 
   @override
-  String get connectionModeLabel => '运行模式';
-
-  @override
-  String get connectionModeDescription =>
-      '本机模式在当前设备运行 flashskyai；SSH 模式在选中的远程服务器上运行。';
-
-  @override
-  String get connectionModeLocal => '本机';
-
-  @override
-  String get connectionModeSsh => 'SSH';
-
-  @override
   String get sshProfilesSettingsTitle => 'SSH 服务器';
 
   @override
@@ -1583,38 +1570,6 @@ class AppLocalizationsZh extends AppLocalizations {
 
   @override
   String get homeTargetSingleOptionHint => '当前平台只有这一个可用的主设备。';
-
-  @override
-  String get windowsStorageBackendTitle => '数据存储位置';
-
-  @override
-  String get windowsStorageBackendDescription =>
-      '团队、技能、工作区与配置文件的读写位置。切换会使用另一套数据目录，不会自动迁移。';
-
-  @override
-  String get windowsStorageBackendNative => 'Windows 本地';
-
-  @override
-  String get windowsStorageBackendWsl => 'WSL';
-
-  @override
-  String windowsStorageBackendCurrentRoot(String path) {
-    return '当前根目录：$path';
-  }
-
-  @override
-  String get windowsStorageBackendSwitchConfirmTitle => '切换存储位置？';
-
-  @override
-  String get windowsStorageBackendSwitchConfirmBody =>
-      '将使用另一套数据目录。另一位置下的团队、工作区与技能需切回后才能看到。';
-
-  @override
-  String get windowsStorageBackendSwitchConfirmAction => '切换';
-
-  @override
-  String get windowsStorageBackendWslUnavailable =>
-      'WSL 不可用。请先安装或启动 WSL 后再选择 WSL 存储。';
 
   @override
   String get windowsStorageCliMismatchNativeCli =>

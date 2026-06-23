@@ -661,11 +661,13 @@ class SessionRepository {
           workspaceId: workspaceId,
           teamId: teamId,
           sessionId: sessionId,
+          session: existing,
         );
       } else if (workspaceId.isNotEmpty) {
         await _lifecycleService?.destroyStandaloneCliState(
           workspaceId: workspaceId,
           sessionId: sessionId,
+          session: existing,
         );
       }
       await fs.deleteSessionDir(workspaceId, sessionId);

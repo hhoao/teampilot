@@ -65,4 +65,43 @@ void main() {
     expect(resolved, ['ssh:p1']);
     expect(ctx.appDataRoot, '/remote/app'); // work-plane on the remote
   });
+
+  test('destroyCliState on an ssh workspace cleans the work-plane, not home',
+      () async {
+    final resolved = <String>[];
+    final home = testRuntimeContext('/home-root');
+    final lifecycle = SessionLifecycleService(
+      storageRootsResolver: () async => home,
+      workContextResolver: (target) async {
+        resolved.add(target.id);
+        return target.kind == RuntimeKind.ssh
+            ? RuntimeContext(
+                target: target,
+                filesystem: InMemoryFilesystem(),
+                home: '/remote',
+                cwd: '/remote',
+                appDataRoot: '/remote/app',
+                paths: home.paths,
+              )
+            : home;
+      },
+    );
+    final session = AppSession(
+      sessionId: 's3',
+      workspaceId: 'w3',
+      sessionTeam: 'team-x',
+      cliTeamName: 'team-x-1',
+      folders: const [WorkspaceFolder(path: '/proj', targetId: 'ssh:p1')],
+      createdAt: 1,
+    );
+
+    await lifecycle.destroyCliState(
+      workspaceId: 'w3',
+      teamId: 'team-x',
+      sessionId: 's3',
+      session: session,
+    );
+    // The destroy path resolved the workspace's ssh target (not home).
+    expect(resolved, ['ssh:p1']);
+  });
 }

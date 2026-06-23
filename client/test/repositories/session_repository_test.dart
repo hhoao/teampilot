@@ -13,13 +13,19 @@ class _RecordingLifecycleService extends SessionLifecycleService {
 
   final destroyed = <({String teamId, String sessionId})>[];
 
+  final destroyedWithTarget = <String>[];
+
   @override
   Future<void> destroyCliState({
     required String workspaceId,
     required String teamId,
     required String sessionId,
+    AppSession? session,
   }) async {
     destroyed.add((teamId: teamId, sessionId: sessionId));
+    if (session != null && session.folders.isNotEmpty) {
+      destroyedWithTarget.add(session.folders.first.targetId);
+    }
   }
 }
 

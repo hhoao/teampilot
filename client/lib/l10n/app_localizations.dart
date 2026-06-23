@@ -2360,30 +2360,6 @@ abstract class AppLocalizations {
   /// **'Configure AI agent CLI executable paths and install missing tools.'**
   String get cliConfigPageSubtitle;
 
-  /// No description provided for @connectionModeLabel.
-  ///
-  /// In en, this message translates to:
-  /// **'Runtime mode'**
-  String get connectionModeLabel;
-
-  /// No description provided for @connectionModeDescription.
-  ///
-  /// In en, this message translates to:
-  /// **'Local runs flashskyai on this device. SSH runs it on the selected remote server.'**
-  String get connectionModeDescription;
-
-  /// No description provided for @connectionModeLocal.
-  ///
-  /// In en, this message translates to:
-  /// **'Local'**
-  String get connectionModeLocal;
-
-  /// No description provided for @connectionModeSsh.
-  ///
-  /// In en, this message translates to:
-  /// **'SSH'**
-  String get connectionModeSsh;
-
   /// No description provided for @sshProfilesSettingsTitle.
   ///
   /// In en, this message translates to:
@@ -3061,60 +3037,6 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'This is the only available home on this platform.'**
   String get homeTargetSingleOptionHint;
-
-  /// No description provided for @windowsStorageBackendTitle.
-  ///
-  /// In en, this message translates to:
-  /// **'Data storage location'**
-  String get windowsStorageBackendTitle;
-
-  /// No description provided for @windowsStorageBackendDescription.
-  ///
-  /// In en, this message translates to:
-  /// **'Where teams, skills, workspaces, and config profiles are stored. Switching uses a separate data tree; nothing is migrated automatically.'**
-  String get windowsStorageBackendDescription;
-
-  /// No description provided for @windowsStorageBackendNative.
-  ///
-  /// In en, this message translates to:
-  /// **'Windows local'**
-  String get windowsStorageBackendNative;
-
-  /// No description provided for @windowsStorageBackendWsl.
-  ///
-  /// In en, this message translates to:
-  /// **'WSL'**
-  String get windowsStorageBackendWsl;
-
-  /// No description provided for @windowsStorageBackendCurrentRoot.
-  ///
-  /// In en, this message translates to:
-  /// **'Current root: {path}'**
-  String windowsStorageBackendCurrentRoot(String path);
-
-  /// No description provided for @windowsStorageBackendSwitchConfirmTitle.
-  ///
-  /// In en, this message translates to:
-  /// **'Switch storage location?'**
-  String get windowsStorageBackendSwitchConfirmTitle;
-
-  /// No description provided for @windowsStorageBackendSwitchConfirmBody.
-  ///
-  /// In en, this message translates to:
-  /// **'This uses a different data directory. Teams, workspaces, and skills from the other location will not appear until you switch back.'**
-  String get windowsStorageBackendSwitchConfirmBody;
-
-  /// No description provided for @windowsStorageBackendSwitchConfirmAction.
-  ///
-  /// In en, this message translates to:
-  /// **'Switch'**
-  String get windowsStorageBackendSwitchConfirmAction;
-
-  /// No description provided for @windowsStorageBackendWslUnavailable.
-  ///
-  /// In en, this message translates to:
-  /// **'WSL is not available. Install or start WSL before using WSL storage.'**
-  String get windowsStorageBackendWslUnavailable;
 
   /// No description provided for @windowsStorageCliMismatchNativeCli.
   ///

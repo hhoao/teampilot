@@ -554,10 +554,6 @@
   "sessionPageSubtitle": "Configure shell session launch, terminal behavior, and storage backend.",
   "cliConfig": "CLI",
   "cliConfigPageSubtitle": "Configure AI agent CLI executable paths and install missing tools.",
-  "connectionModeLabel": "Runtime mode",
-  "connectionModeDescription": "Local runs flashskyai on this device. SSH runs it on the selected remote server.",
-  "connectionModeLocal": "Local",
-  "connectionModeSsh": "SSH",
   "sshProfilesSettingsTitle": "SSH servers",
   "sshProfileSelectorTooltip": "Switch SSH server",
   "sshProfileSelectorManage": "Manage SSH servers…",
@@ -708,22 +704,6 @@
   "homeTargetTitle": "Home device",
   "homeTargetSubtitle": "Where TeamPilot stores teams, workspaces, and config (the control plane). Switching uses a separate data tree; nothing is migrated automatically.",
   "homeTargetSingleOptionHint": "This is the only available home on this platform.",
-  "windowsStorageBackendTitle": "Data storage location",
-  "windowsStorageBackendDescription": "Where teams, skills, workspaces, and config profiles are stored. Switching uses a separate data tree; nothing is migrated automatically.",
-  "windowsStorageBackendNative": "Windows local",
-  "windowsStorageBackendWsl": "WSL",
-  "windowsStorageBackendCurrentRoot": "Current root: {path}",
-  "@windowsStorageBackendCurrentRoot": {
-    "placeholders": {
-      "path": {
-        "type": "String"
-      }
-    }
-  },
-  "windowsStorageBackendSwitchConfirmTitle": "Switch storage location?",
-  "windowsStorageBackendSwitchConfirmBody": "This uses a different data directory. Teams, workspaces, and skills from the other location will not appear until you switch back.",
-  "windowsStorageBackendSwitchConfirmAction": "Switch",
-  "windowsStorageBackendWslUnavailable": "WSL is not available. Install or start WSL before using WSL storage.",
   "windowsStorageCliMismatchNativeCli": "CLI runs in WSL but data is stored in Windows AppData. Config may not match.",
   "windowsStorageCliMismatchWslCli": "CLI runs on Windows but data is stored in WSL. Config may not match.",
   "windowsStorageSwitchReloadHint": "Reconnect open sessions after switching storage.",
