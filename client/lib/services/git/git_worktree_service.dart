@@ -12,8 +12,8 @@ class GitWorktreeService {
   GitWorktreeService({
     ProcessRunner runner = cliToolDefaultProcessRun,
     CliToolLocator? gitLocator,
-  })  : _runner = runner,
-        _gitLocator = gitLocator ?? const CliToolLocator('git');
+  }) : _runner = runner,
+       _gitLocator = gitLocator ?? const CliToolLocator('git');
 
   /// Test seam: when set, [WorktreeCubit] builds this instead of a real
   /// process-backed service, so widget tests never spawn `git` (mirrors
@@ -27,7 +27,7 @@ class GitWorktreeService {
   final ProcessRunner _runner;
   final CliToolLocator _gitLocator;
 
-  static const Encoding _textEncoding = Utf8Codec(allowMalformed: true);
+  static const Encoding _textEncoding = Utf8Codec();
   static const List<String> _globalFlags = [
     '--no-optional-locks',
     '-c',
@@ -40,8 +40,9 @@ class GitWorktreeService {
     String output, {
     required bool nulDelimited,
   }) {
-    final blocks =
-        nulDelimited ? _splitNulBlocks(output) : _splitLineBlocks(output);
+    final blocks = nulDelimited
+        ? _splitNulBlocks(output)
+        : _splitLineBlocks(output);
     final result = <GitWorktree>[];
     for (final lines in blocks) {
       if (lines.isEmpty) continue;
@@ -62,13 +63,15 @@ class GitWorktreeService {
         // 'detached' → leave branch empty (isDetached getter returns true).
       }
       if (path.isEmpty) continue;
-      result.add(GitWorktree(
-        path: path,
-        head: head,
-        branch: branch,
-        isBare: isBare,
-        isMainWorktree: result.isEmpty,
-      ));
+      result.add(
+        GitWorktree(
+          path: path,
+          head: head,
+          branch: branch,
+          isBare: isBare,
+          isMainWorktree: result.isEmpty,
+        ),
+      );
     }
     return result;
   }
@@ -126,7 +129,9 @@ class GitWorktreeService {
       final err = (result.stderr as String?)?.trim();
       final out = (result.stdout as String?)?.trim();
       final detail = (err == null || err.isEmpty) ? (out ?? '') : err;
-      appLogger.d('[GitWorktree] ${args.join(' ')} exit ${result.exitCode}: $detail');
+      appLogger.d(
+        '[GitWorktree] ${args.join(' ')} exit ${result.exitCode}: $detail',
+      );
       throw GitException(detail.isEmpty ? 'git ${args.first} failed' : detail);
     }
     return (result.stdout as String?) ?? '';
@@ -138,7 +143,12 @@ class GitWorktreeService {
   /// raises a [ProcessException]).
   Future<List<GitWorktree>> list(String repoPath) async {
     try {
-      final out = await _run(repoPath, ['worktree', 'list', '--porcelain', '-z']);
+      final out = await _run(repoPath, [
+        'worktree',
+        'list',
+        '--porcelain',
+        '-z',
+      ]);
       return parseWorktreeList(out, nulDelimited: true);
     } on GitException catch (e) {
       // git <2.36 rejects -z; retry the plain form before giving up.
@@ -160,18 +170,20 @@ class GitWorktreeService {
     }
   }
 
-  static bool _isUnknownZOption(String message) =>
-      RegExp(r'(unknown|invalid) (switch|option).*z', caseSensitive: false)
-          .hasMatch(message);
+  static bool _isUnknownZOption(String message) => RegExp(
+    r'(unknown|invalid) (switch|option).*z',
+    caseSensitive: false,
+  ).hasMatch(message);
 
   /// True when [worktreePath] has uncommitted or untracked changes. Returns
   /// false on any error (never blocks the UI on a probe failure).
   Future<bool> isDirty(String worktreePath) async {
     try {
-      final out = await _run(
-        worktreePath,
-        ['status', '--porcelain', '--untracked-files=all'],
-      );
+      final out = await _run(worktreePath, [
+        'status',
+        '--porcelain',
+        '--untracked-files=all',
+      ]);
       return out.trim().isNotEmpty;
     } on Object {
       return false;

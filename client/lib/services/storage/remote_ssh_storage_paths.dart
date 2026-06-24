@@ -38,22 +38,26 @@ TP_DIR="${TEAMPILOT_APP_DATA_DIR:-${XDG_DATA_HOME:-$HOME_DIR/.local/share}/com.h
 printf '%s\n' "$HOME_DIR" "$TP_DIR"
 ''';
 
-  Future<RemoteSshStoragePaths?> resolve(SshProfile profile) async {
-    try {
-      final client = await _clientFactory.clientFor(profile);
-      final result = await (_runCommand ?? _defaultRun)(client, resolveCommand);
-      if (result.exitCode != 0) return null;
-      final lines = utf8
-          .decode(result.stdout, allowMalformed: true)
-          .split('\n')
-          .map((l) => l.trim())
-          .where((l) => l.isNotEmpty)
-          .toList();
-      if (lines.length < 2) return null;
-      return RemoteSshStoragePaths(home: lines[0], teampilotAppDir: lines[1]);
-    } on Object {
-      return null;
+  Future<RemoteSshStoragePaths> resolve(SshProfile profile) async {
+    final client = await _clientFactory.clientFor(profile);
+    final result = await (_runCommand ?? _defaultRun)(client, resolveCommand);
+    if (result.exitCode != 0) {
+      throw StateError(
+        'Failed to resolve remote SSH storage paths (${result.exitCode}).',
+      );
     }
+    final lines = utf8
+        .decode(result.stdout, allowMalformed: true)
+        .split('\n')
+        .map((l) => l.trim())
+        .where((l) => l.isNotEmpty)
+        .toList();
+    if (lines.length < 2) {
+      throw StateError(
+        'Remote SSH path resolve returned ${lines.length} line(s), expected 2.',
+      );
+    }
+    return RemoteSshStoragePaths(home: lines[0], teampilotAppDir: lines[1]);
   }
 
   /// Fallback when the combined command fails.

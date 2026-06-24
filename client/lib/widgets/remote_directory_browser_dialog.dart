@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
 import '../l10n/l10n_extensions.dart';
+import '../utils/logger.dart';
 import '../services/storage/remote_directory_browser.dart';
 import '../services/storage/workspace_directory_picker.dart';
 import '../theme/app_icon_sizes.dart';
@@ -57,7 +58,12 @@ class _RemoteDirectoryBrowserDialogState
         _loading = false;
         _error = null;
       });
-    } catch (_) {
+    } catch (error, stackTrace) {
+      appLogger.e(
+        'Failed to initialize remote directory browser',
+        error: error,
+        stackTrace: stackTrace,
+      );
       if (!mounted) return;
       setState(() {
         _loading = false;
@@ -228,11 +234,7 @@ class _RemoteDirectoryBrowserDialogState
         itemBuilder: (context, index) {
           final name = listing.directories[index];
           return ListTile(
-            dense: true,
-            leading: Icon(
-              Icons.folder_outlined,
-              size: context.appIconSizes.md,
-            ),
+            leading: Icon(Icons.folder_outlined, size: context.appIconSizes.md),
             title: Text(name),
             trailing: Icon(
               Icons.chevron_right_rounded,

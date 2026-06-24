@@ -9,6 +9,7 @@ import 'package:teampilot/cubits/chat_cubit.dart';
 import 'package:teampilot/cubits/member_presence_cubit.dart';
 import 'package:teampilot/models/member_presence.dart';
 import 'package:teampilot/models/team_config.dart';
+import 'package:teampilot/models/workspace_folder.dart';
 import 'package:teampilot/repositories/session_repository.dart';
 import 'package:teampilot/services/team/member_presence_service.dart';
 import 'package:teampilot/services/team_bus/bus_user_line_capture.dart';
@@ -415,7 +416,7 @@ void main() {
         async.flushMicrotasks();
 
         unawaited(
-          repo.createWorkspace('/tmp').then((workspace) async {
+          repo.createWorkspace([WorkspaceFolder(path: '/tmp')]).then((workspace) async {
             final localSession = await repo.createSession(workspace.workspaceId);
             await chatCubit.openSessionTab(localSession, connectImmediately: false);
             async.flushMicrotasks();

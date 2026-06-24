@@ -14,6 +14,7 @@ import '../../../models/app_session.dart';
 import '../../../models/cli_preset.dart';
 import '../../../models/personal_profile.dart';
 import '../../../models/team_config.dart';
+import '../../../models/workspace_topology.dart';
 import '../../../services/cli/registry/cli_tool_registry_scope.dart';
 import '../../../services/git/git_worktree_service.dart';
 import '../../../services/storage/app_storage.dart';
@@ -22,6 +23,7 @@ import '../../../utils/session_worktree_grouping.dart';
 import '../../../utils/workspace_path_utils.dart';
 import '../../../widgets/app_toast/app_toast.dart';
 import '../../../theme/app_toast_theme.dart';
+import 'mixed_workspace_personal_launch_banner.dart';
 import 'worktree_create_dialog.dart';
 import 'worktree_group_section.dart';
 import '../../../theme/app_text_styles.dart';
@@ -101,13 +103,19 @@ class _WorkspaceSidebarState
     });
     final sortedSessions = sortAppSessions(rawSessions, sort: _sessionSort);
     final wtState = context.watch<WorktreeCubit>().state;
+    final personalLaunchBlocked = personalIdentityBlockedForWorkspace(
+      isPersonal: _isPersonal,
+      folders: widget.workspace.folders,
+    );
 
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 18),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          if (_isPersonal) ...[
+          if (personalLaunchBlocked)
+            const MixedWorkspacePersonalLaunchBanner(),
+          if (_isPersonal && !personalLaunchBlocked) ...[
             _PresetDropdown(
               workspaceId: widget.workspace.workspaceId,
               profileId: widget.profileId,
@@ -118,6 +126,8 @@ class _WorkspaceSidebarState
             key: AppKeys.newChatSidebarTile,
             icon: Icons.edit_outlined,
             label: l10n.homeWorkspaceNewConversation,
+            enabled: !personalLaunchBlocked,
+            disabledTooltip: l10n.mixedWorkspaceRequiresTeamLaunch,
             onTap: throttledAsync(
               'workspace_sidebar_new_chat',
               () => _startNewConversation(context),
@@ -154,6 +164,7 @@ class _WorkspaceSidebarState
                         workspace: widget.workspace,
                         isPersonal: widget.isPersonalWorkspace,
                         sessionTeamFilter: widget.sessionTeamFilter,
+                        personalLaunchBlocked: personalLaunchBlocked,
                       ),
                     ),
                   ),
@@ -186,7 +197,12 @@ class _WorkspaceSidebarState
             ),
           ),
           Expanded(
-            child: _buildBody(context, sortedSessions, wtState),
+            child: _buildBody(
+              context,
+              sortedSessions,
+              wtState,
+              personalLaunchBlocked: personalLaunchBlocked,
+            ),
           ),
         ],
       ),
@@ -199,8 +215,9 @@ class _WorkspaceSidebarState
   Widget _buildBody(
     BuildContext context,
     List<AppSession> sortedSessions,
-    WorktreeState wtState,
-  ) {
+    WorktreeState wtState, {
+    required bool personalLaunchBlocked,
+  }) {
     final l10n = context.l10n;
     if (!wtState.hasMultipleWorktrees) {
       return sortedSessions.isEmpty
@@ -222,6 +239,7 @@ class _WorkspaceSidebarState
             isPersonal: widget.isPersonalWorkspace,
             profileId: widget.profileId,
             sessionTeamFilter: widget.sessionTeamFilter,
+            personalLaunchBlocked: personalLaunchBlocked,
             collapsed:
                 wtState.collapsed.contains(worktreeGroupCollapseKey(group)),
             isCurrent: group.worktree != null &&
@@ -244,6 +262,10 @@ class _WorkspaceSidebarState
       repoName: _basename(repoPath),
       repoPath: repoPath,
       layout: layout.worktreePathFor,
+      showStartConversationOption: !personalIdentityBlockedForWorkspace(
+        isPersonal: widget.isPersonalWorkspace,
+        folders: widget.workspace.folders,
+      ),
     );
     if (result == null) return;
     try {
@@ -329,14 +351,23 @@ class _WorkspaceSidebarState
       session: session,
       index: index,
       tapThrottleKeyPrefix: 'workspace_sidebar_session',
-      onTap: () => unawaited(
-        openWorkspaceSessionTab(
-          context,
-          widget.workspace,
-          session,
+      onTap: () {
+        if (personalIdentityBlockedForWorkspace(
           isPersonal: widget.isPersonalWorkspace,
-        ),
-      ),
+          folders: widget.workspace.folders,
+        )) {
+          showPersonalLaunchBlockedToast(context);
+          return;
+        }
+        unawaited(
+          openWorkspaceSessionTab(
+            context,
+            widget.workspace,
+            session,
+            isPersonal: widget.isPersonalWorkspace,
+          ),
+        );
+      },
     );
   }
 
@@ -509,12 +540,16 @@ class _SidebarActionTile extends StatefulWidget {
     required this.icon,
     required this.label,
     required this.onTap,
+    this.enabled = true,
+    this.disabledTooltip,
     super.key,
   });
 
   final IconData icon;
   final String label;
   final VoidCallback onTap;
+  final bool enabled;
+  final String? disabledTooltip;
 
   @override
   State<_SidebarActionTile> createState() => _SidebarActionTileState();
@@ -523,34 +558,41 @@ class _SidebarActionTile extends StatefulWidget {
 class _SidebarActionTileState extends State<_SidebarActionTile> {
   bool _hovered = false;
 
+  bool get _enabled => widget.enabled;
+
   @override
   Widget build(BuildContext context) {
     final cs = Theme.of(context).colorScheme;
     final styles = AppTextStyles.of(context);
-    final background = _hovered
+    final background = !_enabled
+        ? Colors.transparent
+        : _hovered
         ? cs.onSurface.withValues(alpha: 0.05)
         : Colors.transparent;
+    final foreground = _enabled
+        ? cs.onSurface
+        : cs.onSurface.withValues(alpha: 0.38);
 
-    return MouseRegion(
-      onEnter: (_) => setState(() => _hovered = true),
-      onExit: (_) => setState(() => _hovered = false),
+    final tile = MouseRegion(
+      onEnter: _enabled ? (_) => setState(() => _hovered = true) : null,
+      onExit: _enabled ? (_) => setState(() => _hovered = false) : null,
       child: Material(
         color: background,
         borderRadius: BorderRadius.circular(8),
         child: InkWell(
           borderRadius: BorderRadius.circular(8),
-          onTap: widget.onTap,
+          onTap: _enabled ? widget.onTap : null,
           child: Padding(
             padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 10),
             child: Row(
               children: [
-                Icon(widget.icon, size: context.appIconSizes.md, color: cs.onSurface),
+                Icon(widget.icon, size: context.appIconSizes.md, color: foreground),
                 const SizedBox(width: 10),
                 Expanded(
                   child: Text(
                     widget.label,
                     style: styles.prominent.copyWith(
-                      color: cs.onSurface,
+                      color: foreground,
                       fontWeight: FontWeight.w500,
                     ),
                   ),
@@ -561,6 +603,11 @@ class _SidebarActionTileState extends State<_SidebarActionTile> {
         ),
       ),
     );
+
+    if (!_enabled && widget.disabledTooltip != null) {
+      return Tooltip(message: widget.disabledTooltip!, child: tile);
+    }
+    return tile;
   }
 }
 

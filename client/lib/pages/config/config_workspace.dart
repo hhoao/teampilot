@@ -16,6 +16,7 @@ import 'ai_features_config_section.dart';
 import 'cli_config_section.dart';
 import 'layout_config_section.dart';
 import 'session_config_section.dart';
+import 'ssh_profiles_config_section.dart';
 
 /// Opens the workspace quick-settings modal from anywhere (e.g. the title bar).
 ///
@@ -30,7 +31,7 @@ Future<void> showWorkspaceSettingsDialog(BuildContext context) {
     final navigator = Navigator.of(context);
     context.read<ConfigCubit>().selectSection(section);
     navigator.pop();
-    router.go('/config/${section.name}');
+    router.go('/config/${section.routeSegment}');
   }
 
   return showSettingsDialog(
@@ -64,6 +65,13 @@ Future<void> showWorkspaceSettingsDialog(BuildContext context) {
         title: l10n.aiFeatures,
         subtitle: l10n.aiFeaturesPageSubtitle,
         body: const AiFeaturesConfigWorkspace(showHeading: false),
+      ),
+      SettingsDialogEntry(
+        icon: Icons.dns_outlined,
+        navLabel: l10n.sshProfilesSettingsTitle,
+        title: l10n.sshProfilesPageTitle,
+        subtitle: l10n.sshProfilesPageSubtitle,
+        body: const SshProfilesConfigWorkspace(showHeading: false),
       ),
       SettingsDialogEntry(
         icon: Icons.info_outline,
@@ -128,7 +136,7 @@ class ConfigSettingsHubPage extends StatelessWidget {
           icon: Icons.auto_awesome_outlined,
           onTap: throttledTap('config_hub_ai_features', () {
             context.read<ConfigCubit>().selectSection(ConfigSection.aiFeatures);
-            context.push('/config/ai-features');
+            context.push('/config/${ConfigSection.aiFeatures.routeSegment}');
           }),
         ),
         WorkspaceHubEntry(
@@ -137,7 +145,10 @@ class ConfigSettingsHubPage extends StatelessWidget {
           icon: Icons.dns_outlined,
           onTap: throttledTap(
             'config_hub_ssh_profiles',
-            () => context.push('/config/ssh-profiles'),
+            () {
+              context.read<ConfigCubit>().selectSection(ConfigSection.sshProfiles);
+              context.push('/config/${ConfigSection.sshProfiles.routeSegment}');
+            },
           ),
         ),
         WorkspaceHubEntry(
@@ -190,7 +201,7 @@ class ConfigWorkspace extends StatelessWidget {
         section: currentSection,
         onSelectSection: (selected) {
           context.read<ConfigCubit>().selectSection(selected);
-          context.go('/config/${selected.name}');
+          context.go('/config/${selected.routeSegment}');
         },
         l10n: l10n,
       ),
@@ -201,6 +212,9 @@ class ConfigWorkspace extends StatelessWidget {
         ),
         ConfigSection.cli => CliConfigWorkspace(showHeading: showHeading),
         ConfigSection.aiFeatures => AiFeaturesConfigWorkspace(
+          showHeading: showHeading,
+        ),
+        ConfigSection.sshProfiles => SshProfilesConfigWorkspace(
           showHeading: showHeading,
         ),
         ConfigSection.about => AboutConfigWorkspace(showHeading: showHeading),
@@ -266,6 +280,16 @@ class ConfigNavPanel extends StatelessWidget {
           onTap: throttledTap(
             'config_nav_ai_features',
             () => onSelectSection(ConfigSection.aiFeatures),
+          ),
+        ),
+        WorkspaceHubEntry(
+          key: AppKeys.configSshProfilesSectionButton,
+          title: l10n.sshProfilesSettingsTitle,
+          icon: Icons.dns_outlined,
+          selected: section == ConfigSection.sshProfiles,
+          onTap: throttledTap(
+            'config_nav_ssh_profiles',
+            () => onSelectSection(ConfigSection.sshProfiles),
           ),
         ),
         WorkspaceHubEntry(

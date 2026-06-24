@@ -2,6 +2,7 @@ import 'package:collection/collection.dart';
 
 import '../../models/team_config.dart';
 import '../../models/workspace.dart';
+import '../../models/workspace_folder.dart';
 import '../../repositories/session_repository.dart';
 import '../../services/storage/app_storage.dart';
 import '../../services/storage/launch_profile_provisioner.dart';
@@ -34,7 +35,7 @@ abstract final class DefaultWorkspaceService {
         .firstOrNull;
 
     workspace ??= await repository.createWorkspace(
-      primaryPath,
+      [WorkspaceFolder(path: primaryPath)],
       display: defaultDisplay,
     );
 

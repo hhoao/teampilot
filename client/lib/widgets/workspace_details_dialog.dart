@@ -1,8 +1,4 @@
-﻿import 'package:flutter/material.dart';
-import 'package:teampilot/theme/app_icon_sizes.dart';
-import 'package:teampilot/theme/app_toast_theme.dart';
-import 'package:teampilot/widgets/app_toast/app_toast.dart';
-import 'package:flutter/services.dart';
+import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
 import '../cubits/chat_cubit.dart';
@@ -10,9 +6,8 @@ import '../l10n/l10n_extensions.dart';
 import '../models/workspace.dart';
 import '../models/workspace_folder.dart';
 import '../repositories/session_repository.dart';
-import '../utils/workspace_path_picker.dart';
-import '../utils/workspace_path_utils.dart';
 import 'app_dialog.dart';
+import 'workspace_folders_editor.dart';
 
 Future<void> showWorkspaceDetailsDialog(
   BuildContext context,
@@ -41,23 +36,18 @@ class _WorkspaceDetailsDialog extends StatefulWidget {
 
 class _WorkspaceDetailsDialogState extends State<_WorkspaceDetailsDialog> {
   late final TextEditingController _displayController;
-  late List<String> _additionalPaths;
-  late String _primaryPath;
+  late List<WorkspaceFolder> _folders;
   var _saving = false;
 
   @override
   void initState() {
     super.initState();
     _displayController = TextEditingController(text: widget.workspace.display);
-    _additionalPaths = List<String>.from(widget.workspace.extraFolderPaths);
-    _primaryPath = widget.workspace.firstFolderPath;
+    _folders = List<WorkspaceFolder>.from(widget.workspace.folders);
+    if (_folders.isEmpty) {
+      _folders = [const WorkspaceFolder(path: '')];
+    }
   }
-
-  /// The target machine all folders of this workspace live on (P2: one target
-  /// per workspace). Used to route the picker to the local or remote browser.
-  String get _targetId => widget.workspace.folders.isNotEmpty
-      ? widget.workspace.folders.first.targetId
-      : WorkspaceFolder.localTargetId;
 
   @override
   void dispose() {
@@ -74,86 +64,19 @@ class _WorkspaceDetailsDialogState extends State<_WorkspaceDetailsDialog> {
         '${two(local.hour)}:${two(local.minute)}';
   }
 
-  void _copyPath(String path) {
-    Clipboard.setData(ClipboardData(text: path));
-    final l10n = context.l10n;
-    AppToast.show(
-      context,
-      message: l10n.pathCopied(path),
-      variant: AppToastVariant.success,
-    );
-  }
-
-  Future<void> _editPrimary() async {
-    final path = await pickWorkspaceDirectoryPath(context, targetId: _targetId);
-    if (path == null || path.trim().isEmpty || !mounted) return;
-    final trimmed = normalizeWorkspacePath(path);
-    final l10n = context.l10n;
-    if (workspacePathsContains(_additionalPaths, trimmed)) {
-      AppToast.show(
-        context,
-        message: l10n.workspaceDirectoryAlreadyAdded,
-        variant: AppToastVariant.warning,
-      );
-      return;
-    }
-    setState(() => _primaryPath = trimmed);
-  }
-
-  Future<void> _addDirectory() async {
-    final path = await pickWorkspaceDirectoryPath(context, targetId: _targetId);
-    if (path == null || path.trim().isEmpty || !mounted) return;
-    final trimmed = normalizeWorkspacePath(path);
-    final l10n = context.l10n;
-    if (workspacePathsEqual(trimmed, _primaryPath)) {
-      AppToast.show(
-        context,
-        message: l10n.workspaceDirectoryAlreadyPrimary,
-        variant: AppToastVariant.warning,
-      );
-      return;
-    }
-    if (workspacePathsContains(_additionalPaths, trimmed)) {
-      AppToast.show(
-        context,
-        message: l10n.workspaceDirectoryAlreadyAdded,
-        variant: AppToastVariant.warning,
-      );
-      return;
-    }
-    setState(() => _additionalPaths = [..._additionalPaths, trimmed]);
-  }
-
   Future<void> _save() async {
     if (_saving) return;
+    final valid = _folders.where((f) => f.path.trim().isNotEmpty).toList();
+    if (valid.isEmpty) return;
     setState(() => _saving = true);
     final repo = context.read<SessionRepository>();
     final cubit = context.read<ChatCubit>();
     try {
-      // Save via folders so each folder's targetId is preserved (P2): the
-      // primary keeps the workspace target, additional dirs keep their own.
-      final targetByPath = {
-        for (final f in widget.workspace.folders)
-          normalizeWorkspacePath(f.path): f.targetId,
-      };
-      final primaryTargetId =
-          targetByPath[normalizeWorkspacePath(widget.workspace.firstFolderPath)] ??
-          WorkspaceFolder.localTargetId;
-      final folders = <WorkspaceFolder>[
-        WorkspaceFolder(path: _primaryPath, targetId: primaryTargetId),
-        for (final path in _additionalPaths)
-          WorkspaceFolder(
-            path: path,
-            targetId:
-                targetByPath[normalizeWorkspacePath(path)] ??
-                WorkspaceFolder.localTargetId,
-          ),
-      ];
       await repo.updateWorkspaceMetadata(
         widget.workspace.workspaceId,
         display: _displayController.text,
       );
-      await repo.updateWorkspaceFolders(widget.workspace.workspaceId, folders);
+      await repo.updateWorkspaceFolders(widget.workspace.workspaceId, valid);
       await cubit.loadWorkspaceData(repo);
       if (mounted) Navigator.of(context).pop();
     } finally {
@@ -165,7 +88,6 @@ class _WorkspaceDetailsDialogState extends State<_WorkspaceDetailsDialog> {
   Widget build(BuildContext context) {
     final l10n = context.l10n;
     final p = widget.workspace;
-    final theme = Theme.of(context);
 
     return AppDialog(
       scrollable: true,
@@ -177,89 +99,28 @@ class _WorkspaceDetailsDialogState extends State<_WorkspaceDetailsDialog> {
           AppDialogHeader(title: l10n.workspaceDetailsTitle),
           const SizedBox(height: 16),
           TextField(
-                controller: _displayController,
-                decoration: InputDecoration(labelText: l10n.workspaceDisplayName),
-              ),
-              const SizedBox(height: 16),
-              _DetailRow(
-                label: l10n.workspacePrimaryPath,
-                value: _primaryPath.isNotEmpty ? _primaryPath : '—',
-                onCopy: _primaryPath.isNotEmpty
-                    ? () => _copyPath(_primaryPath)
-                    : null,
-                onEdit: _saving ? null : _editPrimary,
-                editTooltip: l10n.editWorkspacePrimaryPath,
-              ),
-              const SizedBox(height: 12),
-              Text(
-                l10n.workspaceAdditionalDirectories,
-                style: theme.textTheme.labelLarge,
-              ),
-              const SizedBox(height: 6),
-              if (_additionalPaths.isEmpty)
-                Text(
-                  l10n.workspaceNoAdditionalDirectories,
-                  style: theme.textTheme.bodySmall?.copyWith(
-                    color: theme.colorScheme.onSurfaceVariant,
-                  ),
-                )
-              else
-                ..._additionalPaths.map(
-                  (path) => Padding(
-                    padding: const EdgeInsets.only(bottom: 6),
-                    child: Row(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Expanded(
-                          child: SelectableText(
-                            path,
-                            style: theme.textTheme.bodySmall,
-                          ),
-                        ),
-                        IconButton(
-                          tooltip: l10n.copyFolderPath,
-                          icon: Icon(Icons.copy, size: context.appIconSizes.md),
-                          onPressed: () => _copyPath(path),
-                        ),
-                        IconButton(
-                          tooltip: l10n.removeWorkspaceDirectory,
-                          icon: Icon(
-                            Icons.remove_circle_outline,
-                            size: context.appIconSizes.md,
-                            color: theme.colorScheme.error,
-                          ),
-                          onPressed: () {
-                            setState(
-                              () => _additionalPaths = _additionalPaths
-                                  .where((e) => e != path)
-                                  .toList(),
-                            );
-                          },
-                        ),
-                      ],
-                    ),
-                  ),
-                ),
-              const SizedBox(height: 8),
-              Align(
-                alignment: Alignment.centerLeft,
-                child: TextButton.icon(
-                  onPressed: _saving ? null : _addDirectory,
-                  icon: Icon(Icons.create_new_folder_outlined, size: context.appIconSizes.md),
-                  label: Text(l10n.addWorkspaceDirectory),
-                ),
-              ),
-              const SizedBox(height: 12),
-              _DetailRow(
-                label: l10n.workspaceSessionCount,
-                value: '${widget.sessionCount}',
-              ),
-              const SizedBox(height: 8),
-              _DetailRow(
-                label: l10n.workspaceCreatedAt,
-                value: _formatTimestamp(p.createdAt),
-              ),
-              const SizedBox(height: 8),
+            controller: _displayController,
+            decoration: InputDecoration(labelText: l10n.workspaceDisplayName),
+          ),
+          const SizedBox(height: 16),
+          Text(l10n.workspaceFoldersSectionTitle, style: Theme.of(context).textTheme.labelLarge),
+          const SizedBox(height: 8),
+          WorkspaceFoldersEditor(
+            folders: _folders,
+            enabled: !_saving,
+            onChanged: (next) => setState(() => _folders = next),
+          ),
+          const SizedBox(height: 12),
+          _DetailRow(
+            label: l10n.workspaceSessionCount,
+            value: '${widget.sessionCount}',
+          ),
+          const SizedBox(height: 8),
+          _DetailRow(
+            label: l10n.workspaceCreatedAt,
+            value: _formatTimestamp(p.createdAt),
+          ),
+          const SizedBox(height: 8),
           _DetailRow(
             label: l10n.workspaceUpdatedAt,
             value: _formatTimestamp(p.updatedAt),
@@ -289,19 +150,10 @@ class _WorkspaceDetailsDialogState extends State<_WorkspaceDetailsDialog> {
 }
 
 class _DetailRow extends StatelessWidget {
-  const _DetailRow({
-    required this.label,
-    required this.value,
-    this.onCopy,
-    this.onEdit,
-    this.editTooltip,
-  });
+  const _DetailRow({required this.label, required this.value});
 
   final String label;
   final String value;
-  final VoidCallback? onCopy;
-  final VoidCallback? onEdit;
-  final String? editTooltip;
 
   @override
   Widget build(BuildContext context) {
@@ -311,26 +163,7 @@ class _DetailRow extends StatelessWidget {
       children: [
         Text(label, style: theme.textTheme.labelLarge),
         const SizedBox(height: 4),
-        Row(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Expanded(
-              child: SelectableText(value, style: theme.textTheme.bodyMedium),
-            ),
-            if (onEdit != null)
-              IconButton(
-                tooltip: editTooltip,
-                icon: Icon(Icons.edit_outlined, size: context.appIconSizes.md),
-                onPressed: onEdit,
-              ),
-            if (onCopy != null)
-              IconButton(
-                tooltip: context.l10n.copyFolderPath,
-                icon: Icon(Icons.copy, size: context.appIconSizes.md),
-                onPressed: onCopy,
-              ),
-          ],
-        ),
+        SelectableText(value, style: theme.textTheme.bodyMedium),
       ],
     );
   }

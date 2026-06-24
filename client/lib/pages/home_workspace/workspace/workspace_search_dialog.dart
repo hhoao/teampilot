@@ -28,6 +28,7 @@ Future<void> showWorkspaceSearchDialog(
   required Workspace workspace,
   required bool isPersonal,
   String sessionTeamFilter = '',
+  bool personalLaunchBlocked = false,
 }) {
   final chatCubit = context.read<ChatCubit>();
   final editorCubit = context.read<EditorCubit>();
@@ -45,6 +46,10 @@ Future<void> showWorkspaceSearchDialog(
       onOpenSession: (session) {
         Navigator.of(dialogContext).pop();
         if (!context.mounted) return;
+        if (personalLaunchBlocked) {
+          showPersonalLaunchBlockedToast(context);
+          return;
+        }
         unawaited(
           openWorkspaceSessionTab(
             context,

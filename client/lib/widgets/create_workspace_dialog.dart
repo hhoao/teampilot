@@ -1,18 +1,14 @@
 ﻿import 'package:flutter/material.dart';
-import 'package:flutter_bloc/flutter_bloc.dart';
-import 'package:teampilot/theme/app_icon_sizes.dart';
 import 'package:teampilot/theme/app_toast_theme.dart';
 import 'package:teampilot/widgets/app_toast/app_toast.dart';
 
 import '../l10n/l10n_extensions.dart';
-import '../services/storage/home_target_controller.dart';
-import '../utils/workspace_path_picker.dart';
-import '../utils/workspace_path_utils.dart';
+import '../models/workspace_folder.dart';
 import 'app_dialog.dart';
+import 'workspace_create_directory_picker.dart';
 
 typedef CreateWorkspaceDraft = ({
-  String primaryPath,
-  List<String> additionalPaths,
+  List<WorkspaceFolder> folders,
   String display,
 });
 
@@ -32,8 +28,8 @@ class _CreateWorkspaceDialog extends StatefulWidget {
 
 class _CreateWorkspaceDialogState extends State<_CreateWorkspaceDialog> {
   final _displayController = TextEditingController();
-  String _primaryPath = '';
-  final _additionalPaths = <String>[];
+  var _targetId = WorkspaceFolder.localTargetId;
+  var _folders = <WorkspaceFolder>[];
 
   @override
   void dispose() {
@@ -41,41 +37,15 @@ class _CreateWorkspaceDialogState extends State<_CreateWorkspaceDialog> {
     super.dispose();
   }
 
-  Future<void> _pickPrimary() async {
-    final targetId = context.read<HomeTargetController>().currentId;
-    final path = await pickWorkspaceDirectoryPath(context, targetId: targetId);
-    if (path == null || path.trim().isEmpty || !mounted) return;
-    setState(() => _primaryPath = normalizeWorkspacePath(path));
-  }
-
-  Future<void> _addAdditional() async {
-    final targetId = context.read<HomeTargetController>().currentId;
-    final path = await pickWorkspaceDirectoryPath(context, targetId: targetId);
-    if (path == null || path.trim().isEmpty || !mounted) return;
-    final l10n = context.l10n;
-    final trimmed = normalizeWorkspacePath(path);
-    if (_primaryPath.isNotEmpty && workspacePathsEqual(trimmed, _primaryPath)) {
-      AppToast.show(
-        context,
-        message: l10n.workspaceDirectoryAlreadyPrimary,
-        variant: AppToastVariant.warning,
-      );
-      return;
-    }
-    if (workspacePathsContains(_additionalPaths, trimmed)) {
-      AppToast.show(
-        context,
-        message: l10n.workspaceDirectoryAlreadyAdded,
-        variant: AppToastVariant.warning,
-      );
-      return;
-    }
-    setState(() => _additionalPaths.add(trimmed));
+  void _onTargetChanged(String next) {
+    if (next == _targetId) return;
+    setState(() => _targetId = next);
   }
 
   void _create() {
     final l10n = context.l10n;
-    if (_primaryPath.isEmpty) {
+    final valid = _folders.where((f) => f.path.trim().isNotEmpty).toList();
+    if (valid.isEmpty) {
       AppToast.show(
         context,
         message: l10n.workspacePrimaryPathRequired,
@@ -84,8 +54,7 @@ class _CreateWorkspaceDialogState extends State<_CreateWorkspaceDialog> {
       return;
     }
     Navigator.of(context).pop((
-      primaryPath: _primaryPath,
-      additionalPaths: List<String>.from(_additionalPaths),
+      folders: valid,
       display: _displayController.text.trim(),
     ));
   }
@@ -93,7 +62,8 @@ class _CreateWorkspaceDialogState extends State<_CreateWorkspaceDialog> {
   @override
   Widget build(BuildContext context) {
     final l10n = context.l10n;
-    final theme = Theme.of(context);
+    final hasDirectory = _folders.isNotEmpty;
+    final firstPath = hasDirectory ? _folders.first.path : '';
 
     return AppDialog(
       scrollable: true,
@@ -104,79 +74,19 @@ class _CreateWorkspaceDialogState extends State<_CreateWorkspaceDialog> {
         children: [
           AppDialogHeader(title: l10n.newWorkspace),
           const SizedBox(height: 16),
-          TextField(
-                controller: _displayController,
-                decoration: InputDecoration(labelText: l10n.workspaceDisplayName),
-              ),
-              const SizedBox(height: 16),
-              Text(l10n.workspacePrimaryPath, style: theme.textTheme.labelLarge),
-              const SizedBox(height: 6),
-              if (_primaryPath.isEmpty)
-                Text(
-                  l10n.workspacePrimaryPathNotSelected,
-                  style: theme.textTheme.bodySmall?.copyWith(
-                    color: theme.colorScheme.onSurfaceVariant,
-                  ),
-                )
-              else
-                SelectableText(_primaryPath, style: theme.textTheme.bodyMedium),
-              const SizedBox(height: 8),
-              Align(
-                alignment: Alignment.centerLeft,
-                child: FilledButton.tonalIcon(
-                  onPressed: _pickPrimary,
-                  icon: Icon(Icons.folder_open, size: context.appIconSizes.md),
-                  label: Text(l10n.pickPrimaryDirectory),
-                ),
-              ),
-              const SizedBox(height: 16),
-              Text(
-                l10n.workspaceAdditionalDirectories,
-                style: theme.textTheme.labelLarge,
-              ),
-              const SizedBox(height: 6),
-              if (_additionalPaths.isEmpty)
-                Text(
-                  l10n.workspaceNoAdditionalDirectories,
-                  style: theme.textTheme.bodySmall?.copyWith(
-                    color: theme.colorScheme.onSurfaceVariant,
-                  ),
-                )
-              else
-                ..._additionalPaths.map(
-                  (path) => Padding(
-                    padding: const EdgeInsets.only(bottom: 4),
-                    child: Row(
-                      children: [
-                        Expanded(
-                          child: SelectableText(
-                            path,
-                            style: theme.textTheme.bodySmall,
-                          ),
-                        ),
-                        IconButton(
-                          tooltip: l10n.removeWorkspaceDirectory,
-                          icon: Icon(
-                            Icons.remove_circle_outline,
-                            size: context.appIconSizes.md,
-                            color: theme.colorScheme.error,
-                          ),
-                          onPressed: () {
-                            setState(() => _additionalPaths.remove(path));
-                          },
-                        ),
-                      ],
-                    ),
-                  ),
-                ),
-              const SizedBox(height: 8),
-          Align(
-            alignment: Alignment.centerLeft,
-            child: TextButton.icon(
-              onPressed: _addAdditional,
-              icon: Icon(Icons.create_new_folder_outlined, size: context.appIconSizes.md),
-              label: Text(l10n.addWorkspaceDirectory),
-            ),
+          WorkspaceCreateDirectoryPicker(
+            targetId: _targetId,
+            onTargetChanged: _onTargetChanged,
+            folders: _folders,
+            onFoldersChanged: (next) => setState(() => _folders = next),
+          ),
+          const SizedBox(height: 16),
+          WorkspaceCreateNameField(
+            controller: _displayController,
+            hint: hasDirectory
+                ? _basename(firstPath)
+                : l10n.homeWorkspaceNewWorkspaceNameHint,
+            onSubmitted: (_) => _create(),
           ),
           AppDialogActions(
             children: [
@@ -184,11 +94,20 @@ class _CreateWorkspaceDialogState extends State<_CreateWorkspaceDialog> {
                 onPressed: () => Navigator.of(context).pop(),
                 child: Text(l10n.cancel),
               ),
-              FilledButton(onPressed: _create, child: Text(l10n.create)),
+              FilledButton(
+                onPressed: hasDirectory ? _create : null,
+                child: Text(l10n.create),
+              ),
             ],
           ),
         ],
       ),
     );
+  }
+
+  static String _basename(String path) {
+    final parts = path.replaceAll(r'\', '/').split('/')
+      ..removeWhere((p) => p.isEmpty);
+    return parts.isEmpty ? path : parts.last;
   }
 }

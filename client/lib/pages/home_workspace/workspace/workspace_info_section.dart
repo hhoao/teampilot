@@ -1,4 +1,4 @@
-﻿import 'package:flutter/material.dart';
+import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:teampilot/theme/app_icon_sizes.dart';
@@ -14,7 +14,7 @@ import '../../../widgets/workspace_details_dialog.dart';
 import '../../../widgets/settings/workspace_settings_widgets.dart';
 import '../../../services/io/system_folder_opener.dart';
 import '../workspace_actions.dart';
-import 'config/workspace_target_section.dart';
+import 'config/workspace_folders_section.dart';
 import 'workspace_icon_settings_row.dart';
 
 /// Workspace basic settings + danger zone (same layout as [TeamInfoSection]).
@@ -42,7 +42,7 @@ class WorkspaceInfoSection extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          WorkspaceTargetSection(workspace: live),
+          WorkspaceFoldersSection(workspace: live),
           const SizedBox(height: 12),
           SettingsSurfaceCard(
             child: Column(

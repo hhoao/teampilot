@@ -1,5 +1,6 @@
 import 'dart:io';
 
+import 'package:teampilot/models/workspace_folder.dart';
 import 'package:teampilot/repositories/session_repository.dart';
 import 'package:flutter_test/flutter_test.dart';
 
@@ -9,7 +10,7 @@ void main() {
     addTearDown(() => tmp.deleteSync(recursive: true));
 
     final repo = SessionRepository(rootDir: tmp.path);
-    final ws = await repo.createWorkspace('/repo/main');
+    final ws = await repo.createWorkspace([WorkspaceFolder(path: '/repo/main')]);
     final session = await repo.createSession(
       ws.workspaceId,
       personalIdentityId: 'p',
@@ -24,7 +25,7 @@ void main() {
     addTearDown(() => tmp.deleteSync(recursive: true));
 
     final repo = SessionRepository(rootDir: tmp.path);
-    final ws = await repo.createWorkspace('/repo/main');
+    final ws = await repo.createWorkspace([WorkspaceFolder(path: '/repo/main')]);
     final session = await repo.createSession(ws.workspaceId, personalIdentityId: 'p');
     expect(session.firstFolderPath, '/repo/main');
   });

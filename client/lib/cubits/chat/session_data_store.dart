@@ -1,5 +1,6 @@
 import 'package:equatable/equatable.dart';
 
+import '../../models/workspace_folder.dart';
 import '../../models/workspace.dart';
 import '../../models/app_session.dart';
 import '../../models/workspace_icon_ref.dart';
@@ -100,18 +101,16 @@ class SessionDataStore {
 
   Future<({String workspaceId, ChatDataSnapshot snapshot})>
   createWorkspaceWithFirstSession(
-    String primaryPath,
+    List<WorkspaceFolder> folders,
     SessionRepository repo, {
     String sessionTeamId = '',
     List<TeamMemberConfig> rosterMembers = const [],
-    List<String> additionalPaths = const [],
     String display = '',
     bool allowDuplicate = false,
     LaunchProfileRepository? identityRepository,
   }) async {
     final workspace = await repo.createWorkspace(
-      primaryPath,
-      additionalPaths: additionalPaths,
+      folders,
       display: display,
       allowDuplicate: allowDuplicate,
     );
@@ -127,18 +126,17 @@ class SessionDataStore {
   Future<ChatDataSnapshot?> addWorkspaceDirectory(
     SessionRepository repo,
     Workspace workspace,
-    String directoryPath,
+    WorkspaceFolder folder,
   ) async {
-    final trimmed = directoryPath.trim();
-    if (trimmed.isEmpty) return null;
-    if (workspacePathsEqual(trimmed, workspace.firstFolderPath)) return null;
-    if (workspacePathsContains(workspace.extraFolderPaths, trimmed)) {
+    if (folder.path.trim().isEmpty) return null;
+    if (workspacePathsEqual(folder.path, workspace.firstFolderPath)) return null;
+    if (workspace.folders.any((f) => workspacePathsEqual(f.path, folder.path))) {
       return null;
     }
-    await repo.createWorkspace(
-      workspace.firstFolderPath,
-      additionalPaths: [trimmed],
-    );
+    await repo.updateWorkspaceFolders(workspace.workspaceId, [
+      ...workspace.folders,
+      folder.copyWith(path: normalizeWorkspacePath(folder.path)),
+    ]);
     return loadWorkspaceData(repo);
   }
 
@@ -147,13 +145,11 @@ class SessionDataStore {
     String workspaceId, {
     String? display,
     String? defaultProfileId,
-    List<String>? additionalPaths,
   }) async {
     await repo.updateWorkspaceMetadata(
       workspaceId,
       display: display,
       defaultProfileId: defaultProfileId,
-      additionalPaths: additionalPaths,
     );
     return loadWorkspaceData(repo);
   }

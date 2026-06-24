@@ -16,11 +16,10 @@ import 'package:teampilot/services/storage/home_target_controller.dart';
 import 'package:teampilot/services/storage/runtime_target_registry.dart';
 import 'package:teampilot/services/storage/targets_repository.dart';
 
-/// Reachability guard: the workspace target picker is rendered by the *live*
-/// workspace-settings body (WorkspaceInfoSection, which the workspace settings
-/// section actually builds) — not an orphan view.
+/// Reachability guard: the workspace folders editor is rendered by the *live*
+/// workspace-settings body (WorkspaceInfoSection) — not an orphan view.
 void main() {
-  testWidgets('WorkspaceInfoSection shows the workspace target picker',
+  testWidgets('WorkspaceInfoSection shows the workspace folders editor',
       (tester) async {
     await tester.runAsync(() async {
       final tmp = await Directory.systemTemp.createTemp('ws_info_target_');
@@ -68,7 +67,7 @@ void main() {
       await tester.pump();
 
       final l10n = await AppLocalizations.delegate.load(const Locale('en'));
-      expect(find.text(l10n.workspaceTargetTitle), findsOneWidget);
+      expect(find.text(l10n.workspaceFoldersSectionTitle), findsOneWidget);
     });
   });
 }

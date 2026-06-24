@@ -1,6 +1,7 @@
 import 'dart:io';
 
 import 'package:flutter_test/flutter_test.dart';
+import 'package:teampilot/models/team_config.dart';
 import 'package:teampilot/models/workspace_folder.dart';
 import 'package:teampilot/repositories/session_repository.dart';
 
@@ -10,14 +11,20 @@ void main() {
     addTearDown(() => tmp.deleteSync(recursive: true));
     final repo = SessionRepository(rootDir: tmp.path);
 
-    final ws = await repo.createWorkspace('/main', additionalPaths: ['/x']);
+    final ws = await repo.createWorkspace([
+      const WorkspaceFolder(path: '/main'),
+      const WorkspaceFolder(path: '/x'),
+    ]);
     expect(ws.folders.map((f) => f.path), ['/main', '/x']);
     expect(
       ws.folders.every((f) => f.targetId == WorkspaceFolder.localTargetId),
       isTrue,
     );
 
-    final merged = await repo.createWorkspace('/main', additionalPaths: ['/y']);
+    final merged = await repo.createWorkspace([
+      const WorkspaceFolder(path: '/main'),
+      const WorkspaceFolder(path: '/y'),
+    ]);
     expect(merged.workspaceId, ws.workspaceId);
     expect(merged.folders.map((f) => f.path), ['/main', '/x', '/y']);
   });
@@ -28,7 +35,10 @@ void main() {
     addTearDown(() => tmp.deleteSync(recursive: true));
     final repo = SessionRepository(rootDir: tmp.path);
 
-    final ws = await repo.createWorkspace('/main', additionalPaths: ['/x']);
+    final ws = await repo.createWorkspace([
+      const WorkspaceFolder(path: '/main'),
+      const WorkspaceFolder(path: '/x'),
+    ]);
     final inherited = await repo.createSession(ws.workspaceId);
     expect(inherited.folders.map((f) => f.path), ['/main', '/x']);
 
@@ -39,26 +49,38 @@ void main() {
     expect(overridden.folders.map((f) => f.path), ['/override', '/x']);
   });
 
-  test('updateWorkspacePaths rewrites folders', () async {
+  test('updateWorkspaceFolders rewrites folders', () async {
     final tmp = await Directory.systemTemp.createTemp('fs_repo_folders_');
     addTearDown(() => tmp.deleteSync(recursive: true));
     final repo = SessionRepository(rootDir: tmp.path);
 
-    final ws = await repo.createWorkspace('/main', additionalPaths: ['/x']);
-    await repo.updateWorkspacePaths(ws.workspaceId, '/main2', ['/y', '/z']);
+    final ws = await repo.createWorkspace([
+      const WorkspaceFolder(path: '/main'),
+      const WorkspaceFolder(path: '/x'),
+    ]);
+    await repo.updateWorkspaceFolders(ws.workspaceId, [
+      const WorkspaceFolder(path: '/main2'),
+      const WorkspaceFolder(path: '/y'),
+      const WorkspaceFolder(path: '/z'),
+    ]);
     final reloaded = (await repo.loadWorkspaces()).single;
     expect(reloaded.folders.map((f) => f.path), ['/main2', '/y', '/z']);
   });
 
-  test('setWorkspaceTarget stamps all folders with the target id', () async {
+  test('updateWorkspaceFolders can stamp all folders with one target', () async {
     final tmp = await Directory.systemTemp.createTemp('fs_repo_folders_');
     addTearDown(() => tmp.deleteSync(recursive: true));
     final repo = SessionRepository(rootDir: tmp.path);
 
-    final ws = await repo.createWorkspace('/main', additionalPaths: ['/x']);
+    final ws = await repo.createWorkspace([
+      const WorkspaceFolder(path: '/main'),
+      const WorkspaceFolder(path: '/x'),
+    ]);
     expect(ws.folders.every((f) => f.targetId == 'local'), isTrue);
 
-    await repo.setWorkspaceTarget(ws.workspaceId, 'ssh:p1');
+    await repo.updateWorkspaceFolders(ws.workspaceId, [
+      for (final f in ws.folders) f.copyWith(targetId: 'ssh:p1'),
+    ]);
     final reloaded = (await repo.loadWorkspaces()).single;
     expect(reloaded.folders.map((f) => f.path), ['/main', '/x']);
     expect(reloaded.folders.every((f) => f.targetId == 'ssh:p1'), isTrue);
@@ -70,14 +92,16 @@ void main() {
     addTearDown(() => tmp.deleteSync(recursive: true));
     final repo = SessionRepository(rootDir: tmp.path);
 
-    final ws = await repo.createWorkspace('/main', additionalPaths: ['/x']);
+    final ws = await repo.createWorkspace([
+      const WorkspaceFolder(path: '/main'),
+      const WorkspaceFolder(path: '/x'),
+    ]);
     final s = await repo.createSession(ws.workspaceId);
 
     await repo.setMemberFolderAssignment(s.sessionId, 'm1', ['/main', '/x']);
     var reloaded = (await repo.loadSessions()).single;
     expect(reloaded.folderAssignments['m1'], ['/main', '/x']);
 
-    // empty list clears the assignment
     await repo.setMemberFolderAssignment(s.sessionId, 'm1', const []);
     reloaded = (await repo.loadSessions()).single;
     expect(reloaded.folderAssignments.containsKey('m1'), isFalse);
@@ -88,7 +112,9 @@ void main() {
     addTearDown(() => tmp.deleteSync(recursive: true));
     final repo = SessionRepository(rootDir: tmp.path);
 
-    final ws = await repo.createWorkspace('/main');
+    final ws = await repo.createWorkspace([
+      const WorkspaceFolder(path: '/main'),
+    ]);
     await repo.updateWorkspaceFolders(ws.workspaceId, [
       const WorkspaceFolder(path: '/a', targetId: 'wsl:Ubuntu'),
       const WorkspaceFolder(path: '/b', targetId: 'wsl:Ubuntu'),
@@ -96,5 +122,48 @@ void main() {
     final reloaded = (await repo.loadWorkspaces()).single;
     expect(reloaded.folders.map((f) => f.path), ['/a', '/b']);
     expect(reloaded.folders.every((f) => f.targetId == 'wsl:Ubuntu'), isTrue);
+  });
+
+  test('mixed topology via per-folder targets', () async {
+    final tmp = await Directory.systemTemp.createTemp('fs_repo_folders_');
+    addTearDown(() => tmp.deleteSync(recursive: true));
+    final repo = SessionRepository(rootDir: tmp.path);
+
+    final ws = await repo.createWorkspace([
+      const WorkspaceFolder(path: '/local'),
+      const WorkspaceFolder(path: '/remote', targetId: 'ssh:p1'),
+    ]);
+    expect(ws.folders.first.targetId, WorkspaceFolder.localTargetId);
+    expect(ws.folders.last.targetId, 'ssh:p1');
+  });
+
+  test('createSession seeds remembered mixed-workspace member assignments', () async {
+    final tmp = await Directory.systemTemp.createTemp('fs_repo_folders_');
+    addTearDown(() => tmp.deleteSync(recursive: true));
+    final repo = SessionRepository(rootDir: tmp.path);
+
+    final ws = await repo.createWorkspace([
+      const WorkspaceFolder(path: '/local'),
+      const WorkspaceFolder(path: '/remote', targetId: 'ssh:p1'),
+    ]);
+    await repo.updateWorkspaceMemberFolderAssignments(
+      ws.workspaceId,
+      'team-a',
+      assignments: const {
+        'lead': ['/local'],
+        'dev': ['/remote'],
+      },
+    );
+
+    final session = await repo.createSession(
+      ws.workspaceId,
+      sessionTeam: 'team-a',
+      rosterMembers: const [
+        TeamMemberConfig(id: 'lead', name: 'Lead'),
+        TeamMemberConfig(id: 'dev', name: 'Dev'),
+      ],
+    );
+    expect(session.folderAssignments['lead'], ['/local']);
+    expect(session.folderAssignments['dev'], ['/remote']);
   });
 }

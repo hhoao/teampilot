@@ -2,6 +2,7 @@ import 'package:flutter/foundation.dart';
 
 import 'workspace_folder.dart';
 import 'workspace_icon_ref.dart';
+import 'workspace_topology.dart';
 
 @immutable
 class Workspace {
@@ -14,6 +15,7 @@ class Workspace {
     required this.createdAt,
     this.updatedAt = 0,
     this.sessionIds = const [],
+    this.memberFolderAssignmentsByTeam = const {},
   });
 
   factory Workspace({
@@ -25,6 +27,8 @@ class Workspace {
     required int createdAt,
     int updatedAt = 0,
     List<String> sessionIds = const [],
+    Map<String, MemberFolderAssignments> memberFolderAssignmentsByTeam =
+        const {},
   }) {
     return Workspace._(
       workspaceId: workspaceId,
@@ -35,6 +39,9 @@ class Workspace {
       createdAt: createdAt,
       updatedAt: updatedAt,
       sessionIds: sessionIds,
+      memberFolderAssignmentsByTeam: _freezeAssignmentsByTeam(
+        memberFolderAssignmentsByTeam,
+      ),
     );
   }
 
@@ -52,6 +59,9 @@ class Workspace {
       createdAt: json['createdAt'] as int? ?? 0,
       updatedAt: json['updatedAt'] as int? ?? 0,
       sessionIds: sessionIds,
+      memberFolderAssignmentsByTeam: _assignmentsByTeamFromJson(
+        json['memberFolderAssignmentsByTeam'],
+      ),
     );
   }
 
@@ -63,6 +73,9 @@ class Workspace {
   final int createdAt;
   final int updatedAt;
   final List<String> sessionIds;
+
+  /// Remembered per-member folder picks for mixed workspaces, keyed by team id.
+  final Map<String, MemberFolderAssignments> memberFolderAssignmentsByTeam;
 
   String get firstFolderPath => folders.isEmpty ? '' : folders.first.path;
   List<String> get extraFolderPaths => folders.length <= 1
@@ -89,6 +102,7 @@ class Workspace {
     int? createdAt,
     int? updatedAt,
     List<String>? sessionIds,
+    Map<String, MemberFolderAssignments>? memberFolderAssignmentsByTeam,
   }) {
     return Workspace(
       workspaceId: workspaceId ?? this.workspaceId,
@@ -99,6 +113,8 @@ class Workspace {
       createdAt: createdAt ?? this.createdAt,
       updatedAt: updatedAt ?? this.updatedAt,
       sessionIds: sessionIds ?? this.sessionIds,
+      memberFolderAssignmentsByTeam:
+          memberFolderAssignmentsByTeam ?? this.memberFolderAssignmentsByTeam,
     );
   }
 
@@ -112,7 +128,49 @@ class Workspace {
       'createdAt': createdAt,
       'updatedAt': updatedAt,
       'sessionIds': sessionIds,
+      if (memberFolderAssignmentsByTeam.isNotEmpty)
+        'memberFolderAssignmentsByTeam': {
+          for (final e in memberFolderAssignmentsByTeam.entries)
+            e.key: e.value,
+        },
     };
+  }
+
+  static Map<String, MemberFolderAssignments> _freezeAssignmentsByTeam(
+    Map<String, MemberFolderAssignments> raw,
+  ) {
+    return Map<String, MemberFolderAssignments>.unmodifiable({
+      for (final team in raw.entries)
+        if (team.key.trim().isNotEmpty)
+          team.key: Map<String, List<String>>.unmodifiable({
+            for (final member in team.value.entries)
+              if (member.key.trim().isNotEmpty && member.value.isNotEmpty)
+                member.key: List<String>.unmodifiable(member.value),
+          }),
+    });
+  }
+
+  static Map<String, MemberFolderAssignments> _assignmentsByTeamFromJson(
+    Object? raw,
+  ) {
+    if (raw is! Map) return const {};
+    final out = <String, MemberFolderAssignments>{};
+    for (final teamEntry in raw.entries) {
+      final teamId = teamEntry.key.toString().trim();
+      if (teamId.isEmpty || teamEntry.value is! Map) continue;
+      final members = <String, List<String>>{};
+      for (final memberEntry in (teamEntry.value as Map).entries) {
+        final memberId = memberEntry.key.toString().trim();
+        if (memberId.isEmpty || memberEntry.value is! List) continue;
+        final paths = [
+          for (final path in memberEntry.value as List)
+            if (path != null) path.toString().trim(),
+        ].where((p) => p.isNotEmpty).toList(growable: false);
+        if (paths.isNotEmpty) members[memberId] = paths;
+      }
+      if (members.isNotEmpty) out[teamId] = members;
+    }
+    return _freezeAssignmentsByTeam(out);
   }
 
   @override
@@ -127,7 +185,11 @@ class Workspace {
             icon == other.icon &&
             createdAt == other.createdAt &&
             updatedAt == other.updatedAt &&
-            listEquals(sessionIds, other.sessionIds);
+            listEquals(sessionIds, other.sessionIds) &&
+            mapEquals(
+              memberFolderAssignmentsByTeam,
+              other.memberFolderAssignmentsByTeam,
+            );
   }
 
   @override
@@ -140,6 +202,11 @@ class Workspace {
     createdAt,
     updatedAt,
     Object.hashAll(sessionIds),
+    Object.hashAll(
+      memberFolderAssignmentsByTeam.entries.map(
+        (e) => Object.hash(e.key, Object.hashAll(e.value.entries)),
+      ),
+    ),
   );
 }
 

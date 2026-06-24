@@ -42,6 +42,7 @@ Future<WorktreeCreateResult?> showWorktreeCreateDialog(
   required String repoPath,
   required WorktreeLayoutPathResolver layout,
   BranchListLoader? branchLoader,
+  bool showStartConversationOption = true,
 }) {
   return showDialog<WorktreeCreateResult>(
     context: context,
@@ -50,6 +51,7 @@ Future<WorktreeCreateResult?> showWorktreeCreateDialog(
       repoPath: repoPath,
       layout: layout,
       branchLoader: branchLoader ?? _defaultBranchLoader,
+      showStartConversationOption: showStartConversationOption,
     ),
   );
 }
@@ -79,12 +81,14 @@ class _WorktreeCreateDialog extends StatefulWidget {
     required this.repoPath,
     required this.layout,
     required this.branchLoader,
+    required this.showStartConversationOption,
   });
 
   final String repoName;
   final String repoPath;
   final WorktreeLayoutPathResolver layout;
   final BranchListLoader branchLoader;
+  final bool showStartConversationOption;
 
   @override
   State<_WorktreeCreateDialog> createState() => _WorktreeCreateDialogState();
@@ -101,6 +105,9 @@ class _WorktreeCreateDialogState extends State<_WorktreeCreateDialog> {
   @override
   void initState() {
     super.initState();
+    if (!widget.showStartConversationOption) {
+      _startConversation = false;
+    }
     _branch.addListener(() => setState(() {}));
     _loadBranches();
   }
@@ -216,13 +223,14 @@ class _WorktreeCreateDialogState extends State<_WorktreeCreateDialog> {
               ),
               const SizedBox(height: 8),
             ],
-            CheckboxListTile(
-              contentPadding: EdgeInsets.zero,
-              controlAffinity: ListTileControlAffinity.leading,
-              value: _startConversation,
-              onChanged: (v) => setState(() => _startConversation = v ?? false),
-              title: Text(l10n.worktreeStartConversation),
-            ),
+            if (widget.showStartConversationOption)
+              CheckboxListTile(
+                contentPadding: EdgeInsets.zero,
+                controlAffinity: ListTileControlAffinity.leading,
+                value: _startConversation,
+                onChanged: (v) => setState(() => _startConversation = v ?? false),
+                title: Text(l10n.worktreeStartConversation),
+              ),
           ],
         ),
       ),
@@ -241,7 +249,9 @@ class _WorktreeCreateDialogState extends State<_WorktreeCreateDialog> {
                     branch: branch,
                     baseRef: base.isEmpty ? null : base,
                     existingBranch: _existingBranch,
-                    startConversation: _startConversation,
+                    startConversation: widget.showStartConversationOption
+                        ? _startConversation
+                        : false,
                   ));
                 }
               : null,

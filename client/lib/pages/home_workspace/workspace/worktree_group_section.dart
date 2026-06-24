@@ -49,6 +49,7 @@ class WorktreeGroupSection extends StatelessWidget {
     required this.sessionTeamFilter,
     required this.collapsed,
     required this.isCurrent,
+    this.personalLaunchBlocked = false,
     this.worktreeService,
     super.key,
   });
@@ -60,6 +61,7 @@ class WorktreeGroupSection extends StatelessWidget {
   final String sessionTeamFilter;
   final bool collapsed;
   final bool isCurrent;
+  final bool personalLaunchBlocked;
 
   /// Injectable for tests; defaults to [GitWorktreeService.resolve].
   final GitWorktreeService? worktreeService;
@@ -78,7 +80,7 @@ class WorktreeGroupSection extends StatelessWidget {
     // desktop-local backends where local `git worktree remove` is meaningful.
     final manageable =
         wt != null && !wt.isMainWorktree && worktreeManagementEnabled();
-    final selectable = wt != null;
+    final selectable = wt != null && !personalLaunchBlocked;
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -138,6 +140,7 @@ class WorktreeGroupSection extends StatelessWidget {
                     _GroupMenu(
                       worktreePath: wt.path,
                       manageable: manageable,
+                      allowNewConversation: !personalLaunchBlocked,
                       onNewConversation: () {
                         context
                             .read<WorktreeCubit>()
@@ -168,8 +171,9 @@ class WorktreeGroupSection extends StatelessWidget {
             sessions: group.sessions,
             workspace: workspace,
             isPersonal: isPersonal,
+            personalLaunchBlocked: personalLaunchBlocked,
           ),
-        if (!collapsed && group.sessions.isEmpty && wt != null)
+        if (!collapsed && group.sessions.isEmpty && wt != null && !personalLaunchBlocked)
           _EmptyGroupCta(
             onTap: () {
               context.read<WorktreeCubit>().setCurrentWorktree(wt.path);
@@ -282,12 +286,14 @@ class _GroupMenu extends StatelessWidget {
   const _GroupMenu({
     required this.worktreePath,
     required this.manageable,
+    required this.allowNewConversation,
     required this.onNewConversation,
     required this.onDelete,
   });
 
   final String worktreePath;
   final bool manageable;
+  final bool allowNewConversation;
   final VoidCallback onNewConversation;
   final VoidCallback onDelete;
 
@@ -304,12 +310,13 @@ class _GroupMenu extends StatelessWidget {
         onTap: () => controller.isOpen ? controller.close() : controller.open(),
       ),
       buildMenuChildren: (context, controller) => [
-        SidebarActionMenuItem(
-          icon: Icons.edit_outlined,
-          label: l10n.worktreeNewConversationHere,
-          menuController: controller,
-          onTap: onNewConversation,
-        ),
+        if (allowNewConversation)
+          SidebarActionMenuItem(
+            icon: Icons.edit_outlined,
+            label: l10n.worktreeNewConversationHere,
+            menuController: controller,
+            onTap: onNewConversation,
+          ),
         SidebarActionMenuItem(
           icon: Icons.copy_rounded,
           label: l10n.worktreeMenuCopyPath,
@@ -335,12 +342,14 @@ class _GroupSessionList extends StatefulWidget {
     required this.sessions,
     required this.workspace,
     required this.isPersonal,
+    this.personalLaunchBlocked = false,
     super.key,
   });
 
   final List<AppSession> sessions;
   final Workspace workspace;
   final bool isPersonal;
+  final bool personalLaunchBlocked;
 
   @override
   State<_GroupSessionList> createState() => _GroupSessionListState();
@@ -367,14 +376,20 @@ class _GroupSessionListState extends State<_GroupSessionList> {
             session: session,
             contentLeftInset: 18,
             tapThrottleKeyPrefix: 'worktree_sidebar_session',
-            onTap: () => unawaited(
-              openWorkspaceSessionTab(
-                context,
-                widget.workspace,
-                session,
-                isPersonal: widget.isPersonal,
-              ),
-            ),
+            onTap: () {
+              if (widget.personalLaunchBlocked) {
+                showPersonalLaunchBlockedToast(context);
+                return;
+              }
+              unawaited(
+                openWorkspaceSessionTab(
+                  context,
+                  widget.workspace,
+                  session,
+                  isPersonal: widget.isPersonal,
+                ),
+              );
+            },
           ),
         if (overflow > 0)
           InkWell(

@@ -110,9 +110,6 @@ class RuntimeContextResolver {
     required RemoteSshStoragePathResolver pathResolver,
   }) async {
     final paths = await pathResolver.resolve(profile);
-    if (paths == null) {
-      throw StateError('Failed to resolve remote SSH storage paths.');
-    }
     final fileStore = RemoteFileStore(
       profile: profile,
       clientFactory: clientFactory,

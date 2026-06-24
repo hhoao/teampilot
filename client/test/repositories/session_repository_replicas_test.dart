@@ -1,6 +1,7 @@
 import 'dart:io';
 
 import 'package:teampilot/models/team_config.dart';
+import 'package:teampilot/models/workspace_folder.dart';
 import 'package:teampilot/repositories/session_repository.dart';
 import 'package:flutter_test/flutter_test.dart';
 
@@ -11,7 +12,7 @@ void main() {
     addTearDown(() => tmp.deleteSync(recursive: true));
 
     final repo = SessionRepository(rootDir: tmp.path);
-    final workspace = await repo.createWorkspace('/replicas');
+    final workspace = await repo.createWorkspace([WorkspaceFolder(path: '/replicas')]);
     final workspaceId = workspace.workspaceId;
 
     final session = await repo.createSession(

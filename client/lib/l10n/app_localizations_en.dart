@@ -1298,6 +1298,147 @@ class AppLocalizationsEn extends AppLocalizations {
   String get sshProfilesSettingsTitle => 'SSH servers';
 
   @override
+  String get sshProfilesPageTitle => 'SSH remote hosts';
+
+  @override
+  String get sshProfilesPageSubtitle =>
+      'Connect to existing machines over SSH for files, terminals, Git, and workspaces.';
+
+  @override
+  String get sshProfilesTargetsTitle => 'Targets';
+
+  @override
+  String get sshProfilesTargetsSubtitle =>
+      'Add a remote host to connect from TeamPilot.';
+
+  @override
+  String get sshProfilesImport => 'Import';
+
+  @override
+  String get sshProfilesImportUnavailable =>
+      'Import from ~/.ssh/config is not available yet.';
+
+  @override
+  String get sshProfilesAddTarget => 'Add target';
+
+  @override
+  String get sshProfilesEmpty => 'No SSH targets configured.';
+
+  @override
+  String get sshProfileStatusDisconnected => 'Disconnected';
+
+  @override
+  String get sshProfileStatusConnecting => 'Connecting…';
+
+  @override
+  String get sshProfileStatusConnected => 'Connected';
+
+  @override
+  String get sshProfileStatusError => 'Error';
+
+  @override
+  String get sshProfileTest => 'Test';
+
+  @override
+  String get sshProfileConnect => 'Connect';
+
+  @override
+  String get sshProfileDisconnect => 'Disconnect';
+
+  @override
+  String get sshProfileEdit => 'Edit';
+
+  @override
+  String get sshProfileDelete => 'Delete';
+
+  @override
+  String get sshProfileRefresh => 'Refresh';
+
+  @override
+  String get sshProfileTestSuccess => 'Connection successful';
+
+  @override
+  String get sshProfileTestFailed => 'Connection test failed';
+
+  @override
+  String sshProfileConnectSuccess(String host) {
+    return 'Connected to $host';
+  }
+
+  @override
+  String get sshProfileFormTitleNew => 'New SSH target';
+
+  @override
+  String get sshProfileFormTitleEdit => 'Edit SSH target';
+
+  @override
+  String get sshProfileFormLabel => 'Label';
+
+  @override
+  String get sshProfileFormLabelHint => 'My server';
+
+  @override
+  String get sshProfileFormHost => 'Host or alias';
+
+  @override
+  String get sshProfileFormHostHint => 'server, deploy@server:2222';
+
+  @override
+  String get sshProfileFormUsername => 'Username';
+
+  @override
+  String get sshProfileFormUsernameHint => 'deploy';
+
+  @override
+  String get sshProfileFormPort => 'Port';
+
+  @override
+  String get sshProfileFormPortInvalid => 'Port must be between 1 and 65535';
+
+  @override
+  String get sshProfileFormIdentityFile => 'Identity file';
+
+  @override
+  String get sshProfileFormIdentityFileHint => '~/.ssh/id_ed25519';
+
+  @override
+  String get sshProfileFormIdentityFileHelper =>
+      'Optional. Reads the private key from disk when set.';
+
+  @override
+  String get sshProfileFormIdentityFileBrowse => 'Browse…';
+
+  @override
+  String get sshProfileFormIdentityFileMissing => 'Identity file not found';
+
+  @override
+  String get sshProfileFormPassphrase => 'Key passphrase';
+
+  @override
+  String get sshProfileFormPassphraseHint => 'Optional';
+
+  @override
+  String get sshProfileFormPassword => 'Password';
+
+  @override
+  String get sshProfileFormPasswordHint => 'Use when no identity file is set';
+
+  @override
+  String get sshProfileFormPasswordHintEdit =>
+      'Leave empty to keep saved password';
+
+  @override
+  String get sshProfileFormPasswordHelper =>
+      'Optional if an identity file is provided.';
+
+  @override
+  String get sshProfileFormCredentialRequired =>
+      'Provide an identity file or password.';
+
+  @override
+  String get sshProfileFormFieldRequired => 'Required';
+
+  @override
   String get sshProfileSelectorTooltip => 'Switch SSH server';
 
   @override
@@ -1687,6 +1828,60 @@ class AppLocalizationsEn extends AppLocalizations {
   @override
   String get workspaceTargetSubtitle =>
       'The machine this workspace\'s folders live and run on. Sessions launch on this target; switching does not move files.';
+
+  @override
+  String get workspaceFoldersSectionTitle => 'Directories & machines';
+
+  @override
+  String get workspaceFoldersEditorHint =>
+      'Set machine and path per directory. All local = local workspace; all one remote = project-remote; cross-machine = mixed (member-remote).';
+
+  @override
+  String get workspaceTopologyLocal => 'Local workspace';
+
+  @override
+  String get workspaceTopologyRemote => 'Remote workspace';
+
+  @override
+  String get workspaceTopologyMixed => 'Mixed workspace';
+
+  @override
+  String get mixedWorkspaceRequiresTeamLaunch =>
+      'Mixed workspaces can only be started with a team identity. Switch to a team and assign each member to a machine.';
+
+  @override
+  String get mixedWorkspacePersonalLaunchBlockedHint =>
+      'This is a mixed workspace. Switch to a team tab to start conversations and assign members to machines.';
+
+  @override
+  String get mixedWorkspaceMemberAssignmentTitle =>
+      'Assign members to machines';
+
+  @override
+  String get mixedWorkspaceMemberAssignmentSubtitle =>
+      'Each team member must run on one of this workspace\'s machines before launch.';
+
+  @override
+  String get mixedWorkspaceMemberAssignmentIncomplete =>
+      'Assign every team member to a machine.';
+
+  @override
+  String get mixedWorkspaceMemberAssignmentConfirm => 'Start team';
+
+  @override
+  String get workspaceFolderTargetLabel => 'Machine';
+
+  @override
+  String get workspaceFoldersPickPath => 'Choose directory';
+
+  @override
+  String get workspaceFoldersApplyAllLocal => 'Set all to local';
+
+  @override
+  String get workspaceFoldersApplyAllRemote => 'Set all to remote…';
+
+  @override
+  String get workspaceFoldersPickRemoteTarget => 'Choose remote machine';
 
   @override
   String get homeTargetTitle => 'Home device';

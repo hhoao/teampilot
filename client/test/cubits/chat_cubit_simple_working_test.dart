@@ -2,6 +2,7 @@ import 'dart:io';
 
 import 'package:flutter_test/flutter_test.dart';
 import 'package:teampilot/cubits/chat_cubit.dart';
+import 'package:teampilot/models/workspace_folder.dart';
 import 'package:teampilot/repositories/session_repository.dart';
 import 'package:teampilot/services/terminal/terminal_session.dart';
 
@@ -56,7 +57,7 @@ void main() {
     });
 
     test('send lights working; screen going quiet clears it', () async {
-      final workspace = await repo.createWorkspace('/tmp');
+      final workspace = await repo.createWorkspace([WorkspaceFolder(path: '/tmp')]);
       final session = await repo.createSession(workspace.workspaceId);
       await cubit.loadWorkspaceData(repo);
 
@@ -93,7 +94,7 @@ void main() {
     });
 
     test('real 1s idle-watch timer is running for a simple-mode tab', () async {
-      final workspace = await repo.createWorkspace('/tmp');
+      final workspace = await repo.createWorkspace([WorkspaceFolder(path: '/tmp')]);
       final session = await repo.createSession(workspace.workspaceId);
       await cubit.loadWorkspaceData(repo);
 

@@ -18,6 +18,7 @@ class MemberFolderAssignmentTile extends StatelessWidget {
     required this.workspace,
     required this.currentAssignment,
     required this.onAssign,
+    this.requireExplicitTarget = false,
     super.key,
   });
 
@@ -26,6 +27,9 @@ class MemberFolderAssignmentTile extends StatelessWidget {
 
   /// Currently assigned folder paths (empty = inherit workspace folders).
   final List<String> currentAssignment;
+
+  /// When true, the inherit option is hidden (mixed workspace launch).
+  final bool requireExplicitTarget;
 
   /// Emits the folder paths for the chosen target (empty = inherit).
   final void Function(List<String> folderPaths) onAssign;
@@ -70,13 +74,14 @@ class MemberFolderAssignmentTile extends StatelessWidget {
           return Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
-              RadioListTile<String>(
-                contentPadding: EdgeInsets.zero,
-                value: '',
-                groupValue: current,
-                title: Text(l10n.memberTargetAssignmentInherit),
-                onChanged: (_) => onAssign(const []),
-              ),
+              if (!requireExplicitTarget)
+                RadioListTile<String>(
+                  contentPadding: EdgeInsets.zero,
+                  value: '',
+                  groupValue: current,
+                  title: Text(l10n.memberTargetAssignmentInherit),
+                  onChanged: (_) => onAssign(const []),
+                ),
               for (final id in targetIds)
                 RadioListTile<String>(
                   contentPadding: EdgeInsets.zero,

@@ -1,8 +1,10 @@
 import 'dart:convert';
 
+import 'package:flutter/foundation.dart' show listEquals;
 import 'package:uuid/uuid.dart';
 
 import '../models/workspace.dart';
+import '../models/workspace_topology.dart';
 import '../models/workspace_folder.dart';
 import '../models/app_session.dart';
 import '../models/member_instance.dart';
@@ -119,47 +121,48 @@ class SessionRepository {
   /// Creates a workspace for [primaryPath].
   ///
   /// By default, an existing workspace with the same normalized [primaryPath]
-  /// is reused: its [additionalPaths]/[display] are merged and it is returned
+  /// is reused: its folders and [display] are merged and it is returned
   /// instead of creating a duplicate. This keeps folder-merge
   /// ([SessionDataStore.addWorkspaceDirectory]) and bootstrap seeding
   /// idempotent. Pass [allowDuplicate] to skip reuse and always create a new,
   /// independent workspace on the same directory (the explicit "New Workspace"
   /// action) — multiple workspaces may then point at one directory.
   Future<Workspace> createWorkspace(
-    String primaryPath, {
-    List<String> additionalPaths = const [],
+    List<WorkspaceFolder> folders, {
     String display = '',
     bool allowDuplicate = false,
   }) async {
     final fs = await _fs();
-    final trimmed = normalizeWorkspacePath(primaryPath);
+    final normalized = [
+      for (final f in folders)
+        if (f.path.trim().isNotEmpty)
+          f.copyWith(path: normalizeWorkspacePath(f.path)),
+    ];
+    if (normalized.isEmpty) {
+      throw ArgumentError('createWorkspace requires at least one folder path');
+    }
+    final primary = normalized.first.path;
     final now = DateTime.now().millisecondsSinceEpoch;
     final workspaces = await loadWorkspaces();
     for (final existing in allowDuplicate ? const <Workspace>[] : workspaces) {
-      if (!workspacePathsEqual(existing.firstFolderPath, trimmed)) {
+      if (!workspacePathsEqual(existing.firstFolderPath, primary)) {
         continue;
       }
-      final newAdd = additionalPaths
-          .map(normalizeWorkspacePath)
-          .where((e) => e.isNotEmpty)
-          .toList();
-      final mergedPaths = List<String>.from(existing.extraFolderPaths);
-      for (final p in newAdd) {
-        if (!mergedPaths.contains(p)) mergedPaths.add(p);
+      final merged = List<WorkspaceFolder>.from(existing.folders);
+      for (final f in normalized.skip(1)) {
+        if (!merged.any((e) => workspacePathsEqual(e.path, f.path))) {
+          merged.add(f);
+        }
       }
       final trimmedDisplay = display.trim();
       final displayOut = trimmedDisplay.isNotEmpty
           ? trimmedDisplay
           : existing.display;
-      if (_pathsEqual(mergedPaths, existing.extraFolderPaths) &&
-          displayOut == existing.display) {
+      if (listEquals(merged, existing.folders) && displayOut == existing.display) {
         return existing;
       }
       final updated = existing.copyWith(
-        folders: [
-          WorkspaceFolder(path: existing.firstFolderPath),
-          for (final p in mergedPaths) WorkspaceFolder(path: p),
-        ],
+        folders: merged,
         display: displayOut,
         updatedAt: now,
       );
@@ -168,13 +171,7 @@ class SessionRepository {
     }
     final workspace = Workspace(
       workspaceId: const Uuid().v4(),
-      folders: [
-        WorkspaceFolder(path: trimmed),
-        for (final p in additionalPaths
-            .map(normalizeWorkspacePath)
-            .where((e) => e.isNotEmpty))
-          WorkspaceFolder(path: p),
-      ],
+      folders: normalized,
       display: display.trim(),
       createdAt: now,
       updatedAt: now,
@@ -188,7 +185,6 @@ class SessionRepository {
     String workspaceId, {
     String? display,
     String? defaultProfileId,
-    List<String>? additionalPaths,
   }) async {
     final fs = await _fs();
     final existing = await _readManifest(fs, workspaceId);
@@ -199,15 +195,7 @@ class SessionRepository {
       defaultProfileId: defaultProfileId != null
           ? defaultProfileId.trim()
           : existing.defaultProfileId,
-      folders: additionalPaths != null
-          ? [
-              WorkspaceFolder(path: existing.firstFolderPath),
-              for (final p in additionalPaths
-                  .map(normalizeWorkspacePath)
-                  .where((e) => e.isNotEmpty))
-                WorkspaceFolder(path: p),
-            ]
-          : existing.folders,
+      folders: existing.folders,
       updatedAt: now,
     );
     await _writeManifest(fs, updated);
@@ -263,30 +251,7 @@ class SessionRepository {
     );
   }
 
-  Future<void> updateWorkspacePaths(
-    String workspaceId,
-    String primaryPath,
-    List<String> additionalPaths,
-  ) async {
-    final fs = await _fs();
-    final existing = await _readManifest(fs, workspaceId);
-    if (existing == null) return;
-    final now = DateTime.now().millisecondsSinceEpoch;
-    final updated = existing.copyWith(
-      folders: [
-        WorkspaceFolder(path: normalizeWorkspacePath(primaryPath)),
-        for (final p in additionalPaths
-            .map(normalizeWorkspacePath)
-            .where((e) => e.isNotEmpty))
-          WorkspaceFolder(path: p),
-      ],
-      updatedAt: now,
-    );
-    await _writeManifest(fs, updated);
-    await _provisionWorkspaceTrust(fs, updated);
-  }
-
-  /// P2: replace a workspace's folders wholesale (path + per-folder targetId).
+  /// Replace a workspace's folders wholesale (path + per-folder targetId).
   /// Used by the workspace target picker to move a workspace onto another
   /// machine (sets [WorkspaceFolder.targetId] on all folders).
   Future<void> updateWorkspaceFolders(
@@ -309,15 +274,43 @@ class SessionRepository {
     await _provisionWorkspaceTrust(fs, updated);
   }
 
-  /// Sets the target machine for all folders of [workspaceId] (P2: whole
-  /// workspace on one target).
-  Future<void> setWorkspaceTarget(String workspaceId, String targetId) async {
+  /// Persists remembered per-member folder picks for a team on a mixed workspace.
+  Future<void> updateWorkspaceMemberFolderAssignments(
+    String workspaceId,
+    String teamId, {
+    required MemberFolderAssignments assignments,
+  }) async {
+    final trimmedTeam = teamId.trim();
+    if (trimmedTeam.isEmpty) return;
     final fs = await _fs();
     final existing = await _readManifest(fs, workspaceId);
     if (existing == null) return;
-    await updateWorkspaceFolders(workspaceId, [
-      for (final f in existing.folders) f.copyWith(targetId: targetId),
-    ]);
+    final now = DateTime.now().millisecondsSinceEpoch;
+    final nextByTeam = Map<String, MemberFolderAssignments>.from(
+      existing.memberFolderAssignmentsByTeam,
+    );
+    final normalized = <String, List<String>>{};
+    for (final entry in assignments.entries) {
+      final memberId = entry.key.trim();
+      if (memberId.isEmpty) continue;
+      final paths = entry.value
+          .map(normalizeWorkspacePath)
+          .where((p) => p.isNotEmpty)
+          .toList(growable: false);
+      if (paths.isNotEmpty) normalized[memberId] = paths;
+    }
+    if (normalized.isEmpty) {
+      nextByTeam.remove(trimmedTeam);
+    } else {
+      nextByTeam[trimmedTeam] = normalized;
+    }
+    await _writeManifest(
+      fs,
+      existing.copyWith(
+        memberFolderAssignmentsByTeam: nextByTeam,
+        updatedAt: now,
+      ),
+    );
   }
 
   Future<void> _provisionWorkspaceTrust(
@@ -383,6 +376,13 @@ class SessionRepository {
       ];
     }
 
+    final rememberedAssignments = trimmedTeam.isNotEmpty
+        ? rememberedMemberFolderAssignments(
+            workspace.memberFolderAssignmentsByTeam,
+            trimmedTeam,
+          )
+        : const <String, List<String>>{};
+
     final sessionId = const Uuid().v4();
     final now = DateTime.now().millisecondsSinceEpoch;
     final session = AppSession(
@@ -405,6 +405,7 @@ class SessionRepository {
       cliTeamName: cliTeamName,
       cli: trimmedTeam.isEmpty ? cli : null,
       members: members,
+      folderAssignments: rememberedAssignments,
       launchState: AppSessionLaunchState.created,
       createdAt: now,
       updatedAt: now,

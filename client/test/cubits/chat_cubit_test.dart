@@ -302,7 +302,7 @@ void main() {
             ({required String executable, int scrollbackLines = 10000}) =>
                 _FakeTerminalSession(executable: executable),
       );
-      final workspace = await repo.createWorkspace('/tmp');
+      final workspace = await repo.createWorkspace([WorkspaceFolder(path: '/tmp')]);
       await cubit.loadWorkspaceData(repo);
       cubit.setActiveWorkspace(workspace.workspaceId);
     });
@@ -332,7 +332,7 @@ void main() {
     test('personal connect materializes first session when tabs empty', () async {
       setUpTestAppStorage();
       addTearDown(tearDownTestAppStorage);
-      final workspace = await repo.createWorkspace('/tmp/personal-connect');
+      final workspace = await repo.createWorkspace([WorkspaceFolder(path: '/tmp/personal-connect')]);
       await cubit.loadWorkspaceData(repo);
       cubit.setActiveWorkspace(workspace.workspaceId);
       expect(cubit.state.tabs, isEmpty);
@@ -390,7 +390,7 @@ void main() {
         final tmp = await Directory.systemTemp.createTemp('chat_cubit_');
         addTearDown(() => tmp.deleteSync(recursive: true));
         final repo = SessionRepository(rootDir: tmp.path);
-        final workspace = await repo.createWorkspace('/tmp');
+        final workspace = await repo.createWorkspace([WorkspaceFolder(path: '/tmp')]);
         final session = await repo.createSession(
           workspace.workspaceId,
           sessionTeam: team.id,
@@ -441,8 +441,8 @@ void main() {
         );
         final tmp = await Directory.systemTemp.createTemp('chat_cubit_close_');
         final repo = SessionRepository(rootDir: tmp.path);
-        final workspaceA = await repo.createWorkspace('/a');
-        final workspaceB = await repo.createWorkspace('/b');
+        final workspaceA = await repo.createWorkspace([WorkspaceFolder(path: '/a')]);
+        final workspaceB = await repo.createWorkspace([WorkspaceFolder(path: '/b')]);
         final sessionA = await repo.createSession(
           workspaceA.workspaceId,
           sessionTeam: team.id,
@@ -507,7 +507,7 @@ void main() {
             TeamMemberConfig(id: 'm-dev', name: 'developer'),
           ],
         );
-        final workspace = await repo.createWorkspace('/tmp/auto-launch');
+        final workspace = await repo.createWorkspace([WorkspaceFolder(path: '/tmp/auto-launch')]);
         await cubit.loadWorkspaceData(repo);
         cubit.setActiveWorkspace(workspace.workspaceId);
 
@@ -544,7 +544,7 @@ void main() {
         final tmp = await Directory.systemTemp.createTemp('chat_cubit_mixed_cli_');
         addTearDown(() => tmp.deleteSync(recursive: true));
         final repo = SessionRepository(rootDir: tmp.path);
-        final workspace = await repo.createWorkspace('/tmp');
+        final workspace = await repo.createWorkspace([WorkspaceFolder(path: '/tmp')]);
         final session = await repo.createSession(
           workspace.workspaceId,
           sessionTeam: team.id,
@@ -597,7 +597,7 @@ void main() {
           'chat_cubit_mixed_lead_connect_',
         );
         final repo = SessionRepository(rootDir: tmp.path);
-        final workspace = await repo.createWorkspace('/tmp');
+        final workspace = await repo.createWorkspace([WorkspaceFolder(path: '/tmp')]);
         final session = await repo.createSession(
           workspace.workspaceId,
           sessionTeam: team.id,
@@ -650,7 +650,7 @@ void main() {
         );
         final tmp = await Directory.systemTemp.createTemp('chat_cubit_mixed_');
         final repo = SessionRepository(rootDir: tmp.path);
-        final workspace = await repo.createWorkspace('/tmp');
+        final workspace = await repo.createWorkspace([WorkspaceFolder(path: '/tmp')]);
         final session = await repo.createSession(
           workspace.workspaceId,
           sessionTeam: team.id,
@@ -708,7 +708,7 @@ void main() {
             TeamMemberConfig(id: 'm-dev', name: 'developer'),
           ],
         );
-        final workspace = await repo.createWorkspace('/tmp');
+        final workspace = await repo.createWorkspace([WorkspaceFolder(path: '/tmp')]);
         final session = await repo.createSession(
           workspace.workspaceId,
           sessionTeam: team.id,
@@ -766,7 +766,7 @@ void main() {
         final repo = SessionRepository(rootDir: tmp.path);
         const workspacePath = '/tmp/default-team-workspace';
         final workspace = await repo.createWorkspace(
-          workspacePath,
+          [const WorkspaceFolder(path: workspacePath)],
           display: 'Default Team',
         );
         await repo.createSession(

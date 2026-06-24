@@ -15,6 +15,7 @@ import '../../theme/app_text_styles.dart';
 import '../../models/layout_preferences.dart';
 import '../../models/member_instance.dart';
 import '../../models/team_config.dart';
+import '../../models/workspace_topology.dart';
 import '../../pages/home_workspace/workspace/member_detail_dialog.dart';
 import '../../pages/home_workspace/workspace/member_folder_assignment_dialog.dart';
 import '../../services/cli/member_config/member_config_inspector.dart';
@@ -302,6 +303,14 @@ class _RightToolsPanelState extends State<RightToolsPanel> {
     final showBoard = showMailbox && widget.preferences.boardVisible;
 
     final views = <ToolView>[];
+    final activeSessionId = chatCubit.state.activeSessionId;
+    final activeSession = activeSessionId == null
+        ? null
+        : chatCubit.state.sessions
+            .where((s) => s.sessionId == activeSessionId)
+            .firstOrNull;
+    final showAssignFolders = activeSession != null &&
+        workspaceTopologyRequiresMemberAssignment(activeSession.folders);
     if (!widget.isPersonalWorkspace &&
         widget.preferences.membersVisible &&
         team != null) {
@@ -314,6 +323,7 @@ class _RightToolsPanelState extends State<RightToolsPanel> {
             members: members,
             memberPresence: context.watch<MemberPresenceCubit>().state.presence,
             selectedMemberId: chatCubit.state.selectedMemberId,
+            showAssignFolders: showAssignFolders,
             onSelected: (id) {
               final member = runtimeMembers.firstWhere((m) => m.id == id);
               final cubit = _chatCubit;

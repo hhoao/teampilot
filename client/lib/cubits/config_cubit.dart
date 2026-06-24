@@ -3,7 +3,23 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 
 import '../models/team_config.dart';
 
-enum ConfigSection { layout, session, cli, aiFeatures, about, logs }
+enum ConfigSection {
+  layout,
+  session,
+  cli,
+  aiFeatures,
+  sshProfiles,
+  about,
+  logs,
+}
+
+extension ConfigSectionRoute on ConfigSection {
+  String get routeSegment => switch (this) {
+    ConfigSection.aiFeatures => 'ai-features',
+    ConfigSection.sshProfiles => 'ssh-profiles',
+    _ => name,
+  };
+}
 
 class ConfigState extends Equatable {
   const ConfigState({
@@ -19,6 +35,7 @@ class ConfigState extends Equatable {
     ConfigSection.session => 'Session Configuration',
     ConfigSection.cli => 'CLI Configuration',
     ConfigSection.aiFeatures => 'AI Features',
+    ConfigSection.sshProfiles => 'SSH Servers',
     ConfigSection.about => 'About',
     ConfigSection.logs => 'Logs',
   };
@@ -28,6 +45,7 @@ class ConfigState extends Equatable {
     ConfigSection.session => 'Config / Session',
     ConfigSection.cli => 'Config / CLI',
     ConfigSection.aiFeatures => 'Config / AI Features',
+    ConfigSection.sshProfiles => 'Config / SSH Servers',
     ConfigSection.about => 'Config / About',
     ConfigSection.logs => 'Config / Logs',
   };

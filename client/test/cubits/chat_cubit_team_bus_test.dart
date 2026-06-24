@@ -4,6 +4,7 @@ import 'dart:io';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:teampilot/cubits/chat_cubit.dart';
 import 'package:teampilot/models/team_config.dart';
+import 'package:teampilot/models/workspace_folder.dart';
 import 'package:teampilot/repositories/session_repository.dart';
 import 'package:teampilot/services/terminal/terminal_session.dart';
 
@@ -88,7 +89,7 @@ void main() {
     });
 
     test('openSessionTab creates TeamBus and loopback MCP server', () async {
-      final workspace = await repo.createWorkspace('/tmp');
+      final workspace = await repo.createWorkspace([WorkspaceFolder(path: '/tmp')]);
       final session = await repo.createSession(
         workspace.workspaceId,
         sessionTeam: team.id,
@@ -112,7 +113,7 @@ void main() {
     });
 
     test('closeTab stops MCP server and clears bus resources', () async {
-      final workspace = await repo.createWorkspace('/tmp');
+      final workspace = await repo.createWorkspace([WorkspaceFolder(path: '/tmp')]);
       final session = await repo.createSession(
         workspace.workspaceId,
         sessionTeam: team.id,

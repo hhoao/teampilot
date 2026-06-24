@@ -28,7 +28,7 @@ void main() {
       final repo = SessionRepository(rootDir: tmp.path);
 
       // Workspace with two targets; session inherits its folders.
-      await repo.createWorkspace('/local-proj');
+      await repo.createWorkspace([WorkspaceFolder(path: '/local-proj')]);
       final ws = (await repo.loadWorkspaces()).single;
       await repo.updateWorkspaceFolders(ws.workspaceId, [
         const WorkspaceFolder(path: '/local-proj'),

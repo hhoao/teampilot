@@ -462,7 +462,7 @@ void main() {
     );
     late final Workspace workspace;
     await tester.runAsync(() async {
-      workspace = await _widgetTestSessionRepo.createWorkspace('/work/current');
+      workspace = await _widgetTestSessionRepo.createWorkspace([WorkspaceFolder(path: '/work/current')]);
       chatCubit.ingestWorkspaceSessionSnapshot(
         workspaces: [workspace],
         sessions: const [],
@@ -603,7 +603,7 @@ void main() {
     final repo = SessionRepository(
       rootDir: (await Directory.systemTemp.createTemp('sidebar_sess_')).path,
     );
-    final workspace = await repo.createWorkspace('/work/current');
+    final workspace = await repo.createWorkspace([WorkspaceFolder(path: '/work/current')]);
     final session = await repo.createSession(
       workspace.workspaceId,
       sessionTeam: team.id,
@@ -822,7 +822,7 @@ void main() {
           TeamMemberConfig(id: 'dev', name: 'developer'),
         ],
       );
-      final workspace = await repo.createWorkspace('/wd');
+      final workspace = await repo.createWorkspace([WorkspaceFolder(path: '/wd')]);
       await repo.createSession(
         workspace.workspaceId,
         sessionTeam: team.id,
@@ -870,7 +870,7 @@ void main() {
           TeamMemberConfig(id: 'dev', name: 'developer'),
         ],
       );
-      final workspace = await repo.createWorkspace('/wd');
+      final workspace = await repo.createWorkspace([WorkspaceFolder(path: '/wd')]);
       await repo.createSession(
         workspace.workspaceId,
         sessionTeam: team.id,
@@ -969,7 +969,7 @@ void main() {
       name: 'TName',
       members: const [TeamMemberConfig(id: 'lid', name: 'team-lead')],
     );
-    final workspace = await repo.createWorkspace('/wd');
+    final workspace = await repo.createWorkspace([WorkspaceFolder(path: '/wd')]);
     await repo.createSession(
       workspace.workspaceId,
       sessionTeam: team.id,
@@ -1011,7 +1011,7 @@ void main() {
       name: 'TName',
       members: const [TeamMemberConfig(id: 'lid', name: 'team-lead')],
     );
-    final workspace = await repo.createWorkspace('/wd');
+    final workspace = await repo.createWorkspace([WorkspaceFolder(path: '/wd')]);
     final session = await repo.createSession(
       workspace.workspaceId,
       sessionTeam: team.id,
@@ -1056,7 +1056,7 @@ void main() {
         name: 'TName',
         members: const [TeamMemberConfig(id: 'lid', name: 'team-lead')],
       );
-      final workspace = await repo.createWorkspace('/wd');
+      final workspace = await repo.createWorkspace([WorkspaceFolder(path: '/wd')]);
       final session = await repo.createSession(
         workspace.workspaceId,
         sessionTeam: team.id,
@@ -1102,10 +1102,10 @@ void main() {
         name: 'TName',
         members: const [TeamMemberConfig(id: 'lid', name: 'team-lead')],
       );
-      final workspace = await repo.createWorkspace(
-        '/root',
-        additionalPaths: const ['/extra'],
-      );
+      final workspace = await repo.createWorkspace([
+        WorkspaceFolder(path: '/root'),
+        WorkspaceFolder(path: '/extra'),
+      ]);
       await repo.createSession(
         workspace.workspaceId,
         sessionTeam: team.id,

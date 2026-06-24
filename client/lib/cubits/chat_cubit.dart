@@ -6,6 +6,7 @@ import 'package:flutter/widgets.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
 import '../models/workspace.dart';
+import '../models/workspace_folder.dart';
 import '../models/runtime_target.dart';
 import '../models/app_session.dart';
 import '../models/member_presence.dart';
@@ -369,21 +370,19 @@ class ChatCubit extends Cubit<ChatState>
   /// reloads workspace data, and returns the workspace id so callers can navigate
   /// straight to the new workspace.
   Future<String> createWorkspaceWithFirstSession(
-    String primaryPath,
+    List<WorkspaceFolder> folders,
     SessionRepository repo, {
     String sessionTeamId = '',
     List<TeamMemberConfig> rosterMembers = const [],
-    List<String> additionalPaths = const [],
     String display = '',
     bool allowDuplicate = false,
     LaunchProfileRepository? identityRepository,
   }) async {
     final result = await _dataStore.createWorkspaceWithFirstSession(
-      primaryPath,
+      folders,
       repo,
       sessionTeamId: sessionTeamId,
       rosterMembers: rosterMembers,
-      additionalPaths: additionalPaths,
       display: display,
       allowDuplicate: allowDuplicate,
       identityRepository: identityRepository,
@@ -395,12 +394,12 @@ class ChatCubit extends Cubit<ChatState>
   Future<void> addWorkspaceDirectory(
     SessionRepository repo,
     Workspace workspace,
-    String directoryPath,
+    WorkspaceFolder folder,
   ) async {
     final snap = await _dataStore.addWorkspaceDirectory(
       repo,
       workspace,
-      directoryPath,
+      folder,
     );
     if (snap != null) _emitSnapshot(snap);
   }
@@ -410,7 +409,6 @@ class ChatCubit extends Cubit<ChatState>
     String workspaceId, {
     String? display,
     String? defaultProfileId,
-    List<String>? additionalPaths,
   }) async {
     _emitSnapshot(
       await _dataStore.updateWorkspaceMetadata(
@@ -418,7 +416,6 @@ class ChatCubit extends Cubit<ChatState>
         workspaceId,
         display: display,
         defaultProfileId: defaultProfileId,
-        additionalPaths: additionalPaths,
       ),
     );
   }

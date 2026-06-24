@@ -15,8 +15,10 @@ import '../../../models/workspace.dart';
 import '../../../models/app_session.dart';
 import '../../../models/personal_profile.dart';
 import '../../../models/team_config.dart';
+import '../../../models/workspace_topology.dart';
 import '../../../repositories/session_repository.dart';
 import '../../../utils/app_session_sort.dart';
+import 'mixed_workspace_member_assignment_dialog.dart';
 
 Future<void> openWorkspaceSessionTab(
   BuildContext context,
@@ -24,6 +26,10 @@ Future<void> openWorkspaceSessionTab(
   AppSession session, {
   required bool isPersonal,
 }) async {
+  if (!_canLaunchWorkspaceSession(context, workspace, isPersonal: isPersonal)) {
+    return;
+  }
+
   _syncWorktreeForSession(context, session);
 
   final chatCubit = context.read<ChatCubit>();
@@ -36,6 +42,14 @@ Future<void> openWorkspaceSessionTab(
     final team = context.read<LaunchProfileCubit>().state.selectedTeam;
     if (team != null) {
       unawaited(chatCubit.scheduleTeamConfigValidation(team));
+      final ready = await ensureMixedWorkspaceMemberAssignments(
+        context,
+        workspace: workspace,
+        session: session,
+        team: team,
+        repository: repo,
+      );
+      if (!ready || !context.mounted) return;
     }
   }
 
@@ -62,6 +76,36 @@ Future<void> openWorkspaceSessionTab(
     member: lead,
     repo: repo,
     emptyDisplayTitleFallback: fallback,
+  );
+}
+
+bool _canLaunchWorkspaceSession(
+  BuildContext context,
+  Workspace workspace, {
+  required bool isPersonal,
+}) {
+  if (personalIdentityBlockedForWorkspace(
+    isPersonal: isPersonal,
+    folders: workspace.folders,
+  )) {
+    showPersonalLaunchBlockedToast(context);
+    return false;
+  }
+  if (workspaceTopologyRequiresMemberAssignment(workspace.folders)) {
+    final team = context.read<LaunchProfileCubit>().state.selectedTeam;
+    if (team == null) {
+      showPersonalLaunchBlockedToast(context);
+      return false;
+    }
+  }
+  return true;
+}
+
+void showPersonalLaunchBlockedToast(BuildContext context) {
+  AppToast.show(
+    context,
+    message: context.l10n.mixedWorkspaceRequiresTeamLaunch,
+    variant: AppToastVariant.warning,
   );
 }
 
@@ -120,6 +164,10 @@ Future<void> createAndOpenWorkspaceConversation(
   final l10n = context.l10n;
   final team = isPersonal ? null : context.read<LaunchProfileCubit>().state.selectedTeam;
 
+  if (!_canLaunchWorkspaceSession(context, workspace, isPersonal: isPersonal)) {
+    return;
+  }
+
   // A new personal conversation pins its CLI to the active preset's CLI so it
   // resumes under (and stores its transcript with) the CLI the user selected.
   // An explicit [cli] override (e.g. a per-preset "new chat" action) wins.
@@ -168,6 +216,9 @@ Future<void> createSessionInWorktree(
   final repo = context.read<SessionRepository>();
   final l10n = context.l10n;
   final team = isPersonal ? null : context.read<LaunchProfileCubit>().state.selectedTeam;
+  if (!_canLaunchWorkspaceSession(context, workspace, isPersonal: isPersonal)) {
+    return;
+  }
   final effectiveCli = isPersonal
       ? (cli ?? _activePresetCli(context, personalIdentityId) ?? CliTool.claude)
       : null;

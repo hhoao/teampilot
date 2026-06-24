@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 
 import '../../../l10n/l10n_extensions.dart';
 import '../../../models/workspace.dart';
+import '../../../models/workspace_topology.dart';
 import '../../../repositories/session_repository.dart';
 import '../../../widgets/app_dialog.dart';
 import 'config/member_folder_assignment_tile.dart';
@@ -108,6 +109,9 @@ class _MemberFolderAssignmentDialogState
             memberLabel: widget.memberLabel,
             workspace: workspace,
             currentAssignment: _current,
+            requireExplicitTarget: workspaceTopologyRequiresMemberAssignment(
+              workspace.folders,
+            ),
             onAssign: _assign,
           ),
         ],

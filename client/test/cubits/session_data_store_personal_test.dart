@@ -3,6 +3,7 @@ import 'dart:io';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:teampilot/cubits/chat/session_data_store.dart';
 import 'package:teampilot/repositories/launch_profile_repository.dart';
+import 'package:teampilot/models/workspace_folder.dart';
 import 'package:teampilot/repositories/session_repository.dart';
 import 'package:teampilot/services/io/local_filesystem.dart';
 import 'package:teampilot/services/storage/app_storage.dart';
@@ -38,7 +39,7 @@ void main() {
     final store = SessionDataStore();
 
     final result = await store.createWorkspaceWithFirstSession(
-      primaryPath,
+      [WorkspaceFolder(path: primaryPath)],
       sessionRepo,
       sessionTeamId: '',
       rosterMembers: const [],

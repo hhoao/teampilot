@@ -1237,6 +1237,140 @@ class AppLocalizationsZh extends AppLocalizations {
   String get sshProfilesSettingsTitle => 'SSH 服务器';
 
   @override
+  String get sshProfilesPageTitle => 'SSH 远程主机';
+
+  @override
+  String get sshProfilesPageSubtitle => '通过 SSH 使用已有机器处理文件、终端、Git 和工作区。';
+
+  @override
+  String get sshProfilesTargetsTitle => '目标';
+
+  @override
+  String get sshProfilesTargetsSubtitle => '添加远程主机以在 TeamPilot 中连接到它。';
+
+  @override
+  String get sshProfilesImport => '导入';
+
+  @override
+  String get sshProfilesImportUnavailable => '暂不支持从 ~/.ssh/config 导入。';
+
+  @override
+  String get sshProfilesAddTarget => '添加目标';
+
+  @override
+  String get sshProfilesEmpty => '尚未配置 SSH 目标。';
+
+  @override
+  String get sshProfileStatusDisconnected => '未连接';
+
+  @override
+  String get sshProfileStatusConnecting => '连接中…';
+
+  @override
+  String get sshProfileStatusConnected => '已连接';
+
+  @override
+  String get sshProfileStatusError => '错误';
+
+  @override
+  String get sshProfileTest => '测试';
+
+  @override
+  String get sshProfileConnect => '连接';
+
+  @override
+  String get sshProfileDisconnect => '断开';
+
+  @override
+  String get sshProfileEdit => '编辑';
+
+  @override
+  String get sshProfileDelete => '删除';
+
+  @override
+  String get sshProfileRefresh => '刷新';
+
+  @override
+  String get sshProfileTestSuccess => '连接成功';
+
+  @override
+  String get sshProfileTestFailed => '连接测试失败';
+
+  @override
+  String sshProfileConnectSuccess(String host) {
+    return '已连接到 $host';
+  }
+
+  @override
+  String get sshProfileFormTitleNew => '新的 SSH 目标';
+
+  @override
+  String get sshProfileFormTitleEdit => '编辑 SSH 目标';
+
+  @override
+  String get sshProfileFormLabel => '标签';
+
+  @override
+  String get sshProfileFormLabelHint => '我的服务器';
+
+  @override
+  String get sshProfileFormHost => '主机或别名';
+
+  @override
+  String get sshProfileFormHostHint => 'server、deploy@server:2222';
+
+  @override
+  String get sshProfileFormUsername => '用户名';
+
+  @override
+  String get sshProfileFormUsernameHint => 'deploy';
+
+  @override
+  String get sshProfileFormPort => '端口';
+
+  @override
+  String get sshProfileFormPortInvalid => '端口须在 1–65535 之间';
+
+  @override
+  String get sshProfileFormIdentityFile => '身份文件';
+
+  @override
+  String get sshProfileFormIdentityFileHint => '~/.ssh/id_ed25519';
+
+  @override
+  String get sshProfileFormIdentityFileHelper => '可选。填写后从磁盘读取私钥。';
+
+  @override
+  String get sshProfileFormIdentityFileBrowse => '浏览…';
+
+  @override
+  String get sshProfileFormIdentityFileMissing => '找不到身份文件';
+
+  @override
+  String get sshProfileFormPassphrase => '密钥口令';
+
+  @override
+  String get sshProfileFormPassphraseHint => '可选';
+
+  @override
+  String get sshProfileFormPassword => '密码';
+
+  @override
+  String get sshProfileFormPasswordHint => '未设置身份文件时使用';
+
+  @override
+  String get sshProfileFormPasswordHintEdit => '留空则保留已保存密码';
+
+  @override
+  String get sshProfileFormPasswordHelper => '若已提供身份文件则可不填。';
+
+  @override
+  String get sshProfileFormCredentialRequired => '请提供身份文件或密码。';
+
+  @override
+  String get sshProfileFormFieldRequired => '必填';
+
+  @override
   String get sshProfileSelectorTooltip => '切换 SSH 服务器';
 
   @override
@@ -1620,6 +1754,58 @@ class AppLocalizationsZh extends AppLocalizations {
   @override
   String get workspaceTargetSubtitle =>
       '该工作区的目录所在并运行的机器。会话在此 target 上启动；切换不会移动文件。';
+
+  @override
+  String get workspaceFoldersSectionTitle => '工作区目录与机器';
+
+  @override
+  String get workspaceFoldersEditorHint =>
+      '每个目录单独指定所在机器与路径。全部本地 = 本地工作区；全部同一远程 = 项目远程；跨机 = 混合工作区（成员远程）。';
+
+  @override
+  String get workspaceTopologyLocal => '本地工作区';
+
+  @override
+  String get workspaceTopologyRemote => '远程工作区';
+
+  @override
+  String get workspaceTopologyMixed => '混合工作区';
+
+  @override
+  String get mixedWorkspaceRequiresTeamLaunch =>
+      '混合工作区只能通过团队身份启动。请切换到团队并为每位成员指定机器。';
+
+  @override
+  String get mixedWorkspacePersonalLaunchBlockedHint =>
+      '这是混合工作区。请切换到团队标签页启动对话，并为成员分配机器。';
+
+  @override
+  String get mixedWorkspaceMemberAssignmentTitle => '分配成员到机器';
+
+  @override
+  String get mixedWorkspaceMemberAssignmentSubtitle =>
+      '启动前，每位团队成员必须绑定到本工作区的一台机器。';
+
+  @override
+  String get mixedWorkspaceMemberAssignmentIncomplete => '请为每位团队成员选择一台机器。';
+
+  @override
+  String get mixedWorkspaceMemberAssignmentConfirm => '启动团队';
+
+  @override
+  String get workspaceFolderTargetLabel => '所在机器';
+
+  @override
+  String get workspaceFoldersPickPath => '选择目录';
+
+  @override
+  String get workspaceFoldersApplyAllLocal => '全部设为本地';
+
+  @override
+  String get workspaceFoldersApplyAllRemote => '全部设为远程…';
+
+  @override
+  String get workspaceFoldersPickRemoteTarget => '选择远程机器';
 
   @override
   String get homeTargetTitle => '主设备';

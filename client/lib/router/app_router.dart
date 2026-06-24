@@ -1,4 +1,4 @@
-﻿import 'dart:io';
+import 'dart:io';
 
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
@@ -15,7 +15,6 @@ import '../pages/mcp/mcp_form_nav_page.dart';
 import '../pages/mcp/mcp_management_page.dart';
 import '../pages/onboarding/onboarding_gate.dart';
 import '../pages/startup_gate.dart';
-import '../pages/ssh_profiles_page.dart';
 import '../pages/team_config/team_config_page.dart';
 import '../widgets/android_ssh_profile_selector.dart';
 import 'android_shell_chrome.dart';
@@ -251,7 +250,7 @@ final appRouter = GoRouter(
             GoRoute(
               path: '/config/ssh-profiles',
               pageBuilder: (context, state) => const NoTransitionPage(
-                child: SshProfilesPage(embedded: true),
+                child: ConfigWorkspace(section: ConfigSection.sshProfiles),
               ),
             ),
             GoRoute(

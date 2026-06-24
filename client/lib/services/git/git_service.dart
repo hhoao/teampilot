@@ -61,9 +61,8 @@ class GitService {
   /// path located by an earlier case never leaks into the next.
   static void debugResetExecutableCache() => _locateFuture = null;
 
-  Future<String?> get _git => _locateFuture ??= _gitLocator.locate(
-    runner: _runner,
-  );
+  Future<String?> get _git =>
+      _locateFuture ??= _gitLocator.locate(runner: _runner);
 
   Future<bool> get isAvailable async => (await _git) != null;
 
@@ -84,9 +83,7 @@ class GitService {
       final out = (result.stdout as String?)?.trim();
       final detail = (err == null || err.isEmpty) ? (out ?? '') : err;
       appLogger.d('[Git] ${args.join(' ')} exit ${result.exitCode}: $detail');
-      throw GitException(
-        detail.isEmpty ? 'git ${args.first} failed' : detail,
-      );
+      throw GitException(detail.isEmpty ? 'git ${args.first} failed' : detail);
     }
     return (result.stdout as String?) ?? '';
   }
@@ -105,8 +102,7 @@ class GitService {
       'rev-parse',
       '--is-inside-work-tree',
     ]);
-    if (probe.exitCode != 0 ||
-        ((probe.stdout as String?)?.trim() != 'true')) {
+    if (probe.exitCode != 0 || ((probe.stdout as String?)?.trim() != 'true')) {
       return GitRepoStatus.notARepository;
     }
 
@@ -138,10 +134,11 @@ class GitService {
           upstream = header.substring('branch.upstream '.length).trim();
         } else if (header.startsWith('branch.ab ')) {
           // Format: "+<ahead> -<behind>"
-          for (final tok in header
-              .substring('branch.ab '.length)
-              .trim()
-              .split(RegExp(r'\s+'))) {
+          for (final tok
+              in header
+                  .substring('branch.ab '.length)
+                  .trim()
+                  .split(RegExp(r'\s+'))) {
             final n = int.tryParse(tok.substring(1)) ?? 0;
             if (tok.startsWith('+')) ahead = n;
             if (tok.startsWith('-')) behind = n;

@@ -45,8 +45,8 @@ class WslFilesystem implements Filesystem {
     if (result.exitCode != 0) return const FsStat(kind: FsEntityKind.notFound);
     return switch ((result.stdout as String).trim()) {
       'directory' => const FsStat(kind: FsEntityKind.directory),
-      'regular file' || 'regular empty file' =>
-        const FsStat(kind: FsEntityKind.file),
+      'regular file' ||
+      'regular empty file' => const FsStat(kind: FsEntityKind.file),
       'symbolic link' => const FsStat(kind: FsEntityKind.symlink),
       _ => const FsStat(kind: FsEntityKind.notFound),
     };
@@ -92,13 +92,14 @@ class WslFilesystem implements Filesystem {
   }
 
   Future<String> _collectStreamText(Stream<List<int>> stream) {
-    return stream
-        .transform(const Utf8Decoder(allowMalformed: true))
-        .join();
+    return stream.transform(const Utf8Decoder()).join();
   }
 
-  Future<void> _pipeBase64ToFile(String path, String encoded,
-      {bool append = false}) async {
+  Future<void> _pipeBase64ToFile(
+    String path,
+    String encoded, {
+    bool append = false,
+  }) async {
     await ensureDir(pathContext.dirname(path));
     final quotedPath = RemoteFileStore.shellSingleQuote(path);
     final op = append ? '>>' : '>';
@@ -111,10 +112,9 @@ class WslFilesystem implements Filesystem {
     final payload = utf8.encode(encoded);
     const chunkSize = 64 * 1024;
     for (var offset = 0; offset < payload.length; offset += chunkSize) {
-      final end =
-          offset + chunkSize < payload.length
-              ? offset + chunkSize
-              : payload.length;
+      final end = offset + chunkSize < payload.length
+          ? offset + chunkSize
+          : payload.length;
       process.stdin.add(payload.sublist(offset, end));
     }
     await process.stdin.close();
@@ -253,9 +253,7 @@ class WslFilesystem implements Filesystem {
     args.add(template);
     final result = await _run(args);
     if (result.exitCode != 0) {
-      throw StateError(
-        'mktemp failed (${result.exitCode}): ${result.stderr}',
-      );
+      throw StateError('mktemp failed (${result.exitCode}): ${result.stderr}');
     }
     return (result.stdout as String).trim();
   }

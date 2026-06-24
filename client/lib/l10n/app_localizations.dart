@@ -2420,6 +2420,270 @@ abstract class AppLocalizations {
   /// **'SSH servers'**
   String get sshProfilesSettingsTitle;
 
+  /// No description provided for @sshProfilesPageTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'SSH remote hosts'**
+  String get sshProfilesPageTitle;
+
+  /// No description provided for @sshProfilesPageSubtitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Connect to existing machines over SSH for files, terminals, Git, and workspaces.'**
+  String get sshProfilesPageSubtitle;
+
+  /// No description provided for @sshProfilesTargetsTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Targets'**
+  String get sshProfilesTargetsTitle;
+
+  /// No description provided for @sshProfilesTargetsSubtitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Add a remote host to connect from TeamPilot.'**
+  String get sshProfilesTargetsSubtitle;
+
+  /// No description provided for @sshProfilesImport.
+  ///
+  /// In en, this message translates to:
+  /// **'Import'**
+  String get sshProfilesImport;
+
+  /// No description provided for @sshProfilesImportUnavailable.
+  ///
+  /// In en, this message translates to:
+  /// **'Import from ~/.ssh/config is not available yet.'**
+  String get sshProfilesImportUnavailable;
+
+  /// No description provided for @sshProfilesAddTarget.
+  ///
+  /// In en, this message translates to:
+  /// **'Add target'**
+  String get sshProfilesAddTarget;
+
+  /// No description provided for @sshProfilesEmpty.
+  ///
+  /// In en, this message translates to:
+  /// **'No SSH targets configured.'**
+  String get sshProfilesEmpty;
+
+  /// No description provided for @sshProfileStatusDisconnected.
+  ///
+  /// In en, this message translates to:
+  /// **'Disconnected'**
+  String get sshProfileStatusDisconnected;
+
+  /// No description provided for @sshProfileStatusConnecting.
+  ///
+  /// In en, this message translates to:
+  /// **'Connecting…'**
+  String get sshProfileStatusConnecting;
+
+  /// No description provided for @sshProfileStatusConnected.
+  ///
+  /// In en, this message translates to:
+  /// **'Connected'**
+  String get sshProfileStatusConnected;
+
+  /// No description provided for @sshProfileStatusError.
+  ///
+  /// In en, this message translates to:
+  /// **'Error'**
+  String get sshProfileStatusError;
+
+  /// No description provided for @sshProfileTest.
+  ///
+  /// In en, this message translates to:
+  /// **'Test'**
+  String get sshProfileTest;
+
+  /// No description provided for @sshProfileConnect.
+  ///
+  /// In en, this message translates to:
+  /// **'Connect'**
+  String get sshProfileConnect;
+
+  /// No description provided for @sshProfileDisconnect.
+  ///
+  /// In en, this message translates to:
+  /// **'Disconnect'**
+  String get sshProfileDisconnect;
+
+  /// No description provided for @sshProfileEdit.
+  ///
+  /// In en, this message translates to:
+  /// **'Edit'**
+  String get sshProfileEdit;
+
+  /// No description provided for @sshProfileDelete.
+  ///
+  /// In en, this message translates to:
+  /// **'Delete'**
+  String get sshProfileDelete;
+
+  /// No description provided for @sshProfileRefresh.
+  ///
+  /// In en, this message translates to:
+  /// **'Refresh'**
+  String get sshProfileRefresh;
+
+  /// No description provided for @sshProfileTestSuccess.
+  ///
+  /// In en, this message translates to:
+  /// **'Connection successful'**
+  String get sshProfileTestSuccess;
+
+  /// No description provided for @sshProfileTestFailed.
+  ///
+  /// In en, this message translates to:
+  /// **'Connection test failed'**
+  String get sshProfileTestFailed;
+
+  /// No description provided for @sshProfileConnectSuccess.
+  ///
+  /// In en, this message translates to:
+  /// **'Connected to {host}'**
+  String sshProfileConnectSuccess(String host);
+
+  /// No description provided for @sshProfileFormTitleNew.
+  ///
+  /// In en, this message translates to:
+  /// **'New SSH target'**
+  String get sshProfileFormTitleNew;
+
+  /// No description provided for @sshProfileFormTitleEdit.
+  ///
+  /// In en, this message translates to:
+  /// **'Edit SSH target'**
+  String get sshProfileFormTitleEdit;
+
+  /// No description provided for @sshProfileFormLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Label'**
+  String get sshProfileFormLabel;
+
+  /// No description provided for @sshProfileFormLabelHint.
+  ///
+  /// In en, this message translates to:
+  /// **'My server'**
+  String get sshProfileFormLabelHint;
+
+  /// No description provided for @sshProfileFormHost.
+  ///
+  /// In en, this message translates to:
+  /// **'Host or alias'**
+  String get sshProfileFormHost;
+
+  /// No description provided for @sshProfileFormHostHint.
+  ///
+  /// In en, this message translates to:
+  /// **'server, deploy@server:2222'**
+  String get sshProfileFormHostHint;
+
+  /// No description provided for @sshProfileFormUsername.
+  ///
+  /// In en, this message translates to:
+  /// **'Username'**
+  String get sshProfileFormUsername;
+
+  /// No description provided for @sshProfileFormUsernameHint.
+  ///
+  /// In en, this message translates to:
+  /// **'deploy'**
+  String get sshProfileFormUsernameHint;
+
+  /// No description provided for @sshProfileFormPort.
+  ///
+  /// In en, this message translates to:
+  /// **'Port'**
+  String get sshProfileFormPort;
+
+  /// No description provided for @sshProfileFormPortInvalid.
+  ///
+  /// In en, this message translates to:
+  /// **'Port must be between 1 and 65535'**
+  String get sshProfileFormPortInvalid;
+
+  /// No description provided for @sshProfileFormIdentityFile.
+  ///
+  /// In en, this message translates to:
+  /// **'Identity file'**
+  String get sshProfileFormIdentityFile;
+
+  /// No description provided for @sshProfileFormIdentityFileHint.
+  ///
+  /// In en, this message translates to:
+  /// **'~/.ssh/id_ed25519'**
+  String get sshProfileFormIdentityFileHint;
+
+  /// No description provided for @sshProfileFormIdentityFileHelper.
+  ///
+  /// In en, this message translates to:
+  /// **'Optional. Reads the private key from disk when set.'**
+  String get sshProfileFormIdentityFileHelper;
+
+  /// No description provided for @sshProfileFormIdentityFileBrowse.
+  ///
+  /// In en, this message translates to:
+  /// **'Browse…'**
+  String get sshProfileFormIdentityFileBrowse;
+
+  /// No description provided for @sshProfileFormIdentityFileMissing.
+  ///
+  /// In en, this message translates to:
+  /// **'Identity file not found'**
+  String get sshProfileFormIdentityFileMissing;
+
+  /// No description provided for @sshProfileFormPassphrase.
+  ///
+  /// In en, this message translates to:
+  /// **'Key passphrase'**
+  String get sshProfileFormPassphrase;
+
+  /// No description provided for @sshProfileFormPassphraseHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Optional'**
+  String get sshProfileFormPassphraseHint;
+
+  /// No description provided for @sshProfileFormPassword.
+  ///
+  /// In en, this message translates to:
+  /// **'Password'**
+  String get sshProfileFormPassword;
+
+  /// No description provided for @sshProfileFormPasswordHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Use when no identity file is set'**
+  String get sshProfileFormPasswordHint;
+
+  /// No description provided for @sshProfileFormPasswordHintEdit.
+  ///
+  /// In en, this message translates to:
+  /// **'Leave empty to keep saved password'**
+  String get sshProfileFormPasswordHintEdit;
+
+  /// No description provided for @sshProfileFormPasswordHelper.
+  ///
+  /// In en, this message translates to:
+  /// **'Optional if an identity file is provided.'**
+  String get sshProfileFormPasswordHelper;
+
+  /// No description provided for @sshProfileFormCredentialRequired.
+  ///
+  /// In en, this message translates to:
+  /// **'Provide an identity file or password.'**
+  String get sshProfileFormCredentialRequired;
+
+  /// No description provided for @sshProfileFormFieldRequired.
+  ///
+  /// In en, this message translates to:
+  /// **'Required'**
+  String get sshProfileFormFieldRequired;
+
   /// No description provided for @sshProfileSelectorTooltip.
   ///
   /// In en, this message translates to:
@@ -3127,6 +3391,102 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'The machine this workspace\'s folders live and run on. Sessions launch on this target; switching does not move files.'**
   String get workspaceTargetSubtitle;
+
+  /// No description provided for @workspaceFoldersSectionTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Directories & machines'**
+  String get workspaceFoldersSectionTitle;
+
+  /// No description provided for @workspaceFoldersEditorHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Set machine and path per directory. All local = local workspace; all one remote = project-remote; cross-machine = mixed (member-remote).'**
+  String get workspaceFoldersEditorHint;
+
+  /// No description provided for @workspaceTopologyLocal.
+  ///
+  /// In en, this message translates to:
+  /// **'Local workspace'**
+  String get workspaceTopologyLocal;
+
+  /// No description provided for @workspaceTopologyRemote.
+  ///
+  /// In en, this message translates to:
+  /// **'Remote workspace'**
+  String get workspaceTopologyRemote;
+
+  /// No description provided for @workspaceTopologyMixed.
+  ///
+  /// In en, this message translates to:
+  /// **'Mixed workspace'**
+  String get workspaceTopologyMixed;
+
+  /// No description provided for @mixedWorkspaceRequiresTeamLaunch.
+  ///
+  /// In en, this message translates to:
+  /// **'Mixed workspaces can only be started with a team identity. Switch to a team and assign each member to a machine.'**
+  String get mixedWorkspaceRequiresTeamLaunch;
+
+  /// No description provided for @mixedWorkspacePersonalLaunchBlockedHint.
+  ///
+  /// In en, this message translates to:
+  /// **'This is a mixed workspace. Switch to a team tab to start conversations and assign members to machines.'**
+  String get mixedWorkspacePersonalLaunchBlockedHint;
+
+  /// No description provided for @mixedWorkspaceMemberAssignmentTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Assign members to machines'**
+  String get mixedWorkspaceMemberAssignmentTitle;
+
+  /// No description provided for @mixedWorkspaceMemberAssignmentSubtitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Each team member must run on one of this workspace\'s machines before launch.'**
+  String get mixedWorkspaceMemberAssignmentSubtitle;
+
+  /// No description provided for @mixedWorkspaceMemberAssignmentIncomplete.
+  ///
+  /// In en, this message translates to:
+  /// **'Assign every team member to a machine.'**
+  String get mixedWorkspaceMemberAssignmentIncomplete;
+
+  /// No description provided for @mixedWorkspaceMemberAssignmentConfirm.
+  ///
+  /// In en, this message translates to:
+  /// **'Start team'**
+  String get mixedWorkspaceMemberAssignmentConfirm;
+
+  /// No description provided for @workspaceFolderTargetLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Machine'**
+  String get workspaceFolderTargetLabel;
+
+  /// No description provided for @workspaceFoldersPickPath.
+  ///
+  /// In en, this message translates to:
+  /// **'Choose directory'**
+  String get workspaceFoldersPickPath;
+
+  /// No description provided for @workspaceFoldersApplyAllLocal.
+  ///
+  /// In en, this message translates to:
+  /// **'Set all to local'**
+  String get workspaceFoldersApplyAllLocal;
+
+  /// No description provided for @workspaceFoldersApplyAllRemote.
+  ///
+  /// In en, this message translates to:
+  /// **'Set all to remote…'**
+  String get workspaceFoldersApplyAllRemote;
+
+  /// No description provided for @workspaceFoldersPickRemoteTarget.
+  ///
+  /// In en, this message translates to:
+  /// **'Choose remote machine'**
+  String get workspaceFoldersPickRemoteTarget;
 
   /// No description provided for @homeTargetTitle.
   ///
