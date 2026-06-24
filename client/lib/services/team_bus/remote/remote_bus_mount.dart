@@ -1,6 +1,7 @@
 import 'dart:async';
 import 'dart:math';
 
+import '../../../models/runtime_target.dart';
 import '../../io/filesystem.dart';
 import '../mcp/teammate_bus_mcp_handler.dart';
 import 'bus_http_token_guard.dart';
@@ -29,6 +30,7 @@ class RemoteBusMount {
     required this.remoteRun,
     required this.arch,
     required this.httpBusPort,
+    this.remoteOs = RemoteOs.posix,
     this.relayProvisioner = const RelayProvisioner(),
     String? token,
   }) : token = token ?? _randomToken();
@@ -38,6 +40,10 @@ class RemoteBusMount {
   final Filesystem remoteFs;
   final RemoteCommandRunner remoteRun;
   final String arch;
+
+  /// P3e: the remote host OS family, deciding relay strategy (socat/nc vs the
+  /// bundled static relay) and other os-specific remote behavior.
+  final RemoteOs remoteOs;
 
   /// The local HTTP bus port ([TeammateBusMcpServer.port]) that cursor's
   /// HTTP-over-tunnel members forward to.
@@ -71,6 +77,7 @@ class RemoteBusMount {
       token: token,
       memberId: memberId,
       arch: arch,
+      remoteOs: remoteOs,
     );
 
     final binding = RemoteBusBinding(

@@ -18,7 +18,7 @@
 | P3c | 远程 preflight + CLI 定位泛化 + 工作机物化 | ✅ 已交付 | `services/remote/*` |
 | **P3c+（本轮）** | 远程目录选择 UX（§11 末条） | ✅ 已交付 | 见 §2 Phase B |
 | **P3d** | 跨机产物传输（§4.2） | ✅ 已交付 | publish/fetch/list_artifacts + 会话 inbox，见 §2 Phase C |
-| **P3e** | Windows 远程（§3 / §5.2 / §7.1） | ⏳ 规划就绪，未实现 | 见 §3 Phase D 实现计划 |
+| **P3e** | Windows 远程（§3 / §5.2 / §7.1） | 🟡 部分交付（D.1+D.3） | remoteOs 探测 + windows relay 选择已交付；D.2/D.4 + connect 接线见 §3 |
 | **P4** | 连接弹性（§11 首条） | ⏳ 规划就绪，未实现 | 见 §4 Phase E 实现计划 |
 
 ---
@@ -65,21 +65,27 @@
 
 设计依据：§3（`remoteOs` 探测）、§5.2（symlink→copy 继承退化）、§7.1（windows 静态 relay）。**远程仍仅 local/wsl/ssh 三 kind，不引入新后端。**
 
-### D.1 connect 时探测 `remoteOs`
-- 位置：ssh target 物化点（`services/storage/runtime_context_resolver.dart` 的 ssh 分支 / `services/ssh/ssh_client_factory.dart` 连接后）。
-- 探测：连上后跑一条命令判定 POSIX vs Windows——优先 `uname -s`（成功→posix）；失败/返回 Windows 标识（如 `ver` / `echo %OS%` 含 `Windows_NT`）→ windows。把结果写回 `RuntimeTarget.remoteOs`（模型字段已存在），并缓存到 target 注册表，避免每次重探。
-- 测试：注入 fake 命令 runner，三态（uname 成功 / ver 命中 / 都失败的兜底=posix）。
+> 本轮交付 **D.1（探测逻辑）+ D.3（windows relay 选择/物化 + 可注入资产解析器）**，均带单测。**D.2（symlink→copy）/ D.4（登录 shell/路径）/ D.1 connect 接线** 仍按下方计划留待后续——避免半接线侵入式改动。提交：`feat: 远程执行架构 P3e（部分） — remoteOs 探测 + 跨平台 relay 选择`。
+
+### D.1 connect 时探测 `remoteOs` — ✅ 探测逻辑已交付
+- **新增** `services/remote/remote_os_prober.dart`：注入 `RemoteCommandRunner`，按序 `uname -s`（非空→posix）→ `echo %OS%`（含 `windows`→windows）→ `ver`（含 `windows`→windows）→ 兜底 posix。只读探测、无副作用。
+- 测试 `remote_os_prober_test.dart`：Linux/Darwin uname→posix（uname 命中即不再多探）、`%OS%`=Windows_NT→windows、`ver` banner→windows、全静默→posix 兜底。
+- **未接线（留待）**：在 ssh target 物化点调用 prober 并写回 `RuntimeTarget.remoteOs` 缓存（`runtime_context_resolver.dart` ssh 分支 / `ssh_client_factory.dart` 连接后）。模型字段与 prober 都就绪，缺的是 connect 序里调用 + 持久化这一步。
 
 ### D.2 symlink → copy 继承退化（§5.2）
 - 位置：`services/remote/work_machine_materializer.dart` + `RuntimeLayout._ensureInheritedChild`（现成 copyTree 兜底）。
 - 改动：物化继承 ancestry 时，若 `target.remoteOs == windows` → 走 copy 而非 symlink。能力位/参数传入，不散落 `if`。
 - 测试：windows target 下 `_ensureInheritedChild` 走 copyTree；posix 下仍 symlink（fake fs 断言调用路径）。
 
-### D.3 windows 静态 relay（§7.1）
-- 位置：`services/team_bus/remote/relay_provisioner.dart`。
-- 改动：relay 分发分层——① 探测远程 `socat`/`nc`；② 缺则按 `arch`+`remoteOs` 物化 bundle 的微型静态 relay，**新增 windows-x64 分支**（Windows 远程通常无 socat，静态 relay 是必需路径）；③ 都无→清晰报错。
-- **外部依赖（阻塞点）**：需要一个为 windows-x64（及 linux/macos）预编译的静态 relay 二进制作为 bundled asset。代码侧可完成「选择 + 物化 + argv 拼装 + token 握手」逻辑与测试；**真正的二进制资产需另行编译/采购并加入 `assets/`**（本轮不产出二进制）。relay 选择逻辑应可在无真实二进制下被单测（注入 fake 资产解析器）。
-- 测试：按 `(arch, remoteOs)` 选对 relay 条目；socat 命中时零分发；缺资产时报错。
+### D.3 windows 静态 relay（§7.1）— ✅ 已交付
+- **重构** `services/team_bus/remote/relay_provisioner.dart`：
+  - `provision(... , RemoteOs remoteOs = posix)`：**posix** = socat → nc → bundled(posix arch) → 抛错；**windows** = 直接 bundled(windows arch)（Windows OpenSSH 几乎无 socat/nc，且无 `sh -c` 握手包装，静态 relay 自带 `--token/--member` 握手是唯一路径，故不再探 socat/nc）。
+  - 新增可注入 `RelayAssetResolver`（`Future<List<int>?> Function(assetName)`，构造器可选、保持 `const`）：bundled relay 的二进制字节由它提供；**默认解析器恒返回 null → 抛 `RelayAssetMissingException`（清晰报错，绝不落地坏文件）** —— 即「二进制缺失时明确报错」。
+  - 支持矩阵：posix `{linux-x64, linux-arm64}`、windows `{windows-x64, windows-arm64}`（`.exe` 后缀）；不支持的 arch → `RelayUnavailableException`。
+  - 物化：写字节 → posix 经命令 runner `chmod +x`（`Filesystem` 无 chmod 原语）；windows 不 chmod。
+- **接线** `remote_bus_mount.dart`：新增 `remoteOs`（默认 posix）并透传给 `provision`。
+- **外部依赖（阻塞点，仍在）**：真正的预编译静态 relay 二进制（windows-x64/linux/macos）需另行编译并作为 app asset 由实际 `RelayAssetResolver` 提供；本轮只产出选择/物化/握手逻辑 + 注入式资产解析器，二进制未产出（缺失即清晰报错）。
+- 测试 `relay_provisioner_test.dart`：posix socat/nc 优先、posix bundled（注入字节 + chmod + 写盘校验）、posix 支持 arch 但无资产→asset-missing、posix 不支持 arch→unavailable、windows `.exe`（零 socat/nc 探测、零 chmod）、windows 无资产→asset-missing、windows 不支持 arch→unavailable。
 
 ### D.4 登录 shell / 路径语义（§5.3）
 - 位置：`services/session/launch_command_builder.dart`（远程命令拼装）。

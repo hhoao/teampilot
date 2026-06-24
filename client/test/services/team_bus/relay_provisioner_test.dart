@@ -4,6 +4,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:teampilot/services/cli/registry/capabilities/bus_transport_capability.dart';
 import 'package:teampilot/services/cli/registry/cli_tool_registry.dart';
 import 'package:teampilot/models/team_config.dart';
+import 'package:teampilot/models/runtime_target.dart';
 import 'package:teampilot/services/io/local_filesystem.dart';
 import 'package:teampilot/services/team_bus/remote/relay_provisioner.dart';
 
@@ -74,17 +75,100 @@ void main() {
       expect(plan.argv.join(' '), contains('/bin/nc 127.0.0.1 5599'));
     });
 
-    test('falls back to bundled static relay by arch when no socat/nc',
+    test('posix: materializes bundled static relay via asset resolver + chmod',
         () async {
-      final plan = await provision(run: (_) async => '');
+      final runCmds = <String>[];
+      final p = RelayProvisioner(assetResolver: (_) async => const [1, 2, 3]);
+      final plan = await p.provision(
+        remoteFs: fs,
+        run: (cmd) async {
+          runCmds.add(cmd);
+          return '';
+        },
+        tunnelPort: 5599,
+        token: 'tok123',
+        memberId: 'worker',
+        arch: 'linux-x64',
+      );
       expect(plan.kind, RelayKind.bundledStatic);
       expect(plan.argv.first, contains('flashskyai-bus-relay-linux-x64'));
+      expect(plan.argv.first, isNot(contains('.exe')));
       expect(plan.argv, containsAll(['--token', 'tok123', '--member', 'worker']));
+      expect(runCmds.any((c) => c.startsWith('chmod +x')), isTrue);
+      expect(await fs.readBytes(plan.argv.first), const [1, 2, 3]);
     });
 
-    test('throws when nothing available for an unsupported arch', () async {
+    test('posix: supported arch but no packaged binary → asset-missing error',
+        () async {
       expect(
-        () => provision(run: (_) async => '', arch: 'windows-x64'),
+        () => provision(run: (_) async => ''),
+        throwsA(isA<RelayAssetMissingException>()),
+      );
+    });
+
+    test('posix: unsupported arch with no socat/nc → unavailable', () async {
+      expect(
+        () => RelayProvisioner(assetResolver: (_) async => const [1])
+            .provision(
+          remoteFs: fs,
+          run: (_) async => '',
+          tunnelPort: 1,
+          token: 't',
+          memberId: 'm',
+          arch: 'solaris-sparc',
+        ),
+        throwsA(isA<RelayUnavailableException>()),
+      );
+    });
+
+    test('windows: bundled .exe relay, no socat/nc probe, no chmod', () async {
+      final runCmds = <String>[];
+      final p = RelayProvisioner(assetResolver: (_) async => const [9]);
+      final plan = await p.provision(
+        remoteFs: fs,
+        run: (cmd) async {
+          runCmds.add(cmd);
+          return '';
+        },
+        tunnelPort: 5599,
+        token: 'tok',
+        memberId: 'w',
+        arch: 'windows-x64',
+        remoteOs: RemoteOs.windows,
+      );
+      expect(plan.kind, RelayKind.bundledStatic);
+      expect(plan.argv.first, contains('flashskyai-bus-relay-windows-x64.exe'));
+      expect(runCmds.any((c) => c.contains('command -v')), isFalse);
+      expect(runCmds.any((c) => c.startsWith('chmod')), isFalse);
+    });
+
+    test('windows: no packaged binary → clear asset-missing error', () async {
+      expect(
+        () => const RelayProvisioner().provision(
+          remoteFs: fs,
+          run: (_) async => '',
+          tunnelPort: 1,
+          token: 't',
+          memberId: 'm',
+          arch: 'windows-x64',
+          remoteOs: RemoteOs.windows,
+        ),
+        throwsA(isA<RelayAssetMissingException>()),
+      );
+    });
+
+    test('windows: unsupported arch → unavailable', () async {
+      expect(
+        () => RelayProvisioner(assetResolver: (_) async => const [1])
+            .provision(
+          remoteFs: fs,
+          run: (_) async => '',
+          tunnelPort: 1,
+          token: 't',
+          memberId: 'm',
+          arch: 'windows-ia64',
+          remoteOs: RemoteOs.windows,
+        ),
         throwsA(isA<RelayUnavailableException>()),
       );
     });
