@@ -8,6 +8,7 @@ import '../../models/team_config.dart';
 import '../../services/cli/registry/capabilities/terminal_behavior_capability.dart';
 import '../../services/cli/registry/cli_tool_registry.dart';
 import '../../services/team_bus/agent_node.dart';
+import '../../services/team_bus/artifacts/artifact_transfer_service.dart';
 import '../../services/team_bus/bus_user_line_capture.dart';
 import '../../services/team_bus/chat_cubit_member_launcher.dart';
 import '../../services/team_bus/mcp/teammate_bus_mcp_handler.dart';
@@ -42,12 +43,14 @@ class TabTeamBusCoordinator implements MemberMaterializer {
     required TeamProfile? Function() activeTeam,
     required bool Function() isClosed,
     void Function(Set<String> workingSessionIds)? onWorkingSessionsChanged,
+    ArtifactTransferService Function(AppSession session)? artifactServiceFactory,
   })  : _tabStore = tabStore,
         _shellFactory = shellFactory,
         _connector = connector,
         _activeTeam = activeTeam,
         _isClosed = isClosed,
-        _onWorkingSessionsChanged = onWorkingSessionsChanged;
+        _onWorkingSessionsChanged = onWorkingSessionsChanged,
+        _artifactServiceFactory = artifactServiceFactory;
 
   final ChatTabStore _tabStore;
   final ChatSessionShellFactory _shellFactory;
@@ -55,6 +58,11 @@ class TabTeamBusCoordinator implements MemberMaterializer {
   final TeamProfile? Function() _activeTeam;
   final bool Function() _isClosed;
   final void Function(Set<String> workingSessionIds)? _onWorkingSessionsChanged;
+
+  /// P3d: builds the per-session cross-machine artifact transfer service. Null =
+  /// the three artifact MCP tools are not advertised (single-machine / tests).
+  final ArtifactTransferService Function(AppSession session)?
+      _artifactServiceFactory;
   Set<String> _lastWorkingSessions = const {};
 
   final Map<(String, String), Completer<void>> _memberReady = {};
@@ -121,6 +129,7 @@ class TabTeamBusCoordinator implements MemberMaterializer {
     final server = TeammateBusMcpServer(
       handler: TeammateBusMcpHandler(
         bus: bus,
+        artifacts: _artifactServiceFactory?.call(session),
         forceWaitBeforeStop: team.forceWaitBeforeStop,
         // 成员级解析：cursor 等 push-投递 CLI → false（正常停 + 门铃投递）。
         forceWaitForMember: (memberId) =>

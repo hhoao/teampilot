@@ -807,6 +807,20 @@ class SessionLifecycleService {
   RuntimeTarget memberWorkTarget(AppSession session, String memberId) =>
       _workTargetForMember(session, memberId);
 
+  /// P3d: resolve the work-plane context for an arbitrary target id, so the
+  /// cross-machine artifact service can read on the publisher's machine and
+  /// write on the fetcher's machine. Falls back to the control-plane /home
+  /// context when no work-plane resolver is wired (single-machine setups).
+  Future<RuntimeContext> resolveWorkContextForTargetId(String targetId) {
+    final resolver = _workContextResolver;
+    if (resolver != null) return resolver(_runtimeTargetFromId(targetId));
+    final fallback = _storageRootsResolver;
+    if (fallback != null) return fallback();
+    return Future.value(
+      _localRoots(_appDataBasePath ?? AppStorage.paths.basePath),
+    );
+  }
+
   /// P3a: a member's work target — the targetId of its first assigned folder
   /// (default = the workspace's first folder). One agent, one machine.
   RuntimeTarget _workTargetForMember(AppSession session, String memberId) {

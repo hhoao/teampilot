@@ -1,5 +1,8 @@
 import 'dart:convert';
 
+import '../artifacts/artifact_exceptions.dart';
+import '../artifacts/artifact_handle.dart';
+import '../artifacts/artifact_transfer_service.dart';
 import '../cancellation.dart';
 import '../persistence/bus_message_page.dart';
 import '../idle_notification.dart';
@@ -35,8 +38,10 @@ class TeammateBusMcpHandler {
     String Function()? idGenerator,
     this.forceWaitBeforeStop = true,
     bool Function(String memberId)? forceWaitForMember,
+    ArtifactTransferService? artifacts,
   }) : _bus = bus,
        _forceWaitForMember = forceWaitForMember,
+       _artifacts = artifacts,
        idGenerator = idGenerator ?? bus.newMessageId;
 
   /// 团队配置:成员 turn 结束时是否强制推回 `wait_for_message`(见
@@ -66,6 +71,11 @@ class TeammateBusMcpHandler {
 
   final TeamBus _bus;
   final String Function() idGenerator;
+
+  /// Cross-machine artifact transfer (publish/list/fetch). Null = the three
+  /// artifact tools are neither advertised nor dispatchable (gated like the
+  /// task-queue tools are on [TeamBus.hasTaskQueue]).
+  final ArtifactTransferService? _artifacts;
 
   /// 控制端点：成员（经 Stop hook / plugin / 终端 watcher）报告 idle。
   void notifyIdle(String memberId) => _bus.onMemberIdle(memberId);
@@ -122,6 +132,8 @@ class TeammateBusMcpHandler {
             ..._toolDefs,
             // work-queue 工具仅 mixed 模式（装配了任务队列）才广播。
             if (_bus.hasTaskQueue) ..._taskToolDefs,
+            // 跨机产物工具仅在注入了传输服务（会话挂载了 inbox）时广播。
+            if (_artifacts != null) ..._artifactToolDefs,
           ],
         });
       case 'tools/call':
@@ -341,6 +353,63 @@ class TeammateBusMcpHandler {
     },
   ];
 
+  /// Cross-machine artifact tools (§4.2). Members do NOT share a filesystem;
+  /// the bus stores only a handle and the local App moves the bytes. Single
+  /// file only in v1 (directory/tar transfer is deferred).
+  static const _artifactToolDefs = <Map<String, Object?>>[
+    {
+      'name': 'publish_artifact',
+      'description':
+          'Publish a file on YOUR machine so a teammate can fetch it (members '
+          'do not share a filesystem). Records only a handle (name + path + '
+          'size); the file is not copied until someone fetches it. path is an '
+          'absolute path on your own machine; name is the logical name '
+          'teammates fetch by. Single files only. Fails if name is already '
+          'published unless overwrite=true.',
+      'inputSchema': {
+        'type': 'object',
+        'additionalProperties': false,
+        'properties': {
+          'path': {'type': 'string'},
+          'name': {'type': 'string'},
+          'kind': {'type': 'string', 'enum': ['file']},
+          'overwrite': {'type': 'boolean'},
+        },
+        'required': ['path', 'name'],
+      },
+    },
+    {
+      'name': 'list_artifacts',
+      'description':
+          'List artifacts currently published on the bus (name, publisher, '
+          'size). Use a name with fetch_artifact to pull it to your machine.',
+      'inputSchema': {
+        'type': 'object',
+        'additionalProperties': false,
+        'properties': <String, Object?>{},
+        'required': <String>[],
+      },
+    },
+    {
+      'name': 'fetch_artifact',
+      'description':
+          'Pull a published artifact to YOUR machine. name is the published '
+          'name; destPath is where it lands on your machine and must be inside '
+          'your session inbox (relative paths resolve there). Fails if destPath '
+          'already exists unless overwrite=true. Returns the final landing path.',
+      'inputSchema': {
+        'type': 'object',
+        'additionalProperties': false,
+        'properties': {
+          'name': {'type': 'string'},
+          'destPath': {'type': 'string'},
+          'overwrite': {'type': 'boolean'},
+        },
+        'required': ['name', 'destPath'],
+      },
+    },
+  ];
+
   Future<JsonRpcResponse?> _callTool(
     String memberId,
     JsonRpcRequest req,
@@ -488,8 +557,109 @@ class TeammateBusMcpHandler {
           );
         }
         return _ok(req.id, _encodeTaskAssignment(claimed));
+      case 'publish_artifact':
+        return _publishArtifact(memberId, req, args);
+      case 'list_artifacts':
+        return _listArtifacts(req);
+      case 'fetch_artifact':
+        return _fetchArtifact(memberId, req, args);
       default:
         return JsonRpcResponse.error(req.id, -32602, 'Unknown tool: $name');
+    }
+  }
+
+  Future<JsonRpcResponse> _publishArtifact(
+    String memberId,
+    JsonRpcRequest req,
+    Map<String, Object?> args,
+  ) async {
+    final artifacts = _artifacts;
+    if (artifacts == null) {
+      return JsonRpcResponse.error(req.id, -32602, 'No artifact transfer');
+    }
+    final path = (args['path'] as String?)?.trim() ?? '';
+    final name = (args['name'] as String?)?.trim() ?? '';
+    if (path.isEmpty || name.isEmpty) {
+      return _toolError(
+        req.id,
+        'publish_artifact requires a non-empty "path" and "name".',
+      );
+    }
+    final kind = ArtifactKind.tryParse(args['kind'] as String?);
+    if (kind == null) {
+      return _toolError(
+        req.id,
+        'Only kind=file is supported (directory/tar transfer is not yet '
+        'available).',
+      );
+    }
+    final overwrite = args['overwrite'] as bool? ?? false;
+    try {
+      final handle = await artifacts.publish(
+        publisherMemberId: memberId,
+        path: path,
+        name: name,
+        kind: kind,
+        overwrite: overwrite,
+      );
+      return _ok(
+        req.id,
+        'Published "${handle.name}" (${handle.sizeBytes} bytes). Teammates can '
+        'fetch_artifact(name: "${handle.name}", destPath: ...).',
+      );
+    } on ArtifactException catch (e) {
+      return _toolError(req.id, e.toString());
+    }
+  }
+
+  JsonRpcResponse _listArtifacts(JsonRpcRequest req) {
+    final artifacts = _artifacts;
+    if (artifacts == null) {
+      return JsonRpcResponse.error(req.id, -32602, 'No artifact transfer');
+    }
+    final handles = artifacts.list();
+    if (handles.isEmpty) {
+      return _ok(req.id, 'No artifacts published.');
+    }
+    final lines = <String>['Artifacts (${handles.length}):'];
+    for (final h in handles) {
+      lines.add('- ${h.name} (by ${h.publisherMemberId}, ${h.sizeBytes} bytes)');
+    }
+    return _ok(req.id, lines.join('\n'));
+  }
+
+  Future<JsonRpcResponse> _fetchArtifact(
+    String memberId,
+    JsonRpcRequest req,
+    Map<String, Object?> args,
+  ) async {
+    final artifacts = _artifacts;
+    if (artifacts == null) {
+      return JsonRpcResponse.error(req.id, -32602, 'No artifact transfer');
+    }
+    final name = (args['name'] as String?)?.trim() ?? '';
+    final destPath = (args['destPath'] as String?)?.trim() ?? '';
+    if (name.isEmpty || destPath.isEmpty) {
+      return _toolError(
+        req.id,
+        'fetch_artifact requires a non-empty "name" and "destPath".',
+      );
+    }
+    final overwrite = args['overwrite'] as bool? ?? false;
+    try {
+      final result = await artifacts.fetch(
+        fetcherMemberId: memberId,
+        name: name,
+        destPath: destPath,
+        overwrite: overwrite,
+      );
+      return _ok(
+        req.id,
+        'Fetched "${result.name}" (${result.sizeBytes} bytes) to '
+        '${result.finalPath}.',
+      );
+    } on ArtifactException catch (e) {
+      return _toolError(req.id, e.toString());
     }
   }
 

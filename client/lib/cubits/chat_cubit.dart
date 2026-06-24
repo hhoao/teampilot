@@ -18,6 +18,8 @@ import '../services/workspace/workspace_icon_service.dart';
 import '../services/workspace/workspace_icon_storage.dart';
 import '../services/storage/app_storage.dart';
 import '../services/session/session_lifecycle_service.dart';
+import '../services/team_bus/artifacts/artifact_registry.dart';
+import '../services/team_bus/artifacts/artifact_transfer_service.dart';
 import '../services/team_bus/remote/remote_bus_binding_resolver.dart';
 import '../services/remote/remote_member_preflight_coordinator.dart';
 import '../services/terminal/terminal_session.dart';
@@ -88,7 +90,26 @@ class ChatCubit extends Cubit<ChatState>
     activeTeam: () => _activeTeam,
     isClosed: () => isClosed,
     onWorkingSessionsChanged: _updateWorkingSessions,
+    artifactServiceFactory: _buildArtifactService,
   );
+
+  /// P3d: a per-session cross-machine artifact transfer service. The registry is
+  /// session-scoped (one per bus install), so published handles live only as
+  /// long as the session. Resolvers reuse the launch path's member→target and
+  /// work-context seams so publisher/fetcher bytes move on the right machines.
+  ArtifactTransferService _buildArtifactService(AppSession session) {
+    return ArtifactTransferService(
+      registry: ArtifactRegistry(),
+      resolveFs: (targetId) async =>
+          (await _lifecycle.resolveWorkContextForTargetId(targetId)).filesystem,
+      targetForMember: (memberId) =>
+          _lifecycle.memberWorkTarget(session, memberId).id,
+      inboxDirFor: (memberId) {
+        final cwd = _lifecycle.memberWorkDirs(session, memberId).workingDirectory;
+        return cwd.isEmpty ? '.teampilot-inbox' : '$cwd/.teampilot-inbox';
+      },
+    );
+  }
   MemberPresenceCubit? _presenceCubit;
   TeamProfile? _activeTeam;
   final ChatSessionShellFactory _shellFactory;
