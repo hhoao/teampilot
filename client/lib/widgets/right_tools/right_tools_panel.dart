@@ -16,6 +16,7 @@ import '../../models/layout_preferences.dart';
 import '../../models/member_instance.dart';
 import '../../models/team_config.dart';
 import '../../pages/home_workspace/workspace/member_detail_dialog.dart';
+import '../../pages/home_workspace/workspace/member_folder_assignment_dialog.dart';
 import '../../services/cli/member_config/member_config_inspector.dart';
 import '../../services/io/system_folder_opener.dart';
 import '../../services/file_tree/workspace_file_tree_store.dart';
@@ -350,6 +351,24 @@ class _RightToolsPanelState extends State<RightToolsPanel> {
                   sessionId: sessionId,
                   team: team,
                   member: member,
+                ),
+              );
+              maybeDismissDrawer();
+            },
+            onAssignFolders: (id) {
+              final member = runtimeMembers.firstWhere((m) => m.id == id);
+              final activeTab = chatCubit.activeTab;
+              final sessionId = activeTab?.info.id ?? '';
+              final repo = chatCubit.sessionRepository;
+              if (sessionId.isEmpty || repo == null) return;
+              unawaited(
+                showMemberFolderAssignmentDialog(
+                  context,
+                  repository: repo,
+                  sessionId: sessionId,
+                  memberId: member.id,
+                  memberLabel:
+                      member.name.isEmpty ? context.l10n.memberName : member.name,
                 ),
               );
               maybeDismissDrawer();

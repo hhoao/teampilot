@@ -46,6 +46,7 @@ void main() {
         canViewDetail: true,
         onViewDetail: (_) {},
         onOpenConfigDir: (_) {},
+        onAssignFolders: (_) {},
       ),
       providerCubit,
     ));
@@ -80,6 +81,7 @@ void main() {
         canViewDetail: true,
         onViewDetail: (id) => viewedId = id,
         onOpenConfigDir: (_) {},
+        onAssignFolders: (_) {},
       ),
       providerCubit,
     ));
@@ -119,6 +121,7 @@ void main() {
         canViewDetail: false,
         onViewDetail: (_) => viewed = true,
         onOpenConfigDir: (_) {},
+        onAssignFolders: (_) {},
       ),
       providerCubit,
     ));
@@ -136,5 +139,44 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(viewed, isFalse);
+  });
+
+  testWidgets('assign-folders action appears and dispatches for the member',
+      (tester) async {
+    final providerCubit = AppProviderCubit();
+    addTearDown(providerCubit.close);
+
+    String? assignedId;
+    await tester.pumpWidget(_host(
+      MembersPanel(
+        team: _team,
+        members: const [_member],
+        memberPresence: const {},
+        selectedMemberId: '',
+        onSelected: (_) {},
+        onOpen: (_) {},
+        onLaunchAll: () {},
+        canViewDetail: true,
+        onViewDetail: (_) {},
+        onOpenConfigDir: (_) {},
+        onAssignFolders: (id) => assignedId = id,
+      ),
+      providerCubit,
+    ));
+    await tester.pumpAndSettle();
+
+    final l10n = AppLocalizations.of(
+      tester.element(find.byType(MembersPanel)),
+    );
+
+    await tester.tap(find.byKey(const Key('member-row-m1')),
+        buttons: kSecondaryButton);
+    await tester.pumpAndSettle();
+
+    expect(find.text(l10n.memberAssignFoldersAction), findsOneWidget);
+    await tester.tap(find.text(l10n.memberAssignFoldersAction));
+    await tester.pumpAndSettle();
+
+    expect(assignedId, 'm1');
   });
 }

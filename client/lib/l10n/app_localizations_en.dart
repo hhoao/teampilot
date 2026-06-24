@@ -1621,6 +1621,20 @@ class AppLocalizationsEn extends AppLocalizations {
       'When enabled, the sidebar shows only sessions assigned to the current team. New sessions are always tagged with the selected team so they appear here if you turn this on later.';
 
   @override
+  String get memberTargetAssignmentTitle => 'Member machine';
+
+  @override
+  String memberTargetAssignmentSubtitle(Object member) {
+    return 'Which machine $member runs on (its assigned workspace folders).';
+  }
+
+  @override
+  String get memberTargetAssignmentInherit => 'Inherit workspace folders';
+
+  @override
+  String get memberAssignFoldersAction => 'Assign folders…';
+
+  @override
   String get workspaceTargetTitle => 'Workspace machine';
 
   @override

@@ -2,6 +2,7 @@ import '../../../../models/team_config.dart';
 import '../../cli_tool_adapter.dart';
 import '../cli_capability.dart';
 import '../cli_tool_definition.dart';
+import '../capabilities/bus_transport_capability.dart';
 import '../capabilities/built_in_tool_capabilities.dart';
 import '../capabilities/codex_provider_catalog_capability.dart';
 import '../capabilities/provider_catalog_capability.dart';
@@ -33,6 +34,7 @@ import '../resources/default_resource_capability.dart';
 
 final class CodexCliTool implements CliToolDefinition {
   CodexCliTool({
+    this.busTransport = const BusTransportCapability(longBlockingWaitForMessage: true),
     this.launchArgs = const CodexCliToolAdapter(),
     this.configProfile = const CodexConfigProfileCapability(),
     this.sessionResume = const CodexResumeStrategy(),
@@ -76,6 +78,8 @@ final class CodexCliTool implements CliToolDefinition {
   final ResourceCapability resource;
   final CodexMcpConfigWriter mcpConfigWriter;
 
+  final BusTransportCapability busTransport;
+
   @override
   CliTool get id => CliTool.codex;
 
@@ -84,6 +88,7 @@ final class CodexCliTool implements CliToolDefinition {
 
   @override
   Iterable<CliCapability> get capabilities => [
+    busTransport,
     launchArgs,
     configProfile,
     sessionResume,

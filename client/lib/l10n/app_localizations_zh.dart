@@ -1555,6 +1555,20 @@ class AppLocalizationsZh extends AppLocalizations {
       '开启后，侧边栏仅显示归属当前团队的会话。新建会话仍会写入当前所选团队，之后开启本选项即可看到它们。';
 
   @override
+  String get memberTargetAssignmentTitle => '成员所在机器';
+
+  @override
+  String memberTargetAssignmentSubtitle(Object member) {
+    return '$member 运行所在的机器（其分配的工作区目录）。';
+  }
+
+  @override
+  String get memberTargetAssignmentInherit => '继承工作区目录';
+
+  @override
+  String get memberAssignFoldersAction => '分配目录…';
+
+  @override
   String get workspaceTargetTitle => '工作区所在机器';
 
   @override

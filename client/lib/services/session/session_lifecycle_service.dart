@@ -274,6 +274,11 @@ class SessionLifecycleService {
       workspace: workspace,
       profileId: profileId,
     );
+    // P3a: the member runs in its assigned working directory (default = session
+    // first folder). Personal sessions have no roster member → inherit.
+    final memberWork = session.workDirsForMember(
+      isPersonal ? null : memberBinding?.rosterMemberId,
+    );
     TeamMemberConfig? launchMember = member;
     if (!isPersonal && team != null && member != null) {
       launchMember = _resolveTeamMemberForLaunch(team, member);
@@ -288,7 +293,10 @@ class SessionLifecycleService {
       'cliTeam=$cliTeamName task=$taskId personal=$isPersonal',
     );
     try {
-      final roots = await _resolveRoots(session: session);
+      final roots = await _resolveRoots(
+        session: session,
+        memberId: isPersonal ? null : memberBinding?.rosterMemberId,
+      );
       final service = await _configProfileServiceFor(
         roots,
         launchWorkspaceId: isPersonal ? workspace!.workspaceId : null,
@@ -357,7 +365,7 @@ class SessionLifecycleService {
         personal: resolvedPersonal,
         isPersonal: isPersonal,
         runtimeTeamId: runtimeTeamId,
-        workingDirectory: session.firstFolderPath,
+        workingDirectory: memberWork.workingDirectory,
         llmConfigPathOverride: llmConfigPathOverride,
         extraMcpServers: extraMcpServers,
         busIdleUrl: busIdleUrl,
@@ -379,7 +387,7 @@ class SessionLifecycleService {
         env: prepared.env,
         transcriptRoots: rootsForResume,
         bucket: RuntimeLayout.workspaceBucketForPrimaryPath(
-          session.firstFolderPath,
+          memberWork.workingDirectory,
         ),
         persistedNativeId: cli == null
             ? null
@@ -437,7 +445,10 @@ class SessionLifecycleService {
     Workspace? workspace,
     PersonalProfile? personal,
   }) async {
-    final roots = await _resolveRoots(session: session);
+    final roots = await _resolveRoots(
+      session: session,
+      memberId: memberBinding?.rosterMemberId,
+    );
     final isPersonal = _isPersonalLaunch(workspace, session);
     final runtimeTeamId = isPersonal
         ? session.sessionId.trim()
@@ -744,24 +755,43 @@ class SessionLifecycleService {
     );
   }
 
-  /// Test seam: resolve the work-plane context for [session] (exercises the
-  /// folder-target → forTarget path).
+  /// Test seam: resolve the work-plane context for [session] (and optionally a
+  /// [memberId], exercising the per-member folder-target → forTarget path).
   @visibleForTesting
-  Future<RuntimeContext> debugResolveWorkContext(AppSession session) =>
-      _resolveRoots(session: session);
+  Future<RuntimeContext> debugResolveWorkContext(
+    AppSession session, {
+    String? memberId,
+  }) => _resolveRoots(session: session, memberId: memberId);
 
   /// Resolves the context for launch. When [session] is given and a work-plane
-  /// resolver is wired, the workspace's folder target decides the machine
-  /// (P2 project-remote); otherwise the control-plane/home context is used.
-  Future<RuntimeContext> _resolveRoots({AppSession? session}) async {
+  /// resolver is wired, the folder target decides the machine — per-member
+  /// (P3a, via [memberId]) or whole-session (P2); otherwise the control-plane
+  /// /home context is used.
+  Future<RuntimeContext> _resolveRoots({
+    AppSession? session,
+    String? memberId,
+  }) async {
     final workResolver = _workContextResolver;
     if (session != null && workResolver != null) {
-      return workResolver(_workTargetFor(session));
+      final target = memberId != null
+          ? _workTargetForMember(session, memberId)
+          : _workTargetFor(session);
+      return workResolver(target);
     }
     final resolver = _storageRootsResolver;
     if (resolver != null) return resolver();
     return _localRoots(_appDataBasePath ?? AppStorage.paths.basePath);
   }
+
+  RuntimeTarget _runtimeTargetFromId(String id) =>
+      switch (runtimeKindOfId(id)) {
+        RuntimeKind.ssh => RuntimeTarget.ssh(
+          sshProfileIdOfId(id) ?? '',
+          label: '',
+        ),
+        RuntimeKind.wsl => RuntimeTarget.wsl(wslDistroOfId(id) ?? ''),
+        RuntimeKind.local => RuntimeTarget.local(),
+      };
 
   /// The runtime target of a session's workspace (P2: whole workspace = one
   /// target = `folders.first.targetId`).
@@ -769,12 +799,34 @@ class SessionLifecycleService {
     final id = session.folders.isEmpty
         ? RuntimeTarget.localId
         : session.folders.first.targetId;
-    return switch (runtimeKindOfId(id)) {
-      RuntimeKind.ssh => RuntimeTarget.ssh(sshProfileIdOfId(id) ?? '', label: ''),
-      RuntimeKind.wsl => RuntimeTarget.wsl(wslDistroOfId(id) ?? ''),
-      RuntimeKind.local => RuntimeTarget.local(),
-    };
+    return _runtimeTargetFromId(id);
   }
+
+  /// P3a: a member's work target (the machine it runs on). Public seam for the
+  /// launch path's remote-bus wiring (#1). One agent, one machine.
+  RuntimeTarget memberWorkTarget(AppSession session, String memberId) =>
+      _workTargetForMember(session, memberId);
+
+  /// P3a: a member's work target — the targetId of its first assigned folder
+  /// (default = the workspace's first folder). One agent, one machine.
+  RuntimeTarget _workTargetForMember(AppSession session, String memberId) {
+    final assigned = session.folderAssignments[memberId];
+    final firstPath = (assigned != null && assigned.isNotEmpty)
+        ? assigned.first
+        : (session.folders.isEmpty ? null : session.folders.first.path);
+    final folder = session.folders
+            .where((f) => f.path == firstPath)
+            .firstOrNull ??
+        (session.folders.isEmpty ? null : session.folders.first);
+    return _runtimeTargetFromId(folder?.targetId ?? RuntimeTarget.localId);
+  }
+
+  /// P3a: a member's working directory (assigned first, default session first)
+  /// and `--add-dir` directories (assigned rest, default session extras).
+  ({String workingDirectory, List<String> addDirs}) memberWorkDirs(
+    AppSession session,
+    String memberId,
+  ) => session.workDirsForMember(memberId);
 
   RuntimeContext _localRoots(String basePath) {
     return RuntimeContext(

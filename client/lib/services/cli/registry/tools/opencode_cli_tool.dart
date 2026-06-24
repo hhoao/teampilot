@@ -2,6 +2,7 @@ import '../../../../models/team_config.dart';
 import '../../cli_tool_adapter.dart';
 import '../cli_capability.dart';
 import '../cli_tool_definition.dart';
+import '../capabilities/bus_transport_capability.dart';
 import '../capabilities/built_in_tool_capabilities.dart';
 import '../capabilities/config_profile_capability.dart';
 import '../capabilities/executable_resolver_capability.dart';
@@ -28,12 +29,12 @@ import '../capabilities/member_config_inspection_capability.dart';
 import '../capabilities/provider_form_capability.dart';
 import '../capabilities/resource_capability.dart';
 import '../mcp_writers/opencode_mcp_config_writer.dart';
-import '../mcp_writers/opencode_mcp_config_writer.dart';
 import '../plugin_provisioners/opencode_plugin_provisioner.dart';
 import '../resources/opencode_resource_capability.dart';
 
 final class OpencodeCliTool implements CliToolDefinition {
   OpencodeCliTool({
+    this.busTransport = const BusTransportCapability(longBlockingWaitForMessage: true),
     this.launchArgs = const OpencodeCliToolAdapter(),
     this.configProfile = const OpencodeConfigProfileCapability(),
     this.sessionResume = const OpencodeResumeStrategy(),
@@ -77,6 +78,8 @@ final class OpencodeCliTool implements CliToolDefinition {
   final ResourceCapability resource;
   final OpencodeMcpConfigWriter mcpConfigWriter;
 
+  final BusTransportCapability busTransport;
+
   @override
   CliTool get id => CliTool.opencode;
 
@@ -85,6 +88,7 @@ final class OpencodeCliTool implements CliToolDefinition {
 
   @override
   Iterable<CliCapability> get capabilities => [
+    busTransport,
     launchArgs,
     configProfile,
     sessionResume,

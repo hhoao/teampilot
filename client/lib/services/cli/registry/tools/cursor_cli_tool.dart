@@ -2,6 +2,7 @@ import '../../../../models/team_config.dart';
 import '../../cli_tool_adapter.dart';
 import '../cli_capability.dart';
 import '../cli_tool_definition.dart';
+import '../capabilities/bus_transport_capability.dart';
 import '../../../provider/cursor/cursor_cli_config_layout.dart';
 import '../../../provider/cursor/cursor_provider_catalog_capability.dart';
 import '../capabilities/cli_config_layout_capability.dart';
@@ -35,6 +36,7 @@ import '../resources/cursor_resource_capability.dart';
 /// provider auth) embedded terminal.
 final class CursorCliTool implements CliToolDefinition {
   CursorCliTool({
+    this.busTransport = const BusTransportCapability(longBlockingWaitForMessage: false),
     this.launchArgs = const CursorCliToolAdapter(),
     this.configProfile = const CursorConfigProfileCapability(),
     this.sessionResume = const CursorResumeStrategy(),
@@ -78,6 +80,8 @@ final class CursorCliTool implements CliToolDefinition {
   final CliConfigLayoutCapability configLayout;
   final CursorMcpConfigWriter mcpConfigWriter;
 
+  final BusTransportCapability busTransport;
+
   @override
   CliTool get id => CliTool.cursor;
 
@@ -86,6 +90,7 @@ final class CursorCliTool implements CliToolDefinition {
 
   @override
   Iterable<CliCapability> get capabilities => [
+    busTransport,
     launchArgs,
     configProfile,
     sessionResume,

@@ -2,6 +2,7 @@ import 'dart:async';
 
 import '../../../models/app_session.dart';
 import '../../../services/team_bus/mcp/teammate_bus_mcp_server.dart';
+import '../../../services/team_bus/remote/remote_bus_mount.dart';
 import '../../../services/team_bus/team_bus.dart';
 import '../../../services/terminal/terminal_session.dart';
 import 'chat_tab_info.dart';
@@ -39,7 +40,13 @@ class ChatTab {
   TeamBus? teamBus;
   TeammateBusMcpServer? mcpServer;
 
+  /// P3b (#1): remote members' reverse-tunnel mount (raw socket + tunnels +
+  /// pumps), built lazily on first remote-member connect; torn down with the bus.
+  RemoteBusMount? remoteBusMount;
+
   Future<void> disposeBus() async {
+    await remoteBusMount?.close();
+    remoteBusMount = null;
     await mcpServer?.stop();
     teamBus?.dispose();
     teamBus = null;

@@ -12,6 +12,7 @@ class AppSession {
     required this.sessionId,
     required this.workspaceId,
     required this.folders,
+    this.folderAssignments = const {},
     this.display = '',
     this.sessionTeam = '',
     this.profileId = '',
@@ -30,6 +31,7 @@ class AppSession {
     required String sessionId,
     required String workspaceId,
     List<WorkspaceFolder> folders = const [],
+    Map<String, List<String>> folderAssignments = const {},
     String display = '',
     String sessionTeam = '',
     String profileId = '',
@@ -47,6 +49,10 @@ class AppSession {
       sessionId: sessionId,
       workspaceId: workspaceId,
       folders: List.unmodifiable(folders),
+      folderAssignments: Map.unmodifiable({
+        for (final e in folderAssignments.entries)
+          e.key: List<String>.unmodifiable(e.value),
+      }),
       display: display,
       sessionTeam: sessionTeam,
       profileId: profileId,
@@ -86,10 +92,22 @@ class AppSession {
               if (e.value != null) '${e.key}': '${e.value}',
           }
         : const <String, String>{};
+    final assignRaw = json['folderAssignments'];
+    final assignments = assignRaw is Map
+        ? <String, List<String>>{
+            for (final e in assignRaw.entries)
+              if (e.value is List)
+                '${e.key}': [
+                  for (final p in (e.value as List))
+                    if ('$p'.isNotEmpty) '$p',
+                ],
+          }
+        : const <String, List<String>>{};
     return AppSession(
       sessionId: json['sessionId'] as String? ?? '',
       workspaceId: json['workspaceId'] as String? ?? '',
       folders: foldersFromJson(json['folders']),
+      folderAssignments: assignments,
       display: json['display'] as String? ?? '',
       sessionTeam: json['sessionTeam'] as String? ?? '',
       profileId: json['profileId'] as String? ?? '',
@@ -108,6 +126,13 @@ class AppSession {
   final String sessionId;
   final String workspaceId;
   final List<WorkspaceFolder> folders;
+
+  /// P3a: per-member startup folder assignment (memberId → [folderPath...]).
+  /// First path = that member's working directory; rest = `--add-dir`. A member
+  /// with no entry inherits the workspace folders. All of a member's folders
+  /// share one targetId (one agent, one machine).
+  final Map<String, List<String>> folderAssignments;
+
   final String display;
 
   String get firstFolderPath => folders.isEmpty ? '' : folders.first.path;
@@ -116,6 +141,25 @@ class AppSession {
       : folders.skip(1).map((f) => f.path).toList(growable: false);
   List<String> get folderPaths =>
       folders.map((f) => f.path).toList(growable: false);
+
+  /// P3a: the working directory + `--add-dir` dirs for [memberId]. When the
+  /// member has a non-empty [folderAssignments] entry, its first path is the
+  /// working directory and the rest are add-dirs; otherwise the member inherits
+  /// the session folders ([firstFolderPath] / [extraFolderPaths]). A null/empty
+  /// [memberId] always inherits. Single source for per-member work-dir
+  /// resolution (lifecycle launch, connect, and tab-store all delegate here).
+  ({String workingDirectory, List<String> addDirs}) workDirsForMember(
+    String? memberId,
+  ) {
+    final assigned = memberId == null ? null : folderAssignments[memberId];
+    if (assigned == null || assigned.isEmpty) {
+      return (workingDirectory: firstFolderPath, addDirs: extraFolderPaths);
+    }
+    return (
+      workingDirectory: assigned.first,
+      addDirs: assigned.skip(1).toList(growable: false),
+    );
+  }
 
 
   /// Stable UI team id ([TeamProfile.id]) for filtering; not the CLI runtime name.
@@ -179,6 +223,7 @@ class AppSession {
     String? sessionId,
     String? workspaceId,
     List<WorkspaceFolder>? folders,
+    Map<String, List<String>>? folderAssignments,
     String? display,
     String? sessionTeam,
     String? profileId,
@@ -196,6 +241,7 @@ class AppSession {
       sessionId: sessionId ?? this.sessionId,
       workspaceId: workspaceId ?? this.workspaceId,
       folders: folders ?? this.folders,
+      folderAssignments: folderAssignments ?? this.folderAssignments,
       display: display ?? this.display,
       sessionTeam: sessionTeam ?? this.sessionTeam,
       profileId: profileId ?? this.profileId,
@@ -217,6 +263,7 @@ class AppSession {
       'sessionId': sessionId,
       'workspaceId': workspaceId,
       'folders': folders.map((f) => f.toJson()).toList(),
+      if (folderAssignments.isNotEmpty) 'folderAssignments': folderAssignments,
       'display': display,
       'sessionTeam': sessionTeam,
       if (profileId.isNotEmpty) 'profileId': profileId,
@@ -241,6 +288,7 @@ class AppSession {
             sessionId == other.sessionId &&
             workspaceId == other.workspaceId &&
             listEquals(folders, other.folders) &&
+            _assignmentsEqual(folderAssignments, other.folderAssignments) &&
             display == other.display &&
             sessionTeam == other.sessionTeam &&
             profileId == other.profileId &&
@@ -260,6 +308,11 @@ class AppSession {
     sessionId,
     workspaceId,
     Object.hashAll(folders),
+    Object.hashAll(
+      folderAssignments.entries.map(
+        (e) => Object.hash(e.key, Object.hashAll(e.value)),
+      ),
+    ),
     display,
     sessionTeam,
     profileId,
@@ -275,4 +328,16 @@ class AppSession {
     pinned,
     sortOrder,
   );
+
+  static bool _assignmentsEqual(
+    Map<String, List<String>> a,
+    Map<String, List<String>> b,
+  ) {
+    if (a.length != b.length) return false;
+    for (final entry in a.entries) {
+      final other = b[entry.key];
+      if (other == null || !listEquals(entry.value, other)) return false;
+    }
+    return true;
+  }
 }

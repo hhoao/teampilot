@@ -32,6 +32,7 @@ class MembersPanel extends StatelessWidget {
     required this.canViewDetail,
     required this.onViewDetail,
     required this.onOpenConfigDir,
+    required this.onAssignFolders,
     super.key,
   });
 
@@ -47,6 +48,10 @@ class MembersPanel extends StatelessWidget {
   final bool canViewDetail;
   final ValueChanged<String> onViewDetail;
   final ValueChanged<String> onOpenConfigDir;
+
+  /// Assigns the member to a runtime target's folders (P3a). Needs a session, so
+  /// it is gated on [canViewDetail].
+  final ValueChanged<String> onAssignFolders;
 
   @override
   Widget build(BuildContext context) {
@@ -200,6 +205,13 @@ class MembersPanel extends StatelessWidget {
           icon: Icons.folder_open,
           label: l10n.memberDetailOpenConfigDir,
         ),
+        SidebarActionMenuSpec.item(
+          value: _MemberMenuAction.assignFolders,
+          icon: Icons.dns_outlined,
+          label: l10n.memberAssignFoldersAction,
+          enabled: canViewDetail,
+          tooltip: canViewDetail ? null : l10n.memberDetailNeedsSession,
+        ),
         const SidebarActionMenuSpec.divider(),
         SidebarActionMenuSpec.item(
           value: _MemberMenuAction.launchAll,
@@ -215,6 +227,8 @@ class MembersPanel extends StatelessWidget {
         onOpen(member.id);
       case _MemberMenuAction.openConfigDir:
         onOpenConfigDir(member.id);
+      case _MemberMenuAction.assignFolders:
+        onAssignFolders(member.id);
       case _MemberMenuAction.launchAll:
         onLaunchAll();
       case null:
@@ -223,7 +237,13 @@ class MembersPanel extends StatelessWidget {
   }
 }
 
-enum _MemberMenuAction { viewDetail, open, openConfigDir, launchAll }
+enum _MemberMenuAction {
+  viewDetail,
+  open,
+  openConfigDir,
+  assignFolders,
+  launchAll,
+}
 
 CliTool _catalogCli(CliToolRegistry? registry, CliTool memberCli) {
   if (registry != null &&

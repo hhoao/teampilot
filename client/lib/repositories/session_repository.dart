@@ -500,6 +500,43 @@ class SessionRepository {
     });
   }
 
+  /// P3a: assigns [memberId] to [folderPaths] (first = working directory, rest
+  /// = `--add-dir`); an empty list clears the assignment (member inherits the
+  /// workspace folders). All paths should share one target (one agent, one
+  /// machine). Writes the session manifest's `folderAssignments`.
+  Future<void> setMemberFolderAssignment(
+    String sessionId,
+    String memberId,
+    List<String> folderPaths,
+  ) {
+    final trimmedMember = memberId.trim();
+    if (trimmedMember.isEmpty) return Future.value();
+    return _withSessionFile(sessionId, () async {
+      final fs = await _fs();
+      final existing = await _findSession(fs, sessionId);
+      if (existing == null) {
+        throw StateError('Unknown sessionId: $sessionId');
+      }
+      final paths = folderPaths
+          .map(normalizeWorkspacePath)
+          .where((p) => p.isNotEmpty)
+          .toList(growable: false);
+      final next = Map<String, List<String>>.from(existing.folderAssignments);
+      if (paths.isEmpty) {
+        next.remove(trimmedMember);
+      } else {
+        next[trimmedMember] = paths;
+      }
+      await _writeSession(
+        fs,
+        existing.copyWith(
+          folderAssignments: next,
+          updatedAt: DateTime.now().millisecondsSinceEpoch,
+        ),
+      );
+    });
+  }
+
   /// Records a CLI-native resume id for [sessionId]. Team sessions store it on
   /// the matching member binding ([rosterMemberId]); personal sessions store it
   /// at the session level. No-op when already equal. See

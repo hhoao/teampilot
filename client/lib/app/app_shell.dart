@@ -9,6 +9,8 @@ import 'package:shared_preferences/shared_preferences.dart';
 import '../cubits/app_provider_cubit.dart';
 import '../cubits/app_update_cubit.dart';
 import '../cubits/chat_cubit.dart';
+import '../services/team_bus/remote/remote_bus_binding_resolver.dart';
+import '../services/team_bus/remote/ssh_remote_bus_mount_factory.dart';
 import '../cubits/board_cubit.dart';
 import '../cubits/mailbox_cubit.dart';
 import '../cubits/member_presence_cubit.dart';
@@ -610,6 +612,16 @@ Future<AppShell> buildAppShell({
     defaultTargetResolver: defaultTargetResolver,
     terminalScrollbackLinesResolver: () =>
         sessionPreferencesCubit.state.preferences.terminalScrollbackLines,
+    // P3b (#1): connect remote (ssh) mixed-team members back to the in-process
+    // bus over a reverse tunnel. Local members resolve to null (unchanged).
+    remoteBusResolver: RemoteBusBindingResolver(
+      registry: cliToolRegistry,
+      mountFactory: sshRemoteBusMountFactory(
+        sshClientFactory: sshClientFactory,
+        profileById: (id) async => sshProfileById(id),
+        contextForTarget: runtimeContextRegistry.forTarget,
+      ),
+    ),
   );
 
   memberPresenceCubit = MemberPresenceCubit();

@@ -18,6 +18,7 @@ import '../services/workspace/workspace_icon_service.dart';
 import '../services/workspace/workspace_icon_storage.dart';
 import '../services/storage/app_storage.dart';
 import '../services/session/session_lifecycle_service.dart';
+import '../services/team_bus/remote/remote_bus_binding_resolver.dart';
 import '../services/terminal/terminal_session.dart';
 import '../services/terminal/terminal_transport_factory.dart';
 import '../widgets/workspace_icon_picker_dialog.dart';
@@ -53,7 +54,9 @@ class ChatCubit extends Cubit<ChatState>
     bool Function()? sshUseLoginShellResolver,
     RuntimeTarget Function()? defaultTargetResolver,
     int Function()? terminalScrollbackLinesResolver,
-  }) : _shellFactory = ChatSessionShellFactory(
+    RemoteBusBindingResolver? remoteBusResolver,
+  }) : _remoteBusResolver = remoteBusResolver,
+       _shellFactory = ChatSessionShellFactory(
          executableResolver: executableResolver,
          cliExecutableResolver: cliExecutableResolver,
          terminalSessionFactory: terminalSessionFactory,
@@ -70,6 +73,7 @@ class ChatCubit extends Cubit<ChatState>
        _sessionRepository = sessionRepository,
        super(const ChatState());
 
+  final RemoteBusBindingResolver? _remoteBusResolver;
   final ChatTabStore _tabStore = ChatTabStore();
   final SessionDataStore _dataStore = SessionDataStore();
   late final SessionLaunchService _launchService = SessionLaunchService(this);
@@ -133,6 +137,9 @@ class ChatCubit extends Cubit<ChatState>
   @override
   bool Function()? get autoLaunchAllMembersOnConnect =>
       _autoLaunchAllMembersOnConnect;
+
+  @override
+  RemoteBusBindingResolver? get remoteBusResolver => _remoteBusResolver;
 
   /// Wired by app_shell after both cubits are constructed.
   void bindPresenceCubit(MemberPresenceCubit cubit) => _presenceCubit = cubit;

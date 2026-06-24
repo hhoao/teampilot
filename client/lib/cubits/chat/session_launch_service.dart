@@ -20,6 +20,10 @@ import '../../services/storage/app_storage.dart';
 import '../../services/storage/runtime_context.dart';
 import '../../services/team_bus/mcp/bus_bridge_locator.dart';
 import '../../services/team_bus/mcp/teammate_bus_mcp_config.dart';
+import '../../services/team_bus/remote/member_bus_mcp_config.dart';
+import '../../services/team_bus/remote/remote_bus_binding_resolver.dart';
+import '../../services/cli/registry/cli_tool_registry.dart';
+import '../../services/cli/registry/capabilities/bus_transport_capability.dart';
 import '../../services/terminal/terminal_session.dart';
 import '../../utils/logger.dart';
 import '../../utils/workspace_path_utils.dart';
@@ -79,6 +83,11 @@ abstract interface class SessionLaunchHost {
   SessionRepository? get sessionRepository;
   PostFrameScheduler get postFrameScheduler;
   bool Function()? get autoLaunchAllMembersOnConnect;
+
+  /// P3b (#1): resolves a remote member's reverse-tunnel bus binding. Null when
+  /// remote-member-over-tunnel is not wired (then all members use local
+  /// transport — pre-P3b behavior).
+  RemoteBusBindingResolver? get remoteBusResolver;
 }
 
 /// Owns the entire connect / launch flow: opening (or restoring) session tabs,
@@ -838,6 +847,24 @@ class SessionLaunchService implements MemberConnector {
         launchMember != null &&
         team.teamMode == TeamMode.mixed &&
         tab.mcpServer != null;
+    // P3b (#1): a remote (ssh) member connects back to the in-process bus over a
+    // reverse tunnel; the resolver returns its binding (relay/HTTP over tunnel),
+    // or null for a local member (unchanged transport). Android-mixed fix.
+    RemoteBusBinding? remoteBinding;
+    if (mixedBus && _h.remoteBusResolver != null) {
+      final memberId = binding?.rosterMemberId ?? launchMember.id;
+      final resolution = await _h.remoteBusResolver!.resolve(
+        existingMount: tab.remoteBusMount,
+        memberTarget: _h.lifecycle.memberWorkTarget(activeSession, memberId),
+        memberId: memberId,
+        cli: launchMember.cliWithin(team),
+        busServer: tab.mcpServer!,
+      );
+      if (resolution != null) {
+        tab.remoteBusMount = resolution.mount;
+        remoteBinding = resolution.binding;
+      }
+    }
     final shellLaunch = await _h.lifecycle.prepareShellLaunch(
       session: activeSession,
       team: team,
@@ -851,6 +878,7 @@ class SessionLaunchService implements MemberConnector {
                 endpoint: tab.mcpServer!.endpoint,
                 memberId: launchMember.id,
                 cli: launchMember.cliWithin(team),
+                remoteBinding: remoteBinding,
               ),
             }
           : null,
@@ -866,9 +894,14 @@ class SessionLaunchService implements MemberConnector {
     // cursor pre-allocation on first launch), so map them through directly —
     // no `launched` gating. See docs/session-resume-architecture.md.
     await _persistNativeSessionId(repo, tab, activeSession, binding, plan);
+    // P3a: the member runs in its assigned working directory (default = session
+    // first folder). Personal sessions inherit (null memberId).
+    final memberWork = activeSession.workDirsForMember(
+      isPersonal ? null : binding?.rosterMemberId,
+    );
     shell.connect(
-      workingDirectory: activeSession.firstFolderPath,
-      additionalDirectories: activeSession.extraFolderPaths,
+      workingDirectory: memberWork.workingDirectory,
+      additionalDirectories: memberWork.addDirs,
       fixedSessionId: plan.createSessionId,
       resumeSessionId: plan.resumeSessionId,
       shellLaunch: shellLaunch,
@@ -907,28 +940,40 @@ class SessionLaunchService implements MemberConnector {
     );
   }
 
-  /// 选择 teammate-bus MCP 的传输方式。claude + 本地 PTY（native 后端）+ 桥接 exe
-  /// 可解析 → stdio（经 `teammate_bus_bridge` 绕开 claude HTTP 的 ~6 分钟单请求死线，
-  /// 让 `wait_for_message` 真正阻塞、不再 transport dropped）。其余情况（非 claude、
-  /// SSH/WSL 远端够不到本地 loopback、或桥接未随包分发）回落到 HTTP，不破坏现状。
+  /// 选择 teammate-bus MCP 的传输方式（P3b：按成员 target + 能力位分流）。
+  ///
+  /// - **本地成员**：claude + 本地 PTY（native 后端）+ 桥接 exe 可解析 → stdio（经
+  ///   `teammate_bus_bridge` 绕开 claude HTTP 的 ~6 分钟单请求死线，让
+  ///   `wait_for_message` 真正阻塞）；其余回落到 HTTP（不破坏现状）。
+  /// - **远程成员**（[remoteBinding] 非空，target 为 ssh）：长阻塞 CLI
+  ///   （claude/flashskyai/codex/opencode）→ relay-over-tunnel（stdio↔127.0.0.1:<P>，
+  ///   带 token 握手）；cursor（门铃式）→ HTTP-over-tunnel（127.0.0.1:<P> + token header）。
+  ///   远程成员配置指向**隧道端口 <P>**而非远端够不到的裸 loopback——即 Android mixed 修点。
   Map<String, Object?> _busMcpServerConfig({
     required Uri endpoint,
     required String memberId,
     required CliTool cli,
+    RemoteBusBinding? remoteBinding,
   }) {
-    final localNative = !AppStorage.isInstalled ||
-        AppStorage.context.mode == StorageBackendMode.native;
-    if (cli == CliTool.claude && localNative) {
-      final bridge = BusBridgeLocator.resolve();
-      if (bridge != null) {
-        return teammateBusMcpServerConfigStdio(
-          bridgePath: bridge,
-          endpoint: endpoint,
-          memberId: memberId,
-        );
+    final longBlocking = CliToolRegistry.builtIn()
+            .capability<BusTransportCapability>(cli)
+            ?.longBlockingWaitForMessage ??
+        true;
+    String? localBridge;
+    if (remoteBinding == null) {
+      final localNative = !AppStorage.isInstalled ||
+          AppStorage.context.mode == StorageBackendMode.native;
+      if (cli == CliTool.claude && localNative) {
+        localBridge = BusBridgeLocator.resolve();
       }
     }
-    return teammateBusMcpServerConfig(endpoint: endpoint, memberId: memberId);
+    return buildMemberBusMcpConfig(
+      memberId: memberId,
+      localEndpoint: endpoint,
+      longBlocking: longBlocking,
+      localStdioBridgePath: localBridge,
+      remote: remoteBinding,
+    );
   }
 
   void _scheduleMemberConnect(

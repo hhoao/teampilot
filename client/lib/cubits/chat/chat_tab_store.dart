@@ -155,8 +155,12 @@ class ChatTabStore {
     }
     for (final s in sessions) {
       if (s.sessionId != tabId) continue;
-      final wd = s.firstFolderPath.trim();
-      final addl = s.extraFolderPaths
+      // P3a: resolve for the tab's selected member (its assigned folders;
+      // default = session folders).
+      final memberId = tab.selectedMemberId.trim();
+      final work = s.workDirsForMember(memberId.isEmpty ? null : memberId);
+      final wd = work.workingDirectory.trim();
+      final addl = work.addDirs
           .map((e) => e.trim())
           .where((e) => e.isNotEmpty)
           .toList();

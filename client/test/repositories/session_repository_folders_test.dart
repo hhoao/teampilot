@@ -64,6 +64,25 @@ void main() {
     expect(reloaded.folders.every((f) => f.targetId == 'ssh:p1'), isTrue);
   });
 
+  test('setMemberFolderAssignment writes + clears per-member assignment',
+      () async {
+    final tmp = await Directory.systemTemp.createTemp('fs_repo_folders_');
+    addTearDown(() => tmp.deleteSync(recursive: true));
+    final repo = SessionRepository(rootDir: tmp.path);
+
+    final ws = await repo.createWorkspace('/main', additionalPaths: ['/x']);
+    final s = await repo.createSession(ws.workspaceId);
+
+    await repo.setMemberFolderAssignment(s.sessionId, 'm1', ['/main', '/x']);
+    var reloaded = (await repo.loadSessions()).single;
+    expect(reloaded.folderAssignments['m1'], ['/main', '/x']);
+
+    // empty list clears the assignment
+    await repo.setMemberFolderAssignment(s.sessionId, 'm1', const []);
+    reloaded = (await repo.loadSessions()).single;
+    expect(reloaded.folderAssignments.containsKey('m1'), isFalse);
+  });
+
   test('updateWorkspaceFolders replaces folders wholesale', () async {
     final tmp = await Directory.systemTemp.createTemp('fs_repo_folders_');
     addTearDown(() => tmp.deleteSync(recursive: true));

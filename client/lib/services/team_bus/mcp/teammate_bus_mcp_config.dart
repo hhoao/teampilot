@@ -41,3 +41,7 @@ const teammateBusMcpServerName = 'teammate-bus';
 
 /// 标识发起请求成员身份的 HTTP header 名。
 const teammateBusMcpMemberHeader = 'X-Member';
+
+/// 远程成员经反向隧道连回 bus 时携带的 per-session token header 名（HTTP-over-tunnel
+/// 的 cursor 用；长阻塞 CLI 走 raw-socket relay 时 token 在握手帧里）。
+const teammateBusTokenHeader = 'X-Bus-Token';

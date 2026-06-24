@@ -3008,6 +3008,30 @@ abstract class AppLocalizations {
   /// **'When enabled, the sidebar shows only sessions assigned to the current team. New sessions are always tagged with the selected team so they appear here if you turn this on later.'**
   String get scopeSessionsToSelectedTeamDescription;
 
+  /// No description provided for @memberTargetAssignmentTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Member machine'**
+  String get memberTargetAssignmentTitle;
+
+  /// No description provided for @memberTargetAssignmentSubtitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Which machine {member} runs on (its assigned workspace folders).'**
+  String memberTargetAssignmentSubtitle(Object member);
+
+  /// No description provided for @memberTargetAssignmentInherit.
+  ///
+  /// In en, this message translates to:
+  /// **'Inherit workspace folders'**
+  String get memberTargetAssignmentInherit;
+
+  /// No description provided for @memberAssignFoldersAction.
+  ///
+  /// In en, this message translates to:
+  /// **'Assign folders…'**
+  String get memberAssignFoldersAction;
+
   /// No description provided for @workspaceTargetTitle.
   ///
   /// In en, this message translates to:
