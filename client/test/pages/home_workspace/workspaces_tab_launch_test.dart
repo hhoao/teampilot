@@ -1,5 +1,6 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:teampilot/models/workspace.dart';
+import 'package:teampilot/models/launch_profile_kind.dart';
 import 'package:teampilot/models/workspace_folder.dart';
 import 'package:teampilot/models/launch_profile_ref.dart';
 import 'package:teampilot/pages/home_workspace/workspaces_tab.dart';
@@ -10,6 +11,15 @@ Workspace _workspace() => Workspace(
     workspaceId: 'p1',
     folders: [WorkspaceFolder(path: '/tmp/p1')],
     createdAt: 0);
+
+Workspace _mixedWorkspace() => Workspace(
+  workspaceId: 'mixed',
+  folders: const [
+    WorkspaceFolder(path: '/local'),
+    WorkspaceFolder(path: '/remote', targetId: 'ssh:p1'),
+  ],
+  createdAt: 0,
+);
 
 void main() {
   group('workspaceLaunchRoute', () {
@@ -67,6 +77,28 @@ void main() {
           const WorkspaceLaunchPref(lastIdentity: '', remember: true),
         ),
         isNull,
+      );
+    });
+
+    test('null when mixed workspace remembered personal identity', () {
+      expect(
+        rememberedLaunchRoute(
+          _mixedWorkspace(),
+          WorkspaceLaunchPref(
+            lastIdentity: LaunchProfileProvisioner.defaultPersonalId,
+            remember: true,
+          ),
+          profileKindFor: (_) => LaunchProfileKind.personal,
+        ),
+        isNull,
+      );
+      expect(
+        rememberedLaunchRoute(
+          _mixedWorkspace(),
+          const WorkspaceLaunchPref(lastIdentity: 'squad', remember: true),
+          profileKindFor: (_) => LaunchProfileKind.team,
+        ),
+        '/home-v2/workspace/mixed?as=squad',
       );
     });
   });

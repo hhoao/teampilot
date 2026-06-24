@@ -10,11 +10,12 @@ import '../../cubits/launch_profile_cubit.dart';
 import '../../l10n/l10n_extensions.dart';
 import '../../models/workspace.dart';
 import '../../models/app_session.dart';
+import '../../models/launch_profile_kind.dart';
 import '../../models/launch_profile_ref.dart';
+import '../../models/workspace_topology.dart';
 import '../../repositories/session_repository.dart';
 import '../../services/home_workspace/workspace_launch_prefs_store.dart';
 import '../../theme/app_text_styles.dart';
-import '../../utils/launch_profile_resolver.dart';
 import '../../utils/home_workspace_display.dart';
 import '../../utils/workspace_display_name.dart';
 import '../../widgets/menu/sidebar_action_menu.dart';
@@ -31,10 +32,22 @@ String workspaceLaunchRoute(String workspaceId, LaunchProfileRef identity) =>
 
 /// When a remembered, well-formed choice exists for [workspace], the route to
 /// open it directly (skipping the dialog); otherwise null (show the dialog).
-String? rememberedLaunchRoute(Workspace workspace, WorkspaceLaunchPref? pref) {
+String? rememberedLaunchRoute(
+  Workspace workspace,
+  WorkspaceLaunchPref? pref, {
+  LaunchProfileKind? Function(String profileId)? profileKindFor,
+}) {
   if (pref == null || !pref.remember) return null;
   final id = LaunchProfileRef.decode(pref.lastIdentity);
   if (id == null) return null;
+  final kind = profileKindFor?.call(id.profileId);
+  if (kind == LaunchProfileKind.personal &&
+      personalIdentityBlockedForWorkspace(
+        isPersonal: true,
+        folders: workspace.folders,
+      )) {
+    return null;
+  }
   return workspaceLaunchRoute(workspace.workspaceId, id);
 }
 
@@ -48,13 +61,17 @@ Future<void> openWorkspace(
   if (!context.mounted) return;
 
   final l10n = context.l10n;
-  final remembered = rememberedLaunchRoute(workspace, pref);
+  final identityCubit = context.read<LaunchProfileCubit>();
+  final remembered = rememberedLaunchRoute(
+    workspace,
+    pref,
+    profileKindFor: (id) => identityCubit.byId(id)?.kind,
+  );
   if (remembered != null) {
     context.go(remembered);
     return;
   }
 
-  final identityCubit = context.read<LaunchProfileCubit>();
   final options = buildLaunchIdentityOptions(
     l10n: l10n,
     identities: identityCubit.state.identities,
@@ -65,12 +82,11 @@ Future<void> openWorkspace(
     context,
     workspaceName: workspace.effectiveDisplay,
     identities: options,
-    preselected: pref != null
-        ? LaunchProfileRef.decode(pref.lastIdentity)
-        : resolveWorkspaceLaunchProfileRef(
-            workspace,
-            identityCubit.byId,
-          ),
+    preselected: resolveWorkspaceLaunchPreselection(
+      workspace: workspace,
+      pref: pref,
+      lookupById: identityCubit.byId,
+    ),
   );
   if (choice == null || !context.mounted) return;
   if (choice.remember) {

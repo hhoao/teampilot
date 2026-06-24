@@ -18,6 +18,7 @@ import '../../../models/team_config.dart';
 import '../../../models/workspace_topology.dart';
 import '../../../repositories/session_repository.dart';
 import '../../../utils/app_session_sort.dart';
+import '../../../utils/logger.dart';
 import 'mixed_workspace_member_assignment_dialog.dart';
 
 Future<void> openWorkspaceSessionTab(
@@ -191,7 +192,12 @@ Future<void> createAndOpenWorkspaceConversation(
       session,
       isPersonal: isPersonal,
     );
-  } on Object catch (error) {
+  } on Object catch (error, stackTrace) {
+    appLogger.e(
+      l10n.homeWorkspaceNewConversation,
+      error: error,
+      stackTrace: stackTrace,
+    );
     if (!context.mounted) return;
     AppToast.show(
       context,
@@ -234,7 +240,12 @@ Future<void> createSessionInWorktree(
     );
     if (!context.mounted) return;
     await openWorkspaceSessionTab(context, workspace, session, isPersonal: isPersonal);
-  } on Object catch (error) {
+  } on Object catch (error, stackTrace) {
+    appLogger.e(
+      l10n.homeWorkspaceNewConversation,
+      error: error,
+      stackTrace: stackTrace,
+    );
     if (!context.mounted) return;
     AppToast.show(
       context,

@@ -53,4 +53,53 @@ void main() {
     );
     expect(result!.remember, isFalse);
   });
+
+  testWidgets('disabled personal identity cannot be selected on mixed workspace',
+      (tester) async {
+    LaunchWorkspaceChoice? result;
+    await tester.pumpWidget(MaterialApp(
+      localizationsDelegates: AppLocalizations.localizationsDelegates,
+      supportedLocales: AppLocalizations.supportedLocales,
+      home: Builder(builder: (context) {
+        return Scaffold(
+          body: Center(
+            child: ElevatedButton(
+              onPressed: () async {
+                result = await showHomeLaunchWorkspaceDialog(
+                  context,
+                  workspaceName: 'Mixed',
+                  identities: const <LaunchWorkspaceIdentityOption>[
+                    LaunchWorkspaceIdentityOption(
+                      id: LaunchProfileProvisioner.defaultPersonalId,
+                      name: 'Default',
+                      isTeam: false,
+                      enabled: false,
+                      disabledReason: 'blocked',
+                    ),
+                    LaunchWorkspaceIdentityOption(
+                      id: 't1',
+                      name: 'Backend',
+                      isTeam: true,
+                    ),
+                  ],
+                );
+              },
+              child: const Text('open'),
+            ),
+          ),
+        );
+      }),
+    ));
+    await tester.tap(find.text('open'));
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.text('Default'));
+    await tester.pumpAndSettle();
+    expect(result, isNull);
+
+    await tester.tap(find.text('Backend'));
+    await tester.pumpAndSettle();
+    expect(result, isNotNull);
+    expect(result!.identity, const LaunchProfileRef('t1'));
+  });
 }

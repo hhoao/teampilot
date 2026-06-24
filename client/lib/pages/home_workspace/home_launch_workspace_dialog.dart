@@ -11,11 +11,15 @@ class LaunchWorkspaceIdentityOption {
     required this.id,
     required this.name,
     required this.isTeam,
+    this.enabled = true,
+    this.disabledReason,
   });
 
   final String id;
   final String name;
   final bool isTeam;
+  final bool enabled;
+  final String? disabledReason;
 }
 
 /// Result of the launch dialog.
@@ -58,11 +62,29 @@ class _LaunchWorkspaceDialog extends StatefulWidget {
 }
 
 class _LaunchWorkspaceDialogState extends State<_LaunchWorkspaceDialog> {
-  late LaunchProfileRef _selected = widget.preselected ??
-      const LaunchProfileRef(LaunchProfileProvisioner.defaultPersonalId);
+  late LaunchProfileRef _selected = _initialSelection();
   bool _remember = false;
 
-  void _choose(LaunchProfileRef identity) {
+  LaunchProfileRef _initialSelection() {
+    final pre = widget.preselected;
+    if (pre != null) {
+      final match = widget.identities
+          .where((o) => o.id == pre.profileId)
+          .firstOrNull;
+      if (match != null && match.enabled) return pre;
+    }
+    final firstEnabled =
+        widget.identities.where((o) => o.enabled).firstOrNull;
+    if (firstEnabled != null) {
+      return LaunchProfileRef(firstEnabled.id);
+    }
+    return widget.preselected ??
+        const LaunchProfileRef(LaunchProfileProvisioner.defaultPersonalId);
+  }
+
+  void _choose(LaunchWorkspaceIdentityOption opt) {
+    if (!opt.enabled) return;
+    final identity = LaunchProfileRef(opt.id);
     setState(() => _selected = identity);
     Navigator.of(context).pop(
       LaunchWorkspaceChoice(identity: identity, remember: _remember),
@@ -82,14 +104,31 @@ class _LaunchWorkspaceDialogState extends State<_LaunchWorkspaceDialog> {
           const SizedBox(height: 12),
           for (final opt in widget.identities)
             ListTile(
+              enabled: opt.enabled,
               leading: Icon(
                 opt.isTeam
                     ? Icons.groups_2_outlined
                     : Icons.person_outline_rounded,
+                color: opt.enabled
+                    ? null
+                    : cs.onSurface.withValues(alpha: 0.38),
               ),
-              title: Text(opt.name),
-              selected: _selected == LaunchProfileRef(opt.id),
-              onTap: () => _choose(LaunchProfileRef(opt.id)),
+              title: Text(
+                opt.name,
+                style: opt.enabled
+                    ? null
+                    : TextStyle(color: cs.onSurface.withValues(alpha: 0.38)),
+              ),
+              subtitle: opt.enabled || opt.disabledReason == null
+                  ? null
+                  : Text(
+                      opt.disabledReason!,
+                      style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                        color: cs.onSurfaceVariant,
+                      ),
+                    ),
+              selected: opt.enabled && _selected == LaunchProfileRef(opt.id),
+              onTap: opt.enabled ? () => _choose(opt) : null,
             ),
           const SizedBox(height: 8),
           CheckboxListTile(
