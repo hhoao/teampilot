@@ -5,7 +5,6 @@ import 'package:path/path.dart' as p;
 import 'package:teampilot/models/plugin.dart';
 import 'package:teampilot/services/storage/app_storage.dart';
 import 'package:teampilot/services/io/local_filesystem.dart';
-import 'package:teampilot/services/storage/runtime_context.dart';
 import 'package:teampilot/services/plugin/profile_plugin_linker_service.dart';
 
 void main() {

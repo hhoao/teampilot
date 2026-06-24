@@ -7,7 +7,6 @@ import 'package:teampilot/cubits/chat_cubit.dart';
 import 'package:teampilot/l10n/app_localizations.dart';
 import 'package:teampilot/models/runtime_target.dart';
 import 'package:teampilot/models/ssh_profile.dart';
-import 'package:teampilot/models/workspace.dart';
 import 'package:teampilot/pages/home_workspace/workspace/config/workspace_target_section.dart';
 import 'package:teampilot/repositories/session_repository.dart';
 import 'package:teampilot/repositories/ssh_profile_repository.dart';

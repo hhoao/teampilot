@@ -1,6 +1,5 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:teampilot/cubits/cli_presets_cubit.dart';
-import 'package:teampilot/models/cli_preset.dart';
 import 'package:teampilot/models/team_config.dart';
 import 'package:teampilot/repositories/cli_presets_repository.dart';
 

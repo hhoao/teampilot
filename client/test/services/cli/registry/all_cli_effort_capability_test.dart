@@ -5,7 +5,6 @@ import 'package:teampilot/services/cli/registry/capabilities/cli_effort_capabili
 import 'package:teampilot/services/cli/registry/cli_tool_registry.dart';
 import 'package:teampilot/services/cli/registry/config_profile/opencode_config_profile_capability.dart';
 import 'package:teampilot/services/cli/cli_tool_adapter.dart';
-import 'package:teampilot/services/cli/registry/tools/cursor_cli_tool.dart';
 import 'package:teampilot/services/provider/flashskyai/flashskyai_effort_capability.dart';
 import 'package:teampilot/services/provider/opencode/opencode_effort_capability.dart';
 

@@ -8,7 +8,6 @@ import 'package:path/path.dart' as p;
 import 'package:teampilot/models/config_bundle.dart';
 import 'package:teampilot/models/personal_profile.dart';
 import 'package:teampilot/models/skill.dart';
-import 'package:teampilot/models/team_config.dart';
 import 'package:teampilot/services/storage/runtime_layout.dart';
 import 'package:teampilot/services/provider/config_profile_service.dart';
 import 'package:teampilot/services/storage/app_storage.dart';

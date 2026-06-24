@@ -1,6 +1,5 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:teampilot/models/team_config.dart';
-import 'package:teampilot/services/cli/registry/capabilities/remote_cli_locator_capability.dart';
 import 'package:teampilot/services/cli/remote_cli_locator.dart';
 
 /// Map-based fake: returns a configured result per exact command, else exit 1.

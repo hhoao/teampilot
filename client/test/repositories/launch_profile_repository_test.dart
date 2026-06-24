@@ -4,7 +4,6 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:teampilot/models/config_bundle.dart';
 import 'package:teampilot/models/personal_profile.dart';
 import 'package:teampilot/models/team_config.dart';
-import 'package:teampilot/models/launch_profile.dart';
 import 'package:teampilot/repositories/launch_profile_repository.dart';
 
 import '../support/post_frame_test_harness.dart';
