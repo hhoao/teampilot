@@ -1569,6 +1569,25 @@ class AppLocalizationsZh extends AppLocalizations {
   String get memberAssignFoldersAction => '分配目录…';
 
   @override
+  String get credentialPushOptInTitle => '把凭证推送到此机器';
+
+  @override
+  String credentialPushOptInSubtitle(Object host) {
+    return '将 provider 密钥物化到 $host，让远程成员可认证。默认关闭。';
+  }
+
+  @override
+  String get credentialPushConfirmTitle => '确认把凭证推送到远程主机？';
+
+  @override
+  String credentialPushConfirmBody(Object host) {
+    return 'provider 密钥将写入远程主机 $host。请仅对你信任的机器开启。轮换密钥后需重推到每台已开启的机器。';
+  }
+
+  @override
+  String get credentialPushConfirmAction => '推送凭证';
+
+  @override
   String get workspaceTargetTitle => '工作区所在机器';
 
   @override

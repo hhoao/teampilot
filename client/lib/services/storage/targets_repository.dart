@@ -7,13 +7,35 @@ import 'app_storage.dart';
 /// On-disk shape of `targets.json` (control plane). A pure target catalog —
 /// the home target authority lives device-local in [HomeTargetStore], not here.
 class TargetsRegistryFile {
-  const TargetsRegistryFile({this.schemaVersion = 1, this.targets = const []});
+  const TargetsRegistryFile({
+    this.schemaVersion = 1,
+    this.targets = const [],
+    this.credentialOptIn = const [],
+    this.installOptIn = const [],
+    this.cliPathOverrides = const {},
+  });
 
   final int schemaVersion;
   final List<RuntimeTarget> targets;
 
+  /// P3c: target ids the user explicitly opted in to credential push (default
+  /// empty = no key materialized to any remote). Consent is config, not part of
+  /// the [RuntimeTarget] runtime identity.
+  final List<String> credentialOptIn;
+
+  /// P3c: target ids the user opted in to remote CLI auto-install (default empty
+  /// = locate / manual path only, never auto-install over SSH).
+  final List<String> installOptIn;
+
+  /// P3c: per-target manual CLI path overrides — `targetId → {cliValue → path}`
+  /// (manual bottom-fill when remote locate/install can't resolve a CLI).
+  final Map<String, Map<String, String>> cliPathOverrides;
+
   factory TargetsRegistryFile.fromJson(Map<String, Object?> json) {
     final raw = json['targets'];
+    final optIn = json['credentialOptIn'];
+    final installOpt = json['installOptIn'];
+    final overrides = json['cliPathOverrides'];
     return TargetsRegistryFile(
       schemaVersion: (json['schemaVersion'] as num?)?.toInt() ?? 1,
       targets: raw is List
@@ -22,18 +44,45 @@ class TargetsRegistryFile {
                 if (e is Map<String, Object?>) RuntimeTarget.fromJson(e),
             ]
           : const [],
+      credentialOptIn: optIn is List
+          ? [for (final e in optIn) '$e'].where((s) => s.isNotEmpty).toList()
+          : const [],
+      installOptIn: installOpt is List
+          ? [for (final e in installOpt) '$e'].where((s) => s.isNotEmpty).toList()
+          : const [],
+      cliPathOverrides: overrides is Map<String, Object?>
+          ? {
+              for (final e in overrides.entries)
+                if (e.value is Map<String, Object?>)
+                  e.key: {
+                    for (final c in (e.value as Map<String, Object?>).entries)
+                      c.key: '${c.value}',
+                  },
+            }
+          : const {},
     );
   }
 
   Map<String, Object?> toJson() => {
     'schemaVersion': schemaVersion,
     'targets': targets.map((t) => t.toJson()).toList(),
+    if (credentialOptIn.isNotEmpty) 'credentialOptIn': credentialOptIn,
+    if (installOptIn.isNotEmpty) 'installOptIn': installOptIn,
+    if (cliPathOverrides.isNotEmpty) 'cliPathOverrides': cliPathOverrides,
   };
 
-  TargetsRegistryFile copyWith({List<RuntimeTarget>? targets}) =>
+  TargetsRegistryFile copyWith({
+    List<RuntimeTarget>? targets,
+    List<String>? credentialOptIn,
+    List<String>? installOptIn,
+    Map<String, Map<String, String>>? cliPathOverrides,
+  }) =>
       TargetsRegistryFile(
         schemaVersion: schemaVersion,
         targets: targets ?? this.targets,
+        credentialOptIn: credentialOptIn ?? this.credentialOptIn,
+        installOptIn: installOptIn ?? this.installOptIn,
+        cliPathOverrides: cliPathOverrides ?? this.cliPathOverrides,
       );
 }
 
@@ -73,5 +122,61 @@ class TargetsRepository {
     final dir = _fs.pathContext.dirname(_file);
     await _fs.ensureDir(dir);
     await _fs.atomicWrite(_file, jsonEncode(file.toJson()));
+  }
+
+  // ── P3c: credential-push opt-in (default off) ──────────────────────────────
+
+  Future<bool> isCredentialOptIn(String targetId) async =>
+      (await load()).credentialOptIn.contains(targetId);
+
+  Future<void> setCredentialOptIn(String targetId, bool optIn) async {
+    final file = await load();
+    final next = file.credentialOptIn.toSet();
+    if (optIn) {
+      next.add(targetId);
+    } else {
+      next.remove(targetId);
+    }
+    await save(file.copyWith(credentialOptIn: (next.toList()..sort())));
+  }
+
+  Future<bool> isInstallOptIn(String targetId) async =>
+      (await load()).installOptIn.contains(targetId);
+
+  Future<void> setInstallOptIn(String targetId, bool optIn) async {
+    final file = await load();
+    final next = file.installOptIn.toSet();
+    if (optIn) {
+      next.add(targetId);
+    } else {
+      next.remove(targetId);
+    }
+    await save(file.copyWith(installOptIn: (next.toList()..sort())));
+  }
+
+  // ── P3c: per-target manual CLI path override ───────────────────────────────
+
+  Future<String?> cliPathOverride(String targetId, String cliValue) async =>
+      (await load()).cliPathOverrides[targetId]?[cliValue];
+
+  Future<void> setCliPathOverride(
+    String targetId,
+    String cliValue,
+    String path,
+  ) async {
+    final file = await load();
+    final overrides = {
+      for (final e in file.cliPathOverrides.entries)
+        e.key: {...e.value},
+    };
+    final forTarget = overrides.putIfAbsent(targetId, () => {});
+    final trimmed = path.trim();
+    if (trimmed.isEmpty) {
+      forTarget.remove(cliValue);
+      if (forTarget.isEmpty) overrides.remove(targetId);
+    } else {
+      forTarget[cliValue] = trimmed;
+    }
+    await save(file.copyWith(cliPathOverrides: overrides));
   }
 }

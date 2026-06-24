@@ -14,7 +14,7 @@ import '../../../models/team_config.dart';
 import '../../../services/cli/cli_installer_service.dart';
 import '../../../services/cli/cli_tool_locator.dart';
 import '../../../services/app/connection_mode_service.dart';
-import '../../../services/cli/remote_flashskyai_cli_locator.dart';
+import '../../../services/cli/remote_cli_locator.dart';
 import '../../../services/ssh/ssh_client_factory.dart';
 import '../../../utils/app_keys.dart';
 import '../../../widgets/cli_install_progress_panel.dart';
@@ -275,27 +275,9 @@ Future<String?> _locateRemoteClaude(
   SshProfile profile,
   SshClientFactory clientFactory,
 ) async {
-  const lookupCommand = 'command -v claude';
-
-  Future<SshCommandResult> runner(String command) async {
-    final client = await clientFactory.clientFor(profile);
-    final result = await client.runWithResult(command, stderr: false);
-    return SshCommandResult(
-      exitCode: result.exitCode ?? 1,
-      stdout: String.fromCharCodes(result.stdout),
-    );
-  }
-
-  final direct = await runner(lookupCommand);
-  if (direct.exitCode == 0) {
-    final parsed = CliToolLocator.parseFirstStdoutLine(direct.stdout);
-    if (parsed != null) return parsed;
-  }
-  for (final shell in const ['bash', 'zsh']) {
-    final result = await runner("$shell -ilc '$lookupCommand'");
-    if (result.exitCode != 0) continue;
-    final parsed = CliToolLocator.parseFirstStdoutLine(result.stdout);
-    if (parsed != null) return parsed;
-  }
-  return null;
+  final client = await clientFactory.clientFor(profile);
+  return RemoteCliLocator().resolve(
+    cli: CliTool.claude,
+    run: RemoteCliLocator.runnerForClient(client),
+  );
 }

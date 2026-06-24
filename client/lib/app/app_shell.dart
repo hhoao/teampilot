@@ -11,6 +11,7 @@ import '../cubits/app_update_cubit.dart';
 import '../cubits/chat_cubit.dart';
 import '../services/team_bus/remote/remote_bus_binding_resolver.dart';
 import '../services/team_bus/remote/ssh_remote_bus_mount_factory.dart';
+import '../services/remote/remote_member_preflight_factory.dart';
 import '../cubits/board_cubit.dart';
 import '../cubits/mailbox_cubit.dart';
 import '../cubits/member_presence_cubit.dart';
@@ -72,7 +73,7 @@ import '../services/provider/cursor/cursor_provider_credentials_service.dart';
 import '../services/app/connection_mode_service.dart';
 import '../services/cli/flashskyai_cli_locator.dart';
 import '../services/provider/provider_migration_service.dart';
-import '../services/cli/remote_flashskyai_cli_locator.dart';
+import '../services/cli/remote_cli_locator.dart';
 import '../services/storage/runtime_context.dart';
 import '../services/storage/runtime_context_resolver.dart';
 import '../services/storage/runtime_context_registry.dart';
@@ -243,9 +244,25 @@ Future<AppShell> buildAppShell({
   final defaultWorkspaceDirectory = await DefaultWorkspaceDirectory.resolve();
 
   final sshProfileRepo = SshProfileRepository();
-  final remoteCliLocator = RemoteFlashskyaiCliLocator(
-    clientFactory: sshClientFactory,
-  );
+  final remoteCliLocator = RemoteCliLocator(registry: cliToolRegistry);
+  // Android home-ssh discovery of the remote flashskyai binary (used as the
+  // claude executable path). Generalized P3c locator behind the same adapter.
+  Future<String?> locateRemoteCli(SshProfile profile) async {
+    try {
+      final client = await sshClientFactory.clientFor(profile);
+      return remoteCliLocator.resolve(
+        cli: CliTool.flashskyai,
+        run: RemoteCliLocator.runnerForClient(client),
+      );
+    } on Object catch (error, stackTrace) {
+      appLogger.w(
+        '[remote-cli] locate failed for ${profile.hostIdentifier}: $error',
+        error: error,
+        stackTrace: stackTrace,
+      );
+      return null;
+    }
+  }
 
   late final LlmConfigCubit llmConfigCubit;
   late final AppProviderCubit appProviderCubit;
@@ -270,7 +287,7 @@ Future<AppShell> buildAppShell({
   sshProfileCubit = SshProfileCubit(
     profileRepository: sshProfileRepo,
     credentialStore: sshCredentialStore,
-    locateRemoteCliPath: remoteCliLocator.locate,
+    locateRemoteCliPath: locateRemoteCli,
     onRemoteCliLocated: (path) =>
         sessionPreferencesCubit.setCliExecutablePathFor(CliTool.claude, path),
     invalidateProfileConnection: sshClientFactory.disconnectProfile,
@@ -297,8 +314,9 @@ Future<AppShell> buildAppShell({
   // P1: targets.json is a pure target catalog (no default/migrate); the home
   // target authority is the device-local homeTargetStore read above. The
   // registry is used by the picker UI to list selectable targets.
+  final targetsRepo = TargetsRepository();
   final runtimeTargetRegistry = RuntimeTargetRegistry(
-    repo: TargetsRepository(),
+    repo: targetsRepo,
     sshProfileRepo: sshProfileRepo,
     isWindows: Platform.isWindows,
     isAndroid: Platform.isAndroid,
@@ -621,6 +639,22 @@ Future<AppShell> buildAppShell({
         profileById: (id) async => sshProfileById(id),
         contextForTarget: runtimeContextRegistry.forTarget,
       ),
+    ),
+    // P3c: members on a machine other than home run preflight (connect → CLI
+    // ready → app-data materialize) before launch. SSH/SFTP ops are on-device.
+    remoteMemberPreflight: buildRemoteMemberPreflightCoordinator(
+      registry: cliToolRegistry,
+      sshClientFactory: sshClientFactory,
+      profileById: sshProfileById,
+      contextForTarget: runtimeContextRegistry.forTarget,
+      homeContext: runtimeContextRegistry.home,
+      homeTarget: defaultTargetResolver,
+      isCredentialOptIn: targetsRepo.isCredentialOptIn,
+      isInstallOptIn: targetsRepo.isInstallOptIn,
+      cliPathOverride: targetsRepo.cliPathOverride,
+      // on-device: real per-CLI credential export + skills/plugins linking +
+      // relay provisioning + install execution compose over the work transport.
+      loadLocalCredentials: (_) async => const [],
     ),
   );
 

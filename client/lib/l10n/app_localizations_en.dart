@@ -1635,6 +1635,25 @@ class AppLocalizationsEn extends AppLocalizations {
   String get memberAssignFoldersAction => 'Assign folders…';
 
   @override
+  String get credentialPushOptInTitle => 'Push credentials to this machine';
+
+  @override
+  String credentialPushOptInSubtitle(Object host) {
+    return 'Materialize provider keys onto $host so remote members can authenticate. Off by default.';
+  }
+
+  @override
+  String get credentialPushConfirmTitle => 'Push credentials to remote host?';
+
+  @override
+  String credentialPushConfirmBody(Object host) {
+    return 'Provider keys will be written to the remote host $host. Only enable this for machines you trust. Rotating a key requires re-pushing to every opted-in machine.';
+  }
+
+  @override
+  String get credentialPushConfirmAction => 'Push credentials';
+
+  @override
   String get workspaceTargetTitle => 'Workspace machine';
 
   @override

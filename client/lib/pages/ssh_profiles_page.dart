@@ -8,7 +8,10 @@ import '../repositories/ssh_profile_repository.dart';
 import '../services/ssh/ssh_profile_connection_tester.dart';
 import '../services/terminal/terminal_transport_factory.dart';
 import '../widgets/app_dialog.dart';
+import '../models/runtime_target.dart';
+import '../services/storage/targets_repository.dart';
 import '../widgets/menu/sidebar_action_menu.dart';
+import 'ssh_profiles/credential_push_opt_in_tile.dart';
 import 'ssh_profile_setup_page.dart';
 
 class SshProfilesPage extends StatelessWidget {
@@ -82,39 +85,48 @@ class _SshProfilesBody extends StatelessWidget {
         itemBuilder: (context, index) {
           final profile = state.profiles[index];
           final selected = profile.id == state.selectedProfileId;
-          return ListTile(
-            leading: Radio<String>(value: profile.id),
-            title: Text(profile.name),
-            subtitle: Text(
-              '${profile.username}@${profile.host}:${profile.port}',
-            ),
-            selected: selected,
-            onTap: () {
-              context.read<SshProfileCubit>().selectProfile(profile.id);
-            },
-            trailing: SidebarActionMenuButton(
-              specs: const [
-                SidebarActionMenuSpec.item(
-                  value: _ProfileAction.edit,
-                  icon: Icons.edit_outlined,
-                  label: '编辑',
+          return Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              ListTile(
+                leading: Radio<String>(value: profile.id),
+                title: Text(profile.name),
+                subtitle: Text(
+                  '${profile.username}@${profile.host}:${profile.port}',
                 ),
-                SidebarActionMenuSpec.item(
-                  value: _ProfileAction.delete,
-                  icon: Icons.delete_outline,
-                  label: '删除',
-                  destructive: true,
+                selected: selected,
+                onTap: () {
+                  context.read<SshProfileCubit>().selectProfile(profile.id);
+                },
+                trailing: SidebarActionMenuButton(
+                  specs: const [
+                    SidebarActionMenuSpec.item(
+                      value: _ProfileAction.edit,
+                      icon: Icons.edit_outlined,
+                      label: '编辑',
+                    ),
+                    SidebarActionMenuSpec.item(
+                      value: _ProfileAction.delete,
+                      icon: Icons.delete_outline,
+                      label: '删除',
+                      destructive: true,
+                    ),
+                  ],
+                  onSelected: (action) {
+                    switch (action as _ProfileAction) {
+                      case _ProfileAction.edit:
+                        onEdit(profile);
+                      case _ProfileAction.delete:
+                        onDelete(profile);
+                    }
+                  },
                 ),
-              ],
-              onSelected: (action) {
-                switch (action as _ProfileAction) {
-                  case _ProfileAction.edit:
-                    onEdit(profile);
-                  case _ProfileAction.delete:
-                    onDelete(profile);
-                }
-              },
-            ),
+              ),
+              Padding(
+                padding: const EdgeInsets.fromLTRB(16, 0, 16, 8),
+                child: _ProfileCredentialOptInTile(profile: profile),
+              ),
+            ],
           );
         },
       ),
@@ -199,3 +211,47 @@ Future<void> confirmDeleteSshProfile(
 }
 
 enum _ProfileAction { edit, delete }
+
+/// P3c: per-profile credential-push opt-in, persisted in targets.json under the
+/// profile's ssh target id. Loads the current value and writes on toggle.
+class _ProfileCredentialOptInTile extends StatefulWidget {
+  const _ProfileCredentialOptInTile({required this.profile});
+  final SshProfile profile;
+
+  @override
+  State<_ProfileCredentialOptInTile> createState() =>
+      _ProfileCredentialOptInTileState();
+}
+
+class _ProfileCredentialOptInTileState
+    extends State<_ProfileCredentialOptInTile> {
+  final _repo = TargetsRepository();
+  bool _optedIn = false;
+
+  String get _targetId => RuntimeTarget.ssh(widget.profile.id, label: '').id;
+
+  @override
+  void initState() {
+    super.initState();
+    _load();
+  }
+
+  Future<void> _load() async {
+    final value = await _repo.isCredentialOptIn(_targetId);
+    if (mounted) setState(() => _optedIn = value);
+  }
+
+  Future<void> _onChanged(bool next) async {
+    await _repo.setCredentialOptIn(_targetId, next);
+    if (mounted) setState(() => _optedIn = next);
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return CredentialPushOptInTile(
+      host: widget.profile.host,
+      optedIn: _optedIn,
+      onChanged: _onChanged,
+    );
+  }
+}

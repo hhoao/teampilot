@@ -66,6 +66,7 @@ class _FakeTerminalSession extends TerminalSession {
     void Function(String line)? onFirstUserLineSubmitted,
     void Function(String line)? onEveryUserLineSubmitted,
     BusUserInputRouting? busUserInputRouting,
+    String? executableOverride,
   }) {
     _connecting = true;
     final member = shellLaunch?.launchContext.member;

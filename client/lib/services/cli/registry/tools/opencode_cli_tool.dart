@@ -3,6 +3,7 @@ import '../../cli_tool_adapter.dart';
 import '../cli_capability.dart';
 import '../cli_tool_definition.dart';
 import '../capabilities/bus_transport_capability.dart';
+import '../capabilities/remote_cli_locator_capability.dart';
 import '../capabilities/built_in_tool_capabilities.dart';
 import '../capabilities/config_profile_capability.dart';
 import '../capabilities/executable_resolver_capability.dart';
@@ -35,6 +36,7 @@ import '../resources/opencode_resource_capability.dart';
 final class OpencodeCliTool implements CliToolDefinition {
   OpencodeCliTool({
     this.busTransport = const BusTransportCapability(longBlockingWaitForMessage: true),
+    this.remoteCliLocator = const DefaultRemoteCliLocator('opencode'),
     this.launchArgs = const OpencodeCliToolAdapter(),
     this.configProfile = const OpencodeConfigProfileCapability(),
     this.sessionResume = const OpencodeResumeStrategy(),
@@ -79,6 +81,7 @@ final class OpencodeCliTool implements CliToolDefinition {
   final OpencodeMcpConfigWriter mcpConfigWriter;
 
   final BusTransportCapability busTransport;
+  final RemoteCliLocatorCapability remoteCliLocator;
 
   @override
   CliTool get id => CliTool.opencode;
@@ -89,6 +92,7 @@ final class OpencodeCliTool implements CliToolDefinition {
   @override
   Iterable<CliCapability> get capabilities => [
     busTransport,
+    remoteCliLocator,
     launchArgs,
     configProfile,
     sessionResume,

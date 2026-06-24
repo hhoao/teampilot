@@ -328,6 +328,7 @@ class TerminalSession implements TerminalTextSink {
     void Function(String line)? onFirstUserLineSubmitted,
     void Function(String line)? onEveryUserLineSubmitted,
     BusUserInputRouting? busUserInputRouting,
+    String? executableOverride,
   }) {
     _prepareConnect(
       workingDirectory: workingDirectory,
@@ -335,9 +336,15 @@ class TerminalSession implements TerminalTextSink {
       onProcessFailed: onProcessFailed,
       onProcessExited: onProcessExited,
     );
+    // P3c: an off-home remote member launches the CLI at the path preflight
+    // located on the work machine (else the session's resolved executable).
+    final effectiveExecutable =
+        (executableOverride != null && executableOverride.trim().isNotEmpty)
+            ? executableOverride.trim()
+            : executable;
     final invocation = parseExecutable
-        ? CliInvocation.fromExecutable(executable)
-        : CliInvocation(executable: executable);
+        ? CliInvocation.fromExecutable(effectiveExecutable)
+        : CliInvocation(executable: effectiveExecutable);
     // Resolve the drag-and-drop path namespace for local sessions. SSH sessions
     // are tagged at construction (the factory knows the remote) and kept as-is;
     // a local launch is WSL when it wraps `wsl.exe`, else the host platform.

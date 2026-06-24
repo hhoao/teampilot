@@ -3,6 +3,7 @@ import '../../cli_tool_adapter.dart';
 import '../cli_capability.dart';
 import '../cli_tool_definition.dart';
 import '../capabilities/bus_transport_capability.dart';
+import '../capabilities/remote_cli_locator_capability.dart';
 import '../capabilities/built_in_tool_capabilities.dart';
 import '../capabilities/flashskyai_provider_catalog_capability.dart';
 import '../capabilities/provider_catalog_capability.dart';
@@ -35,6 +36,7 @@ import '../resources/default_resource_capability.dart';
 final class FlashskyaiCliTool implements CliToolDefinition {
   const FlashskyaiCliTool({
     this.busTransport = const BusTransportCapability(longBlockingWaitForMessage: true),
+    this.remoteCliLocator = const DefaultRemoteCliLocator('flashskyai'),
     this.launchArgs = const FlashskyaiCliToolAdapter(),
     this.configProfile = const FlashskyaiConfigProfileCapability(),
     this.sessionResume = const TranscriptResumeStrategy(),
@@ -75,6 +77,7 @@ final class FlashskyaiCliTool implements CliToolDefinition {
   final FlashskyaiMcpConfigWriter mcpConfigWriter;
 
   final BusTransportCapability busTransport;
+  final RemoteCliLocatorCapability remoteCliLocator;
 
   @override
   CliTool get id => CliTool.flashskyai;
@@ -88,6 +91,7 @@ final class FlashskyaiCliTool implements CliToolDefinition {
   @override
   Iterable<CliCapability> get capabilities => [
     busTransport,
+    remoteCliLocator,
     _nativeTeam,
     _memberAgentPreset,
     launchArgs,

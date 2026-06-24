@@ -3,6 +3,7 @@ import '../../cli_tool_adapter.dart';
 import '../cli_capability.dart';
 import '../cli_tool_definition.dart';
 import '../capabilities/bus_transport_capability.dart';
+import '../capabilities/remote_cli_locator_capability.dart';
 import '../capabilities/built_in_tool_capabilities.dart';
 import '../capabilities/claude_provider_catalog_capability.dart';
 import '../capabilities/provider_catalog_capability.dart';
@@ -38,6 +39,7 @@ import '../resources/default_resource_capability.dart';
 final class ClaudeCliTool implements CliToolDefinition {
   ClaudeCliTool({
     this.busTransport = const BusTransportCapability(longBlockingWaitForMessage: true),
+    this.remoteCliLocator = const DefaultRemoteCliLocator('claude'),
     this.launchArgs = const ClaudeCodeCliToolAdapter(),
     this.configProfile = const ClaudeConfigProfileCapability(),
     this.sessionResume = const ClaudeResumeStrategy(),
@@ -82,6 +84,7 @@ final class ClaudeCliTool implements CliToolDefinition {
   final ClaudeMcpConfigWriter mcpConfigWriter;
 
   final BusTransportCapability busTransport;
+  final RemoteCliLocatorCapability remoteCliLocator;
 
   @override
   CliTool get id => CliTool.claude;
@@ -95,6 +98,7 @@ final class ClaudeCliTool implements CliToolDefinition {
   @override
   Iterable<CliCapability> get capabilities => [
     busTransport,
+    remoteCliLocator,
     _nativeTeam,
     _memberAgentPreset,
     launchArgs,

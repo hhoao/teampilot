@@ -3032,6 +3032,36 @@ abstract class AppLocalizations {
   /// **'Assign folders…'**
   String get memberAssignFoldersAction;
 
+  /// No description provided for @credentialPushOptInTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Push credentials to this machine'**
+  String get credentialPushOptInTitle;
+
+  /// No description provided for @credentialPushOptInSubtitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Materialize provider keys onto {host} so remote members can authenticate. Off by default.'**
+  String credentialPushOptInSubtitle(Object host);
+
+  /// No description provided for @credentialPushConfirmTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Push credentials to remote host?'**
+  String get credentialPushConfirmTitle;
+
+  /// No description provided for @credentialPushConfirmBody.
+  ///
+  /// In en, this message translates to:
+  /// **'Provider keys will be written to the remote host {host}. Only enable this for machines you trust. Rotating a key requires re-pushing to every opted-in machine.'**
+  String credentialPushConfirmBody(Object host);
+
+  /// No description provided for @credentialPushConfirmAction.
+  ///
+  /// In en, this message translates to:
+  /// **'Push credentials'**
+  String get credentialPushConfirmAction;
+
   /// No description provided for @workspaceTargetTitle.
   ///
   /// In en, this message translates to:

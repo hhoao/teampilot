@@ -296,6 +296,7 @@ class FakeTerminalSession extends TerminalSession {
     void Function(String line)? onFirstUserLineSubmitted,
     void Function(String line)? onEveryUserLineSubmitted,
     BusUserInputRouting? busUserInputRouting,
+    String? executableOverride,
   }) {
     lastFixedSessionIds.add(fixedSessionId);
     lastResumeSessionIds.add(resumeSessionId);

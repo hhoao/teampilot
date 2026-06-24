@@ -22,6 +22,8 @@ import '../../services/team_bus/mcp/bus_bridge_locator.dart';
 import '../../services/team_bus/mcp/teammate_bus_mcp_config.dart';
 import '../../services/team_bus/remote/member_bus_mcp_config.dart';
 import '../../services/team_bus/remote/remote_bus_binding_resolver.dart';
+import '../../services/remote/remote_member_preflight_coordinator.dart';
+import '../../services/remote/remote_preflight_service.dart';
 import '../../services/cli/registry/cli_tool_registry.dart';
 import '../../services/cli/registry/capabilities/bus_transport_capability.dart';
 import '../../services/terminal/terminal_session.dart';
@@ -88,6 +90,11 @@ abstract interface class SessionLaunchHost {
   /// remote-member-over-tunnel is not wired (then all members use local
   /// transport — pre-P3b behavior).
   RemoteBusBindingResolver? get remoteBusResolver;
+
+  /// P3c: runs preflight for a member on a machine **other than home** (connect →
+  /// CLI ready → app-data materialize → bus bind). Null / off-home-returns-null
+  /// keeps the existing home / home-ssh launch path.
+  RemoteMemberPreflightCoordinator? get remoteMemberPreflight;
 }
 
 /// Owns the entire connect / launch flow: opening (or restoring) session tabs,
@@ -851,18 +858,35 @@ class SessionLaunchService implements MemberConnector {
     // reverse tunnel; the resolver returns its binding (relay/HTTP over tunnel),
     // or null for a local member (unchanged transport). Android-mixed fix.
     RemoteBusBinding? remoteBinding;
-    if (mixedBus && _h.remoteBusResolver != null) {
+    PreflightResult? preflightResult;
+    if (mixedBus) {
       final memberId = binding?.rosterMemberId ?? launchMember.id;
-      final resolution = await _h.remoteBusResolver!.resolve(
-        existingMount: tab.remoteBusMount,
-        memberTarget: _h.lifecycle.memberWorkTarget(activeSession, memberId),
+      final memberTarget =
+          _h.lifecycle.memberWorkTarget(activeSession, memberId);
+      final memberCli = launchMember.cliWithin(team);
+      // P3c: a member on a machine *other than home* runs preflight before launch
+      // (connect → CLI ready → app-data materialize). home / home-ssh members
+      // return null and skip it (zero change).
+      preflightResult = await _h.remoteMemberPreflight?.prepareIfOffHome(
+        memberTarget: memberTarget,
+        cli: memberCli,
+        workspaceId: activeSession.workspaceId,
         memberId: memberId,
-        cli: launchMember.cliWithin(team),
-        busServer: tab.mcpServer!,
       );
-      if (resolution != null) {
-        tab.remoteBusMount = resolution.mount;
-        remoteBinding = resolution.binding;
+      // P3b/P3c: bind the bus back over a reverse tunnel — for any ssh member
+      // (home-ssh or off-home); the resolver owns the per-tab bus server.
+      if (_h.remoteBusResolver != null) {
+        final resolution = await _h.remoteBusResolver!.resolve(
+          existingMount: tab.remoteBusMount,
+          memberTarget: memberTarget,
+          memberId: memberId,
+          cli: memberCli,
+          busServer: tab.mcpServer!,
+        );
+        if (resolution != null) {
+          tab.remoteBusMount = resolution.mount;
+          remoteBinding = resolution.binding;
+        }
       }
     }
     final shellLaunch = await _h.lifecycle.prepareShellLaunch(
@@ -902,6 +926,8 @@ class SessionLaunchService implements MemberConnector {
     shell.connect(
       workingDirectory: memberWork.workingDirectory,
       additionalDirectories: memberWork.addDirs,
+      // P3c: off-home members launch the CLI at the preflight-located remote path.
+      executableOverride: preflightResult?.remoteCliPath,
       fixedSessionId: plan.createSessionId,
       resumeSessionId: plan.resumeSessionId,
       shellLaunch: shellLaunch,
