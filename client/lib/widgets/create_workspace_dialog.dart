@@ -1,9 +1,11 @@
 ﻿import 'package:flutter/material.dart';
+import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:teampilot/theme/app_icon_sizes.dart';
 import 'package:teampilot/theme/app_toast_theme.dart';
 import 'package:teampilot/widgets/app_toast/app_toast.dart';
 
 import '../l10n/l10n_extensions.dart';
+import '../services/storage/home_target_controller.dart';
 import '../utils/workspace_path_picker.dart';
 import '../utils/workspace_path_utils.dart';
 import 'app_dialog.dart';
@@ -40,13 +42,15 @@ class _CreateWorkspaceDialogState extends State<_CreateWorkspaceDialog> {
   }
 
   Future<void> _pickPrimary() async {
-    final path = await pickWorkspaceDirectoryPath(context);
+    final targetId = context.read<HomeTargetController>().currentId;
+    final path = await pickWorkspaceDirectoryPath(context, targetId: targetId);
     if (path == null || path.trim().isEmpty || !mounted) return;
     setState(() => _primaryPath = normalizeWorkspacePath(path));
   }
 
   Future<void> _addAdditional() async {
-    final path = await pickWorkspaceDirectoryPath(context);
+    final targetId = context.read<HomeTargetController>().currentId;
+    final path = await pickWorkspaceDirectoryPath(context, targetId: targetId);
     if (path == null || path.trim().isEmpty || !mounted) return;
     final l10n = context.l10n;
     final trimmed = normalizeWorkspacePath(path);

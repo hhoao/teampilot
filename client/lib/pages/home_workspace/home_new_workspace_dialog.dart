@@ -5,6 +5,7 @@ import 'package:go_router/go_router.dart';
 import '../../cubits/chat_cubit.dart';
 import '../../repositories/launch_profile_repository.dart';
 import '../../repositories/session_repository.dart';
+import '../../services/storage/home_target_controller.dart';
 import '../../services/storage/launch_profile_provisioner.dart';
 import '../../theme/app_text_styles.dart';
 import '../../widgets/app_dialog.dart';
@@ -80,7 +81,8 @@ class _HomeNewWorkspaceDialogState
   }
 
   Future<void> _addDirectory() async {
-    final picked = await pickWorkspaceDirectoryPath(context);
+    final targetId = context.read<HomeTargetController>().currentId;
+    final picked = await pickWorkspaceDirectoryPath(context, targetId: targetId);
     final trimmed = picked?.trim() ?? '';
     if (trimmed.isEmpty) return;
     if (workspacePathsContains(_directories, trimmed)) return;

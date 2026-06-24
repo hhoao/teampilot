@@ -78,6 +78,7 @@ import '../services/storage/runtime_context.dart';
 import '../services/storage/runtime_context_resolver.dart';
 import '../services/storage/runtime_context_registry.dart';
 import '../services/storage/home_target_controller.dart';
+import '../services/storage/workspace_directory_picker.dart';
 import '../services/storage/home_target_store.dart';
 import '../services/storage/runtime_target_registry.dart';
 import '../services/storage/targets_repository.dart';
@@ -102,6 +103,7 @@ import '../utils/logger.dart';
 class AppShell {
   AppShell({
     required this.homeTargetController,
+    required this.directoryPicker,
     required this.chatCubit,
     required this.memberPresenceCubit,
     required this.mailboxCubit,
@@ -143,6 +145,7 @@ class AppShell {
 
   final CliToolRegistry cliToolRegistry;
   final HomeTargetController homeTargetController;
+  final WorkspaceDirectoryPicker directoryPicker;
   final ChatCubit chatCubit;
   final MemberPresenceCubit memberPresenceCubit;
   final MailboxCubit mailboxCubit;
@@ -736,9 +739,17 @@ Future<AppShell> buildAppShell({
     switchTo: switchHomeTarget,
   );
 
+  // Target-aware directory picker for workspace dialogs: resolves the chosen
+  // target's filesystem (real SSH connect for ssh targets) and lists targets.
+  final directoryPicker = WorkspaceDirectoryPicker(
+    resolveContext: runtimeContextRegistry.forTarget,
+    listTargets: () => runtimeTargetRegistry.listTargets(),
+  );
+
   return AppShell(
     cliToolRegistry: cliToolRegistry,
     homeTargetController: homeTargetController,
+    directoryPicker: directoryPicker,
     chatCubit: chatCubit,
     memberPresenceCubit: memberPresenceCubit,
     mailboxCubit: mailboxCubit,

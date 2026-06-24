@@ -2228,6 +2228,60 @@ abstract class AppLocalizations {
   /// **'This directory is already in the workspace.'**
   String get workspaceDirectoryAlreadyAdded;
 
+  /// No description provided for @editWorkspacePrimaryPath.
+  ///
+  /// In en, this message translates to:
+  /// **'Edit primary directory'**
+  String get editWorkspacePrimaryPath;
+
+  /// No description provided for @remoteDirectoryBrowserTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Browse remote directory'**
+  String get remoteDirectoryBrowserTitle;
+
+  /// No description provided for @remoteDirectoryBrowserUpOneLevel.
+  ///
+  /// In en, this message translates to:
+  /// **'Up one level'**
+  String get remoteDirectoryBrowserUpOneLevel;
+
+  /// No description provided for @remoteDirectoryBrowserUseThisDirectory.
+  ///
+  /// In en, this message translates to:
+  /// **'Use this directory'**
+  String get remoteDirectoryBrowserUseThisDirectory;
+
+  /// No description provided for @remoteDirectoryBrowserTypePathLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Or type a path'**
+  String get remoteDirectoryBrowserTypePathLabel;
+
+  /// No description provided for @remoteDirectoryBrowserTypePathHint.
+  ///
+  /// In en, this message translates to:
+  /// **'~/work/workspace'**
+  String get remoteDirectoryBrowserTypePathHint;
+
+  /// No description provided for @remoteDirectoryBrowserUseTypedPath.
+  ///
+  /// In en, this message translates to:
+  /// **'Use path'**
+  String get remoteDirectoryBrowserUseTypedPath;
+
+  /// No description provided for @remoteDirectoryBrowserError.
+  ///
+  /// In en, this message translates to:
+  /// **'Couldn\'t open the remote directory. You can still type a path below.'**
+  String get remoteDirectoryBrowserError;
+
+  /// No description provided for @remoteDirectoryBrowserEmpty.
+  ///
+  /// In en, this message translates to:
+  /// **'No subdirectories here'**
+  String get remoteDirectoryBrowserEmpty;
+
   /// No description provided for @deleteWorkspace.
   ///
   /// In en, this message translates to:

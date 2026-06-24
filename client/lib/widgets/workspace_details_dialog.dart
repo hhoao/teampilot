@@ -8,6 +8,7 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import '../cubits/chat_cubit.dart';
 import '../l10n/l10n_extensions.dart';
 import '../models/workspace.dart';
+import '../models/workspace_folder.dart';
 import '../repositories/session_repository.dart';
 import '../utils/workspace_path_picker.dart';
 import '../utils/workspace_path_utils.dart';
@@ -41,6 +42,7 @@ class _WorkspaceDetailsDialog extends StatefulWidget {
 class _WorkspaceDetailsDialogState extends State<_WorkspaceDetailsDialog> {
   late final TextEditingController _displayController;
   late List<String> _additionalPaths;
+  late String _primaryPath;
   var _saving = false;
 
   @override
@@ -48,7 +50,14 @@ class _WorkspaceDetailsDialogState extends State<_WorkspaceDetailsDialog> {
     super.initState();
     _displayController = TextEditingController(text: widget.workspace.display);
     _additionalPaths = List<String>.from(widget.workspace.extraFolderPaths);
+    _primaryPath = widget.workspace.firstFolderPath;
   }
+
+  /// The target machine all folders of this workspace live on (P2: one target
+  /// per workspace). Used to route the picker to the local or remote browser.
+  String get _targetId => widget.workspace.folders.isNotEmpty
+      ? widget.workspace.folders.first.targetId
+      : WorkspaceFolder.localTargetId;
 
   @override
   void dispose() {
@@ -75,12 +84,28 @@ class _WorkspaceDetailsDialogState extends State<_WorkspaceDetailsDialog> {
     );
   }
 
-  Future<void> _addDirectory() async {
-    final path = await pickWorkspaceDirectoryPath(context);
+  Future<void> _editPrimary() async {
+    final path = await pickWorkspaceDirectoryPath(context, targetId: _targetId);
     if (path == null || path.trim().isEmpty || !mounted) return;
     final trimmed = normalizeWorkspacePath(path);
     final l10n = context.l10n;
-    if (workspacePathsEqual(trimmed, widget.workspace.firstFolderPath)) {
+    if (workspacePathsContains(_additionalPaths, trimmed)) {
+      AppToast.show(
+        context,
+        message: l10n.workspaceDirectoryAlreadyAdded,
+        variant: AppToastVariant.warning,
+      );
+      return;
+    }
+    setState(() => _primaryPath = trimmed);
+  }
+
+  Future<void> _addDirectory() async {
+    final path = await pickWorkspaceDirectoryPath(context, targetId: _targetId);
+    if (path == null || path.trim().isEmpty || !mounted) return;
+    final trimmed = normalizeWorkspacePath(path);
+    final l10n = context.l10n;
+    if (workspacePathsEqual(trimmed, _primaryPath)) {
       AppToast.show(
         context,
         message: l10n.workspaceDirectoryAlreadyPrimary,
@@ -105,12 +130,31 @@ class _WorkspaceDetailsDialogState extends State<_WorkspaceDetailsDialog> {
     final repo = context.read<SessionRepository>();
     final cubit = context.read<ChatCubit>();
     try {
-      await cubit.updateWorkspaceMetadata(
-        repo,
+      // Save via folders so each folder's targetId is preserved (P2): the
+      // primary keeps the workspace target, additional dirs keep their own.
+      final targetByPath = {
+        for (final f in widget.workspace.folders)
+          normalizeWorkspacePath(f.path): f.targetId,
+      };
+      final primaryTargetId =
+          targetByPath[normalizeWorkspacePath(widget.workspace.firstFolderPath)] ??
+          WorkspaceFolder.localTargetId;
+      final folders = <WorkspaceFolder>[
+        WorkspaceFolder(path: _primaryPath, targetId: primaryTargetId),
+        for (final path in _additionalPaths)
+          WorkspaceFolder(
+            path: path,
+            targetId:
+                targetByPath[normalizeWorkspacePath(path)] ??
+                WorkspaceFolder.localTargetId,
+          ),
+      ];
+      await repo.updateWorkspaceMetadata(
         widget.workspace.workspaceId,
         display: _displayController.text,
-        additionalPaths: _additionalPaths,
       );
+      await repo.updateWorkspaceFolders(widget.workspace.workspaceId, folders);
+      await cubit.loadWorkspaceData(repo);
       if (mounted) Navigator.of(context).pop();
     } finally {
       if (mounted) setState(() => _saving = false);
@@ -139,10 +183,12 @@ class _WorkspaceDetailsDialogState extends State<_WorkspaceDetailsDialog> {
               const SizedBox(height: 16),
               _DetailRow(
                 label: l10n.workspacePrimaryPath,
-                value: p.firstFolderPath.isNotEmpty ? p.firstFolderPath : '—',
-                onCopy: p.firstFolderPath.isNotEmpty
-                    ? () => _copyPath(p.firstFolderPath)
+                value: _primaryPath.isNotEmpty ? _primaryPath : '—',
+                onCopy: _primaryPath.isNotEmpty
+                    ? () => _copyPath(_primaryPath)
                     : null,
+                onEdit: _saving ? null : _editPrimary,
+                editTooltip: l10n.editWorkspacePrimaryPath,
               ),
               const SizedBox(height: 12),
               Text(
@@ -243,11 +289,19 @@ class _WorkspaceDetailsDialogState extends State<_WorkspaceDetailsDialog> {
 }
 
 class _DetailRow extends StatelessWidget {
-  const _DetailRow({required this.label, required this.value, this.onCopy});
+  const _DetailRow({
+    required this.label,
+    required this.value,
+    this.onCopy,
+    this.onEdit,
+    this.editTooltip,
+  });
 
   final String label;
   final String value;
   final VoidCallback? onCopy;
+  final VoidCallback? onEdit;
+  final String? editTooltip;
 
   @override
   Widget build(BuildContext context) {
@@ -263,6 +317,12 @@ class _DetailRow extends StatelessWidget {
             Expanded(
               child: SelectableText(value, style: theme.textTheme.bodyMedium),
             ),
+            if (onEdit != null)
+              IconButton(
+                tooltip: editTooltip,
+                icon: Icon(Icons.edit_outlined, size: context.appIconSizes.md),
+                onPressed: onEdit,
+              ),
             if (onCopy != null)
               IconButton(
                 tooltip: context.l10n.copyFolderPath,

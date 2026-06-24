@@ -1195,6 +1195,34 @@ class AppLocalizationsEn extends AppLocalizations {
       'This directory is already in the workspace.';
 
   @override
+  String get editWorkspacePrimaryPath => 'Edit primary directory';
+
+  @override
+  String get remoteDirectoryBrowserTitle => 'Browse remote directory';
+
+  @override
+  String get remoteDirectoryBrowserUpOneLevel => 'Up one level';
+
+  @override
+  String get remoteDirectoryBrowserUseThisDirectory => 'Use this directory';
+
+  @override
+  String get remoteDirectoryBrowserTypePathLabel => 'Or type a path';
+
+  @override
+  String get remoteDirectoryBrowserTypePathHint => '~/work/workspace';
+
+  @override
+  String get remoteDirectoryBrowserUseTypedPath => 'Use path';
+
+  @override
+  String get remoteDirectoryBrowserError =>
+      'Couldn\'t open the remote directory. You can still type a path below.';
+
+  @override
+  String get remoteDirectoryBrowserEmpty => 'No subdirectories here';
+
+  @override
   String get deleteWorkspace => 'Delete Workspace';
 
   @override

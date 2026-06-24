@@ -28,6 +28,7 @@ import 'services/cli/registry/cli_tool_registry_scope.dart';
 import 'services/storage/app_storage.dart';
 import 'services/app/connection_mode_service.dart';
 import 'services/storage/home_target_controller.dart';
+import 'services/storage/workspace_directory_picker.dart';
 import 'services/app/desktop_window_actions.dart';
 import 'services/ssh/ssh_client_factory.dart';
 import 'services/terminal/terminal_transport_factory.dart';
@@ -346,6 +347,9 @@ void main() async {
               ),
               RepositoryProvider<HomeTargetController>.value(
                 value: shell.homeTargetController,
+              ),
+              RepositoryProvider<WorkspaceDirectoryPicker>.value(
+                value: shell.directoryPicker,
               ),
               RepositoryProvider<WorkspaceTerminalRegistry>.value(
                 value: shell.workspaceTerminalRegistry,

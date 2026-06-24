@@ -1137,6 +1137,33 @@ class AppLocalizationsZh extends AppLocalizations {
   String get workspaceDirectoryAlreadyAdded => '该目录已在工作区中。';
 
   @override
+  String get editWorkspacePrimaryPath => '编辑主目录';
+
+  @override
+  String get remoteDirectoryBrowserTitle => '浏览远程目录';
+
+  @override
+  String get remoteDirectoryBrowserUpOneLevel => '上一级';
+
+  @override
+  String get remoteDirectoryBrowserUseThisDirectory => '使用此目录';
+
+  @override
+  String get remoteDirectoryBrowserTypePathLabel => '或手动输入路径';
+
+  @override
+  String get remoteDirectoryBrowserTypePathHint => '~/work/workspace';
+
+  @override
+  String get remoteDirectoryBrowserUseTypedPath => '使用路径';
+
+  @override
+  String get remoteDirectoryBrowserError => '无法打开远程目录。你仍可在下方手动输入路径。';
+
+  @override
+  String get remoteDirectoryBrowserEmpty => '此处没有子目录';
+
+  @override
   String get deleteWorkspace => '删除工作区';
 
   @override
