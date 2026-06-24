@@ -19,7 +19,7 @@
 | **P3c+（本轮）** | 远程目录选择 UX（§11 末条） | ✅ 已交付 | 见 §2 Phase B |
 | **P3d** | 跨机产物传输（§4.2） | ✅ 已交付 | publish/fetch/list_artifacts + 会话 inbox，见 §2 Phase C |
 | **P3e** | Windows 远程（§3 / §5.2 / §7.1） | 🟡 部分交付（D.1+D.3） | remoteOs 探测 + windows relay 选择已交付；D.2/D.4 + connect 接线见 §3 |
-| **P4** | 连接弹性（§11 首条） | ⏳ 规划就绪，未实现 | 见 §4 Phase E 实现计划 |
+| **P4** | 连接弹性（§11 首条） | 🟡 部分交付（E.1 状态机） | per-target 连接状态机 + 掉线隔离核心已交付；重连/隧道重建/UI/resume 见 §4 |
 
 ---
 
@@ -101,9 +101,15 @@
 
 设计依据：§11 首条、§12 P4。目标：某远程 target 掉线只降级该机会话/成员，其余团队继续；自动重连 + 会话恢复 + per-target 状态 UI。
 
-### E.1 per-target 连接登记 + 心跳/超时
-- 位置：扩展 `services/storage/runtime_context_registry.dart`（已持有 per-target `SSHClient`）+ `services/ssh/ssh_client_factory.dart`。
-- 改动：每个 ssh target 一个连接「监督者」——心跳（周期 keepalive / `SSHClient` ping）、超时判定、状态枚举（`connected` / `degraded` / `reconnecting` / `down`）。状态对外用流暴露（cubit 可订阅）。
+> 本轮交付 **E.1 的核心状态机**（纯函数 + 流封装 + 掉线隔离语义），带单测。**心跳/SSH 驱动接线（计时器/keepalive）、E.2 注册表隔离回收、E.3 重连+隧道重建、E.4 会话 resume、E.5 状态 UI** 留待后续。提交：`feat: 远程执行架构 P4（部分） — per-target 连接状态机 + 掉线隔离核心`。
+
+### E.1 per-target 连接登记 + 心跳/超时 — ✅ 状态机核心已交付
+- **新增** `services/remote/remote_connection_monitor.dart`：
+  - `RemoteConnectionStatus { connected, degraded, reconnecting, down }` + `RemoteConnectionState`（status + 连续丢心跳计数）。
+  - `RemoteConnectionReducer.reduce(state, event, {maxMissedBeforeDown=3})` 纯状态机：丢心跳累计到阈值前为 `degraded`、到阈值翻 `down`；健康心跳恢复并清零；`reconnectStarted→reconnecting`、`reconnected→connected`、`reconnectFailed→down`；**重连进行中忽略杂散心跳超时**（由重连结果驱动）。无计时器/IO，可穷举单测、被任意驱动复用。
+  - `RemoteConnectionMonitor`：状态机的有状态、流暴露封装（`changes` 流仅在状态变化时 emit），不含计时器/SSH → 测试确定、驱动可换。**掉线隔离**：每 target 一个 monitor 实例，互不影响。
+- 测试 `remote_connection_monitor_test.dart`：degraded→down 阈值、健康心跳恢复清零、down→reconnecting→connected、重连失败→down、重连中忽略心跳超时、自定义阈值；monitor 仅变化时 emit + 当前态、双 target 掉线隔离。
+- **未接线（留待）**：把 monitor 接到 `runtime_context_registry`（per-target 持有）+ `ssh_client_factory` 的 keepalive/计时器驱动，喂入真实心跳/重连事件。
 
 ### E.2 掉线隔离
 - 改动：连接事件只影响该 target 的 `RuntimeContext` 与挂在其上的会话/成员；控制面（home）与其它 target 不受影响。`RuntimeContextRegistry.dispose/forTarget` 配合状态机做隔离回收。
