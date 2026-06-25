@@ -1,7 +1,6 @@
 import '../../models/workspace_folder.dart';
 import '../../models/workspace_topology.dart';
 import '../session/session_lifecycle_service.dart';
-import '../storage/app_storage.dart';
 import '../storage/runtime_context.dart';
 
 /// Resolved storage backend for the workspace file tree / source-control panels.
@@ -61,10 +60,4 @@ class WorkspaceToolsContext {
     }
     return roots;
   }
-
-  /// Fallback when no lifecycle resolver is available (tests / early mount).
-  static WorkspaceToolsContext home() => WorkspaceToolsContext(
-    targetId: AppStorage.context.target.id,
-    context: AppStorage.context,
-  );
 }

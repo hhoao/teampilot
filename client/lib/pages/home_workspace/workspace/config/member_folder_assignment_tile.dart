@@ -7,16 +7,12 @@ import '../../../../models/workspace.dart';
 import '../../../../services/storage/home_target_controller.dart';
 import '../../../../widgets/settings/workspace_settings_widgets.dart';
 
-/// P3a (minimal): assigns one team member to a runtime target (machine). The
-/// member runs on that target's workspace folders (one agent, one machine). On
-/// select it emits the assigned folder paths via [onAssign]; an empty selection
-/// means "inherit the workspace folders". Caller persists via
-/// `SessionRepository.setMemberFolderAssignment`.
+/// Assigns one team member to a runtime target (machine).
 class MemberFolderAssignmentTile extends StatelessWidget {
   const MemberFolderAssignmentTile({
     required this.memberLabel,
     required this.workspace,
-    required this.currentAssignment,
+    required this.currentTargetId,
     required this.onAssign,
     this.requireExplicitTarget = false,
     super.key,
@@ -25,16 +21,13 @@ class MemberFolderAssignmentTile extends StatelessWidget {
   final String memberLabel;
   final Workspace workspace;
 
-  /// Currently assigned folder paths (empty = inherit workspace folders).
-  final List<String> currentAssignment;
-
-  /// When true, the inherit option is hidden (mixed workspace launch).
+  /// Empty = inherit workspace folders.
+  final String currentTargetId;
   final bool requireExplicitTarget;
 
-  /// Emits the folder paths for the chosen target (empty = inherit).
-  final void Function(List<String> folderPaths) onAssign;
+  /// Emits the chosen target id (empty = inherit).
+  final ValueChanged<String> onAssign;
 
-  /// Distinct target ids present in the workspace folders.
   List<String> get _workspaceTargetIds {
     final seen = <String>[];
     for (final f in workspace.folders) {
@@ -48,19 +41,10 @@ class MemberFolderAssignmentTile extends StatelessWidget {
       if (f.targetId == targetId) f.path,
   ];
 
-  String get _currentTargetId {
-    if (currentAssignment.isEmpty) return '';
-    for (final f in workspace.folders) {
-      if (f.path == currentAssignment.first) return f.targetId;
-    }
-    return '';
-  }
-
   @override
   Widget build(BuildContext context) {
     final l10n = context.l10n;
     final controller = context.read<HomeTargetController>();
-    final current = _currentTargetId;
     return SettingsLabeledStackedRow(
       title: l10n.memberTargetAssignmentTitle,
       subtitle: l10n.memberTargetAssignmentSubtitle(memberLabel),
@@ -78,18 +62,18 @@ class MemberFolderAssignmentTile extends StatelessWidget {
                 RadioListTile<String>(
                   contentPadding: EdgeInsets.zero,
                   value: '',
-                  groupValue: current,
+                  groupValue: currentTargetId,
                   title: Text(l10n.memberTargetAssignmentInherit),
-                  onChanged: (_) => onAssign(const []),
+                  onChanged: (_) => onAssign(''),
                 ),
               for (final id in targetIds)
                 RadioListTile<String>(
                   contentPadding: EdgeInsets.zero,
                   value: id,
-                  groupValue: current,
+                  groupValue: currentTargetId,
                   title: Text(labelOf[id] ?? id),
                   subtitle: Text(_pathsForTarget(id).join(', ')),
-                  onChanged: (_) => onAssign(_pathsForTarget(id)),
+                  onChanged: (_) => onAssign(id),
                 ),
             ],
           );

@@ -4,6 +4,7 @@ import 'package:uuid/uuid.dart';
 
 import '../../models/runtime_target.dart' show RuntimeKind;
 import '../../models/workspace.dart';
+import '../../models/workspace_launch_context.dart';
 import '../../models/workspace_folder.dart';
 import '../../models/app_session.dart';
 import '../../models/cli_preset.dart';
@@ -182,7 +183,10 @@ class SessionLaunchService implements MemberConnector {
           : member!.cliWithin(team!),
       workTarget: isPersonal
           ? null
-          : _h.lifecycle.memberWorkTarget(session, effectiveMember.id),
+          : _h.lifecycle.memberWorkTarget(
+              _launchContextFor(session),
+              effectiveMember.id,
+            ),
     );
     final info = ChatTabInfo(
       id: session.sessionId,
@@ -536,7 +540,10 @@ class SessionLaunchService implements MemberConnector {
             : member!.cliWithin(team!),
         workTarget: isPersonal
             ? null
-            : _h.lifecycle.memberWorkTarget(session, effectiveMember.id),
+            : _h.lifecycle.memberWorkTarget(
+              _launchContextFor(session),
+              effectiveMember.id,
+            ),
       ),
     );
 
@@ -590,6 +597,18 @@ class SessionLaunchService implements MemberConnector {
     }
     return null;
   }
+
+  WorkspaceLaunchContext _launchContextFor(AppSession session) =>
+      WorkspaceLaunchContext(
+        session: session,
+        workspace:
+            _workspaceById(session.workspaceId) ??
+            Workspace(
+              workspaceId: session.workspaceId,
+              folders: session.folders,
+              createdAt: 0,
+            ),
+      );
 
   Future<void> openMemberTab(
     TeamProfile team,
@@ -755,6 +774,7 @@ class SessionLaunchService implements MemberConnector {
     final launch = _tabStore.workingDirectoryAndAddDirsForTab(
       tab,
       _state.sessions,
+      workspaces: _state.workspaces,
     );
     final session =
         tab.persistedSession ??
@@ -869,8 +889,10 @@ class SessionLaunchService implements MemberConnector {
     PreflightResult? preflightResult;
     if (mixedBus) {
       final memberId = binding?.rosterMemberId ?? launchMember.id;
-      final memberTarget =
-          _h.lifecycle.memberWorkTarget(activeSession, memberId);
+      final memberTarget = _h.lifecycle.memberWorkTarget(
+        _launchContextFor(activeSession),
+        memberId,
+      );
       final memberCli = launchMember.cliWithin(team);
       // P3c: a member on a machine *other than home* runs preflight before launch
       // (connect → CLI ready → app-data materialize). home / home-ssh members
@@ -918,7 +940,10 @@ class SessionLaunchService implements MemberConnector {
     );
     if (team != null && launchMember != null) {
       final memberId = binding?.rosterMemberId ?? launchMember.id;
-      final memberTarget = _h.lifecycle.memberWorkTarget(activeSession, memberId);
+      final memberTarget = _h.lifecycle.memberWorkTarget(
+        _launchContextFor(activeSession),
+        memberId,
+      );
       final shellFactory = _h.shellFactory;
       shellLaunch = await applyRemoteSshLaunchConstraints(
         spec: shellLaunch,
@@ -941,6 +966,7 @@ class SessionLaunchService implements MemberConnector {
     // first folder). Personal sessions inherit (null memberId).
     final memberWork = activeSession.workDirsForMember(
       isPersonal ? null : binding?.rosterMemberId,
+      folders: _launchContextFor(activeSession).folderCatalog,
     );
     shell.connect(
       workingDirectory: memberWork.workingDirectory,
@@ -1028,7 +1054,10 @@ class SessionLaunchService implements MemberConnector {
     AppSession? session,
   }) {
     final workTarget = session != null
-        ? _h.lifecycle.memberWorkTarget(session, member.id)
+        ? _h.lifecycle.memberWorkTarget(
+            _launchContextFor(session),
+            member.id,
+          )
         : null;
     final needsRemoteLaunch = workTarget?.kind == RuntimeKind.ssh;
     final existing = tab.memberShells[member.id];
@@ -1077,7 +1106,11 @@ class SessionLaunchService implements MemberConnector {
       return;
     }
     tab.membersPendingConnect.add(member.id);
-    _tabStore.workingDirectoryAndAddDirsForTab(tab, _state.sessions);
+    _tabStore.workingDirectoryAndAddDirsForTab(
+      tab,
+      _state.sessions,
+      workspaces: _state.workspaces,
+    );
     _h.beginSessionConnect(tab.info.id);
     _h.postFrameScheduler(() async {
       try {

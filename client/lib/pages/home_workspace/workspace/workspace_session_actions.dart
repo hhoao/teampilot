@@ -39,24 +39,27 @@ Future<void> openWorkspaceSessionTab(
 
   chatCubit.selectSession(session.sessionId);
 
+  var launchSession = session;
   if (!isPersonal) {
     final team = context.read<LaunchProfileCubit>().state.selectedTeam;
     if (team != null) {
       unawaited(chatCubit.scheduleTeamConfigValidation(team));
-      final ready = await ensureMixedWorkspaceMemberAssignments(
+      final ensured = await ensureMixedWorkspaceMemberAssignments(
         context,
         workspace: workspace,
         session: session,
         team: team,
         repository: repo,
       );
-      if (!ready || !context.mounted) return;
+      if (ensured == null || !context.mounted) return;
+      launchSession = ensured;
+      await chatCubit.loadWorkspaceData(repo);
     }
   }
 
   if (isPersonal) {
     await chatCubit.openSessionTab(
-      session,
+      launchSession,
       team: null,
       member: null,
       repo: repo,
@@ -72,7 +75,7 @@ Future<void> openWorkspaceSessionTab(
   final TeamMemberConfig? lead = leads.isEmpty ? null : leads.first;
 
   await chatCubit.openSessionTab(
-    session,
+    launchSession,
     team: lead != null ? team : null,
     member: lead,
     repo: repo,

@@ -11,8 +11,11 @@ import '../../../widgets/app_dialog.dart';
 import 'mixed_workspace_member_placement_panel.dart';
 
 /// Ensures every roster member is assigned to one machine before a mixed
-/// workspace team session connects. Returns `true` when ready (or not needed).
-Future<bool> ensureMixedWorkspaceMemberAssignments(
+/// workspace team session connects.
+///
+/// Returns the disk-backed [AppSession] when ready, or `null` when cancelled /
+/// not needed because the workspace is not mixed.
+Future<AppSession?> ensureMixedWorkspaceMemberAssignments(
   BuildContext context, {
   required Workspace workspace,
   required AppSession session,
@@ -20,20 +23,17 @@ Future<bool> ensureMixedWorkspaceMemberAssignments(
   required SessionRepository repository,
 }) async {
   if (!workspaceTopologyRequiresMemberAssignment(workspace.folders)) {
-    return true;
+    return _reloadSession(repository, session);
   }
-  final fresh = (await repository.loadSessions())
-      .where((s) => s.sessionId == session.sessionId)
-      .firstOrNull;
-  final current = fresh ?? session;
-  if (memberFolderAssignmentsComplete(
+  var current = await _reloadSession(repository, session);
+  if (memberTargetsComplete(
     workspaceFolders: workspace.folders,
     members: team.members,
-    assignments: current.folderAssignments,
+    targets: current.memberTargets,
   )) {
-    return true;
+    return current;
   }
-  if (!context.mounted) return false;
+  if (!context.mounted) return null;
   final confirmed = await showDialog<bool>(
     context: context,
     barrierDismissible: false,
@@ -44,7 +44,18 @@ Future<bool> ensureMixedWorkspaceMemberAssignments(
       team: team,
     ),
   );
-  return confirmed == true;
+  if (confirmed != true) return null;
+  return _reloadSession(repository, session);
+}
+
+Future<AppSession> _reloadSession(
+  SessionRepository repository,
+  AppSession session,
+) async {
+  final fresh = (await repository.loadSessions())
+      .where((s) => s.sessionId == session.sessionId)
+      .firstOrNull;
+  return fresh ?? session;
 }
 
 class _MixedWorkspaceMemberAssignmentDialog extends StatefulWidget {
@@ -73,10 +84,9 @@ class _MixedWorkspaceMemberAssignmentDialogState
   @override
   void initState() {
     super.initState();
-    _placement = memberPlacementFromFolderAssignments(
-      workspaceFolders: widget.workspace.folders,
+    _placement = memberPlacementFromMemberTargets(
       members: widget.team.members,
-      assignments: widget.session.folderAssignments,
+      targets: widget.session.memberTargets,
     );
   }
 
@@ -86,8 +96,8 @@ class _MixedWorkspaceMemberAssignmentDialogState
     placement: _placement,
   );
 
-  MemberFolderAssignments get _folderAssignments =>
-      folderAssignmentsFromMemberPlacement(
+  MemberTargetAssignments get _memberTargets =>
+      memberTargetsFromMemberPlacement(
         workspaceFolders: widget.workspace.folders,
         members: widget.team.members,
         placement: _placement,
@@ -97,25 +107,23 @@ class _MixedWorkspaceMemberAssignmentDialogState
     if (!_complete || _saving) return;
     setState(() => _saving = true);
     try {
-      final assignments = _folderAssignments;
+      final targets = _memberTargets;
       final roster = widget.team.members.where((m) => m.isValid).toList();
       final instanceIds = {
         for (final inst in expandTeamRoster(roster)) inst.instanceId,
       };
-      final staleKeys = widget.session.folderAssignments.keys
+      final staleKeys = widget.session.memberTargets.keys
           .where((id) => !instanceIds.contains(id))
           .toList(growable: false);
-      for (final memberId in {...instanceIds, ...staleKeys}) {
-        await widget.repository.setMemberFolderAssignment(
-          widget.session.sessionId,
-          memberId,
-          assignments[memberId] ?? const <String>[],
-        );
-      }
-      await widget.repository.updateWorkspaceMemberFolderAssignments(
+      await widget.repository.replaceMemberTargets(
+        widget.session.sessionId,
+        targets: targets,
+        instanceIdsToClear: {...instanceIds, ...staleKeys},
+      );
+      await widget.repository.updateWorkspaceMemberTargets(
         widget.workspace.workspaceId,
         widget.team.id,
-        assignments: assignments,
+        targets: targets,
       );
       if (!mounted) return;
       Navigator.of(context).pop(true);

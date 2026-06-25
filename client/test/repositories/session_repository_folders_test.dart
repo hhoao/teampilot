@@ -86,8 +86,7 @@ void main() {
     expect(reloaded.folders.every((f) => f.targetId == 'ssh:p1'), isTrue);
   });
 
-  test('setMemberFolderAssignment writes + clears per-member assignment',
-      () async {
+  test('setMemberTarget writes + clears per-member target', () async {
     final tmp = await Directory.systemTemp.createTemp('fs_repo_folders_');
     addTearDown(() => tmp.deleteSync(recursive: true));
     final repo = SessionRepository(rootDir: tmp.path);
@@ -98,13 +97,13 @@ void main() {
     ]);
     final s = await repo.createSession(ws.workspaceId);
 
-    await repo.setMemberFolderAssignment(s.sessionId, 'm1', ['/main', '/x']);
+    await repo.setMemberTarget(s.sessionId, 'm1', 'local');
     var reloaded = (await repo.loadSessions()).single;
-    expect(reloaded.folderAssignments['m1'], ['/main', '/x']);
+    expect(reloaded.memberTargets['m1'], 'local');
 
-    await repo.setMemberFolderAssignment(s.sessionId, 'm1', const []);
+    await repo.setMemberTarget(s.sessionId, 'm1', '');
     reloaded = (await repo.loadSessions()).single;
-    expect(reloaded.folderAssignments.containsKey('m1'), isFalse);
+    expect(reloaded.memberTargets.containsKey('m1'), isFalse);
   });
 
   test('updateWorkspaceFolders replaces folders wholesale', () async {
@@ -137,7 +136,7 @@ void main() {
     expect(ws.folders.last.targetId, 'ssh:p1');
   });
 
-  test('createSession seeds remembered mixed-workspace member assignments', () async {
+  test('createSession seeds remembered mixed-workspace member targets', () async {
     final tmp = await Directory.systemTemp.createTemp('fs_repo_folders_');
     addTearDown(() => tmp.deleteSync(recursive: true));
     final repo = SessionRepository(rootDir: tmp.path);
@@ -146,12 +145,12 @@ void main() {
       const WorkspaceFolder(path: '/local'),
       const WorkspaceFolder(path: '/remote', targetId: 'ssh:p1'),
     ]);
-    await repo.updateWorkspaceMemberFolderAssignments(
+    await repo.updateWorkspaceMemberTargets(
       ws.workspaceId,
       'team-a',
-      assignments: const {
-        'lead': ['/local'],
-        'dev': ['/remote'],
+      targets: const {
+        'lead': 'local',
+        'dev': 'ssh:p1',
       },
     );
 
@@ -163,7 +162,34 @@ void main() {
         TeamMemberConfig(id: 'dev', name: 'Dev'),
       ],
     );
-    expect(session.folderAssignments['lead'], ['/local']);
-    expect(session.folderAssignments['dev'], ['/remote']);
+    expect(session.memberTargets['lead'], 'local');
+    expect(session.memberTargets['dev'], 'ssh:p1');
+  });
+
+  test('replaceMemberTargets writes targets atomically', () async {
+    final tmp = await Directory.systemTemp.createTemp('fs_repo_folders_');
+    addTearDown(() => tmp.deleteSync(recursive: true));
+    final repo = SessionRepository(rootDir: tmp.path);
+
+    final ws = await repo.createWorkspace([
+      const WorkspaceFolder(path: '/local'),
+      const WorkspaceFolder(path: '/remote', targetId: 'ssh:p1'),
+    ]);
+    final session = await repo.createSession(
+      ws.workspaceId,
+      sessionTeam: 'team-a',
+      rosterMembers: const [
+        TeamMemberConfig(id: 'lead', name: 'Lead'),
+      ],
+    );
+    await repo.replaceMemberTargets(
+      session.sessionId,
+      targets: const {
+        'lead': 'ssh:p1',
+      },
+      instanceIdsToClear: const {'lead'},
+    );
+    final reloaded = (await repo.loadSessions()).single;
+    expect(reloaded.memberTargets['lead'], 'ssh:p1');
   });
 }

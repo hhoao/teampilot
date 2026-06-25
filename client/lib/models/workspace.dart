@@ -15,7 +15,7 @@ class Workspace {
     required this.createdAt,
     this.updatedAt = 0,
     this.sessionIds = const [],
-    this.memberFolderAssignmentsByTeam = const {},
+    this.memberTargetsByTeam = const {},
   });
 
   factory Workspace({
@@ -27,8 +27,7 @@ class Workspace {
     required int createdAt,
     int updatedAt = 0,
     List<String> sessionIds = const [],
-    Map<String, MemberFolderAssignments> memberFolderAssignmentsByTeam =
-        const {},
+    Map<String, MemberTargetAssignments> memberTargetsByTeam = const {},
   }) {
     return Workspace._(
       workspaceId: workspaceId,
@@ -39,9 +38,7 @@ class Workspace {
       createdAt: createdAt,
       updatedAt: updatedAt,
       sessionIds: sessionIds,
-      memberFolderAssignmentsByTeam: _freezeAssignmentsByTeam(
-        memberFolderAssignmentsByTeam,
-      ),
+      memberTargetsByTeam: _freezeTargetsByTeam(memberTargetsByTeam),
     );
   }
 
@@ -59,9 +56,7 @@ class Workspace {
       createdAt: json['createdAt'] as int? ?? 0,
       updatedAt: json['updatedAt'] as int? ?? 0,
       sessionIds: sessionIds,
-      memberFolderAssignmentsByTeam: _assignmentsByTeamFromJson(
-        json['memberFolderAssignmentsByTeam'],
-      ),
+      memberTargetsByTeam: _targetsByTeamFromJson(json['memberTargetsByTeam']),
     );
   }
 
@@ -74,8 +69,8 @@ class Workspace {
   final int updatedAt;
   final List<String> sessionIds;
 
-  /// Remembered per-member folder picks for mixed workspaces, keyed by team id.
-  final Map<String, MemberFolderAssignments> memberFolderAssignmentsByTeam;
+  /// Remembered mixed-workspace machine pins keyed by team id.
+  final Map<String, MemberTargetAssignments> memberTargetsByTeam;
 
   String get firstFolderPath => folders.isEmpty ? '' : folders.first.path;
   List<String> get extraFolderPaths => folders.length <= 1
@@ -102,7 +97,7 @@ class Workspace {
     int? createdAt,
     int? updatedAt,
     List<String>? sessionIds,
-    Map<String, MemberFolderAssignments>? memberFolderAssignmentsByTeam,
+    Map<String, MemberTargetAssignments>? memberTargetsByTeam,
   }) {
     return Workspace(
       workspaceId: workspaceId ?? this.workspaceId,
@@ -113,8 +108,7 @@ class Workspace {
       createdAt: createdAt ?? this.createdAt,
       updatedAt: updatedAt ?? this.updatedAt,
       sessionIds: sessionIds ?? this.sessionIds,
-      memberFolderAssignmentsByTeam:
-          memberFolderAssignmentsByTeam ?? this.memberFolderAssignmentsByTeam,
+      memberTargetsByTeam: memberTargetsByTeam ?? this.memberTargetsByTeam,
     );
   }
 
@@ -128,49 +122,45 @@ class Workspace {
       'createdAt': createdAt,
       'updatedAt': updatedAt,
       'sessionIds': sessionIds,
-      if (memberFolderAssignmentsByTeam.isNotEmpty)
-        'memberFolderAssignmentsByTeam': {
-          for (final e in memberFolderAssignmentsByTeam.entries)
-            e.key: e.value,
+      if (memberTargetsByTeam.isNotEmpty)
+        'memberTargetsByTeam': {
+          for (final e in memberTargetsByTeam.entries) e.key: e.value,
         },
     };
   }
 
-  static Map<String, MemberFolderAssignments> _freezeAssignmentsByTeam(
-    Map<String, MemberFolderAssignments> raw,
+  static Map<String, MemberTargetAssignments> _freezeTargetsByTeam(
+    Map<String, MemberTargetAssignments> raw,
   ) {
-    return Map<String, MemberFolderAssignments>.unmodifiable({
+    return Map<String, MemberTargetAssignments>.unmodifiable({
       for (final team in raw.entries)
         if (team.key.trim().isNotEmpty)
-          team.key: Map<String, List<String>>.unmodifiable({
+          team.key: Map<String, String>.unmodifiable({
             for (final member in team.value.entries)
-              if (member.key.trim().isNotEmpty && member.value.isNotEmpty)
-                member.key: List<String>.unmodifiable(member.value),
+              if (member.key.trim().isNotEmpty && member.value.trim().isNotEmpty)
+                member.key.trim(): member.value.trim(),
           }),
     });
   }
 
-  static Map<String, MemberFolderAssignments> _assignmentsByTeamFromJson(
+  static Map<String, MemberTargetAssignments> _targetsByTeamFromJson(
     Object? raw,
   ) {
     if (raw is! Map) return const {};
-    final out = <String, MemberFolderAssignments>{};
+    final out = <String, MemberTargetAssignments>{};
     for (final teamEntry in raw.entries) {
       final teamId = teamEntry.key.toString().trim();
       if (teamId.isEmpty || teamEntry.value is! Map) continue;
-      final members = <String, List<String>>{};
+      final members = <String, String>{};
       for (final memberEntry in (teamEntry.value as Map).entries) {
         final memberId = memberEntry.key.toString().trim();
-        if (memberId.isEmpty || memberEntry.value is! List) continue;
-        final paths = [
-          for (final path in memberEntry.value as List)
-            if (path != null) path.toString().trim(),
-        ].where((p) => p.isNotEmpty).toList(growable: false);
-        if (paths.isNotEmpty) members[memberId] = paths;
+        final targetId = memberEntry.value?.toString().trim() ?? '';
+        if (memberId.isEmpty || targetId.isEmpty) continue;
+        members[memberId] = targetId;
       }
       if (members.isNotEmpty) out[teamId] = members;
     }
-    return _freezeAssignmentsByTeam(out);
+    return _freezeTargetsByTeam(out);
   }
 
   @override
@@ -186,10 +176,7 @@ class Workspace {
             createdAt == other.createdAt &&
             updatedAt == other.updatedAt &&
             listEquals(sessionIds, other.sessionIds) &&
-            mapEquals(
-              memberFolderAssignmentsByTeam,
-              other.memberFolderAssignmentsByTeam,
-            );
+            mapEquals(memberTargetsByTeam, other.memberTargetsByTeam);
   }
 
   @override
@@ -203,7 +190,7 @@ class Workspace {
     updatedAt,
     Object.hashAll(sessionIds),
     Object.hashAll(
-      memberFolderAssignmentsByTeam.entries.map(
+      memberTargetsByTeam.entries.map(
         (e) => Object.hash(e.key, Object.hashAll(e.value.entries)),
       ),
     ),

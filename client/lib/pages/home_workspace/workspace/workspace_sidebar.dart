@@ -19,6 +19,7 @@ import '../../../services/cli/registry/cli_tool_registry_scope.dart';
 import '../../../services/git/git_worktree_service.dart';
 import '../../../services/storage/app_storage.dart';
 import '../../../services/storage/workspace_layout.dart';
+import '../../../services/workspace/workspace_tools_scope.dart';
 import '../../../utils/session_worktree_grouping.dart';
 import '../../../utils/workspace_path_utils.dart';
 import '../../../widgets/app_toast/app_toast.dart';
@@ -107,6 +108,7 @@ class _WorkspaceSidebarState
       isPersonal: _isPersonal,
       folders: widget.workspace.folders,
     );
+    final toolsContext = WorkspaceToolsScope.maybeOf(context)?.tools?.context;
 
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 18),
@@ -169,7 +171,8 @@ class _WorkspaceSidebarState
                     ),
                   ),
                 ),
-                if (worktreeManagementEnabled()) ...[
+                if (toolsContext != null &&
+                    worktreeManagementEnabled(toolsContext)) ...[
                   const SizedBox(width: 2),
                   AppIconButton(
                     icon: Icons.refresh_rounded,
@@ -255,6 +258,8 @@ class _WorkspaceSidebarState
   Future<void> _createWorktree(BuildContext context) async {
     final cubit = context.read<WorktreeCubit>();
     final l10n = context.l10n;
+    final tools = WorkspaceToolsScope.of(context).tools;
+    if (tools == null) return;
     final repoPath = widget.workspace.firstFolderPath;
     final layout = WorkspaceLayout(teampilotRoot: AppStorage.paths.basePath);
     final result = await showWorktreeCreateDialog(
@@ -262,6 +267,7 @@ class _WorkspaceSidebarState
       repoName: _basename(repoPath),
       repoPath: repoPath,
       layout: layout.worktreePathFor,
+      branchLoader: branchListLoaderFor(tools.context),
       showStartConversationOption: !personalIdentityBlockedForWorkspace(
         isPersonal: widget.isPersonalWorkspace,
         folders: widget.workspace.folders,
@@ -269,7 +275,7 @@ class _WorkspaceSidebarState
     );
     if (result == null) return;
     try {
-      await GitWorktreeService.resolve().add(
+      await GitWorktreeService.forContext(tools.context).add(
         repoPath,
         result.worktreePath,
         branch: result.branch,

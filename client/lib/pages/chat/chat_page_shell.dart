@@ -11,7 +11,6 @@ import '../../cubits/editor_cubit.dart';
 import '../../cubits/layout_cubit.dart';
 import '../../l10n/l10n_extensions.dart';
 import '../../models/layout_preferences.dart';
-import '../../models/workspace_folder.dart';
 import '../../models/team_config.dart';
 import '../../services/app/platform_utils.dart';
 import '../../utils/app_keys.dart';
@@ -29,7 +28,6 @@ class ChatPageShell extends StatelessWidget {
     required this.workspaceId,
     required this.tabScopeId,
     required this.team,
-    this.workspaceFolders = const [],
     this.additionalPaths = const [],
     this.sessionId,
     super.key,
@@ -39,7 +37,6 @@ class ChatPageShell extends StatelessWidget {
 
   /// Extra workspace folders for the multi-root file tree / source control.
   final List<String> additionalPaths;
-  final List<WorkspaceFolder> workspaceFolders;
   final String? sessionId;
   final bool isPersonalWorkspace;
   final String workspaceId;
@@ -55,7 +52,6 @@ class ChatPageShell extends StatelessWidget {
     final rightToolsPanel = RightToolsPanel(
       cwd: cwd,
       additionalPaths: additionalPaths,
-      workspaceFolders: workspaceFolders,
       preferences: preferences,
       panelKey: AppKeys.rightToolsPanel,
       dismissDrawerOnAction: toolsAsDrawer,

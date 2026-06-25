@@ -17,7 +17,7 @@ import 'package:teampilot/services/storage/targets_repository.dart';
 
 /// Reachability: the chat-workbench member panel opens this dialog with a real
 /// session+repo; the assignment tile renders and selecting a target persists via
-/// SessionRepository.setMemberFolderAssignment (guards against an orphan UI).
+/// SessionRepository.setMemberTarget (guards against an orphan UI).
 void main() {
   testWidgets('dialog renders the tile and persists a target selection',
       (tester) async {
@@ -93,7 +93,7 @@ void main() {
 
       final reloaded = (await repo.loadSessions())
           .firstWhere((s) => s.sessionId == session.sessionId);
-      expect(reloaded.folderAssignments['m1'], ['/remote-proj']);
+      expect(reloaded.memberTargets['m1'], 'ssh:p1');
     });
   });
 }

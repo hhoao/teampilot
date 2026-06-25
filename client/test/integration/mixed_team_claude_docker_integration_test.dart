@@ -71,12 +71,12 @@ void main() {
             targetId: remote.sshTargetId,
           ),
         ]);
-        await repo.updateWorkspaceMemberFolderAssignments(
+        await repo.updateWorkspaceMemberTargets(
           workspace.workspaceId,
           kItMixedClaudeTeam.id,
-          assignments: {
-            kLeadMember.id: [localPath],
-            kWorkerMember.id: [MixedTeamDockerRemote.remoteWorkspacePath],
+          targets: {
+            kLeadMember.id: 'local',
+            kWorkerMember.id: remote.sshTargetId,
           },
         );
         session = await repo.createSession(
@@ -84,22 +84,22 @@ void main() {
           sessionTeam: kItMixedClaudeTeam.id,
           rosterMembers: kItMixedClaudeTeam.members,
         );
-        await repo.setMemberFolderAssignment(
+        await repo.setMemberTarget(
           session.sessionId,
           kLeadMember.id,
-          [localPath],
+          'local',
         );
-        await repo.setMemberFolderAssignment(
+        await repo.setMemberTarget(
           session.sessionId,
           kWorkerMember.id,
-          [MixedTeamDockerRemote.remoteWorkspacePath],
+          remote.sshTargetId,
         );
         final reloaded = (await repo.loadSessions()).firstWhere(
           (s) => s.sessionId == session!.sessionId,
         );
         session = reloaded;
 
-        expect(reloaded.folderAssignments[kLeadMember.id], isNotNull);
+        expect(reloaded.memberTargets[kLeadMember.id], 'local');
 
         await cubit.openSessionTab(
           session,

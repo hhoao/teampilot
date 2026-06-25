@@ -8,9 +8,12 @@ import '../../../cubits/member_config_cubit.dart';
 import '../../../l10n/l10n_extensions.dart';
 import '../../../models/app_session.dart';
 import '../../../models/team_config.dart';
+import '../../../models/workspace.dart';
+import '../../../models/workspace_launch_context.dart';
 import '../../../pages/home_workspace/workspace/member_config_directory_opener.dart';
 import '../../../services/cli/member_config/member_config_detail.dart';
 import '../../../services/session/session_lifecycle_service.dart';
+import '../../../services/storage/runtime_context.dart';
 import '../home_workspace_content_header.dart';
 import '../../../widgets/app_dialog.dart';
 
@@ -30,9 +33,20 @@ Future<void> showMemberDetailDialog(
       create: (_) {
         final cubit = MemberConfigCubit();
         unawaited(() async {
-          final workContext = lifecycle != null && session != null
-              ? await lifecycle.memberWorkContext(session, member.id)
-              : null;
+          RuntimeContext? workContext;
+          if (lifecycle != null && session != null) {
+            workContext = await lifecycle.memberWorkContext(
+              WorkspaceLaunchContext(
+                session: session,
+                workspace: Workspace(
+                  workspaceId: workspaceId,
+                  folders: session.folders,
+                  createdAt: 0,
+                ),
+              ),
+              member.id,
+            );
+          }
           await cubit.load(
             workspaceId: workspaceId,
             sessionId: sessionId,

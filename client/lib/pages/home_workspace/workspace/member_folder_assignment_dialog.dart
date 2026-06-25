@@ -2,19 +2,12 @@ import 'package:flutter/material.dart';
 
 import '../../../l10n/l10n_extensions.dart';
 import '../../../models/workspace.dart';
+import '../../../models/workspace_folder.dart';
 import '../../../models/workspace_topology.dart';
 import '../../../repositories/session_repository.dart';
 import '../../../widgets/app_dialog.dart';
 import 'config/member_folder_assignment_tile.dart';
 
-/// Opens the per-member folder-assignment dialog from the chat workbench member
-/// panel (P3a). Loads the active session's folders + current assignment, renders
-/// [MemberFolderAssignmentTile], and persists selections via
-/// [SessionRepository.setMemberFolderAssignment].
-///
-/// [repository] and the `HomeTargetController` (read by the tile) come from the
-/// caller's widget tree; the dialog is opened with the root context which sits
-/// under those providers.
 Future<void> showMemberFolderAssignmentDialog(
   BuildContext context, {
   required SessionRepository repository,
@@ -54,8 +47,9 @@ class _MemberFolderAssignmentDialog extends StatefulWidget {
 class _MemberFolderAssignmentDialogState
     extends State<_MemberFolderAssignmentDialog> {
   bool _loading = true;
-  Workspace? _workspace;
-  List<String> _current = const [];
+  var _currentTargetId = '';
+  var _workspaceId = '';
+  var _folders = const <WorkspaceFolder>[];
 
   @override
   void initState() {
@@ -65,41 +59,42 @@ class _MemberFolderAssignmentDialogState
 
   Future<void> _load() async {
     final sessions = await widget.repository.loadSessions();
+    final workspaces = await widget.repository.loadWorkspaces();
     final session = sessions
         .where((s) => s.sessionId == widget.sessionId)
         .firstOrNull;
+    final workspace = session == null
+        ? null
+        : workspaces
+            .where((w) => w.workspaceId == session.workspaceId)
+            .firstOrNull;
     if (!mounted) return;
     setState(() {
       _loading = false;
-      _workspace = session == null
-          ? null
-          : Workspace(
-              workspaceId: session.workspaceId,
-              folders: session.folders,
-              createdAt: 0,
-            );
-      _current = session?.folderAssignments[widget.memberId] ?? const [];
+      _workspaceId = session?.workspaceId ?? '';
+      _folders = workspace?.folders ?? session?.folders ?? const [];
+      _currentTargetId =
+          session?.memberTargets[widget.memberId]?.trim() ?? '';
     });
   }
 
-  Future<void> _assign(List<String> paths) async {
-    await widget.repository.setMemberFolderAssignment(
+  Future<void> _assign(String targetId) async {
+    await widget.repository.setMemberTarget(
       widget.sessionId,
       widget.memberId,
-      paths,
+      targetId,
     );
     if (!mounted) return;
-    setState(() => _current = paths);
+    setState(() => _currentTargetId = targetId);
   }
 
   @override
   Widget build(BuildContext context) {
     final l10n = context.l10n;
-    final workspace = _workspace;
     Widget body;
     if (_loading) {
       body = const Center(child: CircularProgressIndicator());
-    } else if (workspace == null) {
+    } else if (_workspaceId.isEmpty || _folders.isEmpty) {
       body = Center(child: Text(l10n.memberDetailLoadError));
     } else {
       body = ListView(
@@ -107,10 +102,14 @@ class _MemberFolderAssignmentDialogState
         children: [
           MemberFolderAssignmentTile(
             memberLabel: widget.memberLabel,
-            workspace: workspace,
-            currentAssignment: _current,
+            workspace: Workspace(
+              workspaceId: _workspaceId,
+              folders: _folders,
+              createdAt: 0,
+            ),
+            currentTargetId: _currentTargetId,
             requireExplicitTarget: workspaceTopologyRequiresMemberAssignment(
-              workspace.folders,
+              _folders,
             ),
             onAssign: _assign,
           ),

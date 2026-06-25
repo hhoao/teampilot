@@ -7,12 +7,13 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 
 import '../models/workspace.dart';
 import '../models/workspace_folder.dart';
-import '../models/runtime_target.dart';
+import '../models/workspace_launch_context.dart';
 import '../models/app_session.dart';
 import '../models/member_presence.dart';
 import '../models/workspace_icon_picker_result.dart';
 import '../models/workspace_icon_ref.dart';
 import '../models/team_config.dart';
+import '../models/runtime_target.dart';
 import '../../repositories/launch_profile_repository.dart';
 import '../repositories/session_repository.dart';
 import '../services/workspace/workspace_icon_service.dart';
@@ -105,10 +106,41 @@ class ChatCubit extends Cubit<ChatState>
       registry: ArtifactRegistry(),
       resolveFs: (targetId) async =>
           (await _lifecycle.resolveWorkContextForTargetId(targetId)).filesystem,
-      targetForMember: (memberId) =>
-          _lifecycle.memberWorkTarget(session, memberId).id,
+      targetForMember: (memberId) {
+        final workspace = state.workspaces
+            .where((w) => w.workspaceId == session.workspaceId)
+            .firstOrNull;
+        return _lifecycle
+            .memberWorkTarget(
+              WorkspaceLaunchContext(
+                session: session,
+                workspace:
+                    workspace ??
+                    Workspace(
+                      workspaceId: session.workspaceId,
+                      folders: session.folders,
+                      createdAt: 0,
+                    ),
+              ),
+              memberId,
+            )
+            .id;
+      },
       inboxDirFor: (memberId) {
-        final cwd = _lifecycle.memberWorkDirs(session, memberId).workingDirectory;
+        final workspace = state.workspaces
+            .where((w) => w.workspaceId == session.workspaceId)
+            .firstOrNull;
+        final ctx = WorkspaceLaunchContext(
+          session: session,
+          workspace:
+              workspace ??
+              Workspace(
+                workspaceId: session.workspaceId,
+                folders: session.folders,
+                createdAt: 0,
+              ),
+        );
+        final cwd = _lifecycle.memberWorkDirs(ctx, memberId).workingDirectory;
         return cwd.isEmpty ? '.teampilot-inbox' : '$cwd/.teampilot-inbox';
       },
     );
@@ -316,7 +348,13 @@ class ChatCubit extends Cubit<ChatState>
   String get activeTabWorkingDirectory {
     final tab = _activeTab;
     if (tab == null) return AppStorage.cwd;
-    return _tabStore.workingDirectoryAndAddDirsForTab(tab, state.sessions).$1;
+    return _tabStore
+        .workingDirectoryAndAddDirsForTab(
+          tab,
+          state.sessions,
+          workspaces: state.workspaces,
+        )
+        .$1;
   }
 
   /// Last launch failure for the active tab, or [ChatState.sessionLaunchError].

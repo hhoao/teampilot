@@ -15,7 +15,7 @@ import 'package:teampilot/services/storage/runtime_target_registry.dart';
 import 'package:teampilot/services/storage/targets_repository.dart';
 
 void main() {
-  testWidgets('selecting a target assigns that target\'s folders', (tester) async {
+  testWidgets('selecting a target assigns that target id', (tester) async {
     await tester.runAsync(() async {
       final tmp = await Directory.systemTemp.createTemp('member_assign_');
       addTearDown(() => tmp.deleteSync(recursive: true));
@@ -38,8 +38,8 @@ void main() {
         ],
         createdAt: 1,
       );
-      final assigned = <List<String>>[];
-      var current = <String>[];
+      final assigned = <String>[];
+      var current = '';
 
       await tester.pumpWidget(
         MaterialApp(
@@ -52,10 +52,10 @@ void main() {
                 builder: (context, setState) => MemberFolderAssignmentTile(
                   memberLabel: 'developer',
                   workspace: workspace,
-                  currentAssignment: current,
-                  onAssign: (paths) {
-                    assigned.add(paths);
-                    setState(() => current = paths);
+                  currentTargetId: current,
+                  onAssign: (targetId) {
+                    assigned.add(targetId);
+                    setState(() => current = targetId);
                   },
                 ),
               ),
@@ -67,12 +67,12 @@ void main() {
       await Future<void>.delayed(const Duration(milliseconds: 100));
       await tester.pump();
 
-      // Selecting the ssh target row assigns the ssh folder path.
+      // Selecting the ssh target row assigns its target id.
       await tester.tap(find.text('/remote-proj'));
       await tester.pump();
-      expect(assigned.last, ['/remote-proj']);
+      expect(assigned.last, 'ssh:p1');
 
-      // The inherit row assigns an empty list.
+      // The inherit row clears the pin.
       await tester.tap(find.text('Inherit workspace folders'));
       await tester.pump();
       expect(assigned.last, isEmpty);

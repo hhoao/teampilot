@@ -71,7 +71,12 @@ class _WorkspaceFoldersEditorState extends State<WorkspaceFoldersEditor> {
     final dup = _folders
         .asMap()
         .entries
-        .any((e) => e.key != index && workspacePathsEqual(e.value.path, trimmed));
+        .any(
+          (e) =>
+              e.key != index &&
+              e.value.targetId == folder.targetId &&
+              workspacePathsEqual(e.value.path, trimmed),
+        );
     if (dup) {
       AppToast.show(
         context,
@@ -105,7 +110,13 @@ class _WorkspaceFoldersEditorState extends State<WorkspaceFoldersEditor> {
     final path = await pickWorkspaceDirectoryPath(context, targetId: targetId);
     if (path == null || path.trim().isEmpty || !mounted) return;
     final trimmed = normalizeWorkspacePath(path);
-    if (workspacePathsContains(_folders.map((f) => f.path), trimmed)) return;
+    if (_folders.any(
+      (f) =>
+          f.targetId == targetId &&
+          workspacePathsEqual(f.path, trimmed),
+    )) {
+      return;
+    }
     _emit([
       ..._folders,
       WorkspaceFolder(path: trimmed, targetId: targetId),

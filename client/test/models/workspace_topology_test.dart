@@ -55,37 +55,7 @@ void main() {
       );
     });
 
-    test('personalIdentityBlockedForWorkspace', () {
-      expect(
-        personalIdentityBlockedForWorkspace(
-          isPersonal: true,
-          folders: const [WorkspaceFolder(path: '/a')],
-        ),
-        isFalse,
-      );
-      expect(
-        personalIdentityBlockedForWorkspace(
-          isPersonal: false,
-          folders: const [
-            WorkspaceFolder(path: '/a'),
-            WorkspaceFolder(path: '/b', targetId: 'ssh:p1'),
-          ],
-        ),
-        isFalse,
-      );
-      expect(
-        personalIdentityBlockedForWorkspace(
-          isPersonal: true,
-          folders: const [
-            WorkspaceFolder(path: '/a'),
-            WorkspaceFolder(path: '/b', targetId: 'ssh:p1'),
-          ],
-        ),
-        isTrue,
-      );
-    });
-
-    test('memberFolderAssignmentsComplete requires every instance', () {
+    test('memberTargetsComplete requires every instance', () {
       const members = [
         TeamMemberConfig(id: 'lead', name: 'Lead', cli: CliTool.claude),
         TeamMemberConfig(
@@ -100,42 +70,31 @@ void main() {
         WorkspaceFolder(path: '/remote', targetId: 'ssh:p1'),
       ];
       expect(
-        memberFolderAssignmentsComplete(
+        memberTargetsComplete(
           workspaceFolders: folders,
           members: members,
-          assignments: const {
-            'lead': ['/local'],
-            'dev-0': ['/local'],
+          targets: const {
+            'lead': 'local',
+            'dev-0': 'local',
           },
         ),
         isFalse,
       );
       expect(
-        memberFolderAssignmentsComplete(
+        memberTargetsComplete(
           workspaceFolders: folders,
           members: members,
-          assignments: const {
-            'lead': ['/local'],
-            'dev': ['/remote'],
-          },
-        ),
-        isTrue,
-      );
-      expect(
-        memberFolderAssignmentsComplete(
-          workspaceFolders: folders,
-          members: members,
-          assignments: const {
-            'lead': ['/local'],
-            'dev-0': ['/local'],
-            'dev-1': ['/remote'],
+          targets: const {
+            'lead': 'local',
+            'dev-0': 'local',
+            'dev-1': 'ssh:p1',
           },
         ),
         isTrue,
       );
     });
 
-    test('member placement round-trips through folder assignments', () {
+    test('member placement round-trips through member targets', () {
       const members = [
         TeamMemberConfig(id: 'lead', name: 'Lead', cli: CliTool.claude),
         TeamMemberConfig(
@@ -161,21 +120,37 @@ void main() {
         ),
         isTrue,
       );
-      final assignments = folderAssignmentsFromMemberPlacement(
+      final targets = memberTargetsFromMemberPlacement(
         workspaceFolders: folders,
         members: members,
         placement: placement,
       );
-      expect(assignments['lead'], ['/local']);
-      expect(assignments['dev-0'], ['/local']);
-      expect(assignments['dev-1'], ['/local']);
-      expect(assignments['dev-2'], ['/remote']);
-      final roundTrip = memberPlacementFromFolderAssignments(
-        workspaceFolders: folders,
-        members: members,
-        assignments: assignments,
+      expect(targets['lead'], 'local');
+      expect(targets['dev-0'], 'local');
+      expect(targets['dev-1'], 'local');
+      expect(targets['dev-2'], 'ssh:p1');
+      expect(
+        memberPlacementFromMemberTargets(
+          members: members,
+          targets: targets,
+        ),
+        placement,
       );
-      expect(roundTrip, placement);
+    });
+
+    test('same path on local and remote disambiguates via target id', () {
+      const folders = [
+        WorkspaceFolder(path: '/repo'),
+        WorkspaceFolder(path: '/repo', targetId: 'ssh:p1'),
+      ];
+      expect(
+        memberWorkDirsForTarget(folders, 'ssh:p1').workingDirectory,
+        '/repo',
+      );
+      expect(
+        memberWorkDirsForTarget(folders, 'local').workingDirectory,
+        '/repo',
+      );
     });
   });
 }

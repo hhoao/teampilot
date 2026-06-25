@@ -5,8 +5,8 @@ import 'workspace_folder.dart';
 import '../utils/team_member_naming.dart';
 import '../utils/workspace_path_utils.dart';
 
-/// Per-member folder paths keyed by roster member or runtime instance id.
-typedef MemberFolderAssignments = Map<String, List<String>>;
+/// Mixed-workspace machine pin per runtime instance (instanceId → targetId).
+typedef MemberTargetAssignments = Map<String, String>;
 
 /// Instance counts per roster member type on each workspace target.
 typedef MemberPlacementByTarget = Map<String, Map<String, int>>;
@@ -67,6 +67,7 @@ List<String> folderPathsForTarget(
     if (f.targetId == targetId) f.path,
 ];
 
+/// Resolves which machine owns [paths] in [folders] (file-tree / git panels).
 String? targetIdForFolderPaths(
   List<WorkspaceFolder> folders,
   List<String> paths, {
@@ -101,63 +102,56 @@ String? targetIdForFolderPaths(
   return null;
 }
 
-/// Whether [memberId]'s folder assignment maps to a workspace folder target.
-bool memberFolderAssignmentResolves(
-  List<WorkspaceFolder> folders,
-  MemberFolderAssignments assignments,
-  String memberId,
-) {
-  final paths = folderAssignmentForMemberId(assignments, memberId);
-  if (paths == null || paths.isEmpty) return true;
-  return targetIdForFolderPaths(
-        folders,
-        paths,
-        matchSubpaths: true,
-      ) !=
-      null;
-}
-
-List<String>? folderAssignmentForInstance(
-  MemberFolderAssignments assignments,
-  MemberInstance instance,
-) {
-  final direct = assignments[instance.instanceId];
-  if (direct != null && direct.isNotEmpty) return direct;
-  final legacy = assignments[instance.type.id];
-  if (legacy != null && legacy.isNotEmpty) return legacy;
-  return null;
-}
-
-/// Resolves folder paths for a runtime member id (instance id or legacy type id).
-List<String>? folderAssignmentForMemberId(
-  MemberFolderAssignments assignments,
-  String memberId,
-) {
-  final trimmed = memberId.trim();
-  if (trimmed.isEmpty) return null;
-  final direct = assignments[trimmed];
-  if (direct != null && direct.isNotEmpty) return direct;
-  final dash = trimmed.lastIndexOf('-');
-  if (dash > 0) {
-    final legacy = assignments[trimmed.substring(0, dash)];
-    if (legacy != null && legacy.isNotEmpty) return legacy;
-  }
-  return null;
-}
-
-MemberPlacementByTarget memberPlacementFromFolderAssignments({
+/// Workspace folders win on path collisions; session-only paths are appended.
+List<WorkspaceFolder> mergeWorkspaceFolderCatalog({
+  required List<WorkspaceFolder> sessionFolders,
   required List<WorkspaceFolder> workspaceFolders,
+}) {
+  if (workspaceFolders.isEmpty) return sessionFolders;
+  final merged = <WorkspaceFolder>[...workspaceFolders];
+  for (final sf in sessionFolders) {
+    if (workspaceFolders.any((wf) => workspacePathsEqual(wf.path, sf.path))) {
+      continue;
+    }
+    merged.add(sf);
+  }
+  return merged;
+}
+
+String? memberTargetForInstanceId(
+  MemberTargetAssignments targets,
+  String instanceId,
+) {
+  final trimmed = instanceId.trim();
+  if (trimmed.isEmpty) return null;
+  final targetId = targets[trimmed]?.trim();
+  if (targetId == null || targetId.isEmpty) return null;
+  return targetId;
+}
+
+/// Working directory + add-dirs for a member pinned to [targetId].
+({String workingDirectory, List<String> addDirs}) memberWorkDirsForTarget(
+  List<WorkspaceFolder> folders,
+  String targetId,
+) {
+  final paths = folderPathsForTarget(folders, targetId.trim());
+  if (paths.isEmpty) {
+    return (workingDirectory: '', addDirs: const []);
+  }
+  return (
+    workingDirectory: paths.first,
+    addDirs: paths.skip(1).toList(growable: false),
+  );
+}
+
+MemberPlacementByTarget memberPlacementFromMemberTargets({
   required List<TeamMemberConfig> members,
-  required MemberFolderAssignments assignments,
+  required MemberTargetAssignments targets,
 }) {
   final roster = [for (final m in members) if (m.isValid) m];
-  final placement = <String, Map<String, int>>{
-    for (final id in workspaceTargetIds(workspaceFolders)) id: {},
-  };
+  final placement = <String, Map<String, int>>{};
   for (final instance in expandTeamRoster(roster)) {
-    final paths = folderAssignmentForInstance(assignments, instance);
-    if (paths == null || paths.isEmpty) continue;
-    final targetId = targetIdForFolderPaths(workspaceFolders, paths);
+    final targetId = memberTargetForInstanceId(targets, instance.instanceId);
     if (targetId == null) continue;
     final byType = placement.putIfAbsent(targetId, () => {});
     byType[instance.type.id] = (byType[instance.type.id] ?? 0) + 1;
@@ -165,22 +159,21 @@ MemberPlacementByTarget memberPlacementFromFolderAssignments({
   return placement;
 }
 
-MemberFolderAssignments folderAssignmentsFromMemberPlacement({
+MemberTargetAssignments memberTargetsFromMemberPlacement({
   required List<WorkspaceFolder> workspaceFolders,
   required List<TeamMemberConfig> members,
   required MemberPlacementByTarget placement,
 }) {
   final roster = [for (final m in members) if (m.isValid) m];
-  final result = <String, List<String>>{};
+  final result = <String, String>{};
   for (final type in roster) {
     final instances = expandTeamRoster([type]);
     var index = 0;
     for (final targetId in workspaceTargetIds(workspaceFolders)) {
       final count = placement[targetId]?[type.id] ?? 0;
-      final paths = folderPathsForTarget(workspaceFolders, targetId);
-      if (paths.isEmpty) continue;
+      if (count <= 0) continue;
       for (var i = 0; i < count && index < instances.length; i++, index++) {
-        result[instances[index].instanceId] = paths;
+        result[instances[index].instanceId] = targetId;
       }
     }
   }
@@ -216,44 +209,32 @@ bool memberPlacementComplete({
   return true;
 }
 
-bool memberFolderAssignmentsComplete({
+bool memberTargetsComplete({
   required List<WorkspaceFolder> workspaceFolders,
   required List<TeamMemberConfig> members,
-  required MemberFolderAssignments assignments,
+  required MemberTargetAssignments targets,
 }) {
   if (!workspaceTopologyRequiresMemberAssignment(workspaceFolders)) {
     return true;
   }
   final roster = [for (final m in members) if (m.isValid) m];
   for (final instance in expandTeamRoster(roster)) {
-    final paths = folderAssignmentForInstance(assignments, instance);
-    if (paths == null || paths.isEmpty) return false;
-    if (!_assignmentPathsValid(workspaceFolders, paths)) return false;
+    final targetId = memberTargetForInstanceId(targets, instance.instanceId);
+    if (targetId == null) return false;
+    if (folderPathsForTarget(workspaceFolders, targetId).isEmpty) return false;
   }
   return true;
 }
 
-bool _assignmentPathsValid(
-  List<WorkspaceFolder> workspaceFolders,
-  List<String> paths,
-) {
-  if (paths.isEmpty) return false;
-  final first = paths.first.trim();
-  if (first.isEmpty) return false;
-  return workspaceFolders.any(
-    (f) => workspacePathsEqual(f.path, first),
-  );
-}
-
-MemberFolderAssignments rememberedMemberFolderAssignments(
-  Map<String, MemberFolderAssignments> byTeam,
+MemberTargetAssignments rememberedMemberTargets(
+  Map<String, MemberTargetAssignments> byTeam,
   String teamId,
 ) {
   final remembered = byTeam[teamId.trim()];
   if (remembered == null || remembered.isEmpty) return const {};
   return Map.unmodifiable({
     for (final e in remembered.entries)
-      if (e.key.trim().isNotEmpty && e.value.isNotEmpty)
-        e.key: List<String>.unmodifiable(e.value),
+      if (e.key.trim().isNotEmpty && e.value.trim().isNotEmpty)
+        e.key.trim(): e.value.trim(),
   });
 }

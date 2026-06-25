@@ -274,11 +274,11 @@ class SessionRepository {
     await _provisionWorkspaceTrust(fs, updated);
   }
 
-  /// Persists remembered per-member folder picks for a team on a mixed workspace.
-  Future<void> updateWorkspaceMemberFolderAssignments(
+  /// Persists remembered mixed-workspace machine pins for a team.
+  Future<void> updateWorkspaceMemberTargets(
     String workspaceId,
     String teamId, {
-    required MemberFolderAssignments assignments,
+    required MemberTargetAssignments targets,
   }) async {
     final trimmedTeam = teamId.trim();
     if (trimmedTeam.isEmpty) return;
@@ -286,18 +286,15 @@ class SessionRepository {
     final existing = await _readManifest(fs, workspaceId);
     if (existing == null) return;
     final now = DateTime.now().millisecondsSinceEpoch;
-    final nextByTeam = Map<String, MemberFolderAssignments>.from(
-      existing.memberFolderAssignmentsByTeam,
+    final nextByTeam = Map<String, MemberTargetAssignments>.from(
+      existing.memberTargetsByTeam,
     );
-    final normalized = <String, List<String>>{};
-    for (final entry in assignments.entries) {
+    final normalized = <String, String>{};
+    for (final entry in targets.entries) {
       final memberId = entry.key.trim();
-      if (memberId.isEmpty) continue;
-      final paths = entry.value
-          .map(normalizeWorkspacePath)
-          .where((p) => p.isNotEmpty)
-          .toList(growable: false);
-      if (paths.isNotEmpty) normalized[memberId] = paths;
+      final targetId = entry.value.trim();
+      if (memberId.isEmpty || targetId.isEmpty) continue;
+      normalized[memberId] = targetId;
     }
     if (normalized.isEmpty) {
       nextByTeam.remove(trimmedTeam);
@@ -306,10 +303,7 @@ class SessionRepository {
     }
     await _writeManifest(
       fs,
-      existing.copyWith(
-        memberFolderAssignmentsByTeam: nextByTeam,
-        updatedAt: now,
-      ),
+      existing.copyWith(memberTargetsByTeam: nextByTeam, updatedAt: now),
     );
   }
 
@@ -376,12 +370,12 @@ class SessionRepository {
       ];
     }
 
-    final rememberedAssignments = trimmedTeam.isNotEmpty
-        ? rememberedMemberFolderAssignments(
-            workspace.memberFolderAssignmentsByTeam,
+    final rememberedTargets = trimmedTeam.isNotEmpty
+        ? rememberedMemberTargets(
+            workspace.memberTargetsByTeam,
             trimmedTeam,
           )
-        : const <String, List<String>>{};
+        : const <String, String>{};
 
     final sessionId = const Uuid().v4();
     final now = DateTime.now().millisecondsSinceEpoch;
@@ -405,7 +399,7 @@ class SessionRepository {
       cliTeamName: cliTeamName,
       cli: trimmedTeam.isEmpty ? cli : null,
       members: members,
-      folderAssignments: rememberedAssignments,
+      memberTargets: rememberedTargets,
       launchState: AppSessionLaunchState.created,
       createdAt: now,
       updatedAt: now,
@@ -501,16 +495,50 @@ class SessionRepository {
     });
   }
 
-  /// P3a: assigns [memberId] to [folderPaths] (first = working directory, rest
-  /// = `--add-dir`); an empty list clears the assignment (member inherits the
-  /// workspace folders). All paths should share one target (one agent, one
-  /// machine). Writes the session manifest's `folderAssignments`.
-  Future<void> setMemberFolderAssignment(
+  /// Atomically replaces mixed-workspace member machine pins on a session.
+  Future<void> replaceMemberTargets(
+    String sessionId, {
+    required MemberTargetAssignments targets,
+    required Iterable<String> instanceIdsToClear,
+  }) {
+    return _withSessionFile(sessionId, () async {
+      final fs = await _fs();
+      final existing = await _findSession(fs, sessionId);
+      if (existing == null) {
+        throw StateError('Unknown sessionId: $sessionId');
+      }
+      final next = Map<String, String>.from(existing.memberTargets);
+      for (final memberId in instanceIdsToClear) {
+        final trimmed = memberId.trim();
+        if (trimmed.isEmpty) continue;
+        next.remove(trimmed);
+      }
+      for (final entry in targets.entries) {
+        final memberId = entry.key.trim();
+        final targetId = entry.value.trim();
+        if (memberId.isEmpty || targetId.isEmpty) {
+          next.remove(memberId);
+        } else {
+          next[memberId] = targetId;
+        }
+      }
+      await _writeSession(
+        fs,
+        existing.copyWith(
+          memberTargets: next,
+          updatedAt: DateTime.now().millisecondsSinceEpoch,
+        ),
+      );
+    });
+  }
+
+  /// Sets or clears one member's machine pin on a session.
+  Future<void> setMemberTarget(
     String sessionId,
-    String memberId,
-    List<String> folderPaths,
+    String instanceId,
+    String targetId,
   ) {
-    final trimmedMember = memberId.trim();
+    final trimmedMember = instanceId.trim();
     if (trimmedMember.isEmpty) return Future.value();
     return _withSessionFile(sessionId, () async {
       final fs = await _fs();
@@ -518,20 +546,17 @@ class SessionRepository {
       if (existing == null) {
         throw StateError('Unknown sessionId: $sessionId');
       }
-      final paths = folderPaths
-          .map(normalizeWorkspacePath)
-          .where((p) => p.isNotEmpty)
-          .toList(growable: false);
-      final next = Map<String, List<String>>.from(existing.folderAssignments);
-      if (paths.isEmpty) {
+      final next = Map<String, String>.from(existing.memberTargets);
+      final trimmedTarget = targetId.trim();
+      if (trimmedTarget.isEmpty) {
         next.remove(trimmedMember);
       } else {
-        next[trimmedMember] = paths;
+        next[trimmedMember] = trimmedTarget;
       }
       await _writeSession(
         fs,
         existing.copyWith(
-          folderAssignments: next,
+          memberTargets: next,
           updatedAt: DateTime.now().millisecondsSinceEpoch,
         ),
       );

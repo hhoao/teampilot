@@ -1,4 +1,5 @@
 import '../../models/app_session.dart';
+import '../../models/workspace.dart';
 import '../../models/team_config.dart';
 import '../../services/storage/app_storage.dart';
 import 'model/chat_tab.dart';
@@ -147,18 +148,24 @@ class ChatTabStore {
 
   (String, List<String>) workingDirectoryAndAddDirsForTab(
     ChatTab tab,
-    List<AppSession> sessions,
-  ) {
+    List<AppSession> sessions, {
+    List<Workspace> workspaces = const [],
+  }) {
     final tabId = tab.info.id;
     if (tabId.startsWith('local-')) {
       return (AppStorage.cwd, const <String>[]);
     }
     for (final s in sessions) {
       if (s.sessionId != tabId) continue;
-      // P3a: resolve for the tab's selected member (its assigned folders;
-      // default = session folders).
       final memberId = tab.selectedMemberId.trim();
-      final work = s.workDirsForMember(memberId.isEmpty ? null : memberId);
+      final workspace = workspaces
+          .where((w) => w.workspaceId == s.workspaceId)
+          .firstOrNull;
+      final folders = workspace?.folders ?? s.folders;
+      final work = s.workDirsForMember(
+        memberId.isEmpty ? null : memberId,
+        folders: folders,
+      );
       final wd = work.workingDirectory.trim();
       final addl = work.addDirs
           .map((e) => e.trim())

@@ -1,6 +1,7 @@
 import 'package:flutter/foundation.dart';
 
 import '../../models/workspace.dart';
+import '../../models/workspace_folder.dart';
 import '../../models/app_session.dart';
 import '../../models/cli_preset.dart';
 import '../../models/launch_profile_kind.dart';
@@ -16,6 +17,7 @@ import '../../utils/team_member_naming.dart';
 import '../../utils/workspace_path_utils.dart';
 import '../../utils/logger.dart';
 import '../../models/workspace_topology.dart';
+import '../../models/workspace_launch_context.dart';
 import '../storage/app_storage.dart';
 import '../storage/runtime_layout.dart';
 import '../cli/registry/capabilities/resume/pinned_transcript_probe.dart';
@@ -287,19 +289,21 @@ class SessionLifecycleService {
     // first folder). Personal sessions have no roster member → inherit.
     final memberWork = session.workDirsForMember(
       isPersonal ? null : memberBinding?.rosterMemberId,
+      folders: workspace?.folders ?? session.folders,
     );
     if (!isPersonal) {
       final rosterId =
           memberBinding?.rosterMemberId.trim() ?? member?.id.trim() ?? '';
       if (rosterId.isNotEmpty &&
-          !memberFolderAssignmentResolves(
-            session.folders,
-            session.folderAssignments,
+          workspace != null &&
+          workspaceTopologyRequiresMemberAssignment(workspace.folders) &&
+          !memberTargetIsValid(
+            WorkspaceLaunchContext(session: session, workspace: workspace),
             rosterId,
           )) {
         throw StateError(
-          'Member folder assignment does not match any workspace folder '
-          '(member=$rosterId paths=${session.folderAssignments[rosterId]})',
+          'Member target assignment is invalid '
+          '(member=$rosterId target=${session.memberTargets[rosterId]})',
         );
       }
     }
@@ -649,7 +653,10 @@ class SessionLifecycleService {
       );
     }
 
-    final memberDirs = session.workDirsForMember(member.id);
+    final catalog = workspace != null
+        ? WorkspaceLaunchContext(session: session, workspace: workspace).folderCatalog
+        : session.folders;
+    final memberDirs = session.workDirsForMember(member.id, folders: catalog);
     return CliLaunchContext(
       team: team,
       member: member,
@@ -725,9 +732,14 @@ class SessionLifecycleService {
               leadTaskId.isNotEmpty
           ? leadTaskId
           : null;
+      final catalog = workspace != null
+          ? WorkspaceLaunchContext(session: session, workspace: workspace)
+              .folderCatalog
+          : session.folders;
       final memberDirs = member != null
           ? session.workDirsForMember(
               memberBinding?.rosterMemberId ?? member.id,
+              folders: catalog,
             )
           : (
               workingDirectory: session.firstFolderPath,
@@ -810,20 +822,31 @@ class SessionLifecycleService {
   Future<RuntimeContext> debugResolveWorkContext(
     AppSession session, {
     String? memberId,
-  }) => _resolveRoots(session: session, memberId: memberId);
+    Workspace? workspace,
+  }) =>
+      _resolveRoots(session: session, memberId: memberId, workspace: workspace);
 
-  /// Resolves the context for launch. When [session] is given and a work-plane
-  /// resolver is wired, the folder target decides the machine — per-member
-  /// (P3a, via [memberId]) or whole-session (P2); otherwise the control-plane
-  /// /home context is used.
   Future<RuntimeContext> _resolveRoots({
     AppSession? session,
     String? memberId,
+    Workspace? workspace,
   }) async {
     final workResolver = _workContextResolver;
     if (session != null && workResolver != null) {
       final target = memberId != null
-          ? _workTargetForMember(session, memberId)
+          ? _workTargetForMember(
+              WorkspaceLaunchContext(
+                session: session,
+                workspace:
+                    workspace ??
+                    Workspace(
+                      workspaceId: session.workspaceId,
+                      folders: session.folders,
+                      createdAt: 0,
+                    ),
+              ),
+              memberId,
+            )
           : _workTargetFor(session);
       return workResolver(target);
     }
@@ -851,18 +874,15 @@ class SessionLifecycleService {
     return _runtimeTargetFromId(id);
   }
 
-  /// P3a: a member's work target (the machine it runs on). Public seam for the
-  /// launch path's remote-bus wiring (#1). One agent, one machine.
-  RuntimeTarget memberWorkTarget(AppSession session, String memberId) =>
-      _workTargetForMember(session, memberId);
+  /// P3a: a member's work target (the machine it runs on).
+  RuntimeTarget memberWorkTarget(WorkspaceLaunchContext ctx, String memberId) =>
+      _workTargetForMember(ctx, memberId);
 
-  /// Work-plane storage for a member (ssh/wsl/local), for config inspection and
-  /// other per-machine reads that must not use the control-plane /home context.
   Future<RuntimeContext> memberWorkContext(
-    AppSession session,
+    WorkspaceLaunchContext ctx,
     String memberId,
   ) =>
-      resolveWorkContextForTargetId(memberWorkTarget(session, memberId).id);
+      resolveWorkContextForTargetId(memberWorkTarget(ctx, memberId).id);
 
   /// P3d: resolve the work-plane context for an arbitrary target id, so the
   /// cross-machine artifact service can read on the publisher's machine and
@@ -878,44 +898,39 @@ class SessionLifecycleService {
     );
   }
 
-  /// P3a: a member's work target — the targetId of its first assigned folder
-  /// (default = the workspace's first folder). One agent, one machine.
-  RuntimeTarget _workTargetForMember(AppSession session, String memberId) {
-    final targetId = targetIdForFolderPaths(
-      session.folders,
-      folderAssignmentForMemberId(session.folderAssignments, memberId) ??
-          const <String>[],
-      matchSubpaths: true,
-    );
-    if (targetId != null) {
-      return _runtimeTargetFromId(targetId);
-    }
-    final assigned = folderAssignmentForMemberId(
-      session.folderAssignments,
+  RuntimeTarget _workTargetForMember(
+    WorkspaceLaunchContext ctx,
+    String memberId,
+  ) {
+    final targetId = memberTargetForInstanceId(
+      ctx.session.memberTargets,
       memberId,
     );
-    if (assigned != null && assigned.isNotEmpty) {
-      // Unresolved assignment — do not guess session.folders.first (wrong machine).
-      return _runtimeTargetFromId(RuntimeTarget.localId);
+    if (targetId != null &&
+        folderPathsForTarget(ctx.folderCatalog, targetId).isNotEmpty) {
+      return _runtimeTargetFromId(targetId);
     }
-    final fallback = session.folders.isEmpty ? null : session.folders.first;
+    final fallback = ctx.folderCatalog.isEmpty ? null : ctx.folderCatalog.first;
     return _runtimeTargetFromId(fallback?.targetId ?? RuntimeTarget.localId);
   }
 
-  /// Whether [memberId]'s assigned folders map to a workspace target.
-  bool memberFolderAssignmentIsValid(AppSession session, String memberId) =>
-      memberFolderAssignmentResolves(
-        session.folders,
-        session.folderAssignments,
-        memberId,
-      );
+  bool memberTargetIsValid(WorkspaceLaunchContext ctx, String memberId) {
+    final targetId = memberTargetForInstanceId(
+      ctx.session.memberTargets,
+      memberId,
+    );
+    if (targetId == null) return false;
+    return folderPathsForTarget(ctx.folderCatalog, targetId).isNotEmpty;
+  }
 
-  /// P3a: a member's working directory (assigned first, default session first)
-  /// and `--add-dir` directories (assigned rest, default session extras).
   ({String workingDirectory, List<String> addDirs}) memberWorkDirs(
-    AppSession session,
+    WorkspaceLaunchContext ctx,
     String memberId,
-  ) => session.workDirsForMember(memberId);
+  ) =>
+      ctx.session.workDirsForMember(
+        memberId,
+        folders: ctx.folderCatalog,
+      );
 
   RuntimeContext _localRoots(String basePath) {
     return RuntimeContext(

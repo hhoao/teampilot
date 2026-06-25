@@ -4,6 +4,7 @@ import 'package:teampilot/cubits/chat/model/chat_tab.dart';
 import 'package:teampilot/cubits/chat/model/chat_tab_info.dart';
 import 'package:teampilot/models/app_session.dart';
 import 'package:teampilot/models/team_config.dart';
+import 'package:teampilot/models/workspace.dart';
 import 'package:teampilot/models/workspace_folder.dart';
 
 ChatTab _tab(String id) => ChatTab(
@@ -30,32 +31,47 @@ void main() {
     expect(store.activeTab(-1)!.info.id, 'a');
   });
 
-  test('workingDirectoryAndAddDirsForTab resolves the selected member folders',
+  test('workingDirectoryAndAddDirsForTab resolves the selected member target',
       () {
     final store = ChatTabStore();
+    const folders = [
+      WorkspaceFolder(path: '/main'),
+      WorkspaceFolder(path: '/x'),
+      WorkspaceFolder(path: '/remote', targetId: 'ssh:p1'),
+    ];
+    final workspace = Workspace(
+      workspaceId: 'w1',
+      folders: folders,
+      createdAt: 0,
+    );
     final session = AppSession(
       sessionId: 's1',
       workspaceId: 'w1',
-      folders: const [
-        WorkspaceFolder(path: '/main'),
-        WorkspaceFolder(path: '/x'),
-      ],
-      folderAssignments: const {
-        'm1': ['/main/sub', '/extra'],
+      folders: folders,
+      memberTargets: const {
+        'm1': 'ssh:p1',
       },
       createdAt: 1,
     );
 
     final tab = _tab('s1')..selectedMemberId = 'm1';
-    final m1 = store.workingDirectoryAndAddDirsForTab(tab, [session]);
-    expect(m1.$1, '/main/sub');
-    expect(m1.$2, ['/extra']);
+    final m1 = store.workingDirectoryAndAddDirsForTab(
+      tab,
+      [session],
+      workspaces: [workspace],
+    );
+    expect(m1.$1, '/remote');
+    expect(m1.$2, isEmpty);
 
     // An unassigned member inherits the session folders.
     final tab2 = _tab('s1')..selectedMemberId = 'm2';
-    final m2 = store.workingDirectoryAndAddDirsForTab(tab2, [session]);
+    final m2 = store.workingDirectoryAndAddDirsForTab(
+      tab2,
+      [session],
+      workspaces: [workspace],
+    );
     expect(m2.$1, '/main');
-    expect(m2.$2, ['/x']);
+    expect(m2.$2, ['/x', '/remote']);
   });
 
   test('defaultMemberId prefers team-lead', () {
