@@ -17,7 +17,9 @@ abstract final class MemberRoleProvision {
   static const rolePromptsDirName = 'prompts';
   static const rolePromptFileName = 'role.md';
 
-  /// Denied for every Claude team member — roster is provisioned by TeamPilot.
+  /// Denied for native Claude team sessions — roster is provisioned by TeamPilot.
+  /// Omitted in mixed mode: those tools are not registered (teammate-bus MCP
+  /// replaces native swarm) and deny rules for unknown tools abort CLI startup.
   static const teamSessionDenyTools = <String>['TeamCreate', 'TeamDelete'];
 
   /// Auto-allowed in mixed mode so the teammate-bus MCP tools (list_teammates,
@@ -239,10 +241,15 @@ This tab is **plan-and-assign only**: Bash, PowerShell, Edit, Write, NotebookEdi
         if (entry is String) entry,
     ];
     final deny = <String>{
-      ...existingDeny,
-      ...teamSessionDenyTools,
+      for (final entry in existingDeny)
+        if (!mixed || !teamSessionDenyTools.contains(entry)) entry,
+      if (!mixed) ...teamSessionDenyTools,
     }.toList(growable: false);
-    permissions['deny'] = deny;
+    if (deny.isEmpty) {
+      permissions.remove('deny');
+    } else {
+      permissions['deny'] = deny;
+    }
     if (mixed) {
       final existingAllow = <String>[
         for (final entry in (permissions['allow'] as List?) ?? const [])

@@ -4,6 +4,7 @@ import '../../models/runtime_target.dart' show RuntimeKind, sshProfileIdOfId;
 import '../../models/ssh_profile.dart';
 import '../../models/team_config.dart';
 import '../../services/terminal/terminal_session.dart';
+import '../../services/ssh/ssh_client_factory.dart';
 import '../../services/terminal/terminal_transport_factory.dart';
 import '../../services/workspace_dnd/runtime_target.dart';
 import 'model/chat_state.dart';
@@ -44,6 +45,10 @@ class ChatSessionShellFactory {
   final bool Function()? _sshUseLoginShellResolver;
   final rt.RuntimeTarget Function()? _defaultTargetResolver;
   final int Function()? _terminalScrollbackLinesResolver;
+
+  SshProfile? profileFor(rt.RuntimeTarget target) => _profileFor(target);
+
+  SshClientFactory? get sshClientFactory => _transportFactory?.sshClientFactory;
 
   rt.RuntimeTarget get _target =>
       _defaultTargetResolver?.call() ?? rt.RuntimeTarget.local();

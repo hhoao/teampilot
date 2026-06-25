@@ -747,14 +747,16 @@ class TerminalSession implements TerminalTextSink {
 
       _outputSubscription = transport.output.listen((Uint8List data) {
         if (data.isEmpty) return;
-        // Feed the engine the raw PTY bytes — alacritty is a full UTF-8 VTE
-        // parser and reassembles multi-byte glyphs split across reads itself,
-        // so the steady-state hot path skips the decode→String→re-encode round
-        // trip entirely. We only decode inside the brief startup window, where
-        // a String is needed for exec-failure detection + first-output confirm.
         _feedPtyBytes(data);
-        if (!_starting || _startFailed) return;
         final text = utf8.decode(data, allowMalformed: true);
+        if (_looksLikeCliStartupFailure(text)) {
+          appLogger.e('[terminal] CLI error: ${text.trim()}');
+        }
+        if (!_starting || _startFailed) return;
+        if (_looksLikeCliStartupFailure(text)) {
+          _handleStartFailure(_launchFailureMessage(executable));
+          return;
+        }
         if (_looksLikeExecFailure(text)) {
           _handleStartFailure(_launchFailureMessage(executable));
           return;
@@ -779,7 +781,12 @@ class TerminalSession implements TerminalTextSink {
           return;
         }
         if (code != 0) {
-          write('\r\n[process exited with code $code]\r\n');
+          final message = '[process exited with code $code]';
+          appLogger.w(
+            '[terminal] $message '
+            '(executable: ${CliExecutableValidator.cliDisplayName(executable)})',
+          );
+          write('\r\n$message\r\n');
           return;
         }
         if (_transport == transport) {
@@ -937,6 +944,15 @@ class TerminalSession implements TerminalTextSink {
     return text.contains('execvp:') ||
         text.contains('No such file or directory') ||
         text.contains('没有那个文件或目录');
+  }
+
+  /// Claude Code (and similar CLIs) print a fatal config/permission error then
+  /// exit 1 — often after the first PTY bytes so [_confirmProcessStarted] already
+  /// ran. Detect early and route through [_handleStartFailure] (logs + UI).
+  static bool _looksLikeCliStartupFailure(String text) {
+    return text.contains('matches no known tool') ||
+        text.contains('cannot be used with root/sudo privileges') ||
+        text.contains('Permission deny rule');
   }
 
   String _launchFailureMessage(String executable) {

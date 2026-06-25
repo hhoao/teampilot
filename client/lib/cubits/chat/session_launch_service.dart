@@ -14,6 +14,7 @@ import '../../models/team_config.dart';
 import '../../models/workspace_tab_ref.dart';
 import '../../repositories/session_repository.dart';
 import '../../services/cli/registry/config_profile/config_profile_context.dart';
+import '../../services/session/remote_ssh_launch_constraints.dart';
 import '../../services/session/session_lifecycle_service.dart';
 import '../../services/team/team_config_launch_validator.dart';
 import '../../services/storage/app_storage.dart';
@@ -895,7 +896,7 @@ class SessionLaunchService implements MemberConnector {
         }
       }
     }
-    final shellLaunch = await _h.lifecycle.prepareShellLaunch(
+    var shellLaunch = await _h.lifecycle.prepareShellLaunch(
       session: activeSession,
       team: team,
       member: launchMember,
@@ -914,6 +915,17 @@ class SessionLaunchService implements MemberConnector {
           : null,
       busIdleUrl: mixedBus ? tab.mcpServer!.idleEndpoint.toString() : null,
     );
+    if (team != null && launchMember != null) {
+      final memberId = binding?.rosterMemberId ?? launchMember.id;
+      final memberTarget = _h.lifecycle.memberWorkTarget(activeSession, memberId);
+      final shellFactory = _h.shellFactory;
+      shellLaunch = await applyRemoteSshLaunchConstraints(
+        spec: shellLaunch,
+        memberTarget: memberTarget,
+        sshClientFactory: shellFactory.sshClientFactory,
+        profile: shellFactory.profileFor(memberTarget),
+      );
+    }
     final plan = shellLaunch.plan;
     final configDir = plan.memberConfigDir.trim();
     if (configDir.isNotEmpty) {
