@@ -690,6 +690,13 @@ packages:
       url: "https://pub.flutter-io.cn"
     source: hosted
     version: "2.0.0"
+  mock_anthropic:
+    dependency: "direct dev"
+    description:
+      path: "../tools/mock_anthropic"
+      relative: true
+    source: path
+    version: "0.1.0"
   native_toolchain_c:
     dependency: transitive
     description:
