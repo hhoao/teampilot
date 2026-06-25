@@ -1,6 +1,6 @@
 # Mixed 团队 Claude 互通信 · ChatCubit 全链路集成测试设计
 
-> 状态：**已批准 · 待实现** · 日期：2026-06-25  
+> 状态：**已实现（L0–L1 验证通过；L2 需本地 claude + PTY golden path）** · 日期：2026-06-25  
 > 决策：**方案一（ChatCubit 全栈）** + **最佳架构（零兼容包袱）** — 独立 `tools/mock_anthropic` 包、共享 Scenario DSL、双层集成测（fast bus / full ChatCubit）、集成环境强制 HTTP teammate-bus。
 
 ## 1. 目标
