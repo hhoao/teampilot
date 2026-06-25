@@ -1784,13 +1784,23 @@ class AppLocalizationsZh extends AppLocalizations {
 
   @override
   String get mixedWorkspaceMemberAssignmentSubtitle =>
-      '启动前，每位团队成员必须绑定到本工作区的一台机器。';
+      '左侧选择机器，右侧用 + / − 放置各成员的实例。';
 
   @override
-  String get mixedWorkspaceMemberAssignmentIncomplete => '请为每位团队成员选择一台机器。';
+  String get mixedWorkspaceMemberAssignmentIncomplete => '请为每个成员实例都分配到一台机器。';
 
   @override
   String get mixedWorkspaceMemberAssignmentConfirm => '启动团队';
+
+  @override
+  String mixedWorkspaceMemberPlacementProgress(int placed, int total) {
+    return '已分配 $placed / $total';
+  }
+
+  @override
+  String mixedWorkspaceMemberPlacementOnMachine(int count) {
+    return '本机 $count 个';
+  }
 
   @override
   String get workspaceFolderTargetLabel => '所在机器';

@@ -2,12 +2,13 @@ import 'package:flutter/material.dart';
 
 import '../../../l10n/l10n_extensions.dart';
 import '../../../models/app_session.dart';
+import '../../../models/member_instance.dart';
 import '../../../models/team_config.dart';
 import '../../../models/workspace.dart';
 import '../../../models/workspace_topology.dart';
 import '../../../repositories/session_repository.dart';
 import '../../../widgets/app_dialog.dart';
-import 'config/member_folder_assignment_tile.dart';
+import 'mixed_workspace_member_placement_panel.dart';
 
 /// Ensures every roster member is assigned to one machine before a mixed
 /// workspace team session connects. Returns `true` when ready (or not needed).
@@ -66,41 +67,55 @@ class _MixedWorkspaceMemberAssignmentDialog extends StatefulWidget {
 
 class _MixedWorkspaceMemberAssignmentDialogState
     extends State<_MixedWorkspaceMemberAssignmentDialog> {
-  late Map<String, List<String>> _draft;
+  late MemberPlacementByTarget _placement;
   var _saving = false;
 
   @override
   void initState() {
     super.initState();
-    _draft = {
-      for (final e in widget.session.folderAssignments.entries)
-        e.key: List<String>.from(e.value),
-    };
+    _placement = memberPlacementFromFolderAssignments(
+      workspaceFolders: widget.workspace.folders,
+      members: widget.team.members,
+      assignments: widget.session.folderAssignments,
+    );
   }
 
-  bool get _complete => memberFolderAssignmentsComplete(
+  bool get _complete => memberPlacementComplete(
     workspaceFolders: widget.workspace.folders,
     members: widget.team.members,
-    assignments: _draft,
+    placement: _placement,
   );
+
+  MemberFolderAssignments get _folderAssignments =>
+      folderAssignmentsFromMemberPlacement(
+        workspaceFolders: widget.workspace.folders,
+        members: widget.team.members,
+        placement: _placement,
+      );
 
   Future<void> _save() async {
     if (!_complete || _saving) return;
     setState(() => _saving = true);
     try {
-      for (final member in widget.team.members) {
-        if (!member.isValid) continue;
-        final paths = _draft[member.id] ?? const <String>[];
+      final assignments = _folderAssignments;
+      final roster = widget.team.members.where((m) => m.isValid).toList();
+      final instanceIds = {
+        for (final inst in expandTeamRoster(roster)) inst.instanceId,
+      };
+      final staleKeys = widget.session.folderAssignments.keys
+          .where((id) => !instanceIds.contains(id))
+          .toList(growable: false);
+      for (final memberId in {...instanceIds, ...staleKeys}) {
         await widget.repository.setMemberFolderAssignment(
           widget.session.sessionId,
-          member.id,
-          paths,
+          memberId,
+          assignments[memberId] ?? const <String>[],
         );
       }
       await widget.repository.updateWorkspaceMemberFolderAssignments(
         widget.workspace.workspaceId,
         widget.team.id,
-        assignments: _draft,
+        assignments: assignments,
       );
       if (!mounted) return;
       Navigator.of(context).pop(true);
@@ -112,9 +127,8 @@ class _MixedWorkspaceMemberAssignmentDialogState
   @override
   Widget build(BuildContext context) {
     final l10n = context.l10n;
-    final members = widget.team.members.where((m) => m.isValid).toList();
     return AppDialog(
-      maxWidth: 680,
+      maxWidth: 820,
       maxHeight: 560,
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -130,28 +144,14 @@ class _MixedWorkspaceMemberAssignmentDialogState
             ),
           ),
           Expanded(
-            child: ListView(
-              padding: const EdgeInsets.symmetric(horizontal: 16),
-              children: [
-                for (final member in members)
-                  MemberFolderAssignmentTile(
-                    memberLabel: member.name.isEmpty
-                        ? l10n.memberName
-                        : member.name,
-                    workspace: widget.workspace,
-                    currentAssignment: _draft[member.id] ?? const [],
-                    requireExplicitTarget: true,
-                    onAssign: (paths) {
-                      setState(() {
-                        if (paths.isEmpty) {
-                          _draft.remove(member.id);
-                        } else {
-                          _draft[member.id] = paths;
-                        }
-                      });
-                    },
-                  ),
-              ],
+            child: Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 8),
+              child: MixedWorkspaceMemberPlacementPanel(
+                workspace: widget.workspace,
+                members: widget.team.members,
+                placement: _placement,
+                onPlacementChanged: (next) => setState(() => _placement = next),
+              ),
             ),
           ),
           if (!_complete)

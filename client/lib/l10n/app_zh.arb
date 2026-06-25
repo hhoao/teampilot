@@ -705,9 +705,22 @@
   "mixedWorkspaceRequiresTeamLaunch": "混合工作区只能通过团队身份启动。请切换到团队并为每位成员指定机器。",
   "mixedWorkspacePersonalLaunchBlockedHint": "这是混合工作区。请切换到团队标签页启动对话，并为成员分配机器。",
   "mixedWorkspaceMemberAssignmentTitle": "分配成员到机器",
-  "mixedWorkspaceMemberAssignmentSubtitle": "启动前，每位团队成员必须绑定到本工作区的一台机器。",
-  "mixedWorkspaceMemberAssignmentIncomplete": "请为每位团队成员选择一台机器。",
+  "mixedWorkspaceMemberAssignmentSubtitle": "左侧选择机器，右侧用 + / − 放置各成员的实例。",
+  "mixedWorkspaceMemberAssignmentIncomplete": "请为每个成员实例都分配到一台机器。",
   "mixedWorkspaceMemberAssignmentConfirm": "启动团队",
+  "mixedWorkspaceMemberPlacementProgress": "已分配 {placed} / {total}",
+  "@mixedWorkspaceMemberPlacementProgress": {
+    "placeholders": {
+      "placed": { "type": "int" },
+      "total": { "type": "int" }
+    }
+  },
+  "mixedWorkspaceMemberPlacementOnMachine": "本机 {count} 个",
+  "@mixedWorkspaceMemberPlacementOnMachine": {
+    "placeholders": {
+      "count": { "type": "int" }
+    }
+  },
   "workspaceFolderTargetLabel": "所在机器",
   "workspaceFoldersPickPath": "选择目录",
   "workspaceFoldersApplyAllLocal": "全部设为本地",

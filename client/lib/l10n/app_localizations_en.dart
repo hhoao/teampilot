@@ -1859,14 +1859,24 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get mixedWorkspaceMemberAssignmentSubtitle =>
-      'Each team member must run on one of this workspace\'s machines before launch.';
+      'Select a machine on the left, then use + / − to place each member\'s instances on it.';
 
   @override
   String get mixedWorkspaceMemberAssignmentIncomplete =>
-      'Assign every team member to a machine.';
+      'Every member instance must be assigned to a machine.';
 
   @override
   String get mixedWorkspaceMemberAssignmentConfirm => 'Start team';
+
+  @override
+  String mixedWorkspaceMemberPlacementProgress(int placed, int total) {
+    return '$placed / $total assigned';
+  }
+
+  @override
+  String mixedWorkspaceMemberPlacementOnMachine(int count) {
+    return '$count on this machine';
+  }
 
   @override
   String get workspaceFolderTargetLabel => 'Machine';

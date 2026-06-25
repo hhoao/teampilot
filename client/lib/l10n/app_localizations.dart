@@ -3443,13 +3443,13 @@ abstract class AppLocalizations {
   /// No description provided for @mixedWorkspaceMemberAssignmentSubtitle.
   ///
   /// In en, this message translates to:
-  /// **'Each team member must run on one of this workspace\'s machines before launch.'**
+  /// **'Select a machine on the left, then use + / − to place each member\'s instances on it.'**
   String get mixedWorkspaceMemberAssignmentSubtitle;
 
   /// No description provided for @mixedWorkspaceMemberAssignmentIncomplete.
   ///
   /// In en, this message translates to:
-  /// **'Assign every team member to a machine.'**
+  /// **'Every member instance must be assigned to a machine.'**
   String get mixedWorkspaceMemberAssignmentIncomplete;
 
   /// No description provided for @mixedWorkspaceMemberAssignmentConfirm.
@@ -3457,6 +3457,18 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Start team'**
   String get mixedWorkspaceMemberAssignmentConfirm;
+
+  /// No description provided for @mixedWorkspaceMemberPlacementProgress.
+  ///
+  /// In en, this message translates to:
+  /// **'{placed} / {total} assigned'**
+  String mixedWorkspaceMemberPlacementProgress(int placed, int total);
+
+  /// No description provided for @mixedWorkspaceMemberPlacementOnMachine.
+  ///
+  /// In en, this message translates to:
+  /// **'{count} on this machine'**
+  String mixedWorkspaceMemberPlacementOnMachine(int count);
 
   /// No description provided for @workspaceFolderTargetLabel.
   ///

@@ -775,9 +775,22 @@
   "mixedWorkspaceRequiresTeamLaunch": "Mixed workspaces can only be started with a team identity. Switch to a team and assign each member to a machine.",
   "mixedWorkspacePersonalLaunchBlockedHint": "This is a mixed workspace. Switch to a team tab to start conversations and assign members to machines.",
   "mixedWorkspaceMemberAssignmentTitle": "Assign members to machines",
-  "mixedWorkspaceMemberAssignmentSubtitle": "Each team member must run on one of this workspace's machines before launch.",
-  "mixedWorkspaceMemberAssignmentIncomplete": "Assign every team member to a machine.",
+  "mixedWorkspaceMemberAssignmentSubtitle": "Select a machine on the left, then use + / − to place each member's instances on it.",
+  "mixedWorkspaceMemberAssignmentIncomplete": "Every member instance must be assigned to a machine.",
   "mixedWorkspaceMemberAssignmentConfirm": "Start team",
+  "mixedWorkspaceMemberPlacementProgress": "{placed} / {total} assigned",
+  "@mixedWorkspaceMemberPlacementProgress": {
+    "placeholders": {
+      "placed": { "type": "int" },
+      "total": { "type": "int" }
+    }
+  },
+  "mixedWorkspaceMemberPlacementOnMachine": "{count} on this machine",
+  "@mixedWorkspaceMemberPlacementOnMachine": {
+    "placeholders": {
+      "count": { "type": "int" }
+    }
+  },
   "workspaceFolderTargetLabel": "Machine",
   "workspaceFoldersPickPath": "Choose directory",
   "workspaceFoldersApplyAllLocal": "Set all to local",
