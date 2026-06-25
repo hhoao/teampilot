@@ -1,6 +1,7 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:teampilot/cubits/member_config_cubit.dart';
 import 'package:teampilot/models/team_config.dart';
+import 'package:teampilot/services/storage/runtime_context.dart';
 import 'package:teampilot/services/storage/runtime_layout.dart';
 import 'package:teampilot/services/cli/member_config/member_config_detail.dart';
 import 'package:teampilot/services/cli/member_config/member_config_inspector.dart';
@@ -30,6 +31,7 @@ class _FakeInspector extends MemberConfigInspector {
     required String sessionId,
     required TeamProfile team,
     required TeamMemberConfig member,
+    RuntimeContext? workContext,
   }) async {
     if (throwIt) throw StateError('boom');
     return _result;

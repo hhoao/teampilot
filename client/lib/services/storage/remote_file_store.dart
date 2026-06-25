@@ -7,6 +7,7 @@ import 'package:path/path.dart' as p;
 import '../io/filesystem.dart';
 import '../ssh/ssh_client_factory.dart';
 import '../ssh/ssh_run_result.dart';
+import '../../models/runtime_target.dart';
 import '../../models/ssh_profile.dart';
 import 'remote_home_resolver.dart';
 
@@ -381,6 +382,35 @@ class RemoteFileStore {
       ));
     }
     return entries;
+  }
+
+  /// Best-effort stdout from a remote shell command (empty on failure).
+  Future<String> runRemoteCommand(String command) async {
+    final client = await _clientFactory.clientFor(_profile);
+    final result = await client.runWithResult(command, stderr: false);
+    return utf8.decode(result.stdout, allowMalformed: true);
+  }
+
+  /// Opens [absolutePath] in the remote OS file manager (best-effort).
+  Future<bool> revealInFileManager(
+    String absolutePath, {
+    required RemoteOs remoteOs,
+  }) async {
+    final resolved = (await expandHome(absolutePath)).trim();
+    if (resolved.isEmpty) return false;
+
+    final client = await _clientFactory.clientFor(_profile);
+    final quoted = shellSingleQuote(resolved);
+    final cmd = switch (remoteOs) {
+      RemoteOs.windows => 'explorer $quoted',
+      RemoteOs.posix => 'if command -v xdg-open >/dev/null 2>&1; then '
+          'xdg-open -- $quoted; '
+          'elif command -v open >/dev/null 2>&1; then '
+          'open -- $quoted; '
+          'else exit 127; fi',
+    };
+    final result = await client.runWithResult(cmd, stderr: false);
+    return sshRunSucceeded(result);
   }
 
   Future<String> createTempDir({String? prefix, String? parent}) async {

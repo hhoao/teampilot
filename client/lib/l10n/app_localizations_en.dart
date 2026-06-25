@@ -4124,6 +4124,9 @@ class AppLocalizationsEn extends AppLocalizations {
   String get memberDetailOpenInFileManager => 'Open in file manager';
 
   @override
+  String get memberDetailBrowseConfigDirTitle => 'Config directory';
+
+  @override
   String get memberDetailNeedsSession => 'Open a session first';
 
   @override
@@ -4155,6 +4158,15 @@ class AppLocalizationsEn extends AppLocalizations {
   @override
   String get memberDetailLoadError =>
       'Failed to read this member\'s config directory.';
+
+  @override
+  String get memberDetailOpenConfigDirFailed =>
+      'Couldn\'t open the config directory in a file manager.';
+
+  @override
+  String memberDetailOpenConfigDirFailedOnHost(String host) {
+    return 'Couldn\'t open the config directory on $host. The remote host may have no desktop file manager.';
+  }
 
   @override
   String get memberDetailSectionEmpty => 'None';

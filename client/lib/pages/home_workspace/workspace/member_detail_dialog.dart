@@ -1,15 +1,16 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
 import '../../../cubits/member_config_cubit.dart';
 import '../../../l10n/l10n_extensions.dart';
+import '../../../models/app_session.dart';
 import '../../../models/team_config.dart';
+import '../../../pages/home_workspace/workspace/member_config_directory_opener.dart';
 import '../../../services/cli/member_config/member_config_detail.dart';
-import '../../../services/io/sftp_filesystem.dart';
-import '../../../services/io/system_folder_opener.dart';
-import '../../../services/storage/app_storage.dart';
-import '../../../services/storage/runtime_context.dart';
+import '../../../services/session/session_lifecycle_service.dart';
 import '../home_workspace_content_header.dart';
 import '../../../widgets/app_dialog.dart';
 
@@ -20,18 +21,28 @@ Future<void> showMemberDetailDialog(
   required String sessionId,
   required TeamProfile team,
   required TeamMemberConfig member,
+  SessionLifecycleService? lifecycle,
+  AppSession? session,
 }) {
   return showDialog<void>(
     context: context,
     builder: (_) => BlocProvider(
-      create: (_) =>
-          MemberConfigCubit()
-            ..load(
-              workspaceId: workspaceId,
-              sessionId: sessionId,
-              team: team,
-              member: member,
-            ),
+      create: (_) {
+        final cubit = MemberConfigCubit();
+        unawaited(() async {
+          final workContext = lifecycle != null && session != null
+              ? await lifecycle.memberWorkContext(session, member.id)
+              : null;
+          await cubit.load(
+            workspaceId: workspaceId,
+            sessionId: sessionId,
+            team: team,
+            member: member,
+            workContext: workContext,
+          );
+        }());
+        return cubit;
+      },
       child: _MemberDetailDialog(memberName: member.name),
     ),
   );
@@ -40,9 +51,6 @@ Future<void> showMemberDetailDialog(
 class _MemberDetailDialog extends StatelessWidget {
   const _MemberDetailDialog({required this.memberName});
   final String memberName;
-
-  bool get _canRevealLocally =>
-      AppStorage.fs is! SftpFilesystem;
 
   @override
   Widget build(BuildContext context) {
@@ -56,9 +64,12 @@ class _MemberDetailDialog extends StatelessWidget {
         body = MemberDetailDialogBody(
           memberName: memberName,
           detail: detail,
-          onOpenInFileManager:
-              (_canRevealLocally && detail.resolvedDir.isNotEmpty)
-              ? () => SystemFolderOpener().reveal(detail.resolvedDir)
+          onOpenInFileManager: detail.resolvedDir.isNotEmpty
+              ? () => openMemberConfigDirectory(
+                  context,
+                  path: detail.resolvedDir,
+                  workContext: state.workContext,
+                )
               : null,
         );
       case MemberConfigStatus.error:

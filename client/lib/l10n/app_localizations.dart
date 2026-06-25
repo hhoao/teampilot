@@ -7467,6 +7467,12 @@ abstract class AppLocalizations {
   /// **'Open in file manager'**
   String get memberDetailOpenInFileManager;
 
+  /// No description provided for @memberDetailBrowseConfigDirTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Config directory'**
+  String get memberDetailBrowseConfigDirTitle;
+
   /// No description provided for @memberDetailNeedsSession.
   ///
   /// In en, this message translates to:
@@ -7526,6 +7532,18 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Failed to read this member\'s config directory.'**
   String get memberDetailLoadError;
+
+  /// No description provided for @memberDetailOpenConfigDirFailed.
+  ///
+  /// In en, this message translates to:
+  /// **'Couldn\'t open the config directory in a file manager.'**
+  String get memberDetailOpenConfigDirFailed;
+
+  /// No description provided for @memberDetailOpenConfigDirFailedOnHost.
+  ///
+  /// In en, this message translates to:
+  /// **'Couldn\'t open the config directory on {host}. The remote host may have no desktop file manager.'**
+  String memberDetailOpenConfigDirFailedOnHost(String host);
 
   /// No description provided for @memberDetailSectionEmpty.
   ///

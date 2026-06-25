@@ -3970,6 +3970,9 @@ class AppLocalizationsZh extends AppLocalizations {
   String get memberDetailOpenInFileManager => '在文件管理器中打开';
 
   @override
+  String get memberDetailBrowseConfigDirTitle => '配置目录';
+
+  @override
   String get memberDetailNeedsSession => '请先打开一个会话';
 
   @override
@@ -3998,6 +4001,14 @@ class AppLocalizationsZh extends AppLocalizations {
 
   @override
   String get memberDetailLoadError => '读取该成员的配置目录失败。';
+
+  @override
+  String get memberDetailOpenConfigDirFailed => '无法在文件管理器中打开配置目录。';
+
+  @override
+  String memberDetailOpenConfigDirFailedOnHost(String host) {
+    return '无法在 $host 上打开配置目录，远程主机可能没有桌面文件管理器。';
+  }
 
   @override
   String get memberDetailSectionEmpty => '无';

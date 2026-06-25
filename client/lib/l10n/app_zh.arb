@@ -1559,6 +1559,7 @@
   "memberDetailViewAction": "查看成员详情",
   "memberDetailOpenConfigDir": "打开配置目录",
   "memberDetailOpenInFileManager": "在文件管理器中打开",
+  "memberDetailBrowseConfigDirTitle": "配置目录",
   "memberDetailNeedsSession": "请先打开一个会话",
   "memberDetailTabOverview": "概览",
   "memberDetailTabSkills": "Skills",
@@ -1569,6 +1570,13 @@
   "memberDetailSourceTeam": "团队层配置（该成员未在此会话中启动）",
   "memberDetailEmpty": "该成员尚未在此会话中启动，且团队层无配置。",
   "memberDetailLoadError": "读取该成员的配置目录失败。",
+  "memberDetailOpenConfigDirFailed": "无法在文件管理器中打开配置目录。",
+  "memberDetailOpenConfigDirFailedOnHost": "无法在 {host} 上打开配置目录，远程主机可能没有桌面文件管理器。",
+  "@memberDetailOpenConfigDirFailedOnHost": {
+    "placeholders": {
+      "host": { "type": "String" }
+    }
+  },
   "memberDetailSectionEmpty": "无",
   "cliConfigAiCliGroup": "AI CLI",
   "cliConfigToolchainGroup": "工具链",

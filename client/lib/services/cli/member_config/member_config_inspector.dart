@@ -2,7 +2,7 @@ import '../../../models/team_config.dart';
 import '../../io/filesystem.dart';
 import '../../storage/app_storage.dart';
 import '../../storage/runtime_layout.dart';
-import '../../storage/runtime_context.dart';
+import '../../storage/runtime_context.dart' show RuntimeContext;
 import '../../team/claude_team_roster_service.dart';
 import '../registry/capabilities/cli_config_layout_capability.dart';
 import '../registry/capabilities/member_config_inspection_capability.dart';
@@ -33,9 +33,12 @@ class MemberConfigInspector {
     required String sessionId,
     required TeamProfile team,
     required TeamMemberConfig member,
+    RuntimeContext? workContext,
   }) async {
     final cli = member.cliWithin(team);
     final tool = cli.value;
+    final fs = workContext?.filesystem ?? _fs;
+    final layout = workContext?.layout ?? _layout;
 
     final resolved = await _resolveDir(
       workspaceId: workspaceId,
@@ -43,6 +46,8 @@ class MemberConfigInspector {
       team: team,
       member: member,
       tool: tool,
+      layout: layout,
+      fs: fs,
     );
     if (resolved == null) {
       return MemberConfigDetail.none(cli: cli);
@@ -57,10 +62,10 @@ class MemberConfigInspector {
         cli: cli,
         configDir: resolved.dir,
         sourceLayer: resolved.layer,
-        mcpSnapshotPath: _layout.identityMcpServersFile(team.id),
+        mcpSnapshotPath: layout.identityMcpServersFile(team.id),
         provider: member.provider,
         model: member.model,
-        fs: _fs,
+        fs: fs,
       ),
     );
   }
@@ -71,6 +76,8 @@ class MemberConfigInspector {
     required TeamProfile team,
     required TeamMemberConfig member,
     required String tool,
+    required RuntimeLayout layout,
+    required Filesystem fs,
   }) async {
     final trimmedWorkspaceId = workspaceId.trim();
     final trimmedSessionId = sessionId.trim();
@@ -82,23 +89,23 @@ class MemberConfigInspector {
       final runtimeDir = cli != null
           ? sessionConfigDirForTool(
               cli,
-              _layout,
+              layout,
               workspaceId: trimmedWorkspaceId,
               sessionId: trimmedSessionId,
               memberId: memberId,
             )
-          : _layout.sessionRuntimeToolDir(
+          : layout.sessionRuntimeToolDir(
               trimmedWorkspaceId,
               trimmedSessionId,
               tool,
               memberId: memberId,
             );
-      if ((await _fs.stat(runtimeDir)).isDirectory) {
+      if ((await fs.stat(runtimeDir)).isDirectory) {
         return _ResolvedDir(runtimeDir, MemberConfigSourceLayer.runtime);
       }
     }
-    final teamDir = _layout.identityToolDir(team.id, tool);
-    if ((await _fs.stat(teamDir)).isDirectory) {
+    final teamDir = layout.identityToolDir(team.id, tool);
+    if ((await fs.stat(teamDir)).isDirectory) {
       return _ResolvedDir(teamDir, MemberConfigSourceLayer.team);
     }
     return null;

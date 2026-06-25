@@ -143,6 +143,40 @@ void main() {
     expect(resolved.last, 'ssh:p1');
   });
 
+  test('memberWorkContext resolves the member ssh work plane', () async {
+    final resolved = <String>[];
+    final home = testRuntimeContext('/home-root');
+    final lifecycle = SessionLifecycleService(
+      storageRootsResolver: () async => home,
+      workContextResolver: (target) async {
+        resolved.add(target.id);
+        return target.kind == RuntimeKind.ssh
+            ? RuntimeContext(
+                target: target,
+                filesystem: InMemoryFilesystem(),
+                home: '/remote',
+                cwd: '/remote',
+                appDataRoot: '/remote/app',
+                paths: home.paths,
+              )
+            : home;
+      },
+    );
+    final session = AppSession(
+      sessionId: 's1',
+      workspaceId: 'w1',
+      folders: const [
+        WorkspaceFolder(path: '/repo', targetId: 'ssh:p1'),
+      ],
+      folderAssignments: const {'m1': ['/repo']},
+      createdAt: 1,
+    );
+
+    final ctx = await lifecycle.memberWorkContext(session, 'm1');
+    expect(resolved.last, 'ssh:p1');
+    expect(ctx.appDataRoot, '/remote/app');
+  });
+
   test('memberWorkDirs: assigned first is workdir, rest are add-dirs', () {
     final lifecycle = SessionLifecycleService();
     final session = AppSession(

@@ -822,6 +822,14 @@ class SessionLifecycleService {
   RuntimeTarget memberWorkTarget(AppSession session, String memberId) =>
       _workTargetForMember(session, memberId);
 
+  /// Work-plane storage for a member (ssh/wsl/local), for config inspection and
+  /// other per-machine reads that must not use the control-plane /home context.
+  Future<RuntimeContext> memberWorkContext(
+    AppSession session,
+    String memberId,
+  ) =>
+      resolveWorkContextForTargetId(memberWorkTarget(session, memberId).id);
+
   /// P3d: resolve the work-plane context for an arbitrary target id, so the
   /// cross-machine artifact service can read on the publisher's machine and
   /// write on the fetcher's machine. Falls back to the control-plane /home

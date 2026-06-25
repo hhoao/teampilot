@@ -19,7 +19,7 @@ import '../../models/workspace_topology.dart';
 import '../../pages/home_workspace/workspace/member_detail_dialog.dart';
 import '../../pages/home_workspace/workspace/member_folder_assignment_dialog.dart';
 import '../../services/cli/member_config/member_config_inspector.dart';
-import '../../services/io/system_folder_opener.dart';
+import '../../pages/home_workspace/workspace/member_config_directory_opener.dart';
 import '../../services/file_tree/workspace_file_tree_store.dart';
 import '../../services/git/git_repo_store.dart';
 import '../../services/io/workspace_fs_watcher.dart';
@@ -361,6 +361,8 @@ class _RightToolsPanelState extends State<RightToolsPanel> {
                   sessionId: sessionId,
                   team: team,
                   member: member,
+                  lifecycle: chatCubit.lifecycle,
+                  session: activeSession,
                 ),
               );
               maybeDismissDrawer();
@@ -388,16 +390,25 @@ class _RightToolsPanelState extends State<RightToolsPanel> {
               final activeTab = chatCubit.activeTab;
               final workspaceId = widget.workspaceId;
               final sessionId = activeTab?.info.id ?? '';
+              final lifecycle = chatCubit.lifecycle;
+              final session = activeSession;
               unawaited(() async {
+                final workContext = session != null
+                    ? await lifecycle.memberWorkContext(session, member.id)
+                    : null;
                 final detail = await MemberConfigInspector().inspect(
                   workspaceId: workspaceId,
                   sessionId: sessionId,
                   team: team,
                   member: member,
+                  workContext: workContext,
                 );
-                if (detail.resolvedDir.isNotEmpty) {
-                  await SystemFolderOpener().reveal(detail.resolvedDir);
-                }
+                if (!context.mounted || detail.resolvedDir.isEmpty) return;
+                await openMemberConfigDirectory(
+                  context,
+                  path: detail.resolvedDir,
+                  workContext: workContext,
+                );
               }());
               maybeDismissDrawer();
             },

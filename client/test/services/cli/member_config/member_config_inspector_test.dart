@@ -1,5 +1,8 @@
 import 'package:flutter_test/flutter_test.dart';
+import 'package:teampilot/models/runtime_target.dart';
 import 'package:teampilot/models/team_config.dart';
+import 'package:teampilot/services/storage/app_storage.dart';
+import 'package:teampilot/services/storage/runtime_context.dart';
 import 'package:teampilot/services/storage/runtime_layout.dart';
 import 'package:teampilot/services/cli/member_config/member_config_detail.dart';
 import 'package:teampilot/services/cli/member_config/member_config_inspector.dart';
@@ -83,5 +86,37 @@ void main() {
     );
     expect(detail.sourceLayer, MemberConfigSourceLayer.none);
     expect(detail.hasConfig, isFalse);
+  });
+
+  test('reads from the member work context when it differs from home', () async {
+    final remoteFs = InMemoryFilesystem();
+    final remoteLayout = RuntimeLayout(teampilotRoot: '/remote/app', fs: remoteFs);
+    final remoteDir = remoteLayout.sessionRuntimeToolDir(
+      'workspace-1',
+      'team-a-1',
+      'claude',
+      memberId: 'm1',
+    );
+    await remoteFs.ensureDir(remoteDir);
+    await remoteFs.writeString('$remoteDir/skills/remote/SKILL.md', '---\nname: Remote\n---');
+
+    final detail = await inspector.inspect(
+      workspaceId: 'workspace-1',
+      sessionId: 'team-a-1',
+      team: team,
+      member: member,
+      workContext: RuntimeContext(
+        target: RuntimeTarget.ssh('p1', label: 'box'),
+        filesystem: remoteFs,
+        home: '/remote',
+        cwd: '/remote',
+        appDataRoot: '/remote/app',
+        paths: AppPaths('/remote/app'),
+      ),
+    );
+
+    expect(detail.sourceLayer, MemberConfigSourceLayer.runtime);
+    expect(detail.resolvedDir, remoteDir);
+    expect(detail.skills.single.name, 'Remote');
   });
 }

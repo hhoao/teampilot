@@ -12,12 +12,27 @@ import 'app_dialog.dart';
 /// via [WorkspaceDirectoryPicker], navigates with [RemoteDirectoryBrowser], and
 /// returns the chosen (or hand-typed) absolute path via [Navigator.pop].
 ///
+/// When [browseOnly] is true the dialog is read-only navigation (no path pick);
+/// use [initialPath] to open directly at a known directory (e.g. a member's
+/// CONFIG_DIR on a remote host).
+///
 /// Connecting to a remote can throw; failures are surfaced inline while the
-/// hand-fill field below stays usable as a fallback.
+/// hand-fill field below stays usable as a fallback (picker mode only).
 class RemoteDirectoryBrowserDialog extends StatefulWidget {
-  const RemoteDirectoryBrowserDialog({super.key, required this.targetId});
+  const RemoteDirectoryBrowserDialog({
+    super.key,
+    required this.targetId,
+    this.initialPath,
+    this.browseOnly = false,
+    this.title,
+  });
 
   final String targetId;
+  final String? initialPath;
+
+  /// View-only navigation — hides the hand-fill row and confirm actions.
+  final bool browseOnly;
+  final String? title;
 
   @override
   State<RemoteDirectoryBrowserDialog> createState() =>
@@ -49,7 +64,7 @@ class _RemoteDirectoryBrowserDialogState
     try {
       final fs = await picker.filesystemFor(widget.targetId);
       final browser = RemoteDirectoryBrowser(fs);
-      final initial = await browser.resolveInitial(null);
+      final initial = await browser.resolveInitial(widget.initialPath);
       final listing = await browser.list(initial);
       if (!mounted) return;
       setState(() {
@@ -119,7 +134,9 @@ class _RemoteDirectoryBrowserDialogState
         mainAxisSize: MainAxisSize.min,
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          AppDialogHeader(title: l10n.remoteDirectoryBrowserTitle),
+          AppDialogHeader(
+            title: widget.title ?? l10n.remoteDirectoryBrowserTitle,
+          ),
           const SizedBox(height: 16),
           Row(
             children: [
@@ -154,42 +171,51 @@ class _RemoteDirectoryBrowserDialogState
               ),
             ),
           ],
-          const SizedBox(height: 16),
-          Text(
-            l10n.remoteDirectoryBrowserTypePathLabel,
-            style: theme.textTheme.labelLarge,
-          ),
-          const SizedBox(height: 6),
-          Row(
-            children: [
-              Expanded(
-                child: TextField(
-                  controller: _handFillController,
-                  decoration: InputDecoration(
-                    hintText: l10n.remoteDirectoryBrowserTypePathHint,
+          if (!widget.browseOnly) ...[
+            const SizedBox(height: 16),
+            Text(
+              l10n.remoteDirectoryBrowserTypePathLabel,
+              style: theme.textTheme.labelLarge,
+            ),
+            const SizedBox(height: 6),
+            Row(
+              children: [
+                Expanded(
+                  child: TextField(
+                    controller: _handFillController,
+                    decoration: InputDecoration(
+                      hintText: l10n.remoteDirectoryBrowserTypePathHint,
+                    ),
+                    textInputAction: TextInputAction.done,
+                    onSubmitted: (_) => _submitHandFill(),
                   ),
-                  textInputAction: TextInputAction.done,
-                  onSubmitted: (_) => _submitHandFill(),
                 ),
-              ),
-              const SizedBox(width: 8),
-              TextButton(
-                onPressed: _submitHandFill,
-                child: Text(l10n.remoteDirectoryBrowserUseTypedPath),
-              ),
-            ],
-          ),
+                const SizedBox(width: 8),
+                TextButton(
+                  onPressed: _submitHandFill,
+                  child: Text(l10n.remoteDirectoryBrowserUseTypedPath),
+                ),
+              ],
+            ),
+          ],
           AppDialogActions(
-            children: [
-              TextButton(
-                onPressed: () => Navigator.of(context).pop(),
-                child: Text(l10n.cancel),
-              ),
-              FilledButton(
-                onPressed: listing != null && !_loading ? _useCurrent : null,
-                child: Text(l10n.remoteDirectoryBrowserUseThisDirectory),
-              ),
-            ],
+            children: widget.browseOnly
+                ? [
+                    FilledButton(
+                      onPressed: () => Navigator.of(context).pop(),
+                      child: Text(l10n.closeTab),
+                    ),
+                  ]
+                : [
+                    TextButton(
+                      onPressed: () => Navigator.of(context).pop(),
+                      child: Text(l10n.cancel),
+                    ),
+                    FilledButton(
+                      onPressed: listing != null && !_loading ? _useCurrent : null,
+                      child: Text(l10n.remoteDirectoryBrowserUseThisDirectory),
+                    ),
+                  ],
           ),
         ],
       ),
