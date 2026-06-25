@@ -90,6 +90,23 @@ List<String>? folderAssignmentForInstance(
   return null;
 }
 
+/// Resolves folder paths for a runtime member id (instance id or legacy type id).
+List<String>? folderAssignmentForMemberId(
+  MemberFolderAssignments assignments,
+  String memberId,
+) {
+  final trimmed = memberId.trim();
+  if (trimmed.isEmpty) return null;
+  final direct = assignments[trimmed];
+  if (direct != null && direct.isNotEmpty) return direct;
+  final dash = trimmed.lastIndexOf('-');
+  if (dash > 0) {
+    final legacy = assignments[trimmed.substring(0, dash)];
+    if (legacy != null && legacy.isNotEmpty) return legacy;
+  }
+  return null;
+}
+
 MemberPlacementByTarget memberPlacementFromFolderAssignments({
   required List<WorkspaceFolder> workspaceFolders,
   required List<TeamMemberConfig> members,

@@ -114,7 +114,10 @@ abstract class NpmInstallerCapability implements InstallerCapability {
     host.report(CliInstallPhase.installingCli, detail: displayName);
     final install = await host.runSsh(
       profile,
-      node.remotePackageInstall(npmCommand: npmCommand, package: npmPackage),
+      CliInstallerCommand.npmGlobalInstall(
+        npmCommand: npmCommand,
+        package: npmPackage,
+      ),
     );
     if (install.exitCode != 0) {
       return CliInstallResult(
@@ -129,7 +132,7 @@ abstract class NpmInstallerCapability implements InstallerCapability {
     host.report(CliInstallPhase.locatingExecutable);
     final resolved = await host.runSsh(
       profile,
-      CliInstallerCommand('command', ['-v', executableName]),
+      CliInstallerCommand.commandV(executableName),
     );
     final path = firstInstallerOutputLine(resolved);
     return CliInstallResult(

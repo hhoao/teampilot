@@ -129,7 +129,7 @@ class CliInstallerService {
     final npmLookup = HostLoginShellLookup.commandForExecutable('npm');
     final direct = await _sshRunner(
       profile,
-      CliInstallerCommand('command', ['-v', 'npm']),
+      CliInstallerCommand.commandV('npm'),
     );
     final fromDirect = firstInstallerOutputLine(direct);
     if (fromDirect != null) return fromDirect;

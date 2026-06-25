@@ -15,6 +15,7 @@ typedef PreflightConnect = Future<RuntimeContext> Function(RuntimeTarget target)
 typedef PreflightEnsureCli = Future<String> Function({
   required RuntimeTarget target,
   required CliTool cli,
+  void Function(String message)? onCliProgress,
 });
 
 /// Materializes app-data (ancestry+skills/plugins+relay+(opt-in)creds) to the
@@ -91,7 +92,12 @@ class RemotePreflightService {
     }
 
     onProgress?.call(PreflightStage.locating, 'Locating ${cli.value}');
-    final remoteCliPath = await ensureCli(target: target, cli: cli);
+    final remoteCliPath = await ensureCli(
+      target: target,
+      cli: cli,
+      onCliProgress: (message) =>
+          onProgress?.call(PreflightStage.locating, message),
+    );
 
     onProgress?.call(PreflightStage.materializing, 'Materializing app data');
     await materialize(

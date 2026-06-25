@@ -20,8 +20,8 @@ class RemoteCliUnavailableException implements Exception {
   @override
   String toString() => switch (reason) {
         RemoteCliUnavailableReason.optInOff =>
-          '${cli.value} not found on the remote host. Enable opt-in auto-install '
-              'for this target, or set a manual CLI path.',
+          '${cli.value} not found on the remote host and auto-install is '
+              'disabled for this target. Re-enable it or set a manual CLI path.',
         RemoteCliUnavailableReason.noInstaller =>
           '${cli.value} not found and has no installer; set a manual CLI path '
               'for this target.',

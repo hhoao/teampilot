@@ -9,6 +9,7 @@ import '../ssh/ssh_client_factory.dart';
 import '../storage/runtime_context.dart';
 import 'remote_app_data_materializer.dart';
 import 'remote_member_preflight_coordinator.dart';
+import 'remote_preflight_cli_install.dart';
 import 'remote_preflight_service.dart';
 
 /// Builds the production [RemoteMemberPreflightCoordinator] by composing the real
@@ -34,7 +35,7 @@ RemoteMemberPreflightCoordinator buildRemoteMemberPreflightCoordinator({
   required LocalCredentialsLoader loadLocalCredentials,
   RemoteResourceLinker? linkResources,
   RemoteRelayProvisioner? provisionRelay,
-  RemoteInstallAction Function(CliTool cli, SshCommandRunner run)?
+  RemoteInstallAction Function(CliTool cli, SshProfile profile, SshCommandRunner run)?
       installActionBuilder,
 }) {
   final installer =
@@ -50,7 +51,11 @@ RemoteMemberPreflightCoordinator buildRemoteMemberPreflightCoordinator({
     isCredentialOptIn: isCredentialOptIn,
     preflight: RemotePreflightService(
       connect: contextForTarget,
-      ensureCli: ({required target, required cli}) async {
+      ensureCli: ({
+        required target,
+        required cli,
+        onCliProgress,
+      }) async {
         final profile = profileById(target.sshProfileId ?? '');
         if (profile == null) {
           throw StateError(
@@ -63,13 +68,19 @@ RemoteMemberPreflightCoordinator buildRemoteMemberPreflightCoordinator({
         return installer.ensure(
           cli: cli,
           run: run,
-          // B3: per-target auto-install opt-in (default off → locate / manual
-          // path only). The install execution itself is on-device.
+          // B3: per-target auto-install opt-out (default on → locate then install
+          // over SSH when missing). The install execution itself is on-device.
           optIn: await isInstallOptIn(target.id),
           supportsInstaller:
               registry.capability<InstallerCapability>(cli)?.supportsInstaller ??
                   false,
-          install: installActionBuilder?.call(cli, run),
+          install: installActionBuilder?.call(cli, profile, run) ??
+              buildRemotePreflightCliInstall(
+                registry: registry,
+                profile: profile,
+                cli: cli,
+              ),
+          onProgress: onCliProgress,
           manualPathOverride:
               await cliPathOverride(target.id, cli.value) ?? '',
         );

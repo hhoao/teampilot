@@ -13,7 +13,9 @@ import '../../repositories/cli_presets_repository.dart';
 import '../../repositories/launch_profile_repository.dart';
 import '../../services/storage/launch_profile_provisioner.dart';
 import '../../utils/team_member_naming.dart';
+import '../../utils/workspace_path_utils.dart';
 import '../../utils/logger.dart';
+import '../../models/workspace_topology.dart';
 import '../storage/app_storage.dart';
 import '../storage/runtime_layout.dart';
 import '../cli/registry/capabilities/resume/pinned_transcript_probe.dart';
@@ -824,12 +826,15 @@ class SessionLifecycleService {
   /// P3a: a member's work target — the targetId of its first assigned folder
   /// (default = the workspace's first folder). One agent, one machine.
   RuntimeTarget _workTargetForMember(AppSession session, String memberId) {
-    final assigned = session.folderAssignments[memberId];
+    final assigned = folderAssignmentForMemberId(
+      session.folderAssignments,
+      memberId,
+    );
     final firstPath = (assigned != null && assigned.isNotEmpty)
         ? assigned.first
         : (session.folders.isEmpty ? null : session.folders.first.path);
     final folder = session.folders
-            .where((f) => f.path == firstPath)
+            .where((f) => workspacePathsEqual(f.path, firstPath ?? ''))
             .firstOrNull ??
         (session.folders.isEmpty ? null : session.folders.first);
     return _runtimeTargetFromId(folder?.targetId ?? RuntimeTarget.localId);

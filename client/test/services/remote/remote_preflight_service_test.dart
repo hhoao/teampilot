@@ -16,7 +16,7 @@ void main() {
         order.add('connect');
         return testRuntimeContext('/remote');
       },
-      ensureCli: ({required target, required cli}) async {
+      ensureCli: ({required target, required cli, onCliProgress}) async {
         order.add('locate');
         return '/usr/bin/${cli.value}';
       },
@@ -51,7 +51,7 @@ void main() {
     final order = <String>[];
     final svc = RemotePreflightService(
       connect: (t) async => throw StateError('no route to host'),
-      ensureCli: ({required target, required cli}) async {
+      ensureCli: ({required target, required cli, onCliProgress}) async {
         order.add('locate');
         return '';
       },
@@ -84,7 +84,7 @@ void main() {
     final order = <String>[];
     final svc = RemotePreflightService(
       connect: (t) async => testRuntimeContext('/remote'),
-      ensureCli: ({required target, required cli}) async =>
+      ensureCli: ({required target, required cli, onCliProgress}) async =>
           throw StateError('cli not found / opt-in off'),
       materialize: ({
         required target,

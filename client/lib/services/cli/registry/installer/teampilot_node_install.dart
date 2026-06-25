@@ -67,9 +67,8 @@ final class TeampilotNodeInstall {
     return runner.installerCommandForInline(body);
   }
 
-  CliInstallerCommand sshBootstrapCommand() {
-    return CliInstallerCommand('sh', ['-c', _unixBootstrapScript()]);
-  }
+  CliInstallerCommand sshBootstrapCommand() =>
+      CliInstallerCommand.unixShellScript(_unixBootstrapScript());
 
   /// After [LocalNpmBootstrapped], install a global npm [package] locally.
   CliInstallerCommand bootstrappedLocalPackageInstall({
@@ -80,7 +79,9 @@ final class TeampilotNodeInstall {
       HostScriptDialect.powershell =>
         "& (Join-Path \$env:LOCALAPPDATA 'teampilot\\node\\$version\\npm.cmd') install -g $package",
       HostScriptDialect.bash =>
-        '\$HOME/.local/share/teampilot/node/$version/bin/npm install -g $package',
+        'export PATH="\$HOME/.local/share/teampilot/node/$version/bin:\$HOME/.local/bin:\$PATH"\n'
+        'npm config set prefix "\$HOME/.local"\n'
+        'npm install -g $package',
     };
     return runner.installerCommandForInline(body);
   }
@@ -110,14 +111,10 @@ final class TeampilotNodeInstall {
         package,
       ]);
     }
-    return CliInstallerCommand(npmPath, ['install', '-g', package]);
-  }
-
-  CliInstallerCommand remotePackageInstall({
-    required String npmCommand,
-    required String package,
-  }) {
-    return CliInstallerCommand(npmCommand, ['install', '-g', package]);
+    return CliInstallerCommand.npmGlobalInstall(
+      npmCommand: npmPath,
+      package: package,
+    );
   }
 
   static String _unixBootstrapScript() {
@@ -158,7 +155,8 @@ mv "\$tmp/node-\$version-\$platform-\$node_arch" "\$target"
 ln -sf "\$target/bin/node" "\$HOME/.local/bin/node"
 ln -sf "\$target/bin/npm" "\$HOME/.local/bin/npm"
 ln -sf "\$target/bin/npx" "\$HOME/.local/bin/npx"
-"\$target/bin/npm" --version
+PATH="\$target/bin:\$HOME/.local/bin:\$PATH" npm config set prefix "\$HOME/.local"
+PATH="\$target/bin:\$HOME/.local/bin:\$PATH" npm --version
 ''';
   }
 

@@ -193,9 +193,8 @@ void main() {
             stdout: '10.9.0\n',
           );
         }
-        if (command.commandLine.contains(
-          r"$HOME/.local/share/teampilot/node/v24.15.0/bin/npm install -g @anthropic-ai/claude-code",
-        )) {
+        if (command.commandLine.contains('export PATH=') &&
+            command.commandLine.contains('npm install -g @anthropic-ai/claude-code')) {
           return const CliInstallerCommandResult(exitCode: 0);
         }
         if (command.commandLine == 'which claude') {
@@ -356,8 +355,8 @@ void main() {
                 '/home/alice/.local/share/teampilot/node/v24.15.0/bin/npm\n',
           );
         }
-        if (command.commandLine ==
-            r'$HOME/.local/share/teampilot/node/v24.15.0/bin/npm install -g @anthropic-ai/claude-code') {
+        if (command.commandLine.contains('export PATH=') &&
+            command.commandLine.contains('npm install -g @anthropic-ai/claude-code')) {
           return const CliInstallerCommandResult(exitCode: 0);
         }
         if (command.commandLine == 'command -v claude') {

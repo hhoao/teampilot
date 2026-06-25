@@ -24,16 +24,17 @@ void main() {
     expect(await repo.isCredentialOptIn('ssh:p1'), isFalse);
   });
 
-  test('installOptIn defaults off and round-trips (sorted)', () async {
+  test('install auto-install defaults on; opt-out round-trips (sorted)', () async {
+    expect(await repo.isInstallOptIn('ssh:p1'), isTrue);
+    await repo.setInstallOptIn('ssh:p1', false);
+    await repo.setInstallOptIn('ssh:p2', false);
     expect(await repo.isInstallOptIn('ssh:p1'), isFalse);
-    await repo.setInstallOptIn('ssh:p2', true);
+    final reloaded = await repo.load();
+    expect(reloaded.installOptOut, ['ssh:p1', 'ssh:p2']); // sorted, stable
+
     await repo.setInstallOptIn('ssh:p1', true);
     expect(await repo.isInstallOptIn('ssh:p1'), isTrue);
-    final reloaded = await repo.load();
-    expect(reloaded.installOptIn, ['ssh:p1', 'ssh:p2']); // sorted, stable
-
-    await repo.setInstallOptIn('ssh:p1', false);
-    expect(await repo.isInstallOptIn('ssh:p1'), isFalse);
+    expect((await repo.load()).installOptOut, ['ssh:p2']);
   });
 
   test('cli path override round-trips per target+cli and clears on empty',

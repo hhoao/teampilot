@@ -42,7 +42,7 @@ final class HostScriptRunner {
 
   CliInstallerCommand installerCommandForInline(String scriptBody) {
     return switch (dialect) {
-      HostScriptDialect.bash => CliInstallerCommand('sh', ['-c', scriptBody]),
+      HostScriptDialect.bash => CliInstallerCommand.unixShellScript(scriptBody),
       HostScriptDialect.powershell => CliInstallerCommand('powershell', [
         '-NoProfile',
         '-Command',

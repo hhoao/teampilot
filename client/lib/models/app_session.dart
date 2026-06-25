@@ -3,6 +3,7 @@ import 'package:flutter/foundation.dart';
 import 'session_member_binding.dart';
 import 'team_config.dart';
 import 'workspace_folder.dart';
+import 'workspace_topology.dart';
 
 enum AppSessionLaunchState { created, started }
 
@@ -151,7 +152,9 @@ class AppSession {
   ({String workingDirectory, List<String> addDirs}) workDirsForMember(
     String? memberId,
   ) {
-    final assigned = memberId == null ? null : folderAssignments[memberId];
+    final assigned = memberId == null
+        ? null
+        : folderAssignmentForMemberId(folderAssignments, memberId);
     if (assigned == null || assigned.isEmpty) {
       return (workingDirectory: firstFolderPath, addDirs: extraFolderPaths);
     }

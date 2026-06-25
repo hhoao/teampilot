@@ -22,6 +22,41 @@ class CliInstallerCommand {
   final String executable;
   final List<String> arguments;
 
+  /// Runs [scriptBody] under a non-interactive POSIX shell (`sh -c`).
+  ///
+  /// Use for remote SSH exec and local Unix inline scripts — the single entry
+  /// for anything that needs env expansion (`$HOME`, …) or shell builtins.
+  factory CliInstallerCommand.unixShellScript(String scriptBody) =>
+      CliInstallerCommand('sh', ['-c', scriptBody]);
+
+  /// `command -v <name>` — safe as a direct SSH exec argv (no shell needed).
+  factory CliInstallerCommand.commandV(String executableName) =>
+      CliInstallerCommand('command', ['-v', executableName]);
+
+  /// `npm install -g <package>` using [npmCommand] as argv0.
+  ///
+  /// Wraps in [unixShellScript] when [npmCommand] needs shell expansion.
+  /// Bootstrapped npm is a Node shebang script — Node must be on PATH.
+  factory CliInstallerCommand.npmGlobalInstall({
+    required String npmCommand,
+    required String package,
+  }) {
+    if (needsUnixShellInvocation(npmCommand)) {
+      final binDir = npmCommand.replaceAll(RegExp(r'/npm$'), '');
+      return CliInstallerCommand.unixShellScript(
+        'export PATH="$binDir:\$HOME/.local/bin:\$PATH"\n'
+        'npm config set prefix "\$HOME/.local"\n'
+        'npm install -g $package',
+      );
+    }
+    return CliInstallerCommand(npmCommand, ['install', '-g', package]);
+  }
+
+  /// Whether [executable] must run under a shell on remote SSH exec.
+  static bool needsUnixShellInvocation(String executable) =>
+      executable.contains(r'$') || executable.contains(' ');
+
+  /// Wire format for Process / SSH exec — always use this at the transport edge.
   String get commandLine => [
     executable,
     ...arguments.map(_shellQuoteIfNeeded),

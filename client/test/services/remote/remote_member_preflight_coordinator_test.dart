@@ -18,7 +18,7 @@ void main() {
             calls.add('prepare:${t.id}');
             return testRuntimeContext('/remote');
           },
-          ensureCli: ({required target, required cli}) async =>
+          ensureCli: ({required target, required cli, onCliProgress}) async =>
               '/usr/bin/${cli.value}',
           materialize: ({
             required target,

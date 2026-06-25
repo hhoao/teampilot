@@ -11,7 +11,7 @@ class TargetsRegistryFile {
     this.schemaVersion = 1,
     this.targets = const [],
     this.credentialOptIn = const [],
-    this.installOptIn = const [],
+    this.installOptOut = const [],
     this.cliPathOverrides = const {},
   });
 
@@ -23,9 +23,9 @@ class TargetsRegistryFile {
   /// the [RuntimeTarget] runtime identity.
   final List<String> credentialOptIn;
 
-  /// P3c: target ids the user opted in to remote CLI auto-install (default empty
-  /// = locate / manual path only, never auto-install over SSH).
-  final List<String> installOptIn;
+  /// P3c: target ids where remote CLI auto-install is disabled (default empty =
+  /// auto-install is on for every target after locate fails).
+  final List<String> installOptOut;
 
   /// P3c: per-target manual CLI path overrides — `targetId → {cliValue → path}`
   /// (manual bottom-fill when remote locate/install can't resolve a CLI).
@@ -34,7 +34,7 @@ class TargetsRegistryFile {
   factory TargetsRegistryFile.fromJson(Map<String, Object?> json) {
     final raw = json['targets'];
     final optIn = json['credentialOptIn'];
-    final installOpt = json['installOptIn'];
+    final installOptOut = json['installOptOut'];
     final overrides = json['cliPathOverrides'];
     return TargetsRegistryFile(
       schemaVersion: (json['schemaVersion'] as num?)?.toInt() ?? 1,
@@ -47,8 +47,11 @@ class TargetsRegistryFile {
       credentialOptIn: optIn is List
           ? [for (final e in optIn) '$e'].where((s) => s.isNotEmpty).toList()
           : const [],
-      installOptIn: installOpt is List
-          ? [for (final e in installOpt) '$e'].where((s) => s.isNotEmpty).toList()
+      installOptOut: installOptOut is List
+          ? [
+              for (final e in installOptOut)
+                '$e',
+            ].where((s) => s.isNotEmpty).toList()
           : const [],
       cliPathOverrides: overrides is Map<String, Object?>
           ? {
@@ -67,21 +70,21 @@ class TargetsRegistryFile {
     'schemaVersion': schemaVersion,
     'targets': targets.map((t) => t.toJson()).toList(),
     if (credentialOptIn.isNotEmpty) 'credentialOptIn': credentialOptIn,
-    if (installOptIn.isNotEmpty) 'installOptIn': installOptIn,
+    if (installOptOut.isNotEmpty) 'installOptOut': installOptOut,
     if (cliPathOverrides.isNotEmpty) 'cliPathOverrides': cliPathOverrides,
   };
 
   TargetsRegistryFile copyWith({
     List<RuntimeTarget>? targets,
     List<String>? credentialOptIn,
-    List<String>? installOptIn,
+    List<String>? installOptOut,
     Map<String, Map<String, String>>? cliPathOverrides,
   }) =>
       TargetsRegistryFile(
         schemaVersion: schemaVersion,
         targets: targets ?? this.targets,
         credentialOptIn: credentialOptIn ?? this.credentialOptIn,
-        installOptIn: installOptIn ?? this.installOptIn,
+        installOptOut: installOptOut ?? this.installOptOut,
         cliPathOverrides: cliPathOverrides ?? this.cliPathOverrides,
       );
 }
@@ -141,17 +144,17 @@ class TargetsRepository {
   }
 
   Future<bool> isInstallOptIn(String targetId) async =>
-      (await load()).installOptIn.contains(targetId);
+      !(await load()).installOptOut.contains(targetId);
 
   Future<void> setInstallOptIn(String targetId, bool optIn) async {
     final file = await load();
-    final next = file.installOptIn.toSet();
+    final next = file.installOptOut.toSet();
     if (optIn) {
-      next.add(targetId);
-    } else {
       next.remove(targetId);
+    } else {
+      next.add(targetId);
     }
-    await save(file.copyWith(installOptIn: (next.toList()..sort())));
+    await save(file.copyWith(installOptOut: (next.toList()..sort())));
   }
 
   // ── P3c: per-target manual CLI path override ───────────────────────────────

@@ -44,10 +44,9 @@ void main() {
     );
     expect(
       unix.commandLine,
-      contains(
-        '\$HOME/.local/share/teampilot/node/${TeampilotNodeInstall.version}/bin/npm install -g @anthropic-ai/claude-code',
-      ),
+      contains('npm install -g @anthropic-ai/claude-code'),
     );
+    expect(unix.commandLine, contains('export PATH='));
 
     final windowsRunner = HostExecutionEnvironment.resolve(
       isWindowsHost: true,
@@ -60,15 +59,6 @@ void main() {
     final psCommand = windows.arguments.last;
     expect(psCommand, contains('teampilot\\node\\${TeampilotNodeInstall.version}'));
     expect(psCommand, contains('@anthropic-ai/claude-code'));
-  });
-
-  test('remote package install uses npm global install argv', () {
-    final command = node.remotePackageInstall(
-      npmCommand: '/usr/bin/npm',
-      package: 'some-package',
-    );
-    expect(command.executable, '/usr/bin/npm');
-    expect(command.arguments, ['install', '-g', 'some-package']);
   });
 
   test('bootstrapped unix npm path is stable', () {
