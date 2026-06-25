@@ -11,6 +11,22 @@ import 'app_error_utils.dart';
 
 enum AppLogLevel { debug, info, warning, error }
 
+class _LogStyle {
+  const _LogStyle(this.line);
+
+  /// When null the record is printed without ANSI (e.g. unknown level).
+  final String? line;
+}
+
+/// ANSI escapes for console output only (file logger uses [colors: false]).
+abstract final class _Ansi {
+  static const reset = '\u001b[0m';
+  static const dim = '\u001b[90m';
+  static const cyan = '\u001b[36m';
+  static const yellow = '\u001b[33m';
+  static const red = '\u001b[31m';
+}
+
 class _PendingLog {
   _PendingLog({
     required this.timestamp,
@@ -25,6 +41,148 @@ class _PendingLog {
   final String message;
   final Object? error;
   final StackTrace? stackTrace;
+}
+
+/// log4j-style single-line records with an IDE-clickable source column:
+/// `2026-06-26 00:58:08.513 |  INFO 3992904 | package:teampilot/.../terminal_session.dart:831:15 | message`
+class _Log4jStylePrinter extends LogPrinter {
+  _Log4jStylePrinter({required this.colors});
+
+  final bool colors;
+
+  static const _excludePaths = [
+    'package:teampilot/utils/logger_utils.dart',
+    'package:logger/',
+  ];
+
+  static int? _cachedPid;
+
+  static int get _processId {
+    if (kIsWeb) return 0;
+    try {
+      return _cachedPid ??= pid;
+    } on Object {
+      return 0;
+    }
+  }
+
+  @override
+  List<String> log(LogEvent event) {
+    final time = event.time;
+    final level = _levelLabel(event.level);
+    final caller = _callerLocationFromStack(event.stackTrace);
+    final source = caller ?? '?:?';
+    final pid = _processId;
+    final style = _styleFor(event.level);
+
+    final body = StringBuffer()
+      ..write(_formatTimestamp(time))
+      ..write(' | ')
+      ..write(level)
+      ..write(' ')
+      ..write(pid)
+      ..write(' | ')
+      ..write(source)
+      ..write(' | ')
+      ..write(event.message);
+
+    if (event.error != null) {
+      body.write(' | ${event.error}');
+    }
+
+    final lines = <String>[_colorize(body.toString(), style.line)];
+
+    if (event.level.index >= Level.warning.index &&
+        event.stackTrace != null &&
+        _stackHasDiagnosticFrames(event.stackTrace!)) {
+      lines.add(
+        _colorize(event.stackTrace.toString().trimRight(), style.line),
+      );
+    }
+
+    return lines;
+  }
+
+  String _colorize(String text, String? ansiCode) {
+    if (!colors || ansiCode == null) return text;
+    return '$ansiCode$text${_Ansi.reset}';
+  }
+
+  static _LogStyle _styleFor(Level level) {
+    return switch (level) {
+      Level.debug => const _LogStyle(_Ansi.dim),
+      Level.info => const _LogStyle(_Ansi.cyan),
+      Level.warning => const _LogStyle(_Ansi.yellow),
+      Level.error => const _LogStyle(_Ansi.red),
+      _ => const _LogStyle(null),
+    };
+  }
+
+  static String _levelLabel(Level level) {
+    final raw = switch (level) {
+      Level.debug => 'DEBUG',
+      Level.info => 'INFO',
+      Level.warning => 'WARN',
+      Level.error => 'ERROR',
+      _ => level.name.toUpperCase(),
+    };
+    return raw.padLeft(5);
+  }
+
+  static String _formatTimestamp(DateTime time) {
+    final y = time.year.toString().padLeft(4, '0');
+    final mo = time.month.toString().padLeft(2, '0');
+    final d = time.day.toString().padLeft(2, '0');
+    final h = time.hour.toString().padLeft(2, '0');
+    final mi = time.minute.toString().padLeft(2, '0');
+    final s = time.second.toString().padLeft(2, '0');
+    final ms = time.millisecond.toString().padLeft(3, '0');
+    return '$y-$mo-$d $h:$mi:$s.$ms';
+  }
+
+  static bool _stackHasDiagnosticFrames(StackTrace trace) {
+    for (final line in trace.toString().split('\n')) {
+      if (line.trim().isEmpty) continue;
+      if (_isExcludedFrame(line)) continue;
+      return true;
+    }
+    return false;
+  }
+
+  static String? _callerLocationFromStack(StackTrace? trace) {
+    if (trace == null) return null;
+    for (final line in trace.toString().split('\n')) {
+      if (line.trim().isEmpty || _isExcludedFrame(line)) continue;
+      final location = _parseFrameLocation(line);
+      if (location != null) return location;
+    }
+    return null;
+  }
+
+  static bool _isExcludedFrame(String line) {
+    for (final path in _excludePaths) {
+      if (line.contains(path)) return true;
+    }
+    return false;
+  }
+
+  static final _framePattern = RegExp(r'^#\d+\s+(.+?)\s+\((.+)\)\s*$');
+
+  static String? _parseFrameLocation(String line) {
+    final match = _framePattern.firstMatch(line.trim());
+    if (match == null) return null;
+    return _sourceLink(match.group(2)!.trim());
+  }
+
+  /// Keeps `package:…/file.dart:line:col` intact so Cursor/VS Code can linkify.
+  static String _sourceLink(String raw) {
+    final trimmed = raw.trim();
+    if (trimmed.startsWith('package:')) return trimmed;
+    if (trimmed.startsWith('file://')) {
+      return Uri.parse(trimmed).toFilePath(windows: Platform.isWindows);
+    }
+    return trimmed;
+  }
 }
 
 /// Console + rotating file logging under `{appDataRoot}/logs/`.
@@ -49,38 +207,13 @@ class AppLogger {
 
   final List<_PendingLog> _pendingFileLogs = [];
 
-  /// Frames inside [AppLogger] itself — stripped so [PrettyPrinter] shows the
-  /// real call site.
-  static const _excludePaths = [
-    'package:teampilot/utils/logger_utils.dart',
-  ];
-
-  static PrettyPrinter _printer({
-    required int methodCount,
-    required int errorMethodCount,
-    required int lineLength,
-    required bool colors,
-  }) {
-    return PrettyPrinter(
-      methodCount: methodCount,
-      errorMethodCount: errorMethodCount,
-      lineLength: lineLength,
-      colors: colors,
-      printEmojis: false,
-      dateTimeFormat: DateTimeFormat.dateAndTime,
-      excludePaths: _excludePaths,
-    );
-  }
+  LogPrinter _printer({required bool colors}) =>
+      _Log4jStylePrinter(colors: colors);
 
   void _ensureConsoleLogger() {
     if (_consoleLogger != null) return;
     _consoleLogger = Logger(
-      printer: _printer(
-        methodCount: 2,
-        errorMethodCount: 8,
-        lineLength: 100,
-        colors: true,
-      ),
+      printer: _printer(colors: true),
       output: ConsoleOutput(),
       filter: _ConsoleLogFilter(),
     );
@@ -121,12 +254,7 @@ class AppLogger {
       _fileLogOutput = _FlushingFileOutput(file: _logFile!);
       await _fileLogOutput!.init();
       _fileLogger = Logger(
-        printer: _printer(
-          methodCount: 1,
-          errorMethodCount: 8,
-          lineLength: 120,
-          colors: false,
-        ),
+        printer: _printer(colors: false),
         output: _fileLogOutput!,
         filter: _FileLogFilter(),
       );
@@ -150,7 +278,8 @@ class AppLogger {
       AppLogLevel.info,
       message,
       error: error,
-      stackTrace: stackTrace ?? StackTrace.current,
+      stackTrace: stackTrace,
+      captureCaller: stackTrace == null,
     );
   }
 
@@ -159,7 +288,8 @@ class AppLogger {
       AppLogLevel.debug,
       message,
       error: error,
-      stackTrace: stackTrace ?? StackTrace.current,
+      stackTrace: stackTrace,
+      captureCaller: stackTrace == null,
     );
   }
 
@@ -168,7 +298,8 @@ class AppLogger {
       AppLogLevel.warning,
       message,
       error: error,
-      stackTrace: stackTrace ?? StackTrace.current,
+      stackTrace: stackTrace,
+      captureCaller: stackTrace == null,
     );
   }
 
@@ -193,7 +324,13 @@ class AppLogger {
         );
       }
     }
-    _log(AppLogLevel.error, message, error: error, stackTrace: trace);
+    _log(
+      AppLogLevel.error,
+      message,
+      error: error,
+      stackTrace: trace,
+      captureCaller: stackTrace == null,
+    );
   }
 
   void _log(
@@ -201,22 +338,24 @@ class AppLogger {
     String message, {
     Object? error,
     StackTrace? stackTrace,
+    required bool captureCaller,
   }) {
     _ensureConsoleLogger();
 
+    final trace = captureCaller ? StackTrace.current : stackTrace;
     final console = _consoleLogger!;
     switch (level) {
       case AppLogLevel.debug:
-        console.d(message, error: error, stackTrace: stackTrace);
+        console.d(message, error: error, stackTrace: trace);
       case AppLogLevel.info:
-        console.i(message, error: error, stackTrace: stackTrace);
+        console.i(message, error: error, stackTrace: trace);
       case AppLogLevel.warning:
-        console.w(message, error: error, stackTrace: stackTrace);
+        console.w(message, error: error, stackTrace: trace);
       case AppLogLevel.error:
-        console.e(message, error: error, stackTrace: stackTrace);
+        console.e(message, error: error, stackTrace: trace);
     }
 
-    _writeToFile(level, message, error: error, stackTrace: stackTrace);
+    _writeToFile(level, message, error: error, stackTrace: trace);
   }
 
   void _writeToFile(
@@ -310,12 +449,7 @@ class AppLogger {
       _fileLogOutput = _FlushingFileOutput(file: _logFile!);
       await _fileLogOutput!.init();
       _fileLogger = Logger(
-        printer: _printer(
-          methodCount: 1,
-          errorMethodCount: 8,
-          lineLength: 120,
-          colors: false,
-        ),
+        printer: _printer(colors: false),
         output: _fileLogOutput!,
         filter: _FileLogFilter(),
       );
@@ -471,18 +605,24 @@ class AppLogger {
   }
 
   String _formatPendingEntry(_PendingLog entry) {
-    final ts = entry.timestamp.toIso8601String();
-    final level = entry.level.name.toUpperCase();
-    final buffer = StringBuffer('$ts | $level | ${entry.message}');
-    if (entry.error != null) {
-      buffer.writeln();
-      buffer.write('Error: ${entry.error}');
-    }
-    if (entry.stackTrace != null) {
-      buffer.writeln();
-      buffer.write(entry.stackTrace);
-    }
-    return buffer.toString();
+    final printer = _Log4jStylePrinter(colors: false);
+    final level = switch (entry.level) {
+      AppLogLevel.debug => Level.debug,
+      AppLogLevel.info => Level.info,
+      AppLogLevel.warning => Level.warning,
+      AppLogLevel.error => Level.error,
+    };
+    return printer
+        .log(
+          LogEvent(
+            level,
+            entry.message,
+            time: entry.timestamp,
+            error: entry.error,
+            stackTrace: entry.stackTrace,
+          ),
+        )
+        .join('\n');
   }
 }
 

@@ -45,5 +45,13 @@ void main() {
 
     final contents = await _readLogWhenContains(logPath!, 'hello from test');
     expect(contents, contains('hello from test'));
+    expect(
+      contents,
+      matches(
+        RegExp(
+          r'\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}\.\d{3} \|  INFO \d+ \| [^\|]+\.dart:\d+:\d+ \| hello from test',
+        ),
+      ),
+    );
   });
 }
