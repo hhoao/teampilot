@@ -1,0 +1,70 @@
+import '../../models/workspace_folder.dart';
+import '../../models/workspace_topology.dart';
+import '../session/session_lifecycle_service.dart';
+import '../storage/app_storage.dart';
+import '../storage/runtime_context.dart';
+
+/// Resolved storage backend for the workspace file tree / source-control panels.
+class WorkspaceToolsContext {
+  const WorkspaceToolsContext({
+    required this.targetId,
+    required this.context,
+  });
+
+  final String targetId;
+  final RuntimeContext context;
+
+  /// Picks the machine for [paths] against [folders] and materializes its
+  /// work-plane [RuntimeContext].
+  static Future<WorkspaceToolsContext> resolve({
+    required SessionLifecycleService lifecycle,
+    required List<WorkspaceFolder> folders,
+    required List<String> paths,
+  }) async {
+    final probePaths = [
+      for (final raw in paths)
+        if (raw.trim().isNotEmpty) raw.trim(),
+    ];
+    final targetId =
+        targetIdForFolderPaths(
+          folders,
+          probePaths,
+          matchSubpaths: true,
+        ) ??
+        (folders.isNotEmpty
+            ? folders.first.targetId
+            : WorkspaceFolder.localTargetId);
+    final context = await lifecycle.resolveWorkContextForTargetId(targetId);
+    return WorkspaceToolsContext(targetId: targetId, context: context);
+  }
+
+  /// Workspace folder paths on [targetId]; drops roots pinned to another machine.
+  static List<String> rootsOnTarget({
+    required List<WorkspaceFolder> folders,
+    required String targetId,
+    required String primaryPath,
+    required List<String> additionalPaths,
+    required RuntimeContext context,
+  }) {
+    final pathCtx = context.filesystem.pathContext;
+    final roots = <String>[];
+    for (final raw in [primaryPath, ...additionalPaths]) {
+      if (raw.isEmpty) continue;
+      final onTarget = targetIdForFolderPaths(
+        folders,
+        [raw],
+        matchSubpaths: true,
+      );
+      if (onTarget != null && onTarget != targetId) continue;
+      final normalized = pathCtx.normalize(raw);
+      if (!roots.contains(normalized)) roots.add(normalized);
+    }
+    return roots;
+  }
+
+  /// Fallback when no lifecycle resolver is available (tests / early mount).
+  static WorkspaceToolsContext home() => WorkspaceToolsContext(
+    targetId: AppStorage.context.target.id,
+    context: AppStorage.context,
+  );
+}

@@ -1,7 +1,7 @@
 // Local git working-tree state for the source control panel.
 //
 // Parsed from `git status --porcelain=v2 --branch` (see GitService.status).
-// Desktop-local only (no SSH/WSL remote repos).
+// Git runs on the active storage backend (native, WSL, or SSH remote host).
 
 /// How a single path changed, mapped from porcelain XY status codes.
 enum GitChangeKind { modified, added, deleted, renamed, untracked, conflicted }

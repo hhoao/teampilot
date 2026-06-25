@@ -10,6 +10,7 @@ import '../cubits/file_tree_cubit.dart';
 import '../services/editor/file_editor_theme.dart';
 import '../services/file_tree/file_tree_visible_rows.dart';
 import '../services/io/filesystem.dart';
+import '../services/storage/runtime_context.dart';
 import '../services/workspace_dnd/path_namespace.dart';
 import '../services/workspace_dnd/workspace_file_ref.dart';
 import '../theme/app_text_styles.dart';
@@ -27,6 +28,8 @@ class FileTreeNode extends StatefulWidget {
     required this.cubit,
     required this.textColor,
     this.desktopShellActions = false,
+    this.remoteFileManagerActions = false,
+    required this.workContext,
     this.hoverEnabled = true,
     this.isRoot = false,
     this.rootMissing = false,
@@ -39,6 +42,8 @@ class FileTreeNode extends StatefulWidget {
   final FileTreeCubit cubit;
   final Color textColor;
   final bool desktopShellActions;
+  final bool remoteFileManagerActions;
+  final RuntimeContext workContext;
   final bool hoverEnabled;
 
   /// True for a workspace-folder header row in a multi-root tree (rendered with
@@ -140,6 +145,8 @@ class _FileTreeNodeState extends State<FileTreeNode> {
               targetName: widget.entry.name,
               isDirectory: isDir,
               desktopShellActions: widget.desktopShellActions,
+              remoteFileManagerActions: widget.remoteFileManagerActions,
+              workContext: widget.workContext,
             ),
           ),
           child: Container(
@@ -239,7 +246,12 @@ class _FileTreeNodeState extends State<FileTreeNode> {
       _openFileExternally(filePath);
       return;
     }
-    unawaited(context.read<EditorCubit>().openFile(filePath));
+    unawaited(
+      context.read<EditorCubit>().openFile(
+        filePath,
+        fs: widget.cubit.fs,
+      ),
+    );
   }
 
   void _openFileExternally(String filePath) {

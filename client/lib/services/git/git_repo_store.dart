@@ -1,8 +1,11 @@
 import 'package:path/path.dart' as p;
 
 import '../../cubits/git_cubit.dart';
+import '../storage/runtime_context.dart';
+import 'git_service.dart';
 
-/// App-level registry of long-lived [GitCubit]s, one per repository root.
+/// App-level registry of long-lived [GitCubit]s, one per repository root and
+/// storage target.
 ///
 /// The source-control panel is rebuilt every time its tool tab is selected
 /// (the tab switcher only mounts the active view). If each panel owned its own
@@ -16,44 +19,53 @@ import '../../cubits/git_cubit.dart';
 /// while in view.
 class GitRepoStore {
   GitRepoStore({
-    GitCubit Function(String root)? cubitFactory,
+    GitCubit Function(String root, RuntimeContext workContext)? cubitFactory,
     int maxRetained = 8,
   }) : _cubitFactory = cubitFactory ?? _defaultFactory,
        _maxRetained = maxRetained;
 
-  static GitCubit _defaultFactory(String root) =>
-      GitCubit()..setRepoRoot(root);
+  static GitCubit _defaultFactory(String root, RuntimeContext workContext) {
+    final service =
+        GitService.debugOverrideFactory?.call() ??
+        GitService.forContext(workContext);
+    return GitCubit(service: service)..setRepoRoot(root);
+  }
 
-  final GitCubit Function(String root) _cubitFactory;
+  final GitCubit Function(String root, RuntimeContext workContext) _cubitFactory;
   final int _maxRetained;
   final p.Context _ctx = p.Context();
 
-  /// Normalized root → cubit. Insertion order is the LRU order: re-accessing a
-  /// root moves it to the end (most-recently-used).
+  /// Normalized `targetId:root` → cubit. Insertion order is the LRU order.
   final Map<String, GitCubit> _cubits = <String, GitCubit>{};
 
-  /// Returns the retained cubit for [root], creating (and warming) it on first
-  /// access. Accessing a root marks it most-recently-used.
-  GitCubit cubitFor(String root) {
-    final key = _ctx.normalize(root);
+  static String _cacheKey(String root, RuntimeContext workContext) {
+    final normalized = p.Context(style: p.Style.posix).normalize(root);
+    return '${workContext.target.id}:$normalized';
+  }
+
+  /// Returns the retained cubit for [root] on [workContext], creating (and
+  /// warming) it on first access.
+  GitCubit cubitFor(String root, {required RuntimeContext workContext}) {
+    final key = _cacheKey(root, workContext);
     final existing = _cubits.remove(key);
     if (existing != null) {
-      _cubits[key] = existing; // bump to most-recently-used
+      _cubits[key] = existing;
       return existing;
     }
-    final cubit = _cubitFactory(key);
+    final cubit = _cubitFactory(_ctx.normalize(root), workContext);
     _cubits[key] = cubit;
     _evict();
     return cubit;
   }
 
-  /// Triggers a coalesced refresh for every [roots] entry, creating cubits as
-  /// needed. Used to warm a workspace's folders the moment its tools mount, so
-  /// the source-control tab is already populated by the time it is opened.
-  void refreshAll(Iterable<String> roots) {
+  /// Triggers a coalesced refresh for every [roots] entry on [workContext].
+  void refreshAll(
+    Iterable<String> roots, {
+    required RuntimeContext workContext,
+  }) {
     for (final root in roots) {
       if (root.isEmpty) continue;
-      cubitFor(root).refresh();
+      cubitFor(root, workContext: workContext).refresh();
     }
   }
 

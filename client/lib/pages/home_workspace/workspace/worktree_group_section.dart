@@ -12,8 +12,8 @@ import '../../../models/workspace.dart';
 import '../../../repositories/session_repository.dart';
 import '../../../services/git/git_worktree_service.dart';
 import '../../../services/git/worktree_removal.dart';
-import '../../../services/storage/app_storage.dart';
 import '../../../services/storage/runtime_context.dart';
+import '../../../services/workspace/workspace_tools_scope.dart';
 import '../../../theme/app_text_styles.dart';
 import '../../../utils/session_worktree_grouping.dart';
 import '../../../widgets/app_icon_button.dart';
@@ -30,12 +30,10 @@ import 'workspace_session_actions.dart';
 String worktreeGroupCollapseKey(WorktreeGroup group) =>
     group.worktree?.path ?? '<orphan>';
 
-/// Worktree create/remove run local `git`, so management is desktop-local only
-/// (v1). Native and WSL backends can spawn local git; SSH/Android hide controls.
-bool worktreeManagementEnabled() =>
-    AppStorage.isInstalled &&
-    (AppStorage.context.mode == StorageBackendMode.native ||
-        AppStorage.context.mode == StorageBackendMode.wsl);
+/// Worktree create/remove run on the workspace work-plane (native or WSL git).
+bool worktreeManagementEnabled(RuntimeContext workContext) =>
+    workContext.mode == StorageBackendMode.native ||
+    workContext.mode == StorageBackendMode.wsl;
 
 /// One collapsible worktree group in [WorkspaceSidebar]: a branch header (with
 /// management menu) plus its session tiles. Selecting the header makes the
@@ -50,7 +48,6 @@ class WorktreeGroupSection extends StatelessWidget {
     required this.collapsed,
     required this.isCurrent,
     this.personalLaunchBlocked = false,
-    this.worktreeService,
     super.key,
   });
 
@@ -63,11 +60,11 @@ class WorktreeGroupSection extends StatelessWidget {
   final bool isCurrent;
   final bool personalLaunchBlocked;
 
-  /// Injectable for tests; defaults to [GitWorktreeService.resolve].
-  final GitWorktreeService? worktreeService;
-
-  GitWorktreeService get _service =>
-      worktreeService ?? GitWorktreeService.resolve();
+  GitWorktreeService? _worktreeService(BuildContext context) {
+    final tools = WorkspaceToolsScope.maybeOf(context)?.tools;
+    if (tools == null) return null;
+    return GitWorktreeService.forContext(tools.context);
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -76,10 +73,11 @@ class WorktreeGroupSection extends StatelessWidget {
     final styles = AppTextStyles.of(context);
     final wt = group.worktree;
     final label = wt == null ? l10n.worktreeOrphanGroup : wt.shortBranch;
-    // Only linked (non-main, non-orphan) worktrees can be removed, and only on
-    // desktop-local backends where local `git worktree remove` is meaningful.
-    final manageable =
-        wt != null && !wt.isMainWorktree && worktreeManagementEnabled();
+    final workContext = WorkspaceToolsScope.maybeOf(context)?.tools?.context;
+    final manageable = wt != null &&
+        !wt.isMainWorktree &&
+        workContext != null &&
+        worktreeManagementEnabled(workContext);
     final selectable = wt != null && !personalLaunchBlocked;
 
     return Column(
@@ -214,7 +212,7 @@ class WorktreeGroupSection extends StatelessWidget {
       );
       return;
     }
-    final dirty = await _service.isDirty(worktreePath);
+    final dirty = await _worktreeService(context)?.isDirty(worktreePath) ?? false;
     if (!context.mounted) return;
     final result = await showWorktreeDeleteDialog(
       context,
@@ -224,8 +222,10 @@ class WorktreeGroupSection extends StatelessWidget {
     );
     if (result == null) return;
     try {
+      final service = _worktreeService(context);
+      if (service == null) return;
       await removeWorktreeWithSessions(
-        service: _service,
+        service: service,
         repoPath: cubit.state.repoPath,
         worktreePath: worktreePath,
         worktree: group.worktree,

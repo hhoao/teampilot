@@ -386,9 +386,15 @@ class RemoteFileStore {
 
   /// Best-effort stdout from a remote shell command (empty on failure).
   Future<String> runRemoteCommand(String command) async {
-    final client = await _clientFactory.clientFor(_profile);
-    final result = await client.runWithResult(command, stderr: false);
+    final result = await execShell(command);
+    if (sshRunFailed(result)) return '';
     return utf8.decode(result.stdout, allowMalformed: true);
+  }
+
+  /// Runs [command] in the remote login shell and returns the full exit status.
+  Future<SSHRunResult> execShell(String command) async {
+    final client = await _clientFactory.clientFor(_profile);
+    return client.runWithResult(command);
   }
 
   /// Opens [absolutePath] in the remote OS file manager (best-effort).

@@ -2,37 +2,26 @@ import 'dart:convert';
 
 import '../../models/git_worktree.dart';
 import '../../utils/logger.dart';
-import '../cli/cli_tool_locator.dart';
+import '../storage/runtime_context.dart';
+import 'git_command_runner.dart';
 import 'git_service.dart' show GitException;
 
-/// Runs `git worktree …` for the worktree sidebar. Desktop-local only;
-/// mirrors [GitService]'s injected [ProcessRunner] seam so tests never spawn
-/// real git. Listing/parsing is path-derived; nothing is persisted.
+/// Runs `git worktree …` for the worktree sidebar on the active storage
+/// backend (native, WSL, or SSH remote host).
 class GitWorktreeService {
-  GitWorktreeService({
-    ProcessRunner runner = cliToolDefaultProcessRun,
-    CliToolLocator? gitLocator,
-  }) : _runner = runner,
-       _gitLocator = gitLocator ?? const CliToolLocator('git');
+  GitWorktreeService({GitCommandRunner? runner})
+    : _runner = runner ?? LocalGitCommandRunner();
+
+  /// Builds a service for [ctx]'s storage backend.
+  factory GitWorktreeService.forContext(RuntimeContext ctx) =>
+      GitWorktreeService(runner: gitCommandRunnerForContext(ctx));
 
   /// Test seam: when set, [WorktreeCubit] builds this instead of a real
   /// process-backed service, so widget tests never spawn `git` (mirrors
   /// [GitService.debugOverrideFactory]). See `setUpTestAppStorage`.
   static GitWorktreeService Function()? debugOverrideFactory;
 
-  /// Resolves the process-backed service, honoring [debugOverrideFactory] in tests.
-  static GitWorktreeService resolve() =>
-      debugOverrideFactory?.call() ?? GitWorktreeService();
-
-  final ProcessRunner _runner;
-  final CliToolLocator _gitLocator;
-
-  static const Encoding _textEncoding = Utf8Codec();
-  static const List<String> _globalFlags = [
-    '--no-optional-locks',
-    '-c',
-    'core.quotePath=false',
-  ];
+  final GitCommandRunner _runner;
 
   /// Parse `git worktree list --porcelain` output. [nulDelimited] for the
   /// `-z` form (fields NUL-delimited, records terminated by an extra NUL).
@@ -106,35 +95,21 @@ class GitWorktreeService {
     return blocks;
   }
 
-  /// Located git path, cached process-wide like [GitService] — locating git can
-  /// fork a login shell, so every [GitWorktreeService] instance shares one probe.
-  static Future<String?>? _locateFuture;
-  Future<String?> get _git =>
-      _locateFuture ??= _gitLocator.locate(runner: _runner);
-
-  /// Resets the static cache so tests with scripted locators don't leak a path
-  /// across cases (mirrors [GitService.debugResetExecutableCache]).
-  static void debugResetExecutableCache() => _locateFuture = null;
-
   Future<String> _run(String dir, List<String> args) async {
-    final git = await _git;
-    if (git == null) throw GitException('git executable not found on PATH');
-    final result = await _runner(
-      git,
-      [..._globalFlags, '-C', dir, ...args],
-      stdoutEncoding: _textEncoding,
-      stderrEncoding: _textEncoding,
-    );
+    if (!await _runner.isAvailable) {
+      throw GitException('git executable not found on PATH');
+    }
+    final result = await _runner.runInDirectory(dir, args);
     if (result.exitCode != 0) {
-      final err = (result.stderr as String?)?.trim();
-      final out = (result.stdout as String?)?.trim();
-      final detail = (err == null || err.isEmpty) ? (out ?? '') : err;
+      final err = result.stderr.trim();
+      final out = result.stdout.trim();
+      final detail = err.isEmpty ? out : err;
       appLogger.d(
         '[GitWorktree] ${args.join(' ')} exit ${result.exitCode}: $detail',
       );
       throw GitException(detail.isEmpty ? 'git ${args.first} failed' : detail);
     }
-    return (result.stdout as String?) ?? '';
+    return result.stdout;
   }
 
   /// List worktrees; empty list when [repoPath] is not a git repo or git is

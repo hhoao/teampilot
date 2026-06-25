@@ -3,6 +3,7 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 
 import '../cubits/launch_profile_cubit.dart';
 import '../models/team_config.dart';
+import '../models/workspace_folder.dart';
 import 'chat/chat_page_shell.dart';
 
 class ChatPage extends StatelessWidget {
@@ -11,6 +12,7 @@ class ChatPage extends StatelessWidget {
     required this.workspaceId,
     this.tabScopeId,
     this.additionalPaths = const [],
+    this.workspaceFolders = const [],
     this.sessionId,
     this.isPersonalWorkspace = false,
     super.key,
@@ -25,6 +27,9 @@ class ChatPage extends StatelessWidget {
 
   /// Extra workspace folders for the multi-root file tree / source control.
   final List<String> additionalPaths;
+
+  /// Workspace manifest folders (path + targetId).
+  final List<WorkspaceFolder> workspaceFolders;
 
   /// When true, the embedded workbench runs without a selected [TeamProfile].
   final bool isPersonalWorkspace;
@@ -43,6 +48,7 @@ class ChatPage extends StatelessWidget {
       return _PersonalChatPage(
         cwd: cwd,
         additionalPaths: additionalPaths,
+        workspaceFolders: workspaceFolders,
         sessionId: sessionId,
         workspaceId: workspaceId,
         tabScopeId: _tabScopeId,
@@ -51,6 +57,7 @@ class ChatPage extends StatelessWidget {
     return _TeamChatPage(
       cwd: cwd,
       additionalPaths: additionalPaths,
+      workspaceFolders: workspaceFolders,
       sessionId: sessionId,
       workspaceId: workspaceId,
       tabScopeId: _tabScopeId,
@@ -64,6 +71,7 @@ class _PersonalChatPage extends StatelessWidget {
     required this.workspaceId,
     required this.tabScopeId,
     this.additionalPaths = const [],
+    this.workspaceFolders = const [],
     this.sessionId,
   });
 
@@ -71,6 +79,7 @@ class _PersonalChatPage extends StatelessWidget {
   final String workspaceId;
   final String tabScopeId;
   final List<String> additionalPaths;
+  final List<WorkspaceFolder> workspaceFolders;
   final String? sessionId;
 
   @override
@@ -78,6 +87,7 @@ class _PersonalChatPage extends StatelessWidget {
     return ChatPageShell(
       cwd: cwd,
       additionalPaths: additionalPaths,
+      workspaceFolders: workspaceFolders,
       sessionId: sessionId,
       isPersonalWorkspace: true,
       workspaceId: workspaceId,
@@ -93,6 +103,7 @@ class _TeamChatPage extends StatelessWidget {
     required this.workspaceId,
     required this.tabScopeId,
     this.additionalPaths = const [],
+    this.workspaceFolders = const [],
     this.sessionId,
   });
 
@@ -100,6 +111,7 @@ class _TeamChatPage extends StatelessWidget {
   final String workspaceId;
   final String tabScopeId;
   final List<String> additionalPaths;
+  final List<WorkspaceFolder> workspaceFolders;
   final String? sessionId;
 
   @override
@@ -115,6 +127,7 @@ class _TeamChatPage extends StatelessWidget {
     return ChatPageShell(
       cwd: cwd,
       additionalPaths: additionalPaths,
+      workspaceFolders: workspaceFolders,
       sessionId: sessionId,
       isPersonalWorkspace: false,
       workspaceId: workspaceId,

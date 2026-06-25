@@ -101,11 +101,11 @@ class GitState extends Equatable {
 ///
 /// The root tracks the active session cwd (see `RightToolsPanel`); mutating
 /// operations refresh status on success and surface failures via
-/// [GitState.errorMessage]. Desktop-local only.
+/// [GitState.errorMessage]. Runs git on the active storage backend (local,
+/// WSL, or SSH).
 class GitCubit extends Cubit<GitState> {
-  GitCubit({GitService? service, HeadlessAiService? headless})
-    : _service =
-          service ?? GitService.debugOverrideFactory?.call() ?? GitService(),
+  GitCubit({required GitService service, HeadlessAiService? headless})
+    : _service = service,
       _headless = headless ?? HeadlessAiService(),
       super(const GitState());
 

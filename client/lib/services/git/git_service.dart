@@ -2,7 +2,11 @@ import 'dart:convert';
 
 import '../../models/git_status.dart';
 import '../../utils/logger.dart';
-import '../cli/cli_tool_locator.dart';
+import '../storage/runtime_context.dart';
+import 'git_command_runner.dart';
+
+export 'git_command_runner.dart'
+    show GitCommandRunner, gitCommandRunnerForContext;
 
 /// Thrown when a git command exits non-zero; [message] carries stderr.
 class GitException implements Exception {
@@ -12,97 +16,56 @@ class GitException implements Exception {
   String toString() => 'GitException: $message';
 }
 
-/// Runs the local `git` executable for the source control panel.
-///
-/// Desktop-local only: every command uses `git -C <dir>` so no working
-/// directory switch is needed. Mirrors [SkillRepoGitService] injection so
-/// tests can supply a fake [ProcessRunner].
+/// Runs `git` for the source control panel on the active storage backend
+/// (native, WSL, or SSH remote host).
 class GitService {
-  GitService({
-    ProcessRunner runner = cliToolDefaultProcessRun,
-    CliToolLocator? gitLocator,
-  }) : _runner = runner,
-       _gitLocator = gitLocator ?? const CliToolLocator('git');
+  GitService({GitCommandRunner? runner})
+    : _runner = runner ?? LocalGitCommandRunner();
+
+  /// Builds a service for [ctx]'s storage backend (local / WSL / SSH).
+  factory GitService.forContext(RuntimeContext ctx) =>
+      GitService(runner: gitCommandRunnerForContext(ctx));
 
   /// Test seam: when set, the default [GitCubit] builds this instead of a
   /// real process-backed service, so widget tests never spawn `git` (mirrors
   /// `AppStorage` test injection). See `setUpTestAppStorage`.
   static GitService Function()? debugOverrideFactory;
 
-  final ProcessRunner _runner;
-  final CliToolLocator _gitLocator;
+  final GitCommandRunner _runner;
 
-  /// git emits UTF-8 (diff content, paths, branch names) regardless of the host
-  /// locale, but `Process.run` defaults to `systemEncoding` — the Windows ANSI
-  /// code page (e.g. GBK), which mangles non-ASCII text into mojibake. Decode as
-  /// UTF-8, tolerating malformed bytes so a non-UTF-8 file's diff never throws.
-  static const Encoding _textEncoding = Utf8Codec();
+  /// Resets static caches on local/remote runners. Tests call this in setUp.
+  static void debugResetExecutableCache() {
+    LocalGitCommandRunner.debugResetExecutableCache();
+    RemoteGitCommandRunner.debugResetAvailabilityCache();
+  }
 
-  /// Prepended to every invocation:
-  /// - `--no-optional-locks`: never take optional locks, so read commands like
-  ///   `status` don't opportunistically rewrite `.git/index`. Without this, a
-  ///   filesystem watcher observing `.git` sees status's own index write and
-  ///   re-triggers a refresh, which writes again — a self-feeding loop.
-  /// - `core.quotePath=false`: non-ASCII paths arrive as literal UTF-8 instead
-  ///   of git's default octal-escaped `"\344\270\255…"` quoting.
-  static const List<String> _globalFlags = [
-    '--no-optional-locks',
-    '-c',
-    'core.quotePath=false',
-  ];
-
-  /// Located `git` path, cached process-wide. Locating git can fork a login
-  /// shell (sparse GUI environments / macOS), which is slow — doing it once and
-  /// sharing it across every [GitService] instance keeps the source-control
-  /// panel from re-paying that cost each time it remounts.
-  static Future<String?>? _locateFuture;
-
-  /// Resets the static cache. Tests that swap the locator/runner call this so a
-  /// path located by an earlier case never leaks into the next.
-  static void debugResetExecutableCache() => _locateFuture = null;
-
-  Future<String?> get _git =>
-      _locateFuture ??= _gitLocator.locate(runner: _runner);
-
-  Future<bool> get isAvailable async => (await _git) != null;
+  Future<bool> get isAvailable => _runner.isAvailable;
 
   /// Runs `git -C dir <args>`; throws [GitException] on non-zero exit.
   Future<String> _run(String dir, List<String> args) async {
-    final git = await _git;
-    if (git == null) {
-      throw GitException('git executable not found on PATH');
-    }
-    final result = await _runner(
-      git,
-      [..._globalFlags, '-C', dir, ...args],
-      stdoutEncoding: _textEncoding,
-      stderrEncoding: _textEncoding,
-    );
+    final result = await _runner.runInDirectory(dir, args);
     if (result.exitCode != 0) {
-      final err = (result.stderr as String?)?.trim();
-      final out = (result.stdout as String?)?.trim();
-      final detail = (err == null || err.isEmpty) ? (out ?? '') : err;
+      final err = result.stderr.trim();
+      final out = result.stdout.trim();
+      final detail = err.isEmpty ? out : err;
       appLogger.d('[Git] ${args.join(' ')} exit ${result.exitCode}: $detail');
       throw GitException(detail.isEmpty ? 'git ${args.first} failed' : detail);
     }
-    return (result.stdout as String?) ?? '';
+    return result.stdout;
   }
 
   /// Parses `git status --porcelain=v2 --branch` into a [GitRepoStatus].
   ///
   /// Returns [GitRepoStatus.notARepository] when [dir] is outside a work tree.
   Future<GitRepoStatus> status(String dir) async {
-    final git = await _git;
-    if (git == null) {
+    if (!await isAvailable) {
       throw GitException('git executable not found on PATH');
     }
-    final probe = await _runner(git, [
-      '-C',
-      dir,
+    final probe = await _runner.runInDirectory(dir, [
       'rev-parse',
       '--is-inside-work-tree',
     ]);
-    if (probe.exitCode != 0 || ((probe.stdout as String?)?.trim() != 'true')) {
+    if (probe.exitCode != 0 || probe.stdout.trim() != 'true') {
       return GitRepoStatus.notARepository;
     }
 

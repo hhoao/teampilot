@@ -9,14 +9,14 @@ import 'package:teampilot/models/git_status.dart';
 import 'package:teampilot/repositories/app_settings_repository.dart';
 import 'package:teampilot/services/git/git_repo_store.dart';
 import 'package:teampilot/services/git/git_service.dart';
+import 'package:teampilot/services/storage/runtime_context.dart';
 import 'package:teampilot/widgets/git/git_source_control_panel.dart';
 
+import '../../support/post_frame_test_harness.dart';
+import '../../support/test_runtime_context.dart';
+
 class _RepoGitStub extends GitService {
-  _RepoGitStub()
-    : super(
-        runner: (executable, arguments, {stdoutEncoding, stderrEncoding}) async =>
-            ProcessResult(0, 0, '/usr/bin/git\n', ''),
-      );
+  _RepoGitStub() : super();
 
   @override
   Future<bool> get isAvailable async => true;
@@ -38,11 +38,7 @@ class _RepoGitStub extends GitService {
 /// Reports a per-root change count derived from the folder name's last digit,
 /// so the selector badges can be asserted independently per repo.
 class _MultiRepoGitStub extends GitService {
-  _MultiRepoGitStub()
-    : super(
-        runner: (executable, arguments, {stdoutEncoding, stderrEncoding}) async =>
-            ProcessResult(0, 0, '/usr/bin/git\n', ''),
-      );
+  _MultiRepoGitStub() : super();
 
   @override
   Future<bool> get isAvailable async => true;
@@ -71,8 +67,11 @@ class _MultiRepoGitStub extends GitService {
 
 void main() {
   late GitRepoStore store;
+  late RuntimeContext workContext;
 
   setUp(() {
+    setUpTestAppStorage();
+    workContext = testRuntimeContext('/home');
     GitService.debugOverrideFactory = _RepoGitStub.new;
     GitService.debugResetExecutableCache();
     store = GitRepoStore();
@@ -82,6 +81,7 @@ void main() {
     store.dispose();
     GitService.debugOverrideFactory = null;
     GitService.debugResetExecutableCache();
+    tearDownTestAppStorage();
   });
 
   Widget wrap(AiFeatureSettingsCubit aiSettingsCubit, Widget child) {
@@ -104,7 +104,10 @@ void main() {
     );
 
     await tester.pumpWidget(
-      wrap(aiSettingsCubit, const GitSourceControlPanel(roots: ['/repo'])),
+      wrap(
+        aiSettingsCubit,
+        GitSourceControlPanel(roots: const ['/repo'], workContext: workContext),
+      ),
     );
     await tester.pump();
     await tester.pump(const Duration(milliseconds: 100));
@@ -127,7 +130,10 @@ void main() {
     await tester.pumpWidget(
       wrap(
         aiSettingsCubit,
-        const GitSourceControlPanel(roots: ['/work/repoA', '/work/repoB']),
+        GitSourceControlPanel(
+          roots: const ['/work/repoA', '/work/repoB'],
+          workContext: workContext,
+        ),
       ),
     );
     await tester.pump();

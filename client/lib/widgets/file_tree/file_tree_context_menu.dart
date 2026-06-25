@@ -11,8 +11,10 @@ import '../../cubits/editor_cubit.dart';
 import '../../cubits/file_tree_cubit.dart';
 import '../../l10n/l10n_extensions.dart';
 import '../../services/editor/file_editor_theme.dart';
+import '../../services/io/runtime_folder_opener.dart';
 import '../../services/io/system_folder_opener.dart';
 import '../../services/io/system_terminal_opener.dart';
+import '../../services/storage/runtime_context.dart';
 import '../../utils/debounce/debounce.dart';
 import '../app_dialog.dart';
 import '../menu/sidebar_action_menu.dart';
@@ -27,6 +29,8 @@ abstract final class FileTreeContextMenu {
     required String targetName,
     required bool isDirectory,
     required bool desktopShellActions,
+    bool remoteFileManagerActions = false,
+    required RuntimeContext workContext,
   }) async {
     final l10n = context.l10n;
     final ctx = cubit.fs.pathContext;
@@ -73,7 +77,7 @@ abstract final class FileTreeContextMenu {
         destructive: true,
       ),
       const SidebarActionMenuSpec.divider(),
-      if (!isDirectory)
+      if (!isDirectory && desktopShellActions)
         SidebarActionMenuSpec.item(
           value: 'external',
           icon: Icons.open_in_new,
@@ -95,7 +99,12 @@ abstract final class FileTreeContextMenu {
           icon: Icons.terminal,
           label: l10n.fileTreeOpenInTerminal,
         ),
-      ],
+      ] else if (remoteFileManagerActions)
+        SidebarActionMenuSpec.item(
+          value: 'file_manager',
+          icon: Icons.folder_open_outlined,
+          label: l10n.fileTreeOpenInFileManager,
+        ),
     ];
 
     final value = await showSidebarActionMenuFromSpecsAtTap<String>(
@@ -149,7 +158,14 @@ abstract final class FileTreeContextMenu {
       case 'copy_path':
         await Clipboard.setData(ClipboardData(text: targetPath));
       case 'file_manager':
-        await _openInFileManager(targetPath, isDirectory: isDirectory);
+        if (workContext != null) {
+          await _openInFileManager(
+            targetPath,
+            isDirectory: isDirectory,
+            remoteFileManagerActions: remoteFileManagerActions,
+            workContext: workContext,
+          );
+        }
       case 'terminal':
         await _openInTerminal(context, targetPath, isDirectory: isDirectory);
     }
@@ -181,7 +197,12 @@ abstract final class FileTreeContextMenu {
           : () {
               final created = cubit.fs.pathContext.join(parentDir, name.trim());
               if (isEditorOpenableFilePath(created)) {
-                unawaited(context.read<EditorCubit>().openFile(created));
+                unawaited(
+                  context.read<EditorCubit>().openFile(
+                    created,
+                    fs: cubit.fs,
+                  ),
+                );
               }
             },
     );
@@ -312,12 +333,20 @@ abstract final class FileTreeContextMenu {
   static Future<void> _openInFileManager(
     String targetPath, {
     required bool isDirectory,
+    required bool remoteFileManagerActions,
+    required RuntimeContext workContext,
   }) async {
-    final ctx = SystemFolderOpener();
     final path = isDirectory
         ? targetPath
         : SystemFolderOpener.revealPathForFile(targetPath);
-    await ctx.reveal(path);
+    if (remoteFileManagerActions) {
+      await RuntimeFolderOpener().reveal(
+        path: path,
+        workContext: workContext,
+      );
+      return;
+    }
+    await SystemFolderOpener().reveal(path);
   }
 
   static Future<void> _openInTerminal(

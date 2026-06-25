@@ -3,6 +3,7 @@ import 'dart:io';
 
 import 'package:flutter_test/flutter_test.dart';
 import 'package:teampilot/models/git_status.dart';
+import 'package:teampilot/services/git/git_command_runner.dart';
 import 'package:teampilot/services/git/git_service.dart';
 
 /// Fake [ProcessRunner]: answers the locate probe with a git path, records the
@@ -69,7 +70,9 @@ void main() {
         _inRepo: _ok('true\n'),
         'status': _ok(statusOut),
       });
-      final service = GitService(runner: runner.call);
+      final service = GitService(
+        runner: LocalGitCommandRunner(runner: runner.call),
+      );
 
       final status = await service.status('/repo');
 
@@ -111,7 +114,9 @@ void main() {
 
     test('returns notARepository when outside a work tree', () async {
       final runner = _FakeRunner({_inRepo: ProcessResult(0, 128, '', 'fatal')});
-      final service = GitService(runner: runner.call);
+      final service = GitService(
+        runner: LocalGitCommandRunner(runner: runner.call),
+      );
 
       final status = await service.status('/tmp');
 
@@ -122,7 +127,9 @@ void main() {
   group('GitService mutations', () {
     test('stage / unstage / commit issue the expected argv', () async {
       final runner = _FakeRunner({});
-      final service = GitService(runner: runner.call);
+      final service = GitService(
+        runner: LocalGitCommandRunner(runner: runner.call),
+      );
 
       await service.stage('/repo', ['a.txt']);
       await service.unstage('/repo', ['a.txt']);
@@ -139,7 +146,9 @@ void main() {
 
     test('discard chooses restore for tracked and clean for untracked', () async {
       final runner = _FakeRunner({});
-      final service = GitService(runner: runner.call);
+      final service = GitService(
+        runner: LocalGitCommandRunner(runner: runner.call),
+      );
 
       await service.discard(
         '/repo',
@@ -166,7 +175,9 @@ void main() {
       final runner = _FakeRunner({
         'push': ProcessResult(0, 1, '', 'remote rejected'),
       });
-      final service = GitService(runner: runner.call);
+      final service = GitService(
+        runner: LocalGitCommandRunner(runner: runner.call),
+      );
 
       expect(
         () => service.push('/repo'),
@@ -184,7 +195,9 @@ void main() {
   group('text encoding', () {
     test('decodes git output as lenient UTF-8 with quotePath disabled', () async {
       final runner = _FakeRunner({_inRepo: _ok('true\n'), 'status': _ok('')});
-      final service = GitService(runner: runner.call);
+      final service = GitService(
+        runner: LocalGitCommandRunner(runner: runner.call),
+      );
 
       await service.status('/repo');
 
@@ -210,7 +223,9 @@ void main() {
 
   test('branches parses one name per line', () async {
     final runner = _FakeRunner({'branch': _ok('main\ndev\nfeature/x\n')});
-    final service = GitService(runner: runner.call);
+    final service = GitService(
+      runner: LocalGitCommandRunner(runner: runner.call),
+    );
 
     expect(await service.branches('/repo'), ['main', 'dev', 'feature/x']);
   });

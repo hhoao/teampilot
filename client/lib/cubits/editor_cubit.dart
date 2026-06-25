@@ -115,6 +115,7 @@ class EditorCubit extends Cubit<EditorState> {
   EditorCubit({Filesystem? fs}) : _fs = fs ?? AppStorage.fs, super(const EditorState());
 
   final Filesystem _fs;
+  final Map<String, Filesystem> _fsByPath = {};
   final Map<String, _OpenFileHandle> _handles = {};
 
   CodeLineEditingController? controllerFor(String path) =>
@@ -130,7 +131,7 @@ class EditorCubit extends Cubit<EditorState> {
     emit(state.copyWith(clearSnackbar: true));
   }
 
-  Future<void> openFile(String path) async {
+  Future<void> openFile(String path, {Filesystem? fs}) async {
     final normalized = path.trim();
     if (normalized.isEmpty) return;
 
@@ -149,11 +150,12 @@ class EditorCubit extends Cubit<EditorState> {
       return;
     }
 
+    final filesystem = fs ?? _fs;
     final loading = Set<String>.from(state.loadingPaths)..add(normalized);
     emit(state.copyWith(loadingPaths: loading, clearSnackbar: true));
 
     try {
-      final stat = await _fs.stat(normalized);
+      final stat = await filesystem.stat(normalized);
       if (!stat.exists || !stat.isFile) {
         emit(_clearLoading(normalized, error: EditorMessage.fileNotFound));
         return;
@@ -169,7 +171,7 @@ class EditorCubit extends Cubit<EditorState> {
         return;
       }
 
-      final content = await _fs.readString(normalized);
+      final content = await filesystem.readString(normalized);
       if (content == null) {
         emit(_clearLoading(normalized, error: EditorMessage.couldNotRead));
         return;
@@ -182,6 +184,7 @@ class EditorCubit extends Cubit<EditorState> {
       )..savedText = content;
       handle.attachListener();
       _handles[normalized] = handle;
+      _fsByPath[normalized] = filesystem;
 
       final paths = [...state.openPaths, normalized];
       final errors = Map<String, String>.from(state.errorByPath)
@@ -295,8 +298,9 @@ class EditorCubit extends Cubit<EditorState> {
       );
       return false;
     }
+    final fs = _fsByPath[path] ?? _fs;
     try {
-      await _fs.atomicWrite(path, handle.controller.text);
+      await fs.atomicWrite(path, handle.controller.text);
       handle.savedText = handle.controller.text;
       final dirty = Set<String>.from(state.dirtyPaths)..remove(path);
       emit(state.copyWith(dirtyPaths: dirty, clearSnackbar: true));
@@ -308,6 +312,7 @@ class EditorCubit extends Cubit<EditorState> {
   }
 
   void _disposeHandle(String path) {
+    _fsByPath.remove(path);
     _handles.remove(path)?.dispose();
   }
 

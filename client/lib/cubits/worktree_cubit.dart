@@ -15,9 +15,13 @@ abstract class WorktreeLister {
 
 class _ServiceLister implements WorktreeLister {
   _ServiceLister(this._svc);
-  final GitWorktreeService _svc;
+  final GitWorktreeService? _svc;
   @override
-  Future<List<GitWorktree>> list(String repoPath) => _svc.list(repoPath);
+  Future<List<GitWorktree>> list(String repoPath) async {
+    final svc = _svc;
+    if (svc == null) return const [];
+    return svc.list(repoPath);
+  }
 }
 
 class WorktreeState {
@@ -61,13 +65,13 @@ class WorktreeCubit extends Cubit<WorktreeState> {
     this.workspaceId = '',
     WorktreeUiPrefsStore? prefsStore,
   })  : _lister = lister ??
-            _ServiceLister(service ??
-                GitWorktreeService.debugOverrideFactory?.call() ??
-                GitWorktreeService()),
+            _ServiceLister(
+              service ?? GitWorktreeService.debugOverrideFactory?.call(),
+            ),
         _prefsStore = prefsStore ?? WorktreeUiPrefsStore(),
         super(const WorktreeState());
 
-  final WorktreeLister _lister;
+  WorktreeLister _lister;
   final WorktreeUiPrefsStore _prefsStore;
 
   /// Scopes persisted UI state (collapse + current worktree). Empty disables
@@ -75,6 +79,13 @@ class WorktreeCubit extends Cubit<WorktreeState> {
   final String workspaceId;
 
   bool _hydrated = false;
+
+  /// Swaps the git runner when the workspace tools plane resolves a new target.
+  void bindWorktreeService(GitWorktreeService service) {
+    _lister = _ServiceLister(service);
+    final repo = state.repoPath;
+    if (repo.isNotEmpty) unawaited(load(repo));
+  }
 
   /// Loads the worktree list. Selection priority: an existing valid in-memory
   /// selection (across reload) → the persisted last current worktree → the one

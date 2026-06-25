@@ -2,6 +2,7 @@ import 'dart:convert';
 import 'dart:io';
 
 import 'package:flutter_test/flutter_test.dart';
+import 'package:teampilot/services/git/git_command_runner.dart';
 import 'package:teampilot/services/git/git_service.dart';
 
 class _FakeRunner {
@@ -24,7 +25,9 @@ class _FakeRunner {
 void main() {
   test('stagedDiff runs git diff --cached --no-color', () async {
     final runner = _FakeRunner('diff body');
-    final service = GitService(runner: runner.call);
+    final service = GitService(
+      runner: LocalGitCommandRunner(runner: runner.call),
+    );
 
     final out = await service.stagedDiff('/repo');
 
@@ -36,7 +39,9 @@ void main() {
 
   test('stagedDiff truncates oversized output', () async {
     final big = 'x' * 20000;
-    final service = GitService(runner: _FakeRunner(big).call);
+    final service = GitService(
+      runner: LocalGitCommandRunner(runner: _FakeRunner(big).call),
+    );
 
     final out = await service.stagedDiff('/repo', maxChars: 100);
 

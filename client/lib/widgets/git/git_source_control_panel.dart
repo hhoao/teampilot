@@ -19,6 +19,7 @@ import '../../l10n/l10n_extensions.dart';
 import '../../models/git_status.dart';
 import '../../services/git/git_changes_visible_rows.dart';
 import '../../services/git/git_repo_store.dart';
+import '../../services/storage/runtime_context.dart';
 import '../../theme/app_text_styles.dart';
 import '../app_dialog.dart';
 import '../app_icon_button.dart';
@@ -38,10 +39,17 @@ import 'git_diff_view.dart';
 /// repo selector switches which folder's source control is shown (each folder
 /// may be its own git repository). A single folder shows it directly.
 class GitSourceControlPanel extends StatefulWidget {
-  const GitSourceControlPanel({required this.roots, super.key});
+  const GitSourceControlPanel({
+    required this.roots,
+    required this.workContext,
+    super.key,
+  });
 
   /// Workspace folders (first = primary). Each may be an independent git repo.
   final List<String> roots;
+
+  /// Work-plane context for git commands (ssh/wsl/local).
+  final RuntimeContext workContext;
 
   @override
   State<GitSourceControlPanel> createState() => _GitSourceControlPanelState();
@@ -64,6 +72,11 @@ class _GitSourceControlPanelState extends State<GitSourceControlPanel> {
 
   GitRepoStore get _store => context.read<GitRepoStore>();
 
+  RuntimeContext get _workContext => widget.workContext;
+
+  GitCubit _cubitFor(String root) =>
+      _store.cubitFor(root, workContext: _workContext);
+
   @override
   void initState() {
     super.initState();
@@ -71,7 +84,7 @@ class _GitSourceControlPanelState extends State<GitSourceControlPanel> {
     // current even if the background poll just missed a change.
     WidgetsBinding.instance.addPostFrameCallback((_) {
       final active = _activeRoot;
-      if (active.isNotEmpty) _store.cubitFor(active).refresh();
+      if (active.isNotEmpty) _cubitFor(active).refresh();
     });
   }
 
@@ -86,25 +99,29 @@ class _GitSourceControlPanelState extends State<GitSourceControlPanel> {
       );
     }
     if (roots.length == 1) {
-      return _GitRepoBody(cubit: _store.cubitFor(roots.first));
+      return _GitRepoBody(
+        cubit: _cubitFor(roots.first),
+        workContext: _workContext,
+      );
     }
     final active = _activeRoot;
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
         _RepoSelector(
-          store: _store,
+          cubitFor: _cubitFor,
           roots: roots,
           selected: active,
           onSelect: (root) {
             setState(() => _selectedRoot = root);
-            _store.cubitFor(root).refresh();
+            _cubitFor(root).refresh();
           },
         ),
         Expanded(
           child: _GitRepoBody(
             key: ValueKey('git-repo:$active'),
-            cubit: _store.cubitFor(active),
+            cubit: _cubitFor(active),
+            workContext: _workContext,
           ),
         ),
       ],
@@ -116,13 +133,13 @@ class _GitSourceControlPanelState extends State<GitSourceControlPanel> {
 /// Each chip's change badge is driven live by that root's store [GitCubit].
 class _RepoSelector extends StatelessWidget {
   const _RepoSelector({
-    required this.store,
+    required this.cubitFor,
     required this.roots,
     required this.selected,
     required this.onSelect,
   });
 
-  final GitRepoStore store;
+  final GitCubit Function(String root) cubitFor;
   final List<String> roots;
   final String selected;
   final ValueChanged<String> onSelect;
@@ -137,7 +154,7 @@ class _RepoSelector extends StatelessWidget {
         children: [
           for (final root in roots)
             _RepoChip(
-              cubit: store.cubitFor(root),
+              cubit: cubitFor(root),
               root: root,
               selected: root == selected,
               onTap: () => onSelect(root),
@@ -233,9 +250,14 @@ class _DirtyBadge extends StatelessWidget {
 /// lives in [GitRepoStore] and outlives this widget, so the body never owns,
 /// refreshes, or disposes it — switching tabs just rebinds to warm state.
 class _GitRepoBody extends StatefulWidget {
-  const _GitRepoBody({required this.cubit, super.key});
+  const _GitRepoBody({
+    required this.cubit,
+    required this.workContext,
+    super.key,
+  });
 
   final GitCubit cubit;
+  final RuntimeContext workContext;
 
   @override
   State<_GitRepoBody> createState() => _GitRepoBodyState();
@@ -277,7 +299,9 @@ class _GitRepoBodyState extends State<_GitRepoBody> {
         fullContext: fullContext,
       ),
       // The dialog closes itself (via its own context); we just open the file.
-      onOpenSource: () => unawaited(editor.openFile(absolutePath)),
+      onOpenSource: () => unawaited(
+        editor.openFile(absolutePath, fs: widget.workContext.filesystem),
+      ),
     );
   }
 

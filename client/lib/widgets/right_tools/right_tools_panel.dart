@@ -15,7 +15,9 @@ import '../../theme/app_text_styles.dart';
 import '../../models/layout_preferences.dart';
 import '../../models/member_instance.dart';
 import '../../models/team_config.dart';
+import '../../models/workspace.dart';
 import '../../models/workspace_topology.dart';
+import '../../models/workspace_launch_context.dart';
 import '../../pages/home_workspace/workspace/member_detail_dialog.dart';
 import '../../pages/home_workspace/workspace/member_folder_assignment_dialog.dart';
 import '../../services/cli/member_config/member_config_inspector.dart';
@@ -23,7 +25,8 @@ import '../../pages/home_workspace/workspace/member_config_directory_opener.dart
 import '../../services/file_tree/workspace_file_tree_store.dart';
 import '../../services/git/git_repo_store.dart';
 import '../../services/io/workspace_fs_watcher.dart';
-import '../../services/storage/app_storage.dart';
+import '../../services/workspace/workspace_tools_context.dart';
+import '../../services/workspace/workspace_tools_scope.dart';
 import '../../utils/app_keys.dart';
 import '../../utils/debounce/debounce.dart';
 import '../../utils/team_member_naming.dart';
@@ -92,8 +95,10 @@ class _RightToolsPanelState extends State<RightToolsPanel> {
   /// (SSH/Android), where disk events never arrive.
   Set<String> _prevWorkingSessionIds = const {};
 
-  FileTreeCubit get _fileTreeCubit =>
-      context.read<WorkspaceFileTreeStore>().cubitFor(widget.workspaceId);
+  WorkspaceToolsScopeState? _scope;
+  String? _lastTargetId;
+
+  FileTreeCubit? _fileTreeCubit;
   StreamSubscription<Set<String>>? _diskWatchSub;
   Timer? _diskPollTimer;
   static const _diskPollInterval = Duration(seconds: 15);
@@ -101,47 +106,69 @@ class _RightToolsPanelState extends State<RightToolsPanel> {
   @override
   void initState() {
     super.initState();
-    _rebuildWatcher();
-    unawaited(_fileTreeCubit.setRoots(_workspaceRoots));
     _setupDiskRefresh();
   }
 
-  /// Workspace folders for the file tree / source control panels: the primary
-  /// [RightToolsPanel.cwd] first, then any [RightToolsPanel.additionalPaths]
-  /// (deduped, empties dropped).
-  List<String> get _workspaceRoots {
-    final ctx = AppStorage.fs.pathContext;
-    final roots = <String>[];
-    for (final path in [widget.cwd, ...widget.additionalPaths]) {
-      if (path.isEmpty) continue;
-      final normalized = ctx.normalize(path);
-      if (!roots.contains(normalized)) roots.add(normalized);
-    }
-    return roots;
+  WorkspaceToolsScopeState _requireScope(BuildContext context) {
+    final scope = WorkspaceToolsScope.of(context);
+    _applyScope(scope);
+    return scope;
   }
 
-  void _rebuildWatcher() {
+  void _applyScope(WorkspaceToolsScopeState scope) {
+    final tools = scope.tools;
+    if (tools == null) return;
+    final prevTarget = _lastTargetId;
+    final targetChanged = tools.targetId != prevTarget;
+    if (targetChanged) {
+      if (prevTarget != null) {
+        context.read<WorkspaceFileTreeStore>().removeWorkspaceTarget(
+          widget.workspaceId,
+          prevTarget,
+        );
+      }
+      _lastTargetId = tools.targetId;
+      _fileTreeCubit = context.read<WorkspaceFileTreeStore>().cubitFor(
+        widget.workspaceId,
+        targetId: tools.targetId,
+        fs: tools.context.filesystem,
+      );
+      _rebuildWatcher(tools);
+      unawaited(_fileTreeCubit!.setRoots(scope.roots));
+      _setupDiskRefresh();
+    } else if (_fileTreeCubit != null &&
+        !listEquals(_scope?.roots, scope.roots)) {
+      unawaited(_fileTreeCubit!.setRoots(scope.roots));
+    }
+    _scope = scope;
+  }
+
+  void _rebuildWatcher(WorkspaceToolsContext tools) {
     _fsWatcher?.dispose();
     _fsWatcher = widget.cwd.isEmpty
         ? null
-        : WorkspaceFsWatcher(fs: AppStorage.fs, root: widget.cwd);
+        : WorkspaceFsWatcher(
+            fs: tools.context.filesystem,
+            root: widget.cwd,
+          );
   }
 
   @override
   void didUpdateWidget(covariant RightToolsPanel oldWidget) {
     super.didUpdateWidget(oldWidget);
-    if (widget.cwd != oldWidget.cwd) {
-      _rebuildWatcher();
-    }
     final rootsChanged =
         widget.cwd != oldWidget.cwd ||
         !listEquals(widget.additionalPaths, oldWidget.additionalPaths);
-    if (rootsChanged ||
-        widget.workspaceId != oldWidget.workspaceId) {
-      unawaited(_fileTreeCubit.setRoots(_workspaceRoots));
+    if (rootsChanged) {
+      final scope = _scope;
+      final tools = scope?.tools;
+      if (tools != null && _fileTreeCubit != null) {
+        _rebuildWatcher(tools);
+        unawaited(_fileTreeCubit!.setRoots(scope!.roots));
+      }
     }
-    if (widget.cwd != oldWidget.cwd ||
-        rootsChanged ||
+    if (rootsChanged ||
+        widget.workspaceId != oldWidget.workspaceId ||
         widget.preferences.gitVisible != oldWidget.preferences.gitVisible ||
         widget.preferences.fileTreeVisible !=
             oldWidget.preferences.fileTreeVisible) {
@@ -209,30 +236,41 @@ class _RightToolsPanelState extends State<RightToolsPanel> {
 
   /// Empty [changedDirs] = unknown scope (e.g. turn-end poke) → full refresh.
   void _refreshFileTree(Set<String> changedDirs) {
+    final cubit = _fileTreeCubit;
+    if (cubit == null) return;
     if (changedDirs.isEmpty) {
-      unawaited(_fileTreeCubit.refresh());
+      unawaited(cubit.refresh());
     } else {
-      unawaited(_fileTreeCubit.refreshPaths(changedDirs));
+      unawaited(cubit.refreshPaths(changedDirs));
     }
   }
 
   void _warmFileTree() {
-    final state = _fileTreeCubit.state;
+    final cubit = _fileTreeCubit;
+    if (cubit == null) return;
+    final state = cubit.state;
     // Cold start: mount roots first; refresh only when root listings are missing.
     if (state.rootPaths.isEmpty) {
-      unawaited(_fileTreeCubit.setRoots(_workspaceRoots));
+      final roots = _scope?.roots ?? const [];
+      unawaited(cubit.setRoots(roots));
       return;
     }
     final cold = state.rootPaths.any(
       (root) => state.dirCache[root] == null,
     );
     if (cold) {
-      unawaited(_fileTreeCubit.refresh());
+      unawaited(cubit.refresh());
     }
   }
 
-  void _warmGit() =>
-      context.read<GitRepoStore>().refreshAll(_workspaceRoots);
+  void _warmGit() {
+    final tools = _scope?.tools?.context;
+    if (tools == null) return;
+    context.read<GitRepoStore>().refreshAll(
+      _scope!.roots,
+      workContext: tools,
+    );
+  }
 
   /// Pokes the watcher when any session leaves the working set (a turn ended,
   /// so the agent has likely just written files). Cheap no-op on watch-capable
@@ -254,6 +292,12 @@ class _RightToolsPanelState extends State<RightToolsPanel> {
 
   @override
   Widget build(BuildContext context) {
+    final scope = _requireScope(context);
+    final tools = scope.tools;
+    if (!scope.isReady || tools == null) {
+      return const SizedBox.shrink();
+    }
+
     final teamCubit = context.watch<LaunchProfileCubit>();
     final chatCubit = context.watch<ChatCubit>();
     _pokeOnTurnEnd(chatCubit.state.workingSessionIds);
@@ -309,8 +353,9 @@ class _RightToolsPanelState extends State<RightToolsPanel> {
         : chatCubit.state.sessions
             .where((s) => s.sessionId == activeSessionId)
             .firstOrNull;
-    final showAssignFolders = activeSession != null &&
-        workspaceTopologyRequiresMemberAssignment(activeSession.folders);
+    final showAssignFolders = workspaceTopologyRequiresMemberAssignment(
+      scope.effectiveFolders,
+    );
     if (!widget.isPersonalWorkspace &&
         widget.preferences.membersVisible &&
         team != null) {
@@ -393,9 +438,19 @@ class _RightToolsPanelState extends State<RightToolsPanel> {
               final lifecycle = chatCubit.lifecycle;
               final session = activeSession;
               unawaited(() async {
-                final workContext = session != null
-                    ? await lifecycle.memberWorkContext(session, member.id)
-                    : null;
+                if (session == null) return;
+                final launchCtx = WorkspaceLaunchContext(
+                  session: session,
+                  workspace: Workspace(
+                    workspaceId: workspaceId,
+                    folders: scope.effectiveFolders,
+                    createdAt: 0,
+                  ),
+                );
+                final workContext = await lifecycle.memberWorkContext(
+                  launchCtx,
+                  member.id,
+                );
                 final detail = await MemberConfigInspector().inspect(
                   workspaceId: workspaceId,
                   sessionId: sessionId,
@@ -423,7 +478,8 @@ class _RightToolsPanelState extends State<RightToolsPanel> {
           label: context.l10n.fileTree,
           child: FileTreePanel(
             key: const ValueKey('workspace-file-tree'),
-            cubit: _fileTreeCubit,
+            cubit: _fileTreeCubit!,
+            workContext: tools.context,
           ),
         ),
       );
@@ -433,7 +489,10 @@ class _RightToolsPanelState extends State<RightToolsPanel> {
         ToolView(
           icon: Icons.account_tree_outlined,
           label: context.l10n.sourceControl,
-          child: GitSourceControlPanel(roots: _workspaceRoots),
+          child: GitSourceControlPanel(
+            roots: scope.roots,
+            workContext: tools.context,
+          ),
         ),
       );
     }

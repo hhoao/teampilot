@@ -98,6 +98,7 @@ class _WorkspaceSplitPaneState extends State<WorkspaceSplitPane> {
               return ChatPage(
                 cwd: cwd,
                 additionalPaths: widget.workspace.extraFolderPaths,
+                workspaceFolders: widget.workspace.folders,
                 workspaceId: widget.workspace.workspaceId,
                 tabScopeId: widget.tabScopeId,
                 isPersonalWorkspace: widget.isPersonalWorkspace,

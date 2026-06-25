@@ -5,10 +5,7 @@ import 'package:teampilot/services/git/git_service.dart';
 
 /// Records calls and returns scripted status; never spawns a process.
 class _FakeGitService extends GitService {
-  _FakeGitService({required this.statusToReturn})
-    : super(runner: (exe, args, {stdoutEncoding, stderrEncoding}) async {
-        throw StateError('runner should not be used in fake');
-      });
+  _FakeGitService({required this.statusToReturn}) : super();
 
   GitRepoStatus statusToReturn;
   final List<String> calls = [];

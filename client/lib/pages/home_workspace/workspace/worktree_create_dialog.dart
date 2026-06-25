@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 
 import '../../../l10n/l10n_extensions.dart';
 import '../../../services/git/git_service.dart';
+import '../../../services/storage/runtime_context.dart';
 import '../../../widgets/dropdown/app_dropdown_decoration.dart';
 import '../../../widgets/dropdown/app_dropdown_field.dart';
 
@@ -41,7 +42,7 @@ Future<WorktreeCreateResult?> showWorktreeCreateDialog(
   required String repoName,
   required String repoPath,
   required WorktreeLayoutPathResolver layout,
-  BranchListLoader? branchLoader,
+  required BranchListLoader branchLoader,
   bool showStartConversationOption = true,
 }) {
   return showDialog<WorktreeCreateResult>(
@@ -50,15 +51,18 @@ Future<WorktreeCreateResult?> showWorktreeCreateDialog(
       repoName: repoName,
       repoPath: repoPath,
       layout: layout,
-      branchLoader: branchLoader ?? _defaultBranchLoader,
+      branchLoader: branchLoader,
       showStartConversationOption: showStartConversationOption,
     ),
   );
 }
 
-Future<List<String>> _defaultBranchLoader(String repoPath) async {
-  final git = GitService.debugOverrideFactory?.call() ?? GitService();
-  return git.branches(repoPath);
+BranchListLoader branchListLoaderFor(RuntimeContext workContext) {
+  return (repoPath) {
+    final git = GitService.debugOverrideFactory?.call() ??
+        GitService.forContext(workContext);
+    return git.branches(repoPath);
+  };
 }
 
 /// Suggest a new worktree branch name from the repo's current/default branch.

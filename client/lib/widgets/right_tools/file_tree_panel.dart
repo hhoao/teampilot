@@ -14,7 +14,6 @@ import '../../cubits/file_tree_cubit.dart';
 import '../../l10n/l10n_extensions.dart';
 import '../../services/file_tree/file_tree_visible_rows.dart';
 import '../../services/io/filesystem.dart';
-import '../../services/storage/app_storage.dart';
 import '../../services/storage/runtime_context.dart';
 import '../../theme/app_icon_sizes.dart';
 import '../../theme/app_text_styles.dart';
@@ -30,9 +29,14 @@ import 'file_tree_header_overflow_menu.dart';
 /// A single workspace folder shows its children directly; multiple folders each
 /// get a collapsible header (VSCode multi-root layout).
 class FileTreePanel extends StatefulWidget {
-  const FileTreePanel({required this.cubit, super.key});
+  const FileTreePanel({
+    required this.cubit,
+    required this.workContext,
+    super.key,
+  });
 
   final FileTreeCubit cubit;
+  final RuntimeContext workContext;
 
   @override
   State<FileTreePanel> createState() => _FileTreePanelState();
@@ -292,6 +296,8 @@ class _FileTreePanelState extends State<FileTreePanel> {
                           horizontalScrollController:
                               _horizontalScrollController,
                           desktopShellActions: _desktopShellActions,
+                          remoteFileManagerActions: _remoteFileManagerActions,
+                          workContext: _workContext,
                         );
                       },
                     ),
@@ -362,10 +368,17 @@ class _FileTreePanelState extends State<FileTreePanel> {
     return actions;
   }
 
+  RuntimeContext get _workContext => widget.workContext;
+
   bool get _desktopShellActions {
     if (kIsWeb) return false;
-    final mode = AppStorage.context.mode;
+    final mode = _workContext.mode;
     return mode == StorageBackendMode.native || mode == StorageBackendMode.wsl;
+  }
+
+  bool get _remoteFileManagerActions {
+    if (kIsWeb) return false;
+    return _workContext.mode == StorageBackendMode.ssh;
   }
 }
 
@@ -377,6 +390,8 @@ class _FileTreeList extends StatefulWidget {
     required this.listScrollController,
     required this.horizontalScrollController,
     required this.desktopShellActions,
+    required this.remoteFileManagerActions,
+    required this.workContext,
   });
 
   final FileTreeState treeState;
@@ -385,6 +400,8 @@ class _FileTreeList extends StatefulWidget {
   final ScrollController listScrollController;
   final ScrollController horizontalScrollController;
   final bool desktopShellActions;
+  final bool remoteFileManagerActions;
+  final RuntimeContext workContext;
 
   @override
   State<_FileTreeList> createState() => _FileTreeListState();
@@ -504,6 +521,8 @@ class _FileTreeListState extends State<_FileTreeList> {
                         cubit: widget.cubit,
                         textColor: widget.textColor,
                         desktopShellActions: widget.desktopShellActions,
+                        remoteFileManagerActions: widget.remoteFileManagerActions,
+                        workContext: widget.workContext,
                         hoverEnabled: _hoverEnabled,
                         isRoot: row.isRoot,
                         rootMissing: row.rootMissing,
