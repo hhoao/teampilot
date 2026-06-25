@@ -47,6 +47,27 @@ void main() {
     expect(run.calls.first, 'command -v claude'); // direct tried first
   });
 
+  test('falls back to bash -lc when -ilc probes miss', () async {
+    final run = _FakeRun({
+      "bash -lc 'command -v claude'":
+          const SshCommandResult(exitCode: 0, stdout: '/opt/claude\n'),
+    });
+    final path = await locator.resolve(cli: CliTool.claude, run: run.call);
+    expect(path, '/opt/claude');
+  });
+
+  test('falls back to ~/.local/bin when PATH probes miss', () async {
+    final run = _FakeRun({
+      "sh -c 'test -x \"\$HOME/.local/bin/claude\" && printf \"%s\\n\" \"\$HOME/.local/bin/claude\"'":
+          const SshCommandResult(
+            exitCode: 0,
+            stdout: '/home/testuser/.local/bin/claude\n',
+          ),
+    });
+    final path = await locator.resolve(cli: CliTool.claude, run: run.call);
+    expect(path, '/home/testuser/.local/bin/claude');
+  });
+
   test('manual override wins without probing', () async {
     final run = _FakeRun({});
     final path = await locator.resolve(

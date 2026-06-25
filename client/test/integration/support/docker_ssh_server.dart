@@ -17,8 +17,15 @@ class DockerSshServer {
   });
 
   static const imageTag = 'teampilot-it-ssh:latest';
+
+  /// Prebuilt Node + Claude for mixed-team IT (skips per-run npm bootstrap).
+  static const mixedImageTag = 'teampilot-it-ssh-mixed:latest';
+
   static const defaultUsername = 'testuser';
   static const defaultPassword = 'teampilot-test';
+
+  /// Hostname containers use to reach services bound on the test runner host.
+  static const hostGatewayHostname = 'host.docker.internal';
 
   final String containerName;
   final String host;
@@ -42,13 +49,17 @@ class DockerSshServer {
   static String dockerContextDir(String clientRoot) =>
       p.join(clientRoot, 'test', 'integration', 'docker');
 
-  static Future<DockerSshServer> start({String clientRoot = '.'}) async {
+  static Future<DockerSshServer> start({
+    String clientRoot = '.',
+    String dockerfileName = 'Dockerfile',
+    String imageTag = DockerSshServer.imageTag,
+  }) async {
     if (!await isDockerAvailable()) {
       throw StateError('Docker is not available');
     }
 
     final contextDir = dockerContextDir(clientRoot);
-    final dockerfile = File(p.join(contextDir, 'Dockerfile'));
+    final dockerfile = File(p.join(contextDir, dockerfileName));
     if (!dockerfile.existsSync()) {
       throw StateError('Missing Dockerfile at ${dockerfile.path}');
     }
@@ -57,6 +68,8 @@ class DockerSshServer {
       'build',
       '-t',
       imageTag,
+      '-f',
+      dockerfile.path,
       contextDir,
     ]);
     if (build.exitCode != 0) {
@@ -73,6 +86,7 @@ class DockerSshServer {
       '-d',
       '--name',
       name,
+      '--add-host=host.docker.internal:host-gateway',
       '-p',
       '127.0.0.1::22',
       imageTag,
@@ -95,6 +109,14 @@ class DockerSshServer {
     await server.waitUntilReady();
     return server;
   }
+
+  /// Mixed-team IT image: SSH + Node + global `claude` under `~/.local/bin`.
+  static Future<DockerSshServer> startMixed({String clientRoot = '.'}) =>
+      start(
+        clientRoot: clientRoot,
+        dockerfileName: 'Dockerfile.mixed',
+        imageTag: mixedImageTag,
+      );
 
   static Future<int> _readMappedPort(String containerName) async {
     final port = await Process.run('docker', ['port', containerName, '22']);

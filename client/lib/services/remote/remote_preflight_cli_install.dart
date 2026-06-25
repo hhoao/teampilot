@@ -36,6 +36,13 @@ RemoteInstallAction buildRemotePreflightCliInstall({
     if (!result.success) {
       throw StateError(result.message);
     }
+    final path = result.executablePath?.trim() ?? '';
+    if (path.isEmpty) {
+      throw StateError(
+        '${cli.value} install finished but did not report an executable path.',
+      );
+    }
+    return path;
   };
 }
 

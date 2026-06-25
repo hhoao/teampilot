@@ -132,13 +132,45 @@ abstract class NpmInstallerCapability implements InstallerCapability {
     host.report(CliInstallPhase.locatingExecutable);
     final resolved = await host.runSsh(
       profile,
-      CliInstallerCommand.commandV(executableName),
+      CliInstallerCommand.unixShellScript(
+        _remotePostInstallLocateScript(executableName),
+      ),
     );
     final path = firstInstallerOutputLine(resolved);
+    if (path == null) {
+      return CliInstallResult(
+        success: false,
+        message:
+            '$displayName install finished but the executable could not be '
+            'located on ${profile.hostIdentifier}.',
+      );
+    }
     return CliInstallResult(
       success: true,
       message: '$displayName installed on ${profile.hostIdentifier}.',
       executablePath: path,
     );
   }
+
+  /// Mirrors [DefaultRemoteCliLocator] probes in one remote shell script.
+  static String _remotePostInstallLocateScript(String executableName) => '''
+if command -v $executableName >/dev/null 2>&1; then
+  command -v $executableName
+  exit 0
+fi
+for s in bash zsh; do
+  for f in -ilc -lc; do
+    p=\$(\$s \$f 'command -v $executableName' 2>/dev/null) || true
+    if [ -n "\$p" ]; then
+      printf '%s\\n' "\$p"
+      exit 0
+    fi
+  done
+done
+if [ -x "\$HOME/.local/bin/$executableName" ]; then
+  printf '%s\\n' "\$HOME/.local/bin/$executableName"
+  exit 0
+fi
+exit 1
+''';
 }

@@ -31,7 +31,10 @@ void main() {
       run: run.call,
       optIn: true,
       supportsInstaller: true,
-      install: ({required run, required onProgress}) async => installed = true,
+      install: ({required run, required onProgress}) async {
+        installed = true;
+        return '';
+      },
     );
     expect(path, '/usr/bin/claude');
     expect(installed, isFalse);
@@ -71,9 +74,9 @@ void main() {
     );
   });
 
-  test('opt-in on + supportsInstaller → runs install, reports progress, re-locates',
+  test('opt-in on + supportsInstaller → runs install and uses reported path',
       () async {
-    final fakeRun = _FakeRun({}); // codex missing initially
+    final fakeRun = _FakeRun({});
     final progress = <String>[];
     final path = await installer.ensure(
       cli: CliTool.codex,
@@ -83,16 +86,14 @@ void main() {
       onProgress: progress.add,
       install: ({required run, required onProgress}) async {
         onProgress('installing codex');
-        // the install makes the binary locatable on the next probe.
-        fakeRun.byCommand['command -v codex'] =
-            const SshCommandResult(exitCode: 0, stdout: '/usr/local/bin/codex\n');
+        return '/usr/local/bin/codex';
       },
     );
     expect(path, '/usr/local/bin/codex');
     expect(progress, contains('installing codex'));
   });
 
-  test('install runs but CLI still not locatable → installFailed', () async {
+  test('install runs but reports no path → installFailed', () async {
     final run = _FakeRun({}); // stays missing even after install
     await expectLater(
       installer.ensure(
@@ -101,7 +102,7 @@ void main() {
         optIn: true,
         supportsInstaller: true,
         install: ({required run, required onProgress}) async {
-          // install "succeeds" but does not make the binary locatable
+          return '';
         },
       ),
       throwsA(isA<RemoteCliUnavailableException>().having(

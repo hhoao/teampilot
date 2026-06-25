@@ -626,6 +626,7 @@ Future<AppShell> buildAppShell({
     cliExecutableResolver: sessionPreferencesCubit.resolveExecutable,
     transportFactory: transportFactory,
     sshProfileResolver: () => sshProfileCubit.state.selectedProfile,
+    sshProfileById: sshProfileById,
     sshDefaultWorkingDirectoryResolver: () =>
         sessionPreferencesCubit.state.preferences.defaultSshWorkingDirectory,
     sshUseLoginShellResolver: () =>
@@ -655,6 +656,7 @@ Future<AppShell> buildAppShell({
       isCredentialOptIn: targetsRepo.isCredentialOptIn,
       isInstallOptIn: targetsRepo.isInstallOptIn,
       cliPathOverride: targetsRepo.cliPathOverride,
+      setCliPathOverride: targetsRepo.setCliPathOverride,
       // on-device: real per-CLI credential export + skills/plugins linking +
       // relay provisioning + install execution compose over the work transport.
       loadLocalCredentials: (_) async => const [],

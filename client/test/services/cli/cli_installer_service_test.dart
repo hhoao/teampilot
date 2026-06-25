@@ -3,6 +3,12 @@ import 'package:teampilot/models/ssh_profile.dart';
 import 'package:teampilot/models/team_config.dart';
 import 'package:teampilot/services/cli/cli_installer_service.dart';
 
+bool _isClaudeNpmInstall(String line) =>
+    line.contains('npm install -g @anthropic-ai/claude-code');
+
+bool _isRemoteClaudeLocate(String line) =>
+    line.startsWith('sh -c') && line.contains('command -v claude');
+
 void main() {
   test('installs Claude Code locally with npm and resolves the executable', () async {
     final commands = <String>[];
@@ -16,7 +22,8 @@ void main() {
             stdout: '/usr/bin/npm\n',
           );
         }
-        if (command.commandLine == '/usr/bin/npm install -g @anthropic-ai/claude-code') {
+        if (_isClaudeNpmInstall(command.commandLine) &&
+            command.commandLine.contains('/usr/bin/npm')) {
           return const CliInstallerCommandResult(exitCode: 0);
         }
         if (command.commandLine == 'which claude') {
@@ -36,11 +43,10 @@ void main() {
 
     expect(result.success, isTrue);
     expect(result.executablePath, '/usr/local/bin/claude');
-    expect(commands, [
-      'which npm',
-      '/usr/bin/npm install -g @anthropic-ai/claude-code',
-      'which claude',
-    ]);
+    expect(commands.length, 3);
+    expect(commands[0], 'which npm');
+    expect(_isClaudeNpmInstall(commands[1]), isTrue);
+    expect(commands[2], 'which claude');
   });
 
   test('reports install progress phases locally', () async {
@@ -56,7 +62,8 @@ void main() {
             stdout: '/usr/bin/npm\n',
           );
         }
-        if (command.commandLine == '/usr/bin/npm install -g @anthropic-ai/claude-code') {
+        if (_isClaudeNpmInstall(command.commandLine) &&
+            command.commandLine.contains('/usr/bin/npm')) {
           return const CliInstallerCommandResult(exitCode: 0);
         }
         if (command.commandLine == 'which claude') {
@@ -76,11 +83,10 @@ void main() {
     );
 
     expect(result.success, isTrue, reason: result.message);
-    expect(commands, [
-      'which npm',
-      '/usr/bin/npm install -g @anthropic-ai/claude-code',
-      'which claude',
-    ]);
+    expect(commands.length, 3);
+    expect(commands[0], 'which npm');
+    expect(_isClaudeNpmInstall(commands[1]), isTrue);
+    expect(commands[2], 'which claude');
     expect(phases, [
       CliInstallPhase.checkingNpm,
       CliInstallPhase.installingCli,
@@ -239,8 +245,8 @@ void main() {
             stdout: '/opt/homebrew/bin/npm\n',
           );
         }
-        if (command.commandLine ==
-            '/opt/homebrew/bin/npm install -g @anthropic-ai/claude-code') {
+        if (_isClaudeNpmInstall(command.commandLine) &&
+            command.commandLine.contains('/opt/homebrew/bin/npm')) {
           return const CliInstallerCommandResult(exitCode: 0);
         }
         if (command.commandLine == 'which claude') {
@@ -260,12 +266,11 @@ void main() {
 
     expect(result.success, isTrue, reason: result.message);
     expect(result.executablePath, '/opt/homebrew/bin/claude');
-    expect(commands, [
-      'which npm',
-      "bash -ilc 'command -v npm'",
-      '/opt/homebrew/bin/npm install -g @anthropic-ai/claude-code',
-      'which claude',
-    ]);
+    expect(commands.length, 4);
+    expect(commands[0], 'which npm');
+    expect(commands[1], "bash -ilc 'command -v npm'");
+    expect(_isClaudeNpmInstall(commands[2]), isTrue);
+    expect(commands[3], 'which claude');
     expect(commands.any((line) => line.contains('nodejs.org')), isFalse);
   });
 
@@ -306,10 +311,11 @@ void main() {
             stdout: '/usr/bin/npm\n',
           );
         }
-        if (command.commandLine == '/usr/bin/npm install -g @anthropic-ai/claude-code') {
+        if (_isClaudeNpmInstall(command.commandLine) &&
+            command.commandLine.contains('/usr/bin/npm')) {
           return const CliInstallerCommandResult(exitCode: 0);
         }
-        if (command.commandLine == 'command -v claude') {
+        if (_isRemoteClaudeLocate(command.commandLine)) {
           return const CliInstallerCommandResult(
             exitCode: 0,
             stdout: '/home/alice/.npm-global/bin/claude\n',
@@ -327,11 +333,10 @@ void main() {
 
     expect(result.success, isTrue);
     expect(result.executablePath, '/home/alice/.npm-global/bin/claude');
-    expect(commands, [
-      'command -v npm',
-      '/usr/bin/npm install -g @anthropic-ai/claude-code',
-      'command -v claude',
-    ]);
+    expect(commands.length, 3);
+    expect(commands[0], 'command -v npm');
+    expect(_isClaudeNpmInstall(commands[1]), isTrue);
+    expect(_isRemoteClaudeLocate(commands[2]), isTrue);
   });
 
   test('bootstraps Node npm on SSH host when npm is missing', () async {
@@ -352,14 +357,13 @@ void main() {
           return const CliInstallerCommandResult(
             exitCode: 0,
             stdout:
-                '/home/alice/.local/share/teampilot/node/v24.15.0/bin/npm\n',
+                '/home/alice/.local/share/com.hhoa.teampilot/toolchain/node/v24.15.0/bin/npm\n',
           );
         }
-        if (command.commandLine.contains('export PATH=') &&
-            command.commandLine.contains('npm install -g @anthropic-ai/claude-code')) {
+        if (_isClaudeNpmInstall(command.commandLine)) {
           return const CliInstallerCommandResult(exitCode: 0);
         }
-        if (command.commandLine == 'command -v claude') {
+        if (_isRemoteClaudeLocate(command.commandLine)) {
           return const CliInstallerCommandResult(
             exitCode: 0,
             stdout: '/home/alice/.local/bin/claude\n',
@@ -401,11 +405,11 @@ void main() {
             stdout: '/opt/homebrew/bin/npm\n',
           );
         }
-        if (command.commandLine ==
-            '/opt/homebrew/bin/npm install -g @anthropic-ai/claude-code') {
+        if (_isClaudeNpmInstall(command.commandLine) &&
+            command.commandLine.contains('/opt/homebrew/bin/npm')) {
           return const CliInstallerCommandResult(exitCode: 0);
         }
-        if (command.commandLine == 'command -v claude') {
+        if (_isRemoteClaudeLocate(command.commandLine)) {
           return const CliInstallerCommandResult(
             exitCode: 0,
             stdout: '/opt/homebrew/bin/claude\n',
@@ -423,12 +427,11 @@ void main() {
 
     expect(result.success, isTrue, reason: result.message);
     expect(result.executablePath, '/opt/homebrew/bin/claude');
-    expect(commands, [
-      'command -v npm',
-      "bash -ilc 'command -v npm'",
-      '/opt/homebrew/bin/npm install -g @anthropic-ai/claude-code',
-      'command -v claude',
-    ]);
+    expect(commands.length, 4);
+    expect(commands[0], 'command -v npm');
+    expect(commands[1], "bash -ilc 'command -v npm'");
+    expect(_isClaudeNpmInstall(commands[2]), isTrue);
+    expect(_isRemoteClaudeLocate(commands[3]), isTrue);
   });
 
   test('requires an SSH profile for SSH install', () async {

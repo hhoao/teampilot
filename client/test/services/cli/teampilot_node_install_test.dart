@@ -14,7 +14,10 @@ void main() {
     final unix = node.localBootstrapCommand(unixRunner);
     expect(unix.commandLine, contains('nodejs.org/dist/'));
     expect(unix.commandLine, contains(TeampilotNodeInstall.version));
-    expect(unix.commandLine, contains(r'$HOME/.local/share/teampilot/node'));
+    expect(
+      unix.commandLine,
+      contains(TeampilotNodeInstall.unixToolchainNodeBase),
+    );
 
     final windowsRunner = HostExecutionEnvironment.resolve(
       isWindowsHost: true,
@@ -57,14 +60,19 @@ void main() {
       package: '@anthropic-ai/claude-code',
     );
     final psCommand = windows.arguments.last;
-    expect(psCommand, contains('teampilot\\node\\${TeampilotNodeInstall.version}'));
+    expect(
+      psCommand,
+      contains(
+        '${TeampilotNodeInstall.windowsToolchainNodeBase}\\${TeampilotNodeInstall.version}',
+      ),
+    );
     expect(psCommand, contains('@anthropic-ai/claude-code'));
   });
 
   test('bootstrapped unix npm path is stable', () {
     expect(
       TeampilotNodeInstall.bootstrappedUnixNpmPath,
-      r'$HOME/.local/share/teampilot/node/v24.15.0/bin/npm',
+      '${TeampilotNodeInstall.unixToolchainNodeBase}/${TeampilotNodeInstall.version}/bin/npm',
     );
   });
 }

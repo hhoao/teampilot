@@ -1,11 +1,15 @@
 import '../../../../models/ssh_profile.dart';
 import '../../../host/host_script_dialect.dart';
 import '../../../host/host_script_runner.dart';
+import '../../../storage/app_storage.dart';
 import '../../cli_tool_locator.dart';
 import '../../installer_types.dart';
 import 'installer_context.dart';
 
 /// Shared TeamPilot-managed Node.js bootstrap under app data (local + SSH).
+///
+/// Unix: `$HOME/.local/share/com.hhoa.teampilot/toolchain/node/<version>/`
+/// Windows: `%LOCALAPPDATA%\com.hhoa.teampilot\toolchain\node\<version>\`
 ///
 /// Attach via [CliInstallContext.node] so any [InstallerCapability] can reuse
 /// the same version, paths, and npm resolution without duplicating scripts.
@@ -16,9 +20,19 @@ final class TeampilotNodeInstall {
 
   static const version = 'v24.15.0';
 
+  static const _appDataDirName = AppPaths.teampilotAppDataDirName;
+
+  /// `$HOME/.local/share/com.hhoa.teampilot/toolchain/node` for shell scripts.
+  static String get unixToolchainNodeBase =>
+      r'$HOME/.local/share/' + _appDataDirName + r'/toolchain/node';
+
   /// Remote Unix npm after bootstrap (`npm install -g` argv0).
-  static const bootstrappedUnixNpmPath =
-      r'$HOME/.local/share/teampilot/node/v24.15.0/bin/npm';
+  static String get bootstrappedUnixNpmPath =>
+      '$unixToolchainNodeBase/$version/bin/npm';
+
+  /// `com.hhoa.teampilot\toolchain\node` under `%LOCALAPPDATA%`.
+  static String get windowsToolchainNodeBase =>
+      '$_appDataDirName\\toolchain\\node';
 
   /// Resolves local npm, bootstrapping Node when missing.
   Future<LocalNpmResolution> resolveLocalNpm(CliInstallerHost host) async {
@@ -56,7 +70,7 @@ final class TeampilotNodeInstall {
     if (bootstrap.exitCode != 0) {
       return RemoteNpmBootstrapFailed(bootstrap);
     }
-    return const RemoteNpmFound(bootstrappedUnixNpmPath);
+    return RemoteNpmFound(bootstrappedUnixNpmPath);
   }
 
   CliInstallerCommand localBootstrapCommand(HostScriptRunner runner) {
@@ -77,9 +91,9 @@ final class TeampilotNodeInstall {
   }) {
     final body = switch (runner.dialect) {
       HostScriptDialect.powershell =>
-        "& (Join-Path \$env:LOCALAPPDATA 'teampilot\\node\\$version\\npm.cmd') install -g $package",
+        "& (Join-Path \$env:LOCALAPPDATA '$windowsToolchainNodeBase\\$version\\npm.cmd') install -g $package",
       HostScriptDialect.bash =>
-        'export PATH="\$HOME/.local/share/teampilot/node/$version/bin:\$HOME/.local/bin:\$PATH"\n'
+        'export PATH="$unixToolchainNodeBase/$version/bin:\$HOME/.local/bin:\$PATH"\n'
         'npm config set prefix "\$HOME/.local"\n'
         'npm install -g $package',
     };
@@ -118,6 +132,7 @@ final class TeampilotNodeInstall {
   }
 
   static String _unixBootstrapScript() {
+    final base = unixToolchainNodeBase;
     return '''
 set -e
 os="\$(uname -s)"
@@ -133,7 +148,7 @@ case "\$arch" in
   *) echo "Unsupported architecture: \$arch" >&2; exit 2 ;;
 esac
 version="$version"
-base="\$HOME/.local/share/teampilot/node"
+base="$base"
 target="\$base/\$version"
 archive="node-\$version-\$platform-\$node_arch.tar.xz"
 url="https://nodejs.org/dist/\$version/\$archive"
@@ -161,24 +176,25 @@ PATH="\$target/bin:\$HOME/.local/bin:\$PATH" npm --version
   }
 
   static String _windowsBootstrapScript() {
-    return r'''
-$ErrorActionPreference = 'Stop'
-$version = 'v24.15.0'
-$arch = if ([System.Runtime.InteropServices.RuntimeInformation]::ProcessArchitecture -eq 'Arm64') { 'arm64' } else { 'x64' }
-$base = Join-Path $env:LOCALAPPDATA 'teampilot\node'
-$target = Join-Path $base $version
-$archive = "node-$version-win-$arch.zip"
-$url = "https://nodejs.org/dist/$version/$archive"
-$tmp = Join-Path ([System.IO.Path]::GetTempPath()) ([System.IO.Path]::GetRandomFileName())
-New-Item -ItemType Directory -Force -Path $base, $tmp | Out-Null
+    final base = windowsToolchainNodeBase;
+    return '''
+\$ErrorActionPreference = 'Stop'
+\$version = '$version'
+\$arch = if ([System.Runtime.InteropServices.RuntimeInformation]::ProcessArchitecture -eq 'Arm64') { 'arm64' } else { 'x64' }
+\$base = Join-Path \$env:LOCALAPPDATA '$base'
+\$target = Join-Path \$base \$version
+\$archive = "node-\$version-win-\$arch.zip"
+\$url = "https://nodejs.org/dist/\$version/\$archive"
+\$tmp = Join-Path ([System.IO.Path]::GetTempPath()) ([System.IO.Path]::GetRandomFileName())
+New-Item -ItemType Directory -Force -Path \$base, \$tmp | Out-Null
 try {
-  Invoke-WebRequest -Uri $url -OutFile (Join-Path $tmp $archive)
-  if (Test-Path $target) { Remove-Item -Recurse -Force $target }
-  Expand-Archive -Path (Join-Path $tmp $archive) -DestinationPath $tmp -Force
-  Move-Item -Path (Join-Path $tmp "node-$version-win-$arch") -Destination $target
-  & (Join-Path $target 'npm.cmd') --version
+  Invoke-WebRequest -Uri \$url -OutFile (Join-Path \$tmp \$archive)
+  if (Test-Path \$target) { Remove-Item -Recurse -Force \$target }
+  Expand-Archive -Path (Join-Path \$tmp \$archive) -DestinationPath \$tmp -Force
+  Move-Item -Path (Join-Path \$tmp "node-\$version-win-\$arch") -Destination \$target
+  & (Join-Path \$target 'npm.cmd') --version
 } finally {
-  Remove-Item -Recurse -Force $tmp -ErrorAction SilentlyContinue
+  Remove-Item -Recurse -Force \$tmp -ErrorAction SilentlyContinue
 }
 ''';
   }

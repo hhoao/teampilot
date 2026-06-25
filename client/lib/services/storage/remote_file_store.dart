@@ -6,7 +6,9 @@ import 'package:path/path.dart' as p;
 
 import '../io/filesystem.dart';
 import '../ssh/ssh_client_factory.dart';
+import '../ssh/ssh_run_result.dart';
 import '../../models/ssh_profile.dart';
+import 'remote_home_resolver.dart';
 
 class RemoteDirEntry {
   const RemoteDirEntry({required this.name, required this.isDirectory});
@@ -24,13 +26,32 @@ class RemoteFileStore {
 
   final SshProfile _profile;
   final SshClientFactory _clientFactory;
+  String? _cachedRemoteHome;
+
+  Future<String> _remoteHome() async {
+    final cached = _cachedRemoteHome;
+    if (cached != null && cached.isNotEmpty) return cached;
+    final home = await RemoteHomeResolver(
+      clientFactory: _clientFactory,
+    ).resolve(_profile);
+    if (home == null || home.isEmpty) {
+      throw StateError(
+        'Failed to resolve remote HOME for ${_profile.hostIdentifier}.',
+      );
+    }
+    _cachedRemoteHome = home;
+    return home;
+  }
 
   Future<SftpClient> _ensureConnected() => _clientFactory.sftpFor(_profile);
 
   Future<String> expandHome(String path) async {
     if (!path.startsWith('~')) return path;
-    if (path == '~' || path == '~/') return '.';
-    return path.substring(2);
+    final home = await _remoteHome();
+    if (path == '~' || path == '~/') return home;
+    final rest = path.startsWith('~/') ? path.substring(2) : path.substring(1);
+    if (rest.isEmpty) return home;
+    return p.posix.join(home, rest);
   }
 
   Future<FsEntityKind> statKind(String path) async {
@@ -112,6 +133,7 @@ class RemoteFileStore {
   Future<void> writeFile(String path, String contents) async {
     final sftp = await _ensureConnected();
     final resolved = await expandHome(path);
+    await _ensureParentDirs(resolved);
     final bytes = Uint8List.fromList(utf8.encode(contents));
     final file = await sftp.open(
       resolved,
@@ -143,6 +165,7 @@ class RemoteFileStore {
   Future<void> writeBytes(String path, Uint8List bytes) async {
     final sftp = await _ensureConnected();
     final resolved = await expandHome(path);
+    await _ensureParentDirs(resolved);
     final file = await sftp.open(
       resolved,
       mode:
@@ -154,16 +177,44 @@ class RemoteFileStore {
     await file.close();
   }
 
-  Future<void> ensureDirectory(String absolutePosixPath) async {
+  Future<void> ensureDirectory(String path) async {
+    final resolved = await expandHome(path);
+    if (resolved.isEmpty || resolved == '.' || resolved == '/') return;
+    if ((await statKind(resolved)) == FsEntityKind.directory) return;
+
     final client = await _clientFactory.clientFor(_profile);
     final result = await client.runWithResult(
-      'mkdir -p -- ${shellSingleQuote(absolutePosixPath)}',
+      'mkdir -p -- ${shellSingleQuote(resolved)}',
       stderr: false,
     );
-    if (result.exitCode != 0) {
-      throw StateError(
-        'mkdir failed (${result.exitCode}): ${utf8.decode(result.stderr, allowMalformed: true)}',
-      );
+    if (sshRunSucceeded(result)) return;
+
+    await _ensureDirectorySftp(resolved);
+    if ((await statKind(resolved)) == FsEntityKind.directory) return;
+
+    throw StateError(
+      'mkdir failed (${sshRunFailureLabel(result)}): '
+      '${sshRunOutputDetail(result)}',
+    );
+  }
+
+  Future<void> _ensureDirectorySftp(String absolutePosixPath) async {
+    final sftp = await _ensureConnected();
+    final posix = p.posix;
+    final isAbsolute = posix.isAbsolute(absolutePosixPath);
+    final parts = absolutePosixPath
+        .split('/')
+        .where((segment) => segment.isNotEmpty);
+    var current = isAbsolute ? '/' : '';
+    for (final part in parts) {
+      current = current.isEmpty
+          ? part
+          : (current == '/' ? '/$part' : posix.join(current, part));
+      try {
+        await sftp.mkdir(current);
+      } on SftpStatusError {
+        // Directory may already exist.
+      }
     }
   }
 
@@ -189,9 +240,9 @@ class RemoteFileStore {
       'ln -sf -- ${shellSingleQuote(target)} ${shellSingleQuote(linkPath)}',
       stderr: false,
     );
-    if (result.exitCode != 0) {
+    if (sshRunFailed(result)) {
       throw StateError(
-        'ln failed (${result.exitCode}): ${utf8.decode(result.stderr, allowMalformed: true)}',
+        'ln failed (${sshRunFailureLabel(result)}): ${sshRunOutputDetail(result)}',
       );
     }
   }
@@ -238,9 +289,9 @@ class RemoteFileStore {
       'mv -- ${shellSingleQuote(from)} ${shellSingleQuote(to)}',
       stderr: false,
     );
-    if (result.exitCode != 0) {
+    if (sshRunFailed(result)) {
       throw StateError(
-        'mv failed (${result.exitCode}): ${utf8.decode(result.stderr, allowMalformed: true)}',
+        'mv failed (${sshRunFailureLabel(result)}): ${sshRunOutputDetail(result)}',
       );
     }
   }
@@ -261,9 +312,9 @@ class RemoteFileStore {
       'cp -R -- ${shellSingleQuote('$source/.')} ${shellSingleQuote(destination)}',
       stderr: false,
     );
-    if (result.exitCode != 0) {
+    if (sshRunFailed(result)) {
       throw StateError(
-        'cp failed (${result.exitCode}): ${utf8.decode(result.stderr, allowMalformed: true)}',
+        'cp failed (${sshRunFailureLabel(result)}): ${sshRunOutputDetail(result)}',
       );
     }
   }
@@ -304,9 +355,9 @@ class RemoteFileStore {
       'cp -- ${shellSingleQuote(source)} ${shellSingleQuote(destination)}',
       stderr: false,
     );
-    if (result.exitCode != 0) {
+    if (sshRunFailed(result)) {
       throw StateError(
-        'cp failed (${result.exitCode}): ${utf8.decode(result.stderr, allowMalformed: true)}',
+        'cp failed (${sshRunFailureLabel(result)}): ${sshRunOutputDetail(result)}',
       );
     }
   }
@@ -317,7 +368,7 @@ class RemoteFileStore {
       'find ${shellSingleQuote(path)} -mindepth 1 -printf "%P\\t%y\\n"',
       stderr: false,
     );
-    if (result.exitCode != 0) return const [];
+    if (sshRunFailed(result)) return const [];
     final out = utf8.decode(result.stdout, allowMalformed: true);
     final entries = <RemoteDirEntry>[];
     for (final line in out.split('\n')) {
@@ -339,25 +390,35 @@ class RemoteFileStore {
         ? 'mktemp -d -p ${shellSingleQuote(parent)} $template'
         : 'mktemp -d $template';
     final result = await client.runWithResult(cmd, stderr: false);
-    if (result.exitCode != 0) {
+    if (sshRunFailed(result)) {
       throw StateError(
-        'mktemp failed (${result.exitCode}): ${utf8.decode(result.stderr, allowMalformed: true)}',
+        'mktemp failed (${sshRunFailureLabel(result)}): '
+        '${sshRunOutputDetail(result)}',
       );
     }
     return utf8.decode(result.stdout, allowMalformed: true).trim();
   }
 
   Future<void> appendToFile(String path, String content) async {
+    final resolved = await expandHome(path);
+    await _ensureParentDirs(resolved);
     final encoded = base64.encode(utf8.encode(content));
     final client = await _clientFactory.clientFor(_profile);
     final result = await client.runWithResult(
       'printf \'%s\' ${shellSingleQuote(encoded)} | base64 -d >> ${shellSingleQuote(path)}',
       stderr: false,
     );
-    if (result.exitCode != 0) {
+    if (sshRunFailed(result)) {
       throw StateError(
-        'append failed (${result.exitCode}): ${utf8.decode(result.stderr, allowMalformed: true)}',
+        'append failed (${sshRunFailureLabel(result)}): '
+        '${sshRunOutputDetail(result)}',
       );
     }
+  }
+
+  Future<void> _ensureParentDirs(String resolvedPath) async {
+    final parent = p.posix.dirname(resolvedPath);
+    if (parent.isEmpty || parent == '.' || parent == '/') return;
+    await ensureDirectory(parent);
   }
 }

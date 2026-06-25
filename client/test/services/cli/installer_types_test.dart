@@ -20,13 +20,15 @@ void main() {
   });
 
   group('CliInstallerCommand.npmGlobalInstall', () {
-    test('uses direct argv for absolute npm path', () {
+    test('wraps absolute npm path in shell with ~/.local prefix', () {
       final command = CliInstallerCommand.npmGlobalInstall(
         npmCommand: '/usr/bin/npm',
         package: 'some-package',
       );
-      expect(command.executable, '/usr/bin/npm');
-      expect(command.arguments, ['install', '-g', 'some-package']);
+      expect(command.executable, 'sh');
+      final script = command.arguments.last;
+      expect(script, contains('npm config set prefix'));
+      expect(script, contains('/usr/bin/npm install -g some-package'));
     });
 
     test('wraps bootstrapped npm in shell with PATH for node shebang', () {

@@ -1,0 +1,49 @@
+# SSH host for mixed-team integration tests — Node + Claude Code preinstalled
+# so the test exercises bus/SSH launch, not npm bootstrap on every run.
+# Bare image (install path) stays in Dockerfile for remote_cli_install_docker_test.
+FROM debian:bookworm-slim
+
+RUN apt-get update \
+ && DEBIAN_FRONTEND=noninteractive apt-get install -y --no-install-recommends \
+      openssh-server \
+      curl \
+      wget \
+      ca-certificates \
+      xz-utils \
+      socat \
+ && rm -rf /var/lib/apt/lists/*
+
+RUN mkdir -p /run/sshd \
+ && ssh-keygen -A \
+ && useradd -m -s /bin/bash testuser \
+ && echo 'testuser:teampilot-test' | chpasswd \
+ && sed -i 's/#PasswordAuthentication.*/PasswordAuthentication yes/' /etc/ssh/sshd_config \
+ && sed -i 's/#PermitEmptyPasswords.*/PermitEmptyPasswords no/' /etc/ssh/sshd_config
+
+# Match TeampilotNodeInstall.version — same layout preflight expects on the remote host.
+USER testuser
+WORKDIR /home/testuser
+ENV HOME=/home/testuser
+RUN set -eux; \
+  version=v24.15.0; \
+  platform=linux; \
+  node_arch=x64; \
+  base="$HOME/.local/share/com.hhoa.teampilot/toolchain/node"; \
+  target="$base/$version"; \
+  archive="node-$version-$platform-$node_arch.tar.xz"; \
+  url="https://nodejs.org/dist/$version/$archive"; \
+  mkdir -p "$base" "$HOME/.local/bin"; \
+  tmp="$(mktemp -d)"; \
+  curl -fsSL "$url" -o "$tmp/$archive"; \
+  tar -xJf "$tmp/$archive" -C "$tmp"; \
+  mv "$tmp/node-$version-$platform-$node_arch" "$target"; \
+  ln -sf "$target/bin/node" "$HOME/.local/bin/node"; \
+  ln -sf "$target/bin/npm" "$HOME/.local/bin/npm"; \
+  export PATH="$target/bin:$HOME/.local/bin:$PATH"; \
+  npm config set prefix "$HOME/.local"; \
+  npm install -g @anthropic-ai/claude-code; \
+  rm -rf "$tmp"
+
+USER root
+EXPOSE 22
+CMD ["/usr/sbin/sshd", "-D", "-e"]

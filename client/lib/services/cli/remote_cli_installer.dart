@@ -2,10 +2,9 @@ import '../../models/team_config.dart';
 import 'remote_cli_locator.dart';
 
 /// Performs the actual install of [cli] on the work machine over its transport,
-/// reporting progress. Injected so the orchestration is unit-testable without
-/// real SSH (production binds it to `InstallerCapability.install` over a
-/// target-bound `HostScriptRunner`).
-typedef RemoteInstallAction = Future<void> Function({
+/// reporting progress. Returns the absolute remote executable path the install
+/// step resolved (production: [CliInstallResult.executablePath]).
+typedef RemoteInstallAction = Future<String> Function({
   required SshCommandRunner run,
   required void Function(String message) onProgress,
 });
@@ -26,14 +25,14 @@ class RemoteCliUnavailableException implements Exception {
           '${cli.value} not found and has no installer; set a manual CLI path '
               'for this target.',
         RemoteCliUnavailableReason.installFailed =>
-          '${cli.value} install completed but the CLI still could not be located '
+          '${cli.value} install finished but did not report an executable path '
               'on the remote host.',
       };
 }
 
 /// Ensures [cli] is present on the work machine (P3c §3.2): locate → (opt-in)
-/// install → re-locate. Returns the absolute remote path or throws a clear
-/// [RemoteCliUnavailableException].
+/// install → use the path the install step reported. Returns the absolute remote
+/// path or throws a clear [RemoteCliUnavailableException].
 class RemoteCliInstaller {
   RemoteCliInstaller({RemoteCliLocator? locator})
       : _locator = locator ?? RemoteCliLocator();
@@ -69,10 +68,9 @@ class RemoteCliInstaller {
       );
     }
 
-    await install(run: run, onProgress: onProgress ?? (_) {});
-
-    final located = await _locator.resolve(cli: cli, run: run);
-    if (located != null) return located;
+    final installedPath =
+        (await install(run: run, onProgress: onProgress ?? (_) {})).trim();
+    if (installedPath.isNotEmpty) return installedPath;
     throw RemoteCliUnavailableException(
       cli,
       RemoteCliUnavailableReason.installFailed,

@@ -24,6 +24,7 @@ TerminalSession defaultTerminalSessionFactory({
 
 typedef PostFrameScheduler = void Function(VoidCallback callback);
 typedef SshActiveProfileResolver = SshProfile? Function();
+typedef SshProfileByIdResolver = SshProfile? Function(String profileId);
 typedef CliExecutableResolver = String Function(CliTool cli);
 
 class ChatState extends Equatable {

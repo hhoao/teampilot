@@ -9,6 +9,7 @@ RUN apt-get update \
       wget \
       ca-certificates \
       xz-utils \
+      socat \
  && rm -rf /var/lib/apt/lists/*
 
 RUN mkdir -p /run/sshd \

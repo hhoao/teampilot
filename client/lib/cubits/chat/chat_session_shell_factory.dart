@@ -1,5 +1,7 @@
 import '../../models/launch_target.dart';
 import '../../models/runtime_target.dart' as rt;
+import '../../models/runtime_target.dart' show RuntimeKind, sshProfileIdOfId;
+import '../../models/ssh_profile.dart';
 import '../../models/team_config.dart';
 import '../../services/terminal/terminal_session.dart';
 import '../../services/terminal/terminal_transport_factory.dart';
@@ -16,6 +18,7 @@ class ChatSessionShellFactory {
         defaultTerminalSessionFactory,
     TerminalTransportFactory? transportFactory,
     SshActiveProfileResolver? sshProfileResolver,
+    SshProfileByIdResolver? sshProfileById,
     String Function()? sshDefaultWorkingDirectoryResolver,
     bool Function()? sshUseLoginShellResolver,
     rt.RuntimeTarget Function()? defaultTargetResolver,
@@ -25,6 +28,7 @@ class ChatSessionShellFactory {
        _terminalSessionFactory = terminalSessionFactory,
        _transportFactory = transportFactory,
        _sshProfileResolver = sshProfileResolver,
+       _sshProfileById = sshProfileById,
        _sshDefaultWorkingDirectoryResolver = sshDefaultWorkingDirectoryResolver,
        _sshUseLoginShellResolver = sshUseLoginShellResolver,
        _defaultTargetResolver = defaultTargetResolver,
@@ -35,6 +39,7 @@ class ChatSessionShellFactory {
   final TerminalSessionFactory _terminalSessionFactory;
   final TerminalTransportFactory? _transportFactory;
   final SshActiveProfileResolver? _sshProfileResolver;
+  final SshProfileByIdResolver? _sshProfileById;
   final String Function()? _sshDefaultWorkingDirectoryResolver;
   final bool Function()? _sshUseLoginShellResolver;
   final rt.RuntimeTarget Function()? _defaultTargetResolver;
@@ -43,11 +48,19 @@ class ChatSessionShellFactory {
   rt.RuntimeTarget get _target =>
       _defaultTargetResolver?.call() ?? rt.RuntimeTarget.local();
 
-  bool get _useSsh =>
-      _target.kind == rt.RuntimeKind.ssh &&
-      _transportFactory != null &&
-      _sshProfileResolver != null &&
-      _sshProfileResolver() != null;
+  bool _useSshFor(rt.RuntimeTarget target) =>
+      target.kind == RuntimeKind.ssh && _transportFactory != null;
+
+  rt.RuntimeTarget _effectiveTarget(rt.RuntimeTarget? workTarget) =>
+      workTarget ?? _target;
+
+  SshProfile? _profileFor(rt.RuntimeTarget target) {
+    final id = target.sshProfileId ?? sshProfileIdOfId(target.id);
+    if (id != null && id.isNotEmpty) {
+      return _sshProfileById?.call(id) ?? _sshProfileResolver?.call();
+    }
+    return _sshProfileResolver?.call();
+  }
 
   int get _scrollbackLines => _terminalScrollbackLinesResolver?.call() ?? 10000;
 
@@ -61,11 +74,12 @@ class ChatSessionShellFactory {
     return team.cli;
   }
 
-  TerminalSession newSession([CliTool cli = CliTool.claude]) {
+  TerminalSession newSession(CliTool cli, {rt.RuntimeTarget? workTarget}) {
     final executable = _resolveExecutableFor(cli);
     final scrollback = _scrollbackLines;
-    if (_useSsh) {
-      final profile = _sshProfileResolver?.call();
+    final target = _effectiveTarget(workTarget);
+    if (_useSshFor(target)) {
+      final profile = _profileFor(target);
       if (profile == null) {
         return _terminalSessionFactory(
           executable: executable,

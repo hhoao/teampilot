@@ -902,9 +902,12 @@ class TerminalSession implements TerminalTextSink {
   /// [_ptySubmitChain] so overlapping injections never interleave their CR.
   Future<void> submitFullScreenInput(String text) {
     markUserTurnStarted();
+    final pasteSettleDelay = (_runtimeTarget?.namespace.isSsh ?? false)
+        ? const Duration(milliseconds: 500)
+        : _fullScreenSubmitDelay;
     final next = _ptySubmitChain.then((_) async {
       writeToPty('\x1B[200~$text\x1B[201~');
-      await Future<void>.delayed(_fullScreenSubmitDelay);
+      await Future<void>.delayed(pasteSettleDelay);
       writeToPty('\r');
     });
     // Keep the chain healthy if a write throws so later injections still run.

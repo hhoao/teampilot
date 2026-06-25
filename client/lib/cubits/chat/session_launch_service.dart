@@ -178,6 +178,9 @@ class SessionLaunchService implements MemberConnector {
           // active preset has since been switched to another CLI.
           ? (session.cli ?? personalPreset?.cli ?? CliTool.claude)
           : member!.cliWithin(team!),
+      workTarget: isPersonal
+          ? null
+          : _h.lifecycle.memberWorkTarget(session, effectiveMember.id),
     );
     final info = ChatTabInfo(
       id: session.sessionId,
@@ -529,6 +532,9 @@ class SessionLaunchService implements MemberConnector {
         isPersonal
             ? (session.cli ?? personalPreset?.cli ?? CliTool.claude)
             : member!.cliWithin(team!),
+        workTarget: isPersonal
+            ? null
+            : _h.lifecycle.memberWorkTarget(session, effectiveMember.id),
       ),
     );
 
@@ -1008,9 +1014,15 @@ class SessionLaunchService implements MemberConnector {
     ChatTab tab,
   ) {
     tab.selectedMemberId = member.id;
+    final persisted = tab.persistedSession;
     final shell = tab.memberShells.putIfAbsent(
       member.id,
-      () => _h.shellFactory.newSession(member.cliWithin(team)),
+      () => _h.shellFactory.newSession(
+        member.cliWithin(team),
+        workTarget: persisted != null
+            ? _h.lifecycle.memberWorkTarget(persisted, member.id)
+            : null,
+      ),
     );
     _h.applyState(
       _state.copyWith(

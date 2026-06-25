@@ -627,12 +627,15 @@ class SessionLifecycleService {
       );
     }
 
+    final memberDirs = session.workDirsForMember(member.id);
     return CliLaunchContext(
       team: team,
       member: member,
       sessionTeam: _resolveSessionTeam(session, plan, false),
-      workingDirectory: session.firstFolderPath,
-      additionalDirectories: session.extraFolderPaths,
+      workingDirectory: memberDirs.workingDirectory.isNotEmpty
+          ? memberDirs.workingDirectory
+          : session.firstFolderPath,
+      additionalDirectories: memberDirs.addDirs,
       isFreshConversation: plan.isFreshConversation,
     );
   }
@@ -700,6 +703,14 @@ class SessionLifecycleService {
               leadTaskId.isNotEmpty
           ? leadTaskId
           : null;
+      final memberDirs = member != null
+          ? session.workDirsForMember(
+              memberBinding?.rosterMemberId ?? member.id,
+            )
+          : (
+              workingDirectory: session.firstFolderPath,
+              addDirs: session.extraFolderPaths,
+            );
       final outcome = await service.prepareTeamLaunch(
         workspaceId: effectiveLaunchWorkspaceId(
           workspaceId: session.workspaceId,
@@ -711,8 +722,10 @@ class SessionLifecycleService {
         cli: launchCli,
         members: team.members,
         member: member,
-        workingDirectory: workingDirectory,
-        additionalDirectories: session.extraFolderPaths,
+        workingDirectory: memberDirs.workingDirectory.isNotEmpty
+            ? memberDirs.workingDirectory
+            : workingDirectory,
+        additionalDirectories: memberDirs.addDirs,
         team: team,
         leadSessionId: leadSessionId,
         extraMcpServers: extraMcpServers,

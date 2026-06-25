@@ -2,6 +2,7 @@ import 'dart:convert';
 import 'package:dartssh2/dartssh2.dart';
 import '../../models/ssh_profile.dart';
 import '../ssh/ssh_client_factory.dart';
+import '../ssh/ssh_run_result.dart';
 
 typedef SshRunCapture =
     Future<SSHRunResult> Function(SSHClient client, String command);
@@ -24,7 +25,7 @@ class RemoteHomeResolver {
         client,
         r'printf %s "$HOME"',
       );
-      if (result.exitCode != 0) return null;
+      if (sshRunFailed(result)) return null;
       final home = utf8.decode(result.stdout, allowMalformed: true).trim();
       if (home.isEmpty) return null;
       return home;

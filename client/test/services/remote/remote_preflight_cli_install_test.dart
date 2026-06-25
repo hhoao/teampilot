@@ -21,19 +21,20 @@ void main() {
       cli: CliTool.claude,
     );
 
-    await install(
+    final path = await install(
       run: (command) async {
         calls.add(command);
         if (command.contains('command -v npm')) {
           return const SshCommandResult(exitCode: 1, stdout: '');
         }
-        if (command.startsWith('sh -c')) {
+        if (command.startsWith('sh -c') &&
+            command.contains('com.hhoa.teampilot/toolchain/node')) {
           return const SshCommandResult(exitCode: 0, stdout: '10.0.0\n');
         }
         if (command.contains('npm install -g @anthropic-ai/claude-code')) {
           return const SshCommandResult(exitCode: 0, stdout: '');
         }
-        if (command.contains('command -v claude')) {
+        if (command.startsWith('sh -c') && command.contains('command -v claude')) {
           return const SshCommandResult(
             exitCode: 0,
             stdout: '/home/dev/.local/bin/claude\n',
@@ -43,6 +44,8 @@ void main() {
       },
       onProgress: (_) {},
     );
+
+    expect(path, '/home/dev/.local/bin/claude');
 
     expect(calls.any((c) => c.startsWith('sh -c')), isTrue);
     expect(

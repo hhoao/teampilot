@@ -5,6 +5,7 @@ import 'package:path/path.dart' as p;
 import '../../models/ssh_profile.dart';
 import 'app_storage.dart';
 import '../ssh/ssh_client_factory.dart';
+import '../ssh/ssh_run_result.dart';
 
 typedef SshRunCapture =
     Future<SSHRunResult> Function(SSHClient client, String command);
@@ -48,26 +49,16 @@ printf '%s\n' "$HOME_DIR" "$TP_DIR"
         .where((l) => l.isNotEmpty)
         .toList();
 
-    final exitCode = result.exitCode;
-    if (exitCode != null && exitCode != 0) {
-      throw StateError(
-        'Failed to resolve remote SSH storage paths ($exitCode): '
-        '${_runOutputDetail(result)}',
-      );
-    }
-    final signal = result.exitSignal;
-    if (signal != null) {
-      final signalDetail = signal.errorMessage.trim();
+    if (sshRunFailed(result)) {
       throw StateError(
         'Failed to resolve remote SSH storage paths '
-        '(signal ${signal.signalName}): '
-        '${signalDetail.isNotEmpty ? signalDetail : _runOutputDetail(result)}',
+        '(${sshRunFailureLabel(result)}): ${sshRunOutputDetail(result)}',
       );
     }
     if (lines.length < 2) {
       throw StateError(
         'Remote SSH path resolve returned ${lines.length} line(s), expected 2: '
-        '${_runOutputDetail(result)}',
+        '${sshRunOutputDetail(result)}',
       );
     }
     return RemoteSshStoragePaths(home: lines[0], teampilotAppDir: lines[1]);
@@ -86,13 +77,5 @@ printf '%s\n' "$HOME_DIR" "$TP_DIR"
 
   static Future<SSHRunResult> _defaultRun(SSHClient client, String command) {
     return client.runWithResult(command);
-  }
-
-  static String _runOutputDetail(SSHRunResult result) {
-    final stderrText = utf8.decode(result.stderr, allowMalformed: true).trim();
-    if (stderrText.isNotEmpty) return stderrText;
-    final stdoutText = utf8.decode(result.stdout, allowMalformed: true).trim();
-    if (stdoutText.isNotEmpty) return stdoutText;
-    return 'no output';
   }
 }

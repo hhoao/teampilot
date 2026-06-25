@@ -35,11 +35,18 @@ class DefaultRemoteCliLocator implements RemoteCliLocatorCapability {
     final direct = await _tryCommand(run, probe);
     if (direct != null) return direct;
     for (final shell in const ['bash', 'zsh']) {
-      final located = await _tryCommand(run, "$shell -ilc '$probe'");
-      if (located != null) return located;
+      for (final flags in const ['-ilc', '-lc']) {
+        final located = await _tryCommand(run, '$shell $flags \'$probe\'');
+        if (located != null) return located;
+      }
     }
-    return null;
+    return _tryCommand(run, _wellKnownLocalBinProbe(executableName));
   }
+
+  /// TeamPilot remote npm installs default to prefix `~/.local` → `~/.local/bin`.
+  static String _wellKnownLocalBinProbe(String executableName) =>
+      'sh -c \'test -x "\$HOME/.local/bin/$executableName" && '
+      'printf "%s\\n" "\$HOME/.local/bin/$executableName"\'';
 
   static Future<String?> _tryCommand(
     SshCommandRunner run,

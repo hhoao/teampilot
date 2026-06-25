@@ -82,7 +82,7 @@ void main() {
         optIn: true,
         supportsInstaller: true,
         onProgress: progress.add,
-        install: ({required run, required onProgress}) => install(
+        install: ({required run, required onProgress}) async => install(
           run: run,
           onProgress: onProgress,
         ),

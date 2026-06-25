@@ -5,17 +5,31 @@ import 'package:mock_anthropic/scenarios/ping_pong_mixed_claude.dart';
 import 'package:mock_anthropic/server.dart';
 import 'package:teampilot/cubits/chat_cubit.dart';
 import 'package:teampilot/models/app_provider_config.dart';
+import 'package:teampilot/models/runtime_target.dart';
+import 'package:teampilot/models/ssh_profile.dart';
 import 'package:teampilot/models/team_config.dart';
 import 'package:teampilot/repositories/app_provider_repository.dart';
 import 'package:teampilot/repositories/session_repository.dart';
+import 'package:teampilot/repositories/ssh_credential_store.dart';
+import 'package:teampilot/repositories/ssh_known_host_repository.dart';
+import 'package:teampilot/repositories/ssh_profile_repository.dart';
+import 'package:teampilot/services/cli/registry/cli_tool_registry.dart';
+import 'package:teampilot/services/remote/remote_member_preflight_factory.dart';
 import 'package:teampilot/services/session/session_lifecycle_service.dart';
 import 'package:teampilot/services/storage/app_storage.dart';
+import 'package:teampilot/services/storage/runtime_context_registry.dart';
+import 'package:teampilot/services/storage/runtime_context_resolver.dart';
 import 'package:teampilot/services/storage/workspace_layout.dart';
+import 'package:teampilot/services/ssh/ssh_client_factory.dart';
 import 'package:teampilot/services/team_bus/mcp/bus_bridge_locator.dart';
+import 'package:teampilot/services/team_bus/remote/remote_bus_binding_resolver.dart';
+import 'package:teampilot/services/team_bus/remote/ssh_remote_bus_mount_factory.dart';
 import 'package:teampilot/services/terminal/terminal_session.dart';
+import 'package:teampilot/services/terminal/terminal_transport_factory.dart';
 
 import '../../support/post_frame_test_harness.dart';
 import 'bus_mail_assertions.dart';
+import 'docker_ssh_server.dart';
 
 const kItMixedClaudeTeamId = 'it-mixed-claude';
 const kMockLeaderProviderId = 'mock-leader';
@@ -54,6 +68,8 @@ class MixedTeamIntegrationHarness {
   bool _envOverrideApplied = false;
 
   String get mockBaseUrl => _mockServer!.baseUri.toString();
+
+  int get mockPort => _mockServer!.port;
 
   /// True when `libflutter_pty` is on the loader path (e.g. after `flutter build linux`).
   static bool get nativePtyAvailable {
@@ -101,16 +117,23 @@ class MixedTeamIntegrationHarness {
     }
   }
 
-  Future<void> startMockServer() async {
+  Future<void> startMockServer({bool exposeToDocker = false}) async {
     _forceHttpMcp();
     final server = MockAnthropicServer(
       scenarios: pingPongMixedClaudeScenarios(),
     );
     _mockServer = server;
-    await server.start();
+    await server.start(
+      address: exposeToDocker ? InternetAddress.anyIPv4 : null,
+    );
   }
 
-  Future<void> writeMockProviders() async {
+  Future<void> writeMockProviders({String? workerBaseUrl}) async {
+    final port = _mockServer!.port;
+    final leaderUrl = workerBaseUrl != null
+        ? 'http://127.0.0.1:$port'
+        : mockBaseUrl;
+    final remoteWorkerUrl = workerBaseUrl ?? leaderUrl;
     await AppProviderRepository(basePath: AppStorage.paths.basePath).saveProviders(
       CliTool.claude,
       [
@@ -118,7 +141,7 @@ class MixedTeamIntegrationHarness {
           id: kMockLeaderProviderId,
           cli: CliTool.claude,
           name: 'Mock Leader',
-          baseUrl: mockBaseUrl,
+          baseUrl: leaderUrl,
           apiKey: leadScriptApiKey,
           defaultModel: 'mock-model',
         ),
@@ -126,7 +149,7 @@ class MixedTeamIntegrationHarness {
           id: kMockWorkerProviderId,
           cli: CliTool.claude,
           name: 'Mock Worker',
-          baseUrl: mockBaseUrl,
+          baseUrl: remoteWorkerUrl,
           apiKey: workerScriptApiKey,
           defaultModel: 'mock-model',
         ),
@@ -147,6 +170,112 @@ class MixedTeamIntegrationHarness {
     );
     cubit = created;
     return created;
+  }
+
+  /// Full ChatCubit wiring for local-lead + Docker-SSH-worker mixed teams.
+  ChatCubit createDockerCubit({
+    required PostFrameTestHarness postFrame,
+    required MixedTeamDockerRemote remote,
+  }) {
+    final registry = remote.contextRegistry;
+    final profileById = remote.sshProfileById;
+    final created = ChatCubit(
+      executableResolver: () => claudePath,
+      cliExecutableResolver: (_) => claudePath,
+      postFrameScheduler: postFrame.scheduler,
+      autoLaunchAllMembersOnConnect: () => true,
+      sessionRepository: SessionRepository(),
+      lifecycleService: SessionLifecycleService(
+        appDataBasePath: AppStorage.paths.basePath,
+        workContextResolver: registry.forTarget,
+      ),
+      transportFactory: TerminalTransportFactory(
+        sshProfileRepository: remote.sshProfileRepository,
+        sshCredentialStore: remote.credentialStore,
+        sshKnownHostRepository: remote.knownHostRepository,
+        sshClientFactory: remote.sshClientFactory,
+      ),
+      sshProfileById: profileById,
+      defaultTargetResolver: RuntimeTarget.local,
+      remoteBusResolver: RemoteBusBindingResolver(
+        registry: CliToolRegistry.builtIn(),
+        mountFactory: sshRemoteBusMountFactory(
+          sshClientFactory: remote.sshClientFactory,
+          profileById: (id) async => profileById(id),
+          contextForTarget: registry.forTarget,
+        ),
+      ),
+      remoteMemberPreflight: buildRemoteMemberPreflightCoordinator(
+        registry: CliToolRegistry.builtIn(),
+        sshClientFactory: remote.sshClientFactory,
+        profileById: profileById,
+        contextForTarget: registry.forTarget,
+        homeContext: registry.home,
+        homeTarget: RuntimeTarget.local,
+        isCredentialOptIn: (_) async => false,
+        isInstallOptIn: (_) async => true,
+        cliPathOverride: (_, __) async => null,
+        setCliPathOverride: (_, __, ___) async {},
+        loadLocalCredentials: (_) async => const [],
+      ),
+    );
+    cubit = created;
+    return created;
+  }
+
+  /// Same as L2; remote SSH worker may need slightly longer to settle.
+  Future<void> waitUntilDockerMembersReady(
+    ChatCubit cubit,
+    List<String> memberIds,
+  ) =>
+      waitUntilMembersReady(
+        cubit,
+        memberIds,
+        minWarmup: const Duration(seconds: 30),
+        settleTimeout: const Duration(seconds: 90),
+      );
+
+  /// Worker must enter `wait_for_message` before the leader sends ping.
+  Future<void> kickoffAndWaitForPingPong({
+    required ChatCubit cubit,
+    required String workspaceId,
+    required String sessionId,
+    PostFrameTestHarness? postFrame,
+    Duration workerReadyTimeout = const Duration(seconds: 60),
+    Duration busTimeout = const Duration(seconds: 30),
+  }) async {
+    await _submitWorkerKickoff(cubit);
+    final workerInLoop = await _waitForMockRequest(
+      workerScriptApiKey,
+      timeout: workerReadyTimeout,
+    );
+    if (!workerInLoop) {
+      throw StateError(
+        'Remote worker never entered mock API idle loop '
+        '(expected $workerScriptApiKey request)',
+      );
+    }
+    await _submitLeaderKickoff(cubit, postFrame: postFrame);
+    await waitForPingPong(
+      workspaceId: workspaceId,
+      sessionId: sessionId,
+      timeout: busTimeout,
+    );
+  }
+
+  Future<void> verifyMockReachableFromDocker(MixedTeamDockerRemote remote) async {
+    final client = await remote.sshClientFactory.clientFor(remote.profile);
+    final url =
+        'http://${DockerSshServer.hostGatewayHostname}:${mockPort}/';
+    final out = await client.run(
+      'wget -q -O /dev/null --timeout=5 $url 2>/dev/null; echo \$?',
+    );
+    final code = String.fromCharCodes(out).trim();
+    if (code != '0' && code != '8') {
+      throw StateError(
+        'Docker worker host cannot reach mock API at $url (wget exit $code)',
+      );
+    }
   }
 
   Future<void> waitUntilMembersRunning(
@@ -238,14 +367,29 @@ class MixedTeamIntegrationHarness {
     await _submitLeaderKickoff(cubit, postFrame: postFrame);
   }
 
+  Future<void> _submitFullScreenKickoff(
+    TerminalSession shell,
+    String text,
+  ) async {
+    if (shell.runtimeTarget.namespace.isSsh) {
+      // Bracketed paste + CR in one Future can lose the Enter over SSH latency;
+      // stage text, settle, then submit on its own chain slot.
+      await shell.pasteText(text);
+      await Future<void>.delayed(const Duration(milliseconds: 800));
+      await shell.submitPendingCr();
+    } else {
+      await shell.submitFullScreenInput(text);
+    }
+  }
+
   Future<void> _submitWorkerKickoff(ChatCubit cubit) async {
     cubit.selectMember(kWorkerMember.id);
     final worker = cubit.currentSession;
     if (worker == null) {
       throw StateError('worker shell missing before kickoff');
     }
-    await worker.submitFullScreenInput('Start idle loop.');
-    await drainPendingAsyncWork(rounds: 10);
+    await _submitFullScreenKickoff(worker, 'Start idle loop.');
+    await drainPendingAsyncWork(rounds: 20);
   }
 
   Future<void> _submitLeaderKickoff(
@@ -257,7 +401,7 @@ class MixedTeamIntegrationHarness {
     if (leader == null) {
       throw StateError('leader shell missing before kickoff');
     }
-    await leader.submitFullScreenInput('Coordinate the team.');
+    await _submitFullScreenKickoff(leader, 'Coordinate the team.');
     await drainPendingAsyncWork(rounds: 10);
     if (postFrame != null) {
       await postFrame.flush();
@@ -419,5 +563,89 @@ class MixedTeamIntegrationHarness {
     } on UnsupportedError {
       // Best-effort restore only.
     }
+  }
+}
+
+/// Docker SSH host + runtime contexts for mixed-team integration tests.
+class MixedTeamDockerRemote {
+  MixedTeamDockerRemote._({
+    required this.server,
+    required this.profile,
+    required this.sshClientFactory,
+    required this.sshProfileRepository,
+    required this.credentialStore,
+    required this.knownHostRepository,
+    required this.contextRegistry,
+  });
+
+  static const profileId = 'it-mixed-docker';
+  static const remoteWorkspacePath = '/home/testuser/workspace';
+
+  final DockerSshServer server;
+  final SshProfile profile;
+  final SshClientFactory sshClientFactory;
+  final SshProfileRepository sshProfileRepository;
+  final SshCredentialStore credentialStore;
+  final SshKnownHostRepository knownHostRepository;
+  final RuntimeContextRegistry contextRegistry;
+
+  String get sshTargetId => 'ssh:$profileId';
+
+  SshProfile? sshProfileById(String id) => id == profileId ? profile : null;
+
+  static Future<MixedTeamDockerRemote> start() async {
+    final server = await DockerSshServer.startMixed(
+      clientRoot: Directory.current.path,
+    );
+    final credentials = InMemorySshCredentialStore();
+    final knownHosts = InMemorySshKnownHostRepository();
+    await credentials.savePassword(profileId, DockerSshServer.defaultPassword);
+
+    final profile = SshProfile(
+      id: profileId,
+      name: 'docker-it-mixed',
+      host: server.host,
+      port: server.port,
+      username: DockerSshServer.defaultUsername,
+    );
+
+    final sshProfileRepository = SshProfileRepository();
+    await sshProfileRepository.save(profile);
+
+    final sshClientFactory = SshClientFactory(
+      credentialStore: credentials,
+      knownHostRepository: knownHosts,
+      onHostKeyPrompt: (_) async => true,
+    );
+
+    final client = await sshClientFactory.clientFor(profile);
+    await client.run('mkdir -p $remoteWorkspacePath');
+
+    final resolver = RuntimeContextResolver(
+      sshClientFactory: sshClientFactory,
+      nativeAppDataPath: AppStorage.paths.basePath,
+      nativeCwd: AppStorage.cwd,
+    );
+    final registry = RuntimeContextRegistry(
+      resolver: resolver,
+      homeTarget: RuntimeTarget.local(),
+      sshProfileById: (id) => id == profileId ? profile : null,
+    );
+    await registry.ensureHome();
+
+    return MixedTeamDockerRemote._(
+      server: server,
+      profile: profile,
+      sshClientFactory: sshClientFactory,
+      sshProfileRepository: sshProfileRepository,
+      credentialStore: credentials,
+      knownHostRepository: knownHosts,
+      contextRegistry: registry,
+    );
+  }
+
+  Future<void> dispose() async {
+    sshClientFactory.disconnectAll();
+    await server.stop();
   }
 }
