@@ -36,7 +36,7 @@ class GitService {
   /// locale, but `Process.run` defaults to `systemEncoding` — the Windows ANSI
   /// code page (e.g. GBK), which mangles non-ASCII text into mojibake. Decode as
   /// UTF-8, tolerating malformed bytes so a non-UTF-8 file's diff never throws.
-  static const Encoding _textEncoding = Utf8Codec(allowMalformed: true);
+  static const Encoding _textEncoding = Utf8Codec();
 
   /// Prepended to every invocation:
   /// - `--no-optional-locks`: never take optional locks, so read commands like
