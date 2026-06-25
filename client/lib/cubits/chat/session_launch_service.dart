@@ -2,6 +2,7 @@ import 'dart:async';
 
 import 'package:uuid/uuid.dart';
 
+import '../../models/runtime_target.dart' show RuntimeKind;
 import '../../models/workspace.dart';
 import '../../models/workspace_folder.dart';
 import '../../models/app_session.dart';
@@ -1020,21 +1021,46 @@ class SessionLaunchService implements MemberConnector {
     );
   }
 
+  TerminalSession _memberShellForConnect({
+    required ChatTab tab,
+    required TeamProfile team,
+    required TeamMemberConfig member,
+    AppSession? session,
+  }) {
+    final workTarget = session != null
+        ? _h.lifecycle.memberWorkTarget(session, member.id)
+        : null;
+    final needsRemoteLaunch = workTarget?.kind == RuntimeKind.ssh;
+    final existing = tab.memberShells[member.id];
+    if (existing != null &&
+        !existing.isRunning &&
+        !existing.isConnecting &&
+        needsRemoteLaunch != !existing.validateLaunch) {
+      existing.disconnect();
+      tab.memberShells.remove(member.id);
+    }
+    return tab.memberShells.putIfAbsent(
+      member.id,
+      () => _h.shellFactory.newSession(
+        member.cliWithin(team),
+        workTarget: workTarget,
+      ),
+    );
+  }
+
   void _scheduleMemberConnect(
     TeamProfile team,
     TeamMemberConfig member,
     ChatTab tab,
   ) {
     tab.selectedMemberId = member.id;
-    final persisted = tab.persistedSession;
-    final shell = tab.memberShells.putIfAbsent(
-      member.id,
-      () => _h.shellFactory.newSession(
-        member.cliWithin(team),
-        workTarget: persisted != null
-            ? _h.lifecycle.memberWorkTarget(persisted, member.id)
-            : null,
-      ),
+    final session =
+        tab.persistedSession ?? _sessionForMemberConnect(tab, team);
+    final shell = _memberShellForConnect(
+      tab: tab,
+      team: team,
+      member: member,
+      session: session,
     );
     _h.applyState(
       _state.copyWith(

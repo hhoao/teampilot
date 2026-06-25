@@ -9,6 +9,9 @@ import 'package:teampilot/services/host/host_execution_environment.dart';
 import 'package:teampilot/services/host/script_file_hook_provisioner.dart';
 import 'package:teampilot/services/host/team_pilot_hook_scripts.dart';
 import 'package:teampilot/services/storage/runtime_context.dart';
+import 'package:teampilot/services/provider/control_plane_profile_paths.dart';
+import 'package:teampilot/models/runtime_target.dart';
+import 'package:teampilot/services/storage/app_storage.dart';
 import 'package:teampilot/services/storage/runtime_layout.dart';
 import 'package:teampilot/services/cli/registry/config_profile/claude_config_profile_capability.dart';
 import 'package:teampilot/services/cli/registry/config_profile/flashskyai_config_profile_capability.dart';
@@ -785,6 +788,110 @@ base_url = "https://api.example.com/v1"
         'https://api.example.com/anthropic',
       );
       expect(memberEnv['ANTHROPIC_MODEL'], 'sonnet');
+    },
+  );
+
+  test(
+    'prepareTeamLaunch resolves provider env from control plane when work fs differs',
+    () async {
+      const sessionId = '00000000-0000-4000-8000-000000000099';
+      final homeBase = await Directory.systemTemp.createTemp('cfg_home_');
+      final workBase = await Directory.systemTemp.createTemp('cfg_work_');
+      addTearDown(() async {
+        if (await homeBase.exists()) await homeBase.delete(recursive: true);
+        if (await workBase.exists()) await workBase.delete(recursive: true);
+      });
+
+      final homeFs = LocalFilesystem();
+      final workFs = LocalFilesystem();
+      await AppProviderRepository(basePath: homeBase.path, fs: homeFs)
+          .saveProviders(CliTool.claude, [
+        AppProviderConfig(
+          id: 'deepseek',
+          cli: CliTool.claude,
+          name: 'deepseek',
+          category: AppProviderCategory.thirdParty,
+          apiKey: 'sk-remote-test',
+          apiKeyField: 'ANTHROPIC_AUTH_TOKEN',
+          baseUrl: 'https://api.deepseek.com/anthropic',
+          defaultModel: 'deepseek-v4-pro',
+          config: const {
+            'env': {'DISABLE_AUTOUPDATER': '1'},
+          },
+        ),
+      ]);
+
+      final homeCtx = RuntimeContext(
+        target: RuntimeTarget.local(),
+        filesystem: homeFs,
+        home: '/home/hhoa',
+        cwd: '/home/hhoa',
+        appDataRoot: homeBase.path,
+        paths: AppPaths(homeBase.path),
+      );
+      final workService = ConfigProfileService(
+        basePath: workBase.path,
+        home: '/root',
+        fs: workFs,
+        layout: RuntimeLayout(teampilotRoot: workBase.path, fs: workFs),
+        catalog: ControlPlaneProfilePaths(homeCtx),
+        hostEnvironment: HostExecutionEnvironment.resolve(
+          isWindowsHost: false,
+          storageMode: StorageBackendMode.native,
+        ),
+      );
+
+      await workService.prepareTeamLaunch(
+        workspaceId: _testWorkspaceId,
+        sessionId: sessionId,
+        teamId: 'team-a',
+        cliTeamName: sessionId,
+        cli: CliTool.claude,
+        members: const [
+          TeamMemberConfig(id: 'builder', name: 'builder', model: 'deepseek-v4-pro'),
+        ],
+        member: const TeamMemberConfig(
+          id: 'builder',
+          name: 'builder',
+          provider: 'deepseek',
+          model: 'deepseek-v4-pro',
+        ),
+        team: const TeamProfile(
+          id: 'team-a',
+          name: 'team-a',
+          cli: CliTool.claude,
+          teamMode: TeamMode.mixed,
+          providerIdsByTool: {'claude': 'deepseek'},
+        ),
+      );
+
+      final settingsPath = p.join(
+        _sessionClaudeDir(workBase.path, sessionId, memberId: 'builder'),
+        'settings',
+        'builder.json',
+      );
+      final memberEnv =
+          (jsonDecode(await File(settingsPath).readAsString())
+                  as Map<String, Object?>)['env']
+              as Map<String, Object?>;
+      expect(memberEnv['ANTHROPIC_AUTH_TOKEN'], 'sk-remote-test');
+      expect(
+        memberEnv['ANTHROPIC_BASE_URL'],
+        'https://api.deepseek.com/anthropic',
+      );
+      expect(memberEnv['DISABLE_AUTOUPDATER'], '1');
+      expect(
+        (await File(
+          p.join(homeBase.path, 'providers', 'claude', 'providers.json'),
+        ).exists()),
+        isTrue,
+      );
+      expect(
+        (await File(
+          p.join(workBase.path, 'providers', 'claude', 'providers.json'),
+        ).exists()),
+        isFalse,
+      );
     },
   );
 

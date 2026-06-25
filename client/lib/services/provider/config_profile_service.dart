@@ -51,6 +51,7 @@ class ConfigProfileService implements ConfigProfileDelegate {
     String? home,
     Filesystem? fs,
     RuntimeLayout? layout,
+    ConfigProfilePaths? catalog,
     Future<Set<String>> Function({String? teamId, String? workspaceId})?
     loadEnabledExtensionIds,
     ExtensionDetector? extensionDetector,
@@ -81,20 +82,25 @@ class ConfigProfileService implements ConfigProfileDelegate {
          loadTeamLeadDelegateHookScript: loadTeamLeadDelegateHookScript,
          hostEnvironment: hostEnvironment,
        ),
+       _catalogOverride = catalog,
        _cliRegistry = cliRegistry ?? _defaultCliRegistry,
        _loadInstalledSkills = loadInstalledSkills;
 
   final ConfigProfileInfrastructure _infra;
+  final ConfigProfilePaths? _catalogOverride;
   final CliToolRegistry _cliRegistry;
   final Future<List<Skill>> Function()? _loadInstalledSkills;
   StandaloneLaunchProfileScope? _activeStandaloneScope;
+
+  /// Control-plane paths for provider catalog reads (home when work != home).
+  ConfigProfilePaths get catalog => _catalogOverride ?? _infra;
 
   Future<ResourceCatalog> _skillCatalog() async {
     final skills =
         await (_loadInstalledSkills?.call() ?? Future.value(const <Skill>[]));
     return ResourceCatalog(
       skills: skills,
-      skillsRoot: AppPaths.skillsDirForTeampilotRoot(basePath),
+      skillsRoot: AppPaths.skillsDirForTeampilotRoot(catalog.basePath),
       pathContext: fs.pathContext,
     );
   }
@@ -463,6 +469,7 @@ class ConfigProfileService implements ConfigProfileDelegate {
             workingDirectory: workingDirectory,
             additionalDirectories: additionalDirectories,
             paths: this,
+            catalog: catalog,
             busIdleUrl: busIdleUrl,
             preset: preset,
           ),
@@ -590,6 +597,7 @@ class ConfigProfileService implements ConfigProfileDelegate {
           workingDirectory: workingDirectory,
           additionalDirectories: additionalDirectories,
           paths: this,
+          catalog: catalog,
           leadSessionId: leadSessionId,
           busIdleUrl: busIdleUrl,
           memberId: memberId,

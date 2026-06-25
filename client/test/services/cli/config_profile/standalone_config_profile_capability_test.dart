@@ -69,6 +69,7 @@ void main() {
       personal: personal,
       members: const [],
       paths: service,
+    catalog: service,
     );
   }
 

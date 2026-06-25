@@ -10,6 +10,8 @@ import '../../../provider/codex/codex_effort_capability.dart';
 import '../../../provider/codex/codex_home_provisioner.dart';
 import '../capabilities/cli_effort_capability.dart';
 import '../../../provider/codex/codex_official_provider.dart';
+import '../../../provider/cross_machine_credential_bridge.dart';
+import '../../../provider/provider_catalog_access.dart';
 import '../../../provider/codex/codex_provider_settings_resolver.dart';
 import '../../../provider/codex/codex_team_bus_overlay.dart';
 import '../../../provider/workspace_trust_provisioner.dart';
@@ -61,13 +63,7 @@ final class CodexConfigProfileCapability implements ConfigProfileCapability {
     );
 
     if (team != null) {
-      final resolver = CodexProviderSettingsResolver(
-        basePath: paths.basePath,
-        repository: AppProviderRepository(
-          basePath: paths.basePath,
-          fs: paths.fs,
-        ),
-      );
+      final resolver = _codexResolver(ctx.catalog);
       final provider = await resolver.resolveForLaunch(
         team: team,
         member: member,
@@ -86,6 +82,13 @@ final class CodexConfigProfileCapability implements ConfigProfileCapability {
           additionalDirectories: ctx.additionalDirectories,
         );
         try {
+          if (ctx.crossMachine && isOfficialCodexOAuthProvider(provider)) {
+            await CrossMachineCredentialBridge.materializeCodexAuth(
+              catalog: ctx.catalog,
+              work: paths,
+              providerId: provider.id,
+            );
+          }
           await CodexHomeProvisioner(fs: paths.fs).provision(
             codexHome: codexHome,
             provider: provider,
@@ -147,15 +150,9 @@ final class CodexConfigProfileCapability implements ConfigProfileCapability {
       additionalDirectories: ctx.additionalDirectories,
     );
 
-    final resolver = CodexProviderSettingsResolver(
-      basePath: paths.basePath,
-      repository: AppProviderRepository(
-        basePath: paths.basePath,
-        fs: paths.fs,
-      ),
-    );
+    final resolver = _codexResolver(ctx.catalog);
     var provider = await resolver.findById(standaloneProviderId(ctx.preset));
-    provider ??= await _resolveSoleCodexProvider(paths);
+    provider ??= await _resolveSoleCodexProvider(ctx.catalog);
     if (provider == null) {
       warnings.add('codex_provider_missing');
     } else {
@@ -165,6 +162,13 @@ final class CodexConfigProfileCapability implements ConfigProfileCapability {
         additionalDirectories: ctx.additionalDirectories,
       );
       try {
+        if (ctx.crossMachine && isOfficialCodexOAuthProvider(provider)) {
+          await CrossMachineCredentialBridge.materializeCodexAuth(
+            catalog: ctx.catalog,
+            work: paths,
+            providerId: provider.id,
+          );
+        }
         await CodexHomeProvisioner(fs: paths.fs).provision(
           codexHome: codexHome,
           provider: provider,
@@ -205,11 +209,10 @@ final class CodexConfigProfileCapability implements ConfigProfileCapability {
   }
 
   Future<AppProviderConfig?> _resolveSoleCodexProvider(
-    ConfigProfileDelegate paths,
+    ConfigProfilePaths catalog,
   ) async {
-    final providers = await AppProviderRepository(
-      basePath: paths.basePath,
-      fs: paths.fs,
+    final providers = await providerCatalogRepository(
+      catalog,
     ).loadProviders(CliTool.codex);
     if (providers.length == 1) return providers.first;
     return null;
@@ -303,4 +306,12 @@ final class CodexConfigProfileCapability implements ConfigProfileCapability {
     );
     return keys.toList(growable: false);
   }
+
+  static CodexProviderSettingsResolver _codexResolver(
+    ConfigProfilePaths catalog,
+  ) =>
+      CodexProviderSettingsResolver(
+        basePath: catalog.basePath,
+        repository: providerCatalogRepository(catalog),
+      );
 }

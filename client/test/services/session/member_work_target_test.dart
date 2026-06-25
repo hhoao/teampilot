@@ -177,6 +177,79 @@ void main() {
     expect(ctx.appDataRoot, '/remote/app');
   });
 
+  test('member assigned to ssh folder resolves ssh even when local is first',
+      () async {
+    final resolved = <String>[];
+    final home = testRuntimeContext('/home-root');
+    final lifecycle = SessionLifecycleService(
+      storageRootsResolver: () async => home,
+      workContextResolver: (target) async {
+        resolved.add(target.id);
+        return target.kind == RuntimeKind.ssh
+            ? RuntimeContext(
+                target: target,
+                filesystem: InMemoryFilesystem(),
+                home: '/remote',
+                cwd: '/remote',
+                appDataRoot: '/remote/app',
+                paths: home.paths,
+              )
+            : home;
+      },
+    );
+    final session = AppSession(
+      sessionId: 's-mixed-order',
+      workspaceId: 'w1',
+      folders: const [
+        WorkspaceFolder(path: '/home/local', targetId: 'local'),
+        WorkspaceFolder(path: '/root/hhoa', targetId: 'ssh:p1'),
+      ],
+      folderAssignments: const {
+        'builder': ['/root/hhoa'],
+      },
+      createdAt: 1,
+    );
+
+    expect(lifecycle.memberWorkTarget(session, 'builder').id, 'ssh:p1');
+    await lifecycle.debugResolveWorkContext(session, memberId: 'builder');
+    expect(resolved.last, 'ssh:p1');
+  });
+
+  test('member assigned subpath under ssh folder resolves ssh target', () {
+    final lifecycle = SessionLifecycleService();
+    final session = AppSession(
+      sessionId: 's-sub',
+      workspaceId: 'w1',
+      folders: const [
+        WorkspaceFolder(path: '/home/local', targetId: 'local'),
+        WorkspaceFolder(path: '/root/hhoa', targetId: 'ssh:p1'),
+      ],
+      folderAssignments: const {
+        'builder': ['/root/hhoa/project'],
+      },
+      createdAt: 1,
+    );
+    expect(lifecycle.memberWorkTarget(session, 'builder').id, 'ssh:p1');
+  });
+
+  test('invalid assignment does not inherit local first folder target', () {
+    final lifecycle = SessionLifecycleService();
+    final session = AppSession(
+      sessionId: 's-invalid',
+      workspaceId: 'w1',
+      folders: const [
+        WorkspaceFolder(path: '/home/local', targetId: 'local'),
+        WorkspaceFolder(path: '/root/hhoa', targetId: 'ssh:p1'),
+      ],
+      folderAssignments: const {
+        'builder': ['/other/machine/path'],
+      },
+      createdAt: 1,
+    );
+    // Falls back to session first folder only when assignment cannot be resolved.
+    expect(lifecycle.memberWorkTarget(session, 'builder').id, 'local');
+  });
+
   test('memberWorkDirs: assigned first is workdir, rest are add-dirs', () {
     final lifecycle = SessionLifecycleService();
     final session = AppSession(

@@ -82,6 +82,7 @@ void main() {
           member: member,
           members: const [member],
           paths: paths,
+        catalog: paths,
           standaloneScope: standalone,
           personal: profile,
         ),
@@ -120,6 +121,7 @@ void main() {
           personal: profile,
           members: const [],
           paths: paths,
+        catalog: paths,
           standaloneScope: standalone,
           workingDirectory: workspace,
         ),
@@ -153,6 +155,7 @@ void main() {
           member: member,
           members: const [member],
           paths: paths,
+        catalog: paths,
           busIdleUrl: 'http://127.0.0.1:5050/idle',
           workingDirectory: workspace,
         ),
@@ -186,6 +189,7 @@ void main() {
           member: member,
           members: const [member],
           paths: paths,
+        catalog: paths,
           busIdleUrl: 'http://127.0.0.1:5050/idle',
         ),
       );
@@ -217,6 +221,7 @@ void main() {
           member: member,
           members: const [member],
           paths: paths,
+        catalog: paths,
         ),
       );
 
@@ -255,6 +260,7 @@ void main() {
           member: member,
           members: const [member],
           paths: paths,
+        catalog: paths,
           busIdleUrl: 'http://127.0.0.1:5050/idle',
         ),
       );
@@ -283,6 +289,7 @@ void main() {
           member: member,
           members: const [member],
           paths: paths,
+        catalog: paths,
           busIdleUrl: 'http://127.0.0.1:4321/idle',
         ),
       );

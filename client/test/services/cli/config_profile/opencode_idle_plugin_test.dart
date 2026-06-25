@@ -63,6 +63,7 @@ void main() {
           member: member,
           members: const [member],
           paths: service,
+        catalog: service,
           busIdleUrl: 'http://127.0.0.1:54321/idle',
         ),
       );
@@ -204,6 +205,7 @@ void main() {
               member: member,
               members: const [member],
               paths: service,
+        catalog: service,
               busIdleUrl: 'http://127.0.0.1:54321/idle',
             ),
           );

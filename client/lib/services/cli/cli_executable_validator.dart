@@ -80,7 +80,11 @@ class CliExecutableValidator {
 
   static String? _validateWorkingDirectory(String workingDirectory) {
     final cwd = workingDirectory.trim();
-    if (cwd.isEmpty || Directory(cwd).existsSync()) {
+    if (cwd.isEmpty) return null;
+    try {
+      if (Directory(cwd).existsSync()) return null;
+    } on FileSystemException {
+      // Local PTY preflight cannot stat remote-only paths (e.g. /root/...).
       return null;
     }
     return _formatMessage(

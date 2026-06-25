@@ -11,6 +11,7 @@ import '../cubits/app_update_cubit.dart';
 import '../cubits/chat_cubit.dart';
 import '../services/team_bus/remote/remote_bus_binding_resolver.dart';
 import '../services/team_bus/remote/ssh_remote_bus_mount_factory.dart';
+import '../services/remote/local_credential_exporter.dart';
 import '../services/remote/remote_member_preflight_factory.dart';
 import '../cubits/board_cubit.dart';
 import '../cubits/mailbox_cubit.dart';
@@ -479,6 +480,7 @@ Future<AppShell> buildAppShell({
   sessionLifecycleService = SessionLifecycleService(
     llmConfigPathOverride: llmConfigPathOverrideForLaunch,
     storageRootsResolver: () async => AppStorage.context,
+  catalogContextResolver: () async => runtimeContextRegistry.home(),
     // P2: launch resolves the work-plane on the workspace's target machine.
     workContextResolver: runtimeContextRegistry.forTarget,
     loadEnabledExtensionIds: ({teamId, workspaceId}) async {
@@ -659,7 +661,7 @@ Future<AppShell> buildAppShell({
       setCliPathOverride: targetsRepo.setCliPathOverride,
       // on-device: real per-CLI credential export + skills/plugins linking +
       // relay provisioning + install execution compose over the work transport.
-      loadLocalCredentials: (_) async => const [],
+      loadLocalCredentials: (cli) => LocalCredentialExporter().export(cli),
     ),
   );
 

@@ -6,6 +6,7 @@ import '../../../provider/cursor/cursor_home_provisioner.dart';
 import '../../../provider/cursor/cursor_launch_environment.dart';
 import '../../../provider/cursor/cursor_provider_credentials_service.dart';
 import '../../../provider/cursor/cursor_provider_settings_resolver.dart';
+import '../../../provider/provider_catalog_access.dart';
 import '../../../provider/cursor/cursor_session_config_dir.dart';
 import '../../../provider/workspace_trust_provisioner.dart';
 import '../../../provider/cursor/cursor_workspace_trust_provisioner.dart';
@@ -122,11 +123,8 @@ final class CursorConfigProfileCapability implements ConfigProfileCapability {
       String? providerId;
       if (team != null) {
         final resolver = CursorProviderSettingsResolver(
-          basePath: paths.basePath,
-          repository: AppProviderRepository(
-            basePath: paths.basePath,
-            fs: paths.fs,
-          ),
+          basePath: ctx.catalog.basePath,
+          repository: providerCatalogRepository(ctx.catalog),
         );
         final provider = await resolver.resolveForLaunch(
           team: team,

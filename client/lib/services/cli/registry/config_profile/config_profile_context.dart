@@ -249,6 +249,7 @@ class ConfigProfileLaunchContext {
     this.workingDirectory = '',
     this.additionalDirectories = const [],
     required this.paths,
+    required this.catalog,
     this.leadSessionId,
     this.busIdleUrl,
     this.standaloneScope,
@@ -266,11 +267,18 @@ class ConfigProfileLaunchContext {
   final List<TeamMemberConfig> members;
   final String? workingDirectory;
   final List<String> additionalDirectories;
+
+  /// Work-plane delegate: session runtime trees, settings writes, hooks.
   final ConfigProfileDelegate paths;
+
+  /// Control-plane paths: provider catalog and home credential reads.
+  final ConfigProfilePaths catalog;
   final String? leadSessionId;
   final String? busIdleUrl;
   final StandaloneLaunchProfileScope? standaloneScope;
   final PersonalProfile? personal;
   final CliPreset? preset;
   final String? memberId;
+
+  bool get crossMachine => catalog.basePath != paths.basePath;
 }

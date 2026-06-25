@@ -42,6 +42,7 @@ void main() {
         members: const [member],
         workingDirectory: '/workspace/workspace',
         paths: service,
+      catalog: service,
       ),
     );
 
@@ -101,6 +102,7 @@ void main() {
         members: const [member],
         workingDirectory: '/workspace/workspace',
         paths: service,
+        catalog: service,
         busIdleUrl: 'http://127.0.0.1:54321/idle',
       ),
     );

@@ -58,6 +58,7 @@ void main() {
         members: const [member],
         workingDirectory: '/workspace/workspace',
         paths: service,
+      catalog: service,
       ),
     );
 
@@ -127,6 +128,7 @@ void main() {
           members: const [member],
           workingDirectory: '/workspace/workspace',
           paths: service,
+        catalog: service,
         ),
       );
 
@@ -255,6 +257,7 @@ void main() {
           members: const [member],
           workingDirectory: '/workspace/workspace',
           paths: service,
+        catalog: service,
         ),
       );
 
@@ -357,6 +360,7 @@ void main() {
           members: const [member],
           workingDirectory: '/workspace/workspace',
           paths: service,
+        catalog: service,
         ),
       );
 

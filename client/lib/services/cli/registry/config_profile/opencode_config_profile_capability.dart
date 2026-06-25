@@ -3,7 +3,7 @@ import 'package:flutter/foundation.dart';
 import '../../../../models/app_provider_config.dart';
 import '../../../../models/personal_profile.dart';
 import '../../../../models/team_config.dart';
-import '../../../../repositories/app_provider_repository.dart';
+import '../../../provider/provider_catalog_access.dart';
 import '../../../provider/opencode/opencode_auth_artifacts.dart';
 import '../../../provider/opencode/opencode_data_layout.dart';
 import '../../../provider/opencode/opencode_provider_settings_resolver.dart';
@@ -256,7 +256,7 @@ final class OpencodeConfigProfileCapability implements ConfigProfileCapability {
     AppProviderConfig? launchProvider;
 
     if (team != null) {
-      launchProvider = await _resolver(paths).resolveForLaunch(
+      launchProvider = await _resolver(ctx.catalog).resolveForLaunch(
         team: team,
         member: member,
       );
@@ -353,7 +353,7 @@ final class OpencodeConfigProfileCapability implements ConfigProfileCapability {
     var config = await paths.readSettingsFile(configPath);
     var changed = false;
 
-    final resolver = _resolver(paths);
+    final resolver = _resolver(ctx.catalog);
     var provider = await resolver.findById(standaloneProviderId(ctx.preset));
     provider ??= await resolver.resolveSole();
     if (provider != null) {
@@ -427,13 +427,10 @@ final class OpencodeConfigProfileCapability implements ConfigProfileCapability {
     return content.trim();
   }
 
-  OpencodeProviderSettingsResolver _resolver(ConfigProfileDelegate paths) =>
+  OpencodeProviderSettingsResolver _resolver(ConfigProfilePaths catalog) =>
       OpencodeProviderSettingsResolver(
-        basePath: paths.basePath,
-        repository: AppProviderRepository(
-          basePath: paths.basePath,
-          fs: paths.fs,
-        ),
+        basePath: catalog.basePath,
+        repository: providerCatalogRepository(catalog),
       );
 
   /// Writes member identity to `AGENTS.md`; opencode auto-loads it from the

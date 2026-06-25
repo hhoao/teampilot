@@ -1,6 +1,7 @@
 import 'package:flutter/foundation.dart';
 
 import '../../models/workspace.dart';
+import '../../models/workspace_folder.dart';
 import '../../models/app_session.dart';
 import '../../models/cli_preset.dart';
 import '../../models/launch_profile_kind.dart';
@@ -23,6 +24,7 @@ import '../cli/registry/capabilities/session_resume_capability.dart';
 import '../cli/registry/cli_tool_registry.dart';
 import '../cli/registry/config_profile/flashskyai_config_profile_capability.dart';
 import '../cli/preset_resolver.dart';
+import '../provider/control_plane_profile_paths.dart';
 import '../provider/config_profile_service.dart';
 import '../../models/runtime_target.dart';
 import '../io/local_filesystem.dart';
@@ -47,6 +49,7 @@ class SessionLifecycleService {
     ConfigProfileService? configProfileService,
     StorageRootsResolver? storageRootsResolver,
     Future<RuntimeContext> Function(RuntimeTarget target)? workContextResolver,
+    Future<RuntimeContext> Function()? catalogContextResolver,
     Future<Set<String>> Function({String? teamId, String? workspaceId})?
     loadEnabledExtensionIds,
     CliToolRegistry? cliToolRegistry,
@@ -59,6 +62,7 @@ class SessionLifecycleService {
        _configProfileService = configProfileService,
        _storageRootsResolver = storageRootsResolver,
        _workContextResolver = workContextResolver,
+       _catalogContextResolver = catalogContextResolver,
        _loadEnabledExtensionIds = loadEnabledExtensionIds,
        _cliToolRegistry = cliToolRegistry ?? _defaultCliRegistry,
        _identityRepository = identityRepository,
@@ -76,6 +80,10 @@ class SessionLifecycleService {
   /// session metadata still lives on home.
   final Future<RuntimeContext> Function(RuntimeTarget target)?
   _workContextResolver;
+
+  /// Control-plane context (`registry.home()`). Provider catalog reads use this
+  /// even when the member launches on a remote work machine.
+  final Future<RuntimeContext> Function()? _catalogContextResolver;
   final Future<Set<String>> Function({String? teamId, String? workspaceId})?
   _loadEnabledExtensionIds;
   final CliToolRegistry _cliToolRegistry;
@@ -753,10 +761,16 @@ class SessionLifecycleService {
     if (injected != null) return injected;
     final loader = _loadEnabledExtensionIds;
     final trimmedWorkspaceId = launchWorkspaceId?.trim() ?? '';
+    final catalogRoots = await _resolveCatalogRoots();
+    final catalog = catalogRoots.appDataRoot == roots.appDataRoot
+        ? null
+        : ControlPlaneProfilePaths(catalogRoots);
     return ConfigProfileService(
       basePath: roots.teampilotRoot,
+      home: roots.home,
       fs: roots.fs,
       layout: roots.layout,
+      catalog: catalog,
       loadEnabledExtensionIds: loader == null
           ? null
           : ({teamId, workspaceId}) => loader(
@@ -768,6 +782,12 @@ class SessionLifecycleService {
       cliRegistry: _cliToolRegistry,
       loadInstalledSkills: _loadInstalledSkills,
     );
+  }
+
+  Future<RuntimeContext> _resolveCatalogRoots() async {
+    final resolver = _catalogContextResolver ?? _storageRootsResolver;
+    if (resolver != null) return resolver();
+    return _localRoots(_appDataBasePath ?? AppStorage.paths.basePath);
   }
 
   /// Test seam: resolve the work-plane context for [session] (and optionally a
@@ -851,14 +871,51 @@ class SessionLifecycleService {
       session.folderAssignments,
       memberId,
     );
-    final firstPath = (assigned != null && assigned.isNotEmpty)
-        ? assigned.first
-        : (session.folders.isEmpty ? null : session.folders.first.path);
-    final folder = session.folders
-            .where((f) => workspacePathsEqual(f.path, firstPath ?? ''))
-            .firstOrNull ??
-        (session.folders.isEmpty ? null : session.folders.first);
-    return _runtimeTargetFromId(folder?.targetId ?? RuntimeTarget.localId);
+    if (assigned != null && assigned.isNotEmpty) {
+      final targetId = targetIdForFolderPaths(session.folders, assigned);
+      if (targetId != null) {
+        return _runtimeTargetFromId(targetId);
+      }
+      final folder = _workspaceFolderForAssignedPaths(session.folders, assigned);
+      if (folder != null) {
+        return _runtimeTargetFromId(folder.targetId);
+      }
+      // Do not fall back to session.folders.first — in mixed workspaces that
+      // pins the wrong machine while memberWorkDirs still uses assigned paths.
+    }
+    final fallback = session.folders.isEmpty ? null : session.folders.first;
+    return _runtimeTargetFromId(fallback?.targetId ?? RuntimeTarget.localId);
+  }
+
+  /// Resolves a workspace folder for member-assigned paths (exact match, then
+  /// longest workspace root prefix).
+  WorkspaceFolder? _workspaceFolderForAssignedPaths(
+    List<WorkspaceFolder> folders,
+    List<String> paths,
+  ) {
+    for (final path in paths) {
+      for (final folder in folders) {
+        if (workspacePathsEqual(folder.path, path)) return folder;
+      }
+    }
+    for (final path in paths) {
+      final normalized = normalizeWorkspacePath(path);
+      if (normalized.isEmpty) continue;
+      WorkspaceFolder? best;
+      var bestRootLen = -1;
+      for (final folder in folders) {
+        final root = normalizeWorkspacePath(folder.path);
+        if (root.isEmpty) continue;
+        if (normalized == root || normalized.startsWith('$root/')) {
+          if (root.length > bestRootLen) {
+            best = folder;
+            bestRootLen = root.length;
+          }
+        }
+      }
+      if (best != null) return best;
+    }
+    return null;
   }
 
   /// P3a: a member's working directory (assigned first, default session first)

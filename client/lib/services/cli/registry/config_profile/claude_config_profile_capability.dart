@@ -10,6 +10,8 @@ import '../capabilities/cli_effort_capability.dart';
 import '../../../../repositories/app_provider_repository.dart';
 import '../../../provider/claude/claude_provider_credentials_service.dart';
 import '../../../provider/credential_binding.dart';
+import '../../../provider/cross_machine_credential_bridge.dart';
+import '../../../provider/provider_catalog_access.dart';
 import '../../../provider/claude/claude_provider_settings_resolver.dart';
 import '../../../session/member_role_provision.dart';
 import '../../../team/claude_team_roster_service.dart';
@@ -146,6 +148,7 @@ final class ClaudeConfigProfileCapability implements ConfigProfileCapability {
     }
 
     final delegate = ctx.paths;
+    final catalog = ctx.catalog;
     final scope = ctx.scope;
     final workingDirectory = ctx.workingDirectory ?? '';
     final team = ctx.team;
@@ -154,13 +157,7 @@ final class ClaudeConfigProfileCapability implements ConfigProfileCapability {
 
     ClaudeLaunchExtras? claude;
     if (team != null) {
-      final resolver = ClaudeProviderSettingsResolver(
-        basePath: delegate.basePath,
-        repository: AppProviderRepository(
-          basePath: delegate.basePath,
-          fs: delegate.fs,
-        ),
-      );
+      final resolver = _claudeResolver(catalog);
       claude = await resolveLaunchExtras(
         team: team,
         member: ctx.member,
@@ -219,6 +216,8 @@ final class ClaudeConfigProfileCapability implements ConfigProfileCapability {
 
     await _maybeLinkOfficialCredentials(
       delegate: delegate,
+      catalog: catalog,
+      crossMachine: ctx.crossMachine,
       scope: scope,
       claude: claude,
       launchedMember: ctx.member,
@@ -299,19 +298,14 @@ final class ClaudeConfigProfileCapability implements ConfigProfileCapability {
     PersonalProfile personal,
   ) async {
     final delegate = ctx.paths;
+    final catalog = ctx.catalog;
     final member = standaloneMemberFromPersonal(personal, preset: ctx.preset);
     final memberToolDir = standaloneSessionToolDir(delegate, standalone, toolId);
     final scope = launchScopeForStandalone(standalone);
     final workingDirectory = ctx.workingDirectory ?? '';
     final warnings = <String>[];
 
-    final resolver = ClaudeProviderSettingsResolver(
-      basePath: delegate.basePath,
-      repository: AppProviderRepository(
-        basePath: delegate.basePath,
-        fs: delegate.fs,
-      ),
-    );
+    final resolver = _claudeResolver(catalog);
     final providerId = standaloneProviderId(ctx.preset);
     final settings = await resolver.resolve(
       providerId.isNotEmpty ? providerId : null,
@@ -319,7 +313,7 @@ final class ClaudeConfigProfileCapability implements ConfigProfileCapability {
     final resolvedProviderId = providerId.isNotEmpty
         ? providerId
         : (settings != null
-              ? (await _resolveSoleClaudeProviderId(delegate))
+              ? (await _resolveSoleClaudeProviderId(catalog))
               : null);
 
     await _provisionWorkspaceTrust(
@@ -362,24 +356,14 @@ final class ClaudeConfigProfileCapability implements ConfigProfileCapability {
     if (trimmedProviderId.isNotEmpty &&
         settings != null &&
         isOfficialClaudeSettings(settings)) {
-      final credentials = ClaudeProviderCredentialsService(
-        fs: delegate.fs,
-        basePath: delegate.basePath,
-        resolveHomeDirectory: () => delegate.home,
+      await _linkOfficialClaudeCredentials(
+        delegate: delegate,
+        catalog: catalog,
+        crossMachine: ctx.crossMachine,
+        sessionClaudeDir: memberToolDir,
+        providerId: trimmedProviderId,
+        warnings: warnings,
       );
-      final binding = await _resolveClaudeCredentialBinding(
-        delegate,
-        trimmedProviderId,
-      );
-      final link = await credentials.ensureLinked(
-        memberToolDir,
-        trimmedProviderId,
-        binding: binding,
-        homeDirectory: delegate.home,
-      );
-      if (link == CredentialLinkResult.missing) {
-        warnings.add('claude_credentials_missing');
-      }
     }
 
     final environment = <String, String>{
@@ -413,11 +397,10 @@ final class ClaudeConfigProfileCapability implements ConfigProfileCapability {
   }
 
   Future<String?> _resolveSoleClaudeProviderId(
-    ConfigProfileDelegate delegate,
+    ConfigProfilePaths catalog,
   ) async {
-    final providers = await AppProviderRepository(
-      basePath: delegate.basePath,
-      fs: delegate.fs,
+    final providers = await providerCatalogRepository(
+      catalog,
     ).loadProviders(CliTool.claude);
     if (providers.length == 1) return providers.first.id;
     return null;
@@ -425,6 +408,8 @@ final class ClaudeConfigProfileCapability implements ConfigProfileCapability {
 
   Future<void> _maybeLinkOfficialCredentials({
     required ConfigProfileDelegate delegate,
+    required ConfigProfilePaths catalog,
+    required bool crossMachine,
     required LaunchProfileScope scope,
     required ClaudeLaunchExtras? claude,
     required TeamMemberConfig? launchedMember,
@@ -442,22 +427,61 @@ final class ClaudeConfigProfileCapability implements ConfigProfileCapability {
       toolId,
       memberId: scope.memberId,
     );
+    await _linkOfficialClaudeCredentials(
+      delegate: delegate,
+      catalog: catalog,
+      crossMachine: crossMachine,
+      sessionClaudeDir: sessionClaudeDir,
+      providerId: providerId,
+      warnings: warnings,
+    );
+  }
+
+  Future<void> _linkOfficialClaudeCredentials({
+    required ConfigProfileDelegate delegate,
+    required ConfigProfilePaths catalog,
+    required bool crossMachine,
+    required String sessionClaudeDir,
+    required String providerId,
+    required List<String> warnings,
+  }) async {
+    final binding = await _resolveClaudeCredentialBinding(catalog, providerId);
+    if (crossMachine) {
+      final copied = await CrossMachineCredentialBridge.materializeClaudeCredential(
+        catalog: catalog,
+        work: delegate,
+        providerId: providerId,
+        binding: binding,
+      );
+      if (!copied) {
+        warnings.add('claude_credentials_missing');
+        return;
+      }
+    }
+
     final credentials = ClaudeProviderCredentialsService(
       fs: delegate.fs,
       basePath: delegate.basePath,
       resolveHomeDirectory: () => delegate.home,
     );
-    final binding = await _resolveClaudeCredentialBinding(delegate, providerId);
     final link = await credentials.ensureLinked(
       sessionClaudeDir,
       providerId,
-      binding: binding,
+      binding: crossMachine ? CredentialBindingKind.isolated : binding,
       homeDirectory: delegate.home,
     );
     if (link == CredentialLinkResult.missing) {
       warnings.add('claude_credentials_missing');
     }
   }
+
+  static ClaudeProviderSettingsResolver _claudeResolver(
+    ConfigProfilePaths catalog,
+  ) =>
+      ClaudeProviderSettingsResolver(
+        basePath: catalog.basePath,
+        repository: providerCatalogRepository(catalog),
+      );
 
   /// Official credential linking follows the launched member's provider in
   /// mixed teams (per-member presets), not only the team-level Claude binding.
@@ -483,12 +507,11 @@ final class ClaudeConfigProfileCapability implements ConfigProfileCapability {
   }
 
   Future<CredentialBindingKind> _resolveClaudeCredentialBinding(
-    ConfigProfileDelegate delegate,
+    ConfigProfilePaths catalog,
     String providerId,
   ) async {
-    final providers = await AppProviderRepository(
-      basePath: delegate.basePath,
-      fs: delegate.fs,
+    final providers = await providerCatalogRepository(
+      catalog,
     ).loadProviders(CliTool.claude);
     final provider = providers.where((p) => p.id == providerId).firstOrNull;
     if (provider == null) return CredentialBindingKind.linked;
