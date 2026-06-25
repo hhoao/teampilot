@@ -26,6 +26,7 @@ import '../services/team_bus/remote/remote_bus_binding_resolver.dart';
 import '../services/remote/remote_member_preflight_coordinator.dart';
 import '../services/terminal/terminal_session.dart';
 import '../services/terminal/terminal_transport_factory.dart';
+import '../utils/logger.dart';
 import '../widgets/workspace_icon_picker_dialog.dart';
 import 'chat/chat_connect_state_mixin.dart';
 import 'chat/session_data_store.dart';
@@ -111,7 +112,7 @@ class ChatCubit extends Cubit<ChatState>
             .where((w) => w.workspaceId == session.workspaceId)
             .firstOrNull;
         return _lifecycle
-            .memberWorkTarget(
+            .launchWorkTarget(
               WorkspaceLaunchContext(
                 session: session,
                 workspace:
@@ -122,7 +123,7 @@ class ChatCubit extends Cubit<ChatState>
                       createdAt: 0,
                     ),
               ),
-              memberId,
+              memberId: memberId,
             )
             .id;
       },
@@ -546,14 +547,21 @@ class ChatCubit extends Cubit<ChatState>
     SessionRepository? repo,
     String emptyDisplayTitleFallback = 'New Chat',
     bool connectImmediately = true,
-  }) => _launchService.openSessionTab(
-    session,
-    team: team,
-    member: member,
-    repo: repo,
-    emptyDisplayTitleFallback: emptyDisplayTitleFallback,
-    connectImmediately: connectImmediately,
-  );
+  }) {
+    appLogger.i(
+      '[session-launch] ChatCubit.openSessionTab '
+      'session=${session.sessionId} team=${team?.id ?? ''} '
+      'member=${member?.id ?? ''} connectImmediately=$connectImmediately',
+    );
+    return _launchService.openSessionTab(
+      session,
+      team: team,
+      member: member,
+      repo: repo,
+      emptyDisplayTitleFallback: emptyDisplayTitleFallback,
+      connectImmediately: connectImmediately,
+    );
+  }
 
   Future<void> scheduleTeamConfigValidation(TeamProfile team) =>
       _launchService.scheduleTeamConfigValidation(team);

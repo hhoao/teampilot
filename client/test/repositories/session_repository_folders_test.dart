@@ -86,24 +86,87 @@ void main() {
     expect(reloaded.folders.every((f) => f.targetId == 'ssh:p1'), isTrue);
   });
 
-  test('setMemberTarget writes + clears per-member target', () async {
+  test('createSession rejects personal launch on mixed workspace', () async {
     final tmp = await Directory.systemTemp.createTemp('fs_repo_folders_');
     addTearDown(() => tmp.deleteSync(recursive: true));
     final repo = SessionRepository(rootDir: tmp.path);
 
     final ws = await repo.createWorkspace([
-      const WorkspaceFolder(path: '/main'),
-      const WorkspaceFolder(path: '/x'),
+      const WorkspaceFolder(path: '/local'),
+      const WorkspaceFolder(path: '/remote', targetId: 'ssh:p1'),
     ]);
-    final s = await repo.createSession(ws.workspaceId);
 
-    await repo.setMemberTarget(s.sessionId, 'm1', 'local');
-    var reloaded = (await repo.loadSessions()).single;
-    expect(reloaded.memberTargets['m1'], 'local');
+    expect(
+      () => repo.createSession(ws.workspaceId),
+      throwsA(
+        isA<StateError>().having(
+          (e) => e.message,
+          'message',
+          'mixed_workspace_personal_launch_blocked',
+        ),
+      ),
+    );
+  });
 
-    await repo.setMemberTarget(s.sessionId, 'm1', '');
-    reloaded = (await repo.loadSessions()).single;
-    expect(reloaded.memberTargets.containsKey('m1'), isFalse);
+  test('createSession rejects mixed workspace when team targets incomplete',
+      () async {
+    final tmp = await Directory.systemTemp.createTemp('fs_repo_folders_');
+    addTearDown(() => tmp.deleteSync(recursive: true));
+    final repo = SessionRepository(rootDir: tmp.path);
+
+    final ws = await repo.createWorkspace([
+      const WorkspaceFolder(path: '/local'),
+      const WorkspaceFolder(path: '/remote', targetId: 'ssh:p1'),
+    ]);
+
+    expect(
+      () => repo.createSession(
+        ws.workspaceId,
+        sessionTeam: 'team-a',
+        rosterMembers: const [
+          TeamMemberConfig(id: 'lead', name: 'Lead'),
+        ],
+      ),
+      throwsA(
+        isA<StateError>().having(
+          (e) => e.message,
+          'message',
+          'mixed_workspace_member_targets_incomplete',
+        ),
+      ),
+    );
+  });
+
+  test('createSession snapshots workspace team targets immutably', () async {
+    final tmp = await Directory.systemTemp.createTemp('fs_repo_folders_');
+    addTearDown(() => tmp.deleteSync(recursive: true));
+    final repo = SessionRepository(rootDir: tmp.path);
+
+    final ws = await repo.createWorkspace([
+      const WorkspaceFolder(path: '/local'),
+      const WorkspaceFolder(path: '/remote', targetId: 'ssh:p1'),
+    ]);
+    await repo.updateWorkspaceMemberTargets(
+      ws.workspaceId,
+      'team-a',
+      targets: const {'lead': 'local'},
+    );
+    final session = await repo.createSession(
+      ws.workspaceId,
+      sessionTeam: 'team-a',
+      rosterMembers: const [
+        TeamMemberConfig(id: 'lead', name: 'Lead'),
+      ],
+    );
+    expect(session.memberTargets['lead'], 'local');
+
+    await repo.updateWorkspaceMemberTargets(
+      ws.workspaceId,
+      'team-a',
+      targets: const {'lead': 'ssh:p1'},
+    );
+    final reloaded = (await repo.loadSessions()).single;
+    expect(reloaded.memberTargets['lead'], 'local');
   });
 
   test('updateWorkspaceFolders replaces folders wholesale', () async {
@@ -164,32 +227,5 @@ void main() {
     );
     expect(session.memberTargets['lead'], 'local');
     expect(session.memberTargets['dev'], 'ssh:p1');
-  });
-
-  test('replaceMemberTargets writes targets atomically', () async {
-    final tmp = await Directory.systemTemp.createTemp('fs_repo_folders_');
-    addTearDown(() => tmp.deleteSync(recursive: true));
-    final repo = SessionRepository(rootDir: tmp.path);
-
-    final ws = await repo.createWorkspace([
-      const WorkspaceFolder(path: '/local'),
-      const WorkspaceFolder(path: '/remote', targetId: 'ssh:p1'),
-    ]);
-    final session = await repo.createSession(
-      ws.workspaceId,
-      sessionTeam: 'team-a',
-      rosterMembers: const [
-        TeamMemberConfig(id: 'lead', name: 'Lead'),
-      ],
-    );
-    await repo.replaceMemberTargets(
-      session.sessionId,
-      targets: const {
-        'lead': 'ssh:p1',
-      },
-      instanceIdsToClear: const {'lead'},
-    );
-    final reloaded = (await repo.loadSessions()).single;
-    expect(reloaded.memberTargets['lead'], 'ssh:p1');
   });
 }

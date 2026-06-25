@@ -461,9 +461,9 @@ class _RightToolsPanelState extends State<RightToolsPanel> {
                     createdAt: 0,
                   ),
                 );
-                final workContext = await lifecycle.memberWorkContext(
+                final workContext = await lifecycle.launchWorkContext(
                   launchCtx,
-                  member.id,
+                  memberId: member.id,
                 );
                 final detail = await MemberConfigInspector().inspect(
                   workspaceId: workspaceId,

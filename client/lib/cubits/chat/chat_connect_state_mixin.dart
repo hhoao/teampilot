@@ -1,6 +1,7 @@
 import 'package:flutter_bloc/flutter_bloc.dart';
 
 import '../../services/team/team_config_launch_validator.dart';
+import '../../utils/logger.dart';
 import '../../utils/session_launch_error.dart';
 import 'chat_tab_store.dart';
 import 'model/chat_state.dart';
@@ -13,6 +14,7 @@ mixin ChatConnectStateMixin on Cubit<ChatState> {
   void onTabRunningChanged();
 
   void beginSessionConnect(String sessionId) {
+    appLogger.d('[session-launch] connecting start session=$sessionId');
     clearLaunchError(sessionId);
     if (state.sessionConnectingId == sessionId) return;
     emit(
@@ -68,11 +70,15 @@ mixin ChatConnectStateMixin on Cubit<ChatState> {
   }
 
   void failSessionConnect(String sessionId, String rawMessage) {
+    appLogger.w(
+      '[session-launch] connecting failed session=$sessionId: $rawMessage',
+    );
     setLaunchError(sessionId, rawMessage);
     finishSessionConnect(sessionId);
   }
 
   void finishSessionConnect(String sessionId) {
+    appLogger.d('[session-launch] connecting done session=$sessionId');
     updateTabRunning(sessionId);
     if (state.sessionConnectingId != sessionId) return;
     emit(

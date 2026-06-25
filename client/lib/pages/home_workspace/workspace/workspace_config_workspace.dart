@@ -78,7 +78,10 @@ class _WorkspaceConfigPanelState
     final team = identity is TeamProfile ? identity : null;
 
     final body = switch (section) {
-      WorkspaceConfigSection.settings => WorkspaceInfoSection(workspace: widget.workspace),
+      WorkspaceConfigSection.settings => WorkspaceInfoSection(
+          workspace: widget.workspace,
+          team: team,
+        ),
       WorkspaceConfigSection.members when team != null => HomeTeamTab(
           section: TeamConfigSection.members,
           team: team,

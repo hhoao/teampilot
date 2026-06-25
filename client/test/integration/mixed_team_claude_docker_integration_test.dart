@@ -84,16 +84,6 @@ void main() {
           sessionTeam: kItMixedClaudeTeam.id,
           rosterMembers: kItMixedClaudeTeam.members,
         );
-        await repo.setMemberTarget(
-          session.sessionId,
-          kLeadMember.id,
-          'local',
-        );
-        await repo.setMemberTarget(
-          session.sessionId,
-          kWorkerMember.id,
-          remote.sshTargetId,
-        );
         final reloaded = (await repo.loadSessions()).firstWhere(
           (s) => s.sessionId == session!.sessionId,
         );

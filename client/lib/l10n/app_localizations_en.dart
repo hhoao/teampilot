@@ -1837,6 +1837,17 @@ class AppLocalizationsEn extends AppLocalizations {
       'Set machine and path per directory. All local = local workspace; all one remote = project-remote; cross-machine = mixed (member-remote).';
 
   @override
+  String get workspaceFoldersMixedTargetsLockedHint =>
+      'Mixed workspace: folder machines are fixed. Add paths on existing machines above; use Assign to change member machine assignment.';
+
+  @override
+  String get workspaceFoldersPersonalTargetsLockedHint =>
+      'Personal identity cannot change folder machines. Switch to a team identity to configure machines and directories.';
+
+  @override
+  String get workspaceFoldersPickMixedTarget => 'Add directory on machine';
+
+  @override
   String get workspaceTopologyLocal => 'Local workspace';
 
   @override
@@ -1844,6 +1855,9 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get workspaceTopologyMixed => 'Mixed workspace';
+
+  @override
+  String get workspaceTypeLabel => 'Type';
 
   @override
   String get mixedWorkspaceRequiresTeamLaunch =>
@@ -1869,6 +1883,39 @@ class AppLocalizationsEn extends AppLocalizations {
   String get mixedWorkspaceMemberAssignmentConfirm => 'Start team';
 
   @override
+  String get workspaceMemberTargetsSectionTitle => 'Member machine assignment';
+
+  @override
+  String get workspaceMemberTargetsSectionSubtitle =>
+      'Default for new conversations with this team. Existing conversations keep the assignment from when they were created.';
+
+  @override
+  String get workspaceMemberTargetsSave => 'Save assignment';
+
+  @override
+  String get workspaceMemberTargetsSaved => 'Member assignment saved.';
+
+  @override
+  String get workspaceMemberTargetsAssignAction => 'Assign';
+
+  @override
+  String get workspaceMemberTargetsAssigned => 'Assigned';
+
+  @override
+  String get workspaceMemberTargetsUnassigned => 'Not assigned';
+
+  @override
+  String get workspaceMemberTargetsPartiallyAssigned => 'Partially assigned';
+
+  @override
+  String get mixedWorkspaceCreateSessionBlocked =>
+      'Complete member machine assignment in workspace settings before starting a conversation.';
+
+  @override
+  String get mixedWorkspaceSessionLaunchBlocked =>
+      'This conversation has incomplete member assignments. Configure assignment in workspace settings and start a new conversation.';
+
+  @override
   String mixedWorkspaceMemberPlacementProgress(int placed, int total) {
     return '$placed / $total assigned';
   }
@@ -1880,6 +1927,18 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get workspaceFolderTargetLabel => 'Machine';
+
+  @override
+  String get workspaceFolderPathLabel => 'Directory';
+
+  @override
+  String get workspaceFoldersChangeTarget => 'Change';
+
+  @override
+  String get workspaceFoldersAddOnAnotherMachine => 'Add on another machine';
+
+  @override
+  String get workspaceFoldersPickTarget => 'Choose machine';
 
   @override
   String get workspaceFoldersPickPath => 'Choose directory';

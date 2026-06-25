@@ -5,8 +5,10 @@ import 'package:teampilot/models/session_member_binding.dart';
 import 'package:teampilot/models/workspace.dart';
 import 'package:teampilot/models/workspace_folder.dart';
 import 'package:teampilot/models/workspace_launch_context.dart';
+import 'package:teampilot/models/personal_profile.dart';
 import 'package:teampilot/models/team_config.dart';
 import 'package:teampilot/services/session/session_lifecycle_service.dart';
+import 'package:teampilot/services/storage/launch_profile_provisioner.dart';
 import 'package:teampilot/services/storage/runtime_context.dart';
 
 import '../../support/in_memory_filesystem.dart';
@@ -164,7 +166,7 @@ void main() {
     expect(resolved.last, 'ssh:p1');
   });
 
-  test('memberWorkContext resolves the member ssh work plane', () async {
+  test('launchWorkContext resolves the member ssh work plane', () async {
     final resolved = <String>[];
     final lifecycle = capturingLifecycle(resolved);
     final session = AppSession(
@@ -177,7 +179,7 @@ void main() {
       createdAt: 1,
     );
 
-    final ctx = await lifecycle.memberWorkContext(_ctx(session), 'm1');
+    final ctx = await lifecycle.launchWorkContext(_ctx(session), memberId: 'm1');
     expect(resolved.last, 'ssh:p1');
     expect(ctx.appDataRoot, '/remote/app');
   });
@@ -197,7 +199,7 @@ void main() {
     );
 
     expect(
-      lifecycle.memberWorkTarget(_ctx(session), 'builder').id,
+      lifecycle.launchWorkTarget(_ctx(session), memberId: 'builder').id,
       'ssh:p1',
     );
   });
@@ -216,7 +218,7 @@ void main() {
     );
     expect(lifecycle.memberTargetIsValid(_ctx(session), 'builder'), isFalse);
     expect(
-      lifecycle.memberWorkTarget(_ctx(session), 'builder').id,
+      lifecycle.launchWorkTarget(_ctx(session), memberId: 'builder').id,
       RuntimeTarget.localId,
     );
   });
@@ -288,5 +290,60 @@ void main() {
     final unassigned = lifecycle.memberWorkDirs(ctx, 'm2');
     expect(unassigned.workingDirectory, '/main');
     expect(unassigned.addDirs, ['/x']);
+  });
+
+  test('personal session launchWorkTarget uses workspace session target', () {
+    final lifecycle = SessionLifecycleService();
+    final session = AppSession(
+      sessionId: 's-personal',
+      workspaceId: 'w1',
+      sessionTeam: '',
+      folders: const [
+        WorkspaceFolder(path: '/root/hhoa', targetId: 'ssh:p1'),
+      ],
+      createdAt: 1,
+    );
+
+    expect(
+      lifecycle.launchWorkTarget(_ctx(session)).id,
+      'ssh:p1',
+    );
+  });
+
+  test('prepareShellLaunch rejects personal launch on mixed workspace', () async {
+    final lifecycle = SessionLifecycleService();
+    final session = AppSession(
+      sessionId: 's-personal',
+      workspaceId: 'w1',
+      sessionTeam: '',
+      folders: const [
+        WorkspaceFolder(path: '/local', targetId: 'local'),
+        WorkspaceFolder(path: '/remote', targetId: 'ssh:p1'),
+      ],
+      createdAt: 1,
+    );
+    const personal = PersonalProfile(
+      id: LaunchProfileProvisioner.defaultPersonalId,
+      display: 'Me',
+    );
+    final workspace = Workspace(
+      workspaceId: 'w1',
+      folders: session.folders,
+      createdAt: 0,
+    );
+    await expectLater(
+      lifecycle.prepareShellLaunch(
+        session: session,
+        workspace: workspace,
+        personal: personal,
+      ),
+      throwsA(
+        isA<StateError>().having(
+          (e) => e.message,
+          'message',
+          'mixed_workspace_personal_launch_blocked',
+        ),
+      ),
+    );
   });
 }

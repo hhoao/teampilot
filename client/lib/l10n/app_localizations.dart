@@ -3404,6 +3404,24 @@ abstract class AppLocalizations {
   /// **'Set machine and path per directory. All local = local workspace; all one remote = project-remote; cross-machine = mixed (member-remote).'**
   String get workspaceFoldersEditorHint;
 
+  /// No description provided for @workspaceFoldersMixedTargetsLockedHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Mixed workspace: folder machines are fixed. Add paths on existing machines above; use Assign to change member machine assignment.'**
+  String get workspaceFoldersMixedTargetsLockedHint;
+
+  /// No description provided for @workspaceFoldersPersonalTargetsLockedHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Personal identity cannot change folder machines. Switch to a team identity to configure machines and directories.'**
+  String get workspaceFoldersPersonalTargetsLockedHint;
+
+  /// No description provided for @workspaceFoldersPickMixedTarget.
+  ///
+  /// In en, this message translates to:
+  /// **'Add directory on machine'**
+  String get workspaceFoldersPickMixedTarget;
+
   /// No description provided for @workspaceTopologyLocal.
   ///
   /// In en, this message translates to:
@@ -3421,6 +3439,12 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Mixed workspace'**
   String get workspaceTopologyMixed;
+
+  /// No description provided for @workspaceTypeLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Type'**
+  String get workspaceTypeLabel;
 
   /// No description provided for @mixedWorkspaceRequiresTeamLaunch.
   ///
@@ -3458,6 +3482,66 @@ abstract class AppLocalizations {
   /// **'Start team'**
   String get mixedWorkspaceMemberAssignmentConfirm;
 
+  /// No description provided for @workspaceMemberTargetsSectionTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Member machine assignment'**
+  String get workspaceMemberTargetsSectionTitle;
+
+  /// No description provided for @workspaceMemberTargetsSectionSubtitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Default for new conversations with this team. Existing conversations keep the assignment from when they were created.'**
+  String get workspaceMemberTargetsSectionSubtitle;
+
+  /// No description provided for @workspaceMemberTargetsSave.
+  ///
+  /// In en, this message translates to:
+  /// **'Save assignment'**
+  String get workspaceMemberTargetsSave;
+
+  /// No description provided for @workspaceMemberTargetsSaved.
+  ///
+  /// In en, this message translates to:
+  /// **'Member assignment saved.'**
+  String get workspaceMemberTargetsSaved;
+
+  /// No description provided for @workspaceMemberTargetsAssignAction.
+  ///
+  /// In en, this message translates to:
+  /// **'Assign'**
+  String get workspaceMemberTargetsAssignAction;
+
+  /// No description provided for @workspaceMemberTargetsAssigned.
+  ///
+  /// In en, this message translates to:
+  /// **'Assigned'**
+  String get workspaceMemberTargetsAssigned;
+
+  /// No description provided for @workspaceMemberTargetsUnassigned.
+  ///
+  /// In en, this message translates to:
+  /// **'Not assigned'**
+  String get workspaceMemberTargetsUnassigned;
+
+  /// No description provided for @workspaceMemberTargetsPartiallyAssigned.
+  ///
+  /// In en, this message translates to:
+  /// **'Partially assigned'**
+  String get workspaceMemberTargetsPartiallyAssigned;
+
+  /// No description provided for @mixedWorkspaceCreateSessionBlocked.
+  ///
+  /// In en, this message translates to:
+  /// **'Complete member machine assignment in workspace settings before starting a conversation.'**
+  String get mixedWorkspaceCreateSessionBlocked;
+
+  /// No description provided for @mixedWorkspaceSessionLaunchBlocked.
+  ///
+  /// In en, this message translates to:
+  /// **'This conversation has incomplete member assignments. Configure assignment in workspace settings and start a new conversation.'**
+  String get mixedWorkspaceSessionLaunchBlocked;
+
   /// No description provided for @mixedWorkspaceMemberPlacementProgress.
   ///
   /// In en, this message translates to:
@@ -3475,6 +3559,30 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Machine'**
   String get workspaceFolderTargetLabel;
+
+  /// No description provided for @workspaceFolderPathLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Directory'**
+  String get workspaceFolderPathLabel;
+
+  /// No description provided for @workspaceFoldersChangeTarget.
+  ///
+  /// In en, this message translates to:
+  /// **'Change'**
+  String get workspaceFoldersChangeTarget;
+
+  /// No description provided for @workspaceFoldersAddOnAnotherMachine.
+  ///
+  /// In en, this message translates to:
+  /// **'Add on another machine'**
+  String get workspaceFoldersAddOnAnotherMachine;
+
+  /// No description provided for @workspaceFoldersPickTarget.
+  ///
+  /// In en, this message translates to:
+  /// **'Choose machine'**
+  String get workspaceFoldersPickTarget;
 
   /// No description provided for @workspaceFoldersPickPath.
   ///

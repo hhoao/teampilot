@@ -27,7 +27,16 @@ Future<void> openWorkspaceSessionTab(
   AppSession session, {
   required bool isPersonal,
 }) async {
+  appLogger.i(
+    '[session-launch] openWorkspaceSessionTab start '
+    'session=${session.sessionId} workspace=${workspace.workspaceId} '
+    'personal=$isPersonal launchState=${session.launchState.name}',
+  );
   if (!_canLaunchWorkspaceSession(context, workspace, isPersonal: isPersonal)) {
+    appLogger.w(
+      '[session-launch] openWorkspaceSessionTab blocked '
+      'session=${session.sessionId} personal=$isPersonal',
+    );
     return;
   }
 
@@ -195,6 +204,22 @@ Future<void> createAndOpenWorkspaceConversation(
       session,
       isPersonal: isPersonal,
     );
+  } on StateError catch (error) {
+    if (error.message == 'mixed_workspace_member_targets_incomplete') {
+      if (!context.mounted) return;
+      AppToast.show(
+        context,
+        message: context.l10n.mixedWorkspaceCreateSessionBlocked,
+        variant: AppToastVariant.warning,
+      );
+      return;
+    }
+    if (error.message == 'mixed_workspace_personal_launch_blocked') {
+      if (!context.mounted) return;
+      showPersonalLaunchBlockedToast(context);
+      return;
+    }
+    rethrow;
   } on Object catch (error, stackTrace) {
     appLogger.e(
       l10n.homeWorkspaceNewConversation,
@@ -243,6 +268,22 @@ Future<void> createSessionInWorktree(
     );
     if (!context.mounted) return;
     await openWorkspaceSessionTab(context, workspace, session, isPersonal: isPersonal);
+  } on StateError catch (error) {
+    if (error.message == 'mixed_workspace_member_targets_incomplete') {
+      if (!context.mounted) return;
+      AppToast.show(
+        context,
+        message: context.l10n.mixedWorkspaceCreateSessionBlocked,
+        variant: AppToastVariant.warning,
+      );
+      return;
+    }
+    if (error.message == 'mixed_workspace_personal_launch_blocked') {
+      if (!context.mounted) return;
+      showPersonalLaunchBlockedToast(context);
+      return;
+    }
+    rethrow;
   } on Object catch (error, stackTrace) {
     appLogger.e(
       l10n.homeWorkspaceNewConversation,

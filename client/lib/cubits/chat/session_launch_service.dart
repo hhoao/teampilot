@@ -2,7 +2,7 @@ import 'dart:async';
 
 import 'package:uuid/uuid.dart';
 
-import '../../models/runtime_target.dart' show RuntimeKind;
+import '../../models/runtime_target.dart';
 import '../../models/workspace.dart';
 import '../../models/workspace_launch_context.dart';
 import '../../models/workspace_folder.dart';
@@ -125,8 +125,19 @@ class SessionLaunchService implements MemberConnector {
     String emptyDisplayTitleFallback = 'New Chat',
     bool connectImmediately = true,
   }) async {
+    final isPersonal = session.sessionTeam.trim().isEmpty;
+    appLogger.i(
+      '[session-launch] openSessionTab start '
+      'session=${session.sessionId} personal=$isPersonal '
+      'member=${member?.id ?? ''} team=${team?.id ?? ''} '
+      'connectImmediately=$connectImmediately',
+    );
     final existingIdx = _tabStore.indexOfSession(session.sessionId);
     if (existingIdx != -1) {
+      appLogger.i(
+        '[session-launch] openSessionTab reuse existing tab '
+        'session=${session.sessionId} idx=$existingIdx',
+      );
       final existing = _tabStore.tabs[existingIdx];
       final memberId = member?.id ?? existing.selectedMemberId;
       existing.selectedMemberId = memberId;
@@ -149,11 +160,11 @@ class SessionLaunchService implements MemberConnector {
       return;
     }
     final workspace = _workspaceById(session.workspaceId);
-    final isPersonal = session.sessionTeam.trim().isEmpty;
+    final isPersonalSession = session.sessionTeam.trim().isEmpty;
     PersonalProfile? personalIdentity;
     TeamMemberConfig? personalMember;
     CliPreset? personalPreset;
-    if (isPersonal) {
+    if (isPersonalSession) {
       if (workspace == null) {
         throw StateError(
           'openSessionTab requires workspace for personal sessions',
@@ -167,27 +178,13 @@ class SessionLaunchService implements MemberConnector {
       personalPreset = personalCtx.personalPreset;
       personalMember = personalCtx.personalMember;
     }
-    if (!isPersonal && (team == null || member == null)) {
+    if (!isPersonalSession && (team == null || member == null)) {
       throw StateError(
         'openSessionTab requires team and member for non-personal sessions',
       );
     }
-    final effectiveMember = isPersonal ? personalMember! : member!;
-    final effectiveTeam = isPersonal ? null : team;
-    final ts = _h.shellFactory.newSession(
-      isPersonal
-          // Honor the session's pinned CLI so an existing simple-mode session
-          // resumes under the CLI it was created with, even when the workspace's
-          // active preset has since been switched to another CLI.
-          ? (session.cli ?? personalPreset?.cli ?? CliTool.claude)
-          : member!.cliWithin(team!),
-      workTarget: isPersonal
-          ? null
-          : _h.lifecycle.memberWorkTarget(
-              _launchContextFor(session),
-              effectiveMember.id,
-            ),
-    );
+    final effectiveMember = isPersonalSession ? personalMember! : member!;
+    final effectiveTeam = isPersonalSession ? null : team;
     final info = ChatTabInfo(
       id: session.sessionId,
       title: session.resolveDisplayTitle(emptyDisplayTitleFallback),
@@ -197,7 +194,18 @@ class SessionLaunchService implements MemberConnector {
     final cliTeamName = session.cliTeamName;
     final internalTab = ChatTab(info: info, cliTeamName: cliTeamName)
       ..persistedSession = session;
-    internalTab.memberShells[effectiveMember.id] = ts;
+    final ts = _shellForLaunch(
+      tab: internalTab,
+      shellKey: effectiveMember.id,
+      cli: isPersonalSession
+          // Honor the session's pinned CLI so an existing simple-mode session
+          // resumes under the CLI it was created with, even when the workspace's
+          // active preset has since been switched to another CLI.
+          ? (session.cli ?? personalPreset?.cli ?? CliTool.claude)
+          : member!.cliWithin(team!),
+      session: session,
+      rosterMemberId: isPersonalSession ? null : effectiveMember.id,
+    );
     internalTab.selectedMemberId = effectiveMember.id;
     _tabStore.append(internalTab);
     // 驱动 working 指示器（侧栏 tile + tab spinner）。mixed 模式靠总线 turn 真相，
@@ -215,6 +223,10 @@ class SessionLaunchService implements MemberConnector {
       _h.activeTeam = effectiveTeam;
       _h.pushPresenceTarget();
       if (effectiveTeam.teamMode == TeamMode.mixed) {
+        appLogger.i(
+          '[session-launch] installing team bus '
+          'session=${session.sessionId} team=${effectiveTeam.id}',
+        );
         await _h.busCoordinator.installBusForTab(
           internalTab,
           effectiveTeam,
@@ -228,6 +240,11 @@ class SessionLaunchService implements MemberConnector {
         (effectiveTeam?.teamMode != TeamMode.mixed ||
             TeamMemberNaming.isTeamLead(effectiveMember));
     if (connectNow) {
+      appLogger.i(
+        '[session-launch] connect scheduled '
+        'session=${info.id} member=${effectiveMember.id} '
+        'teamMode=${effectiveTeam?.teamMode.name ?? 'personal'}',
+      );
       _h.beginSessionConnect(info.id);
       _h.postFrameScheduler(() async {
         try {
@@ -237,19 +254,19 @@ class SessionLaunchService implements MemberConnector {
             shell: ts,
             repo: repo,
             launched: launched,
-            team: isPersonal ? null : team,
-            member: isPersonal ? null : member,
-            workspace: isPersonal ? workspace : null,
-            personal: isPersonal ? personalIdentity : null,
+            team: isPersonalSession ? null : team,
+            member: isPersonalSession ? null : member,
+            workspace: isPersonalSession ? workspace : null,
+            personal: isPersonalSession ? personalIdentity : null,
           );
-          if (!isPersonal &&
+          if (!isPersonalSession &&
               _h.autoLaunchAllMembersOnConnect?.call() == true) {
             _launchRemainingMembersForTab(team!, member!.id, internalTab);
           }
           _h.updateTabRunning(info.id);
         } on Object catch (e, st) {
           appLogger.e(
-            '[session] prepareLaunch/connect failed for ${info.id}: $e',
+            '[session-launch] prepareLaunch/connect failed for ${info.id}: $e',
             error: e,
             stackTrace: st,
           );
@@ -259,6 +276,12 @@ class SessionLaunchService implements MemberConnector {
         }
       });
     } else {
+      appLogger.i(
+        '[session-launch] connect deferred '
+        'session=${info.id} connectImmediately=$connectImmediately '
+        'teamMode=${effectiveTeam?.teamMode.name ?? 'personal'} '
+        'member=${effectiveMember.id}',
+      );
       _h.updateTabRunning(info.id);
     }
   }
@@ -509,6 +532,10 @@ class SessionLaunchService implements MemberConnector {
     TeamMemberConfig? member,
     SessionRepository? repo,
   }) async {
+    appLogger.i(
+      '[session-launch] reconnect existing tab '
+      'session=${session.sessionId} member=${member?.id ?? ''}',
+    );
     final isPersonal = session.sessionTeam.trim().isEmpty;
     final workspace = isPersonal ? _workspaceById(session.workspaceId) : null;
     late final TeamMemberConfig effectiveMember;
@@ -532,26 +559,32 @@ class SessionLaunchService implements MemberConnector {
     }
 
     tab.selectedMemberId = effectiveMember.id;
-    final shell = tab.memberShells.putIfAbsent(
-      effectiveMember.id,
-      () => _h.shellFactory.newSession(
-        isPersonal
-            ? (session.cli ?? personalPreset?.cli ?? CliTool.claude)
-            : member!.cliWithin(team!),
-        workTarget: isPersonal
-            ? null
-            : _h.lifecycle.memberWorkTarget(
-              _launchContextFor(session),
-              effectiveMember.id,
-            ),
-      ),
+    final shell = _shellForLaunch(
+      tab: tab,
+      shellKey: effectiveMember.id,
+      cli: isPersonal
+          ? (session.cli ?? personalPreset?.cli ?? CliTool.claude)
+          : member!.cliWithin(team!),
+      session: session,
+      rosterMemberId: isPersonal ? null : effectiveMember.id,
     );
 
     if (shell.isRunning || shell.isConnecting) {
+      appLogger.d(
+        '[session-launch] reconnect skip session=${tab.info.id} '
+        'reason=shell_active running=${shell.isRunning} '
+        'connecting=${shell.isConnecting}',
+      );
       _h.updateTabRunning(tab.info.id);
       return;
     }
-    if (tab.membersPendingConnect.contains(effectiveMember.id)) return;
+    if (tab.membersPendingConnect.contains(effectiveMember.id)) {
+      appLogger.d(
+        '[session-launch] reconnect skip session=${tab.info.id} '
+        'reason=pending member=${effectiveMember.id}',
+      );
+      return;
+    }
 
     tab.membersPendingConnect.add(effectiveMember.id);
     final launched = session.launchState == AppSessionLaunchState.started;
@@ -578,7 +611,7 @@ class SessionLaunchService implements MemberConnector {
         _h.updateTabRunning(tab.info.id);
       } on Object catch (e, st) {
         appLogger.e(
-          '[session] reconnect failed for ${tab.info.id}: $e',
+          '[session-launch] reconnect failed for ${tab.info.id}: $e',
           error: e,
           stackTrace: st,
         );
@@ -609,6 +642,40 @@ class SessionLaunchService implements MemberConnector {
               createdAt: 0,
             ),
       );
+
+  RuntimeTarget _launchWorkTarget(
+    AppSession session, {
+    String? memberId,
+  }) =>
+      _h.lifecycle.launchWorkTarget(
+        _launchContextFor(session),
+        memberId: memberId,
+      );
+
+  /// Ensures [tab] holds a [TerminalSession] whose transport matches [session]'s
+  /// launch target (local PTY vs SSH).
+  TerminalSession _shellForLaunch({
+    required ChatTab tab,
+    required String shellKey,
+    required CliTool cli,
+    required AppSession session,
+    String? rosterMemberId,
+  }) {
+    final workTarget = _launchWorkTarget(session, memberId: rosterMemberId);
+    final needsRemoteLaunch = workTarget.kind == RuntimeKind.ssh;
+    final existing = tab.memberShells[shellKey];
+    if (existing != null &&
+        !existing.isRunning &&
+        !existing.isConnecting &&
+        needsRemoteLaunch != existing.usesRemoteTransport) {
+      existing.disconnect();
+      tab.memberShells.remove(shellKey);
+    }
+    return tab.memberShells.putIfAbsent(
+      shellKey,
+      () => _h.shellFactory.newSession(cli, workTarget: workTarget),
+    );
+  }
 
   Future<void> openMemberTab(
     TeamProfile team,
@@ -832,8 +899,18 @@ class SessionLaunchService implements MemberConnector {
     PersonalProfile? personal,
   }) async {
     final isPersonal = workspace != null;
+    final memberLabel = isPersonal ? session.sessionId : (member?.id ?? '');
+    appLogger.i(
+      '[session-launch] connectShell start '
+      'session=${tab.info.id} member=$memberLabel personal=$isPersonal '
+      'launched=$launched',
+    );
     if (isPersonal) {
       if (personal == null) {
+        appLogger.w(
+          '[session-launch] connectShell aborted session=${tab.info.id} '
+          'reason=missing_personal_identity',
+        );
         _h.failSessionConnect(
           tab.info.id,
           'Personal session is missing personal identity.',
@@ -841,6 +918,10 @@ class SessionLaunchService implements MemberConnector {
         return;
       }
     } else if (team == null || member == null) {
+      appLogger.w(
+        '[session-launch] connectShell aborted session=${tab.info.id} '
+        'reason=missing_team_or_member',
+      );
       _h.failSessionConnect(
         tab.info.id,
         'Team session requires team and member to connect.',
@@ -850,6 +931,10 @@ class SessionLaunchService implements MemberConnector {
 
     if (team != null) {
       if (session.cliTeamName.isEmpty) {
+        appLogger.w(
+          '[session-launch] connectShell aborted session=${tab.info.id} '
+          'reason=missing_cli_team_name',
+        );
         _h.failSessionConnect(
           tab.info.id,
           'Session is missing CLI team identity (cliTeamName). '
@@ -858,6 +943,10 @@ class SessionLaunchService implements MemberConnector {
         return;
       }
       if (!session.sessionId.startsWith('local-') && session.members.isEmpty) {
+        appLogger.w(
+          '[session-launch] connectShell aborted session=${tab.info.id} '
+          'reason=missing_member_bindings',
+        );
         _h.failSessionConnect(
           tab.info.id,
           'Session is missing member task bindings. Create a new team session.',
@@ -877,6 +966,26 @@ class SessionLaunchService implements MemberConnector {
         : null;
 
     final launchMember = member;
+    final launchCtx = _launchContextFor(activeSession);
+    final rosterMemberId = binding?.rosterMemberId;
+    final launchTarget = _h.lifecycle.launchWorkTarget(
+      launchCtx,
+      memberId: isPersonal ? null : (rosterMemberId ?? launchMember?.id),
+    );
+    final launchCli = isPersonal
+        ? (activeSession.cli ?? CliTool.claude)
+        : launchMember!.cliWithin(team!);
+    final preflightMemberId = isPersonal
+        ? activeSession.sessionId
+        : (rosterMemberId ?? launchMember!.id);
+
+    appLogger.d(
+      '[session-launch] launch target resolved '
+      'session=${tab.info.id} member=$preflightMemberId '
+      'cli=${launchCli.value} target=${launchTarget.kind.name} '
+      'targetId=${launchTarget.id}',
+    );
+
     final mixedBus =
         team != null &&
         launchMember != null &&
@@ -888,29 +997,27 @@ class SessionLaunchService implements MemberConnector {
     RemoteBusBinding? remoteBinding;
     PreflightResult? preflightResult;
     if (mixedBus) {
-      final memberId = binding?.rosterMemberId ?? launchMember.id;
-      final memberTarget = _h.lifecycle.memberWorkTarget(
-        _launchContextFor(activeSession),
-        memberId,
+      appLogger.d(
+        '[session-launch] mixed bus preflight start '
+        'session=${tab.info.id} member=$preflightMemberId',
       );
-      final memberCli = launchMember.cliWithin(team);
       // P3c: a member on a machine *other than home* runs preflight before launch
       // (connect → CLI ready → app-data materialize). home / home-ssh members
       // return null and skip it (zero change).
       preflightResult = await _h.remoteMemberPreflight?.prepareIfOffHome(
-        memberTarget: memberTarget,
-        cli: memberCli,
+        memberTarget: launchTarget,
+        cli: launchCli,
         workspaceId: activeSession.workspaceId,
-        memberId: memberId,
+        memberId: preflightMemberId,
       );
       // P3b/P3c: bind the bus back over a reverse tunnel — for any ssh member
       // (home-ssh or off-home); the resolver owns the per-tab bus server.
       if (_h.remoteBusResolver != null) {
         final resolution = await _h.remoteBusResolver!.resolve(
           existingMount: tab.remoteBusMount,
-          memberTarget: memberTarget,
-          memberId: memberId,
-          cli: memberCli,
+          memberTarget: launchTarget,
+          memberId: preflightMemberId,
+          cli: launchCli,
           busServer: tab.mcpServer!,
         );
         if (resolution != null) {
@@ -918,6 +1025,28 @@ class SessionLaunchService implements MemberConnector {
           remoteBinding = resolution.binding;
         }
       }
+      appLogger.d(
+        '[session-launch] mixed bus preflight done '
+        'session=${tab.info.id} member=$preflightMemberId '
+        'preflight=${preflightResult != null} '
+        'remoteBinding=${remoteBinding != null}',
+      );
+    } else if (_h.remoteMemberPreflight?.isOffHome(launchTarget) ?? false) {
+      appLogger.d(
+        '[session-launch] off-home preflight start '
+        'session=${tab.info.id} member=$preflightMemberId',
+      );
+      preflightResult = await _h.remoteMemberPreflight!.prepareIfOffHome(
+        memberTarget: launchTarget,
+        cli: launchCli,
+        workspaceId: activeSession.workspaceId,
+        memberId: preflightMemberId,
+      );
+      appLogger.d(
+        '[session-launch] off-home preflight done '
+        'session=${tab.info.id} member=$preflightMemberId '
+        'remoteCli=${preflightResult?.remoteCliPath ?? ''}',
+      );
     }
     var shellLaunch = await _h.lifecycle.prepareShellLaunch(
       session: activeSession,
@@ -938,21 +1067,22 @@ class SessionLaunchService implements MemberConnector {
           : null,
       busIdleUrl: mixedBus ? tab.mcpServer!.idleEndpoint.toString() : null,
     );
-    if (team != null && launchMember != null) {
-      final memberId = binding?.rosterMemberId ?? launchMember.id;
-      final memberTarget = _h.lifecycle.memberWorkTarget(
-        _launchContextFor(activeSession),
-        memberId,
-      );
+    if (launchTarget.kind == RuntimeKind.ssh) {
       final shellFactory = _h.shellFactory;
       shellLaunch = await applyRemoteSshLaunchConstraints(
         spec: shellLaunch,
-        memberTarget: memberTarget,
+        memberTarget: launchTarget,
         sshClientFactory: shellFactory.sshClientFactory,
-        profile: shellFactory.profileFor(memberTarget),
+        profile: shellFactory.profileFor(launchTarget),
       );
     }
     final plan = shellLaunch.plan;
+    appLogger.i(
+      '[session-launch] launch plan ready '
+      'session=${tab.info.id} member=$memberLabel '
+      'resume=${plan.resume} create=${plan.createSessionId ?? ''} '
+      'resumeId=${plan.resumeSessionId ?? ''} warnings=${plan.warnings.length}',
+    );
     final configDir = plan.memberConfigDir.trim();
     if (configDir.isNotEmpty) {
       tab.memberToolConfigDir = configDir;
@@ -967,6 +1097,11 @@ class SessionLaunchService implements MemberConnector {
     final memberWork = activeSession.workDirsForMember(
       isPersonal ? null : binding?.rosterMemberId,
       folders: _launchContextFor(activeSession).folderCatalog,
+    );
+    appLogger.i(
+      '[session-launch] shell.connect '
+      'session=${tab.info.id} member=$memberLabel '
+      'cwd=${memberWork.workingDirectory} addDirs=${memberWork.addDirs.length}',
     );
     shell.connect(
       workingDirectory: memberWork.workingDirectory,
@@ -1053,27 +1188,19 @@ class SessionLaunchService implements MemberConnector {
     required TeamMemberConfig member,
     AppSession? session,
   }) {
-    final workTarget = session != null
-        ? _h.lifecycle.memberWorkTarget(
-            _launchContextFor(session),
-            member.id,
-          )
-        : null;
-    final needsRemoteLaunch = workTarget?.kind == RuntimeKind.ssh;
-    final existing = tab.memberShells[member.id];
-    if (existing != null &&
-        !existing.isRunning &&
-        !existing.isConnecting &&
-        needsRemoteLaunch != existing.usesRemoteTransport) {
-      existing.disconnect();
-      tab.memberShells.remove(member.id);
+    final activeSession = session ?? tab.persistedSession;
+    if (activeSession == null) {
+      return tab.memberShells.putIfAbsent(
+        member.id,
+        () => _h.shellFactory.newSession(member.cliWithin(team)),
+      );
     }
-    return tab.memberShells.putIfAbsent(
-      member.id,
-      () => _h.shellFactory.newSession(
-        member.cliWithin(team),
-        workTarget: workTarget,
-      ),
+    return _shellForLaunch(
+      tab: tab,
+      shellKey: member.id,
+      cli: member.cliWithin(team),
+      session: activeSession,
+      rosterMemberId: member.id,
     );
   }
 
@@ -1082,6 +1209,10 @@ class SessionLaunchService implements MemberConnector {
     TeamMemberConfig member,
     ChatTab tab,
   ) {
+    appLogger.i(
+      '[session-launch] scheduleMemberConnect '
+      'session=${tab.info.id} member=${member.id} team=${team.id}',
+    );
     tab.selectedMemberId = member.id;
     final session =
         tab.persistedSession ?? _sessionForMemberConnect(tab, team);
@@ -1099,10 +1230,20 @@ class SessionLaunchService implements MemberConnector {
       ),
     );
     if (shell.isRunning || shell.isConnecting) {
+      appLogger.d(
+        '[session-launch] scheduleMemberConnect skip '
+        'session=${tab.info.id} member=${member.id} '
+        'reason=shell_active running=${shell.isRunning} '
+        'connecting=${shell.isConnecting}',
+      );
       _h.updateTabRunning(tab.info.id);
       return;
     }
     if (tab.membersPendingConnect.contains(member.id)) {
+      appLogger.d(
+        '[session-launch] scheduleMemberConnect skip '
+        'session=${tab.info.id} member=${member.id} reason=pending',
+      );
       return;
     }
     tab.membersPendingConnect.add(member.id);
@@ -1137,7 +1278,7 @@ class SessionLaunchService implements MemberConnector {
         _h.updateTabRunning(tab.info.id);
       } on Object catch (e, st) {
         appLogger.e(
-          '[session] prepareLaunch/connect failed for member ${member.name}: $e',
+          '[session-launch] member connect failed for ${member.name}: $e',
           error: e,
           stackTrace: st,
         );

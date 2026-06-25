@@ -44,9 +44,34 @@ class WorkspaceToolsContext {
     required String primaryPath,
     required List<String> additionalPaths,
     required RuntimeContext context,
+  }) =>
+      rootsForTarget(
+        folders: folders,
+        targetId: targetId,
+        primaryPath: primaryPath,
+        additionalPaths: additionalPaths,
+        context: context,
+        includeCatalogPaths: false,
+      );
+
+  /// All folder roots on [targetId] for multi-target file trees.
+  static List<String> rootsForTarget({
+    required List<WorkspaceFolder> folders,
+    required String targetId,
+    required String primaryPath,
+    required List<String> additionalPaths,
+    required RuntimeContext context,
+    bool includeCatalogPaths = true,
   }) {
     final pathCtx = context.filesystem.pathContext;
     final roots = <String>[];
+    if (includeCatalogPaths) {
+      for (final raw in folderPathsForTarget(folders, targetId)) {
+        if (raw.isEmpty) continue;
+        final normalized = pathCtx.normalize(raw);
+        if (!roots.contains(normalized)) roots.add(normalized);
+      }
+    }
     for (final raw in [primaryPath, ...additionalPaths]) {
       if (raw.isEmpty) continue;
       final onTarget = targetIdForFolderPaths(

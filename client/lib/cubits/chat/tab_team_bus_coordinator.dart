@@ -18,6 +18,7 @@ import '../../services/team_bus/tasks/task_log_factory.dart';
 import '../../services/team_bus/tasks/task_queue.dart';
 import '../../services/team_bus/team_bus.dart';
 import '../../services/team_bus/teammate_roster_profile.dart';
+import '../../utils/logger.dart';
 import '../../utils/team_member_naming.dart';
 import 'chat_session_shell_factory.dart';
 import 'chat_tab_store.dart';
@@ -80,6 +81,12 @@ class TabTeamBusCoordinator implements MemberMaterializer {
     TeamProfile team,
     AppSession session,
   ) async {
+    final memberCount = runtimeRosterMembers(team).length;
+    appLogger.i(
+      '[session-launch] installBusForTab start '
+      'session=${session.sessionId} team=${team.id} '
+      'teamMode=${team.teamMode.name} members=$memberCount',
+    );
     // 共享任务队列仅 mixed 模式接线：纯 Claude swarm 复用 Claude 原生任务表。
     final taskQueue = team.teamMode == TeamMode.mixed
         ? TaskQueue(log: TaskLogFactory.forSession(session.workspaceId, session.sessionId))
@@ -144,6 +151,10 @@ class TabTeamBusCoordinator implements MemberMaterializer {
     tab.teamBus = bus;
     tab.mcpServer = server;
     ensureIdleWatch();
+    appLogger.i(
+      '[session-launch] installBusForTab ready '
+      'session=${session.sessionId} endpoint=${server.endpoint}',
+    );
   }
 
   BusUserInputRouting? busUserInputRouting(

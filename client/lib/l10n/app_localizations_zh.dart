@@ -1763,6 +1763,17 @@ class AppLocalizationsZh extends AppLocalizations {
       '每个目录单独指定所在机器与路径。全部本地 = 本地工作区；全部同一远程 = 项目远程；跨机 = 混合工作区（成员远程）。';
 
   @override
+  String get workspaceFoldersMixedTargetsLockedHint =>
+      '混合工作区：各目录所在机器已固定。可在上方现有机器上添加路径；成员分配请使用下方「分配」按钮。';
+
+  @override
+  String get workspaceFoldersPersonalTargetsLockedHint =>
+      '个人身份下无法更改目录所在机器。请切换到团队身份配置机器与目录。';
+
+  @override
+  String get workspaceFoldersPickMixedTarget => '添加到机器';
+
+  @override
   String get workspaceTopologyLocal => '本地工作区';
 
   @override
@@ -1770,6 +1781,9 @@ class AppLocalizationsZh extends AppLocalizations {
 
   @override
   String get workspaceTopologyMixed => '混合工作区';
+
+  @override
+  String get workspaceTypeLabel => '类型';
 
   @override
   String get mixedWorkspaceRequiresTeamLaunch =>
@@ -1793,6 +1807,39 @@ class AppLocalizationsZh extends AppLocalizations {
   String get mixedWorkspaceMemberAssignmentConfirm => '启动团队';
 
   @override
+  String get workspaceMemberTargetsSectionTitle => '成员机器分配';
+
+  @override
+  String get workspaceMemberTargetsSectionSubtitle =>
+      '与本团队新建对话时的默认分配。已有对话保持创建时的分配不变。';
+
+  @override
+  String get workspaceMemberTargetsSave => '保存分配';
+
+  @override
+  String get workspaceMemberTargetsSaved => '成员分配已保存。';
+
+  @override
+  String get workspaceMemberTargetsAssignAction => '分配';
+
+  @override
+  String get workspaceMemberTargetsAssigned => '已分配';
+
+  @override
+  String get workspaceMemberTargetsUnassigned => '未分配';
+
+  @override
+  String get workspaceMemberTargetsPartiallyAssigned => '部分分配';
+
+  @override
+  String get mixedWorkspaceCreateSessionBlocked =>
+      '请先在 workspace 设置中完成成员机器分配，再新建对话。';
+
+  @override
+  String get mixedWorkspaceSessionLaunchBlocked =>
+      '该对话的成员分配不完整。请在 workspace 设置中配置分配后新建对话。';
+
+  @override
   String mixedWorkspaceMemberPlacementProgress(int placed, int total) {
     return '已分配 $placed / $total';
   }
@@ -1804,6 +1851,18 @@ class AppLocalizationsZh extends AppLocalizations {
 
   @override
   String get workspaceFolderTargetLabel => '所在机器';
+
+  @override
+  String get workspaceFolderPathLabel => '目录';
+
+  @override
+  String get workspaceFoldersChangeTarget => '更换';
+
+  @override
+  String get workspaceFoldersAddOnAnotherMachine => '在其他机器上添加';
+
+  @override
+  String get workspaceFoldersPickTarget => '选择机器';
 
   @override
   String get workspaceFoldersPickPath => '选择目录';

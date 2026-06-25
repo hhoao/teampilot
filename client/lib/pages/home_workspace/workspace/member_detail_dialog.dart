@@ -35,7 +35,7 @@ Future<void> showMemberDetailDialog(
         unawaited(() async {
           RuntimeContext? workContext;
           if (lifecycle != null && session != null) {
-            workContext = await lifecycle.memberWorkContext(
+            workContext = await lifecycle.launchWorkContext(
               WorkspaceLaunchContext(
                 session: session,
                 workspace: Workspace(
@@ -44,7 +44,7 @@ Future<void> showMemberDetailDialog(
                   createdAt: 0,
                 ),
               ),
-              member.id,
+              memberId: member.id,
             );
           }
           await cubit.load(

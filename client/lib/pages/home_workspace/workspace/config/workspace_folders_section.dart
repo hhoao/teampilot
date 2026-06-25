@@ -10,13 +10,17 @@ import '../../../../widgets/settings/workspace_settings_widgets.dart';
 import '../../../../widgets/workspace_folders_editor.dart';
 
 /// Per-workspace directory + machine editor (local / project-remote / mixed).
-///
-/// Replaces the legacy whole-workspace target radio. Each [WorkspaceFolder] row
-/// carries its own [WorkspaceFolder.targetId]; topology emerges from uniformity.
 class WorkspaceFoldersSection extends StatefulWidget {
-  const WorkspaceFoldersSection({required this.workspace, super.key});
+  const WorkspaceFoldersSection({
+    required this.workspace,
+    this.lockTargets = false,
+    super.key,
+  });
 
   final Workspace workspace;
+
+  /// Personal launch identity cannot reassign folder machines.
+  final bool lockTargets;
 
   @override
   State<WorkspaceFoldersSection> createState() => _WorkspaceFoldersSectionState();
@@ -57,17 +61,23 @@ class _WorkspaceFoldersSectionState extends State<WorkspaceFoldersSection> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          SettingsGroupHeader(title: l10n.workspaceFoldersSectionTitle),
           if (_saving)
             const Padding(
-              padding: EdgeInsets.symmetric(vertical: 4),
+              padding: EdgeInsets.fromLTRB(20, 12, 20, 0),
               child: LinearProgressIndicator(),
             ),
-          Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 4),
-            child: WorkspaceFoldersEditor(
+          SettingsLabeledStackedRow(
+            title: l10n.workspaceFoldersSectionTitle,
+            subtitle: workspaceFoldersEditorHint(
+              l10n,
+              live.folders,
+              lockTargets: widget.lockTargets,
+            ),
+            showDividerBelow: false,
+            body: WorkspaceFoldersEditor(
               folders: folders,
               enabled: !_saving,
+              lockTargets: widget.lockTargets,
               onChanged: _persist,
             ),
           ),

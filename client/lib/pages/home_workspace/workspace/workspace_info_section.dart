@@ -7,21 +7,25 @@ import 'package:teampilot/widgets/app_toast/app_toast.dart';
 
 import '../../../cubits/chat_cubit.dart';
 import '../../../l10n/l10n_extensions.dart';
+import '../../../models/team_config.dart';
 import '../../../models/workspace.dart';
-import '../../../theme/app_text_styles.dart';
+import '../../../models/workspace_topology.dart';
+import '../../../widgets/workspace_topology_chip.dart';
 import '../../../utils/workspace_display_name.dart';
-import '../../../widgets/workspace_details_dialog.dart';
 import '../../../widgets/settings/workspace_settings_widgets.dart';
-import '../../../services/io/system_folder_opener.dart';
 import '../workspace_actions.dart';
 import 'config/workspace_folders_section.dart';
+import 'config/workspace_team_member_targets_section.dart';
 import 'workspace_icon_settings_row.dart';
 
 /// Workspace basic settings + danger zone (same layout as [TeamInfoSection]).
 class WorkspaceInfoSection extends StatelessWidget {
-  const WorkspaceInfoSection({required this.workspace, super.key});
+  const WorkspaceInfoSection({required this.workspace, this.team, super.key});
 
   final Workspace workspace;
+
+  /// When set on a mixed workspace, shows the team default member→machine pins.
+  final TeamProfile? team;
 
   @override
   Widget build(BuildContext context) {
@@ -42,8 +46,6 @@ class WorkspaceInfoSection extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          WorkspaceFoldersSection(workspace: live),
-          const SizedBox(height: 12),
           SettingsSurfaceCard(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -65,34 +67,14 @@ class WorkspaceInfoSection extends StatelessWidget {
                   label: l10n.homeWorkspaceWorkspaceId,
                   value: live.workspaceId,
                   onCopy: () => _copyText(context, live.workspaceId),
-                  showDividerBelow: true,
                 ),
                 _WorkspaceSettingsInlineRow(
-                  label: l10n.workspacePrimaryPath,
-                  value: live.firstFolderPath.isNotEmpty
-                      ? live.firstFolderPath
-                      : l10n.workspacePrimaryPathNotSelected,
-                  onCopy: live.firstFolderPath.isNotEmpty
-                      ? () => _copyText(context, live.firstFolderPath)
-                      : null,
-                  trailing: live.firstFolderPath.isNotEmpty
-                      ? TextButton(
-                          onPressed: () => _openFolder(live.firstFolderPath),
-                          child: Text(l10n.openFolder),
-                        )
-                      : null,
-                ),
-                _WorkspaceSettingsInlineRow(
-                  label: l10n.workspaceAdditionalDirectories,
-                  value: live.extraFolderPaths.isEmpty
-                      ? l10n.workspaceNoAdditionalDirectories
-                      : l10n.homeWorkspaceWorkspaceAdditionalDirsCount(
-                          live.extraFolderPaths.length,
-                        ),
-                  onEdit: () => showWorkspaceDetailsDialog(
-                    context,
-                    live,
-                    sessionCount,
+                  label: l10n.workspaceTypeLabel,
+                  valueWidget: Align(
+                    alignment: Alignment.centerLeft,
+                    child: WorkspaceTopologyChip(
+                      topology: workspaceTopologyOf(live.folders),
+                    ),
                   ),
                   showDividerBelow: true,
                 ),
@@ -113,12 +95,12 @@ class WorkspaceInfoSection extends StatelessWidget {
             ),
           ),
           const SizedBox(height: 12),
-          Text(
-            l10n.homeWorkspaceWorkspaceSettingsPathsHint,
-            style: AppTextStyles.of(context).caption.copyWith(
-              color: Theme.of(context).colorScheme.onSurfaceVariant,
-            ),
-          ),
+          WorkspaceFoldersSection(workspace: live, lockTargets: team == null),
+          if (team != null &&
+              workspaceTopologyRequiresMemberAssignment(live.folders)) ...[
+            const SizedBox(height: 12),
+            WorkspaceTeamMemberTargetsSection(workspace: live, team: team!),
+          ],
           const SizedBox(height: 12),
           WorkspaceConfigDangerZone(workspace: live),
         ],
@@ -150,7 +132,10 @@ class WorkspaceConfigDangerZone extends StatelessWidget {
               size: context.appIconSizes.md,
               color: errorColor,
             ),
-            label: Text(l10n.deleteWorkspace, style: TextStyle(color: errorColor)),
+            label: Text(
+              l10n.deleteWorkspace,
+              style: TextStyle(color: errorColor),
+            ),
             style: OutlinedButton.styleFrom(
               side: BorderSide(color: errorColor.withValues(alpha: 0.4)),
             ),
@@ -163,9 +148,10 @@ class WorkspaceConfigDangerZone extends StatelessWidget {
 }
 
 class _WorkspaceSettingsInlineRow extends StatelessWidget {
-  const _WorkspaceSettingsInlineRow({
+  _WorkspaceSettingsInlineRow({
     required this.label,
-    required this.value,
+    this.value = '',
+    this.valueWidget,
     this.onEdit,
     this.onCopy,
     this.trailing,
@@ -174,6 +160,7 @@ class _WorkspaceSettingsInlineRow extends StatelessWidget {
 
   final String label;
   final String value;
+  final Widget? valueWidget;
   final VoidCallback? onEdit;
   final VoidCallback? onCopy;
   final Widget? trailing;
@@ -211,10 +198,14 @@ class _WorkspaceSettingsInlineRow extends StatelessWidget {
                 ),
               ),
               Expanded(
-                child: SelectableText(
-                  value,
-                  style: tt.bodyMedium?.copyWith(fontWeight: FontWeight.w500),
-                ),
+                child:
+                    valueWidget ??
+                    SelectableText(
+                      value,
+                      style: tt.bodyMedium?.copyWith(
+                        fontWeight: FontWeight.w500,
+                      ),
+                    ),
               ),
               if (trailing != null) trailing!,
               if (action != null) action,
@@ -247,8 +238,4 @@ void _copyText(BuildContext context, String text) {
     message: context.l10n.pathCopied(text),
     variant: AppToastVariant.success,
   );
-}
-
-void _openFolder(String path) {
-  SystemFolderOpener().reveal(path);
 }

@@ -285,6 +285,14 @@ class SessionLifecycleService {
       workspace: workspace,
       profileId: profileId,
     );
+    if (isPersonal &&
+        workspace != null &&
+        personalIdentityBlockedForWorkspace(
+          isPersonal: true,
+          folders: workspace.folders,
+        )) {
+      throw StateError('mixed_workspace_personal_launch_blocked');
+    }
     // P3a: the member runs in its assigned working directory (default = session
     // first folder). Personal sessions have no roster member → inherit.
     final memberWork = session.workDirsForMember(
@@ -324,6 +332,10 @@ class SessionLifecycleService {
       final roots = await _resolveRoots(
         session: session,
         memberId: isPersonal ? null : memberBinding?.rosterMemberId,
+      );
+      appLogger.d(
+        '[session-lifecycle] roots resolved session=$sessionId '
+        'workspace=${session.workspaceId.trim()}',
       );
       final service = await _configProfileServiceFor(
         roots,
@@ -425,6 +437,12 @@ class SessionLifecycleService {
         previouslyLaunched:
             session.launchState == AppSessionLaunchState.started,
       );
+      appLogger.d(
+        '[session-lifecycle] resume resolved session=$sessionId '
+        'resume=${resume.resumeSessionId ?? ''} '
+        'create=${resume.createSessionId ?? ''} '
+        'fresh=${resume.isFreshConversation}',
+      );
 
       final resolvedRoots = rootsForResume;
 
@@ -443,8 +461,9 @@ class SessionLifecycleService {
         warnings: prepared.warnings,
       );
       appLogger.i(
-        '[session-lifecycle] prepareShellLaunch ready '
+        '[session-lifecycle] prepareLaunch ready '
         'session=$sessionId resume=${plan.resume} '
+        'cwd=${memberWork.workingDirectory} '
         'warnings=${plan.warnings.length}',
       );
       return (
@@ -456,7 +475,7 @@ class SessionLifecycleService {
       );
     } on Object catch (e, st) {
       appLogger.e(
-        '[session-lifecycle] prepareShellLaunch failed '
+        '[session-lifecycle] prepareLaunch failed '
         'session=$sessionId team=$teamId member=$memberName: $e',
         error: e,
         stackTrace: st,
@@ -865,6 +884,22 @@ class SessionLifecycleService {
         RuntimeKind.local => RuntimeTarget.local(),
       };
 
+  /// Where the CLI process runs for this launch.
+  ///
+  /// Personal sessions omit [memberId] and use the workspace session target
+  /// (`folders.first.targetId`). Team sessions pin each roster member via
+  /// [memberId] → [AppSession.memberTargets].
+  RuntimeTarget launchWorkTarget(
+    WorkspaceLaunchContext ctx, {
+    String? memberId,
+  }) {
+    final trimmed = memberId?.trim() ?? '';
+    if (trimmed.isNotEmpty) {
+      return _workTargetForMember(ctx, trimmed);
+    }
+    return _workTargetFor(ctx.session);
+  }
+
   /// The runtime target of a session's workspace (P2: whole workspace = one
   /// target = `folders.first.targetId`).
   RuntimeTarget _workTargetFor(AppSession session) {
@@ -874,15 +909,13 @@ class SessionLifecycleService {
     return _runtimeTargetFromId(id);
   }
 
-  /// P3a: a member's work target (the machine it runs on).
-  RuntimeTarget memberWorkTarget(WorkspaceLaunchContext ctx, String memberId) =>
-      _workTargetForMember(ctx, memberId);
-
-  Future<RuntimeContext> memberWorkContext(
-    WorkspaceLaunchContext ctx,
-    String memberId,
-  ) =>
-      resolveWorkContextForTargetId(memberWorkTarget(ctx, memberId).id);
+  Future<RuntimeContext> launchWorkContext(
+    WorkspaceLaunchContext ctx, {
+    String? memberId,
+  }) =>
+      resolveWorkContextForTargetId(
+        launchWorkTarget(ctx, memberId: memberId).id,
+      );
 
   /// P3d: resolve the work-plane context for an arbitrary target id, so the
   /// cross-machine artifact service can read on the publisher's machine and

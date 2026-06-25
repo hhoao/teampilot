@@ -377,6 +377,26 @@ class SessionRepository {
           )
         : const <String, String>{};
 
+    if (trimmedTeam.isEmpty &&
+        personalIdentityBlockedForWorkspace(
+          isPersonal: true,
+          folders: workspace.folders,
+        )) {
+      throw StateError('mixed_workspace_personal_launch_blocked');
+    }
+
+    if (trimmedTeam.isNotEmpty &&
+        workspaceTopologyRequiresMemberAssignment(workspace.folders)) {
+      final valid = rosterMembers.where((m) => m.isValid).toList();
+      if (!memberTargetsComplete(
+        workspaceFolders: workspace.folders,
+        members: valid,
+        targets: rememberedTargets,
+      )) {
+        throw StateError('mixed_workspace_member_targets_incomplete');
+      }
+    }
+
     final sessionId = const Uuid().v4();
     final now = DateTime.now().millisecondsSinceEpoch;
     final session = AppSession(
@@ -492,74 +512,6 @@ class SessionRepository {
         ),
       );
       return binding;
-    });
-  }
-
-  /// Atomically replaces mixed-workspace member machine pins on a session.
-  Future<void> replaceMemberTargets(
-    String sessionId, {
-    required MemberTargetAssignments targets,
-    required Iterable<String> instanceIdsToClear,
-  }) {
-    return _withSessionFile(sessionId, () async {
-      final fs = await _fs();
-      final existing = await _findSession(fs, sessionId);
-      if (existing == null) {
-        throw StateError('Unknown sessionId: $sessionId');
-      }
-      final next = Map<String, String>.from(existing.memberTargets);
-      for (final memberId in instanceIdsToClear) {
-        final trimmed = memberId.trim();
-        if (trimmed.isEmpty) continue;
-        next.remove(trimmed);
-      }
-      for (final entry in targets.entries) {
-        final memberId = entry.key.trim();
-        final targetId = entry.value.trim();
-        if (memberId.isEmpty || targetId.isEmpty) {
-          next.remove(memberId);
-        } else {
-          next[memberId] = targetId;
-        }
-      }
-      await _writeSession(
-        fs,
-        existing.copyWith(
-          memberTargets: next,
-          updatedAt: DateTime.now().millisecondsSinceEpoch,
-        ),
-      );
-    });
-  }
-
-  /// Sets or clears one member's machine pin on a session.
-  Future<void> setMemberTarget(
-    String sessionId,
-    String instanceId,
-    String targetId,
-  ) {
-    final trimmedMember = instanceId.trim();
-    if (trimmedMember.isEmpty) return Future.value();
-    return _withSessionFile(sessionId, () async {
-      final fs = await _fs();
-      final existing = await _findSession(fs, sessionId);
-      if (existing == null) {
-        throw StateError('Unknown sessionId: $sessionId');
-      }
-      final next = Map<String, String>.from(existing.memberTargets);
-      final trimmedTarget = targetId.trim();
-      if (trimmedTarget.isEmpty) {
-        next.remove(trimmedMember);
-      } else {
-        next[trimmedMember] = trimmedTarget;
-      }
-      await _writeSession(
-        fs,
-        existing.copyWith(
-          memberTargets: next,
-          updatedAt: DateTime.now().millisecondsSinceEpoch,
-        ),
-      );
     });
   }
 
