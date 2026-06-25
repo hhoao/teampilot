@@ -1,0 +1,5 @@
+.dart_tool/
+pubspec.lock
+build/
+mock_anthropic
+mock_anthropic.exe
