@@ -164,12 +164,12 @@ bool fileTreePathsEqual(p.Context ctx, String a, String b) {
 /// DFS of expanded directories matching on-screen tree order.
 List<FileTreeVisibleRow> visibleFileTreeRows({
   required FileTreeState state,
-  required p.Context pathContext,
+  required p.Context Function(String path) pathContextFor,
 }) {
-  final ctx = pathContext;
   final rows = <FileTreeVisibleRow>[];
 
   void walk(String dirPath, int depth) {
+    final ctx = pathContextFor(dirPath);
     final entries = state.dirCache[dirPath] ?? [];
     if (entries.isEmpty) {
       if (depth > 0) {
@@ -199,6 +199,7 @@ List<FileTreeVisibleRow> visibleFileTreeRows({
     // Each workspace folder is a collapsible header; its contents nest one
     // level in. A single folder (below) renders its children at the top level.
     for (final root in state.roots) {
+      final ctx = pathContextFor(root.path);
       rows.add(
         FileTreeVisibleRow(
           path: root.path,

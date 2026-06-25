@@ -6,6 +6,7 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 
 import '../../cubits/chat_cubit.dart';
 import '../../cubits/file_tree_cubit.dart';
+import '../../cubits/file_tree_root_mount.dart';
 import '../../cubits/mailbox_cubit.dart';
 import '../../cubits/member_presence_cubit.dart';
 import '../../cubits/launch_profile_cubit.dart';
@@ -16,10 +17,8 @@ import '../../models/layout_preferences.dart';
 import '../../models/member_instance.dart';
 import '../../models/team_config.dart';
 import '../../models/workspace.dart';
-import '../../models/workspace_topology.dart';
 import '../../models/workspace_launch_context.dart';
 import '../../pages/home_workspace/workspace/member_detail_dialog.dart';
-import '../../pages/home_workspace/workspace/member_folder_assignment_dialog.dart';
 import '../../services/cli/member_config/member_config_inspector.dart';
 import '../../pages/home_workspace/workspace/member_config_directory_opener.dart';
 import '../../services/file_tree/workspace_file_tree_store.dart';
@@ -118,29 +117,63 @@ class _RightToolsPanelState extends State<RightToolsPanel> {
   void _applyScope(WorkspaceToolsScopeState scope) {
     final tools = scope.tools;
     if (tools == null) return;
-    final prevTarget = _lastTargetId;
-    final targetChanged = tools.targetId != prevTarget;
-    if (targetChanged) {
-      if (prevTarget != null) {
+
+    final storeTargetId = scope.isMixed
+        ? WorkspaceFileTreeStore.mixedTargetId
+        : tools.targetId;
+    final storeTargetChanged = storeTargetId != _lastTargetId;
+    final mounts = _fileTreeMounts(scope);
+
+    if (storeTargetChanged) {
+      if (_lastTargetId != null) {
         context.read<WorkspaceFileTreeStore>().removeWorkspaceTarget(
           widget.workspaceId,
-          prevTarget,
+          _lastTargetId!,
         );
       }
-      _lastTargetId = tools.targetId;
+      _lastTargetId = storeTargetId;
+      final primaryFs = mounts.isNotEmpty
+          ? mounts.first.filesystem
+          : tools.context.filesystem;
       _fileTreeCubit = context.read<WorkspaceFileTreeStore>().cubitFor(
         widget.workspaceId,
-        targetId: tools.targetId,
-        fs: tools.context.filesystem,
+        targetId: storeTargetId,
+        fs: primaryFs,
       );
       _rebuildWatcher(tools);
-      unawaited(_fileTreeCubit!.setRoots(scope.roots));
+      unawaited(_fileTreeCubit!.mountRoots(mounts));
       _setupDiskRefresh();
-    } else if (_fileTreeCubit != null &&
-        !listEquals(_scope?.roots, scope.roots)) {
-      unawaited(_fileTreeCubit!.setRoots(scope.roots));
+    } else if (_fileTreeCubit != null && !_mountListsEqual(_lastMounts, mounts)) {
+      unawaited(_fileTreeCubit!.mountRoots(mounts));
     }
+    _lastMounts = mounts;
     _scope = scope;
+  }
+
+  List<FileTreeRootMount> _lastMounts = const [];
+
+  List<FileTreeRootMount> _fileTreeMounts(WorkspaceToolsScopeState scope) => [
+    for (final slice in scope.targetSlices)
+      for (final path in slice.roots)
+        FileTreeRootMount(
+          path: path,
+          filesystem: slice.tools.context.filesystem,
+          workContext: slice.tools.context,
+        ),
+  ];
+
+  bool _mountListsEqual(
+    List<FileTreeRootMount> a,
+    List<FileTreeRootMount> b,
+  ) {
+    if (a.length != b.length) return false;
+    for (var i = 0; i < a.length; i++) {
+      if (a[i].path != b[i].path ||
+          !identical(a[i].filesystem, b[i].filesystem)) {
+        return false;
+      }
+    }
+    return true;
   }
 
   void _rebuildWatcher(WorkspaceToolsContext tools) {
@@ -164,7 +197,8 @@ class _RightToolsPanelState extends State<RightToolsPanel> {
       final tools = scope?.tools;
       if (tools != null && _fileTreeCubit != null) {
         _rebuildWatcher(tools);
-        unawaited(_fileTreeCubit!.setRoots(scope!.roots));
+        final mounts = _fileTreeMounts(scope!);
+        unawaited(_fileTreeCubit!.mountRoots(mounts));
       }
     }
     if (rootsChanged ||
@@ -251,8 +285,10 @@ class _RightToolsPanelState extends State<RightToolsPanel> {
     final state = cubit.state;
     // Cold start: mount roots first; refresh only when root listings are missing.
     if (state.rootPaths.isEmpty) {
-      final roots = _scope?.roots ?? const [];
-      unawaited(cubit.setRoots(roots));
+      final mounts = _lastMounts;
+      if (mounts.isNotEmpty) {
+        unawaited(cubit.mountRoots(mounts));
+      }
       return;
     }
     final cold = state.rootPaths.any(
@@ -353,9 +389,6 @@ class _RightToolsPanelState extends State<RightToolsPanel> {
         : chatCubit.state.sessions
             .where((s) => s.sessionId == activeSessionId)
             .firstOrNull;
-    final showAssignFolders = workspaceTopologyRequiresMemberAssignment(
-      scope.effectiveFolders,
-    );
     if (!widget.isPersonalWorkspace &&
         widget.preferences.membersVisible &&
         team != null) {
@@ -368,7 +401,6 @@ class _RightToolsPanelState extends State<RightToolsPanel> {
             members: members,
             memberPresence: context.watch<MemberPresenceCubit>().state.presence,
             selectedMemberId: chatCubit.state.selectedMemberId,
-            showAssignFolders: showAssignFolders,
             onSelected: (id) {
               final member = runtimeMembers.firstWhere((m) => m.id == id);
               final cubit = _chatCubit;
@@ -408,24 +440,6 @@ class _RightToolsPanelState extends State<RightToolsPanel> {
                   member: member,
                   lifecycle: chatCubit.lifecycle,
                   session: activeSession,
-                ),
-              );
-              maybeDismissDrawer();
-            },
-            onAssignFolders: (id) {
-              final member = runtimeMembers.firstWhere((m) => m.id == id);
-              final activeTab = chatCubit.activeTab;
-              final sessionId = activeTab?.info.id ?? '';
-              final repo = chatCubit.sessionRepository;
-              if (sessionId.isEmpty || repo == null) return;
-              unawaited(
-                showMemberFolderAssignmentDialog(
-                  context,
-                  repository: repo,
-                  sessionId: sessionId,
-                  memberId: member.id,
-                  memberLabel:
-                      member.name.isEmpty ? context.l10n.memberName : member.name,
                 ),
               );
               maybeDismissDrawer();

@@ -30,10 +30,11 @@ import 'workspace_session_actions.dart';
 String worktreeGroupCollapseKey(WorktreeGroup group) =>
     group.worktree?.path ?? '<orphan>';
 
-/// Worktree create/remove run on the workspace work-plane (native or WSL git).
+/// Worktree create/remove on the workspace work-plane (native, WSL, or SSH git).
 bool worktreeManagementEnabled(RuntimeContext workContext) =>
     workContext.mode == StorageBackendMode.native ||
-    workContext.mode == StorageBackendMode.wsl;
+    workContext.mode == StorageBackendMode.wsl ||
+    workContext.mode == StorageBackendMode.ssh;
 
 /// One collapsible worktree group in [WorkspaceSidebar]: a branch header (with
 /// management menu) plus its session tiles. Selecting the header makes the

@@ -249,7 +249,7 @@ class _FileTreeNodeState extends State<FileTreeNode> {
     unawaited(
       context.read<EditorCubit>().openFile(
         filePath,
-        fs: widget.cubit.fs,
+        fs: widget.cubit.fsFor(filePath),
       ),
     );
   }

@@ -7,6 +7,8 @@ import 'package:path/path.dart' as p;
 import '../services/file_tree/file_tree_clipboard.dart';
 import '../services/io/filesystem.dart';
 import '../services/io/local_filesystem.dart';
+import '../services/storage/runtime_context.dart';
+import 'file_tree_root_mount.dart';
 
 class FileTreeOperationException implements Exception {
   FileTreeOperationException(this.message);
@@ -119,38 +121,103 @@ class FileTreeState {
 
 class FileTreeCubit extends Cubit<FileTreeState> {
   FileTreeCubit({Filesystem? fs})
-    : fs = fs ?? LocalFilesystem(),
+    : _defaultFs = fs ?? LocalFilesystem(),
       super(const FileTreeState());
 
-  final Filesystem fs;
+  final Filesystem _defaultFs;
+  final Map<String, FileTreeRootMount> _mountsByRoot = {};
 
-  /// Single-root convenience wrapper around [setRoots].
+  /// Primary filesystem (first mount, else constructor default).
+  Filesystem get fs =>
+      _mountsByRoot.isNotEmpty
+          ? _mountsByRoot.values.first.filesystem
+          : _defaultFs;
+
+  Filesystem fsFor(String path) {
+    final mount = _mountFor(path);
+    return mount?.filesystem ?? _defaultFs;
+  }
+
+  RuntimeContext? workContextFor(String path) => _mountFor(path)?.workContext;
+
+  FileTreeRootMount? _mountFor(String path) {
+    if (_mountsByRoot.isEmpty) return null;
+    FileTreeRootMount? best;
+    var bestLen = -1;
+    for (final entry in _mountsByRoot.entries) {
+      final root = entry.key;
+      final ctx = entry.value.filesystem.pathContext;
+      final normalized = ctx.normalize(path.trim());
+      if (!_isPathUnderRoot(ctx, root, normalized) &&
+          !_pathsEqual(ctx, root, normalized)) {
+        continue;
+      }
+      if (root.length > bestLen) {
+        best = entry.value;
+        bestLen = root.length;
+      }
+    }
+    return best;
+  }
+
+  bool _mountMapsEqual(
+    Map<String, FileTreeRootMount> a,
+    Map<String, FileTreeRootMount> b,
+  ) {
+    if (a.length != b.length) return false;
+    for (final entry in a.entries) {
+      final other = b[entry.key];
+      if (other == null || !identical(other.filesystem, entry.value.filesystem)) {
+        return false;
+      }
+    }
+    return true;
+  }
+
+  /// Single-root convenience wrapper around [mountRoots].
   Future<void> setRoot(String path) =>
-      setRoots(path.isEmpty ? const [] : [path]);
+      mountRoots(path.isEmpty ? const [] : [FileTreeRootMount(path: path, filesystem: fs)]);
 
-  /// Mounts [paths] as the tree's workspace folders (first = primary). When
-  /// more than one folder is mounted, each root renders as a collapsible
-  /// header and starts expanded; a single folder shows its children directly.
-  Future<void> setRoots(List<String> paths) async {
-    final ctx = fs.pathContext;
-    final wanted = paths
-        .where((p) => p.isNotEmpty)
-        .map((p) => ctx.normalize(p))
-        .toList(growable: false);
-    if (listEquals(wanted, state.rootPaths)) return;
-    if (wanted.isEmpty) {
+  /// Mounts [paths] on a single [filesystem] (legacy single-target callers).
+  Future<void> setRoots(List<String> paths, {Filesystem? filesystem}) {
+    final activeFs = filesystem ?? fs;
+    return mountRoots([
+      for (final path in paths)
+        if (path.isNotEmpty)
+          FileTreeRootMount(path: path, filesystem: activeFs),
+    ]);
+  }
+
+  /// Mounts workspace folder roots, each with its own work-plane [Filesystem].
+  Future<void> mountRoots(List<FileTreeRootMount> mounts) async {
+    final wanted = <String, FileTreeRootMount>{};
+    for (final mount in mounts) {
+      final path = mount.path.trim();
+      if (path.isEmpty) continue;
+      final ctx = mount.filesystem.pathContext;
+      wanted[ctx.normalize(path)] = FileTreeRootMount(
+        path: ctx.normalize(path),
+        filesystem: mount.filesystem,
+        workContext: mount.workContext,
+      );
+    }
+    if (_mountMapsEqual(wanted, _mountsByRoot)) return;
+    _mountsByRoot
+      ..clear()
+      ..addAll(wanted);
+    final paths = wanted.keys.toList(growable: false);
+    if (paths.isEmpty) {
       emit(const FileTreeState());
       return;
     }
     final roots = <FileTreeRoot>[];
-    for (final path in wanted) {
-      final stat = await fs.stat(path);
+    for (final path in paths) {
+      final activeFs = wanted[path]!.filesystem;
+      final stat = await activeFs.stat(path);
       roots.add(
         FileTreeRoot(path: path, exists: stat.exists && stat.isDirectory),
       );
     }
-    // Multi-root: expand every existing root by default so its contents show.
-    // Single-root: no header row, so the root is implicitly expanded.
     final expanded = roots.length > 1
         ? {for (final r in roots) if (r.exists) r.path}
         : <String>{};
@@ -237,34 +304,35 @@ class FileTreeCubit extends Cubit<FileTreeState> {
     String filePath, {
     bool clearFilter = true,
   }) async {
-    final ctx = fs.pathContext;
-    final normalized = ctx.normalize(filePath.trim());
+    final normalized = fsFor(filePath).pathContext.normalize(filePath.trim());
     if (normalized.isEmpty) return false;
 
-    // Find the mounted root that contains the target path.
     String? rootNorm;
+    p.Context? rootCtx;
     for (final root in state.roots) {
       if (!root.exists) continue;
+      final ctx = fsFor(root.path).pathContext;
       final candidate = ctx.normalize(root.path);
       if (_isPathUnderRoot(ctx, candidate, normalized)) {
         rootNorm = candidate;
+        rootCtx = ctx;
         break;
       }
     }
-    if (rootNorm == null) return false;
+    if (rootNorm == null || rootCtx == null) return false;
 
-    final stat = await fs.stat(normalized);
+    final activeFs = fsFor(normalized);
+    final stat = await activeFs.stat(normalized);
     if (!stat.exists || stat.isDirectory) return false;
 
     final expanded = Set<String>.from(state.expandedPaths);
-    // In multi-root mode the containing root must be expanded to reveal it.
     if (state.isMultiRoot) expanded.add(rootNorm);
-    var parent = ctx.dirname(normalized);
-    while (!_pathsEqual(ctx, parent, rootNorm) &&
-        _isPathUnderRoot(ctx, rootNorm, parent)) {
+    var parent = rootCtx.dirname(normalized);
+    while (!_pathsEqual(rootCtx, parent, rootNorm) &&
+        _isPathUnderRoot(rootCtx, rootNorm, parent)) {
       expanded.add(parent);
       await _loadDirectory(parent);
-      parent = ctx.dirname(parent);
+      parent = rootCtx.dirname(parent);
     }
     await _loadDirectory(rootNorm);
 
@@ -287,10 +355,11 @@ class FileTreeCubit extends Cubit<FileTreeState> {
   }
 
   Future<List<FsDirEntry>?> _fetchDirectoryEntries(String path) async {
+    final activeFs = fsFor(path);
     try {
-      final stat = await fs.stat(path);
+      final stat = await activeFs.stat(path);
       if (!stat.exists || !stat.isDirectory) return null;
-      final allEntries = await fs.listDir(path);
+      final allEntries = await activeFs.listDir(path);
       return allEntries.where(_matchesFilter).toList()
         ..sort(_compareEntries);
     } catch (_) {
@@ -323,7 +392,7 @@ class FileTreeCubit extends Cubit<FileTreeState> {
 
   /// Deletes a file or directory at [path] and refreshes the tree.
   Future<void> deletePath(String path) async {
-    await fs.removeRecursive(path);
+    await fsFor(path).removeRecursive(path);
     await refresh();
   }
 
@@ -353,7 +422,7 @@ class FileTreeCubit extends Cubit<FileTreeState> {
     final clip = state.clipboard;
     if (clip == null) return;
 
-    final ctx = fs.pathContext;
+    final ctx = fsFor(destDir).pathContext;
     final dest = ctx.normalize(destDir);
     final source = ctx.normalize(clip.path);
     if (!_canPasteInto(ctx, source: source, destDir: dest)) {
@@ -361,14 +430,15 @@ class FileTreeCubit extends Cubit<FileTreeState> {
     }
 
     final target = ctx.join(dest, ctx.basename(source));
+    final activeFs = fsFor(destDir);
     if (!_pathsEqual(ctx, source, target)) {
-      final existing = await fs.stat(target);
+      final existing = await activeFs.stat(target);
       if (existing.exists) {
         throw FileTreeOperationException('target already exists');
       }
     }
 
-    final sourceStat = await fs.stat(source);
+    final sourceStat = await fsFor(source).stat(source);
     if (!sourceStat.exists) {
       emit(state.copyWith(clearClipboard: true));
       throw FileTreeOperationException('source missing');
@@ -376,12 +446,12 @@ class FileTreeCubit extends Cubit<FileTreeState> {
 
     if (clip.mode == FileTreeClipboardMode.copy) {
       if (sourceStat.isDirectory) {
-        await fs.copyTree(source: source, destination: target);
+        await activeFs.copyTree(source: source, destination: target);
       } else {
-        await fs.copyFile(source, target);
+        await activeFs.copyFile(source, target);
       }
     } else {
-      await fs.rename(source, target);
+      await fsFor(source).rename(source, target);
       emit(state.copyWith(clearClipboard: true));
     }
 
@@ -394,17 +464,18 @@ class FileTreeCubit extends Cubit<FileTreeState> {
     final trimmed = newName.trim();
     _validateName(trimmed);
 
-    final ctx = fs.pathContext;
+    final activeFs = fsFor(path);
+    final ctx = activeFs.pathContext;
     final parent = ctx.dirname(path);
     final target = ctx.join(parent, trimmed);
     if (_pathsEqual(ctx, path, target)) return;
 
-    final existing = await fs.stat(target);
+    final existing = await activeFs.stat(target);
     if (existing.exists) {
       throw FileTreeOperationException('target already exists');
     }
 
-    await fs.rename(path, target);
+    await activeFs.rename(path, target);
     await refresh();
   }
 
@@ -412,14 +483,15 @@ class FileTreeCubit extends Cubit<FileTreeState> {
     final trimmed = name.trim();
     _validateName(trimmed);
 
-    final ctx = fs.pathContext;
+    final activeFs = fsFor(parentDir);
+    final ctx = activeFs.pathContext;
     final target = ctx.join(parentDir, trimmed);
-    final existing = await fs.stat(target);
+    final existing = await activeFs.stat(target);
     if (existing.exists) {
       throw FileTreeOperationException('target already exists');
     }
 
-    await fs.writeString(target, '');
+    await activeFs.writeString(target, '');
     final expanded = Set<String>.from(state.expandedPaths)..add(parentDir);
     emit(state.copyWith(expandedPaths: expanded));
     await refresh();
@@ -429,14 +501,15 @@ class FileTreeCubit extends Cubit<FileTreeState> {
     final trimmed = name.trim();
     _validateName(trimmed);
 
-    final ctx = fs.pathContext;
+    final activeFs = fsFor(parentDir);
+    final ctx = activeFs.pathContext;
     final target = ctx.join(parentDir, trimmed);
-    final existing = await fs.stat(target);
+    final existing = await activeFs.stat(target);
     if (existing.exists) {
       throw FileTreeOperationException('target already exists');
     }
 
-    await fs.ensureDir(target);
+    await activeFs.ensureDir(target);
     final expanded = Set<String>.from(state.expandedPaths)..add(parentDir);
     emit(state.copyWith(expandedPaths: expanded));
     await refresh();

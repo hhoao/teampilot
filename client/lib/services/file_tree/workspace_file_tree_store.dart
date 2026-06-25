@@ -19,6 +19,9 @@ class WorkspaceFileTreeStore {
   static String _key(String workspaceId, String targetId) =>
       '${workspaceId.trim()}@${targetId.trim()}';
 
+  /// Store key when a workspace spans multiple machines in one file tree.
+  static const mixedTargetId = 'mixed';
+
   /// Returns the retained cubit for [workspaceId] on [targetId].
   FileTreeCubit cubitFor(
     String workspaceId, {

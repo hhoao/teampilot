@@ -97,9 +97,13 @@ class _FileTreePanelState extends State<FileTreePanel> {
 
       final rows = visibleFileTreeRows(
         state: _cubit.state,
-        pathContext: _cubit.fs.pathContext,
+        pathContextFor: (path) => _cubit.fsFor(path).pathContext,
       );
-      final index = visibleRowIndexForPath(rows, target, _cubit.fs.pathContext);
+      final index = visibleRowIndexForPath(
+        rows,
+        target,
+        _cubit.fsFor(target).pathContext,
+      );
       if (index == null) {
         if (attempt < 12) {
           _scheduleRevealScroll(attempt + 1);
@@ -295,8 +299,9 @@ class _FileTreePanelState extends State<FileTreePanel> {
                           listScrollController: _listScrollController,
                           horizontalScrollController:
                               _horizontalScrollController,
-                          desktopShellActions: _desktopShellActions,
-                          remoteFileManagerActions: _remoteFileManagerActions,
+                          desktopShellActions: _desktopShellActionsFor(_workContext),
+                          remoteFileManagerActions:
+                              _remoteFileManagerActionsFor(_workContext),
                           workContext: _workContext,
                         );
                       },
@@ -370,15 +375,15 @@ class _FileTreePanelState extends State<FileTreePanel> {
 
   RuntimeContext get _workContext => widget.workContext;
 
-  bool get _desktopShellActions {
+  bool _desktopShellActionsFor(RuntimeContext ctx) {
     if (kIsWeb) return false;
-    final mode = _workContext.mode;
-    return mode == StorageBackendMode.native || mode == StorageBackendMode.wsl;
+    return ctx.mode == StorageBackendMode.native ||
+        ctx.mode == StorageBackendMode.wsl;
   }
 
-  bool get _remoteFileManagerActions {
+  bool _remoteFileManagerActionsFor(RuntimeContext ctx) {
     if (kIsWeb) return false;
-    return _workContext.mode == StorageBackendMode.ssh;
+    return ctx.mode == StorageBackendMode.ssh;
   }
 }
 
@@ -411,6 +416,17 @@ class _FileTreeListState extends State<_FileTreeList> {
   var _hoverEnabled = true;
   var _activeScrolls = 0;
 
+  bool _desktopShellActionsFor(RuntimeContext ctx) {
+    if (kIsWeb) return false;
+    return ctx.mode == StorageBackendMode.native ||
+        ctx.mode == StorageBackendMode.wsl;
+  }
+
+  bool _remoteFileManagerActionsFor(RuntimeContext ctx) {
+    if (kIsWeb) return false;
+    return ctx.mode == StorageBackendMode.ssh;
+  }
+
   bool _onScrollNotification(ScrollNotification notification) {
     if (notification.depth != 0) return false;
     if (notification is ScrollStartNotification) {
@@ -431,7 +447,7 @@ class _FileTreeListState extends State<_FileTreeList> {
   Widget build(BuildContext context) {
     final rows = visibleFileTreeRows(
       state: widget.treeState,
-      pathContext: widget.cubit.fs.pathContext,
+      pathContextFor: (path) => widget.cubit.fsFor(path).pathContext,
     );
     if (rows.isEmpty) {
       return Text(
@@ -520,9 +536,17 @@ class _FileTreeListState extends State<_FileTreeList> {
                         depth: row.depth,
                         cubit: widget.cubit,
                         textColor: widget.textColor,
-                        desktopShellActions: widget.desktopShellActions,
-                        remoteFileManagerActions: widget.remoteFileManagerActions,
-                        workContext: widget.workContext,
+                        desktopShellActions: _desktopShellActionsFor(
+                          widget.cubit.workContextFor(row.path) ??
+                              widget.workContext,
+                        ),
+                        remoteFileManagerActions: _remoteFileManagerActionsFor(
+                          widget.cubit.workContextFor(row.path) ??
+                              widget.workContext,
+                        ),
+                        workContext:
+                            widget.cubit.workContextFor(row.path) ??
+                            widget.workContext,
                         hoverEnabled: _hoverEnabled,
                         isRoot: row.isRoot,
                         rootMissing: row.rootMissing,

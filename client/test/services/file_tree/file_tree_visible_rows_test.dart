@@ -114,7 +114,7 @@ void main() {
 
     final rows = visibleFileTreeRows(
       state: state,
-      pathContext: cubit.fs.pathContext,
+      pathContextFor: (_) => cubit.fs.pathContext,
     );
     final target = p.join(root, 'src', 'main.dart');
     final index = visibleRowIndexForPath(rows, target, cubit.fs.pathContext);
@@ -138,7 +138,10 @@ void main() {
       },
     );
 
-    final rows = visibleFileTreeRows(state: state, pathContext: ctx);
+    final rows = visibleFileTreeRows(
+      state: state,
+      pathContextFor: (_) => ctx,
+    );
 
     // Header A (depth 0), a.dart (depth 1), Header B (depth 0), b.dart (depth 1).
     expect(rows.length, 4);
@@ -171,7 +174,10 @@ void main() {
       },
     );
 
-    final rows = visibleFileTreeRows(state: state, pathContext: ctx);
+    final rows = visibleFileTreeRows(
+      state: state,
+      pathContextFor: (_) => ctx,
+    );
 
     // Header A, a.dart, Header B (collapsed → no child rows).
     expect(rows.length, 3);

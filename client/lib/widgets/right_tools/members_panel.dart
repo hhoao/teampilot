@@ -32,8 +32,6 @@ class MembersPanel extends StatelessWidget {
     required this.canViewDetail,
     required this.onViewDetail,
     required this.onOpenConfigDir,
-    required this.onAssignFolders,
-    this.showAssignFolders = true,
     super.key,
   });
 
@@ -49,11 +47,6 @@ class MembersPanel extends StatelessWidget {
   final bool canViewDetail;
   final ValueChanged<String> onViewDetail;
   final ValueChanged<String> onOpenConfigDir;
-
-  /// Assigns the member to a runtime target's folders (P3a). Needs a session, so
-  /// it is gated on [canViewDetail]. Hidden for uniform local/remote workspaces.
-  final ValueChanged<String> onAssignFolders;
-  final bool showAssignFolders;
 
   @override
   Widget build(BuildContext context) {
@@ -207,14 +200,6 @@ class MembersPanel extends StatelessWidget {
           icon: Icons.folder_open,
           label: l10n.memberDetailOpenConfigDir,
         ),
-        if (showAssignFolders)
-          SidebarActionMenuSpec.item(
-            value: _MemberMenuAction.assignFolders,
-            icon: Icons.dns_outlined,
-            label: l10n.memberAssignFoldersAction,
-            enabled: canViewDetail,
-            tooltip: canViewDetail ? null : l10n.memberDetailNeedsSession,
-          ),
         const SidebarActionMenuSpec.divider(),
         SidebarActionMenuSpec.item(
           value: _MemberMenuAction.launchAll,
@@ -230,8 +215,6 @@ class MembersPanel extends StatelessWidget {
         onOpen(member.id);
       case _MemberMenuAction.openConfigDir:
         onOpenConfigDir(member.id);
-      case _MemberMenuAction.assignFolders:
-        onAssignFolders(member.id);
       case _MemberMenuAction.launchAll:
         onLaunchAll();
       case null:
@@ -244,7 +227,6 @@ enum _MemberMenuAction {
   viewDetail,
   open,
   openConfigDir,
-  assignFolders,
   launchAll,
 }
 

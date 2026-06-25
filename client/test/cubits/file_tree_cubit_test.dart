@@ -1,6 +1,7 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:path/path.dart' as p;
 import 'package:teampilot/cubits/file_tree_cubit.dart';
+import 'package:teampilot/cubits/file_tree_root_mount.dart';
 import 'package:teampilot/services/io/filesystem.dart';
 
 class _FakeFilesystem implements Filesystem {
@@ -184,6 +185,30 @@ void main() {
     expect(cubit.state.rootPath, root);
     // Single root renders children directly; the root is not in expandedPaths.
     expect(cubit.state.expandedPaths, isEmpty);
+
+    await cubit.close();
+  });
+
+  test('mountRoots uses each root filesystem for stat and listing', () async {
+    final local = p.normalize('/local');
+    final remote = p.normalize('/remote');
+    final localFs = _FakeFilesystem({
+      local: [const FsDirEntry(name: 'local.dart', isDirectory: false)],
+    });
+    final remoteFs = _FakeFilesystem({
+      remote: [const FsDirEntry(name: 'remote.dart', isDirectory: false)],
+    });
+    final cubit = FileTreeCubit();
+
+    await cubit.mountRoots([
+      FileTreeRootMount(path: local, filesystem: localFs),
+      FileTreeRootMount(path: remote, filesystem: remoteFs),
+    ]);
+    await Future<void>.delayed(const Duration(milliseconds: 20));
+
+    expect(cubit.state.roots.every((r) => r.exists), isTrue);
+    expect(cubit.entriesFor(local).map((e) => e.name), ['local.dart']);
+    expect(cubit.entriesFor(remote).map((e) => e.name), ['remote.dart']);
 
     await cubit.close();
   });
