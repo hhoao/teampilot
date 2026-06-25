@@ -5,6 +5,9 @@ import '../provider/credential_binding.dart';
 import 'claude/claude_provider_credentials_service.dart';
 import 'codex/codex_auth_artifacts.dart';
 import 'codex/codex_provider_credentials_service.dart';
+import 'cursor/cursor_home_layout.dart';
+import 'cursor/cursor_provider_credentials_service.dart';
+import 'opencode/opencode_data_layout.dart';
 import 'provider_catalog_access.dart';
 
 /// Copies provider credential artifacts from the control plane onto a work
@@ -61,6 +64,64 @@ abstract final class CrossMachineCredentialBridge {
       CliTool.codex.value,
       providerId,
       CodexAuthArtifacts.authFileName,
+    );
+    await work.fs.ensureDir(work.pathContext.dirname(dest));
+    await work.fs.writeBytes(dest, bytes);
+    return true;
+  }
+
+  static Future<bool> materializeCursorCredential({
+    required ConfigProfilePaths catalog,
+    required ConfigProfileDelegate work,
+    required String providerId,
+  }) async {
+    final catalogSvc = CursorProviderCredentialsService(
+      fs: catalog.fs,
+      basePath: catalog.basePath,
+    );
+    final probe = await catalogSvc.probe(providerId);
+    if (!probe.isReady) return false;
+
+    final bytes = await catalog.fs.readBytes(probe.credentialPath);
+    if (bytes == null || bytes.isEmpty) return false;
+
+    final workSvc = CursorProviderCredentialsService(
+      fs: work.fs,
+      basePath: work.basePath,
+    );
+    final workHome = workSvc.providerHome(providerId);
+    final dest = CursorHomeLayout(pathContext: work.fs.pathContext).authJson(
+      workHome,
+    );
+    await work.fs.ensureDir(work.fs.pathContext.dirname(dest));
+    await work.fs.writeBytes(dest, bytes);
+    return true;
+  }
+
+  static Future<bool> materializeOpencodeAuth({
+    required ConfigProfilePaths catalog,
+    required ConfigProfileDelegate work,
+    required String providerId,
+  }) async {
+    const layout = OpencodeDataLayout();
+    final src = layout.providerAuthJsonPath(
+      catalog.pathContext.join(
+        catalog.basePath,
+        'providers',
+        CliTool.opencode.value,
+        providerId.trim(),
+      ),
+    );
+    final bytes = await catalog.fs.readBytes(src);
+    if (bytes == null || bytes.isEmpty) return false;
+
+    final dest = layout.providerAuthJsonPath(
+      work.pathContext.join(
+        work.basePath,
+        'providers',
+        CliTool.opencode.value,
+        providerId.trim(),
+      ),
     );
     await work.fs.ensureDir(work.pathContext.dirname(dest));
     await work.fs.writeBytes(dest, bytes);

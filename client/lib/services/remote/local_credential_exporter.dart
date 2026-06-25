@@ -1,3 +1,4 @@
+import '../../models/app_provider_config.dart';
 import '../../models/team_config.dart';
 import '../../repositories/app_provider_repository.dart';
 import '../provider/claude/claude_provider_credentials_service.dart';
@@ -36,24 +37,22 @@ class LocalCredentialExporter {
 
     final providers = await repo.loadProviders(cli);
     for (final provider in providers) {
-      final exported = await _exportCredential(cli, provider.id);
+      final exported = await _exportCredential(cli, provider);
       if (exported != null) files.add(exported);
     }
 
     return files;
   }
 
-  Future<CredentialFile?> _exportCredential(CliTool cli, String providerId) async {
+  Future<CredentialFile?> _exportCredential(
+    CliTool cli,
+    AppProviderConfig provider,
+  ) async {
     final fs = AppStorage.fs;
     final toolRoot = fs.pathContext.join(_basePath, 'providers', cli.value);
+    final providerId = provider.id;
     switch (cli) {
       case CliTool.claude:
-        final providers = await AppProviderRepository(
-          basePath: _basePath,
-          fs: fs,
-        ).loadProviders(cli);
-        final provider = providers.where((p) => p.id == providerId).firstOrNull;
-        if (provider == null) return null;
         final binding = resolveCredentialBinding(provider);
         final svc = ClaudeProviderCredentialsService(
           fs: fs,

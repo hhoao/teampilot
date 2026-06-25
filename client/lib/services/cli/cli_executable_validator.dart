@@ -83,9 +83,9 @@ class CliExecutableValidator {
     if (cwd.isEmpty) return null;
     try {
       if (Directory(cwd).existsSync()) return null;
-    } on FileSystemException {
-      // Local PTY preflight cannot stat remote-only paths (e.g. /root/...).
-      return null;
+    } on FileSystemException catch (e) {
+      if (_localStatBlocked(e)) return null;
+      rethrow;
     }
     return _formatMessage(
       'Working directory does not exist',
@@ -93,6 +93,13 @@ class CliExecutableValidator {
       hint:
           'Choose another workspace folder or create the directory before connecting.',
     );
+  }
+
+  static bool _localStatBlocked(FileSystemException e) {
+    final code = e.osError?.errorCode;
+    if (code == null) return false;
+    // EACCES / EPERM (Unix) and ACCESS_DENIED (Windows).
+    return code == 13 || code == 1 || code == 5;
   }
 
   static String? _validateAbsoluteExecutableSync(String executable) {

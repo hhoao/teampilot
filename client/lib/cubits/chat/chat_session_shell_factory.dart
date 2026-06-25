@@ -95,6 +95,7 @@ class ChatSessionShellFactory {
         executable: executable,
         scrollbackLines: scrollback,
         validateLaunch: false,
+        usesRemoteTransport: true,
         parseExecutable: false,
         // Tag the namespace so dropped local files are recognised as
         // cross-machine (and refused) rather than pasted as unreachable paths.

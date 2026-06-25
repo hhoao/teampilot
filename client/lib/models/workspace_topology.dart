@@ -69,14 +69,52 @@ List<String> folderPathsForTarget(
 
 String? targetIdForFolderPaths(
   List<WorkspaceFolder> folders,
-  List<String> paths,
-) {
+  List<String> paths, {
+  bool matchSubpaths = false,
+}) {
   if (paths.isEmpty) return null;
-  final first = paths.first.trim();
-  for (final f in folders) {
-    if (workspacePathsEqual(f.path, first)) return f.targetId;
+  for (final raw in paths) {
+    final path = raw.trim();
+    if (path.isEmpty) continue;
+    for (final f in folders) {
+      if (workspacePathsEqual(f.path, path)) return f.targetId;
+    }
+  }
+  if (!matchSubpaths) return null;
+  for (final raw in paths) {
+    final normalized = normalizeWorkspacePath(raw.trim());
+    if (normalized.isEmpty) continue;
+    WorkspaceFolder? best;
+    var bestRootLen = -1;
+    for (final f in folders) {
+      final root = normalizeWorkspacePath(f.path);
+      if (root.isEmpty) continue;
+      if (normalized == root || normalized.startsWith('$root/')) {
+        if (root.length > bestRootLen) {
+          best = f;
+          bestRootLen = root.length;
+        }
+      }
+    }
+    if (best != null) return best.targetId;
   }
   return null;
+}
+
+/// Whether [memberId]'s folder assignment maps to a workspace folder target.
+bool memberFolderAssignmentResolves(
+  List<WorkspaceFolder> folders,
+  MemberFolderAssignments assignments,
+  String memberId,
+) {
+  final paths = folderAssignmentForMemberId(assignments, memberId);
+  if (paths == null || paths.isEmpty) return true;
+  return targetIdForFolderPaths(
+        folders,
+        paths,
+        matchSubpaths: true,
+      ) !=
+      null;
 }
 
 List<String>? folderAssignmentForInstance(

@@ -74,6 +74,7 @@ void main() {
 
     expect(session.runtimeTarget?.namespace.isSsh, isTrue);
     expect(session.validateLaunch, isFalse);
+    expect(session.usesRemoteTransport, isTrue);
   });
 
   test('cliForMember resolves member-specific cli', () {

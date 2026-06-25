@@ -49,6 +49,7 @@ class TerminalSession implements TerminalTextSink {
   TerminalSession({
     required this.executable,
     this.validateLaunch = true,
+    this.usesRemoteTransport = false,
     this.parseExecutable = true,
     this.startupDeadline = const Duration(seconds: 15),
     this.confirmFallback = const Duration(milliseconds: 150),
@@ -80,6 +81,7 @@ class TerminalSession implements TerminalTextSink {
 
   final String executable;
   final bool validateLaunch;
+  final bool usesRemoteTransport;
   final bool parseExecutable;
   final Duration startupDeadline;
   final Duration confirmFallback;
@@ -365,9 +367,13 @@ class TerminalSession implements TerminalTextSink {
     _extraEnvironment = LaunchCommandBuilder.launchEnvironmentForProcess(
       normalizedEnvironment,
     );
+    final sshRemote = _runtimeTarget?.namespace.isSsh ?? false;
     _ptyEnvironment = buildPtyEnvironment(
       _extraEnvironment,
       themeBackground: _terminalTheme?.background,
+      // SSH members run on the work machine — never forward the control-plane
+      // host's Platform.environment (proxy / ANTHROPIC_BASE_URL on 127.0.0.1).
+      inheritHostEnvironment: !sshRemote,
     );
 
     final args = shellLaunch != null
@@ -403,7 +409,7 @@ class TerminalSession implements TerminalTextSink {
       'Executable: ${invocation.executable},\n'
       'Arguments: ${launchArgs.join(' ')},\n'
       'WorkingDirectory: $ptyWorkingDirectory,\n'
-      'Environment: ${_extraEnvironment?.entries.map((e) => '${e.key}=${e.value}').join(', ')}\n'
+      'Environment: ${_ptyEnvironment?.entries.map((e) => '${e.key}=${e.value}').join(', ')}\n'
       '--------------------------------\n',
     );
 
@@ -1009,12 +1015,17 @@ class TerminalSession implements TerminalTextSink {
   }
 
   /// Full process environment for [Pty.start], including OSC 8 identity hints.
+  ///
+  /// [inheritHostEnvironment] is true for local/WSL PTY (PATH, locale, …).
+  /// SSH remote launches must pass false so the control-plane host's proxy and
+  /// API endpoint env vars are not exported onto the work machine.
   static Map<String, String> buildPtyEnvironment(
     Map<String, String>? environment, {
     int? themeBackground,
+    bool inheritHostEnvironment = true,
   }) {
     final merged = <String, String>{
-      ...Platform.environment,
+      if (inheritHostEnvironment) ...Platform.environment,
       if (environment != null) ...environment,
     };
     PtyLaunchEnvironment.applyHyperlinkIdentity(merged);

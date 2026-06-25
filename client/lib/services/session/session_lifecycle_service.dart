@@ -1,7 +1,6 @@
 import 'package:flutter/foundation.dart';
 
 import '../../models/workspace.dart';
-import '../../models/workspace_folder.dart';
 import '../../models/app_session.dart';
 import '../../models/cli_preset.dart';
 import '../../models/launch_profile_kind.dart';
@@ -289,6 +288,21 @@ class SessionLifecycleService {
     final memberWork = session.workDirsForMember(
       isPersonal ? null : memberBinding?.rosterMemberId,
     );
+    if (!isPersonal) {
+      final rosterId =
+          memberBinding?.rosterMemberId.trim() ?? member?.id.trim() ?? '';
+      if (rosterId.isNotEmpty &&
+          !memberFolderAssignmentResolves(
+            session.folders,
+            session.folderAssignments,
+            rosterId,
+          )) {
+        throw StateError(
+          'Member folder assignment does not match any workspace folder '
+          '(member=$rosterId paths=${session.folderAssignments[rosterId]})',
+        );
+      }
+    }
     TeamMemberConfig? launchMember = member;
     if (!isPersonal && team != null && member != null) {
       launchMember = _resolveTeamMemberForLaunch(team, member);
@@ -867,56 +881,34 @@ class SessionLifecycleService {
   /// P3a: a member's work target — the targetId of its first assigned folder
   /// (default = the workspace's first folder). One agent, one machine.
   RuntimeTarget _workTargetForMember(AppSession session, String memberId) {
+    final targetId = targetIdForFolderPaths(
+      session.folders,
+      folderAssignmentForMemberId(session.folderAssignments, memberId) ??
+          const <String>[],
+      matchSubpaths: true,
+    );
+    if (targetId != null) {
+      return _runtimeTargetFromId(targetId);
+    }
     final assigned = folderAssignmentForMemberId(
       session.folderAssignments,
       memberId,
     );
     if (assigned != null && assigned.isNotEmpty) {
-      final targetId = targetIdForFolderPaths(session.folders, assigned);
-      if (targetId != null) {
-        return _runtimeTargetFromId(targetId);
-      }
-      final folder = _workspaceFolderForAssignedPaths(session.folders, assigned);
-      if (folder != null) {
-        return _runtimeTargetFromId(folder.targetId);
-      }
-      // Do not fall back to session.folders.first — in mixed workspaces that
-      // pins the wrong machine while memberWorkDirs still uses assigned paths.
+      // Unresolved assignment — do not guess session.folders.first (wrong machine).
+      return _runtimeTargetFromId(RuntimeTarget.localId);
     }
     final fallback = session.folders.isEmpty ? null : session.folders.first;
     return _runtimeTargetFromId(fallback?.targetId ?? RuntimeTarget.localId);
   }
 
-  /// Resolves a workspace folder for member-assigned paths (exact match, then
-  /// longest workspace root prefix).
-  WorkspaceFolder? _workspaceFolderForAssignedPaths(
-    List<WorkspaceFolder> folders,
-    List<String> paths,
-  ) {
-    for (final path in paths) {
-      for (final folder in folders) {
-        if (workspacePathsEqual(folder.path, path)) return folder;
-      }
-    }
-    for (final path in paths) {
-      final normalized = normalizeWorkspacePath(path);
-      if (normalized.isEmpty) continue;
-      WorkspaceFolder? best;
-      var bestRootLen = -1;
-      for (final folder in folders) {
-        final root = normalizeWorkspacePath(folder.path);
-        if (root.isEmpty) continue;
-        if (normalized == root || normalized.startsWith('$root/')) {
-          if (root.length > bestRootLen) {
-            best = folder;
-            bestRootLen = root.length;
-          }
-        }
-      }
-      if (best != null) return best;
-    }
-    return null;
-  }
+  /// Whether [memberId]'s assigned folders map to a workspace target.
+  bool memberFolderAssignmentIsValid(AppSession session, String memberId) =>
+      memberFolderAssignmentResolves(
+        session.folders,
+        session.folderAssignments,
+        memberId,
+      );
 
   /// P3a: a member's working directory (assigned first, default session first)
   /// and `--add-dir` directories (assigned rest, default session extras).

@@ -1035,7 +1035,7 @@ class SessionLaunchService implements MemberConnector {
     if (existing != null &&
         !existing.isRunning &&
         !existing.isConnecting &&
-        needsRemoteLaunch != !existing.validateLaunch) {
+        needsRemoteLaunch != existing.usesRemoteTransport) {
       existing.disconnect();
       tab.memberShells.remove(member.id);
     }

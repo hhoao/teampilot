@@ -47,4 +47,25 @@ void main() {
     PtyLaunchEnvironment.applyColorScheme(env, background: 0x0A0C10); // we are dark
     expect(env['COLORFGBG'], '15;0');
   });
+
+  test(
+    'buildPtyEnvironment omits host Platform.environment for SSH remote launches',
+    () {
+      final env = TerminalSession.buildPtyEnvironment(
+        const {'CLAUDE_CONFIG_DIR': '/tmp/claude'},
+        inheritHostEnvironment: false,
+      );
+      expect(env['CLAUDE_CONFIG_DIR'], '/tmp/claude');
+      expect(env['TERM_PROGRAM'], PtyLaunchEnvironment.termProgram);
+      if (Platform.environment.containsKey('HOME')) {
+        expect(env.containsKey('HOME'), isFalse);
+      }
+      if (Platform.environment.containsKey('PATH')) {
+        expect(env.containsKey('PATH'), isFalse);
+      }
+      if (Platform.environment.containsKey('HTTP_PROXY')) {
+        expect(env.containsKey('HTTP_PROXY'), isFalse);
+      }
+    },
+  );
 }

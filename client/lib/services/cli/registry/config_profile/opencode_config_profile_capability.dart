@@ -3,6 +3,7 @@ import 'package:flutter/foundation.dart';
 import '../../../../models/app_provider_config.dart';
 import '../../../../models/personal_profile.dart';
 import '../../../../models/team_config.dart';
+import '../../../provider/cross_machine_credential_bridge.dart';
 import '../../../provider/provider_catalog_access.dart';
 import '../../../provider/opencode/opencode_auth_artifacts.dart';
 import '../../../provider/opencode/opencode_data_layout.dart';
@@ -318,6 +319,19 @@ final class OpencodeConfigProfileCapability implements ConfigProfileCapability {
 
     if (changed) {
       await paths.writeJsonIfChanged(configPath, config);
+    }
+
+    if (launchProvider != null &&
+        launchProvider.isOfficial &&
+        ctx.crossMachine) {
+      final copied = await CrossMachineCredentialBridge.materializeOpencodeAuth(
+        catalog: ctx.catalog,
+        work: paths,
+        providerId: launchProvider.id,
+      );
+      if (!copied) {
+        warnings.add('opencode_credentials_missing');
+      }
     }
 
     final environment = <String, String>{

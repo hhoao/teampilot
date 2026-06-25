@@ -480,7 +480,7 @@ Future<AppShell> buildAppShell({
   sessionLifecycleService = SessionLifecycleService(
     llmConfigPathOverride: llmConfigPathOverrideForLaunch,
     storageRootsResolver: () async => AppStorage.context,
-  catalogContextResolver: () async => runtimeContextRegistry.home(),
+    catalogContextResolver: () async => runtimeContextRegistry.home(),
     // P2: launch resolves the work-plane on the workspace's target machine.
     workContextResolver: runtimeContextRegistry.forTarget,
     loadEnabledExtensionIds: ({teamId, workspaceId}) async {

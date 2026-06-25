@@ -1,5 +1,6 @@
 import '../../../../models/team_config.dart';
 import '../../../../repositories/app_provider_repository.dart';
+import '../../../provider/cross_machine_credential_bridge.dart';
 import '../../../provider/cursor/cursor_home_bus_overlay.dart';
 import '../../../provider/cursor/cursor_home_layout.dart';
 import '../../../provider/cursor/cursor_home_provisioner.dart';
@@ -134,7 +135,17 @@ final class CursorConfigProfileCapability implements ConfigProfileCapability {
           warnings.add('cursor_provider_missing');
         } else {
           providerId = provider.id;
-          if (!(await credentials.probe(providerId)).isReady) {
+          if (ctx.crossMachine) {
+            final copied =
+                await CrossMachineCredentialBridge.materializeCursorCredential(
+              catalog: ctx.catalog,
+              work: paths,
+              providerId: providerId,
+            );
+            if (!copied) {
+              warnings.add('cursor_credentials_missing');
+            }
+          } else if (!(await credentials.probe(providerId)).isReady) {
             warnings.add('cursor_credentials_missing');
           }
         }

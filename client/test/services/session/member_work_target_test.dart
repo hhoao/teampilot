@@ -3,6 +3,7 @@ import 'package:teampilot/models/app_session.dart';
 import 'package:teampilot/models/runtime_target.dart';
 import 'package:teampilot/models/session_member_binding.dart';
 import 'package:teampilot/models/workspace_folder.dart';
+import 'package:teampilot/models/team_config.dart';
 import 'package:teampilot/services/session/session_lifecycle_service.dart';
 import 'package:teampilot/services/storage/runtime_context.dart';
 
@@ -232,7 +233,7 @@ void main() {
     expect(lifecycle.memberWorkTarget(session, 'builder').id, 'ssh:p1');
   });
 
-  test('invalid assignment does not inherit local first folder target', () {
+  test('invalid assignment fails folder resolution check', () {
     final lifecycle = SessionLifecycleService();
     final session = AppSession(
       sessionId: 's-invalid',
@@ -246,8 +247,45 @@ void main() {
       },
       createdAt: 1,
     );
-    // Falls back to session first folder only when assignment cannot be resolved.
-    expect(lifecycle.memberWorkTarget(session, 'builder').id, 'local');
+    expect(lifecycle.memberFolderAssignmentIsValid(session, 'builder'), isFalse);
+    expect(lifecycle.memberWorkTarget(session, 'builder').id, RuntimeTarget.localId);
+  });
+
+  test('prepareShellLaunch rejects unresolved member folder assignment', () async {
+    final lifecycle = SessionLifecycleService();
+    final session = AppSession(
+      sessionId: 's-invalid',
+      workspaceId: 'w1',
+      sessionTeam: 'team',
+      cliTeamName: 'team-1',
+      folders: const [
+        WorkspaceFolder(path: '/home/local', targetId: 'local'),
+      ],
+      folderAssignments: const {
+        'm1': ['/other/machine/path'],
+      },
+      members: const [],
+      createdAt: 1,
+    );
+    const team = TeamProfile(
+      id: 'team',
+      name: 'Team',
+      members: [
+        TeamMemberConfig(id: 'm1', name: 'Builder', agent: 'builder'),
+      ],
+    );
+    await expectLater(
+      lifecycle.prepareShellLaunch(
+        session: session,
+        team: team,
+        member: team.members.first,
+        memberBinding: const SessionMemberBinding(
+          rosterMemberId: 'm1',
+          taskId: 't1',
+        ),
+      ),
+      throwsStateError,
+    );
   });
 
   test('memberWorkDirs: assigned first is workdir, rest are add-dirs', () {

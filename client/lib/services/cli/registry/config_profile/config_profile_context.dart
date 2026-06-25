@@ -8,6 +8,7 @@ import '../../../../models/team_config.dart';
 import '../../../../utils/team_member_naming.dart';
 import '../../../io/filesystem.dart';
 import '../../../host/host_execution_environment.dart';
+import '../../../provider/provider_catalog_access.dart';
 import 'config_profile_scope.dart';
 
 export 'config_profile_scope.dart';
@@ -280,5 +281,5 @@ class ConfigProfileLaunchContext {
   final CliPreset? preset;
   final String? memberId;
 
-  bool get crossMachine => catalog.basePath != paths.basePath;
+  bool get crossMachine => configProfileCrossMachine(catalog, paths);
 }
