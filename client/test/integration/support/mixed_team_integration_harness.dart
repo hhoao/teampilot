@@ -45,12 +45,13 @@ class MixedTeamIntegrationHarness {
 
   final String claudePath;
 
-  late MockAnthropicServer mockServer;
+  MockAnthropicServer? _mockServer;
   ChatCubit? cubit;
 
   String? _savedBusBridgeEnv;
+  bool _envOverrideApplied = false;
 
-  String get mockBaseUrl => mockServer.baseUri.toString();
+  String get mockBaseUrl => _mockServer!.baseUri.toString();
 
   /// True when `libflutter_pty` is on the loader path (e.g. after `flutter build linux`).
   static bool get nativePtyAvailable {
@@ -100,10 +101,11 @@ class MixedTeamIntegrationHarness {
 
   Future<void> startMockServer() async {
     _forceHttpMcp();
-    mockServer = MockAnthropicServer(
+    final server = MockAnthropicServer(
       scenarios: pingPongMixedClaudeScenarios(),
     );
-    await mockServer.start();
+    _mockServer = server;
+    await server.start();
   }
 
   Future<void> writeMockProviders() async {
@@ -164,11 +166,31 @@ class MixedTeamIntegrationHarness {
     );
   }
 
-  Future<void> kickoffMembers(ChatCubit cubit) async {
+  Future<void> kickoffMembers(
+    ChatCubit cubit, {
+    PostFrameTestHarness? postFrame,
+  }) async {
+    // Claude needs a moment after PTY "running" before it accepts bracketed paste.
+    await Future<void>.delayed(const Duration(seconds: 3));
+
     cubit.selectMember(kWorkerMember.id);
-    await cubit.currentSession?.submitFullScreenInput('Start idle loop.');
+    final worker = cubit.currentSession;
+    if (worker == null) {
+      throw StateError('worker shell missing before kickoff');
+    }
+    await worker.submitFullScreenInput('Start idle loop.');
+    await drainPendingAsyncWork(rounds: 10);
+
     cubit.selectMember(kLeadMember.id);
-    await cubit.currentSession?.submitFullScreenInput('Coordinate the team.');
+    final leader = cubit.currentSession;
+    if (leader == null) {
+      throw StateError('leader shell missing before kickoff');
+    }
+    await leader.submitFullScreenInput('Coordinate the team.');
+    await drainPendingAsyncWork(rounds: 10);
+    if (postFrame != null) {
+      await postFrame.flush();
+    }
   }
 
   Future<void> waitForPingPong({
@@ -214,7 +236,7 @@ class MixedTeamIntegrationHarness {
     String? sessionId,
   }) async {
     // ignore: avoid_print
-    print(mockServer.dumpDiagnostics());
+    print(_mockServer?.dumpDiagnostics() ?? 'mockServer: not started');
     // ignore: avoid_print
     print('claudePath: $claudePath');
     if (workspaceId != null && sessionId != null) {
@@ -233,23 +255,37 @@ class MixedTeamIntegrationHarness {
     if (activeCubit != null) {
       await activeCubit.close();
     }
-    await mockServer.stop();
+    await _mockServer?.stop();
+    _mockServer = null;
     _restoreBusBridgeEnv();
   }
 
   void _forceHttpMcp() {
-    _savedBusBridgeEnv = Platform.environment[BusBridgeLocator.envOverride];
-    Platform.environment[BusBridgeLocator.envOverride] =
-        '/dev/null/teampilot-it-no-bridge';
+    try {
+      _savedBusBridgeEnv = Platform.environment[BusBridgeLocator.envOverride];
+      Platform.environment[BusBridgeLocator.envOverride] =
+          '/dev/null/teampilot-it-no-bridge';
+      _envOverrideApplied = true;
+    } on UnsupportedError {
+      // `flutter test` exposes an unmodifiable environment map; rely on no
+      // runnable bridge being present in the test runner instead.
+      _envOverrideApplied = false;
+    }
   }
 
   void _restoreBusBridgeEnv() {
+    if (!_envOverrideApplied) return;
     final saved = _savedBusBridgeEnv;
     _savedBusBridgeEnv = null;
-    if (saved == null) {
-      Platform.environment.remove(BusBridgeLocator.envOverride);
-    } else {
-      Platform.environment[BusBridgeLocator.envOverride] = saved;
+    _envOverrideApplied = false;
+    try {
+      if (saved == null) {
+        Platform.environment.remove(BusBridgeLocator.envOverride);
+      } else {
+        Platform.environment[BusBridgeLocator.envOverride] = saved;
+      }
+    } on UnsupportedError {
+      // Best-effort restore only.
     }
   }
 }
