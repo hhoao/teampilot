@@ -543,6 +543,11 @@ final class ClaudeConfigProfileCapability implements ConfigProfileCapability {
       teamId: standalone ? null : scope.teamId,
       workspaceId: standalone ? scope.teamId : null,
     );
+    await _approveProviderApiKeyInMetadata(
+      delegate,
+      memberToolDir,
+      providerSettings,
+    );
   }
 
   Future<void> _writeStandaloneMemberProfile({
@@ -580,6 +585,11 @@ final class ClaudeConfigProfileCapability implements ConfigProfileCapability {
       tool: toolId,
       workspaceId: scope.teamId,
     );
+    await _approveProviderApiKeyInMetadata(
+      delegate,
+      memberToolDir,
+      providerSettings,
+    );
   }
 
   Future<void> _writeSettings(
@@ -616,6 +626,16 @@ final class ClaudeConfigProfileCapability implements ConfigProfileCapability {
       ),
       tool: toolId,
       teamId: scope.teamId,
+    );
+    await _approveProviderApiKeyInMetadata(
+      delegate,
+      delegate.sessionToolDir(
+        scope.workspaceId,
+        scope.sessionId,
+        toolId,
+        memberId: scope.memberId,
+      ),
+      providerSettings,
     );
   }
 
@@ -802,6 +822,11 @@ final class ClaudeConfigProfileCapability implements ConfigProfileCapability {
       tool: toolId,
       teamId: scope.teamId,
     );
+    await _approveProviderApiKeyInMetadata(
+      delegate,
+      memberToolDir,
+      providerSettings,
+    );
   }
 
   Future<Map<String, Map<String, Object?>>> _loadMemberProviderSettings({
@@ -928,6 +953,72 @@ final class ClaudeConfigProfileCapability implements ConfigProfileCapability {
       settings['env'] = env;
     }
     return settings;
+  }
+
+  /// Matches Claude Code `normalizeApiKeyForConfig` (last 20 chars).
+  static String normalizeCustomApiKeySuffix(String apiKey) {
+    final trimmed = apiKey.trim();
+    if (trimmed.isEmpty) return '';
+    if (trimmed.length <= 20) return trimmed;
+    return trimmed.substring(trimmed.length - 20);
+  }
+
+  static Map<String, Object?> mergeApprovedCustomApiKeyMetadata(
+    Map<String, Object?> metadata,
+    String apiKey,
+  ) {
+    final suffix = normalizeCustomApiKeySuffix(apiKey);
+    if (suffix.isEmpty) return metadata;
+
+    final responses = Map<String, Object?>.from(
+      (metadata['customApiKeyResponses'] as Map?)?.cast<String, Object?>() ??
+          const {},
+    );
+    final approved = List<Object?>.from(
+      (responses['approved'] as List?) ?? const <Object?>[],
+    );
+    if (!approved.contains(suffix)) {
+      approved.add(suffix);
+    }
+    responses['approved'] = approved;
+    responses.putIfAbsent('rejected', () => <Object?>[]);
+
+    return {...metadata, 'customApiKeyResponses': responses};
+  }
+
+  static String _apiKeyFromClaudeProviderSettings(
+    Map<String, Object?>? providerSettings,
+  ) {
+    if (providerSettings == null) return '';
+    final env = providerSettings['env'];
+    if (env is! Map) return '';
+    for (final key in ['ANTHROPIC_API_KEY', 'ANTHROPIC_AUTH_TOKEN']) {
+      final value = env[key]?.toString().trim() ?? '';
+      if (value.isNotEmpty) return value;
+    }
+    return '';
+  }
+
+  /// Pre-approves third-party provider keys so Claude Code skips the
+  /// "Detected a custom API key" interactive gate at first launch.
+  Future<void> _approveProviderApiKeyInMetadata(
+    ConfigProfileDelegate delegate,
+    String memberToolDir,
+    Map<String, Object?>? providerSettings,
+  ) async {
+    final apiKey = _apiKeyFromClaudeProviderSettings(providerSettings);
+    if (apiKey.isEmpty) return;
+
+    final metadataPath = delegate.pathContext.join(
+      memberToolDir,
+      metadataFileName,
+    );
+    final existing = await delegate.readMetadataFile(
+      metadataPath,
+      defaultMetadata,
+    );
+    final merged = mergeApprovedCustomApiKeyMetadata(existing, apiKey);
+    await delegate.writeJsonIfChanged(metadataPath, merged);
   }
 
   Future<void> _provisionWorkspaceTrust({

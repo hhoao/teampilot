@@ -10,7 +10,9 @@ import 'package:teampilot/repositories/app_provider_repository.dart';
 import 'package:teampilot/repositories/session_repository.dart';
 import 'package:teampilot/services/session/session_lifecycle_service.dart';
 import 'package:teampilot/services/storage/app_storage.dart';
+import 'package:teampilot/services/storage/workspace_layout.dart';
 import 'package:teampilot/services/team_bus/mcp/bus_bridge_locator.dart';
+import 'package:teampilot/services/terminal/terminal_session.dart';
 
 import '../../support/post_frame_test_harness.dart';
 import 'bus_mail_assertions.dart';
@@ -166,13 +168,77 @@ class MixedTeamIntegrationHarness {
     );
   }
 
+  /// Waits for PTY spawn plus Claude Code + MCP startup before kickoff input.
+  ///
+  /// [isMemberRunning] fires on first PTY output, but the Ink input box on the
+  /// alternate screen often needs 15–30s more before [submitFullScreenInput]
+  /// reaches the API layer.
+  Future<void> waitUntilMembersReady(
+    ChatCubit cubit,
+    List<String> memberIds, {
+    Duration minWarmup = const Duration(seconds: 20),
+    Duration settleTimeout = const Duration(seconds: 45),
+  }) async {
+    await waitUntilMembersRunning(cubit, memberIds);
+
+    final warmupDeadline = DateTime.now().add(minWarmup);
+    while (DateTime.now().isBefore(warmupDeadline)) {
+      await drainPendingAsyncWork();
+      await Future<void>.delayed(const Duration(milliseconds: 500));
+    }
+
+    final settleDeadline = DateTime.now().add(settleTimeout);
+    while (DateTime.now().isBefore(settleDeadline)) {
+      if (memberIds.every((id) => _isMemberShellSettled(cubit, id))) {
+        await Future<void>.delayed(const Duration(seconds: 2));
+        return;
+      }
+      await drainPendingAsyncWork();
+      await Future<void>.delayed(const Duration(milliseconds: 500));
+    }
+  }
+
   Future<void> kickoffMembers(
     ChatCubit cubit, {
     PostFrameTestHarness? postFrame,
   }) async {
-    // Claude needs a moment after PTY "running" before it accepts bracketed paste.
-    await Future<void>.delayed(const Duration(seconds: 3));
+    const maxAttempts = 8;
+    for (var attempt = 0; attempt < maxAttempts; attempt++) {
+      await _submitKickoffOnce(cubit, postFrame: postFrame);
 
+      final workerHit = await _waitForMockRequest(
+        workerScriptApiKey,
+        timeout: const Duration(seconds: 25),
+      );
+      if (workerHit) {
+        final leaderHit = await _waitForMockRequest(
+          leadScriptApiKey,
+          timeout: const Duration(seconds: 15),
+        );
+        if (!leaderHit) {
+          await _submitLeaderKickoff(cubit, postFrame: postFrame);
+        }
+        return;
+      }
+
+      if (attempt < maxAttempts - 1) {
+        await Future<void>.delayed(const Duration(seconds: 5));
+      }
+    }
+    throw StateError(
+      'Mock Anthropic API received no requests after $maxAttempts kickoff attempts',
+    );
+  }
+
+  Future<void> _submitKickoffOnce(
+    ChatCubit cubit, {
+    PostFrameTestHarness? postFrame,
+  }) async {
+    await _submitWorkerKickoff(cubit);
+    await _submitLeaderKickoff(cubit, postFrame: postFrame);
+  }
+
+  Future<void> _submitWorkerKickoff(ChatCubit cubit) async {
     cubit.selectMember(kWorkerMember.id);
     final worker = cubit.currentSession;
     if (worker == null) {
@@ -180,7 +246,12 @@ class MixedTeamIntegrationHarness {
     }
     await worker.submitFullScreenInput('Start idle loop.');
     await drainPendingAsyncWork(rounds: 10);
+  }
 
+  Future<void> _submitLeaderKickoff(
+    ChatCubit cubit, {
+    PostFrameTestHarness? postFrame,
+  }) async {
     cubit.selectMember(kLeadMember.id);
     final leader = cubit.currentSession;
     if (leader == null) {
@@ -191,6 +262,35 @@ class MixedTeamIntegrationHarness {
     if (postFrame != null) {
       await postFrame.flush();
     }
+  }
+
+  Future<bool> _waitForMockRequest(
+    String apiKey, {
+    required Duration timeout,
+  }) async {
+    final server = _mockServer;
+    if (server == null) return false;
+    final deadline = DateTime.now().add(timeout);
+    while (DateTime.now().isBefore(deadline)) {
+      if (server.requestLog.any((entry) => entry.apiKey == apiKey)) {
+        return true;
+      }
+      await drainPendingAsyncWork();
+      await Future<void>.delayed(const Duration(milliseconds: 200));
+    }
+    return false;
+  }
+
+  bool _isMemberShellSettled(ChatCubit cubit, String memberId) {
+    cubit.selectMember(memberId);
+    final shell = cubit.currentSession;
+    if (shell == null || !shell.isRunning) return false;
+    return !shell.activityTracker.isWorking;
+  }
+
+  TerminalSession? memberShell(ChatCubit cubit, String memberId) {
+    cubit.selectMember(memberId);
+    return cubit.currentSession;
   }
 
   Future<void> waitForPingPong({
@@ -240,12 +340,44 @@ class MixedTeamIntegrationHarness {
     // ignore: avoid_print
     print('claudePath: $claudePath');
     if (workspaceId != null && sessionId != null) {
+      await _dumpClaudeSettings(
+        workspaceId: workspaceId,
+        sessionId: sessionId,
+      );
       await dumpBusMailDiagnostics(
         teampilotRoot: AppStorage.paths.basePath,
         workspaceId: workspaceId,
         sessionId: sessionId,
         memberIds: [kLeadMember.id, kWorkerMember.id],
       );
+    }
+  }
+
+  Future<void> _dumpClaudeSettings({
+    required String workspaceId,
+    required String sessionId,
+  }) async {
+    final root = WorkspaceLayout(
+      teampilotRoot: AppStorage.paths.basePath,
+    ).sessionRuntimeDir(workspaceId, sessionId);
+    final dir = Directory(root);
+    if (!await dir.exists()) {
+      // ignore: avoid_print
+      print('--- claude settings: runtime dir missing ($root)');
+      return;
+    }
+    await for (final entity in dir.list(recursive: true, followLinks: false)) {
+      if (entity is! File) continue;
+      final name = entity.uri.pathSegments.last;
+      if (name != '.claude.json' &&
+          !entity.path.contains('${Platform.pathSeparator}settings${Platform.pathSeparator}')) {
+        continue;
+      }
+      if (!name.endsWith('.json')) continue;
+      // ignore: avoid_print
+      print('--- claude settings: ${entity.path}');
+      // ignore: avoid_print
+      print(await entity.readAsString());
     }
   }
 

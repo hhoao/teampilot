@@ -96,17 +96,18 @@ cd client && flutter test test/integration/mixed_team_bus_ping_pong_integration_
 ```bash
 cd client
 flutter build linux --debug
+TEAMPILOT_BUS_BRIDGE=/dev/null/teampilot-it-no-bridge \
 LD_LIBRARY_PATH=build/linux/x64/debug/bundle/lib \
   flutter test test/integration/mixed_team_claude_bus_integration_test.dart --tags integration
 ```
+
+L2 requires `claude` on PATH. TeamPilot pre-approves third-party provider API keys in `.claude.json` (`customApiKeyResponses`) so Claude Code skips the interactive "use this API key?" gate on first launch.
 
 **Debug mock API:**
 
 ```bash
 dart run tools/mock_anthropic/bin/mock_anthropic.dart
 ```
-
-L2 requires `claude` on PATH and may need provider settings. If L2 times out without mock API traffic, Claude may still be waiting on first-run auth; integration harnesses set `CCGUI_CLI_LOGIN_AUTHORIZED` in provider config via `ToolConfigGenerator` to bypass that path when using the mock API.
 
 Remote CLI install over Docker SSH (needs Docker daemon + outbound network):
 

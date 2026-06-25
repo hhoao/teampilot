@@ -51,7 +51,19 @@ void tearDownTestAppStorage() {
   final dir = _testAppDataDir;
   _testAppDataDir = null;
   if (dir != null && dir.existsSync()) {
-    dir.deleteSync(recursive: true);
+    _deleteTestDirWithRetry(dir);
+  }
+}
+
+void _deleteTestDirWithRetry(Directory dir, {int attempts = 8}) {
+  for (var i = 0; i < attempts; i++) {
+    try {
+      dir.deleteSync(recursive: true);
+      return;
+    } on FileSystemException {
+      if (i == attempts - 1) rethrow;
+      sleep(const Duration(milliseconds: 250));
+    }
   }
 }
 

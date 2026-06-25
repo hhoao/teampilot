@@ -13,6 +13,17 @@ import 'package:teampilot/repositories/app_provider_repository.dart';
 import 'package:teampilot/services/provider/config_profile_service.dart';
 
 void main() {
+  test('mergeApprovedCustomApiKeyMetadata stores last-20 suffix', () {
+    final merged = ClaudeConfigProfileCapability.mergeApprovedCustomApiKeyMetadata(
+      const {},
+      'sk-ant-api03-abcdefghijklmnop',
+    );
+    final approved =
+        ((merged['customApiKeyResponses'] as Map)['approved'] as List)
+            .cast<String>();
+    expect(approved, contains('i03-abcdefghijklmnop'));
+  });
+
   test('contributeLaunch sets agent-teams env in native mode', () async {
     final base = await Directory.systemTemp.createTemp('claude_cap_native_');
     addTearDown(() async {
@@ -79,6 +90,7 @@ void main() {
           cli: CliTool.claude,
           name: 'leaky',
           category: AppProviderCategory.thirdParty,
+          apiKey: 'mock-third-party-key',
           config: {
             'env': {
               'ANTHROPIC_BASE_URL': 'https://api.example.com/anthropic',
@@ -152,6 +164,25 @@ void main() {
         isNull,
         reason: 'no idle URL passed ??no Stop hook here',
       );
+
+      final metadataPath = p.join(
+        base.path,
+        'workspace',
+        'workspaces',
+        'workspace-1',
+        'sessions',
+        'session-1',
+        'runtime',
+        'm1',
+        'claude',
+        ClaudeConfigProfileCapability.metadataFileName,
+      );
+      final metadata =
+          jsonDecode(await File(metadataPath).readAsString()) as Map;
+      final approved =
+          ((metadata['customApiKeyResponses'] as Map)['approved'] as List)
+              .cast<String>();
+      expect(approved, contains('mock-third-party-key'));
     },
   );
 

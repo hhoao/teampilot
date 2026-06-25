@@ -1,5 +1,5 @@
 @Tags(['integration'])
-@Timeout(Duration(minutes: 2))
+@Timeout(Duration(minutes: 4))
 library;
 
 import 'dart:io';
@@ -58,7 +58,7 @@ void main() {
         connectImmediately: true,
       );
       await postFrame.flush();
-      await harness.waitUntilMembersRunning(
+      await harness.waitUntilMembersReady(
         cubit,
         [kLeadMember.id, kWorkerMember.id],
       );
@@ -79,6 +79,8 @@ void main() {
       await harness.dispose();
       await postFrame.flush();
       await drainPendingAsyncWork();
+      // Let Claude PTY children release config dir handles before tearDown.
+      await Future<void>.delayed(const Duration(seconds: 2));
     }
   });
 }
