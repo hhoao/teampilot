@@ -1,5 +1,3 @@
-import 'dart:io';
-
 import 'package:flutter_test/flutter_test.dart';
 import 'package:teampilot/services/team_bus/agent_node.dart';
 import 'package:teampilot/services/team_bus/mcp/teammate_bus_mcp_handler.dart';
@@ -7,12 +5,11 @@ import 'package:teampilot/services/team_bus/mcp/teammate_bus_mcp_server.dart';
 import 'package:teampilot/services/team_bus/team_bus.dart';
 
 import '../../services/team_bus/support/fake_member_launcher.dart';
+import 'integration_prerequisites.dart';
 import 'teammate_bus_http_client.dart';
 
 void main() {
-  setUpAll(() {
-    HttpOverrides.global = null;
-  });
+  setUpAll(IntegrationPrerequisites.resetHttpOverrides);
 
   late TeamBus bus;
   late TeammateBusMcpServer server;

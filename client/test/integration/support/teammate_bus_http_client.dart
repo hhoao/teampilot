@@ -69,6 +69,13 @@ class TeammateBusHttpClient {
     return _parseResponse(resp, text);
   }
 
+  /// Extracts the first text block from an MCP `tools/call` JSON-RPC response.
+  static String toolResultText(Map<String, Object?> response) {
+    final result = response['result'] as Map;
+    final content = result['content'] as List;
+    return (content.first as Map)['text'] as String;
+  }
+
   Map<String, Object?> _parseResponse(HttpClientResponse resp, String text) {
     if (resp.headers.contentType?.mimeType == 'text/event-stream') {
       final dataLines = text

@@ -111,12 +111,11 @@ class DockerSshServer {
   }
 
   /// Mixed-team IT image: SSH + Node + global `claude` under `~/.local/bin`.
-  static Future<DockerSshServer> startMixed({String clientRoot = '.'}) =>
-      start(
-        clientRoot: clientRoot,
-        dockerfileName: 'Dockerfile.mixed',
-        imageTag: mixedImageTag,
-      );
+  static Future<DockerSshServer> startMixed({String clientRoot = '.'}) => start(
+    clientRoot: clientRoot,
+    dockerfileName: 'Dockerfile.mixed',
+    imageTag: mixedImageTag,
+  );
 
   static Future<int> _readMappedPort(String containerName) async {
     final port = await Process.run('docker', ['port', containerName, '22']);

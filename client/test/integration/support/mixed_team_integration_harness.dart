@@ -1,4 +1,3 @@
-import 'dart:ffi';
 import 'dart:io';
 
 import 'package:mock_anthropic/scenarios/ping_pong_mixed_claude.dart';
@@ -29,6 +28,7 @@ import 'package:teampilot/services/terminal/terminal_transport_factory.dart';
 import '../../support/post_frame_test_harness.dart';
 import 'bus_mail_assertions.dart';
 import 'docker_ssh_server.dart';
+import 'integration_prerequisites.dart';
 
 const kItMixedClaudeTeamId = 'it-mixed-claude';
 const kMockLeaderProviderId = 'mock-leader';
@@ -71,50 +71,12 @@ class MixedTeamIntegrationHarness {
   int get mockPort => _mockServer!.port;
 
   /// True when `libflutter_pty` is on the loader path (e.g. after `flutter build linux`).
-  static bool get nativePtyAvailable {
-    if (Platform.isLinux) {
-      try {
-        DynamicLibrary.open('libflutter_pty.so');
-        return true;
-      } catch (_) {
-        return false;
-      }
-    }
-    if (Platform.isWindows) {
-      for (final path in [
-        'flutter_pty.dll',
-        r'build\windows\x64\debug\flutter_pty.dll',
-        r'build\windows\x64\runner\Debug\flutter_pty.dll',
-      ]) {
-        try {
-          DynamicLibrary.open(path);
-          return true;
-        } catch (_) {}
-      }
-    }
-    return false;
-  }
+  static bool get nativePtyAvailable =>
+      IntegrationPrerequisites.nativePtyAvailable;
 
   /// Resolves `claude` on PATH, or null when not installed.
-  static String? resolveClaudePath() {
-    try {
-      if (Platform.isWindows) {
-        final result = Process.runSync('where', ['claude']);
-        if (result.exitCode != 0) return null;
-        for (final raw in result.stdout.toString().split(RegExp(r'\r?\n'))) {
-          final line = raw.trim();
-          if (line.isNotEmpty) return line;
-        }
-        return null;
-      }
-      final result = Process.runSync('which', ['claude']);
-      if (result.exitCode != 0) return null;
-      final line = result.stdout.toString().trim().split('\n').first.trim();
-      return line.isEmpty ? null : line;
-    } on ProcessException {
-      return null;
-    }
-  }
+  static String? resolveClaudePath() =>
+      IntegrationPrerequisites.resolveClaudePath();
 
   Future<void> startMockServer({bool exposeToDocker = false}) async {
     _forceHttpMcp();
@@ -133,27 +95,26 @@ class MixedTeamIntegrationHarness {
         ? 'http://127.0.0.1:$port'
         : mockBaseUrl;
     final remoteWorkerUrl = workerBaseUrl ?? leaderUrl;
-    await AppProviderRepository(basePath: AppStorage.paths.basePath).saveProviders(
-      CliTool.claude,
-      [
-        AppProviderConfig(
-          id: kMockLeaderProviderId,
-          cli: CliTool.claude,
-          name: 'Mock Leader',
-          baseUrl: leaderUrl,
-          apiKey: leadScriptApiKey,
-          defaultModel: 'mock-model',
-        ),
-        AppProviderConfig(
-          id: kMockWorkerProviderId,
-          cli: CliTool.claude,
-          name: 'Mock Worker',
-          baseUrl: remoteWorkerUrl,
-          apiKey: workerScriptApiKey,
-          defaultModel: 'mock-model',
-        ),
-      ],
-    );
+    await AppProviderRepository(
+      basePath: AppStorage.paths.basePath,
+    ).saveProviders(CliTool.claude, [
+      AppProviderConfig(
+        id: kMockLeaderProviderId,
+        cli: CliTool.claude,
+        name: 'Mock Leader',
+        baseUrl: leaderUrl,
+        apiKey: leadScriptApiKey,
+        defaultModel: 'mock-model',
+      ),
+      AppProviderConfig(
+        id: kMockWorkerProviderId,
+        cli: CliTool.claude,
+        name: 'Mock Worker',
+        baseUrl: remoteWorkerUrl,
+        apiKey: workerScriptApiKey,
+        defaultModel: 'mock-model',
+      ),
+    ]);
   }
 
   ChatCubit createCubit({required PostFrameTestHarness postFrame}) {
@@ -224,13 +185,12 @@ class MixedTeamIntegrationHarness {
   Future<void> waitUntilDockerMembersReady(
     ChatCubit cubit,
     List<String> memberIds,
-  ) =>
-      waitUntilMembersReady(
-        cubit,
-        memberIds,
-        minWarmup: const Duration(seconds: 30),
-        settleTimeout: const Duration(seconds: 90),
-      );
+  ) => waitUntilMembersReady(
+    cubit,
+    memberIds,
+    minWarmup: const Duration(seconds: 30),
+    settleTimeout: const Duration(seconds: 90),
+  );
 
   /// Worker must enter `wait_for_message` before the leader sends ping.
   Future<void> kickoffAndWaitForPingPong({
@@ -260,10 +220,13 @@ class MixedTeamIntegrationHarness {
     );
   }
 
-  Future<void> verifyMockReachableFromDocker(MixedTeamDockerRemote remote) async {
-    final client = await remote.sshClientFactory.clientForStorage(remote.profile);
-    final url =
-        'http://${DockerSshServer.hostGatewayHostname}:${mockPort}/';
+  Future<void> verifyMockReachableFromDocker(
+    MixedTeamDockerRemote remote,
+  ) async {
+    final client = await remote.sshClientFactory.clientForStorage(
+      remote.profile,
+    );
+    final url = 'http://${DockerSshServer.hostGatewayHostname}:$mockPort/';
     final out = await client.run(
       'wget -q -O /dev/null --timeout=5 $url 2>/dev/null; echo \$?',
     );
@@ -447,8 +410,7 @@ class MixedTeamIntegrationHarness {
       sessionId: sessionId,
       memberId: kWorkerMember.id,
       timeout: timeout,
-      where: (row) =>
-          row['from'] == kLeadMember.id && row['content'] == 'ping',
+      where: (row) => row['from'] == kLeadMember.id && row['content'] == 'ping',
     );
     if (!workerPing) {
       throw StateError(
@@ -481,10 +443,7 @@ class MixedTeamIntegrationHarness {
     // ignore: avoid_print
     print('claudePath: $claudePath');
     if (workspaceId != null && sessionId != null) {
-      await _dumpClaudeSettings(
-        workspaceId: workspaceId,
-        sessionId: sessionId,
-      );
+      await _dumpClaudeSettings(workspaceId: workspaceId, sessionId: sessionId);
       await dumpBusMailDiagnostics(
         teampilotRoot: AppStorage.paths.basePath,
         workspaceId: workspaceId,
@@ -511,7 +470,9 @@ class MixedTeamIntegrationHarness {
       if (entity is! File) continue;
       final name = entity.uri.pathSegments.last;
       if (name != '.claude.json' &&
-          !entity.path.contains('${Platform.pathSeparator}settings${Platform.pathSeparator}')) {
+          !entity.path.contains(
+            '${Platform.pathSeparator}settings${Platform.pathSeparator}',
+          )) {
         continue;
       }
       if (!name.endsWith('.json')) continue;

@@ -1,9 +1,6 @@
 @Tags(['integration'])
 library;
 
-import 'dart:async';
-import 'dart:io';
-
 import 'package:flutter_test/flutter_test.dart';
 import 'package:teampilot/services/team_bus/agent_node.dart';
 import 'package:teampilot/services/team_bus/mcp/teammate_bus_mcp_handler.dart';
@@ -12,6 +9,7 @@ import 'package:teampilot/services/team_bus/persistence/in_memory_bus_message_lo
 import 'package:teampilot/services/team_bus/team_bus.dart';
 
 import '../services/team_bus/support/fake_member_launcher.dart';
+import 'support/integration_prerequisites.dart';
 import 'support/teammate_bus_http_client.dart';
 
 /// L1-fast: same ping/pong scenario as the full ChatCubit integration test,
@@ -24,7 +22,7 @@ void main() {
   late TeammateBusHttpClient workerClient;
 
   setUp(() async {
-    HttpOverrides.global = null;
+    IntegrationPrerequisites.resetHttpOverrides();
     messageLog = InMemoryBusMessageLog();
     bus = TeamBus(
       launcher: FakeMemberLauncher(),
@@ -73,12 +71,12 @@ void main() {
     await leaderClient.sendMessage(to: 'worker-1', content: 'ping');
 
     final workerRes = await workerWait;
-    expect(toolResultText(workerRes), contains('ping'));
+    expect(TeammateBusHttpClient.toolResultText(workerRes), contains('ping'));
 
     await workerClient.sendMessage(to: 'team-lead', content: 'pong');
 
     final leaderRes = await leaderClient.waitForMessage();
-    expect(toolResultText(leaderRes), contains('pong'));
+    expect(TeammateBusHttpClient.toolResultText(leaderRes), contains('pong'));
 
     final workerMail = await messageLog.load('worker-1');
     expect(
@@ -95,10 +93,4 @@ void main() {
       isTrue,
     );
   });
-}
-
-String toolResultText(Map<String, Object?> res) {
-  final result = res['result'] as Map;
-  final content = result['content'] as List;
-  return (content.first as Map)['text'] as String;
 }
