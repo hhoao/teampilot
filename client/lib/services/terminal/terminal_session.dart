@@ -197,6 +197,15 @@ class TerminalSession implements TerminalTextSink {
   Timer? _startupDeadlineTimer;
   var _spawnRequested = false;
   var _transportStartGeneration = 0;
+  var _disposed = false;
+
+  /// True after [dispose]; blocks [connect] and in-flight [_startTransport].
+  bool get isDisposed => _disposed;
+
+  bool _startTransportAborted(int startGeneration) =>
+      _disposed ||
+      startGeneration != _transportStartGeneration ||
+      !_starting;
   int _pendingViewportCols = 80;
   int _pendingViewportRows = 24;
 
@@ -309,6 +318,7 @@ class TerminalSession implements TerminalTextSink {
     BusUserInputRouting? busUserInputRouting,
     String? executableOverride,
   }) {
+    if (_disposed) return;
     _prepareConnect(
       workingDirectory: workingDirectory,
       onProcessStarted: onProcessStarted,
@@ -319,8 +329,8 @@ class TerminalSession implements TerminalTextSink {
     // located on the work machine (else the session's resolved executable).
     final effectiveExecutable =
         (executableOverride != null && executableOverride.trim().isNotEmpty)
-            ? executableOverride.trim()
-            : executable;
+        ? executableOverride.trim()
+        : executable;
     final invocation = parseExecutable
         ? CliInvocation.fromExecutable(effectiveExecutable)
         : CliInvocation(executable: effectiveExecutable);
@@ -386,7 +396,7 @@ class TerminalSession implements TerminalTextSink {
       'Executable: ${invocation.executable},\n'
       'Arguments: ${launchArgs.join(' ')},\n'
       'WorkingDirectory: $ptyWorkingDirectory,\n'
-      'Environment: ${_ptyEnvironment?.entries.map((e) => '${e.key}=${e.value}').join(', ')}\n'
+      'Environment: ${normalizedEnvironment?.entries.map((e) => '${e.key}=${e.value}').join(', ')}\n'
       '--------------------------------\n',
     );
 
@@ -514,6 +524,7 @@ class TerminalSession implements TerminalTextSink {
     void Function(String message)? onProcessFailed,
     VoidCallback? onProcessExited,
   }) {
+    if (_disposed) return;
     _prepareConnect(
       workingDirectory: workingDirectory,
       onProcessStarted: onProcessStarted,
@@ -661,7 +672,7 @@ class TerminalSession implements TerminalTextSink {
       // Yield to the event loop so the loading animation can paint before the
       // synchronous Rust FFI call (engineNew) blocks the main thread.
       await Future<void>.delayed(Duration.zero);
-      if (startGeneration != _transportStartGeneration || !_starting) return;
+      if (_startTransportAborted(startGeneration)) return;
 
       // By now the view may have mounted and reported the real grid via
       // onTerminalPtyResize; fall back to the connect-time guess otherwise.
@@ -680,12 +691,13 @@ class TerminalSession implements TerminalTextSink {
               executable,
             );
         if (validationError != null) {
-          if (startGeneration == _transportStartGeneration && _starting) {
+          if (!_startTransportAborted(startGeneration)) {
             _spawnRequested = false;
             _handleStartFailure(validationError);
           }
           return;
         }
+        if (_startTransportAborted(startGeneration)) return;
       }
       // PTY still spawns at the connect-time guess (cols/rows) by design;
       // [_flushPendingPtyResize] reconciles to [onTerminalPtyResize] geometry
@@ -698,7 +710,7 @@ class TerminalSession implements TerminalTextSink {
         rows: rows,
         environment: _ptyEnvironment,
       );
-      if (startGeneration != _transportStartGeneration || !_starting) {
+      if (_startTransportAborted(startGeneration)) {
         transport.close();
         return;
       }
@@ -725,7 +737,8 @@ class TerminalSession implements TerminalTextSink {
       });
 
       transport.done.then((code) {
-        if (startGeneration != _transportStartGeneration ||
+        if (_disposed ||
+            startGeneration != _transportStartGeneration ||
             _transport != transport) {
           return;
         }
@@ -759,7 +772,7 @@ class TerminalSession implements TerminalTextSink {
         callback?.call();
       });
     } on Object catch (error, stackTrace) {
-      if (startGeneration != _transportStartGeneration || !_starting) {
+      if (_startTransportAborted(startGeneration)) {
         return;
       }
       final cliName = CliExecutableValidator.cliDisplayName(executable);
@@ -953,6 +966,8 @@ class TerminalSession implements TerminalTextSink {
   }
 
   void dispose() {
+    if (_disposed) return;
+    _disposed = true;
     disconnect();
     final providers = _linkProviders;
     if (providers != null) {

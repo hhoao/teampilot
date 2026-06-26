@@ -65,7 +65,7 @@ void main() {
   );
 
   test(
-    'disconnect during async transport start closes late transport',
+    'dispose during async transport start closes late transport',
     () async {
       final transport = _FakeTransport();
       final starter = Completer<TerminalTransport>();
@@ -98,4 +98,48 @@ void main() {
       expect(session.isRunning, isFalse);
     },
   );
+
+  test('connect after dispose is a no-op', () async {
+    final session = TerminalSession(
+      executable: '/bin/echo',
+      validateLaunch: false,
+    );
+    session.dispose();
+    session.connect(workingDirectory: '/tmp');
+    session.onViewportResize(80, 24);
+    await Future<void>.delayed(const Duration(milliseconds: 50));
+    expect(session.isRunning, isFalse);
+    expect(session.isDisposed, isTrue);
+  });
+
+  test('dispose during async transport start does not touch engine grid', () async {
+    final transport = _FakeTransport();
+    final starter = Completer<TerminalTransport>();
+    final session = TerminalSession(
+      executable: '/bin/echo',
+      validateLaunch: false,
+      transportStarter:
+          (
+            executable, {
+            required arguments,
+            required workingDirectory,
+            required columns,
+            required rows,
+            environment,
+          }) {
+            return starter.future;
+          },
+    );
+
+    session.connect(workingDirectory: '/tmp');
+    session.onViewportResize(80, 24);
+    await Future<void>.delayed(Duration.zero);
+
+    session.dispose();
+    starter.complete(transport);
+    await Future<void>.delayed(Duration.zero);
+
+    expect(transport.closed, isTrue);
+    expect(session.isDisposed, isTrue);
+  });
 }

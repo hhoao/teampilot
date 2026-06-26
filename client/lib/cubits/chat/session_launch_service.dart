@@ -117,6 +117,33 @@ class SessionLaunchService implements MemberConnector {
   ChatTabStore get _tabStore => _h.tabStore;
   ChatTab? get _activeTab => _h.activeTab;
 
+  /// Returns false when the tab was closed or [shell] was disposed while an
+  /// async connect prep was in flight — avoids [shell.connect] on a dead engine.
+  bool _connectShellStillValid({
+    required ChatTab tab,
+    required TerminalSession shell,
+  }) {
+    if (_h.isClosed) return false;
+    if (_tabStore.indexOfSession(tab.info.id) == -1) return false;
+    if (shell.isDisposed) return false;
+    return true;
+  }
+
+  void _abortConnectShellIfStale({
+    required ChatTab tab,
+    required TerminalSession shell,
+    required String reason,
+  }) {
+    if (_connectShellStillValid(tab: tab, shell: shell)) return;
+    appLogger.d(
+      '[session-launch] connectShell aborted session=${tab.info.id} '
+      'reason=$reason',
+    );
+    if (_state.sessionConnectingId == tab.info.id) {
+      _h.finishSessionConnect(tab.info.id);
+    }
+  }
+
   Future<void> openSessionTab(
     AppSession session, {
     TeamProfile? team,
@@ -965,6 +992,15 @@ class SessionLaunchService implements MemberConnector {
           )
         : null;
 
+    if (!_connectShellStillValid(tab: tab, shell: shell)) {
+      _abortConnectShellIfStale(
+        tab: tab,
+        shell: shell,
+        reason: 'tab_or_shell_gone_after_member_binding',
+      );
+      return;
+    }
+
     final launchMember = member;
     final launchCtx = _launchContextFor(activeSession);
     final rosterMemberId = binding?.rosterMemberId;
@@ -1063,6 +1099,15 @@ class SessionLaunchService implements MemberConnector {
       launchWarnings.addAll(connectResult.warnings);
     }
 
+    if (!_connectShellStillValid(tab: tab, shell: shell)) {
+      _abortConnectShellIfStale(
+        tab: tab,
+        shell: shell,
+        reason: 'tab_or_shell_gone_after_prepare_connect',
+      );
+      return;
+    }
+
     if (launchTarget.kind == RuntimeKind.ssh) {
       final shellFactory = _h.shellFactory;
       shellLaunch = await applyRemoteSshLaunchConstraints(
@@ -1072,6 +1117,16 @@ class SessionLaunchService implements MemberConnector {
         profile: shellFactory.profileFor(launchTarget),
       );
     }
+
+    if (!_connectShellStillValid(tab: tab, shell: shell)) {
+      _abortConnectShellIfStale(
+        tab: tab,
+        shell: shell,
+        reason: 'tab_or_shell_gone_after_ssh_constraints',
+      );
+      return;
+    }
+
     final plan = shellLaunch.plan;
     appLogger.i(
       '[session-launch] launch plan ready '
@@ -1088,6 +1143,16 @@ class SessionLaunchService implements MemberConnector {
     // cursor pre-allocation on first launch), so map them through directly —
     // no `launched` gating. See docs/session-resume-architecture.md.
     await _persistNativeSessionId(repo, tab, activeSession, binding, plan);
+
+    if (!_connectShellStillValid(tab: tab, shell: shell)) {
+      _abortConnectShellIfStale(
+        tab: tab,
+        shell: shell,
+        reason: 'tab_or_shell_gone_after_persist_native_id',
+      );
+      return;
+    }
+
     // P3a: the member runs in its assigned working directory (default = session
     // first folder). Personal sessions inherit (null memberId).
     final memberWork = activeSession.workDirsForMember(

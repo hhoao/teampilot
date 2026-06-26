@@ -191,22 +191,28 @@ class _WorkspaceTerminalPanelState extends State<WorkspaceTerminalPanel> {
     final theme = _terminalTheme(context);
     entry.session.applyTerminalTheme(theme);
     entry.connected = true;
-    entry.session.connectShell(
-      workingDirectory: cwd,
-      onProcessStarted: () {
-        if (mounted) setState(() {});
-      },
-      onProcessFailed: (_) {
-        if (mounted) setState(() {});
-      },
-      onProcessExited: () {
-        entry.connected = false;
-        if (mounted) setState(() {});
-      },
-    );
     if (entry.controller.engine == null) {
       entry.controller.attach(entry.session.engine);
     }
+    // Defer spawn until after the first [TerminalView] layout pass reports
+    // real geometry via [TerminalSession.onTerminalPtyResize].
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted || !entry.connected) return;
+      if (entry.session.isRunning || entry.session.isConnecting) return;
+      entry.session.connectShell(
+        workingDirectory: cwd,
+        onProcessStarted: () {
+          if (mounted) setState(() {});
+        },
+        onProcessFailed: (_) {
+          if (mounted) setState(() {});
+        },
+        onProcessExited: () {
+          entry.connected = false;
+          if (mounted) setState(() {});
+        },
+      );
+    });
   }
 
   Future<void> _showContextMenu(

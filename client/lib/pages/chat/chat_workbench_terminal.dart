@@ -35,6 +35,7 @@ class ChatWorkbenchRunningTerminal extends StatelessWidget {
     required this.onOpenLink,
     required this.onDisconnect,
     required this.onRestart,
+    this.autofocus = true,
     super.key,
   });
 
@@ -47,6 +48,7 @@ class ChatWorkbenchRunningTerminal extends StatelessWidget {
   final Future<void> Function(String uri) onOpenLink;
   final VoidCallback onDisconnect;
   final Future<void> Function() onRestart;
+  final bool autofocus;
 
   /// Fresh per-build ingestor for a drop region — stateless, captures the
   /// session's current namespace + CLI paste behavior.
@@ -96,7 +98,7 @@ class ChatWorkbenchRunningTerminal extends StatelessWidget {
             backgroundOpacity: 0.98,
             padding: const EdgeInsets.symmetric(horizontal: 36, vertical: 16),
             textStyle: appTerminalTextStyle(context),
-            autofocus: !findVisible,
+            autofocus: autofocus && !findVisible,
             linkProviders: session.linkProviders,
             primaryTapActivatesLink: context
                 .watch<SessionPreferencesCubit>()
@@ -235,15 +237,13 @@ void consumeChatWorkbenchRouteSession({
   }
 }
 
-/// Key for the `AnimatedSwitcher` terminal child in the chat workbench.
+/// Stable key for the chat workbench terminal stack.
 ///
-/// The running terminal uses a STABLE key (independent of which session/member
-/// is shown) so switching members reuses the same `TerminalView` element. That
-/// triggers the submodule's engine-swap path (`didUpdateWidget`) instead of a
-/// remount, keeping the glyph cache and viewport geometry warm — otherwise a
-/// freshly mounted `TerminalView` paints partial text while its empty glyph
-/// cache warms up over several frames. Loading / placeholder keep their own
-/// keys so transitions to/from them still cross-fade.
+/// Kept independent of loading/running so the [TerminalView] element is not
+/// remounted when connect finishes — only visibility toggles via [Offstage].
+const Key kChatWorkbenchTerminalStackKey = ValueKey('chat-terminal-running');
+
+/// Legacy helper for tests that still key off loading vs running transitions.
 Key chatWorkbenchTerminalViewKey({
   required bool loading,
   required bool running,

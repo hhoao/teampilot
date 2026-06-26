@@ -189,6 +189,40 @@ class _ChatWorkbenchState extends State<ChatWorkbench> {
     if (mounted) setState(() {});
   }
 
+  Widget _buildRunningTerminal({
+    required TerminalSession session,
+    required TerminalTheme terminalTheme,
+    required ChatCubit chatCubit,
+    required bool isPersonal,
+    required TeamProfile? team,
+    required bool autofocus,
+  }) {
+    _terminalController = bindChatWorkbenchTerminalController(
+      _terminalController,
+      session.engine,
+    );
+    return ChatWorkbenchRunningTerminal(
+      session: session,
+      terminalTheme: terminalTheme,
+      terminalController: _terminalController,
+      findVisible: _findVisible,
+      autofocus: autofocus,
+      onFindVisibleChanged: (visible) => setState(() => _findVisible = visible),
+      onControllerSearchChanged: () => setState(() {}),
+      onOpenLink: _openTerminalLink,
+      onDisconnect: () {
+        chatCubit.disconnectSession();
+        setState(() {});
+      },
+      onRestart: () async {
+        await _restartWorkspace(
+          isPersonal: isPersonal,
+          team: team,
+        );
+      },
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final cs = Theme.of(context).colorScheme;
@@ -256,57 +290,66 @@ class _ChatWorkbenchState extends State<ChatWorkbench> {
     return Container(
       key: AppKeys.chatWorkspace,
       color: cs.surface,
-      child: AnimatedSwitcher(
-        duration: const Duration(milliseconds: 180),
-        child: Container(
-          key: chatWorkbenchTerminalViewKey(
-            loading: sessionConnectInProgress,
-            running: session.isRunning,
-          ),
-          color: terminalBackground,
-          child: sessionConnectInProgress
-              ? ChatWorkbenchSessionLoadingView(
-                  message: context.l10n.sessionStarting,
-                )
-              : session.isRunning
-              ? () {
-                  _terminalController = bindChatWorkbenchTerminalController(
-                    _terminalController,
-                    session.engine,
-                  );
-                  return ChatWorkbenchRunningTerminal(
-                    session: session,
-                    terminalTheme: terminalTheme,
-                    terminalController: _terminalController,
-                    findVisible: _findVisible,
-                    onFindVisibleChanged: (visible) =>
-                        setState(() => _findVisible = visible),
-                    onControllerSearchChanged: () => setState(() {}),
-                    onOpenLink: _openTerminalLink,
-                    onDisconnect: () {
-                      chatCubit.disconnectSession();
-                      setState(() {});
-                    },
-                    onRestart: () async {
-                      await _restartWorkspace(
-                        isPersonal: isPersonal,
-                        team: team,
-                      );
-                    },
-                  );
-                }()
-              : ChatWorkbenchTerminalPlaceholder(
-                  onConnect: () => unawaited(
-                    _connectWorkspace(isPersonal: isPersonal, team: team),
-                  ),
-                  connectDisabled: sessionConnectInProgress,
-                  memberName: isPersonal
-                      ? context.l10n.homeWorkspaceWorkspaceAgent
-                      : chatCubit.selectedMemberName(team!),
-                  launchError: chatCubit.activeLaunchError,
-                ),
+      child: ColoredBox(
+        color: terminalBackground,
+        child: _buildTerminalBody(
+          session: session,
+          terminalTheme: terminalTheme,
+          chatCubit: chatCubit,
+          isPersonal: isPersonal,
+          team: team,
+          sessionConnectInProgress: sessionConnectInProgress,
         ),
       ),
+    );
+  }
+
+  /// Loading overlays the terminal while connect runs, but [TerminalView] stays
+  /// mounted (offstage) so the first layout reports real geometry via
+  /// [TerminalSession.onTerminalPtyResize] before the PTY spawns.
+  Widget _buildTerminalBody({
+    required TerminalSession session,
+    required TerminalTheme terminalTheme,
+    required ChatCubit chatCubit,
+    required bool isPersonal,
+    required TeamProfile? team,
+    required bool sessionConnectInProgress,
+  }) {
+    final mountTerminalForLayout =
+        sessionConnectInProgress || session.isRunning;
+
+    return Stack(
+      key: kChatWorkbenchTerminalStackKey,
+      fit: StackFit.expand,
+      children: [
+        if (mountTerminalForLayout)
+          Offstage(
+            offstage: sessionConnectInProgress,
+            child: _buildRunningTerminal(
+              session: session,
+              terminalTheme: terminalTheme,
+              chatCubit: chatCubit,
+              isPersonal: isPersonal,
+              team: team,
+              autofocus: !sessionConnectInProgress,
+            ),
+          ),
+        if (sessionConnectInProgress)
+          ChatWorkbenchSessionLoadingView(
+            message: context.l10n.sessionStarting,
+          )
+        else if (!session.isRunning)
+          ChatWorkbenchTerminalPlaceholder(
+            onConnect: () => unawaited(
+              _connectWorkspace(isPersonal: isPersonal, team: team),
+            ),
+            connectDisabled: sessionConnectInProgress,
+            memberName: isPersonal
+                ? context.l10n.homeWorkspaceWorkspaceAgent
+                : chatCubit.selectedMemberName(team!),
+            launchError: chatCubit.activeLaunchError,
+          ),
+      ],
     );
   }
 }
