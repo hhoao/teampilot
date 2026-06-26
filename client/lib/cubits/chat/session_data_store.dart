@@ -88,6 +88,7 @@ class SessionDataStore {
     List<TeamMemberConfig> rosterMembers = const [],
     CliTool? cli,
     String? workingDirectory,
+    String? fixedSessionId,
   }) {
     return repo.createSession(
       workspaceId,
@@ -96,6 +97,35 @@ class SessionDataStore {
       rosterMembers: rosterMembers,
       cli: cli,
       workingDirectory: workingDirectory,
+      fixedSessionId: fixedSessionId,
+    );
+  }
+
+  ChatDataSnapshot appendSession(ChatDataSnapshot base, AppSession session) {
+    return deriveSnapshot(
+      workspaces: base.workspaces,
+      sessions: [...base.sessions, session],
+    );
+  }
+
+  ChatDataSnapshot replaceSession(ChatDataSnapshot base, AppSession session) {
+    final sessions = [...base.sessions];
+    final index = sessions.indexWhere((s) => s.sessionId == session.sessionId);
+    if (index == -1) {
+      sessions.add(session);
+    } else {
+      sessions[index] = session;
+    }
+    return deriveSnapshot(workspaces: base.workspaces, sessions: sessions);
+  }
+
+  ChatDataSnapshot removeSession(ChatDataSnapshot base, String sessionId) {
+    return deriveSnapshot(
+      workspaces: base.workspaces,
+      sessions: [
+        for (final s in base.sessions)
+          if (s.sessionId != sessionId) s,
+      ],
     );
   }
 

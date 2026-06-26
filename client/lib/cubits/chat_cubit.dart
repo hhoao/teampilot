@@ -40,9 +40,15 @@ import 'member_presence_cubit.dart';
 import 'chat/model/chat_state.dart';
 import 'chat/model/chat_tab.dart';
 import 'chat/model/session_connect_request.dart';
+import 'chat/model/session_create_request.dart';
+import 'chat/model/session_open_request.dart';
+import 'chat/model/session_open_status.dart';
 
 export 'chat/model/chat_state.dart';
 export 'chat/model/chat_tab_info.dart';
+export 'chat/model/session_create_request.dart';
+export 'chat/model/session_open_request.dart';
+export 'chat/model/session_open_status.dart';
 
 class ChatCubit extends Cubit<ChatState>
     with ChatConnectStateMixin
@@ -172,6 +178,57 @@ class ChatCubit extends Cubit<ChatState>
   void emitSnapshot(ChatDataSnapshot snapshot) => _emitSnapshot(snapshot);
 
   @override
+  void appendSessionSnapshot(AppSession session) {
+    _emitSnapshot(
+      _dataStore.appendSession(
+        ChatDataSnapshot(
+          workspaces: state.workspaces,
+          sessions: state.sessions,
+          visibleWorkspaces: state.visibleWorkspaces,
+          visibleSessions: state.visibleSessions,
+        ),
+        session,
+      ),
+    );
+  }
+
+  @override
+  void replaceSessionSnapshot(AppSession session) {
+    _emitSnapshot(
+      _dataStore.replaceSession(
+        ChatDataSnapshot(
+          workspaces: state.workspaces,
+          sessions: state.sessions,
+          visibleWorkspaces: state.visibleWorkspaces,
+          visibleSessions: state.visibleSessions,
+        ),
+        session,
+      ),
+    );
+  }
+
+  @override
+  void removeSessionSnapshot(String sessionId) {
+    _emitSnapshot(
+      _dataStore.removeSession(
+        ChatDataSnapshot(
+          workspaces: state.workspaces,
+          sessions: state.sessions,
+          visibleWorkspaces: state.visibleWorkspaces,
+          visibleSessions: state.visibleSessions,
+        ),
+        sessionId,
+      ),
+    );
+  }
+
+  @override
+  void closeSessionTab(String sessionId) {
+    final idx = _tabStore.indexOfSession(sessionId);
+    if (idx != -1) closeTab(idx);
+  }
+
+  @override
   void pushPresenceTarget() => _pushPresenceTarget();
 
   @override
@@ -291,6 +348,7 @@ class ChatCubit extends Cubit<ChatState>
 
   /// Re-emits the active bucket's tab infos without changing the workspace, after
   /// callers mutate the active bucket directly via [tabStore].
+  @override
   void refreshActiveWorkspaceTabs() =>
       _publishActiveWorkspaceTabs(state.activeTabIndex);
 
@@ -411,6 +469,7 @@ class ChatCubit extends Cubit<ChatState>
     List<TeamMemberConfig> rosterMembers = const [],
     CliTool? cli,
     String? workingDirectory,
+    String? fixedSessionId,
   }) async {
     final session = await _dataStore.createSession(
       workspaceId,
@@ -420,10 +479,26 @@ class ChatCubit extends Cubit<ChatState>
       rosterMembers: rosterMembers,
       cli: cli,
       workingDirectory: workingDirectory,
+      fixedSessionId: fixedSessionId,
     );
-    _emitSnapshot(await _dataStore.loadWorkspaceData(repo));
+    _emitSnapshot(
+      _dataStore.appendSession(
+        ChatDataSnapshot(
+          workspaces: state.workspaces,
+          sessions: state.sessions,
+          visibleWorkspaces: state.visibleWorkspaces,
+          visibleSessions: state.visibleSessions,
+        ),
+        session,
+      ),
+    );
     return session;
   }
+
+  Future<SessionOpenStatus> requestCreateAndOpenSession(
+    SessionCreateRequest request,
+  ) =>
+      _launchService.requestCreateAndOpenSession(request);
 
   /// Creates (or reuses) the workspace for [primaryPath], seeds a first session,
   /// reloads workspace data, and returns the workspace id so callers can navigate
@@ -558,28 +633,8 @@ class ChatCubit extends Cubit<ChatState>
     return null;
   }
 
-  Future<void> openSessionTab(
-    AppSession session, {
-    TeamProfile? team,
-    TeamMemberConfig? member,
-    SessionRepository? repo,
-    String emptyDisplayTitleFallback = 'New Chat',
-    bool connectImmediately = true,
-  }) {
-    appLogger.i(
-      '[session-launch] ChatCubit.openSessionTab '
-      'session=${session.sessionId} team=${team?.id ?? ''} '
-      'member=${member?.id ?? ''} connectImmediately=$connectImmediately',
-    );
-    return _launchService.openSessionTab(
-      session,
-      team: team,
-      member: member,
-      repo: repo,
-      emptyDisplayTitleFallback: emptyDisplayTitleFallback,
-      connectImmediately: connectImmediately,
-    );
-  }
+  Future<SessionOpenStatus> requestOpenSession(SessionOpenRequest request) =>
+      _launchService.requestOpenSession(request);
 
   Future<void> scheduleTeamConfigValidation(TeamProfile team) =>
       _launchService.scheduleTeamConfigValidation(team);
@@ -934,15 +989,6 @@ class ChatCubit extends Cubit<ChatState>
       await deleteSession(repo, sid);
     }
     _emitSnapshot(await _dataStore.deleteWorkspaceRecord(repo, workspaceId));
-  }
-
-  void selectSession(String sessionId) {
-    final idx = _tabStore.indexOfSession(sessionId);
-    if (idx == -1) {
-      emit(state.copyWith(activeSessionId: sessionId));
-      return;
-    }
-    selectTab(idx);
   }
 
   void addSystemMessage(String content) {

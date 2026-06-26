@@ -18,8 +18,8 @@ import '../../../models/team_config.dart';
 import '../../../models/workspace_topology.dart';
 import '../../../repositories/session_repository.dart';
 import '../../../utils/app_session_sort.dart';
+import '../../../utils/team_member_naming.dart';
 import '../../../utils/logger.dart';
-import 'mixed_workspace_member_assignment_dialog.dart';
 
 Future<void> openWorkspaceSessionTab(
   BuildContext context,
@@ -45,51 +45,64 @@ Future<void> openWorkspaceSessionTab(
   final chatCubit = context.read<ChatCubit>();
   final repo = context.read<SessionRepository>();
   final fallback = context.l10n.defaultNewChatSessionTitle;
-
-  chatCubit.selectSession(session.sessionId);
-
-  var launchSession = session;
-  if (!isPersonal) {
-    final team = context.read<LaunchProfileCubit>().state.selectedTeam;
-    if (team != null) {
-      unawaited(chatCubit.scheduleTeamConfigValidation(team));
-      final ensured = await ensureMixedWorkspaceMemberAssignments(
-        context,
-        workspace: workspace,
-        session: session,
-        team: team,
-        repository: repo,
-      );
-      if (ensured == null || !context.mounted) return;
-      launchSession = ensured;
-      await chatCubit.loadWorkspaceData(repo);
-    }
+  final team = isPersonal ? null : context.read<LaunchProfileCubit>().state.selectedTeam;
+  if (team != null) {
+    unawaited(chatCubit.scheduleTeamConfigValidation(team));
   }
 
-  if (isPersonal) {
-    await chatCubit.openSessionTab(
-      launchSession,
-      team: null,
-      member: null,
+  final status = await chatCubit.requestOpenSession(
+    SessionOpenRequest(
+      session: session,
+      workspace: workspace,
+      team: team,
+      member: isPersonal ? null : _teamLead(team),
       repo: repo,
       emptyDisplayTitleFallback: fallback,
-    );
-    return;
-  }
-
-  final team = context.read<LaunchProfileCubit>().state.selectedTeam;
-  final leads =
-      team?.members.where((m) => m.id == 'team-lead').toList() ??
-      const <TeamMemberConfig>[];
-  final TeamMemberConfig? lead = leads.isEmpty ? null : leads.first;
-
-  await chatCubit.openSessionTab(
-    launchSession,
-    team: lead != null ? team : null,
-    member: lead,
-    repo: repo,
-    emptyDisplayTitleFallback: fallback,
+    ),
   );
+  if (!context.mounted) return;
+  _handleSessionOpenStatus(
+    context,
+    status,
+    blockedMixedMessage: context.l10n.mixedWorkspaceSessionLaunchBlocked,
+  );
+}
+
+void _handleSessionOpenStatus(
+  BuildContext context,
+  SessionOpenStatus status, {
+  required String blockedMixedMessage,
+}) {
+  switch (status) {
+    case SessionOpenStatus.opened:
+      return;
+    case SessionOpenStatus.blockedMixedMemberTargets:
+      AppToast.show(
+        context,
+        message: blockedMixedMessage,
+        variant: AppToastVariant.warning,
+      );
+    case SessionOpenStatus.missingWorkspace:
+      AppToast.show(
+        context,
+        message: context.l10n.sessionLaunchMissingWorkspace,
+        variant: AppToastVariant.warning,
+      );
+    case SessionOpenStatus.missingTeamMember:
+      AppToast.show(
+        context,
+        message: context.l10n.sessionLaunchMissingTeamMember,
+        variant: AppToastVariant.warning,
+      );
+  }
+}
+
+TeamMemberConfig? _teamLead(TeamProfile? team) {
+  if (team == null) return null;
+  for (final member in team.members) {
+    if (TeamMemberNaming.isTeamLead(member)) return member;
+  }
+  return null;
 }
 
 bool _canLaunchWorkspaceSession(
@@ -181,45 +194,33 @@ Future<void> createAndOpenWorkspaceConversation(
     return;
   }
 
-  // A new personal conversation pins its CLI to the active preset's CLI so it
-  // resumes under (and stores its transcript with) the CLI the user selected.
-  // An explicit [cli] override (e.g. a per-preset "new chat" action) wins.
   final effectiveCli = isPersonal
       ? (cli ?? _activePresetCli(context, personalIdentityId) ?? CliTool.claude)
       : null;
 
+  if (team != null) {
+    unawaited(chatCubit.scheduleTeamConfigValidation(team));
+  }
+
   try {
-    final session = await chatCubit.createSession(
-      workspace.workspaceId,
-      repo,
-      sessionTeamId: isPersonal ? '' : (team?.id ?? sessionTeamId),
-      personalIdentityId: isPersonal ? personalIdentityId : '',
-      rosterMembers: isPersonal ? const [] : (team?.members ?? const []),
-      cli: effectiveCli,
+    final status = await chatCubit.requestCreateAndOpenSession(
+      SessionCreateRequest(
+        workspace: workspace,
+        isPersonal: isPersonal,
+        team: team,
+        member: isPersonal ? null : _teamLead(team),
+        repo: repo,
+        personalIdentityId: personalIdentityId,
+        cli: effectiveCli,
+        emptyDisplayTitleFallback: l10n.defaultNewChatSessionTitle,
+      ),
     );
     if (!context.mounted) return;
-    await openWorkspaceSessionTab(
+    _handleSessionOpenStatus(
       context,
-      workspace,
-      session,
-      isPersonal: isPersonal,
+      status,
+      blockedMixedMessage: context.l10n.mixedWorkspaceCreateSessionBlocked,
     );
-  } on StateError catch (error) {
-    if (error.message == 'mixed_workspace_member_targets_incomplete') {
-      if (!context.mounted) return;
-      AppToast.show(
-        context,
-        message: context.l10n.mixedWorkspaceCreateSessionBlocked,
-        variant: AppToastVariant.warning,
-      );
-      return;
-    }
-    if (error.message == 'mixed_workspace_personal_launch_blocked') {
-      if (!context.mounted) return;
-      showPersonalLaunchBlockedToast(context);
-      return;
-    }
-    rethrow;
   } on Object catch (error, stackTrace) {
     appLogger.e(
       l10n.homeWorkspaceNewConversation,
@@ -256,34 +257,29 @@ Future<void> createSessionInWorktree(
   final effectiveCli = isPersonal
       ? (cli ?? _activePresetCli(context, personalIdentityId) ?? CliTool.claude)
       : null;
+  if (team != null) {
+    unawaited(chatCubit.scheduleTeamConfigValidation(team));
+  }
   try {
-    final session = await chatCubit.createSession(
-      workspace.workspaceId,
-      repo,
-      sessionTeamId: isPersonal ? '' : (team?.id ?? sessionTeamId),
-      personalIdentityId: isPersonal ? personalIdentityId : '',
-      rosterMembers: isPersonal ? const [] : (team?.members ?? const []),
-      cli: effectiveCli,
-      workingDirectory: worktreePath,
+    final status = await chatCubit.requestCreateAndOpenSession(
+      SessionCreateRequest(
+        workspace: workspace,
+        isPersonal: isPersonal,
+        team: team,
+        member: isPersonal ? null : _teamLead(team),
+        repo: repo,
+        personalIdentityId: personalIdentityId,
+        cli: effectiveCli,
+        workingDirectory: worktreePath,
+        emptyDisplayTitleFallback: l10n.defaultNewChatSessionTitle,
+      ),
     );
     if (!context.mounted) return;
-    await openWorkspaceSessionTab(context, workspace, session, isPersonal: isPersonal);
-  } on StateError catch (error) {
-    if (error.message == 'mixed_workspace_member_targets_incomplete') {
-      if (!context.mounted) return;
-      AppToast.show(
-        context,
-        message: context.l10n.mixedWorkspaceCreateSessionBlocked,
-        variant: AppToastVariant.warning,
-      );
-      return;
-    }
-    if (error.message == 'mixed_workspace_personal_launch_blocked') {
-      if (!context.mounted) return;
-      showPersonalLaunchBlockedToast(context);
-      return;
-    }
-    rethrow;
+    _handleSessionOpenStatus(
+      context,
+      status,
+      blockedMixedMessage: context.l10n.mixedWorkspaceCreateSessionBlocked,
+    );
   } on Object catch (error, stackTrace) {
     appLogger.e(
       l10n.homeWorkspaceNewConversation,

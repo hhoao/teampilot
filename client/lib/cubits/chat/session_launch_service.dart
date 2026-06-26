@@ -1,5 +1,6 @@
 import 'dart:async';
 
+import 'package:flutter/foundation.dart';
 import 'package:uuid/uuid.dart';
 
 import '../../models/runtime_target.dart';
@@ -13,10 +14,15 @@ import '../../models/personal_profile.dart';
 import '../../services/storage/launch_profile_provisioner.dart';
 import '../../models/session_member_binding.dart';
 import '../../models/team_config.dart';
+import '../../models/workspace_topology.dart';
 import '../../models/workspace_tab_ref.dart';
 import '../../repositories/session_repository.dart';
 import '../../services/cli/registry/config_profile/config_profile_context.dart';
+import '../../services/launch/personal_launch_context.dart';
+import '../../services/launch/personal_launch_context_resolver.dart';
 import '../../services/launch/session_connect_orchestrator.dart';
+import '../../services/launch/session_launch_readiness.dart';
+import '../../services/launch/session_provisional_builder.dart';
 import '../../services/launch/workspace_provision_coordinator.dart';
 import '../../services/session/remote_ssh_launch_constraints.dart';
 import '../../services/session/session_lifecycle_service.dart';
@@ -44,6 +50,10 @@ import 'chat_tab_store.dart';
 import 'model/chat_state.dart';
 import 'model/chat_tab.dart';
 import 'model/chat_tab_info.dart';
+import 'model/session_create_request.dart';
+import 'model/session_open_request.dart';
+import 'model/session_open_status.dart';
+import 'model/session_persist_params.dart';
 import 'model/session_connect_request.dart';
 import 'session_data_store.dart';
 import 'tab_team_bus_coordinator.dart';
@@ -58,6 +68,11 @@ abstract interface class SessionLaunchHost {
 
   /// Single emit entry point (wraps the cubit's protected emit).
   void applyState(ChatState next);
+  void refreshActiveWorkspaceTabs();
+  void appendSessionSnapshot(AppSession session);
+  void replaceSessionSnapshot(AppSession session);
+  void removeSessionSnapshot(String sessionId);
+  void closeSessionTab(String sessionId);
   void emitSnapshot(ChatDataSnapshot snapshot);
 
   // Connect state-machine (ChatConnectStateMixin).
@@ -65,6 +80,7 @@ abstract interface class SessionLaunchHost {
   void failSessionConnect(String sessionId, String rawMessage);
   void finishSessionConnect(String sessionId);
   void clearLaunchError(String sessionId);
+  void setLaunchError(String sessionId, String rawMessage);
   void emitLaunchWarnings(List<String> warnings);
   void emitTeamConfigValidation(TeamConfigValidation validation);
   void updateTabRunning(String tabId);
@@ -110,10 +126,11 @@ abstract interface class SessionLaunchHost {
 /// the connect/restart/disconnect user commands. ChatCubit delegates here and
 /// keeps only its data/tab facades + getters.
 class SessionLaunchService implements MemberConnector {
-  SessionLaunchService(this._h);
+  SessionLaunchService(this._h)
+      : _personalContext = PersonalLaunchContextResolver(_h.lifecycle);
 
   final SessionLaunchHost _h;
-
+  final PersonalLaunchContextResolver _personalContext;
   static const _uuid = Uuid();
   final _teamConfigValidator = TeamConfigLaunchValidator();
   final _lastTouchTimes = <String, int>{};
@@ -140,6 +157,7 @@ class SessionLaunchService implements MemberConnector {
     required String reason,
     String? remoteMemberKey,
   }) {
+    if (_h.isClosed) return;
     if (_connectShellStillValid(tab: tab, shell: shell)) return;
     appLogger.d(
       '[session-launch] connectShell aborted session=${tab.info.id} '
@@ -153,173 +171,692 @@ class SessionLaunchService implements MemberConnector {
     }
   }
 
-  Future<void> openSessionTab(
-    AppSession session, {
-    TeamProfile? team,
-    TeamMemberConfig? member,
-    SessionRepository? repo,
-    String emptyDisplayTitleFallback = 'New Chat',
-    bool connectImmediately = true,
-  }) async {
-    final isPersonal = session.sessionTeam.trim().isEmpty;
+  Future<SessionOpenStatus> requestOpenSession(SessionOpenRequest request) async {
+    var session = request.session;
+    final isPersonal = request.isPersonal;
     appLogger.i(
-      '[session-launch] openSessionTab start '
+      '[session-launch] requestOpenSession start '
       'session=${session.sessionId} personal=$isPersonal '
-      'member=${member?.id ?? ''} team=${team?.id ?? ''} '
-      'connectImmediately=$connectImmediately',
+      'member=${request.member?.id ?? ''} team=${request.team?.id ?? ''} '
+      'connectImmediately=${request.connectImmediately}',
     );
+
+    if (isPersonal) {
+      final workspace =
+          request.workspace ?? _workspaceById(session.workspaceId);
+      if (workspace == null) return SessionOpenStatus.missingWorkspace;
+    } else if (request.team == null || request.member == null) {
+      return SessionOpenStatus.missingTeamMember;
+    } else {
+      final workspace =
+          request.workspace ?? _workspaceById(session.workspaceId);
+      final team = request.team!;
+      if (workspace != null &&
+          workspaceTopologyRequiresMemberAssignment(workspace.folders) &&
+          !memberTargetsComplete(
+            workspaceFolders: workspace.folders,
+            members: team.members.where((m) => m.isValid).toList(),
+            targets: session.memberTargets,
+          )) {
+        return SessionOpenStatus.blockedMixedMemberTargets;
+      }
+    }
+
     final existingIdx = _tabStore.indexOfSession(session.sessionId);
     if (existingIdx != -1) {
-      appLogger.i(
-        '[session-launch] openSessionTab reuse existing tab '
-        'session=${session.sessionId} idx=$existingIdx',
+      return _surfaceExistingTab(
+        request: request.withSession(session),
+        existingIdx: existingIdx,
       );
-      final existing = _tabStore.tabs[existingIdx];
-      final memberId = member?.id ?? existing.selectedMemberId;
-      existing.selectedMemberId = memberId;
-      _h.applyState(
-        _state.copyWith(
-          activeTabIndex: existingIdx,
-          activeSessionId: session.sessionId,
-          selectedMemberId: memberId,
+    }
+    return _surfaceNewTab(
+      request: request.withSession(session),
+      session: session,
+    );
+  }
+
+  /// Stages a new conversation tab immediately, then persists and connects async.
+  Future<SessionOpenStatus> requestCreateAndOpenSession(
+    SessionCreateRequest request,
+  ) async {
+    appLogger.i(
+      '[session-launch] requestCreateAndOpenSession start '
+      'workspace=${request.workspace.workspaceId} personal=${request.isPersonal}',
+    );
+
+    if (!request.isPersonal &&
+        (request.team == null || request.member == null)) {
+      return SessionOpenStatus.missingTeamMember;
+    }
+
+    final sessionTeamId =
+        request.isPersonal ? '' : (request.team?.id ?? '').trim();
+    if (!request.isPersonal &&
+        workspaceTopologyRequiresMemberAssignment(request.workspace.folders)) {
+      final team = request.team!;
+      final valid = team.members.where((m) => m.isValid).toList();
+      final targets = rememberedMemberTargets(
+        request.workspace.memberTargetsByTeam,
+        sessionTeamId,
+      );
+      if (!memberTargetsComplete(
+        workspaceFolders: request.workspace.folders,
+        members: valid,
+        targets: targets,
+      )) {
+        return SessionOpenStatus.blockedMixedMemberTargets;
+      }
+    }
+
+    final sessionId = _uuid.v4();
+    final provisional = buildProvisionalSession(
+      sessionId: sessionId,
+      workspace: request.workspace,
+      isPersonal: request.isPersonal,
+      personalIdentityId: request.personalIdentityId,
+      cli: request.cli,
+      workingDirectory: request.workingDirectory,
+      sessionTeamId: sessionTeamId,
+    );
+    _h.appendSessionSnapshot(provisional);
+
+    final persistParams = SessionPersistParams(
+      sessionTeamId: sessionTeamId,
+      personalIdentityId: request.personalIdentityId,
+      rosterMembers: request.isPersonal ? const [] : (request.team?.members ?? const []),
+      cli: request.cli,
+      workingDirectory: request.workingDirectory,
+    );
+
+    return _surfaceNewTab(
+      request: SessionOpenRequest(
+        session: provisional,
+        workspace: request.workspace,
+        team: request.team,
+        member: request.member,
+        repo: request.repo,
+        emptyDisplayTitleFallback: request.emptyDisplayTitleFallback,
+        persistParams: persistParams,
+      ),
+      session: provisional,
+    );
+  }
+
+  Future<AppSession> _persistSessionIfNeeded({
+    required SessionOpenRequest request,
+    required AppSession session,
+    required ChatTab tab,
+  }) async {
+    final params = request.persistParams;
+    if (params == null) return session;
+
+    final repo = request.repo ?? _h.sessionRepository;
+    if (repo == null) {
+      throw StateError('Session repository unavailable');
+    }
+
+    final persisted = await repo.createSession(
+      session.workspaceId,
+      sessionTeam: params.sessionTeamId,
+      personalIdentityId: params.personalIdentityId,
+      rosterMembers: params.rosterMembers,
+      cli: params.cli,
+      workingDirectory: params.workingDirectory,
+      fixedSessionId: session.sessionId,
+    );
+    tab.persistedSession = persisted;
+    _h.replaceSessionSnapshot(persisted);
+    return persisted;
+  }
+
+  void _rollbackStagedLaunch({
+    required ChatTab tab,
+    required String sessionId,
+    required SessionOpenRequest request,
+    required String message,
+  }) {
+    _h.failSessionConnect(sessionId, message);
+    if (request.persistParams == null) return;
+    _h.closeSessionTab(sessionId);
+    _h.removeSessionSnapshot(sessionId);
+  }
+
+  SessionOpenStatus _surfaceExistingTab({
+    required SessionOpenRequest request,
+    required int existingIdx,
+  }) {
+    final session = request.session;
+    appLogger.i(
+      '[session-launch] requestOpenSession reuse existing tab '
+      'session=${session.sessionId} idx=$existingIdx',
+    );
+    final existing = _tabStore.tabs[existingIdx];
+    final memberId = request.member?.id ?? existing.selectedMemberId;
+    existing.selectedMemberId = memberId;
+    existing.bumpLaunchGeneration();
+    final generation = existing.launchGeneration;
+    _h.applyState(
+      _state.copyWith(
+        activeTabIndex: existingIdx,
+        activeSessionId: session.sessionId,
+        selectedMemberId: memberId,
+      ),
+    );
+    _h.refreshActiveWorkspaceTabs();
+    if (!request.connectImmediately) {
+      unawaited(
+        _prepareExistingTabConnect(
+          generation: generation,
+          tab: existing,
+          request: request,
+          connect: false,
         ),
       );
-      if (connectImmediately) {
-        await _connectExistingTabIfNeeded(
-          tab: existing,
-          session: session,
-          team: team,
-          member: member,
-          repo: repo,
-        );
-      }
-      return;
+      return SessionOpenStatus.opened;
     }
-    final workspace = _workspaceById(session.workspaceId);
-    final isPersonalSession = session.sessionTeam.trim().isEmpty;
-    PersonalProfile? personalIdentity;
-    TeamMemberConfig? personalMember;
-    CliPreset? personalPreset;
-    if (isPersonalSession) {
-      if (workspace == null) {
-        throw StateError(
-          'openSessionTab requires workspace for personal sessions',
-        );
-      }
-      final personalCtx = await _resolvePersonalMember(
-        session: session,
-        workspace: workspace,
-      );
-      personalIdentity = personalCtx.personalIdentity;
-      personalPreset = personalCtx.personalPreset;
-      personalMember = personalCtx.personalMember;
+    if (_shouldAutoConnect(request)) {
+      _h.beginSessionConnect(session.sessionId);
     }
-    if (!isPersonalSession && (team == null || member == null)) {
-      throw StateError(
-        'openSessionTab requires team and member for non-personal sessions',
-      );
+    unawaited(
+      _prepareExistingTabConnect(
+        generation: generation,
+        tab: existing,
+        request: request,
+        connect: _shouldAutoConnect(request),
+      ),
+    );
+    return SessionOpenStatus.opened;
+  }
+
+  SessionOpenStatus _surfaceNewTab({
+    required SessionOpenRequest request,
+    required AppSession session,
+  }) {
+    final workspace =
+        request.workspace ?? _workspaceById(session.workspaceId);
+    if (request.isPersonal && workspace == null) {
+      return SessionOpenStatus.missingWorkspace;
     }
-    final effectiveMember = isPersonalSession ? personalMember! : member!;
-    final effectiveTeam = isPersonalSession ? null : team;
+
+    final placeholderMemberId = request.member?.id ?? 'team-lead';
     final info = ChatTabInfo(
       id: session.sessionId,
-      title: session.resolveDisplayTitle(emptyDisplayTitleFallback),
+      title: session.resolveDisplayTitle(request.emptyDisplayTitleFallback),
       subtitle: session.firstFolderPath,
     );
-    final launched = session.launchState == AppSessionLaunchState.started;
-    final cliTeamName = session.cliTeamName;
-    final internalTab = ChatTab(info: info, cliTeamName: cliTeamName)
-      ..persistedSession = session;
-    final ts = _shellForLaunch(
-      tab: internalTab,
-      shellKey: effectiveMember.id,
-      cli: isPersonalSession
-          // Honor the session's pinned CLI so an existing simple-mode session
-          // resumes under the CLI it was created with, even when the workspace's
-          // active preset has since been switched to another CLI.
-          ? (session.cli ?? personalPreset?.cli ?? CliTool.claude)
-          : member!.cliWithin(team!),
-      session: session,
-      rosterMemberId: isPersonalSession ? null : effectiveMember.id,
-    );
-    internalTab.selectedMemberId = effectiveMember.id;
-    _tabStore.append(internalTab);
-    // 驱动 working 指示器（侧栏 tile + tab spinner）。mixed 模式靠总线 turn 真相，
-    // 简单 / 原生单 CLI 靠 shell 活动检测——两条路径都需要这只 1s 看门狗在跑。
+    final tab = ChatTab(
+      info: info,
+      cliTeamName: session.cliTeamName,
+      workspaceId: session.workspaceId,
+    )
+      ..persistedSession = session
+      ..selectedMemberId = placeholderMemberId;
+    tab.bumpLaunchGeneration();
+    final generation = tab.launchGeneration;
+
+    _tabStore.append(tab);
     _h.busCoordinator.ensureIdleWatch();
     _h.applyState(
       _state.copyWith(
-        tabs: [..._state.tabs, info],
         activeTabIndex: _tabStore.length - 1,
         activeSessionId: session.sessionId,
-        selectedMemberId: internalTab.selectedMemberId,
+        selectedMemberId: placeholderMemberId,
       ),
     );
-    if (effectiveTeam != null) {
-      _h.activeTeam = effectiveTeam;
-      _h.pushPresenceTarget();
-      if (effectiveTeam.teamMode == TeamMode.mixed) {
-        appLogger.i(
-          '[session-launch] installing team bus '
-          'session=${session.sessionId} team=${effectiveTeam.id}',
-        );
-        await _h.busCoordinator.installBusForTab(
-          internalTab,
-          effectiveTeam,
-          session,
+    _h.refreshActiveWorkspaceTabs();
+
+    if (!request.connectImmediately) {
+      unawaited(
+        _prepareNewTabConnect(
+          generation: generation,
+          tab: tab,
+          session: session,
+          request: request,
+          workspace: workspace,
+          connect: false,
+        ),
+      );
+      return SessionOpenStatus.opened;
+    }
+
+    if (_shouldAutoConnect(request)) {
+      _h.beginSessionConnect(session.sessionId);
+      unawaited(
+        _prepareNewTabConnect(
+          generation: generation,
+          tab: tab,
+          session: session,
+          request: request,
+          workspace: workspace,
+          connect: true,
+        ),
+      );
+    } else {
+      unawaited(
+        _prepareDeferredTeamTab(
+          generation: generation,
+          tab: tab,
+          session: session,
+          request: request,
+        ),
+      );
+      _h.updateTabRunning(session.sessionId);
+    }
+    return SessionOpenStatus.opened;
+  }
+
+  bool _shouldAutoConnect(SessionOpenRequest request) {
+    if (!request.connectImmediately) return false;
+    if (request.isPersonal) return true;
+    final team = request.team!;
+    if (team.teamMode != TeamMode.mixed) return true;
+    return TeamMemberNaming.isTeamLead(request.member!);
+  }
+
+  bool _launchStillValid(ChatTab tab, int generation) {
+    if (_h.isClosed) return false;
+    if (_tabStore.indexOfSession(tab.info.id) == -1) return false;
+    return tab.launchGeneration == generation;
+  }
+
+  Future<AppSession?> _ensureTeamSessionReady({
+    required SessionOpenRequest request,
+    required AppSession session,
+    required Workspace? workspace,
+  }) async {
+    if (request.isPersonal) return session;
+    final team = request.team;
+    final repo = request.repo ?? _h.sessionRepository;
+    if (team == null || workspace == null || repo == null) return session;
+    return ensureSessionLaunchReady(
+      workspace: workspace,
+      session: session,
+      team: team,
+      repository: repo,
+    );
+  }
+
+  Future<void> _prepareNewTabConnect({
+    required int generation,
+    required ChatTab tab,
+    required AppSession session,
+    required SessionOpenRequest request,
+    required Workspace? workspace,
+    required bool connect,
+  }) async {
+    try {
+      var launchSession = session;
+      launchSession = await _persistSessionIfNeeded(
+        request: request,
+        session: session,
+        tab: tab,
+      );
+      if (!_launchStillValid(tab, generation)) return;
+
+      final ready = await _ensureTeamSessionReady(
+        request: request,
+        session: launchSession,
+        workspace: workspace,
+      );
+      if (!_launchStillValid(tab, generation)) return;
+      if (ready == null) {
+        if (request.persistParams != null) {
+          _rollbackStagedLaunch(
+            tab: tab,
+            sessionId: launchSession.sessionId,
+            request: request,
+            message: 'mixed_workspace_member_targets_incomplete',
+          );
+        } else {
+          _h.failSessionConnect(
+            launchSession.sessionId,
+            'mixed_workspace_member_targets_incomplete',
+          );
+        }
+        return;
+      }
+      launchSession = ready;
+      tab.persistedSession = ready;
+
+      final resolved = await _resolveLaunchMembers(
+        session: launchSession,
+        request: request,
+        workspace: workspace,
+      );
+      if (!_launchStillValid(tab, generation)) return;
+
+      await _installTeamRuntimeIfNeeded(
+        tab: tab,
+        session: launchSession,
+        team: resolved.team,
+        generation: generation,
+      );
+      if (!_launchStillValid(tab, generation)) return;
+
+      tab.selectedMemberId = resolved.member.id;
+      if (_state.selectedMemberId != resolved.member.id) {
+        _h.applyState(
+          _state.copyWith(selectedMemberId: resolved.member.id),
         );
       }
-    }
-    // mixed：非 team-lead 只建 bus + MCP，不 spawn PTY；team-lead 打开 tab 时自动 connect。
-    final connectNow =
-        connectImmediately &&
-        (effectiveTeam?.teamMode != TeamMode.mixed ||
-            TeamMemberNaming.isTeamLead(effectiveMember));
-    if (connectNow) {
-      appLogger.i(
-        '[session-launch] connect scheduled '
-        'session=${info.id} member=${effectiveMember.id} '
-        'teamMode=${effectiveTeam?.teamMode.name ?? 'personal'}',
+
+      final shell = _shellForLaunch(
+        tab: tab,
+        shellKey: resolved.member.id,
+        cli: resolved.cli,
+        session: launchSession,
+        rosterMemberId: request.isPersonal ? null : resolved.member.id,
       );
-      _h.beginSessionConnect(info.id);
-      _h.postFrameScheduler(() async {
-        try {
-          await _connectShell(
-            tab: internalTab,
-            session: session,
-            shell: ts,
-            repo: repo,
-            launched: launched,
-            team: isPersonalSession ? null : team,
-            member: isPersonalSession ? null : member,
-            workspace: isPersonalSession ? workspace : null,
-            personal: isPersonalSession ? personalIdentity : null,
+      if (!connect) {
+        _h.updateTabRunning(launchSession.sessionId);
+        return;
+      }
+      final launched =
+          launchSession.launchState == AppSessionLaunchState.started;
+      _scheduleShellConnect(
+        generation: generation,
+        tab: tab,
+        session: launchSession,
+        shell: shell,
+        request: request,
+        launched: launched,
+        workspace: workspace,
+        personal: resolved.personalIdentity,
+        team: resolved.team,
+        member: request.isPersonal ? null : resolved.member,
+      );
+    } on Object catch (e, st) {
+      appLogger.e(
+        '[session-launch] prepare new tab failed session=${session.sessionId}: $e',
+        error: e,
+        stackTrace: st,
+      );
+      if (_launchStillValid(tab, generation)) {
+        if (request.persistParams != null) {
+          _rollbackStagedLaunch(
+            tab: tab,
+            sessionId: session.sessionId,
+            request: request,
+            message: e.toString(),
           );
-          if (!isPersonalSession &&
-              _h.autoLaunchAllMembersOnConnect?.call() == true) {
-            _launchRemainingMembersForTab(team!, member!.id, internalTab);
-          }
-          _h.updateTabRunning(info.id);
-        } on Object catch (e, st) {
-          appLogger.e(
-            '[session-launch] prepareLaunch/connect failed for ${info.id}: $e',
-            error: e,
-            stackTrace: st,
-          );
-          final message = 'Failed to resume session: $e';
-          ts.write('\r\n[$message]\r\n');
-          _h.failSessionConnect(info.id, message);
+        } else {
+          _h.failSessionConnect(session.sessionId, e.toString());
         }
-      });
-    } else {
-      appLogger.i(
-        '[session-launch] connect deferred '
-        'session=${info.id} connectImmediately=$connectImmediately '
-        'teamMode=${effectiveTeam?.teamMode.name ?? 'personal'} '
-        'member=${effectiveMember.id}',
-      );
-      _h.updateTabRunning(info.id);
+      }
     }
+  }
+
+  Future<void> _prepareDeferredTeamTab({
+    required int generation,
+    required ChatTab tab,
+    required AppSession session,
+    required SessionOpenRequest request,
+  }) async {
+    final team = request.team;
+    if (team == null || request.member == null) return;
+    try {
+      await _installTeamRuntimeIfNeeded(
+        tab: tab,
+        session: session,
+        team: team,
+        generation: generation,
+      );
+      if (!_launchStillValid(tab, generation)) return;
+      tab.selectedMemberId = request.member!.id;
+      _h.applyState(_state.copyWith(selectedMemberId: request.member!.id));
+      _h.updateTabRunning(session.sessionId);
+    } on Object catch (e, st) {
+      appLogger.e(
+        '[session-launch] deferred team tab prep failed session=${session.sessionId}: $e',
+        error: e,
+        stackTrace: st,
+      );
+      if (_launchStillValid(tab, generation)) {
+        _h.setLaunchError(session.sessionId, e.toString());
+      }
+    }
+  }
+
+  Future<void> _prepareExistingTabConnect({
+    required int generation,
+    required ChatTab tab,
+    required SessionOpenRequest request,
+    required bool connect,
+  }) async {
+    var session = request.session;
+    final workspace = request.workspace ?? _workspaceById(session.workspaceId);
+    if (request.isPersonal && workspace == null) return;
+
+    try {
+      var launchSession = session;
+      launchSession = await _persistSessionIfNeeded(
+        request: request,
+        session: session,
+        tab: tab,
+      );
+      if (!_launchStillValid(tab, generation)) return;
+
+      final ready = await _ensureTeamSessionReady(
+        request: request,
+        session: launchSession,
+        workspace: workspace,
+      );
+      if (!_launchStillValid(tab, generation)) return;
+      if (ready == null) {
+        if (request.persistParams != null) {
+          _rollbackStagedLaunch(
+            tab: tab,
+            sessionId: launchSession.sessionId,
+            request: request,
+            message: 'mixed_workspace_member_targets_incomplete',
+          );
+        } else {
+          _h.failSessionConnect(
+            launchSession.sessionId,
+            'mixed_workspace_member_targets_incomplete',
+          );
+        }
+        return;
+      }
+      launchSession = ready;
+      tab.persistedSession = ready;
+
+      final resolved = await _resolveLaunchMembers(
+        session: launchSession,
+        request: request,
+        workspace: workspace,
+      );
+      if (!_launchStillValid(tab, generation)) return;
+
+      tab.selectedMemberId = resolved.member.id;
+      if (_state.selectedMemberId != resolved.member.id) {
+        _h.applyState(
+          _state.copyWith(selectedMemberId: resolved.member.id),
+        );
+      }
+
+      final shell = _shellForLaunch(
+        tab: tab,
+        shellKey: resolved.member.id,
+        cli: resolved.cli,
+        session: launchSession,
+        rosterMemberId: request.isPersonal ? null : resolved.member.id,
+      );
+
+      if (shell.isRunning || shell.isConnecting) {
+        _h.updateTabRunning(tab.info.id);
+        if (_state.sessionConnectingId == launchSession.sessionId) {
+          _h.finishSessionConnect(launchSession.sessionId);
+        }
+        return;
+      }
+      if (tab.membersPendingConnect.contains(resolved.member.id)) return;
+
+      if (!connect) {
+        _h.updateTabRunning(tab.info.id);
+        return;
+      }
+
+      if (_shouldAutoConnect(request) &&
+          _state.sessionConnectingId != launchSession.sessionId) {
+        _h.beginSessionConnect(launchSession.sessionId);
+      }
+
+      tab.membersPendingConnect.add(resolved.member.id);
+      final launched =
+          launchSession.launchState == AppSessionLaunchState.started;
+      _scheduleShellConnect(
+        generation: generation,
+        tab: tab,
+        session: launchSession,
+        shell: shell,
+        request: request,
+        launched: launched,
+        workspace: workspace,
+        personal: resolved.personalIdentity,
+        team: resolved.team,
+        member: request.isPersonal ? null : resolved.member,
+        onFinally: () => tab.membersPendingConnect.remove(resolved.member.id),
+      );
+    } on Object catch (e, st) {
+      appLogger.e(
+        '[session-launch] prepare existing tab failed session=${session.sessionId}: $e',
+        error: e,
+        stackTrace: st,
+      );
+      if (_launchStillValid(tab, generation)) {
+        if (request.persistParams != null) {
+          _rollbackStagedLaunch(
+            tab: tab,
+            sessionId: session.sessionId,
+            request: request,
+            message: e.toString(),
+          );
+        } else {
+          _h.failSessionConnect(session.sessionId, e.toString());
+        }
+      }
+    }
+  }
+
+  Future<
+    ({
+      TeamProfile? team,
+      TeamMemberConfig member,
+      CliTool cli,
+      PersonalProfile? personalIdentity,
+    })
+  >
+  _resolveLaunchMembers({
+    required AppSession session,
+    required SessionOpenRequest request,
+    Workspace? workspace,
+  }) async {
+    if (request.isPersonal) {
+      final resolvedWorkspace =
+          workspace ?? _workspaceById(session.workspaceId);
+      if (resolvedWorkspace == null) {
+        throw StateError('Personal session requires workspace');
+      }
+      final personalCtx = await _personalContext.resolve(
+        session: session,
+        workspace: resolvedWorkspace,
+      );
+      return (
+        team: null,
+        member: personalCtx.personalMember,
+        cli: session.cli ?? personalCtx.personalPreset?.cli ?? CliTool.claude,
+        personalIdentity: personalCtx.personalIdentity,
+      );
+    }
+    final team = request.team!;
+    final member = request.member!;
+    return (
+      team: team,
+      member: member,
+      cli: member.cliWithin(team),
+      personalIdentity: null,
+    );
+  }
+
+  Future<void> _installTeamRuntimeIfNeeded({
+    required ChatTab tab,
+    required AppSession session,
+    required TeamProfile? team,
+    required int generation,
+  }) async {
+    if (team == null) return;
+    _h.activeTeam = team;
+    _h.pushPresenceTarget();
+    if (team.teamMode != TeamMode.mixed) return;
+    appLogger.i(
+      '[session-launch] installing team bus '
+      'session=${session.sessionId} team=${team.id}',
+    );
+    await _h.busCoordinator.installBusForTab(tab, team, session);
+    if (!_launchStillValid(tab, generation)) return;
+  }
+
+  void _scheduleShellConnect({
+    required int generation,
+    required ChatTab tab,
+    required AppSession session,
+    required TerminalSession shell,
+    required SessionOpenRequest request,
+    required bool launched,
+    required Workspace? workspace,
+    required PersonalProfile? personal,
+    required TeamProfile? team,
+    required TeamMemberConfig? member,
+    VoidCallback? onFinally,
+  }) {
+    _h.postFrameScheduler(() async {
+      if (!_launchStillValid(tab, generation)) {
+        _abortConnectShellIfStale(
+          tab: tab,
+          shell: shell,
+          reason: 'launch_generation_stale',
+          remoteMemberKey: member?.id,
+        );
+        return;
+      }
+      try {
+        await _connectShell(
+          tab: tab,
+          session: session,
+          shell: shell,
+          repo: request.repo,
+          launched: launched,
+          team: team,
+          member: member,
+          workspace: workspace,
+          personal: personal,
+        );
+        if (!request.isPersonal &&
+            team != null &&
+            member != null &&
+            _h.autoLaunchAllMembersOnConnect?.call() == true) {
+          _launchRemainingMembersForTab(team, member.id, tab);
+        }
+        _h.updateTabRunning(tab.info.id);
+      } on Object catch (e, st) {
+        appLogger.e(
+          '[session-launch] connect failed for ${tab.info.id}: $e',
+          error: e,
+          stackTrace: st,
+        );
+        final message = 'Failed to resume session: $e';
+        shell.write('\r\n[$message]\r\n');
+        if (member != null) {
+          unawaited(tab.closeMemberRemotePlane(member.id));
+        }
+        if (_launchStillValid(tab, generation)) {
+          _h.failSessionConnect(tab.info.id, message);
+        }
+      } finally {
+        onFinally?.call();
+      }
+    });
   }
 
   TeamConfigValidation? _lastSurfacedTeamConfigValidation;
@@ -376,12 +913,15 @@ class SessionLaunchService implements MemberConnector {
       workspaceCwd: cwd,
     );
     if (existingSession != null) {
-      await openSessionTab(
-        existingSession,
-        team: team,
-        member: memberForInitialShell,
-        repo: repo,
-        connectImmediately: connectImmediately,
+      await requestOpenSession(
+        SessionOpenRequest(
+          session: existingSession,
+          workspace: _workspaceById(existingSession.workspaceId),
+          team: team,
+          member: memberForInitialShell,
+          repo: repo,
+          connectImmediately: connectImmediately,
+        ),
       );
       return;
     }
@@ -407,14 +947,18 @@ class SessionLaunchService implements MemberConnector {
       sessionTeam: team.id,
       rosterMembers: team.members,
     );
+    if (_h.isClosed) return;
     await _h.loadWorkspaceData(repo);
     if (_h.isClosed) return;
-    await openSessionTab(
-      session,
-      team: team,
-      member: memberForInitialShell,
-      repo: repo,
-      connectImmediately: connectImmediately,
+    await requestOpenSession(
+      SessionOpenRequest(
+        session: session,
+        workspace: workspace,
+        team: team,
+        member: memberForInitialShell,
+        repo: repo,
+        connectImmediately: connectImmediately,
+      ),
     );
   }
 
@@ -469,44 +1013,6 @@ class SessionLaunchService implements MemberConnector {
     return _firstSessionForWorkspaceAndTeam(workspaceId, '');
   }
 
-  Future<
-    ({
-      PersonalProfile personalIdentity,
-      CliPreset? personalPreset,
-      TeamMemberConfig personalMember,
-    })
-  >
-  _resolvePersonalMember({
-    required AppSession session,
-    required Workspace workspace,
-    String personalIdentityIdOverride = '',
-  }) async {
-    var profileId = personalIdentityIdOverride.trim();
-    if (profileId.isEmpty) {
-      profileId = session.profileId.trim();
-    }
-    if (profileId.isEmpty) {
-      profileId = workspace.defaultProfileId.trim();
-    }
-    if (profileId.isEmpty) {
-      profileId = LaunchProfileProvisioner.defaultPersonalId;
-    } else if (await _h.lifecycle.loadIdentity(profileId) == null) {
-      profileId = LaunchProfileProvisioner.defaultPersonalId;
-    }
-    final personalIdentity = await _h.lifecycle.loadPersonalProfile(profileId);
-    final personalPreset =
-        await _h.lifecycle.resolveActivePresetForPersonal(personalIdentity);
-    final personalMember = standaloneMemberFromPersonal(
-      personalIdentity,
-      preset: personalPreset,
-    );
-    return (
-      personalIdentity: personalIdentity,
-      personalPreset: personalPreset,
-      personalMember: personalMember,
-    );
-  }
-
   Future<void> _materializeDefaultPersonalWorkspaceSession(
     Workspace workspace,
     SessionRepository repo, {
@@ -518,15 +1024,18 @@ class SessionLaunchService implements MemberConnector {
 
     final existingSession = _firstSessionForPersonalWorkspace(workspace.workspaceId);
     if (existingSession != null) {
-      await openSessionTab(
-        existingSession,
-        repo: repo,
-        connectImmediately: connectImmediately,
+      await requestOpenSession(
+        SessionOpenRequest(
+          session: existingSession,
+          workspace: workspace,
+          repo: repo,
+          connectImmediately: connectImmediately,
+        ),
       );
       return;
     }
 
-    final personalCtx = await _resolvePersonalMember(
+    final personalCtx = await _personalContext.resolve(
       session: AppSession(
         sessionId: '',
         workspaceId: workspace.workspaceId,
@@ -552,113 +1061,17 @@ class SessionLaunchService implements MemberConnector {
       personalIdentityId: personalCtx.personalIdentity.id,
       cli: cli,
     );
+    if (_h.isClosed) return;
     await _h.loadWorkspaceData(repo);
     if (_h.isClosed) return;
-    await openSessionTab(
-      session,
-      repo: repo,
-      connectImmediately: connectImmediately,
-    );
-  }
-
-  Future<void> _connectExistingTabIfNeeded({
-    required ChatTab tab,
-    required AppSession session,
-    TeamProfile? team,
-    TeamMemberConfig? member,
-    SessionRepository? repo,
-  }) async {
-    appLogger.i(
-      '[session-launch] reconnect existing tab '
-      'session=${session.sessionId} member=${member?.id ?? ''}',
-    );
-    final isPersonal = session.sessionTeam.trim().isEmpty;
-    final workspace = isPersonal ? _workspaceById(session.workspaceId) : null;
-    late final TeamMemberConfig effectiveMember;
-    PersonalProfile? personalIdentity;
-    TeamProfile? effectiveTeam;
-    CliPreset? personalPreset;
-
-    if (isPersonal) {
-      if (workspace == null) return;
-      final personalCtx = await _resolvePersonalMember(
+    await requestOpenSession(
+      SessionOpenRequest(
         session: session,
         workspace: workspace,
-      );
-      personalIdentity = personalCtx.personalIdentity;
-      personalPreset = personalCtx.personalPreset;
-      effectiveMember = personalCtx.personalMember;
-    } else {
-      if (team == null || member == null) return;
-      effectiveTeam = team;
-      effectiveMember = member;
-    }
-
-    tab.selectedMemberId = effectiveMember.id;
-    final shell = _shellForLaunch(
-      tab: tab,
-      shellKey: effectiveMember.id,
-      cli: isPersonal
-          ? (session.cli ?? personalPreset?.cli ?? CliTool.claude)
-          : member!.cliWithin(team!),
-      session: session,
-      rosterMemberId: isPersonal ? null : effectiveMember.id,
+        repo: repo,
+        connectImmediately: connectImmediately,
+      ),
     );
-
-    if (shell.isRunning || shell.isConnecting) {
-      appLogger.d(
-        '[session-launch] reconnect skip session=${tab.info.id} '
-        'reason=shell_active running=${shell.isRunning} '
-        'connecting=${shell.isConnecting}',
-      );
-      _h.updateTabRunning(tab.info.id);
-      return;
-    }
-    if (tab.membersPendingConnect.contains(effectiveMember.id)) {
-      appLogger.d(
-        '[session-launch] reconnect skip session=${tab.info.id} '
-        'reason=pending member=${effectiveMember.id}',
-      );
-      return;
-    }
-
-    tab.membersPendingConnect.add(effectiveMember.id);
-    final launched = session.launchState == AppSessionLaunchState.started;
-    _h.beginSessionConnect(tab.info.id);
-    _h.postFrameScheduler(() async {
-      try {
-        await _connectShell(
-          tab: tab,
-          session: session,
-          shell: shell,
-          repo: repo,
-          launched: launched,
-          team: isPersonal ? null : effectiveTeam,
-          member: isPersonal ? null : effectiveMember,
-          workspace: isPersonal ? workspace : null,
-          personal: isPersonal ? personalIdentity : null,
-        );
-        if (!isPersonal &&
-            effectiveTeam != null &&
-            member != null &&
-            _h.autoLaunchAllMembersOnConnect?.call() == true) {
-          _launchRemainingMembersForTab(effectiveTeam, member.id, tab);
-        }
-        _h.updateTabRunning(tab.info.id);
-      } on Object catch (e, st) {
-        appLogger.e(
-          '[session-launch] reconnect failed for ${tab.info.id}: $e',
-          error: e,
-          stackTrace: st,
-        );
-        final message = 'Failed to resume session: $e';
-        shell.write('\r\n[$message]\r\n');
-        unawaited(tab.closeMemberRemotePlane(effectiveMember.id));
-        _h.failSessionConnect(tab.info.id, message);
-      } finally {
-        tab.membersPendingConnect.remove(effectiveMember.id);
-      }
-    });
   }
 
   Workspace? _workspaceById(String workspaceId) {
@@ -952,7 +1365,7 @@ class SessionLaunchService implements MemberConnector {
     Workspace? workspace,
     PersonalProfile? personal,
   }) async {
-    final isPersonal = workspace != null;
+    final isPersonal = session.sessionTeam.trim().isEmpty;
     final memberLabel = isPersonal ? session.sessionId : (member?.id ?? '');
     appLogger.i(
       '[session-launch] connectShell start '
@@ -1555,7 +1968,14 @@ class SessionLaunchService implements MemberConnector {
       _h.failSessionConnect('pending', 'No active personal session tab.');
       return;
     }
-    await openSessionTab(session, repo: r, connectImmediately: true);
+    await requestOpenSession(
+      SessionOpenRequest(
+        session: session,
+        workspace: _workspaceById(session.workspaceId),
+        repo: r,
+        connectImmediately: true,
+      ),
+    );
   }
 
   Future<void> _connectTeamSession(

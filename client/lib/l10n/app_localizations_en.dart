@@ -1935,6 +1935,14 @@ class AppLocalizationsEn extends AppLocalizations {
       'This conversation has incomplete member assignments. Configure assignment in workspace settings and start a new conversation.';
 
   @override
+  String get sessionLaunchMissingWorkspace =>
+      'Workspace not found for this session.';
+
+  @override
+  String get sessionLaunchMissingTeamMember =>
+      'Team member is not available. Select a team and try again.';
+
+  @override
   String mixedWorkspaceMemberPlacementProgress(int placed, int total) {
     return '$placed / $total assigned';
   }

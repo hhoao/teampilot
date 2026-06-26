@@ -5,6 +5,7 @@ import 'package:teampilot/l10n/app_localizations.dart';
 import 'package:teampilot/cubits/ai_feature_settings_cubit.dart';
 import 'package:teampilot/cubits/app_provider_cubit.dart';
 import 'package:teampilot/cubits/chat/model/session_connect_request.dart';
+import 'package:teampilot/cubits/chat/model/session_open_request.dart';
 import 'package:teampilot/cubits/chat_cubit.dart';
 import 'package:teampilot/cubits/notification_cubit.dart';
 import 'package:teampilot/cubits/member_presence_cubit.dart';
@@ -527,11 +528,16 @@ void main() {
     expect(selectedTeam, isNotNull);
     chatCubit.setActiveWorkspace(workspace.workspaceId);
     // Real repository I/O must run inside runAsync in widget tests.
-    await tester.runAsync(
-      () => chatCubit.connectWorkspaceSession(TeamSessionConnect(selectedTeam!)),
-    );
+    await tester.runAsync(() async {
+      await chatCubit.connectWorkspaceSession(
+        TeamSessionConnect(selectedTeam!),
+      );
+    });
     await tester.pump();
-    await tester.runAsync(postFrame.flush);
+    await tester.runAsync(() async {
+      await drainPendingAsyncWork();
+      await postFrame.flush();
+    });
     await tester.pump();
     expect(chatCubit.state.tabs.length, 1);
     expect(chatCubit.state.tabs.single.id.startsWith('local-'), isFalse);
@@ -660,12 +666,14 @@ void main() {
     addTearDown(chatCubit.close);
     await chatCubit.loadWorkspaceData(repo);
 
-    await chatCubit.openSessionTab(
-      session,
-      team: team,
+    await chatCubit.requestOpenSession(
+        SessionOpenRequest(
+          session: session, team: team,
       member: team.members.first,
       repo: repo,
-    );
+        ),
+      );
+    await drainPendingAsyncWork();
     await postFrame.flush();
 
     expect(chatCubit.state.activeSessionId, session.sessionId);
@@ -881,8 +889,8 @@ void main() {
 
       cubit.syncTeam(team);
       await cubit.connectWorkspaceSession(TeamSessionConnect(team), repo: repo);
-      await postFrame.flush();
       await drainPendingAsyncWork();
+      await postFrame.flush();
 
       expect(cubit.state.tabs.length, 1);
       expect(cubit.isMemberRunning('team-lead'), isTrue);
@@ -928,8 +936,8 @@ void main() {
 
       cubit.syncTeam(team);
       await cubit.connectWorkspaceSession(TeamSessionConnect(team), repo: repo);
-      await postFrame.flush();
       await drainPendingAsyncWork();
+      await postFrame.flush();
 
       expect(cubit.state.tabs.length, 1);
       expect(cubit.isMemberRunning('team-lead'), isTrue);
@@ -978,13 +986,16 @@ void main() {
         updatedAt: 1,
       );
 
-      await cubit.openSessionTab(
-        session,
-        team: team,
+      await cubit.requestOpenSession(
+        SessionOpenRequest(
+          session: session, team: team,
         member: team.members.first,
+        ),
       );
+      await drainPendingAsyncWork();
       await cubit.openMemberTab(team, team.members[0]);
       await cubit.openMemberTab(team, team.members[1]);
+      await drainPendingAsyncWork();
       await postFrame.flush();
 
       expect(cubit.state.tabs.length, 1);
@@ -1025,12 +1036,14 @@ void main() {
     addTearDown(() => _tearDownChatCubitWithSessionPersist(cubit, postFrame));
     await cubit.loadWorkspaceData(repo);
     final rel = cubit.state.sessions.single;
-    await cubit.openSessionTab(
-      rel,
-      team: team,
+    await cubit.requestOpenSession(
+        SessionOpenRequest(
+          session: rel, team: team,
       member: team.members.first,
       repo: repo,
-    );
+        ),
+      );
+    await drainPendingAsyncWork();
     await postFrame.flush();
     await drainPendingAsyncWork();
     expect(captured, isNotNull);
@@ -1070,12 +1083,14 @@ void main() {
     addTearDown(() => _tearDownChatCubitWithSessionPersist(cubit, postFrame));
     await cubit.loadWorkspaceData(repo);
     final rel = cubit.state.sessions.single;
-    await cubit.openSessionTab(
-      rel,
-      team: team,
+    await cubit.requestOpenSession(
+        SessionOpenRequest(
+          session: rel, team: team,
       member: team.members.first,
       repo: repo,
-    );
+        ),
+      );
+    await drainPendingAsyncWork();
     await postFrame.flush();
     expect(captured!.lastResumeSessionIds.last, rel.members.single.taskId);
     expect(captured!.lastFixedSessionIds.last, isNull);
@@ -1115,12 +1130,14 @@ void main() {
       addTearDown(() => _tearDownChatCubitWithSessionPersist(cubit, postFrame));
       await cubit.loadWorkspaceData(repo);
       final rel = cubit.state.sessions.single;
-      await cubit.openSessionTab(
-        rel,
-        team: team,
+      await cubit.requestOpenSession(
+        SessionOpenRequest(
+          session: rel, team: team,
         member: team.members.first,
         repo: repo,
+        ),
       );
+      await drainPendingAsyncWork();
       await postFrame.flush();
       expect(captured!.lastResumeSessionIds.last, isNull);
       expect(captured!.lastFixedSessionIds.last, rel.members.single.taskId);
@@ -1161,14 +1178,15 @@ void main() {
       addTearDown(() => _tearDownChatCubitWithSessionPersist(cubit, postFrame));
       await cubit.loadWorkspaceData(repo);
       final rel = cubit.state.sessions.single;
-      await cubit.openSessionTab(
-        rel,
-        team: team,
+      await cubit.requestOpenSession(
+        SessionOpenRequest(
+          session: rel, team: team,
         member: team.members.first,
         repo: repo,
+        ),
       );
-      await postFrame.flush();
       await drainPendingAsyncWork();
+      await postFrame.flush();
       expect(captured!.lastAdditionalDirectoriesLists.last, ['/extra']);
     },
   );

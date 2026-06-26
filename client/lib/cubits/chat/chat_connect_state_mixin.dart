@@ -80,6 +80,7 @@ mixin ChatConnectStateMixin on Cubit<ChatState> {
   void finishSessionConnect(String sessionId) {
     appLogger.d('[session-launch] connecting done session=$sessionId');
     updateTabRunning(sessionId);
+    if (isClosed) return;
     if (state.sessionConnectingId != sessionId) return;
     emit(
       state.copyWith(

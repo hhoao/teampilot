@@ -1,6 +1,7 @@
 import 'dart:io';
 
 import 'package:teampilot/cubits/chat/model/session_connect_request.dart';
+import 'package:teampilot/cubits/chat/model/session_open_request.dart';
 import 'package:teampilot/cubits/chat_cubit.dart';
 import 'package:teampilot/models/workspace.dart';
 import 'package:teampilot/models/app_session.dart';
@@ -376,6 +377,122 @@ void main() {
     });
 
     test(
+      'requestOpenSession stages tab and connecting before async prep completes',
+      () async {
+        final tmp = await Directory.systemTemp.createTemp('chat_cubit_stage_');
+        final repo = SessionRepository(rootDir: tmp.path);
+        final workspace = await repo.createWorkspace([
+          WorkspaceFolder(path: '/tmp'),
+        ]);
+        final session = await repo.createSession(workspace.workspaceId);
+        final cubit = ChatCubit(
+          executableResolver: () => 'true',
+          sessionRepository: repo,
+          terminalSessionFactory:
+              ({required String executable, int scrollbackLines = 10000}) =>
+                  _FakeTerminalSession(executable: executable),
+          postFrameScheduler: postFrame.scheduler,
+        );
+        _registerTempCubitCleanup(tmp: tmp, cubit: cubit, postFrame: postFrame);
+        await cubit.loadWorkspaceData(repo);
+
+        await cubit.requestOpenSession(
+          SessionOpenRequest(
+            session: session,
+            workspace: workspace,
+            repo: repo,
+          ),
+        );
+
+        expect(cubit.state.tabs, hasLength(1));
+        expect(cubit.state.activeSessionId, session.sessionId);
+        expect(cubit.state.sessionConnectingId, session.sessionId);
+      },
+    );
+
+    test(
+      'requestCreateAndOpenSession stages tab before disk persist completes',
+      () async {
+        final tmp = await Directory.systemTemp.createTemp('chat_cubit_create_');
+        final repo = SessionRepository(rootDir: tmp.path);
+        final workspace = await repo.createWorkspace([
+          const WorkspaceFolder(path: '/remote', targetId: 'ssh:host'),
+        ]);
+        final postFrame = PostFrameTestHarness();
+        final cubit = ChatCubit(
+          executableResolver: () => 'true',
+          sessionRepository: repo,
+          terminalSessionFactory:
+              ({required String executable, int scrollbackLines = 10000}) =>
+                  _FakeTerminalSession(executable: executable),
+          postFrameScheduler: postFrame.scheduler,
+        );
+        _registerTempCubitCleanup(tmp: tmp, cubit: cubit, postFrame: postFrame);
+        await cubit.loadWorkspaceData(repo);
+
+        await cubit.requestCreateAndOpenSession(
+          SessionCreateRequest(
+            workspace: workspace,
+            isPersonal: true,
+            repo: repo,
+            cli: CliTool.claude,
+          ),
+        );
+
+        expect(cubit.state.tabs, hasLength(1));
+        expect(cubit.state.activeSessionId, isNotEmpty);
+        expect(cubit.state.sessionConnectingId, cubit.state.activeSessionId);
+        expect(cubit.state.sessions, hasLength(1));
+      },
+    );
+
+    test(
+      'requestOpenSession stages team tab before async readiness check',
+      () async {
+        const team = TeamProfile(
+          id: 'team-a',
+          name: 'A',
+          members: [TeamMemberConfig(id: 'm-lead', name: 'team-lead')],
+        );
+        final tmp = await Directory.systemTemp.createTemp('chat_cubit_team_stage_');
+        final repo = SessionRepository(rootDir: tmp.path);
+        final workspace = await repo.createWorkspace([
+          const WorkspaceFolder(path: '/remote', targetId: 'ssh:host'),
+        ]);
+        final session = await repo.createSession(
+          workspace.workspaceId,
+          sessionTeam: team.id,
+          rosterMembers: team.members,
+        );
+        final postFrame = PostFrameTestHarness();
+        final cubit = ChatCubit(
+          executableResolver: () => 'true',
+          sessionRepository: repo,
+          terminalSessionFactory:
+              ({required String executable, int scrollbackLines = 10000}) =>
+                  _FakeTerminalSession(executable: executable),
+          postFrameScheduler: postFrame.scheduler,
+        );
+        _registerTempCubitCleanup(tmp: tmp, cubit: cubit, postFrame: postFrame);
+        await cubit.loadWorkspaceData(repo);
+
+        await cubit.requestOpenSession(
+          SessionOpenRequest(
+            session: session,
+            workspace: workspace,
+            team: team,
+            member: team.members.first,
+            repo: repo,
+          ),
+        );
+
+        expect(cubit.state.tabs, hasLength(1));
+        expect(cubit.state.activeSessionId, session.sessionId);
+        expect(cubit.state.sessionConnectingId, session.sessionId);
+      },
+    );
+
+    test(
       'openSessionTab starts all members when auto-launch enabled',
       () async {
         final fakeSessions = <_FakeTerminalSession>[];
@@ -411,12 +528,14 @@ void main() {
         );
         addTearDown(cubit.close);
 
-        await cubit.openSessionTab(
-          session,
-          team: team,
+        await cubit.requestOpenSession(
+        SessionOpenRequest(
+          session: session, team: team,
           member: team.members.first,
           repo: repo,
-        );
+        ),
+      );
+        await drainPendingAsyncWork();
         await postFrame.flush();
 
         expect(cubit.state.tabs.length, 1);
@@ -464,8 +583,17 @@ void main() {
         );
         _registerTempCubitCleanup(tmp: tmp, cubit: cubit, postFrame: postFrame);
 
-        await cubit.openSessionTab(sessionA, team: team, member: team.members.first, repo: repo);
-        await cubit.openSessionTab(sessionB, team: team, member: team.members.first, repo: repo);
+        await cubit.requestOpenSession(
+        SessionOpenRequest(
+          session: sessionA, team: team, member: team.members.first, repo: repo,
+        ),
+      );
+        await cubit.requestOpenSession(
+        SessionOpenRequest(
+          session: sessionB, team: team, member: team.members.first, repo: repo,
+        ),
+      );
+        await drainPendingAsyncWork();
         await postFrame.flush();
 
         expect(cubit.state.tabs.length, 2);
@@ -512,6 +640,7 @@ void main() {
         cubit.setActiveWorkspace(workspace.workspaceId);
 
         await cubit.connectWorkspaceSession(TeamSessionConnect(team));
+        await drainPendingAsyncWork();
         await drainPostFrameQueue(scheduled);
 
         final connectedMembers = fakeSessions
@@ -566,13 +695,15 @@ void main() {
         );
         addTearDown(cubit.close);
 
-        await cubit.openSessionTab(
-          session,
-          team: team,
+        await cubit.requestOpenSession(
+        SessionOpenRequest(
+          session: session, team: team,
           member: team.members.first,
           repo: repo,
           connectImmediately: false,
-        );
+        ),
+      );
+        await drainPendingAsyncWork();
         await postFrame.flush();
 
         expect(fakeSessions, hasLength(1));
@@ -617,12 +748,14 @@ void main() {
         );
         _registerTempCubitCleanup(tmp: tmp, cubit: cubit, postFrame: postFrame);
 
-        await cubit.openSessionTab(
-          session,
-          team: team,
+        await cubit.requestOpenSession(
+        SessionOpenRequest(
+          session: session, team: team,
           member: team.members.first,
           repo: repo,
-        );
+        ),
+      );
+        await drainPendingAsyncWork();
         await postFrame.flush();
 
         expect(cubit.state.tabs.length, 1);
@@ -670,13 +803,15 @@ void main() {
         );
         _registerTempCubitCleanup(tmp: tmp, cubit: cubit, postFrame: postFrame);
 
-        await cubit.openSessionTab(
-          session,
-          team: team,
+        await cubit.requestOpenSession(
+        SessionOpenRequest(
+          session: session, team: team,
           member: team.members[1],
           repo: repo,
           connectImmediately: true,
-        );
+        ),
+      );
+        await drainPendingAsyncWork();
         await postFrame.flush();
 
         expect(cubit.state.tabs.length, 1);
@@ -727,12 +862,14 @@ void main() {
         );
         addTearDown(cubit.close);
 
-        await cubit.openSessionTab(
-          session,
-          team: team,
+        await cubit.requestOpenSession(
+        SessionOpenRequest(
+          session: session, team: team,
           member: team.members.first,
           repo: repo,
-        );
+        ),
+      );
+        await drainPendingAsyncWork();
         await drainPostFrameQueue(scheduled);
         scheduled.clear();
 
@@ -792,6 +929,7 @@ void main() {
           repo: repo,
           workspaceCwd: workspacePath,
         );
+        await drainPendingAsyncWork();
         await postFrame.flush();
 
         expect(cubit.state.workspaces, hasLength(1));

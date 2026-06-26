@@ -1,3 +1,4 @@
+import 'package:teampilot/cubits/chat_cubit.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:teampilot/models/app_session.dart';
 import 'package:teampilot/models/workspace_folder.dart';
@@ -36,13 +37,16 @@ abstract final class MixedTeamPingPongScenario {
         rosterMembers: kItMixedClaudeTeam.members,
       );
 
-      await cubit.openSessionTab(
-        session,
-        team: kItMixedClaudeTeam,
-        member: kLeadMember,
-        repo: repo,
-        connectImmediately: true,
+      await cubit.requestOpenSession(
+        SessionOpenRequest(
+          session: session,
+          team: kItMixedClaudeTeam,
+          member: kLeadMember,
+          repo: repo,
+          connectImmediately: true,
+        ),
       );
+      await drainPendingAsyncWork();
       await postFrame.flush();
       await harness.waitUntilMembersReady(
         cubit,
@@ -119,13 +123,16 @@ abstract final class MixedTeamPingPongScenario {
 
       expect(session.memberTargets[kLeadMember.id], 'local');
 
-      await cubit.openSessionTab(
-        session,
-        team: kItMixedClaudeTeam,
-        member: kLeadMember,
-        repo: repo,
-        connectImmediately: true,
+      await cubit.requestOpenSession(
+        SessionOpenRequest(
+          session: session,
+          team: kItMixedClaudeTeam,
+          member: kLeadMember,
+          repo: repo,
+          connectImmediately: true,
+        ),
       );
+      await drainPendingAsyncWork();
       await postFrame.flush();
       await harness.waitUntilDockerMembersReady(
         cubit,

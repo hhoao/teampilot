@@ -799,6 +799,8 @@
   "workspaceMemberTargetsPartiallyAssigned": "Partially assigned",
   "mixedWorkspaceCreateSessionBlocked": "Complete member machine assignment in workspace settings before starting a conversation.",
   "mixedWorkspaceSessionLaunchBlocked": "This conversation has incomplete member assignments. Configure assignment in workspace settings and start a new conversation.",
+  "sessionLaunchMissingWorkspace": "Workspace not found for this session.",
+  "sessionLaunchMissingTeamMember": "Team member is not available. Select a team and try again.",
   "mixedWorkspaceMemberPlacementProgress": "{placed} / {total} assigned",
   "@mixedWorkspaceMemberPlacementProgress": {
     "placeholders": {

@@ -1859,6 +1859,12 @@ class AppLocalizationsZh extends AppLocalizations {
       '该对话的成员分配不完整。请在 workspace 设置中配置分配后新建对话。';
 
   @override
+  String get sessionLaunchMissingWorkspace => '找不到该对话所属的工作区。';
+
+  @override
+  String get sessionLaunchMissingTeamMember => '团队成员不可用，请选择团队后重试。';
+
+  @override
   String mixedWorkspaceMemberPlacementProgress(int placed, int total) {
     return '已分配 $placed / $total';
   }

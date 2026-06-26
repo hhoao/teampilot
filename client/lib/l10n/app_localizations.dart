@@ -3572,6 +3572,18 @@ abstract class AppLocalizations {
   /// **'This conversation has incomplete member assignments. Configure assignment in workspace settings and start a new conversation.'**
   String get mixedWorkspaceSessionLaunchBlocked;
 
+  /// No description provided for @sessionLaunchMissingWorkspace.
+  ///
+  /// In en, this message translates to:
+  /// **'Workspace not found for this session.'**
+  String get sessionLaunchMissingWorkspace;
+
+  /// No description provided for @sessionLaunchMissingTeamMember.
+  ///
+  /// In en, this message translates to:
+  /// **'Team member is not available. Select a team and try again.'**
+  String get sessionLaunchMissingTeamMember;
+
   /// No description provided for @mixedWorkspaceMemberPlacementProgress.
   ///
   /// In en, this message translates to:

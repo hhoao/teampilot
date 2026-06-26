@@ -5,6 +5,7 @@ import 'package:flutter/services.dart';
 import 'package:flutter_alacritty/flutter_alacritty.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
+import '../../cubits/chat/model/session_open_request.dart';
 import '../../cubits/chat_cubit.dart';
 import '../../cubits/editor_cubit.dart';
 import '../../cubits/session_preferences_cubit.dart';
@@ -204,7 +205,6 @@ void consumeChatWorkbenchRouteSession({
   if (session == null) return;
 
   onHandled(true);
-  chatCubit.selectSession(session.sessionId);
 
   final team = teamCubit.state.selectedTeam;
   final lead = team != null
@@ -213,20 +213,24 @@ void consumeChatWorkbenchRouteSession({
   if (team != null && lead.isNotEmpty) {
     unawaited(chatCubit.scheduleTeamConfigValidation(team));
     unawaited(
-      chatCubit.openSessionTab(
-        session,
-        team: team,
-        member: lead.first,
-        repo: sessionRepo,
-        emptyDisplayTitleFallback: l10n.defaultNewChatSessionTitle,
+      chatCubit.requestOpenSession(
+        SessionOpenRequest(
+          session: session,
+          team: team,
+          member: lead.first,
+          repo: sessionRepo,
+          emptyDisplayTitleFallback: l10n.defaultNewChatSessionTitle,
+        ),
       ),
     );
   } else {
     unawaited(
-      chatCubit.openSessionTab(
-        session,
-        repo: sessionRepo,
-        emptyDisplayTitleFallback: l10n.defaultNewChatSessionTitle,
+      chatCubit.requestOpenSession(
+        SessionOpenRequest(
+          session: session,
+          repo: sessionRepo,
+          emptyDisplayTitleFallback: l10n.defaultNewChatSessionTitle,
+        ),
       ),
     );
     if (team != null) {

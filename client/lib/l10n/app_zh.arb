@@ -729,6 +729,8 @@
   "workspaceMemberTargetsPartiallyAssigned": "部分分配",
   "mixedWorkspaceCreateSessionBlocked": "请先在 workspace 设置中完成成员机器分配，再新建对话。",
   "mixedWorkspaceSessionLaunchBlocked": "该对话的成员分配不完整。请在 workspace 设置中配置分配后新建对话。",
+  "sessionLaunchMissingWorkspace": "找不到该对话所属的工作区。",
+  "sessionLaunchMissingTeamMember": "团队成员不可用，请选择团队后重试。",
   "mixedWorkspaceMemberPlacementProgress": "已分配 {placed} / {total}",
   "@mixedWorkspaceMemberPlacementProgress": {
     "placeholders": {

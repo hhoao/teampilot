@@ -338,6 +338,7 @@ class SessionRepository {
     List<TeamMemberConfig> rosterMembers = const [],
     CliTool? cli,
     String? workingDirectory,
+    String? fixedSessionId,
   }) async {
     final fs = await _fs();
     final workspace = await _readManifest(fs, workspaceId);
@@ -397,7 +398,8 @@ class SessionRepository {
       }
     }
 
-    final sessionId = const Uuid().v4();
+    final pinnedId = fixedSessionId?.trim() ?? '';
+    final sessionId = pinnedId.isNotEmpty ? pinnedId : const Uuid().v4();
     final now = DateTime.now().millisecondsSinceEpoch;
     final session = AppSession(
       sessionId: sessionId,

@@ -5,6 +5,7 @@ import 'package:fake_async/fake_async.dart';
 import 'package:flutter/scheduler.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:teampilot/cubits/chat/model/session_connect_request.dart';
+import 'package:teampilot/cubits/chat/model/session_open_request.dart';
 import 'package:teampilot/cubits/chat_cubit.dart';
 import 'package:teampilot/cubits/member_presence_cubit.dart';
 import 'package:teampilot/models/member_presence.dart';
@@ -418,7 +419,11 @@ void main() {
         unawaited(
           repo.createWorkspace([WorkspaceFolder(path: '/tmp')]).then((workspace) async {
             final localSession = await repo.createSession(workspace.workspaceId);
-            await chatCubit.openSessionTab(localSession, connectImmediately: false);
+            await chatCubit.requestOpenSession(
+        SessionOpenRequest(
+          session: localSession, connectImmediately: false,
+        ),
+      );
             async.flushMicrotasks();
             unawaited(harness.flush());
             async.flushMicrotasks();

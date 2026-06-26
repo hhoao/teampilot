@@ -1,6 +1,7 @@
 import 'dart:io';
 
 import 'package:flutter_test/flutter_test.dart';
+import 'package:teampilot/cubits/chat/model/session_open_request.dart';
 import 'package:teampilot/cubits/chat_cubit.dart';
 import 'package:teampilot/models/workspace_folder.dart';
 import 'package:teampilot/repositories/session_repository.dart';
@@ -61,11 +62,15 @@ void main() {
       final session = await repo.createSession(workspace.workspaceId);
       await cubit.loadWorkspaceData(repo);
 
-      await cubit.openSessionTab(
-        session,
-        repo: repo,
-        connectImmediately: false,
+      await cubit.requestOpenSession(
+        SessionOpenRequest(
+          session: session,
+          workspace: workspace,
+          repo: repo,
+          connectImmediately: false,
+        ),
       );
+      await drainPendingAsyncWork();
       expect(cubit.state.tabs.length, 1);
       final shell = created.single;
 
@@ -98,11 +103,15 @@ void main() {
       final session = await repo.createSession(workspace.workspaceId);
       await cubit.loadWorkspaceData(repo);
 
-      await cubit.openSessionTab(
-        session,
-        repo: repo,
-        connectImmediately: false,
+      await cubit.requestOpenSession(
+        SessionOpenRequest(
+          session: session,
+          workspace: workspace,
+          repo: repo,
+          connectImmediately: false,
+        ),
       );
+      await drainPendingAsyncWork();
       final shell = created.single;
 
       shell.markUserTurnStarted();

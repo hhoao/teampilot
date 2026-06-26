@@ -21,6 +21,70 @@ import '../workspace_shell/workspace_shell.dart';
 import 'right_tools_host.dart';
 import 'team_config_incomplete_dialog.dart';
 
+/// Layout fields that affect [ChatPageShell] and its right-tools subtree.
+/// Subscribes narrowly so persistence-only prefs (e.g. [LayoutPreferences.lastOpenedWorkspaceId])
+/// do not rebuild the workbench shell on every workspace tab switch.
+@immutable
+class _ChatPageShellLayoutView {
+  const _ChatPageShellLayoutView({
+    required this.rightToolsVisible,
+    required this.rightToolsWidth,
+    required this.fileTreeVisible,
+    required this.gitVisible,
+    required this.membersVisible,
+    required this.boardVisible,
+  });
+
+  final bool rightToolsVisible;
+  final double rightToolsWidth;
+  final bool fileTreeVisible;
+  final bool gitVisible;
+  final bool membersVisible;
+  final bool boardVisible;
+
+  factory _ChatPageShellLayoutView.from(LayoutPreferences preferences) {
+    return _ChatPageShellLayoutView(
+      rightToolsVisible: preferences.rightToolsVisible,
+      rightToolsWidth: preferences.rightToolsWidth,
+      fileTreeVisible: preferences.fileTreeVisible,
+      gitVisible: preferences.gitVisible,
+      membersVisible: preferences.membersVisible,
+      boardVisible: preferences.boardVisible,
+    );
+  }
+
+  LayoutPreferences get asPreferences => LayoutPreferences(
+    rightToolsVisible: rightToolsVisible,
+    rightToolsWidth: rightToolsWidth,
+    fileTreeVisible: fileTreeVisible,
+    gitVisible: gitVisible,
+    membersVisible: membersVisible,
+    boardVisible: boardVisible,
+  );
+
+  @override
+  bool operator ==(Object other) {
+    return identical(this, other) ||
+        other is _ChatPageShellLayoutView &&
+            rightToolsVisible == other.rightToolsVisible &&
+            rightToolsWidth == other.rightToolsWidth &&
+            fileTreeVisible == other.fileTreeVisible &&
+            gitVisible == other.gitVisible &&
+            membersVisible == other.membersVisible &&
+            boardVisible == other.boardVisible;
+  }
+
+  @override
+  int get hashCode => Object.hash(
+    rightToolsVisible,
+    rightToolsWidth,
+    fileTreeVisible,
+    gitVisible,
+    membersVisible,
+    boardVisible,
+  );
+}
+
 class ChatPageShell extends StatelessWidget {
   const ChatPageShell({
     required this.cwd,
@@ -45,9 +109,10 @@ class ChatPageShell extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final preferences = context.select<LayoutCubit, LayoutPreferences>(
-      (c) => c.state.preferences,
+    final layout = context.select<LayoutCubit, _ChatPageShellLayoutView>(
+      (c) => _ChatPageShellLayoutView.from(c.state.preferences),
     );
+    final preferences = layout.asPreferences;
     final toolsAsDrawer = useRightToolsAsDrawer(context);
     final rightToolsPanel = RightToolsPanel(
       cwd: cwd,
@@ -67,7 +132,6 @@ class ChatPageShell extends StatelessWidget {
       workspaceId: workspaceId,
       tabScopeId: tabScopeId,
       team: team,
-      preferences: preferences,
     );
 
     if (!toolsAsDrawer) {
@@ -146,7 +210,6 @@ class _ChatWorkspaceShell extends StatelessWidget {
     required this.workspaceId,
     required this.tabScopeId,
     required this.team,
-    required this.preferences,
   });
 
   final String cwd;
@@ -155,7 +218,6 @@ class _ChatWorkspaceShell extends StatelessWidget {
   final String workspaceId;
   final String tabScopeId;
   final TeamProfile? team;
-  final LayoutPreferences preferences;
 
   @override
   Widget build(BuildContext context) {
@@ -197,7 +259,6 @@ class _ChatWorkspaceShell extends StatelessWidget {
               context.read<ChatCubit>().closeOtherTabs(index),
           onTabCloseRight: (index) =>
               context.read<ChatCubit>().closeRightTabs(index),
-          layoutPreferences: preferences,
           showRightToolsVisibilityToggle: true,
           actions: isPersonalWorkspace
               ? const []

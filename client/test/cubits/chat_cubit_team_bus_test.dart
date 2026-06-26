@@ -2,6 +2,7 @@ import 'dart:convert';
 import 'dart:io';
 
 import 'package:flutter_test/flutter_test.dart';
+import 'package:teampilot/cubits/chat/model/session_open_request.dart';
 import 'package:teampilot/cubits/chat_cubit.dart';
 import 'package:teampilot/models/team_config.dart';
 import 'package:teampilot/models/workspace_folder.dart';
@@ -96,13 +97,16 @@ void main() {
         rosterMembers: team.members,
       );
 
-      await cubit.openSessionTab(
-        session,
-        team: team,
-        member: team.members.first,
-        repo: repo,
-        connectImmediately: false,
+      await cubit.requestOpenSession(
+        SessionOpenRequest(
+          session: session,
+          team: team,
+          member: team.members.first,
+          repo: repo,
+          connectImmediately: false,
+        ),
       );
+      await drainPendingAsyncWork();
 
       expect(cubit.hasTeamBusResources(session.sessionId), isTrue);
       final endpoint = cubit.teammateBusMcpEndpointForSession(
@@ -120,13 +124,16 @@ void main() {
         rosterMembers: team.members,
       );
 
-      await cubit.openSessionTab(
-        session,
-        team: team,
-        member: team.members.first,
-        repo: repo,
-        connectImmediately: false,
+      await cubit.requestOpenSession(
+        SessionOpenRequest(
+          session: session,
+          team: team,
+          member: team.members.first,
+          repo: repo,
+          connectImmediately: false,
+        ),
       );
+      await drainPendingAsyncWork();
       final endpoint = cubit.teammateBusMcpEndpointForSession(
         session.sessionId,
       )!;
