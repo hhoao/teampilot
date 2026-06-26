@@ -57,8 +57,7 @@ class WorkspacePage extends StatefulWidget {
   final bool routeActive;
 
   @override
-  State<WorkspacePage> createState() =>
-      _WorkspacePageState();
+  State<WorkspacePage> createState() => _WorkspacePageState();
 }
 
 class _WorkspacePageState extends State<WorkspacePage> {
@@ -76,8 +75,18 @@ class _WorkspacePageState extends State<WorkspacePage> {
     }
     if (widget.routeActive) {
       context.read<ChatCubit>().setActiveWorkspace(widget.tabKey);
-      WidgetsBinding.instance.addPostFrameCallback((_) => _syncWorkspaceContext());
+      WidgetsBinding.instance.addPostFrameCallback(
+        (_) => _syncWorkspaceContext(),
+      );
     }
+    // Build the manage panel after the conversations pane paints so the first
+    // rail click does not pay the full [WorkspaceConfigPanel] mount cost.
+    WidgetsBinding.instance.addPostFrameCallback((_) => _prewarmManagePanel());
+  }
+
+  void _prewarmManagePanel() {
+    if (!mounted || _visitedManage) return;
+    setState(() => _visitedManage = true);
   }
 
   @override
@@ -128,17 +137,21 @@ class _WorkspacePageState extends State<WorkspacePage> {
     final workspaceIdentity = _resolveIdentity();
     if (workspaceIdentity is TeamProfile) {
       _syncSelectedTeam(workspaceIdentity.id);
-      unawaited(_scheduleTeamWorkspaceProvision(
-        chatCubit: chatCubit,
-        workspace: workspace,
-        team: workspaceIdentity,
-      ));
+      unawaited(
+        _scheduleTeamWorkspaceProvision(
+          chatCubit: chatCubit,
+          workspace: workspace,
+          team: workspaceIdentity,
+        ),
+      );
     } else if (workspaceIdentity is PersonalProfile) {
-      unawaited(_scheduleWorkspaceProvision(
-        chatCubit: chatCubit,
-        workspace: workspace,
-        personal: workspaceIdentity,
-      ));
+      unawaited(
+        _scheduleWorkspaceProvision(
+          chatCubit: chatCubit,
+          workspace: workspace,
+          personal: workspaceIdentity,
+        ),
+      );
     }
   }
 
@@ -213,9 +226,15 @@ class _WorkspacePageState extends State<WorkspacePage> {
       WorkspaceSection.manage => '$base&view=manage',
       _ => base,
     };
-    if (GoRouterState.of(context).uri.toString() != path) {
-      context.go(path);
-    }
+    final current = GoRouterState.of(context).uri.toString();
+    if (current == path) return;
+    // Paint the section switch before GoRouter rebuilds [HomeShell].
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) return;
+      if (GoRouterState.of(context).uri.toString() != path) {
+        context.go(path);
+      }
+    });
   }
 
   @override
@@ -246,13 +265,12 @@ class _WorkspacePageState extends State<WorkspacePage> {
       );
     }
 
-    final workspaceIdentity = context.select<LaunchProfileCubit, LaunchProfile?>(
-      (c) {
-        final resolved = c.byId(launchIdentity.profileId);
-        if (resolved != null) return resolved;
-        return c.byId(LaunchProfileProvisioner.defaultPersonalId);
-      },
-    );
+    final workspaceIdentity = context
+        .select<LaunchProfileCubit, LaunchProfile?>((c) {
+          final resolved = c.byId(launchIdentity.profileId);
+          if (resolved != null) return resolved;
+          return c.byId(LaunchProfileProvisioner.defaultPersonalId);
+        });
     if (workspaceIdentity == null) {
       return WorkspacePageCardShell(
         chrome: WorkspacePageChrome.workspace,
@@ -261,8 +279,7 @@ class _WorkspacePageState extends State<WorkspacePage> {
     }
 
     final isPersonal = workspaceIdentity.kind == LaunchProfileKind.personal;
-    final sessionTeamFilter =
-        isPersonal ? '' : workspaceIdentity.id;
+    final sessionTeamFilter = isPersonal ? '' : workspaceIdentity.id;
     final cardBody = _buildCardBody(
       workspace: workspace,
       workspaceIdentity: workspaceIdentity,
@@ -326,7 +343,8 @@ class _WorkspacePageState extends State<WorkspacePage> {
             key: ValueKey('conversations-${widget.tabKey}'),
             workspace: workspace,
             tabScopeId: widget.tabKey,
-            isPersonalWorkspace: workspaceIdentity.kind == LaunchProfileKind.personal,
+            isPersonalWorkspace:
+                workspaceIdentity.kind == LaunchProfileKind.personal,
             profileId: workspaceIdentity.id,
             sessionTeamFilter: sessionTeamFilter,
           ),
