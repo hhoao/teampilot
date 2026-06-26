@@ -85,7 +85,12 @@ class SshReverseTunnel implements ReverseTunnel {
   }
 
   @override
-  Future<void> close() async => _forward?.close();
+  Future<void> close() async {
+    final forward = _forward;
+    _forward = null;
+    if (forward == null) return;
+    await forward.close();
+  }
 }
 
 /// Pipes every [ReverseTunnel] channel to a local loopback socket on

@@ -653,14 +653,17 @@ class ChatCubit extends Cubit<ChatState>
     scheduleTeamConfigValidation: scheduleTeamConfigValidation,
   );
 
-  void closeTab(int index) {
-    if (index < 0 || index >= _tabStore.length) return;
-    final tab = _tabStore.removeAt(index);
+  Future<void> _tearDownTab(ChatTab tab) async {
     for (final session in tab.sessions) {
       session.dispose();
     }
-    // ignore: discarded_futures
-    tab.disposeBus();
+    await tab.disposeBus();
+  }
+
+  void closeTab(int index) {
+    if (index < 0 || index >= _tabStore.length) return;
+    final tab = _tabStore.removeAt(index);
+    unawaited(_tearDownTab(tab));
     _busCoordinator.maybeStopIdleWatch();
     if (_tabStore.isEmpty) {
       emit(
@@ -694,11 +697,7 @@ class ChatCubit extends Cubit<ChatState>
     final removed = _tabStore.removeWorkspace(workspaceId);
     if (removed.isEmpty) return;
     for (final tab in removed) {
-      for (final session in tab.sessions) {
-        session.dispose();
-      }
-      // ignore: discarded_futures
-      tab.disposeBus();
+      unawaited(_tearDownTab(tab));
     }
     _busCoordinator.maybeStopIdleWatch();
     // Republish whenever the active bucket was affected: either it was the
@@ -717,11 +716,7 @@ class ChatCubit extends Cubit<ChatState>
     for (var i = _tabStore.length - 1; i >= 0; i--) {
       if (i == index) continue;
       final tab = _tabStore.removeAt(i);
-      for (final session in tab.sessions) {
-        session.dispose();
-      }
-      // ignore: discarded_futures
-      tab.disposeBus();
+      unawaited(_tearDownTab(tab));
     }
     _busCoordinator.maybeStopIdleWatch();
     final kept = _tabStore.tabs.single;
@@ -740,11 +735,7 @@ class ChatCubit extends Cubit<ChatState>
     if (index < 0 || index >= _tabStore.length) return;
     for (var i = _tabStore.length - 1; i > index; i--) {
       final tab = _tabStore.removeAt(i);
-      for (final session in tab.sessions) {
-        session.dispose();
-      }
-      // ignore: discarded_futures
-      tab.disposeBus();
+      unawaited(_tearDownTab(tab));
     }
     _busCoordinator.maybeStopIdleWatch();
     final active = _activeTab;
@@ -908,11 +899,7 @@ class ChatCubit extends Cubit<ChatState>
     final idx = _tabStore.indexOfSession(sessionId);
     if (idx != -1) {
       final tab = _tabStore.removeAt(idx);
-      for (final session in tab.sessions) {
-        session.dispose();
-      }
-      // ignore: discarded_futures
-      tab.disposeBus();
+      await _tearDownTab(tab);
       _busCoordinator.maybeStopIdleWatch();
     }
     final tabs = _tabStore.tabs.map((t) => t.info).toList();
@@ -1009,10 +996,7 @@ class ChatCubit extends Cubit<ChatState>
     _busCoordinator.disposeIdleWatch();
     final busDisposals = <Future<void>>[];
     for (final tab in _tabStore.allTabs) {
-      for (final session in tab.sessions) {
-        session.dispose();
-      }
-      busDisposals.add(tab.disposeBus());
+      busDisposals.add(_tearDownTab(tab));
     }
     await Future.wait(busDisposals);
     _tabStore.clear();

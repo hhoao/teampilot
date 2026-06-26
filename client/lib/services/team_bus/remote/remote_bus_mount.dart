@@ -205,7 +205,6 @@ class RemoteBusMount {
     for (final m in _members.values) {
       for (final t in m.tunnels) {
         await t.pump.stop();
-        await t.tunnel.close();
       }
     }
     _members.clear();
