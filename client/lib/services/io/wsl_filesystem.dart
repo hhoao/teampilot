@@ -3,6 +3,7 @@ import 'dart:convert';
 import 'dart:io';
 import 'package:path/path.dart' as p;
 
+import '../host/host_wsl_argv.dart';
 import '../storage/remote_file_store.dart';
 import 'filesystem.dart';
 
@@ -21,9 +22,7 @@ class WslFilesystem implements Filesystem {
   p.Context get pathContext => p.Context(style: p.Style.posix);
 
   List<String> _args(List<String> command) {
-    final distro = _distro;
-    if (distro == null || distro.isEmpty) return command;
-    return ['-d', distro, ...command];
+    return HostWslArgv.prefixDistro(distro: _distro, command: command);
   }
 
   Future<ProcessResult> _run(List<String> command) {

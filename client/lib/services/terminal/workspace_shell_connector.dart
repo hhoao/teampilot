@@ -1,7 +1,5 @@
 import 'dart:io';
 
-import 'package:path/path.dart' as p;
-
 import '../../models/runtime_target.dart';
 import '../../models/workspace_shell_launch_plan.dart';
 import '../../models/ssh_profile.dart';
@@ -15,7 +13,7 @@ import '../workspace_dnd/runtime_target.dart' as dnd;
 import 'ssh_pty_transport.dart';
 import 'terminal_session.dart';
 import 'terminal_transport_factory.dart';
-import 'workspace_interactive_shell.dart';
+import '../host/host_interactive_shell.dart';
 
 /// Materializes workspace-terminal [TerminalSession]s and opens their transports.
 class WorkspaceShellConnector {
@@ -31,7 +29,7 @@ class WorkspaceShellConnector {
   final SshProfileRepository _sshProfileRepository;
   final bool Function() _sshUseLoginShell;
 
-  static const _remoteShell = r'${SHELL:-/bin/bash}';
+  static final _remoteShell = HostInteractiveShell.remotePosixExecutable;
 
   RuntimeTarget runtimeTargetFor(WorkspaceTerminalSessionSpec spec) =>
       switch (spec) {
@@ -48,7 +46,7 @@ class WorkspaceShellConnector {
       return _createSshSession();
     }
     return TerminalSession(
-      executable: _posixShellPathFor(spec),
+      executable: _posixShellSpec(spec).executable,
       validateLaunch: false,
       parseExecutable: false,
       runtimeTarget: _dndTargetFor(target),
@@ -64,7 +62,7 @@ class WorkspaceShellConnector {
       RuntimeKind.ssh => _sshLaunchPlan(workingDirectory: workingDirectory),
       RuntimeKind.wsl => _wslLaunchPlan(
         distro: target.wslDistro ?? '',
-        shellPath: _posixShellPathFor(spec),
+        shell: _posixShellSpec(spec),
         workingDirectory: workingDirectory,
         runtimeTarget: target,
       ),
@@ -167,10 +165,11 @@ class WorkspaceShellConnector {
     return shell;
   }
 
-  String _posixShellPathFor(WorkspaceTerminalSessionSpec spec) =>
+  HostInteractiveShellSpec _posixShellSpec(WorkspaceTerminalSessionSpec spec) =>
       switch (spec) {
-        WorkspaceTerminalLocalSpec(:final shellPath) => shellPath,
-        _ => WorkspaceInteractiveShell.executable(),
+        WorkspaceTerminalLocalSpec(:final shellPath) =>
+          HostInteractiveShell.resolveSpec(shellPath),
+        _ => HostInteractiveShell.defaultSpec(),
       };
 
   WorkspaceShellLaunchPlan _localLaunchPlan({
@@ -178,14 +177,14 @@ class WorkspaceShellConnector {
     required String workingDirectory,
     required RuntimeTarget runtimeTarget,
   }) {
-    final shellPath = _posixShellPathFor(spec);
+    final shell = _posixShellSpec(spec);
     final cwd = LaunchCommandBuilder.workingDirectoryForProcess(
       _nonEmptyCwd(workingDirectory),
       useWslPaths: false,
     );
     return WorkspaceShellLaunchPlan(
-      executable: shellPath,
-      arguments: WorkspaceInteractiveShell.launchArguments(shellPath),
+      executable: shell.executable,
+      arguments: shell.launchArguments,
       workingDirectory: cwd,
       useWslPaths: false,
       inheritHostEnvironment: true,
@@ -196,7 +195,7 @@ class WorkspaceShellConnector {
 
   WorkspaceShellLaunchPlan _wslLaunchPlan({
     required String distro,
-    required String shellPath,
+    required HostInteractiveShellSpec shell,
     required String workingDirectory,
     required RuntimeTarget runtimeTarget,
   }) {
@@ -205,8 +204,7 @@ class WorkspaceShellConnector {
     final trimmedDistro = distro.trim();
     if (trimmedDistro.isNotEmpty) wslArgs.addAll(['-d', trimmedDistro]);
     if (cwd.isNotEmpty) wslArgs.addAll(['--cd', cwd]);
-    wslArgs.add(p.basename(shellPath));
-    wslArgs.addAll(WorkspaceInteractiveShell.launchArguments(shellPath));
+    wslArgs.addAll(HostInteractiveShell.wslArgumentsFor(shell));
 
     return WorkspaceShellLaunchPlan(
       executable: 'wsl.exe',
@@ -223,9 +221,10 @@ class WorkspaceShellConnector {
   }
 
   WorkspaceShellLaunchPlan _sshLaunchPlan({required String workingDirectory}) {
+    final shell = HostInteractiveShell.resolveSpec(_remoteShell);
     return WorkspaceShellLaunchPlan(
-      executable: _remoteShell,
-      arguments: WorkspaceInteractiveShell.launchArguments('/bin/bash'),
+      executable: shell.executable,
+      arguments: shell.launchArguments,
       workingDirectory: workingDirectory.trim(),
       useWslPaths: false,
       inheritHostEnvironment: false,

@@ -100,7 +100,10 @@ EdgeInsets tapRegionBridgeInsetsForAnchor(AppAnchorBase anchor) {
   return EdgeInsets.fromLTRB(left, top, right, bottom);
 }
 
-/// Positions the overlay at a fixed global offset.
+/// Positions the overlay at a fixed global offset (screen coordinates).
+///
+/// Used for right-click menus: the menu's top-left is placed at [offset],
+/// matching legacy [showMenu] / [RelativeRect] behavior (not tooltip centering).
 @immutable
 class AppGlobalAnchor extends AppAnchorBase {
   const AppGlobalAnchor(this.offset);

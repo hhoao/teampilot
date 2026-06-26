@@ -4,7 +4,7 @@ import '../../models/workspace_folder.dart';
 import '../../models/workspace_terminal_session_spec.dart';
 import '../../models/workspace_topology.dart';
 import '../../repositories/ssh_profile_repository.dart';
-import '../terminal/workspace_interactive_shell.dart';
+import '../host/host_interactive_shell.dart';
 import '../terminal/workspace_shell_connector.dart';
 
 enum WorkspaceTerminalLaunchAction {
@@ -51,11 +51,11 @@ abstract final class WorkspaceTerminalLaunchCatalog {
 
   static List<WorkspaceTerminalLaunchMenuItem> buildLocalShells() {
     final items = <WorkspaceTerminalLaunchMenuItem>[];
-    for (final shellPath in WorkspaceInteractiveShell.discoverShellPaths()) {
+    for (final shell in HostInteractiveShell.discoverSpecs()) {
       items.add(
         WorkspaceTerminalLaunchMenuItem.session(
-          spec: WorkspaceTerminalLocalSpec(shellPath),
-          label: WorkspaceInteractiveShell.menuLabelFor(shellPath),
+          spec: WorkspaceTerminalLocalSpec(shell.executable),
+          label: shell.menuLabel,
         ),
       );
     }

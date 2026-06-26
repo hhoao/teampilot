@@ -5,6 +5,7 @@ import 'package:dartssh2/dartssh2.dart';
 import 'package:path/path.dart' as p;
 
 import '../io/filesystem.dart';
+import '../host/host_one_shot_runner.dart';
 import '../ssh/ssh_client_factory.dart';
 import '../ssh/ssh_run_result.dart';
 import '../../models/runtime_target.dart';
@@ -389,6 +390,11 @@ class RemoteFileStore {
     final result = await execShell(command);
     if (sshRunFailed(result)) return '';
     return utf8.decode(result.stdout, allowMalformed: true);
+  }
+
+  /// Runs [request] on the remote host via login-shell exec (argv-safe quoting).
+  Future<HostRunResult> runHost(HostRunRequest request) async {
+    return RemoteHostOneShotRunner(execShell: execShell).run(request);
   }
 
   /// Runs [command] in the remote login shell and returns the full exit status.

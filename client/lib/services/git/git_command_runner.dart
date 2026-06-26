@@ -4,6 +4,7 @@ import 'dart:io';
 import 'package:dartssh2/dartssh2.dart';
 
 import '../cli/cli_tool_locator.dart';
+import '../host/host_one_shot_runner.dart';
 import '../ssh/ssh_run_result.dart';
 import '../storage/remote_file_store.dart';
 import '../storage/runtime_context.dart';
@@ -21,6 +22,14 @@ class GitCommandResult {
   final String stderr;
 }
 
+GitCommandResult _gitResultFromHost(HostRunResult result) {
+  return GitCommandResult(
+    exitCode: result.exitCode,
+    stdout: result.stdout,
+    stderr: result.stderr,
+  );
+}
+
 /// Executes git against a working directory on local disk, WSL, or SSH.
 abstract interface class GitCommandRunner {
   Future<bool> get isAvailable;
@@ -35,17 +44,22 @@ const List<String> gitGlobalFlags = [
   'core.quotePath=false',
 ];
 
+List<String> _gitArgv(String dir, List<String> args) {
+  return [...gitGlobalFlags, '-C', dir, ...args];
+}
+
 class LocalGitCommandRunner implements GitCommandRunner {
   LocalGitCommandRunner({
     ProcessRunner runner = cliToolDefaultProcessRun,
     CliToolLocator? gitLocator,
+    HostOneShotRunner? hostRunner,
   })  : _runner = runner,
-        _gitLocator = gitLocator ?? const CliToolLocator('git');
+        _gitLocator = gitLocator ?? const CliToolLocator('git'),
+        _host = hostRunner ?? LocalHostOneShotRunner();
 
   final ProcessRunner _runner;
   final CliToolLocator _gitLocator;
-
-  static const Encoding _textEncoding = Utf8Codec(allowMalformed: true);
+  final HostOneShotRunner _host;
 
   static Future<String?>? _locateFuture;
 
@@ -67,17 +81,10 @@ class LocalGitCommandRunner implements GitCommandRunner {
         stderr: 'git executable not found on PATH',
       );
     }
-    final result = await _runner(
-      git,
-      [...gitGlobalFlags, '-C', dir, ...args],
-      stdoutEncoding: _textEncoding,
-      stderrEncoding: _textEncoding,
+    final result = await _host.run(
+      HostRunRequest(executable: git, arguments: _gitArgv(dir, args)),
     );
-    return GitCommandResult(
-      exitCode: result.exitCode,
-      stdout: (result.stdout as String?) ?? '',
-      stderr: (result.stderr as String?) ?? '',
-    );
+    return _gitResultFromHost(result);
   }
 }
 
@@ -85,52 +92,56 @@ class WslGitCommandRunner implements GitCommandRunner {
   WslGitCommandRunner({
     String? distro,
     ProcessRunner? wslRunner,
-  })  : _distro = distro?.trim(),
-        _wslRunner = wslRunner ?? Process.run;
+    HostOneShotRunner? hostRunner,
+  })  : _host =
+            hostRunner ??
+            WslHostOneShotRunner(
+              distro: distro,
+              processRunner: _adaptProcessRunner(wslRunner),
+            );
 
-  final String? _distro;
-  final ProcessRunner _wslRunner;
+  final HostOneShotRunner _host;
 
-  static const Encoding _textEncoding = Utf8Codec(allowMalformed: true);
-
-  List<String> _wslArgs(List<String> command) {
-    final distro = _distro;
-    if (distro == null || distro.isEmpty) return command;
-    return ['-d', distro, ...command];
+  static HostProcessRunner _adaptProcessRunner(ProcessRunner? wslRunner) {
+    final runner = wslRunner ?? Process.run;
+    return (
+      executable,
+      arguments, {
+      workingDirectory,
+      environment,
+      includeParentEnvironment = true,
+      stdoutEncoding,
+      stderrEncoding,
+    }) {
+      return runner(
+        executable,
+        arguments,
+        stdoutEncoding: stdoutEncoding ?? const Utf8Codec(allowMalformed: true),
+        stderrEncoding: stderrEncoding ?? const Utf8Codec(allowMalformed: true),
+      );
+    };
   }
 
   @override
   Future<bool> get isAvailable async {
-    final result = await _wslRunner(
-      'wsl.exe',
-      _wslArgs(['sh', '-lc', 'command -v git >/dev/null 2>&1 || which git']),
-      stdoutEncoding: _textEncoding,
-      stderrEncoding: _textEncoding,
+    final result = await _host.run(
+      const HostRunRequest(
+        executable: 'sh',
+        arguments: ['-lc', 'command -v git >/dev/null 2>&1 || which git'],
+      ),
     );
-    return result.exitCode == 0 &&
-        (result.stdout as String?)?.trim().isNotEmpty == true;
+    return result.succeeded && result.stdout.trim().isNotEmpty;
   }
 
   @override
   Future<GitCommandResult> runInDirectory(String dir, List<String> args) async {
-    final argv = <String>[
-      'git',
-      ...gitGlobalFlags,
-      '-C',
-      dir,
-      ...args,
-    ];
-    final result = await _wslRunner(
-      'wsl.exe',
-      _wslArgs(argv),
-      stdoutEncoding: _textEncoding,
-      stderrEncoding: _textEncoding,
+    final result = await _host.run(
+      HostRunRequest(
+        executable: 'git',
+        arguments: _gitArgv(dir, args),
+      ),
     );
-    return GitCommandResult(
-      exitCode: result.exitCode,
-      stdout: (result.stdout as String?) ?? '',
-      stderr: (result.stderr as String?) ?? '',
-    );
+    return _gitResultFromHost(result);
   }
 }
 
@@ -138,13 +149,20 @@ class RemoteGitCommandRunner implements GitCommandRunner {
   RemoteGitCommandRunner({
     RemoteFileStore? store,
     Future<SSHRunResult> Function(String command)? execShell,
+    HostOneShotRunner? hostRunner,
   }) : assert(
          store != null || execShell != null,
          'store or execShell required',
        ),
-       _execShell = execShell ?? store!.execShell;
+       _execShell = execShell ?? store!.execShell,
+       _host =
+           hostRunner ??
+           RemoteHostOneShotRunner(
+             execShell: execShell ?? store!.execShell,
+           );
 
   final Future<SSHRunResult> Function(String command) _execShell;
+  final HostOneShotRunner _host;
 
   static Future<bool>? _availableFuture;
 
@@ -164,20 +182,13 @@ class RemoteGitCommandRunner implements GitCommandRunner {
 
   @override
   Future<GitCommandResult> runInDirectory(String dir, List<String> args) async {
-    final shellArgs = <String>[
-      'git',
-      ...gitGlobalFlags,
-      '-C',
-      dir,
-      ...args,
-    ];
-    final cmd = shellArgs.map(RemoteFileStore.shellSingleQuote).join(' ');
-    final result = await _execShell(cmd);
-    return GitCommandResult(
-      exitCode: result.exitCode ?? 1,
-      stdout: utf8.decode(result.stdout, allowMalformed: true),
-      stderr: utf8.decode(result.stderr, allowMalformed: true),
+    final result = await _host.run(
+      HostRunRequest(
+        executable: 'git',
+        arguments: _gitArgv(dir, args),
+      ),
     );
+    return _gitResultFromHost(result);
   }
 }
 

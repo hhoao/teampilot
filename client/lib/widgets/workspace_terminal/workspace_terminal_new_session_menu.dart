@@ -2,6 +2,7 @@ import 'dart:async';
 
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
+
 import '../../cubits/layout_cubit.dart';
 import '../../l10n/l10n_extensions.dart';
 import '../../models/workspace_folder.dart';
@@ -16,8 +17,11 @@ import '../menu/sidebar_action_menu.dart';
 typedef WorkspaceTerminalSessionSelected =
     void Function(WorkspaceTerminalSessionSpec spec);
 
-/// IDEA-style “▾” menu: opens instantly with local shells, refreshes remote/SSH
-/// entries in the background (Orca/Shad-style: show first, load later).
+/// IDEA-style “▾” menu: local shells first, full catalog after refresh.
+///
+/// Uses [showSidebarActionMenuFromSpecs] (root overlay + global anchor) instead
+/// of [SidebarActionMenuIconAnchor] — the terminal panel rebuilds often while
+/// PTY output streams, which breaks anchored [AppPopover] overlays.
 class WorkspaceTerminalNewSessionMenuButton extends StatefulWidget {
   const WorkspaceTerminalNewSessionMenuButton({
     required this.folders,
@@ -39,8 +43,11 @@ class WorkspaceTerminalNewSessionMenuButton extends StatefulWidget {
 
 class _WorkspaceTerminalNewSessionMenuButtonState
     extends State<WorkspaceTerminalNewSessionMenuButton> {
+  final _anchorKey = GlobalKey();
+
   var _items = WorkspaceTerminalLaunchCatalog.buildLocalShells();
   var _refreshGeneration = 0;
+  var _menuOpen = false;
 
   @override
   void initState() {
@@ -106,6 +113,32 @@ class _WorkspaceTerminalNewSessionMenuButtonState
     return specs;
   }
 
+  Future<void> _showMenu() async {
+    if (_menuOpen) return;
+    final box = _anchorKey.currentContext?.findRenderObject() as RenderBox?;
+    if (box == null || !box.hasSize) return;
+
+    final anchor = box.localToGlobal(
+      box.size.bottomLeft(Offset.zero),
+    );
+
+    setState(() => _menuOpen = true);
+    unawaited(_refreshItems());
+
+    final selected =
+        await showSidebarActionMenuFromSpecs<WorkspaceTerminalLaunchMenuItem>(
+          context: context,
+          globalPosition: anchor + const Offset(0, 4),
+          specs: _specs(context),
+        );
+
+    if (!mounted) return;
+    setState(() => _menuOpen = false);
+
+    if (selected == null) return;
+    await _handleSelected(context, selected);
+  }
+
   Future<void> _handleSelected(
     BuildContext context,
     WorkspaceTerminalLaunchMenuItem selected,
@@ -127,25 +160,14 @@ class _WorkspaceTerminalNewSessionMenuButtonState
   @override
   Widget build(BuildContext context) {
     final l10n = context.l10n;
-    return SidebarActionMenuIconAnchor(
-      onOpen: _refreshItems,
-      buildMenuChildren: (menuContext, controller) {
-        return buildSidebarActionMenuChildren(
-          context: menuContext,
-          specs: _specs(menuContext),
-          menuController: controller,
-          onSelect: (value) {
-            if (value is! WorkspaceTerminalLaunchMenuItem) return;
-            unawaited(_handleSelected(menuContext, value));
-          },
-        );
-      },
-      triggerBuilder: (context, controller) => AppIconButton(
+    return KeyedSubtree(
+      key: _anchorKey,
+      child: AppIconButton(
         icon: Icons.arrow_drop_down,
         color: widget.iconColor,
         size: AppIconButton.kCompactSize,
         tooltip: l10n.workspaceTerminalNewSessionMenu,
-        onTap: controller.isOpen ? controller.close : controller.open,
+        onTap: () => unawaited(_showMenu()),
       ),
     );
   }

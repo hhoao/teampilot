@@ -14,7 +14,7 @@ import '../models/workspace_terminal_session_spec.dart';
 import '../services/terminal/terminal_layout_coordinator.dart';
 import '../services/terminal/terminal_theme_mapper.dart';
 import '../services/terminal/terminal_uri_opener.dart';
-import '../services/terminal/workspace_interactive_shell.dart';
+import '../services/host/host_interactive_shell.dart';
 import '../services/terminal/workspace_shell_connector.dart';
 import '../services/terminal/workspace_terminal_connect_coordinator.dart';
 import '../services/terminal/workspace_terminal_registry.dart';
@@ -103,7 +103,7 @@ class _WorkspaceTerminalPanelState extends State<WorkspaceTerminalPanel> {
       defaultSessionSpecFor(
         cwd: cwd,
         folders: _folders,
-        fallbackLocalShell: WorkspaceInteractiveShell.executable(),
+        fallbackLocalShell: HostInteractiveShell.defaultExecutable(),
       );
 
   void _ensureDefaultEntry() {

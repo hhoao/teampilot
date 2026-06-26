@@ -119,7 +119,7 @@ class _AppPortalState extends State<AppPortal> with SingleTickerProviderStateMix
     return switch (anchor) {
       AppAnchor anchor => anchor.childAlignment,
       AppAnchorAuto anchor => anchor.followerAnchor,
-      AppGlobalAnchor _ => Alignment.topCenter,
+      AppGlobalAnchor _ => Alignment.topLeft,
     };
   }
 
@@ -230,11 +230,7 @@ class _AppPortalState extends State<AppPortal> with SingleTickerProviderStateMix
 
   Widget _buildGlobalPosition(BuildContext context, AppGlobalAnchor anchor) {
     return CustomSingleChildLayout(
-      delegate: _AppPositionDelegate(
-        target: anchor.offset,
-        verticalOffset: 0,
-        preferBelow: true,
-      ),
+      delegate: _AppContextMenuPositionDelegate(target: anchor.offset),
       child: _buildAnimatedPortal(context, widget.portalBuilder(context)),
     );
   }
@@ -264,6 +260,37 @@ class _AppPortalState extends State<AppPortal> with SingleTickerProviderStateMix
         child: widget.child,
       ),
     );
+  }
+}
+
+/// Places a context menu with its top-left at [target] (legacy [showMenu] style).
+class _AppContextMenuPositionDelegate extends SingleChildLayoutDelegate {
+  _AppContextMenuPositionDelegate({required this.target});
+
+  final Offset target;
+
+  @override
+  BoxConstraints getConstraintsForChild(BoxConstraints constraints) =>
+      constraints.loosen();
+
+  @override
+  Offset getPositionForChild(Size viewport, Size menuSize) {
+    var x = target.dx;
+    var y = target.dy;
+    if (x + menuSize.width > viewport.width) {
+      x = viewport.width - menuSize.width;
+    }
+    if (y + menuSize.height > viewport.height) {
+      y = target.dy - menuSize.height;
+    }
+    x = x.clamp(0.0, (viewport.width - menuSize.width).clamp(0.0, viewport.width));
+    y = y.clamp(0.0, (viewport.height - menuSize.height).clamp(0.0, viewport.height));
+    return Offset(x, y);
+  }
+
+  @override
+  bool shouldRelayout(_AppContextMenuPositionDelegate oldDelegate) {
+    return target != oldDelegate.target;
   }
 }
 

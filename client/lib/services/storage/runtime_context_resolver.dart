@@ -2,6 +2,7 @@ import 'dart:io';
 
 import '../../models/runtime_target.dart';
 import '../../models/ssh_profile.dart';
+import '../host/host_one_shot_runner.dart';
 import '../io/local_filesystem.dart';
 import '../io/sftp_filesystem.dart';
 import '../io/wsl_filesystem.dart';
@@ -133,19 +134,19 @@ class RuntimeContextResolver {
     if (_cachedWslHome != null && _cachedWslDistroKey == distroKey) {
       return _cachedWslHome!;
     }
-    final args = <String>[];
-    final trimmedDistro = distro?.trim();
-    if (trimmedDistro != null && trimmedDistro.isNotEmpty) {
-      args.addAll(['-d', trimmedDistro]);
-    }
-    args.addAll(['sh', '-lc', r'printf %s "$HOME"']);
-    final result = await Process.run('wsl.exe', args);
-    if (result.exitCode != 0) {
+    final host = WslHostOneShotRunner(distro: distro);
+    final result = await host.run(
+      const HostRunRequest(
+        executable: 'sh',
+        arguments: ['-lc', r'printf %s "$HOME"'],
+      ),
+    );
+    if (!result.succeeded) {
       throw StateError(
         'Failed to resolve WSL HOME (${result.exitCode}): ${result.stderr}',
       );
     }
-    final home = (result.stdout as String)
+    final home = result.stdout
         .split(RegExp(r'\r?\n'))
         .map((l) => l.trim())
         .firstWhere((l) => l.isNotEmpty, orElse: () => '');

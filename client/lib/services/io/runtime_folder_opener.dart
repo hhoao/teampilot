@@ -1,6 +1,7 @@
 import 'dart:io';
 
 import '../../models/runtime_target.dart';
+import '../host/host_one_shot_runner.dart';
 import '../remote/remote_os_prober.dart';
 import '../storage/remote_file_store.dart';
 import '../storage/runtime_context.dart';
@@ -16,13 +17,16 @@ class RuntimeFolderOpener {
     SystemFolderOpener? localOpener,
     RemoteOsProber? osProber,
     WslProcessRunner? wslRunner,
+    HostOneShotRunner Function(RuntimeContext ctx)? oneShotRunnerForContext,
   })  : _localOpener = localOpener ?? SystemFolderOpener(),
         _osProber = osProber ?? const RemoteOsProber(),
-        _wslRunner = wslRunner ?? Process.run;
+        _wslRunner = wslRunner,
+        _oneShotRunnerForContext = oneShotRunnerForContext;
 
   final SystemFolderOpener _localOpener;
   final RemoteOsProber _osProber;
-  final WslProcessRunner _wslRunner;
+  final WslProcessRunner? _wslRunner;
+  final HostOneShotRunner Function(RuntimeContext ctx)? _oneShotRunnerForContext;
 
   Future<bool> reveal({
     required String path,
@@ -48,19 +52,31 @@ class RuntimeFolderOpener {
   }
 
   Future<bool> _revealWsl(RuntimeContext ctx, String path) async {
-    final distro = ctx.target.wslDistro?.trim();
-    final args = <String>[
-      if (distro != null && distro.isNotEmpty) ...['-d', distro],
-      'xdg-open',
-      '--',
-      path,
-    ];
+    final runner = _oneShotRunnerForContext?.call(ctx) ?? _wslOneShotRunner(ctx);
     try {
-      final result = await _wslRunner('wsl.exe', args);
-      return result.exitCode == 0;
+      final result = await runner.run(
+        HostRunRequest(
+          executable: 'xdg-open',
+          arguments: ['--', path],
+        ),
+      );
+      return result.succeeded;
     } on Object {
       return false;
     }
+  }
+
+  HostOneShotRunner _wslOneShotRunner(RuntimeContext ctx) {
+    final inject = _wslRunner;
+    if (inject != null) {
+      return WslHostOneShotRunner(
+        distro: ctx.target.wslDistro,
+        processRunner: (executable, arguments, {workingDirectory, environment, includeParentEnvironment = true, stdoutEncoding, stderrEncoding}) {
+          return inject(executable, arguments);
+        },
+      );
+    }
+    return hostOneShotRunnerForContext(ctx);
   }
 
   Future<bool> _revealSsh(RuntimeContext ctx, String path) async {

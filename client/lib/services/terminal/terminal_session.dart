@@ -551,6 +551,16 @@ class TerminalSession implements TerminalTextSink {
     if (!_validateBeforeSpawn(plan.executable, plan.workingDirectory)) {
       return;
     }
+    if (!plan.usesRemoteTransport) {
+      final validationError = CliExecutableValidator.validateLaunch(
+        executable: plan.executable,
+        workingDirectory: plan.workingDirectory,
+      );
+      if (validationError != null) {
+        _handleStartFailure(validationError);
+        return;
+      }
+    }
 
     _beginStartup(plan.executable);
 
