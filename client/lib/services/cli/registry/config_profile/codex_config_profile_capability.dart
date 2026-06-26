@@ -71,10 +71,18 @@ final class CodexConfigProfileCapability implements ConfigProfileCapability {
       if (provider == null) {
         warnings.add('codex_provider_missing');
       } else {
-        final port = mixed ? _parseBusPort(ctx.busIdleUrl) : null;
+        final busIdle = mixed ? ctx.busIdle : null;
         final busOverlay =
-            mixed && port != null && member != null && member.isValid
-            ? CodexTeamBusOverlay.build(memberId: member.id, port: port)
+            busIdle != null && member != null && member.isValid
+            ? (busIdle.isRemote
+                ? CodexTeamBusOverlay.buildStopHook(
+                    memberId: member.id,
+                    idle: busIdle,
+                  )
+                : CodexTeamBusOverlay.buildLocal(
+                    memberId: member.id,
+                    port: busIdle.port!,
+                  ))
             : null;
         final trustedDirectories = await _trustedProjectDirectories(
           paths: paths,
@@ -224,14 +232,7 @@ final class CodexConfigProfileCapability implements ConfigProfileCapability {
     required String memberId,
     required int port,
   }) =>
-      CodexTeamBusOverlay.build(memberId: memberId, port: port);
-
-  static int? _parseBusPort(String? idleUrl) {
-    if (idleUrl == null || idleUrl.isEmpty) return null;
-    final uri = Uri.tryParse(idleUrl);
-    if (uri == null || !uri.hasPort) return null;
-    return uri.port;
-  }
+      CodexTeamBusOverlay.buildLocal(memberId: memberId, port: port);
 
   static String _resolveCodexEffort({
     required TeamProfile? team,

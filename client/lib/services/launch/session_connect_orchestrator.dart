@@ -6,6 +6,7 @@ import '../../models/session_member_binding.dart';
 import '../../models/team_config.dart';
 import '../../models/workspace.dart';
 import '../../utils/team_member_naming.dart';
+import '../team_bus/member_bus_idle_endpoint.dart';
 import '../provider/config_profile_service.dart';
 import '../session/session_lifecycle_service.dart';
 import '../storage/runtime_context.dart';
@@ -42,7 +43,7 @@ class SessionConnectOrchestrator {
     required CliPreset? preset,
     required RuntimeTarget launchTarget,
     Map<String, Map<String, Object?>>? extraMcpServers,
-    String? busIdleUrl,
+    MemberBusIdleEndpoint? busIdle,
   }) async {
     final cli = session.cli ?? preset?.cli ?? CliTool.claude;
     final trustedDirectories = [
@@ -83,7 +84,7 @@ class SessionConnectOrchestrator {
       workingDirectory: session.firstFolderPath,
       additionalDirectories: session.extraFolderPaths,
       extraMcpServers: extraMcpServers,
-      busIdleUrl: busIdleUrl,
+      busIdle: busIdle,
       preset: preset,
     );
 
@@ -101,7 +102,7 @@ class SessionConnectOrchestrator {
       preset: preset,
       environment: staged.outcome.environment,
       extraMcpServers: extraMcpServers,
-      busIdleUrl: busIdleUrl,
+      busIdle: busIdle,
     );
 
     return (
@@ -128,7 +129,7 @@ class SessionConnectOrchestrator {
     required String workingDirectory,
     List<String> additionalDirectories = const [],
     Map<String, Map<String, Object?>>? extraMcpServers,
-    String? busIdleUrl,
+    MemberBusIdleEndpoint? busIdle,
   }) async {
     final cli = member.cliWithin(team);
     final offHome = workspaceProvision.isOffHome(launchTarget);
@@ -181,7 +182,7 @@ class SessionConnectOrchestrator {
       team: team,
       leadSessionId: leadSessionId,
       extraMcpServers: extraMcpServers,
-      busIdleUrl: busIdleUrl,
+      busIdle: busIdle,
     );
 
     await manifestExecutor.flush(

@@ -13,6 +13,7 @@ import 'package:teampilot/services/cli/registry/config_profile/claude_config_pro
 import 'package:teampilot/services/cli/registry/config_profile/flashskyai_config_profile_capability.dart';
 import 'package:teampilot/services/storage/runtime_context.dart';
 import '../../support/test_runtime_context.dart';
+import 'package:teampilot/services/team_bus/member_bus_idle_endpoint.dart';
 import 'package:teampilot/services/session/session_lifecycle_service.dart';
 import 'package:teampilot/services/team/claude_team_roster_service.dart';
 
@@ -156,7 +157,7 @@ void main() {
           members: [member],
         ),
         member: member,
-        busIdleUrl: 'http://127.0.0.1:5050/idle',
+        busIdle: MemberBusIdleEndpoint(url: 'http://127.0.0.1:5050/idle'),
       );
 
       final cursorDir = layout.sessionRuntimeToolDir(

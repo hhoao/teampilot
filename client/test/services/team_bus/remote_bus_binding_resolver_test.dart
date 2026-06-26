@@ -15,7 +15,7 @@ import 'support/fake_reverse_tunnel.dart';
 void main() {
   late TeamBus bus;
   late TeammateBusMcpServer server;
-  late FakeReverseTunnel lastTunnel;
+  final openedTunnels = <FakeReverseTunnel>[];
   late RemoteBusMount mount;
 
   RemoteBusBindingResolver makeResolver() {
@@ -24,8 +24,9 @@ void main() {
       handler: server.handler,
       httpBusPort: server.port,
       tunnelFactory: () {
-        lastTunnel = FakeReverseTunnel(port: nextPort++);
-        return lastTunnel;
+        final tunnel = FakeReverseTunnel(port: nextPort++);
+        openedTunnels.add(tunnel);
+        return tunnel;
       },
       storageFs: LocalFilesystem(),
       remoteRun: (cmd) async => cmd.contains('socat') ? '/usr/bin/socat' : '',
@@ -38,10 +39,14 @@ void main() {
     bus = TeamBus(launcher: FakeMemberLauncher());
     server = TeammateBusMcpServer(handler: TeammateBusMcpHandler(bus: bus));
     await server.start();
+    openedTunnels.clear();
   });
-  tearDown(() => server.stop());
+  tearDown(() async {
+    await mount.close();
+    await server.stop();
+  });
 
-  test('remote long-blocking member → relay binding at the tunnel port',
+  test('remote long-blocking member → relay binding at the MCP tunnel port',
       () async {
     final resolver = makeResolver();
     final binding = await resolver.bindMember(
@@ -49,8 +54,10 @@ void main() {
       memberId: 'worker',
       cli: CliTool.claude,
     );
-    expect(binding.relayArgv, isNotNull);
-    expect(binding.tunnelPort, lastTunnel.port);
+    expect(binding.mcpRelayArgv, isNotNull);
+    expect(binding.mcpRawTunnelPort, openedTunnels.first.port);
+    expect(binding.idleHttpTunnelPort, openedTunnels.last.port);
+    expect(binding.idleHttpTunnelPort, isNot(binding.mcpRawTunnelPort));
 
     final cfg = buildMemberBusMcpConfig(
       memberId: 'worker',
@@ -59,7 +66,7 @@ void main() {
       remote: binding,
     );
     final args = (cfg['args'] as List).join(' ');
-    expect(args, contains('TCP:127.0.0.1:${lastTunnel.port}'));
+    expect(args, contains('TCP:127.0.0.1:${binding.mcpRawTunnelPort}'));
     expect(args, isNot(contains('${server.port}')));
   });
 
@@ -70,14 +77,14 @@ void main() {
       memberId: 'cur',
       cli: CliTool.cursor,
     );
-    expect(binding.relayArgv, isNull);
+    expect(binding.mcpRelayArgv, isNull);
     final cfg = buildMemberBusMcpConfig(
       memberId: 'cur',
       localEndpoint: server.endpoint,
       longBlocking: false,
       remote: binding,
     );
-    expect(cfg['url'], 'http://127.0.0.1:${binding.tunnelPort}/mcp');
+    expect(cfg['url'], 'http://127.0.0.1:${binding.mcpHttpTunnelPort}/mcp');
   });
 
   test('same mount binds multiple members', () async {
@@ -92,10 +99,11 @@ void main() {
       memberId: 'b',
       cli: CliTool.claude,
     );
-    expect(a.tunnelPort, isNot(b.tunnelPort));
+    expect(a.mcpRawTunnelPort, isNot(b.mcpRawTunnelPort));
+    expect(a.idleHttpTunnelPort, isNot(b.idleHttpTunnelPort));
   });
 
-  test('closing the mount tears down its tunnel (tab dispose path)', () async {
+  test('closing the mount tears down its tunnels (tab dispose path)', () async {
     final resolver = makeResolver();
     await resolver.bindMember(
       mount: mount,
@@ -103,6 +111,8 @@ void main() {
       cli: CliTool.claude,
     );
     await mount.close();
-    expect(lastTunnel.closed, isTrue);
+    for (final tunnel in openedTunnels) {
+      expect(tunnel.closed, isTrue);
+    }
   });
 }

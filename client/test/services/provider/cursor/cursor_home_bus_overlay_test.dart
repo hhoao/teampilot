@@ -2,14 +2,21 @@ import 'dart:convert';
 
 import 'package:flutter_test/flutter_test.dart';
 import 'package:teampilot/services/provider/cursor/cursor_home_bus_overlay.dart';
+import 'package:teampilot/services/team_bus/member_bus_idle_endpoint.dart';
 import 'package:teampilot/services/team_bus/mcp/teammate_bus_mcp_config.dart';
 
 void main() {
+  const localIdle = MemberBusIdleEndpoint(url: 'http://127.0.0.1:4321/idle');
+  const remoteIdle = MemberBusIdleEndpoint(
+    url: 'http://127.0.0.1:4321/idle',
+    token: 'sess-tok',
+  );
+
   group('CursorHomeBusOverlay', () {
     test('buildMcpJson includes teammate-bus server with correct url/headers', () {
       final json = CursorHomeBusOverlay.buildMcpJson(
         memberId: 'planner',
-        port: 4321,
+        idle: localIdle,
       );
       final decoded = jsonDecode(json) as Map<String, Object?>;
       final servers = decoded['mcpServers'] as Map<String, Object?>;
@@ -17,6 +24,17 @@ void main() {
       expect(bus['type'], 'http');
       expect(bus['url'], 'http://127.0.0.1:4321/mcp');
       expect((bus['headers'] as Map)['X-Member'], 'planner');
+    });
+
+    test('buildMcpJson adds bus token for remote idle endpoints', () {
+      final json = CursorHomeBusOverlay.buildMcpJson(
+        memberId: 'planner',
+        idle: remoteIdle,
+      );
+      final decoded = jsonDecode(json) as Map<String, Object?>;
+      final bus =
+          (decoded['mcpServers'] as Map)[teammateBusMcpServerName] as Map;
+      expect((bus['headers'] as Map)[teammateBusTokenHeader], 'sess-tok');
     });
 
     test('hooksConfig fires idle script on stop via bash, no loop cap', () {
@@ -30,7 +48,10 @@ void main() {
     });
 
     test('idleScript POSTs /idle and translates decision:block', () {
-      final s = CursorHomeBusOverlay.idleScript(memberId: 'planner', port: 4321);
+      final s = CursorHomeBusOverlay.idleScript(
+        memberId: 'planner',
+        idle: localIdle,
+      );
 
       expect(s, contains('X-Member: planner'));
       expect(s, contains('http://127.0.0.1:4321/idle'));
@@ -38,13 +59,12 @@ void main() {
       expect(s, contains('followup_message'));
     });
 
-    test('parseBusPort extracts the port', () {
-      expect(
-        CursorHomeBusOverlay.parseBusPort('http://127.0.0.1:5050/idle'),
-        5050,
+    test('idleScript includes bus token for remote endpoints', () {
+      final s = CursorHomeBusOverlay.idleScript(
+        memberId: 'planner',
+        idle: remoteIdle,
       );
-      expect(CursorHomeBusOverlay.parseBusPort(null), isNull);
-      expect(CursorHomeBusOverlay.parseBusPort(''), isNull);
+      expect(s, contains('X-Bus-Token: sess-tok'));
     });
 
     test('roleRule has alwaysApply frontmatter', () {

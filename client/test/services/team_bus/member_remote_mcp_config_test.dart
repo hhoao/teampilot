@@ -30,7 +30,8 @@ void main() {
   });
 
   group('remote member — points at the tunnel port, not the bare endpoint', () {
-    const tunnelPort = 47213;
+    const mcpRawTunnelPort = 47213;
+    const idleHttpTunnelPort = 47214;
 
     test('long-blocking CLI → stdio relay over the tunnel (token in handshake)',
         () {
@@ -39,21 +40,21 @@ void main() {
         localEndpoint: localEndpoint,
         longBlocking: true,
         remote: const RemoteBusBinding(
-          tunnelPort: tunnelPort,
           token: 'tok',
-          relayArgv: [
+          idleHttpTunnelPort: idleHttpTunnelPort,
+          mcpRawTunnelPort: mcpRawTunnelPort,
+          mcpRelayArgv: [
             'sh',
             '-c',
             "{ printf '%s\\n' '{\"token\":\"tok\",\"memberId\":\"worker\"}'; cat; } "
-                '| socat - TCP:127.0.0.1:$tunnelPort',
+                '| socat - TCP:127.0.0.1:$mcpRawTunnelPort',
           ],
         ),
       );
       expect(cfg['command'], 'sh');
       final args = (cfg['args'] as List).join(' ');
-      expect(args, contains('TCP:127.0.0.1:$tunnelPort'));
+      expect(args, contains('TCP:127.0.0.1:$mcpRawTunnelPort'));
       expect(args, contains('tok'));
-      // crucially: NOT the bare in-process bus port.
       expect(args, isNot(contains('5005')));
       expect(cfg.containsKey('url'), isFalse);
     });
@@ -63,10 +64,14 @@ void main() {
         memberId: 'cur',
         localEndpoint: localEndpoint,
         longBlocking: false,
-        remote: const RemoteBusBinding(tunnelPort: tunnelPort, token: 'tok'),
+        remote: const RemoteBusBinding(
+          token: 'tok',
+          idleHttpTunnelPort: mcpRawTunnelPort,
+          mcpHttpTunnelPort: mcpRawTunnelPort,
+        ),
       );
       expect(cfg['type'], 'http');
-      expect(cfg['url'], 'http://127.0.0.1:$tunnelPort/mcp');
+      expect(cfg['url'], 'http://127.0.0.1:$mcpRawTunnelPort/mcp');
       expect((cfg['url'] as String), isNot(contains('5005')));
       final headers = cfg['headers'] as Map;
       expect(headers[teammateBusMcpMemberHeader], 'cur');
@@ -79,7 +84,10 @@ void main() {
           memberId: 'worker',
           localEndpoint: localEndpoint,
           longBlocking: true,
-          remote: const RemoteBusBinding(tunnelPort: tunnelPort, token: 'tok'),
+          remote: const RemoteBusBinding(
+            token: 'tok',
+            idleHttpTunnelPort: idleHttpTunnelPort,
+          ),
         ),
         throwsArgumentError,
       );

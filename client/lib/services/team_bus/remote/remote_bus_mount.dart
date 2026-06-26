@@ -17,6 +17,10 @@ import 'reverse_tunnel.dart';
 /// Owns bus-side resources (raw socket / HTTP guard, per-member tunnels). The
 /// SSH session plane lives in [memberSession] and is closed by the tab when the
 /// member disconnects — not by [close].
+///
+/// Transport split:
+/// - **Long-blocking MCP** (claude/codex/…) → raw-socket tunnel + relay argv.
+/// - **HTTP surfaces** (cursor MCP, all `/idle` Stop hooks) → HTTP guard tunnel.
 class RemoteBusMount {
   RemoteBusMount({
     required this.handler,
@@ -89,28 +93,57 @@ class RemoteBusMount {
         );
 
     final raw = await _ensureRawSocket();
-    final tunnel = _tunnelFactory();
+    final guard = await _ensureHttpGuard();
+    final mcpTunnel = _tunnelFactory();
+    final idleTunnel = _tunnelFactory();
+    TunnelPump? mcpPump;
+    TunnelPump? idlePump;
+    var mcpPumpStarted = false;
+    var idlePumpStarted = false;
     try {
-      final port = await tunnel.open();
-      final pump = TunnelPump(tunnel: tunnel, localPort: raw.port);
-      await pump.start();
+      final mcpRawTunnelPort = await mcpTunnel.open();
+      final idleHttpTunnelPort = await idleTunnel.open();
+
+      mcpPump = TunnelPump(tunnel: mcpTunnel, localPort: raw.port);
+      await mcpPump.start();
+      mcpPumpStarted = true;
+
+      idlePump = TunnelPump(tunnel: idleTunnel, localPort: guard.port);
+      await idlePump.start();
+      idlePumpStarted = true;
 
       final plan = relayProvisioner.planFor(
         prepared: prepared,
-        tunnelPort: port,
+        tunnelPort: mcpRawTunnelPort,
         token: token,
         memberId: memberId,
       );
 
       final binding = RemoteBusBinding(
-        tunnelPort: port,
         token: token,
-        relayArgv: plan.argv,
+        idleHttpTunnelPort: idleHttpTunnelPort,
+        mcpRawTunnelPort: mcpRawTunnelPort,
+        mcpRelayArgv: plan.argv,
       );
-      _members[memberId] = _MountedMember(tunnel, pump, binding);
+      _members[memberId] = _MountedMember(
+        binding: binding,
+        tunnels: [
+          (tunnel: mcpTunnel, pump: mcpPump),
+          (tunnel: idleTunnel, pump: idlePump),
+        ],
+      );
       return binding;
     } on Object {
-      await tunnel.close();
+      if (idlePumpStarted) {
+        await idlePump!.stop();
+      } else {
+        await idleTunnel.close();
+      }
+      if (mcpPumpStarted) {
+        await mcpPump!.stop();
+      } else {
+        await mcpTunnel.close();
+      }
       rethrow;
     }
   }
@@ -121,16 +154,30 @@ class RemoteBusMount {
 
     final guard = await _ensureHttpGuard();
     final tunnel = _tunnelFactory();
+    TunnelPump? pump;
+    var pumpStarted = false;
     try {
       final port = await tunnel.open();
-      final pump = TunnelPump(tunnel: tunnel, localPort: guard.port);
+      pump = TunnelPump(tunnel: tunnel, localPort: guard.port);
       await pump.start();
+      pumpStarted = true;
 
-      final binding = RemoteBusBinding(tunnelPort: port, token: token);
-      _members[memberId] = _MountedMember(tunnel, pump, binding);
+      final binding = RemoteBusBinding(
+        token: token,
+        idleHttpTunnelPort: port,
+        mcpHttpTunnelPort: port,
+      );
+      _members[memberId] = _MountedMember(
+        binding: binding,
+        tunnels: [(tunnel: tunnel, pump: pump)],
+      );
       return binding;
     } on Object {
-      await tunnel.close();
+      if (pumpStarted) {
+        await pump!.stop();
+      } else {
+        await tunnel.close();
+      }
       rethrow;
     }
   }
@@ -156,8 +203,10 @@ class RemoteBusMount {
   /// Tears down tunnels and local bus sockets. Does not close [memberSession].
   Future<void> close() async {
     for (final m in _members.values) {
-      await m.pump.stop();
-      await m.tunnel.close();
+      for (final t in m.tunnels) {
+        await t.pump.stop();
+        await t.tunnel.close();
+      }
     }
     _members.clear();
     _preparedRelay.clear();
@@ -174,10 +223,10 @@ class RemoteBusMount {
 }
 
 class _MountedMember {
-  _MountedMember(this.tunnel, this.pump, this.binding);
-  final ReverseTunnel tunnel;
-  final TunnelPump pump;
+  _MountedMember({required this.binding, required this.tunnels});
+
   final RemoteBusBinding binding;
+  final List<({ReverseTunnel tunnel, TunnelPump pump})> tunnels;
 }
 
 String archFromUname(String unameM) {

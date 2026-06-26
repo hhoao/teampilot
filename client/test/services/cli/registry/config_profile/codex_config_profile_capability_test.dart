@@ -1,9 +1,10 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:teampilot/services/provider/codex/codex_team_bus_overlay.dart';
+import 'package:teampilot/services/team_bus/member_bus_idle_endpoint.dart';
 
 void main() {
   group('CodexTeamBusOverlay', () {
-    final toml = CodexTeamBusOverlay.build(
+    final toml = CodexTeamBusOverlay.buildLocal(
       memberId: 'worker-1',
       port: 54321,
     );
@@ -45,6 +46,22 @@ void main() {
           'http://127.0.0.1:54321/idle"',
         ),
       );
+    });
+  });
+
+  group('CodexTeamBusOverlay remote stop hook', () {
+    test('buildStopHook includes X-Bus-Token for remote idle endpoints', () {
+      const idle = MemberBusIdleEndpoint(
+        url: 'http://127.0.0.1:54321/idle',
+        token: 'sess-tok',
+      );
+      final toml = CodexTeamBusOverlay.buildStopHook(
+        memberId: 'worker-1',
+        idle: idle,
+      );
+      expect(toml, contains('X-Bus-Token: sess-tok'));
+      expect(toml, contains('http://127.0.0.1:54321/idle'));
+      expect(toml, isNot(contains('[mcp_servers.teammate-bus]')));
     });
   });
 }

@@ -3,6 +3,7 @@ import 'dart:convert';
 import '../../../models/team_config.dart';
 import '../../io/filesystem.dart';
 import '../../session/member_role_provision.dart';
+import '../../team_bus/member_bus_idle_endpoint.dart';
 import 'cursor_cli_config_policy.dart';
 import 'cursor_home_bus_overlay.dart';
 import 'cursor_home_layout.dart';
@@ -26,7 +27,7 @@ final class CursorHomeProvisioner {
     required String memberHome,
     required String? providerId,
     required TeamMemberConfig member,
-    required int? busPort,
+    required MemberBusIdleEndpoint? busIdle,
     required bool forceTeamLeadDelegateMode,
     required bool mixed,
   }) async {
@@ -41,12 +42,12 @@ final class CursorHomeProvisioner {
 
     await _mergeTeamBusPermissions(memberHome);
 
-    if (busPort == null) return;
+    if (busIdle == null) return;
 
     await _writeBusOverlay(
       memberHome: memberHome,
       member: member,
-      port: busPort,
+      busIdle: busIdle,
       forceTeamLeadDelegateMode: forceTeamLeadDelegateMode,
     );
   }
@@ -78,7 +79,7 @@ final class CursorHomeProvisioner {
   Future<void> _writeBusOverlay({
     required String memberHome,
     required TeamMemberConfig member,
-    required int port,
+    required MemberBusIdleEndpoint busIdle,
     required bool forceTeamLeadDelegateMode,
   }) async {
     final idleScriptPath = _layout.idleScript(memberHome);
@@ -87,7 +88,6 @@ final class CursorHomeProvisioner {
       member: member,
       forceTeamLeadDelegateMode: forceTeamLeadDelegateMode,
       mixed: true,
-      // cursor 的 MCP 工具调用 ~60s 硬限 → 不能阻塞在 wait_for_message；走门铃 push。
       pushDelivery: true,
     ).trim();
 
@@ -97,7 +97,10 @@ final class CursorHomeProvisioner {
     );
     await _fs.atomicWrite(
       idleScriptPath,
-      CursorHomeBusOverlay.idleScript(memberId: member.id, port: port),
+      CursorHomeBusOverlay.idleScript(
+        memberId: member.id,
+        idle: busIdle,
+      ),
     );
     await _fs.atomicWrite(
       _layout.hooksConfig(memberHome),
@@ -108,14 +111,14 @@ final class CursorHomeProvisioner {
     await _mergeTeamBusMcp(
       memberHome: memberHome,
       memberId: member.id,
-      port: port,
+      busIdle: busIdle,
     );
   }
 
   Future<void> _mergeTeamBusMcp({
     required String memberHome,
     required String memberId,
-    required int port,
+    required MemberBusIdleEndpoint busIdle,
   }) async {
     final path = _layout.mcpConfig(memberHome);
     final raw = await _fs.readString(path);
@@ -132,7 +135,7 @@ final class CursorHomeProvisioner {
       ...((jsonDecode(
                 CursorHomeBusOverlay.buildMcpJson(
                   memberId: memberId,
-                  port: port,
+                  idle: busIdle,
                 ),
               ) as Map)
               .cast<String, Object?>()['mcpServers'] as Map)
@@ -143,8 +146,6 @@ final class CursorHomeProvisioner {
     await _fs.atomicWrite(path, _jsonPretty(existing));
   }
 
-  static String _jsonPretty(Map<String, Object?> value) {
-    const encoder = JsonEncoder.withIndent('  ');
-    return encoder.convert(value);
-  }
+  String _jsonPretty(Object? value) =>
+      const JsonEncoder.withIndent('  ').convert(value);
 }

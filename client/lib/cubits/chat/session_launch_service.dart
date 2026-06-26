@@ -23,6 +23,7 @@ import '../../services/session/session_lifecycle_service.dart';
 import '../../services/team/team_config_launch_validator.dart';
 import '../../services/storage/app_storage.dart';
 import '../../services/storage/runtime_context.dart';
+import '../../services/team_bus/member_bus_idle_endpoint.dart';
 import '../../services/team_bus/mcp/bus_bridge_locator.dart';
 import '../../services/team_bus/mcp/teammate_bus_mcp_config.dart';
 import '../../services/team_bus/remote/member_bus_mcp_config.dart';
@@ -1112,6 +1113,8 @@ class SessionLaunchService implements MemberConnector {
             memberId: preflightMemberId,
             cli: launchCli,
           );
+        } else {
+          launchWarnings.add('remote_bus_binding_unavailable');
         }
       }
       final memberWork = activeSession.workDirsForMember(
@@ -1137,7 +1140,14 @@ class SessionLaunchService implements MemberConnector {
                 ),
               }
             : null,
-        busIdleUrl: mixedBus ? tab.mcpServer!.idleEndpoint.toString() : null,
+        busIdle: mixedBus
+            ? switch (remoteBinding) {
+                final binding? => MemberBusIdleEndpoint.remote(binding),
+                null when launchTarget.kind != RuntimeKind.ssh =>
+                  MemberBusIdleEndpoint.local(tab.mcpServer!),
+                null => null,
+              }
+            : null,
       );
       shellLaunch = connectResult.shellLaunch;
       remoteCliPath = connectResult.remoteCliPath;

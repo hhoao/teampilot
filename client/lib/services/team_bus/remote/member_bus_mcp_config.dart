@@ -1,44 +1,45 @@
 import '../mcp/teammate_bus_mcp_config.dart';
 
-/// Per-remote-member binding produced by the reverse-tunnel mount: the remote
-/// loopback port `<P>` the member's CLI dials, the per-session token guarding the
-/// tunnel, and — for long-blocking CLIs — the relay argv that injects the
-/// handshake frame and pipes the CLI's MCP stdio to that port.
+/// Per-remote-member binding produced by the reverse-tunnel mount.
+///
+/// MCP and idle HTTP use **separate** remote loopback ports for long-blocking
+/// CLIs: raw-socket relay for `wait_for_message`, HTTP guard tunnel for `/idle`.
+/// Cursor (doorbell) shares one HTTP tunnel for MCP + idle.
 class RemoteBusBinding {
   const RemoteBusBinding({
-    required this.tunnelPort,
     required this.token,
-    this.relayArgv,
+    required this.idleHttpTunnelPort,
+    this.mcpRawTunnelPort,
+    this.mcpRelayArgv,
+    this.mcpHttpTunnelPort,
   });
 
-  /// Remote loopback port forwarded back to the local bus by the reverse tunnel.
-  final int tunnelPort;
-
-  /// Per-session token. For long-blocking CLIs it rides in the relay handshake
-  /// frame; for cursor (HTTP) it rides in [teammateBusTokenHeader].
   final String token;
 
-  /// Relay command argv for long-blocking CLIs (relay-over-tunnel). Null for
-  /// cursor (plain HTTP-over-tunnel needs no relay).
-  final List<String>? relayArgv;
+  /// Remote loopback port for Stop-hook / idle-plugin HTTP (`/idle`).
+  final int idleHttpTunnelPort;
+
+  /// Raw-socket MCP tunnel port (long-blocking CLIs only).
+  final int? mcpRawTunnelPort;
+
+  /// Relay argv dialing [mcpRawTunnelPort] (long-blocking CLIs only).
+  final List<String>? mcpRelayArgv;
+
+  /// HTTP MCP tunnel port (cursor only; same tunnel as [idleHttpTunnelPort]).
+  final int? mcpHttpTunnelPort;
+
+  String get idleUrl => 'http://127.0.0.1:$idleHttpTunnelPort/idle';
+
+  bool get isLongBlocking => mcpRelayArgv != null;
 }
 
 /// Builds the teammate-bus MCP server config dict for one member, selecting the
 /// transport by whether the member runs remotely and whether its CLI parks in a
 /// long-blocking `wait_for_message`.
 ///
-/// - **local** member → unchanged: claude on the native backend with a resolvable
-///   bridge → stdio bridge to the bare loopback [localEndpoint]; otherwise HTTP
-///   to [localEndpoint].
-/// - **remote + long-blocking** (claude/flashskyai/codex/opencode) → stdio relay
-///   over the reverse tunnel: `command`/`args` come from [RemoteBusBinding.relayArgv]
-///   which dials `127.0.0.1:<P>` and sends the token handshake.
-/// - **remote + cursor** (doorbell) → HTTP over the reverse tunnel: `url` points
-///   at `127.0.0.1:<P>`, guarded by the session token header.
-///
-/// The remote branches point the member's CLI at the **tunnel port** `<P>` rather
-/// than the bare in-process bus loopback the remote host cannot reach — this is
-/// the Android-mixed fix.
+/// - **local** member → claude + native PTY bridge → stdio; else HTTP loopback.
+/// - **remote + long-blocking** → stdio relay over [mcpRawTunnelPort].
+/// - **remote + cursor** → HTTP over [mcpHttpTunnelPort] + session token header.
 Map<String, Object?> buildMemberBusMcpConfig({
   required String memberId,
   required Uri localEndpoint,
@@ -48,7 +49,7 @@ Map<String, Object?> buildMemberBusMcpConfig({
 }) {
   if (remote != null) {
     if (longBlocking) {
-      final argv = remote.relayArgv;
+      final argv = remote.mcpRelayArgv;
       if (argv == null || argv.isEmpty) {
         throw ArgumentError(
           'long-blocking remote member "$memberId" needs a relay argv',
@@ -59,10 +60,15 @@ Map<String, Object?> buildMemberBusMcpConfig({
         'args': argv.sublist(1),
       };
     }
-    // cursor: plain HTTP over the tunnel, token in a header.
+    final httpPort = remote.mcpHttpTunnelPort;
+    if (httpPort == null) {
+      throw ArgumentError(
+        'non-blocking remote member "$memberId" needs an HTTP MCP tunnel port',
+      );
+    }
     return {
       'type': 'http',
-      'url': 'http://127.0.0.1:${remote.tunnelPort}/mcp',
+      'url': 'http://127.0.0.1:$httpPort/mcp',
       'headers': {
         teammateBusMcpMemberHeader: memberId,
         teammateBusTokenHeader: remote.token,

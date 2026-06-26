@@ -17,6 +17,7 @@ import '../../../session/member_role_provision.dart';
 import '../../../team/claude_team_roster_service.dart';
 import '../capabilities/config_profile_capability.dart';
 import '../../../provider/workspace_trust_provisioner.dart';
+import '../../../team_bus/member_bus_idle_endpoint.dart';
 import 'bus_idle_stop_hook.dart';
 import '../../../../utils/logger.dart';
 
@@ -243,7 +244,7 @@ final class ClaudeConfigProfileCapability implements ConfigProfileCapability {
       providerSettingsByMember: claude?.settingsByMember ?? const {},
       forceTeamLeadDelegateMode: team?.forceTeamLeadDelegateMode ?? false,
       mixed: mixed,
-      idleUrl: ctx.busIdleUrl,
+      busIdle: ctx.busIdle,
     );
 
     await _maybeLinkOfficialCredentials(
@@ -817,7 +818,7 @@ final class ClaudeConfigProfileCapability implements ConfigProfileCapability {
     required Map<String, Map<String, Object?>> providerSettingsByMember,
     required bool forceTeamLeadDelegateMode,
     required bool mixed,
-    String? idleUrl,
+    MemberBusIdleEndpoint? busIdle,
   }) async {
     final selected = launchedMember;
     final uniqueMembers = <String, TeamMemberConfig>{};
@@ -840,7 +841,7 @@ final class ClaudeConfigProfileCapability implements ConfigProfileCapability {
             providerSettingsByMember[member.id] ?? providerSettings,
         forceTeamLeadDelegateMode: forceTeamLeadDelegateMode,
         mixed: mixed,
-        idleUrl: idleUrl,
+        busIdle: busIdle,
       );
     }
   }
@@ -853,7 +854,7 @@ final class ClaudeConfigProfileCapability implements ConfigProfileCapability {
     required Map<String, Object?>? providerSettings,
     required bool forceTeamLeadDelegateMode,
     required bool mixed,
-    String? idleUrl,
+    MemberBusIdleEndpoint? busIdle,
   }) async {
     final memberToolDir = delegate.sessionToolDir(
       scope.workspaceId,
@@ -892,8 +893,8 @@ final class ClaudeConfigProfileCapability implements ConfigProfileCapability {
       mixed: mixed,
     );
     settings = MemberRoleProvision.applyTeamSessionPolicy(settings, mixed: mixed);
-    if (mixed && idleUrl != null && idleUrl.isNotEmpty) {
-      settings = mergeStopIdleHook(settings, member.id, idleUrl);
+    if (mixed && busIdle != null) {
+      settings = mergeStopIdleHook(settings, member.id, busIdle);
     }
     settings = await delegate.maybeApplyTeamLeadHooks(
       settings,

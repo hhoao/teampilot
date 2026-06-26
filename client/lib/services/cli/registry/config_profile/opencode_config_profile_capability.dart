@@ -32,13 +32,15 @@ int? parseBusPortFromIdleUrl(String? idleUrl) {
 Map<String, Object?> mergeOpencodeIdlePlugin(
   Map<String, Object?> config,
   String memberId,
-  int port,
-) {
+  int port, {
+  String? token,
+}) {
   final pluginPath = './$opencodeIdlePluginFileName';
-  final entry = <Object?>[
-    pluginPath,
-    <String, Object?>{'member': memberId, 'port': port},
-  ];
+  final options = <String, Object?>{'member': memberId, 'port': port};
+  if (token != null && token.isNotEmpty) {
+    options['token'] = token;
+  }
+  final entry = <Object?>[pluginPath, options];
   final plugins = List<Object?>.from((config['plugin'] as List?) ?? const []);
   final exists = plugins.any(
     (e) =>
@@ -293,27 +295,31 @@ final class OpencodeConfigProfileCapability implements ConfigProfileCapability {
       changed = true;
     }
 
-    final idleUrl = ctx.busIdleUrl;
-    if (mixed &&
-        idleUrl != null &&
-        idleUrl.isNotEmpty &&
-        member != null &&
-        member.isValid) {
-      final port = parseBusPortFromIdleUrl(idleUrl);
+    final busIdle = ctx.busIdle;
+    if (mixed && busIdle != null && member != null && member.isValid) {
+      final port = busIdle.port;
       if (port != null) {
         await _writeIdlePlugin(paths: paths, opencodeDir: opencodeDir);
-        config = mergeOpencodeIdlePlugin(config, member.id, port);
-        // 本地 PTY（native 后端）+ 桥接 exe 可用 → stdio（真无限阻塞）；否则 remote。
-        final localNative = !AppStorage.isInstalled ||
-            AppStorage.context.mode == StorageBackendMode.native;
-        final bridgePath = localNative ? BusBridgeLocator.resolve() : null;
-        config = mergeOpencodeTeammateBusMcp(
+        config = mergeOpencodeIdlePlugin(
           config,
           member.id,
           port,
-          bridgePath: bridgePath,
+          token: busIdle.token,
         );
+        if (!busIdle.isRemote) {
+          final localNative = !AppStorage.isInstalled ||
+              AppStorage.context.mode == StorageBackendMode.native;
+          final bridgePath = localNative ? BusBridgeLocator.resolve() : null;
+          config = mergeOpencodeTeammateBusMcp(
+            config,
+            member.id,
+            port,
+            bridgePath: bridgePath,
+          );
+        }
         changed = true;
+      } else {
+        warnings.add('opencode_bus_idle_port_missing');
       }
     }
 

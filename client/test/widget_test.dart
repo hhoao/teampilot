@@ -47,6 +47,7 @@ import 'package:teampilot/services/app/connection_mode_service.dart';
 import 'package:teampilot/services/io/local_filesystem.dart';
 import 'support/test_runtime_context.dart';
 import 'package:teampilot/services/session/session_lifecycle_service.dart';
+import 'package:teampilot/services/team_bus/member_bus_idle_endpoint.dart';
 import 'package:teampilot/services/team_bus/bus_user_line_capture.dart';
 import 'package:teampilot/services/terminal/terminal_session.dart';
 import 'package:teampilot/router/app_router.dart';
@@ -350,7 +351,7 @@ class _FixedResumeLifecycleService extends SessionLifecycleService {
     String? profileId,
     String? llmConfigPathOverride,
     Map<String, Map<String, Object?>>? extraMcpServers,
-    String? busIdleUrl,
+    MemberBusIdleEndpoint? busIdle,
   }) async {
     final spec = await super.prepareShellLaunch(
       session: session,
@@ -361,7 +362,7 @@ class _FixedResumeLifecycleService extends SessionLifecycleService {
       personal: personal,
       llmConfigPathOverride: llmConfigPathOverride,
       extraMcpServers: extraMcpServers,
-      busIdleUrl: busIdleUrl,
+      busIdle: busIdle,
     );
     return _withFixedResume(spec);
   }

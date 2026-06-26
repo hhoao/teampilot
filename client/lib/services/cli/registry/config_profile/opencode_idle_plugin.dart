@@ -5,12 +5,15 @@ const opencodeIdlePluginSource = r'''
 export const TeampilotIdleBus = async (input, options) => {
   const member = options?.member ?? process.env.TEAMPILOT_MEMBER;
   const port = options?.port ?? process.env.TEAMPILOT_BUS_PORT;
+  const token = options?.token ?? process.env.TEAMPILOT_BUS_TOKEN;
+  const headers = { "X-Member": String(member) };
+  if (token) headers["X-Bus-Token"] = String(token);
   return {
     event: async ({ event }) => {
       if (event && event.type === "session.next.step.ended" && member && port) {
         await fetch(`http://127.0.0.1:${port}/idle`, {
           method: "POST",
-          headers: { "X-Member": String(member) },
+          headers,
         }).catch(() => {});
       }
     },

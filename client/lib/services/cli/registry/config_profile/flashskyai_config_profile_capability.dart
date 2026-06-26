@@ -6,6 +6,7 @@ import '../../../session/member_role_provision.dart';
 import '../capabilities/cli_effort_capability.dart';
 import '../capabilities/config_profile_capability.dart';
 import '../../../provider/workspace_trust_provisioner.dart';
+import '../../../team_bus/member_bus_idle_endpoint.dart';
 import 'bus_idle_stop_hook.dart';
 
 final class FlashskyaiConfigProfileCapability
@@ -105,7 +106,7 @@ final class FlashskyaiConfigProfileCapability
       launchedMember: ctx.member,
       forceTeamLeadDelegateMode: ctx.team?.forceTeamLeadDelegateMode ?? false,
       mixed: ctx.team?.teamMode == TeamMode.mixed,
-      idleUrl: ctx.busIdleUrl,
+      busIdle: ctx.busIdle,
       effortLevel: _resolveFlashskyaiEffort(
         team: ctx.team,
         member: ctx.member,
@@ -315,7 +316,7 @@ final class FlashskyaiConfigProfileCapability
     required TeamMemberConfig? launchedMember,
     required bool forceTeamLeadDelegateMode,
     required bool mixed,
-    String? idleUrl,
+    MemberBusIdleEndpoint? busIdle,
     required String effortLevel,
   }) async {
     final selected = launchedMember;
@@ -329,7 +330,7 @@ final class FlashskyaiConfigProfileCapability
       member: selected,
       forceTeamLeadDelegateMode: forceTeamLeadDelegateMode,
       mixed: mixed,
-      idleUrl: idleUrl,
+      busIdle: busIdle,
       effortLevel: effortLevel,
     );
   }
@@ -378,7 +379,7 @@ final class FlashskyaiConfigProfileCapability
     required TeamMemberConfig member,
     required bool forceTeamLeadDelegateMode,
     required bool mixed,
-    String? idleUrl,
+    MemberBusIdleEndpoint? busIdle,
     required String effortLevel,
   }) async {
     final memberToolDir = delegate.sessionToolDir(
@@ -401,8 +402,8 @@ final class FlashskyaiConfigProfileCapability
     );
     var settings = _memberSettings(member, effortLevel: effortLevel);
     settings = MemberRoleProvision.applyTeamSessionPolicy(settings, mixed: mixed);
-    if (mixed && idleUrl != null && idleUrl.isNotEmpty) {
-      settings = mergeStopIdleHook(settings, member.id, idleUrl);
+    if (mixed && busIdle != null) {
+      settings = mergeStopIdleHook(settings, member.id, busIdle);
     }
     settings = await delegate.maybeApplyTeamLeadHooks(
       settings,

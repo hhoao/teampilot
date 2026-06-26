@@ -7,6 +7,7 @@ import 'package:teampilot/models/team_config.dart';
 import 'package:teampilot/repositories/app_provider_repository.dart';
 import 'package:teampilot/services/storage/runtime_layout.dart';
 import 'package:teampilot/services/cli/registry/config_profile/opencode_config_profile_capability.dart';
+import 'package:teampilot/services/team_bus/member_bus_idle_endpoint.dart';
 import 'package:teampilot/services/cli/registry/config_profile/opencode_idle_plugin.dart';
 import 'package:teampilot/services/io/local_filesystem.dart';
 import 'package:teampilot/services/provider/config_profile_service.dart';
@@ -64,7 +65,7 @@ void main() {
           members: const [member],
           paths: service,
         catalog: service,
-          busIdleUrl: 'http://127.0.0.1:54321/idle',
+          busIdle: MemberBusIdleEndpoint(url: 'http://127.0.0.1:54321/idle'),
         ),
       );
 
@@ -206,7 +207,7 @@ void main() {
               members: const [member],
               paths: service,
         catalog: service,
-              busIdleUrl: 'http://127.0.0.1:54321/idle',
+              busIdle: MemberBusIdleEndpoint(url: 'http://127.0.0.1:54321/idle'),
             ),
           );
 

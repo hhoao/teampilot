@@ -5,6 +5,7 @@ import '../../models/extension_manifest.dart';
 import '../../models/personal_profile.dart';
 import '../../models/skill.dart';
 import '../../models/team_config.dart';
+import '../team_bus/member_bus_idle_endpoint.dart';
 import '../storage/runtime_layout.dart';
 import '../extension/extension_detector.dart';
 import '../host/host_execution_environment.dart';
@@ -504,7 +505,7 @@ class ConfigProfileService implements ConfigProfileDelegate {
     required PersonalProfile personal,
     String workingDirectory = '',
     List<String> additionalDirectories = const [],
-    String? busIdleUrl,
+    MemberBusIdleEndpoint? busIdle,
     CliPreset? preset,
   }) async {
     final trimmedWorkspaceId = workspaceId.trim();
@@ -555,7 +556,7 @@ class ConfigProfileService implements ConfigProfileDelegate {
             additionalDirectories: additionalDirectories,
             paths: this,
             catalog: catalog,
-            busIdleUrl: busIdleUrl,
+            busIdle: busIdle,
             preset: preset,
           ),
         );
@@ -586,7 +587,7 @@ class ConfigProfileService implements ConfigProfileDelegate {
     String workingDirectory = '',
     List<String> additionalDirectories = const [],
     Map<String, Map<String, Object?>>? extraMcpServers,
-    String? busIdleUrl,
+    MemberBusIdleEndpoint? busIdle,
     CliPreset? preset,
   }) async {
     final manifest = LaunchManifest(pathContext: readDelegate.pathContext);
@@ -613,7 +614,7 @@ class ConfigProfileService implements ConfigProfileDelegate {
       personal: personal,
       workingDirectory: workingDirectory,
       additionalDirectories: additionalDirectories,
-      busIdleUrl: busIdleUrl,
+      busIdle: busIdle,
       preset: preset,
     );
     return (
@@ -634,7 +635,7 @@ class ConfigProfileService implements ConfigProfileDelegate {
     String workingDirectory = '',
     List<String> additionalDirectories = const [],
     Map<String, Map<String, Object?>>? extraMcpServers,
-    String? busIdleUrl,
+    MemberBusIdleEndpoint? busIdle,
     CliPreset? preset,
     ManifestExecutor? manifestExecutor,
   }) async {
@@ -648,7 +649,7 @@ class ConfigProfileService implements ConfigProfileDelegate {
       workingDirectory: workingDirectory,
       additionalDirectories: additionalDirectories,
       extraMcpServers: extraMcpServers,
-      busIdleUrl: busIdleUrl,
+      busIdle: busIdle,
       preset: preset,
     );
     final executor = manifestExecutor ?? const ManifestExecutor();
@@ -693,7 +694,7 @@ class ConfigProfileService implements ConfigProfileDelegate {
     TeamProfile? team,
     String? leadSessionId,
     Map<String, Map<String, Object?>>? extraMcpServers,
-    String? busIdleUrl,
+    MemberBusIdleEndpoint? busIdle,
   }) async {
     final trimmedWorkspaceId = effectiveLaunchWorkspaceId(
       workspaceId: workspaceId,
@@ -804,7 +805,7 @@ class ConfigProfileService implements ConfigProfileDelegate {
           paths: staging,
           catalog: catalog,
           leadSessionId: leadSessionId,
-          busIdleUrl: busIdleUrl,
+          busIdle: busIdle,
           memberId: memberId,
         ),
       );
@@ -840,7 +841,7 @@ class ConfigProfileService implements ConfigProfileDelegate {
     TeamProfile? team,
     String? leadSessionId,
     Map<String, Map<String, Object?>>? extraMcpServers,
-    String? busIdleUrl,
+    MemberBusIdleEndpoint? busIdle,
     ManifestExecutor? manifestExecutor,
   }) async {
     final staged = await stageTeamLaunch(
@@ -858,7 +859,7 @@ class ConfigProfileService implements ConfigProfileDelegate {
       team: team,
       leadSessionId: leadSessionId,
       extraMcpServers: extraMcpServers,
-      busIdleUrl: busIdleUrl,
+      busIdle: busIdle,
     );
     final executor = manifestExecutor ?? const ManifestExecutor();
     await executor.flush(

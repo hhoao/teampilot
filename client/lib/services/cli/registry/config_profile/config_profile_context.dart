@@ -9,6 +9,7 @@ import '../../../../utils/team_member_naming.dart';
 import '../../../io/filesystem.dart';
 import '../../../host/host_execution_environment.dart';
 import '../../../provider/provider_catalog_access.dart';
+import '../../../team_bus/member_bus_idle_endpoint.dart';
 import 'config_profile_scope.dart';
 
 export 'config_profile_scope.dart';
@@ -252,7 +253,7 @@ class ConfigProfileLaunchContext {
     required this.paths,
     required this.catalog,
     this.leadSessionId,
-    this.busIdleUrl,
+    this.busIdle,
     this.standaloneScope,
     this.personal,
     this.preset,
@@ -275,7 +276,7 @@ class ConfigProfileLaunchContext {
   /// Control-plane paths: provider catalog and home credential reads.
   final ConfigProfilePaths catalog;
   final String? leadSessionId;
-  final String? busIdleUrl;
+  final MemberBusIdleEndpoint? busIdle;
   final StandaloneLaunchProfileScope? standaloneScope;
   final PersonalProfile? personal;
   final CliPreset? preset;

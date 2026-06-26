@@ -16,6 +16,7 @@ import 'package:teampilot/services/storage/app_storage.dart';
 import 'package:teampilot/services/storage/runtime_layout.dart';
 import 'package:teampilot/services/cli/registry/config_profile/claude_config_profile_capability.dart';
 import 'package:teampilot/services/cli/registry/config_profile/flashskyai_config_profile_capability.dart';
+import 'package:teampilot/services/team_bus/member_bus_idle_endpoint.dart';
 import 'package:teampilot/services/provider/config_profile_service.dart';
 import 'package:teampilot/models/app_provider_config.dart';
 import 'package:teampilot/repositories/app_provider_repository.dart';
@@ -316,7 +317,7 @@ base_url = "https://api.example.com/v1"
           name: 'worker',
           provider: 'p1',
         ),
-        busIdleUrl: 'http://127.0.0.1:59999/idle',
+        busIdle: MemberBusIdleEndpoint(url: 'http://127.0.0.1:59999/idle'),
       );
 
       final codexDir = _sessionToolDir(

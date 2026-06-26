@@ -83,7 +83,7 @@ base_url = "https://api.deepseek.com"
           'configToml': 'model = "m1"\nbase_url = "https://upstream.example.com"\n',
         },
       );
-      final overlay = CodexTeamBusOverlay.build(memberId: 'w1', port: 44000);
+      final overlay = CodexTeamBusOverlay.buildLocal(memberId: 'w1', port: 44000);
 
       final codexHome = p.join(root.path, 'codex-mixed');
       await CodexHomeProvisioner(fs: LocalFilesystem()).provision(

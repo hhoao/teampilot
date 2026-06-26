@@ -1,10 +1,12 @@
+import '../../../team_bus/member_bus_idle_endpoint.dart';
+
 /// mixed 模式：往成员 settings 的 `hooks.Stop` 加一个 http hook —— turn 结束时
-/// POST `/idle`（带 `X-Member`）。server 在响应里回 `decision:block`，把成员拦在
-/// 停止前、推回 `wait_for_message`（claude/flashskyai 同一套 Stop-hook 协议）。
+/// POST `/idle`（带 `X-Member`，远程再加 `X-Bus-Token`）。server 回
+/// `decision:block`，把成员拦在停止前、推回 `wait_for_message`。
 Map<String, Object?> mergeStopIdleHook(
   Map<String, Object?> settings,
   String memberId,
-  String idleUrl,
+  MemberBusIdleEndpoint idle,
 ) {
   final hooks = Map<String, Object?>.from(
     (settings['hooks'] as Map?)?.cast<String, Object?>() ?? const {},
@@ -14,7 +16,7 @@ Map<String, Object?> mergeStopIdleHook(
     (e) =>
         e is Map &&
         (e['hooks'] as List?)?.any(
-              (h) => h is Map && h['url'] == idleUrl,
+              (h) => h is Map && h['url'] == idle.url,
             ) ==
             true,
   );
@@ -23,8 +25,8 @@ Map<String, Object?> mergeStopIdleHook(
       'hooks': [
         {
           'type': 'http',
-          'url': idleUrl,
-          'headers': {'X-Member': memberId},
+          'url': idle.url,
+          'headers': idle.headersFor(memberId),
         },
       ],
     });

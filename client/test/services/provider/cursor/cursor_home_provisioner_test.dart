@@ -7,6 +7,7 @@ import 'package:teampilot/services/provider/cursor/cursor_cli_config_policy.dart
 import 'package:teampilot/services/provider/cursor/cursor_home_layout.dart';
 import 'package:teampilot/services/provider/cursor/cursor_home_provisioner.dart';
 import 'package:teampilot/services/provider/cursor/cursor_provider_credentials_service.dart';
+import 'package:teampilot/services/team_bus/member_bus_idle_endpoint.dart';
 import 'package:teampilot/services/team_bus/mcp/teammate_bus_mcp_config.dart';
 
 import '../../../support/in_memory_filesystem.dart';
@@ -51,6 +52,9 @@ void main() {
     provisioner = CursorHomeProvisioner(fs: fs, credentials: credentials);
   });
 
+  const localBusIdle =
+      MemberBusIdleEndpoint(url: 'http://127.0.0.1:4321/idle');
+
   group('CursorHomeProvisioner', () {
     test('provision writes bus files when port set (no provider)', () async {
       const memberHome = '/data/tp/members/planner/cursor/home';
@@ -59,7 +63,7 @@ void main() {
         memberHome: memberHome,
         providerId: null,
         member: member,
-        busPort: 4321,
+        busIdle: localBusIdle,
         forceTeamLeadDelegateMode: false,
         mixed: true,
       );
@@ -77,7 +81,7 @@ void main() {
         memberHome: memberHome,
         providerId: null,
         member: member,
-        busPort: null,
+        busIdle: null,
         forceTeamLeadDelegateMode: false,
         mixed: true,
       );
@@ -104,7 +108,7 @@ void main() {
         memberHome: memberHome,
         providerId: 'work',
         member: member,
-        busPort: null,
+        busIdle: null,
         forceTeamLeadDelegateMode: false,
         mixed: true,
       );
@@ -131,7 +135,7 @@ void main() {
         memberHome: memberHome,
         providerId: null,
         member: member,
-        busPort: 4321,
+        busIdle: localBusIdle,
         forceTeamLeadDelegateMode: false,
         mixed: true,
       );
@@ -151,7 +155,7 @@ void main() {
         memberHome: memberHome,
         providerId: null,
         member: member,
-        busPort: 4321,
+        busIdle: localBusIdle,
         forceTeamLeadDelegateMode: false,
         mixed: true,
       );
@@ -183,14 +187,14 @@ void main() {
       expect((bus['headers'] as Map)['X-Member'], 'planner');
     });
 
-    test('skips bus files when busPort null in mixed mode', () async {
+    test('skips bus files when busIdle null in mixed mode', () async {
       const memberHome = '/data/tp/members/planner/cursor/home';
 
       await provisioner.provision(
         memberHome: memberHome,
         providerId: null,
         member: member,
-        busPort: null,
+        busIdle: null,
         forceTeamLeadDelegateMode: false,
         mixed: true,
       );
@@ -206,7 +210,7 @@ void main() {
         memberHome: memberHome,
         providerId: 'missing-provider',
         member: member,
-        busPort: 4321,
+        busIdle: localBusIdle,
         forceTeamLeadDelegateMode: false,
         mixed: true,
       );

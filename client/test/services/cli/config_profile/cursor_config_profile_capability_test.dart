@@ -8,6 +8,7 @@ import 'package:teampilot/services/provider/cursor/cursor_home_layout.dart';
 import 'package:teampilot/services/provider/cursor/cursor_workspace_trust.dart';
 import 'package:teampilot/services/storage/runtime_layout.dart';
 import 'package:teampilot/services/cli/registry/config_profile/cursor_config_profile_capability.dart';
+import 'package:teampilot/services/team_bus/member_bus_idle_endpoint.dart';
 import 'package:teampilot/services/provider/config_profile_service.dart';
 import 'package:teampilot/services/team/claude_team_roster_service.dart';
 
@@ -156,7 +157,7 @@ void main() {
           members: const [member],
           paths: paths,
         catalog: paths,
-          busIdleUrl: 'http://127.0.0.1:5050/idle',
+          busIdle: MemberBusIdleEndpoint(url: 'http://127.0.0.1:5050/idle'),
           workingDirectory: workspace,
         ),
       );
@@ -190,7 +191,7 @@ void main() {
           members: const [member],
           paths: paths,
         catalog: paths,
-          busIdleUrl: 'http://127.0.0.1:5050/idle',
+          busIdle: MemberBusIdleEndpoint(url: 'http://127.0.0.1:5050/idle'),
         ),
       );
 
@@ -226,7 +227,7 @@ void main() {
       );
 
       expect(contribution.warnings, contains('cursor_provider_missing'));
-      expect(contribution.warnings, contains('cursor_bus_idle_url_missing'));
+      expect(contribution.warnings, contains('cursor_bus_idle_missing'));
     });
 
     test('mixed warns cursor_credentials_missing when provider not ready',
@@ -261,7 +262,7 @@ void main() {
           members: const [member],
           paths: paths,
         catalog: paths,
-          busIdleUrl: 'http://127.0.0.1:5050/idle',
+          busIdle: MemberBusIdleEndpoint(url: 'http://127.0.0.1:5050/idle'),
         ),
       );
 
@@ -290,7 +291,7 @@ void main() {
           members: const [member],
           paths: paths,
         catalog: paths,
-          busIdleUrl: 'http://127.0.0.1:4321/idle',
+          busIdle: MemberBusIdleEndpoint(url: 'http://127.0.0.1:4321/idle'),
         ),
       );
 

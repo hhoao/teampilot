@@ -75,7 +75,7 @@ final class CursorConfigProfileCapability implements ConfigProfileCapability {
         memberHome: home,
         providerId: providerId.isEmpty ? null : providerId,
         member: standaloneMemberFromPersonal(personal, preset: ctx.preset),
-        busPort: null,
+        busIdle: null,
         forceTeamLeadDelegateMode: false,
         mixed: false,
       );
@@ -153,17 +153,17 @@ final class CursorConfigProfileCapability implements ConfigProfileCapability {
         warnings.add('cursor_provider_missing');
       }
 
-      final port = CursorHomeBusOverlay.parseBusPort(ctx.busIdleUrl);
-      if (member != null && member.isValid && port == null) {
-        warnings.add('cursor_bus_idle_url_missing');
+      final busIdle = ctx.busIdle;
+      if (member != null && member.isValid && busIdle == null) {
+        warnings.add('cursor_bus_idle_missing');
       }
 
-      if (member != null && member.isValid) {
+      if (member != null && member.isValid && busIdle != null) {
         await provisioner.provision(
           memberHome: memberHome,
           providerId: providerId,
           member: member,
-          busPort: port,
+          busIdle: busIdle,
           forceTeamLeadDelegateMode: team?.forceTeamLeadDelegateMode ?? false,
           mixed: true,
         );

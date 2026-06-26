@@ -18,6 +18,7 @@ import '../../utils/workspace_path_utils.dart';
 import '../../utils/logger.dart';
 import '../../models/workspace_topology.dart';
 import '../../models/workspace_launch_context.dart';
+import '../team_bus/member_bus_idle_endpoint.dart';
 import '../storage/app_storage.dart';
 import '../storage/runtime_layout.dart';
 import '../cli/registry/capabilities/resume/pinned_transcript_probe.dart';
@@ -181,7 +182,7 @@ class SessionLifecycleService {
     String? profileId,
     String? llmConfigPathOverride,
     Map<String, Map<String, Object?>>? extraMcpServers,
-    String? busIdleUrl,
+    MemberBusIdleEndpoint? busIdle,
   }) async {
     return (await _prepareLaunchPlan(
       session: session,
@@ -193,7 +194,7 @@ class SessionLifecycleService {
       profileId: profileId,
       llmConfigPathOverride: llmConfigPathOverride,
       extraMcpServers: extraMcpServers,
-      busIdleUrl: busIdleUrl,
+      busIdle: busIdle,
     )).plan;
   }
 
@@ -207,7 +208,7 @@ class SessionLifecycleService {
     String? profileId,
     String? llmConfigPathOverride,
     Map<String, Map<String, Object?>>? extraMcpServers,
-    String? busIdleUrl,
+    MemberBusIdleEndpoint? busIdle,
   }) async {
     final prepared = await _prepareLaunchPlan(
       session: session,
@@ -219,7 +220,7 @@ class SessionLifecycleService {
       profileId: profileId,
       llmConfigPathOverride: llmConfigPathOverride,
       extraMcpServers: extraMcpServers,
-      busIdleUrl: busIdleUrl,
+      busIdle: busIdle,
     );
 
     return ShellLaunchSpec(
@@ -251,7 +252,7 @@ class SessionLifecycleService {
     CliPreset? preset,
     required Map<String, String> environment,
     Map<String, Map<String, Object?>>? extraMcpServers,
-    String? busIdleUrl,
+    MemberBusIdleEndpoint? busIdle,
   }) async {
     final prepared = await _prepareLaunchPlanFromEnvironment(
       session: session,
@@ -260,7 +261,7 @@ class SessionLifecycleService {
       preset: preset,
       environment: environment,
       extraMcpServers: extraMcpServers,
-      busIdleUrl: busIdleUrl,
+      busIdle: busIdle,
     );
 
     return ShellLaunchSpec(
@@ -374,7 +375,7 @@ class SessionLifecycleService {
     CliPreset? preset,
     required Map<String, String> environment,
     Map<String, Map<String, Object?>>? extraMcpServers,
-    String? busIdleUrl,
+    MemberBusIdleEndpoint? busIdle,
   }) async {
     final sessionId = session.sessionId.trim();
     final taskId = sessionId;
@@ -560,7 +561,7 @@ class SessionLifecycleService {
     String? profileId,
     String? llmConfigPathOverride,
     Map<String, Map<String, Object?>>? extraMcpServers,
-    String? busIdleUrl,
+    MemberBusIdleEndpoint? busIdle,
   }) async {
     final sessionId = session.sessionId.trim();
     final teamId = (team?.id ?? session.sessionTeam).trim();
@@ -701,7 +702,7 @@ class SessionLifecycleService {
         workingDirectory: memberWork.workingDirectory,
         llmConfigPathOverride: llmConfigPathOverride,
         extraMcpServers: extraMcpServers,
-        busIdleUrl: busIdleUrl,
+        busIdle: busIdle,
         preset: activePreset,
       );
       _logPrepareLaunchStep(
@@ -1017,7 +1018,7 @@ class SessionLifecycleService {
     required String workingDirectory,
     required String? llmConfigPathOverride,
     Map<String, Map<String, Object?>>? extraMcpServers,
-    String? busIdleUrl,
+    MemberBusIdleEndpoint? busIdle,
     CliPreset? preset,
   }) async {
     if (isPersonal) {
@@ -1033,7 +1034,7 @@ class SessionLifecycleService {
         workingDirectory: workingDirectory,
         additionalDirectories: session.extraFolderPaths,
         extraMcpServers: extraMcpServers,
-        busIdleUrl: busIdleUrl,
+        busIdle: busIdle,
         preset: preset,
       );
       return _PreparedLaunch(
@@ -1083,7 +1084,7 @@ class SessionLifecycleService {
         team: team,
         leadSessionId: leadSessionId,
         extraMcpServers: extraMcpServers,
-        busIdleUrl: busIdleUrl,
+        busIdle: busIdle,
       );
       return _PreparedLaunch(
         env: outcome.environment,
