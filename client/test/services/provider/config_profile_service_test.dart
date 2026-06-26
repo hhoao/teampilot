@@ -4,6 +4,7 @@ import 'dart:io';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:path/path.dart' as p;
 import 'package:teampilot/models/team_config.dart';
+import 'package:teampilot/models/cli_preset.dart';
 import 'package:teampilot/services/team/claude_team_roster_service.dart';
 import 'package:teampilot/services/host/host_execution_environment.dart';
 import 'package:teampilot/services/host/script_file_hook_provisioner.dart';
@@ -788,6 +789,79 @@ base_url = "https://api.example.com/v1"
         'https://api.example.com/anthropic',
       );
       expect(memberEnv['ANTHROPIC_MODEL'], 'sonnet');
+    },
+  );
+
+  test(
+    'prepareTeamLaunch resolves preset-only member into provider env settings',
+    () async {
+      const presetId = 'preset-deepseek';
+      const providerId = 'deepseek-provider';
+      const sessionId = 'sess-preset-only';
+      await _seedClaudeProvider(
+        base.path,
+        id: providerId,
+        env: const {
+          'ANTHROPIC_BASE_URL': 'https://api.deepseek.com/anthropic',
+          'ANTHROPIC_AUTH_TOKEN': 'sk-test',
+          'ANTHROPIC_MODEL': 'deepseek-v4-pro',
+        },
+      );
+      final presetService = ConfigProfileService(
+        basePath: base.path,
+        fs: LocalFilesystem(),
+        layout: RuntimeLayout(teampilotRoot: base.path, fs: LocalFilesystem()),
+        loadGlobalPresets: () async => const [
+          CliPreset(
+            id: presetId,
+            name: 'DeepSeek',
+            cli: CliTool.claude,
+            provider: providerId,
+            model: 'deepseek-v4-pro[1m]',
+            createdAt: 1,
+            updatedAt: 1,
+          ),
+        ],
+      );
+      const builder = TeamMemberConfig(
+        id: 'builder',
+        name: 'builder',
+        cli: CliTool.claude,
+        activePresetId: presetId,
+      );
+      await presetService.prepareTeamLaunch(
+        workspaceId: _testWorkspaceId,
+        sessionId: sessionId,
+        teamId: 'superpowers-quartet',
+        cliTeamName: sessionId,
+        cli: CliTool.claude,
+        members: const [builder],
+        member: builder,
+        team: const TeamProfile(
+          id: 'superpowers-quartet',
+          name: 'Superpowers',
+          cli: CliTool.claude,
+          teamMode: TeamMode.mixed,
+          members: [builder],
+        ),
+        workingDirectory: '/ws',
+      );
+
+      final builderSettings = p.join(
+        _sessionClaudeDir(base.path, sessionId, memberId: 'builder'),
+        'settings',
+        'builder.json',
+      );
+      final memberEnv =
+          (jsonDecode(await File(builderSettings).readAsString())
+                  as Map<String, Object?>)['env']
+              as Map<String, Object?>;
+      expect(
+        memberEnv['ANTHROPIC_BASE_URL'],
+        'https://api.deepseek.com/anthropic',
+      );
+      expect(memberEnv['ANTHROPIC_AUTH_TOKEN'], 'sk-test');
+      expect(memberEnv['ANTHROPIC_MODEL'], 'deepseek-v4-pro[1m]');
     },
   );
 

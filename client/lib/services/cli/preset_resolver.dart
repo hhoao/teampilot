@@ -63,6 +63,47 @@ resolveMemberLaunchConfig({
   );
 }
 
+/// Applies [resolveMemberLaunchConfig] to [member] for config staging and launch.
+///
+/// Preset ids, team per-CLI defaults, and flat member fields collapse into the
+/// provider/model/effort fields consumed by config-profile provisioning.
+TeamMemberConfig teamMemberWithLaunchConfig({
+  required TeamProfile team,
+  required TeamMemberConfig member,
+  required List<CliPreset> globalPresets,
+}) {
+  final resolved = resolveMemberLaunchConfig(
+    team: team,
+    member: member,
+    globalPresets: globalPresets,
+  );
+  return member.copyWith(
+    provider: resolved.provider,
+    model: resolved.model,
+    effort: resolved.effort,
+    updateEffort: true,
+  );
+}
+
+/// Resolves every valid roster member for team launch staging.
+List<TeamMemberConfig> resolveTeamRosterForLaunch({
+  required TeamProfile team,
+  required Iterable<TeamMemberConfig> members,
+  required List<CliPreset> globalPresets,
+}) {
+  return [
+    for (final member in members)
+      if (member.isValid)
+        teamMemberWithLaunchConfig(
+          team: team,
+          member: member,
+          globalPresets: globalPresets,
+        )
+      else
+        member,
+  ];
+}
+
 /// Presets whose [CliPreset.cli] matches the member's effective CLI.
 ///
 /// Use in member-level preset pickers so only compatible presets are shown.

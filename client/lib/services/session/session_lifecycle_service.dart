@@ -22,9 +22,9 @@ import '../storage/app_storage.dart';
 import '../storage/runtime_layout.dart';
 import '../cli/registry/capabilities/resume/pinned_transcript_probe.dart';
 import '../cli/registry/capabilities/session_resume_capability.dart';
+import '../cli/preset_resolver.dart';
 import '../cli/registry/cli_tool_registry.dart';
 import '../cli/registry/config_profile/flashskyai_config_profile_capability.dart';
-import '../cli/preset_resolver.dart';
 import '../provider/control_plane_profile_paths.dart';
 import '../provider/config_profile_service.dart';
 import '../../models/runtime_target.dart';
@@ -360,17 +360,10 @@ class SessionLifecycleService {
     TeamProfile team,
     TeamMemberConfig member,
   ) {
-    final presets = _loadPresets?.call() ?? [];
-    final resolved = resolveMemberLaunchConfig(
+    return teamMemberWithLaunchConfig(
       team: team,
       member: member,
-      globalPresets: presets,
-    );
-    return member.copyWith(
-      provider: resolved.provider,
-      model: resolved.model,
-      effort: resolved.effort,
-      updateEffort: true,
+      globalPresets: _loadPresets?.call() ?? const [],
     );
   }
 
@@ -1140,6 +1133,7 @@ class SessionLifecycleService {
             ),
       cliRegistry: _cliToolRegistry,
       loadInstalledSkills: _loadInstalledSkills,
+      loadGlobalPresets: () async => _loadPresets?.call() ?? const [],
     );
   }
 

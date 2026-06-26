@@ -28,10 +28,13 @@ import '../provider/workspace_trust_provisioner.dart';
 import '../team/claude_team_roster_service.dart';
 import '../cli/registry/capabilities/cli_config_layout_capability.dart';
 import '../storage/app_storage.dart';
+import '../cli/preset_resolver.dart';
 import 'config_profile_infrastructure.dart';
 
 export '../cli/registry/config_profile/config_profile_context.dart';
 export '../cli/registry/config_profile/config_profile_scope.dart';
+
+Future<List<CliPreset>> _defaultLoadGlobalPresets() async => const [];
 
 /// Launch-time environment for tool-isolated team profiles.
 typedef TeamLaunchEnvironment = Map<String, String>;
@@ -69,6 +72,8 @@ class ConfigProfileService implements ConfigProfileDelegate {
     HostExecutionEnvironment? hostEnvironment,
     CliToolRegistry? cliRegistry,
     Future<List<Skill>> Function()? loadInstalledSkills,
+    Future<List<CliPreset>> Function() loadGlobalPresets =
+        _defaultLoadGlobalPresets,
   }) : _infra = ConfigProfileInfrastructure(
          basePath: basePath,
          home: home,
@@ -88,22 +93,27 @@ class ConfigProfileService implements ConfigProfileDelegate {
        ),
        _catalogOverride = catalog,
        _cliRegistry = cliRegistry ?? _defaultCliRegistry,
-       _loadInstalledSkills = loadInstalledSkills;
+       _loadInstalledSkills = loadInstalledSkills,
+       _loadGlobalPresets = loadGlobalPresets;
 
   ConfigProfileService._fromInfrastructure({
     required ConfigProfileInfrastructure infra,
     ConfigProfilePaths? catalog,
     CliToolRegistry? cliRegistry,
     Future<List<Skill>> Function()? loadInstalledSkills,
+    Future<List<CliPreset>> Function() loadGlobalPresets =
+        _defaultLoadGlobalPresets,
   }) : _infra = infra,
        _catalogOverride = catalog,
        _cliRegistry = cliRegistry ?? _defaultCliRegistry,
-       _loadInstalledSkills = loadInstalledSkills;
+       _loadInstalledSkills = loadInstalledSkills,
+       _loadGlobalPresets = loadGlobalPresets;
 
   final ConfigProfileInfrastructure _infra;
   final ConfigProfilePaths? _catalogOverride;
   final CliToolRegistry _cliRegistry;
   final Future<List<Skill>> Function()? _loadInstalledSkills;
+  final Future<List<CliPreset>> Function() _loadGlobalPresets;
   StandaloneLaunchProfileScope? _activeStandaloneScope;
 
   /// Control-plane paths for provider catalog reads (home when work != home).
@@ -132,6 +142,49 @@ class ConfigProfileService implements ConfigProfileDelegate {
       catalog: catalog,
       cliRegistry: _cliRegistry,
       loadInstalledSkills: _loadInstalledSkills,
+      loadGlobalPresets: _loadGlobalPresets,
+    );
+  }
+
+  Future<
+    ({
+      TeamMemberConfig? member,
+      List<TeamMemberConfig> members,
+      CliTool cli,
+    })
+  >
+  _resolveTeamLaunchRoster({
+    required TeamProfile? team,
+    required TeamMemberConfig? member,
+    required List<TeamMemberConfig> members,
+    required CliTool cli,
+  }) async {
+    if (team == null) {
+      return (member: member, members: members, cli: cli);
+    }
+    final presets = await _loadGlobalPresets();
+    final roster = members.isNotEmpty ? members : team.members;
+    final resolvedMember =
+        member != null && member.isValid
+            ? teamMemberWithLaunchConfig(
+                team: team,
+                member: member,
+                globalPresets: presets,
+              )
+            : member;
+    final resolvedRoster = resolveTeamRosterForLaunch(
+      team: team,
+      members: roster,
+      globalPresets: presets,
+    );
+    final effectiveCli =
+        resolvedMember != null && resolvedMember.isValid
+            ? resolvedMember.cliWithin(team)
+            : cli;
+    return (
+      member: resolvedMember,
+      members: resolvedRoster,
+      cli: effectiveCli,
     );
   }
 
@@ -660,9 +713,21 @@ class ConfigProfileService implements ConfigProfileDelegate {
     final warnings = <String>[];
     await _infra.collectExtensionWarnings(warnings, teamId: trimmedTeamId);
 
+    final resolvedRoster = await _resolveTeamLaunchRoster(
+      team: team,
+      member: member,
+      members: members,
+      cli: cli,
+    );
+    final launchMember = resolvedRoster.member;
+    final launchMembers = resolvedRoster.members;
+    final launchCli = resolvedRoster.cli;
+
     String? memberId;
-    if (team?.teamMode == TeamMode.mixed && member != null && member.isValid) {
-      memberId = ClaudeTeamRosterService.safeClaudePathSegment(member.id);
+    if (team?.teamMode == TeamMode.mixed &&
+        launchMember != null &&
+        launchMember.isValid) {
+      memberId = ClaudeTeamRosterService.safeClaudePathSegment(launchMember.id);
     }
 
     final scope = resolveLaunchProfileScope(
@@ -687,7 +752,7 @@ class ConfigProfileService implements ConfigProfileDelegate {
       trimmedWorkspaceId,
       trimmedSessionId,
       trimmedTeamId,
-      cli: cli,
+      cli: launchCli,
       team: team,
       memberId: memberId,
       extraMcpServers: extraMcpServers,
@@ -699,10 +764,10 @@ class ConfigProfileService implements ConfigProfileDelegate {
             fs: stagingFs,
             registry: _cliRegistry,
           ).provisionForLaunch(
-            scope: TeamResourceScope(team: team, member: member),
-            cli: cli,
+            scope: TeamResourceScope(team: team, member: launchMember),
+            cli: launchCli,
             configDir: staging._launchResourceConfigDir(
-              cli: cli,
+              cli: launchCli,
               workspaceId: trimmedWorkspaceId,
               sessionId: trimmedSessionId,
               memberId: memberId,
@@ -712,12 +777,12 @@ class ConfigProfileService implements ConfigProfileDelegate {
       warnings.addAll(provisionResult.warnings);
     }
 
-    final cap = _cliRegistry.capability<ConfigProfileCapability>(cli);
+    final cap = _cliRegistry.capability<ConfigProfileCapability>(launchCli);
     if (cap == null) {
       return (
         outcome: TeamLaunchOutcome(
           environment: const {},
-          warnings: [...warnings, 'unknown_cli_${cli.value}'],
+          warnings: [...warnings, 'unknown_cli_${launchCli.value}'],
         ),
         manifest: manifest,
       );
@@ -732,8 +797,8 @@ class ConfigProfileService implements ConfigProfileDelegate {
           sessionId: scope.sessionId,
           scope: scope,
           team: team,
-          member: member,
-          members: members,
+          member: launchMember,
+          members: launchMembers,
           workingDirectory: workingDirectory,
           additionalDirectories: additionalDirectories,
           paths: staging,
@@ -747,7 +812,7 @@ class ConfigProfileService implements ConfigProfileDelegate {
       return (
         outcome: TeamLaunchOutcome(
           environment: const {},
-          warnings: [...warnings, 'config_profile_${cli.value}: $e'],
+          warnings: [...warnings, 'config_profile_${launchCli.value}: $e'],
         ),
         manifest: manifest,
       );

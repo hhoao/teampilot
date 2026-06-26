@@ -182,6 +182,19 @@ final class ClaudeConfigProfileCapability implements ConfigProfileCapability {
         member: ctx.member,
         resolver: resolver,
       );
+      final launched = ctx.member;
+      if (launched != null &&
+          launched.isValid &&
+          launched.provider.trim().isNotEmpty) {
+        final memberSettings = claude.settingsByMember[launched.id];
+        final env = memberSettings?['env'];
+        final hasProviderEnv =
+            env is Map &&
+            env.keys.any((key) => key.toString().startsWith('ANTHROPIC_'));
+        if (!hasProviderEnv) {
+          warnings.add('claude_provider_missing:${launched.id}');
+        }
+      }
     }
 
     await _provisionWorkspaceTrust(

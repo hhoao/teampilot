@@ -26,6 +26,9 @@ class WorkspaceProvisionCoordinator {
   }
 
   /// Background provision when a workspace tab opens or config changes.
+  ///
+  /// Attaches logging to a derived future so the shared [_inFlight] work future
+  /// still completes with errors for [ensureReady] waiters.
   void schedule({
     required RuntimeTarget target,
     required String workspaceId,
@@ -40,27 +43,23 @@ class WorkspaceProvisionCoordinator {
     );
     if (_ready.containsKey(key.cacheKey)) return;
     if (_inFlight.containsKey(key.cacheKey)) return;
-    unawaited(() async {
-      try {
-        await _start(
-          key,
-          target: target,
-          personal: personal,
-          trustedDirectories: trustedDirectories,
-        );
-      } on Object catch (error, stackTrace) {
-        appLogger.e(
-          '[workspace-provision] background failed '
-          'target=${key.targetId} workspace=${key.workspaceId} '
-          'cli=${key.cli.value}: $error',
-          error: error,
-          stackTrace: stackTrace,
-        );
-      }
-    }());
+    final work = _start(
+      key,
+      target: target,
+      personal: personal,
+      trustedDirectories: trustedDirectories,
+    );
+    unawaited(
+      work.then<void>(
+        (_) {},
+        onError: (Object error, StackTrace stackTrace) {
+          _logProvisionFailed(key, error, stackTrace);
+        },
+      ),
+    );
   }
 
-  /// Blocks until workspace provision completes. Fails fast on error.
+  /// Blocks until workspace provision completes. Propagates errors to callers.
   Future<WorkspaceProvisionResult> ensureReady({
     required RuntimeTarget target,
     required String workspaceId,
@@ -93,21 +92,50 @@ class WorkspaceProvisionCoordinator {
     required PersonalProfile? personal,
     Iterable<String> trustedDirectories = const [],
   }) {
-    final future = provisioner
-        .provision(
-          target: target,
-          workspaceId: key.workspaceId,
-          cli: key.cli,
-          personal: personal,
-          trustedDirectories: trustedDirectories,
-        )
-        .then((result) {
-          _ready[key.cacheKey] = result;
-          return result;
-        })
-        .whenComplete(() => _inFlight.remove(key.cacheKey));
+    final future = _runProvision(
+      key,
+      target: target,
+      personal: personal,
+      trustedDirectories: trustedDirectories,
+    );
     _inFlight[key.cacheKey] = future;
     return future;
+  }
+
+  Future<WorkspaceProvisionResult> _runProvision(
+    WorkspaceProvisionKey key, {
+    required RuntimeTarget target,
+    required PersonalProfile? personal,
+    Iterable<String> trustedDirectories = const [],
+  }) async {
+    try {
+      final result = await provisioner.provision(
+        target: target,
+        workspaceId: key.workspaceId,
+        cli: key.cli,
+        personal: personal,
+        trustedDirectories: trustedDirectories,
+      );
+      _ready[key.cacheKey] = result;
+
+      return result;
+    } finally {
+      _inFlight.remove(key.cacheKey);
+    }
+  }
+
+  void _logProvisionFailed(
+    WorkspaceProvisionKey key,
+    Object error,
+    StackTrace stackTrace,
+  ) {
+    appLogger.e(
+      '[workspace-provision] failed '
+      'target=${key.targetId} workspace=${key.workspaceId} '
+      'cli=${key.cli.value}: $error',
+      error: error,
+      stackTrace: stackTrace,
+    );
   }
 
   void invalidate({
