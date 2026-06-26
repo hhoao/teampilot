@@ -6,6 +6,7 @@ import 'package:dartssh2/dartssh2.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:teampilot/services/git/git_command_runner.dart';
 import 'package:teampilot/services/git/git_service.dart';
+import 'package:teampilot/services/host/host_one_shot_runner.dart';
 import 'package:teampilot/services/io/local_filesystem.dart';
 import 'package:teampilot/services/storage/app_storage.dart';
 
@@ -83,6 +84,23 @@ void main() {
     });
   });
 
+  group('LocalGitCommandRunner', () {
+    test('uses injected host runner for git execution', () async {
+      var hostInvoked = false;
+      final runner = LocalGitCommandRunner(
+        runner: (executable, arguments, {stdoutEncoding, stderrEncoding}) async {
+          return ProcessResult(0, 0, '/usr/bin/git\n', '');
+        },
+        hostRunner: _RecordingHostRunner(() => hostInvoked = true),
+      );
+
+      final result = await runner.runInDirectory('/repo', ['status']);
+
+      expect(hostInvoked, isTrue);
+      expect(result.exitCode, 0);
+    });
+  });
+
   group('gitCommandRunnerForContext', () {
     test('picks local runner for native storage', () {
       AppStorage.installForTesting(
@@ -99,4 +117,16 @@ void main() {
       );
     });
   });
+}
+
+class _RecordingHostRunner implements HostOneShotRunner {
+  _RecordingHostRunner(this._onRun);
+
+  final void Function() _onRun;
+
+  @override
+  Future<HostRunResult> run(HostRunRequest request) async {
+    _onRun();
+    return const HostRunResult(exitCode: 0, stdout: 'ok\n', stderr: '');
+  }
 }

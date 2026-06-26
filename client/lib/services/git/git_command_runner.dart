@@ -48,18 +48,39 @@ List<String> _gitArgv(String dir, List<String> args) {
   return [...gitGlobalFlags, '-C', dir, ...args];
 }
 
+HostProcessRunner _hostProcessRunnerFrom(ProcessRunner runner) {
+  return (
+    executable,
+    arguments, {
+    workingDirectory,
+    environment,
+    includeParentEnvironment = true,
+    stdoutEncoding,
+    stderrEncoding,
+  }) {
+    return runner(
+      executable,
+      arguments,
+      stdoutEncoding: stdoutEncoding ?? const Utf8Codec(allowMalformed: true),
+      stderrEncoding: stderrEncoding ?? const Utf8Codec(allowMalformed: true),
+    );
+  };
+}
+
 class LocalGitCommandRunner implements GitCommandRunner {
   LocalGitCommandRunner({
     ProcessRunner runner = cliToolDefaultProcessRun,
     CliToolLocator? gitLocator,
     HostOneShotRunner? hostRunner,
   })  : _runner = runner,
-        _gitLocator = gitLocator ?? const CliToolLocator('git'),
-        _host = hostRunner ?? LocalHostOneShotRunner();
+        _gitLocator = gitLocator ?? const CliToolLocator('git') {
+    _host = hostRunner ??
+        LocalHostOneShotRunner(processRunner: _hostProcessRunnerFrom(runner));
+  }
 
   final ProcessRunner _runner;
   final CliToolLocator _gitLocator;
-  final HostOneShotRunner _host;
+  late final HostOneShotRunner _host;
 
   static Future<String?>? _locateFuture;
 
@@ -97,30 +118,10 @@ class WslGitCommandRunner implements GitCommandRunner {
             hostRunner ??
             WslHostOneShotRunner(
               distro: distro,
-              processRunner: _adaptProcessRunner(wslRunner),
+              processRunner: _hostProcessRunnerFrom(wslRunner ?? Process.run),
             );
 
   final HostOneShotRunner _host;
-
-  static HostProcessRunner _adaptProcessRunner(ProcessRunner? wslRunner) {
-    final runner = wslRunner ?? Process.run;
-    return (
-      executable,
-      arguments, {
-      workingDirectory,
-      environment,
-      includeParentEnvironment = true,
-      stdoutEncoding,
-      stderrEncoding,
-    }) {
-      return runner(
-        executable,
-        arguments,
-        stdoutEncoding: stdoutEncoding ?? const Utf8Codec(allowMalformed: true),
-        stderrEncoding: stderrEncoding ?? const Utf8Codec(allowMalformed: true),
-      );
-    };
-  }
 
   @override
   Future<bool> get isAvailable async {

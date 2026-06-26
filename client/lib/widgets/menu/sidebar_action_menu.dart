@@ -1,6 +1,4 @@
-﻿import 'dart:async';
-
-import 'package:flutter/material.dart';
+﻿import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:teampilot/theme/app_icon_sizes.dart';
 
@@ -8,6 +6,7 @@ import '../../theme/app_text_styles.dart';
 import '../../utils/context_menu_position.dart';
 import '../app_icon_button.dart';
 import '../dropdown/popover/app_popover.dart';
+import 'sidebar_action_menu_overlay.dart';
 
 export '../dropdown/popover/app_popover.dart' show AppAnchor, AppAnchorAuto, AppGlobalAnchor, AppPopoverController;
 
@@ -711,69 +710,33 @@ Future<T?> _showActionMenuFromSpecs<T>({
   bool useRootNavigator = true,
   AnimationStyle? popUpAnimationStyle,
 }) {
-  final overlay = Overlay.of(context, rootOverlay: useRootNavigator);
-  final completer = Completer<T?>();
-  final popoverController = AppPopoverController();
-  final menuController = ActionMenuController(popoverController);
-  late OverlayEntry entry;
-  var entryRemoved = false;
-
-  void removeEntry() {
-    if (entryRemoved || !entry.mounted) return;
-    entry.remove();
-    entryRemoved = true;
-  }
-
-  void finish(T? value) {
-    if (!completer.isCompleted) completer.complete(value);
-    popoverController.hide();
-  }
-
-  void onControllerChanged() {
-    if (!popoverController.isOpen && !completer.isCompleted) {
-      finish(null);
-    }
-  }
-
-  entry = OverlayEntry(
-    builder: (overlayContext) {
-      return AppPopover(
-        controller: popoverController,
-        anchor: AppGlobalAnchor(globalPosition),
-        useSameGroupIdForChild: false,
-        transitionDuration: _popUpTransitionDuration(popUpAnimationStyle),
-        transitionCurve: _popUpTransitionCurve(popUpAnimationStyle),
+  return showFloatingActionMenuOverlay<T>(
+    context: context,
+    globalPosition: globalPosition,
+    useRootNavigator: useRootNavigator,
+    transitionDuration: _popUpTransitionDuration(popUpAnimationStyle),
+    transitionCurve: _popUpTransitionCurve(popUpAnimationStyle),
+    menuBuilder: (overlayContext, complete) {
+      return DecoratedBox(
         decoration: SidebarActionMenuMetrics.panelDecoration(overlayContext),
-        padding: SidebarActionMenuMetrics.panelPadding,
-        popover: (ctx) => SidebarActionMenuPanel(
-          minWidth: minWidth,
-          menuAnchorShell: true,
-          children: specs.map((spec) {
-            if (spec.isDivider) return const SidebarActionMenuDivider();
-            return _specToMenuItem(
-              context: ctx,
-              spec: spec,
-              menuController: menuController,
-              onChosen: (value) => finish(value as T?),
-            );
-          }).toList(),
+        child: Padding(
+          padding: SidebarActionMenuMetrics.panelPadding,
+          child: SidebarActionMenuPanel(
+            minWidth: minWidth,
+            menuAnchorShell: true,
+            children: specs.map((spec) {
+              if (spec.isDivider) return const SidebarActionMenuDivider();
+              return _specToMenuItem(
+                context: overlayContext,
+                spec: spec,
+                onChosen: (value) => complete(value as T?),
+              );
+            }).toList(),
+          ),
         ),
-        child: const SizedBox.shrink(),
       );
     },
   );
-
-  popoverController.addListener(onControllerChanged);
-  overlay.insert(entry);
-  WidgetsBinding.instance.addPostFrameCallback((_) {
-    if (!completer.isCompleted) popoverController.show();
-  });
-
-  return completer.future.whenComplete(() {
-    popoverController.removeListener(onControllerChanged);
-    removeEntry();
-    popoverController.dispose();
-  });
 }
 
 Future<T?> showSidebarActionMenuFromSpecs<T>({
@@ -820,63 +783,29 @@ Future<T?> _showActionMenuWithChildren<T>({
   bool useRootNavigator = true,
   AnimationStyle? popUpAnimationStyle,
 }) {
-  final overlay = Overlay.of(context, rootOverlay: useRootNavigator);
-  final completer = Completer<T?>();
-  final popoverController = AppPopoverController();
-  late OverlayEntry entry;
-  var entryRemoved = false;
-
-  void removeEntry() {
-    if (entryRemoved || !entry.mounted) return;
-    entry.remove();
-    entryRemoved = true;
-  }
-
-  void finish(T? value) {
-    if (!completer.isCompleted) completer.complete(value);
-    popoverController.hide();
-  }
-
-  void onControllerChanged() {
-    if (!popoverController.isOpen && !completer.isCompleted) {
-      finish(null);
-    }
-  }
-
-  entry = OverlayEntry(
-    builder: (overlayContext) {
+  return showFloatingActionMenuOverlay<T>(
+    context: context,
+    globalPosition: globalPosition,
+    useRootNavigator: useRootNavigator,
+    transitionDuration: _popUpTransitionDuration(popUpAnimationStyle),
+    transitionCurve: _popUpTransitionCurve(popUpAnimationStyle),
+    menuBuilder: (overlayContext, complete) {
       return _ActionMenuOverlayScope<T>(
-        onChosen: finish,
-        child: AppPopover(
-          controller: popoverController,
-          anchor: AppGlobalAnchor(globalPosition),
-          useSameGroupIdForChild: false,
-          transitionDuration: _popUpTransitionDuration(popUpAnimationStyle),
-          transitionCurve: _popUpTransitionCurve(popUpAnimationStyle),
+        onChosen: complete,
+        child: DecoratedBox(
           decoration: SidebarActionMenuMetrics.panelDecoration(overlayContext),
-          padding: SidebarActionMenuMetrics.panelPadding,
-          popover: (_) => SidebarActionMenuPanel(
-            minWidth: minWidth,
-            menuAnchorShell: true,
-            children: children,
+          child: Padding(
+            padding: SidebarActionMenuMetrics.panelPadding,
+            child: SidebarActionMenuPanel(
+              minWidth: minWidth,
+              menuAnchorShell: true,
+              children: children,
+            ),
           ),
-          child: const SizedBox.shrink(),
         ),
       );
     },
   );
-
-  popoverController.addListener(onControllerChanged);
-  overlay.insert(entry);
-  WidgetsBinding.instance.addPostFrameCallback((_) {
-    if (!completer.isCompleted) popoverController.show();
-  });
-
-  return completer.future.whenComplete(() {
-    popoverController.removeListener(onControllerChanged);
-    removeEntry();
-    popoverController.dispose();
-  });
 }
 
 class _ActionMenuOverlayScope<T> extends InheritedWidget {

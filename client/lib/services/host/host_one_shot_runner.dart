@@ -3,11 +3,7 @@ import 'dart:io';
 
 import 'package:dartssh2/dartssh2.dart';
 
-import '../storage/runtime_context.dart';
-import 'host_run_request.dart';
-import 'host_run_result.dart';
-import 'host_shell_argv.dart';
-import 'host_wsl_argv.dart';
+import 'host_one_shot_runner.dart';
 
 export 'host_run_request.dart';
 export 'host_run_result.dart';
@@ -116,17 +112,4 @@ class RemoteHostOneShotRunner implements HostOneShotRunner {
     final result = await _execShell(command);
     return HostRunResult.fromSsh(result);
   }
-}
-
-/// Picks the runner for the active [RuntimeContext] storage backend.
-HostOneShotRunner hostOneShotRunnerForContext(RuntimeContext ctx) {
-  return switch (ctx.mode) {
-    StorageBackendMode.ssh => RemoteHostOneShotRunner(
-      execShell: ctx.remoteFileStore!.execShell,
-    ),
-    StorageBackendMode.wsl => WslHostOneShotRunner(
-      distro: ctx.target.wslDistro,
-    ),
-    StorageBackendMode.native => LocalHostOneShotRunner(),
-  };
 }

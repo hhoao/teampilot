@@ -5,6 +5,7 @@ import 'dart:typed_data';
 import 'package:dartssh2/dartssh2.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:teampilot/services/host/host_one_shot_runner.dart';
+import 'package:teampilot/services/host/host_one_shot_runner_for_context.dart';
 import 'package:teampilot/services/io/local_filesystem.dart';
 import 'package:teampilot/services/storage/app_storage.dart';
 

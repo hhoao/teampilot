@@ -119,3 +119,40 @@ class AppGlobalAnchor extends AppAnchorBase {
   @override
   int get hashCode => offset.hashCode;
 }
+
+/// Positions a context-menu panel with its top-left at [target] (overlay-local).
+class ContextMenuOverlayPositionDelegate extends SingleChildLayoutDelegate {
+  const ContextMenuOverlayPositionDelegate({required this.target});
+
+  final Offset target;
+
+  @override
+  BoxConstraints getConstraintsForChild(BoxConstraints constraints) =>
+      constraints.loosen();
+
+  @override
+  Offset getPositionForChild(Size viewport, Size menuSize) {
+    var x = target.dx;
+    var y = target.dy;
+    if (x + menuSize.width > viewport.width) {
+      x = viewport.width - menuSize.width;
+    }
+    if (y + menuSize.height > viewport.height) {
+      y = target.dy - menuSize.height;
+    }
+    x = x.clamp(
+      0.0,
+      (viewport.width - menuSize.width).clamp(0.0, viewport.width),
+    );
+    y = y.clamp(
+      0.0,
+      (viewport.height - menuSize.height).clamp(0.0, viewport.height),
+    );
+    return Offset(x, y);
+  }
+
+  @override
+  bool shouldRelayout(ContextMenuOverlayPositionDelegate oldDelegate) {
+    return target != oldDelegate.target;
+  }
+}
