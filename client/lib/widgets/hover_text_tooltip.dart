@@ -2,8 +2,6 @@ import 'dart:async';
 
 import 'package:flutter/material.dart';
 
-import '../theme/app_text_styles.dart';
-
 /// A lightweight hover tooltip that shows [message] in an overlay bubble.
 ///
 /// Unlike Material's [Tooltip], it uses neither a global pointer route nor a
@@ -71,10 +69,7 @@ class _HoverTextTooltipState extends State<HoverTextTooltip> {
   }
 
   Widget _buildOverlay(BuildContext context) {
-    final isDark = Theme.of(context).brightness == Brightness.dark;
-    final background = isDark
-        ? const Color(0xFF2A2A2E)
-        : const Color(0xFF111827);
+    final tooltipTheme = Theme.of(context).tooltipTheme;
     return IgnorePointer(
       child: CompositedTransformFollower(
         link: _link,
@@ -89,23 +84,11 @@ class _HoverTextTooltipState extends State<HoverTextTooltip> {
             child: Material(
               color: Colors.transparent,
               child: Container(
-                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-                decoration: BoxDecoration(
-                  color: background,
-                  borderRadius: BorderRadius.circular(6),
-                  boxShadow: const [
-                    BoxShadow(
-                      color: Color(0x33000000),
-                      blurRadius: 8,
-                      offset: Offset(0, 2),
-                    ),
-                  ],
-                ),
+                padding: tooltipTheme.padding,
+                decoration: tooltipTheme.decoration,
                 child: Text(
                   widget.message,
-                  style: AppTextStyles.of(context).bodySmall.copyWith(
-                    color: Colors.white,
-                  ),
+                  style: tooltipTheme.textStyle,
                 ),
               ),
             ),
