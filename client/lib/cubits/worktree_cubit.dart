@@ -5,6 +5,7 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import '../models/git_worktree.dart';
 import '../services/git/git_worktree_service.dart';
 import '../services/home_workspace/worktree_ui_prefs_store.dart';
+import '../services/workspace/workspace_worktree_store.dart';
 import '../utils/session_worktree_grouping.dart';
 import '../utils/workspace_path_utils.dart';
 
@@ -55,38 +56,61 @@ class WorktreeState {
       );
 }
 
+/// How [WorkspaceSidebar] lays out the conversation list for the current repo.
+enum WorktreeSessionListLayout {
+  /// Worktree list not loaded yet — show a placeholder, not a flat list.
+  indeterminate,
+
+  /// Single worktree (or none) — flat session list.
+  flat,
+
+  /// Multiple worktrees — grouped collapsible sections.
+  grouped,
+}
+
 /// Snapshot of [WorktreeState] fields that drive [WorkspaceSidebar] grouping.
 class WorktreeSidebarView {
   const WorktreeSidebarView({
     required this.worktrees,
     required this.collapsed,
     required this.currentWorktreePath,
+    required this.loading,
   });
 
   factory WorktreeSidebarView.from(WorktreeState state) => WorktreeSidebarView(
         worktrees: state.worktrees,
         collapsed: state.collapsed,
         currentWorktreePath: state.currentWorktreePath,
+        loading: state.loading,
       );
 
   final List<GitWorktree> worktrees;
   final Set<String> collapsed;
   final String currentWorktreePath;
+  final bool loading;
 
   bool get hasMultipleWorktrees => worktrees.length > 1;
+
+  WorktreeSessionListLayout get sessionListLayout {
+    if (worktrees.length > 1) return WorktreeSessionListLayout.grouped;
+    if (loading && worktrees.isEmpty) {
+      return WorktreeSessionListLayout.indeterminate;
+    }
+    return WorktreeSessionListLayout.flat;
+  }
 
   @override
   bool operator ==(Object other) =>
       identical(this, other) ||
       other is WorktreeSidebarView &&
-          hasMultipleWorktrees == other.hasMultipleWorktrees &&
+          sessionListLayout == other.sessionListLayout &&
           currentWorktreePath == other.currentWorktreePath &&
           _setEquals(collapsed, other.collapsed) &&
           _worktreePathsEqual(worktrees, other.worktrees);
 
   @override
   int get hashCode => Object.hash(
-        hasMultipleWorktrees,
+        sessionListLayout,
         currentWorktreePath,
         _collapsedHash(collapsed),
         Object.hashAll(worktrees.map((w) => w.path)),
@@ -114,18 +138,50 @@ class WorktreeCubit extends Cubit<WorktreeState> {
     WorktreeLister? lister,
     this.workspaceId = '',
     WorktreeUiPrefsStore? prefsStore,
+    WorkspaceWorktreeStore? worktreeStore,
+    String? initialRepoPath,
   })  : _lister = lister,
         _prefsStore = prefsStore ?? WorktreeUiPrefsStore(),
-        super(const WorktreeState());
+        _worktreeStore = worktreeStore,
+        super(
+          _initialState(
+            workspaceId: workspaceId,
+            worktreeStore: worktreeStore,
+            initialRepoPath: initialRepoPath,
+          ),
+        );
 
   WorktreeLister? _lister;
   final WorktreeUiPrefsStore _prefsStore;
+  final WorkspaceWorktreeStore? _worktreeStore;
 
   /// Scopes persisted UI state (collapse + current worktree). Empty disables
   /// persistence (e.g. in unit tests that don't exercise it).
   final String workspaceId;
 
   bool _hydrated = false;
+
+  static WorktreeState _initialState({
+    required String workspaceId,
+    required WorkspaceWorktreeStore? worktreeStore,
+    required String? initialRepoPath,
+  }) {
+    final repo = initialRepoPath?.trim() ?? '';
+    if (repo.isEmpty) return const WorktreeState();
+
+    final cached = workspaceId.trim().isNotEmpty
+        ? worktreeStore?.peek(workspaceId, repo)
+        : null;
+    if (cached != null && cached.worktrees.isNotEmpty) {
+      return WorktreeState(
+        repoPath: repo,
+        worktrees: cached.worktrees,
+        currentWorktreePath: cached.worktrees.first.path,
+        loading: true,
+      );
+    }
+    return WorktreeState(repoPath: repo, currentWorktreePath: repo);
+  }
 
   /// Binds the git runner for the resolved workspace tools plane and loads the
   /// worktree list. Called when the workspace tools [targetId] changes;
@@ -187,6 +243,9 @@ class WorktreeCubit extends Cubit<WorktreeState> {
       collapsed: collapsed,
       loading: false,
     ));
+    if (workspaceId.isNotEmpty) {
+      _worktreeStore?.remember(workspaceId, repoPath, list);
+    }
   }
 
   void _persist() {

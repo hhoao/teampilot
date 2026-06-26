@@ -34,6 +34,8 @@ import 'services/ssh/ssh_client_factory.dart';
 import 'services/terminal/terminal_transport_factory.dart';
 import 'services/file_tree/workspace_file_tree_store.dart';
 import 'services/git/git_repo_store.dart';
+import 'services/workspace/workspace_tools_scope_registry.dart';
+import 'services/workspace/workspace_worktree_registry.dart';
 import 'services/terminal/workspace_terminal_registry.dart';
 import 'services/notification/notification_recorder.dart';
 import 'services/terminal/terminal_fonts.dart';
@@ -55,11 +57,15 @@ class _CleanupWindowListener extends WindowListener {
     this.workspaceTerminalRegistry,
     this.gitRepoStore,
     this.workspaceFileTreeStore,
+    this.workspaceWorktreeRegistry,
+    this.workspaceToolsScopeRegistry,
   );
   final ChatCubit chatCubit;
   final WorkspaceTerminalRegistry workspaceTerminalRegistry;
   final GitRepoStore gitRepoStore;
   final WorkspaceFileTreeStore workspaceFileTreeStore;
+  final WorkspaceWorktreeRegistry workspaceWorktreeRegistry;
+  final WorkspaceToolsScopeRegistry workspaceToolsScopeRegistry;
 
   @override
   void onWindowClose() {
@@ -72,6 +78,8 @@ class _CleanupWindowListener extends WindowListener {
       workspaceTerminalRegistry.disposeAll();
       gitRepoStore.dispose();
       workspaceFileTreeStore.dispose();
+      workspaceWorktreeRegistry.dispose();
+      workspaceToolsScopeRegistry.dispose();
     } finally {
       await windowManager.destroy();
     }
@@ -89,6 +97,8 @@ class _AppShutdownScope extends StatefulWidget {
     required this.workspaceTerminalRegistry,
     required this.gitRepoStore,
     required this.workspaceFileTreeStore,
+    required this.workspaceWorktreeRegistry,
+    required this.workspaceToolsScopeRegistry,
     required this.child,
   });
 
@@ -99,6 +109,8 @@ class _AppShutdownScope extends StatefulWidget {
   final WorkspaceTerminalRegistry workspaceTerminalRegistry;
   final GitRepoStore gitRepoStore;
   final WorkspaceFileTreeStore workspaceFileTreeStore;
+  final WorkspaceWorktreeRegistry workspaceWorktreeRegistry;
+  final WorkspaceToolsScopeRegistry workspaceToolsScopeRegistry;
   final Widget child;
 
   @override
@@ -116,6 +128,8 @@ class _AppShutdownScopeState extends State<_AppShutdownScope> {
     widget.workspaceTerminalRegistry.disposeAll();
     widget.gitRepoStore.dispose();
     widget.workspaceFileTreeStore.dispose();
+    widget.workspaceWorktreeRegistry.dispose();
+    widget.workspaceToolsScopeRegistry.dispose();
     super.dispose();
   }
 
@@ -304,6 +318,8 @@ void main() async {
               shell.workspaceTerminalRegistry,
               shell.gitRepoStore,
               shell.workspaceFileTreeStore,
+              shell.workspaceWorktreeRegistry,
+              shell.workspaceToolsScopeRegistry,
             ),
           );
         }
@@ -315,6 +331,8 @@ void main() async {
           workspaceTerminalRegistry: shell.workspaceTerminalRegistry,
           gitRepoStore: shell.gitRepoStore,
           workspaceFileTreeStore: shell.workspaceFileTreeStore,
+          workspaceWorktreeRegistry: shell.workspaceWorktreeRegistry,
+          workspaceToolsScopeRegistry: shell.workspaceToolsScopeRegistry,
           child: MultiRepositoryProvider(
             providers: [
               RepositoryProvider<SharedPreferences>.value(value: preferences),
@@ -359,6 +377,12 @@ void main() async {
               ),
               RepositoryProvider<WorkspaceFileTreeStore>.value(
                 value: shell.workspaceFileTreeStore,
+              ),
+              RepositoryProvider<WorkspaceWorktreeRegistry>.value(
+                value: shell.workspaceWorktreeRegistry,
+              ),
+              RepositoryProvider<WorkspaceToolsScopeRegistry>.value(
+                value: shell.workspaceToolsScopeRegistry,
               ),
             ],
             child: MultiBlocProvider(

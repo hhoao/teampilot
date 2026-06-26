@@ -98,7 +98,11 @@ class WorkspaceToolsScopeCubit extends Cubit<WorkspaceToolsScopeState> {
       emit(const WorkspaceToolsScopeState(resolving: false));
       return;
     }
-    if (!isClosed) emit(state.copyWith(resolving: true));
+    // Stale-while-revalidate: keep the last resolved tools plane visible while
+    // cwd/session folders re-resolve. Only block the panel on the first resolve.
+    if (!isClosed && state.tools == null) {
+      emit(state.copyWith(resolving: true));
+    }
 
     final activeTools = await WorkspaceToolsContext.resolve(
       lifecycle: _lifecycle,

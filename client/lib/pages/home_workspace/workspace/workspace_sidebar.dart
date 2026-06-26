@@ -213,38 +213,42 @@ class _WorkspaceSidebarState
     required bool personalLaunchBlocked,
   }) {
     final l10n = context.l10n;
-    if (!wtView.hasMultipleWorktrees) {
-      return sortedSessions.isEmpty
-          ? _EmptyConversations(label: l10n.homeWorkspaceNoConversations)
-          : _buildSessionList(context, sortedSessions);
-    }
-    final groups = groupSessionsByWorktree(
-      worktrees: wtView.worktrees,
-      sessions: sortedSessions,
-    );
-    return ListView.builder(
-      padding: EdgeInsets.zero,
-      itemCount: groups.length,
-      itemBuilder: (context, index) {
-        final group = groups[index];
-        return WorktreeGroupSection(
-          key: ValueKey('wt-group-${worktreeGroupCollapseKey(group)}'),
-          group: group,
-          workspace: widget.workspace,
-          isPersonal: widget.isPersonalWorkspace,
-          profileId: widget.profileId,
-          sessionTeamFilter: widget.sessionTeamFilter,
-          personalLaunchBlocked: personalLaunchBlocked,
-          collapsed:
-              wtView.collapsed.contains(worktreeGroupCollapseKey(group)),
-          isCurrent: group.worktree != null &&
-              workspacePathsEqual(
-                group.worktree!.path,
-                wtView.currentWorktreePath,
-              ),
+    switch (wtView.sessionListLayout) {
+      case WorktreeSessionListLayout.indeterminate:
+        return const _SessionListSkeleton();
+      case WorktreeSessionListLayout.flat:
+        return sortedSessions.isEmpty
+            ? _EmptyConversations(label: l10n.homeWorkspaceNoConversations)
+            : _buildSessionList(context, sortedSessions);
+      case WorktreeSessionListLayout.grouped:
+        final groups = groupSessionsByWorktree(
+          worktrees: wtView.worktrees,
+          sessions: sortedSessions,
         );
-      },
-    );
+        return ListView.builder(
+          padding: EdgeInsets.zero,
+          itemCount: groups.length,
+          itemBuilder: (context, index) {
+            final group = groups[index];
+            return WorktreeGroupSection(
+              key: ValueKey('wt-group-${worktreeGroupCollapseKey(group)}'),
+              group: group,
+              workspace: widget.workspace,
+              isPersonal: widget.isPersonalWorkspace,
+              profileId: widget.profileId,
+              sessionTeamFilter: widget.sessionTeamFilter,
+              personalLaunchBlocked: personalLaunchBlocked,
+              collapsed:
+                  wtView.collapsed.contains(worktreeGroupCollapseKey(group)),
+              isCurrent: group.worktree != null &&
+                  workspacePathsEqual(
+                    group.worktree!.path,
+                    wtView.currentWorktreePath,
+                  ),
+            );
+          },
+        );
+    }
   }
 
   Future<void> _createWorktree(BuildContext context) async {
@@ -703,6 +707,42 @@ class _EmptyConversations extends StatelessWidget {
           ],
         ),
       ),
+    );
+  }
+}
+
+/// Placeholder while the git worktree list for this workspace is still loading.
+/// Avoids briefly showing a flat session list that immediately regroups.
+class _SessionListSkeleton extends StatelessWidget {
+  const _SessionListSkeleton();
+
+  @override
+  Widget build(BuildContext context) {
+    final cs = Theme.of(context).colorScheme;
+    final fill = cs.onSurface.withValues(alpha: 0.08);
+    return ListView.separated(
+      padding: EdgeInsets.zero,
+      itemCount: 5,
+      separatorBuilder: (_, _) => const SizedBox(height: 8),
+      itemBuilder: (context, index) {
+        final widthFactor = switch (index % 3) {
+          0 => 0.92,
+          1 => 0.74,
+          _ => 0.58,
+        };
+        return LayoutBuilder(
+          builder: (context, constraints) {
+            return Container(
+              height: 34,
+              width: constraints.maxWidth * widthFactor,
+              decoration: BoxDecoration(
+                color: fill,
+                borderRadius: BorderRadius.circular(8),
+              ),
+            );
+          },
+        );
+      },
     );
   }
 }

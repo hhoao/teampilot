@@ -26,6 +26,8 @@ import '../../services/home_workspace/home_closed_workspaces_store.dart';
 import '../../services/home_workspace/home_open_workspaces_store.dart';
 import '../../services/home_workspace/home_recent_workspaces_store.dart';
 import '../../services/file_tree/workspace_file_tree_store.dart';
+import '../../services/workspace/workspace_tools_scope_registry.dart';
+import '../../services/workspace/workspace_worktree_registry.dart';
 import '../../services/terminal/workspace_terminal_registry.dart';
 import '../../widgets/app_dialog.dart';
 import 'home_workspace_body_stack.dart';
@@ -280,12 +282,16 @@ class _HomeShellState extends State<HomeShell> {
 
     terminalRegistry.disposeWorkspace(tab.tabKey);
     workspaceTools.removeWorkspace(tab.tabKey);
+    context.read<WorkspaceToolsScopeRegistry>().removeScope(tab.tabKey);
 
     final stillOpenSameDirectory = next.any(
       (t) => t.workspaceId == tab.workspaceId,
     );
     if (!stillOpenSameDirectory) {
       context.read<WorkspaceFileTreeStore>().removeWorkspace(tab.workspaceId);
+      context.read<WorkspaceWorktreeRegistry>().removeWorkspace(
+        tab.workspaceId,
+      );
     }
     if (running == 0) {
       chat.closeTabsForWorkspace(tab.tabKey);

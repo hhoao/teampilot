@@ -6,6 +6,8 @@ import '../../../cubits/worktree_cubit.dart';
 import '../../../models/workspace.dart';
 import '../../../models/layout_preferences.dart';
 import '../../../services/workspace/workspace_tools_scope.dart';
+import '../../../services/workspace/workspace_tools_scope_registry.dart';
+import '../../../services/workspace/workspace_worktree_registry.dart';
 import '../../../widgets/resizable_split_view.dart';
 import '../../chat_page.dart';
 import 'workspace_sidebar.dart';
@@ -43,16 +45,18 @@ class _WorkspaceSplitPaneState extends State<WorkspaceSplitPane> {
   @override
   Widget build(BuildContext context) {
     final chatLifecycle = context.read<ChatCubit>().lifecycle;
+    final scopeCubit = context.read<WorkspaceToolsScopeRegistry>().cubitFor(
+      tabScopeId: widget.tabScopeId,
+      lifecycle: chatLifecycle,
+    );
+    final worktreeCubit = context.read<WorkspaceWorktreeRegistry>().cubitFor(
+      workspaceId: widget.workspace.workspaceId,
+      repoPath: widget.workspace.firstFolderPath,
+    );
     return MultiBlocProvider(
       providers: [
-        BlocProvider(
-          create: (_) => WorkspaceToolsScopeCubit(lifecycle: chatLifecycle),
-        ),
-        BlocProvider<WorktreeCubit>(
-          key: ValueKey('worktree-${widget.workspace.workspaceId}'),
-          create: (_) =>
-              WorktreeCubit(workspaceId: widget.workspace.workspaceId),
-        ),
+        BlocProvider<WorkspaceToolsScopeCubit>.value(value: scopeCubit),
+        BlocProvider<WorktreeCubit>.value(value: worktreeCubit),
       ],
       child: BlocBuilder<WorktreeCubit, WorktreeState>(
         buildWhen: (a, b) => a.currentWorktreePath != b.currentWorktreePath,

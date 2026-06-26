@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter_test/flutter_test.dart';
 import 'package:teampilot/models/runtime_target.dart';
 import 'package:teampilot/models/workspace_folder.dart';
@@ -109,6 +111,41 @@ void main() {
       {'local', 'ssh:p1'},
     );
     expect(cubit.state.targetSlices[1].roots, ['/remote']);
+
+    await cubit.close();
+  });
+
+  test('re-sync keeps tools visible while resolving', () async {
+    final home = testRuntimeContext('/home');
+    final lifecycle = SessionLifecycleService(
+      storageRootsResolver: () async => home,
+      workContextResolver: (_) async => home,
+    );
+    final folders = const [
+      WorkspaceFolder(path: '/repo', targetId: 'local'),
+    ];
+    final cubit = WorkspaceToolsScopeCubit(lifecycle: lifecycle);
+    await cubit.sync(
+      workspaceFolders: folders,
+      cwd: '/repo',
+      additionalPaths: const [],
+    );
+    expect(cubit.state.isReady, isTrue);
+    expect(cubit.state.tools, isNotNull);
+
+    final readyDuringSync = cubit.stream.firstWhere((s) {
+      if (!s.isReady) return false;
+      return s.tools != null;
+    });
+    unawaited(
+      cubit.sync(
+        workspaceFolders: folders,
+        cwd: '/repo/feature',
+        additionalPaths: const [],
+      ),
+    );
+    expect(await readyDuringSync, isNotNull);
+    expect(cubit.state.isReady, isTrue);
 
     await cubit.close();
   });

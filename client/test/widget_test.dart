@@ -17,6 +17,8 @@ import 'package:teampilot/cubits/workspace_tools_cubit.dart';
 import 'package:teampilot/services/terminal/workspace_terminal_registry.dart';
 import 'package:teampilot/services/git/git_repo_store.dart';
 import 'package:teampilot/services/file_tree/workspace_file_tree_store.dart';
+import 'package:teampilot/services/workspace/workspace_tools_scope_registry.dart';
+import 'package:teampilot/services/workspace/workspace_worktree_registry.dart';
 import 'package:teampilot/cubits/llm_config_cubit.dart';
 import 'package:teampilot/cubits/session_preferences_cubit.dart';
 import 'package:teampilot/cubits/launch_profile_cubit.dart';
@@ -148,6 +150,12 @@ Widget buildTestApp({
       RepositoryProvider<GitRepoStore>(create: (_) => GitRepoStore()),
       RepositoryProvider<WorkspaceFileTreeStore>(
         create: (_) => WorkspaceFileTreeStore(),
+      ),
+      RepositoryProvider<WorkspaceWorktreeRegistry>(
+        create: (_) => WorkspaceWorktreeRegistry(),
+      ),
+      RepositoryProvider<WorkspaceToolsScopeRegistry>(
+        create: (_) => WorkspaceToolsScopeRegistry(),
       ),
     ],
     child: MultiBlocProvider(

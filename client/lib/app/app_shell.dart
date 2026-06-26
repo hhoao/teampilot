@@ -94,6 +94,8 @@ import '../services/plugin/profile_plugin_linker_service.dart';
 import '../services/terminal/terminal_transport_factory.dart';
 import '../services/file_tree/workspace_file_tree_store.dart';
 import '../services/git/git_repo_store.dart';
+import '../services/workspace/workspace_tools_scope_registry.dart';
+import '../services/workspace/workspace_worktree_registry.dart';
 import '../services/terminal/workspace_terminal_registry.dart';
 import '../utils/logger.dart';
 
@@ -116,6 +118,8 @@ class AppShell {
     required this.workspaceTerminalRegistry,
     required this.gitRepoStore,
     required this.workspaceFileTreeStore,
+    required this.workspaceWorktreeRegistry,
+    required this.workspaceToolsScopeRegistry,
     required this.sshClientFactory,
     required this.connectionModeService,
     required this.identityRepository,
@@ -158,6 +162,8 @@ class AppShell {
   final WorkspaceTerminalRegistry workspaceTerminalRegistry;
   final GitRepoStore gitRepoStore;
   final WorkspaceFileTreeStore workspaceFileTreeStore;
+  final WorkspaceWorktreeRegistry workspaceWorktreeRegistry;
+  final WorkspaceToolsScopeRegistry workspaceToolsScopeRegistry;
   final SshClientFactory sshClientFactory;
   final ConnectionModeService connectionModeService;
   final LaunchProfileRepository identityRepository;
@@ -587,6 +593,8 @@ Future<AppShell> buildAppShell({
   final workspaceTerminalRegistry = WorkspaceTerminalRegistry();
   final gitRepoStore = GitRepoStore();
   final workspaceFileTreeStore = WorkspaceFileTreeStore();
+  final workspaceWorktreeRegistry = WorkspaceWorktreeRegistry();
+  final workspaceToolsScopeRegistry = WorkspaceToolsScopeRegistry();
   final configCubit = ConfigCubit();
 
   final transportFactory = TerminalTransportFactory(
@@ -736,6 +744,8 @@ Future<AppShell> buildAppShell({
     workspaceTerminalRegistry: workspaceTerminalRegistry,
     gitRepoStore: gitRepoStore,
     workspaceFileTreeStore: workspaceFileTreeStore,
+    workspaceWorktreeRegistry: workspaceWorktreeRegistry,
+    workspaceToolsScopeRegistry: workspaceToolsScopeRegistry,
     sshClientFactory: sshClientFactory,
     connectionModeService: connectionModeService,
     identityRepository: identityRepository,
