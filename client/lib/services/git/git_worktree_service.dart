@@ -1,5 +1,3 @@
-import 'dart:convert';
-
 import '../../models/git_worktree.dart';
 import '../../utils/logger.dart';
 import '../storage/runtime_context.dart';
@@ -15,11 +13,6 @@ class GitWorktreeService {
   /// Builds a service for [ctx]'s storage backend.
   factory GitWorktreeService.forContext(RuntimeContext ctx) =>
       GitWorktreeService(runner: gitCommandRunnerForContext(ctx));
-
-  /// Test seam: when set, [WorktreeCubit] builds this instead of a real
-  /// process-backed service, so widget tests never spawn `git` (mirrors
-  /// [GitService.debugOverrideFactory]). See `setUpTestAppStorage`.
-  static GitWorktreeService Function()? debugOverrideFactory;
 
   final GitCommandRunner _runner;
 

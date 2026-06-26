@@ -1,6 +1,5 @@
 import 'dart:async';
 
-import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
@@ -35,12 +34,13 @@ class _WorkspaceToolsScopeSyncState extends State<WorkspaceToolsScopeSync> {
   String? _lastSyncKey;
   String? _lastWorktreeTargetId;
 
-  AppSession? _activeSessionForWorkspace(ChatCubit chat) {
-    final activeId = chat.state.activeSessionId;
+  AppSession? _activeSession(ChatState chat) {
+    final activeId = chat.activeSessionId;
     if (activeId == null || activeId.isEmpty) return null;
-    for (final session in chat.state.sessions) {
+    final workspaceId = widget.workspace.workspaceId;
+    for (final session in chat.sessions) {
       if (session.sessionId == activeId &&
-          session.workspaceId == widget.workspace.workspaceId) {
+          session.workspaceId == workspaceId) {
         return session;
       }
     }
@@ -62,7 +62,7 @@ class _WorkspaceToolsScopeSyncState extends State<WorkspaceToolsScopeSync> {
   }
 
   Future<void> _sync(ChatCubit chat) async {
-    final session = _activeSessionForWorkspace(chat);
+    final session = _activeSession(chat.state);
     final key = _syncKey(
       cwd: widget.cwd,
       additionalPaths: widget.workspace.extraFolderPaths,
@@ -83,12 +83,21 @@ class _WorkspaceToolsScopeSyncState extends State<WorkspaceToolsScopeSync> {
 
     final tools = scopeCubit.state.tools;
     if (tools == null) return;
+    // Git worktree list is per storage target; session cwd selection is handled
+    // separately via WorktreeCubit.syncCurrentForSessionPath on tab open.
     if (_lastWorktreeTargetId != tools.targetId) {
       _lastWorktreeTargetId = tools.targetId;
       context.read<WorktreeCubit>().bindWorktreeService(
         GitWorktreeService.forContext(tools.context),
+        repoPath: widget.workspace.firstFolderPath,
+        preferCurrentPath: session?.firstFolderPath,
       );
     }
+  }
+
+  bool _chatAffectsToolsPlane(ChatState prev, ChatState next) {
+    if (prev.activeSessionId != next.activeSessionId) return true;
+    return _activeSession(prev)?.folders != _activeSession(next)?.folders;
   }
 
   @override
@@ -115,9 +124,7 @@ class _WorkspaceToolsScopeSyncState extends State<WorkspaceToolsScopeSync> {
   @override
   Widget build(BuildContext context) {
     return BlocListener<ChatCubit, ChatState>(
-      listenWhen: (prev, next) =>
-          prev.activeSessionId != next.activeSessionId ||
-          !listEquals(prev.sessions, next.sessions),
+      listenWhen: _chatAffectsToolsPlane,
       listener: (context, _) => unawaited(_sync(context.read<ChatCubit>())),
       child: BlocBuilder<WorkspaceToolsScopeCubit, WorkspaceToolsScopeState>(
         builder: (context, scopeState) => WorkspaceToolsScope(

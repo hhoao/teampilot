@@ -81,6 +81,7 @@ class WorkspaceToolsScopeCubit extends Cubit<WorkspaceToolsScopeState> {
       super(const WorkspaceToolsScopeState());
 
   final SessionLifecycleService _lifecycle;
+  int _syncGeneration = 0;
 
   Future<void> sync({
     required List<WorkspaceFolder> workspaceFolders,
@@ -88,10 +89,12 @@ class WorkspaceToolsScopeCubit extends Cubit<WorkspaceToolsScopeState> {
     required List<String> additionalPaths,
     List<WorkspaceFolder>? sessionFolders,
   }) async {
+    final generation = ++_syncGeneration;
     final folders = sessionFolders != null && sessionFolders.isNotEmpty
         ? sessionFolders
         : workspaceFolders;
     if (folders.isEmpty) {
+      if (generation != _syncGeneration || isClosed) return;
       emit(const WorkspaceToolsScopeState(resolving: false));
       return;
     }
@@ -102,7 +105,7 @@ class WorkspaceToolsScopeCubit extends Cubit<WorkspaceToolsScopeState> {
       folders: folders,
       paths: [cwd, ...additionalPaths],
     );
-    if (isClosed) return;
+    if (generation != _syncGeneration || isClosed) return;
 
     final activeRoots = WorkspaceToolsContext.rootsOnTarget(
       folders: folders,
@@ -127,6 +130,8 @@ class WorkspaceToolsScopeCubit extends Cubit<WorkspaceToolsScopeState> {
               roots: activeRoots,
             ),
           ];
+
+    if (generation != _syncGeneration || isClosed) return;
 
     emit(
       WorkspaceToolsScopeState(

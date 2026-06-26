@@ -40,21 +40,6 @@ class WorkspaceSplitPane extends StatefulWidget {
 class _WorkspaceSplitPaneState extends State<WorkspaceSplitPane> {
   double? _sidebarWidth;
 
-  /// Working directory of the active session if it belongs to this workspace,
-  /// used to seed the initial current worktree. Null when none applies.
-  String? _activeSessionPath(BuildContext ctx) {
-    final chat = ctx.read<ChatCubit>().state;
-    final activeId = chat.activeSessionId;
-    if (activeId == null || activeId.isEmpty) return null;
-    for (final s in chat.sessions) {
-      if (s.sessionId == activeId &&
-          s.workspaceId == widget.workspace.workspaceId) {
-        return s.firstFolderPath;
-      }
-    }
-    return null;
-  }
-
   @override
   Widget build(BuildContext context) {
     final chatLifecycle = context.read<ChatCubit>().lifecycle;
@@ -65,11 +50,8 @@ class _WorkspaceSplitPaneState extends State<WorkspaceSplitPane> {
         ),
         BlocProvider<WorktreeCubit>(
           key: ValueKey('worktree-${widget.workspace.workspaceId}'),
-          create: (ctx) => WorktreeCubit(workspaceId: widget.workspace.workspaceId)
-            ..load(
-              widget.workspace.firstFolderPath,
-              preferCurrentPath: _activeSessionPath(ctx),
-            ),
+          create: (_) =>
+              WorktreeCubit(workspaceId: widget.workspace.workspaceId),
         ),
       ],
       child: BlocBuilder<WorktreeCubit, WorktreeState>(

@@ -5,7 +5,6 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:teampilot/cubits/chat_cubit.dart';
 import 'package:teampilot/services/git/git_command_runner.dart';
 import 'package:teampilot/services/git/git_service.dart';
-import 'package:teampilot/services/git/git_worktree_service.dart';
 import 'package:teampilot/services/io/workspace_fs_watcher.dart';
 import 'package:teampilot/services/storage/app_storage.dart';
 import 'package:teampilot/services/io/local_filesystem.dart';
@@ -34,21 +33,11 @@ void setUpTestAppStorage() {
           ProcessResult(0, 1, '', ''),
     ),
   );
-  // The worktree sidebar self-builds a GitWorktreeService that would otherwise
-  // spawn `git` when a workspace mounts. Use a process-free runner so it
-  // reports "no worktrees" instead of leaking subprocesses in widget tests.
-  GitWorktreeService.debugOverrideFactory = () => GitWorktreeService(
-    runner: LocalGitCommandRunner(
-      runner: (executable, arguments, {stdoutEncoding, stderrEncoding}) async =>
-          ProcessResult(0, 1, '', ''),
-    ),
-  );
   WorkspaceFsWatcher.debugDisable = true;
 }
 
 void tearDownTestAppStorage() {
   GitService.debugOverrideFactory = null;
-  GitWorktreeService.debugOverrideFactory = null;
   WorkspaceFsWatcher.debugDisable = false;
   AppStorage.resetForTesting();
   AppPathsBootstrapper.resetForTesting();

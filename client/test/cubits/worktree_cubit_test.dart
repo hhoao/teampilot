@@ -1,6 +1,7 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:teampilot/cubits/worktree_cubit.dart';
 import 'package:teampilot/models/git_worktree.dart';
+import 'package:teampilot/services/git/git_worktree_service.dart';
 import 'package:teampilot/services/home_workspace/worktree_ui_prefs_store.dart';
 
 import '../support/in_memory_filesystem.dart';
@@ -12,10 +13,80 @@ class _FakeWorktreeService implements WorktreeLister {
   Future<List<GitWorktree>> list(String repoPath) async => _list;
 }
 
+class _StubGitWorktreeService extends GitWorktreeService {
+  _StubGitWorktreeService(this._worktrees) : super();
+  final List<GitWorktree> _worktrees;
+
+  @override
+  Future<List<GitWorktree>> list(String repoPath) async => _worktrees;
+}
+
+class _DelayedLister implements WorktreeLister {
+  _DelayedLister(this._list, this.delay);
+  final List<GitWorktree> _list;
+  final Duration delay;
+
+  @override
+  Future<List<GitWorktree>> list(String repoPath) async {
+    await Future<void>.delayed(delay);
+    return _list;
+  }
+}
+
+class _DelayedPrefsStore extends WorktreeUiPrefsStore {
+  _DelayedPrefsStore({required this.delay, super.fs, super.pathOverride});
+  final Duration delay;
+
+  @override
+  Future<WorktreeUiPref?> prefsFor(String workspaceId) async {
+    await Future<void>.delayed(delay);
+    return super.prefsFor(workspaceId);
+  }
+}
+
 GitWorktree _wt(String p, {bool main = false}) => GitWorktree(
     path: p, branch: 'refs/heads/x', head: 'h', isBare: false, isMainWorktree: main);
 
 void main() {
+  test('load without lister throws StateError', () {
+    final cubit = WorktreeCubit();
+    expect(cubit.load('/repo'), throwsA(isA<StateError>()));
+  });
+
+  test('bindWorktreeService loads worktrees and honors preferCurrentPath', () async {
+    final cubit = WorktreeCubit();
+    cubit.bindWorktreeService(
+      _StubGitWorktreeService([_wt('/repo', main: true), _wt('/wt/a')]),
+      repoPath: '/repo',
+      preferCurrentPath: '/wt/a/lib/main.dart',
+    );
+    await cubit.stream.firstWhere((s) => !s.loading && s.worktrees.isNotEmpty);
+    expect(cubit.state.worktrees, hasLength(2));
+    expect(cubit.state.currentWorktreePath, '/wt/a');
+  });
+
+  test('hydration runs in parallel with git list on first load', () async {
+    final svc = _DelayedLister(
+      [_wt('/repo', main: true), _wt('/wt/a')],
+      const Duration(milliseconds: 30),
+    );
+    final store = _DelayedPrefsStore(
+      fs: InMemoryFilesystem(),
+      pathOverride: '/prefs/worktree-ui-prefs.json',
+      delay: const Duration(milliseconds: 30),
+    );
+    final cubit = WorktreeCubit(
+      lister: svc,
+      workspaceId: 'w1',
+      prefsStore: store,
+    );
+    final started = DateTime.now();
+    await cubit.load('/repo');
+    final elapsed = DateTime.now().difference(started);
+    expect(cubit.state.worktrees, hasLength(2));
+    expect(elapsed.inMilliseconds, lessThan(55));
+  });
+
   test('load populates worktrees and defaults current to first (main)', () async {
     final svc = _FakeWorktreeService([_wt('/repo', main: true), _wt('/wt/a')]);
     final cubit = WorktreeCubit(lister: svc);

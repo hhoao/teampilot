@@ -13,15 +13,12 @@ abstract class WorktreeLister {
   Future<List<GitWorktree>> list(String repoPath);
 }
 
-class _ServiceLister implements WorktreeLister {
-  _ServiceLister(this._svc);
-  final GitWorktreeService? _svc;
+class _GitWorktreeLister implements WorktreeLister {
+  _GitWorktreeLister(this._service);
+  final GitWorktreeService _service;
+
   @override
-  Future<List<GitWorktree>> list(String repoPath) async {
-    final svc = _svc;
-    if (svc == null) return const [];
-    return svc.list(repoPath);
-  }
+  Future<List<GitWorktree>> list(String repoPath) => _service.list(repoPath);
 }
 
 class WorktreeState {
@@ -58,20 +55,70 @@ class WorktreeState {
       );
 }
 
+/// Snapshot of [WorktreeState] fields that drive [WorkspaceSidebar] grouping.
+class WorktreeSidebarView {
+  const WorktreeSidebarView({
+    required this.worktrees,
+    required this.collapsed,
+    required this.currentWorktreePath,
+  });
+
+  factory WorktreeSidebarView.from(WorktreeState state) => WorktreeSidebarView(
+        worktrees: state.worktrees,
+        collapsed: state.collapsed,
+        currentWorktreePath: state.currentWorktreePath,
+      );
+
+  final List<GitWorktree> worktrees;
+  final Set<String> collapsed;
+  final String currentWorktreePath;
+
+  bool get hasMultipleWorktrees => worktrees.length > 1;
+
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      other is WorktreeSidebarView &&
+          hasMultipleWorktrees == other.hasMultipleWorktrees &&
+          currentWorktreePath == other.currentWorktreePath &&
+          _setEquals(collapsed, other.collapsed) &&
+          _worktreePathsEqual(worktrees, other.worktrees);
+
+  @override
+  int get hashCode => Object.hash(
+        hasMultipleWorktrees,
+        currentWorktreePath,
+        _collapsedHash(collapsed),
+        Object.hashAll(worktrees.map((w) => w.path)),
+      );
+
+  static int _collapsedHash(Set<String> collapsed) {
+    final sorted = collapsed.toList()..sort();
+    return Object.hashAll(sorted);
+  }
+
+  static bool _setEquals(Set<String> a, Set<String> b) =>
+      a.length == b.length && a.containsAll(b);
+
+  static bool _worktreePathsEqual(List<GitWorktree> a, List<GitWorktree> b) {
+    if (a.length != b.length) return false;
+    for (var i = 0; i < a.length; i++) {
+      if (a[i].path != b[i].path) return false;
+    }
+    return true;
+  }
+}
+
 class WorktreeCubit extends Cubit<WorktreeState> {
   WorktreeCubit({
     WorktreeLister? lister,
-    GitWorktreeService? service,
     this.workspaceId = '',
     WorktreeUiPrefsStore? prefsStore,
-  })  : _lister = lister ??
-            _ServiceLister(
-              service ?? GitWorktreeService.debugOverrideFactory?.call(),
-            ),
+  })  : _lister = lister,
         _prefsStore = prefsStore ?? WorktreeUiPrefsStore(),
         super(const WorktreeState());
 
-  WorktreeLister _lister;
+  WorktreeLister? _lister;
   final WorktreeUiPrefsStore _prefsStore;
 
   /// Scopes persisted UI state (collapse + current worktree). Empty disables
@@ -80,11 +127,16 @@ class WorktreeCubit extends Cubit<WorktreeState> {
 
   bool _hydrated = false;
 
-  /// Swaps the git runner when the workspace tools plane resolves a new target.
-  void bindWorktreeService(GitWorktreeService service) {
-    _lister = _ServiceLister(service);
-    final repo = state.repoPath;
-    if (repo.isNotEmpty) unawaited(load(repo));
+  /// Binds the git runner for the resolved workspace tools plane and loads the
+  /// worktree list. Called when the workspace tools [targetId] changes;
+  /// per-session worktree selection uses [syncCurrentForSessionPath].
+  void bindWorktreeService(
+    GitWorktreeService service, {
+    required String repoPath,
+    String? preferCurrentPath,
+  }) {
+    _lister = _GitWorktreeLister(service);
+    unawaited(load(repoPath, preferCurrentPath: preferCurrentPath));
   }
 
   /// Loads the worktree list. Selection priority: an existing valid in-memory
@@ -92,18 +144,29 @@ class WorktreeCubit extends Cubit<WorktreeState> {
   /// containing [preferCurrentPath] (e.g. the active session's directory, §7) →
   /// the main worktree. Collapse state is hydrated from disk on first load.
   Future<void> load(String repoPath, {String? preferCurrentPath}) async {
+    final lister = _lister;
+    if (lister == null) {
+      throw StateError(
+        'WorktreeCubit.load before bindWorktreeService (or test lister)',
+      );
+    }
+
     emit(state.copyWith(repoPath: repoPath, loading: true));
-    final list = await _lister.list(repoPath);
+
+    final hydrating = !_hydrated && workspaceId.isNotEmpty;
+    final listFuture = lister.list(repoPath);
+    final prefFuture =
+        hydrating ? _prefsStore.prefsFor(workspaceId) : Future<WorktreeUiPref?>.value(null);
+
+    final list = await listFuture;
+    final pref = await prefFuture;
+    if (hydrating) _hydrated = true;
 
     var collapsed = state.collapsed;
     String? persistedCurrent;
-    if (!_hydrated && workspaceId.isNotEmpty) {
-      _hydrated = true;
-      final pref = await _prefsStore.prefsFor(workspaceId);
-      if (pref != null) {
-        collapsed = pref.collapsed;
-        persistedCurrent = pref.currentPath;
-      }
+    if (pref != null) {
+      collapsed = pref.collapsed;
+      persistedCurrent = pref.currentPath;
     }
 
     bool inList(String path) =>

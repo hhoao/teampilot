@@ -103,7 +103,9 @@ class _WorkspaceSidebarState
           .toList();
     });
     final sortedSessions = sortAppSessions(rawSessions, sort: _sessionSort);
-    final wtState = context.watch<WorktreeCubit>().state;
+    final wtView = context.select<WorktreeCubit, WorktreeSidebarView>(
+      (c) => WorktreeSidebarView.from(c.state),
+    );
     final personalLaunchBlocked = personalIdentityBlockedForWorkspace(
       isPersonal: _isPersonal,
       folders: widget.workspace.folders,
@@ -203,7 +205,7 @@ class _WorkspaceSidebarState
             child: _buildBody(
               context,
               sortedSessions,
-              wtState,
+              wtView,
               personalLaunchBlocked: personalLaunchBlocked,
             ),
           ),
@@ -218,17 +220,17 @@ class _WorkspaceSidebarState
   Widget _buildBody(
     BuildContext context,
     List<AppSession> sortedSessions,
-    WorktreeState wtState, {
+    WorktreeSidebarView wtView, {
     required bool personalLaunchBlocked,
   }) {
     final l10n = context.l10n;
-    if (!wtState.hasMultipleWorktrees) {
+    if (!wtView.hasMultipleWorktrees) {
       return sortedSessions.isEmpty
           ? _EmptyConversations(label: l10n.homeWorkspaceNoConversations)
           : _buildSessionList(context, sortedSessions);
     }
     final groups = groupSessionsByWorktree(
-      worktrees: wtState.worktrees,
+      worktrees: wtView.worktrees,
       sessions: sortedSessions,
     );
     return ListView(
@@ -244,11 +246,11 @@ class _WorkspaceSidebarState
             sessionTeamFilter: widget.sessionTeamFilter,
             personalLaunchBlocked: personalLaunchBlocked,
             collapsed:
-                wtState.collapsed.contains(worktreeGroupCollapseKey(group)),
+                wtView.collapsed.contains(worktreeGroupCollapseKey(group)),
             isCurrent: group.worktree != null &&
                 workspacePathsEqual(
                   group.worktree!.path,
-                  wtState.currentWorktreePath,
+                  wtView.currentWorktreePath,
                 ),
           ),
       ],
