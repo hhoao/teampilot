@@ -1,92 +1,64 @@
-import 'package:flutter_alacritty/flutter_alacritty.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:teampilot/services/terminal/terminal_layout_coordinator.dart';
 
-/// A minimal [TerminalResizeController] that records transaction calls
-/// without needing a real engine. Used to test [TerminalLayoutCoordinator]
-/// in isolation.
-class _SpyController implements TerminalResizeController {
+class _SpyHoldTarget implements PtyResizeHoldTarget {
   int beginCount = 0;
   int endCount = 0;
-  int commitCount = 0;
   bool lastFlush = true;
 
   @override
-  void beginTransaction() {
+  void beginPtyHold() {
     beginCount++;
   }
 
   @override
-  void endTransaction({bool flush = true}) {
+  void endPtyHold({bool flush = true}) {
     endCount++;
     lastFlush = flush;
   }
-
-  @override
-  void commitNow() {
-    commitCount++;
-  }
-
-  @override
-  void dispose() {}
-
-  // ── Unused by coordinator ──────────────────────────────────────────────
-
-  @override
-  TerminalGrid propose(ViewportQuery query) =>
-      const TerminalGrid(80, 24);
-
-  @override
-  TerminalGrid get current => const TerminalGrid(80, 24);
-
-  @override
-  TerminalGrid? get committed => null;
-
-  @override
-  void Function(int cols, int rows)? onPtyResize;
 }
 
 void main() {
   group('TerminalLayoutCoordinator', () {
     late TerminalLayoutCoordinator coordinator;
-    late _SpyController c1, c2;
+    late _SpyHoldTarget t1, t2;
 
     setUp(() {
       coordinator = TerminalLayoutCoordinator();
-      c1 = _SpyController();
-      c2 = _SpyController();
-      coordinator.register(c1);
-      coordinator.register(c2);
+      t1 = _SpyHoldTarget();
+      t2 = _SpyHoldTarget();
+      coordinator.register(t1);
+      coordinator.register(t2);
     });
 
     tearDown(() {
       coordinator.dispose();
     });
 
-    test('hasControllers reports registered controllers', () {
-      expect(coordinator.hasControllers, isTrue);
+    test('hasTargets reports registered targets', () {
+      expect(coordinator.hasTargets, isTrue);
     });
 
-    test('unregister removes controller', () {
-      coordinator.unregister(c1);
-      expect(coordinator.hasControllers, isTrue); // c2 still registered
-      coordinator.unregister(c2);
-      expect(coordinator.hasControllers, isFalse);
+    test('unregister removes target', () {
+      coordinator.unregister(t1);
+      expect(coordinator.hasTargets, isTrue);
+      coordinator.unregister(t2);
+      expect(coordinator.hasTargets, isFalse);
     });
 
-    test('runLayoutTransactionSync begins and ends on all controllers', () {
+    test('runLayoutTransactionSync begins and ends on all targets', () {
       coordinator.runLayoutTransactionSync(() {});
-      expect(c1.beginCount, 1);
-      expect(c1.endCount, 1);
-      expect(c2.beginCount, 1);
-      expect(c2.endCount, 1);
+      expect(t1.beginCount, 1);
+      expect(t1.endCount, 1);
+      expect(t2.beginCount, 1);
+      expect(t2.endCount, 1);
     });
 
     test('runLayoutTransactionSync with flush:false', () {
       coordinator.runLayoutTransactionSync(() {}, flush: false);
-      expect(c1.endCount, 1);
-      expect(c1.lastFlush, isFalse);
-      expect(c2.lastFlush, isFalse);
+      expect(t1.endCount, 1);
+      expect(t1.lastFlush, isFalse);
+      expect(t2.lastFlush, isFalse);
     });
 
     test('runLayoutTransactionSync ends even if action throws', () {
@@ -96,23 +68,15 @@ void main() {
         }),
         throwsStateError,
       );
-      // Both controllers were ended (with flush:false on throw)
-      expect(c1.endCount, 1);
-      expect(c2.endCount, 1);
-    });
-
-    test('flushAllImmediate calls commitNow on all', () {
-      coordinator.flushAllImmediate();
-      expect(c1.commitCount, 1);
-      expect(c2.commitCount, 1);
+      expect(t1.endCount, 1);
+      expect(t2.endCount, 1);
     });
 
     test('dispose ends all transactions and clears', () {
       coordinator.dispose();
-      // Controllers were ended (flush:false from cancelAllTransactions)
-      expect(c1.endCount, 1);
-      expect(c2.endCount, 1);
-      expect(coordinator.hasControllers, isFalse);
+      expect(t1.endCount, 1);
+      expect(t2.endCount, 1);
+      expect(coordinator.hasTargets, isFalse);
     });
   });
 }

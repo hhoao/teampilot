@@ -12,7 +12,6 @@ import '../cubits/launch_profile_cubit.dart';
 import '../l10n/l10n_extensions.dart';
 import '../models/team_config.dart';
 import '../repositories/session_repository.dart';
-import '../services/terminal/terminal_layout_coordinator.dart';
 import '../services/terminal/terminal_session.dart';
 import '../services/terminal/terminal_theme_mapper.dart';
 import '../theme/workspace_surface_layers.dart';
@@ -38,15 +37,6 @@ class ChatWorkbench extends StatefulWidget {
 
 class _ChatWorkbenchState extends State<ChatWorkbench> {
   TerminalController _terminalController = TerminalController();
-  TerminalResizeController? _resizeController;
-  TerminalLayoutCoordinator? _coordinator;
-
-  /// The engine the current [_resizeController] is bound to. A controller is
-  /// final-bound to one engine, so we recreate it only when the active session's
-  /// engine actually changes — NOT on every rebuild (find bar, theme, member
-  /// switch), which would reset the policy, abort in-flight settles, and leak
-  /// disposed controllers into the coordinator.
-  TerminalEngine? _resizeControllerEngine;
 
   var _findVisible = false;
   var _handledRouteSession = false;
@@ -116,37 +106,8 @@ class _ChatWorkbenchState extends State<ChatWorkbench> {
         state.tabs.length != _lastTabCount;
   }
 
-  /// Returns the resize controller for [session], creating it only when the
-  /// session's engine changed. Disposing the previous controller is paired with
-  /// a coordinator `unregister` so the coordinator never holds a dead controller.
-  TerminalResizeController _ensureResizeController(TerminalSession session) {
-    final existing = _resizeController;
-    if (existing != null &&
-        identical(_resizeControllerEngine, session.engine)) {
-      return existing;
-    }
-    if (existing != null) {
-      _coordinator?.unregister(existing);
-      existing.dispose();
-    }
-    final controller = TerminalResizeController(engine: session.engine);
-    _resizeController = controller;
-    _resizeControllerEngine = session.engine;
-    session.attachResizeController(controller);
-    _coordinator ??= TerminalLayoutCoordinator();
-    _coordinator!.register(controller);
-    return controller;
-  }
-
   @override
   void dispose() {
-    final controller = _resizeController;
-    if (controller != null) {
-      _coordinator?.unregister(controller);
-      controller.dispose();
-    }
-    // Coordinator only forgets its controllers; the line above disposes ours.
-    _coordinator?.dispose();
     _terminalController.dispose();
     _chatSub?.cancel();
     super.dispose();
@@ -313,14 +274,10 @@ class _ChatWorkbenchState extends State<ChatWorkbench> {
                     _terminalController,
                     session.engine,
                   );
-                  // Reuse the controller unless the engine changed — recreating
-                  // it every rebuild would reset the resize policy mid-settle.
-                  final resizeController = _ensureResizeController(session);
                   return ChatWorkbenchRunningTerminal(
                     session: session,
                     terminalTheme: terminalTheme,
                     terminalController: _terminalController,
-                    resizeController: resizeController,
                     findVisible: _findVisible,
                     onFindVisibleChanged: (visible) =>
                         setState(() => _findVisible = visible),

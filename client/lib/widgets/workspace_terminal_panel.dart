@@ -25,11 +25,8 @@ import 'app_icon_button.dart';
 import 'menu/sidebar_action_menu.dart';
 import 'resizable_split_view.dart';
 
-/// Stable key for the workspace terminal's `TerminalView`. Shared across all
-/// entries so switching tabs swaps the engine on a reused view (warm glyph
-/// cache) instead of remounting and painting partial text. See
-/// `chatWorkbenchTerminalViewKey` for the chat-workbench counterpart.
-const Key kWorkspaceTerminalViewKey = ValueKey('workspace-terminal-view');
+/// Debug label for the workspace panel's stable [GlobalKey<TerminalViewState>].
+const String kWorkspaceTerminalViewDebugLabel = 'workspace-terminal-view';
 
 /// VS Code–style bottom panel: main terminal + session list (not chat agent PTY).
 class WorkspaceTerminalPanel extends StatefulWidget {
@@ -53,41 +50,16 @@ class _WorkspaceTerminalPanelState extends State<WorkspaceTerminalPanel> {
 
   var _bootstrapped = false;
 
-  /// Owns resize for the active terminal entry. Created lazily on first use,
-  /// re-created when the active entry changes (different engine).
-  TerminalResizeController? _resizeController;
+  final _terminalViewKey = GlobalKey<TerminalViewState>(
+    debugLabel: kWorkspaceTerminalViewDebugLabel,
+  );
 
-  /// Coordinates resize across entries. Single instance per panel.
+  /// Coordinates PTY holds across layout chrome. Single instance per panel.
   TerminalLayoutCoordinator? _coordinator;
 
-  /// The entry id the current [_resizeController] was created for.
-  String? _controllerEntryId;
-
-  TerminalResizeController _ensureResizeController() {
-    final active = _activeEntry;
-    if (active == null) {
-      throw StateError('_ensureResizeController called with no active entry');
-    }
-    // Invalidate when the active entry changes identity (tab switch).
-    if (_resizeController != null && _controllerEntryId == active.id) {
-      return _resizeController!;
-    }
-    // Dispose old controller (bound to wrong engine), unregistering it first so
-    // the coordinator never keeps a dead controller in its set.
-    if (_resizeController != null) {
-      _coordinator?.unregister(_resizeController!);
-      _resizeController!.dispose();
-    }
-    final c = TerminalResizeController(
-      engine: active.session.engine,
-    );
-    _resizeController = c;
-    _controllerEntryId = active.id;
-    _coordinator ??= TerminalLayoutCoordinator();
-    _coordinator!.register(c);
-    active.session.attachResizeController(c);
-    return c;
-  }
+  PtyResizeHoldTarget? _registeredHoldTarget;
+  TerminalViewState? _registeredViewState;
+  var _registrationScheduled = false;
 
   @override
   void didChangeDependencies() {
@@ -95,6 +67,33 @@ class _WorkspaceTerminalPanelState extends State<WorkspaceTerminalPanel> {
     if (_bootstrapped) return;
     _bootstrapped = true;
     _ensureDefaultEntry();
+  }
+
+  void _syncTerminalViewRegistration() {
+    final state = _terminalViewKey.currentState;
+    if (identical(state, _registeredViewState)) return;
+    if (_registeredHoldTarget != null) {
+      _coordinator?.unregister(_registeredHoldTarget!);
+      _registeredHoldTarget = null;
+      _registeredViewState = null;
+    }
+    if (state == null) return;
+    final target = ptyHoldTargetFor(state);
+    _coordinator ??= TerminalLayoutCoordinator();
+    _coordinator!.register(target);
+    _registeredHoldTarget = target;
+    _registeredViewState = state;
+  }
+
+  /// Registers the mounted [TerminalView] with [_coordinator] at most once per
+  /// frame — avoids queuing redundant sync work on every rebuild.
+  void _scheduleTerminalViewRegistration() {
+    if (_registrationScheduled) return;
+    _registrationScheduled = true;
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _registrationScheduled = false;
+      if (mounted) _syncTerminalViewRegistration();
+    });
   }
 
   @override
@@ -108,12 +107,11 @@ class _WorkspaceTerminalPanelState extends State<WorkspaceTerminalPanel> {
 
   // NOTE: no dispose() of sessions here — the registry owns their lifetime and
   // tears them down via disposeWorkspace when the workspace tab is closed. We
-  // DO own the resize controller + coordinator, so those are torn down below.
+  // DO own the layout coordinator, so that is torn down below.
   @override
   void dispose() {
-    if (_resizeController != null) {
-      _coordinator?.unregister(_resizeController!);
-      _resizeController!.dispose();
+    if (_registeredHoldTarget != null) {
+      _coordinator?.unregister(_registeredHoldTarget!);
     }
     _coordinator?.dispose();
     super.dispose();
@@ -327,10 +325,14 @@ class _WorkspaceTerminalPanelState extends State<WorkspaceTerminalPanel> {
         : _WorkspaceTerminalView(
             entry: active,
             theme: theme,
-            resizeController: _ensureResizeController(),
+            terminalViewKey: _terminalViewKey,
             onContextMenu: (position, cell) =>
                 _showContextMenu(context, active, position, cell),
           );
+
+    if (active != null && cwd.isNotEmpty) {
+      _scheduleTerminalViewRegistration();
+    }
 
     return ColoredBox(
       key: AppKeys.workspaceTerminalPanel,
@@ -370,13 +372,10 @@ class _WorkspaceTerminalPanelState extends State<WorkspaceTerminalPanel> {
             width,
           );
         },
-        // Divider drag: let StableFrameCommitPolicy gate naturally.
-        // flushAllImmediate at drag end forces a synchronous engine.resize
-        // which can trigger MirrorGrid snapshot + CustomPaint repaint while
-        // the ResizableSplitView is still settling from its own setState.
-        // The settle timer (150ms) handles the final commit reliably.
-        onDragStart: () {},
-        onDragEnd: () {},
+        // Suppress PTY SIGWINCH while the session-sidebar divider moves; the
+        // view still tracks the live grid internally.
+        onDragStart: () => _coordinator?.beginAllTransactions(),
+        onDragEnd: () => _coordinator?.endAllTransactions(flush: true),
       ),
     );
   }
@@ -386,14 +385,14 @@ class _WorkspaceTerminalView extends StatelessWidget {
   const _WorkspaceTerminalView({
     required this.entry,
     required this.theme,
+    required this.terminalViewKey,
     required this.onContextMenu,
-    this.resizeController,
   });
 
   final WorkspaceTerminalEntry entry;
   final TerminalTheme theme;
+  final GlobalKey<TerminalViewState> terminalViewKey;
   final void Function(Offset globalPosition, CellOffset? cell) onContextMenu;
-  final TerminalResizeController? resizeController;
 
   @override
   Widget build(BuildContext context) {
@@ -402,7 +401,7 @@ class _WorkspaceTerminalView extends StatelessWidget {
       color: background,
       child: TerminalView(
         entry.session.engine,
-        key: kWorkspaceTerminalViewKey,
+        key: terminalViewKey,
         controller: entry.controller,
         theme: theme,
         backgroundOpacity: 0.98,
@@ -415,7 +414,7 @@ class _WorkspaceTerminalView extends StatelessWidget {
             .state
             .preferences
             .terminalLinkClickOpensInApp,
-        resizeController: resizeController,
+        onPtyResize: entry.session.onTerminalPtyResize,
         onLinkActivate: (uri) {
           final editorCubit = context.read<EditorCubit>();
           unawaited(

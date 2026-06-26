@@ -200,10 +200,6 @@ class TerminalSession implements TerminalTextSink {
   int _pendingViewportCols = 80;
   int _pendingViewportRows = 24;
 
-  /// The attached resize controller. When non-null, PTY geometry is driven by
-  /// the controller's stability-gated policy instead of the legacy timer path.
-  TerminalResizeController? _resizeController;
-
   /// Serializes [submitFullScreenInput] so overlapping bracketed-paste + CR
   /// injections never interleave their carriage returns.
   Future<void> _ptySubmitChain = Future<void>.value();
@@ -212,17 +208,8 @@ class TerminalSession implements TerminalTextSink {
   /// full-screen TUI CLIs, matching Claude Code's own ~10ms child-PTY delay.
   static const _fullScreenSubmitDelay = Duration(milliseconds: 10);
 
-  // Prefer the committed grid (what the PTY actually has) over the proposed
-  // `current`, which can lead the engine mid-drag. Before the first commit
-  // `committed` is null, so spawn-time reads fall back to the fresh proposal.
-  int get viewWidth =>
-      _resizeController?.committed?.cols ??
-      _resizeController?.current.cols ??
-      _pendingViewportCols;
-  int get viewHeight =>
-      _resizeController?.committed?.rows ??
-      _resizeController?.current.rows ??
-      _pendingViewportRows;
+  int get viewWidth => _pendingViewportCols;
+  int get viewHeight => _pendingViewportRows;
 
   bool get isRunning =>
       (_launchPhase == _LaunchPhase.running ||
@@ -265,41 +252,31 @@ class TerminalSession implements TerminalTextSink {
     );
   }
 
-  /// Called from [TerminalView.onViewportResize] when the cell grid changes.
+  /// Called from [TerminalView.onPtyResize] when the view commits a new grid.
   ///
-  /// **Deprecated.** Use [attachResizeController] instead. This path uses
-  /// wall-clock timers and is kept only for callers that haven't migrated.
-  /// When a controller is attached, this is a no-op.
-  @Deprecated('Use attachResizeController instead')
+  /// The view owns [engine.resize]; this only tracks pending geometry and
+  /// SIGWINCHs the PTY once the transport is ready.
+  void onTerminalPtyResize(int columns, int rows) {
+    if (columns < kMinTerminalColumns || rows < kMinTerminalRows) return;
+    _pendingViewportCols = columns;
+    _pendingViewportRows = rows;
+    if (!_transportReadyForIo || _transport == null) {
+      _pendingPtyResizeCols = columns;
+      _pendingPtyResizeRows = rows;
+      return;
+    }
+    _transport!.resize(rows, columns);
+  }
+
+  /// Legacy test shim: resizes the engine and PTY without a mounted [TerminalView].
+  @Deprecated('Tests only — production uses TerminalView.onPtyResize')
   void onViewportResize(int columns, int rows) {
-    if (_resizeController != null) return; // controller handles it
     if (columns < kMinTerminalColumns || rows < kMinTerminalRows) return;
     _pendingViewportCols = columns;
     _pendingViewportRows = rows;
     engine.resize(columns: columns, rows: rows);
     _syncPtyGeometryNow(columns, rows);
     _scheduleLayoutPtyGeometrySettle();
-  }
-
-  /// Attach a [TerminalResizeController] so the session follows its
-  /// stability-gated PTY commits instead of the legacy timer-based path.
-  ///
-  /// After this call, [onViewportResize] becomes a no-op and the controller
-  /// handles all PTY geometry via its policy.
-  void attachResizeController(TerminalResizeController controller) {
-    _resizeController = controller;
-    controller.onPtyResize = (cols, rows) {
-      _pendingViewportCols = cols;
-      _pendingViewportRows = rows;
-      if (!_transportReadyForIo || _transport == null) {
-        // Transport not ready yet (still spawning). Remember the size and flush
-        // it when the transport comes up, instead of silently dropping it.
-        _pendingPtyResizeCols = cols;
-        _pendingPtyResizeRows = rows;
-        return;
-      }
-      _transport!.resize(rows, cols);
-    };
   }
 
   /// A PTY resize that arrived before the transport was ready. Flushed by
@@ -579,9 +556,8 @@ class TerminalSession implements TerminalTextSink {
     );
   }
 
-  /// Direct PTY resize — no timers, no settle, no debounce. Called only from
-  /// the legacy [onViewportResize] path. When a controller is attached, all
-  /// PTY geometry flows through the controller's policy instead.
+  /// Direct PTY resize — no timers, no settle, no debounce. Used only by the
+  /// deprecated [onViewportResize] test shim.
   void _syncPtyGeometryNow(int cols, int rows) {
     if (cols <= 0 || rows <= 0) return;
     if (_transport == null) return;
@@ -589,7 +565,7 @@ class TerminalSession implements TerminalTextSink {
     _transport!.resize(rows, cols);
   }
 
-  /// 80ms settle after a legacy layout resize; kept for [onViewportResize].
+  /// 80ms settle after a legacy layout resize; kept for deprecated [onViewportResize].
   void _scheduleLayoutPtyGeometrySettle() {
     Timer(const Duration(milliseconds: 80), () {
       if (_transport == null || !_transportReadyForIo) return;
@@ -670,8 +646,7 @@ class TerminalSession implements TerminalTextSink {
       activityTracker.markActive();
     }
     engine.feed(data);
-    // PTY geometry is managed by TerminalResizeController when attached,
-    // or by the legacy onViewportResize path. No output-driven re-sync.
+    // PTY geometry is managed by TerminalView.onPtyResize → onTerminalPtyResize.
   }
 
   Future<void> _startTransport({
@@ -688,12 +663,10 @@ class TerminalSession implements TerminalTextSink {
       await Future<void>.delayed(Duration.zero);
       if (startGeneration != _transportStartGeneration || !_starting) return;
 
-      // By now the view has mounted and the controller (if attached) has
-      // proposed the real grid. Use the controller's authoritative size;
-      // fall back to the captured cols/rows for legacy callers.
-      final ctrl = _resizeController;
-      final startCols = ctrl?.current.cols ?? _pendingViewportCols;
-      final startRows = ctrl?.current.rows ?? _pendingViewportRows;
+      // By now the view may have mounted and reported the real grid via
+      // onTerminalPtyResize; fall back to the connect-time guess otherwise.
+      final startCols = _pendingViewportCols;
+      final startRows = _pendingViewportRows;
       engine.resize(columns: startCols, rows: startRows);
       engine.initializeEmpty(startRows, startCols);
       final theme = _terminalTheme;
@@ -714,11 +687,9 @@ class TerminalSession implements TerminalTextSink {
           return;
         }
       }
-      // PTY still spawns at the connect-time guess (cols/rows) by design — the
-      // reconciliation block below corrects it (and the engine) to the pending
-      // geometry right after attach, matching the original spawn-then-resize
-      // flow. Only the engine init above adopts the pending size, so the mirror
-      // grid is never left clobbered at the guess.
+      // PTY still spawns at the connect-time guess (cols/rows) by design;
+      // [_flushPendingPtyResize] reconciles to [onTerminalPtyResize] geometry
+      // once the transport enters the confirming phase.
       final transport = await _transportStarter(
         executable,
         arguments: args,
@@ -733,23 +704,6 @@ class TerminalSession implements TerminalTextSink {
       }
       _transport = transport;
       _enterConfirmingPhase();
-
-      // Reconcile: if the controller has a current grid that differs from
-      // spawn time, push it to engine + PTY now. This handles the case where
-      // the view's first LayoutBuilder fired during the awaits above.
-      if (ctrl != null) {
-        final current = ctrl.current;
-        if (current.cols != startCols || current.rows != startRows) {
-          _pendingViewportCols = current.cols;
-          _pendingViewportRows = current.rows;
-          engine.resize(columns: current.cols, rows: current.rows);
-          transport.resize(current.rows, current.cols);
-        }
-        // Force first PTY commit through the controller now that transport is
-        // ready — the initial proposal may have been gated by the policy while
-        // the transport wasn't ready yet.
-        ctrl.commitNow();
-      }
 
       _outputSubscription = transport.output.listen((Uint8List data) {
         if (data.isEmpty) return;

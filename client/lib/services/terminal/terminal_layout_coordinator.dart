@@ -1,8 +1,30 @@
 import 'package:flutter_alacritty/flutter_alacritty.dart';
 
-/// Coordinates PTY resize across all [TerminalResizeController] instances during
-/// structural layout changes (sidebar collapse, divider drag, worktree switch,
-/// tab open/close, split create/destroy).
+/// Bracket target for suppressing PTY SIGWINCH during layout animation.
+abstract interface class PtyResizeHoldTarget {
+  void beginPtyHold();
+  void endPtyHold({bool flush = true});
+}
+
+/// Adapts [TerminalViewState] to [PtyResizeHoldTarget].
+PtyResizeHoldTarget ptyHoldTargetFor(TerminalViewState state) =>
+    _TerminalViewHoldTarget(state);
+
+final class _TerminalViewHoldTarget implements PtyResizeHoldTarget {
+  _TerminalViewHoldTarget(this._state);
+
+  final TerminalViewState _state;
+
+  @override
+  void beginPtyHold() => _state.beginPtyHold();
+
+  @override
+  void endPtyHold({bool flush = true}) => _state.endPtyHold(flush: flush);
+}
+
+/// Coordinates PTY resize holds across terminal panes during structural layout
+/// changes (sidebar collapse, divider drag, worktree switch, tab open/close,
+/// split create/destroy).
 ///
 /// Counterpart of orca's `holdPtyResizesForPaneSubtrees` + `SYNC_FIT_PANES_EVENT`.
 ///
@@ -13,25 +35,25 @@ import 'package:flutter_alacritty/flutter_alacritty.dart';
 /// });
 /// ```
 ///
-/// One instance per app, provided via DI. Controllers auto-register on mount
-/// and unregister on dispose.
+/// One instance per terminal host (e.g. workspace terminal panel). Targets
+/// auto-register on mount and unregister on dispose.
 class TerminalLayoutCoordinator {
-  final Set<TerminalResizeController> _controllers = {};
+  final Set<PtyResizeHoldTarget> _targets = {};
 
-  /// Register a controller. Called when a [TerminalView] mounts.
-  void register(TerminalResizeController controller) {
-    _controllers.add(controller);
+  /// Register a terminal view. Called when a [TerminalView] mounts.
+  void register(PtyResizeHoldTarget target) {
+    _targets.add(target);
   }
 
-  /// Unregister a controller. Called when a [TerminalView] disposes.
-  void unregister(TerminalResizeController controller) {
-    _controllers.remove(controller);
+  /// Unregister a terminal view. Called when a [TerminalView] disposes.
+  void unregister(PtyResizeHoldTarget target) {
+    _targets.remove(target);
   }
 
-  /// Whether any controllers are registered.
-  bool get hasControllers => _controllers.isNotEmpty;
+  /// Whether any targets are registered.
+  bool get hasTargets => _targets.isNotEmpty;
 
-  /// Run [action] while PTY resizes are held for all registered controllers.
+  /// Run [action] while PTY resizes are held for all registered targets.
   /// After [action] completes, flush the final grid to the PTY.
   ///
   /// If [action] is asynchronous, PTY resizes remain held until it completes.
@@ -40,91 +62,72 @@ class TerminalLayoutCoordinator {
     Future<void> Function() action, {
     bool flush = true,
   }) async {
-    for (final c in _controllers) {
-      c.beginTransaction();
+    for (final t in _targets) {
+      t.beginPtyHold();
     }
     try {
       await action();
     } catch (_) {
-      // Cancelled: discard queued resizes.
-      for (final c in _controllers) {
-        c.endTransaction(flush: false);
+      for (final t in _targets) {
+        t.endPtyHold(flush: false);
       }
       rethrow;
     }
-    for (final c in _controllers) {
-      c.endTransaction(flush: flush);
+    for (final t in _targets) {
+      t.endPtyHold(flush: flush);
     }
   }
 
   /// Synchronous variant for purely synchronous layout changes (e.g. immediate
   /// setState that doesn't await anything).
-  ///
-  /// Matches [runLayoutTransaction]'s cancel semantics: if [action] throws, the
-  /// held resizes are discarded (`flush: false`) before the error propagates,
-  /// so a failed layout change never pushes a half-applied grid to the PTY.
   void runLayoutTransactionSync(
     void Function() action, {
     bool flush = true,
   }) {
-    for (final c in _controllers) {
-      c.beginTransaction();
+    for (final t in _targets) {
+      t.beginPtyHold();
     }
     try {
       action();
     } catch (_) {
-      for (final c in _controllers) {
-        c.endTransaction(flush: false);
+      for (final t in _targets) {
+        t.endPtyHold(flush: false);
       }
       rethrow;
     }
-    for (final c in _controllers) {
-      c.endTransaction(flush: flush);
+    for (final t in _targets) {
+      t.endPtyHold(flush: flush);
     }
   }
 
-  /// Begin a transaction on all controllers. Use with [endAllTransactions]
-  /// for multi-frame operations like divider drag where the action spans
-  /// from a drag-start callback to a drag-end callback.
+  /// Begin a hold on all targets. Use with [endAllTransactions] for multi-frame
+  /// operations like divider drag where the action spans drag-start to drag-end.
   void beginAllTransactions() {
-    for (final c in _controllers) {
-      c.beginTransaction();
+    for (final t in _targets) {
+      t.beginPtyHold();
     }
   }
 
-  /// End transactions on all controllers, flushing queued PTY resizes if
-  /// [flush] is true.
+  /// End holds on all targets, flushing queued PTY resizes if [flush] is true.
   void endAllTransactions({bool flush = true}) {
-    for (final c in _controllers) {
-      c.endTransaction(flush: flush);
+    for (final t in _targets) {
+      t.endPtyHold(flush: flush);
     }
   }
 
-  /// Immediate flush for all controllers — ensures every pane's PTY is at the
-  /// current grid. Used after font-zoom, theme change, or any synchronous
-  /// layout change that should take effect right now (similar to orca's
-  /// `SYNC_FIT_PANES_EVENT` path for layout-effect pre-paint fit).
-  void flushAllImmediate() {
-    for (final c in _controllers) {
-      c.commitNow();
-    }
-  }
-
-  /// Cancel all held transactions in all controllers.
+  /// Cancel all held transactions in all targets.
   void cancelAllTransactions() {
-    for (final c in _controllers) {
-      c.endTransaction(flush: false);
+    for (final t in _targets) {
+      t.endPtyHold(flush: false);
     }
   }
 
-  /// Cancel any held transactions and forget all controllers.
+  /// Cancel any held transactions and forget all targets.
   ///
-  /// Does **not** dispose the registered controllers: their lifetime is owned
-  /// by the host (the chat workbench / workspace panel that created them), which
-  /// disposes each controller when it swaps the active engine or unmounts.
-  /// Disposing them here too would double-dispose.
+  /// Does **not** dispose the registered views: their lifetime is owned by the
+  /// host widget that created them.
   void dispose() {
     cancelAllTransactions();
-    _controllers.clear();
+    _targets.clear();
   }
 }

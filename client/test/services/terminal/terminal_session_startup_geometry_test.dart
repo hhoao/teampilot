@@ -46,48 +46,64 @@ class _FakeTransport implements TerminalTransport {
   }
 }
 
+TerminalSession _sessionWithFakeTransport(_FakeTransport handle) {
+  return TerminalSession(
+    executable: _ptyTestExecutable,
+    transportStarter:
+        (
+          executable, {
+          required arguments,
+          required workingDirectory,
+          required columns,
+          required rows,
+          environment,
+        }) {
+          return Future.value(handle);
+        },
+  );
+}
+
 void main() {
-  // Regression: the embedding view reports its real cell grid through
-  // [TerminalSession.onViewportResize] at the end of the mount frame, which
-  // runs BEFORE the deferred (Timer(0)) body of `_startTransport`. The bug:
-  // that body called `engine.initializeEmpty(24, 80)`, clobbering the grid the
-  // view had just sized, and the post-spawn reconciliation resized only the
-  // PTY — never the engine. The mirror grid was then stuck at 24 rows inside a
-  // taller viewport, so new output rendered into the top rows with dead space
-  // below and the view could not reach the live bottom until a window resize
-  // re-fired `onViewportResize`.
-  test('engine grid adopts viewport geometry reported before spawn', () async {
+  // Regression: [TerminalView.onPtyResize] → [onTerminalPtyResize] reports the
+  // real cell grid before the deferred (Timer(0)) body of `_startTransport`. The
+  // bug: that body called `engine.initializeEmpty(24, 80)`, clobbering the grid
+  // the view had just sized. The mirror grid was then stuck at 24 rows inside a
+  // taller viewport until a window resize re-fired resize.
+  test('engine grid adopts geometry from onTerminalPtyResize before spawn',
+      () async {
     final handle = _FakeTransport();
-    final session = TerminalSession(
-      executable: _ptyTestExecutable,
-      transportStarter:
-          (
-            executable, {
-            required arguments,
-            required workingDirectory,
-            required columns,
-            required rows,
-            environment,
-          }) {
-            return Future.value(handle);
-          },
-    );
+    final session = _sessionWithFakeTransport(handle);
     addTearDown(() async {
       session.dispose();
       await handle.outputController.close();
     });
 
     session.connect(workingDirectory: Directory.systemTemp.path);
-    // Lands in the same turn, before the deferred _startTransport body — the
-    // ordering the real app hits on every launch (post-frame ahead of Timer(0)).
-    session.onViewportResize(120, 40);
+    // Production path: view owns engine.resize; session only records geometry
+    // and SIGWINCHs the PTY once transport is ready.
+    session.onTerminalPtyResize(120, 40);
     await Future<void>.delayed(const Duration(milliseconds: 300));
     await flushTerminalEngine(session.engine);
 
-    // The mirror grid must match the real viewport, not the 80x24 placeholder.
     expect(session.engine.grid.rows, 40);
     expect(session.engine.grid.columns, 120);
-    // And the PTY was reconciled to the same geometry after attach.
     expect(handle.resizeCalls, contains((40, 120)));
+  });
+
+  test('onTerminalPtyResize queues PTY SIGWINCH until transport is ready',
+      () async {
+    final handle = _FakeTransport();
+    final session = _sessionWithFakeTransport(handle);
+    addTearDown(() async {
+      session.dispose();
+      await handle.outputController.close();
+    });
+
+    session.connect(workingDirectory: Directory.systemTemp.path);
+    session.onTerminalPtyResize(100, 30);
+    expect(handle.resizeCalls, isEmpty);
+
+    await Future<void>.delayed(const Duration(milliseconds: 300));
+    expect(handle.resizeCalls, contains((30, 100)));
   });
 }

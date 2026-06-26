@@ -35,7 +35,6 @@ class ChatWorkbenchRunningTerminal extends StatelessWidget {
     required this.onOpenLink,
     required this.onDisconnect,
     required this.onRestart,
-    this.resizeController,
     super.key,
   });
 
@@ -48,7 +47,6 @@ class ChatWorkbenchRunningTerminal extends StatelessWidget {
   final Future<void> Function(String uri) onOpenLink;
   final VoidCallback onDisconnect;
   final Future<void> Function() onRestart;
-  final TerminalResizeController? resizeController;
 
   /// Fresh per-build ingestor for a drop region — stateless, captures the
   /// session's current namespace + CLI paste behavior.
@@ -105,7 +103,7 @@ class ChatWorkbenchRunningTerminal extends StatelessWidget {
                 .state
                 .preferences
                 .terminalLinkClickOpensInApp,
-            resizeController: resizeController,
+            onPtyResize: session.onTerminalPtyResize,
             onTapDown: (_, offset) {
               if (!HardwareKeyboard.instance.isControlPressed &&
                   !HardwareKeyboard.instance.isMetaPressed) {

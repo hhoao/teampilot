@@ -315,7 +315,7 @@ packages:
       path: "packages/flutter_alacritty"
       relative: true
     source: path
-    version: "2.1.0"
+    version: "2.2.0"
   flutter_animate:
     dependency: "direct main"
     description:
@@ -934,7 +934,7 @@ packages:
       path: "packages/flutter_alacritty/packages/rust_lib_flutter_alacritty"
       relative: true
     source: path
-    version: "0.1.0"
+    version: "0.2.0"
   screen_retriever:
     dependency: transitive
     description:
