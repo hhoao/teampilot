@@ -30,6 +30,7 @@ class _AppPortalState extends State<AppPortal> with SingleTickerProviderStateMix
   final layerLink = LayerLink();
   final overlayPortalController = OverlayPortalController();
   final overlayKey = GlobalKey();
+  final _targetKey = GlobalKey();
   late final AnimationController _transitionController;
   late final Animation<double> _fadeAnimation;
   late final Animation<double> _scaleAnimation;
@@ -68,23 +69,35 @@ class _AppPortalState extends State<AppPortal> with SingleTickerProviderStateMix
   }
 
   void _updateVisibility() {
-    final shouldShow = widget.visible;
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (!mounted) return;
-      if (shouldShow) {
+      if (widget.visible) {
         _show();
-        // Avoid replaying open animation on parent rebuilds while already open.
-        if (_transitionController.status == AnimationStatus.dismissed) {
-          _transitionController.forward(from: 0);
+        if (widget.transitionDuration == Duration.zero) {
+          _transitionController.value = 1.0;
+          return;
         }
+        // Always forward — handles re-open after reverse, and re-open while
+        // reverse is still running (otherwise opacity stays at 0).
+        _transitionController.forward();
         return;
       }
-      if (_transitionController.status == AnimationStatus.dismissed) {
+      if (widget.transitionDuration == Duration.zero) {
+        _transitionController.value = 0.0;
+        _hide();
+        return;
+      }
+      if (_transitionController.value <= 0) {
         _hide();
         return;
       }
       _transitionController.reverse().whenComplete(() {
-        if (!mounted || widget.visible) return;
+        if (!mounted) return;
+        if (widget.visible) {
+          _show();
+          _transitionController.forward(from: 0);
+          return;
+        }
         _hide();
       });
     });
@@ -111,6 +124,9 @@ class _AppPortalState extends State<AppPortal> with SingleTickerProviderStateMix
   }
 
   Widget _buildAnimatedPortal(BuildContext context, Widget child) {
+    if (widget.transitionDuration == Duration.zero) {
+      return child;
+    }
     return FadeTransition(
       opacity: _fadeAnimation,
       child: ScaleTransition(
@@ -126,12 +142,21 @@ class _AppPortalState extends State<AppPortal> with SingleTickerProviderStateMix
       MediaQuery.sizeOf(context);
     }
     final overlayState = Overlay.of(context, debugRequiredFor: widget);
-    final box = context.findRenderObject()! as RenderBox;
+    // overlayChildBuilder's [context] is not the anchor — use [_targetKey].
+    final box = _targetKey.currentContext?.findRenderObject() as RenderBox?;
+    if (box == null || !box.hasSize) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (mounted) setState(() {});
+      });
+      return const SizedBox.shrink();
+    }
     final overlayAncestor =
         overlayState.context.findRenderObject()! as RenderBox;
 
     final overlay = overlayKey.currentContext?.findRenderObject() as RenderBox?;
-    final overlaySize = overlay?.size ?? Size.zero;
+    final overlaySize =
+        overlay != null && overlay.hasSize ? overlay.size : Size.zero;
+    final needsMeasure = overlay == null || !overlay.hasSize;
 
     final targetOffset = switch (anchor.targetAnchor) {
       Alignment.topLeft => box.size.topLeft(Offset.zero),
@@ -172,7 +197,7 @@ class _AppPortalState extends State<AppPortal> with SingleTickerProviderStateMix
       ancestor: overlayAncestor,
     );
 
-    if (overlay == null) {
+    if (needsMeasure) {
       WidgetsBinding.instance.addPostFrameCallback((_) {
         if (mounted) setState(() {});
       });
@@ -185,15 +210,9 @@ class _AppPortalState extends State<AppPortal> with SingleTickerProviderStateMix
       ),
       child: KeyedSubtree(
         key: overlayKey,
-        child: Visibility.maintain(
-          visible: overlay != null,
-          child: IgnorePointer(
-            ignoring: overlay == null,
-            child: _buildAnimatedPortal(
-              context,
-              widget.portalBuilder(context),
-            ),
-          ),
+        child: _buildAnimatedPortal(
+          context,
+          widget.portalBuilder(context),
         ),
       ),
     );
@@ -223,6 +242,7 @@ class _AppPortalState extends State<AppPortal> with SingleTickerProviderStateMix
   @override
   Widget build(BuildContext context) {
     return CompositedTransformTarget(
+      key: _targetKey,
       link: layerLink,
       child: OverlayPortal(
         controller: overlayPortalController,

@@ -141,11 +141,4 @@ class LayoutCubit extends Cubit<LayoutState> {
   Future<void> setWorkspaceTerminalHeight(double height) => _save(
     state.preferences.copyWith(workspaceTerminalHeight: height),
   );
-
-  Future<void> setWorkspaceTerminalSessionSidebarWidth(double width) =>
-      _save(
-        state.preferences.copyWith(
-          workspaceTerminalSessionSidebarWidth: width,
-        ),
-      );
 }

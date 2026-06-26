@@ -1,7 +1,15 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:teampilot/cubits/chat_cubit.dart';
 import 'package:teampilot/cubits/chat/model/chat_tab.dart';
+import 'package:teampilot/models/workspace_terminal_session_spec.dart';
+import 'package:teampilot/services/terminal/terminal_session.dart';
 import 'package:teampilot/services/terminal/workspace_terminal_registry.dart';
+
+TerminalSession _testSession() => TerminalSession(
+  executable: '/bin/bash',
+  validateLaunch: false,
+  parseExecutable: false,
+);
 
 ChatTab _tab(String id) =>
     ChatTab(info: ChatTabInfo(id: id, title: id, subtitle: ''), cliTeamName: id);
@@ -28,7 +36,12 @@ void main() {
   test('terminal group survives a workspace switch and is restored', () {
     final reg = WorkspaceTerminalRegistry();
     final groupA = reg.groupFor('A');
-    final entry = groupA.addEntry(cwd: '/tmp/a', select: true);
+    final entry = groupA.addEntry(
+      cwd: '/tmp/a',
+      spec: const WorkspaceTerminalLocalSpec('/bin/bash'),
+      session: _testSession(),
+      select: true,
+    );
 
     // Switch to B (group A is untouched in the registry).
     reg.groupFor('B');

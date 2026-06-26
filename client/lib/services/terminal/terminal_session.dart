@@ -26,7 +26,7 @@ import '../../utils/first_user_line_capture.dart';
 import '../../utils/every_user_line_capture.dart';
 import '../../utils/logger.dart';
 import 'terminal_theme_mapper.dart';
-import 'workspace_interactive_shell.dart';
+import '../../models/workspace_shell_launch_plan.dart';
 import '../storage/app_storage.dart';
 import '../workspace_dnd/runtime_target.dart';
 import '../workspace_dnd/terminal_text_sink.dart';
@@ -523,39 +523,36 @@ class TerminalSession implements TerminalTextSink {
   }
 
   /// Interactive login shell for the workspace terminal panel (no CLI flags).
-  void connectShell({
-    required String workingDirectory,
+  void connectWorkspaceShell({
+    required WorkspaceShellLaunchPlan plan,
     VoidCallback? onProcessStarted,
     void Function(String message)? onProcessFailed,
     VoidCallback? onProcessExited,
   }) {
     if (_disposed) return;
     _prepareConnect(
-      workingDirectory: workingDirectory,
+      workingDirectory: plan.workingDirectory,
       onProcessStarted: onProcessStarted,
       onProcessFailed: onProcessFailed,
       onProcessExited: onProcessExited,
     );
-    final executable = WorkspaceInteractiveShell.executable();
-    final ptyWorkingDirectory = LaunchCommandBuilder.workingDirectoryForProcess(
-      workingDirectory.trim().isNotEmpty
-          ? workingDirectory
-          : Directory.current.path,
-      useWslPaths: false,
-    );
+    _runtimeTarget = plan.usesRemoteTransport
+        ? const RuntimeTarget.ssh()
+        : (plan.useWslPaths
+              ? RuntimeTarget.wsl()
+              : _localRuntimeTarget(plan.workingDirectory));
     _extraEnvironment = null;
     _ptyEnvironment = buildPtyEnvironment(
       null,
       themeBackground: _terminalTheme?.background,
+      inheritHostEnvironment: plan.inheritHostEnvironment,
     );
 
-    final launchArgs = WorkspaceInteractiveShell.launchArguments(executable);
-
-    if (!_validateBeforeSpawn(executable, ptyWorkingDirectory)) {
+    if (!_validateBeforeSpawn(plan.executable, plan.workingDirectory)) {
       return;
     }
 
-    _beginStartup(executable);
+    _beginStartup(plan.executable);
 
     _firstUserLineCapture = null;
     _everyUserLineCapture = null;
@@ -564,9 +561,9 @@ class TerminalSession implements TerminalTextSink {
     _listenEngineOutput(null);
 
     _spawnTransport(
-      executable: executable,
-      args: launchArgs,
-      cwd: ptyWorkingDirectory,
+      executable: plan.executable,
+      args: plan.arguments,
+      cwd: plan.workingDirectory,
       cols: viewWidth,
       rows: viewHeight,
     );

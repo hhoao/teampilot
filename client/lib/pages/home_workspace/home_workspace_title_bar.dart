@@ -644,14 +644,18 @@ class _RecentlyClosedOverflowButton extends StatefulWidget {
 
 class _RecentlyClosedOverflowButtonState
     extends State<_RecentlyClosedOverflowButton> {
-  final _menuController = MenuController();
+  final _popoverController = AppPopoverController();
   Timer? _closeTimer;
   var _pointerOnAnchor = false;
   var _pointerOnMenu = false;
 
+  ActionMenuController get _menuController =>
+      ActionMenuController(_popoverController);
+
   @override
   void dispose() {
     _closeTimer?.cancel();
+    _popoverController.dispose();
     super.dispose();
   }
 
@@ -663,16 +667,16 @@ class _RecentlyClosedOverflowButtonState
   void _scheduleClose() {
     _cancelCloseTimer();
     _closeTimer = Timer(_RecentlyClosedOverflowButton._closeDelay, () {
-      if (!_pointerOnAnchor && !_pointerOnMenu && _menuController.isOpen) {
-        _menuController.close();
+      if (!_pointerOnAnchor && !_pointerOnMenu && _popoverController.isOpen) {
+        _popoverController.hide();
       }
     });
   }
 
   void _openMenu() {
     _cancelCloseTimer();
-    if (!_menuController.isOpen) {
-      _menuController.open();
+    if (!_popoverController.isOpen) {
+      _popoverController.show();
     }
   }
 
@@ -683,79 +687,73 @@ class _RecentlyClosedOverflowButtonState
     final cs = Theme.of(context).colorScheme;
     final entries = widget.entries;
 
-    return MenuAnchor(
-      controller: _menuController,
-      style: SidebarActionMenuMetrics.menuAnchorStyle(
-        context,
-        minWidth: _RecentlyClosedOverflowButton._menuWidth,
-      ),
-      alignmentOffset: const Offset(0, 4),
+    return ActionMenuPopoverAnchor(
+      controller: _popoverController,
+      minWidth: _RecentlyClosedOverflowButton._menuWidth,
       onOpen: _cancelCloseTimer,
-      menuChildren: [
-        MouseRegion(
-          onEnter: (_) {
-            _pointerOnMenu = true;
-            _cancelCloseTimer();
-          },
-          onExit: (_) {
-            _pointerOnMenu = false;
-            _scheduleClose();
-          },
-          child: SidebarActionMenuPanel(
-            minWidth: _RecentlyClosedOverflowButton._menuWidth,
-            menuAnchorShell: true,
-            children: [
-              Padding(
-                padding: const EdgeInsets.fromLTRB(12, 4, 12, 8),
-                child: Text(
-                  l10n.homeWorkspaceRecentlyClosed,
-                  style: styles.bodySmall.copyWith(
-                    color: cs.onSurfaceVariant,
-                    fontWeight: FontWeight.w600,
+      popoverBuilder: (context, controller) => MouseRegion(
+        onEnter: (_) {
+          _pointerOnMenu = true;
+          _cancelCloseTimer();
+        },
+        onExit: (_) {
+          _pointerOnMenu = false;
+          _scheduleClose();
+        },
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            Padding(
+              padding: const EdgeInsets.fromLTRB(12, 4, 12, 8),
+              child: Text(
+                l10n.homeWorkspaceRecentlyClosed,
+                style: styles.bodySmall.copyWith(
+                  color: cs.onSurfaceVariant,
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
+            ),
+            if (entries.isEmpty)
+              SidebarActionMenuItem(
+                icon: Icons.inbox_outlined,
+                label: l10n.homeWorkspaceRecentlyClosedEmpty,
+                enabled: false,
+                menuController: _menuController,
+              )
+            else
+              ConstrainedBox(
+                constraints: const BoxConstraints(
+                  maxHeight: _RecentlyClosedOverflowButton._menuMaxHeight,
+                ),
+                child: SingleChildScrollView(
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      for (final entry in entries)
+                        SidebarActionMenuItem(
+                          icon: Icons.description_outlined,
+                          label: entry.displayName,
+                          subtitle: entry.primaryPath.isEmpty
+                              ? null
+                              : Text(
+                                  entry.primaryPath,
+                                  maxLines: 1,
+                                  overflow: TextOverflow.ellipsis,
+                                  style: styles.caption.copyWith(
+                                    color: cs.onSurfaceVariant,
+                                  ),
+                                ),
+                          menuController: _menuController,
+                          onTap: () => widget.onReopen?.call(entry.tabKey),
+                        ),
+                    ],
                   ),
                 ),
               ),
-              if (entries.isEmpty)
-                SidebarActionMenuItem(
-                  icon: Icons.inbox_outlined,
-                  label: l10n.homeWorkspaceRecentlyClosedEmpty,
-                  enabled: false,
-                  menuController: _menuController,
-                )
-              else
-                ConstrainedBox(
-                  constraints: const BoxConstraints(
-                    maxHeight: _RecentlyClosedOverflowButton._menuMaxHeight,
-                  ),
-                  child: SingleChildScrollView(
-                    child: Column(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        for (final entry in entries)
-                          SidebarActionMenuItem(
-                            icon: Icons.description_outlined,
-                            label: entry.displayName,
-                            subtitle: entry.primaryPath.isEmpty
-                                ? null
-                                : Text(
-                                    entry.primaryPath,
-                                    maxLines: 1,
-                                    overflow: TextOverflow.ellipsis,
-                                    style: styles.caption.copyWith(
-                                      color: cs.onSurfaceVariant,
-                                    ),
-                                  ),
-                            menuController: _menuController,
-                            onTap: () => widget.onReopen?.call(entry.tabKey),
-                          ),
-                      ],
-                    ),
-                  ),
-                ),
-            ],
-          ),
+          ],
         ),
-      ],
+      ),
       child: MouseRegion(
         onEnter: (_) {
           _pointerOnAnchor = true;

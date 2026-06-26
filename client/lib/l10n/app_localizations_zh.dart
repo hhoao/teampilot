@@ -1654,6 +1654,27 @@ class AppLocalizationsZh extends AppLocalizations {
   String get workspaceTerminalNewSession => '新建终端';
 
   @override
+  String get workspaceTerminalNewSessionMenu => '新建终端会话菜单';
+
+  @override
+  String get workspaceTerminalNewSshSession => '新建 SSH 会话…';
+
+  @override
+  String get workspaceTerminalSettings => '设置';
+
+  @override
+  String get workspaceTerminalThemeAdaptive => '跟随主题';
+
+  @override
+  String get workspaceTerminalThemeClassicDark => '经典暗色';
+
+  @override
+  String get workspaceTerminalThemeHighContrast => '高对比';
+
+  @override
+  String get workspaceTerminalSshConnectFailed => 'SSH 配置未找到或连接失败';
+
+  @override
   String get workspaceTerminalCloseSession => '关闭终端';
 
   @override

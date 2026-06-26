@@ -14,7 +14,12 @@ import 'package:teampilot/cubits/extension_cubit.dart';
 import 'package:teampilot/cubits/editor_cubit.dart';
 import 'package:teampilot/cubits/layout_cubit.dart';
 import 'package:teampilot/cubits/workspace_tools_cubit.dart';
+import 'package:teampilot/services/terminal/workspace_shell_connector.dart';
 import 'package:teampilot/services/terminal/workspace_terminal_registry.dart';
+import 'package:teampilot/repositories/ssh_credential_store.dart';
+import 'package:teampilot/repositories/ssh_known_host_repository.dart';
+import 'package:teampilot/repositories/ssh_profile_repository.dart';
+import 'package:teampilot/services/terminal/terminal_transport_factory.dart';
 import 'package:teampilot/services/git/git_repo_store.dart';
 import 'package:teampilot/services/file_tree/workspace_file_tree_store.dart';
 import 'package:teampilot/services/workspace/workspace_tools_scope_registry.dart';
@@ -146,6 +151,16 @@ Widget buildTestApp({
       ),
       RepositoryProvider<WorkspaceTerminalRegistry>(
         create: (_) => WorkspaceTerminalRegistry(),
+      ),
+      RepositoryProvider<WorkspaceShellConnector>(
+        create: (_) => WorkspaceShellConnector(
+          transportFactory: TerminalTransportFactory(
+            sshProfileRepository: SshProfileRepository(),
+            sshCredentialStore: InMemorySshCredentialStore(),
+            sshKnownHostRepository: InMemorySshKnownHostRepository(),
+          ),
+          sshProfileRepository: SshProfileRepository(),
+        ),
       ),
       RepositoryProvider<GitRepoStore>(create: (_) => GitRepoStore()),
       RepositoryProvider<WorkspaceFileTreeStore>(

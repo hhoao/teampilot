@@ -91,7 +91,6 @@ Future<void> showChatWorkbenchTerminalContextMenu({
   final selected = await showSidebarActionMenuFromSpecs<String>(
     context: menuContext,
     globalPosition: globalPosition,
-    popUpAnimationStyle: const AnimationStyle(duration: Duration.zero),
     specs: specs,
   );
   if (!menuContext.mounted) return;

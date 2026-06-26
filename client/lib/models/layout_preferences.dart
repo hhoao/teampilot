@@ -29,8 +29,6 @@ class LayoutPreferences {
     this.locale = '',
     this.workspaceTerminalVisible = false,
     this.workspaceTerminalHeight = defaultWorkspaceTerminalHeight,
-    this.workspaceTerminalSessionSidebarWidth =
-        defaultWorkspaceTerminalSessionSidebarWidth,
   });
 
   factory LayoutPreferences.fromJson(Map<String, Object?> json) {
@@ -89,13 +87,6 @@ class LayoutPreferences {
         json['workspaceTerminalHeight'],
         fallback: defaultWorkspaceTerminalHeight,
       ).clamp(minWorkspaceTerminalHeight, maxWorkspaceTerminalHeight),
-      workspaceTerminalSessionSidebarWidth: _doubleValue(
-        json['workspaceTerminalSessionSidebarWidth'],
-        fallback: defaultWorkspaceTerminalSessionSidebarWidth,
-      ).clamp(
-        minWorkspaceTerminalSessionSidebarWidth,
-        maxWorkspaceTerminalSessionSidebarWidth,
-      ),
     ).withAtLeastOneToolVisible();
   }
 
@@ -111,15 +102,9 @@ class LayoutPreferences {
   static const defaultWorkspaceTerminalHeight = 220.0;
   static const minWorkspaceTerminalHeight = 120.0;
   static const maxWorkspaceTerminalHeight = 480.0;
-  static const defaultWorkspaceTerminalSessionSidebarWidth = 200.0;
-  static const minWorkspaceTerminalSessionSidebarWidth = 140.0;
-  static const maxWorkspaceTerminalSessionSidebarWidth = 420.0;
 
   /// Minimum extent for the main workbench column beside a side panel.
   static const minWorkbenchMainWidth = 320.0;
-
-  /// Minimum terminal grid width when a session sidebar is shown.
-  static const minWorkspaceTerminalMainWidth = 200.0;
 
   /// Minimum LLM provider detail column in the config split.
   static const minLlmProviderDetailWidth = 280.0;
@@ -153,7 +138,6 @@ class LayoutPreferences {
   final String locale;
   final bool workspaceTerminalVisible;
   final double workspaceTerminalHeight;
-  final double workspaceTerminalSessionSidebarWidth;
 
   LayoutPreferences copyWith({
     LayoutPreset? preset,
@@ -178,7 +162,6 @@ class LayoutPreferences {
     String? locale,
     bool? workspaceTerminalVisible,
     double? workspaceTerminalHeight,
-    double? workspaceTerminalSessionSidebarWidth,
   }) {
     return LayoutPreferences(
       preset: preset ?? this.preset,
@@ -225,13 +208,6 @@ class LayoutPreferences {
       workspaceTerminalHeight: (workspaceTerminalHeight ??
               this.workspaceTerminalHeight)
           .clamp(minWorkspaceTerminalHeight, maxWorkspaceTerminalHeight),
-      workspaceTerminalSessionSidebarWidth:
-          (workspaceTerminalSessionSidebarWidth ??
-                  this.workspaceTerminalSessionSidebarWidth)
-              .clamp(
-                minWorkspaceTerminalSessionSidebarWidth,
-                maxWorkspaceTerminalSessionSidebarWidth,
-              ),
     ).withAtLeastOneToolVisible();
   }
 
@@ -262,8 +238,6 @@ class LayoutPreferences {
       locale: locale,
       workspaceTerminalVisible: workspaceTerminalVisible,
       workspaceTerminalHeight: workspaceTerminalHeight,
-      workspaceTerminalSessionSidebarWidth:
-          workspaceTerminalSessionSidebarWidth,
     );
   }
 
@@ -292,8 +266,6 @@ class LayoutPreferences {
       'locale': locale,
       'workspaceTerminalVisible': workspaceTerminalVisible,
       'workspaceTerminalHeight': workspaceTerminalHeight,
-      'workspaceTerminalSessionSidebarWidth':
-          workspaceTerminalSessionSidebarWidth,
     };
   }
 }

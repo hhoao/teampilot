@@ -96,6 +96,7 @@ import '../services/file_tree/workspace_file_tree_store.dart';
 import '../services/git/git_repo_store.dart';
 import '../services/workspace/workspace_tools_scope_registry.dart';
 import '../services/workspace/workspace_worktree_registry.dart';
+import '../services/terminal/workspace_shell_connector.dart';
 import '../services/terminal/workspace_terminal_registry.dart';
 import '../utils/logger.dart';
 
@@ -116,6 +117,7 @@ class AppShell {
     required this.sshKnownHostRepo,
     required this.transportFactory,
     required this.workspaceTerminalRegistry,
+    required this.workspaceShellConnector,
     required this.gitRepoStore,
     required this.workspaceFileTreeStore,
     required this.workspaceWorktreeRegistry,
@@ -160,6 +162,7 @@ class AppShell {
   final SshKnownHostRepository sshKnownHostRepo;
   final TerminalTransportFactory transportFactory;
   final WorkspaceTerminalRegistry workspaceTerminalRegistry;
+  final WorkspaceShellConnector workspaceShellConnector;
   final GitRepoStore gitRepoStore;
   final WorkspaceFileTreeStore workspaceFileTreeStore;
   final WorkspaceWorktreeRegistry workspaceWorktreeRegistry;
@@ -604,6 +607,13 @@ Future<AppShell> buildAppShell({
     sshClientFactory: sshClientFactory,
   );
 
+  final workspaceShellConnector = WorkspaceShellConnector(
+    transportFactory: transportFactory,
+    sshProfileRepository: sshProfileRepo,
+    sshUseLoginShell: () =>
+        sessionPreferencesCubit.state.preferences.sshUseLoginShell,
+  );
+
   chatCubit = ChatCubit(
     sessionRepository: sessionRepo,
     lifecycleService: sessionLifecycleService,
@@ -742,6 +752,7 @@ Future<AppShell> buildAppShell({
     sshKnownHostRepo: sshKnownHostRepo,
     transportFactory: transportFactory,
     workspaceTerminalRegistry: workspaceTerminalRegistry,
+    workspaceShellConnector: workspaceShellConnector,
     gitRepoStore: gitRepoStore,
     workspaceFileTreeStore: workspaceFileTreeStore,
     workspaceWorktreeRegistry: workspaceWorktreeRegistry,

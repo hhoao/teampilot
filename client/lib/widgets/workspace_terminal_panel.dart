@@ -1,34 +1,34 @@
 ﻿import 'dart:async';
 
 import 'package:flutter/material.dart';
-import 'package:flutter_animate/flutter_animate.dart';
-import 'package:teampilot/theme/app_icon_sizes.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_alacritty/flutter_alacritty.dart';
 import 'package:flutter_alacritty/input/paste.dart' as alacritty_paste;
 import 'package:flutter_alacritty/input/term_mode.dart' show anyMouse;
 import 'package:flutter_bloc/flutter_bloc.dart';
 
-import '../cubits/editor_cubit.dart';
 import '../cubits/layout_cubit.dart';
-import '../cubits/session_preferences_cubit.dart';
 import '../l10n/l10n_extensions.dart';
-import '../models/layout_preferences.dart';
-import '../services/terminal/terminal_fonts.dart';
-import '../services/terminal/terminal_theme_mapper.dart';
-import '../theme/workspace_surface_layers.dart';
-import '../services/terminal/terminal_uri_opener.dart';
+import '../models/workspace_folder.dart';
+import '../models/workspace_terminal_session_spec.dart';
 import '../services/terminal/terminal_layout_coordinator.dart';
+import '../services/terminal/terminal_theme_mapper.dart';
+import '../services/terminal/terminal_uri_opener.dart';
+import '../services/terminal/workspace_interactive_shell.dart';
+import '../services/terminal/workspace_shell_connector.dart';
+import '../services/terminal/workspace_terminal_connect_coordinator.dart';
 import '../services/terminal/workspace_terminal_registry.dart';
+import '../services/workspace/workspace_tools_scope.dart';
+import '../theme/workspace_surface_layers.dart';
 import '../utils/app_keys.dart';
-import 'app_icon_button.dart';
 import 'menu/sidebar_action_menu.dart';
-import 'resizable_split_view.dart';
+import 'workspace_terminal/workspace_terminal_tab_bar.dart';
+import 'workspace_terminal/workspace_terminal_view.dart';
 
 /// Debug label for the workspace panel's stable [GlobalKey<TerminalViewState>].
 const String kWorkspaceTerminalViewDebugLabel = 'workspace-terminal-view';
 
-/// VS Code–style bottom panel: main terminal + session list (not chat agent PTY).
+/// IntelliJ-style bottom panel: tab row + shell PTY (not chat agent terminals).
 class WorkspaceTerminalPanel extends StatefulWidget {
   const WorkspaceTerminalPanel({
     required this.workspaceId,
@@ -46,7 +46,11 @@ class WorkspaceTerminalPanel extends StatefulWidget {
 class _WorkspaceTerminalPanelState extends State<WorkspaceTerminalPanel> {
   WorkspaceTerminalRegistry get _registry =>
       context.read<WorkspaceTerminalRegistry>();
+  WorkspaceShellConnector get _connector =>
+      context.read<WorkspaceShellConnector>();
   WorkspaceTerminalGroup get _group => _registry.groupFor(widget.workspaceId);
+
+  WorkspaceTerminalConnectCoordinator? _connectCoordinator;
 
   var _bootstrapped = false;
 
@@ -54,12 +58,18 @@ class _WorkspaceTerminalPanelState extends State<WorkspaceTerminalPanel> {
     debugLabel: kWorkspaceTerminalViewDebugLabel,
   );
 
-  /// Coordinates PTY holds across layout chrome. Single instance per panel.
   TerminalLayoutCoordinator? _coordinator;
-
   PtyResizeHoldTarget? _registeredHoldTarget;
   TerminalViewState? _registeredViewState;
   var _registrationScheduled = false;
+
+  List<WorkspaceFolder> get _folders =>
+      WorkspaceToolsScope.maybeOf(context)?.effectiveFolders ?? const [];
+
+  WorkspaceTerminalConnectCoordinator get _connect =>
+      _connectCoordinator ??= WorkspaceTerminalConnectCoordinator(
+        connector: _connector,
+      );
 
   @override
   void didChangeDependencies() {
@@ -67,33 +77,6 @@ class _WorkspaceTerminalPanelState extends State<WorkspaceTerminalPanel> {
     if (_bootstrapped) return;
     _bootstrapped = true;
     _ensureDefaultEntry();
-  }
-
-  void _syncTerminalViewRegistration() {
-    final state = _terminalViewKey.currentState;
-    if (identical(state, _registeredViewState)) return;
-    if (_registeredHoldTarget != null) {
-      _coordinator?.unregister(_registeredHoldTarget!);
-      _registeredHoldTarget = null;
-      _registeredViewState = null;
-    }
-    if (state == null) return;
-    final target = ptyHoldTargetFor(state);
-    _coordinator ??= TerminalLayoutCoordinator();
-    _coordinator!.register(target);
-    _registeredHoldTarget = target;
-    _registeredViewState = state;
-  }
-
-  /// Registers the mounted [TerminalView] with [_coordinator] at most once per
-  /// frame — avoids queuing redundant sync work on every rebuild.
-  void _scheduleTerminalViewRegistration() {
-    if (_registrationScheduled) return;
-    _registrationScheduled = true;
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      _registrationScheduled = false;
-      if (mounted) _syncTerminalViewRegistration();
-    });
   }
 
   @override
@@ -105,9 +88,6 @@ class _WorkspaceTerminalPanelState extends State<WorkspaceTerminalPanel> {
     }
   }
 
-  // NOTE: no dispose() of sessions here — the registry owns their lifetime and
-  // tears them down via disposeWorkspace when the workspace tab is closed. We
-  // DO own the layout coordinator, so that is torn down below.
   @override
   void dispose() {
     if (_registeredHoldTarget != null) {
@@ -119,10 +99,16 @@ class _WorkspaceTerminalPanelState extends State<WorkspaceTerminalPanel> {
 
   WorkspaceTerminalEntry? get _activeEntry => _group.activeEntry;
 
+  WorkspaceTerminalSessionSpec _defaultSpec(String cwd) =>
+      defaultSessionSpecFor(
+        cwd: cwd,
+        folders: _folders,
+        fallbackLocalShell: WorkspaceInteractiveShell.executable(),
+      );
+
   void _ensureDefaultEntry() {
     final cwd = widget.workingDirectory.trim();
     if (_group.entries.isNotEmpty) {
-      // Revisiting a workspace: re-attach controllers to live sessions.
       for (final entry in _group.entries) {
         if (entry.connected && entry.controller.engine == null) {
           entry.controller.attach(entry.session.engine);
@@ -132,7 +118,14 @@ class _WorkspaceTerminalPanelState extends State<WorkspaceTerminalPanel> {
       return;
     }
     if (cwd.isEmpty) return;
-    _addEntry(cwd, select: true);
+    unawaited(
+      _addEntry(
+        cwd: cwd,
+        spec: _defaultSpec(cwd),
+        followWorkspace: true,
+        select: true,
+      ),
+    );
   }
 
   void _syncActiveEntryCwd() {
@@ -140,19 +133,97 @@ class _WorkspaceTerminalPanelState extends State<WorkspaceTerminalPanel> {
     if (cwd.isEmpty) return;
     final active = _activeEntry;
     if (active == null) {
-      _addEntry(cwd, select: true);
+      unawaited(
+        _addEntry(
+          cwd: cwd,
+          spec: _defaultSpec(cwd),
+          followWorkspace: true,
+          select: true,
+        ),
+      );
       return;
     }
-    if (active.cwd == cwd) return;
-    active.cwd = cwd;
-    active.connected = false;
-    _connectEntry(active);
-    setState(() {});
+    unawaited(_syncEntryWithWorkspace(active, cwd));
   }
 
-  void _addEntry(String cwd, {required bool select}) {
-    final entry = _group.addEntry(cwd: cwd, select: select);
-    _connectEntry(entry);
+  Future<void> _syncEntryWithWorkspace(
+    WorkspaceTerminalEntry entry,
+    String cwd,
+  ) async {
+    if (!entry.followWorkspace) {
+      if (entry.cwd == cwd) return;
+      entry.cwd = cwd;
+      entry.connected = false;
+      await _runConnect(entry);
+      if (mounted) setState(() {});
+      return;
+    }
+
+    final newSpec = _defaultSpec(cwd);
+    final specChanged = newSpec != entry.spec;
+    final cwdChanged = entry.cwd != cwd;
+    if (!specChanged && !cwdChanged) return;
+
+    entry.cwd = cwd;
+    entry.bumpConnectGeneration();
+
+    if (specChanged) {
+      entry.session.dispose();
+      entry.spec = newSpec;
+      entry.session = _connector.createSession(newSpec);
+      entry.titleLabel = await _connector.labelForSpec(newSpec);
+      entry.controller.attach(entry.session.engine);
+      entry.connected = false;
+    } else {
+      entry.connected = false;
+    }
+
+    await _runConnect(entry);
+    if (mounted) setState(() {});
+  }
+
+  Future<void> _addEntry({
+    required String cwd,
+    required WorkspaceTerminalSessionSpec spec,
+    required bool select,
+    bool followWorkspace = false,
+  }) async {
+    final session = _connector.createSession(spec);
+    final label = await _connector.labelForSpec(spec);
+    final entry = _group.addEntry(
+      cwd: cwd,
+      spec: spec,
+      session: session,
+      select: select,
+      titleLabel: label,
+      followWorkspace: followWorkspace,
+    );
+    await _runConnect(entry);
+    if (mounted) setState(() {});
+  }
+
+  Future<void> _runConnect(WorkspaceTerminalEntry entry) async {
+    await _connect.connect(
+      group: _group,
+      entry: entry,
+      theme: _terminalTheme(context),
+      sshConnectFailedMessage: context.l10n.workspaceTerminalSshConnectFailed,
+      onStateChanged: () {
+        if (mounted) setState(() {});
+      },
+      mounted: () => mounted,
+    );
+  }
+
+  void _selectEntry(String id) {
+    _group.activeId = id;
+    final entry = _group.entryById(id);
+    if (entry != null &&
+        !entry.connected &&
+        entry.cwd.trim().isNotEmpty &&
+        !entry.session.isDisposed) {
+      unawaited(_runConnect(entry));
+    }
     setState(() {});
   }
 
@@ -183,35 +254,35 @@ class _WorkspaceTerminalPanelState extends State<WorkspaceTerminalPanel> {
     );
   }
 
-  void _connectEntry(WorkspaceTerminalEntry entry) {
-    final cwd = entry.cwd.trim();
-    if (cwd.isEmpty) return;
-    if (entry.connected && entry.session.isRunning) return;
-
-    final theme = _terminalTheme(context);
-    entry.session.applyTerminalTheme(theme);
-    entry.connected = true;
-    if (entry.controller.engine == null) {
-      entry.controller.attach(entry.session.engine);
+  void _syncTerminalViewRegistration() {
+    final state = _terminalViewKey.currentState;
+    if (identical(state, _registeredViewState)) return;
+    if (_registeredHoldTarget != null) {
+      _coordinator?.unregister(_registeredHoldTarget!);
+      _registeredHoldTarget = null;
+      _registeredViewState = null;
     }
-    // Defer spawn until after the first [TerminalView] layout pass reports
-    // real geometry via [TerminalSession.onTerminalPtyResize].
+    if (state == null) return;
+    final target = ptyHoldTargetFor(state);
+    _coordinator ??= TerminalLayoutCoordinator();
+    _coordinator!.register(target);
+    _registeredHoldTarget = target;
+    _registeredViewState = state;
+  }
+
+  void _scheduleTerminalViewRegistration() {
+    if (_registrationScheduled) return;
+    _registrationScheduled = true;
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      if (!mounted || !entry.connected) return;
-      if (entry.session.isRunning || entry.session.isConnecting) return;
-      entry.session.connectShell(
-        workingDirectory: cwd,
-        onProcessStarted: () {
-          if (mounted) setState(() {});
-        },
-        onProcessFailed: (_) {
-          if (mounted) setState(() {});
-        },
-        onProcessExited: () {
-          entry.connected = false;
-          if (mounted) setState(() {});
-        },
-      );
+      _registrationScheduled = false;
+      if (mounted) _syncTerminalViewRegistration();
+    });
+  }
+
+  void _refocusTerminal() {
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) return;
+      _terminalViewKey.currentState?.requestTerminalFocus();
     });
   }
 
@@ -223,8 +294,6 @@ class _WorkspaceTerminalPanelState extends State<WorkspaceTerminalPanel> {
   ) async {
     final mloc = MaterialLocalizations.of(menuContext);
     final hasSelection = entry.controller.selectionActive;
-    // Mouse reporting (TUI) eats plain left-drag, so a terminal selection never
-    // forms and Copy stays disabled. Hint the standard Shift+drag escape hatch.
     final mouseReporting = anyMouse(entry.session.engine.grid.modeFlags);
     final linkUri = cellOffset != null
         ? entry.session.engine.hyperlinkAt(cellOffset.row, cellOffset.column)
@@ -264,6 +333,7 @@ class _WorkspaceTerminalPanelState extends State<WorkspaceTerminalPanel> {
       specs: specs,
     );
     if (!menuContext.mounted) return;
+    _refocusTerminal();
     switch (selected) {
       case 'openLink':
         if (linkUri != null) {
@@ -302,6 +372,20 @@ class _WorkspaceTerminalPanelState extends State<WorkspaceTerminalPanel> {
     }
   }
 
+  void _closePanel() {
+    _coordinator?.beginAllTransactions();
+    context.read<LayoutCubit>().setWorkspaceTerminalVisible(false);
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _coordinator?.endAllTransactions(flush: true);
+    });
+  }
+
+  void _onMenuSessionSelected(WorkspaceTerminalSessionSpec spec) {
+    final dir = widget.workingDirectory.trim();
+    if (dir.isEmpty) return;
+    unawaited(_addEntry(cwd: dir, spec: spec, select: true));
+  }
+
   @override
   Widget build(BuildContext context) {
     final l10n = context.l10n;
@@ -310,14 +394,6 @@ class _WorkspaceTerminalPanelState extends State<WorkspaceTerminalPanel> {
     final theme = _terminalTheme(context);
     final terminalBackground = Color(0xFF000000 | theme.background);
     final terminalForeground = Color(0xFF000000 | theme.foreground);
-    final sessionSidebarWidth = context
-        .select<LayoutCubit, double>(
-          (c) => c.state.preferences.workspaceTerminalSessionSidebarWidth,
-        )
-        .clamp(
-          LayoutPreferences.minWorkspaceTerminalSessionSidebarWidth,
-          LayoutPreferences.maxWorkspaceTerminalSessionSidebarWidth,
-        );
 
     final terminalBody = active == null || cwd.isEmpty
         ? Center(
@@ -328,10 +404,11 @@ class _WorkspaceTerminalPanelState extends State<WorkspaceTerminalPanel> {
               ),
             ),
           )
-        : _WorkspaceTerminalView(
+        : WorkspaceTerminalView(
             entry: active,
             theme: theme,
             terminalViewKey: _terminalViewKey,
+            siblings: _group.entries,
             onContextMenu: (position, cell) =>
                 _showContextMenu(context, active, position, cell),
           );
@@ -343,244 +420,32 @@ class _WorkspaceTerminalPanelState extends State<WorkspaceTerminalPanel> {
     return ColoredBox(
       key: AppKeys.workspaceTerminalPanel,
       color: terminalBackground,
-      child: ResizableSplitView(
-        axis: Axis.horizontal,
-        primaryAtEnd: true,
-        first: terminalBody,
-        second: _WorkspaceTerminalSessionSidebar(
-          theme: theme,
-          entries: _group.entries,
-          activeEntryId: _group.activeId,
-          onSelect: (id) => setState(() => _group.activeId = id),
-          onCloseEntry: _closeEntry,
-          onNewTab: () {
-            final dir = widget.workingDirectory.trim();
-            if (dir.isEmpty) return;
-            _addEntry(dir, select: true);
-          },
-          onClosePanel: () {
-            _coordinator?.beginAllTransactions();
-            context.read<LayoutCubit>().setWorkspaceTerminalVisible(false);
-            // Flush after the next frame's layout settles.
-            WidgetsBinding.instance.addPostFrameCallback((_) {
-              _coordinator?.endAllTransactions(flush: true);
-            });
-          },
-        ),
-        initialPrimarySize: sessionSidebarWidth,
-        minPrimarySize:
-            LayoutPreferences.minWorkspaceTerminalSessionSidebarWidth,
-        minSecondarySize: LayoutPreferences.minWorkspaceTerminalMainWidth,
-        maxPrimarySize:
-            LayoutPreferences.maxWorkspaceTerminalSessionSidebarWidth,
-        onPrimarySizeChanged: (width) {
-          context.read<LayoutCubit>().setWorkspaceTerminalSessionSidebarWidth(
-            width,
-          );
-        },
-        // Suppress PTY SIGWINCH while the session-sidebar divider moves; the
-        // view still tracks the live grid internally.
-        onDragStart: () => _coordinator?.beginAllTransactions(),
-        onDragEnd: () => _coordinator?.endAllTransactions(flush: true),
-      ),
-    );
-  }
-}
-
-class _WorkspaceTerminalView extends StatelessWidget {
-  const _WorkspaceTerminalView({
-    required this.entry,
-    required this.theme,
-    required this.terminalViewKey,
-    required this.onContextMenu,
-  });
-
-  final WorkspaceTerminalEntry entry;
-  final TerminalTheme theme;
-  final GlobalKey<TerminalViewState> terminalViewKey;
-  final void Function(Offset globalPosition, CellOffset? cell) onContextMenu;
-
-  @override
-  Widget build(BuildContext context) {
-    final background = Color(0xFF000000 | theme.background);
-    return ColoredBox(
-      color: background,
-      child: TerminalView(
-        entry.session.engine,
-        key: terminalViewKey,
-        controller: entry.controller,
-        theme: theme,
-        backgroundOpacity: 0.98,
-        padding: const EdgeInsets.symmetric(horizontal: 36, vertical: 8),
-        textStyle: appTerminalTextStyle(context),
-        autofocus: true,
-        linkProviders: entry.session.linkProviders,
-        primaryTapActivatesLink: context
-            .watch<SessionPreferencesCubit>()
-            .state
-            .preferences
-            .terminalLinkClickOpensInApp,
-        onPtyResize: entry.session.onTerminalPtyResize,
-        onLinkActivate: (uri) {
-          final editorCubit = context.read<EditorCubit>();
-          unawaited(
-            TerminalUriOpener.open(
-              uri,
-              workingDirectory: entry.cwd,
-              openInEditor: (path) => editorCubit.openFile(path),
-            ),
-          );
-        },
-        onSecondaryTapDown: (details, offset) {
-          onContextMenu(details.globalPosition, offset);
-        },
-      ),
-    );
-  }
-}
-
-class _WorkspaceTerminalSessionSidebar extends StatelessWidget {
-  const _WorkspaceTerminalSessionSidebar({
-    required this.theme,
-    required this.entries,
-    required this.activeEntryId,
-    required this.onSelect,
-    required this.onCloseEntry,
-    required this.onNewTab,
-    required this.onClosePanel,
-  });
-
-  final TerminalTheme theme;
-  final List<WorkspaceTerminalEntry> entries;
-  final String? activeEntryId;
-  final ValueChanged<String> onSelect;
-  final ValueChanged<String> onCloseEntry;
-  final VoidCallback onNewTab;
-  final VoidCallback onClosePanel;
-
-  @override
-  Widget build(BuildContext context) {
-    final l10n = context.l10n;
-    final background = Color(0xFF000000 | theme.background);
-    final foreground = Color(0xFF000000 | theme.foreground);
-    final muted = foreground.withValues(alpha: 0.65);
-    final divider = foreground.withValues(alpha: 0.18);
-    final selectedFill = foreground.withValues(alpha: 0.12);
-
-    return ColoredBox(
-      color: background,
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          SizedBox(
-            height: 32,
-            child: Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 4),
-              child: Row(
-                children: [
-                  const SizedBox(width: 6),
-                  Expanded(
-                    child: Text(
-                      l10n.workspaceTerminal,
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                      style: Theme.of(context).textTheme.labelSmall?.copyWith(
-                        color: muted,
-                        fontWeight: FontWeight.w700,
-                        letterSpacing: 0.6,
-                      ),
-                    ),
-                  ),
-                  AppIconButton(
-                    icon: Icons.add,
-                    color: muted,
-                    size: AppIconButton.kCompactSize,
-                    tooltip: l10n.workspaceTerminalNewSession,
-                    onTap: onNewTab,
-                  ),
-                  AppIconButton(
-                    icon: Icons.close,
-                    color: muted,
-                    size: AppIconButton.kCompactSize,
-                    tooltip: l10n.workspaceTerminalClose,
-                    onTap: onClosePanel,
-                  ),
-                ],
-              ),
-            ),
+          WorkspaceTerminalTabBar(
+            entries: _group.entries,
+            activeEntryId: _group.activeId,
+            onSelect: _selectEntry,
+            onCloseEntry: _closeEntry,
+            onQuickNew: () {
+              final dir = widget.workingDirectory.trim();
+              if (dir.isEmpty) return;
+              unawaited(
+                _addEntry(
+                  cwd: dir,
+                  spec: _defaultSpec(dir),
+                  followWorkspace: true,
+                  select: true,
+                ),
+              );
+            },
+            folders: _folders,
+            connector: _connector,
+            onSessionSelected: _onMenuSessionSelected,
+            onClosePanel: _closePanel,
           ),
-          Divider(height: 1, color: divider),
-          Expanded(
-            child: ListView.builder(
-              padding: const EdgeInsets.symmetric(vertical: 4),
-              itemCount: entries.length,
-              itemBuilder: (context, index) {
-                final entry = entries[index];
-                final selected = entry.id == activeEntryId;
-                final itemColor = selected ? foreground : muted;
-                final itemTextStyle = Theme.of(context).textTheme.bodySmall
-                        ?.copyWith(
-                          fontWeight:
-                              selected ? FontWeight.w600 : FontWeight.w500,
-                          color: itemColor,
-                        ) ??
-                    const TextStyle();
-                return TweenAnimationBuilder<Color?>(
-                  tween: ColorTween(
-                    begin: selected
-                        ? Colors.transparent
-                        : selectedFill,
-                    end: selected ? selectedFill : Colors.transparent,
-                  ),
-                  duration: 200.ms,
-                  curve: Curves.easeOutCubic,
-                  builder: (context, color, child) {
-                    return Material(
-                      color: color,
-                      child: child,
-                    );
-                  },
-                  child: InkWell(
-                    onTap: () => onSelect(entry.id),
-                    child: Padding(
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 8,
-                        vertical: 4,
-                      ),
-                      child: Row(
-                        children: [
-                          Icon(
-                            Icons.terminal,
-                            size: context.appIconSizes.md,
-                            color: itemColor,
-                          ),
-                          const SizedBox(width: 8),
-                          Expanded(
-                            child: AnimatedDefaultTextStyle(
-                              duration: 200.ms,
-                              curve: Curves.easeOutCubic,
-                              style: itemTextStyle,
-                              maxLines: 1,
-                              overflow: TextOverflow.ellipsis,
-                              child: Text(entry.title()),
-                            ),
-                          ),
-                          AppIconButton(
-                            icon: Icons.close,
-                            iconSize: context.appIconSizes.md,
-                            color: itemColor,
-                            size: AppIconButton.kCompactSize,
-                            tooltip: l10n.workspaceTerminalCloseSession,
-                            onTap: () => onCloseEntry(entry.id),
-                          ),
-                        ],
-                      ),
-                    ),
-                  ),
-                );
-              },
-            ),
-          ),
+          Expanded(child: terminalBody),
         ],
       ),
     );

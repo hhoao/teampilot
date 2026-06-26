@@ -1726,6 +1726,28 @@ class AppLocalizationsEn extends AppLocalizations {
   String get workspaceTerminalNewSession => 'New terminal';
 
   @override
+  String get workspaceTerminalNewSessionMenu => 'New terminal session menu';
+
+  @override
+  String get workspaceTerminalNewSshSession => 'New SSH Session…';
+
+  @override
+  String get workspaceTerminalSettings => 'Settings';
+
+  @override
+  String get workspaceTerminalThemeAdaptive => 'Match app theme';
+
+  @override
+  String get workspaceTerminalThemeClassicDark => 'Classic dark';
+
+  @override
+  String get workspaceTerminalThemeHighContrast => 'High contrast';
+
+  @override
+  String get workspaceTerminalSshConnectFailed =>
+      'SSH profile not found or connection failed';
+
+  @override
   String get workspaceTerminalCloseSession => 'Close terminal';
 
   @override

@@ -36,6 +36,7 @@ import 'services/file_tree/workspace_file_tree_store.dart';
 import 'services/git/git_repo_store.dart';
 import 'services/workspace/workspace_tools_scope_registry.dart';
 import 'services/workspace/workspace_worktree_registry.dart';
+import 'services/terminal/workspace_shell_connector.dart';
 import 'services/terminal/workspace_terminal_registry.dart';
 import 'services/notification/notification_recorder.dart';
 import 'services/terminal/terminal_fonts.dart';
@@ -371,6 +372,9 @@ void main() async {
               ),
               RepositoryProvider<WorkspaceTerminalRegistry>.value(
                 value: shell.workspaceTerminalRegistry,
+              ),
+              RepositoryProvider<WorkspaceShellConnector>.value(
+                value: shell.workspaceShellConnector,
               ),
               RepositoryProvider<GitRepoStore>.value(
                 value: shell.gitRepoStore,

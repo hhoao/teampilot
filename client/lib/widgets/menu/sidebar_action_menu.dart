@@ -1,14 +1,55 @@
-﻿import 'package:flutter/material.dart';
+﻿import 'dart:async';
+
+import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:teampilot/theme/app_icon_sizes.dart';
 
 import '../../theme/app_text_styles.dart';
 import '../../utils/context_menu_position.dart';
 import '../app_icon_button.dart';
+import '../dropdown/popover/app_popover.dart';
+
+export '../dropdown/popover/app_popover.dart' show AppAnchor, AppAnchorAuto, AppGlobalAnchor, AppPopoverController;
+
+/// Popover-backed menu controller (replaces [MenuAnchor]'s [MenuController]).
+class ActionMenuController {
+  ActionMenuController(this._inner);
+
+  final AppPopoverController _inner;
+
+  bool get isOpen => _inner.isOpen;
+
+  void open() => _inner.show();
+
+  void close() => _inner.hide();
+}
+
+Duration _popUpTransitionDuration(AnimationStyle? style) {
+  return style?.duration ?? const Duration(milliseconds: 160);
+}
+
+Curve _popUpTransitionCurve(AnimationStyle? style) {
+  return style?.curve ?? Curves.easeOutCubic;
+}
 
 /// AppFlowy-inspired action menu: rounded panel, icon rows, hover highlight,
-/// optional dividers. Used in the context sidebar and other compact surfaces.
+/// optional dividers. Overlay uses [AppPopover] (portal, ~160ms scale/fade).
 abstract final class SidebarActionMenuMetrics {
   static const double minWidth = 160;
+
+  /// Legacy [MenuAnchor] allowed the panel to grow up to min × 2.
+  static double maxWidthFor(double minWidth) => minWidth * 2;
+
+  static BoxConstraints panelConstraints({
+    double minWidth = SidebarActionMenuMetrics.minWidth,
+    double? maxWidth,
+  }) {
+    return BoxConstraints(
+      minWidth: minWidth,
+      maxWidth: maxWidth ?? maxWidthFor(minWidth),
+    );
+  }
+
   static const double itemHeight = 34;
   static const double itemHorizontalMargin = 6;
   static const double itemPaddingLeft = 6;
@@ -21,6 +62,13 @@ abstract final class SidebarActionMenuMetrics {
   static const double dividerVerticalPadding = 8;
   static const double itemGap = 4;
   static const BorderRadius panelRadius = BorderRadius.all(Radius.circular(8));
+
+  static EdgeInsets get panelPadding => const EdgeInsets.fromLTRB(
+    panelPaddingHorizontal,
+    panelPaddingTop,
+    panelPaddingHorizontal,
+    panelPaddingBottom,
+  );
 
   static BoxDecoration panelDecoration(BuildContext context) {
     final cs = Theme.of(context).colorScheme;
@@ -36,35 +84,6 @@ abstract final class SidebarActionMenuMetrics {
           offset: const Offset(0, 8),
         ),
       ],
-    );
-  }
-
-  /// [MenuAnchor] shell: rounded border and shadow on the menu surface itself.
-  ///
-  /// Inner [SidebarActionMenuPanel] must use [menuAnchorShell] so its
-  /// [panelDecoration] is not clipped at the corners by the anchor.
-  static MenuStyle menuAnchorStyle(
-    BuildContext context, {
-    required double minWidth,
-  }) {
-    final cs = Theme.of(context).colorScheme;
-    final isDark = Theme.of(context).brightness == Brightness.dark;
-    return MenuStyle(
-      padding: const WidgetStatePropertyAll(EdgeInsets.zero),
-      minimumSize: WidgetStatePropertyAll(Size(minWidth, 0)),
-      maximumSize: WidgetStatePropertyAll(Size(minWidth * 2, double.infinity)),
-      backgroundColor: WidgetStatePropertyAll(cs.surfaceContainer),
-      surfaceTintColor: const WidgetStatePropertyAll(Colors.transparent),
-      elevation: const WidgetStatePropertyAll(8),
-      shadowColor: WidgetStatePropertyAll(
-        Colors.black.withValues(alpha: isDark ? 0.42 : 0.1),
-      ),
-      shape: WidgetStatePropertyAll(
-        RoundedRectangleBorder(
-          borderRadius: panelRadius,
-          side: BorderSide(color: cs.outlineVariant),
-        ),
-      ),
     );
   }
 }
@@ -92,27 +111,25 @@ class SidebarActionMenuPanel extends StatelessWidget {
     super.key,
     required this.children,
     this.minWidth = SidebarActionMenuMetrics.minWidth,
+    this.maxWidth,
     this.menuAnchorShell = false,
   });
 
   final List<Widget> children;
   final double minWidth;
+  final double? maxWidth;
 
-  /// When true, border and shadow are drawn by [menuAnchorStyle] on
-  /// [MenuAnchor]; this panel only supplies padding and content.
+  /// When true, border and shadow come from the popover [decoration].
   final bool menuAnchorShell;
 
   @override
   Widget build(BuildContext context) {
-    final padding = Padding(
-      padding: const EdgeInsets.fromLTRB(
-        SidebarActionMenuMetrics.panelPaddingHorizontal,
-        SidebarActionMenuMetrics.panelPaddingTop,
-        SidebarActionMenuMetrics.panelPaddingHorizontal,
-        SidebarActionMenuMetrics.panelPaddingBottom,
-      ),
+    final content = IntrinsicWidth(
       child: ConstrainedBox(
-        constraints: BoxConstraints(minWidth: minWidth),
+        constraints: SidebarActionMenuMetrics.panelConstraints(
+          minWidth: minWidth,
+          maxWidth: maxWidth,
+        ),
         child: Column(
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -120,10 +137,14 @@ class SidebarActionMenuPanel extends StatelessWidget {
         ),
       ),
     );
-    if (menuAnchorShell) return padding;
+    // Popover shell ([AppPopover]) already applies [panelPadding].
+    if (menuAnchorShell) return content;
     return DecoratedBox(
       decoration: SidebarActionMenuMetrics.panelDecoration(context),
-      child: padding,
+      child: Padding(
+        padding: SidebarActionMenuMetrics.panelPadding,
+        child: content,
+      ),
     );
   }
 }
@@ -144,8 +165,7 @@ class SidebarActionMenuDivider extends StatelessWidget {
   }
 }
 
-/// Single menu row: left icon, label, hover background (mirrors AppFlowy
-/// [FlowyIconTextButton] + [FlowyHover]).
+/// Single menu row with instant hover (no route animation).
 class SidebarActionMenuItem extends StatefulWidget {
   const SidebarActionMenuItem({
     super.key,
@@ -169,7 +189,7 @@ class SidebarActionMenuItem extends StatefulWidget {
   final VoidCallback? onTap;
   final bool destructive;
   final bool enabled;
-  final MenuController? menuController;
+  final ActionMenuController? menuController;
   final String? tooltip;
 
   @override
@@ -181,8 +201,8 @@ class _SidebarActionMenuItemState extends State<SidebarActionMenuItem> {
 
   void _handleTap() {
     if (!widget.enabled || widget.onTap == null) return;
-    widget.menuController?.close();
     widget.onTap!();
+    widget.menuController?.close();
   }
 
   @override
@@ -198,12 +218,16 @@ class _SidebarActionMenuItemState extends State<SidebarActionMenuItem> {
         : cs.onSurface.withValues(alpha: 0.85);
     final baseTextColor = widget.destructive ? cs.error : cs.onSurface;
 
-    final iconColor = _hovered && widget.destructive
+    final iconColor = widget.destructive && _hovered
         ? cs.error
-        : baseIconColor.withValues(alpha: widget.enabled ? 1 : 0.35);
-    final textColor = _hovered && widget.destructive
+        : baseIconColor.withValues(
+            alpha: widget.enabled ? 1 : 0.35,
+          );
+    final textColor = widget.destructive && _hovered
         ? cs.error
-        : baseTextColor.withValues(alpha: widget.enabled ? 1 : 0.35);
+        : baseTextColor.withValues(
+            alpha: widget.enabled ? 1 : 0.35,
+          );
 
     Widget row = MouseRegion(
       onEnter: (_) => setState(() => _hovered = true),
@@ -214,9 +238,8 @@ class _SidebarActionMenuItemState extends State<SidebarActionMenuItem> {
       child: GestureDetector(
         behavior: HitTestBehavior.opaque,
         onTap: widget.enabled ? _handleTap : null,
-        child: AnimatedContainer(
-          duration: const Duration(milliseconds: 120),
-          constraints: BoxConstraints(
+        child: Container(
+          constraints: const BoxConstraints(
             minHeight: SidebarActionMenuMetrics.itemHeight,
           ),
           margin: const EdgeInsets.symmetric(
@@ -233,6 +256,7 @@ class _SidebarActionMenuItemState extends State<SidebarActionMenuItem> {
             borderRadius: BorderRadius.circular(6),
           ),
           child: Row(
+            mainAxisSize: MainAxisSize.min,
             children: [
               SizedBox(
                 width: SidebarActionMenuMetrics.iconSize(context),
@@ -248,7 +272,8 @@ class _SidebarActionMenuItemState extends State<SidebarActionMenuItem> {
                 ),
               ),
               SizedBox(width: SidebarActionMenuMetrics.iconGap),
-              Expanded(
+              Flexible(
+                fit: FlexFit.loose,
                 child: Column(
                   mainAxisAlignment: MainAxisAlignment.center,
                   crossAxisAlignment: CrossAxisAlignment.start,
@@ -257,9 +282,7 @@ class _SidebarActionMenuItemState extends State<SidebarActionMenuItem> {
                       widget.label,
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
-                      // No hardcoded fontSize: keep the theme's typography-scaled
-                      // bodyMedium size so menu labels follow the in-app "Text
-                      // size" setting (height stays a ratio, so it scales too).
+                      softWrap: false,
                       style: dropdownFieldTextStyle(
                         context,
                         fontWeight: FontWeight.w500,
@@ -288,9 +311,130 @@ class _SidebarActionMenuItemState extends State<SidebarActionMenuItem> {
   }
 }
 
-/// Icon button that opens a [MenuAnchor] styled like AppFlowy's
-/// [PopoverActionList].
-class SidebarActionMenuIconAnchor extends StatelessWidget {
+/// Popover anchor for custom panel content (notifications, hover menus, etc.).
+class ActionMenuPopoverAnchor extends StatefulWidget {
+  const ActionMenuPopoverAnchor({
+    super.key,
+    required this.child,
+    required this.popoverBuilder,
+    this.controller,
+    this.anchor,
+    this.onOpen,
+    this.onClose,
+    this.minWidth,
+    this.maxWidth,
+    this.fixedPanelWidth,
+    this.padding,
+    this.closeOnTapOutside = true,
+  });
+
+  final Widget child;
+  final Widget Function(BuildContext context, ActionMenuController controller)
+  popoverBuilder;
+  final AppPopoverController? controller;
+  final AppAnchorBase? anchor;
+  final VoidCallback? onOpen;
+  final VoidCallback? onClose;
+  final double? minWidth;
+  final double? maxWidth;
+
+  /// When set, the popover panel is exactly this wide (e.g. notification dropdown).
+  final double? fixedPanelWidth;
+  final EdgeInsetsGeometry? padding;
+  final bool closeOnTapOutside;
+
+  @override
+  State<ActionMenuPopoverAnchor> createState() =>
+      _ActionMenuPopoverAnchorState();
+}
+
+class _ActionMenuPopoverAnchorState extends State<ActionMenuPopoverAnchor> {
+  AppPopoverController? _ownedController;
+
+  AppPopoverController get _popoverController =>
+      widget.controller ?? _ownedController!;
+
+  @override
+  void initState() {
+    super.initState();
+    _ownedController = widget.controller == null
+        ? AppPopoverController()
+        : null;
+    _popoverController.addListener(_onPopoverChanged);
+  }
+
+  @override
+  void didUpdateWidget(covariant ActionMenuPopoverAnchor oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.controller != widget.controller) {
+      (oldWidget.controller ?? _ownedController)?.removeListener(
+        _onPopoverChanged,
+      );
+      if (oldWidget.controller == null && widget.controller != null) {
+        _ownedController?.dispose();
+        _ownedController = null;
+      }
+      if (widget.controller == null && _ownedController == null) {
+        _ownedController = AppPopoverController();
+      }
+      _popoverController.addListener(_onPopoverChanged);
+    }
+  }
+
+  @override
+  void dispose() {
+    _popoverController.removeListener(_onPopoverChanged);
+    _ownedController?.dispose();
+    super.dispose();
+  }
+
+  void _onPopoverChanged() {
+    if (_popoverController.isOpen) {
+      widget.onOpen?.call();
+    } else {
+      widget.onClose?.call();
+    }
+  }
+
+  ActionMenuController get _menuController =>
+      ActionMenuController(_popoverController);
+
+  @override
+  Widget build(BuildContext context) {
+    final panelMin = widget.minWidth ?? SidebarActionMenuMetrics.minWidth;
+    return AppPopover(
+      controller: _popoverController,
+      closeOnTapOutside: widget.closeOnTapOutside,
+      anchor:
+          widget.anchor ??
+          const AppAnchor(
+            childAlignment: Alignment.topLeft,
+            overlayAlignment: Alignment.bottomLeft,
+            offset: Offset(0, 4),
+          ),
+      decoration: SidebarActionMenuMetrics.panelDecoration(context),
+      panelWidth: widget.fixedPanelWidth,
+      padding: widget.padding ?? SidebarActionMenuMetrics.panelPadding,
+      popover: (ctx) {
+        final panel = widget.popoverBuilder(ctx, _menuController);
+        if (widget.fixedPanelWidth != null) return panel;
+        return IntrinsicWidth(
+          child: ConstrainedBox(
+            constraints: SidebarActionMenuMetrics.panelConstraints(
+              minWidth: panelMin,
+              maxWidth: widget.maxWidth,
+            ),
+            child: panel,
+          ),
+        );
+      },
+      child: widget.child,
+    );
+  }
+}
+
+/// Icon button that opens an [AppPopover] action menu.
+class SidebarActionMenuIconAnchor extends StatefulWidget {
   const SidebarActionMenuIconAnchor({
     super.key,
     this.icon,
@@ -300,61 +444,86 @@ class SidebarActionMenuIconAnchor extends StatelessWidget {
     this.onClose,
     this.size = AppIconButton.kDefaultSize,
     this.minWidth = SidebarActionMenuMetrics.minWidth,
+    this.anchor,
   }) : assert(icon != null || triggerBuilder != null);
 
   final Widget? icon;
-  final Widget Function(BuildContext context, MenuController controller)?
+  final Widget Function(BuildContext context, ActionMenuController controller)?
   triggerBuilder;
-  final List<Widget> Function(BuildContext context, MenuController controller)
+  final List<Widget> Function(
+    BuildContext context,
+    ActionMenuController controller,
+  )
   buildMenuChildren;
   final VoidCallback? onOpen;
   final VoidCallback? onClose;
   final double size;
   final double minWidth;
+  final AppAnchorBase? anchor;
+
+  @override
+  State<SidebarActionMenuIconAnchor> createState() =>
+      _SidebarActionMenuIconAnchorState();
+}
+
+class _SidebarActionMenuIconAnchorState
+    extends State<SidebarActionMenuIconAnchor> {
+  final _popoverController = AppPopoverController();
+
+  @override
+  void initState() {
+    super.initState();
+    _popoverController.addListener(_onPopoverChanged);
+  }
+
+  @override
+  void dispose() {
+    _popoverController.removeListener(_onPopoverChanged);
+    _popoverController.dispose();
+    super.dispose();
+  }
+
+  void _onPopoverChanged() {
+    if (_popoverController.isOpen) {
+      widget.onOpen?.call();
+    } else {
+      widget.onClose?.call();
+    }
+  }
+
+  ActionMenuController get _menuController =>
+      ActionMenuController(_popoverController);
 
   @override
   Widget build(BuildContext context) {
-    return MenuAnchor(
-      style: SidebarActionMenuMetrics.menuAnchorStyle(
-        context,
-        minWidth: minWidth,
+    final menuController = _menuController;
+    return AppPopover(
+      controller: _popoverController,
+      anchor:
+          widget.anchor ??
+          const AppAnchor(
+            childAlignment: Alignment.topLeft,
+            overlayAlignment: Alignment.bottomLeft,
+            offset: Offset(0, 4),
+          ),
+      decoration: SidebarActionMenuMetrics.panelDecoration(context),
+      padding: SidebarActionMenuMetrics.panelPadding,
+      popover: (ctx) => SidebarActionMenuPanel(
+        minWidth: widget.minWidth,
+        menuAnchorShell: true,
+        children: widget.buildMenuChildren(ctx, menuController),
       ),
-      onOpen: onOpen,
-      onClose: onClose,
-      builder: (context, controller, child) {
-        if (triggerBuilder != null) {
-          return triggerBuilder!(context, controller);
-        }
-        return AppIconButton(
-          iconWidget: icon,
-          size: size,
-          onTap: () {
-            if (controller.isOpen) {
-              controller.close();
-            } else {
-              controller.open();
-            }
-          },
-        );
-      },
-      menuChildren: [
-        Builder(
-          builder: (context) {
-            final controller = MenuController.maybeOf(context);
-            if (controller == null) return const SizedBox.shrink();
-            return SidebarActionMenuPanel(
-              minWidth: minWidth,
-              menuAnchorShell: true,
-              children: buildMenuChildren(context, controller),
-            );
-          },
-        ),
-      ],
+      child: widget.triggerBuilder != null
+          ? widget.triggerBuilder!(context, menuController)
+          : AppIconButton(
+              iconWidget: widget.icon,
+              size: widget.size,
+              onTap: _popoverController.toggle,
+            ),
     );
   }
 }
 
-/// Estimates vertical size for [showSidebarActionMenu] height budgeting.
 int sidebarActionMenuSpecGapCount(List<SidebarActionMenuSpec> specs) {
   var gaps = 0;
   var previousWasItem = false;
@@ -384,8 +553,6 @@ double estimateSidebarActionMenuHeight({
       dividerCount * (SidebarActionMenuMetrics.dividerVerticalPadding * 2 + 1);
 }
 
-/// Declarative menu row for [buildSidebarActionMenuChildren] /
-/// [buildSidebarActionMenuPopupChildren].
 class SidebarActionMenuSpec {
   const SidebarActionMenuSpec.divider()
     : isDivider = true,
@@ -435,7 +602,7 @@ int sidebarActionMenuSpecDividerCount(List<SidebarActionMenuSpec> specs) =>
 List<Widget> buildSidebarActionMenuChildren({
   required BuildContext context,
   required List<SidebarActionMenuSpec> specs,
-  required MenuController menuController,
+  required ActionMenuController menuController,
   required ValueChanged<Object?> onSelect,
 }) {
   return specs.map((spec) {
@@ -449,22 +616,12 @@ List<Widget> buildSidebarActionMenuChildren({
   }).toList();
 }
 
-List<Widget> buildSidebarActionMenuPopupChildren({
-  required BuildContext context,
-  required List<SidebarActionMenuSpec> specs,
-}) {
-  return specs.map((spec) {
-    if (spec.isDivider) return const SidebarActionMenuDivider();
-    return _specToMenuItem(context: context, spec: spec, popup: true);
-  }).toList();
-}
-
 Widget _specToMenuItem({
   required BuildContext context,
   required SidebarActionMenuSpec spec,
-  MenuController? menuController,
+  ActionMenuController? menuController,
   ValueChanged<Object?>? onSelect,
-  bool popup = false,
+  void Function(Object? value)? onChosen,
 }) {
   final trailing = spec.selected
       ? Icon(
@@ -474,35 +631,13 @@ Widget _specToMenuItem({
         )
       : spec.trailing;
 
-  if (popup) {
-    return Builder(
-      builder: (popupContext) => SidebarActionMenuItem(
-        icon: spec.icon,
-        label: spec.label ?? '',
-        subtitle: spec.subtitle,
-        trailing: trailing,
-        destructive: spec.destructive,
-        enabled: spec.enabled,
-        tooltip: spec.tooltip,
-        menuController: null,
-        onTap: spec.enabled
-            ? () {
-                spec.onAction?.call();
-                Navigator.of(popupContext).pop(spec.value);
-              }
-            : null,
-      ),
-    );
-  }
-
   VoidCallback? onTap;
   if (spec.enabled) {
     onTap = () {
       spec.onAction?.call();
+      onChosen?.call(spec.value);
+      onSelect?.call(spec.value);
       menuController?.close();
-      if (spec.value != null) {
-        onSelect?.call(spec.value);
-      }
     };
   }
 
@@ -519,7 +654,6 @@ Widget _specToMenuItem({
   );
 }
 
-/// [PopupMenuButton] replacement using [SidebarActionMenuIconAnchor].
 class SidebarActionMenuButton extends StatelessWidget {
   const SidebarActionMenuButton({
     super.key,
@@ -537,7 +671,7 @@ class SidebarActionMenuButton extends StatelessWidget {
   final List<SidebarActionMenuSpec> specs;
   final ValueChanged<Object?> onSelected;
   final Widget? icon;
-  final Widget Function(BuildContext context, MenuController controller)?
+  final Widget Function(BuildContext context, ActionMenuController controller)?
   triggerBuilder;
   final VoidCallback? onOpen;
   final VoidCallback? onClose;
@@ -569,72 +703,79 @@ class SidebarActionMenuButton extends StatelessWidget {
   }
 }
 
-/// Shows an AppFlowy-style menu at [globalPosition] (e.g. right-click).
-Future<T?> showSidebarActionMenu<T>({
+Future<T?> _showActionMenuFromSpecs<T>({
   required BuildContext context,
   required Offset globalPosition,
-  required List<Widget> children,
+  required List<SidebarActionMenuSpec> specs,
   double minWidth = SidebarActionMenuMetrics.minWidth,
-  int itemCount = 4,
-  int dividerCount = 0,
-  int? itemGapCount,
   bool useRootNavigator = true,
   AnimationStyle? popUpAnimationStyle,
 }) {
-  final panel = SidebarActionMenuPanel(minWidth: minWidth, children: children);
-  final height = estimateSidebarActionMenuHeight(
-    itemCount: itemCount,
-    dividerCount: dividerCount,
-    itemGapCount: itemGapCount ?? (itemCount > 1 ? itemCount - 1 : 0),
+  final overlay = Overlay.of(context, rootOverlay: useRootNavigator);
+  final completer = Completer<T?>();
+  final popoverController = AppPopoverController();
+  final menuController = ActionMenuController(popoverController);
+  late OverlayEntry entry;
+  var entryRemoved = false;
+
+  void removeEntry() {
+    if (entryRemoved || !entry.mounted) return;
+    entry.remove();
+    entryRemoved = true;
+  }
+
+  void finish(T? value) {
+    if (!completer.isCompleted) completer.complete(value);
+    popoverController.hide();
+  }
+
+  void onControllerChanged() {
+    if (!popoverController.isOpen && !completer.isCompleted) {
+      finish(null);
+    }
+  }
+
+  entry = OverlayEntry(
+    builder: (overlayContext) {
+      return AppPopover(
+        controller: popoverController,
+        anchor: AppGlobalAnchor(globalPosition),
+        useSameGroupIdForChild: false,
+        transitionDuration: _popUpTransitionDuration(popUpAnimationStyle),
+        transitionCurve: _popUpTransitionCurve(popUpAnimationStyle),
+        decoration: SidebarActionMenuMetrics.panelDecoration(overlayContext),
+        padding: SidebarActionMenuMetrics.panelPadding,
+        popover: (ctx) => SidebarActionMenuPanel(
+          minWidth: minWidth,
+          menuAnchorShell: true,
+          children: specs.map((spec) {
+            if (spec.isDivider) return const SidebarActionMenuDivider();
+            return _specToMenuItem(
+              context: ctx,
+              spec: spec,
+              menuController: menuController,
+              onChosen: (value) => finish(value as T?),
+            );
+          }).toList(),
+        ),
+        child: const SizedBox.shrink(),
+      );
+    },
   );
 
-  return showMenu<T>(
-    context: context,
-    useRootNavigator: useRootNavigator,
-    popUpAnimationStyle: popUpAnimationStyle,
-    position: contextMenuPositionForGlobal(
-      context,
-      globalPosition,
-      rootOverlay: useRootNavigator,
-    ),
-    elevation: 0,
-    shadowColor: Colors.transparent,
-    surfaceTintColor: Colors.transparent,
-    color: Colors.transparent,
-    shape: const RoundedRectangleBorder(
-      borderRadius: SidebarActionMenuMetrics.panelRadius,
-    ),
-    items: [SidebarActionMenuPopupEntry<T>(height: height, child: panel)],
-  );
+  popoverController.addListener(onControllerChanged);
+  overlay.insert(entry);
+  WidgetsBinding.instance.addPostFrameCallback((_) {
+    if (!completer.isCompleted) popoverController.show();
+  });
+
+  return completer.future.whenComplete(() {
+    popoverController.removeListener(onControllerChanged);
+    removeEntry();
+    popoverController.dispose();
+  });
 }
 
-/// [showSidebarActionMenu] at a right-click ([TapDownDetails]) on [context]'s
-/// widget.
-Future<T?> showSidebarActionMenuAtTap<T>({
-  required BuildContext context,
-  required TapDownDetails tapDetails,
-  required List<Widget> children,
-  double minWidth = SidebarActionMenuMetrics.minWidth,
-  int itemCount = 4,
-  int dividerCount = 0,
-  int? itemGapCount,
-  bool useRootNavigator = true,
-  AnimationStyle? popUpAnimationStyle,
-}) {
-  return showSidebarActionMenu<T>(
-    context: context,
-    globalPosition: contextMenuGlobalPosition(context, tapDetails),
-    children: children,
-    minWidth: minWidth,
-    itemCount: itemCount,
-    dividerCount: dividerCount,
-    itemGapCount: itemGapCount,
-    useRootNavigator: useRootNavigator,
-    popUpAnimationStyle: popUpAnimationStyle,
-  );
-}
-
-/// [showSidebarActionMenu] driven by [SidebarActionMenuSpec] list.
 Future<T?> showSidebarActionMenuFromSpecs<T>({
   required BuildContext context,
   required Offset globalPosition,
@@ -643,23 +784,16 @@ Future<T?> showSidebarActionMenuFromSpecs<T>({
   bool useRootNavigator = true,
   AnimationStyle? popUpAnimationStyle,
 }) {
-  return showSidebarActionMenu<T>(
+  return _showActionMenuFromSpecs<T>(
     context: context,
     globalPosition: globalPosition,
+    specs: specs,
     minWidth: minWidth,
     useRootNavigator: useRootNavigator,
     popUpAnimationStyle: popUpAnimationStyle,
-    itemCount: sidebarActionMenuSpecItemCount(specs),
-    dividerCount: sidebarActionMenuSpecDividerCount(specs),
-    itemGapCount: sidebarActionMenuSpecGapCount(specs),
-    children: buildSidebarActionMenuPopupChildren(
-      context: context,
-      specs: specs,
-    ),
   );
 }
 
-/// [showSidebarActionMenuFromSpecs] at a right-click on [context]'s widget.
 Future<T?> showSidebarActionMenuFromSpecsAtTap<T>({
   required BuildContext context,
   required TapDownDetails tapDetails,
@@ -678,33 +812,132 @@ Future<T?> showSidebarActionMenuFromSpecsAtTap<T>({
   );
 }
 
-/// Full custom panel inside [showMenu] (avoids disabled [PopupMenuItem]).
-class SidebarActionMenuPopupEntry<T> extends PopupMenuEntry<T> {
-  const SidebarActionMenuPopupEntry({
-    super.key,
-    required this.child,
-    required this.height,
+Future<T?> _showActionMenuWithChildren<T>({
+  required BuildContext context,
+  required Offset globalPosition,
+  required List<Widget> children,
+  double minWidth = SidebarActionMenuMetrics.minWidth,
+  bool useRootNavigator = true,
+  AnimationStyle? popUpAnimationStyle,
+}) {
+  final overlay = Overlay.of(context, rootOverlay: useRootNavigator);
+  final completer = Completer<T?>();
+  final popoverController = AppPopoverController();
+  late OverlayEntry entry;
+  var entryRemoved = false;
+
+  void removeEntry() {
+    if (entryRemoved || !entry.mounted) return;
+    entry.remove();
+    entryRemoved = true;
+  }
+
+  void finish(T? value) {
+    if (!completer.isCompleted) completer.complete(value);
+    popoverController.hide();
+  }
+
+  void onControllerChanged() {
+    if (!popoverController.isOpen && !completer.isCompleted) {
+      finish(null);
+    }
+  }
+
+  entry = OverlayEntry(
+    builder: (overlayContext) {
+      return _ActionMenuOverlayScope<T>(
+        onChosen: finish,
+        child: AppPopover(
+          controller: popoverController,
+          anchor: AppGlobalAnchor(globalPosition),
+          useSameGroupIdForChild: false,
+          transitionDuration: _popUpTransitionDuration(popUpAnimationStyle),
+          transitionCurve: _popUpTransitionCurve(popUpAnimationStyle),
+          decoration: SidebarActionMenuMetrics.panelDecoration(overlayContext),
+          padding: SidebarActionMenuMetrics.panelPadding,
+          popover: (_) => SidebarActionMenuPanel(
+            minWidth: minWidth,
+            menuAnchorShell: true,
+            children: children,
+          ),
+          child: const SizedBox.shrink(),
+        ),
+      );
+    },
+  );
+
+  popoverController.addListener(onControllerChanged);
+  overlay.insert(entry);
+  WidgetsBinding.instance.addPostFrameCallback((_) {
+    if (!completer.isCompleted) popoverController.show();
   });
 
-  final Widget child;
-  @override
-  final double height;
-
-  @override
-  bool represents(T? value) => false;
-
-  @override
-  State<SidebarActionMenuPopupEntry<T>> createState() =>
-      _SidebarActionMenuPopupEntryState<T>();
+  return completer.future.whenComplete(() {
+    popoverController.removeListener(onControllerChanged);
+    removeEntry();
+    popoverController.dispose();
+  });
 }
 
-class _SidebarActionMenuPopupEntryState<T>
-    extends State<SidebarActionMenuPopupEntry<T>> {
+class _ActionMenuOverlayScope<T> extends InheritedWidget {
+  const _ActionMenuOverlayScope({
+    required this.onChosen,
+    required super.child,
+  });
+
+  final void Function(T? value) onChosen;
+
+  static _ActionMenuOverlayScope<T>? maybeOf<T>(BuildContext context) {
+    return context.dependOnInheritedWidgetOfExactType<_ActionMenuOverlayScope<T>>();
+  }
+
   @override
-  Widget build(BuildContext context) => widget.child;
+  bool updateShouldNotify(_ActionMenuOverlayScope<T> oldWidget) => false;
 }
 
-/// Helper for [showSidebarActionMenu] rows that pop a typed result.
+/// Shows an action menu at [globalPosition] with pre-built row widgets.
+Future<T?> showSidebarActionMenu<T>({
+  required BuildContext context,
+  required Offset globalPosition,
+  required List<Widget> children,
+  double minWidth = SidebarActionMenuMetrics.minWidth,
+  int itemCount = 4,
+  int dividerCount = 0,
+  int? itemGapCount,
+  bool useRootNavigator = true,
+  AnimationStyle? popUpAnimationStyle,
+}) {
+  return _showActionMenuWithChildren<T>(
+    context: context,
+    globalPosition: globalPosition,
+    children: children,
+    minWidth: minWidth,
+    useRootNavigator: useRootNavigator,
+    popUpAnimationStyle: popUpAnimationStyle,
+  );
+}
+
+Future<T?> showSidebarActionMenuAtTap<T>({
+  required BuildContext context,
+  required TapDownDetails tapDetails,
+  required List<Widget> children,
+  double minWidth = SidebarActionMenuMetrics.minWidth,
+  int itemCount = 4,
+  int dividerCount = 0,
+  int? itemGapCount,
+  bool useRootNavigator = true,
+  AnimationStyle? popUpAnimationStyle,
+}) {
+  return showSidebarActionMenu<T>(
+    context: context,
+    globalPosition: contextMenuGlobalPosition(context, tapDetails),
+    children: children,
+    minWidth: minWidth,
+    useRootNavigator: useRootNavigator,
+    popUpAnimationStyle: popUpAnimationStyle,
+  );
+}
+
 class SidebarActionMenuPopupItem<T> extends StatelessWidget {
   const SidebarActionMenuPopupItem({
     super.key,
@@ -727,6 +960,7 @@ class SidebarActionMenuPopupItem<T> extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final scope = _ActionMenuOverlayScope.maybeOf<T>(context);
     return SidebarActionMenuItem(
       icon: icon,
       iconWidget: iconWidget,
@@ -734,7 +968,7 @@ class SidebarActionMenuPopupItem<T> extends StatelessWidget {
       destructive: destructive,
       enabled: enabled,
       tooltip: tooltip,
-      onTap: enabled ? () => Navigator.of(context).pop<T>(value) : null,
+      onTap: enabled ? () => scope?.onChosen(value) : null,
     );
   }
 }

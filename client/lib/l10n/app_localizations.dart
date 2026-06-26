@@ -3212,6 +3212,48 @@ abstract class AppLocalizations {
   /// **'New terminal'**
   String get workspaceTerminalNewSession;
 
+  /// No description provided for @workspaceTerminalNewSessionMenu.
+  ///
+  /// In en, this message translates to:
+  /// **'New terminal session menu'**
+  String get workspaceTerminalNewSessionMenu;
+
+  /// No description provided for @workspaceTerminalNewSshSession.
+  ///
+  /// In en, this message translates to:
+  /// **'New SSH Session…'**
+  String get workspaceTerminalNewSshSession;
+
+  /// No description provided for @workspaceTerminalSettings.
+  ///
+  /// In en, this message translates to:
+  /// **'Settings'**
+  String get workspaceTerminalSettings;
+
+  /// No description provided for @workspaceTerminalThemeAdaptive.
+  ///
+  /// In en, this message translates to:
+  /// **'Match app theme'**
+  String get workspaceTerminalThemeAdaptive;
+
+  /// No description provided for @workspaceTerminalThemeClassicDark.
+  ///
+  /// In en, this message translates to:
+  /// **'Classic dark'**
+  String get workspaceTerminalThemeClassicDark;
+
+  /// No description provided for @workspaceTerminalThemeHighContrast.
+  ///
+  /// In en, this message translates to:
+  /// **'High contrast'**
+  String get workspaceTerminalThemeHighContrast;
+
+  /// No description provided for @workspaceTerminalSshConnectFailed.
+  ///
+  /// In en, this message translates to:
+  /// **'SSH profile not found or connection failed'**
+  String get workspaceTerminalSshConnectFailed;
+
   /// No description provided for @workspaceTerminalCloseSession.
   ///
   /// In en, this message translates to:

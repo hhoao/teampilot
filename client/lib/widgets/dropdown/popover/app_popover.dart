@@ -25,6 +25,8 @@ class AppPopover extends StatefulWidget {
     this.overlayVisible,
     this.groupId,
     this.useSameGroupIdForChild = true,
+    this.transitionDuration = const Duration(milliseconds: 160),
+    this.transitionCurve = Curves.easeOutCubic,
   });
 
   final Widget child;
@@ -42,6 +44,8 @@ class AppPopover extends StatefulWidget {
   final bool? overlayVisible;
   final Object? groupId;
   final bool useSameGroupIdForChild;
+  final Duration transitionDuration;
+  final Curve transitionCurve;
 
   @override
   State<AppPopover> createState() => _AppPopoverState();
@@ -159,6 +163,8 @@ class _AppPopoverState extends State<AppPopover> {
             visible:
                 controller.isOpen && (widget.overlayVisible ?? true),
             anchor: effectiveAnchor,
+            transitionDuration: widget.transitionDuration,
+            transitionCurve: widget.transitionCurve,
             portalBuilder: (_) => panel,
             child: widget.child,
           ),

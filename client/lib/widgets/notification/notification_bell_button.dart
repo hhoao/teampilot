@@ -4,6 +4,7 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import '../../cubits/notification_cubit.dart';
 import '../../l10n/l10n_extensions.dart';
 import '../../theme/app_icon_sizes.dart';
+import '../dropdown/popover/app_popover.dart';
 import '../menu/sidebar_action_menu.dart';
 import 'notification_list_tile.dart';
 
@@ -12,8 +13,21 @@ const _dropdownListMaxHeight = 360.0;
 const _bellWidth = 34.0;
 
 /// Title-bar bell with unread badge and notification dropdown.
-class NotificationBellButton extends StatelessWidget {
+class NotificationBellButton extends StatefulWidget {
   const NotificationBellButton({super.key});
+
+  @override
+  State<NotificationBellButton> createState() => _NotificationBellButtonState();
+}
+
+class _NotificationBellButtonState extends State<NotificationBellButton> {
+  final _popoverController = AppPopoverController();
+
+  @override
+  void dispose() {
+    _popoverController.dispose();
+    super.dispose();
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -22,26 +36,21 @@ class NotificationBellButton extends StatelessWidget {
     );
     final l10n = context.l10n;
 
-    return MenuAnchor(
-      style: SidebarActionMenuMetrics.menuAnchorStyle(
-        context,
-        minWidth: _dropdownWidth,
+    return ActionMenuPopoverAnchor(
+      controller: _popoverController,
+      fixedPanelWidth: _dropdownWidth,
+      anchor: const AppAnchorAuto(
+        offset: Offset(-(_dropdownWidth - _bellWidth), 8),
+        followerAnchor: Alignment.topLeft,
+        targetAnchor: Alignment.bottomLeft,
       ),
-      alignmentOffset: Offset(-(_dropdownWidth - _bellWidth), 8),
-      builder: (context, controller, child) {
-        return _BellGlyph(
-          unread: unread,
-          tooltip: l10n.notificationCenterTitle,
-          onTap: () {
-            if (controller.isOpen) {
-              controller.close();
-            } else {
-              controller.open();
-            }
-          },
-        );
-      },
-      menuChildren: const [_NotificationDropdownPanel()],
+      popoverBuilder: (context, controller) =>
+          const _NotificationDropdownPanel(),
+      child: _BellGlyph(
+        unread: unread,
+        tooltip: l10n.notificationCenterTitle,
+        onTap: _popoverController.toggle,
+      ),
     );
   }
 }
@@ -142,9 +151,9 @@ class _NotificationDropdownPanel extends StatelessWidget {
 
     return ConstrainedBox(
       constraints: const BoxConstraints(maxWidth: _dropdownWidth),
-      child: SidebarActionMenuPanel(
-        minWidth: _dropdownWidth,
-        menuAnchorShell: true,
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
           Row(
             children: [

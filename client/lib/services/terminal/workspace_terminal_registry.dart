@@ -1,69 +1,91 @@
 import 'package:flutter_alacritty/flutter_alacritty.dart';
-import 'package:path/path.dart' as p;
 import 'package:uuid/uuid.dart';
 
+import '../../models/workspace_terminal_session_spec.dart';
 import 'terminal_session.dart';
-import 'workspace_interactive_shell.dart';
+import 'workspace_shell_connector.dart';
 
 const _uuid = Uuid();
 
-/// A single workspace-terminal tab's runtime: its shell session, the view
-/// controller (kept alive across widget rebuilds to preserve scroll/selection),
-/// its working directory, and whether a connect has been kicked off.
+/// A single workspace-terminal tab: spec, cwd, session, and view controller.
 class WorkspaceTerminalEntry {
-  WorkspaceTerminalEntry({required this.id, required this.cwd})
-    : session = TerminalSession(
-        executable: WorkspaceInteractiveShell.executable(),
-        validateLaunch: false,
-        parseExecutable: false,
-      ),
-      controller = TerminalController();
+  WorkspaceTerminalEntry({
+    required this.id,
+    required this.cwd,
+    required this.spec,
+    required this.session,
+    this.followWorkspace = false,
+  }) : controller = TerminalController();
 
   final String id;
   String cwd;
+  WorkspaceTerminalSessionSpec spec;
+  TerminalSession session;
+
+  /// When true, cwd changes re-resolve [spec] via [defaultSessionSpecFor].
+  bool followWorkspace;
+
   bool connected = false;
-  final TerminalSession session;
+  int connectGeneration = 0;
   final TerminalController controller;
 
-  String title() {
-    final shell = p.basename(WorkspaceInteractiveShell.executable());
-    if (cwd.isEmpty) return shell;
-    return '$shell ${p.basename(cwd)}';
-  }
+  /// Cached display label from [WorkspaceShellConnector.labelForSpec].
+  String titleLabel = '';
+
+  int bumpConnectGeneration() => ++connectGeneration;
 
   void dispose() {
+    bumpConnectGeneration();
+    session.sshMemberSession?.close();
     session.disconnect();
+    session.dispose();
     controller.dispose();
   }
 }
 
-/// One workspace's set of workspace-terminal tabs.
+/// One workspace's IDEA-style terminal tabs.
 class WorkspaceTerminalGroup {
   final List<WorkspaceTerminalEntry> _entries = [];
 
-  /// Id of the selected entry in this group, or null when the group is empty.
   String? activeId;
 
   List<WorkspaceTerminalEntry> get entries => List.unmodifiable(_entries);
 
-  WorkspaceTerminalEntry? get activeEntry {
-    final id = activeId;
-    if (id == null) return null;
+  bool contains(String id) => _entries.any((e) => e.id == id);
+
+  WorkspaceTerminalEntry? entryById(String id) {
     for (final e in _entries) {
       if (e.id == id) return e;
     }
     return null;
   }
 
-  WorkspaceTerminalEntry addEntry({required String cwd, required bool select}) {
-    final entry = WorkspaceTerminalEntry(id: _uuid.v4(), cwd: cwd);
+  WorkspaceTerminalEntry? get activeEntry {
+    final id = activeId;
+    if (id == null) return null;
+    return entryById(id);
+  }
+
+  WorkspaceTerminalEntry addEntry({
+    required String cwd,
+    required WorkspaceTerminalSessionSpec spec,
+    required TerminalSession session,
+    required bool select,
+    String titleLabel = '',
+    bool followWorkspace = false,
+  }) {
+    final entry = WorkspaceTerminalEntry(
+      id: _uuid.v4(),
+      cwd: cwd,
+      spec: spec,
+      session: session,
+      followWorkspace: followWorkspace,
+    )..titleLabel = titleLabel;
     _entries.add(entry);
     if (select) activeId = entry.id;
     return entry;
   }
 
-  /// Removes [id], disposing it, and reselects a neighbour. Returns true when
-  /// the group is now empty.
   bool removeEntry(String id) {
     final index = _entries.indexWhere((e) => e.id == id);
     if (index < 0) return _entries.isEmpty;
@@ -90,9 +112,7 @@ class WorkspaceTerminalGroup {
   }
 }
 
-/// Owns workspace-terminal groups keyed by `workspaceId`. Lives in DI so terminal
-/// sessions survive [WorkspaceTerminalPanel] rebuilds on workspace switch; a
-/// group is torn down only when its workspace tab is closed ([disposeWorkspace]).
+/// Owns workspace-terminal groups keyed by workspace tab id.
 class WorkspaceTerminalRegistry {
   final Map<String, WorkspaceTerminalGroup> _groups = {};
 

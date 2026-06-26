@@ -1,5 +1,13 @@
 import 'package:flutter_test/flutter_test.dart';
+import 'package:teampilot/models/workspace_terminal_session_spec.dart';
+import 'package:teampilot/services/terminal/terminal_session.dart';
 import 'package:teampilot/services/terminal/workspace_terminal_registry.dart';
+
+TerminalSession _testSession() => TerminalSession(
+  executable: '/bin/bash',
+  validateLaunch: false,
+  parseExecutable: false,
+);
 
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
@@ -18,7 +26,12 @@ void main() {
     test('addEntry / entries stays scoped to its workspace group', () {
       final reg = WorkspaceTerminalRegistry();
       final a = reg.groupFor('A');
-      final entry = a.addEntry(cwd: '/tmp/a', select: true);
+      final entry = a.addEntry(
+        cwd: '/tmp/a',
+        spec: const WorkspaceTerminalLocalSpec('/bin/bash'),
+        session: _testSession(),
+        select: true,
+      );
       expect(a.entries.single, entry);
       expect(a.activeId, entry.id);
       expect(reg.groupFor('B').entries, isEmpty);
@@ -28,11 +41,14 @@ void main() {
     test('disposeWorkspace disposes entries and drops the group', () {
       final reg = WorkspaceTerminalRegistry();
       final a = reg.groupFor('A');
-      final entry = a.addEntry(cwd: '/tmp/a', select: true);
+      final entry = a.addEntry(
+        cwd: '/tmp/a',
+        spec: const WorkspaceTerminalLocalSpec('/bin/bash'),
+        session: _testSession(),
+        select: true,
+      );
       reg.disposeWorkspace('A');
-      // Disposing the session twice must be safe.
       expect(entry.session.isRunning, isFalse);
-      // A fresh group is created on next access (entries empty).
       expect(reg.groupFor('A').entries, isEmpty);
       reg.disposeAll();
     });
@@ -40,8 +56,18 @@ void main() {
     test('removeEntry reselects the active id', () {
       final reg = WorkspaceTerminalRegistry();
       final a = reg.groupFor('A');
-      final e1 = a.addEntry(cwd: '/tmp/a', select: true);
-      final e2 = a.addEntry(cwd: '/tmp/a2', select: true);
+      final e1 = a.addEntry(
+        cwd: '/tmp/a',
+        spec: const WorkspaceTerminalLocalSpec('/bin/bash'),
+        session: _testSession(),
+        select: true,
+      );
+      final e2 = a.addEntry(
+        cwd: '/tmp/a2',
+        spec: const WorkspaceTerminalLocalSpec('/bin/bash'),
+        session: _testSession(),
+        select: true,
+      );
       expect(a.activeId, e2.id);
       a.removeEntry(e2.id);
       expect(a.activeId, e1.id);
