@@ -31,7 +31,7 @@ import '../../../theme/app_text_styles.dart';
 import '../../../utils/app_keys.dart';
 import '../../../utils/app_session_sort.dart';
 import '../../../utils/debounce/debounce.dart';
-import '../../../utils/workspace_sessions.dart';
+import '../../../utils/workspace_sidebar_sessions.dart';
 import '../../../widgets/app_icon_button.dart';
 import '../../../widgets/cli/cli_brand_icon.dart';
 import '../../../widgets/menu/sidebar_action_menu.dart';
@@ -75,34 +75,23 @@ class WorkspaceSidebar extends StatefulWidget {
 
 class _WorkspaceSidebarState
     extends State<WorkspaceSidebar> {
-  static const _emptySessions = <AppSession>[];
-
   bool get _isPersonal => widget.isPersonalWorkspace;
 
   AppSessionSort _sessionSort = AppSessionSort.manual;
 
   @override
-  void initState() {
-    super.initState();
-  }
-
-  @override
   Widget build(BuildContext context) {
     final cs = Theme.of(context).colorScheme;
     final l10n = context.l10n;
-    final rawSessions = context.select<ChatCubit, List<AppSession>>((c) {
-      final grouped = groupSessionsByWorkspaceId(c.state.sessions);
-      final bucket = grouped[widget.workspace.workspaceId];
-      if (bucket == null || bucket.isEmpty) {
-        return sessionsForWorkspace(widget.workspace, _emptySessions)
-            .where((s) => s.sessionTeam.trim() == widget.sessionTeamFilter)
-            .toList();
-      }
-      return sessionsForWorkspace(widget.workspace, bucket)
-          .where((s) => s.sessionTeam.trim() == widget.sessionTeamFilter)
-          .toList();
-    });
-    final sortedSessions = sortAppSessions(rawSessions, sort: _sessionSort);
+    final sessionSnapshot = context.select<ChatCubit, WorkspaceSidebarSessions>(
+      (c) => WorkspaceSidebarSessions.forWorkspace(
+        allSessions: c.state.sessions,
+        workspace: widget.workspace,
+        sessionTeamFilter: widget.sessionTeamFilter,
+      ),
+    );
+    final sortedSessions =
+        sortAppSessions(sessionSnapshot.sessions, sort: _sessionSort);
     final wtView = context.select<WorktreeCubit, WorktreeSidebarView>(
       (c) => WorktreeSidebarView.from(c.state),
     );
@@ -233,27 +222,28 @@ class _WorkspaceSidebarState
       worktrees: wtView.worktrees,
       sessions: sortedSessions,
     );
-    return ListView(
+    return ListView.builder(
       padding: EdgeInsets.zero,
-      children: [
-        for (final group in groups)
-          WorktreeGroupSection(
-            key: ValueKey('wt-group-${worktreeGroupCollapseKey(group)}'),
-            group: group,
-            workspace: widget.workspace,
-            isPersonal: widget.isPersonalWorkspace,
-            profileId: widget.profileId,
-            sessionTeamFilter: widget.sessionTeamFilter,
-            personalLaunchBlocked: personalLaunchBlocked,
-            collapsed:
-                wtView.collapsed.contains(worktreeGroupCollapseKey(group)),
-            isCurrent: group.worktree != null &&
-                workspacePathsEqual(
-                  group.worktree!.path,
-                  wtView.currentWorktreePath,
-                ),
-          ),
-      ],
+      itemCount: groups.length,
+      itemBuilder: (context, index) {
+        final group = groups[index];
+        return WorktreeGroupSection(
+          key: ValueKey('wt-group-${worktreeGroupCollapseKey(group)}'),
+          group: group,
+          workspace: widget.workspace,
+          isPersonal: widget.isPersonalWorkspace,
+          profileId: widget.profileId,
+          sessionTeamFilter: widget.sessionTeamFilter,
+          personalLaunchBlocked: personalLaunchBlocked,
+          collapsed:
+              wtView.collapsed.contains(worktreeGroupCollapseKey(group)),
+          isCurrent: group.worktree != null &&
+              workspacePathsEqual(
+                group.worktree!.path,
+                wtView.currentWorktreePath,
+              ),
+        );
+      },
     );
   }
 

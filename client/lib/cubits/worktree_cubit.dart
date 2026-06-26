@@ -160,6 +160,7 @@ class WorktreeCubit extends Cubit<WorktreeState> {
 
     final list = await listFuture;
     final pref = await prefFuture;
+    if (isClosed) return;
     if (hydrating) _hydrated = true;
 
     var collapsed = state.collapsed;

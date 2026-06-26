@@ -95,10 +95,7 @@ class _FileTreePanelState extends State<FileTreePanel> {
         return;
       }
 
-      final rows = visibleFileTreeRows(
-        state: _cubit.state,
-        pathContextFor: (path) => _cubit.fsFor(path).pathContext,
-      );
+      final rows = _cubit.state.visibleRows;
       final index = visibleRowIndexForPath(
         rows,
         target,
@@ -272,34 +269,22 @@ class _FileTreePanelState extends State<FileTreePanel> {
                   ),
                   const SizedBox(height: 10),
                   Expanded(
-                    child: BlocSelector<
-                      FileTreeCubit,
-                      FileTreeState,
-                      (
-                        List<FileTreeRoot>,
-                        Set<String>,
-                        Map<String, List<FsDirEntry>>,
-                      )
-                    >(
-                      selector: (state) =>
-                          (state.roots, state.expandedPaths, state.dirCache),
-                      builder: (context, selected) {
-                        final (roots, expandedPaths, dirCache) = selected;
-                        if (!roots.any((r) => r.exists)) {
+                    child: BlocSelector<FileTreeCubit, FileTreeState,
+                        List<FileTreeVisibleRow>>(
+                      selector: (state) => state.visibleRows,
+                      builder: (context, rows) {
+                        if (!context.read<FileTreeCubit>().state.anyRootExists) {
                           return const SizedBox.shrink();
                         }
                         return _FileTreeList(
-                          treeState: FileTreeState(
-                            roots: roots,
-                            expandedPaths: expandedPaths,
-                            dirCache: dirCache,
-                          ),
+                          rows: rows,
                           cubit: _cubit,
                           textColor: cs.onSurface,
                           listScrollController: _listScrollController,
                           horizontalScrollController:
                               _horizontalScrollController,
-                          desktopShellActions: _desktopShellActionsFor(_workContext),
+                          desktopShellActions:
+                              _desktopShellActionsFor(_workContext),
                           remoteFileManagerActions:
                               _remoteFileManagerActionsFor(_workContext),
                           workContext: _workContext,
@@ -389,7 +374,7 @@ class _FileTreePanelState extends State<FileTreePanel> {
 
 class _FileTreeList extends StatefulWidget {
   const _FileTreeList({
-    required this.treeState,
+    required this.rows,
     required this.cubit,
     required this.textColor,
     required this.listScrollController,
@@ -399,7 +384,7 @@ class _FileTreeList extends StatefulWidget {
     required this.workContext,
   });
 
-  final FileTreeState treeState;
+  final List<FileTreeVisibleRow> rows;
   final FileTreeCubit cubit;
   final Color textColor;
   final ScrollController listScrollController;
@@ -445,10 +430,7 @@ class _FileTreeListState extends State<_FileTreeList> {
 
   @override
   Widget build(BuildContext context) {
-    final rows = visibleFileTreeRows(
-      state: widget.treeState,
-      pathContextFor: (path) => widget.cubit.fsFor(path).pathContext,
-    );
+    final rows = widget.rows;
     if (rows.isEmpty) {
       return Text(
         '(empty)',

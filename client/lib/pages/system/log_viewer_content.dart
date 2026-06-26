@@ -74,7 +74,7 @@ class LogViewerLineList extends StatelessWidget {
   Widget build(BuildContext context) {
     final cs = Theme.of(context).colorScheme;
 
-    Widget lineWidget(int index, String line) {
+    Widget lineWidget(int index, String line, {required bool singleLine}) {
       final tinted = logLineColor(context, line);
       final bg = index.isEven
           ? Colors.transparent
@@ -85,6 +85,7 @@ class LogViewerLineList extends StatelessWidget {
           padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 3),
           child: SelectableText(
             line,
+            maxLines: singleLine ? 1 : null,
             style: logMonospaceStyle(context, color: tinted),
           ),
         ),
@@ -102,21 +103,30 @@ class LogViewerLineList extends StatelessWidget {
               child: Center(child: CircularProgressIndicator(strokeWidth: 2)),
             );
           }
-          return lineWidget(index, lines[index]);
+          return lineWidget(index, lines[index], singleLine: false);
         },
       );
     }
 
-    return SingleChildScrollView(
-      controller: scrollController,
-      scrollDirection: Axis.horizontal,
-      child: SizedBox(
-        width: 2000,
-        child: ListView.builder(
-          shrinkWrap: true,
-          physics: const NeverScrollableScrollPhysics(),
-          itemCount: lines.length,
-          itemBuilder: (context, index) => lineWidget(index, lines[index]),
+    return Scrollbar(
+      thumbVisibility: true,
+      child: SingleChildScrollView(
+        scrollDirection: Axis.horizontal,
+        child: SizedBox(
+          width: 2000,
+          child: ListView.builder(
+            controller: scrollController,
+            itemCount: lines.length + (loadingMore ? 1 : 0),
+            itemBuilder: (context, index) {
+              if (index >= lines.length) {
+                return const Padding(
+                  padding: EdgeInsets.all(20),
+                  child: Center(child: CircularProgressIndicator(strokeWidth: 2)),
+                );
+              }
+              return lineWidget(index, lines[index], singleLine: true);
+            },
+          ),
         ),
       ),
     );

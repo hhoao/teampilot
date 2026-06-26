@@ -45,6 +45,8 @@ import 'package:teampilot/services/cli/registry/config_profile/claude_config_pro
 import 'package:teampilot/services/provider/config_profile_service.dart';
 import 'package:teampilot/services/app/connection_mode_service.dart';
 import 'package:teampilot/services/io/local_filesystem.dart';
+import 'package:teampilot/services/git/git_command_runner.dart';
+import 'package:teampilot/services/storage/home_target_controller.dart';
 import 'support/test_runtime_context.dart';
 import 'package:teampilot/services/session/session_lifecycle_service.dart';
 import 'package:teampilot/services/team_bus/member_bus_idle_endpoint.dart';
@@ -62,6 +64,8 @@ import 'package:shared_preferences/shared_preferences.dart';
 
 import 'support/in_memory_filesystem.dart';
 import 'support/post_frame_test_harness.dart';
+import 'support/test_git_command_runner.dart';
+import 'support/test_home_target_controller.dart';
 
 ExtensionCubit _testExtensionCubit() => ExtensionCubit(
   ExtensionRepository(
@@ -130,6 +134,12 @@ Widget buildTestApp({
       ),
       RepositoryProvider<ConnectionModeService>.value(
         value: connectionModeService,
+      ),
+      RepositoryProvider<HomeTargetController>.value(
+        value: testHomeTargetController(),
+      ),
+      RepositoryProvider<GitCommandRunner>.value(
+        value: const TestGitCommandRunner(),
       ),
       RepositoryProvider<WorkspaceTerminalRegistry>(
         create: (_) => WorkspaceTerminalRegistry(),
@@ -504,8 +514,7 @@ void main() {
     expect(find.byKey(AppKeys.chatWorkspace), findsOneWidget);
     expect(find.byKey(AppKeys.rightToolsPanel), findsOneWidget);
     expect(find.byKey(AppKeys.membersPanel), findsOneWidget);
-    // Tabbed right-tools layout keeps every tool view mounted (IndexedStack);
-    // the file tree panel is offstage until its tab is selected.
+    // Lazy TabbedPanel mounts only the selected tool tab; file tree is off-tab.
     expect(find.byKey(AppKeys.fileTreePanel), findsNothing);
     expect(find.text('team-lead'), findsWidgets);
     expect(chatCubit.state.tabs.length, 0);

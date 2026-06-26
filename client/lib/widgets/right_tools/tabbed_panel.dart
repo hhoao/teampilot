@@ -25,15 +25,12 @@ class TabbedPanel extends StatefulWidget {
 
 class _TabbedPanelState extends State<TabbedPanel> {
   int _localSelected = 0;
-
-  int _selectedIndex() {
-    final scope = widget.scopeId;
-    if (scope == null) return _localSelected;
-    return context.read<WorkspaceToolsCubit>().selectedIndexFor(scope);
-  }
+  final Set<int> _visitedIndices = {0};
+  int? _lastTrackedIndex;
 
   void _select(int index) {
     final scope = widget.scopeId;
+    setState(() => _visitedIndices.add(index));
     if (scope == null) {
       setState(() => _localSelected = index);
     } else {
@@ -41,16 +38,31 @@ class _TabbedPanelState extends State<TabbedPanel> {
     }
   }
 
+  void _trackVisited(int index) {
+    if (_visitedIndices.contains(index)) return;
+    setState(() => _visitedIndices.add(index));
+  }
+
   @override
   Widget build(BuildContext context) {
     final cs = Theme.of(context).colorScheme;
     if (widget.views.isEmpty) return const SizedBox.shrink();
     if (widget.views.length == 1) return widget.views.single.child;
-    // Rebuild on cubit changes when scoped so the selection reflects the store.
-    if (widget.scopeId != null) {
-      context.watch<WorkspaceToolsCubit>();
+
+    final selected = widget.scopeId == null
+        ? _localSelected
+        : context.select<WorkspaceToolsCubit, int>(
+            (c) => c.selectedIndexFor(widget.scopeId!),
+          );
+    final clamped = selected.clamp(0, widget.views.length - 1);
+    if (_lastTrackedIndex != clamped) {
+      _lastTrackedIndex = clamped;
+      if (!_visitedIndices.contains(clamped)) {
+        WidgetsBinding.instance.addPostFrameCallback((_) {
+          if (mounted) _trackVisited(clamped);
+        });
+      }
     }
-    final selected = _selectedIndex().clamp(0, widget.views.length - 1);
 
     return Column(
       children: [
@@ -61,7 +73,7 @@ class _TabbedPanelState extends State<TabbedPanel> {
               for (var i = 0; i < widget.views.length; i++)
                 _SwitcherButton(
                   view: widget.views[i],
-                  active: i == selected,
+                  active: i == clamped,
                   onTap: () => _select(i),
                 ),
             ],
@@ -69,16 +81,15 @@ class _TabbedPanelState extends State<TabbedPanel> {
         ),
         Divider(height: 1, thickness: 1, color: cs.outlineVariant),
         Expanded(
-          // Keep every tool view mounted so panel-local state (file-tree scroll/
-          // filter field, members selection, …) and injected cubits stay warm
-          // across tab switches. AnimatedSwitcher used to dispose the inactive
-          // tab, which made a lifted FileTreeCubit look like it had no effect:
-          // expand/filter/dirCache lived in the cubit but scroll + filter UI reset
-          // and the ListView rebuilt from scratch on every return.
           child: IndexedStack(
-            index: selected,
+            index: clamped,
             sizing: StackFit.expand,
-            children: [for (final view in widget.views) view.child],
+            children: [
+              for (var i = 0; i < widget.views.length; i++)
+                _visitedIndices.contains(i)
+                    ? widget.views[i].child
+                    : const SizedBox.shrink(),
+            ],
           ),
         ),
       ],

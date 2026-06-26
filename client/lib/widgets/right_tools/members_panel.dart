@@ -1,7 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:flutter_bloc/flutter_bloc.dart';
-
-import '../../cubits/app_provider_cubit.dart';
 import '../../l10n/l10n_extensions.dart';
 import '../../models/app_provider_config.dart';
 import '../../models/member_presence.dart';
@@ -25,6 +22,7 @@ class MembersPanel extends StatelessWidget {
     required this.team,
     required this.members,
     required this.memberPresence,
+    required this.providersByCli,
     required this.selectedMemberId,
     required this.onSelected,
     required this.onOpen,
@@ -38,6 +36,7 @@ class MembersPanel extends StatelessWidget {
   final TeamProfile team;
   final List<TeamMemberConfig> members;
   final Map<String, MemberPresence> memberPresence;
+  final Map<CliTool, List<AppProviderConfig>> providersByCli;
   final String selectedMemberId;
   final ValueChanged<String> onSelected;
   final ValueChanged<String> onOpen;
@@ -53,7 +52,6 @@ class MembersPanel extends StatelessWidget {
     final cs = Theme.of(context).colorScheme;
     final l10n = context.l10n;
     final registry = CliToolRegistryScope.maybeOf(context);
-    final providerState = context.watch<AppProviderCubit>().state;
     return Container(
       key: AppKeys.membersPanel,
       padding: const EdgeInsets.all(13),
@@ -94,7 +92,7 @@ class MembersPanel extends StatelessWidget {
                 final memberCli = member.cliWithin(team);
                 final catalogCli = _catalogCli(registry, memberCli);
                 final memberProvider = _memberProvider(
-                  providerState.providersFor(catalogCli),
+                  providersByCli[catalogCli] ?? const [],
                   member.provider,
                 );
                 final brandLabel = memberProvider?.name ??

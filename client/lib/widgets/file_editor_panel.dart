@@ -1,4 +1,5 @@
-﻿import 'package:flutter/material.dart';
+﻿import 'package:flutter/foundation.dart';
+import 'package:flutter/material.dart';
 import 'package:teampilot/theme/app_icon_sizes.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:path/path.dart' as p;
@@ -40,22 +41,24 @@ class _FileEditorTabBar extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final editor = context.watch<EditorCubit>();
-    final state = editor.state;
-    if (state.openPaths.isEmpty) {
+    final tabModel = context.select<EditorCubit, _EditorTabBarModel>(
+      (c) => _EditorTabBarModel.from(c.state),
+    );
+    if (tabModel.openPaths.isEmpty) {
       return const SizedBox.shrink();
     }
 
+    final editor = context.read<EditorCubit>();
     return SizedBox(
       height: 32,
       child: ListView.builder(
         scrollDirection: Axis.horizontal,
-        itemCount: state.openPaths.length,
+        itemCount: tabModel.openPaths.length,
         itemBuilder: (context, index) {
-          final path = state.openPaths[index];
-          final selected = index == state.activeIndex;
-          final dirty = state.isDirty(path);
-          final name = state.fileNameFor(path);
+          final path = tabModel.openPaths[index];
+          final selected = index == tabModel.activeIndex;
+          final dirty = tabModel.dirtyPaths.contains(path);
+          final name = p.basename(path);
 
           return FileEditorTab(
             fileName: name,
@@ -78,63 +81,61 @@ class _FileEditorBody extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final editor = context.watch<EditorCubit>();
-    final state = editor.state;
-    final path = state.activePath;
+    return BlocSelector<EditorCubit, EditorState, _EditorBodyModel>(
+      selector: _EditorBodyModel.from,
+      builder: (context, model) {
+        final l10n = context.l10n;
+        final path = model.activePath;
 
-    final l10n = context.l10n;
+        if (path == null) {
+          return Center(child: Text(l10n.editorNoFileOpen));
+        }
 
-    if (path == null) {
-      return Center(child: Text(l10n.editorNoFileOpen));
-    }
+        if (model.isLoading) {
+          return const Center(
+            child: SizedBox(
+              width: 24,
+              height: 24,
+              child: CircularProgressIndicator(strokeWidth: 2),
+            ),
+          );
+        }
 
-    if (state.loadingPaths.contains(path)) {
-      return const Center(
-        child: SizedBox(
-          width: 24,
-          height: 24,
-          child: CircularProgressIndicator(strokeWidth: 2),
-        ),
-      );
-    }
+        final loadError = model.loadError;
+        if (loadError != null) {
+          return Center(
+            child: Padding(
+              padding: const EdgeInsets.all(16),
+              child: Text(
+                l10n.editorPanelErrorMessage(loadError),
+                textAlign: TextAlign.center,
+              ),
+            ),
+          );
+        }
 
-    final loadError = state.errorByPath[path];
-    if (loadError != null) {
-      return Center(
-        child: Padding(
-          padding: const EdgeInsets.all(16),
-          child: Text(
-            l10n.editorPanelErrorMessage(loadError),
-            textAlign: TextAlign.center,
-          ),
-        ),
-      );
-    }
+        final editor = context.read<EditorCubit>();
+        final controller = editor.controllerFor(path);
+        if (controller == null) {
+          return Center(child: Text(l10n.editorNotReady));
+        }
 
-    final controller = editor.controllerFor(path);
-    if (controller == null) {
-      return Center(child: Text(l10n.editorNotReady));
-    }
-
-    final readOnly = editor.isReadOnly(path);
-    return CodeEditor(
-      // Stable per-file GlobalKey: reparents (moves) the editor instead of
-      // remounting when the host subtree is swapped, so this file's shared
-      // controller is never bound to two editors in one frame (which made
-      // re_editor setState() during build).
-      key: editor.editorKeyFor(path) ?? ValueKey(path),
-      controller: controller,
-      readOnly: readOnly,
-      toolbarController: const FileEditorContextMenuController(),
-      style: codeEditorStyleFor(context, path),
-      wordWrap: false,
-      indicatorBuilder:
-          (context, editingController, chunkController, notifier) {
-            return DefaultCodeLineNumber(
-              controller: editingController,
-              notifier: notifier,
-            );
-          },
+        return CodeEditor(
+          key: editor.editorKeyFor(path) ?? ValueKey(path),
+          controller: controller,
+          readOnly: model.readOnly,
+          toolbarController: const FileEditorContextMenuController(),
+          style: codeEditorStyleFor(context, path),
+          wordWrap: false,
+          indicatorBuilder:
+              (context, editingController, chunkController, notifier) {
+                return DefaultCodeLineNumber(
+                  controller: editingController,
+                  notifier: notifier,
+                );
+              },
+        );
+      },
     );
   }
 }
@@ -256,8 +257,9 @@ class _FloatingEditorWindowState extends State<_FloatingEditorWindow> {
   @override
   Widget build(BuildContext context) {
     final cs = Theme.of(context).colorScheme;
-    final editor = context.watch<EditorCubit>();
-    final activePath = editor.state.activePath;
+    final activePath = context.select<EditorCubit, String?>(
+      (c) => c.state.activePath,
+    );
 
     final maxW = widget.areaWidth;
     final maxH = widget.areaHeight;
@@ -540,13 +542,10 @@ class _FloatingTitleBar extends StatelessWidget {
   Widget build(BuildContext context) {
     final cs = Theme.of(context).colorScheme;
     final l10n = context.l10n;
-    final editor = context.watch<EditorCubit>();
-    final activePath = path;
-    final dirty = activePath != null && editor.state.isDirty(activePath);
-    final readOnly =
-        activePath != null && editor.state.readOnlyPaths.contains(activePath);
-    final showDirtyActions = dirty && !readOnly;
-    final title = activePath ?? '';
+    final titleModel = context.select<EditorCubit, _FloatingTitleModel>(
+      (c) => _FloatingTitleModel.from(c.state, path),
+    );
+    final title = titleModel.path ?? '';
 
     return GestureDetector(
       onPanUpdate: (details) => onDragUpdate(details.delta),
@@ -577,14 +576,14 @@ class _FloatingTitleBar extends StatelessWidget {
                 style: AppTextStyles.of(context).body,
               ),
             ),
-            if (showDirtyActions) ...[
+            if (titleModel.showDirtyActions) ...[
               IconButton(
                 tooltip: l10n.editorSave,
                 iconSize: context.appIconSizes.md,
                 visualDensity: VisualDensity.compact,
                 onPressed: throttledAsync(
                   'file_editor_save',
-                  () => editor.saveActive(),
+                  () => context.read<EditorCubit>().saveActive(),
                 ),
                 icon: Icon(Icons.check, color: cs.secondary),
               ),
@@ -594,7 +593,7 @@ class _FloatingTitleBar extends StatelessWidget {
                 visualDensity: VisualDensity.compact,
                 onPressed: throttledOnPressed(
                   'file_editor_revert',
-                  editor.revertActive,
+                  context.read<EditorCubit>().revertActive,
                 ),
                 icon: Icon(
                   Icons.undo,
@@ -614,4 +613,111 @@ class _FloatingTitleBar extends StatelessWidget {
       ),
     );
   }
+}
+
+@immutable
+class _EditorTabBarModel {
+  const _EditorTabBarModel({
+    required this.openPaths,
+    required this.activeIndex,
+    required this.dirtyPaths,
+  });
+
+  factory _EditorTabBarModel.from(EditorState state) {
+    return _EditorTabBarModel(
+      openPaths: state.openPaths,
+      activeIndex: state.activeIndex,
+      dirtyPaths: state.dirtyPaths,
+    );
+  }
+
+  final List<String> openPaths;
+  final int activeIndex;
+  final Set<String> dirtyPaths;
+
+  @override
+  bool operator ==(Object other) {
+    return other is _EditorTabBarModel &&
+        activeIndex == other.activeIndex &&
+        dirtyPaths == other.dirtyPaths &&
+        _listEquals(openPaths, other.openPaths);
+  }
+
+  @override
+  int get hashCode => Object.hash(activeIndex, dirtyPaths, Object.hashAll(openPaths));
+}
+
+@immutable
+class _EditorBodyModel {
+  const _EditorBodyModel({
+    required this.activePath,
+    required this.isLoading,
+    required this.loadError,
+    required this.readOnly,
+  });
+
+  factory _EditorBodyModel.from(EditorState state) {
+    final path = state.activePath;
+    return _EditorBodyModel(
+      activePath: path,
+      isLoading: path != null && state.loadingPaths.contains(path),
+      loadError: path == null ? null : state.errorByPath[path],
+      readOnly: path != null && state.readOnlyPaths.contains(path),
+    );
+  }
+
+  final String? activePath;
+  final bool isLoading;
+  final String? loadError;
+  final bool readOnly;
+
+  @override
+  bool operator ==(Object other) {
+    return other is _EditorBodyModel &&
+        activePath == other.activePath &&
+        isLoading == other.isLoading &&
+        loadError == other.loadError &&
+        readOnly == other.readOnly;
+  }
+
+  @override
+  int get hashCode => Object.hash(activePath, isLoading, loadError, readOnly);
+}
+
+@immutable
+class _FloatingTitleModel {
+  const _FloatingTitleModel({
+    required this.path,
+    required this.showDirtyActions,
+  });
+
+  factory _FloatingTitleModel.from(EditorState state, String? path) {
+    final dirty = path != null && state.dirtyPaths.contains(path);
+    final readOnly = path != null && state.readOnlyPaths.contains(path);
+    return _FloatingTitleModel(
+      path: path,
+      showDirtyActions: dirty && !readOnly,
+    );
+  }
+
+  final String? path;
+  final bool showDirtyActions;
+
+  @override
+  bool operator ==(Object other) {
+    return other is _FloatingTitleModel &&
+        path == other.path &&
+        showDirtyActions == other.showDirtyActions;
+  }
+
+  @override
+  int get hashCode => Object.hash(path, showDirtyActions);
+}
+
+bool _listEquals<T>(List<T> a, List<T> b) {
+  if (a.length != b.length) return false;
+  for (var i = 0; i < a.length; i++) {
+    if (a[i] != b[i]) return false;
+  }
+  return true;
 }

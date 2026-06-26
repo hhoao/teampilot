@@ -2,13 +2,16 @@ import 'dart:async';
 
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:provider/provider.dart';
 
 import '../../../cubits/chat_cubit.dart';
 import '../../../cubits/worktree_cubit.dart';
 import '../../../models/app_session.dart';
 import '../../../models/workspace.dart';
 import '../../../models/workspace_folder.dart';
+import '../../../services/git/git_command_runner.dart';
 import '../../../services/git/git_worktree_service.dart';
+import '../../../services/storage/runtime_context.dart';
 import '../../../services/workspace/workspace_tools_scope.dart';
 
 /// Keeps [WorkspaceToolsScopeCubit] and [WorktreeCubit]'s git runner aligned
@@ -88,10 +91,21 @@ class _WorkspaceToolsScopeSyncState extends State<WorkspaceToolsScopeSync> {
     if (_lastWorktreeTargetId != tools.targetId) {
       _lastWorktreeTargetId = tools.targetId;
       context.read<WorktreeCubit>().bindWorktreeService(
-        GitWorktreeService.forContext(tools.context),
+        _worktreeServiceFor(context, tools.context),
         repoPath: widget.workspace.firstFolderPath,
         preferCurrentPath: session?.firstFolderPath,
       );
+    }
+  }
+
+  GitWorktreeService _worktreeServiceFor(
+    BuildContext context,
+    RuntimeContext toolsContext,
+  ) {
+    try {
+      return GitWorktreeService(runner: context.read<GitCommandRunner>());
+    } on ProviderNotFoundException {
+      return GitWorktreeService.forContext(toolsContext);
     }
   }
 

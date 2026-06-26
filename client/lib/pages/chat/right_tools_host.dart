@@ -7,8 +7,8 @@ import '../../widgets/resizable_split_view.dart';
 /// tools panel. Delegates resize to [ResizableSplitView] — the same widget
 /// used by the workspace sidebar, file-tree split, and workspace shell.
 ///
-/// Show/hide is instant. The panel stays mounted via [Offstage] so toggling
-/// never rebuilds its subtree (IndexedStack of file tree, git, members).
+/// Show/hide is instant. The panel stays mounted via [Visibility] so toggling
+/// skips layout when hidden while preserving element state in cubits/stores.
 ///
 /// The center child (terminal) is ALWAYS in the flex position — structurally
 /// stable, never reparents across show/hide.
@@ -46,10 +46,13 @@ class RightToolsHost extends StatelessWidget {
           axis: Axis.horizontal,
           primaryAtEnd: true,
           first: ClipRect(child: child),
-          // Offstage keeps the panel mounted when hidden, preserving element
-          // state (IndexedStack) so show is just a visibility flip.
-          second: Offstage(
-            offstage: !showPanel,
+          // Hidden panel keeps state in cubits/stores but skips layout/paint.
+          second: Visibility(
+            visible: showPanel,
+            maintainState: true,
+            maintainAnimation: false,
+            maintainSize: false,
+            maintainInteractivity: false,
             child: ClipRect(
               child: SizedBox(width: storedWidth, child: rightTools),
             ),

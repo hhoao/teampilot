@@ -3,6 +3,7 @@ import 'package:flutter_animate/flutter_animate.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
 import '../../cubits/launch_profile_cubit.dart';
+import '../../models/team_config.dart';
 import '../../l10n/l10n_extensions.dart';
 import '../../theme/workspace_surface_layers.dart';
 import '../team_config/team_config_section.dart';
@@ -57,8 +58,9 @@ class _HomeContentState extends State<HomeContent> {
   Widget build(BuildContext context) {
     final cs = Theme.of(context).colorScheme;
     final l10n = context.l10n;
-    final teamCubit = context.watch<LaunchProfileCubit>();
-    final team = teamCubit.state.selectedTeam;
+    final team = context.select<LaunchProfileCubit, TeamProfile?>(
+      (c) => c.state.selectedTeam,
+    );
 
     if (team == null) {
       return ColoredBox(
@@ -89,7 +91,7 @@ class _HomeContentState extends State<HomeContent> {
               key: ValueKey('home-team-tab-${activeSection.name}'),
               section: activeSection,
               team: team,
-              cubit: teamCubit,
+              cubit: context.read<LaunchProfileCubit>(),
               initialMemberId: activeSection == TeamConfigSection.members
                   ? widget.initialMemberId
                   : null,

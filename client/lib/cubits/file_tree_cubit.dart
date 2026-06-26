@@ -5,6 +5,7 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:path/path.dart' as p;
 
 import '../services/file_tree/file_tree_clipboard.dart';
+import '../services/file_tree/file_tree_visible_rows.dart';
 import '../services/io/filesystem.dart';
 import '../services/io/local_filesystem.dart';
 import '../services/storage/runtime_context.dart';
@@ -41,6 +42,7 @@ class FileTreeState {
     this.filterText = '',
     this.showHiddenFiles = false,
     this.dirCache = const {},
+    this.visibleRows = const [],
     this.revealPath,
     this.clipboard,
   });
@@ -53,6 +55,7 @@ class FileTreeState {
     String filterText = '',
     bool showHiddenFiles = false,
     Map<String, List<FsDirEntry>> dirCache = const {},
+    List<FileTreeVisibleRow> visibleRows = const [],
     String? revealPath,
     FileTreeClipboard? clipboard,
   }) {
@@ -64,6 +67,7 @@ class FileTreeState {
       filterText: filterText,
       showHiddenFiles: showHiddenFiles,
       dirCache: dirCache,
+      visibleRows: visibleRows,
       revealPath: revealPath,
       clipboard: clipboard,
     );
@@ -74,6 +78,7 @@ class FileTreeState {
   final String filterText;
   final bool showHiddenFiles;
   final Map<String, List<FsDirEntry>> dirCache;
+  final List<FileTreeVisibleRow> visibleRows;
 
   /// Set by [FileTreeCubit.revealPath]; cleared after scroll-into-view.
   final String? revealPath;
@@ -101,6 +106,7 @@ class FileTreeState {
     String? filterText,
     bool? showHiddenFiles,
     Map<String, List<FsDirEntry>>? dirCache,
+    List<FileTreeVisibleRow>? visibleRows,
     String? revealPath,
     FileTreeClipboard? clipboard,
     bool clearRevealPath = false,
@@ -113,6 +119,7 @@ class FileTreeState {
       filterText: clearFilter ? '' : (filterText ?? this.filterText),
       showHiddenFiles: showHiddenFiles ?? this.showHiddenFiles,
       dirCache: dirCache ?? this.dirCache,
+      visibleRows: visibleRows ?? this.visibleRows,
       revealPath: clearRevealPath ? null : (revealPath ?? this.revealPath),
       clipboard: clearClipboard ? null : (clipboard ?? this.clipboard),
     );
@@ -124,8 +131,12 @@ class FileTreeCubit extends Cubit<FileTreeState> {
     : _defaultFs = fs ?? LocalFilesystem(),
       super(const FileTreeState());
 
+  static const _filterDebounce = Duration(milliseconds: 200);
+
   final Filesystem _defaultFs;
   final Map<String, FileTreeRootMount> _mountsByRoot = {};
+  Timer? _filterDebounceTimer;
+  String _pendingFilter = '';
 
   /// Primary filesystem (first mount, else constructor default).
   Filesystem get fs =>
@@ -139,6 +150,27 @@ class FileTreeCubit extends Cubit<FileTreeState> {
   }
 
   RuntimeContext? workContextFor(String path) => _mountFor(path)?.workContext;
+
+  @override
+  Future<void> close() {
+    _filterDebounceTimer?.cancel();
+    return super.close();
+  }
+
+  void _publish(FileTreeState next, {bool recomputeRows = true}) {
+    if (recomputeRows) {
+      emit(
+        next.copyWith(
+          visibleRows: visibleFileTreeRows(
+            state: next,
+            pathContextFor: (path) => fsFor(path).pathContext,
+          ),
+        ),
+      );
+      return;
+    }
+    emit(next.copyWith(visibleRows: state.visibleRows));
+  }
 
   FileTreeRootMount? _mountFor(String path) {
     if (_mountsByRoot.isEmpty) return null;
@@ -207,7 +239,7 @@ class FileTreeCubit extends Cubit<FileTreeState> {
       ..addAll(wanted);
     final paths = wanted.keys.toList(growable: false);
     if (paths.isEmpty) {
-      emit(const FileTreeState());
+      _publish(const FileTreeState());
       return;
     }
     final roots = <FileTreeRoot>[];
@@ -221,7 +253,7 @@ class FileTreeCubit extends Cubit<FileTreeState> {
     final expanded = roots.length > 1
         ? {for (final r in roots) if (r.exists) r.path}
         : <String>{};
-    emit(FileTreeState(roots: roots, expandedPaths: expanded));
+    _publish(FileTreeState(roots: roots, expandedPaths: expanded));
     for (final root in roots) {
       if (root.exists) await _loadDirectory(root.path);
     }
@@ -235,17 +267,32 @@ class FileTreeCubit extends Cubit<FileTreeState> {
       expanded.add(path);
       _loadDirectory(path);
     }
-    emit(state.copyWith(expandedPaths: expanded));
+    _publish(state.copyWith(expandedPaths: expanded));
   }
 
   void setFilter(String text) {
-    emit(state.copyWith(filterText: text));
+    _pendingFilter = text;
+    _filterDebounceTimer?.cancel();
+    if (text.isEmpty) {
+      _applyFilter('');
+      return;
+    }
+    _filterDebounceTimer = Timer(_filterDebounce, () {
+      if (isClosed) return;
+      _applyFilter(_pendingFilter);
+    });
+  }
+
+  void _applyFilter(String text) {
+    if (text == state.filterText) return;
+    _publish(state.copyWith(filterText: text));
+    unawaited(refresh());
   }
 
   void toggleShowHidden() {
     // Flip the flag, then re-read visible directories in place. The new filter
     // is applied by [_fetchDirectoryEntries]; no need to flash the cache empty.
-    emit(state.copyWith(showHiddenFiles: !state.showHiddenFiles));
+    _publish(state.copyWith(showHiddenFiles: !state.showHiddenFiles));
     unawaited(refresh());
   }
 
@@ -291,12 +338,12 @@ class FileTreeCubit extends Cubit<FileTreeState> {
         cache.remove(entry.key);
       }
     }
-    emit(state.copyWith(dirCache: cache));
+    _publish(state.copyWith(dirCache: cache));
   }
 
   void clearRevealPath() {
     if (state.revealPath == null) return;
-    emit(state.copyWith(clearRevealPath: true));
+    _publish(state.copyWith(clearRevealPath: true), recomputeRows: false);
   }
 
   /// Expands ancestor folders and scrolls [filePath] into view in the tree.
@@ -336,7 +383,7 @@ class FileTreeCubit extends Cubit<FileTreeState> {
     }
     await _loadDirectory(rootNorm);
 
-    emit(
+    _publish(
       state.copyWith(
         expandedPaths: expanded,
         revealPath: normalized,
@@ -351,7 +398,7 @@ class FileTreeCubit extends Cubit<FileTreeState> {
     if (isClosed || entries == null) return;
     final cache = Map<String, List<FsDirEntry>>.from(state.dirCache);
     cache[path] = entries;
-    emit(state.copyWith(dirCache: cache));
+    _publish(state.copyWith(dirCache: cache));
   }
 
   Future<List<FsDirEntry>?> _fetchDirectoryEntries(String path) async {
@@ -368,7 +415,7 @@ class FileTreeCubit extends Cubit<FileTreeState> {
   }
 
   void collapseAllFolders() {
-    emit(state.copyWith(expandedPaths: const {}));
+    _publish(state.copyWith(expandedPaths: const {}));
   }
 
   List<FsDirEntry> entriesFor(String path) {
@@ -397,24 +444,26 @@ class FileTreeCubit extends Cubit<FileTreeState> {
   }
 
   void copyItem(String path) {
-    emit(
+    _publish(
       state.copyWith(
         clipboard: FileTreeClipboard(
           path: path,
           mode: FileTreeClipboardMode.copy,
         ),
       ),
+      recomputeRows: false,
     );
   }
 
   void cutItem(String path) {
-    emit(
+    _publish(
       state.copyWith(
         clipboard: FileTreeClipboard(
           path: path,
           mode: FileTreeClipboardMode.cut,
         ),
       ),
+      recomputeRows: false,
     );
   }
 
@@ -440,7 +489,7 @@ class FileTreeCubit extends Cubit<FileTreeState> {
 
     final sourceStat = await fsFor(source).stat(source);
     if (!sourceStat.exists) {
-      emit(state.copyWith(clearClipboard: true));
+      _publish(state.copyWith(clearClipboard: true));
       throw FileTreeOperationException('source missing');
     }
 
@@ -452,11 +501,11 @@ class FileTreeCubit extends Cubit<FileTreeState> {
       }
     } else {
       await fsFor(source).rename(source, target);
-      emit(state.copyWith(clearClipboard: true));
+      _publish(state.copyWith(clearClipboard: true));
     }
 
     final expanded = Set<String>.from(state.expandedPaths)..add(dest);
-    emit(state.copyWith(expandedPaths: expanded));
+    _publish(state.copyWith(expandedPaths: expanded));
     await refresh();
   }
 
@@ -493,7 +542,7 @@ class FileTreeCubit extends Cubit<FileTreeState> {
 
     await activeFs.writeString(target, '');
     final expanded = Set<String>.from(state.expandedPaths)..add(parentDir);
-    emit(state.copyWith(expandedPaths: expanded));
+    _publish(state.copyWith(expandedPaths: expanded));
     await refresh();
   }
 
@@ -511,7 +560,7 @@ class FileTreeCubit extends Cubit<FileTreeState> {
 
     await activeFs.ensureDir(target);
     final expanded = Set<String>.from(state.expandedPaths)..add(parentDir);
-    emit(state.copyWith(expandedPaths: expanded));
+    _publish(state.copyWith(expandedPaths: expanded));
     await refresh();
   }
 
