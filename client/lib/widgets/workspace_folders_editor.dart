@@ -147,27 +147,11 @@ class _WorkspaceFoldersEditorState extends State<WorkspaceFoldersEditor> {
     _emit(next);
   }
 
-  void _setTargetForGroup(String targetId, String newTargetId) {
-    if (!widget.enabled || _targetsLocked || targetId == newTargetId) return;
-    _emit([
-      for (final f in _folders)
-        f.targetId == targetId ? f.copyWith(targetId: newTargetId) : f,
-    ]);
-  }
-
   void _setTargetForRow(int index, String targetId) {
     if (!widget.enabled || _targetsLocked) return;
     final next = [..._folders];
     next[index] = next[index].copyWith(targetId: targetId);
     _emit(next);
-  }
-
-  Future<void> _pickTargetForGroup(String targetId) async {
-    if (!widget.enabled || _targetsLocked) return;
-    final chosen = await _pickTargetDialog(current: targetId);
-    if (chosen != null) {
-      _setTargetForGroup(targetId, chosen);
-    }
   }
 
   Future<void> _pickTargetForRow(int index) async {
@@ -231,65 +215,6 @@ class _WorkspaceFoldersEditorState extends State<WorkspaceFoldersEditor> {
     ]);
   }
 
-  Future<void> _addFolderOnAnotherMachine() async {
-    if (!widget.enabled || _targetsLocked) return;
-    final targets = await (_targets ?? _loadTargets());
-    if (!mounted) return;
-    final used = workspaceTargetIds(_folders).toSet();
-    final candidates = targets.where((t) => !used.contains(t.id)).toList();
-    if (candidates.isEmpty) return;
-    final chosen = candidates.length == 1
-        ? candidates.first
-        : await showDialog<RuntimeTarget>(
-            context: context,
-            builder: (ctx) => SimpleDialog(
-              title: Text(context.l10n.workspaceFoldersPickTarget),
-              children: [
-                for (final t in candidates)
-                  SimpleDialogOption(
-                    onPressed: () => Navigator.pop(ctx, t),
-                    child: Text(t.label),
-                  ),
-              ],
-            ),
-          );
-    if (chosen == null || !mounted) return;
-    await _addFolderOnTarget(chosen.id);
-  }
-
-  Future<void> _applyAllLocal() async {
-    if (_targetsLocked) return;
-    _emit([
-      for (final f in _folders)
-        f.copyWith(targetId: WorkspaceFolder.localTargetId),
-    ]);
-  }
-
-  Future<void> _applyAllRemote() async {
-    if (_targetsLocked) return;
-    final targets = await (_targets ?? _loadTargets());
-    if (!mounted) return;
-    final remote = targets.where((t) => t.kind == RuntimeKind.ssh).toList();
-    if (remote.isEmpty) return;
-    final chosen = remote.length == 1
-        ? remote.first
-        : await showDialog<RuntimeTarget>(
-            context: context,
-            builder: (ctx) => SimpleDialog(
-              title: Text(context.l10n.workspaceFoldersPickRemoteTarget),
-              children: [
-                for (final t in remote)
-                  SimpleDialogOption(
-                    onPressed: () => Navigator.pop(ctx, t),
-                    child: Text('${t.label} (${t.id})'),
-                  ),
-              ],
-            ),
-          );
-    if (chosen == null || !mounted) return;
-    _emit([for (final f in _folders) f.copyWith(targetId: chosen.id)]);
-  }
-
   bool get _targetsLocked =>
       widget.lockTargets ||
       workspaceTopologyOf(_folders) == WorkspaceTopology.mixed;
@@ -310,33 +235,7 @@ class _WorkspaceFoldersEditorState extends State<WorkspaceFoldersEditor> {
         return Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            if (widget.enabled && !lockTargets) ...[
-              Wrap(
-                spacing: 8,
-                runSpacing: 8,
-                children: [
-                  OutlinedButton(
-                    onPressed: _applyAllLocal,
-                    child: Text(l10n.workspaceFoldersApplyAllLocal),
-                  ),
-                  OutlinedButton(
-                    onPressed: _applyAllRemote,
-                    child: Text(l10n.workspaceFoldersApplyAllRemote),
-                  ),
-                  if (groups.length == 1)
-                    OutlinedButton.icon(
-                      onPressed: _addFolderOnAnotherMachine,
-                      icon: Icon(
-                        Icons.add_circle_outline,
-                        size: context.appIconSizes.md,
-                      ),
-                      label: Text(l10n.workspaceFoldersAddOnAnotherMachine),
-                    ),
-                ],
-              ),
-              const SizedBox(height: 12),
-            ],
-              if (!hasDirectory && groups.length == 1)
+            if (!hasDirectory && groups.length == 1)
               _MachineFolderCard(
                 targetId: groups.first.targetId,
                 targetLabel: workspaceFolderTargetLabel(
@@ -347,10 +246,7 @@ class _WorkspaceFoldersEditorState extends State<WorkspaceFoldersEditor> {
                 targets: targets,
                 primaryIndex: primaryIndex,
                 enabled: widget.enabled,
-                targetEditable: !lockTargets,
                 allowRowTargetChange: !lockTargets,
-                onPickTargetForGroup: () =>
-                    _pickTargetForGroup(groups.first.targetId),
                 onAddDirectory: () =>
                     _addFolderOnTarget(groups.first.targetId),
                 onPickPath: _pickPath,
@@ -371,13 +267,10 @@ class _WorkspaceFoldersEditorState extends State<WorkspaceFoldersEditor> {
                     targets: targets,
                     primaryIndex: primaryIndex,
                     enabled: widget.enabled,
-                    targetEditable: !lockTargets,
                     allowRowTargetChange:
                         !lockTargets &&
                         workspaceTopologyOf(_folders) !=
                             WorkspaceTopology.mixed,
-                    onPickTargetForGroup: () =>
-                        _pickTargetForGroup(group.targetId),
                     onAddDirectory: () => _addFolderOnTarget(group.targetId),
                     onPickPath: _pickPath,
                     onPickTargetForRow: _pickTargetForRow,
@@ -398,9 +291,7 @@ class _MachineFolderCard extends StatelessWidget {
     required this.targets,
     required this.primaryIndex,
     required this.enabled,
-    required this.targetEditable,
     required this.allowRowTargetChange,
-    required this.onPickTargetForGroup,
     required this.onAddDirectory,
     required this.onPickPath,
     required this.onPickTargetForRow,
@@ -413,9 +304,7 @@ class _MachineFolderCard extends StatelessWidget {
   final List<RuntimeTarget> targets;
   final int primaryIndex;
   final bool enabled;
-  final bool targetEditable;
   final bool allowRowTargetChange;
-  final VoidCallback onPickTargetForGroup;
   final VoidCallback onAddDirectory;
   final ValueChanged<int> onPickPath;
   final ValueChanged<int> onPickTargetForRow;
@@ -456,11 +345,6 @@ class _MachineFolderCard extends StatelessWidget {
                     style: styles.bodyStrong.copyWith(color: cs.onSurface),
                   ),
                 ),
-                if (targetEditable && enabled)
-                  TextButton(
-                    onPressed: onPickTargetForGroup,
-                    child: Text(l10n.workspaceFoldersChangeTarget),
-                  ),
                 if (enabled)
                   TextButton.icon(
                     onPressed: onAddDirectory,

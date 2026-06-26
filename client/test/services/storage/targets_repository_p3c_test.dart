@@ -24,6 +24,17 @@ void main() {
     expect(await repo.isCredentialOptIn('ssh:p1'), isFalse);
   });
 
+  test('rootSandboxEnvOptIn defaults off and round-trips', () async {
+    expect(await repo.isRootSandboxEnvOptIn('ssh:p1'), isFalse);
+
+    await repo.setRootSandboxEnvOptIn('ssh:p1', true);
+    expect(await repo.isRootSandboxEnvOptIn('ssh:p1'), isTrue);
+    expect(await repo.isRootSandboxEnvOptIn('ssh:p2'), isFalse);
+
+    await repo.setRootSandboxEnvOptIn('ssh:p1', false);
+    expect(await repo.isRootSandboxEnvOptIn('ssh:p1'), isFalse);
+  });
+
   test('install auto-install defaults on; opt-out round-trips (sorted)', () async {
     expect(await repo.isInstallOptIn('ssh:p1'), isTrue);
     await repo.setInstallOptIn('ssh:p1', false);

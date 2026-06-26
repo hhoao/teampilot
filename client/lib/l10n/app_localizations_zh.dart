@@ -1749,6 +1749,25 @@ class AppLocalizationsZh extends AppLocalizations {
   String get credentialPushConfirmAction => '推送凭证';
 
   @override
+  String get rootSandboxEnvOptInTitle => '为 root 注入 IS_SANDBOX';
+
+  @override
+  String rootSandboxEnvOptInSubtitle(Object host) {
+    return '在 $host 上以 root 且非容器环境启动 Claude 时，设置 IS_SANDBOX=1 以保留 skip-permissions。默认关闭。';
+  }
+
+  @override
+  String get rootSandboxEnvConfirmTitle => '确认为 root 启用 sandbox 环境变量？';
+
+  @override
+  String rootSandboxEnvConfirmBody(Object host) {
+    return '在 $host 上以 root 启动 Claude 时，TeamPilot 将设置 IS_SANDBOX=1 并保留 --dangerously-skip-permissions。请仅对你信任的机器开启。';
+  }
+
+  @override
+  String get rootSandboxEnvConfirmAction => '启用';
+
+  @override
   String get workspaceTargetTitle => '工作区所在机器';
 
   @override

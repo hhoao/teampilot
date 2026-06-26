@@ -1823,6 +1823,25 @@ class AppLocalizationsEn extends AppLocalizations {
   String get credentialPushConfirmAction => 'Push credentials';
 
   @override
+  String get rootSandboxEnvOptInTitle => 'Inject IS_SANDBOX for root';
+
+  @override
+  String rootSandboxEnvOptInSubtitle(Object host) {
+    return 'When Claude launches as root on $host outside a container, set IS_SANDBOX=1 so skip-permissions is kept. Off by default.';
+  }
+
+  @override
+  String get rootSandboxEnvConfirmTitle => 'Enable root sandbox env?';
+
+  @override
+  String rootSandboxEnvConfirmBody(Object host) {
+    return 'TeamPilot will set IS_SANDBOX=1 when launching Claude as root on $host, keeping --dangerously-skip-permissions. Only enable on machines you trust.';
+  }
+
+  @override
+  String get rootSandboxEnvConfirmAction => 'Enable';
+
+  @override
   String get workspaceTargetTitle => 'Workspace machine';
 
   @override

@@ -3380,6 +3380,36 @@ abstract class AppLocalizations {
   /// **'Push credentials'**
   String get credentialPushConfirmAction;
 
+  /// No description provided for @rootSandboxEnvOptInTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Inject IS_SANDBOX for root'**
+  String get rootSandboxEnvOptInTitle;
+
+  /// No description provided for @rootSandboxEnvOptInSubtitle.
+  ///
+  /// In en, this message translates to:
+  /// **'When Claude launches as root on {host} outside a container, set IS_SANDBOX=1 so skip-permissions is kept. Off by default.'**
+  String rootSandboxEnvOptInSubtitle(Object host);
+
+  /// No description provided for @rootSandboxEnvConfirmTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Enable root sandbox env?'**
+  String get rootSandboxEnvConfirmTitle;
+
+  /// No description provided for @rootSandboxEnvConfirmBody.
+  ///
+  /// In en, this message translates to:
+  /// **'TeamPilot will set IS_SANDBOX=1 when launching Claude as root on {host}, keeping --dangerously-skip-permissions. Only enable on machines you trust.'**
+  String rootSandboxEnvConfirmBody(Object host);
+
+  /// No description provided for @rootSandboxEnvConfirmAction.
+  ///
+  /// In en, this message translates to:
+  /// **'Enable'**
+  String get rootSandboxEnvConfirmAction;
+
   /// No description provided for @workspaceTargetTitle.
   ///
   /// In en, this message translates to:

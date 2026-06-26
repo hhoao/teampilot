@@ -33,7 +33,7 @@ void main() {
       );
     });
 
-    test('bare-metal root drops flag', () {
+    test('bare-metal root drops flag unless target opt-in', () {
       expect(
         resolveRemoteRootSkipPermissionsPolicy(
           skipPermissionsRequested: true,
@@ -41,6 +41,15 @@ void main() {
           remoteInDocker: false,
         ),
         RemoteRootSkipPermissionsPolicy.dropFlag,
+      );
+      expect(
+        resolveRemoteRootSkipPermissionsPolicy(
+          skipPermissionsRequested: true,
+          runsAsRoot: true,
+          remoteInDocker: false,
+          injectRootSandboxEnv: true,
+        ),
+        RemoteRootSkipPermissionsPolicy.injectSandboxEnv,
       );
     });
   });

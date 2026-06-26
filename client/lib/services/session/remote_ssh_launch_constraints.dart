@@ -1,5 +1,6 @@
 import '../../models/runtime_target.dart';
 import '../../models/ssh_profile.dart';
+import '../../utils/logger.dart';
 import '../ssh/ssh_member_session.dart';
 import '../ssh/ssh_run_result.dart';
 import 'shell_launch_spec.dart';
@@ -32,7 +33,8 @@ enum RemoteRootSkipPermissionsPolicy {
   /// No change (non-root, or skip-permissions off).
   unchanged,
 
-  /// Root inside a container: export `IS_SANDBOX=1`, keep the CLI flag.
+  /// Root with sandbox env: export `IS_SANDBOX=1`, keep the CLI flag.
+  /// Triggered by container detection or per-target opt-in on bare-metal root.
   injectSandboxEnv,
 
   /// Root on a non-container host: drop the flag (setup.ts would exit 1).
@@ -43,11 +45,14 @@ RemoteRootSkipPermissionsPolicy resolveRemoteRootSkipPermissionsPolicy({
   required bool skipPermissionsRequested,
   required bool runsAsRoot,
   required bool remoteInDocker,
+  bool injectRootSandboxEnv = false,
 }) {
   if (!skipPermissionsRequested || !runsAsRoot) {
     return RemoteRootSkipPermissionsPolicy.unchanged;
   }
-  if (remoteInDocker) return RemoteRootSkipPermissionsPolicy.injectSandboxEnv;
+  if (remoteInDocker || injectRootSandboxEnv) {
+    return RemoteRootSkipPermissionsPolicy.injectSandboxEnv;
+  }
   return RemoteRootSkipPermissionsPolicy.dropFlag;
 }
 
@@ -57,6 +62,7 @@ Future<ShellLaunchSpec> applyRemoteSshLaunchConstraints({
   required RuntimeTarget memberTarget,
   required SshMemberSession? memberSession,
   required SshProfile? profile,
+  bool injectRootSandboxEnv = false,
 }) async {
   if (memberTarget.kind != RuntimeKind.ssh ||
       memberSession == null ||
@@ -74,6 +80,7 @@ Future<ShellLaunchSpec> applyRemoteSshLaunchConstraints({
     skipPermissionsRequested: member.dangerouslySkipPermissions,
     runsAsRoot: runsAsRoot,
     remoteInDocker: remoteInDocker,
+    injectRootSandboxEnv: injectRootSandboxEnv,
   );
 
   return switch (policy) {
@@ -82,6 +89,11 @@ Future<ShellLaunchSpec> applyRemoteSshLaunchConstraints({
       final plan = spec.plan;
       final env = Map<String, String>.from(plan.env);
       env[claudeCodeSandboxEnvKey] = claudeCodeSandboxEnvValue;
+      final reason = remoteInDocker ? 'container root' : 'target opt-in';
+      appLogger.i(
+        '[remote-ssh-launch] $reason on ${profile.hostIdentifier}: '
+        'injecting $claudeCodeSandboxEnvKey=$claudeCodeSandboxEnvValue',
+      );
       return ShellLaunchSpec(
         plan: LaunchPlan(
           env: env,
@@ -121,8 +133,9 @@ Future<ShellLaunchSpec> applyRemoteSshLaunchConstraints({
             'remote_ssh_root_skip_permissions_disabled: '
                 'Claude Code rejects --dangerously-skip-permissions for root '
                 'outside a sandbox (setup.ts); launching with permission prompts '
-                'on ${profile.hostIdentifier}. Use a non-root SSH user or a '
-                'container with IS_SANDBOX=1.',
+                'on ${profile.hostIdentifier}. Use a non-root SSH user, a '
+                'container with IS_SANDBOX=1, or enable root sandbox env '
+                'in SSH target settings.',
           ],
         ),
         launchContext: spec.launchContext.copyWith(

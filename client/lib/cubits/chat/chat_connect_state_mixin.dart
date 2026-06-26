@@ -106,6 +106,9 @@ mixin ChatConnectStateMixin on Cubit<ChatState> {
 
   void emitLaunchWarnings(List<String> warnings) {
     if (warnings.isEmpty || isClosed) return;
+    for (final warning in warnings) {
+      appLogger.w('[session-launch] $warning');
+    }
     emit(
       state.copyWith(
         snackbarMessage: warnings.first,
