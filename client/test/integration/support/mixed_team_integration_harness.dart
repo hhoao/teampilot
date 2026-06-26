@@ -14,7 +14,7 @@ import 'package:teampilot/repositories/ssh_credential_store.dart';
 import 'package:teampilot/repositories/ssh_known_host_repository.dart';
 import 'package:teampilot/repositories/ssh_profile_repository.dart';
 import 'package:teampilot/services/cli/registry/cli_tool_registry.dart';
-import 'package:teampilot/services/remote/remote_member_preflight_factory.dart';
+import 'package:teampilot/services/launch/launch_factory.dart';
 import 'package:teampilot/services/session/session_lifecycle_service.dart';
 import 'package:teampilot/services/storage/app_storage.dart';
 import 'package:teampilot/services/storage/runtime_context_registry.dart';
@@ -179,16 +179,17 @@ class MixedTeamIntegrationHarness {
   }) {
     final registry = remote.contextRegistry;
     final profileById = remote.sshProfileById;
+    final lifecycle = SessionLifecycleService(
+      appDataBasePath: AppStorage.paths.basePath,
+      workContextResolver: registry.forTarget,
+    );
     final created = ChatCubit(
       executableResolver: () => claudePath,
       cliExecutableResolver: (_) => claudePath,
       postFrameScheduler: postFrame.scheduler,
       autoLaunchAllMembersOnConnect: () => true,
       sessionRepository: SessionRepository(),
-      lifecycleService: SessionLifecycleService(
-        appDataBasePath: AppStorage.paths.basePath,
-        workContextResolver: registry.forTarget,
-      ),
+      lifecycleService: lifecycle,
       transportFactory: TerminalTransportFactory(
         sshProfileRepository: remote.sshProfileRepository,
         sshCredentialStore: remote.credentialStore,
@@ -205,7 +206,8 @@ class MixedTeamIntegrationHarness {
           contextForTarget: registry.forTarget,
         ),
       ),
-      remoteMemberPreflight: buildRemoteMemberPreflightCoordinator(
+      sessionConnect: buildSessionConnectOrchestrator(
+        lifecycle: lifecycle,
         registry: CliToolRegistry.builtIn(),
         sshClientFactory: remote.sshClientFactory,
         profileById: profileById,
@@ -217,6 +219,7 @@ class MixedTeamIntegrationHarness {
         cliPathOverride: (_, __) async => null,
         setCliPathOverride: (_, __, ___) async {},
         loadLocalCredentials: (_) async => const [],
+        localCliPath: (_) async => claudePath,
       ),
     );
     cubit = created;

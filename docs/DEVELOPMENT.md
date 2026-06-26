@@ -103,6 +103,17 @@ LD_LIBRARY_PATH=build/linux/x64/debug/bundle/lib \
 
 L2 requires `claude` on PATH. TeamPilot pre-approves third-party provider API keys in `.claude.json` (`customApiKeyResponses`) so Claude Code skips the interactive "use this API key?" gate on first launch.
 
+**L3 (local lead + Docker SSH worker, full ChatCubit + remote preflight):**
+
+```bash
+cd client
+flutter build linux --debug
+LD_LIBRARY_PATH=build/linux/x64/debug/bundle/lib \
+  flutter test test/integration/mixed_team_claude_docker_integration_test.dart --tags integration
+```
+
+L3 uses `Dockerfile.mixed` (`teampilot-it-ssh-mixed:latest`) with Node + `claude` baked in. Most wall time is **cold start** (Docker + two Claude PTYs + remote preflight locate); once both members are idle, bus ping/pong should complete in **seconds** (`kickoffAndWaitForPingPong` allows 30s per attempt). Bare-image install coverage remains `remote_cli_install_docker_test.dart`.
+
 **Debug mock API:**
 
 ```bash
@@ -116,7 +127,7 @@ cd client
 flutter test test/integration/remote_cli_install_docker_test.dart --tags integration
 ```
 
-Skips automatically when Docker is unavailable. First run builds `teampilot-it-ssh:latest` from `test/integration/docker/Dockerfile` (Debian + OpenSSH, no Node/npm preinstalled).
+Skips automatically when Docker is unavailable. First run builds `teampilot-it-ssh:latest` from `test/integration/docker/Dockerfile` (Debian + OpenSSH + socat, no Node/npm preinstalled).
 
 ### Test helpers (cubit / AppStorage)
 

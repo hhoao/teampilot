@@ -48,6 +48,10 @@ class ChatSessionShellFactory {
 
   SshProfile? profileFor(rt.RuntimeTarget target) => _profileFor(target);
 
+  String executableFor(CliTool cli) => _resolveExecutableFor(cli);
+
+  SshProfile? profileById(String id) => _sshProfileById?.call(id);
+
   SshClientFactory? get sshClientFactory => _transportFactory?.sshClientFactory;
 
   rt.RuntimeTarget get _target =>

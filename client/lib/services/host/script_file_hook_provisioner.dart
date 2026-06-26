@@ -21,6 +21,15 @@ final class ScriptFileHookProvisioner {
 
   HostScriptRunner get runner => _runner;
 
+  ScriptFileHookProvisioner withFilesystem(Filesystem fs) {
+    return ScriptFileHookProvisioner(
+      fs: fs,
+      runner: _runner,
+      baseFileName: _baseFileName,
+      loadScript: _loadScript,
+    );
+  }
+
   String fileNameForDialect([HostScriptDialect? dialect]) =>
       _runner.hookFileName(_baseFileName);
 

@@ -18,6 +18,7 @@ import 'package:teampilot/services/file_tree/workspace_file_tree_store.dart';
 import 'package:teampilot/services/git/git_repo_store.dart';
 import 'package:teampilot/services/io/local_filesystem.dart';
 import 'package:teampilot/services/provider/config_profile_service.dart';
+import 'package:teampilot/services/workspace/workspace_tools_scope.dart';
 
 import '../support/post_frame_test_harness.dart';
 
@@ -94,11 +95,14 @@ void main() {
               BlocProvider.value(value: presenceCubit),
               BlocProvider.value(value: WorkspaceToolsCubit()),
             ],
-            child: const Scaffold(
-              body: ChatPage(
-                cwd: '/tmp/personal-workspace',
-                workspaceId: 'personal-test',
-                isPersonalWorkspace: true,
+            child: WorkspaceToolsScope(
+              state: const WorkspaceToolsScopeState(resolving: false),
+              child: const Scaffold(
+                body: ChatPage(
+                  cwd: '/tmp/personal-workspace',
+                  workspaceId: 'personal-test',
+                  isPersonalWorkspace: true,
+                ),
               ),
             ),
           ),

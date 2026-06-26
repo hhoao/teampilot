@@ -18,6 +18,25 @@ import '../../../team/claude_team_roster_service.dart';
 import '../capabilities/config_profile_capability.dart';
 import '../../../provider/workspace_trust_provisioner.dart';
 import 'bus_idle_stop_hook.dart';
+import '../../../../utils/logger.dart';
+
+void _logClaudeContributeLaunchStep(
+  Stopwatch sw,
+  String step,
+  String sessionId, {
+  String? extra,
+}) {
+  final elapsedMs = sw.elapsedMilliseconds;
+  sw
+    ..stop()
+    ..reset()
+    ..start();
+  final suffix = extra == null ? '' : ' $extra';
+  appLogger.d(
+    '[session-lifecycle] contributeLaunch step=$step '
+    'elapsedMs=$elapsedMs session=$sessionId cli=claude$suffix',
+  );
+}
 
 class ClaudeLaunchExtras {
   const ClaudeLaunchExtras({
@@ -297,6 +316,12 @@ final class ClaudeConfigProfileCapability implements ConfigProfileCapability {
     StandaloneLaunchProfileScope standalone,
     PersonalProfile personal,
   ) async {
+    final sessionId = standalone.sessionId;
+    final stepSw = Stopwatch()..start();
+    appLogger.d(
+      '[session-lifecycle] contributeLaunch start session=$sessionId cli=claude',
+    );
+
     final delegate = ctx.paths;
     final catalog = ctx.catalog;
     final member = standaloneMemberFromPersonal(personal, preset: ctx.preset);
@@ -315,6 +340,12 @@ final class ClaudeConfigProfileCapability implements ConfigProfileCapability {
         : (settings != null
               ? (await _resolveSoleClaudeProviderId(catalog))
               : null);
+    _logClaudeContributeLaunchStep(
+      stepSw,
+      'resolveProviderSettings',
+      sessionId,
+      extra: 'providerId=${resolvedProviderId ?? ''}',
+    );
 
     await _provisionWorkspaceTrust(
       delegate: delegate,
@@ -322,12 +353,16 @@ final class ClaudeConfigProfileCapability implements ConfigProfileCapability {
       workingDirectory: workingDirectory,
       additionalDirectories: ctx.additionalDirectories,
     );
+    _logClaudeContributeLaunchStep(stepSw, 'provisionWorkspaceTrust', sessionId);
+
     await _writeMetadataAt(
       delegate,
       memberToolDir,
       workingDirectory,
       additionalDirectories: ctx.additionalDirectories,
     );
+    _logClaudeContributeLaunchStep(stepSw, 'writeMetadata', sessionId);
+
     final effortLevel = _resolveClaudeEffort(
       team: null,
       member: member,
@@ -342,6 +377,8 @@ final class ClaudeConfigProfileCapability implements ConfigProfileCapability {
       effortLevel: effortLevel,
       standalone: true,
     );
+    _logClaudeContributeLaunchStep(stepSw, 'writeSettings', sessionId);
+
     await _writeStandaloneMemberProfile(
       delegate: delegate,
       memberToolDir: memberToolDir,
@@ -351,6 +388,7 @@ final class ClaudeConfigProfileCapability implements ConfigProfileCapability {
       team: null,
       effortLevel: effortLevel,
     );
+    _logClaudeContributeLaunchStep(stepSw, 'writeStandaloneMemberProfile', sessionId);
 
     final trimmedProviderId = resolvedProviderId?.trim() ?? '';
     if (trimmedProviderId.isNotEmpty &&
@@ -363,6 +401,12 @@ final class ClaudeConfigProfileCapability implements ConfigProfileCapability {
         sessionClaudeDir: memberToolDir,
         providerId: trimmedProviderId,
         warnings: warnings,
+      );
+      _logClaudeContributeLaunchStep(
+        stepSw,
+        'linkOfficialCredentials',
+        sessionId,
+        extra: 'warnings=${warnings.length}',
       );
     }
 
@@ -384,11 +428,17 @@ final class ClaudeConfigProfileCapability implements ConfigProfileCapability {
         tool: toolId,
         member: member,
       );
+      _logClaudeContributeLaunchStep(stepSw, 'resolveAppendSystemPrompt', sessionId);
       if (appendPath != null) {
         environment[MemberRoleProvision.appendSystemPromptFileEnvKey] =
             appendPath;
       }
     }
+
+    stepSw.stop();
+    appLogger.d(
+      '[session-lifecycle] contributeLaunch done session=$sessionId cli=claude',
+    );
 
     return ConfigProfileLaunchContribution(
       environment: environment,

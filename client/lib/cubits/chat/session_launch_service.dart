@@ -16,6 +16,8 @@ import '../../models/team_config.dart';
 import '../../models/workspace_tab_ref.dart';
 import '../../repositories/session_repository.dart';
 import '../../services/cli/registry/config_profile/config_profile_context.dart';
+import '../../services/launch/session_connect_orchestrator.dart';
+import '../../services/launch/workspace_provision_coordinator.dart';
 import '../../services/session/remote_ssh_launch_constraints.dart';
 import '../../services/session/session_lifecycle_service.dart';
 import '../../services/team/team_config_launch_validator.dart';
@@ -25,8 +27,6 @@ import '../../services/team_bus/mcp/bus_bridge_locator.dart';
 import '../../services/team_bus/mcp/teammate_bus_mcp_config.dart';
 import '../../services/team_bus/remote/member_bus_mcp_config.dart';
 import '../../services/team_bus/remote/remote_bus_binding_resolver.dart';
-import '../../services/remote/remote_member_preflight_coordinator.dart';
-import '../../services/remote/remote_preflight_service.dart';
 import '../../services/cli/registry/cli_tool_registry.dart';
 import '../../services/cli/registry/capabilities/bus_transport_capability.dart';
 import '../../services/terminal/terminal_session.dart';
@@ -94,10 +94,10 @@ abstract interface class SessionLaunchHost {
   /// transport — pre-P3b behavior).
   RemoteBusBindingResolver? get remoteBusResolver;
 
-  /// P3c: runs preflight for a member on a machine **other than home** (connect →
-  /// CLI ready → app-data materialize → bus bind). Null / off-home-returns-null
-  /// keeps the existing home / home-ssh launch path.
-  RemoteMemberPreflightCoordinator? get remoteMemberPreflight;
+  SessionConnectOrchestrator get sessionConnect;
+
+  /// Exposes workspace Phase A for team / mixed off-home paths.
+  WorkspaceProvisionCoordinator get workspaceProvision;
 }
 
 /// Owns the entire connect / launch flow: opening (or restoring) session tabs,
@@ -995,78 +995,74 @@ class SessionLaunchService implements MemberConnector {
     // reverse tunnel; the resolver returns its binding (relay/HTTP over tunnel),
     // or null for a local member (unchanged transport). Android-mixed fix.
     RemoteBusBinding? remoteBinding;
-    PreflightResult? preflightResult;
-    if (mixedBus) {
-      appLogger.d(
-        '[session-launch] mixed bus preflight start '
-        'session=${tab.info.id} member=$preflightMemberId',
+    String? remoteCliPath;
+    ShellLaunchSpec shellLaunch;
+    final launchWarnings = <String>[];
+
+    if (isPersonal) {
+      final connectResult = await _h.sessionConnect.preparePersonalConnect(
+        session: activeSession,
+        workspace: workspace!,
+        personal: personal!,
+        preset: await _h.lifecycle.resolveActivePresetForSession(
+          activeSession,
+          personal!,
+        ),
+        launchTarget: launchTarget,
       );
-      // P3c: a member on a machine *other than home* runs preflight before launch
-      // (connect → CLI ready → app-data materialize). home / home-ssh members
-      // return null and skip it (zero change).
-      preflightResult = await _h.remoteMemberPreflight?.prepareIfOffHome(
-        memberTarget: launchTarget,
-        cli: launchCli,
-        workspaceId: activeSession.workspaceId,
-        memberId: preflightMemberId,
-      );
-      // P3b/P3c: bind the bus back over a reverse tunnel — for any ssh member
-      // (home-ssh or off-home); the resolver owns the per-tab bus server.
-      if (_h.remoteBusResolver != null) {
-        final resolution = await _h.remoteBusResolver!.resolve(
-          existingMount: tab.remoteBusMount,
-          memberTarget: launchTarget,
-          memberId: preflightMemberId,
-          cli: launchCli,
-          busServer: tab.mcpServer!,
+      shellLaunch = connectResult.shellLaunch;
+      remoteCliPath = connectResult.remoteCliPath;
+      launchWarnings.addAll(connectResult.warnings);
+    } else {
+      if (mixedBus) {
+        appLogger.d(
+          '[session-launch] mixed bus remote setup start '
+          'session=${tab.info.id} member=$preflightMemberId',
         );
-        if (resolution != null) {
-          tab.remoteBusMount = resolution.mount;
-          remoteBinding = resolution.binding;
+        if (_h.remoteBusResolver != null) {
+          final resolution = await _h.remoteBusResolver!.resolve(
+            existingMount: tab.remoteBusMount,
+            memberTarget: launchTarget,
+            memberId: preflightMemberId,
+            cli: launchCli,
+            busServer: tab.mcpServer!,
+          );
+          if (resolution != null) {
+            tab.remoteBusMount = resolution.mount;
+            remoteBinding = resolution.binding;
+          }
         }
       }
-      appLogger.d(
-        '[session-launch] mixed bus preflight done '
-        'session=${tab.info.id} member=$preflightMemberId '
-        'preflight=${preflightResult != null} '
-        'remoteBinding=${remoteBinding != null}',
+      final memberWork = activeSession.workDirsForMember(
+        rosterMemberId ?? launchMember!.id,
+        folders: _launchContextFor(activeSession).folderCatalog,
       );
-    } else if (_h.remoteMemberPreflight?.isOffHome(launchTarget) ?? false) {
-      appLogger.d(
-        '[session-launch] off-home preflight start '
-        'session=${tab.info.id} member=$preflightMemberId',
+      final connectResult = await _h.sessionConnect.prepareTeamConnect(
+        session: activeSession,
+        team: team!,
+        member: launchMember!,
+        memberBinding: binding,
+        workspace: workspace,
+        launchTarget: launchTarget,
+        workingDirectory: memberWork.workingDirectory,
+        additionalDirectories: memberWork.addDirs,
+        extraMcpServers: mixedBus
+            ? {
+                teammateBusMcpServerName: _busMcpServerConfig(
+                  endpoint: tab.mcpServer!.endpoint,
+                  memberId: launchMember.id,
+                  cli: launchMember.cliWithin(team),
+                  remoteBinding: remoteBinding,
+                ),
+              }
+            : null,
+        busIdleUrl: mixedBus ? tab.mcpServer!.idleEndpoint.toString() : null,
       );
-      preflightResult = await _h.remoteMemberPreflight!.prepareIfOffHome(
-        memberTarget: launchTarget,
-        cli: launchCli,
-        workspaceId: activeSession.workspaceId,
-        memberId: preflightMemberId,
-      );
-      appLogger.d(
-        '[session-launch] off-home preflight done '
-        'session=${tab.info.id} member=$preflightMemberId '
-        'remoteCli=${preflightResult?.remoteCliPath ?? ''}',
-      );
+      shellLaunch = connectResult.shellLaunch;
+      remoteCliPath = connectResult.remoteCliPath;
+      launchWarnings.addAll(connectResult.warnings);
     }
-    var shellLaunch = await _h.lifecycle.prepareShellLaunch(
-      session: activeSession,
-      team: team,
-      member: launchMember,
-      memberBinding: binding,
-      workspace: workspace,
-      personal: personal,
-      extraMcpServers: mixedBus
-          ? {
-              teammateBusMcpServerName: _busMcpServerConfig(
-                endpoint: tab.mcpServer!.endpoint,
-                memberId: launchMember.id,
-                cli: launchMember.cliWithin(team),
-                remoteBinding: remoteBinding,
-              ),
-            }
-          : null,
-      busIdleUrl: mixedBus ? tab.mcpServer!.idleEndpoint.toString() : null,
-    );
+
     if (launchTarget.kind == RuntimeKind.ssh) {
       final shellFactory = _h.shellFactory;
       shellLaunch = await applyRemoteSshLaunchConstraints(
@@ -1087,7 +1083,7 @@ class SessionLaunchService implements MemberConnector {
     if (configDir.isNotEmpty) {
       tab.memberToolConfigDir = configDir;
     }
-    _h.emitLaunchWarnings(plan.warnings);
+    _h.emitLaunchWarnings([...launchWarnings, ...plan.warnings]);
     // The plan already resolved the native create/resume ids per CLI (incl.
     // cursor pre-allocation on first launch), so map them through directly —
     // no `launched` gating. See docs/session-resume-architecture.md.
@@ -1107,7 +1103,7 @@ class SessionLaunchService implements MemberConnector {
       workingDirectory: memberWork.workingDirectory,
       additionalDirectories: memberWork.addDirs,
       // P3c: off-home members launch the CLI at the preflight-located remote path.
-      executableOverride: preflightResult?.remoteCliPath,
+      executableOverride: remoteCliPath,
       fixedSessionId: plan.createSessionId,
       resumeSessionId: plan.resumeSessionId,
       shellLaunch: shellLaunch,

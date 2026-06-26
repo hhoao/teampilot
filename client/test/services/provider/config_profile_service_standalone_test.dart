@@ -11,8 +11,11 @@ import 'package:teampilot/services/io/local_filesystem.dart';
 import 'package:teampilot/services/cli/registry/config_profile/flashskyai_config_profile_capability.dart';
 import 'package:teampilot/services/provider/config_profile_service.dart';
 import 'package:teampilot/services/provider/cursor/cursor_workspace_trust.dart';
+import 'package:teampilot/services/storage/app_storage.dart';
 import 'package:teampilot/services/host/host_execution_environment.dart';
 import 'package:teampilot/services/storage/runtime_context.dart';
+
+import '../../support/post_frame_test_harness.dart';
 
 String _standaloneSessionClaudeDir(
   String base,
@@ -35,7 +38,8 @@ void main() {
   late ConfigProfileService service;
 
   setUp(() async {
-    base = await Directory.systemTemp.createTemp('cfg_profile_standalone_');
+    setUpTestAppStorage();
+    base = Directory(AppStorage.paths.basePath);
     final fs = LocalFilesystem();
     service = ConfigProfileService(
       basePath: base.path,
@@ -49,12 +53,12 @@ void main() {
     );
   });
 
-  tearDown(() async {
-    if (await base.exists()) await base.delete(recursive: true);
+  tearDown(() {
+    tearDownTestAppStorage();
   });
 
   test(
-    'prepareWorkspaceLaunch for flashskyai sets FLASHSKYAI_CONFIG_DIR under session runtime',
+    'prepareSessionLaunch for flashskyai sets FLASHSKYAI_CONFIG_DIR under session runtime',
     () async {
       const workspaceId = 'proj-standalone-fs';
       const sessionId = 'sess-standalone-fs';
@@ -71,9 +75,10 @@ void main() {
         updatedAt: 0,
       );
 
-      final outcome = await service.prepareWorkspaceLaunch(profileId: 'personal-default', 
+      final outcome = await service.prepareSessionLaunch(
         workspaceId: workspaceId,
         sessionId: sessionId,
+        profileId: 'personal-default',
         personal: profile,
         workingDirectory: '/workspace/personal',
         preset: flashskyaiPreset,
@@ -99,7 +104,7 @@ void main() {
   );
 
   test(
-    'prepareWorkspaceLaunch for claude sets CLAUDE_CONFIG_DIR under session runtime',
+    'prepareSessionLaunch for claude sets CLAUDE_CONFIG_DIR under session runtime',
     () async {
       const workspaceId = 'proj-standalone';
       const sessionId = 'sess-standalone';
@@ -107,9 +112,10 @@ void main() {
         // TODO: migrate to presets — cli removed
       );
 
-      final outcome = await service.prepareWorkspaceLaunch(profileId: 'personal-default', 
+      final outcome = await service.prepareSessionLaunch(
         workspaceId: workspaceId,
         sessionId: sessionId,
+        profileId: 'personal-default',
         personal: profile,
         workingDirectory: '/workspace/personal',
       );
@@ -126,7 +132,7 @@ void main() {
   );
 
   test(
-    'prepareWorkspaceLaunch for cursor pre-trusts workspace under runtime home',
+    'prepareSessionLaunch for cursor pre-trusts workspace under runtime home',
     () async {
       const workspaceId = 'proj-standalone-cursor';
       const sessionId = 'sess-standalone-cursor';
@@ -144,9 +150,17 @@ void main() {
         updatedAt: 0,
       );
 
-      final outcome = await service.prepareWorkspaceLaunch(profileId: 'personal-default', 
+      await service.provisionWorkspace(
+        workspaceId: workspaceId,
+        cli: CliTool.cursor,
+        personal: profile,
+        trustedDirectories: [workspace],
+      );
+
+      final outcome = await service.prepareSessionLaunch(
         workspaceId: workspaceId,
         sessionId: sessionId,
+        profileId: 'personal-default',
         personal: profile,
         workingDirectory: workspace,
         preset: cursorPreset,

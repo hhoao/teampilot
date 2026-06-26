@@ -38,6 +38,9 @@ class _WorkspaceFoldersSectionState extends State<WorkspaceFoldersSection> {
     final chat = context.read<ChatCubit>();
     try {
       await repo.updateWorkspaceFolders(widget.workspace.workspaceId, valid);
+      chat.invalidateWorkspaceProvision(
+        widget.workspace.copyWith(folders: valid),
+      );
       await chat.loadWorkspaceData(repo);
     } finally {
       if (mounted) setState(() => _saving = false);

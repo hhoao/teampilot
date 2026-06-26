@@ -1,6 +1,6 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:teampilot/models/team_config.dart';
-import 'package:teampilot/services/remote/remote_member_preflight_factory.dart';
+import 'package:teampilot/services/remote/remember_remote_cli_path.dart';
 
 void main() {
   test('persists newly resolved path', () async {

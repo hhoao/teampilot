@@ -12,7 +12,7 @@ import '../cubits/chat_cubit.dart';
 import '../services/team_bus/remote/remote_bus_binding_resolver.dart';
 import '../services/team_bus/remote/ssh_remote_bus_mount_factory.dart';
 import '../services/remote/local_credential_exporter.dart';
-import '../services/remote/remote_member_preflight_factory.dart';
+import '../services/launch/launch_factory.dart';
 import '../cubits/board_cubit.dart';
 import '../cubits/mailbox_cubit.dart';
 import '../cubits/member_presence_cubit.dart';
@@ -646,9 +646,8 @@ Future<AppShell> buildAppShell({
         contextForTarget: runtimeContextRegistry.forTarget,
       ),
     ),
-    // P3c: members on a machine other than home run preflight (connect → CLI
-    // ready → app-data materialize) before launch. SSH/SFTP ops are on-device.
-    remoteMemberPreflight: buildRemoteMemberPreflightCoordinator(
+    sessionConnect: buildSessionConnectOrchestrator(
+      lifecycle: sessionLifecycleService,
       registry: cliToolRegistry,
       sshClientFactory: sshClientFactory,
       profileById: sshProfileById,
@@ -659,9 +658,8 @@ Future<AppShell> buildAppShell({
       isInstallOptIn: targetsRepo.isInstallOptIn,
       cliPathOverride: targetsRepo.cliPathOverride,
       setCliPathOverride: targetsRepo.setCliPathOverride,
-      // on-device: real per-CLI credential export + skills/plugins linking +
-      // relay provisioning + install execution compose over the work transport.
       loadLocalCredentials: (cli) => LocalCredentialExporter().export(cli),
+      localCliPath: (cli) async => sessionPreferencesCubit.resolveExecutable(cli),
     ),
   );
 

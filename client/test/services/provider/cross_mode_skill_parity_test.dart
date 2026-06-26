@@ -56,9 +56,10 @@ void main() {
         ],
       );
 
-      await service.prepareWorkspaceLaunch(profileId: 'personal-default', 
+      await service.prepareSessionLaunch(
         workspaceId: 'p',
         sessionId: 's',
+        profileId: 'personal-default',
         personal: const PersonalProfile(id: 'p', display: 'p',
           bundle: ConfigBundle(skillIds: ['demo']),
         ),

@@ -8,7 +8,8 @@ import 'package:teampilot/models/workspace_folder.dart';
 import 'package:teampilot/models/team_config.dart';
 import 'package:teampilot/repositories/session_repository.dart';
 import 'package:teampilot/services/team_bus/bus_user_line_capture.dart';
-import 'package:teampilot/services/session/session_lifecycle_service.dart';
+import 'package:teampilot/services/storage/app_storage.dart';
+import 'package:teampilot/services/session/shell_launch_spec.dart';
 import 'package:teampilot/services/terminal/terminal_session.dart';
 import 'package:flutter_test/flutter_test.dart';
 
@@ -291,7 +292,8 @@ void main() {
 
     setUp(() async {
       TestWidgetsFlutterBinding.ensureInitialized();
-      tmp = await Directory.systemTemp.createTemp('chat_conn_');
+      setUpTestAppStorage();
+      tmp = Directory(AppStorage.paths.basePath);
       repo = SessionRepository(rootDir: tmp.path);
       postFrame = PostFrameTestHarness();
       cubit = ChatCubit(
@@ -312,7 +314,7 @@ void main() {
       await drainPendingAsyncWork();
       await cubit.close();
       await drainPendingAsyncWork();
-      await deleteTempDirBestEffort(tmp);
+      tearDownTestAppStorage();
     });
 
     test('materializes tab when selectedMemberId is empty', () async {
@@ -330,8 +332,6 @@ void main() {
     });
 
     test('personal connect materializes first session when tabs empty', () async {
-      setUpTestAppStorage();
-      addTearDown(tearDownTestAppStorage);
       final workspace = await repo.createWorkspace([WorkspaceFolder(path: '/tmp/personal-connect')]);
       await cubit.loadWorkspaceData(repo);
       cubit.setActiveWorkspace(workspace.workspaceId);

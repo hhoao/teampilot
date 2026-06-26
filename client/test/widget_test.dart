@@ -363,6 +363,32 @@ class _FixedResumeLifecycleService extends SessionLifecycleService {
       extraMcpServers: extraMcpServers,
       busIdleUrl: busIdleUrl,
     );
+    return _withFixedResume(spec);
+  }
+
+  @override
+  Future<ShellLaunchSpec> prepareTeamShellLaunchFromEnvironment({
+    required AppSession session,
+    required TeamProfile team,
+    required TeamMemberConfig member,
+    SessionMemberBinding? memberBinding,
+    Workspace? workspace,
+    required Map<String, String> environment,
+    List<String> launchWarnings = const [],
+  }) async {
+    final spec = await super.prepareTeamShellLaunchFromEnvironment(
+      session: session,
+      team: team,
+      member: member,
+      memberBinding: memberBinding,
+      workspace: workspace,
+      environment: environment,
+      launchWarnings: launchWarnings,
+    );
+    return _withFixedResume(spec);
+  }
+
+  ShellLaunchSpec _withFixedResume(ShellLaunchSpec spec) {
     final plan = spec.plan;
     return ShellLaunchSpec(
       plan: LaunchPlan(

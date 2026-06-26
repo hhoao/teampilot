@@ -1,8 +1,6 @@
 import 'package:uuid/uuid.dart';
 
-import '../../models/app_session.dart';
 import '../../models/team_config.dart';
-import '../../models/workspace_folder.dart';
 import '../../services/session/launch_command_builder.dart';
 import '../../services/session/session_lifecycle_service.dart';
 import '../../services/storage/app_storage.dart';
@@ -45,19 +43,13 @@ class TeamLaunchService {
     TeamProfile team, {
     TeamMemberConfig? member,
   }) async {
-    final plan = await _lifecycle.prepareLaunch(
-      session: AppSession(
-        sessionId: const Uuid().v4(),
-        workspaceId: '',
-        folders: [WorkspaceFolder(path: AppStorage.cwd)],
-        sessionTeam: team.id,
-        cliTeamName: team.id,
-        createdAt: DateTime.now().millisecondsSinceEpoch,
-      ),
+    final outcome = await _lifecycle.prepareTeamLaunchEnvironment(
       team: team,
       member: member,
+      sessionId: const Uuid().v4(),
+      workingDirectory: AppStorage.cwd,
     );
-    return plan.env.isEmpty ? null : plan.env;
+    return outcome.environment.isEmpty ? null : outcome.environment;
   }
 
   Future<void> _runLaunch(TeamProfile team, TeamMemberConfig member) async {

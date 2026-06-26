@@ -21,6 +21,10 @@ import '../io/filesystem.dart';
 import '../mcp/mcp_registry_service.dart';
 import '../resource/resource_provisioning_service.dart';
 import '../resource/resource_scope.dart';
+import '../launch/launch_manifest.dart';
+import '../launch/manifest_executor.dart';
+import '../launch/manifest_filesystem.dart';
+import '../provider/workspace_trust_provisioner.dart';
 import '../team/claude_team_roster_service.dart';
 import '../cli/registry/capabilities/cli_config_layout_capability.dart';
 import '../storage/app_storage.dart';
@@ -86,6 +90,16 @@ class ConfigProfileService implements ConfigProfileDelegate {
        _cliRegistry = cliRegistry ?? _defaultCliRegistry,
        _loadInstalledSkills = loadInstalledSkills;
 
+  ConfigProfileService._fromInfrastructure({
+    required ConfigProfileInfrastructure infra,
+    ConfigProfilePaths? catalog,
+    CliToolRegistry? cliRegistry,
+    Future<List<Skill>> Function()? loadInstalledSkills,
+  }) : _infra = infra,
+       _catalogOverride = catalog,
+       _cliRegistry = cliRegistry ?? _defaultCliRegistry,
+       _loadInstalledSkills = loadInstalledSkills;
+
   final ConfigProfileInfrastructure _infra;
   final ConfigProfilePaths? _catalogOverride;
   final CliToolRegistry _cliRegistry;
@@ -102,6 +116,22 @@ class ConfigProfileService implements ConfigProfileDelegate {
       skills: skills,
       skillsRoot: AppPaths.skillsDirForTeampilotRoot(catalog.basePath),
       pathContext: fs.pathContext,
+    );
+  }
+
+  ConfigProfileService _stagingService({
+    required Filesystem stagingFs,
+    required String workTeampilotRoot,
+  }) {
+    final layout = RuntimeLayout(
+      teampilotRoot: workTeampilotRoot,
+      fs: stagingFs,
+    );
+    return ConfigProfileService._fromInfrastructure(
+      infra: _infra.rebindFilesystem(fs: stagingFs, layout: layout),
+      catalog: catalog,
+      cliRegistry: _cliRegistry,
+      loadInstalledSkills: _loadInstalledSkills,
     );
   }
 
@@ -283,40 +313,63 @@ class ConfigProfileService implements ConfigProfileDelegate {
     await layout.ensureWorkspaceConfigInheritsApp(trimmed, cli.value);
   }
 
-  Future<void> ensureStandaloneSessionProfile(
-    String workspaceId,
-    String sessionId, {
+  /// Phase A: workspace-level profile on the work machine (not per-session).
+  Future<void> provisionWorkspace({
+    required String workspaceId,
+    required CliTool cli,
+    required PersonalProfile personal,
+    Iterable<String> trustedDirectories = const [],
+  }) async {
+    final trimmedWorkspaceId = workspaceId.trim();
+    if (trimmedWorkspaceId.isEmpty) return;
+
+    await ensureStandalonePersonalProfile(trimmedWorkspaceId, cli: cli);
+
+    final profileId = personal.id.trim();
+    if (profileId.isNotEmpty) {
+      await ProfileMcpLinkerService(fs: fs).syncForProfile(
+        profileId: profileId,
+        mcpServerIds: personal.bundle.mcpServerIds,
+        catalog: await McpRepository().loadAll(),
+        layout: layout,
+      );
+    }
+
+    final paths = [
+      for (final directory in trustedDirectories)
+        if (directory.trim().isNotEmpty) directory.trim(),
+    ];
+    if (paths.isNotEmpty) {
+      await WorkspaceTrustProvisioner(layout: layout, fs: fs).provisionWorkspace(
+        workspaceId: trimmedWorkspaceId,
+        directories: paths,
+        tools: [cli.value],
+      );
+    }
+  }
+
+  /// Phase B (work fs): inheritance, plugins, skills, MCP — not config JSON bodies.
+  Future<List<String>> applySessionFilesystem({
+    required String workspaceId,
+    required String sessionId,
+    required PersonalProfile personal,
     CliTool cli = CliTool.claude,
-    PersonalProfile? personal,
     Map<String, Map<String, Object?>>? extraMcpServers,
   }) async {
     final trimmedWorkspaceId = workspaceId.trim();
     final trimmedSessionId = sessionId.trim();
-    if (trimmedWorkspaceId.isEmpty || trimmedSessionId.isEmpty) return;
+    if (trimmedWorkspaceId.isEmpty || trimmedSessionId.isEmpty) {
+      return const [];
+    }
 
+    final warnings = <String>[];
+    final personalProfileId = personal.id.trim();
     final standaloneScope = StandaloneLaunchProfileScope(
       workspaceId: trimmedWorkspaceId,
       sessionId: trimmedSessionId,
     );
-    final profileId = personal?.id.trim() ?? '';
-    await _withStandaloneScope(standaloneScope, () async {
-      await ensureStandalonePersonalProfile(trimmedWorkspaceId, cli: cli);
-      // Self-heal the personal MCP snapshot at launch from the bundle + catalog
-      // (like personal skills/plugins resolve from the bundle), so MCP works
-      // without requiring a prior re-save. writeForStandaloneWorkspace below
-      // provisions from this snapshot.
-      if (personal != null && profileId.isNotEmpty) {
-        try {
-          await ProfileMcpLinkerService(fs: fs).syncForProfile(
-            profileId: profileId,
-            mcpServerIds: personal.bundle.mcpServerIds,
-            catalog: await McpRepository().loadAll(),
-            layout: layout,
-          );
-        } catch (e) {
-          appLogger.w('[standalone-mcp] snapshot refresh failed: $e');
-        }
-      }
+
+    return _withStandaloneScope(standaloneScope, () async {
       String? sessionProvisionJson;
       await Future.wait([
         layout.ensureSessionRuntimeInheritsWorkspace(
@@ -324,18 +377,16 @@ class ConfigProfileService implements ConfigProfileDelegate {
           trimmedSessionId,
           cli.value,
         ),
-        // Personal-profile plugins are linked into the profile's identity pool
-        // (ProfilePluginLinkerService → identityPluginsDir), so provision the
-        // session from there — same identity-scoped path the team flow uses.
         layout
             .provisionSessionPluginsFromIdentity(
               trimmedWorkspaceId,
               trimmedSessionId,
-              profileId,
+              personalProfileId,
               cli.value,
             )
             .then((json) => sessionProvisionJson = json),
       ]);
+
       final pluginProvisioner =
           _cliRegistry.capability<PluginProvisionerCapability>(cli);
       if (pluginProvisioner != null) {
@@ -353,7 +404,7 @@ class ConfigProfileService implements ConfigProfileDelegate {
               trimmedSessionId,
               cli.value,
             ),
-            enabledPluginIds: personal?.bundle.pluginIds ?? const <String>[],
+            enabledPluginIds: personal.bundle.pluginIds,
             installedCatalog: await InstalledPluginCatalog.load(fs, basePath),
             layout: layout,
             tool: cli,
@@ -361,40 +412,45 @@ class ConfigProfileService implements ConfigProfileDelegate {
           ),
         );
       }
-      final cap = _cliRegistry.capability<ConfigProfileCapability>(cli);
-      if (cap != null) {
-        await cap.ensureSessionProfile(
-          ConfigProfileSessionContext(
-            workspaceId: trimmedWorkspaceId,
-            teamId: '',
-            sessionId: trimmedSessionId,
-            members: const [],
-            paths: this,
-            standaloneScope: standaloneScope,
-            personal: personal,
-          ),
-        );
-      }
+
+      final provisionResult =
+          await ResourceProvisioningService(
+            fs: fs,
+            registry: _cliRegistry,
+          ).provisionForLaunch(
+            scope: PersonalResourceScope(personal: personal),
+            cli: cli,
+            configDir: _launchResourceConfigDir(
+              cli: cli,
+              workspaceId: trimmedWorkspaceId,
+              sessionId: trimmedSessionId,
+            ),
+            catalog: await _skillCatalog(),
+          );
+      warnings.addAll(provisionResult.warnings);
+
       await McpRegistryService(
         fs: fs,
         layout: layout,
       ).writeForStandaloneWorkspace(
         workspaceId: trimmedWorkspaceId,
         sessionId: trimmedSessionId,
-        profileId: profileId,
+        profileId: personalProfileId,
         extraServers: extraMcpServers,
       );
+
+      return warnings;
     });
   }
 
-  Future<TeamLaunchOutcome> prepareWorkspaceLaunch({
+  /// Phase B (control plane): session config JSON + env from CLI capabilities.
+  Future<TeamLaunchOutcome> contributeSessionLaunch({
     required String workspaceId,
     required String sessionId,
     required String profileId,
     required PersonalProfile personal,
     String workingDirectory = '',
     List<String> additionalDirectories = const [],
-    Map<String, Map<String, Object?>>? extraMcpServers,
     String? busIdleUrl,
     CliPreset? preset,
   }) async {
@@ -423,30 +479,6 @@ class ConfigProfileService implements ConfigProfileDelegate {
     );
 
     return _withStandaloneScope(standaloneScope, () async {
-      await ensureStandaloneSessionProfile(
-        trimmedWorkspaceId,
-        trimmedSessionId,
-        cli: cli,
-        personal: personal,
-        extraMcpServers: extraMcpServers,
-      );
-
-      final provisionResult =
-          await ResourceProvisioningService(
-            fs: fs,
-            registry: _cliRegistry,
-          ).provisionForLaunch(
-            scope: PersonalResourceScope(personal: personal),
-            cli: cli,
-            configDir: _launchResourceConfigDir(
-              cli: cli,
-              workspaceId: trimmedWorkspaceId,
-              sessionId: trimmedSessionId,
-            ),
-            catalog: await _skillCatalog(),
-          );
-      warnings.addAll(provisionResult.warnings);
-
       final cap = _cliRegistry.capability<ConfigProfileCapability>(cli);
       if (cap == null) {
         return TeamLaunchOutcome(
@@ -488,6 +520,93 @@ class ConfigProfileService implements ConfigProfileDelegate {
     });
   }
 
+  /// Stages session launch mutations into [LaunchManifest] without touching the
+  /// work filesystem. [readDelegate] supplies catalog reads (home or work).
+  Future<({TeamLaunchOutcome outcome, LaunchManifest manifest})>
+  stageSessionLaunch({
+    required Filesystem readDelegate,
+    required String workTeampilotRoot,
+    required String workspaceId,
+    required String sessionId,
+    required String profileId,
+    required PersonalProfile personal,
+    String workingDirectory = '',
+    List<String> additionalDirectories = const [],
+    Map<String, Map<String, Object?>>? extraMcpServers,
+    String? busIdleUrl,
+    CliPreset? preset,
+  }) async {
+    final manifest = LaunchManifest(pathContext: readDelegate.pathContext);
+    final stagingFs = ManifestFilesystem(
+      manifest: manifest,
+      readDelegate: readDelegate,
+    );
+    final staging = _stagingService(
+      stagingFs: stagingFs,
+      workTeampilotRoot: workTeampilotRoot,
+    );
+
+    final fsWarnings = await staging.applySessionFilesystem(
+      workspaceId: workspaceId,
+      sessionId: sessionId,
+      personal: personal,
+      cli: preset?.cli ?? CliTool.claude,
+      extraMcpServers: extraMcpServers,
+    );
+    final outcome = await staging.contributeSessionLaunch(
+      workspaceId: workspaceId,
+      sessionId: sessionId,
+      profileId: profileId,
+      personal: personal,
+      workingDirectory: workingDirectory,
+      additionalDirectories: additionalDirectories,
+      busIdleUrl: busIdleUrl,
+      preset: preset,
+    );
+    return (
+      outcome: TeamLaunchOutcome(
+        environment: outcome.environment,
+        warnings: [...fsWarnings, ...outcome.warnings],
+      ),
+      manifest: manifest,
+    );
+  }
+
+  /// Phase B: full session launch — stage then flush to [fs].
+  Future<TeamLaunchOutcome> prepareSessionLaunch({
+    required String workspaceId,
+    required String sessionId,
+    required String profileId,
+    required PersonalProfile personal,
+    String workingDirectory = '',
+    List<String> additionalDirectories = const [],
+    Map<String, Map<String, Object?>>? extraMcpServers,
+    String? busIdleUrl,
+    CliPreset? preset,
+    ManifestExecutor? manifestExecutor,
+  }) async {
+    final staged = await stageSessionLaunch(
+      readDelegate: fs,
+      workTeampilotRoot: basePath,
+      workspaceId: workspaceId,
+      sessionId: sessionId,
+      profileId: profileId,
+      personal: personal,
+      workingDirectory: workingDirectory,
+      additionalDirectories: additionalDirectories,
+      extraMcpServers: extraMcpServers,
+      busIdleUrl: busIdleUrl,
+      preset: preset,
+    );
+    final executor = manifestExecutor ?? const ManifestExecutor();
+    await executor.flush(
+      manifest: staged.manifest,
+      targetFs: fs,
+      sourceFs: fs,
+    );
+    return staged.outcome;
+  }
+
   Future<T> _withStandaloneScope<T>(
     StandaloneLaunchProfileScope scope,
     Future<T> Function() action,
@@ -503,7 +622,12 @@ class ConfigProfileService implements ConfigProfileDelegate {
     }
   }
 
-  Future<TeamLaunchOutcome> prepareTeamLaunch({
+  /// Stages team launch mutations into [LaunchManifest] without touching the
+  /// work filesystem. [readDelegate] supplies catalog reads (home or work).
+  Future<({TeamLaunchOutcome outcome, LaunchManifest manifest})>
+  stageTeamLaunch({
+    required Filesystem readDelegate,
+    required String workTeampilotRoot,
     required String workspaceId,
     required String sessionId,
     required String teamId,
@@ -527,7 +651,10 @@ class ConfigProfileService implements ConfigProfileDelegate {
     if (trimmedWorkspaceId.isEmpty ||
         trimmedSessionId.isEmpty ||
         trimmedTeamId.isEmpty) {
-      return const TeamLaunchOutcome(environment: {});
+      return (
+        outcome: const TeamLaunchOutcome(environment: {}),
+        manifest: LaunchManifest(pathContext: readDelegate.pathContext),
+      );
     }
 
     final warnings = <String>[];
@@ -546,7 +673,17 @@ class ConfigProfileService implements ConfigProfileDelegate {
       memberId: memberId,
     );
 
-    await ensureSessionProfile(
+    final manifest = LaunchManifest(pathContext: readDelegate.pathContext);
+    final stagingFs = ManifestFilesystem(
+      manifest: manifest,
+      readDelegate: readDelegate,
+    );
+    final staging = _stagingService(
+      stagingFs: stagingFs,
+      workTeampilotRoot: workTeampilotRoot,
+    );
+
+    await staging.ensureSessionProfile(
       trimmedWorkspaceId,
       trimmedSessionId,
       trimmedTeamId,
@@ -559,12 +696,12 @@ class ConfigProfileService implements ConfigProfileDelegate {
     if (team != null) {
       final provisionResult =
           await ResourceProvisioningService(
-            fs: fs,
+            fs: stagingFs,
             registry: _cliRegistry,
           ).provisionForLaunch(
             scope: TeamResourceScope(team: team, member: member),
             cli: cli,
-            configDir: _launchResourceConfigDir(
+            configDir: staging._launchResourceConfigDir(
               cli: cli,
               workspaceId: trimmedWorkspaceId,
               sessionId: trimmedSessionId,
@@ -577,9 +714,12 @@ class ConfigProfileService implements ConfigProfileDelegate {
 
     final cap = _cliRegistry.capability<ConfigProfileCapability>(cli);
     if (cap == null) {
-      return TeamLaunchOutcome(
-        environment: const {},
-        warnings: [...warnings, 'unknown_cli_${cli.value}'],
+      return (
+        outcome: TeamLaunchOutcome(
+          environment: const {},
+          warnings: [...warnings, 'unknown_cli_${cli.value}'],
+        ),
+        manifest: manifest,
       );
     }
 
@@ -596,7 +736,7 @@ class ConfigProfileService implements ConfigProfileDelegate {
           members: members,
           workingDirectory: workingDirectory,
           additionalDirectories: additionalDirectories,
-          paths: this,
+          paths: staging,
           catalog: catalog,
           leadSessionId: leadSessionId,
           busIdleUrl: busIdleUrl,
@@ -604,16 +744,64 @@ class ConfigProfileService implements ConfigProfileDelegate {
         ),
       );
     } on Object catch (e) {
-      return TeamLaunchOutcome(
-        environment: const {},
-        warnings: [...warnings, 'config_profile_${cli.value}: $e'],
+      return (
+        outcome: TeamLaunchOutcome(
+          environment: const {},
+          warnings: [...warnings, 'config_profile_${cli.value}: $e'],
+        ),
+        manifest: manifest,
       );
     }
 
-    return TeamLaunchOutcome(
-      environment: contribution.environment,
-      warnings: [...warnings, ...contribution.warnings],
+    return (
+      outcome: TeamLaunchOutcome(
+        environment: contribution.environment,
+        warnings: [...warnings, ...contribution.warnings],
+      ),
+      manifest: manifest,
     );
+  }
+
+  Future<TeamLaunchOutcome> prepareTeamLaunch({
+    required String workspaceId,
+    required String sessionId,
+    required String teamId,
+    String cliTeamName = '',
+    CliTool cli = CliTool.claude,
+    List<TeamMemberConfig> members = const [],
+    TeamMemberConfig? member,
+    String workingDirectory = '',
+    List<String> additionalDirectories = const [],
+    TeamProfile? team,
+    String? leadSessionId,
+    Map<String, Map<String, Object?>>? extraMcpServers,
+    String? busIdleUrl,
+    ManifestExecutor? manifestExecutor,
+  }) async {
+    final staged = await stageTeamLaunch(
+      readDelegate: fs,
+      workTeampilotRoot: basePath,
+      workspaceId: workspaceId,
+      sessionId: sessionId,
+      teamId: teamId,
+      cliTeamName: cliTeamName,
+      cli: cli,
+      members: members,
+      member: member,
+      workingDirectory: workingDirectory,
+      additionalDirectories: additionalDirectories,
+      team: team,
+      leadSessionId: leadSessionId,
+      extraMcpServers: extraMcpServers,
+      busIdleUrl: busIdleUrl,
+    );
+    final executor = manifestExecutor ?? const ManifestExecutor();
+    await executor.flush(
+      manifest: staged.manifest,
+      targetFs: fs,
+      sourceFs: fs,
+    );
+    return staged.outcome;
   }
 
   @override

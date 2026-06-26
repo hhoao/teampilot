@@ -23,7 +23,9 @@ import '../services/session/session_lifecycle_service.dart';
 import '../services/team_bus/artifacts/artifact_registry.dart';
 import '../services/team_bus/artifacts/artifact_transfer_service.dart';
 import '../services/team_bus/remote/remote_bus_binding_resolver.dart';
-import '../services/remote/remote_member_preflight_coordinator.dart';
+import '../services/launch/launch_factory.dart';
+import '../services/launch/session_connect_orchestrator.dart';
+import '../services/launch/workspace_provision_coordinator.dart';
 import '../services/terminal/terminal_session.dart';
 import '../services/terminal/terminal_transport_factory.dart';
 import '../utils/logger.dart';
@@ -62,9 +64,9 @@ class ChatCubit extends Cubit<ChatState>
     RuntimeTarget Function()? defaultTargetResolver,
     int Function()? terminalScrollbackLinesResolver,
     RemoteBusBindingResolver? remoteBusResolver,
-    RemoteMemberPreflightCoordinator? remoteMemberPreflight,
+    SessionConnectOrchestrator? sessionConnect,
   }) : _remoteBusResolver = remoteBusResolver,
-       _remoteMemberPreflight = remoteMemberPreflight,
+       _sessionConnect = sessionConnect,
        _shellFactory = ChatSessionShellFactory(
          executableResolver: executableResolver,
          cliExecutableResolver: cliExecutableResolver,
@@ -84,7 +86,8 @@ class ChatCubit extends Cubit<ChatState>
        super(const ChatState());
 
   final RemoteBusBindingResolver? _remoteBusResolver;
-  final RemoteMemberPreflightCoordinator? _remoteMemberPreflight;
+  final SessionConnectOrchestrator? _sessionConnect;
+  SessionConnectOrchestrator? _defaultSessionConnect;
   final ChatTabStore _tabStore = ChatTabStore();
   final SessionDataStore _dataStore = SessionDataStore();
   late final SessionLaunchService _launchService = SessionLaunchService(this);
@@ -203,8 +206,23 @@ class ChatCubit extends Cubit<ChatState>
   RemoteBusBindingResolver? get remoteBusResolver => _remoteBusResolver;
 
   @override
-  RemoteMemberPreflightCoordinator? get remoteMemberPreflight =>
-      _remoteMemberPreflight;
+  SessionConnectOrchestrator get sessionConnect =>
+      _sessionConnect ??
+      (_defaultSessionConnect ??= buildDefaultSessionConnectOrchestrator(
+        lifecycle: _lifecycle,
+        localCliPath: (cli) async => _shellFactory.executableFor(cli),
+        sshClientFactory: _shellFactory.sshClientFactory,
+        profileById: _shellFactory.profileById,
+      ));
+
+  @override
+  WorkspaceProvisionCoordinator get workspaceProvision =>
+      sessionConnect.workspaceProvision;
+
+  /// Drops cached Phase A provision for [workspace] (e.g. after folder/target edits).
+  void invalidateWorkspaceProvision(Workspace workspace) {
+    sessionConnect.invalidateWorkspaceProvision(workspace);
+  }
 
   /// Wired by app_shell after both cubits are constructed.
   void bindPresenceCubit(MemberPresenceCubit cubit) => _presenceCubit = cubit;

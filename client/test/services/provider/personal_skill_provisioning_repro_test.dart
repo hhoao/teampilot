@@ -68,9 +68,10 @@ void main() {
       );
 
       // --- Act: run personal-mode launch prep ---
-      await service.prepareWorkspaceLaunch(profileId: 'personal-default', 
+      await service.prepareSessionLaunch(
         workspaceId: 'p1',
         sessionId: 's1',
+        profileId: 'personal-default',
         personal: profile,
       );
 
@@ -125,9 +126,10 @@ void main() {
       );
 
       // --- Act ---
-      final outcome = await service.prepareWorkspaceLaunch(profileId: 'personal-default', 
+      final outcome = await service.prepareSessionLaunch(
         workspaceId: 'p2',
         sessionId: 's2',
+        profileId: 'personal-default',
         personal: profile,
       );
 

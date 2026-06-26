@@ -514,4 +514,28 @@ final class ConfigProfileInfrastructure implements ConfigProfileDelegate {
     }
     return {...defaults};
   }
+
+  ConfigProfileInfrastructure rebindFilesystem({
+    required Filesystem fs,
+    required RuntimeLayout layout,
+  }) {
+    return ConfigProfileInfrastructure(
+      basePath: layout.teampilotRoot,
+      layout: layout,
+      home: home,
+      fs: fs,
+      loadEnabledExtensionIds: _loadEnabledExtensionIds,
+      extensionDetector: _extensionDetector,
+      extensionManifests: _extensionManifests,
+      extensionHookProvisioners: _extensionHookProvisioners?.map(
+        (key, provisioner) => MapEntry(key, provisioner.withFilesystem(fs)),
+      ),
+      teamLeadHookProvisioner: _teamLeadHookProvisioner?.withFilesystem(fs),
+      loadTeamLeadHookScript: _loadTeamLeadHookScript,
+      teamLeadDelegateHookProvisioner:
+          _teamLeadDelegateHookProvisioner?.withFilesystem(fs),
+      loadTeamLeadDelegateHookScript: _loadTeamLeadDelegateHookScript,
+      hostEnvironment: _hostEnvironment,
+    );
+  }
 }

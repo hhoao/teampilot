@@ -52,9 +52,10 @@ void main() {
       ),
     );
 
-    await buildService(root, layout).prepareWorkspaceLaunch(profileId: 'personal-default', 
+    await buildService(root, layout).prepareSessionLaunch(
       workspaceId: 'p',
       sessionId: 's',
+      profileId: 'personal-default',
       personal: const PersonalProfile(id: 'p', display: 'p',
         bundle: ConfigBundle(skillIds: ['demo']),
       ),

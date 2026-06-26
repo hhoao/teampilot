@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
@@ -8,6 +10,8 @@ import '../../../l10n/l10n_extensions.dart';
 import '../../../models/workspace.dart';
 import '../../../models/launch_profile_kind.dart';
 import '../../../models/launch_profile_ref.dart';
+import '../../../models/personal_profile.dart';
+import '../../../models/runtime_target.dart';
 import '../../../models/team_config.dart';
 import '../../../models/launch_profile.dart';
 import '../../../services/storage/launch_profile_provisioner.dart';
@@ -115,15 +119,79 @@ class _WorkspacePageState extends State<WorkspacePage> {
   void _syncWorkspaceContext() {
     if (!mounted) return;
     if (widget.identity == null) return;
+    final chatCubit = context.read<ChatCubit>();
     final workspace = _findWorkspace(
-      context.read<ChatCubit>().state.workspaces,
+      chatCubit.state.workspaces,
       widget.workspaceId,
     );
     if (workspace == null) return;
     final workspaceIdentity = _resolveIdentity();
     if (workspaceIdentity is TeamProfile) {
       _syncSelectedTeam(workspaceIdentity.id);
+      unawaited(_scheduleTeamWorkspaceProvision(
+        chatCubit: chatCubit,
+        workspace: workspace,
+        team: workspaceIdentity,
+      ));
+    } else if (workspaceIdentity is PersonalProfile) {
+      unawaited(_scheduleWorkspaceProvision(
+        chatCubit: chatCubit,
+        workspace: workspace,
+        personal: workspaceIdentity,
+      ));
     }
+  }
+
+  Future<void> _scheduleWorkspaceProvision({
+    required ChatCubit chatCubit,
+    required Workspace workspace,
+    required PersonalProfile personal,
+  }) async {
+    if (!mounted) return;
+    if (workspace.folders.isEmpty) return;
+    final targetId = workspace.folders.first.targetId;
+    final launchTarget = switch (runtimeKindOfId(targetId)) {
+      RuntimeKind.ssh => RuntimeTarget.ssh(
+        sshProfileIdOfId(targetId) ?? '',
+        label: targetId,
+      ),
+      RuntimeKind.wsl => RuntimeTarget.wsl(wslDistroOfId(targetId) ?? ''),
+      RuntimeKind.local => RuntimeTarget.local(),
+    };
+    final preset = await chatCubit.lifecycle.resolveActivePresetForPersonal(
+      personal,
+    );
+    final cli = preset?.cli ?? CliTool.claude;
+    chatCubit.sessionConnect.scheduleWorkspaceProvision(
+      launchTarget: launchTarget,
+      workspace: workspace,
+      personal: personal,
+      cli: cli,
+    );
+  }
+
+  Future<void> _scheduleTeamWorkspaceProvision({
+    required ChatCubit chatCubit,
+    required Workspace workspace,
+    required TeamProfile team,
+  }) async {
+    if (!mounted) return;
+    if (workspace.folders.isEmpty) return;
+    final targetId = workspace.folders.first.targetId;
+    final launchTarget = switch (runtimeKindOfId(targetId)) {
+      RuntimeKind.ssh => RuntimeTarget.ssh(
+        sshProfileIdOfId(targetId) ?? '',
+        label: targetId,
+      ),
+      RuntimeKind.wsl => RuntimeTarget.wsl(wslDistroOfId(targetId) ?? ''),
+      RuntimeKind.local => RuntimeTarget.local(),
+    };
+    chatCubit.sessionConnect.scheduleTeamWorkspaceProvision(
+      launchTarget: launchTarget,
+      workspace: workspace,
+      team: team,
+      cli: team.cli,
+    );
   }
 
   void _onSectionChanged(
