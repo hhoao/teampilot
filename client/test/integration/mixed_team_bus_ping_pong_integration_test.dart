@@ -1,4 +1,4 @@
-@Tags(['integration'])
+@Tags(['integration', 'cross-platform'])
 library;
 
 import 'package:flutter_test/flutter_test.dart';

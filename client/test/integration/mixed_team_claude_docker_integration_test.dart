@@ -1,4 +1,4 @@
-@Tags(['integration'])
+@Tags(['integration', 'linux-pty', 'docker'])
 @Timeout(Duration(minutes: 6))
 library;
 
@@ -13,7 +13,7 @@ import 'support/mixed_team_ping_pong_scenario.dart';
 /// Run from `client/` (Docker daemon, outbound network, local `claude` on PATH,
 /// `libflutter_pty.so` after `flutter build linux --debug`):
 /// ```bash
-/// flutter test test/integration/mixed_team_claude_docker_integration_test.dart --tags integration
+/// flutter test test/integration/mixed_team_claude_docker_integration_test.dart --tags "integration && docker"
 /// ```
 void main() {
   setUp(setUpIntegrationAppStorage);

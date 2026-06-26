@@ -68,14 +68,32 @@ flutter test test/widget_test.dart
 flutter test --plain-name="test name"
 ```
 
-Linux PTY integration tests (local):
+Linux PTY integration tests (local) — filter by secondary tag (see table below):
 
 ```bash
 cd client
 flutter build linux --debug
-LD_LIBRARY_PATH=build/linux/x64/debug/bundle/lib flutter test --tags integration
+LD_LIBRARY_PATH=build/linux/x64/debug/bundle/lib flutter test --tags "integration && linux-pty"
 ```
 
+### Integration test tags
+
+Declared in `client/dart_test.yaml`. Every integration test has the `integration` tag plus one or more secondary tags for CI filtering.
+
+| Secondary tag | Tests | Needs |
+|---------------|-------|--------|
+| `cross-platform` | L1 bus ping/pong | Nothing (HTTP loopback only) |
+| `linux-pty` | L2 local Claude PTY; L3 also carries this tag | `flutter build linux`, `libflutter_pty.so` on loader path, `claude` on PATH |
+| `docker` | L3 mixed SSH worker; remote CLI install | Docker daemon (+ outbound network for install test) |
+
+Examples:
+
+```bash
+cd client
+flutter test --tags "integration && cross-platform"   # L1 only
+flutter test --tags "integration && linux-pty"        # L2 + L3 (CI)
+flutter test --tags "integration && docker"           # L3 + remote CLI install
+```
 
 ### Mixed team Claude bus integration tests
 
@@ -88,7 +106,7 @@ cd tools/mock_anthropic && dart test
 **L1 (fast, no claude):**
 
 ```bash
-cd client && flutter test test/integration/mixed_team_bus_ping_pong_integration_test.dart --tags integration
+cd client && flutter test --tags "integration && cross-platform"
 ```
 
 **L2 (full ChatCubit + claude + PTY, Linux):**
@@ -98,7 +116,7 @@ cd client
 flutter build linux --debug
 TEAMPILOT_BUS_BRIDGE=/dev/null/teampilot-it-no-bridge \
 LD_LIBRARY_PATH=build/linux/x64/debug/bundle/lib \
-  flutter test test/integration/mixed_team_claude_bus_integration_test.dart --tags integration
+  flutter test test/integration/mixed_team_claude_bus_integration_test.dart --tags "integration && linux-pty"
 ```
 
 L2 requires `claude` on PATH. TeamPilot pre-approves third-party provider API keys in `.claude.json` (`customApiKeyResponses`) so Claude Code skips the interactive "use this API key?" gate on first launch.
@@ -109,7 +127,7 @@ L2 requires `claude` on PATH. TeamPilot pre-approves third-party provider API ke
 cd client
 flutter build linux --debug
 LD_LIBRARY_PATH=build/linux/x64/debug/bundle/lib \
-  flutter test test/integration/mixed_team_claude_docker_integration_test.dart --tags integration
+  flutter test test/integration/mixed_team_claude_docker_integration_test.dart --tags "integration && docker"
 ```
 
 L3 uses `Dockerfile.mixed` (`teampilot-it-ssh-mixed:latest`) with Node + `claude` baked in. Most wall time is **cold start** (Docker + two Claude PTYs + remote preflight locate); once both members are idle, bus ping/pong should complete in **seconds** (`kickoffAndWaitForPingPong` allows 30s per attempt). Bare-image install coverage remains `remote_cli_install_docker_test.dart`.
@@ -124,7 +142,7 @@ Remote CLI install over Docker SSH (needs Docker daemon + outbound network):
 
 ```bash
 cd client
-flutter test test/integration/remote_cli_install_docker_test.dart --tags integration
+flutter test test/integration/remote_cli_install_docker_test.dart --tags "integration && docker"
 ```
 
 Skips automatically when Docker is unavailable. First run builds `teampilot-it-ssh:latest` from `test/integration/docker/Dockerfile` (Debian + OpenSSH + socat, no Node/npm preinstalled).
@@ -171,7 +189,10 @@ CI uses [fastforge](https://pub.dev/packages/fastforge) to produce artifacts und
 
 You can still run `git tag vX.Y.Z && git push origin vX.Y.Z` (a local push triggers `release.yml` via `on.push.tags`), or use **workflow_dispatch** on Release Packages with any `ref` (no GitHub Release unless that ref is already a tag).
 
-Changes under `client/` trigger [Client Build Verify](../.github/workflows/client-verify.yml) on **Linux, Windows, macOS, and Android**: `flutter analyze` and `flutter test` (excluding the `integration` tag).
+Changes under `client/` trigger [Client Build Verify](../.github/workflows/client-verify.yml):
+
+- **Four platforms** (Linux, Windows, macOS, Android): `flutter analyze` and `flutter test --exclude-tags integration`.
+- **Linux integration** (`integration-linux` job): L2 + L3 via `flutter test --tags "integration && linux-pty"` after `flutter build linux --debug`, global `claude` CLI, and a cached `Dockerfile.mixed` image.
 
 ### Local packaging examples
 

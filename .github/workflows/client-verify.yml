@@ -102,3 +102,61 @@ jobs:
 
       - name: Unit and widget tests
         run: flutter test --exclude-tags integration
+
+  integration-linux:
+    name: Linux integration (Claude PTY + Docker SSH)
+    runs-on: ubuntu-22.04
+    timeout-minutes: 25
+    defaults:
+      run:
+        working-directory: client
+
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          submodules: recursive
+
+      - uses: dtolnay/rust-toolchain@stable
+
+      - name: Install Linux build dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y \
+            clang cmake git ninja-build pkg-config \
+            libgtk-3-dev liblzma-dev libstdc++-12-dev libsecret-1-dev
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - name: Install Claude Code CLI
+        run: npm install -g @anthropic-ai/claude-code
+
+      - uses: subosito/flutter-action@v2
+        with:
+          channel: stable
+          cache: true
+
+      - name: Resolve Flutter packages
+        run: flutter pub get
+
+      - name: Sync bundled Google Fonts (Noto Sans SC)
+        run: dart run tool/sync_bundled_google_fonts.dart
+
+      - name: Build Linux (PTY native lib)
+        run: flutter build linux --debug
+
+      - name: Build mixed Docker image (cached)
+        uses: docker/build-push-action@v6
+        with:
+          context: client/test/integration/docker
+          file: client/test/integration/docker/Dockerfile.mixed
+          tags: teampilot-it-ssh-mixed:latest
+          load: true
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+      - name: Mixed team Claude integration tests (L2 + L3)
+        env:
+          LD_LIBRARY_PATH: build/linux/x64/debug/bundle/lib
+        run: flutter test --tags "integration && linux-pty"

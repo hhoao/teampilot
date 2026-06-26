@@ -1,3 +1,9 @@
 tags:
   integration:
-    description: Filesystem integration tests that use temp directories.
+    description: Integration tests excluded from default `flutter test` runs.
+  cross-platform:
+    description: Integration tests with no PTY, Claude, or Docker (CI on all platforms).
+  linux-pty:
+    description: Integration tests needing native PTY + Claude CLI (Linux CI).
+  docker:
+    description: Integration tests needing Docker daemon (Linux CI).

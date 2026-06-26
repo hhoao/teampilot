@@ -1,4 +1,4 @@
-@Tags(['integration'])
+@Tags(['integration', 'docker'])
 library;
 
 import 'dart:io';

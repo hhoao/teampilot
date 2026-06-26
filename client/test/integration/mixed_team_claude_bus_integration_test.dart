@@ -1,4 +1,4 @@
-@Tags(['integration'])
+@Tags(['integration', 'linux-pty'])
 @Timeout(Duration(minutes: 4))
 library;
 
