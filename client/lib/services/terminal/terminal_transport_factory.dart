@@ -5,8 +5,9 @@ import '../../models/ssh_profile.dart';
 import '../../repositories/ssh_credential_store.dart';
 import '../../repositories/ssh_known_host_repository.dart';
 import '../../repositories/ssh_profile_repository.dart';
-import 'local_pty_transport.dart';
 import '../session/remote_flashskyai_command_builder.dart';
+import '../ssh/ssh_member_session.dart';
+import 'local_pty_transport.dart';
 import '../ssh/ssh_client_factory.dart';
 import 'ssh_pty_transport.dart';
 import 'terminal_transport.dart';
@@ -23,8 +24,7 @@ typedef PtyStarter =
 
 typedef SshTransportStarter =
     Future<TerminalTransport> Function({
-      required SshProfile profile,
-      required SshClientFactory clientFactory,
+      required SshMemberSession memberSession,
       required String command,
       required int columns,
       required int rows,
@@ -73,15 +73,13 @@ class TerminalTransportFactory {
   }
 
   static Future<TerminalTransport> _defaultSshStarter({
-    required SshProfile profile,
-    required SshClientFactory clientFactory,
+    required SshMemberSession memberSession,
     required String command,
     required int columns,
     required int rows,
   }) {
     return SshPtyTransport.start(
-      profile: profile,
-      clientFactory: clientFactory,
+      memberSession: memberSession,
       command: command,
       columns: columns,
       rows: rows,
@@ -97,6 +95,7 @@ class TerminalTransportFactory {
     required List<String> arguments,
     required int columns,
     required int rows,
+    required SshMemberSession? memberSession,
   }) async {
     switch (target.connectionMode) {
       case ConnectionMode.localPty:
@@ -117,6 +116,11 @@ class TerminalTransportFactory {
         if (profile == null) {
           throw StateError('SSH profile not found: ${target.sshProfileId}');
         }
+        if (memberSession == null) {
+          throw StateError(
+            'SSH transport requires a member session plane connection',
+          );
+        }
         final remoteEnvironment = target.remoteEnvironment;
         final command = const RemoteFlashskyaiCommandBuilder().buildCommand(
           remoteExecutablePath: target.remoteExecutable,
@@ -128,9 +132,8 @@ class TerminalTransportFactory {
           useLoginShell: target.useLoginShell,
         );
         return _sshStarter(
-          profile: profile,
-          clientFactory: sshClientFactory,
-          command: command,
+          memberSession: memberSession,
+          command: SshPtyTransport.buildSessionCommand(command),
           columns: columns,
           rows: rows,
         );

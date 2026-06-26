@@ -25,10 +25,10 @@ void main() {
   setUp(() {
     bus = TeamBus(launcher: FakeMemberLauncher());
     tunnel = FakeReverseTunnel(port: 49888);
-    mount = RemoteBusMount(
+    mount = RemoteBusMount.testing(
       handler: TeammateBusMcpHandler(bus: bus),
       tunnelFactory: () => tunnel,
-      remoteFs: LocalFilesystem(),
+      storageFs: LocalFilesystem(),
       remoteRun: (cmd) async => cmd.contains('socat') ? '/usr/bin/socat' : '',
       arch: 'linux-x64',
       httpBusPort: 0,

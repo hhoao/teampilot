@@ -1,10 +1,11 @@
-import '../../models/launch_target.dart';
 import '../../models/runtime_target.dart' as rt;
 import '../../models/runtime_target.dart' show RuntimeKind, sshProfileIdOfId;
 import '../../models/ssh_profile.dart';
 import '../../models/team_config.dart';
-import '../../services/terminal/terminal_session.dart';
+import '../../services/session/remote_flashskyai_command_builder.dart';
 import '../../services/ssh/ssh_client_factory.dart';
+import '../../services/terminal/ssh_pty_transport.dart';
+import '../../services/terminal/terminal_session.dart';
 import '../../services/terminal/terminal_transport_factory.dart';
 import '../../services/workspace_dnd/runtime_target.dart';
 import 'model/chat_state.dart';
@@ -52,6 +53,8 @@ class ChatSessionShellFactory {
 
   SshProfile? profileById(String id) => _sshProfileById?.call(id);
 
+  TerminalTransportFactory? get transportFactory => _transportFactory;
+
   SshClientFactory? get sshClientFactory => _transportFactory?.sshClientFactory;
 
   rt.RuntimeTarget get _target =>
@@ -95,14 +98,13 @@ class ChatSessionShellFactory {
           scrollbackLines: scrollback,
         );
       }
-      return TerminalSession(
+      late final TerminalSession shell;
+      shell = TerminalSession(
         executable: executable,
         scrollbackLines: scrollback,
         validateLaunch: false,
         usesRemoteTransport: true,
         parseExecutable: false,
-        // Tag the namespace so dropped local files are recognised as
-        // cross-machine (and refused) rather than pasted as unreachable paths.
         runtimeTarget: const RuntimeTarget.ssh(),
         transportStarter:
             (
@@ -113,26 +115,38 @@ class ChatSessionShellFactory {
               required int rows,
               Map<String, String>? environment,
             }) async {
+              final memberSession = shell.sshMemberSession;
+              if (memberSession == null) {
+                throw StateError(
+                  'SSH member session must be opened before connecting the shell',
+                );
+              }
               final remoteEnvironment = <String, String>{
                 if (environment != null) ...environment,
               };
               final remoteWorkingDirectory = workingDirectory.isNotEmpty
                   ? workingDirectory
                   : (_sshDefaultWorkingDirectoryResolver?.call() ?? '');
-              return _transportFactory!.startTransport(
-                LaunchTarget.ssh(
-                  sshProfileId: profile.id,
-                  remoteExecutable: executable,
-                  remoteWorkingDirectory: remoteWorkingDirectory,
-                  remoteEnvironment: remoteEnvironment,
-                  useLoginShell: _sshUseLoginShellResolver?.call() ?? false,
-                ),
+              final command = const RemoteFlashskyaiCommandBuilder().buildCommand(
+                remoteExecutablePath: executable,
                 arguments: arguments,
+                workingDirectory: remoteWorkingDirectory.isEmpty
+                    ? null
+                    : remoteWorkingDirectory,
+                environment: remoteEnvironment.isNotEmpty
+                    ? remoteEnvironment
+                    : null,
+                useLoginShell: _sshUseLoginShellResolver?.call() ?? false,
+              );
+              return SshPtyTransport.start(
+                memberSession: memberSession,
+                command: SshPtyTransport.buildSessionCommand(command),
                 columns: columns,
                 rows: rows,
               );
             },
       );
+      return shell;
     }
     return _terminalSessionFactory(
       executable: executable,

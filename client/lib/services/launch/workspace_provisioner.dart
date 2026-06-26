@@ -132,7 +132,7 @@ class WorkspaceProvisioner {
     if (profile == null) {
       throw StateError('No SSH profile for target "${target.id}".');
     }
-    final client = await sshClientFactory.clientFor(profile);
+    final client = await sshClientFactory.clientForStorage(profile);
     final run = RemoteCliLocator.runnerForClient(client);
     final storedPath = (await cliPathOverride(target.id, cli.value) ?? '').trim();
     final path = await _installer.ensure(

@@ -2,12 +2,14 @@ import 'dart:async';
 import 'dart:io';
 import 'dart:typed_data';
 
+import 'package:dartssh2/dartssh2.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:teampilot/models/launch_target.dart';
 import 'package:teampilot/models/ssh_profile.dart';
 import 'package:teampilot/repositories/ssh_credential_store.dart';
 import 'package:teampilot/repositories/ssh_known_host_repository.dart';
 import 'package:teampilot/repositories/ssh_profile_repository.dart';
+import 'package:teampilot/services/ssh/ssh_member_session.dart';
 import 'package:teampilot/services/ssh/ssh_client_factory.dart';
 import 'package:teampilot/services/terminal/terminal_transport.dart';
 import 'package:teampilot/services/terminal/terminal_transport_factory.dart';
@@ -35,6 +37,62 @@ class _FakeTransport implements TerminalTransport {
   void write(Uint8List data) {}
 }
 
+class _InstantAuthClient extends SSHClient {
+  _InstantAuthClient() : super(_FakeSSHSocket(), username: 'test');
+
+  @override
+  Future<void> get authenticated => Future.value();
+}
+
+class _FakeSSHSocket implements SSHSocket {
+  final _inputController = StreamController<Uint8List>();
+  final _doneCompleter = Completer<void>();
+
+  @override
+  Stream<Uint8List> get stream => _inputController.stream;
+
+  @override
+  StreamSink<List<int>> get sink => _NoopSink();
+
+  @override
+  Future<void> get done => _doneCompleter.future;
+
+  @override
+  Future<void> close() async {
+    if (!_doneCompleter.isCompleted) {
+      _doneCompleter.complete();
+    }
+    await _inputController.close();
+  }
+
+  @override
+  void destroy() {
+    if (!_doneCompleter.isCompleted) {
+      _doneCompleter.complete();
+    }
+    unawaited(_inputController.close());
+  }
+}
+
+class _NoopSink implements StreamSink<List<int>> {
+  @override
+  void add(List<int> data) {}
+
+  @override
+  void addError(Object error, [StackTrace? stackTrace]) {}
+
+  @override
+  Future<void> addStream(Stream<List<int>> stream) async {
+    await for (final _ in stream) {}
+  }
+
+  @override
+  Future<void> close() async {}
+
+  @override
+  Future<void> get done async {}
+}
+
 void main() {
   test(
     'SSH launch target resolves profile and builds remote command',
@@ -60,16 +118,20 @@ void main() {
         sshKnownHostRepository: InMemorySshKnownHostRepository(),
         sshStarter:
             ({
-              required SshProfile profile,
-              required SshClientFactory clientFactory,
+              required SshMemberSession memberSession,
               required String command,
               required int columns,
               required int rows,
             }) async {
-              startedProfile = profile;
+              startedProfile = memberSession.profile;
               startedCommand = command;
               return _FakeTransport();
             },
+      );
+
+      final memberSession = SshMemberSession.testing(
+        profile: profile,
+        client: _InstantAuthClient(),
       );
 
       await factory.startTransport(
@@ -83,6 +145,7 @@ void main() {
         arguments: const ['--resume', 's1'],
         columns: 80,
         rows: 24,
+        memberSession: memberSession,
       );
 
       expect(startedProfile, profile);

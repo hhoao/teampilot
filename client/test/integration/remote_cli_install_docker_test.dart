@@ -62,7 +62,7 @@ void main() {
       final factory = sshFactory!;
 
       final profile = _profile.copyWith(port: docker.port);
-      final client = await factory.clientFor(
+      final client = await factory.clientForStorage(
         profile,
         timeout: const Duration(seconds: 30),
       );

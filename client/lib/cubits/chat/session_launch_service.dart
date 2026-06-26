@@ -26,7 +26,11 @@ import '../../services/storage/runtime_context.dart';
 import '../../services/team_bus/mcp/bus_bridge_locator.dart';
 import '../../services/team_bus/mcp/teammate_bus_mcp_config.dart';
 import '../../services/team_bus/remote/member_bus_mcp_config.dart';
+import '../../services/ssh/ssh_member_session.dart';
+import '../../services/storage/targets_repository.dart';
 import '../../services/team_bus/remote/remote_bus_binding_resolver.dart';
+import '../../services/team_bus/remote/remote_bus_mount.dart';
+import '../../services/team_bus/remote/ssh_remote_bus_mount_factory.dart';
 import '../../services/cli/registry/cli_tool_registry.dart';
 import '../../services/cli/registry/capabilities/bus_transport_capability.dart';
 import '../../services/terminal/terminal_session.dart';
@@ -133,12 +137,16 @@ class SessionLaunchService implements MemberConnector {
     required ChatTab tab,
     required TerminalSession shell,
     required String reason,
+    String? remoteMemberKey,
   }) {
     if (_connectShellStillValid(tab: tab, shell: shell)) return;
     appLogger.d(
       '[session-launch] connectShell aborted session=${tab.info.id} '
       'reason=$reason',
     );
+    if (remoteMemberKey != null) {
+      unawaited(tab.closeMemberRemotePlane(remoteMemberKey));
+    }
     if (_state.sessionConnectingId == tab.info.id) {
       _h.finishSessionConnect(tab.info.id);
     }
@@ -644,6 +652,7 @@ class SessionLaunchService implements MemberConnector {
         );
         final message = 'Failed to resume session: $e';
         shell.write('\r\n[$message]\r\n');
+        unawaited(tab.closeMemberRemotePlane(effectiveMember.id));
         _h.failSessionConnect(tab.info.id, message);
       } finally {
         tab.membersPendingConnect.remove(effectiveMember.id);
@@ -656,6 +665,23 @@ class SessionLaunchService implements MemberConnector {
       if (workspace.workspaceId == workspaceId) return workspace;
     }
     return null;
+  }
+
+  Future<SshMemberSession?> _beginRemoteMemberSshSession({
+    required ChatTab tab,
+    required String memberKey,
+    required RuntimeTarget launchTarget,
+  }) async {
+    if (launchTarget.kind != RuntimeKind.ssh) return null;
+    final factory = _h.shellFactory.transportFactory?.sshClientFactory;
+    final profile = _h.shellFactory.profileFor(launchTarget);
+    if (factory == null || profile == null) return null;
+
+    await tab.closeMemberRemotePlane(memberKey);
+
+    final session = await SshMemberSession.open(factory, profile);
+    tab.memberSshSessions[memberKey] = session;
+    return session;
   }
 
   WorkspaceLaunchContext _launchContextFor(AppSession session) =>
@@ -1015,6 +1041,19 @@ class SessionLaunchService implements MemberConnector {
         ? activeSession.sessionId
         : (rosterMemberId ?? launchMember!.id);
 
+    final sshMemberKey = preflightMemberId;
+    String? remoteMemberKeyForRollback;
+    try {
+      final memberSshSession = await _beginRemoteMemberSshSession(
+        tab: tab,
+        memberKey: sshMemberKey,
+        launchTarget: launchTarget,
+      );
+      if (memberSshSession != null) {
+        remoteMemberKeyForRollback = sshMemberKey;
+      }
+      shell.sshMemberSession = memberSshSession;
+
     appLogger.d(
       '[session-launch] launch target resolved '
       'session=${tab.info.id} member=$preflightMemberId '
@@ -1050,23 +1089,29 @@ class SessionLaunchService implements MemberConnector {
       remoteCliPath = connectResult.remoteCliPath;
       launchWarnings.addAll(connectResult.warnings);
     } else {
-      if (mixedBus) {
+      if (mixedBus && memberSshSession != null) {
         appLogger.d(
           '[session-launch] mixed bus remote setup start '
           'session=${tab.info.id} member=$preflightMemberId',
         );
-        if (_h.remoteBusResolver != null) {
-          final resolution = await _h.remoteBusResolver!.resolve(
-            existingMount: tab.remoteBusMount,
-            memberTarget: launchTarget,
+        final resolver = _h.remoteBusResolver;
+        if (resolver != null) {
+          final workCtx = await _h.lifecycle.resolveWorkContextForTargetId(
+            launchTarget.id,
+          );
+          final arch = archFromUname(await memberSshSession.run('uname -m'));
+          final mount = buildRemoteBusMount(
+            memberSession: memberSshSession,
+            busServer: tab.mcpServer!,
+            storageFs: workCtx.fs,
+            arch: arch,
+          );
+          tab.memberRemoteBusMounts[preflightMemberId] = mount;
+          remoteBinding = await resolver.bindMember(
+            mount: mount,
             memberId: preflightMemberId,
             cli: launchCli,
-            busServer: tab.mcpServer!,
           );
-          if (resolution != null) {
-            tab.remoteBusMount = resolution.mount;
-            remoteBinding = resolution.binding;
-          }
         }
       }
       final memberWork = activeSession.workDirsForMember(
@@ -1104,17 +1149,20 @@ class SessionLaunchService implements MemberConnector {
         tab: tab,
         shell: shell,
         reason: 'tab_or_shell_gone_after_prepare_connect',
+        remoteMemberKey: remoteMemberKeyForRollback,
       );
       return;
     }
 
     if (launchTarget.kind == RuntimeKind.ssh) {
-      final shellFactory = _h.shellFactory;
+      final injectRootSandboxEnv = await TargetsRepository()
+          .isRootSandboxEnvOptIn(launchTarget.id);
       shellLaunch = await applyRemoteSshLaunchConstraints(
         spec: shellLaunch,
         memberTarget: launchTarget,
-        sshClientFactory: shellFactory.sshClientFactory,
-        profile: shellFactory.profileFor(launchTarget),
+        memberSession: memberSshSession,
+        profile: _h.shellFactory.profileFor(launchTarget),
+        injectRootSandboxEnv: injectRootSandboxEnv,
       );
     }
 
@@ -1123,6 +1171,7 @@ class SessionLaunchService implements MemberConnector {
         tab: tab,
         shell: shell,
         reason: 'tab_or_shell_gone_after_ssh_constraints',
+        remoteMemberKey: remoteMemberKeyForRollback,
       );
       return;
     }
@@ -1149,6 +1198,7 @@ class SessionLaunchService implements MemberConnector {
         tab: tab,
         shell: shell,
         reason: 'tab_or_shell_gone_after_persist_native_id',
+        remoteMemberKey: remoteMemberKeyForRollback,
       );
       return;
     }
@@ -1182,7 +1232,12 @@ class SessionLaunchService implements MemberConnector {
       onEveryUserLineSubmitted: _autoTouchOnEveryPrompt(
         activeSession.sessionId,
       ),
-      onProcessFailed: (message) => _h.failSessionConnect(tab.info.id, message),
+      onProcessFailed: (message) {
+        if (remoteMemberKeyForRollback != null) {
+          unawaited(tab.closeMemberRemotePlane(remoteMemberKeyForRollback!));
+        }
+        _h.failSessionConnect(tab.info.id, message);
+      },
       onProcessExited: () => _h.updateTabRunning(tab.info.id),
       onProcessStarted: () {
         if (team != null && member != null) {
@@ -1205,6 +1260,19 @@ class SessionLaunchService implements MemberConnector {
         }
       },
     );
+      remoteMemberKeyForRollback = null;
+    } on Object catch (e, st) {
+      if (remoteMemberKeyForRollback != null) {
+        await tab.closeMemberRemotePlane(remoteMemberKeyForRollback!);
+      }
+      appLogger.e(
+        '[session-launch] connectShell failed session=${tab.info.id} '
+        'member=$memberLabel: $e',
+        error: e,
+        stackTrace: st,
+      );
+      _h.failSessionConnect(tab.info.id, 'Failed to connect session: $e');
+    }
   }
 
   /// 选择 teammate-bus MCP 的传输方式（P3b：按成员 target + 能力位分流）。
@@ -1537,8 +1605,10 @@ class SessionLaunchService implements MemberConnector {
   void disconnectSession() {
     final tab = _activeTab;
     if (tab == null) return;
-    tab.membersPendingConnect.remove(tab.selectedMemberId);
-    tab.memberShells[tab.selectedMemberId]?.disconnect();
+    final memberId = tab.selectedMemberId;
+    tab.membersPendingConnect.remove(memberId);
+    tab.memberShells[memberId]?.disconnect();
+    unawaited(tab.closeMemberRemotePlane(memberId));
     _h.clearLaunchError(tab.info.id);
     _h.updateTabRunning(tab.info.id);
   }
@@ -1572,6 +1642,9 @@ class SessionLaunchService implements MemberConnector {
         tab.membersPendingConnect.clear();
         for (final shell in tab.memberShells.values) {
           shell.disconnect();
+        }
+        for (final memberId in tab.memberSshSessions.keys.toList()) {
+          unawaited(tab.closeMemberRemotePlane(memberId));
         }
         _h.updateTabRunning(tab.info.id);
       }

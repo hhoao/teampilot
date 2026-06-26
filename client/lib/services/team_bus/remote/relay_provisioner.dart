@@ -16,6 +16,16 @@ typedef RemoteCommandRunner = Future<String> Function(String command);
 /// real packaged binary (the default resolver always reports "missing").
 typedef RelayAssetResolver = Future<List<int>?> Function(String assetName);
 
+/// Prepared relay strategy on the remote host (no tunnel port yet).
+class PreparedRelay {
+  const PreparedRelay({required this.kind, required this.toolPath});
+
+  final RelayKind kind;
+
+  /// socat/nc path, or materialized bundled relay path.
+  final String toolPath;
+}
+
 /// The argv a long-blocking remote member's MCP config invokes: a stdio↔TCP
 /// relay that first writes the bus handshake frame, then pipes the CLI's MCP
 /// traffic to the reverse-tunnel loopback port.
@@ -95,56 +105,77 @@ class RelayProvisioner {
     required String arch,
     RemoteOs remoteOs = RemoteOs.posix,
   }) async {
-    if (remoteOs == RemoteOs.windows) {
-      return _provisionWindows(
-        remoteFs: remoteFs,
-        run: run,
-        tunnelPort: tunnelPort,
-        token: token,
-        memberId: memberId,
-        arch: arch,
-      );
-    }
-    return _provisionPosix(
+    final prepared = await prepare(
       remoteFs: remoteFs,
       run: run,
+      arch: arch,
+      remoteOs: remoteOs,
+    );
+    return planFor(
+      prepared: prepared,
       tunnelPort: tunnelPort,
       token: token,
       memberId: memberId,
-      arch: arch,
     );
   }
 
-  Future<RelayPlan> _provisionPosix({
+  /// Phase 1: probe / materialize relay on the remote host (exec + storage SFTP).
+  /// Does not open SSH reverse forwards.
+  Future<PreparedRelay> prepare({
     required Filesystem remoteFs,
     required RemoteCommandRunner run,
+    required String arch,
+    RemoteOs remoteOs = RemoteOs.posix,
+  }) async {
+    if (remoteOs == RemoteOs.windows) {
+      return _prepareWindows(remoteFs: remoteFs, run: run, arch: arch);
+    }
+    return _preparePosix(remoteFs: remoteFs, run: run, arch: arch);
+  }
+
+  /// Phase 2: build MCP relay argv once the reverse-tunnel port is known.
+  RelayPlan planFor({
+    required PreparedRelay prepared,
     required int tunnelPort,
     required String token,
     required String memberId,
-    required String arch,
-  }) async {
+  }) {
     final handshake = jsonEncode({'token': token, 'memberId': memberId});
-
-    final socat = (await run('command -v socat')).trim();
-    if (socat.isNotEmpty) {
-      return RelayPlan(
+    return switch (prepared.kind) {
+      RelayKind.socat => RelayPlan(
         kind: RelayKind.socat,
         argv: _pipeWithHandshake(
           handshake: handshake,
-          pipeCommand: '$socat - TCP:127.0.0.1:$tunnelPort',
+          pipeCommand: '${prepared.toolPath} - TCP:127.0.0.1:$tunnelPort',
         ),
-      );
+      ),
+      RelayKind.nc => RelayPlan(
+        kind: RelayKind.nc,
+        argv: _pipeWithHandshake(
+          handshake: handshake,
+          pipeCommand: '${prepared.toolPath} 127.0.0.1 $tunnelPort',
+        ),
+      ),
+      RelayKind.bundledStatic => RelayPlan(
+        kind: RelayKind.bundledStatic,
+        argv: _bundledArgv(prepared.toolPath, tunnelPort, token, memberId),
+      ),
+    };
+  }
+
+  Future<PreparedRelay> _preparePosix({
+    required Filesystem remoteFs,
+    required RemoteCommandRunner run,
+    required String arch,
+  }) async {
+    final socat = (await run('command -v socat')).trim();
+    if (socat.isNotEmpty) {
+      return PreparedRelay(kind: RelayKind.socat, toolPath: socat);
     }
 
     final nc = (await run('command -v nc')).trim();
     if (nc.isNotEmpty) {
-      return RelayPlan(
-        kind: RelayKind.nc,
-        argv: _pipeWithHandshake(
-          handshake: handshake,
-          pipeCommand: '$nc 127.0.0.1 $tunnelPort',
-        ),
-      );
+      return PreparedRelay(kind: RelayKind.nc, toolPath: nc);
     }
 
     final bundled = await _materializeBundledRelay(
@@ -154,18 +185,12 @@ class RelayProvisioner {
       RemoteOs.posix,
     );
     if (bundled == null) throw RelayUnavailableException(arch, RemoteOs.posix);
-    return RelayPlan(
-      kind: RelayKind.bundledStatic,
-      argv: _bundledArgv(bundled, tunnelPort, token, memberId),
-    );
+    return PreparedRelay(kind: RelayKind.bundledStatic, toolPath: bundled);
   }
 
-  Future<RelayPlan> _provisionWindows({
+  Future<PreparedRelay> _prepareWindows({
     required Filesystem remoteFs,
     required RemoteCommandRunner run,
-    required int tunnelPort,
-    required String token,
-    required String memberId,
     required String arch,
   }) async {
     final bundled = await _materializeBundledRelay(
@@ -174,11 +199,10 @@ class RelayProvisioner {
       arch,
       RemoteOs.windows,
     );
-    if (bundled == null) throw RelayUnavailableException(arch, RemoteOs.windows);
-    return RelayPlan(
-      kind: RelayKind.bundledStatic,
-      argv: _bundledArgv(bundled, tunnelPort, token, memberId),
-    );
+    if (bundled == null) {
+      throw RelayUnavailableException(arch, RemoteOs.windows);
+    }
+    return PreparedRelay(kind: RelayKind.bundledStatic, toolPath: bundled);
   }
 
   /// The bundled static relay self-sends the handshake (no shell wrapper), so

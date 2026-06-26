@@ -1,14 +1,14 @@
 import 'dart:async';
 import 'dart:typed_data';
+
 import 'package:dartssh2/dartssh2.dart';
-import '../../models/ssh_profile.dart';
-import '../ssh/ssh_client_factory.dart';
+
+import '../ssh/ssh_member_session.dart';
 import 'terminal_transport.dart';
 
 class SshPtyTransport implements TerminalTransport {
-  SshPtyTransport({required this.client, required this.session});
+  SshPtyTransport({required this.session});
 
-  final SSHClient client;
   final SSHSession session;
   Stream<Uint8List>? _output;
 
@@ -67,33 +67,19 @@ class SshPtyTransport implements TerminalTransport {
   }
 
   static Future<SshPtyTransport> start({
-    required SshProfile profile,
-    required SshClientFactory clientFactory,
+    required SshMemberSession memberSession,
     required String command,
-    String? workingDirectory,
-    Map<String, String>? environment,
     int columns = 80,
     int rows = 24,
+    Map<String, String>? environment,
   }) async {
-    final client = await clientFactory.clientFor(profile);
-
-    try {
-      final fullCommand = buildSessionCommand(
-        command,
-        workingDirectory: workingDirectory,
-        environment: environment,
-      );
-
-      final session = await client.execute(
-        fullCommand,
-        pty: SSHPtyConfig(type: 'xterm-256color', width: columns, height: rows),
-      );
-
-      return SshPtyTransport(client: client, session: session);
-    } catch (e) {
-      clientFactory.disconnectProfile(profile.id);
-      rethrow;
-    }
+    final session = await memberSession.openPty(
+      command: command,
+      columns: columns,
+      rows: rows,
+      environment: environment,
+    );
+    return SshPtyTransport(session: session);
   }
 
   static String buildSessionCommand(

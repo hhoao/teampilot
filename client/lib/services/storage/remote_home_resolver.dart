@@ -19,7 +19,7 @@ class RemoteHomeResolver {
   final SshRunCapture? _runCommand;
 
   Future<String?> resolve(SshProfile profile) async {
-    final client = await _clientFactory.clientFor(profile);
+    final client = await _clientFactory.clientForStorage(profile);
     try {
       final result = await (_runCommand ?? _defaultRun)(
         client,

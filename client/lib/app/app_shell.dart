@@ -10,7 +10,6 @@ import '../cubits/app_provider_cubit.dart';
 import '../cubits/app_update_cubit.dart';
 import '../cubits/chat_cubit.dart';
 import '../services/team_bus/remote/remote_bus_binding_resolver.dart';
-import '../services/team_bus/remote/ssh_remote_bus_mount_factory.dart';
 import '../services/remote/local_credential_exporter.dart';
 import '../services/launch/launch_factory.dart';
 import '../cubits/board_cubit.dart';
@@ -253,7 +252,7 @@ Future<AppShell> buildAppShell({
   // claude executable path). Generalized P3c locator behind the same adapter.
   Future<String?> locateRemoteCli(SshProfile profile) async {
     try {
-      final client = await sshClientFactory.clientFor(profile);
+      final client = await sshClientFactory.clientForStorage(profile);
       return remoteCliLocator.resolve(
         cli: CliTool.flashskyai,
         run: RemoteCliLocator.runnerForClient(client),
@@ -638,14 +637,7 @@ Future<AppShell> buildAppShell({
         sessionPreferencesCubit.state.preferences.terminalScrollbackLines,
     // P3b (#1): connect remote (ssh) mixed-team members back to the in-process
     // bus over a reverse tunnel. Local members resolve to null (unchanged).
-    remoteBusResolver: RemoteBusBindingResolver(
-      registry: cliToolRegistry,
-      mountFactory: sshRemoteBusMountFactory(
-        sshClientFactory: sshClientFactory,
-        profileById: (id) async => sshProfileById(id),
-        contextForTarget: runtimeContextRegistry.forTarget,
-      ),
-    ),
+    remoteBusResolver: RemoteBusBindingResolver(registry: cliToolRegistry),
     sessionConnect: buildSessionConnectOrchestrator(
       lifecycle: sessionLifecycleService,
       registry: cliToolRegistry,

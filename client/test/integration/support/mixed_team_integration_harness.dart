@@ -23,7 +23,6 @@ import 'package:teampilot/services/storage/workspace_layout.dart';
 import 'package:teampilot/services/ssh/ssh_client_factory.dart';
 import 'package:teampilot/services/team_bus/mcp/bus_bridge_locator.dart';
 import 'package:teampilot/services/team_bus/remote/remote_bus_binding_resolver.dart';
-import 'package:teampilot/services/team_bus/remote/ssh_remote_bus_mount_factory.dart';
 import 'package:teampilot/services/terminal/terminal_session.dart';
 import 'package:teampilot/services/terminal/terminal_transport_factory.dart';
 
@@ -200,11 +199,6 @@ class MixedTeamIntegrationHarness {
       defaultTargetResolver: RuntimeTarget.local,
       remoteBusResolver: RemoteBusBindingResolver(
         registry: CliToolRegistry.builtIn(),
-        mountFactory: sshRemoteBusMountFactory(
-          sshClientFactory: remote.sshClientFactory,
-          profileById: (id) async => profileById(id),
-          contextForTarget: registry.forTarget,
-        ),
       ),
       sessionConnect: buildSessionConnectOrchestrator(
         lifecycle: lifecycle,
@@ -267,7 +261,7 @@ class MixedTeamIntegrationHarness {
   }
 
   Future<void> verifyMockReachableFromDocker(MixedTeamDockerRemote remote) async {
-    final client = await remote.sshClientFactory.clientFor(remote.profile);
+    final client = await remote.sshClientFactory.clientForStorage(remote.profile);
     final url =
         'http://${DockerSshServer.hostGatewayHostname}:${mockPort}/';
     final out = await client.run(
@@ -621,7 +615,7 @@ class MixedTeamDockerRemote {
       onHostKeyPrompt: (_) async => true,
     );
 
-    final client = await sshClientFactory.clientFor(profile);
+    final client = await sshClientFactory.clientForStorage(profile);
     await client.run('mkdir -p $remoteWorkspacePath');
 
     final resolver = RuntimeContextResolver(

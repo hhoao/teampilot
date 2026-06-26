@@ -9,7 +9,7 @@ import 'package:teampilot/repositories/ssh_known_host_repository.dart';
 import 'package:teampilot/services/ssh/ssh_client_factory.dart';
 
 void main() {
-  test('clientFor reuses the same pooled client for one profile', () async {
+  test('clientForStorage reuses the same pooled client for one profile', () async {
     var createCount = 0;
     final factory = SshClientFactory(
       credentialStore: InMemorySshCredentialStore(),
@@ -27,8 +27,8 @@ void main() {
       username: 'alice',
     );
 
-    final first = await factory.clientFor(profile);
-    final second = await factory.clientFor(profile);
+    final first = await factory.clientForStorage(profile);
+    final second = await factory.clientForStorage(profile);
 
     expect(identical(first, second), isTrue);
     expect(createCount, 1);
@@ -53,16 +53,16 @@ void main() {
       username: 'alice',
     );
 
-    final client = await factory.clientFor(profile);
+    final client = await factory.clientForStorage(profile);
     factory.disconnectProfile('p1');
 
     expect(client.isClosed, isTrue);
 
-    await factory.clientFor(profile);
+    await factory.clientForStorage(profile);
     expect(createCount, 2);
   });
 
-  test('clientFor reconnects when host identity changes', () async {
+  test('clientForStorage reconnects when host identity changes', () async {
     var createCount = 0;
     final factory = SshClientFactory(
       credentialStore: InMemorySshCredentialStore(),
@@ -86,8 +86,8 @@ void main() {
       username: 'alice',
     );
 
-    final first = await factory.clientFor(profileV1);
-    final second = await factory.clientFor(profileV2);
+    final first = await factory.clientForStorage(profileV1);
+    final second = await factory.clientForStorage(profileV2);
 
     expect(identical(first, second), isFalse);
     expect(first.isClosed, isTrue);

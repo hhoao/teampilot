@@ -183,7 +183,7 @@ class RemoteFileStore {
     if (resolved.isEmpty || resolved == '.' || resolved == '/') return;
     if ((await statKind(resolved)) == FsEntityKind.directory) return;
 
-    final client = await _clientFactory.clientFor(_profile);
+    final client = await _clientFactory.clientForStorage(_profile);
     final result = await client.runWithResult(
       'mkdir -p -- ${shellSingleQuote(resolved)}',
       stderr: false,
@@ -220,7 +220,7 @@ class RemoteFileStore {
   }
 
   Future<void> removeRecursive(String absolutePosixPath) async {
-    final client = await _clientFactory.clientFor(_profile);
+    final client = await _clientFactory.clientForStorage(_profile);
     await client.runWithResult(
       'rm -rf -- ${shellSingleQuote(absolutePosixPath)}',
       stderr: false,
@@ -231,7 +231,7 @@ class RemoteFileStore {
     required String target,
     required String linkPath,
   }) async {
-    final client = await _clientFactory.clientFor(_profile);
+    final client = await _clientFactory.clientForStorage(_profile);
     final parent = p.Context(style: p.Style.posix).dirname(linkPath);
     if (parent.isNotEmpty && parent != '.') {
       await ensureDirectory(parent);
@@ -285,7 +285,7 @@ class RemoteFileStore {
       await ensureDirectory(parent);
     }
     await removeRecursive(to);
-    final client = await _clientFactory.clientFor(_profile);
+    final client = await _clientFactory.clientForStorage(_profile);
     final result = await client.runWithResult(
       'mv -- ${shellSingleQuote(from)} ${shellSingleQuote(to)}',
       stderr: false,
@@ -308,7 +308,7 @@ class RemoteFileStore {
     }
     await removeRecursive(destination);
     await ensureDirectory(destination);
-    final client = await _clientFactory.clientFor(_profile);
+    final client = await _clientFactory.clientForStorage(_profile);
     final result = await client.runWithResult(
       'cp -R -- ${shellSingleQuote('$source/.')} ${shellSingleQuote(destination)}',
       stderr: false,
@@ -351,7 +351,7 @@ class RemoteFileStore {
     if (parent.isNotEmpty && parent != '.' && parent != '/') {
       await ensureDirectory(parent);
     }
-    final client = await _clientFactory.clientFor(_profile);
+    final client = await _clientFactory.clientForStorage(_profile);
     final result = await client.runWithResult(
       'cp -- ${shellSingleQuote(source)} ${shellSingleQuote(destination)}',
       stderr: false,
@@ -364,7 +364,7 @@ class RemoteFileStore {
   }
 
   Future<List<RemoteDirEntry>> listDirectoryEntriesRecursive(String path) async {
-    final client = await _clientFactory.clientFor(_profile);
+    final client = await _clientFactory.clientForStorage(_profile);
     final result = await client.runWithResult(
       'find ${shellSingleQuote(path)} -mindepth 1 -printf "%P\\t%y\\n"',
       stderr: false,
@@ -393,7 +393,7 @@ class RemoteFileStore {
 
   /// Runs [command] in the remote login shell and returns the full exit status.
   Future<SSHRunResult> execShell(String command) async {
-    final client = await _clientFactory.clientFor(_profile);
+    final client = await _clientFactory.clientForStorage(_profile);
     return client.runWithResult(command);
   }
 
@@ -405,7 +405,7 @@ class RemoteFileStore {
     final resolved = (await expandHome(absolutePath)).trim();
     if (resolved.isEmpty) return false;
 
-    final client = await _clientFactory.clientFor(_profile);
+    final client = await _clientFactory.clientForStorage(_profile);
     final quoted = shellSingleQuote(resolved);
     final cmd = switch (remoteOs) {
       RemoteOs.windows => 'explorer $quoted',
@@ -420,7 +420,7 @@ class RemoteFileStore {
   }
 
   Future<String> createTempDir({String? prefix, String? parent}) async {
-    final client = await _clientFactory.clientFor(_profile);
+    final client = await _clientFactory.clientForStorage(_profile);
     final template = '${prefix ?? 'tmp'}XXXXXX';
     final cmd = parent != null
         ? 'mktemp -d -p ${shellSingleQuote(parent)} $template'
@@ -439,7 +439,7 @@ class RemoteFileStore {
     final resolved = await expandHome(path);
     await _ensureParentDirs(resolved);
     final encoded = base64.encode(utf8.encode(content));
-    final client = await _clientFactory.clientFor(_profile);
+    final client = await _clientFactory.clientForStorage(_profile);
     final result = await client.runWithResult(
       'printf \'%s\' ${shellSingleQuote(encoded)} | base64 -d >> ${shellSingleQuote(path)}',
       stderr: false,

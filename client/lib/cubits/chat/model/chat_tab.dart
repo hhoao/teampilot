@@ -1,6 +1,7 @@
 import 'dart:async';
 
 import '../../../models/app_session.dart';
+import '../../../services/ssh/ssh_member_session.dart';
 import '../../../services/team_bus/mcp/teammate_bus_mcp_server.dart';
 import '../../../services/team_bus/remote/remote_bus_mount.dart';
 import '../../../services/team_bus/team_bus.dart';
@@ -40,13 +41,37 @@ class ChatTab {
   TeamBus? teamBus;
   TeammateBusMcpServer? mcpServer;
 
-  /// P3b (#1): remote members' reverse-tunnel mount (raw socket + tunnels +
-  /// pumps), built lazily on first remote-member connect; torn down with the bus.
-  RemoteBusMount? remoteBusMount;
+  /// Per-member reverse-tunnel bus mounts (session plane). One mount per remote
+  /// roster member so auto-launching multiple ssh members does not tear down
+  /// siblings.
+  final Map<String, RemoteBusMount> memberRemoteBusMounts = {};
+
+  /// Session-plane SSH connections keyed by roster member id (or session id for
+  /// personal remote). Closed when the member shell disconnects or the tab bus
+  /// is disposed — not pooled with storage SFTP.
+  final Map<String, SshMemberSession> memberSshSessions = {};
+
+  Future<void> closeMemberRemoteBusMount(String memberId) async {
+    await memberRemoteBusMounts.remove(memberId)?.close();
+  }
+
+  void closeMemberSshSession(String memberId) {
+    memberSshSessions.remove(memberId)?.close();
+  }
+
+  /// Tears down one member's session-plane SSH connection and bus mount.
+  Future<void> closeMemberRemotePlane(String memberId) async {
+    await closeMemberRemoteBusMount(memberId);
+    closeMemberSshSession(memberId);
+  }
 
   Future<void> disposeBus() async {
-    await remoteBusMount?.close();
-    remoteBusMount = null;
+    for (final id in memberRemoteBusMounts.keys.toList()) {
+      await closeMemberRemoteBusMount(id);
+    }
+    for (final id in memberSshSessions.keys.toList()) {
+      closeMemberSshSession(id);
+    }
     await mcpServer?.stop();
     teamBus?.dispose();
     teamBus = null;

@@ -79,7 +79,7 @@ class ManifestExecutor {
     appLogger.d(
       '[session-launch] manifest flush via ssh ops=${manifest.entries.length}',
     );
-    final client = await sshClientFactory!.clientFor(profile);
+    final client = await sshClientFactory!.clientForStorage(profile);
     final result = await client.runWithResult(script, stderr: true);
     if (sshRunFailed(result)) {
       final stderr = utf8.decode(result.stderr, allowMalformed: true);

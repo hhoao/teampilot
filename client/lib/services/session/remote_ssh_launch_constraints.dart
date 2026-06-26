@@ -1,8 +1,6 @@
-import 'dart:convert';
-
 import '../../models/runtime_target.dart';
 import '../../models/ssh_profile.dart';
-import '../ssh/ssh_client_factory.dart';
+import '../ssh/ssh_member_session.dart';
 import '../ssh/ssh_run_result.dart';
 import 'shell_launch_spec.dart';
 
@@ -11,24 +9,21 @@ import 'shell_launch_spec.dart';
 const claudeCodeSandboxEnvKey = 'IS_SANDBOX';
 const claudeCodeSandboxEnvValue = '1';
 
-/// Whether the remote SSH login runs as Unix root (`uid 0`).
 Future<bool> remoteSshRunsAsRoot({
-  required SshClientFactory sshClientFactory,
-  required SshProfile profile,
+  required SshMemberSession memberSession,
 }) async {
-  final client = await sshClientFactory.clientFor(profile);
-  final result = await client.runWithResult('id -u', stderr: false);
+  final result = await memberSession.runWithResult('id -u', stderr: false);
   if (sshRunFailed(result)) return false;
-  return utf8.decode(result.stdout, allowMalformed: true).trim() == '0';
+  return String.fromCharCodes(result.stdout).trim() == '0';
 }
 
-/// Linux Docker probe — same as Claude Code `envDynamic.getIsDocker()`.
 Future<bool> remoteSshInDockerContainer({
-  required SshClientFactory sshClientFactory,
-  required SshProfile profile,
+  required SshMemberSession memberSession,
 }) async {
-  final client = await sshClientFactory.clientFor(profile);
-  final result = await client.runWithResult('test -f /.dockerenv', stderr: false);
+  final result = await memberSession.runWithResult(
+    'test -f /.dockerenv',
+    stderr: false,
+  );
   return sshRunSucceeded(result);
 }
 
@@ -57,33 +52,23 @@ RemoteRootSkipPermissionsPolicy resolveRemoteRootSkipPermissionsPolicy({
 }
 
 /// Applies Claude Code launch constraints for remote SSH (P3c).
-///
-/// When the login is root and the member requests skip-permissions, container
-/// hosts get `IS_SANDBOX=1` (setup.ts escape hatch); bare-metal root drops the
-/// flag instead of letting the CLI abort.
 Future<ShellLaunchSpec> applyRemoteSshLaunchConstraints({
   required ShellLaunchSpec spec,
   required RuntimeTarget memberTarget,
-  required SshClientFactory? sshClientFactory,
+  required SshMemberSession? memberSession,
   required SshProfile? profile,
 }) async {
   if (memberTarget.kind != RuntimeKind.ssh ||
-      sshClientFactory == null ||
+      memberSession == null ||
       profile == null) {
     return spec;
   }
   final member = spec.launchContext.member;
   if (!member.dangerouslySkipPermissions) return spec;
 
-  final runsAsRoot = await remoteSshRunsAsRoot(
-    sshClientFactory: sshClientFactory,
-    profile: profile,
-  );
+  final runsAsRoot = await remoteSshRunsAsRoot(memberSession: memberSession);
   final remoteInDocker = runsAsRoot
-      ? await remoteSshInDockerContainer(
-          sshClientFactory: sshClientFactory,
-          profile: profile,
-        )
+      ? await remoteSshInDockerContainer(memberSession: memberSession)
       : false;
   final policy = resolveRemoteRootSkipPermissionsPolicy(
     skipPermissionsRequested: member.dangerouslySkipPermissions,

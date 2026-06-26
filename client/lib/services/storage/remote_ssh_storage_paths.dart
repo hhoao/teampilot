@@ -40,7 +40,7 @@ printf '%s\n' "$HOME_DIR" "$TP_DIR"
 ''';
 
   Future<RemoteSshStoragePaths> resolve(SshProfile profile) async {
-    final client = await _clientFactory.clientFor(profile);
+    final client = await _clientFactory.clientForStorage(profile);
     final result = await (_runCommand ?? _defaultRun)(client, resolveCommand);
     final lines = utf8
         .decode(result.stdout, allowMalformed: true)

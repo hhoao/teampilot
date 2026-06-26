@@ -62,11 +62,11 @@ class SshClientFactory {
   final Map<String, _PooledConnection> _pool = {};
   final Map<String, SftpClient> _sftpByProfile = {};
 
-  /// Returns a shared, authenticated [SSHClient] for [profile].
+  /// Pooled storage-plane client for [profile] (SFTP / file I/O only).
   ///
-  /// One pooled connection is kept per profile id until [disconnectProfile] or
-  /// [disconnectAll] is called, or the remote host identity changes.
-  Future<SSHClient> clientFor(
+  /// Interactive session work (PTY, reverse bus tunnels, exec probes) must use
+  /// [createMemberClient] via [SshMemberSession.open] instead.
+  Future<SSHClient> clientForStorage(
     SshProfile profile, {
     Duration timeout = const Duration(seconds: 10),
   }) async {
@@ -109,7 +109,7 @@ class SshClientFactory {
       }
     }
 
-    final client = await clientFor(profile);
+    final client = await clientForStorage(profile);
     final sftp = await client.sftp();
     _sftpByProfile[profile.id] = sftp;
     return sftp;
@@ -174,6 +174,13 @@ class SshClientFactory {
 
   static String fingerprintToBase64(Uint8List fingerprint) =>
       base64.encode(fingerprint);
+
+  /// Opens a fresh, caller-owned SSH connection for one member session plane.
+  Future<SSHClient> createMemberClient(
+    SshProfile profile, {
+    Duration timeout = const Duration(seconds: 10),
+  }) =>
+      createClient(profile, timeout: timeout);
 
   Future<SSHClient> createClient(
     SshProfile profile, {

@@ -12,31 +12,26 @@ import 'package:teampilot/services/team_bus/team_bus.dart';
 import 'support/fake_member_launcher.dart';
 import 'support/fake_reverse_tunnel.dart';
 
-/// DI-testable production call-site logic (#1): the resolver decides per member
-/// target + CLI which binding to produce, built over an injected FakeReverseTunnel
-/// — no real SSH. Only `SshReverseTunnel.open()` against a live host is on-device.
 void main() {
   late TeamBus bus;
   late TeammateBusMcpServer server;
   late FakeReverseTunnel lastTunnel;
-  late int mountBuilds;
+  late RemoteBusMount mount;
 
   RemoteBusBindingResolver makeResolver() {
-    mountBuilds = 0;
-    return RemoteBusBindingResolver(
-      mountFactory: ({required memberTarget, required busServer}) async {
-        mountBuilds++;
-        lastTunnel = FakeReverseTunnel(port: 51000 + mountBuilds);
-        return RemoteBusMount(
-          handler: busServer.handler,
-          httpBusPort: busServer.port,
-          tunnelFactory: () => lastTunnel,
-          remoteFs: LocalFilesystem(),
-          remoteRun: (cmd) async => cmd.contains('socat') ? '/usr/bin/socat' : '',
-          arch: 'linux-x64',
-        );
+    var nextPort = 51000;
+    mount = RemoteBusMount.testing(
+      handler: server.handler,
+      httpBusPort: server.port,
+      tunnelFactory: () {
+        lastTunnel = FakeReverseTunnel(port: nextPort++);
+        return lastTunnel;
       },
+      storageFs: LocalFilesystem(),
+      remoteRun: (cmd) async => cmd.contains('socat') ? '/usr/bin/socat' : '',
+      arch: 'linux-x64',
     );
+    return RemoteBusBindingResolver();
   }
 
   setUp(() async {
@@ -46,97 +41,68 @@ void main() {
   });
   tearDown(() => server.stop());
 
-  test('local member resolves to null (no tunnel, unchanged transport)',
-      () async {
-    final resolver = makeResolver();
-    final res = await resolver.resolve(
-      existingMount: null,
-      memberTarget: RuntimeTarget.local(),
-      memberId: 'm1',
-      cli: CliTool.claude,
-      busServer: server,
-    );
-    expect(res, isNull);
-    expect(mountBuilds, 0);
-  });
-
   test('remote long-blocking member → relay binding at the tunnel port',
       () async {
     final resolver = makeResolver();
-    final res = await resolver.resolve(
-      existingMount: null,
-      memberTarget: RuntimeTarget.ssh('p1', label: 'remote'),
+    final binding = await resolver.bindMember(
+      mount: mount,
       memberId: 'worker',
       cli: CliTool.claude,
-      busServer: server,
     );
-    expect(res, isNotNull);
-    expect(res!.binding.relayArgv, isNotNull); // relay-over-tunnel
-    expect(res.binding.tunnelPort, lastTunnel.port);
+    expect(binding.relayArgv, isNotNull);
+    expect(binding.tunnelPort, lastTunnel.port);
 
     final cfg = buildMemberBusMcpConfig(
       memberId: 'worker',
       localEndpoint: server.endpoint,
       longBlocking: true,
-      remote: res.binding,
+      remote: binding,
     );
     final args = (cfg['args'] as List).join(' ');
     expect(args, contains('TCP:127.0.0.1:${lastTunnel.port}'));
-    expect(args, isNot(contains('${server.port}'))); // not the bare bus port
+    expect(args, isNot(contains('${server.port}')));
   });
 
   test('remote cursor member → HTTP-over-tunnel binding (no relay)', () async {
     final resolver = makeResolver();
-    final res = await resolver.resolve(
-      existingMount: null,
-      memberTarget: RuntimeTarget.ssh('p1', label: 'remote'),
+    final binding = await resolver.bindMember(
+      mount: mount,
       memberId: 'cur',
       cli: CliTool.cursor,
-      busServer: server,
     );
-    expect(res, isNotNull);
-    expect(res!.binding.relayArgv, isNull); // HTTP, no relay
+    expect(binding.relayArgv, isNull);
     final cfg = buildMemberBusMcpConfig(
       memberId: 'cur',
       localEndpoint: server.endpoint,
       longBlocking: false,
-      remote: res.binding,
+      remote: binding,
     );
-    expect(cfg['url'], 'http://127.0.0.1:${res.binding.tunnelPort}/mcp');
+    expect(cfg['url'], 'http://127.0.0.1:${binding.tunnelPort}/mcp');
   });
 
-  test('existing mount is reused across members (one tunnel mount per tab)',
-      () async {
+  test('same mount binds multiple members', () async {
     final resolver = makeResolver();
-    final first = await resolver.resolve(
-      existingMount: null,
-      memberTarget: RuntimeTarget.ssh('p1', label: 'remote'),
+    final a = await resolver.bindMember(
+      mount: mount,
       memberId: 'a',
       cli: CliTool.claude,
-      busServer: server,
     );
-    expect(mountBuilds, 1);
-    final second = await resolver.resolve(
-      existingMount: first!.mount,
-      memberTarget: RuntimeTarget.ssh('p1', label: 'remote'),
+    final b = await resolver.bindMember(
+      mount: mount,
       memberId: 'b',
       cli: CliTool.claude,
-      busServer: server,
     );
-    expect(mountBuilds, 1); // not rebuilt
-    expect(identical(first.mount, second!.mount), isTrue);
+    expect(a.tunnelPort, isNot(b.tunnelPort));
   });
 
   test('closing the mount tears down its tunnel (tab dispose path)', () async {
     final resolver = makeResolver();
-    final res = await resolver.resolve(
-      existingMount: null,
-      memberTarget: RuntimeTarget.ssh('p1', label: 'remote'),
+    await resolver.bindMember(
+      mount: mount,
       memberId: 'worker',
       cli: CliTool.claude,
-      busServer: server,
     );
-    await res!.mount.close();
+    await mount.close();
     expect(lastTunnel.closed, isTrue);
   });
 }

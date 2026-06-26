@@ -293,7 +293,7 @@ class _SshCommandRunner {
       );
     }
     try {
-      final client = await factory.clientFor(profile);
+      final client = await factory.clientForStorage(profile);
       final session = await client.execute(command.commandLine);
       final stdout = await _decode(session.stdout);
       final stderr = await _decode(session.stderr);

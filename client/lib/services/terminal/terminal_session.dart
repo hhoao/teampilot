@@ -12,6 +12,7 @@ import '../cli/registry/capabilities/terminal_behavior_capability.dart';
 import '../cli/registry/cli_tool_registry.dart';
 import '../session/launch_command_builder.dart';
 import '../session/shell_launch_spec.dart';
+import '../ssh/ssh_member_session.dart';
 import 'local_pty_transport.dart';
 import 'pty_launch_environment.dart';
 import 'terminal_color_scheme_report.dart';
@@ -104,6 +105,10 @@ class TerminalSession implements TerminalTextSink {
   void markUserTurnIdle() => _userTurnActive = false;
   TerminalTransport? _transport;
   var _launchPhase = _LaunchPhase.idle;
+
+  /// Session-plane SSH connection for remote members. Set by [SessionLaunchService]
+  /// before [connect] when the launch target is ssh.
+  SshMemberSession? sshMemberSession;
   var _startFailed = false;
   String? _startupExecutable;
   Map<String, String>? _extraEnvironment;

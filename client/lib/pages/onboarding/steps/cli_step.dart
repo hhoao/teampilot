@@ -275,7 +275,7 @@ Future<String?> _locateRemoteClaude(
   SshProfile profile,
   SshClientFactory clientFactory,
 ) async {
-  final client = await clientFactory.clientFor(profile);
+  final client = await clientFactory.clientForStorage(profile);
   return RemoteCliLocator().resolve(
     cli: CliTool.claude,
     run: RemoteCliLocator.runnerForClient(client),
