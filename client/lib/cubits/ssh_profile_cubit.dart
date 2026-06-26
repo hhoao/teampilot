@@ -3,6 +3,7 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:logger/logger.dart';
 
 import '../models/ssh_profile.dart';
+import '../models/team_config.dart';
 import '../repositories/ssh_credential_store.dart';
 import '../repositories/ssh_profile_repository.dart';
 
@@ -43,20 +44,23 @@ class SshProfileState extends Equatable {
   List<Object?> get props => [profiles, selectedProfileId, isLoading];
 }
 
-typedef RemoteCliPathLocator = Future<String?> Function(SshProfile profile);
+typedef RemoteCliPathsLocator =
+    Future<Map<CliTool, String>> Function(SshProfile profile);
+typedef RemoteCliPathHandler =
+    Future<void> Function(CliTool cli, String path);
 
 class SshProfileCubit extends Cubit<SshProfileState> {
   SshProfileCubit({
     required SshProfileRepository profileRepository,
     required SshCredentialStore credentialStore,
-    RemoteCliPathLocator? locateRemoteCliPath,
-    Future<void> Function(String path)? onRemoteCliLocated,
+    RemoteCliPathsLocator? locateRemoteCliPaths,
+    RemoteCliPathHandler? onRemoteCliLocated,
     void Function(String profileId)? invalidateProfileConnection,
     bool Function()? enableRemoteCliDiscovery,
     Future<void> Function()? onActiveProfileChanged,
   }) : _profileRepository = profileRepository,
        _credentialStore = credentialStore,
-       _locateRemoteCliPath = locateRemoteCliPath,
+       _locateRemoteCliPaths = locateRemoteCliPaths,
        _onRemoteCliLocated = onRemoteCliLocated,
        _invalidateProfileConnection = invalidateProfileConnection,
        _enableRemoteCliDiscovery = enableRemoteCliDiscovery,
@@ -65,8 +69,8 @@ class SshProfileCubit extends Cubit<SshProfileState> {
 
   final SshProfileRepository _profileRepository;
   final SshCredentialStore _credentialStore;
-  final RemoteCliPathLocator? _locateRemoteCliPath;
-  final Future<void> Function(String path)? _onRemoteCliLocated;
+  final RemoteCliPathsLocator? _locateRemoteCliPaths;
+  final RemoteCliPathHandler? _onRemoteCliLocated;
   final void Function(String profileId)? _invalidateProfileConnection;
   final bool Function()? _enableRemoteCliDiscovery;
   final Future<void> Function()? _onActiveProfileChanged;
@@ -133,7 +137,7 @@ class SshProfileCubit extends Cubit<SshProfileState> {
   }
 
   Future<void> _discoverRemoteCliPath(SshProfile profile) async {
-    final locate = _locateRemoteCliPath;
+    final locate = _locateRemoteCliPaths;
     final apply = _onRemoteCliLocated;
     if (_enableRemoteCliDiscovery?.call() != true ||
         locate == null ||
@@ -142,11 +146,12 @@ class SshProfileCubit extends Cubit<SshProfileState> {
     }
     try {
       final located = await locate(profile);
-      if (located == null || located.isEmpty) return;
-      await apply(located);
+      for (final entry in located.entries) {
+        await apply(entry.key, entry.value);
+      }
     } on Object catch (error, stackTrace) {
       Logger().w(
-        'Remote flashskyai CLI discovery failed for ${profile.hostIdentifier}',
+        'Remote CLI discovery failed for ${profile.hostIdentifier}',
         error: error,
         stackTrace: stackTrace,
       );

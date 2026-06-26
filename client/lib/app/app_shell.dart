@@ -62,7 +62,7 @@ import '../services/team_hub/composite_team_hub_source.dart';
 import '../services/team_hub/git_registry_team_hub_source.dart';
 import '../services/team_hub/team_hub_dependency_installers.dart';
 import '../services/team_hub/team_hub_favorites_store.dart';
-import '../services/cli/cli_tool_locator.dart';
+import '../services/cli/cli_executable_discovery.dart';
 import '../services/cli/registry/cli_bootstrap.dart';
 import '../services/cli/registry/cli_tool_registry.dart';
 import '../services/provider/claude/claude_provider_credentials_service.dart';
@@ -71,8 +71,6 @@ import '../services/provider/opencode/opencode_provider_credentials_service.dart
 import '../services/provider/cursor/cursor_agent_models_service.dart';
 import '../services/provider/cursor/cursor_provider_credentials_service.dart';
 import '../services/app/connection_mode_service.dart';
-import '../services/cli/flashskyai_cli_locator.dart';
-import '../services/provider/provider_migration_service.dart';
 import '../services/cli/remote_cli_locator.dart';
 import '../services/storage/runtime_context.dart';
 import '../services/storage/runtime_context_resolver.dart';
@@ -192,20 +190,12 @@ Future<AppShell> buildAppShell({
 
   boot('start');
   final cliToolRegistry = CliToolRegistry.builtIn();
+  final cliExecutableDiscovery = CliExecutableDiscovery(registry: cliToolRegistry);
   final locatedExecutables = <CliTool, String>{};
   if (!Platform.isAndroid) {
     boot('locating CLI tools');
-    final flashskyaiLocated = await FlashskyaiCliLocator.locate();
-    if (flashskyaiLocated != null && flashskyaiLocated.isNotEmpty) {
-      locatedExecutables[CliTool.flashskyai] = flashskyaiLocated;
-    }
-    final claudeLocated = await const CliToolLocator('claude').locate();
-    if (claudeLocated != null && claudeLocated.isNotEmpty) {
-      locatedExecutables[CliTool.claude] = claudeLocated;
-    }
+    locatedExecutables.addAll(await cliExecutableDiscovery.locateLocal());
   }
-  final claudeLocated = locatedExecutables[CliTool.claude];
-  final flashskyaiLocated = locatedExecutables[CliTool.flashskyai];
 
   final appSettings = SharedPrefsAppSettingsRepository(preferences);
   final aiFeatureSettingsCubit = AiFeatureSettingsCubit(repository: appSettings);
@@ -247,14 +237,10 @@ Future<AppShell> buildAppShell({
   final defaultWorkspaceDirectory = await DefaultWorkspaceDirectory.resolve();
 
   final sshProfileRepo = SshProfileRepository();
-  final remoteCliLocator = RemoteCliLocator(registry: cliToolRegistry);
-  // Android home-ssh discovery of the remote flashskyai binary (used as the
-  // claude executable path). Generalized P3c locator behind the same adapter.
-  Future<String?> locateRemoteCli(SshProfile profile) async {
+  Future<Map<CliTool, String>> locateRemoteClis(SshProfile profile) async {
     try {
       final client = await sshClientFactory.clientForStorage(profile);
-      return remoteCliLocator.resolve(
-        cli: CliTool.flashskyai,
+      return cliExecutableDiscovery.locateRemote(
         run: RemoteCliLocator.runnerForClient(client),
       );
     } on Object catch (error, stackTrace) {
@@ -263,7 +249,7 @@ Future<AppShell> buildAppShell({
         error: error,
         stackTrace: stackTrace,
       );
-      return null;
+      return const {};
     }
   }
 
@@ -290,9 +276,9 @@ Future<AppShell> buildAppShell({
   sshProfileCubit = SshProfileCubit(
     profileRepository: sshProfileRepo,
     credentialStore: sshCredentialStore,
-    locateRemoteCliPath: locateRemoteCli,
-    onRemoteCliLocated: (path) =>
-        sessionPreferencesCubit.setCliExecutablePathFor(CliTool.claude, path),
+    locateRemoteCliPaths: locateRemoteClis,
+    onRemoteCliLocated: (cli, path) =>
+        sessionPreferencesCubit.setCliExecutablePathFor(cli, path),
     invalidateProfileConnection: sshClientFactory.disconnectProfile,
     enableRemoteCliDiscovery: () =>
         Platform.isAndroid &&
@@ -355,14 +341,6 @@ Future<AppShell> buildAppShell({
     '(${AppStorage.context.mode}, home=${homeTarget.id}, '
     'root=${AppStorage.appDataRoot})',
   );
-
-  if (!Platform.isAndroid) {
-    unawaited(
-      ProviderMigrationService(
-        cliExecutablePath: flashskyaiLocated,
-      ).migrateIfNeeded(),
-    );
-  }
 
   // Persists the chosen home id, rebinds the registry home, and republishes it
   // on AppStorage.

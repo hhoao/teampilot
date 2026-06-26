@@ -10,7 +10,6 @@ import 'package:teampilot/services/storage/app_storage.dart';
 import 'package:teampilot/services/io/local_filesystem.dart';
 import 'package:teampilot/services/provider/opencode/opencode_data_layout.dart';
 import 'package:teampilot/services/provider/provider_import_service.dart';
-import 'package:teampilot/services/provider/provider_migration_service.dart';
 
 void main() {
   late Directory root;
@@ -407,38 +406,6 @@ wire_api = "chat"
         ),
       ).exists(),
       isTrue,
-    );
-  });
-
-  test('startup migration imports only empty cli catalogs', () async {
-    await repository.saveProviders(CliTool.claude, [
-      const AppProviderConfig(
-        id: 'existing',
-        cli: CliTool.claude,
-        name: 'Existing',
-      ),
-    ]);
-    await _writeJson(
-      p.join(home, '.claude', 'settings-new.json'),
-      {
-        'env': {'ANTHROPIC_API_KEY': 'sk-new'},
-      },
-    );
-    await _writeJson(
-      p.join(home, '.codex', 'auth-codex-new.json'),
-      {'OPENAI_API_KEY': 'sk-codex'},
-    );
-
-    final service = ProviderMigrationService(providerRepository: repository);
-
-    expect(await service.migrateIfNeeded(), isTrue);
-    expect(
-      (await repository.loadProviders(CliTool.claude)).map((p) => p.id),
-      ['existing'],
-    );
-    expect(
-      (await repository.loadProviders(CliTool.codex)).map((p) => p.id),
-      contains('codex-new'),
     );
   });
 }

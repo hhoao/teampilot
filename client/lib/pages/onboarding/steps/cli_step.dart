@@ -11,6 +11,7 @@ import '../../../cubits/ssh_profile_cubit.dart';
 import '../../../l10n/l10n_extensions.dart';
 import '../../../models/ssh_profile.dart';
 import '../../../models/team_config.dart';
+import '../../../services/cli/cli_executable_discovery.dart';
 import '../../../services/cli/cli_installer_service.dart';
 import '../../../services/cli/cli_tool_locator.dart';
 import '../../../services/app/connection_mode_service.dart';
@@ -276,7 +277,7 @@ Future<String?> _locateRemoteClaude(
   SshClientFactory clientFactory,
 ) async {
   final client = await clientFactory.clientForStorage(profile);
-  return RemoteCliLocator().resolve(
+  return CliExecutableDiscovery().locateRemoteCli(
     cli: CliTool.claude,
     run: RemoteCliLocator.runnerForClient(client),
   );

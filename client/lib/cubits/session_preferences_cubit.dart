@@ -35,14 +35,10 @@ class SessionPreferencesState extends Equatable {
 class SessionPreferencesCubit extends Cubit<SessionPreferencesState> {
   SessionPreferencesCubit({
     required SessionPreferencesRepository repository,
-    String? locatedExecutable,
     Map<CliTool, String> locatedExecutables = const {},
     CliToolRegistry? cliToolRegistry,
   }) : _repository = repository,
-       _locatedExecutables = _normalizeLocatedExecutables(
-         locatedExecutable: locatedExecutable,
-         locatedExecutables: locatedExecutables,
-       ),
+       _locatedExecutables = _normalizeLocatedExecutables(locatedExecutables),
        _cliToolRegistry = cliToolRegistry ?? _defaultCliRegistry,
        super(SessionPreferencesState());
 
@@ -168,18 +164,13 @@ class SessionPreferencesCubit extends Cubit<SessionPreferencesState> {
     return state.preferences.cliExecutablePathFor(pathKey);
   }
 
-  static Map<CliTool, String> _normalizeLocatedExecutables({
-    required String? locatedExecutable,
-    required Map<CliTool, String> locatedExecutables,
-  }) {
+  static Map<CliTool, String> _normalizeLocatedExecutables(
+    Map<CliTool, String> locatedExecutables,
+  ) {
     final normalized = <CliTool, String>{};
     for (final entry in locatedExecutables.entries) {
       final value = entry.value.trim();
       if (value.isNotEmpty) normalized[entry.key] = value;
-    }
-    final flashskyaiLocated = locatedExecutable?.trim();
-    if (flashskyaiLocated != null && flashskyaiLocated.isNotEmpty) {
-      normalized.putIfAbsent(CliTool.flashskyai, () => flashskyaiLocated);
     }
     return Map.unmodifiable(normalized);
   }
