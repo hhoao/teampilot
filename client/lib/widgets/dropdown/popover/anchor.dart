@@ -100,6 +100,35 @@ EdgeInsets tapRegionBridgeInsetsForAnchor(AppAnchorBase anchor) {
   return EdgeInsets.fromLTRB(left, top, right, bottom);
 }
 
+/// Point on a rectangle for an [Alignment] (-1..1 → edges/center).
+Offset alignmentPointOnRect(Size size, Alignment alignment) {
+  return Offset(
+    (1 + alignment.x) / 2 * size.width,
+    (1 + alignment.y) / 2 * size.height,
+  );
+}
+
+/// Top-left position of an auto-anchored overlay in the overlay ancestor's coords.
+Offset computeAppAnchorAutoOverlayTopLeft({
+  required RenderBox anchorBox,
+  required RenderBox overlayAncestor,
+  required Size overlaySize,
+  required AppAnchorAuto anchor,
+}) {
+  final targetPoint = alignmentPointOnRect(anchorBox.size, anchor.targetAnchor);
+  final followerPoint = alignmentPointOnRect(
+    overlaySize,
+    anchor.followerAnchor,
+  );
+  final topLeftInAnchorBox = targetPoint + anchor.offset - followerPoint;
+  return anchorBox.localToGlobal(topLeftInAnchorBox, ancestor: overlayAncestor);
+}
+
+/// True when overlay size must be known before the follower alignment is stable.
+bool appAnchorAutoNeedsOverlayMeasure(AppAnchorAuto anchor) {
+  return anchor.followerAnchor != Alignment.topLeft;
+}
+
 /// Positions the overlay at a fixed global offset (screen coordinates).
 ///
 /// Used for right-click menus: the menu's top-left is placed at [offset],

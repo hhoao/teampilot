@@ -39,10 +39,10 @@ class _NotificationBellButtonState extends State<NotificationBellButton> {
     return ActionMenuPopoverAnchor(
       controller: _popoverController,
       fixedPanelWidth: _dropdownWidth,
-      anchor: const AppAnchorAuto(
+      anchor: const AppAnchor(
+        childAlignment: Alignment.topLeft,
+        overlayAlignment: Alignment.bottomLeft,
         offset: Offset(-(_dropdownWidth - _bellWidth), 8),
-        followerAnchor: Alignment.topLeft,
-        targetAnchor: Alignment.bottomLeft,
       ),
       popoverBuilder: (context, controller) =>
           const _NotificationDropdownPanel(),

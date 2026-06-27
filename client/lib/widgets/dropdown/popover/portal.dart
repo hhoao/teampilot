@@ -142,7 +142,6 @@ class _AppPortalState extends State<AppPortal> with SingleTickerProviderStateMix
       MediaQuery.sizeOf(context);
     }
     final overlayState = Overlay.of(context, debugRequiredFor: widget);
-    // overlayChildBuilder's [context] is not the anchor — use [_targetKey].
     final box = _targetKey.currentContext?.findRenderObject() as RenderBox?;
     if (box == null || !box.hasSize) {
       WidgetsBinding.instance.addPostFrameCallback((_) {
@@ -156,45 +155,15 @@ class _AppPortalState extends State<AppPortal> with SingleTickerProviderStateMix
     final overlay = overlayKey.currentContext?.findRenderObject() as RenderBox?;
     final overlaySize =
         overlay != null && overlay.hasSize ? overlay.size : Size.zero;
-    final needsMeasure = overlay == null || !overlay.hasSize;
+    final needsMeasure =
+        (overlay == null || !overlay.hasSize) &&
+        appAnchorAutoNeedsOverlayMeasure(anchor);
 
-    final targetOffset = switch (anchor.targetAnchor) {
-      Alignment.topLeft => box.size.topLeft(Offset.zero),
-      Alignment.topCenter => box.size.topCenter(Offset.zero),
-      Alignment.topRight => box.size.topRight(Offset.zero),
-      Alignment.centerLeft => box.size.centerLeft(Offset.zero),
-      Alignment.center => box.size.center(Offset.zero),
-      Alignment.centerRight => box.size.centerRight(Offset.zero),
-      Alignment.bottomLeft => box.size.bottomLeft(Offset.zero),
-      Alignment.bottomCenter => box.size.bottomCenter(Offset.zero),
-      Alignment.bottomRight => box.size.bottomRight(Offset.zero),
-      final alignment => throw Exception(
-          'AppAnchorAuto does not support alignment $alignment',
-        ),
-    };
-
-    var followerOffset = switch (anchor.followerAnchor) {
-      Alignment.topLeft => Offset(-overlaySize.width / 2, -overlaySize.height),
-      Alignment.topCenter => Offset(0, -overlaySize.height),
-      Alignment.topRight => Offset(overlaySize.width / 2, -overlaySize.height),
-      Alignment.centerLeft =>
-        Offset(-overlaySize.width / 2, -overlaySize.height / 2),
-      Alignment.center => Offset(0, -overlaySize.height / 2),
-      Alignment.centerRight =>
-        Offset(overlaySize.width / 2, -overlaySize.height / 2),
-      Alignment.bottomLeft => Offset(-overlaySize.width / 2, 0),
-      Alignment.bottomCenter => Offset.zero,
-      Alignment.bottomRight => Offset(overlaySize.width / 2, 0),
-      final alignment => throw Exception(
-          'AppAnchorAuto does not support alignment $alignment',
-        ),
-    };
-
-    followerOffset += targetOffset + anchor.offset;
-
-    final target = box.localToGlobal(
-      followerOffset,
-      ancestor: overlayAncestor,
+    final overlayTopLeft = computeAppAnchorAutoOverlayTopLeft(
+      anchorBox: box,
+      overlayAncestor: overlayAncestor,
+      overlaySize: overlaySize,
+      anchor: anchor,
     );
 
     if (needsMeasure) {
@@ -202,17 +171,20 @@ class _AppPortalState extends State<AppPortal> with SingleTickerProviderStateMix
         if (mounted) setState(() {});
       });
     }
+
     return CustomSingleChildLayout(
-      delegate: _AppPositionDelegate(
-        target: target,
-        verticalOffset: 0,
-        preferBelow: true,
-      ),
+      delegate: ContextMenuOverlayPositionDelegate(target: overlayTopLeft),
       child: KeyedSubtree(
         key: overlayKey,
-        child: _buildAnimatedPortal(
-          context,
-          widget.portalBuilder(context),
+        child: Visibility.maintain(
+          visible: !needsMeasure,
+          child: IgnorePointer(
+            ignoring: needsMeasure,
+            child: _buildAnimatedPortal(
+              context,
+              widget.portalBuilder(context),
+            ),
+          ),
         ),
       ),
     );
@@ -262,40 +234,5 @@ class _AppPortalState extends State<AppPortal> with SingleTickerProviderStateMix
         child: widget.child,
       ),
     );
-  }
-}
-
-class _AppPositionDelegate extends SingleChildLayoutDelegate {
-  _AppPositionDelegate({
-    required this.target,
-    required this.verticalOffset,
-    required this.preferBelow,
-  });
-
-  final Offset target;
-  final double verticalOffset;
-  final bool preferBelow;
-
-  @override
-  BoxConstraints getConstraintsForChild(BoxConstraints constraints) =>
-      constraints.loosen();
-
-  @override
-  Offset getPositionForChild(Size size, Size childSize) {
-    return positionDependentBox(
-      size: size,
-      childSize: childSize,
-      target: target,
-      verticalOffset: verticalOffset,
-      preferBelow: preferBelow,
-      margin: 0,
-    );
-  }
-
-  @override
-  bool shouldRelayout(_AppPositionDelegate oldDelegate) {
-    return target != oldDelegate.target ||
-        verticalOffset != oldDelegate.verticalOffset ||
-        preferBelow != oldDelegate.preferBelow;
   }
 }
