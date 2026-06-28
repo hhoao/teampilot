@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 
 import '../../cubits/app_provider_cubit.dart';
-import '../../l10n/app_localizations.dart';
 import '../../l10n/l10n_extensions.dart';
 import '../../models/cli_preset.dart';
 import '../../services/cli/registry/cli_tool_registry.dart';

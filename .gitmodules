@@ -14,3 +14,7 @@
 [submodule "client/packages/re-editor"]
 	path = client/packages/re-editor
 	url = https://github.com/hhoao/re-editor.git
+
+[submodule "client/packages/native_splash_screen"]
+	path = client/packages/native_splash_screen
+	url = https://github.com/hhoao/native_splash_screen.git

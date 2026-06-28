@@ -9,7 +9,6 @@ import '../../cubits/launch_profile_cubit.dart';
 import '../../l10n/l10n_extensions.dart';
 import '../../models/app_session.dart';
 import '../../models/launch_profile.dart';
-import '../../models/launch_profile_ref.dart';
 import '../../models/workspace.dart';
 import '../../models/workspace_tab_ref.dart';
 import '../../services/home_workspace/home_recent_workspaces_store.dart';

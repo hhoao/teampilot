@@ -1,11 +1,12 @@
 import 'dart:async';
-import 'dart:convert';
 import 'dart:io';
 
 import 'package:collection/collection.dart';
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
+import '../cubits/app_bootstrap_cubit.dart';
+import 'app_data_bootstrap.dart';
 import '../cubits/app_provider_cubit.dart';
 import '../cubits/app_update_cubit.dart';
 import '../cubits/chat_cubit.dart';
@@ -28,7 +29,6 @@ import '../cubits/mcp_cubit.dart';
 import '../cubits/plugin_cubit.dart';
 import '../repositories/launch_profile_repository.dart';
 import '../services/storage/launch_profile_provisioner.dart';
-import '../services/team/default_workspace_service.dart';
 import '../cubits/cli_presets_cubit.dart';
 import '../repositories/cli_presets_repository.dart';
 import '../cubits/skill_cubit.dart';
@@ -37,11 +37,13 @@ import '../services/mcp/profile_mcp_linker_service.dart';
 import '../cubits/ssh_profile_cubit.dart';
 import '../cubits/launch_profile_cubit.dart';
 import '../cubits/team_hub_cubit.dart';
-import '../models/connection_mode.dart';
 import '../models/runtime_target.dart';
 import '../models/ssh_profile.dart';
 import '../models/team_config.dart';
+import '../services/app/boot_splash.dart';
+import '../utils/yield_ui_frame.dart';
 import '../l10n/app_localizations.dart';
+import '../pages/system/app_bootstrap_loading_page.dart';
 import '../repositories/app_settings_repository.dart';
 import '../repositories/layout_repository.dart';
 import '../repositories/session_preferences_repository.dart';
@@ -57,6 +59,7 @@ import '../services/extension/builtin_manifests.dart';
 import '../services/extension/extension_acquisition_engine.dart';
 import '../services/extension/extension_provisioner.dart';
 import '../services/storage/app_storage.dart';
+import '../services/home_workspace/home_workspace_ui_cache.dart';
 import '../services/team/team_clone_service.dart';
 import '../services/team_hub/composite_team_hub_source.dart';
 import '../services/team_hub/git_registry_team_hub_source.dart';
@@ -72,7 +75,6 @@ import '../services/provider/cursor/cursor_agent_models_service.dart';
 import '../services/provider/cursor/cursor_provider_credentials_service.dart';
 import '../services/app/connection_mode_service.dart';
 import '../services/cli/remote_cli_locator.dart';
-import '../services/storage/runtime_context.dart';
 import '../services/storage/runtime_context_resolver.dart';
 import '../services/storage/runtime_context_registry.dart';
 import '../services/storage/home_target_controller.dart';
@@ -145,9 +147,11 @@ class AppShell {
     required this.reinstallStorageContext,
     required this.bootstrapAppData,
     required this.cliToolRegistry,
+    required this.homeWorkspaceUiCache,
   });
 
   final CliToolRegistry cliToolRegistry;
+  final HomeWorkspaceUiCache homeWorkspaceUiCache;
   final HomeTargetController homeTargetController;
   final WorkspaceDirectoryPicker directoryPicker;
   final ChatCubit chatCubit;
@@ -194,29 +198,46 @@ class AppShell {
 Future<AppShell> buildAppShell({
   required SharedPreferences preferences,
   required String nativeAppDataPath,
+  Future<String>? defaultWorkspaceDirectoryFuture,
+  Future<void>? homeIndexPrefetchFuture,
+  AppBootstrapCubit? bootstrapCubit,
 }) async {
-  void boot(String phase) => appLogger.i('[boot] $phase');
+  final bootSw = Stopwatch()..start();
+  void boot(String phase) =>
+      appLogger.i('[boot] +${bootSw.elapsedMilliseconds}ms $phase');
 
   boot('start');
+  final documentsFuture =
+      defaultWorkspaceDirectoryFuture ??
+      DefaultWorkspaceDirectory.resolve(preferences: preferences);
   final cliToolRegistry = CliToolRegistry.builtIn();
   final cliExecutableDiscovery = CliExecutableDiscovery(registry: cliToolRegistry);
-  final locatedExecutables = <CliTool, String>{};
-  if (!Platform.isAndroid) {
-    boot('locating CLI tools');
-    locatedExecutables.addAll(await cliExecutableDiscovery.locateLocal());
-  }
 
   final appSettings = SharedPrefsAppSettingsRepository(preferences);
   final aiFeatureSettingsCubit = AiFeatureSettingsCubit(repository: appSettings);
-  unawaited(aiFeatureSettingsCubit.load());
   final sessionPreferencesCubit = SessionPreferencesCubit(
     repository: SessionPreferencesRepository(preferences),
-    locatedExecutables: locatedExecutables,
     cliToolRegistry: cliToolRegistry,
   );
-  boot('loading session preferences');
-  await sessionPreferencesCubit.load();
-  boot('session preferences loaded');
+  if (!Platform.isAndroid) {
+    boot('scheduling CLI tool discovery (background)');
+    unawaited(
+      cliExecutableDiscovery.locateLocal().then((paths) {
+        sessionPreferencesCubit.mergeLocatedExecutables(paths);
+        appLogger.i(
+          '[boot] CLI tool discovery complete '
+          '(${paths.length} located, background)',
+        );
+      }),
+    );
+  }
+  boot('loading session preferences and workspace directory');
+  final parallel = await Future.wait<Object?>([
+    sessionPreferencesCubit.load(),
+    documentsFuture,
+  ]);
+  final defaultWorkspaceDirectory = parallel[1]! as String;
+  boot('session preferences and workspace directory ready');
 
   final sshCredentialStore = const SecureSshCredentialStore(
     FlutterSecureKeyValueStore(),
@@ -241,9 +262,6 @@ Future<AppShell> buildAppShell({
   // to local and is held at the create-profile gate until a home is chosen.
   var homeTarget = homeTargetFromId(homeTargetStore.load());
   RuntimeTarget defaultTargetResolver() => homeTarget;
-
-  boot('resolving default workspace directory');
-  final defaultWorkspaceDirectory = await DefaultWorkspaceDirectory.resolve();
 
   final sshProfileRepo = SshProfileRepository();
   Future<Map<CliTool, String>> locateRemoteClis(SshProfile profile) async {
@@ -281,7 +299,10 @@ Future<AppShell> buildAppShell({
   late final ConnectionModeService connectionModeService;
   late final Future<void> Function() reinstallStorageContext;
 
+  late final Future<void> Function() reloadAllAppData;
+
   late final SshProfileCubit sshProfileCubit;
+  final homeWorkspaceUiCache = HomeWorkspaceUiCache();
   sshProfileCubit = SshProfileCubit(
     profileRepository: sshProfileRepo,
     credentialStore: sshCredentialStore,
@@ -294,18 +315,7 @@ Future<AppShell> buildAppShell({
         defaultTargetResolver().kind == RuntimeKind.ssh,
     onActiveProfileChanged: () async {
       await reinstallStorageContext();
-      await reloadRemoteBackedAppData(
-        llmConfigCubit: llmConfigCubit,
-        appProviderCubit: appProviderCubit,
-        teamCubit: teamCubit,
-        pluginCubit: pluginCubit,
-        skillCubit: skillCubit,
-        mcpCubit: mcpCubit,
-        extensionCubit: extensionCubit,
-        chatCubit: chatCubit,
-        sessionRepo: sessionRepo,
-        sshProfileCubit: sshProfileCubit,
-      );
+      await reloadAllAppData();
     },
   );
 
@@ -343,7 +353,9 @@ Future<AppShell> buildAppShell({
     },
   );
   boot('installing home runtime context');
+  final ensureHomeSw = Stopwatch()..start();
   await runtimeContextRegistry.ensureHome();
+  boot('home runtime context ensured +${ensureHomeSw.elapsedMilliseconds}ms');
   AppStorage.bindHome(runtimeContextRegistry.home());
   boot(
     'home context installed '
@@ -491,6 +503,14 @@ Future<AppShell> buildAppShell({
   sessionRepo = SessionRepository(
     lifecycleService: sessionLifecycleService,
   );
+  boot('prefetching home index snapshots');
+  bootstrapCubit?.beginHomeIndex();
+  final homeIndexPrefetch =
+      homeIndexPrefetchFuture ??
+      Future.wait([
+        sessionRepo.loadWorkspacesIndex(),
+        identityRepository.loadAll(),
+      ]);
   final pluginRepository = PluginRepository();
   final mcpRepository = McpRepository();
   identityProvisioner = LaunchProfileProvisioner(repository: identityRepository);
@@ -531,7 +551,6 @@ Future<AppShell> buildAppShell({
     onPluginUpdated: teamCubit.syncTeamsUsingPlugin,
   );
   cliPresetsCubit = CliPresetsCubit(repository: cliPresetsRepo);
-  unawaited(cliPresetsCubit.load());
   mcpCubit = McpCubit(
     mcpRepository,
     onMcpDeleted: teamCubit.removeMcpFromAllTeams,
@@ -661,28 +680,84 @@ Future<AppShell> buildAppShell({
       BoardCubit(activeBus: () => chatCubit.activeTab?.teamBus);
 
   final notificationCubit = NotificationCubit();
-  await notificationCubit.load();
+  final notificationBootstrap = notificationCubit.load();
   NotificationRecorder.install(notificationCubit);
 
   boot('loading layout');
   await layoutCubit.load();
+  unawaited(notificationBootstrap);
+  boot('layout ready (home index prefetched in background)');
   applyWorkspaceEntryMode(
     layoutCubit.state.preferences.workspaceEntryMode,
     lastOpenedWorkspaceId: layoutCubit.state.preferences.lastOpenedWorkspaceId,
   );
   boot('buildAppShell complete');
+  bootstrapCubit?.markShellReady();
+  boot('buildAppShell shell ready');
+
+  reloadAllAppData = () => AppDataBootstrap.reloadAll(
+    boot: boot,
+    sshProfileCubit: sshProfileCubit,
+    llmConfigCubit: llmConfigCubit,
+    appProviderCubit: appProviderCubit,
+    teamCubit: teamCubit,
+    pluginCubit: pluginCubit,
+    skillCubit: skillCubit,
+    mcpCubit: mcpCubit,
+    extensionCubit: extensionCubit,
+    chatCubit: chatCubit,
+    sessionRepo: sessionRepo,
+    layoutCubit: layoutCubit,
+    isSshMode: connectionModeService.isSshMode,
+    homeSshProfileId: defaultTargetResolver().sshProfileId,
+    sshProfileExists: (id) => sshProfileById(id) != null,
+    reinstallStorageContext: reinstallStorageContext,
+  );
 
   Future<void> bootstrapAppData() async {
-    await sshProfileCubit.load(notifyActiveProfileChanged: false);
-    // Home is ssh and its profile is now loaded → reinstall the home context
-    // against the real remote (the first install fell back to native).
-    final homeSshProfileId = defaultTargetResolver().sshProfileId;
-    if (connectionModeService.isSshMode &&
-        homeSshProfileId != null &&
-        sshProfileById(homeSshProfileId) != null) {
-      await reinstallStorageContext();
+    await notificationBootstrap;
+    final indexReady = bootstrapCubit?.state.homeIndexReady ?? false;
+    if (!indexReady) {
+      bootstrapCubit?.beginHomeIndex();
     }
-    await reloadRemoteBackedAppData(
+    boot('bootstrapAppData start');
+    if (!indexReady) {
+      boot('awaiting home index snapshots');
+      await homeIndexPrefetch;
+      if (connectionModeService.isSshMode) {
+        await AppDataBootstrap.bootstrapHomeIndex(
+          boot: boot,
+          sshProfileCubit: sshProfileCubit,
+          teamCubit: teamCubit,
+          chatCubit: chatCubit,
+          sessionRepo: sessionRepo,
+          layoutCubit: layoutCubit,
+          isSshMode: connectionModeService.isSshMode,
+          homeSshProfileId: defaultTargetResolver().sshProfileId,
+          sshProfileExists: (id) => sshProfileById(id) != null,
+          reinstallStorageContext: reinstallStorageContext,
+        );
+      } else {
+        await AppDataBootstrap.hydrateNativeHomeIndex(
+          boot: boot,
+          teamCubit: teamCubit,
+          chatCubit: chatCubit,
+          sessionRepo: sessionRepo,
+          layoutCubit: layoutCubit,
+        );
+      }
+      bootstrapCubit?.markHomeIndexReady();
+    }
+    await yieldUiFrame();
+    boot(
+      'bootstrapAppData index ready '
+      'workspaces=${chatCubit.state.workspaces.length} '
+      '(sessions load on demand)',
+    );
+    await AppDataBootstrap.warmUiInteractive(boot: boot);
+    bootstrapCubit?.beginWarmAuxiliary();
+    await AppDataBootstrap.warmAuxiliaryData(
+      boot: boot,
       llmConfigCubit: llmConfigCubit,
       appProviderCubit: appProviderCubit,
       teamCubit: teamCubit,
@@ -692,14 +767,18 @@ Future<AppShell> buildAppShell({
       extensionCubit: extensionCubit,
       chatCubit: chatCubit,
       sessionRepo: sessionRepo,
+    );
+    final showOnboarding = await AppDataBootstrap.prepareInteractiveShell(
+      boot: boot,
+      appSettings: appSettings,
       sshProfileCubit: sshProfileCubit,
+      cliPresetsCubit: cliPresetsCubit,
+      aiFeatureSettingsCubit: aiFeatureSettingsCubit,
+      homeWorkspaceUiCache: homeWorkspaceUiCache,
+      workspaces: chatCubit.state.workspaces,
     );
-    reapplyWorkspaceEntryFromPreferences(
-      layoutCubit.state.preferences,
-      knownWorkspaceIds: {
-        for (final workspace in chatCubit.state.workspaces) workspace.workspaceId,
-      },
-    );
+    bootstrapCubit?.markAppReady(showOnboardingWizard: showOnboarding);
+    boot('bootstrapAppData complete');
   }
 
   editorCubit = EditorCubit();
@@ -709,18 +788,7 @@ Future<AppShell> buildAppShell({
   // backend/profile switches used).
   Future<void> switchHomeTarget(String id) async {
     await setHomeTarget(id); // persists + rebinds home + republishes AppStorage
-    await reloadRemoteBackedAppData(
-      llmConfigCubit: llmConfigCubit,
-      appProviderCubit: appProviderCubit,
-      teamCubit: teamCubit,
-      pluginCubit: pluginCubit,
-      skillCubit: skillCubit,
-      mcpCubit: mcpCubit,
-      extensionCubit: extensionCubit,
-      chatCubit: chatCubit,
-      sessionRepo: sessionRepo,
-      sshProfileCubit: sshProfileCubit,
-    );
+    await reloadAllAppData();
   }
 
   final homeTargetController = HomeTargetController(
@@ -779,42 +847,8 @@ Future<AppShell> buildAppShell({
     aiFeatureSettingsCubit: aiFeatureSettingsCubit,
     reinstallStorageContext: reinstallStorageContext,
     bootstrapAppData: bootstrapAppData,
+    homeWorkspaceUiCache: homeWorkspaceUiCache,
   );
-}
-
-Future<void> reloadRemoteBackedAppData({
-  required LlmConfigCubit llmConfigCubit,
-  required AppProviderCubit appProviderCubit,
-  required LaunchProfileCubit teamCubit,
-  required PluginCubit pluginCubit,
-  required SkillCubit skillCubit,
-  required McpCubit mcpCubit,
-  required ExtensionCubit extensionCubit,
-  required ChatCubit chatCubit,
-  required SessionRepository sessionRepo,
-  required SshProfileCubit sshProfileCubit,
-}) async {
-  await Future.wait([
-    llmConfigCubit.load(),
-    appProviderCubit.load(),
-    teamCubit.load(),
-    pluginCubit.load(),
-    skillCubit.loadAll(),
-    mcpCubit.loadAll(),
-    extensionCubit.load(force: true),
-    sshProfileCubit.load(notifyActiveProfileChanged: false),
-  ]);
-  final defaultTeam = teamCubit.state.teams
-      .where((t) => t.id == LaunchProfileProvisioner.defaultTeamId)
-      .firstOrNull;
-  if (defaultTeam != null) {
-    await DefaultWorkspaceService.seed(sessionRepo, defaultTeam: defaultTeam);
-  }
-  await chatCubit.loadWorkspaceData(sessionRepo);
-  await teamCubit.syncSelectedTeamPlugins(
-    installed: pluginCubit.state.installed,
-  );
-  await teamCubit.syncSelectedTeamMcp(installed: mcpCubit.state.servers);
 }
 
 class TeamPilotBootstrap extends StatefulWidget {
@@ -822,11 +856,17 @@ class TeamPilotBootstrap extends StatefulWidget {
     super.key,
     required this.preferences,
     required this.nativeAppDataPath,
+    required this.defaultWorkspaceDirectoryFuture,
+    required this.homeIndexPrefetchFuture,
+    required this.bootstrapCubit,
     required this.childBuilder,
   });
 
   final SharedPreferences preferences;
   final String nativeAppDataPath;
+  final Future<String> defaultWorkspaceDirectoryFuture;
+  final Future<void> homeIndexPrefetchFuture;
+  final AppBootstrapCubit bootstrapCubit;
   final Widget Function(AppShell shell) childBuilder;
 
   @override
@@ -841,31 +881,48 @@ class _TeamPilotBootstrapState extends State<TeamPilotBootstrap> {
   @override
   void initState() {
     super.initState();
-    unawaited(_start());
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      unawaited(_start());
+    });
   }
 
   Future<void> _start() async {
+    final bootSw = Stopwatch()..start();
     try {
-      appLogger.i('[boot] TeamPilotBootstrap starting buildAppShell');
+      appLogger.i('[boot] +0ms TeamPilotBootstrap starting buildAppShell');
       final shell = await buildAppShell(
         preferences: widget.preferences,
         nativeAppDataPath: widget.nativeAppDataPath,
+        defaultWorkspaceDirectoryFuture: widget.defaultWorkspaceDirectoryFuture,
+        homeIndexPrefetchFuture: widget.homeIndexPrefetchFuture,
+        bootstrapCubit: widget.bootstrapCubit,
       );
       if (!mounted) return;
+      await yieldUiFrame();
+      await shell.bootstrapAppData();
+      if (!mounted) return;
+      appLogger.i(
+        '[boot] +${bootSw.elapsedMilliseconds}ms bootstrap complete '
+        'workspaces=${shell.chatCubit.state.workspaces.length}',
+      );
+      // Build the app UI first so it paints underneath the splash overlay, then
+      // fade the overlay away — the splash cross-fades directly onto the app.
       setState(() {
         _shell = shell;
         _error = null;
         _retrying = false;
       });
-      WidgetsBinding.instance.addPostFrameCallback((_) {
-        unawaited(shell.bootstrapAppData());
-      });
+      await yieldUiFrame();
+      if (!mounted) return;
+      await completeBootSplashTransition();
     } on Object catch (error, stackTrace) {
       appLogger.e(
         '[boot] buildAppShell failed',
         error: error,
         stackTrace: stackTrace,
       );
+      if (!mounted) return;
+      await completeBootSplashTransition();
       if (!mounted) return;
       setState(() {
         _error = error;
@@ -936,18 +993,9 @@ class _TeamPilotBootstrapState extends State<TeamPilotBootstrap> {
     if (shell == null) {
       return MaterialApp(
         debugShowCheckedModeBanner: false,
-        home: Scaffold(
-          body: Center(
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: const [
-                CircularProgressIndicator(),
-                SizedBox(height: 16),
-                Text('Starting TeamPilot…'),
-              ],
-            ),
-          ),
-        ),
+        localizationsDelegates: AppLocalizations.localizationsDelegates,
+        supportedLocales: AppLocalizations.supportedLocales,
+        home: const AppBootstrapLoadingPage(),
       );
     }
     return widget.childBuilder(shell);

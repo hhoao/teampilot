@@ -14,7 +14,6 @@ import '../../services/ssh/ssh_profile_connection_tester.dart';
 import '../../services/storage/targets_repository.dart';
 import '../../services/terminal/terminal_transport_factory.dart';
 import '../../widgets/settings/workspace_settings_widgets.dart';
-import '../ssh_profile_setup_page.dart';
 import '../ssh_profiles_page.dart';
 import 'credential_push_opt_in_tile.dart';
 import 'root_sandbox_env_opt_in_tile.dart';

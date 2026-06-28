@@ -2,6 +2,7 @@ import 'dart:io';
 import 'package:flutter/foundation.dart';
 import 'package:path/path.dart' as p;
 import 'package:path_provider/path_provider.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import '../../models/runtime_target.dart';
 import '../io/filesystem.dart';
 import '../io/local_filesystem.dart';
@@ -322,15 +323,75 @@ class AppPaths {
 class DefaultWorkspaceDirectory {
   DefaultWorkspaceDirectory._();
 
+  static const _prefsKey = 'teampilot.default_documents_directory_path';
+
   static String? _cachedPath;
 
-  static Future<String> resolve() async {
+  /// Resolves the OS Documents folder used as the default workspace parent.
+  ///
+  /// On cold start, [getApplicationDocumentsDirectory] can take ~1–2s on Linux
+  /// (portal/DBus). We prefer a persisted path, then a platform fast path, and
+  /// only fall back to path_provider when needed.
+  static Future<String> resolve({SharedPreferences? preferences}) async {
     final cached = _cachedPath;
     if (cached != null && cached.isNotEmpty) return cached;
+
+    final prefs = preferences;
+    if (prefs != null) {
+      final persisted = prefs.getString(_prefsKey)?.trim();
+      if (persisted != null && persisted.isNotEmpty && _directoryExists(persisted)) {
+        _cachedPath = persisted;
+        return persisted;
+      }
+    }
+
+    final fast = _platformDocumentsFastPath();
+    if (fast != null && _directoryExists(fast)) {
+      await Directory(fast).create(recursive: true);
+      _cachedPath = fast;
+      await prefs?.setString(_prefsKey, fast);
+      return fast;
+    }
+
     final dir = await getApplicationDocumentsDirectory();
     await Directory(dir.path).create(recursive: true);
     _cachedPath = dir.path;
+    await prefs?.setString(_prefsKey, dir.path);
     return dir.path;
+  }
+
+  static bool _directoryExists(String path) {
+    try {
+      return Directory(path).existsSync();
+    } on Object {
+      return false;
+    }
+  }
+
+  @visibleForTesting
+  static String? platformDocumentsFastPathForTesting() =>
+      _platformDocumentsFastPath();
+
+  static String? _platformDocumentsFastPath() {
+    if (Platform.isLinux) {
+      final xdg = Platform.environment['XDG_DOCUMENTS_DIR']?.trim();
+      if (xdg != null && xdg.isNotEmpty) return xdg;
+      final home = Platform.environment['HOME']?.trim();
+      if (home != null && home.isNotEmpty) return p.join(home, 'Documents');
+      return null;
+    }
+    if (Platform.isMacOS) {
+      final home = Platform.environment['HOME']?.trim();
+      if (home != null && home.isNotEmpty) return p.join(home, 'Documents');
+      return null;
+    }
+    if (Platform.isWindows) {
+      final userProfile = Platform.environment['USERPROFILE']?.trim();
+      if (userProfile != null && userProfile.isNotEmpty) {
+        return p.join(userProfile, 'Documents');
+      }
+    }
+    return null;
   }
 
   /// Working directory of the built-in personal workspace: `<Documents>/TeamPilot`.

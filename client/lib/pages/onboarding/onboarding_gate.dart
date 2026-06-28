@@ -3,12 +3,12 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
+import '../../cubits/app_bootstrap_cubit.dart';
 import '../../cubits/app_provider_cubit.dart';
 import '../../cubits/cli_presets_cubit.dart';
 import '../../cubits/launch_profile_cubit.dart';
 import '../../repositories/app_settings_repository.dart';
 import '../../services/app/onboarding_service.dart';
-import '../../theme/workspace_surface_layers.dart';
 import 'onboarding_wizard.dart';
 
 /// App-wide handle for [OnboardingGateState]; wired in [appRouter].
@@ -24,23 +24,7 @@ class OnboardingGate extends StatefulWidget {
 }
 
 class OnboardingGateState extends State<OnboardingGate> {
-  bool? _showWizard;
-  late final OnboardingService _onboardingService;
-
-  @override
-  void initState() {
-    super.initState();
-    _onboardingService = OnboardingService(
-      appSettings: context.read<AppSettingsRepository>(),
-    );
-    unawaited(_resolve());
-  }
-
-  Future<void> _resolve() async {
-    final show = await _onboardingService.shouldShowOnboarding();
-    if (!mounted) return;
-    setState(() => _showWizard = show);
-  }
+  var _reopenWizard = false;
 
   void completeOnboarding() {
     unawaited(_completeOnboarding());
@@ -59,26 +43,26 @@ class OnboardingGateState extends State<OnboardingGate> {
     );
     await settingsRepo.saveHasCompletedOnboarding(true);
     if (!mounted) return;
-    setState(() => _showWizard = false);
+    context.read<AppBootstrapCubit>().dismissOnboardingWizard();
+    setState(() => _reopenWizard = false);
   }
 
   Future<void> reopenWizard() async {
     if (!mounted) return;
     await context.read<AppSettingsRepository>().saveHasCompletedOnboarding(false);
     if (!mounted) return;
-    setState(() => _showWizard = true);
+    setState(() => _reopenWizard = true);
   }
 
   @override
   Widget build(BuildContext context) {
-    final showWizard = _showWizard;
-    if (showWizard == null) {
-      final cs = Theme.of(context).colorScheme;
-      return Scaffold(
-        backgroundColor: cs.workspacePage,
-        body: const Center(child: CircularProgressIndicator()),
-      );
+    if (_reopenWizard) {
+      return OnboardingWizard(onComplete: completeOnboarding);
     }
+
+    final showWizard = context.select<AppBootstrapCubit, bool>(
+      (cubit) => cubit.state.showOnboardingWizard,
+    );
     if (showWizard) {
       return OnboardingWizard(onComplete: completeOnboarding);
     }

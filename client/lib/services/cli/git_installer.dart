@@ -2,7 +2,6 @@ import 'dart:io';
 
 import '../host/host_executable_locator.dart';
 import '../host/host_execution_environment.dart';
-import '../storage/runtime_context.dart';
 import '../storage/app_storage.dart';
 
 /// Result of a git detection or installation operation.

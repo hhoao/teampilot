@@ -523,6 +523,7 @@ class TeamProfile implements LaunchProfile {
   }
 
   /// Canonical slug ([TeamMemberNaming.slugTeamId]); used for paths and [AppSession.sessionTeam].
+  @override
   final String id;
   final String name;
   final String description;
@@ -656,6 +657,7 @@ class TeamProfile implements LaunchProfile {
     );
   }
 
+  @override
   Map<String, Object?> toJson() {
     return {
       'id': id,

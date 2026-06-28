@@ -202,7 +202,7 @@ class _SshProfileFormDialogState extends State<_SshProfileFormDialog> {
         message: context.l10n.sshProfileTestSuccess,
         variant: AppToastVariant.success,
       );
-    } on Object catch (e) {
+    } on Object {
       if (!mounted) return;
       AppToast.show(
         context,

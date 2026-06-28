@@ -10,6 +10,8 @@ import 'package:toastification/toastification.dart';
 import 'package:window_manager/window_manager.dart';
 
 import 'app/app_shell.dart';
+import 'app/home_index_prefetch.dart';
+import 'cubits/app_bootstrap_cubit.dart';
 import 'cubits/app_update_cubit.dart';
 import 'cubits/board_cubit.dart';
 import 'cubits/chat_cubit.dart';
@@ -25,7 +27,9 @@ import 'repositories/ssh_known_host_repository.dart';
 import 'repositories/ssh_profile_repository.dart';
 import 'router/app_router.dart';
 import 'services/cli/registry/cli_tool_registry_scope.dart';
+import 'services/home_workspace/home_workspace_ui_cache.dart';
 import 'services/storage/app_storage.dart';
+import 'services/app/boot_splash.dart';
 import 'services/app/connection_mode_service.dart';
 import 'services/storage/home_target_controller.dart';
 import 'services/storage/workspace_directory_picker.dart';
@@ -250,12 +254,40 @@ class _DragToResizeWrapperState extends State<_DragToResizeWrapper>
 Future<void> _preloadBundledUiFonts() async {
   try {
     // Only Regular is awaited before first paint (keeps launch fast). The other
-    // weights are ~10MB each and loaded lazily by GoogleFonts on first use,
-    // which is what janks the first workspace tab click — UiWarmup preloads them
-    // right after first frame, before the user can click.
+    // weights are warmed during the boot gate in UiInteractiveWarmup.
     await GoogleFonts.pendingFonts([GoogleFonts.notoSansSc()]);
   } on Object {
     // Run `dart run tool/sync_bundled_google_fonts.dart` from client/, then rebuild.
+  }
+}
+
+/// Builds the engine's text-shaping subsystem before the first frame.
+///
+/// The *first* text layout in a process pays a large one-time cost: Skia/
+/// HarfBuzz init, system-font enumeration, and constructing the bundled Noto
+/// Sans SC face. Startup traces show this lands inside the first frame's LAYOUT
+/// phase — a single offstage `RenderParagraph` took ~1.3s, dominating cold
+/// start, while every later paragraph (subsystem now warm) was ~150ms.
+///
+/// One synchronous shaping pass here moves that cost off the first frame. It is
+/// run while startup IO (app paths, prefs) is in flight so part of it overlaps.
+/// Loading the bytes (`_preloadBundledUiFonts`) is not enough — the face/shaper
+/// is built lazily on first *layout*, which is exactly what we trigger here.
+void _warmTextLayoutSubsystem() {
+  try {
+    // Latin + common CJK so both the system font-manager init and the Noto
+    // Sans SC face are built now, not on first paint. Regular weight only —
+    // heavier weights are warmed in UiInteractiveWarmup during the boot gate.
+    // enough: the dominant cost is the one-time subsystem/face setup, not the
+    // per-glyph shaping.
+    final painter = TextPainter(
+      text: TextSpan(text: '加载中 Aa1', style: GoogleFonts.notoSansSc()),
+      textDirection: TextDirection.ltr,
+    )..layout();
+    painter.dispose();
+  } on Object {
+    // Bundled weights may be absent in dev trees: see
+    // tool/sync_bundled_google_fonts.dart.
   }
 }
 
@@ -263,7 +295,8 @@ Future<void> _preloadBundledUiFonts() async {
 const kDefaultDesktopWindowSize = Size(1380, 960);
 
 void main() async {
-  WidgetsFlutterBinding.ensureInitialized();
+  final binding = WidgetsFlutterBinding.ensureInitialized();
+  preserveBootSplash(binding);
   installWindowsKeyboardWorkaround();
   await RustLib.init();
   GoogleFonts.config.allowRuntimeFetching = false;
@@ -282,36 +315,65 @@ void main() async {
       minimumSize: const Size(800, 500),
       center: false,
       title: 'TeamPilot',
-      titleBarStyle: TitleBarStyle.hidden,
-      windowButtonVisibility: false,
+      backgroundColor: const Color(0xFFFFFFFF),
+      // Frameless chrome is applied in completeBootSplashTransition() so the
+      // main window does not resize under the native splash.
     );
-    windowManager.waitUntilReadyToShow(windowOptions, () async {
-      await windowManager.show();
-      await windowManager.focus();
+    await windowManager.waitUntilReadyToShow(windowOptions, () async {
+      // Linux paints the splash as an in-window overlay over the Flutter view,
+      // so the window itself stays visible. Windows/macOS hide the main window
+      // behind the plugin's separate splash window until the reveal.
+      if (!Platform.isLinux) {
+        await windowManager.setOpacity(0);
+      }
+      await ensureBootSplashOnTop();
     });
   }
 
+  // Start startup IO up front so the synchronous text-shaping warm-up below
+  // overlaps it instead of stacking onto the first frame.
+  final pathsFuture = AppPathsBootstrapper.init();
+  final preferencesFuture = SharedPreferences.getInstance();
+
+  // Build the text-shaping subsystem + Noto Sans SC face now (off the first
+  // frame's LAYOUT phase). Runs while pathsFuture / preferencesFuture are in
+  // flight, hiding part of the cost behind their IO.
+  _warmTextLayoutSubsystem();
+
   late final String nativeAppDataPath;
   try {
-    await AppPathsBootstrapper.init();
+    await pathsFuture;
     nativeAppDataPath = AppPathsBootstrapper.current.basePath;
     await initAppLogging(nativeAppDataPath);
   } on Object catch (error, stackTrace) {
+    if (!Platform.isAndroid) {
+      await completeBootSplashTransition();
+    }
     await showInitErrorApp(error: error, stackTrace: stackTrace);
     return;
   }
 
-  final preferences = await SharedPreferences.getInstance();
+  final preferences = await preferencesFuture;
+  final defaultWorkspaceDirectoryFuture = DefaultWorkspaceDirectory.resolve(
+    preferences: preferences,
+  );
+  final homeIndexPrefetchFuture = prefetchHomeIndexSnapshots(nativeAppDataPath);
+  final bootstrapCubit = AppBootstrapCubit();
 
   if (!Platform.isAndroid) {
     await windowManager.setPreventClose(true);
   }
 
   runApp(
-    TeamPilotBootstrap(
-      preferences: preferences,
-      nativeAppDataPath: nativeAppDataPath,
-      childBuilder: (shell) {
+    BlocProvider.value(
+      value: bootstrapCubit,
+      child: TeamPilotBootstrap(
+        preferences: preferences,
+        nativeAppDataPath: nativeAppDataPath,
+        defaultWorkspaceDirectoryFuture: defaultWorkspaceDirectoryFuture,
+        homeIndexPrefetchFuture: homeIndexPrefetchFuture,
+        bootstrapCubit: bootstrapCubit,
+        childBuilder: (shell) {
         if (!Platform.isAndroid) {
           windowManager.addListener(
             _CleanupWindowListener(
@@ -339,6 +401,9 @@ void main() async {
               RepositoryProvider<SharedPreferences>.value(value: preferences),
               RepositoryProvider<AppSettingsRepository>.value(
                 value: shell.appSettings,
+              ),
+              RepositoryProvider<HomeWorkspaceUiCache>.value(
+                value: shell.homeWorkspaceUiCache,
               ),
               RepositoryProvider<SessionRepository>.value(
                 value: shell.sessionRepo,
@@ -422,6 +487,7 @@ void main() async {
           ),
         );
       },
+    ),
     ),
   );
 }

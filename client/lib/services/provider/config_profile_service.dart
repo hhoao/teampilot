@@ -17,7 +17,6 @@ import '../cli/registry/cli_tool_registry.dart';
 import '../plugin/installed_plugin_catalog.dart';
 import '../mcp/profile_mcp_linker_service.dart';
 import '../../repositories/mcp_repository.dart';
-import '../../utils/logger.dart';
 import '../io/filesystem.dart';
 import '../mcp/mcp_registry_service.dart';
 import '../resource/resource_provisioning_service.dart';

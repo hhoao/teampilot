@@ -75,6 +75,9 @@ class _WorkspacePageState extends State<WorkspacePage> {
     }
     if (widget.routeActive) {
       context.read<ChatCubit>().setActiveWorkspace(widget.tabKey);
+      unawaited(
+        context.read<ChatCubit>().ensureSessionsForWorkspace(widget.workspaceId),
+      );
       WidgetsBinding.instance.addPostFrameCallback(
         (_) => _syncWorkspaceContext(),
       );
@@ -98,6 +101,9 @@ class _WorkspacePageState extends State<WorkspacePage> {
             (oldWidget.tabKey != widget.tabKey ||
                 oldWidget.identity != widget.identity))) {
       context.read<ChatCubit>().setActiveWorkspace(widget.tabKey);
+      unawaited(
+        context.read<ChatCubit>().ensureSessionsForWorkspace(widget.workspaceId),
+      );
       WidgetsBinding.instance.addPostFrameCallback(
         (_) => _syncWorkspaceContext(),
       );

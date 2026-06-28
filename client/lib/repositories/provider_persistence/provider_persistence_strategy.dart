@@ -121,22 +121,23 @@ mixin CredentialProbeSupport on ProviderPersistenceStrategy {
     ProviderPersistenceContext ctx,
     List<AppProviderConfig> providers,
   ) async {
-    var changed = false;
-    final probed = <AppProviderConfig>[];
-    for (final provider in providers) {
-      if (!appliesToProbe(provider)) {
-        probed.add(provider);
-        continue;
-      }
-      final probe = await credentialProbe(provider);
-      final next = provider.withCredentialProbe(probe);
-      if (next.credentialStatus != provider.credentialStatus ||
-          next.credentialUpdatedAt != provider.credentialUpdatedAt) {
-        changed = true;
-      }
-      probed.add(next);
+    final results = await Future.wait(
+      providers.map((provider) async {
+        if (!appliesToProbe(provider)) {
+          return (provider: provider, changed: false);
+        }
+        final probe = await credentialProbe(provider);
+        final next = provider.withCredentialProbe(probe);
+        final changed =
+            next.credentialStatus != provider.credentialStatus ||
+            next.credentialUpdatedAt != provider.credentialUpdatedAt;
+        return (provider: next, changed: changed);
+      }),
+    );
+    final probed = [for (final result in results) result.provider];
+    if (results.any((result) => result.changed)) {
+      await ctx.save(cli, probed);
     }
-    if (changed) await ctx.save(cli, probed);
     return probed;
   }
 }

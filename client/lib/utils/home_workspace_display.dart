@@ -37,7 +37,10 @@ WorkspaceDisplay computeWorkspaceDisplay({
     return cached;
   }
 
-  final sessionCounts = homeWorkspaceSessionCountByWorkspaceId(sessions);
+  final sessionCounts = homeWorkspaceSessionCountByWorkspaceId(
+    sessions,
+    workspaces: workspaces,
+  );
   final sortedWorkspaces = sortWorkspaces(
     workspaces: workspaces,
     sort: sort,

@@ -1,10 +1,11 @@
-﻿import 'dart:async';
+import 'dart:async';
 
 import 'package:flutter/material.dart';
 import 'package:teampilot/theme/app_icon_sizes.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
 
+import '../../cubits/app_bootstrap_cubit.dart';
 import '../../cubits/chat_cubit.dart';
 import '../../cubits/launch_profile_cubit.dart';
 import '../../l10n/l10n_extensions.dart';
@@ -24,6 +25,7 @@ import 'home_new_workspace_dialog.dart';
 import 'open_workspace_tab_actions.dart';
 import 'workspace_card.dart';
 import 'workspace_list_tile.dart';
+import 'workspace_pane_animations.dart';
 import 'workspace_sort.dart';
 
 /// Route for [workspace] under [identity].
@@ -53,9 +55,13 @@ String? rememberedLaunchRoute(
 
 Future<void> openWorkspace(
   BuildContext context,
-  Workspace workspace, {
-  required List<AppSession> sessions,
-}) async {
+  Workspace workspace,
+) async {
+  final chatCubit = context.read<ChatCubit>();
+  await chatCubit.ensureSessionsForWorkspace(workspace.workspaceId);
+  final sessions = await chatCubit.sessionsForWorkspaceReady(
+    workspace.workspaceId,
+  );
   final store = WorkspaceLaunchPrefsStore();
   final pref = await store.prefsFor(workspace.workspaceId);
   if (!context.mounted) return;
@@ -108,7 +114,8 @@ Future<void> openWorkspace(
 }
 
 class WorkspacesTab extends StatelessWidget {
-  const WorkspacesTab({super.key, 
+  const WorkspacesTab({
+    super.key,
     required this.workspaces,
     required this.sessions,
     required this.gridView,
@@ -141,18 +148,59 @@ class WorkspacesTab extends StatelessWidget {
         ),
         const SizedBox(height: 16),
         Expanded(
-          child: workspaces.isEmpty
-              ? const HomeEmptyWorkspaces()
-              : WorkspaceCollection(
-                  workspaces: workspaces,
-                  sessions: sessions,
-                  gridView: gridView,
-                  workspaceSort: workspaceSort,
-                  favoriteWorkspaceIds: favoriteWorkspaceIds,
-                  onToggleWorkspaceFavorite: onToggleWorkspaceFavorite,
-                ),
+          child: WorkspacesListBody(
+            gridView: gridView,
+            workspaceSort: workspaceSort,
+            favoriteWorkspaceIds: favoriteWorkspaceIds,
+            onToggleWorkspaceFavorite: onToggleWorkspaceFavorite,
+          ),
         ),
       ],
+    );
+  }
+}
+
+/// Workspace grid/list below the toolbar — loading, empty, and data animations.
+class WorkspacesListBody extends StatelessWidget {
+  const WorkspacesListBody({
+    super.key,
+    required this.gridView,
+    required this.workspaceSort,
+    required this.favoriteWorkspaceIds,
+    required this.onToggleWorkspaceFavorite,
+  });
+
+  final bool gridView;
+  final WorkspaceSort workspaceSort;
+  final Set<String> favoriteWorkspaceIds;
+  final Future<void> Function(String workspaceId) onToggleWorkspaceFavorite;
+
+  @override
+  Widget build(BuildContext context) {
+    final workspaces = context.select<ChatCubit, List<Workspace>>(
+      (c) => c.state.workspaces,
+    );
+    final sessions = context.select<ChatCubit, List<AppSession>>(
+      (c) => c.state.sessions,
+    );
+
+    final suppressMotion = context.select<AppBootstrapCubit, bool>(
+      (c) => c.state.suppressHomeEntryMotion,
+    );
+    final content = workspaces.isEmpty
+        ? const HomeEmptyWorkspaces()
+        : WorkspaceCollection(
+            workspaces: workspaces,
+            sessions: sessions,
+            gridView: gridView,
+            workspaceSort: workspaceSort,
+            favoriteWorkspaceIds: favoriteWorkspaceIds,
+            onToggleWorkspaceFavorite: onToggleWorkspaceFavorite,
+          );
+    if (suppressMotion) return content;
+    return WorkspacePaneAnimations.data(
+      content,
+      key: ValueKey('workspace-data-${workspaces.length}'),
     );
   }
 }
@@ -530,13 +578,7 @@ class WorkspaceGrid extends StatelessWidget {
           favorited: favoriteWorkspaceIds.contains(workspace.workspaceId),
           onToggleFavorite: () => onToggleWorkspaceFavorite(workspace.workspaceId),
           sessions: sessions,
-          onTap: () => unawaited(
-            openWorkspace(
-              context,
-              workspace,
-              sessions: sessions,
-            ),
-          ),
+          onTap: () => unawaited(openWorkspace(context, workspace)),
         );
       },
     );
@@ -573,13 +615,7 @@ class WorkspaceList extends StatelessWidget {
           favorited: favoriteWorkspaceIds.contains(workspace.workspaceId),
           onToggleFavorite: () => onToggleWorkspaceFavorite(workspace.workspaceId),
           sessions: sessions,
-          onTap: () => unawaited(
-            openWorkspace(
-              context,
-              workspace,
-              sessions: sessions,
-            ),
-          ),
+          onTap: () => unawaited(openWorkspace(context, workspace)),
         );
       },
     );

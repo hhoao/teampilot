@@ -1,7 +1,6 @@
 import 'package:flutter_pty/flutter_pty.dart';
 import '../../models/connection_mode.dart';
 import '../../models/launch_target.dart';
-import '../../models/ssh_profile.dart';
 import '../../repositories/ssh_credential_store.dart';
 import '../../repositories/ssh_known_host_repository.dart';
 import '../../repositories/ssh_profile_repository.dart';

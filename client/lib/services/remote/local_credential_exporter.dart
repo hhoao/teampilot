@@ -1,5 +1,4 @@
 import '../../models/app_provider_config.dart';
-import '../../models/team_config.dart';
 import '../../repositories/app_provider_repository.dart';
 import '../provider/claude/claude_provider_credentials_service.dart';
 import '../provider/codex/codex_auth_artifacts.dart';

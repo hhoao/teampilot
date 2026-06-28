@@ -5,6 +5,8 @@
 #include <gdk/gdkx.h>
 #endif
 
+#include <native_splash_screen_linux/native_splash_screen_linux_plugin.h>
+
 #include <limits.h>
 #include <unistd.h>
 #include <libgen.h>
@@ -41,6 +43,7 @@ static void my_application_activate(GApplication* application) {
 
   // Client-side decorations: Flutter + window_manager draw the title bar.
   gtk_window_set_title(window, "TeamPilot");
+  gtk_window_set_decorated(window, FALSE);
 
   // Keep in sync with kDefaultWindowSize in lib/main.dart.
   gtk_window_set_default_size(window, 1380, 960);
@@ -53,18 +56,35 @@ static void my_application_activate(GApplication* application) {
     }
   }
 
-  gtk_widget_show(GTK_WIDGET(window));
-
   g_autoptr(FlDartProject) project = fl_dart_project_new();
   fl_dart_project_set_dart_entrypoint_arguments(project, self->dart_entrypoint_arguments);
 
   FlView* view = fl_view_new(project);
   gtk_widget_show(GTK_WIDGET(view));
-  gtk_container_add(GTK_CONTAINER(window), GTK_WIDGET(view));
+
+  // Overlay-mode boot splash: stack the splash bitmap over the Flutter view in
+  // THIS window (instead of a separate top-level splash window), so it paints
+  // white+logo from the first map and Dart fades it out via close() once the app
+  // has painted. Avoids the second-top-level decoration/alignment artifacts on
+  // GNOME/Wayland. This replaces adding the view to the window directly.
+  native_splash_screen_attach_overlay(window, view);
 
   fl_register_plugins(FL_PLUGIN_REGISTRY(view));
 
   gtk_widget_grab_focus(GTK_WIDGET(view));
+
+  GtkCssProvider* css_provider = gtk_css_provider_new();
+  gtk_css_provider_load_from_data(
+      css_provider, "window { background-color: #ffffff; }", -1, nullptr);
+  GtkStyleContext* style_context = gtk_widget_get_style_context(GTK_WIDGET(window));
+  gtk_style_context_add_provider(
+      style_context, GTK_STYLE_PROVIDER(css_provider),
+      GTK_STYLE_PROVIDER_PRIORITY_APPLICATION);
+  g_object_unref(css_provider);
+
+  // The widget tree (including the splash overlay) is built, so the first paint
+  // already shows white+logo.
+  gtk_widget_show(GTK_WIDGET(window));
 }
 
 // Implements GApplication::local_command_line.

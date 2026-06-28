@@ -72,7 +72,7 @@ void main() {
       workTarget: RuntimeTarget.ssh('p1', label: 'box'),
     );
 
-    expect(session.runtimeTarget?.namespace.isSsh, isTrue);
+    expect(session.runtimeTarget.namespace.isSsh, isTrue);
     expect(session.validateLaunch, isFalse);
     expect(session.usesRemoteTransport, isTrue);
   });

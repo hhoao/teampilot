@@ -5,7 +5,6 @@ import 'package:teampilot/l10n/app_localizations.dart';
 import 'package:teampilot/cubits/ai_feature_settings_cubit.dart';
 import 'package:teampilot/cubits/app_provider_cubit.dart';
 import 'package:teampilot/cubits/chat/model/session_connect_request.dart';
-import 'package:teampilot/cubits/chat/model/session_open_request.dart';
 import 'package:teampilot/cubits/chat_cubit.dart';
 import 'package:teampilot/cubits/notification_cubit.dart';
 import 'package:teampilot/cubits/member_presence_cubit.dart';

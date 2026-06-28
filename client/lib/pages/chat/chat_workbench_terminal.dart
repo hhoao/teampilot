@@ -5,7 +5,6 @@ import 'package:flutter/services.dart';
 import 'package:flutter_alacritty/flutter_alacritty.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
-import '../../cubits/chat/model/session_open_request.dart';
 import '../../cubits/chat_cubit.dart';
 import '../../cubits/editor_cubit.dart';
 import '../../cubits/session_preferences_cubit.dart';

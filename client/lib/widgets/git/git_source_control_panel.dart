@@ -1,7 +1,8 @@
-﻿import 'dart:async';
+import 'dart:async';
 import 'dart:math' as math;
 
 import 'package:flutter/material.dart';
+import 'package:flutter/rendering.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:path/path.dart' as p;
 import 'package:teampilot/theme/app_toast_theme.dart';
@@ -232,7 +233,9 @@ class _DirtyBadge extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 1),
       decoration: BoxDecoration(
-        color: selected ? cs.onSecondaryContainer.withValues(alpha: 0.18) : cs.primaryContainer,
+        color: selected
+            ? cs.onSecondaryContainer.withValues(alpha: 0.18)
+            : cs.primaryContainer,
         borderRadius: BorderRadius.circular(9),
       ),
       child: Text(
@@ -488,12 +491,8 @@ class _GitRepoBodyState extends State<_GitRepoBody> {
                       state.expandedFolderPaths,
                     ),
                     builder: (context, changesData) {
-                      final (
-                        viewMode,
-                        staged,
-                        unstaged,
-                        expandedFolderPaths,
-                      ) = changesData;
+                      final (viewMode, staged, unstaged, expandedFolderPaths) =
+                          changesData;
                       return _GitChangesScrollBody(
                         viewMode: viewMode,
                         staged: staged,
@@ -663,8 +662,8 @@ class _GitChangesScrollBodyState extends State<_GitChangesScrollBody> {
       return NotificationListener<ScrollNotification>(
         onNotification: _onScrollNotification,
         child: ListView(
+          scrollCacheExtent: ScrollCacheExtent.pixels(400),
           controller: widget.changesScrollController,
-          cacheExtent: 400,
           children: sections,
         ),
       );
@@ -712,8 +711,8 @@ class _GitChangesScrollBodyState extends State<_GitChangesScrollBody> {
                 child: NotificationListener<ScrollNotification>(
                   onNotification: _onScrollNotification,
                   child: CustomScrollView(
+                    scrollCacheExtent: ScrollCacheExtent.pixels(400),
                     controller: widget.changesScrollController,
-                    cacheExtent: 400,
                     slivers: [
                       if (widget.staged.isNotEmpty) ...[
                         SliverToBoxAdapter(
@@ -940,15 +939,14 @@ class _Header extends StatelessWidget {
           ),
         AppIconButton(
           icon: treeView ? Icons.view_list : Icons.account_tree_outlined,
-          compact: true, size: AppIconButton.kCompactSize,
+          compact: true,
+          size: AppIconButton.kCompactSize,
           tooltip: treeView ? l10n.gitChangesListView : l10n.gitChangesTreeView,
           onTap: onToggleViewMode,
         ),
         if (treeView)
           AppIconButton(
-            icon: allFoldersExpanded
-                ? Icons.unfold_less
-                : Icons.unfold_more,
+            icon: allFoldersExpanded ? Icons.unfold_less : Icons.unfold_more,
             compact: true,
             size: AppIconButton.kCompactSize,
             tooltip: allFoldersExpanded
@@ -958,19 +956,22 @@ class _Header extends StatelessWidget {
           ),
         AppIconButton(
           icon: Icons.download_outlined,
-          compact: true, size: AppIconButton.kCompactSize,
+          compact: true,
+          size: AppIconButton.kCompactSize,
           tooltip: l10n.gitPull,
           onTap: onPull,
         ),
         AppIconButton(
           icon: Icons.upload_outlined,
-          compact: true, size: AppIconButton.kCompactSize,
+          compact: true,
+          size: AppIconButton.kCompactSize,
           tooltip: l10n.gitPush,
           onTap: onPush,
         ),
         AppIconButton(
           icon: Icons.refresh,
-          compact: true, size: AppIconButton.kCompactSize,
+          compact: true,
+          size: AppIconButton.kCompactSize,
           tooltip: l10n.gitRefresh,
           onTap: onRefresh,
         ),

@@ -31,15 +31,22 @@ extension WorkspaceSortLabels on WorkspaceSort {
 }
 
 Map<String, int> homeWorkspaceSessionCountByWorkspaceId(
-  List<AppSession> sessions,
-) {
-  final counts = <String, int>{};
-  for (final session in sessions) {
-    final id = session.workspaceId;
-    if (id.isEmpty) continue;
-    counts[id] = (counts[id] ?? 0) + 1;
+  List<AppSession> sessions, {
+  List<Workspace>? workspaces,
+}) {
+  if (sessions.isNotEmpty) {
+    final counts = <String, int>{};
+    for (final session in sessions) {
+      final id = session.workspaceId;
+      if (id.isEmpty) continue;
+      counts[id] = (counts[id] ?? 0) + 1;
+    }
+    return counts;
   }
-  return counts;
+  return {
+    for (final workspace in workspaces ?? const <Workspace>[])
+      workspace.workspaceId: workspace.sessionIds.length,
+  };
 }
 
 List<Workspace> sortWorkspaces({

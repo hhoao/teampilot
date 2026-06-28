@@ -8,17 +8,13 @@ import '../../models/workspace.dart';
 import '../../models/workspace_launch_context.dart';
 import '../../models/workspace_folder.dart';
 import '../../models/app_session.dart';
-import '../../models/cli_preset.dart';
 import '../../models/member_instance.dart';
 import '../../models/personal_profile.dart';
-import '../../services/storage/launch_profile_provisioner.dart';
 import '../../models/session_member_binding.dart';
 import '../../models/team_config.dart';
 import '../../models/workspace_topology.dart';
 import '../../models/workspace_tab_ref.dart';
 import '../../repositories/session_repository.dart';
-import '../../services/cli/registry/config_profile/config_profile_context.dart';
-import '../../services/launch/personal_launch_context.dart';
 import '../../services/launch/personal_launch_context_resolver.dart';
 import '../../services/launch/session_connect_orchestrator.dart';
 import '../../services/launch/session_launch_readiness.dart';
@@ -1495,7 +1491,7 @@ class SessionLaunchService implements MemberConnector {
         personal: personal!,
         preset: await _h.lifecycle.resolveActivePresetForSession(
           activeSession,
-          personal!,
+          personal,
         ),
         launchTarget: launchTarget,
       );
@@ -1657,7 +1653,7 @@ class SessionLaunchService implements MemberConnector {
       ),
       onProcessFailed: (message) {
         if (remoteMemberKeyForRollback != null) {
-          unawaited(tab.closeMemberRemotePlane(remoteMemberKeyForRollback!));
+          unawaited(tab.closeMemberRemotePlane(remoteMemberKeyForRollback));
         }
         _h.failSessionConnect(tab.info.id, message);
       },
@@ -1686,7 +1682,7 @@ class SessionLaunchService implements MemberConnector {
       remoteMemberKeyForRollback = null;
     } on Object catch (e, st) {
       if (remoteMemberKeyForRollback != null) {
-        await tab.closeMemberRemotePlane(remoteMemberKeyForRollback!);
+        await tab.closeMemberRemotePlane(remoteMemberKeyForRollback);
       }
       appLogger.e(
         '[session-launch] connectShell failed session=${tab.info.id} '

@@ -2,7 +2,6 @@ import 'dart:convert';
 
 import '../models/app_provider_config.dart';
 import '../services/storage/app_storage.dart';
-import '../services/storage/runtime_context.dart';
 import '../services/provider/claude/claude_provider_credentials_service.dart';
 import '../services/provider/codex/codex_provider_credentials_service.dart';
 import '../services/provider/cursor/cursor_provider_credentials_service.dart';
@@ -43,6 +42,18 @@ class AppProviderRepository {
   final CursorProviderCredentialsService? _cursorCredentialsServiceOverride;
   final CodexProviderCredentialsService? _codexCredentialsServiceOverride;
   final OpencodeProviderCredentialsService? _opencodeCredentialsServiceOverride;
+
+  final Map<String, List<AppProviderConfig>> _diskCache = {};
+
+  String _diskCacheKey(CliTool cli) => '$_basePath:${cli.value}';
+
+  void _invalidateDiskCache([CliTool? cli]) {
+    if (cli != null) {
+      _diskCache.remove(_diskCacheKey(cli));
+    } else {
+      _diskCache.clear();
+    }
+  }
 
   String get _basePath => _basePathOverride ?? AppStorage.paths.basePath;
 
@@ -101,8 +112,20 @@ class AppProviderRepository {
   Future<List<AppProviderConfig>> loadProviders(
     CliTool cli, {
     bool importCredentialsFromGlobal = false,
+    bool reconcileCredentials = true,
   }) async {
     var providers = await _loadProvidersFromDisk(cli);
+    if (!reconcileCredentials) return providers;
+    return reconcileProviders(cli, providers,
+        importCredentialsFromGlobal: importCredentialsFromGlobal);
+  }
+
+  /// Re-runs credential reconciliation for providers already loaded from disk.
+  Future<List<AppProviderConfig>> reconcileProviders(
+    CliTool cli,
+    List<AppProviderConfig> providers, {
+    bool importCredentialsFromGlobal = false,
+  }) async {
     final strategy = _strategies[cli];
     if (strategy == null) return providers;
     if (importCredentialsFromGlobal && strategy is CredentialProbeSupport) {
@@ -117,17 +140,33 @@ class AppProviderRepository {
   Future<List<AppProviderConfig>> _loadProvidersFromDisk(
     CliTool cli,
   ) async {
+    final cached = _diskCache[_diskCacheKey(cli)];
+    if (cached != null) return cached;
+
     final path = providersPath(cli);
-    if (!(await _fs.stat(path)).isFile) return const [];
+    if (!(await _fs.stat(path)).isFile) {
+      _diskCache[_diskCacheKey(cli)] = const [];
+      return const [];
+    }
     try {
       final raw = await _fs.readString(path);
-      if (raw == null || raw.isEmpty) return const [];
+      if (raw == null || raw.isEmpty) {
+        _diskCache[_diskCacheKey(cli)] = const [];
+        return const [];
+      }
       final decoded = jsonDecode(raw);
-      if (decoded is! Map) return const [];
-      return _decodeCatalog(cli, Map<String, Object?>.from(decoded));
+      if (decoded is! Map) {
+        _diskCache[_diskCacheKey(cli)] = const [];
+        return const [];
+      }
+      final providers = _decodeCatalog(cli, Map<String, Object?>.from(decoded));
+      _diskCache[_diskCacheKey(cli)] = providers;
+      return providers;
     } on FormatException {
+      _diskCache[_diskCacheKey(cli)] = const [];
       return const [];
     } on TypeError {
+      _diskCache[_diskCacheKey(cli)] = const [];
       return const [];
     }
   }
@@ -163,6 +202,7 @@ class AppProviderRepository {
       ).convert({...unknownTopLevel, 'providers': encoded}),
     );
 
+    _invalidateDiskCache(cli);
     await _strategies[cli]?.reconcileSaved(_persistenceContext, merged);
   }
 

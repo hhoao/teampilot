@@ -1,4 +1,4 @@
-﻿import 'dart:async';
+import 'dart:async';
 import 'dart:io';
 
 import 'package:flutter/material.dart';
@@ -416,7 +416,6 @@ class _SidebarTile extends StatelessWidget {
     this.leading,
     this.trailing,
     this.contentLeftInset = 0,
-    super.key,
   });
 
   final String title;

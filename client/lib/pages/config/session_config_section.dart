@@ -1,28 +1,11 @@
-﻿import 'dart:async';
-import 'dart:io';
+import 'dart:async';
 
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
-import 'package:teampilot/theme/app_toast_theme.dart';
-import 'package:teampilot/widgets/app_toast/app_toast.dart';
 
-import '../../app/app_shell.dart';
-import '../../cubits/app_provider_cubit.dart';
-import '../../cubits/chat_cubit.dart';
-import '../../cubits/extension_cubit.dart';
-import '../../cubits/llm_config_cubit.dart';
-import '../../cubits/mcp_cubit.dart';
-import '../../cubits/plugin_cubit.dart';
 import '../../cubits/session_preferences_cubit.dart';
-import '../../cubits/skill_cubit.dart';
-import '../../cubits/launch_profile_cubit.dart';
 import '../../l10n/l10n_extensions.dart';
-import '../../widgets/app_dialog.dart';
-import '../../models/connection_mode.dart';
-import '../../repositories/session_repository.dart';
-import '../../cubits/ssh_profile_cubit.dart';
 import '../../services/app/connection_mode_service.dart';
-import '../../services/storage/runtime_context.dart';
 import '../../utils/app_keys.dart';
 import '../../utils/debounce/debounce.dart';
 import '../../widgets/settings/workspace_settings_widgets.dart';

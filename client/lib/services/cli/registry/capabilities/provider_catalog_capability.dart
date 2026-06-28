@@ -1,5 +1,4 @@
 import '../../../../models/app_provider_config.dart';
-import '../../../../models/team_config.dart';
 import '../../../io/filesystem.dart';
 import '../cli_capability.dart';
 

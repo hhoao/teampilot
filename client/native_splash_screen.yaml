@@ -1,0 +1,55 @@
+# Regenerate: dart run native_splash_screen_cli setup && dart run native_splash_screen_cli gen
+version: v1
+
+platforms:
+  linux:
+    enabled: true
+    fallback: true
+  windows:
+    enabled: true
+    fallback: true
+  macos:
+    enabled: true
+    fallback: true
+
+release:
+  linux:
+    window_width: 1380
+    window_height: 960
+    window_title: TeamPilot
+    window_color: "#FFFFFF"
+    background_color: "#FFFFFF"
+    background_width: 1380
+    background_height: 960
+    background_border_radius: 0.0
+    image_path: assets/icons/icon_bg.png
+    # Bake a full-window bitmap so draw never leaves transparent gutters.
+    image_width: 1380
+    image_height: 960
+    image_scaling: false
+    image_border_radius: 0.0
+    blur_radius: 0.0
+    with_animation: false
+
+  windows:
+    window_width: 1380
+    window_height: 960
+    window_title: TeamPilot
+    background_color: "#FFFFFF"
+    image_path: assets/icons/icon_bg.png
+    image_width: 1380
+    image_height: 960
+    image_scaling: false
+    with_animation: false
+
+  macos:
+    window_width: 1380
+    window_height: 960
+    window_title: TeamPilot
+    background_color: "#FFFFFF"
+    image_path: assets/icons/icon_bg.png
+    image_width: 1380
+    image_height: 960
+    image_scaling: false
+    blur_radius: 0.0
+    with_animation: false

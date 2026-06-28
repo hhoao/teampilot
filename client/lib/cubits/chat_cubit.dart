@@ -28,8 +28,8 @@ import '../services/launch/session_connect_orchestrator.dart';
 import '../services/launch/workspace_provision_coordinator.dart';
 import '../services/terminal/terminal_session.dart';
 import '../services/terminal/terminal_transport_factory.dart';
-import '../utils/logger.dart';
-import '../widgets/workspace_icon_picker_dialog.dart';
+import '../utils/workspace_sessions.dart';
+import '../../widgets/workspace_icon_picker_dialog.dart';
 import 'chat/chat_connect_state_mixin.dart';
 import 'chat/session_data_store.dart';
 import 'chat/chat_session_shell_factory.dart';
@@ -96,6 +96,7 @@ class ChatCubit extends Cubit<ChatState>
   SessionConnectOrchestrator? _defaultSessionConnect;
   final ChatTabStore _tabStore = ChatTabStore();
   final SessionDataStore _dataStore = SessionDataStore();
+  final Map<String, Future<void>> _sessionHydrationByWorkspace = {};
   late final SessionLaunchService _launchService = SessionLaunchService(this);
   late final TabTeamBusCoordinator _busCoordinator = TabTeamBusCoordinator(
     tabStore: _tabStore,
@@ -449,6 +450,77 @@ class ChatCubit extends Cubit<ChatState>
   @override
   Future<void> loadWorkspaceData(SessionRepository repo) async {
     _emitSnapshot(await _dataStore.loadWorkspaceData(repo));
+  }
+
+  /// Home index: workspace manifests only; sessions hydrate separately.
+  Future<void> loadWorkspaceIndex(SessionRepository repo) async {
+    _emitSnapshot(await _dataStore.loadWorkspaceIndex(repo));
+  }
+
+  Future<void> hydrateAllSessions(SessionRepository repo) async {
+    final sessions = await _dataStore.loadSessions(repo);
+    _dataStore.markWorkspacesSessionsHydrated(
+      state.workspaces.map((workspace) => workspace.workspaceId),
+    );
+    _emitSnapshot(
+      _dataStore.deriveSnapshot(
+        workspaces: state.workspaces,
+        sessions: sessions,
+      ),
+    );
+  }
+
+  /// Loads [workspaceId] sessions from disk when the UI needs them.
+  Future<void> ensureSessionsForWorkspace(String workspaceId) async {
+    final repo = _sessionRepository;
+    final id = workspaceId.trim();
+    if (repo == null || id.isEmpty) return;
+    if (_dataStore.sessionsLoadedForWorkspace(id)) return;
+
+    final inflight = _sessionHydrationByWorkspace[id];
+    if (inflight != null) {
+      await inflight;
+      return;
+    }
+
+    final load = _hydrateWorkspaceSessions(repo, id);
+    _sessionHydrationByWorkspace[id] = load;
+    try {
+      await load;
+    } finally {
+      _sessionHydrationByWorkspace.remove(id);
+    }
+  }
+
+  Future<List<AppSession>> sessionsForWorkspaceReady(String workspaceId) async {
+    await ensureSessionsForWorkspace(workspaceId);
+    return sessionsForWorkspace(
+      state.workspaces
+          .where((w) => w.workspaceId == workspaceId)
+          .firstOrNull ??
+          Workspace(workspaceId: workspaceId, folders: const [], createdAt: 0),
+      state.sessions,
+    );
+  }
+
+  Future<void> _hydrateWorkspaceSessions(
+    SessionRepository repo,
+    String workspaceId,
+  ) async {
+    final sessions = await _dataStore.loadSessionsForWorkspace(repo, workspaceId);
+    if (isClosed) return;
+    _emitSnapshot(
+      _dataStore.mergeWorkspaceSessions(
+        current: ChatDataSnapshot(
+          workspaces: state.workspaces,
+          sessions: state.sessions,
+          visibleWorkspaces: state.visibleWorkspaces,
+          visibleSessions: state.visibleSessions,
+        ),
+        workspaceId: workspaceId,
+        workspaceSessions: sessions,
+      ),
+    );
   }
 
   /// Updates persisted-index mirrors in state and recomputes team-scoped sidebar lists.

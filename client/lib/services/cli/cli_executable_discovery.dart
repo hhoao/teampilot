@@ -26,14 +26,20 @@ class CliExecutableDiscovery {
     ProcessRunner runner = cliToolDefaultProcessRun,
   }) async {
     final located = <CliTool, String>{};
-    for (final cli in _localDiscoverable) {
-      final resolver = _registry.capability<ExecutableResolverCapability>(cli)!;
-      final path = await CliToolLocator(
-        resolver.defaultExecutableName,
-      ).locate(runner: runner);
-      if (path != null && path.isNotEmpty) {
-        located[cli] = path;
-      }
+    final discoveries = await Future.wait([
+      for (final cli in _localDiscoverable)
+        () async {
+          final resolver =
+              _registry.capability<ExecutableResolverCapability>(cli)!;
+          final path = await CliToolLocator(
+            resolver.defaultExecutableName,
+          ).locate(runner: runner);
+          if (path == null || path.isEmpty) return null;
+          return MapEntry(cli, path);
+        }(),
+    ]);
+    for (final entry in discoveries) {
+      if (entry != null) located[entry.key] = entry.value;
     }
     return located;
   }

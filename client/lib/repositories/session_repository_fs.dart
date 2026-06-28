@@ -69,17 +69,17 @@ class SessionRepositoryFs {
   }
 
   Future<List<String>> listWorkspaceIds() async {
-    final ids = <String>[];
     final stat = await fs.stat(workspacesDir);
-    if (!stat.isDirectory) return ids;
-    for (final entry in await fs.listDir(workspacesDir)) {
-      if (!entry.isDirectory) continue;
-      final manifest = manifestFile(entry.name);
-      if ((await fs.stat(manifest)).exists) {
-        ids.add(entry.name);
-      }
-    }
-    return ids;
+    if (!stat.isDirectory) return const [];
+    final entries = await fs.listDir(workspacesDir);
+    final ids = await Future.wait(
+      entries.where((e) => e.isDirectory).map((entry) async {
+        final manifest = manifestFile(entry.name);
+        if ((await fs.stat(manifest)).exists) return entry.name;
+        return null;
+      }),
+    );
+    return [for (final id in ids) if (id != null) id];
   }
 
   Future<List<Map<String, Object?>>> listSessionJsonMapsForWorkspace(
@@ -111,6 +111,16 @@ class SessionRepositoryFs {
       maps.addAll(await listSessionJsonMapsForWorkspace(workspaceId));
     }
     return maps;
+  }
+
+  Future<List<String>> listSessionDirectoryIds(String workspaceId) async {
+    final dir = sessionsDir(workspaceId);
+    final stat = await fs.stat(dir);
+    if (!stat.isDirectory) return const [];
+    return [
+      for (final entry in await fs.listDir(dir))
+        if (entry.isDirectory) entry.name,
+    ];
   }
 
   Future<List<String>> listSessionIdsForWorkspace(String workspaceId) async {

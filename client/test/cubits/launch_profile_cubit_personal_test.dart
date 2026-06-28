@@ -71,7 +71,7 @@ void main() {
       const PersonalProfile(
         id: 'b',
         display: 'B',
-        bundle: const ConfigBundle(skillIds: ['s']),
+        bundle: ConfigBundle(skillIds: ['s']),
       ),
     );
     expect(cubit.state.personals.length, 2);

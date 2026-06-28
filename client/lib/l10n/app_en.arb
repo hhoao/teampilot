@@ -845,6 +845,9 @@
     }
   },
   "bootstrapUseNativeStorageInstead": "Use Windows local storage instead",
+  "bootstrapLoadingApp": "Starting TeamPilot…",
+  "bootstrapLoadingWorkspaces": "Loading workspaces…",
+  "bootstrapLoadingLibraries": "Loading libraries…",
   "runsPlaceholder": "Run history will appear here.",
   "llmConfig": "Provider",
   "llmConfigSubtitle": "providers and models",

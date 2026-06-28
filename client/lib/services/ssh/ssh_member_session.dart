@@ -3,7 +3,6 @@ import 'package:dartssh2/dartssh2.dart';
 import '../../models/ssh_profile.dart';
 import '../team_bus/remote/reverse_tunnel.dart';
 import 'ssh_client_factory.dart';
-import 'ssh_run_result.dart';
 
 /// Dedicated SSH connection for one remote member's **session plane**: reverse
 /// bus tunnels, exec probes, and PTY. Not pooled with the storage-plane SFTP

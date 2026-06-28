@@ -1,4 +1,3 @@
-import '../../models/team_config.dart';
 import '../../utils/trusted_project_paths.dart';
 import '../cli/registry/config_profile/claude_config_profile_capability.dart';
 import '../cli/registry/config_profile/codex_config_profile_capability.dart';

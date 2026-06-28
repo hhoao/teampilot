@@ -51,17 +51,19 @@ final class ClaudeProviderPersistence extends ProviderPersistenceStrategy
   ) async {
     final home = ctx.resolveHome();
     if (home.isNotEmpty) {
-      for (final provider in providers) {
-        if (!appliesToProbe(provider)) continue;
-        if (resolveCredentialBinding(provider) != CredentialBindingKind.linked) {
-          continue;
-        }
-        await _credentials.materializeLinkedBinding(
-          provider.id,
-          homeDirectory: home,
-          replace: true,
-        );
-      }
+      await Future.wait(
+        providers.map((provider) async {
+          if (!appliesToProbe(provider)) return;
+          if (resolveCredentialBinding(provider) != CredentialBindingKind.linked) {
+            return;
+          }
+          await _credentials.materializeLinkedBinding(
+            provider.id,
+            homeDirectory: home,
+            replace: true,
+          );
+        }),
+      );
     }
     return probeOfficialCredentials(ctx, providers);
   }

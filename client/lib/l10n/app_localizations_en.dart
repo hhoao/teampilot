@@ -2034,6 +2034,15 @@ class AppLocalizationsEn extends AppLocalizations {
       'Use Windows local storage instead';
 
   @override
+  String get bootstrapLoadingApp => 'Starting TeamPilot…';
+
+  @override
+  String get bootstrapLoadingWorkspaces => 'Loading workspaces…';
+
+  @override
+  String get bootstrapLoadingLibraries => 'Loading libraries…';
+
+  @override
   String get runsPlaceholder => 'Run history will appear here.';
 
   @override

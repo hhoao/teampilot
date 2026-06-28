@@ -1,7 +1,6 @@
 import 'package:flutter/foundation.dart';
 
 import '../../models/workspace.dart';
-import '../../models/workspace_folder.dart';
 import '../../models/app_session.dart';
 import '../../models/cli_preset.dart';
 import '../../models/launch_profile_kind.dart';
@@ -14,7 +13,6 @@ import '../../repositories/cli_presets_repository.dart';
 import '../../repositories/launch_profile_repository.dart';
 import '../../services/storage/launch_profile_provisioner.dart';
 import '../../utils/team_member_naming.dart';
-import '../../utils/workspace_path_utils.dart';
 import '../../utils/logger.dart';
 import '../../models/workspace_topology.dart';
 import '../../models/workspace_launch_context.dart';

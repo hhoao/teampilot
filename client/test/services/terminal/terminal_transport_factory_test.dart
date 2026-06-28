@@ -10,7 +10,6 @@ import 'package:teampilot/repositories/ssh_credential_store.dart';
 import 'package:teampilot/repositories/ssh_known_host_repository.dart';
 import 'package:teampilot/repositories/ssh_profile_repository.dart';
 import 'package:teampilot/services/ssh/ssh_member_session.dart';
-import 'package:teampilot/services/ssh/ssh_client_factory.dart';
 import 'package:teampilot/services/terminal/terminal_transport.dart';
 import 'package:teampilot/services/terminal/terminal_transport_factory.dart';
 

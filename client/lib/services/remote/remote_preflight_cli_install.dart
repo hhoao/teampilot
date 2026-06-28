@@ -1,7 +1,6 @@
 import '../../models/ssh_profile.dart';
 import '../../models/team_config.dart';
 import '../cli/cli_installer_service.dart';
-import '../cli/installer_types.dart';
 import '../cli/remote_cli_installer.dart';
 import '../cli/registry/capabilities/remote_cli_locator_capability.dart';
 import '../cli/registry/cli_tool_registry.dart';

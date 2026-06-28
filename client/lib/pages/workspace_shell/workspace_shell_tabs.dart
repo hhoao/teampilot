@@ -1,4 +1,4 @@
-﻿import 'dart:io';
+import 'dart:io';
 
 import 'package:flutter/material.dart';
 import 'package:teampilot/theme/app_icon_sizes.dart';
@@ -167,7 +167,7 @@ class WorkspaceShellTabChipState extends State<WorkspaceShellTabChip> {
   /// Keeps overflow actions (and [SidebarActionMenuButton]) mounted while the menu is
   /// open; otherwise moving the pointer onto the overlay triggers
   /// [MouseRegion.onExit] and removes the button before [onSelected] runs.
-  var _overflowMenuOpen = false;
+  final _overflowMenuOpen = false;
 
   void _handleTabMenuSelection(String value) {
     if (value == 'close') {

@@ -60,6 +60,9 @@ dependencies:
   flutter_svg: ^2.3.0
   intl: any
   watcher: ^1.2.0
+  native_splash_screen:
+    path: packages/native_splash_screen/native_splash_screen
+  provider: any
 dependency_overrides:
   flutter_pty:
     path: packages/flutter_pty
@@ -79,6 +82,9 @@ dev_dependencies:
 
   mock_anthropic:
     path: ../tools/mock_anthropic
+  flutter_native_splash: any
+  native_splash_screen_cli:
+    path: packages/native_splash_screen/native_splash_screen_cli
 
 flutter:
   generate: true
@@ -96,6 +102,15 @@ flutter:
     - assets/hooks/teampilot-deny-team-lead-self-message.ps1
     - assets/hooks/teampilot-team-lead-delegate-only.sh
     - assets/hooks/teampilot-team-lead-delegate-only.ps1
+
+flutter_native_splash:
+  color: "#FFFFFF"
+  image: assets/icons/icon_bg.png
+  android: true
+  ios: false
+  android_12:
+    color: "#FFFFFF"
+    image: assets/icons/icon_bg.png
 
 flutter_launcher_icons:
   android: true

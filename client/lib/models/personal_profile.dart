@@ -110,6 +110,7 @@ class PersonalProfile implements LaunchProfile {
         sortOrder: sortOrder ?? this.sortOrder,
       );
 
+  @override
   Map<String, Object?> toJson() => {
         'id': id,
         'kind': kind.value,

@@ -1,7 +1,6 @@
 import '../../../../l10n/app_localizations.dart';
 import 'display_capability.dart';
 import 'executable_resolver_capability.dart';
-import 'plugin_manifest_paths.dart';
 import 'presence_capability.dart';
 import 'terminal_behavior_capability.dart';
 

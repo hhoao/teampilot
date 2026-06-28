@@ -19,12 +19,10 @@ class HomeAllWorkspacesPane extends StatefulWidget {
   const HomeAllWorkspacesPane({super.key});
 
   @override
-  State<HomeAllWorkspacesPane> createState() =>
-      _HomeAllWorkspacesPaneState();
+  State<HomeAllWorkspacesPane> createState() => _HomeAllWorkspacesPaneState();
 }
 
-class _HomeAllWorkspacesPaneState
-    extends State<HomeAllWorkspacesPane> {
+class _HomeAllWorkspacesPaneState extends State<HomeAllWorkspacesPane> {
   final _workspaceFavoritesStore = WorkspaceFavoritesStore();
   final _displayPrefsStore = WorkspaceDisplayPrefsStore();
   Set<String> _favoriteWorkspaceIds = {};
@@ -107,24 +105,25 @@ class _HomeAllWorkspacesPaneState
           Divider(height: 1, color: cs.outlineVariant.withValues(alpha: 0.5)),
           const SizedBox(height: 16),
           Expanded(
-            child: WorkspacesTab(
-              workspaces: workspaces,
-              sessions: sessions,
-              gridView: _gridView,
-              onToggleView: _setGridView,
-              workspaceSort: _workspaceSort,
-              onWorkspaceSortChanged: _setWorkspaceSort,
-              favoriteWorkspaceIds: _favoriteWorkspaceIds,
-              onToggleWorkspaceFavorite: _toggleWorkspaceFavorite,
-            )
-                .animate(key: const ValueKey('home-all-workspaces'))
-                .fadeIn(duration: 180.ms, curve: Curves.easeOut)
-                .slideX(
-                  begin: 0.025,
-                  end: 0,
-                  duration: 220.ms,
-                  curve: Curves.easeOutCubic,
-                ),
+            child:
+                WorkspacesTab(
+                      workspaces: workspaces,
+                      sessions: sessions,
+                      gridView: _gridView,
+                      onToggleView: _setGridView,
+                      workspaceSort: _workspaceSort,
+                      onWorkspaceSortChanged: _setWorkspaceSort,
+                      favoriteWorkspaceIds: _favoriteWorkspaceIds,
+                      onToggleWorkspaceFavorite: _toggleWorkspaceFavorite,
+                    )
+                    .animate(key: const ValueKey('home-all-workspaces'))
+                    .fadeIn(duration: 180.ms, curve: Curves.easeOut)
+                    .slideX(
+                      begin: 0.025,
+                      end: 0,
+                      duration: 220.ms,
+                      curve: Curves.easeOutCubic,
+                    ),
           ),
         ],
       ),

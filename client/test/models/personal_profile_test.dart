@@ -14,7 +14,7 @@ void main() {
     const identity = PersonalProfile(
       id: 'coding',
       display: 'Coding',
-      bundle: const ConfigBundle(skillIds: ['s1'], mcpServerIds: ['m1']),
+      bundle: ConfigBundle(skillIds: ['s1'], mcpServerIds: ['m1']),
       providerIdsByTool: {'claude': 'anthropic'},
       modelsByTool: {'claude': 'opus'},
       effortsByTool: {'claude': 'high'},
