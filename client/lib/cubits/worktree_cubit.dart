@@ -180,7 +180,15 @@ class WorktreeCubit extends Cubit<WorktreeState> {
         loading: true,
       );
     }
-    return WorktreeState(repoPath: repo, currentWorktreePath: repo);
+    // No cached worktrees yet, but a load() is coming (bindWorktreeService runs
+    // on first tools-scope sync). Start in the indeterminate (loading) state so
+    // the sidebar paints the skeleton, not the full flat session list that it
+    // would then immediately throw away once the worktree list resolves.
+    return WorktreeState(
+      repoPath: repo,
+      currentWorktreePath: repo,
+      loading: true,
+    );
   }
 
   /// Binds the git runner for the resolved workspace tools plane and loads the

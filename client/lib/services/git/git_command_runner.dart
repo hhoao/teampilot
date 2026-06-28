@@ -151,11 +151,13 @@ class RemoteGitCommandRunner implements GitCommandRunner {
     RemoteFileStore? store,
     Future<SSHRunResult> Function(String command)? execShell,
     HostOneShotRunner? hostRunner,
+    String? hostKey,
   }) : assert(
          store != null || execShell != null,
          'store or execShell required',
        ),
        _execShell = execShell ?? store!.execShell,
+       _hostKey = hostKey ?? '',
        _host =
            hostRunner ??
            RemoteHostOneShotRunner(
@@ -165,13 +167,17 @@ class RemoteGitCommandRunner implements GitCommandRunner {
   final Future<SSHRunResult> Function(String command) _execShell;
   final HostOneShotRunner _host;
 
-  static Future<bool>? _availableFuture;
+  /// Identifies the remote host so the availability probe is cached per host
+  /// (a host without git must not poison the cache for every other host).
+  final String _hostKey;
 
-  static void debugResetAvailabilityCache() => _availableFuture = null;
+  static final Map<String, Future<bool>> _availableByHost = {};
+
+  static void debugResetAvailabilityCache() => _availableByHost.clear();
 
   @override
   Future<bool> get isAvailable =>
-      _availableFuture ??= _probeAvailability();
+      _availableByHost[_hostKey] ??= _probeAvailability();
 
   Future<bool> _probeAvailability() async {
     final result = await _execShell(
@@ -198,6 +204,7 @@ GitCommandRunner gitCommandRunnerForContext(RuntimeContext ctx) {
   return switch (ctx.mode) {
     StorageBackendMode.ssh => RemoteGitCommandRunner(
       store: ctx.remoteFileStore!,
+      hostKey: ctx.target.id,
     ),
     StorageBackendMode.wsl => WslGitCommandRunner(
       distro: ctx.target.wslDistro,

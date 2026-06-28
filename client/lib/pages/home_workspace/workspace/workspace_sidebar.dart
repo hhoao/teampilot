@@ -92,6 +92,9 @@ class _WorkspaceSidebarState
     );
     final sortedSessions =
         sortAppSessions(sessionSnapshot.sessions, sort: _sessionSort);
+    final sessionsHydrated = context.select<ChatCubit, bool>(
+      (c) => c.sessionsLoadedForWorkspace(widget.workspace.workspaceId),
+    );
     final wtView = context.select<WorktreeCubit, WorktreeSidebarView>(
       (c) => WorktreeSidebarView.from(c.state),
     );
@@ -196,6 +199,7 @@ class _WorkspaceSidebarState
               sortedSessions,
               wtView,
               personalLaunchBlocked: personalLaunchBlocked,
+              sessionsHydrated: sessionsHydrated,
             ),
           ),
         ],
@@ -211,8 +215,15 @@ class _WorkspaceSidebarState
     List<AppSession> sortedSessions,
     WorktreeSidebarView wtView, {
     required bool personalLaunchBlocked,
+    required bool sessionsHydrated,
   }) {
     final l10n = context.l10n;
+    // Sessions still loading from disk/SFTP: show the skeleton rather than the
+    // empty-conversations placeholder, so a cold tab switch never flashes
+    // "no conversations" before the list pops in.
+    if (!sessionsHydrated && sortedSessions.isEmpty) {
+      return const _SessionListSkeleton();
+    }
     switch (wtView.sessionListLayout) {
       case WorktreeSessionListLayout.indeterminate:
         return const _SessionListSkeleton();
@@ -713,16 +724,34 @@ class _EmptyConversations extends StatelessWidget {
 
 /// Placeholder while the git worktree list for this workspace is still loading.
 /// Avoids briefly showing a flat session list that immediately regroups.
-class _SessionListSkeleton extends StatelessWidget {
+class _SessionListSkeleton extends StatefulWidget {
   const _SessionListSkeleton();
+
+  @override
+  State<_SessionListSkeleton> createState() => _SessionListSkeletonState();
+}
+
+class _SessionListSkeletonState extends State<_SessionListSkeleton>
+    with SingleTickerProviderStateMixin {
+  late final AnimationController _controller = AnimationController(
+    vsync: this,
+    duration: const Duration(milliseconds: 1200),
+  )..repeat();
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
 
   @override
   Widget build(BuildContext context) {
     final cs = Theme.of(context).colorScheme;
-    final fill = cs.onSurface.withValues(alpha: 0.08);
+    final base = cs.onSurface.withValues(alpha: 0.06);
+    final highlight = cs.onSurface.withValues(alpha: 0.16);
     return ListView.separated(
       padding: EdgeInsets.zero,
-      itemCount: 5,
+      itemCount: 6,
       separatorBuilder: (_, _) => const SizedBox(height: 8),
       itemBuilder: (context, index) {
         final widthFactor = switch (index % 3) {
@@ -732,12 +761,19 @@ class _SessionListSkeleton extends StatelessWidget {
         };
         return LayoutBuilder(
           builder: (context, constraints) {
-            return Container(
-              height: 34,
-              width: constraints.maxWidth * widthFactor,
-              decoration: BoxDecoration(
-                color: fill,
-                borderRadius: BorderRadius.circular(8),
+            return AnimatedBuilder(
+              animation: _controller,
+              builder: (context, _) => Container(
+                height: 34,
+                width: constraints.maxWidth * widthFactor,
+                decoration: BoxDecoration(
+                  borderRadius: BorderRadius.circular(8),
+                  gradient: LinearGradient(
+                    colors: [base, highlight, base],
+                    stops: const [0.1, 0.5, 0.9],
+                    transform: _ShimmerSlide(_controller.value),
+                  ),
+                ),
               ),
             );
           },
@@ -745,4 +781,15 @@ class _SessionListSkeleton extends StatelessWidget {
       },
     );
   }
+}
+
+/// Slides the shimmer highlight band across a bar as the controller advances.
+class _ShimmerSlide extends GradientTransform {
+  const _ShimmerSlide(this.t);
+
+  final double t;
+
+  @override
+  Matrix4 transform(Rect bounds, {TextDirection? textDirection}) =>
+      Matrix4.translationValues(bounds.width * (3.0 * t - 1.5), 0, 0);
 }

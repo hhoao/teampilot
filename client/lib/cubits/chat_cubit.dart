@@ -250,6 +250,13 @@ class ChatCubit extends Cubit<ChatState>
   @override
   SessionDataStore get dataStore => _dataStore;
 
+  /// True once [ensureSessionsForWorkspace] has loaded this workspace's
+  /// sessions from disk. The UI uses this to tell "still loading" apart from
+  /// "genuinely empty" so a cold tab switch shows a skeleton, not a flash of
+  /// the empty-conversations placeholder.
+  bool sessionsLoadedForWorkspace(String workspaceId) =>
+      _dataStore.sessionsLoadedForWorkspace(workspaceId);
+
   @override
   SessionRepository? get sessionRepository => _sessionRepository;
 
