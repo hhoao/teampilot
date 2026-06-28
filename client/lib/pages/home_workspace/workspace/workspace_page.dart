@@ -82,14 +82,13 @@ class _WorkspacePageState extends State<WorkspacePage> {
         (_) => _syncWorkspaceContext(),
       );
     }
-    // Build the manage panel after the conversations pane paints so the first
-    // rail click does not pay the full [WorkspaceConfigPanel] mount cost.
-    WidgetsBinding.instance.addPostFrameCallback((_) => _prewarmManagePanel());
-  }
-
-  void _prewarmManagePanel() {
-    if (!mounted || _visitedManage) return;
-    setState(() => _visitedManage = true);
+    // The manage panel is built lazily, only when the user actually opens it
+    // (rail click or a ?view=manage route). It used to be pre-warmed on a
+    // post-frame callback right after a tab switch, but [WorkspaceConfigPanel]'s
+    // first mount costs ~2s of synchronous build/text-shaping — pre-warming
+    // moved that cost onto every tab switch, freezing the whole app. Paying it
+    // once, on demand, is far better than a guaranteed stall the user rarely
+    // benefits from. Once visited, the panel stays alive in the IndexedStack.
   }
 
   @override
@@ -111,7 +110,12 @@ class _WorkspacePageState extends State<WorkspacePage> {
     if (widget.routeActive &&
         (oldWidget.view != widget.view ||
             oldWidget.configSection != widget.configSection)) {
-      setState(() => _section = _sectionFromRoute());
+      setState(() {
+        _section = _sectionFromRoute();
+        // Latch the lazy manage panel when a route navigates to it (the rail
+        // tap path latches this in [_onSectionChanged]).
+        if (_section == WorkspaceSection.manage) _visitedManage = true;
+      });
     }
   }
 

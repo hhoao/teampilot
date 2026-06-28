@@ -135,6 +135,21 @@ class _HomeShellState extends State<HomeShell> {
     }
     await _persistOpenTabs();
     await _reloadRecentlyClosed();
+    // Warm sessions for every restored tab so switching to a background tab is
+    // instant on first click instead of paying the cold disk/SFTP load then.
+    for (final tab in _openTabs) {
+      _prefetchWorkspaceSessions(tab.workspaceId);
+    }
+  }
+
+  /// Best-effort background hydration of a workspace's sessions. Deduped by
+  /// [ChatCubit.ensureSessionsForWorkspace] (skips when already loaded/in
+  /// flight), so it is safe to call eagerly on tab open or hover.
+  void _prefetchWorkspaceSessions(String workspaceId) {
+    if (!mounted || workspaceId.trim().isEmpty) return;
+    unawaited(
+      context.read<ChatCubit>().ensureSessionsForWorkspace(workspaceId),
+    );
   }
 
   Future<void> _persistOpenTabs() async {
@@ -185,6 +200,7 @@ class _HomeShellState extends State<HomeShell> {
       unawaited(_persistOpenTabs());
     }
     unawaited(_recentWorkspacesStore.recordVisit(tab));
+    _prefetchWorkspaceSessions(tab.workspaceId);
     if (activate) {
       _selectTab(tab);
     }

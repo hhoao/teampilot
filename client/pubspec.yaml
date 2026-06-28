@@ -85,6 +85,10 @@ dev_dependencies:
   flutter_native_splash: any
   native_splash_screen_cli:
     path: packages/native_splash_screen/native_splash_screen_cli
+  vm_service_protos: ^2.0.1
+  integration_test:
+    sdk: flutter
+  vm_service: ^15.2.0
 
 flutter:
   generate: true
