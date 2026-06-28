@@ -3740,6 +3740,24 @@ abstract class AppLocalizations {
   /// **'Use Windows local storage instead'**
   String get bootstrapUseNativeStorageInstead;
 
+  /// No description provided for @bootstrapLoadingApp.
+  ///
+  /// In en, this message translates to:
+  /// **'Starting TeamPilot…'**
+  String get bootstrapLoadingApp;
+
+  /// No description provided for @bootstrapLoadingWorkspaces.
+  ///
+  /// In en, this message translates to:
+  /// **'Loading workspaces…'**
+  String get bootstrapLoadingWorkspaces;
+
+  /// No description provided for @bootstrapLoadingLibraries.
+  ///
+  /// In en, this message translates to:
+  /// **'Loading libraries…'**
+  String get bootstrapLoadingLibraries;
+
   /// No description provided for @runsPlaceholder.
   ///
   /// In en, this message translates to:

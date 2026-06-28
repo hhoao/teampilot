@@ -36,7 +36,8 @@ export 'team/team_resource_sync_service.dart'
 /// linking ([TeamResourceSyncService]), launching ([TeamLaunchService]) and
 /// config-profile provisioning ([TeamProfileProvisioner]). Roster transforms
 /// live in [TeamRosterEditor]; this cubit persists and emits.
-class LaunchProfileCubit extends Cubit<LaunchProfileState> implements LaunchProfileCubitHost {
+class LaunchProfileCubit extends Cubit<LaunchProfileState>
+    implements LaunchProfileCubitHost {
   LaunchProfileCubit({
     required LaunchProfileRepository repository,
     required SessionRepository sessionRepository,
@@ -58,7 +59,8 @@ class LaunchProfileCubit extends Cubit<LaunchProfileState> implements LaunchProf
     LaunchProfileProvisioner? identityProvisioner,
   }) : _repository = repository,
        _sessionRepository = sessionRepository,
-       _identityProvisioner = identityProvisioner ??
+       _identityProvisioner =
+           identityProvisioner ??
            LaunchProfileProvisioner(repository: repository),
        _executableResolver = executableResolver,
        _cliExecutableResolver = cliExecutableResolver,
@@ -221,7 +223,9 @@ class LaunchProfileCubit extends Cubit<LaunchProfileState> implements LaunchProf
     }
     if (state.personals.any((p) => p.display == trimmed) ||
         state.teams.any((t) => t.name == trimmed)) {
-      emit(state.copyWith(statusMessage: 'Workspace "$trimmed" already exists.'));
+      emit(
+        state.copyWith(statusMessage: 'Workspace "$trimmed" already exists.'),
+      );
       return false;
     }
     final now = DateTime.now().millisecondsSinceEpoch;
@@ -351,11 +355,27 @@ class LaunchProfileCubit extends Cubit<LaunchProfileState> implements LaunchProf
 
   // ===== Team lifecycle =====
 
-  Future<void> load({bool awaitProfiles = false}) async {
-    appLogger.i('LaunchProfileCubit loading identities...');
-    emit(state.copyWith(isLoading: true));
-    await _identityProvisioner.ensureDefaultPersonal();
-    final all = await _repository.loadAll();
+  Future<void> load({
+    bool awaitProfiles = false,
+    bool bootSilent = false,
+  }) async {
+    final sw = Stopwatch()..start();
+    appLogger.i('[boot] LaunchProfileCubit load start');
+    if (!bootSilent) {
+      emit(state.copyWith(isLoading: true));
+    }
+    final loadSw = Stopwatch()..start();
+    var all = await _repository.loadAll();
+    appLogger.i(
+      '[boot] LaunchProfileCubit loadAll +${loadSw.elapsedMilliseconds}ms '
+      'count=${all.length}',
+    );
+    final defaultPersonal = await _identityProvisioner.ensureDefaultPersonal(
+      loaded: all,
+    );
+    if (!all.any((profile) => profile.id == defaultPersonal.id)) {
+      all = List<LaunchProfile>.of(all)..add(defaultPersonal);
+    }
     var teams = _sortTeams(all.whereType<TeamProfile>().toList());
     final personals = _sortPersonals(all.whereType<PersonalProfile>().toList());
     if (teams.isEmpty) {
@@ -364,8 +384,8 @@ class LaunchProfileCubit extends Cubit<LaunchProfileState> implements LaunchProf
       await _repository.save(team);
     }
     final selectedId = state.selectedTeamId;
-    final nextSelected = selectedId != null &&
-            teams.any((team) => team.id == selectedId)
+    final nextSelected =
+        selectedId != null && teams.any((team) => team.id == selectedId)
         ? selectedId
         : teams.first.id;
     emit(
@@ -377,7 +397,8 @@ class LaunchProfileCubit extends Cubit<LaunchProfileState> implements LaunchProf
       ),
     );
     appLogger.i(
-      'LaunchProfileCubit loaded ${teams.length} teams, ${personals.length} personals',
+      '[boot] LaunchProfileCubit load done +${sw.elapsedMilliseconds}ms '
+      '${teams.length} teams, ${personals.length} personals',
     );
     final profiles = _provisioner.ensureForTeams(teams);
     if (awaitProfiles) {
@@ -385,7 +406,9 @@ class LaunchProfileCubit extends Cubit<LaunchProfileState> implements LaunchProf
     } else {
       unawaited(
         profiles.catchError((Object e) {
-          appLogger.w('[LaunchProfileCubit] background profile ensure failed: $e');
+          appLogger.w(
+            '[LaunchProfileCubit] background profile ensure failed: $e',
+          );
         }),
       );
     }
@@ -770,7 +793,8 @@ class LaunchProfileCubit extends Cubit<LaunchProfileState> implements LaunchProf
     final effectiveId = (presetId == null || presetId.trim().isEmpty)
         ? null
         : presetId.trim();
-    final syncCliFromPreset = team.teamMode == TeamMode.mixed &&
+    final syncCliFromPreset =
+        team.teamMode == TeamMode.mixed &&
         effectiveId != null &&
         effectiveId != TeamProfile.inheritPresetId &&
         syncCli != null;
@@ -887,7 +911,8 @@ class LaunchProfileCubit extends Cubit<LaunchProfileState> implements LaunchProf
     emit(state.copyWith(isSyncingPlugins: true));
     try {
       final catalog =
-          await (_installedPluginsLoader?.call() ?? _pluginRepository.loadAll());
+          await (_installedPluginsLoader?.call() ??
+              _pluginRepository.loadAll());
       await _pluginLinker.syncForProfile(
         profileId: personal.id,
         pluginIds: personal.bundle.pluginIds,

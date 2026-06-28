@@ -158,14 +158,12 @@ abstract final class FileTreeContextMenu {
       case 'copy_path':
         await Clipboard.setData(ClipboardData(text: targetPath));
       case 'file_manager':
-        if (workContext != null) {
-          await _openInFileManager(
-            targetPath,
-            isDirectory: isDirectory,
-            remoteFileManagerActions: remoteFileManagerActions,
-            workContext: workContext,
-          );
-        }
+        await _openInFileManager(
+          targetPath,
+          isDirectory: isDirectory,
+          remoteFileManagerActions: remoteFileManagerActions,
+          workContext: workContext,
+        );
       case 'terminal':
         await _openInTerminal(context, targetPath, isDirectory: isDirectory);
     }

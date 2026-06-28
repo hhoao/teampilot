@@ -4,7 +4,6 @@ import 'dart:io' show Directory, File;
 import 'package:sqlite3/sqlite3.dart';
 
 import '../../models/app_provider_config.dart';
-import '../../models/team_config.dart';
 import '../io/filesystem.dart';
 import 'codex/codex_cc_switch_import.dart';
 

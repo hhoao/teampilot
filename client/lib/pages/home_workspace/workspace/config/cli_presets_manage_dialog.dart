@@ -9,7 +9,6 @@ import '../../../../services/cli/registry/cli_display_name.dart';
 import '../../../../services/cli/registry/cli_tool_registry_scope.dart';
 import '../../../../theme/app_text_styles.dart';
 import '../../../../widgets/app_dialog.dart';
-import '../../../../widgets/settings/workspace_settings_widgets.dart';
 import 'cli_preset_edit_dialog.dart';
 
 class CliPresetsManageDialog extends StatelessWidget {

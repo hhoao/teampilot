@@ -1,3 +1,4 @@
+import 'dart:convert';
 import 'dart:io';
 
 import 'package:flutter_test/flutter_test.dart';
@@ -25,7 +26,7 @@ void main() {
     await repo.save(const PersonalProfile(
       id: 'coding',
       display: 'Coding',
-      bundle: const ConfigBundle(skillIds: ['s']),
+      bundle: ConfigBundle(skillIds: ['s']),
     ));
     await repo.save(const TeamProfile(id: 'squad', name: 'Squad'));
 
@@ -55,5 +56,23 @@ void main() {
 
     final personals = await repo.loadPersonalProfiles();
     expect(personals.map((p) => p.id).toList(), ['a', 'b']);
+  });
+
+  test('loadAll maintains launch-profiles-index.json snapshot', () async {
+    await repo.save(const PersonalProfile(id: 'coding', display: 'Coding'));
+    await repo.save(const TeamProfile(id: 'squad', name: 'Squad'));
+
+    final resolvedIndex =
+        '${Directory(tmp.path).parent.path}${Platform.pathSeparator}launch-profiles-index.json';
+    expect(File(resolvedIndex).existsSync(), isTrue);
+
+    final fromSnapshot = await repo.loadAll();
+    expect(fromSnapshot.map((e) => e.id).toSet(), {'coding', 'squad'});
+
+    await repo.delete('coding');
+    final afterDelete = await repo.loadAll();
+    expect(afterDelete.map((e) => e.id).toList(), ['squad']);
+    final decoded = jsonDecode(File(resolvedIndex).readAsStringSync());
+    expect((decoded as Map)['profiles'], hasLength(1));
   });
 }

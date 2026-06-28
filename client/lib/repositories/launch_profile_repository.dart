@@ -1,12 +1,14 @@
+import 'dart:async';
 import 'dart:convert';
 
-import '../models/launch_profile_kind.dart';
 import '../models/personal_profile.dart';
 import '../models/team_config.dart';
 import '../models/launch_profile.dart';
 import '../services/io/filesystem.dart';
 import '../services/session/session_lifecycle_service.dart';
 import '../services/storage/app_storage.dart';
+import '../utils/logger.dart';
+import 'launch_profile_index_store.dart';
 
 /// Persists [LaunchProfile] records (both kinds) at
 /// `launch-profiles/{id}/profile.json`.
@@ -19,6 +21,23 @@ class LaunchProfileRepository {
 
   final String? _rootDirOverride;
   final SessionLifecycleService? _lifecycleService;
+  static final Map<String, List<LaunchProfile>> _loadAllByRoot = {};
+
+  String _loadAllCacheKey() {
+    if (_rootDirOverride != null) return _rootDirOverride;
+    if (AppStorage.isInstalled) return AppStorage.appDataRoot;
+    return AppPathsBootstrapper.current.basePath;
+  }
+
+  void _invalidateLoadAllCache() {
+    _loadAllByRoot.remove(_loadAllCacheKey());
+  }
+
+  List<LaunchProfile> _rememberLoadAll(List<LaunchProfile> profiles) {
+    final remembered = List<LaunchProfile>.unmodifiable(profiles);
+    _loadAllByRoot[_loadAllCacheKey()] = remembered;
+    return remembered;
+  }
 
   Future<({String dir, Filesystem fs})> _paths() async {
     // Explicit rootDir override (tests) wins; otherwise the home control plane.
@@ -35,27 +54,115 @@ class LaunchProfileRepository {
   String _profileFile(Filesystem fs, String dir, String id) =>
       fs.pathContext.join(dir, id.trim(), 'profile.json');
 
-  Future<List<LaunchProfile>> loadAll() async {
-    final paths = await _paths();
-    final out = <LaunchProfile>[];
+  LaunchProfileIndexStore _indexStore(({String dir, Filesystem fs}) paths) =>
+      LaunchProfileIndexStore(launchProfilesDir: paths.dir, fs: paths.fs);
+
+  Future<List<String>> _listProfileIds(({String dir, Filesystem fs}) paths) async {
     try {
       final entries = await paths.fs.listDir(paths.dir);
-      for (final entry in entries) {
-        if (!entry.isDirectory) continue;
-        final file = _profileFile(paths.fs, paths.dir, entry.name);
-        final content = await paths.fs.readString(file);
-        if (content == null || content.isEmpty) continue;
-        try {
-          final decoded = jsonDecode(content);
-          if (decoded is! Map) continue;
-          out.add(_decode(Map<String, Object?>.from(decoded)));
-        } on FormatException {
-          continue;
-        }
-      }
+      final ids = await Future.wait(
+        entries.where((e) => e.isDirectory).map((entry) async {
+          final file = _profileFile(paths.fs, paths.dir, entry.name);
+          if ((await paths.fs.stat(file)).exists) return entry.name;
+          return null;
+        }),
+      );
+      return [for (final id in ids) if (id != null) id];
     } on Object {
       return const [];
     }
+  }
+
+  static bool _sameProfileIds(List<String> diskIds, List<LaunchProfile> snapshot) {
+    if (diskIds.length != snapshot.length) return false;
+    final diskSet = diskIds.toSet();
+    return snapshot.every((profile) => diskSet.contains(profile.id));
+  }
+
+  Future<List<LaunchProfile>> loadAll() async {
+    final cached = _loadAllByRoot[_loadAllCacheKey()];
+    if (cached != null) {
+      appLogger.i(
+        '[boot] loadLaunchProfiles from memory count=${cached.length}',
+      );
+      return cached;
+    }
+    final paths = await _paths();
+    final store = _indexStore(paths);
+    final readSw = Stopwatch()..start();
+    final snapshot = await store.tryRead();
+    final readMs = readSw.elapsedMilliseconds;
+    if (snapshot != null) {
+      appLogger.i(
+        '[boot] loadLaunchProfiles from snapshot count=${snapshot.length} '
+        'read=${readMs}ms (validate deferred)',
+      );
+      unawaited(
+        _revalidateLaunchProfilesSnapshot(paths, store, snapshot),
+      );
+      return _rememberLoadAll(_sorted(snapshot));
+    } else {
+      appLogger.i(
+        '[boot] loadLaunchProfiles rebuilding snapshot read=${readMs}ms',
+      );
+    }
+    final profiles = await _scanAll(paths);
+    await store.writeAll(profiles);
+    return _rememberLoadAll(profiles);
+  }
+
+  Future<void> _revalidateLaunchProfilesSnapshot(
+    ({String dir, Filesystem fs}) paths,
+    LaunchProfileIndexStore store,
+    List<LaunchProfile> snapshot,
+  ) async {
+    final validateSw = Stopwatch()..start();
+    final diskIds = await _listProfileIds(paths);
+    final validateMs = validateSw.elapsedMilliseconds;
+    if (_sameProfileIds(diskIds, snapshot)) {
+      appLogger.i(
+        '[boot] loadLaunchProfiles validate ok +${validateMs}ms',
+      );
+      return;
+    }
+    appLogger.i(
+      '[boot] loadLaunchProfiles snapshot stale '
+      'disk=${diskIds.length} index=${snapshot.length} '
+      'validate=${validateMs}ms',
+    );
+    final profiles = await _scanAll(paths);
+    await store.writeAll(profiles);
+    _rememberLoadAll(profiles);
+  }
+
+  Future<List<LaunchProfile>> _scanAll(({String dir, Filesystem fs}) paths) async {
+    try {
+      final entries = await paths.fs.listDir(paths.dir);
+      final profiles = await Future.wait(
+        entries.where((e) => e.isDirectory).map((entry) async {
+          final file = _profileFile(paths.fs, paths.dir, entry.name);
+          final content = await paths.fs.readString(file);
+          if (content == null || content.isEmpty) return null;
+          try {
+            final decoded = jsonDecode(content);
+            if (decoded is! Map) return null;
+            return _decode(Map<String, Object?>.from(decoded));
+          } on FormatException {
+            return null;
+          }
+        }),
+      );
+      final out = [
+        for (final profile in profiles)
+          if (profile != null) profile,
+      ];
+      return _sorted(out);
+    } on Object {
+      return const [];
+    }
+  }
+
+  static List<LaunchProfile> _sorted(List<LaunchProfile> out) {
     final sorted = List<LaunchProfile>.of(out)..sort(_compareProfiles);
     return List.unmodifiable(sorted);
   }
@@ -102,12 +209,8 @@ class LaunchProfileRepository {
     return a.display.toLowerCase().compareTo(b.display.toLowerCase());
   }
 
-  LaunchProfile _decode(Map<String, Object?> json) {
-    return switch (LaunchProfileKind.decode(json['kind'])) {
-      LaunchProfileKind.personal => PersonalProfile.fromJson(json),
-      LaunchProfileKind.team => TeamProfile.fromJson(json),
-    };
-  }
+  LaunchProfile _decode(Map<String, Object?> json) =>
+      LaunchProfileIndexStore.decodeProfile(json);
 
   Future<void> save(LaunchProfile identity) async {
     final id = identity.id.trim();
@@ -119,6 +222,8 @@ class LaunchProfileRepository {
       _profileFile(paths.fs, paths.dir, id),
       const JsonEncoder.withIndent('  ').convert(identity.toJson()),
     );
+    _invalidateLoadAllCache();
+    await _indexStore(paths).upsert(identity);
   }
 
   Future<List<TeamProfile>> loadTeamProfiles() async {
@@ -159,5 +264,7 @@ class LaunchProfileRepository {
     } on Object {
       // best effort
     }
+    _invalidateLoadAllCache();
+    await _indexStore(paths).remove(trimmed);
   }
 }

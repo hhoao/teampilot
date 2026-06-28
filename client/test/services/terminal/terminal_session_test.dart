@@ -1049,7 +1049,7 @@ void main() {
   });
 
   group('linkProviders', () {
-    TerminalSession _makeSession() => TerminalSession(
+    TerminalSession makeSession() => TerminalSession(
           executable: _ptyTestExecutable,
           validateLaunch: false,
           transportStarter: (
@@ -1064,7 +1064,7 @@ void main() {
         );
 
     test('returns a UrlLinkProvider and a FilePathLinkProvider', () {
-      final session = _makeSession();
+      final session = makeSession();
       addTearDown(session.dispose);
 
       final providers = session.linkProviders;
@@ -1074,7 +1074,7 @@ void main() {
     });
 
     test('returns the same list instance on repeated access (lazy/cached)', () {
-      final session = _makeSession();
+      final session = makeSession();
       addTearDown(session.dispose);
 
       final first = session.linkProviders;
@@ -1083,7 +1083,7 @@ void main() {
     });
 
     test('dispose clears and disposes the providers', () {
-      final session = _makeSession();
+      final session = makeSession();
 
       // Force allocation before dispose.
       final providers = List<TerminalLinkProvider>.from(session.linkProviders);

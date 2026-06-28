@@ -94,8 +94,9 @@ class _IdentityExtensionsSectionState
   }
 
   ExtensionOverrideChoice _choiceFor(String id) {
-    if (!_overrides.containsKey(id))
+    if (!_overrides.containsKey(id)) {
       return ExtensionOverrideChoice.followGlobal;
+    }
     return _overrides[id]!
         ? ExtensionOverrideChoice.forceOn
         : ExtensionOverrideChoice.forceOff;

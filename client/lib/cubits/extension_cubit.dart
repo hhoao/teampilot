@@ -6,6 +6,7 @@ import '../models/extension_state.dart';
 import '../repositories/extension_repository.dart';
 import '../services/extension/extension_acquisition_engine.dart';
 import '../services/extension/extension_detector.dart';
+import '../utils/yield_ui_frame.dart';
 
 enum ExtensionLoadStatus { idle, loading, ready, error }
 
@@ -110,6 +111,36 @@ class ExtensionCubit extends Cubit<ExtensionUiState> {
       await _loadFuture;
     } finally {
       _loadFuture = null;
+    }
+  }
+
+  /// Boot gate: probe each manifest sequentially so the loading spinner can
+  /// animate between host `which` / `--version` subprocess calls.
+  Future<void> loadForBootstrap() async {
+    if (state.rows.isEmpty) {
+      emit(state.copyWith(status: ExtensionLoadStatus.loading, clearError: true));
+    }
+    try {
+      final persisted = await _repository.load(forceReload: true);
+      final rows = <ExtensionRow>[];
+      for (final manifest in _repository.manifests) {
+        rows.add(await _buildRow(manifest, persisted));
+        await yieldUiFrame();
+      }
+      emit(
+        state.copyWith(
+          rows: rows,
+          status: ExtensionLoadStatus.ready,
+          clearError: true,
+        ),
+      );
+    } catch (e) {
+      emit(
+        state.copyWith(
+          status: ExtensionLoadStatus.error,
+          errorMessage: e.toString(),
+        ),
+      );
     }
   }
 

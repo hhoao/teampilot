@@ -46,7 +46,7 @@ void main() {
     const team = TeamProfile(
       id: 'team-1',
       name: 'hello',
-      modelsByTool: const {'claude': 'sonnet'},
+      modelsByTool: {'claude': 'sonnet'},
     );
 
     final decoded = TeamProfile.fromJson(team.toJson());

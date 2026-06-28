@@ -1,3 +1,4 @@
+import 'dart:convert';
 import 'dart:io';
 
 import 'package:teampilot/models/app_session.dart';
@@ -478,5 +479,43 @@ void main() {
 
     expect(session.profileId, '');
     expect((await repo.loadSessions()).single.profileId, '');
+  });
+
+  test('loadWorkspacesIndex maintains workspaces-index.json snapshot', () async {
+    final tmp = await Directory.systemTemp.createTemp('fs_session_repo_');
+    addTearDown(() => tmp.deleteSync(recursive: true));
+
+    final repo = SessionRepository(rootDir: tmp.path);
+    final workspace = await repo.createWorkspace([WorkspaceFolder(path: '/a')]);
+    final session = await repo.createSession(workspace.workspaceId);
+
+    final indexPath = '${tmp.path}/workspace/workspaces-index.json';
+    expect(File(indexPath).existsSync(), isTrue);
+
+    final fromIndex = await repo.loadWorkspacesIndex();
+    expect(fromIndex.single.workspaceId, workspace.workspaceId);
+    expect(fromIndex.single.sessionIds, contains(session.sessionId));
+
+    await repo.deleteSession(session.sessionId);
+    final afterDelete = await repo.loadWorkspacesIndex();
+    expect(afterDelete.single.sessionIds, isEmpty);
+  });
+
+  test('deleteWorkspace removes entry from workspaces-index.json', () async {
+    final tmp = await Directory.systemTemp.createTemp('fs_session_repo_');
+    addTearDown(() => tmp.deleteSync(recursive: true));
+
+    final repo = SessionRepository(rootDir: tmp.path);
+    final workspace = await repo.createWorkspace([WorkspaceFolder(path: '/a')]);
+    await repo.createSession(workspace.workspaceId);
+
+    final indexPath = '${tmp.path}/workspace/workspaces-index.json';
+    expect(File(indexPath).existsSync(), isTrue);
+
+    await repo.deleteWorkspace(workspace.workspaceId);
+    expect(await repo.loadWorkspacesIndex(), isEmpty);
+    expect(File(indexPath).existsSync(), isTrue);
+    final decoded = jsonDecode(File(indexPath).readAsStringSync());
+    expect((decoded as Map)['workspaces'], isEmpty);
   });
 }

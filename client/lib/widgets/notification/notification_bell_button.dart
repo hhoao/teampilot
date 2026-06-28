@@ -4,7 +4,6 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import '../../cubits/notification_cubit.dart';
 import '../../l10n/l10n_extensions.dart';
 import '../../theme/app_icon_sizes.dart';
-import '../dropdown/popover/app_popover.dart';
 import '../menu/sidebar_action_menu.dart';
 import 'notification_list_tile.dart';
 

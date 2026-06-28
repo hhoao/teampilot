@@ -1,5 +1,4 @@
 import '../../models/team_config.dart';
-import '../../repositories/app_provider_repository.dart';
 import '../cli/registry/config_profile/config_profile_context.dart';
 import '../provider/credential_binding.dart';
 import 'claude/claude_provider_credentials_service.dart';

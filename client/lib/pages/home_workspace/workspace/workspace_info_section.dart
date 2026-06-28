@@ -148,15 +148,14 @@ class WorkspaceConfigDangerZone extends StatelessWidget {
 }
 
 class _WorkspaceSettingsInlineRow extends StatelessWidget {
-  _WorkspaceSettingsInlineRow({
+  const _WorkspaceSettingsInlineRow({
     required this.label,
     this.value = '',
     this.valueWidget,
     this.onEdit,
     this.onCopy,
-    this.trailing,
     this.showDividerBelow = true,
-  });
+  }) : trailing = null;
 
   final String label;
   final String value;

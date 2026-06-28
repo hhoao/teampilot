@@ -14,6 +14,7 @@ import '../services/cli/registry/capabilities/provider_credential_capability.dar
 import '../services/cli/registry/cli_tool_registry.dart';
 import '../services/provider/provider_import_service.dart';
 import '../services/provider/tool_config_generator.dart';
+import '../utils/logger.dart';
 
 class AppProviderState extends Equatable {
   const AppProviderState({
@@ -133,14 +134,23 @@ class AppProviderCubit extends Cubit<AppProviderState> {
 
   String get catalogPath => AppStorage.paths.providerConfigDir;
 
-  Future<void> load() async {
+  Future<void> load({bool reconcileCredentials = true}) async {
+    final sw = Stopwatch()..start();
     emit(state.copyWith(isLoading: true, statusMessage: ''));
     final byCli = <CliTool, List<AppProviderConfig>>{};
     final selectedByCli = Map<CliTool, String?>.from(
       state.selectedProviderIdByCli,
     );
-    for (final cli in CliTool.values) {
-      final providers = await _repository.loadProviders(cli);
+    final loaded = await Future.wait(
+      CliTool.values.map((cli) async {
+        final providers = await _repository.loadProviders(
+          cli,
+          reconcileCredentials: reconcileCredentials,
+        );
+        return (cli, providers);
+      }),
+    );
+    for (final (cli, providers) in loaded) {
       byCli[cli] = providers;
       final selected = selectedByCli[cli];
       selectedByCli[cli] =
@@ -158,6 +168,58 @@ class AppProviderCubit extends Cubit<AppProviderState> {
             : 'Ready.',
       ),
     );
+    appLogger.i(
+      '[boot] AppProviderCubit load done +${sw.elapsedMilliseconds}ms '
+      'reconcile=$reconcileCredentials',
+    );
+  }
+
+  /// Refreshes credential status for catalogs already in memory (background).
+  Future<void> reconcileCredentials() async {
+    if (state.providersByCli.isEmpty) return;
+    final sw = Stopwatch()..start();
+    final byCli = Map<CliTool, List<AppProviderConfig>>.from(state.providersByCli);
+    final reconciled = await Future.wait(
+      CliTool.values.map((cli) async {
+        final current = byCli[cli];
+        if (current == null) return (cli, current);
+        final providers = await _repository.reconcileProviders(cli, current);
+        return (cli, providers);
+      }),
+    );
+    var changed = false;
+    for (final (cli, providers) in reconciled) {
+      if (profilesEqual(byCli[cli], providers)) continue;
+      changed = true;
+      if (providers != null) {
+        byCli[cli] = providers;
+      }
+    }
+    if (!changed) {
+      appLogger.i(
+        '[boot] AppProviderCubit reconcileCredentials +${sw.elapsedMilliseconds}ms unchanged',
+      );
+      return;
+    }
+    emit(state.copyWith(providersByCli: byCli));
+    appLogger.i(
+      '[boot] AppProviderCubit reconcileCredentials +${sw.elapsedMilliseconds}ms updated',
+    );
+  }
+
+  static bool profilesEqual(
+    List<AppProviderConfig>? a,
+    List<AppProviderConfig>? b,
+  ) {
+    if (identical(a, b)) return true;
+    if (a == null || b == null) return a == b;
+    if (a.length != b.length) return false;
+    for (var i = 0; i < a.length; i++) {
+      if (a[i].id != b[i].id) return false;
+      if (a[i].credentialStatus != b[i].credentialStatus) return false;
+      if (a[i].credentialUpdatedAt != b[i].credentialUpdatedAt) return false;
+    }
+    return true;
   }
 
   Future<void> setSelectedCli(CliTool cli) async {

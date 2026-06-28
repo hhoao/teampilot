@@ -6,7 +6,6 @@ import '../../../../cubits/cli_presets_cubit.dart';
 import '../../../../l10n/l10n_extensions.dart';
 import '../../../../models/app_provider_config.dart';
 import '../../../../models/cli_preset.dart';
-import '../../../../models/team_config.dart';
 import '../../../../services/cli/registry/cli_display_name.dart';
 import '../../../../services/cli/registry/cli_tool_registry_scope.dart';
 import '../../../../widgets/app_dialog.dart';

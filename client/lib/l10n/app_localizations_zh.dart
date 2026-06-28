@@ -1952,6 +1952,15 @@ class AppLocalizationsZh extends AppLocalizations {
   String get bootstrapUseNativeStorageInstead => '改用 Windows 本地存储';
 
   @override
+  String get bootstrapLoadingApp => '正在启动 TeamPilot…';
+
+  @override
+  String get bootstrapLoadingWorkspaces => '正在加载工作区…';
+
+  @override
+  String get bootstrapLoadingLibraries => '正在加载资源库…';
+
+  @override
   String get runsPlaceholder => '运行历史将显示在此处。';
 
   @override

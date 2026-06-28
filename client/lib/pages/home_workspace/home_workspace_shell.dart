@@ -10,7 +10,6 @@ import '../../cubits/layout_cubit.dart';
 import '../../cubits/session_preferences_cubit.dart';
 import '../../cubits/launch_profile_cubit.dart';
 import '../../cubits/workspace_tools_cubit.dart';
-import '../../l10n/app_localizations.dart';
 import '../../l10n/l10n_extensions.dart';
 import '../../models/workspace.dart';
 import '../../models/launch_profile_ref.dart';
@@ -25,6 +24,7 @@ import '../../theme/workspace_surface_layers.dart';
 import '../../services/home_workspace/home_closed_workspaces_store.dart';
 import '../../services/home_workspace/home_open_workspaces_store.dart';
 import '../../services/home_workspace/home_recent_workspaces_store.dart';
+import '../../services/home_workspace/home_workspace_ui_cache.dart';
 import '../../services/file_tree/workspace_file_tree_store.dart';
 import '../../services/workspace/workspace_tools_scope_registry.dart';
 import '../../services/workspace/workspace_worktree_registry.dart';
@@ -104,29 +104,26 @@ class _HomeShellState extends State<HomeShell> {
   final _openWorkspacesStore = HomeOpenWorkspacesStore();
 
   /// Open workspace tabs in display order; persisted across app restarts.
-  List<WorkspaceTabRef> _openTabs = const [];
+  late List<WorkspaceTabRef> _openTabs;
   List<HomeClosedWorkspaceEntry> _recentlyClosed = const [];
 
   @override
   void initState() {
     super.initState();
-    unawaited(_bootstrapOpenTabs());
+    final cache = context.read<HomeWorkspaceUiCache>();
+    final routeTab = WorkspaceTabRef.fromLocation(widget.location);
+    _openTabs = HomeShell.mergeOpenTabs(
+      persisted: cache.openWorkspaceTabs,
+      routeTab: routeTab,
+    );
+    unawaited(_finishOpenTabsBootstrap(routeTab));
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (!mounted) return;
       _syncTeamSessionScope(context);
     });
   }
 
-  Future<void> _bootstrapOpenTabs() async {
-    final routeTab = WorkspaceTabRef.fromLocation(widget.location);
-    final persisted = await _openWorkspacesStore.loadOrderedTabs();
-    if (!mounted) return;
-    setState(
-      () => _openTabs = HomeShell.mergeOpenTabs(
-        persisted: persisted,
-        routeTab: routeTab,
-      ),
-    );
+  Future<void> _finishOpenTabsBootstrap(WorkspaceTabRef? routeTab) async {
     if (routeTab != null) {
       unawaited(_recentWorkspacesStore.recordVisit(routeTab));
       WidgetsBinding.instance.addPostFrameCallback((_) {
@@ -223,10 +220,12 @@ class _HomeShellState extends State<HomeShell> {
     final chat = context.read<ChatCubit>();
     final workspace = _resolve(chat.state.workspaces, tab.workspaceId);
     if (workspace == null) return;
+    await chat.ensureSessionsForWorkspace(tab.workspaceId);
+    final sessions = await chat.sessionsForWorkspaceReady(tab.workspaceId);
     await openWorkspaceInNewTabWithIdentityPicker(
       context,
       workspace: workspace,
-      sessions: chat.state.sessions,
+      sessions: sessions,
       excludeIdentity: tab.identity,
     );
   }

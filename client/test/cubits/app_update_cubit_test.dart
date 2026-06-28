@@ -8,9 +8,8 @@ import 'package:teampilot/services/app/app_update_service.dart';
 class _FakeUpdateService extends AppUpdateService {
   _FakeUpdateService({
     required this.result,
-    this.versionLabel = '2.1.10',
     this.throwOnCheck = false,
-  });
+  }) : versionLabel = '2.1.10';
 
   final AppUpdateCheckResult result;
   final String versionLabel;

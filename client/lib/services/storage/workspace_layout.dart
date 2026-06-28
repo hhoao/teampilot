@@ -9,6 +9,7 @@ import 'app_storage.dart';
 /// manifest, profile, assets, sessions (metadata + bus + CLI runtime).
 ///
 /// ```
+/// workspace/workspaces-index.json   # derived startup snapshot (manifest + session dir ids)
 /// workspace/workspaces/{workspaceId}/
 ///   manifest.json       # Workspace
 ///   profile.json        # PersonalProfile (personal workspaces)
@@ -33,6 +34,10 @@ class WorkspaceLayout {
   p.Context get _ctx => _fs.pathContext;
 
   String get workspaceRootDir => _ctx.join(teampilotRoot, 'workspace');
+
+  /// Cached workspace list for fast home index load; rebuilt when stale or missing.
+  String get workspacesIndexFile =>
+      _ctx.join(workspaceRootDir, 'workspaces-index.json');
 
   String get workspacesDir => _ctx.join(workspaceRootDir, 'workspaces');
 

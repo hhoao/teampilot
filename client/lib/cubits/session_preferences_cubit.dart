@@ -1,7 +1,6 @@
 import 'package:equatable/equatable.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
-import '../models/connection_mode.dart';
 import '../models/session_preferences.dart';
 import '../services/cli/cli_tool_locator.dart';
 import '../services/cli/registry/capabilities/executable_resolver_capability.dart';
@@ -50,6 +49,15 @@ class SessionPreferencesCubit extends Cubit<SessionPreferencesState> {
   final SessionPreferencesRepository _repository;
   final Map<CliTool, String> _locatedExecutables;
   final CliToolRegistry _cliToolRegistry;
+
+  /// Merges startup PATH discovery; user-configured paths always win.
+  void mergeLocatedExecutables(Map<CliTool, String> discovered) {
+    for (final entry in discovered.entries) {
+      final path = entry.value.trim();
+      if (path.isEmpty || _userExecutableFor(entry.key).isNotEmpty) continue;
+      _locatedExecutables[entry.key] = path;
+    }
+  }
 
   Future<void> load() async {
     emit(state.copyWith(isLoading: true));
@@ -172,6 +180,6 @@ class SessionPreferencesCubit extends Cubit<SessionPreferencesState> {
       final value = entry.value.trim();
       if (value.isNotEmpty) normalized[entry.key] = value;
     }
-    return Map.unmodifiable(normalized);
+    return normalized;
   }
 }

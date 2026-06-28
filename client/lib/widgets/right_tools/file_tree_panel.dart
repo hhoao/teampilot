@@ -1,8 +1,9 @@
-﻿import 'dart:async';
+import 'dart:async';
 import 'dart:math' as math;
 
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/rendering.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:teampilot/theme/app_toast_theme.dart';
@@ -243,9 +244,16 @@ class _FileTreePanelState extends State<FileTreePanel> {
                   const SizedBox(height: 10),
                   // Single-root: show the folder path. Multi-root: each root
                   // gets its own header row, so the single path line is hidden.
-                  BlocSelector<FileTreeCubit, FileTreeState, (bool, bool, String)>(
-                    selector: (state) =>
-                        (state.isMultiRoot, state.anyRootExists, state.rootPath),
+                  BlocSelector<
+                    FileTreeCubit,
+                    FileTreeState,
+                    (bool, bool, String)
+                  >(
+                    selector: (state) => (
+                      state.isMultiRoot,
+                      state.anyRootExists,
+                      state.rootPath,
+                    ),
                     builder: (context, root) {
                       final (isMultiRoot, anyRootExists, rootPath) = root;
                       if (isMultiRoot) return const SizedBox.shrink();
@@ -269,28 +277,36 @@ class _FileTreePanelState extends State<FileTreePanel> {
                   ),
                   const SizedBox(height: 10),
                   Expanded(
-                    child: BlocSelector<FileTreeCubit, FileTreeState,
-                        List<FileTreeVisibleRow>>(
-                      selector: (state) => state.visibleRows,
-                      builder: (context, rows) {
-                        if (!context.read<FileTreeCubit>().state.anyRootExists) {
-                          return const SizedBox.shrink();
-                        }
-                        return _FileTreeList(
-                          rows: rows,
-                          cubit: _cubit,
-                          textColor: cs.onSurface,
-                          listScrollController: _listScrollController,
-                          horizontalScrollController:
-                              _horizontalScrollController,
-                          desktopShellActions:
-                              _desktopShellActionsFor(_workContext),
-                          remoteFileManagerActions:
-                              _remoteFileManagerActionsFor(_workContext),
-                          workContext: _workContext,
-                        );
-                      },
-                    ),
+                    child:
+                        BlocSelector<
+                          FileTreeCubit,
+                          FileTreeState,
+                          List<FileTreeVisibleRow>
+                        >(
+                          selector: (state) => state.visibleRows,
+                          builder: (context, rows) {
+                            if (!context
+                                .read<FileTreeCubit>()
+                                .state
+                                .anyRootExists) {
+                              return const SizedBox.shrink();
+                            }
+                            return _FileTreeList(
+                              rows: rows,
+                              cubit: _cubit,
+                              textColor: cs.onSurface,
+                              listScrollController: _listScrollController,
+                              horizontalScrollController:
+                                  _horizontalScrollController,
+                              desktopShellActions: _desktopShellActionsFor(
+                                _workContext,
+                              ),
+                              remoteFileManagerActions:
+                                  _remoteFileManagerActionsFor(_workContext),
+                              workContext: _workContext,
+                            );
+                          },
+                        ),
                   ),
                 ],
               ),
@@ -338,9 +354,7 @@ class _FileTreePanelState extends State<FileTreePanel> {
             : Icons.visibility_outlined,
         compact: true,
         size: AppIconButton.kCompactSize,
-        tooltip: showHiddenFiles
-            ? 'Hide hidden files'
-            : 'Show hidden files',
+        tooltip: showHiddenFiles ? 'Hide hidden files' : 'Show hidden files',
         onTap: _cubit.toggleShowHidden,
       ),
       AppIconButton(
@@ -472,70 +486,73 @@ class _FileTreeListState extends State<_FileTreeList> {
                 child: NotificationListener<ScrollNotification>(
                   onNotification: _onScrollNotification,
                   child: ListView.builder(
+                    scrollCacheExtent: ScrollCacheExtent.pixels(400),
                     controller: widget.listScrollController,
-                    cacheExtent: 400,
                     itemCount: rows.length,
                     itemExtent: kFileTreeRowExtent,
                     itemBuilder: (context, index) {
-                    final row = rows[index];
-                    if (row.isEmptyPlaceholder) {
-                      return SizedBox(
-                        width: contentWidth,
-                        child: Padding(
-                          padding: const EdgeInsets.symmetric(
-                            vertical: kFileTreeRowVerticalPadding,
-                            horizontal: kFileTreeRowHorizontalPadding,
-                          ),
-                          child: Align(
-                            alignment: Alignment.centerLeft,
-                            child: Padding(
-                              padding: EdgeInsets.only(
-                                left:
-                                    row.depth * kFileTreeIndentWidth +
-                                    kFileTreeNodePaddingLeft +
-                                    kFileTreeChevronSlotWidth,
-                              ),
-                              child: Text(
-                                '(empty)',
-                                style: AppTextStyles.of(context).caption
-                                    .copyWith(
-                                      color: widget.textColor.withValues(
-                                        alpha: 0.35,
+                      final row = rows[index];
+                      if (row.isEmptyPlaceholder) {
+                        return SizedBox(
+                          width: contentWidth,
+                          child: Padding(
+                            padding: const EdgeInsets.symmetric(
+                              vertical: kFileTreeRowVerticalPadding,
+                              horizontal: kFileTreeRowHorizontalPadding,
+                            ),
+                            child: Align(
+                              alignment: Alignment.centerLeft,
+                              child: Padding(
+                                padding: EdgeInsets.only(
+                                  left:
+                                      row.depth * kFileTreeIndentWidth +
+                                      kFileTreeNodePaddingLeft +
+                                      kFileTreeChevronSlotWidth,
+                                ),
+                                child: Text(
+                                  '(empty)',
+                                  style: AppTextStyles.of(context).caption
+                                      .copyWith(
+                                        color: widget.textColor.withValues(
+                                          alpha: 0.35,
+                                        ),
                                       ),
-                                    ),
+                                ),
                               ),
                             ),
                           ),
+                        );
+                      }
+                      return SizedBox(
+                        width: contentWidth,
+                        child: FileTreeNode(
+                          key: ValueKey(
+                            row.isRoot ? 'root:${row.path}' : row.path,
+                          ),
+                          path: row.path,
+                          entry: row.entry,
+                          depth: row.depth,
+                          cubit: widget.cubit,
+                          textColor: widget.textColor,
+                          desktopShellActions: _desktopShellActionsFor(
+                            widget.cubit.workContextFor(row.path) ??
+                                widget.workContext,
+                          ),
+                          remoteFileManagerActions:
+                              _remoteFileManagerActionsFor(
+                                widget.cubit.workContextFor(row.path) ??
+                                    widget.workContext,
+                              ),
+                          workContext:
+                              widget.cubit.workContextFor(row.path) ??
+                              widget.workContext,
+                          hoverEnabled: _hoverEnabled,
+                          isRoot: row.isRoot,
+                          rootMissing: row.rootMissing,
                         ),
                       );
-                    }
-                    return SizedBox(
-                      width: contentWidth,
-                      child: FileTreeNode(
-                        key: ValueKey(row.isRoot ? 'root:${row.path}' : row.path),
-                        path: row.path,
-                        entry: row.entry,
-                        depth: row.depth,
-                        cubit: widget.cubit,
-                        textColor: widget.textColor,
-                        desktopShellActions: _desktopShellActionsFor(
-                          widget.cubit.workContextFor(row.path) ??
-                              widget.workContext,
-                        ),
-                        remoteFileManagerActions: _remoteFileManagerActionsFor(
-                          widget.cubit.workContextFor(row.path) ??
-                              widget.workContext,
-                        ),
-                        workContext:
-                            widget.cubit.workContextFor(row.path) ??
-                            widget.workContext,
-                        hoverEnabled: _hoverEnabled,
-                        isRoot: row.isRoot,
-                        rootMissing: row.rootMissing,
-                      ),
-                    );
-                  },
-                ),
+                    },
+                  ),
                 ),
               ),
             ),

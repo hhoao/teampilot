@@ -3,7 +3,6 @@ import 'package:flutter/foundation.dart';
 import '../../../../models/app_provider_config.dart';
 import '../../../../models/personal_profile.dart';
 import '../../../../models/team_config.dart';
-import '../../../../repositories/app_provider_repository.dart';
 import '../../../provider/codex/codex_auth_artifacts.dart';
 import '../../../mcp/mcp_credentials_store.dart';
 import '../../../provider/codex/codex_effort_capability.dart';

@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:teampilot/cubits/app_bootstrap_cubit.dart';
 import 'package:teampilot/pages/onboarding/onboarding_gate.dart';
 import 'package:teampilot/repositories/app_settings_repository.dart';
 
@@ -15,12 +16,17 @@ void main() {
     );
 
     await tester.pumpWidget(
-      RepositoryProvider<AppSettingsRepository>.value(
-        value: settings,
-        child: MaterialApp(
-          home: OnboardingGate(
-            key: onboardingGateKey,
-            child: const Scaffold(body: Text('main app')),
+      MultiRepositoryProvider(
+        providers: [
+          RepositoryProvider<AppSettingsRepository>.value(value: settings),
+        ],
+        child: BlocProvider(
+          create: (_) => AppBootstrapCubit(),
+          child: MaterialApp(
+            home: OnboardingGate(
+              key: onboardingGateKey,
+              child: const Scaffold(body: Text('main app')),
+            ),
           ),
         ),
       ),

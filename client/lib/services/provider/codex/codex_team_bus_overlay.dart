@@ -59,7 +59,7 @@ timeout = 30
 url = "http://127.0.0.1:$port/mcp"
 tool_timeout_sec = $busToolTimeoutSec
 default_tools_approval_mode = "$defaultToolsApprovalMode"
-http_headers = { "${teammateBusMcpMemberHeader}" = "$memberId" }
+http_headers = { "$teammateBusMcpMemberHeader" = "$memberId" }
 '''
           .trim();
 

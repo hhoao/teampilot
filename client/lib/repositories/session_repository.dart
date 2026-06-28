@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:convert';
 
 import 'package:flutter/foundation.dart' show listEquals;
@@ -20,9 +21,11 @@ import '../services/workspace/workspace_icon_storage.dart';
 import '../services/session/session_lifecycle_service.dart';
 import '../services/provider/workspace_trust_provisioner.dart';
 import '../utils/lock_pool.dart';
+import '../utils/logger.dart';
 import '../utils/workspace_path_utils.dart';
 import '../utils/workspace_sessions.dart';
 import 'session_repository_fs.dart';
+import 'workspace_index_store.dart';
 
 class SessionRepository {
   SessionRepository({
@@ -34,6 +37,23 @@ class SessionRepository {
   final String? _rootOverride;
   final SessionLifecycleService? _lifecycleService;
   final _sessionFileLocks = LockPool();
+  static final Map<String, List<Workspace>> _workspacesIndexByRoot = {};
+
+  String _workspacesIndexCacheKey() {
+    if (_rootOverride != null) return _rootOverride;
+    if (AppStorage.isInstalled) return AppStorage.appDataRoot;
+    return AppStorage.paths.basePath;
+  }
+
+  void _invalidateWorkspacesIndexCache() {
+    _workspacesIndexByRoot.remove(_workspacesIndexCacheKey());
+  }
+
+  List<Workspace> _rememberWorkspacesIndex(List<Workspace> workspaces) {
+    final remembered = List<Workspace>.unmodifiable(workspaces);
+    _workspacesIndexByRoot[_workspacesIndexCacheKey()] = remembered;
+    return remembered;
+  }
 
   Future<T> _withSessionFile<T>(String sessionId, Future<T> Function() fn) {
     return _sessionFileLocks.synchronized(sessionId, fn);
@@ -55,14 +75,20 @@ class SessionRepository {
     return SessionRepositoryFs(teampilotRoot: AppStorage.paths.basePath);
   }
 
-  Future<Workspace?> _readManifest(SessionRepositoryFs fs, String workspaceId) async {
+  Future<Workspace?> _readManifest(
+    SessionRepositoryFs fs,
+    String workspaceId, {
+    bool indexOnly = false,
+  }) async {
     final raw = await fs.readText(fs.manifestFile(workspaceId));
     if (raw == null || raw.isEmpty) return null;
     try {
       final json = jsonDecode(raw);
       if (json is Map<String, Object?>) {
         final workspace = Workspace.fromJson(json);
-        final sessionIds = await fs.listSessionIdsForWorkspace(workspaceId);
+        final sessionIds = indexOnly
+            ? await fs.listSessionDirectoryIds(workspaceId)
+            : await fs.listSessionIdsForWorkspace(workspaceId);
         return workspace.copyWith(sessionIds: sessionIds);
       }
     } on Object {
@@ -78,28 +104,120 @@ class SessionRepository {
       fs.manifestFile(workspace.workspaceId),
       const JsonEncoder.withIndent('  ').convert(withoutSessions.toJson()),
     );
+    await _syncWorkspaceIndexEntry(fs, workspace);
   }
 
-  Future<List<Workspace>> loadWorkspaces() async {
-    final fs = await _fs();
-    final workspaces = <Workspace>[];
-    for (final workspaceId in await fs.listWorkspaceIds()) {
-      final workspace = await _readManifest(fs, workspaceId);
-      if (workspace != null) {
-        workspaces.add(workspace);
-      }
+  Future<void> _syncWorkspaceIndexEntry(
+    SessionRepositoryFs fs,
+    Workspace workspace,
+  ) async {
+    _invalidateWorkspacesIndexCache();
+    final sessionIds = await fs.listSessionDirectoryIds(workspace.workspaceId);
+    await WorkspaceIndexStore(fs).upsert(
+      workspace.copyWith(sessionIds: sessionIds),
+    );
+  }
+
+  static bool _sameWorkspaceIds(List<String> diskIds, List<Workspace> snapshot) {
+    if (diskIds.length != snapshot.length) return false;
+    final diskSet = diskIds.toSet();
+    return snapshot.every((workspace) => diskSet.contains(workspace.workspaceId));
+  }
+
+  Future<List<Workspace>> loadWorkspaces() => _loadWorkspaces(indexOnly: false);
+
+  /// Manifest + session directory names only — no per-session JSON reads.
+  ///
+  /// Reads [workspaces-index.json] when present and workspace ids still match
+  /// disk; otherwise rebuilds the snapshot from per-workspace manifests.
+  Future<List<Workspace>> loadWorkspacesIndex() async {
+    final cached = _workspacesIndexByRoot[_workspacesIndexCacheKey()];
+    if (cached != null) {
+      appLogger.i(
+        '[boot] loadWorkspacesIndex from memory count=${cached.length}',
+      );
+      return cached;
     }
-    return workspaces;
+    final fs = await _fs();
+    final store = WorkspaceIndexStore(fs);
+    final readSw = Stopwatch()..start();
+    final snapshot = await store.tryRead();
+    final readMs = readSw.elapsedMilliseconds;
+    if (snapshot != null) {
+      appLogger.i(
+        '[boot] loadWorkspacesIndex from snapshot count=${snapshot.length} '
+        'read=${readMs}ms (validate deferred)',
+      );
+      unawaited(
+        _revalidateWorkspacesIndexSnapshot(fs, store, snapshot),
+      );
+      return _rememberWorkspacesIndex(snapshot);
+    } else {
+      appLogger.i(
+        '[boot] loadWorkspacesIndex rebuilding snapshot read=${readMs}ms',
+      );
+    }
+    final workspaces = await _loadWorkspaces(indexOnly: true);
+    await store.writeAll(workspaces);
+    return _rememberWorkspacesIndex(workspaces);
+  }
+
+  Future<void> _revalidateWorkspacesIndexSnapshot(
+    SessionRepositoryFs fs,
+    WorkspaceIndexStore store,
+    List<Workspace> snapshot,
+  ) async {
+    final validateSw = Stopwatch()..start();
+    final diskIds = await fs.listWorkspaceIds();
+    final validateMs = validateSw.elapsedMilliseconds;
+    if (_sameWorkspaceIds(diskIds, snapshot)) {
+      appLogger.i(
+        '[boot] loadWorkspacesIndex validate ok +${validateMs}ms',
+      );
+      return;
+    }
+    appLogger.i(
+      '[boot] loadWorkspacesIndex snapshot stale '
+      'disk=${diskIds.length} index=${snapshot.length} '
+      'validate=${validateMs}ms',
+    );
+    final workspaces = await _loadWorkspaces(indexOnly: true);
+    await store.writeAll(workspaces);
+    _rememberWorkspacesIndex(workspaces);
+  }
+
+  Future<List<Workspace>> _loadWorkspaces({required bool indexOnly}) async {
+    final fs = await _fs();
+    final workspaceIds = await fs.listWorkspaceIds();
+    final workspaces = await Future.wait(
+      workspaceIds.map(
+        (workspaceId) => _readManifest(
+          fs,
+          workspaceId,
+          indexOnly: indexOnly,
+        ),
+      ),
+    );
+    return [
+      for (final workspace in workspaces)
+        if (workspace != null) workspace,
+    ];
   }
 
   Future<List<AppSession>> loadSessions() async {
     final fs = await _fs();
+    final workspaceIds = await fs.listWorkspaceIds();
+    final mapsPerWorkspace = await Future.wait(
+      workspaceIds.map(fs.listSessionJsonMapsForWorkspace),
+    );
     final sessions = <AppSession>[];
-    for (final json in await fs.listAllSessionJsonMaps()) {
-      try {
-        sessions.add(AppSession.fromJson(json));
-      } on Object {
-        continue;
+    for (final maps in mapsPerWorkspace) {
+      for (final json in maps) {
+        try {
+          sessions.add(AppSession.fromJson(json));
+        } on Object {
+          continue;
+        }
       }
     }
     sessions.sort((a, b) {
@@ -107,6 +225,19 @@ class SessionRepository {
       final bu = b.updatedAt != 0 ? b.updatedAt : b.createdAt;
       return bu.compareTo(au);
     });
+    return sessions;
+  }
+
+  Future<List<AppSession>> loadSessionsForWorkspace(String workspaceId) async {
+    final fs = await _fs();
+    final sessions = <AppSession>[];
+    for (final json in await fs.listSessionJsonMapsForWorkspace(workspaceId)) {
+      try {
+        sessions.add(AppSession.fromJson(json));
+      } on Object {
+        continue;
+      }
+    }
     return sessions;
   }
 
@@ -431,6 +562,7 @@ class SessionRepository {
       fs.sessionFile(workspaceId, sessionId),
       jsonEncode(session.toJson()),
     );
+    await _syncWorkspaceIndexEntry(fs, workspace);
     return session;
   }
 
@@ -731,6 +863,8 @@ class SessionRepository {
       );
     }
 
+    await _syncWorkspaceIndexEntry(fs, newWorkspace);
+
     return (await _readManifest(fs, newWorkspaceId)) ?? newWorkspace;
   }
 
@@ -801,5 +935,7 @@ class SessionRepository {
     );
 
     await fs.deleteWorkspaceDir(workspaceId);
+    _invalidateWorkspacesIndexCache();
+    await WorkspaceIndexStore(fs).remove(workspaceId);
   }
 }

@@ -72,4 +72,23 @@ void main() {
       hasLength(2),
     );
   });
+
+  test('ensureDefault is idempotent and reports no mutation', () async {
+    final repo = SessionRepository();
+    final team = const TeamRosterEditor().defaultTeam();
+
+    final first = await DefaultWorkspaceService.ensureDefault(
+      repo,
+      defaultTeam: team,
+    );
+    expect(first, isTrue);
+
+    final workspaces = await repo.loadWorkspaces();
+    final again = await DefaultWorkspaceService.ensureDefault(
+      repo,
+      defaultTeam: team,
+      knownWorkspaces: workspaces,
+    );
+    expect(again, isFalse);
+  });
 }

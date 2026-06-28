@@ -7,6 +7,7 @@ import '../../models/workspace_icon_ref.dart';
 import '../../models/team_config.dart' show CliTool, TeamMemberConfig;
 import '../../repositories/launch_profile_repository.dart';
 import '../../repositories/session_repository.dart';
+import '../../utils/logger.dart';
 import '../../utils/workspace_path_utils.dart';
 
 class ChatDataSnapshot extends Equatable {
@@ -32,6 +33,24 @@ class ChatDataSnapshot extends Equatable {
 class SessionDataStore {
   bool _scopeSessionsToSelectedTeam = false;
   String? _selectedTeamId;
+  final Set<String> _hydratedSessionWorkspaceIds = {};
+
+  void _resetSessionHydration() => _hydratedSessionWorkspaceIds.clear();
+
+  void _markAllWorkspacesHydrated(Iterable<String> workspaceIds) {
+    _hydratedSessionWorkspaceIds
+      ..clear()
+      ..addAll(workspaceIds);
+  }
+
+  void markWorkspacesSessionsHydrated(Iterable<String> workspaceIds) {
+    _hydratedSessionWorkspaceIds.addAll(
+      workspaceIds.map((id) => id.trim()).where((id) => id.isNotEmpty),
+    );
+  }
+
+  bool sessionsLoadedForWorkspace(String workspaceId) =>
+      _hydratedSessionWorkspaceIds.contains(workspaceId.trim());
 
   bool setScope({
     required bool scopeSessionsToSelectedTeam,
@@ -74,9 +93,68 @@ class SessionDataStore {
     );
   }
 
-  Future<ChatDataSnapshot> loadWorkspaceData(SessionRepository repo) async {
-    final workspaces = await repo.loadWorkspaces();
+  Future<ChatDataSnapshot> loadWorkspaceIndex(SessionRepository repo) async {
+    final sw = Stopwatch()..start();
+    _resetSessionHydration();
+    final workspaces = await repo.loadWorkspacesIndex();
+    appLogger.i(
+      '[boot] SessionDataStore.loadWorkspaceIndex '
+      '${workspaces.length} workspaces +${sw.elapsedMilliseconds}ms',
+    );
+    return deriveSnapshot(workspaces: workspaces, sessions: const []);
+  }
+
+  Future<List<AppSession>> loadSessionsForWorkspace(
+    SessionRepository repo,
+    String workspaceId,
+  ) async {
+    final sw = Stopwatch()..start();
+    final sessions = await repo.loadSessionsForWorkspace(workspaceId);
+    appLogger.i(
+      '[boot] SessionDataStore.loadSessionsForWorkspace $workspaceId '
+      '${sessions.length} sessions +${sw.elapsedMilliseconds}ms',
+    );
+    return sessions;
+  }
+
+  ChatDataSnapshot mergeWorkspaceSessions({
+    required ChatDataSnapshot current,
+    required String workspaceId,
+    required List<AppSession> workspaceSessions,
+  }) {
+    _hydratedSessionWorkspaceIds.add(workspaceId.trim());
+    final others = [
+      for (final session in current.sessions)
+        if (session.workspaceId != workspaceId) session,
+    ];
+    return deriveSnapshot(
+      workspaces: current.workspaces,
+      sessions: [...others, ...workspaceSessions],
+    );
+  }
+
+  Future<List<AppSession>> loadSessions(SessionRepository repo) async {
+    final sw = Stopwatch()..start();
     final sessions = await repo.loadSessions();
+    appLogger.i(
+      '[boot] SessionDataStore.loadSessions '
+      '${sessions.length} sessions +${sw.elapsedMilliseconds}ms',
+    );
+    return sessions;
+  }
+
+  Future<ChatDataSnapshot> loadWorkspaceData(SessionRepository repo) async {
+    final sw = Stopwatch()..start();
+    final workspaces = await repo.loadWorkspaces();
+    final workspacesMs = sw.elapsedMilliseconds;
+    final sessions = await repo.loadSessions();
+    _markAllWorkspacesHydrated(workspaces.map((w) => w.workspaceId));
+    appLogger.i(
+      '[boot] SessionDataStore.loadWorkspaceData '
+      '${workspaces.length} workspaces (+${workspacesMs}ms) '
+      '${sessions.length} sessions (+${sw.elapsedMilliseconds - workspacesMs}ms) '
+      'total=${sw.elapsedMilliseconds}ms',
+    );
     return deriveSnapshot(workspaces: workspaces, sessions: sessions);
   }
 

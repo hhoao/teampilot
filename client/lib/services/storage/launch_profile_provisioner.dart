@@ -1,5 +1,6 @@
 import 'package:collection/collection.dart';
 
+import '../../models/launch_profile.dart';
 import '../../models/personal_profile.dart';
 import '../../repositories/launch_profile_repository.dart';
 
@@ -14,8 +15,10 @@ class LaunchProfileProvisioner {
 
   final LaunchProfileRepository _repository;
 
-  Future<PersonalProfile> ensureDefaultPersonal() async {
-    final all = await _repository.loadAll();
+  Future<PersonalProfile> ensureDefaultPersonal({
+    List<LaunchProfile>? loaded,
+  }) async {
+    final all = loaded ?? await _repository.loadAll();
     final existing = all
         .whereType<PersonalProfile>()
         .where((p) => p.id == defaultPersonalId)

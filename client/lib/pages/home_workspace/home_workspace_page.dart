@@ -164,28 +164,49 @@ class _HomePageState extends State<HomePage> {
         Expanded(
           child: Padding(
             padding: const EdgeInsets.fromLTRB(44, 48, 42, 18),
-            child: (globalView != null
-                    ? HomeGlobalSection(view: globalView)
-                    : libraryView != null
-                    ? HomeLibrarySection(view: libraryView)
-                    : _allWorkspacesActive
-                    ? const HomeAllWorkspacesPane()
-                    : selectedIdentity != null
-                    ? _identityPane(identityCubit, selectedIdentity)
-                    : const HomeAllWorkspacesPane())
-                .animate(key: paneKey)
-                .fadeIn(duration: 180.ms, curve: Curves.easeOut)
-                .slideX(
-                  begin: 0.025,
-                  end: 0,
-                  duration: 220.ms,
-                  curve: Curves.easeOutCubic,
-                ),
+            child: _buildRightPane(
+              globalView: globalView,
+              libraryView: libraryView,
+              identityCubit: identityCubit,
+              selectedIdentity: selectedIdentity,
+              paneKey: paneKey,
+            ),
           ),
         ),
       ],
     );
 
     return WorkspacePageCardShell(child: body);
+  }
+
+  Widget _buildRightPane({
+    required HomeGlobalView? globalView,
+    required HomeLibraryView? libraryView,
+    required LaunchProfileCubit identityCubit,
+    required LaunchProfile? selectedIdentity,
+    required ValueKey<String> paneKey,
+  }) {
+    final Widget pane;
+    if (globalView != null) {
+      pane = HomeGlobalSection(view: globalView);
+    } else if (libraryView != null) {
+      pane = HomeLibrarySection(view: libraryView);
+    } else if (_allWorkspacesActive) {
+      return const HomeAllWorkspacesPane();
+    } else if (selectedIdentity != null) {
+      pane = _identityPane(identityCubit, selectedIdentity);
+    } else {
+      return const HomeAllWorkspacesPane();
+    }
+
+    return pane
+        .animate(key: paneKey)
+        .fadeIn(duration: 180.ms, curve: Curves.easeOut)
+        .slideX(
+          begin: 0.025,
+          end: 0,
+          duration: 220.ms,
+          curve: Curves.easeOutCubic,
+        );
   }
 }

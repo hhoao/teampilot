@@ -7,7 +7,6 @@ import '../../../../utils/team_member_naming.dart';
 import '../../../provider/claude/claude_effort_capability.dart';
 import '../../../provider/claude/claude_official_provider.dart';
 import '../capabilities/cli_effort_capability.dart';
-import '../../../../repositories/app_provider_repository.dart';
 import '../../../provider/claude/claude_provider_credentials_service.dart';
 import '../../../provider/credential_binding.dart';
 import '../../../provider/cross_machine_credential_bridge.dart';
