@@ -2,7 +2,9 @@ import 'dart:math' as math;
 
 import 'models.dart';
 import 'options.dart';
+import 'precision_analysis.dart';
 import 'rebuild_model.dart';
+import 'frame_slice_tree.dart';
 import 'snapshot_loader.dart';
 import 'trace_decoder.dart';
 import 'trace_filters.dart';
@@ -96,6 +98,16 @@ PerformanceAnalysisResult analyzeSnapshot(
     }
   }
 
+  PrecisionAnalysis? precision;
+  if (timeline != null && options.includes(ReportSection.precision)) {
+    precision = buildPrecisionAnalysis(
+      snapshot: snapshot,
+      trace: timeline.trace,
+      options: options,
+      budgetMs: budgetMs,
+    );
+  }
+
   SnapshotComparison? comparison;
   if (options.comparePath != null && options.includes(ReportSection.compare)) {
     comparison = _compareSnapshots(
@@ -116,6 +128,7 @@ PerformanceAnalysisResult analyzeSnapshot(
         missingFrameId: missingFrameId,
         slowestFrameTip: slowestTip,
         appliedFilters: _appliedFiltersMap(options),
+        precision: precision,
       ),
       options: options,
       candidateLabel: snapshotLabel,
@@ -137,6 +150,7 @@ PerformanceAnalysisResult analyzeSnapshot(
     missingFrameId: missingFrameId,
     slowestFrameTip: slowestTip,
     appliedFilters: _appliedFiltersMap(options),
+    precision: precision,
   );
 }
 
@@ -221,17 +235,6 @@ TimingStats _timingStats(String label, List<double> sorted) {
     maxMs: sorted.last,
     avgMs: sum / n,
   );
-}
-
-String frameBottleneck(FlutterFrame f) {
-  final parts = {
-    'build': f.buildMs,
-    'raster': f.rasterMs,
-    'vsync': f.vsyncMs,
-  };
-  final max = parts.entries.reduce((a, b) => a.value > b.value ? a : b);
-  if (max.value < f.elapsedMs * 0.4) return 'mixed/idle';
-  return max.key;
 }
 
 RebuildSummary _analyzeRebuilds(RebuildCountData? data, int topN) {

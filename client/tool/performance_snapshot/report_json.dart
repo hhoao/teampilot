@@ -26,6 +26,7 @@ extension PerformanceAnalysisResultJson on PerformanceAnalysisResult {
             for (final d in worstFrameDrilldowns) _drilldownJson(d),
           ],
         if (comparison != null) 'comparison': _comparisonJson(comparison!),
+        if (precision != null) 'precision': _precisionJson(precision!),
         if (missingFrameId != null) 'missingFrameId': missingFrameId,
         if (slowestFrameTip != null) 'slowestFrameTip': slowestFrameTip,
       };
@@ -161,7 +162,14 @@ extension PerformanceAnalysisResultJson on PerformanceAnalysisResult {
         'rasterSliceMs': d.rasterSliceMs,
         'rebuilds': [
           for (final r in d.rebuilds)
-            {'label': r.label, 'buildCount': r.buildCount},
+            {
+              'name': r.name,
+              'file': r.file,
+              'line': r.line,
+              'column': r.column,
+              'label': r.label,
+              'buildCount': r.buildCount,
+            },
         ],
         'overlappingSlices': [
           for (final s in d.overlappingSlices)
@@ -176,6 +184,87 @@ extension PerformanceAnalysisResultJson on PerformanceAnalysisResult {
             {'durationMs': s.durationMs, 'name': s.name},
         ],
         'frameCpuSymbols': d.frameCpuSymbols,
+      };
+
+  Map<String, Object?> _precisionJson(PrecisionAnalysis p) => {
+        'frameCountAnalyzed': p.frameCountAnalyzed,
+        'rebuildNote': {
+          'status': p.rebuildNote.status,
+          'precisionImpact': p.rebuildNote.precisionImpact,
+          'message': p.rebuildNote.message,
+        },
+        'frameGuides': [
+          for (final g in p.frameGuides)
+            {
+              'frameNumber': g.frameNumber,
+              'bottleneck': g.bottleneck,
+              'primaryAnalysisTrack': g.primaryAnalysisTrack,
+              'buildMs': g.buildMs,
+              'rasterMs': g.rasterMs,
+              'elapsedMs': g.elapsedMs,
+            },
+        ],
+        'uiHotPaths': [for (final h in p.uiHotPaths) _hotPathJson(h)],
+        'rasterHotPaths': [for (final h in p.rasterHotPaths) _hotPathJson(h)],
+        'rebuildCorrelations': [
+          for (final c in p.rebuildCorrelations) _rebuildCorrelationJson(c),
+        ],
+        'unmatchedHighSelfSlices': [
+          for (final u in p.unmatchedHighSelfSlices) _unmatchedSliceJson(u),
+        ],
+        'unmatchedHighRebuilds': [
+          for (final u in p.unmatchedHighRebuilds) _unmatchedRebuildJson(u),
+        ],
+      };
+
+  Map<String, Object?> _hotPathJson(AggregatedHotPath h) => {
+        'path': h.path,
+        'track': h.track,
+        'totalSelfMs': h.totalSelfMs,
+        'maxSelfMsInSingleFrame': h.maxSelfMsInSingleFrame,
+        'frameNumbers': h.frameNumbers,
+        'occurrenceCount': h.occurrenceCount,
+      };
+
+  Map<String, Object?> _rebuildCorrelationJson(RebuildSliceCorrelation c) => {
+        'frameNumber': c.frameNumber,
+        'widgetId': c.widgetId,
+        'widgetName': c.widgetName,
+        'file': c.file,
+        'line': c.line,
+        'column': c.column,
+        'rebuildCount': c.rebuildCount,
+        'matchQuality': c.matchQuality,
+        'matchedSlices': [
+          for (final m in c.matchedSlices)
+            {
+              'name': m.name,
+              'track': m.track,
+              'selfMs': m.selfMs,
+              'totalMs': m.totalMs,
+              'path': m.path,
+              'phase': m.phase,
+            },
+        ],
+      };
+
+  Map<String, Object?> _unmatchedSliceJson(UnmatchedHighSelfSlice u) => {
+        'frameNumber': u.frameNumber,
+        'name': u.name,
+        'track': u.track,
+        'selfMs': u.selfMs,
+        'path': u.path,
+        'phase': u.phase,
+      };
+
+  Map<String, Object?> _unmatchedRebuildJson(UnmatchedHighRebuild u) => {
+        'frameNumber': u.frameNumber,
+        'widgetId': u.widgetId,
+        'widgetName': u.widgetName,
+        'file': u.file,
+        'line': u.line,
+        'column': u.column,
+        'rebuildCount': u.rebuildCount,
       };
 
   Map<String, Object?> _comparisonJson(SnapshotComparison c) => {
@@ -227,6 +316,7 @@ Map<String, Object?> filterJsonBySections(
   keep('timeline', ReportSection.timeline);
   keep('frameDrilldown', ReportSection.drilldown);
   keep('worstFrameDrilldowns', ReportSection.drilldown);
+  keep('precision', ReportSection.precision);
   keep('comparison', ReportSection.compare);
 
   for (final key in ['budgetMs', 'appliedFilters', 'rebuildStatus', 'traceBinaryKiB']) {

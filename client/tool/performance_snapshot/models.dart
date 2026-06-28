@@ -303,6 +303,156 @@ class SliceRegression {
   final double deltaMs;
 }
 
+class MatchedTimelineSlice {
+  const MatchedTimelineSlice({
+    required this.name,
+    required this.track,
+    required this.selfMs,
+    required this.totalMs,
+    required this.path,
+    this.phase,
+  });
+
+  final String name;
+  final String track;
+  final double selfMs;
+  final double totalMs;
+  final String path;
+  final String? phase;
+}
+
+class RebuildSliceCorrelation {
+  const RebuildSliceCorrelation({
+    required this.frameNumber,
+    required this.widgetId,
+    required this.widgetName,
+    this.file,
+    this.line,
+    this.column,
+    required this.rebuildCount,
+    required this.matchedSlices,
+    required this.matchQuality,
+  });
+
+  final int frameNumber;
+  final int widgetId;
+  final String widgetName;
+  final String? file;
+  final int? line;
+  final int? column;
+  final int rebuildCount;
+  final List<MatchedTimelineSlice> matchedSlices;
+  final String matchQuality;
+}
+
+class UnmatchedHighSelfSlice {
+  const UnmatchedHighSelfSlice({
+    required this.frameNumber,
+    required this.name,
+    required this.track,
+    required this.selfMs,
+    required this.path,
+    this.phase,
+  });
+
+  final int frameNumber;
+  final String name;
+  final String track;
+  final double selfMs;
+  final String path;
+  final String? phase;
+}
+
+class UnmatchedHighRebuild {
+  const UnmatchedHighRebuild({
+    required this.frameNumber,
+    required this.widgetId,
+    required this.widgetName,
+    this.file,
+    this.line,
+    this.column,
+    required this.rebuildCount,
+  });
+
+  final int frameNumber;
+  final int widgetId;
+  final String widgetName;
+  final String? file;
+  final int? line;
+  final int? column;
+  final int rebuildCount;
+}
+
+class AggregatedHotPath {
+  const AggregatedHotPath({
+    required this.path,
+    required this.track,
+    required this.totalSelfMs,
+    required this.maxSelfMsInSingleFrame,
+    required this.frameNumbers,
+    required this.occurrenceCount,
+  });
+
+  final String path;
+  final String track;
+  final double totalSelfMs;
+  final double maxSelfMsInSingleFrame;
+  final List<int> frameNumbers;
+  final int occurrenceCount;
+}
+
+class FrameBottleneckGuide {
+  const FrameBottleneckGuide({
+    required this.frameNumber,
+    required this.bottleneck,
+    required this.primaryAnalysisTrack,
+    required this.buildMs,
+    required this.rasterMs,
+    required this.elapsedMs,
+  });
+
+  final int frameNumber;
+  final String bottleneck;
+  final String primaryAnalysisTrack;
+  final double buildMs;
+  final double rasterMs;
+  final double elapsedMs;
+}
+
+class RebuildPrecisionNote {
+  const RebuildPrecisionNote({
+    required this.status,
+    required this.precisionImpact,
+    required this.message,
+  });
+
+  final String status;
+  final String precisionImpact;
+  final String message;
+}
+
+class PrecisionAnalysis {
+  const PrecisionAnalysis({
+    required this.frameCountAnalyzed,
+    required this.rebuildNote,
+    required this.frameGuides,
+    required this.uiHotPaths,
+    required this.rasterHotPaths,
+    required this.rebuildCorrelations,
+    required this.unmatchedHighSelfSlices,
+    required this.unmatchedHighRebuilds,
+  });
+
+  final int frameCountAnalyzed;
+  final RebuildPrecisionNote rebuildNote;
+  final List<FrameBottleneckGuide> frameGuides;
+  final List<AggregatedHotPath> uiHotPaths;
+  final List<AggregatedHotPath> rasterHotPaths;
+  final List<RebuildSliceCorrelation> rebuildCorrelations;
+  final List<UnmatchedHighSelfSlice> unmatchedHighSelfSlices;
+  final List<UnmatchedHighRebuild> unmatchedHighRebuilds;
+}
+
 class PerformanceAnalysisResult {
   const PerformanceAnalysisResult({
     required this.snapshot,
@@ -319,6 +469,7 @@ class PerformanceAnalysisResult {
     required this.missingFrameId,
     required this.slowestFrameTip,
     required this.appliedFilters,
+    this.precision,
   });
 
   final PerformanceSnapshot snapshot;
@@ -335,4 +486,5 @@ class PerformanceAnalysisResult {
   final int? missingFrameId;
   final int? slowestFrameTip;
   final Map<String, Object?> appliedFilters;
+  final PrecisionAnalysis? precision;
 }
