@@ -38,6 +38,17 @@ If the call chain doesn't make the cause obvious, add `debugPrint` at each step 
 
 Error filtering at `PlatformDispatcher` hides the problem. Timing hacks (`addPostFrameCallback`) guess at the cause. If the first fix doesn't work, re-examine your hypothesis — don't layer more workarounds.
 
+### 6. UI jank (Flutter frames)
+
+If the bug is **slow UI / jank** (not a crash or exception), export DevTools Performance JSON and analyze offline:
+
+```bash
+cd client
+dart run tool/analyze_performance_json.dart /path/to/snapshot.json --format summary
+```
+
+See [PERFORMANCE_ANALYSIS.md](PERFORMANCE_ANALYSIS.md) for CLI options, JSON output for agents, and comparison between before/after snapshots.
+
 ### 6. Revert failed workarounds
 
 Once the root cause is fixed, remove any intermediate defensive changes so future readers aren't confused.

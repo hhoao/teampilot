@@ -10,6 +10,7 @@ Guidance for Claude Code and other AI assistants working in this repository.
 | [docs/DEVELOPMENT.md](docs/DEVELOPMENT.md) | Clone, commands, tests, packaging, CI |
 | [docs/CODE_QUALITY.md](docs/CODE_QUALITY.md) | File size, layering, tests, Extension conventions |
 | [docs/DEBUGGING.md](docs/DEBUGGING.md) | Systematic debugging process |
+| [docs/PERFORMANCE_ANALYSIS.md](docs/PERFORMANCE_ANALYSIS.md) | DevTools performance JSON offline analysis (`tool/analyze_performance_json.dart`) |
 
 All app code lives under `client/lib/` (cubits, pages, repositories, services, models). Vendored deps: `client/packages/` (git submodules: xterm, flutter_pty, dartssh2, re-editor, flutter_alacritty).
 
@@ -136,12 +137,15 @@ Session runtime dirs live under `workspace/projects/{projectId}/sessions/{sessio
 | Storage layout | `client/lib/services/storage/workspace_layout.dart`, `runtime_layout.dart` |
 | Session title from prompt | `client/lib/utils/first_user_line_capture.dart`, `session_display_title.dart` |
 | Extensions (install, state, provision) | `client/lib/services/extension/`, `client/lib/repositories/extension_repository.dart`, `client/lib/cubits/extension_cubit.dart` |
+| Performance snapshot CLI | `client/tool/analyze_performance_json.dart`, `client/tool/performance_snapshot/` — see [docs/PERFORMANCE_ANALYSIS.md](docs/PERFORMANCE_ANALYSIS.md) |
 
 **Routes** (`app_router.dart`): `/home-v2` (workspace home — library, team config, global views via query params), `/home-v2/project/:projectId` (project workbench); `/config/*` (settings, LLM/provider config); `/team-config/*` (members, skills, plugins, mcp, extensions); `/skills/*`, `/plugins/*`, `/extensions/*`, `/mcp/*` (global libraries); `/ssh-profiles`.
 
 ## Debugging
 
 See [docs/DEBUGGING.md](docs/DEBUGGING.md) for the systematic debugging process (search-first, root cause over workarounds, etc.).
+
+**UI jank / slow frames:** export a recording from DevTools Performance, then run `dart run tool/analyze_performance_json.dart <snapshot.json> --format summary` from `client/`. Prefer `--format json` with `--frame auto` and `--sections` when drilling down programmatically. Full options and AI workflow: [docs/PERFORMANCE_ANALYSIS.md](docs/PERFORMANCE_ANALYSIS.md).
 
 ## Conventions
 
