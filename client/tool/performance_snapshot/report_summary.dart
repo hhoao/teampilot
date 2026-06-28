@@ -2,7 +2,9 @@
 
 import 'models.dart';
 
-/// One-screen executive summary for AI first-pass triage.
+import 'summary_format.dart';
+
+/// One-screen triage for AI / humans: jank stats + precision hot paths.
 void printPerformanceSummary(PerformanceAnalysisResult result) {
   final s = result.snapshot;
   final app = s.connectedApp;
@@ -16,71 +18,121 @@ void printPerformanceSummary(PerformanceAnalysisResult result) {
   final frames = result.frameSummary;
   if (frames == null) {
     print('Frames: none');
+    _printNextSteps(result, worstFrameNumber: null);
     return;
   }
 
+  final worst = frames.jankyFrames.isEmpty ? null : frames.jankyFrames.first;
   print(
-    'Frames: ${frames.jankyCount}/${frames.totalCount} janky '
-    '(worst ${frames.jankyFrames.isEmpty ? '?' : frames.jankyFrames.first.frame.elapsedMs.toStringAsFixed(1)} ms)',
+    'Frames: ${frames.jankyCount}/${frames.totalCount} janky'
+    '${worst == null ? '' : ' | worst #${worst.frame.number} ${worst.frame.elapsedMs.toStringAsFixed(1)} ms (${worst.bottleneck})'}',
   );
 
-  if (frames.jankyFrames.isNotEmpty) {
-    print('Top janky:');
-    for (final j in frames.jankyFrames.take(3)) {
-      final f = j.frame;
-      print(
-        '  #${f.number} ${f.elapsedMs.toStringAsFixed(1)} ms '
-        '(build ${f.buildMs.toStringAsFixed(1)}, raster ${f.rasterMs.toStringAsFixed(1)}) '
-        '→ ${j.bottleneck}',
-      );
-    }
+  if (frames.jankyCount == 0) {
+    print('No janky frames over ${frames.budgetMs.toStringAsFixed(2)} ms budget.');
+    _printNextSteps(result, worstFrameNumber: null);
+    return;
   }
 
-  final timeline = result.timeline;
-  if (timeline != null && timeline.topSlices.isNotEmpty) {
-    print('Top timeline slices:');
-    for (final slice in timeline.topSlices.take(5)) {
-      print(
-        '  ${slice.durationMs.toStringAsFixed(1)} ms ${slice.trackLabel}::${slice.name}',
-      );
-    }
-  }
-
-  final drill = result.frameDrilldown ?? result.worstFrameDrilldowns.firstOrNull;
-  if (drill != null) {
+  print('Top janky:');
+  for (final j in frames.jankyFrames.take(3)) {
+    final f = j.frame;
     print(
-      'Primary bottleneck frame #${drill.frame.number}: ${drill.bottleneck} '
-      '(over budget ${drill.overBudgetMs?.toStringAsFixed(1) ?? '0'} ms)',
-    );
-    if (drill.dartHotspots.isNotEmpty) {
-      print(
-        'Hotspot: ${drill.dartHotspots.first.name} '
-        '(${drill.dartHotspots.first.durationMs.toStringAsFixed(1)} ms)',
-      );
-    }
-  } else if (result.slowestFrameTip != null) {
-    print('Tip: re-run with --frame auto or --frame ${result.slowestFrameTip}');
-  }
-
-  if (result.comparison != null) {
-    final c = result.comparison!;
-    print(
-      'Compare vs ${c.baselineLabel}: '
-      'janky ${c.jankyCountBaseline}→${c.jankyCountCandidate}, '
-      'worst ${c.worstFrameMsBaseline.toStringAsFixed(1)}→'
-      '${c.worstFrameMsCandidate.toStringAsFixed(1)} ms',
+      '  #${f.number} ${f.elapsedMs.toStringAsFixed(1)} ms '
+      '(build ${f.buildMs.toStringAsFixed(1)}, raster ${f.rasterMs.toStringAsFixed(1)}) '
+      '→ ${j.bottleneck}',
     );
   }
 
-  if (result.appliedFilters.isNotEmpty) {
-    print('Filters: ${result.appliedFilters}');
+  final precision = result.precision;
+  if (precision != null) {
+    _printPrecisionHighlights(precision);
+  } else if (result.timeline == null) {
+    print(
+      '\nHot paths: unavailable (no traceBinary in export). '
+      'Re-export from DevTools Performance with timeline data.',
+    );
+  } else {
+    print('\nHot paths: unavailable (no janky frames in snapshot).');
+  }
+
+  _printNextSteps(result, worstFrameNumber: worst?.frame.number);
+}
+
+void _printPrecisionHighlights(PrecisionAnalysis precision) {
+  final note = precision.rebuildNote;
+  if (note.precisionImpact != 'low') {
+    print('\nRebuild data: ${note.status} (${note.precisionImpact} impact)');
+    print('  ${note.message}');
+  }
+
+  if (precision.uiHotPaths.isNotEmpty) {
+    print(
+      '\nUI hot paths (self time, ${precision.frameCountAnalyzed} janky frames):',
+    );
+    for (final h in precision.uiHotPaths.take(5)) {
+      print(
+        '  ${h.totalSelfMs.toStringAsFixed(1)} ms '
+        '(${h.occurrenceCount}/${precision.frameCountAnalyzed} frames, '
+        '${formatFrameList(h.frameNumbers)})',
+      );
+      print('    ${shortenHotPath(h.path)}');
+    }
+  }
+
+  final rasterGuides = precision.frameGuides
+      .where((g) => g.primaryAnalysisTrack == 'raster')
+      .toList();
+  if (precision.rasterHotPaths.isNotEmpty &&
+      (rasterGuides.isNotEmpty ||
+          precision.rasterHotPaths.first.totalSelfMs >= 5)) {
+    print('\nRaster hot paths:');
+    for (final h in precision.rasterHotPaths.take(3)) {
+      print(
+        '  ${h.totalSelfMs.toStringAsFixed(1)} ms '
+        '(${formatFrameList(h.frameNumbers)})  ${shortenHotPath(h.path)}',
+      );
+    }
+  }
+
+  if (precision.rebuildCorrelations.isNotEmpty) {
+    print('\nRebuild ↔ timeline slice:');
+    for (final c in precision.rebuildCorrelations.take(5)) {
+      final loc =
+          c.file != null && c.line != null ? ' @ ${c.file}:${c.line}' : '';
+      final slice = c.matchedSlices.isEmpty
+          ? ''
+          : ' → ${c.matchedSlices.first.name} '
+              '${c.matchedSlices.first.selfMs.toStringAsFixed(1)} ms self'
+              '${c.matchedSlices.first.phase != null ? ' (${c.matchedSlices.first.phase})' : ''}';
+      print(
+        '  #${c.frameNumber} ${c.widgetName}$loc '
+        '${c.rebuildCount}x [${c.matchQuality}]$slice',
+      );
+    }
+  }
+
+  print('\nInspect track per frame:');
+  for (final g in precision.frameGuides.take(3)) {
+    print(
+      '  #${g.frameNumber} ${g.elapsedMs.toStringAsFixed(0)} ms '
+      '→ ${g.bottleneck} → ${g.primaryAnalysisTrack}',
+    );
   }
 }
 
-extension _FirstOrNull<E> on Iterable<E> {
-  E? get firstOrNull {
-    final it = iterator;
-    if (!it.moveNext()) return null;
-    return it.current;
+void _printNextSteps(PerformanceAnalysisResult result, {int? worstFrameNumber}) {
+  final frameArg = worstFrameNumber?.toString() ?? 'auto';
+  print('\nNext steps:');
+  print(
+    '  dart run tool/analyze_performance_json.dart <snapshot> '
+    '--format json --no-embedder --sections precision,frames',
+  );
+  print(
+    '  dart run tool/analyze_performance_json.dart <snapshot> '
+    '--format flame-tree-json --frame $frameArg --no-embedder',
+  );
+  if (result.appliedFilters['excludeEmbedder'] == true) {
+    print('  (summary excludes Embedder slices by default)');
   }
 }

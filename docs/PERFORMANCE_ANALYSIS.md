@@ -39,30 +39,27 @@ This runs `integration_test/workspace_switch_performance_test.dart` (tag `perfor
 
 
 ```bash
-# Human-readable full report
-dart run tool/analyze_performance_json.dart ~/Downloads/snapshot.json
-
-# One-screen triage (best first pass for humans and AI)
+# One-screen triage (AI / human first pass — hot paths + jank stats)
 dart run tool/analyze_performance_json.dart ~/Downloads/snapshot.json --format summary
 
-# Machine-readable report (best for AI agents)
+# Machine-readable full report
 dart run tool/analyze_performance_json.dart ~/Downloads/snapshot.json --format json
 
-# Drill into the slowest janky frame automatically
+# Drill into the slowest janky frame
 dart run tool/analyze_performance_json.dart ~/Downloads/snapshot.json --frame auto
 
 # Focus on a specific widget / phase
 dart run tool/analyze_performance_json.dart ~/Downloads/snapshot.json \
   --frame auto --filter RightToolsPanel --no-embedder \
-  --format json --sections frames,drilldown
+  --format json --sections frames,drilldown,precision
 ```
 
 ## CLI options
 
 | Option | Description |
 |--------|-------------|
-| `--format <text\|json\|summary>` | Output format (default: `text`) |
-| `--sections <list>` | Comma-separated: `meta`, `frames`, `rebuild`, `timeline`, `drilldown`, `compare`, `all` |
+| `--format <text\|json\|summary\|flame-tree\|flame-tree-json>` | Output format (default: `text`; `summary` = jank + precision hot paths, excludes Embedder by default) |
+| `--sections <list>` | Comma-separated: `meta`, `frames`, `rebuild`, `timeline`, `drilldown`, `precision`, `compare`, `all` |
 | `--frame <id\|auto>` | Frame drill-down; `auto` = slowest janky frame |
 | `--top <n>` | Top N items in ranked lists (default: 25) |
 | `--budget <ms>` | Jank threshold override (default: `1000 / displayRefreshRate`) |
@@ -70,26 +67,27 @@ dart run tool/analyze_performance_json.dart ~/Downloads/snapshot.json \
 | `--category <Dart,Embedder>` | Filter timeline by Perfetto category |
 | `--janky-only` | Frames section: list janky frames only (skip min/p50 stats) |
 | `--worst-frames <n>` | Compact drill-down for top N janky frames |
-| `--no-embedder` | Exclude Embedder track from timeline analysis |
+| `--precision-frames <n>` | Janky frames used for hot-path aggregation and rebuild correlation (default: 5) |
+| `--no-embedder` | Exclude Embedder track (default when `--format summary`) |
+| `--embedder` | Include Embedder slices with `--format summary` |
 | `--compare <baseline.json>` | Compare current file (candidate) vs another export (baseline) |
 | `-h`, `--help` | Show help |
 
 ## Recommended AI workflow
 
-Use a **two-pass** flow to limit tokens and avoid parsing raw DevTools JSON (multi‑MB `traceBinary`).
+Avoid pasting raw DevTools JSON (multi‑MB `traceBinary`). Prefer the CLI.
 
 1. **Triage** — `--format summary`  
-   Gets jank count, worst frames, bottleneck phase (build / raster / vsync), and top timeline slices.
+   Jank count, worst frames, **aggregated UI hot paths** (widget breadcrumbs), rebuild ↔ slice matches when captured, and which track (`ui` / `raster`) to inspect per frame. Embedder timeline noise is excluded by default.
 
-2. **Drill-down** — `--format json` with filters  
+2. **Structured drill-down** — `--format json`  
    ```bash
    dart run tool/analyze_performance_json.dart snapshot.json \
      --format json \
-     --frame auto \
      --no-embedder \
-     --filter Panel \
-     --sections frames,drilldown,rebuild
+     --sections precision,frames,drilldown
    ```
+   Full `precision` object: `frameGuides`, `uiHotPaths`, `rasterHotPaths`, `rebuildCorrelations`, unmatched slices/rebuilds.
 
 3. **Regression** — after a fix, compare against a baseline export:  
    ```bash
@@ -98,6 +96,15 @@ Use a **two-pass** flow to limit tokens and avoid parsing raw DevTools JSON (mul
      --format json \
      --sections compare,frames
    ```
+
+4. **Flame tree** — nested BUILD/LAYOUT hierarchy with **self time** (closest to DevTools flame chart):  
+   ```bash
+   dart run tool/analyze_performance_json.dart snapshot.json \
+     --format flame-tree --frame auto --no-embedder
+   dart run tool/analyze_performance_json.dart snapshot.json \
+     --format flame-tree-json --frame 1515
+   ```
+   Per-level pruning: `--tree-top 2` (default for flame-tree) keeps top N children by self ms at each level and recurses; `--tree-full` shows the full tree. `topSelfTime` is from the full tree before pruning.
 
 Prefer `--format json` over pasting the raw DevTools export into chat. Prefer `--sections` to omit unused blocks (`timeline` is the largest).
 
@@ -108,7 +115,8 @@ Prefer `--format json` over pasting the raw DevTools export into chat. Prefer `-
 | `flutterFrames` | Jank list, build/raster/vsync stats, bottleneck hint |
 | `displayRefreshRate` | Default frame budget (e.g. 240 Hz → ~4.17 ms) |
 | `traceBinary` | Perfetto slices, instants, shader events, CPU samples (if present) |
-| `rebuildCountModel` | Top widgets by rebuild count; per-frame rebuilds in drill-down |
+| `traceBinary` + `--format flame-tree` | Nested slice tree on `io.flutter.ui` with **total/self ms** and breadcrumb paths |
+| `rebuildCountModel` | Top widgets by rebuild count; per-frame rebuilds; **rebuild ↔ slice correlation** in `precision` |
 | `selectedFrameId` | Default frame for drill-down when `--frame` omitted |
 | `selectedTab` | Which DevTools tab was active at export |
 
@@ -133,10 +141,16 @@ client/tool/
     ├── models.dart                        # Report data types
     ├── rebuild_model.dart                 # rebuildCountModel decoder
     ├── trace_decoder.dart                 # Perfetto traceBinary decoder
+    ├── frame_slice_tree.dart                # UI/raster slice trees + bottleneck helpers
+    ├── precision_analysis.dart              # hot-path aggregation + rebuild correlation
+    ├── slice_tree.dart                    # Nested slice tree + self-time
+    ├── flame_tree_builder.dart            # Per-frame flame tree
+    ├── report_flame_tree.dart             # --format flame-tree output
     ├── trace_filters.dart                 # --filter, --category, --no-embedder
     ├── report_printer.dart                # --format text
     ├── report_json.dart                    # --format json
-    └── report_summary.dart                # --format summary
+    ├── report_summary.dart                # --format summary (precision highlights)
+    ├── summary_format.dart              # hot-path shortening for summary
 ```
 
 To extend analysis, add logic in `analyzer.dart` and new fields on `PerformanceAnalysisResult`; keep `analyze_performance_json.dart` as a thin CLI.

@@ -46,7 +46,7 @@ Future<void> main(List<String> args) async {
   print('\n=== Performance analysis (${snapshotPath.path}) ===\n');
   try {
     final snapshot = loadSnapshotFromFile(snapshotPath.path);
-    final options = const AnalyzeOptions(format: OutputFormat.summary);
+    final options = AnalyzeOptions.forSummary();
     final result = analyzeSnapshot(
       snapshot,
       options,

@@ -45,6 +45,10 @@ void printPerformanceReport(
   if (sections.contains(ReportSection.drilldown) || sections.isEmpty) {
     _printDrilldownSection(result);
   }
+
+  if (sections.contains(ReportSection.precision) || sections.isEmpty) {
+    _printPrecisionSection(result.precision);
+  }
 }
 
 void _printDrilldownSection(PerformanceAnalysisResult result) {
@@ -325,5 +329,87 @@ void _printFrameDrilldown(FrameDrilldown drilldown, {bool compact = false}) {
 
   if (drilldown.overBudgetMs != null) {
     print('Over budget by ${drilldown.overBudgetMs!.toStringAsFixed(2)} ms.');
+  }
+}
+
+void _printPrecisionSection(PrecisionAnalysis? precision) {
+  if (precision == null) {
+    print('\n=== Precision Analysis ===');
+    print('No janky frames or traceBinary — precision analysis skipped.');
+    return;
+  }
+
+  print('\n=== Precision Analysis (${precision.frameCountAnalyzed} janky frames) ===');
+  final note = precision.rebuildNote;
+  print(
+    'Rebuild data: ${note.status} (precision impact: ${note.precisionImpact})',
+  );
+  print('  ${note.message}');
+
+  print('\nFrame guides (which track to inspect):');
+  for (final g in precision.frameGuides) {
+    print(
+      '  #${g.frameNumber} ${g.elapsedMs.toStringAsFixed(1)} ms '
+      '→ ${g.bottleneck} → inspect ${g.primaryAnalysisTrack} track',
+    );
+  }
+
+  if (precision.uiHotPaths.isNotEmpty) {
+    print('\nAggregated UI hot paths:');
+    for (final h in precision.uiHotPaths.take(10)) {
+      print(
+        '  ${h.totalSelfMs.toStringAsFixed(1)} ms self '
+        '(${h.occurrenceCount}/${precision.frameCountAnalyzed} frames)  ${h.path}',
+      );
+    }
+  }
+
+  if (precision.rasterHotPaths.isNotEmpty) {
+    print('\nAggregated raster hot paths:');
+    for (final h in precision.rasterHotPaths.take(10)) {
+      print(
+        '  ${h.totalSelfMs.toStringAsFixed(1)} ms self '
+        '(${h.occurrenceCount}/${precision.frameCountAnalyzed} frames)  ${h.path}',
+      );
+    }
+  }
+
+  if (precision.rebuildCorrelations.isNotEmpty) {
+    print('\nRebuild ↔ slice correlations:');
+    for (final c in precision.rebuildCorrelations.take(10)) {
+      final loc = c.file != null && c.line != null
+          ? ' @ ${c.file}:${c.line}'
+          : '';
+      final slice = c.matchedSlices.isEmpty
+          ? ''
+          : ' → ${c.matchedSlices.first.name} '
+              '(${c.matchedSlices.first.selfMs.toStringAsFixed(1)} ms self, '
+              '${c.matchedSlices.first.phase ?? '?'})';
+      print(
+        '  #${c.frameNumber} ${c.widgetName}$loc '
+        '${c.rebuildCount}x rebuilds [${c.matchQuality}]$slice',
+      );
+    }
+  }
+
+  if (precision.unmatchedHighSelfSlices.isNotEmpty) {
+    print('\nHigh self-time slices without rebuild match:');
+    for (final u in precision.unmatchedHighSelfSlices.take(8)) {
+      print(
+        '  #${u.frameNumber} ${u.selfMs.toStringAsFixed(1)} ms '
+        '[${u.track}] ${u.path}',
+      );
+    }
+  }
+
+  if (precision.unmatchedHighRebuilds.isNotEmpty) {
+    print('\nFrequent rebuilds without timeline slice match:');
+    for (final u in precision.unmatchedHighRebuilds.take(8)) {
+      final loc =
+          u.file != null && u.line != null ? ' @ ${u.file}:${u.line}' : '';
+      print(
+        '  #${u.frameNumber} ${u.widgetName}$loc ${u.rebuildCount}x rebuilds',
+      );
+    }
   }
 }
