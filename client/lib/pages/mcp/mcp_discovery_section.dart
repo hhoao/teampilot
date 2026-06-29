@@ -323,20 +323,11 @@ class _McpDiscoveryDisabledHint extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final l10n = context.l10n;
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.stretch,
-      children: [
-        Text(l10n.mcpRepoDisabledHint),
-        const SizedBox(height: 8),
-        Align(
-          alignment: Alignment.centerLeft,
-          child: TextButton.icon(
-            onPressed: onGoRegistries,
-            icon: Icon(Icons.settings_outlined, size: context.appIconSizes.md),
-            label: Text(l10n.mcpEmptyGoRegistries),
-          ),
-        ),
-      ],
+    return EmptyStateBlock(
+      icon: Icons.cloud_off_outlined,
+      title: l10n.mcpRepoDisabledHint,
+      actionLabel: l10n.mcpEmptyGoRegistries,
+      onAction: onGoRegistries,
     );
   }
 }

@@ -9,6 +9,7 @@ import '../../l10n/l10n_extensions.dart';
 import '../../models/mcp_server.dart';
 import '../../models/team_config.dart';
 import '../../theme/app_text_styles.dart';
+import '../../widgets/empty_state_block.dart';
 import '../../widgets/settings/workspace_settings_widgets.dart';
 import 'team_config_cards.dart';
 
@@ -31,8 +32,6 @@ class TeamMcpSection extends StatelessWidget {
   Widget build(BuildContext context) {
     final l10n = context.l10n;
     final onManage = onManageGlobal ?? () => context.go('/mcp');
-    final isDark = Theme.of(context).brightness == Brightness.dark;
-    final textBase = isDark ? Colors.white : const Color(0xFF111827);
     final mcpState = context.watch<McpCubit>().state;
     final enabled = mcpState.servers.where((s) => s.enabled).toList();
     final assignedCount = enabled
@@ -60,16 +59,12 @@ class TeamMcpSection extends StatelessWidget {
                 ),
                 const SizedBox(height: 14),
                 if (enabled.isEmpty)
-                  Padding(
-                    padding: const EdgeInsets.symmetric(vertical: 24),
-                    child: Center(
-                      child: Text(
-                        l10n.mcpEmpty,
-                        style: TextStyle(
-                          color: textBase.withValues(alpha: 0.6),
-                        ),
-                      ),
-                    ),
+                  EmptyStateBlock(
+                    icon: Icons.dns_outlined,
+                    title: l10n.mcpNoInstalled,
+                    hint: l10n.mcpNoInstalledHint,
+                    actionLabel: l10n.teamMcpManage,
+                    onAction: onManage,
                   )
                 else
                   for (final server in enabled)

@@ -7,6 +7,7 @@ import '../../services/cli/registry/capabilities/member_agent_preset_capability.
 import '../../services/cli/registry/cli_tool_registry_scope.dart';
 import '../dropdown/app_dropdown_decoration.dart';
 import '../dropdown/app_dropdown_field.dart';
+import '../settings/focus_gated_text_field.dart';
 import '../../pages/team_config/team_config_helpers.dart';
 
 /// Agent preset field for team members and personal workspaces.
@@ -47,14 +48,17 @@ class MemberAgentPresetField extends StatelessWidget {
         hintText: l10n.selectAgent,
         customIdHint: l10n.agentCustomIdHint,
       ),
-      MemberAgentPresetStyle.claudeAgentType => TextField(
-        controller: customAgentController,
-        decoration: InputDecoration(
-          hintText: l10n.agentClaudeTypeHint,
-          floatingLabelBehavior: FloatingLabelBehavior.never,
-        ),
-        onChanged: onAgentChanged,
-      ),
+      MemberAgentPresetStyle.claudeAgentType =>
+        customAgentController == null
+            ? const SizedBox.shrink()
+            : FocusGatedTextField(
+                controller: customAgentController!,
+                decoration: InputDecoration(
+                  hintText: l10n.agentClaudeTypeHint,
+                  floatingLabelBehavior: FloatingLabelBehavior.never,
+                ),
+                onChanged: onAgentChanged,
+              ),
     };
   }
 }
@@ -139,10 +143,10 @@ class _FlashskyaiCatalogField extends StatelessWidget {
             }
           },
         ),
-        if (showCustomAgentField) ...[
+        if (showCustomAgentField && customAgentController != null) ...[
           const SizedBox(height: 8),
-          TextField(
-            controller: customAgentController,
+          FocusGatedTextField(
+            controller: customAgentController!,
             decoration: InputDecoration(
               hintText: customIdHint,
               floatingLabelBehavior: FloatingLabelBehavior.never,

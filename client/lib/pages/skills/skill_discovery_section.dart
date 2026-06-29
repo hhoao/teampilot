@@ -4,6 +4,7 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 
 import '../../cubits/skill_cubit.dart';
 import '../../l10n/l10n_extensions.dart';
+import '../../utils/debounce/debounce.dart';
 import 'skill_discovery_helpers.dart';
 import 'skill_discovery_repos_panel.dart';
 import 'skill_discovery_skills_sh_panel.dart';
@@ -11,13 +12,8 @@ import 'skill_management_cards.dart';
 import 'skill_source_toggle.dart';
 
 class SkillDiscoverySection extends StatefulWidget {
-  const SkillDiscoverySection({
-    super.key,
-    required this.state,
-    required this.onGoRepos,
-  });
+  const SkillDiscoverySection({super.key, required this.onGoRepos});
 
-  final SkillState state;
   final VoidCallback onGoRepos;
 
   @override
@@ -42,117 +38,183 @@ class SkillDiscoverySectionState extends State<SkillDiscoverySection> {
 
   @override
   void dispose() {
+    Debounces.cancel('skill_discovery_search');
     _skillsShCtl.dispose();
     super.dispose();
   }
 
+  void _onSearchChanged(String value) {
+    Debounces.debounce(
+      'skill_discovery_search',
+      const Duration(milliseconds: 400),
+      () {
+        if (!mounted) return;
+        setState(() => _searchQuery = value);
+      },
+    );
+  }
+
+  void _reconcileRepoFilter(SkillState state) {
+    final choices = skillDiscoveryRepoFilterChoices(
+      state.repos,
+      state.discoverable,
+      context.l10n,
+    );
+    final effective = resolveSkillDiscoveryRepoFilter(_filterRepo, choices);
+    if (effective != _filterRepo && mounted) {
+      setState(() => _filterRepo = effective);
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return BlocListener<SkillCubit, SkillState>(
+      listenWhen: (previous, current) =>
+          previous.repos != current.repos ||
+          previous.discoverable != current.discoverable,
+      listener: (context, state) => _reconcileRepoFilter(state),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          SkillManagementCard(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                _SkillDiscoverySourceRow(
+                  source: _source,
+                  onSourceChanged: (source) => setState(() => _source = source),
+                ),
+                if (_source == SkillSearchSource.repos) ...[
+                  const _SkillDiscoverySyncBanner(),
+                  const SizedBox(height: 14),
+                  SkillDiscoveryReposFilters(
+                    filterRepo: _filterRepo,
+                    filterStatus: _filterStatus,
+                    onSearchChanged: _onSearchChanged,
+                    onFilterRepoChanged: (v) => setState(() => _filterRepo = v),
+                    onFilterStatusChanged: (v) =>
+                        setState(() => _filterStatus = v),
+                  ),
+                ] else ...[
+                  const SizedBox(height: 14),
+                  SkillDiscoverySkillsShSearchBar(
+                    controller: _skillsShCtl,
+                    onSearch: context.read<SkillCubit>().searchSkillsSh,
+                  ),
+                ],
+              ],
+            ),
+          ),
+          Expanded(
+            child: _source == SkillSearchSource.repos
+                ? SkillDiscoveryReposBody(
+                    filterRepo: _filterRepo,
+                    filterStatus: _filterStatus,
+                    searchQuery: _searchQuery,
+                    onGoRepos: widget.onGoRepos,
+                  )
+                : const SkillDiscoverySkillsShBody(),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _SkillDiscoverySourceRow extends StatelessWidget {
+  const _SkillDiscoverySourceRow({
+    required this.source,
+    required this.onSourceChanged,
+  });
+
+  final SkillSearchSource source;
+  final ValueChanged<SkillSearchSource> onSourceChanged;
+
   @override
   Widget build(BuildContext context) {
     final l10n = context.l10n;
-    final state = widget.state;
-    final cubit = context.read<SkillCubit>();
-    final installedKeys = state.installed
-        .map(
-          (s) =>
-              '${s.directory.toLowerCase()}:${(s.repoOwner ?? '').toLowerCase()}:${(s.repoName ?? '').toLowerCase()}',
-        )
-        .toSet();
-
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.stretch,
+    return Row(
       children: [
-        SkillManagementCard(
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
-              Row(
-                children: [
-                  SkillSourceToggle(
-                    label: l10n.skillsSourceRepos,
-                    selected: _source == SkillSearchSource.repos,
-                    onTap: () =>
-                        setState(() => _source = SkillSearchSource.repos),
+        SkillSourceToggle(
+          label: l10n.skillsSourceRepos,
+          selected: source == SkillSearchSource.repos,
+          onTap: () => onSourceChanged(SkillSearchSource.repos),
+        ),
+        const SizedBox(width: 8),
+        SkillSourceToggle(
+          label: l10n.skillsSourceSkillsSh,
+          selected: source == SkillSearchSource.skillsSh,
+          onTap: () => onSourceChanged(SkillSearchSource.skillsSh),
+        ),
+        const Spacer(),
+        if (source == SkillSearchSource.repos) const _SkillDiscoveryRefreshButton(),
+      ],
+    );
+  }
+}
+
+class _SkillDiscoveryRefreshButton extends StatelessWidget {
+  const _SkillDiscoveryRefreshButton();
+
+  @override
+  Widget build(BuildContext context) {
+    final l10n = context.l10n;
+    return BlocSelector<SkillCubit, SkillState, SkillDiscoverySyncSlice>(
+      selector: (state) => (
+        discoveryLoading: state.discoveryLoading,
+        repoSyncingKeys: state.repoSyncingKeys,
+      ),
+      builder: (context, sync) {
+        final syncing = sync.discoveryLoading || sync.repoSyncingKeys.isNotEmpty;
+        return IconButton(
+          tooltip: l10n.skillsCheckUpdates,
+          onPressed: syncing
+              ? null
+              : () => context.read<SkillCubit>().ensureDiscoveryLoaded(
+                    force: true,
                   ),
-                  const SizedBox(width: 8),
-                  SkillSourceToggle(
-                    label: l10n.skillsSourceSkillsSh,
-                    selected: _source == SkillSearchSource.skillsSh,
-                    onTap: () =>
-                        setState(() => _source = SkillSearchSource.skillsSh),
-                  ),
-                  const Spacer(),
-                  if (_source == SkillSearchSource.repos)
-                    IconButton(
-                      tooltip: l10n.skillsCheckUpdates,
-                      onPressed: state.discoveryLoading
-                          ? null
-                          : () => cubit.ensureDiscoveryLoaded(force: true),
-                      icon:
-                          state.discoveryLoading ||
-                              state.repoSyncingKeys.isNotEmpty
-                          ? const SizedBox(
-                              width: 14,
-                              height: 14,
-                              child: CircularProgressIndicator(strokeWidth: 2),
-                            )
-                          : Icon(Icons.refresh, size: context.appIconSizes.md),
-                    ),
-                ],
-              ),
-              if (_source == SkillSearchSource.repos &&
-                  state.repoSyncingKeys.isNotEmpty) ...[
-                const SizedBox(height: 10),
-                Row(
-                  children: [
-                    const SizedBox(
-                      width: 14,
-                      height: 14,
-                      child: CircularProgressIndicator(strokeWidth: 2),
-                    ),
-                    const SizedBox(width: 8),
-                    Expanded(
-                      child: Text(
-                        l10n.skillsDiscoverySyncing,
-                        style: Theme.of(context).textTheme.bodySmall,
-                      ),
-                    ),
-                  ],
-                ),
-              ],
-              const SizedBox(height: 14),
-              if (_source == SkillSearchSource.repos)
-                SkillDiscoveryReposFilters(
-                  state: state,
-                  filterRepo: _filterRepo,
-                  filterStatus: _filterStatus,
-                  onSearchChanged: (v) => setState(() => _searchQuery = v),
-                  onFilterRepoChanged: (v) => setState(() => _filterRepo = v),
-                  onFilterStatusChanged: (v) =>
-                      setState(() => _filterStatus = v),
+          icon: syncing
+              ? const SizedBox(
+                  width: 14,
+                  height: 14,
+                  child: CircularProgressIndicator(strokeWidth: 2),
                 )
-              else
-                SkillDiscoverySkillsShSearchBar(
-                  controller: _skillsShCtl,
-                  onSearch: cubit.searchSkillsSh,
+              : Icon(Icons.refresh, size: context.appIconSizes.md),
+        );
+      },
+    );
+  }
+}
+
+class _SkillDiscoverySyncBanner extends StatelessWidget {
+  const _SkillDiscoverySyncBanner();
+
+  @override
+  Widget build(BuildContext context) {
+    return BlocSelector<SkillCubit, SkillState, Set<String>>(
+      selector: (state) => state.repoSyncingKeys,
+      builder: (context, syncingKeys) {
+        if (syncingKeys.isEmpty) return const SizedBox.shrink();
+        return Padding(
+          padding: const EdgeInsets.only(top: 10),
+          child: Row(
+            children: [
+              const SizedBox(
+                width: 14,
+                height: 14,
+                child: CircularProgressIndicator(strokeWidth: 2),
+              ),
+              const SizedBox(width: 8),
+              Expanded(
+                child: Text(
+                  context.l10n.skillsDiscoverySyncing,
+                  style: Theme.of(context).textTheme.bodySmall,
                 ),
+              ),
             ],
           ),
-        ),
-        if (_source == SkillSearchSource.repos)
-          SkillDiscoveryReposGrid(
-            state: state,
-            installedKeys: installedKeys,
-            filterRepo: _filterRepo,
-            filterStatus: _filterStatus,
-            searchQuery: _searchQuery,
-            onGoRepos: widget.onGoRepos,
-          )
-        else
-          SkillDiscoverySkillsShResults(
-            state: state,
-            installedKeys: installedKeys,
-          ),
-      ],
+        );
+      },
     );
   }
 }

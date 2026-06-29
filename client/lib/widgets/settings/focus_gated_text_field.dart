@@ -103,22 +103,7 @@ class _FocusGatedTextFieldState extends State<FocusGatedTextField> {
   @override
   Widget build(BuildContext context) {
     if (!_editing) {
-      final text = widget.controller.text;
-      final multiline = widget.maxLines > 1;
-      return InkWell(
-        onTap: _enterEdit,
-        child: InputDecorator(
-          decoration: widget.decoration,
-          isEmpty: text.isEmpty,
-          child: text.isEmpty
-              ? null
-              : Text(
-                  text,
-                  maxLines: multiline ? widget.maxLines : 1,
-                  overflow: multiline ? TextOverflow.fade : TextOverflow.ellipsis,
-                ),
-        ),
-      );
+      return _buildIdleField(context);
     }
 
     return TextField(
@@ -129,6 +114,56 @@ class _FocusGatedTextFieldState extends State<FocusGatedTextField> {
       maxLines: widget.maxLines,
       decoration: widget.decoration,
       onChanged: widget.onChanged,
+    );
+  }
+
+  Widget _buildIdleField(BuildContext context) {
+    final text = widget.controller.text;
+    final theme = Theme.of(context);
+    final baseStyle =
+        widget.decoration.hintStyle ??
+        theme.inputDecorationTheme.hintStyle ??
+        theme.textTheme.bodyLarge;
+    final fontSize = baseStyle?.fontSize ?? 16.0;
+    final lineHeight = baseStyle?.height ?? 1.0;
+    // Match [TextField] minLines vertical extent while unfocused.
+    final minIdleHeight = fontSize * lineHeight * widget.minLines;
+    final hintText = widget.decoration.hintText;
+    final hintStyle = baseStyle?.copyWith(
+      color: widget.decoration.hintStyle?.color ?? theme.hintColor,
+    );
+
+    return InkWell(
+      onTap: _enterEdit,
+      child: InputDecorator(
+        decoration: widget.decoration,
+        isEmpty: text.isEmpty,
+        child: ConstrainedBox(
+          constraints: BoxConstraints(minHeight: minIdleHeight),
+          child: Align(
+            alignment: Alignment.topLeft,
+            child: text.isEmpty
+                ? (hintText != null && hintText.isNotEmpty
+                      ? Text(
+                          hintText,
+                          style: hintStyle,
+                          maxLines: widget.maxLines > 1 ? widget.maxLines : 1,
+                          overflow: TextOverflow.ellipsis,
+                        )
+                      : const SizedBox(width: double.infinity))
+                : Text(
+                    text,
+                    style: baseStyle?.copyWith(
+                      color: theme.colorScheme.onSurface,
+                    ),
+                    maxLines: widget.maxLines > 1 ? widget.maxLines : 1,
+                    overflow: widget.maxLines > 1
+                        ? TextOverflow.fade
+                        : TextOverflow.ellipsis,
+                  ),
+          ),
+        ),
+      ),
     );
   }
 }
