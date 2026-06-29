@@ -1,14 +1,12 @@
 import 'package:flutter/material.dart';
-import 'package:flutter_animate/flutter_animate.dart';
 
 import '../../cubits/launch_profile_cubit.dart';
 import '../../l10n/l10n_extensions.dart';
 import '../../models/launch_profile_kind.dart';
 import '../../models/personal_profile.dart';
 import '../../utils/launch_profile_display_name.dart';
-import '../../theme/workspace_surface_layers.dart';
-import 'home_workspace_content_header.dart';
 import 'home_workspace_global_section.dart';
+import 'home_workspace_identity_content_shell.dart';
 import 'home_workspace_personal_tab.dart';
 import 'workspace/workspace_config_section.dart';
 
@@ -39,7 +37,6 @@ class _HomePersonalContentState extends State<HomePersonalContent> {
 
   @override
   Widget build(BuildContext context) {
-    final cs = Theme.of(context).colorScheme;
     final l10n = context.l10n;
     final sections = _sections;
     if (sections.isEmpty) {
@@ -47,40 +44,20 @@ class _HomePersonalContentState extends State<HomePersonalContent> {
     }
     final active = sections[_tabIndex.clamp(0, sections.length - 1)];
     final tabs = [for (final section in sections) section.title(l10n)];
+    final personalId = widget.personal.id;
 
-    return ColoredBox(
-      color: cs.workspaceCard,
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: [
-          HomePersonalHeader(personal: widget.personal),
-          const SizedBox(height: 14),
-          HomeContentTabBar(
-            tabs: tabs,
-            selectedIndex: _tabIndex,
-            onSelect: (i) => setState(() => _tabIndex = i),
-          ),
-          Divider(height: 1, color: cs.outlineVariant.withValues(alpha: 0.5)),
-          const SizedBox(height: 16),
-          Expanded(
-            child:
-                HomePersonalTab(
-                      key: ValueKey('home-personal-tab-${active.name}'),
-                      section: active,
-                      personal: widget.personal,
-                      cubit: widget.cubit,
-                      onSelectGlobalView: widget.onSelectGlobalView,
-                    )
-                    .animate(key: ValueKey('home-personal-content-$_tabIndex'))
-                    .fadeIn(duration: 180.ms, curve: Curves.easeOut)
-                    .slideX(
-                      begin: 0.025,
-                      end: 0,
-                      duration: 220.ms,
-                      curve: Curves.easeOutCubic,
-                    ),
-          ),
-        ],
+    return HomeIdentityContentShell(
+      header: HomePersonalHeader(personal: widget.personal),
+      tabs: tabs,
+      selectedTabIndex: _tabIndex,
+      onTabSelected: (i) => setState(() => _tabIndex = i),
+      bodyAnimationKey: ValueKey('home-personal-content-$personalId-$_tabIndex'),
+      tabBody: HomePersonalTab(
+        key: ValueKey('home-personal-tab-${active.name}'),
+        section: active,
+        personal: widget.personal,
+        cubit: widget.cubit,
+        onSelectGlobalView: widget.onSelectGlobalView,
       ),
     );
   }
