@@ -6,6 +6,7 @@ import 'package:teampilot/theme/app_icon_sizes.dart';
 
 import '../../l10n/l10n_extensions.dart';
 import '../../models/app_session.dart';
+import '../../models/launch_profile.dart';
 import '../../models/launch_profile_ref.dart';
 import '../../models/workspace.dart';
 import '../../theme/app_text_styles.dart';
@@ -17,6 +18,8 @@ import '../../widgets/menu/sidebar_action_menu.dart';
 import 'open_workspace_tab_actions.dart';
 import 'workspace_actions.dart';
 import 'home_workspace_tab_scope.dart';
+import 'workspace_card_meta_row.dart';
+import 'workspace_card_session_bar.dart';
 
 /// A single workspace tile in the workspace home grid: icon, name, session count,
 /// and hover actions (new tab, favorite, overflow menu).
@@ -29,6 +32,8 @@ class WorkspaceCard extends StatefulWidget {
     this.onTap,
     this.displayNameOverride,
     this.tabIdentity,
+    this.launchProfiles = const [],
+    this.showSessionContextIcon = false,
     this.sessions = const [],
     super.key,
   });
@@ -40,6 +45,10 @@ class WorkspaceCard extends StatefulWidget {
   final VoidCallback? onTap;
   final String? displayNameOverride;
   final LaunchProfileRef? tabIdentity;
+  final List<LaunchProfile> launchProfiles;
+
+  /// When true with [tabIdentity], shows identity/topology glyph on the session row.
+  final bool showSessionContextIcon;
   final List<AppSession> sessions;
 
   @override
@@ -120,14 +129,19 @@ class _WorkspaceCardState extends State<WorkspaceCard> {
                       fontWeight: FontWeight.w600,
                     ),
                   ),
+                  const SizedBox(height: 6),
+                  WorkspaceCardMetaRow(
+                    workspace: workspace,
+                    showTopologyChip: !widget.showSessionContextIcon,
+                  ),
                   const Spacer(),
-                  Text(
-                    '${widget.sessionCount} ${l10n.homeWorkspaceSessionsLabel}',
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                    style: styles.bodySmall.copyWith(
-                      color: cs.onSurfaceVariant,
-                    ),
+                  WorkspaceCardSessionBar(
+                    sessionCount: widget.sessionCount,
+                    sessionCountLabel: l10n.homeWorkspaceSessionsLabel,
+                    workspace: workspace,
+                    tabIdentity: widget.tabIdentity,
+                    launchProfiles: widget.launchProfiles,
+                    showContextIcon: widget.showSessionContextIcon,
                   ),
                 ],
               ),
@@ -230,7 +244,6 @@ class _WorkspaceCardState extends State<WorkspaceCard> {
 
   Future<void> _showContextMenu(TapUpDetails details) async {
     final l10n = context.l10n;
-    final workspace = widget.workspace;
     final selected = await showSidebarActionMenuFromSpecsAtTap<String>(
       context: context,
       tapDetails: TapDownDetails(globalPosition: details.globalPosition),

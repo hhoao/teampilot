@@ -11,12 +11,15 @@ import '../../models/launch_profile_ref.dart';
 import '../../models/personal_profile.dart';
 import '../../models/team_config.dart';
 import '../../models/workspace.dart';
+import '../../models/workspace_folder.dart';
 import '../../models/workspace_topology.dart';
 import '../../models/workspace_tab_ref.dart';
+import '../../models/runtime_target.dart';
 import '../../utils/launch_profile_display_name.dart';
 import '../../utils/launch_profile_resolver.dart';
 import '../../utils/workspace_display_name.dart';
 import '../../services/home_workspace/workspace_launch_prefs_store.dart';
+import '../../services/storage/launch_profile_provisioner.dart';
 import 'home_launch_workspace_dialog.dart';
 import 'home_workspace_tab_scope.dart';
 import 'launch_workspace_team_order.dart';
@@ -74,6 +77,95 @@ String workspaceTabDisplayLabel({
       : (launchProfileDisplayNameForId(l10n, identities, profileId) ??
           profileId);
   return '$identityLabel · $workspaceName';
+}
+
+String workspaceTabIdentityLabel({
+  required AppLocalizations l10n,
+  required LaunchProfileRef identity,
+  required List<LaunchProfile> identities,
+}) {
+  final profile =
+      identities.where((e) => e.id == identity.profileId).firstOrNull;
+  final isPersonal = profile?.kind == LaunchProfileKind.personal;
+  if (isPersonal) {
+    return l10n.homeWorkspaceWorkspaceTabKindPersonal;
+  }
+  return launchProfileDisplayNameForId(
+        l10n,
+        identities,
+        identity.profileId,
+      ) ??
+      identity.profileId;
+}
+
+String workspaceTopologyLabel(
+  AppLocalizations l10n,
+  WorkspaceTopology topology,
+) {
+  return switch (topology) {
+    WorkspaceTopology.local => l10n.workspaceTopologyLocal,
+    WorkspaceTopology.remote => l10n.workspaceTopologyRemote,
+    WorkspaceTopology.mixed => l10n.workspaceTopologyMixed,
+  };
+}
+
+/// Default launch identity for workspace cards when no tab context exists.
+LaunchProfileRef workspaceCardDisplayIdentity(Workspace workspace) {
+  final profileId = workspace.defaultProfileId.trim();
+  if (profileId.isNotEmpty) {
+    return LaunchProfileRef(profileId);
+  }
+  return const LaunchProfileRef(LaunchProfileProvisioner.defaultPersonalId);
+}
+
+@visibleForTesting
+String? formatWorkspaceFolderTooltipLine(WorkspaceFolder folder) {
+  final path = folder.path.trim();
+  if (path.isEmpty) return null;
+  return switch (runtimeKindOfId(folder.targetId)) {
+    RuntimeKind.ssh => 'SSH: $path',
+    RuntimeKind.wsl => 'WSL: $path',
+    RuntimeKind.local => path,
+  };
+}
+
+@visibleForTesting
+List<String> workspaceTabTooltipFolderLines(List<WorkspaceFolder> folders) {
+  return [
+    for (final folder in folders)
+      if (formatWorkspaceFolderTooltipLine(folder) case final line?) line,
+  ];
+}
+
+@visibleForTesting
+String formatWorkspaceTabTooltip({
+  required Workspace workspace,
+  required String personalKindLabel,
+  required bool isPersonal,
+  String? teamName,
+  String? teamId,
+  String? displayName,
+  WorkspaceTopology topology = WorkspaceTopology.local,
+  String? topologyLabel,
+}) {
+  final name = displayName ?? workspace.effectiveDisplay;
+  final identity = isPersonal
+      ? personalKindLabel
+      : ((teamName != null && teamName.isNotEmpty)
+            ? teamName
+            : teamId ?? '');
+  final headlineParts = <String>[
+    if (topology != WorkspaceTopology.local &&
+        topologyLabel != null &&
+        topologyLabel.isNotEmpty)
+      topologyLabel,
+    identity,
+    name,
+  ];
+  final headline = headlineParts.join(' · ');
+  final pathLines = workspaceTabTooltipFolderLines(workspace.folders);
+  if (pathLines.isEmpty) return headline;
+  return '$headline\n${pathLines.join('\n')}';
 }
 
 LaunchProfileRef? resolveWorkspaceLaunchPreselection({

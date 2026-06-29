@@ -16,6 +16,7 @@ import '../../models/launch_profile_ref.dart';
 import '../../models/launch_profile_kind.dart';
 import '../../models/launch_profile.dart';
 import '../../models/workspace_tab_ref.dart';
+import '../../models/workspace_topology.dart';
 import '../../services/storage/launch_profile_provisioner.dart';
 import '../../utils/launch_profile_display_name.dart';
 import '../../utils/workspace_display_name.dart';
@@ -50,27 +51,6 @@ class HomeShell extends StatefulWidget {
 
   @override
   State<HomeShell> createState() => _HomeShellState();
-
-  @visibleForTesting
-  static String formatWorkspaceTabTooltip({
-    required Workspace workspace,
-    required String personalKindLabel,
-    required bool isPersonal,
-    String? teamName,
-    String? teamId,
-    String? displayName,
-  }) {
-    final name = displayName ?? workspace.effectiveDisplay;
-    final prefix = isPersonal
-        ? personalKindLabel
-        : ((teamName != null && teamName.isNotEmpty)
-              ? teamName
-              : teamId ?? '');
-    final headline = '$prefix · $name';
-    final path = workspace.firstFolderPath.trim();
-    if (path.isEmpty || path == name) return headline;
-    return '$headline\n$path';
-  }
 
   static String? identityNameFor(
     AppLocalizations l10n,
@@ -285,6 +265,9 @@ class _HomeShellState extends State<HomeShell> {
         tab,
         displayName: workspace?.effectiveDisplay ?? tab.workspaceId,
         primaryPath: workspace?.firstFolderPath ?? '',
+        topology: workspace == null
+            ? null
+            : workspaceTopologyOf(workspace.folders),
       ),
     );
     if (!mounted) return;
@@ -491,18 +474,19 @@ class _HomeShellTitleBar extends StatelessWidget {
         : WorkspacePageChrome.workspace;
     final openWorkspaceIds = openTabs.map((t) => t.workspaceId).toSet();
     final workspaces = context.select<ChatCubit, List<Workspace>>((c) {
-      return [
-        for (final workspace in c.state.workspaces)
-          if (openWorkspaceIds.contains(workspace.workspaceId)) workspace,
-      ];
+      return c.state.workspaces;
     });
+    final openWorkspaces = [
+      for (final workspace in workspaces)
+        if (openWorkspaceIds.contains(workspace.workspaceId)) workspace,
+    ];
     final l10n = context.l10n;
     final identities = context.select<LaunchProfileCubit, List<LaunchProfile>>(
       (c) => c.state.identities,
     );
     final tabs = <HomeWorkspaceTab>[
       for (final tab in openTabs)
-        if (_HomeShellState._resolve(workspaces, tab.workspaceId)
+        if (_HomeShellState._resolve(openWorkspaces, tab.workspaceId)
             case final workspace?)
           _workspaceTab(
             tab: tab,
@@ -517,6 +501,8 @@ class _HomeShellTitleBar extends StatelessWidget {
       activeTabKey: activeTab?.tabKey,
       pageChrome: pageChrome,
       recentlyClosed: recentlyClosed,
+      workspaces: workspaces,
+      launchProfiles: identities,
       onHomeTap: onHomeTap,
       onSelectTab: onSelectTab,
       onCloseTab: onCloseTab,
@@ -544,19 +530,23 @@ class _HomeShellTitleBar extends StatelessWidget {
         : (HomeShell.identityNameFor(l10n, identities, profileId) ?? profileId);
     final workspaceName = workspace.localizedName(l10n);
     final showIdentityInLabel = hasDuplicateDirectory(tab);
+    final topology = workspaceTopologyOf(workspace.folders);
     return HomeWorkspaceTab(
       id: tab.tabKey,
       name: showIdentityInLabel
           ? '$identityLabel · $workspaceName'
           : workspaceName,
       kind: isPersonal ? HomeWorkspaceTabKind.personal : HomeWorkspaceTabKind.team,
-      tooltip: HomeShell.formatWorkspaceTabTooltip(
+      topology: topology,
+      tooltip: formatWorkspaceTabTooltip(
         workspace: workspace,
         personalKindLabel: l10n.homeWorkspaceWorkspaceTabKindPersonal,
         isPersonal: isPersonal,
         teamName: HomeShell.identityNameFor(l10n, identities, profileId),
         teamId: profileId,
         displayName: workspaceName,
+        topology: topology,
+        topologyLabel: workspaceTopologyLabel(l10n, topology),
       ),
       closable: true,
     );

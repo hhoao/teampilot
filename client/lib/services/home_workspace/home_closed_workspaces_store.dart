@@ -57,6 +57,7 @@ class HomeClosedWorkspacesStore {
         primaryPath: entry.primaryPath,
         closedAt: now,
         identity: entry.identity,
+        topology: entry.topology,
       ),
       for (final e in existing)
         if (e.tabKey != entry.tabKey) e,

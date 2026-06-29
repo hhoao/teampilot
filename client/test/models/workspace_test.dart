@@ -29,6 +29,7 @@ void main() {
       createdAt: 1,
     );
     expect(ws.firstFolderPath, '/main');
+    expect(ws.primaryDirectoryName, 'main');
     expect(ws.extraFolderPaths, ['/extra']);
     expect(ws.folderPaths, ['/main', '/extra']);
     final restored = Workspace.fromJson(ws.toJson());
