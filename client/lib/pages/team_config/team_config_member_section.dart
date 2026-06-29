@@ -17,6 +17,7 @@ import '../../widgets/cli/member_agent_preset_field.dart';
 import '../../widgets/settings/focus_gated_text_field.dart';
 import '../../widgets/settings/workspace_settings_widgets.dart';
 import '../../widgets/team/team_lead_badge.dart';
+import '../home_workspace/home_workspace_lazy_mount.dart';
 import 'team_config_helpers.dart';
 import 'team_config_member_dialogs.dart';
 import 'team_config_persist_constants.dart';
@@ -38,7 +39,8 @@ class TeamMemberDetailSection extends StatelessWidget {
     final isDark = Theme.of(context).brightness == Brightness.dark;
     final textBase = isDark ? Colors.white : const Color(0xFF111827);
     final memberId = selectedMemberId;
-    final hasMember = memberId != null &&
+    final hasMember =
+        memberId != null &&
         context.select<LaunchProfileCubit, bool>(
           (c) =>
               LaunchProfileSelectors.memberById(
@@ -59,11 +61,14 @@ class TeamMemberDetailSection extends StatelessWidget {
       );
     }
 
-    return SingleChildScrollView(
-      child: TeamMemberConfigForm(
-        key: ValueKey('member-form-$memberId'),
-        teamId: teamId,
-        memberId: memberId,
+    return HomeWorkspaceLazyMount(
+      mountKey: '$teamId-$memberId',
+      child: SingleChildScrollView(
+        child: TeamMemberConfigForm(
+          key: ValueKey('member-form-$memberId'),
+          teamId: teamId,
+          memberId: memberId,
+        ),
       ),
     );
   }
@@ -120,7 +125,9 @@ class TeamMemberConfigFormState extends State<TeamMemberConfigForm> {
     _profileCubit = context.read<LaunchProfileCubit>();
     if (!_controllersSynced) {
       _controllersSynced = true;
-      _syncControllersFromMember(_memberSnapshot(_profileCubit!, widget.memberId));
+      _syncControllersFromMember(
+        _memberSnapshot(_profileCubit!, widget.memberId),
+      );
     }
   }
 
@@ -309,7 +316,10 @@ class TeamMemberConfigFormState extends State<TeamMemberConfigForm> {
     );
     final team = _team;
     final member = _member;
-    if (team == null || teamShell == null || discrete == null || member == null) {
+    if (team == null ||
+        teamShell == null ||
+        discrete == null ||
+        member == null) {
       return const SizedBox.shrink();
     }
 
@@ -318,14 +328,11 @@ class TeamMemberConfigFormState extends State<TeamMemberConfigForm> {
       team: team,
       member: member,
     );
-    final agentPresetCli = memberAgentPresetCli(
-      team: team,
-      member: member,
-    );
+    final agentPresetCli = memberAgentPresetCli(team: team, member: member);
     final memberAgentStyle = showMemberAgentPreset && agentPresetCli != null
-        ? CliToolRegistryScope.of(context).memberAgentPresetStyle(
-            agentPresetCli,
-          )
+        ? CliToolRegistryScope.of(
+            context,
+          ).memberAgentPresetStyle(agentPresetCli)
         : null;
 
     final canDelete = teamShell.memberCount > 1 && !discrete.isTeamLead;
@@ -602,10 +609,7 @@ class _ReplicasStepper extends StatelessWidget {
           onPressed: value > 1 ? () => onChanged(value - 1) : null,
           icon: const Icon(Icons.remove),
         ),
-        SizedBox(
-          width: 28,
-          child: Text('$value', textAlign: TextAlign.center),
-        ),
+        SizedBox(width: 28, child: Text('$value', textAlign: TextAlign.center)),
         IconButton(
           visualDensity: VisualDensity.compact,
           tooltip: '+',

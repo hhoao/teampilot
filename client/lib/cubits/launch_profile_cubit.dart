@@ -458,16 +458,26 @@ class LaunchProfileCubit extends Cubit<LaunchProfileState>
     }
   }
 
-  Future<void> selectTeam(String id) async {
+  /// Selects the active team. [syncResources] runs plugin/MCP linker sync
+  /// (expensive; skip when browsing teams in the home workspace). [silent]
+  /// avoids a status-line emit that would rebuild listeners.
+  Future<void> selectTeam(
+    String id, {
+    bool syncResources = true,
+    bool silent = false,
+  }) async {
     if (!state.teams.any((team) => team.id == id)) return;
     final team = state.teams.firstWhere((t) => t.id == id);
     emit(
       state.copyWith(
         selectedTeamId: id,
-        statusMessage: 'Selected ${team.name}.',
+        statusMessage: silent ? state.statusMessage : 'Selected ${team.name}.',
       ),
     );
-    await Future.wait([_sync.syncPluginsForSelected(), _sync.syncMcp()]);
+    if (!syncResources) return;
+    unawaited(
+      Future.wait([_sync.syncPluginsForSelected(), _sync.syncMcp()]),
+    );
   }
 
   Future<bool> addTeam(

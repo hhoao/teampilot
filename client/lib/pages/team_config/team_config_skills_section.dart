@@ -34,7 +34,9 @@ class TeamSkillsSection extends StatelessWidget {
   Widget build(BuildContext context) {
     final l10n = context.l10n;
     final onManage = onManageGlobal ?? () => context.go('/skills');
-    final skillState = context.watch<SkillCubit>().state;
+    final skillState = context.select<SkillCubit, SkillState>(
+      (c) => c.state,
+    );
     final enabled = skillState.installed
         .where((s) => s.enabled)
         .toList(growable: false);

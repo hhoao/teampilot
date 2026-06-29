@@ -1,34 +1,35 @@
 import 'package:flutter/material.dart';
-import 'package:flutter_animate/flutter_animate.dart';
-import 'package:flutter_bloc/flutter_bloc.dart';
 
 import '../../cubits/launch_profile_cubit.dart';
-import '../../cubits/team/launch_profile_selectors.dart';
 import '../../l10n/l10n_extensions.dart';
-import '../../theme/workspace_surface_layers.dart';
+import '../../models/team_config.dart';
 import '../team_config/team_config_section.dart';
 import 'home_workspace_content_header.dart';
 import 'home_workspace_global_section.dart';
+import 'home_workspace_identity_content_shell.dart';
 import 'home_workspace_team_tab.dart';
 
-/// Right-hand content pane: team header, config tabs (Members / Skills / …),
-/// and the selected team-config section. Read-only — actions show hints.
+/// Right-hand content pane: team header, config tabs (Skills / Plugins / …),
+/// and the selected team-config section.
 class HomeContent extends StatefulWidget {
   const HomeContent({
-    this.initialSection,
+    required this.team,
+    required this.cubit,
+    required this.initialTabIndex,
     this.initialMemberId,
+    this.onTabIndexChanged,
     this.onSelectGlobalView,
     super.key,
   });
 
-  /// Team-config tab to select on first build; null shows Members.
-  final TeamConfigSection? initialSection;
+  final TeamProfile team;
+  final LaunchProfileCubit cubit;
+  final int initialTabIndex;
 
-  /// Member to focus when [initialSection] is [TeamConfigSection.members].
+  /// Member to focus when the Members tab is active (deep-link).
   final String? initialMemberId;
 
-  /// Switches the workspace right pane to a global management view, used by the
-  /// embedded team skills/plugins/MCP tabs to jump to global management.
+  final ValueChanged<int>? onTabIndexChanged;
   final ValueChanged<HomeGlobalView>? onSelectGlobalView;
 
   @override
@@ -36,96 +37,54 @@ class HomeContent extends StatefulWidget {
 }
 
 class _HomeContentState extends State<HomeContent> {
+  /// Mirrors personal tab order: bundle sections first, members/settings last.
   static const _sections = <TeamConfigSection>[
+    TeamConfigSection.team,
     TeamConfigSection.members,
     TeamConfigSection.skills,
     TeamConfigSection.plugins,
     TeamConfigSection.mcp,
     TeamConfigSection.extensions,
-    TeamConfigSection.team,
   ];
 
-  late int _tabIndex = _initialTabIndex();
+  late int _tabIndex = widget.initialTabIndex.clamp(0, _sections.length - 1);
 
-  int _initialTabIndex() {
-    final section = widget.initialSection;
-    if (section == null) return 0;
-    final index = _sections.indexOf(section);
-    return index < 0 ? 0 : index;
+  @override
+  void didUpdateWidget(covariant HomeContent oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (widget.team.id != oldWidget.team.id) {
+      _tabIndex = widget.initialTabIndex.clamp(0, _sections.length - 1);
+    }
+  }
+
+  void _onTabSelected(int index) {
+    setState(() => _tabIndex = index);
+    widget.onTabIndexChanged?.call(index);
   }
 
   @override
   Widget build(BuildContext context) {
-    final cs = Theme.of(context).colorScheme;
     final l10n = context.l10n;
-    final teamId = context.select<LaunchProfileCubit, String?>(
-      (c) => c.state.selectedTeamId,
-    );
-
-    if (teamId == null) {
-      return ColoredBox(
-        color: cs.surface,
-        child: const Center(child: CircularProgressIndicator()),
-      );
-    }
-
+    final team = widget.team;
     final tabs = [for (final section in _sections) section.title(l10n)];
     final activeSection = _sections[_tabIndex];
 
-    return ColoredBox(
-      color: cs.workspaceCard,
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: [
-          _HomeTeamHeaderHost(teamId: teamId),
-          const SizedBox(height: 14),
-          HomeContentTabBar(
-            tabs: tabs,
-            selectedIndex: _tabIndex,
-            onSelect: (i) => setState(() => _tabIndex = i),
-          ),
-          Divider(height: 1, color: cs.outlineVariant.withValues(alpha: 0.5)),
-          const SizedBox(height: 16),
-          Expanded(
-            child:
-                HomeTeamTab(
-                      key: ValueKey('home-team-tab-${activeSection.name}'),
-                      teamId: teamId,
-                      section: activeSection,
-                      initialMemberId:
-                          activeSection == TeamConfigSection.members
-                          ? widget.initialMemberId
-                          : null,
-                      onSelectGlobalView: widget.onSelectGlobalView,
-                    )
-                    .animate(key: ValueKey('home-content-tab-$_tabIndex'))
-                    .fadeIn(duration: 180.ms, curve: Curves.easeOut)
-                    .slideX(
-                      begin: 0.025,
-                      end: 0,
-                      duration: 220.ms,
-                      curve: Curves.easeOutCubic,
-                    ),
-          ),
-        ],
+    return HomeIdentityContentShell(
+      header: HomeTeamHeader.fromTeam(team),
+      tabs: tabs,
+      selectedTabIndex: _tabIndex,
+      onTabSelected: _onTabSelected,
+      bodyAnimationKey: ValueKey('home-team-content-${team.id}-$_tabIndex'),
+      tabBody: HomeTeamTab(
+        key: ValueKey('home-team-tab-${activeSection.name}'),
+        team: team,
+        section: activeSection,
+        cubit: widget.cubit,
+        initialMemberId: activeSection == TeamConfigSection.members
+            ? widget.initialMemberId
+            : null,
+        onSelectGlobalView: widget.onSelectGlobalView,
       ),
     );
-  }
-}
-
-class _HomeTeamHeaderHost extends StatelessWidget {
-  const _HomeTeamHeaderHost({required this.teamId});
-
-  final String teamId;
-
-  @override
-  Widget build(BuildContext context) {
-    final header = context.select<LaunchProfileCubit, TeamHeaderSnapshot?>(
-      (c) => LaunchProfileSelectors.teamHeader(
-        LaunchProfileSelectors.teamById(c.state, teamId),
-      ),
-    );
-    if (header == null) return const SizedBox.shrink();
-    return HomeTeamHeader(snapshot: header);
   }
 }

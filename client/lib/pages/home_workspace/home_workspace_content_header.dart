@@ -11,6 +11,12 @@ class HomeTeamHeader extends StatelessWidget {
 
   final TeamHeaderSnapshot snapshot;
 
+  factory HomeTeamHeader.fromTeam(TeamProfile team) {
+    return HomeTeamHeader(
+      snapshot: LaunchProfileSelectors.teamHeader(team)!,
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final cs = Theme.of(context).colorScheme;
@@ -29,7 +35,16 @@ class HomeTeamHeader extends StatelessWidget {
         : snapshot.display;
     return Row(
       children: [
-        Text(title, style: titleStyle),
+        Icon(Icons.groups_2_outlined, color: cs.primary),
+        const SizedBox(width: 10),
+        Expanded(
+          child: Text(
+            title,
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+            style: titleStyle,
+          ),
+        ),
         const SizedBox(width: 12),
         Container(
           padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 3),

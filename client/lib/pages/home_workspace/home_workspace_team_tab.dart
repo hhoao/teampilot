@@ -14,21 +14,24 @@ import '../team_config/team_config_plugins_section.dart';
 import '../team_config/team_config_section.dart';
 import '../team_config/team_config_skills_section.dart';
 import 'home_workspace_global_section.dart';
+import 'home_workspace_lazy_mount.dart';
 
 /// Embeds an existing team-config section body inside a workspace-home tab.
 /// For the Members section it adds a lightweight member picker (the standalone
 /// section only renders one member's detail).
 class HomeTeamTab extends StatefulWidget {
   const HomeTeamTab({
-    required this.teamId,
+    required this.team,
     required this.section,
+    required this.cubit,
     this.initialMemberId,
     this.onSelectGlobalView,
     super.key,
   });
 
-  final String teamId;
+  final TeamProfile team;
   final TeamConfigSection section;
+  final LaunchProfileCubit cubit;
 
   /// Member to pre-select in the Members section (deep-link); null picks the
   /// first member.
@@ -46,10 +49,7 @@ class HomeTeamTab extends StatefulWidget {
 class _HomeTeamTabState extends State<HomeTeamTab> {
   late String? _selectedMemberId = widget.initialMemberId;
 
-  LaunchProfileCubit get _cubit => context.read<LaunchProfileCubit>();
-
-  TeamProfile? get _team =>
-      LaunchProfileSelectors.teamById(_cubit.state, widget.teamId);
+  LaunchProfileCubit get _cubit => widget.cubit;
 
   @override
   Widget build(BuildContext context) {
@@ -57,11 +57,7 @@ class _HomeTeamTabState extends State<HomeTeamTab> {
       return _buildMembers(context);
     }
 
-    final team = context.select<LaunchProfileCubit, TeamProfile?>(
-      (c) => LaunchProfileSelectors.teamById(c.state, widget.teamId),
-    );
-    if (team == null) return const SizedBox.shrink();
-
+    final team = widget.team;
     final onGlobal = widget.onSelectGlobalView;
     VoidCallback? manage(HomeGlobalView view) =>
         onGlobal == null ? null : () => onGlobal(view);
@@ -98,12 +94,15 @@ class _HomeTeamTabState extends State<HomeTeamTab> {
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
         _MemberPickerHost(
-          teamId: widget.teamId,
+          teamId: widget.team.id,
           selectedMemberId: _selectedMemberId,
           onSelect: (id) => setState(() => _selectedMemberId = id),
           onAddMember: () async {
             await _cubit.addMember();
-            final team = _team;
+            final team = LaunchProfileSelectors.teamById(
+              _cubit.state,
+              widget.team.id,
+            );
             if (team != null && team.members.isNotEmpty) {
               setState(() => _selectedMemberId = team.members.last.id);
             }
@@ -113,9 +112,12 @@ class _HomeTeamTabState extends State<HomeTeamTab> {
           child: Padding(
             padding: const EdgeInsets.symmetric(horizontal: 0, vertical: 4),
             child: RepaintBoundary(
-              child: _MemberDetailHost(
-                teamId: widget.teamId,
-                selectedMemberId: _selectedMemberId,
+              child: HomeWorkspaceLazyMount(
+                mountKey: widget.team.id,
+                child: _MemberDetailHost(
+                  teamId: widget.team.id,
+                  selectedMemberId: _selectedMemberId,
+                ),
               ),
             ),
           ),

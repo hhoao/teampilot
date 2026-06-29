@@ -83,7 +83,8 @@ class _WorkspaceConfigPanelState
           team: team,
         ),
       WorkspaceConfigSection.members when team != null => HomeTeamTab(
-          teamId: team.id,
+          team: team,
+          cubit: identityCubit,
           section: TeamConfigSection.members,
         ),
       WorkspaceConfigSection.agent when identity is PersonalProfile =>
@@ -101,7 +102,8 @@ class _WorkspaceConfigPanelState
           profileId: identity.id,
         ),
       WorkspaceConfigSection.skills when team != null => HomeTeamTab(
-          teamId: team.id,
+          team: team,
+          cubit: identityCubit,
           section: TeamConfigSection.skills,
           onSelectGlobalView: _openGlobalView,
         ),
@@ -111,7 +113,8 @@ class _WorkspaceConfigPanelState
           profileId: identity.id,
         ),
       WorkspaceConfigSection.plugins when team != null => HomeTeamTab(
-          teamId: team.id,
+          team: team,
+          cubit: identityCubit,
           section: TeamConfigSection.plugins,
           onSelectGlobalView: _openGlobalView,
         ),
@@ -121,14 +124,16 @@ class _WorkspaceConfigPanelState
           profileId: identity.id,
         ),
       WorkspaceConfigSection.mcp when team != null => HomeTeamTab(
-          teamId: team.id,
+          team: team,
+          cubit: identityCubit,
           section: TeamConfigSection.mcp,
           onSelectGlobalView: _openGlobalView,
         ),
       WorkspaceConfigSection.extensions when identity is PersonalProfile =>
         WorkspaceExtensionsSection(workspaceId: widget.workspace.workspaceId),
       WorkspaceConfigSection.extensions when team != null => HomeTeamTab(
-          teamId: team.id,
+          team: team,
+          cubit: identityCubit,
           section: TeamConfigSection.extensions,
         ),
       _ => const SizedBox.shrink(),

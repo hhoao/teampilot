@@ -323,10 +323,11 @@ class _TeamDefaultPresetRow extends StatelessWidget {
     final styles = AppTextStyles.of(context);
     final registry = CliToolRegistryScope.of(context);
     final presets = context.watch<CliPresetsCubit>().state.presets;
-    final currentTeam = context.watch<LaunchProfileCubit>().state.teams.firstWhere(
-      (t) => t.id == team.id,
-      orElse: () => team,
-    );
+    final currentTeam = context
+        .watch<LaunchProfileCubit>()
+        .state
+        .teams
+        .firstWhere((t) => t.id == team.id, orElse: () => team);
     final catalogCli = currentTeam.cli;
     final activePreset = currentTeam.activePresetId != null
         ? _findPreset(presets, currentTeam.activePresetId!)
