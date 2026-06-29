@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:teampilot/cubits/app_bootstrap_cubit.dart';
 import 'package:teampilot/cubits/layout_cubit.dart';
 import 'package:teampilot/cubits/session_preferences_cubit.dart';
 import 'package:teampilot/l10n/app_localizations.dart';
@@ -52,6 +53,8 @@ void main() {
     final sessionPreferencesCubit = SessionPreferencesCubit(
       repository: SessionPreferencesRepository(prefs),
     );
+    final bootstrapCubit = AppBootstrapCubit()
+      ..markAppReady(showOnboardingWizard: true);
 
     appRouter.go('/home-v2');
 
@@ -72,6 +75,7 @@ void main() {
         ],
         child: MultiBlocProvider(
           providers: [
+            BlocProvider.value(value: bootstrapCubit),
             BlocProvider.value(value: sessionPreferencesCubit),
             BlocProvider(create: (_) => LayoutCubit()),
           ],
@@ -90,5 +94,6 @@ void main() {
     expect(find.byType(OnboardingWizard), findsOneWidget);
 
     await sessionPreferencesCubit.close();
+    await bootstrapCubit.close();
   });
 }

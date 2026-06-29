@@ -14,6 +14,8 @@ import 'package:teampilot/services/mcp/profile_mcp_linker_service.dart';
 import 'package:teampilot/services/plugin/profile_plugin_linker_service.dart';
 import 'package:teampilot/services/storage/app_storage.dart';
 
+import '../support/post_frame_test_harness.dart';
+
 const _userServer = McpServer(
   id: 'user-mcp',
   name: 'user',
@@ -175,6 +177,7 @@ void main() {
 
       linker.calls.clear();
       await cubit.selectTeam('t');
+      await drainPendingAsyncWork(rounds: 10);
 
       expect(linker.calls, isNotEmpty);
       final call = linker.calls.first;
@@ -217,6 +220,7 @@ void main() {
 
       linker.calls.clear();
       await cubit.selectTeam('t');
+      await drainPendingAsyncWork(rounds: 10);
 
       // Two calls: initial (skips 'ghost') then the pruned re-sync.
       expect(linker.calls, hasLength(2));
