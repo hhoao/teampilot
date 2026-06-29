@@ -7,6 +7,7 @@ import '../../l10n/l10n_extensions.dart';
 import '../../theme/app_text_styles.dart';
 import '../../utils/github_source_url.dart';
 import 'skill_discover_card.dart';
+import '../../widgets/empty_state_block.dart';
 import 'skill_management_cards.dart';
 
 class SkillDiscoverySkillsShSearchBar extends StatelessWidget {
@@ -72,7 +73,7 @@ class SkillDiscoverySkillsShResults extends StatelessWidget {
     }
     if (sh.query.isEmpty) {
       return SkillManagementCard(
-        child: SkillEmptyBlock(
+        child: EmptyStateBlock(
           icon: Icons.search,
           title: l10n.skillsSkillsShPlaceholder,
           hint: '',
@@ -81,7 +82,7 @@ class SkillDiscoverySkillsShResults extends StatelessWidget {
     }
     if (sh.entries.isEmpty) {
       return SkillManagementCard(
-        child: SkillEmptyBlock(
+        child: EmptyStateBlock(
           icon: Icons.search_off,
           title: l10n.skillsDiscoveryEmpty,
           hint: l10n.skillsDiscoveryEmptyHint,

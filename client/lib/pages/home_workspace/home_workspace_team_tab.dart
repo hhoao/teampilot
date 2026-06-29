@@ -1,10 +1,11 @@
-﻿import 'package:flutter/material.dart';
+import 'package:flutter/material.dart';
+import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:teampilot/theme/app_icon_sizes.dart';
 
 import '../../cubits/launch_profile_cubit.dart';
+import '../../cubits/team/launch_profile_selectors.dart';
 import '../../models/team_config.dart';
 import '../../theme/app_text_styles.dart';
-import '../../utils/team_member_naming.dart';
 import '../team_config/team_config_extensions_section.dart';
 import '../team_config/team_config_info_section.dart';
 import '../team_config/team_config_mcp_section.dart';
@@ -19,17 +20,15 @@ import 'home_workspace_global_section.dart';
 /// section only renders one member's detail).
 class HomeTeamTab extends StatefulWidget {
   const HomeTeamTab({
+    required this.teamId,
     required this.section,
-    required this.team,
-    required this.cubit,
     this.initialMemberId,
     this.onSelectGlobalView,
     super.key,
   });
 
+  final String teamId;
   final TeamConfigSection section;
-  final TeamProfile team;
-  final LaunchProfileCubit cubit;
 
   /// Member to pre-select in the Members section (deep-link); null picks the
   /// first member.
@@ -47,13 +46,17 @@ class HomeTeamTab extends StatefulWidget {
 class _HomeTeamTabState extends State<HomeTeamTab> {
   late String? _selectedMemberId = widget.initialMemberId;
 
-  String? get _resolvedMemberId {
-    final members = widget.team.members;
-    if (members.isEmpty) return null;
+  String? _resolvedMemberId(List<MemberRosterEntry> roster) {
+    if (roster.isEmpty) return null;
     final id = _selectedMemberId;
-    if (id != null && members.any((m) => m.id == id)) return id;
-    return members.first.id;
+    if (id != null && roster.any((m) => m.id == id)) return id;
+    return roster.first.id;
   }
+
+  LaunchProfileCubit get _cubit => context.read<LaunchProfileCubit>();
+
+  TeamProfile? get _team =>
+      LaunchProfileSelectors.teamById(_cubit.state, widget.teamId);
 
   @override
   Widget build(BuildContext context) {
@@ -61,31 +64,33 @@ class _HomeTeamTabState extends State<HomeTeamTab> {
       return _buildMembers(context);
     }
 
+    final team = context.select<LaunchProfileCubit, TeamProfile?>(
+      (c) => LaunchProfileSelectors.teamById(c.state, widget.teamId),
+    );
+    if (team == null) return const SizedBox.shrink();
+
     final onGlobal = widget.onSelectGlobalView;
     VoidCallback? manage(HomeGlobalView view) =>
         onGlobal == null ? null : () => onGlobal(view);
 
     final body = switch (widget.section) {
-      TeamConfigSection.team => TeamInfoSection(
-        team: widget.team,
-        cubit: widget.cubit,
-      ),
+      TeamConfigSection.team => TeamInfoSection(team: team, cubit: _cubit),
       TeamConfigSection.skills => TeamSkillsSection(
-        team: widget.team,
-        cubit: widget.cubit,
+        team: team,
+        cubit: _cubit,
         onManageGlobal: manage(HomeGlobalView.skills),
       ),
       TeamConfigSection.plugins => TeamPluginsSection(
-        team: widget.team,
-        cubit: widget.cubit,
+        team: team,
+        cubit: _cubit,
         onManageGlobal: manage(HomeGlobalView.plugins),
       ),
       TeamConfigSection.mcp => TeamMcpSection(
-        team: widget.team,
-        cubit: widget.cubit,
+        team: team,
+        cubit: _cubit,
         onManageGlobal: manage(HomeGlobalView.mcp),
       ),
-      TeamConfigSection.extensions => TeamExtensionsSection(team: widget.team),
+      TeamConfigSection.extensions => TeamExtensionsSection(team: team),
       TeamConfigSection.members => const SizedBox.shrink(),
     };
 
@@ -96,22 +101,32 @@ class _HomeTeamTabState extends State<HomeTeamTab> {
   }
 
   Widget _buildMembers(BuildContext context) {
-    final memberId = _resolvedMemberId;
+    final roster = context.select<LaunchProfileCubit, List<MemberRosterEntry>>(
+      (c) => LaunchProfileSelectors.memberRoster(
+        LaunchProfileSelectors.teamById(c.state, widget.teamId),
+      ),
+    );
+    final memberId = _resolvedMemberId(roster);
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
         _MemberPicker(
-          team: widget.team,
-          cubit: widget.cubit,
+          roster: roster,
           selectedMemberId: memberId,
           onSelect: (id) => setState(() => _selectedMemberId = id),
+          onAddMember: () async {
+            await _cubit.addMember();
+            final team = _team;
+            if (team != null && team.members.isNotEmpty) {
+              setState(() => _selectedMemberId = team.members.last.id);
+            }
+          },
         ),
         Expanded(
           child: Padding(
             padding: const EdgeInsets.symmetric(horizontal: 0, vertical: 4),
             child: TeamMemberDetailSection(
-              team: widget.team,
-              cubit: widget.cubit,
+              teamId: widget.teamId,
               selectedMemberId: memberId,
             ),
           ),
@@ -123,16 +138,16 @@ class _HomeTeamTabState extends State<HomeTeamTab> {
 
 class _MemberPicker extends StatelessWidget {
   const _MemberPicker({
-    required this.team,
-    required this.cubit,
+    required this.roster,
     required this.selectedMemberId,
     required this.onSelect,
+    required this.onAddMember,
   });
 
-  final TeamProfile team;
-  final LaunchProfileCubit cubit;
+  final List<MemberRosterEntry> roster;
   final String? selectedMemberId;
   final ValueChanged<String> onSelect;
+  final Future<void> Function() onAddMember;
 
   @override
   Widget build(BuildContext context) {
@@ -148,13 +163,13 @@ class _MemberPicker extends StatelessWidget {
         scrollDirection: Axis.horizontal,
         child: Row(
           children: [
-            for (final member in team.members)
+            for (final member in roster)
               _MemberChip(
                 member: member,
                 selected: member.id == selectedMemberId,
                 onTap: () => onSelect(member.id),
               ),
-            _AddMemberChip(cubit: cubit, onAdded: onSelect),
+            _AddMemberChip(onTap: onAddMember),
           ],
         ),
       ),
@@ -169,7 +184,7 @@ class _MemberChip extends StatelessWidget {
     required this.onTap,
   });
 
-  final TeamMemberConfig member;
+  final MemberRosterEntry member;
   final bool selected;
   final VoidCallback onTap;
 
@@ -177,8 +192,6 @@ class _MemberChip extends StatelessWidget {
   Widget build(BuildContext context) {
     final cs = Theme.of(context).colorScheme;
     final styles = AppTextStyles.of(context);
-    final isLead = TeamMemberNaming.isTeamLead(member);
-    final name = member.name.trim().isEmpty ? member.id : member.name;
 
     return Padding(
       padding: const EdgeInsets.only(right: 8),
@@ -202,13 +215,13 @@ class _MemberChip extends StatelessWidget {
             mainAxisSize: MainAxisSize.min,
             children: [
               Icon(
-                isLead ? Icons.star_rounded : Icons.person_outline,
+                member.isTeamLead ? Icons.star_rounded : Icons.person_outline,
                 size: context.appIconSizes.md,
                 color: selected ? cs.primary : cs.onSurfaceVariant,
               ),
               const SizedBox(width: 6),
               Text(
-                name,
+                member.displayName,
                 style: styles.bodySmall.copyWith(
                   color: selected ? cs.primary : cs.onSurface,
                   fontWeight: selected ? FontWeight.w600 : FontWeight.w400,
@@ -223,22 +236,15 @@ class _MemberChip extends StatelessWidget {
 }
 
 class _AddMemberChip extends StatelessWidget {
-  const _AddMemberChip({required this.cubit, required this.onAdded});
+  const _AddMemberChip({required this.onTap});
 
-  final LaunchProfileCubit cubit;
-  final ValueChanged<String> onAdded;
+  final Future<void> Function() onTap;
 
   @override
   Widget build(BuildContext context) {
     final cs = Theme.of(context).colorScheme;
     return InkWell(
-      onTap: () async {
-        await cubit.addMember();
-        final team = cubit.state.selectedTeam;
-        if (team != null && team.members.isNotEmpty) {
-          onAdded(team.members.last.id);
-        }
-      },
+      onTap: onTap,
       borderRadius: BorderRadius.circular(8),
       child: Container(
         padding: const EdgeInsets.all(9),

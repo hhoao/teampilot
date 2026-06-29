@@ -143,17 +143,27 @@ class _AssignmentStatusChip extends StatelessWidget {
             cs.error,
           );
 
-    return Chip(
-      avatar: Icon(icon, size: 16, color: color),
-      label: Text(label),
-      labelStyle: Theme.of(context).textTheme.labelSmall?.copyWith(
-        color: color,
-        fontWeight: FontWeight.w600,
+    final labelStyle = Theme.of(context).textTheme.labelSmall?.copyWith(
+      color: color,
+      fontWeight: FontWeight.w600,
+    );
+    return DecoratedBox(
+      decoration: BoxDecoration(
+        color: color.withValues(alpha: 0.08),
+        borderRadius: BorderRadius.circular(8),
+        border: Border.all(color: color.withValues(alpha: 0.35)),
       ),
-      side: BorderSide(color: color.withValues(alpha: 0.35)),
-      backgroundColor: color.withValues(alpha: 0.08),
-      visualDensity: VisualDensity.compact,
-      padding: const EdgeInsets.symmetric(horizontal: 4),
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(icon, size: 16, color: color),
+            const SizedBox(width: 4),
+            Text(label, style: labelStyle),
+          ],
+        ),
+      ),
     );
   }
 }

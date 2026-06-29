@@ -291,7 +291,7 @@ class _WorkspaceSettingsInlineRow extends StatelessWidget {
                 ),
               ),
               Expanded(
-                child: SelectableText(
+                child: Text(
                   value,
                   style: tt.bodyMedium?.copyWith(fontWeight: FontWeight.w500),
                 ),

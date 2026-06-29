@@ -3107,6 +3107,9 @@ class AppLocalizationsEn extends AppLocalizations {
       'Browse built-in templates and remote catalogs configured under Registries.';
 
   @override
+  String get mcpDiscoverySourceAll => 'All';
+
+  @override
   String get mcpDiscoverySourceBuiltin => 'Built-in';
 
   @override

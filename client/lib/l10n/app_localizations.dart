@@ -5649,6 +5649,12 @@ abstract class AppLocalizations {
   /// **'Browse built-in templates and remote catalogs configured under Registries.'**
   String get mcpDiscoverySectionHint;
 
+  /// No description provided for @mcpDiscoverySourceAll.
+  ///
+  /// In en, this message translates to:
+  /// **'All'**
+  String get mcpDiscoverySourceAll;
+
   /// No description provided for @mcpDiscoverySourceBuiltin.
   ///
   /// In en, this message translates to:

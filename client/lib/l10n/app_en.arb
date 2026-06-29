@@ -1452,6 +1452,7 @@
   "mcpNoInstalledHint": "Open Discovery to add servers from built-in templates or registries.",
   "mcpDiscoverySectionTitle": "Discover MCP servers",
   "mcpDiscoverySectionHint": "Browse built-in templates and remote catalogs configured under Registries.",
+  "mcpDiscoverySourceAll": "All",
   "mcpDiscoverySourceBuiltin": "Built-in",
   "mcpSmitheryApiTokenLabel": "API token",
   "mcpSmitheryApiTokenHint": "Smithery API key (Bearer)",

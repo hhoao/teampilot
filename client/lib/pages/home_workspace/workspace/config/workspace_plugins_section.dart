@@ -9,6 +9,7 @@ import '../../../../cubits/plugin_cubit.dart';
 import '../../../../l10n/l10n_extensions.dart';
 import '../../../../models/personal_profile.dart';
 import '../../home_workspace_global_section.dart';
+import '../../../../widgets/empty_state_block.dart';
 import '../../../team_config/team_config_cards.dart';
 import '../../../team_config/team_config_plugins_section.dart';
 
@@ -33,8 +34,6 @@ class WorkspacePluginsSection extends StatelessWidget {
     final l10n = context.l10n;
     void onManage() =>
         context.go(HomeGlobalView.plugins.homeLocation);
-    final isDark = Theme.of(context).brightness == Brightness.dark;
-    final textBase = isDark ? Colors.white : const Color(0xFF111827);
     final pluginState = context.watch<PluginCubit>().state;
     final syncing = identityCubit.state.isSyncingPlugins;
     final installed = pluginState.installed;
@@ -67,12 +66,14 @@ class WorkspacePluginsSection extends StatelessWidget {
                 ],
                 const SizedBox(height: 14),
                 if (installed.isEmpty)
-                  TeamPluginsEmptyBlock(
-                    textBase: textBase,
-                    onGoPlugins: onManage,
-                    emptyTitle: l10n.workspacePluginsEmpty,
-                    emptyHint: l10n.workspacePluginsEmptyHint,
+                  EmptyStateBlock(
+                    icon: Icons.inventory_2_outlined,
+                    title: l10n.workspacePluginsEmpty,
+                    hint: l10n.workspacePluginsEmptyHint,
                     actionLabel: l10n.workspacePluginsManage,
+                    onAction: onManage,
+                    actionIcon: Icons.widgets_outlined,
+                    actionStyle: EmptyStateActionStyle.outlinedIcon,
                   )
                 else
                   Column(

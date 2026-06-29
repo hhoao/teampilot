@@ -12,6 +12,7 @@ class WorkspaceTopologyChip extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final l10n = context.l10n;
+    final tt = Theme.of(context).textTheme;
     final (label, icon, color) = switch (topology) {
       WorkspaceTopology.local => (
         l10n.workspaceTopologyLocal,
@@ -29,11 +30,25 @@ class WorkspaceTopologyChip extends StatelessWidget {
         Theme.of(context).colorScheme.secondary,
       ),
     };
-    return Chip(
-      avatar: Icon(icon, size: 18, color: color),
-      label: Text(label),
-      side: BorderSide(color: color.withValues(alpha: 0.4)),
-      visualDensity: VisualDensity.compact,
+    return DecoratedBox(
+      decoration: BoxDecoration(
+        borderRadius: BorderRadius.circular(8),
+        border: Border.all(color: color.withValues(alpha: 0.4)),
+      ),
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(icon, size: 18, color: color),
+            const SizedBox(width: 6),
+            Text(
+              label,
+              style: tt.labelLarge?.copyWith(color: color),
+            ),
+          ],
+        ),
+      ),
     );
   }
 }

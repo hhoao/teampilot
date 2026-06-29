@@ -83,9 +83,8 @@ class _WorkspaceConfigPanelState
           team: team,
         ),
       WorkspaceConfigSection.members when team != null => HomeTeamTab(
+          teamId: team.id,
           section: TeamConfigSection.members,
-          team: team,
-          cubit: identityCubit,
         ),
       WorkspaceConfigSection.agent when identity is PersonalProfile =>
         WorkspaceAgentSection(
@@ -102,9 +101,8 @@ class _WorkspaceConfigPanelState
           profileId: identity.id,
         ),
       WorkspaceConfigSection.skills when team != null => HomeTeamTab(
+          teamId: team.id,
           section: TeamConfigSection.skills,
-          team: team,
-          cubit: identityCubit,
           onSelectGlobalView: _openGlobalView,
         ),
       WorkspaceConfigSection.plugins when identity is PersonalProfile =>
@@ -113,9 +111,8 @@ class _WorkspaceConfigPanelState
           profileId: identity.id,
         ),
       WorkspaceConfigSection.plugins when team != null => HomeTeamTab(
+          teamId: team.id,
           section: TeamConfigSection.plugins,
-          team: team,
-          cubit: identityCubit,
           onSelectGlobalView: _openGlobalView,
         ),
       WorkspaceConfigSection.mcp when identity is PersonalProfile =>
@@ -124,17 +121,15 @@ class _WorkspaceConfigPanelState
           profileId: identity.id,
         ),
       WorkspaceConfigSection.mcp when team != null => HomeTeamTab(
+          teamId: team.id,
           section: TeamConfigSection.mcp,
-          team: team,
-          cubit: identityCubit,
           onSelectGlobalView: _openGlobalView,
         ),
       WorkspaceConfigSection.extensions when identity is PersonalProfile =>
         WorkspaceExtensionsSection(workspaceId: widget.workspace.workspaceId),
       WorkspaceConfigSection.extensions when team != null => HomeTeamTab(
+          teamId: team.id,
           section: TeamConfigSection.extensions,
-          team: team,
-          cubit: identityCubit,
         ),
       _ => const SizedBox.shrink(),
     };

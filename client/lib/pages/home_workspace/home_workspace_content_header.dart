@@ -1,14 +1,15 @@
 import 'package:flutter/material.dart';
 
+import '../../cubits/team/launch_profile_selectors.dart';
 import '../../models/team_config.dart';
+import '../../services/storage/launch_profile_provisioner.dart';
 import '../../theme/app_text_styles.dart';
 import '../../l10n/l10n_extensions.dart';
-import '../../utils/launch_profile_display_name.dart';
 
 class HomeTeamHeader extends StatelessWidget {
-  const HomeTeamHeader({super.key, required this.team});
+  const HomeTeamHeader({super.key, required this.snapshot});
 
-  final TeamProfile team;
+  final TeamHeaderSnapshot snapshot;
 
   @override
   Widget build(BuildContext context) {
@@ -18,12 +19,17 @@ class HomeTeamHeader extends StatelessWidget {
     final titleStyle = Theme.of(
       context,
     ).textTheme.titleLarge?.copyWith(color: cs.onSurface);
-    final isMixed = team.teamMode == TeamMode.mixed;
-    final modeLabel = isMixed ? l10n.teamModeMixedTitle : l10n.teamModeNativeTitle;
+    final isMixed = snapshot.teamMode == TeamMode.mixed;
+    final modeLabel = isMixed
+        ? l10n.teamModeMixedTitle
+        : l10n.teamModeNativeTitle;
     final badgeColor = isMixed ? cs.tertiary : cs.primary;
+    final title = snapshot.id == LaunchProfileProvisioner.defaultTeamId
+        ? l10n.homeWorkspaceDefaultTeamName
+        : snapshot.display;
     return Row(
       children: [
-        Text(launchProfileDisplayName(l10n, team), style: titleStyle),
+        Text(title, style: titleStyle),
         const SizedBox(width: 12),
         Container(
           padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 3),
@@ -45,7 +51,8 @@ class HomeTeamHeader extends StatelessWidget {
 }
 
 class HomeContentTabBar extends StatelessWidget {
-  const HomeContentTabBar({super.key, 
+  const HomeContentTabBar({
+    super.key,
     required this.tabs,
     required this.selectedIndex,
     required this.onSelect,
@@ -74,7 +81,8 @@ class HomeContentTabBar extends StatelessWidget {
 }
 
 class HomeContentTabItem extends StatefulWidget {
-  const HomeContentTabItem({super.key, 
+  const HomeContentTabItem({
+    super.key,
     required this.label,
     required this.selected,
     required this.onTap,

@@ -9,6 +9,7 @@ import '../../theme/app_text_styles.dart';
 import '../../utils/github_source_url.dart';
 import '../../widgets/dropdown/app_dropdown_field.dart';
 import '../../widgets/github_details_button.dart';
+import '../../widgets/empty_state_block.dart';
 import 'plugin_management_cards.dart';
 
 class PluginDiscoverySection extends StatefulWidget {
@@ -109,7 +110,7 @@ class PluginDiscoveryBodyState extends State<PluginDiscoveryBody> {
     if (marketplaces.isEmpty) {
       return SingleChildScrollView(
         child: PluginManagementCard(
-          child: PluginEmptyBlock(
+          child: EmptyStateBlock(
             icon: Icons.store_outlined,
             title: l10n.pluginsMarketplacesEmpty,
             hint: l10n.pluginsNoInstalledHint,
@@ -212,10 +213,9 @@ class PluginDiscoveryBodyState extends State<PluginDiscoveryBody> {
     if (!widget.state.discoveryLoading && filtered.isEmpty) {
       return SingleChildScrollView(
         child: PluginManagementCard(
-          child: PluginEmptyBlock(
+          child: EmptyStateBlock(
             icon: Icons.travel_explore_outlined,
             title: l10n.pluginsDiscoveryEmpty,
-            hint: '',
             actionLabel: l10n.pluginsGoDiscovery,
             onAction: widget.onGoMarketplaces,
           ),

@@ -12,6 +12,7 @@ import '../../theme/app_text_styles.dart';
 import '../../theme/workspace_surface_layers.dart';
 import '../../utils/debounce/debounce.dart';
 import '../../utils/skill_repo_parse.dart';
+import '../../widgets/empty_state_block.dart';
 import 'skill_management_cards.dart';
 
 class SkillReposSection extends StatefulWidget {
@@ -48,7 +49,7 @@ class SkillReposSectionState extends State<SkillReposSection> {
                 SkillCardHeader(title: l10n.skillsNavRepos),
                 const SizedBox(height: 12),
                 if (widget.state.repos.isEmpty)
-                  SkillEmptyBlock(
+                  EmptyStateBlock(
                     icon: Icons.source_outlined,
                     title: l10n.skillsReposEmpty,
                     hint: l10n.skillsDiscoveryEmptyHint,

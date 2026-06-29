@@ -197,6 +197,10 @@ class AppPaths {
   static String mcpBackupsDirForTeampilotRoot(String teampilotRoot) =>
       _pathUnderTeampilotRoot(teampilotRoot, 'mcp/backups');
 
+  /// Cached MCP discovery listings from remote catalogs (Smithery / official).
+  static String mcpDiscoveryCacheDirForTeampilotRoot(String teampilotRoot) =>
+      _pathUnderTeampilotRoot(teampilotRoot, 'mcp/discovery-cache');
+
   static String teamHubDirForTeampilotRoot(String teampilotRoot) =>
       _pathUnderTeampilotRoot(teampilotRoot, 'team-hub');
 
@@ -259,6 +263,8 @@ class AppPaths {
   String get mcpRegistrySourcesConfigPath =>
       mcpRegistrySourcesConfigPathForTeampilotRoot(basePath);
   String get mcpBackupsDir => mcpBackupsDirForTeampilotRoot(basePath);
+  String get mcpDiscoveryCacheDir =>
+      mcpDiscoveryCacheDirForTeampilotRoot(basePath);
   String get pluginMarketplacesConfigPath =>
       pluginMarketplacesConfigPathForTeampilotRoot(basePath);
 

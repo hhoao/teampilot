@@ -3,9 +3,9 @@ import 'package:flutter_animate/flutter_animate.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
 import '../../cubits/launch_profile_cubit.dart';
+import '../../models/launch_profile_kind.dart';
 import '../../models/personal_profile.dart';
 import '../../models/team_config.dart';
-import '../../models/launch_profile.dart';
 import '../../theme/workspace_surface_layers.dart';
 import '../team_config/team_config_section.dart';
 import 'home_all_workspaces_pane.dart';
@@ -91,112 +91,151 @@ class _HomePageState extends State<HomePage> {
     });
   }
 
-  Widget _identityPane(
-    LaunchProfileCubit identityCubit,
-    LaunchProfile identity,
-  ) {
-    return switch (identity) {
-      PersonalProfile personal => HomePersonalContent(
-          personal: personal,
-          cubit: identityCubit,
-          onSelectGlobalView: (view) => setState(() {
-            _allWorkspacesActive = false;
-            _globalView = view;
-            _libraryView = null;
-          }),
-        ),
-      TeamProfile _ => HomeContent(
-          initialSection: widget.initialSection,
-          initialMemberId: widget.initialMemberId,
-          onSelectGlobalView: (view) => setState(() {
-            _allWorkspacesActive = false;
-            _globalView = view;
-            _libraryView = null;
-          }),
-        ),
-      _ => const Center(child: CircularProgressIndicator()),
-    };
-  }
-
   @override
   Widget build(BuildContext context) {
     final globalView = _globalView;
     final libraryView = _libraryView;
-    final identityCubit = context.watch<LaunchProfileCubit>();
-    final selectedIdentity = _selectedIdentityId != null
-        ? identityCubit.byId(_selectedIdentityId!)
-        : identityCubit.state.selectedTeam;
+
+    return WorkspacePageCardShell(
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          HomeSidebar(
+            activeGlobalView: globalView,
+            activeLibraryView: libraryView,
+            allWorkspacesActive:
+                _allWorkspacesActive && globalView == null && libraryView == null,
+            selectedIdentityId: _allWorkspacesActive
+                ? null
+                : (_selectedIdentityId ??
+                    context.select<LaunchProfileCubit, String?>(
+                      (c) => c.state.selectedTeamId,
+                    )),
+            onSelectAllWorkspaces: () => setState(() {
+              _allWorkspacesActive = true;
+              _globalView = null;
+              _libraryView = null;
+              _selectedIdentityId = null;
+            }),
+            onSelectGlobalView: (view) => setState(() {
+              _allWorkspacesActive = false;
+              _globalView = view;
+              _libraryView = null;
+            }),
+            onSelectLibraryView: (view) => setState(() {
+              _allWorkspacesActive = false;
+              _libraryView = view;
+              _globalView = null;
+            }),
+            onSelectIdentity: _selectIdentity,
+          ),
+          Expanded(
+            child: Padding(
+              padding: const EdgeInsets.fromLTRB(44, 48, 42, 18),
+              child: _HomeRightPane(
+                globalView: globalView,
+                libraryView: libraryView,
+                allWorkspacesActive: _allWorkspacesActive,
+                selectedIdentityId: _selectedIdentityId,
+                initialSection: widget.initialSection,
+                initialMemberId: widget.initialMemberId,
+                onSelectGlobalView: (view) => setState(() {
+                  _allWorkspacesActive = false;
+                  _globalView = view;
+                  _libraryView = null;
+                }),
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _HomeRightPane extends StatelessWidget {
+  const _HomeRightPane({
+    required this.globalView,
+    required this.libraryView,
+    required this.allWorkspacesActive,
+    required this.selectedIdentityId,
+    required this.initialSection,
+    required this.initialMemberId,
+    required this.onSelectGlobalView,
+  });
+
+  final HomeGlobalView? globalView;
+  final HomeLibraryView? libraryView;
+  final bool allWorkspacesActive;
+  final String? selectedIdentityId;
+  final TeamConfigSection? initialSection;
+  final String? initialMemberId;
+  final ValueChanged<HomeGlobalView> onSelectGlobalView;
+
+  @override
+  Widget build(BuildContext context) {
     final paneKey = ValueKey(
       globalView?.name ??
           libraryView?.name ??
-          (_allWorkspacesActive
+          (allWorkspacesActive
               ? 'all-workspaces'
-              : 'identity-${selectedIdentity?.id ?? 'none'}'),
+              : 'identity-${selectedIdentityId ?? context.select<LaunchProfileCubit, String?>((c) => c.state.selectedTeamId) ?? 'none'}'),
     );
 
-    final body = Row(
-      crossAxisAlignment: CrossAxisAlignment.stretch,
-      children: [
-        HomeSidebar(
-          activeGlobalView: globalView,
-          activeLibraryView: libraryView,
-          allWorkspacesActive:
-              _allWorkspacesActive && globalView == null && libraryView == null,
-          selectedIdentityId: _allWorkspacesActive ? null : selectedIdentity?.id,
-          onSelectAllWorkspaces: () => setState(() {
-            _allWorkspacesActive = true;
-            _globalView = null;
-            _libraryView = null;
-            _selectedIdentityId = null;
-          }),
-          onSelectGlobalView: (view) => setState(() {
-            _allWorkspacesActive = false;
-            _globalView = view;
-            _libraryView = null;
-          }),
-          onSelectLibraryView: (view) => setState(() {
-            _allWorkspacesActive = false;
-            _libraryView = view;
-            _globalView = null;
-          }),
-          onSelectIdentity: _selectIdentity,
-        ),
-        Expanded(
-          child: Padding(
-            padding: const EdgeInsets.fromLTRB(44, 48, 42, 18),
-            child: _buildRightPane(
-              globalView: globalView,
-              libraryView: libraryView,
-              identityCubit: identityCubit,
-              selectedIdentity: selectedIdentity,
-              paneKey: paneKey,
-            ),
-          ),
-        ),
-      ],
-    );
-
-    return WorkspacePageCardShell(child: body);
-  }
-
-  Widget _buildRightPane({
-    required HomeGlobalView? globalView,
-    required HomeLibraryView? libraryView,
-    required LaunchProfileCubit identityCubit,
-    required LaunchProfile? selectedIdentity,
-    required ValueKey<String> paneKey,
-  }) {
-    final Widget pane;
     if (globalView != null) {
-      pane = HomeGlobalSection(view: globalView);
-    } else if (libraryView != null) {
-      pane = HomeLibrarySection(view: libraryView);
-    } else if (_allWorkspacesActive) {
+      return HomeGlobalSection(view: globalView!)
+          .animate(key: paneKey)
+          .fadeIn(duration: 180.ms, curve: Curves.easeOut)
+          .slideX(
+            begin: 0.025,
+            end: 0,
+            duration: 220.ms,
+            curve: Curves.easeOutCubic,
+          );
+    }
+    if (libraryView != null) {
+      return HomeLibrarySection(view: libraryView!)
+          .animate(key: paneKey)
+          .fadeIn(duration: 180.ms, curve: Curves.easeOut)
+          .slideX(
+            begin: 0.025,
+            end: 0,
+            duration: 220.ms,
+            curve: Curves.easeOutCubic,
+          );
+    }
+    if (allWorkspacesActive) {
       return const HomeAllWorkspacesPane();
-    } else if (selectedIdentity != null) {
-      pane = _identityPane(identityCubit, selectedIdentity);
-    } else {
+    }
+
+    final resolvedProfileId = selectedIdentityId ??
+        context.select<LaunchProfileCubit, String?>(
+          (c) => c.state.selectedTeamId,
+        );
+    final identityKind = context.select<LaunchProfileCubit, LaunchProfileKind?>(
+      (c) {
+        final id = resolvedProfileId;
+        if (id == null) return null;
+        return c.byId(id)?.kind;
+      },
+    );
+    if (identityKind == null) {
       return const HomeAllWorkspacesPane();
+    }
+
+    final Widget pane;
+    switch (identityKind) {
+      case LaunchProfileKind.personal:
+        pane = _HomePersonalPane(
+          profileId: resolvedProfileId ?? '',
+          onSelectGlobalView: onSelectGlobalView,
+        );
+      case LaunchProfileKind.team:
+        pane = HomeContent(
+          initialSection: initialSection,
+          initialMemberId: initialMemberId,
+          onSelectGlobalView: onSelectGlobalView,
+        );
     }
 
     return pane
@@ -208,5 +247,33 @@ class _HomePageState extends State<HomePage> {
           duration: 220.ms,
           curve: Curves.easeOutCubic,
         );
+  }
+}
+
+class _HomePersonalPane extends StatelessWidget {
+  const _HomePersonalPane({
+    required this.profileId,
+    required this.onSelectGlobalView,
+  });
+
+  final String profileId;
+  final ValueChanged<HomeGlobalView> onSelectGlobalView;
+
+  @override
+  Widget build(BuildContext context) {
+    final personal = context.select<LaunchProfileCubit, PersonalProfile?>(
+      (c) {
+        final identity = c.byId(profileId);
+        return identity is PersonalProfile ? identity : null;
+      },
+    );
+    if (personal == null) {
+      return const Center(child: CircularProgressIndicator());
+    }
+    return HomePersonalContent(
+      personal: personal,
+      cubit: context.read<LaunchProfileCubit>(),
+      onSelectGlobalView: onSelectGlobalView,
+    );
   }
 }

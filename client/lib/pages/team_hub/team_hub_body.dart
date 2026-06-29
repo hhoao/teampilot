@@ -6,6 +6,7 @@ import '../../models/discoverable_team.dart';
 import '../../theme/app_icon_sizes.dart';
 import '../../theme/app_text_styles.dart';
 import '../../widgets/dropdown/app_dropdown_field.dart';
+import '../../widgets/empty_state_block.dart';
 import 'team_hub_cards.dart';
 
 /// Single-page hub body: a toolbar (search + sort), an inline filter-chip bar
@@ -81,7 +82,8 @@ class TeamHubBody extends StatelessWidget {
     if (teams.isEmpty) {
       final isError = state.status == TeamHubLoadStatus.error;
       if (state.favoritesOnly && !isError) {
-        return TeamHubEmptyBlock(
+        return EmptyStateBlock(
+          centered: true,
           icon: Icons.star_outline_rounded,
           title: l10n.teamHubFavoritesEmptyTitle,
           hint: l10n.teamHubFavoritesEmptyHint,
@@ -89,12 +91,13 @@ class TeamHubBody extends StatelessWidget {
       }
       return Padding(
         padding: EdgeInsets.all(inset),
-        child: TeamHubEmptyBlock(
+        child: EmptyStateBlock(
+          centered: true,
           icon: isError
               ? Icons.cloud_off_outlined
               : Icons.travel_explore_outlined,
           title: isError ? l10n.teamHubLoadError : l10n.teamHubEmptyTitle,
-          hint: isError ? '' : l10n.teamHubEmptyHint,
+          hint: isError ? null : l10n.teamHubEmptyHint,
           actionLabel: l10n.teamHubRefresh,
           onAction: () => cubit.load(forceRefresh: true),
         ),

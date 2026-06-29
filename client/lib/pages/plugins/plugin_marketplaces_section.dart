@@ -9,6 +9,7 @@ import '../../models/plugin.dart';
 import '../../theme/app_text_styles.dart';
 import '../../widgets/app_dialog.dart';
 import '../../utils/skill_repo_parse.dart';
+import '../../widgets/empty_state_block.dart';
 import 'plugin_management_cards.dart';
 
 class PluginMarketplacesSection extends StatelessWidget {
@@ -48,7 +49,7 @@ class PluginMarketplacesSection extends StatelessWidget {
                 ),
                 const SizedBox(height: 14),
                 if (state.marketplaces.isEmpty)
-                  PluginEmptyBlock(
+                  EmptyStateBlock(
                     icon: Icons.store_outlined,
                     title: l10n.pluginsMarketplacesEmpty,
                     hint: l10n.pluginsNoInstalledHint,

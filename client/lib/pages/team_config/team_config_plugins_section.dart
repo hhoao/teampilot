@@ -11,6 +11,7 @@ import '../../models/team_config.dart';
 import '../../services/cli/registry/cli_tool_registry_scope.dart';
 import '../../theme/app_text_styles.dart';
 import '../../utils/github_source_url.dart';
+import '../../widgets/empty_state_block.dart';
 import '../../widgets/github_details_button.dart';
 import '../../widgets/settings/workspace_settings_widgets.dart';
 import 'team_config_cards.dart';
@@ -109,11 +110,14 @@ class TeamPluginsSection extends StatelessWidget {
                 ],
                 const SizedBox(height: 14),
                 if (installed.isEmpty && missingIds.isEmpty)
-                  TeamPluginsEmptyBlock(
-                    textBase: textBase,
-                    onGoPlugins:
-                        onManageGlobal ??
-                        () => context.go('/plugins/discovery'),
+                  EmptyStateBlock(
+                    icon: Icons.inventory_2_outlined,
+                    title: l10n.teamPluginsEmpty,
+                    hint: l10n.teamPluginsEmptyHint,
+                    actionLabel: l10n.teamPluginsGoDiscovery,
+                    onAction: onManageGlobal ?? () => context.go('/plugins/discovery'),
+                    actionIcon: Icons.search,
+                    actionStyle: EmptyStateActionStyle.outlinedIcon,
                   )
                 else
                   Column(
@@ -147,61 +151,6 @@ class TeamPluginsSection extends StatelessWidget {
                   ),
               ],
             ),
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-class TeamPluginsEmptyBlock extends StatelessWidget {
-  const TeamPluginsEmptyBlock({
-    super.key,
-    required this.textBase,
-    required this.onGoPlugins,
-    this.emptyTitle,
-    this.emptyHint,
-    this.actionLabel,
-  });
-
-  final Color textBase;
-  final VoidCallback onGoPlugins;
-  final String? emptyTitle;
-  final String? emptyHint;
-  final String? actionLabel;
-
-  @override
-  Widget build(BuildContext context) {
-    final l10n = context.l10n;
-    return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 24),
-      child: Column(
-        children: [
-          Icon(
-            Icons.inventory_2_outlined,
-            size: context.appIconSizes.md,
-            color: textBase.withValues(alpha: 0.35),
-          ),
-          const SizedBox(height: 12),
-          Text(
-            emptyTitle ?? l10n.teamPluginsEmpty,
-            style: AppTextStyles.of(
-              context,
-            ).body.copyWith(fontWeight: FontWeight.w700, color: textBase),
-          ),
-          const SizedBox(height: 6),
-          Text(
-            emptyHint ?? l10n.teamPluginsEmptyHint,
-            textAlign: TextAlign.center,
-            style: AppTextStyles.of(
-              context,
-            ).bodySmall.copyWith(color: textBase.withValues(alpha: 0.55)),
-          ),
-          const SizedBox(height: 14),
-          OutlinedButton.icon(
-            onPressed: onGoPlugins,
-            icon: Icon(Icons.search, size: context.appIconSizes.md),
-            label: Text(actionLabel ?? l10n.teamPluginsGoDiscovery),
           ),
         ],
       ),
