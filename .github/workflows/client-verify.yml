@@ -146,6 +146,9 @@ jobs:
       - name: Build Linux (PTY native lib)
         run: flutter build linux --debug
 
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
       - name: Build mixed Docker image (cached)
         uses: docker/build-push-action@v6
         with:

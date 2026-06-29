@@ -2,7 +2,9 @@ import 'dart:io';
 
 import 'package:flutter/foundation.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:path/path.dart' as p;
 import 'package:teampilot/cubits/chat_cubit.dart';
+import 'package:teampilot/repositories/launch_profile_repository.dart';
 import 'package:teampilot/services/git/git_command_runner.dart';
 import 'package:teampilot/services/git/git_service.dart';
 import 'package:teampilot/services/io/workspace_fs_watcher.dart';
@@ -34,6 +36,18 @@ void setUpTestAppStorage() {
     ),
   );
   WorkspaceFsWatcher.debugDisable = true;
+}
+
+/// Isolated [LaunchProfileRepository] for tests.
+///
+/// The index snapshot is stored beside [launchProfilesDir], so the repo root must
+/// not be a bare system-temp leaf (that would share `/tmp/launch-profiles-index.json`).
+LaunchProfileRepository testLaunchProfileRepository(Directory isolatedRoot) {
+  final profilesDir = Directory(p.join(isolatedRoot.path, 'launch-profiles'));
+  if (!profilesDir.existsSync()) {
+    profilesDir.createSync(recursive: true);
+  }
+  return LaunchProfileRepository(rootDir: profilesDir.path);
 }
 
 void tearDownTestAppStorage() {
@@ -98,6 +112,19 @@ Future<void> drainPendingAsyncWork({int rounds = 5}) async {
   for (var i = 0; i < rounds; i++) {
     await pumpEventQueue();
     await Future<void>.delayed(Duration.zero);
+  }
+}
+
+/// Polls [predicate] until true or [timeout] (for unawaited cubit side effects).
+Future<void> waitUntil(
+  bool Function() predicate, {
+  Duration timeout = const Duration(seconds: 5),
+  Duration step = const Duration(milliseconds: 10),
+}) async {
+  final deadline = DateTime.now().add(timeout);
+  while (!predicate() && DateTime.now().isBefore(deadline)) {
+    await pumpEventQueue();
+    await Future<void>.delayed(step);
   }
 }
 

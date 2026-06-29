@@ -1,7 +1,6 @@
 import 'dart:io';
 
 import 'package:flutter_test/flutter_test.dart';
-import 'package:path/path.dart' as p;
 import 'package:teampilot/cubits/launch_profile_cubit.dart';
 import 'package:teampilot/models/mcp_server.dart';
 import 'package:teampilot/models/plugin.dart';
@@ -70,8 +69,7 @@ class _NoopPluginLinker extends ProfilePluginLinkerService {
       const ProfilePluginSyncResult();
 }
 
-LaunchProfileRepository _repo(Directory dir) =>
-    LaunchProfileRepository(rootDir: p.join(dir.path, 'launch-profiles'));
+LaunchProfileRepository _repo(Directory dir) => testLaunchProfileRepository(dir);
 
 void main() {
   group('mergeExtensionMcp', () {
@@ -177,7 +175,7 @@ void main() {
 
       linker.calls.clear();
       await cubit.selectTeam('t');
-      await drainPendingAsyncWork(rounds: 10);
+      await waitUntil(() => linker.calls.isNotEmpty);
 
       expect(linker.calls, isNotEmpty);
       final call = linker.calls.first;
@@ -220,7 +218,7 @@ void main() {
 
       linker.calls.clear();
       await cubit.selectTeam('t');
-      await drainPendingAsyncWork(rounds: 10);
+      await waitUntil(() => linker.calls.length >= 2);
 
       // Two calls: initial (skips 'ghost') then the pruned re-sync.
       expect(linker.calls, hasLength(2));

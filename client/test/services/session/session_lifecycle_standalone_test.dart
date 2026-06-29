@@ -81,7 +81,7 @@ void main() {
   test('prepareShellLaunch loads persisted profile from repository', () async {
     const workspaceId = 'personal-proj';
     const sessionId = 'personal-sess';
-    final repo = LaunchProfileRepository(rootDir: base.path);
+    final repo = testLaunchProfileRepository(base);
     // Seed a preset for flashskyai so the resolved member/provider/model/cli
     // come from the active preset instead of the (now-removed) profile fields.
     final presetsRepo = await _seededPresetsRepo(

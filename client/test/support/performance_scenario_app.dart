@@ -61,6 +61,7 @@ import 'package:teampilot/services/workspace/workspace_tools_scope_registry.dart
 import 'package:teampilot/services/workspace/workspace_worktree_registry.dart';
 
 import '../support/in_memory_filesystem.dart';
+import '../support/post_frame_test_harness.dart';
 import '../support/test_git_command_runner.dart';
 import '../support/test_home_target_controller.dart';
 
@@ -247,7 +248,7 @@ Future<LaunchProfileCubit> createPerformanceTeamCubit(
   );
   expect(tmp, isNotNull);
   expect(appData, isNotNull);
-  final repository = LaunchProfileRepository(rootDir: tmp!.path);
+  final repository = testLaunchProfileRepository(tmp!);
   final cubit = LaunchProfileCubit(
     repository: repository,
     sessionRepository: SessionRepository(),

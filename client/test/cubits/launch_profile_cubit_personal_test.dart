@@ -10,7 +10,7 @@ import 'package:teampilot/services/session/session_lifecycle_service.dart';
 
 import '../support/post_frame_test_harness.dart';
 
-LaunchProfileRepository _repo(Directory dir) => LaunchProfileRepository(rootDir: dir.path);
+LaunchProfileRepository _repo(Directory dir) => testLaunchProfileRepository(dir);
 
 LaunchProfileCubit _cubit(Directory dir, LaunchProfileRepository repo) => LaunchProfileCubit(
       repository: repo,
