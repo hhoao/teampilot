@@ -93,6 +93,7 @@ When touching oversized files (`team_config_page`, `llm_config_workspace`, `skil
 | Long lists | Use **`ListView.builder` / `SliverList`** for skills/plugins/extensions; avoid huge `children: [...]`. |
 | Keep `build()` light | **No** disk/network/subprocess, heavy JSON parse, or heavy compute inside `build()`; use Cubit/Service + `BlocBuilder`. |
 | `const` | Use `const` constructors where subtrees are stable to cut unnecessary desktop rebuilds. |
+| Typography | Use [`AppTextStyles`](../client/lib/theme/app_text_styles.dart) / `ThemeData.textTheme` in `pages/` and `widgets/`; do **not** set `letterSpacing` outside `lib/theme/`. |
 
 Shared pieces for multiple sections on the **same** screen (e.g. `mcp_shared_widgets.dart`) stay in the **same** `pages/<domain>/` folder. Move to `widgets/` only when a second route imports them.
 

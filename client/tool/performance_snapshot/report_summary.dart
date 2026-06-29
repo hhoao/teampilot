@@ -18,7 +18,7 @@ void printPerformanceSummary(PerformanceAnalysisResult result) {
   final frames = result.frameSummary;
   if (frames == null) {
     print('Frames: none');
-    _printNextSteps(result, worstFrameNumber: null);
+    _printAppliedFilters(result);
     return;
   }
 
@@ -30,7 +30,7 @@ void printPerformanceSummary(PerformanceAnalysisResult result) {
 
   if (frames.jankyCount == 0) {
     print('No janky frames over ${frames.budgetMs.toStringAsFixed(2)} ms budget.');
-    _printNextSteps(result, worstFrameNumber: null);
+    _printAppliedFilters(result);
     return;
   }
 
@@ -45,21 +45,49 @@ void printPerformanceSummary(PerformanceAnalysisResult result) {
   }
 
   final precision = result.precision;
+  if (precision?.traceCoverage != null) {
+    print('\nTrace coverage:');
+    for (final line in precision!.traceCoverage!.message.split('\n')) {
+      print('  $line');
+    }
+  }
+
   if (precision != null) {
-    _printPrecisionHighlights(precision);
+    _printPrecisionHighlights(precision, budgetMs: result.budgetMs);
   } else if (result.timeline == null) {
-    print(
-      '\nHot paths: unavailable (no traceBinary in export). '
-      'Re-export from DevTools Performance with timeline data.',
-    );
+    print('\nHot paths: unavailable (no traceBinary in export).');
   } else {
     print('\nHot paths: unavailable (no janky frames in snapshot).');
   }
 
-  _printNextSteps(result, worstFrameNumber: worst?.frame.number);
+  _printAppliedFilters(result);
 }
 
-void _printPrecisionHighlights(PrecisionAnalysis precision) {
+void _printPrecisionHighlights(
+  PrecisionAnalysis precision, {
+  required double budgetMs,
+}) {
+  final coverage = precision.traceCoverage;
+  final tracedFramesLabel = coverage != null &&
+          coverage.precisionFrameNumbers.isNotEmpty
+      ? formatFrameList(coverage.precisionFrameNumbers)
+      : null;
+  final excludesWorst = coverage?.precisionExcludesWorstJanky ?? false;
+
+  if (excludesWorst && coverage?.untracedWorstJanky != null) {
+    final untraced = coverage!.untracedWorstJanky!;
+    print('\nWorst janky frame (no timeline in export):');
+    print(
+      '  #${untraced.frameNumber} ${untraced.elapsedMs.toStringAsFixed(1)} ms '
+      '(build ${untraced.buildMs.toStringAsFixed(1)}, '
+      'raster ${untraced.rasterMs.toStringAsFixed(1)}, '
+      'vsync ${untraced.vsyncMs.toStringAsFixed(1)}) '
+      '→ ${untraced.bottleneck} '
+      '(+${untraced.overBudgetMs.toStringAsFixed(1)} ms over '
+      '${budgetMs.toStringAsFixed(2)} ms budget)',
+    );
+  }
+
   final note = precision.rebuildNote;
   if (note.precisionImpact != 'low') {
     print('\nRebuild data: ${note.status} (${note.precisionImpact} impact)');
@@ -67,9 +95,11 @@ void _printPrecisionHighlights(PrecisionAnalysis precision) {
   }
 
   if (precision.uiHotPaths.isNotEmpty) {
-    print(
-      '\nUI hot paths (self time, ${precision.frameCountAnalyzed} janky frames):',
-    );
+    final header = excludesWorst && tracedFramesLabel != null
+        ? '\nUI hot paths (self time; frames $tracedFramesLabel; '
+            'excludes #${coverage!.untracedWorstJanky!.frameNumber}):'
+        : '\nUI hot paths (self time, ${precision.frameCountAnalyzed} janky frames):';
+    print(header);
     for (final h in precision.uiHotPaths.take(5)) {
       print(
         '  ${h.totalSelfMs.toStringAsFixed(1)} ms '
@@ -77,6 +107,24 @@ void _printPrecisionHighlights(PrecisionAnalysis precision) {
         '${formatFrameList(h.frameNumbers)})',
       );
       print('    ${shortenHotPath(h.path)}');
+    }
+  }
+
+  if (precision.dartMethodHotspots.isNotEmpty) {
+    final header = excludesWorst && tracedFramesLabel != null
+        ? '\nDart method hotspots (frames $tracedFramesLabel; '
+            'excludes #${coverage!.untracedWorstJanky!.frameNumber}):'
+        : '\nDart method hotspots (layout/paint on Dart track, '
+            '${precision.frameCountAnalyzed} janky frames):';
+    print(header);
+    for (final h in precision.dartMethodHotspots.take(5)) {
+      print(
+        '  ${h.totalMs.toStringAsFixed(1)} ms '
+        '(${h.occurrenceCount}/${precision.frameCountAnalyzed} frames, '
+        'max ${h.maxMsInSingleFrame.toStringAsFixed(1)} ms, '
+        '${formatFrameList(h.frameNumbers)})',
+      );
+      print('    ${h.name}');
     }
   }
 
@@ -96,7 +144,10 @@ void _printPrecisionHighlights(PrecisionAnalysis precision) {
   }
 
   if (precision.rebuildCorrelations.isNotEmpty) {
-    print('\nRebuild ↔ timeline slice:');
+    final header = excludesWorst && tracedFramesLabel != null
+        ? '\nRebuild ↔ timeline slice (frames $tracedFramesLabel):'
+        : '\nRebuild ↔ timeline slice:';
+    print(header);
     for (final c in precision.rebuildCorrelations.take(5)) {
       final loc =
           c.file != null && c.line != null ? ' @ ${c.file}:${c.line}' : '';
@@ -112,27 +163,20 @@ void _printPrecisionHighlights(PrecisionAnalysis precision) {
     }
   }
 
-  print('\nInspect track per frame:');
-  for (final g in precision.frameGuides.take(3)) {
+  print('\nPer-frame breakdown:');
+  for (final g in precision.frameGuides.take(4)) {
+    final track = g.primaryAnalysisTrack == 'flutterFrames-only'
+        ? 'flutterFrames only'
+        : g.primaryAnalysisTrack;
     print(
       '  #${g.frameNumber} ${g.elapsedMs.toStringAsFixed(0)} ms '
-      '→ ${g.bottleneck} → ${g.primaryAnalysisTrack}',
+      '→ ${g.bottleneck} → $track',
     );
   }
 }
 
-void _printNextSteps(PerformanceAnalysisResult result, {int? worstFrameNumber}) {
-  final frameArg = worstFrameNumber?.toString() ?? 'auto';
-  print('\nNext steps:');
-  print(
-    '  dart run tool/analyze_performance_json.dart <snapshot> '
-    '--format json --no-embedder --sections precision,frames',
-  );
-  print(
-    '  dart run tool/analyze_performance_json.dart <snapshot> '
-    '--format flame-tree-json --frame $frameArg --no-embedder',
-  );
+void _printAppliedFilters(PerformanceAnalysisResult result) {
   if (result.appliedFilters['excludeEmbedder'] == true) {
-    print('  (summary excludes Embedder slices by default)');
+    print('\nApplied filters: Embedder slices excluded');
   }
 }

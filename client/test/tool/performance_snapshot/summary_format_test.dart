@@ -23,7 +23,11 @@ void main() {
   group('formatFrameList', () {
     test('formats and truncates frame numbers', () {
       expect(formatFrameList([445, 444]), '#444, #445');
-      expect(formatFrameList([1, 2, 3, 4, 5]), '#1, #2, #3, #4 +1');
+      expect(formatFrameList([1, 2, 3, 4, 5]), '#1–#5');
+    });
+
+    test('uses contiguous range for long runs', () {
+      expect(formatFrameList([2050, 2051, 2052, 2053, 2054]), '#2050–#2054');
     });
   });
 }

@@ -1,5 +1,6 @@
 import 'package:flutter_test/flutter_test.dart';
 
+import '../../../tool/performance_snapshot/dart_slice_analysis.dart';
 import '../../../tool/performance_snapshot/precision_analysis.dart';
 
 void main() {
@@ -50,6 +51,39 @@ void main() {
       expect(
         normalizeWidgetName('BlocProvider<FileTreeCubit>'),
         'BlocProvider',
+      );
+    });
+  });
+
+  group('widgetMatchesDartMethodSlice', () {
+    test('links Text widgets to RenderParagraph methods', () {
+      expect(
+        widgetMatchesDartMethodSlice('Text', 'RenderParagraph.getDryLayout'),
+        isTrue,
+      );
+      expect(
+        widgetMatchesDartMethodSlice(
+          'RichText',
+          'RenderParagraph.paint',
+        ),
+        isTrue,
+      );
+    });
+
+    test('matches render class names directly', () {
+      expect(
+        widgetMatchesDartMethodSlice(
+          'IndexedStack',
+          'RenderIndexedStack.performLayout',
+        ),
+        isTrue,
+      );
+    });
+
+    test('rejects unrelated pairs', () {
+      expect(
+        widgetMatchesDartMethodSlice('RightToolsPanel', 'Scavenge'),
+        isFalse,
       );
     });
   });

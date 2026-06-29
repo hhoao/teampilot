@@ -1,3 +1,4 @@
+import 'dart_slice_analysis.dart';
 import 'rebuild_model.dart';
 
 import 'frame_slice_tree.dart';
@@ -5,6 +6,7 @@ import 'models.dart';
 import 'options.dart';
 import 'slice_tree.dart';
 import 'trace_decoder.dart';
+import 'trace_frame_coverage.dart';
 
 PrecisionAnalysis? buildPrecisionAnalysis({
   required PerformanceSnapshot snapshot,
@@ -16,13 +18,61 @@ PrecisionAnalysis? buildPrecisionAnalysis({
     ..sort((a, b) => b.elapsedUs.compareTo(a.elapsedUs));
   if (janky.isEmpty) return null;
 
-  final frameCount = options.precisionFrameCount.clamp(1, janky.length);
-  final frames = janky.take(frameCount).toList();
+  final coverage = traceCoverageSummary(trace);
+  final tracedJanky = tracedJankyFrames(
+    jankyFrames: janky,
+    trace: trace,
+    coverage: coverage,
+  );
+
+  final suggested = slowestTracedJankyFrame(
+    jankyFrames: janky,
+    trace: trace,
+    coverage: coverage,
+  );
+
+  if (tracedJanky.isEmpty) {
+    return PrecisionAnalysis(
+      frameCountAnalyzed: 0,
+      rebuildNote: _rebuildNote(snapshot.rebuildData),
+      frameGuides: const [],
+      uiHotPaths: const [],
+      rasterHotPaths: const [],
+      dartMethodHotspots: const [],
+      dartHotPaths: const [],
+      rebuildCorrelations: const [],
+      unmatchedHighSelfSlices: const [],
+      unmatchedHighRebuilds: const [],
+      traceCoverage: _buildTraceCoverageNote(
+        janky: janky,
+        tracedJanky: tracedJanky,
+        precisionFrames: const [],
+        coverage: coverage,
+        budgetMs: budgetMs,
+        suggested: suggested,
+      ),
+    );
+  }
+
+  final frameCount =
+      options.precisionFrameCount.clamp(1, tracedJanky.length);
+  final frames = tracedJanky.take(frameCount).toList();
+
+  final traceCoverageNote = _buildTraceCoverageNote(
+    janky: janky,
+    tracedJanky: tracedJanky,
+    precisionFrames: frames,
+    coverage: coverage,
+    budgetMs: budgetMs,
+    suggested: suggested,
+  );
   final filters = options.traceFilters;
   final minSelf = options.minSelfMs;
 
   final uiPathAgg = <String, _HotPathAccumulator>{};
   final rasterPathAgg = <String, _HotPathAccumulator>{};
+  final dartPathAgg = <String, _HotPathAccumulator>{};
+  final dartMethodAgg = <String, DartMethodAccumulator>{};
   final correlations = <RebuildSliceCorrelation>[];
   final unmatchedSlices = <UnmatchedHighSelfSlice>[];
   final unmatchedRebuilds = <UnmatchedHighRebuild>[];
@@ -56,16 +106,41 @@ PrecisionAnalysis? buildPrecisionAnalysis({
       minSelfMs: minSelf,
       limit: options.topN,
     );
+    final dartHotspots = collectFrameSelfTimeHotspots(
+      trace: trace,
+      frame: frame,
+      filters: filters,
+      track: FlameTreeTrack.dart,
+      minSelfMs: minSelf,
+      limit: options.topN,
+    );
+
+    final inWindow = slicesInFrameWindow(
+      trace: trace,
+      frame: frame,
+      filters: filters,
+    );
+    accumulateDartMethodSlices(
+      dartMethodAgg,
+      inWindow,
+      frame.number,
+      minMs: minSelf,
+    );
 
     _accumulateHotPaths(uiPathAgg, uiHotspots, frame.number, 'ui');
     _accumulateHotPaths(rasterPathAgg, rasterHotspots, frame.number, 'raster');
+    _accumulateHotPaths(dartPathAgg, dartHotspots, frame.number, 'dart');
 
     final rebuilds = snapshot.rebuildData?.rebuildsByFrame[frame.number] ?? [];
     final matchedSliceKeys = <String>{};
 
     for (final rebuild in rebuilds) {
       final uiMatches = _matchWidgetToHotspots(rebuild.name, uiHotspots);
-      if (uiMatches.isEmpty) {
+      final dartMatches = uiMatches.isEmpty
+          ? _matchWidgetToDartSlices(rebuild.name, inWindow)
+          : const <TraceSlice>[];
+
+      if (uiMatches.isEmpty && dartMatches.isEmpty) {
         if (rebuild.buildCount >= 2) {
           unmatchedRebuilds.add(
             UnmatchedHighRebuild(
@@ -82,20 +157,51 @@ PrecisionAnalysis? buildPrecisionAnalysis({
         continue;
       }
 
-      final quality = _matchQuality(rebuild.name, uiMatches);
+      if (uiMatches.isNotEmpty) {
+        final quality = _matchQuality(rebuild.name, uiMatches);
+        final matched = [
+          for (final h in uiMatches)
+            MatchedTimelineSlice(
+              name: h.name,
+              track: h.track,
+              selfMs: h.selfMs,
+              totalMs: h.totalMs,
+              path: h.path,
+              phase: inferPhaseFromPath(h.path),
+            ),
+        ];
+        for (final h in uiMatches) {
+          matchedSliceKeys.add('${frame.number}:${h.path}');
+        }
+
+        correlations.add(
+          RebuildSliceCorrelation(
+            frameNumber: frame.number,
+            widgetId: rebuild.id,
+            widgetName: rebuild.name,
+            file: rebuild.file,
+            line: rebuild.line,
+            column: rebuild.column,
+            rebuildCount: rebuild.buildCount,
+            matchedSlices: matched,
+            matchQuality: quality,
+          ),
+        );
+        continue;
+      }
+
       final matched = [
-        for (final h in uiMatches)
+        for (final s in dartMatches)
           MatchedTimelineSlice(
-            name: h.name,
-            track: h.track,
-            selfMs: h.selfMs,
-            totalMs: h.totalMs,
-            path: h.path,
-            phase: inferPhaseFromPath(h.path),
+            name: s.name,
+            track: 'dart',
+            selfMs: s.durationMs,
+            totalMs: s.durationMs,
+            path: s.name,
           ),
       ];
-      for (final h in uiMatches) {
-        matchedSliceKeys.add('${frame.number}:${h.path}');
+      for (final s in dartMatches) {
+        matchedSliceKeys.add('${frame.number}:dart:${s.name}');
       }
 
       correlations.add(
@@ -108,12 +214,12 @@ PrecisionAnalysis? buildPrecisionAnalysis({
           column: rebuild.column,
           rebuildCount: rebuild.buildCount,
           matchedSlices: matched,
-          matchQuality: quality,
+          matchQuality: _dartMatchQuality(rebuild.name, dartMatches),
         ),
       );
     }
 
-    for (final h in [...uiHotspots, ...rasterHotspots]) {
+    for (final h in [...uiHotspots, ...rasterHotspots, ...dartHotspots]) {
       final key = '${frame.number}:${h.path}';
       if (matchedSliceKeys.contains(key)) continue;
       if (h.selfMs < minSelf * 2) continue;
@@ -123,7 +229,9 @@ PrecisionAnalysis? buildPrecisionAnalysis({
           name: h.name,
           track: h.track.contains('raster') || h.name == rasterEventName
               ? 'raster'
-              : 'ui',
+              : isDartMethodSliceByName(h.name)
+                  ? 'dart'
+                  : 'ui',
           selfMs: h.selfMs,
           path: h.path,
           phase: inferPhaseFromPath(h.path),
@@ -143,15 +251,24 @@ PrecisionAnalysis? buildPrecisionAnalysis({
   unmatchedSlices.sort((a, b) => b.selfMs.compareTo(a.selfMs));
   unmatchedRebuilds.sort((a, b) => b.rebuildCount.compareTo(a.rebuildCount));
 
+  final orderedGuides = _orderedFrameGuides(
+    guides: guides,
+    traceCoverage: traceCoverageNote,
+  );
+
   return PrecisionAnalysis(
     frameCountAnalyzed: frames.length,
     rebuildNote: _rebuildNote(snapshot.rebuildData),
-    frameGuides: guides,
+    frameGuides: orderedGuides,
     uiHotPaths: _finalizeHotPaths(uiPathAgg, options.topN),
     rasterHotPaths: _finalizeHotPaths(rasterPathAgg, options.topN),
+    dartMethodHotspots:
+        aggregateDartMethodHotspots(agg: dartMethodAgg, limit: options.topN),
+    dartHotPaths: _finalizeHotPaths(dartPathAgg, options.topN),
     rebuildCorrelations: correlations.take(options.topN).toList(),
     unmatchedHighSelfSlices: unmatchedSlices.take(options.topN).toList(),
     unmatchedHighRebuilds: unmatchedRebuilds.take(options.topN).toList(),
+    traceCoverage: traceCoverageNote,
   );
 }
 
@@ -204,8 +321,8 @@ RebuildPrecisionNote _rebuildNote(RebuildCountData? data) {
       status: 'notCaptured',
       precisionImpact: 'high',
       message:
-          'rebuildCountModel missing — cannot distinguish frequent rebuilds '
-          'from expensive single builds. Enable Rebuild Stats in DevTools before export.',
+          'rebuildCountModel missing in export — rebuild ↔ slice correlation '
+          'unavailable.',
     );
   }
   if (data.isEmpty) {
@@ -230,6 +347,110 @@ List<SliceSelfTimeEntry> _matchWidgetToHotspots(
     for (final h in hotspots)
       if (widgetMatchesSliceName(widgetName, h.name)) h,
   ];
+}
+
+List<TraceSlice> _matchWidgetToDartSlices(
+  String widgetName,
+  List<TraceSlice> inWindow,
+) {
+  return [
+    for (final s in dartMethodSlicesInWindow(inWindow))
+      if (widgetMatchesDartMethodSlice(widgetName, s.name)) s,
+  ];
+}
+
+String _dartMatchQuality(String widgetName, List<TraceSlice> matches) {
+  final normalized = normalizeWidgetName(widgetName);
+  for (final m in matches) {
+    if (m.name.startsWith('Render$normalized') ||
+        m.name.startsWith('_Render$normalized')) {
+      return 'strong';
+    }
+    if (widgetMatchesDartMethodSlice(widgetName, m.name)) {
+      const textWidgets = {'Text', 'RichText', 'SelectableText'};
+      if (textWidgets.contains(normalized) &&
+          m.name.contains('Paragraph')) {
+        return 'weak';
+      }
+      return 'strong';
+    }
+  }
+  return 'weak';
+}
+
+bool isDartMethodSliceByName(String name) =>
+    name.startsWith('Render') || name.startsWith('_Render');
+
+TraceCoverageNote? _buildTraceCoverageNote({
+  required List<FlutterFrame> janky,
+  required List<FlutterFrame> tracedJanky,
+  required List<FlutterFrame> precisionFrames,
+  required TraceCoverageSummary coverage,
+  required double budgetMs,
+  required FlutterFrame? suggested,
+}) {
+  final skippedNoTrace = [
+    for (final frame in janky)
+      if (!tracedJanky.any((t) => t.number == frame.number)) frame.number,
+  ];
+  if (skippedNoTrace.isEmpty) return null;
+
+  final worstSkipped = janky.firstWhere(
+    (f) => skippedNoTrace.contains(f.number),
+  );
+  final worstOverall = janky.first;
+  final precisionExcludesWorst =
+      !tracedJanky.any((t) => t.number == worstOverall.number);
+  final precisionFrameNumbers = [
+    for (final frame in precisionFrames) frame.number,
+  ];
+
+  UntracedWorstJankyFrame? untracedWorst;
+  if (precisionExcludesWorst) {
+    untracedWorst = UntracedWorstJankyFrame(
+      frameNumber: worstOverall.number,
+      elapsedMs: worstOverall.elapsedMs,
+      buildMs: worstOverall.buildMs,
+      rasterMs: worstOverall.rasterMs,
+      vsyncMs: worstOverall.vsyncMs,
+      bottleneck: frameBottleneck(worstOverall),
+      overBudgetMs: worstOverall.elapsedMs - budgetMs,
+    );
+  }
+
+  return TraceCoverageNote(
+    message: formatTraceCoverageWarning(
+      frame: worstSkipped,
+      coverage: coverage,
+      suggestedFrameNumber: suggested?.number,
+      precisionFrameNumbers: precisionFrameNumbers,
+    ),
+    jankyFramesWithoutTrace: skippedNoTrace,
+    markerFrameFirst: coverage.firstMarkerFrame,
+    markerFrameLast: coverage.lastMarkerFrame,
+    suggestedFrameNumber: suggested?.number,
+    untracedWorstJanky: untracedWorst,
+    precisionFrameNumbers: precisionFrameNumbers,
+    precisionExcludesWorstJanky: precisionExcludesWorst,
+  );
+}
+
+List<FrameBottleneckGuide> _orderedFrameGuides({
+  required List<FrameBottleneckGuide> guides,
+  required TraceCoverageNote? traceCoverage,
+}) {
+  final untraced = traceCoverage?.untracedWorstJanky;
+  if (untraced == null) return guides;
+
+  final primary = FrameBottleneckGuide(
+    frameNumber: untraced.frameNumber,
+    bottleneck: untraced.bottleneck,
+    primaryAnalysisTrack: 'flutterFrames-only',
+    buildMs: untraced.buildMs,
+    rasterMs: untraced.rasterMs,
+    elapsedMs: untraced.elapsedMs,
+  );
+  return [primary, ...guides];
 }
 
 String _matchQuality(String widgetName, List<SliceSelfTimeEntry> matches) {

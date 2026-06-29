@@ -26,11 +26,24 @@ void printFlameTreeReport(FlameTreeAnalysis analysis) {
       'per level by ${analysis.appliedFilters['treeTopMetric']}',
     );
   }
+  if (analysis.traceCoverageWarning != null) {
+    print('');
+    for (final line in analysis.traceCoverageWarning!.split('\n')) {
+      print('WARNING: $line');
+    }
+  }
   print('');
 
   if (analysis.roots.isEmpty) {
-    print('No nested UI slices in this frame window.');
-    print('Tip: ensure traceBinary is present and try without --filter.');
+    print('No nested UI or Dart slices in this frame window.');
+    if (analysis.suggestedFrameNumber != null) {
+      print(
+        'Tip: re-run with --frame ${analysis.suggestedFrameNumber} '
+        '(slowest janky frame that has timeline data).',
+      );
+    } else {
+      print('Tip: ensure traceBinary is present and try without --filter.');
+    }
     return;
   }
 
@@ -92,6 +105,10 @@ String encodeFlameTreeJson(FlameTreeAnalysis analysis) {
     'timelineWindowMs': analysis.timelineWindowMs,
     'sliceCountInWindow': analysis.sliceCountInWindow,
     'appliedFilters': analysis.appliedFilters,
+    if (analysis.traceCoverageWarning != null)
+      'traceCoverageWarning': analysis.traceCoverageWarning,
+    if (analysis.suggestedFrameNumber != null)
+      'suggestedFrameNumber': analysis.suggestedFrameNumber,
     if (analysis.forestOmitted != null)
       'forestOmitted': {
         'count': analysis.forestOmitted!.count,

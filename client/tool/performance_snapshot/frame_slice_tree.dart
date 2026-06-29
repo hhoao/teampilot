@@ -1,3 +1,4 @@
+import 'dart_slice_analysis.dart';
 import 'models.dart';
 import 'slice_tree.dart';
 import 'trace_decoder.dart';
@@ -25,7 +26,9 @@ String primaryAnalysisTrack(FlutterFrame frame) {
   };
 }
 
-enum FlameTreeTrack { ui, raster, both }
+enum FlameTreeTrack { ui, raster, dart, both }
+
+bool isDartFlameTreeSlice(TraceSlice slice) => isDartMethodSlice(slice);
 
 bool isUiFlameTreeSlice(TraceSlice slice) {
   if (slice.isShaderEvent) return false;
@@ -45,8 +48,11 @@ bool isRasterFlameTreeSlice(TraceSlice slice) {
 bool isFlameTreeSlice(TraceSlice slice, FlameTreeTrack track) => switch (track) {
       FlameTreeTrack.ui => isUiFlameTreeSlice(slice),
       FlameTreeTrack.raster => isRasterFlameTreeSlice(slice),
+      FlameTreeTrack.dart => isDartFlameTreeSlice(slice),
       FlameTreeTrack.both =>
-        isUiFlameTreeSlice(slice) || isRasterFlameTreeSlice(slice),
+        isUiFlameTreeSlice(slice) ||
+        isRasterFlameTreeSlice(slice) ||
+        isDartFlameTreeSlice(slice),
     };
 
 List<TraceSlice> slicesInFrameWindow({
@@ -107,6 +113,7 @@ List<SliceSelfTimeEntry> collectFrameSelfTimeHotspots({
 String trackLabelForFlameTree(FlameTreeTrack track) => switch (track) {
       FlameTreeTrack.ui => 'ui',
       FlameTreeTrack.raster => 'raster',
+      FlameTreeTrack.dart => 'dart',
       FlameTreeTrack.both => 'both',
     };
 
