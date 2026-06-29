@@ -19,6 +19,7 @@ import '../../models/workspace_tab_ref.dart';
 import '../../services/storage/launch_profile_provisioner.dart';
 import '../../utils/launch_profile_display_name.dart';
 import '../../utils/workspace_display_name.dart';
+import '../../utils/workspace_tab_session_scope.dart';
 import '../../models/home_closed_workspace_entry.dart';
 import '../../theme/workspace_surface_layers.dart';
 import '../../services/home_workspace/home_closed_workspaces_store.dart';
@@ -117,10 +118,12 @@ class _HomeShellState extends State<HomeShell> {
       routeTab: routeTab,
     );
     unawaited(_finishOpenTabsBootstrap(routeTab));
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      if (!mounted) return;
-      _syncTeamSessionScope(context);
-    });
+    if (routeTab == null) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (!mounted) return;
+        _syncTeamSessionScope(context);
+      });
+    }
   }
 
   Future<void> _finishOpenTabsBootstrap(WorkspaceTabRef? routeTab) async {
@@ -182,11 +185,9 @@ class _HomeShellState extends State<HomeShell> {
         context
             .read<LayoutCubit>()
             .setLastOpenedWorkspaceId(routeTab.workspaceId);
-      }
-      WidgetsBinding.instance.addPostFrameCallback((_) {
-        if (!mounted) return;
+      } else {
         _syncTeamSessionScope(context);
-      });
+      }
     }
   }
 
@@ -381,30 +382,6 @@ class _HomeShellState extends State<HomeShell> {
 
   @override
   Widget build(BuildContext context) {
-    final workspaces = context.select<ChatCubit, List<Workspace>>(
-      (c) => c.state.workspaces,
-    );
-    final activeTab = WorkspaceTabRef.fromLocation(widget.location);
-    final pageChrome = activeTab == null
-        ? WorkspacePageChrome.home
-        : WorkspacePageChrome.workspace;
-
-    final cs = Theme.of(context).colorScheme;
-    final l10n = context.l10n;
-    final identities = context.select<LaunchProfileCubit, List<LaunchProfile>>(
-      (c) => c.state.identities,
-    );
-    final tabs = <HomeWorkspaceTab>[
-      for (final tab in _openTabs)
-        if (_resolve(workspaces, tab.workspaceId) case final workspace?)
-          _workspaceTab(
-            tab: tab,
-            workspace: workspace,
-            l10n: l10n,
-            identities: identities,
-          ),
-    ];
-
     return BlocListener<SessionPreferencesCubit, SessionPreferencesState>(
       listenWhen: (previous, next) =>
           previous.preferences.scopeSessionsToSelectedTeam !=
@@ -415,13 +392,16 @@ class _HomeShellState extends State<HomeShell> {
             previous.selectedTeam?.id != next.selectedTeam?.id,
         listener: (context, _) => _syncTeamSessionScope(context),
         child: Scaffold(
-          backgroundColor: cs.workspacePageChrome(pageChrome),
+          backgroundColor: Theme.of(context).colorScheme.workspacePageChrome(
+            WorkspaceTabRef.fromLocation(widget.location) == null
+                ? WorkspacePageChrome.home
+                : WorkspacePageChrome.workspace,
+          ),
           body: Column(
             children: [
-              HomeTitleBar(
-                tabs: tabs,
-                activeTabKey: activeTab?.tabKey,
-                pageChrome: pageChrome,
+              _HomeShellTitleBar(
+                location: widget.location,
+                openTabs: _openTabs,
                 recentlyClosed: _recentlyClosed,
                 onHomeTap: _goHome,
                 onSelectTab: (tabKey) {
@@ -430,9 +410,11 @@ class _HomeShellState extends State<HomeShell> {
                   if (tab != null) _selectTab(tab);
                 },
                 onCloseTab: (tabKey) => unawaited(_closeTab(tabKey)),
-                onReopenClosedTab: (tabKey) => unawaited(_reopenClosedTab(tabKey)),
+                onReopenClosedTab: (tabKey) =>
+                    unawaited(_reopenClosedTab(tabKey)),
                 onOpenTabWithOtherIdentity: (tabKey) =>
                     unawaited(_openTabWithOtherIdentity(tabKey)),
+                hasDuplicateDirectory: _hasDuplicateDirectory,
               ),
               Expanded(
                 child: SafeArea(
@@ -457,6 +439,91 @@ class _HomeShellState extends State<HomeShell> {
     );
   }
 
+  static String _sessionTeamScopeId(
+    BuildContext context,
+    LaunchProfileRef identity,
+  ) {
+    final workspaceIdentity = context.read<LaunchProfileCubit>().byId(
+          identity.profileId,
+        );
+    return workspaceTabSessionTeamScopeId(identity, workspaceIdentity);
+  }
+
+  static Workspace? _resolve(List<Workspace> workspaces, String id) {
+    for (final p in workspaces) {
+      if (p.workspaceId == id) return p;
+    }
+    return null;
+  }
+}
+
+/// Title bar isolated from [HomeShell] body so session/tab [ChatCubit] updates
+/// during workspace switches do not rebuild the workbench subtree.
+class _HomeShellTitleBar extends StatelessWidget {
+  const _HomeShellTitleBar({
+    required this.location,
+    required this.openTabs,
+    required this.recentlyClosed,
+    required this.onHomeTap,
+    required this.onSelectTab,
+    required this.onCloseTab,
+    required this.onReopenClosedTab,
+    required this.onOpenTabWithOtherIdentity,
+    required this.hasDuplicateDirectory,
+  });
+
+  final String location;
+  final List<WorkspaceTabRef> openTabs;
+  final List<HomeClosedWorkspaceEntry> recentlyClosed;
+  final VoidCallback onHomeTap;
+  final ValueChanged<String> onSelectTab;
+  final ValueChanged<String> onCloseTab;
+  final ValueChanged<String> onReopenClosedTab;
+  final ValueChanged<String> onOpenTabWithOtherIdentity;
+  final bool Function(WorkspaceTabRef tab) hasDuplicateDirectory;
+
+  @override
+  Widget build(BuildContext context) {
+    final activeTab = WorkspaceTabRef.fromLocation(location);
+    final pageChrome = activeTab == null
+        ? WorkspacePageChrome.home
+        : WorkspacePageChrome.workspace;
+    final openWorkspaceIds = openTabs.map((t) => t.workspaceId).toSet();
+    final workspaces = context.select<ChatCubit, List<Workspace>>((c) {
+      return [
+        for (final workspace in c.state.workspaces)
+          if (openWorkspaceIds.contains(workspace.workspaceId)) workspace,
+      ];
+    });
+    final l10n = context.l10n;
+    final identities = context.select<LaunchProfileCubit, List<LaunchProfile>>(
+      (c) => c.state.identities,
+    );
+    final tabs = <HomeWorkspaceTab>[
+      for (final tab in openTabs)
+        if (_HomeShellState._resolve(workspaces, tab.workspaceId)
+            case final workspace?)
+          _workspaceTab(
+            tab: tab,
+            workspace: workspace,
+            l10n: l10n,
+            identities: identities,
+          ),
+    ];
+
+    return HomeTitleBar(
+      tabs: tabs,
+      activeTabKey: activeTab?.tabKey,
+      pageChrome: pageChrome,
+      recentlyClosed: recentlyClosed,
+      onHomeTap: onHomeTap,
+      onSelectTab: onSelectTab,
+      onCloseTab: onCloseTab,
+      onReopenClosedTab: onReopenClosedTab,
+      onOpenTabWithOtherIdentity: onOpenTabWithOtherIdentity,
+    );
+  }
+
   HomeWorkspaceTab _workspaceTab({
     required WorkspaceTabRef tab,
     required Workspace workspace,
@@ -475,7 +542,7 @@ class _HomeShellState extends State<HomeShell> {
         ? l10n.homeWorkspaceWorkspaceTabKindPersonal
         : (HomeShell.identityNameFor(l10n, identities, profileId) ?? profileId);
     final workspaceName = workspace.localizedName(l10n);
-    final showIdentityInLabel = _hasDuplicateDirectory(tab);
+    final showIdentityInLabel = hasDuplicateDirectory(tab);
     return HomeWorkspaceTab(
       id: tab.tabKey,
       name: showIdentityInLabel
@@ -492,23 +559,5 @@ class _HomeShellState extends State<HomeShell> {
       ),
       closable: true,
     );
-  }
-
-  static String _sessionTeamScopeId(
-    BuildContext context,
-    LaunchProfileRef identity,
-  ) {
-    final workspaceIdentity = context.read<LaunchProfileCubit>().byId(
-          identity.profileId,
-        );
-    if (workspaceIdentity?.kind == LaunchProfileKind.personal) return '';
-    return identity.profileId;
-  }
-
-  static Workspace? _resolve(List<Workspace> workspaces, String id) {
-    for (final p in workspaces) {
-      if (p.workspaceId == id) return p;
-    }
-    return null;
   }
 }

@@ -354,20 +354,53 @@ class ChatCubit extends Cubit<ChatState>
     _publishActiveWorkspaceTabs(restoredIndex);
   }
 
+  /// Switches the chat tab bucket and session visibility scope in one [emit].
+  /// Use on workspace tab activation so [setTeamSessionScope] does not fire a
+  /// second rebuild on the next frame.
+  void activateWorkspaceTab({
+    required String workspaceTabKey,
+    required bool scopeSessionsToSelectedTeam,
+    String? selectedTeamId,
+  }) {
+    final restoredIndex = _tabStore.setActiveWorkspace(
+      workspaceTabKey,
+      currentActiveIndex: state.activeTabIndex,
+    );
+    final scopeChanged = _dataStore.setScope(
+      scopeSessionsToSelectedTeam: scopeSessionsToSelectedTeam,
+      selectedTeamId: selectedTeamId,
+    );
+    final snapshot = scopeChanged
+        ? _dataStore.deriveSnapshot(
+            workspaces: state.workspaces,
+            sessions: state.sessions,
+          )
+        : null;
+    _publishActiveWorkspaceTabs(restoredIndex, snapshot: snapshot);
+  }
+
   /// Re-emits the active bucket's tab infos without changing the workspace, after
   /// callers mutate the active bucket directly via [tabStore].
   @override
   void refreshActiveWorkspaceTabs() =>
       _publishActiveWorkspaceTabs(state.activeTabIndex);
 
-  void _publishActiveWorkspaceTabs(int desiredIndex) {
+  void _publishActiveWorkspaceTabs(
+    int desiredIndex, {
+    ChatDataSnapshot? snapshot,
+  }) {
     if (_tabStore.isEmpty) {
+      final empty = snapshot;
       emit(
         state.copyWith(
           tabs: const [],
           activeTabIndex: 0,
           clearActiveSessionId: true,
           selectedMemberId: '',
+          workspaces: empty?.workspaces,
+          sessions: empty?.sessions,
+          visibleWorkspaces: empty?.visibleWorkspaces,
+          visibleSessions: empty?.visibleSessions,
         ),
       );
       _pushPresenceTarget();
@@ -381,6 +414,10 @@ class ChatCubit extends Cubit<ChatState>
         activeTabIndex: index,
         activeSessionId: tab.info.id,
         selectedMemberId: tab.selectedMemberId,
+        workspaces: snapshot?.workspaces,
+        sessions: snapshot?.sessions,
+        visibleWorkspaces: snapshot?.visibleWorkspaces,
+        visibleSessions: snapshot?.visibleSessions,
       ),
     );
     _pushPresenceTarget();
