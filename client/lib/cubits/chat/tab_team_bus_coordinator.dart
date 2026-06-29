@@ -81,8 +81,9 @@ class TabTeamBusCoordinator implements MemberMaterializer {
     TeamProfile team,
     AppSession session,
   ) async {
-    final memberCount = runtimeRosterMembers(team).length;
-    appLogger.i(
+    final runtimeMembers = runtimeRosterMembers(team);
+    final memberCount = runtimeMembers.length;
+    appLogger.d(
       '[session-launch] installBusForTab start '
       'session=${session.sessionId} team=${team.id} '
       'teamMode=${team.teamMode.name} members=$memberCount',
@@ -113,7 +114,7 @@ class TabTeamBusCoordinator implements MemberMaterializer {
         additionalPaths: session.extraFolderPaths,
       ),
     );
-    for (final m in runtimeRosterMembers(team)) {
+    for (final m in runtimeMembers) {
       final taskId = session.members
           .where((b) => b.rosterMemberId == m.id)
           .map((b) => b.taskId)
@@ -133,6 +134,10 @@ class TabTeamBusCoordinator implements MemberMaterializer {
       );
     }
     await bus.rehydrateUnread();
+    final forceWaitByMember = {
+      for (final m in runtimeMembers)
+        m.id: m.effectiveForceWaitBeforeStop(team),
+    };
     final server = TeammateBusMcpServer(
       handler: TeammateBusMcpHandler(
         bus: bus,
@@ -140,18 +145,14 @@ class TabTeamBusCoordinator implements MemberMaterializer {
         forceWaitBeforeStop: team.forceWaitBeforeStop,
         // 成员级解析：cursor 等 push-投递 CLI → false（正常停 + 门铃投递）。
         forceWaitForMember: (memberId) =>
-            runtimeRosterMembers(team)
-                .where((m) => m.id == memberId)
-                .map((m) => m.effectiveForceWaitBeforeStop(team))
-                .firstOrNull ??
-            team.forceWaitBeforeStop,
+            forceWaitByMember[memberId] ?? team.forceWaitBeforeStop,
       ),
     );
     await server.start();
     tab.teamBus = bus;
     tab.mcpServer = server;
     ensureIdleWatch();
-    appLogger.i(
+    appLogger.d(
       '[session-launch] installBusForTab ready '
       'session=${session.sessionId} endpoint=${server.endpoint}',
     );

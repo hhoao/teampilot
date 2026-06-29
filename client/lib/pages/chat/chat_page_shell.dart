@@ -1,6 +1,5 @@
 ﻿import 'dart:async';
 
-import 'package:collection/collection.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:teampilot/theme/app_toast_theme.dart';
@@ -19,6 +18,7 @@ import '../../widgets/right_tools/right_tools_panel.dart';
 import '../chat_workbench.dart';
 import '../workspace_shell/workspace_shell.dart';
 import 'right_tools_host.dart';
+import 'chat_scoped_tab_view.dart';
 import 'team_config_incomplete_dialog.dart';
 
 /// Layout fields that affect [ChatPageShell] and its right-tools subtree.
@@ -92,6 +92,7 @@ class ChatPageShell extends StatelessWidget {
     required this.workspaceId,
     required this.tabScopeId,
     required this.team,
+    this.routeActive = true,
     this.additionalPaths = const [],
     this.sessionId,
     super.key,
@@ -105,6 +106,7 @@ class ChatPageShell extends StatelessWidget {
   final bool isPersonalWorkspace;
   final String workspaceId;
   final String tabScopeId;
+  final bool routeActive;
   final TeamProfile? team;
 
   @override
@@ -121,6 +123,7 @@ class ChatPageShell extends StatelessWidget {
           isPersonalWorkspace: isPersonalWorkspace,
           workspaceId: workspaceId,
           tabScopeId: tabScopeId,
+          routeActive: routeActive,
           team: team,
         ),
       );
@@ -135,6 +138,7 @@ class ChatPageShell extends StatelessWidget {
         isPersonalWorkspace: isPersonalWorkspace,
         workspaceId: workspaceId,
         tabScopeId: tabScopeId,
+        routeActive: routeActive,
         team: team,
       ),
     );
@@ -151,6 +155,7 @@ class _ChatPageSplitLayout extends StatelessWidget {
     required this.isPersonalWorkspace,
     required this.workspaceId,
     required this.tabScopeId,
+    required this.routeActive,
     required this.team,
   });
 
@@ -160,6 +165,7 @@ class _ChatPageSplitLayout extends StatelessWidget {
   final bool isPersonalWorkspace;
   final String workspaceId;
   final String tabScopeId;
+  final bool routeActive;
   final TeamProfile? team;
 
   @override
@@ -173,6 +179,7 @@ class _ChatPageSplitLayout extends StatelessWidget {
         isPersonalWorkspace: isPersonalWorkspace,
         workspaceId: workspaceId,
         tabScopeId: tabScopeId,
+        routeActive: routeActive,
         team: team,
       ),
       rightTools: _ChatRightToolsPanelSlot(
@@ -228,6 +235,7 @@ class _ChatPageDrawerLayout extends StatelessWidget {
     required this.isPersonalWorkspace,
     required this.workspaceId,
     required this.tabScopeId,
+    required this.routeActive,
     required this.team,
   });
 
@@ -237,6 +245,7 @@ class _ChatPageDrawerLayout extends StatelessWidget {
   final bool isPersonalWorkspace;
   final String workspaceId;
   final String tabScopeId;
+  final bool routeActive;
   final TeamProfile? team;
 
   @override
@@ -269,45 +278,11 @@ class _ChatPageDrawerLayout extends StatelessWidget {
         isPersonalWorkspace: isPersonalWorkspace,
         workspaceId: workspaceId,
         tabScopeId: tabScopeId,
+        routeActive: routeActive,
         team: team,
       ),
     );
   }
-}
-
-class _ShellTabModel {
-  const _ShellTabModel({
-    required this.tabs,
-    required this.activeTabIndex,
-    required this.workingSessionIds,
-    required this.selectedMemberId,
-  });
-
-  final List<ChatTabInfo> tabs;
-  final int activeTabIndex;
-  final Set<String> workingSessionIds;
-  final String selectedMemberId;
-
-  static const _listEquality = ListEquality<ChatTabInfo>();
-  static const _setEquality = SetEquality<String>();
-
-  @override
-  bool operator ==(Object other) {
-    return identical(this, other) ||
-        other is _ShellTabModel &&
-            _listEquality.equals(tabs, other.tabs) &&
-            activeTabIndex == other.activeTabIndex &&
-            _setEquality.equals(workingSessionIds, other.workingSessionIds) &&
-            selectedMemberId == other.selectedMemberId;
-  }
-
-  @override
-  int get hashCode => Object.hash(
-    _listEquality.hash(tabs),
-    activeTabIndex,
-    _setEquality.hash(workingSessionIds),
-    selectedMemberId,
-  );
 }
 
 class _ChatWorkspaceShell extends StatelessWidget {
@@ -317,6 +292,7 @@ class _ChatWorkspaceShell extends StatelessWidget {
     required this.isPersonalWorkspace,
     required this.workspaceId,
     required this.tabScopeId,
+    required this.routeActive,
     required this.team,
   });
 
@@ -325,18 +301,32 @@ class _ChatWorkspaceShell extends StatelessWidget {
   final bool isPersonalWorkspace;
   final String workspaceId;
   final String tabScopeId;
+  final bool routeActive;
   final TeamProfile? team;
+
+  bool _scopedTabBuildWhen(
+    ChatCubit cubit,
+    ChatState previous,
+    ChatState next,
+  ) {
+    if (!routeActive) return false;
+    return previous.tabs != next.tabs ||
+        previous.activeTabIndex != next.activeTabIndex ||
+        previous.workingSessionIds != next.workingSessionIds ||
+        previous.selectedMemberId != next.selectedMemberId ||
+        previous.sessionConnectingId != next.sessionConnectingId ||
+        previous.sessionLaunchError != next.sessionLaunchError ||
+        previous.stateVersion != next.stateVersion;
+  }
 
   @override
   Widget build(BuildContext context) {
-    return BlocSelector<ChatCubit, ChatState, _ShellTabModel>(
-      selector: (state) => _ShellTabModel(
-        tabs: state.tabs,
-        activeTabIndex: state.activeTabIndex,
-        workingSessionIds: state.workingSessionIds,
-        selectedMemberId: state.selectedMemberId,
-      ),
-      builder: (context, model) {
+    final cubit = context.read<ChatCubit>();
+    return BlocBuilder<ChatCubit, ChatState>(
+      buildWhen: (previous, next) =>
+          _scopedTabBuildWhen(cubit, previous, next),
+      builder: (context, state) {
+        final view = ChatScopedTabView.resolve(cubit, tabScopeId);
         final teamConfig = team;
         return WorkspaceShell(
           workspaceTerminalWorkingDirectory: cwd,
@@ -348,33 +338,43 @@ class _ChatWorkspaceShell extends StatelessWidget {
           title: 'Shell chat workbench',
           subtitle: isPersonalWorkspace
               ? 'personal workspace / shell wrapper mode'
-              : 'target: ${context.read<ChatCubit>().selectedMemberName(teamConfig!)} / shell wrapper mode',
-          tabs: model.tabs
+              : 'target: ${cubit.selectedMemberName(teamConfig!)} / shell wrapper mode',
+          tabs: view.tabs
               .map(
                 (t) => TabInfo(
                   id: t.id,
                   title: t.title,
-                  working: model.workingSessionIds.contains(t.id),
+                  working: view.workingSessionIds.contains(t.id),
                   icon: Icons.terminal_rounded,
                   accentColor: Theme.of(context).colorScheme.primary,
                 ),
               )
               .toList(),
-          activeTabIndex: model.activeTabIndex,
-          onTabSelected: (index) => context.read<ChatCubit>().selectTab(index),
-          onTabClosed: (index) => context.read<ChatCubit>().closeTab(index),
-          onTabCloseOthers: (index) =>
-              context.read<ChatCubit>().closeOtherTabs(index),
-          onTabCloseRight: (index) =>
-              context.read<ChatCubit>().closeRightTabs(index),
+          activeTabIndex: view.activeTabIndex,
+          onTabSelected: routeActive
+              ? (index) => cubit.selectTab(index)
+              : null,
+          onTabClosed: routeActive
+              ? (index) => cubit.closeTab(index)
+              : null,
+          onTabCloseOthers: routeActive
+              ? (index) => cubit.closeOtherTabs(index)
+              : null,
+          onTabCloseRight: routeActive
+              ? (index) => cubit.closeRightTabs(index)
+              : null,
           showRightToolsVisibilityToggle: true,
           actions: isPersonalWorkspace
               ? const []
               : _chatActions(context, teamConfig!),
           child: ChatWorkbench(
             workspaceId: workspaceId,
+            tabScopeId: tabScopeId,
+            routeActive: routeActive,
             sessionId: sessionId,
             isPersonalWorkspace: isPersonalWorkspace,
+            team: team,
+            workbenchSlice: view.workbenchSlice,
           ),
         );
       },

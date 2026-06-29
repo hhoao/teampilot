@@ -428,6 +428,7 @@ class _HomeShellState extends State<HomeShell> {
                         ),
                     child: HomeWorkspaceBodyStack(
                       location: widget.location,
+                      openTabs: _openTabs,
                     ),
                   ),
                 ),

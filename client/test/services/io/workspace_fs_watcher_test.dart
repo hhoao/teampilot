@@ -178,5 +178,32 @@ void main() {
       await Future<void>.delayed(const Duration(milliseconds: 60));
       expect(count, 0);
     });
+
+    test('suspend stops events and resume delivers again', () async {
+      final fs = _WatchableFs();
+      final watcher = WorkspaceFsWatcher(
+        fs: fs,
+        root: '/repo',
+        debounce: const Duration(milliseconds: 20),
+      );
+      addTearDown(watcher.dispose);
+
+      var count = 0;
+      watcher.onChanged.listen((_) => count++);
+
+      fs.emit(FsChangeType.created, '/repo/a.txt');
+      await Future<void>.delayed(const Duration(milliseconds: 60));
+      expect(count, 1);
+
+      watcher.suspend();
+      fs.emit(FsChangeType.created, '/repo/b.txt');
+      await Future<void>.delayed(const Duration(milliseconds: 60));
+      expect(count, 1);
+
+      watcher.resume();
+      fs.emit(FsChangeType.created, '/repo/c.txt');
+      await Future<void>.delayed(const Duration(milliseconds: 60));
+      expect(count, 2);
+    });
   });
 }

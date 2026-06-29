@@ -48,6 +48,7 @@ class WorktreeGroupSection extends StatelessWidget {
     required this.sessionTeamFilter,
     required this.collapsed,
     required this.isCurrent,
+    this.highlightSessionId,
     this.personalLaunchBlocked = false,
     super.key,
   });
@@ -59,6 +60,7 @@ class WorktreeGroupSection extends StatelessWidget {
   final String sessionTeamFilter;
   final bool collapsed;
   final bool isCurrent;
+  final String? highlightSessionId;
   final bool personalLaunchBlocked;
 
   GitWorktreeService? _worktreeService(BuildContext context) {
@@ -170,6 +172,7 @@ class WorktreeGroupSection extends StatelessWidget {
             sessions: group.sessions,
             workspace: workspace,
             isPersonal: isPersonal,
+            highlightSessionId: highlightSessionId,
             personalLaunchBlocked: personalLaunchBlocked,
           ),
         if (!collapsed && group.sessions.isEmpty && wt != null && !personalLaunchBlocked)
@@ -343,6 +346,7 @@ class _GroupSessionList extends StatefulWidget {
     required this.sessions,
     required this.workspace,
     required this.isPersonal,
+    this.highlightSessionId,
     this.personalLaunchBlocked = false,
     super.key,
   });
@@ -350,6 +354,7 @@ class _GroupSessionList extends StatefulWidget {
   final List<AppSession> sessions;
   final Workspace workspace;
   final bool isPersonal;
+  final String? highlightSessionId;
   final bool personalLaunchBlocked;
 
   @override
@@ -375,6 +380,7 @@ class _GroupSessionListState extends State<_GroupSessionList> {
           SidebarSessionTile(
             key: ValueKey('worktree-session-${session.sessionId}'),
             session: session,
+            highlightSessionId: widget.highlightSessionId,
             contentLeftInset: 18,
             tapThrottleKeyPrefix: 'worktree_sidebar_session',
             onTap: () {

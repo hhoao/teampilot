@@ -260,7 +260,7 @@ class AppLogger {
       );
 
       _fileLoggerInitialized = true;
-      _consoleLogger!.i('[AppLogger] file logging → ${_logFile!.path}');
+      _consoleLogger!.d('[AppLogger] file logging → ${_logFile!.path}');
       await _flushPendingFileLogs();
     } on Object catch (e) {
       if (AppErrorUtils.isStorageError(e)) {
@@ -654,15 +654,16 @@ class _FlushingFileOutput extends LogOutput {
 class _ConsoleLogFilter extends LogFilter {
   @override
   bool shouldLog(LogEvent event) {
-    if (kDebugMode) return true;
-    return event.level.index >= Level.info.index;
+    // Routine boot/launch/session tracing is INFO/DEBUG and still lands in the
+    // log file — keep the dev console for warnings and errors only.
+    return event.level.index >= Level.warning.index;
   }
 }
 
 class _FileLogFilter extends LogFilter {
   @override
   bool shouldLog(LogEvent event) {
-    if (kDebugMode) return true;
+    // Skip DEBUG in log files — routine tracing stays out unless promoted.
     return event.level.index >= Level.info.index;
   }
 }

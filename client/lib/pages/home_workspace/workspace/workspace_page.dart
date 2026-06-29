@@ -23,6 +23,7 @@ import 'workspace_rail.dart';
 import 'workspace_section.dart';
 import 'workspace_split_pane.dart';
 import 'workspace_config_section.dart';
+import 'workspace_route_active_scope.dart';
 
 /// Workspace work page.
 ///
@@ -34,9 +35,6 @@ class WorkspacePage extends StatefulWidget {
     required this.workspaceId,
     required this.tabKey,
     this.identity,
-    this.view,
-    this.configSection,
-    required this.routeActive,
     super.key,
   });
 
@@ -49,63 +47,66 @@ class WorkspacePage extends StatefulWidget {
   /// redirects to the workspace grid.
   final LaunchProfileRef? identity;
 
-  /// `manage` opens [WorkspaceConfigPanel] (personal workspaces).
-  final String? view;
-
-  final WorkspaceConfigSection? configSection;
-
-  /// True when this page matches the current route (see [HomeWorkspaceBodyStack]).
-  /// Only the active page may call [ChatCubit.setActiveWorkspace].
-  final bool routeActive;
-
   @override
   State<WorkspacePage> createState() => _WorkspacePageState();
 }
 
 class _WorkspacePageState extends State<WorkspacePage> {
-  late WorkspaceSection _section = _sectionFromRoute();
+  late WorkspaceSection _section = WorkspaceSection.conversations;
   var _visitedManage = false;
+  Widget? _frozenPage;
+  bool _wasRouteActive = false;
+  String? _lastScopeView;
 
-  WorkspaceConfigSection get _configSection =>
-      widget.configSection ?? WorkspaceConfigSection.settings;
+  WorkspaceRouteActiveScope? _readScope(BuildContext context) {
+    return context.getInheritedWidgetOfExactType<WorkspaceRouteActiveScope>();
+  }
+
+  WorkspaceConfigSection _configSection(BuildContext context) =>
+      _readScope(context)?.configSection ?? WorkspaceConfigSection.settings;
 
   @override
   void initState() {
     super.initState();
-    if (widget.view == 'manage') {
-      _visitedManage = true;
-    }
-    if (widget.routeActive) {
-      _activateRoute();
-    }
     // The manage panel is built lazily on first rail click (?view=manage). Once
     // visited it stays mounted; [Offstage] skips layout for the hidden pane.
   }
 
   @override
-  void didUpdateWidget(covariant WorkspacePage oldWidget) {
-    super.didUpdateWidget(oldWidget);
-    final becameActive = widget.routeActive && !oldWidget.routeActive;
-    if (becameActive ||
-        (widget.routeActive &&
-            (oldWidget.tabKey != widget.tabKey ||
-                oldWidget.identity != widget.identity))) {
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    final scope = _readScope(context);
+    final active = scope?.routeActive ?? true;
+    final view = scope?.view;
+    if (active && !_wasRouteActive) {
       _activateRoute();
     }
-    if (widget.routeActive &&
-        (oldWidget.view != widget.view ||
-            oldWidget.configSection != widget.configSection)) {
+    if (active &&
+        (view != _lastScopeView ||
+            (!_wasRouteActive && view == 'manage'))) {
+      if (view == 'manage') _visitedManage = true;
       setState(() {
-        _section = _sectionFromRoute();
-        // Latch the lazy manage panel when a route navigates to it (the rail
-        // tap path latches this in [_onSectionChanged]).
+        _section = _sectionFromRoute(view);
         if (_section == WorkspaceSection.manage) _visitedManage = true;
       });
     }
+    _wasRouteActive = active;
+    _lastScopeView = view;
   }
 
-  WorkspaceSection _sectionFromRoute() {
-    if (widget.view == 'manage') {
+  @override
+  void didUpdateWidget(covariant WorkspacePage oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    final active = _readScope(context)?.routeActive ?? true;
+    if (active &&
+        (oldWidget.tabKey != widget.tabKey ||
+            oldWidget.identity != widget.identity)) {
+      _activateRoute();
+    }
+  }
+
+  WorkspaceSection _sectionFromRoute(String? view) {
+    if (view == 'manage') {
       return WorkspaceSection.manage;
     }
     return WorkspaceSection.conversations;
@@ -252,6 +253,17 @@ class _WorkspacePageState extends State<WorkspacePage> {
 
   @override
   Widget build(BuildContext context) {
+    final scope = context.dependOnInheritedWidgetOfExactType<WorkspaceRouteActiveScope>();
+    final routeActive = scope?.routeActive ?? true;
+    if (!routeActive) {
+      return _frozenPage ?? const SizedBox.shrink();
+    }
+    final built = _buildLivePage(context);
+    _frozenPage = built;
+    return built;
+  }
+
+  Widget _buildLivePage(BuildContext context) {
     final l10n = context.l10n;
 
     final workspace = context.select<ChatCubit, Workspace?>(
@@ -374,7 +386,7 @@ class _WorkspacePageState extends State<WorkspacePage> {
               child: WorkspaceConfigPanel(
                 workspace: workspace,
                 profileId: workspaceIdentity.id,
-                section: _configSection,
+                section: _configSection(context),
               ),
             ),
           ),

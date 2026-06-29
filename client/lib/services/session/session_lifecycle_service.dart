@@ -382,7 +382,7 @@ class SessionLifecycleService {
       folders: workspace.folders,
     );
 
-    appLogger.i(
+    appLogger.d(
       '[session-lifecycle] prepareLaunchFromEnvironment start '
       'session=$sessionId workspace=${workspace.workspaceId}',
     );
@@ -433,7 +433,7 @@ class SessionLifecycleService {
       warnings: const [],
     );
 
-    appLogger.i(
+    appLogger.d(
       '[session-lifecycle] prepareLaunchFromEnvironment ready '
       'session=$sessionId resume=${plan.resume}',
     );
@@ -471,7 +471,7 @@ class SessionLifecycleService {
     final taskId = memberBinding?.taskId.trim() ?? sessionId;
     final launchMember = _resolveTeamMemberForLaunch(team, member) ?? member;
 
-    appLogger.i(
+    appLogger.d(
       '[session-lifecycle] prepareTeamLaunchFromEnvironment start '
       'session=$sessionId team=$teamId member=${member.id}',
     );
@@ -532,7 +532,7 @@ class SessionLifecycleService {
       warnings: launchWarnings,
     );
 
-    appLogger.i(
+    appLogger.d(
       '[session-lifecycle] prepareTeamLaunchFromEnvironment ready '
       'session=$sessionId resume=${plan.resume}',
     );
@@ -609,7 +609,7 @@ class SessionLifecycleService {
       profileId: profileId,
       isPersonal: isPersonal,
     );
-    appLogger.i(
+    appLogger.d(
       '[session-lifecycle] prepareLaunch start '
       'session=$sessionId team=$teamId member=$memberName '
       'cliTeam=$cliTeamName task=$taskId personal=$isPersonal',
@@ -760,7 +760,7 @@ class SessionLifecycleService {
         resolvedRoots: resolvedRoots,
         warnings: prepared.warnings,
       );
-      appLogger.i(
+      appLogger.d(
         '[session-lifecycle] prepareLaunch ready '
         'session=$sessionId resume=${plan.resume} '
         'cwd=${memberWork.workingDirectory} '

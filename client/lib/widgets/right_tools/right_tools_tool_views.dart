@@ -116,6 +116,9 @@ class _RightToolsPresenceTeamSyncState extends State<RightToolsPresenceTeamSync>
 
   @override
   Widget build(BuildContext context) {
+    if (!TickerMode.valuesOf(context).enabled) {
+      return widget.child;
+    }
     if (!widget.isPersonalWorkspace) {
       final teamId = context.select<LaunchProfileCubit, String?>(
         (c) => c.state.selectedTeam?.id,

@@ -90,7 +90,7 @@ Future<ShellLaunchSpec> applyRemoteSshLaunchConstraints({
       final env = Map<String, String>.from(plan.env);
       env[claudeCodeSandboxEnvKey] = claudeCodeSandboxEnvValue;
       final reason = remoteInDocker ? 'container root' : 'target opt-in';
-      appLogger.i(
+      appLogger.d(
         '[remote-ssh-launch] $reason on ${profile.hostIdentifier}: '
         'injecting $claudeCodeSandboxEnvKey=$claudeCodeSandboxEnvValue',
       );

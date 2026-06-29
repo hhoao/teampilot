@@ -58,7 +58,8 @@ class WorkspaceShellCenterColumnWithTerminal extends StatelessWidget {
               next.preferences.workspaceTerminalHeight,
       builder: (context, layoutState) {
         final prefs = layoutState.preferences;
-        if (!prefs.workspaceTerminalVisible) {
+        final foreground = TickerMode.valuesOf(context).enabled;
+        if (!prefs.workspaceTerminalVisible || !foreground) {
           return child;
         }
         final scoped = workspaceTerminalWorkingDirectory?.trim() ?? '';
