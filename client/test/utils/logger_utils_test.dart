@@ -31,6 +31,7 @@ void main() {
 
     await AppLogger.instance.initFileLogging(temp.path);
     AppLogger.instance.i('hello from test');
+    AppLogger.instance.d('trace from test');
     await AppLogger.instance.flushFileLogging();
 
     final logDir = Directory('${temp.path}/logs');
@@ -45,6 +46,7 @@ void main() {
 
     final contents = await _readLogWhenContains(logPath!, 'hello from test');
     expect(contents, contains('hello from test'));
+    expect(contents, contains('trace from test'));
     expect(
       contents,
       matches(

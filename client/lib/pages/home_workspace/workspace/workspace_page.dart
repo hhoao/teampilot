@@ -273,9 +273,11 @@ class _WorkspacePageState extends State<WorkspacePage> {
   Widget build(BuildContext context) {
     final scope = context.dependOnInheritedWidgetOfExactType<WorkspaceRouteActiveScope>();
     final routeActive = scope?.routeActive ?? true;
-    final body = !routeActive
-        ? (_frozenPage ?? const SizedBox.shrink())
-        : (_frozenPage ??= _buildAndCacheLivePage(context));
+    // Foreground tab: always rebuild so rail section / route view updates apply.
+    // Background tab: show the last foreground snapshot only.
+    final body = routeActive
+        ? _buildAndCacheLivePage(context)
+        : (_frozenPage ?? const SizedBox.shrink());
     return BlocListener<ChatCubit, ChatState>(
       listenWhen: (previous, next) {
         if (previous.workspaces == next.workspaces) return false;
