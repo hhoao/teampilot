@@ -401,6 +401,25 @@ class AggregatedHotPath {
   final int occurrenceCount;
 }
 
+/// Aggregated Dart-track method slice (e.g. `RenderParagraph.getDryLayout`).
+class DartMethodHotspot {
+  const DartMethodHotspot({
+    required this.name,
+    required this.renderClass,
+    required this.totalMs,
+    required this.maxMsInSingleFrame,
+    required this.frameNumbers,
+    required this.occurrenceCount,
+  });
+
+  final String name;
+  final String renderClass;
+  final double totalMs;
+  final double maxMsInSingleFrame;
+  final List<int> frameNumbers;
+  final int occurrenceCount;
+}
+
 class FrameBottleneckGuide {
   const FrameBottleneckGuide({
     required this.frameNumber,
@@ -431,6 +450,57 @@ class RebuildPrecisionNote {
   final String message;
 }
 
+class TraceCoverageNote {
+  const TraceCoverageNote({
+    required this.message,
+    required this.jankyFramesWithoutTrace,
+    required this.markerFrameFirst,
+    required this.markerFrameLast,
+    required this.suggestedFrameNumber,
+    this.untracedWorstJanky,
+    this.precisionFrameNumbers = const [],
+    this.precisionExcludesWorstJanky = false,
+  });
+
+  final String message;
+  final List<int> jankyFramesWithoutTrace;
+  final int? markerFrameFirst;
+  final int? markerFrameLast;
+
+  /// Slowest janky frame that has timeline slices — optional drill-down only.
+  final int? suggestedFrameNumber;
+
+  /// Worst janky frame when it falls outside traceBinary (flutterFrames only).
+  final UntracedWorstJankyFrame? untracedWorstJanky;
+
+  /// Frames aggregated into precision hot paths / correlations.
+  final List<int> precisionFrameNumbers;
+
+  /// True when [untracedWorstJanky] is the global worst janky frame.
+  final bool precisionExcludesWorstJanky;
+}
+
+/// flutterFrames timing for a janky frame with no overlapping trace slices.
+class UntracedWorstJankyFrame {
+  const UntracedWorstJankyFrame({
+    required this.frameNumber,
+    required this.elapsedMs,
+    required this.buildMs,
+    required this.rasterMs,
+    required this.vsyncMs,
+    required this.bottleneck,
+    required this.overBudgetMs,
+  });
+
+  final int frameNumber;
+  final double elapsedMs;
+  final double buildMs;
+  final double rasterMs;
+  final double vsyncMs;
+  final String bottleneck;
+  final double overBudgetMs;
+}
+
 class PrecisionAnalysis {
   const PrecisionAnalysis({
     required this.frameCountAnalyzed,
@@ -438,9 +508,12 @@ class PrecisionAnalysis {
     required this.frameGuides,
     required this.uiHotPaths,
     required this.rasterHotPaths,
+    required this.dartMethodHotspots,
+    required this.dartHotPaths,
     required this.rebuildCorrelations,
     required this.unmatchedHighSelfSlices,
     required this.unmatchedHighRebuilds,
+    this.traceCoverage,
   });
 
   final int frameCountAnalyzed;
@@ -448,9 +521,12 @@ class PrecisionAnalysis {
   final List<FrameBottleneckGuide> frameGuides;
   final List<AggregatedHotPath> uiHotPaths;
   final List<AggregatedHotPath> rasterHotPaths;
+  final List<DartMethodHotspot> dartMethodHotspots;
+  final List<AggregatedHotPath> dartHotPaths;
   final List<RebuildSliceCorrelation> rebuildCorrelations;
   final List<UnmatchedHighSelfSlice> unmatchedHighSelfSlices;
   final List<UnmatchedHighRebuild> unmatchedHighRebuilds;
+  final TraceCoverageNote? traceCoverage;
 }
 
 class PerformanceAnalysisResult {

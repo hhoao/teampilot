@@ -374,6 +374,27 @@ void _printPrecisionSection(PrecisionAnalysis? precision) {
     }
   }
 
+  if (precision.dartMethodHotspots.isNotEmpty) {
+    print('\nAggregated Dart method hotspots:');
+    for (final h in precision.dartMethodHotspots.take(10)) {
+      print(
+        '  ${h.totalMs.toStringAsFixed(1)} ms '
+        '(${h.occurrenceCount}/${precision.frameCountAnalyzed} frames, '
+        'max ${h.maxMsInSingleFrame.toStringAsFixed(1)} ms)  ${h.name}',
+      );
+    }
+  }
+
+  if (precision.dartHotPaths.isNotEmpty) {
+    print('\nAggregated Dart hot paths (self time):');
+    for (final h in precision.dartHotPaths.take(10)) {
+      print(
+        '  ${h.totalSelfMs.toStringAsFixed(1)} ms self '
+        '(${h.occurrenceCount}/${precision.frameCountAnalyzed} frames)  ${h.path}',
+      );
+    }
+  }
+
   if (precision.rebuildCorrelations.isNotEmpty) {
     print('\nRebuild ↔ slice correlations:');
     for (final c in precision.rebuildCorrelations.take(10)) {

@@ -87,7 +87,7 @@ Avoid pasting raw DevTools JSON (multi‑MB `traceBinary`). Prefer the CLI.
      --no-embedder \
      --sections precision,frames,drilldown
    ```
-   Full `precision` object: `frameGuides`, `uiHotPaths`, `rasterHotPaths`, `rebuildCorrelations`, unmatched slices/rebuilds.
+   Full `precision` object: `frameGuides`, `uiHotPaths`, `rasterHotPaths`, `dartMethodHotspots`, `dartHotPaths`, `rebuildCorrelations`, unmatched slices/rebuilds.
 
 3. **Regression** — after a fix, compare against a baseline export:  
    ```bash
@@ -114,8 +114,8 @@ Prefer `--format json` over pasting the raw DevTools export into chat. Prefer `-
 |----------------|----------|
 | `flutterFrames` | Jank list, build/raster/vsync stats, bottleneck hint |
 | `displayRefreshRate` | Default frame budget (e.g. 240 Hz → ~4.17 ms) |
-| `traceBinary` | Perfetto slices, instants, shader events, CPU samples (if present) |
-| `traceBinary` + `--format flame-tree` | Nested slice tree on `io.flutter.ui` with **total/self ms** and breadcrumb paths |
+| `traceBinary` | Perfetto slices; may cover **fewer** frames than `flutterFrames` (see `traceCoverage` in `precision`). Summary labels which frames hot paths include and which janky frames lack timeline data. |
+| `traceBinary` + `--format flame-tree` | Nested slice tree on `io.flutter.ui` **and Dart-track** render methods with **total/self ms** |
 | `rebuildCountModel` | Top widgets by rebuild count; per-frame rebuilds; **rebuild ↔ slice correlation** in `precision` |
 | `selectedFrameId` | Default frame for drill-down when `--frame` omitted |
 | `selectedTab` | Which DevTools tab was active at export |
@@ -127,6 +127,15 @@ Prefer `--format json` over pasting the raw DevTools export into chat. Prefer `-
 - Full parity with DevTools **Frame Analysis** UI (exact UI/Raster event tree linking)
 
 The tool targets **offline triage**: which frames jank, which phase, which widget/event names dominate.
+
+### UI widget tree vs Dart method slices
+
+DevTools shows two related but distinct timelines:
+
+- **`io.flutter.ui`** — widget breadcrumbs (`BUILD` → `RightToolsPanel` → …)
+- **`Dart` track** — render-object method slices (`RenderParagraph.getDryLayout`, `RenderIndexedStack.performLayout`, …)
+
+The widest bar in DevTools is often a **Dart method** slice, not a named widget in the UI tree. `precision.dartMethodHotspots` and flame-tree output include these; rebuild correlation links widgets like `Text` to `RenderParagraph.*` when possible.
 
 ## Code layout
 
@@ -141,7 +150,8 @@ client/tool/
     ├── models.dart                        # Report data types
     ├── rebuild_model.dart                 # rebuildCountModel decoder
     ├── trace_decoder.dart                 # Perfetto traceBinary decoder
-    ├── frame_slice_tree.dart                # UI/raster slice trees + bottleneck helpers
+    ├── frame_slice_tree.dart                # UI/raster/dart slice trees + bottleneck helpers
+    ├── dart_slice_analysis.dart             # Dart-track RenderObject method hotspots
     ├── precision_analysis.dart              # hot-path aggregation + rebuild correlation
     ├── slice_tree.dart                    # Nested slice tree + self-time
     ├── flame_tree_builder.dart            # Per-frame flame tree

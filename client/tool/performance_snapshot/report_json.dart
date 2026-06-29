@@ -206,6 +206,10 @@ extension PerformanceAnalysisResultJson on PerformanceAnalysisResult {
         ],
         'uiHotPaths': [for (final h in p.uiHotPaths) _hotPathJson(h)],
         'rasterHotPaths': [for (final h in p.rasterHotPaths) _hotPathJson(h)],
+        'dartMethodHotspots': [
+          for (final h in p.dartMethodHotspots) _dartMethodHotspotJson(h),
+        ],
+        'dartHotPaths': [for (final h in p.dartHotPaths) _hotPathJson(h)],
         'rebuildCorrelations': [
           for (final c in p.rebuildCorrelations) _rebuildCorrelationJson(c),
         ],
@@ -215,6 +219,7 @@ extension PerformanceAnalysisResultJson on PerformanceAnalysisResult {
         'unmatchedHighRebuilds': [
           for (final u in p.unmatchedHighRebuilds) _unmatchedRebuildJson(u),
         ],
+        if (p.traceCoverage != null) 'traceCoverage': _traceCoverageJson(p.traceCoverage!),
       };
 
   Map<String, Object?> _hotPathJson(AggregatedHotPath h) => {
@@ -222,6 +227,15 @@ extension PerformanceAnalysisResultJson on PerformanceAnalysisResult {
         'track': h.track,
         'totalSelfMs': h.totalSelfMs,
         'maxSelfMsInSingleFrame': h.maxSelfMsInSingleFrame,
+        'frameNumbers': h.frameNumbers,
+        'occurrenceCount': h.occurrenceCount,
+      };
+
+  Map<String, Object?> _dartMethodHotspotJson(DartMethodHotspot h) => {
+        'name': h.name,
+        'renderClass': h.renderClass,
+        'totalMs': h.totalMs,
+        'maxMsInSingleFrame': h.maxMsInSingleFrame,
         'frameNumbers': h.frameNumbers,
         'occurrenceCount': h.occurrenceCount,
       };
@@ -265,6 +279,26 @@ extension PerformanceAnalysisResultJson on PerformanceAnalysisResult {
         'line': u.line,
         'column': u.column,
         'rebuildCount': u.rebuildCount,
+      };
+
+  Map<String, Object?> _traceCoverageJson(TraceCoverageNote note) => {
+        'message': note.message,
+        'jankyFramesWithoutTrace': note.jankyFramesWithoutTrace,
+        'markerFrameFirst': note.markerFrameFirst,
+        'markerFrameLast': note.markerFrameLast,
+        'suggestedFrameNumber': note.suggestedFrameNumber,
+        'precisionFrameNumbers': note.precisionFrameNumbers,
+        'precisionExcludesWorstJanky': note.precisionExcludesWorstJanky,
+        if (note.untracedWorstJanky != null)
+          'untracedWorstJanky': {
+            'frameNumber': note.untracedWorstJanky!.frameNumber,
+            'elapsedMs': note.untracedWorstJanky!.elapsedMs,
+            'buildMs': note.untracedWorstJanky!.buildMs,
+            'rasterMs': note.untracedWorstJanky!.rasterMs,
+            'vsyncMs': note.untracedWorstJanky!.vsyncMs,
+            'bottleneck': note.untracedWorstJanky!.bottleneck,
+            'overBudgetMs': note.untracedWorstJanky!.overBudgetMs,
+          },
       };
 
   Map<String, Object?> _comparisonJson(SnapshotComparison c) => {

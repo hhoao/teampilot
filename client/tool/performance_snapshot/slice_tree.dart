@@ -34,7 +34,7 @@ bool sliceContains(TraceSlice parent, TraceSlice child) {
 
 /// Builds a forest of nested slice trees on each track independently.
 List<SliceTreeNode> buildSliceForest(List<TraceSlice> slices) {
-  if (slices.isEmpty) return const [];
+  if (slices.isEmpty) return [];
 
   final byTrack = <String, List<TraceSlice>>{};
   for (final slice in slices) {

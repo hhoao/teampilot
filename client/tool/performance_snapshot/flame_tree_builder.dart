@@ -3,6 +3,7 @@ import 'options.dart';
 import 'frame_slice_tree.dart';
 import 'slice_tree.dart';
 import 'trace_decoder.dart';
+import 'trace_frame_coverage.dart';
 
 /// Flame-chart-style nested slice tree for one Flutter frame.
 class FlameTreeAnalysis {
@@ -15,6 +16,8 @@ class FlameTreeAnalysis {
     required this.sliceCountInWindow,
     required this.appliedFilters,
     this.forestOmitted,
+    this.traceCoverageWarning,
+    this.suggestedFrameNumber,
   });
 
   final FlutterFrame frame;
@@ -25,6 +28,8 @@ class FlameTreeAnalysis {
   final int sliceCountInWindow;
   final Map<String, Object?> appliedFilters;
   final SliceTreeForestOmitted? forestOmitted;
+  final String? traceCoverageWarning;
+  final int? suggestedFrameNumber;
 }
 
 FlameTreeAnalysis? buildFlameTreeAnalysis({
@@ -46,12 +51,59 @@ FlameTreeAnalysis? buildFlameTreeAnalysis({
     filters: filters,
   );
 
-  final flameSlices = inWindow.where(isUiFlameTreeSlice).toList();
+  final flameSlices = inWindow
+      .where(
+        (s) =>
+            isUiFlameTreeSlice(s) ||
+            isDartFlameTreeSlice(s),
+      )
+      .toList();
 
-  var roots = buildSliceForest(flameSlices);
+  var roots = [
+    ...buildFlameForestForTrack(inWindow, FlameTreeTrack.ui),
+    ...buildFlameForestForTrack(inWindow, FlameTreeTrack.dart),
+  ];
   dropRedundantDartFrameRoots(roots);
   if (options.treePhases.isNotEmpty) {
-    roots = _promotePhaseRoots(roots, options.treePhases);
+    roots = List<SliceTreeNode>.from(_promotePhaseRoots(roots, options.treePhases));
+  }
+
+  final coverage = traceCoverageSummary(trace);
+  final janky = snapshot.frames.where((f) => f.elapsedMs > budgetMs).toList()
+    ..sort((a, b) => b.elapsedUs.compareTo(a.elapsedUs));
+  final suggested = slowestTracedJankyFrame(
+    jankyFrames: janky,
+    trace: trace,
+    coverage: coverage,
+  );
+
+  String? traceWarning;
+  int? suggestedFrame;
+  if (flameSlices.isEmpty || !frameHasTraceSlices(frame, trace, coverage)) {
+    traceWarning = formatTraceCoverageWarning(
+      frame: frame,
+      coverage: coverage,
+      suggestedFrameNumber: suggested?.number,
+    );
+    suggestedFrame = suggested?.number;
+  }
+
+  if (roots.isEmpty) {
+    final markerRange = trace.timeRangeForFrame(frame.number, frame.elapsedUs);
+    final windowMs = markerRange != null
+        ? (markerRange.endNs - markerRange.beginNs) / 1e6
+        : frame.elapsedMs;
+    return FlameTreeAnalysis(
+      frame: frame,
+      budgetMs: budgetMs,
+      timelineWindowMs: windowMs,
+      roots: roots,
+      topSelfTime: const [],
+      sliceCountInWindow: flameSlices.length,
+      appliedFilters: _flameFiltersMap(options),
+      traceCoverageWarning: traceWarning,
+      suggestedFrameNumber: suggestedFrame,
+    );
   }
 
   final topSelfTime = collectSelfTimeHotspots(
@@ -87,6 +139,8 @@ FlameTreeAnalysis? buildFlameTreeAnalysis({
     sliceCountInWindow: flameSlices.length,
     appliedFilters: _flameFiltersMap(options),
     forestOmitted: forestOmitted,
+    traceCoverageWarning: traceWarning,
+    suggestedFrameNumber: suggestedFrame,
   );
 }
 
