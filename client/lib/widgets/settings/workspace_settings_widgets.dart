@@ -49,16 +49,13 @@ class SettingsGroupHeader extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final tt = Theme.of(context).textTheme;
     final cs = Theme.of(context).colorScheme;
+    final styles = AppTextStyles.of(context);
     return Padding(
       padding: _settingGroupHeaderPadding,
       child: Text(
         title,
-        style: tt.labelSmall?.copyWith(
-          color: cs.onSurfaceVariant,
-          letterSpacing: 0.2,
-        ),
+        style: styles.settingsGroupHeaderColored(cs.onSurfaceVariant),
       ),
     );
   }

@@ -6,7 +6,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_alacritty/flutter_alacritty.dart';
 import 'package:google_fonts/google_fonts.dart';
 
-import '../../theme/app_fonts.dart';
+import '../../theme/app_text_styles_warmup.dart';
 import '../../utils/yield_ui_frame.dart';
 import '../../widgets/warmup_glyphs.g.dart';
 
@@ -49,20 +49,9 @@ abstract final class UiInteractiveWarmup {
   }
 
   static Future<void> _warmGlyphs() async {
-    for (final weight in FontWeight.values) {
-      await _shapeWarmupGlyphs(GoogleFonts.notoSansSc(fontWeight: weight));
+    for (final style in textStylesForInteractiveWarmup()) {
+      await _shapeWarmupGlyphs(style);
     }
-    // File-tree paths, source-control file lists, and the code/log viewers
-    // render in the monospace family with its own CJK fallback chain — none of
-    // which the Noto Sans SC passes above touch. Without warming it, the first
-    // file-tree / git-panel layout on a tab switch pays the cold mono shaping
-    // and fallback-typeface load on the UI thread, which a DevTools trace
-    // showed dominating the multi-hundred-ms LAYOUT phase of that frame.
-    await _shapeWarmupGlyphs(
-      const TextStyle(fontFamily: AppFonts.monoFamily).copyWith(
-        fontFamilyFallback: AppFonts.monoFamilyFallback,
-      ),
-    );
   }
 
   /// Lays out [warmupGlyphs] in [style] in chunks, yielding a frame between

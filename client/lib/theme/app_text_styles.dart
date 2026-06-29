@@ -25,6 +25,38 @@ final class AppTextStyles {
   TextStyle captionColored(Color color, {FontWeight? fontWeight}) =>
       caption.copyWith(color: color, fontWeight: fontWeight);
 
+  /// 11px bold tracked — right-tool panel headers (file tree, git, members).
+  TextStyle get toolPanelTitle => caption.copyWith(
+        fontWeight: FontWeight.w700,
+        letterSpacing: 0.8,
+      );
+
+  TextStyle toolPanelTitleColored(Color color) =>
+      toolPanelTitle.copyWith(color: color);
+
+  /// 11px — settings sidebar group labels.
+  TextStyle get settingsGroupHeader => caption.copyWith(letterSpacing: 0.2);
+
+  TextStyle settingsGroupHeaderColored(Color color) =>
+      settingsGroupHeader.copyWith(color: color);
+
+  /// File-tree multi-root folder row label.
+  TextStyle fileTreeRootLabel(Color color) => body.copyWith(
+        fontWeight: FontWeight.w700,
+        letterSpacing: 0.4,
+        color: color,
+      );
+
+  /// File-tree file or nested folder row label.
+  TextStyle fileTreeEntryLabel({
+    required Color color,
+    required bool active,
+  }) =>
+      body.copyWith(
+        fontWeight: active ? FontWeight.w600 : FontWeight.w500,
+        color: color,
+      );
+
   /// 12px — compact lists, tree nodes.
   TextStyle get bodySmall => _resolve(_t.bodySmall);
 

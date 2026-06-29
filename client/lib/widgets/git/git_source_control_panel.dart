@@ -838,11 +838,9 @@ class _SectionHeader extends StatelessWidget {
           Expanded(
             child: Text(
               title,
-              style: Theme.of(context).textTheme.labelSmall?.copyWith(
-                color: cs.onSurfaceVariant,
-                fontWeight: FontWeight.w700,
-                letterSpacing: 0.8,
-              ),
+              style: AppTextStyles.of(
+                context,
+              ).toolPanelTitleColored(cs.onSurfaceVariant),
             ),
           ),
           action,
