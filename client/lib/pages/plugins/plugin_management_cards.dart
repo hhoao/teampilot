@@ -1,11 +1,9 @@
 ﻿import 'package:flutter/material.dart';
-import 'package:teampilot/theme/app_icon_sizes.dart';
 import 'package:teampilot/theme/app_toast_theme.dart';
 import 'package:teampilot/widgets/app_toast/app_toast.dart';
 import 'package:url_launcher/url_launcher.dart';
 
 import '../../l10n/l10n_extensions.dart';
-import '../../theme/app_text_styles.dart';
 import '../../widgets/app_dialog.dart';
 import '../../widgets/settings/workspace_settings_widgets.dart';
 
@@ -113,54 +111,6 @@ Future<void> openPluginUrl(String url) async {
   if (uri == null) return;
   if (await canLaunchUrl(uri)) {
     await launchUrl(uri, mode: LaunchMode.externalApplication);
-  }
-}
-
-class PluginEmptyBlock extends StatelessWidget {
-  const PluginEmptyBlock({
-    required this.icon,
-    required this.title,
-    required this.hint,
-    required this.actionLabel,
-    required this.onAction,
-    super.key,
-  });
-
-  final IconData icon;
-  final String title;
-  final String hint;
-  final String actionLabel;
-  final VoidCallback onAction;
-
-  @override
-  Widget build(BuildContext context) {
-    final cs = Theme.of(context).colorScheme;
-    final isDark = Theme.of(context).brightness == Brightness.dark;
-    final textBase = isDark ? Colors.white : const Color(0xFF111827);
-    return Column(
-      children: [
-        const SizedBox(height: 10),
-        Icon(icon, size: context.appIconSizes.md, color: cs.primary.withValues(alpha: 0.6)),
-        const SizedBox(height: 12),
-        Text(
-          title,
-          style: AppTextStyles.of(
-            context,
-          ).subtitle.copyWith(fontWeight: FontWeight.w700, color: textBase),
-        ),
-        const SizedBox(height: 8),
-        Text(
-          hint,
-          textAlign: TextAlign.center,
-          style: AppTextStyles.of(
-            context,
-          ).body.copyWith(color: textBase.withValues(alpha: 0.55)),
-        ),
-        const SizedBox(height: 16),
-        FilledButton.tonal(onPressed: onAction, child: Text(actionLabel)),
-        const SizedBox(height: 10),
-      ],
-    );
   }
 }
 

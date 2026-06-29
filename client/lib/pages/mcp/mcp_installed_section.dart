@@ -11,6 +11,7 @@ import '../../services/mcp/mcp_credentials_store.dart';
 import '../../services/mcp/mcp_oauth_flow.dart';
 import '../../widgets/settings/workspace_settings_widgets.dart';
 import 'mcp_oauth_connect_dialog.dart';
+import '../../widgets/empty_state_block.dart';
 import 'mcp_shared_widgets.dart';
 
 class McpInstalledSection extends StatefulWidget {
@@ -138,7 +139,7 @@ class _McpInstalledSectionState extends State<McpInstalledSection> {
               ),
             )
           else if (servers.isEmpty)
-            McpEmptyBlock(
+            EmptyStateBlock(
               icon: Icons.dns_outlined,
               title: l10n.mcpNoInstalled,
               hint: l10n.mcpNoInstalledHint,

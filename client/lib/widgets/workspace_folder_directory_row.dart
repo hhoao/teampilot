@@ -115,13 +115,7 @@ class WorkspaceFolderDirectoryRow extends StatelessWidget {
           Expanded(
             child: Padding(
               padding: const EdgeInsets.symmetric(vertical: 4),
-              child: _pathLabel(
-                name,
-                parent,
-                styles,
-                cs,
-                muted: !hasPath,
-              ),
+              child: _pathLabel(name, parent, styles, cs, muted: !hasPath),
             ),
           ),
           if (showTarget) ...[
@@ -170,7 +164,6 @@ class WorkspaceFolderDirectoryRow extends StatelessWidget {
         overflow: TextOverflow.ellipsis,
         style: title.copyWith(
           fontWeight: muted ? FontWeight.w500 : FontWeight.w600,
-          fontStyle: muted ? FontStyle.italic : FontStyle.normal,
         ),
       );
     }
@@ -179,10 +172,7 @@ class WorkspaceFolderDirectoryRow extends StatelessWidget {
       overflow: TextOverflow.ellipsis,
       TextSpan(
         children: [
-          TextSpan(
-            text: name,
-            style: title.copyWith(fontWeight: FontWeight.w600),
-          ),
+          TextSpan(text: name),
           TextSpan(text: ' · ', style: detail),
           TextSpan(text: parent, style: detail),
         ],

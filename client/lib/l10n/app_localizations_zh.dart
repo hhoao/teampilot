@@ -3003,6 +3003,9 @@ class AppLocalizationsZh extends AppLocalizations {
   String get mcpDiscoverySectionHint => '浏览内置模板，以及「仓库」中配置的远程目录。';
 
   @override
+  String get mcpDiscoverySourceAll => '全部';
+
+  @override
   String get mcpDiscoverySourceBuiltin => '内置';
 
   @override

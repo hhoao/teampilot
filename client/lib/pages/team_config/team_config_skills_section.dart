@@ -10,6 +10,7 @@ import '../../models/skill.dart';
 import '../../models/team_config.dart';
 import '../../theme/app_text_styles.dart';
 import '../../utils/github_source_url.dart';
+import '../../widgets/empty_state_block.dart';
 import '../../widgets/github_details_button.dart';
 import '../../widgets/settings/workspace_settings_widgets.dart';
 import 'team_config_cards.dart';
@@ -33,8 +34,6 @@ class TeamSkillsSection extends StatelessWidget {
   Widget build(BuildContext context) {
     final l10n = context.l10n;
     final onManage = onManageGlobal ?? () => context.go('/skills');
-    final isDark = Theme.of(context).brightness == Brightness.dark;
-    final textBase = isDark ? Colors.white : const Color(0xFF111827);
     final skillState = context.watch<SkillCubit>().state;
     final enabled = skillState.installed
         .where((s) => s.enabled)
@@ -64,9 +63,14 @@ class TeamSkillsSection extends StatelessWidget {
                 ),
                 const SizedBox(height: 14),
                 if (enabled.isEmpty)
-                  TeamSkillsEmptyBlock(
-                    textBase: textBase,
-                    onGoSkills: onManage,
+                  EmptyStateBlock(
+                    icon: Icons.inventory_2_outlined,
+                    title: l10n.skillsNoInstalled,
+                    hint: l10n.skillsNoInstalledHint,
+                    actionLabel: l10n.teamSkillsManage,
+                    onAction: onManage,
+                    actionIcon: Icons.extension_outlined,
+                    actionStyle: EmptyStateActionStyle.outlinedIcon,
                   )
                 else
                   Column(
@@ -90,56 +94,6 @@ class TeamSkillsSection extends StatelessWidget {
                   ),
               ],
             ),
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-class TeamSkillsEmptyBlock extends StatelessWidget {
-  const TeamSkillsEmptyBlock({super.key,
-    required this.textBase,
-    required this.onGoSkills,
-    this.manageButtonLabel,
-  });
-
-  final Color textBase;
-  final VoidCallback onGoSkills;
-  final String? manageButtonLabel;
-
-  @override
-  Widget build(BuildContext context) {
-    final l10n = context.l10n;
-    return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 24),
-      child: Column(
-        children: [
-          Icon(
-            Icons.inventory_2_outlined,
-            size: context.appIconSizes.md,
-            color: textBase.withValues(alpha: 0.35),
-          ),
-          const SizedBox(height: 12),
-          Text(
-            l10n.skillsNoInstalled,
-            style: AppTextStyles.of(
-              context,
-            ).body.copyWith(fontWeight: FontWeight.w700, color: textBase),
-          ),
-          const SizedBox(height: 6),
-          Text(
-            l10n.skillsNoInstalledHint,
-            textAlign: TextAlign.center,
-            style: AppTextStyles.of(
-              context,
-            ).bodySmall.copyWith(color: textBase.withValues(alpha: 0.55)),
-          ),
-          const SizedBox(height: 14),
-          OutlinedButton.icon(
-            onPressed: onGoSkills,
-            icon: Icon(Icons.extension_outlined, size: context.appIconSizes.md),
-            label: Text(manageButtonLabel ?? l10n.teamSkillsManage),
           ),
         ],
       ),

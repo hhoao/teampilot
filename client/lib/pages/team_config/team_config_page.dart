@@ -152,8 +152,7 @@ class TeamConfigPage extends StatelessWidget {
       TeamConfigSection.mcp => TeamMcpSection(team: team, cubit: teamCubit),
       TeamConfigSection.extensions => TeamExtensionsSection(team: team),
       TeamConfigSection.members => TeamMemberDetailSection(
-          team: team,
-          cubit: teamCubit,
+          teamId: team.id,
           selectedMemberId: resolvedMemberId,
         ),
     };

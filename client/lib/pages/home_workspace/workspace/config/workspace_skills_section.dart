@@ -9,6 +9,7 @@ import '../../../../cubits/launch_profile_cubit.dart';
 import '../../../../cubits/skill_cubit.dart';
 import '../../../../l10n/l10n_extensions.dart';
 import '../../home_workspace_global_section.dart';
+import '../../../../widgets/empty_state_block.dart';
 import '../../../team_config/team_config_cards.dart';
 import '../../../team_config/team_config_skills_section.dart';
 
@@ -33,8 +34,6 @@ class WorkspaceSkillsSection extends StatelessWidget {
     final l10n = context.l10n;
     void onManage() =>
         context.go(HomeGlobalView.skills.homeLocation);
-    final isDark = Theme.of(context).brightness == Brightness.dark;
-    final textBase = isDark ? Colors.white : const Color(0xFF111827);
     final skillState = context.watch<SkillCubit>().state;
     final enabled = skillState.installed
         .where((s) => s.enabled)
@@ -64,10 +63,14 @@ class WorkspaceSkillsSection extends StatelessWidget {
                 ),
                 const SizedBox(height: 14),
                 if (enabled.isEmpty)
-                  TeamSkillsEmptyBlock(
-                    textBase: textBase,
-                    onGoSkills: onManage,
-                    manageButtonLabel: l10n.workspaceSkillsManage,
+                  EmptyStateBlock(
+                    icon: Icons.inventory_2_outlined,
+                    title: l10n.skillsNoInstalled,
+                    hint: l10n.skillsNoInstalledHint,
+                    actionLabel: l10n.workspaceSkillsManage,
+                    onAction: onManage,
+                    actionIcon: Icons.extension_outlined,
+                    actionStyle: EmptyStateActionStyle.outlinedIcon,
                   )
                 else
                   Column(

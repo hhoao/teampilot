@@ -3,7 +3,7 @@ import 'package:flutter_animate/flutter_animate.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
 import '../../cubits/launch_profile_cubit.dart';
-import '../../models/team_config.dart';
+import '../../cubits/team/launch_profile_selectors.dart';
 import '../../l10n/l10n_extensions.dart';
 import '../../theme/workspace_surface_layers.dart';
 import '../team_config/team_config_section.dart';
@@ -58,11 +58,11 @@ class _HomeContentState extends State<HomeContent> {
   Widget build(BuildContext context) {
     final cs = Theme.of(context).colorScheme;
     final l10n = context.l10n;
-    final team = context.select<LaunchProfileCubit, TeamProfile?>(
-      (c) => c.state.selectedTeam,
+    final teamId = context.select<LaunchProfileCubit, String?>(
+      (c) => c.state.selectedTeamId,
     );
 
-    if (team == null) {
+    if (teamId == null) {
       return ColoredBox(
         color: cs.surface,
         child: const Center(child: CircularProgressIndicator()),
@@ -77,7 +77,7 @@ class _HomeContentState extends State<HomeContent> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          HomeTeamHeader(team: team),
+          _HomeTeamHeaderHost(teamId: teamId),
           const SizedBox(height: 14),
           HomeContentTabBar(
             tabs: tabs,
@@ -87,27 +87,45 @@ class _HomeContentState extends State<HomeContent> {
           Divider(height: 1, color: cs.outlineVariant.withValues(alpha: 0.5)),
           const SizedBox(height: 16),
           Expanded(
-            child: HomeTeamTab(
-              key: ValueKey('home-team-tab-${activeSection.name}'),
-              section: activeSection,
-              team: team,
-              cubit: context.read<LaunchProfileCubit>(),
-              initialMemberId: activeSection == TeamConfigSection.members
-                  ? widget.initialMemberId
-                  : null,
-              onSelectGlobalView: widget.onSelectGlobalView,
-            )
-                .animate(key: ValueKey('home-content-tab-$_tabIndex'))
-                .fadeIn(duration: 180.ms, curve: Curves.easeOut)
-                .slideX(
-                  begin: 0.025,
-                  end: 0,
-                  duration: 220.ms,
-                  curve: Curves.easeOutCubic,
-                ),
+            child:
+                HomeTeamTab(
+                      key: ValueKey('home-team-tab-${activeSection.name}'),
+                      teamId: teamId,
+                      section: activeSection,
+                      initialMemberId:
+                          activeSection == TeamConfigSection.members
+                          ? widget.initialMemberId
+                          : null,
+                      onSelectGlobalView: widget.onSelectGlobalView,
+                    )
+                    .animate(key: ValueKey('home-content-tab-$_tabIndex'))
+                    .fadeIn(duration: 180.ms, curve: Curves.easeOut)
+                    .slideX(
+                      begin: 0.025,
+                      end: 0,
+                      duration: 220.ms,
+                      curve: Curves.easeOutCubic,
+                    ),
           ),
         ],
       ),
     );
+  }
+}
+
+class _HomeTeamHeaderHost extends StatelessWidget {
+  const _HomeTeamHeaderHost({required this.teamId});
+
+  final String teamId;
+
+  @override
+  Widget build(BuildContext context) {
+    final header = context.select<LaunchProfileCubit, TeamHeaderSnapshot?>(
+      (c) => LaunchProfileSelectors.teamHeader(
+        LaunchProfileSelectors.teamById(c.state, teamId),
+      ),
+    );
+    if (header == null) return const SizedBox.shrink();
+    return HomeTeamHeader(snapshot: header);
   }
 }

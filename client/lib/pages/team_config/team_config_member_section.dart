@@ -1,7 +1,11 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
+import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:teampilot/theme/app_icon_sizes.dart';
 
 import '../../cubits/launch_profile_cubit.dart';
+import '../../cubits/team/launch_profile_selectors.dart';
 import '../../l10n/l10n_extensions.dart';
 import '../../models/team_config.dart';
 import '../../models/team_member_prompt_presets.dart';
@@ -9,42 +13,40 @@ import '../../services/app/flashskyai_agent_catalog_service.dart';
 import '../../services/cli/registry/cli_tool_registry_scope.dart';
 import '../../theme/app_text_styles.dart';
 import '../../utils/debounce/debounce.dart';
-import '../../utils/team_member_naming.dart';
 import '../../widgets/cli/member_agent_preset_field.dart';
 import '../../widgets/settings/workspace_settings_widgets.dart';
 import '../../widgets/team/team_lead_badge.dart';
 import 'team_config_helpers.dart';
 import 'team_config_member_dialogs.dart';
+import 'team_config_persist_constants.dart';
 import 'team_member_launch_config_section.dart';
 
 class TeamMemberDetailSection extends StatelessWidget {
   const TeamMemberDetailSection({
     super.key,
-    required this.team,
-    required this.cubit,
+    required this.teamId,
     required this.selectedMemberId,
   });
 
-  final TeamProfile team;
-  final LaunchProfileCubit cubit;
+  final String teamId;
   final String? selectedMemberId;
-
-  TeamMemberConfig? _memberOrNull() {
-    final id = selectedMemberId;
-    if (id == null || team.members.isEmpty) return null;
-    for (final m in team.members) {
-      if (m.id == id) return m;
-    }
-    return null;
-  }
 
   @override
   Widget build(BuildContext context) {
     final l10n = context.l10n;
     final isDark = Theme.of(context).brightness == Brightness.dark;
     final textBase = isDark ? Colors.white : const Color(0xFF111827);
-    final member = _memberOrNull();
-    if (member == null) {
+    final memberId = selectedMemberId;
+    final hasMember = memberId != null &&
+        context.select<LaunchProfileCubit, bool>(
+          (c) =>
+              LaunchProfileSelectors.memberById(
+                LaunchProfileSelectors.teamById(c.state, teamId),
+                memberId,
+              ) !=
+              null,
+        );
+    if (!hasMember) {
       return Center(
         child: Text(
           l10n.openMember,
@@ -58,10 +60,8 @@ class TeamMemberDetailSection extends StatelessWidget {
 
     return SingleChildScrollView(
       child: TeamMemberConfigForm(
-        key: ValueKey(member.id),
-        team: team,
-        member: member,
-        cubit: cubit,
+        teamId: teamId,
+        memberId: memberId,
       ),
     );
   }
@@ -70,14 +70,12 @@ class TeamMemberDetailSection extends StatelessWidget {
 class TeamMemberConfigForm extends StatefulWidget {
   const TeamMemberConfigForm({
     super.key,
-    required this.team,
-    required this.member,
-    required this.cubit,
+    required this.teamId,
+    required this.memberId,
   });
 
-  final TeamProfile team;
-  final TeamMemberConfig member;
-  final LaunchProfileCubit cubit;
+  final String teamId;
+  final String memberId;
 
   @override
   State<TeamMemberConfigForm> createState() => TeamMemberConfigFormState();
@@ -89,13 +87,71 @@ class TeamMemberConfigFormState extends State<TeamMemberConfigForm> {
   late TextEditingController _argsCtl;
   late TextEditingController _promptCtl;
   late TextEditingController _playbookCtl;
+  late FocusNode _nameFocus;
+  late FocusNode _promptFocus;
+  late FocusNode _playbookFocus;
+  late FocusNode _argsFocus;
+  late Debouncer _persistDebouncer;
   List<String> _userAgentIds = const [];
+
+  LaunchProfileCubit get _cubit => context.read<LaunchProfileCubit>();
+
+  TeamMemberConfig? get _member {
+    final team = LaunchProfileSelectors.teamById(_cubit.state, widget.teamId);
+    return LaunchProfileSelectors.memberById(team, widget.memberId);
+  }
+
+  TeamProfile? get _team =>
+      LaunchProfileSelectors.teamById(_cubit.state, widget.teamId);
 
   @override
   void initState() {
     super.initState();
-    _syncControllers(widget.member);
+    _initControllersForMember(_member);
+    _initFocusNodes();
+    _initDebouncer();
     _loadUserAgents();
+  }
+
+  void _initControllersForMember(TeamMemberConfig? member) {
+    _nameCtl = TextEditingController(text: member?.name ?? '');
+    _agentCtl = TextEditingController(text: member?.agent ?? '');
+    _argsCtl = TextEditingController(text: member?.extraArgs ?? '');
+    _promptCtl = TextEditingController(text: member?.prompt ?? '');
+    _playbookCtl = TextEditingController(text: member?.playbook ?? '');
+  }
+
+  void _initFocusNodes() {
+    _nameFocus = FocusNode()..addListener(_onNameFocusChanged);
+    _promptFocus = FocusNode()..addListener(_onPromptFocusChanged);
+    _playbookFocus = FocusNode()..addListener(_onPlaybookFocusChanged);
+    _argsFocus = FocusNode()..addListener(_onArgsFocusChanged);
+  }
+
+  void _initDebouncer() {
+    _persistDebouncer = Debouncer(
+      tag: 'team_member_config_${widget.teamId}_${widget.memberId}',
+      duration: kTeamConfigTextPersistDebounce,
+    );
+  }
+
+  @override
+  void didUpdateWidget(covariant TeamMemberConfigForm oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (widget.memberId != oldWidget.memberId) {
+      _flushPersistForMember(oldWidget.memberId);
+      _persistDebouncer.dispose();
+      _initDebouncer();
+      _syncControllersFromMember(_member);
+      return;
+    }
+    final member = _member;
+    if (member == null) return;
+    _syncControllerIfIdle(_nameCtl, _nameFocus, member.name);
+    _syncControllerIfIdle(_agentCtl, null, member.agent);
+    _syncControllerIfIdle(_argsCtl, _argsFocus, member.extraArgs);
+    _syncControllerIfIdle(_promptCtl, _promptFocus, member.prompt);
+    _syncControllerIfIdle(_playbookCtl, _playbookFocus, member.playbook);
   }
 
   Future<void> _loadUserAgents() async {
@@ -104,16 +160,33 @@ class TeamMemberConfigFormState extends State<TeamMemberConfigForm> {
     setState(() => _userAgentIds = ids);
   }
 
-  void _syncControllers(TeamMemberConfig m) {
-    _nameCtl = TextEditingController(text: m.name);
-    _agentCtl = TextEditingController(text: m.agent);
-    _argsCtl = TextEditingController(text: m.extraArgs);
-    _promptCtl = TextEditingController(text: m.prompt);
-    _playbookCtl = TextEditingController(text: m.playbook);
+  void _syncControllersFromMember(TeamMemberConfig? member) {
+    if (member == null) return;
+    _nameCtl.text = member.name;
+    _agentCtl.text = member.agent;
+    _argsCtl.text = member.extraArgs;
+    _promptCtl.text = member.prompt;
+    _playbookCtl.text = member.playbook;
+  }
+
+  void _syncControllerIfIdle(
+    TextEditingController controller,
+    FocusNode? focus,
+    String value,
+  ) {
+    if (focus != null && focus.hasFocus) return;
+    if (controller.text == value) return;
+    controller.text = value;
   }
 
   @override
   void dispose() {
+    _flushPersistForMember(widget.memberId);
+    _persistDebouncer.dispose();
+    _nameFocus.dispose();
+    _promptFocus.dispose();
+    _playbookFocus.dispose();
+    _argsFocus.dispose();
     _nameCtl.dispose();
     _agentCtl.dispose();
     _argsCtl.dispose();
@@ -122,14 +195,67 @@ class TeamMemberConfigFormState extends State<TeamMemberConfigForm> {
     super.dispose();
   }
 
-  void _update(TeamMemberConfig next) {
-    widget.cubit.updateMember(widget.member.id, next);
+  TeamMemberConfig _memberFromControllers(TeamMemberConfig base) {
+    return base.copyWith(
+      name: _nameCtl.text,
+      agent: _agentCtl.text,
+      extraArgs: _argsCtl.text,
+      prompt: _promptCtl.text,
+      playbook: _playbookCtl.text,
+    );
   }
 
-  /// A preset is a role bundle: it fills both layers at once — responsibilities
-  /// ([prompt]) and the working method ([playbook]). team_lead has no playbook
-  /// (its method is injected by the system addendum), so that layer is cleared.
+  TeamMemberConfig? _memberSnapshot(String memberId) {
+    final team = LaunchProfileSelectors.teamById(_cubit.state, widget.teamId);
+    return LaunchProfileSelectors.memberById(team, memberId);
+  }
+
+  void _persistImmediate(TeamMemberConfig next) {
+    _persistDebouncer.cancel();
+    unawaited(_cubit.updateMember(next.id, next));
+  }
+
+  void _schedulePersist() {
+    _persistDebouncer(() {
+      if (!mounted) return;
+      final member = _member;
+      if (member == null) return;
+      final next = _memberFromControllers(member);
+      if (_membersEqualForPersist(member, next)) return;
+      unawaited(_cubit.updateMember(member.id, next));
+    });
+  }
+
+  void _flushPersistForMember(String memberId) {
+    _persistDebouncer.cancel();
+    if (!mounted) return;
+    final member = _memberSnapshot(memberId);
+    if (member == null) return;
+    final next = _memberFromControllers(member);
+    if (_membersEqualForPersist(member, next)) return;
+    unawaited(_cubit.updateMember(memberId, next));
+  }
+
+  bool _membersEqualForPersist(TeamMemberConfig a, TeamMemberConfig b) {
+    return a.name == b.name &&
+        a.agent == b.agent &&
+        a.extraArgs == b.extraArgs &&
+        a.prompt == b.prompt &&
+        a.playbook == b.playbook;
+  }
+
+  void _onNameFocusChanged() => _onFieldFocusChanged(_nameFocus);
+  void _onPromptFocusChanged() => _onFieldFocusChanged(_promptFocus);
+  void _onPlaybookFocusChanged() => _onFieldFocusChanged(_playbookFocus);
+  void _onArgsFocusChanged() => _onFieldFocusChanged(_argsFocus);
+
+  void _onFieldFocusChanged(FocusNode node) {
+    if (!node.hasFocus) _flushPersistForMember(widget.memberId);
+  }
+
   void _applyPromptPreset(String presetId) {
+    final member = _member;
+    if (member == null) return;
     final l10n = context.l10n;
     final prompt = teamMemberPromptPresetText(l10n, presetId);
     final playbook = teamMemberPlaybookPresetText(l10n, presetId);
@@ -138,22 +264,38 @@ class TeamMemberConfigFormState extends State<TeamMemberConfigForm> {
     _promptCtl.selection = TextSelection.collapsed(offset: prompt.length);
     _playbookCtl.text = playbook;
     _playbookCtl.selection = TextSelection.collapsed(offset: playbook.length);
-    _update(widget.member.copyWith(prompt: prompt, playbook: playbook));
+    _persistImmediate(member.copyWith(prompt: prompt, playbook: playbook));
   }
 
   @override
   Widget build(BuildContext context) {
     final l10n = context.l10n;
-    final m = widget.member;
+    final teamShell = context.select<LaunchProfileCubit, TeamMemberFormShell?>(
+      (c) => LaunchProfileSelectors.memberFormShell(
+        LaunchProfileSelectors.teamById(c.state, widget.teamId),
+      ),
+    );
+    final discrete = context.select<LaunchProfileCubit, MemberDiscreteFields?>(
+      (c) => LaunchProfileSelectors.memberDiscreteFields(
+        c.state,
+        widget.teamId,
+        widget.memberId,
+      ),
+    );
+    final team = _team;
+    final member = _member;
+    if (team == null || teamShell == null || discrete == null || member == null) {
+      return const SizedBox.shrink();
+    }
 
     final showMemberAgentPreset = memberShowsAgentPresetUi(
       context,
-      team: widget.team,
-      member: m,
+      team: team,
+      member: member,
     );
     final agentPresetCli = memberAgentPresetCli(
-      team: widget.team,
-      member: m,
+      team: team,
+      member: member,
     );
     final memberAgentStyle = showMemberAgentPreset && agentPresetCli != null
         ? CliToolRegistryScope.of(context).memberAgentPresetStyle(
@@ -161,8 +303,7 @@ class TeamMemberConfigFormState extends State<TeamMemberConfigForm> {
           )
         : null;
 
-    final canDelete =
-        widget.team.members.length > 1 && !TeamMemberNaming.isTeamLead(m);
+    final canDelete = teamShell.memberCount > 1 && !discrete.isTeamLead;
     final errorColor = Theme.of(context).colorScheme.error;
 
     return SettingsSurfaceCard(
@@ -172,11 +313,11 @@ class TeamMemberConfigFormState extends State<TeamMemberConfigForm> {
           SettingsLabeledStackedRow(
             title: l10n.memberName,
             subtitle: l10n.memberNameSubtitle,
-            titleTrailing: TeamMemberNaming.isTeamLead(m) || canDelete
+            titleTrailing: discrete.isTeamLead || canDelete
                 ? Row(
                     mainAxisSize: MainAxisSize.min,
                     children: [
-                      if (TeamMemberNaming.isTeamLead(m)) const TeamLeadBadge(),
+                      if (discrete.isTeamLead) const TeamLeadBadge(),
                       if (canDelete)
                         IconButton(
                           tooltip: l10n.delete,
@@ -187,11 +328,11 @@ class TeamMemberConfigFormState extends State<TeamMemberConfigForm> {
                             minHeight: 36,
                           ),
                           onPressed: throttledAsync(
-                            'team_delete_member_${m.id}',
+                            'team_delete_member_${member.id}',
                             () => confirmDeleteTeamMember(
                               context,
-                              widget.cubit,
-                              m,
+                              _cubit,
+                              member,
                               l10n,
                             ),
                           ),
@@ -206,26 +347,21 @@ class TeamMemberConfigFormState extends State<TeamMemberConfigForm> {
                 : null,
             body: TextField(
               controller: _nameCtl,
+              focusNode: _nameFocus,
               decoration: const InputDecoration(),
-              onChanged: (v) => _update(m.copyWith(name: v)),
+              onChanged: (_) => _schedulePersist(),
             ),
             showDividerBelow: true,
           ),
           MemberLaunchConfigRow(
-            team: widget.team,
-            member: m,
-            cubit: widget.cubit,
+            teamId: widget.teamId,
+            memberId: widget.memberId,
             showDividerBelow: true,
           ),
-          SettingsLabeledRow(
-            title: l10n.memberDangerouslySkipPermissions,
-            subtitle: l10n.memberDangerouslySkipPermissionsHint,
-            trailing: Switch(
-              value: m.dangerouslySkipPermissions,
-              onChanged: (v) =>
-                  _update(m.copyWith(dangerouslySkipPermissions: v)),
-            ),
-            showDividerBelow: true,
+          _MemberSkipPermissionsSwitch(
+            teamId: widget.teamId,
+            memberId: widget.memberId,
+            onPersist: _persistImmediate,
           ),
           SettingsLabeledStackedRow(
             title: l10n.prompt,
@@ -252,10 +388,11 @@ class TeamMemberConfigFormState extends State<TeamMemberConfigForm> {
                 const SizedBox(height: 8),
                 TextField(
                   controller: _promptCtl,
+                  focusNode: _promptFocus,
                   minLines: 3,
                   maxLines: 6,
                   decoration: const InputDecoration(),
-                  onChanged: (v) => _update(m.copyWith(prompt: v)),
+                  onChanged: (_) => _schedulePersist(),
                 ),
               ],
             ),
@@ -266,10 +403,11 @@ class TeamMemberConfigFormState extends State<TeamMemberConfigForm> {
             subtitle: l10n.memberPlaybookSubtitle,
             body: TextField(
               controller: _playbookCtl,
+              focusNode: _playbookFocus,
               minLines: 3,
               maxLines: 8,
               decoration: const InputDecoration(),
-              onChanged: (v) => _update(m.copyWith(playbook: v)),
+              onChanged: (_) => _schedulePersist(),
             ),
             showDividerBelow: true,
           ),
@@ -285,32 +423,31 @@ class TeamMemberConfigFormState extends State<TeamMemberConfigForm> {
                   subtitle: memberAgentPresetSubtitle(l10n, memberAgentStyle),
                   body: MemberAgentPresetField(
                     cli: agentPresetCli,
-                    agent: m.agent,
+                    agent: member.agent,
                     userAgentIds: _userAgentIds,
                     customAgentController: _agentCtl,
-                    fieldKeyPrefix: 'member-${widget.member.id}',
-                    onAgentChanged: (value) =>
-                        _update(m.copyWith(agent: value)),
+                    fieldKeyPrefix: 'member-${widget.memberId}',
+                    onAgentChanged: (value) {
+                      _agentCtl.text = value;
+                      _persistImmediate(member.copyWith(agent: value));
+                    },
                   ),
                   showDividerBelow: true,
                 ),
-              if (!TeamMemberNaming.isTeamLead(m))
-                SettingsLabeledRow(
-                  title: l10n.memberReplicas,
-                  subtitle: l10n.memberReplicasSubtitle,
-                  trailing: _ReplicasStepper(
-                    value: m.replicas,
-                    onChanged: (v) => _update(m.copyWith(replicas: v)),
-                  ),
-                  showDividerBelow: true,
+              if (!discrete.isTeamLead)
+                _MemberReplicasRow(
+                  teamId: widget.teamId,
+                  memberId: widget.memberId,
+                  onPersist: _persistImmediate,
                 ),
               SettingsLabeledStackedRow(
                 title: l10n.memberExtraArgs,
                 subtitle: l10n.memberExtraArgsSubtitle,
                 body: TextField(
                   controller: _argsCtl,
+                  focusNode: _argsFocus,
                   decoration: const InputDecoration(),
-                  onChanged: (v) => _update(m.copyWith(extraArgs: v)),
+                  onChanged: (_) => _schedulePersist(),
                 ),
                 showDividerBelow: false,
               ),
@@ -318,6 +455,96 @@ class TeamMemberConfigFormState extends State<TeamMemberConfigForm> {
           ),
         ],
       ),
+    );
+  }
+}
+
+class _MemberSkipPermissionsSwitch extends StatelessWidget {
+  const _MemberSkipPermissionsSwitch({
+    required this.teamId,
+    required this.memberId,
+    required this.onPersist,
+  });
+
+  final String teamId;
+  final String memberId;
+  final void Function(TeamMemberConfig next) onPersist;
+
+  @override
+  Widget build(BuildContext context) {
+    final l10n = context.l10n;
+    final skip = context.select<LaunchProfileCubit, bool?>(
+      (c) => LaunchProfileSelectors.memberDiscreteFields(
+        c.state,
+        teamId,
+        memberId,
+      )?.dangerouslySkipPermissions,
+    );
+    if (skip == null) return const SizedBox.shrink();
+
+    return SettingsLabeledRow(
+      title: l10n.memberDangerouslySkipPermissions,
+      subtitle: l10n.memberDangerouslySkipPermissionsHint,
+      trailing: Switch(
+        value: skip,
+        onChanged: (v) {
+          final member = LaunchProfileSelectors.memberById(
+            LaunchProfileSelectors.teamById(
+              context.read<LaunchProfileCubit>().state,
+              teamId,
+            ),
+            memberId,
+          );
+          if (member == null) return;
+          onPersist(member.copyWith(dangerouslySkipPermissions: v));
+        },
+      ),
+      showDividerBelow: true,
+    );
+  }
+}
+
+class _MemberReplicasRow extends StatelessWidget {
+  const _MemberReplicasRow({
+    required this.teamId,
+    required this.memberId,
+    required this.onPersist,
+  });
+
+  final String teamId;
+  final String memberId;
+  final void Function(TeamMemberConfig next) onPersist;
+
+  @override
+  Widget build(BuildContext context) {
+    final l10n = context.l10n;
+    final replicas = context.select<LaunchProfileCubit, int?>(
+      (c) => LaunchProfileSelectors.memberDiscreteFields(
+        c.state,
+        teamId,
+        memberId,
+      )?.replicas,
+    );
+    if (replicas == null) return const SizedBox.shrink();
+
+    return SettingsLabeledRow(
+      title: l10n.memberReplicas,
+      subtitle: l10n.memberReplicasSubtitle,
+      trailing: _ReplicasStepper(
+        value: replicas,
+        onChanged: (v) {
+          final member = LaunchProfileSelectors.memberById(
+            LaunchProfileSelectors.teamById(
+              context.read<LaunchProfileCubit>().state,
+              teamId,
+            ),
+            memberId,
+          );
+          if (member == null) return;
+          onPersist(member.copyWith(replicas: v));
+        },
+      ),
+      showDividerBelow: true,
     );
   }
 }

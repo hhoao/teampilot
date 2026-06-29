@@ -41,56 +41,6 @@ class McpCardHeader extends StatelessWidget {
   }
 }
 
-class McpEmptyBlock extends StatelessWidget {
-  const McpEmptyBlock({
-    required this.icon,
-    required this.title,
-    required this.hint,
-    this.actionLabel,
-    this.onAction,
-    super.key,
-  });
-
-  final IconData icon;
-  final String title;
-  final String hint;
-  final String? actionLabel;
-  final VoidCallback? onAction;
-
-  @override
-  Widget build(BuildContext context) {
-    final isDark = Theme.of(context).brightness == Brightness.dark;
-    final textBase = isDark ? Colors.white : const Color(0xFF111827);
-    return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 24),
-      child: Column(
-        children: [
-          Icon(icon, size: context.appIconSizes.md, color: textBase.withValues(alpha: 0.35)),
-          const SizedBox(height: 12),
-          Text(
-            title,
-            style: AppTextStyles.of(context).bodyStrong.copyWith(
-              color: textBase,
-            ),
-          ),
-          const SizedBox(height: 6),
-          Text(
-            hint,
-            textAlign: TextAlign.center,
-            style: AppTextStyles.of(context).bodySmall.copyWith(
-              color: textBase.withValues(alpha: 0.55),
-            ),
-          ),
-          if (actionLabel != null && onAction != null) ...[
-            const SizedBox(height: 10),
-            TextButton(onPressed: onAction, child: Text(actionLabel!)),
-          ],
-        ],
-      ),
-    );
-  }
-}
-
 class McpInstalledServerRow extends StatelessWidget {
   const McpInstalledServerRow({
     required this.server,

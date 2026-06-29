@@ -14,6 +14,7 @@ import '../../utils/github_source_url.dart';
 import '../../widgets/app_dialog.dart';
 import '../../widgets/github_details_button.dart';
 import '../../widgets/settings/workspace_settings_widgets.dart';
+import '../../widgets/empty_state_block.dart';
 import 'skill_management_cards.dart';
 
 class SkillInstalledSection extends StatelessWidget {
@@ -99,7 +100,7 @@ class SkillInstalledSection extends StatelessWidget {
                 ),
                 const SizedBox(height: 14),
                 if (state.installed.isEmpty)
-                  SkillEmptyBlock(
+                  EmptyStateBlock(
                     icon: Icons.inventory_2_outlined,
                     title: l10n.skillsNoInstalled,
                     hint: l10n.skillsNoInstalledHint,

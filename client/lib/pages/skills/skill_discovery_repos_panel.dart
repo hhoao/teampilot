@@ -8,6 +8,7 @@ import '../../utils/github_source_url.dart';
 import '../../widgets/dropdown/app_dropdown_field.dart';
 import 'skill_discover_card.dart';
 import 'skill_discovery_helpers.dart';
+import '../../widgets/empty_state_block.dart';
 import 'skill_management_cards.dart';
 
 class SkillDiscoveryReposFilters extends StatelessWidget {
@@ -137,7 +138,7 @@ class SkillDiscoveryReposGrid extends StatelessWidget {
     );
     if (!state.discoveryLoading && filtered.isEmpty) {
       return SkillManagementCard(
-        child: SkillEmptyBlock(
+        child: EmptyStateBlock(
           icon: Icons.travel_explore_outlined,
           title: l10n.skillsDiscoveryEmpty,
           hint: l10n.skillsDiscoveryEmptyHint,

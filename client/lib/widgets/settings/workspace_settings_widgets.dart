@@ -386,7 +386,7 @@ class SettingsCompactDropdown<T extends Object> extends StatelessWidget {
 }
 
 /// Collapsed-by-default panel for infrequently edited member/workspace options.
-class SettingsAdvancedExpansion extends StatelessWidget {
+class SettingsAdvancedExpansion extends StatefulWidget {
   const SettingsAdvancedExpansion({
     super.key,
     required this.title,
@@ -399,8 +399,16 @@ class SettingsAdvancedExpansion extends StatelessWidget {
   final List<Widget> children;
 
   @override
+  State<SettingsAdvancedExpansion> createState() =>
+      _SettingsAdvancedExpansionState();
+}
+
+class _SettingsAdvancedExpansionState extends State<SettingsAdvancedExpansion> {
+  var _childrenBuilt = false;
+
+  @override
   Widget build(BuildContext context) {
-    if (children.isEmpty) return const SizedBox.shrink();
+    if (widget.children.isEmpty) return const SizedBox.shrink();
 
     final theme = Theme.of(context);
     final cs = theme.colorScheme;
@@ -408,24 +416,29 @@ class SettingsAdvancedExpansion extends StatelessWidget {
       color: Colors.transparent,
       child: ExpansionTile(
         initiallyExpanded: false,
+        onExpansionChanged: (expanded) {
+          if (expanded && !_childrenBuilt) {
+            setState(() => _childrenBuilt = true);
+          }
+        },
         tilePadding: _settingRowPadding,
         expandedAlignment: Alignment.centerLeft,
         childrenPadding: EdgeInsets.zero,
         collapsedShape: const RoundedRectangleBorder(side: BorderSide.none),
         shape: const RoundedRectangleBorder(side: BorderSide.none),
-        title: Text(title, style: theme.textTheme.titleSmall),
-        subtitle: _hasSettingsSubtitle(subtitle)
+        title: Text(widget.title, style: theme.textTheme.titleSmall),
+        subtitle: _hasSettingsSubtitle(widget.subtitle)
             ? Padding(
                 padding: const EdgeInsets.only(top: _titleSubtitleGap),
                 child: Text(
-                  subtitle!,
+                  widget.subtitle!,
                   style: theme.textTheme.bodySmall?.copyWith(
                     color: cs.onSurfaceVariant,
                   ),
                 ),
               )
             : null,
-        children: children,
+        children: _childrenBuilt ? widget.children : const [],
       ),
     );
   }

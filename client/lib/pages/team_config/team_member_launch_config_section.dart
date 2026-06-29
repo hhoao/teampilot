@@ -5,6 +5,7 @@ import 'package:teampilot/theme/app_icon_sizes.dart';
 import '../../cubits/app_provider_cubit.dart';
 import '../../cubits/cli_presets_cubit.dart';
 import '../../cubits/launch_profile_cubit.dart';
+import '../../cubits/team/launch_profile_selectors.dart';
 import '../../l10n/l10n_extensions.dart';
 import '../../models/cli_preset.dart';
 import '../../models/app_provider_config.dart';
@@ -29,16 +30,40 @@ import 'team_member_launch_config_helpers.dart';
 /// Summary row + configure dialog for member CLI / provider / model / effort.
 class MemberLaunchConfigRow extends StatelessWidget {
   const MemberLaunchConfigRow({
-    required this.team,
-    required this.member,
-    required this.cubit,
+    required this.teamId,
+    required this.memberId,
     this.showDividerBelow = true,
     super.key,
   });
 
-  final TeamProfile team;
-  final TeamMemberConfig member;
-  final LaunchProfileCubit cubit;
+  final String teamId;
+  final String memberId;
+  final bool showDividerBelow;
+
+  @override
+  Widget build(BuildContext context) {
+    return BlocSelector<LaunchProfileCubit, LaunchProfileState,
+        MemberLaunchContext?>(
+      selector: (state) =>
+          LaunchProfileSelectors.memberLaunchContext(state, teamId, memberId),
+      builder: (context, launchContext) {
+        if (launchContext == null) return const SizedBox.shrink();
+        return _MemberLaunchConfigRowBody(
+          launchContext: launchContext,
+          showDividerBelow: showDividerBelow,
+        );
+      },
+    );
+  }
+}
+
+class _MemberLaunchConfigRowBody extends StatelessWidget {
+  const _MemberLaunchConfigRowBody({
+    required this.launchContext,
+    required this.showDividerBelow,
+  });
+
+  final MemberLaunchContext launchContext;
   final bool showDividerBelow;
 
   @override
@@ -47,14 +72,20 @@ class MemberLaunchConfigRow extends StatelessWidget {
     final cs = Theme.of(context).colorScheme;
     final styles = AppTextStyles.of(context);
     final registry = CliToolRegistryScope.of(context);
-    final catalogCli = memberCatalogCliFor(team, member);
+    final cubit = context.read<LaunchProfileCubit>();
+    final team = LaunchProfileSelectors.teamById(cubit.state, launchContext.teamId);
+    final member =
+        LaunchProfileSelectors.memberById(team, launchContext.memberId);
+    if (team == null || member == null) return const SizedBox.shrink();
+
+    final catalogCli = launchContext.catalogCli;
     final catalogDef = registry.tryGet(catalogCli);
     final providers = context
-        .watch<AppProviderCubit>()
-        .state
-        .providersFor(catalogCli)
-        .toList(growable: false);
-    final presets = context.watch<CliPresetsCubit>().state.presets;
+        .select<AppProviderCubit, List<AppProviderConfig>>(
+          (c) => c.state.providersFor(catalogCli).toList(growable: false),
+        );
+    final presets = context
+        .select<CliPresetsCubit, List<CliPreset>>((c) => c.state.presets);
     final resolved = resolveMemberLaunchConfig(
       team: team,
       member: member,

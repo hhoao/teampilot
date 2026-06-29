@@ -16,6 +16,7 @@ import '../../widgets/app_dialog.dart';
 import '../../widgets/github_details_button.dart';
 import '../../widgets/plugins/plugin_cli_support_disclosure.dart';
 import '../../widgets/settings/workspace_settings_widgets.dart';
+import '../../widgets/empty_state_block.dart';
 import 'plugin_management_cards.dart';
 
 class PluginInstalledSection extends StatelessWidget {
@@ -101,7 +102,7 @@ class PluginInstalledSection extends StatelessWidget {
                 ),
                 const SizedBox(height: 14),
                 if (state.installed.isEmpty)
-                  PluginEmptyBlock(
+                  EmptyStateBlock(
                     icon: Icons.extension_outlined,
                     title: l10n.pluginsNoInstalled,
                     hint: l10n.pluginsNoInstalledHint,

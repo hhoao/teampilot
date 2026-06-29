@@ -1169,6 +1169,7 @@
   "mcpNoInstalledHint": "打开发现页，从内置模板或注册中心添加。",
   "mcpDiscoverySectionTitle": "发现 MCP 服务器",
   "mcpDiscoverySectionHint": "浏览内置模板，以及「仓库」中配置的远程目录。",
+  "mcpDiscoverySourceAll": "全部",
   "mcpDiscoverySourceBuiltin": "内置",
   "mcpSmitheryApiTokenLabel": "API Token",
   "mcpSmitheryApiTokenHint": "Smithery API 密钥（Bearer）",

@@ -1,11 +1,13 @@
-﻿import 'dart:async';
+import 'dart:async';
 
 import 'package:flutter/material.dart';
 import 'package:teampilot/theme/app_icon_sizes.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import '../../cubits/launch_profile_cubit.dart';
+import '../../cubits/team/launch_profile_selectors.dart';
 import '../../l10n/l10n_extensions.dart';
-import '../../utils/launch_profile_display_name.dart';
+import '../../models/launch_profile_kind.dart';
+import '../../services/storage/launch_profile_provisioner.dart';
 import '../../theme/app_text_styles.dart';
 import '../../theme/workspace_surface_layers.dart';
 import '../../utils/app_keys.dart';
@@ -56,9 +58,12 @@ class _HomeSidebarState extends State<HomeSidebar> {
   Widget build(BuildContext context) {
     final cs = Theme.of(context).colorScheme;
     final l10n = context.l10n;
-    final identityCubit = context.watch<LaunchProfileCubit>();
-    final personals = identityCubit.state.personals;
-    final teams = identityCubit.state.teams;
+    final identityCubit = context.read<LaunchProfileCubit>();
+    final identities = context.select<LaunchProfileCubit, HomeSidebarIdentitySnapshot>(
+      (c) => LaunchProfileSelectors.sidebarIdentities(c.state),
+    );
+    final personals = identities.personals;
+    final teams = identities.teams;
     final selectedIdentityId = widget.selectedIdentityId;
     final onIdentity = widget.onSelectIdentity;
     final onAllWorkspaces = widget.onSelectAllWorkspaces;
@@ -129,7 +134,7 @@ class _HomeSidebarState extends State<HomeSidebar> {
                         return _IdentityRow(
                           key: ValueKey(personal.id),
                           index: index,
-                          name: launchProfileDisplayName(l10n, personal),
+                          name: _sidebarDisplayName(l10n, personal),
                           isTeam: false,
                           selected:
                               !allWorkspacesActive &&
@@ -154,7 +159,7 @@ class _HomeSidebarState extends State<HomeSidebar> {
                         return _IdentityRow(
                           key: ValueKey(team.id),
                           index: index,
-                          name: launchProfileDisplayName(l10n, team),
+                          name: _sidebarDisplayName(l10n, team),
                           isTeam: true,
                           selected:
                               !allWorkspacesActive &&
@@ -594,4 +599,19 @@ class _ProvidersButton extends StatelessWidget {
       ),
     );
   }
+}
+
+String _sidebarDisplayName(
+  AppLocalizations l10n,
+  IdentitySidebarEntry entry,
+) {
+  if (entry.kind == LaunchProfileKind.personal &&
+      entry.id == LaunchProfileProvisioner.defaultPersonalId) {
+    return l10n.homeWorkspaceDefaultPersonalWorkspaceName;
+  }
+  if (entry.kind == LaunchProfileKind.team &&
+      entry.id == LaunchProfileProvisioner.defaultTeamId) {
+    return l10n.homeWorkspaceDefaultTeamName;
+  }
+  return entry.display;
 }

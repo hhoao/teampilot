@@ -82,13 +82,8 @@ class _WorkspacePageState extends State<WorkspacePage> {
         (_) => _syncWorkspaceContext(),
       );
     }
-    // The manage panel is built lazily, only when the user actually opens it
-    // (rail click or a ?view=manage route). It used to be pre-warmed on a
-    // post-frame callback right after a tab switch, but [WorkspaceConfigPanel]'s
-    // first mount costs ~2s of synchronous build/text-shaping — pre-warming
-    // moved that cost onto every tab switch, freezing the whole app. Paying it
-    // once, on demand, is far better than a guaranteed stall the user rarely
-    // benefits from. Once visited, the panel stays alive in the IndexedStack.
+    // The manage panel is built lazily on first rail click (?view=manage). Once
+    // visited it stays mounted; [Offstage] skips layout for the hidden pane.
   }
 
   @override
@@ -337,38 +332,44 @@ class _WorkspacePageState extends State<WorkspacePage> {
     required String sessionTeamFilter,
   }) {
     final showManage = _section == WorkspaceSection.manage;
-    // Mirror the outer workspace-tab IndexedStack: gate each kept-alive child
-    // with TickerMode so only the visible pane's subtree is "active". This
-    // composes with the foreground-workspace gate, so a terminal sees
-    // TickerMode.enabled only when its workspace is foreground *and* the
-    // conversations pane is showing — which is what scopes OS file drops to the
-    // single visible terminal (config view no longer steals the drop).
-    return IndexedStack(
-      index: showManage ? 1 : 0,
-      sizing: StackFit.expand,
+    // Keep both panes mounted after first visit, but [Offstage] skips layout and
+    // paint for the hidden one. [IndexedStack] laid out both every frame — opening
+    // manage still ran the conversations subtree (file-tree [TextField], git
+    // chips, etc.) and amplified first-mount jank.
+    //
+    // [TickerMode] gates tickers so a terminal is active only when its workspace
+    // is foreground *and* the conversations pane is showing — which scopes OS file
+    // drops to the single visible terminal.
+    return Stack(
+      fit: StackFit.expand,
       children: [
-        TickerMode(
-          enabled: !showManage,
-          child: WorkspaceSplitPane(
-            key: ValueKey('conversations-${widget.tabKey}'),
-            workspace: workspace,
-            tabScopeId: widget.tabKey,
-            isPersonalWorkspace:
-                workspaceIdentity.kind == LaunchProfileKind.personal,
-            profileId: workspaceIdentity.id,
-            sessionTeamFilter: sessionTeamFilter,
+        Offstage(
+          offstage: showManage,
+          child: TickerMode(
+            enabled: !showManage,
+            child: WorkspaceSplitPane(
+              key: ValueKey('conversations-${widget.tabKey}'),
+              workspace: workspace,
+              tabScopeId: widget.tabKey,
+              isPersonalWorkspace:
+                  workspaceIdentity.kind == LaunchProfileKind.personal,
+              profileId: workspaceIdentity.id,
+              sessionTeamFilter: sessionTeamFilter,
+            ),
           ),
         ),
-        TickerMode(
-          enabled: showManage,
-          child: _visitedManage
-              ? WorkspaceConfigPanel(
-                  workspace: workspace,
-                  profileId: workspaceIdentity.id,
-                  section: _configSection,
-                )
-              : const SizedBox.shrink(),
-        ),
+        if (_visitedManage)
+          Offstage(
+            offstage: !showManage,
+            child: TickerMode(
+              enabled: showManage,
+              child: WorkspaceConfigPanel(
+                workspace: workspace,
+                profileId: workspaceIdentity.id,
+                section: _configSection,
+              ),
+            ),
+          ),
       ],
     );
   }

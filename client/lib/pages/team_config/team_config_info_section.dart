@@ -1,4 +1,6 @@
-﻿import 'package:flutter/material.dart';
+import 'dart:async';
+
+import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:teampilot/theme/app_icon_sizes.dart';
 
@@ -10,6 +12,7 @@ import '../../models/app_provider_config.dart';
 import '../../models/cli_preset.dart';
 import '../../models/team_config.dart';
 import '../../utils/app_keys.dart';
+import '../../utils/debounce/debounce.dart';
 import '../../services/cli/registry/capabilities/cli_effort_capability.dart';
 import '../../services/cli/registry/cli_display_name.dart';
 import '../../services/cli/registry/cli_tool_registry_scope.dart';
@@ -22,6 +25,7 @@ import '../../widgets/app_dialog.dart';
 import '../../widgets/settings/workspace_settings_widgets.dart';
 import '../home_workspace/workspace/config/workspace_cli_config_helpers.dart';
 import 'team_config_helpers.dart';
+import 'team_config_persist_constants.dart';
 import 'team_default_preset_configure_dialog.dart';
 
 class TeamInfoSection extends StatefulWidget {
@@ -37,11 +41,20 @@ class TeamInfoSection extends StatefulWidget {
 class TeamInfoSectionState extends State<TeamInfoSection> {
   late TextEditingController _descCtl;
   late TextEditingController _argsCtl;
+  late FocusNode _descFocus;
+  late FocusNode _argsFocus;
+  late Debouncer _persistDebouncer;
   late String _trackedTeamId;
 
   @override
   void initState() {
     super.initState();
+    _persistDebouncer = Debouncer(
+      tag: 'team_info_${widget.team.id}',
+      duration: kTeamConfigTextPersistDebounce,
+    );
+    _descFocus = FocusNode()..addListener(_onDescFocusChanged);
+    _argsFocus = FocusNode()..addListener(_onArgsFocusChanged);
     _descCtl = TextEditingController(text: widget.team.description);
     _argsCtl = TextEditingController(text: widget.team.extraArgs);
     _trackedTeamId = widget.team.id;
@@ -52,19 +65,63 @@ class TeamInfoSectionState extends State<TeamInfoSection> {
     super.didUpdateWidget(oldWidget);
     if (widget.team.id != _trackedTeamId) {
       _trackedTeamId = widget.team.id;
+      _persistDebouncer.cancel();
       _descCtl.text = widget.team.description;
       _argsCtl.text = widget.team.extraArgs;
+      return;
     }
-    if (widget.team.description != _descCtl.text) {
+    if (!_descFocus.hasFocus && widget.team.description != _descCtl.text) {
       _descCtl.text = widget.team.description;
+    }
+    if (!_argsFocus.hasFocus && widget.team.extraArgs != _argsCtl.text) {
+      _argsCtl.text = widget.team.extraArgs;
     }
   }
 
   @override
   void dispose() {
+    _flushPersist();
+    _persistDebouncer.dispose();
+    _descFocus.dispose();
+    _argsFocus.dispose();
     _descCtl.dispose();
     _argsCtl.dispose();
     super.dispose();
+  }
+
+  void _onDescFocusChanged() {
+    if (!_descFocus.hasFocus) _flushPersist();
+  }
+
+  void _onArgsFocusChanged() {
+    if (!_argsFocus.hasFocus) _flushPersist();
+  }
+
+  void _schedulePersist() {
+    _persistDebouncer(() {
+      if (!mounted) return;
+      _persistFromControllers();
+    });
+  }
+
+  void _flushPersist() {
+    _persistDebouncer.cancel();
+    if (!mounted) return;
+    _persistFromControllers();
+  }
+
+  void _persistFromControllers() {
+    final description = _descCtl.text;
+    final extraArgs = _argsCtl.text;
+    if (description == widget.team.description &&
+        extraArgs == widget.team.extraArgs) {
+      return;
+    }
+    unawaited(
+      widget.cubit.updateSelected(
+        widget.team.copyWith(description: description, extraArgs: extraArgs),
+      ),
+    );
   }
 
   @override
@@ -113,11 +170,10 @@ class TeamInfoSectionState extends State<TeamInfoSection> {
                   subtitle: l10n.teamDescriptionHint,
                   body: TextField(
                     controller: _descCtl,
+                    focusNode: _descFocus,
                     maxLines: 3,
                     decoration: const InputDecoration(),
-                    onChanged: (v) => widget.cubit.updateSelected(
-                      widget.team.copyWith(description: v),
-                    ),
+                    onChanged: (_) => _schedulePersist(),
                   ),
                   showDividerBelow: true,
                 ),
@@ -181,10 +237,9 @@ class TeamInfoSectionState extends State<TeamInfoSection> {
                   subtitle: l10n.teamExtraArgsHint,
                   body: TextField(
                     controller: _argsCtl,
+                    focusNode: _argsFocus,
                     decoration: const InputDecoration(),
-                    onChanged: (v) => widget.cubit.updateSelected(
-                      widget.team.copyWith(extraArgs: v),
-                    ),
+                    onChanged: (_) => _schedulePersist(),
                   ),
                   showDividerBelow:
                       showDelegateRow || showTeamEffort || showForceWaitRow,

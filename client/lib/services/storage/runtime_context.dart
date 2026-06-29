@@ -93,4 +93,6 @@ class RuntimeContext {
       AppPaths.mcpServersJsonForTeampilotRoot(appDataRoot);
   String get mcpRegistrySourcesConfigPath =>
       AppPaths.mcpRegistrySourcesConfigPathForTeampilotRoot(appDataRoot);
+  String get mcpDiscoveryCacheDir =>
+      AppPaths.mcpDiscoveryCacheDirForTeampilotRoot(appDataRoot);
 }

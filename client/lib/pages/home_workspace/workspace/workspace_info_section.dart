@@ -199,7 +199,7 @@ class _WorkspaceSettingsInlineRow extends StatelessWidget {
               Expanded(
                 child:
                     valueWidget ??
-                    SelectableText(
+                    Text(
                       value,
                       style: tt.bodyMedium?.copyWith(
                         fontWeight: FontWeight.w500,
