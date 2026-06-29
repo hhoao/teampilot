@@ -116,8 +116,6 @@ class TeamPluginsSection extends StatelessWidget {
                     hint: l10n.teamPluginsEmptyHint,
                     actionLabel: l10n.teamPluginsGoDiscovery,
                     onAction: onManageGlobal ?? () => context.go('/plugins/discovery'),
-                    actionIcon: Icons.search,
-                    actionStyle: EmptyStateActionStyle.outlinedIcon,
                   )
                 else
                   Column(

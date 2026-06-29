@@ -46,13 +46,6 @@ class HomeTeamTab extends StatefulWidget {
 class _HomeTeamTabState extends State<HomeTeamTab> {
   late String? _selectedMemberId = widget.initialMemberId;
 
-  String? _resolvedMemberId(List<MemberRosterEntry> roster) {
-    if (roster.isEmpty) return null;
-    final id = _selectedMemberId;
-    if (id != null && roster.any((m) => m.id == id)) return id;
-    return roster.first.id;
-  }
-
   LaunchProfileCubit get _cubit => context.read<LaunchProfileCubit>();
 
   TeamProfile? get _team =>
@@ -101,18 +94,12 @@ class _HomeTeamTabState extends State<HomeTeamTab> {
   }
 
   Widget _buildMembers(BuildContext context) {
-    final roster = context.select<LaunchProfileCubit, List<MemberRosterEntry>>(
-      (c) => LaunchProfileSelectors.memberRoster(
-        LaunchProfileSelectors.teamById(c.state, widget.teamId),
-      ),
-    );
-    final memberId = _resolvedMemberId(roster);
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        _MemberPicker(
-          roster: roster,
-          selectedMemberId: memberId,
+        _MemberPickerHost(
+          teamId: widget.teamId,
+          selectedMemberId: _selectedMemberId,
           onSelect: (id) => setState(() => _selectedMemberId = id),
           onAddMember: () async {
             await _cubit.addMember();
@@ -125,14 +112,94 @@ class _HomeTeamTabState extends State<HomeTeamTab> {
         Expanded(
           child: Padding(
             padding: const EdgeInsets.symmetric(horizontal: 0, vertical: 4),
-            child: TeamMemberDetailSection(
-              teamId: widget.teamId,
-              selectedMemberId: memberId,
+            child: RepaintBoundary(
+              child: _MemberDetailHost(
+                teamId: widget.teamId,
+                selectedMemberId: _selectedMemberId,
+              ),
             ),
           ),
         ),
       ],
     );
+  }
+}
+
+/// Subscribes only to roster identity — name edits do not rebuild the detail pane.
+class _MemberPickerHost extends StatelessWidget {
+  const _MemberPickerHost({
+    required this.teamId,
+    required this.selectedMemberId,
+    required this.onSelect,
+    required this.onAddMember,
+  });
+
+  final String teamId;
+  final String? selectedMemberId;
+  final ValueChanged<String> onSelect;
+  final Future<void> Function() onAddMember;
+
+  @override
+  Widget build(BuildContext context) {
+    final roster = context.select<LaunchProfileCubit, List<MemberRosterEntry>>(
+      (c) => LaunchProfileSelectors.memberRoster(
+        LaunchProfileSelectors.teamById(c.state, teamId),
+      ),
+    );
+    final resolvedId = _resolvedMemberId(roster, selectedMemberId);
+    return _MemberPicker(
+      roster: roster,
+      selectedMemberId: resolvedId,
+      onSelect: onSelect,
+      onAddMember: onAddMember,
+    );
+  }
+
+  String? _resolvedMemberId(
+    List<MemberRosterEntry> roster,
+    String? selectedMemberId,
+  ) {
+    if (roster.isEmpty) return null;
+    final id = selectedMemberId;
+    if (id != null && roster.any((m) => m.id == id)) return id;
+    return roster.first.id;
+  }
+}
+
+/// Resolves the active member id without subscribing to roster display names.
+class _MemberDetailHost extends StatelessWidget {
+  const _MemberDetailHost({
+    required this.teamId,
+    required this.selectedMemberId,
+  });
+
+  final String teamId;
+  final String? selectedMemberId;
+
+  @override
+  Widget build(BuildContext context) {
+    final memberId = context.select<LaunchProfileCubit, String?>(
+      (c) => _resolveMemberId(
+        LaunchProfileSelectors.teamById(c.state, teamId),
+        selectedMemberId,
+      ),
+    );
+    return TeamMemberDetailSection(
+      key: ValueKey('member-detail-$memberId'),
+      teamId: teamId,
+      selectedMemberId: memberId,
+    );
+  }
+
+  static String? _resolveMemberId(TeamProfile? team, String? selectedMemberId) {
+    if (team == null || team.members.isEmpty) return null;
+    final id = selectedMemberId;
+    if (id != null) {
+      for (final member in team.members) {
+        if (member.id == id) return id;
+      }
+    }
+    return team.members.first.id;
   }
 }
 
