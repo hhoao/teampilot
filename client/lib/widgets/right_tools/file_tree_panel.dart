@@ -4,6 +4,7 @@ import 'dart:math' as math;
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/rendering.dart';
+import 'package:flutter/scheduler.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:teampilot/theme/app_toast_theme.dart';
@@ -14,7 +15,6 @@ import '../../cubits/file_tree_cubit.dart';
 
 import '../../l10n/l10n_extensions.dart';
 import '../../services/file_tree/file_tree_visible_rows.dart';
-import '../../services/io/filesystem.dart';
 import '../../services/storage/runtime_context.dart';
 import '../../theme/app_icon_sizes.dart';
 import '../../theme/app_text_styles.dart';
@@ -22,6 +22,7 @@ import '../../utils/app_keys.dart';
 import '../app_icon_button.dart';
 import '../file_tree_node.dart';
 import 'file_tree_header_overflow_menu.dart';
+import 'right_tools_lifecycle.dart';
 
 /// Workspace file tree panel.
 ///
@@ -44,10 +45,15 @@ class FileTreePanel extends StatefulWidget {
 }
 
 class _FileTreePanelState extends State<FileTreePanel> {
+  /// Matches [InputDecorationTheme.constraints] min height in the app theme.
+  static const _filterFieldHeight = 40.0;
+
   final _filterController = TextEditingController();
   final _listScrollController = ScrollController();
   final _horizontalScrollController = ScrollController();
   EditorCubit? _editorCubit;
+  bool _filterFieldReady = false;
+  bool _listReady = false;
 
   FileTreeCubit get _cubit => widget.cubit;
 
@@ -56,6 +62,17 @@ class _FileTreePanelState extends State<FileTreePanel> {
     super.initState();
     // Filter lives in the cubit; sync the text field when the panel remounts.
     _filterController.text = _cubit.state.filterText;
+    // Stagger first paint: header → filter field → file rows. DevTools traces
+    // showed RenderEditable and the first visible FileTreeNode batch landing
+    // in the same ~400ms frame when mounted together.
+    SchedulerBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) return;
+      RightToolsLifecycle.of(context).ensureFileTreeReady();
+      setState(() => _filterFieldReady = true);
+      SchedulerBinding.instance.addPostFrameCallback((_) {
+        if (mounted) setState(() => _listReady = true);
+      });
+    });
   }
 
   @override
@@ -169,12 +186,9 @@ class _FileTreePanelState extends State<FileTreePanel> {
                         Expanded(
                           child: Text(
                             l10n.fileTree,
-                            style: Theme.of(context).textTheme.labelSmall
-                                ?.copyWith(
-                                  color: cs.onSurfaceVariant,
-                                  fontWeight: FontWeight.w700,
-                                  letterSpacing: 0.8,
-                                ),
+                            style: AppTextStyles.of(
+                              context,
+                            ).toolPanelTitleColored(cs.onSurfaceVariant),
                             overflow: TextOverflow.ellipsis,
                             maxLines: 1,
                           ),
@@ -215,99 +229,90 @@ class _FileTreePanelState extends State<FileTreePanel> {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
-                  TextField(
-                    controller: _filterController,
-                    decoration: InputDecoration(
+                  if (_filterFieldReady)
+                    _FileTreeFilterField(
+                      controller: _filterController,
                       hintText: l10n.filterFiles,
-                      prefixIcon: Icon(
-                        Icons.search,
-                        size: context.appIconSizes.md,
+                      onFilterChanged: _cubit.setFilter,
+                      onClear: () {
+                        _filterController.clear();
+                        _cubit.setFilter('');
+                      },
+                    )
+                  else
+                    const SizedBox(height: _filterFieldHeight),
+                  const SizedBox(height: 10),
+                  if (_listReady) ...[
+                    // Single-root: show the folder path. Multi-root: each root
+                    // gets its own header row, so the single path line is hidden.
+                    BlocSelector<
+                      FileTreeCubit,
+                      FileTreeState,
+                      (bool, bool, String)
+                    >(
+                      selector: (state) => (
+                        state.isMultiRoot,
+                        state.anyRootExists,
+                        state.rootPath,
                       ),
-                      floatingLabelBehavior: FloatingLabelBehavior.never,
-                      suffixIcon: _filterController.text.isNotEmpty
-                          ? AppIconButton(
-                              icon: Icons.clear,
-                              compact: true,
-                              size: AppIconButton.kCompactSize,
-                              onTap: () {
-                                _filterController.clear();
-                                _cubit.setFilter('');
-                              },
-                            )
-                          : null,
-                    ),
-                    onChanged: (v) {
-                      _cubit.setFilter(v);
-                      setState(() {});
-                    },
-                  ),
-                  const SizedBox(height: 10),
-                  // Single-root: show the folder path. Multi-root: each root
-                  // gets its own header row, so the single path line is hidden.
-                  BlocSelector<
-                    FileTreeCubit,
-                    FileTreeState,
-                    (bool, bool, String)
-                  >(
-                    selector: (state) => (
-                      state.isMultiRoot,
-                      state.anyRootExists,
-                      state.rootPath,
-                    ),
-                    builder: (context, root) {
-                      final (isMultiRoot, anyRootExists, rootPath) = root;
-                      if (isMultiRoot) return const SizedBox.shrink();
-                      if (anyRootExists) {
+                      builder: (context, root) {
+                        final (isMultiRoot, anyRootExists, rootPath) = root;
+                        if (isMultiRoot) return const SizedBox.shrink();
+                        if (anyRootExists) {
+                          return Text(
+                            rootPath,
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                            style: AppTextStyles.of(
+                              context,
+                            ).bodySmall.copyWith(color: cs.onSurfaceVariant),
+                          );
+                        }
                         return Text(
-                          rootPath,
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
-                          style: AppTextStyles.of(
-                            context,
-                          ).bodySmall.copyWith(color: cs.onSurfaceVariant),
+                          'Directory unavailable',
+                          style: AppTextStyles.of(context).bodySmall.copyWith(
+                            color: cs.onSurfaceVariant.withValues(alpha: 0.7),
+                          ),
                         );
-                      }
-                      return Text(
-                        'Directory unavailable',
-                        style: AppTextStyles.of(context).bodySmall.copyWith(
-                          color: cs.onSurfaceVariant.withValues(alpha: 0.7),
-                        ),
-                      );
-                    },
-                  ),
-                  const SizedBox(height: 10),
-                  Expanded(
-                    child:
-                        BlocSelector<
-                          FileTreeCubit,
-                          FileTreeState,
-                          List<FileTreeVisibleRow>
-                        >(
-                          selector: (state) => state.visibleRows,
-                          builder: (context, rows) {
-                            if (!context
-                                .read<FileTreeCubit>()
-                                .state
-                                .anyRootExists) {
-                              return const SizedBox.shrink();
-                            }
-                            return _FileTreeList(
-                              rows: rows,
-                              cubit: _cubit,
-                              textColor: cs.onSurface,
-                              listScrollController: _listScrollController,
-                              horizontalScrollController:
-                                  _horizontalScrollController,
-                              desktopShellActions: _desktopShellActionsFor(
-                                _workContext,
-                              ),
-                              remoteFileManagerActions:
-                                  _remoteFileManagerActionsFor(_workContext),
-                              workContext: _workContext,
-                            );
-                          },
-                        ),
-                  ),
+                      },
+                    ),
+                    const SizedBox(height: 10),
+                    Expanded(
+                      child:
+                          BlocSelector<
+                            FileTreeCubit,
+                            FileTreeState,
+                            List<FileTreeVisibleRow>
+                          >(
+                            selector: (state) => state.visibleRows,
+                            builder: (context, rows) {
+                              if (!context
+                                  .read<FileTreeCubit>()
+                                  .state
+                                  .anyRootExists) {
+                                return const SizedBox.shrink();
+                              }
+                              return _FileTreeList(
+                                rows: rows,
+                                cubit: _cubit,
+                                textColor: cs.onSurface,
+                                listScrollController: _listScrollController,
+                                horizontalScrollController:
+                                    _horizontalScrollController,
+                                desktopShellActions: _desktopShellActionsFor(
+                                  _workContext,
+                                ),
+                                remoteFileManagerActions:
+                                    _remoteFileManagerActionsFor(
+                                  _workContext,
+                                ),
+                                workContext: _workContext,
+                              );
+                            },
+                          ),
+                    ),
+                  ] else
+                    const Expanded(child: SizedBox.shrink()),
                 ],
               ),
             ),
@@ -383,6 +388,50 @@ class _FileTreePanelState extends State<FileTreePanel> {
   bool _remoteFileManagerActionsFor(RuntimeContext ctx) {
     if (kIsWeb) return false;
     return ctx.mode == StorageBackendMode.ssh;
+  }
+}
+
+/// Filter row isolated from the file tree list so keystrokes do not rebuild rows.
+class _FileTreeFilterField extends StatelessWidget {
+  const _FileTreeFilterField({
+    required this.controller,
+    required this.hintText,
+    required this.onFilterChanged,
+    required this.onClear,
+  });
+
+  final TextEditingController controller;
+  final String hintText;
+  final ValueChanged<String> onFilterChanged;
+  final VoidCallback onClear;
+
+  @override
+  Widget build(BuildContext context) {
+    return ValueListenableBuilder<TextEditingValue>(
+      valueListenable: controller,
+      builder: (context, value, _) {
+        return TextField(
+          controller: controller,
+          decoration: InputDecoration(
+            hintText: hintText,
+            prefixIcon: Icon(
+              Icons.search,
+              size: context.appIconSizes.md,
+            ),
+            floatingLabelBehavior: FloatingLabelBehavior.never,
+            suffixIcon: value.text.isNotEmpty
+                ? AppIconButton(
+                    icon: Icons.clear,
+                    compact: true,
+                    size: AppIconButton.kCompactSize,
+                    onTap: onClear,
+                  )
+                : null,
+          ),
+          onChanged: onFilterChanged,
+        );
+      },
+    );
   }
 }
 

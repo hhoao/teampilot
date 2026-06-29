@@ -571,14 +571,17 @@ class WorkspaceGrid extends StatelessWidget {
       itemBuilder: (context, index) {
         final workspace = workspaces[index];
         final count = sessionCounts[workspace.workspaceId] ?? 0;
-        return WorkspaceCard(
-          key: ValueKey('workspace-card-${workspace.workspaceId}'),
-          workspace: workspace,
-          sessionCount: count,
-          favorited: favoriteWorkspaceIds.contains(workspace.workspaceId),
-          onToggleFavorite: () => onToggleWorkspaceFavorite(workspace.workspaceId),
-          sessions: sessions,
-          onTap: () => unawaited(openWorkspace(context, workspace)),
+        return RepaintBoundary(
+          child: WorkspaceCard(
+            key: ValueKey('workspace-card-${workspace.workspaceId}'),
+            workspace: workspace,
+            sessionCount: count,
+            favorited: favoriteWorkspaceIds.contains(workspace.workspaceId),
+            onToggleFavorite: () =>
+                onToggleWorkspaceFavorite(workspace.workspaceId),
+            sessions: sessions,
+            onTap: () => unawaited(openWorkspace(context, workspace)),
+          ),
         );
       },
     );

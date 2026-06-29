@@ -1,5 +1,6 @@
 import 'dart:async';
 
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
@@ -12,7 +13,6 @@ import '../../cubits/launch_profile_cubit.dart';
 import '../../cubits/worktree_cubit.dart';
 import '../../l10n/l10n_extensions.dart';
 import '../../models/app_provider_config.dart';
-import '../../models/layout_preferences.dart';
 import '../../models/member_instance.dart';
 import '../../models/member_presence.dart';
 import '../../models/team_config.dart';
@@ -32,6 +32,7 @@ import 'board_panel.dart';
 import 'file_tree_panel.dart';
 import 'mailbox_panel.dart';
 import 'members_panel.dart';
+import 'right_tools_tool_preferences.dart';
 import 'tabbed_panel.dart';
 import 'tool_view.dart';
 
@@ -212,7 +213,7 @@ class RightToolsChatSlice {
 }
 
 /// Builds the tabbed tool views with narrow bloc subscriptions.
-class RightToolsToolViews extends StatelessWidget {
+class RightToolsToolViews extends StatefulWidget {
   const RightToolsToolViews({
     required this.preferences,
     required this.cwd,
@@ -226,7 +227,7 @@ class RightToolsToolViews extends StatelessWidget {
     super.key,
   });
 
-  final LayoutPreferences preferences;
+  final RightToolsToolPreferences preferences;
   final String cwd;
   final String workspaceId;
   final String toolsScopeId;
@@ -235,6 +236,67 @@ class RightToolsToolViews extends StatelessWidget {
   final FileTreeCubit fileTreeCubit;
   final RuntimeContext workContext;
   final WorkspaceToolsScopeState scope;
+
+  @override
+  State<RightToolsToolViews> createState() => _RightToolsToolViewsState();
+}
+
+@immutable
+class _RightToolsViewsCacheKey {
+  const _RightToolsViewsCacheKey({
+    required this.preferences,
+    required this.isPersonalWorkspace,
+    required this.team,
+    required this.chatSlice,
+    required this.mailboxGate,
+    required this.scopeRoots,
+    required this.cwd,
+    required this.workspaceId,
+    required this.toolsScopeId,
+  });
+
+  final RightToolsToolPreferences preferences;
+  final bool isPersonalWorkspace;
+  final TeamProfile? team;
+  final RightToolsChatSlice chatSlice;
+  final RightToolsMailboxGate mailboxGate;
+  final List<String> scopeRoots;
+  final String cwd;
+  final String workspaceId;
+  final String toolsScopeId;
+
+  @override
+  bool operator ==(Object other) {
+    return identical(this, other) ||
+        other is _RightToolsViewsCacheKey &&
+            preferences == other.preferences &&
+            isPersonalWorkspace == other.isPersonalWorkspace &&
+            team == other.team &&
+            chatSlice == other.chatSlice &&
+            mailboxGate == other.mailboxGate &&
+            listEquals(scopeRoots, other.scopeRoots) &&
+            cwd == other.cwd &&
+            workspaceId == other.workspaceId &&
+            toolsScopeId == other.toolsScopeId;
+  }
+
+  @override
+  int get hashCode => Object.hash(
+    preferences,
+    isPersonalWorkspace,
+    team,
+    chatSlice,
+    mailboxGate,
+    Object.hashAll(scopeRoots),
+    cwd,
+    workspaceId,
+    toolsScopeId,
+  );
+}
+
+class _RightToolsToolViewsState extends State<RightToolsToolViews> {
+  _RightToolsViewsCacheKey? _cacheKey;
+  List<ToolView>? _cachedViews;
 
   @override
   Widget build(BuildContext context) {
@@ -258,12 +320,12 @@ class RightToolsToolViews extends StatelessWidget {
     required int unreadCount,
     required bool hasMailboxCubit,
   }) {
-    final team = isPersonalWorkspace
+    final team = widget.isPersonalWorkspace
         ? null
         : context.select<LaunchProfileCubit, TeamProfile?>(
             (c) => c.state.selectedTeam,
           );
-    if (!isPersonalWorkspace && team == null) {
+    if (!widget.isPersonalWorkspace && team == null) {
       return const SizedBox.shrink();
     }
 
@@ -275,21 +337,36 @@ class RightToolsToolViews extends StatelessWidget {
     );
 
     final mailboxGate = RightToolsMailboxGate.resolve(
-      isPersonalWorkspace: isPersonalWorkspace,
+      isPersonalWorkspace: widget.isPersonalWorkspace,
       team: team,
       hasTeamBus: chatSlice.hasTeamBus && hasMailboxCubit,
-      boardVisible: preferences.boardVisible,
+      boardVisible: widget.preferences.boardVisible,
       unreadCount: unreadCount,
     );
 
-    final views = _buildViews(
-      context,
+    final cacheKey = _RightToolsViewsCacheKey(
+      preferences: widget.preferences,
+      isPersonalWorkspace: widget.isPersonalWorkspace,
       team: team,
       chatSlice: chatSlice,
       mailboxGate: mailboxGate,
+      scopeRoots: widget.scope.roots,
+      cwd: widget.cwd,
+      workspaceId: widget.workspaceId,
+      toolsScopeId: widget.toolsScopeId,
     );
 
-    final panel = TabbedPanel(views: views, scopeId: toolsScopeId);
+    if (_cacheKey != cacheKey || _cachedViews == null) {
+      _cacheKey = cacheKey;
+      _cachedViews = _buildViews(
+        context,
+        team: team,
+        chatSlice: chatSlice,
+        mailboxGate: mailboxGate,
+      );
+    }
+
+    final panel = TabbedPanel(views: _cachedViews!, scopeId: widget.toolsScopeId);
     final branchLabel = _optionalWorktreeBranch(context);
     if (branchLabel == null) return panel;
     return Column(
@@ -333,13 +410,13 @@ class RightToolsToolViews extends StatelessWidget {
     final l10n = context.l10n;
     final views = <ToolView>[];
     void maybeDismissDrawer() {
-      if (dismissDrawerOnAction) {
+      if (widget.dismissDrawerOnAction) {
         Navigator.of(context).maybePop();
       }
     }
 
-    if (!isPersonalWorkspace &&
-        preferences.membersVisible &&
+    if (!widget.isPersonalWorkspace &&
+        widget.preferences.membersVisible &&
         team != null) {
       final runtimeMembers = runtimeRosterMembers(team);
       final members = [...runtimeMembers]
@@ -358,37 +435,37 @@ class RightToolsToolViews extends StatelessWidget {
             runtimeMembers: runtimeMembers,
             selectedMemberId: chatSlice.selectedMemberId,
             canViewDetail: chatSlice.hasActiveTab,
-            workspaceId: workspaceId,
-            cwd: cwd,
-            scope: scope,
+            workspaceId: widget.workspaceId,
+            cwd: widget.cwd,
+            scope: widget.scope,
             maybeDismissDrawer: maybeDismissDrawer,
           ),
         ),
       );
     }
 
-    if (preferences.fileTreeVisible) {
+    if (widget.preferences.fileTreeVisible) {
       views.add(
         ToolView(
           icon: Icons.folder_outlined,
           label: l10n.fileTree,
           child: FileTreePanel(
             key: const ValueKey('workspace-file-tree'),
-            cubit: fileTreeCubit,
-            workContext: workContext,
+            cubit: widget.fileTreeCubit,
+            workContext: widget.workContext,
           ),
         ),
       );
     }
 
-    if (preferences.gitVisible) {
+    if (widget.preferences.gitVisible) {
       views.add(
         ToolView(
           icon: Icons.account_tree_outlined,
           label: l10n.sourceControl,
           child: GitSourceControlPanel(
-            roots: scope.roots,
-            workContext: workContext,
+            roots: widget.scope.roots,
+            workContext: widget.workContext,
           ),
         ),
       );
@@ -400,7 +477,7 @@ class RightToolsToolViews extends StatelessWidget {
           icon: Icons.mail_outline,
           label: l10n.mailbox,
           badgeCount: mailboxGate.unreadCount,
-          child: MailboxPanel(team: team, cwd: cwd),
+          child: MailboxPanel(team: team, cwd: widget.cwd),
         ),
       );
     }
@@ -410,7 +487,7 @@ class RightToolsToolViews extends StatelessWidget {
         ToolView(
           icon: Icons.view_kanban_outlined,
           label: l10n.board,
-          child: BoardPanel(team: team, cwd: cwd),
+          child: BoardPanel(team: team, cwd: widget.cwd),
         ),
       );
     }

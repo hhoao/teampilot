@@ -109,59 +109,167 @@ class ChatPageShell extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final layout = context.select<LayoutCubit, _ChatPageShellLayoutView>(
-      (c) => _ChatPageShellLayoutView.from(c.state.preferences),
-    );
-    final preferences = layout.asPreferences;
     final toolsAsDrawer = useRightToolsAsDrawer(context);
-    final rightToolsPanel = RightToolsPanel(
-      cwd: cwd,
-      additionalPaths: additionalPaths,
-      preferences: preferences,
-      panelKey: AppKeys.rightToolsPanel,
-      dismissDrawerOnAction: toolsAsDrawer,
-      isPersonalWorkspace: isPersonalWorkspace,
-      workspaceId: workspaceId,
-      toolsScopeId: tabScopeId,
-    );
-
-    final centerShell = _ChatWorkspaceShell(
-      cwd: cwd,
-      sessionId: sessionId,
-      isPersonalWorkspace: isPersonalWorkspace,
-      workspaceId: workspaceId,
-      tabScopeId: tabScopeId,
-      team: team,
-    );
 
     if (!toolsAsDrawer) {
-      // Right tools is a full-height, project-page-level column (peer of the
-      // left workspace sidebar) rather than a child of [WorkspaceShell].
-      // [RightToolsHost] keeps the center subtree structurally stable, so
-      // toggling the panel never reparents/remounts the terminal. It owns the
-      // show/hide animation and the resize gutter.
       return _chatLaunchListener(
         context,
-        RightToolsHost(
-          preferences: preferences,
-          rightTools: rightToolsPanel,
-          onRightToolsWidthChanged: (w) =>
-              context.read<LayoutCubit>().setRightToolsWidth(w),
-          child: centerShell,
+        _ChatPageSplitLayout(
+          cwd: cwd,
+          additionalPaths: additionalPaths,
+          sessionId: sessionId,
+          isPersonalWorkspace: isPersonalWorkspace,
+          workspaceId: workspaceId,
+          tabScopeId: tabScopeId,
+          team: team,
         ),
       );
     }
 
     return _chatLaunchListener(
       context,
-      Scaffold(
-        endDrawer: preferences.rightToolsVisible
-            ? Drawer(
-                width: rightToolsDrawerWidth(context, preferences),
-                child: SafeArea(child: rightToolsPanel),
-              )
-            : null,
-        body: centerShell,
+      _ChatPageDrawerLayout(
+        cwd: cwd,
+        additionalPaths: additionalPaths,
+        sessionId: sessionId,
+        isPersonalWorkspace: isPersonalWorkspace,
+        workspaceId: workspaceId,
+        tabScopeId: tabScopeId,
+        team: team,
+      ),
+    );
+  }
+}
+
+/// Desktop split: [RightToolsHost] owns layout prefs; center and right tools
+/// are separate subtrees so chat/layout churn does not cross-rebuild.
+class _ChatPageSplitLayout extends StatelessWidget {
+  const _ChatPageSplitLayout({
+    required this.cwd,
+    required this.additionalPaths,
+    required this.sessionId,
+    required this.isPersonalWorkspace,
+    required this.workspaceId,
+    required this.tabScopeId,
+    required this.team,
+  });
+
+  final String cwd;
+  final List<String> additionalPaths;
+  final String? sessionId;
+  final bool isPersonalWorkspace;
+  final String workspaceId;
+  final String tabScopeId;
+  final TeamProfile? team;
+
+  @override
+  Widget build(BuildContext context) {
+    return RightToolsHost(
+      onRightToolsWidthChanged: (w) =>
+          context.read<LayoutCubit>().setRightToolsWidth(w),
+      center: _ChatWorkspaceShell(
+        cwd: cwd,
+        sessionId: sessionId,
+        isPersonalWorkspace: isPersonalWorkspace,
+        workspaceId: workspaceId,
+        tabScopeId: tabScopeId,
+        team: team,
+      ),
+      rightTools: _ChatRightToolsPanelSlot(
+        cwd: cwd,
+        additionalPaths: additionalPaths,
+        isPersonalWorkspace: isPersonalWorkspace,
+        workspaceId: workspaceId,
+        tabScopeId: tabScopeId,
+      ),
+    );
+  }
+}
+
+/// Narrow layout subscription for the right tools panel only.
+class _ChatRightToolsPanelSlot extends StatelessWidget {
+  const _ChatRightToolsPanelSlot({
+    required this.cwd,
+    required this.additionalPaths,
+    required this.isPersonalWorkspace,
+    required this.workspaceId,
+    required this.tabScopeId,
+  });
+
+  final String cwd;
+  final List<String> additionalPaths;
+  final bool isPersonalWorkspace;
+  final String workspaceId;
+  final String tabScopeId;
+
+  @override
+  Widget build(BuildContext context) {
+    final layout = context.select<LayoutCubit, _ChatPageShellLayoutView>(
+      (c) => _ChatPageShellLayoutView.from(c.state.preferences),
+    );
+    return RightToolsPanel(
+      cwd: cwd,
+      additionalPaths: additionalPaths,
+      preferences: layout.asPreferences,
+      panelKey: AppKeys.rightToolsPanel,
+      dismissDrawerOnAction: false,
+      isPersonalWorkspace: isPersonalWorkspace,
+      workspaceId: workspaceId,
+      toolsScopeId: tabScopeId,
+    );
+  }
+}
+
+class _ChatPageDrawerLayout extends StatelessWidget {
+  const _ChatPageDrawerLayout({
+    required this.cwd,
+    required this.additionalPaths,
+    required this.sessionId,
+    required this.isPersonalWorkspace,
+    required this.workspaceId,
+    required this.tabScopeId,
+    required this.team,
+  });
+
+  final String cwd;
+  final List<String> additionalPaths;
+  final String? sessionId;
+  final bool isPersonalWorkspace;
+  final String workspaceId;
+  final String tabScopeId;
+  final TeamProfile? team;
+
+  @override
+  Widget build(BuildContext context) {
+    final layout = context.select<LayoutCubit, _ChatPageShellLayoutView>(
+      (c) => _ChatPageShellLayoutView.from(c.state.preferences),
+    );
+    final preferences = layout.asPreferences;
+    final rightToolsPanel = RightToolsPanel(
+      cwd: cwd,
+      additionalPaths: additionalPaths,
+      preferences: preferences,
+      panelKey: AppKeys.rightToolsPanel,
+      dismissDrawerOnAction: true,
+      isPersonalWorkspace: isPersonalWorkspace,
+      workspaceId: workspaceId,
+      toolsScopeId: tabScopeId,
+    );
+
+    return Scaffold(
+      endDrawer: preferences.rightToolsVisible
+          ? Drawer(
+              width: rightToolsDrawerWidth(context, preferences),
+              child: SafeArea(child: rightToolsPanel),
+            )
+          : null,
+      body: _ChatWorkspaceShell(
+        cwd: cwd,
+        sessionId: sessionId,
+        isPersonalWorkspace: isPersonalWorkspace,
+        workspaceId: workspaceId,
+        tabScopeId: tabScopeId,
+        team: team,
       ),
     );
   }

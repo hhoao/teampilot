@@ -21,14 +21,11 @@ class HomeWorkspaceBodyStack extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final workspaces = context.select<ChatCubit, List<Workspace>>(
-      (c) => c.state.workspaces,
-    );
     final activeTab = WorkspaceTabRef.fromLocation(location);
     final showEditor =
         activeTab != null && HomeWorkspaceRoute.view(location) != 'manage';
 
-    Widget body;
+    final Widget body;
     if (activeTab == null) {
       body = HomePage(
         key: const ValueKey('home-v2-body'),
@@ -37,7 +34,9 @@ class HomeWorkspaceBodyStack extends StatelessWidget {
         initialGlobalView: HomeWorkspaceRoute.homeGlobalView(location),
       );
     } else {
-      final workspace = _resolve(workspaces, activeTab.workspaceId);
+      final workspace = context.select<ChatCubit, Workspace?>(
+        (c) => _resolve(c.state.workspaces, activeTab.workspaceId),
+      );
       body = workspace == null
           ? const SizedBox.shrink()
           : WorkspacePage(
@@ -55,7 +54,7 @@ class HomeWorkspaceBodyStack extends StatelessWidget {
     return Stack(
       fit: StackFit.expand,
       children: [
-        body,
+        RepaintBoundary(child: body),
         if (showEditor) const WorkspaceFloatingEditor(),
       ],
     );

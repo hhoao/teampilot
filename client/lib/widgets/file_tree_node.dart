@@ -218,17 +218,18 @@ class _FileTreeNodeState extends State<FileTreeNode> {
                     Text(
                       widget.entry.name,
                       maxLines: 1,
-                      style: AppTextStyles.of(context).body.copyWith(
-                        fontWeight: widget.isRoot
-                            ? FontWeight.w700
-                            : isActive
-                            ? FontWeight.w600
-                            : FontWeight.w500,
-                        letterSpacing: widget.isRoot ? 0.4 : null,
-                        color: widget.rootMissing
-                            ? cs.onSurfaceVariant.withValues(alpha: 0.5)
-                            : labelColor,
-                      ),
+                      style: widget.isRoot
+                          ? AppTextStyles.of(context).fileTreeRootLabel(
+                              widget.rootMissing
+                                  ? cs.onSurfaceVariant.withValues(alpha: 0.5)
+                                  : labelColor,
+                            )
+                          : AppTextStyles.of(context).fileTreeEntryLabel(
+                              color: widget.rootMissing
+                                  ? cs.onSurfaceVariant.withValues(alpha: 0.5)
+                                  : labelColor,
+                              active: isActive,
+                            ),
                     ),
                   ],
                 ),

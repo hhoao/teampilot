@@ -76,7 +76,7 @@ class DiffToolbar extends StatelessWidget {
           if (showFullContext) ...[
             const SizedBox(width: 8),
             FilterChip(
-              visualDensity: VisualDensity.compact,
+              visualDensity: VisualDensity.standard,
               label: Text(l10n.diffShowAllLines),
               selected: fullContext,
               onSelected: onFullContextChanged,
@@ -85,7 +85,7 @@ class DiffToolbar extends StatelessWidget {
           if (showIgnoreWhitespace) ...[
             const SizedBox(width: 8),
             FilterChip(
-              visualDensity: VisualDensity.compact,
+              visualDensity: VisualDensity.standard,
               label: Text(l10n.diffIgnoreWhitespace),
               selected: ignoreWhitespace,
               onSelected: onIgnoreWhitespaceChanged,

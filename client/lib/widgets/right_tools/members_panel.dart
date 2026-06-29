@@ -7,6 +7,7 @@ import '../../services/cli/registry/capabilities/provider_catalog_capability.dar
 import '../../services/cli/registry/cli_display_name.dart';
 import '../../services/cli/registry/cli_tool_registry.dart';
 import '../../services/cli/registry/cli_tool_registry_scope.dart';
+import '../../theme/app_text_styles.dart';
 import '../../theme/workspace_surface_layers.dart';
 import '../../utils/app_keys.dart';
 import '../app_icon_button.dart';
@@ -63,11 +64,9 @@ class MembersPanel extends StatelessWidget {
               Expanded(
                 child: Text(
                   l10n.members,
-                  style: Theme.of(context).textTheme.labelSmall?.copyWith(
-                    color: cs.onSurfaceVariant,
-                    fontWeight: FontWeight.w700,
-                    letterSpacing: 0.8,
-                  ),
+                  style: AppTextStyles.of(
+                    context,
+                  ).toolPanelTitleColored(cs.onSurfaceVariant),
                 ),
               ),
               AppIconButton(
