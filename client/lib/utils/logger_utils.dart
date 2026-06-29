@@ -654,16 +654,17 @@ class _FlushingFileOutput extends LogOutput {
 class _ConsoleLogFilter extends LogFilter {
   @override
   bool shouldLog(LogEvent event) {
-    // Routine boot/launch/session tracing is INFO/DEBUG and still lands in the
-    // log file — keep the dev console for warnings and errors only.
-    return event.level.index >= Level.warning.index;
+    // Debug builds: full console tracing. Release/profile: warnings and errors only.
+    final minLevel = kDebugMode ? Level.debug : Level.warning;
+    return event.level.index >= minLevel.index;
   }
 }
 
 class _FileLogFilter extends LogFilter {
   @override
   bool shouldLog(LogEvent event) {
-    // Skip DEBUG in log files — routine tracing stays out unless promoted.
-    return event.level.index >= Level.info.index;
+    // Debug builds: persist DEBUG for the in-app log viewer. Release: INFO+ only.
+    final minLevel = kDebugMode ? Level.debug : Level.info;
+    return event.level.index >= minLevel.index;
   }
 }
