@@ -179,7 +179,12 @@ class _Log4jStylePrinter extends LogPrinter {
     final trimmed = raw.trim();
     if (trimmed.startsWith('package:')) return trimmed;
     if (trimmed.startsWith('file://')) {
-      return Uri.parse(trimmed).toFilePath(windows: Platform.isWindows);
+      try {
+        return Uri.parse(trimmed).toFilePath(windows: Platform.isWindows);
+      } on Object {
+        // VM stack frames may use file URIs without a full path on Windows.
+        return trimmed;
+      }
     }
     return trimmed;
   }

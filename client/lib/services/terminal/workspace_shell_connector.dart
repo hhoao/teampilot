@@ -14,6 +14,7 @@ import 'ssh_pty_transport.dart';
 import 'terminal_session.dart';
 import 'terminal_transport_factory.dart';
 import '../host/host_interactive_shell.dart';
+import '../host/host_interactive_shell_kind.dart';
 
 /// Materializes workspace-terminal [TerminalSession]s and opens their transports.
 class WorkspaceShellConnector {
@@ -221,10 +222,11 @@ class WorkspaceShellConnector {
   }
 
   WorkspaceShellLaunchPlan _sshLaunchPlan({required String workingDirectory}) {
-    final shell = HostInteractiveShell.resolveSpec(_remoteShell);
     return WorkspaceShellLaunchPlan(
-      executable: shell.executable,
-      arguments: shell.launchArguments,
+      executable: _remoteShell,
+      arguments: HostInteractiveShell.launchArgumentsFor(
+        HostInteractiveShellKind.bash,
+      ),
       workingDirectory: workingDirectory.trim(),
       useWslPaths: false,
       inheritHostEnvironment: false,
