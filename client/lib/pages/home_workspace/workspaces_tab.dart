@@ -9,6 +9,7 @@ import '../../cubits/app_bootstrap_cubit.dart';
 import '../../cubits/chat_cubit.dart';
 import '../../cubits/launch_profile_cubit.dart';
 import '../../l10n/l10n_extensions.dart';
+import '../../models/launch_profile.dart';
 import '../../models/workspace.dart';
 import '../../models/app_session.dart';
 import '../../models/launch_profile_kind.dart';
@@ -196,6 +197,7 @@ class WorkspacesListBody extends StatelessWidget {
             workspaceSort: workspaceSort,
             favoriteWorkspaceIds: favoriteWorkspaceIds,
             onToggleWorkspaceFavorite: onToggleWorkspaceFavorite,
+            showSessionBarContextIcon: true,
           );
     if (suppressMotion) return content;
     return WorkspacePaneAnimations.data(
@@ -474,6 +476,7 @@ class WorkspaceCollection extends StatefulWidget {
     required this.favoriteWorkspaceIds,
     required this.onToggleWorkspaceFavorite,
     this.preserveOrder = false,
+    this.showSessionBarContextIcon = false,
   });
 
   final List<Workspace> workspaces;
@@ -483,6 +486,7 @@ class WorkspaceCollection extends StatefulWidget {
   final Set<String> favoriteWorkspaceIds;
   final Future<void> Function(String workspaceId) onToggleWorkspaceFavorite;
   final bool preserveOrder;
+  final bool showSessionBarContextIcon;
 
   @override
   State<WorkspaceCollection> createState() =>
@@ -530,6 +534,7 @@ class _WorkspaceCollectionState
         favoriteWorkspaceIds: widget.favoriteWorkspaceIds,
         onToggleWorkspaceFavorite: widget.onToggleWorkspaceFavorite,
         sessions: widget.sessions,
+        showSessionContextIcon: widget.showSessionBarContextIcon,
       );
     }
 
@@ -539,6 +544,7 @@ class _WorkspaceCollectionState
       favoriteWorkspaceIds: widget.favoriteWorkspaceIds,
       onToggleWorkspaceFavorite: widget.onToggleWorkspaceFavorite,
       sessions: widget.sessions,
+      showSessionContextIcon: widget.showSessionBarContextIcon,
     );
   }
 }
@@ -550,6 +556,7 @@ class WorkspaceGrid extends StatelessWidget {
     required this.favoriteWorkspaceIds,
     required this.onToggleWorkspaceFavorite,
     required this.sessions,
+    this.showSessionContextIcon = false,
   });
 
   final List<Workspace> workspaces;
@@ -557,13 +564,18 @@ class WorkspaceGrid extends StatelessWidget {
   final Set<String> favoriteWorkspaceIds;
   final Future<void> Function(String workspaceId) onToggleWorkspaceFavorite;
   final List<AppSession> sessions;
+  final bool showSessionContextIcon;
 
   @override
   Widget build(BuildContext context) {
+    final launchProfiles = context.select<LaunchProfileCubit, List<LaunchProfile>>(
+      (c) => c.state.identities,
+    );
+
     return GridView.builder(
       gridDelegate: const SliverGridDelegateWithMaxCrossAxisExtent(
         maxCrossAxisExtent: 460,
-        mainAxisExtent: 244,
+        mainAxisExtent: 268,
         crossAxisSpacing: 20,
         mainAxisSpacing: 20,
       ),
@@ -580,6 +592,8 @@ class WorkspaceGrid extends StatelessWidget {
             onToggleFavorite: () =>
                 onToggleWorkspaceFavorite(workspace.workspaceId),
             sessions: sessions,
+            launchProfiles: launchProfiles,
+            showSessionContextIcon: showSessionContextIcon,
             onTap: () => unawaited(openWorkspace(context, workspace)),
           ),
         );
@@ -595,6 +609,7 @@ class WorkspaceList extends StatelessWidget {
     required this.favoriteWorkspaceIds,
     required this.onToggleWorkspaceFavorite,
     required this.sessions,
+    this.showSessionContextIcon = false,
   });
 
   final List<Workspace> workspaces;
@@ -602,9 +617,14 @@ class WorkspaceList extends StatelessWidget {
   final Set<String> favoriteWorkspaceIds;
   final Future<void> Function(String workspaceId) onToggleWorkspaceFavorite;
   final List<AppSession> sessions;
+  final bool showSessionContextIcon;
 
   @override
   Widget build(BuildContext context) {
+    final launchProfiles = context.select<LaunchProfileCubit, List<LaunchProfile>>(
+      (c) => c.state.identities,
+    );
+
     return ListView.separated(
       itemCount: workspaces.length,
       separatorBuilder: (_, __) => const SizedBox(height: 10),
@@ -618,6 +638,8 @@ class WorkspaceList extends StatelessWidget {
           favorited: favoriteWorkspaceIds.contains(workspace.workspaceId),
           onToggleFavorite: () => onToggleWorkspaceFavorite(workspace.workspaceId),
           sessions: sessions,
+          launchProfiles: launchProfiles,
+          showSessionContextIcon: showSessionContextIcon,
           onTap: () => unawaited(openWorkspace(context, workspace)),
         );
       },

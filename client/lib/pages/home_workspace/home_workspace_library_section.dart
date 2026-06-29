@@ -17,7 +17,6 @@ import '../../services/home_workspace/workspace_favorites_store.dart';
 import '../../theme/app_text_styles.dart';
 import '../../theme/workspace_surface_layers.dart';
 import 'home_workspace_library_view.dart';
-import 'open_workspace_tab_actions.dart';
 import 'workspace_card.dart';
 import 'workspace_sort.dart';
 import 'workspaces_tab.dart';
@@ -142,6 +141,7 @@ class _HomeLibrarySectionState extends State<HomeLibrarySection> {
                         favoriteWorkspaceIds: _favoriteWorkspaceIds,
                         onToggleWorkspaceFavorite: _toggleWorkspaceFavorite,
                         preserveOrder: false,
+                        showSessionBarContextIcon: true,
                       )
                     : _RecentWorkspaceGrid(
                         entries: recentEntries,
@@ -181,7 +181,6 @@ class _RecentWorkspaceGrid extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final l10n = context.l10n;
     final sessionCounts = <String, int>{};
     for (final s in sessions) {
       final id = s.workspaceId;
@@ -192,7 +191,7 @@ class _RecentWorkspaceGrid extends StatelessWidget {
     return GridView.builder(
       gridDelegate: const SliverGridDelegateWithMaxCrossAxisExtent(
         maxCrossAxisExtent: 460,
-        mainAxisExtent: 244,
+        mainAxisExtent: 268,
         crossAxisSpacing: 20,
         mainAxisSpacing: 20,
       ),
@@ -207,14 +206,9 @@ class _RecentWorkspaceGrid extends StatelessWidget {
           sessionCount: sessionCounts[workspace.workspaceId] ?? 0,
           favorited: favoriteWorkspaceIds.contains(workspace.workspaceId),
           onToggleFavorite: () => onToggleWorkspaceFavorite(workspace.workspaceId),
-          displayNameOverride: workspaceTabDisplayLabel(
-            l10n: l10n,
-            workspace: workspace,
-            identity: tab.identity,
-            identities: identities,
-            alwaysShowIdentity: true,
-          ),
           tabIdentity: tab.identity,
+          launchProfiles: identities,
+          showSessionContextIcon: true,
           onTap: () => context.go(tab.route),
           sessions: sessions,
         );

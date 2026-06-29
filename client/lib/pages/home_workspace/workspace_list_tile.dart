@@ -6,6 +6,7 @@ import 'package:teampilot/theme/app_icon_sizes.dart';
 
 import '../../l10n/l10n_extensions.dart';
 import '../../models/app_session.dart';
+import '../../models/launch_profile.dart';
 import '../../models/launch_profile_ref.dart';
 import '../../models/workspace.dart';
 import '../../theme/app_text_styles.dart';
@@ -17,6 +18,8 @@ import '../../widgets/workspace_icon.dart';
 import 'open_workspace_tab_actions.dart';
 import 'workspace_actions.dart';
 import 'home_workspace_tab_scope.dart';
+import 'workspace_card_meta_row.dart';
+import 'workspace_card_session_bar.dart';
 
 /// Compact horizontal workspace row for list layout in the workspace home.
 class WorkspaceListTile extends StatefulWidget {
@@ -28,6 +31,8 @@ class WorkspaceListTile extends StatefulWidget {
     this.onTap,
     this.sessions = const [],
     this.tabIdentity,
+    this.launchProfiles = const [],
+    this.showSessionContextIcon = false,
     this.displayNameOverride,
     super.key,
   });
@@ -39,6 +44,8 @@ class WorkspaceListTile extends StatefulWidget {
   final VoidCallback? onTap;
   final List<AppSession> sessions;
   final LaunchProfileRef? tabIdentity;
+  final List<LaunchProfile> launchProfiles;
+  final bool showSessionContextIcon;
   final String? displayNameOverride;
 
   @override
@@ -119,14 +126,19 @@ class _WorkspaceListTileState extends State<WorkspaceListTile> {
                       overflow: TextOverflow.ellipsis,
                       style: styles.body.copyWith(fontWeight: FontWeight.w600),
                     ),
+                    const SizedBox(height: 4),
+                    WorkspaceCardMetaRow(
+                      workspace: workspace,
+                      showTopologyChip: !widget.showSessionContextIcon,
+                    ),
                     const SizedBox(height: 2),
-                    Text(
-                      '${widget.sessionCount} ${l10n.homeWorkspaceSessionsLabel}',
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                      style: styles.bodySmall.copyWith(
-                        color: cs.onSurfaceVariant,
-                      ),
+                    WorkspaceCardSessionBar(
+                      sessionCount: widget.sessionCount,
+                      sessionCountLabel: l10n.homeWorkspaceSessionsLabel,
+                      workspace: workspace,
+                      tabIdentity: widget.tabIdentity,
+                      launchProfiles: widget.launchProfiles,
+                      showContextIcon: widget.showSessionContextIcon,
                     ),
                   ],
                 ),

@@ -82,6 +82,9 @@ class Workspace {
   String get effectiveDisplay =>
       display.isNotEmpty ? display : _basename(firstFolderPath);
 
+  /// Basename of [firstFolderPath]; empty when no primary directory is set.
+  String get primaryDirectoryName => _basename(firstFolderPath);
+
   static String _basename(String path) {
     if (path.isEmpty) return '';
     final parts = path.replaceAll(r'\', '/').split('/');

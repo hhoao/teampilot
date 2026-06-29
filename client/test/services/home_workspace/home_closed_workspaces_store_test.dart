@@ -3,6 +3,7 @@ import 'dart:io';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:teampilot/models/home_closed_workspace_entry.dart';
 import 'package:teampilot/models/launch_profile_ref.dart';
+import 'package:teampilot/models/workspace_topology.dart';
 import 'package:teampilot/services/home_workspace/home_closed_workspaces_store.dart';
 import 'package:teampilot/services/io/local_filesystem.dart';
 import 'package:teampilot/services/storage/app_storage.dart';
@@ -55,6 +56,21 @@ void main() {
       AppPaths(root.path).homeWorkspaceClosedWorkspacesJson,
     );
     expect(file.existsSync(), isTrue);
+  });
+
+  test('recordClosed persists topology snapshot', () async {
+    await store.recordClosed(
+      const HomeClosedWorkspaceEntry(
+        workspaceId: 'proj-a',
+        displayName: 'Workspace A',
+        primaryPath: '/tmp/a',
+        identity: personal,
+        topology: WorkspaceTopology.remote,
+      ),
+    );
+
+    final loaded = await store.load();
+    expect(loaded.single.topology, WorkspaceTopology.remote);
   });
 
   test('remove drops a closed entry by tab key', () async {

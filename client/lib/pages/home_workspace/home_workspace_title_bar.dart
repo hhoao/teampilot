@@ -7,10 +7,17 @@ import 'package:window_manager/window_manager.dart';
 
 import '../../l10n/l10n_extensions.dart';
 import '../../models/home_closed_workspace_entry.dart';
+import '../../models/launch_profile.dart';
+import '../../models/launch_profile_kind.dart';
+import '../../models/launch_profile_ref.dart';
+import '../../models/workspace.dart';
+import '../../models/workspace_topology.dart';
 import '../../services/app/desktop_window_actions.dart';
 import '../../services/app/platform_utils.dart';
+import '../../services/storage/launch_profile_provisioner.dart';
 import '../../theme/app_text_styles.dart';
 import '../../theme/workspace_surface_layers.dart';
+import '../../theme/workspace_topology_colors.dart';
 import '../../widgets/menu/sidebar_action_menu.dart';
 import '../../widgets/notification/notification_bell_button.dart';
 import '../../utils/context_menu_position.dart';
@@ -18,6 +25,7 @@ import '../../widgets/team_pilot_brand_logo.dart';
 import '../../widgets/window_chrome_controls.dart';
 import '../../widgets/window_drag_area.dart';
 import '../config/config_workspace.dart';
+import 'open_workspace_tab_actions.dart';
 
 /// Height of the Apifox-style workspace title bar.
 const double kHomeTitleBarHeight = 58;
@@ -64,17 +72,37 @@ IconData homeWorkspaceTabKindIcon(HomeWorkspaceTabKind kind) {
 
 @visibleForTesting
 Color homeWorkspaceTabBarColor({
-  required HomeWorkspaceTabKind kind,
   required ColorScheme colorScheme,
+  required Brightness brightness,
+  WorkspaceTopology topology = WorkspaceTopology.local,
   required bool active,
   required bool hovered,
 }) {
-  return homeWorkspaceTabKindAccentColor(
-    kind: kind,
+  final base = WorkspaceTopologyColors.of(
+    topology: topology,
     colorScheme: colorScheme,
-  ).withValues(
+    brightness: brightness,
+  );
+  return base.withValues(
     alpha: homeWorkspaceTabBarAlpha(active: active, hovered: hovered),
   );
+}
+
+@visibleForTesting
+Color workspaceTabTopologyIconColor({
+  required ColorScheme colorScheme,
+  required Brightness brightness,
+  WorkspaceTopology topology = WorkspaceTopology.local,
+  bool active = false,
+  bool hovered = false,
+}) {
+  final base = WorkspaceTopologyColors.of(
+    topology: topology,
+    colorScheme: colorScheme,
+    brightness: brightness,
+  );
+  final alpha = active ? 1.0 : (hovered ? 0.9 : 0.8);
+  return base.withValues(alpha: alpha);
 }
 
 @visibleForTesting
@@ -93,12 +121,146 @@ Color homeWorkspaceTabKindIconColor({
   return base.withValues(alpha: alpha);
 }
 
+@visibleForTesting
+String recentlyClosedEntryLabel(HomeClosedWorkspaceEntry entry) {
+  final name = entry.displayName.trim();
+  return name.isNotEmpty ? name : entry.workspaceId;
+}
+
+@visibleForTesting
+bool recentlyClosedShowIdentityInSubtitle({
+  required HomeClosedWorkspaceEntry entry,
+  required List<HomeClosedWorkspaceEntry> entries,
+  required List<LaunchProfile> identities,
+}) {
+  final duplicateDirectory = entries
+          .where((candidate) => candidate.workspaceId == entry.workspaceId)
+          .length >
+      1;
+  if (duplicateDirectory) return true;
+  final profile =
+      identities.where((e) => e.id == entry.identity.profileId).firstOrNull ??
+      identities
+          .where((e) => e.id == LaunchProfileProvisioner.defaultPersonalId)
+          .firstOrNull;
+  return profile?.kind == LaunchProfileKind.team;
+}
+
+HomeWorkspaceTabKind workspaceTabKindForIdentity({
+  required LaunchProfileRef identity,
+  required List<LaunchProfile> identities,
+}) {
+  final profile =
+      identities.where((e) => e.id == identity.profileId).firstOrNull ??
+      identities
+          .where((e) => e.id == LaunchProfileProvisioner.defaultPersonalId)
+          .firstOrNull;
+  return profile?.kind == LaunchProfileKind.team
+      ? HomeWorkspaceTabKind.team
+      : HomeWorkspaceTabKind.personal;
+}
+
+@visibleForTesting
+HomeWorkspaceTabKind recentlyClosedTabKind({
+  required LaunchProfileRef identity,
+  required List<LaunchProfile> identities,
+}) =>
+    workspaceTabKindForIdentity(identity: identity, identities: identities);
+
+@visibleForTesting
+String recentlyClosedIdentityLabel({
+  required AppLocalizations l10n,
+  required HomeClosedWorkspaceEntry entry,
+  required List<LaunchProfile> identities,
+}) =>
+    workspaceTabIdentityLabel(
+      l10n: l10n,
+      identity: entry.identity,
+      identities: identities,
+    );
+
+@visibleForTesting
+String? recentlyClosedSubtitleLine({
+  required AppLocalizations l10n,
+  required HomeClosedWorkspaceEntry entry,
+  required List<HomeClosedWorkspaceEntry> entries,
+  required List<LaunchProfile> identities,
+}) {
+  final path = entry.primaryPath.trim();
+  final showIdentity = recentlyClosedShowIdentityInSubtitle(
+    entry: entry,
+    entries: entries,
+    identities: identities,
+  );
+  final identityPart = showIdentity
+      ? recentlyClosedIdentityLabel(
+          l10n: l10n,
+          entry: entry,
+          identities: identities,
+        )
+      : null;
+  if (identityPart != null && path.isNotEmpty) {
+    return '$identityPart · $path';
+  }
+  if (path.isNotEmpty) return path;
+  return identityPart;
+}
+
+@visibleForTesting
+WorkspaceTopology? recentlyClosedTopology({
+  required HomeClosedWorkspaceEntry entry,
+  Workspace? workspace,
+}) {
+  if (workspace != null) {
+    return workspaceTopologyOf(workspace.folders);
+  }
+  return entry.topology;
+}
+
+/// Personal/team glyph colored by workspace topology (local / remote / mixed).
+class WorkspaceTabKindTopologyIcon extends StatelessWidget {
+  const WorkspaceTabKindTopologyIcon({
+    required this.kind,
+    required this.topology,
+    required this.colorScheme,
+    required this.brightness,
+    required this.size,
+    this.active = false,
+    this.hovered = false,
+    super.key,
+  });
+
+  final HomeWorkspaceTabKind kind;
+  final WorkspaceTopology topology;
+  final ColorScheme colorScheme;
+  final Brightness brightness;
+  final double size;
+  final bool active;
+  final bool hovered;
+
+  @override
+  Widget build(BuildContext context) {
+    return Icon(
+      homeWorkspaceTabKindIcon(kind),
+      size: size,
+      color: workspaceTabTopologyIconColor(
+        colorScheme: colorScheme,
+        brightness: brightness,
+        topology: topology,
+        active: active,
+        hovered: hovered,
+      ),
+    );
+  }
+}
+
 /// An open workspace tab in the title bar.
 class HomeWorkspaceTab {
   const HomeWorkspaceTab({
     required this.id,
     required this.name,
     required this.kind,
+    this.topology = WorkspaceTopology.local,
     this.tooltip,
     this.closable = true,
   });
@@ -106,6 +268,7 @@ class HomeWorkspaceTab {
   final String id;
   final String name;
   final HomeWorkspaceTabKind kind;
+  final WorkspaceTopology topology;
 
   /// Shown on hover; defaults to [name] when omitted.
   final String? tooltip;
@@ -120,6 +283,8 @@ class HomeTitleBar extends StatefulWidget {
     this.activeTabKey,
     this.pageChrome = WorkspacePageChrome.home,
     this.recentlyClosed = const [],
+    this.workspaces = const [],
+    this.launchProfiles = const [],
     this.onHomeTap,
     this.onSelectTab,
     this.onCloseTab,
@@ -139,6 +304,12 @@ class HomeTitleBar extends StatefulWidget {
 
   /// Recently closed tabs (newest first), excluding currently open ids.
   final List<HomeClosedWorkspaceEntry> recentlyClosed;
+
+  /// Workspace records for resolving topology in the recently-closed menu.
+  final List<Workspace> workspaces;
+
+  /// Launch identities for personal/team badges in the recently-closed menu.
+  final List<LaunchProfile> launchProfiles;
   final VoidCallback? onHomeTap;
   final ValueChanged<String>? onSelectTab;
   final ValueChanged<String>? onCloseTab;
@@ -237,6 +408,8 @@ class _HomeTitleBarState extends State<HomeTitleBar>
                     const SizedBox(width: 6),
                     _RecentlyClosedOverflowButton(
                       entries: widget.recentlyClosed,
+                      workspaces: widget.workspaces,
+                      launchProfiles: widget.launchProfiles,
                       onReopen: widget.onReopenClosedTab,
                     ),
                     Expanded(
@@ -285,6 +458,7 @@ class _HomeTitleBarState extends State<HomeTitleBar>
                                     label: tab.name,
                                     tooltip: tab.tooltip ?? tab.name,
                                     kind: tab.kind,
+                                    topology: tab.topology,
                                     active: tab.id == widget.activeTabKey,
                                     closable: tab.closable,
                                     onTap: () =>
@@ -303,6 +477,8 @@ class _HomeTitleBarState extends State<HomeTitleBar>
                                 widthFactor: 1,
                                 child: _RecentlyClosedOverflowButton(
                                   entries: widget.recentlyClosed,
+                                  workspaces: widget.workspaces,
+                                  launchProfiles: widget.launchProfiles,
                                   onReopen: widget.onReopenClosedTab,
                                 ),
                               ),
@@ -411,6 +587,7 @@ class _WorkspaceTab extends StatefulWidget {
     required this.label,
     required this.tooltip,
     required this.kind,
+    this.topology = WorkspaceTopology.local,
     this.active = false,
     this.closable = true,
     this.onTap,
@@ -421,6 +598,7 @@ class _WorkspaceTab extends StatefulWidget {
   final String label;
   final String tooltip;
   final HomeWorkspaceTabKind kind;
+  final WorkspaceTopology topology;
   final bool active;
   final bool closable;
   final VoidCallback? onTap;
@@ -491,15 +669,11 @@ class _WorkspaceTabState extends State<_WorkspaceTab> {
     final styles = AppTextStyles.of(context);
     final active = widget.active;
     final Color fg = active ? cs.onSurface : cs.onSurfaceVariant;
+    final brightness = Theme.of(context).brightness;
     final barColor = homeWorkspaceTabBarColor(
-      kind: widget.kind,
       colorScheme: cs,
-      active: active,
-      hovered: _hovered,
-    );
-    final kindIconColor = homeWorkspaceTabKindIconColor(
-      kind: widget.kind,
-      colorScheme: cs,
+      brightness: brightness,
+      topology: widget.topology,
       active: active,
       hovered: _hovered,
     );
@@ -561,10 +735,14 @@ class _WorkspaceTabState extends State<_WorkspaceTab> {
                 const SizedBox(width: 8),
                 _TabChromeSlot(
                   visible: _showChrome,
-                  child: Icon(
-                    homeWorkspaceTabKindIcon(widget.kind),
+                  child: WorkspaceTabKindTopologyIcon(
+                    kind: widget.kind,
+                    topology: widget.topology,
+                    colorScheme: cs,
+                    brightness: brightness,
                     size: context.appIconSizes.md,
-                    color: kindIconColor,
+                    active: active,
+                    hovered: _hovered,
                   ),
                 ),
                 const SizedBox(width: 12),
@@ -628,13 +806,20 @@ class _TabChromeSlot extends StatelessWidget {
 
 /// Overflow menu listing recently closed workspace tabs; opens on hover.
 class _RecentlyClosedOverflowButton extends StatefulWidget {
-  const _RecentlyClosedOverflowButton({required this.entries, this.onReopen});
+  const _RecentlyClosedOverflowButton({
+    required this.entries,
+    this.workspaces = const [],
+    this.launchProfiles = const [],
+    this.onReopen,
+  });
 
   final List<HomeClosedWorkspaceEntry> entries;
+  final List<Workspace> workspaces;
+  final List<LaunchProfile> launchProfiles;
   final ValueChanged<String>? onReopen;
 
   static const _menuMaxHeight = 320.0;
-  static const _menuWidth = 280.0;
+  static const _menuWidth = 300.0;
   static const _closeDelay = Duration(milliseconds: 180);
 
   @override
@@ -685,11 +870,20 @@ class _RecentlyClosedOverflowButtonState
     final l10n = context.l10n;
     final styles = AppTextStyles.of(context);
     final cs = Theme.of(context).colorScheme;
-    final entries = widget.entries;
+    final entries = [
+      for (final entry in widget.entries)
+        if (entry.workspaceId.trim().isNotEmpty) entry,
+    ];
+    final workspaceById = {
+      for (final workspace in widget.workspaces)
+        workspace.workspaceId: workspace,
+    };
+    final identities = widget.launchProfiles;
 
     return ActionMenuPopoverAnchor(
       controller: _popoverController,
       minWidth: _RecentlyClosedOverflowButton._menuWidth,
+      fixedPanelWidth: _RecentlyClosedOverflowButton._menuWidth,
       onOpen: _cancelCloseTimer,
       popoverBuilder: (context, controller) => MouseRegion(
         onEnter: (_) {
@@ -729,24 +923,22 @@ class _RecentlyClosedOverflowButtonState
                 child: SingleChildScrollView(
                   child: Column(
                     mainAxisSize: MainAxisSize.min,
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
                     children: [
-                      for (final entry in entries)
-                        SidebarActionMenuItem(
-                          icon: Icons.description_outlined,
-                          label: entry.displayName,
-                          subtitle: entry.primaryPath.isEmpty
-                              ? null
-                              : Text(
-                                  entry.primaryPath,
-                                  maxLines: 1,
-                                  overflow: TextOverflow.ellipsis,
-                                  style: styles.caption.copyWith(
-                                    color: cs.onSurfaceVariant,
-                                  ),
-                                ),
+                      for (var i = 0; i < entries.length; i++) ...[
+                        if (i > 0)
+                          const SizedBox(
+                            height: SidebarActionMenuMetrics.itemGap,
+                          ),
+                        _RecentlyClosedMenuItem(
+                          entry: entries[i],
+                          entries: entries,
+                          workspace: workspaceById[entries[i].workspaceId],
+                          identities: identities,
                           menuController: _menuController,
-                          onTap: () => widget.onReopen?.call(entry.tabKey),
+                          onReopen: widget.onReopen,
                         ),
+                      ],
                     ],
                   ),
                 ),
@@ -768,6 +960,64 @@ class _RecentlyClosedOverflowButtonState
           tooltip: l10n.homeWorkspaceRecentlyClosed,
         ),
       ),
+    );
+  }
+}
+
+class _RecentlyClosedMenuItem extends StatelessWidget {
+  const _RecentlyClosedMenuItem({
+    required this.entry,
+    required this.entries,
+    required this.workspace,
+    required this.identities,
+    required this.menuController,
+    this.onReopen,
+  });
+
+  final HomeClosedWorkspaceEntry entry;
+  final List<HomeClosedWorkspaceEntry> entries;
+  final Workspace? workspace;
+  final List<LaunchProfile> identities;
+  final ActionMenuController menuController;
+  final ValueChanged<String>? onReopen;
+
+  @override
+  Widget build(BuildContext context) {
+    final l10n = context.l10n;
+    final styles = AppTextStyles.of(context);
+    final cs = Theme.of(context).colorScheme;
+    final kind = workspaceTabKindForIdentity(
+      identity: entry.identity,
+      identities: identities,
+    );
+    final subtitle = recentlyClosedSubtitleLine(
+      l10n: l10n,
+      entry: entry,
+      entries: entries,
+      identities: identities,
+    );
+    final topology = recentlyClosedTopology(entry: entry, workspace: workspace);
+    final brightness = Theme.of(context).brightness;
+
+    return SidebarActionMenuItem(
+      iconWidget: WorkspaceTabKindTopologyIcon(
+        kind: kind,
+        topology: topology ?? WorkspaceTopology.local,
+        colorScheme: cs,
+        brightness: brightness,
+        size: SidebarActionMenuMetrics.iconSize(context),
+      ),
+      label: recentlyClosedEntryLabel(entry),
+      subtitle: subtitle == null
+          ? null
+          : Text(
+              subtitle,
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              style: styles.caption.copyWith(color: cs.onSurfaceVariant),
+            ),
+      menuController: menuController,
+      onTap: () => onReopen?.call(entry.tabKey),
     );
   }
 }

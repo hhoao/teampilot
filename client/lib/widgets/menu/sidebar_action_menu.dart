@@ -254,7 +254,7 @@ class _SidebarActionMenuItemState extends State<SidebarActionMenuItem> {
             borderRadius: BorderRadius.circular(6),
           ),
           child: Row(
-            mainAxisSize: MainAxisSize.min,
+            mainAxisSize: MainAxisSize.max,
             children: [
               SizedBox(
                 width: SidebarActionMenuMetrics.iconSize(context),
