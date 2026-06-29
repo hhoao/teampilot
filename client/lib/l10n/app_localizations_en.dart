@@ -1621,6 +1621,12 @@ class AppLocalizationsEn extends AppLocalizations {
   String get fileTreeRefresh => 'Refresh';
 
   @override
+  String get fileTreeShowFilter => 'Show file filter';
+
+  @override
+  String get fileTreeHideFilter => 'Hide file filter';
+
+  @override
   String get fileTreeRevealFailed => 'Cannot reveal this file in the file tree';
 
   @override

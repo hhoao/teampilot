@@ -3008,6 +3008,18 @@ abstract class AppLocalizations {
   /// **'Refresh'**
   String get fileTreeRefresh;
 
+  /// No description provided for @fileTreeShowFilter.
+  ///
+  /// In en, this message translates to:
+  /// **'Show file filter'**
+  String get fileTreeShowFilter;
+
+  /// No description provided for @fileTreeHideFilter.
+  ///
+  /// In en, this message translates to:
+  /// **'Hide file filter'**
+  String get fileTreeHideFilter;
+
   /// No description provided for @fileTreeRevealFailed.
   ///
   /// In en, this message translates to:

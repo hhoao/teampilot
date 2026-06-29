@@ -3,11 +3,13 @@
 // Parsed from `git status --porcelain=v2 --branch` (see GitService.status).
 // Git runs on the active storage backend (native, WSL, or SSH remote host).
 
+import 'package:equatable/equatable.dart';
+
 /// How a single path changed, mapped from porcelain XY status codes.
 enum GitChangeKind { modified, added, deleted, renamed, untracked, conflicted }
 
 /// One changed path, in either the index (staged) or worktree (unstaged) area.
-class GitFileChange {
+class GitFileChange extends Equatable {
   const GitFileChange({
     required this.path,
     required this.kind,
@@ -35,10 +37,13 @@ class GitFileChange {
     GitChangeKind.conflicted => 'U',
     GitChangeKind.untracked => '?',
   };
+
+  @override
+  List<Object?> get props => [path, kind, staged, originalPath];
 }
 
 /// Snapshot of a repository's branch and pending changes.
-class GitRepoStatus {
+class GitRepoStatus extends Equatable {
   const GitRepoStatus({
     required this.isRepository,
     this.branch,
@@ -69,4 +74,15 @@ class GitRepoStatus {
   final List<GitFileChange> unstaged;
 
   bool get hasChanges => staged.isNotEmpty || unstaged.isNotEmpty;
+
+  @override
+  List<Object?> get props => [
+    isRepository,
+    branch,
+    upstream,
+    ahead,
+    behind,
+    ...staged,
+    ...unstaged,
+  ];
 }

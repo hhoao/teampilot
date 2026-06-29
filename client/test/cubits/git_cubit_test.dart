@@ -86,14 +86,40 @@ void main() {
 
     expect(cubit.state.repoRoot, '/repo');
     expect(cubit.state.isRepository, isTrue);
+    expect(cubit.state.changesTreeView.stagedRows, isEmpty);
+    expect(cubit.state.changesTreeView.unstagedRows, isEmpty);
     expect(service.calls, contains('status'));
-    // Branches are off the hot path — not fetched until requested.
     expect(cubit.state.branches, isEmpty);
     expect(service.calls, isNot(contains('branches')));
 
     await cubit.ensureBranches();
     expect(cubit.state.branches, ['main', 'dev']);
     expect(service.calls, contains('branches'));
+
+    await cubit.close();
+  });
+
+  test('changesTreeView is precomputed after status load', () async {
+    final service = _FakeGitService(
+      statusToReturn: _repoWith(
+        unstaged: const [
+          GitFileChange(
+            path: 'src/foo.dart',
+            kind: GitChangeKind.modified,
+            staged: false,
+          ),
+        ],
+      ),
+    );
+    final cubit = GitCubit(service: service);
+    await cubit.setRepoRoot('/repo');
+
+    expect(
+      cubit.state.changesTreeView.unstagedRows.map(
+        (r) => r.isFolder ? 'D:${r.name}' : 'F:${r.change!.path}',
+      ),
+      ['D:src', 'F:src/foo.dart'],
+    );
 
     await cubit.close();
   });

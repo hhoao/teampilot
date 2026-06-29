@@ -9,7 +9,8 @@ import '../services/ai/headless_ai_service.dart';
 import '../services/git/git_changes_visible_rows.dart';
 import '../services/git/git_service.dart';
 
-export '../services/git/git_changes_visible_rows.dart' show GitChangesViewMode;
+export '../services/git/git_changes_visible_rows.dart'
+    show GitChangesTreeViewData, GitChangesVisibleRow;
 
 class GitState extends Equatable {
   const GitState({
@@ -21,9 +22,12 @@ class GitState extends Equatable {
     this.commitMessage = '',
     this.branches = const [],
     this.errorMessage,
-    this.changesViewMode = GitChangesViewMode.tree,
     this.expandedFolderPaths = const {},
     this.generatingCommitMessage = false,
+    this.changesTreeView = const GitChangesTreeViewData(
+      stagedRows: [],
+      unstagedRows: [],
+    ),
   });
 
   final String repoRoot;
@@ -36,9 +40,11 @@ class GitState extends Equatable {
   final String commitMessage;
   final List<String> branches;
   final String? errorMessage;
-  final GitChangesViewMode changesViewMode;
   final Set<String> expandedFolderPaths;
   final bool generatingCommitMessage;
+
+  /// Flattened staged/unstaged rows for the changes tree (recomputed in cubit).
+  final GitChangesTreeViewData changesTreeView;
 
   bool get isRepository => status.isRepository;
 
@@ -60,9 +66,9 @@ class GitState extends Equatable {
     String? commitMessage,
     List<String>? branches,
     String? errorMessage,
-    GitChangesViewMode? changesViewMode,
     Set<String>? expandedFolderPaths,
     bool? generatingCommitMessage,
+    GitChangesTreeViewData? changesTreeView,
     bool clearError = false,
   }) {
     return GitState(
@@ -74,10 +80,10 @@ class GitState extends Equatable {
       commitMessage: commitMessage ?? this.commitMessage,
       branches: branches ?? this.branches,
       errorMessage: clearError ? null : (errorMessage ?? this.errorMessage),
-      changesViewMode: changesViewMode ?? this.changesViewMode,
       expandedFolderPaths: expandedFolderPaths ?? this.expandedFolderPaths,
       generatingCommitMessage:
           generatingCommitMessage ?? this.generatingCommitMessage,
+      changesTreeView: changesTreeView ?? this.changesTreeView,
     );
   }
 
@@ -91,9 +97,9 @@ class GitState extends Equatable {
     commitMessage,
     branches,
     errorMessage,
-    changesViewMode,
     expandedFolderPaths,
     generatingCommitMessage,
+    changesTreeView,
   ];
 }
 
@@ -112,15 +118,25 @@ class GitCubit extends Cubit<GitState> {
   final GitService _service;
   final HeadlessAiService _headless;
 
-  /// Seeds [GitState.expandedFolderPaths] once after the first status load in
-  /// tree mode (matches [toggleChangesViewMode] when switching from list).
+  /// Seeds [GitState.expandedFolderPaths] once after the first status load.
   bool _treeExpansionInitialized = false;
 
   @visibleForTesting
-  void debugSetState(GitState next) => _emit(next);
+  void debugSetState(GitState next) => _publish(next, recomputeRows: false);
 
-  void _emit(GitState next) {
-    if (!isClosed) emit(next);
+  void _publish(GitState next, {bool recomputeRows = true}) {
+    var published = next;
+    if (recomputeRows) {
+      published = next.copyWith(
+        changesTreeView: visibleGitChangesTreeViewData(
+          staged: next.status.staged,
+          unstaged: next.status.unstaged,
+          expandedFolderPaths: next.expandedFolderPaths,
+        ),
+      );
+    }
+    if (published == state || isClosed) return;
+    emit(published);
   }
 
   Future<void> setRepoRoot(String path) async {
@@ -128,9 +144,19 @@ class GitCubit extends Cubit<GitState> {
     _treeExpansionInitialized = false;
     _branchesLoaded = false;
     _branchesInFlight = null;
-    // Clear the previous repo's branch list so a reused cubit never shows a
-    // stale picker before the lazy reload lands.
-    _emit(state.copyWith(repoRoot: path, branches: const [], clearError: true));
+    _publish(
+      state.copyWith(
+        repoRoot: path,
+        branches: const [],
+        expandedFolderPaths: const {},
+        changesTreeView: const GitChangesTreeViewData(
+          stagedRows: [],
+          unstagedRows: [],
+        ),
+        clearError: true,
+      ),
+      recomputeRows: false,
+    );
     await refresh();
   }
 
@@ -170,20 +196,20 @@ class GitCubit extends Cubit<GitState> {
   Future<void> _runRefresh() async {
     final dir = state.repoRoot;
     if (dir.isEmpty) {
-      _emit(state.copyWith(status: GitRepoStatus.notARepository));
+      _publish(state.copyWith(status: GitRepoStatus.notARepository));
       return;
     }
     // Only flag loading on the very first fetch for this root; background polls
     // refresh in place so a warm panel never flashes a spinner.
     if (state.status == GitRepoStatus.notARepository && !_treeExpansionInitialized) {
-      _emit(state.copyWith(isLoading: true, clearError: true));
-    } else {
-      _emit(state.copyWith(clearError: true));
+      _publish(state.copyWith(isLoading: true, clearError: true));
+    } else if (state.errorMessage != null) {
+      _publish(state.copyWith(clearError: true));
     }
     try {
       if (!await _service.isAvailable) {
         if (isClosed || state.repoRoot != dir) return;
-        _emit(
+        _publish(
           state.copyWith(
             gitAvailable: false,
             isLoading: false,
@@ -192,30 +218,33 @@ class GitCubit extends Cubit<GitState> {
         );
         return;
       }
-      // Status is the hot path; branches load lazily on demand (ensureBranches)
-      // so the panel paints without waiting on a second subprocess.
       final status = await _service.status(dir);
       if (isClosed || state.repoRoot != dir) return;
       var expanded = state.expandedFolderPaths;
-      if (state.changesViewMode == GitChangesViewMode.tree &&
-          !_treeExpansionInitialized) {
+      if (!_treeExpansionInitialized) {
         expanded = gitChangesDefaultExpandedFolders([
           ...status.staged,
           ...status.unstaged,
         ]);
         _treeExpansionInitialized = true;
       }
-      _emit(
-        state.copyWith(
-          gitAvailable: true,
-          isLoading: false,
-          status: status,
-          expandedFolderPaths: expanded,
-        ),
+      final next = state.copyWith(
+        gitAvailable: true,
+        isLoading: false,
+        status: status,
+        expandedFolderPaths: expanded,
       );
+      if (next.status == state.status &&
+          next.expandedFolderPaths == state.expandedFolderPaths &&
+          next.isLoading == state.isLoading &&
+          next.gitAvailable == state.gitAvailable &&
+          next.errorMessage == state.errorMessage) {
+        return;
+      }
+      _publish(next);
     } on GitException catch (e) {
       if (isClosed || state.repoRoot != dir) return;
-      _emit(state.copyWith(isLoading: false, errorMessage: e.message));
+      _publish(state.copyWith(isLoading: false, errorMessage: e.message));
     }
   }
 
@@ -239,29 +268,16 @@ class GitCubit extends Cubit<GitState> {
       final branches = await _service.branches(dir);
       if (isClosed || state.repoRoot != dir) return;
       _branchesLoaded = true;
-      _emit(state.copyWith(branches: branches));
+      _publish(state.copyWith(branches: branches));
     } on GitException catch (e) {
       if (isClosed || state.repoRoot != dir) return;
-      _emit(state.copyWith(errorMessage: e.message));
+      _publish(state.copyWith(errorMessage: e.message));
     }
   }
 
   void setCommitMessage(String message) {
-    _emit(state.copyWith(commitMessage: message));
-  }
-
-  void toggleChangesViewMode() {
-    final next = state.changesViewMode == GitChangesViewMode.list
-        ? GitChangesViewMode.tree
-        : GitChangesViewMode.list;
-    var expanded = state.expandedFolderPaths;
-    if (next == GitChangesViewMode.tree && expanded.isEmpty) {
-      expanded = gitChangesDefaultExpandedFolders([
-        ...state.status.staged,
-        ...state.status.unstaged,
-      ]);
-    }
-    _emit(state.copyWith(changesViewMode: next, expandedFolderPaths: expanded));
+    if (message == state.commitMessage) return;
+    _publish(state.copyWith(commitMessage: message), recomputeRows: false);
   }
 
   void toggleFolderExpanded(String folderPath) {
@@ -271,7 +287,7 @@ class GitCubit extends Cubit<GitState> {
     } else {
       next.add(folderPath);
     }
-    _emit(state.copyWith(expandedFolderPaths: next));
+    _publish(state.copyWith(expandedFolderPaths: next));
   }
 
   void expandAllFolders() {
@@ -280,11 +296,11 @@ class GitCubit extends Cubit<GitState> {
       ...state.status.unstaged,
     ]);
     if (all.isEmpty) return;
-    _emit(state.copyWith(expandedFolderPaths: all));
+    _publish(state.copyWith(expandedFolderPaths: all));
   }
 
   void collapseAllFolders() {
-    _emit(state.copyWith(expandedFolderPaths: const {}));
+    _publish(state.copyWith(expandedFolderPaths: const {}));
   }
 
   void toggleExpandAllFolders() {
@@ -324,7 +340,7 @@ class GitCubit extends Cubit<GitState> {
     }
     final ok = await _mutate(() => _service.commit(state.repoRoot, message));
     if (ok) {
-      _emit(state.copyWith(commitMessage: ''));
+      _publish(state.copyWith(commitMessage: ''), recomputeRows: false);
     }
     return ok;
   }
@@ -354,12 +370,15 @@ class GitCubit extends Cubit<GitState> {
         state.generatingCommitMessage) {
       return;
     }
-    _emit(state.copyWith(generatingCommitMessage: true, clearError: true));
+    _publish(state.copyWith(generatingCommitMessage: true, clearError: true));
     try {
       final diff = await _service.stagedDiff(dir);
       if (isClosed || state.repoRoot != dir) return;
       if (diff.trim().isEmpty) {
-        _emit(state.copyWith(generatingCommitMessage: false));
+        _publish(
+          state.copyWith(generatingCommitMessage: false),
+          recomputeRows: false,
+        );
         return;
       }
       final result = await _headless.run(
@@ -368,26 +387,39 @@ class GitCubit extends Cubit<GitState> {
         workingDirectory: dir,
       );
       if (isClosed || state.repoRoot != dir) return;
-      _emit(
+      _publish(
         state.copyWith(
           commitMessage: cleanCommitMessageOutput(result.text),
           generatingCommitMessage: false,
         ),
+        recomputeRows: false,
       );
     } on GitException catch (e) {
       if (isClosed) return;
-      _emit(state.copyWith(generatingCommitMessage: false, errorMessage: e.message));
+      _publish(
+        state.copyWith(
+          generatingCommitMessage: false,
+          errorMessage: e.message,
+        ),
+        recomputeRows: false,
+      );
     } on HeadlessAiException catch (e) {
       if (isClosed) return;
-      _emit(state.copyWith(generatingCommitMessage: false, errorMessage: e.message));
+      _publish(
+        state.copyWith(
+          generatingCommitMessage: false,
+          errorMessage: e.message,
+        ),
+        recomputeRows: false,
+      );
     } on Object catch (e) {
       if (isClosed) return;
-      // Never strand the spinner on an unexpected failure.
-      _emit(
+      _publish(
         state.copyWith(
           generatingCommitMessage: false,
           errorMessage: e.toString(),
         ),
+        recomputeRows: false,
       );
     }
   }
@@ -405,7 +437,7 @@ class GitCubit extends Cubit<GitState> {
         fullContext: fullContext,
       );
     } on GitException catch (e) {
-      _emit(state.copyWith(errorMessage: e.message));
+      _publish(state.copyWith(errorMessage: e.message), recomputeRows: false);
       return null;
     }
   }
@@ -414,16 +446,19 @@ class GitCubit extends Cubit<GitState> {
   /// failure. Guards against re-entrancy via [GitState.busy].
   Future<bool> _mutate(Future<void> Function() action) async {
     if (state.busy) return false;
-    _emit(state.copyWith(busy: true, clearError: true));
+    _publish(state.copyWith(busy: true, clearError: true), recomputeRows: false);
     try {
       await action();
       await refresh();
       if (isClosed) return false;
-      _emit(state.copyWith(busy: false));
+      _publish(state.copyWith(busy: false), recomputeRows: false);
       return true;
     } on GitException catch (e) {
       if (isClosed) return false;
-      _emit(state.copyWith(busy: false, errorMessage: e.message));
+      _publish(
+        state.copyWith(busy: false, errorMessage: e.message),
+        recomputeRows: false,
+      );
       return false;
     }
   }

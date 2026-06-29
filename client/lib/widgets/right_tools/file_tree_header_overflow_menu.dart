@@ -5,7 +5,14 @@ import '../../l10n/app_localizations.dart';
 import '../app_icon_button.dart';
 import '../menu/sidebar_action_menu.dart';
 
-enum FileTreeHeaderAction { refresh, reveal, collapseAll, toggleHidden, copy }
+enum FileTreeHeaderAction {
+  refresh,
+  reveal,
+  collapseAll,
+  toggleFilter,
+  toggleHidden,
+  copy,
+}
 
 /// Compact header overflow menu when the file-tree panel is too narrow for
 /// inline action buttons.
@@ -13,11 +20,13 @@ class FileTreeHeaderOverflowMenu extends StatelessWidget {
   const FileTreeHeaderOverflowMenu({
     required this.l10n,
     required this.showHiddenFiles,
+    required this.filterVisible,
     required this.hasExpandedFolders,
     required this.canCopy,
     required this.onRefresh,
     required this.onReveal,
     required this.onCollapseAll,
+    required this.onToggleFilter,
     required this.onToggleHidden,
     required this.onCopy,
     super.key,
@@ -25,11 +34,13 @@ class FileTreeHeaderOverflowMenu extends StatelessWidget {
 
   final AppLocalizations l10n;
   final bool showHiddenFiles;
+  final bool filterVisible;
   final bool hasExpandedFolders;
   final bool canCopy;
   final VoidCallback onRefresh;
   final VoidCallback onReveal;
   final VoidCallback onCollapseAll;
+  final VoidCallback onToggleFilter;
   final VoidCallback onToggleHidden;
   final VoidCallback onCopy;
 
@@ -57,6 +68,11 @@ class FileTreeHeaderOverflowMenu extends StatelessWidget {
             label: l10n.treeCollapseAllFolders,
           ),
         SidebarActionMenuSpec.item(
+          value: FileTreeHeaderAction.toggleFilter,
+          icon: filterVisible ? Icons.search_off : Icons.search,
+          label: filterVisible ? l10n.fileTreeHideFilter : l10n.fileTreeShowFilter,
+        ),
+        SidebarActionMenuSpec.item(
           value: FileTreeHeaderAction.toggleHidden,
           icon: showHiddenFiles
               ? Icons.visibility_off_outlined
@@ -78,6 +94,8 @@ class FileTreeHeaderOverflowMenu extends StatelessWidget {
             onReveal();
           case FileTreeHeaderAction.collapseAll:
             onCollapseAll();
+          case FileTreeHeaderAction.toggleFilter:
+            onToggleFilter();
           case FileTreeHeaderAction.toggleHidden:
             onToggleHidden();
           case FileTreeHeaderAction.copy:

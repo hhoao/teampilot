@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_bloc/flutter_bloc.dart';
 
+import '../../cubits/git_cubit.dart';
 import '../../l10n/l10n_extensions.dart';
 import '../../services/git/git_changes_visible_rows.dart';
 import '../../theme/app_text_styles.dart';
@@ -9,20 +11,20 @@ import '../hover_widget.dart';
 /// Folder row in the git changes tree view.
 class GitChangeFolderTile extends StatefulWidget {
   const GitChangeFolderTile({
+    required this.folderPath,
     required this.name,
     required this.depth,
-    required this.isExpanded,
-    required this.onToggle,
+    required this.cubit,
     this.onStage,
     this.onUnstage,
     this.hoverEnabled = true,
     super.key,
   });
 
+  final String folderPath;
   final String name;
   final int depth;
-  final bool isExpanded;
-  final VoidCallback onToggle;
+  final GitCubit cubit;
   final VoidCallback? onStage;
   final VoidCallback? onUnstage;
   final bool hoverEnabled;
@@ -78,6 +80,9 @@ class _GitChangeFolderTileState extends State<GitChangeFolderTile> {
   @override
   Widget build(BuildContext context) {
     final cs = Theme.of(context).colorScheme;
+    final isExpanded = context.select<GitCubit, bool>(
+      (c) => c.state.expandedFolderPaths.contains(widget.folderPath),
+    );
     final rowColor = _hovered ? HoverWidget.defaultHoverColor(context) : null;
     final showActions =
         _hovered && (widget.onStage != null || widget.onUnstage != null);
@@ -89,7 +94,7 @@ class _GitChangeFolderTileState extends State<GitChangeFolderTile> {
         cursor: SystemMouseCursors.click,
         child: GestureDetector(
           behavior: HitTestBehavior.opaque,
-          onTap: widget.onToggle,
+          onTap: () => widget.cubit.toggleFolderExpanded(widget.folderPath),
           child: Container(
             width: double.infinity,
             height: double.infinity,
@@ -121,7 +126,7 @@ class _GitChangeFolderTileState extends State<GitChangeFolderTile> {
                       width: 16,
                       height: 16,
                       child: AnimatedRotation(
-                        turns: widget.isExpanded ? 0.25 : 0.0,
+                        turns: isExpanded ? 0.25 : 0.0,
                         duration: const Duration(milliseconds: 150),
                         child: Icon(
                           Icons.chevron_right,
@@ -131,7 +136,7 @@ class _GitChangeFolderTileState extends State<GitChangeFolderTile> {
                       ),
                     ),
                     Icon(
-                      widget.isExpanded
+                      isExpanded
                           ? Icons.folder_open
                           : Icons.folder_outlined,
                       color: cs.onSurfaceVariant,

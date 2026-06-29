@@ -1,4 +1,5 @@
 ﻿import 'package:flutter/material.dart';
+import 'package:flutter/scheduler.dart';
 
 import '../../l10n/l10n_extensions.dart';
 import '../../theme/app_text_styles.dart';
@@ -7,7 +8,10 @@ import '../diff/diff_viewer.dart';
 
 /// Dialog hosting the full [DiffViewer] (side-by-side / unified, inline
 /// highlights, change navigation) for a single source-control file change.
-class GitDiffDialog extends StatelessWidget {
+///
+/// Defers mounting [DiffViewer] until after the first frame so the dialog shell
+/// (title + route) does not share a frame with [CodeEditor] layout.
+class GitDiffDialog extends StatefulWidget {
   const GitDiffDialog({
     required this.title,
     required this.diff,
@@ -53,6 +57,21 @@ class GitDiffDialog extends StatelessWidget {
   }
 
   @override
+  State<GitDiffDialog> createState() => _GitDiffDialogState();
+}
+
+class _GitDiffDialogState extends State<GitDiffDialog> {
+  var _viewerReady = false;
+
+  @override
+  void initState() {
+    super.initState();
+    SchedulerBinding.instance.addPostFrameCallback((_) {
+      if (mounted) setState(() => _viewerReady = true);
+    });
+  }
+
+  @override
   Widget build(BuildContext context) {
     return AppDialog(
       maxWidth: 1100,
@@ -66,7 +85,7 @@ class GitDiffDialog extends StatelessWidget {
             children: [
               Expanded(
                 child: Text(
-                  title,
+                  widget.title,
                   style: AppTextStyles.of(context).body.copyWith(
                         fontWeight: FontWeight.w600,
                       ),
@@ -83,19 +102,27 @@ class GitDiffDialog extends StatelessWidget {
           ),
           const Divider(height: 1),
           Expanded(
-            child: diff.trim().isEmpty
-                ? Center(child: Text(context.l10n.diffNoChanges))
-                : DiffViewer.fromUnifiedDiff(
-                    diffText: diff,
-                    filePath: filePath ?? title,
-                    reloadDiff: reloadDiff,
-                    onOpenSource: onOpenSource == null
-                        ? null
-                        : () {
-                            Navigator.of(context).pop();
-                            onOpenSource!.call();
-                          },
-                  ),
+            child: !_viewerReady
+                ? const Center(
+                    child: SizedBox(
+                      width: 22,
+                      height: 22,
+                      child: CircularProgressIndicator(strokeWidth: 2),
+                    ),
+                  )
+                : widget.diff.trim().isEmpty
+                    ? Center(child: Text(context.l10n.diffNoChanges))
+                    : DiffViewer.fromUnifiedDiff(
+                        diffText: widget.diff,
+                        filePath: widget.filePath ?? widget.title,
+                        reloadDiff: widget.reloadDiff,
+                        onOpenSource: widget.onOpenSource == null
+                            ? null
+                            : () {
+                                Navigator.of(context).pop();
+                                widget.onOpenSource!.call();
+                              },
+                      ),
           ),
         ],
       ),

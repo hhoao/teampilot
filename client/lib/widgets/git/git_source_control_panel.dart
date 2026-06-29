@@ -1,8 +1,7 @@
 import 'dart:async';
-import 'dart:math' as math;
 
 import 'package:flutter/material.dart';
-import 'package:flutter/rendering.dart';
+import 'package:flutter/scheduler.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:path/path.dart' as p;
 import 'package:teampilot/theme/app_toast_theme.dart';
@@ -18,15 +17,13 @@ import '../../services/ai/ai_feature_setting_resolver.dart';
 import '../../services/cli/registry/cli_tool_registry_scope.dart';
 import '../../l10n/l10n_extensions.dart';
 import '../../models/git_status.dart';
-import '../../services/git/git_changes_visible_rows.dart';
 import '../../services/git/git_repo_store.dart';
 import '../../services/storage/runtime_context.dart';
 import '../../theme/app_text_styles.dart';
 import '../app_dialog.dart';
 import '../app_icon_button.dart';
 import 'git_branch_menu.dart';
-import 'git_change_folder_tile.dart';
-import 'git_change_tile.dart';
+import 'git_changes_tree_list.dart';
 import 'git_diff_view.dart';
 
 /// VSCode-style "Source Control" panel for the editor workbench left rail.
@@ -81,8 +78,6 @@ class _GitSourceControlPanelState extends State<GitSourceControlPanel> {
   @override
   void initState() {
     super.initState();
-    // Opening the tab nudges a coalesced refresh of the visible repo so it is
-    // current even if the background poll just missed a change.
     WidgetsBinding.instance.addPostFrameCallback((_) {
       final active = _activeRoot;
       if (active.isNotEmpty) _cubitFor(active).refresh();
@@ -93,7 +88,6 @@ class _GitSourceControlPanelState extends State<GitSourceControlPanel> {
   Widget build(BuildContext context) {
     final roots = _roots;
     if (roots.isEmpty) {
-      // No folder mounted: show a hint without creating an empty store entry.
       return _GitCenteredHint(
         icon: Icons.source_outlined,
         text: context.l10n.gitNotARepository,
@@ -130,8 +124,6 @@ class _GitSourceControlPanelState extends State<GitSourceControlPanel> {
   }
 }
 
-/// Repo picker shown above the source-control body for multi-folder workspaces.
-/// Each chip's change badge is driven live by that root's store [GitCubit].
 class _RepoSelector extends StatelessWidget {
   const _RepoSelector({
     required this.cubitFor,
@@ -166,7 +158,6 @@ class _RepoSelector extends StatelessWidget {
   }
 }
 
-/// One selector chip; rebuilds its dirty badge from the root's [GitCubit].
 class _RepoChip extends StatelessWidget {
   const _RepoChip({
     required this.cubit,
@@ -220,7 +211,6 @@ class _RepoChip extends StatelessWidget {
   }
 }
 
-/// Small count pill on a repo chip indicating uncommitted changes.
 class _DirtyBadge extends StatelessWidget {
   const _DirtyBadge({required this.count, required this.selected});
 
@@ -249,9 +239,6 @@ class _DirtyBadge extends StatelessWidget {
   }
 }
 
-/// Source-control body for a single repository root. View-only: the [cubit]
-/// lives in [GitRepoStore] and outlives this widget, so the body never owns,
-/// refreshes, or disposes it — switching tabs just rebinds to warm state.
 class _GitRepoBody extends StatefulWidget {
   const _GitRepoBody({
     required this.cubit,
@@ -272,11 +259,15 @@ class _GitRepoBodyState extends State<_GitRepoBody> {
   final _commitController = TextEditingController();
   final _changesScrollController = ScrollController();
   final _horizontalScrollController = ScrollController();
+  var _changesListReady = false;
 
   @override
   void initState() {
     super.initState();
     _commitController.text = _cubit.state.commitMessage;
+    SchedulerBinding.instance.addPostFrameCallback((_) {
+      if (mounted) setState(() => _changesListReady = true);
+    });
   }
 
   @override
@@ -301,7 +292,6 @@ class _GitRepoBodyState extends State<_GitRepoBody> {
         ignoreWhitespace: ignoreWhitespace,
         fullContext: fullContext,
       ),
-      // The dialog closes itself (via its own context); we just open the file.
       onOpenSource: () => unawaited(
         editor.openFile(absolutePath, fs: widget.workContext.filesystem),
       ),
@@ -346,8 +336,6 @@ class _GitRepoBodyState extends State<_GitRepoBody> {
   }
 
   Future<void> _openBranchSheet() async {
-    // Branches load lazily — fetch fresh on open (force) so a branch created or
-    // checked out in the terminal shows up, not on every status poll.
     await _cubit.ensureBranches(force: true);
     if (!mounted) return;
     final action = await GitBranchSheet.show(
@@ -371,8 +359,7 @@ class _GitRepoBodyState extends State<_GitRepoBody> {
         listenWhen: (prev, next) =>
             (prev.errorMessage != next.errorMessage &&
                 next.errorMessage != null) ||
-            prev.commitMessage != next.commitMessage ||
-            prev.status != next.status,
+            prev.commitMessage != next.commitMessage,
         listener: (context, state) {
           if (state.errorMessage != null) {
             AppToast.show(
@@ -385,148 +372,165 @@ class _GitRepoBodyState extends State<_GitRepoBody> {
             _commitController.text = state.commitMessage;
           }
         },
-        builder: (context, state) => _buildBody(context, state),
+        buildWhen: (prev, next) =>
+            prev.gitAvailable != next.gitAvailable ||
+            prev.isRepository != next.isRepository ||
+            prev.isLoading != next.isLoading,
+        builder: (context, state) => _buildShell(context, state),
       ),
     );
   }
 
-  Widget _buildBody(BuildContext context, GitState state) {
+  Widget _buildShell(BuildContext context, GitState state) {
     final l10n = context.l10n;
-    final cs = Theme.of(context).colorScheme;
 
     if (!state.gitAvailable) {
-      return _centeredHint(context, Icons.error_outline, l10n.gitNotInstalled);
+      return _GitCenteredHint(
+        icon: Icons.error_outline,
+        text: l10n.gitNotInstalled,
+      );
     }
     if (!state.isRepository) {
       if (state.isLoading) {
         return const Center(child: CircularProgressIndicator());
       }
-      return _centeredHint(
-        context,
-        Icons.source_outlined,
-        l10n.gitNotARepository,
+      return _GitCenteredHint(
+        icon: Icons.source_outlined,
+        text: l10n.gitNotARepository,
       );
     }
-
-    final branch = state.status.branch ?? 'HEAD';
 
     return Container(
       padding: const EdgeInsets.all(10),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          _Header(
-            branch: branch,
-            ahead: state.status.ahead,
-            behind: state.status.behind,
-            busy: state.busy || state.isLoading,
-            treeView: state.changesViewMode == GitChangesViewMode.tree,
-            allFoldersExpanded: state.allChangeFoldersExpanded,
-            onRefresh: () => unawaited(_cubit.refresh()),
-            onPush: () => unawaited(_cubit.push()),
-            onPull: () => unawaited(_cubit.pull()),
-            onBranch: () => unawaited(_openBranchSheet()),
-            onToggleViewMode: _cubit.toggleChangesViewMode,
-            onToggleExpandAll: _cubit.toggleExpandAllFolders,
+          BlocSelector<
+            GitCubit,
+            GitState,
+            (String, int, int, bool, bool)
+          >(
+            selector: (state) => (
+              state.status.branch ?? 'HEAD',
+              state.status.ahead,
+              state.status.behind,
+              state.busy || state.isLoading,
+              state.allChangeFoldersExpanded,
+            ),
+            builder: (context, header) {
+              final (branch, ahead, behind, busy, allExpanded) = header;
+              return _Header(
+                branch: branch,
+                ahead: ahead,
+                behind: behind,
+                busy: busy,
+                allFoldersExpanded: allExpanded,
+                onRefresh: () => unawaited(_cubit.refresh()),
+                onPush: () => unawaited(_cubit.push()),
+                onPull: () => unawaited(_cubit.pull()),
+                onBranch: () => unawaited(_openBranchSheet()),
+                onToggleExpandAll: _cubit.toggleExpandAllFolders,
+              );
+            },
           ),
           const SizedBox(height: 10),
-          _CommitBox(
-            controller: _commitController,
-            hint: l10n.gitCommitMessageHint(branch),
-            canCommit: state.status.staged.isNotEmpty && !state.busy,
-            canGenerate: state.status.staged.isNotEmpty && !state.busy,
-            generating: state.generatingCommitMessage,
-            onChanged: _cubit.setCommitMessage,
-            onCommit: () async {
-              final ok = await _cubit.commit();
-              if (ok) _commitController.clear();
-            },
-            onGenerate: () async {
-              final stored = context
-                  .read<AiFeatureSettingsCubit>()
-                  .state
-                  .settingFor(AiFeatureId.commitMessage);
-              final appProviders = context.read<AppProviderCubit>().state;
-              final registry = CliToolRegistryScope.of(context);
-              final presets = context.read<CliPresetsCubit>().state.presets;
-              if (!aiFeatureIsConfigured(
-                stored: stored,
-                registry: registry,
-                appProviders: appProviders,
-                globalPresets: presets,
-              )) {
-                AppToast.show(
-                  context,
-                  message: l10n.gitGenerateCommitMessageNoProvider,
-                  variant: AppToastVariant.error,
-                );
-                return;
-              }
-              final setting = resolveAiFeatureSetting(
-                stored: stored,
-                appProviders: appProviders,
-                registry: registry,
-                globalPresets: presets,
+          BlocSelector<
+            GitCubit,
+            GitState,
+            (bool, bool, bool, String)
+          >(
+            selector: (state) => (
+              state.status.staged.isNotEmpty,
+              state.busy,
+              state.generatingCommitMessage,
+              state.status.branch ?? 'HEAD',
+            ),
+            builder: (context, commit) {
+              final (hasStaged, busy, generating, branch) = commit;
+              return _CommitBox(
+                controller: _commitController,
+                hint: l10n.gitCommitMessageHint(branch),
+                canCommit: hasStaged && !busy,
+                canGenerate: hasStaged && !busy,
+                generating: generating,
+                onChanged: _cubit.setCommitMessage,
+                onCommit: () async {
+                  final ok = await _cubit.commit();
+                  if (ok) _commitController.clear();
+                },
+                onGenerate: () async {
+                  final stored = context
+                      .read<AiFeatureSettingsCubit>()
+                      .state
+                      .settingFor(AiFeatureId.commitMessage);
+                  final appProviders = context.read<AppProviderCubit>().state;
+                  final registry = CliToolRegistryScope.of(context);
+                  final presets = context.read<CliPresetsCubit>().state.presets;
+                  if (!aiFeatureIsConfigured(
+                    stored: stored,
+                    registry: registry,
+                    appProviders: appProviders,
+                    globalPresets: presets,
+                  )) {
+                    AppToast.show(
+                      context,
+                      message: l10n.gitGenerateCommitMessageNoProvider,
+                      variant: AppToastVariant.error,
+                    );
+                    return;
+                  }
+                  final setting = resolveAiFeatureSetting(
+                    stored: stored,
+                    appProviders: appProviders,
+                    registry: registry,
+                    globalPresets: presets,
+                  );
+                  await _cubit.generateCommitMessage(setting);
+                },
               );
-              await _cubit.generateCommitMessage(setting);
             },
           ),
           const SizedBox(height: 12),
           Expanded(
-            child: state.status.hasChanges
-                ? BlocSelector<
-                    GitCubit,
-                    GitState,
-                    (
-                      GitChangesViewMode,
-                      List<GitFileChange>,
-                      List<GitFileChange>,
-                      Set<String>,
-                    )
-                  >(
-                    selector: (state) => (
-                      state.changesViewMode,
-                      state.status.staged,
-                      state.status.unstaged,
-                      state.expandedFolderPaths,
-                    ),
-                    builder: (context, changesData) {
-                      final (viewMode, staged, unstaged, expandedFolderPaths) =
-                          changesData;
-                      return _GitChangesScrollBody(
-                        viewMode: viewMode,
-                        staged: staged,
-                        unstaged: unstaged,
-                        expandedFolderPaths: expandedFolderPaths,
-                        cubit: _cubit,
-                        changesScrollController: _changesScrollController,
-                        horizontalScrollController: _horizontalScrollController,
-                        onOpenDiff: (change) => unawaited(_openDiff(change)),
-                        onConfirmDiscard: (change) =>
-                            unawaited(_confirmDiscard(change)),
-                      );
-                    },
-                  )
-                : Center(
+            child: BlocSelector<GitCubit, GitState, (bool, GitChangesTreeViewData)>(
+              selector: (state) => (
+                state.status.hasChanges,
+                state.changesTreeView,
+              ),
+              builder: (context, data) {
+                final (hasChanges, treeView) = data;
+                if (!hasChanges) {
+                  final cs = Theme.of(context).colorScheme;
+                  return Center(
                     child: Text(
                       l10n.gitNoChanges,
                       style: AppTextStyles.of(
                         context,
                       ).bodySmall.copyWith(color: cs.onSurfaceVariant),
                     ),
-                  ),
+                  );
+                }
+                if (!_changesListReady) {
+                  return const SizedBox.shrink();
+                }
+                return GitChangesTreeList(
+                  treeView: treeView,
+                  cubit: _cubit,
+                  listScrollController: _changesScrollController,
+                  horizontalScrollController: _horizontalScrollController,
+                  onOpenDiff: (change) => unawaited(_openDiff(change)),
+                  onConfirmDiscard: (change) =>
+                      unawaited(_confirmDiscard(change)),
+                );
+              },
+            ),
           ),
         ],
       ),
     );
   }
-
-  Widget _centeredHint(BuildContext context, IconData icon, String text) =>
-      _GitCenteredHint(icon: icon, text: text);
 }
 
-/// Centered icon + message used for the panel's empty / not-installed /
-/// not-a-repository states.
 class _GitCenteredHint extends StatelessWidget {
   const _GitCenteredHint({required this.icon, required this.text});
 
@@ -558,313 +562,17 @@ class _GitCenteredHint extends StatelessWidget {
   }
 }
 
-class _GitChangesScrollBody extends StatefulWidget {
-  const _GitChangesScrollBody({
-    required this.viewMode,
-    required this.staged,
-    required this.unstaged,
-    required this.expandedFolderPaths,
-    required this.cubit,
-    required this.changesScrollController,
-    required this.horizontalScrollController,
-    required this.onOpenDiff,
-    required this.onConfirmDiscard,
-  });
-
-  final GitChangesViewMode viewMode;
-  final List<GitFileChange> staged;
-  final List<GitFileChange> unstaged;
-  final Set<String> expandedFolderPaths;
-  final GitCubit cubit;
-  final ScrollController changesScrollController;
-  final ScrollController horizontalScrollController;
-  final ValueChanged<GitFileChange> onOpenDiff;
-  final ValueChanged<GitFileChange> onConfirmDiscard;
-
-  @override
-  State<_GitChangesScrollBody> createState() => _GitChangesScrollBodyState();
-}
-
-class _GitChangesScrollBodyState extends State<_GitChangesScrollBody> {
-  var _hoverEnabled = true;
-  var _activeScrolls = 0;
-
-  bool _onScrollNotification(ScrollNotification notification) {
-    if (notification.depth != 0) return false;
-    if (notification is ScrollStartNotification) {
-      _activeScrolls++;
-      if (_hoverEnabled) setState(() => _hoverEnabled = false);
-      return false;
-    }
-    if (notification is ScrollEndNotification) {
-      _activeScrolls = (_activeScrolls - 1).clamp(0, 1 << 30);
-      if (_activeScrolls == 0 && !_hoverEnabled) {
-        setState(() => _hoverEnabled = true);
-      }
-    }
-    return false;
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    final l10n = context.l10n;
-    if (widget.viewMode == GitChangesViewMode.list) {
-      final sections = <Widget>[
-        if (widget.staged.isNotEmpty)
-          _Section(
-            title: l10n.gitStagedChanges,
-            count: widget.staged.length,
-            action: AppIconButton(
-              icon: Icons.remove,
-              compact: true,
-              size: AppIconButton.kCompactSize,
-              tooltip: l10n.gitUnstageAll,
-              onTap: () => unawaited(widget.cubit.unstageAll()),
-            ),
-            children: [
-              for (final change in widget.staged)
-                GitChangeTile(
-                  key: ValueKey('staged:${change.path}'),
-                  change: change,
-                  hoverEnabled: _hoverEnabled,
-                  onOpenDiff: () => widget.onOpenDiff(change),
-                  onStage: () {},
-                  onUnstage: () => unawaited(widget.cubit.unstage(change)),
-                  onDiscard: () {},
-                ),
-            ],
-          ),
-        if (widget.unstaged.isNotEmpty)
-          _Section(
-            title: l10n.gitChanges,
-            count: widget.unstaged.length,
-            action: AppIconButton(
-              icon: Icons.add,
-              compact: true,
-              size: AppIconButton.kCompactSize,
-              tooltip: l10n.gitStageAll,
-              onTap: () => unawaited(widget.cubit.stageAll()),
-            ),
-            children: [
-              for (final change in widget.unstaged)
-                GitChangeTile(
-                  key: ValueKey('unstaged:${change.path}'),
-                  change: change,
-                  hoverEnabled: _hoverEnabled,
-                  onOpenDiff: () => widget.onOpenDiff(change),
-                  onStage: () => unawaited(widget.cubit.stage(change)),
-                  onUnstage: () {},
-                  onDiscard: () => widget.onConfirmDiscard(change),
-                ),
-            ],
-          ),
-      ];
-      return NotificationListener<ScrollNotification>(
-        onNotification: _onScrollNotification,
-        child: ListView(
-          scrollCacheExtent: ScrollCacheExtent.pixels(400),
-          controller: widget.changesScrollController,
-          children: sections,
-        ),
-      );
-    }
-
-    final stagedRows = visibleGitChangesRows(
-      changes: widget.staged,
-      expandedFolderPaths: widget.expandedFolderPaths,
-    );
-    final unstagedRows = visibleGitChangesRows(
-      changes: widget.unstaged,
-      expandedFolderPaths: widget.expandedFolderPaths,
-    );
-
-    return LayoutBuilder(
-      builder: (context, constraints) {
-        final fileLabelStyle = AppTextStyles.of(context).bodySmall;
-        final folderLabelStyle = AppTextStyles.of(
-          context,
-        ).bodySmall.copyWith(fontWeight: FontWeight.w500);
-        final contentWidth = math.max(
-          constraints.maxWidth,
-          gitChangesMinContentWidth(
-            rows: [...stagedRows, ...unstagedRows],
-            fileLabelStyle: fileLabelStyle,
-            folderLabelStyle: folderLabelStyle,
-            textScaler: MediaQuery.textScalerOf(context),
-          ),
-        );
-
-        return Scrollbar(
-          controller: widget.horizontalScrollController,
-          thumbVisibility: true,
-          notificationPredicate: (notification) =>
-              notification.metrics.axis == Axis.horizontal,
-          child: SingleChildScrollView(
-            controller: widget.horizontalScrollController,
-            scrollDirection: Axis.horizontal,
-            child: SizedBox(
-              width: contentWidth,
-              height: constraints.maxHeight,
-              child: Scrollbar(
-                controller: widget.changesScrollController,
-                thumbVisibility: true,
-                child: NotificationListener<ScrollNotification>(
-                  onNotification: _onScrollNotification,
-                  child: CustomScrollView(
-                    scrollCacheExtent: ScrollCacheExtent.pixels(400),
-                    controller: widget.changesScrollController,
-                    slivers: [
-                      if (widget.staged.isNotEmpty) ...[
-                        SliverToBoxAdapter(
-                          child: _SectionHeader(
-                            title: l10n.gitStagedChanges,
-                            count: widget.staged.length,
-                            action: AppIconButton(
-                              icon: Icons.remove,
-                              compact: true,
-                              size: AppIconButton.kCompactSize,
-                              tooltip: l10n.gitUnstageAll,
-                              onTap: () => unawaited(widget.cubit.unstageAll()),
-                            ),
-                          ),
-                        ),
-                        SliverFixedExtentList(
-                          itemExtent: kGitChangesRowExtent,
-                          delegate: SliverChildBuilderDelegate(
-                            (context, index) => SizedBox(
-                              width: contentWidth,
-                              child: _buildTreeRow(
-                                row: stagedRows[index],
-                                staged: true,
-                              ),
-                            ),
-                            childCount: stagedRows.length,
-                          ),
-                        ),
-                      ],
-                      if (widget.unstaged.isNotEmpty) ...[
-                        SliverToBoxAdapter(
-                          child: _SectionHeader(
-                            title: l10n.gitChanges,
-                            count: widget.unstaged.length,
-                            action: AppIconButton(
-                              icon: Icons.add,
-                              compact: true,
-                              size: AppIconButton.kCompactSize,
-                              tooltip: l10n.gitStageAll,
-                              onTap: () => unawaited(widget.cubit.stageAll()),
-                            ),
-                          ),
-                        ),
-                        SliverFixedExtentList(
-                          itemExtent: kGitChangesRowExtent,
-                          delegate: SliverChildBuilderDelegate(
-                            (context, index) => SizedBox(
-                              width: contentWidth,
-                              child: _buildTreeRow(
-                                row: unstagedRows[index],
-                                staged: false,
-                              ),
-                            ),
-                            childCount: unstagedRows.length,
-                          ),
-                        ),
-                      ],
-                    ],
-                  ),
-                ),
-              ),
-            ),
-          ),
-        );
-      },
-    );
-  }
-
-  Widget _buildTreeRow({
-    required GitChangesVisibleRow row,
-    required bool staged,
-  }) {
-    if (row.isFolder) {
-      return GitChangeFolderTile(
-        key: ValueKey('folder:${row.folderPath}'),
-        name: row.name!,
-        depth: row.depth,
-        isExpanded: widget.expandedFolderPaths.contains(row.folderPath),
-        hoverEnabled: _hoverEnabled,
-        onToggle: () => widget.cubit.toggleFolderExpanded(row.folderPath!),
-        onStage: staged
-            ? null
-            : () => unawaited(widget.cubit.stageFolder(row.folderPath!)),
-        onUnstage: staged
-            ? () => unawaited(widget.cubit.unstageFolder(row.folderPath!))
-            : null,
-      );
-    }
-
-    final change = row.change!;
-    return GitChangeTile(
-      key: ValueKey('${staged ? 'staged' : 'unstaged'}:${change.path}'),
-      change: change,
-      depth: row.depth,
-      treeLayout: true,
-      hoverEnabled: _hoverEnabled,
-      onOpenDiff: () => widget.onOpenDiff(change),
-      onStage: staged ? () {} : () => unawaited(widget.cubit.stage(change)),
-      onUnstage: staged ? () => unawaited(widget.cubit.unstage(change)) : () {},
-      onDiscard: staged ? () {} : () => widget.onConfirmDiscard(change),
-    );
-  }
-}
-
-class _SectionHeader extends StatelessWidget {
-  const _SectionHeader({
-    required this.title,
-    required this.count,
-    required this.action,
-  });
-
-  final String title;
-  final int count;
-  final Widget action;
-
-  @override
-  Widget build(BuildContext context) {
-    final cs = Theme.of(context).colorScheme;
-    return Padding(
-      padding: const EdgeInsets.fromLTRB(4, 6, 0, 2),
-      child: Row(
-        children: [
-          Expanded(
-            child: Text(
-              title,
-              style: AppTextStyles.of(
-                context,
-              ).toolPanelTitleColored(cs.onSurfaceVariant),
-            ),
-          ),
-          action,
-          const SizedBox(width: 2),
-          _CountBadge(count: count),
-        ],
-      ),
-    );
-  }
-}
-
 class _Header extends StatelessWidget {
   const _Header({
     required this.branch,
     required this.ahead,
     required this.behind,
     required this.busy,
-    required this.treeView,
     required this.allFoldersExpanded,
     required this.onRefresh,
     required this.onPush,
     required this.onPull,
     required this.onBranch,
-    required this.onToggleViewMode,
     required this.onToggleExpandAll,
   });
 
@@ -872,13 +580,11 @@ class _Header extends StatelessWidget {
   final int ahead;
   final int behind;
   final bool busy;
-  final bool treeView;
   final bool allFoldersExpanded;
   final VoidCallback onRefresh;
   final VoidCallback onPush;
   final VoidCallback onPull;
   final VoidCallback onBranch;
-  final VoidCallback onToggleViewMode;
   final VoidCallback onToggleExpandAll;
 
   @override
@@ -936,22 +642,14 @@ class _Header extends StatelessWidget {
             ),
           ),
         AppIconButton(
-          icon: treeView ? Icons.view_list : Icons.account_tree_outlined,
+          icon: allFoldersExpanded ? Icons.unfold_less : Icons.unfold_more,
           compact: true,
           size: AppIconButton.kCompactSize,
-          tooltip: treeView ? l10n.gitChangesListView : l10n.gitChangesTreeView,
-          onTap: onToggleViewMode,
+          tooltip: allFoldersExpanded
+              ? l10n.treeCollapseAllFolders
+              : l10n.treeExpandAllFolders,
+          onTap: onToggleExpandAll,
         ),
-        if (treeView)
-          AppIconButton(
-            icon: allFoldersExpanded ? Icons.unfold_less : Icons.unfold_more,
-            compact: true,
-            size: AppIconButton.kCompactSize,
-            tooltip: allFoldersExpanded
-                ? l10n.treeCollapseAllFolders
-                : l10n.treeExpandAllFolders,
-            onTap: onToggleExpandAll,
-          ),
         AppIconButton(
           icon: Icons.download_outlined,
           compact: true,
@@ -1040,56 +738,6 @@ class _CommitBox extends StatelessWidget {
           label: Text(l10n.gitCommit),
         ),
       ],
-    );
-  }
-}
-
-class _Section extends StatelessWidget {
-  const _Section({
-    required this.title,
-    required this.count,
-    required this.action,
-    required this.children,
-  });
-
-  final String title;
-  final int count;
-  final Widget action;
-  final List<Widget> children;
-
-  @override
-  Widget build(BuildContext context) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.stretch,
-      children: [
-        _SectionHeader(title: title, count: count, action: action),
-        ...children,
-      ],
-    );
-  }
-}
-
-class _CountBadge extends StatelessWidget {
-  const _CountBadge({required this.count});
-
-  final int count;
-
-  @override
-  Widget build(BuildContext context) {
-    final cs = Theme.of(context).colorScheme;
-    return Container(
-      margin: const EdgeInsets.only(left: 4),
-      padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 1),
-      decoration: BoxDecoration(
-        color: cs.surfaceContainerHighest,
-        borderRadius: BorderRadius.circular(10),
-      ),
-      child: Text(
-        '$count',
-        style: AppTextStyles.of(
-          context,
-        ).caption.copyWith(color: cs.onSurfaceVariant),
-      ),
     );
   }
 }
