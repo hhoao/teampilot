@@ -269,6 +269,7 @@ ThemeData _applyTypography(
       dialogTheme: buildAppDialogTheme(colorScheme: scheme, textTheme: textTheme),
       tooltipTheme: buildAppTooltipTheme(
         textTheme: textTheme,
+        colorScheme: scheme,
         brightness: flexTheme.brightness,
       ),
       inputDecorationTheme: buildAppOutlineInputDecorationTheme(
@@ -318,6 +319,7 @@ ThemeData _applyTypography(
     ),
     tooltipTheme: buildAppTooltipTheme(
       textTheme: mergedTextTheme,
+      colorScheme: scheme,
       brightness: flexTheme.brightness,
     ),
     inputDecorationTheme: buildAppOutlineInputDecorationTheme(
