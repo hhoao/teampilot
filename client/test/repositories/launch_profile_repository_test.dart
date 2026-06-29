@@ -19,10 +19,7 @@ void main() {
 
   setUp(() async {
     tmp = await Directory.systemTemp.createTemp('identity_repo_');
-    // Index lives beside launchProfilesDir; isolate each test under its own root.
-    final profilesDir = Directory(p.join(tmp.path, 'launch-profiles'));
-    await profilesDir.create(recursive: true);
-    repo = LaunchProfileRepository(rootDir: profilesDir.path);
+    repo = testLaunchProfileRepository(tmp);
   });
   tearDown(() => tmp.delete(recursive: true));
 

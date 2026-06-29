@@ -13,7 +13,7 @@ void main() {
 
   test('provisions exactly one default personal identity on empty store', () async {
     final tmp = await Directory.systemTemp.createTemp('identity_prov_');
-    final repo = LaunchProfileRepository(rootDir: tmp.path);
+    final repo = testLaunchProfileRepository(tmp);
     final provisioner = LaunchProfileProvisioner(repository: repo);
 
     final first = await provisioner.ensureDefaultPersonal();

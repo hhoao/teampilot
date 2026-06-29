@@ -21,7 +21,7 @@ void main() {
   test('addClonedTeam persists ids, members, and selects the new team',
       () async {
     final dir = await Directory.systemTemp.createTemp('clone-team-');
-    final repo = LaunchProfileRepository(rootDir: dir.path);
+    final repo = testLaunchProfileRepository(dir);
     final cubit = build(repo);
     await cubit.load();
 
@@ -54,7 +54,7 @@ void main() {
 
   test('addClonedTeam auto-renames on display-name collision', () async {
     final dir = await Directory.systemTemp.createTemp('clone-team-2-');
-    final repo = LaunchProfileRepository(rootDir: dir.path);
+    final repo = testLaunchProfileRepository(dir);
     final cubit = build(repo);
     await cubit.load();
 

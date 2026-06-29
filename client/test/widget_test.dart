@@ -286,7 +286,7 @@ Future<SessionPreferencesCubit> testSessionPreferencesCubit() async {
 Future<LaunchProfileCubit> createTeamCubit({TeamLauncher? launcher}) async {
   final tmp = await Directory.systemTemp.createTemp('teams_widget_');
   final appData = await Directory.systemTemp.createTemp('teams_widget_app_');
-  final repository = LaunchProfileRepository(rootDir: tmp.path);
+  final repository = testLaunchProfileRepository(tmp);
   final cubit = LaunchProfileCubit(
     repository: repository,
     sessionRepository: SessionRepository(),
@@ -737,7 +737,7 @@ void main() {
   test('team cubit manages teams', () async {
     final tmp = await Directory.systemTemp.createTemp('teams_cubit_');
     final appData = await Directory.systemTemp.createTemp('teams_cubit_app_');
-    final repository = LaunchProfileRepository(rootDir: tmp.path);
+    final repository = testLaunchProfileRepository(tmp);
     final cubit = LaunchProfileCubit(
       repository: repository,
       sessionRepository: SessionRepository(),
