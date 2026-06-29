@@ -4,6 +4,7 @@ import 'package:re_editor/re_editor.dart';
 import '../../services/diff/diff_decoration_mapper.dart';
 import '../../services/diff/diff_model.dart';
 import '../../services/editor/file_editor_theme.dart';
+import '../../theme/workspace_surface_layers.dart';
 import 'diff_overview_ruler.dart';
 import 'diff_ribbon_painter.dart';
 import 'diff_view_controller.dart';
@@ -19,6 +20,7 @@ class SideBySideDiffView extends StatefulWidget {
     required this.result,
     this.filePath,
     this.controller,
+    this.chrome = WorkspacePageChrome.workspace,
     super.key,
   });
 
@@ -29,6 +31,9 @@ class SideBySideDiffView extends StatefulWidget {
 
   /// Optional shared navigation controller (next/previous change).
   final DiffViewController? controller;
+
+  /// Workspace surface chrome for editor backgrounds.
+  final WorkspacePageChrome chrome;
 
   @override
   State<SideBySideDiffView> createState() => _SideBySideDiffViewState();
@@ -138,7 +143,12 @@ class _SideBySideDiffViewState extends State<SideBySideDiffView> {
     final colors = diffColorsFor(cs);
     final decorations = buildDiffPaneDecorations(_result.rows, colors);
     final path = widget.filePath ?? '';
-    final style = codeEditorStyleFor(context, path);
+    final shellSurface = cs.workspaceCardChrome(widget.chrome);
+    final style = codeEditorStyleFor(
+      context,
+      path,
+      backgroundColor: shellSurface,
+    );
     _lineHeightCache = _lineHeight(style);
 
     return Row(
@@ -169,6 +179,7 @@ class _SideBySideDiffViewState extends State<SideBySideDiffView> {
           scroll: _rightScroll,
           lineHeight: _lineHeightCache,
           topPadding: _kEditorTopPadding,
+          trackColor: cs.workspaceSubtleSurface,
         ),
       ],
     );

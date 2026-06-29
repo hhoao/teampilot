@@ -24,6 +24,7 @@ class AppDialog extends StatelessWidget {
     this.contentPadding = kAppDialogContentPadding,
     this.scrollable = false,
     this.backgroundColor,
+    this.showBorder = false,
   });
 
   /// The dialog body. Typically a [Column] starting with an [AppDialogHeader].
@@ -46,6 +47,10 @@ class AppDialog extends StatelessWidget {
   /// Overrides the dialog surface. Defaults to the workspace card color.
   final Color? backgroundColor;
 
+  /// Draws an [outlineVariant] border around the dialog shell, matching
+  /// [WorkspacePageCardShell].
+  final bool showBorder;
+
   @override
   Widget build(BuildContext context) {
     final cs = Theme.of(context).colorScheme;
@@ -55,6 +60,13 @@ class AppDialog extends StatelessWidget {
 
     return Dialog(
       backgroundColor: backgroundColor ?? cs.workspaceCard,
+      shape: showBorder
+          ? appDialogShape().copyWith(
+              side: BorderSide(
+                color: cs.outlineVariant.withValues(alpha: 0.7),
+              ),
+            )
+          : null,
       child: ConstrainedBox(
         constraints: BoxConstraints(
           maxWidth: maxWidth,

@@ -4,6 +4,7 @@ import 'package:re_editor/re_editor.dart';
 import '../../services/diff/diff_decoration_mapper.dart';
 import '../../services/diff/diff_model.dart';
 import '../../services/editor/file_editor_theme.dart';
+import '../../theme/workspace_surface_layers.dart';
 import 'diff_overview_ruler.dart';
 import 'diff_view_controller.dart';
 import 'side_by_side_diff_view.dart' show diffColorsFor;
@@ -18,12 +19,14 @@ class UnifiedDiffView extends StatefulWidget {
     required this.result,
     this.filePath,
     this.controller,
+    this.chrome = WorkspacePageChrome.workspace,
     super.key,
   });
 
   final DiffResult result;
   final String? filePath;
   final DiffViewController? controller;
+  final WorkspacePageChrome chrome;
 
   @override
   State<UnifiedDiffView> createState() => _UnifiedDiffViewState();
@@ -106,7 +109,12 @@ class _UnifiedDiffViewState extends State<UnifiedDiffView> {
   Widget build(BuildContext context) {
     final cs = Theme.of(context).colorScheme;
     final path = widget.filePath ?? '';
-    final style = codeEditorStyleFor(context, path);
+    final shellSurface = cs.workspaceCardChrome(widget.chrome);
+    final style = codeEditorStyleFor(
+      context,
+      path,
+      backgroundColor: shellSurface,
+    );
     _lineHeightCache = _unifiedLineHeight(style);
 
     // Rebuild decorations with real theme colors against the cached structure.
@@ -146,6 +154,7 @@ class _UnifiedDiffViewState extends State<UnifiedDiffView> {
           scroll: _scroll,
           lineHeight: _lineHeightCache,
           topPadding: 5,
+          trackColor: cs.workspaceSubtleSurface,
         ),
       ],
     );

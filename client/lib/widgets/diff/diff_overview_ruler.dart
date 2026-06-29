@@ -15,6 +15,7 @@ class DiffOverviewRuler extends StatelessWidget {
     required this.scroll,
     required this.lineHeight,
     required this.topPadding,
+    this.trackColor,
     super.key,
   });
 
@@ -25,6 +26,7 @@ class DiffOverviewRuler extends StatelessWidget {
   final CodeScrollController scroll;
   final double lineHeight;
   final double topPadding;
+  final Color? trackColor;
 
   double _contentHeight() {
     final pos = scroll.verticalScroller.hasClients
@@ -76,7 +78,7 @@ class DiffOverviewRuler extends StatelessWidget {
                     scrollOffset: hasClients ? scroller.offset : 0,
                     viewportExtent:
                         hasClients ? scroller.position.viewportDimension : 0,
-                    trackColor: cs.surfaceContainerHighest,
+                    trackColor: trackColor ?? cs.surfaceContainerHighest,
                     viewportColor: cs.onSurface.withValues(alpha: 0.12),
                     addColor: const Color(0xFF2EA043),
                     removeColor: cs.error,
