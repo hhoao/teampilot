@@ -16,6 +16,8 @@ import '../services/terminal/terminal_session.dart';
 import '../services/terminal/terminal_theme_mapper.dart';
 import '../theme/workspace_surface_layers.dart';
 import '../utils/app_keys.dart';
+import '../widgets/deferred_foreground_mount.dart';
+import 'home_workspace/workspace/workspace_route_active_scope.dart';
 import 'chat/chat_workbench_placeholders.dart';
 import 'chat/chat_workbench_slice.dart';
 import 'chat/chat_workbench_terminal.dart';
@@ -329,45 +331,50 @@ class _ChatWorkbenchBody extends StatelessWidget {
     required bool sessionConnectInProgress,
     required String? launchError,
   }) {
-    if (!routeActive) {
+    final foreground =
+        routeActive && WorkspaceRouteActiveScope.routeActiveOf(context);
+    if (!foreground) {
       return const SizedBox.expand();
     }
 
     final mountTerminalForLayout =
         sessionConnectInProgress || session.isRunning;
 
-    return Stack(
-      key: kChatWorkbenchTerminalStackKey,
-      fit: StackFit.expand,
-      children: [
-        if (mountTerminalForLayout)
-          Offstage(
-            offstage: sessionConnectInProgress,
-            child: buildRunningTerminal(
-              session: session,
-              terminalTheme: terminalTheme,
-              chatCubit: chatCubit,
-              isPersonal: isPersonalWorkspace,
-              team: team,
-              autofocus: !sessionConnectInProgress,
+    return DeferredForegroundMount(
+      active: TickerMode.valuesOf(context).enabled,
+      builder: (context) => Stack(
+        key: kChatWorkbenchTerminalStackKey,
+        fit: StackFit.expand,
+        children: [
+          if (mountTerminalForLayout)
+            Offstage(
+              offstage: sessionConnectInProgress,
+              child: buildRunningTerminal(
+                session: session,
+                terminalTheme: terminalTheme,
+                chatCubit: chatCubit,
+                isPersonal: isPersonalWorkspace,
+                team: team,
+                autofocus: !sessionConnectInProgress,
+              ),
             ),
-          ),
-        if (sessionConnectInProgress)
-          ChatWorkbenchSessionLoadingView(
-            message: context.l10n.sessionStarting,
-          )
-        else if (!session.isRunning)
-          ChatWorkbenchTerminalPlaceholder(
-            onConnect: () => unawaited(
-              onConnect(isPersonal: isPersonalWorkspace, team: team),
+          if (sessionConnectInProgress)
+            ChatWorkbenchSessionLoadingView(
+              message: context.l10n.sessionStarting,
+            )
+          else if (!session.isRunning)
+            ChatWorkbenchTerminalPlaceholder(
+              onConnect: () => unawaited(
+                onConnect(isPersonal: isPersonalWorkspace, team: team),
+              ),
+              connectDisabled: sessionConnectInProgress,
+              memberName: isPersonalWorkspace
+                  ? context.l10n.homeWorkspaceWorkspaceAgent
+                  : chatCubit.selectedMemberName(team!),
+              launchError: launchError,
             ),
-            connectDisabled: sessionConnectInProgress,
-            memberName: isPersonalWorkspace
-                ? context.l10n.homeWorkspaceWorkspaceAgent
-                : chatCubit.selectedMemberName(team!),
-            launchError: launchError,
-          ),
-      ],
+        ],
+      ),
     );
   }
 }

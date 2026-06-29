@@ -58,13 +58,8 @@ class FilePathLinkProvider extends TerminalLinkProvider {
 
   String _key(String payload) => '${_cwd()} $payload';
 
-  /// Strips a trailing `:line` or `:line:col` suffix so the base file path can
-  /// be stat'd. The regex is anchored at `$` and requires at least one digit
-  /// after the colon, so Windows drive letters like `C:\x` are unaffected
-  /// (`C:` has no digit immediately after the colon).
-  static final RegExp _lineSuffixRe = RegExp(r':\d+(?::\d+)?$');
-
-  String _filePart(String payload) => payload.replaceFirst(_lineSuffixRe, '');
+  String _filePart(String payload) =>
+      TerminalUriOpener.stripLineSuffix(payload);
 
   @override
   bool isEnabled(LinkSpan span) => _confirmed.contains(_key(span.payload));

@@ -177,6 +177,21 @@ class TerminalSession implements TerminalTextSink {
     ];
   }
 
+  /// Drops cached link providers so the next [linkProviders] read rebuilds with
+  /// the current [_launchCwd]. [TerminalView] may materialize during
+  /// `sessionConnecting` before [connect] assigns the project directory.
+  void _disposeLinkProviders() {
+    final providers = _linkProviders;
+    if (providers == null) return;
+    engine.workingDir.removeListener(_syncOsc7Cwd);
+    for (final p in providers) {
+      p.dispose();
+    }
+    _osc7Cwd?.dispose();
+    _osc7Cwd = null;
+    _linkProviders = null;
+  }
+
   void _syncOsc7Cwd() =>
       _osc7Cwd?.value = parseOsc7Cwd(engine.workingDir.value);
 
@@ -487,6 +502,7 @@ class TerminalSession implements TerminalTextSink {
       disconnect();
     }
     _launchCwd = workingDirectory;
+    _disposeLinkProviders();
     _onProcessStarted = onProcessStarted;
     _onProcessFailed = onProcessFailed;
     _onProcessExited = onProcessExited;
@@ -981,16 +997,7 @@ class TerminalSession implements TerminalTextSink {
     if (_disposed) return;
     _disposed = true;
     disconnect();
-    final providers = _linkProviders;
-    if (providers != null) {
-      engine.workingDir.removeListener(_syncOsc7Cwd);
-      for (final p in providers) {
-        p.dispose();
-      }
-      _linkProviders = null;
-    }
-    _osc7Cwd?.dispose();
-    _osc7Cwd = null;
+    _disposeLinkProviders();
     engine.dispose();
     unawaited(_parkedSubmissions.close());
   }

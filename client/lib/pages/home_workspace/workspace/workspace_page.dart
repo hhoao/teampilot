@@ -57,6 +57,7 @@ class _WorkspacePageState extends State<WorkspacePage> {
   Widget? _frozenPage;
   bool _wasRouteActive = false;
   String? _lastScopeView;
+  bool _activationScheduled = false;
 
   WorkspaceRouteActiveScope? _readScope(BuildContext context) {
     return context.getInheritedWidgetOfExactType<WorkspaceRouteActiveScope>();
@@ -79,7 +80,7 @@ class _WorkspacePageState extends State<WorkspacePage> {
     final active = scope?.routeActive ?? true;
     final view = scope?.view;
     if (active && !_wasRouteActive) {
-      _activateRoute();
+      _scheduleActivation();
     }
     if (active &&
         (view != _lastScopeView ||
@@ -97,11 +98,15 @@ class _WorkspacePageState extends State<WorkspacePage> {
   @override
   void didUpdateWidget(covariant WorkspacePage oldWidget) {
     super.didUpdateWidget(oldWidget);
+    if (oldWidget.tabKey != widget.tabKey ||
+        oldWidget.identity != widget.identity) {
+      _invalidateFrozenPage();
+    }
     final active = _readScope(context)?.routeActive ?? true;
     if (active &&
         (oldWidget.tabKey != widget.tabKey ||
             oldWidget.identity != widget.identity)) {
-      _activateRoute();
+      _scheduleActivation();
     }
   }
 
@@ -111,6 +116,19 @@ class _WorkspacePageState extends State<WorkspacePage> {
     }
     return WorkspaceSection.conversations;
   }
+
+  void _scheduleActivation() {
+    if (_activationScheduled) return;
+    _activationScheduled = true;
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _activationScheduled = false;
+      if (!mounted) return;
+      if (!(_readScope(context)?.routeActive ?? false)) return;
+      _activateRoute();
+    });
+  }
+
+  void _invalidateFrozenPage() => _frozenPage = null;
 
   void _activateRoute() {
     final launchIdentity = widget.identity;
@@ -255,9 +273,24 @@ class _WorkspacePageState extends State<WorkspacePage> {
   Widget build(BuildContext context) {
     final scope = context.dependOnInheritedWidgetOfExactType<WorkspaceRouteActiveScope>();
     final routeActive = scope?.routeActive ?? true;
-    if (!routeActive) {
-      return _frozenPage ?? const SizedBox.shrink();
-    }
+    final body = !routeActive
+        ? (_frozenPage ?? const SizedBox.shrink())
+        : (_frozenPage ??= _buildAndCacheLivePage(context));
+    return BlocListener<ChatCubit, ChatState>(
+      listenWhen: (previous, next) {
+        if (previous.workspaces == next.workspaces) return false;
+        return _findWorkspace(previous.workspaces, widget.workspaceId) !=
+            _findWorkspace(next.workspaces, widget.workspaceId);
+      },
+      listener: (context, state) {
+        _invalidateFrozenPage();
+        if (routeActive && mounted) setState(() {});
+      },
+      child: body,
+    );
+  }
+
+  Widget _buildAndCacheLivePage(BuildContext context) {
     final built = _buildLivePage(context);
     _frozenPage = built;
     return built;

@@ -128,17 +128,19 @@ class _WorkspaceTabSlot extends StatelessWidget {
       routeActive: isActive,
       view: view,
       configSection: configSection,
-      child: Offstage(
-        offstage: !isActive,
-        child: TickerMode(
-          enabled: isActive,
-          child: IgnorePointer(
-            ignoring: !isActive,
-            child: WorkspacePage(
-              key: ValueKey('workspace-body-${tab.tabKey}'),
-              workspaceId: tab.workspaceId,
-              tabKey: tab.tabKey,
-              identity: tab.identity,
+      child: RepaintBoundary(
+        child: Offstage(
+          offstage: !isActive,
+          child: TickerMode(
+            enabled: isActive,
+            child: IgnorePointer(
+              ignoring: !isActive,
+              child: WorkspacePage(
+                key: ValueKey('workspace-body-${tab.tabKey}'),
+                workspaceId: tab.workspaceId,
+                tabKey: tab.tabKey,
+                identity: tab.identity,
+              ),
             ),
           ),
         ),

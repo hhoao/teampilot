@@ -1082,6 +1082,26 @@ void main() {
       expect(identical(first, second), isTrue);
     });
 
+    test(
+      'rebuilds file path link provider when connect assigns launch cwd',
+      () {
+        final session = makeSession();
+        addTearDown(session.dispose);
+
+        final stale = session.linkProviders;
+        expect((stale[1] as FilePathLinkProvider).launchCwd, isEmpty);
+
+        session.connect(workingDirectory: '/tmp/teampilot-link-cwd-test');
+
+        final fresh = session.linkProviders;
+        expect(identical(stale, fresh), isFalse);
+        expect(
+          (fresh[1] as FilePathLinkProvider).launchCwd,
+          '/tmp/teampilot-link-cwd-test',
+        );
+      },
+    );
+
     test('dispose clears and disposes the providers', () {
       final session = makeSession();
 
