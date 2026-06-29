@@ -286,8 +286,12 @@ class _ResizableSplitViewState extends State<ResizableSplitView> {
 
   @override
   Widget build(BuildContext context) {
-    final isDark = Theme.of(context).brightness == Brightness.dark;
-    final dividerColor = isDark ? Colors.white12 : const Color(0xFFE5E7EB);
+    final cs = Theme.of(context).colorScheme;
+    final isDark = cs.brightness == Brightness.dark;
+    // outlineVariant tracks the active palette; hardcoded gray-200 matched
+    // surfaceContainer in light mode and vanished against pane backgrounds.
+    final dividerColor =
+        cs.outlineVariant.withValues(alpha: isDark ? 0.5 : 0.6);
 
     return LayoutBuilder(
       builder: (context, constraints) {
