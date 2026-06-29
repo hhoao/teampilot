@@ -53,5 +53,24 @@ void main() {
       expect(cubit.openTabCountForWorkspace('B'), 1);
       addTearDown(cubit.close);
     });
+
+    test('activateWorkspaceTab updates tab bucket and session scope together', () {
+      final cubit = _cubit();
+      addTearDown(cubit.close);
+
+      cubit.setActiveWorkspace('A');
+      cubit.tabStore.append(_tab('a1'));
+      cubit.refreshActiveWorkspaceTabs();
+      expect(cubit.state.tabs, isNotEmpty);
+
+      cubit.activateWorkspaceTab(
+        workspaceTabKey: 'B',
+        scopeSessionsToSelectedTeam: true,
+        selectedTeamId: 'team-1',
+      );
+
+      expect(cubit.tabStore.activeWorkspaceId, 'B');
+      expect(cubit.state.tabs, isEmpty);
+    });
   });
 }

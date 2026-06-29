@@ -6,6 +6,7 @@ import 'package:go_router/go_router.dart';
 
 import '../../../cubits/chat_cubit.dart';
 import '../../../cubits/launch_profile_cubit.dart';
+import '../../../cubits/session_preferences_cubit.dart';
 import '../../../l10n/l10n_extensions.dart';
 import '../../../models/workspace.dart';
 import '../../../models/launch_profile_kind.dart';
@@ -16,6 +17,7 @@ import '../../../models/team_config.dart';
 import '../../../models/launch_profile.dart';
 import '../../../services/storage/launch_profile_provisioner.dart';
 import '../../../theme/workspace_surface_layers.dart';
+import '../../../utils/workspace_tab_session_scope.dart';
 import 'workspace_config_workspace.dart';
 import 'workspace_rail.dart';
 import 'workspace_section.dart';
@@ -74,13 +76,7 @@ class _WorkspacePageState extends State<WorkspacePage> {
       _visitedManage = true;
     }
     if (widget.routeActive) {
-      context.read<ChatCubit>().setActiveWorkspace(widget.tabKey);
-      unawaited(
-        context.read<ChatCubit>().ensureSessionsForWorkspace(widget.workspaceId),
-      );
-      WidgetsBinding.instance.addPostFrameCallback(
-        (_) => _syncWorkspaceContext(),
-      );
+      _activateRoute();
     }
     // The manage panel is built lazily on first rail click (?view=manage). Once
     // visited it stays mounted; [Offstage] skips layout for the hidden pane.
@@ -94,13 +90,7 @@ class _WorkspacePageState extends State<WorkspacePage> {
         (widget.routeActive &&
             (oldWidget.tabKey != widget.tabKey ||
                 oldWidget.identity != widget.identity))) {
-      context.read<ChatCubit>().setActiveWorkspace(widget.tabKey);
-      unawaited(
-        context.read<ChatCubit>().ensureSessionsForWorkspace(widget.workspaceId),
-      );
-      WidgetsBinding.instance.addPostFrameCallback(
-        (_) => _syncWorkspaceContext(),
-      );
+      _activateRoute();
     }
     if (widget.routeActive &&
         (oldWidget.view != widget.view ||
@@ -119,6 +109,24 @@ class _WorkspacePageState extends State<WorkspacePage> {
       return WorkspaceSection.manage;
     }
     return WorkspaceSection.conversations;
+  }
+
+  void _activateRoute() {
+    final launchIdentity = widget.identity;
+    if (launchIdentity == null) return;
+    final prefs = context.read<SessionPreferencesCubit>().state.preferences;
+    context.read<ChatCubit>().activateWorkspaceTab(
+      workspaceTabKey: widget.tabKey,
+      scopeSessionsToSelectedTeam: prefs.scopeSessionsToSelectedTeam,
+      selectedTeamId: workspaceTabSessionTeamScopeId(
+        launchIdentity,
+        _resolveIdentity(),
+      ),
+    );
+    unawaited(
+      context.read<ChatCubit>().ensureSessionsForWorkspace(widget.workspaceId),
+    );
+    WidgetsBinding.instance.addPostFrameCallback((_) => _syncWorkspaceContext());
   }
 
   LaunchProfile? _resolveIdentity() {
@@ -378,9 +386,9 @@ class _WorkspacePageState extends State<WorkspacePage> {
     if (teamId.isEmpty) return;
     final teamCubit = context.read<LaunchProfileCubit>();
     if (teamCubit.state.selectedTeam?.id == teamId) return;
-    if (teamCubit.state.selectedTeam?.id != teamId) {
-      teamCubit.selectTeam(teamId);
-    }
+    unawaited(
+      teamCubit.selectTeam(teamId, syncResources: false, silent: true),
+    );
   }
 
   static Workspace? _findWorkspace(List<Workspace> workspaces, String id) {
