@@ -2,6 +2,7 @@ import 'dart:convert';
 import 'dart:io';
 
 import 'package:flutter_test/flutter_test.dart';
+import 'package:path/path.dart' as p;
 import 'package:teampilot/models/config_bundle.dart';
 import 'package:teampilot/models/personal_profile.dart';
 import 'package:teampilot/models/team_config.dart';
@@ -18,7 +19,10 @@ void main() {
 
   setUp(() async {
     tmp = await Directory.systemTemp.createTemp('identity_repo_');
-    repo = LaunchProfileRepository(rootDir: tmp.path);
+    // Index lives beside launchProfilesDir; isolate each test under its own root.
+    final profilesDir = Directory(p.join(tmp.path, 'launch-profiles'));
+    await profilesDir.create(recursive: true);
+    repo = LaunchProfileRepository(rootDir: profilesDir.path);
   });
   tearDown(() => tmp.delete(recursive: true));
 
@@ -62,8 +66,7 @@ void main() {
     await repo.save(const PersonalProfile(id: 'coding', display: 'Coding'));
     await repo.save(const TeamProfile(id: 'squad', name: 'Squad'));
 
-    final resolvedIndex =
-        '${Directory(tmp.path).parent.path}${Platform.pathSeparator}launch-profiles-index.json';
+    final resolvedIndex = p.join(tmp.path, 'launch-profiles-index.json');
     expect(File(resolvedIndex).existsSync(), isTrue);
 
     final fromSnapshot = await repo.loadAll();

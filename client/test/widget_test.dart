@@ -2,6 +2,7 @@ import 'dart:io';
 
 import 'package:google_fonts/google_fonts.dart';
 import 'package:teampilot/l10n/app_localizations.dart';
+import 'package:teampilot/cubits/app_bootstrap_cubit.dart';
 import 'package:teampilot/cubits/ai_feature_settings_cubit.dart';
 import 'package:teampilot/cubits/app_provider_cubit.dart';
 import 'package:teampilot/cubits/chat/model/session_connect_request.dart';
@@ -53,6 +54,7 @@ import 'package:teampilot/services/provider/config_profile_service.dart';
 import 'package:teampilot/services/app/connection_mode_service.dart';
 import 'package:teampilot/services/io/local_filesystem.dart';
 import 'package:teampilot/services/git/git_command_runner.dart';
+import 'package:teampilot/services/home_workspace/home_workspace_ui_cache.dart';
 import 'package:teampilot/services/storage/home_target_controller.dart';
 import 'support/test_runtime_context.dart';
 import 'package:teampilot/services/session/session_lifecycle_service.dart';
@@ -107,6 +109,7 @@ Future<void> _tearDownChatCubitWithSessionPersist(
 
 late Directory _widgetTestSessionRepoDir;
 late SessionRepository _widgetTestSessionRepo;
+late HomeWorkspaceUiCache _widgetTestHomeWorkspaceUiCache;
 
 Widget buildTestApp({
   required LaunchProfileCubit teamCubit,
@@ -138,6 +141,9 @@ Widget buildTestApp({
       RepositoryProvider<AppSettingsRepository>.value(value: settings),
       RepositoryProvider<SessionRepository>.value(
         value: _widgetTestSessionRepo,
+      ),
+      RepositoryProvider<HomeWorkspaceUiCache>.value(
+        value: _widgetTestHomeWorkspaceUiCache,
       ),
       RepositoryProvider<ConnectionModeService>.value(
         value: connectionModeService,
@@ -174,6 +180,13 @@ Widget buildTestApp({
     ],
     child: MultiBlocProvider(
       providers: [
+        BlocProvider(
+          create: (_) {
+            final bootstrap = AppBootstrapCubit();
+            bootstrap.markAppReady(showOnboardingWizard: false);
+            return bootstrap;
+          },
+        ),
         BlocProvider.value(value: teamCubit),
         BlocProvider.value(value: chat),
         BlocProvider.value(value: presence),
@@ -484,6 +497,7 @@ void main() {
     _widgetTestSessionRepo = SessionRepository(
       rootDir: _widgetTestSessionRepoDir.path,
     );
+    _widgetTestHomeWorkspaceUiCache = HomeWorkspaceUiCache();
   });
   tearDownAll(() {
     try {
