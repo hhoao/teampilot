@@ -95,21 +95,39 @@ class TeamMemberConfigFormState extends State<TeamMemberConfigForm> {
   late FocusNode _argsFocus;
   late Debouncer _persistDebouncer;
   List<String> _userAgentIds = const [];
+  LaunchProfileCubit? _profileCubit;
+  bool _controllersSynced = false;
 
-  LaunchProfileCubit get _cubit => context.read<LaunchProfileCubit>();
-
-  TeamMemberConfig? get _member {
-    final team = LaunchProfileSelectors.teamById(_cubit.state, widget.teamId);
-    return LaunchProfileSelectors.memberById(team, widget.memberId);
+  LaunchProfileCubit get _cubit {
+    final cached = _profileCubit;
+    if (cached != null) return cached;
+    return context.read<LaunchProfileCubit>();
   }
+
+  TeamMemberConfig? _memberSnapshot(LaunchProfileCubit cubit, String memberId) {
+    final team = LaunchProfileSelectors.teamById(cubit.state, widget.teamId);
+    return LaunchProfileSelectors.memberById(team, memberId);
+  }
+
+  TeamMemberConfig? get _member => _memberSnapshot(_cubit, widget.memberId);
 
   TeamProfile? get _team =>
       LaunchProfileSelectors.teamById(_cubit.state, widget.teamId);
 
   @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    _profileCubit = context.read<LaunchProfileCubit>();
+    if (!_controllersSynced) {
+      _controllersSynced = true;
+      _syncControllersFromMember(_memberSnapshot(_profileCubit!, widget.memberId));
+    }
+  }
+
+  @override
   void initState() {
     super.initState();
-    _initControllersForMember(_member);
+    _initControllersForMember(null);
     _initFocusNodes();
     _initDebouncer();
     _loadUserAgents();
@@ -183,7 +201,7 @@ class TeamMemberConfigFormState extends State<TeamMemberConfigForm> {
 
   @override
   void dispose() {
-    _flushPersistForMember(widget.memberId);
+    _flushPersistOnDispose(widget.memberId);
     _persistDebouncer.dispose();
     _nameFocus.dispose();
     _promptFocus.dispose();
@@ -207,9 +225,32 @@ class TeamMemberConfigFormState extends State<TeamMemberConfigForm> {
     );
   }
 
-  TeamMemberConfig? _memberSnapshot(String memberId) {
-    final team = LaunchProfileSelectors.teamById(_cubit.state, widget.teamId);
-    return LaunchProfileSelectors.memberById(team, memberId);
+  void _flushPersistForMember(String memberId) {
+    if (!mounted) return;
+    _flushPersistWithCubit(_cubit, memberId);
+  }
+
+  void _flushPersistOnDispose(String memberId) {
+    final cubit = _profileCubit;
+    if (cubit == null) return;
+    _flushPersistWithCubit(cubit, memberId);
+  }
+
+  void _flushPersistWithCubit(LaunchProfileCubit cubit, String memberId) {
+    _persistDebouncer.cancel();
+    final member = _memberSnapshot(cubit, memberId);
+    if (member == null) return;
+    final next = _memberFromControllers(member);
+    if (_membersEqualForPersist(member, next)) return;
+    unawaited(cubit.updateMember(memberId, next));
+  }
+
+  bool _membersEqualForPersist(TeamMemberConfig a, TeamMemberConfig b) {
+    return a.name == b.name &&
+        a.agent == b.agent &&
+        a.extraArgs == b.extraArgs &&
+        a.prompt == b.prompt &&
+        a.playbook == b.playbook;
   }
 
   void _persistImmediate(TeamMemberConfig next) {
@@ -226,24 +267,6 @@ class TeamMemberConfigFormState extends State<TeamMemberConfigForm> {
       if (_membersEqualForPersist(member, next)) return;
       unawaited(_cubit.updateMember(member.id, next));
     });
-  }
-
-  void _flushPersistForMember(String memberId) {
-    _persistDebouncer.cancel();
-    if (!mounted) return;
-    final member = _memberSnapshot(memberId);
-    if (member == null) return;
-    final next = _memberFromControllers(member);
-    if (_membersEqualForPersist(member, next)) return;
-    unawaited(_cubit.updateMember(memberId, next));
-  }
-
-  bool _membersEqualForPersist(TeamMemberConfig a, TeamMemberConfig b) {
-    return a.name == b.name &&
-        a.agent == b.agent &&
-        a.extraArgs == b.extraArgs &&
-        a.prompt == b.prompt &&
-        a.playbook == b.playbook;
   }
 
   void _onNameFocusChanged() => _onFieldFocusChanged(_nameFocus);

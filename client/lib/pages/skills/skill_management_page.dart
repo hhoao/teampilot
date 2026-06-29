@@ -60,7 +60,7 @@ class SkillManagementPage extends StatelessWidget {
     void select(SkillSection target) => onSelectSection != null
         ? onSelectSection!(target)
         : navigateSkillSection(context, target);
-    return BlocConsumer<SkillCubit, SkillState>(
+    return BlocListener<SkillCubit, SkillState>(
       listenWhen: (a, b) =>
           a.errorMessage != b.errorMessage && b.errorMessage != null,
       listener: (context, state) {
@@ -73,34 +73,33 @@ class SkillManagementPage extends StatelessWidget {
         );
         context.read<SkillCubit>().clearError();
       },
-      builder: (context, state) {
-        final sectionBody = switch (section) {
-          SkillSection.installed => SkillInstalledSection(
-            state: state,
-            onGoDiscovery: () => select(SkillSection.discovery),
+      child: WorkspaceAdaptiveSectionPage(
+        pageKey: AppKeys.skillsWorkspace,
+        title: context.l10n.skillsTitle,
+        subtitle: context.l10n.skillsSubtitle,
+        bodyAnimationKey: ValueKey('skills-body-${section.name}'),
+        nav: WorkspaceEnumNavPanel<SkillSection>(
+          sections: SkillSection.values,
+          current: section,
+          basePath: '/skills',
+          descriptor: (s) => s,
+          onSelect: select,
+        ),
+        body: switch (section) {
+          SkillSection.installed => BlocBuilder<SkillCubit, SkillState>(
+            builder: (context, state) => SkillInstalledSection(
+              state: state,
+              onGoDiscovery: () => select(SkillSection.discovery),
+            ),
           ),
           SkillSection.discovery => SkillDiscoverySection(
-            state: state,
             onGoRepos: () => select(SkillSection.repos),
           ),
-          SkillSection.repos => SkillReposSection(state: state),
-        };
-
-        return WorkspaceAdaptiveSectionPage(
-          pageKey: AppKeys.skillsWorkspace,
-          title: context.l10n.skillsTitle,
-          subtitle: context.l10n.skillsSubtitle,
-          bodyAnimationKey: ValueKey('skills-body-${section.name}'),
-          nav: WorkspaceEnumNavPanel<SkillSection>(
-            sections: SkillSection.values,
-            current: section,
-            basePath: '/skills',
-            descriptor: (s) => s,
-            onSelect: select,
+          SkillSection.repos => BlocBuilder<SkillCubit, SkillState>(
+            builder: (context, state) => SkillReposSection(state: state),
           ),
-          body: sectionBody,
-        );
-      },
+        },
+      ),
     );
   }
 }

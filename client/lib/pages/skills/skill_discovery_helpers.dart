@@ -1,18 +1,62 @@
-import '../../cubits/skill_cubit.dart';
 import '../../l10n/app_localizations.dart';
 import '../../models/skill.dart';
 
 enum SkillSearchSource { repos, skillsSh }
 
+Set<String> skillInstalledKeys(List<Skill> installed) {
+  return installed
+      .map(
+        (s) =>
+            '${s.directory.toLowerCase()}:${(s.repoOwner ?? '').toLowerCase()}:${(s.repoName ?? '').toLowerCase()}',
+      )
+      .toSet();
+}
+
+String skillsShInstallKey(SkillsShEntry entry) {
+  return '${entry.directory.toLowerCase()}:${entry.repoOwner.toLowerCase()}:${entry.repoName.toLowerCase()}';
+}
+
+bool sameDiscoverableSkills(
+  List<DiscoverableSkill> a,
+  List<DiscoverableSkill> b,
+) {
+  if (a.length != b.length) return false;
+  final keysA = a.map(_discoverableSkillKey).toSet();
+  return keysA.length == a.length &&
+      b.every((skill) => keysA.contains(_discoverableSkillKey(skill)));
+}
+
+String _discoverableSkillKey(DiscoverableSkill skill) {
+  return '${skill.directory}:${skill.repoOwner}:${skill.repoName}';
+}
+
+typedef SkillDiscoverySyncSlice = ({
+  bool discoveryLoading,
+  Set<String> repoSyncingKeys,
+});
+
+typedef SkillDiscoveryFilterSlice = ({
+  List<SkillRepo> repos,
+  List<DiscoverableSkill> discoverable,
+});
+
+typedef SkillDiscoveryGridSlice = ({
+  List<DiscoverableSkill> discoverable,
+  bool discoveryLoading,
+  List<SkillRepo> repos,
+  Set<String> busyIds,
+});
+
 Map<String, String> skillDiscoveryRepoFilterChoices(
-  SkillState state,
+  List<SkillRepo> repos,
+  List<DiscoverableSkill> discoverable,
   AppLocalizations l10n,
 ) {
   final choices = <String, String>{'all': l10n.skillsFilterRepoAll};
-  for (final r in state.repos.where((r) => r.enabled)) {
+  for (final r in repos.where((r) => r.enabled)) {
     choices[r.githubUrl] = r.fullName;
   }
-  for (final d in state.discoverable) {
+  for (final d in discoverable) {
     final url = 'https://github.com/${d.repoOwner}/${d.repoName}';
     choices.putIfAbsent(url, () => '${d.repoOwner}/${d.repoName}');
   }
@@ -37,13 +81,13 @@ bool skillDiscoveryMatchesRepoFilter(DiscoverableSkill skill, String filterRepo)
 }
 
 List<DiscoverableSkill> filterDiscoverableSkills({
-  required SkillState state,
+  required List<DiscoverableSkill> discoverable,
   required Set<String> installedKeys,
   required String filterRepo,
   required String filterStatus,
   required String searchQuery,
 }) {
-  return state.discoverable.where((d) {
+  return discoverable.where((d) {
     if (!skillDiscoveryMatchesRepoFilter(d, filterRepo)) return false;
     final installKey =
         '${d.directory.split('/').last.toLowerCase()}:${d.repoOwner.toLowerCase()}:${d.repoName.toLowerCase()}';

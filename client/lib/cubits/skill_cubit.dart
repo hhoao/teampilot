@@ -214,12 +214,10 @@ class SkillCubit extends Cubit<SkillState> {
         ...state.repoSyncingKeys.where((k) => !batchKeys.contains(k)),
         ...remaining,
       };
-      emit(
-        state.copyWith(
-          discoverable: discoverable,
-          discoveryLoading: repoSyncingKeys.isNotEmpty,
-          repoSyncingKeys: repoSyncingKeys,
-        ),
+      _emitDiscoveryProgress(
+        discoverable: discoverable,
+        discoveryLoading: repoSyncingKeys.isNotEmpty,
+        repoSyncingKeys: repoSyncingKeys,
       );
     }
 
@@ -248,6 +246,39 @@ class SkillCubit extends Cubit<SkillState> {
         ),
       ),
     );
+  }
+
+  void _emitDiscoveryProgress({
+    required List<DiscoverableSkill> discoverable,
+    required bool discoveryLoading,
+    required Set<String> repoSyncingKeys,
+  }) {
+    final discoverableChanged =
+        !_sameDiscoverableSkills(state.discoverable, discoverable);
+    final syncingChanged = state.repoSyncingKeys != repoSyncingKeys;
+    final loadingChanged = state.discoveryLoading != discoveryLoading;
+    if (!discoverableChanged && !syncingChanged && !loadingChanged) return;
+    emit(
+      state.copyWith(
+        discoverable: discoverableChanged ? discoverable : null,
+        discoveryLoading: discoveryLoading,
+        repoSyncingKeys: repoSyncingKeys,
+      ),
+    );
+  }
+
+  static bool _sameDiscoverableSkills(
+    List<DiscoverableSkill> a,
+    List<DiscoverableSkill> b,
+  ) {
+    if (a.length != b.length) return false;
+    final keysA = a
+        .map((s) => '${s.directory}:${s.repoOwner}:${s.repoName}')
+        .toSet();
+    return keysA.length == a.length &&
+        b.every(
+          (s) => keysA.contains('${s.directory}:${s.repoOwner}:${s.repoName}'),
+        );
   }
 
   Future<List<DiscoverableSkill>> _aggregateDiscoverableFromDisk(

@@ -24,7 +24,6 @@ abstract final class UiInteractiveWarmup {
 
     try {
       await GoogleFonts.pendingFonts([
-        GoogleFonts.notoSansSc(fontWeight: FontWeight.w300),
         GoogleFonts.notoSansSc(fontWeight: FontWeight.w400),
         GoogleFonts.notoSansSc(fontWeight: FontWeight.w500),
         GoogleFonts.notoSansSc(fontWeight: FontWeight.w600),
