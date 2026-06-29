@@ -1550,6 +1550,12 @@ class AppLocalizationsZh extends AppLocalizations {
   String get fileTreeRefresh => '刷新';
 
   @override
+  String get fileTreeShowFilter => '显示筛选';
+
+  @override
+  String get fileTreeHideFilter => '隐藏筛选';
+
+  @override
   String get fileTreeRevealFailed => '无法在文件树中定位该文件';
 
   @override

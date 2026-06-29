@@ -28,6 +28,7 @@ List<TextStyle> textStylesForInteractiveWarmup() {
     textTheme: textTheme,
   );
   final bodyMedium = textTheme.bodyMedium ?? const TextStyle();
+  final labelLarge = textTheme.labelLarge ?? bodyMedium;
 
   return [
     styles.caption,
@@ -49,5 +50,6 @@ List<TextStyle> textStylesForInteractiveWarmup() {
     bodyMedium.copyWith(fontWeight: FontWeight.w500, height: 1.25),
     bodyMedium.copyWith(fontWeight: FontWeight.w400, height: 1.25),
     styles.mono,
+    labelLarge,
   ];
 }

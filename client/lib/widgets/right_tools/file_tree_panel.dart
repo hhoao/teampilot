@@ -45,14 +45,11 @@ class FileTreePanel extends StatefulWidget {
 }
 
 class _FileTreePanelState extends State<FileTreePanel> {
-  /// Matches [InputDecorationTheme.constraints] min height in the app theme.
-  static const _filterFieldHeight = 40.0;
-
   final _filterController = TextEditingController();
   final _listScrollController = ScrollController();
   final _horizontalScrollController = ScrollController();
   EditorCubit? _editorCubit;
-  bool _filterFieldReady = false;
+  bool _filterVisible = false;
   bool _listReady = false;
 
   FileTreeCubit get _cubit => widget.cubit;
@@ -62,16 +59,21 @@ class _FileTreePanelState extends State<FileTreePanel> {
     super.initState();
     // Filter lives in the cubit; sync the text field when the panel remounts.
     _filterController.text = _cubit.state.filterText;
-    // Stagger first paint: header → filter field → file rows. DevTools traces
-    // showed RenderEditable and the first visible FileTreeNode batch landing
-    // in the same ~400ms frame when mounted together.
+    // Stagger list mount one frame after the header so first paint stays light.
     SchedulerBinding.instance.addPostFrameCallback((_) {
       if (!mounted) return;
       RightToolsLifecycle.of(context).ensureFileTreeReady();
-      setState(() => _filterFieldReady = true);
-      SchedulerBinding.instance.addPostFrameCallback((_) {
-        if (mounted) setState(() => _listReady = true);
-      });
+      setState(() => _listReady = true);
+    });
+  }
+
+  void _toggleFilterVisible() {
+    setState(() {
+      _filterVisible = !_filterVisible;
+      if (!_filterVisible) {
+        _filterController.clear();
+        _cubit.setFilter('');
+      }
     });
   }
 
@@ -178,7 +180,7 @@ class _FileTreePanelState extends State<FileTreePanel> {
                 return LayoutBuilder(
                   builder: (context, constraints) {
                     const actionSlotWidth = 28.0;
-                    final actionCount = hasExpandedFolders ? 5 : 4;
+                    final actionCount = (hasExpandedFolders ? 5 : 4) + 1;
                     final showInlineActions =
                         constraints.maxWidth >= actionSlotWidth * actionCount;
                     return Row(
@@ -198,17 +200,20 @@ class _FileTreePanelState extends State<FileTreePanel> {
                             l10n: l10n,
                             showHiddenFiles: showHiddenFiles,
                             rootPath: rootPath,
+                            filterVisible: _filterVisible,
                           )
                         else
                           FileTreeHeaderOverflowMenu(
                             l10n: l10n,
                             showHiddenFiles: showHiddenFiles,
+                            filterVisible: _filterVisible,
                             hasExpandedFolders: hasExpandedFolders,
                             canCopy: rootPath.isNotEmpty,
                             onRefresh: _cubit.refresh,
                             onReveal: () =>
                                 unawaited(_revealActiveEditorFile()),
                             onCollapseAll: _cubit.collapseAllFolders,
+                            onToggleFilter: _toggleFilterVisible,
                             onToggleHidden: _cubit.toggleShowHidden,
                             onCopy: () {
                               if (rootPath.isNotEmpty) {
@@ -229,7 +234,7 @@ class _FileTreePanelState extends State<FileTreePanel> {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
-                  if (_filterFieldReady)
+                  if (_filterVisible) ...[
                     _FileTreeFilterField(
                       controller: _filterController,
                       hintText: l10n.filterFiles,
@@ -238,10 +243,9 @@ class _FileTreePanelState extends State<FileTreePanel> {
                         _filterController.clear();
                         _cubit.setFilter('');
                       },
-                    )
-                  else
-                    const SizedBox(height: _filterFieldHeight),
-                  const SizedBox(height: 10),
+                    ),
+                    const SizedBox(height: 10),
+                  ],
                   if (_listReady) ...[
                     // Single-root: show the folder path. Multi-root: each root
                     // gets its own header row, so the single path line is hidden.
@@ -326,8 +330,16 @@ class _FileTreePanelState extends State<FileTreePanel> {
     required AppLocalizations l10n,
     required bool showHiddenFiles,
     required String rootPath,
+    required bool filterVisible,
   }) {
     final actions = <Widget>[
+      AppIconButton(
+        icon: filterVisible ? Icons.search_off : Icons.search,
+        compact: true,
+        size: AppIconButton.kCompactSize,
+        tooltip: filterVisible ? l10n.fileTreeHideFilter : l10n.fileTreeShowFilter,
+        onTap: _toggleFilterVisible,
+      ),
       AppIconButton(
         icon: Icons.refresh,
         compact: true,

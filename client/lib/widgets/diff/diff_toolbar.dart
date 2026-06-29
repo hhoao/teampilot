@@ -75,20 +75,18 @@ class DiffToolbar extends StatelessWidget {
           ),
           if (showFullContext) ...[
             const SizedBox(width: 8),
-            FilterChip(
-              visualDensity: VisualDensity.standard,
-              label: Text(l10n.diffShowAllLines),
+            _DiffToolbarToggle(
+              label: l10n.diffShowAllLines,
               selected: fullContext,
-              onSelected: onFullContextChanged,
+              onChanged: onFullContextChanged,
             ),
           ],
           if (showIgnoreWhitespace) ...[
             const SizedBox(width: 8),
-            FilterChip(
-              visualDensity: VisualDensity.standard,
-              label: Text(l10n.diffIgnoreWhitespace),
+            _DiffToolbarToggle(
+              label: l10n.diffIgnoreWhitespace,
               selected: ignoreWhitespace,
-              onSelected: onIgnoreWhitespaceChanged,
+              onChanged: onIgnoreWhitespaceChanged,
             ),
           ],
           const Spacer(),
@@ -139,6 +137,47 @@ class DiffToolbar extends StatelessWidget {
           ),
         ],
       ),
+    );
+  }
+}
+
+/// Compact on/off control aligned with [SegmentedButton] density — avoids
+/// [FilterChip] intrinsic layout (`RenderParagraph.getDryLayout`) on open.
+class _DiffToolbarToggle extends StatelessWidget {
+  const _DiffToolbarToggle({
+    required this.label,
+    required this.selected,
+    required this.onChanged,
+  });
+
+  final String label;
+  final bool selected;
+  final ValueChanged<bool> onChanged;
+
+  @override
+  Widget build(BuildContext context) {
+    final cs = Theme.of(context).colorScheme;
+    final labelStyle = Theme.of(context).textTheme.labelLarge;
+    return TextButton(
+      style: ButtonStyle(
+        visualDensity: VisualDensity.compact,
+        tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+        padding: const WidgetStatePropertyAll(
+          EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+        ),
+        minimumSize: const WidgetStatePropertyAll(Size(0, 32)),
+        backgroundColor: WidgetStatePropertyAll(
+          selected ? cs.secondaryContainer : Colors.transparent,
+        ),
+        foregroundColor: WidgetStatePropertyAll(
+          selected ? cs.onSecondaryContainer : cs.onSurfaceVariant,
+        ),
+        shape: WidgetStatePropertyAll(
+          RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+        ),
+      ),
+      onPressed: () => onChanged(!selected),
+      child: Text(label, style: labelStyle),
     );
   }
 }

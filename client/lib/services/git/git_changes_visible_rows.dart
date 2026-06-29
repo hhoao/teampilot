@@ -1,15 +1,13 @@
 import 'dart:math' as math;
 
+import 'package:equatable/equatable.dart';
 import 'package:flutter/painting.dart';
 import 'package:path/path.dart' as p;
 
 import '../../models/git_status.dart';
 
-/// How the source control panel lays out changed paths.
-enum GitChangesViewMode { list, tree }
-
 /// One rendered row in the flattened git changes tree.
-class GitChangesVisibleRow {
+class GitChangesVisibleRow extends Equatable {
   const GitChangesVisibleRow.folder({
     required this.folderPath,
     required this.name,
@@ -29,6 +27,23 @@ class GitChangesVisibleRow {
   final GitFileChange? change;
   final int depth;
   final bool isFolder;
+
+  @override
+  List<Object?> get props => [folderPath, name, change, depth, isFolder];
+}
+
+/// Pre-flattened staged + unstaged rows for the changes tree list.
+class GitChangesTreeViewData extends Equatable {
+  const GitChangesTreeViewData({
+    required this.stagedRows,
+    required this.unstagedRows,
+  });
+
+  final List<GitChangesVisibleRow> stagedRows;
+  final List<GitChangesVisibleRow> unstagedRows;
+
+  @override
+  List<Object?> get props => [...stagedRows, ...unstagedRows];
 }
 
 /// Inner content height of a git changes row (excluding outer vertical padding).
@@ -62,6 +77,10 @@ const double kGitChangesTrailingBadgeWidth = 22;
 
 const double kGitChangesContentWidthSlack = 12;
 
+/// Above this row count, only the widest [_kContentWidthCandidates] candidate
+/// rows (by a cheap char-width estimate) are actually shaped.
+const int _kContentWidthCandidates = 32;
+
 /// Minimum content width so the widest visible tree row fits without truncation.
 double gitChangesMinContentWidth({
   required List<GitChangesVisibleRow> rows,
@@ -71,12 +90,23 @@ double gitChangesMinContentWidth({
 }) {
   if (rows.isEmpty) return 0;
 
+  final List<GitChangesVisibleRow> measured;
+  if (rows.length > _kContentWidthCandidates) {
+    measured = [...rows]
+      ..sort(
+        (a, b) => _rowWidthEstimate(b).compareTo(_rowWidthEstimate(a)),
+      );
+    measured.length = _kContentWidthCandidates;
+  } else {
+    measured = rows;
+  }
+
   final painter = TextPainter(
     textDirection: TextDirection.ltr,
     textScaler: textScaler,
   );
   var maxWidth = 0.0;
-  for (final row in rows) {
+  for (final row in measured) {
     if (row.isFolder) {
       painter.text = TextSpan(text: row.name, style: folderLabelStyle);
       painter.layout();
@@ -111,6 +141,18 @@ double gitChangesMinContentWidth({
   return maxWidth.ceilToDouble() + kGitChangesContentWidthSlack;
 }
 
+double _rowWidthEstimate(GitChangesVisibleRow row) {
+  final label = row.isFolder ? row.name! : p.basename(row.change!.path);
+  var units = 0.0;
+  for (final rune in label.runes) {
+    units += rune >= 0x1100 ? 2.0 : 1.0;
+  }
+  final trailing = row.isFolder || !row.change!.staged
+      ? kGitChangesTrailingActionsWidth
+      : kGitChangesTrailingBadgeWidth;
+  return row.depth * 2.0 + units + trailing / 8.0;
+}
+
 /// Default expanded folders: every directory prefix of a changed path.
 Set<String> gitChangesDefaultExpandedFolders(List<GitFileChange> changes) {
   final paths = <String>{};
@@ -127,6 +169,23 @@ Set<String> gitChangesDefaultExpandedFolders(List<GitFileChange> changes) {
 /// Every folder node in the git changes tree (same set as default expansion).
 Set<String> gitChangesAllFolderPaths(List<GitFileChange> changes) =>
     gitChangesDefaultExpandedFolders(changes);
+
+GitChangesTreeViewData visibleGitChangesTreeViewData({
+  required List<GitFileChange> staged,
+  required List<GitFileChange> unstaged,
+  required Set<String> expandedFolderPaths,
+}) {
+  return GitChangesTreeViewData(
+    stagedRows: visibleGitChangesRows(
+      changes: staged,
+      expandedFolderPaths: expandedFolderPaths,
+    ),
+    unstagedRows: visibleGitChangesRows(
+      changes: unstaged,
+      expandedFolderPaths: expandedFolderPaths,
+    ),
+  );
+}
 
 /// Flatten [changes] into folder + file rows for tree view.
 List<GitChangesVisibleRow> visibleGitChangesRows({

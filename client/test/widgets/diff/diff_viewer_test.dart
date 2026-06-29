@@ -29,6 +29,7 @@ void main() {
       ),
     ));
     await tester.pump();
+    await tester.pump();
   }
 
   testWidgets('renders toolbar over a side-by-side body by default',
@@ -89,6 +90,7 @@ void main() {
         ),
       ),
     ));
+    await tester.pump();
     await tester.pump();
 
     final l10n = await AppLocalizations.delegate.load(const Locale('en'));

@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/scheduler.dart';
 
 import '../../l10n/l10n_extensions.dart';
 import '../../services/diff/diff_engine.dart';
@@ -104,6 +105,15 @@ class _DiffViewerState extends State<DiffViewer> {
   late DiffResult _result = widget.initialResult;
   bool _ignoreWhitespace = false;
   bool _fullContext = false;
+  var _bodyReady = false;
+
+  @override
+  void initState() {
+    super.initState();
+    SchedulerBinding.instance.addPostFrameCallback((_) {
+      if (mounted) setState(() => _bodyReady = true);
+    });
+  }
 
   @override
   void dispose() {
@@ -131,11 +141,9 @@ class _DiffViewerState extends State<DiffViewer> {
     _reload();
   }
 
-  @override
-  Widget build(BuildContext context) {
-    final Widget body;
+  Widget _buildBody(BuildContext context) {
     if (_result.rows.isEmpty) {
-      body = Center(
+      return Center(
         child: Text(
           context.l10n.diffNoChanges,
           style: Theme.of(context).textTheme.bodyMedium?.copyWith(
@@ -143,21 +151,23 @@ class _DiffViewerState extends State<DiffViewer> {
               ),
         ),
       );
-    } else {
-      body = switch (_mode) {
-        DiffViewMode.sideBySide => SideBySideDiffView(
-            result: _result,
-            filePath: widget.filePath,
-            controller: _controller,
-          ),
-        DiffViewMode.unified => UnifiedDiffView(
-            result: _result,
-            filePath: widget.filePath,
-            controller: _controller,
-          ),
-      };
     }
+    return switch (_mode) {
+      DiffViewMode.sideBySide => SideBySideDiffView(
+          result: _result,
+          filePath: widget.filePath,
+          controller: _controller,
+        ),
+      DiffViewMode.unified => UnifiedDiffView(
+          result: _result,
+          filePath: widget.filePath,
+          controller: _controller,
+        ),
+    };
+  }
 
+  @override
+  Widget build(BuildContext context) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
@@ -173,7 +183,17 @@ class _DiffViewerState extends State<DiffViewer> {
           showFullContext: widget.supportsFullContext,
           onOpenSource: widget.onOpenSource,
         ),
-        Expanded(child: body),
+        Expanded(
+          child: _bodyReady
+              ? _buildBody(context)
+              : const Center(
+                  child: SizedBox(
+                    width: 22,
+                    height: 22,
+                    child: CircularProgressIndicator(strokeWidth: 2),
+                  ),
+                ),
+        ),
       ],
     );
   }

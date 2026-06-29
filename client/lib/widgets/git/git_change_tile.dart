@@ -9,7 +9,7 @@ import '../app_icon_button.dart';
 import '../file_icon_widget.dart';
 import '../hover_widget.dart';
 
-/// One changed file row in the source control panel.
+/// One changed file row in the source control changes tree.
 ///
 /// Shows a status badge + file name; trailing actions depend on the area:
 /// staged rows offer "unstage", unstaged rows offer "discard" + "stage".
@@ -17,23 +17,21 @@ import '../hover_widget.dart';
 class GitChangeTile extends StatefulWidget {
   const GitChangeTile({
     required this.change,
+    required this.depth,
     required this.onOpenDiff,
     required this.onStage,
     required this.onUnstage,
     required this.onDiscard,
-    this.depth = 0,
-    this.treeLayout = false,
     this.hoverEnabled = true,
     super.key,
   });
 
   final GitFileChange change;
+  final int depth;
   final VoidCallback onOpenDiff;
   final VoidCallback onStage;
   final VoidCallback onUnstage;
   final VoidCallback onDiscard;
-  final int depth;
-  final bool treeLayout;
   final bool hoverEnabled;
 
   @override
@@ -68,17 +66,9 @@ class _GitChangeTileState extends State<GitChangeTile> {
   @override
   Widget build(BuildContext context) {
     final cs = Theme.of(context).colorScheme;
-    final l10n = context.l10n;
     final change = widget.change;
     final name = p.basename(change.path);
-    final dir = p.dirname(change.path);
-    final showDir = !widget.treeLayout && dir != '.' && dir.isNotEmpty;
     final rowColor = _hovered ? HoverWidget.defaultHoverColor(context) : null;
-    final leftPadding = widget.treeLayout
-        ? widget.depth * kGitChangesIndentWidth +
-              kGitChangesNodePaddingLeft +
-              kGitChangesRowHorizontalPadding
-        : kGitChangesNodePaddingLeft + kGitChangesRowHorizontalPadding;
 
     return RepaintBoundary(
       child: MouseRegion(
@@ -89,8 +79,8 @@ class _GitChangeTileState extends State<GitChangeTile> {
           behavior: HitTestBehavior.opaque,
           onTap: widget.onOpenDiff,
           child: Container(
-            width: widget.treeLayout ? double.infinity : null,
-            height: widget.treeLayout ? double.infinity : null,
+            width: double.infinity,
+            height: double.infinity,
             clipBehavior: Clip.none,
             decoration: rowColor != null
                 ? BoxDecoration(
@@ -99,91 +89,39 @@ class _GitChangeTileState extends State<GitChangeTile> {
                   )
                 : null,
             padding: EdgeInsets.fromLTRB(
-              leftPadding,
-              widget.treeLayout
-                  ? kGitChangesRowVerticalPadding
-                  : kGitChangesRowVerticalPadding,
+              widget.depth * kGitChangesIndentWidth +
+                  kGitChangesNodePaddingLeft +
+                  kGitChangesRowHorizontalPadding,
+              kGitChangesRowVerticalPadding,
               kGitChangesNodePaddingRight + kGitChangesRowHorizontalPadding,
-              widget.treeLayout
-                  ? kGitChangesRowVerticalPadding
-                  : kGitChangesRowVerticalPadding,
+              kGitChangesRowVerticalPadding,
             ),
-            child: widget.treeLayout
-                ? _buildTreeRow(context, cs, l10n, change, name)
-                : _buildListRow(context, cs, l10n, change, name, showDir, dir),
-          ),
-        ),
-      ),
-    );
-  }
-
-  Widget _buildTreeRow(
-    BuildContext context,
-    ColorScheme cs,
-    AppLocalizations l10n,
-    GitFileChange change,
-    String name,
-  ) {
-    return OverflowBox(
-      maxWidth: double.infinity,
-      alignment: Alignment.centerLeft,
-      child: SizedBox(
-        height: kGitChangesNodeHeight,
-        child: Row(
-          crossAxisAlignment: CrossAxisAlignment.center,
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            const SizedBox(width: 16),
-            FileIconWidget(fileName: name),
-            const SizedBox(width: 6),
-            Text(name, maxLines: 1, style: AppTextStyles.of(context).body),
-            const SizedBox(width: 8),
-            if (_hovered) ..._actions(l10n) else _badge(cs),
-          ],
-        ),
-      ),
-    );
-  }
-
-  Widget _buildListRow(
-    BuildContext context,
-    ColorScheme cs,
-    AppLocalizations l10n,
-    GitFileChange change,
-    String name,
-    bool showDir,
-    String dir,
-  ) {
-    return Row(
-      children: [
-        const SizedBox(width: 2),
-        FileIconWidget(fileName: name),
-        const SizedBox(width: 6),
-        Expanded(
-          child: Row(
-            crossAxisAlignment: CrossAxisAlignment.center,
-            children: [
-              Flexible(
-                child: Text(name, maxLines: 1, overflow: TextOverflow.ellipsis),
-              ),
-              if (showDir) ...[
-                const SizedBox(width: 6),
-                Flexible(
-                  child: Text(
-                    dir,
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                    style: AppTextStyles.of(context).caption.copyWith(
-                      color: cs.onSurfaceVariant.withValues(alpha: 0.7),
+            child: OverflowBox(
+              maxWidth: double.infinity,
+              alignment: Alignment.centerLeft,
+              child: SizedBox(
+                height: kGitChangesNodeHeight,
+                child: Row(
+                  crossAxisAlignment: CrossAxisAlignment.center,
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    const SizedBox(width: 16),
+                    FileIconWidget(fileName: name),
+                    const SizedBox(width: 6),
+                    Text(
+                      name,
+                      maxLines: 1,
+                      style: AppTextStyles.of(context).body,
                     ),
-                  ),
+                    const SizedBox(width: 8),
+                    if (_hovered) ..._actions(context) else _badge(cs),
+                  ],
                 ),
-              ],
-            ],
+              ),
+            ),
           ),
         ),
-        if (_hovered) ..._actions(l10n) else _badge(cs),
-      ],
+      ),
     );
   }
 
@@ -198,12 +136,14 @@ class _GitChangeTileState extends State<GitChangeTile> {
     ),
   );
 
-  List<Widget> _actions(AppLocalizations l10n) {
+  List<Widget> _actions(BuildContext context) {
+    final l10n = context.l10n;
     if (widget.change.staged) {
       return [
         AppIconButton(
           icon: Icons.remove,
-          compact: true, size: AppIconButton.kCompactSize,
+          compact: true,
+          size: AppIconButton.kCompactSize,
           tooltip: l10n.gitUnstage,
           onTap: widget.onUnstage,
         ),
@@ -212,13 +152,15 @@ class _GitChangeTileState extends State<GitChangeTile> {
     return [
       AppIconButton(
         icon: Icons.undo,
-        compact: true, size: AppIconButton.kCompactSize,
+        compact: true,
+        size: AppIconButton.kCompactSize,
         tooltip: l10n.gitDiscard,
         onTap: widget.onDiscard,
       ),
       AppIconButton(
         icon: Icons.add,
-        compact: true, size: AppIconButton.kCompactSize,
+        compact: true,
+        size: AppIconButton.kCompactSize,
         tooltip: l10n.gitStage,
         onTap: widget.onStage,
       ),
