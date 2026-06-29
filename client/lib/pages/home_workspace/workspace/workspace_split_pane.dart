@@ -67,6 +67,7 @@ class _WorkspaceSplitPaneState extends State<WorkspaceSplitPane> {
           return WorkspaceToolsScopeSync(
             workspace: widget.workspace,
             cwd: cwd,
+            tabScopeId: widget.tabScopeId,
             child: LayoutBuilder(
               builder: (context, constraints) {
                 final maxW = constraints.maxWidth;
@@ -86,12 +87,14 @@ class _WorkspaceSplitPaneState extends State<WorkspaceSplitPane> {
                     isPersonalWorkspace: widget.isPersonalWorkspace,
                     profileId: widget.profileId,
                     sessionTeamFilter: widget.sessionTeamFilter,
+                    tabScopeId: widget.tabScopeId,
                   ),
                   second: ChatPage(
                     cwd: cwd,
                     additionalPaths: widget.workspace.extraFolderPaths,
                     workspaceId: widget.workspace.workspaceId,
                     tabScopeId: widget.tabScopeId,
+                    profileId: widget.profileId,
                     isPersonalWorkspace: widget.isPersonalWorkspace,
                   ),
                   initialPrimarySize: initialSidebar,

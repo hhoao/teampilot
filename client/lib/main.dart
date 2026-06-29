@@ -294,27 +294,9 @@ void _warmTextLayoutSubsystem() {
 /// Desktop default window size (Linux GTK + Windows Win32 + [WindowOptions]).
 const kDefaultDesktopWindowSize = Size(1380, 960);
 
-/// Logs any frame whose UI-build or raster phase blocks long enough to be felt
-/// as a stall (e.g. the workbench's first paint on a tab switch). Temporary
-/// diagnostic — points at whether a freeze is a build cost or raster cost, and
-/// how long, so the slow phase can be isolated instead of guessed.
-void _installSlowFrameProbe(WidgetsBinding binding) {
-  const thresholdMs = 120;
-  binding.addTimingsCallback((timings) {
-    for (final t in timings) {
-      final buildMs = t.buildDuration.inMilliseconds;
-      final rasterMs = t.rasterDuration.inMilliseconds;
-      if (buildMs >= thresholdMs || rasterMs >= thresholdMs) {
-        appLogger.w('[slow-frame] build=${buildMs}ms raster=${rasterMs}ms');
-      }
-    }
-  });
-}
-
 void main() async {
   final binding = WidgetsFlutterBinding.ensureInitialized();
   preserveBootSplash(binding);
-  _installSlowFrameProbe(binding);
   installWindowsKeyboardWorkaround();
   await RustLib.init();
   GoogleFonts.config.allowRuntimeFetching = false;

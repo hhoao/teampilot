@@ -170,7 +170,7 @@ class SessionLaunchService implements MemberConnector {
   Future<SessionOpenStatus> requestOpenSession(SessionOpenRequest request) async {
     var session = request.session;
     final isPersonal = request.isPersonal;
-    appLogger.i(
+    appLogger.d(
       '[session-launch] requestOpenSession start '
       'session=${session.sessionId} personal=$isPersonal '
       'member=${request.member?.id ?? ''} team=${request.team?.id ?? ''} '
@@ -215,7 +215,7 @@ class SessionLaunchService implements MemberConnector {
   Future<SessionOpenStatus> requestCreateAndOpenSession(
     SessionCreateRequest request,
   ) async {
-    appLogger.i(
+    appLogger.d(
       '[session-launch] requestCreateAndOpenSession start '
       'workspace=${request.workspace.workspaceId} personal=${request.isPersonal}',
     );
@@ -322,7 +322,7 @@ class SessionLaunchService implements MemberConnector {
     required int existingIdx,
   }) {
     final session = request.session;
-    appLogger.i(
+    appLogger.d(
       '[session-launch] requestOpenSession reuse existing tab '
       'session=${session.sessionId} idx=$existingIdx',
     );
@@ -785,7 +785,7 @@ class SessionLaunchService implements MemberConnector {
     _h.activeTeam = team;
     _h.pushPresenceTarget();
     if (team.teamMode != TeamMode.mixed) return;
-    appLogger.i(
+    appLogger.d(
       '[session-launch] installing team bus '
       'session=${session.sessionId} team=${team.id}',
     );
@@ -1363,14 +1363,14 @@ class SessionLaunchService implements MemberConnector {
   }) async {
     final isPersonal = session.sessionTeam.trim().isEmpty;
     final memberLabel = isPersonal ? session.sessionId : (member?.id ?? '');
-    appLogger.i(
+    appLogger.d(
       '[session-launch] connectShell start '
       'session=${tab.info.id} member=$memberLabel personal=$isPersonal '
       'launched=$launched',
     );
     if (isPersonal) {
       if (personal == null) {
-        appLogger.w(
+        appLogger.d(
           '[session-launch] connectShell aborted session=${tab.info.id} '
           'reason=missing_personal_identity',
         );
@@ -1381,7 +1381,7 @@ class SessionLaunchService implements MemberConnector {
         return;
       }
     } else if (team == null || member == null) {
-      appLogger.w(
+      appLogger.d(
         '[session-launch] connectShell aborted session=${tab.info.id} '
         'reason=missing_team_or_member',
       );
@@ -1394,7 +1394,7 @@ class SessionLaunchService implements MemberConnector {
 
     if (team != null) {
       if (session.cliTeamName.isEmpty) {
-        appLogger.w(
+        appLogger.d(
           '[session-launch] connectShell aborted session=${tab.info.id} '
           'reason=missing_cli_team_name',
         );
@@ -1406,7 +1406,7 @@ class SessionLaunchService implements MemberConnector {
         return;
       }
       if (!session.sessionId.startsWith('local-') && session.members.isEmpty) {
-        appLogger.w(
+        appLogger.d(
           '[session-launch] connectShell aborted session=${tab.info.id} '
           'reason=missing_member_bindings',
         );
@@ -1596,7 +1596,7 @@ class SessionLaunchService implements MemberConnector {
     }
 
     final plan = shellLaunch.plan;
-    appLogger.i(
+    appLogger.d(
       '[session-launch] launch plan ready '
       'session=${tab.info.id} member=$memberLabel '
       'resume=${plan.resume} create=${plan.createSessionId ?? ''} '
@@ -1628,7 +1628,7 @@ class SessionLaunchService implements MemberConnector {
       isPersonal ? null : binding?.rosterMemberId,
       folders: _launchContextFor(activeSession).folderCatalog,
     );
-    appLogger.i(
+    appLogger.d(
       '[session-launch] shell.connect '
       'session=${tab.info.id} member=$memberLabel '
       'cwd=${memberWork.workingDirectory} addDirs=${memberWork.addDirs.length}',
@@ -1757,7 +1757,7 @@ class SessionLaunchService implements MemberConnector {
     TeamMemberConfig member,
     ChatTab tab,
   ) {
-    appLogger.i(
+    appLogger.d(
       '[session-launch] scheduleMemberConnect '
       'session=${tab.info.id} member=${member.id} team=${team.id}',
     );

@@ -22,6 +22,7 @@ class SidebarSessionTile extends StatefulWidget {
   const SidebarSessionTile({
     required this.session,
     required this.onTap,
+    this.highlightSessionId,
     this.tapThrottleKeyPrefix = 'sidebar_session',
     this.contentLeftInset = 0,
     this.index = -1,
@@ -30,6 +31,10 @@ class SidebarSessionTile extends StatefulWidget {
 
   final AppSession session;
   final VoidCallback onTap;
+
+  /// When set, selection highlight follows this id instead of the global
+  /// [ChatState.activeSessionId] (kept-alive background workspace tabs).
+  final String? highlightSessionId;
 
   /// Prefix for [throttledTap] keys (`{prefix}_{sessionId}`).
   final String tapThrottleKeyPrefix;
@@ -198,9 +203,11 @@ class _SidebarSessionTileState extends State<SidebarSessionTile> {
   @override
   Widget build(BuildContext context) {
     final session = widget.session;
-    final selected = context.select<ChatCubit, bool>(
-      (cubit) => cubit.state.activeSessionId == session.sessionId,
-    );
+    final selected = widget.highlightSessionId != null
+        ? widget.highlightSessionId == session.sessionId
+        : context.select<ChatCubit, bool>(
+            (cubit) => cubit.state.activeSessionId == session.sessionId,
+          );
     final working = context.select<ChatCubit, bool>(
       (cubit) => cubit.state.workingSessionIds.contains(session.sessionId),
     );

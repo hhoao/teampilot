@@ -80,6 +80,31 @@ class _DelayedPresenceService extends MemberPresenceService {
   }
 }
 
+class _TrackingPresenceService extends MemberPresenceService {
+  var computeCalls = 0;
+  List<TeamMemberConfig>? lastMembers;
+
+  @override
+  Future<Map<String, MemberPresence>> compute({
+    required CliTool teamCli,
+    required List<TeamMemberConfig> members,
+    required String cliTeamName,
+    required String? memberToolConfigDir,
+    required Map<String, TerminalSession> memberShells,
+    MemberWorkload Function(String memberId)? workloadResolver,
+  }) async {
+    computeCalls++;
+    lastMembers = members;
+    return {
+      for (final m in members)
+        m.id: const MemberPresence(
+          connection: MemberConnection.connected,
+          workload: MemberWorkload.idle,
+        ),
+    };
+  }
+}
+
 void main() {
   setUp(setUpTestAppStorage);
   tearDown(tearDownTestAppStorage);
@@ -453,6 +478,55 @@ void main() {
           }),
         );
         async.elapse(const Duration(seconds: 5));
+      });
+    });
+
+    test('reuses runtime roster and presence instances while idle', () {
+      fakeAsync((async) {
+        final service = _TrackingPresenceService();
+        final cubit = MemberPresenceCubit(memberPresenceService: service);
+        addTearDown(() async {
+          await cubit.close();
+        });
+
+        const team = TeamProfile(
+          id: 'team-a',
+          name: 'A',
+          members: [TeamMemberConfig(id: 'm-lead', name: 'team-lead')],
+        );
+        final shell = _FakeTerminalSession(executable: 'test');
+
+        void pumpFrame() {
+          SchedulerBinding.instance.handleBeginFrame(Duration.zero);
+          SchedulerBinding.instance.handleDrawFrame();
+        }
+
+        cubit.attachPresenceUi();
+        cubit.syncPresenceTeam(team);
+        cubit.updateTarget(PresenceTarget(
+          cliTeamName: 'team-a-1',
+          memberToolConfigDir: '/tmp/cfg',
+          memberShells: {'m-lead': shell},
+        ));
+
+        pumpFrame();
+        async.elapse(const Duration(milliseconds: 50));
+        async.flushMicrotasks();
+        pumpFrame();
+
+        final firstMembers = service.lastMembers;
+        final firstPresence = cubit.state.presence['m-lead'];
+        expect(firstMembers, isNotNull);
+        expect(firstPresence, isNotNull);
+
+        pumpFrame();
+        async.elapse(const Duration(seconds: 2));
+        async.flushMicrotasks();
+        pumpFrame();
+
+        expect(service.computeCalls, greaterThan(1));
+        expect(identical(service.lastMembers, firstMembers), isTrue);
+        expect(identical(cubit.state.presence['m-lead'], firstPresence), isTrue);
       });
     });
   });

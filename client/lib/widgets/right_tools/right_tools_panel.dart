@@ -40,6 +40,7 @@ class RightToolsPanel extends StatefulWidget {
 class _RightToolsPanelState extends State<RightToolsPanel> {
   ChatCubit? _chatCubit;
   MemberPresenceCubit? _presenceCubit;
+  bool _presenceAttached = false;
 
   RightToolsToolPreferences get _toolPreferences =>
       RightToolsToolPreferences.from(widget.preferences);
@@ -49,17 +50,32 @@ class _RightToolsPanelState extends State<RightToolsPanel> {
     super.didChangeDependencies();
     final chatCubit = context.read<ChatCubit>();
     final presenceCubit = context.read<MemberPresenceCubit>();
+    final shouldAttach = TickerMode.valuesOf(context).enabled;
+
     if (!identical(_chatCubit, chatCubit)) {
-      _presenceCubit?.detachPresenceUi(this);
+      if (_presenceAttached) {
+        _presenceCubit?.detachPresenceUi(this);
+        _presenceAttached = false;
+      }
       _chatCubit = chatCubit;
       _presenceCubit = presenceCubit;
+    }
+
+    if (shouldAttach && !_presenceAttached) {
       presenceCubit.attachPresenceUi(this);
+      _presenceAttached = true;
+    } else if (!shouldAttach && _presenceAttached) {
+      presenceCubit.detachPresenceUi(this);
+      _presenceAttached = false;
     }
   }
 
   @override
   void dispose() {
-    _presenceCubit?.detachPresenceUi(this);
+    if (_presenceAttached) {
+      _presenceCubit?.detachPresenceUi(this);
+      _presenceAttached = false;
+    }
     super.dispose();
   }
 

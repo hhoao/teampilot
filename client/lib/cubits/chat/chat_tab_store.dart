@@ -99,6 +99,18 @@ class ChatTabStore {
     return count;
   }
 
+  int savedActiveIndexFor(String workspaceTabKey) {
+    final bucket = _byWorkspace[workspaceTabKey];
+    if (bucket == null || bucket.isEmpty) return 0;
+    return (_savedActiveIndex[workspaceTabKey] ?? 0).clamp(0, bucket.length - 1);
+  }
+
+  List<ChatTab> tabsForWorkspace(String workspaceTabKey) =>
+      List.unmodifiable(_byWorkspace[workspaceTabKey] ?? const []);
+
+  List<ChatTabInfo> tabInfosForWorkspace(String workspaceTabKey) =>
+      tabsForWorkspace(workspaceTabKey).map((t) => t.info).toList();
+
   List<ChatTabInfo> toInfos() => _active.map((t) => t.info).toList();
 
   ChatTab? activeTab(int activeTabIndex) {

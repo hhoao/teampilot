@@ -71,6 +71,23 @@ class WorkspaceFsWatcher {
     _scheduleEmit();
   }
 
+  /// Stops native watch + debounce without tearing down [onChanged] subscribers.
+  void suspend() {
+    if (_disposed) return;
+    _debounceTimer?.cancel();
+    _debounceTimer = null;
+    unawaited(_sub?.cancel());
+    _sub = null;
+    _pendingDirs.clear();
+    _pendingFull = false;
+  }
+
+  /// Restarts native watch after [suspend].
+  void resume() {
+    if (_disposed || _sub != null) return;
+    if (root.isNotEmpty) _start();
+  }
+
   void _start() {
     final watcher = _watcher;
     if (watcher == null) return;

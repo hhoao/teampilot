@@ -23,14 +23,22 @@ import 'chat/chat_workbench_terminal.dart';
 class ChatWorkbench extends StatefulWidget {
   const ChatWorkbench({
     required this.workspaceId,
+    required this.workbenchSlice,
+    this.tabScopeId,
+    this.routeActive = true,
     this.sessionId,
     this.isPersonalWorkspace = false,
+    this.team,
     super.key,
   });
 
   final String workspaceId;
+  final String? tabScopeId;
+  final bool routeActive;
   final String? sessionId;
   final bool isPersonalWorkspace;
+  final TeamProfile? team;
+  final ChatWorkbenchSlice workbenchSlice;
 
   @override
   State<ChatWorkbench> createState() => _ChatWorkbenchState();
@@ -147,29 +155,24 @@ class _ChatWorkbenchState extends State<ChatWorkbench> {
 
   @override
   Widget build(BuildContext context) {
+    final slice = widget.workbenchSlice;
+    final team = widget.team;
     return BlocListener<ChatCubit, ChatState>(
-      listenWhen: (previous, next) => widget.sessionId != null,
+      listenWhen: (previous, next) =>
+          widget.routeActive && widget.sessionId != null,
       listener: (context, state) => _consumeRouteSession(state),
-      child: BlocSelector<ChatCubit, ChatState, ChatWorkbenchSlice>(
-        selector: ChatWorkbenchSlice.from,
-        builder: (context, slice) {
-          final team = widget.isPersonalWorkspace
-              ? null
-              : context.select<LaunchProfileCubit, TeamProfile?>(
-                  (c) => c.state.selectedTeam,
-                );
-          return _ChatWorkbenchBody(
-            workspaceId: widget.workspaceId,
-            sessionId: widget.sessionId,
-            isPersonalWorkspace: widget.isPersonalWorkspace,
-            slice: slice,
-            team: team,
-            findVisible: _findVisible,
-            onSyncTerminalTheme: _syncTerminalTheme,
-            buildRunningTerminal: _buildRunningTerminal,
-            onConnect: _connectWorkspace,
-          );
-        },
+      child: _ChatWorkbenchBody(
+        workspaceId: widget.workspaceId,
+        tabScopeId: widget.tabScopeId ?? widget.workspaceId,
+        routeActive: widget.routeActive,
+        sessionId: widget.sessionId,
+        isPersonalWorkspace: widget.isPersonalWorkspace,
+        slice: slice,
+        team: team,
+        findVisible: _findVisible,
+        onSyncTerminalTheme: _syncTerminalTheme,
+        buildRunningTerminal: _buildRunningTerminal,
+        onConnect: _connectWorkspace,
       ),
     );
   }
@@ -178,6 +181,8 @@ class _ChatWorkbenchState extends State<ChatWorkbench> {
 class _ChatWorkbenchBody extends StatelessWidget {
   const _ChatWorkbenchBody({
     required this.workspaceId,
+    required this.tabScopeId,
+    required this.routeActive,
     required this.sessionId,
     required this.isPersonalWorkspace,
     required this.slice,
@@ -189,6 +194,8 @@ class _ChatWorkbenchBody extends StatelessWidget {
   });
 
   final String workspaceId;
+  final String tabScopeId;
+  final bool routeActive;
   final String? sessionId;
   final bool isPersonalWorkspace;
   final ChatWorkbenchSlice slice;
@@ -226,7 +233,10 @@ class _ChatWorkbenchBody extends StatelessWidget {
     final terminalBackground = Color(0xFF000000 | terminalTheme.background);
     final chatCubit = context.read<ChatCubit>();
     final sessionConnectInProgress = slice.isActiveSessionConnecting;
-    final launchError = chatCubit.activeLaunchError ?? slice.sessionLaunchError;
+    final launchError = routeActive &&
+            chatCubit.tabStore.activeWorkspaceId == tabScopeId
+        ? (chatCubit.activeLaunchError ?? slice.sessionLaunchError)
+        : slice.sessionLaunchError;
 
     if (!isPersonalWorkspace && team == null) {
       return const Center(child: CircularProgressIndicator());
@@ -260,9 +270,11 @@ class _ChatWorkbenchBody extends StatelessWidget {
       );
     }
 
-    final session = isPersonalWorkspace
-        ? chatCubit.currentSession
-        : (chatCubit.ensureSession(team!) ?? chatCubit.currentSession);
+    final session = _resolveSession(
+      chatCubit: chatCubit,
+      slice: slice,
+      team: team,
+    );
     if (session == null) {
       return const Center(child: CircularProgressIndicator());
     }
@@ -286,6 +298,28 @@ class _ChatWorkbenchBody extends StatelessWidget {
     );
   }
 
+  TerminalSession? _resolveSession({
+    required ChatCubit chatCubit,
+    required ChatWorkbenchSlice slice,
+    required TeamProfile? team,
+  }) {
+    final activeId = slice.activeSessionId;
+    if (activeId == null || activeId.isEmpty) return null;
+
+    if (routeActive && chatCubit.tabStore.activeWorkspaceId == tabScopeId) {
+      if (isPersonalWorkspace) return chatCubit.currentSession;
+      return chatCubit.ensureSession(team!) ?? chatCubit.currentSession;
+    }
+
+    for (final tab in chatCubit.tabStore.tabsForWorkspace(tabScopeId)) {
+      if (tab.info.id != activeId) continue;
+      if (isPersonalWorkspace) return tab.resumeSession;
+      final memberId = slice.selectedMemberId;
+      return tab.memberShells[memberId] ?? tab.resumeSession;
+    }
+    return null;
+  }
+
   Widget _buildTerminalBody(
     BuildContext context, {
     required TerminalSession session,
@@ -295,6 +329,10 @@ class _ChatWorkbenchBody extends StatelessWidget {
     required bool sessionConnectInProgress,
     required String? launchError,
   }) {
+    if (!routeActive) {
+      return const SizedBox.expand();
+    }
+
     final mountTerminalForLayout =
         sessionConnectInProgress || session.isRunning;
 

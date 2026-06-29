@@ -394,7 +394,7 @@ class TerminalSession implements TerminalTextSink {
       return;
     }
 
-    appLogger.i(
+    appLogger.d(
       '--------------------------------\n'
       'Starting transport:\n'
       '--------------------------------\n'
@@ -807,7 +807,7 @@ class TerminalSession implements TerminalTextSink {
     _userTurnActive = false;
     _cancelStartupTimers();
     final cliExecutable = _startupExecutable ?? executable;
-    appLogger.i(
+    appLogger.d(
       '[terminal] started ${CliExecutableValidator.cliDisplayName(cliExecutable)}',
     );
     final callback = _onProcessStarted;
@@ -1042,7 +1042,7 @@ class TerminalSession implements TerminalTextSink {
       rows: rows,
       environment: environment,
     );
-    appLogger.i("Pty started");
+    appLogger.d("Pty started");
     return LocalPtyTransport(pty);
   }
 }

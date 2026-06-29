@@ -90,16 +90,61 @@ class _RightToolsLifecycleHostState extends State<RightToolsLifecycleHost> {
 
   bool _scopeSyncScheduled = false;
   bool _diskRefreshScheduled = false;
+  bool _diskListenersActive = false;
+
+  bool get _lifecycleActive => TickerMode.valuesOf(context).enabled;
+
+  void _suspendDiskSideEffects() {
+    _diskWatchSub?.cancel();
+    _diskWatchSub = null;
+    _diskPollTimer?.cancel();
+    _diskPollTimer = null;
+    _fsWatcher?.suspend();
+    _diskListenersActive = false;
+  }
+
+  void _resumeDiskSideEffects() {
+    if (!_lifecycleActive || _diskListenersActive) return;
+    _fsWatcher?.resume();
+    _attachDiskListeners();
+    _diskListenersActive = true;
+  }
+
+  void _attachDiskListeners() {
+    final needsFileTree = widget.preferences.fileTreeVisible;
+    final needsGit = widget.preferences.gitVisible;
+    if (!needsFileTree && !needsGit) return;
+
+    final watcher = _fsWatcher;
+    if (watcher?.isSupported ?? false) {
+      _diskWatchSub = watcher!.onChanged.listen(_onDiskChanged);
+    } else {
+      _diskPollTimer = Timer.periodic(
+        _diskPollInterval,
+        (_) => _onDiskPoll(),
+      );
+    }
+  }
 
   @override
   void didChangeDependencies() {
     super.didChangeDependencies();
+    if (!_lifecycleActive) {
+      _suspendDiskSideEffects();
+      return;
+    }
+    _resumeDiskSideEffects();
     _scheduleScopeSync();
   }
 
   @override
   void didUpdateWidget(covariant RightToolsLifecycleHost oldWidget) {
     super.didUpdateWidget(oldWidget);
+    if (!_lifecycleActive) {
+      _suspendDiskSideEffects();
+      return;
+    }
+    _resumeDiskSideEffects();
     final rootsChanged =
         widget.cwd != oldWidget.cwd ||
         !listEquals(widget.additionalPaths, oldWidget.additionalPaths);
@@ -118,6 +163,7 @@ class _RightToolsLifecycleHostState extends State<RightToolsLifecycleHost> {
   }
 
   void _scheduleScopeSync() {
+    if (!_lifecycleActive) return;
     if (_scopeSyncScheduled) return;
     _scopeSyncScheduled = true;
     SchedulerBinding.instance.addPostFrameCallback((_) {
@@ -128,6 +174,7 @@ class _RightToolsLifecycleHostState extends State<RightToolsLifecycleHost> {
   }
 
   void _scheduleDiskRefresh({bool afterInitialPaint = false}) {
+    if (!_lifecycleActive) return;
     if (_diskRefreshScheduled) return;
     _diskRefreshScheduled = true;
     void run() {
@@ -184,6 +231,7 @@ class _RightToolsLifecycleHostState extends State<RightToolsLifecycleHost> {
   }
 
   void _syncScope(WorkspaceToolsScopeState scope) {
+    if (!_lifecycleActive) return;
     final tools = scope.tools;
     if (tools == null) {
       _scope = scope;
@@ -268,10 +316,15 @@ class _RightToolsLifecycleHostState extends State<RightToolsLifecycleHost> {
   }
 
   void _setupDiskRefresh() {
+    if (!_lifecycleActive) {
+      _suspendDiskSideEffects();
+      return;
+    }
     _diskWatchSub?.cancel();
     _diskWatchSub = null;
     _diskPollTimer?.cancel();
     _diskPollTimer = null;
+    _diskListenersActive = false;
 
     final needsFileTree = widget.preferences.fileTreeVisible;
     final needsGit = widget.preferences.gitVisible;
@@ -280,15 +333,9 @@ class _RightToolsLifecycleHostState extends State<RightToolsLifecycleHost> {
     if (needsFileTree) _warmFileTree();
     if (needsGit) _warmGit();
 
-    final watcher = _fsWatcher;
-    if (watcher?.isSupported ?? false) {
-      _diskWatchSub = watcher!.onChanged.listen(_onDiskChanged);
-    } else {
-      _diskPollTimer = Timer.periodic(
-        _diskPollInterval,
-        (_) => _onDiskPoll(),
-      );
-    }
+    _fsWatcher?.resume();
+    _attachDiskListeners();
+    _diskListenersActive = true;
   }
 
   void _onDiskChanged(Set<String> changedDirs) {

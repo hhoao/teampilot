@@ -27,7 +27,7 @@ Future<void> openWorkspaceSessionTab(
   AppSession session, {
   required bool isPersonal,
 }) async {
-  appLogger.i(
+  appLogger.d(
     '[session-launch] openWorkspaceSessionTab start '
     'session=${session.sessionId} workspace=${workspace.workspaceId} '
     'personal=$isPersonal launchState=${session.launchState.name}',

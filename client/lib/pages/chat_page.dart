@@ -10,6 +10,7 @@ class ChatPage extends StatelessWidget {
     required this.cwd,
     required this.workspaceId,
     this.tabScopeId,
+    this.profileId,
     this.additionalPaths = const [],
     this.sessionId,
     this.isPersonalWorkspace = false,
@@ -35,6 +36,9 @@ class ChatPage extends StatelessWidget {
   /// Scopes workspace terminals and right-tools selection; defaults to [workspaceId].
   final String? tabScopeId;
 
+  /// Launch identity for team resolution.
+  final String? profileId;
+
   String get _tabScopeId => tabScopeId ?? workspaceId;
 
   @override
@@ -54,6 +58,7 @@ class ChatPage extends StatelessWidget {
       sessionId: sessionId,
       workspaceId: workspaceId,
       tabScopeId: _tabScopeId,
+      profileId: profileId,
     );
   }
 }
@@ -92,6 +97,7 @@ class _TeamChatPage extends StatelessWidget {
     required this.cwd,
     required this.workspaceId,
     required this.tabScopeId,
+    this.profileId,
     this.additionalPaths = const [],
     this.sessionId,
   });
@@ -99,14 +105,24 @@ class _TeamChatPage extends StatelessWidget {
   final String cwd;
   final String workspaceId;
   final String tabScopeId;
+  final String? profileId;
   final List<String> additionalPaths;
   final String? sessionId;
 
-  @override
-  Widget build(BuildContext context) {
-    final team = context.select<LaunchProfileCubit, TeamProfile?>(
+  TeamProfile? _team(BuildContext context) {
+    final id = profileId?.trim() ?? '';
+    if (id.isNotEmpty) {
+      final profile = context.read<LaunchProfileCubit>().byId(id);
+      if (profile is TeamProfile) return profile;
+    }
+    return context.select<LaunchProfileCubit, TeamProfile?>(
       (c) => c.state.selectedTeam,
     );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final team = _team(context);
 
     if (team == null) {
       return const Center(child: CircularProgressIndicator());

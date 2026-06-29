@@ -32,6 +32,7 @@ import '../../../utils/app_keys.dart';
 import '../../../utils/app_session_sort.dart';
 import '../../../utils/debounce/debounce.dart';
 import '../../../utils/workspace_sidebar_sessions.dart';
+import '../../../utils/workspace_tab_session_scope.dart';
 import '../../../widgets/app_icon_button.dart';
 import '../../../widgets/cli/cli_brand_icon.dart';
 import '../../../widgets/menu/sidebar_action_menu.dart';
@@ -58,6 +59,7 @@ class WorkspaceSidebar extends StatefulWidget {
     required this.isPersonalWorkspace,
     required this.profileId,
     required this.sessionTeamFilter,
+    required this.tabScopeId,
     super.key,
   });
 
@@ -67,6 +69,7 @@ class WorkspaceSidebar extends StatefulWidget {
   /// The launch identity the workspace was opened against ([LaunchProfile.id]).
   final String profileId;
   final String sessionTeamFilter;
+  final String tabScopeId;
 
   @override
   State<WorkspaceSidebar> createState() =>
@@ -248,6 +251,10 @@ class _WorkspaceSidebarState
               isPersonal: widget.isPersonalWorkspace,
               profileId: widget.profileId,
               sessionTeamFilter: widget.sessionTeamFilter,
+              highlightSessionId: scopedActiveSessionId(
+                context.read<ChatCubit>(),
+                widget.tabScopeId,
+              ),
               personalLaunchBlocked: personalLaunchBlocked,
               collapsed:
                   wtView.collapsed.contains(worktreeGroupCollapseKey(group)),
@@ -363,6 +370,10 @@ class _WorkspaceSidebarState
       key: ValueKey('workspace-sidebar-session-${session.sessionId}'),
       session: session,
       index: index,
+      highlightSessionId: scopedActiveSessionId(
+        context.read<ChatCubit>(),
+        widget.tabScopeId,
+      ),
       tapThrottleKeyPrefix: 'workspace_sidebar_session',
       onTap: () {
         if (personalIdentityBlockedForWorkspace(

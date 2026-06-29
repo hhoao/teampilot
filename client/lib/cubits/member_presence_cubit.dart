@@ -5,7 +5,7 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter/scheduler.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
-import '../models/member_instance.dart';
+import '../services/team/runtime_roster_cache.dart';
 import '../models/member_presence.dart';
 import '../models/team_config.dart';
 import '../services/team/member_presence_service.dart';
@@ -53,6 +53,7 @@ class MemberPresenceCubit extends Cubit<MemberPresenceState> {
       super(const MemberPresenceState());
 
   final MemberPresenceService _memberPresenceService;
+  final RuntimeRosterCache _runtimeRosterCache = RuntimeRosterCache();
   Timer? _presencePollTimer;
   TeamProfile? _presenceTeam;
   PresenceTarget? _target;
@@ -97,6 +98,7 @@ class MemberPresenceCubit extends Cubit<MemberPresenceState> {
 
   void stopPresencePolling() {
     _presenceTeam = null;
+    _runtimeRosterCache.clear();
     _presenceUiOwners.clear();
     _invalidatePresencePolls();
     if (state.presence.isNotEmpty) _emitMemberPresence(const {});
@@ -109,7 +111,9 @@ class MemberPresenceCubit extends Cubit<MemberPresenceState> {
   }
 
   void syncPresenceTeam(TeamProfile? team) {
-    if (_samePresenceTeam(_presenceTeam, team)) return;
+    if (identical(_presenceTeam, team)) return;
+    if (_presenceTeam != null && team != null && _presenceTeam == team) return;
+    _runtimeRosterCache.clear();
     _presenceTeam = team;
     _schedulePresencePollingRestart();
   }
@@ -138,16 +142,6 @@ class MemberPresenceCubit extends Cubit<MemberPresenceState> {
     return target.eligible;
   }
 
-  static bool _samePresenceTeam(TeamProfile? a, TeamProfile? b) {
-    if (a == null || b == null) return a == b;
-    if (a.id != b.id || a.cli != b.cli) return false;
-    if (a.members.length != b.members.length) return false;
-    for (var i = 0; i < a.members.length; i++) {
-      if (a.members[i].id != b.members[i].id) return false;
-    }
-    return true;
-  }
-
   void _restartPresencePolling() {
     _presencePollTimer?.cancel();
     _presencePollTimer = null;
@@ -162,23 +156,26 @@ class MemberPresenceCubit extends Cubit<MemberPresenceState> {
     }
     final generation = _presencePollGeneration;
     _presencePollTimer = Timer.periodic(const Duration(seconds: 1), (_) {
-      unawaited(_tickMemberPresence(team, generation));
+      unawaited(_tickMemberPresence(generation));
     });
-    unawaited(_tickMemberPresence(team, generation));
+    unawaited(_tickMemberPresence(generation));
   }
 
-  Future<void> _tickMemberPresence(TeamProfile team, int generation) async {
+  Future<void> _tickMemberPresence(int generation) async {
     if (isClosed || generation != _presencePollGeneration) return;
     if (!_shouldPollPresence()) return;
     if (_presenceTickInFlight) return;
     final target = _target;
     if (target == null) return;
 
+    final rosterTeam = _presenceTeam;
+    if (rosterTeam == null) return;
+
     _presenceTickInFlight = true;
     try {
       final next = await _memberPresenceService.compute(
-        teamCli: team.cli,
-        members: runtimeRosterMembers(team),
+        teamCli: rosterTeam.cli,
+        members: _runtimeRosterCache.resolve(rosterTeam),
         cliTeamName: target.cliTeamName,
         memberToolConfigDir: target.memberToolConfigDir,
         memberShells: target.memberShells,
@@ -189,10 +186,28 @@ class MemberPresenceCubit extends Cubit<MemberPresenceState> {
           !_shouldPollPresence()) {
         return;
       }
-      _emitMemberPresence(next);
+      _emitMemberPresence(_mergePreservingInstances(next));
     } finally {
       _presenceTickInFlight = false;
     }
+  }
+
+  /// Reuses prior [MemberPresence] instances when values are unchanged so idle
+  /// polls do not allocate or emit.
+  Map<String, MemberPresence> _mergePreservingInstances(
+    Map<String, MemberPresence> next,
+  ) {
+    final prev = state.presence;
+    if (prev.isEmpty) return next;
+    if (mapEquals(next, prev)) return prev;
+
+    final out = <String, MemberPresence>{};
+    for (final entry in next.entries) {
+      final old = prev[entry.key];
+      out[entry.key] =
+          (old != null && old == entry.value) ? old : entry.value;
+    }
+    return mapEquals(out, prev) ? prev : out;
   }
 
   @override

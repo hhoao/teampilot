@@ -41,9 +41,6 @@ class MemberPresenceService {
     required Map<String, TerminalSession> memberShells,
     MemberWorkload Function(String memberId)? workloadResolver,
   }) async {
-    final valid = members.where((m) => m.isValid).toList();
-    if (valid.isEmpty) return const {};
-
     final presenceCap =
         _cliToolRegistry.capability<PresenceCapability>(teamCli);
     var claudeWorking = const <String, bool>{};
@@ -59,7 +56,8 @@ class MemberPresenceService {
     }
 
     final out = <String, MemberPresence>{};
-    for (final member in valid) {
+    for (final member in members) {
+      if (!member.isValid) continue;
       final shell = memberShells[member.id];
       final connection = _connectionOf(shell);
       final workload = switch (connection) {
@@ -78,7 +76,7 @@ class MemberPresenceService {
         workload: workload,
       );
     }
-    return out;
+    return out.isEmpty ? const {} : out;
   }
 
   static MemberConnection _connectionOf(TerminalSession? shell) {

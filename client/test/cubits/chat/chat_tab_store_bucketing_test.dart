@@ -78,5 +78,17 @@ void main() {
       expect(store.bySessionId('a1'), isNull);
       expect(store.bySessionId('b1')?.info.id, 'b1');
     });
+    test('tabsForWorkspace and savedActiveIndexFor read non-active buckets', () {
+      final store = ChatTabStore();
+      store.setActiveWorkspace('A');
+      store.append(_tab('a1'));
+      store.append(_tab('a2'));
+      store.setActiveWorkspace('B', currentActiveIndex: 1);
+      store.append(_tab('b1'));
+
+      expect(store.tabsForWorkspace('A').map((t) => t.info.id), ['a1', 'a2']);
+      expect(store.savedActiveIndexFor('A'), 1);
+      expect(store.tabsForWorkspace('B').map((t) => t.info.id), ['b1']);
+    });
   });
 }
