@@ -22,6 +22,31 @@ class LaunchProfileRepository {
   final String? _rootDirOverride;
   final SessionLifecycleService? _lifecycleService;
   static final Map<String, List<LaunchProfile>> _loadAllByRoot = {};
+  Future<void>? _revalidationFuture;
+
+  Future<void> _awaitIndexQuiescence() async {
+    final pending = _revalidationFuture;
+    if (pending != null) await pending;
+  }
+
+  void _scheduleRevalidation(
+    ({String dir, Filesystem fs}) paths,
+    LaunchProfileIndexStore store,
+    List<LaunchProfile> snapshot,
+  ) {
+    Future<void>? pending;
+    pending = _revalidateLaunchProfilesSnapshot(
+      paths,
+      store,
+      snapshot,
+    ).whenComplete(() {
+      if (identical(_revalidationFuture, pending)) {
+        _revalidationFuture = null;
+      }
+    });
+    _revalidationFuture = pending;
+    unawaited(pending);
+  }
 
   String _loadAllCacheKey() {
     if (_rootDirOverride != null) return _rootDirOverride;
@@ -97,9 +122,7 @@ class LaunchProfileRepository {
         '[boot] loadLaunchProfiles from snapshot count=${snapshot.length} '
         'read=${readMs}ms (validate deferred)',
       );
-      unawaited(
-        _revalidateLaunchProfilesSnapshot(paths, store, snapshot),
-      );
+      _scheduleRevalidation(paths, store, snapshot);
       return _rememberLoadAll(_sorted(snapshot));
     } else {
       appLogger.i(
@@ -215,6 +238,7 @@ class LaunchProfileRepository {
   Future<void> save(LaunchProfile identity) async {
     final id = identity.id.trim();
     if (id.isEmpty) return;
+    await _awaitIndexQuiescence();
     final paths = await _paths();
     final dir = paths.fs.pathContext.join(paths.dir, id);
     await paths.fs.ensureDir(dir);
@@ -253,6 +277,7 @@ class LaunchProfileRepository {
   Future<void> delete(String id, {bool destroyCliState = true}) async {
     final trimmed = id.trim();
     if (trimmed.isEmpty) return;
+    await _awaitIndexQuiescence();
     if (destroyCliState) {
       await _lifecycleService?.destroyCliToolState(trimmed);
     }
