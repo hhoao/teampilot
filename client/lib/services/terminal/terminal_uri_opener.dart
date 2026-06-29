@@ -9,6 +9,12 @@ import '../storage/app_storage.dart';
 
 /// Opens terminal hyperlinks like gnome-terminal ([gtk_show_uri] semantics).
 abstract final class TerminalUriOpener {
+  /// Trailing `:line` or `:line:col` from IDE/CLI citations (`path.dart:42`).
+  /// Anchored at `$` with a digit after `:` so `C:\foo` drive letters are safe.
+  static final RegExp lineSuffixPattern = RegExp(r':\d+(?::\d+)?$');
+
+  static String stripLineSuffix(String raw) =>
+      raw.replaceFirst(lineSuffixPattern, '');
   /// When set, existing local files are opened in the in-app editor before
   /// falling back to the OS handler.
   static Future<bool> open(
@@ -82,7 +88,7 @@ abstract final class TerminalUriOpener {
 
   /// gnome-terminal [terminal_util_uri_fixup]: normalize file:// host, trim punctuation.
   static String? fixup(String raw) {
-    var trimmed = raw.trim();
+    var trimmed = stripLineSuffix(raw.trim());
     if (trimmed.isEmpty) return null;
     trimmed = trimmed.replaceAll(RegExp(r'[)\],.;:]+$'), '');
 

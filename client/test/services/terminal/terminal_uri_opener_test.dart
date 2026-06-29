@@ -41,6 +41,24 @@ void main() {
         'https://example.com',
       );
     });
+
+    test('strips :line suffix before resolving bare file paths', () {
+      if (Platform.isWindows) return;
+      expect(
+        TerminalUriOpener.fixup(
+          'client/lib/pages/chat/chat_scoped_tab_view.dart:1',
+        ),
+        'file:/client/lib/pages/chat/chat_scoped_tab_view.dart',
+      );
+    });
+
+    test('strips :line:col suffix before resolving bare file paths', () {
+      if (Platform.isWindows) return;
+      expect(
+        TerminalUriOpener.fixup('src/main.dart:42:7'),
+        'file:/src/main.dart',
+      );
+    });
   });
 
   group('TerminalUriOpener.resolveLocalFilePath', () {
@@ -79,6 +97,17 @@ void main() {
           workingDirectory: '/workspace',
         ),
         '/workspace/src/main.dart',
+      );
+    });
+
+    test('resolves relative path with :line suffix', () {
+      if (Platform.isWindows) return;
+      expect(
+        TerminalUriOpener.resolveLocalFilePath(
+          'client/lib/foo.dart:1',
+          workingDirectory: '/workspace',
+        ),
+        '/workspace/client/lib/foo.dart',
       );
     });
   });
