@@ -92,7 +92,50 @@ class _RightToolsLifecycleHostState extends State<RightToolsLifecycleHost> {
   bool _diskRefreshScheduled = false;
   bool _diskListenersActive = false;
 
+  /// Side effects stay suspended until two frames after foreground resume so
+  /// tab-switch frames are not shared with scope sync / file-tree publish.
+  bool _foregroundSideEffectsReady = false;
+  bool _foregroundActivationScheduled = false;
+  bool _pendingDiskRefresh = false;
+
   bool get _lifecycleActive => TickerMode.valuesOf(context).enabled;
+
+  void _cancelForegroundActivation() {
+    _foregroundActivationScheduled = false;
+    _foregroundSideEffectsReady = false;
+  }
+
+  void _scheduleForegroundActivation() {
+    if (_foregroundActivationScheduled || _foregroundSideEffectsReady) return;
+    _foregroundActivationScheduled = true;
+    SchedulerBinding.instance.scheduleFrameCallback((_) {
+      if (!mounted) return;
+      SchedulerBinding.instance.addPostFrameCallback((_) {
+        _foregroundActivationScheduled = false;
+        if (!mounted || !_lifecycleActive) return;
+        _foregroundSideEffectsReady = true;
+        _resumeDiskSideEffects();
+        _scheduleScopeSync();
+        if (_pendingDiskRefresh) {
+          _pendingDiskRefresh = false;
+          _scheduleDiskRefresh();
+        }
+      });
+    });
+  }
+
+  void _onForegroundChanged() {
+    if (!_lifecycleActive) {
+      _cancelForegroundActivation();
+      _suspendDiskSideEffects();
+      return;
+    }
+    if (_foregroundSideEffectsReady) {
+      _scheduleScopeSync();
+      return;
+    }
+    _scheduleForegroundActivation();
+  }
 
   void _suspendDiskSideEffects() {
     _diskWatchSub?.cancel();
@@ -111,9 +154,7 @@ class _RightToolsLifecycleHostState extends State<RightToolsLifecycleHost> {
   }
 
   void _attachDiskListeners() {
-    final needsFileTree = widget.preferences.fileTreeVisible;
-    final needsGit = widget.preferences.gitVisible;
-    if (!needsFileTree && !needsGit) return;
+    if (!widget.preferences.needsDiskSideEffects) return;
 
     final watcher = _fsWatcher;
     if (watcher?.isSupported ?? false) {
@@ -129,12 +170,7 @@ class _RightToolsLifecycleHostState extends State<RightToolsLifecycleHost> {
   @override
   void didChangeDependencies() {
     super.didChangeDependencies();
-    if (!_lifecycleActive) {
-      _suspendDiskSideEffects();
-      return;
-    }
-    _resumeDiskSideEffects();
-    _scheduleScopeSync();
+    _onForegroundChanged();
   }
 
   @override
@@ -144,7 +180,15 @@ class _RightToolsLifecycleHostState extends State<RightToolsLifecycleHost> {
       _suspendDiskSideEffects();
       return;
     }
-    _resumeDiskSideEffects();
+    if (!_foregroundSideEffectsReady) {
+      if (widget.cwd != oldWidget.cwd ||
+          !listEquals(widget.additionalPaths, oldWidget.additionalPaths) ||
+          widget.workspaceId != oldWidget.workspaceId ||
+          widget.preferences != oldWidget.preferences) {
+        _pendingDiskRefresh = true;
+      }
+      return;
+    }
     final rootsChanged =
         widget.cwd != oldWidget.cwd ||
         !listEquals(widget.additionalPaths, oldWidget.additionalPaths);
@@ -163,7 +207,7 @@ class _RightToolsLifecycleHostState extends State<RightToolsLifecycleHost> {
   }
 
   void _scheduleScopeSync() {
-    if (!_lifecycleActive) return;
+    if (!_lifecycleActive || !_foregroundSideEffectsReady) return;
     if (_scopeSyncScheduled) return;
     _scopeSyncScheduled = true;
     SchedulerBinding.instance.addPostFrameCallback((_) {
@@ -174,7 +218,7 @@ class _RightToolsLifecycleHostState extends State<RightToolsLifecycleHost> {
   }
 
   void _scheduleDiskRefresh({bool afterInitialPaint = false}) {
-    if (!_lifecycleActive) return;
+    if (!_lifecycleActive || !_foregroundSideEffectsReady) return;
     if (_diskRefreshScheduled) return;
     _diskRefreshScheduled = true;
     void run() {
@@ -192,7 +236,7 @@ class _RightToolsLifecycleHostState extends State<RightToolsLifecycleHost> {
   /// Waits for [RightToolsLifecycleHost] scope publish plus [FileTreePanel]'s
   /// header → filter → list stagger before running disk-side effects.
   void _scheduleAfterFileTreePaintStagger(void Function() action) {
-    const frameCount = 5;
+    const frameCount = 2;
     void chain(int remaining) {
       SchedulerBinding.instance.addPostFrameCallback((_) {
         if (!mounted) return;
@@ -231,12 +275,17 @@ class _RightToolsLifecycleHostState extends State<RightToolsLifecycleHost> {
   }
 
   void _syncScope(WorkspaceToolsScopeState scope) {
-    if (!_lifecycleActive) return;
+    if (!_lifecycleActive || !_foregroundSideEffectsReady) return;
     final tools = scope.tools;
     if (tools == null) {
+      if (_scope == scope) return;
       _scope = scope;
+      if (mounted) setState(() {});
       return;
     }
+
+    final prevCubit = _fileTreeCubit;
+    final prevScope = _scope;
 
     final storeTargetId = scope.isMixed
         ? WorkspaceFileTreeStore.mixedTargetId
@@ -270,6 +319,11 @@ class _RightToolsLifecycleHostState extends State<RightToolsLifecycleHost> {
     _lastMounts = mounts;
     _scope = scope;
     if (!mounted) return;
+
+    final cubitChanged = !identical(prevCubit, _fileTreeCubit);
+    final scopeChanged = prevScope != _scope;
+    if (!cubitChanged && !scopeChanged) return;
+
     // First cubit attach can coincide with workspace sidebar layout; publish on
     // the next frame so FileTreePanel does not mount in the same UI frame.
     if (storeTargetChanged) {
@@ -316,7 +370,7 @@ class _RightToolsLifecycleHostState extends State<RightToolsLifecycleHost> {
   }
 
   void _setupDiskRefresh() {
-    if (!_lifecycleActive) {
+    if (!_lifecycleActive || !_foregroundSideEffectsReady) {
       _suspendDiskSideEffects();
       return;
     }
@@ -326,9 +380,10 @@ class _RightToolsLifecycleHostState extends State<RightToolsLifecycleHost> {
     _diskPollTimer = null;
     _diskListenersActive = false;
 
+    if (!widget.preferences.needsDiskSideEffects) return;
+
     final needsFileTree = widget.preferences.fileTreeVisible;
     final needsGit = widget.preferences.gitVisible;
-    if (!needsFileTree && !needsGit) return;
 
     if (needsFileTree) _warmFileTree();
     if (needsGit) _warmGit();

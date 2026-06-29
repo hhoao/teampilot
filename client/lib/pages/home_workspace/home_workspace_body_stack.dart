@@ -93,13 +93,16 @@ class _HomeBodyLayer extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Offstage(
-      offstage: offstage,
-      child: TickerMode(
-        enabled: enabled,
-        child: IgnorePointer(
-          ignoring: offstage,
-          child: child,
+    return ExcludeSemantics(
+      excluding: offstage,
+      child: Offstage(
+        offstage: offstage,
+        child: TickerMode(
+          enabled: enabled,
+          child: IgnorePointer(
+            ignoring: offstage,
+            child: child,
+          ),
         ),
       ),
     );
@@ -129,17 +132,20 @@ class _WorkspaceTabSlot extends StatelessWidget {
       view: view,
       configSection: configSection,
       child: RepaintBoundary(
-        child: Offstage(
-          offstage: !isActive,
-          child: TickerMode(
-            enabled: isActive,
-            child: IgnorePointer(
-              ignoring: !isActive,
-              child: WorkspacePage(
-                key: ValueKey('workspace-body-${tab.tabKey}'),
-                workspaceId: tab.workspaceId,
-                tabKey: tab.tabKey,
-                identity: tab.identity,
+        child: ExcludeSemantics(
+          excluding: !isActive,
+          child: Offstage(
+            offstage: !isActive,
+            child: TickerMode(
+              enabled: isActive,
+              child: IgnorePointer(
+                ignoring: !isActive,
+                child: WorkspacePage(
+                  key: ValueKey('workspace-body-${tab.tabKey}'),
+                  workspaceId: tab.workspaceId,
+                  tabKey: tab.tabKey,
+                  identity: tab.identity,
+                ),
               ),
             ),
           ),

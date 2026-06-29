@@ -81,6 +81,10 @@ class _RightToolsPanelState extends State<RightToolsPanel> {
 
   @override
   Widget build(BuildContext context) {
+    if (!widget.preferences.rightToolsVisible ||
+        !_toolPreferences.needsLifecycleHost) {
+      return const SizedBox.shrink();
+    }
     return RightToolsLifecycleHost(
       cwd: widget.cwd,
       additionalPaths: widget.additionalPaths,
