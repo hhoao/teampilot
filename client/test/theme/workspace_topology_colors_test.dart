@@ -7,11 +7,11 @@ void main() {
   test('remote and mixed base accents differ by brightness', () {
     expect(
       WorkspaceTopologyColors.remote(Brightness.light),
-      const Color(0xFF5F7A68),
+      const Color(0xFF4A8B57),
     );
     expect(
       WorkspaceTopologyColors.mixed(Brightness.dark),
-      const Color(0xFF9E8B62),
+      const Color(0xFFC9A85A),
     );
   });
 

@@ -7,10 +7,10 @@ import '../models/workspace_topology.dart';
 /// Remote and mixed hues are muted and blended with [ColorScheme.onSurfaceVariant]
 /// so they read as hints rather than traffic-light accents.
 abstract final class WorkspaceTopologyColors {
-  static const _remoteLight = Color(0xFF5F7A68);
-  static const _remoteDark = Color(0xFF7E9486);
-  static const _mixedLight = Color(0xFF8F7650);
-  static const _mixedDark = Color(0xFF9E8B62);
+  static const _remoteLight = Color(0xFF4A8B57);
+  static const _remoteDark = Color(0xFF8FB89A);
+  static const _mixedLight = Color(0xFFB08A42);
+  static const _mixedDark = Color(0xFFC9A85A);
 
   static Color remote(Brightness brightness) {
     return brightness == Brightness.dark ? _remoteDark : _remoteLight;
@@ -49,7 +49,7 @@ abstract final class WorkspaceTopologyColors {
   static Color _tone({
     required Color accent,
     required ColorScheme colorScheme,
-    double accentWeight = 0.58,
+    double accentWeight = 0.70,
   }) {
     return Color.lerp(
       colorScheme.onSurfaceVariant,
@@ -58,7 +58,7 @@ abstract final class WorkspaceTopologyColors {
     )!;
   }
 
-  static Color borderAlpha(Color color, {double alpha = 0.35}) {
+  static Color borderAlpha(Color color, {double alpha = 0.38}) {
     return color.withValues(alpha: alpha);
   }
 }
