@@ -15,16 +15,20 @@ class WorkspaceSearchFieldWarmup extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return TextField(
-      decoration: InputDecoration(
-        hintText: 'a',
-        prefixIcon: Icon(
-          Icons.search,
-          size: context.appIconSizes.md,
+    final cs = Theme.of(context).colorScheme;
+    return Material(
+      color: cs.surface,
+      child: TextField(
+        decoration: InputDecoration(
+          hintText: 'a',
+          prefixIcon: Icon(
+            Icons.search,
+            size: context.appIconSizes.md,
+          ),
+          floatingLabelBehavior: FloatingLabelBehavior.never,
         ),
-        floatingLabelBehavior: FloatingLabelBehavior.never,
+        style: appTextFieldStyle(Theme.of(context).textTheme),
       ),
-      style: appTextFieldStyle(Theme.of(context).textTheme),
     );
   }
 }

@@ -6,6 +6,7 @@ import '../../services/diff/diff_engine.dart';
 import '../../services/diff/diff_model.dart';
 import '../../services/diff/diff_options.dart';
 import '../../services/diff/unified_diff_parser.dart';
+import '../../theme/workspace_surface_layers.dart';
 import 'diff_toolbar.dart';
 import 'diff_view_controller.dart';
 import 'side_by_side_diff_view.dart';
@@ -25,6 +26,7 @@ class DiffViewer extends StatefulWidget {
     required this.supportsFullContext,
     this.filePath,
     this.initialMode = DiffViewMode.sideBySide,
+    this.chrome = WorkspacePageChrome.workspace,
     this.onOpenSource,
     super.key,
   });
@@ -34,6 +36,7 @@ class DiffViewer extends StatefulWidget {
     required String newText,
     String? filePath,
     DiffViewMode initialMode = DiffViewMode.sideBySide,
+    WorkspacePageChrome chrome = WorkspacePageChrome.workspace,
     VoidCallback? onOpenSource,
     Key? key,
   }) {
@@ -48,6 +51,7 @@ class DiffViewer extends StatefulWidget {
       supportsFullContext: false,
       filePath: filePath,
       initialMode: initialMode,
+      chrome: chrome,
       onOpenSource: onOpenSource,
       key: key,
     );
@@ -58,6 +62,7 @@ class DiffViewer extends StatefulWidget {
     String? filePath,
     Future<String?> Function(bool ignoreWhitespace, bool fullContext)? reloadDiff,
     DiffViewMode initialMode = DiffViewMode.sideBySide,
+    WorkspacePageChrome chrome = WorkspacePageChrome.workspace,
     VoidCallback? onOpenSource,
     Key? key,
   }) {
@@ -73,6 +78,7 @@ class DiffViewer extends StatefulWidget {
       supportsFullContext: reloadDiff != null,
       filePath: filePath,
       initialMode: initialMode,
+      chrome: chrome,
       onOpenSource: onOpenSource,
       key: key,
     );
@@ -90,6 +96,9 @@ class DiffViewer extends StatefulWidget {
 
   final String? filePath;
   final DiffViewMode initialMode;
+
+  /// Workspace surface chrome for shell/editor backgrounds.
+  final WorkspacePageChrome chrome;
 
   /// Opens the underlying file in the editor; shown as a toolbar button. Hidden
   /// when null.
@@ -157,11 +166,13 @@ class _DiffViewerState extends State<DiffViewer> {
           result: _result,
           filePath: widget.filePath,
           controller: _controller,
+          chrome: widget.chrome,
         ),
       DiffViewMode.unified => UnifiedDiffView(
           result: _result,
           filePath: widget.filePath,
           controller: _controller,
+          chrome: widget.chrome,
         ),
     };
   }
@@ -174,6 +185,7 @@ class _DiffViewerState extends State<DiffViewer> {
         DiffToolbar(
           controller: _controller,
           mode: _mode,
+          chrome: widget.chrome,
           onModeChanged: (m) => setState(() => _mode = m),
           ignoreWhitespace: _ignoreWhitespace,
           onIgnoreWhitespaceChanged: _setIgnoreWhitespace,

@@ -198,7 +198,11 @@ CodeHighlightTheme? codeHighlightThemeFor(
 /// Editor monospace size from [AppTypographyTheme.mono].
 double fileEditorFontSize(BuildContext context) => context.appTypography.mono;
 
-CodeEditorStyle codeEditorStyleFor(BuildContext context, String filePath) {
+CodeEditorStyle codeEditorStyleFor(
+  BuildContext context,
+  String filePath, {
+  Color? backgroundColor,
+}) {
   final cs = Theme.of(context).colorScheme;
   final fonts = context.appFonts;
   final textScaler = MediaQuery.textScalerOf(context);
@@ -208,7 +212,7 @@ CodeEditorStyle codeEditorStyleFor(BuildContext context, String filePath) {
     fontFamily: fonts.monoFontFamily,
     fontFamilyFallback: fonts.monoFontFamilyFallback,
     textColor: cs.onSurface,
-    backgroundColor: cs.workspaceCode,
+    backgroundColor: backgroundColor ?? cs.workspaceCode,
     selectionColor: cs.primary.withValues(alpha: 0.28),
     highlightColor: cs.tertiary.withValues(alpha: 0.35),
     cursorColor: cs.primary,

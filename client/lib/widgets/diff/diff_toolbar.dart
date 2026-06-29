@@ -1,6 +1,7 @@
 ﻿import 'package:flutter/material.dart';
 
 import '../../l10n/l10n_extensions.dart';
+import '../../theme/workspace_surface_layers.dart';
 import 'diff_view_controller.dart';
 
 /// Which diff layout the viewer is showing.
@@ -15,6 +16,7 @@ class DiffToolbar extends StatelessWidget {
     required this.onModeChanged,
     required this.ignoreWhitespace,
     required this.onIgnoreWhitespaceChanged,
+    this.chrome = WorkspacePageChrome.workspace,
     this.showIgnoreWhitespace = true,
     this.fullContext = false,
     required this.onFullContextChanged,
@@ -28,6 +30,7 @@ class DiffToolbar extends StatelessWidget {
   final ValueChanged<DiffViewMode> onModeChanged;
   final bool ignoreWhitespace;
   final ValueChanged<bool> onIgnoreWhitespaceChanged;
+  final WorkspacePageChrome chrome;
   final bool showIgnoreWhitespace;
 
   /// When true, the whole file is shown; otherwise only changed regions.
@@ -47,7 +50,7 @@ class DiffToolbar extends StatelessWidget {
       height: 44,
       padding: const EdgeInsets.symmetric(horizontal: 8),
       decoration: BoxDecoration(
-        color: cs.surface,
+        color: cs.workspaceCardChrome(chrome),
         border: Border(bottom: BorderSide(color: cs.outlineVariant)),
       ),
       child: Row(
