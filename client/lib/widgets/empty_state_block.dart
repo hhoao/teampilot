@@ -3,11 +3,6 @@ import 'package:teampilot/theme/app_icon_sizes.dart';
 
 import '../theme/app_text_styles.dart';
 
-enum EmptyStateActionStyle {
-  text,
-  outlinedIcon,
-}
-
 /// Flat gray-icon empty state shared across skills, plugins, MCP, extensions, etc.
 class EmptyStateBlock extends StatelessWidget {
   const EmptyStateBlock({
@@ -16,8 +11,6 @@ class EmptyStateBlock extends StatelessWidget {
     this.hint,
     this.actionLabel,
     this.onAction,
-    this.actionIcon,
-    this.actionStyle = EmptyStateActionStyle.text,
     this.centered = false,
     super.key,
   });
@@ -27,8 +20,6 @@ class EmptyStateBlock extends StatelessWidget {
   final String? hint;
   final String? actionLabel;
   final VoidCallback? onAction;
-  final IconData? actionIcon;
-  final EmptyStateActionStyle actionStyle;
   final bool centered;
 
   @override
@@ -62,23 +53,8 @@ class EmptyStateBlock extends StatelessWidget {
             ),
           ],
           if (actionLabel != null && onAction != null) ...[
-            SizedBox(
-              height: actionStyle == EmptyStateActionStyle.outlinedIcon ? 14 : 10,
-            ),
-            switch (actionStyle) {
-              EmptyStateActionStyle.text => TextButton(
-                onPressed: onAction,
-                child: Text(actionLabel!),
-              ),
-              EmptyStateActionStyle.outlinedIcon => OutlinedButton.icon(
-                onPressed: onAction,
-                icon: Icon(
-                  actionIcon ?? Icons.arrow_forward,
-                  size: context.appIconSizes.md,
-                ),
-                label: Text(actionLabel!),
-              ),
-            },
+            const SizedBox(height: 10),
+            TextButton(onPressed: onAction, child: Text(actionLabel!)),
           ],
         ],
       ),

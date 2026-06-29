@@ -69,8 +69,6 @@ class WorkspaceSkillsSection extends StatelessWidget {
                     hint: l10n.skillsNoInstalledHint,
                     actionLabel: l10n.workspaceSkillsManage,
                     onAction: onManage,
-                    actionIcon: Icons.extension_outlined,
-                    actionStyle: EmptyStateActionStyle.outlinedIcon,
                   )
                 else
                   Column(

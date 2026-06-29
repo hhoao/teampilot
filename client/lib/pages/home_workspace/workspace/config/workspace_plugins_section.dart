@@ -72,8 +72,6 @@ class WorkspacePluginsSection extends StatelessWidget {
                     hint: l10n.workspacePluginsEmptyHint,
                     actionLabel: l10n.workspacePluginsManage,
                     onAction: onManage,
-                    actionIcon: Icons.widgets_outlined,
-                    actionStyle: EmptyStateActionStyle.outlinedIcon,
                   )
                 else
                   Column(
