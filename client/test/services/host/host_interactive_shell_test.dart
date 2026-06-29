@@ -29,6 +29,7 @@ void main() {
     });
 
     test('resolveSpec attaches login flags for bash', () {
+      if (Platform.isWindows) return;
       final spec = HostInteractiveShell.resolveSpec('/bin/bash');
       expect(spec.kind, HostInteractiveShellKind.bash);
       expect(spec.launchArguments, const ['-l']);

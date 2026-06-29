@@ -21,7 +21,7 @@ void main() {
     tmp = await Directory.systemTemp.createTemp('identity_repo_');
     repo = testLaunchProfileRepository(tmp);
   });
-  tearDown(() => tmp.delete(recursive: true));
+  tearDown(() async => deleteTempDirBestEffort(tmp));
 
   test('saves and loads both kinds', () async {
     await repo.save(const PersonalProfile(

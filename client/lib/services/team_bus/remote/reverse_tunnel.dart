@@ -132,10 +132,18 @@ class TunnelPump {
     // local bus → remote
     socket.listen(
       channel.add,
-      onError: (_) => channel.close(),
-      onDone: () => channel.close(),
+      onError: (_) => unawaited(_closeChannelQuietly(channel)),
+      onDone: () => unawaited(_closeChannelQuietly(channel)),
       cancelOnError: true,
     );
+  }
+
+  Future<void> _closeChannelQuietly(TunnelChannel channel) async {
+    try {
+      await channel.close();
+    } on Object {
+      // Transport may already be torn down during session cleanup.
+    }
   }
 
   Future<void> stop() async {
