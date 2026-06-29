@@ -83,6 +83,7 @@ class _HoverTextTooltipState extends State<HoverTextTooltip> {
             constraints: BoxConstraints(maxWidth: widget.maxWidth),
             child: Material(
               color: Colors.transparent,
+              clipBehavior: Clip.antiAlias,
               child: Container(
                 padding: tooltipTheme.padding,
                 decoration: tooltipTheme.decoration,
