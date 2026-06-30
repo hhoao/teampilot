@@ -66,6 +66,17 @@ abstract final class WorkspacePaneAnimations {
 
   static const slideDuration = Duration(milliseconds: 220);
 
+  /// Panes that already run their own entry motion — [switcher] must not stack
+  /// [AnimatedSwitcher] + deferred mount on top (feels like double animation).
+  static bool _paneHandlesOwnEntryMotion(WorkspaceRightPaneKind kind) =>
+      switch (kind) {
+        WorkspaceRightPaneKind.global ||
+        WorkspaceRightPaneKind.team ||
+        WorkspaceRightPaneKind.personal ||
+        WorkspaceRightPaneKind.allWorkspaces => true,
+        WorkspaceRightPaneKind.library => false,
+      };
+
   static Widget switcher({
     required BuildContext context,
     required WorkspaceRightPaneDescriptor descriptor,
@@ -75,9 +86,8 @@ abstract final class WorkspacePaneAnimations {
     final switching = previous != null && previous != descriptor;
     if (!switching) return child;
 
-    final involvesGlobal = previous!.kind == WorkspaceRightPaneKind.global ||
-        descriptor.kind == WorkspaceRightPaneKind.global;
-    if (involvesGlobal) {
+    if (_paneHandlesOwnEntryMotion(previous.kind) ||
+        _paneHandlesOwnEntryMotion(descriptor.kind)) {
       return KeyedSubtree(
         key: ValueKey(descriptor.switchKey),
         child: child,
