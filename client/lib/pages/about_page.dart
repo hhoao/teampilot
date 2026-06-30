@@ -1,14 +1,13 @@
 ﻿import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
-import 'package:go_router/go_router.dart';
 import 'package:teampilot/theme/app_toast_theme.dart';
 import 'package:teampilot/widgets/app_toast/app_toast.dart';
 import 'package:url_launcher/url_launcher.dart';
 
 import '../config/app_update_config.dart';
 import '../cubits/app_update_cubit.dart';
-import '../cubits/config_cubit.dart';
 import '../l10n/l10n_extensions.dart';
+import '../pages/system/log_config_workspace.dart';
 import '../pages/onboarding/onboarding_gate.dart';
 import '../utils/app_keys.dart';
 import '../widgets/settings/workspace_hub_shell.dart';
@@ -24,8 +23,7 @@ class AboutConfigWorkspace extends StatefulWidget {
 
   final bool showHeading;
 
-  /// Overrides the default `/config/logs` route navigation for the logs button.
-  /// Lets embedders (e.g. the settings dialog) decide how to open the viewer.
+  /// Overrides the default modal log viewer for the logs button.
   final VoidCallback? onViewLogs;
 
   @override
@@ -176,10 +174,7 @@ class _AboutConfigWorkspaceState extends State<AboutConfigWorkspace> {
                                   onViewLogs();
                                   return;
                                 }
-                                context.read<ConfigCubit>().selectSection(
-                                  ConfigSection.logs,
-                                );
-                                context.go('/config/logs');
+                                showLogViewerDialog(context);
                               },
                               icon: Icon(Icons.article_outlined),
                               label: Text(l10n.logViewerTitle),
