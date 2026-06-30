@@ -56,7 +56,47 @@ class TeammateBusHttpClient {
     return callTool('list_teammates', <String, Object?>{});
   }
 
-  void close({bool force = true}) => _client.close(force: force);
+  Future<Map<String, Object?>> readMessages({
+    String? afterId,
+    int limit = 20,
+    bool unreadOnly = true,
+    bool markRead = false,
+  }) {
+    return callTool('read_messages', <String, Object?>{
+      if (afterId != null) 'after_id': afterId,
+      'limit': limit,
+      'unread_only': unreadOnly,
+      'mark_read': markRead,
+    });
+  }
+
+  Future<Map<String, Object?>> addTasks(List<Map<String, Object?>> tasks) {
+    return callTool('add_tasks', <String, Object?>{'tasks': tasks});
+  }
+
+  Future<Map<String, Object?>> claimTask(String taskId) {
+    return callTool('claim_task', <String, Object?>{'task_id': taskId});
+  }
+
+  Future<Map<String, Object?>> updateTask({
+    required String taskId,
+    required String status,
+    String? result,
+  }) {
+    return callTool('update_task', <String, Object?>{
+      'task_id': taskId,
+      'status': status,
+      if (result != null) 'result': result,
+    });
+  }
+
+  Future<Map<String, Object?>> listTasks({String? status}) {
+    return callTool('list_tasks', <String, Object?>{
+      if (status != null) 'status': status,
+    });
+  }
+
+  void close({bool force = true}) => _client.close(force: true);
 
   Future<Map<String, Object?>> rpc(Map<String, Object?> body) async {
     final req = await _client.postUrl(_endpoint);
@@ -91,4 +131,29 @@ class TeammateBusHttpClient {
     }
     return jsonDecode(text) as Map<String, Object?>;
   }
+
+  /// Parses `Enqueued N task(s):\n- <id>: <title>` lines from [addTasks].
+  static List<({String id, String title})> parseEnqueuedTasks(
+    Map<String, Object?> response,
+  ) {
+    final text = toolResultText(response);
+    final out = <({String id, String title})>[];
+    for (final line in text.split('\n')) {
+      final trimmed = line.trim();
+      if (!trimmed.startsWith('- ')) continue;
+      final body = trimmed.substring(2);
+      final colon = body.indexOf(': ');
+      if (colon <= 0) continue;
+      out.add((id: body.substring(0, colon), title: body.substring(colon + 2)));
+    }
+    return out;
+  }
+
+  static bool toolSucceeded(Map<String, Object?> response) {
+    final result = response['result'];
+    if (result is! Map) return false;
+    return result['isError'] != true;
+  }
+
+  static bool toolFailed(Map<String, Object?> response) => !toolSucceeded(response);
 }
