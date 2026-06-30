@@ -20,19 +20,10 @@ import 'ssh_profiles_config_section.dart';
 
 /// Opens the workspace quick-settings modal from anywhere (e.g. the title bar).
 ///
-/// Self-contained sections (layout, session) render inline; sections
-/// that depend on the `/config/*` route tree (about) close the dialog and
-/// navigate to the full settings route instead.
+/// All sections render inline in the dialog. Log viewing from About opens a
+/// nested modal instead of navigating away.
 Future<void> showWorkspaceSettingsDialog(BuildContext context) {
   final l10n = context.l10n;
-
-  void goToSection(ConfigSection section) {
-    final router = GoRouter.of(context);
-    final navigator = Navigator.of(context);
-    context.read<ConfigCubit>().selectSection(section);
-    navigator.pop();
-    router.go('/config/${section.routeSegment}');
-  }
 
   return showSettingsDialog(
     context,
@@ -80,7 +71,7 @@ Future<void> showWorkspaceSettingsDialog(BuildContext context) {
         subtitle: l10n.aboutPageSubtitle,
         body: AboutConfigWorkspace(
           showHeading: false,
-          onViewLogs: () => goToSection(ConfigSection.logs),
+          onViewLogs: () => showLogViewerDialog(context),
         ),
       ),
     ],
