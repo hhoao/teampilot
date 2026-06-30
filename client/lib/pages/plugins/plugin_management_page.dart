@@ -90,7 +90,6 @@ class PluginManagementPage extends StatelessWidget {
           pageKey: AppKeys.pluginsWorkspace,
           title: context.l10n.pluginsTitle,
           subtitle: context.l10n.pluginsSubtitle,
-          bodyAnimationKey: ValueKey('plugins-body-${section.name}'),
           nav: WorkspaceEnumNavPanel<PluginSection>(
             sections: PluginSection.values,
             current: section,

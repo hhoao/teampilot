@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_animate/flutter_animate.dart';
 
 import '../extensions/extension_management_page.dart';
 import '../mcp/mcp_management_page.dart';
@@ -62,7 +63,7 @@ class _HomeGlobalSectionState
 
   @override
   Widget build(BuildContext context) {
-    return switch (widget.view) {
+    final content = switch (widget.view) {
       HomeGlobalView.skills => SkillManagementPage(
           section: _skill,
           onSelectSection: (s) => setState(() => _skill = s),
@@ -82,5 +83,15 @@ class _HomeGlobalSectionState
       HomeGlobalView.teamHub => const TeamHubPage(),
       HomeGlobalView.providers => const LlmConfigWorkspace(),
     };
+    if (MediaQuery.disableAnimationsOf(context)) return content;
+    return content
+        .animate(key: ValueKey(widget.view))
+        .fadeIn(duration: 180.ms, curve: Curves.easeOut)
+        .slideX(
+          begin: 0.025,
+          end: 0,
+          duration: 220.ms,
+          curve: Curves.easeOutCubic,
+        );
   }
 }

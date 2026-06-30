@@ -1,6 +1,5 @@
 ﻿import 'package:flutter/material.dart';
 import 'package:teampilot/theme/app_icon_sizes.dart';
-import 'package:flutter_animate/flutter_animate.dart';
 
 import '../../models/layout_preferences.dart';
 import '../../theme/app_text_styles.dart';
@@ -137,9 +136,10 @@ class WorkspaceHubNavItem extends StatelessWidget {
         : BorderRadius.circular(12);
     final leadingIcon = showLeaderBadge ? teamLeadNavIcon : icon;
 
-    return Padding(
-      padding: EdgeInsets.only(left: leftIndent, bottom: 8),
-      child: Material(
+    return RepaintBoundary(
+      child: Padding(
+        padding: EdgeInsets.only(left: leftIndent, bottom: 8),
+        child: Material(
         color: selected
             ? selectedColor
             : hubStyle
@@ -196,6 +196,7 @@ class WorkspaceHubNavItem extends StatelessWidget {
           ),
         ),
       ),
+    ),
     );
   }
 }
@@ -205,7 +206,6 @@ class WorkspaceHubNavList extends StatelessWidget {
     required this.entries,
     this.hubStyle = false,
     this.sidebarStyle = false,
-    this.animateEntries = false,
     this.shrinkWrap = false,
     this.trailingChildren = const [],
     super.key,
@@ -214,7 +214,6 @@ class WorkspaceHubNavList extends StatelessWidget {
   final List<WorkspaceHubEntry> entries;
   final bool hubStyle;
   final bool sidebarStyle;
-  final bool animateEntries;
 
   /// When true, sizes to [entries] height. Use inside a [Column] with a
   /// scrollable sibling (e.g. member list footer), not inside another scroll view.
@@ -225,9 +224,8 @@ class WorkspaceHubNavList extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final items = entries.indexed.map((indexedEntry) {
-      final (index, entry) = indexedEntry;
-      final item = WorkspaceHubNavItem(
+    final items = entries.map((entry) {
+      return WorkspaceHubNavItem(
         key: entry.key,
         title: entry.title,
         icon: entry.icon,
@@ -238,20 +236,6 @@ class WorkspaceHubNavList extends StatelessWidget {
         density: entry.density,
         onTap: entry.onTap,
       );
-
-      if (!animateEntries) {
-        return item;
-      }
-
-      return item
-          .animate(delay: (index * 35).ms)
-          .fadeIn(duration: 180.ms, curve: Curves.easeOut)
-          .slideX(
-            begin: -0.06,
-            end: 0,
-            duration: 220.ms,
-            curve: Curves.easeOutCubic,
-          );
     }).toList();
 
     final scrollPhysics = shrinkWrap
@@ -321,7 +305,6 @@ class WorkspaceSplitShell extends StatelessWidget {
     required this.body,
     this.navWidth = LayoutPreferences.defaultWorkspaceNavWidth,
     this.onNavWidthChanged,
-    this.bodyAnimationKey,
     super.key,
   });
 
@@ -329,7 +312,6 @@ class WorkspaceSplitShell extends StatelessWidget {
   final Widget body;
   final double navWidth;
   final ValueChanged<double>? onNavWidthChanged;
-  final Key? bodyAnimationKey;
 
   static const compactBreakpoint = 820.0;
 
@@ -341,15 +323,6 @@ class WorkspaceSplitShell extends StatelessWidget {
         final contentPadding = compact
             ? const EdgeInsets.fromLTRB(16, 20, 16, 16)
             : const EdgeInsets.fromLTRB(24, 28, 28, 24);
-
-        // Fade only — slideX uses RenderFractionalTranslation and breaks hit
-        // testing / MouseTracker when the body is swapped during pointer events
-        // (e.g. team-config section nav).
-        final animatedBody = bodyAnimationKey == null
-            ? body
-            : body
-                  .animate(key: bodyAnimationKey)
-                  .fadeIn(duration: 180.ms, curve: Curves.easeOut);
 
         return TwoPaneSplitView(
           axis: Axis.horizontal,
@@ -368,7 +341,7 @@ class WorkspaceSplitShell extends StatelessWidget {
                 return SizedBox(
                   width: contentWidth,
                   height: inner.maxHeight,
-                  child: animatedBody,
+                  child: body,
                 );
               },
             ),

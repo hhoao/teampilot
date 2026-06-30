@@ -46,7 +46,6 @@ class McpFormNavPage extends StatelessWidget {
           pageKey: AppKeys.mcpFormDetail,
           title: context.l10n.mcpNavTitle,
           subtitle: context.l10n.mcpSubtitle,
-          bodyAnimationKey: ValueKey(serverId ?? 'mcp-add'),
           nav: WorkspaceEnumNavPanel<McpSection>(
             sections: McpSection.values,
             current: McpSection.installed,

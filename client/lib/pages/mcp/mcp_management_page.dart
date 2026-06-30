@@ -294,7 +294,6 @@ class _McpManagementPageState extends State<McpManagementPage> {
           pageKey: AppKeys.mcpWorkspace,
           title: context.l10n.mcpNavTitle,
           subtitle: context.l10n.mcpSubtitle,
-          bodyAnimationKey: ValueKey('mcp-body-${widget.section.name}'),
           nav: WorkspaceEnumNavPanel<McpSection>(
             sections: McpSection.values,
             current: widget.section,

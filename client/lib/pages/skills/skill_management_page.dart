@@ -77,7 +77,6 @@ class SkillManagementPage extends StatelessWidget {
         pageKey: AppKeys.skillsWorkspace,
         title: context.l10n.skillsTitle,
         subtitle: context.l10n.skillsSubtitle,
-        bodyAnimationKey: ValueKey('skills-body-${section.name}'),
         nav: WorkspaceEnumNavPanel<SkillSection>(
           sections: SkillSection.values,
           current: section,

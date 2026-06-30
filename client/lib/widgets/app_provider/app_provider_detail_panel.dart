@@ -1,7 +1,10 @@
-﻿import 'dart:convert';
+import 'dart:convert';
 
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:teampilot/theme/app_icon_sizes.dart';
+import 'package:teampilot/theme/app_toast_theme.dart';
+import 'package:teampilot/widgets/app_toast/app_toast.dart';
 
 import '../../theme/app_fonts.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
@@ -143,7 +146,17 @@ class AppProviderDetailPanel extends StatelessWidget {
           const SizedBox(height: 24),
           ProviderCredentialActionBar(provider: provider),
           const SizedBox(height: 24),
-          Text(l10n.jsonPreview, style: Theme.of(context).textTheme.labelLarge),
+          Row(
+            children: [
+              Expanded(
+                child: Text(
+                  l10n.jsonPreview,
+                  style: Theme.of(context).textTheme.labelLarge,
+                ),
+              ),
+              _ProviderJsonPreviewCopyButton(provider: provider),
+            ],
+          ),
           const SizedBox(height: 8),
           _ProviderJsonPreview(provider: provider),
         ],
@@ -203,6 +216,10 @@ class _ProviderJsonPreviewState extends State<_ProviderJsonPreview> {
   Widget build(BuildContext context) {
     final cs = Theme.of(context).colorScheme;
     final json = _json;
+    final textStyle = appMonoTextStyle(
+      context,
+      base: Theme.of(context).textTheme.bodySmall,
+    );
     return Container(
       padding: const EdgeInsets.all(12),
       decoration: workspaceCodeDecoration(cs),
@@ -211,13 +228,51 @@ class _ProviderJsonPreviewState extends State<_ProviderJsonPreview> {
               height: 120,
               child: Center(child: CircularProgressIndicator(strokeWidth: 2)),
             )
-          : SelectableText(
-              json,
-              style: appMonoTextStyle(
-                context,
-                base: Theme.of(context).textTheme.bodySmall,
-              ),
+          : SingleChildScrollView(
+              child: Text(json, style: textStyle),
             ),
+    );
+  }
+}
+
+/// Copy action kept outside the preview subtree so layout stays on cheap [Text].
+class _ProviderJsonPreviewCopyButton extends StatefulWidget {
+  const _ProviderJsonPreviewCopyButton({required this.provider});
+
+  final AppProviderConfig provider;
+
+  @override
+  State<_ProviderJsonPreviewCopyButton> createState() =>
+      _ProviderJsonPreviewCopyButtonState();
+}
+
+class _ProviderJsonPreviewCopyButtonState
+    extends State<_ProviderJsonPreviewCopyButton> {
+  static const _generator = ToolConfigGenerator();
+
+  Future<void> _copy(BuildContext context) async {
+    final json = widget.provider.cli == CliTool.flashskyai
+        ? _generator
+              .buildFlashskyaiLlmConfig(widget.provider)
+              .toMaskedJsonString()
+        : const JsonEncoder.withIndent(
+            '  ',
+          ).convert(_maskedProviderJson(widget.provider));
+    await Clipboard.setData(ClipboardData(text: json));
+    if (!context.mounted) return;
+    AppToast.show(
+      context,
+      message: context.l10n.extensionCommandCopied,
+      variant: AppToastVariant.success,
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return AppIconButton(
+      icon: Icons.content_copy_outlined,
+      tooltip: context.l10n.copy,
+      onTap: () => _copy(context),
     );
   }
 }
@@ -252,7 +307,14 @@ class _InfoRow extends StatelessWidget {
             ),
           ),
           const SizedBox(width: 8),
-          Expanded(child: SelectableText(value)),
+          Expanded(
+            child: GestureDetector(
+              onLongPress: () {
+                Clipboard.setData(ClipboardData(text: value));
+              },
+              child: Text(value),
+            ),
+          ),
         ],
       ),
     );

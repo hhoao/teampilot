@@ -10,6 +10,7 @@ import '../../models/layout_preferences.dart';
 import '../../services/app/platform_utils.dart';
 import '../../widgets/app_provider/app_provider_detail_panel.dart';
 import '../../widgets/app_provider/app_provider_form_sheet.dart';
+import '../../widgets/deferred_mount_shell.dart';
 import '../../widgets/split_layout.dart';
 import 'llm_config_helpers.dart';
 import 'llm_config_routes.dart';
@@ -73,16 +74,6 @@ class LlmProvidersTabContentState extends State<LlmProvidersTabContent> {
 
   @override
   Widget build(BuildContext context) {
-    final appCubit = context.watch<AppProviderCubit>();
-    final appState = appCubit.state;
-    final selected = appState.selectedProvider;
-
-    final showModels =
-        _modelsProviderId != null &&
-        selected != null &&
-        _modelsProviderId == selected.id &&
-        selected.cli == CliTool.flashskyai;
-
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 4),
       child: TwoPaneSplitView(
@@ -111,89 +102,130 @@ class LlmProvidersTabContentState extends State<LlmProvidersTabContent> {
         second: Padding(
           padding: const EdgeInsets.only(left: 6),
           child: LlmWorkspaceDetailCard(
-            child: _buildRightPanelContent(
-              context,
-              appState: appState,
-              selected: selected,
-              showModels: showModels,
+            child: _LlmProvidersRightPanel(
+              showAddProvider: _showAddProvider,
+              editingProviderId: _editingProviderId,
+              modelsProviderId: _modelsProviderId,
+              onCloseEditor: _closeRightPanelEditor,
+              onAddSaved: () => setState(() {
+                _showAddProvider = false;
+                _editingProviderId = null;
+                _modelsProviderId = null;
+              }),
+              onOpenEdit: _openEditProvider,
+              onModelsBack: () => setState(() => _modelsProviderId = null),
+              onShowModels: (selected) {
+                if (selected.cli != CliTool.flashskyai) return;
+                if (useAndroidHubNavigation(context)) {
+                  context.push(llmProviderModelsRoute(selected.cli, selected.id));
+                } else {
+                  setState(() => _modelsProviderId = selected.id);
+                }
+              },
             ),
           ),
         ),
       ),
     );
   }
+}
 
-  Widget _buildRightPanelContent(
-    BuildContext context, {
-    required AppProviderState appState,
-    required AppProviderConfig? selected,
-    required bool showModels,
-  }) {
-    if (_showAddProvider) {
-      return Padding(
-        padding: const EdgeInsets.all(12),
-        child: AppProviderFormPage(
-          key: ValueKey(appState.selectedCli),
-          cli: appState.selectedCli,
-          onCliChanged: (cli) async {
-            await context.read<AppProviderCubit>().setSelectedCli(cli);
-            if (!mounted) return;
-            setState(() => _modelsProviderId = null);
-          },
-          onCancel: _closeRightPanelEditor,
-          onSaved: (draft) async {
-            final id = await saveNewAppProvider(context, draft);
-            if (!mounted || id == null) return;
-            setState(() {
-              _showAddProvider = false;
-              _editingProviderId = null;
-              _modelsProviderId = null;
-            });
-          },
-        ),
+class _LlmProvidersRightPanel extends StatelessWidget {
+  const _LlmProvidersRightPanel({
+    required this.showAddProvider,
+    required this.editingProviderId,
+    required this.modelsProviderId,
+    required this.onCloseEditor,
+    required this.onAddSaved,
+    required this.onOpenEdit,
+    required this.onModelsBack,
+    required this.onShowModels,
+  });
+
+  final bool showAddProvider;
+  final String? editingProviderId;
+  final String? modelsProviderId;
+  final VoidCallback onCloseEditor;
+  final VoidCallback onAddSaved;
+  final ValueChanged<String> onOpenEdit;
+  final VoidCallback onModelsBack;
+  final ValueChanged<AppProviderConfig> onShowModels;
+
+  @override
+  Widget build(BuildContext context) {
+    if (showAddProvider) {
+      return BlocSelector<AppProviderCubit, AppProviderState, CliTool>(
+        selector: (state) => state.selectedCli,
+        builder: (context, selectedCli) {
+          return Padding(
+            padding: const EdgeInsets.all(12),
+            child: AppProviderFormPage(
+              key: ValueKey(selectedCli),
+              cli: selectedCli,
+              onCliChanged: (cli) async {
+                await context.read<AppProviderCubit>().setSelectedCli(cli);
+              },
+              onCancel: onCloseEditor,
+              onSaved: (draft) async {
+                final id = await saveNewAppProvider(context, draft);
+                if (!context.mounted || id == null) return;
+                onAddSaved();
+              },
+            ),
+          );
+        },
       );
     }
 
-    if (selected != null &&
-        _editingProviderId != null &&
-        selected.id == _editingProviderId) {
-      return Padding(
-        padding: const EdgeInsets.all(12),
-        child: AppProviderFormPage(
-          cli: selected.cli,
-          existing: selected,
-          onCancel: _closeRightPanelEditor,
-          onSaved: (draft) async {
-            await saveExistingAppProvider(context, selected, draft: draft);
-            if (!mounted) return;
-            _closeRightPanelEditor();
-          },
-        ),
-      );
-    }
-
-    if (selected == null) {
-      return Center(child: Text(context.l10n.selectProvider));
-    }
-
-    if (showModels) {
-      return LlmAppProviderModelsPanel(
-        provider: selected,
-        onBack: () => setState(() => _modelsProviderId = null),
-      );
-    }
-
-    return AppProviderDetailPanel(
-      provider: selected,
-      onEdit: () => _openEditProvider(selected.id),
-      onDelete: () => confirmDeleteAppProvider(context, selected.id),
-      onShowModels: () {
-        if (selected.cli != CliTool.flashskyai) return;
-        if (useAndroidHubNavigation(context)) {
-          context.push(llmProviderModelsRoute(selected.cli, selected.id));
-        } else {
-          setState(() => _modelsProviderId = selected.id);
+    return BlocSelector<AppProviderCubit, AppProviderState, AppProviderConfig?>(
+      selector: (state) => state.selectedProvider,
+      builder: (context, selected) {
+        if (selected != null &&
+            editingProviderId != null &&
+            selected.id == editingProviderId) {
+          return Padding(
+            padding: const EdgeInsets.all(12),
+            child: AppProviderFormPage(
+              cli: selected.cli,
+              existing: selected,
+              onCancel: onCloseEditor,
+              onSaved: (draft) async {
+                await saveExistingAppProvider(context, selected, draft: draft);
+                if (!context.mounted) return;
+                onCloseEditor();
+              },
+            ),
+          );
         }
+
+        if (selected == null) {
+          return Center(child: Text(context.l10n.selectProvider));
+        }
+
+        final showModels =
+            modelsProviderId != null &&
+            modelsProviderId == selected.id &&
+            selected.cli == CliTool.flashskyai;
+
+        if (showModels) {
+          return LlmAppProviderModelsPanel(
+            provider: selected,
+            onBack: onModelsBack,
+          );
+        }
+
+        return RepaintBoundary(
+          child: DeferredMountShell(
+            key: ValueKey('provider-detail-${selected.id}'),
+            delayFrames: 1,
+            child: AppProviderDetailPanel(
+              provider: selected,
+              onEdit: () => onOpenEdit(selected.id),
+              onDelete: () => confirmDeleteAppProvider(context, selected.id),
+              onShowModels: () => onShowModels(selected),
+            ),
+          ),
+        );
       },
     );
   }

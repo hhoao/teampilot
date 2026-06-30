@@ -13,7 +13,6 @@ class WorkspaceHubDesktopShell extends StatelessWidget {
     required this.subtitle,
     required this.nav,
     required this.body,
-    this.bodyAnimationKey,
     this.pageKey,
     super.key,
   });
@@ -23,7 +22,6 @@ class WorkspaceHubDesktopShell extends StatelessWidget {
   final String subtitle;
   final Widget nav;
   final Widget body;
-  final Key? bodyAnimationKey;
 
   @override
   Widget build(BuildContext context) {
@@ -37,7 +35,6 @@ class WorkspaceHubDesktopShell extends StatelessWidget {
             child: BlocBuilder<LayoutCubit, LayoutState>(
               builder: (context, layoutState) {
                 return WorkspaceSplitShell(
-                  bodyAnimationKey: bodyAnimationKey,
                   navWidth: layoutState.preferences.workspaceNavWidth,
                   onNavWidthChanged: (width) {
                     context.read<LayoutCubit>().setWorkspaceNavWidth(width);
@@ -61,7 +58,6 @@ class WorkspaceAdaptiveSectionPage extends StatelessWidget {
     required this.subtitle,
     required this.nav,
     required this.body,
-    this.bodyAnimationKey,
     super.key,
   });
 
@@ -70,7 +66,6 @@ class WorkspaceAdaptiveSectionPage extends StatelessWidget {
   final String subtitle;
   final Widget nav;
   final Widget body;
-  final Key? bodyAnimationKey;
 
   @override
   Widget build(BuildContext context) {
@@ -81,7 +76,6 @@ class WorkspaceAdaptiveSectionPage extends StatelessWidget {
       pageKey: pageKey,
       title: title,
       subtitle: subtitle,
-      bodyAnimationKey: bodyAnimationKey,
       nav: nav,
       body: body,
     );
@@ -109,7 +103,6 @@ class WorkspaceEnumNavPanel<S extends Enum> extends StatelessWidget {
     final l10n = context.l10n;
     return WorkspaceHubNavList(
       sidebarStyle: true,
-      animateEntries: true,
       entries: [
         for (final section in sections)
           WorkspaceHubEntry(
@@ -141,7 +134,6 @@ class WorkspaceCompositeNavPanel extends StatelessWidget {
       padding: const EdgeInsets.fromLTRB(24, 28, 18, 24),
       child: WorkspaceHubNavList(
         entries: primaryEntries,
-        animateEntries: true,
         trailingChildren: [
           for (final child in trailingChildren)
             Padding(

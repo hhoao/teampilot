@@ -370,7 +370,7 @@ class _IdentityRow extends StatefulWidget {
 }
 
 class _IdentityRowState extends State<_IdentityRow> {
-  bool _hovered = false;
+  bool _contentHovered = false;
 
   @override
   Widget build(BuildContext context) {
@@ -380,83 +380,100 @@ class _IdentityRowState extends State<_IdentityRow> {
 
     final Color background = selected
         ? cs.primary.withValues(alpha: 0.14)
-        : _hovered
+        : _contentHovered
         ? cs.onSurface.withValues(alpha: 0.05)
         : Colors.transparent;
 
-    return MouseRegion(
-      onEnter: (_) => setState(() => _hovered = true),
-      onExit: (_) => setState(() => _hovered = false),
-      child: Padding(
-        padding: const EdgeInsets.symmetric(vertical: 4),
-        child: Row(
-          crossAxisAlignment: CrossAxisAlignment.center,
-          children: [
-            ReorderableDragStartListener(
-              index: widget.index,
-              child: MouseRegion(
-                cursor: _hovered
-                    ? SystemMouseCursors.grab
-                    : SystemMouseCursors.basic,
-                child: SizedBox(
-                  width: _kIdentityDragGutterWidth,
-                  height: 40,
-                  child: AnimatedOpacity(
-                    opacity: _hovered ? 0.65 : 0,
-                    duration: const Duration(milliseconds: 120),
-                    curve: Curves.easeOut,
-                    child: Icon(
-                      Icons.drag_indicator_rounded,
-                      size: 18,
-                      color: cs.onSurfaceVariant,
-                    ),
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 4),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.center,
+        children: [
+          _IdentityDragHandle(index: widget.index),
+          const SizedBox(width: _kIdentityGutterGap),
+          Expanded(
+            child: MouseRegion(
+              onEnter: (_) => setState(() => _contentHovered = true),
+              onExit: (_) => setState(() => _contentHovered = false),
+              cursor: SystemMouseCursors.click,
+              child: GestureDetector(
+                onTap: widget.onTap,
+                behavior: HitTestBehavior.opaque,
+                child: Container(
+                  padding: const EdgeInsets.fromLTRB(12, 10, 11, 10),
+                  decoration: BoxDecoration(
+                    color: background,
+                    borderRadius: BorderRadius.circular(8),
                   ),
-                ),
-              ),
-            ),
-            const SizedBox(width: _kIdentityGutterGap),
-            Expanded(
-              child: MouseRegion(
-                cursor: SystemMouseCursors.click,
-                child: GestureDetector(
-                  onTap: widget.onTap,
-                  behavior: HitTestBehavior.opaque,
-                  child: Container(
-                    padding: const EdgeInsets.fromLTRB(12, 10, 11, 10),
-                    decoration: BoxDecoration(
-                      color: background,
-                      borderRadius: BorderRadius.circular(8),
-                    ),
-                    child: Row(
-                      children: [
-                        Icon(
-                          widget.isTeam
-                              ? Icons.groups_2_outlined
-                              : Icons.person_outline_rounded,
-                          size: context.appIconSizes.md,
-                          color: selected ? cs.primary : cs.onSurfaceVariant,
-                        ),
-                        const SizedBox(width: 8),
-                        Expanded(
-                          child: Text(
-                            widget.name,
-                            maxLines: 1,
-                            overflow: TextOverflow.ellipsis,
-                            style: styles.prominent.copyWith(
-                              color: selected ? cs.primary : cs.onSurface,
-                              fontWeight: selected
-                                  ? FontWeight.w600
-                                  : FontWeight.w400,
-                            ),
+                  child: Row(
+                    children: [
+                      Icon(
+                        widget.isTeam
+                            ? Icons.groups_2_outlined
+                            : Icons.person_outline_rounded,
+                        size: context.appIconSizes.md,
+                        color: selected ? cs.primary : cs.onSurfaceVariant,
+                      ),
+                      const SizedBox(width: 8),
+                      Expanded(
+                        child: Text(
+                          widget.name,
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: styles.prominent.copyWith(
+                            color: selected ? cs.primary : cs.onSurface,
+                            fontWeight: selected
+                                ? FontWeight.w600
+                                : FontWeight.w400,
                           ),
                         ),
-                      ],
-                    ),
+                      ),
+                    ],
                   ),
                 ),
               ),
             ),
-          ],
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _IdentityDragHandle extends StatefulWidget {
+  const _IdentityDragHandle({required this.index});
+
+  final int index;
+
+  @override
+  State<_IdentityDragHandle> createState() => _IdentityDragHandleState();
+}
+
+class _IdentityDragHandleState extends State<_IdentityDragHandle> {
+  bool _hovered = false;
+
+  @override
+  Widget build(BuildContext context) {
+    final cs = Theme.of(context).colorScheme;
+    return ReorderableDragStartListener(
+      index: widget.index,
+      child: MouseRegion(
+        onEnter: (_) => setState(() => _hovered = true),
+        onExit: (_) => setState(() => _hovered = false),
+        cursor: _hovered ? SystemMouseCursors.grab : SystemMouseCursors.basic,
+        child: SizedBox(
+          width: _kIdentityDragGutterWidth,
+          height: 40,
+          child: AnimatedOpacity(
+            opacity: _hovered ? 0.65 : 0,
+            duration: const Duration(milliseconds: 120),
+            curve: Curves.easeOut,
+            child: Icon(
+              Icons.drag_indicator_rounded,
+              size: 18,
+              color: cs.onSurfaceVariant,
+            ),
+          ),
         ),
       ),
     );

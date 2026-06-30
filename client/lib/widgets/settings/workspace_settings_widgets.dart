@@ -177,45 +177,50 @@ class SettingsLabeledRow extends StatelessWidget {
       fontWeight: FontWeight.w500,
       height: 1.35,
     );
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.stretch,
-      children: [
-        Padding(
-          padding: _settingRowPadding,
-          child: Row(
-            crossAxisAlignment: CrossAxisAlignment.center,
-            children: [
-              if (titleLeading != null) ...[
-                titleLeading!,
-                const SizedBox(width: 12),
-              ],
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(title),
-                    if (hasSubtitle) ...[
-                      SizedBox(height: _titleSubtitleGap),
-                      Text(subtitle!.trim(), style: subtitleStyle),
+    return RepaintBoundary(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          Padding(
+            padding: _settingRowPadding,
+            child: Row(
+              crossAxisAlignment: CrossAxisAlignment.center,
+              children: [
+                if (titleLeading != null) ...[
+                  titleLeading!,
+                  const SizedBox(width: 12),
+                ],
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(title),
+                      if (hasSubtitle) ...[
+                        SizedBox(height: _titleSubtitleGap),
+                        Text(subtitle!.trim(), style: subtitleStyle),
+                      ],
                     ],
-                  ],
+                  ),
                 ),
-              ),
-              SizedBox(width: _labelTrailingGap),
-              Flexible(
-                fit: FlexFit.loose,
-                child: Align(alignment: Alignment.centerRight, child: trailing),
-              ),
-            ],
+                SizedBox(width: _labelTrailingGap),
+                Flexible(
+                  fit: FlexFit.loose,
+                  child: Align(
+                    alignment: Alignment.centerRight,
+                    child: trailing,
+                  ),
+                ),
+              ],
+            ),
           ),
-        ),
-        if (showDividerBelow)
-          Divider(
-            height: 1,
-            thickness: 1,
-            color: cs.outlineVariant.withValues(alpha: 0.5),
-          ),
-      ],
+          if (showDividerBelow)
+            Divider(
+              height: 1,
+              thickness: 1,
+              color: cs.outlineVariant.withValues(alpha: 0.5),
+            ),
+        ],
+      ),
     );
   }
 }
