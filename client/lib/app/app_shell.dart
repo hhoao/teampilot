@@ -40,7 +40,6 @@ import '../cubits/team_hub_cubit.dart';
 import '../models/runtime_target.dart';
 import '../models/ssh_profile.dart';
 import '../models/team_config.dart';
-import '../services/app/app_text_field_warmup.dart';
 import '../services/app/boot_splash.dart';
 import '../utils/yield_ui_frame.dart';
 import '../l10n/app_localizations.dart';
@@ -910,15 +909,14 @@ class _TeamPilotBootstrapState extends State<TeamPilotBootstrap> {
         'workspaces=${shell.chatCubit.state.workspaces.length}',
       );
       // Build the app UI first so it paints underneath the splash overlay.
-      // Wait for canonical TextField warmup + one deferred-shell frame before
-      // fading the splash away.
+      // Yield across SplashDeferredShell mount before fading the splash away.
       setState(() {
         _shell = shell;
         _error = null;
         _retrying = false;
       });
       await yieldUiFrame();
-      await AppTextFieldWarmup.whenReady;
+      await yieldUiFrame();
       await yieldUiFrame();
       await yieldUiFrame();
       if (!mounted) return;

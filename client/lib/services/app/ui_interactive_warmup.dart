@@ -12,8 +12,7 @@ import '../../utils/yield_ui_frame.dart';
 import '../../widgets/warmup_glyphs.g.dart';
 
 /// Heavy UI-thread work during [AppDataBootstrap] — fonts, glyph shaping, and
-/// terminal engine. [RenderEditable] / [TextField] layout is warmed globally by
-/// [AppTextFieldWarmupHost] once [MaterialApp] mounts.
+/// terminal engine.
 abstract final class UiInteractiveWarmup {
   UiInteractiveWarmup._();
 
