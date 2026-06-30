@@ -395,7 +395,7 @@ class TeamMemberConfigFormState extends State<TeamMemberConfigForm> {
             onPersist: _persistImmediate,
           ),
           SettingsLabeledStackedRow(
-            title: l10n.prompt,
+            title: l10n.memberResponsibilities,
             subtitle: l10n.memberPromptSubtitle,
             body: Column(
               crossAxisAlignment: CrossAxisAlignment.stretch,

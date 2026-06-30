@@ -3382,7 +3382,7 @@ class AppLocalizationsZh extends AppLocalizations {
   String get memberName => '成员名称';
 
   @override
-  String get memberNameSubtitle => '仅作界面展示用。若要指明职责与边界，请编辑下方的提示词。';
+  String get memberNameSubtitle => '仅作界面展示用。若要指明职责与边界，请编辑下方的职责。';
 
   @override
   String get provider => '提供商';
@@ -3448,7 +3448,10 @@ class AppLocalizationsZh extends AppLocalizations {
   String get prompt => '提示词';
 
   @override
-  String get memberPromptSubtitle => '简要写明职责边界与角色备注，方便队长识别分工。';
+  String get memberResponsibilities => '职责';
+
+  @override
+  String get memberPromptSubtitle => '该成员负责什么、不应做什么。会写入 Agent 的角色说明。';
 
   @override
   String get memberPromptPresetsLabel => '预设';
@@ -3480,11 +3483,10 @@ class AppLocalizationsZh extends AppLocalizations {
   String get memberPromptPresetResearcherText => '只调研并汇报。除非被要求，否则不要改动生产代码。';
 
   @override
-  String get memberPlaybook => '工作方法';
+  String get memberPlaybook => '提示词';
 
   @override
-  String get memberPlaybookSubtitle =>
-      '这个角色具体怎么干活——一套可执行的步骤（HOW）。可软引用团队 skill，但本质是自由文本指令，不绑定固定 skill。';
+  String get memberPlaybookSubtitle => '接到任务后怎么执行：步骤、检查点、汇报格式。会作为 Agent 的操作指令。';
 
   @override
   String get memberPlaybookPresetDeveloperText =>
