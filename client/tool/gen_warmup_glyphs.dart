@@ -8,7 +8,7 @@
 //
 // Why: the UI font is Noto Sans SC (a multi-MB CJK face). Flutter shapes glyphs
 // lazily on first use, so the first screen that renders Chinese text pays a
-// large one-time HarfBuzz face-init + shaping cost (~300ms). [UiWarmup] shapes
+// large one-time HarfBuzz face-init + shaping cost (~300ms). [UiInteractiveWarmup] shapes
 // these glyphs offscreen at startup instead. Driving the glyph set from the ARB
 // files keeps coverage complete and self-maintaining — no hand-written string.
 
@@ -55,7 +55,7 @@ void main() {
     ..writeln('// Re-run after editing app_en.arb / app_zh.arb:')
     ..writeln('//   dart run tool/gen_warmup_glyphs.dart')
     ..writeln('//')
-    ..writeln('// Every unique glyph across the l10n bundles. [UiWarmup] shapes')
+    ..writeln('// Every unique glyph across the l10n bundles. [UiInteractiveWarmup] shapes')
     ..writeln('// these at startup so the first CJK text render does not pay the')
     ..writeln('// one-time Noto Sans SC shaping cost on the UI thread.')
     ..writeln()
