@@ -60,8 +60,7 @@ class ThemeColorPresetChip extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final cs = Theme.of(context).colorScheme;
-    final isDark = Theme.of(context).brightness == Brightness.dark;
-    final textBase = isDark ? Colors.white : const Color(0xFF111827);
+    final textBase = cs.onSurface;
     final primary = themePresetSwatchPrimary(id);
     final secondary = themePresetSwatchSecondary(id);
     return InkWell(

@@ -30,8 +30,8 @@ class PluginCliSupportDisclosure extends StatelessWidget {
       capabilities,
       registry: reg,
     );
-    final isDark = Theme.of(context).brightness == Brightness.dark;
-    final muted = isDark ? Colors.white70 : const Color(0xFF6B7280);
+    final cs = Theme.of(context).colorScheme;
+    final muted = cs.onSurfaceVariant;
 
     return Padding(
       padding: const EdgeInsets.only(top: 6),

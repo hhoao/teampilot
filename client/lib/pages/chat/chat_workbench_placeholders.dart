@@ -12,8 +12,8 @@ class ChatWorkbenchSessionLoadingView extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final isDark = Theme.of(context).brightness == Brightness.dark;
-    final textBase = isDark ? Colors.white : const Color(0xFF111827);
+    final cs = Theme.of(context).colorScheme;
+    final textBase = cs.onSurface;
     return Center(
       child: Column(
         mainAxisSize: MainAxisSize.min,

@@ -172,8 +172,7 @@ class SkillInstalledRow extends StatelessWidget {
   Widget build(BuildContext context) {
     final cs = Theme.of(context).colorScheme;
     final l10n = context.l10n;
-    final isDark = Theme.of(context).brightness == Brightness.dark;
-    final textBase = isDark ? Colors.white : const Color(0xFF111827);
+    final textBase = cs.onSurface;
     final cubit = context.read<SkillCubit>();
     final hasUpdate = updateInfo != null;
     final sourceLabel = skill.repoOwner != null && skill.repoName != null

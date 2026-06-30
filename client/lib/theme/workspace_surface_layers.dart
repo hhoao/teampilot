@@ -35,6 +35,12 @@ extension WorkspaceSurfaceLayers on ColorScheme {
     WorkspacePageChrome.home => surfaceContainer,
     WorkspacePageChrome.workspace => surface,
   };
+
+  /// Primary list/row label — prefer over hardcoded gray-900 / white pairs.
+  Color get workspacePrimaryText => onSurface;
+
+  /// Secondary/muted label — prefer over hardcoded gray-500 / white70 pairs.
+  Color get workspaceMutedText => onSurfaceVariant;
 }
 
 BoxDecoration workspaceCardDecoration(

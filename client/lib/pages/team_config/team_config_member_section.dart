@@ -36,8 +36,8 @@ class TeamMemberDetailSection extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final l10n = context.l10n;
-    final isDark = Theme.of(context).brightness == Brightness.dark;
-    final textBase = isDark ? Colors.white : const Color(0xFF111827);
+    final cs = Theme.of(context).colorScheme;
+    final textBase = cs.onSurface;
     final memberId = selectedMemberId;
     final hasMember =
         memberId != null &&

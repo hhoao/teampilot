@@ -95,8 +95,7 @@ class _DesktopWindowTitleBarState extends State<DesktopWindowTitleBar>
 
     final theme = Theme.of(context);
     final cs = theme.colorScheme;
-    final isDark = theme.brightness == Brightness.dark;
-    final titleColor = isDark ? Colors.white : const Color(0xFF111827);
+    final titleColor = cs.onSurface;
 
     final title = Padding(
       padding: EdgeInsets.only(left: useMacWindowChromeStyle ? 8 : 16),

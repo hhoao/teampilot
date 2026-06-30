@@ -315,8 +315,8 @@ class PluginDiscoverableCard extends StatelessWidget {
   Widget build(BuildContext context) {
     final l10n = context.l10n;
     final cubit = context.read<PluginCubit>();
-    final isDark = Theme.of(context).brightness == Brightness.dark;
-    final textBase = isDark ? Colors.white : const Color(0xFF111827);
+    final cs = Theme.of(context).colorScheme;
+    final textBase = cs.onSurface;
 
     return PluginManagementCard(
       child: Row(

@@ -26,8 +26,8 @@ class LlmProviderModelsTable extends StatelessWidget {
     final theme = Theme.of(context);
     final tx = LlmWorkspaceText(theme);
     final l10n = context.l10n;
-    final isDark = theme.brightness == Brightness.dark;
-    final textBase = isDark ? Colors.white : const Color(0xFF111827);
+    final cs = theme.colorScheme;
+    final textBase = cs.onSurface;
     final muted = textBase.withValues(alpha: 0.55);
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,

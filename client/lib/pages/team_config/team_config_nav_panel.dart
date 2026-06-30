@@ -73,8 +73,7 @@ class TeamConfigMemberNavAddTile extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final cs = Theme.of(context).colorScheme;
-    final isDark = Theme.of(context).brightness == Brightness.dark;
-    final textBase = isDark ? Colors.white : const Color(0xFF111827);
+    final textBase = cs.onSurface;
     final muted = textBase.withValues(alpha: 0.72);
     return Padding(
       padding: const EdgeInsets.only(top: 2, bottom: 6),

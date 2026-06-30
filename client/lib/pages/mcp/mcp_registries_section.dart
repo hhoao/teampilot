@@ -371,8 +371,7 @@ class _RegistryRow extends StatelessWidget {
   Widget build(BuildContext context) {
     final cs = Theme.of(context).colorScheme;
     final l10n = context.l10n;
-    final isDark = Theme.of(context).brightness == Brightness.dark;
-    final textBase = isDark ? Colors.white : const Color(0xFF111827);
+    final textBase = cs.onSurface;
 
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 6),

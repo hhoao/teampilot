@@ -35,8 +35,8 @@ class TeamPluginsSection extends StatelessWidget {
   Widget build(BuildContext context) {
     final l10n = context.l10n;
     final onManage = onManageGlobal ?? () => context.go('/plugins');
-    final isDark = Theme.of(context).brightness == Brightness.dark;
-    final textBase = isDark ? Colors.white : const Color(0xFF111827);
+    final cs = Theme.of(context).colorScheme;
+    final textBase = cs.onSurface;
     final pluginState = context.watch<PluginCubit>().state;
     final teamState = context.watch<LaunchProfileCubit>().state;
     final syncing = teamState.isSyncingPlugins;
@@ -174,8 +174,7 @@ class TeamPluginRow extends StatelessWidget {
   Widget build(BuildContext context) {
     final l10n = context.l10n;
     final cs = Theme.of(context).colorScheme;
-    final isDark = Theme.of(context).brightness == Brightness.dark;
-    final textBase = isDark ? Colors.white : const Color(0xFF111827);
+    final textBase = cs.onSurface;
     final sourceLabel =
         plugin.marketplaceOwner != null && plugin.marketplaceName != null
         ? '${plugin.marketplaceOwner}/${plugin.marketplaceName}'
@@ -286,8 +285,7 @@ class TeamMissingPluginRow extends StatelessWidget {
   Widget build(BuildContext context) {
     final l10n = context.l10n;
     final cs = Theme.of(context).colorScheme;
-    final isDark = Theme.of(context).brightness == Brightness.dark;
-    final textBase = isDark ? Colors.white : const Color(0xFF111827);
+    final textBase = cs.onSurface;
 
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 8),

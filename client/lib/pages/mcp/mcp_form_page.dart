@@ -151,8 +151,7 @@ class _McpFormPageState extends State<McpFormPage> {
     final l10n = context.l10n;
     final cs = Theme.of(context).colorScheme;
 
-    final isDark = Theme.of(context).brightness == Brightness.dark;
-    final textBase = isDark ? Colors.white : const Color(0xFF111827);
+    final textBase = cs.onSurface;
 
     return ListView(
       padding: const EdgeInsets.fromLTRB(4, 4, 4, 24),

@@ -908,13 +908,17 @@ class _TeamPilotBootstrapState extends State<TeamPilotBootstrap> {
         '[boot] +${bootSw.elapsedMilliseconds}ms bootstrap complete '
         'workspaces=${shell.chatCubit.state.workspaces.length}',
       );
-      // Build the app UI first so it paints underneath the splash overlay, then
-      // fade the overlay away — the splash cross-fades directly onto the app.
+      // Build the app UI first so it paints underneath the splash overlay.
+      // Yield across splash-deferred shell mount + search-field warmup frames
+      // before fading the splash away.
       setState(() {
         _shell = shell;
         _error = null;
         _retrying = false;
       });
+      await yieldUiFrame();
+      await yieldUiFrame();
+      await yieldUiFrame();
       await yieldUiFrame();
       if (!mounted) return;
       await completeBootSplashTransition();
