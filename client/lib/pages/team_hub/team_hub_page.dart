@@ -11,6 +11,7 @@ import '../../services/app/platform_utils.dart';
 import '../../services/team/team_clone_service.dart';
 import '../../widgets/settings/workspace_hub_shell.dart';
 import 'team_hub_body.dart';
+import 'team_hub_clone_feedback.dart';
 import 'team_hub_detail_overlay.dart';
 
 /// Single-page team hub: search + inline filters (favorites, category) over a
@@ -46,15 +47,16 @@ class _TeamHubPageState extends State<TeamHubPage> {
         _detailForward = false;
         _detail = null;
       });
-      final failed = result.failedDeps.length;
       AppToast.show(
         context,
-        message: failed == 0
-            ? l10n.teamHubCloneSuccess(team.name)
-            : l10n.teamHubClonePartial(team.name, failed),
-        variant: failed == 0
-            ? AppToastVariant.success
-            : AppToastVariant.warning,
+        message: teamHubCloneToastMessage(
+          l10n,
+          teamName: team.name,
+          result: result,
+        ),
+        variant: teamHubCloneToastIsWarning(result)
+            ? AppToastVariant.warning
+            : AppToastVariant.success,
       );
     } on CloneException {
       if (!mounted) return;
@@ -87,36 +89,37 @@ class _TeamHubPageState extends State<TeamHubPage> {
         final detail = _detail;
 
         final paneKey = ValueKey(detail?.key ?? 'team-hub-list');
-        final pane = (detail != null
-                ? TeamHubDetailOverlay(
-                    key: paneKey,
-                    team: detail,
-                    cloning: state.cloningKeys.contains(detail.key),
-                    installedDepIds: state.installedDepIds,
-                    onBack: () => setState(() {
-                      _detailForward = false;
-                      _detail = null;
-                    }),
-                    onClone: () => _clone(cubit, detail),
-                    inset: inset,
-                  )
-                : TeamHubBody(
-                    key: paneKey,
-                    cubit: cubit,
-                    onOpen: (t) => setState(() {
-                      _detailForward = true;
-                      _detail = t;
-                    }),
-                    inset: inset,
-                  ))
-            .animate(key: paneKey)
-            .fadeIn(duration: 180.ms, curve: Curves.easeOut)
-            .slideX(
-              begin: _detailForward ? 0.025 : -0.025,
-              end: 0,
-              duration: 220.ms,
-              curve: Curves.easeOutCubic,
-            );
+        final pane =
+            (detail != null
+                    ? TeamHubDetailOverlay(
+                        key: paneKey,
+                        team: detail,
+                        cloning: state.cloningKeys.contains(detail.key),
+                        installedDepIds: state.installedDepIds,
+                        onBack: () => setState(() {
+                          _detailForward = false;
+                          _detail = null;
+                        }),
+                        onClone: () => _clone(cubit, detail),
+                        inset: inset,
+                      )
+                    : TeamHubBody(
+                        key: paneKey,
+                        cubit: cubit,
+                        onOpen: (t) => setState(() {
+                          _detailForward = true;
+                          _detail = t;
+                        }),
+                        inset: inset,
+                      ))
+                .animate(key: paneKey)
+                .fadeIn(duration: 180.ms, curve: Curves.easeOut)
+                .slideX(
+                  begin: _detailForward ? 0.025 : -0.025,
+                  end: 0,
+                  duration: 220.ms,
+                  curve: Curves.easeOutCubic,
+                );
 
         if (android) {
           return WorkspaceSectionPage(

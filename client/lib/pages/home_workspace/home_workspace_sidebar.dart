@@ -507,36 +507,38 @@ class _ShortcutRowState extends State<_ShortcutRow> {
         ? cs.onSurface.withValues(alpha: 0.05)
         : Colors.transparent;
 
-    return MouseRegion(
-      cursor: SystemMouseCursors.click,
-      onEnter: (_) => setState(() => _hovered = true),
-      onExit: (_) => setState(() => _hovered = false),
-      child: GestureDetector(
-        onTap: widget.onTap,
-        behavior: HitTestBehavior.opaque,
-        child: Container(
-          margin: const EdgeInsets.symmetric(vertical: 1),
-          padding: const EdgeInsets.symmetric(horizontal: 11, vertical: 10),
-          decoration: BoxDecoration(
-            color: background,
-            borderRadius: BorderRadius.circular(8),
-          ),
-          child: Row(
-            children: [
-              Icon(
-                widget.icon,
-                size: context.appIconSizes.md,
-                color: active ? cs.primary : cs.onSurfaceVariant,
-              ),
-              const SizedBox(width: 8),
-              Text(
-                widget.label,
-                style: styles.prominent.copyWith(
-                  color: fg,
-                  fontWeight: active ? FontWeight.w600 : FontWeight.w400,
+    return RepaintBoundary(
+      child: MouseRegion(
+        cursor: SystemMouseCursors.click,
+        onEnter: (_) => setState(() => _hovered = true),
+        onExit: (_) => setState(() => _hovered = false),
+        child: GestureDetector(
+          onTap: widget.onTap,
+          behavior: HitTestBehavior.opaque,
+          child: Container(
+            margin: const EdgeInsets.symmetric(vertical: 1),
+            padding: const EdgeInsets.symmetric(horizontal: 11, vertical: 10),
+            decoration: BoxDecoration(
+              color: background,
+              borderRadius: BorderRadius.circular(8),
+            ),
+            child: Row(
+              children: [
+                Icon(
+                  widget.icon,
+                  size: context.appIconSizes.md,
+                  color: active ? cs.primary : cs.onSurfaceVariant,
                 ),
-              ),
-            ],
+                const SizedBox(width: 8),
+                Text(
+                  widget.label,
+                  style: styles.prominent.copyWith(
+                    color: fg,
+                    fontWeight: active ? FontWeight.w600 : FontWeight.w400,
+                  ),
+                ),
+              ],
+            ),
           ),
         ),
       ),

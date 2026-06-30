@@ -1,3 +1,5 @@
+import 'package:flutter/foundation.dart';
+
 import '../../models/discoverable_team.dart';
 import '../../models/team_config.dart';
 
@@ -32,15 +34,51 @@ class DependencyFailure {
   final String name;
 }
 
+/// Per-kind ids successfully installed during a TeamHub clone.
+class CloneDepInstallSummary {
+  const CloneDepInstallSummary({
+    this.skillIds = const [],
+    this.pluginIds = const [],
+    this.mcpIds = const [],
+  });
+
+  final List<String> skillIds;
+  final List<String> pluginIds;
+  final List<String> mcpIds;
+
+  int get skillCount => skillIds.length;
+  int get pluginCount => pluginIds.length;
+  int get mcpCount => mcpIds.length;
+  int get totalCount => skillCount + pluginCount + mcpCount;
+  bool get isEmpty => totalCount == 0;
+
+  @override
+  bool operator ==(Object other) =>
+      other is CloneDepInstallSummary &&
+      listEquals(skillIds, other.skillIds) &&
+      listEquals(pluginIds, other.pluginIds) &&
+      listEquals(mcpIds, other.mcpIds);
+
+  @override
+  int get hashCode => Object.hash(
+        Object.hashAll(skillIds),
+        Object.hashAll(pluginIds),
+        Object.hashAll(mcpIds),
+      );
+}
+
 class CloneResult {
   const CloneResult({
     required this.teamId,
-    required this.installedDeps,
+    required this.installed,
     required this.failedDeps,
   });
+
   final String teamId;
-  final List<String> installedDeps;
+  final CloneDepInstallSummary installed;
   final List<DependencyFailure> failedDeps;
+
+  bool get hasFailures => failedDeps.isNotEmpty;
 }
 
 class CloneException implements Exception {
@@ -76,7 +114,6 @@ class TeamCloneService {
     DiscoverableTeam team, {
     void Function(CloneProgress)? onProgress,
   }) async {
-    final installed = <String>[];
     final failed = <DependencyFailure>[];
     final total =
         team.skillDeps.length + team.pluginDeps.length + team.mcpDeps.length;
@@ -92,7 +129,6 @@ class TeamCloneService {
       final id = await installSkill(dep);
       if (id != null) {
         skillIds.add(id);
-        installed.add(id);
       } else {
         failed.add(DependencyFailure(DependencyKind.skill, dep.name));
       }
@@ -104,7 +140,6 @@ class TeamCloneService {
       final id = await installPlugin(dep);
       if (id != null) {
         pluginIds.add(id);
-        installed.add(id);
       } else {
         failed.add(DependencyFailure(DependencyKind.plugin, dep.name));
       }
@@ -116,7 +151,6 @@ class TeamCloneService {
       final id = await installMcp(dep);
       if (id != null) {
         mcpIds.add(id);
-        installed.add(id);
       } else {
         failed.add(DependencyFailure(DependencyKind.mcp, dep.name));
       }
@@ -144,7 +178,11 @@ class TeamCloneService {
     }
     return CloneResult(
       teamId: teamId,
-      installedDeps: installed,
+      installed: CloneDepInstallSummary(
+        skillIds: skillIds,
+        pluginIds: pluginIds,
+        mcpIds: mcpIds,
+      ),
       failedDeps: failed,
     );
   }

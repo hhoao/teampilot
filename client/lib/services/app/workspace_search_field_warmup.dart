@@ -5,8 +5,9 @@ import '../../theme/app_outline_input_theme.dart';
 
 /// Off-screen [TextField] matching the workspace file-tree filter row.
 ///
-/// [TextPainter] glyph warmup does not touch [RenderEditable]; layout this once
-/// under [UiWarmup] so the first real filter field avoids ~100ms+ cold start.
+/// [TextPainter] glyph warmup does not touch [RenderEditable]; [UiWarmup] lays
+/// this out off-screen on the first themed frame so the first real filter field
+/// avoids ~100ms+ cold start.
 class WorkspaceSearchFieldWarmup extends StatelessWidget {
   const WorkspaceSearchFieldWarmup({super.key});
 

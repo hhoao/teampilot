@@ -21,12 +21,12 @@ class _FakeSource implements TeamHubSource {
 }
 
 DiscoverableTeam _t(String name, String cat, int updated) => DiscoverableTeam(
-      key: 'o/r/${name.toLowerCase()}',
-      name: name,
-      description: 'desc of $name',
-      category: cat,
-      updatedAt: updated,
-    );
+  key: 'o/r/${name.toLowerCase()}',
+  name: name,
+  description: 'desc of $name',
+  category: cat,
+  updatedAt: updated,
+);
 
 void main() {
   late _FakeSource source;
@@ -44,7 +44,7 @@ void main() {
       saveFavoriteToggle: (key) async => true,
       cloneTeam: (team) async => const CloneResult(
         teamId: 'new-id',
-        installedDeps: [],
+        installed: CloneDepInstallSummary(),
         failedDeps: [],
       ),
     );
@@ -91,5 +91,30 @@ void main() {
     await cubit.load();
     await cubit.toggleFavorite('o/r/beta');
     expect(cubit.state.favorites.contains('o/r/beta'), isTrue);
+  });
+
+  test('clone refreshes installedDepIds', () async {
+    var cloneCalls = 0;
+    cubit = TeamHubCubit(
+      source: source,
+      loadFavorites: () async => <String>{},
+      saveFavoriteToggle: (key) async => true,
+      cloneTeam: (team) async {
+        cloneCalls++;
+        return const CloneResult(
+          teamId: 'new-id',
+          installed: CloneDepInstallSummary(skillIds: ['skill-a']),
+          failedDeps: [],
+        );
+      },
+      loadInstalledDepIds: () async {
+        if (cloneCalls == 0) return const <String>{};
+        return const {'skill-a', 'plugin-b'};
+      },
+    );
+
+    await cubit.clone(_t('Delta', 'AI', 5));
+    expect(cloneCalls, 1);
+    expect(cubit.state.installedDepIds, {'skill-a', 'plugin-b'});
   });
 }

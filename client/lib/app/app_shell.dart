@@ -63,7 +63,6 @@ import '../services/home_workspace/home_workspace_ui_cache.dart';
 import '../services/team/team_clone_service.dart';
 import '../services/team_hub/composite_team_hub_source.dart';
 import '../services/team_hub/git_registry_team_hub_source.dart';
-import '../services/team_hub/team_hub_dependency_installers.dart';
 import '../services/team_hub/team_hub_favorites_store.dart';
 import '../services/cli/cli_executable_discovery.dart';
 import '../services/cli/registry/cli_bootstrap.dart';
@@ -211,10 +210,14 @@ Future<AppShell> buildAppShell({
       defaultWorkspaceDirectoryFuture ??
       DefaultWorkspaceDirectory.resolve(preferences: preferences);
   final cliToolRegistry = CliToolRegistry.builtIn();
-  final cliExecutableDiscovery = CliExecutableDiscovery(registry: cliToolRegistry);
+  final cliExecutableDiscovery = CliExecutableDiscovery(
+    registry: cliToolRegistry,
+  );
 
   final appSettings = SharedPrefsAppSettingsRepository(preferences);
-  final aiFeatureSettingsCubit = AiFeatureSettingsCubit(repository: appSettings);
+  final aiFeatureSettingsCubit = AiFeatureSettingsCubit(
+    repository: appSettings,
+  );
   final sessionPreferencesCubit = SessionPreferencesCubit(
     repository: SessionPreferencesRepository(preferences),
     cliToolRegistry: cliToolRegistry,
@@ -253,7 +256,10 @@ Future<AppShell> buildAppShell({
   // encoded in the id; there is no connectionMode/windowsStorageBackend knob.
   final homeTargetStore = HomeTargetStore(preferences);
   RuntimeTarget homeTargetFromId(String id) => switch (runtimeKindOfId(id)) {
-    RuntimeKind.ssh => RuntimeTarget.ssh(sshProfileIdOfId(id) ?? '', label: 'SSH'),
+    RuntimeKind.ssh => RuntimeTarget.ssh(
+      sshProfileIdOfId(id) ?? '',
+      label: 'SSH',
+    ),
     RuntimeKind.wsl => RuntimeTarget.wsl(wslDistroOfId(id) ?? ''),
     RuntimeKind.local => RuntimeTarget.local(),
   };
@@ -311,8 +317,7 @@ Future<AppShell> buildAppShell({
         sessionPreferencesCubit.setCliExecutablePathFor(cli, path),
     invalidateProfileConnection: sshClientFactory.disconnectProfile,
     enableRemoteCliDiscovery: () =>
-        Platform.isAndroid &&
-        defaultTargetResolver().kind == RuntimeKind.ssh,
+        Platform.isAndroid && defaultTargetResolver().kind == RuntimeKind.ssh,
     onActiveProfileChanged: () async {
       await reinstallStorageContext();
       await reloadAllAppData();
@@ -388,8 +393,7 @@ Future<AppShell> buildAppShell({
 
   cliToolRegistry.configure(
     CliBootstrap(
-      cursorAgentModelsService: CursorAgentModelsService(
-      ),
+      cursorAgentModelsService: CursorAgentModelsService(),
       claudeCredentialsService: ClaudeProviderCredentialsService(
         fs: AppStorage.fs,
         basePath: AppStorage.paths.basePath,
@@ -500,9 +504,7 @@ Future<AppShell> buildAppShell({
     cliPresetsRepository: cliPresetsRepo,
     loadPresets: () => cliPresetsCubit.state.presets,
   );
-  sessionRepo = SessionRepository(
-    lifecycleService: sessionLifecycleService,
-  );
+  sessionRepo = SessionRepository(lifecycleService: sessionLifecycleService);
   boot('prefetching home index snapshots');
   bootstrapCubit?.beginHomeIndex();
   final homeIndexPrefetch =
@@ -513,7 +515,9 @@ Future<AppShell> buildAppShell({
       ]);
   final pluginRepository = PluginRepository();
   final mcpRepository = McpRepository();
-  identityProvisioner = LaunchProfileProvisioner(repository: identityRepository);
+  identityProvisioner = LaunchProfileProvisioner(
+    repository: identityRepository,
+  );
   teamCubit = LaunchProfileCubit(
     repository: identityRepository,
     sessionRepository: sessionRepo,
@@ -560,15 +564,10 @@ Future<AppShell> buildAppShell({
     GitRegistryTeamHubSource(),
   );
   final teamHubFavorites = TeamHubFavoritesStore();
-  final pluginDiskCache = PluginRepoDiskCacheService(
-  );
   final teamCloneService = TeamCloneService(
-    installSkill: skillInstallerFor(skillRepo.install),
-    installPlugin: pluginInstallerFor(
-      pluginRepository.install,
-      pluginDiskCache,
-    ),
-    installMcp: mcpInstallerFor(mcpRepository),
+    installSkill: skillCubit.installTeamDependency,
+    installPlugin: pluginCubit.installTeamDependency,
+    installMcp: mcpCubit.installTeamDependency,
     createTeam:
         ({
           required name,
@@ -666,18 +665,19 @@ Future<AppShell> buildAppShell({
       cliPathOverride: targetsRepo.cliPathOverride,
       setCliPathOverride: targetsRepo.setCliPathOverride,
       loadLocalCredentials: (cli) => LocalCredentialExporter().export(cli),
-      localCliPath: (cli) async => sessionPreferencesCubit.resolveExecutable(cli),
+      localCliPath: (cli) async =>
+          sessionPreferencesCubit.resolveExecutable(cli),
     ),
   );
 
   memberPresenceCubit = MemberPresenceCubit();
   chatCubit.bindPresenceCubit(memberPresenceCubit);
 
-  final mailboxCubit =
-      MailboxCubit(activeBus: () => chatCubit.activeTab?.teamBus);
+  final mailboxCubit = MailboxCubit(
+    activeBus: () => chatCubit.activeTab?.teamBus,
+  );
 
-  final boardCubit =
-      BoardCubit(activeBus: () => chatCubit.activeTab?.teamBus);
+  final boardCubit = BoardCubit(activeBus: () => chatCubit.activeTab?.teamBus);
 
   final notificationCubit = NotificationCubit();
   final notificationBootstrap = notificationCubit.load();
@@ -754,7 +754,10 @@ Future<AppShell> buildAppShell({
       'workspaces=${chatCubit.state.workspaces.length} '
       '(sessions load on demand)',
     );
-    await AppDataBootstrap.warmUiInteractive(boot: boot);
+    await AppDataBootstrap.warmUiInteractive(
+      boot: boot,
+      layoutPreferences: layoutCubit.state.preferences,
+    );
     bootstrapCubit?.beginWarmAuxiliary();
     await AppDataBootstrap.warmAuxiliaryData(
       boot: boot,

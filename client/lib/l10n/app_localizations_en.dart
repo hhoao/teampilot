@@ -3016,8 +3016,25 @@ class AppLocalizationsEn extends AppLocalizations {
   }
 
   @override
-  String teamHubClonePartial(Object name, Object count) {
-    return 'Cloned \"$name\"; $count dependencies could not be installed automatically.';
+  String teamHubCloneSuccessWithDeps(
+    Object name,
+    int skillCount,
+    int pluginCount,
+    int mcpCount,
+  ) {
+    return 'Cloned \"$name\". Installed $skillCount skills, $pluginCount plugins, and $mcpCount MCP servers.';
+  }
+
+  @override
+  String teamHubClonePartial(
+    Object name,
+    int skillCount,
+    int pluginCount,
+    int mcpCount,
+    int failedCount,
+    Object failedNames,
+  ) {
+    return 'Cloned \"$name\". Installed $skillCount skills, $pluginCount plugins, $mcpCount MCP. $failedCount could not be installed: $failedNames.';
   }
 
   @override

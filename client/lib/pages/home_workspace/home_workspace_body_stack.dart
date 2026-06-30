@@ -30,9 +30,6 @@ class HomeWorkspaceBodyStack extends StatelessWidget {
     final activeTab = WorkspaceTabRef.fromLocation(location);
     final showEditor =
         activeTab != null && HomeWorkspaceRoute.view(location) != 'manage';
-    final workspaces = context.select<ChatCubit, List<Workspace>>(
-      (c) => c.state.workspaces,
-    );
 
     return Stack(
       fit: StackFit.expand,
@@ -44,26 +41,15 @@ class HomeWorkspaceBodyStack extends StatelessWidget {
               _HomeBodyLayer(
                 offstage: activeTab != null,
                 enabled: activeTab == null,
-                child: HomePage(
-                  key: const ValueKey('home-v2-body'),
-                  initialSection: HomeWorkspaceRoute.homeTeamSection(location),
-                  initialMemberId: HomeWorkspaceRoute.homeMemberId(location),
-                  initialGlobalView: HomeWorkspaceRoute.homeGlobalView(location),
-                ),
+                child: _HomePageLayer(location: location),
               ),
               for (final tab in openTabs)
-                if (_resolve(workspaces, tab.workspaceId) case final workspace?)
-                  _WorkspaceTabSlot(
-                    key: ValueKey('workspace-tab-slot-${tab.tabKey}'),
-                    tab: tab,
-                    isActive: activeTab?.tabKey == tab.tabKey,
-                    view: activeTab?.tabKey == tab.tabKey
-                        ? HomeWorkspaceRoute.view(location)
-                        : null,
-                    configSection: activeTab?.tabKey == tab.tabKey
-                        ? HomeWorkspaceRoute.workspaceConfigSection(location)
-                        : null,
-                  ),
+                _WorkspaceTabSlot(
+                  key: ValueKey('workspace-tab-slot-${tab.tabKey}'),
+                  tab: tab,
+                  activeTabKey: activeTab?.tabKey,
+                  location: location,
+                ),
             ],
           ),
         ),
@@ -71,12 +57,21 @@ class HomeWorkspaceBodyStack extends StatelessWidget {
       ],
     );
   }
+}
 
-  static Workspace? _resolve(List<Workspace> workspaces, String id) {
-    for (final workspace in workspaces) {
-      if (workspace.workspaceId == id) return workspace;
-    }
-    return null;
+class _HomePageLayer extends StatelessWidget {
+  const _HomePageLayer({required this.location});
+
+  final String location;
+
+  @override
+  Widget build(BuildContext context) {
+    return HomePage(
+      key: const ValueKey('home-v2-body'),
+      initialSection: HomeWorkspaceRoute.homeTeamSection(location),
+      initialMemberId: HomeWorkspaceRoute.homeMemberId(location),
+      initialGlobalView: HomeWorkspaceRoute.homeGlobalView(location),
+    );
   }
 }
 
@@ -114,19 +109,34 @@ class _HomeBodyLayer extends StatelessWidget {
 class _WorkspaceTabSlot extends StatelessWidget {
   const _WorkspaceTabSlot({
     required this.tab,
-    required this.isActive,
-    required this.view,
-    required this.configSection,
+    required this.activeTabKey,
+    required this.location,
     super.key,
   });
 
   final WorkspaceTabRef tab;
-  final bool isActive;
-  final String? view;
-  final WorkspaceConfigSection? configSection;
+  final String? activeTabKey;
+  final String location;
 
   @override
   Widget build(BuildContext context) {
+    final workspace = context.select<ChatCubit, Workspace?>(
+      (c) {
+        for (final candidate in c.state.workspaces) {
+          if (candidate.workspaceId == tab.workspaceId) return candidate;
+        }
+        return null;
+      },
+    );
+    if (workspace == null) return const SizedBox.shrink();
+
+    final isActive = activeTabKey == tab.tabKey;
+    final view =
+        isActive ? HomeWorkspaceRoute.view(location) : null;
+    final configSection = isActive
+        ? HomeWorkspaceRoute.workspaceConfigSection(location)
+        : null;
+
     return WorkspaceRouteActiveScope(
       routeActive: isActive,
       view: view,

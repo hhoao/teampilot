@@ -6,6 +6,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_alacritty/flutter_alacritty.dart';
 import 'package:google_fonts/google_fonts.dart';
 
+import '../../models/layout_preferences.dart';
 import '../../theme/app_text_styles_warmup.dart';
 import '../../utils/yield_ui_frame.dart';
 import '../../widgets/warmup_glyphs.g.dart';
@@ -19,7 +20,7 @@ abstract final class UiInteractiveWarmup {
   static const _glyphBudgetMs = bootFrameBudgetMs;
   static const _glyphChunkSize = 64;
 
-  static Future<void> run() async {
+  static Future<void> run({LayoutPreferences? layoutPreferences}) async {
     if (_inTest) return;
 
     try {
@@ -34,7 +35,7 @@ abstract final class UiInteractiveWarmup {
       // Missing bundled weights: see tool/sync_bundled_google_fonts.dart.
     }
 
-    await _warmGlyphs();
+    await _warmGlyphs(layoutPreferences: layoutPreferences);
     await yieldUiFrame();
     await _warmTerminalEngine();
   }
@@ -47,8 +48,10 @@ abstract final class UiInteractiveWarmup {
     }
   }
 
-  static Future<void> _warmGlyphs() async {
-    for (final style in textStylesForInteractiveWarmup()) {
+  static Future<void> _warmGlyphs({LayoutPreferences? layoutPreferences}) async {
+    for (final style in textStylesForInteractiveWarmup(
+      preferences: layoutPreferences,
+    )) {
       await _shapeWarmupGlyphs(style);
     }
   }

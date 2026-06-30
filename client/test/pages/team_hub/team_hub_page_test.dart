@@ -41,7 +41,7 @@ void main() {
       saveFavoriteToggle: (k) async => true,
       cloneTeam: (t) async => const CloneResult(
         teamId: 'new-id',
-        installedDeps: [],
+        installed: CloneDepInstallSummary(),
         failedDeps: [],
       ),
     );

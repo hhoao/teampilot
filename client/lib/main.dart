@@ -500,15 +500,12 @@ class TeamPilotApp extends StatelessWidget {
     return BlocSelector<
       LayoutCubit,
       LayoutState,
-      (
+      ({
         String themeMode,
         String colorPreset,
         String typographyScale,
         double typographyCustomMultiplier,
-        String uiZoomScale,
-        double uiZoomCustomMultiplier,
-        String locale,
-      )
+      })
     >(
       selector: (state) {
         final prefs = state.preferences;
@@ -519,77 +516,109 @@ class TeamPilotApp extends StatelessWidget {
           themeMode = 'system';
         }
         return (
-          themeMode,
-          normalizeThemeColorPreset(prefs.themeColorPreset),
-          normalizeTypographyScale(prefs.typographyScale),
-          prefs.typographyScaleCustomMultiplier,
-          normalizeTypographyScale(prefs.uiZoomScale),
-          prefs.uiZoomCustomMultiplier,
-          prefs.locale,
+          themeMode: themeMode,
+          colorPreset: normalizeThemeColorPreset(prefs.themeColorPreset),
+          typographyScale: normalizeTypographyScale(prefs.typographyScale),
+          typographyCustomMultiplier: prefs.typographyScaleCustomMultiplier,
         );
       },
-      builder: (context, themePrefs) {
-        final (
-          themeMode,
-          colorPreset,
-          typographyScaleId,
-          typographyCustomMultiplier,
-          uiZoomScaleId,
-          uiZoomCustomMultiplier,
-          savedLocale,
-        ) = themePrefs;
-        // Text size: scales fonts via the theme. `standard` == the per-system
-        // baseline (OS text-scaling × display scaling); compact/comfortable/
-        // custom are relative to it. Read system metrics from the implicit view
-        // — there is no MediaQuery ancestor above MaterialApp here.
-        final systemView =
-            WidgetsBinding.instance.platformDispatcher.implicitView;
-        final systemMq = systemView == null
-            ? const MediaQueryData()
-            : MediaQueryData.fromView(systemView);
-        final textBaseline = autoTextScaleForSystem(
-          systemMq.textScaler.scale(1.0),
-          systemMq.devicePixelRatio,
+      builder: (context, themeBundle) {
+        return BlocSelector<LayoutCubit, LayoutState, String>(
+          selector: (state) => state.preferences.locale,
+          builder: (context, savedLocale) {
+            return _TeamPilotMaterialApp(
+              themeMode: themeBundle.themeMode,
+              colorPreset: themeBundle.colorPreset,
+              typographyScaleId: themeBundle.typographyScale,
+              typographyCustomMultiplier:
+                  themeBundle.typographyCustomMultiplier,
+              savedLocale: savedLocale,
+            );
+          },
         );
-        final effectiveTextMult = resolveRelativeScale(
-          scaleId: typographyScaleId,
-          customMultiplier: typographyCustomMultiplier,
-          baseline: textBaseline,
-        );
-        final textScale = AppTypographyScale(multiplier: effectiveTextMult);
-        final iconScale = AppTypographyScale(
-          multiplier: AppIconSizes.resolveIconMultiplier(
-            effectiveTextMultiplier: effectiveTextMult,
-            textBaseline: textBaseline,
-          ),
-        );
+      },
+    );
+  }
+}
 
-        ThemeMode themeModeFromPrefs(String mode) => switch (mode) {
-          'light' => ThemeMode.light,
-          'dark' => ThemeMode.dark,
-          _ => ThemeMode.system,
-        };
+class _TeamPilotMaterialApp extends StatelessWidget {
+  const _TeamPilotMaterialApp({
+    required this.themeMode,
+    required this.colorPreset,
+    required this.typographyScaleId,
+    required this.typographyCustomMultiplier,
+    required this.savedLocale,
+  });
 
-        return ToastificationWrapper(
-          config: buildAppToastificationConfig(),
-          child: MaterialApp.router(
-            debugShowCheckedModeBanner: false,
-            title: 'TeamPilot',
-            theme: buildLightTheme(colorPreset, textScale, iconScale),
-            darkTheme: buildDarkTheme(colorPreset, textScale, iconScale),
-            themeMode: themeModeFromPrefs(themeMode),
-            localizationsDelegates: AppLocalizations.localizationsDelegates,
-            supportedLocales: AppLocalizations.supportedLocales,
-            locale: savedLocale.isNotEmpty ? Locale(savedLocale) : null,
-            builder: (context, child) {
+  final String themeMode;
+  final String colorPreset;
+  final String typographyScaleId;
+  final double typographyCustomMultiplier;
+  final String savedLocale;
+
+  @override
+  Widget build(BuildContext context) {
+    // Text size: scales fonts via the theme. `standard` == the per-system
+    // baseline (OS text-scaling × display scaling); compact/comfortable/
+    // custom are relative to it. Read system metrics from the implicit view
+    // — there is no MediaQuery ancestor above MaterialApp here.
+    final systemView = WidgetsBinding.instance.platformDispatcher.implicitView;
+    final systemMq = systemView == null
+        ? const MediaQueryData()
+        : MediaQueryData.fromView(systemView);
+    final textBaseline = autoTextScaleForSystem(
+      systemMq.textScaler.scale(1.0),
+      systemMq.devicePixelRatio,
+    );
+    final effectiveTextMult = resolveRelativeScale(
+      scaleId: typographyScaleId,
+      customMultiplier: typographyCustomMultiplier,
+      baseline: textBaseline,
+    );
+    final textScale = AppTypographyScale(multiplier: effectiveTextMult);
+    final iconScale = AppTypographyScale(
+      multiplier: AppIconSizes.resolveIconMultiplier(
+        effectiveTextMultiplier: effectiveTextMult,
+        textBaseline: textBaseline,
+      ),
+    );
+
+    ThemeMode themeModeFromPrefs(String mode) => switch (mode) {
+      'light' => ThemeMode.light,
+      'dark' => ThemeMode.dark,
+      _ => ThemeMode.system,
+    };
+
+    return ToastificationWrapper(
+      config: buildAppToastificationConfig(),
+      child: MaterialApp.router(
+        debugShowCheckedModeBanner: false,
+        title: 'TeamPilot',
+        theme: buildLightTheme(colorPreset, textScale, iconScale),
+        darkTheme: buildDarkTheme(colorPreset, textScale, iconScale),
+        themeMode: themeModeFromPrefs(themeMode),
+        localizationsDelegates: AppLocalizations.localizationsDelegates,
+        supportedLocales: AppLocalizations.supportedLocales,
+        locale: savedLocale.isNotEmpty ? Locale(savedLocale) : null,
+        builder: (context, child) {
+          return BlocSelector<
+            LayoutCubit,
+            LayoutState,
+            ({String uiZoomScale, double uiZoomCustomMultiplier})
+          >(
+            selector: (state) => (
+              uiZoomScale: normalizeTypographyScale(state.preferences.uiZoomScale),
+              uiZoomCustomMultiplier: state.preferences.uiZoomCustomMultiplier,
+            ),
+            builder: (context, zoomBundle) {
               // Interface zoom: `standard` == the per-display baseline (1/dpr,
               // compensating for OS display scaling); compact/comfortable/custom
               // are relative to it.
               final dpr = MediaQuery.of(context).devicePixelRatio;
               final effectiveZoom = clampUiZoom(
                 resolveRelativeScale(
-                  scaleId: uiZoomScaleId,
-                  customMultiplier: uiZoomCustomMultiplier,
+                  scaleId: zoomBundle.uiZoomScale,
+                  customMultiplier: zoomBundle.uiZoomCustomMultiplier,
                   baseline: autoUiZoomForDevicePixelRatio(dpr),
                 ),
               );
@@ -613,19 +642,19 @@ class TeamPilotApp extends StatelessWidget {
               }
               return content;
             },
-            localeResolutionCallback: (locale, supportedLocales) {
-              if (savedLocale.isNotEmpty) return Locale(savedLocale);
-              for (final supportedLocale in supportedLocales) {
-                if (supportedLocale.languageCode == locale?.languageCode) {
-                  return supportedLocale;
-                }
-              }
-              return const Locale('en');
-            },
-            routerConfig: appRouter,
-          ),
-        );
-      },
+          );
+        },
+        localeResolutionCallback: (locale, supportedLocales) {
+          if (savedLocale.isNotEmpty) return Locale(savedLocale);
+          for (final supportedLocale in supportedLocales) {
+            if (supportedLocale.languageCode == locale?.languageCode) {
+              return supportedLocale;
+            }
+          }
+          return const Locale('en');
+        },
+        routerConfig: appRouter,
+      ),
     );
   }
 }

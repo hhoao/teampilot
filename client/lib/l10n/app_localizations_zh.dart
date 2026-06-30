@@ -2916,8 +2916,25 @@ class AppLocalizationsZh extends AppLocalizations {
   }
 
   @override
-  String teamHubClonePartial(Object name, Object count) {
-    return '已克隆「$name」；有 $count 个依赖未能自动安装。';
+  String teamHubCloneSuccessWithDeps(
+    Object name,
+    int skillCount,
+    int pluginCount,
+    int mcpCount,
+  ) {
+    return '已克隆「$name」。已安装 $skillCount 个 Skill、$pluginCount 个插件、$mcpCount 个 MCP 服务。';
+  }
+
+  @override
+  String teamHubClonePartial(
+    Object name,
+    int skillCount,
+    int pluginCount,
+    int mcpCount,
+    int failedCount,
+    Object failedNames,
+  ) {
+    return '已克隆「$name」。已安装 $skillCount 个 Skill、$pluginCount 个插件、$mcpCount 个 MCP；$failedCount 个依赖安装失败：$failedNames。';
   }
 
   @override
