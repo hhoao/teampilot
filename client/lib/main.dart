@@ -53,7 +53,6 @@ import 'services/app/windows_keyboard_workaround.dart';
 import 'utils/logger.dart';
 import 'widgets/app_text_scale_boundary.dart';
 import 'widgets/app_update_available_dialog.dart';
-import 'widgets/app_text_field_warmup_host.dart';
 import 'widgets/ui_zoom.dart';
 
 class _CleanupWindowListener extends WindowListener {
@@ -654,10 +653,8 @@ class _TeamPilotMaterialAppState extends State<_TeamPilotMaterialApp> {
                 ),
               );
               Widget content = AppTextScaleBoundary(
-                child: AppTextFieldWarmupHost(
-                  child: _AppUpdateAutoCheck(
-                    child: child ?? const SizedBox.shrink(),
-                  ),
+                child: _AppUpdateAutoCheck(
+                  child: child ?? const SizedBox.shrink(),
                 ),
               );
               // Single global zoom: scales fonts + icons + padding + every
