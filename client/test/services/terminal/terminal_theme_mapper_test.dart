@@ -61,6 +61,19 @@ void main() {
     expect(theme.hintStart.fg, cs.onPrimary.toARGB32() & 0xFFFFFF);
   });
 
+  test('teampilotTerminalTheme adaptive light foreground follows ColorScheme', () {
+    const cs = ColorScheme.light(
+      surface: Color(0xFFFFFFFF),
+      onSurface: Color(0xFF3D3A42),
+      onSurfaceVariant: Color(0xFF6B6670),
+    );
+    final theme = teampilotTerminalTheme(cs, isDark: false, mode: 'adaptive');
+    expect(theme.foreground, 0x3D3A42);
+    expect(theme.ansi[15], 0x3D3A42);
+    expect(theme.ansi[7], 0x6B6670);
+    expect(theme.ansi[15], isNot(0x111827));
+  });
+
   test('teampilotTerminalTheme adaptive background follows page chrome', () {
     const cs = ColorScheme.light(
       surface: Color(0xFFFFFFFF),

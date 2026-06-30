@@ -6,7 +6,10 @@ import 'package:teampilot/theme/app_toast_theme.dart';
 import 'package:teampilot/widgets/app_toast/app_toast.dart';
 
 import '../../cubits/chat_cubit.dart';
+import '../../cubits/chat/model/chat_tab.dart';
+import '../../cubits/cli_presets_cubit.dart';
 import '../../cubits/editor_cubit.dart';
+import '../../cubits/launch_profile_cubit.dart';
 import '../../cubits/layout_cubit.dart';
 import '../../l10n/l10n_extensions.dart';
 import '../../models/layout_preferences.dart';
@@ -19,6 +22,7 @@ import '../chat_workbench.dart';
 import '../workspace_shell/workspace_shell.dart';
 import 'right_tools_host.dart';
 import 'chat_scoped_tab_view.dart';
+import 'session_tab_cli.dart';
 import 'team_config_incomplete_dialog.dart';
 
 /// Layout fields that affect [ChatPageShell] and its right-tools subtree.
@@ -328,6 +332,11 @@ class _ChatWorkspaceShell extends StatelessWidget {
       builder: (context, state) {
         final view = ChatScopedTabView.resolve(cubit, tabScopeId);
         final teamConfig = team;
+        final runtimeTabs = _runtimeTabsForScope(cubit, tabScopeId);
+        final tabById = {for (final t in runtimeTabs) t.info.id: t};
+        final personalFallbackCli = isPersonalWorkspace
+            ? _personalPresetCli(context)
+            : null;
         return WorkspaceShell(
           workspaceTerminalWorkingDirectory: cwd,
           workspaceWorkspaceId: tabScopeId,
@@ -341,13 +350,25 @@ class _ChatWorkspaceShell extends StatelessWidget {
               : 'target: ${cubit.selectedMemberName(teamConfig!)} / shell wrapper mode',
           tabs: view.tabs
               .map(
-                (t) => TabInfo(
-                  id: t.id,
-                  title: t.title,
-                  working: view.workingSessionIds.contains(t.id),
-                  icon: Icons.terminal_rounded,
-                  accentColor: Theme.of(context).colorScheme.primary,
-                ),
+                (t) {
+                  final runtimeTab = tabById[t.id];
+                  final cli = runtimeTab == null
+                      ? null
+                      : resolveSessionTabCli(
+                          tab: runtimeTab,
+                          sessions: state.sessions,
+                          isPersonal: isPersonalWorkspace,
+                          team: teamConfig,
+                          personalFallbackCli: personalFallbackCli,
+                        );
+                  return TabInfo(
+                    id: t.id,
+                    title: t.title,
+                    working: view.workingSessionIds.contains(t.id),
+                    cli: cli,
+                    accentColor: Theme.of(context).colorScheme.primary,
+                  );
+                },
               )
               .toList(),
           activeTabIndex: view.activeTabIndex,
@@ -418,6 +439,22 @@ class _ChatWorkspaceShell extends StatelessWidget {
       ),
     ];
   }
+}
+
+List<ChatTab> _runtimeTabsForScope(ChatCubit cubit, String tabScopeId) {
+  final bucket = cubit.tabStore.tabsForWorkspace(tabScopeId);
+  if (bucket.isNotEmpty) return bucket;
+  if (cubit.tabStore.activeWorkspaceId == tabScopeId) {
+    return cubit.tabStore.tabs;
+  }
+  return bucket;
+}
+
+CliTool? _personalPresetCli(BuildContext context) {
+  final personal = context.read<LaunchProfileCubit>().activePersonal;
+  final activePresetId = personal?.activePresetId;
+  if (activePresetId == null || activePresetId.isEmpty) return null;
+  return context.read<CliPresetsCubit>().state.presetById(activePresetId)?.cli;
 }
 
 Widget _chatLaunchListener(BuildContext context, Widget child) {
