@@ -11,6 +11,7 @@ import '../../services/storage/launch_profile_provisioner.dart';
 import '../../theme/app_text_styles.dart';
 import '../../theme/workspace_surface_layers.dart';
 import '../../utils/app_keys.dart';
+import '../../widgets/deferred_mount_shell.dart';
 import 'home_workspace_global_section.dart';
 import 'home_workspace_library_view.dart';
 import 'home_workspace_new_team_dialog.dart';
@@ -58,12 +59,6 @@ class _HomeSidebarState extends State<HomeSidebar> {
   Widget build(BuildContext context) {
     final cs = Theme.of(context).colorScheme;
     final l10n = context.l10n;
-    final identityCubit = context.read<LaunchProfileCubit>();
-    final identities = context.select<LaunchProfileCubit, HomeSidebarIdentitySnapshot>(
-      (c) => LaunchProfileSelectors.sidebarIdentities(c.state),
-    );
-    final personals = identities.personals;
-    final teams = identities.teams;
     final selectedIdentityId = widget.selectedIdentityId;
     final onIdentity = widget.onSelectIdentity;
     final onAllWorkspaces = widget.onSelectAllWorkspaces;
@@ -117,158 +112,16 @@ class _HomeSidebarState extends State<HomeSidebar> {
             onToggle: () => setState(() => _teamsExpanded = !_teamsExpanded),
           ),
           Expanded(
-            child: CustomScrollView(
-              slivers: [
-                if (_teamsExpanded && personals.isNotEmpty)
-                  SliverPadding(
-                    padding: const EdgeInsets.fromLTRB(0, 8, 0, 0),
-                    sliver: SliverReorderableList(
-                      itemCount: personals.length,
-                      onReorder: (oldIndex, newIndex) {
-                        unawaited(
-                          identityCubit.reorderPersonals(oldIndex, newIndex),
-                        );
-                      },
-                      itemBuilder: (context, index) {
-                        final personal = personals[index];
-                        return _IdentityRow(
-                          key: ValueKey(personal.id),
-                          index: index,
-                          name: _sidebarDisplayName(l10n, personal),
-                          isTeam: false,
-                          selected:
-                              !allWorkspacesActive &&
-                              activeGlobalView == null &&
-                              activeLibraryView == null &&
-                              personal.id == selectedIdentityId,
-                          onTap: () => onIdentity?.call(personal.id),
-                        );
-                      },
-                    ),
-                  ),
-                if (_teamsExpanded && teams.isNotEmpty)
-                  SliverPadding(
-                    padding: EdgeInsets.fromLTRB(0, personals.isEmpty ? 8 : 0, 0, 0),
-                    sliver: SliverReorderableList(
-                      itemCount: teams.length,
-                      onReorder: (oldIndex, newIndex) {
-                        unawaited(identityCubit.reorderTeams(oldIndex, newIndex));
-                      },
-                      itemBuilder: (context, index) {
-                        final team = teams[index];
-                        return _IdentityRow(
-                          key: ValueKey(team.id),
-                          index: index,
-                          name: _sidebarDisplayName(l10n, team),
-                          isTeam: true,
-                          selected:
-                              !allWorkspacesActive &&
-                              activeGlobalView == null &&
-                              activeLibraryView == null &&
-                              team.id == selectedIdentityId,
-                          onTap: () => onIdentity?.call(team.id),
-                        );
-                      },
-                    ),
-                  ),
-                SliverPadding(
-                  padding: const EdgeInsets.fromLTRB(0, 0, 0, 8),
-                  sliver: SliverToBoxAdapter(
-                    child: AnimatedSize(
-                      duration: const Duration(milliseconds: 220),
-                      curve: Curves.easeOutCubic,
-                      alignment: Alignment.topCenter,
-                      child: _teamsExpanded
-                          ? Column(
-                              crossAxisAlignment: CrossAxisAlignment.stretch,
-                              children: [
-                                if (personals.isEmpty && teams.isEmpty)
-                                  const SizedBox(height: 8),
-                                _NewTeamRow(
-                                  label: l10n.homeWorkspaceNewTeam,
-                                  onTap: () => showHomeNewTeamDialog(
-                                    context,
-                                    identityCubit,
-                                  ),
-                                ),
-                                const SizedBox(height: 10),
-                              ],
-                            )
-                          : const SizedBox(width: double.infinity),
-                    ),
-                  ),
-                ),
-                SliverPadding(
-                  padding: const EdgeInsets.fromLTRB(0, 0, 0, 8),
-                  sliver: SliverToBoxAdapter(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.stretch,
-                      children: [
-                        const SizedBox(height: 8),
-                        Divider(
-                          height: 1,
-                          color: cs.outlineVariant.withValues(alpha: 0.5),
-                        ),
-                        const SizedBox(height: 8),
-                        _ShortcutRow(
-                          icon: Icons.travel_explore_outlined,
-                          label: l10n.teamHubNav,
-                          active:
-                              activeGlobalView ==
-                              HomeGlobalView.teamHub,
-                          onTap: () =>
-                              onGlobal?.call(HomeGlobalView.teamHub),
-                        ),
-                        const SizedBox(height: 8),
-                        Divider(
-                          height: 1,
-                          color: cs.outlineVariant.withValues(alpha: 0.5),
-                        ),
-                        const SizedBox(height: 8),
-                        _ShortcutRow(
-                          icon: Icons.extension_outlined,
-                          label: l10n.teamSkillsNav,
-                          active:
-                              activeGlobalView ==
-                              HomeGlobalView.skills,
-                          onTap: () =>
-                              onGlobal?.call(HomeGlobalView.skills),
-                        ),
-                        const SizedBox(height: 4),
-                        _ShortcutRow(
-                          icon: Icons.widgets_outlined,
-                          label: l10n.teamPluginsNav,
-                          active:
-                              activeGlobalView ==
-                              HomeGlobalView.plugins,
-                          onTap: () =>
-                              onGlobal?.call(HomeGlobalView.plugins),
-                        ),
-                        const SizedBox(height: 4),
-                        _ShortcutRow(
-                          icon: Icons.hub_outlined,
-                          label: l10n.teamMcpNav,
-                          active:
-                              activeGlobalView == HomeGlobalView.mcp,
-                          onTap: () =>
-                              onGlobal?.call(HomeGlobalView.mcp),
-                        ),
-                        const SizedBox(height: 4),
-                        _ShortcutRow(
-                          icon: Icons.power_outlined,
-                          label: l10n.teamExtensionsNav,
-                          active:
-                              activeGlobalView ==
-                              HomeGlobalView.extensions,
-                          onTap: () => onGlobal?.call(
-                            HomeGlobalView.extensions,
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                ),
-              ],
+            child: DeferredMountShell(
+              child: _HomeSidebarIdentityScroll(
+                teamsExpanded: _teamsExpanded,
+                selectedIdentityId: selectedIdentityId,
+                allWorkspacesActive: allWorkspacesActive,
+                activeGlobalView: activeGlobalView,
+                activeLibraryView: activeLibraryView,
+                onIdentity: onIdentity,
+                onGlobal: onGlobal,
+              ),
             ),
           ),
           Divider(height: 1, color: cs.outlineVariant.withValues(alpha: 0.5)),
@@ -280,6 +133,178 @@ class _HomeSidebarState extends State<HomeSidebar> {
           ),
         ],
       ),
+    );
+  }
+}
+
+class _HomeSidebarIdentityScroll extends StatelessWidget {
+  const _HomeSidebarIdentityScroll({
+    required this.teamsExpanded,
+    required this.selectedIdentityId,
+    required this.allWorkspacesActive,
+    required this.activeGlobalView,
+    required this.activeLibraryView,
+    required this.onIdentity,
+    required this.onGlobal,
+  });
+
+  final bool teamsExpanded;
+  final String? selectedIdentityId;
+  final bool allWorkspacesActive;
+  final HomeGlobalView? activeGlobalView;
+  final HomeLibraryView? activeLibraryView;
+  final ValueChanged<String>? onIdentity;
+  final ValueChanged<HomeGlobalView>? onGlobal;
+
+  @override
+  Widget build(BuildContext context) {
+    final cs = Theme.of(context).colorScheme;
+    final l10n = context.l10n;
+    final identityCubit = context.read<LaunchProfileCubit>();
+    final identities = context.select<LaunchProfileCubit, HomeSidebarIdentitySnapshot>(
+      (c) => LaunchProfileSelectors.sidebarIdentities(c.state),
+    );
+    final personals = identities.personals;
+    final teams = identities.teams;
+    final onIdentity = this.onIdentity;
+    final onGlobal = this.onGlobal;
+    final activeGlobalView = this.activeGlobalView;
+    final activeLibraryView = this.activeLibraryView;
+    final allWorkspacesActive = this.allWorkspacesActive;
+    final selectedIdentityId = this.selectedIdentityId;
+
+    return CustomScrollView(
+      slivers: [
+        if (teamsExpanded && personals.isNotEmpty)
+          SliverPadding(
+            padding: const EdgeInsets.fromLTRB(0, 8, 0, 0),
+            sliver: SliverReorderableList(
+              itemCount: personals.length,
+              onReorder: (oldIndex, newIndex) {
+                unawaited(identityCubit.reorderPersonals(oldIndex, newIndex));
+              },
+              itemBuilder: (context, index) {
+                final personal = personals[index];
+                return _IdentityRow(
+                  key: ValueKey(personal.id),
+                  index: index,
+                  name: _sidebarDisplayName(l10n, personal),
+                  isTeam: false,
+                  selected:
+                      !allWorkspacesActive &&
+                      activeGlobalView == null &&
+                      activeLibraryView == null &&
+                      personal.id == selectedIdentityId,
+                  onTap: () => onIdentity?.call(personal.id),
+                );
+              },
+            ),
+          ),
+        if (teamsExpanded && teams.isNotEmpty)
+          SliverPadding(
+            padding: EdgeInsets.fromLTRB(0, personals.isEmpty ? 8 : 0, 0, 0),
+            sliver: SliverReorderableList(
+              itemCount: teams.length,
+              onReorder: (oldIndex, newIndex) {
+                unawaited(identityCubit.reorderTeams(oldIndex, newIndex));
+              },
+              itemBuilder: (context, index) {
+                final team = teams[index];
+                return _IdentityRow(
+                  key: ValueKey(team.id),
+                  index: index,
+                  name: _sidebarDisplayName(l10n, team),
+                  isTeam: true,
+                  selected:
+                      !allWorkspacesActive &&
+                      activeGlobalView == null &&
+                      activeLibraryView == null &&
+                      team.id == selectedIdentityId,
+                  onTap: () => onIdentity?.call(team.id),
+                );
+              },
+            ),
+          ),
+        SliverPadding(
+          padding: const EdgeInsets.fromLTRB(0, 0, 0, 8),
+          sliver: SliverToBoxAdapter(
+            child: AnimatedSize(
+              duration: const Duration(milliseconds: 220),
+              curve: Curves.easeOutCubic,
+              alignment: Alignment.topCenter,
+              child: teamsExpanded
+                  ? Column(
+                      crossAxisAlignment: CrossAxisAlignment.stretch,
+                      children: [
+                        if (personals.isEmpty && teams.isEmpty)
+                          const SizedBox(height: 8),
+                        _NewTeamRow(
+                          label: l10n.homeWorkspaceNewTeam,
+                          onTap: () => showHomeNewTeamDialog(context, identityCubit),
+                        ),
+                        const SizedBox(height: 10),
+                      ],
+                    )
+                  : const SizedBox(width: double.infinity),
+            ),
+          ),
+        ),
+        SliverPadding(
+          padding: const EdgeInsets.fromLTRB(0, 0, 0, 8),
+          sliver: SliverToBoxAdapter(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                const SizedBox(height: 8),
+                Divider(
+                  height: 1,
+                  color: cs.outlineVariant.withValues(alpha: 0.5),
+                ),
+                const SizedBox(height: 8),
+                _ShortcutRow(
+                  icon: Icons.travel_explore_outlined,
+                  label: l10n.teamHubNav,
+                  active: activeGlobalView == HomeGlobalView.teamHub,
+                  onTap: () => onGlobal?.call(HomeGlobalView.teamHub),
+                ),
+                const SizedBox(height: 8),
+                Divider(
+                  height: 1,
+                  color: cs.outlineVariant.withValues(alpha: 0.5),
+                ),
+                const SizedBox(height: 8),
+                _ShortcutRow(
+                  icon: Icons.extension_outlined,
+                  label: l10n.teamSkillsNav,
+                  active: activeGlobalView == HomeGlobalView.skills,
+                  onTap: () => onGlobal?.call(HomeGlobalView.skills),
+                ),
+                const SizedBox(height: 4),
+                _ShortcutRow(
+                  icon: Icons.widgets_outlined,
+                  label: l10n.teamPluginsNav,
+                  active: activeGlobalView == HomeGlobalView.plugins,
+                  onTap: () => onGlobal?.call(HomeGlobalView.plugins),
+                ),
+                const SizedBox(height: 4),
+                _ShortcutRow(
+                  icon: Icons.hub_outlined,
+                  label: l10n.teamMcpNav,
+                  active: activeGlobalView == HomeGlobalView.mcp,
+                  onTap: () => onGlobal?.call(HomeGlobalView.mcp),
+                ),
+                const SizedBox(height: 4),
+                _ShortcutRow(
+                  icon: Icons.power_outlined,
+                  label: l10n.teamExtensionsNav,
+                  active: activeGlobalView == HomeGlobalView.extensions,
+                  onTap: () => onGlobal?.call(HomeGlobalView.extensions),
+                ),
+              ],
+            ),
+          ),
+        ),
+      ],
     );
   }
 }

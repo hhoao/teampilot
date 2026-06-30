@@ -541,7 +541,7 @@ class TeamPilotApp extends StatelessWidget {
   }
 }
 
-class _TeamPilotMaterialApp extends StatelessWidget {
+class _TeamPilotMaterialApp extends StatefulWidget {
   const _TeamPilotMaterialApp({
     required this.themeMode,
     required this.colorPreset,
@@ -557,7 +557,18 @@ class _TeamPilotMaterialApp extends StatelessWidget {
   final String savedLocale;
 
   @override
-  Widget build(BuildContext context) {
+  State<_TeamPilotMaterialApp> createState() => _TeamPilotMaterialAppState();
+}
+
+class _TeamPilotMaterialAppState extends State<_TeamPilotMaterialApp> {
+  ThemeData? _lightTheme;
+  ThemeData? _darkTheme;
+  String? _cachedColorPreset;
+  String? _cachedTypographyScaleId;
+  double? _cachedTypographyCustomMultiplier;
+  double? _cachedEffectiveTextMult;
+
+  ({ThemeData light, ThemeData dark}) _resolveThemes() {
     // Text size: scales fonts via the theme. `standard` == the per-system
     // baseline (OS text-scaling × display scaling); compact/comfortable/
     // custom are relative to it. Read system metrics from the implicit view
@@ -571,10 +582,18 @@ class _TeamPilotMaterialApp extends StatelessWidget {
       systemMq.devicePixelRatio,
     );
     final effectiveTextMult = resolveRelativeScale(
-      scaleId: typographyScaleId,
-      customMultiplier: typographyCustomMultiplier,
+      scaleId: widget.typographyScaleId,
+      customMultiplier: widget.typographyCustomMultiplier,
       baseline: textBaseline,
     );
+    if (_lightTheme != null &&
+        _darkTheme != null &&
+        _cachedColorPreset == widget.colorPreset &&
+        _cachedTypographyScaleId == widget.typographyScaleId &&
+        _cachedTypographyCustomMultiplier == widget.typographyCustomMultiplier &&
+        _cachedEffectiveTextMult == effectiveTextMult) {
+      return (light: _lightTheme!, dark: _darkTheme!);
+    }
     final textScale = AppTypographyScale(multiplier: effectiveTextMult);
     final iconScale = AppTypographyScale(
       multiplier: AppIconSizes.resolveIconMultiplier(
@@ -582,24 +601,36 @@ class _TeamPilotMaterialApp extends StatelessWidget {
         textBaseline: textBaseline,
       ),
     );
+    _cachedColorPreset = widget.colorPreset;
+    _cachedTypographyScaleId = widget.typographyScaleId;
+    _cachedTypographyCustomMultiplier = widget.typographyCustomMultiplier;
+    _cachedEffectiveTextMult = effectiveTextMult;
+    _lightTheme = buildLightTheme(widget.colorPreset, textScale, iconScale);
+    _darkTheme = buildDarkTheme(widget.colorPreset, textScale, iconScale);
+    return (light: _lightTheme!, dark: _darkTheme!);
+  }
 
-    ThemeMode themeModeFromPrefs(String mode) => switch (mode) {
-      'light' => ThemeMode.light,
-      'dark' => ThemeMode.dark,
-      _ => ThemeMode.system,
-    };
+  ThemeMode _themeModeFromPrefs(String mode) => switch (mode) {
+    'light' => ThemeMode.light,
+    'dark' => ThemeMode.dark,
+    _ => ThemeMode.system,
+  };
+
+  @override
+  Widget build(BuildContext context) {
+    final themes = _resolveThemes();
 
     return ToastificationWrapper(
       config: buildAppToastificationConfig(),
       child: MaterialApp.router(
         debugShowCheckedModeBanner: false,
         title: 'TeamPilot',
-        theme: buildLightTheme(colorPreset, textScale, iconScale),
-        darkTheme: buildDarkTheme(colorPreset, textScale, iconScale),
-        themeMode: themeModeFromPrefs(themeMode),
+        theme: themes.light,
+        darkTheme: themes.dark,
+        themeMode: _themeModeFromPrefs(widget.themeMode),
         localizationsDelegates: AppLocalizations.localizationsDelegates,
         supportedLocales: AppLocalizations.supportedLocales,
-        locale: savedLocale.isNotEmpty ? Locale(savedLocale) : null,
+        locale: widget.savedLocale.isNotEmpty ? Locale(widget.savedLocale) : null,
         builder: (context, child) {
           return BlocSelector<
             LayoutCubit,
@@ -645,7 +676,7 @@ class _TeamPilotMaterialApp extends StatelessWidget {
           );
         },
         localeResolutionCallback: (locale, supportedLocales) {
-          if (savedLocale.isNotEmpty) return Locale(savedLocale);
+          if (widget.savedLocale.isNotEmpty) return Locale(widget.savedLocale);
           for (final supportedLocale in supportedLocales) {
             if (supportedLocale.languageCode == locale?.languageCode) {
               return supportedLocale;
