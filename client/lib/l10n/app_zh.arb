@@ -1131,7 +1131,26 @@
   "teamHubClone": "克隆为我的团队",
   "teamHubCloning": "正在克隆…",
   "teamHubCloneSuccess": "已克隆「{name}」。",
-  "teamHubClonePartial": "已克隆「{name}」；有 {count} 个依赖未能自动安装。",
+  "teamHubCloneSuccessWithDeps": "已克隆「{name}」。已安装 {skillCount} 个 Skill、{pluginCount} 个插件、{mcpCount} 个 MCP 服务。",
+  "@teamHubCloneSuccessWithDeps": {
+    "placeholders": {
+      "name": {},
+      "skillCount": {"type": "int"},
+      "pluginCount": {"type": "int"},
+      "mcpCount": {"type": "int"}
+    }
+  },
+  "teamHubClonePartial": "已克隆「{name}」。已安装 {skillCount} 个 Skill、{pluginCount} 个插件、{mcpCount} 个 MCP；{failedCount} 个依赖安装失败：{failedNames}。",
+  "@teamHubClonePartial": {
+    "placeholders": {
+      "name": {},
+      "skillCount": {"type": "int"},
+      "pluginCount": {"type": "int"},
+      "mcpCount": {"type": "int"},
+      "failedCount": {"type": "int"},
+      "failedNames": {}
+    }
+  },
   "teamHubCloneFailed": "无法克隆该团队。",
   "teamHubEmptyTitle": "暂无公开团队",
   "teamHubEmptyHint": "点击刷新从注册表拉取团队。",

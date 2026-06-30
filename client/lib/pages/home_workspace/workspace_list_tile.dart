@@ -33,6 +33,7 @@ class WorkspaceListTile extends StatefulWidget {
     this.tabIdentity,
     this.launchProfiles = const [],
     this.showSessionContextIcon = false,
+    this.sessionBarTopologyIconOnly = false,
     this.displayNameOverride,
     super.key,
   });
@@ -46,6 +47,7 @@ class WorkspaceListTile extends StatefulWidget {
   final LaunchProfileRef? tabIdentity;
   final List<LaunchProfile> launchProfiles;
   final bool showSessionContextIcon;
+  final bool sessionBarTopologyIconOnly;
   final String? displayNameOverride;
 
   @override
@@ -139,6 +141,7 @@ class _WorkspaceListTileState extends State<WorkspaceListTile> {
                       tabIdentity: widget.tabIdentity,
                       launchProfiles: widget.launchProfiles,
                       showContextIcon: widget.showSessionContextIcon,
+                      topologyIconOnly: widget.sessionBarTopologyIconOnly,
                     ),
                   ],
                 ),

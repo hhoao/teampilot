@@ -5487,11 +5487,29 @@ abstract class AppLocalizations {
   /// **'Cloned \"{name}\".'**
   String teamHubCloneSuccess(Object name);
 
+  /// No description provided for @teamHubCloneSuccessWithDeps.
+  ///
+  /// In en, this message translates to:
+  /// **'Cloned \"{name}\". Installed {skillCount} skills, {pluginCount} plugins, and {mcpCount} MCP servers.'**
+  String teamHubCloneSuccessWithDeps(
+    Object name,
+    int skillCount,
+    int pluginCount,
+    int mcpCount,
+  );
+
   /// No description provided for @teamHubClonePartial.
   ///
   /// In en, this message translates to:
-  /// **'Cloned \"{name}\"; {count} dependencies could not be installed automatically.'**
-  String teamHubClonePartial(Object name, Object count);
+  /// **'Cloned \"{name}\". Installed {skillCount} skills, {pluginCount} plugins, {mcpCount} MCP. {failedCount} could not be installed: {failedNames}.'**
+  String teamHubClonePartial(
+    Object name,
+    int skillCount,
+    int pluginCount,
+    int mcpCount,
+    int failedCount,
+    Object failedNames,
+  );
 
   /// No description provided for @teamHubCloneFailed.
   ///

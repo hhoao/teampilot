@@ -198,6 +198,7 @@ class WorkspacesListBody extends StatelessWidget {
             favoriteWorkspaceIds: favoriteWorkspaceIds,
             onToggleWorkspaceFavorite: onToggleWorkspaceFavorite,
             showSessionBarContextIcon: true,
+            sessionBarTopologyIconOnly: true,
           );
     if (suppressMotion) return content;
     return WorkspacePaneAnimations.data(
@@ -477,6 +478,7 @@ class WorkspaceCollection extends StatefulWidget {
     required this.onToggleWorkspaceFavorite,
     this.preserveOrder = false,
     this.showSessionBarContextIcon = false,
+    this.sessionBarTopologyIconOnly = false,
   });
 
   final List<Workspace> workspaces;
@@ -487,6 +489,7 @@ class WorkspaceCollection extends StatefulWidget {
   final Future<void> Function(String workspaceId) onToggleWorkspaceFavorite;
   final bool preserveOrder;
   final bool showSessionBarContextIcon;
+  final bool sessionBarTopologyIconOnly;
 
   @override
   State<WorkspaceCollection> createState() =>
@@ -535,6 +538,7 @@ class _WorkspaceCollectionState
         onToggleWorkspaceFavorite: widget.onToggleWorkspaceFavorite,
         sessions: widget.sessions,
         showSessionContextIcon: widget.showSessionBarContextIcon,
+        sessionBarTopologyIconOnly: widget.sessionBarTopologyIconOnly,
       );
     }
 
@@ -545,6 +549,7 @@ class _WorkspaceCollectionState
       onToggleWorkspaceFavorite: widget.onToggleWorkspaceFavorite,
       sessions: widget.sessions,
       showSessionContextIcon: widget.showSessionBarContextIcon,
+      sessionBarTopologyIconOnly: widget.sessionBarTopologyIconOnly,
     );
   }
 }
@@ -557,6 +562,7 @@ class WorkspaceGrid extends StatelessWidget {
     required this.onToggleWorkspaceFavorite,
     required this.sessions,
     this.showSessionContextIcon = false,
+    this.sessionBarTopologyIconOnly = false,
   });
 
   final List<Workspace> workspaces;
@@ -565,6 +571,7 @@ class WorkspaceGrid extends StatelessWidget {
   final Future<void> Function(String workspaceId) onToggleWorkspaceFavorite;
   final List<AppSession> sessions;
   final bool showSessionContextIcon;
+  final bool sessionBarTopologyIconOnly;
 
   @override
   Widget build(BuildContext context) {
@@ -594,6 +601,7 @@ class WorkspaceGrid extends StatelessWidget {
             sessions: sessions,
             launchProfiles: launchProfiles,
             showSessionContextIcon: showSessionContextIcon,
+            sessionBarTopologyIconOnly: sessionBarTopologyIconOnly,
             onTap: () => unawaited(openWorkspace(context, workspace)),
           ),
         );
@@ -610,6 +618,7 @@ class WorkspaceList extends StatelessWidget {
     required this.onToggleWorkspaceFavorite,
     required this.sessions,
     this.showSessionContextIcon = false,
+    this.sessionBarTopologyIconOnly = false,
   });
 
   final List<Workspace> workspaces;
@@ -618,6 +627,7 @@ class WorkspaceList extends StatelessWidget {
   final Future<void> Function(String workspaceId) onToggleWorkspaceFavorite;
   final List<AppSession> sessions;
   final bool showSessionContextIcon;
+  final bool sessionBarTopologyIconOnly;
 
   @override
   Widget build(BuildContext context) {
@@ -640,6 +650,7 @@ class WorkspaceList extends StatelessWidget {
           sessions: sessions,
           launchProfiles: launchProfiles,
           showSessionContextIcon: showSessionContextIcon,
+          sessionBarTopologyIconOnly: sessionBarTopologyIconOnly,
           onTap: () => unawaited(openWorkspace(context, workspace)),
         );
       },

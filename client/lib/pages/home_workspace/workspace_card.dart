@@ -34,6 +34,7 @@ class WorkspaceCard extends StatefulWidget {
     this.tabIdentity,
     this.launchProfiles = const [],
     this.showSessionContextIcon = false,
+    this.sessionBarTopologyIconOnly = false,
     this.sessions = const [],
     super.key,
   });
@@ -49,6 +50,7 @@ class WorkspaceCard extends StatefulWidget {
 
   /// When true with [tabIdentity], shows identity/topology glyph on the session row.
   final bool showSessionContextIcon;
+  final bool sessionBarTopologyIconOnly;
   final List<AppSession> sessions;
 
   @override
@@ -57,10 +59,7 @@ class WorkspaceCard extends StatefulWidget {
 }
 
 class _WorkspaceCardState extends State<WorkspaceCard> {
-  var _hovered = false;
   var _menuOpen = false;
-
-  bool get _showActions => _hovered || _menuOpen || Platform.isAndroid;
 
   void _openInNewTab() {
     HomeTabScope.openInTab(
@@ -89,155 +88,115 @@ class _WorkspaceCardState extends State<WorkspaceCard> {
     final displayName =
         widget.displayNameOverride ?? workspace.localizedName(l10n);
 
-    return MouseRegion(
-      cursor: SystemMouseCursors.click,
-      onEnter: (_) => setState(() => _hovered = true),
-      onExit: (_) => setState(() => _hovered = false),
-      child: GestureDetector(
-        behavior: HitTestBehavior.opaque,
-        onTap: widget.onTap,
-        onSecondaryTapUp: (details) => unawaited(_showContextMenu(details)),
-        child: AnimatedContainer(
-          duration: const Duration(milliseconds: 160),
-          curve: Curves.easeOut,
-          padding: const EdgeInsets.all(26),
-          decoration:
-              workspaceCardDecoration(
-                cs,
-                radius: 14,
-                borderAlpha: _hovered ? 1 : 0.7,
-              ).copyWith(
-                color: cs.workspaceInset,
-                border: Border.all(
-                  color: _hovered
-                      ? cs.primary.withValues(alpha: 0.5)
-                      : cs.outlineVariant.withValues(alpha: 0.7),
-                ),
+    return _WorkspaceCardHoverShell(
+      menuOpen: _menuOpen,
+      onTap: widget.onTap,
+      onSecondaryTapUp: (details) => unawaited(_showContextMenu(details)),
+      showFavoriteBadge: widget.favorited,
+      actions: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          AppIconButton(
+            icon: Icons.open_in_new_rounded,
+            tooltip: l10n.homeWorkspaceOpenWorkspaceInNewTab,
+            size: AppIconButton.kCompactSize,
+            compact: true,
+            onTap: _openInNewTab,
+          ),
+          AppIconButton(
+            icon: widget.favorited
+                ? Icons.star_rounded
+                : Icons.star_outline_rounded,
+            color: widget.favorited ? cs.primary : null,
+            tooltip: widget.favorited
+                ? l10n.homeWorkspaceUnfavoriteWorkspace
+                : l10n.homeWorkspaceFavoriteWorkspace,
+            size: AppIconButton.kCompactSize,
+            compact: true,
+            onTap: () => unawaited(widget.onToggleFavorite()),
+          ),
+          SizedBox(
+            width: AppIconButton.kCompactSize,
+            height: AppIconButton.kCompactSize,
+            child: SidebarActionMenuIconAnchor(
+              icon: Icon(
+                Icons.more_horiz,
+                size: context.appIconSizes.sm,
               ),
-          child: Stack(
-            children: [
-              Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  WorkspaceIcon.fromWorkspace(workspace),
-                  const SizedBox(height: 20),
-                  Text(
-                    displayName,
-                    maxLines: 2,
-                    overflow: TextOverflow.ellipsis,
-                    style: styles.prominent.copyWith(
-                      fontWeight: FontWeight.w600,
+              onOpen: () => setState(() => _menuOpen = true),
+              onClose: () => setState(() => _menuOpen = false),
+              buildMenuChildren: (context, controller) => [
+                SidebarActionMenuItem(
+                  icon: Icons.badge_outlined,
+                  label: l10n.homeWorkspaceOpenInNewTabWithOtherIdentity,
+                  menuController: controller,
+                  onTap: () => unawaited(_openWithOtherIdentity()),
+                ),
+                SidebarActionMenuItem(
+                  icon: Icons.drive_file_rename_outline,
+                  label: l10n.homeWorkspaceRenameWorkspace,
+                  menuController: controller,
+                  onTap: () => unawaited(
+                    showRenameWorkspaceDialog(
+                      context,
+                      workspace,
                     ),
                   ),
-                  const SizedBox(height: 6),
-                  WorkspaceCardMetaRow(
-                    workspace: workspace,
-                    showTopologyChip: !widget.showSessionContextIcon,
-                  ),
-                  const Spacer(),
-                  WorkspaceCardSessionBar(
-                    sessionCount: widget.sessionCount,
-                    sessionCountLabel: l10n.homeWorkspaceSessionsLabel,
-                    workspace: workspace,
-                    tabIdentity: widget.tabIdentity,
-                    launchProfiles: widget.launchProfiles,
-                    showContextIcon: widget.showSessionContextIcon,
-                  ),
-                ],
-              ),
-              if (_showActions)
-                Positioned(
-                  top: 0,
-                  right: 0,
-                  child: Row(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      AppIconButton(
-                        icon: Icons.open_in_new_rounded,
-                        tooltip: l10n.homeWorkspaceOpenWorkspaceInNewTab,
-                        size: AppIconButton.kCompactSize,
-                        compact: true,
-                        onTap: _openInNewTab,
-                      ),
-                      AppIconButton(
-                        icon: widget.favorited
-                            ? Icons.star_rounded
-                            : Icons.star_outline_rounded,
-                        color: widget.favorited ? cs.primary : null,
-                        tooltip: widget.favorited
-                            ? l10n.homeWorkspaceUnfavoriteWorkspace
-                            : l10n.homeWorkspaceFavoriteWorkspace,
-                        size: AppIconButton.kCompactSize,
-                        compact: true,
-                        onTap: () => unawaited(widget.onToggleFavorite()),
-                      ),
-                      SizedBox(
-                        width: AppIconButton.kCompactSize,
-                        height: AppIconButton.kCompactSize,
-                        child: SidebarActionMenuIconAnchor(
-                          icon: Icon(
-                            Icons.more_horiz,
-                            size: context.appIconSizes.sm,
-                          ),
-                          onOpen: () => setState(() => _menuOpen = true),
-                          onClose: () => setState(() => _menuOpen = false),
-                          buildMenuChildren: (context, controller) => [
-                            SidebarActionMenuItem(
-                              icon: Icons.badge_outlined,
-                              label: l10n.homeWorkspaceOpenInNewTabWithOtherIdentity,
-                              menuController: controller,
-                              onTap: () => unawaited(_openWithOtherIdentity()),
-                            ),
-                            SidebarActionMenuItem(
-                              icon: Icons.drive_file_rename_outline,
-                              label: l10n.homeWorkspaceRenameWorkspace,
-                              menuController: controller,
-                              onTap: () => unawaited(
-                                showRenameWorkspaceDialog(
-                                  context,
-                                  workspace,
-                                ),
-                              ),
-                            ),
-                            SidebarActionMenuItem(
-                              icon: Icons.copy_all_outlined,
-                              label: l10n.homeWorkspaceCloneWorkspace,
-                              menuController: controller,
-                              onTap: () => unawaited(
-                                cloneWorkspace(context, workspace),
-                              ),
-                            ),
-                            SidebarActionMenuItem(
-                              icon: Icons.delete_outline,
-                              label: l10n.deleteWorkspace,
-                              destructive: true,
-                              menuController: controller,
-                              onTap: () => unawaited(
-                                confirmDeleteWorkspace(
-                                  context,
-                                  workspace,
-                                ),
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
-                    ],
+                ),
+                SidebarActionMenuItem(
+                  icon: Icons.copy_all_outlined,
+                  label: l10n.homeWorkspaceCloneWorkspace,
+                  menuController: controller,
+                  onTap: () => unawaited(
+                    cloneWorkspace(context, workspace),
                   ),
                 ),
-              if (widget.favorited && !_showActions)
-                Positioned(
-                  top: 0,
-                  right: 0,
-                  child: Icon(
-                    Icons.star_rounded,
-                    size: context.appIconSizes.sm,
-                    color: cs.primary.withValues(alpha: 0.85),
+                SidebarActionMenuItem(
+                  icon: Icons.delete_outline,
+                  label: l10n.deleteWorkspace,
+                  destructive: true,
+                  menuController: controller,
+                  onTap: () => unawaited(
+                    confirmDeleteWorkspace(
+                      context,
+                      workspace,
+                    ),
                   ),
                 ),
-            ],
+              ],
+            ),
           ),
-        ),
+        ],
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          WorkspaceIcon.fromWorkspace(workspace),
+          const SizedBox(height: 20),
+          Text(
+            displayName,
+            maxLines: 2,
+            overflow: TextOverflow.ellipsis,
+            style: styles.prominent.copyWith(
+              fontWeight: FontWeight.w600,
+            ),
+          ),
+          const SizedBox(height: 6),
+          WorkspaceCardMetaRow(
+            workspace: workspace,
+            showTopologyChip: !widget.showSessionContextIcon,
+          ),
+          const Spacer(),
+          WorkspaceCardSessionBar(
+            sessionCount: widget.sessionCount,
+            sessionCountLabel: l10n.homeWorkspaceSessionsLabel,
+            workspace: workspace,
+            tabIdentity: widget.tabIdentity,
+            launchProfiles: widget.launchProfiles,
+            showContextIcon: widget.showSessionContextIcon,
+            topologyIconOnly: widget.sessionBarTopologyIconOnly,
+          ),
+        ],
       ),
     );
   }
@@ -267,5 +226,88 @@ class _WorkspaceCardState extends State<WorkspaceCard> {
       case 'newTab':
         _openInNewTab();
     }
+  }
+}
+
+class _WorkspaceCardHoverShell extends StatefulWidget {
+  const _WorkspaceCardHoverShell({
+    required this.child,
+    required this.actions,
+    required this.onTap,
+    required this.onSecondaryTapUp,
+    required this.menuOpen,
+    required this.showFavoriteBadge,
+  });
+
+  final Widget child;
+  final Widget actions;
+  final VoidCallback? onTap;
+  final void Function(TapUpDetails details) onSecondaryTapUp;
+  final bool menuOpen;
+  final bool showFavoriteBadge;
+
+  @override
+  State<_WorkspaceCardHoverShell> createState() =>
+      _WorkspaceCardHoverShellState();
+}
+
+class _WorkspaceCardHoverShellState extends State<_WorkspaceCardHoverShell> {
+  var _hovered = false;
+
+  bool get _showActions =>
+      _hovered || widget.menuOpen || Platform.isAndroid;
+
+  @override
+  Widget build(BuildContext context) {
+    final cs = Theme.of(context).colorScheme;
+
+    return MouseRegion(
+      cursor: SystemMouseCursors.click,
+      onEnter: (_) => setState(() => _hovered = true),
+      onExit: (_) => setState(() => _hovered = false),
+      child: GestureDetector(
+        behavior: HitTestBehavior.opaque,
+        onTap: widget.onTap,
+        onSecondaryTapUp: widget.onSecondaryTapUp,
+        child: AnimatedContainer(
+          duration: const Duration(milliseconds: 160),
+          curve: Curves.easeOut,
+          padding: const EdgeInsets.all(26),
+          decoration: workspaceCardDecoration(
+            cs,
+            radius: 14,
+            borderAlpha: _hovered ? 1 : 0.7,
+          ).copyWith(
+            color: cs.workspaceInset,
+            border: Border.all(
+              color: _hovered
+                  ? cs.primary.withValues(alpha: 0.5)
+                  : cs.outlineVariant.withValues(alpha: 0.7),
+            ),
+          ),
+          child: Stack(
+            children: [
+              widget.child,
+              if (_showActions)
+                Positioned(
+                  top: 0,
+                  right: 0,
+                  child: widget.actions,
+                ),
+              if (widget.showFavoriteBadge && !_showActions)
+                Positioned(
+                  top: 0,
+                  right: 0,
+                  child: Icon(
+                    Icons.star_rounded,
+                    size: context.appIconSizes.sm,
+                    color: cs.primary.withValues(alpha: 0.85),
+                  ),
+                ),
+            ],
+          ),
+        ),
+      ),
+    );
   }
 }

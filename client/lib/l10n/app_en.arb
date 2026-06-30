@@ -1413,8 +1413,26 @@
   "teamHubCloning": "Cloning…",
   "teamHubCloneSuccess": "Cloned \"{name}\".",
   "@teamHubCloneSuccess": { "placeholders": { "name": {} } },
-  "teamHubClonePartial": "Cloned \"{name}\"; {count} dependencies could not be installed automatically.",
-  "@teamHubClonePartial": { "placeholders": { "name": {}, "count": {} } },
+  "teamHubCloneSuccessWithDeps": "Cloned \"{name}\". Installed {skillCount} skills, {pluginCount} plugins, and {mcpCount} MCP servers.",
+  "@teamHubCloneSuccessWithDeps": {
+    "placeholders": {
+      "name": {},
+      "skillCount": {"type": "int"},
+      "pluginCount": {"type": "int"},
+      "mcpCount": {"type": "int"}
+    }
+  },
+  "teamHubClonePartial": "Cloned \"{name}\". Installed {skillCount} skills, {pluginCount} plugins, {mcpCount} MCP. {failedCount} could not be installed: {failedNames}.",
+  "@teamHubClonePartial": {
+    "placeholders": {
+      "name": {},
+      "skillCount": {"type": "int"},
+      "pluginCount": {"type": "int"},
+      "mcpCount": {"type": "int"},
+      "failedCount": {"type": "int"},
+      "failedNames": {}
+    }
+  },
   "teamHubCloneFailed": "Could not clone this team.",
   "teamHubEmptyTitle": "No public teams yet",
   "teamHubEmptyHint": "Refresh to fetch teams from the registry.",

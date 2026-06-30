@@ -76,38 +76,38 @@ class TeamHubState extends Equatable {
     String? errorMessage,
     bool clearError = false,
     Set<String>? cloningKeys,
-  }) =>
-      TeamHubState(
-        allTeams: allTeams ?? this.allTeams,
-        categories: categories ?? this.categories,
-        favorites: favorites ?? this.favorites,
-        installedDepIds: installedDepIds ?? this.installedDepIds,
-        selectedCategory:
-            clearCategory ? null : (selectedCategory ?? this.selectedCategory),
-        favoritesOnly: favoritesOnly ?? this.favoritesOnly,
-        search: search ?? this.search,
-        sort: sort ?? this.sort,
-        status: status ?? this.status,
-        refreshing: refreshing ?? this.refreshing,
-        errorMessage: clearError ? null : (errorMessage ?? this.errorMessage),
-        cloningKeys: cloningKeys ?? this.cloningKeys,
-      );
+  }) => TeamHubState(
+    allTeams: allTeams ?? this.allTeams,
+    categories: categories ?? this.categories,
+    favorites: favorites ?? this.favorites,
+    installedDepIds: installedDepIds ?? this.installedDepIds,
+    selectedCategory: clearCategory
+        ? null
+        : (selectedCategory ?? this.selectedCategory),
+    favoritesOnly: favoritesOnly ?? this.favoritesOnly,
+    search: search ?? this.search,
+    sort: sort ?? this.sort,
+    status: status ?? this.status,
+    refreshing: refreshing ?? this.refreshing,
+    errorMessage: clearError ? null : (errorMessage ?? this.errorMessage),
+    cloningKeys: cloningKeys ?? this.cloningKeys,
+  );
 
   @override
   List<Object?> get props => [
-        allTeams,
-        categories,
-        favorites,
-        installedDepIds,
-        selectedCategory,
-        favoritesOnly,
-        search,
-        sort,
-        status,
-        refreshing,
-        errorMessage,
-        cloningKeys,
-      ];
+    allTeams,
+    categories,
+    favorites,
+    installedDepIds,
+    selectedCategory,
+    favoritesOnly,
+    search,
+    sort,
+    status,
+    refreshing,
+    errorMessage,
+    cloningKeys,
+  ];
 }
 
 class TeamHubCubit extends Cubit<TeamHubState> {
@@ -117,12 +117,12 @@ class TeamHubCubit extends Cubit<TeamHubState> {
     required FavoriteToggler saveFavoriteToggle,
     required TeamCloner cloneTeam,
     InstalledDepIdsLoader? loadInstalledDepIds,
-  })  : _source = source,
-        _loadFavorites = loadFavorites,
-        _saveFavoriteToggle = saveFavoriteToggle,
-        _cloneTeam = cloneTeam,
-        _loadInstalledDepIds = loadInstalledDepIds,
-        super(const TeamHubState());
+  }) : _source = source,
+       _loadFavorites = loadFavorites,
+       _saveFavoriteToggle = saveFavoriteToggle,
+       _cloneTeam = cloneTeam,
+       _loadInstalledDepIds = loadInstalledDepIds,
+       super(const TeamHubState());
 
   final TeamHubSource _source;
   final FavoritesLoader _loadFavorites;
@@ -131,32 +131,38 @@ class TeamHubCubit extends Cubit<TeamHubState> {
   final InstalledDepIdsLoader? _loadInstalledDepIds;
 
   Future<void> load({bool forceRefresh = false}) async {
-    emit(state.copyWith(
-      status: state.allTeams.isEmpty
-          ? TeamHubLoadStatus.loading
-          : state.status,
-      refreshing: forceRefresh,
-      clearError: true,
-    ));
+    emit(
+      state.copyWith(
+        status: state.allTeams.isEmpty
+            ? TeamHubLoadStatus.loading
+            : state.status,
+        refreshing: forceRefresh,
+        clearError: true,
+      ),
+    );
     try {
       final teams = await _source.fetchTeams(forceRefresh: forceRefresh);
       final cats = await _source.categories();
       final favs = await _loadFavorites();
       final installed = await _loadInstalledDepIds?.call() ?? const <String>{};
-      emit(state.copyWith(
-        allTeams: teams,
-        categories: cats,
-        favorites: favs,
-        installedDepIds: installed,
-        status: TeamHubLoadStatus.ready,
-        refreshing: false,
-      ));
+      emit(
+        state.copyWith(
+          allTeams: teams,
+          categories: cats,
+          favorites: favs,
+          installedDepIds: installed,
+          status: TeamHubLoadStatus.ready,
+          refreshing: false,
+        ),
+      );
     } catch (e) {
-      emit(state.copyWith(
-        status: TeamHubLoadStatus.error,
-        refreshing: false,
-        errorMessage: e.toString(),
-      ));
+      emit(
+        state.copyWith(
+          status: TeamHubLoadStatus.error,
+          refreshing: false,
+          errorMessage: e.toString(),
+        ),
+      );
     }
   }
 
@@ -182,17 +188,19 @@ class TeamHubCubit extends Cubit<TeamHubState> {
     emit(state.copyWith(favorites: favs));
   }
 
-  /// Clones [team]; the caller handles navigation/snackbar from the result
-  /// (including partial-dependency-failure messaging). Tracks the key in
-  /// `cloningKeys` for spinner UI. May throw [CloneException].
+  /// Clones [team]; tracks the key in `cloningKeys` for spinner UI. Refreshes
+  /// [installedDepIds] after a successful clone. May throw [CloneException].
   Future<CloneResult> clone(DiscoverableTeam team) async {
     emit(state.copyWith(cloningKeys: {...state.cloningKeys, team.key}));
     try {
-      return await _cloneTeam(team);
+      final result = await _cloneTeam(team);
+      final installed = await _loadInstalledDepIds?.call() ?? state.installedDepIds;
+      emit(state.copyWith(installedDepIds: installed));
+      return result;
     } finally {
-      emit(state.copyWith(
-        cloningKeys: {...state.cloningKeys}..remove(team.key),
-      ));
+      emit(
+        state.copyWith(cloningKeys: {...state.cloningKeys}..remove(team.key)),
+      );
     }
   }
 

@@ -114,4 +114,33 @@ void main() {
     expect(find.text('2 sessions'), findsOneWidget);
     expect(find.byType(WorkspaceTabKindTopologyIcon), findsOneWidget);
   });
+
+  testWidgets('topology-only mode uses topology glyph without identities', (
+    tester,
+  ) async {
+    final workspace = Workspace(
+      workspaceId: 'p1',
+      folders: [
+        WorkspaceFolder(path: '/var/www', targetId: 'ssh:host'),
+      ],
+      display: 'Remote App',
+      createdAt: 1,
+    );
+
+    await tester.pumpWidget(
+      wrap(
+        WorkspaceCardSessionBar(
+          sessionCount: 1,
+          sessionCountLabel: 'sessions',
+          workspace: workspace,
+          showContextIcon: true,
+          topologyIconOnly: true,
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    expect(find.byIcon(Icons.dns_outlined), findsOneWidget);
+    expect(find.byType(WorkspaceTabKindTopologyIcon), findsNothing);
+  });
 }

@@ -1,10 +1,13 @@
 import 'dart:async';
 import 'dart:io';
 
+import 'package:path/path.dart' as p;
+
 import 'package:equatable/equatable.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
+import '../models/discoverable_team.dart';
 import '../models/plugin.dart';
 import '../repositories/plugin_repository.dart';
 import '../services/plugin/plugin_install_service.dart';
@@ -315,6 +318,52 @@ class PluginCubit extends Cubit<PluginState> {
       emit(state.copyWith(errorMessage: '$e'));
     } finally {
       final next = {...state.busyIds}..remove(d.key);
+      emit(state.copyWith(busyIds: next));
+    }
+  }
+
+  /// TeamHub clone path: install one template plugin dep and refresh cubit state.
+  Future<String?> installTeamDependency(PluginDependencyRef ref) async {
+    final busyId = ref.expectedLocalId;
+    final busy = {...state.busyIds, busyId};
+    emit(state.copyWith(busyIds: busy, clearError: true));
+    try {
+      final marketplace = PluginMarketplace(
+        owner: ref.marketplaceOwner,
+        name: ref.marketplaceName,
+        branch: ref.marketplaceBranch,
+      );
+      final dirPath = await _diskCache.syncMarketplace(marketplace);
+      final discoverable = _diskCache.parseMarketplaceManifest(
+        directory: dirPath,
+        marketplace: marketplace,
+      );
+      DiscoverablePlugin? match;
+      for (final d in discoverable) {
+        if (d.name == ref.entryName) {
+          match = d;
+          break;
+        }
+      }
+      if (match == null) {
+        appLogger.w('[team-hub] plugin ${ref.entryName} not in marketplace');
+        return null;
+      }
+      final sourceDir = Directory(p.join(dirPath, match.source));
+      if (!sourceDir.existsSync()) return null;
+      final plugin = await installService.installFromDirectory(
+        sourceDir,
+        marketplace: marketplace,
+        marketplaceEntryName: ref.entryName,
+      );
+      final installed = await repository.loadAll();
+      emit(state.copyWith(installed: installed));
+      return plugin.id;
+    } catch (e) {
+      appLogger.w('[team-hub] plugin dep ${ref.name} failed: $e');
+      return null;
+    } finally {
+      final next = {...state.busyIds}..remove(busyId);
       emit(state.copyWith(busyIds: next));
     }
   }

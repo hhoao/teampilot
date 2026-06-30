@@ -259,8 +259,15 @@ abstract final class AppDataBootstrap {
   }
 
   /// Fonts, glyph cache, and terminal engine — time-sliced for spinner fluidity.
-  static Future<void> warmUiInteractive({required BootLog boot}) async {
-    await _timed(boot, 'uiInteractive', UiInteractiveWarmup.run);
+  static Future<void> warmUiInteractive({
+    required BootLog boot,
+    required LayoutPreferences layoutPreferences,
+  }) async {
+    await _timed(
+      boot,
+      'uiInteractive',
+      () => UiInteractiveWarmup.run(layoutPreferences: layoutPreferences),
+    );
     await yieldUiFrame();
   }
 

@@ -7,6 +7,7 @@ import '../../models/launch_profile_ref.dart';
 import '../../models/workspace.dart';
 import '../../models/workspace_topology.dart';
 import '../../theme/app_text_styles.dart';
+import '../../widgets/workspace_topology_icon.dart';
 import 'home_workspace_title_bar.dart';
 import 'open_workspace_tab_actions.dart';
 
@@ -19,6 +20,7 @@ class WorkspaceCardSessionBar extends StatelessWidget {
     this.tabIdentity,
     this.launchProfiles = const [],
     this.showContextIcon = false,
+    this.topologyIconOnly = false,
     super.key,
   });
 
@@ -29,13 +31,16 @@ class WorkspaceCardSessionBar extends StatelessWidget {
   final List<LaunchProfile> launchProfiles;
   final bool showContextIcon;
 
+  /// When true, shows [WorkspaceTopologyIcon] instead of identity-shaped glyph.
+  final bool topologyIconOnly;
+
   @override
   Widget build(BuildContext context) {
     final cs = Theme.of(context).colorScheme;
     final styles = AppTextStyles.of(context);
-    final identity = tabIdentity ?? workspaceCardDisplayIdentity(workspace);
-    final showIcon =
-        showContextIcon && launchProfiles.isNotEmpty;
+    final topology = workspaceTopologyOf(workspace.folders);
+    final showIcon = showContextIcon &&
+        (topologyIconOnly || launchProfiles.isNotEmpty);
 
     return Row(
       crossAxisAlignment: CrossAxisAlignment.center,
@@ -50,13 +55,30 @@ class WorkspaceCardSessionBar extends StatelessWidget {
         ),
         if (showIcon) ...[
           const SizedBox(width: 8),
-          _SessionContextIcon(
-            workspace: workspace,
-            identity: identity,
-            launchProfiles: launchProfiles,
-          ),
+          topologyIconOnly
+              ? _TopologyOnlyIcon(topology: topology)
+              : _SessionContextIcon(
+                  workspace: workspace,
+                  identity: tabIdentity ?? workspaceCardDisplayIdentity(workspace),
+                  launchProfiles: launchProfiles,
+                ),
         ],
       ],
+    );
+  }
+}
+
+class _TopologyOnlyIcon extends StatelessWidget {
+  const _TopologyOnlyIcon({required this.topology});
+
+  final WorkspaceTopology topology;
+
+  @override
+  Widget build(BuildContext context) {
+    final l10n = context.l10n;
+    return Tooltip(
+      message: workspaceTopologyLabel(l10n, topology),
+      child: WorkspaceTopologyIcon(topology: topology),
     );
   }
 }

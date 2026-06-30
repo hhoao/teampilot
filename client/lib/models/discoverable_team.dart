@@ -1,6 +1,7 @@
 import 'package:flutter/foundation.dart';
 
 import '../utils/team_member_naming.dart';
+import 'skill.dart';
 import 'team_config.dart';
 
 /// Source descriptor for a skill a public team depends on (resolved to a local
@@ -26,6 +27,17 @@ class SkillDependencyRef {
   /// without downloading, and keeps the installer + UI in agreement.
   String get expectedLocalId =>
       '$repoOwner/$repoName:${directory.split('/').last}';
+
+  /// Payload for [SkillInstallService.installFromDiscovery] during TeamHub clone.
+  DiscoverableSkill toDiscoverableSkill() => DiscoverableSkill(
+        key: expectedLocalId,
+        name: name,
+        description: '',
+        directory: directory,
+        repoOwner: repoOwner,
+        repoName: repoName,
+        repoBranch: repoBranch,
+      );
 
   factory SkillDependencyRef.fromJson(Map<String, Object?> json) =>
       SkillDependencyRef(
