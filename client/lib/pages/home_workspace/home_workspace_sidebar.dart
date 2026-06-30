@@ -585,7 +585,7 @@ class _ShortcutRowState extends State<_ShortcutRow> {
   }
 }
 
-class _ProvidersButton extends StatelessWidget {
+class _ProvidersButton extends StatefulWidget {
   const _ProvidersButton({
     required this.label,
     required this.onTap,
@@ -598,44 +598,63 @@ class _ProvidersButton extends StatelessWidget {
   final bool active;
 
   @override
+  State<_ProvidersButton> createState() => _ProvidersButtonState();
+}
+
+class _ProvidersButtonState extends State<_ProvidersButton> {
+  bool _hovered = false;
+
+  @override
   Widget build(BuildContext context) {
     final cs = Theme.of(context).colorScheme;
     final styles = AppTextStyles.of(context);
+    final active = widget.active;
     final Color fg = active ? cs.primary : cs.onSurface;
-    final Color background = active
+    final restingBg = active
         ? cs.primary.withValues(alpha: 0.14)
         : cs.surfaceContainer;
+    final hoverTint = cs.onSurface.withValues(alpha: 0.06);
+    final Color background = _hovered
+        ? Color.alphaBlend(hoverTint, restingBg)
+        : restingBg;
     final Color borderColor = active
         ? cs.primary.withValues(alpha: 0.45)
+        : _hovered
+        ? cs.primary.withValues(alpha: 0.35)
         : cs.outlineVariant.withValues(alpha: 0.7);
 
-    return InkWell(
-      onTap: onTap,
-      borderRadius: BorderRadius.circular(8),
-      child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 11),
-        decoration: BoxDecoration(
-          color: background,
-          borderRadius: BorderRadius.circular(8),
-          border: Border.all(color: borderColor),
-        ),
-        child: Row(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Icon(
-              Icons.memory_outlined,
-              size: context.appIconSizes.md,
-              color: active ? cs.primary : cs.onSurfaceVariant,
-            ),
-            const SizedBox(width: 8),
-            Text(
-              label,
-              style: styles.body.copyWith(
-                color: fg,
-                fontWeight: active ? FontWeight.w600 : FontWeight.w400,
+    return MouseRegion(
+      cursor: SystemMouseCursors.click,
+      onEnter: (_) => setState(() => _hovered = true),
+      onExit: (_) => setState(() => _hovered = false),
+      child: GestureDetector(
+        onTap: widget.onTap,
+        behavior: HitTestBehavior.opaque,
+        child: Container(
+          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 11),
+          decoration: BoxDecoration(
+            color: background,
+            borderRadius: BorderRadius.circular(8),
+            border: Border.all(color: borderColor),
+          ),
+          child: Row(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Icon(
+                Icons.memory_outlined,
+                size: context.appIconSizes.md,
+                color: active ? cs.primary : cs.onSurfaceVariant,
               ),
-            ),
-          ],
+              const SizedBox(width: 8),
+              Text(
+                widget.label,
+                style: styles.body.copyWith(
+                  color: fg,
+                  fontWeight: active ? FontWeight.w600 : FontWeight.w400,
+                ),
+              ),
+            ],
+          ),
         ),
       ),
     );

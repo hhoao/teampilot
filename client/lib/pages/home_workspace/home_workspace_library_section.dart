@@ -1,6 +1,7 @@
 import 'dart:async';
 
 import 'package:flutter/material.dart';
+import 'package:flutter_animate/flutter_animate.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
 
@@ -111,7 +112,7 @@ class _HomeLibrarySectionState extends State<HomeLibrarySection> {
 
     final isEmpty = isFavorites ? workspaces.isEmpty : recentEntries.isEmpty;
 
-    return ColoredBox(
+    final content = ColoredBox(
       color: cs.workspaceCard,
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -133,27 +134,37 @@ class _HomeLibrarySectionState extends State<HomeLibrarySection> {
                     label: l10n.homeWorkspaceNoData,
                   )
                 : isFavorites
-                    ? WorkspaceCollection(
-                        workspaces: workspaces,
-                        sessions: sessions,
-                        gridView: true,
-                        workspaceSort: _workspaceSort,
-                        favoriteWorkspaceIds: _favoriteWorkspaceIds,
-                        onToggleWorkspaceFavorite: _toggleWorkspaceFavorite,
-                        preserveOrder: false,
-                        showSessionBarContextIcon: true,
-                      )
-                    : _RecentWorkspaceGrid(
-                        entries: recentEntries,
-                        sessions: sessions,
-                        identities: identities,
-                        favoriteWorkspaceIds: _favoriteWorkspaceIds,
-                        onToggleWorkspaceFavorite: _toggleWorkspaceFavorite,
-                      ),
+                ? WorkspaceCollection(
+                    workspaces: workspaces,
+                    sessions: sessions,
+                    gridView: true,
+                    workspaceSort: _workspaceSort,
+                    favoriteWorkspaceIds: _favoriteWorkspaceIds,
+                    onToggleWorkspaceFavorite: _toggleWorkspaceFavorite,
+                    preserveOrder: false,
+                    showSessionBarContextIcon: true,
+                  )
+                : _RecentWorkspaceGrid(
+                    entries: recentEntries,
+                    sessions: sessions,
+                    identities: identities,
+                    favoriteWorkspaceIds: _favoriteWorkspaceIds,
+                    onToggleWorkspaceFavorite: _toggleWorkspaceFavorite,
+                  ),
           ),
         ],
       ),
     );
+    if (MediaQuery.disableAnimationsOf(context)) return content;
+    return content
+        .animate(key: ValueKey(widget.view))
+        .fadeIn(duration: 180.ms, curve: Curves.easeOut)
+        .slideX(
+          begin: 0.025,
+          end: 0,
+          duration: 220.ms,
+          curve: Curves.easeOutCubic,
+        );
   }
 
   static Workspace? _findWorkspace(List<Workspace> workspaces, String id) {

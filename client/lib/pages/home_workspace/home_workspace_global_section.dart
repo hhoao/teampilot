@@ -25,9 +25,9 @@ enum HomeGlobalView {
   /// `/home-v2?global=<segment>` — opens the main workspace with this sidebar
   /// shortcut selected.
   String get homeLocation => Uri(
-        path: '/home-v2',
-        queryParameters: {globalQueryParam: routeSegment},
-      ).toString();
+    path: '/home-v2',
+    queryParameters: {globalQueryParam: routeSegment},
+  ).toString();
 
   /// Resolves [globalQueryParam] (e.g. `skills`, `mcp`) back to a view.
   static HomeGlobalView? fromSegment(String? segment) {
@@ -50,12 +50,10 @@ class HomeGlobalSection extends StatefulWidget {
   final HomeGlobalView view;
 
   @override
-  State<HomeGlobalSection> createState() =>
-      _HomeGlobalSectionState();
+  State<HomeGlobalSection> createState() => _HomeGlobalSectionState();
 }
 
-class _HomeGlobalSectionState
-    extends State<HomeGlobalSection> {
+class _HomeGlobalSectionState extends State<HomeGlobalSection> {
   SkillSection _skill = SkillSection.installed;
   PluginSection _plugin = PluginSection.installed;
   McpSection _mcp = McpSection.installed;
@@ -65,21 +63,21 @@ class _HomeGlobalSectionState
   Widget build(BuildContext context) {
     final content = switch (widget.view) {
       HomeGlobalView.skills => SkillManagementPage(
-          section: _skill,
-          onSelectSection: (s) => setState(() => _skill = s),
-        ),
+        section: _skill,
+        onSelectSection: (s) => setState(() => _skill = s),
+      ),
       HomeGlobalView.plugins => PluginManagementPage(
-          section: _plugin,
-          onSelectSection: (s) => setState(() => _plugin = s),
-        ),
+        section: _plugin,
+        onSelectSection: (s) => setState(() => _plugin = s),
+      ),
       HomeGlobalView.mcp => McpManagementPage(
-          section: _mcp,
-          onSelectSection: (s) => setState(() => _mcp = s),
-        ),
+        section: _mcp,
+        onSelectSection: (s) => setState(() => _mcp = s),
+      ),
       HomeGlobalView.extensions => ExtensionManagementPage(
-          section: _extension,
-          onSelectSection: (s) => setState(() => _extension = s),
-        ),
+        section: _extension,
+        onSelectSection: (s) => setState(() => _extension = s),
+      ),
       HomeGlobalView.teamHub => const TeamHubPage(),
       HomeGlobalView.providers => const LlmConfigWorkspace(),
     };

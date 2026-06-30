@@ -73,8 +73,8 @@ abstract final class WorkspacePaneAnimations {
         WorkspaceRightPaneKind.global ||
         WorkspaceRightPaneKind.team ||
         WorkspaceRightPaneKind.personal ||
-        WorkspaceRightPaneKind.allWorkspaces => true,
-        WorkspaceRightPaneKind.library => false,
+        WorkspaceRightPaneKind.allWorkspaces ||
+        WorkspaceRightPaneKind.library => true,
       };
 
   static Widget switcher({

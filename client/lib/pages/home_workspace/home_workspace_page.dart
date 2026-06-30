@@ -61,8 +61,11 @@ class _HomePageState extends State<HomePage> {
     }
     if (widget.initialSection != null) {
       _allWorkspacesActive = false;
-      _selectedIdentityId =
-          context.read<LaunchProfileCubit>().state.selectedTeam?.id;
+      _selectedIdentityId = context
+          .read<LaunchProfileCubit>()
+          .state
+          .selectedTeam
+          ?.id;
     }
   }
 
@@ -109,13 +112,15 @@ class _HomePageState extends State<HomePage> {
             activeGlobalView: globalView,
             activeLibraryView: libraryView,
             allWorkspacesActive:
-                _allWorkspacesActive && globalView == null && libraryView == null,
+                _allWorkspacesActive &&
+                globalView == null &&
+                libraryView == null,
             selectedIdentityId: _allWorkspacesActive
                 ? null
                 : (_selectedIdentityId ??
-                    context.select<LaunchProfileCubit, String?>(
-                      (c) => c.state.selectedTeamId,
-                    )),
+                      context.select<LaunchProfileCubit, String?>(
+                        (c) => c.state.selectedTeamId,
+                      )),
             onSelectAllWorkspaces: () => setState(() {
               _allWorkspacesActive = true;
               _globalView = null;
@@ -212,10 +217,7 @@ class _HomeRightPaneState extends State<_HomeRightPane> {
       return (section: null, memberId: null);
     }
     _consumedTeamDeepLink = true;
-    return (
-      section: widget.initialSection,
-      memberId: widget.initialMemberId,
-    );
+    return (section: widget.initialSection, memberId: widget.initialMemberId);
   }
 
   @override
@@ -262,10 +264,12 @@ class _HomeRightPaneState extends State<_HomeRightPane> {
     );
 
     return switch (identityKind) {
-      LaunchProfileKind.personal =>
-        WorkspaceRightPaneDescriptor.personal(resolvedProfileId ?? ''),
-      LaunchProfileKind.team =>
-        WorkspaceRightPaneDescriptor.team(resolvedProfileId ?? ''),
+      LaunchProfileKind.personal => WorkspaceRightPaneDescriptor.personal(
+        resolvedProfileId ?? '',
+      ),
+      LaunchProfileKind.team => WorkspaceRightPaneDescriptor.team(
+        resolvedProfileId ?? '',
+      ),
       _ => const WorkspaceRightPaneDescriptor.allWorkspaces(),
     };
   }
@@ -312,12 +316,10 @@ class _HomePersonalPane extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final personal = context.select<LaunchProfileCubit, PersonalProfile?>(
-      (c) {
-        final identity = c.byId(profileId);
-        return identity is PersonalProfile ? identity : null;
-      },
-    );
+    final personal = context.select<LaunchProfileCubit, PersonalProfile?>((c) {
+      final identity = c.byId(profileId);
+      return identity is PersonalProfile ? identity : null;
+    });
     if (personal == null) {
       return const Center(child: CircularProgressIndicator());
     }

@@ -246,7 +246,7 @@ class _MemberPicker extends StatelessWidget {
   }
 }
 
-class _MemberChip extends StatelessWidget {
+class _MemberChip extends StatefulWidget {
   const _MemberChip({
     required this.member,
     required this.selected,
@@ -258,45 +258,66 @@ class _MemberChip extends StatelessWidget {
   final VoidCallback onTap;
 
   @override
+  State<_MemberChip> createState() => _MemberChipState();
+}
+
+class _MemberChipState extends State<_MemberChip> {
+  bool _hovered = false;
+
+  @override
   Widget build(BuildContext context) {
     final cs = Theme.of(context).colorScheme;
     final styles = AppTextStyles.of(context);
+    final selected = widget.selected;
+    final restingBg = selected
+        ? cs.primary.withValues(alpha: 0.14)
+        : cs.surfaceContainer;
+    final hoverTint = cs.onSurface.withValues(alpha: 0.06);
+    final background = _hovered
+        ? Color.alphaBlend(hoverTint, restingBg)
+        : restingBg;
+    final borderColor = selected
+        ? cs.primary.withValues(alpha: 0.4)
+        : _hovered
+        ? cs.primary.withValues(alpha: 0.35)
+        : cs.outlineVariant.withValues(alpha: 0.7);
 
     return Padding(
       padding: const EdgeInsets.only(right: 8),
-      child: InkWell(
-        onTap: onTap,
-        borderRadius: BorderRadius.circular(8),
-        child: Container(
-          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-          decoration: BoxDecoration(
-            color: selected
-                ? cs.primary.withValues(alpha: 0.14)
-                : cs.surfaceContainer,
-            borderRadius: BorderRadius.circular(8),
-            border: Border.all(
-              color: selected
-                  ? cs.primary.withValues(alpha: 0.4)
-                  : cs.outlineVariant.withValues(alpha: 0.7),
+      child: MouseRegion(
+        cursor: SystemMouseCursors.click,
+        onEnter: (_) => setState(() => _hovered = true),
+        onExit: (_) => setState(() => _hovered = false),
+        child: GestureDetector(
+          onTap: widget.onTap,
+          behavior: HitTestBehavior.opaque,
+          child: Container(
+            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+            decoration: BoxDecoration(
+              color: background,
+              borderRadius: BorderRadius.circular(8),
+              border: Border.all(color: borderColor),
             ),
-          ),
-          child: Row(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Icon(
-                member.isTeamLead ? Icons.star_rounded : Icons.person_outline,
-                size: context.appIconSizes.md,
-                color: selected ? cs.primary : cs.onSurfaceVariant,
-              ),
-              const SizedBox(width: 6),
-              Text(
-                member.displayName,
-                style: styles.bodySmall.copyWith(
-                  color: selected ? cs.primary : cs.onSurface,
-                  fontWeight: selected ? FontWeight.w600 : FontWeight.w400,
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Icon(
+                  widget.member.isTeamLead
+                      ? Icons.star_rounded
+                      : Icons.person_outline,
+                  size: context.appIconSizes.md,
+                  color: selected ? cs.primary : cs.onSurfaceVariant,
                 ),
-              ),
-            ],
+                const SizedBox(width: 6),
+                Text(
+                  widget.member.displayName,
+                  style: styles.bodySmall.copyWith(
+                    color: selected ? cs.primary : cs.onSurface,
+                    fontWeight: selected ? FontWeight.w600 : FontWeight.w400,
+                  ),
+                ),
+              ],
+            ),
           ),
         ),
       ),
@@ -304,28 +325,48 @@ class _MemberChip extends StatelessWidget {
   }
 }
 
-class _AddMemberChip extends StatelessWidget {
+class _AddMemberChip extends StatefulWidget {
   const _AddMemberChip({required this.onTap});
 
   final Future<void> Function() onTap;
 
   @override
+  State<_AddMemberChip> createState() => _AddMemberChipState();
+}
+
+class _AddMemberChipState extends State<_AddMemberChip> {
+  bool _hovered = false;
+
+  @override
   Widget build(BuildContext context) {
     final cs = Theme.of(context).colorScheme;
-    return InkWell(
-      onTap: onTap,
-      borderRadius: BorderRadius.circular(8),
-      child: Container(
-        padding: const EdgeInsets.all(9),
-        decoration: BoxDecoration(
-          color: cs.surfaceContainer,
-          borderRadius: BorderRadius.circular(8),
-          border: Border.all(color: cs.outlineVariant.withValues(alpha: 0.7)),
-        ),
-        child: Icon(
-          Icons.person_add_alt_1_outlined,
-          size: context.appIconSizes.md,
-          color: cs.onSurfaceVariant,
+    final hoverTint = cs.onSurface.withValues(alpha: 0.06);
+    final background = _hovered
+        ? Color.alphaBlend(hoverTint, cs.surfaceContainer)
+        : cs.surfaceContainer;
+    final borderColor = _hovered
+        ? cs.primary.withValues(alpha: 0.35)
+        : cs.outlineVariant.withValues(alpha: 0.7);
+
+    return MouseRegion(
+      cursor: SystemMouseCursors.click,
+      onEnter: (_) => setState(() => _hovered = true),
+      onExit: (_) => setState(() => _hovered = false),
+      child: GestureDetector(
+        onTap: widget.onTap,
+        behavior: HitTestBehavior.opaque,
+        child: Container(
+          padding: const EdgeInsets.all(9),
+          decoration: BoxDecoration(
+            color: background,
+            borderRadius: BorderRadius.circular(8),
+            border: Border.all(color: borderColor),
+          ),
+          child: Icon(
+            Icons.person_add_alt_1_outlined,
+            size: context.appIconSizes.md,
+            color: cs.onSurfaceVariant,
+          ),
         ),
       ),
     );
