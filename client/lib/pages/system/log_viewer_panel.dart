@@ -16,7 +16,10 @@ import 'log_viewer_filter.dart';
 import 'log_viewer_toolbar.dart';
 
 class LogViewerPanel extends StatefulWidget {
-  const LogViewerPanel({super.key});
+  const LogViewerPanel({this.useSurfaceCard = true, super.key});
+
+  /// When false, skips the outer settings card (e.g. inside [showLogViewerDialog]).
+  final bool useSurfaceCard;
 
   @override
   State<LogViewerPanel> createState() => LogViewerPanelState();
@@ -27,16 +30,17 @@ class LogViewerPanelState extends State<LogViewerPanel> {
 
   List<String> _logFiles = [];
   List<String> _rawLines = [];
+  List<String> _filteredLinesCache = [];
   List<String> _displayedLines = [];
   String? _selectedFile;
 
   bool _loading = true;
-  bool _loadingMore = false;
   bool _wrapLines = true;
   bool _reverseOrder = true;
   bool _compactView = true;
   String _searchText = '';
   String _selectedLevel = 'ALL';
+  int _filteredLineCount = 0;
 
   final _searchController = TextEditingController();
   final _scrollController = ScrollController();
@@ -68,6 +72,7 @@ class LogViewerPanelState extends State<LogViewerPanel> {
   }
 
   void _onScroll() {
+    if (_loading) return;
     if (!_scrollController.hasClients) return;
     final pos = _scrollController.position;
     if (pos.pixels >= pos.maxScrollExtent * 0.85) {
@@ -152,23 +157,22 @@ class LogViewerPanelState extends State<LogViewerPanel> {
   void _applyFilters() {
     final filtered = _filteredLines();
     setState(() {
+      _filteredLinesCache = filtered;
+      _filteredLineCount = filtered.length;
       _currentPage = 0;
       _displayedLines = filtered.take(_pageSize).toList();
     });
   }
 
   void _loadMoreLines() {
-    final filtered = _filteredLines();
     final nextPage = _currentPage + 1;
     final start = nextPage * _pageSize;
-    if (start >= filtered.length) return;
+    if (start >= _filteredLinesCache.length) return;
 
-    setState(() => _loadingMore = true);
-    final end = (start + _pageSize).clamp(0, filtered.length);
+    final end = (start + _pageSize).clamp(0, _filteredLinesCache.length);
     setState(() {
-      _displayedLines.addAll(filtered.sublist(start, end));
+      _displayedLines.addAll(_filteredLinesCache.sublist(start, end));
       _currentPage = nextPage;
-      _loadingMore = false;
     });
   }
 
@@ -226,58 +230,60 @@ class LogViewerPanelState extends State<LogViewerPanel> {
     final showPending =
         !AppLogger.instance.getFileLoggerInitialized() && _logFiles.isEmpty;
     final showToolbar = !showPending && _logFiles.isNotEmpty;
-    final filteredCount = _filteredLines().length;
 
-    return SettingsSurfaceCard(
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: [
-          if (showToolbar) ...[
-            LogViewerToolbar(
-              logFiles: _logFiles,
-              selectedFile: _selectedFile,
-              searchController: _searchController,
-              selectedLevel: _selectedLevel,
-              compactView: _compactView,
-              wrapLines: _wrapLines,
-              reverseOrder: _reverseOrder,
-              lineCount: filteredCount,
-              onFileSelected: (path) => unawaited(_loadLogContent(path)),
-              onSearchChanged: _onSearchChanged,
-              onLevelChanged: (level) {
-                setState(() => _selectedLevel = level);
-                _applyFilters();
-              },
-              onCompactViewChanged: (value) {
-                setState(() => _compactView = value);
-                _applyFilters();
-              },
-              onWrapLinesChanged: (value) => setState(() => _wrapLines = value),
-              onRefresh: _loadLogFiles,
-              onCopyPath: _copyLogPath,
-              onClearOld: _clearOldLogs,
-              onReverseOrderChanged: (value) =>
-                  unawaited(_onReverseOrderChanged(value)),
-            ),
-            if (_loading)
-              LinearProgressIndicator(
-                minHeight: 2,
-                color: cs.primary,
-                backgroundColor: cs.surfaceContainerHighest,
-              ),
-          ],
-          Expanded(
-            child: LogViewerBody(
-              logFiles: _logFiles,
-              loading: _loading,
-              displayedLines: _displayedLines,
-              wrapLines: _wrapLines,
-              loadingMore: _loadingMore,
-              scrollController: _scrollController,
-            ),
+    final panel = Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        if (showToolbar) ...[
+          LogViewerToolbar(
+            logFiles: _logFiles,
+            selectedFile: _selectedFile,
+            searchController: _searchController,
+            selectedLevel: _selectedLevel,
+            compactView: _compactView,
+            wrapLines: _wrapLines,
+            reverseOrder: _reverseOrder,
+            lineCount: _filteredLineCount,
+            onFileSelected: (path) => unawaited(_loadLogContent(path)),
+            onSearchChanged: _onSearchChanged,
+            onLevelChanged: (level) {
+              setState(() => _selectedLevel = level);
+              _applyFilters();
+            },
+            onCompactViewChanged: (value) {
+              setState(() => _compactView = value);
+              _applyFilters();
+            },
+            onWrapLinesChanged: (value) => setState(() => _wrapLines = value),
+            onRefresh: _loadLogFiles,
+            onCopyPath: _copyLogPath,
+            onClearOld: _clearOldLogs,
+            onReverseOrderChanged: (value) =>
+                unawaited(_onReverseOrderChanged(value)),
           ),
+          if (_loading)
+            LinearProgressIndicator(
+              minHeight: 2,
+              color: cs.primary,
+              backgroundColor: cs.surfaceContainerHighest,
+            ),
         ],
-      ),
+        Expanded(
+          child: LogViewerBody(
+            logFiles: _logFiles,
+            loading: _loading,
+            displayedLines: _displayedLines,
+            wrapLines: _wrapLines,
+            scrollController: _scrollController,
+          ),
+        ),
+      ],
     );
+
+    if (!widget.useSurfaceCard) {
+      return panel;
+    }
+
+    return SettingsSurfaceCard(child: panel);
   }
 }

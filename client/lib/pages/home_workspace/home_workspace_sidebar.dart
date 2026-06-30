@@ -11,7 +11,6 @@ import '../../services/storage/launch_profile_provisioner.dart';
 import '../../theme/app_text_styles.dart';
 import '../../theme/workspace_surface_layers.dart';
 import '../../utils/app_keys.dart';
-import '../../widgets/deferred_mount_shell.dart';
 import 'home_workspace_global_section.dart';
 import 'home_workspace_library_view.dart';
 import 'home_workspace_new_team_dialog.dart';
@@ -112,16 +111,14 @@ class _HomeSidebarState extends State<HomeSidebar> {
             onToggle: () => setState(() => _teamsExpanded = !_teamsExpanded),
           ),
           Expanded(
-            child: DeferredMountShell(
-              child: _HomeSidebarIdentityScroll(
-                teamsExpanded: _teamsExpanded,
-                selectedIdentityId: selectedIdentityId,
-                allWorkspacesActive: allWorkspacesActive,
-                activeGlobalView: activeGlobalView,
-                activeLibraryView: activeLibraryView,
-                onIdentity: onIdentity,
-                onGlobal: onGlobal,
-              ),
+            child: _HomeSidebarIdentityScroll(
+              teamsExpanded: _teamsExpanded,
+              selectedIdentityId: selectedIdentityId,
+              allWorkspacesActive: allWorkspacesActive,
+              activeGlobalView: activeGlobalView,
+              activeLibraryView: activeLibraryView,
+              onIdentity: onIdentity,
+              onGlobal: onGlobal,
             ),
           ),
           Divider(height: 1, color: cs.outlineVariant.withValues(alpha: 0.5)),

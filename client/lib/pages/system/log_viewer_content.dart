@@ -1,4 +1,5 @@
 ﻿import 'package:flutter/material.dart';
+import 'package:flutter/rendering.dart';
 import 'package:teampilot/theme/app_icon_sizes.dart';
 
 import '../../l10n/l10n_extensions.dart';
@@ -60,73 +61,92 @@ class LogViewerLineList extends StatelessWidget {
   const LogViewerLineList({
     required this.lines,
     required this.wrapLines,
-    required this.loadingMore,
     required this.scrollController,
     super.key,
   });
 
   final List<String> lines;
   final bool wrapLines;
-  final bool loadingMore;
   final ScrollController scrollController;
+
+  static const _singleLineExtent = 21.0;
+  static final _cacheExtent = ScrollCacheExtent.pixels(1200);
 
   @override
   Widget build(BuildContext context) {
-    final cs = Theme.of(context).colorScheme;
+    final itemCount = lines.length;
 
-    Widget lineWidget(int index, String line, {required bool singleLine}) {
-      final tinted = logLineColor(context, line);
-      final bg = index.isEven
-          ? Colors.transparent
-          : cs.onSurface.withValues(alpha: 0.03);
-      return ColoredBox(
-        color: bg,
-        child: Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 3),
-          child: SelectableText(
-            line,
-            maxLines: singleLine ? 1 : null,
-            style: logMonospaceStyle(context, color: tinted),
-          ),
+    if (wrapLines) {
+      return Scrollbar(
+        controller: scrollController,
+        thumbVisibility: true,
+        child: ListView.builder(
+          controller: scrollController,
+          scrollCacheExtent: _cacheExtent,
+          addAutomaticKeepAlives: false,
+          addSemanticIndexes: false,
+          itemCount: itemCount,
+          itemBuilder: (context, index) {
+            return _LogLineTile(
+              line: lines[index],
+              index: index,
+              singleLine: false,
+            );
+          },
         ),
       );
     }
 
-    if (wrapLines) {
-      return ListView.builder(
-        controller: scrollController,
-        itemCount: lines.length + (loadingMore ? 1 : 0),
-        itemBuilder: (context, index) {
-          if (index >= lines.length) {
-            return const Padding(
-              padding: EdgeInsets.all(20),
-              child: Center(child: CircularProgressIndicator(strokeWidth: 2)),
-            );
-          }
-          return lineWidget(index, lines[index], singleLine: false);
-        },
-      );
-    }
-
     return Scrollbar(
+      controller: scrollController,
       thumbVisibility: true,
-      child: SingleChildScrollView(
-        scrollDirection: Axis.horizontal,
-        child: SizedBox(
-          width: 2000,
-          child: ListView.builder(
-            controller: scrollController,
-            itemCount: lines.length + (loadingMore ? 1 : 0),
-            itemBuilder: (context, index) {
-              if (index >= lines.length) {
-                return const Padding(
-                  padding: EdgeInsets.all(20),
-                  child: Center(child: CircularProgressIndicator(strokeWidth: 2)),
-                );
-              }
-              return lineWidget(index, lines[index], singleLine: true);
-            },
-          ),
+      child: ListView.builder(
+        controller: scrollController,
+        itemExtent: _singleLineExtent,
+        scrollCacheExtent: _cacheExtent,
+        addAutomaticKeepAlives: false,
+        addSemanticIndexes: false,
+        itemCount: itemCount,
+        itemBuilder: (context, index) {
+          return _LogLineTile(
+            line: lines[index],
+            index: index,
+            singleLine: true,
+          );
+        },
+      ),
+    );
+  }
+}
+
+class _LogLineTile extends StatelessWidget {
+  const _LogLineTile({
+    required this.line,
+    required this.index,
+    required this.singleLine,
+  });
+
+  final String line;
+  final int index;
+  final bool singleLine;
+
+  @override
+  Widget build(BuildContext context) {
+    final cs = Theme.of(context).colorScheme;
+    final tinted = logLineColor(context, line);
+    final bg = index.isEven
+        ? Colors.transparent
+        : cs.onSurface.withValues(alpha: 0.03);
+
+    return ColoredBox(
+      color: bg,
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 3),
+        child: Text(
+          line,
+          maxLines: singleLine ? 1 : null,
+          overflow: singleLine ? TextOverflow.clip : null,
+          style: logMonospaceStyle(context, color: tinted),
         ),
       ),
     );
@@ -139,7 +159,6 @@ class LogViewerBody extends StatelessWidget {
     required this.loading,
     required this.displayedLines,
     required this.wrapLines,
-    required this.loadingMore,
     required this.scrollController,
     super.key,
   });
@@ -148,7 +167,6 @@ class LogViewerBody extends StatelessWidget {
   final bool loading;
   final List<String> displayedLines;
   final bool wrapLines;
-  final bool loadingMore;
   final ScrollController scrollController;
 
   @override
@@ -209,7 +227,6 @@ class LogViewerBody extends StatelessWidget {
       child: LogViewerLineList(
         lines: displayedLines,
         wrapLines: wrapLines,
-        loadingMore: loadingMore,
         scrollController: scrollController,
       ),
     );
