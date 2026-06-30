@@ -455,8 +455,7 @@ class _SidebarTile extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final cs = Theme.of(context).colorScheme;
-    final isDark = Theme.of(context).brightness == Brightness.dark;
-    final textBase = isDark ? Colors.white : const Color(0xFF111827);
+    final textBase = cs.onSurface;
     return Padding(
       padding: const EdgeInsets.only(bottom: 2),
       child: Material(

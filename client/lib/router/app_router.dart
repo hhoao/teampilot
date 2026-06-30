@@ -20,6 +20,7 @@ import '../widgets/android_ssh_profile_selector.dart';
 import 'android_shell_chrome.dart';
 import '../models/layout_preferences.dart';
 import '../widgets/desktop_window_title_bar.dart';
+import '../widgets/splash_deferred_shell.dart';
 
 final _workspaceEntryNotifier = ValueNotifier<String>('/home-v2');
 
@@ -88,8 +89,9 @@ final appRouter = GoRouter(
         // Apifox-style workspace home — title bar + open workspace tabs live in
         // [HomeShell]; [HomeWorkspaceBodyStack] owns the visible body.
         ShellRoute(
-          builder: (context, state, child) =>
-              HomeShell(location: state.uri.toString()),
+          builder: (context, state, child) => SplashDeferredShell(
+            child: HomeShell(location: state.uri.toString()),
+          ),
           routes: [
             GoRoute(
               path: '/home-v2',

@@ -59,8 +59,7 @@ class LlmProviderModelsView extends StatelessWidget {
     final cs = theme.colorScheme;
     final tx = LlmWorkspaceText(theme);
     final l10n = context.l10n;
-    final isDark = theme.brightness == Brightness.dark;
-    final textBase = isDark ? Colors.white : const Color(0xFF111827);
+    final textBase = cs.onSurface;
     final providerModels = config.models.values
         .where((m) => m.provider == provider.name)
         .toList();
