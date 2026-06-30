@@ -7,7 +7,6 @@ import '../../models/launch_profile_kind.dart';
 import '../../models/personal_profile.dart';
 import '../../models/team_config.dart';
 import '../../theme/workspace_surface_layers.dart';
-import '../../widgets/deferred_mount_shell.dart';
 import '../team_config/team_config_section.dart';
 import 'home_all_workspaces_pane.dart';
 import 'home_workspace_content.dart';
@@ -136,23 +135,20 @@ class _HomePageState extends State<HomePage> {
             onSelectIdentity: _selectIdentity,
           ),
           Expanded(
-            child: DeferredMountShell(
-              delayFrames: 2,
-              child: Padding(
-                padding: const EdgeInsets.fromLTRB(44, 48, 42, 18),
-                child: _HomeRightPane(
-                  globalView: globalView,
-                  libraryView: libraryView,
-                  allWorkspacesActive: _allWorkspacesActive,
-                  selectedIdentityId: _selectedIdentityId,
-                  initialSection: widget.initialSection,
-                  initialMemberId: widget.initialMemberId,
-                  onSelectGlobalView: (view) => setState(() {
-                    _allWorkspacesActive = false;
-                    _globalView = view;
-                    _libraryView = null;
-                  }),
-                ),
+            child: Padding(
+              padding: const EdgeInsets.fromLTRB(44, 48, 42, 18),
+              child: _HomeRightPane(
+                globalView: globalView,
+                libraryView: libraryView,
+                allWorkspacesActive: _allWorkspacesActive,
+                selectedIdentityId: _selectedIdentityId,
+                initialSection: widget.initialSection,
+                initialMemberId: widget.initialMemberId,
+                onSelectGlobalView: (view) => setState(() {
+                  _allWorkspacesActive = false;
+                  _globalView = view;
+                  _libraryView = null;
+                }),
               ),
             ),
           ),
