@@ -28,4 +28,48 @@ void main() {
     expect(find.text('ready'), findsOneWidget);
     expect(built, 1);
   });
+
+  testWidgets('retainWhenInactive keeps child mounted when active goes false', (
+    tester,
+  ) async {
+    var built = 0;
+    var active = true;
+
+    await tester.pumpWidget(
+      MaterialApp(
+        home: StatefulBuilder(
+          builder: (context, setState) {
+            return Column(
+              children: [
+                TextButton(
+                  onPressed: () => setState(() => active = false),
+                  child: const Text('deactivate'),
+                ),
+                Expanded(
+                  child: DeferredForegroundMount(
+                    active: active,
+                    retainWhenInactive: true,
+                    builder: (_) {
+                      built++;
+                      return const Text('ready');
+                    },
+                  ),
+                ),
+              ],
+            );
+          },
+        ),
+      ),
+    );
+
+    await tester.pump();
+    await tester.pump();
+    expect(find.text('ready'), findsOneWidget);
+    final ready = find.text('ready');
+
+    await tester.tap(find.text('deactivate'));
+    await tester.pump();
+
+    expect(ready, findsOneWidget);
+  });
 }

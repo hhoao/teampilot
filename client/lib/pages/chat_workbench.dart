@@ -5,6 +5,7 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:flutter_alacritty/flutter_alacritty.dart';
 
 import '../cubits/chat/model/session_connect_request.dart';
+import '../cubits/chat/model/chat_tab.dart';
 import '../cubits/chat_cubit.dart';
 import '../cubits/editor_cubit.dart';
 import '../cubits/layout_cubit.dart';
@@ -308,16 +309,27 @@ class _ChatWorkbenchBody extends StatelessWidget {
     final activeId = slice.activeSessionId;
     if (activeId == null || activeId.isEmpty) return null;
 
-    if (routeActive && chatCubit.tabStore.activeWorkspaceId == tabScopeId) {
-      if (isPersonalWorkspace) return chatCubit.currentSession;
-      return chatCubit.ensureSession(team!) ?? chatCubit.currentSession;
-    }
-
+    ChatTab? matchedTab;
     for (final tab in chatCubit.tabStore.tabsForWorkspace(tabScopeId)) {
-      if (tab.info.id != activeId) continue;
-      if (isPersonalWorkspace) return tab.resumeSession;
-      final memberId = slice.selectedMemberId;
-      return tab.memberShells[memberId] ?? tab.resumeSession;
+      if (tab.info.id == activeId) {
+        matchedTab = tab;
+        break;
+      }
+    }
+    if (matchedTab == null) return null;
+
+    final memberId = slice.selectedMemberId.isNotEmpty
+        ? slice.selectedMemberId
+        : matchedTab.selectedMemberId;
+    final shell = matchedTab.memberShells[memberId] ?? matchedTab.resumeSession;
+    if (shell != null) return shell;
+
+    // Pre-connect placeholder shell for the foreground team tab only.
+    if (routeActive &&
+        chatCubit.tabStore.activeWorkspaceId == tabScopeId &&
+        !isPersonalWorkspace &&
+        team != null) {
+      return chatCubit.ensureSession(team);
     }
     return null;
   }
@@ -331,49 +343,57 @@ class _ChatWorkbenchBody extends StatelessWidget {
     required bool sessionConnectInProgress,
     required String? launchError,
   }) {
-    final foreground =
+    final routeForeground =
         routeActive && WorkspaceRouteActiveScope.routeActiveOf(context);
-    if (!foreground) {
-      return const SizedBox.expand();
-    }
+    final tickerActive = TickerMode.valuesOf(context).enabled;
+    final terminalVisible = routeForeground && tickerActive;
 
     final mountTerminalForLayout =
         sessionConnectInProgress || session.isRunning;
 
+    // Keep Alacritty mounted across title-bar workspace tab switches; hide with
+    // [Offstage] so scrollback survives when the tab returns to foreground.
     return DeferredForegroundMount(
-      active: TickerMode.valuesOf(context).enabled,
-      builder: (context) => Stack(
-        key: kChatWorkbenchTerminalStackKey,
-        fit: StackFit.expand,
-        children: [
-          if (mountTerminalForLayout)
-            Offstage(
-              offstage: sessionConnectInProgress,
-              child: buildRunningTerminal(
-                session: session,
-                terminalTheme: terminalTheme,
-                chatCubit: chatCubit,
-                isPersonal: isPersonalWorkspace,
-                team: team,
-                autofocus: !sessionConnectInProgress,
-              ),
-            ),
-          if (sessionConnectInProgress)
-            ChatWorkbenchSessionLoadingView(
-              message: context.l10n.sessionStarting,
-            )
-          else if (!session.isRunning)
-            ChatWorkbenchTerminalPlaceholder(
-              onConnect: () => unawaited(
-                onConnect(isPersonal: isPersonalWorkspace, team: team),
-              ),
-              connectDisabled: sessionConnectInProgress,
-              memberName: isPersonalWorkspace
-                  ? context.l10n.homeWorkspaceWorkspaceAgent
-                  : chatCubit.selectedMemberName(team!),
-              launchError: launchError,
-            ),
-        ],
+      active: terminalVisible,
+      retainWhenInactive: true,
+      builder: (context) => Offstage(
+        offstage: !terminalVisible,
+        child: IgnorePointer(
+          ignoring: !terminalVisible,
+          child: Stack(
+            key: kChatWorkbenchTerminalStackKey,
+            fit: StackFit.expand,
+            children: [
+              if (mountTerminalForLayout)
+                Offstage(
+                  offstage: sessionConnectInProgress,
+                  child: buildRunningTerminal(
+                    session: session,
+                    terminalTheme: terminalTheme,
+                    chatCubit: chatCubit,
+                    isPersonal: isPersonalWorkspace,
+                    team: team,
+                    autofocus: !sessionConnectInProgress && terminalVisible,
+                  ),
+                ),
+              if (sessionConnectInProgress)
+                ChatWorkbenchSessionLoadingView(
+                  message: context.l10n.sessionStarting,
+                )
+              else if (!session.isRunning)
+                ChatWorkbenchTerminalPlaceholder(
+                  onConnect: () => unawaited(
+                    onConnect(isPersonal: isPersonalWorkspace, team: team),
+                  ),
+                  connectDisabled: sessionConnectInProgress,
+                  memberName: isPersonalWorkspace
+                      ? context.l10n.homeWorkspaceWorkspaceAgent
+                      : chatCubit.selectedMemberName(team!),
+                  launchError: launchError,
+                ),
+            ],
+          ),
+        ),
       ),
     );
   }

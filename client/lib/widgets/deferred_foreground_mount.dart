@@ -3,17 +3,24 @@ import 'package:flutter/widgets.dart';
 
 /// Defers [builder] until the frame after [active] becomes true so heavy
 /// children (e.g. Alacritty) do not share the tab-switch frame.
+///
+/// When [retainWhenInactive] is true, the child stays mounted after the first
+/// show even if [active] becomes false — callers should hide it with [Offstage].
 class DeferredForegroundMount extends StatefulWidget {
   const DeferredForegroundMount({
     required this.active,
     required this.builder,
     this.placeholder,
+    this.retainWhenInactive = false,
     super.key,
   });
 
   final bool active;
   final WidgetBuilder builder;
   final Widget? placeholder;
+
+  /// Keep [builder] mounted after the first show when [active] goes false.
+  final bool retainWhenInactive;
 
   @override
   State<DeferredForegroundMount> createState() =>
@@ -35,11 +42,12 @@ class _DeferredForegroundMountState extends State<DeferredForegroundMount> {
   void didUpdateWidget(covariant DeferredForegroundMount oldWidget) {
     super.didUpdateWidget(oldWidget);
     if (!widget.active) {
-      _showChild = false;
+      if (!widget.retainWhenInactive) {
+        _showChild = false;
+      }
       return;
     }
-    if (!oldWidget.active) {
-      _showChild = false;
+    if (!oldWidget.active && !_showChild) {
       _scheduleShow();
     }
   }
@@ -56,7 +64,7 @@ class _DeferredForegroundMountState extends State<DeferredForegroundMount> {
 
   @override
   Widget build(BuildContext context) {
-    if (!widget.active || !_showChild) {
+    if (!_showChild) {
       return widget.placeholder ?? const SizedBox.expand();
     }
     return widget.builder(context);
