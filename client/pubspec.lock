@@ -744,6 +744,14 @@ packages:
       relative: true
     source: path
     version: "0.1.0"
+  mocktail:
+    dependency: "direct main"
+    description:
+      name: mocktail
+      sha256: "5e1bf53cc7baa8062a33b84424deb61513858ea05c601b8509e683815b5914aa"
+      url: "https://pub.flutter-io.cn"
+    source: hosted
+    version: "1.0.5"
   native_splash_screen:
     dependency: "direct main"
     description:

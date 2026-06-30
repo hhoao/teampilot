@@ -63,6 +63,8 @@ dependencies:
   native_splash_screen:
     path: packages/native_splash_screen/native_splash_screen
   provider: any
+  mocktail: ^1.0.5
+
 dependency_overrides:
   flutter_pty:
     path: packages/flutter_pty
