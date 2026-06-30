@@ -1949,6 +1949,12 @@
       "hours": { "type": "int" }
     }
   },
+  "notificationTimeDaysAgo": "{days} d ago",
+  "@notificationTimeDaysAgo": {
+    "placeholders": {
+      "days": { "type": "int" }
+    }
+  },
   "memberDetailTitle": "Member detail",
   "memberDetailViewAction": "View member detail",
   "memberDetailOpenConfigDir": "Open config directory",

@@ -4258,6 +4258,11 @@ class AppLocalizationsEn extends AppLocalizations {
   }
 
   @override
+  String notificationTimeDaysAgo(int days) {
+    return '$days d ago';
+  }
+
+  @override
   String get memberDetailTitle => 'Member detail';
 
   @override

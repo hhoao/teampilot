@@ -7695,6 +7695,12 @@ abstract class AppLocalizations {
   /// **'{hours} h ago'**
   String notificationTimeHoursAgo(int hours);
 
+  /// No description provided for @notificationTimeDaysAgo.
+  ///
+  /// In en, this message translates to:
+  /// **'{days} d ago'**
+  String notificationTimeDaysAgo(int days);
+
   /// No description provided for @memberDetailTitle.
   ///
   /// In en, this message translates to:

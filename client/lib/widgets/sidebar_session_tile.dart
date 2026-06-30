@@ -10,6 +10,7 @@ import '../models/app_session.dart';
 import '../repositories/session_repository.dart';
 import '../theme/app_icon_sizes.dart';
 import '../theme/app_text_styles.dart';
+import '../utils/coarse_relative_time.dart';
 import '../utils/debounce/debounce.dart';
 import 'app_dialog.dart';
 import 'app_icon_button.dart';
@@ -123,12 +124,17 @@ class _SidebarSessionTileState extends State<SidebarSessionTile> {
     final selected = await showSidebarActionMenuAtTap<String>(
       context: context,
       tapDetails: details,
-      itemCount: 2,
+      itemCount: 3,
       children: [
         SidebarActionMenuPopupItem(
           value: 'rename',
           icon: Icons.drive_file_rename_outline,
           label: l10n.renameConversation,
+        ),
+        SidebarActionMenuPopupItem(
+          value: 'pin',
+          icon: session.pinned ? Icons.push_pin : Icons.push_pin_outlined,
+          label: session.pinned ? l10n.unpinConversation : l10n.pinConversation,
         ),
         SidebarActionMenuPopupItem(
           value: 'delete',
@@ -144,6 +150,8 @@ class _SidebarSessionTileState extends State<SidebarSessionTile> {
     switch (selected) {
       case 'rename':
         unawaited(_showRenameDialog(context, session, l10n));
+      case 'pin':
+        unawaited(_chatCubit?.toggleSessionPin(session.sessionId));
       case 'delete':
         _armDelete();
     }
@@ -162,12 +170,17 @@ class _SidebarSessionTileState extends State<SidebarSessionTile> {
     final selected = await showSidebarActionMenu<String>(
       context: context,
       globalPosition: globalPosition,
-      itemCount: 2,
+      itemCount: 3,
       children: [
         SidebarActionMenuPopupItem(
           value: 'rename',
           icon: Icons.drive_file_rename_outline,
           label: l10n.renameConversation,
+        ),
+        SidebarActionMenuPopupItem(
+          value: 'pin',
+          icon: session.pinned ? Icons.push_pin : Icons.push_pin_outlined,
+          label: session.pinned ? l10n.unpinConversation : l10n.pinConversation,
         ),
         SidebarActionMenuPopupItem(
           value: 'delete',
@@ -183,6 +196,8 @@ class _SidebarSessionTileState extends State<SidebarSessionTile> {
     switch (selected) {
       case 'rename':
         unawaited(_showRenameDialog(context, session, l10n));
+      case 'pin':
+        unawaited(_chatCubit?.toggleSessionPin(session.sessionId));
       case 'delete':
         _armDelete();
     }
@@ -264,66 +279,69 @@ class _SidebarSessionTileState extends State<SidebarSessionTile> {
       );
     }
 
-    // Trailing row: pin, delete, overflow menu (hover-revealed). Avoid
-    // [AnimatedSize] here — it conflicts with [ReorderableListView] when items
-    // are removed quickly.
-    final Widget? trailing = session.pinned || _showSessionActions
+    // Trailing: coarse relative time (idle) or delete + overflow menu (hover).
+    final int activityMs = session.updatedAt > 0
+        ? session.updatedAt
+        : session.createdAt;
+    final Widget? trailing = _showSessionActions
         ? Row(
             mainAxisSize: MainAxisSize.min,
             children: [
-              if (session.pinned || _showSessionActions)
-                AppIconButton(
-                  icon: session.pinned
-                      ? Icons.push_pin
-                      : Icons.push_pin_outlined,
-                  compact: true,
-                  size: AppIconButton.kCompactSize,
-                  tooltip: session.pinned
-                      ? l10n.unpinConversation
-                      : l10n.pinConversation,
-                  color: session.pinned ? cs.primary : null,
-                  onTap: () => context
-                      .read<ChatCubit>()
-                      .toggleSessionPin(session.sessionId),
+              _SessionDeleteAction(
+                armed: _deleteArmed,
+                confirmLabel: l10n.confirm,
+                deleteTooltip: l10n.deleteConversation,
+                onArm: _armDelete,
+                onConfirm: throttledAsync(
+                  'sidebar_delete_session_${session.sessionId}',
+                  _executeDelete,
                 ),
-              if (_showSessionActions)
-                _SessionDeleteAction(
-                  armed: _deleteArmed,
-                  confirmLabel: l10n.confirm,
-                  deleteTooltip: l10n.deleteConversation,
-                  onArm: _armDelete,
-                  onConfirm: throttledAsync(
-                    'sidebar_delete_session_${session.sessionId}',
-                    _executeDelete,
-                  ),
-                ),
-              if (_showSessionActions)
-                SizedBox(
-                  width: AppIconButton.kDefaultSize,
-                  height: AppIconButton.kDefaultSize,
-                  child: SidebarActionMenuIconAnchor(
-                    icon: Icon(Icons.more_horiz, size: context.appIconSizes.md),
-                    onOpen: () => setState(() => _menuOpen = true),
-                    onClose: () => setState(() => _menuOpen = false),
-                    buildMenuChildren: (context, controller) => [
-                      SidebarActionMenuItem(
-                        icon: Icons.drive_file_rename_outline,
-                        label: l10n.renameConversation,
-                        menuController: controller,
-                        onTap: () =>
-                            unawaited(_showRenameDialog(context, session, l10n)),
+              ),
+              SizedBox(
+                width: AppIconButton.kDefaultSize,
+                height: AppIconButton.kDefaultSize,
+                child: SidebarActionMenuIconAnchor(
+                  icon: Icon(Icons.more_horiz, size: context.appIconSizes.md),
+                  onOpen: () => setState(() => _menuOpen = true),
+                  onClose: () => setState(() => _menuOpen = false),
+                  buildMenuChildren: (context, controller) => [
+                    SidebarActionMenuItem(
+                      icon: Icons.drive_file_rename_outline,
+                      label: l10n.renameConversation,
+                      menuController: controller,
+                      onTap: () =>
+                          unawaited(_showRenameDialog(context, session, l10n)),
+                    ),
+                    SidebarActionMenuItem(
+                      icon: session.pinned
+                          ? Icons.push_pin
+                          : Icons.push_pin_outlined,
+                      label: session.pinned
+                          ? l10n.unpinConversation
+                          : l10n.pinConversation,
+                      menuController: controller,
+                      onTap: () => unawaited(
+                        context.read<ChatCubit>().toggleSessionPin(
+                          session.sessionId,
+                        ),
                       ),
-                      SidebarActionMenuItem(
-                        icon: Icons.delete_outline,
-                        label: l10n.deleteConversation,
-                        destructive: true,
-                        menuController: controller,
-                        onTap: _armDelete,
-                      ),
-                    ],
-                  ),
+                    ),
+                    SidebarActionMenuItem(
+                      icon: Icons.delete_outline,
+                      label: l10n.deleteConversation,
+                      destructive: true,
+                      menuController: controller,
+                      onTap: _armDelete,
+                    ),
+                  ],
                 ),
+              ),
             ],
+          )
+        : activityMs > 0
+        ? _SessionCoarseRelativeTime(
+            timestampMs: activityMs,
+            selected: selected,
           )
         : null;
 
@@ -375,7 +393,38 @@ class _SidebarSessionTileState extends State<SidebarSessionTile> {
     if (name == null || name.trim().isEmpty || !context.mounted) return;
     await chatCubit.renameSession(repo, session.sessionId, name.trim());
   }
+}
 
+/// Muted coarse relative time shown on the trailing edge when actions are hidden.
+class _SessionCoarseRelativeTime extends StatelessWidget {
+  const _SessionCoarseRelativeTime({
+    required this.timestampMs,
+    required this.selected,
+  });
+
+  final int timestampMs;
+  final bool selected;
+
+  @override
+  Widget build(BuildContext context) {
+    final cs = Theme.of(context).colorScheme;
+    final textBase = selected ? cs.onPrimaryContainer : cs.onSurface;
+    final label = formatCoarseRelativeTime(
+      context.l10n,
+      DateTime.fromMillisecondsSinceEpoch(timestampMs),
+    );
+    return Padding(
+      padding: const EdgeInsets.only(left: 8),
+      child: Text(
+        label,
+        maxLines: 1,
+        overflow: TextOverflow.ellipsis,
+        style: AppTextStyles.of(
+          context,
+        ).caption.copyWith(color: textBase.withValues(alpha: 0.52)),
+      ),
+    );
+  }
 }
 
 /// Delete control with a stable subtree: first tap arms, second tap confirms.
@@ -493,12 +542,6 @@ class _SidebarTile extends StatelessWidget {
                               title,
                               maxLines: 1,
                               overflow: TextOverflow.ellipsis,
-                              style: Theme.of(context).textTheme.bodyMedium
-                                  ?.copyWith(
-                                    fontWeight: selected
-                                        ? FontWeight.w600
-                                        : FontWeight.w400,
-                                  ),
                             ),
                           ),
                           if (subtitle.isNotEmpty) ...[

@@ -1603,16 +1603,22 @@
   "notificationMarkRead": "标为已读",
   "notificationDelete": "删除",
   "notificationTimeJustNow": "刚刚",
-  "notificationTimeMinutesAgo": "{minutes} 分钟前",
+  "notificationTimeMinutesAgo": "{minutes} 分钟",
   "@notificationTimeMinutesAgo": {
     "placeholders": {
       "minutes": { "type": "int" }
     }
   },
-  "notificationTimeHoursAgo": "{hours} 小时前",
+  "notificationTimeHoursAgo": "{hours} 小时",
   "@notificationTimeHoursAgo": {
     "placeholders": {
       "hours": { "type": "int" }
+    }
+  },
+  "notificationTimeDaysAgo": "{days} 天",
+  "@notificationTimeDaysAgo": {
+    "placeholders": {
+      "days": { "type": "int" }
     }
   },
   "memberDetailTitle": "成员详情",

@@ -77,7 +77,8 @@ class WorktreeGroupSection extends StatelessWidget {
     final wt = group.worktree;
     final label = wt == null ? l10n.worktreeOrphanGroup : wt.shortBranch;
     final workContext = WorkspaceToolsScope.maybeOf(context)?.tools?.context;
-    final manageable = wt != null &&
+    final manageable =
+        wt != null &&
         !wt.isMainWorktree &&
         workContext != null &&
         worktreeManagementEnabled(workContext);
@@ -95,14 +96,14 @@ class WorktreeGroupSection extends StatelessWidget {
             borderRadius: BorderRadius.circular(8),
             onTap: selectable
                 ? () => unawaited(
-                      activateWorktreeGroup(
-                        context,
-                        workspace,
-                        isPersonal: isPersonal,
-                        worktreePath: wt.path,
-                        groupSessions: group.sessions,
-                      ),
-                    )
+                    activateWorktreeGroup(
+                      context,
+                      workspace,
+                      isPersonal: isPersonal,
+                      worktreePath: wt.path,
+                      groupSessions: group.sessions,
+                    ),
+                  )
                 : null,
             child: Padding(
               padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 6),
@@ -115,9 +116,9 @@ class WorktreeGroupSection extends StatelessWidget {
                     compact: true,
                     size: AppIconButton.kCompactSize,
                     tooltip: null,
-                    onTap: () => context
-                        .read<WorktreeCubit>()
-                        .toggleCollapsed(worktreeGroupCollapseKey(group)),
+                    onTap: () => context.read<WorktreeCubit>().toggleCollapsed(
+                      worktreeGroupCollapseKey(group),
+                    ),
                   ),
                   const SizedBox(width: 2),
                   Expanded(
@@ -125,16 +126,6 @@ class WorktreeGroupSection extends StatelessWidget {
                       label,
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
-                      style: styles.prominent.copyWith(
-                        color: cs.onSurface,
-                        fontWeight: FontWeight.w600,
-                      ),
-                    ),
-                  ),
-                  Text(
-                    '${group.sessions.length}',
-                    style: styles.bodySmall.copyWith(
-                      color: cs.onSurfaceVariant,
                     ),
                   ),
                   if (wt != null)
@@ -143,9 +134,9 @@ class WorktreeGroupSection extends StatelessWidget {
                       manageable: manageable,
                       allowNewConversation: !personalLaunchBlocked,
                       onNewConversation: () {
-                        context
-                            .read<WorktreeCubit>()
-                            .setCurrentWorktree(wt.path);
+                        context.read<WorktreeCubit>().setCurrentWorktree(
+                          wt.path,
+                        );
                         unawaited(
                           createSessionInWorktree(
                             context,
@@ -157,9 +148,8 @@ class WorktreeGroupSection extends StatelessWidget {
                           ),
                         );
                       },
-                      onDelete: () => unawaited(
-                        _confirmAndRemove(context, wt.path, label),
-                      ),
+                      onDelete: () =>
+                          unawaited(_confirmAndRemove(context, wt.path, label)),
                     ),
                 ],
               ),
@@ -175,7 +165,10 @@ class WorktreeGroupSection extends StatelessWidget {
             highlightSessionId: highlightSessionId,
             personalLaunchBlocked: personalLaunchBlocked,
           ),
-        if (!collapsed && group.sessions.isEmpty && wt != null && !personalLaunchBlocked)
+        if (!collapsed &&
+            group.sessions.isEmpty &&
+            wt != null &&
+            !personalLaunchBlocked)
           _EmptyGroupCta(
             onTap: () {
               context.read<WorktreeCubit>().setCurrentWorktree(wt.path);
@@ -206,8 +199,7 @@ class WorktreeGroupSection extends StatelessWidget {
     final l10n = context.l10n;
     // A running agent's cwd would vanish under it — make the user stop first.
     final working = chatCubit.state.workingSessionIds;
-    final hasBusy =
-        group.sessions.any((s) => working.contains(s.sessionId));
+    final hasBusy = group.sessions.any((s) => working.contains(s.sessionId));
     if (hasBusy) {
       AppToast.show(
         context,
@@ -216,7 +208,8 @@ class WorktreeGroupSection extends StatelessWidget {
       );
       return;
     }
-    final dirty = await _worktreeService(context)?.isDirty(worktreePath) ?? false;
+    final dirty =
+        await _worktreeService(context)?.isDirty(worktreePath) ?? false;
     if (!context.mounted) return;
     final result = await showWorktreeDeleteDialog(
       context,
@@ -404,7 +397,9 @@ class _GroupSessionListState extends State<_GroupSessionList> {
             child: Padding(
               padding: const EdgeInsets.fromLTRB(22, 6, 8, 6),
               child: Text(
-                _showAll ? l10n.worktreeShowLess : l10n.worktreeShowMore(overflow),
+                _showAll
+                    ? l10n.worktreeShowLess
+                    : l10n.worktreeShowMore(overflow),
                 style: AppTextStyles.of(context).bodySmall.copyWith(
                   color: cs.primary,
                   fontWeight: FontWeight.w600,
