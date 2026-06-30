@@ -144,21 +144,23 @@ TerminalTheme teampilotTerminalTheme(
   final baseBackground = isDark
       ? Color.alphaBlend(cardSurface, const Color(0xFF06080C))
       : Color.alphaBlend(cardSurface, const Color(0xFFF7F9FC));
-  final foreground = isDark ? const Color(0xFFC8CCD4) : const Color(0xFF1F2937);
-  final weak = isDark ? const Color(0xFF59606A) : const Color(0xFF9AA3B2);
+  // Light: follow softened [ColorScheme] body/muted text (see app_theme.dart).
+  final foreground = isDark ? const Color(0xFFC8CCD4) : cs.onSurface;
+  final weak = isDark ? const Color(0xFF59606A) : cs.onSurfaceVariant;
+  final lightAnsiBlack = Color.lerp(foreground, cs.surface, 0.18)!;
   return TerminalTheme(
     background: _packColor(baseBackground),
     foreground: _packColor(foreground),
     selection: _packColor(cs.primary),
     ansi: [
-      _packColor(isDark ? const Color(0xFF161A21) : const Color(0xFF4B5563)),
+      _packColor(isDark ? const Color(0xFF161A21) : lightAnsiBlack),
       _packColor(cs.error),
       _packColor(cs.secondary),
       _packColor(Color.lerp(cs.secondary, const Color(0xFFE5B95C), 0.5)!),
       _packColor(cs.primary),
       _packColor(Color.lerp(cs.primary, cs.secondary, 0.45)!),
       _packColor(Color.lerp(cs.secondary, const Color(0xFF58C8D7), 0.55)!),
-      _packColor(isDark ? const Color(0xFFD8DCE5) : const Color(0xFF374151)),
+      _packColor(isDark ? const Color(0xFFD8DCE5) : weak),
       _packColor(weak),
       _packColor(Color.lerp(cs.error, Colors.white, isDark ? 0.18 : 0.1)!),
       _packColor(Color.lerp(cs.secondary, Colors.white, isDark ? 0.16 : 0.08)!),
@@ -184,7 +186,7 @@ TerminalTheme teampilotTerminalTheme(
           isDark ? 0.2 : 0.1,
         )!,
       ),
-      _packColor(isDark ? const Color(0xFFF2F4F8) : const Color(0xFF111827)),
+      _packColor(isDark ? const Color(0xFFF2F4F8) : foreground),
     ],
     searchMatch: (bg: 0xFFFF2B, fg: 0x000000),
     searchFocused: (bg: 0x31FF26, fg: 0x000000),

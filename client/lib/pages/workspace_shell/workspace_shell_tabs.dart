@@ -1,15 +1,18 @@
 import 'dart:io';
 
 import 'package:flutter/material.dart';
+import 'package:teampilot/models/team_config.dart';
 import 'package:teampilot/theme/app_icon_sizes.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
 import '../../cubits/layout_cubit.dart';
 import '../../l10n/l10n_extensions.dart';
+import '../../services/cli/registry/cli_tool_registry_scope.dart';
 import '../../theme/app_text_styles.dart';
 import '../../theme/workspace_surface_layers.dart';
 import '../../utils/app_keys.dart';
 import '../../widgets/app_icon_button.dart';
+import '../../widgets/cli/cli_brand_icon.dart';
 import '../../widgets/menu/sidebar_action_menu.dart';
 import '../../widgets/session_working_spinner.dart';
 import 'workspace_shell_models.dart';
@@ -120,6 +123,7 @@ class WorkspaceShellTabRow extends StatelessWidget {
                       onCloseOthers: () => onTabCloseOthers?.call(i),
                       onCloseRight: () => onTabCloseRight?.call(i),
                       icon: tabs[i].icon,
+                      cli: tabs[i].cli,
                       accentColor: tabs[i].accentColor,
                     ),
                 ],
@@ -144,6 +148,7 @@ class WorkspaceShellTabChip extends StatefulWidget {
     this.onCloseRight,
     this.working = false,
     this.icon = Icons.terminal_rounded,
+    this.cli,
     this.accentColor,
   });
 
@@ -155,6 +160,7 @@ class WorkspaceShellTabChip extends StatefulWidget {
   final VoidCallback? onCloseOthers;
   final VoidCallback? onCloseRight;
   final IconData icon;
+  final CliTool? cli;
   final Color? accentColor;
 
   @override
@@ -315,10 +321,11 @@ class WorkspaceShellTabChipState extends State<WorkspaceShellTabChip> {
                   else
                     _TabChromeSlot(
                       visible: _showChrome,
-                      child: Icon(
-                        widget.icon,
-                        size: context.appIconSizes.md,
-                        color: iconColor,
+                      child: _TabLeadingIcon(
+                        cli: widget.cli,
+                        icon: widget.icon,
+                        iconColor: iconColor,
+                        iconOpacity: iconAlpha,
                       ),
                     ),
                   const SizedBox(width: 12),
@@ -352,6 +359,38 @@ class WorkspaceShellTabChipState extends State<WorkspaceShellTabChip> {
             ),
           ),
         ),
+      ),
+    );
+  }
+}
+
+class _TabLeadingIcon extends StatelessWidget {
+  const _TabLeadingIcon({
+    required this.cli,
+    required this.icon,
+    required this.iconColor,
+    required this.iconOpacity,
+  });
+
+  final CliTool? cli;
+  final IconData icon;
+  final Color iconColor;
+  final double iconOpacity;
+
+  @override
+  Widget build(BuildContext context) {
+    final cliTool = cli;
+    if (cliTool == null) {
+      return Icon(icon, size: context.appIconSizes.md, color: iconColor);
+    }
+    final registry = CliToolRegistryScope.of(context);
+    return Opacity(
+      opacity: iconOpacity,
+      child: CliBrandIcon(
+        cli: cliTool,
+        definition: registry.tryGet(cliTool),
+        size: context.appIconSizes.md,
+        borderRadius: 4,
       ),
     );
   }
