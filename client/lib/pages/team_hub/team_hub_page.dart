@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:flutter_animate/flutter_animate.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:teampilot/theme/app_toast_theme.dart';
 import 'package:teampilot/widgets/app_toast/app_toast.dart';
@@ -27,7 +26,6 @@ class _TeamHubPageState extends State<TeamHubPage> {
   static const _pageKey = ValueKey('team-hub-workspace');
 
   DiscoverableTeam? _detail;
-  bool _detailForward = true;
 
   @override
   void initState() {
@@ -43,10 +41,7 @@ class _TeamHubPageState extends State<TeamHubPage> {
     try {
       final result = await cubit.clone(team);
       if (!mounted) return;
-      setState(() {
-        _detailForward = false;
-        _detail = null;
-      });
+      setState(() => _detail = null);
       AppToast.show(
         context,
         message: teamHubCloneToastMessage(
@@ -89,37 +84,22 @@ class _TeamHubPageState extends State<TeamHubPage> {
         final detail = _detail;
 
         final paneKey = ValueKey(detail?.key ?? 'team-hub-list');
-        final pane =
-            (detail != null
-                    ? TeamHubDetailOverlay(
-                        key: paneKey,
-                        team: detail,
-                        cloning: state.cloningKeys.contains(detail.key),
-                        installedDepIds: state.installedDepIds,
-                        onBack: () => setState(() {
-                          _detailForward = false;
-                          _detail = null;
-                        }),
-                        onClone: () => _clone(cubit, detail),
-                        inset: inset,
-                      )
-                    : TeamHubBody(
-                        key: paneKey,
-                        cubit: cubit,
-                        onOpen: (t) => setState(() {
-                          _detailForward = true;
-                          _detail = t;
-                        }),
-                        inset: inset,
-                      ))
-                .animate(key: paneKey)
-                .fadeIn(duration: 180.ms, curve: Curves.easeOut)
-                .slideX(
-                  begin: _detailForward ? 0.025 : -0.025,
-                  end: 0,
-                  duration: 220.ms,
-                  curve: Curves.easeOutCubic,
-                );
+        final pane = detail != null
+            ? TeamHubDetailOverlay(
+                key: paneKey,
+                team: detail,
+                cloning: state.cloningKeys.contains(detail.key),
+                installedDepIds: state.installedDepIds,
+                onBack: () => setState(() => _detail = null),
+                onClone: () => _clone(cubit, detail),
+                inset: inset,
+              )
+            : TeamHubBody(
+                key: paneKey,
+                cubit: cubit,
+                onOpen: (t) => setState(() => _detail = t),
+                inset: inset,
+              );
 
         if (android) {
           return WorkspaceSectionPage(

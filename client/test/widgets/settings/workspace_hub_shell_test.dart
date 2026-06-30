@@ -1,15 +1,10 @@
 import 'package:flutter/material.dart';
-import 'package:flutter_animate/flutter_animate.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:teampilot/widgets/split_layout.dart';
 import 'package:teampilot/widgets/settings/workspace_hub_shell.dart';
 
 void main() {
-  testWidgets('split shell animates body when a bodyAnimationKey is provided', (
-    tester,
-  ) async {
-    const animationKey = ValueKey('body-animation-layout');
-
+  testWidgets('split shell lays out nav and body', (tester) async {
     await tester.pumpWidget(
       MaterialApp(
         home: Scaffold(
@@ -17,7 +12,6 @@ void main() {
             width: 900,
             height: 500,
             child: WorkspaceSplitShell(
-              bodyAnimationKey: animationKey,
               nav: const SizedBox(child: Text('Nav')),
               body: const Text('Body'),
             ),
@@ -26,62 +20,12 @@ void main() {
       ),
     );
 
-    await tester.pump(const Duration(milliseconds: 260));
-
     expect(find.byType(TwoPaneSplitView), findsOneWidget);
-    expect(
-      find.ancestor(
-        of: find.text('Body'),
-        matching: find.byWidgetPredicate(
-          (widget) => widget is Animate && widget.key == animationKey,
-        ),
-      ),
-      findsOneWidget,
-    );
+    expect(find.text('Nav'), findsOneWidget);
+    expect(find.text('Body'), findsOneWidget);
   });
 
-  testWidgets('split shell recreates body animation when the key changes', (
-    tester,
-  ) async {
-    Future<void> pumpSplitBody(String section) {
-      return tester.pumpWidget(
-        MaterialApp(
-          home: Scaffold(
-            body: SizedBox(
-              width: 900,
-              height: 500,
-              child: WorkspaceSplitShell(
-                bodyAnimationKey: ValueKey('body-animation-$section'),
-                nav: const SizedBox(child: Text('Nav')),
-                body: Text('Body $section'),
-              ),
-            ),
-          ),
-        ),
-      );
-    }
-
-    await pumpSplitBody('layout');
-    await tester.pump(const Duration(milliseconds: 260));
-
-    await pumpSplitBody('llm');
-    await tester.pump(const Duration(milliseconds: 260));
-
-    expect(
-      find.ancestor(
-        of: find.text('Body llm'),
-        matching: find.byWidgetPredicate(
-          (widget) =>
-              widget is Animate &&
-              widget.key == const ValueKey('body-animation-llm'),
-        ),
-      ),
-      findsOneWidget,
-    );
-    expect(find.text('Body layout'), findsNothing);
-  });
-
-  testWidgets('animated nav entries fade-slide into their final position', (
+  testWidgets('nav list renders entries without entry animation', (
     tester,
   ) async {
     await tester.pumpWidget(
@@ -91,7 +35,6 @@ void main() {
             width: 320,
             height: 240,
             child: WorkspaceHubNavList(
-              animateEntries: true,
               entries: [
                 WorkspaceHubEntry(
                   key: const ValueKey('layout-entry'),
@@ -111,10 +54,8 @@ void main() {
       ),
     );
 
-    await tester.pump(const Duration(milliseconds: 300));
-
-    expect(find.byType(Animate), findsNWidgets(2));
     expect(find.byKey(const ValueKey('layout-entry')), findsOneWidget);
+    expect(find.text('Models'), findsOneWidget);
   });
 
   testWidgets('team-lead nav item uses distinct leading icon', (tester) async {

@@ -1,4 +1,4 @@
-﻿import 'dart:async';
+import 'dart:async';
 import 'dart:io' show Platform;
 
 import 'package:flutter/material.dart';
@@ -133,7 +133,8 @@ bool recentlyClosedShowIdentityInSubtitle({
   required List<HomeClosedWorkspaceEntry> entries,
   required List<LaunchProfile> identities,
 }) {
-  final duplicateDirectory = entries
+  final duplicateDirectory =
+      entries
           .where((candidate) => candidate.workspaceId == entry.workspaceId)
           .length >
       1;
@@ -164,20 +165,18 @@ HomeWorkspaceTabKind workspaceTabKindForIdentity({
 HomeWorkspaceTabKind recentlyClosedTabKind({
   required LaunchProfileRef identity,
   required List<LaunchProfile> identities,
-}) =>
-    workspaceTabKindForIdentity(identity: identity, identities: identities);
+}) => workspaceTabKindForIdentity(identity: identity, identities: identities);
 
 @visibleForTesting
 String recentlyClosedIdentityLabel({
   required AppLocalizations l10n,
   required HomeClosedWorkspaceEntry entry,
   required List<LaunchProfile> identities,
-}) =>
-    workspaceTabIdentityLabel(
-      l10n: l10n,
-      identity: entry.identity,
-      identities: identities,
-    );
+}) => workspaceTabIdentityLabel(
+  l10n: l10n,
+  identity: entry.identity,
+  identities: identities,
+);
 
 @visibleForTesting
 String? recentlyClosedSubtitleLine({
@@ -320,8 +319,7 @@ class HomeTitleBar extends StatefulWidget {
   State<HomeTitleBar> createState() => _HomeTitleBarState();
 }
 
-class _HomeTitleBarState extends State<HomeTitleBar>
-    with WindowListener {
+class _HomeTitleBarState extends State<HomeTitleBar> with WindowListener {
   bool _isMaximized = false;
 
   @override
@@ -689,94 +687,95 @@ class _WorkspaceTabState extends State<_WorkspaceTab> {
           onSecondaryTapDown: widget.onOpenWithOtherIdentity == null
               ? null
               : _showTabContextMenuFromTap,
-          onLongPress: widget.onOpenWithOtherIdentity == null || !Platform.isAndroid
+          onLongPress:
+              widget.onOpenWithOtherIdentity == null || !Platform.isAndroid
               ? null
               : _showTabContextMenuAtChipCenter,
           child: InkWell(
             onTap: widget.onTap,
-          borderRadius: BorderRadius.circular(8),
-          child: Container(
-            constraints: const BoxConstraints(maxWidth: 200),
-            padding: const EdgeInsets.only(
-              left: 10,
-              right: 6,
-              top: 6,
-              bottom: 6,
-            ),
-            decoration: BoxDecoration(
-              color: active
-                  ? cs.surfaceContainerHigh
-                  : _hovered
-                  ? cs.onSurface.withValues(alpha: 0.05)
-                  : Colors.transparent,
-              borderRadius: BorderRadius.circular(8),
-              border: Border.all(
-                color: active
-                    ? cs.outlineVariant.withValues(alpha: 0.7)
-                    : Colors.transparent,
+            borderRadius: BorderRadius.circular(8),
+            child: Container(
+              constraints: const BoxConstraints(maxWidth: 200),
+              padding: const EdgeInsets.only(
+                left: 10,
+                right: 6,
+                top: 6,
+                bottom: 6,
               ),
-            ),
-            child: Row(
-              mainAxisSize: MainAxisSize.min,
-              crossAxisAlignment: CrossAxisAlignment.center,
-              children: [
-                // Fixed height: CrossAxisAlignment.stretch would expand the row
-                // to the ListView viewport height (~full title bar).
-                SizedBox(
-                  width: 3,
-                  height: context.appIconSizes.md,
-                  child: DecoratedBox(
-                    decoration: BoxDecoration(
-                      color: barColor,
-                      borderRadius: BorderRadius.circular(1.5),
-                    ),
-                  ),
+              decoration: BoxDecoration(
+                color: active
+                    ? cs.surfaceContainerHigh
+                    : _hovered
+                    ? cs.onSurface.withValues(alpha: 0.05)
+                    : Colors.transparent,
+                borderRadius: BorderRadius.circular(8),
+                border: Border.all(
+                  color: active
+                      ? cs.outlineVariant.withValues(alpha: 0.7)
+                      : Colors.transparent,
                 ),
-                const SizedBox(width: 8),
-                _TabChromeSlot(
-                  visible: _showChrome,
-                  child: WorkspaceTabKindTopologyIcon(
-                    kind: widget.kind,
-                    topology: widget.topology,
-                    colorScheme: cs,
-                    brightness: brightness,
-                    size: context.appIconSizes.md,
-                    active: active,
-                    hovered: _hovered,
-                  ),
-                ),
-                const SizedBox(width: 12),
-                Flexible(
-                  child: Text(
-                    widget.label,
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                    style: styles.bodySmall.copyWith(color: fg),
-                  ),
-                ),
-                if (widget.closable) ...[
-                  const SizedBox(width: 8),
-                  _TabChromeSlot(
-                    visible: _showChrome,
-                    child: InkWell(
-                      onTap: widget.onClose,
-                      borderRadius: BorderRadius.circular(5),
-                      child: Padding(
-                        padding: const EdgeInsets.all(2),
-                        child: Icon(
-                          Icons.close,
-                          size: context.appIconSizes.md,
-                          color: cs.onSurfaceVariant,
-                        ),
+              ),
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.center,
+                children: [
+                  // Fixed height: CrossAxisAlignment.stretch would expand the row
+                  // to the ListView viewport height (~full title bar).
+                  SizedBox(
+                    width: 3,
+                    height: context.appIconSizes.md,
+                    child: DecoratedBox(
+                      decoration: BoxDecoration(
+                        color: barColor,
+                        borderRadius: BorderRadius.circular(1.5),
                       ),
                     ),
                   ),
-                ] else
-                  const SizedBox(width: 6),
-              ],
+                  const SizedBox(width: 8),
+                  _TabChromeSlot(
+                    visible: _showChrome,
+                    child: WorkspaceTabKindTopologyIcon(
+                      kind: widget.kind,
+                      topology: widget.topology,
+                      colorScheme: cs,
+                      brightness: brightness,
+                      size: context.appIconSizes.md,
+                      active: active,
+                      hovered: _hovered,
+                    ),
+                  ),
+                  const SizedBox(width: 12),
+                  Flexible(
+                    child: Text(
+                      widget.label,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: styles.bodySmall.copyWith(color: fg),
+                    ),
+                  ),
+                  if (widget.closable) ...[
+                    const SizedBox(width: 8),
+                    _TabChromeSlot(
+                      visible: _showChrome,
+                      child: InkWell(
+                        onTap: widget.onClose,
+                        borderRadius: BorderRadius.circular(5),
+                        child: Padding(
+                          padding: const EdgeInsets.all(2),
+                          child: Icon(
+                            Icons.close,
+                            size: context.appIconSizes.md,
+                            color: cs.onSurfaceVariant,
+                          ),
+                        ),
+                      ),
+                    ),
+                  ] else
+                    const SizedBox(width: 6),
+                ],
+              ),
             ),
           ),
-        ),
         ),
       ),
     );
@@ -792,13 +791,15 @@ class _TabChromeSlot extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return IgnorePointer(
-      ignoring: !visible,
-      child: AnimatedOpacity(
-        opacity: visible ? 1 : 0,
-        duration: const Duration(milliseconds: 120),
-        curve: Curves.easeOut,
-        child: child,
+    return RepaintBoundary(
+      child: IgnorePointer(
+        ignoring: !visible,
+        child: AnimatedOpacity(
+          opacity: visible ? 1 : 0,
+          duration: const Duration(milliseconds: 120),
+          curve: Curves.easeOut,
+          child: child,
+        ),
       ),
     );
   }

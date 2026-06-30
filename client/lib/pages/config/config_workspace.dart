@@ -184,7 +184,6 @@ class ConfigWorkspace extends StatelessWidget {
       pageKey: AppKeys.configWorkspace,
       title: l10n.settings,
       subtitle: l10n.settingsPageSubtitle,
-      bodyAnimationKey: ValueKey('settings-body-${section.name}'),
       nav: ConfigNavPanel(
         section: currentSection,
         onSelectSection: (selected) {
@@ -228,7 +227,6 @@ class ConfigNavPanel extends StatelessWidget {
   Widget build(BuildContext context) {
     return WorkspaceHubNavList(
       sidebarStyle: true,
-      animateEntries: true,
       entries: [
         WorkspaceHubEntry(
           key: AppKeys.configLayoutSectionButton,

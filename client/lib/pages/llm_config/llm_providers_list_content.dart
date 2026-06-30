@@ -30,10 +30,8 @@ class LlmProvidersListContent extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final appCubit = context.watch<AppProviderCubit>();
-    final selectedId = appCubit.state.selectedId;
+    final appCubit = context.read<AppProviderCubit>();
     return AppProviderListPanel(
-      selectedId: hubStyle ? null : selectedId,
       hubStyle: hubStyle,
       onSelect: (id) {
         appCubit.selectProvider(id);

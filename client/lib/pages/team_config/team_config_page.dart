@@ -161,9 +161,6 @@ class TeamConfigPage extends StatelessWidget {
       pageKey: AppKeys.teamConfigWorkspace,
       title: l10n.teamConfig,
       subtitle: l10n.teamSettingsSubtitle,
-      bodyAnimationKey: ValueKey(
-        'team-config-body-${section.name}-${resolvedMemberId ?? ''}',
-      ),
       nav: TeamConfigNavPanel(
         team: team,
         section: section,

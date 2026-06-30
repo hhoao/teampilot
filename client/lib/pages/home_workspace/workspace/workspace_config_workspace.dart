@@ -143,9 +143,6 @@ class _WorkspaceConfigPanelState
       pageKey: AppKeys.workspaceConfigWorkspace,
       title: l10n.homeWorkspaceWorkspaceManagement,
       subtitle: widget.workspace.localizedName(l10n),
-      bodyAnimationKey: ValueKey(
-        'workspace-config-body-${section.name}-${widget.workspace.workspaceId}-${identity.id}',
-      ),
       nav: WorkspaceConfigNavPanel(
         sections: sections,
         section: section,

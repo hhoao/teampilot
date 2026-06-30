@@ -77,7 +77,6 @@ class ExtensionManagementPage extends StatelessWidget {
           pageKey: AppKeys.extensionsWorkspace,
           title: context.l10n.extensionsSettingsTitle,
           subtitle: context.l10n.extensionsSettingsDescription,
-          bodyAnimationKey: ValueKey('extensions-body-${section.name}'),
           nav: WorkspaceEnumNavPanel<ExtensionSection>(
             sections: ExtensionSection.values,
             current: section,

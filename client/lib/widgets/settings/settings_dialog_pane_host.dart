@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/scheduler.dart';
-import 'package:flutter_animate/flutter_animate.dart';
+
+import '../pane_entry_animation.dart';
 
 /// Lazily mounts settings panes on first visit and keeps them alive afterward.
 ///
@@ -148,14 +149,9 @@ class _SettingsLazyPaneState extends State<_SettingsLazyPane>
     if (!widget.isActive || widget.sectionAnimationKey == null) {
       return content;
     }
-    return content
-        .animate(key: widget.sectionAnimationKey)
-        .fadeIn(duration: 180.ms, curve: Curves.easeOut)
-        .slideX(
-          begin: 0.025,
-          end: 0,
-          duration: 220.ms,
-          curve: Curves.easeOutCubic,
-        );
+    return PaneEntryAnimation(
+      key: widget.sectionAnimationKey,
+      child: content,
+    );
   }
 }

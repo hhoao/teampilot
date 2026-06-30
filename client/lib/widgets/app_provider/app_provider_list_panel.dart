@@ -1,20 +1,22 @@
-﻿import 'package:flutter/material.dart';
+import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
 import '../../cubits/app_provider_cubit.dart';
 import '../../l10n/l10n_extensions.dart';
 import '../../models/app_provider_config.dart';
+import '../../theme/app_text_styles.dart';
 import '../../theme/workspace_surface_layers.dart';
 import '../../utils/app_keys.dart';
 import '../../services/cli/registry/cli_tool_registry_scope.dart';
 import '../dropdown/app_dropdown_field.dart';
 import '../menu/sidebar_action_menu.dart';
+import '../settings/focus_gated_text_field.dart';
 import 'brand_dropdown_rows.dart';
 import 'provider_brand_icon.dart';
 
 class AppProviderListPanel extends StatefulWidget {
   const AppProviderListPanel({
-    required this.selectedId,
+    this.selectedId,
     required this.onSelect,
     required this.onAdd,
     required this.onImport,
@@ -24,6 +26,7 @@ class AppProviderListPanel extends StatefulWidget {
     super.key,
   });
 
+  /// When omitted, selection is read from [AppProviderCubit].
   final String? selectedId;
   final ValueChanged<String> onSelect;
   final VoidCallback onAdd;
@@ -36,6 +39,26 @@ class AppProviderListPanel extends StatefulWidget {
   State<AppProviderListPanel> createState() => _AppProviderListPanelState();
 }
 
+class _ProviderListHeaderState {
+  const _ProviderListHeaderState({
+    required this.isLoading,
+    required this.selectedCli,
+  });
+
+  final bool isLoading;
+  final CliTool selectedCli;
+
+  @override
+  bool operator ==(Object other) {
+    return other is _ProviderListHeaderState &&
+        other.isLoading == isLoading &&
+        other.selectedCli == selectedCli;
+  }
+
+  @override
+  int get hashCode => Object.hash(isLoading, selectedCli);
+}
+
 class _AppProviderListPanelState extends State<AppProviderListPanel> {
   final _search = TextEditingController();
   String _query = '';
@@ -46,20 +69,23 @@ class _AppProviderListPanelState extends State<AppProviderListPanel> {
     super.dispose();
   }
 
+  List<AppProviderConfig> _filterProviders(List<AppProviderConfig> providers) {
+    if (_query.isEmpty) return providers;
+    final q = _query.toLowerCase();
+    return providers
+        .where(
+          (p) =>
+              p.name.toLowerCase().contains(q) ||
+              p.id.toLowerCase().contains(q),
+        )
+        .toList(growable: false);
+  }
+
   @override
   Widget build(BuildContext context) {
     final l10n = context.l10n;
     final cs = Theme.of(context).colorScheme;
-    final appCubit = context.watch<AppProviderCubit>();
     final headerBg = widget.hubStyle ? cs.workspacePage : cs.workspaceCard;
-    final providers = appCubit.state.providers
-        .where(
-          (p) =>
-              _query.isEmpty ||
-              p.name.toLowerCase().contains(_query.toLowerCase()) ||
-              p.id.toLowerCase().contains(_query.toLowerCase()),
-        )
-        .toList(growable: false);
 
     return Material(
       key: AppKeys.llmProviderList,
@@ -83,42 +109,121 @@ class _AppProviderListPanelState extends State<AppProviderListPanel> {
                 ),
               ),
             ),
-            child: _ProviderListControls(
-              search: _search,
-              onQueryChanged: (value) => setState(() => _query = value),
-              onAdd: widget.onAdd,
-              onImport: widget.onImport,
-              isLoading: appCubit.state.isLoading,
-              selectedCli: appCubit.state.selectedCli,
-              onCliChanged: appCubit.setSelectedCli,
+            child: BlocSelector<AppProviderCubit, AppProviderState,
+                _ProviderListHeaderState>(
+              selector: (state) => _ProviderListHeaderState(
+                isLoading: state.isLoading,
+                selectedCli: state.selectedCli,
+              ),
+              builder: (context, header) {
+                final cubit = context.read<AppProviderCubit>();
+                return _ProviderListControls(
+                  search: _search,
+                  onQueryChanged: (value) => setState(() => _query = value),
+                  onAdd: widget.onAdd,
+                  onImport: widget.onImport,
+                  isLoading: header.isLoading,
+                  selectedCli: header.selectedCli,
+                  onCliChanged: cubit.setSelectedCli,
+                );
+              },
             ),
           ),
           Expanded(
-            child: providers.isEmpty
-                ? Center(child: Text(l10n.selectProvider))
-                : ListView.separated(
-                    padding: const EdgeInsets.fromLTRB(12, 8, 12, 12),
-                    itemCount: providers.length,
-                    separatorBuilder: (_, __) => const SizedBox(height: 8),
-                    itemBuilder: (context, index) {
-                      final p = providers[index];
-                      return _ProviderListTile(
-                        provider: p,
-                        selected: !widget.hubStyle && p.id == widget.selectedId,
-                        hubStyle: widget.hubStyle,
-                        modelCount: appCubit
-                            .flashskyaiLlmConfigFor(p)
-                            .models
-                            .length,
-                        onTap: () => widget.onSelect(p.id),
-                        onEdit: () => widget.onEdit(p),
-                        onDelete: () => widget.onDelete(p.id),
-                      );
-                    },
-                  ),
+            child: BlocSelector<AppProviderCubit, AppProviderState,
+                List<AppProviderConfig>>(
+              selector: (state) => state.providers,
+              builder: (context, allProviders) {
+                final providers = _filterProviders(allProviders);
+                if (providers.isEmpty) {
+                  return Center(child: Text(l10n.selectProvider));
+                }
+                return ListView.separated(
+                  padding: const EdgeInsets.fromLTRB(12, 8, 12, 12),
+                  itemCount: providers.length,
+                  separatorBuilder: (_, __) => const SizedBox(height: 8),
+                  itemBuilder: (context, index) {
+                    final provider = providers[index];
+                    return _ProviderListTileHost(
+                      key: ValueKey(provider.id),
+                      provider: provider,
+                      hubStyle: widget.hubStyle,
+                      selectedIdOverride: widget.selectedId,
+                      onTap: () => widget.onSelect(provider.id),
+                      onEdit: () => widget.onEdit(provider),
+                      onDelete: () => widget.onDelete(provider.id),
+                    );
+                  },
+                );
+              },
+            ),
           ),
         ],
       ),
+    );
+  }
+}
+
+class _ProviderListTileHost extends StatelessWidget {
+  const _ProviderListTileHost({
+    required this.provider,
+    required this.hubStyle,
+    required this.selectedIdOverride,
+    required this.onTap,
+    required this.onEdit,
+    required this.onDelete,
+    super.key,
+  });
+
+  final AppProviderConfig provider;
+  final bool hubStyle;
+  final String? selectedIdOverride;
+  final VoidCallback onTap;
+  final VoidCallback onEdit;
+  final VoidCallback onDelete;
+
+  @override
+  Widget build(BuildContext context) {
+    if (hubStyle) {
+      return RepaintBoundary(
+        child: _ProviderListTile(
+          provider: provider,
+          selected: false,
+          hubStyle: hubStyle,
+          onTap: onTap,
+          onEdit: onEdit,
+          onDelete: onDelete,
+        ),
+      );
+    }
+
+    if (selectedIdOverride != null) {
+      return RepaintBoundary(
+        child: _ProviderListTile(
+          provider: provider,
+          selected: provider.id == selectedIdOverride,
+          hubStyle: hubStyle,
+          onTap: onTap,
+          onEdit: onEdit,
+          onDelete: onDelete,
+        ),
+      );
+    }
+
+    return BlocSelector<AppProviderCubit, AppProviderState, bool>(
+      selector: (state) => state.selectedId == provider.id,
+      builder: (context, selected) {
+        return RepaintBoundary(
+          child: _ProviderListTile(
+            provider: provider,
+            selected: selected,
+            hubStyle: hubStyle,
+            onTap: onTap,
+            onEdit: onEdit,
+            onDelete: onDelete,
+          ),
+        );
+      },
     );
   }
 }
@@ -145,6 +250,7 @@ class _ProviderListControls extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final l10n = context.l10n;
+    final styles = AppTextStyles.of(context);
 
     return Column(
       mainAxisSize: MainAxisSize.min,
@@ -160,7 +266,7 @@ class _ProviderListControls extends StatelessWidget {
                   l10n.providerList,
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
-                  style: Theme.of(context).textTheme.titleSmall,
+                  style: styles.sectionTitle,
                 ),
               ),
               SidebarActionMenuButton(
@@ -208,7 +314,7 @@ class _ProviderListControls extends StatelessWidget {
         ),
         Padding(
           padding: const EdgeInsets.fromLTRB(12, 8, 12, 10),
-          child: TextField(
+          child: FocusGatedTextField(
             controller: search,
             decoration: InputDecoration(
               hintText: l10n.filterProviders,
@@ -227,7 +333,6 @@ class _ProviderListTile extends StatelessWidget {
     required this.provider,
     required this.selected,
     required this.hubStyle,
-    required this.modelCount,
     required this.onTap,
     required this.onEdit,
     required this.onDelete,
@@ -236,7 +341,6 @@ class _ProviderListTile extends StatelessWidget {
   final AppProviderConfig provider;
   final bool selected;
   final bool hubStyle;
-  final int modelCount;
   final VoidCallback onTap;
   final VoidCallback onEdit;
   final VoidCallback onDelete;
@@ -245,8 +349,9 @@ class _ProviderListTile extends StatelessWidget {
   Widget build(BuildContext context) {
     final l10n = context.l10n;
     final cs = Theme.of(context).colorScheme;
+    final styles = AppTextStyles.of(context);
     final subtitle = provider.cli == CliTool.flashskyai
-        ? l10n.providerListModelCount(modelCount)
+        ? l10n.providerListModelCount(provider.flashskyaiModelCount)
         : l10n.appProviderToolLabel(provider.cli);
     final titleColor = selected ? cs.onPrimaryContainer : cs.onSurface;
     final subtitleColor = selected
@@ -257,6 +362,9 @@ class _ProviderListTile extends StatelessWidget {
         : hubStyle
         ? cs.workspaceSubtleSurface
         : cs.workspaceInset;
+    final titleStyle = selected
+        ? styles.bodyStrongColored(titleColor)
+        : styles.bodyColored(titleColor, fontWeight: FontWeight.w500);
 
     return ListTile(
       selected: selected,
@@ -272,16 +380,15 @@ class _ProviderListTile extends StatelessWidget {
       ),
       title: Text(
         provider.name,
-        style: TextStyle(
-          color: titleColor,
-          fontWeight: selected ? FontWeight.w600 : FontWeight.w500,
-        ),
+        maxLines: 1,
+        overflow: TextOverflow.ellipsis,
+        style: titleStyle,
       ),
       subtitle: Text(
         subtitle,
         maxLines: 1,
         overflow: TextOverflow.ellipsis,
-        style: TextStyle(color: subtitleColor),
+        style: styles.bodySmallColored(subtitleColor),
       ),
       trailing: hubStyle
           ? Icon(Icons.chevron_right, color: titleColor)

@@ -29,11 +29,13 @@ class ThemeColorPresetPicker extends StatelessWidget {
             for (final id in kThemeColorPresetIds)
               Padding(
                 padding: const EdgeInsets.only(left: 8),
-                child: ThemeColorPresetChip(
-                  id: id,
-                  label: l10n.themeColorPresetName(id),
-                  selected: id == selected,
-                  onTap: () => onSelect(id),
+                child: RepaintBoundary(
+                  child: ThemeColorPresetChip(
+                    id: id,
+                    label: l10n.themeColorPresetName(id),
+                    selected: id == selected,
+                    onTap: () => onSelect(id),
+                  ),
                 ),
               ),
           ],
