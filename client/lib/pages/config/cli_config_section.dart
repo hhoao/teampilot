@@ -19,7 +19,6 @@ class CliConfigWorkspace extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final l10n = context.l10n;
-    final cubit = context.watch<SessionPreferencesCubit>();
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
@@ -30,7 +29,7 @@ class CliConfigWorkspace extends StatelessWidget {
           ),
           const SizedBox(height: 16),
         ],
-        _CliControls(cubit: cubit),
+        const Expanded(child: _CliControls()),
       ],
     );
   }
@@ -67,18 +66,18 @@ class _CliHeading extends StatelessWidget {
 }
 
 class _CliControls extends StatelessWidget {
-  const _CliControls({required this.cubit});
-
-  final SessionPreferencesCubit cubit;
+  const _CliControls();
 
   @override
   Widget build(BuildContext context) {
     final l10n = context.l10n;
-    final isSshMode = context.watch<ConnectionModeService>().isSshMode;
+    final cubit = context.read<SessionPreferencesCubit>();
+    final isSshMode = context.select<ConnectionModeService, bool>(
+      (service) => service.isSshMode,
+    );
 
-    return Expanded(
-      child: SingleChildScrollView(
-        child: Column(
+    return SingleChildScrollView(
+      child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
             // ---- AI CLI -----------------------------------------------------
@@ -224,7 +223,6 @@ class _CliControls extends StatelessWidget {
             ),
           ],
         ),
-      ),
     );
   }
 }

@@ -720,7 +720,7 @@ void main() {
   test('terminal views keep IME text input enabled', () {
     final terminalSources = [
       File('lib/pages/chat_workbench.dart'),
-      File('lib/widgets/ui_warmup.dart'),
+      File('lib/widgets/app_text_field_warmup_host.dart'),
     ];
 
     for (final sourceFile in terminalSources) {

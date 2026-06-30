@@ -200,11 +200,20 @@ class CliExecutablePathSettingsRowState
 
   @override
   Widget build(BuildContext context) {
+    return BlocSelector<SessionPreferencesCubit, SessionPreferencesState, String>(
+      selector: (state) =>
+          state.preferences.cliExecutablePathFor(widget.cli.value),
+      builder: (context, stored) => _buildRow(context, stored),
+    );
+  }
+
+  Widget _buildRow(BuildContext context, String stored) {
     final l10n = context.l10n;
-    final stored = _storedPath();
     _syncFromState(stored);
 
-    final isSshMode = context.watch<ConnectionModeService>().isSshMode;
+    final isSshMode = context.select<ConnectionModeService, bool>(
+      (service) => service.isSshMode,
+    );
     final effective = widget.cubit.resolveExecutable(widget.cli);
     final isFallback = stored.trim().isEmpty;
     final fieldEmpty = _controller.text.trim().isEmpty;

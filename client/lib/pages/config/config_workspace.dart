@@ -19,9 +19,6 @@ import 'session_config_section.dart';
 import 'ssh_profiles_config_section.dart';
 
 /// Opens the workspace quick-settings modal from anywhere (e.g. the title bar).
-///
-/// All sections render inline in the dialog. Log viewing from About opens a
-/// nested modal instead of navigating away.
 Future<void> showWorkspaceSettingsDialog(BuildContext context) {
   final l10n = context.l10n;
 
@@ -34,44 +31,44 @@ Future<void> showWorkspaceSettingsDialog(BuildContext context) {
         navLabel: l10n.layout,
         title: l10n.layout,
         subtitle: l10n.layoutPageSubtitle,
-        body: const LayoutConfigWorkspace(showHeading: false),
+        bodyBuilder: (_) => const LayoutConfigWorkspace(showHeading: false),
       ),
       SettingsDialogEntry(
         icon: Icons.terminal_outlined,
         navLabel: l10n.session,
         title: l10n.session,
         subtitle: l10n.sessionPageSubtitle,
-        body: const SessionConfigWorkspace(showHeading: false),
+        bodyBuilder: (_) => const SessionConfigWorkspace(showHeading: false),
       ),
       SettingsDialogEntry(
         icon: Icons.code_outlined,
         navLabel: l10n.cliConfig,
         title: l10n.cliConfig,
         subtitle: l10n.cliConfigPageSubtitle,
-        body: const CliConfigWorkspace(showHeading: false),
+        bodyBuilder: (_) => const CliConfigWorkspace(showHeading: false),
       ),
       SettingsDialogEntry(
         icon: Icons.auto_awesome_outlined,
         navLabel: l10n.aiFeatures,
         title: l10n.aiFeatures,
         subtitle: l10n.aiFeaturesPageSubtitle,
-        body: const AiFeaturesConfigWorkspace(showHeading: false),
+        bodyBuilder: (_) => const AiFeaturesConfigWorkspace(showHeading: false),
       ),
       SettingsDialogEntry(
         icon: Icons.dns_outlined,
         navLabel: l10n.sshProfilesSettingsTitle,
         title: l10n.sshProfilesPageTitle,
         subtitle: l10n.sshProfilesPageSubtitle,
-        body: const SshProfilesConfigWorkspace(showHeading: false),
+        bodyBuilder: (_) => const SshProfilesConfigWorkspace(showHeading: false),
       ),
       SettingsDialogEntry(
         icon: Icons.info_outline,
         navLabel: l10n.aboutTitle,
         title: l10n.aboutTitle,
         subtitle: l10n.aboutPageSubtitle,
-        body: AboutConfigWorkspace(
+        bodyBuilder: (dialogContext) => AboutConfigWorkspace(
           showHeading: false,
-          onViewLogs: () => showLogViewerDialog(context),
+          onViewLogs: () => showLogViewerDialog(dialogContext),
         ),
       ),
     ],
