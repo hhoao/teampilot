@@ -3503,7 +3503,7 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get memberNameSubtitle =>
-      'Display only in TeamPilot (sidebar, member list). To define responsibilities and boundaries, edit the prompt below.';
+      'Display only in TeamPilot (sidebar, member list). To define responsibilities and boundaries, edit Responsibilities below.';
 
   @override
   String get provider => 'Provider';
@@ -3573,8 +3573,11 @@ class AppLocalizationsEn extends AppLocalizations {
   String get prompt => 'Prompt';
 
   @override
+  String get memberResponsibilities => 'Responsibilities';
+
+  @override
   String get memberPromptSubtitle =>
-      'Brief duty boundaries and role notes for the team lead.';
+      'What this member owns and must not do. Written into the agent\'s role definition.';
 
   @override
   String get memberPromptPresetsLabel => 'Presets';
@@ -3608,11 +3611,11 @@ class AppLocalizationsEn extends AppLocalizations {
       'Investigate and report only. Do not change production code unless asked.';
 
   @override
-  String get memberPlaybook => 'Working method';
+  String get memberPlaybook => 'Prompt';
 
   @override
   String get memberPlaybookSubtitle =>
-      'How this role operates—a concrete procedure (HOW). May reference a team skill, but is plain instructions, not a fixed skill.';
+      'How to execute assigned work: steps, checkpoints, and report format. Sent to the agent as operating instructions.';
 
   @override
   String get memberPlaybookPresetDeveloperText =>

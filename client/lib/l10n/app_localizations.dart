@@ -6366,7 +6366,7 @@ abstract class AppLocalizations {
   /// No description provided for @memberNameSubtitle.
   ///
   /// In en, this message translates to:
-  /// **'Display only in TeamPilot (sidebar, member list). To define responsibilities and boundaries, edit the prompt below.'**
+  /// **'Display only in TeamPilot (sidebar, member list). To define responsibilities and boundaries, edit Responsibilities below.'**
   String get memberNameSubtitle;
 
   /// No description provided for @provider.
@@ -6489,10 +6489,16 @@ abstract class AppLocalizations {
   /// **'Prompt'**
   String get prompt;
 
+  /// No description provided for @memberResponsibilities.
+  ///
+  /// In en, this message translates to:
+  /// **'Responsibilities'**
+  String get memberResponsibilities;
+
   /// No description provided for @memberPromptSubtitle.
   ///
   /// In en, this message translates to:
-  /// **'Brief duty boundaries and role notes for the team lead.'**
+  /// **'What this member owns and must not do. Written into the agent\'s role definition.'**
   String get memberPromptSubtitle;
 
   /// No description provided for @memberPromptPresetsLabel.
@@ -6552,13 +6558,13 @@ abstract class AppLocalizations {
   /// No description provided for @memberPlaybook.
   ///
   /// In en, this message translates to:
-  /// **'Working method'**
+  /// **'Prompt'**
   String get memberPlaybook;
 
   /// No description provided for @memberPlaybookSubtitle.
   ///
   /// In en, this message translates to:
-  /// **'How this role operates—a concrete procedure (HOW). May reference a team skill, but is plain instructions, not a fixed skill.'**
+  /// **'How to execute assigned work: steps, checkpoints, and report format. Sent to the agent as operating instructions.'**
   String get memberPlaybookSubtitle;
 
   /// No description provided for @memberPlaybookPresetDeveloperText.
