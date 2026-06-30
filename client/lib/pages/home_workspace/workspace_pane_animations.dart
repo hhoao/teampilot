@@ -6,13 +6,7 @@ import 'home_workspace_global_section.dart';
 import 'home_workspace_library_view.dart';
 
 /// Which right-hand workspace-home pane is active.
-enum WorkspaceRightPaneKind {
-  allWorkspaces,
-  global,
-  library,
-  personal,
-  team,
-}
+enum WorkspaceRightPaneKind { allWorkspaces, global, library, personal, team }
 
 /// Stable identity for [AnimatedSwitcher] and transition selection.
 class WorkspaceRightPaneDescriptor {
@@ -53,7 +47,8 @@ class WorkspaceRightPaneDescriptor {
 
   @override
   bool operator ==(Object other) {
-    return other is WorkspaceRightPaneDescriptor && switchKey == other.switchKey;
+    return other is WorkspaceRightPaneDescriptor &&
+        switchKey == other.switchKey;
   }
 
   @override
@@ -88,10 +83,7 @@ abstract final class WorkspacePaneAnimations {
 
     if (_paneHandlesOwnEntryMotion(previous.kind) ||
         _paneHandlesOwnEntryMotion(descriptor.kind)) {
-      return KeyedSubtree(
-        key: ValueKey(descriptor.switchKey),
-        child: child,
-      );
+      return KeyedSubtree(key: ValueKey(descriptor.switchKey), child: child);
     }
 
     final disabled = MediaQuery.disableAnimationsOf(context);
@@ -100,10 +92,7 @@ abstract final class WorkspacePaneAnimations {
     final paneChild = duration > Duration.zero
         ? DeferredMountAfter(
             delay: duration,
-            child: DeferredMountShell(
-              delayFrames: 1,
-              child: child,
-            ),
+            child: DeferredMountShell(delayFrames: 1, child: child),
           )
         : child;
 

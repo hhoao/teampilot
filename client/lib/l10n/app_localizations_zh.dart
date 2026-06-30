@@ -4091,12 +4091,17 @@ class AppLocalizationsZh extends AppLocalizations {
 
   @override
   String notificationTimeMinutesAgo(int minutes) {
-    return '$minutes 分钟前';
+    return '$minutes 分钟';
   }
 
   @override
   String notificationTimeHoursAgo(int hours) {
-    return '$hours 小时前';
+    return '$hours 小时';
+  }
+
+  @override
+  String notificationTimeDaysAgo(int days) {
+    return '$days 天';
   }
 
   @override
