@@ -44,10 +44,7 @@ class HomeIdentityContentShell extends StatelessWidget {
           Divider(height: 1, color: cs.outlineVariant.withValues(alpha: 0.5)),
           const SizedBox(height: 16),
           Expanded(
-            child: WorkspacePaneAnimations.data(
-              tabBody,
-              key: bodyAnimationKey,
-            ),
+            child: WorkspacePaneAnimations.data(tabBody, key: bodyAnimationKey),
           ),
         ],
       ),

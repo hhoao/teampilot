@@ -54,10 +54,7 @@ String? rememberedLaunchRoute(
   return workspaceLaunchRoute(workspace.workspaceId, id);
 }
 
-Future<void> openWorkspace(
-  BuildContext context,
-  Workspace workspace,
-) async {
+Future<void> openWorkspace(BuildContext context, Workspace workspace) async {
   final chatCubit = context.read<ChatCubit>();
   await chatCubit.ensureSessionsForWorkspace(workspace.workspaceId);
   final sessions = await chatCubit.sessionsForWorkspaceReady(
@@ -209,7 +206,8 @@ class WorkspacesListBody extends StatelessWidget {
 }
 
 class WorkspacesToolbar extends StatelessWidget {
-  const WorkspacesToolbar({super.key, 
+  const WorkspacesToolbar({
+    super.key,
     required this.gridView,
     required this.onToggleView,
     required this.workspaceSort,
@@ -226,10 +224,7 @@ class WorkspacesToolbar extends StatelessWidget {
     final l10n = context.l10n;
     return Row(
       children: [
-        WorkspacesViewToggle(
-          gridView: gridView,
-          onToggleView: onToggleView,
-        ),
+        WorkspacesViewToggle(gridView: gridView, onToggleView: onToggleView),
         const SizedBox(width: 8),
         WorkspacesSortButton(
           workspaceSort: workspaceSort,
@@ -266,7 +261,8 @@ class WorkspacesToolbar extends StatelessWidget {
 }
 
 class WorkspacesSortButton extends StatelessWidget {
-  const WorkspacesSortButton({super.key, 
+  const WorkspacesSortButton({
+    super.key,
     required this.workspaceSort,
     required this.onWorkspaceSortChanged,
   });
@@ -315,19 +311,18 @@ class WorkspacesSortButton extends StatelessWidget {
     );
   }
 
-  static IconData _iconForSort(WorkspaceSort sort) =>
-      switch (sort) {
-        WorkspaceSort.recentlyUpdated => Icons.update_rounded,
-        WorkspaceSort.nameAsc => Icons.sort_by_alpha_rounded,
-        WorkspaceSort.nameDesc => Icons.sort_by_alpha_rounded,
-        WorkspaceSort.createdDesc => Icons.event_rounded,
-        WorkspaceSort.sessionCountDesc =>
-          Icons.forum_outlined,
-      };
+  static IconData _iconForSort(WorkspaceSort sort) => switch (sort) {
+    WorkspaceSort.recentlyUpdated => Icons.update_rounded,
+    WorkspaceSort.nameAsc => Icons.sort_by_alpha_rounded,
+    WorkspaceSort.nameDesc => Icons.sort_by_alpha_rounded,
+    WorkspaceSort.createdDesc => Icons.event_rounded,
+    WorkspaceSort.sessionCountDesc => Icons.forum_outlined,
+  };
 }
 
 class WorkspacesViewToggle extends StatelessWidget {
-  const WorkspacesViewToggle({super.key, 
+  const WorkspacesViewToggle({
+    super.key,
     required this.gridView,
     required this.onToggleView,
   });
@@ -364,8 +359,9 @@ class WorkspacesViewToggle extends StatelessWidget {
   }
 }
 
-class WorkspacesToggleCell extends StatelessWidget {
-  const WorkspacesToggleCell({super.key, 
+class WorkspacesToggleCell extends StatefulWidget {
+  const WorkspacesToggleCell({
+    super.key,
     required this.icon,
     required this.active,
     required this.onTap,
@@ -376,31 +372,53 @@ class WorkspacesToggleCell extends StatelessWidget {
   final VoidCallback onTap;
 
   @override
+  State<WorkspacesToggleCell> createState() => _WorkspacesToggleCellState();
+}
+
+class _WorkspacesToggleCellState extends State<WorkspacesToggleCell> {
+  bool _hovered = false;
+
+  @override
   Widget build(BuildContext context) {
     final cs = Theme.of(context).colorScheme;
-    return InkWell(
-      onTap: onTap,
-      borderRadius: BorderRadius.circular(6),
-      child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 5),
-        decoration: BoxDecoration(
-          color: active
-              ? cs.primary.withValues(alpha: 0.16)
-              : Colors.transparent,
-          borderRadius: BorderRadius.circular(6),
-        ),
-        child: Icon(
-          icon,
-          size: context.appIconSizes.md,
-          color: active ? cs.primary : cs.onSurfaceVariant,
+    final active = widget.active;
+    final restingBg = active
+        ? cs.primary.withValues(alpha: 0.16)
+        : Colors.transparent;
+    final hoverTint = cs.onSurface.withValues(alpha: 0.06);
+    final background = _hovered
+        ? (active
+              ? Color.alphaBlend(hoverTint, restingBg)
+              : cs.onSurface.withValues(alpha: 0.05))
+        : restingBg;
+
+    return MouseRegion(
+      cursor: SystemMouseCursors.click,
+      onEnter: (_) => setState(() => _hovered = true),
+      onExit: (_) => setState(() => _hovered = false),
+      child: GestureDetector(
+        onTap: widget.onTap,
+        behavior: HitTestBehavior.opaque,
+        child: Container(
+          padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 5),
+          decoration: BoxDecoration(
+            color: background,
+            borderRadius: BorderRadius.circular(6),
+          ),
+          child: Icon(
+            widget.icon,
+            size: context.appIconSizes.md,
+            color: active ? cs.primary : cs.onSurfaceVariant,
+          ),
         ),
       ),
     );
   }
 }
 
-class WorkspacesIconChip extends StatelessWidget {
-  const WorkspacesIconChip({super.key, 
+class WorkspacesIconChip extends StatefulWidget {
+  const WorkspacesIconChip({
+    super.key,
     required this.icon,
     required this.onTap,
     this.tooltip,
@@ -411,28 +429,54 @@ class WorkspacesIconChip extends StatelessWidget {
   final String? tooltip;
 
   @override
+  State<WorkspacesIconChip> createState() => _WorkspacesIconChipState();
+}
+
+class _WorkspacesIconChipState extends State<WorkspacesIconChip> {
+  bool _hovered = false;
+
+  @override
   Widget build(BuildContext context) {
     final cs = Theme.of(context).colorScheme;
-    final chip = InkWell(
-      onTap: onTap,
-      borderRadius: BorderRadius.circular(8),
-      child: Container(
-        padding: const EdgeInsets.all(7),
-        decoration: BoxDecoration(
-          color: cs.surfaceContainer,
-          borderRadius: BorderRadius.circular(8),
-          border: Border.all(color: cs.outlineVariant.withValues(alpha: 0.7)),
+    final hoverTint = cs.onSurface.withValues(alpha: 0.06);
+    final background = _hovered
+        ? Color.alphaBlend(hoverTint, cs.surfaceContainer)
+        : cs.surfaceContainer;
+    final borderColor = _hovered
+        ? cs.primary.withValues(alpha: 0.35)
+        : cs.outlineVariant.withValues(alpha: 0.7);
+
+    final chip = MouseRegion(
+      cursor: SystemMouseCursors.click,
+      onEnter: (_) => setState(() => _hovered = true),
+      onExit: (_) => setState(() => _hovered = false),
+      child: GestureDetector(
+        onTap: widget.onTap,
+        behavior: HitTestBehavior.opaque,
+        child: Container(
+          padding: const EdgeInsets.all(7),
+          decoration: BoxDecoration(
+            color: background,
+            borderRadius: BorderRadius.circular(8),
+            border: Border.all(color: borderColor),
+          ),
+          child: Icon(
+            widget.icon,
+            size: context.appIconSizes.md,
+            color: cs.onSurfaceVariant,
+          ),
         ),
-        child: Icon(icon, size: context.appIconSizes.md, color: cs.onSurfaceVariant),
       ),
     );
-    if (tooltip == null || tooltip!.isEmpty) return chip;
+    final tooltip = widget.tooltip;
+    if (tooltip == null || tooltip.isEmpty) return chip;
     return Tooltip(message: tooltip, child: chip);
   }
 }
 
-class WorkspacesPrimaryAction extends StatelessWidget {
-  const WorkspacesPrimaryAction({super.key, 
+class WorkspacesPrimaryAction extends StatefulWidget {
+  const WorkspacesPrimaryAction({
+    super.key,
     required this.icon,
     required this.label,
     required this.onTap,
@@ -443,25 +487,50 @@ class WorkspacesPrimaryAction extends StatelessWidget {
   final VoidCallback onTap;
 
   @override
+  State<WorkspacesPrimaryAction> createState() =>
+      _WorkspacesPrimaryActionState();
+}
+
+class _WorkspacesPrimaryActionState extends State<WorkspacesPrimaryAction> {
+  bool _hovered = false;
+
+  @override
   Widget build(BuildContext context) {
     final cs = Theme.of(context).colorScheme;
     final styles = AppTextStyles.of(context);
-    return InkWell(
-      onTap: onTap,
-      borderRadius: BorderRadius.circular(8),
-      child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 11),
-        decoration: BoxDecoration(
-          color: cs.primary,
-          borderRadius: BorderRadius.circular(8),
-        ),
-        child: Row(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Icon(icon, size: context.appIconSizes.md, color: cs.onPrimary),
-            const SizedBox(width: 7),
-            Text(label, style: styles.body.copyWith(color: cs.onPrimary)),
-          ],
+    final hoverTint = cs.onPrimary.withValues(alpha: 0.12);
+    final background = _hovered
+        ? Color.alphaBlend(hoverTint, cs.primary)
+        : cs.primary;
+
+    return MouseRegion(
+      cursor: SystemMouseCursors.click,
+      onEnter: (_) => setState(() => _hovered = true),
+      onExit: (_) => setState(() => _hovered = false),
+      child: GestureDetector(
+        onTap: widget.onTap,
+        behavior: HitTestBehavior.opaque,
+        child: Container(
+          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 11),
+          decoration: BoxDecoration(
+            color: background,
+            borderRadius: BorderRadius.circular(8),
+          ),
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Icon(
+                widget.icon,
+                size: context.appIconSizes.md,
+                color: cs.onPrimary,
+              ),
+              const SizedBox(width: 7),
+              Text(
+                widget.label,
+                style: styles.body.copyWith(color: cs.onPrimary),
+              ),
+            ],
+          ),
         ),
       ),
     );
@@ -469,7 +538,8 @@ class WorkspacesPrimaryAction extends StatelessWidget {
 }
 
 class WorkspaceCollection extends StatefulWidget {
-  const WorkspaceCollection({super.key, 
+  const WorkspaceCollection({
+    super.key,
     required this.workspaces,
     required this.sessions,
     required this.gridView,
@@ -492,12 +562,10 @@ class WorkspaceCollection extends StatefulWidget {
   final bool sessionBarTopologyIconOnly;
 
   @override
-  State<WorkspaceCollection> createState() =>
-      _WorkspaceCollectionState();
+  State<WorkspaceCollection> createState() => _WorkspaceCollectionState();
 }
 
-class _WorkspaceCollectionState
-    extends State<WorkspaceCollection> {
+class _WorkspaceCollectionState extends State<WorkspaceCollection> {
   WorkspaceDisplay? _cached;
   List<Workspace>? _lastWorkspaces;
   List<AppSession>? _lastSessions;
@@ -555,7 +623,8 @@ class _WorkspaceCollectionState
 }
 
 class WorkspaceGrid extends StatelessWidget {
-  const WorkspaceGrid({super.key, 
+  const WorkspaceGrid({
+    super.key,
     required this.workspaces,
     required this.sessionCounts,
     required this.favoriteWorkspaceIds,
@@ -575,9 +644,10 @@ class WorkspaceGrid extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final launchProfiles = context.select<LaunchProfileCubit, List<LaunchProfile>>(
-      (c) => c.state.identities,
-    );
+    final launchProfiles = context
+        .select<LaunchProfileCubit, List<LaunchProfile>>(
+          (c) => c.state.identities,
+        );
 
     return GridView.builder(
       gridDelegate: const SliverGridDelegateWithMaxCrossAxisExtent(
@@ -611,7 +681,8 @@ class WorkspaceGrid extends StatelessWidget {
 }
 
 class WorkspaceList extends StatelessWidget {
-  const WorkspaceList({super.key, 
+  const WorkspaceList({
+    super.key,
     required this.workspaces,
     required this.sessionCounts,
     required this.favoriteWorkspaceIds,
@@ -631,9 +702,10 @@ class WorkspaceList extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final launchProfiles = context.select<LaunchProfileCubit, List<LaunchProfile>>(
-      (c) => c.state.identities,
-    );
+    final launchProfiles = context
+        .select<LaunchProfileCubit, List<LaunchProfile>>(
+          (c) => c.state.identities,
+        );
 
     return ListView.separated(
       itemCount: workspaces.length,
@@ -646,7 +718,8 @@ class WorkspaceList extends StatelessWidget {
           workspace: workspace,
           sessionCount: count,
           favorited: favoriteWorkspaceIds.contains(workspace.workspaceId),
-          onToggleFavorite: () => onToggleWorkspaceFavorite(workspace.workspaceId),
+          onToggleFavorite: () =>
+              onToggleWorkspaceFavorite(workspace.workspaceId),
           sessions: sessions,
           launchProfiles: launchProfiles,
           showSessionContextIcon: showSessionContextIcon,
