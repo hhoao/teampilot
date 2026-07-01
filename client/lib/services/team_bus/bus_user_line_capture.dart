@@ -1,3 +1,4 @@
+import 'dart:convert';
 import 'dart:typed_data';
 
 /// mixed bus：成员 park 在 [wait_for_message] 时，把用户在终端敲的一行交给 bus 而非 PTY。
@@ -39,6 +40,7 @@ class BusUserLineCapture {
 
   final BusUserInputRouting _routing;
   final StringBuffer _buffer = StringBuffer();
+  final List<int> _pendingUtf8Bytes = [];
   _InputMode _mode = _InputMode.normal;
 
   /// 返回仍应写入 PTY 的字节。
@@ -48,7 +50,7 @@ class BusUserLineCapture {
   Uint8List filter(Uint8List data) {
     final intercept = _routing.shouldIntercept();
     if (!intercept && _routing.onTurnStart == null) {
-      _buffer.clear();
+      _resetLineBuffer();
       _mode = _InputMode.normal;
       return data; // 无 overlay 也无 turn-start 钩子:快路径。
     }
@@ -101,8 +103,27 @@ class BusUserLineCapture {
     if (codeUnit < 0x20 && codeUnit != 0x09) {
       return codeUnit; // 其他控制字节透传，不计入行缓冲
     }
-    _buffer.writeCharCode(codeUnit);
+    _appendUtf8Byte(codeUnit);
     return codeUnit; // 可见字符透传 → CLI 就地回显
+  }
+
+  void _appendUtf8Byte(int byte) {
+    _pendingUtf8Bytes.add(byte);
+    try {
+      _buffer.write(utf8.decode(_pendingUtf8Bytes));
+      _pendingUtf8Bytes.clear();
+    } on FormatException {
+      // Incomplete UTF-8 sequence — wait for more bytes.
+      if (_pendingUtf8Bytes.length >= 4) {
+        _buffer.write('\uFFFD');
+        _pendingUtf8Bytes.clear();
+      }
+    }
+  }
+
+  void _resetLineBuffer() {
+    _buffer.clear();
+    _pendingUtf8Bytes.clear();
   }
 
   void _feedAfterEsc(int codeUnit) {
@@ -135,6 +156,10 @@ class BusUserLineCapture {
       codeUnit >= 0x40 && codeUnit <= 0x7e;
 
   void _backspace() {
+    if (_pendingUtf8Bytes.isNotEmpty) {
+      _pendingUtf8Bytes.removeLast();
+      return;
+    }
     final text = _buffer.toString();
     if (text.isEmpty) return;
     _buffer
@@ -143,6 +168,7 @@ class BusUserLineCapture {
   }
 
   void _submit(bool intercept) {
+    _pendingUtf8Bytes.clear();
     final line = _sanitizeLine(_buffer.toString());
     _buffer.clear();
     if (line.isEmpty) return;

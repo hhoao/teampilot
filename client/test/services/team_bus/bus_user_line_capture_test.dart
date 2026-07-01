@@ -90,4 +90,43 @@ void main() {
     capture.filter(Uint8List.fromList(utf8.encode('\r')));
     expect(submitted, 'ac');
   });
+
+  test('decodes UTF-8 multibyte input instead of Latin-1 per-byte', () {
+    String? submitted;
+    final capture = BusUserLineCapture(
+      BusUserInputRouting(
+        shouldIntercept: () => true,
+        onUserLine: (line) => submitted = line,
+      ),
+    );
+
+    capture.filter(Uint8List.fromList(utf8.encode('你好\r')));
+    expect(submitted, '你好');
+
+    submitted = null;
+    capture.filter(Uint8List.fromList(utf8.encode('hello你好\r')));
+    expect(submitted, 'hello你好');
+  });
+
+  test('backspace shrinks UTF-8 characters, not raw bytes', () {
+    String? submitted;
+    final capture = BusUserLineCapture(
+      BusUserInputRouting(
+        shouldIntercept: () => true,
+        onUserLine: (line) => submitted = line,
+      ),
+    );
+
+    // 你 → backspace → 好 → submit → "好"
+    capture.filter(Uint8List.fromList(utf8.encode('你')));
+    capture.filter(Uint8List.fromList([0x7f]));
+    capture.filter(Uint8List.fromList(utf8.encode('好\r')));
+    expect(submitted, '好');
+
+    submitted = null;
+    // Leading byte of a multibyte char, then DEL — pending cleared, not garbled.
+    capture.filter(Uint8List.fromList([0xE4, 0x7f]));
+    capture.filter(Uint8List.fromList(utf8.encode('好\r')));
+    expect(submitted, '好');
+  });
 }
