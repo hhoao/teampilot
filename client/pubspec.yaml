@@ -2,7 +2,7 @@ name: teampilot
 description: "A team-oriented and easy-to-use desktop client packaged based on the terminal AI Agent"
 publish_to: 'none'
 
-version: 3.0.0
+version: 3.0.1
 
 environment:
   sdk: ^3.8.1
