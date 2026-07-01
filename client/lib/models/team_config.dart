@@ -572,8 +572,8 @@ class TeamProfile implements LaunchProfile {
   final bool forceTeamLeadDelegateMode;
 
   /// mixed 模式:成员 turn 结束时,Stop hook 是否把它推回 `wait_for_message`
-  /// (永不主动结束 turn)。false 时允许成员"休息"(正常停止)。仅经 TeamBus 的
-  /// stop-hook 生效;空闲检测(`/idle` → onMemberIdle)无论开关都照常上报。
+  /// (永不主动结束 turn)。false 时允许成员"休息"(正常停止)。`/idle` 仅回应该
+  /// 决策,不触发 [TeamBus.onMemberIdle]。
   final bool forceWaitBeforeStop;
 
   /// Active preset id for this team. `null` means no preset is active.

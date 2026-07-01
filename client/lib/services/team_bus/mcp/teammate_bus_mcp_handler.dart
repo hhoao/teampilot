@@ -94,7 +94,7 @@ class TeammateBusMcpHandler {
   /// 故意不看 Claude 的 `stop_hook_active`。
   ///
   /// 团队关掉 [forceWaitBeforeStop] 时直接回 `{}` 放行：成员可正常停止("休息")，
-  /// 不再被推回 `wait_for_message`。空闲上报(`/idle` → notifyIdle)不受影响。
+  /// 不再被推回 `wait_for_message`。
   String idleStopDecision(String memberId) {
     if (!_resolveForceWait(memberId)) {
       _idleStreak[memberId] = 0;

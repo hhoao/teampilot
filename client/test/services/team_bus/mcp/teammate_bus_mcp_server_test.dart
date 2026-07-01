@@ -108,8 +108,8 @@ void main() {
 
       expect(json['decision'], 'block');
       expect(json['reason'], contains('wait_for_message'));
-      // notifyIdle still runs: empty inbox settles at turnDoneReady, no doorbell.
-      expect(node.activity, MemberActivity.turnDoneReady);
+      // /idle 不再 notifyIdle:bus 回合保持 active,无门铃。
+      expect(node.activity, MemberActivity.active);
       expect(launcher.woken, isEmpty);
     },
   );

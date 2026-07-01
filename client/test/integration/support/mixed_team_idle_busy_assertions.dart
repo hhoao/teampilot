@@ -25,7 +25,7 @@ Future<void> tickIdleAndPresence({
   required MemberPresenceCubit presenceCubit,
 }) async {
   cubit.debugTickIdleWatch();
-  await waitForPresencePoll();
+  await waitForPresencePoll(cubit: cubit);
   await pumpSchedulerFrames();
 }
 
@@ -48,13 +48,15 @@ Future<void> waitUntilSessionIdle({
 
 Future<void> waitUntilMemberWorkload({
   required MemberPresenceCubit presenceCubit,
+  ChatCubit? cubit,
   required String memberId,
   required MemberWorkload workload,
   Duration timeout = const Duration(seconds: 90),
 }) async {
   final deadline = DateTime.now().add(timeout);
   while (DateTime.now().isBefore(deadline)) {
-    await waitForPresencePoll();
+    cubit?.debugTickIdleWatch();
+    await waitForPresencePoll(cubit: cubit);
     await pumpSchedulerFrames();
     final snap = presenceCubit.memberPresenceFor(memberId);
     if (snap.workload == workload) return;
