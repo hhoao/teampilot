@@ -23,7 +23,8 @@ void main() {
       wasInTurn: wasInTurn,
       endTurn: () => ended = true,
     );
-    shell.activityTracker.latchTurnQuietBaseline(
+    shell.activityTracker.notePtyBytes(
+      const [0x6f, 0x75, 0x74], // "out"
       DateTime.now().subtract(const Duration(seconds: 5)),
     );
 

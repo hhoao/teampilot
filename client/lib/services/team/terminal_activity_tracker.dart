@@ -10,8 +10,8 @@ import 'dart:typed_data';
 /// skipped). No regex, no intermediate [String], O(n) bytes only.
 ///
 /// Mixed teams: [isQuietAfterTurnPtyActivity] is true when the visible
-/// fingerprint has been unchanged for [idleAfter] since [latchTurnQuietBaseline]
-/// or since the last fingerprint change this turn (no PTY bytes also counts).
+/// fingerprint has been unchanged for [idleAfter] since the last fingerprint
+/// change this turn ([notePtyBytes] at least once). No PTY bytes → not quiet.
 /// Also feeds the native single-CLI path and simple-mode `_tickIdleWatch`.
 class TerminalActivityTracker {
   TerminalActivityTracker({
@@ -53,9 +53,11 @@ class TerminalActivityTracker {
   }
 
   /// True when the fingerprint has been unchanged for [idleAfter] since the
-  /// turn latch or since the last fingerprint change (zero PTY bytes included).
+  /// last fingerprint change this turn. Requires at least one [notePtyBytes]
+  /// so MCP-only gaps (no PTY yet / between tools) do not false-trigger quiet.
   bool get isQuietAfterTurnPtyActivity {
-    final since = _fingerprintStableSince ?? _turnLatchedAt;
+    if (!_turnPtyObserved) return false;
+    final since = _fingerprintStableSince;
     if (since == null) return false;
     return DateTime.now().difference(since) >= idleAfter;
   }
