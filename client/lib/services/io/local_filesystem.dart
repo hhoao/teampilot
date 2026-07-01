@@ -178,16 +178,25 @@ class LocalFilesystem implements Filesystem, FsWatcher {
   @override
   Future<void> atomicWrite(String path, String content) async {
     await _atomicWriteLocks.synchronized(path, () async {
-      await ensureDir(pathContext.dirname(path));
-      final tmp =
-          '$path.tmp.${DateTime.now().microsecondsSinceEpoch}.${_tmpWriteCounter++}';
-      await File(tmp).writeAsString(content, flush: true);
-      try {
-        await _renameReplacing(tmp, path);
-      } on Object {
-        // The rename never made it; drop the temp file so we don't leak it.
-        await _deleteIfStillPresent(File(tmp));
-        rethrow;
+      final maxAttempts = Platform.isWindows ? 8 : 1;
+      for (var attempt = 1; ; attempt++) {
+        try {
+          await ensureDir(pathContext.dirname(path));
+          final tmp =
+              '$path.tmp.${DateTime.now().microsecondsSinceEpoch}.${_tmpWriteCounter++}';
+          await File(tmp).writeAsString(content, flush: true);
+          try {
+            await _renameReplacing(tmp, path);
+          } on Object {
+            // The rename never made it; drop the temp file so we don't leak it.
+            await _deleteIfStillPresent(File(tmp));
+            rethrow;
+          }
+          return;
+        } on PathNotFoundException {
+          if (!Platform.isWindows || attempt >= maxAttempts) rethrow;
+          await Future<void>.delayed(Duration(milliseconds: 10 * attempt));
+        }
       }
     });
   }
