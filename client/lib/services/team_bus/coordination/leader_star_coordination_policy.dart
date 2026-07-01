@@ -20,6 +20,9 @@ class LeaderStarCoordinationPolicy implements CoordinationPolicy {
   void noteInboundWork(String memberId) => _unreported.add(memberId);
 
   @override
+  void markIdleReported(String memberId) => _unreported.remove(memberId);
+
+  @override
   List<TeamMessage> onMemberIdle(CoordinationView view, String memberId) {
     final worker = view.member(memberId);
     if (worker == null || worker.profile.isTeamLead) return const [];

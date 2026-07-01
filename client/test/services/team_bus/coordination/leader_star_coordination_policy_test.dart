@@ -36,6 +36,12 @@ void main() {
     expect(policy.onMemberIdle(view, 'dev'), isEmpty);
   });
 
+  test('markIdleReported suppresses a later onMemberIdle ping', () {
+    policy.noteInboundWork('dev');
+    policy.markIdleReported('dev');
+    expect(policy.onMemberIdle(view, 'dev'), isEmpty);
+  });
+
   test('worker with inbound work notifies the leader once per batch', () {
     policy.noteInboundWork('dev');
 

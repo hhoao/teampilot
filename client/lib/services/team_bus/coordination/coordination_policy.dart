@@ -18,4 +18,8 @@ abstract interface class CoordinationPolicy {
 
   /// [memberId] 报告 idle。返回需要投递的协调消息(由总线按 eager 路由)。
   List<TeamMessage> onMemberIdle(CoordinationView view, String memberId);
+
+  /// worker 经 [TeamBus.receiveWork] 已向 leader 上报 idle 后调用，避免
+  /// [onMemberIdle] 协调路径重复投递。
+  void markIdleReported(String memberId);
 }
