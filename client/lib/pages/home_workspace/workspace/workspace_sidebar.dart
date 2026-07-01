@@ -406,6 +406,7 @@ class _WorkspaceSidebarState
       sessionTeamId: widget.sessionTeamFilter,
       personalIdentityId: widget.profileId,
       cli: cli,
+      workingDirectory: context.read<WorktreeCubit>().state.pathForNewSession,
     );
   }
 }

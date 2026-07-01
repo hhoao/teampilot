@@ -40,6 +40,13 @@ class WorktreeState {
   /// True once there is more than the main worktree (drives grouped vs flat).
   bool get hasMultipleWorktrees => worktrees.length > 1;
 
+  /// Working directory for a new conversation: the current worktree when the
+  /// repo has multiple worktrees (§7); otherwise `null` → workspace main folder.
+  String? get pathForNewSession =>
+      hasMultipleWorktrees && currentWorktreePath.isNotEmpty
+          ? currentWorktreePath
+          : null;
+
   WorktreeState copyWith({
     String? repoPath,
     List<GitWorktree>? worktrees,

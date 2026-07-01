@@ -184,6 +184,7 @@ Future<void> createAndOpenWorkspaceConversation(
   String sessionTeamId = '',
   String personalIdentityId = '',
   CliTool? cli,
+  String? workingDirectory,
 }) async {
   final chatCubit = context.read<ChatCubit>();
   final repo = context.read<SessionRepository>();
@@ -212,6 +213,7 @@ Future<void> createAndOpenWorkspaceConversation(
         repo: repo,
         personalIdentityId: personalIdentityId,
         cli: effectiveCli,
+        workingDirectory: workingDirectory,
         emptyDisplayTitleFallback: l10n.defaultNewChatSessionTitle,
       ),
     );
@@ -236,8 +238,8 @@ Future<void> createAndOpenWorkspaceConversation(
   }
 }
 
-/// Like [createAndOpenWorkspaceConversation] but pins the new session's working
-/// directory to [worktreePath] (a git worktree under the workspace's repo).
+/// Pins the new session's working directory to [worktreePath] (a git worktree
+/// under the workspace's repo).
 Future<void> createSessionInWorktree(
   BuildContext context,
   Workspace workspace, {
@@ -246,54 +248,16 @@ Future<void> createSessionInWorktree(
   String sessionTeamId = '',
   String personalIdentityId = '',
   CliTool? cli,
-}) async {
-  final chatCubit = context.read<ChatCubit>();
-  final repo = context.read<SessionRepository>();
-  final l10n = context.l10n;
-  final team = isPersonal ? null : context.read<LaunchProfileCubit>().state.selectedTeam;
-  if (!_canLaunchWorkspaceSession(context, workspace, isPersonal: isPersonal)) {
-    return;
-  }
-  final effectiveCli = isPersonal
-      ? (cli ?? _activePresetCli(context, personalIdentityId) ?? CliTool.claude)
-      : null;
-  if (team != null) {
-    unawaited(chatCubit.scheduleTeamConfigValidation(team));
-  }
-  try {
-    final status = await chatCubit.requestCreateAndOpenSession(
-      SessionCreateRequest(
-        workspace: workspace,
-        isPersonal: isPersonal,
-        team: team,
-        member: isPersonal ? null : _teamLead(team),
-        repo: repo,
-        personalIdentityId: personalIdentityId,
-        cli: effectiveCli,
-        workingDirectory: worktreePath,
-        emptyDisplayTitleFallback: l10n.defaultNewChatSessionTitle,
-      ),
-    );
-    if (!context.mounted) return;
-    _handleSessionOpenStatus(
+}) =>
+    createAndOpenWorkspaceConversation(
       context,
-      status,
-      blockedMixedMessage: context.l10n.mixedWorkspaceCreateSessionBlocked,
+      workspace,
+      isPersonal: isPersonal,
+      sessionTeamId: sessionTeamId,
+      personalIdentityId: personalIdentityId,
+      cli: cli,
+      workingDirectory: worktreePath,
     );
-  } on Object catch (error, stackTrace) {
-    appLogger.e(
-      l10n.homeWorkspaceNewConversation,
-      error: error,
-      stackTrace: stackTrace,
-    );
-    if (!context.mounted) return;
-    AppToast.show(
-      context,
-      message: '${l10n.homeWorkspaceNewConversation}: $error',
-      variant: AppToastVariant.error,
-    );
-  }
-}
 
 /// CLI of the opened personal identity's active preset, or `null` when
 /// unavailable (e.g. no preset selected yet). Used to pin a new personal
