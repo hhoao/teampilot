@@ -180,4 +180,20 @@ void main() {
     expect(c2.state.currentWorktreePath, '/wt/a');
     expect(c2.state.collapsed.contains('/wt/a'), true);
   });
+
+  test('pathForNewSession is null with a single worktree', () async {
+    final svc = _FakeWorktreeService([_wt('/repo', main: true)]);
+    final cubit = WorktreeCubit(lister: svc);
+    await cubit.load('/repo');
+    expect(cubit.state.pathForNewSession, isNull);
+  });
+
+  test('pathForNewSession follows current worktree when multiple exist', () async {
+    final svc = _FakeWorktreeService([_wt('/repo', main: true), _wt('/wt/a')]);
+    final cubit = WorktreeCubit(lister: svc);
+    await cubit.load('/repo');
+    expect(cubit.state.pathForNewSession, '/repo');
+    cubit.setCurrentWorktree('/wt/a');
+    expect(cubit.state.pathForNewSession, '/wt/a');
+  });
 }
