@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 
 import '../../l10n/l10n_extensions.dart';
 import '../../widgets/app_dialog.dart';
+import '../../widgets/settings/workspace_settings_widgets.dart';
 
 /// Per-target opt-in to inject `IS_SANDBOX=1` when launching Claude as root
 /// outside a detected container. Default **off**; enabling keeps
@@ -12,12 +13,14 @@ class RootSandboxEnvOptInTile extends StatelessWidget {
     required this.optedIn,
     required this.onChanged,
     this.confirmTrustBoundary,
+    this.showDividerBelow = true,
     super.key,
   });
 
   final String host;
   final bool optedIn;
   final ValueChanged<bool> onChanged;
+  final bool showDividerBelow;
 
   /// Returns true when the user confirms root sandbox env on [host].
   final Future<bool> Function()? confirmTrustBoundary;
@@ -25,20 +28,24 @@ class RootSandboxEnvOptInTile extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final l10n = context.l10n;
-    return SwitchListTile(
-      contentPadding: EdgeInsets.zero,
-      value: optedIn,
-      title: Text(l10n.rootSandboxEnvOptInTitle),
-      subtitle: Text(l10n.rootSandboxEnvOptInSubtitle(host)),
-      onChanged: (next) async {
-        if (!next) {
-          onChanged(false);
-          return;
-        }
-        final confirm = confirmTrustBoundary ??
-            () => showRootSandboxEnvConfirm(context, host);
-        if (await confirm()) onChanged(true);
-      },
+    return SettingsLabeledRow(
+      title: l10n.rootSandboxEnvOptInTitle,
+      subtitle: l10n.rootSandboxEnvOptInSubtitle(host),
+      trailing: Switch(
+        value: optedIn,
+        onChanged: (next) {
+          if (!next) {
+            onChanged(false);
+            return;
+          }
+          final confirm = confirmTrustBoundary ??
+              () => showRootSandboxEnvConfirm(context, host);
+          confirm().then((ok) {
+            if (ok) onChanged(true);
+          });
+        },
+      ),
+      showDividerBelow: showDividerBelow,
     );
   }
 }

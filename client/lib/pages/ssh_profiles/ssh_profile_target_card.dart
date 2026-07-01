@@ -19,7 +19,7 @@ class SshProfileTargetCard extends StatelessWidget {
     required this.onEdit,
     required this.onDelete,
     required this.onRefresh,
-    this.footer,
+    this.onConfigure,
   });
 
   final SshProfile profile;
@@ -33,7 +33,7 @@ class SshProfileTargetCard extends StatelessWidget {
   final VoidCallback onEdit;
   final VoidCallback onDelete;
   final VoidCallback onRefresh;
-  final Widget? footer;
+  final VoidCallback? onConfigure;
 
   Color _statusColor(ColorScheme cs) => switch (status) {
     SshProfileConnectionStatus.connected => const Color(0xFF10B981),
@@ -135,6 +135,12 @@ class SshProfileTargetCard extends StatelessWidget {
                 icon: Icons.edit_outlined,
                 onPressed: busy ? null : onEdit,
               ),
+              if (onConfigure != null)
+                _IconAction(
+                  tooltip: l10n.configure,
+                  icon: Icons.tune_outlined,
+                  onPressed: busy ? null : onConfigure,
+                ),
               _IconAction(
                 tooltip: l10n.sshProfileDelete,
                 icon: Icons.delete_outline,
@@ -187,7 +193,6 @@ class SshProfileTargetCard extends StatelessWidget {
               ],
             ],
           ),
-          if (footer != null) ...[const SizedBox(height: 8), footer!],
         ],
       ),
     );
