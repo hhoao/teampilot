@@ -167,6 +167,7 @@ void main() {
         presenceCubit.detachPresenceUi();
         expect(presenceCubit.state.presence, isEmpty);
 
+        presenceCubit.tickFromIdleWatch();
         async.elapse(const Duration(milliseconds: 200));
         async.flushMicrotasks();
         expect(presenceCubit.state.presence, isEmpty);
@@ -246,7 +247,8 @@ void main() {
 
         // Polling must keep running for the still-mounted workspace B panel.
         pumpFrame();
-        async.elapse(const Duration(seconds: 2));
+        cubit.tickFromIdleWatch();
+        async.elapse(const Duration(milliseconds: 100));
         async.flushMicrotasks();
         pumpFrame();
         expect(
@@ -318,7 +320,8 @@ void main() {
         // Transient ineligibility: null target should NOT clear presence.
         cubit.updateTarget(null);
         pumpFrame();
-        async.elapse(const Duration(seconds: 2));
+        cubit.tickFromIdleWatch();
+        async.elapse(const Duration(milliseconds: 50));
         async.flushMicrotasks();
 
         expect(service.computeCalls, callsAfterFirstPoll); // no new polls
@@ -466,7 +469,8 @@ void main() {
             unawaited(harness.flush());
             async.flushMicrotasks();
 
-            async.elapse(const Duration(seconds: 2));
+            presenceCubit.tickFromIdleWatch();
+            async.elapse(const Duration(milliseconds: 50));
             async.flushMicrotasks();
             expect(service.computeCalls, callsWithTeamTab);
 
@@ -520,7 +524,8 @@ void main() {
         expect(firstPresence, isNotNull);
 
         pumpFrame();
-        async.elapse(const Duration(seconds: 2));
+        cubit.tickFromIdleWatch();
+        async.elapse(const Duration(milliseconds: 50));
         async.flushMicrotasks();
         pumpFrame();
 

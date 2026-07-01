@@ -106,6 +106,7 @@ class ChatCubit extends Cubit<ChatState>
     isClosed: () => isClosed,
     globalPresets: () => _lifecycle.globalPresets,
     onWorkingSessionsChanged: _updateWorkingSessions,
+    onAfterIdleWatchTick: () => unawaited(_presenceCubit?.tickFromIdleWatch()),
     artifactServiceFactory: _buildArtifactService,
   );
 
@@ -294,8 +295,8 @@ class ChatCubit extends Cubit<ChatState>
   void bindPresenceCubit(MemberPresenceCubit cubit) => _presenceCubit = cubit;
 
   /// Pushed by [TabTeamBusCoordinator] (1s idle-watch tick) whenever the set of
-  /// sessions with a member in-turn changes. Drives the working spinner on tabs
-  /// / sidebar list items. Set is already change-filtered upstream.
+  /// sessions with a member in-turn changes. Member presence refreshes on the
+  /// same tick via [onAfterIdleWatchTick].
   void _updateWorkingSessions(Set<String> ids) {
     if (isClosed || setEquals(ids, state.workingSessionIds)) return;
     emit(state.copyWith(workingSessionIds: ids));
@@ -326,22 +327,19 @@ class ChatCubit extends Cubit<ChatState>
     );
   }
 
-  /// mixed 模式:成员工作态**纯取 TeamBus 回合真值**,不再用 PTY 字节兜底 ——
-  /// 终端输出无法证明 working(spinner / 状态行重绘会把空闲成员喷成「工作中」),
-  /// 所以只认正向回合事件:
-  ///   - 阻塞在 `wait_for_message` → idle;
-  ///   - bus 在回合中(`isMemberInTurn` = `isActive`)→ working;否则 idle。
-  /// working 的 `active` 由三类正向边置位:物化完成 / 收到 mail / **用户在 prompt 直接
-  /// 提交**(`markTurnStarted`,补上了 leader 用户回合这条以前没接回 bus 的路)。idle 由
-  /// `wait` 或 Stop-hook `/idle`（不经 PTY 静默边沿，避免工具间隙误判）。native 单 CLI
-  /// 仍用 PTY 落沿 + `userTurnActive`。
+  /// mixed 模式成员列表 working/idle：只读 TeamBus（PTY 落沿由 idle watch 写 bus）。
   MemberWorkload Function(String memberId)? _busWorkloadResolver(ChatTab tab) {
     final bus = tab.teamBus;
     if (_activeTeam?.teamMode != TeamMode.mixed || bus == null) return null;
-    return (memberId) =>
-        bus.isMemberInTurn(memberId) && !bus.isWaitingForMessage(memberId)
-        ? MemberWorkload.working
-        : MemberWorkload.idle;
+    return (memberId) {
+      if (bus.isWaitingForMessage(memberId)) {
+        return MemberWorkload.idle;
+      }
+      if (bus.isMemberInTurn(memberId)) {
+        return MemberWorkload.working;
+      }
+      return MemberWorkload.idle;
+    };
   }
 
   /// Switches the active workspace bucket and republishes its tabs into state.

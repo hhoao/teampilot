@@ -9,6 +9,7 @@ import '../../models/team_config.dart';
 import '../../services/cli/preset_resolver.dart';
 import '../../services/cli/registry/capabilities/terminal_behavior_capability.dart';
 import '../../services/cli/registry/cli_tool_registry.dart';
+import '../../services/team/member_turn_idle_sync.dart';
 import '../../services/team_bus/agent_node.dart';
 import '../../services/team_bus/artifacts/artifact_transfer_service.dart';
 import '../../services/team_bus/bus_user_line_capture.dart';
@@ -47,6 +48,7 @@ class TabTeamBusCoordinator implements MemberMaterializer {
     required bool Function() isClosed,
     required List<CliPreset> Function() globalPresets,
     void Function(Set<String> workingSessionIds)? onWorkingSessionsChanged,
+    VoidCallback? onAfterIdleWatchTick,
     ArtifactTransferService Function(AppSession session)? artifactServiceFactory,
   })  : _tabStore = tabStore,
         _shellFactory = shellFactory,
@@ -55,6 +57,7 @@ class TabTeamBusCoordinator implements MemberMaterializer {
         _activeTeam = activeTeam,
         _isClosed = isClosed,
         _onWorkingSessionsChanged = onWorkingSessionsChanged,
+        _onAfterIdleWatchTick = onAfterIdleWatchTick,
         _artifactServiceFactory = artifactServiceFactory;
 
   final ChatTabStore _tabStore;
@@ -64,6 +67,7 @@ class TabTeamBusCoordinator implements MemberMaterializer {
   final TeamProfile? Function() _activeTeam;
   final bool Function() _isClosed;
   final void Function(Set<String> workingSessionIds)? _onWorkingSessionsChanged;
+  final VoidCallback? _onAfterIdleWatchTick;
 
   /// P3d: builds the per-session cross-machine artifact transfer service. Null =
   /// the three artifact MCP tools are not advertised (single-machine / tests).
@@ -74,11 +78,8 @@ class TabTeamBusCoordinator implements MemberMaterializer {
   final Map<(String, String), Completer<void>> _memberReady = {};
   Timer? _idleWatchTimer;
 
-  /// Non-bus (simple / native single-CLI) per-shell flag: has PTY output gone
-  /// active at least once *since the current turn started*. The turn is only
-  /// cleared once we observe active→quiet within the same turn, so a send is
-  /// never wiped by stale activity from the previous turn. Keyed `tabId:memberId`.
-  final Map<String, bool> _turnSawActivity = {};
+  /// Per-member rising edge of in-turn (`userTurnActive` or bus `active`).
+  final Map<String, bool> _wasInTurn = {};
 
   Future<void> installBusForTab(
     ChatTab tab,
@@ -181,11 +182,15 @@ class TabTeamBusCoordinator implements MemberMaterializer {
     final bus = tab.teamBus;
     if (team.teamMode != TeamMode.mixed || bus == null) return null;
     final memberId = member.id;
+    final shell = tab.memberShells[memberId];
     return BusUserInputRouting(
       shouldIntercept: () => bus.isWaitingForMessage(memberId),
       onUserLine: (line) => bus.deliverUserCommand(memberId, line),
       isUnread: (id) => bus.isUnread(memberId, id),
-      onTurnStart: () => bus.markTurnStarted(memberId),
+      onTurnStart: () {
+        shell?.activityTracker.latchTurnQuietBaseline();
+        bus.markTurnStarted(memberId);
+      },
     );
   }
 
@@ -268,7 +273,7 @@ class TabTeamBusCoordinator implements MemberMaterializer {
     if (_tabStore.tabs.isEmpty) {
       _idleWatchTimer?.cancel();
       _idleWatchTimer = null;
-      _turnSawActivity.clear();
+      _wasInTurn.clear();
       _publishWorkingSessions(const {}); // no tabs left → nothing spins.
     }
   }
@@ -276,7 +281,7 @@ class TabTeamBusCoordinator implements MemberMaterializer {
   void disposeIdleWatch() {
     _idleWatchTimer?.cancel();
     _idleWatchTimer = null;
-    _turnSawActivity.clear();
+    _wasInTurn.clear();
     _publishWorkingSessions(const {});
   }
 
@@ -304,39 +309,39 @@ class TabTeamBusCoordinator implements MemberMaterializer {
     final working = <String>{};
     for (final tab in _tabStore.tabs) {
       final bus = tab.teamBus;
-      if (bus == null) {
-        // 简单 / 原生单 CLI 无总线：镜像 mixed 的 turn 真相——working 由「发送」点亮
-        // （shell.userTurnActive），屏幕输出仅用于熄灭：在同一回合内由活跃转安静即判
-        // 回合结束。绝不用屏幕输出去*点亮* working（否则 agent 静默思考时会误判空闲、
-        // 且随输出闪烁）。只有当本回合内确实出现过输出再转安静才熄灭，发送后尚无输出
-        // 的窗口保持 working，也不会被上一回合的残留活动误熄。
-        tab.memberShells.forEach((memberId, shell) {
-          if (!shell.isRunning) return;
-          final key = '${tab.info.id}:$memberId';
-          if (!shell.userTurnActive) {
-            _turnSawActivity.remove(key); // 回合外：清空跟踪。
-            return;
-          }
-          if (shell.activityTracker.isWorking) {
-            _turnSawActivity[key] = true; // 本回合已产生输出。
-          } else if (_turnSawActivity[key] ?? false) {
-            // 活跃 → 安静：回合结束。
-            shell.markUserTurnIdle();
-            _turnSawActivity.remove(key);
-            return;
-          }
-          working.add(tab.info.id);
-        });
-        continue;
+      if (bus != null) {
+        if (bus.hasTaskQueue) bus.reclaimExpiredTasks();
+        bus.reengageIdleWorkers();
       }
-      // 租约回收 + 门铃看门狗（补敲卡在 prompt 的 worker）。mixed 回合结束只认
-      // Stop-hook `/idle` → [TeamBus.onMemberIdle]，不用 PTY 静默边沿——working/idle
-      // 以 bus activity 为真值，PTY 工具间隙会误触 TurnEnded+门铃。
-      if (bus.hasTaskQueue) bus.reclaimExpiredTasks();
-      bus.reengageIdleWorkers();
-      if (bus.anyMemberInTurn) working.add(tab.info.id);
+      var tabWorking = false;
+      tab.memberShells.forEach((memberId, shell) {
+        final key = '${tab.info.id}:$memberId';
+        final inTurn = bus != null
+            ? bus.isMemberInTurn(memberId)
+            : shell.userTurnActive;
+        final stillWorking = MemberTurnIdleSync.tick(
+          turnKey: key,
+          inTurn: inTurn,
+          shell: shell,
+          wasInTurn: _wasInTurn,
+          endTurn: () {
+            if (bus != null) {
+              bus.onMemberIdle(memberId);
+            } else {
+              shell.markUserTurnIdle();
+            }
+          },
+        );
+        if (stillWorking) tabWorking = true;
+      });
+      if (bus != null) {
+        if (bus.anyMemberInTurn) working.add(tab.info.id);
+      } else if (tabWorking) {
+        working.add(tab.info.id);
+      }
     }
     _publishWorkingSessions(working);
+    _onAfterIdleWatchTick?.call();
   }
 
   /// Emits the session-level working set (only when changed) so tabs / sidebar

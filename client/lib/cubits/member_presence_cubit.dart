@@ -26,7 +26,7 @@ class PresenceTarget {
   final Map<String, TerminalSession> memberShells;
 
   /// mixed 模式:用 TeamBus 协调真值判定 working/idle(见
-  /// [MemberPresenceService.compute])。native 单 CLI 时为 null。
+  /// [MemberPresenceService.compute])。由 idle watch 驱动刷新。native 单 CLI 时为 null。
   final MemberWorkload Function(String memberId)? workloadResolver;
 
   bool get eligible =>
@@ -54,7 +54,6 @@ class MemberPresenceCubit extends Cubit<MemberPresenceState> {
 
   final MemberPresenceService _memberPresenceService;
   final RuntimeRosterCache _runtimeRosterCache = RuntimeRosterCache();
-  Timer? _presencePollTimer;
   TeamProfile? _presenceTeam;
   PresenceTarget? _target;
   int _presencePollGeneration = 0;
@@ -106,8 +105,11 @@ class MemberPresenceCubit extends Cubit<MemberPresenceState> {
 
   void _invalidatePresencePolls() {
     _presencePollGeneration++;
-    _presencePollTimer?.cancel();
-    _presencePollTimer = null;
+  }
+
+  /// Called each second from [TabTeamBusCoordinator] idle watch (via ChatCubit).
+  Future<void> tickFromIdleWatch() async {
+    await _tickMemberPresence(_presencePollGeneration);
   }
 
   void syncPresenceTeam(TeamProfile? team) {
@@ -143,21 +145,8 @@ class MemberPresenceCubit extends Cubit<MemberPresenceState> {
   }
 
   void _restartPresencePolling() {
-    _presencePollTimer?.cancel();
-    _presencePollTimer = null;
-    final team = _presenceTeam;
-    if (team == null || team.members.isEmpty) {
-      // Keep last-known presence; polling resumes when team becomes available.
-      return;
-    }
-    if (!_shouldPollPresence()) {
-      // Keep last-known presence; polling resumes when target becomes eligible.
-      return;
-    }
+    if (!_shouldPollPresence()) return;
     final generation = _presencePollGeneration;
-    _presencePollTimer = Timer.periodic(const Duration(seconds: 1), (_) {
-      unawaited(_tickMemberPresence(generation));
-    });
     unawaited(_tickMemberPresence(generation));
   }
 
@@ -169,7 +158,7 @@ class MemberPresenceCubit extends Cubit<MemberPresenceState> {
     if (target == null) return;
 
     final rosterTeam = _presenceTeam;
-    if (rosterTeam == null) return;
+    if (rosterTeam == null || rosterTeam.members.isEmpty) return;
 
     _presenceTickInFlight = true;
     try {

@@ -1,5 +1,6 @@
 import 'dart:async';
 import 'dart:io';
+import 'dart:typed_data';
 
 import 'package:teampilot/services/team/terminal_activity_tracker.dart';
 import 'package:teampilot/services/terminal/terminal_session.dart';
@@ -68,8 +69,11 @@ class ConnectedRecordingShell {
     await Future<void>.delayed(Duration.zero);
   }
 
-  /// Past [TerminalActivityTracker.idleAfter] with no new output.
+  /// Fingerprint unchanged for [TerminalActivityTracker.idleAfter] (backdated).
   void simulateQuietGap({Duration ago = const Duration(seconds: 5)}) {
-    activityTracker.markActive(DateTime.now().subtract(ago));
+    activityTracker.notePtyBytes(
+      Uint8List.fromList('fingerprint-quiet\n'.codeUnits),
+      DateTime.now().subtract(ago),
+    );
   }
 }

@@ -102,7 +102,10 @@ class TerminalSession implements TerminalTextSink {
   /// Screen output never *enters* working — it only clears it (team-mode parity).
   bool _userTurnActive = false;
   bool get userTurnActive => _userTurnActive;
-  void markUserTurnStarted() => _userTurnActive = true;
+  void markUserTurnStarted() {
+    _userTurnActive = true;
+    activityTracker.latchTurnQuietBaseline();
+  }
   void markUserTurnIdle() => _userTurnActive = false;
   TerminalTransport? _transport;
   var _launchPhase = _LaunchPhase.idle;
@@ -224,9 +227,7 @@ class TerminalSession implements TerminalTextSink {
   bool get isDisposed => _disposed;
 
   bool _startTransportAborted(int startGeneration) =>
-      _disposed ||
-      startGeneration != _transportStartGeneration ||
-      !_starting;
+      _disposed || startGeneration != _transportStartGeneration || !_starting;
   int _pendingViewportCols = 80;
   int _pendingViewportRows = 24;
 
@@ -684,7 +685,7 @@ class TerminalSession implements TerminalTextSink {
   void _feedPtyBytes(Uint8List data) {
     if (data.isEmpty) return;
     if (isConnected) {
-      activityTracker.markActive();
+      activityTracker.notePtyBytes(data);
     }
     engine.feed(data);
     // PTY geometry is managed by TerminalView.onPtyResize → onTerminalPtyResize.

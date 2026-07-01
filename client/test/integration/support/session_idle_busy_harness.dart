@@ -1,4 +1,5 @@
 import 'dart:io';
+import 'dart:typed_data';
 
 import 'package:flutter/scheduler.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -114,8 +115,10 @@ void bindPresenceForPolling({
   presenceCubit.syncPresenceTeam(kIdleBusyMixedTeam);
 }
 
-Future<void> waitForPresencePoll() =>
-    Future<void>.delayed(const Duration(milliseconds: 1200));
+Future<void> waitForPresencePoll({ChatCubit? cubit}) async {
+  cubit?.debugTickIdleWatch();
+  await Future<void>.delayed(const Duration(milliseconds: 150));
+}
 
 /// [MemberPresenceCubit] schedules via [SchedulerBinding], not [PostFrameTestHarness].
 Future<void> pumpSchedulerFrames({int frames = 2}) async {
@@ -131,4 +134,16 @@ void armActivityTracker(TerminalSession shell) {
   shell.activityTracker.reset();
   shell.activityTracker.isWorking;
   shell.activityTracker.markActive();
+}
+
+/// Backdates the per-turn fingerprint baseline so [isQuietAfterTurnPtyActivity]
+/// is true on the next idle-watch tick.
+void simulateFingerprintQuietGap(
+  TerminalSession shell, {
+  Duration ago = const Duration(seconds: 5),
+}) {
+  shell.activityTracker.notePtyBytes(
+    Uint8List.fromList('fingerprint-quiet\n'.codeUnits),
+    DateTime.now().subtract(ago),
+  );
 }

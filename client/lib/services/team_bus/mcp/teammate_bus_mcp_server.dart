@@ -55,9 +55,8 @@ class TeammateBusMcpServer {
       if (request.method == 'POST' && request.uri.path == '/idle') {
         final member = request.headers.value('x-member')?.trim() ?? '';
         await request.drain<void>();
-        if (member.isNotEmpty) handler.notifyIdle(member);
-        // 回 Stop-hook decision：永远把成员推回 wait_for_message（永不主动结束），
-        // 仅空转保险丝（idleStopDecision 内部）触发时才放行。
+        // Stop-hook 只回 CLI 决策(block/放行)，不触发 bus 协调(onMemberIdle)。
+        // 回合落沿、门铃、leader idle 通知改由 wait_for_message / receiveWork 驱动。
         final reply = member.isEmpty ? '{}' : handler.idleStopDecision(member);
         request.response
           ..statusCode = HttpStatus.ok
