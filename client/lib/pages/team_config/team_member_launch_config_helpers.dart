@@ -7,26 +7,34 @@ import '../../services/cli/registry/cli_display_name.dart';
 import '../../services/cli/registry/cli_tool_registry.dart';
 import '../home_workspace/workspace/config/workspace_cli_config_helpers.dart';
 
-/// Catalog CLI used for provider/model pickers (member override → team default).
-CliTool memberCatalogCliFor(TeamProfile team, TeamMemberConfig member) {
-  return member.cliWithin(team);
+/// Catalog CLI for provider/model pickers when member uses **custom** config.
+/// Requires [member.cli] on mixed teams (no team fallback).
+CliTool memberCustomCatalogCli(TeamProfile team, TeamMemberConfig member) {
+  if (team.teamMode == TeamMode.mixed) {
+    return member.cli ?? team.cli;
+  }
+  return team.cli;
 }
 
 bool memberLaunchIsConfigured({
   required TeamProfile team,
   required TeamMemberConfig member,
   required CliToolRegistry registry,
-  required CliTool catalogCli,
+  required List<CliPreset> presets,
   AppProviderConfig? provider,
-  List<CliPreset> presets = const [],
 }) {
-  final resolved = resolveMemberLaunchConfig(
+  final resolved = resolveMemberLaunch(
     team: team,
     member: member,
     globalPresets: presets,
   );
+  if (resolved.mode == MemberLaunchMode.custom &&
+      team.teamMode == TeamMode.mixed &&
+      member.cli == null) {
+    return false;
+  }
   if (resolved.provider.trim().isEmpty) return false;
-  return workspaceCliHidesModelPicker(registry, catalogCli, provider) ||
+  return workspaceCliHidesModelPicker(registry, resolved.cli, provider) ||
       resolved.model.trim().isNotEmpty;
 }
 
@@ -36,11 +44,11 @@ String memberLaunchConfigLine({
   required TeamProfile team,
   required TeamMemberConfig member,
   required bool configured,
+  required List<CliPreset> presets,
   AppProviderConfig? provider,
   required bool hidesModelPicker,
-  List<CliPreset> presets = const [],
 }) {
-  final presetLine = memberPresetSummaryLine(
+  final typeLabel = memberLaunchConfigTypeLabel(
     l10n: l10n,
     team: team,
     member: member,
@@ -56,44 +64,30 @@ String memberLaunchConfigLine({
     hidesModelPicker: hidesModelPicker,
     presets: presets,
   );
-  if (presetLine != null) return '$presetLine  ·  $configPart';
-  return configPart;
+  return '$typeLabel · $configPart';
 }
 
-/// Returns a preset summary label for display, or `null` when the member uses
-/// custom config (no preset).
-String? memberPresetSummaryLine({
+/// Config-type label for summary rows (matches configure-dialog type picker).
+String memberLaunchConfigTypeLabel({
   required AppLocalizations l10n,
   required TeamProfile team,
   required TeamMemberConfig member,
   required List<CliPreset> presets,
 }) {
-  if (member.hasExplicitPreset) {
-    final preset = _findPreset(presets, member.activePresetId!);
-    if (preset != null) return l10n.memberPresetViaPreset(preset.name);
-    return member.activePresetId;
-  }
   if (member.inheritsTeamPreset) {
-    if (team.activePresetId != null) {
-      final preset = _findPreset(presets, team.activePresetId!);
-      if (preset != null) {
-        return l10n.memberPresetViaTeamDefault(preset.name);
-      }
-    }
-    if (team.hasCustomLaunchDefaultsFor(member.cliWithin(team))) {
+    final bundle = resolveTeamLaunchBundle(
+      team: team,
+      globalPresets: presets,
+    );
+    if (bundle.isConfigured) {
       return l10n.memberPresetInheritTeam;
     }
     return l10n.memberPresetInheritTeamNone;
   }
-  // member.usesCustomConfig — no preset label
-  return null;
-}
-
-CliPreset? _findPreset(List<CliPreset> presets, String id) {
-  for (final p in presets) {
-    if (p.id == id) return p;
+  if (member.hasExplicitPreset) {
+    return l10n.memberLaunchConfigTypePreset;
   }
-  return null;
+  return l10n.memberPresetCustom;
 }
 
 String _rawConfigLine({
@@ -104,22 +98,19 @@ String _rawConfigLine({
   required bool configured,
   AppProviderConfig? provider,
   required bool hidesModelPicker,
-  List<CliPreset> presets = const [],
+  required List<CliPreset> presets,
 }) {
   if (!configured) return l10n.workspaceCliNotConfiguredHint;
 
-  final catalogCli = memberCatalogCliFor(team, member);
-  final def = registry.tryGet(catalogCli);
-  var cliLabel = def == null ? catalogCli.value : cliDisplayName(def, l10n);
-  if (team.teamMode == TeamMode.mixed && member.cli == null) {
-    cliLabel = '$cliLabel · ${l10n.memberCliInheritHint}';
-  }
-
-  final resolved = resolveMemberLaunchConfig(
+  final resolved = resolveMemberLaunch(
     team: team,
     member: member,
     globalPresets: presets,
   );
+  final def = registry.tryGet(resolved.cli);
+  final cliLabel =
+      def == null ? resolved.cli.value : cliDisplayName(def, l10n);
+
   final providerName = provider?.name.trim() ?? resolved.provider.trim();
   final modelLabel = resolved.model.trim();
   final effortLabel = resolved.effort.trim();

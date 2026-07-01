@@ -1,12 +1,10 @@
 import 'package:flutter/material.dart';
 
-import 'cli_launch_config_tokens.dart';
+const _dropdownMinWidth = 180.0;
 
 Widget cliLaunchConfigDropdown(Widget child) {
   return ConstrainedBox(
-    constraints: const BoxConstraints(
-      minWidth: CliLaunchConfigTokens.dropdownMinWidth,
-    ),
+    constraints: const BoxConstraints(minWidth: _dropdownMinWidth),
     child: child,
   );
 }

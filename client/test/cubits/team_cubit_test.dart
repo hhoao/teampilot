@@ -461,7 +461,7 @@ void main() {
       (m) => m.id == memberId,
     );
     expect(inherited.activePresetId, TeamProfile.inheritPresetId);
-    expect(inherited.cli, CliTool.codex);
+    expect(inherited.cli, isNull);
 
     await _drainAndCloseTeamCubit(cubit);
     await deleteTempDirBestEffort(base);

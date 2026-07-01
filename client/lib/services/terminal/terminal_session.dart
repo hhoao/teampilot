@@ -6,6 +6,7 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter_alacritty/flutter_alacritty.dart';
 import 'package:flutter_pty/flutter_pty.dart';
 import '../cli/cli_executable_validator.dart';
+import '../cli/preset_resolver.dart';
 import '../cli/cli_invocation.dart';
 import '../cli/cli_tool_locator.dart';
 import '../cli/registry/capabilities/terminal_behavior_capability.dart';
@@ -452,8 +453,9 @@ class TerminalSession implements TerminalTextSink {
 
     final terminalBehavior = shellLaunch != null
         ? CliToolRegistry.builtIn().capability<TerminalBehaviorCapability>(
-            shellLaunch.launchContext.member.cliWithin(
+            stagedMemberLaunchCli(
               shellLaunch.launchContext.team,
+              shellLaunch.launchContext.member,
             ),
           )
         : null;

@@ -104,6 +104,7 @@ class ChatCubit extends Cubit<ChatState>
     connector: _launchService,
     activeTeam: () => _activeTeam,
     isClosed: () => isClosed,
+    globalPresets: () => _lifecycle.globalPresets,
     onWorkingSessionsChanged: _updateWorkingSessions,
     artifactServiceFactory: _buildArtifactService,
   );

@@ -15,7 +15,6 @@ import '../../theme/app_text_styles.dart';
 import '../../widgets/app_dialog.dart';
 import '../../widgets/app_provider/provider_brand_icon.dart';
 import '../../widgets/cli/cli_brand_icon.dart';
-import '../../widgets/cli_launch_config/cli_launch_config_tokens.dart';
 import '../../widgets/cli_launch_config/cli_launch_custom_fields.dart';
 import '../../widgets/cli_launch_config/preset_launch_picker_field.dart';
 import '../../widgets/dropdown/app_dropdown_decoration.dart';
@@ -324,7 +323,7 @@ class _AiFeatureConfigureDialogState extends State<AiFeatureConfigureDialog> {
       _activePresetId != null && _activePresetId!.isNotEmpty;
 
   void _applyPresetChoice(String token) {
-    if (token == CliLaunchConfigTokens.presetCustom) {
+    if (token == kPresetLaunchCustomOption) {
       setState(() => _activePresetId = null);
       return;
     }
@@ -401,9 +400,9 @@ class _AiFeatureConfigureDialogState extends State<AiFeatureConfigureDialog> {
     final allPresets = context.watch<CliPresetsCubit>().state.presets;
     final eligiblePresets = globalPresetPickerItems(allPresets);
     final currentPresetToken =
-        _activePresetId ?? CliLaunchConfigTokens.presetCustom;
+        _activePresetId ?? kPresetLaunchCustomOption;
     final presetDropdownItems = presetLaunchDropdownItems(
-      mode: PresetLaunchPickerMode.customOnly,
+      mode: PresetLaunchPickerMode.withCustomOption,
       eligiblePresets: eligiblePresets,
     );
     final providers = aiFeatureProvidersForCli(_cli, appProviders, registry);
@@ -422,7 +421,7 @@ class _AiFeatureConfigureDialogState extends State<AiFeatureConfigureDialog> {
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
                 PresetLaunchPickerField(
-                  mode: PresetLaunchPickerMode.customOnly,
+                  mode: PresetLaunchPickerMode.withCustomOption,
                   items: presetDropdownItems,
                   currentToken: currentPresetToken,
                   eligiblePresets: eligiblePresets,

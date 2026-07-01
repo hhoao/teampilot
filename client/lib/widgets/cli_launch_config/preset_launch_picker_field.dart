@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../../cubits/app_provider_cubit.dart';
+import '../../l10n/app_localizations.dart';
 import '../../l10n/l10n_extensions.dart';
 import '../../models/cli_preset.dart';
 import '../../services/cli/registry/cli_tool_registry.dart';
@@ -9,17 +10,19 @@ import '../../widgets/dropdown/app_dropdown_decoration.dart';
 import '../../widgets/dropdown/app_dropdown_field.dart';
 import '../../widgets/settings/workspace_settings_widgets.dart';
 import 'cli_launch_config_dropdown.dart';
-import 'cli_launch_config_tokens.dart';
+
+/// Dropdown sentinel for "custom configuration" in preset pickers (not persisted).
+const kPresetLaunchCustomOption = '__custom__';
 
 enum PresetLaunchPickerMode {
-  /// Presets + custom (team default, AI features).
-  customOnly,
+  /// Saved presets plus [kPresetLaunchCustomOption] (e.g. AI features).
+  withCustomOption,
 
-  /// Inherit team + presets + custom (member).
-  inheritAndCustom,
+  /// Saved presets only (team/member configure dialog, preset type).
+  presetOnly,
 }
 
-/// Preset row shared by team / member / AI-feature launch configure dialogs.
+/// Preset row for launch configure dialogs that use a preset sub-picker.
 class PresetLaunchPickerField extends StatelessWidget {
   const PresetLaunchPickerField({
     required this.mode,
@@ -29,7 +32,6 @@ class PresetLaunchPickerField extends StatelessWidget {
     required this.registry,
     required this.providerState,
     required this.onChanged,
-    this.teamPresetName,
     this.decoration,
     super.key,
   });
@@ -41,7 +43,6 @@ class PresetLaunchPickerField extends StatelessWidget {
   final CliToolRegistry registry;
   final AppProviderState providerState;
   final ValueChanged<String> onChanged;
-  final String? teamPresetName;
   final AppDropdownDecoration? decoration;
 
   @override
@@ -62,7 +63,6 @@ class PresetLaunchPickerField extends StatelessWidget {
             value,
             l10n: l10n,
             eligiblePresets: eligiblePresets,
-            mode: mode,
           ),
           listItemBuilder: (ctx, value) => presetLaunchPickerListItem(
             ctx,
@@ -71,8 +71,6 @@ class PresetLaunchPickerField extends StatelessWidget {
             l10n: l10n,
             registry: registry,
             providerState: providerState,
-            mode: mode,
-            teamPresetName: teamPresetName,
           ),
           onChanged: (value) {
             if (value == null) return;
@@ -89,13 +87,8 @@ String presetLaunchPickerLabel(
   String value, {
   required AppLocalizations l10n,
   required List<CliPreset> eligiblePresets,
-  required PresetLaunchPickerMode mode,
 }) {
-  if (mode == PresetLaunchPickerMode.inheritAndCustom &&
-      value == CliLaunchConfigTokens.presetInherit) {
-    return l10n.memberPresetInheritTeam;
-  }
-  if (value == CliLaunchConfigTokens.presetCustom) {
+  if (value == kPresetLaunchCustomOption) {
     return l10n.memberPresetCustom;
   }
   for (final preset in eligiblePresets) {
@@ -111,18 +104,8 @@ Widget presetLaunchPickerListItem(
   required AppLocalizations l10n,
   required CliToolRegistry registry,
   required AppProviderState providerState,
-  required PresetLaunchPickerMode mode,
-  String? teamPresetName,
 }) {
-  if (mode == PresetLaunchPickerMode.inheritAndCustom &&
-      value == CliLaunchConfigTokens.presetInherit) {
-    return _PresetDropdownOption(
-      title: l10n.memberPresetInheritTeam,
-      subtitle: teamPresetName ?? l10n.memberPresetInheritTeamNone,
-      enabled: teamPresetName != null,
-    );
-  }
-  if (value == CliLaunchConfigTokens.presetCustom) {
+  if (value == kPresetLaunchCustomOption) {
     return _PresetDropdownOption(
       title: l10n.memberPresetCustom,
       enabled: true,
@@ -197,14 +180,12 @@ List<String> presetLaunchDropdownItems({
   required List<CliPreset> eligiblePresets,
 }) {
   return switch (mode) {
-    PresetLaunchPickerMode.customOnly => [
+    PresetLaunchPickerMode.withCustomOption => [
       ...eligiblePresets.map((p) => p.id),
-      CliLaunchConfigTokens.presetCustom,
+      kPresetLaunchCustomOption,
     ],
-    PresetLaunchPickerMode.inheritAndCustom => [
-      CliLaunchConfigTokens.presetInherit,
+    PresetLaunchPickerMode.presetOnly => [
       ...eligiblePresets.map((p) => p.id),
-      CliLaunchConfigTokens.presetCustom,
     ],
   };
 }

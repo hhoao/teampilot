@@ -16,7 +16,6 @@ import '../../widgets/dropdown/app_dropdown_decoration.dart';
 import '../../widgets/dropdown/app_dropdown_field.dart';
 import '../../widgets/settings/workspace_settings_widgets.dart';
 import 'cli_launch_config_dropdown.dart';
-import 'cli_launch_config_tokens.dart';
 
 /// How the effort picker resolves visibility and labels.
 enum CliLaunchEffortContext { team, member, standalone }
@@ -256,9 +255,6 @@ class CliLaunchCustomFields extends StatelessWidget {
             initialItem: cliToken,
             decoration: dropdownDeco,
             itemLabel: (value) {
-              if (value == CliLaunchConfigTokens.cliInherit) {
-                return l10n.memberCliInheritHint;
-              }
               final def = registry.tryGet(CliTool.decode(value));
               return def == null ? value : cliDisplayName(def, l10n);
             },
@@ -267,9 +263,6 @@ class CliLaunchCustomFields extends StatelessWidget {
               onMixedCliTokenChanged?.call(value);
             },
             itemBuilder: (ctx, value) {
-              if (value == CliLaunchConfigTokens.cliInherit) {
-                return Text(l10n.memberCliInheritHint);
-              }
               final cli = CliTool.decode(value);
               final def = registry.tryGet(cli);
               return cliDropdownRow(

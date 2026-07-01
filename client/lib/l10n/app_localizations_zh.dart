@@ -846,6 +846,18 @@ class AppLocalizationsZh extends AppLocalizations {
   String get memberPresetLabel => '预设';
 
   @override
+  String get memberLaunchConfigTypeLabel => '配置类型';
+
+  @override
+  String get memberLaunchConfigTypePreset => '预设';
+
+  @override
+  String get memberLaunchConfigInheritHint => '使用团队的默认 CLI、服务商、模型与 Effort。';
+
+  @override
+  String get memberLaunchConfigInheritUnset => '团队默认尚未配置。';
+
+  @override
   String get memberPresetInheritTeam => '继承团队默认';
 
   @override

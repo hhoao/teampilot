@@ -1,6 +1,8 @@
+import '../../models/cli_preset.dart';
+import '../../models/team_config.dart';
 import '../../cubits/chat/model/chat_tab.dart';
 import '../../models/app_session.dart';
-import '../../models/team_config.dart';
+import '../../services/cli/preset_resolver.dart';
 import '../../utils/team_member_naming.dart';
 
 /// CLI brand shown on a workspace session tab.
@@ -10,6 +12,7 @@ CliTool resolveSessionTabCli({
   required bool isPersonal,
   TeamProfile? team,
   CliTool? personalFallbackCli,
+  List<CliPreset> globalPresets = const [],
 }) {
   final session = _sessionForTab(tab, sessions);
   final pinned = session?.cli;
@@ -21,7 +24,11 @@ CliTool resolveSessionTabCli({
   if (team == null) return CliTool.claude;
 
   final member = _memberForTab(tab, team);
-  return member.cliWithin(team);
+  return memberLaunchCli(
+    team: team,
+    member: member,
+    globalPresets: globalPresets,
+  );
 }
 
 AppSession? _sessionForTab(ChatTab tab, List<AppSession> sessions) {

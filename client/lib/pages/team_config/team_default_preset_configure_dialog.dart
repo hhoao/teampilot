@@ -10,9 +10,11 @@ import '../../services/cli/preset_resolver.dart';
 import '../../services/cli/registry/capabilities/cli_effort_capability.dart';
 import '../../services/cli/registry/cli_tool_registry_scope.dart';
 import '../../widgets/app_dialog.dart';
-import '../../widgets/cli_launch_config/cli_launch_config_tokens.dart';
 import '../../widgets/cli_launch_config/cli_launch_custom_fields.dart';
+import '../../widgets/cli_launch_config/member_launch_config_type_field.dart';
 import '../../widgets/cli_launch_config/preset_launch_picker_field.dart';
+import '../../widgets/cli_launch_config/team_launch_config_kind.dart';
+import '../../widgets/cli_launch_config/team_launch_config_type_field.dart';
 import '../../widgets/dropdown/app_dropdown_decoration.dart';
 import '../../widgets/settings/workspace_settings_widgets.dart';
 import '../home_workspace/workspace/config/cli_presets_manage_dialog.dart';
@@ -50,6 +52,7 @@ class _TeamDefaultPresetConfigureDialogState
   late String _providerId;
   late String _modelId;
   late String _effortId;
+  late TeamLaunchConfigKind _configKind;
 
   @override
   void initState() {
@@ -58,9 +61,8 @@ class _TeamDefaultPresetConfigureDialogState
     _providerId = widget.team.providerForCli(_catalogCli);
     _modelId = widget.team.modelForCli(_catalogCli);
     _effortId = widget.team.effortForCli(_catalogCli);
+    _configKind = teamLaunchConfigKind(widget.team);
   }
-
-  bool get _isPresetActive => _currentTeam.activePresetId != null;
 
   void _applyCatalogCliChange(CliTool cli) {
     final team = _currentTeam;
@@ -79,8 +81,9 @@ class _TeamDefaultPresetConfigureDialogState
     );
   }
 
-  void _applyPresetChoice(String token) {
-    if (token == CliLaunchConfigTokens.presetCustom) {
+  void _applyConfigKind(TeamLaunchConfigKind kind) {
+    setState(() => _configKind = kind);
+    if (kind == TeamLaunchConfigKind.custom) {
       widget.cubit.setTeamActivePreset(null);
       final team = _currentTeam;
       setState(() {
@@ -88,13 +91,26 @@ class _TeamDefaultPresetConfigureDialogState
         _modelId = team.modelForCli(_catalogCli);
         _effortId = team.effortForCli(_catalogCli);
       });
-      return;
     }
-    widget.cubit.setTeamActivePreset(token);
+  }
+
+  void _applyPresetChoice(String token) {
+    CliTool? syncCli;
+    for (final preset in context.read<CliPresetsCubit>().state.presets) {
+      if (preset.id == token) {
+        syncCli = preset.cli;
+        break;
+      }
+    }
+    widget.cubit.setTeamActivePreset(token, syncCli: syncCli);
+    setState(() {
+      _configKind = TeamLaunchConfigKind.preset;
+      if (syncCli != null) _catalogCli = syncCli;
+    });
   }
 
   void _save() {
-    if (!_isPresetActive) {
+    if (_configKind == TeamLaunchConfigKind.custom) {
       widget.cubit.updateTeamCustomLaunch(
         catalogCli: _catalogCli,
         defaultCli: _currentTeam.teamMode == TeamMode.mixed
@@ -121,13 +137,15 @@ class _TeamDefaultPresetConfigureDialogState
       allPresets: allPresets,
       catalogCli: _catalogCli,
     );
-    final isPresetActive = team.activePresetId != null;
-    final currentPresetToken =
-        team.activePresetId ?? CliLaunchConfigTokens.presetCustom;
+    final isCustom = _configKind == TeamLaunchConfigKind.custom;
     final presetDropdownItems = presetLaunchDropdownItems(
-      mode: PresetLaunchPickerMode.customOnly,
+      mode: PresetLaunchPickerMode.presetOnly,
       eligiblePresets: eligiblePresetList,
     );
+    final presetToken = teamLaunchPresetToken(team);
+    final effectivePresetToken = presetDropdownItems.contains(presetToken)
+        ? presetToken
+        : (presetDropdownItems.isNotEmpty ? presetDropdownItems.first : '');
     final providers = context
         .watch<AppProviderCubit>()
         .state
@@ -137,6 +155,7 @@ class _TeamDefaultPresetConfigureDialogState
     final cliItems = mixed
         ? registry.launchable.map((d) => d.id).toList(growable: false)
         : <CliTool>[];
+    final providerState = context.watch<AppProviderCubit>().state;
 
     return AppDialog(
       maxWidth: 680,
@@ -151,17 +170,24 @@ class _TeamDefaultPresetConfigureDialogState
               mainAxisSize: MainAxisSize.min,
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
-                PresetLaunchPickerField(
-                  mode: PresetLaunchPickerMode.customOnly,
-                  items: presetDropdownItems,
-                  currentToken: currentPresetToken,
-                  eligiblePresets: eligiblePresetList,
-                  registry: registry,
-                  providerState: context.watch<AppProviderCubit>().state,
+                TeamLaunchConfigTypeField(
+                  currentKind: _configKind,
                   decoration: dropdownDeco,
-                  onChanged: _applyPresetChoice,
+                  showDividerBelow: isCustom,
+                  onChanged: _applyConfigKind,
                 ),
-                if (!isPresetActive)
+                if (_configKind == TeamLaunchConfigKind.preset &&
+                    presetDropdownItems.isNotEmpty)
+                  MemberLaunchPresetField(
+                    items: presetDropdownItems,
+                    currentToken: effectivePresetToken,
+                    eligiblePresets: eligiblePresetList,
+                    registry: registry,
+                    providerState: providerState,
+                    decoration: dropdownDeco,
+                    onChanged: _applyPresetChoice,
+                  ),
+                if (isCustom)
                   CliLaunchCustomFields(
                     catalogCli: _catalogCli,
                     providers: providers,
@@ -224,7 +250,7 @@ class _TeamDefaultPresetConfigureDialogState
                 onPressed: () => Navigator.of(context).pop(),
                 child: Text(l10n.cancel),
               ),
-              if (!isPresetActive)
+              if (isCustom)
                 FilledButton(
                   onPressed: _providerId.trim().isEmpty ? null : _save,
                   child: Text(l10n.save),

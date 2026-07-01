@@ -249,23 +249,17 @@ void main() {
     expect(legacy.teamMode, TeamMode.native);
   });
 
-  test('member.cli is honored only in mixed mode', () {
-    const nativeTeam = TeamProfile(id: 't', name: 'T', cli: CliTool.claude);
-    const mixedTeam = TeamProfile(
-      id: 't',
-      name: 'T',
-      cli: CliTool.claude,
-      teamMode: TeamMode.mixed,
-    );
+  test('member.cli is stored for mixed custom overrides', () {
     const m = TeamMemberConfig(id: 'm', name: 'a', cli: CliTool.flashskyai);
-    const inherit = TeamMemberConfig(id: 'm2', name: 'b');
+    const inherit = TeamMemberConfig(
+      id: 'm2',
+      name: 'b',
+      activePresetId: TeamProfile.inheritPresetId,
+    );
 
-    expect(
-      m.cliWithin(nativeTeam),
-      CliTool.claude,
-    ); // native ignores member.cli
-    expect(m.cliWithin(mixedTeam), CliTool.flashskyai); // mixed honors it
-    expect(inherit.cliWithin(mixedTeam), CliTool.claude); // mixed fallback
+    expect(m.cli, CliTool.flashskyai);
+    expect(inherit.cli, isNull);
+    expect(inherit.inheritsTeamPreset, isTrue);
 
     expect(TeamMemberConfig.fromJson(m.toJson()).cli, CliTool.flashskyai);
     expect(m.toJson()['cli'], 'flashskyai');

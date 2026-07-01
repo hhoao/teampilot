@@ -360,6 +360,8 @@ class _ChatWorkspaceShell extends StatelessWidget {
                           isPersonal: isPersonalWorkspace,
                           team: teamConfig,
                           personalFallbackCli: personalFallbackCli,
+                          globalPresets:
+                              context.watch<CliPresetsCubit>().state.presets,
                         );
                   return TabInfo(
                     id: t.id,

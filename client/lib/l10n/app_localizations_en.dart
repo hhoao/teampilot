@@ -884,6 +884,20 @@ class AppLocalizationsEn extends AppLocalizations {
   String get memberPresetLabel => 'Preset';
 
   @override
+  String get memberLaunchConfigTypeLabel => 'Configuration type';
+
+  @override
+  String get memberLaunchConfigTypePreset => 'Preset';
+
+  @override
+  String get memberLaunchConfigInheritHint =>
+      'Uses the team\'s default CLI, provider, model, and effort.';
+
+  @override
+  String get memberLaunchConfigInheritUnset =>
+      'Team default is not configured yet.';
+
+  @override
   String get memberPresetInheritTeam => 'Inherit team default';
 
   @override

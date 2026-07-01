@@ -1688,6 +1688,30 @@ abstract class AppLocalizations {
   /// **'Preset'**
   String get memberPresetLabel;
 
+  /// No description provided for @memberLaunchConfigTypeLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Configuration type'**
+  String get memberLaunchConfigTypeLabel;
+
+  /// No description provided for @memberLaunchConfigTypePreset.
+  ///
+  /// In en, this message translates to:
+  /// **'Preset'**
+  String get memberLaunchConfigTypePreset;
+
+  /// No description provided for @memberLaunchConfigInheritHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Uses the team\'s default CLI, provider, model, and effort.'**
+  String get memberLaunchConfigInheritHint;
+
+  /// No description provided for @memberLaunchConfigInheritUnset.
+  ///
+  /// In en, this message translates to:
+  /// **'Team default is not configured yet.'**
+  String get memberLaunchConfigInheritUnset;
+
   /// No description provided for @memberPresetInheritTeam.
   ///
   /// In en, this message translates to:

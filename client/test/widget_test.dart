@@ -7,6 +7,7 @@ import 'package:teampilot/cubits/ai_feature_settings_cubit.dart';
 import 'package:teampilot/cubits/app_provider_cubit.dart';
 import 'package:teampilot/cubits/chat/model/session_connect_request.dart';
 import 'package:teampilot/cubits/chat_cubit.dart';
+import 'package:teampilot/cubits/cli_presets_cubit.dart';
 import 'package:teampilot/cubits/notification_cubit.dart';
 import 'package:teampilot/cubits/member_presence_cubit.dart';
 import 'package:teampilot/cubits/config_cubit.dart';
@@ -40,6 +41,7 @@ import 'package:teampilot/repositories/app_provider_repository.dart';
 import 'package:teampilot/repositories/layout_repository.dart';
 import 'package:teampilot/repositories/session_preferences_repository.dart';
 import 'package:teampilot/repositories/session_repository.dart';
+import 'package:teampilot/repositories/cli_presets_repository.dart';
 import 'package:teampilot/repositories/extension_repository.dart';
 import 'package:teampilot/repositories/launch_profile_repository.dart';
 import 'package:teampilot/services/extension/builtin_manifests.dart';
@@ -198,6 +200,14 @@ Widget buildTestApp({
         BlocProvider.value(value: aiFeatures),
         BlocProvider(create: (_) => EditorCubit(fs: LocalFilesystem())),
         BlocProvider.value(value: extensionCubit ?? _testExtensionCubit()),
+        BlocProvider(
+          create: (_) => CliPresetsCubit(
+            repository: CliPresetsRepository(
+              fs: InMemoryFilesystem(),
+              presetsPath: '/cli-presets.json',
+            ),
+          ),
+        ),
         BlocProvider(create: (_) => WorkspaceToolsCubit()),
         BlocProvider(create: (_) => NotificationCubit()),
       ],

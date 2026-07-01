@@ -1,3 +1,5 @@
+import '../preset_resolver.dart';
+import '../../../models/cli_preset.dart';
 import '../../../models/team_config.dart';
 import '../../io/filesystem.dart';
 import '../../storage/app_storage.dart';
@@ -34,8 +36,13 @@ class MemberConfigInspector {
     required TeamProfile team,
     required TeamMemberConfig member,
     RuntimeContext? workContext,
+    List<CliPreset> globalPresets = const [],
   }) async {
-    final cli = member.cliWithin(team);
+    final cli = memberLaunchCli(
+      team: team,
+      member: member,
+      globalPresets: globalPresets,
+    );
     final tool = cli.value;
     final fs = workContext?.filesystem ?? _fs;
     final layout = workContext?.layout ?? _layout;

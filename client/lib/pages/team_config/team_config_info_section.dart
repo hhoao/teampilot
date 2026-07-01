@@ -363,12 +363,16 @@ class _TeamDefaultPresetRow extends StatelessWidget {
         activePreset.cli,
         selectedProvider,
       );
-      configLine = teamPresetConfigLine(
+      configLine = teamLaunchSummaryLine(
         l10n: l10n,
-        registry: registry,
-        preset: activePreset,
-        provider: selectedProvider,
-        hidesModelPicker: hidesModelPicker,
+        team: currentTeam,
+        body: teamPresetConfigLine(
+          l10n: l10n,
+          registry: registry,
+          preset: activePreset,
+          provider: selectedProvider,
+          hidesModelPicker: hidesModelPicker,
+        ),
       );
     } else {
       final providers = context
@@ -390,13 +394,17 @@ class _TeamDefaultPresetRow extends StatelessWidget {
         catalogCli,
         selectedProvider,
       );
-      configLine = teamCustomLaunchConfigLine(
+      configLine = teamLaunchSummaryLine(
         l10n: l10n,
-        registry: registry,
         team: currentTeam,
-        catalogCli: catalogCli,
-        provider: selectedProvider,
-        hidesModelPicker: hidesModelPicker,
+        body: teamCustomLaunchConfigLine(
+          l10n: l10n,
+          registry: registry,
+          team: currentTeam,
+          catalogCli: catalogCli,
+          provider: selectedProvider,
+          hidesModelPicker: hidesModelPicker,
+        ),
       );
     }
 
