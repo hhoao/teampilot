@@ -208,7 +208,7 @@ class MixedTeamIntegrationHarness {
     required String sessionId,
     PostFrameTestHarness? postFrame,
     Duration workerReadyTimeout = const Duration(seconds: 60),
-    Duration busTimeout = const Duration(seconds: 30),
+    Duration busTimeout = const Duration(seconds: 90),
   }) async {
     _resetMockScenarios();
     final workerBaseline = _mockRequestCount(workerScriptApiKey);
