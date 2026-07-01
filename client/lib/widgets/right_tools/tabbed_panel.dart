@@ -26,7 +26,6 @@ class TabbedPanel extends StatefulWidget {
 class _TabbedPanelState extends State<TabbedPanel> {
   int _localSelected = 0;
   final Set<int> _visitedIndices = {0};
-  int? _lastTrackedIndex;
 
   void _select(int index) {
     final scope = widget.scopeId;
@@ -38,9 +37,18 @@ class _TabbedPanelState extends State<TabbedPanel> {
     }
   }
 
-  void _trackVisited(int index) {
+  /// Lazy-mount off-tab bodies once visited; the selected tab always mounts
+  /// immediately so a restored [WorkspaceToolsCubit] index is not blank until
+  /// the next frame (or a second tap).
+  bool _mountChild(int index, int selected) =>
+      index == selected || _visitedIndices.contains(index);
+
+  void _rememberVisit(int index) {
     if (_visitedIndices.contains(index)) return;
-    setState(() => _visitedIndices.add(index));
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted || _visitedIndices.contains(index)) return;
+      setState(() => _visitedIndices.add(index));
+    });
   }
 
   @override
@@ -55,14 +63,7 @@ class _TabbedPanelState extends State<TabbedPanel> {
             (c) => c.selectedIndexFor(widget.scopeId!),
           );
     final clamped = selected.clamp(0, widget.views.length - 1);
-    if (_lastTrackedIndex != clamped) {
-      _lastTrackedIndex = clamped;
-      if (!_visitedIndices.contains(clamped)) {
-        WidgetsBinding.instance.addPostFrameCallback((_) {
-          if (mounted) _trackVisited(clamped);
-        });
-      }
-    }
+    _rememberVisit(clamped);
 
     return Column(
       children: [
@@ -86,7 +87,7 @@ class _TabbedPanelState extends State<TabbedPanel> {
             sizing: StackFit.expand,
             children: [
               for (var i = 0; i < widget.views.length; i++)
-                _visitedIndices.contains(i)
+                _mountChild(i, clamped)
                     ? widget.views[i].child
                     : const SizedBox.shrink(),
             ],

@@ -169,7 +169,7 @@ void main() {
     },
   );
 
-  test('onMemberIdle with pending mail rings the doorbell and stays busy', () {
+  test('onMemberIdle with pending mail rings at prompt after turn end', () {
     final launcher = FakeMemberLauncher();
     final bus = TeamBus(launcher: launcher);
     final node = AgentNode.test(
@@ -185,17 +185,14 @@ void main() {
     bus.onMemberIdle('leader');
 
     expect(launcher.woken.single.memberId, 'leader');
-    expect(node.activity, MemberActivity.active);
+    expect(node.activity, MemberActivity.turnDoneReady);
   });
 
   test(
     'repeated idle edges with one unread ring the doorbell exactly once',
     () {
-      // A single turn-end is reported by BOTH the CLI Stop-hook /idle POST and
-      // the 1s terminal activity watcher (and the injected notice itself jolts
-      // activity). Without doorbell idempotency each onMemberIdle re-injected
-      // "[teammate-bus] You have unread teammate messages" → the user saw it
-      // twice. It must ring once per unread episode.
+      // A single stop-hook /idle may be reported twice. Without doorbell
+      // idempotency each onMemberIdle re-injected the notice.
       final launcher = FakeMemberLauncher();
       final bus = TeamBus(launcher: launcher);
       final node = AgentNode.test(

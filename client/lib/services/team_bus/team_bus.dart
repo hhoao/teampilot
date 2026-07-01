@@ -577,7 +577,8 @@ class TeamBus implements CoordinationView {
     _apply(node, const TurnStarted());
   }
 
-  /// idle 边：turn 结束 → [MemberActivity.turnDoneReady]（或 doorbell → active）。
+  /// idle 边：CLI Stop-hook `/idle` → [MemberActivity.turnDoneReady]；若信箱有积压，
+  /// 紧接 [MailArrived] 在 at-prompt 统一响门铃（不在 [TurnEnded] 里注入）。
   void onMemberIdle(String memberId) {
     final node = _members[memberId];
     if (node == null) return;
@@ -596,6 +597,9 @@ class TeamBus implements CoordinationView {
       }
     }
     _apply(node, const TurnEnded());
+    if (!node.inbox.isEmpty) {
+      _apply(node, const MailArrived());
+    }
   }
 
   Future<void> broadcast(

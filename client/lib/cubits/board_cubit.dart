@@ -1,13 +1,12 @@
-import 'dart:async';
-
 import 'package:equatable/equatable.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
 import '../models/board_column.dart';
 import '../services/team_bus/tasks/team_task.dart';
 import '../services/team_bus/team_bus.dart';
+import 'scoped_bus_poll_gate.dart';
 
-/// Immutable workspaceion of a [TeamTask] for display. Derived per tick; never
+/// Immutable projection of a [TeamTask] for display. Derived per tick; never
 /// persisted. Kept as a separate type so the UI doesn't depend on fields it
 /// doesn't render (brief, dependsOn, timestamps).
 class BoardCard extends Equatable {
@@ -48,52 +47,36 @@ class BoardState extends Equatable {
   List<Object?> get props => [columns, total];
 }
 
-/// Read-only poll of the active tab's [TeamBus] task queue. Isomorphic to
-/// [MailboxCubit]: attach()/detach() gate a periodic timer; each tick reads
-/// the synchronous [TeamBus.listTasks] and buckets into [BoardState].
-///
-/// Mixed-mode only — in native mode the bus's task queue is null and
-/// listTasks() returns an empty list, but the panel is gated out of the
-/// views list before this cubit is ever attached (see RightToolsPanel).
+/// Read-only poll of a workspace-tab-scoped [TeamBus] task queue. Mixed-mode
+/// only — native mode has no task queue and the panel is gated out of the views
+/// list before attach.
 class BoardCubit extends Cubit<BoardState> {
   BoardCubit({
-    required TeamBus? Function() activeBus,
+    required TeamBus? Function(String tabScopeId) busForScope,
     Duration pollInterval = const Duration(milliseconds: 1500),
-  })  : _activeBus = activeBus,
-        _pollInterval = pollInterval,
-        super(const BoardState());
-
-  final TeamBus? Function() _activeBus;
-  final Duration _pollInterval;
-  Timer? _timer;
-  bool _attached = false;
-
-  void attach() {
-    if (_attached) return;
-    _attached = true;
-    _timer?.cancel();
-    unawaited(_tick());
-    _timer = Timer.periodic(_pollInterval, (_) => unawaited(_tick()));
+  }) : super(const BoardState()) {
+    _poll = ScopedBusPollGate(
+      busForScope: busForScope,
+      pollInterval: pollInterval,
+      onTick: _pollBus,
+    );
   }
 
-  void detach() {
-    if (!_attached) return;
-    _attached = false;
-    _timer?.cancel();
-    _timer = null;
-    if (!isClosed && state != BoardState.empty) emit(BoardState.empty);
-  }
+  late final ScopedBusPollGate _poll;
 
-  Future<void> _tick() async {
-    if (!_attached || isClosed) return;
-    final bus = _activeBus();
+  void attachUi(String tabScopeId, [Object? owner]) =>
+      _poll.attachUi(tabScopeId, owner);
+
+  void detachUi([Object? owner]) => _poll.detachUi(owner);
+
+  Future<void> _pollBus(TeamBus? bus) async {
+    if (isClosed) return;
     if (bus == null) {
       if (state != BoardState.empty) emit(BoardState.empty);
       return;
     }
-    final tasks = bus.listTasks();
-    if (!_attached || isClosed) return;
-    emit(_bucket(tasks));
+    if (!_poll.isAttached) return;
+    emit(_bucket(bus.listTasks()));
   }
 
   BoardState _bucket(List<TeamTask> tasks) {
@@ -116,7 +99,7 @@ class BoardCubit extends Cubit<BoardState> {
 
   @override
   Future<void> close() {
-    _timer?.cancel();
+    _poll.dispose();
     return super.close();
   }
 }

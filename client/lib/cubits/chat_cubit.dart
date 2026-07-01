@@ -333,9 +333,8 @@ class ChatCubit extends Cubit<ChatState>
   ///   - bus 在回合中(`isMemberInTurn` = `isActive`)→ working;否则 idle。
   /// working 的 `active` 由三类正向边置位:物化完成 / 收到 mail / **用户在 prompt 直接
   /// 提交**(`markTurnStarted`,补上了 leader 用户回合这条以前没接回 bus 的路)。idle 由
-  /// `wait` / Stop hook / `_tickIdleWatch` 的 PTY 长静默边沿漏空 —— Stop 漏发也不会卡死。
-  /// 这样空闲成员(含 leader)即便 spinner 喷输出也保持 idle,`_tickIdleWatch` 只清不设。
-  /// native 单 CLI 返回 null。
+  /// `wait` 或 Stop-hook `/idle`（不经 PTY 静默边沿，避免工具间隙误判）。native 单 CLI
+  /// 仍用 PTY 落沿 + `userTurnActive`。
   MemberWorkload Function(String memberId)? _busWorkloadResolver(ChatTab tab) {
     final bus = tab.teamBus;
     if (_activeTeam?.teamMode != TeamMode.mixed || bus == null) return null;

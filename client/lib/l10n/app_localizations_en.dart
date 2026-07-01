@@ -1849,9 +1849,8 @@ class AppLocalizationsEn extends AppLocalizations {
   String get credentialPushOptInTitle => 'Push credentials to this machine';
 
   @override
-  String credentialPushOptInSubtitle(Object host) {
-    return 'Materialize provider keys onto $host so remote members can authenticate. Off by default.';
-  }
+  String get credentialPushOptInSubtitle =>
+      'Provider keys for remote member authentication.';
 
   @override
   String get credentialPushConfirmTitle => 'Push credentials to remote host?';
@@ -1868,9 +1867,8 @@ class AppLocalizationsEn extends AppLocalizations {
   String get rootSandboxEnvOptInTitle => 'Inject IS_SANDBOX for root';
 
   @override
-  String rootSandboxEnvOptInSubtitle(Object host) {
-    return 'When Claude launches as root on $host outside a container, set IS_SANDBOX=1 so skip-permissions is kept. Off by default.';
-  }
+  String get rootSandboxEnvOptInSubtitle =>
+      'Keep skip-permissions when Claude runs as root.';
 
   @override
   String get rootSandboxEnvConfirmTitle => 'Enable root sandbox env?';

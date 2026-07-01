@@ -1,7 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
+import '../../cubits/board_cubit.dart';
 import '../../cubits/chat_cubit.dart';
+import '../../cubits/mailbox_cubit.dart';
 import '../../cubits/member_presence_cubit.dart';
 import '../../models/layout_preferences.dart';
 import '../../utils/app_keys.dart';
@@ -40,7 +42,9 @@ class RightToolsPanel extends StatefulWidget {
 class _RightToolsPanelState extends State<RightToolsPanel> {
   ChatCubit? _chatCubit;
   MemberPresenceCubit? _presenceCubit;
-  bool _presenceAttached = false;
+  MailboxCubit? _mailboxCubit;
+  BoardCubit? _boardCubit;
+  bool _uiPollAttached = false;
 
   RightToolsToolPreferences get _toolPreferences =>
       RightToolsToolPreferences.from(widget.preferences);
@@ -52,29 +56,47 @@ class _RightToolsPanelState extends State<RightToolsPanel> {
     final presenceCubit = context.read<MemberPresenceCubit>();
     final shouldAttach = TickerMode.valuesOf(context).enabled;
 
+    MailboxCubit? mailboxCubit;
+    BoardCubit? boardCubit;
+    try {
+      mailboxCubit = context.read<MailboxCubit>();
+      boardCubit = context.read<BoardCubit>();
+    } on Object {
+      mailboxCubit = null;
+      boardCubit = null;
+    }
+
     if (!identical(_chatCubit, chatCubit)) {
-      if (_presenceAttached) {
-        _presenceCubit?.detachPresenceUi(this);
-        _presenceAttached = false;
+      if (_uiPollAttached) {
+        _detachUiPoll();
       }
       _chatCubit = chatCubit;
       _presenceCubit = presenceCubit;
+      _mailboxCubit = mailboxCubit;
+      _boardCubit = boardCubit;
     }
 
-    if (shouldAttach && !_presenceAttached) {
+    if (shouldAttach && !_uiPollAttached) {
       presenceCubit.attachPresenceUi(this);
-      _presenceAttached = true;
-    } else if (!shouldAttach && _presenceAttached) {
-      presenceCubit.detachPresenceUi(this);
-      _presenceAttached = false;
+      _mailboxCubit?.attachUi(widget._toolsScopeId, this);
+      _boardCubit?.attachUi(widget._toolsScopeId, this);
+      _uiPollAttached = true;
+    } else if (!shouldAttach && _uiPollAttached) {
+      _detachUiPoll();
     }
+  }
+
+  void _detachUiPoll() {
+    _presenceCubit?.detachPresenceUi(this);
+    _mailboxCubit?.detachUi(this);
+    _boardCubit?.detachUi(this);
+    _uiPollAttached = false;
   }
 
   @override
   void dispose() {
-    if (_presenceAttached) {
-      _presenceCubit?.detachPresenceUi(this);
-      _presenceAttached = false;
+    if (_uiPollAttached) {
+      _detachUiPoll();
     }
     super.dispose();
   }

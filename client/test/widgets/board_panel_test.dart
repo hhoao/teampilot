@@ -53,9 +53,10 @@ void main() {
       _task('b', 2, TaskStatus.claimed, assignee: 'developer'),
     ]);
     final boardCubit = BoardCubit(
-      activeBus: () => bus,
+      busForScope: (_) => bus,
       pollInterval: const Duration(minutes: 1),
     );
+    boardCubit.attachUi('test-scope');
 
     final team = TeamProfile(
       id: 't1',
@@ -79,15 +80,17 @@ void main() {
     expect(find.text('Pending'), findsOneWidget); // column header
     expect(find.text('In progress'), findsOneWidget); // column header
 
-    addTearDown(() => boardCubit.close());
+    boardCubit.detachUi();
+    await boardCubit.close();
   });
 
   testWidgets('shows empty state when no tasks', (tester) async {
     final bus = _StubBus([]);
     final boardCubit = BoardCubit(
-      activeBus: () => bus,
+      busForScope: (_) => bus,
       pollInterval: const Duration(minutes: 1),
     );
+    boardCubit.attachUi('test-scope');
 
     await tester.pumpWidget(_host(
       boardCubit: boardCubit,
@@ -103,6 +106,7 @@ void main() {
 
     expect(find.byIcon(Icons.view_kanban_outlined), findsOneWidget);
 
-    addTearDown(() => boardCubit.close());
+    boardCubit.detachUi();
+    await boardCubit.close();
   });
 }

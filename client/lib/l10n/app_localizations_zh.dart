@@ -1772,9 +1772,7 @@ class AppLocalizationsZh extends AppLocalizations {
   String get credentialPushOptInTitle => '把凭证推送到此机器';
 
   @override
-  String credentialPushOptInSubtitle(Object host) {
-    return '将 provider 密钥物化到 $host，让远程成员可认证。默认关闭。';
-  }
+  String get credentialPushOptInSubtitle => '供远程成员认证使用。';
 
   @override
   String get credentialPushConfirmTitle => '确认把凭证推送到远程主机？';
@@ -1791,9 +1789,8 @@ class AppLocalizationsZh extends AppLocalizations {
   String get rootSandboxEnvOptInTitle => '为 root 注入 IS_SANDBOX';
 
   @override
-  String rootSandboxEnvOptInSubtitle(Object host) {
-    return '在 $host 上以 root 且非容器环境启动 Claude 时，设置 IS_SANDBOX=1 以保留 skip-permissions。默认关闭。';
-  }
+  String get rootSandboxEnvOptInSubtitle =>
+      'root 启动 Claude 时保留 skip-permissions。';
 
   @override
   String get rootSandboxEnvConfirmTitle => '确认为 root 启用 sandbox 环境变量？';

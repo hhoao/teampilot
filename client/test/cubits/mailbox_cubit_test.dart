@@ -6,7 +6,8 @@ import 'package:teampilot/services/team_bus/team_bus.dart';
 import '../services/team_bus/support/fake_member_launcher.dart';
 
 void main() {
-  test('attach polls the active bus and emits entries + unread count', () async {
+  test('attachUi polls the scoped bus and emits entries + unread count',
+      () async {
     final bus = TeamBus(launcher: FakeMemberLauncher());
     bus.declareMember(AgentNode.test(
       memberId: 'leader',
@@ -15,23 +16,23 @@ void main() {
     ));
     bus.deliverUserCommand('leader', 'hello');
 
-    final cubit = MailboxCubit(activeBus: () => bus);
+    final cubit = MailboxCubit(busForScope: (_) => bus);
     addTearDown(cubit.close);
 
-    cubit.attach();
+    cubit.attachUi('tab-a');
     await Future<void>.delayed(const Duration(milliseconds: 30));
 
     expect(cubit.state.entries.single.content, 'hello');
     expect(cubit.state.totalUnread, 1);
 
-    cubit.detach();
+    cubit.detachUi();
     expect(cubit.state.entries, isEmpty);
   });
 
-  test('emits empty when no active bus', () async {
-    final cubit = MailboxCubit(activeBus: () => null);
+  test('emits empty when scoped bus is null', () async {
+    final cubit = MailboxCubit(busForScope: (_) => null);
     addTearDown(cubit.close);
-    cubit.attach();
+    cubit.attachUi('tab-a');
     await Future<void>.delayed(const Duration(milliseconds: 30));
     expect(cubit.state.entries, isEmpty);
     expect(cubit.state.totalUnread, 0);

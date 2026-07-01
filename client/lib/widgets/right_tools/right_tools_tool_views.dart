@@ -10,6 +10,7 @@ import '../../cubits/chat_cubit.dart';
 import '../../cubits/file_tree_cubit.dart';
 import '../../cubits/mailbox_cubit.dart';
 import '../../cubits/member_presence_cubit.dart';
+import '../../utils/workspace_tab_session_scope.dart';
 import '../../cubits/launch_profile_cubit.dart';
 import '../../cubits/worktree_cubit.dart';
 import '../../l10n/l10n_extensions.dart';
@@ -336,7 +337,7 @@ class _RightToolsToolViewsState extends State<RightToolsToolViews> {
     final chatSlice = context.select<ChatCubit, RightToolsChatSlice>(
       (c) => RightToolsChatSlice.from(
         c.state,
-        hasTeamBus: c.activeTab?.teamBus != null,
+        hasTeamBus: scopedTeamBus(c, widget.toolsScopeId) != null,
       ),
     );
 

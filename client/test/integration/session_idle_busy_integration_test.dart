@@ -184,12 +184,9 @@ void main() {
         );
         expect(cubit.state.workingSessionIds, contains(opened.sessionId));
       },
-      skip:
-          'known bug: idle watcher fires TurnEnded+doorbell on PTY gap while bus '
-          'still in-turn',
     );
 
-    test('PTY quiet falling edge ends bus turn and clears working', () async {
+    test('PTY quiet alone does not end mixed bus turn', () async {
       final opened = await openMixedSessionWithShells(
         cubit: cubit,
         repo: repo,
@@ -208,34 +205,35 @@ void main() {
       );
       cubit.debugTickIdleWatch();
       expect(
-        cubit.state.workingSessionIds,
-        isEmpty,
-        reason: 'PTY falling edge should call onMemberIdle',
+        bus.isMemberInTurn('team-lead'),
+        isTrue,
+        reason: 'mixed bus turn must not end on PTY silence alone',
       );
-      expect(bus.isMemberInTurn('team-lead'), isFalse);
+      expect(
+        cubit.state.workingSessionIds,
+        contains(opened.sessionId),
+      );
     });
 
-    test(
-      'bus turn stays working without PTY activity until Stop-hook /idle',
-      () async {
-        final opened = await openMixedSessionWithShells(
-          cubit: cubit,
-          repo: repo,
-          postFrame: postFrame,
-        );
-        final bus = cubit.activeTab!.teamBus!;
+    test('bus turn stays working without PTY activity until Stop-hook /idle',
+        () async {
+      final opened = await openMixedSessionWithShells(
+        cubit: cubit,
+        repo: repo,
+        postFrame: postFrame,
+      );
+      final bus = cubit.activeTab!.teamBus!;
 
-        bus.markTurnStarted('team-lead');
-        // No PTY output yet — activity tracker still in boot-quiet (isWorking false).
-        cubit.debugTickIdleWatch();
-        expect(
-          cubit.state.workingSessionIds,
-          contains(opened.sessionId),
-          reason: 'bus in-turn truth must not depend on PTY bytes',
-        );
-        expect(bus.isMemberInTurn('team-lead'), isTrue);
-      },
-    );
+      bus.markTurnStarted('team-lead');
+      // No PTY output yet — activity tracker still in boot-quiet (isWorking false).
+      cubit.debugTickIdleWatch();
+      expect(
+        cubit.state.workingSessionIds,
+        contains(opened.sessionId),
+        reason: 'bus in-turn truth must not depend on PTY bytes',
+      );
+      expect(bus.isMemberInTurn('team-lead'), isTrue);
+    });
 
     test('member parked in wait_for_message is idle on bus and session', () async {
       final opened = await openMixedSessionWithShells(

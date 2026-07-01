@@ -27,6 +27,7 @@ import 'package:teampilot/cubits/member_presence_cubit.dart';
 import 'package:teampilot/cubits/notification_cubit.dart';
 import 'package:teampilot/cubits/session_preferences_cubit.dart';
 import 'package:teampilot/cubits/workspace_tools_cubit.dart';
+import 'package:teampilot/utils/workspace_tab_session_scope.dart';
 import 'package:teampilot/main.dart';
 import 'package:teampilot/models/llm_config.dart';
 import 'package:teampilot/models/runtime_target.dart';
@@ -201,12 +202,12 @@ class PerformanceScenarioApp {
           ),
           BlocProvider(
             create: (_) => MailboxCubit(
-              activeBus: () => chat.activeTab?.teamBus,
+              busForScope: (scope) => scopedTeamBus(chat, scope),
             ),
           ),
           BlocProvider(
             create: (_) => BoardCubit(
-              activeBus: () => chat.activeTab?.teamBus,
+              busForScope: (scope) => scopedTeamBus(chat, scope),
             ),
           ),
           BlocProvider(create: (_) => McpCubit(McpRepository())),
