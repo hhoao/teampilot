@@ -14,6 +14,7 @@ import '../services/team_bus/remote/remote_bus_binding_resolver.dart';
 import '../services/remote/local_credential_exporter.dart';
 import '../services/launch/launch_factory.dart';
 import '../cubits/board_cubit.dart';
+import '../utils/workspace_tab_session_scope.dart';
 import '../cubits/mailbox_cubit.dart';
 import '../cubits/member_presence_cubit.dart';
 import '../cubits/notification_cubit.dart';
@@ -674,10 +675,12 @@ Future<AppShell> buildAppShell({
   chatCubit.bindPresenceCubit(memberPresenceCubit);
 
   final mailboxCubit = MailboxCubit(
-    activeBus: () => chatCubit.activeTab?.teamBus,
+    busForScope: (scope) => scopedTeamBus(chatCubit, scope),
   );
 
-  final boardCubit = BoardCubit(activeBus: () => chatCubit.activeTab?.teamBus);
+  final boardCubit = BoardCubit(
+    busForScope: (scope) => scopedTeamBus(chatCubit, scope),
+  );
 
   final notificationCubit = NotificationCubit();
   final notificationBootstrap = notificationCubit.load();

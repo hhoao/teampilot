@@ -35,16 +35,16 @@ TeamTask _task(String id, int seq, TaskStatus s, {String? assignee}) =>
 void main() {
   group('BoardCubit', () {
     test('emits empty state when bus is null', () async {
-      final cubit = BoardCubit(activeBus: () => null);
-      cubit.attach();
+      final cubit = BoardCubit(busForScope: (_) => null);
+      cubit.attachUi('tab-a');
       await Future<void>.delayed(Duration.zero);
       expect(cubit.state.total, 0);
       expect(cubit.state.columns[BoardColumn.pending], isNull);
-      cubit.detach();
+      cubit.detachUi();
       await cubit.close();
     });
 
-    test('buckets tasks by status on attach', () async {
+    test('buckets tasks by status on attachUi', () async {
       final bus = _StubBus([
         _task('a', 1, TaskStatus.pending),
         _task('b', 2, TaskStatus.claimed, assignee: 'developer'),
@@ -52,33 +52,31 @@ void main() {
         _task('d', 4, TaskStatus.failed, assignee: 'reviewer'),
       ]);
       final cubit = BoardCubit(
-        activeBus: () => bus,
+        busForScope: (_) => bus,
         pollInterval: const Duration(milliseconds: 10),
       );
-      cubit.attach();
-      // Allow the immediate _tick() to run.
+      cubit.attachUi('tab-a');
       await Future<void>.delayed(const Duration(milliseconds: 20));
 
       expect(cubit.state.total, 4);
       expect(cubit.state.columns[BoardColumn.pending]!.length, 1);
       expect(cubit.state.columns[BoardColumn.claimed]!.length, 1);
       expect(cubit.state.columns[BoardColumn.done]!.length, 2);
-      // seq preserved within a column
       expect(cubit.state.columns[BoardColumn.pending]!.first.seq, 1);
       expect(cubit.state.columns[BoardColumn.done]!.first.seq, 3);
 
-      cubit.detach();
+      cubit.detachUi();
       await cubit.close();
     });
 
-    test('detach clears state to empty', () async {
+    test('detachUi clears state to empty', () async {
       final bus = _StubBus([_task('a', 1, TaskStatus.pending)]);
-      final cubit = BoardCubit(activeBus: () => bus);
-      cubit.attach();
+      final cubit = BoardCubit(busForScope: (_) => bus);
+      cubit.attachUi('tab-a');
       await Future<void>.delayed(const Duration(milliseconds: 20));
       expect(cubit.state.total, 1);
 
-      cubit.detach();
+      cubit.detachUi();
       expect(cubit.state.total, 0);
       expect(cubit.state.columns, isEmpty);
       await cubit.close();

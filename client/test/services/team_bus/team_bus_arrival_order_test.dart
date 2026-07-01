@@ -26,7 +26,7 @@ void main() {
 
       bus.onMemberIdle('leader'); // idle edge with pending mail
       expect(launcher.woken.single.memberId, 'leader');
-      expect(node.activity, MemberActivity.active);
+      expect(node.activity, MemberActivity.turnDoneReady);
     },
   );
 
@@ -51,7 +51,7 @@ void main() {
       );
       expect(launcher.woken.single.notice, TeamBus.doorbellNotice);
       expect(node.inbox.isEmpty, isFalse);
-      expect(node.activity, MemberActivity.active);
+      expect(node.activity, MemberActivity.turnDoneReady);
     },
   );
 

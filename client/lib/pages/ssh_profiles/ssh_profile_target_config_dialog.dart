@@ -17,26 +17,14 @@ Future<void> showSshProfileTargetConfigDialog(
   return showDialog<void>(
     context: context,
     builder: (ctx) {
-      final cs = Theme.of(ctx).colorScheme;
-      final tt = Theme.of(ctx).textTheme;
       return AppDialog(
-        maxWidth: 520,
+        maxWidth: 680,
         child: Column(
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
             AppDialogHeader(title: ctx.l10n.configure),
             const SizedBox(height: 12),
-            Text(
-              profile.name,
-              style: tt.titleSmall?.copyWith(fontWeight: FontWeight.w600),
-            ),
-            const SizedBox(height: 2),
-            Text(
-              profile.hostIdentifier,
-              style: tt.bodySmall?.copyWith(color: cs.onSurfaceVariant),
-            ),
-            const SizedBox(height: 16),
             SettingsSurfaceCard(
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.stretch,

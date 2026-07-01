@@ -47,6 +47,35 @@ void main() {
     });
   });
 
+  group('scopedActiveChatTab', () {
+    test('foreground tab follows ChatState active index', () {
+      final cubit = _cubit();
+      addTearDown(cubit.close);
+
+      cubit.setActiveWorkspace('tab-A');
+      cubit.tabStore.append(_tab('a1'));
+      cubit.tabStore.append(_tab('a2'));
+      cubit.refreshActiveWorkspaceTabs();
+
+      expect(scopedActiveChatTab(cubit, 'tab-A')?.info.id, 'a1');
+    });
+
+    test('background tab freezes to saved bucket index', () {
+      final cubit = _cubit();
+      addTearDown(cubit.close);
+
+      cubit.setActiveWorkspace('tab-A');
+      cubit.tabStore.append(_tab('a1'));
+      cubit.tabStore.append(_tab('a2'));
+      cubit.tabStore.setActiveWorkspace('tab-B', currentActiveIndex: 1);
+      cubit.tabStore.append(_tab('b1'));
+      cubit.refreshActiveWorkspaceTabs();
+
+      expect(scopedActiveChatTab(cubit, 'tab-A')?.info.id, 'a2');
+      expect(scopedActiveChatTab(cubit, 'tab-B')?.info.id, 'b1');
+    });
+  });
+
   group('ChatScopedTabView', () {
     test('reads frozen bucket for background workspace tab', () {
       final cubit = _cubit();

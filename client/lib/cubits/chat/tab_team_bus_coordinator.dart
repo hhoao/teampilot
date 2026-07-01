@@ -73,7 +73,6 @@ class TabTeamBusCoordinator implements MemberMaterializer {
 
   final Map<(String, String), Completer<void>> _memberReady = {};
   Timer? _idleWatchTimer;
-  final Map<String, bool> _lastWorking = {};
 
   /// Non-bus (simple / native single-CLI) per-shell flag: has PTY output gone
   /// active at least once *since the current turn started*. The turn is only
@@ -269,7 +268,6 @@ class TabTeamBusCoordinator implements MemberMaterializer {
     if (_tabStore.tabs.isEmpty) {
       _idleWatchTimer?.cancel();
       _idleWatchTimer = null;
-      _lastWorking.clear();
       _turnSawActivity.clear();
       _publishWorkingSessions(const {}); // no tabs left → nothing spins.
     }
@@ -278,7 +276,7 @@ class TabTeamBusCoordinator implements MemberMaterializer {
   void disposeIdleWatch() {
     _idleWatchTimer?.cancel();
     _idleWatchTimer = null;
-    _lastWorking.clear();
+    _turnSawActivity.clear();
     _publishWorkingSessions(const {});
   }
 
@@ -331,19 +329,11 @@ class TabTeamBusCoordinator implements MemberMaterializer {
         });
         continue;
       }
-      // 租约回收：claimed 超时且认领者掉线的任务退回 pending（仅 mixed 模式有队列）。
+      // 租约回收 + 门铃看门狗（补敲卡在 prompt 的 worker）。mixed 回合结束只认
+      // Stop-hook `/idle` → [TeamBus.onMemberIdle]，不用 PTY 静默边沿——working/idle
+      // 以 bus activity 为真值，PTY 工具间隙会误触 TurnEnded+门铃。
       if (bus.hasTaskQueue) bus.reclaimExpiredTasks();
-      // 门铃看门狗：补敲首个回车被全屏 TUI 输入框吞掉、卡在 prompt 的 worker。
       bus.reengageIdleWorkers();
-      tab.memberShells.forEach((memberId, shell) {
-        final key = '${tab.info.id}:$memberId';
-        final shellWorking = shell.activityTracker.isWorking;
-        final was = _lastWorking[key] ?? false;
-        _lastWorking[key] = shellWorking;
-        if (was && !shellWorking && !bus.isWaitingForMessage(memberId)) {
-          bus.onMemberIdle(memberId);
-        }
-      });
       if (bus.anyMemberInTurn) working.add(tab.info.id);
     }
     _publishWorkingSessions(working);

@@ -10,45 +10,24 @@ import '../../models/team_config.dart';
 import '../../services/team_bus/bus_feed_entry.dart';
 import '../../services/team_bus/team_bus.dart';
 
-/// Live full-team team-bus message feed. Attaches the [MailboxCubit] poll while
-/// mounted; tapping a row jumps to the relevant member's chat tab.
-class MailboxPanel extends StatefulWidget {
+/// Live full-team team-bus message feed. Polling is owned by [RightToolsPanel];
+/// tapping a row jumps to the relevant member's chat tab.
+class MailboxPanel extends StatelessWidget {
   const MailboxPanel({required this.team, required this.cwd, super.key});
 
   final TeamProfile team;
   final String cwd;
 
-  @override
-  State<MailboxPanel> createState() => _MailboxPanelState();
-}
-
-class _MailboxPanelState extends State<MailboxPanel> {
-  late final MailboxCubit _mailboxCubit;
-
-  @override
-  void initState() {
-    super.initState();
-    // Cache the cubit: reading it from `context` in dispose() can throw once
-    // the provider is gone from the tree during teardown.
-    _mailboxCubit = context.read<MailboxCubit>()..attach();
-  }
-
-  @override
-  void dispose() {
-    _mailboxCubit.detach();
-    super.dispose();
-  }
-
-  void _jumpTo(BusFeedEntry entry) {
+  void _jumpTo(BuildContext context, BusFeedEntry entry) {
     final targetId =
         entry.from == TeamBus.userSenderId ? entry.to : entry.from;
     if (targetId == TeamBus.userSenderId || targetId == '*') return;
-    final matches = widget.team.members.where((m) => m.id == targetId);
+    final matches = team.members.where((m) => m.id == targetId);
     if (matches.isEmpty) return;
     unawaited(context.read<ChatCubit>().openMemberTab(
-          widget.team,
+          team,
           matches.first,
-          workspaceCwd: widget.cwd,
+          workspaceCwd: cwd,
         ));
   }
 
@@ -80,7 +59,7 @@ class _MailboxPanelState extends State<MailboxPanel> {
               style: Theme.of(context).textTheme.labelSmall),
           subtitle:
               Text(e.content, maxLines: 2, overflow: TextOverflow.ellipsis),
-          onTap: () => _jumpTo(e),
+          onTap: () => _jumpTo(context, e),
         );
       },
     );

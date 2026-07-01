@@ -74,9 +74,9 @@ void main() {
       expect(t.effects, isEmpty);
     });
 
-    test('non-eager + at-prompt → doorbell', () {
+    test('non-eager + at-prompt → doorbell, stays at prompt', () {
       final t = _run(_atPrompt, const MailArrived(), hasUnread: true);
-      expect(t.presence, _active);
+      expect(t.presence, _atPrompt);
       expect(t.effects.single, isA<DoorbellEffect>());
     });
 
@@ -132,10 +132,11 @@ void main() {
       expect(t.presence, _atPrompt);
       expect(t.effects, isEmpty);
     });
-    test('running + unread → active + doorbell', () {
+    test('running + unread → turnDoneReady, doorbell via onMemberIdle mail path',
+        () {
       final t = _run(_active, const TurnEnded(), hasUnread: true);
-      expect(t.presence, _active);
-      expect(t.effects.single, isA<DoorbellEffect>());
+      expect(t.presence, _atPrompt);
+      expect(t.effects, isEmpty);
     });
     test('running + unread but already doorbelled → idle, no re-ring', () {
       final t = _run(_active, const TurnEnded(),

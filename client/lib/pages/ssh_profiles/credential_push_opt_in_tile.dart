@@ -33,7 +33,7 @@ class CredentialPushOptInTile extends StatelessWidget {
     final l10n = context.l10n;
     return SettingsLabeledRow(
       title: l10n.credentialPushOptInTitle,
-      subtitle: l10n.credentialPushOptInSubtitle(host),
+      subtitle: l10n.credentialPushOptInSubtitle,
       trailing: Switch(
         value: optedIn,
         onChanged: (next) {

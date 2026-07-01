@@ -30,7 +30,7 @@ class RootSandboxEnvOptInTile extends StatelessWidget {
     final l10n = context.l10n;
     return SettingsLabeledRow(
       title: l10n.rootSandboxEnvOptInTitle,
-      subtitle: l10n.rootSandboxEnvOptInSubtitle(host),
+      subtitle: l10n.rootSandboxEnvOptInSubtitle,
       trailing: Switch(
         value: optedIn,
         onChanged: (next) {

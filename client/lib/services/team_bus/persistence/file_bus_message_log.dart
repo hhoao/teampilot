@@ -23,10 +23,8 @@ class FileBusMessageLog implements BusMessageLog {
 
   Future<T> _locked<T>(String memberId, Future<T> Function() fn) {
     final prev = _locks[memberId] ?? Future<void>.value();
-    late Future<T> result;
-    final next = prev.then((_) => result);
-    _locks[memberId] = next.then((_) {}, onError: (_) {});
-    result = fn();
+    final result = prev.then((_) => fn());
+    _locks[memberId] = result.then((_) {}, onError: (_) {});
     return result;
   }
 

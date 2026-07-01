@@ -10,51 +10,31 @@ import '../../models/board_column.dart';
 import '../../models/team_config.dart';
 import '../../services/team_bus/tasks/team_task.dart';
 
-/// Live read-only task board for a mixed-mode team. Attaches [BoardCubit]'s
-/// poll while mounted (mirrors MailboxPanel). Tapping a claimed card opens
-/// the assignee's chat tab.
-class BoardPanel extends StatefulWidget {
+/// Live read-only task board for a mixed-mode team. Polling is owned by
+/// [RightToolsPanel]. Tapping a claimed card opens the assignee's chat tab.
+class BoardPanel extends StatelessWidget {
   const BoardPanel({required this.team, required this.cwd, super.key});
 
   final TeamProfile team;
   final String cwd;
 
-  @override
-  State<BoardPanel> createState() => _BoardPanelState();
-}
-
-class _BoardPanelState extends State<BoardPanel> {
-  late final BoardCubit _boardCubit;
-
-  @override
-  void initState() {
-    super.initState();
-    _boardCubit = context.read<BoardCubit>()..attach();
-  }
-
-  @override
-  void dispose() {
-    _boardCubit.detach();
-    super.dispose();
-  }
-
   String _memberName(String? id) {
     if (id == null) return '';
-    final m = widget.team.members.cast<TeamMemberConfig?>().firstWhere(
+    final m = team.members.cast<TeamMemberConfig?>().firstWhere(
           (m) => m?.id == id,
           orElse: () => null,
         );
     return m?.name ?? id;
   }
 
-  void _openAssignee(String? assigneeId) {
+  void _openAssignee(BuildContext context, String? assigneeId) {
     if (assigneeId == null) return;
-    final matches = widget.team.members.where((m) => m.id == assigneeId);
+    final matches = team.members.where((m) => m.id == assigneeId);
     if (matches.isEmpty) return;
     unawaited(context.read<ChatCubit>().openMemberTab(
-          widget.team,
+          team,
           matches.first,
-          workspaceCwd: widget.cwd,
+          workspaceCwd: cwd,
         ));
   }
 
@@ -87,7 +67,7 @@ class _BoardPanelState extends State<BoardPanel> {
             column: column,
             cards: state.columns[column] ?? const [],
             memberName: _memberName,
-            onTapCard: _openAssignee,
+            onTapCard: (id) => _openAssignee(context, id),
           ),
       ],
     );

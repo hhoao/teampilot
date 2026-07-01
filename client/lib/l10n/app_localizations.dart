@@ -3437,8 +3437,8 @@ abstract class AppLocalizations {
   /// No description provided for @credentialPushOptInSubtitle.
   ///
   /// In en, this message translates to:
-  /// **'Materialize provider keys onto {host} so remote members can authenticate. Off by default.'**
-  String credentialPushOptInSubtitle(Object host);
+  /// **'Provider keys for remote member authentication.'**
+  String get credentialPushOptInSubtitle;
 
   /// No description provided for @credentialPushConfirmTitle.
   ///
@@ -3467,8 +3467,8 @@ abstract class AppLocalizations {
   /// No description provided for @rootSandboxEnvOptInSubtitle.
   ///
   /// In en, this message translates to:
-  /// **'When Claude launches as root on {host} outside a container, set IS_SANDBOX=1 so skip-permissions is kept. Off by default.'**
-  String rootSandboxEnvOptInSubtitle(Object host);
+  /// **'Keep skip-permissions when Claude runs as root.'**
+  String get rootSandboxEnvOptInSubtitle;
 
   /// No description provided for @rootSandboxEnvConfirmTitle.
   ///
