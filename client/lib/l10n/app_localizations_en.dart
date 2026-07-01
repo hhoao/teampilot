@@ -4471,4 +4471,206 @@ class AppLocalizationsEn extends AppLocalizations {
   @override
   String get worktreeDeleteBusyWarning =>
       'Stop the running conversations in this worktree before removing it.';
+
+  @override
+  String get automationsTitle => 'Automations';
+
+  @override
+  String get automationsSubtitle =>
+      'Schedule messages and prompts across workspaces and sessions.';
+
+  @override
+  String get automationsNew => 'New automation';
+
+  @override
+  String get automationsSendToLead => 'Send to lead';
+
+  @override
+  String get automationsLaunchPrompt => 'Launch prompt';
+
+  @override
+  String get automationsScheduleHourly => 'Hourly';
+
+  @override
+  String get automationsScheduleDaily => 'Daily';
+
+  @override
+  String get automationsScheduleWeekdays => 'Weekdays';
+
+  @override
+  String get automationsScheduleWeekly => 'Weekly';
+
+  @override
+  String get automationsScheduleCustom => 'Custom cron';
+
+  @override
+  String get automationsSchedule => 'Schedule';
+
+  @override
+  String get automationsSessionContextMenu => 'Scheduled message…';
+
+  @override
+  String get automationsManageSessionContextMenu => 'Manage scheduled messages';
+
+  @override
+  String automationsNextRun(String time) {
+    return 'Next run: $time';
+  }
+
+  @override
+  String get automationsNextRunNone => 'No upcoming run';
+
+  @override
+  String get automationsRunNow => 'Run now';
+
+  @override
+  String get automationsRunHistory => 'Run history';
+
+  @override
+  String get automationsRunHistoryEmpty => 'No runs yet';
+
+  @override
+  String get automationsSkippedUnavailable => 'Skipped — session unavailable';
+
+  @override
+  String get automationsDispatchFailed => 'Dispatch failed';
+
+  @override
+  String get automationsEdit => 'Edit';
+
+  @override
+  String get automationsDelete => 'Delete';
+
+  @override
+  String get automationsDeleteConfirm => 'Delete this automation?';
+
+  @override
+  String get automationsEmpty => 'No automations yet';
+
+  @override
+  String get automationsName => 'Name';
+
+  @override
+  String get automationsMessage => 'Message';
+
+  @override
+  String get automationsEnabled => 'Enabled';
+
+  @override
+  String get automationsAction => 'Action';
+
+  @override
+  String get automationsScope => 'Scope';
+
+  @override
+  String get automationsScopeSession => 'Session';
+
+  @override
+  String get automationsScopeWorkspace => 'Workspace';
+
+  @override
+  String get automationsCli => 'CLI';
+
+  @override
+  String get automationsReuseSession => 'Reuse session';
+
+  @override
+  String get automationsTargetMember => 'Target member';
+
+  @override
+  String get automationsCustomCron => 'Cron expression';
+
+  @override
+  String get automationsInvalidCron =>
+      'Invalid cron expression (5 fields required)';
+
+  @override
+  String get automationsInvalidTime => 'Time must be HH:mm';
+
+  @override
+  String get automationsValidationRequired => 'Name and message are required';
+
+  @override
+  String get automationsTime => 'Time';
+
+  @override
+  String get automationsCreateTitle => 'New automation';
+
+  @override
+  String get automationsEditTitle => 'Edit automation';
+
+  @override
+  String get automationsCompactTitle => 'Scheduled message';
+
+  @override
+  String automationsHeaderCount(int count) {
+    return 'Automations · $count';
+  }
+
+  @override
+  String get automationsFilterAll => 'All';
+
+  @override
+  String get automationsFilterEnabled => 'Enabled only';
+
+  @override
+  String automationsScheduleSummaryHourly(int minute) {
+    return 'Hourly at :$minute';
+  }
+
+  @override
+  String automationsScheduleSummaryDaily(String time) {
+    return 'Daily at $time';
+  }
+
+  @override
+  String automationsScheduleSummaryWeekdays(String time) {
+    return 'Weekdays at $time';
+  }
+
+  @override
+  String automationsScheduleSummaryWeekly(String day, String time) {
+    return 'Weekly on $day at $time';
+  }
+
+  @override
+  String get automationsDayMonday => 'Monday';
+
+  @override
+  String get automationsDayTuesday => 'Tuesday';
+
+  @override
+  String get automationsDayWednesday => 'Wednesday';
+
+  @override
+  String get automationsDayThursday => 'Thursday';
+
+  @override
+  String get automationsDayFriday => 'Friday';
+
+  @override
+  String get automationsDaySaturday => 'Saturday';
+
+  @override
+  String get automationsDaySunday => 'Sunday';
+
+  @override
+  String automationsSessionDefaultName(String title) {
+    return '$title — scheduled message';
+  }
+
+  @override
+  String get automationsRunStatusCompleted => 'Completed';
+
+  @override
+  String get automationsRunStatusPending => 'Pending';
+
+  @override
+  String get automationsRunStatusDispatching => 'Dispatching';
+
+  @override
+  String get automationsRunStatusDispatched => 'Dispatched';
+
+  @override
+  String get automationsRunStatusSkippedMissed => 'Skipped — missed window';
 }

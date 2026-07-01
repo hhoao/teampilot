@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 
+import '../automations/automation_management_page.dart';
 import '../extensions/extension_management_page.dart';
 import '../mcp/mcp_management_page.dart';
 import '../plugins/plugin_management_page.dart';
@@ -15,7 +16,8 @@ enum HomeGlobalView {
   mcp,
   extensions,
   teamHub,
-  providers;
+  providers,
+  automations;
 
   /// Query key on `/home-v2` for deep-linking a global management pane.
   static const globalQueryParam = 'global';
@@ -80,6 +82,7 @@ class _HomeGlobalSectionState extends State<HomeGlobalSection> {
       ),
       HomeGlobalView.teamHub => const TeamHubPage(),
       HomeGlobalView.providers => const LlmConfigWorkspace(),
+      HomeGlobalView.automations => const AutomationManagementPage(),
     };
     if (MediaQuery.disableAnimationsOf(context)) return content;
     return content

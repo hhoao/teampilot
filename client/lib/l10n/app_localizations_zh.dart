@@ -4304,4 +4304,204 @@ class AppLocalizationsZh extends AppLocalizations {
 
   @override
   String get worktreeDeleteBusyWarning => '请先停止该 worktree 下正在运行的会话，再删除。';
+
+  @override
+  String get automationsTitle => '全部自动化';
+
+  @override
+  String get automationsSubtitle => '跨项目与会话定时发送消息或启动 prompt。';
+
+  @override
+  String get automationsNew => '新建自动化';
+
+  @override
+  String get automationsSendToLead => '发送给 lead';
+
+  @override
+  String get automationsLaunchPrompt => '启动 prompt';
+
+  @override
+  String get automationsScheduleHourly => '每小时';
+
+  @override
+  String get automationsScheduleDaily => '每天';
+
+  @override
+  String get automationsScheduleWeekdays => '工作日';
+
+  @override
+  String get automationsScheduleWeekly => '每周';
+
+  @override
+  String get automationsScheduleCustom => '自定义 cron';
+
+  @override
+  String get automationsSchedule => '调度';
+
+  @override
+  String get automationsSessionContextMenu => '定时消息…';
+
+  @override
+  String get automationsManageSessionContextMenu => '管理定时消息';
+
+  @override
+  String automationsNextRun(String time) {
+    return '下次运行：$time';
+  }
+
+  @override
+  String get automationsNextRunNone => '暂无计划运行';
+
+  @override
+  String get automationsRunNow => '立即运行';
+
+  @override
+  String get automationsRunHistory => '运行历史';
+
+  @override
+  String get automationsRunHistoryEmpty => '暂无运行记录';
+
+  @override
+  String get automationsSkippedUnavailable => '已跳过 — 会话不可用';
+
+  @override
+  String get automationsDispatchFailed => '分发失败';
+
+  @override
+  String get automationsEdit => '编辑';
+
+  @override
+  String get automationsDelete => '删除';
+
+  @override
+  String get automationsDeleteConfirm => '删除此自动化？';
+
+  @override
+  String get automationsEmpty => '暂无自动化';
+
+  @override
+  String get automationsName => '名称';
+
+  @override
+  String get automationsMessage => '消息';
+
+  @override
+  String get automationsEnabled => '已启用';
+
+  @override
+  String get automationsAction => '动作';
+
+  @override
+  String get automationsScope => '范围';
+
+  @override
+  String get automationsScopeSession => '会话';
+
+  @override
+  String get automationsScopeWorkspace => '工作区';
+
+  @override
+  String get automationsCli => 'CLI';
+
+  @override
+  String get automationsReuseSession => '复用会话';
+
+  @override
+  String get automationsTargetMember => '目标成员';
+
+  @override
+  String get automationsCustomCron => 'Cron 表达式';
+
+  @override
+  String get automationsInvalidCron => '无效的 cron 表达式（需要 5 个字段）';
+
+  @override
+  String get automationsInvalidTime => '时间格式须为 HH:mm';
+
+  @override
+  String get automationsValidationRequired => '名称和消息为必填项';
+
+  @override
+  String get automationsTime => '时间';
+
+  @override
+  String get automationsCreateTitle => '新建自动化';
+
+  @override
+  String get automationsEditTitle => '编辑自动化';
+
+  @override
+  String get automationsCompactTitle => '定时消息';
+
+  @override
+  String automationsHeaderCount(int count) {
+    return '自动化 · $count';
+  }
+
+  @override
+  String get automationsFilterAll => '全部';
+
+  @override
+  String get automationsFilterEnabled => '仅已启用';
+
+  @override
+  String automationsScheduleSummaryHourly(int minute) {
+    return '每小时 :$minute';
+  }
+
+  @override
+  String automationsScheduleSummaryDaily(String time) {
+    return '每天 $time';
+  }
+
+  @override
+  String automationsScheduleSummaryWeekdays(String time) {
+    return '工作日 $time';
+  }
+
+  @override
+  String automationsScheduleSummaryWeekly(String day, String time) {
+    return '每周$day $time';
+  }
+
+  @override
+  String get automationsDayMonday => '周一';
+
+  @override
+  String get automationsDayTuesday => '周二';
+
+  @override
+  String get automationsDayWednesday => '周三';
+
+  @override
+  String get automationsDayThursday => '周四';
+
+  @override
+  String get automationsDayFriday => '周五';
+
+  @override
+  String get automationsDaySaturday => '周六';
+
+  @override
+  String get automationsDaySunday => '周日';
+
+  @override
+  String automationsSessionDefaultName(String title) {
+    return '$title — 定时消息';
+  }
+
+  @override
+  String get automationsRunStatusCompleted => '已完成';
+
+  @override
+  String get automationsRunStatusPending => '等待中';
+
+  @override
+  String get automationsRunStatusDispatching => '分发中';
+
+  @override
+  String get automationsRunStatusDispatched => '已分发';
+
+  @override
+  String get automationsRunStatusSkippedMissed => '已跳过 — 错过窗口';
 }

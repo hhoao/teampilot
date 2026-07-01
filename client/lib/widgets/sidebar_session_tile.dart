@@ -4,9 +4,13 @@ import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
+import '../cubits/automation_cubit.dart';
+import '../cubits/automation_state.dart';
 import '../cubits/chat_cubit.dart';
 import '../l10n/l10n_extensions.dart';
 import '../models/app_session.dart';
+import '../pages/automations/automation_editor_dialog.dart';
+import '../pages/automations/automations_panel.dart';
 import '../repositories/session_repository.dart';
 import '../theme/app_icon_sizes.dart';
 import '../theme/app_text_styles.dart';
@@ -65,6 +69,7 @@ class _SidebarSessionTileState extends State<SidebarSessionTile> {
 
   SessionRepository? _repo;
   ChatCubit? _chatCubit;
+  var _sessionAutomationCount = 0;
 
   static const _deleteArmTimeout = Duration(seconds: 4);
 
@@ -73,6 +78,21 @@ class _SidebarSessionTileState extends State<SidebarSessionTile> {
     super.didChangeDependencies();
     _repo = context.read<SessionRepository>();
     _chatCubit = context.read<ChatCubit>();
+    _refreshSessionAutomationCount(context.read<AutomationCubit>().state);
+  }
+
+  void _refreshSessionAutomationCount(AutomationState state) {
+    final session = widget.session;
+    final count = state.automations
+        .where(
+          (a) =>
+              a.workspaceId == session.workspaceId &&
+              a.sessionId == session.sessionId,
+        )
+        .length;
+    if (count != _sessionAutomationCount && mounted) {
+      setState(() => _sessionAutomationCount = count);
+    }
   }
 
   @override
@@ -115,46 +135,97 @@ class _SidebarSessionTileState extends State<SidebarSessionTile> {
     await chatCubit.deleteSession(repo, widget.session.sessionId);
   }
 
+  List<SidebarActionMenuPopupItem<String>> _contextMenuItems(
+    AppLocalizations l10n,
+    AppSession session,
+  ) {
+    final items = <SidebarActionMenuPopupItem<String>>[
+      SidebarActionMenuPopupItem(
+        value: 'rename',
+        icon: Icons.drive_file_rename_outline,
+        label: l10n.renameConversation,
+      ),
+      SidebarActionMenuPopupItem(
+        value: 'pin',
+        icon: session.pinned ? Icons.push_pin : Icons.push_pin_outlined,
+        label: session.pinned ? l10n.unpinConversation : l10n.pinConversation,
+      ),
+      SidebarActionMenuPopupItem(
+        value: 'schedule',
+        icon: Icons.schedule_rounded,
+        label: l10n.automationsSessionContextMenu,
+      ),
+    ];
+    if (_sessionAutomationCount > 0) {
+      items.add(
+        SidebarActionMenuPopupItem(
+          value: 'manage_schedule',
+          icon: Icons.event_repeat_rounded,
+          label: l10n.automationsManageSessionContextMenu,
+        ),
+      );
+    }
+    items.add(
+      SidebarActionMenuPopupItem(
+        value: 'delete',
+        icon: Icons.delete_outline,
+        label: l10n.deleteConversation,
+        destructive: true,
+      ),
+    );
+    return items;
+  }
+
+  Future<void> _handleContextAction(String selected, AppSession session) async {
+    final l10n = context.l10n;
+    switch (selected) {
+      case 'rename':
+        await _showRenameDialog(context, session, l10n);
+      case 'pin':
+        await _chatCubit?.toggleSessionPin(session.sessionId);
+      case 'schedule':
+        final title = session.resolveDisplayTitle(l10n.defaultNewChatSessionTitle);
+        final saved = await AutomationEditorDialog.show(
+          context,
+          compact: true,
+          workspaceId: session.workspaceId,
+          sessionId: session.sessionId,
+          defaultName: l10n.automationsSessionDefaultName(title),
+        );
+        if (saved != null && mounted) {
+          _refreshSessionAutomationCount(context.read<AutomationCubit>().state);
+        }
+      case 'manage_schedule':
+        await showAutomationsPanelDialog(
+          context,
+          filterWorkspaceId: session.workspaceId,
+          filterSessionId: session.sessionId,
+        );
+        if (mounted) {
+          _refreshSessionAutomationCount(context.read<AutomationCubit>().state);
+        }
+      case 'delete':
+        _armDelete();
+    }
+  }
+
   Future<void> _showSessionContextMenuAtTap(TapDownDetails details) async {
     if (!mounted) return;
 
     final l10n = context.l10n;
     final session = widget.session;
+    final menuItems = _contextMenuItems(l10n, session);
     setState(() => _menuOpen = true);
     final selected = await showSidebarActionMenuAtTap<String>(
       context: context,
       tapDetails: details,
-      itemCount: 3,
-      children: [
-        SidebarActionMenuPopupItem(
-          value: 'rename',
-          icon: Icons.drive_file_rename_outline,
-          label: l10n.renameConversation,
-        ),
-        SidebarActionMenuPopupItem(
-          value: 'pin',
-          icon: session.pinned ? Icons.push_pin : Icons.push_pin_outlined,
-          label: session.pinned ? l10n.unpinConversation : l10n.pinConversation,
-        ),
-        SidebarActionMenuPopupItem(
-          value: 'delete',
-          icon: Icons.delete_outline,
-          label: l10n.deleteConversation,
-          destructive: true,
-        ),
-      ],
+      itemCount: menuItems.length,
+      children: menuItems,
     );
     if (!mounted) return;
     setState(() => _menuOpen = false);
     if (selected == null) return;
-    switch (selected) {
-      case 'rename':
-        unawaited(_showRenameDialog(context, session, l10n));
-      case 'pin':
-        unawaited(_chatCubit?.toggleSessionPin(session.sessionId));
-      case 'delete':
-        _armDelete();
-    }
+    await _handleContextAction(selected, session);
   }
 
   void _showSessionContextMenuFromTap(TapDownDetails details) {
@@ -166,41 +237,18 @@ class _SidebarSessionTileState extends State<SidebarSessionTile> {
 
     final l10n = context.l10n;
     final session = widget.session;
+    final menuItems = _contextMenuItems(l10n, session);
     setState(() => _menuOpen = true);
     final selected = await showSidebarActionMenu<String>(
       context: context,
       globalPosition: globalPosition,
-      itemCount: 3,
-      children: [
-        SidebarActionMenuPopupItem(
-          value: 'rename',
-          icon: Icons.drive_file_rename_outline,
-          label: l10n.renameConversation,
-        ),
-        SidebarActionMenuPopupItem(
-          value: 'pin',
-          icon: session.pinned ? Icons.push_pin : Icons.push_pin_outlined,
-          label: session.pinned ? l10n.unpinConversation : l10n.pinConversation,
-        ),
-        SidebarActionMenuPopupItem(
-          value: 'delete',
-          icon: Icons.delete_outline,
-          label: l10n.deleteConversation,
-          destructive: true,
-        ),
-      ],
+      itemCount: menuItems.length,
+      children: menuItems,
     );
     if (!mounted) return;
     setState(() => _menuOpen = false);
     if (selected == null) return;
-    switch (selected) {
-      case 'rename':
-        unawaited(_showRenameDialog(context, session, l10n));
-      case 'pin':
-        unawaited(_chatCubit?.toggleSessionPin(session.sessionId));
-      case 'delete':
-        _armDelete();
-    }
+    await _handleContextAction(selected, session);
   }
 
   void _showSessionContextMenuAtCenter() {

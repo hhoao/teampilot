@@ -80,6 +80,13 @@ class _HomeSidebarState extends State<HomeSidebar> {
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
           _ShortcutRow(
+            icon: Icons.schedule_rounded,
+            label: l10n.automationsTitle,
+            active: activeGlobalView == HomeGlobalView.automations,
+            onTap: () => onGlobal?.call(HomeGlobalView.automations),
+          ),
+          const SizedBox(height: 4),
+          _ShortcutRow(
             icon: Icons.star_outline_rounded,
             label: l10n.homeWorkspaceMyFavorites,
             active: activeLibraryView == HomeLibraryView.favorites,

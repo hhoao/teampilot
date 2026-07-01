@@ -239,4 +239,6 @@ class AppKeys {
   static const themeLightButton = Key('theme-light-button');
   static const languageEnButton = Key('language-en-button');
   static const languageZhButton = Key('language-zh-button');
+
+  static const automationsWorkspace = Key('automations-workspace');
 }
