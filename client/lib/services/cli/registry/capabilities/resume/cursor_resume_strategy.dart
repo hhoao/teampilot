@@ -1,11 +1,18 @@
 import 'dart:convert';
 
+import 'package:path/path.dart' as p;
+
+import '../../../../provider/cursor/cursor_home_layout.dart';
 import '../session_resume_capability.dart';
 
 /// `postCaptured` strategy for cursor. cursor stores each chat under the
-/// per-session-isolated `$CURSOR_CONFIG_DIR/chats/<workspaceHash>/<chatId>/`
+/// per-session-isolated config root's `chats/<workspaceHash>/<chatId>/`
 /// (with a `meta.json`), so — like codex/opencode — we let cursor mint its own
 /// chat on the fresh launch and, on reopen, capture the real chat to `--resume`.
+///
+/// Standalone launches set `$CURSOR_CONFIG_DIR` to the isolated `.cursor` dir;
+/// mixed-mode members only isolate via fake `$HOME`, so chats live under
+/// `$HOME/.cursor/chats/` instead.
 ///
 /// We do **not** pre-allocate via `cursor-agent create-chat`: that makes an
 /// empty chat (`"hasConversation": false`) which diverges from the chat the
@@ -18,8 +25,8 @@ final class CursorResumeStrategy implements SessionResumeCapability {
 
   @override
   Future<String?> detectNativeId(ResumeContext ctx) async {
-    final configDir = ctx.env['CURSOR_CONFIG_DIR']?.trim() ?? '';
-    if (configDir.isEmpty) return null;
+    final configDir = _cursorConfigRoot(ctx.env, ctx.fs.pathContext);
+    if (configDir == null) return null;
     final path = ctx.fs.pathContext;
     final chatsRoot = path.join(configDir, 'chats');
 
@@ -51,6 +58,14 @@ final class CursorResumeStrategy implements SessionResumeCapability {
       return null;
     }
     return best;
+  }
+
+  static String? _cursorConfigRoot(Map<String, String> env, p.Context path) {
+    final explicit = env['CURSOR_CONFIG_DIR']?.trim() ?? '';
+    if (explicit.isNotEmpty) return explicit;
+    final home = env['HOME']?.trim() ?? '';
+    if (home.isEmpty) return null;
+    return path.join(home, CursorHomeLayout.cursorDirName);
   }
 
   static Map<String, Object?>? _decode(String raw) {

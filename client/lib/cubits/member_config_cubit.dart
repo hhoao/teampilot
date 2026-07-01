@@ -1,5 +1,6 @@
 import 'package:flutter_bloc/flutter_bloc.dart';
 
+import '../models/cli_preset.dart';
 import '../models/team_config.dart';
 import '../services/cli/member_config/member_config_detail.dart';
 import '../services/cli/member_config/member_config_inspector.dart';
@@ -44,6 +45,7 @@ class MemberConfigCubit extends Cubit<MemberConfigState> {
     required TeamProfile team,
     required TeamMemberConfig member,
     RuntimeContext? workContext,
+    List<CliPreset> globalPresets = const [],
   }) async {
     emit(state.copyWith(status: MemberConfigStatus.loading));
     try {
@@ -53,6 +55,7 @@ class MemberConfigCubit extends Cubit<MemberConfigState> {
         team: team,
         member: member,
         workContext: workContext,
+        globalPresets: globalPresets,
       );
       if (isClosed) return;
       emit(MemberConfigState(

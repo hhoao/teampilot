@@ -37,6 +37,7 @@ class MemberConfigInspector {
     required TeamMemberConfig member,
     RuntimeContext? workContext,
     List<CliPreset> globalPresets = const [],
+    bool preferExpectedRuntimeDir = false,
   }) async {
     final cli = memberLaunchCli(
       team: team,
@@ -55,6 +56,7 @@ class MemberConfigInspector {
       tool: tool,
       layout: layout,
       fs: fs,
+      preferExpectedRuntimeDir: preferExpectedRuntimeDir,
     );
     if (resolved == null) {
       return MemberConfigDetail.none(cli: cli);
@@ -85,6 +87,7 @@ class MemberConfigInspector {
     required String tool,
     required RuntimeLayout layout,
     required Filesystem fs,
+    bool preferExpectedRuntimeDir = false,
   }) async {
     final trimmedWorkspaceId = workspaceId.trim();
     final trimmedSessionId = sessionId.trim();
@@ -107,7 +110,8 @@ class MemberConfigInspector {
               tool,
               memberId: memberId,
             );
-      if ((await fs.stat(runtimeDir)).isDirectory) {
+      if (preferExpectedRuntimeDir ||
+          (await fs.stat(runtimeDir)).isDirectory) {
         return _ResolvedDir(runtimeDir, MemberConfigSourceLayer.runtime);
       }
     }
