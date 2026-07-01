@@ -2,6 +2,7 @@ import 'dart:async';
 import 'dart:convert';
 import 'dart:io';
 
+import 'package:mock_anthropic/assigned_task_id_parser.dart';
 import 'package:mock_anthropic/scenario.dart';
 import 'package:mock_anthropic/sse/anthropic_sse_encoder.dart';
 
@@ -127,7 +128,8 @@ class MockAnthropicServer {
 
     try {
       final turnIndex = _scenarios.peekTurnIndex(apiKey);
-      final turn = _scenarios.nextTurn(apiKey);
+      final scripted = _scenarios.nextTurn(apiKey);
+      final turn = _resolveTurn(scripted, bodyJson);
       final messageId = 'msg_${DateTime.now().microsecondsSinceEpoch}';
       final sse = AnthropicSseEncoder.encodeTurn(
         messageId: messageId,
@@ -141,7 +143,7 @@ class MockAnthropicServer {
           path: request.uri.path,
           at: DateTime.now(),
           turnIndex: turnIndex,
-          turnLabel: ScenarioRegistry.describeTurn(turn),
+          turnLabel: ScenarioRegistry.describeTurn(scripted),
         ),
       );
 
@@ -179,6 +181,28 @@ class MockAnthropicServer {
     }
 
     return null;
+  }
+
+  static MockTurn _resolveTurn(
+    MockTurn turn,
+    Map<String, Object?>? bodyJson,
+  ) {
+    if (turn is! AssignedTaskUpdateTurn) return turn;
+    final taskId = extractAssignedTaskIdFromAnthropicRequest(bodyJson);
+    if (taskId == null) {
+      throw StateError(
+        'AssignedTaskUpdateTurn ${turn.id}: no ASSIGNED TASK id in request body',
+      );
+    }
+    return ToolUseTurn(
+      id: turn.id,
+      name: turn.toolName,
+      input: {
+        'task_id': taskId,
+        'status': turn.status,
+        if (turn.result != null) 'result': turn.result,
+      },
+    );
   }
 
   static Map<String, Object?>? _tryParseJson(List<int> bytes) {

@@ -2,6 +2,7 @@ import 'dart:io';
 
 import 'package:mock_anthropic/scenario.dart';
 import 'package:mock_anthropic/scenarios/ping_pong_mixed_claude.dart';
+import 'package:mock_anthropic/scenarios/task_dispatch_mixed_claude.dart';
 import 'package:mock_anthropic/server.dart';
 import 'package:teampilot/cubits/chat_cubit.dart';
 import 'package:teampilot/models/app_provider_config.dart';
@@ -233,6 +234,34 @@ class MixedTeamIntegrationHarness {
     await waitForPingPong(
       workspaceId: workspaceId,
       sessionId: sessionId,
+      timeout: busTimeout,
+    );
+  }
+
+  /// Remote worker parks on `wait_for_message` before leader `add_tasks`.
+  Future<void> kickoffAndWaitForTaskDispatch({
+    required ChatCubit cubit,
+    required String workspaceId,
+    required String sessionId,
+    required String title,
+    PostFrameTestHarness? postFrame,
+    String workerKickoff = taskDispatchWorkerKickoff,
+    String leaderKickoff = taskDispatchLeaderKickoff,
+    Duration workerReadyTimeout = const Duration(seconds: 90),
+    Duration busTimeout = const Duration(seconds: 90),
+  }) async {
+    await kickoffWorkerParkedThenLeader(
+      cubit,
+      sessionId: sessionId,
+      postFrame: postFrame,
+      workerKickoff: workerKickoff,
+      leaderKickoff: leaderKickoff,
+      workerReadyTimeout: workerReadyTimeout,
+    );
+    await waitForTaskDispatched(
+      workspaceId: workspaceId,
+      sessionId: sessionId,
+      title: title,
       timeout: busTimeout,
     );
   }
@@ -551,6 +580,24 @@ class MixedTeamIntegrationHarness {
       throw StateError(
         'Timed out waiting for task "$title" to be claimed by $assignee',
       );
+    }
+  }
+
+  Future<void> waitForTaskCompleted({
+    required String workspaceId,
+    required String sessionId,
+    required String title,
+    Duration timeout = const Duration(seconds: 90),
+  }) async {
+    final done = await waitForTaskDoneByTitle(
+      teampilotRoot: AppStorage.paths.basePath,
+      workspaceId: workspaceId,
+      sessionId: sessionId,
+      title: title,
+      timeout: timeout,
+    );
+    if (!done) {
+      throw StateError('Timed out waiting for task "$title" to be marked done');
     }
   }
 

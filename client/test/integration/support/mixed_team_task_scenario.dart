@@ -2,6 +2,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:mock_anthropic/scenario.dart';
 import 'package:mock_anthropic/scenarios/doorbell_dispatch_mixed_claude.dart';
 import 'package:mock_anthropic/scenarios/mail_priority_mixed_claude.dart';
+import 'package:mock_anthropic/scenarios/task_complete_mixed_claude.dart';
 import 'package:mock_anthropic/scenarios/task_dispatch_mixed_claude.dart';
 import 'package:teampilot/cubits/chat_cubit.dart';
 import 'package:teampilot/models/app_session.dart';
@@ -13,6 +14,7 @@ import '../../support/post_frame_test_harness.dart';
 import 'bus_mail_assertions.dart';
 import 'bus_roster_assertions.dart';
 import 'bus_task_assertions.dart';
+import 'docker_ssh_server.dart';
 import 'integration_prerequisites.dart';
 import 'mixed_team_integration_harness.dart';
 
@@ -128,6 +130,146 @@ abstract final class MixedTeamTaskScenario {
           );
         },
       );
+
+  /// Worker claims via `wait_for_message`, reports `update_task(done)`; jsonl proof.
+  static Future<void> runTaskCompleteCycle() => _run(
+        scenarios: taskCompleteMixedClaudeScenarios(),
+        kickoff: _Kickoff.simultaneous(
+          workerKickoff: taskCompleteWorkerKickoff,
+          leaderKickoff: taskCompleteLeaderKickoff,
+        ),
+        verify: (ctx) async {
+          const title = 'complete-widget';
+
+          await ctx.harness.waitForTaskDispatched(
+            workspaceId: ctx.session.workspaceId,
+            sessionId: ctx.session.sessionId,
+            title: title,
+          );
+          await ctx.harness.waitForTaskCompleted(
+            workspaceId: ctx.session.workspaceId,
+            sessionId: ctx.session.sessionId,
+            title: title,
+          );
+
+          final events = await readBusTaskEvents(
+            teampilotRoot: AppStorage.paths.basePath,
+            workspaceId: ctx.session.workspaceId,
+            sessionId: ctx.session.sessionId,
+          );
+          final claimAt = claimTimestampForTitle(
+            events,
+            title,
+            assignee: kWorkerMember.id,
+          );
+          final doneAt = doneTimestampForTitle(events, title);
+          expect(claimAt, isNotNull);
+          expect(doneAt, isNotNull);
+          expect(doneAt! > claimAt!, isTrue);
+        },
+      );
+
+  /// L3: local lead + Docker SSH worker task dispatch.
+  static Future<void> runTaskDispatchDocker() async {
+    if (!await DockerSshServer.isDockerAvailable()) {
+      markTestSkipped('Docker is not available');
+    }
+    IntegrationPrerequisites.skipUnlessNativePty();
+    final claudePath = IntegrationPrerequisites.requireClaudePath()!;
+
+    final harness = MixedTeamIntegrationHarness(claudePath: claudePath);
+    final postFrame = PostFrameTestHarness();
+    MixedTeamDockerRemote? remote;
+    AppSession? session;
+    ChatCubit? cubit;
+    try {
+      remote = await MixedTeamDockerRemote.start();
+      await harness.startMockServer(
+        scenarios: taskDispatchMixedClaudeScenarios(),
+        exposeToDocker: true,
+      );
+      await harness.writeMockProviders(
+        workerBaseUrl:
+            'http://${DockerSshServer.hostGatewayHostname}:${harness.mockPort}',
+      );
+      await harness.verifyMockReachableFromDocker(remote);
+
+      final repo = SessionRepository();
+      cubit = harness.createDockerCubit(postFrame: postFrame, remote: remote);
+
+      final workspace = await repo.createWorkspace([
+        WorkspaceFolder(path: AppStorage.cwd),
+        WorkspaceFolder(
+          path: MixedTeamDockerRemote.remoteWorkspacePath,
+          targetId: remote.sshTargetId,
+        ),
+      ]);
+      await repo.updateWorkspaceMemberTargets(
+        workspace.workspaceId,
+        kItMixedClaudeTeam.id,
+        targets: {
+          kLeadMember.id: 'local',
+          kWorkerMember.id: remote.sshTargetId,
+        },
+      );
+      session = await repo.createSession(
+        workspace.workspaceId,
+        sessionTeam: kItMixedClaudeTeam.id,
+        rosterMembers: kItMixedClaudeTeam.members,
+      );
+      session = (await repo.loadSessions()).firstWhere(
+        (s) => s.sessionId == session!.sessionId,
+      );
+
+      await cubit.requestOpenSession(
+        SessionOpenRequest(
+          session: session,
+          team: kItMixedClaudeTeam,
+          member: kLeadMember,
+          repo: repo,
+          connectImmediately: true,
+        ),
+      );
+      await drainPendingAsyncWork();
+      await postFrame.flush();
+      await harness.waitUntilDockerMembersReady(
+        cubit,
+        [kLeadMember.id, kWorkerMember.id],
+      );
+
+      final ctx = _ScenarioCtx(
+        harness: harness,
+        cubit: cubit,
+        postFrame: postFrame,
+        session: session,
+      );
+      await _Kickoff.simultaneous(
+        workerKickoff: taskDispatchWorkerKickoff,
+        leaderKickoff: taskDispatchLeaderKickoff,
+      ).apply(ctx);
+      await harness.waitForTaskDispatched(
+        workspaceId: session.workspaceId,
+        sessionId: session.sessionId,
+        title: 'ship-widget',
+        timeout: const Duration(seconds: 120),
+      );
+
+      expect(cubit.hasTeamBusResources(session.sessionId), isTrue);
+    } catch (e, st) {
+      await harness.dumpFailureArtifacts(
+        workspaceId: session?.workspaceId,
+        sessionId: session?.sessionId,
+        cubit: cubit,
+      );
+      Error.throwWithStackTrace(e, st);
+    } finally {
+      await remote?.dispose();
+      await harness.dispose();
+      await postFrame.flush();
+      await drainPendingAsyncWork();
+      await Future<void>.delayed(_ptyReleaseDelay);
+    }
+  }
 
   static Future<void> _run({
     required ScenarioRegistry scenarios,
