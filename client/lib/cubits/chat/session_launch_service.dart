@@ -1616,7 +1616,8 @@ class SessionLaunchService implements MemberConnector {
       'resumeId=${plan.resumeSessionId ?? ''} warnings=${plan.warnings.length}',
     );
     final configDir = plan.memberConfigDir.trim();
-    if (configDir.isNotEmpty) {
+    if (configDir.isNotEmpty && member != null) {
+      tab.memberConfigDirs[member.id] = configDir;
       tab.memberToolConfigDir = configDir;
     }
     _h.emitLaunchWarnings([...launchWarnings, ...plan.warnings]);

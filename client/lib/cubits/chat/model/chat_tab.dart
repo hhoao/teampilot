@@ -32,8 +32,12 @@ class ChatTab {
   /// Persisted session for team member connect (may be absent before index load).
   AppSession? persistedSession;
 
-  /// Shared [LaunchPlan.memberConfigDir] from first successful member connect.
+  /// Shared [LaunchPlan.memberConfigDir] from the most recent member connect
+  /// (used by presence). Per-member paths live in [memberConfigDirs].
   String? memberToolConfigDir;
+
+  /// Per-member [LaunchPlan.memberConfigDir] from successful connects.
+  final Map<String, String> memberConfigDirs = {};
 
   final Map<String, TerminalSession> memberShells = {};
 

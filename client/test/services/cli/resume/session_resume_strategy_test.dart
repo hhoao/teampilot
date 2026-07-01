@@ -116,6 +116,22 @@ void main() {
           .detectNativeId(ctx(env: {'CURSOR_CONFIG_DIR': base.path}));
       expect(got, isNull);
     });
+
+    test('mixed mode scans HOME/.cursor/chats when CURSOR_CONFIG_DIR unset',
+        () async {
+      final home = p.join(base.path, 'member-home');
+      final configDir = p.join(home, '.cursor');
+      final dir = p.join(configDir, 'chats', 'wshash', 'mixed-chat');
+      await Directory(dir).create(recursive: true);
+      await File(p.join(dir, 'meta.json')).writeAsString(
+        '{"schemaVersion":1,"hasConversation":true,"updatedAtMs":300}',
+      );
+
+      final got = await const CursorResumeStrategy().detectNativeId(
+        ctx(env: {'HOME': home, 'USERPROFILE': home}),
+      );
+      expect(got, 'mixed-chat');
+    });
   });
 
   group('ClaudeResumeStrategy', () {

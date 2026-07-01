@@ -5,6 +5,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
 import '../../cubits/app_provider_cubit.dart';
+import '../../cubits/cli_presets_cubit.dart';
 import '../../cubits/chat_cubit.dart';
 import '../../cubits/file_tree_cubit.dart';
 import '../../cubits/mailbox_cubit.dart';
@@ -597,6 +598,8 @@ class _ScopedMembersPanel extends StatelessWidget {
             .where((s) => s.sessionId == activeSessionId)
             .firstOrNull;
     if (session == null) return;
+
+    final cached = activeTab?.memberConfigDirs[id]?.trim();
     final launchCtx = WorkspaceLaunchContext(
       session: session,
       workspace: Workspace(
@@ -609,17 +612,22 @@ class _ScopedMembersPanel extends StatelessWidget {
       launchCtx,
       memberId: member.id,
     );
-    final detail = await MemberConfigInspector().inspect(
-      workspaceId: workspaceId,
-      sessionId: activeTab?.info.id ?? '',
-      team: team,
-      member: member,
-      workContext: workContext,
-    );
-    if (!context.mounted || detail.resolvedDir.isEmpty) return;
+    final path = cached?.isNotEmpty == true
+        ? cached!
+        : (await MemberConfigInspector().inspect(
+            workspaceId: workspaceId,
+            sessionId: activeTab?.info.id ?? '',
+            team: team,
+            member: member,
+            workContext: workContext,
+            globalPresets: context.read<CliPresetsCubit>().state.presets,
+            preferExpectedRuntimeDir: true,
+          ))
+            .resolvedDir;
+    if (!context.mounted || path.isEmpty) return;
     await openMemberConfigDirectory(
       context,
-      path: detail.resolvedDir,
+      path: path,
       workContext: workContext,
     );
     maybeDismissDrawer();

@@ -1,4 +1,6 @@
 import 'package:flutter_test/flutter_test.dart';
+import 'package:path/path.dart' as p;
+import 'package:teampilot/models/cli_preset.dart';
 import 'package:teampilot/models/runtime_target.dart';
 import 'package:teampilot/models/team_config.dart';
 import 'package:teampilot/services/storage/app_storage.dart';
@@ -86,6 +88,49 @@ void main() {
     );
     expect(detail.sourceLayer, MemberConfigSourceLayer.none);
     expect(detail.hasConfig, isFalse);
+  });
+
+  test('mixed cursor member resolves cursor runtime home/.cursor via preset',
+      () async {
+    const cursorMember = TeamMemberConfig(
+      id: 'reviewer',
+      name: 'Reviewer',
+      activePresetId: 'cursor-preset',
+    );
+    const presets = [
+      CliPreset(
+        id: 'cursor-preset',
+        name: 'Cursor',
+        cli: CliTool.cursor,
+        provider: 'work',
+        model: 'gpt-4',
+        createdAt: 1,
+        updatedAt: 1,
+      ),
+    ];
+
+    final detail = await inspector.inspect(
+      workspaceId: 'workspace-1',
+      sessionId: 'team-a-1',
+      team: team,
+      member: cursorMember,
+      globalPresets: presets,
+      preferExpectedRuntimeDir: true,
+    );
+
+    final expected = p.join(
+      layout.sessionRuntimeToolDir(
+        'workspace-1',
+        'team-a-1',
+        'cursor',
+        memberId: 'reviewer',
+      ),
+      'home',
+      '.cursor',
+    );
+    expect(detail.cli, CliTool.cursor);
+    expect(detail.resolvedDir, expected);
+    expect(detail.sourceLayer, MemberConfigSourceLayer.runtime);
   });
 
   test('reads from the member work context when it differs from home', () async {

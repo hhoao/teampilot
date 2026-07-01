@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
+import '../../../cubits/cli_presets_cubit.dart';
 import '../../../cubits/member_config_cubit.dart';
 import '../../../l10n/l10n_extensions.dart';
 import '../../../models/app_session.dart';
@@ -53,6 +54,7 @@ Future<void> showMemberDetailDialog(
             team: team,
             member: member,
             workContext: workContext,
+            globalPresets: context.read<CliPresetsCubit>().state.presets,
           );
         }());
         return cubit;
