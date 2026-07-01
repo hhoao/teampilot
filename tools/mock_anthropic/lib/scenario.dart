@@ -14,6 +14,22 @@ final class TextTurn extends MockTurn {
   final String text;
 }
 
+/// Scripts `update_task` using the task id from the latest ASSIGNED TASK tool
+/// result in the inbound Anthropic request (resolved by [MockAnthropicServer]).
+final class AssignedTaskUpdateTurn extends MockTurn {
+  const AssignedTaskUpdateTurn({
+    required this.id,
+    required this.toolName,
+    required this.status,
+    this.result,
+  });
+
+  final String id;
+  final String toolName;
+  final String status;
+  final String? result;
+}
+
 class MockScenario {
   const MockScenario({required this.turns});
   final List<MockTurn> turns;
@@ -47,6 +63,8 @@ class ScenarioRegistry {
 
   static String describeTurn(MockTurn turn) => switch (turn) {
         ToolUseTurn(:final id, :final name) => 'tool:$name id=$id',
+        AssignedTaskUpdateTurn(:final id, :final toolName, :final status) =>
+          'update:$toolName id=$id status=$status',
         TextTurn(:final text) =>
           'text:${text.length > 48 ? '${text.substring(0, 48)}…' : text}',
       };

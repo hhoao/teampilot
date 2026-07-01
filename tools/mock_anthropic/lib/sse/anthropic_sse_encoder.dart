@@ -73,6 +73,10 @@ class AnthropicSseEncoder {
           'delta': {'stop_reason': 'end_turn', 'stop_sequence': null},
           'usage': {'output_tokens': 1},
         }));
+      case AssignedTaskUpdateTurn():
+        throw StateError(
+          'AssignedTaskUpdateTurn must be resolved before SSE encoding',
+        );
     }
 
     events.add(_event('message_stop', {'type': 'message_stop'}));

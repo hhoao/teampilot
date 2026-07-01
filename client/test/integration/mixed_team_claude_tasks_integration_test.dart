@@ -25,4 +25,9 @@ void main() {
     'add_tasks doorbells idle-at-prompt worker to claim from wait_for_message',
     MixedTeamTaskScenario.runDoorbellDispatch,
   );
+
+  test(
+    'worker update_task(done) after wait_for_message claim over real Claude PTYs',
+    MixedTeamTaskScenario.runTaskCompleteCycle,
+  );
 }

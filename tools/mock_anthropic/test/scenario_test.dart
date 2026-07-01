@@ -2,6 +2,7 @@ import 'package:mock_anthropic/scenario.dart';
 import 'package:mock_anthropic/scenarios/doorbell_dispatch_mixed_claude.dart';
 import 'package:mock_anthropic/scenarios/mail_priority_mixed_claude.dart';
 import 'package:mock_anthropic/scenarios/ping_pong_mixed_claude.dart';
+import 'package:mock_anthropic/scenarios/task_complete_mixed_claude.dart';
 import 'package:mock_anthropic/scenarios/task_dispatch_mixed_claude.dart';
 import 'package:test/test.dart';
 
@@ -15,10 +16,12 @@ void main() {
 
   test('ScenarioRegistry advances turns per api key', () {
     final reg = ScenarioRegistry({
-      'k': MockScenario(turns: [
-        ToolUseTurn(id: 't1', name: 'list_teammates', input: {}),
-        TextTurn('done'),
-      ]),
+      'k': MockScenario(
+        turns: [
+          ToolUseTurn(id: 't1', name: 'list_teammates', input: {}),
+          TextTurn('done'),
+        ],
+      ),
     });
     final first = reg.nextTurn('k');
     expect(first, isA<ToolUseTurn>());
@@ -63,5 +66,15 @@ void main() {
     final worker = reg.scenarioFor(workerScriptApiKey)!;
     expect(worker.turns.length, 5);
     expect((worker.turns[3] as ToolUseTurn).name, contains('wait_for_message'));
+  });
+
+  test('taskCompleteMixedClaude covers dynamic update_task', () {
+    final reg = taskCompleteMixedClaudeScenarios();
+    final worker = reg.scenarioFor(workerScriptApiKey)!;
+    expect(worker.turns[2], isA<AssignedTaskUpdateTurn>());
+    expect(
+      (reg.scenarioFor(leadScriptApiKey)!.turns[2] as ToolUseTurn).name,
+      contains('list_tasks'),
+    );
   });
 }

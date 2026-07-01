@@ -124,6 +124,43 @@ int? claimTimestampForTitle(
   return null;
 }
 
+int? doneTimestampForTitle(
+  List<Map<String, Object?>> events,
+  String title,
+) {
+  final taskId = taskIdForTitle(events, title);
+  if (taskId == null) return null;
+  for (final row in events) {
+    if (row['t'] != 'update' || row['id'] != taskId) continue;
+    if (row['status'] != 'done') continue;
+    return (row['at'] as num?)?.toInt();
+  }
+  return null;
+}
+
+bool isTaskDone(List<Map<String, Object?>> events, String title) =>
+    doneTimestampForTitle(events, title) != null;
+
+Future<bool> waitForTaskDoneByTitle({
+  required String teampilotRoot,
+  required String workspaceId,
+  required String sessionId,
+  required String title,
+  Duration timeout = const Duration(seconds: 90),
+}) async {
+  final deadline = DateTime.now().add(timeout);
+  while (DateTime.now().isBefore(deadline)) {
+    final events = await readBusTaskEvents(
+      teampilotRoot: teampilotRoot,
+      workspaceId: workspaceId,
+      sessionId: sessionId,
+    );
+    if (isTaskDone(events, title)) return true;
+    await Future<void>.delayed(const Duration(milliseconds: 300));
+  }
+  return false;
+}
+
 bool isTaskClaimed(
   List<Map<String, Object?>> events,
   String title, {
