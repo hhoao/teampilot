@@ -137,6 +137,58 @@ void main() {
       );
     });
 
+    test(
+      'send to in-turn member does not doorbell on PTY gap between tool calls',
+      () async {
+        final opened = await openMixedSessionWithShells(
+          cubit: cubit,
+          repo: repo,
+          postFrame: postFrame,
+        );
+        final tab = cubit.activeTab!;
+        final bus = tab.teamBus!;
+        final worker = opened.workerShell;
+
+        bus.markTurnStarted('worker-1');
+        await worker.emitPtyOutput('tool output\r\n');
+        armActivityTracker(worker.session);
+        cubit.debugTickIdleWatch();
+        expect(bus.isMemberInTurn('worker-1'), isTrue);
+        expect(worker.ptyInputJoined, isEmpty);
+
+        await bus.send(
+          const TeamMessage(
+            id: 'mid-turn-ping',
+            from: 'team-lead',
+            to: 'worker-1',
+            content: 'status?',
+          ),
+        );
+        expect(bus.isMemberInTurn('worker-1'), isTrue);
+        expect(await bus.unreadCountFor('worker-1'), 1);
+        expect(worker.ptyInputJoined, isEmpty);
+
+        worker.simulateQuietGap();
+        cubit.debugTickIdleWatch();
+        await drainPendingAsyncWork();
+        // submitFullScreenInput settles before CR is written.
+        await Future<void>.delayed(const Duration(milliseconds: 50));
+
+        expect(bus.isMemberInTurn('worker-1'), isTrue);
+        expect(
+          worker.ptyInput.where((w) => w.contains('teammate-bus')),
+          isEmpty,
+          reason:
+              'PTY gap during bus in-turn must not inject doorbell for mail '
+              'delivered mid-turn (onMemberIdle → TurnEnded regression)',
+        );
+        expect(cubit.state.workingSessionIds, contains(opened.sessionId));
+      },
+      skip:
+          'known bug: idle watcher fires TurnEnded+doorbell on PTY gap while bus '
+          'still in-turn',
+    );
+
     test('PTY quiet falling edge ends bus turn and clears working', () async {
       final opened = await openMixedSessionWithShells(
         cubit: cubit,

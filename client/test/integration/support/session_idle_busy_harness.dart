@@ -9,6 +9,7 @@ import 'package:teampilot/models/workspace_folder.dart';
 import 'package:teampilot/repositories/session_repository.dart';
 import 'package:teampilot/services/terminal/terminal_session.dart';
 
+import 'connected_recording_shell.dart';
 import '../../support/post_frame_test_harness.dart';
 
 /// Running + connected fake shell so idle-watch and presence treat it as live.
@@ -54,11 +55,11 @@ Future<void> postMemberIdle(Uri idleEndpoint, String memberId) async {
   }
 }
 
-/// Opens a mixed team session tab and wires fake shells + running bus members.
+/// Opens a mixed team session tab and wires connected recording shells + running bus members.
 Future<({
   String sessionId,
-  RunningConnectedFakeShell leadShell,
-  RunningConnectedFakeShell workerShell,
+  ConnectedRecordingShell leadShell,
+  ConnectedRecordingShell workerShell,
 })> openMixedSessionWithShells({
   required ChatCubit cubit,
   required SessionRepository repo,
@@ -87,10 +88,10 @@ Future<({
 
   final tab = cubit.activeTab!;
   final bus = tab.teamBus!;
-  final leadShell = RunningConnectedFakeShell(executable: 'claude');
-  final workerShell = RunningConnectedFakeShell(executable: 'claude');
-  tab.memberShells['team-lead'] = leadShell;
-  tab.memberShells['worker-1'] = workerShell;
+  final leadShell = await ConnectedRecordingShell.connect();
+  final workerShell = await ConnectedRecordingShell.connect();
+  tab.memberShells['team-lead'] = leadShell.session;
+  tab.memberShells['worker-1'] = workerShell.session;
   bus.markMemberRunning('team-lead');
   bus.markMemberRunning('worker-1');
   cubit.pushPresenceTarget();
