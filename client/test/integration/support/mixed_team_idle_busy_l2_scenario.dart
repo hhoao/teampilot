@@ -93,6 +93,12 @@ abstract final class MixedTeamIdleBusyL2Scenario {
             title: title,
           );
 
+          await waitUntilWorkerIdleOnBus(
+            bus: ctx.harness.tabBus(ctx.session.sessionId),
+            workspaceId: ctx.session.workspaceId,
+            sessionId: ctx.session.sessionId,
+          );
+
           await waitUntilSessionIdle(
             cubit: ctx.cubit,
             sessionId: ctx.session.sessionId,
