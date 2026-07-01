@@ -181,6 +181,41 @@ void main() {
       expect(second, contains('orphan task'));
     });
 
+    /// When the worker is already parked, `add_tasks` in one leader round can
+    /// wake and claim before `send_message` in the next round — mail loses.
+    /// Leaders should send urgent mail **before** enqueueing, or batch both in
+    /// one turn. Documents current bus semantics (not a regression guard).
+    test(
+      'add_tasks then send_message across rounds may claim before mail arrives',
+      () async {
+        harness = await TeamBusCommTaskHarness.create();
+        final lead = harness.clientFor('team-lead');
+        final backend = harness.clientFor('backend-dev');
+
+        final wait = backend.waitForMessage();
+        await Future<void>.delayed(const Duration(milliseconds: 50));
+
+        await lead.addTasks([
+          <String, Object?>{
+            'title': 'race task',
+            'brief': 'may claim before mail when leader spans API rounds',
+          },
+        ]);
+        // Let the parked worker process the queue wake before mail is sent.
+        await Future<void>.delayed(const Duration(milliseconds: 150));
+        await lead.sendMessage(to: 'backend-dev', content: 'urgent: pause work');
+
+        final first = TeammateBusHttpClient.toolResultText(await wait);
+        if (first.contains('ASSIGNED TASK')) {
+          expect(first, contains('race task'));
+          expect(first, isNot(contains('urgent')));
+        } else {
+          expect(first, contains('urgent'));
+        }
+      },
+      skip: 'documents cross-round race; behavior is leader-order dependent',
+    );
+
     test('dependency DAG: child blocked until parent marked done', () async {
       harness = await TeamBusCommTaskHarness.create();
       final lead = harness.clientFor('team-lead');

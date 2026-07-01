@@ -459,6 +459,14 @@ class MixedTeamIntegrationHarness {
     }
   }
 
+  Future<void> submitWorkerKickoffOnly(
+    ChatCubit cubit, {
+    String kickoff = taskDispatchWorkerKickoff,
+  }) async {
+    _resetMockScenarios();
+    await _submitWorkerKickoff(cubit, kickoff: kickoff);
+  }
+
   Future<void> _submitWorkerKickoff(
     ChatCubit cubit, {
     String kickoff = 'Start idle loop.',
@@ -647,6 +655,43 @@ class MixedTeamIntegrationHarness {
 
   TeamBus? tabBus(String sessionId) =>
       cubit?.tabStore.bySessionId(sessionId)?.teamBus;
+
+  TeammateBusMcpServer? tabMcp(String sessionId) =>
+      _mcpForSession(cubit, sessionId);
+
+  /// Worker-only kickoff until SSE `wait_for_message` is observable (local PTY).
+  Future<void> parkWorkerOnWait(
+    ChatCubit cubit, {
+    required String sessionId,
+    PostFrameTestHarness? postFrame,
+    String workerKickoff = taskDispatchWorkerKickoff,
+    Duration timeout = const Duration(seconds: 90),
+  }) async {
+    _resetMockScenarios();
+    final workerBaseline = _mockRequestCount(workerScriptApiKey);
+    await _submitWorkerKickoff(cubit, kickoff: workerKickoff);
+    final workerInLoop = await _waitForNewMockRequest(
+      workerScriptApiKey,
+      afterCount: workerBaseline,
+      timeout: timeout,
+    );
+    if (!workerInLoop) {
+      throw StateError(
+        'Worker never hit mock API after kickoff '
+        '(expected $workerScriptApiKey request)',
+      );
+    }
+    await waitUntilWorkerParked(
+      bus: _busForSession(cubit, sessionId),
+      mcpServer: _mcpForSession(cubit, sessionId),
+      memberId: kWorkerMember.id,
+      timeout: timeout,
+    );
+    await drainPendingAsyncWork(rounds: 5);
+    if (postFrame != null) {
+      await postFrame.flush();
+    }
+  }
 
   Future<void> dumpFailureArtifacts({
     String? workspaceId,

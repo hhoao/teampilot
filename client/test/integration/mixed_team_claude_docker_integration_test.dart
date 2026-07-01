@@ -29,4 +29,9 @@ void main() {
     'local lead + docker worker task dispatch via ChatCubit',
     MixedTeamTaskScenario.runTaskDispatchDocker,
   );
+
+  test(
+    'local lead + docker worker update_task(done) via ChatCubit',
+    MixedTeamTaskScenario.runTaskCompleteDocker,
+  );
 }
