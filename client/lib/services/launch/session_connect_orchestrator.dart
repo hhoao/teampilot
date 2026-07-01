@@ -8,6 +8,7 @@ import '../../models/workspace.dart';
 import '../../utils/team_member_naming.dart';
 import '../team_bus/member_bus_idle_endpoint.dart';
 import '../provider/config_profile_service.dart';
+import '../../services/cli/preset_resolver.dart';
 import '../session/session_lifecycle_service.dart';
 import '../storage/runtime_context.dart';
 import 'manifest_executor.dart';
@@ -131,7 +132,11 @@ class SessionConnectOrchestrator {
     Map<String, Map<String, Object?>>? extraMcpServers,
     MemberBusIdleEndpoint? busIdle,
   }) async {
-    final cli = member.cliWithin(team);
+    final cli = memberLaunchCli(
+      team: team,
+      member: member,
+      globalPresets: lifecycle.globalPresets,
+    );
     final offHome = workspaceProvision.isOffHome(launchTarget);
     late final RuntimeContext workContext;
     late final String remoteCliPath;

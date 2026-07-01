@@ -22,6 +22,7 @@ import '../../services/launch/session_provisional_builder.dart';
 import '../../services/launch/workspace_provision_coordinator.dart';
 import '../../services/session/remote_ssh_launch_constraints.dart';
 import '../../services/session/session_lifecycle_service.dart';
+import '../../services/cli/preset_resolver.dart';
 import '../../services/team/team_config_launch_validator.dart';
 import '../../services/storage/app_storage.dart';
 import '../../services/storage/runtime_context.dart';
@@ -770,7 +771,11 @@ class SessionLaunchService implements MemberConnector {
     return (
       team: team,
       member: member,
-      cli: member.cliWithin(team),
+      cli: memberLaunchCli(
+        team: team,
+        member: member,
+        globalPresets: _h.lifecycle.globalPresets,
+      ),
       personalIdentity: null,
     );
   }
@@ -1446,7 +1451,11 @@ class SessionLaunchService implements MemberConnector {
     );
     final launchCli = isPersonal
         ? (activeSession.cli ?? CliTool.claude)
-        : launchMember!.cliWithin(team!);
+        : memberLaunchCli(
+            team: team!,
+            member: launchMember!,
+            globalPresets: _h.lifecycle.globalPresets,
+          );
     final preflightMemberId = isPersonal
         ? activeSession.sessionId
         : (rosterMemberId ?? launchMember!.id);
@@ -1544,7 +1553,11 @@ class SessionLaunchService implements MemberConnector {
                 teammateBusMcpServerName: _busMcpServerConfig(
                   endpoint: tab.mcpServer!.endpoint,
                   memberId: launchMember.id,
-                  cli: launchMember.cliWithin(team),
+                  cli: memberLaunchCli(
+                    team: team,
+                    member: launchMember,
+                    globalPresets: _h.lifecycle.globalPresets,
+                  ),
                   remoteBinding: remoteBinding,
                 ),
               }
@@ -1740,13 +1753,23 @@ class SessionLaunchService implements MemberConnector {
     if (activeSession == null) {
       return tab.memberShells.putIfAbsent(
         member.id,
-        () => _h.shellFactory.newSession(member.cliWithin(team)),
+        () => _h.shellFactory.newSession(
+          memberLaunchCli(
+            team: team,
+            member: member,
+            globalPresets: _h.lifecycle.globalPresets,
+          ),
+        ),
       );
     }
     return _shellForLaunch(
       tab: tab,
       shellKey: member.id,
-      cli: member.cliWithin(team),
+      cli: memberLaunchCli(
+        team: team,
+        member: member,
+        globalPresets: _h.lifecycle.globalPresets,
+      ),
       session: activeSession,
       rosterMemberId: member.id,
     );
@@ -1893,7 +1916,11 @@ class SessionLaunchService implements MemberConnector {
       return tab.memberShells.putIfAbsent(
         memberId,
         () => _h.shellFactory.newSession(
-          _h.shellFactory.cliForMember(team, memberId),
+          _h.shellFactory.cliForMember(
+            team,
+            memberId,
+            globalPresets: _h.lifecycle.globalPresets,
+          ),
         ),
       );
     }

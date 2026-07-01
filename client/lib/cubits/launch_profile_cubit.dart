@@ -745,15 +745,21 @@ class LaunchProfileCubit extends Cubit<LaunchProfileState>
   /// Sets the active preset for the selected team.
   ///
   /// [presetId] may be a preset UUID, `null` (clear), or empty (clear).
-  void setTeamActivePreset(String? presetId) {
+  /// [syncCli] aligns [TeamProfile.cli] with the preset for mixed/native launch.
+  void setTeamActivePreset(String? presetId, {CliTool? syncCli}) {
     final team = state.selectedTeam;
     if (team == null) return;
     final effectiveId = (presetId == null || presetId.trim().isEmpty)
         ? null
         : presetId.trim();
-    updateSelected(
-      team.copyWith(activePresetId: effectiveId, updateActivePresetId: true),
+    var next = team.copyWith(
+      activePresetId: effectiveId,
+      updateActivePresetId: true,
     );
+    if (effectiveId != null && syncCli != null) {
+      next = next.copyWith(cli: syncCli);
+    }
+    updateSelected(next);
   }
 
   /// Persists team custom launch defaults for [catalogCli] and clears any preset.
@@ -783,11 +789,10 @@ class LaunchProfileCubit extends Cubit<LaunchProfileState>
   /// Sets the active preset for a member of the selected team.
   ///
   /// [presetId] may be a preset UUID ([CliPreset.id]),
-  /// [TeamProfile.inheritPresetId] to inherit the team default, `null` (clear),
-  /// or empty (clear).
+  /// [TeamProfile.inheritPresetId] to inherit the team default, `null` (custom),
+  /// or empty (custom).
   ///
-  /// In [TeamMode.mixed], pass [syncCli] when selecting an explicit preset so
-  /// the member's CLI matches the preset (launch uses [TeamMemberConfig.cli]).
+  /// In [TeamMode.mixed], [syncCli] is required when selecting an explicit preset.
   Future<void> setMemberActivePreset(
     String memberId,
     String? presetId, {
@@ -803,18 +808,48 @@ class LaunchProfileCubit extends Cubit<LaunchProfileState>
     final effectiveId = (presetId == null || presetId.trim().isEmpty)
         ? null
         : presetId.trim();
+
+    if (effectiveId == TeamProfile.inheritPresetId) {
+      await updateMember(
+        memberId,
+        member.copyWith(
+          activePresetId: TeamProfile.inheritPresetId,
+          updateActivePresetId: true,
+          cli: null,
+          updateCli: true,
+          provider: '',
+          model: '',
+          effort: '',
+          updateEffort: true,
+        ),
+      );
+      return;
+    }
+
+    if (effectiveId == null) {
+      await updateMember(
+        memberId,
+        member.copyWith(
+          activePresetId: null,
+          updateActivePresetId: true,
+        ),
+      );
+      return;
+    }
+
     final syncCliFromPreset =
-        team.teamMode == TeamMode.mixed &&
-        effectiveId != null &&
-        effectiveId != TeamProfile.inheritPresetId &&
-        syncCli != null;
+        team.teamMode == TeamMode.mixed && syncCli != null;
     await updateMember(
       memberId,
       member.copyWith(
         activePresetId: effectiveId,
         updateActivePresetId: true,
-        cli: syncCliFromPreset ? syncCli : member.cli,
+        cli: syncCliFromPreset ? syncCli : null,
         updateCli: syncCliFromPreset,
+        provider: '',
+        model: '',
+        effort: '',
+        updateEffort: true,
       ),
     );
   }

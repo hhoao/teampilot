@@ -1,8 +1,11 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_bloc/flutter_bloc.dart';
+import '../../cubits/cli_presets_cubit.dart';
 import '../../l10n/l10n_extensions.dart';
 import '../../models/app_provider_config.dart';
 import '../../models/member_presence.dart';
 import '../../models/team_config.dart';
+import '../../services/cli/preset_resolver.dart';
 import '../../services/cli/registry/capabilities/provider_catalog_capability.dart';
 import '../../services/cli/registry/cli_display_name.dart';
 import '../../services/cli/registry/cli_tool_registry.dart';
@@ -88,17 +91,23 @@ class MembersPanel extends StatelessWidget {
                 final presence =
                     memberPresence[member.id] ?? const MemberPresence.offline();
                 final statusLabel = memberPresenceStatusLabel(l10n, presence);
-                final memberCli = member.cliWithin(team);
+                final presets = context.watch<CliPresetsCubit>().state.presets;
+                final launch = resolveMemberLaunch(
+                  team: team,
+                  member: member,
+                  globalPresets: presets,
+                );
+                final memberCli = launch.cli;
                 final catalogCli = _catalogCli(registry, memberCli);
                 final memberProvider = _memberProvider(
                   providersByCli[catalogCli] ?? const [],
-                  member.provider,
+                  launch.provider,
                 );
                 final brandLabel = memberProvider?.name ??
                     _cliDisplayLabel(registry, memberCli, l10n);
                 final meta = [
                   brandLabel,
-                  member.model,
+                  launch.model,
                 ].where((v) => v.isNotEmpty).join(' / ');
                 final subtitle = meta.isEmpty
                     ? statusLabel

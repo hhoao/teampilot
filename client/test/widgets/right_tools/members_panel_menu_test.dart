@@ -3,28 +3,43 @@ import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:teampilot/cubits/app_provider_cubit.dart';
+import 'package:teampilot/cubits/cli_presets_cubit.dart';
 import 'package:teampilot/l10n/app_localizations.dart';
 import 'package:teampilot/models/team_config.dart';
+import 'package:teampilot/repositories/cli_presets_repository.dart';
 import 'package:teampilot/services/cli/registry/cli_tool_registry.dart';
 import 'package:teampilot/services/cli/registry/cli_tool_registry_scope.dart';
 import 'package:teampilot/widgets/right_tools/members_panel.dart';
 
+import '../../support/in_memory_filesystem.dart';
 import '../../support/post_frame_test_harness.dart';
 
 const _member = TeamMemberConfig(id: 'm1', name: 'Backend');
 const _team = TeamProfile(id: 't', name: 'T', cli: CliTool.claude, members: [_member]);
 
-Widget _host(Widget child, AppProviderCubit providerCubit) => MaterialApp(
+Widget _host(Widget child, AppProviderCubit providerCubit) {
+  final cliPresetsCubit = CliPresetsCubit(
+    repository: CliPresetsRepository(
+      fs: InMemoryFilesystem(),
+      presetsPath: '/cli-presets.json',
+    ),
+  );
+  addTearDown(cliPresetsCubit.close);
+  return MaterialApp(
       localizationsDelegates: AppLocalizations.localizationsDelegates,
       supportedLocales: AppLocalizations.supportedLocales,
-      home: BlocProvider.value(
-        value: providerCubit,
+      home: MultiBlocProvider(
+        providers: [
+          BlocProvider.value(value: providerCubit),
+          BlocProvider.value(value: cliPresetsCubit),
+        ],
         child: CliToolRegistryScope(
           registry: CliToolRegistry.builtIn(),
           child: Scaffold(body: child),
         ),
       ),
     );
+}
 
 void main() {
   setUp(setUpTestAppStorage);

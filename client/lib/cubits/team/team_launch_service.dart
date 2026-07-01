@@ -3,6 +3,7 @@ import 'package:uuid/uuid.dart';
 import '../../models/team_config.dart';
 import '../../services/session/launch_command_builder.dart';
 import '../../services/session/session_lifecycle_service.dart';
+import '../../services/cli/preset_resolver.dart';
 import '../../services/storage/app_storage.dart';
 import 'launch_profile_cubit_host.dart';
 import 'team_resource_sync_service.dart';
@@ -59,7 +60,13 @@ class TeamLaunchService {
         (t, m) => LaunchCommandBuilder.launch(
           t,
           member: m,
-          executable: _resolveExecutableFor(m.cliWithin(t)),
+          executable: _resolveExecutableFor(
+            memberLaunchCli(
+              team: t,
+              member: m,
+              globalPresets: _lifecycle.globalPresets,
+            ),
+          ),
           extraEnvironment: env,
         );
     await launch(team, member);
@@ -72,7 +79,13 @@ class TeamLaunchService {
         : LaunchCommandBuilder.preview(
             team,
             member,
-            executable: _resolveExecutableFor(member.cliWithin(team)),
+            executable: _resolveExecutableFor(
+              memberLaunchCli(
+                team: team,
+                member: member,
+                globalPresets: _lifecycle.globalPresets,
+              ),
+            ),
           );
   }
 
@@ -82,7 +95,13 @@ class TeamLaunchService {
     return LaunchCommandBuilder.preview(
       team,
       team.members.first,
-      executable: _resolveExecutableFor(team.members.first.cliWithin(team)),
+      executable: _resolveExecutableFor(
+        memberLaunchCli(
+          team: team,
+          member: team.members.first,
+          globalPresets: _lifecycle.globalPresets,
+        ),
+      ),
     );
   }
 
@@ -115,7 +134,7 @@ class TeamLaunchService {
         _h.state.copyWith(
           isLaunching: false,
           statusMessage:
-              'Started ${member.name}: ${LaunchCommandBuilder.preview(team, member, executable: _resolveExecutableFor(member.cliWithin(team)))}',
+              'Started ${member.name}: ${LaunchCommandBuilder.preview(team, member, executable: _resolveExecutableFor(memberLaunchCli(team: team, member: member, globalPresets: _lifecycle.globalPresets)))}',
         ),
       );
     } on Object catch (error) {

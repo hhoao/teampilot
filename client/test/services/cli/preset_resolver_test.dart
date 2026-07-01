@@ -4,8 +4,8 @@ import 'package:teampilot/models/team_config.dart';
 import 'package:teampilot/services/cli/preset_resolver.dart';
 
 void main() {
-  const preset = CliPreset(
-    id: 'preset-1',
+  const claudePreset = CliPreset(
+    id: 'preset-claude',
     name: 'Claude Default',
     cli: CliTool.claude,
     provider: 'deepseek',
@@ -15,7 +15,85 @@ void main() {
     updatedAt: 0,
   );
 
-  test('resolveMemberLaunchConfig merges team custom defaults for empty member', () {
+  const cursorPreset = CliPreset(
+    id: 'preset-cursor',
+    name: 'Cursor',
+    cli: CliTool.cursor,
+    provider: 'cursor-account',
+    model: 'composer-2.5',
+    createdAt: 0,
+    updatedAt: 0,
+  );
+
+  test('resolveTeamLaunchBundle reads team custom defaults', () {
+    const team = TeamProfile(
+      id: 'team',
+      name: 'Team',
+      cli: CliTool.claude,
+      providerIdsByTool: {'claude': 'deepseek'},
+      modelsByTool: {'claude': 'deepseek-v4-pro'},
+      cliEffortLevels: {'claude': 'medium'},
+    );
+
+    final bundle = resolveTeamLaunchBundle(
+      team: team,
+      globalPresets: const [],
+    );
+
+    expect(bundle.cli, CliTool.claude);
+    expect(bundle.provider, 'deepseek');
+    expect(bundle.model, 'deepseek-v4-pro');
+    expect(bundle.effort, 'medium');
+  });
+
+  test('resolveTeamLaunchBundle reads active team preset', () {
+    const team = TeamProfile(
+      id: 'team',
+      name: 'Team',
+      cli: CliTool.claude,
+      activePresetId: 'preset-cursor',
+    );
+
+    final bundle = resolveTeamLaunchBundle(
+      team: team,
+      globalPresets: const [cursorPreset],
+    );
+
+    expect(bundle.cli, CliTool.cursor);
+    expect(bundle.provider, 'cursor-account');
+    expect(bundle.model, 'composer-2.5');
+    expect(bundle.sourcePreset, cursorPreset);
+  });
+
+  test('inherit member uses full team bundle including preset CLI', () {
+    const team = TeamProfile(
+      id: 'team',
+      name: 'Team',
+      teamMode: TeamMode.mixed,
+      cli: CliTool.claude,
+      activePresetId: 'preset-cursor',
+      members: [
+        TeamMemberConfig(
+          id: 'alice',
+          name: 'Alice',
+          activePresetId: TeamProfile.inheritPresetId,
+        ),
+      ],
+    );
+
+    final resolved = resolveMemberLaunch(
+      team: team,
+      member: team.members.single,
+      globalPresets: const [cursorPreset],
+    );
+
+    expect(resolved.mode, MemberLaunchMode.inheritTeam);
+    expect(resolved.cli, CliTool.cursor);
+    expect(resolved.provider, 'cursor-account');
+    expect(resolved.model, 'composer-2.5');
+  });
+
+  test('custom member does not inherit team provider or model', () {
     const team = TeamProfile(
       id: 'team',
       name: 'Team',
@@ -23,64 +101,64 @@ void main() {
       cli: CliTool.claude,
       providerIdsByTool: {'claude': 'deepseek'},
       modelsByTool: {'claude': 'deepseek-v4-pro'},
-      cliEffortLevels: {'claude': 'medium'},
-      members: [
-        TeamMemberConfig(id: 'alice', name: 'Alice'),
-      ],
-    );
-    const member = TeamMemberConfig(id: 'alice', name: 'Alice');
-
-    final resolved = resolveMemberLaunchConfig(
-      team: team,
-      member: member,
-      globalPresets: const [],
-    );
-
-    expect(resolved.provider, 'deepseek');
-    expect(resolved.model, 'deepseek-v4-pro');
-    expect(resolved.effort, 'medium');
-  });
-
-  test('inherits team preset only when CLI matches member effective CLI', () {
-    const team = TeamProfile(
-      id: 'team',
-      name: 'Team',
-      teamMode: TeamMode.mixed,
-      cli: CliTool.claude,
-      activePresetId: 'preset-1',
       members: [
         TeamMemberConfig(
           id: 'alice',
           name: 'Alice',
           cli: CliTool.codex,
-          activePresetId: TeamProfile.inheritPresetId,
+          provider: 'codex-p',
+          model: 'codex-m',
         ),
       ],
     );
-    const member = TeamMemberConfig(
-      id: 'alice',
-      name: 'Alice',
-      cli: CliTool.codex,
-      activePresetId: TeamProfile.inheritPresetId,
-    );
 
-    final resolved = resolveMemberLaunchConfig(
+    final resolved = resolveMemberLaunch(
       team: team,
-      member: member,
-      globalPresets: const [preset],
+      member: team.members.single,
+      globalPresets: const [],
     );
 
-    expect(resolved.provider, isEmpty);
-    expect(resolved.model, isEmpty);
+    expect(resolved.mode, MemberLaunchMode.custom);
+    expect(resolved.cli, CliTool.codex);
+    expect(resolved.provider, 'codex-p');
+    expect(resolved.model, 'codex-m');
   });
 
-  test('inherits team preset when CLI matches', () {
+  test('member explicit preset overrides team bundle', () {
     const team = TeamProfile(
       id: 'team',
       name: 'Team',
       teamMode: TeamMode.mixed,
       cli: CliTool.claude,
-      activePresetId: 'preset-1',
+      activePresetId: 'preset-cursor',
+      members: [
+        TeamMemberConfig(
+          id: 'alice',
+          name: 'Alice',
+          activePresetId: 'preset-claude',
+        ),
+      ],
+    );
+
+    final resolved = resolveMemberLaunch(
+      team: team,
+      member: team.members.single,
+      globalPresets: const [claudePreset, cursorPreset],
+    );
+
+    expect(resolved.mode, MemberLaunchMode.memberPreset);
+    expect(resolved.cli, CliTool.claude);
+    expect(resolved.provider, 'deepseek');
+    expect(resolved.model, 'deepseek-v4-pro');
+  });
+
+  test('memberForLaunch copies resolved CLI for mixed teams', () {
+    const team = TeamProfile(
+      id: 'team',
+      name: 'Team',
+      teamMode: TeamMode.mixed,
+      cli: CliTool.claude,
+      activePresetId: 'preset-cursor',
       members: [
         TeamMemberConfig(
           id: 'alice',
@@ -90,60 +168,28 @@ void main() {
       ],
     );
 
-    final resolved = resolveMemberLaunchConfig(
+    final staged = memberForLaunch(
       team: team,
       member: team.members.single,
-      globalPresets: const [preset],
+      globalPresets: const [cursorPreset],
     );
 
-    expect(resolved.provider, 'deepseek');
-    expect(resolved.model, 'deepseek-v4-pro');
-    expect(resolved.sourcePreset, preset);
+    expect(staged.cli, CliTool.cursor);
+    expect(staged.provider, 'cursor-account');
+    expect(staged.model, 'composer-2.5');
   });
 
-  test('eligiblePresets filters by member effective CLI by default', () {
-    const claudePreset = CliPreset(
-      id: 'preset-claude',
-      name: 'Claude',
-      cli: CliTool.claude,
-      provider: 'p1',
-      model: 'm1',
-      createdAt: 0,
-      updatedAt: 0,
+  test('presetsForCli filters by catalog CLI', () {
+    final items = presetsForCli(
+      const [claudePreset, cursorPreset],
+      CliTool.codex,
     );
-    const codexPreset = CliPreset(
-      id: 'preset-codex',
-      name: 'Codex',
-      cli: CliTool.codex,
-      provider: 'p2',
-      model: 'm2',
-      createdAt: 0,
-      updatedAt: 0,
-    );
-    const team = TeamProfile(
-      id: 'team',
-      name: 'Team',
-      teamMode: TeamMode.mixed,
-      cli: CliTool.claude,
-      members: [
-        TeamMemberConfig(id: 'alice', name: 'Alice'),
-      ],
-    );
-    const member = TeamMemberConfig(id: 'alice', name: 'Alice');
+    expect(items, isEmpty);
 
-    final inherited = eligiblePresets(
-      team: team,
-      member: member,
-      allPresets: const [claudePreset, codexPreset],
+    final claudeItems = presetsForCli(
+      const [claudePreset, cursorPreset],
+      CliTool.claude,
     );
-    expect(inherited, const [claudePreset]);
-
-    final codexCatalog = eligiblePresets(
-      team: team,
-      member: member,
-      allPresets: const [claudePreset, codexPreset],
-      catalogCli: CliTool.codex,
-    );
-    expect(codexCatalog, const [codexPreset]);
+    expect(claudeItems, const [claudePreset]);
   });
 }

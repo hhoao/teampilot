@@ -4,12 +4,14 @@ import '../../l10n/l10n_extensions.dart';
 import '../../models/app_provider_config.dart';
 import '../../models/cli_preset.dart';
 import '../../models/team_config.dart';
+import '../../services/cli/preset_resolver.dart';
 import '../../services/app/flashskyai_agent_catalog_service.dart';
 import '../../services/cli/registry/capabilities/cli_effort_capability.dart';
 import '../../services/cli/registry/capabilities/provider_catalog_capability.dart';
 import '../../services/cli/registry/cli_display_name.dart';
 import '../../services/cli/registry/cli_tool_registry.dart';
 import '../../services/cli/registry/cli_tool_registry_scope.dart';
+import '../../widgets/cli_launch_config/team_launch_config_kind.dart';
 
 CliTool? catalogCliForTeam(BuildContext context, CliTool cli) {
   final registry = CliToolRegistryScope.maybeOf(context);
@@ -30,13 +32,20 @@ bool computeMemberShowsAgentPreset({
   required TeamProfile team,
   required TeamMemberConfig member,
   required bool Function(CliTool cli) supportsPreset,
+  List<CliPreset> globalPresets = const [],
 }) {
-  if (team.teamMode == TeamMode.mixed) {
-    final override = member.cli;
-    if (override == null) return false;
-    return supportsPreset(override);
+  if (team.teamMode == TeamMode.mixed &&
+      member.usesCustomConfig &&
+      member.cli == null) {
+    return false;
   }
-  return supportsPreset(member.cliWithin(team));
+  final cli = memberAgentPresetCli(
+    team: team,
+    member: member,
+    globalPresets: globalPresets,
+  );
+  if (cli == null) return false;
+  return supportsPreset(cli);
 }
 
 /// Whether the member editor should show the agent-preset row.
@@ -62,11 +71,16 @@ bool memberShowsAgentPresetUi(
 CliTool? memberAgentPresetCli({
   required TeamProfile team,
   required TeamMemberConfig member,
+  List<CliPreset> globalPresets = const [],
 }) {
-  if (team.teamMode == TeamMode.mixed) {
+  if (member.usesCustomConfig && team.teamMode == TeamMode.mixed) {
     return member.cli;
   }
-  return member.cliWithin(team);
+  return memberLaunchCli(
+    team: team,
+    member: member,
+    globalPresets: globalPresets,
+  );
 }
 
 String teamCliDisplayLabel(
@@ -152,6 +166,22 @@ bool teamLaunchDefaultsConfigured({
     return false;
   }
   return team.hasCustomLaunchDefaultsFor(catalogCli);
+}
+
+/// Config-type label for team default summary (matches configure-dialog picker).
+String teamLaunchConfigTypeLabel(AppLocalizations l10n, TeamProfile team) {
+  return switch (teamLaunchConfigKind(team)) {
+    TeamLaunchConfigKind.preset => l10n.memberLaunchConfigTypePreset,
+    TeamLaunchConfigKind.custom => l10n.memberPresetCustom,
+  };
+}
+
+String teamLaunchSummaryLine({
+  required AppLocalizations l10n,
+  required TeamProfile team,
+  required String body,
+}) {
+  return '${teamLaunchConfigTypeLabel(l10n, team)} · $body';
 }
 
 /// Summary line for team custom defaults (not preset-backed).

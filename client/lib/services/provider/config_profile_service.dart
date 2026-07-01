@@ -166,7 +166,7 @@ class ConfigProfileService implements ConfigProfileDelegate {
     final roster = members.isNotEmpty ? members : team.members;
     final resolvedMember =
         member != null && member.isValid
-            ? teamMemberWithLaunchConfig(
+            ? memberForLaunch(
                 team: team,
                 member: member,
                 globalPresets: presets,
@@ -179,7 +179,9 @@ class ConfigProfileService implements ConfigProfileDelegate {
     );
     final effectiveCli =
         resolvedMember != null && resolvedMember.isValid
-            ? resolvedMember.cliWithin(team)
+            ? (team.teamMode == TeamMode.mixed
+                  ? resolvedMember.cli ?? team.cli
+                  : team.cli)
             : cli;
     return (
       member: resolvedMember,

@@ -189,19 +189,20 @@ class TeamMemberConfig {
   /// Whether this member uses fully custom config (no preset at all).
   bool get usesCustomConfig => activePresetId == null;
 
-  /// 成员有效 CLI：native 一律 team.cli；mixed 用成员覆盖、否则 team 默认。
-  CliTool cliWithin(TeamProfile team) =>
-      team.teamMode == TeamMode.mixed ? (cli ?? team.cli) : team.cli;
-
   /// turn 结束时是否强制把该成员推回 `wait_for_message`（mixed 协议）。优先级：
   /// 成员显式覆盖 [forceWaitBeforeStop] > CLI 默认 > 团队 [TeamProfile.forceWaitBeforeStop]。
+  ///
+  /// [launchCli] must be the resolved launch CLI ([memberLaunchCli]).
   ///
   /// CLI 默认：**cursor 为 false** —— cursor 的 MCP 工具调用有 ~60s agent 层硬限
   /// （不可配、progress 不续），无法阻塞在 `wait_for_message` 里；改为正常停到
   /// idle-at-prompt，由门铃（stdin 注入 + `read_messages`）push 投递。
-  bool effectiveForceWaitBeforeStop(TeamProfile team) {
+  bool effectiveForceWaitBeforeStop(
+    TeamProfile team, {
+    required CliTool launchCli,
+  }) {
     if (forceWaitBeforeStop != null) return forceWaitBeforeStop!;
-    if (cliWithin(team) == CliTool.cursor) return false;
+    if (launchCli == CliTool.cursor) return false;
     return team.forceWaitBeforeStop;
   }
 

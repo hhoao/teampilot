@@ -1,5 +1,6 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:teampilot/cubits/member_config_cubit.dart';
+import 'package:teampilot/models/cli_preset.dart';
 import 'package:teampilot/models/team_config.dart';
 import 'package:teampilot/services/storage/runtime_context.dart';
 import 'package:teampilot/services/storage/runtime_layout.dart';
@@ -32,6 +33,7 @@ class _FakeInspector extends MemberConfigInspector {
     required TeamProfile team,
     required TeamMemberConfig member,
     RuntimeContext? workContext,
+    List<CliPreset> globalPresets = const [],
   }) async {
     if (throwIt) throw StateError('boom');
     return _result;

@@ -8,14 +8,17 @@ import '../cli/preset_resolver.dart';
 
 /// What aspect of team config is missing for launch.
 enum TeamConfigIssueKind {
-  /// Team has no default provider/preset and members don't resolve either.
+  /// Team has no default provider/preset configured.
   teamDefaultProviderMissing,
 
-  /// A member has no provider configured after team defaults are applied.
+  /// A member has no provider configured for its launch mode.
   memberProviderMissing,
 
-  /// A member has a non-official provider but no model after defaults apply.
+  /// A member has a non-official provider but no model.
   memberModelMissing,
+
+  /// Custom mixed member has no CLI selected.
+  memberCliMissing,
 }
 
 /// A single validation finding, optionally scoped to a roster member.
@@ -67,8 +70,7 @@ typedef OfficialProviderResolver =
     Future<bool> Function(CliTool cli, String providerId);
 
 /// Pre-launch check that a team has enough provider/model configuration to
-/// start a session. Uses [resolveMemberLaunchConfig] so team defaults can
-/// satisfy members with empty flat fields.
+/// start a session. Uses [resolveMemberLaunch] per member launch mode.
 class TeamConfigLaunchValidator {
   TeamConfigLaunchValidator({OfficialProviderResolver? isOfficialProvider})
     : _isOfficialProvider = isOfficialProvider ?? _defaultIsOfficialProvider;
@@ -84,13 +86,11 @@ class TeamConfigLaunchValidator {
         .toList(growable: false);
     final issues = <TeamConfigIssue>[];
 
-    final teamPresetExists = team.activePresetId != null &&
-        _presetExists(team.activePresetId!, globalPresets);
-    final hasTeamCustomDefault = team.hasCustomLaunchDefaultsFor(team.cli);
-    final hasTeamDefault =
-        teamPresetExists ||
-        hasTeamCustomDefault ||
-        (team.providerIdsByTool[team.cli.value] ?? '').trim().isNotEmpty;
+    final teamBundle = resolveTeamLaunchBundle(
+      team: team,
+      globalPresets: globalPresets,
+    );
+    final hasTeamDefault = teamBundle.isConfigured;
 
     if (members.isEmpty && !hasTeamDefault) {
       issues.add(
@@ -99,12 +99,17 @@ class TeamConfigLaunchValidator {
     }
 
     for (final member in members) {
-      final resolved = resolveMemberLaunchConfig(
+      final resolved = resolveMemberLaunch(
         team: team,
         member: member,
         globalPresets: globalPresets,
       );
-      final effectiveCli = member.cliWithin(team);
+      if (resolved.mode == MemberLaunchMode.custom &&
+          team.teamMode == TeamMode.mixed &&
+          member.cli == null) {
+        issues.add(_memberIssue(TeamConfigIssueKind.memberCliMissing, member));
+        continue;
+      }
       if (resolved.provider.trim().isEmpty) {
         issues.add(
           _memberIssue(TeamConfigIssueKind.memberProviderMissing, member),
@@ -112,7 +117,7 @@ class TeamConfigLaunchValidator {
         continue;
       }
       if (await _needsModel(
-        effectiveCli,
+        resolved.cli,
         resolved.provider,
         resolved.model,
       )) {
@@ -125,7 +130,9 @@ class TeamConfigLaunchValidator {
     final allMembersMissingProvider = members.isNotEmpty &&
         issues.isNotEmpty &&
         issues.every(
-          (issue) => issue.kind == TeamConfigIssueKind.memberProviderMissing,
+          (issue) =>
+              issue.kind == TeamConfigIssueKind.memberProviderMissing ||
+              issue.kind == TeamConfigIssueKind.memberCliMissing,
         );
     if (allMembersMissingProvider && !hasTeamDefault) {
       issues.insert(
@@ -136,17 +143,10 @@ class TeamConfigLaunchValidator {
 
     return TeamConfigValidation(
       teamId: team.id,
-      teamName: team.name,
       mode: team.teamMode,
+      teamName: team.name,
       issues: issues,
     );
-  }
-
-  bool _presetExists(String id, List<CliPreset> presets) {
-    for (final preset in presets) {
-      if (preset.id == id) return true;
-    }
-    return false;
   }
 
   /// A model is required only when a non-official provider is configured but no

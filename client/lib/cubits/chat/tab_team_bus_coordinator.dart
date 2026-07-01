@@ -4,7 +4,9 @@ import 'package:flutter/foundation.dart';
 
 import '../../models/app_session.dart';
 import '../../models/member_instance.dart';
+import '../../models/cli_preset.dart';
 import '../../models/team_config.dart';
+import '../../services/cli/preset_resolver.dart';
 import '../../services/cli/registry/capabilities/terminal_behavior_capability.dart';
 import '../../services/cli/registry/cli_tool_registry.dart';
 import '../../services/team_bus/agent_node.dart';
@@ -43,11 +45,13 @@ class TabTeamBusCoordinator implements MemberMaterializer {
     required MemberConnector connector,
     required TeamProfile? Function() activeTeam,
     required bool Function() isClosed,
+    required List<CliPreset> Function() globalPresets,
     void Function(Set<String> workingSessionIds)? onWorkingSessionsChanged,
     ArtifactTransferService Function(AppSession session)? artifactServiceFactory,
   })  : _tabStore = tabStore,
         _shellFactory = shellFactory,
         _connector = connector,
+        _globalPresets = globalPresets,
         _activeTeam = activeTeam,
         _isClosed = isClosed,
         _onWorkingSessionsChanged = onWorkingSessionsChanged,
@@ -56,6 +60,7 @@ class TabTeamBusCoordinator implements MemberMaterializer {
   final ChatTabStore _tabStore;
   final ChatSessionShellFactory _shellFactory;
   final MemberConnector _connector;
+  final List<CliPreset> Function() _globalPresets;
   final TeamProfile? Function() _activeTeam;
   final bool Function() _isClosed;
   final void Function(Set<String> workingSessionIds)? _onWorkingSessionsChanged;
@@ -92,9 +97,17 @@ class TabTeamBusCoordinator implements MemberMaterializer {
     final taskQueue = team.teamMode == TeamMode.mixed
         ? TaskQueue(log: TaskLogFactory.forSession(session.workspaceId, session.sessionId))
         : null;
+    final presets = _globalPresets();
     final forceWaitByMember = {
       for (final m in runtimeMembers)
-        m.id: m.effectiveForceWaitBeforeStop(team),
+        m.id: m.effectiveForceWaitBeforeStop(
+          team,
+          launchCli: memberLaunchCli(
+            team: team,
+            member: m,
+            globalPresets: presets,
+          ),
+        ),
     };
     final bus = TeamBus(
       launcher: ChatCubitMemberLauncher(
@@ -134,6 +147,7 @@ class TabTeamBusCoordinator implements MemberMaterializer {
             cliTeamName: cliTeamName,
             cwd: session.firstFolderPath,
             taskId: taskId,
+            globalPresets: presets,
           ),
           lifecycle: MemberLifecycle.declared,
         ),
@@ -212,7 +226,13 @@ class TabTeamBusCoordinator implements MemberMaterializer {
     final trimmed = text.trim();
     if (trimmed.isEmpty) return;
     final team = _activeTeam();
-    final cli = team == null ? CliTool.claude : _shellFactory.cliForMember(team, memberId);
+    final cli = team == null
+        ? CliTool.claude
+        : _shellFactory.cliForMember(
+            team,
+            memberId,
+            globalPresets: _globalPresets(),
+          );
     final usesFullScreen =
         CliToolRegistry.builtIn()
             .capability<TerminalBehaviorCapability>(cli)

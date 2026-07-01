@@ -1,4 +1,6 @@
+import '../../models/cli_preset.dart';
 import '../../models/team_config.dart';
+import '../cli/preset_resolver.dart';
 import '../../utils/team_member_naming.dart';
 
 /// 成员静态配置（对齐 Claude `teams/<name>/config.json` member 行 + TeamPilot 字段）。
@@ -50,6 +52,7 @@ class TeammateRosterProfile {
     required String cliTeamName,
     required String cwd,
     String? taskId,
+    List<CliPreset> globalPresets = const [],
   }) {
     final rosterName = member.id;
     final isLead = TeamMemberNaming.isTeamLead(member);
@@ -59,7 +62,11 @@ class TeammateRosterProfile {
     final joinedAt = member.joinedAt > 0
         ? member.joinedAt
         : DateTime.now().millisecondsSinceEpoch;
-    final cli = member.cliWithin(team);
+    final launch = resolveMemberLaunch(
+      team: team,
+      member: member,
+      globalPresets: globalPresets,
+    );
     final caps = <String>{rosterName, ...member.capabilities};
     return TeammateRosterProfile(
       memberId: rosterName,
@@ -71,9 +78,9 @@ class TeammateRosterProfile {
         agentType: member.agentType,
       ),
       agent: member.agent.trim(),
-      model: member.model.trim(),
-      provider: member.provider.trim(),
-      cli: cli.value,
+      model: launch.model,
+      provider: launch.provider,
+      cli: launch.cli.value,
       extraArgs: member.extraArgs.trim(),
       prompt: member.prompt.trim(),
       joinedAt: joinedAt,
@@ -81,7 +88,7 @@ class TeammateRosterProfile {
       dangerouslySkipPermissions: member.dangerouslySkipPermissions,
       taskId: taskId?.trim() ?? '',
       cwd: cwd.trim(),
-      backendType: cli.value,
+      backendType: launch.cli.value,
       capabilities: caps,
     );
   }

@@ -3,6 +3,7 @@ import 'dart:io';
 
 import 'package:path/path.dart' as p;
 
+import '../cli/preset_resolver.dart';
 import '../../models/team_config.dart';
 import '../cli/cli_tool_adapter.dart';
 import 'shell_launch_spec.dart';
@@ -98,7 +99,7 @@ class LaunchCommandBuilder {
     CliToolRegistry? cliRegistry,
   }) {
     final registry = cliRegistry ?? _defaultCliRegistry;
-    final cli = context.member.cliWithin(context.team);
+    final cli = stagedMemberLaunchCli(context.team, context.member);
     final launch = registry.capability<LaunchArgsCapability>(cli);
     if (launch == null) {
       throw StateError('No LaunchArgsCapability for ${cli.value}');

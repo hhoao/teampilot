@@ -92,7 +92,7 @@ class SessionLifecycleService {
   final CliPresetsRepository? _cliPresetsRepository;
   final List<CliPreset> Function()? _loadPresets;
 
-  /// Global CLI presets used by [resolveMemberLaunchConfig] and launch validation.
+  /// Global CLI presets used by [resolveMemberLaunch] and launch validation.
   List<CliPreset> get globalPresets => _loadPresets?.call() ?? const [];
 
   /// Resolves the active [CliPreset] for a personal workspace profile.
@@ -345,7 +345,13 @@ class SessionLifecycleService {
       sessionId: trimmedSessionId,
       teamId: trimmedTeamId,
       cliTeamName: trimmedTeamId,
-      cli: launchMember.isValid ? launchMember.cliWithin(team) : team.cli,
+      cli: launchMember.isValid
+          ? memberLaunchCli(
+              team: team,
+              member: launchMember,
+              globalPresets: _loadPresets?.call() ?? const [],
+            )
+          : team.cli,
       members: team.members,
       member: launchMember.isValid ? launchMember : null,
       workingDirectory: workingDirectory.isNotEmpty
@@ -359,7 +365,7 @@ class SessionLifecycleService {
     TeamProfile team,
     TeamMemberConfig member,
   ) {
-    return teamMemberWithLaunchConfig(
+    return memberForLaunch(
       team: team,
       member: member,
       globalPresets: _loadPresets?.call() ?? const [],
@@ -482,7 +488,7 @@ class SessionLifecycleService {
       workspace: workspace,
     );
     final runtimeTeamId = cliTeamName.isNotEmpty ? cliTeamName : sessionId;
-    final cli = launchMember.cliWithin(team);
+    final cli = _memberLaunchCli(team, launchMember);
     final catalog = workspace != null
         ? WorkspaceLaunchContext(session: session, workspace: workspace)
             .folderCatalog
@@ -658,16 +664,15 @@ class SessionLifecycleService {
               launchMember,
             )
           : runtimeTeamId;
-      // Mixed-mode members run (and store transcripts) under their own
-      // `member.cliWithin(team)` override, which can differ from `team.cli`
-      // (the latter defaults to claude when the team JSON omits `cli`).
+      // Mixed-mode members run (and store transcripts) under their resolved
+      // launch CLI, which can differ from `team.cli`.
       // Probe the member's effective CLI so `--resume` finds the prior
       // transcript instead of falling back to `--session-id` (which the running
       // CLI rejects as "Session ID … is already in use").
       final cli = isPersonal
           ? (session.cli ?? activePreset?.cli ?? CliTool.claude)
           : (team != null && launchMember != null && launchMember.isValid
-                ? launchMember.cliWithin(team)
+                ? _memberLaunchCli(team, launchMember)
                 : team?.cli);
       final tools = cli != null ? [cli.value] : runtimeLayoutDefaultTools;
       final transcriptRoots = isPersonal
@@ -1043,7 +1048,9 @@ class SessionLifecycleService {
 
     final teamId = team?.id.trim() ?? '';
     if (team != null && teamId.isNotEmpty) {
-      final launchCli = member != null ? member.cliWithin(team) : team.cli;
+      final launchCli = member != null
+          ? _memberLaunchCli(team, member)
+          : team.cli;
       final leadTaskId = memberBinding?.taskId.trim() ?? '';
       final leadSessionId =
           member != null &&
@@ -1396,6 +1403,15 @@ class SessionLifecycleService {
       matchedPath: probe.matchedPath,
     );
   }
+
+  List<CliPreset> get _globalPresets => _loadPresets?.call() ?? const [];
+
+  CliTool _memberLaunchCli(TeamProfile team, TeamMemberConfig member) =>
+      memberLaunchCli(
+        team: team,
+        member: member,
+        globalPresets: _globalPresets,
+      );
 
   Future<void> _removeTree(RuntimeContext roots, String path) async {
     try {

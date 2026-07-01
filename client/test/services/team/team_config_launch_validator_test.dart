@@ -16,13 +16,20 @@ void main() {
     String provider = '',
     String model = '',
     CliTool? cli,
+    String? activePresetId,
   }) => TeamMemberConfig(
     id: name,
     name: name,
     provider: provider,
     model: model,
     cli: cli,
+    activePresetId: activePresetId,
   );
+
+  TeamMemberConfig inheritMember(String name) => member(
+        name,
+        activePresetId: TeamProfile.inheritPresetId,
+      );
 
   group('native mode', () {
     test('passes when team has an explicit default provider and model', () async {
@@ -33,7 +40,7 @@ void main() {
         teamMode: TeamMode.native,
         providerIdsByTool: const {'claude': 'prov-1'},
         modelsByTool: const {'claude': 'sonnet'},
-        members: [member('alice')],
+        members: [inheritMember('alice')],
       );
 
       final result = await validator.validate(team);
@@ -103,7 +110,7 @@ void main() {
       );
     });
 
-    test('passes when team custom defaults satisfy empty members', () async {
+    test('passes when team custom defaults satisfy inheriting members', () async {
       final team = TeamProfile(
         id: 'team',
         name: 'Team',
@@ -111,7 +118,7 @@ void main() {
         teamMode: TeamMode.native,
         providerIdsByTool: const {'claude': 'prov-1'},
         modelsByTool: const {'claude': 'sonnet'},
-        members: [member('alice')],
+        members: [inheritMember('alice')],
       );
 
       final result = await validator.validate(team);
@@ -191,7 +198,7 @@ void main() {
   });
 
   group('mixed mode', () {
-    test('flags missing provider when team and member defaults are empty', () async {
+    test('flags missing provider when custom member has no own config', () async {
       final team = TeamProfile(
         id: 'team',
         name: 'Team',
@@ -204,7 +211,7 @@ void main() {
 
       expect(
         result.issues.map((i) => i.kind),
-        contains(TeamConfigIssueKind.memberProviderMissing),
+        contains(TeamConfigIssueKind.memberCliMissing),
       );
       expect(
         result.issues.map((i) => i.kind),
@@ -212,7 +219,7 @@ void main() {
       );
     });
 
-    test('passes when member is empty but team custom defaults apply', () async {
+    test('passes when member inherits team custom defaults', () async {
       final team = TeamProfile(
         id: 'team',
         name: 'Team',
@@ -220,7 +227,7 @@ void main() {
         teamMode: TeamMode.mixed,
         providerIdsByTool: const {'claude': 'prov-1'},
         modelsByTool: const {'claude': 'sonnet'},
-        members: [member('alice')],
+        members: [inheritMember('alice')],
       );
 
       final result = await validator.validate(team);

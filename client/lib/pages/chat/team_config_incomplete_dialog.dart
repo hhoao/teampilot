@@ -223,6 +223,12 @@ List<_IssueGroup> _groupIssues(
           Icons.person_outline,
           issue.memberName ?? issue.memberId ?? '',
         ).aspects.add(l10n.teamConfigAspectModel);
+      case TeamConfigIssueKind.memberCliMissing:
+        groupFor(
+          issue.memberId ?? '',
+          Icons.person_outline,
+          issue.memberName ?? issue.memberId ?? '',
+        ).aspects.add(l10n.teamConfigAspectCli);
     }
   }
 

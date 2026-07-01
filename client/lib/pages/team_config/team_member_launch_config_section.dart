@@ -18,8 +18,9 @@ import '../../theme/app_text_styles.dart';
 import '../../widgets/app_dialog.dart';
 import '../../widgets/app_provider/provider_brand_icon.dart';
 import '../../widgets/cli/cli_brand_icon.dart';
-import '../../widgets/cli_launch_config/cli_launch_config_tokens.dart';
 import '../../widgets/cli_launch_config/cli_launch_custom_fields.dart';
+import '../../widgets/cli_launch_config/member_launch_config_kind.dart';
+import '../../widgets/cli_launch_config/member_launch_config_type_field.dart';
 import '../../widgets/cli_launch_config/preset_launch_picker_field.dart';
 import '../../widgets/dropdown/app_dropdown_decoration.dart';
 import '../../widgets/settings/workspace_settings_widgets.dart';
@@ -78,15 +79,21 @@ class _MemberLaunchConfigRowBody extends StatelessWidget {
         LaunchProfileSelectors.memberById(team, launchContext.memberId);
     if (team == null || member == null) return const SizedBox.shrink();
 
-    final catalogCli = launchContext.catalogCli;
-    final catalogDef = registry.tryGet(catalogCli);
+    final presets = context
+        .select<CliPresetsCubit, List<CliPreset>>((c) => c.state.presets);
+    final catalogCli = memberCustomCatalogCli(team, member);
+    final catalogDef = registry.tryGet(
+      resolveMemberLaunch(
+        team: team,
+        member: member,
+        globalPresets: presets,
+      ).cli,
+    );
     final providers = context
         .select<AppProviderCubit, List<AppProviderConfig>>(
           (c) => c.state.providersFor(catalogCli).toList(growable: false),
         );
-    final presets = context
-        .select<CliPresetsCubit, List<CliPreset>>((c) => c.state.presets);
-    final resolved = resolveMemberLaunchConfig(
+    final resolved = resolveMemberLaunch(
       team: team,
       member: member,
       globalPresets: presets,
@@ -103,16 +110,15 @@ class _MemberLaunchConfigRowBody extends StatelessWidget {
     }
     final hidesModelPicker = workspaceCliHidesModelPicker(
       registry,
-      catalogCli,
+      resolved.cli,
       selectedProvider,
     );
     final configured = memberLaunchIsConfigured(
       team: team,
       member: member,
       registry: registry,
-      catalogCli: catalogCli,
-      provider: selectedProvider,
       presets: presets,
+      provider: selectedProvider,
     );
     final configLine = memberLaunchConfigLine(
       l10n: l10n,
@@ -282,24 +288,45 @@ class _MemberLaunchConfigureDialogState
   late String _providerId;
   late String _modelId;
   late String _effortId;
+  late MemberLaunchConfigKind _configKind;
 
   @override
   void initState() {
     super.initState();
-    _cliToken = widget.member.cli?.value ?? CliLaunchConfigTokens.cliInherit;
+    _cliToken = widget.member.cli?.value ?? '';
     _providerId = widget.member.provider;
     _modelId = widget.member.model;
     _effortId = widget.member.effort;
+    _configKind = memberLaunchConfigKind(widget.member);
   }
 
-  CliTool get _catalogCli {
-    if (widget.team.teamMode != TeamMode.mixed) return widget.team.cli;
-    if (_cliToken == CliLaunchConfigTokens.cliInherit) return widget.team.cli;
-    return CliTool.decode(_cliToken);
+  CliTool _customCatalogCli(TeamProfile team) {
+    if (team.teamMode == TeamMode.mixed && _cliToken.isNotEmpty) {
+      return CliTool.decode(_cliToken);
+    }
+    return team.cli;
   }
 
-  /// Whether the member currently has a preset active (not custom).
-  bool get _isPresetActive => widget.member.activePresetId != null;
+  void _applyConfigKind(MemberLaunchConfigKind kind) {
+    setState(() => _configKind = kind);
+    switch (kind) {
+      case MemberLaunchConfigKind.inheritTeam:
+        widget.cubit.setMemberActivePreset(
+          widget.member.id,
+          TeamProfile.inheritPresetId,
+        );
+      case MemberLaunchConfigKind.custom:
+        widget.cubit.setMemberActivePreset(widget.member.id, null);
+        setState(() {
+          _cliToken = widget.member.cli?.value ?? '';
+          _providerId = widget.member.provider;
+          _modelId = widget.member.model;
+          _effortId = widget.member.effort;
+        });
+      case MemberLaunchConfigKind.preset:
+        break;
+    }
+  }
 
   void _applyCatalogCliChange(String token) {
     setState(() {
@@ -310,42 +337,30 @@ class _MemberLaunchConfigureDialogState
     });
   }
 
-  /// Immediately applies a preset choice via the cubit. For inherit/preset
-  /// modes this updates activePresetId; for custom it clears to null.
-  /// Mixed teams sync member CLI from the chosen preset.
+  /// Applies a preset choice when configuration type is [MemberLaunchConfigKind.preset].
   void _applyPresetChoice(String token, List<CliPreset> allPresets) {
-    if (token == CliLaunchConfigTokens.presetInherit) {
-      widget.cubit.setMemberActivePreset(
-        widget.member.id,
-        TeamProfile.inheritPresetId,
-      );
-    } else if (token == CliLaunchConfigTokens.presetCustom) {
-      widget.cubit.setMemberActivePreset(widget.member.id, null);
-    } else {
-      CliTool? syncCli;
-      if (widget.team.teamMode == TeamMode.mixed) {
-        for (final preset in allPresets) {
-          if (preset.id == token) {
-            syncCli = preset.cli;
-            break;
-          }
-        }
-      }
-      widget.cubit.setMemberActivePreset(
-        widget.member.id,
-        token,
-        syncCli: syncCli,
-      );
-      if (syncCli != null) {
-        setState(() => _cliToken = syncCli!.value);
+    CliTool? syncCli;
+    for (final preset in allPresets) {
+      if (preset.id == token) {
+        syncCli = preset.cli;
+        break;
       }
     }
+    widget.cubit.setMemberActivePreset(
+      widget.member.id,
+      token,
+      syncCli: syncCli,
+    );
+    setState(() {
+      _configKind = MemberLaunchConfigKind.preset;
+      if (syncCli != null) _cliToken = syncCli.value;
+    });
   }
 
   void _save() {
-    if (!_isPresetActive) {
+    if (_configKind == MemberLaunchConfigKind.custom) {
       final mixed = widget.team.teamMode == TeamMode.mixed;
-      final nextCli = mixed && _cliToken != CliLaunchConfigTokens.cliInherit
+      final nextCli = mixed && _cliToken.isNotEmpty
           ? CliTool.decode(_cliToken)
           : null;
       widget.cubit.updateMember(
@@ -363,12 +378,17 @@ class _MemberLaunchConfigureDialogState
     Navigator.of(context).pop();
   }
 
+  bool _canSaveCustom(bool mixed) {
+    if (_providerId.trim().isEmpty) return false;
+    if (mixed && _cliToken.trim().isEmpty) return false;
+    return true;
+  }
+
   @override
   Widget build(BuildContext context) {
     final l10n = context.l10n;
     final registry = CliToolRegistryScope.of(context);
     final dropdownDeco = AppDropdownDecorations.themed(context);
-    final catalogCli = _catalogCli;
     final allPresets = context.watch<CliPresetsCubit>().state.presets;
     final team = context.watch<LaunchProfileCubit>().state.teams.firstWhere(
       (t) => t.id == widget.team.id,
@@ -378,44 +398,33 @@ class _MemberLaunchConfigureDialogState
       (m) => m!.id == widget.member.id,
       orElse: () => widget.member,
     )!;
+    final isCustom = _configKind == MemberLaunchConfigKind.custom;
+    final mixed = team.teamMode == TeamMode.mixed;
+    final catalogCli = isCustom
+        ? _customCatalogCli(team)
+        : memberCustomCatalogCli(team, member);
     final eligiblePresetList = team.teamMode == TeamMode.mixed
         ? globalPresetPickerItems(allPresets)
-        : eligiblePresets(
-            team: team,
-            member: member,
-            allPresets: allPresets,
-            catalogCli: catalogCli,
-          );
+        : teamPresetPickerItems(team: team, allPresets: allPresets);
 
-    // Determine current preset state from the updated member.
-    final isPresetActive = member.activePresetId != null;
-    final currentPresetToken =
-        member.activePresetId ?? CliLaunchConfigTokens.presetCustom;
+    final presetDropdownItems = presetLaunchDropdownItems(
+      mode: PresetLaunchPickerMode.presetOnly,
+      eligiblePresets: eligiblePresetList,
+    );
+    final presetToken = memberLaunchPresetToken(member);
+    final effectivePresetToken = presetDropdownItems.contains(presetToken)
+        ? presetToken
+        : (presetDropdownItems.isNotEmpty ? presetDropdownItems.first : '');
 
     final providers = context
         .watch<AppProviderCubit>()
         .state
         .providersFor(catalogCli)
         .toList(growable: false);
-    final mixed = team.teamMode == TeamMode.mixed;
-    final cliItems = mixed
-        ? registry.launchable.map((d) => d.id).toList(growable: false)
-        : <CliTool>[];
     final mixedMemberCliItems = mixed
-        ? [
-            CliLaunchConfigTokens.cliInherit,
-            ...registry.launchable.map((d) => d.id.value),
-          ]
+        ? registry.launchable.map((d) => d.id.value).toList(growable: false)
         : const <String>[];
-
-    final presetDropdownItems = presetLaunchDropdownItems(
-      mode: PresetLaunchPickerMode.inheritAndCustom,
-      eligiblePresets: eligiblePresetList,
-    );
-    final teamPresetName = teamPresetDisplayName(
-      team.activePresetId,
-      allPresets,
-    );
+    final providerState = context.watch<AppProviderCubit>().state;
 
     return AppDialog(
       maxWidth: 680,
@@ -430,18 +439,33 @@ class _MemberLaunchConfigureDialogState
               mainAxisSize: MainAxisSize.min,
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
-                PresetLaunchPickerField(
-                  mode: PresetLaunchPickerMode.inheritAndCustom,
-                  items: presetDropdownItems,
-                  currentToken: currentPresetToken,
-                  eligiblePresets: eligiblePresetList,
-                  registry: registry,
-                  providerState: context.watch<AppProviderCubit>().state,
-                  teamPresetName: teamPresetName,
+                MemberLaunchConfigTypeField(
+                  currentKind: _configKind,
                   decoration: dropdownDeco,
-                  onChanged: (token) => _applyPresetChoice(token, allPresets),
+                  showDividerBelow:
+                      _configKind == MemberLaunchConfigKind.custom,
+                  onChanged: _applyConfigKind,
                 ),
-                if (!isPresetActive)
+                if (_configKind == MemberLaunchConfigKind.inheritTeam)
+                  MemberLaunchInheritSummary(
+                    team: team,
+                    presets: allPresets,
+                    registry: registry,
+                    providerState: providerState,
+                  ),
+                if (_configKind == MemberLaunchConfigKind.preset &&
+                    presetDropdownItems.isNotEmpty)
+                  MemberLaunchPresetField(
+                    items: presetDropdownItems,
+                    currentToken: effectivePresetToken,
+                    eligiblePresets: eligiblePresetList,
+                    registry: registry,
+                    providerState: providerState,
+                    decoration: dropdownDeco,
+                    onChanged: (token) =>
+                        _applyPresetChoice(token, allPresets),
+                  ),
+                if (isCustom)
                   CliLaunchCustomFields(
                     catalogCli: catalogCli,
                     providers: providers,
@@ -452,7 +476,6 @@ class _MemberLaunchConfigureDialogState
                     cliFieldKind: mixed
                         ? CliLaunchCliFieldKind.mixedMember
                         : CliLaunchCliFieldKind.hidden,
-                    cliItems: cliItems,
                     mixedMemberCliItems: mixedMemberCliItems,
                     cliToken: _cliToken,
                     onMixedCliTokenChanged: _applyCatalogCliChange,
@@ -460,8 +483,7 @@ class _MemberLaunchConfigureDialogState
                     member: member,
                     effortContext: CliLaunchEffortContext.member,
                     effortSubtitle: l10n.memberEffortLevelSubtitle,
-                    effortAllowInherit: true,
-                    effortInheritLabel: l10n.memberEffortInheritHint,
+                    effortAllowInherit: false,
                     effortTitle: l10n.memberEffortLevel,
                     dropdownKeyPrefix: 'member-launch',
                     decoration: dropdownDeco,
@@ -493,9 +515,9 @@ class _MemberLaunchConfigureDialogState
                 onPressed: () => Navigator.of(context).pop(),
                 child: Text(l10n.cancel),
               ),
-              if (!isPresetActive)
+              if (isCustom)
                 FilledButton(
-                  onPressed: _providerId.trim().isEmpty ? null : _save,
+                  onPressed: _canSaveCustom(mixed) ? _save : null,
                   child: Text(l10n.save),
                 )
               else
