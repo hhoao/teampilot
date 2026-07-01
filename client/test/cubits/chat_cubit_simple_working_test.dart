@@ -88,9 +88,10 @@ void main() {
         reason: 'a send should light the working indicator',
       );
 
-      // Screen goes quiet (last output older than the idle window) → falling
+      // Screen goes quiet (PTY fingerprint unchanged for idleAfter) → falling
       // edge clears the turn.
-      shell.activityTracker.markActive(
+      shell.activityTracker.notePtyBytes(
+        const [0x64, 0x6f, 0x6e, 0x65], // "done"
         DateTime.now().subtract(const Duration(seconds: 5)),
       );
       cubit.debugTickIdleWatch();
