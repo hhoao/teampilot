@@ -20,12 +20,21 @@ ScenarioRegistry pingPongMixedClaudeScenarios() => ScenarioRegistry({
   ),
   workerScriptApiKey: MockScenario(
     turns: [
+      // First wait: kickoff "Start idle loop." may return immediately when the
+      // bus is empty; do not script pong on that turn.
       ToolUseTurn(id: 'tu_wait', name: '${_bus}wait_for_message', input: {}),
+      // Second wait: blocks until the leader's ping arrives (docker is slower).
+      ToolUseTurn(
+        id: 'tu_wait_ping',
+        name: '${_bus}wait_for_message',
+        input: {},
+      ),
       ToolUseTurn(
         id: 'tu_reply',
         name: '${_bus}send_message',
         input: {'to': 'team-lead', 'content': 'pong'},
       ),
+      const TextTurn('done'),
     ],
   ),
 });

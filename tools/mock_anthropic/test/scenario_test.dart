@@ -11,7 +11,11 @@ void main() {
     final reg = pingPongMixedClaudeScenarios();
     expect(reg.keys, containsAll([leadScriptApiKey, workerScriptApiKey]));
     expect(reg.scenarioFor(leadScriptApiKey)!.turns.length, 3);
-    expect(reg.scenarioFor(workerScriptApiKey)!.turns.length, 2);
+    expect(reg.scenarioFor(workerScriptApiKey)!.turns.length, 4);
+    expect(
+      (reg.scenarioFor(workerScriptApiKey)!.turns[1] as ToolUseTurn).name,
+      contains('wait_for_message'),
+    );
   });
 
   test('ScenarioRegistry advances turns per api key', () {
