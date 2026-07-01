@@ -7,18 +7,15 @@ import 'package:teampilot/widgets/app_toast/app_toast.dart';
 
 import '../../cubits/ssh_profile_cubit.dart';
 import '../../l10n/l10n_extensions.dart';
-import '../../models/runtime_target.dart';
 import '../../models/ssh_profile.dart';
 import '../../repositories/ssh_credential_store.dart';
 import '../../services/ssh/ssh_profile_connection_tester.dart';
-import '../../services/storage/targets_repository.dart';
 import '../../services/terminal/terminal_transport_factory.dart';
 import '../../widgets/settings/workspace_settings_widgets.dart';
 import '../ssh_profiles_page.dart';
-import 'credential_push_opt_in_tile.dart';
-import 'root_sandbox_env_opt_in_tile.dart';
 import 'ssh_profile_connection_status.dart';
 import 'ssh_profile_target_card.dart';
+import 'ssh_profile_target_config_dialog.dart';
 
 /// Orca-style SSH target list for settings (desktop + Android).
 class SshProfilesSection extends StatefulWidget {
@@ -251,106 +248,15 @@ class _SshProfilesSectionState extends State<SshProfilesSection> {
                     onEdit: () => openSshProfileEditor(context, profile: profile),
                     onDelete: () => confirmDeleteSshProfile(context, profile),
                     onRefresh: () => context.read<SshProfileCubit>().load(),
-                    footer: Column(
-                      crossAxisAlignment: CrossAxisAlignment.stretch,
-                      children: [
-                        SshProfileCredentialOptInTile(profile: profile),
-                        SshProfileRootSandboxEnvOptInTile(profile: profile),
-                      ],
+                    onConfigure: () => showSshProfileTargetConfigDialog(
+                      context,
+                      profile: profile,
                     ),
                   ),
                 ),
           ],
         ),
       ),
-    );
-  }
-}
-
-/// P3c: per-profile credential-push opt-in under each target card.
-class SshProfileCredentialOptInTile extends StatefulWidget {
-  const SshProfileCredentialOptInTile({super.key, required this.profile});
-
-  final SshProfile profile;
-
-  @override
-  State<SshProfileCredentialOptInTile> createState() =>
-      _SshProfileCredentialOptInTileState();
-}
-
-class _SshProfileCredentialOptInTileState
-    extends State<SshProfileCredentialOptInTile> {
-  final _repo = TargetsRepository();
-  bool _optedIn = false;
-
-  String get _targetId => RuntimeTarget.ssh(widget.profile.id, label: '').id;
-
-  @override
-  void initState() {
-    super.initState();
-    _load();
-  }
-
-  Future<void> _load() async {
-    final value = await _repo.isCredentialOptIn(_targetId);
-    if (mounted) setState(() => _optedIn = value);
-  }
-
-  Future<void> _onChanged(bool next) async {
-    await _repo.setCredentialOptIn(_targetId, next);
-    if (mounted) setState(() => _optedIn = next);
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    return CredentialPushOptInTile(
-      host: widget.profile.host,
-      optedIn: _optedIn,
-      onChanged: _onChanged,
-    );
-  }
-}
-
-/// Per-profile root sandbox env opt-in under each target card.
-class SshProfileRootSandboxEnvOptInTile extends StatefulWidget {
-  const SshProfileRootSandboxEnvOptInTile({super.key, required this.profile});
-
-  final SshProfile profile;
-
-  @override
-  State<SshProfileRootSandboxEnvOptInTile> createState() =>
-      _SshProfileRootSandboxEnvOptInTileState();
-}
-
-class _SshProfileRootSandboxEnvOptInTileState
-    extends State<SshProfileRootSandboxEnvOptInTile> {
-  final _repo = TargetsRepository();
-  bool _optedIn = false;
-
-  String get _targetId => RuntimeTarget.ssh(widget.profile.id, label: '').id;
-
-  @override
-  void initState() {
-    super.initState();
-    _load();
-  }
-
-  Future<void> _load() async {
-    final value = await _repo.isRootSandboxEnvOptIn(_targetId);
-    if (mounted) setState(() => _optedIn = value);
-  }
-
-  Future<void> _onChanged(bool next) async {
-    await _repo.setRootSandboxEnvOptIn(_targetId, next);
-    if (mounted) setState(() => _optedIn = next);
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    return RootSandboxEnvOptInTile(
-      host: widget.profile.host,
-      optedIn: _optedIn,
-      onChanged: _onChanged,
     );
   }
 }

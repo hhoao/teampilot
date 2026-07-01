@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 
 import '../../l10n/l10n_extensions.dart';
 import '../../widgets/app_dialog.dart';
+import '../../widgets/settings/workspace_settings_widgets.dart';
 
 /// Per-target "push credentials to this machine" opt-in (P3c §3.4). Default
 /// **off**. Turning it on first shows a trust-boundary confirmation naming the
@@ -14,12 +15,14 @@ class CredentialPushOptInTile extends StatelessWidget {
     required this.optedIn,
     required this.onChanged,
     this.confirmTrustBoundary,
+    this.showDividerBelow = true,
     super.key,
   });
 
   final String host;
   final bool optedIn;
   final ValueChanged<bool> onChanged;
+  final bool showDividerBelow;
 
   /// Returns true when the user confirms pushing keys to [host]. Defaults to
   /// [showCredentialPushConfirm].
@@ -28,20 +31,24 @@ class CredentialPushOptInTile extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final l10n = context.l10n;
-    return SwitchListTile(
-      contentPadding: EdgeInsets.zero,
-      value: optedIn,
-      title: Text(l10n.credentialPushOptInTitle),
-      subtitle: Text(l10n.credentialPushOptInSubtitle(host)),
-      onChanged: (next) async {
-        if (!next) {
-          onChanged(false);
-          return;
-        }
-        final confirm = confirmTrustBoundary ??
-            () => showCredentialPushConfirm(context, host);
-        if (await confirm()) onChanged(true);
-      },
+    return SettingsLabeledRow(
+      title: l10n.credentialPushOptInTitle,
+      subtitle: l10n.credentialPushOptInSubtitle(host),
+      trailing: Switch(
+        value: optedIn,
+        onChanged: (next) {
+          if (!next) {
+            onChanged(false);
+            return;
+          }
+          final confirm = confirmTrustBoundary ??
+              () => showCredentialPushConfirm(context, host);
+          confirm().then((ok) {
+            if (ok) onChanged(true);
+          });
+        },
+      ),
+      showDividerBelow: showDividerBelow,
     );
   }
 }
