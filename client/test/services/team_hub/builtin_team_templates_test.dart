@@ -1,4 +1,5 @@
 import 'package:flutter_test/flutter_test.dart';
+import 'package:teampilot/models/team_config.dart';
 import 'package:teampilot/services/team_hub/builtin_team_templates.dart';
 import 'package:teampilot/utils/team_member_naming.dart';
 
@@ -15,6 +16,10 @@ void main() {
     expect(configs[3].id, 'reviewer');
     expect(configs[0].playbook, isNotEmpty);
     expect(configs[1].prompt, contains('Do NOT'));
+    for (final member in configs) {
+      expect(member.inheritsTeamPreset, isTrue);
+      expect(member.activePresetId, TeamProfile.inheritPresetId);
+    }
   });
 
   test('delegate-only lead is not told to brainstorm or dispatch agents', () {
