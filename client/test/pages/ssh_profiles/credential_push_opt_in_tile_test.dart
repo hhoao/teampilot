@@ -19,8 +19,7 @@ void main() {
         confirmTrustBoundary: () async => true,
       ),
     ));
-    expect(tester.widget<SwitchListTile>(find.byType(SwitchListTile)).value,
-        isFalse);
+    expect(tester.widget<Switch>(find.byType(Switch)).value, isFalse);
   });
 
   testWidgets('enabling shows confirm; confirmed → onChanged(true)',
@@ -34,7 +33,7 @@ void main() {
         confirmTrustBoundary: () async => true,
       ),
     ));
-    await tester.tap(find.byType(SwitchListTile));
+    await tester.tap(find.byType(Switch));
     await tester.pumpAndSettle();
     expect(changed, isTrue);
   });
@@ -50,7 +49,7 @@ void main() {
         confirmTrustBoundary: () async => false,
       ),
     ));
-    await tester.tap(find.byType(SwitchListTile));
+    await tester.tap(find.byType(Switch));
     await tester.pumpAndSettle();
     expect(changed, isNull);
   });
@@ -70,7 +69,7 @@ void main() {
         },
       ),
     ));
-    await tester.tap(find.byType(SwitchListTile));
+    await tester.tap(find.byType(Switch));
     await tester.pumpAndSettle();
     expect(changed, isFalse);
     expect(confirmCalled, isFalse);
@@ -85,7 +84,7 @@ void main() {
         onChanged: (v) => changed = v,
       ),
     ));
-    await tester.tap(find.byType(SwitchListTile));
+    await tester.tap(find.byType(Switch));
     await tester.pumpAndSettle();
     // dialog shows + names the host
     expect(find.textContaining('box.example'), findsWidgets);
