@@ -46,6 +46,11 @@ ScenarioRegistry taskCompleteMixedClaudeScenarios() => ScenarioRegistry({
         result: 'widget API shipped',
       ),
       const TextTurn('reported'),
+      ToolUseTurn(
+        id: 'tu_wait_after_done',
+        name: '${_bus}wait_for_message',
+        input: {},
+      ),
     ],
   ),
 });
