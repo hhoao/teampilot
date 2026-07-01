@@ -92,6 +92,10 @@ class TabTeamBusCoordinator implements MemberMaterializer {
     final taskQueue = team.teamMode == TeamMode.mixed
         ? TaskQueue(log: TaskLogFactory.forSession(session.workspaceId, session.sessionId))
         : null;
+    final forceWaitByMember = {
+      for (final m in runtimeMembers)
+        m.id: m.effectiveForceWaitBeforeStop(team),
+    };
     final bus = TeamBus(
       launcher: ChatCubitMemberLauncher(
         materializer: this,
@@ -99,6 +103,8 @@ class TabTeamBusCoordinator implements MemberMaterializer {
       ),
       messageLog: BusMessageLogFactory.forSession(session.workspaceId, session.sessionId),
       taskQueue: taskQueue,
+      reportsIdleViaReceiveWork: (memberId) =>
+          forceWaitByMember[memberId] ?? team.forceWaitBeforeStop,
     );
     final cliTeamName = session.cliTeamName;
     bus.installSessionContext(
@@ -134,10 +140,6 @@ class TabTeamBusCoordinator implements MemberMaterializer {
       );
     }
     await bus.rehydrateUnread();
-    final forceWaitByMember = {
-      for (final m in runtimeMembers)
-        m.id: m.effectiveForceWaitBeforeStop(team),
-    };
     final server = TeammateBusMcpServer(
       handler: TeammateBusMcpHandler(
         bus: bus,
