@@ -2,6 +2,8 @@ import 'dart:async';
 import 'dart:convert';
 import 'dart:io';
 
+import 'package:meta/meta.dart';
+
 import '../../../utils/logger.dart';
 import '../cancellation.dart';
 import 'jsonrpc.dart';
@@ -26,6 +28,10 @@ class TeammateBusMcpServer {
   /// `wait_for_message`——不依赖 force-close 后那次「可能根本不抛错」的 keepalive
   /// 写来探知断连，否则 [beginWait] 永挂、keepalive Timer 永转（流被孤儿化）。
   final Set<CancellationToken> _activeStreams = <CancellationToken>{};
+
+  /// Open SSE `wait_for_message` streams (integration tests observe park).
+  @visibleForTesting
+  int get activeWaitStreamCount => _activeStreams.length;
 
   Future<void> start() async {
     final server = await HttpServer.bind(InternetAddress.loopbackIPv4, 0);

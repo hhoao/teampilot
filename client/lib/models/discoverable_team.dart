@@ -253,6 +253,7 @@ class DiscoverableTeamMember {
       playbook: playbook,
       extraArgs: extraArgs,
       joinedAt: joinedAt,
+      activePresetId: TeamProfile.inheritPresetId,
     );
   }
 

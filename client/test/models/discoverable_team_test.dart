@@ -71,6 +71,8 @@ void main() {
     expect(member.name, 'team-lead');
     expect(member.model, 'claude-opus-4-8');
     expect(member.joinedAt, 42);
+    expect(member.activePresetId, TeamProfile.inheritPresetId);
+    expect(member.inheritsTeamPreset, isTrue);
   });
 
   test('member replicas round-trips and flows to TeamMemberConfig', () {

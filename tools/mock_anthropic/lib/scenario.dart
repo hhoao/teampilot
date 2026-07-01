@@ -31,6 +31,9 @@ class ScenarioRegistry {
 
   MockScenario? scenarioFor(String apiKey) => _scenarios[apiKey];
 
+  /// Index of the next scripted turn (before [nextTurn] advances).
+  int peekTurnIndex(String apiKey) => _indices[apiKey] ?? 0;
+
   MockTurn nextTurn(String apiKey) {
     final scenario = _scenarios[apiKey];
     if (scenario == null) throw StateError('unknown api key: $apiKey');
@@ -41,6 +44,12 @@ class ScenarioRegistry {
     _indices[apiKey] = i + 1;
     return scenario.turns[i];
   }
+
+  static String describeTurn(MockTurn turn) => switch (turn) {
+        ToolUseTurn(:final id, :final name) => 'tool:$name id=$id',
+        TextTurn(:final text) =>
+          'text:${text.length > 48 ? '${text.substring(0, 48)}…' : text}',
+      };
 
   void reset() {
     for (final k in _scenarios.keys) {

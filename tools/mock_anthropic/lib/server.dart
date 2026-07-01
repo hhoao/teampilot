@@ -10,15 +10,23 @@ class RequestLogEntry {
     required this.apiKey,
     required this.path,
     required this.at,
+    required this.turnIndex,
+    required this.turnLabel,
   });
 
   final String apiKey;
   final String path;
   final DateTime at;
 
+  /// Scripted turn index at dispatch time (0-based).
+  final int turnIndex;
+
+  /// Human-readable turn from [ScenarioRegistry.describeTurn].
+  final String turnLabel;
+
   @override
   String toString() =>
-      '[$at] apiKey=$apiKey path=$path';
+      '[$at] apiKey=$apiKey turn=$turnIndex ($turnLabel) path=$path';
 }
 
 class MockAnthropicServer {
@@ -52,6 +60,12 @@ class MockAnthropicServer {
   Uri get messagesUri => baseUri.replace(path: '/v1/messages');
 
   List<RequestLogEntry> get requestLog => List.unmodifiable(_requestLog);
+
+  /// Clears scripted turn indices so the next API call replays from turn 0.
+  void resetScenarios() => _scenarios.reset();
+
+  int requestCountFor(String apiKey) =>
+      _requestLog.where((e) => e.apiKey == apiKey).length;
 
   Future<void> start({InternetAddress? address}) async {
     if (_server != null) {
@@ -112,6 +126,7 @@ class MockAnthropicServer {
     final model = bodyJson?['model'] as String? ?? 'mock-model';
 
     try {
+      final turnIndex = _scenarios.peekTurnIndex(apiKey);
       final turn = _scenarios.nextTurn(apiKey);
       final messageId = 'msg_${DateTime.now().microsecondsSinceEpoch}';
       final sse = AnthropicSseEncoder.encodeTurn(
@@ -125,6 +140,8 @@ class MockAnthropicServer {
           apiKey: apiKey,
           path: request.uri.path,
           at: DateTime.now(),
+          turnIndex: turnIndex,
+          turnLabel: ScenarioRegistry.describeTurn(turn),
         ),
       );
 

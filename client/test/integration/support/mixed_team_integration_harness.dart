@@ -1,5 +1,6 @@
 import 'dart:io';
 
+import 'package:mock_anthropic/scenario.dart';
 import 'package:mock_anthropic/scenarios/ping_pong_mixed_claude.dart';
 import 'package:mock_anthropic/server.dart';
 import 'package:teampilot/cubits/chat_cubit.dart';
@@ -21,12 +22,16 @@ import 'package:teampilot/services/storage/runtime_context_resolver.dart';
 import 'package:teampilot/services/storage/workspace_layout.dart';
 import 'package:teampilot/services/ssh/ssh_client_factory.dart';
 import 'package:teampilot/services/team_bus/mcp/bus_bridge_locator.dart';
+import 'package:teampilot/services/team_bus/mcp/teammate_bus_mcp_server.dart';
 import 'package:teampilot/services/team_bus/remote/remote_bus_binding_resolver.dart';
+import 'package:teampilot/services/team_bus/team_bus.dart';
 import 'package:teampilot/services/terminal/terminal_session.dart';
 import 'package:teampilot/services/terminal/terminal_transport_factory.dart';
 
 import '../../support/post_frame_test_harness.dart';
 import 'bus_mail_assertions.dart';
+import 'bus_roster_assertions.dart';
+import 'bus_task_assertions.dart';
 import 'docker_ssh_server.dart';
 import 'integration_prerequisites.dart';
 
@@ -78,10 +83,13 @@ class MixedTeamIntegrationHarness {
   static String? resolveClaudePath() =>
       IntegrationPrerequisites.resolveClaudePath();
 
-  Future<void> startMockServer({bool exposeToDocker = false}) async {
+  Future<void> startMockServer({
+    ScenarioRegistry? scenarios,
+    bool exposeToDocker = false,
+  }) async {
     _forceHttpMcp();
     final server = MockAnthropicServer(
-      scenarios: pingPongMixedClaudeScenarios(),
+      scenarios: scenarios ?? pingPongMixedClaudeScenarios(),
     );
     _mockServer = server;
     await server.start(
@@ -201,9 +209,12 @@ class MixedTeamIntegrationHarness {
     Duration workerReadyTimeout = const Duration(seconds: 60),
     Duration busTimeout = const Duration(seconds: 30),
   }) async {
+    _resetMockScenarios();
+    final workerBaseline = _mockRequestCount(workerScriptApiKey);
     await _submitWorkerKickoff(cubit);
-    final workerInLoop = await _waitForMockRequest(
+    final workerInLoop = await _waitForNewMockRequest(
       workerScriptApiKey,
+      afterCount: workerBaseline,
       timeout: workerReadyTimeout,
     );
     if (!workerInLoop) {
@@ -212,6 +223,12 @@ class MixedTeamIntegrationHarness {
         '(expected $workerScriptApiKey request)',
       );
     }
+    await waitUntilWorkerParked(
+      bus: _busForSession(cubit, sessionId),
+      mcpServer: _mcpForSession(cubit, sessionId),
+      memberId: kWorkerMember.id,
+      timeout: workerReadyTimeout,
+    );
     await _submitLeaderKickoff(cubit, postFrame: postFrame);
     await waitForPingPong(
       workspaceId: workspaceId,
@@ -287,25 +304,90 @@ class MixedTeamIntegrationHarness {
     }
   }
 
+  /// Worker parks on SSE `wait_for_message` before the leader acts.
+  ///
+  /// Syncs on [TeammateBusMcpServer.activeWaitStreamCount] and in-memory
+  /// roster (`turnDoneBusWait`), not arbitrary delays.
+  Future<void> kickoffWorkerParkedThenLeader(
+    ChatCubit cubit, {
+    required String sessionId,
+    PostFrameTestHarness? postFrame,
+    String workerKickoff = 'Start idle loop.',
+    String leaderKickoff = 'Coordinate the team.',
+    Duration workerReadyTimeout = const Duration(seconds: 90),
+  }) async {
+    _resetMockScenarios();
+    final workerBaseline = _mockRequestCount(workerScriptApiKey);
+    await _submitWorkerKickoff(cubit, kickoff: workerKickoff);
+    final workerInLoop = await _waitForNewMockRequest(
+      workerScriptApiKey,
+      afterCount: workerBaseline,
+      timeout: workerReadyTimeout,
+    );
+    if (!workerInLoop) {
+      throw StateError(
+        'Worker never hit mock API after kickoff '
+        '(expected $workerScriptApiKey request)',
+      );
+    }
+    await waitUntilWorkerParked(
+      bus: _busForSession(cubit, sessionId),
+      mcpServer: _mcpForSession(cubit, sessionId),
+      memberId: kWorkerMember.id,
+      timeout: workerReadyTimeout,
+    );
+    await _submitLeaderKickoff(
+      cubit,
+      postFrame: postFrame,
+      kickoff: leaderKickoff,
+    );
+    await drainPendingAsyncWork(rounds: 15);
+    if (postFrame != null) {
+      await postFrame.flush();
+    }
+  }
+
+  TeamBus? _busForSession(ChatCubit? cubit, String sessionId) =>
+      cubit?.tabStore.bySessionId(sessionId)?.teamBus;
+
+  TeammateBusMcpServer? _mcpForSession(ChatCubit? cubit, String sessionId) =>
+      cubit?.tabStore.bySessionId(sessionId)?.mcpServer;
+
   Future<void> kickoffMembers(
     ChatCubit cubit, {
     PostFrameTestHarness? postFrame,
+    String workerKickoff = 'Start idle loop.',
+    String leaderKickoff = 'Coordinate the team.',
   }) async {
     const maxAttempts = 8;
     for (var attempt = 0; attempt < maxAttempts; attempt++) {
-      await _submitKickoffOnce(cubit, postFrame: postFrame);
+      _resetMockScenarios();
+      final workerBaseline = _mockRequestCount(workerScriptApiKey);
+      final leaderBaseline = _mockRequestCount(leadScriptApiKey);
+      await _submitKickoffOnce(
+        cubit,
+        postFrame: postFrame,
+        workerKickoff: workerKickoff,
+        leaderKickoff: leaderKickoff,
+      );
 
-      final workerHit = await _waitForMockRequest(
+      final workerHit = await _waitForNewMockRequest(
         workerScriptApiKey,
+        afterCount: workerBaseline,
         timeout: const Duration(seconds: 25),
       );
       if (workerHit) {
-        final leaderHit = await _waitForMockRequest(
+        final leaderHit = await _waitForNewMockRequest(
           leadScriptApiKey,
+          afterCount: leaderBaseline,
           timeout: const Duration(seconds: 15),
         );
         if (!leaderHit) {
-          await _submitLeaderKickoff(cubit, postFrame: postFrame);
+          await _submitLeaderKickoff(
+            cubit,
+            postFrame: postFrame,
+            kickoff: leaderKickoff,
+          );
         }
         return;
       }
@@ -322,9 +404,15 @@ class MixedTeamIntegrationHarness {
   Future<void> _submitKickoffOnce(
     ChatCubit cubit, {
     PostFrameTestHarness? postFrame,
+    String workerKickoff = 'Start idle loop.',
+    String leaderKickoff = 'Coordinate the team.',
   }) async {
-    await _submitWorkerKickoff(cubit);
-    await _submitLeaderKickoff(cubit, postFrame: postFrame);
+    await _submitWorkerKickoff(cubit, kickoff: workerKickoff);
+    await _submitLeaderKickoff(
+      cubit,
+      postFrame: postFrame,
+      kickoff: leaderKickoff,
+    );
   }
 
   Future<void> _submitFullScreenKickoff(
@@ -342,41 +430,51 @@ class MixedTeamIntegrationHarness {
     }
   }
 
-  Future<void> _submitWorkerKickoff(ChatCubit cubit) async {
+  Future<void> _submitWorkerKickoff(
+    ChatCubit cubit, {
+    String kickoff = 'Start idle loop.',
+  }) async {
     cubit.selectMember(kWorkerMember.id);
     final worker = cubit.currentSession;
     if (worker == null) {
       throw StateError('worker shell missing before kickoff');
     }
-    await _submitFullScreenKickoff(worker, 'Start idle loop.');
+    await _submitFullScreenKickoff(worker, kickoff);
     await drainPendingAsyncWork(rounds: 20);
   }
 
   Future<void> _submitLeaderKickoff(
     ChatCubit cubit, {
     PostFrameTestHarness? postFrame,
+    String kickoff = 'Coordinate the team.',
   }) async {
     cubit.selectMember(kLeadMember.id);
     final leader = cubit.currentSession;
     if (leader == null) {
       throw StateError('leader shell missing before kickoff');
     }
-    await _submitFullScreenKickoff(leader, 'Coordinate the team.');
+    await _submitFullScreenKickoff(leader, kickoff);
     await drainPendingAsyncWork(rounds: 10);
     if (postFrame != null) {
       await postFrame.flush();
     }
   }
 
-  Future<bool> _waitForMockRequest(
+  void _resetMockScenarios() => _mockServer?.resetScenarios();
+
+  int _mockRequestCount(String apiKey) =>
+      _mockServer?.requestCountFor(apiKey) ?? 0;
+
+  Future<bool> _waitForNewMockRequest(
     String apiKey, {
+    required int afterCount,
     required Duration timeout,
   }) async {
     final server = _mockServer;
     if (server == null) return false;
     final deadline = DateTime.now().add(timeout);
     while (DateTime.now().isBefore(deadline)) {
-      if (server.requestLog.any((entry) => entry.apiKey == apiKey)) {
+      if (server.requestCountFor(apiKey) > afterCount) {
         return true;
       }
       await drainPendingAsyncWork();
@@ -434,9 +532,79 @@ class MixedTeamIntegrationHarness {
     }
   }
 
+  Future<void> waitForTaskDispatched({
+    required String workspaceId,
+    required String sessionId,
+    required String title,
+    String assignee = 'worker-1',
+    Duration timeout = const Duration(seconds: 90),
+  }) async {
+    final claimed = await waitForTaskClaimedByTitle(
+      teampilotRoot: AppStorage.paths.basePath,
+      workspaceId: workspaceId,
+      sessionId: sessionId,
+      title: title,
+      assignee: assignee,
+      timeout: timeout,
+    );
+    if (!claimed) {
+      throw StateError(
+        'Timed out waiting for task "$title" to be claimed by $assignee',
+      );
+    }
+  }
+
+  Future<void> waitForWorkerMail({
+    required String workspaceId,
+    required String sessionId,
+    required String fromMemberId,
+    required String content,
+    Duration timeout = const Duration(seconds: 90),
+  }) async {
+    final ok = await waitForBusMail(
+      teampilotRoot: AppStorage.paths.basePath,
+      workspaceId: workspaceId,
+      sessionId: sessionId,
+      memberId: kWorkerMember.id,
+      timeout: timeout,
+      where: (row) => row['from'] == fromMemberId && row['content'] == content,
+    );
+    if (!ok) {
+      throw StateError(
+        'Timed out waiting for worker mail from $fromMemberId: $content',
+      );
+    }
+  }
+
+  Future<void> waitForLeaderMail({
+    required String workspaceId,
+    required String sessionId,
+    required String fromMemberId,
+    required String content,
+    Duration timeout = const Duration(seconds: 90),
+  }) async {
+    final ok = await waitForBusMail(
+      teampilotRoot: AppStorage.paths.basePath,
+      workspaceId: workspaceId,
+      sessionId: sessionId,
+      memberId: kLeadMember.id,
+      timeout: timeout,
+      where: (row) => row['from'] == fromMemberId && row['content'] == content,
+    );
+    if (!ok) {
+      throw StateError(
+        'Timed out waiting for leader mail from $fromMemberId: $content',
+      );
+    }
+  }
+
+  TeamBus? tabBus(String sessionId) =>
+      cubit?.tabStore.bySessionId(sessionId)?.teamBus;
+
   Future<void> dumpFailureArtifacts({
     String? workspaceId,
     String? sessionId,
+    ChatCubit? cubit,
   }) async {
     // ignore: avoid_print
     print(_mockServer?.dumpDiagnostics() ?? 'mockServer: not started');
@@ -444,11 +612,20 @@ class MixedTeamIntegrationHarness {
     print('claudePath: $claudePath');
     if (workspaceId != null && sessionId != null) {
       await _dumpClaudeSettings(workspaceId: workspaceId, sessionId: sessionId);
+      await dumpBusRosterDiagnostics(
+        bus: _busForSession(cubit ?? this.cubit, sessionId),
+        mcpServer: _mcpForSession(cubit ?? this.cubit, sessionId),
+      );
       await dumpBusMailDiagnostics(
         teampilotRoot: AppStorage.paths.basePath,
         workspaceId: workspaceId,
         sessionId: sessionId,
         memberIds: [kLeadMember.id, kWorkerMember.id],
+      );
+      await dumpBusTaskDiagnostics(
+        teampilotRoot: AppStorage.paths.basePath,
+        workspaceId: workspaceId,
+        sessionId: sessionId,
       );
     }
   }

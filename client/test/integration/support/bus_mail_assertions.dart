@@ -57,6 +57,19 @@ Future<List<Map<String, Object?>>> readBusMailLines({
   return rows;
 }
 
+int? mailCreatedAtForContent(
+  List<Map<String, Object?>> rows, {
+  required String fromMemberId,
+  required String content,
+}) {
+  for (final row in rows) {
+    if (row['from'] == fromMemberId && row['content'] == content) {
+      return (row['createdAt'] as num?)?.toInt();
+    }
+  }
+  return null;
+}
+
 Future<bool> waitForBusMail({
   required String teampilotRoot,
   required String workspaceId,
