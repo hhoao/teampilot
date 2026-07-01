@@ -3,9 +3,7 @@ import 'package:teampilot/cubits/chat_cubit.dart';
 import 'package:teampilot/cubits/member_presence_cubit.dart';
 import 'package:teampilot/models/member_presence.dart';
 import 'package:teampilot/services/team_bus/team_bus.dart';
-import 'package:teampilot/services/storage/app_storage.dart';
 
-import 'bus_mail_assertions.dart';
 import 'bus_roster_assertions.dart';
 import 'mixed_team_integration_harness.dart';
 import 'session_idle_busy_harness.dart';
@@ -85,26 +83,14 @@ Future<void> waitUntilWorkerIdleOnBus({
   Duration timeout = const Duration(seconds: 90),
 }) async {
   final deadline = DateTime.now().add(timeout);
-  final root = AppStorage.paths.basePath;
   while (DateTime.now().isBefore(deadline)) {
     final snap = memberSnapshot(bus, memberId);
     if (snap?.waitingForMessage == true) return;
     if (snap?.activity.name == 'turnDoneBusWait') return;
     if (snap?.activity.name == 'turnDoneReady') return;
-
-    final leaderMail = await readBusMailLines(
-      teampilotRoot: root,
-      workspaceId: workspaceId,
-      sessionId: sessionId,
-      memberId: kLeadMember.id,
-    );
-    if (leaderMail.any(
-      (row) =>
-          row['from'] == memberId &&
-          '${row['content']}'.contains('idle_notification'),
-    )) {
-      return;
-    }
+    // Do not treat idle_notification mail as parked: PTY quiet can fire
+    // onMemberIdle during tool gaps while the member is still bus-active.
+    if (snap?.claudeIsActive == false) return;
     await Future<void>.delayed(const Duration(milliseconds: 200));
   }
   throw StateError(

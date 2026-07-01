@@ -106,7 +106,7 @@ void main() {
     );
   });
 
-  test('no PTY bytes after latch still goes quiet', () {
+  test('no PTY bytes after latch is not quiet', () {
     final tracker = TerminalActivityTracker(
       idleAfter: const Duration(milliseconds: 40),
     );
@@ -114,7 +114,7 @@ void main() {
     tracker.latchTurnQuietBaseline(
       DateTime.now().subtract(const Duration(milliseconds: 50)),
     );
-    expect(tracker.isQuietAfterTurnPtyActivity, isTrue);
+    expect(tracker.isQuietAfterTurnPtyActivity, isFalse);
   });
 
   test('fingerprint unchanged for idleAfter ends turn quiet', () async {
