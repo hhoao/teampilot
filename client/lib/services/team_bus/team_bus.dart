@@ -36,7 +36,9 @@ class TeamBus implements CoordinationView {
     CoordinationPolicy? coordination,
     TaskQueue? taskQueue,
     this.maxHop = 8,
+    bool Function(String memberId)? reportsIdleViaReceiveWork,
   }) : _env = environment ?? BusEnvironment(ids: idGenerator, clock: clock),
+       _reportsIdleViaReceiveWork = reportsIdleViaReceiveWork,
        _messageLog = messageLog,
        _taskQueue = taskQueue,
        _launcher = launcher,
@@ -88,6 +90,10 @@ class TeamBus implements CoordinationView {
   final TaskQueue? _taskQueue;
   final MemberLauncher _launcher;
   final BusEffectDispatcher _dispatcher;
+
+  /// 成员 idle 是否由 [receiveWork] 内 [_announceWorkerIdleToLead] 上报（forceWait
+  /// CLI）。为真时 [onMemberIdle] 跳过协调策略 idle，避免与 receiveWork 双投递。
+  final bool Function(String memberId)? _reportsIdleViaReceiveWork;
   late final CoordinationPolicy _coordination;
   final int maxHop;
   final Map<String, AgentNode> _members = {};
@@ -327,17 +333,19 @@ class TeamBus implements CoordinationView {
   /// 替代被两道门焊死的旧路径：外部 [onMemberIdle] 对 parked worker 有 `waitingForMessage`
   /// 守卫、星型策略又有 `_unreported` 闸（仅消息投递置位，队列认领从不置位）——故纯队列
   /// worker 完成后回到 wait 永不上报、对 leader 隐形。这里在 bus 精确知晓「现在没活干」
-  /// 的一刻直接上报，绕开二者。投递走 [_deliverToMember]（eager 门铃）唤醒 leader。
+  /// 的一刻直接上报，绕开二者。与 [send] 相同走非 eager 投递：leader 在
+  /// `wait_for_message` 时由 waiter 直接收，不停在 prompt 才响门铃。
   void _announceWorkerIdleToLead(AgentNode node) {
     if (node.profile.isTeamLead) return;
     final leaderId = teamLeadId;
     if (leaderId == null || leaderId == node.memberId) return;
+    _coordination.markIdleReported(node.memberId);
     final notice = IdleNotification.fromWorker(
       memberId: node.memberId,
       displayName: node.profile.effectiveDisplayName,
       timestampMs: _env.clock(),
     ).encode();
-    _deliverToMember(
+    _routeMail(
       leaderId,
       TeamMessage(
         id: _env.ids(),
@@ -441,12 +449,17 @@ class TeamBus implements CoordinationView {
     ));
   }
 
-  /// 直投并 eager 唤醒（idle-notify / 用户命令）：即便成员在回合中也响门铃。
+  /// 直投并 eager 唤醒（用户命令）：即便成员在回合中也响门铃。
   void _deliverToMember(String memberId, TeamMessage message) {
+    _routeMail(memberId, message, eager: true);
+  }
+
+  /// 投递邮件并按 [eager] 决定是否响门铃（与 [send] 路径一致）。
+  void _routeMail(String memberId, TeamMessage message, {bool eager = false}) {
     final node = _members[memberId];
     if (node == null) return;
     _deliverToInbox(node, message);
-    _apply(node, const MailArrived(eager: true));
+    _apply(node, MailArrived(eager: eager));
   }
 
   String? _teamLeadMemberId() {
@@ -575,8 +588,12 @@ class TeamBus implements CoordinationView {
     if (node.waitingForMessage) {
       return;
     }
-    for (final msg in _coordination.onMemberIdle(this, memberId)) {
-      _deliverToMember(msg.to, msg);
+    final reportsViaReceiveWork =
+        _reportsIdleViaReceiveWork?.call(memberId) ?? false;
+    if (!reportsViaReceiveWork) {
+      for (final msg in _coordination.onMemberIdle(this, memberId)) {
+        _deliverToMember(msg.to, msg);
+      }
     }
     _apply(node, const TurnEnded());
   }
