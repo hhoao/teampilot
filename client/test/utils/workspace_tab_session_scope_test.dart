@@ -3,8 +3,12 @@ import 'package:teampilot/cubits/chat_cubit.dart';
 import 'package:teampilot/cubits/chat/model/chat_tab.dart';
 import 'package:teampilot/pages/chat/chat_scoped_tab_view.dart';
 import 'package:teampilot/utils/workspace_tab_session_scope.dart';
+import '../support/post_frame_test_harness.dart';
 
-ChatCubit _cubit() => ChatCubit(executableResolver: () => '/bin/true');
+ChatCubit _cubit() => ChatCubit(
+  executableResolver: () => '/bin/true',
+  automationRepository: testAutomationRepository(),
+);
 
 ChatTab _tab(String id, {String? launchError}) => ChatTab(
       info: ChatTabInfo(

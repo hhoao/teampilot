@@ -419,9 +419,13 @@ class _SidebarSessionTileState extends State<SidebarSessionTile> {
     // and a live [RawTooltip]'s global pointer route then recreates its ticker
     // on a SingleTickerProviderStateMixin ("multiple tickers were created").
     // Tooltips stay enabled in every non-reorderable context.
-    return widget.index >= 0
+    final child = widget.index >= 0
         ? TooltipVisibility(visible: false, child: tile)
         : tile;
+    return BlocListener<AutomationCubit, AutomationState>(
+      listener: (context, state) => _refreshSessionAutomationCount(state),
+      child: child,
+    );
   }
 
   Future<void> _showRenameDialog(

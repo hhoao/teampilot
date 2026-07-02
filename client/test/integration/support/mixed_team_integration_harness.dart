@@ -129,6 +129,7 @@ class MixedTeamIntegrationHarness {
   ChatCubit createCubit({required PostFrameTestHarness postFrame}) {
     final created = ChatCubit(
       executableResolver: () => claudePath,
+      automationRepository: testAutomationRepository(),
       cliExecutableResolver: (_) => claudePath,
       postFrameScheduler: postFrame.scheduler,
       autoLaunchAllMembersOnConnect: () => true,
@@ -154,6 +155,7 @@ class MixedTeamIntegrationHarness {
     );
     final created = ChatCubit(
       executableResolver: () => claudePath,
+      automationRepository: testAutomationRepository(),
       cliExecutableResolver: (_) => claudePath,
       postFrameScheduler: postFrame.scheduler,
       autoLaunchAllMembersOnConnect: () => true,

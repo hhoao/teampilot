@@ -15,6 +15,7 @@ import '../models/workspace_icon_ref.dart';
 import '../models/team_config.dart';
 import '../models/runtime_target.dart';
 import '../../repositories/launch_profile_repository.dart';
+import '../repositories/automation_repository.dart';
 import '../repositories/session_repository.dart';
 import '../services/workspace/workspace_icon_service.dart';
 import '../services/workspace/workspace_icon_storage.dart';
@@ -71,8 +72,10 @@ class ChatCubit extends Cubit<ChatState>
     int Function()? terminalScrollbackLinesResolver,
     RemoteBusBindingResolver? remoteBusResolver,
     SessionConnectOrchestrator? sessionConnect,
+    required AutomationRepository automationRepository,
   }) : _remoteBusResolver = remoteBusResolver,
        _sessionConnect = sessionConnect,
+       _automationRepository = automationRepository,
        _shellFactory = ChatSessionShellFactory(
          executableResolver: executableResolver,
          cliExecutableResolver: cliExecutableResolver,
@@ -93,7 +96,15 @@ class ChatCubit extends Cubit<ChatState>
 
   final RemoteBusBindingResolver? _remoteBusResolver;
   final SessionConnectOrchestrator? _sessionConnect;
+  final AutomationRepository _automationRepository;
+  VoidCallback? _onAutomationsChanged;
   SessionConnectOrchestrator? _defaultSessionConnect;
+
+  void bindAutomationsChangeNotifier(VoidCallback listener) {
+    _onAutomationsChanged = listener;
+  }
+
+  void _notifyAutomationsChanged() => _onAutomationsChanged?.call();
   final ChatTabStore _tabStore = ChatTabStore();
   final SessionDataStore _dataStore = SessionDataStore();
   final Map<String, Future<void>> _sessionHydrationByWorkspace = {};
@@ -1009,6 +1020,9 @@ class ChatCubit extends Cubit<ChatState>
   }
 
   Future<void> deleteSession(SessionRepository repo, String sessionId) async {
+    final session = state.sessions
+        .where((s) => s.sessionId == sessionId)
+        .firstOrNull;
     final wasActive = state.activeSessionId == sessionId;
     final sessions = state.sessions
         .where((s) => s.sessionId != sessionId)
@@ -1059,6 +1073,13 @@ class ChatCubit extends Cubit<ChatState>
     }
 
     _emitSnapshot(await _dataStore.deleteSessionRecord(repo, sessionId));
+    if (session != null) {
+      await _automationRepository.disableForSession(
+        session.workspaceId,
+        sessionId,
+      );
+      _notifyAutomationsChanged();
+    }
   }
 
   Future<Workspace> cloneWorkspace(
@@ -1092,6 +1113,8 @@ class ChatCubit extends Cubit<ChatState>
     for (final sid in workspace.sessionIds.toList()) {
       await deleteSession(repo, sid);
     }
+    await _automationRepository.removeWorkspace(workspaceId);
+    _notifyAutomationsChanged();
     _emitSnapshot(await _dataStore.deleteWorkspaceRecord(repo, workspaceId));
   }
 

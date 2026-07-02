@@ -454,9 +454,13 @@ class _AutomationsHeader extends StatefulWidget {
 }
 
 class _AutomationsHeaderState extends State<_AutomationsHeader> {
+  var _didLoad = false;
+
   @override
-  void initState() {
-    super.initState();
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    if (_didLoad) return;
+    _didLoad = true;
     unawaited(
       context.read<AutomationCubit>().loadForWorkspace(widget.workspaceId),
     );

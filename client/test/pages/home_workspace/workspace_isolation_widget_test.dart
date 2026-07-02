@@ -4,6 +4,7 @@ import 'package:teampilot/cubits/chat/model/chat_tab.dart';
 import 'package:teampilot/models/workspace_terminal_session_spec.dart';
 import 'package:teampilot/services/terminal/terminal_session.dart';
 import 'package:teampilot/services/terminal/workspace_terminal_registry.dart';
+import '../../support/post_frame_test_harness.dart';
 
 TerminalSession _testSession() => TerminalSession(
   executable: '/bin/bash',
@@ -18,7 +19,10 @@ void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
 
   test('chat tabs do not leak across workspaces', () {
-    final cubit = ChatCubit(executableResolver: () => '/bin/true');
+    final cubit = ChatCubit(
+      executableResolver: () => '/bin/true',
+      automationRepository: testAutomationRepository(),
+    );
     cubit.setActiveWorkspace('personal-A');
     cubit.tabStore.append(_tab('a-sess'));
     cubit.refreshActiveWorkspaceTabs();

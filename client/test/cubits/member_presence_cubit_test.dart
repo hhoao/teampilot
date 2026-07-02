@@ -140,6 +140,7 @@ void main() {
         );
         final chatCubit = ChatCubit(
           executableResolver: () => 'true',
+          automationRepository: testAutomationRepository(),
           postFrameScheduler: harness.scheduler,
           terminalSessionFactory:
               ({required String executable, int scrollbackLines = 10000}) =>
@@ -421,6 +422,7 @@ void main() {
         );
         final chatCubit = ChatCubit(
           executableResolver: () => 'true',
+          automationRepository: testAutomationRepository(),
           postFrameScheduler: harness.scheduler,
           sessionRepository: repo,
           terminalSessionFactory:

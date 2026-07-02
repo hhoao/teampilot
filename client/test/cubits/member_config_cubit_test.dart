@@ -34,6 +34,7 @@ class _FakeInspector extends MemberConfigInspector {
     required TeamMemberConfig member,
     RuntimeContext? workContext,
     List<CliPreset> globalPresets = const [],
+    bool preferExpectedRuntimeDir = false,
   }) async {
     if (throwIt) throw StateError('boom');
     return _result;

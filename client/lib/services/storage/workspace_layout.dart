@@ -17,12 +17,15 @@ import 'app_storage.dart';
 ///   config/             # workspace-level CLI overrides
 ///     mcp/servers.json
 ///     {tool}/plugins/
+///   automations.json    # workspace-scoped automation rules + run history
 ///   sessions/{sessionId}/
 ///     session.json
 ///     bus/mail/{memberId}.jsonl
 ///     bus/tasks.jsonl
 ///     runtime/{tool}/           # native / personal PTY CONFIG_DIR
 ///     runtime/{memberId}/{tool}/ # mixed-mode per-member CONFIG_DIR
+///
+/// {teampilotRoot}/automations/catalog.json  # global index for home sidebar
 /// ```
 class WorkspaceLayout {
   WorkspaceLayout({required this.teampilotRoot, Filesystem? fs})
@@ -58,6 +61,14 @@ class WorkspaceLayout {
 
   String workspaceConfigToolDir(String workspaceId, String tool) =>
       _ctx.join(workspaceConfigDir(workspaceId), tool.trim());
+
+  String automationsRootDir() => _ctx.join(teampilotRoot, 'automations');
+
+  String automationsCatalogFile() =>
+      _ctx.join(automationsRootDir(), 'catalog.json');
+
+  String workspaceAutomationsFile(String workspaceId) =>
+      _ctx.join(workspaceDir(workspaceId), 'automations.json');
 
   String sessionsDir(String workspaceId) =>
       _ctx.join(workspaceDir(workspaceId), 'sessions');

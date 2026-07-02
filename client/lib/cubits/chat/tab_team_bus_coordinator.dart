@@ -201,8 +201,24 @@ class TabTeamBusCoordinator implements MemberMaterializer {
     String bootstrap,
   ) async {
     final tab = _tabStore.bySessionId(sessionId);
+    if (tab == null) return;
+
+    final session = tab.persistedSession;
+    final isPersonal = session == null || session.sessionTeam.trim().isEmpty;
+
+    if (isPersonal) {
+      final ready = Completer<void>();
+      _memberReady[(sessionId, memberId)] = ready;
+      final shell = tab.memberShells[memberId];
+      if (shell != null && shell.isRunning) {
+        markMemberReady(sessionId, memberId);
+      }
+      await ready.future;
+      return;
+    }
+
     final team = _activeTeam();
-    if (tab == null || team == null) return;
+    if (team == null) return;
     final member = team.members.firstWhere(
       (m) => m.id == memberId,
       orElse: () => const TeamMemberConfig(id: '', name: ''),
@@ -212,7 +228,7 @@ class TabTeamBusCoordinator implements MemberMaterializer {
     _memberReady[(sessionId, memberId)] = ready;
     final shell = tab.memberShells[memberId];
     if (shell != null && shell.isRunning) {
-      ready.complete();
+      markMemberReady(sessionId, memberId);
     } else {
       _connector.scheduleMemberConnect(team, member, tab);
     }
@@ -280,6 +296,23 @@ class TabTeamBusCoordinator implements MemberMaterializer {
     _idleWatchTimer = null;
     _lastWorking.clear();
     _publishWorkingSessions(const {});
+  }
+
+  TeamBus? busForSession(String sessionId) =>
+      _tabStore.bySessionId(sessionId)?.teamBus;
+
+  void deliverUserCommandToMember(
+    String sessionId,
+    String memberId,
+    String message,
+  ) {
+    final bus = busForSession(sessionId);
+    if (bus != null) {
+      bus.deliverUserCommand(memberId, message);
+      return;
+    }
+    injectMemberStdin(sessionId, memberId, message);
+    submitMemberPending(sessionId, memberId);
   }
 
   bool hasTeamBusResources(String sessionId) {
