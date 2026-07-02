@@ -1489,7 +1489,10 @@ class SessionLaunchService implements MemberConnector {
           team != null &&
           launchMember != null &&
           team.teamMode == TeamMode.mixed &&
-          tab.busSessionRegistration != null;
+          tab.teamBus != null &&
+          _h.teammateBusMcpGateway.isSessionRegistered(
+            activeSession.sessionId,
+          );
       // P3b (#1): a remote (ssh) member connects back to the in-process bus over a
       // reverse tunnel; the resolver returns its binding (relay/HTTP over tunnel),
       // or null for a local member (unchanged transport). Android-mixed fix.

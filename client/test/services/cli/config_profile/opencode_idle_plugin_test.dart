@@ -65,7 +65,10 @@ void main() {
           members: const [member],
           paths: service,
         catalog: service,
-          busIdle: MemberBusIdleEndpoint(url: 'http://127.0.0.1:54321/idle'),
+          busIdle: MemberBusIdleEndpoint(
+            url: 'http://127.0.0.1:54321/idle',
+            sessionId: 'session-1',
+          ),
         ),
       );
 
@@ -90,13 +93,16 @@ void main() {
       final opts = entry[1] as Map;
       expect(opts['member'], 'm1');
       expect(opts['port'], 54321);
+      expect(opts['session'], 'session-1');
 
       final mcp = config['mcp'] as Map;
       final bus = mcp[teammateBusMcpServerName] as Map;
       expect(bus['type'], 'remote');
       expect(bus['url'], 'http://127.0.0.1:54321/mcp');
       expect(bus['enabled'], true);
-      expect((bus['headers'] as Map)[teammateBusMcpMemberHeader], 'm1');
+      final headers = bus['headers'] as Map;
+      expect(headers[teammateBusMcpMemberHeader], 'm1');
+      expect(headers[teammateBusMcpSessionHeader], 'session-1');
     },
   );
 
@@ -109,6 +115,7 @@ void main() {
       },
       'm1',
       54321,
+      sessionId: 'session-1',
     );
     final mcp = merged['mcp'] as Map;
     expect(mcp.keys, containsAll(<String>['other', teammateBusMcpServerName]));
@@ -116,7 +123,9 @@ void main() {
     expect(bus['type'], 'remote');
     expect(bus['url'], 'http://127.0.0.1:54321/mcp');
     expect(bus['enabled'], true);
-    expect((bus['headers'] as Map)[teammateBusMcpMemberHeader], 'm1');
+    final headers = (bus['headers'] as Map).cast<String, Object?>();
+    expect(headers[teammateBusMcpMemberHeader], 'm1');
+    expect(headers[teammateBusMcpSessionHeader], 'session-1');
   });
 
   test('mergeOpencodeProvider writes apiKey/baseURL into provider options', () {
@@ -207,7 +216,10 @@ void main() {
               members: const [member],
               paths: service,
         catalog: service,
-              busIdle: MemberBusIdleEndpoint(url: 'http://127.0.0.1:54321/idle'),
+              busIdle: MemberBusIdleEndpoint(
+            url: 'http://127.0.0.1:54321/idle',
+            sessionId: 'session-1',
+          ),
             ),
           );
 

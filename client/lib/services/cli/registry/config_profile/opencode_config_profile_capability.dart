@@ -34,9 +34,13 @@ Map<String, Object?> mergeOpencodeIdlePlugin(
   String memberId,
   int port, {
   String? token,
+  String? sessionId,
 }) {
   final pluginPath = './$opencodeIdlePluginFileName';
   final options = <String, Object?>{'member': memberId, 'port': port};
+  if (sessionId != null && sessionId.isNotEmpty) {
+    options['session'] = sessionId;
+  }
   if (token != null && token.isNotEmpty) {
     options['token'] = token;
   }
@@ -76,6 +80,7 @@ Map<String, Object?> mergeOpencodeTeammateBusMcp(
   Map<String, Object?> config,
   String memberId,
   int port, {
+  required String sessionId,
   String? bridgePath,
 }) {
   final servers = <String, Object?>{
@@ -90,6 +95,8 @@ Map<String, Object?> mergeOpencodeTeammateBusMcp(
             bridgePath,
             '--member',
             memberId,
+            '--session',
+            sessionId,
             '--bus-url',
             endpoint,
           ],
@@ -100,7 +107,10 @@ Map<String, Object?> mergeOpencodeTeammateBusMcp(
           'type': 'remote',
           'url': endpoint,
           'enabled': true,
-          'headers': <String, Object?>{teammateBusMcpMemberHeader: memberId},
+          'headers': <String, Object?>{
+            teammateBusMcpMemberHeader: memberId,
+            teammateBusMcpSessionHeader: sessionId,
+          },
           'timeout': opencodeBusToolTimeoutMs,
         };
   return {...config, 'mcp': servers};
@@ -305,6 +315,7 @@ final class OpencodeConfigProfileCapability implements ConfigProfileCapability {
           member.id,
           port,
           token: busIdle.token,
+          sessionId: busIdle.sessionId,
         );
         if (!busIdle.isRemote) {
           final localNative = !AppStorage.isInstalled ||
@@ -314,6 +325,7 @@ final class OpencodeConfigProfileCapability implements ConfigProfileCapability {
             config,
             member.id,
             port,
+            sessionId: busIdle.sessionId ?? ctx.sessionId,
             bridgePath: bridgePath,
           );
         }

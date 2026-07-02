@@ -5,18 +5,15 @@
 Map<String, Object?> teammateBusMcpServerConfig({
   required Uri endpoint,
   required String memberId,
-  String sessionId = '',
+  required String sessionId,
 }) {
-  final headers = <String, String>{
-    teammateBusMcpMemberHeader: memberId,
-  };
-  if (sessionId.isNotEmpty) {
-    headers[teammateBusMcpSessionHeader] = sessionId;
-  }
   return {
     'type': 'http',
     'url': endpoint.toString(),
-    'headers': headers,
+    'headers': <String, String>{
+      teammateBusMcpMemberHeader: memberId,
+      teammateBusMcpSessionHeader: sessionId,
+    },
   };
 }
 
@@ -31,20 +28,18 @@ Map<String, Object?> teammateBusMcpServerConfigStdio({
   required String bridgePath,
   required Uri endpoint,
   required String memberId,
-  String sessionId = '',
+  required String sessionId,
 }) {
-  final args = <String>[
-    '--member',
-    memberId,
-    '--bus-url',
-    endpoint.toString(),
-  ];
-  if (sessionId.isNotEmpty) {
-    args.addAll(['--session', sessionId]);
-  }
   return {
     'command': bridgePath,
-    'args': args,
+    'args': <String>[
+      '--member',
+      memberId,
+      '--session',
+      sessionId,
+      '--bus-url',
+      endpoint.toString(),
+    ],
   };
 }
 

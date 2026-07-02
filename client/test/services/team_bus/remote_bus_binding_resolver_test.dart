@@ -61,6 +61,7 @@ void main() {
     final cfg = buildMemberBusMcpConfig(
       memberId: 'worker',
       localEndpoint: server.endpoint,
+      sessionId: 'sess-test',
       longBlocking: true,
       remote: binding,
     );
@@ -80,6 +81,7 @@ void main() {
     final cfg = buildMemberBusMcpConfig(
       memberId: 'cur',
       localEndpoint: server.endpoint,
+      sessionId: 'sess-test',
       longBlocking: false,
       remote: binding,
     );

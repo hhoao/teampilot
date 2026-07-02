@@ -6,7 +6,9 @@ export const TeampilotIdleBus = async (input, options) => {
   const member = options?.member ?? process.env.TEAMPILOT_MEMBER;
   const port = options?.port ?? process.env.TEAMPILOT_BUS_PORT;
   const token = options?.token ?? process.env.TEAMPILOT_BUS_TOKEN;
+  const session = options?.session ?? process.env.TEAMPILOT_SESSION;
   const headers = { "X-Member": String(member) };
+  if (session) headers["X-Session"] = String(session);
   if (token) headers["X-Bus-Token"] = String(token);
   return {
     event: async ({ event }) => {

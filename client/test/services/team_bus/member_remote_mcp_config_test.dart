@@ -4,17 +4,21 @@ import 'package:teampilot/services/team_bus/remote/member_bus_mcp_config.dart';
 
 void main() {
   final localEndpoint = Uri.parse('http://127.0.0.1:5005/mcp');
+  const sessionId = 'sess-local';
 
   group('local member (no remote binding) — behaviour preserved', () {
     test('long-blocking with bridge → stdio bridge to the bare endpoint', () {
       final cfg = buildMemberBusMcpConfig(
         memberId: 'm1',
         localEndpoint: localEndpoint,
+        sessionId: sessionId,
         longBlocking: true,
         localStdioBridgePath: '/opt/bridge',
       );
       expect(cfg['command'], '/opt/bridge');
-      expect((cfg['args'] as List).join(' '), contains('5005'));
+      final args = (cfg['args'] as List).join(' ');
+      expect(args, contains('5005'));
+      expect(args, contains('--session $sessionId'));
       expect(cfg.containsKey('type'), isFalse);
     });
 
@@ -22,10 +26,14 @@ void main() {
       final cfg = buildMemberBusMcpConfig(
         memberId: 'm1',
         localEndpoint: localEndpoint,
+        sessionId: sessionId,
         longBlocking: false,
       );
       expect(cfg['type'], 'http');
       expect(cfg['url'], 'http://127.0.0.1:5005/mcp');
+      final headers = cfg['headers'] as Map;
+      expect(headers[teammateBusMcpMemberHeader], 'm1');
+      expect(headers[teammateBusMcpSessionHeader], sessionId);
     });
   });
 
@@ -38,6 +46,7 @@ void main() {
       final cfg = buildMemberBusMcpConfig(
         memberId: 'worker',
         localEndpoint: localEndpoint,
+        sessionId: sessionId,
         longBlocking: true,
         remote: const RemoteBusBinding(
           token: 'tok',
@@ -63,6 +72,7 @@ void main() {
       final cfg = buildMemberBusMcpConfig(
         memberId: 'cur',
         localEndpoint: localEndpoint,
+        sessionId: sessionId,
         longBlocking: false,
         remote: const RemoteBusBinding(
           token: 'tok',
@@ -83,6 +93,7 @@ void main() {
         () => buildMemberBusMcpConfig(
           memberId: 'worker',
           localEndpoint: localEndpoint,
+          sessionId: sessionId,
           longBlocking: true,
           remote: const RemoteBusBinding(
             token: 'tok',

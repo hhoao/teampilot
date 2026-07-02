@@ -300,10 +300,12 @@ void main() {
     final entry = teammateBusMcpServerConfig(
       endpoint: Uri.parse('http://127.0.0.1:54321/mcp'),
       memberId: 'worker-1',
+      sessionId: 'sess-1',
     );
     expect(entry['type'], 'http');
     expect(entry['url'], 'http://127.0.0.1:54321/mcp');
     expect((entry['headers'] as Map)['X-Member'], 'worker-1');
+    expect((entry['headers'] as Map)['X-Session'], 'sess-1');
   });
 
   test('tools/list with a task queue adds queue tools incl claim_task',

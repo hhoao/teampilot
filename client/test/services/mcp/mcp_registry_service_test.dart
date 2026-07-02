@@ -205,6 +205,7 @@ void main() {
         teammateBusMcpServerName: teammateBusMcpServerConfig(
           endpoint: Uri.parse(endpoint),
           memberId: 'worker-1',
+          sessionId: sessionId,
         ),
       },
     );
@@ -216,5 +217,6 @@ void main() {
     expect(bus['type'], 'http');
     expect(bus['url'], endpoint);
     expect((bus['headers'] as Map)['X-Member'], 'worker-1');
+    expect((bus['headers'] as Map)['X-Session'], sessionId);
   });
 }

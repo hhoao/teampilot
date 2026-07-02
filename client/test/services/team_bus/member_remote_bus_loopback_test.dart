@@ -61,6 +61,7 @@ void main() {
     final cfg = buildMemberBusMcpConfig(
       memberId: 'worker',
       localEndpoint: Uri.parse('http://127.0.0.1:5005/mcp'),
+      sessionId: 'sess-test',
       longBlocking: true,
       remote: binding,
     );
