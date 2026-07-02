@@ -5,11 +5,18 @@
 Map<String, Object?> teammateBusMcpServerConfig({
   required Uri endpoint,
   required String memberId,
+  String sessionId = '',
 }) {
+  final headers = <String, String>{
+    teammateBusMcpMemberHeader: memberId,
+  };
+  if (sessionId.isNotEmpty) {
+    headers[teammateBusMcpSessionHeader] = sessionId;
+  }
   return {
     'type': 'http',
     'url': endpoint.toString(),
-    'headers': {teammateBusMcpMemberHeader: memberId},
+    'headers': headers,
   };
 }
 
@@ -24,10 +31,20 @@ Map<String, Object?> teammateBusMcpServerConfigStdio({
   required String bridgePath,
   required Uri endpoint,
   required String memberId,
+  String sessionId = '',
 }) {
+  final args = <String>[
+    '--member',
+    memberId,
+    '--bus-url',
+    endpoint.toString(),
+  ];
+  if (sessionId.isNotEmpty) {
+    args.addAll(['--session', sessionId]);
+  }
   return {
     'command': bridgePath,
-    'args': <String>['--member', memberId, '--bus-url', endpoint.toString()],
+    'args': args,
   };
 }
 
@@ -36,6 +53,9 @@ const teammateBusMcpServerName = 'teammate-bus';
 
 /// 标识发起请求成员身份的 HTTP header 名。
 const teammateBusMcpMemberHeader = 'X-Member';
+
+/// 标识 mixed session 的 HTTP header 名（gateway 按 session 路由）。
+const teammateBusMcpSessionHeader = 'X-Session';
 
 /// 远程成员经反向隧道连回 bus 时携带的 per-session token header 名（HTTP-over-tunnel
 /// 的 cursor 用；长阻塞 CLI 走 raw-socket relay 时 token 在握手帧里）。
