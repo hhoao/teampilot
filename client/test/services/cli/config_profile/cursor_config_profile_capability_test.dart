@@ -1,11 +1,16 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:teampilot/models/app_provider_config.dart';
+import 'package:teampilot/models/cli_preset.dart';
+import 'package:teampilot/models/runtime_target.dart';
 import 'package:teampilot/models/workspace_agent_config.dart';
 import 'package:teampilot/models/personal_profile.dart';
 import 'package:teampilot/models/team_config.dart';
 import 'package:teampilot/repositories/app_provider_repository.dart';
+import 'package:teampilot/services/provider/control_plane_profile_paths.dart';
 import 'package:teampilot/services/provider/cursor/cursor_home_layout.dart';
 import 'package:teampilot/services/provider/cursor/cursor_workspace_trust.dart';
+import 'package:teampilot/services/storage/app_storage.dart';
+import 'package:teampilot/services/storage/runtime_context.dart';
 import 'package:teampilot/services/storage/runtime_layout.dart';
 import 'package:teampilot/services/cli/registry/config_profile/cursor_config_profile_capability.dart';
 import 'package:teampilot/services/team_bus/member_bus_idle_endpoint.dart';
@@ -13,6 +18,15 @@ import 'package:teampilot/services/provider/config_profile_service.dart';
 import 'package:teampilot/services/team/claude_team_roster_service.dart';
 
 import '../../../support/in_memory_filesystem.dart';
+
+RuntimeContext _memoryContext(String dir, InMemoryFilesystem fs) => RuntimeContext(
+  target: RuntimeTarget.local(),
+  filesystem: fs,
+  home: dir,
+  cwd: dir,
+  appDataRoot: dir,
+  paths: AppPaths(dir),
+);
 
 void main() {
   const capability = CursorConfigProfileCapability();
@@ -299,6 +313,98 @@ void main() {
       expect((await fs.stat(layout.mcpConfig(home))).isFile, isTrue);
       expect((await fs.stat(layout.hooksConfig(home))).isFile, isTrue);
       expect((await fs.stat(layout.idleScript(home))).isFile, isTrue);
+    });
+
+    test('standalone crossMachine syncs cursor account auth into isolated home',
+        () async {
+      final homeFs = InMemoryFilesystem();
+      final workFs = InMemoryFilesystem();
+      final catalog = ControlPlaneProfilePaths(
+        _memoryContext('/home-catalog', homeFs),
+      );
+      final workPaths = ConfigProfileService(
+        basePath: '/work',
+        home: '/work-home',
+        fs: workFs,
+        layout: _memoryContext('/work', workFs).layout,
+        catalog: catalog,
+      );
+      final catalogLayout = CursorHomeLayout(pathContext: homeFs.pathContext);
+      const providerId = 'cursor-account';
+      final providerHome = homeFs.pathContext.join(
+        '/home-catalog',
+        'providers',
+        'cursor',
+        providerId,
+        'home',
+      );
+      await homeFs.writeString(
+        catalogLayout.authJson(providerHome),
+        '{"accessToken":"remote-token","refreshToken":"remote-refresh"}',
+      );
+      await homeFs.writeString(
+        catalogLayout.cliConfig(providerHome),
+        '{"authInfo":{"userId":"u1","authId":"a1"}}',
+      );
+      await AppProviderRepository(basePath: catalog.basePath, fs: homeFs)
+          .saveProviders(CliTool.cursor, [
+        const AppProviderConfig(
+          id: providerId,
+          cli: CliTool.cursor,
+          name: 'Cursor Account',
+          category: AppProviderCategory.official,
+          config: {},
+          isOfficial: true,
+        ),
+      ]);
+
+      const profile = PersonalProfile(
+        id: 'workspace-1',
+        display: 'workspace-1',
+        agent: WorkspaceAgentConfig(agent: 'solo'),
+        providerIdsByTool: {'cursor': providerId},
+      );
+      const standalone = StandaloneLaunchProfileScope(
+        workspaceId: 'workspace-1',
+        sessionId: 'session-1',
+      );
+      const preset = CliPreset(
+        id: 'cursor-default',
+        name: 'Cursor',
+        cli: CliTool.cursor,
+        provider: providerId,
+        model: '',
+        createdAt: 0,
+        updatedAt: 0,
+      );
+      final scope = resolveLaunchProfileScope(
+        workspaceId: 'workspace-1',
+        teamId: 'workspace-1',
+        appSessionId: 'session-1',
+        cliTeamName: 'session-1',
+      );
+
+      final contribution = await capability.contributeLaunch(
+        ConfigProfileLaunchContext(
+          workspaceId: 'workspace-1',
+          teamId: '',
+          sessionId: 'session-1',
+          scope: scope,
+          personal: profile,
+          members: const [],
+          paths: workPaths,
+          catalog: catalog,
+          standaloneScope: standalone,
+          preset: preset,
+        ),
+      );
+
+      final home = contribution.environment['HOME']!;
+      expect(contribution.warnings, isEmpty);
+      final authBytes = await workFs.readBytes(catalogLayout.authJson(home));
+      expect(authBytes, isNotNull);
+      expect(String.fromCharCodes(authBytes!), contains('remote-token'));
+      expect(workFs.symlinks[catalogLayout.cliConfig(home)], isNotNull);
     });
   });
 }

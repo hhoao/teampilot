@@ -1,3 +1,4 @@
+import '../../../../models/app_provider_config.dart';
 import '../../../../models/team_config.dart';
 import '../../../provider/cross_machine_credential_bridge.dart';
 import '../../../provider/cursor/cursor_home_layout.dart';
@@ -45,7 +46,8 @@ final class CursorConfigProfileCapability implements ConfigProfileCapability {
     StandaloneLaunchProfileScope standalone,
   ) async {
     final paths = ctx.paths;
-    final personal = ctx.personal;
+    final personal = ctx.personal!;
+    final warnings = <String>[];
     // Isolate under a fake `$HOME` (like mixed mode) so cursor reads the
     // session's `~/.cursor` — plugins/MCP/skills are materialized there.
     // CURSOR_CONFIG_DIR alone does NOT relocate the `.cursor` data dir.
@@ -58,26 +60,43 @@ final class CursorConfigProfileCapability implements ConfigProfileCapability {
     final cursorDir = layout.cursorDir(home);
     await paths.fs.ensureDir(cursorDir);
 
+    final credentials = CursorProviderCredentialsService(
+      fs: paths.fs,
+      basePath: paths.basePath,
+    );
+    final provider = await _resolveStandaloneCursorProvider(ctx);
+    final providerId = provider?.id.trim() ?? '';
+
     // Provision provider auth into the isolated home so cursor can authenticate
     // (real `~/.cursor` auth is no longer visible once HOME is isolated).
-    if (personal != null) {
-      final providerId = standaloneProviderId(ctx.preset);
-      await CursorHomeProvisioner(
-        fs: paths.fs,
-        credentials: CursorProviderCredentialsService(
-          fs: paths.fs,
-          basePath: paths.basePath,
-        ),
-        layout: layout,
-      ).provision(
-        memberHome: home,
-        providerId: providerId.isEmpty ? null : providerId,
-        member: standaloneMemberFromPersonal(personal, preset: ctx.preset),
-        busIdle: null,
-        forceTeamLeadDelegateMode: false,
-        mixed: false,
-      );
+    if (providerId.isNotEmpty && provider != null && provider.isOfficial) {
+      if (ctx.crossMachine) {
+        final copied =
+            await CrossMachineCredentialBridge.materializeCursorCredential(
+          catalog: ctx.catalog,
+          work: paths,
+          providerId: providerId,
+        );
+        if (!copied) {
+          warnings.add('cursor_credentials_missing');
+        }
+      } else if (!(await credentials.probe(providerId)).isReady) {
+        warnings.add('cursor_credentials_missing');
+      }
     }
+
+    await CursorHomeProvisioner(
+      fs: paths.fs,
+      credentials: credentials,
+      layout: layout,
+    ).provision(
+      memberHome: home,
+      providerId: providerId.isEmpty ? null : providerId,
+      member: standaloneMemberFromPersonal(personal, preset: ctx.preset),
+      busIdle: null,
+      forceTeamLeadDelegateMode: false,
+      mixed: false,
+    );
 
     await _provisionWorkspaceTrust(ctx: ctx, homeRoot: home);
     return ConfigProfileLaunchContribution(
@@ -85,7 +104,28 @@ final class CursorConfigProfileCapability implements ConfigProfileCapability {
         homeRoot: home,
         cursorConfigDir: cursorDir,
       ),
+      warnings: warnings,
     );
+  }
+
+  Future<AppProviderConfig?> _resolveStandaloneCursorProvider(
+    ConfigProfileLaunchContext ctx,
+  ) async {
+    final resolver = CursorProviderSettingsResolver(
+      basePath: ctx.catalog.basePath,
+      repository: providerCatalogRepository(ctx.catalog),
+    );
+    var provider = await resolver.findById(standaloneProviderId(ctx.preset));
+    provider ??= await resolver.findById(
+      ctx.personal?.providerIdsByTool[toolId] ?? '',
+    );
+    if (provider != null) return provider;
+
+    final providers = await providerCatalogRepository(
+      ctx.catalog,
+    ).loadProviders(CliTool.cursor);
+    if (providers.length == 1) return providers.first;
+    return null;
   }
 
   Future<ConfigProfileLaunchContribution> _contributeTeamLaunch(

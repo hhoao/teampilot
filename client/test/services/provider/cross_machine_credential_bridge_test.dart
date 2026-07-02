@@ -159,6 +159,12 @@ void main() {
       authPath,
       '{"accessToken":"remote-token"}',
     );
+    await catalog.fs.writeString(
+      CursorHomeLayout(pathContext: catalog.fs.pathContext).cliConfig(
+        catalogSvc.providerHome('default'),
+      ),
+      '{"authInfo":{"userId":"u1"}}',
+    );
 
     expect(
       await CrossMachineCredentialBridge.materializeCursorCredential(
@@ -179,6 +185,16 @@ void main() {
     expect(
       String.fromCharCodes((await work.fs.readBytes(dest))!),
       contains('remote-token'),
+    );
+    expect(
+      String.fromCharCodes(
+        (await work.fs.readBytes(
+          CursorHomeLayout(pathContext: work.fs.pathContext).cliConfig(
+            workSvc.providerHome('default'),
+          ),
+        ))!,
+      ),
+      contains('userId'),
     );
   });
 

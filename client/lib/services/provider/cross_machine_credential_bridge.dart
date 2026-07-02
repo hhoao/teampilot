@@ -4,6 +4,7 @@ import '../provider/credential_binding.dart';
 import 'claude/claude_provider_credentials_service.dart';
 import 'codex/codex_auth_artifacts.dart';
 import 'codex/codex_provider_credentials_service.dart';
+import 'cursor/cursor_auth_artifacts.dart';
 import 'cursor/cursor_home_layout.dart';
 import 'cursor/cursor_provider_credentials_service.dart';
 import 'opencode/opencode_data_layout.dart';
@@ -88,12 +89,27 @@ abstract final class CrossMachineCredentialBridge {
       fs: work.fs,
       basePath: work.basePath,
     );
+    final workLayout = CursorHomeLayout(pathContext: work.fs.pathContext);
     final workHome = workSvc.providerHome(providerId);
-    final dest = CursorHomeLayout(pathContext: work.fs.pathContext).authJson(
-      workHome,
-    );
+    final dest = workLayout.authJson(workHome);
     await work.fs.ensureDir(work.fs.pathContext.dirname(dest));
     await work.fs.writeBytes(dest, bytes);
+
+    final catalogHome = catalogSvc.providerHome(providerId);
+    final catalogLayout = CursorHomeLayout(pathContext: catalog.fs.pathContext);
+    final srcCursorDir = catalogLayout.cursorDir(catalogHome);
+    final destCursorDir = workLayout.cursorDir(workHome);
+    for (final relativePath in [
+      ...CursorAuthArtifacts.cursorDirRequired,
+      ...CursorAuthArtifacts.cursorDirOptional,
+    ]) {
+      final src = catalog.fs.pathContext.join(srcCursorDir, relativePath);
+      final artifactBytes = await catalog.fs.readBytes(src);
+      if (artifactBytes == null || artifactBytes.isEmpty) continue;
+      final artifactDest = work.fs.pathContext.join(destCursorDir, relativePath);
+      await work.fs.ensureDir(work.fs.pathContext.dirname(artifactDest));
+      await work.fs.writeBytes(artifactDest, artifactBytes);
+    }
     return true;
   }
 
