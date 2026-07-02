@@ -57,6 +57,7 @@ class AutomationDispatcher {
         _memberReadyTimeout = memberReadyTimeout;
 
   static const _uuid = Uuid();
+  static const _leadMemberId = 'team-lead';
 
   final AutomationRepository _repository;
   final AutomationScheduleCalculator _scheduleCalculator;
@@ -90,22 +91,11 @@ class AutomationDispatcher {
     );
 
     try {
-      final AutomationRun finished;
-      final Automation updated;
-      switch (automation.action) {
-        case AutomationAction.sendToLead:
-          (finished, updated) = await _dispatchSendToLead(
-            automation,
-            pending,
-            startedAtMs: startedAtMs,
-          );
-        case AutomationAction.launchPrompt:
-          (finished, updated) = await _dispatchLaunchPrompt(
-            automation,
-            pending,
-            startedAtMs: startedAtMs,
-          );
-      }
+      final (finished, updated) = await _dispatchMessage(
+        automation,
+        pending,
+        startedAtMs: startedAtMs,
+      );
       await _repository.upsertRun(automation.workspaceId, finished);
       await _repository.upsert(updated);
       return AutomationDispatchResult(run: finished, automation: updated);
@@ -131,18 +121,22 @@ class AutomationDispatcher {
     }
   }
 
-  Future<(AutomationRun, Automation)> _dispatchSendToLead(
+  Future<(AutomationRun, Automation)> _dispatchMessage(
     Automation automation,
     AutomationRun pending, {
     required int startedAtMs,
   }) async {
-    final session = await _resolveSession(automation);
+    final session = automation.isLaunchPrompt
+        ? await _resolveOrCreateSession(automation)
+        : await _resolveSession(automation);
     if (session == null) {
       final skipped = _finishRun(
         pending,
         AutomationRunStatus.skippedUnavailable,
         startedAtMs: startedAtMs,
-        error: 'session_not_found',
+        error: automation.isLaunchPrompt
+            ? 'session_unavailable'
+            : 'session_not_found',
       );
       final updated = _advanceAutomationAfterRun(
         automation,
@@ -151,74 +145,9 @@ class AutomationDispatcher {
       return (skipped, updated);
     }
 
-    final memberId = await _resolveMemberId(automation, session);
-    final connected = await _ensureSessionConnected(
-      session,
-      memberId: memberId,
-    );
-    if (!connected) {
-      final failed = _finishRun(
-        pending,
-        AutomationRunStatus.dispatchFailed,
-        startedAtMs: startedAtMs,
-        sessionId: session.sessionId,
-        error: 'member_connect_timeout',
-      );
-      final updated = _advanceAutomationAfterRun(
-        automation,
-        lastRunAtMs: startedAtMs,
-      );
-      return (failed, updated);
-    }
-
-    _busGateway.deliverUserCommandToMember(
-      session.sessionId,
-      memberId,
-      automation.message,
-    );
-    await _repository.upsertRun(
-      automation.workspaceId,
-      _finishRun(
-        pending,
-        AutomationRunStatus.dispatched,
-        startedAtMs: startedAtMs,
-        sessionId: session.sessionId,
-      ),
-    );
-    final completed = _finishRun(
-      pending,
-      AutomationRunStatus.completed,
-      startedAtMs: startedAtMs,
-      sessionId: session.sessionId,
-    );
-    final updated = _advanceAutomationAfterRun(
-      automation,
-      lastRunAtMs: startedAtMs,
-    );
-    return (completed, updated);
-  }
-
-  Future<(AutomationRun, Automation)> _dispatchLaunchPrompt(
-    Automation automation,
-    AutomationRun pending, {
-    required int startedAtMs,
-  }) async {
-    final session = await _resolveOrCreateSession(automation);
-    if (session == null) {
-      final skipped = _finishRun(
-        pending,
-        AutomationRunStatus.skippedUnavailable,
-        startedAtMs: startedAtMs,
-        error: 'session_unavailable',
-      );
-      final updated = _advanceAutomationAfterRun(
-        automation,
-        lastRunAtMs: startedAtMs,
-      );
-      return (skipped, updated);
-    }
-
-    final memberId = await _resolveMemberId(automation, session);
+    final memberId = automation.isScheduledMessage
+        ? await _resolveLeadMemberId(session)
+        : await _resolveLaunchMemberId(automation, session);
     final connected = await _ensureSessionConnected(
       session,
       memberId: memberId,
@@ -371,7 +300,26 @@ class AutomationDispatcher {
     }
   }
 
-  Future<String> _resolveMemberId(Automation automation, AppSession session) async {
+  Future<String> _resolveLeadMemberId(AppSession session) async {
+    if (session.sessionTeam.trim().isEmpty) {
+      final workspace = _workspaceById(session.workspaceId);
+      final resolver = _personalContextResolver;
+      if (workspace != null && resolver != null) {
+        final ctx = await resolver.resolve(
+          session: session,
+          workspace: workspace,
+        );
+        return ctx.personalMember.id;
+      }
+      return session.sessionId;
+    }
+    return _leadMemberId;
+  }
+
+  Future<String> _resolveLaunchMemberId(
+    Automation automation,
+    AppSession session,
+  ) async {
     if (session.sessionTeam.trim().isEmpty) {
       final workspace = _workspaceById(session.workspaceId);
       final resolver = _personalContextResolver;
@@ -385,7 +333,7 @@ class AutomationDispatcher {
       return session.sessionId;
     }
     final target = automation.targetMemberId.trim();
-    return target.isEmpty ? 'team-lead' : target;
+    return target.isEmpty ? _leadMemberId : target;
   }
 
   TeamMemberConfig? _resolveTeamMember(
@@ -397,7 +345,7 @@ class AutomationDispatcher {
       final match = team.members.where((m) => m.id == trimmed).firstOrNull;
       if (match != null && match.isValid) return match;
     }
-    final lead = team.members.where((m) => m.id == 'team-lead').firstOrNull;
+    final lead = team.members.where((m) => m.id == _leadMemberId).firstOrNull;
     if (lead != null && lead.isValid) return lead;
     return team.members.where((m) => m.isValid).firstOrNull;
   }

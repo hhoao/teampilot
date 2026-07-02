@@ -2,9 +2,7 @@ import 'package:flutter/foundation.dart';
 
 import 'team_config.dart';
 
-enum AutomationAction { sendToLead, launchPrompt }
-
-enum AutomationScope { session, workspace }
+enum AutomationAction { scheduledMessage, launchPrompt }
 
 enum AutomationSchedulePreset { hourly, daily, weekdays, weekly, custom }
 
@@ -20,13 +18,25 @@ enum AutomationRunStatus {
 
 enum AutomationRunTrigger { scheduled, manual }
 
-T? _enumByName<T extends Enum>(List<T> values, Object? raw, {T? fallback}) {
+T _requireEnum<T extends Enum>(
+  List<T> values,
+  Object? raw, {
+  required String field,
+}) {
+  final parsed = _enumByName(values, raw);
+  if (parsed == null) {
+    throw FormatException('Automation.$field is required');
+  }
+  return parsed;
+}
+
+T? _enumByName<T extends Enum>(List<T> values, Object? raw) {
   final name = raw?.toString().trim();
-  if (name == null || name.isEmpty) return fallback;
+  if (name == null || name.isEmpty) return null;
   for (final value in values) {
     if (value.name == name) return value;
   }
-  return fallback;
+  return null;
 }
 
 String _defaultAutomationTimezone(Object? raw) {
@@ -42,7 +52,6 @@ class Automation {
     required this.id,
     required this.name,
     required this.action,
-    required this.scope,
     required this.workspaceId,
     this.sessionId,
     this.targetMemberId = 'team-lead',
@@ -70,30 +79,22 @@ class Automation {
     return Automation(
       id: json['id'] as String? ?? '',
       name: json['name'] as String? ?? '',
-      action: _enumByName(
-            AutomationAction.values,
-            json['action'],
-            fallback: AutomationAction.sendToLead,
-          ) ??
-          AutomationAction.sendToLead,
-      scope: _enumByName(
-            AutomationScope.values,
-            json['scope'],
-            fallback: AutomationScope.workspace,
-          ) ??
-          AutomationScope.workspace,
+      action: _requireEnum(
+        AutomationAction.values,
+        json['action'],
+        field: 'action',
+      ),
       workspaceId: json['workspaceId'] as String? ?? '',
       sessionId: json['sessionId'] as String?,
       targetMemberId: json['targetMemberId'] as String? ?? 'team-lead',
       message: json['message'] as String? ?? '',
       cli: json['cli'] == null ? null : CliTool.parse(json['cli']),
       reuseSession: json['reuseSession'] as bool? ?? false,
-      preset: _enumByName(
-            AutomationSchedulePreset.values,
-            json['preset'],
-            fallback: AutomationSchedulePreset.daily,
-          ) ??
-          AutomationSchedulePreset.daily,
+      preset: _requireEnum(
+        AutomationSchedulePreset.values,
+        json['preset'],
+        field: 'preset',
+      ),
       customCron: json['customCron'] as String?,
       dayOfWeek: (json['dayOfWeek'] as num?)?.toInt(),
       minute: (json['minute'] as num?)?.toInt() ?? 0,
@@ -115,7 +116,6 @@ class Automation {
   final String id;
   final String name;
   final AutomationAction action;
-  final AutomationScope scope;
   final String workspaceId;
   final String? sessionId;
   final String targetMemberId;
@@ -138,6 +138,11 @@ class Automation {
   final int createdAtMs;
   final int updatedAtMs;
 
+  bool get isScheduledMessage =>
+      action == AutomationAction.scheduledMessage;
+
+  bool get isLaunchPrompt => action == AutomationAction.launchPrompt;
+
   /// When set, automation stops after [runCount] reaches [maxRunCount].
   bool get hasRunLimit => maxRunCount != null && maxRunCount! > 0;
 
@@ -156,12 +161,21 @@ class Automation {
     if (message.trim().isEmpty) {
       throw ArgumentError('Automation message is required');
     }
-    if (scope == AutomationScope.session &&
-        (sessionId == null || sessionId!.trim().isEmpty)) {
-      throw ArgumentError('session scope requires sessionId');
-    }
-    if (action == AutomationAction.launchPrompt && cli == null) {
-      throw ArgumentError('launchPrompt requires cli');
+    switch (action) {
+      case AutomationAction.scheduledMessage:
+        if (sessionId == null || sessionId!.trim().isEmpty) {
+          throw ArgumentError('scheduledMessage requires sessionId');
+        }
+        if (cli != null) {
+          throw ArgumentError('scheduledMessage must not set cli');
+        }
+        if (reuseSession) {
+          throw ArgumentError('scheduledMessage must not reuse session');
+        }
+      case AutomationAction.launchPrompt:
+        if (cli == null) {
+          throw ArgumentError('launchPrompt requires cli');
+        }
     }
     if (preset == AutomationSchedulePreset.custom &&
         (customCron == null || customCron!.trim().isEmpty)) {
@@ -189,7 +203,6 @@ class Automation {
     String? id,
     String? name,
     AutomationAction? action,
-    AutomationScope? scope,
     String? workspaceId,
     String? sessionId,
     bool clearSessionId = false,
@@ -223,7 +236,6 @@ class Automation {
       id: id ?? this.id,
       name: name ?? this.name,
       action: action ?? this.action,
-      scope: scope ?? this.scope,
       workspaceId: workspaceId ?? this.workspaceId,
       sessionId: clearSessionId ? null : (sessionId ?? this.sessionId),
       targetMemberId: targetMemberId ?? this.targetMemberId,
@@ -256,13 +268,12 @@ class Automation {
       'id': id,
       'name': name,
       'action': action.name,
-      'scope': scope.name,
       'workspaceId': workspaceId,
       if (sessionId != null && sessionId!.isNotEmpty) 'sessionId': sessionId,
-      'targetMemberId': targetMemberId,
+      if (isLaunchPrompt) 'targetMemberId': targetMemberId,
       'message': message,
       if (cli != null) 'cli': cli!.value,
-      'reuseSession': reuseSession,
+      if (reuseSession) 'reuseSession': reuseSession,
       'preset': preset.name,
       if (customCron != null && customCron!.isNotEmpty) 'customCron': customCron,
       if (dayOfWeek != null) 'dayOfWeek': dayOfWeek,
@@ -289,7 +300,6 @@ class Automation {
             id == other.id &&
             name == other.name &&
             action == other.action &&
-            scope == other.scope &&
             workspaceId == other.workspaceId &&
             sessionId == other.sessionId &&
             targetMemberId == other.targetMemberId &&
@@ -318,7 +328,6 @@ class Automation {
         id,
         name,
         action,
-        scope,
         workspaceId,
         sessionId,
         targetMemberId,
@@ -364,18 +373,16 @@ class AutomationRun {
       automationId: json['automationId'] as String? ?? '',
       workspaceId: json['workspaceId'] as String? ?? '',
       scheduledForMs: (json['scheduledForMs'] as num?)?.toInt() ?? 0,
-      status: _enumByName(
-            AutomationRunStatus.values,
-            json['status'],
-            fallback: AutomationRunStatus.pending,
-          ) ??
-          AutomationRunStatus.pending,
-      trigger: _enumByName(
-            AutomationRunTrigger.values,
-            json['trigger'],
-            fallback: AutomationRunTrigger.scheduled,
-          ) ??
-          AutomationRunTrigger.scheduled,
+      status: _requireEnum(
+        AutomationRunStatus.values,
+        json['status'],
+        field: 'status',
+      ),
+      trigger: _requireEnum(
+        AutomationRunTrigger.values,
+        json['trigger'],
+        field: 'trigger',
+      ),
       sessionId: json['sessionId'] as String?,
       error: json['error'] as String?,
       startedAtMs: (json['startedAtMs'] as num?)?.toInt(),

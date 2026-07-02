@@ -32,7 +32,7 @@ void main() {
   setUp(setUpTestAppStorage);
   tearDown(tearDownTestAppStorage);
 
-  testWidgets('compact mode shows core fields only', (tester) async {
+  testWidgets('scheduled message editor shows core fields only', (tester) async {
     final setup = testAutomationSetup();
     addTearDown(setup.cubit.close);
 
@@ -40,7 +40,7 @@ void main() {
       _host(
         cubit: setup.cubit,
         child: const AutomationEditorDialog(
-          compact: true,
+          kind: AutomationEditorKind.scheduledMessage,
           workspaceId: 'ws1',
           sessionId: 'sess-1',
           defaultName: 'Daily ping',
@@ -58,12 +58,11 @@ void main() {
     expect(find.text(l10n.automationsName), findsOneWidget);
     expect(find.text(l10n.automationsMessage), findsOneWidget);
     expect(find.text(l10n.automationsEnabled), findsOneWidget);
-    expect(find.text(l10n.automationsAction), findsNothing);
-    expect(find.text(l10n.automationsScope), findsNothing);
+    expect(find.text(l10n.automationsCli), findsNothing);
     expect(find.text(l10n.automationsTargetMember), findsNothing);
   });
 
-  testWidgets('full mode shows action scope and target member fields', (
+  testWidgets('launch prompt editor shows cli and target member fields', (
     tester,
   ) async {
     final setup = testAutomationSetup();
@@ -85,12 +84,13 @@ void main() {
     );
 
     expect(find.text(l10n.automationsCreateTitle), findsOneWidget);
-    expect(find.text(l10n.automationsAction), findsOneWidget);
-    expect(find.text(l10n.automationsScope), findsOneWidget);
+    expect(find.text(l10n.automationsCli), findsOneWidget);
     expect(find.text(l10n.automationsTargetMember), findsOneWidget);
   });
 
-  testWidgets('compact mode pre-fills session defaults', (tester) async {
+  testWidgets('scheduled message editor pre-fills session defaults', (
+    tester,
+  ) async {
     final setup = testAutomationSetup();
     addTearDown(setup.cubit.close);
 
@@ -98,7 +98,7 @@ void main() {
       _host(
         cubit: setup.cubit,
         child: const AutomationEditorDialog(
-          compact: true,
+          kind: AutomationEditorKind.scheduledMessage,
           workspaceId: 'ws1',
           sessionId: 'sess-1',
           defaultName: 'Daily ping',

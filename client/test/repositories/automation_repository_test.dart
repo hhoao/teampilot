@@ -1,5 +1,6 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:teampilot/models/automation.dart';
+import 'package:teampilot/models/team_config.dart';
 import 'package:teampilot/repositories/automation_repository.dart';
 import 'package:teampilot/services/storage/app_storage.dart';
 import 'package:teampilot/services/storage/workspace_layout.dart';
@@ -14,10 +15,12 @@ Automation _sampleAutomation({
   return Automation(
     id: id,
     name: 'Ping $id',
-    action: AutomationAction.sendToLead,
-    scope: sessionId == null ? AutomationScope.workspace : AutomationScope.session,
+    action: sessionId == null
+        ? AutomationAction.launchPrompt
+        : AutomationAction.scheduledMessage,
     workspaceId: workspaceId,
     sessionId: sessionId,
+    cli: sessionId == null ? CliTool.claude : null,
     message: 'hello',
     preset: AutomationSchedulePreset.daily,
     hourMinute: '09:00',

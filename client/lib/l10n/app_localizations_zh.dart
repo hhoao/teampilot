@@ -4315,12 +4315,6 @@ class AppLocalizationsZh extends AppLocalizations {
   String get automationsNew => '新建自动化';
 
   @override
-  String get automationsSendToLead => '发送给 lead';
-
-  @override
-  String get automationsLaunchPrompt => '启动 prompt';
-
-  @override
   String get automationsScheduleHourly => '每小时';
 
   @override
@@ -4387,18 +4381,6 @@ class AppLocalizationsZh extends AppLocalizations {
 
   @override
   String get automationsEnabled => '已启用';
-
-  @override
-  String get automationsAction => '动作';
-
-  @override
-  String get automationsScope => '范围';
-
-  @override
-  String get automationsScopeSession => '会话';
-
-  @override
-  String get automationsScopeWorkspace => '工作区';
 
   @override
   String get automationsCli => 'CLI';

@@ -187,7 +187,7 @@ class _SidebarSessionTileState extends State<SidebarSessionTile> {
         final title = session.resolveDisplayTitle(l10n.defaultNewChatSessionTitle);
         final saved = await AutomationEditorDialog.show(
           context,
-          compact: true,
+          kind: AutomationEditorKind.scheduledMessage,
           workspaceId: session.workspaceId,
           sessionId: session.sessionId,
           defaultName: l10n.automationsSessionDefaultName(title),

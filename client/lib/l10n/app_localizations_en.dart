@@ -4484,12 +4484,6 @@ class AppLocalizationsEn extends AppLocalizations {
   String get automationsNew => 'New automation';
 
   @override
-  String get automationsSendToLead => 'Send to lead';
-
-  @override
-  String get automationsLaunchPrompt => 'Launch prompt';
-
-  @override
   String get automationsScheduleHourly => 'Hourly';
 
   @override
@@ -4556,18 +4550,6 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get automationsEnabled => 'Enabled';
-
-  @override
-  String get automationsAction => 'Action';
-
-  @override
-  String get automationsScope => 'Scope';
-
-  @override
-  String get automationsScopeSession => 'Session';
-
-  @override
-  String get automationsScopeWorkspace => 'Workspace';
 
   @override
   String get automationsCli => 'CLI';

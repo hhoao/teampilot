@@ -45,8 +45,7 @@ Automation _sampleAutomation({
   return Automation(
     id: id,
     name: 'Test $id',
-    action: AutomationAction.sendToLead,
-    scope: AutomationScope.session,
+    action: AutomationAction.scheduledMessage,
     workspaceId: 'ws1',
     sessionId: 'sess-1',
     message: 'ping',

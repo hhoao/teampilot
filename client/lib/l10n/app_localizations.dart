@@ -8091,18 +8091,6 @@ abstract class AppLocalizations {
   /// **'New automation'**
   String get automationsNew;
 
-  /// No description provided for @automationsSendToLead.
-  ///
-  /// In en, this message translates to:
-  /// **'Send to lead'**
-  String get automationsSendToLead;
-
-  /// No description provided for @automationsLaunchPrompt.
-  ///
-  /// In en, this message translates to:
-  /// **'Launch prompt'**
-  String get automationsLaunchPrompt;
-
   /// No description provided for @automationsScheduleHourly.
   ///
   /// In en, this message translates to:
@@ -8234,30 +8222,6 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Enabled'**
   String get automationsEnabled;
-
-  /// No description provided for @automationsAction.
-  ///
-  /// In en, this message translates to:
-  /// **'Action'**
-  String get automationsAction;
-
-  /// No description provided for @automationsScope.
-  ///
-  /// In en, this message translates to:
-  /// **'Scope'**
-  String get automationsScope;
-
-  /// No description provided for @automationsScopeSession.
-  ///
-  /// In en, this message translates to:
-  /// **'Session'**
-  String get automationsScopeSession;
-
-  /// No description provided for @automationsScopeWorkspace.
-  ///
-  /// In en, this message translates to:
-  /// **'Workspace'**
-  String get automationsScopeWorkspace;
 
   /// No description provided for @automationsCli.
   ///

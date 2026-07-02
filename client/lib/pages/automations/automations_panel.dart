@@ -144,6 +144,9 @@ class _AutomationsPanelState extends State<AutomationsPanel> {
     final saved = await AutomationEditorDialog.show(
       context,
       initial: automation,
+      kind: automation.isScheduledMessage
+          ? AutomationEditorKind.scheduledMessage
+          : AutomationEditorKind.launchPrompt,
       workspaceId: automation.workspaceId,
       sessionId: automation.sessionId,
     );
@@ -405,7 +408,7 @@ class _AutomationRow extends StatelessWidget {
     final l10n = context.l10n;
     final cs = Theme.of(context).colorScheme;
     final styles = AppTextStyles.of(context);
-    final actionIcon = automation.action == AutomationAction.sendToLead
+    final actionIcon = automation.isScheduledMessage
         ? Icons.send_rounded
         : Icons.play_arrow_rounded;
 

@@ -16,11 +16,13 @@ import '../../widgets/dropdown/app_dropdown_decoration.dart';
 import '../../widgets/dropdown/app_dropdown_field.dart';
 import 'automation_schedule_picker.dart';
 
-/// Full or compact automation editor. Returns the saved [Automation] on confirm.
+enum AutomationEditorKind { scheduledMessage, launchPrompt }
+
+/// Editor for session scheduled messages or workspace launch-prompt automations.
 class AutomationEditorDialog extends StatefulWidget {
   const AutomationEditorDialog({
     this.initial,
-    this.compact = false,
+    this.kind = AutomationEditorKind.launchPrompt,
     this.workspaceId,
     this.sessionId,
     this.defaultName,
@@ -28,7 +30,7 @@ class AutomationEditorDialog extends StatefulWidget {
   });
 
   final Automation? initial;
-  final bool compact;
+  final AutomationEditorKind kind;
   final String? workspaceId;
   final String? sessionId;
   final String? defaultName;
@@ -36,7 +38,7 @@ class AutomationEditorDialog extends StatefulWidget {
   static Future<Automation?> show(
     BuildContext context, {
     Automation? initial,
-    bool compact = false,
+    AutomationEditorKind kind = AutomationEditorKind.launchPrompt,
     String? workspaceId,
     String? sessionId,
     String? defaultName,
@@ -45,7 +47,7 @@ class AutomationEditorDialog extends StatefulWidget {
       context: context,
       builder: (_) => AutomationEditorDialog(
         initial: initial,
-        compact: compact,
+        kind: kind,
         workspaceId: workspaceId,
         sessionId: sessionId,
         defaultName: defaultName,
@@ -63,13 +65,14 @@ class _AutomationEditorDialogState extends State<AutomationEditorDialog> {
   late final TextEditingController _messageCtl;
   late final TextEditingController _targetMemberCtl;
   late final TextEditingController _maxRunCountCtl;
-  late AutomationAction _action;
-  late AutomationScope _scope;
   late CliTool _cli;
   late bool _reuseSession;
   late bool _enabled;
   late AutomationScheduleDraft _schedule;
   String? _errorMessage;
+
+  bool get _isScheduledMessage =>
+      widget.kind == AutomationEditorKind.scheduledMessage;
 
   bool get _isEditing => widget.initial != null;
 
@@ -78,8 +81,6 @@ class _AutomationEditorDialogState extends State<AutomationEditorDialog> {
     super.initState();
     final initial = widget.initial;
     final workspaceId = initial?.workspaceId ?? widget.workspaceId ?? '';
-    final sessionId = initial?.sessionId ?? widget.sessionId;
-    final compact = widget.compact;
 
     _nameCtl = TextEditingController(
       text: initial?.name ?? widget.defaultName ?? '',
@@ -91,12 +92,6 @@ class _AutomationEditorDialogState extends State<AutomationEditorDialog> {
     _maxRunCountCtl = TextEditingController(
       text: initial?.maxRunCount?.toString() ?? '',
     );
-    _action = initial?.action ??
-        (compact ? AutomationAction.sendToLead : AutomationAction.sendToLead);
-    _scope = initial?.scope ??
-        (sessionId != null && sessionId.isNotEmpty
-            ? AutomationScope.session
-            : AutomationScope.workspace);
     _cli = initial?.cli ?? CliTool.claude;
     _reuseSession = initial?.reuseSession ?? false;
     _enabled = initial?.enabled ?? true;
@@ -161,23 +156,24 @@ class _AutomationEditorDialogState extends State<AutomationEditorDialog> {
     final nowMs = DateTime.now().millisecondsSinceEpoch;
     final workspaceId =
         widget.initial?.workspaceId ?? widget.workspaceId ?? '';
-    final sessionId = _scope == AutomationScope.session
+    final sessionId = _isScheduledMessage
         ? (widget.initial?.sessionId ?? widget.sessionId)
         : null;
 
     final automation = Automation(
       id: widget.initial?.id ?? const Uuid().v4(),
       name: name,
-      action: _action,
-      scope: _scope,
+      action: _isScheduledMessage
+          ? AutomationAction.scheduledMessage
+          : AutomationAction.launchPrompt,
       workspaceId: workspaceId,
       sessionId: sessionId,
       targetMemberId: _targetMemberCtl.text.trim().isEmpty
           ? 'team-lead'
           : _targetMemberCtl.text.trim(),
       message: message,
-      cli: _action == AutomationAction.launchPrompt ? _cli : null,
-      reuseSession: _reuseSession,
+      cli: _isScheduledMessage ? null : _cli,
+      reuseSession: _isScheduledMessage ? false : _reuseSession,
       preset: _schedule.preset,
       customCron: _schedule.customCron,
       dayOfWeek: _schedule.dayOfWeek,
@@ -221,13 +217,16 @@ class _AutomationEditorDialogState extends State<AutomationEditorDialog> {
     final l10n = context.l10n;
     final styles = AppTextStyles.of(context);
     final cs = Theme.of(context).colorScheme;
-    final compact = widget.compact;
     final title = _isEditing
-        ? (compact ? l10n.automationsCompactTitle : l10n.automationsEditTitle)
-        : (compact ? l10n.automationsCompactTitle : l10n.automationsCreateTitle);
+        ? (_isScheduledMessage
+            ? l10n.automationsCompactTitle
+            : l10n.automationsEditTitle)
+        : (_isScheduledMessage
+            ? l10n.automationsCompactTitle
+            : l10n.automationsCreateTitle);
 
     return AppDialog(
-      maxWidth: compact ? 480 : 560,
+      maxWidth: _isScheduledMessage ? 480 : 560,
       scrollable: true,
       maxHeight: MediaQuery.sizeOf(context).height * 0.85,
       child: Column(
@@ -254,60 +253,32 @@ class _AutomationEditorDialogState extends State<AutomationEditorDialog> {
             minLines: 2,
             maxLines: 5,
           ),
-          if (!compact) ...[
+          if (!_isScheduledMessage) ...[
             const SizedBox(height: 16),
-            Text(l10n.automationsAction, style: styles.bodySmall.copyWith(fontWeight: FontWeight.w600)),
+            Text(l10n.automationsCli, style: styles.bodySmall.copyWith(fontWeight: FontWeight.w600)),
             const SizedBox(height: 8),
-            AppDropdownField<AutomationAction>(
-              items: AutomationAction.values,
-              initialItem: _action,
+            AppDropdownField<CliTool>(
+              items: CliTool.values,
+              initialItem: _cli,
               decoration: AppDropdownDecorations.themed(context),
-              itemLabel: (a) => _actionLabel(l10n, a),
+              itemLabel: (cli) {
+                final registry = CliToolRegistryScope.of(context);
+                final def = registry.tryGet(cli);
+                if (def == null) return cli.value;
+                return cliDisplayName(def, l10n, registry: registry);
+              },
               onChanged: (value) {
                 if (value == null) return;
-                setState(() => _action = value);
+                setState(() => _cli = value);
               },
             ),
-            const SizedBox(height: 12),
-            Text(l10n.automationsScope, style: styles.bodySmall.copyWith(fontWeight: FontWeight.w600)),
             const SizedBox(height: 8),
-            AppDropdownField<AutomationScope>(
-              items: AutomationScope.values,
-              initialItem: _scope,
-              decoration: AppDropdownDecorations.themed(context),
-              itemLabel: (s) => _scopeLabel(l10n, s),
-              onChanged: (value) {
-                if (value == null) return;
-                setState(() => _scope = value);
-              },
+            SwitchListTile(
+              contentPadding: EdgeInsets.zero,
+              title: Text(l10n.automationsReuseSession),
+              value: _reuseSession,
+              onChanged: (v) => setState(() => _reuseSession = v),
             ),
-            if (_action == AutomationAction.launchPrompt) ...[
-              const SizedBox(height: 12),
-              Text(l10n.automationsCli, style: styles.bodySmall.copyWith(fontWeight: FontWeight.w600)),
-              const SizedBox(height: 8),
-              AppDropdownField<CliTool>(
-                items: CliTool.values,
-                initialItem: _cli,
-                decoration: AppDropdownDecorations.themed(context),
-                itemLabel: (cli) {
-                  final registry = CliToolRegistryScope.of(context);
-                  final def = registry.tryGet(cli);
-                  if (def == null) return cli.value;
-                  return cliDisplayName(def, l10n, registry: registry);
-                },
-                onChanged: (value) {
-                  if (value == null) return;
-                  setState(() => _cli = value);
-                },
-              ),
-              const SizedBox(height: 8),
-              SwitchListTile(
-                contentPadding: EdgeInsets.zero,
-                title: Text(l10n.automationsReuseSession),
-                value: _reuseSession,
-                onChanged: (v) => setState(() => _reuseSession = v),
-              ),
-            ],
             const SizedBox(height: 8),
             TextField(
               controller: _targetMemberCtl,
@@ -353,18 +324,4 @@ class _AutomationEditorDialogState extends State<AutomationEditorDialog> {
       ),
     );
   }
-}
-
-String _actionLabel(AppLocalizations l10n, AutomationAction action) {
-  return switch (action) {
-    AutomationAction.sendToLead => l10n.automationsSendToLead,
-    AutomationAction.launchPrompt => l10n.automationsLaunchPrompt,
-  };
-}
-
-String _scopeLabel(AppLocalizations l10n, AutomationScope scope) {
-  return switch (scope) {
-    AutomationScope.session => l10n.automationsScopeSession,
-    AutomationScope.workspace => l10n.automationsScopeWorkspace,
-  };
 }

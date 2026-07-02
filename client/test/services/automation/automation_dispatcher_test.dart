@@ -49,18 +49,16 @@ class _RecordingBusGateway implements AutomationBusGateway {
   }
 }
 
-Automation _sendToLeadAutomation({
+Automation _scheduledMessageAutomation({
   required String sessionId,
   String workspaceId = 'ws1',
 }) {
   return Automation(
     id: 'auto-1',
     name: 'Reset',
-    action: AutomationAction.sendToLead,
-    scope: AutomationScope.session,
+    action: AutomationAction.scheduledMessage,
     workspaceId: workspaceId,
     sessionId: sessionId,
-    targetMemberId: 'team-lead',
     message: '/clear',
     preset: AutomationSchedulePreset.hourly,
     minute: 0,
@@ -78,7 +76,7 @@ void main() {
   setUp(setUpTestAppStorage);
   tearDown(tearDownTestAppStorage);
 
-  test('sendToLead delivers message when session is connected', () async {
+  test('scheduledMessage delivers message when session is connected', () async {
     final layout = WorkspaceLayout(teampilotRoot: AppStorage.paths.basePath);
     final repo = AutomationRepository(fs: AppStorage.fs, layout: layout);
     final session = AppSession(
@@ -114,7 +112,7 @@ void main() {
       nowMs: () => 100,
     );
 
-    final result = await dispatcher.dispatch(_sendToLeadAutomation(sessionId: 'sess-1'));
+    final result = await dispatcher.dispatch(_scheduledMessageAutomation(sessionId: 'sess-1'));
 
     expect(openCalls, 1);
     expect(bus.ensureCalls, [('sess-1', 'team-lead')]);
@@ -125,7 +123,7 @@ void main() {
     expect(runs, hasLength(1));
   });
 
-  test('sendToLead skips when session is missing', () async {
+  test('scheduledMessage skips when session is missing', () async {
     final layout = WorkspaceLayout(teampilotRoot: AppStorage.paths.basePath);
     final repo = AutomationRepository(fs: AppStorage.fs, layout: layout);
     final bus = _RecordingBusGateway();
@@ -142,14 +140,14 @@ void main() {
       nowMs: () => 50,
     );
 
-    final result = await dispatcher.dispatch(_sendToLeadAutomation(sessionId: 'missing'));
+    final result = await dispatcher.dispatch(_scheduledMessageAutomation(sessionId: 'missing'));
 
     expect(result.run.status, AutomationRunStatus.skippedUnavailable);
     expect(result.run.error, 'session_not_found');
     expect(bus.deliverCalls, isEmpty);
   });
 
-  test('sendToLead fails when member connect times out', () async {
+  test('scheduledMessage fails when member connect times out', () async {
     final layout = WorkspaceLayout(teampilotRoot: AppStorage.paths.basePath);
     final repo = AutomationRepository(fs: AppStorage.fs, layout: layout);
     final session = AppSession(
@@ -173,7 +171,7 @@ void main() {
       memberReadyTimeout: const Duration(milliseconds: 50),
     );
 
-    final result = await dispatcher.dispatch(_sendToLeadAutomation(sessionId: 'sess-2'));
+    final result = await dispatcher.dispatch(_scheduledMessageAutomation(sessionId: 'sess-2'));
 
     expect(result.run.status, AutomationRunStatus.dispatchFailed);
     expect(result.run.error, 'member_connect_timeout');
@@ -210,7 +208,7 @@ void main() {
       nowMs: () => 100,
     );
 
-    final automation = _sendToLeadAutomation(sessionId: 'sess-1').copyWith(
+    final automation = _scheduledMessageAutomation(sessionId: 'sess-1').copyWith(
       maxRunCount: 1,
     );
     final result = await dispatcher.dispatch(automation);
