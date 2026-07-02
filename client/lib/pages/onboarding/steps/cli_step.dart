@@ -22,7 +22,9 @@ import '../../../widgets/cli_install_progress_panel.dart';
 import '../../../widgets/settings/workspace_settings_widgets.dart';
 
 class OnboardingCliStep extends StatefulWidget {
-  const OnboardingCliStep({super.key});
+  const OnboardingCliStep({super.key, this.isActive = true});
+
+  final bool isActive;
 
   @override
   State<OnboardingCliStep> createState() => _OnboardingCliStepState();
@@ -34,19 +36,38 @@ class _OnboardingCliStepState extends State<OnboardingCliStep> {
   final _controller = TextEditingController();
   var _detecting = false;
   var _installing = false;
+  var _hasStartedDetect = false;
   CliInstallPhase? _installPhase;
   final List<String> _installLog = [];
   String? _detectedPath;
   String? _detectError;
+  Timer? _persistDebounce;
 
   @override
   void initState() {
     super.initState();
+    if (widget.isActive) {
+      _startDetectIfNeeded();
+    }
+  }
+
+  @override
+  void didUpdateWidget(OnboardingCliStep oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (widget.isActive && !oldWidget.isActive) {
+      _startDetectIfNeeded();
+    }
+  }
+
+  void _startDetectIfNeeded() {
+    if (_hasStartedDetect) return;
+    _hasStartedDetect = true;
     unawaited(_detect());
   }
 
   @override
   void dispose() {
+    _persistDebounce?.cancel();
     _controller.dispose();
     super.dispose();
   }
@@ -232,7 +253,11 @@ class _OnboardingCliStepState extends State<OnboardingCliStep> {
                   _detectError = null;
                   _detectedPath = null;
                 });
-                unawaited(_persistPath(value));
+                _persistDebounce?.cancel();
+                _persistDebounce = Timer(
+                  const Duration(milliseconds: 300),
+                  () => unawaited(_persistPath(value)),
+                );
               },
             ),
           ),

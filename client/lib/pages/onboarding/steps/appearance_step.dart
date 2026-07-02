@@ -10,7 +10,9 @@ import '../../../widgets/settings/workspace_settings_toggle_strip.dart';
 import '../../../widgets/settings/workspace_settings_widgets.dart';
 
 class OnboardingAppearanceStep extends StatelessWidget {
-  const OnboardingAppearanceStep({super.key});
+  const OnboardingAppearanceStep({super.key, this.isActive = true});
+
+  final bool isActive;
 
   @override
   Widget build(BuildContext context) {

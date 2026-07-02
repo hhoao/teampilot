@@ -10,8 +10,13 @@ import '../../../services/terminal/terminal_transport_factory.dart';
 import '../../ssh_profile_setup_page.dart';
 
 class OnboardingSshStep extends StatelessWidget {
-  const OnboardingSshStep({super.key, required this.onContinue});
+  const OnboardingSshStep({
+    super.key,
+    this.isActive = true,
+    required this.onContinue,
+  });
 
+  final bool isActive;
   final VoidCallback onContinue;
 
   @override

@@ -11,7 +11,9 @@ import '../../../widgets/app_provider/provider_brand_icon.dart';
 import '../../../widgets/settings/workspace_settings_widgets.dart';
 
 class OnboardingProviderImportStep extends StatefulWidget {
-  const OnboardingProviderImportStep({super.key});
+  const OnboardingProviderImportStep({super.key, this.isActive = true});
+
+  final bool isActive;
 
   @override
   State<OnboardingProviderImportStep> createState() =>
@@ -22,6 +24,7 @@ class _OnboardingProviderImportStepState
     extends State<OnboardingProviderImportStep> {
   var _importing = false;
   var _imported = false;
+  var _hasStartedImport = false;
   List<AppProviderConfig> _providers = const [];
   String _statusMessage = '';
   Object? _error;
@@ -29,6 +32,22 @@ class _OnboardingProviderImportStepState
   @override
   void initState() {
     super.initState();
+    if (widget.isActive) {
+      _startImportIfNeeded();
+    }
+  }
+
+  @override
+  void didUpdateWidget(OnboardingProviderImportStep oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (widget.isActive && !oldWidget.isActive) {
+      _startImportIfNeeded();
+    }
+  }
+
+  void _startImportIfNeeded() {
+    if (_hasStartedImport) return;
+    _hasStartedImport = true;
     unawaited(_import());
   }
 

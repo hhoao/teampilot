@@ -56,6 +56,8 @@ class _OnboardingWizardState extends State<OnboardingWizard> {
   late final List<OnboardingStepKind> _steps;
   late final List<GlobalKey> _stepMeasureKeys;
   late final PageController _pageController;
+  final _defaultPresetKey = GlobalKey<OnboardingDefaultPresetStepState>();
+  final _cachedStepHeights = <int, double>{};
   var _pageIndex = 0;
   var _isAnimating = false;
   var _pageViewportHeight = _minPageViewportHeight.toDouble();
@@ -88,6 +90,8 @@ class _OnboardingWizardState extends State<OnboardingWizard> {
   Future<void> _goNext() async {
     if (_isAnimating) return;
     if (_isLastStep) {
+      await _defaultPresetKey.currentState?.commitSelection();
+      if (!mounted) return;
       widget.onComplete();
       return;
     }
@@ -104,13 +108,36 @@ class _OnboardingWizardState extends State<OnboardingWizard> {
       duration: _pageAnimationDuration,
       curve: Curves.easeOutCubic,
     );
-    if (mounted) {
-      setState(() => _isAnimating = false);
+    if (!mounted) return;
+    setState(() {
+      _pageIndex = page;
+      _isAnimating = false;
+    });
+    _syncViewportHeightForPage(page);
+  }
+
+  void _invalidateStepHeightCache(int index) {
+    _cachedStepHeights.remove(index);
+    if (index == _pageIndex) {
+      _syncViewportHeightForPage(index);
     }
   }
 
   void _syncViewportHeightForPage(int index) {
     if (!mounted || _isAnimating) return;
+
+    final cached = _cachedStepHeights[index];
+    if (cached != null) {
+      final nextHeight = cached.clamp(
+        _minPageViewportHeight.toDouble(),
+        _maxPageViewportHeight.toDouble(),
+      );
+      if ((_pageViewportHeight - nextHeight).abs() > 1) {
+        setState(() => _pageViewportHeight = nextHeight);
+      }
+      return;
+    }
+
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (!mounted || _isAnimating) return;
       final box =
@@ -118,12 +145,13 @@ class _OnboardingWizardState extends State<OnboardingWizard> {
               as RenderBox?;
       if (box == null || !box.hasSize) return;
 
-      final nextHeight = box.size.height.clamp(
+      final measured = box.size.height.clamp(
         _minPageViewportHeight.toDouble(),
         _maxPageViewportHeight.toDouble(),
       );
-      if ((_pageViewportHeight - nextHeight).abs() <= 1) return;
-      setState(() => _pageViewportHeight = nextHeight);
+      _cachedStepHeights[index] = measured;
+      if ((_pageViewportHeight - measured).abs() <= 1) return;
+      setState(() => _pageViewportHeight = measured);
     });
   }
 
@@ -149,90 +177,90 @@ class _OnboardingWizardState extends State<OnboardingWizard> {
                 );
             final viewportHeight = math.min(_pageViewportHeight, maxViewportHeight);
 
-            return SingleChildScrollView(
-              child: ConstrainedBox(
-                constraints: BoxConstraints(minHeight: constraints.maxHeight),
-                child: Center(
-                  child: ConstrainedBox(
-                    constraints: const BoxConstraints(maxWidth: 720),
-                    child: Padding(
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 24,
-                        vertical: 16,
-                      ),
-                      child: Column(
-                        mainAxisSize: MainAxisSize.min,
-                        crossAxisAlignment: CrossAxisAlignment.stretch,
-                        children: [
-                          AnimatedSize(
-                            duration: _pageAnimationDuration,
-                            curve: Curves.easeOutCubic,
-                            alignment: Alignment.topCenter,
-                            child: SizedBox(
-                              height: viewportHeight,
-                              child: PageView(
-                                controller: _pageController,
-                                physics: const NeverScrollableScrollPhysics(),
-                                onPageChanged: (index) {
-                                  setState(() => _pageIndex = index);
-                                  _syncViewportHeightForPage(index);
-                                },
-                                children: [
-                                  for (var i = 0; i < _steps.length; i++)
-                                    NotificationListener<SizeChangedLayoutNotification>(
-                                      onNotification: (_) {
-                                        if (i == _pageIndex) {
-                                          _syncViewportHeightForPage(i);
-                                        }
-                                        return false;
-                                      },
-                                      child: SizeChangedLayoutNotifier(
-                                        child: Align(
-                                          alignment: Alignment.topCenter,
-                                          child: SingleChildScrollView(
-                                            child: KeyedSubtree(
-                                              key: _stepMeasureKeys[i],
-                                              child: _buildStep(_steps[i]),
+            return ConstrainedBox(
+              constraints: BoxConstraints(minHeight: constraints.maxHeight),
+              child: Center(
+                child: ConstrainedBox(
+                  constraints: const BoxConstraints(maxWidth: 720),
+                  child: Padding(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 24,
+                      vertical: 16,
+                    ),
+                    child: Column(
+                      mainAxisSize: MainAxisSize.min,
+                      crossAxisAlignment: CrossAxisAlignment.stretch,
+                      children: [
+                        AnimatedSize(
+                          duration: _pageAnimationDuration,
+                          curve: Curves.easeOutCubic,
+                          alignment: Alignment.topCenter,
+                          child: SizedBox(
+                            height: viewportHeight,
+                            child: PageView.builder(
+                              controller: _pageController,
+                              physics: const NeverScrollableScrollPhysics(),
+                              itemCount: _steps.length,
+                              itemBuilder: (context, index) {
+                                return _OnboardingStepPage(
+                                  child: NotificationListener<
+                                      SizeChangedLayoutNotification>(
+                                    onNotification: (_) {
+                                      if (index == _pageIndex) {
+                                        _invalidateStepHeightCache(index);
+                                      }
+                                      return false;
+                                    },
+                                    child: SizeChangedLayoutNotifier(
+                                      child: Align(
+                                        alignment: Alignment.topCenter,
+                                        child: SingleChildScrollView(
+                                          child: KeyedSubtree(
+                                            key: _stepMeasureKeys[index],
+                                            child: _buildStep(
+                                              _steps[index],
+                                              isActive: index == _pageIndex,
                                             ),
                                           ),
                                         ),
                                       ),
                                     ),
-                                ],
-                              ),
+                                  ),
+                                );
+                              },
                             ),
                           ),
-                          const SizedBox(height: 20),
-                          Row(
-                            children: [
-                              TextButton(
-                                onPressed: navigationLocked ? null : _skip,
-                                child: Text(l10n.onboardingSkip),
-                              ),
-                              const Spacer(),
-                              if (!_isFirstStep) ...[
-                                OutlinedButton(
-                                  onPressed: navigationLocked
-                                      ? null
-                                      : () => unawaited(_goPrevious()),
-                                  child: Text(l10n.onboardingPrevious),
-                                ),
-                                const SizedBox(width: 12),
-                              ],
-                              FilledButton(
+                        ),
+                        const SizedBox(height: 20),
+                        Row(
+                          children: [
+                            TextButton(
+                              onPressed: navigationLocked ? null : _skip,
+                              child: Text(l10n.onboardingSkip),
+                            ),
+                            const Spacer(),
+                            if (!_isFirstStep) ...[
+                              OutlinedButton(
                                 onPressed: navigationLocked
                                     ? null
-                                    : () => unawaited(_goNext()),
-                                child: Text(
-                                  _isLastStep
-                                      ? l10n.onboardingGetStarted
-                                      : l10n.onboardingNext,
-                                ),
+                                    : () => unawaited(_goPrevious()),
+                                child: Text(l10n.onboardingPrevious),
                               ),
+                              const SizedBox(width: 12),
                             ],
-                          ),
-                        ],
-                      ),
+                            FilledButton(
+                              onPressed: navigationLocked
+                                  ? null
+                                  : () => unawaited(_goNext()),
+                              child: Text(
+                                _isLastStep
+                                    ? l10n.onboardingGetStarted
+                                    : l10n.onboardingNext,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ],
                     ),
                   ),
                 ),
@@ -244,17 +272,44 @@ class _OnboardingWizardState extends State<OnboardingWizard> {
     );
   }
 
-  Widget _buildStep(OnboardingStepKind kind) {
+  Widget _buildStep(OnboardingStepKind kind, {required bool isActive}) {
     return switch (kind) {
-      OnboardingStepKind.appearance => const OnboardingAppearanceStep(),
+      OnboardingStepKind.appearance => OnboardingAppearanceStep(
+        isActive: isActive,
+      ),
       OnboardingStepKind.ssh => OnboardingSshStep(
+        isActive: isActive,
         onContinue: () => unawaited(_goNext()),
       ),
-      OnboardingStepKind.cli => const OnboardingCliStep(),
-      OnboardingStepKind.providerImport =>
-        const OnboardingProviderImportStep(),
-      OnboardingStepKind.defaultPreset =>
-        const OnboardingDefaultPresetStep(),
+      OnboardingStepKind.cli => OnboardingCliStep(isActive: isActive),
+      OnboardingStepKind.providerImport => OnboardingProviderImportStep(
+        isActive: isActive,
+      ),
+      OnboardingStepKind.defaultPreset => OnboardingDefaultPresetStep(
+        key: _defaultPresetKey,
+        isActive: isActive,
+      ),
     };
+  }
+}
+
+class _OnboardingStepPage extends StatefulWidget {
+  const _OnboardingStepPage({required this.child});
+
+  final Widget child;
+
+  @override
+  State<_OnboardingStepPage> createState() => _OnboardingStepPageState();
+}
+
+class _OnboardingStepPageState extends State<_OnboardingStepPage>
+    with AutomaticKeepAliveClientMixin {
+  @override
+  bool get wantKeepAlive => true;
+
+  @override
+  Widget build(BuildContext context) {
+    super.build(context);
+    return widget.child;
   }
 }

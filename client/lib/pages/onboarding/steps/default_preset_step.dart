@@ -22,20 +22,23 @@ import '../../home_workspace/workspace/config/workspace_cli_config_helpers.dart'
 import '../../home_workspace/workspace/config/workspace_cli_effort_helpers.dart';
 
 class OnboardingDefaultPresetStep extends StatefulWidget {
-  const OnboardingDefaultPresetStep({super.key});
+  const OnboardingDefaultPresetStep({super.key, this.isActive = true});
+
+  final bool isActive;
 
   @override
   State<OnboardingDefaultPresetStep> createState() =>
-      _OnboardingDefaultPresetStepState();
+      OnboardingDefaultPresetStepState();
 }
 
-class _OnboardingDefaultPresetStepState
+class OnboardingDefaultPresetStepState
     extends State<OnboardingDefaultPresetStep> {
   String? _presetId;
   late CliTool _cli;
   late String _providerId;
   late String _modelId;
   late String _effortId;
+  var _hasSyncedFromState = false;
 
   @override
   void initState() {
@@ -44,6 +47,21 @@ class _OnboardingDefaultPresetStepState
     _providerId = '';
     _modelId = '';
     _effortId = '';
+    if (widget.isActive) {
+      _scheduleSyncFromState();
+    }
+  }
+
+  @override
+  void didUpdateWidget(OnboardingDefaultPresetStep oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (widget.isActive && !oldWidget.isActive) {
+      _scheduleSyncFromState();
+    }
+  }
+
+  void _scheduleSyncFromState() {
+    if (_hasSyncedFromState) return;
     WidgetsBinding.instance.addPostFrameCallback((_) => _syncFromState());
   }
 
@@ -69,7 +87,8 @@ class _OnboardingDefaultPresetStepState
   }
 
   void _syncFromState() {
-    if (!mounted) return;
+    if (!mounted || _hasSyncedFromState) return;
+    _hasSyncedFromState = true;
     final presets = _presets;
     final personal = context.read<LaunchProfileCubit>().activePersonal;
     final activePresetId = personal?.activePresetId?.trim();
@@ -103,12 +122,9 @@ class _OnboardingDefaultPresetStepState
       _effortId = '';
     }
     setState(() {});
-    if (_providerId.isNotEmpty) {
-      unawaited(_applySelection());
-    }
   }
 
-  Future<void> _applySelection() async {
+  Future<void> commitSelection() async {
     if (!mounted) return;
     if (_providerId.trim().isEmpty) return;
 
@@ -257,7 +273,6 @@ class _OnboardingDefaultPresetStepState
                       _modelId = '';
                       _effortId = '';
                     });
-                    unawaited(_applySelection());
                   },
                 ),
                 showDividerBelow: true,
@@ -291,7 +306,6 @@ class _OnboardingDefaultPresetStepState
                       _modelId = provider?.defaultModel.trim() ?? '';
                       _effortId = '';
                     });
-                    unawaited(_applySelection());
                   },
                 ),
                 showDividerBelow: !hideModelPicker || showEffortPicker,
@@ -319,7 +333,6 @@ class _OnboardingDefaultPresetStepState
                           decoration: dropdownDeco,
                           onChanged: (value) {
                             setState(() => _modelId = value);
-                            unawaited(_applySelection());
                           },
                         ),
                   showDividerBelow: showEffortPicker,
@@ -338,7 +351,6 @@ class _OnboardingDefaultPresetStepState
                     decoration: dropdownDeco,
                     onChanged: (value) {
                       setState(() => _effortId = value.trim());
-                      unawaited(_applySelection());
                     },
                   ),
                   showDividerBelow: false,
