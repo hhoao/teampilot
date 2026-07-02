@@ -111,7 +111,7 @@ abstract final class MixedTeamIdleBusyL2Scenario {
             bus: bus,
             cubit: ctx.cubit,
             sessionId: ctx.session.sessionId,
-            mcpServer: ctx.harness.tabMcp(ctx.session.sessionId),
+            gateway: ctx.harness.tabGateway(ctx.cubit),
           );
           await waitUntilMemberWorkload(
             presenceCubit: ctx.presenceCubit!,

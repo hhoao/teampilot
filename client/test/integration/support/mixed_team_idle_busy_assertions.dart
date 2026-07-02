@@ -2,7 +2,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:teampilot/cubits/chat_cubit.dart';
 import 'package:teampilot/cubits/member_presence_cubit.dart';
 import 'package:teampilot/models/member_presence.dart';
-import 'package:teampilot/services/team_bus/mcp/teammate_bus_mcp_server.dart';
+import 'package:teampilot/services/team_bus/mcp/teammate_bus_mcp_gateway.dart';
 import 'package:teampilot/services/team_bus/team_bus.dart';
 
 import 'bus_roster_assertions.dart';
@@ -70,7 +70,7 @@ Future<void> waitUntilBusCalmAndSessionIdle({
   required TeamBus? bus,
   required ChatCubit cubit,
   required String sessionId,
-  TeammateBusMcpServer? mcpServer,
+  TeammateBusMcpGateway? gateway,
   Duration timeout = const Duration(seconds: 180),
 }) async {
   final deadline = DateTime.now().add(timeout);
@@ -91,7 +91,7 @@ Future<void> waitUntilBusCalmAndSessionIdle({
     'Timed out waiting for calm bus + session idle:\n'
     'workingSessions=${cubit.state.workingSessionIds}\n'
     '${formatRosterSnapshot(bus)}\n'
-    'mcpWaitStreams=${mcpServer?.activeWaitStreamCount ?? 0}',
+    'mcpWaitStreams=${gateway?.activeWaitStreamCountFor(sessionId) ?? 0}',
   );
 }
 

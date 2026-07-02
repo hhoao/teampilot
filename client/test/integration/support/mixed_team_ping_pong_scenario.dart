@@ -139,13 +139,11 @@ abstract final class MixedTeamPingPongScenario {
         cubit,
         [kLeadMember.id, kWorkerMember.id],
       );
-      await harness.kickoffAndWaitForPingPong(
-        cubit: cubit,
+      await harness.kickoffMembers(cubit, postFrame: postFrame);
+      await harness.waitForPingPong(
         workspaceId: session.workspaceId,
         sessionId: session.sessionId,
-        postFrame: postFrame,
-        workerReadyTimeout: const Duration(seconds: 120),
-        busTimeout: const Duration(seconds: 120),
+        timeout: const Duration(seconds: 120),
       );
 
       expect(cubit.hasTeamBusResources(session.sessionId), isTrue);

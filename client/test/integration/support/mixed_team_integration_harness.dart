@@ -210,25 +210,10 @@ class MixedTeamIntegrationHarness {
     Duration workerReadyTimeout = const Duration(seconds: 120),
     Duration busTimeout = const Duration(seconds: 120),
   }) async {
-    _resetMockScenarios();
-    final workerBaseline = _mockRequestCount(workerScriptApiKey);
-    await _submitWorkerKickoff(cubit);
-    final workerInLoop = await _waitForNewMockRequest(
-      workerScriptApiKey,
-      afterCount: workerBaseline,
-      timeout: workerReadyTimeout,
-    );
-    if (!workerInLoop) {
-      throw StateError(
-        'Remote worker never entered mock API idle loop '
-        '(expected $workerScriptApiKey request)',
-      );
-    }
-    await waitUntilWorkerParked(
-      bus: _busForSession(cubit, sessionId),
-      gateway: _gatewayForSession(cubit),
+    await ensureWorkerParkedOnWait(
+      cubit,
       sessionId: sessionId,
-      memberId: kWorkerMember.id,
+      postFrame: postFrame,
       timeout: workerReadyTimeout,
     );
     await _submitLeaderKickoff(cubit, postFrame: postFrame);
