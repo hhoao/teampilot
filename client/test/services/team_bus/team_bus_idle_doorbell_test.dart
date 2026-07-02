@@ -116,10 +116,30 @@ void main() {
   );
 
   test(
-    'cursor-style onMemberIdle still doorbells leader at prompt',
+    'back-to-back worker idle + send does not re-doorbell team-lead',
     () {
       final launcher = FakeMemberLauncher();
       final bus = buildBus(launcher, reportsViaReceiveWork: false);
+      bus.onMemberIdle('lead');
+
+      bus.deliverUserCommand('worker', 'do work');
+      bus.send(
+        TeamMessage(id: '1', from: 'worker', to: 'lead', content: 'done'),
+      );
+      expect(launcher.woken.where((w) => w.memberId == 'lead'), hasLength(1));
+
+      bus.onMemberIdle('worker');
+      expect(launcher.woken.where((w) => w.memberId == 'lead'), hasLength(1));
+      expect(bus.memberById('lead')!.inbox.unreadCount, 2);
+    },
+  );
+
+  test(
+    'cursor-style onMemberIdle doorbells leader only when at prompt',
+    () {
+      final launcher = FakeMemberLauncher();
+      final bus = buildBus(launcher, reportsViaReceiveWork: false);
+      bus.onMemberIdle('lead');
       bus.deliverUserCommand('worker', 'do work');
       bus.onMemberIdle('worker');
 

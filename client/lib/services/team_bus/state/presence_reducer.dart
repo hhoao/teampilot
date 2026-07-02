@@ -14,7 +14,7 @@ class PresenceContext {
   final bool hasUnread;
 
   /// 本轮未读是否已经响过门铃（见 [AgentNode.doorbelled]）。为真时 [MailArrived]
-  /// 的非 eager 路径不再重复注入。
+  /// 不再重复注入。
   final bool doorbelled;
 }
 
@@ -68,8 +68,8 @@ abstract final class PresenceReducer {
           [DoorbellEffect(ctx.memberId)],
         );
 
-      case MailArrived(:final eager):
-        return _onMail(s, ctx, eager: eager);
+      case MailArrived():
+        return _onMail(s, ctx);
 
       case WaitEntered():
         if (!s.ptyRunning) return _stay(s);
@@ -104,11 +104,7 @@ abstract final class PresenceReducer {
     }
   }
 
-  static PresenceTransition _onMail(
-    Presence s,
-    PresenceContext ctx, {
-    required bool eager,
-  }) {
+  static PresenceTransition _onMail(Presence s, PresenceContext ctx) {
     // declared 无 PTY:仅同步 mailQueued / none,不响门铃。
     if (s.lifecycle == MemberLifecycle.declared) {
       return _to(s.copyWith(
@@ -121,15 +117,11 @@ abstract final class PresenceReducer {
     if (s.isParked) return _stay(s);
     if (!s.ptyRunning || !ctx.hasUnread) return _stay(s);
 
-    // eager(idle-notify / 用户命令):即便 active 也响。
-    // 非 eager(send):仅 idle-at-prompt 响,不打断进行中的回合。
-    final shouldDoorbell = eager || s.atPrompt;
-    if (!shouldDoorbell) return _stay(s);
+    // 仅 idle-at-prompt 响,不打断进行中的回合。
+    if (!s.atPrompt) return _stay(s);
     // 已响过一记「去 read_messages」、worker 尚未消费 → 不重复注入：back-to-back
-    // 邮件会让原本「每来一条就重响」的逻辑把同一条提示打好几遍（用户看到的「重发」）。
-    // 真没送达（回车被吞）由看门狗 [TeamBus.reengageIdleWorkers] 超时重敲兜底。
-    // eager（idle-notify / 用户显式命令）仍照响。
-    if (ctx.doorbelled && !eager) return _stay(s);
+    // 邮件会把同一条提示打好几遍。真没送达（回车被吞）由看门狗重敲兜底。
+    if (ctx.doorbelled) return _stay(s);
     // Doorbell = TeamPilot 判定 worker 应处理 teammate 信（含 Cursor push 路径：
     // 只注入提示、不走 wait_for_message）。与 TurnStarted / WaitExited 对齐为 working。
     final next = s.atPrompt

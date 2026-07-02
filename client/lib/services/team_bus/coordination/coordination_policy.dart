@@ -16,7 +16,7 @@ abstract interface class CoordinationPolicy {
   /// 有真实工作落入 [memberId] 的信箱(任意入站消息)。
   void noteInboundWork(String memberId);
 
-  /// [memberId] 报告 idle。返回需要投递的协调消息(由总线按 eager 路由)。
+  /// [memberId] 报告 idle。返回需要投递的协调消息(由总线路由)。
   List<TeamMessage> onMemberIdle(CoordinationView view, String memberId);
 
   /// worker 经 [TeamBus.receiveWork] 已向 leader 上报 idle 后调用，避免

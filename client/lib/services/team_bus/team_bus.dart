@@ -158,12 +158,40 @@ class TeamBus implements CoordinationView {
 
   /// 同步路径（效果仅含 doorbell，wake 在当前微任务内同步触发，保序）。
   void _apply(AgentNode node, BusEvent event) {
-    unawaited(_dispatcher.dispatchAll(_observe(node, _reduce(node, event))));
+    final wasDoorbelled = node.doorbelled;
+    final effects = _observe(node, _reduce(node, event));
+    _logMailDelivery(node, event, effects, wasDoorbelled: wasDoorbelled);
+    unawaited(_dispatcher.dispatchAll(effects));
   }
 
   /// 异步路径（含 materialize：须 await PTY 拉起后才继续）。
   Future<void> _applyAsync(AgentNode node, BusEvent event) {
-    return _dispatcher.dispatchAll(_observe(node, _reduce(node, event)));
+    final wasDoorbelled = node.doorbelled;
+    final effects = _observe(node, _reduce(node, event));
+    _logMailDelivery(node, event, effects, wasDoorbelled: wasDoorbelled);
+    return _dispatcher.dispatchAll(effects);
+  }
+
+  void _logMailDelivery(
+    AgentNode node,
+    BusEvent event,
+    List<BusEffect> effects, {
+    required bool wasDoorbelled,
+  }) {
+    if (event is! MailArrived) return;
+    final unread = _hotUnreadCount(node);
+    if (effects.any((e) => e is DoorbellEffect)) {
+      appLogger.d(
+        '[team-bus] mail-doorbell member=${node.memberId} unread=$unread',
+      );
+      return;
+    }
+    appLogger.d(
+      '[team-bus] mail-suppressed member=${node.memberId} '
+      'unread=$unread '
+      'activity=${node.activity.name} lifecycle=${node.lifecycle.name} '
+      'wasDoorbelled=$wasDoorbelled parked=${node.waitingForMessage}',
+    );
   }
 
   /// 把效果落成可观测事件后原样返回(门铃)。
@@ -186,6 +214,15 @@ class TeamBus implements CoordinationView {
   /// 成员是否正处于 bus 已知的回合中(Claude `isActive`;PTY 未起为否)。
   bool isMemberInTurn(String memberId) =>
       _members[memberId]?.claudeIsActive ?? false;
+
+  /// PTY 安静落沿是否应推迟：门铃已响、未读仍在信箱、agent 常走 MCP 几乎不改
+  /// PTY 指纹（Cursor push）。此时 [onMemberIdle] 只接受 CLI stop-hook，不接受
+  /// idle-watch 的安静检测。
+  bool shouldDeferPtyIdleEnd(String memberId) {
+    final node = _members[memberId];
+    if (node == null) return false;
+    return node.doorbelled && !node.inbox.isEmpty;
+  }
 
   /// 队里是否**任一**成员在回合中。会话级 working 指示器(tab / 列表项 spinner)用。
   bool get anyMemberInTurn =>
@@ -346,7 +383,7 @@ class TeamBus implements CoordinationView {
   /// 替代被两道门焊死的旧路径：外部 [onMemberIdle] 对 parked worker 有 `waitingForMessage`
   /// 守卫、星型策略又有 `_unreported` 闸（仅消息投递置位，队列认领从不置位）——故纯队列
   /// worker 完成后回到 wait 永不上报、对 leader 隐形。这里在 bus 精确知晓「现在没活干」
-  /// 的一刻直接上报，绕开二者。与 [send] 相同走非 eager 投递：leader 在
+  /// 的一刻直接上报，绕开二者。与 [send] 相同投递：leader 在
   /// `wait_for_message` 时由 waiter 直接收，不停在 prompt 才响门铃。
   void _announceWorkerIdleToLead(AgentNode node) {
     if (node.profile.isTeamLead) return;
@@ -393,6 +430,10 @@ class TeamBus implements CoordinationView {
     // push CLI（cursor 等永不进 wait）靠 read_messages 消费未读。抽干后解闸，
     // 否则 _onMail 的「已响过就不重发」抑制会把它后续的邮件门铃也压住（饿死）。
     if (markRead && node.inbox.isEmpty) {
+      appLogger.d(
+        '[team-bus] mail-consumed member=$memberId '
+        'doorbell-cleared',
+      );
       node.doorbelled = false;
       node.doorbelledAt = null;
     }
@@ -462,17 +503,12 @@ class TeamBus implements CoordinationView {
     ));
   }
 
-  /// 直投并 eager 唤醒（用户命令）：即便成员在回合中也响门铃。
-  void _deliverToMember(String memberId, TeamMessage message) {
-    _routeMail(memberId, message, eager: true);
-  }
-
-  /// 投递邮件并按 [eager] 决定是否响门铃（与 [send] 路径一致）。
-  void _routeMail(String memberId, TeamMessage message, {bool eager = false}) {
+  /// 投递邮件并触发 [MailArrived]（与 [send] 路径一致）。
+  void _routeMail(String memberId, TeamMessage message) {
     final node = _members[memberId];
     if (node == null) return;
     _deliverToInbox(node, message);
-    _apply(node, MailArrived(eager: eager));
+    _apply(node, const MailArrived());
   }
 
   String? _teamLeadMemberId() {
@@ -490,7 +526,7 @@ class TeamBus implements CoordinationView {
     final node = _members[memberId];
     if (node == null) return '';
     final id = _env.ids();
-    _deliverToMember(
+    _routeMail(
       memberId,
       TeamMessage(
         id: id,
@@ -602,7 +638,9 @@ class TeamBus implements CoordinationView {
 
   /// idle 边：CLI Stop-hook `/idle` → [MemberActivity.turnDoneReady]；若信箱有积压，
   /// 紧接 [MailArrived] 在 at-prompt 统一响门铃（不在 [TurnEnded] 里注入）。
-  void onMemberIdle(String memberId) {
+  ///
+  /// [fromPtyQuietWatch] 为真时，门铃已响且未读未消费则跳过（防 MCP 路径误落沿）。
+  void onMemberIdle(String memberId, {bool fromPtyQuietWatch = false}) {
     final node = _members[memberId];
     if (node == null) return;
     if (node.lifecycle == MemberLifecycle.declared ||
@@ -612,17 +650,37 @@ class TeamBus implements CoordinationView {
     if (node.waitingForMessage) {
       return;
     }
+    if (fromPtyQuietWatch && shouldDeferPtyIdleEnd(memberId)) {
+      appLogger.d(
+        '[team-bus] idle-deferred member=$memberId '
+        'doorbelled=${node.doorbelled} unread=${_hotUnreadCount(node)}',
+      );
+      return;
+    }
     final reportsViaReceiveWork =
         _reportsIdleViaReceiveWork?.call(memberId) ?? false;
     if (!reportsViaReceiveWork) {
       for (final msg in _coordination.onMemberIdle(this, memberId)) {
-        _deliverToMember(msg.to, msg);
+        _routeMail(msg.to, msg);
       }
     }
     _apply(node, const TurnEnded());
     if (!node.inbox.isEmpty) {
-      _apply(node, const MailArrived());
+      if (node.doorbelled) {
+        appLogger.d('[team-bus] mail-nudge-after-idle member=$memberId');
+        _launcher.nudgeSubmit(memberId);
+      } else {
+        _apply(node, const MailArrived());
+      }
     }
+  }
+
+  /// 注入门铃全文并置幂等闸（绕过 reducer 的路径也必须设 [AgentNode.doorbelled]）。
+  void _ringDoorbell(AgentNode node, String notice) {
+    node.doorbelled = true;
+    node.doorbelledAt = _env.clock();
+    _env.events.emit(MemberDoorbelled(node.memberId));
+    _launcher.wake(node.memberId, notice);
   }
 
   Future<void> broadcast(
@@ -713,8 +771,11 @@ class TeamBus implements CoordinationView {
         break;
       }
       if (running != null) {
-        running.doorbelledAt = _env.clock();
-        _launcher.wake(running.memberId, taskDoorbellNotice);
+        appLogger.d(
+          '[team-bus] task-doorbell member=${running.memberId} '
+          'task=${task.id}',
+        );
+        _ringDoorbell(running, taskDoorbellNotice);
         continue;
       }
 
@@ -772,12 +833,17 @@ class TeamBus implements CoordinationView {
       } else {
         continue; // 没有欠它的门铃。
       }
-      // 首次响铃才注入提示全文；之后只补回车提交已卡在框里的那条——重打全文会让同一
-      // 条提示在输入框里叠成好几份（用户看到的「短时间发好几条」）。
-      if (node.doorbelledAt == null) {
-        _launcher.wake(node.memberId, notice);
-      } else {
+      // 已响过门铃（或曾响过）→ 只补回车，绝不重贴全文（全屏输入框会叠字）。
+      if (node.doorbelled || node.doorbelledAt != null) {
+        appLogger.d('[team-bus] reengage nudge-cr member=${node.memberId}');
         _launcher.nudgeSubmit(node.memberId);
+      } else {
+        appLogger.d(
+          '[team-bus] reengage wake member=${node.memberId} '
+          'unread=${!node.inbox.isEmpty} '
+          'queuedTask=${queue != null && _hasEligiblePendingTask(node, queue)}',
+        );
+        _ringDoorbell(node, notice);
       }
       node.doorbelledAt = _env.clock();
     }

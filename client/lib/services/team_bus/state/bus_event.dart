@@ -22,12 +22,9 @@ class MaterializeCompleted extends BusEvent {
   const MaterializeCompleted();
 }
 
-/// 有消息落入信箱。[eager] 为真时即便成员正在回合中(active）也响门铃
-/// (idle-notify / 用户命令路径);为假时仅在 idle-at-prompt 才响(send 路径，
-/// 不打断进行中的回合)。
+/// 有消息落入信箱。门铃仅在 idle-at-prompt 响，不打断进行中的回合。
 class MailArrived extends BusEvent {
-  const MailArrived({this.eager = false});
-  final bool eager;
+  const MailArrived();
 }
 
 /// 成员进入 MCP `wait_for_message` 阻塞。

@@ -36,6 +36,11 @@ class TerminalPathDropBehavior {
 abstract interface class TerminalBehaviorCapability implements CliCapability {
   bool get usesFullScreenInput;
 
+  /// Delay between bracketed-paste content and the standalone CR in
+  /// [TerminalSession.submitFullScreenInput]. Claude Ink settles in ~10ms;
+  /// Cursor's agent TUI needs longer or the CR is coalesced into the paste.
+  Duration get fullScreenPasteSettleDelay;
+
   /// Whether the embedded terminal may forward the OSC 997 color-scheme report
   /// (mode 2031) to this CLI's TUI. Most CLIs use it for live light/dark
   /// theming; Cursor's TUI mishandles it (the report leaks into its input box),

@@ -911,14 +911,23 @@ class TerminalSession implements TerminalTextSink {
   /// bracketed-paste markers, let the input box settle, then write a CR on its
   /// own so it registers as a discrete Enter. Submissions are serialized through
   /// [_ptySubmitChain] so overlapping injections never interleave their CR.
-  Future<void> submitFullScreenInput(String text) {
+  Future<void> submitFullScreenInput(
+    String text, {
+    Duration? pasteSettleDelay,
+  }) {
     markUserTurnStarted();
-    final pasteSettleDelay = (_runtimeTarget?.namespace.isSsh ?? false)
-        ? const Duration(milliseconds: 500)
-        : _fullScreenSubmitDelay;
+    final delay = pasteSettleDelay ??
+        ((_runtimeTarget?.namespace.isSsh ?? false)
+            ? const Duration(milliseconds: 500)
+            : _fullScreenSubmitDelay);
+    appLogger.d(
+      '[terminal] fullscreen-inject paste chars=${text.length} '
+      'settleMs=${delay.inMilliseconds}',
+    );
     final next = _ptySubmitChain.then((_) async {
       writeToPty('\x1B[200~$text\x1B[201~');
-      await Future<void>.delayed(pasteSettleDelay);
+      await Future<void>.delayed(delay);
+      appLogger.d('[terminal] fullscreen-inject cr');
       writeToPty('\r');
     });
     // Keep the chain healthy if a write throws so later injections still run.
@@ -932,6 +941,7 @@ class TerminalSession implements TerminalTextSink {
   /// whole notice would just stack duplicate copies in the box. Serialized
   /// through the same [_ptySubmitChain] so it never interleaves with a paste.
   Future<void> submitPendingCr() {
+    appLogger.d('[terminal] nudge-cr-only');
     final next = _ptySubmitChain.then((_) async {
       writeToPty('\r');
     });

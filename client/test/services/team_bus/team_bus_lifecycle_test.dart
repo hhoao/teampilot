@@ -169,6 +169,27 @@ void main() {
     },
   );
 
+  test('PTY idle watch defers while doorbell unread is pending', () {
+    final launcher = FakeMemberLauncher();
+    final bus = TeamBus(launcher: launcher);
+    final node = AgentNode.test(
+      memberId: 'leader',
+      lifecycle: MemberLifecycle.running,
+      activity: MemberActivity.active,
+    );
+    bus.declareMember(node);
+    node.doorbelled = true;
+    node.inbox.deliver(
+      TeamMessage(id: '1', from: 'w', to: 'leader', content: 'x'),
+    );
+
+    bus.onMemberIdle('leader', fromPtyQuietWatch: true);
+
+    expect(node.activity, MemberActivity.active);
+    expect(launcher.woken, isEmpty);
+    expect(launcher.nudged, isEmpty);
+  });
+
   test('onMemberIdle with pending mail rings at prompt after turn end', () {
     final launcher = FakeMemberLauncher();
     final bus = TeamBus(launcher: launcher);
@@ -187,6 +208,30 @@ void main() {
     expect(launcher.woken.single.memberId, 'leader');
     expect(node.activity, MemberActivity.active);
   });
+
+  test(
+    'onMemberIdle nudges instead of re-pasting when already doorbelled',
+    () {
+      final launcher = FakeMemberLauncher();
+      final bus = TeamBus(launcher: launcher);
+      final node = AgentNode.test(
+        memberId: 'leader',
+        lifecycle: MemberLifecycle.running,
+        activity: MemberActivity.active,
+      );
+      bus.declareMember(node);
+      node.doorbelled = true;
+      node.inbox.deliver(
+        TeamMessage(id: '1', from: 'w', to: 'leader', content: 'x'),
+      );
+
+      bus.onMemberIdle('leader');
+
+      expect(launcher.woken, isEmpty);
+      expect(launcher.nudged, ['leader']);
+      expect(node.activity, MemberActivity.turnDoneReady);
+    },
+  );
 
   test(
     'repeated idle edges with one unread ring the doorbell exactly once',

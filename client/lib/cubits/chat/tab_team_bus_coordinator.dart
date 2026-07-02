@@ -236,7 +236,13 @@ class TabTeamBusCoordinator implements MemberMaterializer {
   @override
   void injectMemberStdin(String sessionId, String memberId, String text) {
     final shell = _tabStore.bySessionId(sessionId)?.memberShells[memberId];
-    if (shell == null) return;
+    if (shell == null) {
+      appLogger.w(
+        '[team-bus] pty-inject skipped no-shell '
+        'member=$memberId session=$sessionId',
+      );
+      return;
+    }
     final trimmed = text.trim();
     if (trimmed.isEmpty) return;
     final team = _activeTeam();
@@ -247,16 +253,31 @@ class TabTeamBusCoordinator implements MemberMaterializer {
             memberId,
             globalPresets: _globalPresets(),
           );
-    final usesFullScreen =
-        CliToolRegistry.builtIn()
-            .capability<TerminalBehaviorCapability>(cli)
-            ?.usesFullScreenInput ??
-        false;
+    final behavior =
+        CliToolRegistry.builtIn().capability<TerminalBehaviorCapability>(cli);
+    final usesFullScreen = behavior?.usesFullScreenInput ?? false;
+    appLogger.d(
+      '[team-bus] pty-inject member=$memberId '
+      'session=$sessionId fullscreen=$usesFullScreen '
+      'chars=${trimmed.length} '
+      'preview=${_doorbellLogPreview(trimmed)}',
+    );
     if (usesFullScreen) {
-      unawaited(shell.submitFullScreenInput(trimmed));
+      unawaited(
+        shell.submitFullScreenInput(
+          trimmed,
+          pasteSettleDelay: behavior?.fullScreenPasteSettleDelay,
+        ),
+      );
     } else {
       shell.writeln(trimmed);
     }
+  }
+
+  static String _doorbellLogPreview(String text) {
+    final oneLine = text.replaceAll('\n', ' ').trim();
+    if (oneLine.length <= 72) return oneLine;
+    return '${oneLine.substring(0, 72)}…';
   }
 
   @override
@@ -265,7 +286,16 @@ class TabTeamBusCoordinator implements MemberMaterializer {
     // [MemberLauncher.nudgeSubmit]）。CR-only 在全屏 / 普通 CLI 都安全（空 prompt
     // 上回车是 no-op）。
     final shell = _tabStore.bySessionId(sessionId)?.memberShells[memberId];
-    if (shell == null) return;
+    if (shell == null) {
+      appLogger.w(
+        '[team-bus] pty-nudge-cr skipped no-shell '
+        'member=$memberId session=$sessionId',
+      );
+      return;
+    }
+    appLogger.d(
+      '[team-bus] pty-nudge-cr member=$memberId session=$sessionId',
+    );
     unawaited(shell.submitPendingCr());
   }
 
@@ -341,7 +371,7 @@ class TabTeamBusCoordinator implements MemberMaterializer {
               'busInTurn=${bus?.isMemberInTurn(memberId)}',
             );
             if (bus != null) {
-              bus.onMemberIdle(memberId);
+              bus.onMemberIdle(memberId, fromPtyQuietWatch: true);
             } else {
               shell.markUserTurnIdle();
             }

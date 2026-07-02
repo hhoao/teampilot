@@ -33,13 +33,15 @@ void main() {
             displayName: 'Lead',
             isTeamLead: true,
           ),
-          lifecycle: MemberLifecycle.running, activity: MemberActivity.active,
+          lifecycle: MemberLifecycle.running,
+          activity: MemberActivity.turnDoneReady,
         ),
       )
       ..declareMember(
         AgentNode(
           profile: TeammateRosterProfile.minimal('developer', displayName: 'Dev'),
-          lifecycle: MemberLifecycle.running, activity: MemberActivity.active,
+          lifecycle: MemberLifecycle.running,
+          activity: MemberActivity.active,
         ),
       );
 
@@ -52,6 +54,36 @@ void main() {
     final idle = IdleNotification.tryParse(raw);
     expect(idle.from, 'developer');
     expect(launcher.woken.any((w) => w.memberId == 'team-lead'), isTrue);
+  });
+
+  test('onMemberIdle does not doorbell team-lead mid-turn', () {
+    final launcher = FakeMemberLauncher();
+    final bus = TeamBus(launcher: launcher);
+    bus
+      ..declareMember(
+        AgentNode(
+          profile: TeammateRosterProfile.minimal(
+            'team-lead',
+            displayName: 'Lead',
+            isTeamLead: true,
+          ),
+          lifecycle: MemberLifecycle.running,
+          activity: MemberActivity.active,
+        ),
+      )
+      ..declareMember(
+        AgentNode(
+          profile: TeammateRosterProfile.minimal('developer', displayName: 'Dev'),
+          lifecycle: MemberLifecycle.running,
+          activity: MemberActivity.active,
+        ),
+      );
+
+    bus.deliverUserCommand('developer', 'do the work');
+    bus.onMemberIdle('developer');
+
+    expect(bus.memberById('team-lead')!.inbox.unreadCount, 1);
+    expect(launcher.woken.where((w) => w.memberId == 'team-lead'), isEmpty);
   });
 
   test('onMemberIdle does not notify leader when team-lead goes idle', () {

@@ -119,6 +119,9 @@ final class FlashskyaiTerminalBehavior implements TerminalBehaviorCapability {
   @override
   bool get usesFullScreenInput => false;
   @override
+  Duration get fullScreenPasteSettleDelay =>
+      const Duration(milliseconds: 10);
+  @override
   bool get forwardsColorSchemeReport => true;
   @override
   TerminalPathDropBehavior get pathDropBehavior =>
@@ -129,6 +132,9 @@ final class ClaudeTerminalBehavior implements TerminalBehaviorCapability {
   const ClaudeTerminalBehavior();
   @override
   bool get usesFullScreenInput => true;
+  @override
+  Duration get fullScreenPasteSettleDelay =>
+      const Duration(milliseconds: 10);
   @override
   bool get forwardsColorSchemeReport => true;
   @override
@@ -141,6 +147,9 @@ final class CodexTerminalBehavior implements TerminalBehaviorCapability {
   @override
   bool get usesFullScreenInput => true;
   @override
+  Duration get fullScreenPasteSettleDelay =>
+      const Duration(milliseconds: 10);
+  @override
   bool get forwardsColorSchemeReport => true;
   @override
   TerminalPathDropBehavior get pathDropBehavior =>
@@ -152,6 +161,9 @@ final class OpencodeTerminalBehavior implements TerminalBehaviorCapability {
   @override
   bool get usesFullScreenInput => false;
   @override
+  Duration get fullScreenPasteSettleDelay =>
+      const Duration(milliseconds: 10);
+  @override
   bool get forwardsColorSchemeReport => true;
   @override
   TerminalPathDropBehavior get pathDropBehavior =>
@@ -162,6 +174,9 @@ final class CursorTerminalBehavior implements TerminalBehaviorCapability {
   const CursorTerminalBehavior();
   @override
   bool get usesFullScreenInput => true;
+  @override
+  Duration get fullScreenPasteSettleDelay =>
+      const Duration(milliseconds: 150);
   @override
   bool get forwardsColorSchemeReport => false;
   @override

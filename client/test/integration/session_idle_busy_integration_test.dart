@@ -174,14 +174,14 @@ void main() {
         await drainPendingAsyncWork();
         await Future<void>.delayed(const Duration(milliseconds: 50));
 
-        expect(bus.isMemberInTurn('worker-1'), isFalse);
+        expect(bus.isMemberInTurn('worker-1'), isTrue);
         expect(
           worker.ptyInput.where((w) => w.contains('teammate-bus')),
           isNotEmpty,
           reason:
-              'PTY quiet after activity ends turn; pending mail doorbells at prompt',
+              'PTY quiet ends prior turn; pending mail doorbells at prompt',
         );
-        expect(cubit.state.workingSessionIds, isEmpty);
+        expect(cubit.state.workingSessionIds, contains(opened.sessionId));
       },
     );
 
