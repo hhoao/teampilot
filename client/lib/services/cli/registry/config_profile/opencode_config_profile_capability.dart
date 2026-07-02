@@ -1,3 +1,5 @@
+import 'dart:convert';
+
 import 'package:flutter/foundation.dart';
 
 import '../../../../models/app_provider_config.dart';
@@ -422,6 +424,18 @@ final class OpencodeConfigProfileCapability implements ConfigProfileCapability {
       await paths.writeJsonIfChanged(configPath, config);
     }
 
+    final warnings = <String>[];
+    if (provider != null && provider.isOfficial && ctx.crossMachine) {
+      final copied = await CrossMachineCredentialBridge.materializeOpencodeAuth(
+        catalog: ctx.catalog,
+        work: paths,
+        providerId: provider.id,
+      );
+      if (!copied) {
+        warnings.add('opencode_credentials_missing');
+      }
+    }
+
     final environment = <String, String>{
       configDirEnv: opencodeDir,
       dataDirEnv: opencodeDir,
@@ -435,6 +449,7 @@ final class OpencodeConfigProfileCapability implements ConfigProfileCapability {
 
     return ConfigProfileLaunchContribution(
       environment: environment,
+      warnings: warnings,
     );
   }
 
@@ -451,7 +466,10 @@ final class OpencodeConfigProfileCapability implements ConfigProfileCapability {
     );
     final authPath = _opencodeDataLayout.providerAuthJsonPath(providerDir);
     if (!(await paths.fs.stat(authPath)).isFile) return null;
-    final content = await paths.fs.readString(authPath);
+    final bytes = await paths.fs.readBytes(authPath);
+    final content = bytes != null
+        ? utf8.decode(bytes)
+        : await paths.fs.readString(authPath);
     if (content == null || content.trim().isEmpty) return null;
     if (!OpencodeAuthArtifacts.authJsonIndicatesReady(content, provider.id)) {
       return null;

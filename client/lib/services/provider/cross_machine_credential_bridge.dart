@@ -8,6 +8,7 @@ import 'cursor/cursor_auth_artifacts.dart';
 import 'cursor/cursor_home_layout.dart';
 import 'cursor/cursor_provider_credentials_service.dart';
 import 'opencode/opencode_data_layout.dart';
+import '../storage/runtime_layout.dart';
 import 'provider_catalog_access.dart';
 
 /// Copies provider credential artifacts from the control plane onto a work
@@ -113,6 +114,31 @@ abstract final class CrossMachineCredentialBridge {
     return true;
   }
 
+  /// Copies merged `cli-defaults/flashskyai/llm_config.json` to the work plane.
+  static Future<bool> materializeFlashskyaiLlmConfig({
+    required ConfigProfilePaths catalog,
+    required ConfigProfileDelegate work,
+  }) async {
+    final catalogLayout = RuntimeLayout(
+      teampilotRoot: catalog.basePath,
+      fs: catalog.fs,
+    );
+    final workLayout = RuntimeLayout(teampilotRoot: work.basePath, fs: work.fs);
+    final src = catalogLayout.appFlashskyaiLlmConfigFile;
+    final dest = workLayout.appFlashskyaiLlmConfigFile;
+    final content = await catalog.fs.readString(src);
+    if (content != null && content.trim().isNotEmpty) {
+      await work.fs.ensureDir(work.fs.pathContext.dirname(dest));
+      await work.fs.writeString(dest, content);
+      return true;
+    }
+    final bytes = await catalog.fs.readBytes(src);
+    if (bytes == null || bytes.isEmpty) return false;
+    await work.fs.ensureDir(work.fs.pathContext.dirname(dest));
+    await work.fs.writeBytes(dest, bytes);
+    return true;
+  }
+
   static Future<bool> materializeOpencodeAuth({
     required ConfigProfilePaths catalog,
     required ConfigProfileDelegate work,
@@ -127,9 +153,6 @@ abstract final class CrossMachineCredentialBridge {
         providerId.trim(),
       ),
     );
-    final bytes = await catalog.fs.readBytes(src);
-    if (bytes == null || bytes.isEmpty) return false;
-
     final dest = layout.providerAuthJsonPath(
       work.pathContext.join(
         work.basePath,
@@ -138,8 +161,16 @@ abstract final class CrossMachineCredentialBridge {
         providerId.trim(),
       ),
     );
+    final bytes = await catalog.fs.readBytes(src);
+    if (bytes != null && bytes.isNotEmpty) {
+      await work.fs.ensureDir(work.pathContext.dirname(dest));
+      await work.fs.writeBytes(dest, bytes);
+      return true;
+    }
+    final content = await catalog.fs.readString(src);
+    if (content == null || content.trim().isEmpty) return false;
     await work.fs.ensureDir(work.pathContext.dirname(dest));
-    await work.fs.writeBytes(dest, bytes);
+    await work.fs.writeString(dest, content);
     return true;
   }
 

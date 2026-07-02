@@ -13,6 +13,7 @@ import 'package:teampilot/services/provider/cursor/cursor_provider_credentials_s
 import 'package:teampilot/services/provider/opencode/opencode_data_layout.dart';
 import 'package:teampilot/services/storage/app_storage.dart';
 import 'package:teampilot/services/storage/runtime_context.dart';
+import 'package:teampilot/services/storage/runtime_layout.dart';
 
 import '../../support/in_memory_filesystem.dart';
 
@@ -243,6 +244,46 @@ void main() {
     expect(
       String.fromCharCodes((await work.fs.readBytes(dest))!),
       contains('official'),
+    );
+  });
+
+  test('materializeFlashskyaiLlmConfig copies llm_config.json to work plane',
+      () async {
+    final homeFs = InMemoryFilesystem();
+    final workFs = InMemoryFilesystem();
+    final catalog = ControlPlaneProfilePaths(
+      _memoryContext('/home-catalog', homeFs),
+    );
+    final work = ConfigProfileService(
+      basePath: '/work',
+      home: '/work-home',
+      fs: workFs,
+      layout: _memoryContext('/work', workFs).layout,
+    );
+    final catalogLayout = RuntimeLayout(
+      teampilotRoot: catalog.basePath,
+      fs: homeFs,
+    );
+    await homeFs.ensureDir(
+      homeFs.pathContext.dirname(catalogLayout.appFlashskyaiLlmConfigFile),
+    );
+    await homeFs.writeString(
+      catalogLayout.appFlashskyaiLlmConfigFile,
+      '{"providers":{"p":{"api_key":"k"}},"models":{}}',
+    );
+
+    expect(
+      await CrossMachineCredentialBridge.materializeFlashskyaiLlmConfig(
+        catalog: catalog,
+        work: work,
+      ),
+      isTrue,
+    );
+
+    final workLayout = RuntimeLayout(teampilotRoot: work.basePath, fs: workFs);
+    expect(
+      await workFs.readString(workLayout.appFlashskyaiLlmConfigFile),
+      contains('k'),
     );
   });
 }

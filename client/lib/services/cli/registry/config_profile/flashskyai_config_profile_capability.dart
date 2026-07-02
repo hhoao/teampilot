@@ -1,6 +1,7 @@
 import '../../../../models/personal_profile.dart';
 import '../../../../models/team_config.dart';
 import '../../../../utils/team_member_naming.dart';
+import '../../../provider/cross_machine_credential_bridge.dart';
 import '../../../provider/flashskyai/flashskyai_effort_capability.dart';
 import '../../../session/member_role_provision.dart';
 import '../capabilities/cli_effort_capability.dart';
@@ -86,6 +87,17 @@ final class FlashskyaiConfigProfileCapability
     final delegate = ctx.paths;
     final scope = ctx.scope;
     final workingDirectory = ctx.workingDirectory ?? '';
+    final warnings = <String>[];
+    if (ctx.crossMachine) {
+      final copied =
+          await CrossMachineCredentialBridge.materializeFlashskyaiLlmConfig(
+        catalog: ctx.catalog,
+        work: delegate,
+      );
+      if (!copied) {
+        warnings.add('flashskyai_llm_config_missing');
+      }
+    }
     await _provisionWorkspaceTrust(
       delegate: delegate,
       workspaceId: scope.workspaceId,
@@ -128,7 +140,10 @@ final class FlashskyaiConfigProfileCapability
       }
     }
 
-    return ConfigProfileLaunchContribution(environment: environment);
+    return ConfigProfileLaunchContribution(
+      environment: environment,
+      warnings: warnings,
+    );
   }
 
   Future<void> _ensureSessionDefaults(
@@ -170,6 +185,17 @@ final class FlashskyaiConfigProfileCapability
     final memberToolDir = standaloneSessionToolDir(delegate, standalone, toolId);
     final scope = launchScopeForStandalone(standalone);
     final workingDirectory = ctx.workingDirectory ?? '';
+    final warnings = <String>[];
+    if (ctx.crossMachine) {
+      final copied =
+          await CrossMachineCredentialBridge.materializeFlashskyaiLlmConfig(
+        catalog: ctx.catalog,
+        work: delegate,
+      );
+      if (!copied) {
+        warnings.add('flashskyai_llm_config_missing');
+      }
+    }
 
     await _provisionWorkspaceTrust(
       delegate: delegate,
@@ -209,7 +235,10 @@ final class FlashskyaiConfigProfileCapability
       }
     }
 
-    return ConfigProfileLaunchContribution(environment: environment);
+    return ConfigProfileLaunchContribution(
+      environment: environment,
+      warnings: warnings,
+    );
   }
 
   Future<void> _writeMetadataAt(
