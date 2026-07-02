@@ -27,7 +27,6 @@ class TeammateBusMcpHttpDelegate {
   final Set<CancellationToken> _activeStreams = <CancellationToken>{};
 
   /// Open SSE `wait_for_message` streams (integration tests observe park).
-  @visibleForTesting
   int get activeWaitStreamCount => _activeStreams.length;
 
   /// Cancel every in-flight long-running stream (session unregister / teardown).

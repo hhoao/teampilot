@@ -3,8 +3,8 @@ library;
 
 import 'package:flutter_test/flutter_test.dart';
 import 'package:teampilot/services/team_bus/agent_node.dart';
+import 'package:teampilot/services/team_bus/mcp/teammate_bus_mcp_gateway.dart';
 import 'package:teampilot/services/team_bus/mcp/teammate_bus_mcp_handler.dart';
-import 'package:teampilot/services/team_bus/mcp/teammate_bus_mcp_server.dart';
 import 'package:teampilot/services/team_bus/persistence/in_memory_bus_message_log.dart';
 import 'package:teampilot/services/team_bus/team_bus.dart';
 
@@ -12,12 +12,14 @@ import '../services/team_bus/support/fake_member_launcher.dart';
 import 'support/integration_prerequisites.dart';
 import 'support/teammate_bus_http_client.dart';
 
+const _sessionId = 'it-ping-pong';
+
 /// L1-fast: same ping/pong scenario as the full ChatCubit integration test,
 /// but drives the loopback HTTP teammate-bus directly (no Claude PTY).
 void main() {
   late TeamBus bus;
   late InMemoryBusMessageLog messageLog;
-  late TeammateBusMcpServer server;
+  late TeammateBusMcpGateway gateway;
   late TeammateBusHttpClient leaderClient;
   late TeammateBusHttpClient workerClient;
 
@@ -28,8 +30,12 @@ void main() {
       launcher: FakeMemberLauncher(),
       messageLog: messageLog,
     );
-    server = TeammateBusMcpServer(handler: TeammateBusMcpHandler(bus: bus));
-    await server.start();
+    gateway = TeammateBusMcpGateway();
+    await gateway.ensureStarted();
+    gateway.register(
+      sessionId: _sessionId,
+      handler: TeammateBusMcpHandler(bus: bus),
+    );
 
     bus.declareMember(
       AgentNode.test(
@@ -47,12 +53,14 @@ void main() {
     );
 
     leaderClient = TeammateBusHttpClient(
-      endpoint: server.endpoint,
+      endpoint: gateway.mcpEndpoint,
       memberId: 'team-lead',
+      sessionId: _sessionId,
     );
     workerClient = TeammateBusHttpClient(
-      endpoint: server.endpoint,
+      endpoint: gateway.mcpEndpoint,
       memberId: 'worker-1',
+      sessionId: _sessionId,
     );
     await leaderClient.initialize();
     await workerClient.initialize();
@@ -61,7 +69,7 @@ void main() {
   tearDown(() async {
     leaderClient.close(force: true);
     workerClient.close(force: true);
-    await server.stop();
+    await gateway.unregister(_sessionId);
   });
 
   test('team-lead and worker-1 exchange ping/pong over HTTP MCP', () async {

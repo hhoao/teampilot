@@ -129,7 +129,7 @@ void main() {
       cubit.debugTickIdleWatch();
       expect(cubit.state.workingSessionIds, contains(opened.sessionId));
 
-      await postMemberIdle(idle, 'team-lead');
+      await postMemberIdle(idle, 'team-lead', sessionId: opened.sessionId);
       cubit.debugTickIdleWatch();
       expect(bus.isMemberInTurn('team-lead'), isTrue);
       expect(
@@ -240,7 +240,7 @@ void main() {
       cubit.debugTickIdleWatch();
       expect(bus.isMemberInTurn('team-lead'), isTrue);
 
-      await postMemberIdle(idle, 'team-lead');
+      await postMemberIdle(idle, 'team-lead', sessionId: opened.sessionId);
       cubit.debugTickIdleWatch();
       expect(bus.isMemberInTurn('team-lead'), isTrue);
 

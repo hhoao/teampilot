@@ -1,33 +1,40 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:teampilot/services/team_bus/agent_node.dart';
+import 'package:teampilot/services/team_bus/mcp/teammate_bus_mcp_gateway.dart';
 import 'package:teampilot/services/team_bus/mcp/teammate_bus_mcp_handler.dart';
-import 'package:teampilot/services/team_bus/mcp/teammate_bus_mcp_server.dart';
 import 'package:teampilot/services/team_bus/team_bus.dart';
 
 import '../../services/team_bus/support/fake_member_launcher.dart';
 import 'integration_prerequisites.dart';
 import 'teammate_bus_http_client.dart';
 
+const _sessionId = 'it-http-client';
+
 void main() {
   setUpAll(IntegrationPrerequisites.resetHttpOverrides);
 
   late TeamBus bus;
-  late TeammateBusMcpServer server;
+  late TeammateBusMcpGateway gateway;
   late TeammateBusHttpClient leaderClient;
 
   setUp(() async {
     bus = TeamBus(launcher: FakeMemberLauncher());
-    server = TeammateBusMcpServer(handler: TeammateBusMcpHandler(bus: bus));
-    await server.start();
+    gateway = TeammateBusMcpGateway();
+    await gateway.ensureStarted();
+    gateway.register(
+      sessionId: _sessionId,
+      handler: TeammateBusMcpHandler(bus: bus),
+    );
     leaderClient = TeammateBusHttpClient(
-      endpoint: server.endpoint,
+      endpoint: gateway.mcpEndpoint,
       memberId: 'leader',
+      sessionId: _sessionId,
     );
   });
 
   tearDown(() async {
     leaderClient.close(force: true);
-    await server.stop();
+    await gateway.unregister(_sessionId);
   });
 
   test('initialize returns protocol + tools capability', () async {

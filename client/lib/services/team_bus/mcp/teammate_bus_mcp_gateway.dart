@@ -1,5 +1,7 @@
 import 'dart:io';
 
+import 'package:meta/meta.dart';
+
 import 'teammate_bus_mcp_config.dart';
 import 'teammate_bus_mcp_handler.dart';
 import 'teammate_bus_mcp_http_delegate.dart';
@@ -38,6 +40,11 @@ class TeammateBusMcpGateway {
 
   bool isSessionRegistered(String sessionId) =>
       _registry.handlerForSession(sessionId) != null;
+
+  /// Open SSE `wait_for_message` streams for one session (integration tests).
+  @visibleForTesting
+  int activeWaitStreamCountFor(String sessionId) =>
+      _delegates[sessionId]?.activeWaitStreamCount ?? 0;
 
   TeammateBusSessionRegistration register({
     required String sessionId,

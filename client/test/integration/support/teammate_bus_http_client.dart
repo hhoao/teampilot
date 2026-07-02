@@ -1,16 +1,20 @@
 import 'dart:convert';
 import 'dart:io';
 
+import 'package:teampilot/services/team_bus/mcp/teammate_bus_mcp_config.dart';
+
 /// Loopback HTTP driver for teammate-bus MCP tools in integration tests.
 class TeammateBusHttpClient {
   TeammateBusHttpClient({
     required Uri endpoint,
     required this.memberId,
+    this.sessionId,
     HttpClient? httpClient,
   }) : _endpoint = endpoint,
        _client = httpClient ?? HttpClient();
 
   final String memberId;
+  final String? sessionId;
   final Uri _endpoint;
   final HttpClient _client;
   int _nextId = 0;
@@ -102,7 +106,11 @@ class TeammateBusHttpClient {
     final req = await _client.postUrl(_endpoint);
     req.headers.set('content-type', 'application/json');
     req.headers.set('accept', 'application/json, text/event-stream');
-    req.headers.set('X-Member', memberId);
+    req.headers.set(teammateBusMcpMemberHeader, memberId);
+    final session = sessionId;
+    if (session != null && session.isNotEmpty) {
+      req.headers.set(teammateBusMcpSessionHeader, session);
+    }
     req.add(utf8.encode(jsonEncode(body)));
     final resp = await req.close();
     final text = await resp.transform(utf8.decoder).join();

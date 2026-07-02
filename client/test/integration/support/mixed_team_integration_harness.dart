@@ -23,7 +23,7 @@ import 'package:teampilot/services/storage/runtime_context_resolver.dart';
 import 'package:teampilot/services/storage/workspace_layout.dart';
 import 'package:teampilot/services/ssh/ssh_client_factory.dart';
 import 'package:teampilot/services/team_bus/mcp/bus_bridge_locator.dart';
-import 'package:teampilot/services/team_bus/mcp/teammate_bus_mcp_server.dart';
+import 'package:teampilot/services/team_bus/mcp/teammate_bus_mcp_gateway.dart';
 import 'package:teampilot/services/team_bus/remote/remote_bus_binding_resolver.dart';
 import 'package:teampilot/services/team_bus/team_bus.dart';
 import 'package:teampilot/services/terminal/terminal_session.dart';
@@ -226,7 +226,8 @@ class MixedTeamIntegrationHarness {
     }
     await waitUntilWorkerParked(
       bus: _busForSession(cubit, sessionId),
-      mcpServer: _mcpForSession(cubit, sessionId),
+      gateway: _gatewayForSession(cubit),
+      sessionId: sessionId,
       memberId: kWorkerMember.id,
       timeout: workerReadyTimeout,
     );
@@ -334,6 +335,9 @@ class MixedTeamIntegrationHarness {
   }
 
   /// Worker parks on SSE `wait_for_message` before the leader acts.
+  ///
+  /// Syncs on [TeammateBusMcpGateway.activeWaitStreamCountFor] and in-memory
+  /// roster (`turnDoneBusWait`), not arbitrary delays.
   Future<void> ensureWorkerParkedOnWait(
     ChatCubit cubit, {
     required String sessionId,
@@ -344,11 +348,12 @@ class MixedTeamIntegrationHarness {
     _resetMockScenarios();
     final workerBaseline = _mockRequestCount(workerScriptApiKey);
     final bus = _busForSession(cubit, sessionId);
-    final mcp = _mcpForSession(cubit, sessionId);
+    final gateway = _gatewayForSession(cubit);
     // Race park detection with kickoff: turn-1 wait can be sub-second.
     final parked = waitUntilWorkerParked(
       bus: bus,
-      mcpServer: mcp,
+      gateway: gateway,
+      sessionId: sessionId,
       memberId: kWorkerMember.id,
       timeout: timeout,
     );
@@ -401,8 +406,8 @@ class MixedTeamIntegrationHarness {
   TeamBus? _busForSession(ChatCubit? cubit, String sessionId) =>
       cubit?.tabStore.bySessionId(sessionId)?.teamBus;
 
-  TeammateBusMcpServer? _mcpForSession(ChatCubit? cubit, String sessionId) =>
-      cubit?.tabStore.bySessionId(sessionId)?.mcpServer;
+  TeammateBusMcpGateway? _gatewayForSession(ChatCubit? cubit) =>
+      cubit?.teammateBusMcpGateway;
 
   Future<void> kickoffMembers(
     ChatCubit cubit, {
@@ -678,8 +683,8 @@ class MixedTeamIntegrationHarness {
   TeamBus? tabBus(String sessionId) =>
       cubit?.tabStore.bySessionId(sessionId)?.teamBus;
 
-  TeammateBusMcpServer? tabMcp(String sessionId) =>
-      _mcpForSession(cubit, sessionId);
+  TeammateBusMcpGateway? tabGateway(ChatCubit? cubit) =>
+      _gatewayForSession(cubit ?? this.cubit);
 
   /// Worker-only kickoff until SSE `wait_for_message` is observable (local PTY).
   Future<void> parkWorkerOnWait(
@@ -711,7 +716,8 @@ class MixedTeamIntegrationHarness {
       await _dumpClaudeSettings(workspaceId: workspaceId, sessionId: sessionId);
       await dumpBusRosterDiagnostics(
         bus: _busForSession(cubit ?? this.cubit, sessionId),
-        mcpServer: _mcpForSession(cubit ?? this.cubit, sessionId),
+        gateway: _gatewayForSession(cubit ?? this.cubit),
+        sessionId: sessionId,
       );
       await dumpBusMailDiagnostics(
         teampilotRoot: AppStorage.paths.basePath,

@@ -8,6 +8,7 @@ import 'package:teampilot/cubits/member_presence_cubit.dart';
 import 'package:teampilot/models/team_config.dart';
 import 'package:teampilot/models/workspace_folder.dart';
 import 'package:teampilot/repositories/session_repository.dart';
+import 'package:teampilot/services/team_bus/mcp/teammate_bus_mcp_config.dart';
 import 'package:teampilot/services/terminal/terminal_session.dart';
 
 import 'connected_recording_shell.dart';
@@ -44,11 +45,16 @@ const kIdleBusyMixedTeam = TeamProfile(
 Uri idleEndpointFromMcp(Uri mcpEndpoint) =>
     mcpEndpoint.replace(path: '/idle');
 
-Future<void> postMemberIdle(Uri idleEndpoint, String memberId) async {
+Future<void> postMemberIdle(
+  Uri idleEndpoint,
+  String memberId, {
+  required String sessionId,
+}) async {
   final client = HttpClient();
   try {
     final req = await client.postUrl(idleEndpoint);
-    req.headers.set('X-Member', memberId);
+    req.headers.set(teammateBusMcpMemberHeader, memberId);
+    req.headers.set(teammateBusMcpSessionHeader, sessionId);
     final resp = await req.close();
     await resp.drain();
   } finally {

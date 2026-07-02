@@ -1,4 +1,4 @@
-import 'package:teampilot/services/team_bus/mcp/teammate_bus_mcp_server.dart';
+import 'package:teampilot/services/team_bus/mcp/teammate_bus_mcp_gateway.dart';
 import 'package:teampilot/services/team_bus/team_bus.dart';
 import 'package:teampilot/services/team_bus/teammate_snapshot.dart';
 
@@ -28,7 +28,8 @@ String formatRosterSnapshot(TeamBus? bus) {
 /// [MemberActivity.turnDoneBusWait] on the in-memory roster.
 Future<void> waitUntilWorkerParked({
   required TeamBus? bus,
-  required TeammateBusMcpServer? mcpServer,
+  required TeammateBusMcpGateway? gateway,
+  required String sessionId,
   required String memberId,
   Duration timeout = const Duration(seconds: 90),
   Duration stableFor = const Duration(milliseconds: 250),
@@ -37,7 +38,7 @@ Future<void> waitUntilWorkerParked({
   DateTime? parkedSince;
   while (DateTime.now().isBefore(deadline)) {
     final snap = memberSnapshot(bus, memberId);
-    final streamOpen = (mcpServer?.activeWaitStreamCount ?? 0) > 0;
+    final streamOpen = (gateway?.activeWaitStreamCountFor(sessionId) ?? 0) > 0;
     final busWait = snap?.waitingForMessage ?? false;
     final parked =
         streamOpen || busWait || snap?.activity.name == 'turnDoneBusWait';
@@ -51,14 +52,15 @@ Future<void> waitUntilWorkerParked({
   }
   throw StateError(
     'Timed out waiting for $memberId to park '
-    '(streams=${mcpServer?.activeWaitStreamCount ?? 0}, '
+    '(streams=${gateway?.activeWaitStreamCountFor(sessionId) ?? 0}, '
     'roster:\n${formatRosterSnapshot(bus)})',
   );
 }
 
 Future<void> dumpBusRosterDiagnostics({
   required TeamBus? bus,
-  required TeammateBusMcpServer? mcpServer,
+  required TeammateBusMcpGateway? gateway,
+  required String sessionId,
 }) async {
   // ignore: avoid_print
   print('--- bus roster (memory)');
@@ -66,6 +68,7 @@ Future<void> dumpBusRosterDiagnostics({
   print(formatRosterSnapshot(bus));
   // ignore: avoid_print
   print(
-    '--- mcp active wait streams: ${mcpServer?.activeWaitStreamCount ?? 0}',
+    '--- mcp active wait streams: '
+    '${gateway?.activeWaitStreamCountFor(sessionId) ?? 0}',
   );
 }
