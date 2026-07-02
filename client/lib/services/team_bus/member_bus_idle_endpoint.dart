@@ -5,8 +5,8 @@ import 'mcp/teammate_bus_mcp_gateway.dart';
 /// Where a mixed-mode member reports turn-end idle (Stop hook / idle plugin).
 ///
 /// Local members dial the in-process bus loopback directly. Remote (ssh) members
-/// dial their reverse-tunnel loopback port and must include [token] for
-/// [BusHttpTokenGuard].
+/// dial their reverse-tunnel loopback port and must include [token] for gateway
+/// routing.
 class MemberBusIdleEndpoint {
   const MemberBusIdleEndpoint({
     required this.url,

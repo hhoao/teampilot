@@ -3,9 +3,9 @@ import 'dart:convert';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:teampilot/services/io/local_filesystem.dart';
 import 'package:teampilot/services/team_bus/agent_node.dart';
+import 'package:teampilot/services/team_bus/mcp/teammate_bus_mcp_gateway.dart';
 import 'package:teampilot/services/team_bus/mcp/teammate_bus_mcp_handler.dart';
 import 'package:teampilot/services/team_bus/mcp/teammate_bus_mcp_config.dart';
-import 'package:teampilot/services/team_bus/mcp/teammate_bus_mcp_server.dart';
 import 'package:teampilot/services/team_bus/remote/member_bus_mcp_config.dart';
 import 'package:teampilot/services/team_bus/remote/remote_bus_mount.dart';
 import 'package:teampilot/services/team_bus/team_bus.dart';
@@ -25,17 +25,26 @@ String _idleHttpPost({required String memberId, required String token}) =>
 
 void main() {
   late TeamBus bus;
+  late TeammateBusMcpGateway gateway;
   late RemoteBusMount mount;
   late FakeReverseTunnel? mcpRawTunnel;
   final tunnels = <FakeReverseTunnel>[];
 
-  setUp(() {
+  setUp(() async {
     bus = TeamBus(launcher: FakeMemberLauncher());
+    gateway = TeammateBusMcpGateway();
+    await gateway.ensureStarted();
+    final reg = gateway.register(
+      sessionId: 'sess-test',
+      handler: TeammateBusMcpHandler(bus: bus),
+    );
     tunnels.clear();
     mcpRawTunnel = null;
     var nextPort = 49888;
     mount = RemoteBusMount.testing(
-      handler: TeammateBusMcpHandler(bus: bus),
+      httpBusPort: gateway.mcpEndpoint.port,
+      rawSocketPort: gateway.rawSocketPort,
+      token: reg.token,
       tunnelFactory: () {
         final tunnel = FakeReverseTunnel(port: nextPort++);
         tunnels.add(tunnel);
@@ -45,10 +54,12 @@ void main() {
       storageFs: LocalFilesystem(),
       remoteRun: (cmd) async => cmd.contains('socat') ? '/usr/bin/socat' : '',
       arch: 'linux-x64',
-      httpBusPort: 0,
     );
   });
-  tearDown(() => mount.close());
+  tearDown(() async {
+    await mount.close();
+    await gateway.unregister('sess-test');
+  });
 
   test('binding points MCP at raw tunnel and idle at separate HTTP tunnel',
       () async {
@@ -60,7 +71,7 @@ void main() {
 
     final cfg = buildMemberBusMcpConfig(
       memberId: 'worker',
-      localEndpoint: Uri.parse('http://127.0.0.1:5005/mcp'),
+      localEndpoint: gateway.mcpEndpoint,
       sessionId: 'sess-test',
       longBlocking: true,
       remote: binding,
@@ -68,7 +79,7 @@ void main() {
     final args = (cfg['args'] as List).join(' ');
     expect(args, contains('TCP:127.0.0.1:${binding.mcpRawTunnelPort}'));
     expect(args, contains(binding.token));
-    expect(args, isNot(contains('5005')));
+    expect(args, isNot(contains('${gateway.mcpEndpoint.port}')));
   });
 
   test('idle POST over HTTP tunnel with token reaches bus /idle', () async {
@@ -79,15 +90,16 @@ void main() {
         activity: MemberActivity.active,
       ),
     );
-    final server = TeammateBusMcpServer(handler: TeammateBusMcpHandler(bus: bus));
-    await server.start();
-    addTearDown(server.stop);
 
     final idleTunnels = <FakeReverseTunnel>[];
     var nextPort = 52000;
     final idleMount = RemoteBusMount.testing(
-      handler: server.handler,
-      httpBusPort: server.port,
+      httpBusPort: gateway.mcpEndpoint.port,
+      rawSocketPort: gateway.rawSocketPort,
+      token: gateway.register(
+        sessionId: 'sess-idle',
+        handler: TeammateBusMcpHandler(bus: bus),
+      ).token,
       tunnelFactory: () {
         final tunnel = FakeReverseTunnel(port: nextPort++);
         idleTunnels.add(tunnel);

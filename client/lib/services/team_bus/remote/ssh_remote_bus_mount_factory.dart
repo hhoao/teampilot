@@ -13,8 +13,8 @@ RemoteBusMount buildRemoteBusMount({
   required String arch,
 }) {
   return RemoteBusMount(
-    handler: registration.handler,
     httpBusPort: gateway.mcpEndpoint.port,
+    rawSocketPort: gateway.rawSocketPort,
     memberSession: memberSession,
     storageFs: storageFs,
     arch: arch,

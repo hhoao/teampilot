@@ -1,8 +1,8 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:teampilot/models/team_config.dart';
 import 'package:teampilot/services/io/local_filesystem.dart';
+import 'package:teampilot/services/team_bus/mcp/teammate_bus_mcp_gateway.dart';
 import 'package:teampilot/services/team_bus/mcp/teammate_bus_mcp_handler.dart';
-import 'package:teampilot/services/team_bus/mcp/teammate_bus_mcp_server.dart';
 import 'package:teampilot/services/team_bus/remote/member_bus_mcp_config.dart';
 import 'package:teampilot/services/team_bus/remote/remote_bus_binding_resolver.dart';
 import 'package:teampilot/services/team_bus/remote/remote_bus_mount.dart';
@@ -13,15 +13,19 @@ import 'support/fake_reverse_tunnel.dart';
 
 void main() {
   late TeamBus bus;
-  late TeammateBusMcpServer server;
+  late TeammateBusMcpGateway gateway;
   final openedTunnels = <FakeReverseTunnel>[];
   late RemoteBusMount mount;
 
   RemoteBusBindingResolver makeResolver() {
     var nextPort = 51000;
     mount = RemoteBusMount.testing(
-      handler: server.handler,
-      httpBusPort: server.port,
+      httpBusPort: gateway.mcpEndpoint.port,
+      rawSocketPort: gateway.rawSocketPort,
+      token: gateway.register(
+        sessionId: 'sess-test',
+        handler: TeammateBusMcpHandler(bus: bus),
+      ).token,
       tunnelFactory: () {
         final tunnel = FakeReverseTunnel(port: nextPort++);
         openedTunnels.add(tunnel);
@@ -36,13 +40,13 @@ void main() {
 
   setUp(() async {
     bus = TeamBus(launcher: FakeMemberLauncher());
-    server = TeammateBusMcpServer(handler: TeammateBusMcpHandler(bus: bus));
-    await server.start();
+    gateway = TeammateBusMcpGateway();
+    await gateway.ensureStarted();
     openedTunnels.clear();
   });
   tearDown(() async {
     await mount.close();
-    await server.stop();
+    await gateway.unregister('sess-test');
   });
 
   test('remote long-blocking member → relay binding at the MCP tunnel port',
@@ -60,14 +64,14 @@ void main() {
 
     final cfg = buildMemberBusMcpConfig(
       memberId: 'worker',
-      localEndpoint: server.endpoint,
+      localEndpoint: gateway.mcpEndpoint,
       sessionId: 'sess-test',
       longBlocking: true,
       remote: binding,
     );
     final args = (cfg['args'] as List).join(' ');
     expect(args, contains('TCP:127.0.0.1:${binding.mcpRawTunnelPort}'));
-    expect(args, isNot(contains('${server.port}')));
+    expect(args, isNot(contains('${gateway.mcpEndpoint.port}')));
   });
 
   test('remote cursor member → HTTP-over-tunnel binding (no relay)', () async {
@@ -80,7 +84,7 @@ void main() {
     expect(binding.mcpRelayArgv, isNull);
     final cfg = buildMemberBusMcpConfig(
       memberId: 'cur',
-      localEndpoint: server.endpoint,
+      localEndpoint: gateway.mcpEndpoint,
       sessionId: 'sess-test',
       longBlocking: false,
       remote: binding,

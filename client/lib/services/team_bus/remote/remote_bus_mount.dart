@@ -4,9 +4,6 @@ import 'dart:math';
 import '../../../models/runtime_target.dart';
 import '../../io/filesystem.dart';
 import '../../ssh/ssh_member_session.dart';
-import '../mcp/teammate_bus_mcp_handler.dart';
-import 'bus_http_token_guard.dart';
-import 'bus_raw_socket_server.dart';
 import 'member_bus_mcp_config.dart';
 import 'relay_provisioner.dart';
 import 'reverse_tunnel.dart';
@@ -14,17 +11,19 @@ import 'reverse_tunnel.dart';
 /// Per-tab mount that connects **remote** (ssh) members back to the local,
 /// in-process teammate bus over an SSH reverse tunnel (P3b).
 ///
-/// Owns bus-side resources (raw socket / HTTP guard, per-member tunnels). The
-/// SSH session plane lives in [memberSession] and is closed by the tab when the
-/// member disconnects — not by [close].
+/// Owns per-member reverse tunnels only. The SSH session plane lives in
+/// [memberSession] and is closed by the tab when the member disconnects — not
+/// by [close].
 ///
 /// Transport split:
-/// - **Long-blocking MCP** (claude/codex/…) → raw-socket tunnel + relay argv.
-/// - **HTTP surfaces** (cursor MCP, all `/idle` Stop hooks) → HTTP guard tunnel.
+/// - **Long-blocking MCP** (claude/codex/…) → raw-socket tunnel to gateway
+///   [rawSocketPort] + relay argv.
+/// - **HTTP surfaces** (cursor MCP, all `/idle` Stop hooks) → HTTP tunnel to
+///   gateway [httpBusPort]; token validated by the gateway registry.
 class RemoteBusMount {
   RemoteBusMount({
-    required this.handler,
     required this.httpBusPort,
+    required this.rawSocketPort,
     required SshMemberSession memberSession,
     required this.storageFs,
     required this.arch,
@@ -39,8 +38,8 @@ class RemoteBusMount {
 
   /// Test / harness constructor without a live [SshMemberSession].
   RemoteBusMount.testing({
-    required this.handler,
     required this.httpBusPort,
+    required this.rawSocketPort,
     required this.storageFs,
     required this.arch,
     required RemoteCommandRunner remoteRun,
@@ -53,8 +52,8 @@ class RemoteBusMount {
         _tunnelFactory = tunnelFactory,
         _remoteRun = remoteRun;
 
-  final TeammateBusMcpHandler handler;
   final int httpBusPort;
+  final int rawSocketPort;
   final SshMemberSession? memberSession;
   final Filesystem storageFs;
   final String arch;
@@ -75,8 +74,6 @@ class RemoteBusMount {
     return session.run;
   }
 
-  BusRawSocketServer? _rawSocket;
-  BusHttpTokenGuard? _httpGuard;
   final _members = <String, _MountedMember>{};
   final _preparedRelay = <String, PreparedRelay>{};
 
@@ -92,8 +89,6 @@ class RemoteBusMount {
           remoteOs: remoteOs,
         );
 
-    final raw = await _ensureRawSocket();
-    final guard = await _ensureHttpGuard();
     final mcpTunnel = _tunnelFactory();
     final idleTunnel = _tunnelFactory();
     TunnelPump? mcpPump;
@@ -104,11 +99,11 @@ class RemoteBusMount {
       final mcpRawTunnelPort = await mcpTunnel.open();
       final idleHttpTunnelPort = await idleTunnel.open();
 
-      mcpPump = TunnelPump(tunnel: mcpTunnel, localPort: raw.port);
+      mcpPump = TunnelPump(tunnel: mcpTunnel, localPort: rawSocketPort);
       await mcpPump.start();
       mcpPumpStarted = true;
 
-      idlePump = TunnelPump(tunnel: idleTunnel, localPort: guard.port);
+      idlePump = TunnelPump(tunnel: idleTunnel, localPort: httpBusPort);
       await idlePump.start();
       idlePumpStarted = true;
 
@@ -152,13 +147,12 @@ class RemoteBusMount {
     final existing = _members[memberId];
     if (existing != null) return existing.binding;
 
-    final guard = await _ensureHttpGuard();
     final tunnel = _tunnelFactory();
     TunnelPump? pump;
     var pumpStarted = false;
     try {
       final port = await tunnel.open();
-      pump = TunnelPump(tunnel: tunnel, localPort: guard.port);
+      pump = TunnelPump(tunnel: tunnel, localPort: httpBusPort);
       await pump.start();
       pumpStarted = true;
 
@@ -182,25 +176,7 @@ class RemoteBusMount {
     }
   }
 
-  Future<BusHttpTokenGuard> _ensureHttpGuard() async {
-    final existing = _httpGuard;
-    if (existing != null) return existing;
-    final guard = BusHttpTokenGuard(token: token, upstreamPort: httpBusPort);
-    await guard.start();
-    _httpGuard = guard;
-    return guard;
-  }
-
-  Future<BusRawSocketServer> _ensureRawSocket() async {
-    final existing = _rawSocket;
-    if (existing != null) return existing;
-    final server = BusRawSocketServer(handler: handler, token: token);
-    await server.start();
-    _rawSocket = server;
-    return server;
-  }
-
-  /// Tears down tunnels and local bus sockets. Does not close [memberSession].
+  /// Tears down tunnels. Does not close [memberSession].
   Future<void> close() async {
     for (final m in _members.values) {
       for (final t in m.tunnels) {
@@ -209,10 +185,6 @@ class RemoteBusMount {
     }
     _members.clear();
     _preparedRelay.clear();
-    await _rawSocket?.close();
-    _rawSocket = null;
-    await _httpGuard?.close();
-    _httpGuard = null;
   }
 
   static String _randomToken() {

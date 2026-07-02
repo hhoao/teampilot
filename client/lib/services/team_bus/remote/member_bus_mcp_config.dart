@@ -3,7 +3,7 @@ import '../mcp/teammate_bus_mcp_config.dart';
 /// Per-remote-member binding produced by the reverse-tunnel mount.
 ///
 /// MCP and idle HTTP use **separate** remote loopback ports for long-blocking
-/// CLIs: raw-socket relay for `wait_for_message`, HTTP guard tunnel for `/idle`.
+/// CLIs: raw-socket relay for `wait_for_message`, HTTP tunnel for `/idle`.
 /// Cursor (doorbell) shares one HTTP tunnel for MCP + idle.
 class RemoteBusBinding {
   const RemoteBusBinding({
