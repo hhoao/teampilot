@@ -1,6 +1,7 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:teampilot/services/team_bus/agent_node.dart';
 import 'package:teampilot/services/team_bus/cancellation.dart';
+import 'package:teampilot/services/team_bus/member_state.dart';
 import 'package:teampilot/services/team_bus/persistence/bus_message_log.dart';
 import 'package:teampilot/services/team_bus/persistence/in_memory_bus_message_log.dart';
 import 'package:teampilot/services/team_bus/team_bus.dart';
@@ -39,6 +40,43 @@ void main() {
     expect(await pending, isEmpty);
     expect(bus.isWaitingForMessage('leader'), isFalse,
         reason: 'cancel must release the park, not leak it');
+    expect(
+      bus.memberById('leader')!.activity,
+      MemberActivity.turnDoneReady,
+      reason: 'generic disconnect cancel stays at prompt',
+    );
+  });
+
+  test('receiveWork MCP cancel resumes active; generic cancel stays at prompt',
+      () async {
+    final bus = TeamBus(launcher: FakeMemberLauncher());
+    bus.declareMember(AgentNode.test(
+      memberId: 'leader',
+      lifecycle: MemberLifecycle.running,
+      activity: MemberActivity.turnDoneReady,
+    ));
+
+    final mcpCancel = CancellationToken();
+    final mcpWait = bus.receiveWork('leader', cancel: mcpCancel);
+    await Future<void>.delayed(Duration.zero);
+    expect(bus.isWaitingForMessage('leader'), isTrue);
+
+    mcpCancel.cancel(WaitCancelReason.mcpCancelled);
+    expect(await mcpWait, isA<EmptyWork>());
+    expect(bus.isWaitingForMessage('leader'), isFalse);
+    expect(bus.memberById('leader')!.activity, MemberActivity.active);
+
+    bus.declareMember(AgentNode.test(
+      memberId: 'worker',
+      lifecycle: MemberLifecycle.running,
+      activity: MemberActivity.turnDoneReady,
+    ));
+    final disconnect = CancellationToken();
+    final disconnectWait = bus.receiveWork('worker', cancel: disconnect);
+    await Future<void>.delayed(Duration.zero);
+    disconnect.cancel();
+    expect(await disconnectWait, isA<EmptyWork>());
+    expect(bus.memberById('worker')!.activity, MemberActivity.turnDoneReady);
   });
 
   test('readMessages browses unread pages without consuming', () async {

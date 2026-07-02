@@ -131,8 +131,9 @@ class _SocketSession {
   }
 
   Future<void> _streamWait(JsonRpcRequest req) async {
-    final cancel = _socketCancel;
+    final cancel = CancellationToken();
     _server._activeWaits.add(cancel);
+    _server.handler.waitCancels.register(req.id, cancel);
     try {
       final delivery = await _server.handler.beginWait(
         _memberId,
@@ -150,6 +151,7 @@ class _SocketSession {
         delivery.abort();
       }
     } finally {
+      _server.handler.waitCancels.unregister(req.id);
       _server._activeWaits.remove(cancel);
     }
   }

@@ -1,5 +1,6 @@
 import 'dart:convert';
 
+import '../../../utils/logger.dart';
 import '../artifacts/artifact_exceptions.dart';
 import '../artifacts/artifact_handle.dart';
 import '../artifacts/artifact_transfer_service.dart';
@@ -12,6 +13,7 @@ import '../team_bus.dart';
 import '../team_message.dart';
 import '../teammate_snapshot.dart';
 import 'jsonrpc.dart';
+import 'wait_cancel_registry.dart';
 
 /// 流式 `wait_for_message` 的投递句柄：响应体 + 「送达确认 / 断连回滚」两个钩子。
 class WaitDelivery {
@@ -39,9 +41,11 @@ class TeammateBusMcpHandler {
     this.forceWaitBeforeStop = true,
     bool Function(String memberId)? forceWaitForMember,
     ArtifactTransferService? artifacts,
+    WaitCancelRegistry? waitCancels,
   }) : _bus = bus,
        _forceWaitForMember = forceWaitForMember,
        _artifacts = artifacts,
+       waitCancels = waitCancels ?? WaitCancelRegistry(),
        idGenerator = idGenerator ?? bus.newMessageId;
 
   /// 团队配置:成员 turn 结束时是否强制推回 `wait_for_message`(见
@@ -76,6 +80,9 @@ class TeammateBusMcpHandler {
   /// artifact tools are neither advertised nor dispatchable (gated like the
   /// task-queue tools are on [TeamBus.hasTaskQueue]).
   final ArtifactTransferService? _artifacts;
+
+  /// In-flight streaming `wait_for_message` calls keyed by JSON-RPC request id.
+  final WaitCancelRegistry waitCancels;
 
   /// 控制端点：成员（经 Stop hook / plugin / 终端 watcher）报告 idle。
   void notifyIdle(String memberId) => _bus.onMemberIdle(memberId);
@@ -121,9 +128,11 @@ class TeammateBusMcpHandler {
           'serverInfo': {'name': serverName, 'version': '1.0.0'},
         });
       case 'notifications/initialized':
-      case 'notifications/cancelled':
       case 'notifications/progress':
         return null; // 通知
+      case 'notifications/cancelled':
+        _handleCancelledNotification(req);
+        return null;
       case 'ping':
         return JsonRpcResponse.result(req.id, const {});
       case 'tools/list':
@@ -150,6 +159,18 @@ class TeammateBusMcpHandler {
   /// wait_for_message 是长任务：返回 true 让传输层走 SSE。
   bool isLongRunning(JsonRpcRequest req) =>
       req.method == 'tools/call' && (req.params['name'] == 'wait_for_message');
+
+  void _handleCancelledNotification(JsonRpcRequest req) {
+    final params = req.params;
+    final requestId = params['requestId'] ?? params['request_id'];
+    if (requestId == null) return;
+    if (waitCancels.cancel(requestId)) {
+      appLogger.d(
+        '[teammate-bus-mcp] wait cancelled via notifications/cancelled '
+        'requestId=$requestId',
+      );
+    }
+  }
 
   /// 流式 `wait_for_message`：抽干热信箱但 **不** 标记已读，连同 confirm/abort
   /// 钩子返回给传输层 —— 仅当结果成功写回 SSE 后 [WaitDelivery.confirm] 才标记

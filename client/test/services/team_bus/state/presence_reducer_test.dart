@@ -115,8 +115,14 @@ void main() {
     test('WaitEntered while declared → no change', () {
       expect(_run(_declared, const WaitEntered()).presence, _declared);
     });
-    test('WaitExited from parked → active', () {
-      expect(_run(_parked, const WaitExited()).presence, _active);
+    test('WaitExited from parked with work → active', () {
+      expect(
+        _run(_parked, const WaitExited(resumeActive: true)).presence,
+        _active,
+      );
+    });
+    test('WaitExited from parked disconnect cancel → turnDoneReady', () {
+      expect(_run(_parked, const WaitExited()).presence, _atPrompt);
     });
   });
 

@@ -137,6 +137,7 @@ class TeammateBusMcpServer {
     // 同时登记到 _activeStreams，让 stop()（关 session）能直接 cancel 本流。
     final cancel = CancellationToken();
     _activeStreams.add(cancel);
+    handler.waitCancels.register(rpc.id, cancel);
 
     final progressToken = _progressToken(rpc);
     // 诊断：坐实 leader(claude) 的 wait_for_message 为何会断 —— 记录开流、每次
@@ -212,6 +213,7 @@ class TeammateBusMcpServer {
         }
       }
     } finally {
+      handler.waitCancels.unregister(rpc.id);
       _activeStreams.remove(cancel);
       keepalive.cancel();
       try {

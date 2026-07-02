@@ -75,9 +75,13 @@ abstract final class PresenceReducer {
         if (!s.ptyRunning) return _stay(s);
         return _to(s.copyWith(activity: MemberActivity.turnDoneBusWait));
 
-      case WaitExited():
+      case WaitExited(:final resumeActive):
         if (s.ptyRunning && s.isParked) {
-          return _to(s.copyWith(activity: MemberActivity.active));
+          return _to(s.copyWith(
+            activity: resumeActive
+                ? MemberActivity.active
+                : MemberActivity.turnDoneReady,
+          ));
         }
         return _stay(s);
 

@@ -175,6 +175,70 @@ void main() {
   // loopback (dart:io buffers SSE writes and hides the peer RST).
 
   test(
+    'notifications/cancelled releases parked wait_for_message',
+    () async {
+      bus.declareMember(
+        AgentNode.test(
+          memberId: 'leader',
+          lifecycle: MemberLifecycle.running,
+          activity: MemberActivity.active,
+        ),
+      );
+
+      final waitReq = await client.postUrl(server.endpoint);
+      waitReq.headers.set('content-type', 'application/json');
+      waitReq.headers.set('accept', 'application/json, text/event-stream');
+      waitReq.headers.set('X-Member', 'leader');
+      waitReq.add(
+        utf8.encode(
+          jsonEncode({
+            'jsonrpc': '2.0',
+            'id': 99,
+            'method': 'tools/call',
+            'params': {
+              'name': 'wait_for_message',
+              'arguments': <String, Object?>{},
+            },
+          }),
+        ),
+      );
+      final waitResp = await waitReq.close();
+
+      await Future<void>.delayed(const Duration(milliseconds: 50));
+      expect(bus.isWaitingForMessage('leader'), isTrue);
+      expect(
+        bus.memberById('leader')!.activity,
+        MemberActivity.turnDoneBusWait,
+      );
+
+      final cancelReq = await client.postUrl(server.endpoint);
+      cancelReq.headers.set('content-type', 'application/json');
+      cancelReq.headers.set('X-Member', 'leader');
+      cancelReq.add(
+        utf8.encode(
+          jsonEncode({
+            'jsonrpc': '2.0',
+            'method': 'notifications/cancelled',
+            'params': {'requestId': 99},
+          }),
+        ),
+      );
+      final cancelResp = await cancelReq.close();
+      expect(cancelResp.statusCode, HttpStatus.accepted);
+
+      await Future<void>.delayed(const Duration(milliseconds: 100));
+      expect(bus.isWaitingForMessage('leader'), isFalse);
+      expect(
+        bus.memberById('leader')!.activity,
+        MemberActivity.active,
+        reason: 'MCP timeout cancel resumes agent loop → working',
+      );
+
+      await waitResp.drain<void>().catchError((_) {});
+    },
+  );
+
+  test(
     'wait_for_message streams an SSE result when a message arrives',
     () async {
       bus.declareMember(
@@ -249,6 +313,11 @@ void main() {
 
       await drained.timeout(const Duration(seconds: 2));
       expect(bus.isWaitingForMessage('leader'), isFalse);
+      expect(
+        bus.memberById('leader')!.activity,
+        MemberActivity.turnDoneReady,
+        reason: 'session stop disconnect must not mark working',
+      );
     },
   );
 }

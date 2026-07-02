@@ -33,8 +33,13 @@ class WaitEntered extends BusEvent {
 }
 
 /// 成员退出 `wait_for_message`(收到批次 / 超时 / 取消)。
+///
+/// [resumeActive] 为真时升到 [MemberActivity.active]（本次 wait 带回了消息、
+/// 任务，或 MCP `notifications/cancelled` 超时后 agent loop 继续）；为假时回到
+/// [MemberActivity.turnDoneReady]（空醒 / 断连 / session stop）。
 class WaitExited extends BusEvent {
-  const WaitExited();
+  const WaitExited({this.resumeActive = false});
+  final bool resumeActive;
 }
 
 /// 回合结束的 idle 边(Stop hook / 终端 watcher）。

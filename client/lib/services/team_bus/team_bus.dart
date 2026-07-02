@@ -285,14 +285,21 @@ class TeamBus implements CoordinationView {
     node.doorbelled = false; // 进 wait = 响应了门铃并开始消费 → 解闸，读完后新邮件再响。
     node.doorbelledAt = null; // 已开工，看门狗停止重敲。
     _apply(node, const WaitEntered());
+    var batch = const <TeamMessage>[];
     try {
-      final batch = await node.inbox.waitAndTake(timeout: timeout, cancel: cancel);
+      batch = await node.inbox.waitAndTake(timeout: timeout, cancel: cancel);
       if (batch.isNotEmpty) {
         _env.events.emit(BatchTaken(memberId: memberId, count: batch.length));
       }
       return batch;
     } finally {
-      _apply(node, const WaitExited());
+      _apply(
+        node,
+        WaitExited(
+          resumeActive: batch.isNotEmpty ||
+              cancel?.cancelReason == WaitCancelReason.mcpCancelled,
+        ),
+      );
     }
   }
 
@@ -332,21 +339,29 @@ class TeamBus implements CoordinationView {
     // 本次 wait 是否已向 leader 上报过「我空闲了」（每个真正阻塞的 wait 期上报一次，
     // spurious wake 后重判不重复上报）。
     var announcedIdle = false;
+    WorkBatch? outcome;
     try {
       while (true) {
-        if (cancel?.isCancelled ?? false) return const EmptyWork();
+        if (cancel?.isCancelled ?? false) {
+          outcome = const EmptyWork();
+          return outcome;
+        }
         // 1) 消息优先（非空时立即取走，不阻塞）。
         if (!node.inbox.isEmpty) {
           final batch = await node.inbox.waitAndTake(cancel: cancel);
           if (batch.isNotEmpty) {
             _env.events.emit(BatchTaken(memberId: memberId, count: batch.length));
-            return MessageWork(batch);
+            outcome = MessageWork(batch);
+            return outcome;
           }
         }
         // 2) 否则原子认领一个队列任务（worker only）。
         if (queue != null) {
           final task = queue.claimNext(memberId, node.profile.capabilities);
-          if (task != null) return TaskWork(task);
+          if (task != null) {
+            outcome = TaskWork(task);
+            return outcome;
+          }
         }
         // 3) 两者皆空 → 真正空闲。对齐 Claude Code「转 idle → 通知 leader → 再等待」：
         // 这是 bus 里精确的「worker 现在没活干」时刻，比被 parked 守卫挡掉的外部
@@ -372,8 +387,23 @@ class TeamBus implements CoordinationView {
         await wake.future;
       }
     } finally {
-      _apply(node, const WaitExited());
+      _apply(
+        node,
+        WaitExited(resumeActive: _resumeActiveAfterWait(outcome, cancel)),
+      );
     }
+  }
+
+  /// [WaitExited] 是否升到 working：有活带回，或 MCP 客户端超时取消（agent 继续 loop）。
+  static bool _resumeActiveAfterWait(
+    WorkBatch? outcome,
+    CancellationToken? cancel,
+  ) {
+    return switch (outcome) {
+      MessageWork() || TaskWork() => true,
+      EmptyWork() || null =>
+        cancel?.cancelReason == WaitCancelReason.mcpCancelled,
+    };
   }
 
   /// worker 进入 `wait_for_message` 且确无可干（消息空 + 队列无可认领）→ 真正空闲时，
