@@ -124,7 +124,7 @@ abstract interface class SessionLaunchHost {
 /// keeps only its data/tab facades + getters.
 class SessionLaunchService implements MemberConnector {
   SessionLaunchService(this._h)
-      : _personalContext = PersonalLaunchContextResolver(_h.lifecycle);
+    : _personalContext = PersonalLaunchContextResolver(_h.lifecycle);
 
   final SessionLaunchHost _h;
   final PersonalLaunchContextResolver _personalContext;
@@ -168,7 +168,9 @@ class SessionLaunchService implements MemberConnector {
     }
   }
 
-  Future<SessionOpenStatus> requestOpenSession(SessionOpenRequest request) async {
+  Future<SessionOpenStatus> requestOpenSession(
+    SessionOpenRequest request,
+  ) async {
     var session = request.session;
     final isPersonal = request.isPersonal;
     appLogger.d(
@@ -226,8 +228,9 @@ class SessionLaunchService implements MemberConnector {
       return SessionOpenStatus.missingTeamMember;
     }
 
-    final sessionTeamId =
-        request.isPersonal ? '' : (request.team?.id ?? '').trim();
+    final sessionTeamId = request.isPersonal
+        ? ''
+        : (request.team?.id ?? '').trim();
     if (!request.isPersonal &&
         workspaceTopologyRequiresMemberAssignment(request.workspace.folders)) {
       final team = request.team!;
@@ -260,7 +263,9 @@ class SessionLaunchService implements MemberConnector {
     final persistParams = SessionPersistParams(
       sessionTeamId: sessionTeamId,
       personalIdentityId: request.personalIdentityId,
-      rosterMembers: request.isPersonal ? const [] : (request.team?.members ?? const []),
+      rosterMembers: request.isPersonal
+          ? const []
+          : (request.team?.members ?? const []),
       cli: request.cli,
       workingDirectory: request.workingDirectory,
     );
@@ -369,8 +374,7 @@ class SessionLaunchService implements MemberConnector {
     required SessionOpenRequest request,
     required AppSession session,
   }) {
-    final workspace =
-        request.workspace ?? _workspaceById(session.workspaceId);
+    final workspace = request.workspace ?? _workspaceById(session.workspaceId);
     if (request.isPersonal && workspace == null) {
       return SessionOpenStatus.missingWorkspace;
     }
@@ -381,13 +385,14 @@ class SessionLaunchService implements MemberConnector {
       title: session.resolveDisplayTitle(request.emptyDisplayTitleFallback),
       subtitle: session.firstFolderPath,
     );
-    final tab = ChatTab(
-      info: info,
-      cliTeamName: session.cliTeamName,
-      workspaceId: session.workspaceId,
-    )
-      ..persistedSession = session
-      ..selectedMemberId = placeholderMemberId;
+    final tab =
+        ChatTab(
+            info: info,
+            cliTeamName: session.cliTeamName,
+            workspaceId: session.workspaceId,
+          )
+          ..persistedSession = session
+          ..selectedMemberId = placeholderMemberId;
     tab.bumpLaunchGeneration();
     final generation = tab.launchGeneration;
 
@@ -532,9 +537,7 @@ class SessionLaunchService implements MemberConnector {
 
       tab.selectedMemberId = resolved.member.id;
       if (_state.selectedMemberId != resolved.member.id) {
-        _h.applyState(
-          _state.copyWith(selectedMemberId: resolved.member.id),
-        );
+        _h.applyState(_state.copyWith(selectedMemberId: resolved.member.id));
       }
 
       final shell = _shellForLaunch(
@@ -667,9 +670,7 @@ class SessionLaunchService implements MemberConnector {
 
       tab.selectedMemberId = resolved.member.id;
       if (_state.selectedMemberId != resolved.member.id) {
-        _h.applyState(
-          _state.copyWith(selectedMemberId: resolved.member.id),
-        );
+        _h.applyState(_state.copyWith(selectedMemberId: resolved.member.id));
       }
 
       final shell = _shellForLaunch(
@@ -942,7 +943,10 @@ class SessionLaunchService implements MemberConnector {
       return;
     }
 
-    var session = _firstSessionForWorkspaceAndTeam(workspace.workspaceId, team.id);
+    var session = _firstSessionForWorkspaceAndTeam(
+      workspace.workspaceId,
+      team.id,
+    );
     session ??= await repo.createSession(
       workspace.workspaceId,
       sessionTeam: team.id,
@@ -996,12 +1000,16 @@ class SessionLaunchService implements MemberConnector {
 
   Workspace? _workspaceMatchingPath(String primaryPath) {
     for (final workspace in _state.workspaces) {
-      if (workspacePathsEqual(workspace.firstFolderPath, primaryPath)) return workspace;
+      if (workspacePathsEqual(workspace.firstFolderPath, primaryPath))
+        return workspace;
     }
     return null;
   }
 
-  AppSession? _firstSessionForWorkspaceAndTeam(String workspaceId, String teamId) {
+  AppSession? _firstSessionForWorkspaceAndTeam(
+    String workspaceId,
+    String teamId,
+  ) {
     for (final session in _state.sessions) {
       if (session.workspaceId != workspaceId) continue;
       if (session.sessionTeam.trim() != teamId) continue;
@@ -1023,7 +1031,9 @@ class SessionLaunchService implements MemberConnector {
   }) async {
     if (!_tabStore.isEmpty) return;
 
-    final existingSession = _firstSessionForPersonalWorkspace(workspace.workspaceId);
+    final existingSession = _firstSessionForPersonalWorkspace(
+      workspace.workspaceId,
+    );
     if (existingSession != null) {
       await requestOpenSession(
         SessionOpenRequest(
@@ -1053,9 +1063,7 @@ class SessionLaunchService implements MemberConnector {
       personalIdentityIdOverride: personalIdentityId,
     );
     final cli =
-        cliOverride ??
-        personalCtx.personalPreset?.cli ??
-        CliTool.claude;
+        cliOverride ?? personalCtx.personalPreset?.cli ?? CliTool.claude;
 
     final session = await repo.createSession(
       workspace.workspaceId,
@@ -1111,14 +1119,9 @@ class SessionLaunchService implements MemberConnector {
             ),
       );
 
-  RuntimeTarget _launchWorkTarget(
-    AppSession session, {
-    String? memberId,
-  }) =>
-      _h.lifecycle.launchWorkTarget(
-        _launchContextFor(session),
-        memberId: memberId,
-      );
+  RuntimeTarget _launchWorkTarget(AppSession session, {String? memberId}) => _h
+      .lifecycle
+      .launchWorkTarget(_launchContextFor(session), memberId: memberId);
 
   /// Ensures [tab] holds a [TerminalSession] whose transport matches [session]'s
   /// launch target (local PTY vs SSH).
@@ -1334,8 +1337,7 @@ class SessionLaunchService implements MemberConnector {
     TeamProfile team,
     TeamMemberConfig member,
     ChatTab tab,
-  ) =>
-      _scheduleMemberConnect(team, member, tab);
+  ) => _scheduleMemberConnect(team, member, tab);
 
   Future<void> _connectMemberShell({
     required ChatTab tab,
@@ -1473,226 +1475,226 @@ class SessionLaunchService implements MemberConnector {
       }
       shell.sshMemberSession = memberSshSession;
 
-    appLogger.d(
-      '[session-launch] launch target resolved '
-      'session=${tab.info.id} member=$preflightMemberId '
-      'cli=${launchCli.value} target=${launchTarget.kind.name} '
-      'targetId=${launchTarget.id}',
-    );
-
-    final mixedBus =
-        team != null &&
-        launchMember != null &&
-        team.teamMode == TeamMode.mixed &&
-        tab.mcpServer != null;
-    // P3b (#1): a remote (ssh) member connects back to the in-process bus over a
-    // reverse tunnel; the resolver returns its binding (relay/HTTP over tunnel),
-    // or null for a local member (unchanged transport). Android-mixed fix.
-    RemoteBusBinding? remoteBinding;
-    String? remoteCliPath;
-    ShellLaunchSpec shellLaunch;
-    final launchWarnings = <String>[];
-
-    if (isPersonal) {
-      final connectResult = await _h.sessionConnect.preparePersonalConnect(
-        session: activeSession,
-        workspace: workspace!,
-        personal: personal!,
-        preset: await _h.lifecycle.resolveActivePresetForSession(
-          activeSession,
-          personal,
-        ),
-        launchTarget: launchTarget,
+      appLogger.d(
+        '[session-launch] launch target resolved '
+        'session=${tab.info.id} member=$preflightMemberId '
+        'cli=${launchCli.value} target=${launchTarget.kind.name} '
+        'targetId=${launchTarget.id}',
       );
-      shellLaunch = connectResult.shellLaunch;
-      remoteCliPath = connectResult.remoteCliPath;
-      launchWarnings.addAll(connectResult.warnings);
-    } else {
-      if (mixedBus && memberSshSession != null) {
-        appLogger.d(
-          '[session-launch] mixed bus remote setup start '
-          'session=${tab.info.id} member=$preflightMemberId',
+
+      final mixedBus =
+          team != null &&
+          launchMember != null &&
+          team.teamMode == TeamMode.mixed &&
+          tab.mcpServer != null;
+      // P3b (#1): a remote (ssh) member connects back to the in-process bus over a
+      // reverse tunnel; the resolver returns its binding (relay/HTTP over tunnel),
+      // or null for a local member (unchanged transport). Android-mixed fix.
+      RemoteBusBinding? remoteBinding;
+      String? remoteCliPath;
+      ShellLaunchSpec shellLaunch;
+      final launchWarnings = <String>[];
+
+      if (isPersonal) {
+        final connectResult = await _h.sessionConnect.preparePersonalConnect(
+          session: activeSession,
+          workspace: workspace!,
+          personal: personal!,
+          preset: await _h.lifecycle.resolveActivePresetForSession(
+            activeSession,
+            personal,
+          ),
+          launchTarget: launchTarget,
         );
-        final resolver = _h.remoteBusResolver;
-        if (resolver != null) {
-          final workCtx = await _h.lifecycle.resolveWorkContextForTargetId(
-            launchTarget.id,
+        shellLaunch = connectResult.shellLaunch;
+        remoteCliPath = connectResult.remoteCliPath;
+        launchWarnings.addAll(connectResult.warnings);
+      } else {
+        if (mixedBus && memberSshSession != null) {
+          appLogger.d(
+            '[session-launch] mixed bus remote setup start '
+            'session=${tab.info.id} member=$preflightMemberId',
           );
-          final arch = archFromUname(await memberSshSession.run('uname -m'));
-          final mount = buildRemoteBusMount(
-            memberSession: memberSshSession,
-            busServer: tab.mcpServer!,
-            storageFs: workCtx.fs,
-            arch: arch,
-          );
-          tab.memberRemoteBusMounts[preflightMemberId] = mount;
-          remoteBinding = await resolver.bindMember(
-            mount: mount,
-            memberId: preflightMemberId,
-            cli: launchCli,
-          );
-        } else {
-          launchWarnings.add('remote_bus_binding_unavailable');
+          final resolver = _h.remoteBusResolver;
+          if (resolver != null) {
+            final workCtx = await _h.lifecycle.resolveWorkContextForTargetId(
+              launchTarget.id,
+            );
+            final arch = archFromUname(await memberSshSession.run('uname -m'));
+            final mount = buildRemoteBusMount(
+              memberSession: memberSshSession,
+              busServer: tab.mcpServer!,
+              storageFs: workCtx.fs,
+              arch: arch,
+            );
+            tab.memberRemoteBusMounts[preflightMemberId] = mount;
+            remoteBinding = await resolver.bindMember(
+              mount: mount,
+              memberId: preflightMemberId,
+              cli: launchCli,
+            );
+          } else {
+            launchWarnings.add('remote_bus_binding_unavailable');
+          }
         }
+        final memberWork = activeSession.workDirsForMember(
+          rosterMemberId ?? launchMember!.id,
+          folders: _launchContextFor(activeSession).folderCatalog,
+        );
+        final connectResult = await _h.sessionConnect.prepareTeamConnect(
+          session: activeSession,
+          team: team!,
+          member: launchMember!,
+          memberBinding: binding,
+          workspace: workspace,
+          launchTarget: launchTarget,
+          workingDirectory: memberWork.workingDirectory,
+          additionalDirectories: memberWork.addDirs,
+          extraMcpServers: mixedBus
+              ? {
+                  teammateBusMcpServerName: _busMcpServerConfig(
+                    endpoint: tab.mcpServer!.endpoint,
+                    memberId: launchMember.id,
+                    cli: memberLaunchCli(
+                      team: team,
+                      member: launchMember,
+                      globalPresets: _h.lifecycle.globalPresets,
+                    ),
+                    remoteBinding: remoteBinding,
+                  ),
+                }
+              : null,
+          busIdle: mixedBus
+              ? switch (remoteBinding) {
+                  final binding? => MemberBusIdleEndpoint.remote(binding),
+                  null when launchTarget.kind != RuntimeKind.ssh =>
+                    MemberBusIdleEndpoint.local(tab.mcpServer!),
+                  null => null,
+                }
+              : null,
+        );
+        shellLaunch = connectResult.shellLaunch;
+        remoteCliPath = connectResult.remoteCliPath;
+        launchWarnings.addAll(connectResult.warnings);
       }
+
+      if (!_connectShellStillValid(tab: tab, shell: shell)) {
+        _abortConnectShellIfStale(
+          tab: tab,
+          shell: shell,
+          reason: 'tab_or_shell_gone_after_prepare_connect',
+          remoteMemberKey: remoteMemberKeyForRollback,
+        );
+        return;
+      }
+
+      if (launchTarget.kind == RuntimeKind.ssh) {
+        final injectRootSandboxEnv = await TargetsRepository()
+            .isRootSandboxEnvOptIn(launchTarget.id);
+        shellLaunch = await applyRemoteSshLaunchConstraints(
+          spec: shellLaunch,
+          memberTarget: launchTarget,
+          memberSession: memberSshSession,
+          profile: _h.shellFactory.profileFor(launchTarget),
+          injectRootSandboxEnv: injectRootSandboxEnv,
+        );
+      }
+
+      if (!_connectShellStillValid(tab: tab, shell: shell)) {
+        _abortConnectShellIfStale(
+          tab: tab,
+          shell: shell,
+          reason: 'tab_or_shell_gone_after_ssh_constraints',
+          remoteMemberKey: remoteMemberKeyForRollback,
+        );
+        return;
+      }
+
+      final plan = shellLaunch.plan;
+      appLogger.d(
+        '[session-launch] launch plan ready '
+        'session=${tab.info.id} member=$memberLabel '
+        'resume=${plan.resume} create=${plan.createSessionId ?? ''} '
+        'resumeId=${plan.resumeSessionId ?? ''} warnings=${plan.warnings.length}',
+      );
+      final configDir = plan.memberConfigDir.trim();
+      if (configDir.isNotEmpty && member != null) {
+        tab.memberConfigDirs[member.id] = configDir;
+        tab.memberToolConfigDir = configDir;
+      }
+      _h.emitLaunchWarnings([...launchWarnings, ...plan.warnings]);
+      // The plan already resolved the native create/resume ids per CLI (incl.
+      // cursor pre-allocation on first launch), so map them through directly —
+      // no `launched` gating. See docs/session-resume-architecture.md.
+      await _persistNativeSessionId(repo, tab, activeSession, binding, plan);
+
+      if (!_connectShellStillValid(tab: tab, shell: shell)) {
+        _abortConnectShellIfStale(
+          tab: tab,
+          shell: shell,
+          reason: 'tab_or_shell_gone_after_persist_native_id',
+          remoteMemberKey: remoteMemberKeyForRollback,
+        );
+        return;
+      }
+
+      // P3a: the member runs in its assigned working directory (default = session
+      // first folder). Personal sessions inherit (null memberId).
       final memberWork = activeSession.workDirsForMember(
-        rosterMemberId ?? launchMember!.id,
+        isPersonal ? null : binding?.rosterMemberId,
         folders: _launchContextFor(activeSession).folderCatalog,
       );
-      final connectResult = await _h.sessionConnect.prepareTeamConnect(
-        session: activeSession,
-        team: team!,
-        member: launchMember!,
-        memberBinding: binding,
-        workspace: workspace,
-        launchTarget: launchTarget,
+      appLogger.d(
+        '[session-launch] shell.connect '
+        'session=${tab.info.id} member=$memberLabel '
+        'cwd=${memberWork.workingDirectory} addDirs=${memberWork.addDirs.length}',
+      );
+      shell.connect(
         workingDirectory: memberWork.workingDirectory,
         additionalDirectories: memberWork.addDirs,
-        extraMcpServers: mixedBus
-            ? {
-                teammateBusMcpServerName: _busMcpServerConfig(
-                  endpoint: tab.mcpServer!.endpoint,
-                  memberId: launchMember.id,
-                  cli: memberLaunchCli(
-                    team: team,
-                    member: launchMember,
-                    globalPresets: _h.lifecycle.globalPresets,
-                  ),
-                  remoteBinding: remoteBinding,
+        // P3c: off-home members launch the CLI at the preflight-located remote path.
+        executableOverride: remoteCliPath,
+        fixedSessionId: plan.createSessionId,
+        resumeSessionId: plan.resumeSessionId,
+        shellLaunch: shellLaunch,
+        extraEnvironment: plan.env.isEmpty ? null : plan.env,
+        busUserInputRouting: team != null && member != null
+            ? _h.busCoordinator.busUserInputRouting(tab, team, member)
+            : null,
+        onFirstUserLineSubmitted: _autoRenameOnFirstPrompt(
+          activeSession.sessionId,
+        ),
+        onEveryUserLineSubmitted: _autoTouchOnEveryPrompt(
+          activeSession.sessionId,
+        ),
+        onProcessFailed: (message) {
+          if (remoteMemberKeyForRollback != null) {
+            unawaited(tab.closeMemberRemotePlane(remoteMemberKeyForRollback));
+          }
+          _h.failSessionConnect(tab.info.id, message);
+        },
+        onProcessExited: () => _h.updateTabRunning(tab.info.id),
+        onProcessStarted: () {
+          if (team != null && member != null) {
+            tab.teamBus?.markMemberRunning(member.id);
+            _h.busCoordinator.markMemberReady(tab.info.id, member.id);
+          }
+          _h.clearLaunchError(tab.info.id);
+          _h.finishSessionConnect(tab.info.id);
+          final r = repo ?? _h.sessionRepository;
+          if (r != null && !activeSession.sessionId.startsWith('local-')) {
+            unawaited(
+              _persistSessionStarted(r, activeSession.sessionId).onError(
+                (e, st) => appLogger.w(
+                  '[session] persist after start failed: $e',
+                  error: e,
+                  stackTrace: st,
                 ),
-              }
-            : null,
-        busIdle: mixedBus
-            ? switch (remoteBinding) {
-                final binding? => MemberBusIdleEndpoint.remote(binding),
-                null when launchTarget.kind != RuntimeKind.ssh =>
-                  MemberBusIdleEndpoint.local(tab.mcpServer!),
-                null => null,
-              }
-            : null,
-      );
-      shellLaunch = connectResult.shellLaunch;
-      remoteCliPath = connectResult.remoteCliPath;
-      launchWarnings.addAll(connectResult.warnings);
-    }
-
-    if (!_connectShellStillValid(tab: tab, shell: shell)) {
-      _abortConnectShellIfStale(
-        tab: tab,
-        shell: shell,
-        reason: 'tab_or_shell_gone_after_prepare_connect',
-        remoteMemberKey: remoteMemberKeyForRollback,
-      );
-      return;
-    }
-
-    if (launchTarget.kind == RuntimeKind.ssh) {
-      final injectRootSandboxEnv = await TargetsRepository()
-          .isRootSandboxEnvOptIn(launchTarget.id);
-      shellLaunch = await applyRemoteSshLaunchConstraints(
-        spec: shellLaunch,
-        memberTarget: launchTarget,
-        memberSession: memberSshSession,
-        profile: _h.shellFactory.profileFor(launchTarget),
-        injectRootSandboxEnv: injectRootSandboxEnv,
-      );
-    }
-
-    if (!_connectShellStillValid(tab: tab, shell: shell)) {
-      _abortConnectShellIfStale(
-        tab: tab,
-        shell: shell,
-        reason: 'tab_or_shell_gone_after_ssh_constraints',
-        remoteMemberKey: remoteMemberKeyForRollback,
-      );
-      return;
-    }
-
-    final plan = shellLaunch.plan;
-    appLogger.d(
-      '[session-launch] launch plan ready '
-      'session=${tab.info.id} member=$memberLabel '
-      'resume=${plan.resume} create=${plan.createSessionId ?? ''} '
-      'resumeId=${plan.resumeSessionId ?? ''} warnings=${plan.warnings.length}',
-    );
-    final configDir = plan.memberConfigDir.trim();
-    if (configDir.isNotEmpty && member != null) {
-      tab.memberConfigDirs[member.id] = configDir;
-      tab.memberToolConfigDir = configDir;
-    }
-    _h.emitLaunchWarnings([...launchWarnings, ...plan.warnings]);
-    // The plan already resolved the native create/resume ids per CLI (incl.
-    // cursor pre-allocation on first launch), so map them through directly —
-    // no `launched` gating. See docs/session-resume-architecture.md.
-    await _persistNativeSessionId(repo, tab, activeSession, binding, plan);
-
-    if (!_connectShellStillValid(tab: tab, shell: shell)) {
-      _abortConnectShellIfStale(
-        tab: tab,
-        shell: shell,
-        reason: 'tab_or_shell_gone_after_persist_native_id',
-        remoteMemberKey: remoteMemberKeyForRollback,
-      );
-      return;
-    }
-
-    // P3a: the member runs in its assigned working directory (default = session
-    // first folder). Personal sessions inherit (null memberId).
-    final memberWork = activeSession.workDirsForMember(
-      isPersonal ? null : binding?.rosterMemberId,
-      folders: _launchContextFor(activeSession).folderCatalog,
-    );
-    appLogger.d(
-      '[session-launch] shell.connect '
-      'session=${tab.info.id} member=$memberLabel '
-      'cwd=${memberWork.workingDirectory} addDirs=${memberWork.addDirs.length}',
-    );
-    shell.connect(
-      workingDirectory: memberWork.workingDirectory,
-      additionalDirectories: memberWork.addDirs,
-      // P3c: off-home members launch the CLI at the preflight-located remote path.
-      executableOverride: remoteCliPath,
-      fixedSessionId: plan.createSessionId,
-      resumeSessionId: plan.resumeSessionId,
-      shellLaunch: shellLaunch,
-      extraEnvironment: plan.env.isEmpty ? null : plan.env,
-      busUserInputRouting: team != null && member != null
-          ? _h.busCoordinator.busUserInputRouting(tab, team, member)
-          : null,
-      onFirstUserLineSubmitted: _autoRenameOnFirstPrompt(
-        activeSession.sessionId,
-      ),
-      onEveryUserLineSubmitted: _autoTouchOnEveryPrompt(
-        activeSession.sessionId,
-      ),
-      onProcessFailed: (message) {
-        if (remoteMemberKeyForRollback != null) {
-          unawaited(tab.closeMemberRemotePlane(remoteMemberKeyForRollback));
-        }
-        _h.failSessionConnect(tab.info.id, message);
-      },
-      onProcessExited: () => _h.updateTabRunning(tab.info.id),
-      onProcessStarted: () {
-        if (team != null && member != null) {
-          tab.teamBus?.markMemberRunning(member.id);
-          _h.busCoordinator.markMemberReady(tab.info.id, member.id);
-        }
-        _h.clearLaunchError(tab.info.id);
-        _h.finishSessionConnect(tab.info.id);
-        final r = repo ?? _h.sessionRepository;
-        if (r != null && !activeSession.sessionId.startsWith('local-')) {
-          unawaited(
-            _persistSessionStarted(r, activeSession.sessionId).onError(
-              (e, st) => appLogger.w(
-                '[session] persist after start failed: $e',
-                error: e,
-                stackTrace: st,
               ),
-            ),
-          );
-        }
-      },
-    );
+            );
+          }
+        },
+      );
       remoteMemberKeyForRollback = null;
     } on Object catch (e, st) {
       if (remoteMemberKeyForRollback != null) {
@@ -1723,13 +1725,15 @@ class SessionLaunchService implements MemberConnector {
     required CliTool cli,
     RemoteBusBinding? remoteBinding,
   }) {
-    final longBlocking = CliToolRegistry.builtIn()
+    final longBlocking =
+        CliToolRegistry.builtIn()
             .capability<BusTransportCapability>(cli)
             ?.longBlockingWaitForMessage ??
         true;
     String? localBridge;
     if (remoteBinding == null) {
-      final localNative = !AppStorage.isInstalled ||
+      final localNative =
+          !AppStorage.isInstalled ||
           AppStorage.context.mode == StorageBackendMode.native;
       if (cli == CliTool.claude && localNative) {
         localBridge = BusBridgeLocator.resolve();
@@ -1786,8 +1790,7 @@ class SessionLaunchService implements MemberConnector {
       'session=${tab.info.id} member=${member.id} team=${team.id}',
     );
     tab.selectedMemberId = member.id;
-    final session =
-        tab.persistedSession ?? _sessionForMemberConnect(tab, team);
+    final session = tab.persistedSession ?? _sessionForMemberConnect(tab, team);
     final shell = _memberShellForConnect(
       tab: tab,
       team: team,
@@ -2136,12 +2139,14 @@ class SessionLaunchService implements MemberConnector {
       unawaited(repo.touchSession(sessionId));
       // Lightweight in-memory update — no full disk reload.
       if (_h.isClosed) return;
-      _h.applyState(_state.copyWith(
-        sessions: _state.sessions.map((s) {
-          if (s.sessionId != sessionId) return s;
-          return s.copyWith(updatedAt: now);
-        }).toList(),
-      ));
+      _h.applyState(
+        _state.copyWith(
+          sessions: _state.sessions.map((s) {
+            if (s.sessionId != sessionId) return s;
+            return s.copyWith(updatedAt: now);
+          }).toList(),
+        ),
+      );
     };
   }
 

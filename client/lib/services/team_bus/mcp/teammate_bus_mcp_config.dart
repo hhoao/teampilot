@@ -27,12 +27,7 @@ Map<String, Object?> teammateBusMcpServerConfigStdio({
 }) {
   return {
     'command': bridgePath,
-    'args': <String>[
-      '--member',
-      memberId,
-      '--bus-url',
-      endpoint.toString(),
-    ],
+    'args': <String>['--member', memberId, '--bus-url', endpoint.toString()],
   };
 }
 

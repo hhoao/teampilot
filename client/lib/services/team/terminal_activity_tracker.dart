@@ -6,8 +6,9 @@ import 'dart:typed_data';
 /// been quiet for [idleAfter], then tracks activity the same way.
 ///
 /// [notePtyBytes] dedupes repaint noise on the PTY hot path with a single-pass
-/// FNV hash of the chunk's **last visible line** (ANSI stripped, block glyphs
-/// skipped). No regex, no intermediate [String], O(n) bytes only.
+/// FNV hash of the chunk's **last [fingerprintTailLines] visible lines** (ANSI
+/// stripped, block glyphs skipped). No regex, no intermediate [String], O(n)
+/// bytes only.
 ///
 /// Mixed teams: [isQuietAfterTurnPtyActivity] is true when the visible
 /// fingerprint has been unchanged for [idleAfter] since the last fingerprint
@@ -16,9 +17,16 @@ import 'dart:typed_data';
 class TerminalActivityTracker {
   TerminalActivityTracker({
     this.idleAfter = const Duration(milliseconds: 2500),
-  });
+    this.fingerprintTailLines = defaultFingerprintTailLines,
+  }) : assert(fingerprintTailLines >= 1);
+
+  /// Default tail window — covers prompt + status rows in full-screen TUIs.
+  static const int defaultFingerprintTailLines = 8;
 
   final Duration idleAfter;
+
+  /// How many trailing visible lines feed the PTY fingerprint hash.
+  final int fingerprintTailLines;
 
   static const int _fnvOffsetBasis = 0x811C9DC5;
   static const int _fnvPrime = 0x01000193;
@@ -67,7 +75,10 @@ class TerminalActivityTracker {
     if (bytes.isEmpty) return;
     final raw = bytes is Uint8List ? bytes : Uint8List.fromList(bytes);
     final now = at ?? DateTime.now();
-    final hash = visiblePtyFingerprintHash(raw);
+    final hash = visiblePtyFingerprintHash(
+      raw,
+      tailLines: fingerprintTailLines,
+    );
 
     if (!_turnPtyObserved) {
       _beginTurnFingerprint(hash, raw, now);
@@ -101,14 +112,32 @@ class TerminalActivityTracker {
     noteOutput(now);
   }
 
-  /// Single-pass FNV-1a over the chunk's last line: strips ESC/CSI/OSC, skips
-  /// `\\r` and UTF-8 block elements (U+2580–U+259F). Exposed for tests.
-  static int visiblePtyFingerprintHash(List<int> bytes) {
+  /// Single-pass FNV-1a over the chunk's last [tailLines] visible lines: strips
+  /// ESC/CSI/OSC, skips `\\r` and UTF-8 block elements (U+2580–U+259F).
+  /// Exposed for tests.
+  static int visiblePtyFingerprintHash(
+    List<int> bytes, {
+    int tailLines = defaultFingerprintTailLines,
+  }) {
+    assert(tailLines >= 1);
+    final window = <int>[];
     var lineHash = _fnvOffsetBasis;
     var i = 0;
     var afterEsc = false;
     var inCsi = false;
     var inOsc = false;
+
+    void pushLine(int hash) {
+      window.add(hash);
+      if (window.length > tailLines) {
+        window.removeAt(0);
+      }
+    }
+
+    void flushCurrentLine() {
+      pushLine(lineHash);
+      lineHash = _fnvOffsetBasis;
+    }
 
     while (i < bytes.length) {
       final b = bytes[i];
@@ -153,7 +182,7 @@ class TerminalActivityTracker {
       }
 
       if (b == 0x0a) {
-        lineHash = _fnvOffsetBasis;
+        flushCurrentLine();
         i++;
         continue;
       }
@@ -170,7 +199,24 @@ class TerminalActivityTracker {
       lineHash = _fnv1a(lineHash, b);
       i++;
     }
-    return lineHash;
+
+    if (lineHash != _fnvOffsetBasis) {
+      pushLine(lineHash);
+    }
+
+    return _combineLineHashes(window);
+  }
+
+  static int _combineLineHashes(List<int> lineHashes) {
+    if (lineHashes.isEmpty) return _fnvOffsetBasis;
+    var combined = _fnvOffsetBasis;
+    for (final line in lineHashes) {
+      combined = _fnv1a(combined, line & 0xFF);
+      combined = _fnv1a(combined, (line >> 8) & 0xFF);
+      combined = _fnv1a(combined, (line >> 16) & 0xFF);
+      combined = _fnv1a(combined, (line >> 24) & 0xFF);
+    }
+    return combined;
   }
 
   void noteOutput([DateTime? at]) {

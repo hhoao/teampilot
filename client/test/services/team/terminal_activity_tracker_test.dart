@@ -101,8 +101,30 @@ void main() {
     expect(a.length, isNot(equals(b.length)));
 
     expect(
-      TerminalActivityTracker.visiblePtyFingerprintHash(a),
-      TerminalActivityTracker.visiblePtyFingerprintHash(b),
+      TerminalActivityTracker.visiblePtyFingerprintHash(a, tailLines: 2),
+      TerminalActivityTracker.visiblePtyFingerprintHash(b, tailLines: 2),
+    );
+  });
+
+  test('upper lines outside tail window do not change fingerprint', () {
+    const stable = 'status row\n→ prompt line\ninput area';
+    final a = utf8.encode('volatile spinner\nnoise above\n$stable');
+    final b = utf8.encode('different noise\nother row\n$stable');
+
+    expect(
+      TerminalActivityTracker.visiblePtyFingerprintHash(a, tailLines: 3),
+      TerminalActivityTracker.visiblePtyFingerprintHash(b, tailLines: 3),
+    );
+    expect(
+      TerminalActivityTracker.visiblePtyFingerprintHash(a, tailLines: 3),
+      isNot(
+        equals(
+          TerminalActivityTracker.visiblePtyFingerprintHash(
+            utf8.encode('volatile spinner\nnoise above\n$stable\nchanged'),
+            tailLines: 3,
+          ),
+        ),
+      ),
     );
   });
 

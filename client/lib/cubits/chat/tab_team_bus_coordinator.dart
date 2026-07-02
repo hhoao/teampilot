@@ -49,16 +49,17 @@ class TabTeamBusCoordinator implements MemberMaterializer {
     required List<CliPreset> Function() globalPresets,
     void Function(Set<String> workingSessionIds)? onWorkingSessionsChanged,
     VoidCallback? onAfterIdleWatchTick,
-    ArtifactTransferService Function(AppSession session)? artifactServiceFactory,
-  })  : _tabStore = tabStore,
-        _shellFactory = shellFactory,
-        _connector = connector,
-        _globalPresets = globalPresets,
-        _activeTeam = activeTeam,
-        _isClosed = isClosed,
-        _onWorkingSessionsChanged = onWorkingSessionsChanged,
-        _onAfterIdleWatchTick = onAfterIdleWatchTick,
-        _artifactServiceFactory = artifactServiceFactory;
+    ArtifactTransferService Function(AppSession session)?
+    artifactServiceFactory,
+  }) : _tabStore = tabStore,
+       _shellFactory = shellFactory,
+       _connector = connector,
+       _globalPresets = globalPresets,
+       _activeTeam = activeTeam,
+       _isClosed = isClosed,
+       _onWorkingSessionsChanged = onWorkingSessionsChanged,
+       _onAfterIdleWatchTick = onAfterIdleWatchTick,
+       _artifactServiceFactory = artifactServiceFactory;
 
   final ChatTabStore _tabStore;
   final ChatSessionShellFactory _shellFactory;
@@ -72,7 +73,7 @@ class TabTeamBusCoordinator implements MemberMaterializer {
   /// P3d: builds the per-session cross-machine artifact transfer service. Null =
   /// the three artifact MCP tools are not advertised (single-machine / tests).
   final ArtifactTransferService Function(AppSession session)?
-      _artifactServiceFactory;
+  _artifactServiceFactory;
   Set<String> _lastWorkingSessions = const {};
 
   final Map<(String, String), Completer<void>> _memberReady = {};
@@ -95,7 +96,12 @@ class TabTeamBusCoordinator implements MemberMaterializer {
     );
     // 共享任务队列仅 mixed 模式接线：纯 Claude swarm 复用 Claude 原生任务表。
     final taskQueue = team.teamMode == TeamMode.mixed
-        ? TaskQueue(log: TaskLogFactory.forSession(session.workspaceId, session.sessionId))
+        ? TaskQueue(
+            log: TaskLogFactory.forSession(
+              session.workspaceId,
+              session.sessionId,
+            ),
+          )
         : null;
     final presets = _globalPresets();
     final forceWaitByMember = {
@@ -114,7 +120,10 @@ class TabTeamBusCoordinator implements MemberMaterializer {
         materializer: this,
         sessionId: tab.info.id,
       ),
-      messageLog: BusMessageLogFactory.forSession(session.workspaceId, session.sessionId),
+      messageLog: BusMessageLogFactory.forSession(
+        session.workspaceId,
+        session.sessionId,
+      ),
       taskQueue: taskQueue,
       reportsIdleViaReceiveWork: (memberId) =>
           forceWaitByMember[memberId] ?? team.forceWaitBeforeStop,
@@ -253,8 +262,8 @@ class TabTeamBusCoordinator implements MemberMaterializer {
             memberId,
             globalPresets: _globalPresets(),
           );
-    final behavior =
-        CliToolRegistry.builtIn().capability<TerminalBehaviorCapability>(cli);
+    final behavior = CliToolRegistry.builtIn()
+        .capability<TerminalBehaviorCapability>(cli);
     final usesFullScreen = behavior?.usesFullScreenInput ?? false;
     appLogger.d(
       '[team-bus] pty-inject member=$memberId '
@@ -293,9 +302,7 @@ class TabTeamBusCoordinator implements MemberMaterializer {
       );
       return;
     }
-    appLogger.d(
-      '[team-bus] pty-nudge-cr member=$memberId session=$sessionId',
-    );
+    appLogger.d('[team-bus] pty-nudge-cr member=$memberId session=$sessionId');
     unawaited(shell.submitPendingCr());
   }
 
