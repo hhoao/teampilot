@@ -4,6 +4,7 @@ import 'teammate_bus_mcp_config.dart';
 import 'teammate_bus_mcp_handler.dart';
 import 'teammate_bus_mcp_http_delegate.dart';
 import 'teammate_bus_session_registry.dart';
+import '../remote/bus_raw_socket_server.dart';
 
 /// App-wide loopback HTTP gateway routing MCP requests to per-session handlers.
 class TeammateBusMcpGateway {
@@ -14,17 +15,26 @@ class TeammateBusMcpGateway {
   final _registry = TeammateBusSessionRegistry();
   final _delegates = <String, TeammateBusMcpHttpDelegate>{};
   HttpServer? _http;
+  BusRawSocketServer? _rawSocket;
 
   Future<void> ensureStarted() async {
-    if (_http != null) return;
-    final server = await HttpServer.bind(InternetAddress.loopbackIPv4, 0);
-    _http = server;
-    server.listen(_onRequest);
+    if (_http != null && _rawSocket != null) return;
+    if (_http == null) {
+      final server = await HttpServer.bind(InternetAddress.loopbackIPv4, 0);
+      _http = server;
+      server.listen(_onRequest);
+    }
+    if (_rawSocket == null) {
+      _rawSocket = BusRawSocketServer.multiplexed(registry: _registry);
+      await _rawSocket!.start();
+    }
   }
 
   Uri get mcpEndpoint => Uri.parse('http://127.0.0.1:${_http!.port}/mcp');
 
   Uri get idleEndpoint => Uri.parse('http://127.0.0.1:${_http!.port}/idle');
+
+  int get rawSocketPort => _rawSocket!.port;
 
   bool isSessionRegistered(String sessionId) =>
       _registry.handlerForSession(sessionId) != null;

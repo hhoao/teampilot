@@ -6,6 +6,7 @@ import '../../../utils/logger.dart';
 import '../cancellation.dart';
 import '../mcp/jsonrpc.dart';
 import '../mcp/teammate_bus_mcp_handler.dart';
+import '../mcp/teammate_bus_session_registry.dart';
 
 /// Loopback raw-socket transport for the teammate bus, used by **remote**
 /// members reaching the local bus through an SSH reverse tunnel.
@@ -18,10 +19,28 @@ import '../mcp/teammate_bus_mcp_handler.dart';
 /// through the shared [TeammateBusMcpHandler] (same handler as the HTTP path —
 /// only the framing differs), including the blocking `wait_for_message`.
 class BusRawSocketServer {
-  BusRawSocketServer({required this.handler, required this.token});
+  BusRawSocketServer({required TeammateBusMcpHandler handler, required String token})
+      : _handler = handler,
+        _token = token,
+        _registry = null;
 
-  final TeammateBusMcpHandler handler;
-  final String token;
+  BusRawSocketServer.multiplexed({required TeammateBusSessionRegistry registry})
+      : _handler = null,
+        _token = null,
+        _registry = registry;
+
+  final TeammateBusMcpHandler? _handler;
+  final String? _token;
+  final TeammateBusSessionRegistry? _registry;
+
+  TeammateBusMcpHandler get handler => _handler!;
+  String get token => _token!;
+
+  TeammateBusMcpHandler? _handlerForToken(String token) {
+    final sessionId = _registry!.sessionForToken(token);
+    if (sessionId == null) return null;
+    return _registry!.handlerForSession(sessionId);
+  }
 
   ServerSocket? _server;
   final Set<CancellationToken> _activeWaits = <CancellationToken>{};
@@ -58,6 +77,7 @@ class _SocketSession {
   final List<int> _buf = <int>[];
   bool _authed = false;
   String _memberId = '';
+  TeammateBusMcpHandler? _handler;
   bool _closed = false;
 
   // Process one line at a time so a blocking wait_for_message doesn't interleave
@@ -96,16 +116,18 @@ class _SocketSession {
     }
     final req = JsonRpcRequest.tryParse(line);
     if (req == null) return;
+    final handler = _handler;
+    if (handler == null) return;
     try {
       if (req.isNotification) {
-        await _server.handler.handle(_memberId, req); // side effects only
+        await handler.handle(_memberId, req); // side effects only
         return;
       }
-      if (_server.handler.isLongRunning(req)) {
-        await _streamWait(req);
+      if (handler.isLongRunning(req)) {
+        await _streamWait(req, handler);
         return;
       }
-      final res = await _server.handler.handle(_memberId, req);
+      final res = await handler.handle(_memberId, req);
       if (res != null) _writeLine(res.encode());
     } on Object catch (e, st) {
       appLogger.e('[bus-raw-socket] dispatch failed', error: e, stackTrace: st);
@@ -122,20 +144,37 @@ class _SocketSession {
     }
     final token = (hs?['token'] as String?)?.trim() ?? '';
     final member = (hs?['memberId'] as String?)?.trim() ?? '';
-    if (token.isEmpty || token != _server.token || member.isEmpty) {
+    if (token.isEmpty || member.isEmpty) {
+      _shutdown();
+      return;
+    }
+
+    final TeammateBusMcpHandler? handler;
+    if (_server._registry != null) {
+      handler = _server._handlerForToken(token);
+    } else if (token != _server._token) {
+      handler = null;
+    } else {
+      handler = _server._handler;
+    }
+    if (handler == null) {
       _shutdown(); // reject: bad token / no member
       return;
     }
     _authed = true;
     _memberId = member;
+    _handler = handler;
   }
 
-  Future<void> _streamWait(JsonRpcRequest req) async {
+  Future<void> _streamWait(
+    JsonRpcRequest req,
+    TeammateBusMcpHandler handler,
+  ) async {
     final cancel = CancellationToken();
     _server._activeWaits.add(cancel);
-    _server.handler.waitCancels.register(req.id, cancel);
+    handler.waitCancels.register(req.id, cancel);
     try {
-      final delivery = await _server.handler.beginWait(
+      final delivery = await handler.beginWait(
         _memberId,
         req,
         cancel: cancel,
@@ -151,7 +190,7 @@ class _SocketSession {
         delivery.abort();
       }
     } finally {
-      _server.handler.waitCancels.unregister(req.id);
+      handler.waitCancels.unregister(req.id);
       _server._activeWaits.remove(cancel);
     }
   }
