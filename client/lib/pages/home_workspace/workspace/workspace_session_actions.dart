@@ -17,7 +17,6 @@ import '../../../models/personal_profile.dart';
 import '../../../models/team_config.dart';
 import '../../../models/workspace_topology.dart';
 import '../../../repositories/session_repository.dart';
-import '../../../utils/app_session_sort.dart';
 import '../../../utils/team_member_naming.dart';
 import '../../../utils/logger.dart';
 
@@ -132,38 +131,6 @@ void showPersonalLaunchBlockedToast(BuildContext context) {
     context,
     message: context.l10n.mixedWorkspaceRequiresTeamLaunch,
     variant: AppToastVariant.warning,
-  );
-}
-
-/// Makes [worktreePath] the workspace current worktree (§7) and opens a session
-/// in that group — the active one when it already belongs here, otherwise the
-/// most recently updated. Empty groups only switch cwd (inline CTA handles new).
-Future<void> activateWorktreeGroup(
-  BuildContext context,
-  Workspace workspace, {
-  required bool isPersonal,
-  required String worktreePath,
-  required List<AppSession> groupSessions,
-}) async {
-  context.read<WorktreeCubit>().setCurrentWorktree(worktreePath);
-  if (groupSessions.isEmpty) return;
-
-  final activeId = context.read<ChatCubit>().state.activeSessionId;
-  AppSession? target;
-  for (final session in groupSessions) {
-    if (session.sessionId == activeId) {
-      target = session;
-      break;
-    }
-  }
-  target ??=
-      sortAppSessions(groupSessions, sort: AppSessionSort.recentlyUpdated).first;
-
-  await openWorkspaceSessionTab(
-    context,
-    workspace,
-    target,
-    isPersonal: isPersonal,
   );
 }
 

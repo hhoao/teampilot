@@ -95,15 +95,7 @@ class WorktreeGroupSection extends StatelessWidget {
           child: InkWell(
             borderRadius: BorderRadius.circular(8),
             onTap: selectable
-                ? () => unawaited(
-                    activateWorktreeGroup(
-                      context,
-                      workspace,
-                      isPersonal: isPersonal,
-                      worktreePath: wt.path,
-                      groupSessions: group.sessions,
-                    ),
-                  )
+                ? () => context.read<WorktreeCubit>().setCurrentWorktree(wt.path)
                 : null,
             child: Padding(
               padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 6),
