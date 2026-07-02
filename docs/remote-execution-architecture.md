@@ -231,9 +231,9 @@ CLI 运行时树是**按 launch 惰性物化**的（`ConfigProfileService` / `Re
 2. CLI 就位：按 target transport 探测 CLI → 缺则 SSH 安装(opt-in) → 缓存远程路径
 3. app-data：确保 <remoteRoot> 存在；物化 ancestry(§5.2) + 凭证(§5.1) + skills/plugins (+ relay,§7.1)
 4. bus 可达（仅协调/团队成员）：
-     等本地 bus server 起来（per-session、动态口）
+     等 App 级 `TeammateBusMcpGateway` 起来并 register 该 session（固定 loopback HTTP + raw 口）
      → forwardRemote(0) 建反向隧道，拿 <P>
-     → 写该成员 MCP 配置：经 relay 走 stdio 回连 127.0.0.1:<P>（§7.1，非裸 HTTP）
+     → 写该成员 MCP 配置：经 relay 走 stdio 回连 127.0.0.1:<P>（隧道本地端接 gateway 口；§7.1，非裸 HTTP）
 5. 远程 SSH server 前置：AllowTcpForwarding on（默认开）
 ```
 
@@ -269,24 +269,24 @@ class RuntimeContext {       // 即今天 RuntimeStorageContext 的"实例化"�
 
 ## 7. 协调面：成员远程的反向隧道
 
-TeamBus 仍是**本地进程内**（`team_bus.dart:27`），MCP 绑死 `127.0.0.1`（`teammate_bus_mcp_server.dart:31`）。成员远程**不需要把总线分布式化**，只需让远程成员够得着本地总线：
+TeamBus 仍是**每 mixed 会话一个本地进程内**实例（`team_bus.dart:27`）；MCP 入站由 App 级 **`TeammateBusMcpGateway`** 统一暴露在 `127.0.0.1` 的固定 HTTP/raw 口（`teammate_bus_mcp_gateway.dart`），按 `X-Session` 或 per-session `X-Bus-Token` 路由到对应 handler。成员远程**不需要把总线分布式化**，只需让远程成员够得着本地 gateway：
 
 ```
 本地 App 进程
-  ├─ TeamBus (in-process)
-  └─ teammate-bus MCP @ 127.0.0.1:PORT
+  ├─ TeamBus × N sessions (in-process, per mixed tab)
+  └─ TeammateBusMcpGateway @ 127.0.0.1:<GW_HTTP> + :<GW_RAW>  （全 App 一个）
               ▲
-              │ SSH remote port forward（反向隧道）
-              │ 远程 127.0.0.1:PORT → 本地 127.0.0.1:PORT
+              │ SSH remote port forward（反向隧道，每远程成员一个远程 <P>）
+              │ 远程 127.0.0.1:<P> → 本地 gateway 固定口
    远程机 ────┘
-     └─ 成员 CLI：MCP 配置照写 127.0.0.1:PORT → 透回本地总线
+     └─ 成员 CLI：MCP 写 127.0.0.1:<P> + session token → 透回 gateway → 正确 TeamBus
 ```
 
-> **现状（2026-06-17 核查）：Android 的 mixed/TeamBus 模式当前是坏的。** mixed 模式无平台 gate（`session_launch_service.dart:176`），但 MCP 端点写死 `127.0.0.1`（`teammate_bus_mcp_server.dart:22`）并经 SFTP 写到远程主机 fs，远程成员读到的是**它自己那台机的 loopback**，连不回手机上的总线。`session_launch_service.dart:609` 注释承认了此问题但所谓 "fallback to HTTP" 仍是 127.0.0.1，未真正解决。**本工作的反向隧道既启用桌面成员远程，又一并修复当前损坏的 Android mixed 模式**——二者是同一拓扑（总线在本地、成员 CLI 在远程主机）。注：native 团队模式在 Android 上正常，因为它不用总线/MCP。
+> **历史（2026-06-17）：** mixed 模式曾把 per-session MCP 写死 `127.0.0.1` 并经 SFTP 落到远程 fs，远程成员读到的是**它自己那台机的 loopback**，连不回手机上的总线。**反向隧道 + gateway** 修复此拓扑：总线与 gateway 在 App 进程，远程 CLI 经隧道回连固定 gateway 口并用 per-session token 鉴权。注：native 团队模式在 Android 上正常，因为它不用总线/MCP。
 
 机制（净新增，无现成可复用）：
 - **门铃/stdin 注入不用动**：注入发生在本地 `shell.writeln()`（`tab_team_bus_coordinator.dart:180`），shell 对象在本地、写进 SSH 通道即可送达远程成员。
-- **端口自协商免冲突**：`forwardRemote(port: 0)` 让远程 SSH server 自选空闲端口 → 由 `SSHRemoteForward.port` 拿到实际绑定端口 → 注入**该成员**的 MCP 配置指向 `127.0.0.1:<该端口>`（传输层选择见 §7.1——远程**不能裸 HTTP**）。
+- **端口自协商免冲突**：本地 gateway 口在 App 生命周期内固定；`forwardRemote(port: 0)` 让远程 SSH server 自选空闲端口 → 由 `SSHRemoteForward.port` 拿到**远程**绑定端口 → 注入**该成员**的 MCP 配置指向 `127.0.0.1:<该远程端口>`（隧道本地端始终对接 gateway 的 HTTP/raw 口；传输层见 §7.1——长阻塞远程**不能裸 HTTP**）。
 - **隧道泵**：App 侧消费 `SSHRemoteForward.connections` 流，每来一个 `SSHForwardChannel` 就对接本地 MCP socket（即 dartssh2 `example/forward_remote.dart` 模式）。
 - 隧道生命周期挂在该成员 session 上，断开时回收（与 §6 的 `dispose` 协同）。
 - 前置条件：远程 SSH server 允许 TCP forwarding（OpenSSH `AllowTcpForwarding` 默认开；绑 loopback 不需 `GatewayPorts`）。
@@ -305,11 +305,11 @@ TeamBus 仍是**本地进程内**（`team_bus.dart:27`），MCP 绑死 `127.0.0.
 | Dart stdio 桥 over 隧道 | 按 arch 编的完整桥（`teammate_bus_bridge`） | ✅ stdio 稳 | 每远程 arch 一份桥 |
 | **bus raw socket + 薄 relay（推荐）** | socat/nc 或按 arch 物化的极小静态 relay | ✅ 稳 | bus 加一个 socket 传输；relay 常已预装 |
 
-**推荐：bus 增开 raw socket 传输**（行分隔 JSON-RPC，即 stdio MCP 的线格式，复用现有 `wait_for_message` 逻辑、只换 framing 入口），远程只放一个 dumb relay：`socat STDIO TCP:127.0.0.1:<P>`（或 bundle 的微型静态 relay，随 §5.1/§5.2 物化按 arch 下发）。全程无 HTTP → 无 fetch 超时；stdio↔TCP 全持久流。反向隧道在三方案中**都不变**。
+**推荐：gateway 上 multiplexed raw socket 传输**（行分隔 JSON-RPC，即 stdio MCP 的线格式，复用现有 `wait_for_message` 逻辑、只换 framing 入口），远程只放一个 dumb relay：`socat STDIO TCP:127.0.0.1:<P>`（`<P>` 为远程隧道口，本地端接 gateway 的单一 `rawSocketPort`；或 bundle 的微型静态 relay，随 §5.1/§5.2 物化按 arch 下发）。全程无 HTTP → 无 fetch 超时；stdio↔TCP 全持久流。反向隧道在三方案中**都不变**。
 
 已定（2026-06-22）：
 
-- **鉴权（必做）**：隧道的远程 `127.0.0.1:<P>` 对**该远程机所有本地用户可见**，而成员身份只是 `--member` 头——共享主机上同机用户可冒充/窃听。故 bus 为**每个 session 生成随机 token**，隧道建立时下发、注入该成员 relay 的连接参数（`--token`），bus 校验后才接受该 socket。token 随 session 失效。
+- **鉴权（必做）**：隧道的远程 `127.0.0.1:<P>` 对**该远程机所有本地用户可见**，而成员身份只是 `--member` 头——共享主机上同机用户可冒充/窃听。故 gateway 在 `register(session)` 时为**每个 session 生成随机 token**（`TeammateBusSessionRegistration`），隧道建立时下发、注入该成员 relay 的连接参数（`--token` 或 HTTP `X-Bus-Token`），gateway registry 校验后才路由到对应 handler。`unregister` 即失效 token。
 - **relay 分发（分层）**：① 先探测远程主机的 `socat`/`nc`（零分发）；② 缺则用 **bundle 的微型静态 relay**，按远程 arch/OS 物化（覆盖 linux-x64/arm64、macos、**windows-x64**——Windows 远程通常没有 socat，故静态 relay 是其必需路径）；③ 都没有 → 清晰报错。
 - **逐 CLI 才配 relay（§5）**：给 CLI 加一个能力位"是否长阻塞 `wait_for_message`"。长阻塞的（claude / flashskyai / codex / opencode）需要 relay；**门铃式的 cursor**（idle-at-prompt、不长阻塞）**不需要**——它远程时直接 HTTP 短请求即可，省掉 relay。能力化判定，不散落 `if (cli==)`。
 
@@ -370,7 +370,7 @@ openSessionTab / scheduleMemberConnect
 - **连接弹性（已定：要做自动重连 + 会话恢复）**：某远程 target 主机掉线时，**只降级该主机上的会话/成员，其余团队继续**（§1.4 决策 5）。注册表持有多个 `SSHClient`，需心跳/超时、**自动重连 + 掉线后会话自动 resume**（含重建反向隧道、重注 MCP 端口、重发门铃）、per-target 连接状态 UI。今天是"单连接掉=全 App 降级"，改为按 target 隔离。**单列一期 P4（见 §12）**，非"先不做"。
 - **凭证推远程的信任边界**：§5.1 的凭证物化应是 **per-target 显式 opt-in + UI 明示**（而非默认把 key 铺到任何远程机）；密钥轮换需重推已 opt-in 的 N 台。
 - **远程 CLI 定位缺口**：今天只有 flashskyai 有远程 locator（`RemoteFlashskyaiCliLocator`）；需泛化成走 target transport 的 capability、覆盖全 5 CLI，并接入缺失→SSH 安装 opt-in（见 §5.3 Q1）。
-- **relay/token 与按-arch 分发（已定，见 §7.1）**：bus 新增 raw socket（行分隔 JSON-RPC）传输 + per-session token 鉴权；远程 relay 分层分发（探测 `socat`/`nc` → bundle 静态 relay 按 arch/OS 物化，含 windows-x64 → 报错）；relay 仅为长阻塞 CLI 配（cursor 门铃式免）。
+- **relay/token 与按-arch 分发（已定，见 §7.1）**：`TeammateBusMcpGateway` 提供 app 级 raw socket（行分隔 JSON-RPC）+ HTTP 路由 + per-session token 鉴权；远程 relay 分层分发（探测 `socat`/`nc` → bundle 静态 relay 按 arch/OS 物化，含 windows-x64 → 报错）；relay 仅为长阻塞 CLI 配（cursor 门铃式免）。
 - **非 POSIX（Windows）远程（已定要支持，见 §3）**：ssh target connect 时探测 `remoteOs`；Windows 远程在 symlink→copy（§5.2）、relay 走 windows 静态二进制（§7.1）、登录 shell/路径语义（§5.3）三处分支。其余抽象不变。远程仍**仅限 local/wsl/ssh 三 kind**，不引入新后端。
 - **跨机产物传输的边界（§4.2）**：写入对方机限定 session inbox；大文件流式 + 大小上限；双远程经本地中转一跳（暂不做 host-to-host 直传）；publish/fetch 受 per-target 信任约束。
 - **跨机协调边界**：成员远程的反向隧道方案假设"总线在本地、成员够得着即可"。若未来要"无本地 App 常驻、纯远程团队自治"，则需把总线本身做成可独立部署的 broker——本设计**显式不纳入**，避免过度工程。
@@ -389,7 +389,7 @@ openSessionTab / scheduleMemberConnect
 | **P0** 重构（行为不变） | 四旋钮 → `RuntimeTarget` + targets 注册表 | §3、§9 前半；单 target = 今天行为 | 现有 local/wsl/ssh/Android 全路径回归通过；`isSshMode` 单一来源 | 消除耦合 |
 | **P1** home target 收尾 | home target 归一 | 清理 `install/reinstall`；UI 从"选 profile"升级为"选 target" | Android（home=ssh）在新模型下等价归一；桌面 home 由平台定为 `local` | 整体远程（Android） |
 | **P2** 去单例 | 控制面/工作面拆分 + 注册表 | §5、§6、§10；`Workspace.folders[].targetId` | 两个工作区同时分别落 local 与 ssh，互不影响；远程机离线时项目列表仍可读 | **项目远程** |
-| **P3** 成员远程（**含修复现网已坏的 Android mixed**） | 启动时成员→目录分配 + 反向隧道 + 远程初始化 | §4.1/§4.2、§5.3、§7/§7.1；`AppSession.folderAssignments`；反向隧道(启用桌面成员远程 + 修复 Android mixed)；bus raw-socket 传输 + per-session token + 远程 relay 物化(仅长阻塞 CLI)；跨机产物传输 MCP；Windows 远程分支(§3) | 混合工作区单成员在远程机自己目录跑，门铃/读信/协调正常；Android mixed 消息真正送达；A↔B 跨机 publish/fetch 产物可用；POSIX 与 Windows 远程各通一条路 | **成员远程** + Android mixed 修复 |
+| **P3** 成员远程（**含修复现网已坏的 Android mixed**） | 启动时成员→目录分配 + 反向隧道 + 远程初始化 | §4.1/§4.2、§5.3、§7/§7.1；`AppSession.folderAssignments`；反向隧道(启用桌面成员远程 + 修复 Android mixed)；`TeammateBusMcpGateway` raw-socket + per-session token + 远程 relay 物化(仅长阻塞 CLI)；跨机产物传输 MCP；Windows 远程分支(§3) | 混合工作区单成员在远程机自己目录跑，门铃/读信/协调正常；Android mixed 消息真正送达；A↔B 跨机 publish/fetch 产物可用；POSIX 与 Windows 远程各通一条路 | **成员远程** + Android mixed 修复 |
 | **P4** 连接弹性 | per-target 掉线隔离 + 自动重连/恢复 | §11 首条；心跳/超时；重连后重建隧道+重注 MCP 端口+重发门铃；掉线会话自动 resume；per-target 状态 UI | 拔掉一台远程机：仅其成员降级、自动重连后会话恢复，其余团队不受影响 | 远程**可用性**（生产级） |
 
 预备/P0/P1 风险低、顺手修掉现有耦合；P2 是分水岭（动存储单例）；P3 最重，建立在 P2 之上；P4 把远程从"能跑"抬到"生产级可用"。
@@ -410,5 +410,5 @@ openSessionTab / scheduleMemberConnect
 | 工作区/会话模型 | `models/workspace.dart`、`models/app_session.dart:66` |
 | 成员模型 / 位置 | `models/team_config.dart`（`TeamMemberConfig`，machine-agnostic）；成员位置存 `models/app_session.dart`（`folderAssignments`，见 §4.1） |
 | 启动时序 | `services/session/session_lifecycle_service.dart`、`cubits/chat/session_launch_service.dart` |
-| TeamBus / MCP | `services/team_bus/team_bus.dart:27`、`team_bus/mcp/teammate_bus_mcp_server.dart:31`、`cubits/chat/tab_team_bus_coordinator.dart:180` |
+| TeamBus / MCP gateway | `services/team_bus/team_bus.dart:27`、`team_bus/mcp/teammate_bus_mcp_gateway.dart`、`cubits/chat/tab_team_bus_coordinator.dart`（`installBusForTab` / `disposeSessionBus`） |
 | Bootstrap | `app/app_shell.dart`（`install:225`、`reinstallStorageContext`、`reloadRemoteBackedAppData`） |
