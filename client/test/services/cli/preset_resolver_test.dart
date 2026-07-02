@@ -192,4 +192,35 @@ void main() {
     );
     expect(claudeItems, const [claudePreset]);
   });
+
+  test('teamPresetPickerItems returns all presets for mixed teams', () {
+    const team = TeamProfile(
+      id: 'team',
+      name: 'Mixed',
+      teamMode: TeamMode.mixed,
+      cli: CliTool.claude,
+    );
+
+    final items = teamPresetPickerItems(
+      team: team,
+      allPresets: const [cursorPreset, claudePreset],
+    );
+
+    expect(items, const [claudePreset, cursorPreset]);
+  });
+
+  test('teamPresetPickerItems filters by team cli for native teams', () {
+    const team = TeamProfile(
+      id: 'team',
+      name: 'Native',
+      cli: CliTool.claude,
+    );
+
+    final items = teamPresetPickerItems(
+      team: team,
+      allPresets: const [cursorPreset, claudePreset],
+    );
+
+    expect(items, const [claudePreset]);
+  });
 }

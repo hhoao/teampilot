@@ -403,9 +403,10 @@ class _MemberLaunchConfigureDialogState
     final catalogCli = isCustom
         ? _customCatalogCli(team)
         : memberCustomCatalogCli(team, member);
-    final eligiblePresetList = team.teamMode == TeamMode.mixed
-        ? globalPresetPickerItems(allPresets)
-        : teamPresetPickerItems(team: team, allPresets: allPresets);
+    final eligiblePresetList = teamPresetPickerItems(
+      team: team,
+      allPresets: allPresets,
+    );
 
     final presetDropdownItems = presetLaunchDropdownItems(
       mode: PresetLaunchPickerMode.presetOnly,

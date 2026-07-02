@@ -58,16 +58,16 @@ class _AutomationsPanelState extends State<AutomationsPanel> {
   }
 
   List<Automation> _filtered(List<Automation> automations) {
-    var items = automations;
+    Iterable<Automation> items = automations;
     if (widget.filterSessionId != null) {
-      items = items
-          .where((a) => a.sessionId == widget.filterSessionId)
-          .toList(growable: false);
+      items = items.where((a) => a.sessionId == widget.filterSessionId);
     }
     if (_filter == _AutomationFilter.enabledOnly) {
-      items = items.where((a) => a.enabled).toList(growable: false);
+      items = items.where((a) => a.enabled);
     }
-    return items..sort((a, b) => a.name.compareTo(b.name));
+    final sorted = items.toList();
+    sorted.sort((a, b) => a.name.compareTo(b.name));
+    return sorted;
   }
 
   Future<void> _reload() async {

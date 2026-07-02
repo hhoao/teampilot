@@ -135,7 +135,6 @@ class _TeamDefaultPresetConfigureDialogState
     final eligiblePresetList = teamPresetPickerItems(
       team: team,
       allPresets: allPresets,
-      catalogCli: _catalogCli,
     );
     final isCustom = _configKind == TeamLaunchConfigKind.custom;
     final presetDropdownItems = presetLaunchDropdownItems(

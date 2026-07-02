@@ -199,15 +199,18 @@ List<CliPreset> presetsForCli(
       .toList(growable: false);
 }
 
-/// Presets for a team-level picker; mixed teams filter by [catalogCli].
+/// Presets for a team-level picker.
+///
+/// [TeamMode.mixed]: all global presets (each carries its own CLI).
+/// [TeamMode.native]: presets for [team.cli] only.
 List<CliPreset> teamPresetPickerItems({
   required TeamProfile team,
   required List<CliPreset> allPresets,
-  CliTool? catalogCli,
 }) {
   if (team.teamMode == TeamMode.mixed) {
-    final cli = catalogCli ?? team.cli;
-    return presetsForCli(allPresets, cli);
+    final items = List<CliPreset>.from(allPresets);
+    items.sort((a, b) => a.name.toLowerCase().compareTo(b.name.toLowerCase()));
+    return items;
   }
   return presetsForCli(allPresets, team.cli);
 }
