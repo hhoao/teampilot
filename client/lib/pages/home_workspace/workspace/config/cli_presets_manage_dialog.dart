@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
-
 import '../../../../cubits/cli_presets_cubit.dart';
 import '../../../../l10n/l10n_extensions.dart';
 import '../../../../models/cli_preset.dart';
@@ -10,6 +9,7 @@ import '../../../../services/cli/registry/cli_tool_registry_scope.dart';
 import '../../../../theme/app_text_styles.dart';
 import '../../../../widgets/app_dialog.dart';
 import 'cli_preset_edit_dialog.dart';
+import 'cli_preset_provider_navigation.dart';
 
 class CliPresetsManageDialog extends StatelessWidget {
   const CliPresetsManageDialog({this.lockCli, super.key});
@@ -54,6 +54,10 @@ class CliPresetsManageDialog extends StatelessWidget {
           AppDialogActions(
             children: [
               TextButton(
+                onPressed: () => _openProviders(context),
+                child: Text(l10n.workspaceCliProviderConfig),
+              ),
+              TextButton(
                 onPressed: () => Navigator.of(context).pop(),
                 child: Text(l10n.cancel),
               ),
@@ -61,6 +65,13 @@ class CliPresetsManageDialog extends StatelessWidget {
           ),
         ],
       ),
+    );
+  }
+
+  void _openProviders(BuildContext context) {
+    openCliPresetProviderConfig(
+      context,
+      cli: lockCli ?? CliTool.claude,
     );
   }
 

@@ -2,12 +2,14 @@ import 'dart:io';
 
 import '../../models/credential_action_result.dart';
 
-CredentialActionResult loginCommandResult({
+Future<CredentialActionResult> loginCommandResult({
   required ProcessResult result,
   required bool ready,
   required String executable,
-}) {
+  Future<void> Function()? clearIncompleteCredentials,
+}) async {
   if (result.exitCode != 0) {
+    await clearIncompleteCredentials?.call();
     final stderr = result.stderr.toString().trim();
     return CredentialActionResult.failure(
       CredentialActionFailure(
@@ -18,6 +20,7 @@ CredentialActionResult loginCommandResult({
     );
   }
   if (!ready) {
+    await clearIncompleteCredentials?.call();
     return CredentialActionResult.failure(
       const CredentialActionFailure(
         code: CredentialActionFailureCode.verifyFailed,

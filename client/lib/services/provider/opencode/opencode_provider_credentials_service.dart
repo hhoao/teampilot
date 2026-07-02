@@ -261,6 +261,9 @@ class OpencodeProviderCredentialsService {
     Map<String, String> platformEnv = const {},
   }) async {
     await _fs.ensureDir(_layout.providerDataHome(providerDir(providerId)));
+    if (!(await probe(providerId)).isReady) {
+      await _removeCredentialFileIfPresent(providerId);
+    }
     final executable = _resolvedOpencodeExecutable();
     try {
       final result = await _runOpencode(
@@ -272,25 +275,41 @@ class OpencodeProviderCredentialsService {
         result: result,
         ready: (await probe(providerId)).isReady,
         executable: executable,
+        clearIncompleteCredentials: () =>
+            _removeCredentialFileIfPresent(providerId),
       );
     } on ProcessException {
+      await _removeCredentialFileIfPresent(providerId);
       return loginProcessError(executable);
     }
   }
 
   Future<CredentialActionResult> revokeCredentials(String providerId) async {
-    if (!(await probe(providerId)).isReady) {
-      return CredentialActionResult.failure(
-        const CredentialActionFailure(
-          code: CredentialActionFailureCode.revokeFailed,
-        ),
-      );
+    final ready = (await probe(providerId)).isReady;
+    if (!ready) {
+      final path = credentialPath(providerId);
+      if (!(await _fs.stat(path)).isFile) {
+        return CredentialActionResult.failure(
+          const CredentialActionFailure(
+            code: CredentialActionFailureCode.revokeFailed,
+          ),
+        );
+      }
+      await _removeCredentialFileIfPresent(providerId);
+      return revokeVerifyResult(!(await probe(providerId)).isReady);
     }
     final path = credentialPath(providerId);
     if ((await _fs.stat(path)).exists) {
       await _fs.removeRecursive(path);
     }
     return revokeVerifyResult(!(await probe(providerId)).isReady);
+  }
+
+  Future<void> _removeCredentialFileIfPresent(String providerId) async {
+    final path = credentialPath(providerId);
+    if ((await _fs.stat(path)).exists) {
+      await _fs.removeRecursive(path);
+    }
   }
 
   Future<String?> _readText(String path) async {

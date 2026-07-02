@@ -168,4 +168,78 @@ void main() {
     expect(loginResult.ok, isTrue);
     expect((await loginService.probe('work')).isReady, isTrue);
   });
+
+  test('runAuthLogin clears partial artifacts when verification fails', () async {
+    final loginService = CursorProviderCredentialsService(
+      fs: fs,
+      basePath: base,
+      processRunner: (executable, arguments, {environment}) async {
+        final home = environment?['HOME'];
+        expect(home, isNotNull);
+        await fs.writeString(
+          layout.cliConfig(home!),
+          loggedInCliConfig,
+        );
+        return ProcessResult(0, 0, '', '');
+      },
+    );
+
+    final loginResult = await loginService.runAuthLogin('work');
+    expect(loginResult.ok, isFalse);
+    final providerHome = fs.pathContext.join(
+      base,
+      'providers',
+      'cursor',
+      'work',
+      'home',
+    );
+    expect((await fs.stat(layout.cliConfig(providerHome))).isFile, isFalse);
+    expect((await fs.stat(layout.authJson(providerHome))).isFile, isFalse);
+  });
+
+  test('importFromGlobal replace overwrites existing artifacts', () async {
+    const home = '/home/user';
+    final providerHome = fs.pathContext.join(
+      base,
+      'providers',
+      'cursor',
+      'work',
+      'home',
+    );
+    await fs.writeString(
+      layout.cliConfig(providerHome),
+      '{"authInfo":{"userId":"stale"}}',
+    );
+    await fs.writeString(layout.authJson(providerHome), '{"accessToken":"old"}');
+    await fs.writeString(layout.cliConfig(home), loggedInCliConfig);
+    await fs.writeString(layout.authJson(home), loggedInAuthJson);
+
+    final result = await service.importFromGlobal(
+      'work',
+      homeDirectory: home,
+      replace: true,
+    );
+
+    expect(result.ok, isTrue);
+    expect((await service.probe('work')).isReady, isTrue);
+    final authBytes = await fs.readBytes(layout.authJson(providerHome));
+    expect(utf8.decode(authBytes!), contains('at1'));
+  });
+
+  test('revokeCredentials clears stale artifacts when not ready', () async {
+    final providerHome = fs.pathContext.join(
+      base,
+      'providers',
+      'cursor',
+      'work',
+      'home',
+    );
+    await fs.writeString(layout.cliConfig(providerHome), loggedInCliConfig);
+
+    final result = await service.revokeCredentials('work');
+
+    expect(result.ok, isTrue);
+    expect((await fs.stat(layout.cliConfig(providerHome))).isFile, isFalse);
+    expect((await service.probe('work')).isReady, isFalse);
+  });
 }

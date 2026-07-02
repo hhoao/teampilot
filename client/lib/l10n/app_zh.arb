@@ -330,6 +330,7 @@
   "workspaceCliPresetLabel": "当前预设",
   "workspaceCliNoPresetHint": "未选择预设",
   "workspaceCliManagePresets": "管理",
+  "workspaceCliProviderConfig": "供应商配置",
   "teamDefaultPresetLabel": "默认模型预设",
   "teamDefaultPresetSubtitle": "可选的默认预设，未单独设置的成员将继承此配置。",
   "teamDefaultPresetNone": "无",

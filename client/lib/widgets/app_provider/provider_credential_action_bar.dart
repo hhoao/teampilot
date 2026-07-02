@@ -55,7 +55,7 @@ class _ProviderCredentialActionBarState extends State<ProviderCredentialActionBa
     final specs = capability.actionsFor(widget.provider).where((spec) {
       if (ready && !spec.showWhenReady) return false;
       if (!ready && spec.kind == ProviderCredentialActionKind.revoke) {
-        return false;
+        return widget.provider.credentialUpdatedAt > 0;
       }
       return true;
     });
@@ -136,13 +136,12 @@ class _ProviderCredentialActionBarState extends State<ProviderCredentialActionBa
         provider = saved;
       }
 
-      final ready = provider.credentialStatus == 'ready';
       if (kind == ProviderCredentialActionKind.importFile) {
-        await _importFile(provider, ready: ready);
+        await _importFile(provider);
         return;
       }
       if (kind == ProviderCredentialActionKind.importDirectory) {
-        await _importDirectory(provider, ready: ready);
+        await _importDirectory(provider);
         return;
       }
       if (kind == ProviderCredentialActionKind.revoke) {
@@ -154,7 +153,7 @@ class _ProviderCredentialActionBarState extends State<ProviderCredentialActionBa
       final actionResult = await cubit.runProviderCredentialAction(
         provider: provider,
         kind: kind,
-        replace: ready,
+        replace: _replaceExistingCredentials(kind),
         homeDirectory: AppStorage.home,
       );
       if (!mounted) return;
@@ -164,7 +163,7 @@ class _ProviderCredentialActionBarState extends State<ProviderCredentialActionBa
     }
   }
 
-  Future<void> _importFile(AppProviderConfig provider, {required bool ready}) async {
+  Future<void> _importFile(AppProviderConfig provider) async {
     final l10n = context.l10n;
     final result = await FilePicker.platform.pickFiles(
       type: FileType.custom,
@@ -182,16 +181,13 @@ class _ProviderCredentialActionBarState extends State<ProviderCredentialActionBa
       provider: provider,
       kind: ProviderCredentialActionKind.importFile,
       pickedPath: path,
-      replace: ready,
+      replace: true,
     );
     if (!mounted) return;
     _showResult(actionResult);
   }
 
-  Future<void> _importDirectory(
-    AppProviderConfig provider, {
-    required bool ready,
-  }) async {
+  Future<void> _importDirectory(AppProviderConfig provider) async {
     final l10n = context.l10n;
     final directory = await FilePicker.platform.getDirectoryPath(
       dialogTitle: _actionLabel(
@@ -209,7 +205,7 @@ class _ProviderCredentialActionBarState extends State<ProviderCredentialActionBa
         provider: provider,
         kind: ProviderCredentialActionKind.importDirectory,
         pickedPath: path,
-        replace: ready,
+        replace: true,
       );
       if (!mounted) return;
       _showResult(actionResult);
@@ -234,7 +230,7 @@ class _ProviderCredentialActionBarState extends State<ProviderCredentialActionBa
       provider: provider,
       kind: ProviderCredentialActionKind.importDirectory,
       pickedPath: resolved,
-      replace: ready,
+      replace: true,
     );
     if (!mounted) return;
     _showResult(actionResult);
@@ -434,5 +430,14 @@ String _revokeConfirmMessage(AppLocalizations l10n, AppProviderConfig provider) 
     CliTool.codex => l10n.codexCredentialsRevokeConfirm(provider.name),
     CliTool.opencode => l10n.opencodeCredentialsRevokeConfirm(provider.name),
     _ => l10n.claudeOfficialCredentialsRevokeConfirm(provider.name),
+  };
+}
+
+bool _replaceExistingCredentials(ProviderCredentialActionKind kind) {
+  return switch (kind) {
+    ProviderCredentialActionKind.importGlobal ||
+    ProviderCredentialActionKind.importFile ||
+    ProviderCredentialActionKind.importDirectory => true,
+    _ => false,
   };
 }

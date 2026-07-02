@@ -197,6 +197,9 @@ class CodexProviderCredentialsService {
     Map<String, String> platformEnv = const {},
   }) async {
     await _fs.ensureDir(providerDir(providerId));
+    if (!(await probe(providerId)).isReady) {
+      await _removeCredentialFileIfPresent(providerId);
+    }
     final executable = _resolvedCodexExecutable();
     try {
       final result = await _runCodex(
@@ -208,8 +211,11 @@ class CodexProviderCredentialsService {
         result: result,
         ready: (await probe(providerId)).isReady,
         executable: executable,
+        clearIncompleteCredentials: () =>
+            _removeCredentialFileIfPresent(providerId),
       );
     } on ProcessException {
+      await _removeCredentialFileIfPresent(providerId);
       return loginProcessError(executable);
     }
   }
@@ -218,12 +224,18 @@ class CodexProviderCredentialsService {
     String providerId, {
     Map<String, String> platformEnv = const {},
   }) async {
-    if (!(await probe(providerId)).isReady) {
-      return CredentialActionResult.failure(
-        const CredentialActionFailure(
-          code: CredentialActionFailureCode.revokeFailed,
-        ),
-      );
+    final ready = (await probe(providerId)).isReady;
+    if (!ready) {
+      final path = credentialPath(providerId);
+      if (!(await _fs.stat(path)).isFile) {
+        return CredentialActionResult.failure(
+          const CredentialActionFailure(
+            code: CredentialActionFailureCode.revokeFailed,
+          ),
+        );
+      }
+      await _removeCredentialFileIfPresent(providerId);
+      return revokeVerifyResult(!(await probe(providerId)).isReady);
     }
     final executable = _resolvedCodexExecutable();
     try {
@@ -248,6 +260,13 @@ class CodexProviderCredentialsService {
       await _fs.removeRecursive(path);
     }
     return revokeVerifyResult(!(await probe(providerId)).isReady);
+  }
+
+  Future<void> _removeCredentialFileIfPresent(String providerId) async {
+    final path = credentialPath(providerId);
+    if ((await _fs.stat(path)).exists) {
+      await _fs.removeRecursive(path);
+    }
   }
 
   Future<String?> _readText(String path) async {

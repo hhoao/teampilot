@@ -355,6 +355,7 @@
   "workspaceCliPresetLabel": "Active Preset",
   "workspaceCliNoPresetHint": "No preset selected",
   "workspaceCliManagePresets": "Manage",
+  "workspaceCliProviderConfig": "Provider configuration",
   "teamDefaultPresetLabel": "Default Model Preset",
   "teamDefaultPresetSubtitle": "Optional default preset applied to members that don't override it.",
   "teamDefaultPresetNone": "None",

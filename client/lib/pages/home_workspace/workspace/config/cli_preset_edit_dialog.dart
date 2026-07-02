@@ -1,11 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
-
 import '../../../../cubits/app_provider_cubit.dart';
 import '../../../../cubits/cli_presets_cubit.dart';
 import '../../../../l10n/l10n_extensions.dart';
 import '../../../../models/app_provider_config.dart';
 import '../../../../models/cli_preset.dart';
+import 'cli_preset_provider_navigation.dart';
 import '../../../../services/cli/registry/cli_display_name.dart';
 import '../../../../services/cli/registry/cli_tool_registry_scope.dart';
 import '../../../../widgets/app_dialog.dart';
@@ -91,6 +91,14 @@ class _CliPresetEditDialogState extends State<CliPresetEditDialog> {
     }
     if (!mounted) return;
     Navigator.of(context).pop();
+  }
+
+  void _openProviderConfig(BuildContext context) {
+    openCliPresetProviderConfig(
+      context,
+      cli: _cli,
+      dialogPops: 2,
+    );
   }
 
   @override
@@ -238,6 +246,10 @@ class _CliPresetEditDialogState extends State<CliPresetEditDialog> {
             ),
           AppDialogActions(
             children: [
+              TextButton(
+                onPressed: () => _openProviderConfig(context),
+                child: Text(l10n.workspaceCliProviderConfig),
+              ),
               TextButton(
                 onPressed: () => Navigator.of(context).pop(),
                 child: Text(l10n.cancel),

@@ -852,6 +852,9 @@ class AppLocalizationsEn extends AppLocalizations {
   String get workspaceCliManagePresets => 'Manage';
 
   @override
+  String get workspaceCliProviderConfig => 'Provider configuration';
+
+  @override
   String get teamDefaultPresetLabel => 'Default Model Preset';
 
   @override

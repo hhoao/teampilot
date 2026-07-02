@@ -344,6 +344,10 @@ class CursorProviderCredentialsService {
     Map<String, String> platformEnv = const {},
   }) async {
     await _fs.ensureDir(providerHome(providerId));
+    if (!(await probe(providerId)).isReady &&
+        await _hasAuthArtifacts(providerId)) {
+      await _removeAuthArtifacts(providerId);
+    }
     final executable = _resolvedCursorExecutable();
     try {
       final result = await _runCursor(
@@ -355,8 +359,10 @@ class CursorProviderCredentialsService {
         result: result,
         ready: (await probe(providerId)).isReady,
         executable: executable,
+        clearIncompleteCredentials: () => _removeAuthArtifacts(providerId),
       );
     } on ProcessException {
+      await _removeAuthArtifacts(providerId);
       return loginProcessError(executable);
     }
   }
@@ -365,12 +371,17 @@ class CursorProviderCredentialsService {
     String providerId, {
     Map<String, String> platformEnv = const {},
   }) async {
-    if (!(await probe(providerId)).isReady) {
-      return CredentialActionResult.failure(
-        const CredentialActionFailure(
-          code: CredentialActionFailureCode.revokeFailed,
-        ),
-      );
+    final ready = (await probe(providerId)).isReady;
+    if (!ready) {
+      if (!await _hasAuthArtifacts(providerId)) {
+        return CredentialActionResult.failure(
+          const CredentialActionFailure(
+            code: CredentialActionFailureCode.revokeFailed,
+          ),
+        );
+      }
+      await _removeAuthArtifacts(providerId);
+      return revokeVerifyResult(!(await probe(providerId)).isReady);
     }
     try {
       await _runCursor(
@@ -381,6 +392,24 @@ class CursorProviderCredentialsService {
     } on ProcessException {
       // Optional logout; continue deleting local auth artifacts.
     }
+    await _removeAuthArtifacts(providerId);
+    return revokeVerifyResult(!(await probe(providerId)).isReady);
+  }
+
+  Future<bool> _hasAuthArtifacts(String providerId) async {
+    final home = providerHome(providerId);
+    final cursorDir = _layout.cursorDir(home);
+    for (final relativePath in [
+      ...CursorAuthArtifacts.cursorDirRequired,
+      ...CursorAuthArtifacts.cursorDirOptional,
+    ]) {
+      final path = _fs.pathContext.join(cursorDir, relativePath);
+      if ((await _fs.stat(path)).isFile) return true;
+    }
+    return (await _fs.stat(_layout.authJson(home))).isFile;
+  }
+
+  Future<void> _removeAuthArtifacts(String providerId) async {
     final home = providerHome(providerId);
     final cursorDir = _layout.cursorDir(home);
     for (final relativePath in [
@@ -396,6 +425,5 @@ class CursorProviderCredentialsService {
     if ((await _fs.stat(authPath)).exists) {
       await _fs.removeRecursive(authPath);
     }
-    return revokeVerifyResult(!(await probe(providerId)).isReady);
   }
 }

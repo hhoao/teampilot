@@ -1628,6 +1628,12 @@ abstract class AppLocalizations {
   /// **'Manage'**
   String get workspaceCliManagePresets;
 
+  /// No description provided for @workspaceCliProviderConfig.
+  ///
+  /// In en, this message translates to:
+  /// **'Provider configuration'**
+  String get workspaceCliProviderConfig;
+
   /// No description provided for @teamDefaultPresetLabel.
   ///
   /// In en, this message translates to:

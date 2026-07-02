@@ -350,7 +350,10 @@ class AppProviderCubit extends Cubit<AppProviderState> {
         homeDirectory: homeDirectory ?? AppStorage.home,
       ),
     );
-    if (!result.ok) return result;
+    if (!result.ok) {
+      await _refreshCredentialStatus(provider.cli, provider.id);
+      return result;
+    }
     final refreshed = await _refreshCredentialStatus(provider.cli, provider.id);
     if (!refreshed) {
       return CredentialActionResult.failure(

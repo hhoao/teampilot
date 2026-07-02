@@ -816,6 +816,9 @@ class AppLocalizationsZh extends AppLocalizations {
   String get workspaceCliManagePresets => '管理';
 
   @override
+  String get workspaceCliProviderConfig => '供应商配置';
+
+  @override
   String get teamDefaultPresetLabel => '默认模型预设';
 
   @override
