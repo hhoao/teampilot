@@ -17,7 +17,7 @@ void main() {
   );
 
   test(
-    'worker kickoff returns to bus-idle session on real PTYs',
+    'worker kickoff parks on wait_for_message on real PTYs',
     MixedTeamIdleBusyL2Scenario.runWorkerKickoffThenSessionIdle,
   );
 

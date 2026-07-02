@@ -368,11 +368,18 @@ void main() {
       final lead = harness.clientFor('team-lead');
 
       final wait = backend.waitForMessage();
-      await Future<void>.delayed(const Duration(milliseconds: 80));
-
-      final inbox = TeammateBusHttpClient.toolResultText(
-        await lead.readMessages(unreadOnly: true),
-      );
+      final deadline = DateTime.now().add(const Duration(seconds: 10));
+      var inbox = '';
+      while (DateTime.now().isBefore(deadline)) {
+        inbox = TeammateBusHttpClient.toolResultText(
+          await lead.readMessages(unreadOnly: true),
+        );
+        if (inbox.contains('IDLE NOTIFICATION') &&
+            inbox.contains('backend-dev')) {
+          break;
+        }
+        await Future<void>.delayed(const Duration(milliseconds: 50));
+      }
       expect(inbox, contains('IDLE NOTIFICATION'));
       expect(inbox, contains('backend-dev'));
 

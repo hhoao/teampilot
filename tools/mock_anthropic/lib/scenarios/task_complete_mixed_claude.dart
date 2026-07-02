@@ -28,7 +28,11 @@ ScenarioRegistry taskCompleteMixedClaudeScenarios() => ScenarioRegistry({
         name: '${_bus}list_tasks',
         input: {'status': 'done'},
       ),
-      const TextTurn('completed'),
+      ToolUseTurn(
+        id: 'tu_wait',
+        name: '${_bus}wait_for_message',
+        input: {},
+      ),
     ],
   ),
   workerScriptApiKey: MockScenario(

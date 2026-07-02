@@ -31,13 +31,22 @@ Future<void> waitUntilWorkerParked({
   required TeammateBusMcpServer? mcpServer,
   required String memberId,
   Duration timeout = const Duration(seconds: 90),
+  Duration stableFor = const Duration(milliseconds: 250),
 }) async {
   final deadline = DateTime.now().add(timeout);
+  DateTime? parkedSince;
   while (DateTime.now().isBefore(deadline)) {
     final snap = memberSnapshot(bus, memberId);
     final streamOpen = (mcpServer?.activeWaitStreamCount ?? 0) > 0;
     final busWait = snap?.waitingForMessage ?? false;
-    if (streamOpen || busWait) return;
+    final parked =
+        streamOpen || busWait || snap?.activity.name == 'turnDoneBusWait';
+    if (parked) {
+      parkedSince ??= DateTime.now();
+      if (DateTime.now().difference(parkedSince) >= stableFor) return;
+    } else {
+      parkedSince = null;
+    }
     await Future<void>.delayed(const Duration(milliseconds: 100));
   }
   throw StateError(

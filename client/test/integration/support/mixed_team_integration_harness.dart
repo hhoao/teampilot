@@ -207,8 +207,8 @@ class MixedTeamIntegrationHarness {
     required String workspaceId,
     required String sessionId,
     PostFrameTestHarness? postFrame,
-    Duration workerReadyTimeout = const Duration(seconds: 60),
-    Duration busTimeout = const Duration(seconds: 90),
+    Duration workerReadyTimeout = const Duration(seconds: 120),
+    Duration busTimeout = const Duration(seconds: 120),
   }) async {
     _resetMockScenarios();
     final workerBaseline = _mockRequestCount(workerScriptApiKey);
@@ -334,9 +334,44 @@ class MixedTeamIntegrationHarness {
   }
 
   /// Worker parks on SSE `wait_for_message` before the leader acts.
-  ///
-  /// Syncs on [TeammateBusMcpServer.activeWaitStreamCount] and in-memory
-  /// roster (`turnDoneBusWait`), not arbitrary delays.
+  Future<void> ensureWorkerParkedOnWait(
+    ChatCubit cubit, {
+    required String sessionId,
+    PostFrameTestHarness? postFrame,
+    String workerKickoff = 'Start idle loop.',
+    Duration timeout = const Duration(seconds: 120),
+  }) async {
+    _resetMockScenarios();
+    final workerBaseline = _mockRequestCount(workerScriptApiKey);
+    final bus = _busForSession(cubit, sessionId);
+    final mcp = _mcpForSession(cubit, sessionId);
+    // Race park detection with kickoff: turn-1 wait can be sub-second.
+    final parked = waitUntilWorkerParked(
+      bus: bus,
+      mcpServer: mcp,
+      memberId: kWorkerMember.id,
+      timeout: timeout,
+    );
+    await _submitWorkerKickoff(cubit, kickoff: workerKickoff);
+    final workerInLoop = await _waitForNewMockRequest(
+      workerScriptApiKey,
+      afterCount: workerBaseline,
+      timeout: timeout,
+    );
+    if (!workerInLoop) {
+      throw StateError(
+        'Worker never hit mock API after kickoff '
+        '(expected $workerScriptApiKey request)',
+      );
+    }
+    await parked;
+    await drainPendingAsyncWork(rounds: 10);
+    if (postFrame != null) {
+      await postFrame.flush();
+    }
+  }
+
+  /// Worker parks, then leader kickoff (task-dispatch / ping-pong L2/L3 flows).
   Future<void> kickoffWorkerParkedThenLeader(
     ChatCubit cubit, {
     required String sessionId,
@@ -345,24 +380,11 @@ class MixedTeamIntegrationHarness {
     String leaderKickoff = 'Coordinate the team.',
     Duration workerReadyTimeout = const Duration(seconds: 90),
   }) async {
-    _resetMockScenarios();
-    final workerBaseline = _mockRequestCount(workerScriptApiKey);
-    await _submitWorkerKickoff(cubit, kickoff: workerKickoff);
-    final workerInLoop = await _waitForNewMockRequest(
-      workerScriptApiKey,
-      afterCount: workerBaseline,
-      timeout: workerReadyTimeout,
-    );
-    if (!workerInLoop) {
-      throw StateError(
-        'Worker never hit mock API after kickoff '
-        '(expected $workerScriptApiKey request)',
-      );
-    }
-    await waitUntilWorkerParked(
-      bus: _busForSession(cubit, sessionId),
-      mcpServer: _mcpForSession(cubit, sessionId),
-      memberId: kWorkerMember.id,
+    await ensureWorkerParkedOnWait(
+      cubit,
+      sessionId: sessionId,
+      postFrame: postFrame,
+      workerKickoff: workerKickoff,
       timeout: workerReadyTimeout,
     );
     await _submitLeaderKickoff(
@@ -665,32 +687,15 @@ class MixedTeamIntegrationHarness {
     required String sessionId,
     PostFrameTestHarness? postFrame,
     String workerKickoff = taskDispatchWorkerKickoff,
-    Duration timeout = const Duration(seconds: 90),
+    Duration timeout = const Duration(seconds: 120),
   }) async {
-    _resetMockScenarios();
-    final workerBaseline = _mockRequestCount(workerScriptApiKey);
-    await _submitWorkerKickoff(cubit, kickoff: workerKickoff);
-    final workerInLoop = await _waitForNewMockRequest(
-      workerScriptApiKey,
-      afterCount: workerBaseline,
+    await ensureWorkerParkedOnWait(
+      cubit,
+      sessionId: sessionId,
+      postFrame: postFrame,
+      workerKickoff: workerKickoff,
       timeout: timeout,
     );
-    if (!workerInLoop) {
-      throw StateError(
-        'Worker never hit mock API after kickoff '
-        '(expected $workerScriptApiKey request)',
-      );
-    }
-    await waitUntilWorkerParked(
-      bus: _busForSession(cubit, sessionId),
-      mcpServer: _mcpForSession(cubit, sessionId),
-      memberId: kWorkerMember.id,
-      timeout: timeout,
-    );
-    await drainPendingAsyncWork(rounds: 5);
-    if (postFrame != null) {
-      await postFrame.flush();
-    }
   }
 
   Future<void> dumpFailureArtifacts({

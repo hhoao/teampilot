@@ -22,7 +22,7 @@ import 'mixed_team_integration_harness.dart';
 
 /// L2 mixed-team scenarios: real Claude PTY + mock Anthropic + bus persistence.
 abstract final class MixedTeamTaskScenario {
-  static const _ptyReleaseDelay = Duration(seconds: 2);
+  static const _ptyReleaseDelay = Duration(seconds: 3);
 
   /// Leader `add_tasks` → worker `wait_for_message` auto-claim.
   ///

@@ -2,6 +2,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:teampilot/cubits/chat_cubit.dart';
 import 'package:teampilot/cubits/member_presence_cubit.dart';
 import 'package:teampilot/models/member_presence.dart';
+import 'package:teampilot/services/team_bus/mcp/teammate_bus_mcp_server.dart';
 import 'package:teampilot/services/team_bus/team_bus.dart';
 
 import 'bus_roster_assertions.dart';
@@ -27,6 +28,23 @@ Future<void> tickIdleAndPresence({
   await pumpSchedulerFrames();
 }
 
+Future<void> waitUntilNoMemberInTurn({
+  required TeamBus? bus,
+  ChatCubit? cubit,
+  Duration timeout = const Duration(seconds: 120),
+}) async {
+  final deadline = DateTime.now().add(timeout);
+  while (DateTime.now().isBefore(deadline)) {
+    cubit?.debugTickIdleWatch();
+    if (bus == null || !bus.anyMemberInTurn) return;
+    await Future<void>.delayed(const Duration(milliseconds: 200));
+  }
+  throw StateError(
+    'Timed out waiting for all members to leave bus turn:\n'
+    '${formatRosterSnapshot(bus)}',
+  );
+}
+
 Future<void> waitUntilSessionIdle({
   required ChatCubit cubit,
   required String sessionId,
@@ -41,6 +59,39 @@ Future<void> waitUntilSessionIdle({
   throw StateError(
     'Timed out waiting for session $sessionId to leave workingSessionIds '
     '(still: ${cubit.state.workingSessionIds})',
+  );
+}
+
+/// Waits until no member is bus-active **and** the session spinner clears.
+///
+/// Nudges PTY fingerprint quiet each tick so real Claude shells can fall through
+/// [TeamBus.onMemberIdle] after tool bursts (mock cannot always re-park).
+Future<void> waitUntilBusCalmAndSessionIdle({
+  required TeamBus? bus,
+  required ChatCubit cubit,
+  required String sessionId,
+  TeammateBusMcpServer? mcpServer,
+  Duration timeout = const Duration(seconds: 180),
+}) async {
+  final deadline = DateTime.now().add(timeout);
+  while (DateTime.now().isBefore(deadline)) {
+    final tab = cubit.tabStore.bySessionId(sessionId);
+    if (tab != null) {
+      for (final shell in tab.memberShells.values) {
+        simulateFingerprintQuietGap(shell);
+      }
+    }
+    cubit.debugTickIdleWatch();
+    final busCalm = bus == null || !bus.anyMemberInTurn;
+    final sessionCalm = !cubit.state.workingSessionIds.contains(sessionId);
+    if (busCalm && sessionCalm) return;
+    await Future<void>.delayed(const Duration(milliseconds: 200));
+  }
+  throw StateError(
+    'Timed out waiting for calm bus + session idle:\n'
+    'workingSessions=${cubit.state.workingSessionIds}\n'
+    '${formatRosterSnapshot(bus)}\n'
+    'mcpWaitStreams=${mcpServer?.activeWaitStreamCount ?? 0}',
   );
 }
 

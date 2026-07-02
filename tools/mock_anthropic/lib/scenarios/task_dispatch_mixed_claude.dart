@@ -8,6 +8,29 @@ const _bus = 'mcp__teammate-bus__';
 const taskDispatchLeaderKickoff = 'Dispatch work to the worker.';
 const taskDispatchWorkerKickoff = 'Start idle loop.';
 
+/// Leader parks on `wait_for_message` when doorbelled (no `add_tasks`).
+///
+/// Use for worker-only kickoff tests: worker idle-notify must not enqueue tasks
+/// on the leader before the test asserts a stable SSE park.
+ScenarioRegistry taskDispatchWorkerParkOnlyScenarios() => ScenarioRegistry({
+  leadScriptApiKey: MockScenario(
+    turns: [
+      ToolUseTurn(id: 'tu_wait', name: '${_bus}wait_for_message', input: {}),
+    ],
+  ),
+  workerScriptApiKey: MockScenario(
+    turns: [
+      ToolUseTurn(id: 'tu_wait', name: '${_bus}wait_for_message', input: {}),
+      ToolUseTurn(
+        id: 'tu_wait_task',
+        name: '${_bus}wait_for_message',
+        input: {},
+      ),
+      const TextTurn('claimed'),
+    ],
+  ),
+});
+
 /// Leader enqueues one task; worker parks on `wait_for_message` and auto-claims.
 ScenarioRegistry taskDispatchMixedClaudeScenarios() => ScenarioRegistry({
   leadScriptApiKey: MockScenario(

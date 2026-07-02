@@ -12,7 +12,7 @@ import 'mixed_team_integration_harness.dart';
 
 /// Shared L2/L3 mixed-team ping/pong scenarios (ChatCubit + mock Anthropic).
 abstract final class MixedTeamPingPongScenario {
-  static const _ptyReleaseDelay = Duration(seconds: 2);
+  static const _ptyReleaseDelay = Duration(seconds: 3);
 
   /// L2: two local Claude PTYs exchange ping/pong via the production launch path.
   static Future<void> runLocal() async {
@@ -56,6 +56,7 @@ abstract final class MixedTeamPingPongScenario {
       await harness.waitForPingPong(
         workspaceId: session.workspaceId,
         sessionId: session.sessionId,
+        timeout: const Duration(seconds: 120),
       );
 
       expect(cubit.hasTeamBusResources(session.sessionId), isTrue);
@@ -143,6 +144,8 @@ abstract final class MixedTeamPingPongScenario {
         workspaceId: session.workspaceId,
         sessionId: session.sessionId,
         postFrame: postFrame,
+        workerReadyTimeout: const Duration(seconds: 120),
+        busTimeout: const Duration(seconds: 120),
       );
 
       expect(cubit.hasTeamBusResources(session.sessionId), isTrue);

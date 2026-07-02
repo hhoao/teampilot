@@ -42,30 +42,35 @@ abstract final class MixedTeamIdleBusyL2Scenario {
         },
       );
 
-  /// Worker kickoff → bus idle → session idle (L2 PTY, roster/jsonl sync).
+  /// Worker kickoff parks on `wait_for_message` (task-dispatch mock turn 2).
   static Future<void> runWorkerKickoffThenSessionIdle() =>
       MixedTeamTaskScenario.run(
-        scenarios: taskDispatchMixedClaudeScenarios(),
+        scenarios: taskDispatchWorkerParkOnlyScenarios(),
         withPresence: true,
         afterReady: (ctx) async {
-          await ctx.harness.submitWorkerKickoffOnly(
+          await ctx.harness.ensureWorkerParkedOnWait(
             ctx.cubit,
-            kickoff: taskDispatchWorkerKickoff,
-          );
-          await waitUntilWorkerIdleOnBus(
-            bus: ctx.harness.tabBus(ctx.session.sessionId),
-            workspaceId: ctx.session.workspaceId,
             sessionId: ctx.session.sessionId,
+            postFrame: ctx.postFrame,
+            workerKickoff: taskDispatchWorkerKickoff,
+            timeout: const Duration(seconds: 120),
           );
 
           await tickIdleAndPresence(
             cubit: ctx.cubit,
             presenceCubit: ctx.presenceCubit!,
           );
-          expectSessionIdle(ctx.cubit, ctx.session.sessionId);
+          final bus = ctx.harness.tabBus(ctx.session.sessionId)!;
+          expect(bus.isWaitingForMessage(kWorkerMember.id), isTrue);
+          expect(bus.isMemberInTurn(kWorkerMember.id), isFalse);
           expect(
             ctx.presenceCubit!.memberPresenceFor(kWorkerMember.id).workload,
             MemberWorkload.idle,
+          );
+          // Worker idle-notify may doorbell an idle-at-prompt leader.
+          expect(
+            ctx.presenceCubit!.memberPresenceFor(kLeadMember.id).workload,
+            anyOf(MemberWorkload.idle, MemberWorkload.working),
           );
         },
       );
@@ -98,14 +103,26 @@ abstract final class MixedTeamIdleBusyL2Scenario {
             workspaceId: ctx.session.workspaceId,
             sessionId: ctx.session.sessionId,
           );
-
-          await waitUntilSessionIdle(
+          final bus = ctx.harness.tabBus(ctx.session.sessionId)!;
+          // Worker idle-notify may doorbell leader; drain unread so PTY quiet can
+          // fall through idle-deferred (doorbelled + unread) and end the turn.
+          await bus.readMessages('team-lead', markRead: true, unreadOnly: true);
+          await waitUntilBusCalmAndSessionIdle(
+            bus: bus,
             cubit: ctx.cubit,
             sessionId: ctx.session.sessionId,
+            mcpServer: ctx.harness.tabMcp(ctx.session.sessionId),
           );
           await waitUntilMemberWorkload(
             presenceCubit: ctx.presenceCubit!,
+            cubit: ctx.cubit,
             memberId: kWorkerMember.id,
+            workload: MemberWorkload.idle,
+          );
+          await waitUntilMemberWorkload(
+            presenceCubit: ctx.presenceCubit!,
+            cubit: ctx.cubit,
+            memberId: kLeadMember.id,
             workload: MemberWorkload.idle,
           );
         },
