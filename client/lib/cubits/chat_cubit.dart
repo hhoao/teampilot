@@ -158,6 +158,7 @@ class ChatCubit extends Cubit<ChatState>
       },
     );
   }
+
   MemberPresenceCubit? _presenceCubit;
   TeamProfile? _activeTeam;
   final ChatSessionShellFactory _shellFactory;
@@ -537,9 +538,7 @@ class ChatCubit extends Cubit<ChatState>
   Future<List<AppSession>> sessionsForWorkspaceReady(String workspaceId) async {
     await ensureSessionsForWorkspace(workspaceId);
     return sessionsForWorkspace(
-      state.workspaces
-          .where((w) => w.workspaceId == workspaceId)
-          .firstOrNull ??
+      state.workspaces.where((w) => w.workspaceId == workspaceId).firstOrNull ??
           Workspace(workspaceId: workspaceId, folders: const [], createdAt: 0),
       state.sessions,
     );
@@ -549,7 +548,10 @@ class ChatCubit extends Cubit<ChatState>
     SessionRepository repo,
     String workspaceId,
   ) async {
-    final sessions = await _dataStore.loadSessionsForWorkspace(repo, workspaceId);
+    final sessions = await _dataStore.loadSessionsForWorkspace(
+      repo,
+      workspaceId,
+    );
     if (isClosed) return;
     _emitSnapshot(
       _dataStore.mergeWorkspaceSessions(
@@ -611,8 +613,7 @@ class ChatCubit extends Cubit<ChatState>
 
   Future<SessionOpenStatus> requestCreateAndOpenSession(
     SessionCreateRequest request,
-  ) =>
-      _launchService.requestCreateAndOpenSession(request);
+  ) => _launchService.requestCreateAndOpenSession(request);
 
   /// Creates (or reuses) the workspace for [primaryPath], seeds a first session,
   /// reloads workspace data, and returns the workspace id so callers can navigate

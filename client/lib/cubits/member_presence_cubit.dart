@@ -5,6 +5,7 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter/scheduler.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
+import '../utils/logger.dart';
 import '../services/team/runtime_roster_cache.dart';
 import '../models/member_presence.dart';
 import '../models/team_config.dart';
@@ -175,9 +176,26 @@ class MemberPresenceCubit extends Cubit<MemberPresenceState> {
           !_shouldPollPresence()) {
         return;
       }
+      _logPresenceChanges(state.presence, next);
       _emitMemberPresence(_mergePreservingInstances(next));
     } finally {
       _presenceTickInFlight = false;
+    }
+  }
+
+  void _logPresenceChanges(
+    Map<String, MemberPresence> prev,
+    Map<String, MemberPresence> next,
+  ) {
+    for (final entry in next.entries) {
+      final old = prev[entry.key];
+      if (old == entry.value) continue;
+      final p = entry.value;
+      appLogger.d(
+        '[presence] ${entry.key} '
+        'conn=${p.connection.name} '
+        'workload=${p.workload?.name ?? 'null'}',
+      );
     }
   }
 

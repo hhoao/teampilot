@@ -185,7 +185,7 @@ void main() {
     bus.onMemberIdle('leader');
 
     expect(launcher.woken.single.memberId, 'leader');
-    expect(node.activity, MemberActivity.turnDoneReady);
+    expect(node.activity, MemberActivity.active);
   });
 
   test(

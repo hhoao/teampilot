@@ -47,19 +47,22 @@ class MailboxPanel extends StatelessWidget {
       itemCount: entries.length,
       itemBuilder: (context, i) {
         final e = entries[entries.length - 1 - i]; // newest first
-        return ListTile(
-          leading: Icon(
-            e.isUnread
-                ? Icons.mark_email_unread_outlined
-                : Icons.email_outlined,
-            size: 18,
-            color: e.isUnread ? cs.primary : cs.onSurfaceVariant,
+        return Material(
+          color: Colors.transparent,
+          child: ListTile(
+            leading: Icon(
+              e.isUnread
+                  ? Icons.mark_email_unread_outlined
+                  : Icons.email_outlined,
+              size: 18,
+              color: e.isUnread ? cs.primary : cs.onSurfaceVariant,
+            ),
+            title: Text('${e.from} → ${e.to}',
+                style: Theme.of(context).textTheme.labelSmall),
+            subtitle:
+                Text(e.content, maxLines: 2, overflow: TextOverflow.ellipsis),
+            onTap: () => _jumpTo(context, e),
           ),
-          title: Text('${e.from} → ${e.to}',
-              style: Theme.of(context).textTheme.labelSmall),
-          subtitle:
-              Text(e.content, maxLines: 2, overflow: TextOverflow.ellipsis),
-          onTap: () => _jumpTo(context, e),
         );
       },
     );

@@ -42,9 +42,14 @@ abstract final class PresenceReducer {
   ) {
     switch (event) {
       case PtySpawned():
+        // Late spawn callback must not clobber an in-flight active turn (e.g.
+        // MaterializeCompleted won the race during PTY connect).
+        final activity = s.activity == MemberActivity.active
+            ? MemberActivity.active
+            : MemberActivity.turnDoneReady;
         return _to(s.copyWith(
           lifecycle: MemberLifecycle.running,
-          activity: MemberActivity.turnDoneReady,
+          activity: activity,
         ));
 
       case MaterializeStarted(:final bootstrap):
@@ -125,7 +130,12 @@ abstract final class PresenceReducer {
     // 真没送达（回车被吞）由看门狗 [TeamBus.reengageIdleWorkers] 超时重敲兜底。
     // eager（idle-notify / 用户显式命令）仍照响。
     if (ctx.doorbelled && !eager) return _stay(s);
-    return PresenceTransition(s, [DoorbellEffect(ctx.memberId)]);
+    // Doorbell = TeamPilot 判定 worker 应处理 teammate 信（含 Cursor push 路径：
+    // 只注入提示、不走 wait_for_message）。与 TurnStarted / WaitExited 对齐为 working。
+    final next = s.atPrompt
+        ? s.copyWith(activity: MemberActivity.active)
+        : s;
+    return PresenceTransition(next, [DoorbellEffect(ctx.memberId)]);
   }
 
   static PresenceTransition _to(Presence next) =>

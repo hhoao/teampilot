@@ -173,29 +173,33 @@ class _TargetTile extends StatelessWidget {
   Widget build(BuildContext context) {
     final cs = Theme.of(context).colorScheme;
     final pathPreview = paths.join(', ');
-    return ListTile(
-      selected: selected,
-      selectedTileColor: cs.primaryContainer.withValues(alpha: 0.35),
-      title: Text(label, maxLines: 1, overflow: TextOverflow.ellipsis),
-      subtitle: Text(
-        pathPreview,
-        maxLines: 2,
-        overflow: TextOverflow.ellipsis,
-        style: Theme.of(context).textTheme.bodySmall,
-      ),
-      trailing: instanceCount > 0
-          ? CircleAvatar(
-              radius: 12,
-              backgroundColor: cs.primary,
-              child: Text(
-                '$instanceCount',
-                style: Theme.of(context).textTheme.labelSmall?.copyWith(
-                  color: cs.onPrimary,
+    return Material(
+      color: selected
+          ? cs.primaryContainer.withValues(alpha: 0.35)
+          : Colors.transparent,
+      child: ListTile(
+        selected: selected,
+        title: Text(label, maxLines: 1, overflow: TextOverflow.ellipsis),
+        subtitle: Text(
+          pathPreview,
+          maxLines: 2,
+          overflow: TextOverflow.ellipsis,
+          style: Theme.of(context).textTheme.bodySmall,
+        ),
+        trailing: instanceCount > 0
+            ? CircleAvatar(
+                radius: 12,
+                backgroundColor: cs.primary,
+                child: Text(
+                  '$instanceCount',
+                  style: Theme.of(context).textTheme.labelSmall?.copyWith(
+                    color: cs.onPrimary,
+                  ),
                 ),
-              ),
-            )
-          : null,
-      onTap: onTap,
+              )
+            : null,
+        onTap: onTap,
+      ),
     );
   }
 }
@@ -222,30 +226,33 @@ class _MemberPlacementRow extends StatelessWidget {
     final l10n = context.l10n;
     final cs = Theme.of(context).colorScheme;
     final complete = placedTotal == needed;
-    return ListTile(
-      contentPadding: const EdgeInsets.symmetric(horizontal: 8),
-      title: Text(memberLabel),
-      subtitle: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text(
-            l10n.mixedWorkspaceMemberPlacementProgress(placedTotal, needed),
-            style: Theme.of(context).textTheme.bodySmall?.copyWith(
-              color: complete ? cs.onSurfaceVariant : cs.error,
+    return Material(
+      color: Colors.transparent,
+      child: ListTile(
+        contentPadding: const EdgeInsets.symmetric(horizontal: 8),
+        title: Text(memberLabel),
+        subtitle: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              l10n.mixedWorkspaceMemberPlacementProgress(placedTotal, needed),
+              style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                color: complete ? cs.onSurfaceVariant : cs.error,
+              ),
             ),
-          ),
-          Text(
-            l10n.mixedWorkspaceMemberPlacementOnMachine(countOnMachine),
-            style: Theme.of(context).textTheme.bodySmall,
-          ),
-        ],
-      ),
-      trailing: _PlacementStepper(
-        value: countOnMachine,
-        canIncrement: placedTotal < needed,
-        canDecrement: countOnMachine > 0,
-        onIncrement: onIncrement,
-        onDecrement: onDecrement,
+            Text(
+              l10n.mixedWorkspaceMemberPlacementOnMachine(countOnMachine),
+              style: Theme.of(context).textTheme.bodySmall,
+            ),
+          ],
+        ),
+        trailing: _PlacementStepper(
+          value: countOnMachine,
+          canIncrement: placedTotal < needed,
+          canDecrement: countOnMachine > 0,
+          onIncrement: onIncrement,
+          onDecrement: onDecrement,
+        ),
       ),
     );
   }

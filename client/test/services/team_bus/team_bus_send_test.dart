@@ -127,7 +127,7 @@ void main() {
     expect(node.inbox.isEmpty, isFalse);
     expect(launcher.woken.single.memberId, 'leader');
     expect(launcher.woken.single.notice, TeamBus.doorbellNotice);
-    expect(node.activity, MemberActivity.turnDoneReady);
+    expect(node.activity, MemberActivity.active);
   });
 
   test('send drops over-hop and unknown targets', () async {

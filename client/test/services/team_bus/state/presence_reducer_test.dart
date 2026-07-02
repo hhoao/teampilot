@@ -36,6 +36,12 @@ void main() {
     expect(t.effects, isEmpty);
   });
 
+  test('PtySpawned preserves active when spawn races materialize', () {
+    final t = _run(_active, const PtySpawned());
+    expect(t.presence, _active);
+    expect(t.effects, isEmpty);
+  });
+
   test('MaterializeStarted from declared → materializing + Materialize effect', () {
     final msg = TeamMessage(id: '1', from: 'l', to: 'm', content: 'go');
     final t = _run(_declared, MaterializeStarted(msg));
@@ -74,9 +80,9 @@ void main() {
       expect(t.effects, isEmpty);
     });
 
-    test('non-eager + at-prompt → doorbell, stays at prompt', () {
+    test('non-eager + at-prompt → doorbell + active (working)', () {
       final t = _run(_atPrompt, const MailArrived(), hasUnread: true);
-      expect(t.presence, _atPrompt);
+      expect(t.presence, _active);
       expect(t.effects.single, isA<DoorbellEffect>());
     });
 

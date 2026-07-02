@@ -215,9 +215,19 @@ class TabTeamBusCoordinator implements MemberMaterializer {
     final ready = Completer<void>();
     _memberReady[(sessionId, memberId)] = ready;
     final shell = tab.memberShells[memberId];
-    if (shell != null && shell.isRunning) {
+    if (shell != null && shell.isConnected) {
+      appLogger.d(
+        '[team-bus] materialize already-connected member=$memberId '
+        'session=$sessionId',
+      );
       ready.complete();
     } else {
+      appLogger.d(
+        '[team-bus] materialize await-connect member=$memberId '
+        'session=$sessionId '
+        'isRunning=${shell?.isRunning ?? false} '
+        'isConnecting=${shell?.isConnecting ?? false}',
+      );
       _connector.scheduleMemberConnect(team, member, tab);
     }
     await ready.future;
@@ -325,6 +335,11 @@ class TabTeamBusCoordinator implements MemberMaterializer {
           shell: shell,
           wasInTurn: _wasInTurn,
           endTurn: () {
+            appLogger.d(
+              '[idle-watch] end-turn member=$memberId '
+              'session=${tab.info.id} '
+              'busInTurn=${bus?.isMemberInTurn(memberId)}',
+            );
             if (bus != null) {
               bus.onMemberIdle(memberId);
             } else {

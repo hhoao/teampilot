@@ -312,16 +312,19 @@ class _ListTab extends StatelessWidget {
         ? Center(child: Text(empty, style: theme.textTheme.bodyMedium))
         : ListView.builder(
             itemCount: items.length,
-            itemBuilder: (_, i) => ListTile(
-              title: Text(items[i].title, style: theme.textTheme.bodyMedium),
-              subtitle: items[i].subtitle.isEmpty
-                  ? null
-                  : Text(
-                      items[i].subtitle,
-                      style: theme.textTheme.bodySmall?.copyWith(
-                        color: cs.onSurfaceVariant,
+            itemBuilder: (_, i) => Material(
+              color: Colors.transparent,
+              child: ListTile(
+                title: Text(items[i].title, style: theme.textTheme.bodyMedium),
+                subtitle: items[i].subtitle.isEmpty
+                    ? null
+                    : Text(
+                        items[i].subtitle,
+                        style: theme.textTheme.bodySmall?.copyWith(
+                          color: cs.onSurfaceVariant,
+                        ),
                       ),
-                    ),
+              ),
             ),
           );
     if (!hasWarning) return content;

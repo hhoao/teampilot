@@ -1,5 +1,6 @@
 import 'dart:async';
 
+import '../../utils/logger.dart';
 import 'agent_node.dart';
 import 'bus_feed_entry.dart';
 import 'cancellation.dart';
@@ -129,8 +130,9 @@ class TeamBus implements CoordinationView {
 
   /// 跑 reducer：算出新在线态写回 node，返回待落地的效果。
   List<BusEffect> _reduce(AgentNode node, BusEvent event) {
+    final before = Presence(node.lifecycle, node.activity);
     final t = PresenceReducer.reduce(
-      Presence(node.lifecycle, node.activity),
+      before,
       event,
       PresenceContext(
         memberId: node.memberId,
@@ -138,8 +140,19 @@ class TeamBus implements CoordinationView {
         doorbelled: node.doorbelled,
       ),
     );
-    node.lifecycle = t.presence.lifecycle;
-    node.activity = t.presence.activity;
+    final after = t.presence;
+    if (before.lifecycle != after.lifecycle ||
+        before.activity != after.activity) {
+      appLogger.d(
+        '[team-bus] presence ${node.memberId} '
+        '${event.runtimeType} '
+        '${before.lifecycle.name}/${before.activity.name}'
+        ' → ${after.lifecycle.name}/${after.activity.name}'
+        '${!node.inbox.isEmpty ? ' unread' : ''}',
+      );
+    }
+    node.lifecycle = after.lifecycle;
+    node.activity = after.activity;
     return t.effects;
   }
 
@@ -542,12 +555,22 @@ class TeamBus implements CoordinationView {
     }
     final target = _members[resolved]!;
     final routed = message.to == resolved ? message : message.copyWith(to: resolved);
+    appLogger.d(
+      '[team-bus] send to=$resolved '
+      'lifecycle=${target.lifecycle.name} '
+      'activity=${target.activity.name} '
+      'msg=${message.id}',
+    );
     switch (target.lifecycle) {
       case MemberLifecycle.declared:
         // 物化（awaited PTY 拉起）→ 投递 → 完成（running+active）+ 门铃。
         await _bringOnline(target, routed);
         _deliverToInbox(target, routed);
         await _applyAsync(target, const MaterializeCompleted());
+        appLogger.d(
+          '[team-bus] send declared-path done member=$resolved '
+          '→ ${target.lifecycle.name}/${target.activity.name}',
+        );
       case MemberLifecycle.materializing:
       case MemberLifecycle.running:
         _deliverToInbox(target, routed);
