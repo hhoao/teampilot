@@ -7,3 +7,5 @@ description: >
 publish_to: none
 environment:
   sdk: ^3.8.1
+dev_dependencies:
+  test: ^1.25.0

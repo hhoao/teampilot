@@ -7,11 +7,13 @@ import 'dart:io';
 Future<void> main() async {
   final server = await HttpServer.bind(InternetAddress.loopbackIPv4, 0);
   const holdSeconds = 12; // simulate a wait that resolves after 12s
+  const sessionId = 'sess-smoke';
   server.listen((req) async {
     final body = await utf8.decoder.bind(req).join();
     final rpc = jsonDecode(body) as Map<String, dynamic>;
     final method = rpc['method'];
     final member = req.headers.value('x-member');
+    final session = req.headers.value('x-session');
     final r = req.response;
     if (method == 'tools/call' &&
         (rpc['params'] as Map)['name'] == 'wait_for_message') {
@@ -30,7 +32,7 @@ Future<void> main() async {
             'id': rpc['id'],
             'result': {
               'content': [
-                {'type': 'text', 'text': 'FROM lead: go (member=$member)'}
+                {'type': 'text', 'text': 'FROM lead: go (member=$member session=$session)'}
               ],
               'isError': false,
             },
@@ -59,8 +61,14 @@ Future<void> main() async {
   final url = 'http://127.0.0.1:${server.port}/mcp';
   stderr.writeln('[smoke] mock bus at $url, holdSeconds=$holdSeconds');
 
-  final proc = await Process.start('/tmp/teammate_bus_bridge',
-      ['--member', 'qa', '--bus-url', url]);
+  final proc = await Process.start('/tmp/teammate_bus_bridge', [
+    '--member',
+    'qa',
+    '--session',
+    sessionId,
+    '--bus-url',
+    url,
+  ]);
   final outLines = <String>[];
   final times = <int>[];
   final sw = Stopwatch()..start();
@@ -92,6 +100,11 @@ Future<void> main() async {
   if (!initOk) { pass = false; stderr.writeln('FAIL: no initialize response'); }
   if (waitLine < 0) { pass = false; stderr.writeln('FAIL: wait result never forwarded'); }
   else {
+    final resultLine = outLines[waitLine];
+    if (!resultLine.contains('session=$sessionId')) {
+      pass = false;
+      stderr.writeln('FAIL: X-Session header not forwarded (got: $resultLine)');
+    }
     final t = times[waitLine];
     if (t < holdSeconds * 1000 - 500) {
       pass = false;

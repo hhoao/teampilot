@@ -8,12 +8,15 @@
 // 把 claude 的 stdio MCP 转发到 app 现有的 loopback HTTP bus，用 Dart HttpClient
 // （无响应体超时）扛住长 SSE，于是 `wait_for_message` 能真正阻塞一整场。
 //
-// 用法：teammate_bus_bridge --member <id> --bus-url http://127.0.0.1:<port>/mcp
-//   member / bus-url 也可分别从 TEAMPILOT_MEMBER / TEAMPILOT_BUS_URL 环境变量读。
+// 用法：teammate_bus_bridge --member <id> --session <sessionId>
+//        --bus-url http://127.0.0.1:<port>/mcp
+//   member / session / bus-url 也可分别从 TEAMPILOT_MEMBER / TEAMPILOT_SESSION /
+//   TEAMPILOT_BUS_URL 环境变量读。
 //
 // 线协议：
 //   stdin/stdout : 换行分隔的 JSON-RPC（MCP stdio 帧）。
-//   → app        : POST <bus-url>，body=原始 JSON-RPC，头 X-Member: <id>。
+//   → app        : POST <bus-url>，body=原始 JSON-RPC，头 X-Member: <id>、
+//                  X-Session: <sessionId>（gateway 按 session 路由）。
 //   ← app        : application/json（一条响应）或 text/event-stream
 //                  （`event: message\ndata: {json}` 事件 + `: ping`/`: open` 注释）。
 //
@@ -24,10 +27,13 @@ import 'dart:convert';
 import 'dart:io';
 
 const _memberHeader = 'X-Member';
+const _sessionHeader = 'X-Session';
 
 Future<void> main(List<String> args) async {
-  final opts = _parseArgs(args);
+  final opts = parseBridgeArgs(args);
   final member = opts['member'] ?? Platform.environment['TEAMPILOT_MEMBER'] ?? '';
+  final session =
+      opts['session'] ?? Platform.environment['TEAMPILOT_SESSION'] ?? '';
   final busUrlRaw =
       opts['bus-url'] ?? Platform.environment['TEAMPILOT_BUS_URL'] ?? '';
   if (busUrlRaw.isEmpty) {
@@ -36,11 +42,12 @@ Future<void> main(List<String> args) async {
   }
   final busUrl = Uri.parse(busUrlRaw);
 
-  final bridge = _Bridge(member: member, busUrl: busUrl);
+  final bridge = _Bridge(member: member, session: session, busUrl: busUrl);
   await bridge.run();
 }
 
-Map<String, String> _parseArgs(List<String> args) {
+/// CLI flag parser for the bridge binary (exported for unit tests).
+Map<String, String> parseBridgeArgs(List<String> args) {
   final out = <String, String>{};
   for (var i = 0; i < args.length; i++) {
     final a = args[i];
@@ -60,9 +67,10 @@ Map<String, String> _parseArgs(List<String> args) {
 }
 
 class _Bridge {
-  _Bridge({required this.member, required this.busUrl});
+  _Bridge({required this.member, required this.session, required this.busUrl});
 
   final String member;
+  final String session;
   final Uri busUrl;
 
   // 自己的 HttpClient：不设任何响应体超时，进行中的 SSE 流可永久挂住。
@@ -130,6 +138,7 @@ class _Bridge {
       req.headers.set('content-type', 'application/json; charset=utf-8');
       req.headers.set('accept', 'application/json, text/event-stream');
       if (member.isNotEmpty) req.headers.set(_memberHeader, member);
+      if (session.isNotEmpty) req.headers.set(_sessionHeader, session);
       req.add(utf8.encode(body));
       final resp = await req.close();
 
