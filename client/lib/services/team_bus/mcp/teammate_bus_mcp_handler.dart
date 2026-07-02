@@ -1,47 +1,21 @@
 import 'dart:convert';
 
 import '../../../utils/logger.dart';
-import '../artifacts/artifact_exceptions.dart';
-import '../artifacts/artifact_handle.dart';
 import '../artifacts/artifact_transfer_service.dart';
 import '../cancellation.dart';
-import '../persistence/bus_message_page.dart';
-import '../idle_notification.dart';
-import '../tasks/task_router.dart';
-import '../tasks/team_task.dart';
 import '../team_bus.dart';
-import '../team_message.dart';
-import '../teammate_snapshot.dart';
 import 'jsonrpc.dart';
 import 'mcp_method.dart';
-import 'tools/add_tasks_tool.dart';
-import 'tools/claim_task_tool.dart';
-import 'tools/fetch_artifact_tool.dart';
-import 'tools/publish_artifact_tool.dart';
-import 'tools/read_messages_tool.dart';
-import 'tools/send_message_tool.dart';
-import 'tools/teammate_bus_tool_name.dart';
-import 'tools/teammate_bus_tools.dart';
-import 'tools/update_task_tool.dart';
-import 'tools/list_tasks_tool.dart';
+import 'toolkit/mcp_tool_response.dart';
+import 'toolkit/teammate_bus_tool_call.dart';
+import 'toolkit/teammate_bus_tool_context.dart';
+import 'toolkit/teammate_bus_tool_name.dart';
+import 'toolkit/teammate_bus_tool_registry.dart';
+import 'toolkit/wait_delivery.dart';
+import 'tools/wait_for_message_tool.dart';
 import 'wait_cancel_registry.dart';
 
-/// 流式 `wait_for_message` 的投递句柄：响应体 + 「送达确认 / 断连回滚」两个钩子。
-class WaitDelivery {
-  const WaitDelivery({
-    required this.response,
-    required this.confirm,
-    required this.abort,
-  });
-
-  final JsonRpcResponse response;
-
-  /// 结果成功写回 SSE 后调：把这批标记已读。
-  final Future<void> Function() confirm;
-
-  /// 结果写回失败（客户端断连）后调：把这批放回信箱，避免丢消息。
-  final void Function() abort;
-}
+export 'toolkit/wait_delivery.dart';
 
 /// 把 MCP JSON-RPC 调用分发到 [TeamBus]。纯逻辑，不依赖 HTTP。
 /// [memberId] 来自传输层解析的身份头。返回 null = 通知（无响应/202）。
@@ -86,14 +60,29 @@ class TeammateBusMcpHandler {
 
   final TeamBus _bus;
   final String Function() idGenerator;
-
-  /// Cross-machine artifact transfer (publish/list/fetch). Null = the three
-  /// artifact tools are neither advertised nor dispatchable (gated like the
-  /// task-queue tools are on [TeamBus.hasTaskQueue]).
   final ArtifactTransferService? _artifacts;
 
   /// In-flight streaming `wait_for_message` calls keyed by JSON-RPC request id.
   final WaitCancelRegistry waitCancels;
+
+  TeammateBusToolContext get _toolCtx => TeammateBusToolContext(
+        bus: _bus,
+        idGenerator: idGenerator,
+        artifacts: _artifacts,
+        onEnteredWaitLoop: _noteEnteredWaitLoop,
+      );
+
+  TeammateBusToolCall _toolCall(
+    String memberId,
+    Object? requestId,
+    Map<String, Object?> arguments,
+  ) =>
+      TeammateBusToolCall(
+        ctx: _toolCtx,
+        memberId: memberId,
+        requestId: requestId,
+        arguments: arguments,
+      );
 
   /// 控制端点：成员（经 Stop hook / plugin / 终端 watcher）报告 idle。
   void notifyIdle(String memberId) => _bus.onMemberIdle(memberId);
@@ -148,10 +137,7 @@ class TeammateBusMcpHandler {
         return JsonRpcResponse.result(req.id, const {});
       case McpMethod.toolsList:
         return JsonRpcResponse.result(req.id, {
-          'tools': listAdvertisedTeammateBusTools(
-            hasTaskQueue: _bus.hasTaskQueue,
-            hasArtifacts: _artifacts != null,
-          ),
+          'tools': listAdvertisedTeammateBusTools(_toolCtx),
         });
       case McpMethod.toolsCall:
         return _callTool(memberId, req);
@@ -189,496 +175,23 @@ class TeammateBusMcpHandler {
     String memberId,
     JsonRpcRequest req, {
     CancellationToken? cancel,
-  }) async {
-    // 成员真的进了 wait 循环 → 健康，清零空转保险丝（见 [idleStopDecision]）。
-    _noteEnteredWaitLoop(memberId);
-    final outcome = await _bus.receiveWork(memberId, cancel: cancel);
-    switch (outcome) {
-      case MessageWork(:final messages):
-        final ids = [for (final m in messages) m.id];
-        return WaitDelivery(
-          response: _ok(req.id, _encodeBatch(messages)),
-          confirm: () => _bus.acknowledgeDelivery(memberId, ids),
-          abort: () => _bus.redeliver(memberId, messages),
-        );
-      case TaskWork(:final task):
-        // 任务已原子认领；写回失败则退回 pending（比等租约回收更及时）。
-        return WaitDelivery(
-          response: _ok(req.id, _encodeTaskAssignment(task)),
-          confirm: () async {},
-          abort: () => _bus.releaseTask(task.id),
-        );
-      case EmptyWork():
-        return WaitDelivery(
-          response: _ok(req.id, _encodeBatch(const [])),
-          confirm: () async {},
-          abort: () {},
-        );
-    }
-  }
+  }) =>
+      WaitForMessageTool.beginStreamWait(
+        _toolCall(memberId, req.id, req.toolArguments),
+        cancel: cancel,
+      );
 
-  Future<JsonRpcResponse?> _callTool(
+  Future<JsonRpcResponse> _callTool(
     String memberId,
     JsonRpcRequest req,
   ) async {
-    final tool = req.toolName;
+    final tool = teammateBusToolByName(_toolCtx)[req.toolName];
     if (tool == null) {
-      return JsonRpcResponse.error(
+      return McpToolResponse.invalidParams(
         req.id,
-        JsonRpcErrorCode.invalidParams,
         'Unknown tool: ${req.params[McpParams.toolName]}',
       );
     }
-    final args = req.toolArguments;
-    switch (tool) {
-      case TeammateBusToolName.listTeammates:
-        return _ok(req.id, _encodeRoster(memberId));
-      case TeammateBusToolName.sendMessage:
-        final to = (args[SendMessageTool.to] as String?)?.trim() ?? '';
-        final content = args[SendMessageTool.content] as String? ?? '';
-        if (to.isEmpty) {
-          return _toolError(req.id, 'send_message requires a non-empty "to".');
-        }
-        final message = TeamMessage(
-          id: idGenerator(),
-          from: memberId,
-          to: to,
-          content: content,
-        );
-        if (to == '*') {
-          await _bus.broadcast(message, materializeDeclared: true);
-          return _ok(req.id, 'sent');
-        }
-        final outcome = await _bus.send(message);
-        if (!outcome.delivered) {
-          return _toolError(
-            req.id,
-            'Message not delivered (${outcome.reason}): recipient "$to" '
-            'is not on the bus.${_unknownRecipientHint()}',
-          );
-        }
-        final resolved = outcome.memberId!;
-        if (resolved == to) {
-          return _ok(req.id, 'sent');
-        }
-        return _ok(req.id, 'sent to $resolved (resolved from agentId "$to")');
-      case TeammateBusToolName.readMessages:
-        final afterId = (args[ReadMessagesTool.afterId] as String?)?.trim();
-        final limit = (args[ReadMessagesTool.limit] as num?)?.toInt() ?? 20;
-        final unreadOnly =
-            args[ReadMessagesTool.unreadOnly] as bool? ?? true;
-        // 默认浏览不消费（与工具描述一致）；wait_for_message 才是消费路径。
-        final markRead = args[ReadMessagesTool.markRead] as bool? ?? false;
-        final page = await _bus.readMessages(
-          memberId,
-          afterId: afterId?.isEmpty == true ? null : afterId,
-          limit: limit,
-          unreadOnly: unreadOnly,
-          markRead: markRead,
-        );
-        return _ok(req.id, _encodeMessagePage(page));
-      case TeammateBusToolName.waitForMessage:
-        _noteEnteredWaitLoop(memberId);
-        final outcome = await _bus.receiveWork(memberId);
-        switch (outcome) {
-          case MessageWork(:final messages):
-            await _bus.acknowledgeDelivery(
-              memberId,
-              [for (final m in messages) m.id],
-            );
-            return _ok(req.id, _encodeBatch(messages));
-          case TaskWork(:final task):
-            return _ok(req.id, _encodeTaskAssignment(task));
-          case EmptyWork():
-            return _ok(req.id, _encodeBatch(const []));
-        }
-      case TeammateBusToolName.addTasks:
-        if (!_bus.hasTaskQueue) {
-          return JsonRpcResponse.error(
-            req.id,
-            JsonRpcErrorCode.invalidParams,
-            'No task queue',
-          );
-        }
-        final raw = args[AddTasksTool.tasks];
-        final drafts = <TeamTaskDraft>[
-          for (final item in (raw is List ? raw : const []))
-            if (item is Map)
-              TeamTaskDraft(
-                title: item[AddTasksTool.title] as String? ?? '',
-                brief: item[AddTasksTool.brief] as String? ?? '',
-                dependsOn: [
-                  for (final d
-                      in (item[AddTasksTool.dependsOn] as List?) ?? const [])
-                    if (d is String) d,
-                ],
-                requiredCapabilities: {
-                  for (final c in (item[AddTasksTool.requiredCapabilities]
-                          as List?) ??
-                      const [])
-                    if (c is String && c.trim().isNotEmpty) c.trim(),
-                },
-                preferredCapabilities: {
-                  for (final c in (item[AddTasksTool.preferredCapabilities]
-                          as List?) ??
-                      const [])
-                    if (c is String && c.trim().isNotEmpty) c.trim(),
-                },
-                preferredAssignee: ((item[AddTasksTool.preferredAssignee]
-                                as String?)
-                            ?.trim() ??
-                        '')
-                        .isEmpty
-                    ? null
-                    : (item[AddTasksTool.preferredAssignee] as String).trim(),
-              ),
-        ];
-        final created = _bus.addTasks(memberId, drafts);
-        return _ok(req.id, 'Enqueued ${created.length} task(s):\n'
-            '${created.map((t) => '- ${t.id}: ${t.title}').join('\n')}');
-      case TeammateBusToolName.updateTask:
-        if (!_bus.hasTaskQueue) {
-          return JsonRpcResponse.error(
-            req.id,
-            JsonRpcErrorCode.invalidParams,
-            'No task queue',
-          );
-        }
-        final taskId = (args[UpdateTaskTool.taskId] as String?)?.trim() ?? '';
-        final status =
-            TaskStatus.parse(args[UpdateTaskTool.status] as String?);
-        if (!status.isTerminal) {
-          return _ok(req.id,
-              'Invalid status. Use done | failed | cancelled.');
-        }
-        final ok = _bus.updateTask(
-          taskId,
-          status,
-          result: args[UpdateTaskTool.result] as String?,
-          byMember: memberId,
-        );
-        return _ok(req.id,
-            ok ? 'Task $taskId -> ${status.name}.' : 'Update rejected '
-                '(unknown task or not the claiming worker): $taskId');
-      case TeammateBusToolName.listTasks:
-        if (!_bus.hasTaskQueue) {
-          return JsonRpcResponse.error(
-            req.id,
-            JsonRpcErrorCode.invalidParams,
-            'No task queue',
-          );
-        }
-        final filter = (args[ListTasksTool.status] as String?)?.trim();
-        final status = (filter == null || filter.isEmpty)
-            ? null
-            : TaskStatus.parse(filter);
-        return _ok(
-            req.id, _encodeTasks(_bus.listTasks(status: status), memberId));
-      case TeammateBusToolName.claimTask:
-        if (!_bus.hasTaskQueue) {
-          return JsonRpcResponse.error(
-            req.id,
-            JsonRpcErrorCode.invalidParams,
-            'No task queue',
-          );
-        }
-        final taskId = (args[ClaimTaskTool.taskId] as String?)?.trim() ?? '';
-        final claimed = _bus.claimSpecificTask(taskId, memberId);
-        if (claimed == null) {
-          return _toolError(
-            req.id,
-            'Could not claim "$taskId" (gone, already claimed, blocked, or you '
-            'are not eligible).',
-          );
-        }
-        return _ok(req.id, _encodeTaskAssignment(claimed));
-      case TeammateBusToolName.publishArtifact:
-        return _publishArtifact(memberId, req, args);
-      case TeammateBusToolName.listArtifacts:
-        return _listArtifacts(req);
-      case TeammateBusToolName.fetchArtifact:
-        return _fetchArtifact(memberId, req, args);
-    }
+    return tool.call(_toolCall(memberId, req.id, req.toolArguments));
   }
-
-  Future<JsonRpcResponse> _publishArtifact(
-    String memberId,
-    JsonRpcRequest req,
-    Map<String, Object?> args,
-  ) async {
-    final artifacts = _artifacts;
-    if (artifacts == null) {
-      return JsonRpcResponse.error(
-        req.id,
-        JsonRpcErrorCode.invalidParams,
-        'No artifact transfer',
-      );
-    }
-    final path = (args[PublishArtifactTool.path] as String?)?.trim() ?? '';
-    final name = (args[PublishArtifactTool.name] as String?)?.trim() ?? '';
-    if (path.isEmpty || name.isEmpty) {
-      return _toolError(
-        req.id,
-        'publish_artifact requires a non-empty "path" and "name".',
-      );
-    }
-    final kind = ArtifactKind.tryParse(args[PublishArtifactTool.kind] as String?);
-    if (kind == null) {
-      return _toolError(
-        req.id,
-        'Only kind=file is supported (directory/tar transfer is not yet '
-        'available).',
-      );
-    }
-    final overwrite = args[PublishArtifactTool.overwrite] as bool? ?? false;
-    try {
-      final handle = await artifacts.publish(
-        publisherMemberId: memberId,
-        path: path,
-        name: name,
-        kind: kind,
-        overwrite: overwrite,
-      );
-      return _ok(
-        req.id,
-        'Published "${handle.name}" (${handle.sizeBytes} bytes). Teammates can '
-        'fetch_artifact(name: "${handle.name}", destPath: ...).',
-      );
-    } on ArtifactException catch (e) {
-      return _toolError(req.id, e.toString());
-    }
-  }
-
-  JsonRpcResponse _listArtifacts(JsonRpcRequest req) {
-    final artifacts = _artifacts;
-    if (artifacts == null) {
-      return JsonRpcResponse.error(
-        req.id,
-        JsonRpcErrorCode.invalidParams,
-        'No artifact transfer',
-      );
-    }
-    final handles = artifacts.list();
-    if (handles.isEmpty) {
-      return _ok(req.id, 'No artifacts published.');
-    }
-    final lines = <String>['Artifacts (${handles.length}):'];
-    for (final h in handles) {
-      lines.add('- ${h.name} (by ${h.publisherMemberId}, ${h.sizeBytes} bytes)');
-    }
-    return _ok(req.id, lines.join('\n'));
-  }
-
-  Future<JsonRpcResponse> _fetchArtifact(
-    String memberId,
-    JsonRpcRequest req,
-    Map<String, Object?> args,
-  ) async {
-    final artifacts = _artifacts;
-    if (artifacts == null) {
-      return JsonRpcResponse.error(
-        req.id,
-        JsonRpcErrorCode.invalidParams,
-        'No artifact transfer',
-      );
-    }
-    final name = (args[FetchArtifactTool.name] as String?)?.trim() ?? '';
-    final destPath =
-        (args[FetchArtifactTool.destPath] as String?)?.trim() ?? '';
-    if (name.isEmpty || destPath.isEmpty) {
-      return _toolError(
-        req.id,
-        'fetch_artifact requires a non-empty "name" and "destPath".',
-      );
-    }
-    final overwrite = args[FetchArtifactTool.overwrite] as bool? ?? false;
-    try {
-      final result = await artifacts.fetch(
-        fetcherMemberId: memberId,
-        name: name,
-        destPath: destPath,
-        overwrite: overwrite,
-      );
-      return _ok(
-        req.id,
-        'Fetched "${result.name}" (${result.sizeBytes} bytes) to '
-        '${result.finalPath}.',
-      );
-    } on ArtifactException catch (e) {
-      return _toolError(req.id, e.toString());
-    }
-  }
-
-  String _encodeTasks(List<TeamTask> tasks, String memberId) {
-    if (tasks.isEmpty) return 'No tasks on the queue.';
-    final caps = _bus.capabilitiesOf(memberId);
-    final buffer = StringBuffer('Work queue (${tasks.length}):\n\n');
-    buffer.write(tasks
-        .map((t) => _formatTask(t, memberId: memberId, memberCaps: caps))
-        .join('\n\n'));
-    return buffer.toString().trimRight();
-  }
-
-  /// wait_for_message 返回的"已认领任务"。明确告知执行 + 完成后回报。
-  String _encodeTaskAssignment(TeamTask t) {
-    return 'ASSIGNED TASK (claimed for you from the shared work queue):\n'
-        '${_formatTask(t, full: true)}\n\n'
-        'Do this task now. When finished, call '
-        'update_task(task_id: "${t.id}", status: "done" | "failed", result?), '
-        'then call wait_for_message again.';
-  }
-
-  String _formatTask(
-    TeamTask t, {
-    bool full = false,
-    String? memberId,
-    Set<String>? memberCaps,
-  }) {
-    final lines = <String>[
-      '--- ${t.id} [${t.status.name}] ---',
-      'title: ${t.title}',
-      if (t.assignee != null) 'assignee: ${t.assignee}',
-      if (t.dependsOn.isNotEmpty) 'depends_on: ${t.dependsOn.join(', ')}',
-      if (t.requiredCapabilities.isNotEmpty)
-        'required_capabilities: ${t.requiredCapabilities.join(', ')}',
-      if (memberId != null && memberCaps != null) ...[
-        'eligible_for_you: ${TaskRouter.eligible(memberId, memberCaps, t)}',
-        'match_score: ${TaskRouter.score(memberCaps, t)}',
-      ],
-      if (t.result != null && t.result!.isNotEmpty) 'result: ${t.result}',
-      if (full) 'brief:\n${t.brief}',
-    ];
-    return lines.join('\n');
-  }
-
-  JsonRpcResponse _ok(Object? id, String text) => JsonRpcResponse.result(id, {
-    'content': [
-      {'type': 'text', 'text': text},
-    ],
-    'isError': false,
-  });
-
-  JsonRpcResponse _toolError(Object? id, String text) =>
-      JsonRpcResponse.result(id, {
-        'content': [
-          {'type': 'text', 'text': text},
-        ],
-        'isError': true,
-      });
-
-  String _unknownRecipientHint() {
-    final roster = _bus.rosterSnapshot().members;
-    if (roster.isEmpty) return '';
-    final lines = <String>[' Known recipients:'];
-    for (final t in roster) {
-      final p = t.profile;
-      final alias = p.agentId.trim();
-      if (alias.isNotEmpty && alias != p.memberId) {
-        lines.add('- ${p.memberId} (agentId: $alias)');
-      } else {
-        lines.add('- ${p.memberId}');
-      }
-    }
-    return lines.join('\n');
-  }
-
-  String _encodeRoster(String callerMemberId) {
-    final snapshot = _bus.rosterSnapshot();
-    if (snapshot.members.isEmpty) {
-      return 'No teammates registered on the bus.';
-    }
-    final buffer = StringBuffer();
-    final team = snapshot.team;
-    if (team != null) {
-      buffer.writeln('=== Team: ${team.teamName} (${team.cliTeamName}) ===');
-      if (team.description.trim().isNotEmpty) {
-        buffer.writeln('description: ${team.description.trim()}');
-      }
-      buffer.writeln('team_id: ${team.teamId}');
-      buffer.writeln('team_mode: ${team.teamMode}');
-      buffer.writeln('lead_agent_id: ${team.leadAgentId}');
-      buffer.writeln('app_session_id: ${team.appSessionId}');
-      buffer.writeln('cwd: ${team.workingDirectory}');
-      if (team.additionalPaths.isNotEmpty) {
-        buffer.writeln('additional_paths: ${team.additionalPaths.join(', ')}');
-      }
-      buffer.writeln('');
-    }
-    buffer.writeln(
-      'Roster (${snapshot.members.length} members). You (caller): $callerMemberId',
-    );
-    buffer.writeln('');
-    for (final t in snapshot.members) {
-      buffer.writeln(_formatTeammate(t, callerMemberId == t.memberId));
-      buffer.writeln('');
-    }
-    return buffer.toString().trimRight();
-  }
-
-  String _formatTeammate(TeammateSnapshot t, bool isSelf) {
-    final p = t.profile;
-    final role = p.isTeamLead ? 'leader' : 'worker';
-    final lines = <String>[
-      '--- ${p.memberId}${isSelf ? ' (self)' : ''} ---',
-      'name: ${p.memberId}',
-      'display_name: ${p.effectiveDisplayName}',
-      'agentId: ${p.agentId.isEmpty ? p.memberId : p.agentId}',
-      'agentType: ${p.agentType.isEmpty ? p.memberId : p.agentType}',
-      'role: $role',
-      if (p.agent.isNotEmpty) 'agent: ${p.agent}',
-      if (p.model.isNotEmpty) 'model: ${p.model}',
-      if (p.provider.isNotEmpty) 'provider: ${p.provider}',
-      'cli: ${p.cli.isEmpty ? '?' : p.cli}',
-      'backendType: ${p.backendType.isEmpty ? p.cli : p.backendType}',
-      if (p.taskId.isNotEmpty) 'taskId: ${p.taskId}',
-      if (p.cwd.isNotEmpty) 'cwd: ${p.cwd}',
-      if (p.joinedAt > 0) 'joinedAt: ${p.joinedAt}',
-      if (p.extraArgs.isNotEmpty) 'extraArgs: ${p.extraArgs}',
-      'dangerouslySkipPermissions: ${p.dangerouslySkipPermissions}',
-      'prompt: ${p.promptSummary()}',
-      'bus.lifecycle: ${t.lifecycle.name}',
-      'bus.activity: ${t.activity.name}',
-      'bus.phase: ${t.busPhaseLabel}',
-      if (t.claudeIsActive != null) 'claude.isActive: ${t.claudeIsActive}',
-      'bus.unread: ${t.unreadCount}',
-      'pty.running: ${t.ptyRunning}',
-    ];
-    return lines.join('\n');
-  }
-
-  String _encodeMessagePage(BusMessagePage page) {
-    if (page.messages.isEmpty) {
-      return 'No messages (total_unread=${page.totalUnread}).';
-    }
-    final buffer = StringBuffer(
-      'Messages (${page.messages.length}, total_unread=${page.totalUnread}, '
-      'has_more=${page.hasMore}',
-    );
-    if (page.nextAfterId != null) {
-      buffer.write(', next_after_id=${page.nextAfterId}');
-    }
-    buffer.writeln('):');
-    buffer.writeln();
-    buffer.write(page.messages.map(_formatMessage).join('\n\n---\n\n'));
-    return buffer.toString().trimRight();
-  }
-
-  String _encodeBatch(List<TeamMessage> batch) {
-    if (batch.isEmpty) {
-      return 'EMPTY: no messages (unexpected — wait_for_message should block until mail arrives).';
-    }
-    return batch.map(_formatMessage).join('\n\n---\n\n');
-  }
-
-  String _formatMessage(TeamMessage m) {
-    if (m.from == TeamBus.userSenderId) {
-      return 'FROM user (operator):\n${m.content}';
-    }
-    final idle = IdleNotification.parseTeamMessageContent(m.content);
-    if (idle != null) {
-      return 'FROM ${m.from}:\n${idle.formatForLeader()}';
-    }
-    return 'FROM ${m.from}:\n${m.content}';
-  }
-
 }

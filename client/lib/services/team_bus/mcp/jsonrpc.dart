@@ -1,7 +1,7 @@
 import 'dart:convert';
 
 import 'mcp_method.dart';
-import 'tools/teammate_bus_tool_name.dart';
+import 'toolkit/teammate_bus_tool_name.dart';
 
 /// 解析后的 JSON-RPC 2.0 请求/通知。
 class JsonRpcRequest {
