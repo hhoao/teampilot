@@ -11,6 +11,7 @@ import 'package:teampilot/repositories/session_repository.dart';
 import 'package:teampilot/services/storage/home_target_controller.dart';
 
 import '../../../support/test_home_target_controller.dart';
+import '../../../support/post_frame_test_harness.dart';
 
 void main() {
   testWidgets('WorkspaceFoldersSection renders folder rows with target catalog',
@@ -23,7 +24,10 @@ void main() {
       final ws = await repo.createWorkspace([
         const WorkspaceFolder(path: '/proj'),
       ]);
-      final chat = ChatCubit(executableResolver: () => 'flashskyai');
+      final chat = ChatCubit(
+        executableResolver: () => 'flashskyai',
+        automationRepository: testAutomationRepository(),
+      );
       addTearDown(chat.close);
       chat.ingestWorkspaceSessionSnapshot(workspaces: [ws], sessions: const []);
 

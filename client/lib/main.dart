@@ -14,6 +14,7 @@ import 'app/home_index_prefetch.dart';
 import 'cubits/app_bootstrap_cubit.dart';
 import 'cubits/app_update_cubit.dart';
 import 'cubits/board_cubit.dart';
+import 'cubits/automation_cubit.dart';
 import 'cubits/chat_cubit.dart';
 import 'cubits/layout_cubit.dart';
 import 'cubits/mailbox_cubit.dart';
@@ -30,6 +31,7 @@ import 'services/cli/registry/cli_tool_registry_scope.dart';
 import 'services/home_workspace/home_workspace_ui_cache.dart';
 import 'services/storage/app_storage.dart';
 import 'services/app/boot_splash.dart';
+import 'services/app/windows_keyboard_workaround.dart';
 import 'services/app/connection_mode_service.dart';
 import 'services/storage/home_target_controller.dart';
 import 'services/storage/workspace_directory_picker.dart';
@@ -49,7 +51,7 @@ import 'theme/app_toast_theme.dart';
 import 'theme/app_theme.dart';
 import 'theme/app_typography_scale.dart';
 import 'pages/system/error_page.dart';
-import 'services/app/windows_keyboard_workaround.dart';
+import 'services/automation/automation_scheduler.dart';
 import 'utils/logger.dart';
 import 'widgets/app_text_scale_boundary.dart';
 import 'widgets/app_update_available_dialog.dart';
@@ -58,6 +60,7 @@ import 'widgets/ui_zoom.dart';
 class _CleanupWindowListener extends WindowListener {
   _CleanupWindowListener(
     this.chatCubit,
+    this.automationScheduler,
     this.workspaceTerminalRegistry,
     this.gitRepoStore,
     this.workspaceFileTreeStore,
@@ -65,6 +68,7 @@ class _CleanupWindowListener extends WindowListener {
     this.workspaceToolsScopeRegistry,
   );
   final ChatCubit chatCubit;
+  final AutomationScheduler automationScheduler;
   final WorkspaceTerminalRegistry workspaceTerminalRegistry;
   final GitRepoStore gitRepoStore;
   final WorkspaceFileTreeStore workspaceFileTreeStore;
@@ -78,6 +82,7 @@ class _CleanupWindowListener extends WindowListener {
 
   Future<void> _shutdownAndDestroy() async {
     try {
+      automationScheduler.stop();
       await chatCubit.close();
       workspaceTerminalRegistry.disposeAll();
       gitRepoStore.dispose();
@@ -95,6 +100,8 @@ class _CleanupWindowListener extends WindowListener {
 class _AppShutdownScope extends StatefulWidget {
   const _AppShutdownScope({
     required this.chatCubit,
+    required this.automationScheduler,
+    required this.automationCubit,
     required this.mailboxCubit,
     required this.boardCubit,
     required this.notificationCubit,
@@ -107,6 +114,8 @@ class _AppShutdownScope extends StatefulWidget {
   });
 
   final ChatCubit chatCubit;
+  final AutomationScheduler automationScheduler;
+  final AutomationCubit automationCubit;
   final MailboxCubit mailboxCubit;
   final BoardCubit boardCubit;
   final NotificationCubit notificationCubit;
@@ -124,7 +133,9 @@ class _AppShutdownScope extends StatefulWidget {
 class _AppShutdownScopeState extends State<_AppShutdownScope> {
   @override
   void dispose() {
+    widget.automationScheduler.stop();
     unawaited(widget.chatCubit.close());
+    unawaited(widget.automationCubit.close());
     unawaited(widget.mailboxCubit.close());
     unawaited(widget.boardCubit.close());
     unawaited(widget.notificationCubit.close());
@@ -377,6 +388,7 @@ void main() async {
           windowManager.addListener(
             _CleanupWindowListener(
               shell.chatCubit,
+              shell.automationScheduler,
               shell.workspaceTerminalRegistry,
               shell.gitRepoStore,
               shell.workspaceFileTreeStore,
@@ -387,6 +399,8 @@ void main() async {
         }
         return _AppShutdownScope(
           chatCubit: shell.chatCubit,
+          automationScheduler: shell.automationScheduler,
+          automationCubit: shell.automationCubit,
           mailboxCubit: shell.mailboxCubit,
           boardCubit: shell.boardCubit,
           notificationCubit: shell.notificationCubit,
@@ -470,6 +484,7 @@ void main() async {
                 BlocProvider.value(value: shell.sessionPreferencesCubit),
                 BlocProvider.value(value: shell.pluginCubit),
                 BlocProvider.value(value: shell.skillCubit),
+                BlocProvider.value(value: shell.automationCubit),
                 BlocProvider.value(value: shell.mcpCubit),
                 BlocProvider.value(value: shell.teamHubCubit),
                 BlocProvider.value(value: shell.extensionCubit),

@@ -4,13 +4,23 @@ import 'dart:io';
 import 'package:flutter/foundation.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:path/path.dart' as p;
+import 'package:teampilot/cubits/automation_cubit.dart';
 import 'package:teampilot/cubits/chat_cubit.dart';
+import 'package:teampilot/cubits/chat/model/session_open_status.dart';
+import 'package:teampilot/cubits/chat_cubit.dart';
+import 'package:teampilot/repositories/automation_repository.dart';
 import 'package:teampilot/repositories/launch_profile_repository.dart';
+import 'package:teampilot/repositories/session_repository.dart';
+import 'package:teampilot/services/automation/automation_bus_gateway.dart';
+import 'package:teampilot/services/automation/automation_dispatcher.dart';
+import 'package:teampilot/services/automation/automation_schedule_calculator.dart';
+import 'package:teampilot/services/automation/automation_scheduler.dart';
 import 'package:teampilot/services/git/git_command_runner.dart';
 import 'package:teampilot/services/git/git_service.dart';
+import 'package:teampilot/services/io/local_filesystem.dart';
 import 'package:teampilot/services/io/workspace_fs_watcher.dart';
 import 'package:teampilot/services/storage/app_storage.dart';
-import 'package:teampilot/services/io/local_filesystem.dart';
+import 'package:teampilot/services/storage/workspace_layout.dart';
 
 Directory? _testAppDataDir;
 
@@ -130,4 +140,75 @@ Future<void> deleteTempDirBestEffort(Directory dir) async {
       await Future<void>.delayed(Duration(milliseconds: 30 * (attempt + 1)));
     }
   }
+}
+
+AutomationRepository testAutomationRepository() {
+  if (_testAppDataDir != null) {
+    return AutomationRepository(
+      fs: AppStorage.fs,
+      layout: WorkspaceLayout(teampilotRoot: AppStorage.paths.basePath),
+    );
+  }
+  return AutomationRepository(
+    fs: LocalFilesystem(),
+    layout: WorkspaceLayout(teampilotRoot: '/tmp/teampilot-test-automation'),
+  );
+}
+
+class _NoopAutomationBusGateway implements AutomationBusGateway {
+  @override
+  void deliverUserCommandToMember(
+    String sessionId,
+    String memberId,
+    String message,
+  ) {}
+
+  @override
+  Future<void> ensureMemberReady(String sessionId, String memberId) async {}
+}
+
+AutomationCubit testAutomationCubit({SessionRepository? sessionRepository}) {
+  return testAutomationSetup(sessionRepository: sessionRepository).cubit;
+}
+
+({AutomationCubit cubit, AutomationRepository repo}) testAutomationSetup({
+  SessionRepository? sessionRepository,
+}) {
+  final repo = testAutomationRepository();
+  final calc = AutomationScheduleCalculator();
+  final sessions = sessionRepository ?? SessionRepository();
+  final dispatcher = AutomationDispatcher(
+    repository: repo,
+    scheduleCalculator: calc,
+    sessionRepository: sessions,
+    busGateway: _NoopAutomationBusGateway(),
+    requestOpenSession: (_) async => SessionOpenStatus.opened,
+    requestCreateAndOpenSession: (_) async => SessionOpenStatus.opened,
+    workspaceById: (_) => null,
+    teamById: (_) => null,
+  );
+  final scheduler = AutomationScheduler(
+    repository: repo,
+    dispatcher: dispatcher,
+    scheduleCalculator: calc,
+  );
+  final cubit = AutomationCubit(
+    repository: repo,
+    scheduler: scheduler,
+    scheduleCalculator: calc,
+  );
+  return (cubit: cubit, repo: repo);
+}
+
+/// Minimal [ChatCubit] for tests — injects [testAutomationRepository] by default.
+ChatCubit testChatCubit({
+  required String Function() executableResolver,
+  AutomationRepository? automationRepository,
+  SessionRepository? sessionRepository,
+}) {
+  return ChatCubit(
+    executableResolver: executableResolver,
+    automationRepository: automationRepository ?? testAutomationRepository(),
+    sessionRepository: sessionRepository,
+  );
 }

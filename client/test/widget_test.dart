@@ -134,7 +134,11 @@ Widget buildTestApp({
       InMemoryAppSettingsRepository(hasCompletedOnboarding: true);
   final aiFeatures =
       aiFeatureSettingsCubit ?? AiFeatureSettingsCubit(repository: settings);
-  final chat = chatCubit ?? ChatCubit(executableResolver: _testExecutable);
+  final chat = chatCubit ??
+      ChatCubit(
+        executableResolver: _testExecutable,
+        automationRepository: testAutomationRepository(),
+      );
   final presence = memberPresenceCubit ?? MemberPresenceCubit();
   chat.bindPresenceCubit(presence);
 
@@ -210,6 +214,11 @@ Widget buildTestApp({
         ),
         BlocProvider(create: (_) => WorkspaceToolsCubit()),
         BlocProvider(create: (_) => NotificationCubit()),
+        BlocProvider(
+          create: (_) => testAutomationCubit(
+            sessionRepository: _widgetTestSessionRepo,
+          ),
+        ),
       ],
       child: CliToolRegistryScope(
         registry: CliToolRegistry.builtIn(),
@@ -472,6 +481,7 @@ class TestChatCubit extends ChatCubit {
     SessionLifecycleService? lifecycleService,
   }) : super(
          executableResolver: _testExecutable,
+         automationRepository: testAutomationRepository(),
          terminalSessionFactory:
              ({required String executable, int scrollbackLines = 10000}) =>
                  FakeTerminalSession(
@@ -535,6 +545,7 @@ void main() {
     final postFrame = PostFrameTestHarness();
     final chatCubit = ChatCubit(
       executableResolver: _testExecutable,
+      automationRepository: testAutomationRepository(),
       terminalSessionFactory:
           ({required String executable, int scrollbackLines = 10000}) =>
               FakeTerminalSession(
@@ -699,6 +710,7 @@ void main() {
     );
     final chatCubit = ChatCubit(
       executableResolver: _testExecutable,
+      automationRepository: testAutomationRepository(),
       sessionRepository: repo,
       terminalSessionFactory:
           ({required String executable, int scrollbackLines = 10000}) =>
@@ -796,7 +808,10 @@ void main() {
   });
 
   test('chat cubit manages tabs and selection', () {
-    final cubit = ChatCubit(executableResolver: _testExecutable);
+    final cubit = ChatCubit(
+      executableResolver: _testExecutable,
+      automationRepository: testAutomationRepository(),
+    );
     expect(cubit.state.tabs, isEmpty);
     expect(cubit.state.selectedMemberId, isEmpty);
 
@@ -820,6 +835,7 @@ void main() {
     final postFrame = PostFrameTestHarness();
     final cubit = ChatCubit(
       executableResolver: _testExecutable,
+      automationRepository: testAutomationRepository(),
       terminalSessionFactory:
           ({required String executable, int scrollbackLines = 10000}) =>
               FakeTerminalSession(
@@ -857,6 +873,7 @@ void main() {
       final postFrame = PostFrameTestHarness();
       final cubit = ChatCubit(
         executableResolver: () => 'claude',
+        automationRepository: testAutomationRepository(),
         terminalSessionFactory:
             ({required String executable, int scrollbackLines = 10000}) {
               final session = FakeTerminalSession(executable: executable);
@@ -920,6 +937,7 @@ void main() {
       );
       final cubit = ChatCubit(
         executableResolver: _testExecutable,
+        automationRepository: testAutomationRepository(),
         sessionRepository: repo,
         terminalSessionFactory:
             ({required String executable, int scrollbackLines = 10000}) =>
@@ -968,6 +986,7 @@ void main() {
       );
       final cubit = ChatCubit(
         executableResolver: _testExecutable,
+        automationRepository: testAutomationRepository(),
         sessionRepository: repo,
         terminalSessionFactory:
             ({required String executable, int scrollbackLines = 10000}) =>
@@ -998,6 +1017,7 @@ void main() {
       final postFrame = PostFrameTestHarness();
       final cubit = ChatCubit(
         executableResolver: _testExecutable,
+        automationRepository: testAutomationRepository(),
         terminalSessionFactory:
             ({required String executable, int scrollbackLines = 10000}) =>
                 FakeTerminalSession(
@@ -1072,6 +1092,7 @@ void main() {
     final postFrame = PostFrameTestHarness();
     final cubit = ChatCubit(
       executableResolver: _testExecutable,
+      automationRepository: testAutomationRepository(),
       terminalSessionFactory:
           ({required String executable, int scrollbackLines = 10000}) {
             captured = FakeTerminalSession(executable: executable);
@@ -1118,6 +1139,7 @@ void main() {
     final postFrame = PostFrameTestHarness();
     final cubit = ChatCubit(
       executableResolver: _testExecutable,
+      automationRepository: testAutomationRepository(),
       terminalSessionFactory:
           ({required String executable, int scrollbackLines = 10000}) {
             captured = FakeTerminalSession(executable: executable);
@@ -1165,6 +1187,7 @@ void main() {
       final postFrame = PostFrameTestHarness();
       final cubit = ChatCubit(
         executableResolver: _testExecutable,
+        automationRepository: testAutomationRepository(),
         terminalSessionFactory:
             ({required String executable, int scrollbackLines = 10000}) {
               captured = FakeTerminalSession(executable: executable);
@@ -1214,6 +1237,7 @@ void main() {
       final postFrame = PostFrameTestHarness();
       final cubit = ChatCubit(
         executableResolver: _testExecutable,
+        automationRepository: testAutomationRepository(),
         terminalSessionFactory:
             ({required String executable, int scrollbackLines = 10000}) {
               captured = FakeTerminalSession(executable: executable);

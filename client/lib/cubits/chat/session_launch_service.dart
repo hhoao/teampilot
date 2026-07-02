@@ -251,7 +251,8 @@ class SessionLaunchService implements MemberConnector {
       }
     }
 
-    final sessionId = _uuid.v4();
+    final fixedId = request.fixedSessionId?.trim();
+    final sessionId = fixedId != null && fixedId.isNotEmpty ? fixedId : _uuid.v4();
     final provisional = buildProvisionalSession(
       sessionId: sessionId,
       workspace: request.workspace,
@@ -1689,6 +1690,11 @@ class SessionLaunchService implements MemberConnector {
           if (team != null && member != null) {
             tab.teamBus?.markMemberRunning(member.id);
             _h.busCoordinator.markMemberReady(tab.info.id, member.id);
+          } else if (isPersonal) {
+            final personalMemberId = tab.selectedMemberId.trim();
+            if (personalMemberId.isNotEmpty) {
+              _h.busCoordinator.markMemberReady(tab.info.id, personalMemberId);
+            }
           }
           _h.clearLaunchError(tab.info.id);
           _h.finishSessionConnect(tab.info.id);

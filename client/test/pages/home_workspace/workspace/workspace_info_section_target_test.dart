@@ -15,6 +15,7 @@ import 'package:teampilot/services/io/local_filesystem.dart';
 import 'package:teampilot/services/storage/home_target_controller.dart';
 import 'package:teampilot/services/storage/runtime_target_registry.dart';
 import 'package:teampilot/services/storage/targets_repository.dart';
+import '../../../support/post_frame_test_harness.dart';
 
 /// Reachability guard: the workspace folders editor is rendered by the *live*
 /// workspace-settings body (WorkspaceInfoSection) — not an orphan view.
@@ -35,7 +36,10 @@ void main() {
         current: RuntimeTarget.local,
         switchTo: (_) async {},
       );
-      final chat = ChatCubit(executableResolver: () => 'flashskyai');
+      final chat = ChatCubit(
+        executableResolver: () => 'flashskyai',
+        automationRepository: testAutomationRepository(),
+      );
       addTearDown(chat.close);
       final ws = Workspace(
         workspaceId: 'w1',

@@ -8072,6 +8072,378 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Stop the running conversations in this worktree before removing it.'**
   String get worktreeDeleteBusyWarning;
+
+  /// Title for automations management UI
+  ///
+  /// In en, this message translates to:
+  /// **'Automations'**
+  String get automationsTitle;
+
+  /// Subtitle for automations management page
+  ///
+  /// In en, this message translates to:
+  /// **'Schedule messages and prompts across workspaces and sessions.'**
+  String get automationsSubtitle;
+
+  /// No description provided for @automationsNew.
+  ///
+  /// In en, this message translates to:
+  /// **'New automation'**
+  String get automationsNew;
+
+  /// No description provided for @automationsSendToLead.
+  ///
+  /// In en, this message translates to:
+  /// **'Send to lead'**
+  String get automationsSendToLead;
+
+  /// No description provided for @automationsLaunchPrompt.
+  ///
+  /// In en, this message translates to:
+  /// **'Launch prompt'**
+  String get automationsLaunchPrompt;
+
+  /// No description provided for @automationsScheduleHourly.
+  ///
+  /// In en, this message translates to:
+  /// **'Hourly'**
+  String get automationsScheduleHourly;
+
+  /// No description provided for @automationsScheduleDaily.
+  ///
+  /// In en, this message translates to:
+  /// **'Daily'**
+  String get automationsScheduleDaily;
+
+  /// No description provided for @automationsScheduleWeekdays.
+  ///
+  /// In en, this message translates to:
+  /// **'Weekdays'**
+  String get automationsScheduleWeekdays;
+
+  /// No description provided for @automationsScheduleWeekly.
+  ///
+  /// In en, this message translates to:
+  /// **'Weekly'**
+  String get automationsScheduleWeekly;
+
+  /// No description provided for @automationsScheduleCustom.
+  ///
+  /// In en, this message translates to:
+  /// **'Custom cron'**
+  String get automationsScheduleCustom;
+
+  /// No description provided for @automationsSchedule.
+  ///
+  /// In en, this message translates to:
+  /// **'Schedule'**
+  String get automationsSchedule;
+
+  /// No description provided for @automationsSessionContextMenu.
+  ///
+  /// In en, this message translates to:
+  /// **'Scheduled message…'**
+  String get automationsSessionContextMenu;
+
+  /// No description provided for @automationsManageSessionContextMenu.
+  ///
+  /// In en, this message translates to:
+  /// **'Manage scheduled messages'**
+  String get automationsManageSessionContextMenu;
+
+  /// No description provided for @automationsNextRun.
+  ///
+  /// In en, this message translates to:
+  /// **'Next run: {time}'**
+  String automationsNextRun(String time);
+
+  /// No description provided for @automationsNextRunNone.
+  ///
+  /// In en, this message translates to:
+  /// **'No upcoming run'**
+  String get automationsNextRunNone;
+
+  /// No description provided for @automationsRunNow.
+  ///
+  /// In en, this message translates to:
+  /// **'Run now'**
+  String get automationsRunNow;
+
+  /// No description provided for @automationsRunHistory.
+  ///
+  /// In en, this message translates to:
+  /// **'Run history'**
+  String get automationsRunHistory;
+
+  /// No description provided for @automationsRunHistoryEmpty.
+  ///
+  /// In en, this message translates to:
+  /// **'No runs yet'**
+  String get automationsRunHistoryEmpty;
+
+  /// No description provided for @automationsSkippedUnavailable.
+  ///
+  /// In en, this message translates to:
+  /// **'Skipped — session unavailable'**
+  String get automationsSkippedUnavailable;
+
+  /// No description provided for @automationsDispatchFailed.
+  ///
+  /// In en, this message translates to:
+  /// **'Dispatch failed'**
+  String get automationsDispatchFailed;
+
+  /// No description provided for @automationsEdit.
+  ///
+  /// In en, this message translates to:
+  /// **'Edit'**
+  String get automationsEdit;
+
+  /// No description provided for @automationsDelete.
+  ///
+  /// In en, this message translates to:
+  /// **'Delete'**
+  String get automationsDelete;
+
+  /// No description provided for @automationsDeleteConfirm.
+  ///
+  /// In en, this message translates to:
+  /// **'Delete this automation?'**
+  String get automationsDeleteConfirm;
+
+  /// No description provided for @automationsEmpty.
+  ///
+  /// In en, this message translates to:
+  /// **'No automations yet'**
+  String get automationsEmpty;
+
+  /// No description provided for @automationsName.
+  ///
+  /// In en, this message translates to:
+  /// **'Name'**
+  String get automationsName;
+
+  /// No description provided for @automationsMessage.
+  ///
+  /// In en, this message translates to:
+  /// **'Message'**
+  String get automationsMessage;
+
+  /// No description provided for @automationsEnabled.
+  ///
+  /// In en, this message translates to:
+  /// **'Enabled'**
+  String get automationsEnabled;
+
+  /// No description provided for @automationsAction.
+  ///
+  /// In en, this message translates to:
+  /// **'Action'**
+  String get automationsAction;
+
+  /// No description provided for @automationsScope.
+  ///
+  /// In en, this message translates to:
+  /// **'Scope'**
+  String get automationsScope;
+
+  /// No description provided for @automationsScopeSession.
+  ///
+  /// In en, this message translates to:
+  /// **'Session'**
+  String get automationsScopeSession;
+
+  /// No description provided for @automationsScopeWorkspace.
+  ///
+  /// In en, this message translates to:
+  /// **'Workspace'**
+  String get automationsScopeWorkspace;
+
+  /// No description provided for @automationsCli.
+  ///
+  /// In en, this message translates to:
+  /// **'CLI'**
+  String get automationsCli;
+
+  /// No description provided for @automationsReuseSession.
+  ///
+  /// In en, this message translates to:
+  /// **'Reuse session'**
+  String get automationsReuseSession;
+
+  /// No description provided for @automationsTargetMember.
+  ///
+  /// In en, this message translates to:
+  /// **'Target member'**
+  String get automationsTargetMember;
+
+  /// No description provided for @automationsCustomCron.
+  ///
+  /// In en, this message translates to:
+  /// **'Cron expression'**
+  String get automationsCustomCron;
+
+  /// No description provided for @automationsInvalidCron.
+  ///
+  /// In en, this message translates to:
+  /// **'Invalid cron expression (5 fields required)'**
+  String get automationsInvalidCron;
+
+  /// No description provided for @automationsInvalidTime.
+  ///
+  /// In en, this message translates to:
+  /// **'Time must be HH:mm'**
+  String get automationsInvalidTime;
+
+  /// No description provided for @automationsValidationRequired.
+  ///
+  /// In en, this message translates to:
+  /// **'Name and message are required'**
+  String get automationsValidationRequired;
+
+  /// No description provided for @automationsTime.
+  ///
+  /// In en, this message translates to:
+  /// **'Time'**
+  String get automationsTime;
+
+  /// No description provided for @automationsCreateTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'New automation'**
+  String get automationsCreateTitle;
+
+  /// No description provided for @automationsEditTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Edit automation'**
+  String get automationsEditTitle;
+
+  /// No description provided for @automationsCompactTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Scheduled message'**
+  String get automationsCompactTitle;
+
+  /// No description provided for @automationsHeaderCount.
+  ///
+  /// In en, this message translates to:
+  /// **'Automations · {count}'**
+  String automationsHeaderCount(int count);
+
+  /// No description provided for @automationsFilterAll.
+  ///
+  /// In en, this message translates to:
+  /// **'All'**
+  String get automationsFilterAll;
+
+  /// No description provided for @automationsFilterEnabled.
+  ///
+  /// In en, this message translates to:
+  /// **'Enabled only'**
+  String get automationsFilterEnabled;
+
+  /// No description provided for @automationsScheduleSummaryHourly.
+  ///
+  /// In en, this message translates to:
+  /// **'Hourly at :{minute}'**
+  String automationsScheduleSummaryHourly(int minute);
+
+  /// No description provided for @automationsScheduleSummaryDaily.
+  ///
+  /// In en, this message translates to:
+  /// **'Daily at {time}'**
+  String automationsScheduleSummaryDaily(String time);
+
+  /// No description provided for @automationsScheduleSummaryWeekdays.
+  ///
+  /// In en, this message translates to:
+  /// **'Weekdays at {time}'**
+  String automationsScheduleSummaryWeekdays(String time);
+
+  /// No description provided for @automationsScheduleSummaryWeekly.
+  ///
+  /// In en, this message translates to:
+  /// **'Weekly on {day} at {time}'**
+  String automationsScheduleSummaryWeekly(String day, String time);
+
+  /// No description provided for @automationsDayMonday.
+  ///
+  /// In en, this message translates to:
+  /// **'Monday'**
+  String get automationsDayMonday;
+
+  /// No description provided for @automationsDayTuesday.
+  ///
+  /// In en, this message translates to:
+  /// **'Tuesday'**
+  String get automationsDayTuesday;
+
+  /// No description provided for @automationsDayWednesday.
+  ///
+  /// In en, this message translates to:
+  /// **'Wednesday'**
+  String get automationsDayWednesday;
+
+  /// No description provided for @automationsDayThursday.
+  ///
+  /// In en, this message translates to:
+  /// **'Thursday'**
+  String get automationsDayThursday;
+
+  /// No description provided for @automationsDayFriday.
+  ///
+  /// In en, this message translates to:
+  /// **'Friday'**
+  String get automationsDayFriday;
+
+  /// No description provided for @automationsDaySaturday.
+  ///
+  /// In en, this message translates to:
+  /// **'Saturday'**
+  String get automationsDaySaturday;
+
+  /// No description provided for @automationsDaySunday.
+  ///
+  /// In en, this message translates to:
+  /// **'Sunday'**
+  String get automationsDaySunday;
+
+  /// No description provided for @automationsSessionDefaultName.
+  ///
+  /// In en, this message translates to:
+  /// **'{title} — scheduled message'**
+  String automationsSessionDefaultName(String title);
+
+  /// No description provided for @automationsRunStatusCompleted.
+  ///
+  /// In en, this message translates to:
+  /// **'Completed'**
+  String get automationsRunStatusCompleted;
+
+  /// No description provided for @automationsRunStatusPending.
+  ///
+  /// In en, this message translates to:
+  /// **'Pending'**
+  String get automationsRunStatusPending;
+
+  /// No description provided for @automationsRunStatusDispatching.
+  ///
+  /// In en, this message translates to:
+  /// **'Dispatching'**
+  String get automationsRunStatusDispatching;
+
+  /// No description provided for @automationsRunStatusDispatched.
+  ///
+  /// In en, this message translates to:
+  /// **'Dispatched'**
+  String get automationsRunStatusDispatched;
+
+  /// No description provided for @automationsRunStatusSkippedMissed.
+  ///
+  /// In en, this message translates to:
+  /// **'Skipped — missed window'**
+  String get automationsRunStatusSkippedMissed;
 }
 
 class _AppLocalizationsDelegate

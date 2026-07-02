@@ -98,8 +98,11 @@ class PerformanceScenarioApp {
     final settings = InMemoryAppSettingsRepository(
       hasCompletedOnboarding: true,
     );
-    final chat =
-        chatCubit ?? ChatCubit(executableResolver: () => performanceTestExecutable);
+    final chat = chatCubit ??
+        ChatCubit(
+          executableResolver: () => performanceTestExecutable,
+          automationRepository: testAutomationRepository(),
+        );
     final presence = MemberPresenceCubit();
     chat.bindPresenceCubit(presence);
 

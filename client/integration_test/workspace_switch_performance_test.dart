@@ -50,6 +50,7 @@ void main() {
 
     final chatCubit = ChatCubit(
       executableResolver: () => performanceTestExecutable,
+      automationRepository: testAutomationRepository(),
       terminalSessionFactory:
           ({required String executable, int scrollbackLines = 10000}) =>
               PerformanceFakeTerminalSession(

@@ -37,6 +37,7 @@ void main() {
       created.clear();
       cubit = ChatCubit(
         executableResolver: () => 'true',
+        automationRepository: testAutomationRepository(),
         sessionRepository: repo,
         postFrameScheduler: postFrame.scheduler,
         terminalSessionFactory:

@@ -14,6 +14,7 @@ class SessionCreateRequest {
     this.cli,
     this.workingDirectory,
     this.emptyDisplayTitleFallback = 'New Chat',
+    this.fixedSessionId,
   });
 
   final Workspace workspace;
@@ -25,4 +26,6 @@ class SessionCreateRequest {
   final CliTool? cli;
   final String? workingDirectory;
   final String emptyDisplayTitleFallback;
+  /// When set, the staged session uses this id instead of a fresh UUID.
+  final String? fixedSessionId;
 }

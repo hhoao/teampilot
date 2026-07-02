@@ -100,7 +100,10 @@ void main() {
     late ChatCubit cubit;
 
     setUp(() {
-      cubit = ChatCubit(executableResolver: _executable);
+      cubit = ChatCubit(
+        executableResolver: _executable,
+        automationRepository: testAutomationRepository(),
+      );
     });
 
     tearDown(() async {
@@ -298,6 +301,7 @@ void main() {
       postFrame = PostFrameTestHarness();
       cubit = ChatCubit(
         executableResolver: () => 'true',
+        automationRepository: testAutomationRepository(),
         sessionRepository: repo,
         postFrameScheduler: postFrame.scheduler,
         terminalSessionFactory:
@@ -352,6 +356,7 @@ void main() {
       final executables = <String>[];
       final cubit = ChatCubit(
         executableResolver: () => 'flashskyai',
+        automationRepository: testAutomationRepository(),
         cliExecutableResolver: (cli) =>
             cli == CliTool.claude ? '/opt/bin/claude' : 'flashskyai',
         terminalSessionFactory:
@@ -386,6 +391,7 @@ void main() {
         final session = await repo.createSession(workspace.workspaceId);
         final cubit = ChatCubit(
           executableResolver: () => 'true',
+          automationRepository: testAutomationRepository(),
           sessionRepository: repo,
           terminalSessionFactory:
               ({required String executable, int scrollbackLines = 10000}) =>
@@ -420,6 +426,7 @@ void main() {
         final postFrame = PostFrameTestHarness();
         final cubit = ChatCubit(
           executableResolver: () => 'true',
+          automationRepository: testAutomationRepository(),
           sessionRepository: repo,
           terminalSessionFactory:
               ({required String executable, int scrollbackLines = 10000}) =>
@@ -466,6 +473,7 @@ void main() {
         final postFrame = PostFrameTestHarness();
         final cubit = ChatCubit(
           executableResolver: () => 'true',
+          automationRepository: testAutomationRepository(),
           sessionRepository: repo,
           terminalSessionFactory:
               ({required String executable, int scrollbackLines = 10000}) =>
@@ -515,6 +523,7 @@ void main() {
         final postFrame = PostFrameTestHarness();
         final cubit = ChatCubit(
           executableResolver: () => 'true',
+          automationRepository: testAutomationRepository(),
           sessionRepository: repo,
           terminalSessionFactory:
             ({required String executable, int scrollbackLines = 10000}) {
@@ -574,6 +583,7 @@ void main() {
         final postFrame = PostFrameTestHarness();
         final cubit = ChatCubit(
           executableResolver: () => 'true',
+          automationRepository: testAutomationRepository(),
           sessionRepository: repo,
           terminalSessionFactory:
               ({required String executable, int scrollbackLines = 10000}) =>
@@ -615,6 +625,7 @@ void main() {
         final fakeSessions = <_FakeTerminalSession>[];
         final cubit = ChatCubit(
           executableResolver: () => 'true',
+          automationRepository: testAutomationRepository(),
           sessionRepository: repo,
           terminalSessionFactory:
             ({required String executable, int scrollbackLines = 10000}) {
@@ -681,6 +692,7 @@ void main() {
         final postFrame = PostFrameTestHarness();
         final cubit = ChatCubit(
           executableResolver: () => 'flashskyai',
+          automationRepository: testAutomationRepository(),
           cliExecutableResolver: (cli) =>
               cli == CliTool.claude ? 'claude' : 'flashskyai',
           sessionRepository: repo,
@@ -736,6 +748,7 @@ void main() {
         final postFrame = PostFrameTestHarness();
         final cubit = ChatCubit(
           executableResolver: () => 'true',
+          automationRepository: testAutomationRepository(),
           sessionRepository: repo,
           terminalSessionFactory:
               ({required String executable, int scrollbackLines = 10000}) {
@@ -791,6 +804,7 @@ void main() {
         final postFrame = PostFrameTestHarness();
         final cubit = ChatCubit(
           executableResolver: () => 'true',
+          automationRepository: testAutomationRepository(),
           sessionRepository: repo,
           terminalSessionFactory:
               ({required String executable, int scrollbackLines = 10000}) {
@@ -850,6 +864,7 @@ void main() {
         );
         final cubit = ChatCubit(
           executableResolver: () => 'true',
+          automationRepository: testAutomationRepository(),
           sessionRepository: repo,
           terminalSessionFactory:
               ({required String executable, int scrollbackLines = 10000}) {
@@ -914,6 +929,7 @@ void main() {
         final postFrame = PostFrameTestHarness();
         final cubit = ChatCubit(
           executableResolver: () => 'true',
+          automationRepository: testAutomationRepository(),
           sessionRepository: repo,
           postFrameScheduler: postFrame.scheduler,
         );
