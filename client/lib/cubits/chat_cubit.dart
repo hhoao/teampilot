@@ -15,6 +15,7 @@ import '../models/workspace_icon_ref.dart';
 import '../models/team_config.dart';
 import '../models/runtime_target.dart';
 import '../../repositories/launch_profile_repository.dart';
+import '../models/automation_tab_scope.dart';
 import '../repositories/automation_repository.dart';
 import '../repositories/session_repository.dart';
 import '../services/workspace/workspace_icon_service.dart';
@@ -1083,7 +1084,7 @@ class ChatCubit extends Cubit<ChatState>
     _emitSnapshot(await _dataStore.deleteSessionRecord(repo, sessionId));
     if (session != null) {
       await _automationRepository.disableForSession(
-        session.workspaceId,
+        AutomationTabScope.fromSession(session),
         sessionId,
       );
       _notifyAutomationsChanged();

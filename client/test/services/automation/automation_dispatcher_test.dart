@@ -7,11 +7,13 @@ import 'package:teampilot/models/workspace.dart';
 import 'package:teampilot/repositories/automation_repository.dart';
 import 'package:teampilot/repositories/session_repository.dart';
 import 'package:teampilot/services/automation/automation_bus_gateway.dart';
+import 'package:teampilot/models/automation_tab_scope.dart';
 import 'package:teampilot/services/automation/automation_dispatcher.dart';
 import 'package:teampilot/services/automation/automation_schedule_calculator.dart';
 import 'package:teampilot/services/storage/app_storage.dart';
 import 'package:teampilot/services/storage/workspace_layout.dart';
 
+import '../../support/automation_test_fixtures.dart';
 import '../../support/post_frame_test_harness.dart';
 
 class _FakeSessionRepository implements SessionRepository {
@@ -52,12 +54,14 @@ class _RecordingBusGateway implements AutomationBusGateway {
 Automation _scheduledMessageAutomation({
   required String sessionId,
   String workspaceId = 'ws1',
+  String launchProfileId = 'team-1',
 }) {
   return Automation(
     id: 'auto-1',
     name: 'Reset',
     action: AutomationAction.scheduledMessage,
     workspaceId: workspaceId,
+    launchProfileId: launchProfileId,
     sessionId: sessionId,
     message: '/clear',
     preset: AutomationSchedulePreset.hourly,
@@ -71,6 +75,11 @@ Automation _scheduledMessageAutomation({
     updatedAtMs: 1,
   );
 }
+
+const _teamTabScope = AutomationTabScope(
+  workspaceId: 'ws1',
+  launchProfileId: 'team-1',
+);
 
 void main() {
   setUp(setUpTestAppStorage);
@@ -109,6 +118,7 @@ void main() {
       requestCreateAndOpenSession: (_) async => SessionOpenStatus.opened,
       workspaceById: (_) => workspace,
       teamById: (id) => id == 'team-1' ? team : null,
+      launchProfileKindById: testLaunchProfileKindResolver(),
       nowMs: () => 100,
     );
 
@@ -119,7 +129,7 @@ void main() {
     expect(bus.deliverCalls, [('sess-1', 'team-lead', '/clear')]);
     expect(result.run.status, AutomationRunStatus.completed);
     expect(result.automation.lastRunAtMs, 100);
-    final runs = await repo.runsFor('ws1', automationId: 'auto-1');
+    final runs = await repo.runsFor(_teamTabScope, automationId: 'auto-1');
     expect(runs, hasLength(1));
   });
 
@@ -137,6 +147,7 @@ void main() {
       requestCreateAndOpenSession: (_) async => SessionOpenStatus.opened,
       workspaceById: (_) => null,
       teamById: (_) => null,
+      launchProfileKindById: testLaunchProfileKindResolver(),
       nowMs: () => 50,
     );
 
@@ -167,6 +178,7 @@ void main() {
       requestCreateAndOpenSession: (_) async => SessionOpenStatus.opened,
       workspaceById: (_) => workspace,
       teamById: (_) => null,
+      launchProfileKindById: testLaunchProfileKindResolver(),
       nowMs: () => 10,
       memberReadyTimeout: const Duration(milliseconds: 50),
     );
@@ -205,6 +217,7 @@ void main() {
       requestCreateAndOpenSession: (_) async => SessionOpenStatus.opened,
       workspaceById: (_) => workspace,
       teamById: (id) => id == 'team-1' ? team : null,
+      launchProfileKindById: testLaunchProfileKindResolver(),
       nowMs: () => 100,
     );
 

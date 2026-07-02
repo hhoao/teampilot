@@ -1,6 +1,9 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:teampilot/models/automation.dart';
 import 'package:teampilot/models/team_config.dart';
+import 'package:teampilot/services/storage/launch_profile_provisioner.dart';
+
+const _defaultLaunchProfileId = LaunchProfileProvisioner.defaultPersonalId;
 
 void main() {
   test('Automation round-trips JSON', () {
@@ -9,6 +12,7 @@ void main() {
       name: 'Reset',
       action: AutomationAction.scheduledMessage,
       workspaceId: 'ws1',
+      launchProfileId: _defaultLaunchProfileId,
       sessionId: 's1',
       message: '/clear',
       preset: AutomationSchedulePreset.hourly,
@@ -34,6 +38,7 @@ void main() {
       name: 'Once',
       action: AutomationAction.scheduledMessage,
       workspaceId: 'ws1',
+      launchProfileId: _defaultLaunchProfileId,
       sessionId: 's1',
       message: '/clear',
       preset: AutomationSchedulePreset.daily,
@@ -61,6 +66,7 @@ void main() {
         name: 'n',
         action: AutomationAction.launchPrompt,
         workspaceId: 'ws',
+        launchProfileId: _defaultLaunchProfileId,
         targetMemberId: 'team-lead',
         message: 'ping',
         preset: AutomationSchedulePreset.daily,
@@ -83,6 +89,7 @@ void main() {
         name: 'n',
         action: AutomationAction.scheduledMessage,
         workspaceId: 'ws',
+        launchProfileId: _defaultLaunchProfileId,
         message: 'ping',
         preset: AutomationSchedulePreset.daily,
         minute: 0,
@@ -104,6 +111,7 @@ void main() {
         name: 'n',
         action: AutomationAction.launchPrompt,
         workspaceId: 'ws',
+        launchProfileId: _defaultLaunchProfileId,
         targetMemberId: 'team-lead',
         message: 'ping',
         cli: CliTool.claude,

@@ -17,7 +17,7 @@ class AutomationManagementPage extends StatelessWidget {
       title: l10n.automationsTitle,
       subtitle: l10n.automationsSubtitle,
       nav: const SizedBox.shrink(),
-      body: const AutomationsPanel(groupByWorkspace: true, embedded: true),
+      body: const AutomationsPanel(groupByTabScope: true, embedded: true),
     );
   }
 }

@@ -24,6 +24,7 @@ class AutomationEditorDialog extends StatefulWidget {
     this.initial,
     this.kind = AutomationEditorKind.launchPrompt,
     this.workspaceId,
+    this.launchProfileId,
     this.sessionId,
     this.defaultName,
     super.key,
@@ -32,6 +33,7 @@ class AutomationEditorDialog extends StatefulWidget {
   final Automation? initial;
   final AutomationEditorKind kind;
   final String? workspaceId;
+  final String? launchProfileId;
   final String? sessionId;
   final String? defaultName;
 
@@ -40,6 +42,7 @@ class AutomationEditorDialog extends StatefulWidget {
     Automation? initial,
     AutomationEditorKind kind = AutomationEditorKind.launchPrompt,
     String? workspaceId,
+    String? launchProfileId,
     String? sessionId,
     String? defaultName,
   }) {
@@ -49,6 +52,7 @@ class AutomationEditorDialog extends StatefulWidget {
         initial: initial,
         kind: kind,
         workspaceId: workspaceId,
+        launchProfileId: launchProfileId,
         sessionId: sessionId,
         defaultName: defaultName,
       ),
@@ -81,6 +85,8 @@ class _AutomationEditorDialogState extends State<AutomationEditorDialog> {
     super.initState();
     final initial = widget.initial;
     final workspaceId = initial?.workspaceId ?? widget.workspaceId ?? '';
+    final launchProfileId =
+        initial?.launchProfileId ?? widget.launchProfileId ?? '';
 
     _nameCtl = TextEditingController(
       text: initial?.name ?? widget.defaultName ?? '',
@@ -106,6 +112,8 @@ class _AutomationEditorDialogState extends State<AutomationEditorDialog> {
 
     if (workspaceId.isEmpty && initial == null) {
       _errorMessage = 'workspaceId required';
+    } else if (launchProfileId.isEmpty && initial == null) {
+      _errorMessage = 'launchProfileId required';
     }
   }
 
@@ -156,6 +164,8 @@ class _AutomationEditorDialogState extends State<AutomationEditorDialog> {
     final nowMs = DateTime.now().millisecondsSinceEpoch;
     final workspaceId =
         widget.initial?.workspaceId ?? widget.workspaceId ?? '';
+    final launchProfileId =
+        widget.initial?.launchProfileId ?? widget.launchProfileId ?? '';
     final sessionId = _isScheduledMessage
         ? (widget.initial?.sessionId ?? widget.sessionId)
         : null;
@@ -167,6 +177,7 @@ class _AutomationEditorDialogState extends State<AutomationEditorDialog> {
           ? AutomationAction.scheduledMessage
           : AutomationAction.launchPrompt,
       workspaceId: workspaceId,
+      launchProfileId: launchProfileId,
       sessionId: sessionId,
       targetMemberId: _targetMemberCtl.text.trim().isEmpty
           ? 'team-lead'

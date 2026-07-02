@@ -42,6 +42,7 @@ import '../cubits/launch_profile_cubit.dart';
 import '../cubits/team_hub_cubit.dart';
 import '../models/runtime_target.dart';
 import '../models/ssh_profile.dart';
+import '../models/launch_profile_kind.dart';
 import '../models/team_config.dart';
 import '../services/app/boot_splash.dart';
 import '../utils/yield_ui_frame.dart';
@@ -714,6 +715,9 @@ Future<AppShell> buildAppShell({
     teamById: (teamId) {
       final profile = teamCubit.state.byId(teamId);
       return profile is TeamProfile ? profile : null;
+    },
+    launchProfileKindById: (profileId) {
+      return teamCubit.state.byId(profileId)?.kind;
     },
     personalContextResolver: personalLaunchContextResolver,
     sessionById: (sessionId, workspaceId) => chatCubit.state.sessions

@@ -2,6 +2,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:teampilot/models/automation.dart';
 import 'package:teampilot/models/team_config.dart';
 import 'package:teampilot/services/automation/automation_schedule_calculator.dart';
+import 'package:teampilot/services/storage/launch_profile_provisioner.dart';
 
 Automation _automation({
   AutomationSchedulePreset preset = AutomationSchedulePreset.daily,
@@ -15,6 +16,7 @@ Automation _automation({
     name: 'Test',
     action: AutomationAction.launchPrompt,
     workspaceId: 'ws1',
+    launchProfileId: LaunchProfileProvisioner.defaultPersonalId,
     cli: CliTool.claude,
     message: 'hi',
     preset: preset,

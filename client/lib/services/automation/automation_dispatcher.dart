@@ -8,6 +8,8 @@ import '../../cubits/chat/model/session_open_request.dart';
 import '../../cubits/chat/model/session_open_status.dart';
 import '../../models/app_session.dart';
 import '../../models/automation.dart';
+import '../../models/automation_tab_scope.dart';
+import '../../models/launch_profile_kind.dart';
 import '../../models/team_config.dart';
 import '../../models/workspace.dart';
 import '../../repositories/automation_repository.dart';
@@ -25,6 +27,10 @@ typedef AutomationSessionLookup = AppSession? Function(
   String workspaceId,
 );
 
+typedef AutomationLaunchProfileKindResolver = LaunchProfileKind? Function(
+  String launchProfileId,
+);
+
 int _automationDefaultNowMs() => DateTime.now().millisecondsSinceEpoch;
 
 class AutomationDispatcher {
@@ -39,6 +45,7 @@ class AutomationDispatcher {
         requestCreateAndOpenSession,
     required AutomationWorkspaceResolver workspaceById,
     required AutomationTeamResolver teamById,
+    required AutomationLaunchProfileKindResolver launchProfileKindById,
     PersonalLaunchContextResolver? personalContextResolver,
     AutomationSessionLookup? sessionById,
     int Function()? nowMs,
@@ -51,6 +58,7 @@ class AutomationDispatcher {
         _requestCreateAndOpenSession = requestCreateAndOpenSession,
         _workspaceById = workspaceById,
         _teamById = teamById,
+        _launchProfileKindById = launchProfileKindById,
         _personalContextResolver = personalContextResolver,
         _sessionById = sessionById,
         _nowMs = nowMs ?? _automationDefaultNowMs,
@@ -69,6 +77,7 @@ class AutomationDispatcher {
       _requestCreateAndOpenSession;
   final AutomationWorkspaceResolver _workspaceById;
   final AutomationTeamResolver _teamById;
+  final AutomationLaunchProfileKindResolver _launchProfileKindById;
   final PersonalLaunchContextResolver? _personalContextResolver;
   final AutomationSessionLookup? _sessionById;
   final int Function() _nowMs;
@@ -86,7 +95,7 @@ class AutomationDispatcher {
       startedAtMs: startedAtMs,
     );
     await _repository.upsertRun(
-      automation.workspaceId,
+      automation.tabScope,
       pending.copyWith(status: AutomationRunStatus.dispatching),
     );
 
@@ -96,7 +105,7 @@ class AutomationDispatcher {
         pending,
         startedAtMs: startedAtMs,
       );
-      await _repository.upsertRun(automation.workspaceId, finished);
+      await _repository.upsertRun(automation.tabScope, finished);
       await _repository.upsert(updated);
       return AutomationDispatchResult(run: finished, automation: updated);
     } on Object catch (error, stackTrace) {
@@ -111,7 +120,7 @@ class AutomationDispatcher {
         startedAtMs: startedAtMs,
         error: error.toString(),
       );
-      await _repository.upsertRun(automation.workspaceId, failed);
+      await _repository.upsertRun(automation.tabScope, failed);
       final updated = _advanceAutomationAfterRun(
         automation,
         lastRunAtMs: startedAtMs,
@@ -173,7 +182,7 @@ class AutomationDispatcher {
       automation.message,
     );
     await _repository.upsertRun(
-      automation.workspaceId,
+      automation.tabScope,
       _finishRun(
         pending,
         AutomationRunStatus.dispatched,
@@ -197,12 +206,18 @@ class AutomationDispatcher {
   Future<AppSession?> _resolveSession(Automation automation) async {
     final sessionId = automation.sessionId?.trim();
     if (sessionId == null || sessionId.isEmpty) return null;
-    final fromSnapshot = _sessionById?.call(sessionId, automation.workspaceId);
-    if (fromSnapshot != null) return fromSnapshot;
-    final sessions = await _sessionRepository.loadSessionsForWorkspace(
+    final kind = _launchProfileKindById(automation.launchProfileId);
+    if (kind == null) return null;
+
+    AppSession? session = _sessionById?.call(sessionId, automation.workspaceId);
+    session ??= (await _sessionRepository.loadSessionsForWorkspace(
       automation.workspaceId,
-    );
-    return sessions.where((s) => s.sessionId == sessionId).firstOrNull;
+    ))
+        .where((s) => s.sessionId == sessionId)
+        .firstOrNull;
+    if (session == null) return null;
+    if (!automation.tabScope.ownsSession(session, kind)) return null;
+    return session;
   }
 
   Future<AppSession?> _resolveOrCreateSession(Automation automation) async {
@@ -219,11 +234,24 @@ class AutomationDispatcher {
     final workspace = _workspaceById(automation.workspaceId);
     if (workspace == null) return null;
 
+    final kind = _launchProfileKindById(automation.launchProfileId);
+    if (kind == null) return null;
+
     final plannedSessionId = _uuid.v4();
-    final teamId = workspace.defaultProfileId.trim();
     final SessionOpenStatus status;
-    if (teamId.isNotEmpty) {
-      final team = _teamById(teamId);
+    if (kind == LaunchProfileKind.personal) {
+      status = await _requestCreateAndOpenSession(
+        SessionCreateRequest(
+          workspace: workspace,
+          isPersonal: true,
+          personalIdentityId: automation.launchProfileId,
+          repo: _sessionRepository,
+          cli: automation.cli,
+          fixedSessionId: plannedSessionId,
+        ),
+      );
+    } else {
+      final team = _teamById(automation.launchProfileId);
       if (team == null) return null;
       final member = _resolveTeamMember(team, automation.targetMemberId);
       status = await _requestCreateAndOpenSession(
@@ -232,16 +260,6 @@ class AutomationDispatcher {
           isPersonal: false,
           team: team,
           member: member,
-          repo: _sessionRepository,
-          cli: automation.cli,
-          fixedSessionId: plannedSessionId,
-        ),
-      );
-    } else {
-      status = await _requestCreateAndOpenSession(
-        SessionCreateRequest(
-          workspace: workspace,
-          isPersonal: true,
           repo: _sessionRepository,
           cli: automation.cli,
           fixedSessionId: plannedSessionId,

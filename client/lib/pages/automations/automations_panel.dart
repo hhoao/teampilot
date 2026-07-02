@@ -8,6 +8,7 @@ import '../../cubits/automation_cubit.dart';
 import '../../cubits/automation_state.dart';
 import '../../l10n/l10n_extensions.dart';
 import '../../models/automation.dart';
+import '../../models/automation_tab_scope.dart';
 import '../../repositories/automation_repository.dart';
 import '../../theme/app_text_styles.dart';
 import '../../utils/coarse_relative_time.dart';
@@ -41,16 +42,16 @@ String formatAutomationRunCountLabel(
 /// sidebar entry points.
 class AutomationsPanel extends StatefulWidget {
   const AutomationsPanel({
-    this.filterWorkspaceId,
+    this.filterTabScope,
     this.filterSessionId,
-    this.groupByWorkspace = false,
+    this.groupByTabScope = false,
     this.embedded = false,
     super.key,
   });
 
-  final String? filterWorkspaceId;
+  final AutomationTabScope? filterTabScope;
   final String? filterSessionId;
-  final bool groupByWorkspace;
+  final bool groupByTabScope;
   final bool embedded;
 
   @override
@@ -68,8 +69,8 @@ class _AutomationsPanelState extends State<AutomationsPanel> {
     if (_didLoad) return;
     _didLoad = true;
     final cubit = context.read<AutomationCubit>();
-    if (widget.filterWorkspaceId != null) {
-      unawaited(cubit.loadForWorkspace(widget.filterWorkspaceId!));
+    if (widget.filterTabScope != null) {
+      unawaited(cubit.loadForTabScope(widget.filterTabScope!));
     } else {
       unawaited(cubit.load());
     }
@@ -90,8 +91,8 @@ class _AutomationsPanelState extends State<AutomationsPanel> {
 
   Future<void> _reload() async {
     final cubit = context.read<AutomationCubit>();
-    if (widget.filterWorkspaceId != null) {
-      await cubit.loadForWorkspace(widget.filterWorkspaceId!);
+    if (widget.filterTabScope != null) {
+      await cubit.loadForTabScope(widget.filterTabScope!);
     } else {
       await cubit.load();
     }
@@ -99,7 +100,7 @@ class _AutomationsPanelState extends State<AutomationsPanel> {
 
   Future<void> _toggleEnabled(Automation automation) async {
     await context.read<AutomationCubit>().toggleEnabled(
-      automation.workspaceId,
+      automation.tabScope,
       automation.id,
     );
   }
@@ -135,7 +136,7 @@ class _AutomationsPanelState extends State<AutomationsPanel> {
     );
     if (ok != true || !mounted) return;
     await context.read<AutomationCubit>().delete(
-      automation.workspaceId,
+      automation.tabScope,
       automation.id,
     );
   }
@@ -147,6 +148,7 @@ class _AutomationsPanelState extends State<AutomationsPanel> {
       kind: automation.isScheduledMessage
           ? AutomationEditorKind.scheduledMessage
           : AutomationEditorKind.launchPrompt,
+      launchProfileId: automation.launchProfileId,
       workspaceId: automation.workspaceId,
       sessionId: automation.sessionId,
     );
@@ -154,9 +156,12 @@ class _AutomationsPanelState extends State<AutomationsPanel> {
   }
 
   Future<void> _create() async {
+    final scope = widget.filterTabScope;
+    if (scope == null) return;
     final saved = await AutomationEditorDialog.show(
       context,
-      workspaceId: widget.filterWorkspaceId,
+      launchProfileId: scope.launchProfileId,
+      workspaceId: scope.workspaceId,
       sessionId: widget.filterSessionId,
     );
     if (saved != null) await _reload();
@@ -164,7 +169,7 @@ class _AutomationsPanelState extends State<AutomationsPanel> {
 
   Future<void> _runNow(Automation automation) async {
     await context.read<AutomationCubit>().runNow(
-      automation.workspaceId,
+      automation.tabScope,
       automation.id,
     );
   }
@@ -241,7 +246,7 @@ class _AutomationsPanelState extends State<AutomationsPanel> {
                   ),
                 );
               }
-              if (widget.groupByWorkspace) {
+              if (widget.groupByTabScope) {
                 return _GroupedList(
                   automations: automations,
                   runsByAutomationId: state.runsByAutomationId,
@@ -333,7 +338,7 @@ class _GroupedList extends StatelessWidget {
     final styles = AppTextStyles.of(context);
     final grouped = <String, List<Automation>>{};
     for (final a in automations) {
-      grouped.putIfAbsent(a.workspaceId, () => []).add(a);
+      grouped.putIfAbsent(a.tabScope.tabKey, () => []).add(a);
     }
     return ListView(
       padding: const EdgeInsets.fromLTRB(8, 0, 8, 16),
@@ -603,7 +608,7 @@ class _RunHistoryRow extends StatelessWidget {
 /// Opens [AutomationsPanel] in a modal dialog (workspace sidebar entry).
 Future<void> showAutomationsPanelDialog(
   BuildContext context, {
-  String? filterWorkspaceId,
+  required AutomationTabScope filterTabScope,
   String? filterSessionId,
 }) {
   final height = MediaQuery.sizeOf(context).height * 0.85;
@@ -615,7 +620,7 @@ Future<void> showAutomationsPanelDialog(
       child: SizedBox(
         height: height - 48,
         child: AutomationsPanel(
-          filterWorkspaceId: filterWorkspaceId,
+          filterTabScope: filterTabScope,
           filterSessionId: filterSessionId,
           embedded: true,
         ),
@@ -636,10 +641,15 @@ class AutomationWorkspaceSummary {
 
   static AutomationWorkspaceSummary fromAutomations(
     List<Automation> automations,
-    String workspaceId,
+    AutomationTabScope tabScope,
   ) {
     final enabled = automations
-        .where((a) => a.workspaceId == workspaceId && a.enabled)
+        .where(
+          (a) =>
+              a.workspaceId == tabScope.workspaceId &&
+              a.launchProfileId == tabScope.launchProfileId &&
+              a.enabled,
+        )
         .toList();
     int? nearest;
     for (final a in enabled) {
@@ -655,9 +665,9 @@ class AutomationWorkspaceSummary {
 
   static Future<AutomationWorkspaceSummary> load(
     AutomationRepository repo,
-    String workspaceId,
+    AutomationTabScope tabScope,
   ) async {
-    final automations = await repo.listForWorkspace(workspaceId);
-    return fromAutomations(automations, workspaceId);
+    final automations = await repo.listForTabScope(tabScope);
+    return fromAutomations(automations, tabScope);
   }
 }

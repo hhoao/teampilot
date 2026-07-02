@@ -4,6 +4,7 @@ import 'package:collection/collection.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
 import '../models/automation.dart';
+import '../models/automation_tab_scope.dart';
 import '../repositories/automation_repository.dart';
 import '../services/automation/automation_schedule_calculator.dart';
 import '../services/automation/automation_scheduler.dart';
@@ -31,7 +32,14 @@ class AutomationCubit extends Cubit<AutomationState> {
   final int Function() _nowMs;
 
   Future<void> load() async {
-    emit(state.copyWith(status: AutomationLoadStatus.loading, clearError: true));
+    emit(
+      state.copyWith(
+        status: AutomationLoadStatus.loading,
+        clearFilterTabScope: true,
+        clearFilterSessionId: true,
+        clearError: true,
+      ),
+    );
     try {
       final automations = await _repository.listAll();
       final runsByAutomationId = await _loadRunsByAutomation(automations);
@@ -52,17 +60,17 @@ class AutomationCubit extends Cubit<AutomationState> {
     }
   }
 
-  Future<void> loadForWorkspace(String workspaceId) async {
+  Future<void> loadForTabScope(AutomationTabScope scope) async {
     emit(
       state.copyWith(
         status: AutomationLoadStatus.loading,
-        filterWorkspaceId: workspaceId,
+        filterTabScope: scope,
         clearFilterSessionId: true,
         clearError: true,
       ),
     );
     try {
-      final automations = await _repository.listForWorkspace(workspaceId);
+      final automations = await _repository.listForTabScope(scope);
       final runsByAutomationId = await _loadRunsByAutomation(automations);
       emit(
         state.copyWith(
@@ -106,13 +114,13 @@ class AutomationCubit extends Cubit<AutomationState> {
     await _reloadPreservingFilters();
   }
 
-  Future<void> delete(String workspaceId, String automationId) async {
-    await _repository.delete(workspaceId, automationId);
+  Future<void> delete(AutomationTabScope scope, String automationId) async {
+    await _repository.delete(scope, automationId);
     await _reloadPreservingFilters();
   }
 
-  Future<void> toggleEnabled(String workspaceId, String automationId) async {
-    final automations = await _repository.listForWorkspace(workspaceId);
+  Future<void> toggleEnabled(AutomationTabScope scope, String automationId) async {
+    final automations = await _repository.listForTabScope(scope);
     final automation = automations.where((a) => a.id == automationId).firstOrNull;
     if (automation == null) return;
     final now = _nowMs();
@@ -130,17 +138,17 @@ class AutomationCubit extends Cubit<AutomationState> {
     await _reloadPreservingFilters();
   }
 
-  Future<void> runNow(String workspaceId, String automationId) async {
-    await _scheduler.runNow(workspaceId, automationId);
+  Future<void> runNow(AutomationTabScope scope, String automationId) async {
+    await _scheduler.runNow(scope, automationId);
     await reloadPreservingFilters();
   }
 
   Future<void> reloadPreservingFilters() => _reloadPreservingFilters();
 
   Future<void> _reloadPreservingFilters() async {
-    final workspaceId = state.filterWorkspaceId;
-    if (workspaceId != null && workspaceId.isNotEmpty) {
-      await loadForWorkspace(workspaceId);
+    final scope = state.filterTabScope;
+    if (scope != null) {
+      await loadForTabScope(scope);
     } else {
       await load();
     }
@@ -150,16 +158,16 @@ class AutomationCubit extends Cubit<AutomationState> {
     List<Automation> automations,
   ) async {
     if (automations.isEmpty) return const {};
-    final byWorkspace = <String, List<Automation>>{};
+    final byScope = <AutomationTabScope, List<Automation>>{};
     for (final automation in automations) {
-      byWorkspace
-          .putIfAbsent(automation.workspaceId, () => <Automation>[])
-          .add(automation);
+      byScope.putIfAbsent(automation.tabScope, () => <Automation>[]).add(
+            automation,
+          );
     }
 
     final runsByAutomationId = <String, List<AutomationRun>>{};
-    for (final entry in byWorkspace.entries) {
-      final runs = await _repository.runsForWorkspace(entry.key);
+    for (final entry in byScope.entries) {
+      final runs = await _repository.runsForTabScope(entry.key);
       final grouped = <String, List<AutomationRun>>{};
       for (final run in runs) {
         grouped.putIfAbsent(run.automationId, () => <AutomationRun>[]).add(run);

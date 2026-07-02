@@ -7,6 +7,8 @@ import 'package:teampilot/pages/automations/automation_editor_dialog.dart';
 import 'package:teampilot/services/cli/registry/cli_tool_registry.dart';
 import 'package:teampilot/services/cli/registry/cli_tool_registry_scope.dart';
 
+import 'package:teampilot/services/storage/launch_profile_provisioner.dart';
+
 import '../../support/post_frame_test_harness.dart';
 
 Widget _host({
@@ -39,9 +41,10 @@ void main() {
     await tester.pumpWidget(
       _host(
         cubit: setup.cubit,
-        child: const AutomationEditorDialog(
+        child: AutomationEditorDialog(
           kind: AutomationEditorKind.scheduledMessage,
           workspaceId: 'ws1',
+          launchProfileId: LaunchProfileProvisioner.defaultPersonalId,
           sessionId: 'sess-1',
           defaultName: 'Daily ping',
         ),
@@ -71,8 +74,9 @@ void main() {
     await tester.pumpWidget(
       _host(
         cubit: setup.cubit,
-        child: const AutomationEditorDialog(
+        child: AutomationEditorDialog(
           workspaceId: 'ws1',
+          launchProfileId: LaunchProfileProvisioner.defaultPersonalId,
         ),
       ),
     );
@@ -97,9 +101,10 @@ void main() {
     await tester.pumpWidget(
       _host(
         cubit: setup.cubit,
-        child: const AutomationEditorDialog(
+        child: AutomationEditorDialog(
           kind: AutomationEditorKind.scheduledMessage,
           workspaceId: 'ws1',
+          launchProfileId: LaunchProfileProvisioner.defaultPersonalId,
           sessionId: 'sess-1',
           defaultName: 'Daily ping',
         ),

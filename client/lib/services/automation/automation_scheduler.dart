@@ -3,6 +3,7 @@ import 'dart:async';
 import 'package:collection/collection.dart';
 
 import '../../models/automation.dart';
+import '../../models/automation_tab_scope.dart';
 import '../../repositories/automation_repository.dart';
 import '../../utils/logger.dart';
 import 'automation_dispatcher.dart';
@@ -45,9 +46,9 @@ class AutomationScheduler {
     _timer = null;
   }
 
-  Future<void> runNow(String workspaceId, String automationId) {
+  Future<void> runNow(AutomationTabScope scope, String automationId) {
     return _enqueue(() async {
-      final automations = await _repository.listForWorkspace(workspaceId);
+      final automations = await _repository.listForTabScope(scope);
       final automation = automations
           .where((a) => a.id == automationId)
           .firstOrNull;
@@ -105,7 +106,7 @@ class AutomationScheduler {
         completedAtMs: now,
         error: 'missed_run_grace_exceeded',
       );
-      await _repository.upsertRun(automation.workspaceId, skippedRun);
+      await _repository.upsertRun(automation.tabScope, skippedRun);
       final advanced = automation.copyWith(
         lastRunAtMs: now,
         nextRunAtMs: _scheduleCalculator.computeNextRunAtMs(

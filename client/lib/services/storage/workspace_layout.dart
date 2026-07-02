@@ -17,7 +17,8 @@ import 'app_storage.dart';
 ///   config/             # workspace-level CLI overrides
 ///     mcp/servers.json
 ///     {tool}/plugins/
-///   automations.json    # workspace-scoped automation rules + run history
+///   automations/               # per launch-identity tab scope
+///     {launchProfileId}.json   # rules + run history for one workspace tab
 ///   sessions/{sessionId}/
 ///     session.json
 ///     bus/mail/{memberId}.jsonl
@@ -67,8 +68,17 @@ class WorkspaceLayout {
   String automationsCatalogFile() =>
       _ctx.join(automationsRootDir(), 'catalog.json');
 
-  String workspaceAutomationsFile(String workspaceId) =>
-      _ctx.join(workspaceDir(workspaceId), 'automations.json');
+  String workspaceAutomationsDir(String workspaceId) =>
+      _ctx.join(workspaceDir(workspaceId), 'automations');
+
+  String workspaceTabAutomationsFile(
+    String workspaceId,
+    String launchProfileId,
+  ) =>
+      _ctx.join(
+        workspaceAutomationsDir(workspaceId),
+        '${launchProfileId.trim()}.json',
+      );
 
   String sessionsDir(String workspaceId) =>
       _ctx.join(workspaceDir(workspaceId), 'sessions');

@@ -29,6 +29,7 @@ import '../../../theme/app_toast_theme.dart';
 import 'mixed_workspace_personal_launch_banner.dart';
 import 'worktree_create_dialog.dart';
 import 'worktree_group_section.dart';
+import '../../../models/automation_tab_scope.dart';
 import '../../../pages/automations/automation_editor_dialog.dart';
 import '../../../pages/automations/automations_panel.dart';
 import '../../../theme/app_text_styles.dart';
@@ -126,7 +127,10 @@ class _WorkspaceSidebarState
             const SizedBox(height: 12),
           ],
           _AutomationsHeader(
-            workspaceId: widget.workspace.workspaceId,
+            tabScope: AutomationTabScope(
+              workspaceId: widget.workspace.workspaceId,
+              launchProfileId: widget.profileId,
+            ),
             onTap: () => _openAutomationsPanel(context),
             onAdd: () => _openAutomationsPanel(context, create: true),
           ),
@@ -379,6 +383,7 @@ class _WorkspaceSidebarState
     return SidebarSessionTile(
       key: ValueKey('workspace-sidebar-session-${session.sessionId}'),
       session: session,
+      launchProfileId: widget.profileId,
       index: index,
       highlightSessionId: scopedActiveSessionId(
         context.read<ChatCubit>(),
@@ -427,6 +432,7 @@ class _WorkspaceSidebarState
     if (create) {
       final saved = await AutomationEditorDialog.show(
         context,
+        launchProfileId: widget.profileId,
         workspaceId: widget.workspace.workspaceId,
       );
       if (saved == null || !context.mounted) return;
@@ -434,19 +440,22 @@ class _WorkspaceSidebarState
     if (!context.mounted) return;
     await showAutomationsPanelDialog(
       context,
-      filterWorkspaceId: widget.workspace.workspaceId,
+      filterTabScope: AutomationTabScope(
+        workspaceId: widget.workspace.workspaceId,
+        launchProfileId: widget.profileId,
+      ),
     );
   }
 }
 
 class _AutomationsHeader extends StatefulWidget {
   const _AutomationsHeader({
-    required this.workspaceId,
+    required this.tabScope,
     required this.onTap,
     required this.onAdd,
   });
 
-  final String workspaceId;
+  final AutomationTabScope tabScope;
   final VoidCallback onTap;
   final VoidCallback onAdd;
 
@@ -463,7 +472,7 @@ class _AutomationsHeaderState extends State<_AutomationsHeader> {
     if (_didLoad) return;
     _didLoad = true;
     unawaited(
-      context.read<AutomationCubit>().loadForWorkspace(widget.workspaceId),
+      context.read<AutomationCubit>().loadForTabScope(widget.tabScope),
     );
   }
 
@@ -485,7 +494,7 @@ class _AutomationsHeaderState extends State<_AutomationsHeader> {
       builder: (context, state) {
         final summary = AutomationWorkspaceSummary.fromAutomations(
           state.automations,
-          widget.workspaceId,
+          widget.tabScope,
         );
         final nextRun = _nextRunLabel(l10n, summary.nearestNextRunAtMs);
 

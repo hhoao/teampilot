@@ -9,6 +9,7 @@ import 'package:teampilot/l10n/app_localizations.dart';
 import 'package:teampilot/models/app_session.dart';
 import 'package:teampilot/models/automation.dart';
 import 'package:teampilot/repositories/session_repository.dart';
+import 'package:teampilot/services/storage/launch_profile_provisioner.dart';
 import 'package:teampilot/widgets/sidebar_session_tile.dart';
 
 import '../support/post_frame_test_harness.dart';
@@ -26,6 +27,7 @@ Automation _sessionAutomation() {
     name: 'Ping',
     action: AutomationAction.scheduledMessage,
     workspaceId: 'ws1',
+    launchProfileId: LaunchProfileProvisioner.defaultPersonalId,
     sessionId: 'sess-1',
     message: 'hello',
     preset: AutomationSchedulePreset.daily,
@@ -60,6 +62,7 @@ Widget _host({
           body: child ??
               SidebarSessionTile(
                 session: _session,
+                launchProfileId: LaunchProfileProvisioner.defaultPersonalId,
                 onTap: () {},
               ),
         ),

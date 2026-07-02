@@ -1,6 +1,7 @@
 import 'package:equatable/equatable.dart';
 
 import '../models/automation.dart';
+import '../models/automation_tab_scope.dart';
 
 enum AutomationLoadStatus { idle, loading, ready, error }
 
@@ -10,7 +11,7 @@ class AutomationState extends Equatable {
     this.runsByAutomationId = const {},
     this.status = AutomationLoadStatus.idle,
     this.errorMessage,
-    this.filterWorkspaceId,
+    this.filterTabScope,
     this.filterSessionId,
   });
 
@@ -18,14 +19,20 @@ class AutomationState extends Equatable {
   final Map<String, List<AutomationRun>> runsByAutomationId;
   final AutomationLoadStatus status;
   final String? errorMessage;
-  final String? filterWorkspaceId;
+  final AutomationTabScope? filterTabScope;
   final String? filterSessionId;
 
   List<Automation> get visibleAutomations {
     var items = automations;
-    final workspaceId = filterWorkspaceId?.trim();
-    if (workspaceId != null && workspaceId.isNotEmpty) {
-      items = items.where((a) => a.workspaceId == workspaceId).toList();
+    final scope = filterTabScope;
+    if (scope != null) {
+      items = items
+          .where(
+            (a) =>
+                a.workspaceId == scope.workspaceId &&
+                a.launchProfileId == scope.launchProfileId,
+          )
+          .toList();
     }
     final sessionId = filterSessionId?.trim();
     if (sessionId != null && sessionId.isNotEmpty) {
@@ -40,8 +47,8 @@ class AutomationState extends Equatable {
     AutomationLoadStatus? status,
     String? errorMessage,
     bool clearError = false,
-    String? filterWorkspaceId,
-    bool clearFilterWorkspaceId = false,
+    AutomationTabScope? filterTabScope,
+    bool clearFilterTabScope = false,
     String? filterSessionId,
     bool clearFilterSessionId = false,
   }) {
@@ -50,9 +57,9 @@ class AutomationState extends Equatable {
       runsByAutomationId: runsByAutomationId ?? this.runsByAutomationId,
       status: status ?? this.status,
       errorMessage: clearError ? null : (errorMessage ?? this.errorMessage),
-      filterWorkspaceId: clearFilterWorkspaceId
+      filterTabScope: clearFilterTabScope
           ? null
-          : (filterWorkspaceId ?? this.filterWorkspaceId),
+          : (filterTabScope ?? this.filterTabScope),
       filterSessionId: clearFilterSessionId
           ? null
           : (filterSessionId ?? this.filterSessionId),
@@ -65,7 +72,7 @@ class AutomationState extends Equatable {
         runsByAutomationId,
         status,
         errorMessage,
-        filterWorkspaceId,
+        filterTabScope,
         filterSessionId,
       ];
 }

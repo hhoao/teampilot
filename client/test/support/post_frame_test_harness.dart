@@ -186,6 +186,7 @@ AutomationCubit testAutomationCubit({SessionRepository? sessionRepository}) {
     requestCreateAndOpenSession: (_) async => SessionOpenStatus.opened,
     workspaceById: (_) => null,
     teamById: (_) => null,
+    launchProfileKindById: (_) => null,
   );
   final scheduler = AutomationScheduler(
     repository: repo,

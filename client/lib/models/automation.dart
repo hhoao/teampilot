@@ -1,5 +1,6 @@
 import 'package:flutter/foundation.dart';
 
+import 'automation_tab_scope.dart';
 import 'team_config.dart';
 
 enum AutomationAction { scheduledMessage, launchPrompt }
@@ -53,6 +54,7 @@ class Automation {
     required this.name,
     required this.action,
     required this.workspaceId,
+    required this.launchProfileId,
     this.sessionId,
     this.targetMemberId = 'team-lead',
     required this.message,
@@ -85,6 +87,7 @@ class Automation {
         field: 'action',
       ),
       workspaceId: json['workspaceId'] as String? ?? '',
+      launchProfileId: json['as'] as String? ?? '',
       sessionId: json['sessionId'] as String?,
       targetMemberId: json['targetMemberId'] as String? ?? 'team-lead',
       message: json['message'] as String? ?? '',
@@ -117,6 +120,7 @@ class Automation {
   final String name;
   final AutomationAction action;
   final String workspaceId;
+  final String launchProfileId;
   final String? sessionId;
   final String targetMemberId;
   final String message;
@@ -148,6 +152,11 @@ class Automation {
 
   bool get isRunLimitReached => hasRunLimit && runCount >= maxRunCount!;
 
+  AutomationTabScope get tabScope => AutomationTabScope(
+        workspaceId: workspaceId,
+        launchProfileId: launchProfileId,
+      );
+
   void validate() {
     if (id.trim().isEmpty) {
       throw ArgumentError('Automation id is required');
@@ -157,6 +166,9 @@ class Automation {
     }
     if (workspaceId.trim().isEmpty) {
       throw ArgumentError('Automation workspaceId is required');
+    }
+    if (launchProfileId.trim().isEmpty) {
+      throw ArgumentError('Automation launchProfileId is required');
     }
     if (message.trim().isEmpty) {
       throw ArgumentError('Automation message is required');
@@ -204,6 +216,7 @@ class Automation {
     String? name,
     AutomationAction? action,
     String? workspaceId,
+    String? launchProfileId,
     String? sessionId,
     bool clearSessionId = false,
     String? targetMemberId,
@@ -237,6 +250,7 @@ class Automation {
       name: name ?? this.name,
       action: action ?? this.action,
       workspaceId: workspaceId ?? this.workspaceId,
+      launchProfileId: launchProfileId ?? this.launchProfileId,
       sessionId: clearSessionId ? null : (sessionId ?? this.sessionId),
       targetMemberId: targetMemberId ?? this.targetMemberId,
       message: message ?? this.message,
@@ -269,6 +283,7 @@ class Automation {
       'name': name,
       'action': action.name,
       'workspaceId': workspaceId,
+      'as': launchProfileId,
       if (sessionId != null && sessionId!.isNotEmpty) 'sessionId': sessionId,
       if (isLaunchPrompt) 'targetMemberId': targetMemberId,
       'message': message,
@@ -301,6 +316,7 @@ class Automation {
             name == other.name &&
             action == other.action &&
             workspaceId == other.workspaceId &&
+            launchProfileId == other.launchProfileId &&
             sessionId == other.sessionId &&
             targetMemberId == other.targetMemberId &&
             message == other.message &&
@@ -329,6 +345,7 @@ class Automation {
         name,
         action,
         workspaceId,
+        launchProfileId,
         sessionId,
         targetMemberId,
         message,

@@ -1,5 +1,6 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:teampilot/cubits/chat/model/session_open_status.dart';
+import 'package:teampilot/models/automation_tab_scope.dart';
 import 'package:teampilot/models/app_session.dart';
 import 'package:teampilot/models/automation.dart';
 import 'package:teampilot/models/team_config.dart';
@@ -13,6 +14,7 @@ import 'package:teampilot/services/automation/automation_scheduler.dart';
 import 'package:teampilot/services/storage/app_storage.dart';
 import 'package:teampilot/services/storage/workspace_layout.dart';
 
+import '../../support/automation_test_fixtures.dart';
 import '../../support/post_frame_test_harness.dart';
 
 class _FakeSessionRepository implements SessionRepository {
@@ -53,6 +55,7 @@ Automation _dueAutomation({required int nextRunAtMs}) {
     name: 'Ping',
     action: AutomationAction.scheduledMessage,
     workspaceId: 'ws1',
+    launchProfileId: 'team-1',
     sessionId: 'sess-1',
     message: 'hello',
     preset: AutomationSchedulePreset.daily,
@@ -88,9 +91,15 @@ AutomationDispatcher _buildDispatcher({
     requestCreateAndOpenSession: (_) async => SessionOpenStatus.opened,
     workspaceById: (_) => workspace,
     teamById: (id) => id == 'team-1' ? team : null,
+    launchProfileKindById: testLaunchProfileKindResolver(),
     nowMs: () => 2_000,
   );
 }
+
+const _teamTabScope = AutomationTabScope(
+  workspaceId: 'ws1',
+  launchProfileId: 'team-1',
+);
 
 void main() {
   setUp(setUpTestAppStorage);
@@ -119,7 +128,7 @@ void main() {
       nowMs: () => 2_000,
     );
 
-    await scheduler.runNow('ws1', 'due-1');
+    await scheduler.runNow(_teamTabScope, 'due-1');
 
     expect(bus.deliverCount, 1);
   });
@@ -148,7 +157,7 @@ void main() {
       nowMs: () => 2_000,
     );
 
-    await scheduler.runNow('ws1', 'due-1');
+    await scheduler.runNow(_teamTabScope, 'due-1');
 
     expect(bus.deliverCount, 0);
   });
@@ -178,9 +187,9 @@ void main() {
     await Future<void>.delayed(const Duration(milliseconds: 50));
     scheduler.stop();
 
-    final runs = await repo.runsFor('ws1', automationId: 'due-1');
+    final runs = await repo.runsFor(_teamTabScope, automationId: 'due-1');
     expect(runs.any((r) => r.status == AutomationRunStatus.skippedMissed), isTrue);
-    final updated = (await repo.listForWorkspace('ws1')).single;
+    final updated = (await repo.listForTabScope(_teamTabScope)).single;
     expect(updated.nextRunAtMs, isNotNull);
     expect(updated.nextRunAtMs! > 1_000, isTrue);
     expect(bus.deliverCount, 0);
