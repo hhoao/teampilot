@@ -13,6 +13,8 @@ import '../../theme/app_text_styles.dart';
 import '../../utils/coarse_relative_time.dart';
 import '../../widgets/app_dialog.dart';
 import '../../widgets/app_icon_button.dart';
+import '../../widgets/dropdown/app_dropdown_decoration.dart';
+import '../../widgets/dropdown/app_dropdown_field.dart';
 import '../../widgets/menu/sidebar_action_menu.dart';
 import 'automation_editor_dialog.dart';
 import 'automation_schedule_picker.dart';
@@ -174,19 +176,14 @@ class _AutomationsPanelState extends State<AutomationsPanel> {
               style: styles.subtitle.copyWith(fontWeight: FontWeight.w700),
             ),
           ),
-          DropdownButton<_AutomationFilter>(
-            value: _filter,
-            underline: const SizedBox.shrink(),
-            items: [
-              DropdownMenuItem(
-                value: _AutomationFilter.all,
-                child: Text(l10n.automationsFilterAll),
-              ),
-              DropdownMenuItem(
-                value: _AutomationFilter.enabledOnly,
-                child: Text(l10n.automationsFilterEnabled),
-              ),
-            ],
+          AppDropdownField<_AutomationFilter>(
+            items: _AutomationFilter.values,
+            initialItem: _filter,
+            decoration: AppDropdownDecorations.themed(context),
+            itemLabel: (f) => switch (f) {
+              _AutomationFilter.all => l10n.automationsFilterAll,
+              _AutomationFilter.enabledOnly => l10n.automationsFilterEnabled,
+            },
             onChanged: (value) {
               if (value == null) return;
               setState(() => _filter = value);
