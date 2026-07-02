@@ -7,6 +7,7 @@ import 'package:meta/meta.dart';
 import '../../../utils/logger.dart';
 import '../cancellation.dart';
 import 'jsonrpc.dart';
+import 'mcp_method.dart';
 import 'teammate_bus_mcp_handler.dart';
 
 /// loopback HTTP（Streamable HTTP 传输）暴露 [TeammateBusMcpHandler]。
@@ -148,7 +149,7 @@ class TeammateBusMcpServer {
     var disconnectAtSec = -1;
     appLogger.d(
       '[teammate-bus-mcp] stream open member=$member '
-      'tool=${rpc.params['name']} id=${rpc.id} '
+      'tool=${rpc.toolName?.value} id=${rpc.id} '
       'progressToken=${progressToken != null} '
       'interval=${progressInterval.inSeconds}s',
     );
@@ -169,7 +170,7 @@ class TeammateBusMcpServer {
           response.write(
             'event: message\ndata: ${jsonEncode({
               'jsonrpc': '2.0',
-              'method': 'notifications/progress',
+              'method': McpMethod.notificationsProgress,
               'params': {'progressToken': progressToken, 'progress': 0},
             })}\n\n',
           );

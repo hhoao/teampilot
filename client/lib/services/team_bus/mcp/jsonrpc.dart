@@ -1,5 +1,8 @@
 import 'dart:convert';
 
+import 'mcp_method.dart';
+import 'tools/teammate_bus_tool_name.dart';
+
 /// 解析后的 JSON-RPC 2.0 请求/通知。
 class JsonRpcRequest {
   const JsonRpcRequest({
@@ -28,6 +31,16 @@ class JsonRpcRequest {
           : const {},
     );
   }
+}
+
+extension TeammateBusToolCallRequest on JsonRpcRequest {
+  TeammateBusToolName? get toolName => method == McpMethod.toolsCall
+      ? TeammateBusToolName.tryParse(params[McpParams.toolName] as String?)
+      : null;
+
+  Map<String, Object?> get toolArguments => params[McpParams.arguments] is Map
+      ? Map<String, Object?>.from(params[McpParams.arguments] as Map)
+      : const <String, Object?>{};
 }
 
 /// JSON-RPC 响应（成功或错误）。
