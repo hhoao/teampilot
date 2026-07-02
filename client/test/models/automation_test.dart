@@ -29,6 +29,34 @@ void main() {
     expect(back, a);
   });
 
+  test('Automation round-trips JSON with run limit fields', () {
+    final a = Automation(
+      id: 'a1',
+      name: 'Once',
+      action: AutomationAction.sendToLead,
+      scope: AutomationScope.session,
+      workspaceId: 'ws1',
+      sessionId: 's1',
+      targetMemberId: 'team-lead',
+      message: '/clear',
+      preset: AutomationSchedulePreset.daily,
+      minute: 0,
+      hourMinute: '09:00',
+      timezone: 'UTC',
+      dtstartMs: 1_700_000_000_000,
+      enabled: false,
+      maxRunCount: 1,
+      runCount: 1,
+      createdAtMs: 1,
+      updatedAtMs: 2,
+    );
+    final back = Automation.fromJson(a.toJson());
+    expect(back.maxRunCount, 1);
+    expect(back.runCount, 1);
+    expect(back.isRunLimitReached, isTrue);
+    expect(back, a);
+  });
+
   test('launchPrompt requires cli', () {
     expect(
       () => Automation(
@@ -45,6 +73,30 @@ void main() {
         timezone: 'UTC',
         dtstartMs: 0,
         enabled: true,
+        createdAtMs: 0,
+        updatedAtMs: 0,
+      ).validate(),
+      throwsA(isA<ArgumentError>()),
+    );
+  });
+
+  test('maxRunCount must be positive when set', () {
+    expect(
+      () => Automation(
+        id: 'x',
+        name: 'n',
+        action: AutomationAction.sendToLead,
+        scope: AutomationScope.workspace,
+        workspaceId: 'ws',
+        targetMemberId: 'team-lead',
+        message: 'ping',
+        preset: AutomationSchedulePreset.daily,
+        minute: 0,
+        hourMinute: '09:00',
+        timezone: 'UTC',
+        dtstartMs: 0,
+        enabled: true,
+        maxRunCount: 0,
         createdAtMs: 0,
         updatedAtMs: 0,
       ).validate(),

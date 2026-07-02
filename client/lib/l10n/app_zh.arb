@@ -1747,5 +1747,10 @@
   "automationsRunStatusPending": "等待中",
   "automationsRunStatusDispatching": "分发中",
   "automationsRunStatusDispatched": "已分发",
-  "automationsRunStatusSkippedMissed": "已跳过 — 错过窗口"
+  "automationsRunStatusSkippedMissed": "已跳过 — 错过窗口",
+  "automationsMaxRunCount": "运行次数上限",
+  "automationsMaxRunCountHint": "留空表示无限制",
+  "automationsInvalidMaxRunCount": "运行次数上限须为正整数",
+  "automationsRunCountUnlimited": "已运行 {count} 次",
+  "automationsRunCountLimited": "已运行 {count} / {max}"
 }

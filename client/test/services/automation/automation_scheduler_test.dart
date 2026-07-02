@@ -125,6 +125,35 @@ void main() {
     expect(bus.deliverCount, 1);
   });
 
+  test('runNow is blocked when run limit is reached', () async {
+    final layout = WorkspaceLayout(teampilotRoot: AppStorage.paths.basePath);
+    final repo = AutomationRepository(fs: AppStorage.fs, layout: layout);
+    final bus = _RecordingBusGateway();
+    await repo.upsert(
+      _dueAutomation(nextRunAtMs: 1_000).copyWith(
+        maxRunCount: 1,
+        runCount: 1,
+        enabled: false,
+        clearNextRunAtMs: true,
+      ),
+    );
+
+    final scheduler = AutomationScheduler(
+      repository: repo,
+      dispatcher: _buildDispatcher(
+        repo: repo,
+        bus: bus,
+        sessions: const [],
+      ),
+      scheduleCalculator: AutomationScheduleCalculator(),
+      nowMs: () => 2_000,
+    );
+
+    await scheduler.runNow('ws1', 'due-1');
+
+    expect(bus.deliverCount, 0);
+  });
+
   test('marks missed run outside grace and advances schedule', () async {
     final layout = WorkspaceLayout(teampilotRoot: AppStorage.paths.basePath);
     final repo = AutomationRepository(fs: AppStorage.fs, layout: layout);

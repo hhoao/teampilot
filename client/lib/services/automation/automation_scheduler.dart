@@ -51,7 +51,7 @@ class AutomationScheduler {
       final automation = automations
           .where((a) => a.id == automationId)
           .firstOrNull;
-      if (automation == null) return;
+      if (automation == null || automation.isRunLimitReached) return;
       await _dispatchClaimed(automation, trigger: AutomationRunTrigger.manual);
       onAfterTick?.call();
     });
@@ -84,7 +84,7 @@ class AutomationScheduler {
     final now = _nowMs();
     final automations = await _repository.listAll();
     for (final automation in automations) {
-      if (!automation.enabled) continue;
+      if (!automation.enabled || automation.isRunLimitReached) continue;
       final dueAt = automation.nextRunAtMs;
       if (dueAt == null || dueAt >= now) continue;
 
@@ -125,6 +125,7 @@ class AutomationScheduler {
         .where(
           (a) =>
               a.enabled &&
+              !a.isRunLimitReached &&
               a.nextRunAtMs != null &&
               a.nextRunAtMs! <= now,
         )
@@ -138,6 +139,7 @@ class AutomationScheduler {
     Automation automation, {
     AutomationRunTrigger trigger = AutomationRunTrigger.scheduled,
   }) async {
+    if (automation.isRunLimitReached) return;
     final now = _nowMs();
     final claimed = automation.copyWith(
       nextRunAtMs: automation.enabled

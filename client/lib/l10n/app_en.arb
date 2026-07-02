@@ -2137,5 +2137,15 @@
   "automationsRunStatusPending": "Pending",
   "automationsRunStatusDispatching": "Dispatching",
   "automationsRunStatusDispatched": "Dispatched",
-  "automationsRunStatusSkippedMissed": "Skipped — missed window"
+  "automationsRunStatusSkippedMissed": "Skipped — missed window",
+  "automationsMaxRunCount": "Run limit",
+  "@automationsMaxRunCount": { "description": "Label for optional max automation run count" },
+  "automationsMaxRunCountHint": "Leave empty for unlimited",
+  "@automationsMaxRunCountHint": { "description": "Hint for run limit field" },
+  "automationsInvalidMaxRunCount": "Run limit must be a positive number",
+  "@automationsInvalidMaxRunCount": { "description": "Validation error for run limit field" },
+  "automationsRunCountUnlimited": "Ran {count} times",
+  "@automationsRunCountUnlimited": { "placeholders": { "count": { "type": "int" } } },
+  "automationsRunCountLimited": "Ran {count} / {max}",
+  "@automationsRunCountLimited": { "placeholders": { "count": { "type": "int" }, "max": { "type": "int" } } }
 }

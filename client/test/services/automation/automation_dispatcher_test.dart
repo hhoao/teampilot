@@ -178,6 +178,47 @@ void main() {
     expect(result.run.status, AutomationRunStatus.dispatchFailed);
     expect(result.run.error, 'member_connect_timeout');
   });
+
+  test('dispatch increments runCount and disables at maxRunCount', () async {
+    final layout = WorkspaceLayout(teampilotRoot: AppStorage.paths.basePath);
+    final repo = AutomationRepository(fs: AppStorage.fs, layout: layout);
+    final session = AppSession(
+      sessionId: 'sess-1',
+      workspaceId: 'ws1',
+      sessionTeam: 'team-1',
+      createdAt: 1,
+    );
+    final workspace = Workspace(workspaceId: 'ws1', createdAt: 1);
+    final team = TeamProfile(
+      id: 'team-1',
+      name: 'Team',
+      members: const [
+        TeamMemberConfig(id: 'team-lead', name: 'Lead'),
+      ],
+    );
+    final bus = _RecordingBusGateway();
+
+    final dispatcher = AutomationDispatcher(
+      repository: repo,
+      scheduleCalculator: AutomationScheduleCalculator(),
+      sessionRepository: _FakeSessionRepository([session]),
+      busGateway: bus,
+      requestOpenSession: (_) async => SessionOpenStatus.opened,
+      requestCreateAndOpenSession: (_) async => SessionOpenStatus.opened,
+      workspaceById: (_) => workspace,
+      teamById: (id) => id == 'team-1' ? team : null,
+      nowMs: () => 100,
+    );
+
+    final automation = _sendToLeadAutomation(sessionId: 'sess-1').copyWith(
+      maxRunCount: 1,
+    );
+    final result = await dispatcher.dispatch(automation);
+
+    expect(result.automation.runCount, 1);
+    expect(result.automation.enabled, isFalse);
+    expect(result.automation.nextRunAtMs, isNull);
+  });
 }
 
 class _SlowBusGateway implements AutomationBusGateway {

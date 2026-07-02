@@ -8444,6 +8444,36 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Skipped — missed window'**
   String get automationsRunStatusSkippedMissed;
+
+  /// Label for optional max automation run count
+  ///
+  /// In en, this message translates to:
+  /// **'Run limit'**
+  String get automationsMaxRunCount;
+
+  /// Hint for run limit field
+  ///
+  /// In en, this message translates to:
+  /// **'Leave empty for unlimited'**
+  String get automationsMaxRunCountHint;
+
+  /// Validation error for run limit field
+  ///
+  /// In en, this message translates to:
+  /// **'Run limit must be a positive number'**
+  String get automationsInvalidMaxRunCount;
+
+  /// No description provided for @automationsRunCountUnlimited.
+  ///
+  /// In en, this message translates to:
+  /// **'Ran {count} times'**
+  String automationsRunCountUnlimited(int count);
+
+  /// No description provided for @automationsRunCountLimited.
+  ///
+  /// In en, this message translates to:
+  /// **'Ran {count} / {max}'**
+  String automationsRunCountLimited(int count, int max);
 }
 
 class _AppLocalizationsDelegate

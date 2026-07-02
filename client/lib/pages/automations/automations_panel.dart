@@ -21,6 +21,22 @@ import 'automation_schedule_picker.dart';
 
 enum _AutomationFilter { all, enabledOnly }
 
+String formatAutomationRunCountLabel(
+  AppLocalizations l10n,
+  Automation automation,
+) {
+  if (automation.hasRunLimit) {
+    return l10n.automationsRunCountLimited(
+      automation.runCount,
+      automation.maxRunCount!,
+    );
+  }
+  if (automation.runCount > 0) {
+    return l10n.automationsRunCountUnlimited(automation.runCount);
+  }
+  return '';
+}
+
 /// Shared automation list used by the global management page and workspace
 /// sidebar entry points.
 class AutomationsPanel extends StatefulWidget {
@@ -240,8 +256,9 @@ class _AutomationsPanelState extends State<AutomationsPanel> {
                 itemCount: automations.length,
                 itemBuilder: (context, index) {
                   final a = automations[index];
-                  final runs = (state.runsByAutomationId[a.id] ?? const [])
-                    ..sort((x, y) => y.scheduledForMs.compareTo(x.scheduledForMs));
+                  final runs = List<AutomationRun>.of(
+                    state.runsByAutomationId[a.id] ?? const [],
+                  )..sort((x, y) => y.scheduledForMs.compareTo(x.scheduledForMs));
                   return _AutomationRow(
                     automation: a,
                     expanded: _expandedIds.contains(a.id),
@@ -250,6 +267,7 @@ class _AutomationsPanelState extends State<AutomationsPanel> {
                       l10n,
                       scheduleDraftFromAutomation(a),
                     ),
+                    runCountLabel: formatAutomationRunCountLabel(l10n, a),
                     nextRunLabel: _formatNextRun(l10n, a.nextRunAtMs),
                     onToggleEnabled: () => unawaited(_toggleEnabled(a)),
                     onTap: () => _toggleExpanded(a.id),
@@ -329,8 +347,9 @@ class _GroupedList extends StatelessWidget {
             ),
           ),
           ...entry.value.map((a) {
-            final runs = (runsByAutomationId[a.id] ?? const [])
-              ..sort((x, y) => y.scheduledForMs.compareTo(x.scheduledForMs));
+            final runs = List<AutomationRun>.of(
+              runsByAutomationId[a.id] ?? const [],
+            )..sort((x, y) => y.scheduledForMs.compareTo(x.scheduledForMs));
             return _AutomationRow(
               automation: a,
               expanded: expandedIds.contains(a.id),
@@ -339,6 +358,7 @@ class _GroupedList extends StatelessWidget {
                 l10n,
                 scheduleDraftFromAutomation(a),
               ),
+              runCountLabel: formatAutomationRunCountLabel(l10n, a),
               nextRunLabel: formatNextRun(a.nextRunAtMs),
               onToggleEnabled: () => unawaited(onToggleEnabled(a)),
               onTap: () => onToggleExpanded(a.id),
@@ -359,6 +379,7 @@ class _AutomationRow extends StatelessWidget {
     required this.expanded,
     required this.runs,
     required this.scheduleSummary,
+    required this.runCountLabel,
     required this.nextRunLabel,
     required this.onToggleEnabled,
     required this.onTap,
@@ -371,6 +392,7 @@ class _AutomationRow extends StatelessWidget {
   final bool expanded;
   final List<AutomationRun> runs;
   final String scheduleSummary;
+  final String runCountLabel;
   final String nextRunLabel;
   final VoidCallback onToggleEnabled;
   final VoidCallback onTap;
@@ -425,6 +447,17 @@ class _AutomationRow extends StatelessWidget {
                             color: cs.onSurfaceVariant,
                           ),
                         ),
+                        if (runCountLabel.isNotEmpty) ...[
+                          const SizedBox(height: 2),
+                          Text(
+                            runCountLabel,
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                            style: styles.caption.copyWith(
+                              color: cs.onSurfaceVariant,
+                            ),
+                          ),
+                        ],
                         if (automation.enabled) ...[
                           const SizedBox(height: 2),
                           Text(
@@ -441,7 +474,9 @@ class _AutomationRow extends StatelessWidget {
                   ),
                   Switch(
                     value: automation.enabled,
-                    onChanged: (_) => onToggleEnabled(),
+                    onChanged: automation.isRunLimitReached
+                        ? null
+                        : (_) => onToggleEnabled(),
                   ),
                   SidebarActionMenuIconAnchor(
                     icon: Icon(Icons.more_vert, size: context.appIconSizes.md),
@@ -456,6 +491,7 @@ class _AutomationRow extends StatelessWidget {
                         icon: Icons.play_circle_outline,
                         label: l10n.automationsRunNow,
                         menuController: controller,
+                        enabled: !automation.isRunLimitReached,
                         onTap: onRunNow,
                       ),
                       SidebarActionMenuItem(

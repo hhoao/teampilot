@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:uuid/uuid.dart';
 
@@ -61,6 +62,7 @@ class _AutomationEditorDialogState extends State<AutomationEditorDialog> {
   late final TextEditingController _nameCtl;
   late final TextEditingController _messageCtl;
   late final TextEditingController _targetMemberCtl;
+  late final TextEditingController _maxRunCountCtl;
   late AutomationAction _action;
   late AutomationScope _scope;
   late CliTool _cli;
@@ -85,6 +87,9 @@ class _AutomationEditorDialogState extends State<AutomationEditorDialog> {
     _messageCtl = TextEditingController(text: initial?.message ?? '');
     _targetMemberCtl = TextEditingController(
       text: initial?.targetMemberId ?? 'team-lead',
+    );
+    _maxRunCountCtl = TextEditingController(
+      text: initial?.maxRunCount?.toString() ?? '',
     );
     _action = initial?.action ??
         (compact ? AutomationAction.sendToLead : AutomationAction.sendToLead);
@@ -114,6 +119,7 @@ class _AutomationEditorDialogState extends State<AutomationEditorDialog> {
     _nameCtl.dispose();
     _messageCtl.dispose();
     _targetMemberCtl.dispose();
+    _maxRunCountCtl.dispose();
     super.dispose();
   }
 
@@ -139,6 +145,17 @@ class _AutomationEditorDialogState extends State<AutomationEditorDialog> {
     } on Object {
       setState(() => _errorMessage = l10n.automationsInvalidTime);
       return;
+    }
+
+    final maxRunRaw = _maxRunCountCtl.text.trim();
+    int? maxRunCount;
+    if (maxRunRaw.isNotEmpty) {
+      final parsed = int.tryParse(maxRunRaw);
+      if (parsed == null || parsed < 1) {
+        setState(() => _errorMessage = l10n.automationsInvalidMaxRunCount);
+        return;
+      }
+      maxRunCount = parsed;
     }
 
     final nowMs = DateTime.now().millisecondsSinceEpoch;
@@ -171,6 +188,8 @@ class _AutomationEditorDialogState extends State<AutomationEditorDialog> {
       enabled: _enabled,
       nextRunAtMs: widget.initial?.nextRunAtMs,
       lastRunAtMs: widget.initial?.lastRunAtMs,
+      maxRunCount: maxRunCount,
+      runCount: widget.initial?.runCount ?? 0,
       createdAtMs: widget.initial?.createdAtMs ?? nowMs,
       updatedAtMs: nowMs,
     );
@@ -182,12 +201,13 @@ class _AutomationEditorDialogState extends State<AutomationEditorDialog> {
       return;
     }
 
-    final nextRun = _enabled
+    final nextRun = _enabled && !automation.isRunLimitReached
         ? _calculator.computeNextRunAtMs(automation, afterMs: nowMs)
         : null;
     final saved = automation.copyWith(
       nextRunAtMs: nextRun,
       clearNextRunAtMs: nextRun == null,
+      enabled: _enabled && !automation.isRunLimitReached,
     );
 
     final cubit = context.read<AutomationCubit>();
@@ -299,6 +319,16 @@ class _AutomationEditorDialogState extends State<AutomationEditorDialog> {
             draft: _schedule,
             calculator: _calculator,
             onChanged: (draft) => setState(() => _schedule = draft),
+          ),
+          const SizedBox(height: 12),
+          TextField(
+            controller: _maxRunCountCtl,
+            decoration: InputDecoration(
+              labelText: l10n.automationsMaxRunCount,
+              hintText: l10n.automationsMaxRunCountHint,
+            ),
+            keyboardType: TextInputType.number,
+            inputFormatters: [FilteringTextInputFormatter.digitsOnly],
           ),
           const SizedBox(height: 12),
           SwitchListTile(

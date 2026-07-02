@@ -60,6 +60,8 @@ class Automation {
     this.nextRunAtMs,
     this.lastRunAtMs,
     this.missedRunGraceMinutes = 15,
+    this.maxRunCount,
+    this.runCount = 0,
     required this.createdAtMs,
     required this.updatedAtMs,
   });
@@ -103,6 +105,8 @@ class Automation {
       lastRunAtMs: (json['lastRunAtMs'] as num?)?.toInt(),
       missedRunGraceMinutes:
           (json['missedRunGraceMinutes'] as num?)?.toInt() ?? 15,
+      maxRunCount: (json['maxRunCount'] as num?)?.toInt(),
+      runCount: (json['runCount'] as num?)?.toInt() ?? 0,
       createdAtMs: (json['createdAtMs'] as num?)?.toInt() ?? 0,
       updatedAtMs: (json['updatedAtMs'] as num?)?.toInt() ?? 0,
     );
@@ -129,8 +133,15 @@ class Automation {
   final int? nextRunAtMs;
   final int? lastRunAtMs;
   final int missedRunGraceMinutes;
+  final int? maxRunCount;
+  final int runCount;
   final int createdAtMs;
   final int updatedAtMs;
+
+  /// When set, automation stops after [runCount] reaches [maxRunCount].
+  bool get hasRunLimit => maxRunCount != null && maxRunCount! > 0;
+
+  bool get isRunLimitReached => hasRunLimit && runCount >= maxRunCount!;
 
   void validate() {
     if (id.trim().isEmpty) {
@@ -166,6 +177,12 @@ class Automation {
     if (timezone.trim().isEmpty) {
       throw ArgumentError('timezone is required');
     }
+    if (maxRunCount != null && maxRunCount! < 1) {
+      throw ArgumentError('maxRunCount must be >= 1 when set');
+    }
+    if (runCount < 0) {
+      throw ArgumentError('runCount must be >= 0');
+    }
   }
 
   Automation copyWith({
@@ -196,6 +213,9 @@ class Automation {
     int? lastRunAtMs,
     bool clearLastRunAtMs = false,
     int? missedRunGraceMinutes,
+    int? maxRunCount,
+    bool clearMaxRunCount = false,
+    int? runCount,
     int? createdAtMs,
     int? updatedAtMs,
   }) {
@@ -224,6 +244,8 @@ class Automation {
           clearLastRunAtMs ? null : (lastRunAtMs ?? this.lastRunAtMs),
       missedRunGraceMinutes:
           missedRunGraceMinutes ?? this.missedRunGraceMinutes,
+      maxRunCount: clearMaxRunCount ? null : (maxRunCount ?? this.maxRunCount),
+      runCount: runCount ?? this.runCount,
       createdAtMs: createdAtMs ?? this.createdAtMs,
       updatedAtMs: updatedAtMs ?? this.updatedAtMs,
     );
@@ -252,6 +274,8 @@ class Automation {
       if (nextRunAtMs != null) 'nextRunAtMs': nextRunAtMs,
       if (lastRunAtMs != null) 'lastRunAtMs': lastRunAtMs,
       'missedRunGraceMinutes': missedRunGraceMinutes,
+      if (maxRunCount != null) 'maxRunCount': maxRunCount,
+      if (runCount > 0) 'runCount': runCount,
       'createdAtMs': createdAtMs,
       'updatedAtMs': updatedAtMs,
     };
@@ -283,6 +307,8 @@ class Automation {
             nextRunAtMs == other.nextRunAtMs &&
             lastRunAtMs == other.lastRunAtMs &&
             missedRunGraceMinutes == other.missedRunGraceMinutes &&
+            maxRunCount == other.maxRunCount &&
+            runCount == other.runCount &&
             createdAtMs == other.createdAtMs &&
             updatedAtMs == other.updatedAtMs;
   }
@@ -310,6 +336,8 @@ class Automation {
         nextRunAtMs,
         lastRunAtMs,
         missedRunGraceMinutes,
+        maxRunCount,
+        runCount,
         createdAtMs,
         updatedAtMs,
       ]);

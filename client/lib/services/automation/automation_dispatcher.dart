@@ -438,15 +438,22 @@ class AutomationDispatcher {
     Automation automation, {
     required int lastRunAtMs,
   }) {
-    final nextRunAtMs = automation.enabled
+    final nextRunCount = automation.runCount + 1;
+    final limitReached =
+        automation.hasRunLimit && nextRunCount >= automation.maxRunCount!;
+    final stillEnabled = automation.enabled && !limitReached;
+    final nextRunAtMs = stillEnabled
         ? _scheduleCalculator.computeNextRunAtMs(
             automation,
             afterMs: lastRunAtMs,
           )
-        : automation.nextRunAtMs;
+        : null;
     return automation.copyWith(
       lastRunAtMs: lastRunAtMs,
+      runCount: nextRunCount,
+      enabled: stillEnabled,
       nextRunAtMs: nextRunAtMs,
+      clearNextRunAtMs: nextRunAtMs == null,
       updatedAtMs: _nowMs(),
     );
   }

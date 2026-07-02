@@ -89,12 +89,16 @@ class AutomationCubit extends Cubit<AutomationState> {
       updatedAtMs: now,
     );
     if (next.enabled) {
-      next = next.copyWith(
-        nextRunAtMs: _scheduleCalculator.computeNextRunAtMs(
-          next,
-          afterMs: now,
-        ),
-      );
+      if (next.isRunLimitReached) {
+        next = next.copyWith(enabled: false, clearNextRunAtMs: true);
+      } else {
+        next = next.copyWith(
+          nextRunAtMs: _scheduleCalculator.computeNextRunAtMs(
+            next,
+            afterMs: now,
+          ),
+        );
+      }
     } else {
       next = next.copyWith(clearNextRunAtMs: true);
     }
@@ -113,6 +117,7 @@ class AutomationCubit extends Cubit<AutomationState> {
     if (automation == null) return;
     final now = _nowMs();
     final enabled = !automation.enabled;
+    if (enabled && automation.isRunLimitReached) return;
     var next = automation.copyWith(enabled: enabled, updatedAtMs: now);
     if (enabled) {
       next = next.copyWith(

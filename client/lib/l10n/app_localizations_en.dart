@@ -4674,4 +4674,24 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get automationsRunStatusSkippedMissed => 'Skipped — missed window';
+
+  @override
+  String get automationsMaxRunCount => 'Run limit';
+
+  @override
+  String get automationsMaxRunCountHint => 'Leave empty for unlimited';
+
+  @override
+  String get automationsInvalidMaxRunCount =>
+      'Run limit must be a positive number';
+
+  @override
+  String automationsRunCountUnlimited(int count) {
+    return 'Ran $count times';
+  }
+
+  @override
+  String automationsRunCountLimited(int count, int max) {
+    return 'Ran $count / $max';
+  }
 }

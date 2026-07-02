@@ -4504,4 +4504,23 @@ class AppLocalizationsZh extends AppLocalizations {
 
   @override
   String get automationsRunStatusSkippedMissed => '已跳过 — 错过窗口';
+
+  @override
+  String get automationsMaxRunCount => '运行次数上限';
+
+  @override
+  String get automationsMaxRunCountHint => '留空表示无限制';
+
+  @override
+  String get automationsInvalidMaxRunCount => '运行次数上限须为正整数';
+
+  @override
+  String automationsRunCountUnlimited(int count) {
+    return '已运行 $count 次';
+  }
+
+  @override
+  String automationsRunCountLimited(int count, int max) {
+    return '已运行 $count / $max';
+  }
 }
