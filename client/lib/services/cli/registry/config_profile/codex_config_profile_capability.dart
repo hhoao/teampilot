@@ -15,6 +15,7 @@ import '../../../provider/codex/codex_provider_settings_resolver.dart';
 import '../../../provider/codex/codex_team_bus_overlay.dart';
 import '../../../provider/workspace_trust_provisioner.dart';
 import '../../../session/member_role_provision.dart';
+import '../../../team_bus/member_bus_idle_endpoint.dart';
 import '../../../../utils/trusted_project_paths.dart';
 import '../capabilities/config_profile_capability.dart';
 
@@ -80,7 +81,7 @@ final class CodexConfigProfileCapability implements ConfigProfileCapability {
                   )
                 : CodexTeamBusOverlay.buildLocal(
                     memberId: member.id,
-                    port: busIdle.port!,
+                    idle: busIdle,
                   ))
             : null;
         final trustedDirectories = await _trustedProjectDirectories(
@@ -229,9 +230,9 @@ final class CodexConfigProfileCapability implements ConfigProfileCapability {
   @visibleForTesting
   static String buildCodexConfigToml({
     required String memberId,
-    required int port,
+    required MemberBusIdleEndpoint idle,
   }) =>
-      CodexTeamBusOverlay.buildLocal(memberId: memberId, port: port);
+      CodexTeamBusOverlay.buildLocal(memberId: memberId, idle: idle);
 
   static String _resolveCodexEffort({
     required TeamProfile? team,

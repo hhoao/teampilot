@@ -26,10 +26,7 @@ abstract final class CursorHomeBusOverlay {
       throw ArgumentError('idle endpoint has no port: ${idle.url}');
     }
     const encoder = JsonEncoder.withIndent('  ');
-    final headers = <String, String>{
-      teammateBusMcpMemberHeader: memberId,
-      if (idle.isRemote) teammateBusTokenHeader: idle.token!,
-    };
+    final headers = idle.headersFor(memberId);
     return encoder.convert({
       'mcpServers': {
         teammateBusMcpServerName: {

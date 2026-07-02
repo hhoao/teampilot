@@ -4,15 +4,20 @@ import 'package:teampilot/services/team_bus/member_bus_idle_endpoint.dart';
 
 void main() {
   group('CodexTeamBusOverlay', () {
+    const idle = MemberBusIdleEndpoint(
+      url: 'http://127.0.0.1:54321/idle',
+      sessionId: 'sess-codex',
+    );
     final toml = CodexTeamBusOverlay.buildLocal(
       memberId: 'worker-1',
-      port: 54321,
+      idle: idle,
     );
 
-    test('registers the teammate-bus HTTP MCP server with X-Member identity', () {
+    test('registers the teammate-bus HTTP MCP server with gateway headers', () {
       expect(toml, contains('[mcp_servers.teammate-bus]'));
       expect(toml, contains('url = "http://127.0.0.1:54321/mcp"'));
-      expect(toml, contains('http_headers = { "X-Member" = "worker-1" }'));
+      expect(toml, contains('"X-Member" = "worker-1"'));
+      expect(toml, contains('"X-Session" = "sess-codex"'));
     });
 
     test('keeps the bus tool timeout far above any real idle wait', () {
@@ -43,6 +48,7 @@ void main() {
         toml,
         contains(
           'command = "curl -sS -X POST -H \\"X-Member: worker-1\\" '
+          '-H \\"X-Session: sess-codex\\" '
           'http://127.0.0.1:54321/idle"',
         ),
       );

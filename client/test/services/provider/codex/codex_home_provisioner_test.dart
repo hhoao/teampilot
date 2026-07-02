@@ -8,6 +8,7 @@ import 'package:teampilot/services/io/local_filesystem.dart';
 import 'package:teampilot/services/provider/codex/codex_home_provisioner.dart';
 import 'package:teampilot/services/provider/codex/codex_proxy_launch_auth.dart';
 import 'package:teampilot/services/provider/codex/codex_team_bus_overlay.dart';
+import 'package:teampilot/services/team_bus/member_bus_idle_endpoint.dart';
 
 void main() {
   group('CodexProxyLaunchAuth', () {
@@ -83,7 +84,13 @@ base_url = "https://api.deepseek.com"
           'configToml': 'model = "m1"\nbase_url = "https://upstream.example.com"\n',
         },
       );
-      final overlay = CodexTeamBusOverlay.buildLocal(memberId: 'w1', port: 44000);
+      final overlay = CodexTeamBusOverlay.buildLocal(
+        memberId: 'w1',
+        idle: const MemberBusIdleEndpoint(
+          url: 'http://127.0.0.1:44000/idle',
+          sessionId: 'sess-w1',
+        ),
+      );
 
       final codexHome = p.join(root.path, 'codex-mixed');
       await CodexHomeProvisioner(fs: LocalFilesystem()).provision(

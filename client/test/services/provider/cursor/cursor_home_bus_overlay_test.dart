@@ -6,25 +6,32 @@ import 'package:teampilot/services/team_bus/member_bus_idle_endpoint.dart';
 import 'package:teampilot/services/team_bus/mcp/teammate_bus_mcp_config.dart';
 
 void main() {
-  const localIdle = MemberBusIdleEndpoint(url: 'http://127.0.0.1:4321/idle');
+  const localIdle = MemberBusIdleEndpoint(
+    url: 'http://127.0.0.1:4321/idle',
+    sessionId: 'sess-abc',
+  );
   const remoteIdle = MemberBusIdleEndpoint(
     url: 'http://127.0.0.1:4321/idle',
     token: 'sess-tok',
   );
 
   group('CursorHomeBusOverlay', () {
-    test('buildMcpJson includes teammate-bus server with correct url/headers', () {
-      final json = CursorHomeBusOverlay.buildMcpJson(
-        memberId: 'planner',
-        idle: localIdle,
-      );
-      final decoded = jsonDecode(json) as Map<String, Object?>;
-      final servers = decoded['mcpServers'] as Map<String, Object?>;
-      final bus = servers[teammateBusMcpServerName] as Map<String, Object?>;
-      expect(bus['type'], 'http');
-      expect(bus['url'], 'http://127.0.0.1:4321/mcp');
-      expect((bus['headers'] as Map)['X-Member'], 'planner');
-    });
+    test(
+      'buildMcpJson includes teammate-bus server with correct url/headers',
+      () {
+        final json = CursorHomeBusOverlay.buildMcpJson(
+          memberId: 'planner',
+          idle: localIdle,
+        );
+        final decoded = jsonDecode(json) as Map<String, Object?>;
+        final servers = decoded['mcpServers'] as Map<String, Object?>;
+        final bus = servers[teammateBusMcpServerName] as Map<String, Object?>;
+        expect(bus['type'], 'http');
+        expect(bus['url'], 'http://127.0.0.1:4321/mcp');
+        expect((bus['headers'] as Map)['X-Member'], 'planner');
+        expect((bus['headers'] as Map)['X-Session'], 'sess-abc');
+      },
+    );
 
     test('buildMcpJson adds bus token for remote idle endpoints', () {
       final json = CursorHomeBusOverlay.buildMcpJson(
@@ -54,6 +61,7 @@ void main() {
       );
 
       expect(s, contains('X-Member: planner'));
+      expect(s, contains('X-Session: sess-abc'));
       expect(s, contains('http://127.0.0.1:4321/idle'));
       expect(s, contains('"decision":"block"'));
       expect(s, contains('followup_message'));
