@@ -20,12 +20,13 @@ class _FakeTerminalSession extends TerminalSession {
   void dispose() {}
 }
 
-Future<bool> _mcpEndpointAcceptsHttp(Uri endpoint) async {
+Future<bool> _mcpEndpointAcceptsHttp(Uri endpoint, String sessionId) async {
   final client = HttpClient();
   try {
     final req = await client.postUrl(endpoint);
     req.headers.set('content-type', 'application/json');
     req.headers.set('X-Member', 'team-lead');
+    req.headers.set('X-Session', sessionId);
     req.add(
       utf8.encode(
         jsonEncode({
@@ -112,7 +113,50 @@ void main() {
         session.sessionId,
       );
       expect(endpoint, isNotNull);
-      expect(await _mcpEndpointAcceptsHttp(endpoint!), isTrue);
+      expect(
+        await _mcpEndpointAcceptsHttp(endpoint!, session.sessionId),
+        isTrue,
+      );
+    });
+
+    test('two mixed sessions share the same gateway port', () async {
+      final workspace = await repo.createWorkspace([WorkspaceFolder(path: '/tmp')]);
+      final sessionA = await repo.createSession(
+        workspace.workspaceId,
+        sessionTeam: team.id,
+        rosterMembers: team.members,
+      );
+      final sessionB = await repo.createSession(
+        workspace.workspaceId,
+        sessionTeam: team.id,
+        rosterMembers: team.members,
+      );
+
+      await cubit.requestOpenSession(
+        SessionOpenRequest(
+          session: sessionA,
+          team: team,
+          member: team.members.first,
+          repo: repo,
+          connectImmediately: false,
+        ),
+      );
+      await cubit.requestOpenSession(
+        SessionOpenRequest(
+          session: sessionB,
+          team: team,
+          member: team.members.first,
+          repo: repo,
+          connectImmediately: false,
+        ),
+      );
+      await drainPendingAsyncWork();
+
+      final epA = cubit.teammateBusMcpEndpointForSession(sessionA.sessionId);
+      final epB = cubit.teammateBusMcpEndpointForSession(sessionB.sessionId);
+      expect(epA, isNotNull);
+      expect(epB, isNotNull);
+      expect(epA!.port, epB!.port);
     });
 
     test('closeTab stops MCP server and clears bus resources', () async {
@@ -146,7 +190,10 @@ void main() {
         cubit.teammateBusMcpEndpointForSession(session.sessionId),
         isNull,
       );
-      expect(await _mcpEndpointAcceptsHttp(endpoint), isFalse);
+      expect(
+        await _mcpEndpointAcceptsHttp(endpoint, session.sessionId),
+        isFalse,
+      );
     });
   });
 }

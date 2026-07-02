@@ -32,6 +32,7 @@ import '../../services/team_bus/mcp/teammate_bus_mcp_config.dart';
 import '../../services/team_bus/remote/member_bus_mcp_config.dart';
 import '../../services/ssh/ssh_member_session.dart';
 import '../../services/storage/targets_repository.dart';
+import '../../services/team_bus/mcp/teammate_bus_mcp_gateway.dart';
 import '../../services/team_bus/remote/remote_bus_binding_resolver.dart';
 import '../../services/team_bus/remote/remote_bus_mount.dart';
 import '../../services/team_bus/remote/ssh_remote_bus_mount_factory.dart';
@@ -113,6 +114,8 @@ abstract interface class SessionLaunchHost {
   RemoteBusBindingResolver? get remoteBusResolver;
 
   SessionConnectOrchestrator get sessionConnect;
+
+  TeammateBusMcpGateway get teammateBusMcpGateway;
 
   /// Exposes workspace Phase A for team / mixed off-home paths.
   WorkspaceProvisionCoordinator get workspaceProvision;
@@ -1486,7 +1489,7 @@ class SessionLaunchService implements MemberConnector {
           team != null &&
           launchMember != null &&
           team.teamMode == TeamMode.mixed &&
-          tab.mcpServer != null;
+          tab.busSessionRegistration != null;
       // P3b (#1): a remote (ssh) member connects back to the in-process bus over a
       // reverse tunnel; the resolver returns its binding (relay/HTTP over tunnel),
       // or null for a local member (unchanged transport). Android-mixed fix.
@@ -1523,7 +1526,8 @@ class SessionLaunchService implements MemberConnector {
             final arch = archFromUname(await memberSshSession.run('uname -m'));
             final mount = buildRemoteBusMount(
               memberSession: memberSshSession,
-              busServer: tab.mcpServer!,
+              gateway: _h.teammateBusMcpGateway,
+              registration: tab.busSessionRegistration!,
               storageFs: workCtx.fs,
               arch: arch,
             );
@@ -1553,7 +1557,8 @@ class SessionLaunchService implements MemberConnector {
           extraMcpServers: mixedBus
               ? {
                   teammateBusMcpServerName: _busMcpServerConfig(
-                    endpoint: tab.mcpServer!.endpoint,
+                    endpoint: _h.teammateBusMcpGateway.mcpEndpoint,
+                    sessionId: activeSession.sessionId,
                     memberId: launchMember.id,
                     cli: memberLaunchCli(
                       team: team,
@@ -1568,7 +1573,10 @@ class SessionLaunchService implements MemberConnector {
               ? switch (remoteBinding) {
                   final binding? => MemberBusIdleEndpoint.remote(binding),
                   null when launchTarget.kind != RuntimeKind.ssh =>
-                    MemberBusIdleEndpoint.local(tab.mcpServer!),
+                    MemberBusIdleEndpoint.local(
+                      _h.teammateBusMcpGateway,
+                      sessionId: activeSession.sessionId,
+                    ),
                   null => null,
                 }
               : null,
@@ -1721,6 +1729,7 @@ class SessionLaunchService implements MemberConnector {
   ///   远程成员配置指向**隧道端口 <P>**而非远端够不到的裸 loopback——即 Android mixed 修点。
   Map<String, Object?> _busMcpServerConfig({
     required Uri endpoint,
+    required String sessionId,
     required String memberId,
     required CliTool cli,
     RemoteBusBinding? remoteBinding,
@@ -1742,6 +1751,7 @@ class SessionLaunchService implements MemberConnector {
     return buildMemberBusMcpConfig(
       memberId: memberId,
       localEndpoint: endpoint,
+      sessionId: sessionId,
       longBlocking: longBlocking,
       localStdioBridgePath: localBridge,
       remote: remoteBinding,

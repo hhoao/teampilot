@@ -43,6 +43,7 @@ class RemoteBusBinding {
 Map<String, Object?> buildMemberBusMcpConfig({
   required String memberId,
   required Uri localEndpoint,
+  String sessionId = '',
   required bool longBlocking,
   String? localStdioBridgePath,
   RemoteBusBinding? remote,
@@ -81,7 +82,12 @@ Map<String, Object?> buildMemberBusMcpConfig({
       bridgePath: localStdioBridgePath,
       endpoint: localEndpoint,
       memberId: memberId,
+      sessionId: sessionId,
     );
   }
-  return teammateBusMcpServerConfig(endpoint: localEndpoint, memberId: memberId);
+  return teammateBusMcpServerConfig(
+    endpoint: localEndpoint,
+    memberId: memberId,
+    sessionId: sessionId,
+  );
 }

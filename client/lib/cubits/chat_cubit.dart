@@ -22,6 +22,7 @@ import '../services/storage/app_storage.dart';
 import '../services/session/session_lifecycle_service.dart';
 import '../services/team_bus/artifacts/artifact_registry.dart';
 import '../services/team_bus/artifacts/artifact_transfer_service.dart';
+import '../services/team_bus/mcp/teammate_bus_mcp_gateway.dart';
 import '../services/team_bus/remote/remote_bus_binding_resolver.dart';
 import '../services/launch/launch_factory.dart';
 import '../services/launch/session_connect_orchestrator.dart';
@@ -71,8 +72,11 @@ class ChatCubit extends Cubit<ChatState>
     int Function()? terminalScrollbackLinesResolver,
     RemoteBusBindingResolver? remoteBusResolver,
     SessionConnectOrchestrator? sessionConnect,
+    TeammateBusMcpGateway? teammateBusMcpGateway,
   }) : _remoteBusResolver = remoteBusResolver,
        _sessionConnect = sessionConnect,
+       _teammateBusMcpGateway =
+           teammateBusMcpGateway ?? TeammateBusMcpGateway(),
        _shellFactory = ChatSessionShellFactory(
          executableResolver: executableResolver,
          cliExecutableResolver: cliExecutableResolver,
@@ -93,12 +97,14 @@ class ChatCubit extends Cubit<ChatState>
 
   final RemoteBusBindingResolver? _remoteBusResolver;
   final SessionConnectOrchestrator? _sessionConnect;
+  final TeammateBusMcpGateway _teammateBusMcpGateway;
   SessionConnectOrchestrator? _defaultSessionConnect;
   final ChatTabStore _tabStore = ChatTabStore();
   final SessionDataStore _dataStore = SessionDataStore();
   final Map<String, Future<void>> _sessionHydrationByWorkspace = {};
   late final SessionLaunchService _launchService = SessionLaunchService(this);
   late final TabTeamBusCoordinator _busCoordinator = TabTeamBusCoordinator(
+    gateway: _teammateBusMcpGateway,
     tabStore: _tabStore,
     shellFactory: _shellFactory,
     connector: _launchService,
@@ -246,6 +252,9 @@ class ChatCubit extends Cubit<ChatState>
 
   @override
   TabTeamBusCoordinator get busCoordinator => _busCoordinator;
+
+  @override
+  TeammateBusMcpGateway get teammateBusMcpGateway => _teammateBusMcpGateway;
 
   @override
   SessionLifecycleService get lifecycle => _lifecycle;
@@ -772,6 +781,7 @@ class ChatCubit extends Cubit<ChatState>
     for (final session in tab.sessions) {
       session.dispose();
     }
+    await _busCoordinator.disposeSessionBus(tab.info.id);
     await tab.disposeBus();
   }
 

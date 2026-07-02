@@ -14,8 +14,8 @@ import '../../services/team_bus/agent_node.dart';
 import '../../services/team_bus/artifacts/artifact_transfer_service.dart';
 import '../../services/team_bus/bus_user_line_capture.dart';
 import '../../services/team_bus/chat_cubit_member_launcher.dart';
+import '../../services/team_bus/mcp/teammate_bus_mcp_gateway.dart';
 import '../../services/team_bus/mcp/teammate_bus_mcp_handler.dart';
-import '../../services/team_bus/mcp/teammate_bus_mcp_server.dart';
 import '../../services/team_bus/persistence/bus_message_log_factory.dart';
 import '../../services/team_bus/tasks/task_log_factory.dart';
 import '../../services/team_bus/tasks/task_queue.dart';
@@ -41,6 +41,7 @@ abstract interface class MemberConnector {
 /// Implements [MemberMaterializer] (was ChatCubit's role).
 class TabTeamBusCoordinator implements MemberMaterializer {
   TabTeamBusCoordinator({
+    required TeammateBusMcpGateway gateway,
     required ChatTabStore tabStore,
     required ChatSessionShellFactory shellFactory,
     required MemberConnector connector,
@@ -51,7 +52,8 @@ class TabTeamBusCoordinator implements MemberMaterializer {
     VoidCallback? onAfterIdleWatchTick,
     ArtifactTransferService Function(AppSession session)?
     artifactServiceFactory,
-  }) : _tabStore = tabStore,
+  }) : _gateway = gateway,
+       _tabStore = tabStore,
        _shellFactory = shellFactory,
        _connector = connector,
        _globalPresets = globalPresets,
@@ -61,6 +63,7 @@ class TabTeamBusCoordinator implements MemberMaterializer {
        _onAfterIdleWatchTick = onAfterIdleWatchTick,
        _artifactServiceFactory = artifactServiceFactory;
 
+  final TeammateBusMcpGateway _gateway;
   final ChatTabStore _tabStore;
   final ChatSessionShellFactory _shellFactory;
   final MemberConnector _connector;
@@ -163,23 +166,25 @@ class TabTeamBusCoordinator implements MemberMaterializer {
       );
     }
     await bus.rehydrateUnread();
-    final server = TeammateBusMcpServer(
-      handler: TeammateBusMcpHandler(
-        bus: bus,
-        artifacts: _artifactServiceFactory?.call(session),
-        forceWaitBeforeStop: team.forceWaitBeforeStop,
-        // 成员级解析：cursor 等 push-投递 CLI → false（正常停 + 门铃投递）。
-        forceWaitForMember: (memberId) =>
-            forceWaitByMember[memberId] ?? team.forceWaitBeforeStop,
-      ),
+    await _gateway.ensureStarted();
+    final handler = TeammateBusMcpHandler(
+      bus: bus,
+      artifacts: _artifactServiceFactory?.call(session),
+      forceWaitBeforeStop: team.forceWaitBeforeStop,
+      // 成员级解析：cursor 等 push-投递 CLI → false（正常停 + 门铃投递）。
+      forceWaitForMember: (memberId) =>
+          forceWaitByMember[memberId] ?? team.forceWaitBeforeStop,
     );
-    await server.start();
+    final reg = _gateway.register(
+      sessionId: session.sessionId,
+      handler: handler,
+    );
     tab.teamBus = bus;
-    tab.mcpServer = server;
+    tab.busSessionRegistration = reg;
     ensureIdleWatch();
     appLogger.d(
       '[session-launch] installBusForTab ready '
-      'session=${session.sessionId} endpoint=${server.endpoint}',
+      'session=${session.sessionId} endpoint=${_gateway.mcpEndpoint}',
     );
   }
 
@@ -334,17 +339,16 @@ class TabTeamBusCoordinator implements MemberMaterializer {
 
   bool hasTeamBusResources(String sessionId) {
     final tab = _tabStore.bySessionId(sessionId);
-    return tab?.teamBus != null && tab?.mcpServer != null;
+    return tab?.teamBus != null && _gateway.isSessionRegistered(sessionId);
   }
 
   Uri? teammateBusMcpEndpointForSession(String sessionId) {
-    final server = _tabStore.bySessionId(sessionId)?.mcpServer;
-    if (server == null) return null;
-    try {
-      return server.endpoint;
-    } catch (_) {
-      return null;
-    }
+    if (!_gateway.isSessionRegistered(sessionId)) return null;
+    return _gateway.mcpEndpoint;
+  }
+
+  Future<void> disposeSessionBus(String sessionId) async {
+    await _gateway.unregister(sessionId);
   }
 
   /// Test seam: synchronously run one idle-watch tick (exposed through

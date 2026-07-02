@@ -10,6 +10,7 @@ import 'app_data_bootstrap.dart';
 import '../cubits/app_provider_cubit.dart';
 import '../cubits/app_update_cubit.dart';
 import '../cubits/chat_cubit.dart';
+import '../services/team_bus/mcp/teammate_bus_mcp_gateway.dart';
 import '../services/team_bus/remote/remote_bus_binding_resolver.dart';
 import '../services/remote/local_credential_exporter.dart';
 import '../services/launch/launch_factory.dart';
@@ -633,7 +634,11 @@ Future<AppShell> buildAppShell({
         sessionPreferencesCubit.state.preferences.sshUseLoginShell,
   );
 
+  final teammateBusMcpGateway = TeammateBusMcpGateway();
+  await teammateBusMcpGateway.ensureStarted();
+
   chatCubit = ChatCubit(
+    teammateBusMcpGateway: teammateBusMcpGateway,
     sessionRepository: sessionRepo,
     lifecycleService: sessionLifecycleService,
     autoLaunchAllMembersOnConnect: () =>
