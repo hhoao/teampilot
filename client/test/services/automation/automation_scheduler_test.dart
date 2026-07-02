@@ -184,7 +184,7 @@ void main() {
     );
 
     scheduler.start();
-    await Future<void>.delayed(const Duration(milliseconds: 50));
+    await scheduler.waitForIdle();
     scheduler.stop();
 
     final runs = await repo.runsFor(_teamTabScope, automationId: 'due-1');

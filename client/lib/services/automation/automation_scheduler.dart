@@ -46,6 +46,9 @@ class AutomationScheduler {
     _timer = null;
   }
 
+  /// Waits until all enqueued scheduler work has finished.
+  Future<void> waitForIdle() => _operationQueue;
+
   Future<void> runNow(AutomationTabScope scope, String automationId) {
     return _enqueue(() async {
       final automations = await _repository.listForTabScope(scope);
