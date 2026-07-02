@@ -447,6 +447,103 @@ void main() {
     expect(result.success, isFalse);
     expect(result.message, contains('SSH'));
   });
+
+  test('installs Cursor CLI locally on Unix via official curl script', () async {
+    final commands = <String>[];
+    final installer = CliInstallerService(
+      isWindowsOverride: false,
+      localRunner: (command) async {
+        commands.add(command.commandLine);
+        if (command.commandLine.contains('curl https://cursor.com/install -fsS | bash')) {
+          return const CliInstallerCommandResult(exitCode: 0);
+        }
+        if (command.commandLine == 'which cursor-agent') {
+          return const CliInstallerCommandResult(
+            exitCode: 0,
+            stdout: '/home/alice/.local/bin/cursor-agent\n',
+          );
+        }
+        return const CliInstallerCommandResult(exitCode: 127);
+      },
+    );
+
+    final result = await installer.install(
+      cli: CliTool.cursor,
+      mode: CliInstallMode.local,
+    );
+
+    expect(result.success, isTrue, reason: result.message);
+    expect(result.executablePath, '/home/alice/.local/bin/cursor-agent');
+    expect(commands.length, 2);
+    expect(commands[0], contains('curl https://cursor.com/install'));
+    expect(commands[1], 'which cursor-agent');
+  });
+
+  test('installs Cursor CLI locally on Windows via PowerShell', () async {
+    final commands = <String>[];
+    final installer = CliInstallerService(
+      isWindowsOverride: true,
+      localRunner: (command) async {
+        commands.add(command.commandLine);
+        if (command.executable == 'powershell' &&
+            command.arguments.any(
+              (arg) => arg.contains('cursor.com/install?win32=true'),
+            )) {
+          return const CliInstallerCommandResult(exitCode: 0);
+        }
+        if (command.commandLine == 'where cursor-agent') {
+          return const CliInstallerCommandResult(
+            exitCode: 0,
+            stdout: r'C:\Users\alice\.local\bin\cursor-agent.cmd',
+          );
+        }
+        return const CliInstallerCommandResult(exitCode: 127);
+      },
+    );
+
+    final result = await installer.install(
+      cli: CliTool.cursor,
+      mode: CliInstallMode.local,
+    );
+
+    expect(result.success, isTrue, reason: result.message);
+    expect(result.executablePath, r'C:\Users\alice\.local\bin\cursor-agent.cmd');
+    expect(commands.length, 2);
+    expect(commands[0], contains('cursor.com/install?win32=true'));
+    expect(commands[1], 'where cursor-agent');
+  });
+
+  test('installs Cursor CLI on SSH host via official curl script', () async {
+    final commands = <String>[];
+    final installer = CliInstallerService(
+      sshRunner: (profile, command) async {
+        commands.add(command.commandLine);
+        if (command.commandLine.contains('curl https://cursor.com/install -fsS | bash')) {
+          return const CliInstallerCommandResult(exitCode: 0);
+        }
+        if (command.commandLine.startsWith('sh -c') &&
+            command.commandLine.contains('command -v cursor-agent')) {
+          return const CliInstallerCommandResult(
+            exitCode: 0,
+            stdout: '/home/alice/.local/bin/cursor-agent\n',
+          );
+        }
+        return const CliInstallerCommandResult(exitCode: 127);
+      },
+    );
+
+    final result = await installer.install(
+      cli: CliTool.cursor,
+      mode: CliInstallMode.ssh,
+      sshProfile: _profile,
+    );
+
+    expect(result.success, isTrue, reason: result.message);
+    expect(result.executablePath, '/home/alice/.local/bin/cursor-agent');
+    expect(commands.length, 2);
+    expect(commands[0], contains('curl https://cursor.com/install'));
+    expect(commands[1], startsWith('sh -c'));
+  });
 }
 
 const _profile = SshProfile(

@@ -133,7 +133,7 @@ abstract class NpmInstallerCapability implements InstallerCapability {
     final resolved = await host.runSsh(
       profile,
       CliInstallerCommand.unixShellScript(
-        _remotePostInstallLocateScript(executableName),
+        remotePostInstallLocateScript(executableName),
       ),
     );
     final path = firstInstallerOutputLine(resolved);
@@ -153,7 +153,7 @@ abstract class NpmInstallerCapability implements InstallerCapability {
   }
 
   /// Mirrors [DefaultRemoteCliLocator] probes in one remote shell script.
-  static String _remotePostInstallLocateScript(String executableName) => '''
+  static String remotePostInstallLocateScript(String executableName) => '''
 if command -v $executableName >/dev/null 2>&1; then
   command -v $executableName
   exit 0

@@ -21,7 +21,7 @@ import '../capabilities/headless_run_capability.dart';
 import '../capabilities/provider_credential_capability.dart';
 import '../capabilities/session_resume_capability.dart';
 import '../capabilities/resume/cursor_resume_strategy.dart';
-import '../capabilities/unsupported_installer_capability.dart';
+import '../installer/cursor_installer_capability.dart';
 import '../config_profile/cursor_config_profile_capability.dart';
 import '../headless/cursor_headless_run_capability.dart';
 import '../../../provider/cursor/cursor_effort_capability.dart';
@@ -43,7 +43,7 @@ final class CursorCliTool implements CliToolDefinition {
     this.configProfile = const CursorConfigProfileCapability(),
     this.sessionResume = const CursorResumeStrategy(),
     this.executableResolver = const CursorExecutableResolver(),
-    this.installer = const UnsupportedInstallerCapability(),
+    this.installer = const CursorInstallerCapability(),
     this.presence = const CursorPresence(),
     this.display = const CursorDisplay(),
     this.terminalBehavior = const CursorTerminalBehavior(),

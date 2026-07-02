@@ -7,6 +7,7 @@ import 'package:teampilot/services/cli/registry/capabilities/provider_catalog_ca
 import 'package:teampilot/services/cli/registry/capabilities/provider_model_capability.dart';
 import 'package:teampilot/services/cli/registry/installer/claude_installer_capability.dart';
 import 'package:teampilot/services/cli/registry/installer/codex_installer_capability.dart';
+import 'package:teampilot/services/cli/registry/installer/cursor_installer_capability.dart';
 import 'package:teampilot/services/cli/registry/installer/opencode_installer_capability.dart';
 import 'package:teampilot/services/cli/registry/built_in_cli_tools.dart';
 import 'package:teampilot/services/cli/registry/capabilities/member_agent_preset_capability.dart';
@@ -135,6 +136,13 @@ void main() {
       CliTool.opencode,
     );
     expect(installer, isA<OpencodeInstallerCapability>());
+    expect(installer!.supportsInstaller, isTrue);
+  });
+
+  test('cursor built-in has curl InstallerCapability with install support', () {
+    final registry = CliToolRegistry.builtIn();
+    final installer = registry.capability<InstallerCapability>(CliTool.cursor);
+    expect(installer, isA<CursorInstallerCapability>());
     expect(installer!.supportsInstaller, isTrue);
   });
 
