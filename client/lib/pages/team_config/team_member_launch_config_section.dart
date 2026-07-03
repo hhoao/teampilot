@@ -324,7 +324,35 @@ class _MemberLaunchConfigureDialogState
           _effortId = widget.member.effort;
         });
       case MemberLaunchConfigKind.preset:
-        break;
+        _applyEffectivePresetChoice(
+          context.read<CliPresetsCubit>().state.presets,
+        );
+    }
+  }
+
+  void _applyEffectivePresetChoice(List<CliPreset> allPresets) {
+    final team = context.read<LaunchProfileCubit>().state.teams.firstWhere(
+      (t) => t.id == widget.team.id,
+      orElse: () => widget.team,
+    );
+    final member = team.members.cast<TeamMemberConfig?>().firstWhere(
+      (m) => m!.id == widget.member.id,
+      orElse: () => widget.member,
+    )!;
+    final eligiblePresetList = teamPresetPickerItems(
+      team: team,
+      allPresets: allPresets,
+    );
+    final presetDropdownItems = presetLaunchDropdownItems(
+      mode: PresetLaunchPickerMode.presetOnly,
+      eligiblePresets: eligiblePresetList,
+    );
+    final token = effectivePresetLaunchToken(
+      currentToken: memberLaunchPresetToken(member),
+      dropdownItems: presetDropdownItems,
+    );
+    if (token.isNotEmpty) {
+      _applyPresetChoice(token, allPresets);
     }
   }
 
@@ -374,6 +402,10 @@ class _MemberLaunchConfigureDialogState
           updateEffort: true,
         ),
       );
+    } else if (_configKind == MemberLaunchConfigKind.preset) {
+      _applyEffectivePresetChoice(
+        context.read<CliPresetsCubit>().state.presets,
+      );
     }
     Navigator.of(context).pop();
   }
@@ -412,10 +444,10 @@ class _MemberLaunchConfigureDialogState
       mode: PresetLaunchPickerMode.presetOnly,
       eligiblePresets: eligiblePresetList,
     );
-    final presetToken = memberLaunchPresetToken(member);
-    final effectivePresetToken = presetDropdownItems.contains(presetToken)
-        ? presetToken
-        : (presetDropdownItems.isNotEmpty ? presetDropdownItems.first : '');
+    final effectivePresetToken = effectivePresetLaunchToken(
+      currentToken: memberLaunchPresetToken(member),
+      dropdownItems: presetDropdownItems,
+    );
 
     final providers = context
         .watch<AppProviderCubit>()
@@ -516,16 +548,12 @@ class _MemberLaunchConfigureDialogState
                 onPressed: () => Navigator.of(context).pop(),
                 child: Text(l10n.cancel),
               ),
-              if (isCustom)
-                FilledButton(
-                  onPressed: _canSaveCustom(mixed) ? _save : null,
-                  child: Text(l10n.save),
-                )
-              else
-                FilledButton(
-                  onPressed: () => Navigator.of(context).pop(),
-                  child: Text(l10n.save),
-                ),
+              FilledButton(
+                onPressed: isCustom
+                    ? (_canSaveCustom(mixed) ? _save : null)
+                    : (presetDropdownItems.isEmpty ? null : _save),
+                child: Text(l10n.save),
+              ),
             ],
           ),
         ],

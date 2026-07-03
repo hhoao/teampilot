@@ -91,6 +91,28 @@ class _TeamDefaultPresetConfigureDialogState
         _modelId = team.modelForCli(_catalogCli);
         _effortId = team.effortForCli(_catalogCli);
       });
+    } else if (kind == TeamLaunchConfigKind.preset) {
+      _applyEffectivePresetChoice();
+    }
+  }
+
+  void _applyEffectivePresetChoice() {
+    final allPresets = context.read<CliPresetsCubit>().state.presets;
+    final team = _currentTeam;
+    final eligiblePresetList = teamPresetPickerItems(
+      team: team,
+      allPresets: allPresets,
+    );
+    final presetDropdownItems = presetLaunchDropdownItems(
+      mode: PresetLaunchPickerMode.presetOnly,
+      eligiblePresets: eligiblePresetList,
+    );
+    final token = effectivePresetLaunchToken(
+      currentToken: teamLaunchPresetToken(team),
+      dropdownItems: presetDropdownItems,
+    );
+    if (token.isNotEmpty) {
+      _applyPresetChoice(token);
     }
   }
 
@@ -120,6 +142,8 @@ class _TeamDefaultPresetConfigureDialogState
         model: _modelId,
         effort: _effortId,
       );
+    } else {
+      _applyEffectivePresetChoice();
     }
     Navigator.of(context).pop();
   }
@@ -141,10 +165,10 @@ class _TeamDefaultPresetConfigureDialogState
       mode: PresetLaunchPickerMode.presetOnly,
       eligiblePresets: eligiblePresetList,
     );
-    final presetToken = teamLaunchPresetToken(team);
-    final effectivePresetToken = presetDropdownItems.contains(presetToken)
-        ? presetToken
-        : (presetDropdownItems.isNotEmpty ? presetDropdownItems.first : '');
+    final effectivePresetToken = effectivePresetLaunchToken(
+      currentToken: teamLaunchPresetToken(team),
+      dropdownItems: presetDropdownItems,
+    );
     final providers = context
         .watch<AppProviderCubit>()
         .state
@@ -249,16 +273,12 @@ class _TeamDefaultPresetConfigureDialogState
                 onPressed: () => Navigator.of(context).pop(),
                 child: Text(l10n.cancel),
               ),
-              if (isCustom)
-                FilledButton(
-                  onPressed: _providerId.trim().isEmpty ? null : _save,
-                  child: Text(l10n.save),
-                )
-              else
-                FilledButton(
-                  onPressed: () => Navigator.of(context).pop(),
-                  child: Text(l10n.save),
-                ),
+              FilledButton(
+                onPressed: isCustom
+                    ? (_providerId.trim().isEmpty ? null : _save)
+                    : (presetDropdownItems.isEmpty ? null : _save),
+                child: Text(l10n.save),
+              ),
             ],
           ),
         ],

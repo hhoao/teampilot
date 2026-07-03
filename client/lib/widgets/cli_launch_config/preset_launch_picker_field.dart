@@ -175,6 +175,18 @@ List<CliPreset> globalPresetPickerItems(List<CliPreset> allPresets) {
   return items;
 }
 
+/// Resolves the preset token shown in the dropdown when [currentToken] is empty
+/// or no longer in [dropdownItems] (e.g. after switching config type to preset).
+String effectivePresetLaunchToken({
+  required String currentToken,
+  required List<String> dropdownItems,
+}) {
+  if (currentToken.isNotEmpty && dropdownItems.contains(currentToken)) {
+    return currentToken;
+  }
+  return dropdownItems.isNotEmpty ? dropdownItems.first : '';
+}
+
 List<String> presetLaunchDropdownItems({
   required PresetLaunchPickerMode mode,
   required List<CliPreset> eligiblePresets,
