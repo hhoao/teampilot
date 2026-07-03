@@ -2,7 +2,8 @@ import 'dart:convert';
 
 /// Catalog of Cursor CLI auth files under an isolated fake `$HOME`.
 ///
-/// Session tokens live in `$HOME/.config/cursor/auth.json`. `cli-config.json`
+/// Session tokens live in `$HOME/.config/cursor/auth.json` (and on Windows also
+/// `%APPDATA%\Cursor\auth.json` from Cursor IDE). `cli-config.json`
 /// under `$HOME/.cursor/` carries profile metadata (`authInfo`) but is not
 /// sufficient for `cursor-agent` to authenticate on its own.
 abstract final class CursorAuthArtifacts {
@@ -14,7 +15,7 @@ abstract final class CursorAuthArtifacts {
   /// Relative to `$HOME/.cursor/`.
   static const cursorDirOptional = <String>['agent-cli-state.json'];
 
-  /// Relative to `$HOME/.config/cursor/`.
+  /// Relative to `$HOME/.config/cursor/` (or `%APPDATA%\Cursor\` on Windows IDE).
   static const configCursorRequired = <String>['auth.json'];
 
   /// Back-compat aliases used by older call sites.

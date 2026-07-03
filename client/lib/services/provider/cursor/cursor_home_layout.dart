@@ -1,3 +1,5 @@
+import 'dart:io';
+
 import 'package:path/path.dart' as p;
 
 /// Path helpers for an isolated fake `$HOME/.cursor/` layout.
@@ -27,6 +29,44 @@ final class CursorHomeLayout {
 
   String authJson(String homeRoot) =>
       _pathContext.join(configCursorDir(homeRoot), authFileName);
+
+  /// Live OAuth tokens on the user's machine, in probe order.
+  ///
+  /// Cursor IDE on Windows stores `auth.json` under `%APPDATA%\Cursor\`.
+  /// `cursor-agent login` writes to `$HOME/.config/cursor/auth.json` on all
+  /// platforms. macOS IDE uses `~/Library/Application Support/Cursor/`.
+  List<String> globalAuthJsonCandidates(
+    String homeDirectory, {
+    Map<String, String> platformEnv = const {},
+  }) {
+    final home = homeDirectory.trim();
+    final candidates = <String>[];
+
+    final appData =
+        platformEnv['APPDATA']?.trim() ??
+        (Platform.isWindows ? Platform.environment['APPDATA']?.trim() : null) ??
+        '';
+    if (appData.isNotEmpty) {
+      candidates.add(_pathContext.join(appData, 'Cursor', authFileName));
+    }
+
+    if (Platform.isMacOS && home.isNotEmpty) {
+      candidates.add(
+        _pathContext.join(
+          home,
+          'Library',
+          'Application Support',
+          'Cursor',
+          authFileName,
+        ),
+      );
+    }
+
+    if (home.isNotEmpty) {
+      candidates.add(authJson(home));
+    }
+    return candidates;
+  }
 
   String roleRule(String homeRoot) =>
       _pathContext.join(cursorDir(homeRoot), rulesDirName, roleRuleFileName);

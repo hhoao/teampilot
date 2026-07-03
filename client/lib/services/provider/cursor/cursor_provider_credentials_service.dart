@@ -86,6 +86,7 @@ class CursorProviderCredentialsService {
   Future<CredentialActionResult> importFromGlobal(
     String providerId, {
     required String homeDirectory,
+    Map<String, String> platformEnv = const {},
     bool replace = false,
   }) async {
     final cursorResult = await importFromCursorDirectory(
@@ -95,7 +96,10 @@ class CursorProviderCredentialsService {
     );
     if (!cursorResult.ok) return cursorResult;
 
-    final globalAuth = _layout.authJson(homeDirectory);
+    final globalAuth = await _resolveGlobalAuthPath(
+      homeDirectory,
+      platformEnv: platformEnv,
+    );
     final destAuth = _layout.authJson(providerHome(providerId));
     final authCopied = await _copyFile(
       src: globalAuth,
@@ -274,6 +278,26 @@ class CursorProviderCredentialsService {
     if (anyLinked) return CredentialLinkResult.linked;
     if (anyCopied) return CredentialLinkResult.copied;
     return CredentialLinkResult.missing;
+  }
+
+  Future<String> _resolveGlobalAuthPath(
+    String homeDirectory, {
+    Map<String, String> platformEnv = const {},
+  }) async {
+    for (final candidate
+        in _layout.globalAuthJsonCandidates(
+          homeDirectory,
+          platformEnv: platformEnv,
+        )) {
+      if ((await _fs.stat(candidate)).isFile) return candidate;
+    }
+    final candidates = _layout.globalAuthJsonCandidates(
+      homeDirectory,
+      platformEnv: platformEnv,
+    );
+    return candidates.isEmpty
+        ? _layout.authJson(homeDirectory)
+        : candidates.first;
   }
 
   Future<String?> _readText(String path) async {

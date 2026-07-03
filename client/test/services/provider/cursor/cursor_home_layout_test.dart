@@ -86,5 +86,22 @@ void main() {
         ),
       );
     });
+
+    test('globalAuthJsonCandidates prefers APPDATA Cursor on Windows', () {
+      final candidates = CursorHomeLayout().globalAuthJsonCandidates(
+        r'C:\Users\haung',
+        platformEnv: const {'APPDATA': r'C:\Users\haung\AppData\Roaming'},
+      );
+      expect(
+        candidates.first,
+        r'C:\Users\haung\AppData\Roaming\Cursor\auth.json',
+      );
+      expect(candidates.last, r'C:\Users\haung\.config\cursor\auth.json');
+    });
+
+    test('globalAuthJsonCandidates always includes xdg auth path', () {
+      final candidates = CursorHomeLayout().globalAuthJsonCandidates(homeRoot);
+      expect(candidates, contains(layout.authJson(homeRoot)));
+    });
   });
 }

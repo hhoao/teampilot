@@ -2,6 +2,7 @@ import 'dart:convert';
 import 'dart:io';
 
 import 'package:flutter_test/flutter_test.dart';
+import 'package:path/path.dart' as p;
 import 'package:teampilot/models/claude_credential_link_result.dart';
 import 'package:teampilot/services/provider/cursor/cursor_home_layout.dart';
 import 'package:teampilot/services/provider/cursor/cursor_provider_credentials_service.dart';
@@ -94,6 +95,28 @@ void main() {
     final authBytes = await fs.readBytes(layout.authJson(providerHome));
     expect(authBytes, isNotNull);
     expect(utf8.decode(authBytes!), contains('at1'));
+  });
+
+  test('importFromGlobal finds auth.json under Windows APPDATA', () async {
+    final winContext = p.Context(style: p.Style.windows);
+    final winFs = InMemoryFilesystem(pathContext: winContext);
+    final winLayout = CursorHomeLayout(pathContext: winContext);
+    final winService = CursorProviderCredentialsService(
+      fs: winFs,
+      basePath: base,
+    );
+    const home = r'C:\Users\haung';
+    const appData = r'C:\Users\haung\AppData\Roaming';
+    final appDataAuth = winContext.join(appData, 'Cursor', 'auth.json');
+    await winFs.writeString(winLayout.cliConfig(home), loggedInCliConfig);
+    await winFs.writeString(appDataAuth, loggedInAuthJson);
+    final result = await winService.importFromGlobal(
+      'work',
+      homeDirectory: home,
+      platformEnv: const {'APPDATA': appData},
+    );
+    expect(result.ok, isTrue);
+    expect((await winService.probe('work')).isReady, isTrue);
   });
 
   test('importAuthJsonFile copies auth.json only', () async {

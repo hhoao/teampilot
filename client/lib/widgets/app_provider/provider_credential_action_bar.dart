@@ -238,7 +238,7 @@ class _ProviderCredentialActionBarState extends State<ProviderCredentialActionBa
 
   String? _resolveCursorImportPath(String normalized) {
     if (widget.provider.cli != CliTool.cursor) return normalized;
-    if (_isConfigCursorDir(normalized)) {
+    if (_isConfigCursorDir(normalized) || _isWindowsCursorAuthDir(normalized)) {
       return p.join(normalized, 'auth.json');
     }
     if (p.basename(normalized) == 'auth.json') return normalized;
@@ -254,6 +254,11 @@ class _ProviderCredentialActionBarState extends State<ProviderCredentialActionBa
   bool _isConfigCursorDir(String normalized) {
     if (p.basename(normalized) != 'cursor') return false;
     return p.basename(p.dirname(normalized)) == '.config';
+  }
+
+  bool _isWindowsCursorAuthDir(String normalized) {
+    if (p.basename(normalized) != 'Cursor') return false;
+    return p.basename(p.dirname(normalized)) == 'Roaming';
   }
 
   Future<void> _confirmRevoke(AppProviderConfig provider) async {

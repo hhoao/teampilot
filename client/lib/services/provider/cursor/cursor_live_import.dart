@@ -14,9 +14,19 @@ abstract final class CursorLiveImport {
     if (home.isEmpty) return const ProviderCatalogSnapshot();
 
     final layout = CursorHomeLayout(pathContext: context.fs.pathContext);
-    final authPath = layout.authJson(home);
-    final authContent = await context.fs.readString(authPath);
-    if (!CursorAuthArtifacts.authJsonIndicatesLoggedIn(authContent ?? '')) {
+    String? authContent;
+    for (final authPath in layout.globalAuthJsonCandidates(
+      home,
+      platformEnv: context.platformEnv,
+    )) {
+      authContent = await context.fs.readString(authPath);
+      if (CursorAuthArtifacts.authJsonIndicatesLoggedIn(authContent ?? '')) {
+        break;
+      }
+      authContent = null;
+    }
+    if (authContent == null ||
+        !CursorAuthArtifacts.authJsonIndicatesLoggedIn(authContent)) {
       return const ProviderCatalogSnapshot();
     }
 

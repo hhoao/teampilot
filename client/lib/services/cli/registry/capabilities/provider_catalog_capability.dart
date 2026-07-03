@@ -25,6 +25,7 @@ class ProviderCatalogLoadContext {
     this.cwd = '',
     this.usePosixPaths = true,
     this.flashskyaiExecutablePath,
+    this.platformEnv = const {},
     this.now,
   });
 
@@ -33,6 +34,9 @@ class ProviderCatalogLoadContext {
   final String cwd;
   final bool usePosixPaths;
   final String? flashskyaiExecutablePath;
+
+  /// Platform env overrides (e.g. `APPDATA` for Windows live-import tests).
+  final Map<String, String> platformEnv;
 
   /// Fixed timestamp for tests; defaults to UTC now in production.
   final int? now;
