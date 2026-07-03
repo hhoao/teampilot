@@ -15,6 +15,21 @@ import 'package:flutter/widgets.dart';
 /// lay out responsively against the real space, and pointer hit-testing stays
 /// correct (Transform hit-tests are transformed by default).
 ///
+/// `devicePixelRatio` is also scaled by [scale] so descendants that key their
+/// rasterization off `MediaQuery.devicePixelRatio` (the terminal's glyph atlas
+/// via `_ensureAtlas`, its viewport resolver, image-asset selectors, …) produce
+/// at the final on-screen resolution. Combined with the default
+/// `filterQuality: null` on `Transform.scale` — which keeps vector content
+/// (text/shapes) re-rasterizing through the matrix instead of being forced
+/// through a raster container — this keeps bitmap-dense layers crisp under zoom
+/// without softening the rest of the UI.
+///
+/// Note: the engine-level `RasterCache` still keys off the system dpr, not
+/// `MediaQuery`; a cached `RepaintBoundary` whose child doesn't follow
+/// `MediaQuery.devicePixelRatio` could still be upscaled. Callers that need a
+/// guaranteed-crisp raster under zoom should either avoid `RepaintBoundary`
+/// caching for that subtree or drive their own metrics from the scaled dpr.
+///
 /// At [scale] `1.0` this is a pass-through (no extra widgets inserted).
 class UiZoom extends StatelessWidget {
   const UiZoom({required this.scale, required this.child, super.key});
@@ -54,6 +69,7 @@ class UiZoom extends StatelessWidget {
         child: MediaQuery(
           data: mq.copyWith(
             size: scaledSize,
+            devicePixelRatio: mq.devicePixelRatio * scale,
             padding: mq.padding * inverse,
             viewPadding: mq.viewPadding * inverse,
             viewInsets: mq.viewInsets * inverse,
