@@ -88,15 +88,29 @@ void main() {
     });
 
     test('globalAuthJsonCandidates prefers APPDATA Cursor on Windows', () {
-      final candidates = CursorHomeLayout().globalAuthJsonCandidates(
+      final windows = p.Context(style: p.Style.windows);
+      final layout = CursorHomeLayout(pathContext: windows);
+      final candidates = layout.globalAuthJsonCandidates(
         r'C:\Users\haung',
         platformEnv: const {'APPDATA': r'C:\Users\haung\AppData\Roaming'},
       );
       expect(
         candidates.first,
-        r'C:\Users\haung\AppData\Roaming\Cursor\auth.json',
+        windows.join(
+          r'C:\Users\haung\AppData\Roaming',
+          'Cursor',
+          CursorHomeLayout.authFileName,
+        ),
       );
-      expect(candidates.last, r'C:\Users\haung\.config\cursor\auth.json');
+      expect(
+        candidates.last,
+        windows.join(
+          r'C:\Users\haung',
+          CursorHomeLayout.configDirName,
+          CursorHomeLayout.configCursorDirName,
+          CursorHomeLayout.authFileName,
+        ),
+      );
     });
 
     test('globalAuthJsonCandidates always includes xdg auth path', () {

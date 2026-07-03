@@ -24,6 +24,27 @@ void main() {
     expect(seen, const Size(800, 600));
   });
 
+  testWidgets('scale 0.5 also scales devicePixelRatio for raster layers', (
+    tester,
+  ) async {
+    late double seenDpr;
+    await tester.pumpWidget(
+      MediaQuery(
+        data: const MediaQueryData(size: Size(800, 600), devicePixelRatio: 2.0),
+        child: UiZoom(
+          scale: 0.5,
+          child: Builder(
+            builder: (context) {
+              seenDpr = MediaQuery.devicePixelRatioOf(context);
+              return const SizedBox.shrink();
+            },
+          ),
+        ),
+      ),
+    );
+    expect(seenDpr, 1.0);
+  });
+
   testWidgets('scale 0.5 doubles the logical canvas the child lays out into', (
     tester,
   ) async {
