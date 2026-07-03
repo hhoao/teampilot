@@ -512,7 +512,6 @@ void main() {
           ],
         );
         final tmp = await Directory.systemTemp.createTemp('chat_cubit_');
-        addTearDown(() => tmp.deleteSync(recursive: true));
         final repo = SessionRepository(rootDir: tmp.path);
         final workspace = await repo.createWorkspace([WorkspaceFolder(path: '/tmp')]);
         final session = await repo.createSession(
@@ -534,7 +533,7 @@ void main() {
           postFrameScheduler: postFrame.scheduler,
           autoLaunchAllMembersOnConnect: () => true,
         );
-        addTearDown(cubit.close);
+        _registerTempCubitCleanup(tmp: tmp, cubit: cubit, postFrame: postFrame);
 
         await cubit.requestOpenSession(
         SessionOpenRequest(
@@ -681,7 +680,6 @@ void main() {
           ],
         );
         final tmp = await Directory.systemTemp.createTemp('chat_cubit_mixed_cli_');
-        addTearDown(() => tmp.deleteSync(recursive: true));
         final repo = SessionRepository(rootDir: tmp.path);
         final workspace = await repo.createWorkspace([WorkspaceFolder(path: '/tmp')]);
         final session = await repo.createSession(
@@ -704,7 +702,7 @@ void main() {
           },
           postFrameScheduler: postFrame.scheduler,
         );
-        addTearDown(cubit.close);
+        _registerTempCubitCleanup(tmp: tmp, cubit: cubit, postFrame: postFrame);
 
         await cubit.requestOpenSession(
         SessionOpenRequest(
@@ -913,7 +911,6 @@ void main() {
         final tmp = await Directory.systemTemp.createTemp(
           'chat_cubit_materialize_',
         );
-        addTearDown(() => tmp.deleteSync(recursive: true));
         final repo = SessionRepository(rootDir: tmp.path);
         const workspacePath = '/tmp/default-team-workspace';
         final workspace = await repo.createWorkspace(
@@ -933,7 +930,7 @@ void main() {
           sessionRepository: repo,
           postFrameScheduler: postFrame.scheduler,
         );
-        addTearDown(cubit.close);
+        _registerTempCubitCleanup(tmp: tmp, cubit: cubit, postFrame: postFrame);
 
         await cubit.loadWorkspaceData(repo);
         expect(cubit.state.workspaces, hasLength(1));
