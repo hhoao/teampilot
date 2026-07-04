@@ -35,10 +35,7 @@ class TeammateBusHttpClient {
       'jsonrpc': '2.0',
       'id': _nextId++,
       'method': 'tools/call',
-      'params': <String, Object?>{
-        'name': name,
-        'arguments': arguments,
-      },
+      'params': <String, Object?>{'name': name, 'arguments': arguments},
     });
   }
 
@@ -163,5 +160,6 @@ class TeammateBusHttpClient {
     return result['isError'] != true;
   }
 
-  static bool toolFailed(Map<String, Object?> response) => !toolSucceeded(response);
+  static bool toolFailed(Map<String, Object?> response) =>
+      !toolSucceeded(response);
 }

@@ -51,8 +51,7 @@ class _FakeFilesystem implements Filesystem {
   Future<bool> createSymlink({
     required String target,
     required String linkPath,
-  }) async =>
-      false;
+  }) async => false;
 
   @override
   Future<String?> readSymlinkTarget(String linkPath) async => null;
@@ -70,8 +69,7 @@ class _FakeFilesystem implements Filesystem {
   Future<void> copyFile(String source, String destination) async {}
 
   @override
-  Future<List<FsDirEntry>> listDirRecursive(String path) async =>
-      listDir(path);
+  Future<List<FsDirEntry>> listDirRecursive(String path) async => listDir(path);
 
   @override
   Future<String> createTempDir({String? prefix, String? parent}) async =>
@@ -104,90 +102,99 @@ void main() {
     await cubit.close();
   });
 
-  test('refreshPaths reloads only relevant directories without flashing',
-      () async {
-    final root = p.normalize('/proj');
-    final src = p.join(root, 'src');
-    final fs = _FakeFilesystem({
-      root: [const FsDirEntry(name: 'src', isDirectory: true)],
-      src: [const FsDirEntry(name: 'main.dart', isDirectory: false)],
-    });
-    final cubit = FileTreeCubit(fs: fs);
+  test(
+    'refreshPaths reloads only relevant directories without flashing',
+    () async {
+      final root = p.normalize('/proj');
+      final src = p.join(root, 'src');
+      final fs = _FakeFilesystem({
+        root: [const FsDirEntry(name: 'src', isDirectory: true)],
+        src: [const FsDirEntry(name: 'main.dart', isDirectory: false)],
+      });
+      final cubit = FileTreeCubit(fs: fs);
 
-    await cubit.setRoot(root);
-    cubit.toggleExpand(src);
-    await Future<void>.delayed(const Duration(milliseconds: 10));
-    expect(cubit.entriesFor(src).map((e) => e.name), ['main.dart']);
+      await cubit.setRoot(root);
+      cubit.toggleExpand(src);
+      await Future<void>.delayed(const Duration(milliseconds: 10));
+      expect(cubit.entriesFor(src).map((e) => e.name), ['main.dart']);
 
-    // A new file lands in src on disk.
-    fs._dirs[src] = const [
-      FsDirEntry(name: 'main.dart', isDirectory: false),
-      FsDirEntry(name: 'extra.dart', isDirectory: false),
-    ];
+      // A new file lands in src on disk.
+      fs._dirs[src] = const [
+        FsDirEntry(name: 'main.dart', isDirectory: false),
+        FsDirEntry(name: 'extra.dart', isDirectory: false),
+      ];
 
-    final states = <FileTreeState>[];
-    final sub = cubit.stream.listen(states.add);
+      final states = <FileTreeState>[];
+      final sub = cubit.stream.listen(states.add);
 
-    // Targeting an unloaded/irrelevant dir is a no-op (no emit, no reload).
-    await cubit.refreshPaths({p.join(root, 'unrelated')});
-    await Future<void>.delayed(const Duration(milliseconds: 5));
-    expect(states, isEmpty);
+      // Targeting an unloaded/irrelevant dir is a no-op (no emit, no reload).
+      await cubit.refreshPaths({p.join(root, 'unrelated')});
+      await Future<void>.delayed(const Duration(milliseconds: 5));
+      expect(states, isEmpty);
 
-    // Targeting the loaded dir reloads it in a single emit, and the cache entry
-    // is never cleared to empty in between (no flash).
-    await cubit.refreshPaths({src});
-    await Future<void>.delayed(const Duration(milliseconds: 5));
-    expect(states.length, 1);
-    expect(states.every((s) => s.dirCache[src]?.isNotEmpty ?? false), isTrue);
-    expect(cubit.entriesFor(src).map((e) => e.name), ['extra.dart', 'main.dart']);
+      // Targeting the loaded dir reloads it in a single emit, and the cache entry
+      // is never cleared to empty in between (no flash).
+      await cubit.refreshPaths({src});
+      await Future<void>.delayed(const Duration(milliseconds: 5));
+      expect(states.length, 1);
+      expect(states.every((s) => s.dirCache[src]?.isNotEmpty ?? false), isTrue);
+      expect(cubit.entriesFor(src).map((e) => e.name), [
+        'extra.dart',
+        'main.dart',
+      ]);
 
-    await sub.cancel();
-    await cubit.close();
-  });
+      await sub.cancel();
+      await cubit.close();
+    },
+  );
 
-  test('setRoots mounts multiple workspace folders, each expanded by default',
-      () async {
-    final a = p.normalize('/projA');
-    final b = p.normalize('/projB');
-    final cubit = FileTreeCubit(
-      fs: _FakeFilesystem({
-        a: [const FsDirEntry(name: 'a.dart', isDirectory: false)],
-        b: [const FsDirEntry(name: 'b.dart', isDirectory: false)],
-      }),
-    );
+  test(
+    'setRoots mounts multiple workspace folders, each expanded by default',
+    () async {
+      final a = p.normalize('/projA');
+      final b = p.normalize('/projB');
+      final cubit = FileTreeCubit(
+        fs: _FakeFilesystem({
+          a: [const FsDirEntry(name: 'a.dart', isDirectory: false)],
+          b: [const FsDirEntry(name: 'b.dart', isDirectory: false)],
+        }),
+      );
 
-    await cubit.setRoots([a, b]);
-    await Future<void>.delayed(const Duration(milliseconds: 20));
+      await cubit.setRoots([a, b]);
+      await Future<void>.delayed(const Duration(milliseconds: 20));
 
-    expect(cubit.state.isMultiRoot, isTrue);
-    expect(cubit.state.rootPaths, [a, b]);
-    // Both existing roots start expanded so their contents are visible.
-    expect(cubit.state.expandedPaths, {a, b});
-    expect(cubit.entriesFor(a).map((e) => e.name), ['a.dart']);
-    expect(cubit.entriesFor(b).map((e) => e.name), ['b.dart']);
+      expect(cubit.state.isMultiRoot, isTrue);
+      expect(cubit.state.rootPaths, [a, b]);
+      // Both existing roots start expanded so their contents are visible.
+      expect(cubit.state.expandedPaths, {a, b});
+      expect(cubit.entriesFor(a).map((e) => e.name), ['a.dart']);
+      expect(cubit.entriesFor(b).map((e) => e.name), ['b.dart']);
 
-    await cubit.close();
-  });
+      await cubit.close();
+    },
+  );
 
-  test('setRoots with a single folder stays single-root (no header expansion)',
-      () async {
-    final root = p.normalize('/solo');
-    final cubit = FileTreeCubit(
-      fs: _FakeFilesystem({
-        root: [const FsDirEntry(name: 'x.dart', isDirectory: false)],
-      }),
-    );
+  test(
+    'setRoots with a single folder stays single-root (no header expansion)',
+    () async {
+      final root = p.normalize('/solo');
+      final cubit = FileTreeCubit(
+        fs: _FakeFilesystem({
+          root: [const FsDirEntry(name: 'x.dart', isDirectory: false)],
+        }),
+      );
 
-    await cubit.setRoots([root]);
-    await Future<void>.delayed(const Duration(milliseconds: 20));
+      await cubit.setRoots([root]);
+      await Future<void>.delayed(const Duration(milliseconds: 20));
 
-    expect(cubit.state.isMultiRoot, isFalse);
-    expect(cubit.state.rootPath, root);
-    // Single root renders children directly; the root is not in expandedPaths.
-    expect(cubit.state.expandedPaths, isEmpty);
+      expect(cubit.state.isMultiRoot, isFalse);
+      expect(cubit.state.rootPath, root);
+      // Single root renders children directly; the root is not in expandedPaths.
+      expect(cubit.state.expandedPaths, isEmpty);
 
-    await cubit.close();
-  });
+      await cubit.close();
+    },
+  );
 
   test('mountRoots uses each root filesystem for stat and listing', () async {
     final local = p.normalize('/local');

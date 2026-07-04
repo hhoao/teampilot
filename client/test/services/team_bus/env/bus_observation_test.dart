@@ -20,13 +20,13 @@ void main() {
   late TeamBus bus;
 
   TeamBus build() => TeamBus(
-        launcher: FakeMemberLauncher(),
-        environment: BusEnvironment(
-          ids: () => 'fixed-id',
-          clock: () => 0,
-          events: sink,
-        ),
-      );
+    launcher: FakeMemberLauncher(),
+    environment: BusEnvironment(
+      ids: () => 'fixed-id',
+      clock: () => 0,
+      events: sink,
+    ),
+  );
 
   setUp(() {
     sink = _CapturingSink();
@@ -34,11 +34,13 @@ void main() {
   });
 
   test('routing a message emits MessageRouted', () async {
-    bus.declareMember(AgentNode.test(
-      memberId: 'w',
-      lifecycle: MemberLifecycle.running,
-      activity: MemberActivity.active,
-    ));
+    bus.declareMember(
+      AgentNode.test(
+        memberId: 'w',
+        lifecycle: MemberLifecycle.running,
+        activity: MemberActivity.active,
+      ),
+    );
     await bus.send(
       const TeamMessage(id: '1', from: 'lead', to: 'w', content: 'hi'),
     );

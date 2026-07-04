@@ -8,11 +8,7 @@ import 'mcp/teammate_bus_mcp_gateway.dart';
 /// dial their reverse-tunnel loopback port and must include [token] for gateway
 /// routing.
 class MemberBusIdleEndpoint {
-  const MemberBusIdleEndpoint({
-    required this.url,
-    this.token,
-    this.sessionId,
-  });
+  const MemberBusIdleEndpoint({required this.url, this.token, this.sessionId});
 
   final String url;
 
@@ -33,11 +29,10 @@ class MemberBusIdleEndpoint {
   factory MemberBusIdleEndpoint.local(
     TeammateBusMcpGateway gateway, {
     required String sessionId,
-  }) =>
-      MemberBusIdleEndpoint(
-        url: gateway.idleEndpoint.toString(),
-        sessionId: sessionId,
-      );
+  }) => MemberBusIdleEndpoint(
+    url: gateway.idleEndpoint.toString(),
+    sessionId: sessionId,
+  );
 
   factory MemberBusIdleEndpoint.remote(RemoteBusBinding binding) =>
       MemberBusIdleEndpoint(url: binding.idleUrl, token: binding.token);

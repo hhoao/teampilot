@@ -27,13 +27,13 @@ final class UpdateTaskTool extends TeammateBusTool {
 
   @override
   Map<String, Object?> get inputSchema => McpSchema.object(
-        properties: {
-          taskId: McpSchema.string,
-          status: McpSchema.stringEnum(['done', 'failed', 'cancelled']),
-          result: McpSchema.string,
-        },
-        required: [taskId, status],
-      );
+    properties: {
+      taskId: McpSchema.string,
+      status: McpSchema.stringEnum(['done', 'failed', 'cancelled']),
+      result: McpSchema.string,
+    },
+    required: [taskId, status],
+  );
 
   @override
   Future<JsonRpcResponse> call(TeammateBusToolCall call) async {

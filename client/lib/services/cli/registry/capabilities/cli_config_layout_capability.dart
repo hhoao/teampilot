@@ -30,13 +30,12 @@ final class DefaultCliConfigLayout implements CliConfigLayoutCapability {
     required String workspaceId,
     required String sessionId,
     String? memberId,
-  }) =>
-      layout.sessionRuntimeToolDir(
-        workspaceId,
-        sessionId,
-        tool.value,
-        memberId: memberId,
-      );
+  }) => layout.sessionRuntimeToolDir(
+    workspaceId,
+    sessionId,
+    tool.value,
+    memberId: memberId,
+  );
 }
 
 /// Resolves the CONFIG_DIR for [tool] via its [CliConfigLayoutCapability],
@@ -49,7 +48,8 @@ String sessionConfigDirForTool(
   String? memberId,
   CliToolRegistry? registry,
 }) {
-  final cap = (registry ?? CliToolRegistry.builtIn())
+  final cap =
+      (registry ?? CliToolRegistry.builtIn())
           .capability<CliConfigLayoutCapability>(tool) ??
       const DefaultCliConfigLayout();
   return cap.sessionConfigDir(

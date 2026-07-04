@@ -134,11 +134,9 @@ class LayoutCubit extends Cubit<LayoutState> {
   Future<void> setLocale(String locale) =>
       _save(state.preferences.copyWith(locale: locale));
 
-  Future<void> setWorkspaceTerminalVisible(bool visible) => _save(
-    state.preferences.copyWith(workspaceTerminalVisible: visible),
-  );
+  Future<void> setWorkspaceTerminalVisible(bool visible) =>
+      _save(state.preferences.copyWith(workspaceTerminalVisible: visible));
 
-  Future<void> setWorkspaceTerminalHeight(double height) => _save(
-    state.preferences.copyWith(workspaceTerminalHeight: height),
-  );
+  Future<void> setWorkspaceTerminalHeight(double height) =>
+      _save(state.preferences.copyWith(workspaceTerminalHeight: height));
 }

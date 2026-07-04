@@ -1,4 +1,4 @@
-﻿import 'dart:async';
+import 'dart:async';
 
 import 'package:flutter/material.dart';
 
@@ -107,8 +107,11 @@ class _ParkedSendOverlayState extends State<ParkedSendOverlay> {
                   padding: const EdgeInsets.fromLTRB(12, 8, 4, 8),
                   child: Row(
                     children: [
-                      Icon(Icons.outgoing_mail,
-                          size: 18, color: cs.onSecondaryContainer),
+                      Icon(
+                        Icons.outgoing_mail,
+                        size: 18,
+                        color: cs.onSecondaryContainer,
+                      ),
                       const SizedBox(width: 8),
                       Expanded(
                         child: Text(

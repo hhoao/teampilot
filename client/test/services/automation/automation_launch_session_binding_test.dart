@@ -1,6 +1,5 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:teampilot/models/automation.dart';
-import 'package:teampilot/models/team_config.dart';
 import 'package:teampilot/services/automation/automation_launch_session_binding.dart';
 import 'package:teampilot/services/storage/launch_profile_provisioner.dart';
 
@@ -67,7 +66,9 @@ void main() {
       createdAtMs: 1,
       updatedAtMs: 1,
     );
-    final next = AutomationLaunchSessionBinding.onBoundSessionRemoved(scheduled);
+    final next = AutomationLaunchSessionBinding.onBoundSessionRemoved(
+      scheduled,
+    );
     expect(next.enabled, isFalse);
     expect(next.nextRunAtMs, isNull);
     expect(next.sessionId, 'sess-1');

@@ -14,10 +14,7 @@ import 'installed_plugin_catalog.dart';
 ///
 /// Used by Claude Code, FlashskyAI, and Cursor provisioners.
 class ClaudeFlavorRegistryWriter {
-  ClaudeFlavorRegistryWriter({
-    required this.fs,
-    required this.teampilotRoot,
-  });
+  ClaudeFlavorRegistryWriter({required this.fs, required this.teampilotRoot});
 
   final Filesystem fs;
   final String teampilotRoot;
@@ -38,15 +35,17 @@ class ClaudeFlavorRegistryWriter {
     final pluginsStat = await fs.stat(memberPluginsDir);
     if (!pluginsStat.isDirectory) return;
 
-    final resolvedCatalog =
-        catalog.isEmpty ? await _loadInstalledCatalog() : catalog;
+    final resolvedCatalog = catalog.isEmpty
+        ? await _loadInstalledCatalog()
+        : catalog;
     final enabledById = {
       for (final p in resolvedCatalog)
         if (enabledIds.isEmpty || enabledIds.contains(p.id)) p.id: p,
     };
 
     final pluginsDir = fs.pathContext.join(configDir, 'plugins');
-    final resolvedMemberProvisionJson = memberProvisionJson ??
+    final resolvedMemberProvisionJson =
+        memberProvisionJson ??
         await CliPluginProvisionCache.memberProvisionStampJson(
           fs: fs,
           memberPluginsDir: memberPluginsDir,
@@ -166,10 +165,9 @@ class ClaudeFlavorRegistryWriter {
     await fs.ensureDir(pluginsDir);
     await fs.atomicWrite(
       fs.pathContext.join(pluginsDir, installedPluginsFileName),
-      const JsonEncoder.withIndent('  ').convert({
-        'version': 2,
-        'plugins': installedV2,
-      }),
+      const JsonEncoder.withIndent(
+        '  ',
+      ).convert({'version': 2, 'plugins': installedV2}),
     );
 
     final materializedMarketplaceStamps = await _writeKnownMarketplaces(
@@ -421,10 +419,7 @@ class ClaudeFlavorRegistryWriter {
         return (
           stamp: stamp,
           knownEntry: MapEntry(name, {
-            'source': {
-              'source': 'directory',
-              'path': cliInstallLocation,
-            },
+            'source': {'source': 'directory', 'path': cliInstallLocation},
             'installLocation': cliInstallLocation,
             'lastUpdated': now,
           }),
@@ -447,10 +442,7 @@ class ClaudeFlavorRegistryWriter {
         plugins: localPlugins,
       );
       known[localMarketplaceName] = {
-        'source': {
-          'source': 'directory',
-          'path': localInstallLocation,
-        },
+        'source': {'source': 'directory', 'path': localInstallLocation},
         'installLocation': localInstallLocation,
         'lastUpdated': now,
       };
@@ -473,8 +465,7 @@ class ClaudeFlavorRegistryWriter {
         ? catalog
         : catalog.where((p) => enabledIds.contains(p.id));
     return enabled.any(
-      (p) =>
-          p.marketplaceName != null && p.marketplaceName!.trim().isNotEmpty,
+      (p) => p.marketplaceName != null && p.marketplaceName!.trim().isNotEmpty,
     );
   }
 
@@ -504,11 +495,12 @@ class ClaudeFlavorRegistryWriter {
         owner,
         '$name@$branch',
       );
-      final stamp = await CliPluginProvisionCache.marketplaceSourceStampFromCacheDir(
-        fs: fs,
-        name: name,
-        cacheDir: cacheDir,
-      );
+      final stamp =
+          await CliPluginProvisionCache.marketplaceSourceStampFromCacheDir(
+            fs: fs,
+            name: name,
+            cacheDir: cacheDir,
+          );
       if (stamp != null) stamps.add(stamp);
     }
 
@@ -576,8 +568,16 @@ class ClaudeFlavorRegistryWriter {
     required List<Map<String, Object?>> plugins,
   }) async {
     final manifestDir = paths.manifestDirName;
-    final stubRoot = fs.pathContext.join(pluginsDir, 'marketplaces', localMarketplaceName);
-    final manifestPath = fs.pathContext.join(stubRoot, manifestDir, 'marketplace.json');
+    final stubRoot = fs.pathContext.join(
+      pluginsDir,
+      'marketplaces',
+      localMarketplaceName,
+    );
+    final manifestPath = fs.pathContext.join(
+      stubRoot,
+      manifestDir,
+      'marketplace.json',
+    );
     await fs.ensureDir(fs.pathContext.dirname(manifestPath));
     if (!(await fs.stat(manifestPath)).isFile) {
       await fs.atomicWrite(
@@ -626,10 +626,7 @@ class ClaudeFlavorRegistryWriter {
 }
 
 class _EnabledMarketplaceEntry {
-  const _EnabledMarketplaceEntry({
-    required this.name,
-    required this.cacheDir,
-  });
+  const _EnabledMarketplaceEntry({required this.name, required this.cacheDir});
 
   final String name;
   final String cacheDir;
@@ -681,11 +678,12 @@ class _MarketplaceLaunchContext {
       final cacheStat = await fs.stat(teampilotCache);
       if (!cacheStat.isDirectory) continue;
 
-      final stamp = await CliPluginProvisionCache.marketplaceSourceStampFromCacheDir(
-        fs: fs,
-        name: name,
-        cacheDir: teampilotCache,
-      );
+      final stamp =
+          await CliPluginProvisionCache.marketplaceSourceStampFromCacheDir(
+            fs: fs,
+            name: name,
+            cacheDir: teampilotCache,
+          );
       if (stamp == null) continue;
       stamps.add(stamp);
       enabledEntries.add(
@@ -699,4 +697,3 @@ class _MarketplaceLaunchContext {
     );
   }
 }
-

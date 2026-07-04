@@ -33,10 +33,8 @@ class BoardCard extends Equatable {
 }
 
 class BoardState extends Equatable {
-  const BoardState({
-    Map<BoardColumn, List<BoardCard>>? columns,
-    this.total = 0,
-  }) : columns = columns ?? const {};
+  const BoardState({Map<BoardColumn, List<BoardCard>>? columns, this.total = 0})
+    : columns = columns ?? const {};
 
   final Map<BoardColumn, List<BoardCard>> columns;
   final int total;
@@ -85,14 +83,16 @@ class BoardCubit extends Cubit<BoardState> {
     };
     for (final t in tasks) {
       final column = BoardColumnMapping.forStatus(t.status);
-      columns[column]!.add(BoardCard(
-        id: t.id,
-        seq: t.seq,
-        title: t.title,
-        status: t.status,
-        column: column,
-        assigneeId: t.assignee,
-      ));
+      columns[column]!.add(
+        BoardCard(
+          id: t.id,
+          seq: t.seq,
+          title: t.title,
+          status: t.status,
+          column: column,
+          assigneeId: t.assignee,
+        ),
+      );
     }
     return BoardState(columns: columns, total: tasks.length);
   }

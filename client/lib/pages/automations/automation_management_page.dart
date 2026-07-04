@@ -43,28 +43,29 @@ class _AutomationManagementPageState extends State<AutomationManagementPage> {
           Divider(height: 1, color: cs.outlineVariant.withValues(alpha: 0.5)),
           const SizedBox(height: 16),
           Expanded(
-            child: AutomationsManagementTab(
-              sort: _sort,
-              onSortChanged: (sort) => setState(() => _sort = sort),
-              filterPanelVisible: _filterPanelVisible,
-              onToggleFilterPanel: () => setState(
-                () => _filterPanelVisible = !_filterPanelVisible,
-              ),
-              enabledFilter: _enabledFilter,
-              onEnabledFilterChanged: (filter) =>
-                  setState(() => _enabledFilter = filter),
-              actionFilter: _actionFilter,
-              onActionFilterChanged: (filter) =>
-                  setState(() => _actionFilter = filter),
-            )
-                .animate(key: const ValueKey('home-all-automations'))
-                .fadeIn(duration: 180.ms, curve: Curves.easeOut)
-                .slideX(
-                  begin: 0.025,
-                  end: 0,
-                  duration: 220.ms,
-                  curve: Curves.easeOutCubic,
-                ),
+            child:
+                AutomationsManagementTab(
+                      sort: _sort,
+                      onSortChanged: (sort) => setState(() => _sort = sort),
+                      filterPanelVisible: _filterPanelVisible,
+                      onToggleFilterPanel: () => setState(
+                        () => _filterPanelVisible = !_filterPanelVisible,
+                      ),
+                      enabledFilter: _enabledFilter,
+                      onEnabledFilterChanged: (filter) =>
+                          setState(() => _enabledFilter = filter),
+                      actionFilter: _actionFilter,
+                      onActionFilterChanged: (filter) =>
+                          setState(() => _actionFilter = filter),
+                    )
+                    .animate(key: const ValueKey('home-all-automations'))
+                    .fadeIn(duration: 180.ms, curve: Curves.easeOut)
+                    .slideX(
+                      begin: 0.025,
+                      end: 0,
+                      duration: 220.ms,
+                      curve: Curves.easeOutCubic,
+                    ),
           ),
         ],
       ),

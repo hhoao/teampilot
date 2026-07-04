@@ -12,7 +12,9 @@ void main() {
   test('parses marketplace.json into DiscoverablePlugin list', () {
     final dir = Directory(p.join(tmp.path, 'mkt'))..createSync();
     Directory(p.join(dir.path, '.claude-plugin')).createSync();
-    File(p.join(dir.path, '.claude-plugin', 'marketplace.json')).writeAsStringSync('''
+    File(
+      p.join(dir.path, '.claude-plugin', 'marketplace.json'),
+    ).writeAsStringSync('''
 {
   "name": "acme-market",
   "plugins": [
@@ -48,7 +50,9 @@ void main() {
   test('parses object source entries without failing the whole manifest', () {
     final dir = Directory(p.join(tmp.path, 'official-like'))..createSync();
     Directory(p.join(dir.path, '.claude-plugin')).createSync();
-    File(p.join(dir.path, '.claude-plugin', 'marketplace.json')).writeAsStringSync('''
+    File(
+      p.join(dir.path, '.claude-plugin', 'marketplace.json'),
+    ).writeAsStringSync('''
 {
   "plugins": [
     {
@@ -99,7 +103,10 @@ void main() {
       marketplaceBranch: 'main',
       source: './plugins/agent-sdk-dev',
     );
-    expect(d.installedPluginId, 'anthropics/claude-plugins-official/agent-sdk-dev');
+    expect(
+      d.installedPluginId,
+      'anthropics/claude-plugins-official/agent-sdk-dev',
+    );
     expect(
       d.isInstalledAmong(const [
         Plugin(
@@ -122,7 +129,8 @@ void main() {
   test('repoKey is stable for owner/name/branch', () {
     expect(
       PluginRepoDiskCacheService.repoKey(
-        const PluginMarketplace(owner: 'a', name: 'b', branch: 'main')),
+        const PluginMarketplace(owner: 'a', name: 'b', branch: 'main'),
+      ),
       'a/b@main',
     );
   });

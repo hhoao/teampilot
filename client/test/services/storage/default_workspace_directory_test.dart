@@ -8,7 +8,8 @@ void main() {
     final home = Platform.environment['HOME'];
     if (home == null || home.isEmpty) return;
 
-    final fast = DefaultWorkspaceDirectory.platformDocumentsFastPathForTesting();
+    final fast =
+        DefaultWorkspaceDirectory.platformDocumentsFastPathForTesting();
     expect(fast, isNotNull);
     expect(fast, contains('Documents'));
   });

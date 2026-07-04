@@ -23,23 +23,27 @@ void main() {
   });
 
   test('delegate-only lead is not told to brainstorm or dispatch agents', () {
-    final lead = kSuperpowersTrioTeamTemplate.members
-        .firstWhere((m) => TeamMemberNaming.isTeamLeadName(m.name));
+    final lead = kSuperpowersTrioTeamTemplate.members.firstWhere(
+      (m) => TeamMemberNaming.isTeamLeadName(m.name),
+    );
     final text = '${lead.prompt}\n${lead.playbook}';
     expect(text, isNot(contains('brainstorming')));
     expect(text, isNot(contains('dispatching-parallel-agents')));
   });
 
-  test('quartet workers carry no explicit capabilities (routed by type name)',
-      () {
-    for (final m in kSuperpowersTrioTeamTemplate.members) {
-      expect(m.capabilities, isEmpty);
-    }
-  });
+  test(
+    'quartet workers carry no explicit capabilities (routed by type name)',
+    () {
+      for (final m in kSuperpowersTrioTeamTemplate.members) {
+        expect(m.capabilities, isEmpty);
+      }
+    },
+  );
 
   test('lead routes tasks to member types by name and gates review', () {
-    final lead = kSuperpowersTrioTeamTemplate.members
-        .firstWhere((m) => TeamMemberNaming.isTeamLeadName(m.name));
+    final lead = kSuperpowersTrioTeamTemplate.members.firstWhere(
+      (m) => TeamMemberNaming.isTeamLeadName(m.name),
+    );
     final text = '${lead.prompt}\n${lead.playbook}';
     expect(text, contains('["architect"]'));
     expect(text, contains('["builder"]'));

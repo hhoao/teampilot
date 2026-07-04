@@ -9,7 +9,10 @@ void main() {
   });
 
   test('decode trims and rejects empty', () {
-    expect(LaunchProfileRef.decode('  squad '), const LaunchProfileRef('squad'));
+    expect(
+      LaunchProfileRef.decode('  squad '),
+      const LaunchProfileRef('squad'),
+    );
     expect(LaunchProfileRef.decode(''), isNull);
     expect(LaunchProfileRef.decode(null), isNull);
   });

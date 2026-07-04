@@ -68,7 +68,10 @@ abstract class NpmInstallerCapability implements InstallerCapability {
     if (install.exitCode != 0) {
       return CliInstallResult(
         success: false,
-        message: installerFailureMessage('$displayName install failed', install),
+        message: installerFailureMessage(
+          '$displayName install failed',
+          install,
+        ),
       );
     }
 
@@ -153,7 +156,8 @@ abstract class NpmInstallerCapability implements InstallerCapability {
   }
 
   /// Mirrors [DefaultRemoteCliLocator] probes in one remote shell script.
-  static String remotePostInstallLocateScript(String executableName) => '''
+  static String remotePostInstallLocateScript(String executableName) =>
+      '''
 if command -v $executableName >/dev/null 2>&1; then
   command -v $executableName
   exit 0

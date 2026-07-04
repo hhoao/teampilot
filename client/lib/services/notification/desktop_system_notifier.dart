@@ -14,10 +14,11 @@ class DesktopSystemNotifier {
       required String title,
       required String body,
       String? subtitle,
-    })? show,
-  })  : _plugin = plugin,
-        _setup = setup,
-        _show = show;
+    })?
+    show,
+  }) : _plugin = plugin,
+       _setup = setup,
+       _show = show;
 
   static final DesktopSystemNotifier instance = DesktopSystemNotifier();
 
@@ -36,7 +37,8 @@ class DesktopSystemNotifier {
     required String title,
     required String body,
     String? subtitle,
-  })? _show;
+  })?
+  _show;
 
   int _nextNotificationId = 1;
 
@@ -118,9 +120,10 @@ class DesktopSystemNotifier {
           ?.requestPermissions(alert: true, badge: false, sound: true);
       appLogger.d('[system-notifier] macOS notification permission=$granted');
     } else if (Platform.isLinux) {
-      final linux = plugin.resolvePlatformSpecificImplementation<
-        LinuxFlutterLocalNotificationsPlugin
-      >();
+      final linux = plugin
+          .resolvePlatformSpecificImplementation<
+            LinuxFlutterLocalNotificationsPlugin
+          >();
       final caps = await linux?.getCapabilities();
       appLogger.d('[system-notifier] Linux notification capabilities=$caps');
     }

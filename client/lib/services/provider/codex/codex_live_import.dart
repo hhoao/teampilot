@@ -136,7 +136,10 @@ abstract final class CodexLiveImport {
   }
 }
 
-Future<Map<String, Object?>?> _readJsonObject(Filesystem fs, String path) async {
+Future<Map<String, Object?>?> _readJsonObject(
+  Filesystem fs,
+  String path,
+) async {
   try {
     final content = await fs.readString(path);
     if (content == null || content.isEmpty) return null;

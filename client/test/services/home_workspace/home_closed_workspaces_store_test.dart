@@ -45,9 +45,7 @@ void main() {
     expect(loaded.first.primaryPath, '/tmp/a');
     expect(loaded.first.closedAt, greaterThan(0));
 
-    final file = File(
-      AppPaths(root.path).homeWorkspaceClosedWorkspacesJson,
-    );
+    final file = File(AppPaths(root.path).homeWorkspaceClosedWorkspacesJson);
     expect(file.existsSync(), isTrue);
   });
 

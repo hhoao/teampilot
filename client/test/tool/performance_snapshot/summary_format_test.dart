@@ -16,7 +16,10 @@ void main() {
     test('truncates long layout-only paths', () {
       final path = List.generate(8, (i) => 'Node$i').join(hotPathSeparator);
       expect(shortenHotPath(path), startsWith('…$hotPathSeparator'));
-      expect(shortenHotPath(path).split(hotPathSeparator).length, lessThanOrEqualTo(5));
+      expect(
+        shortenHotPath(path).split(hotPathSeparator).length,
+        lessThanOrEqualTo(5),
+      );
     });
   });
 

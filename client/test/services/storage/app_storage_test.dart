@@ -51,8 +51,14 @@ void main() {
 
     test('teamPilot teampilotRoot helpers join under root', () {
       const root = '/remote/.local/share/com.hhoa.teampilot';
-      expect(AppPaths.launchProfilesDirForTeampilotRoot(root), '$root/launch-profiles');
-      expect(AppPaths.skillsDirForTeampilotRoot(root), '$root/skills/installed');
+      expect(
+        AppPaths.launchProfilesDirForTeampilotRoot(root),
+        '$root/launch-profiles',
+      );
+      expect(
+        AppPaths.skillsDirForTeampilotRoot(root),
+        '$root/skills/installed',
+      );
       expect(
         AppPaths.skillBackupsDirForTeampilotRoot(root),
         '$root/skills/backups',
@@ -65,10 +71,7 @@ void main() {
         AppPaths.skillRepoCacheDirForTeampilotRoot(root),
         '$root/skills/repo-cache',
       );
-      expect(
-        AppPaths.workspaceDirForTeampilotRoot(root),
-        '$root/workspace',
-      );
+      expect(AppPaths.workspaceDirForTeampilotRoot(root), '$root/workspace');
       expect(
         AppPaths.cliDefaultsDirForTeampilotRoot(root),
         '$root/cli-defaults',
@@ -79,30 +82,54 @@ void main() {
       );
     });
 
-    test('defaultTeampilotAppDataDirForHome uses POSIX separators for WSL home', () {
-      expect(
-        AppPaths.defaultTeampilotAppDataDirForHome('/home/hhoa'),
-        '/home/hhoa/.local/share/com.hhoa.teampilot',
-      );
-      expect(
-        AppPaths.defaultTeampilotAppDataDirForHome('/home/hhoa'),
-        isNot(contains(r'\')),
-      );
-    });
+    test(
+      'defaultTeampilotAppDataDirForHome uses POSIX separators for WSL home',
+      () {
+        expect(
+          AppPaths.defaultTeampilotAppDataDirForHome('/home/hhoa'),
+          '/home/hhoa/.local/share/com.hhoa.teampilot',
+        );
+        expect(
+          AppPaths.defaultTeampilotAppDataDirForHome('/home/hhoa'),
+          isNot(contains(r'\')),
+        );
+      },
+    );
 
     test('AppPaths exposes plugin paths under teampilotRoot', () {
       final root = '/tmp/tp';
-      expect(AppPaths.pluginsDirForTeampilotRoot(root), '/tmp/tp/plugins/installed');
-      expect(AppPaths.pluginBackupsDirForTeampilotRoot(root), '/tmp/tp/plugins/backups');
-      expect(AppPaths.pluginsJsonForTeampilotRoot(root), '/tmp/tp/plugins/plugins.json');
-      expect(AppPaths.pluginMarketplacesConfigPathForTeampilotRoot(root),
-        '/tmp/tp/plugins/marketplaces.json');
-      expect(AppPaths.pluginMarketplaceCacheDirForTeampilotRoot(root),
-        '/tmp/tp/plugins/marketplace-cache');
-      expect(AppPaths.pluginExternalCacheDirForTeampilotRoot(root),
-        '/tmp/tp/plugins/external-cache');
-      expect(AppPaths.mcpServersJsonForTeampilotRoot(root), '/tmp/tp/mcp/mcp_servers.json');
-      expect(AppPaths.mcpBackupsDirForTeampilotRoot(root), '/tmp/tp/mcp/backups');
+      expect(
+        AppPaths.pluginsDirForTeampilotRoot(root),
+        '/tmp/tp/plugins/installed',
+      );
+      expect(
+        AppPaths.pluginBackupsDirForTeampilotRoot(root),
+        '/tmp/tp/plugins/backups',
+      );
+      expect(
+        AppPaths.pluginsJsonForTeampilotRoot(root),
+        '/tmp/tp/plugins/plugins.json',
+      );
+      expect(
+        AppPaths.pluginMarketplacesConfigPathForTeampilotRoot(root),
+        '/tmp/tp/plugins/marketplaces.json',
+      );
+      expect(
+        AppPaths.pluginMarketplaceCacheDirForTeampilotRoot(root),
+        '/tmp/tp/plugins/marketplace-cache',
+      );
+      expect(
+        AppPaths.pluginExternalCacheDirForTeampilotRoot(root),
+        '/tmp/tp/plugins/external-cache',
+      );
+      expect(
+        AppPaths.mcpServersJsonForTeampilotRoot(root),
+        '/tmp/tp/mcp/mcp_servers.json',
+      );
+      expect(
+        AppPaths.mcpBackupsDirForTeampilotRoot(root),
+        '/tmp/tp/mcp/backups',
+      );
     });
   });
 }

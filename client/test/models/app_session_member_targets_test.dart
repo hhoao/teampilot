@@ -7,10 +7,7 @@ void main() {
     final s = AppSession(
       sessionId: 's1',
       workspaceId: 'w1',
-      memberTargets: const {
-        'm1': 'local',
-        'm2': 'ssh:p1',
-      },
+      memberTargets: const {'m1': 'local', 'm2': 'ssh:p1'},
       createdAt: 1,
     );
     expect(s.memberTargets['m1'], 'local');

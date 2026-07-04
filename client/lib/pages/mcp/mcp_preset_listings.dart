@@ -13,9 +13,9 @@ String mcpPresetDescription(AppLocalizations l10n, String id) => switch (id) {
 };
 
 List<McpCatalogListing> mcpBuiltinListings(AppLocalizations l10n) {
-  return mcpPresets(descriptionFor: (id) => mcpPresetDescription(l10n, id))
-      .map(McpCatalogMapper.fromPreset)
-      .toList();
+  return mcpPresets(
+    descriptionFor: (id) => mcpPresetDescription(l10n, id),
+  ).map(McpCatalogMapper.fromPreset).toList();
 }
 
 List<McpCatalogListing> filterMcpBuiltinListings(

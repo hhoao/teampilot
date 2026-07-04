@@ -6,8 +6,14 @@ void main() {
   test('fromScale multiplies base tokens by the scale multiplier', () {
     final compact = AppSpacingTheme.fromScale(AppTypographyScale.compact);
     expect(compact.scale, AppTypographyScale.compact.multiplier);
-    expect(compact.md, AppSpacingTheme.mdBase * AppTypographyScale.compact.multiplier);
-    expect(compact.lg, AppSpacingTheme.lgBase * AppTypographyScale.compact.multiplier);
+    expect(
+      compact.md,
+      AppSpacingTheme.mdBase * AppTypographyScale.compact.multiplier,
+    );
+    expect(
+      compact.lg,
+      AppSpacingTheme.lgBase * AppTypographyScale.compact.multiplier,
+    );
   });
 
   test('standard scale leaves tokens at baseline', () {

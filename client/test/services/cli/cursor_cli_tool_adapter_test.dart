@@ -15,11 +15,7 @@ void main() {
       dangerouslySkipPermissions: true,
     );
     final args = const CursorCliToolAdapter().buildArguments(
-      CliLaunchContext(
-        team: team,
-        member: member,
-        workingDirectory: '/work',
-      ),
+      CliLaunchContext(team: team, member: member, workingDirectory: '/work'),
     );
 
     expect(args, [
@@ -67,7 +63,11 @@ void main() {
   });
 
   test('emits nothing when no workspace/model/prompt and not resuming', () {
-    const member = TeamMemberConfig(id: 'm', name: 'planner', dangerouslySkipPermissions: false);
+    const member = TeamMemberConfig(
+      id: 'm',
+      name: 'planner',
+      dangerouslySkipPermissions: false,
+    );
     final args = const CursorCliToolAdapter().buildArguments(
       CliLaunchContext(team: team, member: member),
     );

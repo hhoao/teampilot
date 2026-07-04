@@ -9,10 +9,7 @@ void main() {
         'model = "gpt-5"\n',
         [cwd],
       );
-      expect(
-        result,
-        contains('[projects."/home/user/Document/testmixed"]'),
-      );
+      expect(result, contains('[projects."/home/user/Document/testmixed"]'));
       expect(result, contains('trust_level = "trusted"'));
     });
 
@@ -23,10 +20,9 @@ void main() {
 trust_level = "trusted"
 model = "m"
 ''';
-      final result = CodexProjectTrustToml.applyTrustedDirectories(
-        existing,
-        [cwd],
-      );
+      final result = CodexProjectTrustToml.applyTrustedDirectories(existing, [
+        cwd,
+      ]);
       expect(result.split('[projects."/home/user/proj"]').length, 2);
     });
 

@@ -94,11 +94,7 @@ class _CliPresetEditDialogState extends State<CliPresetEditDialog> {
   }
 
   void _openProviderConfig(BuildContext context) {
-    openCliPresetProviderConfig(
-      context,
-      cli: _cli,
-      dialogPops: 2,
-    );
+    openCliPresetProviderConfig(context, cli: _cli, dialogPops: 2);
   }
 
   @override

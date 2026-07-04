@@ -29,9 +29,9 @@ void main() {
     try {
       final codexDir = Directory(p.join(home.path, '.codex'));
       await codexDir.create(recursive: true);
-      await File(p.join(codexDir.path, 'auth.json')).writeAsString(
-        jsonEncode({'OPENAI_API_KEY': 'sk-live'}),
-      );
+      await File(
+        p.join(codexDir.path, 'auth.json'),
+      ).writeAsString(jsonEncode({'OPENAI_API_KEY': 'sk-live'}));
 
       expect((await service.probe('openai-official')).isReady, isFalse);
 

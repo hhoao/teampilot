@@ -405,11 +405,7 @@ class _GitRepoBodyState extends State<_GitRepoBody> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          BlocSelector<
-            GitCubit,
-            GitState,
-            (String, int, int, bool, bool)
-          >(
+          BlocSelector<GitCubit, GitState, (String, int, int, bool, bool)>(
             selector: (state) => (
               state.status.branch ?? 'HEAD',
               state.status.ahead,
@@ -434,11 +430,7 @@ class _GitRepoBodyState extends State<_GitRepoBody> {
             },
           ),
           const SizedBox(height: 10),
-          BlocSelector<
-            GitCubit,
-            GitState,
-            (bool, bool, bool, String)
-          >(
+          BlocSelector<GitCubit, GitState, (bool, bool, bool, String)>(
             selector: (state) => (
               state.status.staged.isNotEmpty,
               state.busy,
@@ -492,38 +484,41 @@ class _GitRepoBodyState extends State<_GitRepoBody> {
           ),
           const SizedBox(height: 12),
           Expanded(
-            child: BlocSelector<GitCubit, GitState, (bool, GitChangesTreeViewData)>(
-              selector: (state) => (
-                state.status.hasChanges,
-                state.changesTreeView,
-              ),
-              builder: (context, data) {
-                final (hasChanges, treeView) = data;
-                if (!hasChanges) {
-                  final cs = Theme.of(context).colorScheme;
-                  return Center(
-                    child: Text(
-                      l10n.gitNoChanges,
-                      style: AppTextStyles.of(
-                        context,
-                      ).bodySmall.copyWith(color: cs.onSurfaceVariant),
-                    ),
-                  );
-                }
-                if (!_changesListReady) {
-                  return const SizedBox.shrink();
-                }
-                return GitChangesTreeList(
-                  treeView: treeView,
-                  cubit: _cubit,
-                  listScrollController: _changesScrollController,
-                  horizontalScrollController: _horizontalScrollController,
-                  onOpenDiff: (change) => unawaited(_openDiff(change)),
-                  onConfirmDiscard: (change) =>
-                      unawaited(_confirmDiscard(change)),
-                );
-              },
-            ),
+            child:
+                BlocSelector<
+                  GitCubit,
+                  GitState,
+                  (bool, GitChangesTreeViewData)
+                >(
+                  selector: (state) =>
+                      (state.status.hasChanges, state.changesTreeView),
+                  builder: (context, data) {
+                    final (hasChanges, treeView) = data;
+                    if (!hasChanges) {
+                      final cs = Theme.of(context).colorScheme;
+                      return Center(
+                        child: Text(
+                          l10n.gitNoChanges,
+                          style: AppTextStyles.of(
+                            context,
+                          ).bodySmall.copyWith(color: cs.onSurfaceVariant),
+                        ),
+                      );
+                    }
+                    if (!_changesListReady) {
+                      return const SizedBox.shrink();
+                    }
+                    return GitChangesTreeList(
+                      treeView: treeView,
+                      cubit: _cubit,
+                      listScrollController: _changesScrollController,
+                      horizontalScrollController: _horizontalScrollController,
+                      onOpenDiff: (change) => unawaited(_openDiff(change)),
+                      onConfirmDiscard: (change) =>
+                          unawaited(_confirmDiscard(change)),
+                    );
+                  },
+                ),
           ),
         ],
       ),

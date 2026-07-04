@@ -23,7 +23,11 @@ class CliPluginLayout {
     String dirPath, {
     PluginManifestPaths paths = neutralPluginManifestPaths,
   }) async {
-    final primary = await _resolveWithManifest(fs, dirPath, paths.manifestRelativePath);
+    final primary = await _resolveWithManifest(
+      fs,
+      dirPath,
+      paths.manifestRelativePath,
+    );
     if (primary != null) return primary;
 
     final fallbackPath = paths.fallbackManifestRelativePath;
@@ -109,7 +113,11 @@ class CliPluginLayout {
     final ctx = fs.pathContext;
     final sourceDir = sourceRel != null
         ? ctx.dirname(ctx.join(pluginRoot, sourceRel))
-        : await _firstExistingManifestDir(fs, pluginRoot, neutralPluginManifestPaths);
+        : await _firstExistingManifestDir(
+            fs,
+            pluginRoot,
+            neutralPluginManifestPaths,
+          );
     if (sourceDir == null) return;
     final targetDir = ctx.join(pluginRoot, target.manifestDirName);
     if (sourceDir == targetDir) return;
@@ -125,8 +133,16 @@ class CliPluginLayout {
     String installDir,
   ) async {
     final root =
-        await resolvePluginRoot(fs, installDir, paths: neutralPluginManifestPaths) ??
-        await resolvePluginRoot(fs, installDir, paths: claudePluginManifestPaths) ??
+        await resolvePluginRoot(
+          fs,
+          installDir,
+          paths: neutralPluginManifestPaths,
+        ) ??
+        await resolvePluginRoot(
+          fs,
+          installDir,
+          paths: claudePluginManifestPaths,
+        ) ??
         installDir;
     final ctx = fs.pathContext;
     final neutralManifest = ctx.join(
@@ -147,7 +163,10 @@ class CliPluginLayout {
         if (!(await fs.stat(src)).isFile) continue;
         final content = await fs.readString(src);
         if (content == null || content.trim().isEmpty) continue;
-        final neutralDir = ctx.join(root, neutralPluginManifestPaths.manifestDirName);
+        final neutralDir = ctx.join(
+          root,
+          neutralPluginManifestPaths.manifestDirName,
+        );
         await fs.ensureDir(neutralDir);
         await fs.atomicWrite(neutralManifest, content);
         return;
@@ -207,7 +226,10 @@ class CliPluginLayout {
     if ((await fs.stat(destination)).exists) {
       await fs.removeRecursive(destination);
     }
-    final linked = await fs.createSymlink(target: source, linkPath: destination);
+    final linked = await fs.createSymlink(
+      target: source,
+      linkPath: destination,
+    );
     if (linked) return true;
     await fs.copyTree(source: source, destination: destination);
     return false;
@@ -258,11 +280,12 @@ class CliPluginLayout {
     }
 
     if (await CliPluginProvisionCache.trySkipMemberProvision(
-      fs: fs,
-      teamPluginsDir: teamPluginsDir,
-      memberPluginsDir: memberPluginsDir,
-      paths: paths,
-    ) case final stampJson?) {
+          fs: fs,
+          teamPluginsDir: teamPluginsDir,
+          memberPluginsDir: memberPluginsDir,
+          paths: paths,
+        )
+        case final stampJson?) {
       return stampJson;
     }
 
@@ -292,7 +315,8 @@ class CliPluginLayout {
           await fs.copyTree(source: root, destination: dest);
         }
         await projectBundleToFlavor(fs, dest, paths);
-        if (paths.manifestDirName == claudePluginManifestPaths.manifestDirName) {
+        if (paths.manifestDirName ==
+            claudePluginManifestPaths.manifestDirName) {
           await _removeManifestDir(fs, dest, flashskyaiManifestDirName);
         }
         final manifest = await readManifest(fs, root, paths: paths);

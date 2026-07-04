@@ -55,14 +55,13 @@ class WorkspaceToolsScopeState extends Equatable {
     List<WorkspaceTargetSlice>? targetSlices,
     List<WorkspaceFolder>? effectiveFolders,
     bool? resolving,
-  }) =>
-      WorkspaceToolsScopeState(
-        tools: tools ?? this.tools,
-        roots: roots ?? this.roots,
-        targetSlices: targetSlices ?? this.targetSlices,
-        effectiveFolders: effectiveFolders ?? this.effectiveFolders,
-        resolving: resolving ?? this.resolving,
-      );
+  }) => WorkspaceToolsScopeState(
+    tools: tools ?? this.tools,
+    roots: roots ?? this.roots,
+    targetSlices: targetSlices ?? this.targetSlices,
+    effectiveFolders: effectiveFolders ?? this.effectiveFolders,
+    resolving: resolving ?? this.resolving,
+  );
 
   @override
   List<Object?> get props => [
@@ -196,9 +195,7 @@ class WorkspaceToolsScope extends InheritedWidget {
   }
 
   static WorkspaceToolsScopeState? maybeOf(BuildContext context) =>
-      context
-          .dependOnInheritedWidgetOfExactType<WorkspaceToolsScope>()
-          ?.state;
+      context.dependOnInheritedWidgetOfExactType<WorkspaceToolsScope>()?.state;
 
   @override
   bool updateShouldNotify(WorkspaceToolsScope oldWidget) =>

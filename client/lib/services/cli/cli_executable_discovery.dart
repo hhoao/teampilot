@@ -15,7 +15,8 @@ class CliExecutableDiscovery {
   Iterable<CliTool> get _localDiscoverable => _registry.launchable
       .map((definition) => definition.id)
       .where(
-        (cli) => _registry.capability<ExecutableResolverCapability>(cli) != null,
+        (cli) =>
+            _registry.capability<ExecutableResolverCapability>(cli) != null,
       );
 
   Iterable<CliTool> get _remoteDiscoverable => _localDiscoverable.where(
@@ -29,8 +30,9 @@ class CliExecutableDiscovery {
     final discoveries = await Future.wait([
       for (final cli in _localDiscoverable)
         () async {
-          final resolver =
-              _registry.capability<ExecutableResolverCapability>(cli)!;
+          final resolver = _registry.capability<ExecutableResolverCapability>(
+            cli,
+          )!;
           final path = await CliToolLocator(
             resolver.defaultExecutableName,
           ).locate(runner: runner);

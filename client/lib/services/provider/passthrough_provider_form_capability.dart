@@ -32,6 +32,5 @@ abstract base class PassthroughProviderFormCapability
   Widget buildExtraSection(
     BuildContext context,
     ProviderFormSectionProps props,
-  ) =>
-      const SizedBox.shrink();
+  ) => const SizedBox.shrink();
 }

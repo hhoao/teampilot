@@ -34,7 +34,11 @@ void main() {
   });
 
   test('copyWith overrides selected fields', () {
-    const s = AiFeatureSetting(cli: CliTool.claude, providerId: 'p', model: 'm');
+    const s = AiFeatureSetting(
+      cli: CliTool.claude,
+      providerId: 'p',
+      model: 'm',
+    );
     final s2 = s.copyWith(model: 'opus', effort: 'low');
     expect(s2.model, 'opus');
     expect(s2.effort, 'low');

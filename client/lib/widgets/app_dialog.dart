@@ -1,4 +1,4 @@
-﻿import 'package:flutter/material.dart';
+import 'package:flutter/material.dart';
 
 import '../l10n/l10n_extensions.dart';
 import '../theme/app_dialog_theme.dart';
@@ -62,9 +62,7 @@ class AppDialog extends StatelessWidget {
       backgroundColor: backgroundColor ?? cs.workspaceCard,
       shape: showBorder
           ? appDialogShape().copyWith(
-              side: BorderSide(
-                color: cs.outlineVariant.withValues(alpha: 0.7),
-              ),
+              side: BorderSide(color: cs.outlineVariant.withValues(alpha: 0.7)),
             )
           : null,
       child: ConstrainedBox(
@@ -214,10 +212,7 @@ class AppDialogHeader extends StatelessWidget {
                 ),
               ),
             ),
-            if (trailing != null) ...[
-              trailing!,
-              const SizedBox(width: 4),
-            ],
+            if (trailing != null) ...[trailing!, const SizedBox(width: 4)],
             IconButton(
               tooltip: context.l10n.cancel,
               visualDensity: VisualDensity.compact,

@@ -14,9 +14,9 @@ class NotificationRepository {
     Filesystem? fs,
     String? storePath,
     DateTime Function()? clock,
-  })  : _fs = fs,
-        _storePath = storePath,
-        _clock = clock ?? DateTime.now;
+  }) : _fs = fs,
+       _storePath = storePath,
+       _clock = clock ?? DateTime.now;
 
   final Filesystem? _fs;
   final String? _storePath;
@@ -138,7 +138,7 @@ class NotificationRepository {
       for (final item in items)
         if (!item.createdAt.isBefore(cutoff)) item,
     ];
-  filtered.sort((a, b) => b.createdAt.compareTo(a.createdAt));
+    filtered.sort((a, b) => b.createdAt.compareTo(a.createdAt));
     if (filtered.length <= notificationMaxItems) return filtered;
     return filtered.take(notificationMaxItems).toList();
   }

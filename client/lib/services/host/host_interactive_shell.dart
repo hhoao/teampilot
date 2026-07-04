@@ -40,8 +40,9 @@ abstract final class HostInteractiveShell {
   ];
 
   /// Default interactive shell for the current host OS.
-  static HostInteractiveShellSpec defaultSpec() =>
-      resolveSpec(Platform.environment[Platform.isWindows ? 'COMSPEC' : 'SHELL']);
+  static HostInteractiveShellSpec defaultSpec() => resolveSpec(
+    Platform.environment[Platform.isWindows ? 'COMSPEC' : 'SHELL'],
+  );
 
   static String defaultExecutable() => defaultSpec().executable;
 
@@ -93,9 +94,7 @@ abstract final class HostInteractiveShell {
 
   /// Menu / picker entries — only paths that exist locally.
   static List<HostInteractiveShellSpec> discoverSpecs() {
-    return discoverPaths()
-        .map(resolveSpec)
-        .toList(growable: false);
+    return discoverPaths().map(resolveSpec).toList(growable: false);
   }
 
   static List<String> discoverPaths() {
@@ -142,16 +141,14 @@ abstract final class HostInteractiveShell {
       HostInteractiveShellKind.fish => const ['-l'],
       HostInteractiveShellKind.powershell ||
       HostInteractiveShellKind.pwsh => const ['-NoLogo'],
-      HostInteractiveShellKind.cmd || HostInteractiveShellKind.unknown => const [],
+      HostInteractiveShellKind.cmd ||
+      HostInteractiveShellKind.unknown => const [],
     };
   }
 
   /// PTY argv for `wsl.exe` (basename + login flags).
   static List<String> wslArgumentsFor(HostInteractiveShellSpec shell) {
-    return [
-      p.basename(shell.executable),
-      ...shell.launchArguments,
-    ];
+    return [p.basename(shell.executable), ...shell.launchArguments];
   }
 
   static bool _exists(String path) {

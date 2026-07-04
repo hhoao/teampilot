@@ -13,7 +13,9 @@ void main() {
   });
 
   test('fromJson tolerates missing keys and trims/filters', () {
-    final b = ConfigBundle.fromJson({'skillIds': [' x ', '']});
+    final b = ConfigBundle.fromJson({
+      'skillIds': [' x ', ''],
+    });
     expect(b.skillIds, ['x']);
     expect(b.pluginIds, isEmpty);
     expect(b.mcpServerIds, isEmpty);

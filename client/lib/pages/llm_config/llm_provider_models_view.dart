@@ -1,4 +1,4 @@
-﻿import 'package:flutter/material.dart';
+import 'package:flutter/material.dart';
 
 import '../../cubits/llm_config_cubit.dart';
 import '../../l10n/l10n_extensions.dart';
@@ -177,13 +177,15 @@ class LlmProviderModelsView extends StatelessWidget {
                             ),
                             AppIconButton(
                               icon: Icons.edit_outlined,
-                              compact: true, size: 36,
+                              compact: true,
+                              size: 36,
                               tooltip: l10n.edit,
                               onTap: () => _editModel(context, model),
                             ),
                             AppIconButton(
                               icon: Icons.delete_outline,
-                              compact: true, size: 36,
+                              compact: true,
+                              size: 36,
                               tooltip: l10n.delete,
                               onTap: () async {
                                 final next = Map<String, LlmModelConfig>.from(

@@ -23,10 +23,7 @@ void main() {
         member: member,
       );
       expect(path, isNotNull);
-      expect(
-        path,
-        p.join(root, 'prompts', 'developer-one', 'role.md'),
-      );
+      expect(path, p.join(root, 'prompts', 'developer-one', 'role.md'));
       expect(await fs.readString(path!), contains('Implement only'));
 
       await MemberRoleProvision.syncRolePromptFile(
@@ -44,7 +41,11 @@ void main() {
     final fs = LocalFilesystem();
     final root = await fs.createTempDir(prefix: 'role_lead_');
     try {
-      const lead = TeamMemberConfig(id: 'team-lead', name: 'team-lead', prompt: '');
+      const lead = TeamMemberConfig(
+        id: 'team-lead',
+        name: 'team-lead',
+        prompt: '',
+      );
       final path = await MemberRoleProvision.syncRolePromptFile(
         fs: fs,
         memberToolDir: root,
@@ -108,7 +109,11 @@ void main() {
     final fs = LocalFilesystem();
     final root = await fs.createTempDir(prefix: 'role_delegate_');
     try {
-      const lead = TeamMemberConfig(id: 'team-lead', name: 'team-lead', prompt: '');
+      const lead = TeamMemberConfig(
+        id: 'team-lead',
+        name: 'team-lead',
+        prompt: '',
+      );
       await MemberRoleProvision.syncRolePromptFile(
         fs: fs,
         memberToolDir: root,
@@ -123,18 +128,23 @@ void main() {
     }
   });
 
-  test('applyTeamSessionPolicy denies TeamCreate and TeamDelete for native team', () {
-    final settings = MemberRoleProvision.applyTeamSessionPolicy(const {});
-    final deny = settings['permissions']! as Map;
-    expect(deny['deny'], contains('TeamCreate'));
-    expect(deny['deny'], contains('TeamDelete'));
-    expect(deny['deny'], isNot(contains('Bash')));
-    expect(deny['deny'], isNot(contains('Edit')));
-  });
+  test(
+    'applyTeamSessionPolicy denies TeamCreate and TeamDelete for native team',
+    () {
+      final settings = MemberRoleProvision.applyTeamSessionPolicy(const {});
+      final deny = settings['permissions']! as Map;
+      expect(deny['deny'], contains('TeamCreate'));
+      expect(deny['deny'], contains('TeamDelete'));
+      expect(deny['deny'], isNot(contains('Bash')));
+      expect(deny['deny'], isNot(contains('Edit')));
+    },
+  );
 
   test('applyTeamSessionPolicy omits swarm deny rules in mixed mode', () {
-    final mixed =
-        MemberRoleProvision.applyTeamSessionPolicy(const {}, mixed: true);
+    final mixed = MemberRoleProvision.applyTeamSessionPolicy(
+      const {},
+      mixed: true,
+    );
     final permissions = mixed['permissions']! as Map;
     expect(permissions['allow'], contains('mcp__teammate-bus'));
     expect(permissions['deny'], isNull);

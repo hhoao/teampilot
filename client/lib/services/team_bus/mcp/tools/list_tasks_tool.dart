@@ -24,9 +24,8 @@ final class ListTasksTool extends TeammateBusTool {
       'pending | claimed | done | failed | cancelled.';
 
   @override
-  Map<String, Object?> get inputSchema => McpSchema.object(
-        properties: {status: McpSchema.string},
-      );
+  Map<String, Object?> get inputSchema =>
+      McpSchema.object(properties: {status: McpSchema.string});
 
   @override
   Future<JsonRpcResponse> call(TeammateBusToolCall call) async {

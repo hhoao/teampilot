@@ -106,11 +106,11 @@ bool frameHasTraceSlices(
     return false;
   }
   return slicesForFrame(
-        trace: trace,
-        frameNumber: frame.number,
-        startTimeUs: frame.startTimeUs,
-        elapsedUs: frame.elapsedUs,
-      ).isNotEmpty;
+    trace: trace,
+    frameNumber: frame.number,
+    startTimeUs: frame.startTimeUs,
+    elapsedUs: frame.elapsedUs,
+  ).isNotEmpty;
 }
 
 /// Janky frames that overlap trace data, ordered slowest first.

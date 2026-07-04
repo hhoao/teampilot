@@ -43,8 +43,11 @@ class MemberLaunchConfigRow extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return BlocSelector<LaunchProfileCubit, LaunchProfileState,
-        MemberLaunchContext?>(
+    return BlocSelector<
+      LaunchProfileCubit,
+      LaunchProfileState,
+      MemberLaunchContext?
+    >(
       selector: (state) =>
           LaunchProfileSelectors.memberLaunchContext(state, teamId, memberId),
       builder: (context, launchContext) {
@@ -74,13 +77,19 @@ class _MemberLaunchConfigRowBody extends StatelessWidget {
     final styles = AppTextStyles.of(context);
     final registry = CliToolRegistryScope.of(context);
     final cubit = context.read<LaunchProfileCubit>();
-    final team = LaunchProfileSelectors.teamById(cubit.state, launchContext.teamId);
-    final member =
-        LaunchProfileSelectors.memberById(team, launchContext.memberId);
+    final team = LaunchProfileSelectors.teamById(
+      cubit.state,
+      launchContext.teamId,
+    );
+    final member = LaunchProfileSelectors.memberById(
+      team,
+      launchContext.memberId,
+    );
     if (team == null || member == null) return const SizedBox.shrink();
 
-    final presets = context
-        .select<CliPresetsCubit, List<CliPreset>>((c) => c.state.presets);
+    final presets = context.select<CliPresetsCubit, List<CliPreset>>(
+      (c) => c.state.presets,
+    );
     final catalogCli = memberCustomCatalogCli(team, member);
     final catalogDef = registry.tryGet(
       resolveMemberLaunch(
@@ -89,10 +98,9 @@ class _MemberLaunchConfigRowBody extends StatelessWidget {
         globalPresets: presets,
       ).cli,
     );
-    final providers = context
-        .select<AppProviderCubit, List<AppProviderConfig>>(
-          (c) => c.state.providersFor(catalogCli).toList(growable: false),
-        );
+    final providers = context.select<AppProviderCubit, List<AppProviderConfig>>(
+      (c) => c.state.providersFor(catalogCli).toList(growable: false),
+    );
     final resolved = resolveMemberLaunch(
       team: team,
       member: member,
@@ -495,8 +503,7 @@ class _MemberLaunchConfigureDialogState
                     registry: registry,
                     providerState: providerState,
                     decoration: dropdownDeco,
-                    onChanged: (token) =>
-                        _applyPresetChoice(token, allPresets),
+                    onChanged: (token) => _applyPresetChoice(token, allPresets),
                   ),
                 if (isCustom)
                   CliLaunchCustomFields(

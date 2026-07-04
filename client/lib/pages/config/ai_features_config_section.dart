@@ -1,4 +1,4 @@
-﻿import 'package:flutter/material.dart';
+import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:teampilot/theme/app_icon_sizes.dart';
 
@@ -399,8 +399,7 @@ class _AiFeatureConfigureDialogState extends State<AiFeatureConfigureDialog> {
     final appProviders = context.watch<AppProviderCubit>().state;
     final allPresets = context.watch<CliPresetsCubit>().state.presets;
     final eligiblePresets = globalPresetPickerItems(allPresets);
-    final currentPresetToken =
-        _activePresetId ?? kPresetLaunchCustomOption;
+    final currentPresetToken = _activePresetId ?? kPresetLaunchCustomOption;
     final presetDropdownItems = presetLaunchDropdownItems(
       mode: PresetLaunchPickerMode.withCustomOption,
       eligiblePresets: eligiblePresets,

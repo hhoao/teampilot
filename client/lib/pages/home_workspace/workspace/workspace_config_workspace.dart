@@ -40,16 +40,11 @@ class WorkspaceConfigPanel extends StatefulWidget {
   final WorkspaceConfigSection section;
 
   @override
-  State<WorkspaceConfigPanel> createState() =>
-      _WorkspaceConfigPanelState();
+  State<WorkspaceConfigPanel> createState() => _WorkspaceConfigPanelState();
 }
 
-class _WorkspaceConfigPanelState
-    extends State<WorkspaceConfigPanel> {
-  String _managePath(
-    WorkspaceConfigSection section, {
-    String? profileId,
-  }) {
+class _WorkspaceConfigPanelState extends State<WorkspaceConfigPanel> {
+  String _managePath(WorkspaceConfigSection section, {String? profileId}) {
     return Uri(
       path: '/home-v2/workspace/${widget.workspace.workspaceId}',
       queryParameters: {
@@ -83,63 +78,63 @@ class _WorkspaceConfigPanelState
 
     final body = switch (section) {
       WorkspaceConfigSection.settings => WorkspaceInfoSection(
-          workspace: widget.workspace,
-          team: team,
-        ),
+        workspace: widget.workspace,
+        team: team,
+      ),
       WorkspaceConfigSection.members when team != null => HomeTeamTab(
-          team: team,
-          cubit: identityCubit,
-          section: TeamConfigSection.members,
-        ),
+        team: team,
+        cubit: identityCubit,
+        section: TeamConfigSection.members,
+      ),
       WorkspaceConfigSection.agent when identity is PersonalProfile =>
         WorkspaceAgentSection(
           workspaceId: widget.workspace.workspaceId,
           profileId: identity.id,
         ),
       WorkspaceConfigSection.agent when team != null => TeamInfoSection(
-          team: team,
-          cubit: identityCubit,
-        ),
+        team: team,
+        cubit: identityCubit,
+      ),
       WorkspaceConfigSection.skills when identity is PersonalProfile =>
         WorkspaceSkillsSection(
           workspaceId: widget.workspace.workspaceId,
           profileId: identity.id,
         ),
       WorkspaceConfigSection.skills when team != null => HomeTeamTab(
-          team: team,
-          cubit: identityCubit,
-          section: TeamConfigSection.skills,
-          onSelectGlobalView: _openGlobalView,
-        ),
+        team: team,
+        cubit: identityCubit,
+        section: TeamConfigSection.skills,
+        onSelectGlobalView: _openGlobalView,
+      ),
       WorkspaceConfigSection.plugins when identity is PersonalProfile =>
         WorkspacePluginsSection(
           workspaceId: widget.workspace.workspaceId,
           profileId: identity.id,
         ),
       WorkspaceConfigSection.plugins when team != null => HomeTeamTab(
-          team: team,
-          cubit: identityCubit,
-          section: TeamConfigSection.plugins,
-          onSelectGlobalView: _openGlobalView,
-        ),
+        team: team,
+        cubit: identityCubit,
+        section: TeamConfigSection.plugins,
+        onSelectGlobalView: _openGlobalView,
+      ),
       WorkspaceConfigSection.mcp when identity is PersonalProfile =>
         WorkspaceMcpSection(
           workspaceId: widget.workspace.workspaceId,
           profileId: identity.id,
         ),
       WorkspaceConfigSection.mcp when team != null => HomeTeamTab(
-          team: team,
-          cubit: identityCubit,
-          section: TeamConfigSection.mcp,
-          onSelectGlobalView: _openGlobalView,
-        ),
+        team: team,
+        cubit: identityCubit,
+        section: TeamConfigSection.mcp,
+        onSelectGlobalView: _openGlobalView,
+      ),
       WorkspaceConfigSection.extensions when identity is PersonalProfile =>
         WorkspaceExtensionsSection(workspaceId: widget.workspace.workspaceId),
       WorkspaceConfigSection.extensions when team != null => HomeTeamTab(
-          team: team,
-          cubit: identityCubit,
-          section: TeamConfigSection.extensions,
-        ),
+        team: team,
+        cubit: identityCubit,
+        section: TeamConfigSection.extensions,
+      ),
       _ => const SizedBox.shrink(),
     };
 

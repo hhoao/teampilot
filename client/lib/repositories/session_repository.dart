@@ -97,7 +97,10 @@ class SessionRepository {
     return null;
   }
 
-  Future<void> _writeManifest(SessionRepositoryFs fs, Workspace workspace) async {
+  Future<void> _writeManifest(
+    SessionRepositoryFs fs,
+    Workspace workspace,
+  ) async {
     await fs.ensureWorkspaceDir(workspace.workspaceId);
     final withoutSessions = workspace.copyWith(sessionIds: const []);
     await fs.writeText(
@@ -113,15 +116,20 @@ class SessionRepository {
   ) async {
     _invalidateWorkspacesIndexCache();
     final sessionIds = await fs.listSessionDirectoryIds(workspace.workspaceId);
-    await WorkspaceIndexStore(fs).upsert(
-      workspace.copyWith(sessionIds: sessionIds),
-    );
+    await WorkspaceIndexStore(
+      fs,
+    ).upsert(workspace.copyWith(sessionIds: sessionIds));
   }
 
-  static bool _sameWorkspaceIds(List<String> diskIds, List<Workspace> snapshot) {
+  static bool _sameWorkspaceIds(
+    List<String> diskIds,
+    List<Workspace> snapshot,
+  ) {
     if (diskIds.length != snapshot.length) return false;
     final diskSet = diskIds.toSet();
-    return snapshot.every((workspace) => diskSet.contains(workspace.workspaceId));
+    return snapshot.every(
+      (workspace) => diskSet.contains(workspace.workspaceId),
+    );
   }
 
   Future<List<Workspace>> loadWorkspaces() => _loadWorkspaces(indexOnly: false);
@@ -148,9 +156,7 @@ class SessionRepository {
         '[boot] loadWorkspacesIndex from snapshot count=${snapshot.length} '
         'read=${readMs}ms (validate deferred)',
       );
-      unawaited(
-        _revalidateWorkspacesIndexSnapshot(fs, store, snapshot),
-      );
+      unawaited(_revalidateWorkspacesIndexSnapshot(fs, store, snapshot));
       return _rememberWorkspacesIndex(snapshot);
     } else {
       appLogger.i(
@@ -171,9 +177,7 @@ class SessionRepository {
     final diskIds = await fs.listWorkspaceIds();
     final validateMs = validateSw.elapsedMilliseconds;
     if (_sameWorkspaceIds(diskIds, snapshot)) {
-      appLogger.i(
-        '[boot] loadWorkspacesIndex validate ok +${validateMs}ms',
-      );
+      appLogger.i('[boot] loadWorkspacesIndex validate ok +${validateMs}ms');
       return;
     }
     appLogger.i(
@@ -191,11 +195,7 @@ class SessionRepository {
     final workspaceIds = await fs.listWorkspaceIds();
     final workspaces = await Future.wait(
       workspaceIds.map(
-        (workspaceId) => _readManifest(
-          fs,
-          workspaceId,
-          indexOnly: indexOnly,
-        ),
+        (workspaceId) => _readManifest(fs, workspaceId, indexOnly: indexOnly),
       ),
     );
     return [
@@ -289,7 +289,8 @@ class SessionRepository {
       final displayOut = trimmedDisplay.isNotEmpty
           ? trimmedDisplay
           : existing.display;
-      if (listEquals(merged, existing.folders) && displayOut == existing.display) {
+      if (listEquals(merged, existing.folders) &&
+          displayOut == existing.display) {
         return existing;
       }
       final updated = existing.copyWith(
@@ -332,7 +333,10 @@ class SessionRepository {
     await _writeManifest(fs, updated);
   }
 
-  Future<void> applyWorkspaceIcon(String workspaceId, WorkspaceIconRef icon) async {
+  Future<void> applyWorkspaceIcon(
+    String workspaceId,
+    WorkspaceIconRef icon,
+  ) async {
     final fs = await _fs();
     final existing = await _readManifest(fs, workspaceId);
     if (existing == null) return;
@@ -347,10 +351,7 @@ class SessionRepository {
       previous: existing.icon,
       next: icon,
     );
-    await _writeManifest(
-      fs,
-      existing.copyWith(icon: icon, updatedAt: now),
-    );
+    await _writeManifest(fs, existing.copyWith(icon: icon, updatedAt: now));
   }
 
   Future<void> importCustomWorkspaceIcon(
@@ -443,7 +444,10 @@ class SessionRepository {
     Workspace workspace,
   ) async {
     final layout = RuntimeLayout(teampilotRoot: fs.teampilotRoot, fs: fs.fs);
-    await WorkspaceTrustProvisioner(layout: layout, fs: fs.fs).provisionWorkspace(
+    await WorkspaceTrustProvisioner(
+      layout: layout,
+      fs: fs.fs,
+    ).provisionWorkspace(
       workspaceId: workspace.workspaceId,
       directories: workspace.folderPaths,
     );
@@ -503,10 +507,7 @@ class SessionRepository {
     }
 
     final rememberedTargets = trimmedTeam.isNotEmpty
-        ? rememberedMemberTargets(
-            workspace.memberTargetsByTeam,
-            trimmedTeam,
-          )
+        ? rememberedMemberTargets(workspace.memberTargetsByTeam, trimmedTeam)
         : const <String, String>{};
 
     if (trimmedTeam.isEmpty &&
@@ -584,7 +585,10 @@ class SessionRepository {
     return null;
   }
 
-  Future<AppSession?> _findSession(SessionRepositoryFs fs, String sessionId) async {
+  Future<AppSession?> _findSession(
+    SessionRepositoryFs fs,
+    String sessionId,
+  ) async {
     for (final workspaceId in await fs.listWorkspaceIds()) {
       final session = await _readSession(fs, workspaceId, sessionId);
       if (session != null) return session;
@@ -592,10 +596,7 @@ class SessionRepository {
     return null;
   }
 
-  Future<void> _writeSession(
-    SessionRepositoryFs fs,
-    AppSession session,
-  ) async {
+  Future<void> _writeSession(SessionRepositoryFs fs, AppSession session) async {
     final workspaceId = session.workspaceId.trim();
     if (workspaceId.isEmpty) {
       throw StateError('Session ${session.sessionId} missing workspaceId');

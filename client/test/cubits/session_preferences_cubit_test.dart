@@ -31,7 +31,10 @@ void main() {
       '/opt/custom/flashskyai',
     );
 
-    expect(cubit.resolveExecutable(CliTool.flashskyai), '/opt/custom/flashskyai');
+    expect(
+      cubit.resolveExecutable(CliTool.flashskyai),
+      '/opt/custom/flashskyai',
+    );
   });
 
   test(
@@ -44,7 +47,10 @@ void main() {
       );
       await cubit.load();
 
-      expect(cubit.resolveExecutable(CliTool.flashskyai), '/usr/local/bin/flashskyai');
+      expect(
+        cubit.resolveExecutable(CliTool.flashskyai),
+        '/usr/local/bin/flashskyai',
+      );
     },
   );
 
@@ -58,23 +64,29 @@ void main() {
     },
   );
 
-  test('setCliExecutablePathFor flashskyai persists and emits new state', () async {
-    final cubit = await makeCubit();
-    await cubit.load();
-    await cubit.setCliExecutablePathFor(CliTool.flashskyai, '/a/b/flashskyai');
+  test(
+    'setCliExecutablePathFor flashskyai persists and emits new state',
+    () async {
+      final cubit = await makeCubit();
+      await cubit.load();
+      await cubit.setCliExecutablePathFor(
+        CliTool.flashskyai,
+        '/a/b/flashskyai',
+      );
 
-    expect(
-      cubit.state.preferences.cliExecutablePathFor('flashskyai'),
-      '/a/b/flashskyai',
-    );
+      expect(
+        cubit.state.preferences.cliExecutablePathFor('flashskyai'),
+        '/a/b/flashskyai',
+      );
 
-    final cubit2 = await makeCubit();
-    await cubit2.load();
-    expect(
-      cubit2.state.preferences.cliExecutablePathFor('flashskyai'),
-      '/a/b/flashskyai',
-    );
-  });
+      final cubit2 = await makeCubit();
+      await cubit2.load();
+      expect(
+        cubit2.state.preferences.cliExecutablePathFor('flashskyai'),
+        '/a/b/flashskyai',
+      );
+    },
+  );
 
   test('setAutoLaunchAllMembersOnConnect persists the flag', () async {
     final cubit = await makeCubit();
@@ -96,19 +108,21 @@ void main() {
     expect(cubit2.state.preferences.scopeSessionsToSelectedTeam, true);
   });
 
-  test('terminalLinkClickOpensInApp defaults to true and persists toggle',
-      () async {
-    final cubit = await makeCubit();
-    await cubit.load();
-    expect(cubit.state.preferences.terminalLinkClickOpensInApp, true);
+  test(
+    'terminalLinkClickOpensInApp defaults to true and persists toggle',
+    () async {
+      final cubit = await makeCubit();
+      await cubit.load();
+      expect(cubit.state.preferences.terminalLinkClickOpensInApp, true);
 
-    await cubit.setTerminalLinkClickOpensInApp(false);
-    expect(cubit.state.preferences.terminalLinkClickOpensInApp, false);
+      await cubit.setTerminalLinkClickOpensInApp(false);
+      expect(cubit.state.preferences.terminalLinkClickOpensInApp, false);
 
-    final cubit2 = await makeCubit();
-    await cubit2.load();
-    expect(cubit2.state.preferences.terminalLinkClickOpensInApp, false);
-  });
+      final cubit2 = await makeCubit();
+      await cubit2.load();
+      expect(cubit2.state.preferences.terminalLinkClickOpensInApp, false);
+    },
+  );
 
   test('notifyOnSessionIdle defaults to true and persists toggle', () async {
     final cubit = await makeCubit();

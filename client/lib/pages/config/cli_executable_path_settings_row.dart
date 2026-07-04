@@ -1,4 +1,4 @@
-﻿import 'package:file_picker/file_picker.dart';
+import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
 import 'package:teampilot/theme/app_icon_sizes.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
@@ -19,7 +19,8 @@ import '../../widgets/settings/workspace_settings_widgets.dart';
 import 'session_config_constants.dart';
 
 class CliExecutablePathSettingsRow extends StatefulWidget {
-  const CliExecutablePathSettingsRow({super.key, 
+  const CliExecutablePathSettingsRow({
+    super.key,
     required this.cubit,
     required this.cli,
     required this.title,
@@ -200,7 +201,11 @@ class CliExecutablePathSettingsRowState
 
   @override
   Widget build(BuildContext context) {
-    return BlocSelector<SessionPreferencesCubit, SessionPreferencesState, String>(
+    return BlocSelector<
+      SessionPreferencesCubit,
+      SessionPreferencesState,
+      String
+    >(
       selector: (state) =>
           state.preferences.cliExecutablePathFor(widget.cli.value),
       builder: (context, stored) => _buildRow(context, stored),
@@ -259,7 +264,10 @@ class CliExecutablePathSettingsRowState
                           height: 16,
                           child: CircularProgressIndicator(strokeWidth: 2),
                         )
-                      : Icon(Icons.download_outlined, size: context.appIconSizes.md),
+                      : Icon(
+                          Icons.download_outlined,
+                          size: context.appIconSizes.md,
+                        ),
                   label: Text(
                     _isInstalling
                         ? l10n.cliInstallInstalling
@@ -271,7 +279,10 @@ class CliExecutablePathSettingsRowState
               OutlinedButton.icon(
                 key: widget.browseKey,
                 onPressed: isSshMode ? null : _pickFile,
-                icon: Icon(Icons.folder_open_outlined, size: context.appIconSizes.md),
+                icon: Icon(
+                  Icons.folder_open_outlined,
+                  size: context.appIconSizes.md,
+                ),
                 label: Text(l10n.cliExecutablePathBrowse),
               ),
               const SizedBox(width: 6),

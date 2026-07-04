@@ -47,8 +47,9 @@ final class CodexHeadlessProvisionCapability
         provider: resolved,
         trustedProjectDirectories: trusted,
         storedAuthPath: _storedCodexAuthPath(resolved),
-        reasoningEffortOverride:
-            ctx.effort.trim().isNotEmpty ? ctx.effort.trim() : null,
+        reasoningEffortOverride: ctx.effort.trim().isNotEmpty
+            ? ctx.effort.trim()
+            : null,
       );
     } on CodexHomeProvisionException catch (e) {
       warnings.add('codex_config_invalid: $e');

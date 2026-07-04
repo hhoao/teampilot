@@ -106,10 +106,10 @@ void main() {
 
     expect(cubit.state.isMixed, isTrue);
     expect(cubit.state.targetSlices.length, 2);
-    expect(
-      cubit.state.targetSlices.map((s) => s.targetId).toSet(),
-      {'local', 'ssh:p1'},
-    );
+    expect(cubit.state.targetSlices.map((s) => s.targetId).toSet(), {
+      'local',
+      'ssh:p1',
+    });
     expect(cubit.state.targetSlices[1].roots, ['/remote']);
 
     await cubit.close();
@@ -121,9 +121,7 @@ void main() {
       storageRootsResolver: () async => home,
       workContextResolver: (_) async => home,
     );
-    final folders = const [
-      WorkspaceFolder(path: '/repo', targetId: 'local'),
-    ];
+    final folders = const [WorkspaceFolder(path: '/repo', targetId: 'local')];
     final cubit = WorkspaceToolsScopeCubit(lifecycle: lifecycle);
     await cubit.sync(
       workspaceFolders: folders,

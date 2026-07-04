@@ -24,7 +24,8 @@ class _FakeGitService extends GitService {
   Future<bool> get isAvailable async => true;
 
   @override
-  Future<GitRepoStatus> status(String dir) async => GitRepoStatus.notARepository;
+  Future<GitRepoStatus> status(String dir) async =>
+      GitRepoStatus.notARepository;
 
   @override
   Future<List<String>> branches(String dir) async => const [];
@@ -75,10 +76,7 @@ void main() {
       expect(local.isClosed, isTrue);
       expect(remote.isClosed, isTrue);
       expect(
-        identical(
-          store.cubitFor('ws-a', targetId: 'local', fs: fs),
-          local,
-        ),
+        identical(store.cubitFor('ws-a', targetId: 'local', fs: fs), local),
         isFalse,
       );
 
@@ -139,23 +137,25 @@ void main() {
       store.dispose();
     });
 
-    test('LRU evicts and closes the least-recently-used cubit past the bound',
-        () async {
-      final store = GitRepoStore(cubitFactory: makeCubit, maxRetained: 2);
-      final ctx = testRuntimeContext('/home');
+    test(
+      'LRU evicts and closes the least-recently-used cubit past the bound',
+      () async {
+        final store = GitRepoStore(cubitFactory: makeCubit, maxRetained: 2);
+        final ctx = testRuntimeContext('/home');
 
-      final a = store.cubitFor('/a', workContext: ctx);
-      final b = store.cubitFor('/b', workContext: ctx);
-      store.cubitFor('/a', workContext: ctx);
-      final c = store.cubitFor('/c', workContext: ctx);
+        final a = store.cubitFor('/a', workContext: ctx);
+        final b = store.cubitFor('/b', workContext: ctx);
+        store.cubitFor('/a', workContext: ctx);
+        final c = store.cubitFor('/c', workContext: ctx);
 
-      expect(b.isClosed, isTrue);
-      expect(a.isClosed, isFalse);
-      expect(c.isClosed, isFalse);
-      expect(identical(store.cubitFor('/b', workContext: ctx), b), isFalse);
+        expect(b.isClosed, isTrue);
+        expect(a.isClosed, isFalse);
+        expect(c.isClosed, isFalse);
+        expect(identical(store.cubitFor('/b', workContext: ctx), b), isFalse);
 
-      store.dispose();
-    });
+        store.dispose();
+      },
+    );
 
     test('dispose closes every retained cubit', () {
       final store = GitRepoStore(cubitFactory: makeCubit);

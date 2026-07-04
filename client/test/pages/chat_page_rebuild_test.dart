@@ -68,9 +68,7 @@ void main() {
         tester.view.resetDevicePixelRatio();
       });
 
-      final appData = Directory.systemTemp.createTempSync(
-        'chat_rebuild_test_',
-      );
+      final appData = Directory.systemTemp.createTempSync('chat_rebuild_test_');
       addTearDown(() {
         if (appData.existsSync()) appData.deleteSync(recursive: true);
       });
@@ -108,7 +106,9 @@ void main() {
           presetsPath: '/cli-presets.json',
         ),
       );
-      cliPresetsCubit.emit(const CliPresetsState(status: CliPresetsLoadStatus.ready));
+      cliPresetsCubit.emit(
+        const CliPresetsState(status: CliPresetsLoadStatus.ready),
+      );
       addTearDown(() => cliPresetsCubit.close());
 
       chatCubit.ingestWorkspaceSessionSnapshot(
@@ -190,9 +190,7 @@ void main() {
         tester.view.resetDevicePixelRatio();
       });
 
-      final appData = Directory.systemTemp.createTempSync(
-        'chat_rebuild_test_',
-      );
+      final appData = Directory.systemTemp.createTempSync('chat_rebuild_test_');
       addTearDown(() {
         if (appData.existsSync()) appData.deleteSync(recursive: true);
       });
@@ -230,7 +228,9 @@ void main() {
           presetsPath: '/cli-presets.json',
         ),
       );
-      cliPresetsCubit.emit(const CliPresetsState(status: CliPresetsLoadStatus.ready));
+      cliPresetsCubit.emit(
+        const CliPresetsState(status: CliPresetsLoadStatus.ready),
+      );
       addTearDown(() => cliPresetsCubit.close());
 
       chatCubit.ingestWorkspaceSessionSnapshot(

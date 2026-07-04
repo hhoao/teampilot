@@ -164,7 +164,8 @@ String memberAgentPresetSubtitle(
   MemberAgentPresetStyle style,
 ) {
   return switch (style) {
-    MemberAgentPresetStyle.flashskyaiCatalog => l10n.agentFlashskyaiPresetSubtitle,
+    MemberAgentPresetStyle.flashskyaiCatalog =>
+      l10n.agentFlashskyaiPresetSubtitle,
     MemberAgentPresetStyle.claudeAgentType => l10n.agentClaudeTypeSubtitle,
   };
 }

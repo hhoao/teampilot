@@ -30,9 +30,7 @@ void main() {
     if (!await DockerSshServer.isDockerAvailable()) {
       return;
     }
-    server = await DockerSshServer.start(
-      clientRoot: Directory.current.path,
-    );
+    server = await DockerSshServer.start(clientRoot: Directory.current.path);
 
     final credentials = InMemorySshCredentialStore();
     await credentials.savePassword(
@@ -82,10 +80,8 @@ void main() {
         optIn: true,
         supportsInstaller: true,
         onProgress: progress.add,
-        install: ({required run, required onProgress}) async => install(
-          run: run,
-          onProgress: onProgress,
-        ),
+        install: ({required run, required onProgress}) async =>
+            install(run: run, onProgress: onProgress),
       );
 
       expect(path, isNotEmpty);

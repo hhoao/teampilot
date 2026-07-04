@@ -67,8 +67,9 @@ class AiFeatureSetting {
     String? effort,
   }) {
     return AiFeatureSetting(
-      activePresetId:
-          clearActivePresetId ? null : (activePresetId ?? this.activePresetId),
+      activePresetId: clearActivePresetId
+          ? null
+          : (activePresetId ?? this.activePresetId),
       cli: cli ?? this.cli,
       providerId: providerId ?? this.providerId,
       model: model ?? this.model,

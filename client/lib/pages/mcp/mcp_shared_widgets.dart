@@ -1,4 +1,4 @@
-﻿import 'package:flutter/material.dart';
+import 'package:flutter/material.dart';
 import 'package:teampilot/theme/app_icon_sizes.dart';
 
 import '../../l10n/l10n_extensions.dart';
@@ -92,9 +92,9 @@ class McpInstalledServerRow extends StatelessWidget {
                           server.name,
                           maxLines: 1,
                           overflow: TextOverflow.ellipsis,
-                          style: AppTextStyles.of(context).bodyStrong.copyWith(
-                            color: textBase,
-                          ),
+                          style: AppTextStyles.of(
+                            context,
+                          ).bodyStrong.copyWith(color: textBase),
                         ),
                       ),
                       const SizedBox(width: 8),
@@ -201,7 +201,11 @@ class McpInstalledServerRow extends StatelessWidget {
             IconButton(
               tooltip: l10n.delete,
               onPressed: busy ? null : onDelete,
-              icon: Icon(Icons.delete_outline, size: context.appIconSizes.md, color: cs.error),
+              icon: Icon(
+                Icons.delete_outline,
+                size: context.appIconSizes.md,
+                color: cs.error,
+              ),
             ),
             Switch(
               value: server.enabled,
@@ -249,104 +253,104 @@ class McpCatalogListingTile extends StatelessWidget {
         child: Row(
           crossAxisAlignment: CrossAxisAlignment.center,
           children: [
-              if (listing.iconUrl != null && listing.iconUrl!.isNotEmpty)
-                Padding(
-                  padding: const EdgeInsets.only(right: 10),
-                  child: ClipRRect(
-                    borderRadius: BorderRadius.circular(8),
-                    child: Image.network(
-                      listing.iconUrl!,
-                      width: 36,
-                      height: 36,
-                      fit: BoxFit.cover,
-                      errorBuilder: (_, __, ___) => Icon(
-                        Icons.hub_outlined,
-                        size: context.appIconSizes.md,
-                        color: cs.onSurface.withValues(alpha: 0.4),
-                      ),
+            if (listing.iconUrl != null && listing.iconUrl!.isNotEmpty)
+              Padding(
+                padding: const EdgeInsets.only(right: 10),
+                child: ClipRRect(
+                  borderRadius: BorderRadius.circular(8),
+                  child: Image.network(
+                    listing.iconUrl!,
+                    width: 36,
+                    height: 36,
+                    fit: BoxFit.cover,
+                    errorBuilder: (_, __, ___) => Icon(
+                      Icons.hub_outlined,
+                      size: context.appIconSizes.md,
+                      color: cs.onSurface.withValues(alpha: 0.4),
                     ),
                   ),
-                ),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    Row(
-                      children: [
-                        Flexible(
-                          child: Text(
-                            listing.title,
-                            style: AppTextStyles.of(context).bodyStrong,
-                            maxLines: 1,
-                            overflow: TextOverflow.ellipsis,
-                          ),
-                        ),
-                        if (onOpenHomepage != null)
-                          IconButton(
-                            padding: EdgeInsets.zero,
-                            constraints: const BoxConstraints(
-                              minWidth: 32,
-                              minHeight: 32,
-                            ),
-                            visualDensity: VisualDensity.compact,
-                            iconSize: context.appIconSizes.md,
-                            tooltip: l10n.mcpOpenHomepage,
-                            onPressed: onOpenHomepage,
-                            icon: Icon(Icons.open_in_new),
-                          ),
-                      ],
-                    ),
-                    if (listing.description.isNotEmpty) ...[
-                      const SizedBox(height: 4),
-                      Text(
-                        listing.description,
-                        maxLines: 2,
-                        overflow: TextOverflow.ellipsis,
-                        style: AppTextStyles.of(context).bodySmall.copyWith(
-                          color: cs.onSurface.withValues(alpha: 0.65),
-                        ),
-                      ),
-                    ],
-                    if (meta.isNotEmpty) ...[
-                      const SizedBox(height: 6),
-                      Text(
-                        meta.join(' · '),
-                        style: AppTextStyles.of(context).caption.copyWith(
-                          color: cs.onSurface.withValues(alpha: 0.5),
-                        ),
-                      ),
-                    ],
-                  ],
                 ),
               ),
-              const SizedBox(width: 4),
-              if (busy)
-                const Padding(
-                  padding: EdgeInsets.all(10),
-                  child: SizedBox(
-                    width: 20,
-                    height: 20,
-                    child: CircularProgressIndicator(strokeWidth: 2),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Row(
+                    children: [
+                      Flexible(
+                        child: Text(
+                          listing.title,
+                          style: AppTextStyles.of(context).bodyStrong,
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                      ),
+                      if (onOpenHomepage != null)
+                        IconButton(
+                          padding: EdgeInsets.zero,
+                          constraints: const BoxConstraints(
+                            minWidth: 32,
+                            minHeight: 32,
+                          ),
+                          visualDensity: VisualDensity.compact,
+                          iconSize: context.appIconSizes.md,
+                          tooltip: l10n.mcpOpenHomepage,
+                          onPressed: onOpenHomepage,
+                          icon: Icon(Icons.open_in_new),
+                        ),
+                    ],
                   ),
-                )
-              else if (installed)
-                Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 8),
-                  child: Text(
-                    l10n.mcpCatalogInstalled,
-                    style: AppTextStyles.of(context).bodySmall.copyWith(
-                      fontWeight: FontWeight.w600,
-                      color: cs.primary,
+                  if (listing.description.isNotEmpty) ...[
+                    const SizedBox(height: 4),
+                    Text(
+                      listing.description,
+                      maxLines: 2,
+                      overflow: TextOverflow.ellipsis,
+                      style: AppTextStyles.of(context).bodySmall.copyWith(
+                        color: cs.onSurface.withValues(alpha: 0.65),
+                      ),
                     ),
-                  ),
-                )
-              else
-                FilledButton.tonal(
-                  onPressed: listing.canInstall ? onAdd : null,
-                  child: Text(l10n.mcpCatalogAdd),
+                  ],
+                  if (meta.isNotEmpty) ...[
+                    const SizedBox(height: 6),
+                    Text(
+                      meta.join(' · '),
+                      style: AppTextStyles.of(context).caption.copyWith(
+                        color: cs.onSurface.withValues(alpha: 0.5),
+                      ),
+                    ),
+                  ],
+                ],
+              ),
+            ),
+            const SizedBox(width: 4),
+            if (busy)
+              const Padding(
+                padding: EdgeInsets.all(10),
+                child: SizedBox(
+                  width: 20,
+                  height: 20,
+                  child: CircularProgressIndicator(strokeWidth: 2),
                 ),
-            ],
+              )
+            else if (installed)
+              Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 8),
+                child: Text(
+                  l10n.mcpCatalogInstalled,
+                  style: AppTextStyles.of(context).bodySmall.copyWith(
+                    fontWeight: FontWeight.w600,
+                    color: cs.primary,
+                  ),
+                ),
+              )
+            else
+              FilledButton.tonal(
+                onPressed: listing.canInstall ? onAdd : null,
+                child: Text(l10n.mcpCatalogAdd),
+              ),
+          ],
         ),
       ),
     );

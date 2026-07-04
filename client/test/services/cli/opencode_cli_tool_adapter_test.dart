@@ -32,20 +32,23 @@ void main() {
     ]);
   });
 
-  test('omits --session and --agent when absent; bare model has no provider', () {
-    const member = TeamMemberConfig(
-      id: 'm',
-      name: 'planner',
-      provider: '',
-      model: 'gpt-5',
-      agent: '',
-    );
-    final args = const OpencodeCliToolAdapter().buildArguments(
-      CliLaunchContext(team: team, member: member, workingDirectory: '/work'),
-    );
+  test(
+    'omits --session and --agent when absent; bare model has no provider',
+    () {
+      const member = TeamMemberConfig(
+        id: 'm',
+        name: 'planner',
+        provider: '',
+        model: 'gpt-5',
+        agent: '',
+      );
+      final args = const OpencodeCliToolAdapter().buildArguments(
+        CliLaunchContext(team: team, member: member, workingDirectory: '/work'),
+      );
 
-    expect(args, ['--model', 'gpt-5']);
-  });
+      expect(args, ['--model', 'gpt-5']);
+    },
+  );
 
   test('emits nothing when no model/agent/resume', () {
     const member = TeamMemberConfig(id: 'm', name: 'planner');

@@ -200,7 +200,9 @@ class _SidebarSessionTileState extends State<SidebarSessionTile> {
       case 'pin':
         await _chatCubit?.toggleSessionPin(session.sessionId);
       case 'schedule':
-        final title = session.resolveDisplayTitle(l10n.defaultNewChatSessionTitle);
+        final title = session.resolveDisplayTitle(
+          l10n.defaultNewChatSessionTitle,
+        );
         final tabScope = _tabScopeForSession(session);
         final saved = await AutomationEditorDialog.show(
           context,

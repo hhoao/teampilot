@@ -18,8 +18,7 @@ sealed class McpServerSpec {
     final enabled = spec['enabled'] as bool? ?? true;
     final type = spec['type']?.toString().trim().toLowerCase() ?? '';
 
-    if (_isRemoteType(type) ||
-        (type.isEmpty && _hasRemoteUrl(spec))) {
+    if (_isRemoteType(type) || (type.isEmpty && _hasRemoteUrl(spec))) {
       final url = spec['url']?.toString().trim() ?? '';
       if (url.isEmpty) return null;
       return RemoteMcpServer(
@@ -110,10 +109,17 @@ sealed class McpServerSpec {
   int get hashCode => Object.hash(name, enabled, _payloadHash);
 
   Object? get _payloadHash => switch (this) {
-    StdioMcpServer s =>
-      Object.hash(s.command, Object.hashAll(s.args), Object.hashAll(s.env.entries), s.cwd),
-    RemoteMcpServer r =>
-      Object.hash(r.url, Object.hashAll(r.headers.entries), r.bearerTokenEnvVar),
+    StdioMcpServer s => Object.hash(
+      s.command,
+      Object.hashAll(s.args),
+      Object.hashAll(s.env.entries),
+      s.cwd,
+    ),
+    RemoteMcpServer r => Object.hash(
+      r.url,
+      Object.hashAll(r.headers.entries),
+      r.bearerTokenEnvVar,
+    ),
   };
 }
 

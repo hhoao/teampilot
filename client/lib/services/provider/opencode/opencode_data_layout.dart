@@ -50,12 +50,7 @@ final class OpencodeDataLayout {
       return p.join(xdg, appDirName);
     }
     if (Platform.isMacOS) {
-      return p.join(
-        home,
-        'Library',
-        'Application Support',
-        appDirName,
-      );
+      return p.join(home, 'Library', 'Application Support', appDirName);
     }
     if (Platform.isWindows) {
       final appData =

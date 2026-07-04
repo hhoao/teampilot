@@ -46,38 +46,44 @@ void main() {
     expect(tracker.isBootFrameReady, isTrue);
   });
 
-  test('isBootFrameReady latches and does not revert on later PTY churn',
-      () async {
-    final tracker = TerminalActivityTracker(
-      bootQuietAfter: const Duration(milliseconds: 40),
-    );
-    tracker.reset();
-    tracker.notePtyBytes(Uint8List.fromList('→ prompt\n'.codeUnits));
-    await Future<void>.delayed(const Duration(milliseconds: 50));
-    expect(tracker.isBootFrameReady, isTrue);
+  test(
+    'isBootFrameReady latches and does not revert on later PTY churn',
+    () async {
+      final tracker = TerminalActivityTracker(
+        bootQuietAfter: const Duration(milliseconds: 40),
+      );
+      tracker.reset();
+      tracker.notePtyBytes(Uint8List.fromList('→ prompt\n'.codeUnits));
+      await Future<void>.delayed(const Duration(milliseconds: 50));
+      expect(tracker.isBootFrameReady, isTrue);
 
-    tracker.notePtyBytes(Uint8List.fromList('→ prompt\nspinner\n'.codeUnits));
-    expect(tracker.isBootFrameReady, isTrue);
-  });
+      tracker.notePtyBytes(Uint8List.fromList('→ prompt\nspinner\n'.codeUnits));
+      expect(tracker.isBootFrameReady, isTrue);
+    },
+  );
 
-  test('isBootFrameReady waits for visible content not escape-only quiet',
-      () async {
-    final tracker = TerminalActivityTracker(
-      bootQuietAfter: const Duration(milliseconds: 40),
-    );
-    tracker.reset();
-    // Alternate screen + clear — common cursor startup before TUI paints.
-    tracker.notePtyBytes(
-      Uint8List.fromList([0x1b, 0x5b, 0x3f, 0x31, 0x30, 0x34, 0x39, 0x68]),
-    );
-    tracker.notePtyBytes(Uint8List.fromList([0x1b, 0x5b, 0x32, 0x4a]));
-    await Future<void>.delayed(const Duration(milliseconds: 50));
-    expect(tracker.isBootFrameReady, isFalse);
+  test(
+    'isBootFrameReady waits for visible content not escape-only quiet',
+    () async {
+      final tracker = TerminalActivityTracker(
+        bootQuietAfter: const Duration(milliseconds: 40),
+      );
+      tracker.reset();
+      // Alternate screen + clear — common cursor startup before TUI paints.
+      tracker.notePtyBytes(
+        Uint8List.fromList([0x1b, 0x5b, 0x3f, 0x31, 0x30, 0x34, 0x39, 0x68]),
+      );
+      tracker.notePtyBytes(Uint8List.fromList([0x1b, 0x5b, 0x32, 0x4a]));
+      await Future<void>.delayed(const Duration(milliseconds: 50));
+      expect(tracker.isBootFrameReady, isFalse);
 
-    tracker.notePtyBytes(Uint8List.fromList('Cursor Agent ready\n'.codeUnits));
-    await Future<void>.delayed(const Duration(milliseconds: 50));
-    expect(tracker.isBootFrameReady, isTrue);
-  });
+      tracker.notePtyBytes(
+        Uint8List.fromList('Cursor Agent ready\n'.codeUnits),
+      );
+      await Future<void>.delayed(const Duration(milliseconds: 50));
+      expect(tracker.isBootFrameReady, isTrue);
+    },
+  );
 
   test('whitespace-only tail is not visible content', () async {
     final tracker = TerminalActivityTracker(

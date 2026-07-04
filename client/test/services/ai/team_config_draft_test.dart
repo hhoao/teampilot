@@ -35,7 +35,8 @@ void main() {
   });
 
   test('ignores any model/effort/cli the model emits', () {
-    const json = '{"members":[{"name":"team-lead"},'
+    const json =
+        '{"members":[{"name":"team-lead"},'
         '{"name":"Dev","model":"opus","effort":"high","cli":"codex"}]}';
     final draft = parseTeamConfigDraft(json, joinedAt: 1);
     final dev = draft.members[1];
@@ -52,7 +53,8 @@ void main() {
   });
 
   test('keeps the first lead and demotes duplicate leads to workers', () {
-    const json = '{"members":[{"name":"team-lead","role":"a"},'
+    const json =
+        '{"members":[{"name":"team-lead","role":"a"},'
         '{"name":"team-lead","role":"b"}]}';
     final draft = parseTeamConfigDraft(json, joinedAt: 1);
     final leads = draft.members
@@ -64,7 +66,8 @@ void main() {
   });
 
   test('a non-lead member keeps its own id alongside the injected lead', () {
-    const json = '{"members":[{"name":"team-lead","role":"a"},'
+    const json =
+        '{"members":[{"name":"team-lead","role":"a"},'
         '{"name":"Second Lead","role":"b"}]}';
     final draft = parseTeamConfigDraft(json, joinedAt: 1);
     expect(
@@ -76,7 +79,8 @@ void main() {
   });
 
   test('skips members without a name', () {
-    const json = '{"members":[{"name":"team-lead"},{"role":"dev"},'
+    const json =
+        '{"members":[{"name":"team-lead"},{"role":"dev"},'
         '{"name":"Ok","role":"dev"}]}';
     final draft = parseTeamConfigDraft(json, joinedAt: 1);
     expect(draft.members.map((m) => m.name), contains('Ok'));

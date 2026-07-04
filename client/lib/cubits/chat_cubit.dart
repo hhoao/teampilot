@@ -194,7 +194,15 @@ class ChatCubit extends Cubit<ChatState>
   // ===== SessionLaunchHost =====
 
   @override
-  void applyState(ChatState next) => emit(next);
+  void applyState(ChatState next) {
+    final workspaceId = _tabStore.activeWorkspaceId;
+    if (next.composeActive) {
+      _tabStore.setComposeActive(workspaceId, true);
+    } else {
+      _tabStore.setComposeActive(workspaceId, false);
+    }
+    emit(next);
+  }
 
   @override
   void emitSnapshot(ChatDataSnapshot snapshot) => _emitSnapshot(snapshot);
@@ -404,7 +412,9 @@ class ChatCubit extends Cubit<ChatState>
     int desiredIndex, {
     ChatDataSnapshot? snapshot,
   }) {
+    final workspaceId = _tabStore.activeWorkspaceId;
     if (_tabStore.isEmpty) {
+      _tabStore.setComposeActive(workspaceId, true);
       final empty = snapshot;
       emit(
         state.copyWith(
@@ -413,6 +423,7 @@ class ChatCubit extends Cubit<ChatState>
           clearActiveSessionId: true,
           clearSessionConnectingId: true,
           selectedMemberId: '',
+          composeActive: true,
           workspaces: empty?.workspaces,
           sessions: empty?.sessions,
           visibleWorkspaces: empty?.visibleWorkspaces,
@@ -423,6 +434,24 @@ class ChatCubit extends Cubit<ChatState>
       return;
     }
     final index = desiredIndex.clamp(0, _tabStore.length - 1);
+    final composeActive = _tabStore.isComposeActive(workspaceId);
+    if (composeActive) {
+      emit(
+        state.copyWith(
+          tabs: _tabStore.toInfos(),
+          activeTabIndex: index,
+          clearActiveSessionId: true,
+          selectedMemberId: '',
+          composeActive: true,
+          workspaces: snapshot?.workspaces,
+          sessions: snapshot?.sessions,
+          visibleWorkspaces: snapshot?.visibleWorkspaces,
+          visibleSessions: snapshot?.visibleSessions,
+        ),
+      );
+      _pushPresenceTarget();
+      return;
+    }
     final tab = _tabStore.tabs[index];
     emit(
       state.copyWith(
@@ -430,6 +459,7 @@ class ChatCubit extends Cubit<ChatState>
         activeTabIndex: index,
         activeSessionId: tab.info.id,
         selectedMemberId: tab.selectedMemberId,
+        composeActive: false,
         workspaces: snapshot?.workspaces,
         sessions: snapshot?.sessions,
         visibleWorkspaces: snapshot?.visibleWorkspaces,
@@ -799,8 +829,14 @@ class ChatCubit extends Cubit<ChatState>
     unawaited(_tearDownTab(tab));
     _busCoordinator.maybeStopIdleWatch();
     if (_tabStore.isEmpty) {
+      _tabStore.setComposeActive(_tabStore.activeWorkspaceId, true);
       emit(
-        state.copyWith(tabs: [], activeTabIndex: 0, clearActiveSessionId: true),
+        state.copyWith(
+          tabs: [],
+          activeTabIndex: 0,
+          clearActiveSessionId: true,
+          composeActive: true,
+        ),
       );
     } else {
       final newIdx = state.activeTabIndex >= _tabStore.length
@@ -813,6 +849,7 @@ class ChatCubit extends Cubit<ChatState>
           activeTabIndex: newIdx,
           activeSessionId: nextTab.info.id,
           selectedMemberId: nextTab.selectedMemberId,
+          composeActive: false,
         ),
       );
     }
@@ -853,12 +890,14 @@ class ChatCubit extends Cubit<ChatState>
     }
     _busCoordinator.maybeStopIdleWatch();
     final kept = _tabStore.tabs.single;
+    _tabStore.setComposeActive(_tabStore.activeWorkspaceId, false);
     emit(
       state.copyWith(
         tabs: _tabStore.toInfos(),
         activeTabIndex: 0,
         activeSessionId: kept.info.id,
         selectedMemberId: kept.selectedMemberId,
+        composeActive: false,
       ),
     );
     _pushPresenceTarget();
@@ -872,12 +911,14 @@ class ChatCubit extends Cubit<ChatState>
     }
     _busCoordinator.maybeStopIdleWatch();
     final active = _activeTab;
+    _tabStore.setComposeActive(_tabStore.activeWorkspaceId, false);
     emit(
       state.copyWith(
         tabs: _tabStore.toInfos(),
         activeTabIndex: state.activeTabIndex.clamp(0, _tabStore.length - 1),
         activeSessionId: active?.info.id,
         selectedMemberId: active?.selectedMemberId ?? '',
+        composeActive: false,
       ),
     );
     _pushPresenceTarget();
@@ -886,11 +927,59 @@ class ChatCubit extends Cubit<ChatState>
   void selectTab(int index) {
     if (index < 0 || index >= _tabStore.length) return;
     final tab = _tabStore.tabs[index];
+    _tabStore.setComposeActive(_tabStore.activeWorkspaceId, false);
     emit(
       state.copyWith(
         activeTabIndex: index,
         activeSessionId: tab.info.id,
         selectedMemberId: tab.selectedMemberId,
+        composeActive: false,
+      ),
+    );
+    _pushPresenceTarget();
+  }
+
+  /// Shows the compose landing for [workspaceId] without closing open tabs.
+  void enterComposeMode(String workspaceId) {
+    final wasActive = _tabStore.activeWorkspaceId == workspaceId;
+    if (!wasActive) {
+      _tabStore.setComposeActive(workspaceId, true);
+      return;
+    }
+    _tabStore.setComposeActive(workspaceId, true);
+    final index = state.activeTabIndex.clamp(
+      0,
+      _tabStore.length == 0 ? 0 : _tabStore.length - 1,
+    );
+    emit(
+      state.copyWith(
+        activeTabIndex: index,
+        clearActiveSessionId: true,
+        selectedMemberId: '',
+        composeActive: true,
+      ),
+    );
+    _pushPresenceTarget();
+  }
+
+  /// Leaves compose mode and selects the remembered session tab index.
+  void exitComposeMode() {
+    final workspaceId = _tabStore.activeWorkspaceId;
+    if (!_tabStore.isComposeActive(workspaceId)) return;
+    _tabStore.setComposeActive(workspaceId, false);
+    if (_tabStore.isEmpty) {
+      _tabStore.setComposeActive(workspaceId, true);
+      emit(state.copyWith(composeActive: true));
+      return;
+    }
+    final index = state.activeTabIndex.clamp(0, _tabStore.length - 1);
+    final tab = _tabStore.tabs[index];
+    emit(
+      state.copyWith(
+        activeTabIndex: index,
+        activeSessionId: tab.info.id,
+        selectedMemberId: tab.selectedMemberId,
+        composeActive: false,
       ),
     );
     _pushPresenceTarget();

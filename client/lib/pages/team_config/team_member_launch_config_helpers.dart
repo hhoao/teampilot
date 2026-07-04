@@ -75,10 +75,7 @@ String memberLaunchConfigTypeLabel({
   required List<CliPreset> presets,
 }) {
   if (member.inheritsTeamPreset) {
-    final bundle = resolveTeamLaunchBundle(
-      team: team,
-      globalPresets: presets,
-    );
+    final bundle = resolveTeamLaunchBundle(team: team, globalPresets: presets);
     if (bundle.isConfigured) {
       return l10n.memberPresetInheritTeam;
     }
@@ -108,8 +105,7 @@ String _rawConfigLine({
     globalPresets: presets,
   );
   final def = registry.tryGet(resolved.cli);
-  final cliLabel =
-      def == null ? resolved.cli.value : cliDisplayName(def, l10n);
+  final cliLabel = def == null ? resolved.cli.value : cliDisplayName(def, l10n);
 
   final providerName = provider?.name.trim() ?? resolved.provider.trim();
   final modelLabel = resolved.model.trim();

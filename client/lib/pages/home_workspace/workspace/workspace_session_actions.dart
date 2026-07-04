@@ -169,9 +169,9 @@ void showPersonalLaunchBlockedToast(BuildContext context) {
 
 void _syncWorktreeForSession(BuildContext context, AppSession session) {
   try {
-    context
-        .read<WorktreeCubit>()
-        .syncCurrentForSessionPath(session.firstFolderPath);
+    context.read<WorktreeCubit>().syncCurrentForSessionPath(
+      session.firstFolderPath,
+    );
   } on ProviderNotFoundException {
     // Outside the workspace split pane — no worktree scope to sync.
   }
@@ -203,13 +203,17 @@ Future<void> createAndOpenWorkspaceConversation(
   );
 }
 
-/// Closes open session tabs for [tabScopeId] so the compose landing is shown.
+/// Opens the compose landing for [tabScopeId] without closing open session tabs.
 Future<void> showWorkspaceComposeLanding(
   BuildContext context,
   Workspace workspace, {
   required String tabScopeId,
 }) async {
-  context.read<ChatCubit>().closeTabsForWorkspace(tabScopeId);
+  final chat = context.read<ChatCubit>();
+  if (chat.tabStore.activeWorkspaceId != tabScopeId) {
+    chat.setActiveWorkspace(tabScopeId);
+  }
+  chat.enterComposeMode(tabScopeId);
 }
 
 /// Creates a conversation from the compose landing, connects like automation
@@ -229,8 +233,7 @@ Future<void> submitWorkspaceLandingMessage(
   final chatCubit = context.read<ChatCubit>();
   final repo = context.read<SessionRepository>();
   final l10n = context.l10n;
-  final team =
-      isPersonal ? null : _teamProfileById(context, sessionTeamId);
+  final team = isPersonal ? null : _teamProfileById(context, sessionTeamId);
 
   if (!_canLaunchWorkspaceSession(
     context,
@@ -329,9 +332,7 @@ Future<AppSession?> _sessionById({
       .firstOrNull;
   if (fromState != null) return fromState;
   final loaded = await repo.loadSessionsForWorkspace(workspaceId);
-  return loaded
-      .where((s) => s.sessionId == sessionId)
-      .firstOrNull;
+  return loaded.where((s) => s.sessionId == sessionId).firstOrNull;
 }
 
 Future<String> _resolveLandingMemberId({
@@ -365,18 +366,9 @@ Future<bool> _ensureLandingSessionConnected(
   required SessionRepository repo,
 }) async {
   final chatCubit = context.read<ChatCubit>();
-  final openStatus = await chatCubit.requestOpenSession(
-    SessionOpenRequest(
-      session: session,
-      workspace: workspace,
-      team: team,
-      member: isPersonal ? null : _teamLead(team),
-      repo: repo,
-      connectImmediately: true,
-    ),
-  );
-  if (openStatus != SessionOpenStatus.opened) return false;
-
+  // requestCreateAndOpenSession already staged the tab and scheduled async
+  // persist+connect. Re-opening here races that path and can connect with the
+  // provisional session (empty cliTeamName) before disk persistence finishes.
   try {
     await chatCubit.busCoordinator
         .ensureMemberInputReady(session.sessionId, memberId)
@@ -400,8 +392,7 @@ Future<SessionOpenStatus?> _requestCreateWorkspaceConversation(
   final chatCubit = context.read<ChatCubit>();
   final repo = context.read<SessionRepository>();
   final l10n = context.l10n;
-  final team =
-      isPersonal ? null : _teamProfileById(context, sessionTeamId);
+  final team = isPersonal ? null : _teamProfileById(context, sessionTeamId);
 
   if (!_canLaunchWorkspaceSession(
     context,
@@ -462,16 +453,15 @@ Future<void> createSessionInWorktree(
   String sessionTeamId = '',
   String personalIdentityId = '',
   CliTool? cli,
-}) =>
-    createAndOpenWorkspaceConversation(
-      context,
-      workspace,
-      isPersonal: isPersonal,
-      sessionTeamId: sessionTeamId,
-      personalIdentityId: personalIdentityId,
-      cli: cli,
-      workingDirectory: worktreePath,
-    );
+}) => createAndOpenWorkspaceConversation(
+  context,
+  workspace,
+  isPersonal: isPersonal,
+  sessionTeamId: sessionTeamId,
+  personalIdentityId: personalIdentityId,
+  cli: cli,
+  workingDirectory: worktreePath,
+);
 
 /// CLI of the opened personal identity's active preset, or `null` when
 /// unavailable (e.g. no preset selected yet). Used to pin a new personal
@@ -479,8 +469,9 @@ Future<void> createSessionInWorktree(
 /// [personalIdentityId] is empty or unknown.
 CliTool? _activePresetCli(BuildContext context, String personalIdentityId) {
   final cubit = context.read<LaunchProfileCubit>();
-  final byId =
-      personalIdentityId.isEmpty ? null : cubit.state.byId(personalIdentityId);
+  final byId = personalIdentityId.isEmpty
+      ? null
+      : cubit.state.byId(personalIdentityId);
   final personal = byId is PersonalProfile ? byId : cubit.activePersonal;
   final activePresetId = personal?.activePresetId;
   if (activePresetId == null || activePresetId.isEmpty) return null;

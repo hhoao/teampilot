@@ -42,10 +42,10 @@ void main() {
         postFrameScheduler: postFrame.scheduler,
         terminalSessionFactory:
             ({required String executable, int scrollbackLines = 10000}) {
-          final s = _RunningFakeSession(executable: executable);
-          created.add(s);
-          return s;
-        },
+              final s = _RunningFakeSession(executable: executable);
+              created.add(s);
+              return s;
+            },
       );
     });
 
@@ -58,7 +58,9 @@ void main() {
     });
 
     test('send lights working; screen going quiet clears it', () async {
-      final workspace = await repo.createWorkspace([WorkspaceFolder(path: '/tmp')]);
+      final workspace = await repo.createWorkspace([
+        WorkspaceFolder(path: '/tmp'),
+      ]);
       final session = await repo.createSession(workspace.workspaceId);
       await cubit.loadWorkspaceData(repo);
 
@@ -100,7 +102,9 @@ void main() {
     });
 
     test('real 1s idle-watch timer is running for a simple-mode tab', () async {
-      final workspace = await repo.createWorkspace([WorkspaceFolder(path: '/tmp')]);
+      final workspace = await repo.createWorkspace([
+        WorkspaceFolder(path: '/tmp'),
+      ]);
       final session = await repo.createSession(workspace.workspaceId);
       await cubit.loadWorkspaceData(repo);
 

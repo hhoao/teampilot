@@ -1,4 +1,4 @@
-﻿import 'dart:convert';
+import 'dart:convert';
 
 import 'package:flutter/material.dart';
 import 'package:teampilot/theme/app_icon_sizes.dart';
@@ -164,10 +164,9 @@ class _McpFormPageState extends State<McpFormPage> {
               Expanded(
                 child: Text(
                   _isEditing ? l10n.mcpEdit : l10n.mcpAddTitle,
-                  style: AppTextStyles.of(context).body.copyWith(
-                    fontWeight: FontWeight.w800,
-                    color: textBase,
-                  ),
+                  style: AppTextStyles.of(
+                    context,
+                  ).body.copyWith(fontWeight: FontWeight.w800, color: textBase),
                 ),
               ),
               FilledButton.icon(
@@ -178,7 +177,10 @@ class _McpFormPageState extends State<McpFormPage> {
                         height: 16,
                         child: CircularProgressIndicator(strokeWidth: 2),
                       )
-                    : Icon(_isEditing ? Icons.save : Icons.add, size: context.appIconSizes.md),
+                    : Icon(
+                        _isEditing ? Icons.save : Icons.add,
+                        size: context.appIconSizes.md,
+                      ),
                 label: Text(_isEditing ? l10n.save : l10n.mcpFormSubmitAdd),
               ),
               IconButton(

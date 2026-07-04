@@ -66,16 +66,16 @@ class RuntimeContext {
   /// Alias for [appDataRoot] (the TeamPilot app-data root for this context).
   String get teampilotRoot => appDataRoot;
 
-  RemoteFileStore? get remoteFileStore =>
-      filesystem is SftpFilesystem ? (filesystem as SftpFilesystem).store : null;
+  RemoteFileStore? get remoteFileStore => filesystem is SftpFilesystem
+      ? (filesystem as SftpFilesystem).store
+      : null;
 
   String get launchProfilesDir =>
       AppPaths.launchProfilesDirForTeampilotRoot(appDataRoot);
   String get skillsRoot => AppPaths.skillsDirForTeampilotRoot(appDataRoot);
   String get skillBackupsDir =>
       AppPaths.skillBackupsDirForTeampilotRoot(appDataRoot);
-  String get workspaceDir =>
-      AppPaths.workspaceDirForTeampilotRoot(appDataRoot);
+  String get workspaceDir => AppPaths.workspaceDirForTeampilotRoot(appDataRoot);
   String get skillReposConfigPath =>
       AppPaths.skillReposConfigPathForTeampilotRoot(appDataRoot);
   String get pluginsRoot => AppPaths.pluginsDirForTeampilotRoot(appDataRoot);

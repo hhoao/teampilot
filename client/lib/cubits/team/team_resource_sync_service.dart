@@ -65,13 +65,15 @@ class TeamResourceSyncService {
   final McpRepository _mcpRepository;
   final InstalledPluginsLoader? _installedPluginsLoader;
   final InstalledMcpLoader? _installedMcpLoader;
-  final Future<List<McpServer>> Function(String teamId) _extensionMcpContributor;
+  final Future<List<McpServer>> Function(String teamId)
+  _extensionMcpContributor;
 
   // ===== Cross-team removal =====
 
   Future<void> removeMcpFromAllTeams(String mcpId) async {
     final selected = _h.state.selectedTeam;
-    final syncNeeded = selected != null && selected.mcpServerIds.contains(mcpId);
+    final syncNeeded =
+        selected != null && selected.mcpServerIds.contains(mcpId);
     var changed = false;
     final teams = [
       for (final team in _h.state.teams)
@@ -235,7 +237,8 @@ class TeamResourceSyncService {
     try {
       final catalog =
           installed ??
-          await (_installedPluginsLoader?.call() ?? _pluginRepository.loadAll());
+          await (_installedPluginsLoader?.call() ??
+              _pluginRepository.loadAll());
 
       var conflicts = _h.state.pluginSyncConflicts;
       for (final teamId in ids) {

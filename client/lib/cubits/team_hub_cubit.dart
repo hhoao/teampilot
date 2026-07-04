@@ -194,7 +194,8 @@ class TeamHubCubit extends Cubit<TeamHubState> {
     emit(state.copyWith(cloningKeys: {...state.cloningKeys, team.key}));
     try {
       final result = await _cloneTeam(team);
-      final installed = await _loadInstalledDepIds?.call() ?? state.installedDepIds;
+      final installed =
+          await _loadInstalledDepIds?.call() ?? state.installedDepIds;
       emit(state.copyWith(installedDepIds: installed));
       return result;
     } finally {

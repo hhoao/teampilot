@@ -19,16 +19,17 @@ class MailboxPanel extends StatelessWidget {
   final String cwd;
 
   void _jumpTo(BuildContext context, BusFeedEntry entry) {
-    final targetId =
-        entry.from == TeamBus.userSenderId ? entry.to : entry.from;
+    final targetId = entry.from == TeamBus.userSenderId ? entry.to : entry.from;
     if (targetId == TeamBus.userSenderId || targetId == '*') return;
     final matches = team.members.where((m) => m.id == targetId);
     if (matches.isEmpty) return;
-    unawaited(context.read<ChatCubit>().openMemberTab(
-          team,
-          matches.first,
-          workspaceCwd: cwd,
-        ));
+    unawaited(
+      context.read<ChatCubit>().openMemberTab(
+        team,
+        matches.first,
+        workspaceCwd: cwd,
+      ),
+    );
   }
 
   @override
@@ -38,8 +39,10 @@ class MailboxPanel extends StatelessWidget {
     final entries = context.watch<MailboxCubit>().state.entries;
     if (entries.isEmpty) {
       return Center(
-        child: Text(l10n.mailboxEmpty,
-            style: TextStyle(color: cs.onSurfaceVariant)),
+        child: Text(
+          l10n.mailboxEmpty,
+          style: TextStyle(color: cs.onSurfaceVariant),
+        ),
       );
     }
     return ListView.builder(
@@ -57,10 +60,15 @@ class MailboxPanel extends StatelessWidget {
               size: 18,
               color: e.isUnread ? cs.primary : cs.onSurfaceVariant,
             ),
-            title: Text('${e.from} → ${e.to}',
-                style: Theme.of(context).textTheme.labelSmall),
-            subtitle:
-                Text(e.content, maxLines: 2, overflow: TextOverflow.ellipsis),
+            title: Text(
+              '${e.from} → ${e.to}',
+              style: Theme.of(context).textTheme.labelSmall,
+            ),
+            subtitle: Text(
+              e.content,
+              maxLines: 2,
+              overflow: TextOverflow.ellipsis,
+            ),
             onTap: () => _jumpTo(context, e),
           ),
         );

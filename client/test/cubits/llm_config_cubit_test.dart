@@ -35,7 +35,10 @@ void main() {
     if (await tmp.exists()) await tmp.delete(recursive: true);
   });
 
-  Future<File> writeConfig(String relativePath, Map<String, Object?> json) async {
+  Future<File> writeConfig(
+    String relativePath,
+    Map<String, Object?> json,
+  ) async {
     final file = File('${tmp.path}/$relativePath');
     await file.parent.create(recursive: true);
     await file.writeAsString(jsonEncode(json));
@@ -73,11 +76,13 @@ void main() {
   test('load uses override path when one is stored', () async {
     final file = await writeConfig('custom/llm.json', {
       'providers': {
-        'foo': {'name': 'foo', 'apiKey': 'secret'}
+        'foo': {'name': 'foo', 'apiKey': 'secret'},
       },
     });
     final prefs = await SharedPreferences.getInstance();
-    await SharedPrefsAppSettingsRepository(prefs).saveLlmConfigPathOverride(file.path);
+    await SharedPrefsAppSettingsRepository(
+      prefs,
+    ).saveLlmConfigPathOverride(file.path);
 
     final cubit = LlmConfigCubit(
       appSettings: SharedPrefsAppSettingsRepository(prefs),
@@ -95,13 +100,13 @@ void main() {
   test('setConfigPath persists, reloads, and reflects new providers', () async {
     final fileA = await writeConfig('a/llm.json', {
       'providers': {
-        'a': {'name': 'a', 'apiKey': 'k'}
-      }
+        'a': {'name': 'a', 'apiKey': 'k'},
+      },
     });
     final fileB = await writeConfig('b/llm.json', {
       'providers': {
-        'b': {'name': 'b', 'apiKey': 'k'}
-      }
+        'b': {'name': 'b', 'apiKey': 'k'},
+      },
     });
 
     final prefs = await SharedPreferences.getInstance();
@@ -127,7 +132,9 @@ void main() {
 
   test('setConfigPath(null) reverts to default path', () async {
     final prefs = await SharedPreferences.getInstance();
-    await SharedPrefsAppSettingsRepository(prefs).saveLlmConfigPathOverride('/some/path');
+    await SharedPrefsAppSettingsRepository(
+      prefs,
+    ).saveLlmConfigPathOverride('/some/path');
 
     final cubit = LlmConfigCubit(
       appSettings: SharedPrefsAppSettingsRepository(prefs),
@@ -136,7 +143,10 @@ void main() {
 
     expect(cubit.state.pathSource, LlmConfigPathSource.defaultPath);
     expect(cubit.state.configPathOverride, '');
-    expect(await SharedPrefsAppSettingsRepository(prefs).loadLlmConfigPathOverride(), isNull);
+    expect(
+      await SharedPrefsAppSettingsRepository(prefs).loadLlmConfigPathOverride(),
+      isNull,
+    );
   });
 
   test('renameProvider moves key and updates model references', () async {
@@ -209,11 +219,13 @@ void main() {
     );
 
     final fileA = File(p.join(homeA.path, 'llm.json'));
-    await fileA.writeAsString(jsonEncode({
-      'providers': {
-        'a': {'name': 'a', 'apiKey': 'k'},
-      },
-    }));
+    await fileA.writeAsString(
+      jsonEncode({
+        'providers': {
+          'a': {'name': 'a', 'apiKey': 'k'},
+        },
+      }),
+    );
 
     final prefs = await SharedPreferences.getInstance();
     await SharedPrefsAppSettingsRepository(

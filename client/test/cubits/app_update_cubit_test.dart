@@ -6,10 +6,8 @@ import 'package:teampilot/repositories/app_settings_repository.dart';
 import 'package:teampilot/services/app/app_update_service.dart';
 
 class _FakeUpdateService extends AppUpdateService {
-  _FakeUpdateService({
-    required this.result,
-    this.throwOnCheck = false,
-  }) : versionLabel = '2.1.10';
+  _FakeUpdateService({required this.result, this.throwOnCheck = false})
+    : versionLabel = '2.1.10';
 
   final AppUpdateCheckResult result;
   final String versionLabel;
@@ -20,7 +18,9 @@ class _FakeUpdateService extends AppUpdateService {
   Future<String> currentVersionLabel() async => versionLabel;
 
   @override
-  Future<AppUpdateCheckResult> checkForUpdates({bool? preferAndroidArm64}) async {
+  Future<AppUpdateCheckResult> checkForUpdates({
+    bool? preferAndroidArm64,
+  }) async {
     checkCalls++;
     if (throwOnCheck) {
       throw AppUpdateException('network down');
@@ -43,7 +43,9 @@ void main() {
   group('AppUpdateCubit.autoCheckOnStartup', () {
     test('prompts when an update is available and not skipped', () async {
       final cubit = AppUpdateCubit(
-        service: _FakeUpdateService(result: AppUpdateAvailable(_release('2.2.0'))),
+        service: _FakeUpdateService(
+          result: AppUpdateAvailable(_release('2.2.0')),
+        ),
         settings: InMemoryAppSettingsRepository(),
       );
       addTearDown(cubit.close);
@@ -61,9 +63,7 @@ void main() {
       );
       final cubit = AppUpdateCubit(
         service: service,
-        settings: InMemoryAppSettingsRepository(
-          autoCheckUpdatesEnabled: false,
-        ),
+        settings: InMemoryAppSettingsRepository(autoCheckUpdatesEnabled: false),
       );
       addTearDown(cubit.close);
 
@@ -75,7 +75,9 @@ void main() {
 
     test('does not prompt for a version the user skipped', () async {
       final cubit = AppUpdateCubit(
-        service: _FakeUpdateService(result: AppUpdateAvailable(_release('2.2.0'))),
+        service: _FakeUpdateService(
+          result: AppUpdateAvailable(_release('2.2.0')),
+        ),
         settings: InMemoryAppSettingsRepository(skippedUpdateVersion: '2.2.0'),
       );
       addTearDown(cubit.close);
@@ -89,7 +91,9 @@ void main() {
 
     test('prompts for a version newer than the skipped one', () async {
       final cubit = AppUpdateCubit(
-        service: _FakeUpdateService(result: AppUpdateAvailable(_release('2.3.0'))),
+        service: _FakeUpdateService(
+          result: AppUpdateAvailable(_release('2.3.0')),
+        ),
         settings: InMemoryAppSettingsRepository(skippedUpdateVersion: '2.2.0'),
       );
       addTearDown(cubit.close);
@@ -145,27 +149,34 @@ void main() {
       expect(await settings.loadAutoCheckUpdatesEnabled(), isFalse);
     });
 
-    test('skipPromptedVersion clears the prompt and persists the version', () async {
-      final settings = InMemoryAppSettingsRepository();
-      final cubit = AppUpdateCubit(
-        service: _FakeUpdateService(result: AppUpdateAvailable(_release('2.2.0'))),
-        settings: settings,
-      );
-      addTearDown(cubit.close);
+    test(
+      'skipPromptedVersion clears the prompt and persists the version',
+      () async {
+        final settings = InMemoryAppSettingsRepository();
+        final cubit = AppUpdateCubit(
+          service: _FakeUpdateService(
+            result: AppUpdateAvailable(_release('2.2.0')),
+          ),
+          settings: settings,
+        );
+        addTearDown(cubit.close);
 
-      await cubit.autoCheckOnStartup();
-      expect(cubit.state.promptRelease, isNotNull);
+        await cubit.autoCheckOnStartup();
+        expect(cubit.state.promptRelease, isNotNull);
 
-      await cubit.skipPromptedVersion();
+        await cubit.skipPromptedVersion();
 
-      expect(cubit.state.promptRelease, isNull);
-      expect(cubit.state.skippedVersion, '2.2.0');
-      expect(await settings.loadSkippedUpdateVersion(), '2.2.0');
-    });
+        expect(cubit.state.promptRelease, isNull);
+        expect(cubit.state.skippedVersion, '2.2.0');
+        expect(await settings.loadSkippedUpdateVersion(), '2.2.0');
+      },
+    );
 
     test('consumePrompt clears the one-shot signal only', () async {
       final cubit = AppUpdateCubit(
-        service: _FakeUpdateService(result: AppUpdateAvailable(_release('2.2.0'))),
+        service: _FakeUpdateService(
+          result: AppUpdateAvailable(_release('2.2.0')),
+        ),
         settings: InMemoryAppSettingsRepository(),
       );
       addTearDown(cubit.close);

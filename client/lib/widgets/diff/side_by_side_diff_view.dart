@@ -186,8 +186,11 @@ class _SideBySideDiffViewState extends State<SideBySideDiffView> {
   }
 
   Widget _ribbonGap(ColorScheme cs, DiffColors colors, CodeEditorStyle style) {
-    final divider =
-        VerticalDivider(width: 1, thickness: 1, color: cs.outlineVariant);
+    final divider = VerticalDivider(
+      width: 1,
+      thickness: 1,
+      color: cs.outlineVariant,
+    );
     final lineHeight = _lineHeight(style);
     return Row(
       children: [
@@ -234,17 +237,18 @@ class _SideBySideDiffViewState extends State<SideBySideDiffView> {
       wordWrap: false,
       style: style,
       lineDecorations: decorations,
-      indicatorBuilder: (context, editingController, chunkController, notifier) {
-        return DefaultCodeLineNumber(
-          controller: editingController,
-          notifier: notifier,
-          customLineIndex2Text: (lineIndex) {
-            if (lineIndex < 0 || lineIndex >= numbers.length) return '';
-            final no = numbers[lineIndex];
-            return no == null ? '' : '$no';
+      indicatorBuilder:
+          (context, editingController, chunkController, notifier) {
+            return DefaultCodeLineNumber(
+              controller: editingController,
+              notifier: notifier,
+              customLineIndex2Text: (lineIndex) {
+                if (lineIndex < 0 || lineIndex >= numbers.length) return '';
+                final no = numbers[lineIndex];
+                return no == null ? '' : '$no';
+              },
+            );
           },
-        );
-      },
     );
   }
 }

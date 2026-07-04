@@ -21,10 +21,7 @@ void main() {
     });
 
     test('rejects remote file:// host', () {
-      expect(
-        TerminalUriOpener.fixup('file://other-host/tmp/a.txt'),
-        isNull,
-      );
+      expect(TerminalUriOpener.fixup('file://other-host/tmp/a.txt'), isNull);
     });
 
     test('wraps bare absolute POSIX path as file URI', () {

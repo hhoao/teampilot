@@ -155,7 +155,6 @@ class _SessionControlsState extends State<_SessionControls> {
     await _cubit!.setDefaultSshWorkingDirectory('');
   }
 
-
   @override
   Widget build(BuildContext context) {
     final l10n = context.l10n;
@@ -192,7 +191,8 @@ class _SessionControlsState extends State<_SessionControls> {
                             decoration: const InputDecoration(
                               hintText: '~/work/workspace',
                               hintMaxLines: 1,
-                              floatingLabelBehavior: FloatingLabelBehavior.never,
+                              floatingLabelBehavior:
+                                  FloatingLabelBehavior.never,
                             ),
                             onChanged: (_) => _scheduleDebouncedSshCwdPersist(),
                             onSubmitted: (_) => _flushSshCwdPersist(),
@@ -316,8 +316,7 @@ class _SessionControlsSnapshot {
       sshUseLoginShell: preferences.sshUseLoginShell,
       terminalScrollbackLines: preferences.terminalScrollbackLines,
       terminalLinkClickOpensInApp: preferences.terminalLinkClickOpensInApp,
-      autoLaunchAllMembersOnConnect:
-          preferences.autoLaunchAllMembersOnConnect,
+      autoLaunchAllMembersOnConnect: preferences.autoLaunchAllMembersOnConnect,
       scopeSessionsToSelectedTeam: preferences.scopeSessionsToSelectedTeam,
       notifyOnSessionIdle: preferences.notifyOnSessionIdle,
     );

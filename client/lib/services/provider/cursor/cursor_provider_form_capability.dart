@@ -2,7 +2,8 @@ import '../../../models/app_provider_config.dart';
 import '../../../models/provider_presets/cursor_provider_presets.dart';
 import '../passthrough_provider_form_capability.dart';
 
-final class CursorProviderFormCapability extends PassthroughProviderFormCapability {
+final class CursorProviderFormCapability
+    extends PassthroughProviderFormCapability {
   const CursorProviderFormCapability();
 
   @override

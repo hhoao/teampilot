@@ -6,7 +6,11 @@ sealed class BusObservation {
 
 /// 消息成功路由到某成员信箱。
 class MessageRouted extends BusObservation {
-  const MessageRouted({required this.messageId, required this.to, required this.from});
+  const MessageRouted({
+    required this.messageId,
+    required this.to,
+    required this.from,
+  });
   final String messageId;
   final String to;
   final String from;
@@ -14,7 +18,11 @@ class MessageRouted extends BusObservation {
 
 /// 消息被丢弃(超 hop / 目标未知)。
 class MessageDropped extends BusObservation {
-  const MessageDropped({required this.messageId, required this.reason, this.to});
+  const MessageDropped({
+    required this.messageId,
+    required this.reason,
+    this.to,
+  });
   final String messageId;
   final String reason;
   final String? to;

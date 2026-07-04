@@ -106,6 +106,7 @@ class TerminalSession implements TerminalTextSink {
     _userTurnActive = true;
     activityTracker.latchTurnQuietBaseline();
   }
+
   void markUserTurnIdle() => _userTurnActive = false;
   TerminalTransport? _transport;
   var _launchPhase = _LaunchPhase.idle;
@@ -919,7 +920,8 @@ class TerminalSession implements TerminalTextSink {
     Duration? pasteSettleDelay,
   }) {
     markUserTurnStarted();
-    final delay = pasteSettleDelay ??
+    final delay =
+        pasteSettleDelay ??
         ((_runtimeTarget?.namespace.isSsh ?? false)
             ? const Duration(milliseconds: 500)
             : _fullScreenSubmitDelay);

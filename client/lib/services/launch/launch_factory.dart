@@ -19,7 +19,8 @@ SessionConnectOrchestrator buildSessionConnectOrchestrator({
   required CliToolRegistry registry,
   required SshClientFactory sshClientFactory,
   required SshProfile? Function(String profileId) profileById,
-  required Future<RuntimeContext> Function(RuntimeTarget target) contextForTarget,
+  required Future<RuntimeContext> Function(RuntimeTarget target)
+  contextForTarget,
   required RuntimeContext Function() homeContext,
   required RuntimeTarget Function() homeTarget,
   required Future<bool> Function(String targetId) isCredentialOptIn,

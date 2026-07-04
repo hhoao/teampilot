@@ -10,6 +10,7 @@ import '../../models/workspace_topology.dart';
 import '../../models/runtime_target.dart';
 import '../../utils/workspace_display_name.dart';
 import 'home_workspace_tab_scope.dart';
+
 String workspaceTabDisplayLabel({
   required AppLocalizations l10n,
   required Workspace workspace,
@@ -69,7 +70,9 @@ String formatWorkspaceTabTooltip({
 
 /// Opens [workspace] in a title-bar tab and navigates directly.
 Future<void> openWorkspace(BuildContext context, Workspace workspace) async {
-  await context.read<ChatCubit>().ensureSessionsForWorkspace(workspace.workspaceId);
+  await context.read<ChatCubit>().ensureSessionsForWorkspace(
+    workspace.workspaceId,
+  );
   if (!context.mounted) return;
   HomeTabScope.openInTab(context, workspace.workspaceId);
   context.go('/home-v2/workspace/${workspace.workspaceId}');

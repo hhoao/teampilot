@@ -3,26 +3,29 @@ import 'package:teampilot/services/cli/registry/capabilities/provider_model_capa
 import 'package:teampilot/widgets/app_provider/provider_models_editor.dart';
 
 void main() {
-  test('parse reads the background tier role and toJson omits standard role', () {
-    final entries = ProviderModelsEditor.parse({
-      'main': {'name': 'Main', 'model': 'main', 'enabled': true},
-      'cheap': {
-        'name': 'Cheap',
-        'model': 'cheap',
-        'enabled': true,
-        'role': 'background',
-      },
-    });
+  test(
+    'parse reads the background tier role and toJson omits standard role',
+    () {
+      final entries = ProviderModelsEditor.parse({
+        'main': {'name': 'Main', 'model': 'main', 'enabled': true},
+        'cheap': {
+          'name': 'Cheap',
+          'model': 'cheap',
+          'enabled': true,
+          'role': 'background',
+        },
+      });
 
-    final main = entries.firstWhere((e) => e.id == 'main');
-    final cheap = entries.firstWhere((e) => e.id == 'cheap');
-    expect(main.tier, ProviderModelTier.standard);
-    expect(cheap.tier, ProviderModelTier.background);
+      final main = entries.firstWhere((e) => e.id == 'main');
+      final cheap = entries.firstWhere((e) => e.id == 'cheap');
+      expect(main.tier, ProviderModelTier.standard);
+      expect(cheap.tier, ProviderModelTier.background);
 
-    // Standard role is not persisted; background is.
-    expect(main.toJson().containsKey('role'), isFalse);
-    expect(cheap.toJson()['role'], 'background');
-  });
+      // Standard role is not persisted; background is.
+      expect(main.toJson().containsKey('role'), isFalse);
+      expect(cheap.toJson()['role'], 'background');
+    },
+  );
 
   test('parse reads name/model/enabled and preserves extra keys', () {
     final entries = ProviderModelsEditor.parse({

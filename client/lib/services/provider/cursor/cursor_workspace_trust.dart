@@ -37,15 +37,10 @@ abstract final class CursorWorkspaceTrust {
     String homeRoot,
     String workspacePath, {
     p.Context? pathContext,
-  }) =>
-      (pathContext ?? p.context).join(
-        workspaceDir(
-          homeRoot,
-          workspacePath,
-          pathContext: pathContext,
-        ),
-        trustFileName,
-      );
+  }) => (pathContext ?? p.context).join(
+    workspaceDir(homeRoot, workspacePath, pathContext: pathContext),
+    trustFileName,
+  );
 
   static String buildTrustMarkerJson(String workspacePath) {
     return jsonEncode({

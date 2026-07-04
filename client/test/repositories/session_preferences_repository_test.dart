@@ -27,9 +27,7 @@ void main() {
 
     await repo.save(
       SessionPreferences(
-        cliExecutablePaths: const {
-          'flashskyai': '/usr/local/bin/flashskyai',
-        },
+        cliExecutablePaths: const {'flashskyai': '/usr/local/bin/flashskyai'},
         autoLaunchAllMembersOnConnect: true,
         scopeSessionsToSelectedTeam: true,
       ),
@@ -64,9 +62,7 @@ void main() {
     final repo = SessionPreferencesRepository(prefs);
 
     await repo.save(
-      SessionPreferences(
-        cliExecutablePaths: const {'flashskyai': '/x'},
-      ),
+      SessionPreferences(cliExecutablePaths: const {'flashskyai': '/x'}),
     );
 
     final raw = prefs.getString('flashskyai.session_preferences.v1');

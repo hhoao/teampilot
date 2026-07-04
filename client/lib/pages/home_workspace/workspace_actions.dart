@@ -60,10 +60,7 @@ Future<void> showRenameWorkspaceDialog(
   );
 }
 
-Future<void> cloneWorkspace(
-  BuildContext context,
-  Workspace workspace,
-) async {
+Future<void> cloneWorkspace(BuildContext context, Workspace workspace) async {
   final l10n = context.l10n;
   final repo = context.read<SessionRepository>();
   final team = context.read<LaunchProfileCubit>().state.selectedTeam;

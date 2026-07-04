@@ -9,24 +9,25 @@ import '../../models/keyboard_shortcut_action.dart';
 /// [mergeWith] before dispatching key events.
 class KeyboardShortcutBindings {
   const KeyboardShortcutBindings._({
-    required Map<KeyboardShortcutAction, List<ShortcutActivator>> activatorsByAction,
+    required Map<KeyboardShortcutAction, List<ShortcutActivator>>
+    activatorsByAction,
     required List<KeyboardShortcutAction> matchPriority,
-  })  : _activatorsByAction = activatorsByAction,
-        _matchPriority = matchPriority;
+  }) : _activatorsByAction = activatorsByAction,
+       _matchPriority = matchPriority;
 
-  final Map<KeyboardShortcutAction, List<ShortcutActivator>> _activatorsByAction;
+  final Map<KeyboardShortcutAction, List<ShortcutActivator>>
+  _activatorsByAction;
   final List<KeyboardShortcutAction> _matchPriority;
 
   /// Builds a custom binding set (user prefs deserialization, tests).
   factory KeyboardShortcutBindings.fromActivators({
     required Map<KeyboardShortcutAction, List<ShortcutActivator>>
-        activatorsByAction,
+    activatorsByAction,
     List<KeyboardShortcutAction>? matchPriority,
-  }) =>
-      KeyboardShortcutBindings._(
-        activatorsByAction: activatorsByAction,
-        matchPriority: matchPriority ?? activatorsByAction.keys.toList(),
-      );
+  }) => KeyboardShortcutBindings._(
+    activatorsByAction: activatorsByAction,
+    matchPriority: matchPriority ?? activatorsByAction.keys.toList(),
+  );
 
   /// Compose field: Enter submits, Ctrl/Cmd+Enter inserts a newline.
   static final compose = KeyboardShortcutBindings._(

@@ -32,27 +32,27 @@ AnalyzeOptions parseAnalyzeOptions(List<String> args) {
   final sectionsRaw = _readOption(args, '--sections');
   final sections = sectionsRaw == null
       ? (format == OutputFormat.summary
-          ? summaryReportSections
-          : defaultReportSections)
+            ? summaryReportSections
+            : defaultReportSections)
       : _parseSections(sectionsRaw);
 
   final categoriesRaw = _readOption(args, '--category');
   final categories = categoriesRaw == null
       ? <String>{}
       : categoriesRaw
-          .split(',')
-          .map((s) => s.trim())
-          .where((s) => s.isNotEmpty)
-          .toSet();
+            .split(',')
+            .map((s) => s.trim())
+            .where((s) => s.isNotEmpty)
+            .toSet();
 
   final treePhasesRaw = _readOption(args, '--tree-phase');
   final treePhases = treePhasesRaw == null
       ? <String>{}
       : treePhasesRaw
-          .split(',')
-          .map((s) => s.trim().toLowerCase())
-          .where((s) => s.isNotEmpty)
-          .toSet();
+            .split(',')
+            .map((s) => s.trim().toLowerCase())
+            .where((s) => s.isNotEmpty)
+            .toSet();
 
   final treeFull = args.contains('--tree-full');
   final treeTopRaw = _readOption(args, '--tree-top');
@@ -68,8 +68,8 @@ AnalyzeOptions parseAnalyzeOptions(List<String> args) {
     treeTopPerLevel = 0;
   }
 
-  final metricRaw =
-      (_readOption(args, '--tree-top-metric') ?? 'self').toLowerCase();
+  final metricRaw = (_readOption(args, '--tree-top-metric') ?? 'self')
+      .toLowerCase();
   final treeTopMetric = metricRaw == 'total'
       ? SliceTreeRankMetric.total
       : SliceTreeRankMetric.self;
@@ -92,7 +92,8 @@ AnalyzeOptions parseAnalyzeOptions(List<String> args) {
     excludeEmbedder: excludeEmbedder,
     comparePath: _readOption(args, '--compare'),
     treeDepth: int.tryParse(_readOption(args, '--tree-depth') ?? '16') ?? 16,
-    minSelfMs: double.tryParse(_readOption(args, '--min-self-ms') ?? '0.3') ?? 0.3,
+    minSelfMs:
+        double.tryParse(_readOption(args, '--min-self-ms') ?? '0.3') ?? 0.3,
     treePhases: treePhases,
     treeTopPerLevel: treeTopPerLevel,
     treeTopMetric: treeTopMetric,

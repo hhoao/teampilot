@@ -16,8 +16,7 @@ extension WorkspaceSortLabels on WorkspaceSort {
       l10n.homeWorkspaceWorkspaceSortRecentlyUpdated,
     WorkspaceSort.nameAsc => l10n.homeWorkspaceWorkspaceSortNameAsc,
     WorkspaceSort.nameDesc => l10n.homeWorkspaceWorkspaceSortNameDesc,
-    WorkspaceSort.createdDesc =>
-      l10n.homeWorkspaceWorkspaceSortCreatedDesc,
+    WorkspaceSort.createdDesc => l10n.homeWorkspaceWorkspaceSortCreatedDesc,
     WorkspaceSort.sessionCountDesc =>
       l10n.homeWorkspaceWorkspaceSortSessionCountDesc,
   };
@@ -69,8 +68,7 @@ List<Workspace> sortWorkspaces({
     }
 
     final primary = switch (sort) {
-      WorkspaceSort.recentlyUpdated =>
-        b.updatedAt.compareTo(a.updatedAt),
+      WorkspaceSort.recentlyUpdated => b.updatedAt.compareTo(a.updatedAt),
       WorkspaceSort.nameAsc => _compareIgnoreCase(
         displayName(a),
         displayName(b),
@@ -79,8 +77,7 @@ List<Workspace> sortWorkspaces({
         displayName(b),
         displayName(a),
       ),
-      WorkspaceSort.createdDesc =>
-        b.createdAt.compareTo(a.createdAt),
+      WorkspaceSort.createdDesc => b.createdAt.compareTo(a.createdAt),
       WorkspaceSort.sessionCountDesc => () {
         final ac = sessionCountByWorkspaceId[a.workspaceId] ?? 0;
         final bc = sessionCountByWorkspaceId[b.workspaceId] ?? 0;

@@ -52,9 +52,8 @@ class CliToolRegistry {
       _definitions.values.where((d) => d.isLaunchSupported);
 
   /// CLIs that may back [TeamMode.native] (first-party multi-agent teams).
-  Iterable<CliToolDefinition> get nativeTeamLaunchable => launchable.where(
-    (d) => capability<NativeTeamCapability>(d.id) != null,
-  );
+  Iterable<CliToolDefinition> get nativeTeamLaunchable =>
+      launchable.where((d) => capability<NativeTeamCapability>(d.id) != null);
 
   bool supportsNativeTeam(CliTool id) =>
       capability<NativeTeamCapability>(id) != null;
@@ -68,7 +67,5 @@ class CliToolRegistry {
   Iterable<CliToolDefinition> get all => _definitions.values;
 
   Iterable<CliToolDefinition> withCapability<T extends CliCapability>() =>
-      _definitions.values.where(
-        (d) => d.capabilities.any((c) => c is T),
-      );
+      _definitions.values.where((d) => d.capabilities.any((c) => c is T));
 }

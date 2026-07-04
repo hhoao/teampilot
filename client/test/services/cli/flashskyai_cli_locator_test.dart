@@ -15,35 +15,36 @@ void main() {
     expect(located, '/opt/bin/flashskyai');
   });
 
-  test('locate falls back to bash login shell when which misses on Unix', () async {
-    if (Platform.isWindows) return;
-    final calls = <String>[];
-    final located = await FlashskyaiCliLocator.locate(
-      runner: (executable, arguments, {stdoutEncoding, stderrEncoding}) async {
-        calls.add('$executable ${arguments.join(' ')}');
-        if (executable == 'which') {
-          return ProcessResult(1, 1, '', '');
-        }
-        if (executable == 'bash') {
-          expect(arguments, ['-ilc', FlashskyaiCliLocator.lookupCommand]);
-          expect(stdoutEncoding, latin1);
-          return ProcessResult(
-            2,
-            0,
-            '/home/user/Downloads/flashskyai/dist/flashskyai\n',
-            '',
-          );
-        }
-        fail('unexpected runner call: $executable');
-      },
-    );
+  test(
+    'locate falls back to bash login shell when which misses on Unix',
+    () async {
+      if (Platform.isWindows) return;
+      final calls = <String>[];
+      final located = await FlashskyaiCliLocator.locate(
+        runner:
+            (executable, arguments, {stdoutEncoding, stderrEncoding}) async {
+              calls.add('$executable ${arguments.join(' ')}');
+              if (executable == 'which') {
+                return ProcessResult(1, 1, '', '');
+              }
+              if (executable == 'bash') {
+                expect(arguments, ['-ilc', FlashskyaiCliLocator.lookupCommand]);
+                expect(stdoutEncoding, latin1);
+                return ProcessResult(
+                  2,
+                  0,
+                  '/home/user/Downloads/flashskyai/dist/flashskyai\n',
+                  '',
+                );
+              }
+              fail('unexpected runner call: $executable');
+            },
+      );
 
-    expect(calls, ['which flashskyai', 'bash -ilc command -v flashskyai']);
-    expect(
-      located,
-      '/home/user/Downloads/flashskyai/dist/flashskyai',
-    );
-  });
+      expect(calls, ['which flashskyai', 'bash -ilc command -v flashskyai']);
+      expect(located, '/home/user/Downloads/flashskyai/dist/flashskyai');
+    },
+  );
 
   test('locate tries zsh when bash login shell misses on Unix', () async {
     if (Platform.isWindows) return;
@@ -102,7 +103,10 @@ void main() {
       },
     );
 
-    expect(calls, ['where flashskyai', 'wsl.exe bash -ilc command -v flashskyai']);
+    expect(calls, [
+      'where flashskyai',
+      'wsl.exe bash -ilc command -v flashskyai',
+    ]);
     expect(located, 'wsl.exe /usr/local/bin/flashskyai');
   });
 

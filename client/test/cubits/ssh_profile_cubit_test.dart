@@ -95,39 +95,42 @@ void main() {
     expect(appliedPath, '/remote/bin/flashskyai');
   });
 
-  test('load follows AppStorage home when repository root is dynamic', () async {
-    final rootA = await Directory.systemTemp.createTemp('ssh_cubit_a_');
-    final rootB = await Directory.systemTemp.createTemp('ssh_cubit_b_');
-    addTearDown(() async {
-      if (await rootA.exists()) await rootA.delete(recursive: true);
-      if (await rootB.exists()) await rootB.delete(recursive: true);
-      AppStorage.resetForTesting();
-      AppPathsBootstrapper.resetForTesting();
-    });
+  test(
+    'load follows AppStorage home when repository root is dynamic',
+    () async {
+      final rootA = await Directory.systemTemp.createTemp('ssh_cubit_a_');
+      final rootB = await Directory.systemTemp.createTemp('ssh_cubit_b_');
+      addTearDown(() async {
+        if (await rootA.exists()) await rootA.delete(recursive: true);
+        if (await rootB.exists()) await rootB.delete(recursive: true);
+        AppStorage.resetForTesting();
+        AppPathsBootstrapper.resetForTesting();
+      });
 
-    bindTestNativeHome(rootA.path);
+      bindTestNativeHome(rootA.path);
 
-    final repository = SshProfileRepository();
-    final cubit = SshProfileCubit(
-      profileRepository: repository,
-      credentialStore: InMemorySshCredentialStore(),
-    );
-    addTearDown(cubit.close);
+      final repository = SshProfileRepository();
+      final cubit = SshProfileCubit(
+        profileRepository: repository,
+        credentialStore: InMemorySshCredentialStore(),
+      );
+      addTearDown(cubit.close);
 
-    await repository.save(
-      const SshProfile(
-        id: 'p1',
-        name: 'Server A',
-        host: 'example.com',
-        username: 'user',
-      ),
-    );
-    await cubit.load(notifyActiveProfileChanged: false);
-    expect(cubit.state.profiles, hasLength(1));
+      await repository.save(
+        const SshProfile(
+          id: 'p1',
+          name: 'Server A',
+          host: 'example.com',
+          username: 'user',
+        ),
+      );
+      await cubit.load(notifyActiveProfileChanged: false);
+      expect(cubit.state.profiles, hasLength(1));
 
-    bindTestNativeHome(rootB.path);
+      bindTestNativeHome(rootB.path);
 
-    await cubit.load(notifyActiveProfileChanged: false);
-    expect(cubit.state.profiles, isEmpty);
-  });
+      await cubit.load(notifyActiveProfileChanged: false);
+      expect(cubit.state.profiles, isEmpty);
+    },
+  );
 }

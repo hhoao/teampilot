@@ -38,7 +38,8 @@ class RootSandboxEnvOptInTile extends StatelessWidget {
             onChanged(false);
             return;
           }
-          final confirm = confirmTrustBoundary ??
+          final confirm =
+              confirmTrustBoundary ??
               () => showRootSandboxEnvConfirm(context, host);
           confirm().then((ok) {
             if (ok) onChanged(true);
@@ -50,7 +51,10 @@ class RootSandboxEnvOptInTile extends StatelessWidget {
   }
 }
 
-Future<bool> showRootSandboxEnvConfirm(BuildContext context, String host) async {
+Future<bool> showRootSandboxEnvConfirm(
+  BuildContext context,
+  String host,
+) async {
   final l10n = context.l10n;
   final confirmed = await showDialog<bool>(
     context: context,

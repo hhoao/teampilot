@@ -32,14 +32,14 @@ final class PublishArtifactTool extends TeammateBusTool {
 
   @override
   Map<String, Object?> get inputSchema => McpSchema.object(
-        properties: {
-          pathKey: McpSchema.string,
-          nameKey: McpSchema.string,
-          kindKey: McpSchema.stringEnum(['file']),
-          overwriteKey: McpSchema.boolean,
-        },
-        required: [pathKey, nameKey],
-      );
+    properties: {
+      pathKey: McpSchema.string,
+      nameKey: McpSchema.string,
+      kindKey: McpSchema.stringEnum(['file']),
+      overwriteKey: McpSchema.boolean,
+    },
+    required: [pathKey, nameKey],
+  );
 
   @override
   Future<JsonRpcResponse> call(TeammateBusToolCall call) async {
@@ -53,15 +53,19 @@ final class PublishArtifactTool extends TeammateBusTool {
         'publish_artifact requires a non-empty "path" and "name".',
       );
     }
-    final kind = ArtifactKind.tryParse(call.argString(PublishArtifactTool.kindKey));
+    final kind = ArtifactKind.tryParse(
+      call.argString(PublishArtifactTool.kindKey),
+    );
     if (kind == null) {
       return call.toolError(
         'Only kind=file is supported (directory/tar transfer is not yet '
         'available).',
       );
     }
-    final overwrite =
-        call.argBool(PublishArtifactTool.overwriteKey, defaultValue: false);
+    final overwrite = call.argBool(
+      PublishArtifactTool.overwriteKey,
+      defaultValue: false,
+    );
     try {
       final handle = await call.artifacts.publish(
         publisherMemberId: call.memberId,

@@ -49,8 +49,7 @@ class MemberPresenceState extends Equatable {
 
 class MemberPresenceCubit extends Cubit<MemberPresenceState> {
   MemberPresenceCubit({MemberPresenceService? memberPresenceService})
-    : _memberPresenceService =
-          memberPresenceService ?? MemberPresenceService(),
+    : _memberPresenceService = memberPresenceService ?? MemberPresenceService(),
       super(const MemberPresenceState());
 
   final MemberPresenceService _memberPresenceService;
@@ -211,8 +210,7 @@ class MemberPresenceCubit extends Cubit<MemberPresenceState> {
     final out = <String, MemberPresence>{};
     for (final entry in next.entries) {
       final old = prev[entry.key];
-      out[entry.key] =
-          (old != null && old == entry.value) ? old : entry.value;
+      out[entry.key] = (old != null && old == entry.value) ? old : entry.value;
     }
     return mapEquals(out, prev) ? prev : out;
   }

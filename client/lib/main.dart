@@ -387,126 +387,126 @@ void main() async {
         homeIndexPrefetchFuture: homeIndexPrefetchFuture,
         bootstrapCubit: bootstrapCubit,
         childBuilder: (shell) {
-        if (!Platform.isAndroid) {
-          windowManager.addListener(
-            _CleanupWindowListener(
-              shell.chatCubit,
-              shell.automationScheduler,
-              shell.workspaceTerminalRegistry,
-              shell.gitRepoStore,
-              shell.workspaceFileTreeStore,
-              shell.workspaceWorktreeRegistry,
-              shell.workspaceToolsScopeRegistry,
-            ),
-          );
-        }
-        return _AppShutdownScope(
-          chatCubit: shell.chatCubit,
-          automationScheduler: shell.automationScheduler,
-          automationCubit: shell.automationCubit,
-          mailboxCubit: shell.mailboxCubit,
-          boardCubit: shell.boardCubit,
-          notificationCubit: shell.notificationCubit,
-          workspaceTerminalRegistry: shell.workspaceTerminalRegistry,
-          gitRepoStore: shell.gitRepoStore,
-          workspaceFileTreeStore: shell.workspaceFileTreeStore,
-          workspaceWorktreeRegistry: shell.workspaceWorktreeRegistry,
-          workspaceToolsScopeRegistry: shell.workspaceToolsScopeRegistry,
-          child: MultiRepositoryProvider(
-            providers: [
-              RepositoryProvider<SharedPreferences>.value(value: preferences),
-              RepositoryProvider<AppSettingsRepository>.value(
-                value: shell.appSettings,
+          if (!Platform.isAndroid) {
+            windowManager.addListener(
+              _CleanupWindowListener(
+                shell.chatCubit,
+                shell.automationScheduler,
+                shell.workspaceTerminalRegistry,
+                shell.gitRepoStore,
+                shell.workspaceFileTreeStore,
+                shell.workspaceWorktreeRegistry,
+                shell.workspaceToolsScopeRegistry,
               ),
-              RepositoryProvider<HomeWorkspaceUiCache>.value(
-                value: shell.homeWorkspaceUiCache,
-              ),
-              RepositoryProvider<SessionRepository>.value(
-                value: shell.sessionRepo,
-              ),
-              RepositoryProvider<LaunchProfileRepository>.value(
-                value: shell.identityRepository,
-              ),
-              RepositoryProvider<SshProfileRepository>.value(
-                value: shell.sshProfileRepo,
-              ),
-              RepositoryProvider<SshCredentialStore>.value(
-                value: shell.sshCredentialStore,
-              ),
-              RepositoryProvider<SshKnownHostRepository>.value(
-                value: shell.sshKnownHostRepo,
-              ),
-              RepositoryProvider<TerminalTransportFactory>.value(
-                value: shell.transportFactory,
-              ),
-              RepositoryProvider<SshClientFactory>.value(
-                value: shell.sshClientFactory,
-              ),
-              RepositoryProvider<ConnectionModeService>.value(
-                value: shell.connectionModeService,
-              ),
-              RepositoryProvider<HomeTargetController>.value(
-                value: shell.homeTargetController,
-              ),
-              RepositoryProvider<WorkspaceDirectoryPicker>.value(
-                value: shell.directoryPicker,
-              ),
-              RepositoryProvider<WorkspaceTerminalRegistry>.value(
-                value: shell.workspaceTerminalRegistry,
-              ),
-              RepositoryProvider<WorkspaceShellConnector>.value(
-                value: shell.workspaceShellConnector,
-              ),
-              RepositoryProvider<GitRepoStore>.value(
-                value: shell.gitRepoStore,
-              ),
-              RepositoryProvider<WorkspaceFileTreeStore>.value(
-                value: shell.workspaceFileTreeStore,
-              ),
-              RepositoryProvider<WorkspaceWorktreeRegistry>.value(
-                value: shell.workspaceWorktreeRegistry,
-              ),
-              RepositoryProvider<WorkspaceToolsScopeRegistry>.value(
-                value: shell.workspaceToolsScopeRegistry,
-              ),
-            ],
-            child: MultiBlocProvider(
+            );
+          }
+          return _AppShutdownScope(
+            chatCubit: shell.chatCubit,
+            automationScheduler: shell.automationScheduler,
+            automationCubit: shell.automationCubit,
+            mailboxCubit: shell.mailboxCubit,
+            boardCubit: shell.boardCubit,
+            notificationCubit: shell.notificationCubit,
+            workspaceTerminalRegistry: shell.workspaceTerminalRegistry,
+            gitRepoStore: shell.gitRepoStore,
+            workspaceFileTreeStore: shell.workspaceFileTreeStore,
+            workspaceWorktreeRegistry: shell.workspaceWorktreeRegistry,
+            workspaceToolsScopeRegistry: shell.workspaceToolsScopeRegistry,
+            child: MultiRepositoryProvider(
               providers: [
-                BlocProvider.value(value: shell.teamCubit),
-                BlocProvider.value(value: shell.chatCubit),
-                BlocProvider.value(value: shell.memberPresenceCubit),
-                BlocProvider.value(value: shell.mailboxCubit),
-                BlocProvider.value(value: shell.boardCubit),
-                BlocProvider.value(value: shell.notificationCubit),
-                BlocProvider.value(value: shell.editorCubit),
-                BlocProvider.value(value: shell.configCubit),
-                BlocProvider.value(value: shell.appProviderCubit),
-                BlocProvider.value(value: shell.llmConfigCubit),
-                BlocProvider.value(value: shell.layoutCubit),
-                BlocProvider.value(value: shell.workspaceToolsCubit),
-                BlocProvider.value(value: shell.sessionPreferencesCubit),
-                BlocProvider.value(value: shell.pluginCubit),
-                BlocProvider.value(value: shell.skillCubit),
-                BlocProvider.value(value: shell.automationCubit),
-                BlocProvider.value(value: shell.mcpCubit),
-                BlocProvider.value(value: shell.teamHubCubit),
-                BlocProvider.value(value: shell.extensionCubit),
-                BlocProvider.value(value: shell.appUpdateCubit),
-                BlocProvider.value(value: shell.sshProfileCubit),
-                BlocProvider.value(value: shell.cliPresetsCubit),
-                BlocProvider.value(value: shell.aiFeatureSettingsCubit),
+                RepositoryProvider<SharedPreferences>.value(value: preferences),
+                RepositoryProvider<AppSettingsRepository>.value(
+                  value: shell.appSettings,
+                ),
+                RepositoryProvider<HomeWorkspaceUiCache>.value(
+                  value: shell.homeWorkspaceUiCache,
+                ),
+                RepositoryProvider<SessionRepository>.value(
+                  value: shell.sessionRepo,
+                ),
+                RepositoryProvider<LaunchProfileRepository>.value(
+                  value: shell.identityRepository,
+                ),
+                RepositoryProvider<SshProfileRepository>.value(
+                  value: shell.sshProfileRepo,
+                ),
+                RepositoryProvider<SshCredentialStore>.value(
+                  value: shell.sshCredentialStore,
+                ),
+                RepositoryProvider<SshKnownHostRepository>.value(
+                  value: shell.sshKnownHostRepo,
+                ),
+                RepositoryProvider<TerminalTransportFactory>.value(
+                  value: shell.transportFactory,
+                ),
+                RepositoryProvider<SshClientFactory>.value(
+                  value: shell.sshClientFactory,
+                ),
+                RepositoryProvider<ConnectionModeService>.value(
+                  value: shell.connectionModeService,
+                ),
+                RepositoryProvider<HomeTargetController>.value(
+                  value: shell.homeTargetController,
+                ),
+                RepositoryProvider<WorkspaceDirectoryPicker>.value(
+                  value: shell.directoryPicker,
+                ),
+                RepositoryProvider<WorkspaceTerminalRegistry>.value(
+                  value: shell.workspaceTerminalRegistry,
+                ),
+                RepositoryProvider<WorkspaceShellConnector>.value(
+                  value: shell.workspaceShellConnector,
+                ),
+                RepositoryProvider<GitRepoStore>.value(
+                  value: shell.gitRepoStore,
+                ),
+                RepositoryProvider<WorkspaceFileTreeStore>.value(
+                  value: shell.workspaceFileTreeStore,
+                ),
+                RepositoryProvider<WorkspaceWorktreeRegistry>.value(
+                  value: shell.workspaceWorktreeRegistry,
+                ),
+                RepositoryProvider<WorkspaceToolsScopeRegistry>.value(
+                  value: shell.workspaceToolsScopeRegistry,
+                ),
               ],
-              child: CliToolRegistryScope(
-                registry: shell.cliToolRegistry,
-                child: const SessionIdleNotificationListener(
-                  child: TeamPilotApp(),
+              child: MultiBlocProvider(
+                providers: [
+                  BlocProvider.value(value: shell.teamCubit),
+                  BlocProvider.value(value: shell.chatCubit),
+                  BlocProvider.value(value: shell.memberPresenceCubit),
+                  BlocProvider.value(value: shell.mailboxCubit),
+                  BlocProvider.value(value: shell.boardCubit),
+                  BlocProvider.value(value: shell.notificationCubit),
+                  BlocProvider.value(value: shell.editorCubit),
+                  BlocProvider.value(value: shell.configCubit),
+                  BlocProvider.value(value: shell.appProviderCubit),
+                  BlocProvider.value(value: shell.llmConfigCubit),
+                  BlocProvider.value(value: shell.layoutCubit),
+                  BlocProvider.value(value: shell.workspaceToolsCubit),
+                  BlocProvider.value(value: shell.sessionPreferencesCubit),
+                  BlocProvider.value(value: shell.pluginCubit),
+                  BlocProvider.value(value: shell.skillCubit),
+                  BlocProvider.value(value: shell.automationCubit),
+                  BlocProvider.value(value: shell.mcpCubit),
+                  BlocProvider.value(value: shell.teamHubCubit),
+                  BlocProvider.value(value: shell.extensionCubit),
+                  BlocProvider.value(value: shell.appUpdateCubit),
+                  BlocProvider.value(value: shell.sshProfileCubit),
+                  BlocProvider.value(value: shell.cliPresetsCubit),
+                  BlocProvider.value(value: shell.aiFeatureSettingsCubit),
+                ],
+                child: CliToolRegistryScope(
+                  registry: shell.cliToolRegistry,
+                  child: const SessionIdleNotificationListener(
+                    child: TeamPilotApp(),
+                  ),
                 ),
               ),
             ),
-          ),
-        );
-      },
-    ),
+          );
+        },
+      ),
     ),
   );
 }
@@ -609,7 +609,8 @@ class _TeamPilotMaterialAppState extends State<_TeamPilotMaterialApp> {
         _darkTheme != null &&
         _cachedColorPreset == widget.colorPreset &&
         _cachedTypographyScaleId == widget.typographyScaleId &&
-        _cachedTypographyCustomMultiplier == widget.typographyCustomMultiplier &&
+        _cachedTypographyCustomMultiplier ==
+            widget.typographyCustomMultiplier &&
         _cachedEffectiveTextMult == effectiveTextMult) {
       return (light: _lightTheme!, dark: _darkTheme!);
     }
@@ -649,7 +650,9 @@ class _TeamPilotMaterialAppState extends State<_TeamPilotMaterialApp> {
         themeMode: _themeModeFromPrefs(widget.themeMode),
         localizationsDelegates: AppLocalizations.localizationsDelegates,
         supportedLocales: AppLocalizations.supportedLocales,
-        locale: widget.savedLocale.isNotEmpty ? Locale(widget.savedLocale) : null,
+        locale: widget.savedLocale.isNotEmpty
+            ? Locale(widget.savedLocale)
+            : null,
         builder: (context, child) {
           return BlocSelector<
             LayoutCubit,
@@ -657,7 +660,9 @@ class _TeamPilotMaterialAppState extends State<_TeamPilotMaterialApp> {
             ({String uiZoomScale, double uiZoomCustomMultiplier})
           >(
             selector: (state) => (
-              uiZoomScale: normalizeTypographyScale(state.preferences.uiZoomScale),
+              uiZoomScale: normalizeTypographyScale(
+                state.preferences.uiZoomScale,
+              ),
               uiZoomCustomMultiplier: state.preferences.uiZoomCustomMultiplier,
             ),
             builder: (context, zoomBundle) {

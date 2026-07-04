@@ -26,8 +26,7 @@ class HomeTeamGenerateSection extends StatefulWidget {
       _HomeTeamGenerateSectionState();
 }
 
-class _HomeTeamGenerateSectionState
-    extends State<HomeTeamGenerateSection> {
+class _HomeTeamGenerateSectionState extends State<HomeTeamGenerateSection> {
   final _controller = TextEditingController();
 
   @override
@@ -43,8 +42,7 @@ class _HomeTeamGenerateSectionState
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        Text(l10n.teamGenTitle,
-            style: Theme.of(context).textTheme.titleSmall),
+        Text(l10n.teamGenTitle, style: Theme.of(context).textTheme.titleSmall),
         const SizedBox(height: 8),
         TextField(
           key: const ValueKey('team-gen-description'),

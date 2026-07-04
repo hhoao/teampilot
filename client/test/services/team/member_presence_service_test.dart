@@ -11,14 +11,15 @@ import '../team_bus/support/fake_member_launcher.dart';
 void main() {
   test('compute maps connection and flashskyai availability', () async {
     final service = MemberPresenceService();
-    final shell = TerminalSession(executable: 'flashskyai', validateLaunch: false);
+    final shell = TerminalSession(
+      executable: 'flashskyai',
+      validateLaunch: false,
+    );
     shell.activityTracker.markActive();
 
     final presence = await service.compute(
       teamCli: CliTool.flashskyai,
-      members: const [
-        TeamMemberConfig(id: 'team-lead', name: 'team-lead'),
-      ],
+      members: const [TeamMemberConfig(id: 'team-lead', name: 'team-lead')],
       cliTeamName: 't-1',
       memberToolConfigDir: null,
       memberShells: {'team-lead': shell},
@@ -28,48 +29,48 @@ void main() {
     expect(presence['team-lead']!.availability, isNull);
   });
 
-  test('connected flashskyai shell uses activity tracker after boot frame', () async {
-    final service = MemberPresenceService();
-    final shell = _ConnectedShell();
-    shell.activityTracker.reset();
-    expect(
-      shell.activityTracker.isBootFrameReady,
-      isFalse,
-      reason: 'no PTY bytes yet',
-    );
+  test(
+    'connected flashskyai shell uses activity tracker after boot frame',
+    () async {
+      final service = MemberPresenceService();
+      final shell = _ConnectedShell();
+      shell.activityTracker.reset();
+      expect(
+        shell.activityTracker.isBootFrameReady,
+        isFalse,
+        reason: 'no PTY bytes yet',
+      );
 
-    final booting = await service.compute(
-      teamCli: CliTool.flashskyai,
-      members: const [
-        TeamMemberConfig(id: 'dev', name: 'developer'),
-      ],
-      cliTeamName: 't-1',
-      memberToolConfigDir: null,
-      memberShells: {'dev': shell},
-      session: _session(),
-    );
-    expect(booting['dev']!.availability, MemberAvailability.booting);
+      final booting = await service.compute(
+        teamCli: CliTool.flashskyai,
+        members: const [TeamMemberConfig(id: 'dev', name: 'developer')],
+        cliTeamName: 't-1',
+        memberToolConfigDir: null,
+        memberShells: {'dev': shell},
+        session: _session(),
+      );
+      expect(booting['dev']!.availability, MemberAvailability.booting);
 
-    shell.activityTracker.latchBootFrameReadyForTest();
-    shell.activityTracker.markActive();
-    expect(shell.activityTracker.isWorking, isTrue);
+      shell.activityTracker.latchBootFrameReadyForTest();
+      shell.activityTracker.markActive();
+      expect(shell.activityTracker.isWorking, isTrue);
 
-    final working = await service.compute(
-      teamCli: CliTool.flashskyai,
-      members: const [
-        TeamMemberConfig(id: 'dev', name: 'developer'),
-      ],
-      cliTeamName: 't-1',
-      memberToolConfigDir: null,
-      memberShells: {'dev': shell},
-      session: _session(),
-    );
-    expect(working['dev']!.availability, MemberAvailability.working);
-  });
+      final working = await service.compute(
+        teamCli: CliTool.flashskyai,
+        members: const [TeamMemberConfig(id: 'dev', name: 'developer')],
+        cliTeamName: 't-1',
+        memberToolConfigDir: null,
+        memberShells: {'dev': shell},
+        session: _session(),
+      );
+      expect(working['dev']!.availability, MemberAvailability.working);
+    },
+  );
 
   test('mixed session: booting only until PTY frame is stable', () async {
     final service = MemberPresenceService();
-    final shell = _ConnectedShell()..activityTracker.latchBootFrameReadyForTest();
+    final shell = _ConnectedShell()
+      ..activityTracker.latchBootFrameReadyForTest();
     final bus = TeamBus(launcher: FakeMemberLauncher());
     bus.declareMember(AgentNode.test(memberId: 'waiter'));
     bus.markMemberRunning('waiter');
@@ -144,9 +145,7 @@ void main() {
 
     final presence = await service.compute(
       teamCli: CliTool.codex,
-      members: const [
-        TeamMemberConfig(id: 'offline', name: 'offline'),
-      ],
+      members: const [TeamMemberConfig(id: 'offline', name: 'offline')],
       cliTeamName: 't-1',
       memberToolConfigDir: null,
       memberShells: const {},
@@ -162,8 +161,8 @@ void main() {
 }
 
 PresenceSessionContext _session() => const PresenceSessionContext(
-      team: TeamProfile(id: 't', name: 'T'),
-    );
+  team: TeamProfile(id: 't', name: 'T'),
+);
 
 class _ConnectedShell extends TerminalSession {
   _ConnectedShell() : super(executable: 'flashskyai', validateLaunch: false);

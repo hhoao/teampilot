@@ -3,13 +3,7 @@ import 'trace_filters.dart';
 import 'slice_tree.dart';
 
 /// Output format for CLI / AI consumers.
-enum OutputFormat {
-  text,
-  json,
-  summary,
-  flameTree,
-  flameTreeJson,
-}
+enum OutputFormat { text, json, summary, flameTree, flameTreeJson }
 
 /// Report sections that can be included or excluded.
 enum ReportSection {
@@ -32,17 +26,10 @@ const defaultReportSections = {
 };
 
 /// Lighter analysis for [--format summary]: frames + precision only.
-const summaryReportSections = {
-  ReportSection.frames,
-  ReportSection.precision,
-};
+const summaryReportSections = {ReportSection.frames, ReportSection.precision};
 
 /// How to pick a frame for drill-down analysis.
-enum FrameTarget {
-  none,
-  byId,
-  auto,
-}
+enum FrameTarget { none, byId, auto }
 
 /// Options controlling analysis depth, filters, and output.
 class AnalyzeOptions {
@@ -69,11 +56,11 @@ class AnalyzeOptions {
 
   /// Defaults tuned for one-screen triage (hot paths, no Embedder noise).
   factory AnalyzeOptions.forSummary() => const AnalyzeOptions(
-        format: OutputFormat.summary,
-        frameTarget: FrameTarget.auto,
-        excludeEmbedder: true,
-        sections: summaryReportSections,
-      );
+    format: OutputFormat.summary,
+    frameTarget: FrameTarget.auto,
+    excludeEmbedder: true,
+    sections: summaryReportSections,
+  );
 
   final FrameTarget frameTarget;
   final int? frameId;
@@ -107,12 +94,11 @@ class AnalyzeOptions {
       needsFlameTree ||
       worstFrames > 0;
 
-  bool get needsDrilldown =>
-      frameTarget != FrameTarget.none || worstFrames > 0;
+  bool get needsDrilldown => frameTarget != FrameTarget.none || worstFrames > 0;
 
   TraceFilters get traceFilters => TraceFilters(
-        namePattern: nameFilter,
-        categories: categories,
-        excludeEmbedder: excludeEmbedder,
-      );
+    namePattern: nameFilter,
+    categories: categories,
+    excludeEmbedder: excludeEmbedder,
+  );
 }

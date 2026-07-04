@@ -66,23 +66,22 @@ class TeammateBusMcpHandler {
   final WaitCancelRegistry waitCancels;
 
   TeammateBusToolContext get _toolCtx => TeammateBusToolContext(
-        bus: _bus,
-        idGenerator: idGenerator,
-        artifacts: _artifacts,
-        onEnteredWaitLoop: _noteEnteredWaitLoop,
-      );
+    bus: _bus,
+    idGenerator: idGenerator,
+    artifacts: _artifacts,
+    onEnteredWaitLoop: _noteEnteredWaitLoop,
+  );
 
   TeammateBusToolCall _toolCall(
     String memberId,
     Object? requestId,
     Map<String, Object?> arguments,
-  ) =>
-      TeammateBusToolCall(
-        ctx: _toolCtx,
-        memberId: memberId,
-        requestId: requestId,
-        arguments: arguments,
-      );
+  ) => TeammateBusToolCall(
+    ctx: _toolCtx,
+    memberId: memberId,
+    requestId: requestId,
+    arguments: arguments,
+  );
 
   /// 控制端点：成员（经 Stop hook / plugin / 终端 watcher）报告 idle。
   void notifyIdle(String memberId) => _bus.onMemberIdle(memberId);
@@ -175,16 +174,12 @@ class TeammateBusMcpHandler {
     String memberId,
     JsonRpcRequest req, {
     CancellationToken? cancel,
-  }) =>
-      WaitForMessageTool.beginStreamWait(
-        _toolCall(memberId, req.id, req.toolArguments),
-        cancel: cancel,
-      );
+  }) => WaitForMessageTool.beginStreamWait(
+    _toolCall(memberId, req.id, req.toolArguments),
+    cancel: cancel,
+  );
 
-  Future<JsonRpcResponse> _callTool(
-    String memberId,
-    JsonRpcRequest req,
-  ) async {
+  Future<JsonRpcResponse> _callTool(String memberId, JsonRpcRequest req) async {
     final tool = teammateBusToolByName(_toolCtx)[req.toolName];
     if (tool == null) {
       return McpToolResponse.invalidParams(

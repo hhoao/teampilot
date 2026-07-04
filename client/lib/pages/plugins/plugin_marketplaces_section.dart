@@ -1,4 +1,3 @@
-﻿
 import 'package:flutter/material.dart';
 import 'package:teampilot/theme/app_icon_sizes.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
@@ -104,7 +103,8 @@ class _AddPluginMarketplaceDialog extends StatefulWidget {
       _AddPluginMarketplaceDialogState();
 }
 
-class _AddPluginMarketplaceDialogState extends State<_AddPluginMarketplaceDialog> {
+class _AddPluginMarketplaceDialogState
+    extends State<_AddPluginMarketplaceDialog> {
   late final TextEditingController _urlCtrl;
   late final TextEditingController _branchCtrl;
 

@@ -26,12 +26,10 @@ class WorkspaceSettingsView extends StatefulWidget {
   static const double navWidth = 220;
 
   @override
-  State<WorkspaceSettingsView> createState() =>
-      _WorkspaceSettingsViewState();
+  State<WorkspaceSettingsView> createState() => _WorkspaceSettingsViewState();
 }
 
-class _WorkspaceSettingsViewState
-    extends State<WorkspaceSettingsView> {
+class _WorkspaceSettingsViewState extends State<WorkspaceSettingsView> {
   WorkspaceSettingsSection _section = WorkspaceSettingsSection.basic;
 
   @override
@@ -80,8 +78,9 @@ class _WorkspaceSettingsViewState
                   icon: Icons.warning_amber_outlined,
                   selected: _section == WorkspaceSettingsSection.danger,
                   density: WorkspaceHubNavDensity.relaxed,
-                  onTap: () =>
-                      setState(() => _section = WorkspaceSettingsSection.danger),
+                  onTap: () => setState(
+                    () => _section = WorkspaceSettingsSection.danger,
+                  ),
                 ),
               ],
             ),
@@ -181,8 +180,11 @@ class _WorkspaceSettingsBasicSection extends StatelessWidget {
                     : l10n.homeWorkspaceWorkspaceAdditionalDirsCount(
                         workspace.extraFolderPaths.length,
                       ),
-                onEdit: () =>
-                    showWorkspaceDetailsDialog(context, workspace, sessionCount),
+                onEdit: () => showWorkspaceDetailsDialog(
+                  context,
+                  workspace,
+                  sessionCount,
+                ),
                 showDividerBelow: true,
               ),
               _WorkspaceSettingsInlineRow(

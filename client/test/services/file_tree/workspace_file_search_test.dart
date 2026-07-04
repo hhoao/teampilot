@@ -19,17 +19,20 @@ void main() {
       await fs.writeString('$root/.hidden_file.dart', '');
     });
 
-    test('matches file names case-insensitively across subdirectories', () async {
-      final result = await searchWorkspaceFiles(
-        fs: fs,
-        root: root,
-        query: 'ROUTER',
-      );
+    test(
+      'matches file names case-insensitively across subdirectories',
+      () async {
+        final result = await searchWorkspaceFiles(
+          fs: fs,
+          root: root,
+          query: 'ROUTER',
+        );
 
-      final names = result.matches.map((m) => m.name).toList();
-      expect(names, containsAll(['app_router.dart', 'router_guard.dart']));
-      expect(result.truncated, isFalse);
-    });
+        final names = result.matches.map((m) => m.name).toList();
+        expect(names, containsAll(['app_router.dart', 'router_guard.dart']));
+        expect(result.truncated, isFalse);
+      },
+    );
 
     test('skips ignored directories and hidden entries', () async {
       final result = await searchWorkspaceFiles(
@@ -58,11 +61,18 @@ void main() {
         root: root,
         query: 'router_guard',
       );
-      expect(result.matches.single.relativePath, 'lib/widgets/router_guard.dart');
+      expect(
+        result.matches.single.relativePath,
+        'lib/widgets/router_guard.dart',
+      );
     });
 
     test('empty query yields no matches', () async {
-      final result = await searchWorkspaceFiles(fs: fs, root: root, query: '  ');
+      final result = await searchWorkspaceFiles(
+        fs: fs,
+        root: root,
+        query: '  ',
+      );
       expect(result.matches, isEmpty);
       expect(result.truncated, isFalse);
     });

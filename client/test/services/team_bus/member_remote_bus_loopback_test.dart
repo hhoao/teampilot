@@ -61,26 +61,31 @@ void main() {
     await gateway.unregister('sess-test');
   });
 
-  test('binding points MCP at raw tunnel and idle at separate HTTP tunnel',
-      () async {
-    final binding = await mount.bindLongBlockingMember('worker');
-    expect(binding.mcpRawTunnelPort, mcpRawTunnel!.port);
-    expect(binding.mcpRelayArgv, isNotNull);
-    expect(binding.idleHttpTunnelPort, isNot(mcpRawTunnel!.port));
-    expect(binding.idleUrl, 'http://127.0.0.1:${binding.idleHttpTunnelPort}/idle');
+  test(
+    'binding points MCP at raw tunnel and idle at separate HTTP tunnel',
+    () async {
+      final binding = await mount.bindLongBlockingMember('worker');
+      expect(binding.mcpRawTunnelPort, mcpRawTunnel!.port);
+      expect(binding.mcpRelayArgv, isNotNull);
+      expect(binding.idleHttpTunnelPort, isNot(mcpRawTunnel!.port));
+      expect(
+        binding.idleUrl,
+        'http://127.0.0.1:${binding.idleHttpTunnelPort}/idle',
+      );
 
-    final cfg = buildMemberBusMcpConfig(
-      memberId: 'worker',
-      localEndpoint: gateway.mcpEndpoint,
-      sessionId: 'sess-test',
-      longBlocking: true,
-      remote: binding,
-    );
-    final args = (cfg['args'] as List).join(' ');
-    expect(args, contains('TCP:127.0.0.1:${binding.mcpRawTunnelPort}'));
-    expect(args, contains(binding.token));
-    expect(args, isNot(contains('${gateway.mcpEndpoint.port}')));
-  });
+      final cfg = buildMemberBusMcpConfig(
+        memberId: 'worker',
+        localEndpoint: gateway.mcpEndpoint,
+        sessionId: 'sess-test',
+        longBlocking: true,
+        remote: binding,
+      );
+      final args = (cfg['args'] as List).join(' ');
+      expect(args, contains('TCP:127.0.0.1:${binding.mcpRawTunnelPort}'));
+      expect(args, contains(binding.token));
+      expect(args, isNot(contains('${gateway.mcpEndpoint.port}')));
+    },
+  );
 
   test('idle POST over HTTP tunnel with token reaches bus /idle', () async {
     bus.declareMember(
@@ -96,10 +101,12 @@ void main() {
     final idleMount = RemoteBusMount.testing(
       httpBusPort: gateway.mcpEndpoint.port,
       rawSocketPort: gateway.rawSocketPort,
-      token: gateway.register(
-        sessionId: 'sess-idle',
-        handler: TeammateBusMcpHandler(bus: bus),
-      ).token,
+      token: gateway
+          .register(
+            sessionId: 'sess-idle',
+            handler: TeammateBusMcpHandler(bus: bus),
+          )
+          .token,
       tunnelFactory: () {
         final tunnel = FakeReverseTunnel(port: nextPort++);
         idleTunnels.add(tunnel);
@@ -120,9 +127,7 @@ void main() {
     await Future<void>.delayed(const Duration(milliseconds: 60));
 
     channel.remoteWrite(
-      utf8.encode(
-        _idleHttpPost(memberId: 'worker', token: binding.token),
-      ),
+      utf8.encode(_idleHttpPost(memberId: 'worker', token: binding.token)),
     );
     await Future<void>.delayed(const Duration(milliseconds: 120));
 
@@ -130,34 +135,47 @@ void main() {
     expect(channel.sentText, contains('wait_for_message'));
   });
 
-  test('wait_for_message delivered to a remote member over the tunnel', () async {
-    bus.declareMember(
-      AgentNode.test(
-        memberId: 'worker',
-        lifecycle: MemberLifecycle.running,
-        activity: MemberActivity.active,
-      ),
-    );
-    final binding = await mount.bindLongBlockingMember('worker');
+  test(
+    'wait_for_message delivered to a remote member over the tunnel',
+    () async {
+      bus.declareMember(
+        AgentNode.test(
+          memberId: 'worker',
+          lifecycle: MemberLifecycle.running,
+          activity: MemberActivity.active,
+        ),
+      );
+      final binding = await mount.bindLongBlockingMember('worker');
 
-    final channel = FakeChannel();
-    mcpRawTunnel!.emitChannel(channel);
-    await Future<void>.delayed(const Duration(milliseconds: 60));
+      final channel = FakeChannel();
+      mcpRawTunnel!.emitChannel(channel);
+      await Future<void>.delayed(const Duration(milliseconds: 60));
 
-    channel.remoteWrite(utf8.encode(
-      '{"token":"${binding.token}","memberId":"worker"}\n',
-    ));
-    channel.remoteWrite(utf8.encode(
-      '{"jsonrpc":"2.0","id":7,"method":"tools/call",'
-      '"params":{"name":"wait_for_message","arguments":{}}}\n',
-    ));
-    await Future<void>.delayed(const Duration(milliseconds: 120));
+      channel.remoteWrite(
+        utf8.encode('{"token":"${binding.token}","memberId":"worker"}\n'),
+      );
+      channel.remoteWrite(
+        utf8.encode(
+          '{"jsonrpc":"2.0","id":7,"method":"tools/call",'
+          '"params":{"name":"wait_for_message","arguments":{}}}\n',
+        ),
+      );
+      await Future<void>.delayed(const Duration(milliseconds: 120));
 
-    bus.memberById('worker')!.inbox.deliver(
-      TeamMessage(id: '1', from: 'lead', to: 'worker', content: 'ping-remote'),
-    );
-    await Future<void>.delayed(const Duration(milliseconds: 200));
+      bus
+          .memberById('worker')!
+          .inbox
+          .deliver(
+            TeamMessage(
+              id: '1',
+              from: 'lead',
+              to: 'worker',
+              content: 'ping-remote',
+            ),
+          );
+      await Future<void>.delayed(const Duration(milliseconds: 200));
 
-    expect(channel.sentText, contains('ping-remote'));
-  });
+      expect(channel.sentText, contains('ping-remote'));
+    },
+  );
 }

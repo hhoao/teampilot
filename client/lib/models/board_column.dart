@@ -27,11 +27,7 @@ extension BoardColumnMapping on BoardColumn {
       case BoardColumn.claimed:
         return const [TaskStatus.claimed];
       case BoardColumn.done:
-        return const [
-          TaskStatus.done,
-          TaskStatus.failed,
-          TaskStatus.cancelled,
-        ];
+        return const [TaskStatus.done, TaskStatus.failed, TaskStatus.cancelled];
     }
   }
 }

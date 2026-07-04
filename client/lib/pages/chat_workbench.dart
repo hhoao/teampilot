@@ -3,7 +3,6 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:flutter_alacritty/flutter_alacritty.dart';
-import 'package:provider/provider.dart';
 
 import '../cubits/chat/model/session_connect_request.dart';
 import '../cubits/chat/model/chat_tab.dart';
@@ -94,7 +93,10 @@ class _ChatWorkbenchState extends State<ChatWorkbench> {
     );
   }
 
-  SessionConnectRequest _connectRequest({required bool isPersonal, TeamProfile? team}) {
+  SessionConnectRequest _connectRequest({
+    required bool isPersonal,
+    TeamProfile? team,
+  }) {
     if (isPersonal) {
       return PersonalSessionConnect(workspaceId: widget.workspaceId);
     }
@@ -215,7 +217,8 @@ class _ChatWorkbenchBody extends StatefulWidget {
   final ChatWorkbenchSlice slice;
   final TeamProfile? team;
   final bool findVisible;
-  final void Function(TerminalSession, TerminalTheme, String) onSyncTerminalTheme;
+  final void Function(TerminalSession, TerminalTheme, String)
+  onSyncTerminalTheme;
   final Widget Function({
     required TerminalSession session,
     required TerminalTheme terminalTheme,
@@ -225,10 +228,7 @@ class _ChatWorkbenchBody extends StatefulWidget {
     required bool autofocus,
   })
   buildRunningTerminal;
-  final Future<void> Function({
-    required bool isPersonal,
-    TeamProfile? team,
-  })
+  final Future<void> Function({required bool isPersonal, TeamProfile? team})
   onConnect;
 
   @override
@@ -243,7 +243,10 @@ class _ChatWorkbenchBodyState extends State<_ChatWorkbenchBody> {
     LandingLaunchContext draft,
   ) async {
     if (_landingSubmitting) return;
-    final workspace = context.read<ChatCubit>().state.workspaces
+    final workspace = context
+        .read<ChatCubit>()
+        .state
+        .workspaces
         .where((w) => w.workspaceId == widget.workspaceId)
         .firstOrNull;
     if (workspace == null) return;
@@ -252,7 +255,10 @@ class _ChatWorkbenchBodyState extends State<_ChatWorkbenchBody> {
     try {
       String? workingDirectory;
       try {
-        workingDirectory = context.read<WorktreeCubit>().state.pathForNewSession;
+        workingDirectory = context
+            .read<WorktreeCubit>()
+            .state
+            .pathForNewSession;
       } on ProviderNotFoundException {
         workingDirectory = workspace.firstFolderPath;
       }
@@ -260,7 +266,9 @@ class _ChatWorkbenchBodyState extends State<_ChatWorkbenchBody> {
       if (!draft.isPersonal) {
         final teamId = draft.teamId?.trim() ?? '';
         if (teamId.isNotEmpty) {
-          unawaited(context.read<LaunchProfileCubit>().selectTeam(teamId, silent: true));
+          unawaited(
+            context.read<LaunchProfileCubit>().selectTeam(teamId, silent: true),
+          );
         }
       } else {
         final profileId = draft.personalProfileId.trim();
@@ -309,7 +317,8 @@ class _ChatWorkbenchBodyState extends State<_ChatWorkbenchBody> {
     final terminalBackground = Color(0xFF000000 | terminalTheme.background);
     final chatCubit = context.read<ChatCubit>();
     final sessionConnectInProgress = slice.isActiveSessionConnecting;
-    final launchError = widget.routeActive &&
+    final launchError =
+        widget.routeActive &&
             chatCubit.tabStore.activeWorkspaceId == widget.tabScopeId
         ? (chatCubit.activeLaunchError ?? slice.sessionLaunchError)
         : slice.sessionLaunchError;
@@ -318,7 +327,7 @@ class _ChatWorkbenchBodyState extends State<_ChatWorkbenchBody> {
       if (slice.tabCount == 0) {
         return const Center(child: CircularProgressIndicator());
       }
-    } else if (slice.tabCount == 0) {
+    } else if (slice.composeActive) {
       final workspace = chatCubit.state.workspaces
           .where((w) => w.workspaceId == widget.workspaceId)
           .firstOrNull;
@@ -339,6 +348,8 @@ class _ChatWorkbenchBodyState extends State<_ChatWorkbenchBody> {
                     unawaited(_submitLandingMessage(message, draft)),
               ),
       );
+    } else if (slice.tabCount == 0) {
+      return const Center(child: CircularProgressIndicator());
     }
 
     final session = _resolveSession(

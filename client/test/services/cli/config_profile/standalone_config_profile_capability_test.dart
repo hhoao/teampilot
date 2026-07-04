@@ -19,17 +19,16 @@ String _standaloneToolDir(
   String workspaceId,
   String sessionId,
   String tool,
-) =>
-    p.join(
-      base,
-      'workspace',
-      'workspaces',
-      workspaceId,
-      'sessions',
-      sessionId,
-      'runtime',
-      tool,
-    );
+) => p.join(
+  base,
+  'workspace',
+  'workspaces',
+  workspaceId,
+  'sessions',
+  sessionId,
+  'runtime',
+  tool,
+);
 
 void main() {
   late Directory base;
@@ -40,11 +39,7 @@ void main() {
     base = await Directory.systemTemp.createTemp('standalone_cap_');
     final fs = LocalFilesystem();
     layout = RuntimeLayout(teampilotRoot: base.path, fs: fs);
-    service = ConfigProfileService(
-      basePath: base.path,
-      fs: fs,
-      layout: layout,
-    );
+    service = ConfigProfileService(basePath: base.path, fs: fs, layout: layout);
   });
 
   tearDown(() async {
@@ -69,140 +64,172 @@ void main() {
       personal: personal,
       members: const [],
       paths: service,
-    catalog: service,
+      catalog: service,
     );
   }
 
-  test('claude standalone uses standalone session dir without agent-teams env',
-      () async {
-    const workspaceId = 'p-claude';
-    const sessionId = 's-claude';
-    const profile = PersonalProfile(id: workspaceId, display: workspaceId); // TODO: migrate to presets — cli removed
+  test(
+    'claude standalone uses standalone session dir without agent-teams env',
+    () async {
+      const workspaceId = 'p-claude';
+      const sessionId = 's-claude';
+      const profile = PersonalProfile(
+        id: workspaceId,
+        display: workspaceId,
+      ); // TODO: migrate to presets — cli removed
 
-    final contribution = await const ClaudeConfigProfileCapability()
-        .contributeLaunch(
-          standaloneContext(
-            workspaceId: workspaceId,
-            sessionId: sessionId,
-            personal: profile,
-          ),
-        );
+      final contribution = await const ClaudeConfigProfileCapability()
+          .contributeLaunch(
+            standaloneContext(
+              workspaceId: workspaceId,
+              sessionId: sessionId,
+              personal: profile,
+            ),
+          );
 
-    final expectedDir = _standaloneToolDir(
-      base.path,
-      workspaceId,
-      sessionId,
-      'claude',
-    );
-    expect(contribution.environment['CLAUDE_CONFIG_DIR'], expectedDir);
-    expect(
-      contribution.environment,
-      isNot(contains('CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS')),
-    );
-    expect(await Directory(expectedDir).exists(), isTrue);
-  });
+      final expectedDir = _standaloneToolDir(
+        base.path,
+        workspaceId,
+        sessionId,
+        'claude',
+      );
+      expect(contribution.environment['CLAUDE_CONFIG_DIR'], expectedDir);
+      expect(
+        contribution.environment,
+        isNot(contains('CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS')),
+      );
+      expect(await Directory(expectedDir).exists(), isTrue);
+    },
+  );
 
-  test('flashskyai standalone sets FLASHSKYAI_CONFIG_DIR under standalone path',
-      () async {
-    const workspaceId = 'p-fs';
-    const sessionId = 's-fs';
-    const profile = PersonalProfile(id: workspaceId, display: workspaceId,
-      // TODO: migrate to presets — cli removed
-      agent: WorkspaceAgentConfig(agent: 'solo') // TODO: migrate to presets — model removed,
-    );
+  test(
+    'flashskyai standalone sets FLASHSKYAI_CONFIG_DIR under standalone path',
+    () async {
+      const workspaceId = 'p-fs';
+      const sessionId = 's-fs';
+      const profile = PersonalProfile(
+        id: workspaceId,
+        display: workspaceId,
+        // TODO: migrate to presets — cli removed
+        agent: WorkspaceAgentConfig(
+          agent: 'solo',
+        ), // TODO: migrate to presets — model removed,
+      );
 
-    final contribution = await const FlashskyaiConfigProfileCapability()
-        .contributeLaunch(
-          standaloneContext(
-            workspaceId: workspaceId,
-            sessionId: sessionId,
-            personal: profile,
-          ),
-        );
+      final contribution = await const FlashskyaiConfigProfileCapability()
+          .contributeLaunch(
+            standaloneContext(
+              workspaceId: workspaceId,
+              sessionId: sessionId,
+              personal: profile,
+            ),
+          );
 
-    final expectedDir = _standaloneToolDir(
-      base.path,
-      workspaceId,
-      sessionId,
-      'flashskyai',
-    );
-    expect(
-      contribution.environment[FlashskyaiConfigProfileCapability.configDirEnvKey],
-      expectedDir,
-    );
-    expect(
-      contribution.environment[FlashskyaiConfigProfileCapability.sessionHomeDirEnvKey],
-      expectedDir,
-    );
-    expect(contribution.environment['LLM_CONFIG_PATH'], isNotEmpty);
-  });
+      final expectedDir = _standaloneToolDir(
+        base.path,
+        workspaceId,
+        sessionId,
+        'flashskyai',
+      );
+      expect(
+        contribution.environment[FlashskyaiConfigProfileCapability
+            .configDirEnvKey],
+        expectedDir,
+      );
+      expect(
+        contribution.environment[FlashskyaiConfigProfileCapability
+            .sessionHomeDirEnvKey],
+        expectedDir,
+      );
+      expect(contribution.environment['LLM_CONFIG_PATH'], isNotEmpty);
+    },
+  );
 
-  test('cursor standalone HOME-isolates with CURSOR_CONFIG_DIR at .cursor', () async {
-    const workspaceId = 'p-cursor';
-    const sessionId = 's-cursor';
-    const profile = PersonalProfile(id: workspaceId, display: workspaceId); // TODO: migrate to presets — cli removed
+  test(
+    'cursor standalone HOME-isolates with CURSOR_CONFIG_DIR at .cursor',
+    () async {
+      const workspaceId = 'p-cursor';
+      const sessionId = 's-cursor';
+      const profile = PersonalProfile(
+        id: workspaceId,
+        display: workspaceId,
+      ); // TODO: migrate to presets — cli removed
 
-    final contribution = await const CursorConfigProfileCapability()
-        .contributeLaunch(
-          standaloneContext(
-            workspaceId: workspaceId,
-            sessionId: sessionId,
-            personal: profile,
-          ),
-        );
+      final contribution = await const CursorConfigProfileCapability()
+          .contributeLaunch(
+            standaloneContext(
+              workspaceId: workspaceId,
+              sessionId: sessionId,
+              personal: profile,
+            ),
+          );
 
-    final toolDir = _standaloneToolDir(
-      base.path,
-      workspaceId,
-      sessionId,
-      'cursor',
-    );
-    final home = p.join(toolDir, 'home');
-    expect(contribution.environment['HOME'], home);
-    expect(contribution.environment['USERPROFILE'], home);
-    expect(contribution.environment['CURSOR_CONFIG_DIR'], p.join(home, '.cursor'));
-  });
+      final toolDir = _standaloneToolDir(
+        base.path,
+        workspaceId,
+        sessionId,
+        'cursor',
+      );
+      final home = p.join(toolDir, 'home');
+      expect(contribution.environment['HOME'], home);
+      expect(contribution.environment['USERPROFILE'], home);
+      expect(
+        contribution.environment['CURSOR_CONFIG_DIR'],
+        p.join(home, '.cursor'),
+      );
+    },
+  );
 
-  test('opencode standalone sets OPENCODE_CONFIG_DIR without idle plugin', () async {
-    const workspaceId = 'p-oc';
-    const sessionId = 's-oc';
-    const profile = PersonalProfile(id: workspaceId, display: workspaceId); // TODO: migrate to presets — cli removed
+  test(
+    'opencode standalone sets OPENCODE_CONFIG_DIR without idle plugin',
+    () async {
+      const workspaceId = 'p-oc';
+      const sessionId = 's-oc';
+      const profile = PersonalProfile(
+        id: workspaceId,
+        display: workspaceId,
+      ); // TODO: migrate to presets — cli removed
 
-    final contribution = await const OpencodeConfigProfileCapability()
-        .contributeLaunch(
-          standaloneContext(
-            workspaceId: workspaceId,
-            sessionId: sessionId,
-            personal: profile,
-          ),
-        );
+      final contribution = await const OpencodeConfigProfileCapability()
+          .contributeLaunch(
+            standaloneContext(
+              workspaceId: workspaceId,
+              sessionId: sessionId,
+              personal: profile,
+            ),
+          );
 
-    final expectedDir = _standaloneToolDir(
-      base.path,
-      workspaceId,
-      sessionId,
-      'opencode',
-    );
-    expect(contribution.environment['OPENCODE_CONFIG_DIR'], expectedDir);
-    expect(contribution.environment.containsKey('OPENCODE'), isFalse);
-    expect(
-      await File(p.join(expectedDir, opencodeIdlePluginFileName)).exists(),
-      isFalse,
-    );
-  });
+      final expectedDir = _standaloneToolDir(
+        base.path,
+        workspaceId,
+        sessionId,
+        'opencode',
+      );
+      expect(contribution.environment['OPENCODE_CONFIG_DIR'], expectedDir);
+      expect(contribution.environment.containsKey('OPENCODE'), isFalse);
+      expect(
+        await File(p.join(expectedDir, opencodeIdlePluginFileName)).exists(),
+        isFalse,
+      );
+    },
+  );
 
   test('codex standalone sets CODEX_HOME without bus overlay', () async {
     const workspaceId = 'p-codex';
     const sessionId = 's-codex';
-    const profile = PersonalProfile(id: workspaceId, display: workspaceId); // TODO: migrate to presets — cli removed
+    const profile = PersonalProfile(
+      id: workspaceId,
+      display: workspaceId,
+    ); // TODO: migrate to presets — cli removed
 
-    final contribution = await const CodexConfigProfileCapability().contributeLaunch(
-      standaloneContext(
-        workspaceId: workspaceId,
-        sessionId: sessionId,
-        personal: profile,
-      ),
-    );
+    final contribution = await const CodexConfigProfileCapability()
+        .contributeLaunch(
+          standaloneContext(
+            workspaceId: workspaceId,
+            sessionId: sessionId,
+            personal: profile,
+          ),
+        );
 
     final expectedDir = _standaloneToolDir(
       base.path,

@@ -7,8 +7,9 @@ import 'codex_provider_credentials_service.dart';
 
 final class CodexProviderCredentialCapability
     implements ProviderCredentialCapability {
-  CodexProviderCredentialCapability({CodexProviderCredentialsService? credentials})
-    : _credentials = credentials;
+  CodexProviderCredentialCapability({
+    CodexProviderCredentialsService? credentials,
+  }) : _credentials = credentials;
 
   final CodexProviderCredentialsService? _credentials;
 
@@ -30,8 +31,12 @@ final class CodexProviderCredentialCapability
         primary: true,
         showWhenReady: false,
       ),
-      ProviderCredentialActionSpec(kind: ProviderCredentialActionKind.importGlobal),
-      ProviderCredentialActionSpec(kind: ProviderCredentialActionKind.importFile),
+      ProviderCredentialActionSpec(
+        kind: ProviderCredentialActionKind.importGlobal,
+      ),
+      ProviderCredentialActionSpec(
+        kind: ProviderCredentialActionKind.importFile,
+      ),
       ProviderCredentialActionSpec(
         kind: ProviderCredentialActionKind.revoke,
         showWhenReady: true,

@@ -48,8 +48,11 @@ class AppBootstrapState extends Equatable {
   }
 
   @override
-  List<Object?> get props =>
-      [phase, suppressHomeEntryMotion, showOnboardingWizard];
+  List<Object?> get props => [
+    phase,
+    suppressHomeEntryMotion,
+    showOnboardingWizard,
+  ];
 }
 
 class AppBootstrapCubit extends Cubit<AppBootstrapState> {

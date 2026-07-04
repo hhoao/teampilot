@@ -24,8 +24,7 @@ class DropdownMenuItemButton extends StatefulWidget {
   final bool enabled;
 
   @override
-  State<DropdownMenuItemButton> createState() =>
-      _DropdownMenuItemButtonState();
+  State<DropdownMenuItemButton> createState() => _DropdownMenuItemButtonState();
 }
 
 class _DropdownMenuItemButtonState extends State<DropdownMenuItemButton> {
@@ -53,10 +52,7 @@ class _DropdownMenuItemButtonState extends State<DropdownMenuItemButton> {
         child: AnimatedContainer(
           duration: const Duration(milliseconds: 100),
           padding: widget.padding,
-          decoration: BoxDecoration(
-            color: background,
-            borderRadius: radius,
-          ),
+          decoration: BoxDecoration(color: background, borderRadius: radius),
           child: widget.child,
         ),
       ),

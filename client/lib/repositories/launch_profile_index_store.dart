@@ -14,18 +14,17 @@ import 'index_snapshot_isolate.dart';
 /// Per-profile [profile.json] files remain source of truth; this file is
 /// updated on every repository mutation.
 class LaunchProfileIndexStore {
-  LaunchProfileIndexStore({
-    required this.launchProfilesDir,
-    required this.fs,
-  });
+  LaunchProfileIndexStore({required this.launchProfilesDir, required this.fs});
 
   final String launchProfilesDir;
   final Filesystem fs;
 
   static const indexVersion = 1;
 
-  String get _indexFile =>
-      fs.pathContext.join(fs.pathContext.dirname(launchProfilesDir), 'launch-profiles-index.json');
+  String get _indexFile => fs.pathContext.join(
+    fs.pathContext.dirname(launchProfilesDir),
+    'launch-profiles-index.json',
+  );
 
   static LaunchProfile decodeProfile(Map<String, Object?> json) {
     return switch (LaunchProfileKind.decode(json['kind'])) {
@@ -38,7 +37,9 @@ class LaunchProfileIndexStore {
     final indexFile = _indexFile;
     if (fs is LocalFilesystem) {
       try {
-        final maps = await IndexSnapshotIsolate.readLaunchProfileMaps(indexFile);
+        final maps = await IndexSnapshotIsolate.readLaunchProfileMaps(
+          indexFile,
+        );
         final profiles = _profilesFromMaps(maps);
         if (profiles != null) {
           appLogger.i('[boot] launch-profiles-index read via isolate');

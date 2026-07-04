@@ -62,15 +62,15 @@ class MemberConfigDetail {
   });
 
   const MemberConfigDetail.none({required this.cli})
-      : resolvedDir = '',
-        sourceLayer = MemberConfigSourceLayer.none,
-        provider = '',
-        model = '',
-        settings = const [],
-        skills = const [],
-        mcpServers = const [],
-        plugins = const [],
-        warnings = const [];
+    : resolvedDir = '',
+      sourceLayer = MemberConfigSourceLayer.none,
+      provider = '',
+      model = '',
+      settings = const [],
+      skills = const [],
+      mcpServers = const [],
+      plugins = const [],
+      warnings = const [];
 
   final CliTool cli;
   final String resolvedDir;

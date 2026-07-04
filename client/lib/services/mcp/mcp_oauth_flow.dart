@@ -30,9 +30,9 @@ class McpOAuthFlow {
   final http.Client _http;
 
   static String claudeAppConfigDir() {
-    return RuntimeLayout(teampilotRoot: AppStorage.appDataRoot).appToolRoot(
-      'claude',
-    );
+    return RuntimeLayout(
+      teampilotRoot: AppStorage.appDataRoot,
+    ).appToolRoot('claude');
   }
 
   Future<McpOAuthFlowResult> authenticate({
@@ -85,7 +85,8 @@ class McpOAuthFlow {
     final Uri callbackUri;
     if (useLocalCallback && !Platform.isAndroid) {
       final ownsServer = callbackServer == null;
-      final server = callbackServer ?? McpOAuthCallbackServer(port: callbackPort);
+      final server =
+          callbackServer ?? McpOAuthCallbackServer(port: callbackPort);
       try {
         final localFuture = server.listen(expectedState: state);
         onAuthorizationUrl(authorizationUrl);
@@ -128,7 +129,8 @@ class McpOAuthFlow {
     );
 
     final expiresIn = tokens['expires_in'];
-    final expiresAtMs = DateTime.now().millisecondsSinceEpoch +
+    final expiresAtMs =
+        DateTime.now().millisecondsSinceEpoch +
         ((expiresIn is num ? expiresIn.toInt() : 3600) * 1000);
 
     await _credentials.saveOAuthTokens(
@@ -158,7 +160,8 @@ class McpOAuthFlow {
   void _validateCallback(Uri callbackUri, String expectedState) {
     final error = callbackUri.queryParameters['error'];
     if (error != null) {
-      final description = callbackUri.queryParameters['error_description'] ?? '';
+      final description =
+          callbackUri.queryParameters['error_description'] ?? '';
       throw McpOAuthException('OAuth error: $error $description');
     }
     final state = callbackUri.queryParameters['state'];
@@ -314,7 +317,9 @@ class McpOAuthFlow {
         'Content-Type': 'application/x-www-form-urlencoded',
         'Accept': 'application/json',
       },
-      body: params.entries.map((e) => '${e.key}=${Uri.encodeComponent(e.value)}').join('&'),
+      body: params.entries
+          .map((e) => '${e.key}=${Uri.encodeComponent(e.value)}')
+          .join('&'),
     );
 
     if (response.statusCode < 200 || response.statusCode >= 300) {
@@ -327,10 +332,7 @@ class McpOAuthFlow {
 }
 
 class McpOAuthFlowResult {
-  const McpOAuthFlowResult({
-    required this.serverKey,
-    required this.configDir,
-  });
+  const McpOAuthFlowResult({required this.serverKey, required this.configDir});
 
   final String serverKey;
   final String configDir;

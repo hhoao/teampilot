@@ -20,7 +20,10 @@ void main() {
   });
 
   test('HeadlessInvocation defaults environment to empty', () {
-    const inv = HeadlessInvocation(executable: 'claude', arguments: ['-p', 'x']);
+    const inv = HeadlessInvocation(
+      executable: 'claude',
+      arguments: ['-p', 'x'],
+    );
     expect(inv.executable, 'claude');
     expect(inv.arguments, ['-p', 'x']);
     expect(inv.environment, isEmpty);

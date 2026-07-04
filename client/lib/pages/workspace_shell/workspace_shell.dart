@@ -29,6 +29,11 @@ class WorkspaceShell extends StatelessWidget {
     this.showRightToolsVisibilityToggle = false,
     this.workspaceTerminalWorkingDirectory,
     this.workspaceWorkspaceId,
+    this.showComposeTab = false,
+    this.composeTabActive = false,
+    this.composeTabTitle = '',
+    this.onComposeTabSelected,
+    this.onComposeTabClosed,
     super.key,
   });
 
@@ -55,6 +60,13 @@ class WorkspaceShell extends StatelessWidget {
   /// is recreated when switching between workspaces. Falls back to keying by
   /// [workspaceTerminalWorkingDirectory] / active tab cwd when null.
   final String? workspaceWorkspaceId;
+
+  /// When true, renders a persistent "+" compose tab after session tabs.
+  final bool showComposeTab;
+  final bool composeTabActive;
+  final String composeTabTitle;
+  final VoidCallback? onComposeTabSelected;
+  final VoidCallback? onComposeTabClosed;
 
   @override
   Widget build(BuildContext context) {
@@ -121,14 +133,23 @@ class WorkspaceShell extends StatelessWidget {
               ],
             ),
           ),
-        if (tabs.isNotEmpty)
+        if (tabs.isNotEmpty || showComposeTab)
           WorkspaceShellTabRow(
             tabs: tabs,
-            activeIndex: activeTabIndex,
+            activeIndex: composeTabActive ? -1 : activeTabIndex,
             onTabSelected: onTabSelected,
             onTabClosed: onTabClosed,
             onTabCloseOthers: onTabCloseOthers,
             onTabCloseRight: onTabCloseRight,
+            composeTab: showComposeTab
+                ? WorkspaceShellComposeTab(
+                    title: composeTabTitle,
+                    active: composeTabActive,
+                    closable: tabs.isNotEmpty,
+                    onTap: onComposeTabSelected,
+                    onClose: onComposeTabClosed,
+                  )
+                : null,
             trailing: WorkspaceShellTabRowTrailing(
               actions: actions.isNotEmpty && showHeader
                   ? Padding(
@@ -139,7 +160,7 @@ class WorkspaceShell extends StatelessWidget {
               showRightToolsToggle: showRightToolsVisibilityToggle,
             ),
           ),
-        if (tabs.isEmpty && actions.isNotEmpty && showHeader)
+        if (tabs.isEmpty && !showComposeTab && actions.isNotEmpty && showHeader)
           WorkspaceShellActionsBar(actions: actions),
         Expanded(
           child: WorkspaceShellMainWithTerminal(

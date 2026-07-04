@@ -1406,6 +1406,12 @@ abstract class AppLocalizations {
   /// **'Conversations'**
   String get homeWorkspaceConversationsSection;
 
+  /// No description provided for @workspaceRunningSessionsSection.
+  ///
+  /// In en, this message translates to:
+  /// **'Running'**
+  String get workspaceRunningSessionsSection;
+
   /// No description provided for @homeWorkspaceWorkspaceAgent.
   ///
   /// In en, this message translates to:

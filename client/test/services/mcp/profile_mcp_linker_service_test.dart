@@ -50,10 +50,7 @@ void main() {
     final server = McpServer(
       id: 'github',
       name: 'GitHub',
-      server: const {
-        'type': 'http',
-        'url': 'https://github.run.tools',
-      },
+      server: const {'type': 'http', 'url': 'https://github.run.tools'},
       smitheryHosted: true,
       createdAt: 1,
       updatedAt: 1,
@@ -64,9 +61,13 @@ void main() {
       catalog: [server],
       layout: layout,
     );
-    final json = jsonDecode(
-      await File(layout.identityMcpServersFile('team-a')).readAsString(),
-    ) as Map<String, Object?>;
+    final json =
+        jsonDecode(
+              await File(
+                layout.identityMcpServersFile('team-a'),
+              ).readAsString(),
+            )
+            as Map<String, Object?>;
     expect(json['smitheryServerKeys'], ['GitHub']);
   });
 
@@ -85,9 +86,13 @@ void main() {
       catalog: [server],
       layout: layout,
     );
-    final json = jsonDecode(
-      await File(layout.identityMcpServersFile('team-a')).readAsString(),
-    ) as Map<String, Object?>;
+    final json =
+        jsonDecode(
+              await File(
+                layout.identityMcpServersFile('team-a'),
+              ).readAsString(),
+            )
+            as Map<String, Object?>;
     expect((json['mcpServers'] as Map).isEmpty, isTrue);
   });
 }

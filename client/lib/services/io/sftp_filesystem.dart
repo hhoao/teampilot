@@ -43,8 +43,10 @@ class SftpFilesystem implements Filesystem {
       store.writeFile(path, content);
 
   @override
-  Future<void> writeBytes(String path, List<int> bytes) =>
-      store.writeBytes(path, bytes is Uint8List ? bytes : Uint8List.fromList(bytes));
+  Future<void> writeBytes(String path, List<int> bytes) => store.writeBytes(
+    path,
+    bytes is Uint8List ? bytes : Uint8List.fromList(bytes),
+  );
 
   @override
   Future<void> atomicWrite(String path, String content) async {
@@ -83,7 +85,8 @@ class SftpFilesystem implements Filesystem {
   }
 
   @override
-  Future<String?> readSymlinkTarget(String linkPath) => store.readlink(linkPath);
+  Future<String?> readSymlinkTarget(String linkPath) =>
+      store.readlink(linkPath);
 
   @override
   Future<String?> resolveSymlink(String path) => store.realpath(path);

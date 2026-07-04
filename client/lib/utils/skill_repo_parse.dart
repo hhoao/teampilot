@@ -28,7 +28,9 @@ ParsedGithubRepo? parseGithubRepoUrl(String url) {
     return null;
   }
 
-  cleaned = cleaned.replaceAll(RegExp(r'^/+'), '').replaceAll(RegExp(r'/+$'), '');
+  cleaned = cleaned
+      .replaceAll(RegExp(r'^/+'), '')
+      .replaceAll(RegExp(r'/+$'), '');
   if (cleaned.endsWith('.git')) {
     cleaned = cleaned.substring(0, cleaned.length - 4);
   }

@@ -35,7 +35,9 @@ import '../resources/default_resource_capability.dart';
 
 final class CodexCliTool implements CliToolDefinition {
   CodexCliTool({
-    this.busTransport = const BusTransportCapability(longBlockingWaitForMessage: true),
+    this.busTransport = const BusTransportCapability(
+      longBlockingWaitForMessage: true,
+    ),
     this.remoteCliLocator = const DefaultRemoteCliLocator('codex'),
     this.launchArgs = const CodexCliToolAdapter(),
     this.configProfile = const CodexConfigProfileCapability(),

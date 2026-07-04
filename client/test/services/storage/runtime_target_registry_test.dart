@@ -21,13 +21,15 @@ void main() {
   });
   tearDown(() => tmp.deleteSync(recursive: true));
 
-  RuntimeTargetRegistry build({bool isWindows = false, bool isAndroid = false}) =>
-      RuntimeTargetRegistry(
-        repo: targetsRepo,
-        sshProfileRepo: sshRepo,
-        isWindows: isWindows,
-        isAndroid: isAndroid,
-      );
+  RuntimeTargetRegistry build({
+    bool isWindows = false,
+    bool isAndroid = false,
+  }) => RuntimeTargetRegistry(
+    repo: targetsRepo,
+    sshProfileRepo: sshRepo,
+    isWindows: isWindows,
+    isAndroid: isAndroid,
+  );
 
   SshProfile profile(String id) =>
       SshProfile(id: id, name: 'name-$id', host: 'h', username: 'u');
@@ -38,11 +40,14 @@ void main() {
     expect(targets.first.id, 'local');
   });
 
-  test('listTargets injects implicit wsl on Windows when distro given', () async {
-    final reg = build(isWindows: true);
-    final ids = (await reg.listTargets(wslDistro: 'Ubuntu')).map((t) => t.id);
-    expect(ids, contains('wsl:Ubuntu'));
-  });
+  test(
+    'listTargets injects implicit wsl on Windows when distro given',
+    () async {
+      final reg = build(isWindows: true);
+      final ids = (await reg.listTargets(wslDistro: 'Ubuntu')).map((t) => t.id);
+      expect(ids, contains('wsl:Ubuntu'));
+    },
+  );
 
   test('reconcile: new ssh profile appears; deleted profile pruned', () async {
     await targetsRepo.save(
@@ -59,8 +64,9 @@ void main() {
     expect(ids.contains('ssh:p1'), isTrue);
     expect(ids.contains('ssh:p2'), isTrue); // newly added & written back
     expect(ids.contains('ssh:p3'), isFalse); // orphan pruned
-    final persisted =
-        (await targetsRepo.load()).targets.map((t) => t.id).toSet();
+    final persisted = (await targetsRepo.load()).targets
+        .map((t) => t.id)
+        .toSet();
     expect(persisted, {'ssh:p1', 'ssh:p2'});
   });
 }

@@ -62,12 +62,12 @@ void main() {
 
 class _CapturingLocalOpener extends SystemFolderOpener {
   _CapturingLocalOpener(this._onReveal)
-      : super(
-          isMacOS: true,
-          isWindows: false,
-          isLinux: false,
-          runner: (exe, args) async {},
-        );
+    : super(
+        isMacOS: true,
+        isWindows: false,
+        isLinux: false,
+        runner: (exe, args) async {},
+      );
 
   final void Function(String path) _onReveal;
 

@@ -1,4 +1,4 @@
-﻿import 'package:flutter/material.dart';
+import 'package:flutter/material.dart';
 import 'package:teampilot/theme/app_icon_sizes.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
@@ -107,20 +107,21 @@ class SkillDiscoverySkillsShBody extends StatelessWidget {
                             padding: const EdgeInsets.only(top: 2),
                             gridDelegate:
                                 SliverGridDelegateWithFixedCrossAxisCount(
-                              crossAxisCount: cols,
-                              crossAxisSpacing: 12,
-                              mainAxisSpacing: 12,
-                              mainAxisExtent: 168,
-                            ),
+                                  crossAxisCount: cols,
+                                  crossAxisSpacing: 12,
+                                  mainAxisSpacing: 12,
+                                  mainAxisExtent: 168,
+                                ),
                             itemCount: sh.entries.length,
                             itemBuilder: (context, i) {
                               final entry = sh.entries[i];
                               return SkillDiscoverCard(
                                 key: ValueKey(entry.key),
                                 name: entry.name,
-                                description: l10n.skillsInstalls(entry.installs),
-                                source:
-                                    '${entry.repoOwner}/${entry.repoName}',
+                                description: l10n.skillsInstalls(
+                                  entry.installs,
+                                ),
+                                source: '${entry.repoOwner}/${entry.repoName}',
                                 githubUrl: entry.githubBrowseUrl,
                                 installed: installedKeys.contains(
                                   skillsShInstallKey(entry),
@@ -160,9 +161,9 @@ class SkillDiscoverySkillsShBody extends StatelessWidget {
                       const SizedBox(height: 6),
                       Text(
                         l10n.skillsSkillsShPoweredBy,
-                        style: AppTextStyles.of(context).caption.copyWith(
-                          color: Theme.of(context).hintColor,
-                        ),
+                        style: AppTextStyles.of(
+                          context,
+                        ).caption.copyWith(color: Theme.of(context).hintColor),
                       ),
                     ],
                   ),

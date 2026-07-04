@@ -13,39 +13,42 @@ TeamBus _busWithQueue(FakeMemberLauncher launcher) =>
     TeamBus(launcher: launcher, taskQueue: TaskQueue());
 
 AgentNode _runningWorker(String id) => AgentNode.test(
-      memberId: id,
-      lifecycle: MemberLifecycle.running,
-      activity: MemberActivity.active,
-    );
+  memberId: id,
+  lifecycle: MemberLifecycle.running,
+  activity: MemberActivity.active,
+);
 
 AgentNode _declaredWorker(String id) => AgentNode.test(memberId: id);
 
 AgentNode _parkedWorker(String id) => AgentNode.test(
-      memberId: id,
-      lifecycle: MemberLifecycle.running,
-      activity: MemberActivity.turnDoneBusWait,
-    );
+  memberId: id,
+  lifecycle: MemberLifecycle.running,
+  activity: MemberActivity.turnDoneBusWait,
+);
 
 // Launched but never entered wait_for_message (no initial prompt kicked it off).
 AgentNode _idleAtPromptWorker(String id) => AgentNode.test(
-      memberId: id,
-      lifecycle: MemberLifecycle.running,
-      activity: MemberActivity.turnDoneReady,
-    );
+  memberId: id,
+  lifecycle: MemberLifecycle.running,
+  activity: MemberActivity.turnDoneReady,
+);
 
 void main() {
   test('a bus without a task queue exposes no work-queue surface', () {
     final bus = TeamBus(launcher: FakeMemberLauncher());
     expect(bus.hasTaskQueue, isFalse);
-    expect(bus.addTasks('lead', [const TeamTaskDraft(title: 'a', brief: 'b')]),
-        isEmpty);
+    expect(
+      bus.addTasks('lead', [const TeamTaskDraft(title: 'a', brief: 'b')]),
+      isEmpty,
+    );
     expect(bus.listTasks(), isEmpty);
   });
 
   test('add_tasks then update flows through the bus', () {
     final bus = _busWithQueue(FakeMemberLauncher());
-    final created =
-        bus.addTasks('lead', [const TeamTaskDraft(title: 'a', brief: 'do a')]);
+    final created = bus.addTasks('lead', [
+      const TeamTaskDraft(title: 'a', brief: 'do a'),
+    ]);
     expect(created.single.title, 'a');
 
     final claimed = bus.claimNextTask('w1');
@@ -82,8 +85,9 @@ void main() {
       bus.declareMember(worker);
 
       // Both a message and a task are available; messages win.
-      worker.inbox
-          .deliver(TeamMessage(id: 'm1', from: 'lead', to: 'w1', content: 'hi'));
+      worker.inbox.deliver(
+        TeamMessage(id: 'm1', from: 'lead', to: 'w1', content: 'hi'),
+      );
       bus.addTasks('lead', [const TeamTaskDraft(title: 'a', brief: 'do a')]);
 
       WorkBatch? got;
@@ -100,12 +104,14 @@ void main() {
   test('the team lead never auto-claims tasks', () {
     fakeAsync((async) {
       final bus = _busWithQueue(FakeMemberLauncher());
-      bus.declareMember(AgentNode.test(
-        memberId: 'lead',
-        lifecycle: MemberLifecycle.running,
-        activity: MemberActivity.active,
-        isTeamLead: true,
-      ));
+      bus.declareMember(
+        AgentNode.test(
+          memberId: 'lead',
+          lifecycle: MemberLifecycle.running,
+          activity: MemberActivity.active,
+          isTeamLead: true,
+        ),
+      );
 
       WorkBatch? got;
       bus.receiveWork('lead').then((b) => got = b);
@@ -151,21 +157,24 @@ void main() {
     });
   });
 
-  test('add_tasks prefers doorbelling a running worker over cold-starting one', () {
-    fakeAsync((async) {
-      final launcher = FakeMemberLauncher();
-      final bus = _busWithQueue(launcher);
-      bus.declareMember(_idleAtPromptWorker('running'));
-      bus.declareMember(_declaredWorker('cold'));
+  test(
+    'add_tasks prefers doorbelling a running worker over cold-starting one',
+    () {
+      fakeAsync((async) {
+        final launcher = FakeMemberLauncher();
+        final bus = _busWithQueue(launcher);
+        bus.declareMember(_idleAtPromptWorker('running'));
+        bus.declareMember(_declaredWorker('cold'));
 
-      // One task, two idle workers → engage the cheap running one, not cold start.
-      bus.addTasks('lead', [const TeamTaskDraft(title: 'a', brief: 'do a')]);
-      async.flushMicrotasks();
+        // One task, two idle workers → engage the cheap running one, not cold start.
+        bus.addTasks('lead', [const TeamTaskDraft(title: 'a', brief: 'do a')]);
+        async.flushMicrotasks();
 
-      expect(launcher.woken.single.memberId, 'running');
-      expect(launcher.materialized, isEmpty);
-    });
-  });
+        expect(launcher.woken.single.memberId, 'running');
+        expect(launcher.materialized, isEmpty);
+      });
+    },
+  );
 
   test('add_tasks never materializes the team lead', () {
     fakeAsync((async) {
@@ -201,7 +210,9 @@ void main() {
     fakeAsync((async) {
       final launcher = FakeMemberLauncher();
       final bus = _busWithQueue(launcher);
-      bus.declareMember(_parkedWorker('w1')); // already running, in wait_for_message
+      bus.declareMember(
+        _parkedWorker('w1'),
+      ); // already running, in wait_for_message
       bus.declareMember(_declaredWorker('w2'));
 
       // The parked worker is woken by the queue waiter and claims; the declared
@@ -213,32 +224,35 @@ void main() {
     });
   });
 
-  test('receiveWork notifies the lead when a worker goes idle with no work', () {
-    fakeAsync((async) {
-      final bus = _busWithQueue(FakeMemberLauncher());
-      final lead = AgentNode.test(
-        memberId: 'lead',
-        lifecycle: MemberLifecycle.running,
-        activity: MemberActivity.active,
-        isTeamLead: true,
-      );
-      bus.declareMember(lead);
-      bus.declareMember(_runningWorker('w1'));
+  test(
+    'receiveWork notifies the lead when a worker goes idle with no work',
+    () {
+      fakeAsync((async) {
+        final bus = _busWithQueue(FakeMemberLauncher());
+        final lead = AgentNode.test(
+          memberId: 'lead',
+          lifecycle: MemberLifecycle.running,
+          activity: MemberActivity.active,
+          isTeamLead: true,
+        );
+        bus.declareMember(lead);
+        bus.declareMember(_runningWorker('w1'));
 
-      // Worker waits with nothing to do → blocks → announces idle to the lead
-      // (the Claude Code "transition to idle → notify leader" moment).
-      bus.receiveWork('w1');
-      async.flushMicrotasks();
+        // Worker waits with nothing to do → blocks → announces idle to the lead
+        // (the Claude Code "transition to idle → notify leader" moment).
+        bus.receiveWork('w1');
+        async.flushMicrotasks();
 
-      expect(lead.inbox.isEmpty, isFalse);
-      final note = IdleNotification.parseTeamMessageContent(
-        lead.inbox.peekAll().single.content,
-      );
-      expect(note, isNotNull);
-      expect(note!.from, 'w1');
-      expect(note.idleReason, IdleReason.available);
-    });
-  });
+        expect(lead.inbox.isEmpty, isFalse);
+        final note = IdleNotification.parseTeamMessageContent(
+          lead.inbox.peekAll().single.content,
+        );
+        expect(note, isNotNull);
+        expect(note!.from, 'w1');
+        expect(note.idleReason, IdleReason.available);
+      });
+    },
+  );
 
   test('a worker that claims work does not announce idle', () {
     fakeAsync((async) {
@@ -263,42 +277,48 @@ void main() {
     });
   });
 
-  test('reengageIdleWorkers re-rings a stranded task worker after the retry interval', () {
-    fakeAsync((async) {
-      var now = 0;
-      final launcher = FakeMemberLauncher();
-      final bus = TeamBus(
-        launcher: launcher,
-        taskQueue: TaskQueue(),
-        clock: () => now,
-      );
-      bus.declareMember(_idleAtPromptWorker('w1'));
+  test(
+    'reengageIdleWorkers re-rings a stranded task worker after the retry interval',
+    () {
+      fakeAsync((async) {
+        var now = 0;
+        final launcher = FakeMemberLauncher();
+        final bus = TeamBus(
+          launcher: launcher,
+          taskQueue: TaskQueue(),
+          clock: () => now,
+        );
+        bus.declareMember(_idleAtPromptWorker('w1'));
 
-      bus.addTasks('lead', [const TeamTaskDraft(title: 'a', brief: 'do a')]);
-      async.flushMicrotasks();
-      expect(launcher.woken.length, 1); // initial queue doorbell (full notice)
+        bus.addTasks('lead', [const TeamTaskDraft(title: 'a', brief: 'do a')]);
+        async.flushMicrotasks();
+        expect(
+          launcher.woken.length,
+          1,
+        ); // initial queue doorbell (full notice)
 
-      // First CR was swallowed by the input box → worker still at prompt, task
-      // still claimable. A watchdog tick before the retry window stays quiet.
-      bus.reengageIdleWorkers();
-      expect(launcher.woken.length, 1);
-      expect(launcher.nudged, isEmpty);
+        // First CR was swallowed by the input box → worker still at prompt, task
+        // still claimable. A watchdog tick before the retry window stays quiet.
+        bus.reengageIdleWorkers();
+        expect(launcher.woken.length, 1);
+        expect(launcher.nudged, isEmpty);
 
-      // After the retry interval the watchdog retries — but with a bare CR
-      // (nudgeSubmit), NOT a re-pasted notice. Re-pasting would stack duplicate
-      // copies in the input box (the "several in a short time" the user saw).
-      now += TeamBus.doorbellRetryMs;
-      bus.reengageIdleWorkers();
-      expect(launcher.woken.length, 1); // no second full-notice paste
-      expect(launcher.nudged, ['w1']);
+        // After the retry interval the watchdog retries — but with a bare CR
+        // (nudgeSubmit), NOT a re-pasted notice. Re-pasting would stack duplicate
+        // copies in the input box (the "several in a short time" the user saw).
+        now += TeamBus.doorbellRetryMs;
+        bus.reengageIdleWorkers();
+        expect(launcher.woken.length, 1); // no second full-notice paste
+        expect(launcher.nudged, ['w1']);
 
-      // Still stuck a window later → another CR, still no re-paste.
-      now += TeamBus.doorbellRetryMs;
-      bus.reengageIdleWorkers();
-      expect(launcher.woken.length, 1);
-      expect(launcher.nudged, ['w1', 'w1']);
-    });
-  });
+        // Still stuck a window later → another CR, still no re-paste.
+        now += TeamBus.doorbellRetryMs;
+        bus.reengageIdleWorkers();
+        expect(launcher.woken.length, 1);
+        expect(launcher.nudged, ['w1', 'w1']);
+      });
+    },
+  );
 
   test('reengageIdleWorkers stops once the worker claims (enters wait)', () {
     fakeAsync((async) {
@@ -325,27 +345,31 @@ void main() {
     });
   });
 
-  test('reengageIdleWorkers re-rings a stranded unread-mail worker with the read notice', () {
-    fakeAsync((async) {
-      var now = 0;
-      final launcher = FakeMemberLauncher();
-      final bus = TeamBus(launcher: launcher, clock: () => now);
-      final w = _idleAtPromptWorker('w1');
-      bus.declareMember(w);
-      w.inbox
-          .deliver(TeamMessage(id: 'm1', from: 'lead', to: 'w1', content: 'hi'));
+  test(
+    'reengageIdleWorkers re-rings a stranded unread-mail worker with the read notice',
+    () {
+      fakeAsync((async) {
+        var now = 0;
+        final launcher = FakeMemberLauncher();
+        final bus = TeamBus(launcher: launcher, clock: () => now);
+        final w = _idleAtPromptWorker('w1');
+        bus.declareMember(w);
+        w.inbox.deliver(
+          TeamMessage(id: 'm1', from: 'lead', to: 'w1', content: 'hi'),
+        );
 
-      // First time the watchdog sees it (never doorbelled) → inject full notice.
-      bus.reengageIdleWorkers();
-      expect(launcher.woken.single.notice, TeamBus.doorbellNotice);
+        // First time the watchdog sees it (never doorbelled) → inject full notice.
+        bus.reengageIdleWorkers();
+        expect(launcher.woken.single.notice, TeamBus.doorbellNotice);
 
-      // Swallowed CR → retry submits with a bare CR, not a second notice paste.
-      now += TeamBus.doorbellRetryMs;
-      bus.reengageIdleWorkers();
-      expect(launcher.woken.length, 1);
-      expect(launcher.nudged, ['w1']);
-    });
-  });
+        // Swallowed CR → retry submits with a bare CR, not a second notice paste.
+        now += TeamBus.doorbellRetryMs;
+        bus.reengageIdleWorkers();
+        expect(launcher.woken.length, 1);
+        expect(launcher.nudged, ['w1']);
+      });
+    },
+  );
 
   test('releaseTask returns a claimed task to pending', () {
     final bus = _busWithQueue(FakeMemberLauncher());

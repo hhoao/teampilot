@@ -23,13 +23,10 @@ void main() {
     policy = LeaderStarCoordinationPolicy(
       environment: BusEnvironment(ids: () => 'id${seq++}', clock: () => 0),
     );
-    view = _FakeView(
-      {
-        'lead': AgentNode.test(memberId: 'lead', isTeamLead: true),
-        'dev': AgentNode.test(memberId: 'dev', displayName: 'Dev'),
-      },
-      'lead',
-    );
+    view = _FakeView({
+      'lead': AgentNode.test(memberId: 'lead', isTeamLead: true),
+      'dev': AgentNode.test(memberId: 'dev', displayName: 'Dev'),
+    }, 'lead');
   });
 
   test('no notification when the worker has no inbound work', () {
@@ -65,20 +62,16 @@ void main() {
   });
 
   test('no notification when there is no leader', () {
-    final leaderless = _FakeView(
-      {'dev': AgentNode.test(memberId: 'dev')},
-      null,
-    );
+    final leaderless = _FakeView({
+      'dev': AgentNode.test(memberId: 'dev'),
+    }, null);
     policy.noteInboundWork('dev');
     expect(policy.onMemberIdle(leaderless, 'dev'), isEmpty);
     // Work stays pending (not consumed) so a leader joining later still gets it.
-    final withLeader = _FakeView(
-      {
-        'dev': AgentNode.test(memberId: 'dev'),
-        'lead': AgentNode.test(memberId: 'lead', isTeamLead: true),
-      },
-      'lead',
-    );
+    final withLeader = _FakeView({
+      'dev': AgentNode.test(memberId: 'dev'),
+      'lead': AgentNode.test(memberId: 'lead', isTeamLead: true),
+    }, 'lead');
     expect(policy.onMemberIdle(withLeader, 'dev'), hasLength(1));
   });
 }

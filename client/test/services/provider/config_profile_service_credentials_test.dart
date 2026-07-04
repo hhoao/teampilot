@@ -49,18 +49,28 @@ void main() {
         cli: CliTool.claude,
         name: 'work',
         category: AppProviderCategory.official,
-        config: withCredentialBinding({'env': {}}, CredentialBindingKind.isolated),
+        config: withCredentialBinding({
+          'env': {},
+        }, CredentialBindingKind.isolated),
       ),
       AppProviderConfig(
         id: 'personal',
         cli: CliTool.claude,
         name: 'personal',
         category: AppProviderCategory.official,
-        config: withCredentialBinding({'env': {}}, CredentialBindingKind.isolated),
+        config: withCredentialBinding({
+          'env': {},
+        }, CredentialBindingKind.isolated),
       ),
     ]);
     await fs.writeString(
-      fs.pathContext.join(base, 'providers', 'claude', 'work', '.credentials.json'),
+      fs.pathContext.join(
+        base,
+        'providers',
+        'claude',
+        'work',
+        '.credentials.json',
+      ),
       '{"claudeAiOauth":{"accessToken":"work"}}',
     );
     await fs.writeString(
@@ -76,13 +86,17 @@ void main() {
 
     final workOutcome = await service.prepareTeamLaunch(
       teamId: 'team-a',
-      workspaceId: 'workspace-1', sessionId: 'session-a', cliTeamName: 'session-a',
+      workspaceId: 'workspace-1',
+      sessionId: 'session-a',
+      cliTeamName: 'session-a',
       cli: CliTool.claude,
       team: teamWithProvider('team-a', 'work'),
     );
     final personalOutcome = await service.prepareTeamLaunch(
       teamId: 'team-b',
-      workspaceId: 'workspace-1', sessionId: 'session-b', cliTeamName: 'session-b',
+      workspaceId: 'workspace-1',
+      sessionId: 'session-b',
+      cliTeamName: 'session-b',
       cli: CliTool.claude,
       team: teamWithProvider('team-b', 'personal'),
     );
@@ -93,7 +107,13 @@ void main() {
 
     expect(
       fs.symlinks[fs.pathContext.join(workSessionDir, '.credentials.json')],
-      fs.pathContext.join(base, 'providers', 'claude', 'work', '.credentials.json'),
+      fs.pathContext.join(
+        base,
+        'providers',
+        'claude',
+        'work',
+        '.credentials.json',
+      ),
     );
     expect(
       fs.symlinks[fs.pathContext.join(personalSessionDir, '.credentials.json')],
@@ -112,7 +132,9 @@ void main() {
 
     final outcome = await service.prepareTeamLaunch(
       teamId: 'team-a',
-      workspaceId: 'workspace-1', sessionId: 'session-a', cliTeamName: 'session-a',
+      workspaceId: 'workspace-1',
+      sessionId: 'session-a',
+      cliTeamName: 'session-a',
       cli: CliTool.claude,
       team: teamWithProvider('team-a', 'work'),
     );
@@ -141,7 +163,9 @@ void main() {
           cli: CliTool.claude,
           name: 'official',
           category: AppProviderCategory.official,
-          config: withCredentialBinding({'env': {}}, CredentialBindingKind.linked),
+          config: withCredentialBinding({
+            'env': {},
+          }, CredentialBindingKind.linked),
         ),
       ]);
       await fs.writeString(

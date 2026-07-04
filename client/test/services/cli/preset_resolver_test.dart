@@ -35,10 +35,7 @@ void main() {
       cliEffortLevels: {'claude': 'medium'},
     );
 
-    final bundle = resolveTeamLaunchBundle(
-      team: team,
-      globalPresets: const [],
-    );
+    final bundle = resolveTeamLaunchBundle(team: team, globalPresets: const []);
 
     expect(bundle.cli, CliTool.claude);
     expect(bundle.provider, 'deepseek');
@@ -180,16 +177,16 @@ void main() {
   });
 
   test('presetsForCli filters by catalog CLI', () {
-    final items = presetsForCli(
-      const [claudePreset, cursorPreset],
-      CliTool.codex,
-    );
+    final items = presetsForCli(const [
+      claudePreset,
+      cursorPreset,
+    ], CliTool.codex);
     expect(items, isEmpty);
 
-    final claudeItems = presetsForCli(
-      const [claudePreset, cursorPreset],
-      CliTool.claude,
-    );
+    final claudeItems = presetsForCli(const [
+      claudePreset,
+      cursorPreset,
+    ], CliTool.claude);
     expect(claudeItems, const [claudePreset]);
   });
 
@@ -210,11 +207,7 @@ void main() {
   });
 
   test('teamPresetPickerItems filters by team cli for native teams', () {
-    const team = TeamProfile(
-      id: 'team',
-      name: 'Native',
-      cli: CliTool.claude,
-    );
+    const team = TeamProfile(id: 'team', name: 'Native', cli: CliTool.claude);
 
     final items = teamPresetPickerItems(
       team: team,

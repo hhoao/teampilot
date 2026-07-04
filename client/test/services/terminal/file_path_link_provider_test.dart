@@ -43,10 +43,14 @@ void main() {
   late FilePathLinkProvider p;
   setUp(() => p = FilePathLinkProvider(fs: _NeverFs(), launchCwd: '/proj'));
 
-  List<String> payloads(String line) => p.scan(line).map((s) => s.payload).toList();
+  List<String> payloads(String line) =>
+      p.scan(line).map((s) => s.payload).toList();
 
   test('detects relative, dotted, absolute, and windows paths', () {
-    expect(payloads('Read(client/lib/foo.dart)'), contains('client/lib/foo.dart'));
+    expect(
+      payloads('Read(client/lib/foo.dart)'),
+      contains('client/lib/foo.dart'),
+    );
     expect(payloads('see ./README.md now'), contains('./README.md'));
     expect(payloads('open ../a/b.txt'), contains('../a/b.txt'));
     expect(payloads('at /etc/hosts here'), contains('/etc/hosts'));
@@ -54,7 +58,10 @@ void main() {
 
   test('keeps :line[:col] suffix in the payload', () {
     expect(payloads('Update(lib/main.dart:42)'), contains('lib/main.dart:42'));
-    expect(payloads('err at src/x.dart:10:5 here'), contains('src/x.dart:10:5'));
+    expect(
+      payloads('err at src/x.dart:10:5 here'),
+      contains('src/x.dart:10:5'),
+    );
   });
 
   test('rejects non-paths', () {
@@ -64,7 +71,9 @@ void main() {
 
   test('span ranges align with the matched substring', () {
     final line = 'Read(client/lib/foo.dart)';
-    final span = p.scan(line).firstWhere((s) => s.payload == 'client/lib/foo.dart');
+    final span = p
+        .scan(line)
+        .firstWhere((s) => s.payload == 'client/lib/foo.dart');
     expect(line.substring(span.start, span.end), 'client/lib/foo.dart');
   });
 
@@ -77,26 +86,28 @@ void main() {
 
   // ---- Task 9: async filesystem validation tests ----
 
-  test('candidate becomes enabled after fs confirms existence, and notifies',
-      () async {
-    final fs = _fsWithFiles(['client/lib/foo.dart']);
-    final provider = FilePathLinkProvider(fs: fs, launchCwd: '/proj');
+  test(
+    'candidate becomes enabled after fs confirms existence, and notifies',
+    () async {
+      final fs = _fsWithFiles(['client/lib/foo.dart']);
+      final provider = FilePathLinkProvider(fs: fs, launchCwd: '/proj');
 
-    final span = provider
-        .scan('Read(client/lib/foo.dart)')
-        .firstWhere((s) => s.payload == 'client/lib/foo.dart');
-    expect(provider.isEnabled(span), isFalse); // not validated yet
+      final span = provider
+          .scan('Read(client/lib/foo.dart)')
+          .firstWhere((s) => s.payload == 'client/lib/foo.dart');
+      expect(provider.isEnabled(span), isFalse); // not validated yet
 
-    var notified = 0;
-    provider.addListener(() => notified++);
+      var notified = 0;
+      provider.addListener(() => notified++);
 
-    // scan triggers fire-and-forget validation
-    provider.scan('Read(client/lib/foo.dart)').toList();
-    await Future<void>.delayed(const Duration(milliseconds: 20));
+      // scan triggers fire-and-forget validation
+      provider.scan('Read(client/lib/foo.dart)').toList();
+      await Future<void>.delayed(const Duration(milliseconds: 20));
 
-    expect(notified, greaterThan(0));
-    expect(provider.isEnabled(span), isTrue);
-  });
+      expect(notified, greaterThan(0));
+      expect(provider.isEnabled(span), isTrue);
+    },
+  );
 
   test('non-existent path never enables', () async {
     final fs = _fsWithFiles([]); // no files registered
@@ -109,21 +120,26 @@ void main() {
     expect(provider.isEnabled(span), isFalse);
   });
 
-  test('a path with :line suffix validates against the stripped file path',
-      () async {
-    final fs = _fsWithFiles(['lib/main.dart']);
-    final provider = FilePathLinkProvider(fs: fs, launchCwd: '/proj');
+  test(
+    'a path with :line suffix validates against the stripped file path',
+    () async {
+      final fs = _fsWithFiles(['lib/main.dart']);
+      final provider = FilePathLinkProvider(fs: fs, launchCwd: '/proj');
 
-    final span = provider
-        .scan('Update(lib/main.dart:42)')
-        .firstWhere((s) => s.payload.endsWith(':42'));
-    provider.scan('Update(lib/main.dart:42)').toList();
-    await Future<void>.delayed(const Duration(milliseconds: 20));
+      final span = provider
+          .scan('Update(lib/main.dart:42)')
+          .firstWhere((s) => s.payload.endsWith(':42'));
+      provider.scan('Update(lib/main.dart:42)').toList();
+      await Future<void>.delayed(const Duration(milliseconds: 20));
 
-    expect(provider.isEnabled(span), isTrue,
-        reason: 'suffix stripped before stat; payload keeps :42');
-    expect(span.payload, 'lib/main.dart:42');
-  });
+      expect(
+        provider.isEnabled(span),
+        isTrue,
+        reason: 'suffix stripped before stat; payload keeps :42',
+      );
+      expect(span.payload, 'lib/main.dart:42');
+    },
+  );
 
   test('directory is not a clickable file', () async {
     // Register the resolved path as a real DIRECTORY so validation actually
@@ -138,8 +154,11 @@ void main() {
     provider.scan('see lib/widgets.dart here').toList();
     await Future<void>.delayed(const Duration(milliseconds: 20));
 
-    expect(provider.isEnabled(span), isFalse,
-        reason: 'an existing directory must not be a clickable file');
+    expect(
+      provider.isEnabled(span),
+      isFalse,
+      reason: 'an existing directory must not be a clickable file',
+    );
   });
 
   // ---- Task 10: injected live cwd tests ----
@@ -153,8 +172,11 @@ void main() {
     final span = provider.scan('Read(lib/a.dart)').first;
     provider.scan('Read(lib/a.dart)').toList();
     await Future<void>.delayed(const Duration(milliseconds: 20));
-    expect(provider.isEnabled(span), isTrue,
-        reason: 'should resolve against injected cwd /run/app');
+    expect(
+      provider.isEnabled(span),
+      isTrue,
+      reason: 'should resolve against injected cwd /run/app',
+    );
   });
 
   test('falls back to launchCwd when injected cwd is null/empty', () async {
@@ -165,37 +187,53 @@ void main() {
     final span = provider.scan('Read(lib/a.dart)').first;
     provider.scan('Read(lib/a.dart)').toList();
     await Future<void>.delayed(const Duration(milliseconds: 20));
-    expect(provider.isEnabled(span), isTrue, reason: 'null cwd => launchCwd /proj');
+    expect(
+      provider.isEnabled(span),
+      isTrue,
+      reason: 'null cwd => launchCwd /proj',
+    );
   });
 
-  test('cwd change clears negatives, notifies, and re-validates under new cwd',
-      () async {
-    // a.dart exists ONLY under /run/app.
-    final fs = _fsWithFiles(['lib/a.dart'], cwd: '/run/app');
-    final cwd = ValueNotifier<String?>('/proj');
-    addTearDown(cwd.dispose);
-    final provider = FilePathLinkProvider(fs: fs, launchCwd: '/proj', cwd: cwd);
-    final span = provider.scan('Read(lib/a.dart)').first;
-    provider.scan('Read(lib/a.dart)').toList();
-    await Future<void>.delayed(const Duration(milliseconds: 20));
-    expect(provider.isEnabled(span), isFalse); // /proj/lib/a.dart absent
+  test(
+    'cwd change clears negatives, notifies, and re-validates under new cwd',
+    () async {
+      // a.dart exists ONLY under /run/app.
+      final fs = _fsWithFiles(['lib/a.dart'], cwd: '/run/app');
+      final cwd = ValueNotifier<String?>('/proj');
+      addTearDown(cwd.dispose);
+      final provider = FilePathLinkProvider(
+        fs: fs,
+        launchCwd: '/proj',
+        cwd: cwd,
+      );
+      final span = provider.scan('Read(lib/a.dart)').first;
+      provider.scan('Read(lib/a.dart)').toList();
+      await Future<void>.delayed(const Duration(milliseconds: 20));
+      expect(provider.isEnabled(span), isFalse); // /proj/lib/a.dart absent
 
-    var notified = 0;
-    provider.addListener(() => notified++);
-    cwd.value = '/run/app'; // triggers _onCwdChanged
-    expect(notified, greaterThan(0), reason: 'cwd change must notify');
-    // The view would re-scan on notify; emulate that here:
-    provider.scan('Read(lib/a.dart)').toList();
-    await Future<void>.delayed(const Duration(milliseconds: 20));
-    expect(provider.isEnabled(span), isTrue,
-        reason: 'after cwd change, path resolves under /run/app');
-  });
+      var notified = 0;
+      provider.addListener(() => notified++);
+      cwd.value = '/run/app'; // triggers _onCwdChanged
+      expect(notified, greaterThan(0), reason: 'cwd change must notify');
+      // The view would re-scan on notify; emulate that here:
+      provider.scan('Read(lib/a.dart)').toList();
+      await Future<void>.delayed(const Duration(milliseconds: 20));
+      expect(
+        provider.isEnabled(span),
+        isTrue,
+        reason: 'after cwd change, path resolves under /run/app',
+      );
+    },
+  );
 
   test('removes its cwd listener on dispose', () {
     final cwd = _ProbeNotifier('/proj');
     addTearDown(cwd.dispose);
-    final provider =
-        FilePathLinkProvider(fs: _NeverFs(), launchCwd: '/proj', cwd: cwd);
+    final provider = FilePathLinkProvider(
+      fs: _NeverFs(),
+      launchCwd: '/proj',
+      cwd: cwd,
+    );
     expect(cwd.listened, isTrue);
     provider.dispose();
     expect(cwd.listened, isFalse);

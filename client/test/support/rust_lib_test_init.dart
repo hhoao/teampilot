@@ -13,9 +13,7 @@ Future<void> initRustLibForTests() async {
   final lib = await rust.resolveRustLibPath(
     checkoutRelativeRustDir: _checkoutRustDir,
   );
-  await RustLib.init(
-    externalLibrary: ExternalLibrary.open(lib),
-  );
+  await RustLib.init(externalLibrary: ExternalLibrary.open(lib));
 }
 
 const _checkoutRustDir =

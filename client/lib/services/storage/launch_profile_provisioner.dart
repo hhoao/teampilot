@@ -8,7 +8,7 @@ import '../../repositories/launch_profile_repository.dart';
 /// simple/open-with path always has a target. Initialization, not migration.
 class LaunchProfileProvisioner {
   LaunchProfileProvisioner({required LaunchProfileRepository repository})
-      : _repository = repository;
+    : _repository = repository;
 
   static const defaultPersonalId = 'personal-default';
   static const defaultTeamId = 'default-team';

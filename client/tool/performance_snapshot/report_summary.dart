@@ -29,7 +29,9 @@ void printPerformanceSummary(PerformanceAnalysisResult result) {
   );
 
   if (frames.jankyCount == 0) {
-    print('No janky frames over ${frames.budgetMs.toStringAsFixed(2)} ms budget.');
+    print(
+      'No janky frames over ${frames.budgetMs.toStringAsFixed(2)} ms budget.',
+    );
     _printAppliedFilters(result);
     return;
   }
@@ -68,8 +70,8 @@ void _printPrecisionHighlights(
   required double budgetMs,
 }) {
   final coverage = precision.traceCoverage;
-  final tracedFramesLabel = coverage != null &&
-          coverage.precisionFrameNumbers.isNotEmpty
+  final tracedFramesLabel =
+      coverage != null && coverage.precisionFrameNumbers.isNotEmpty
       ? formatFrameList(coverage.precisionFrameNumbers)
       : null;
   final excludesWorst = coverage?.precisionExcludesWorstJanky ?? false;
@@ -97,7 +99,7 @@ void _printPrecisionHighlights(
   if (precision.uiHotPaths.isNotEmpty) {
     final header = excludesWorst && tracedFramesLabel != null
         ? '\nUI hot paths (self time; frames $tracedFramesLabel; '
-            'excludes #${coverage!.untracedWorstJanky!.frameNumber}):'
+              'excludes #${coverage!.untracedWorstJanky!.frameNumber}):'
         : '\nUI hot paths (self time, ${precision.frameCountAnalyzed} janky frames):';
     print(header);
     for (final h in precision.uiHotPaths.take(5)) {
@@ -113,9 +115,9 @@ void _printPrecisionHighlights(
   if (precision.dartMethodHotspots.isNotEmpty) {
     final header = excludesWorst && tracedFramesLabel != null
         ? '\nDart method hotspots (frames $tracedFramesLabel; '
-            'excludes #${coverage!.untracedWorstJanky!.frameNumber}):'
+              'excludes #${coverage!.untracedWorstJanky!.frameNumber}):'
         : '\nDart method hotspots (layout/paint on Dart track, '
-            '${precision.frameCountAnalyzed} janky frames):';
+              '${precision.frameCountAnalyzed} janky frames):';
     print(header);
     for (final h in precision.dartMethodHotspots.take(5)) {
       print(
@@ -149,13 +151,14 @@ void _printPrecisionHighlights(
         : '\nRebuild ↔ timeline slice:';
     print(header);
     for (final c in precision.rebuildCorrelations.take(5)) {
-      final loc =
-          c.file != null && c.line != null ? ' @ ${c.file}:${c.line}' : '';
+      final loc = c.file != null && c.line != null
+          ? ' @ ${c.file}:${c.line}'
+          : '';
       final slice = c.matchedSlices.isEmpty
           ? ''
           : ' → ${c.matchedSlices.first.name} '
-              '${c.matchedSlices.first.selfMs.toStringAsFixed(1)} ms self'
-              '${c.matchedSlices.first.phase != null ? ' (${c.matchedSlices.first.phase})' : ''}';
+                '${c.matchedSlices.first.selfMs.toStringAsFixed(1)} ms self'
+                '${c.matchedSlices.first.phase != null ? ' (${c.matchedSlices.first.phase})' : ''}';
       print(
         '  #${c.frameNumber} ${c.widgetName}$loc '
         '${c.rebuildCount}x [${c.matchQuality}]$slice',

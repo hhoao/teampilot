@@ -29,25 +29,27 @@ void main() {
     expect(merged.folders.map((f) => f.path), ['/main', '/x', '/y']);
   });
 
-  test('createSession inherits workspace folders; workingDirectory overrides first',
-      () async {
-    final tmp = await Directory.systemTemp.createTemp('fs_repo_folders_');
-    addTearDown(() => tmp.deleteSync(recursive: true));
-    final repo = SessionRepository(rootDir: tmp.path);
+  test(
+    'createSession inherits workspace folders; workingDirectory overrides first',
+    () async {
+      final tmp = await Directory.systemTemp.createTemp('fs_repo_folders_');
+      addTearDown(() => tmp.deleteSync(recursive: true));
+      final repo = SessionRepository(rootDir: tmp.path);
 
-    final ws = await repo.createWorkspace([
-      const WorkspaceFolder(path: '/main'),
-      const WorkspaceFolder(path: '/x'),
-    ]);
-    final inherited = await repo.createSession(ws.workspaceId);
-    expect(inherited.folders.map((f) => f.path), ['/main', '/x']);
+      final ws = await repo.createWorkspace([
+        const WorkspaceFolder(path: '/main'),
+        const WorkspaceFolder(path: '/x'),
+      ]);
+      final inherited = await repo.createSession(ws.workspaceId);
+      expect(inherited.folders.map((f) => f.path), ['/main', '/x']);
 
-    final overridden = await repo.createSession(
-      ws.workspaceId,
-      workingDirectory: '/override',
-    );
-    expect(overridden.folders.map((f) => f.path), ['/override', '/x']);
-  });
+      final overridden = await repo.createSession(
+        ws.workspaceId,
+        workingDirectory: '/override',
+      );
+      expect(overridden.folders.map((f) => f.path), ['/override', '/x']);
+    },
+  );
 
   test('updateWorkspaceFolders rewrites folders', () async {
     final tmp = await Directory.systemTemp.createTemp('fs_repo_folders_');
@@ -67,24 +69,27 @@ void main() {
     expect(reloaded.folders.map((f) => f.path), ['/main2', '/y', '/z']);
   });
 
-  test('updateWorkspaceFolders can stamp all folders with one target', () async {
-    final tmp = await Directory.systemTemp.createTemp('fs_repo_folders_');
-    addTearDown(() => tmp.deleteSync(recursive: true));
-    final repo = SessionRepository(rootDir: tmp.path);
+  test(
+    'updateWorkspaceFolders can stamp all folders with one target',
+    () async {
+      final tmp = await Directory.systemTemp.createTemp('fs_repo_folders_');
+      addTearDown(() => tmp.deleteSync(recursive: true));
+      final repo = SessionRepository(rootDir: tmp.path);
 
-    final ws = await repo.createWorkspace([
-      const WorkspaceFolder(path: '/main'),
-      const WorkspaceFolder(path: '/x'),
-    ]);
-    expect(ws.folders.every((f) => f.targetId == 'local'), isTrue);
+      final ws = await repo.createWorkspace([
+        const WorkspaceFolder(path: '/main'),
+        const WorkspaceFolder(path: '/x'),
+      ]);
+      expect(ws.folders.every((f) => f.targetId == 'local'), isTrue);
 
-    await repo.updateWorkspaceFolders(ws.workspaceId, [
-      for (final f in ws.folders) f.copyWith(targetId: 'ssh:p1'),
-    ]);
-    final reloaded = (await repo.loadWorkspaces()).single;
-    expect(reloaded.folders.map((f) => f.path), ['/main', '/x']);
-    expect(reloaded.folders.every((f) => f.targetId == 'ssh:p1'), isTrue);
-  });
+      await repo.updateWorkspaceFolders(ws.workspaceId, [
+        for (final f in ws.folders) f.copyWith(targetId: 'ssh:p1'),
+      ]);
+      final reloaded = (await repo.loadWorkspaces()).single;
+      expect(reloaded.folders.map((f) => f.path), ['/main', '/x']);
+      expect(reloaded.folders.every((f) => f.targetId == 'ssh:p1'), isTrue);
+    },
+  );
 
   test('createSession rejects personal launch on mixed workspace', () async {
     final tmp = await Directory.systemTemp.createTemp('fs_repo_folders_');
@@ -108,34 +113,34 @@ void main() {
     );
   });
 
-  test('createSession rejects mixed workspace when team targets incomplete',
-      () async {
-    final tmp = await Directory.systemTemp.createTemp('fs_repo_folders_');
-    addTearDown(() => tmp.deleteSync(recursive: true));
-    final repo = SessionRepository(rootDir: tmp.path);
+  test(
+    'createSession rejects mixed workspace when team targets incomplete',
+    () async {
+      final tmp = await Directory.systemTemp.createTemp('fs_repo_folders_');
+      addTearDown(() => tmp.deleteSync(recursive: true));
+      final repo = SessionRepository(rootDir: tmp.path);
 
-    final ws = await repo.createWorkspace([
-      const WorkspaceFolder(path: '/local'),
-      const WorkspaceFolder(path: '/remote', targetId: 'ssh:p1'),
-    ]);
+      final ws = await repo.createWorkspace([
+        const WorkspaceFolder(path: '/local'),
+        const WorkspaceFolder(path: '/remote', targetId: 'ssh:p1'),
+      ]);
 
-    expect(
-      () => repo.createSession(
-        ws.workspaceId,
-        sessionTeam: 'team-a',
-        rosterMembers: const [
-          TeamMemberConfig(id: 'lead', name: 'Lead'),
-        ],
-      ),
-      throwsA(
-        isA<StateError>().having(
-          (e) => e.message,
-          'message',
-          'mixed_workspace_member_targets_incomplete',
+      expect(
+        () => repo.createSession(
+          ws.workspaceId,
+          sessionTeam: 'team-a',
+          rosterMembers: const [TeamMemberConfig(id: 'lead', name: 'Lead')],
         ),
-      ),
-    );
-  });
+        throwsA(
+          isA<StateError>().having(
+            (e) => e.message,
+            'message',
+            'mixed_workspace_member_targets_incomplete',
+          ),
+        ),
+      );
+    },
+  );
 
   test('createSession snapshots workspace team targets immutably', () async {
     final tmp = await Directory.systemTemp.createTemp('fs_repo_folders_');
@@ -154,9 +159,7 @@ void main() {
     final session = await repo.createSession(
       ws.workspaceId,
       sessionTeam: 'team-a',
-      rosterMembers: const [
-        TeamMemberConfig(id: 'lead', name: 'Lead'),
-      ],
+      rosterMembers: const [TeamMemberConfig(id: 'lead', name: 'Lead')],
     );
     expect(session.memberTargets['lead'], 'local');
 
@@ -199,33 +202,33 @@ void main() {
     expect(ws.folders.last.targetId, 'ssh:p1');
   });
 
-  test('createSession seeds remembered mixed-workspace member targets', () async {
-    final tmp = await Directory.systemTemp.createTemp('fs_repo_folders_');
-    addTearDown(() => tmp.deleteSync(recursive: true));
-    final repo = SessionRepository(rootDir: tmp.path);
+  test(
+    'createSession seeds remembered mixed-workspace member targets',
+    () async {
+      final tmp = await Directory.systemTemp.createTemp('fs_repo_folders_');
+      addTearDown(() => tmp.deleteSync(recursive: true));
+      final repo = SessionRepository(rootDir: tmp.path);
 
-    final ws = await repo.createWorkspace([
-      const WorkspaceFolder(path: '/local'),
-      const WorkspaceFolder(path: '/remote', targetId: 'ssh:p1'),
-    ]);
-    await repo.updateWorkspaceMemberTargets(
-      ws.workspaceId,
-      'team-a',
-      targets: const {
-        'lead': 'local',
-        'dev': 'ssh:p1',
-      },
-    );
+      final ws = await repo.createWorkspace([
+        const WorkspaceFolder(path: '/local'),
+        const WorkspaceFolder(path: '/remote', targetId: 'ssh:p1'),
+      ]);
+      await repo.updateWorkspaceMemberTargets(
+        ws.workspaceId,
+        'team-a',
+        targets: const {'lead': 'local', 'dev': 'ssh:p1'},
+      );
 
-    final session = await repo.createSession(
-      ws.workspaceId,
-      sessionTeam: 'team-a',
-      rosterMembers: const [
-        TeamMemberConfig(id: 'lead', name: 'Lead'),
-        TeamMemberConfig(id: 'dev', name: 'Dev'),
-      ],
-    );
-    expect(session.memberTargets['lead'], 'local');
-    expect(session.memberTargets['dev'], 'ssh:p1');
-  });
+      final session = await repo.createSession(
+        ws.workspaceId,
+        sessionTeam: 'team-a',
+        rosterMembers: const [
+          TeamMemberConfig(id: 'lead', name: 'Lead'),
+          TeamMemberConfig(id: 'dev', name: 'Dev'),
+        ],
+      );
+      expect(session.memberTargets['lead'], 'local');
+      expect(session.memberTargets['dev'], 'ssh:p1');
+    },
+  );
 }

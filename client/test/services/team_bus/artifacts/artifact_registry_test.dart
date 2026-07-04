@@ -10,16 +10,15 @@ ArtifactHandle _handle(
   String path = '/work/out.bin',
   int size = 10,
   int publishedAtMs = 0,
-}) =>
-    ArtifactHandle(
-      name: name,
-      publisherMemberId: publisher,
-      targetId: targetId,
-      absolutePath: path,
-      sizeBytes: size,
-      kind: ArtifactKind.file,
-      publishedAtMs: publishedAtMs,
-    );
+}) => ArtifactHandle(
+  name: name,
+  publisherMemberId: publisher,
+  targetId: targetId,
+  absolutePath: path,
+  sizeBytes: size,
+  kind: ArtifactKind.file,
+  publishedAtMs: publishedAtMs,
+);
 
 void main() {
   group('ArtifactRegistry', () {
@@ -28,8 +27,10 @@ void main() {
       registry.register(_handle('build.zip'));
       registry.register(_handle('report.pdf', publisher: 'B'));
 
-      expect(registry.list().map((h) => h.name),
-          containsAll(['build.zip', 'report.pdf']));
+      expect(
+        registry.list().map((h) => h.name),
+        containsAll(['build.zip', 'report.pdf']),
+      );
       expect(registry.byName('build.zip')!.publisherMemberId, 'A');
       expect(registry.byName('report.pdf')!.publisherMemberId, 'B');
       expect(registry.byName('missing'), isNull);

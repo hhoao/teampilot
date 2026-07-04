@@ -13,98 +13,100 @@ import '../../../../support/in_memory_filesystem.dart';
 
 void main() {
   group('CodexPluginProvisioner', () {
-    test('writes cache layout and plugin enable sections into config.toml', () async {
-      final fs = InMemoryFilesystem();
-      const configDir = '/cfg';
-      const poolDir = '/pool';
+    test(
+      'writes cache layout and plugin enable sections into config.toml',
+      () async {
+        final fs = InMemoryFilesystem();
+        const configDir = '/cfg';
+        const poolDir = '/pool';
 
-      await fs.writeString(
-        '$poolDir/demo/.claude-plugin/plugin.json',
-        jsonEncode({'name': 'demo', 'version': '1.0.0'}),
-      );
-      await fs.writeString(
-        '$poolDir/demo/.mcp.json',
-        jsonEncode({
-          'mcpServers': {
-            'bundled': {'type': 'stdio', 'command': 'echo'},
-          },
-        }),
-      );
+        await fs.writeString(
+          '$poolDir/demo/.claude-plugin/plugin.json',
+          jsonEncode({'name': 'demo', 'version': '1.0.0'}),
+        );
+        await fs.writeString(
+          '$poolDir/demo/.mcp.json',
+          jsonEncode({
+            'mcpServers': {
+              'bundled': {'type': 'stdio', 'command': 'echo'},
+            },
+          }),
+        );
 
-      await const CodexPluginProvisioner().provision(
-        PluginProvisionContext(
-          fs: fs,
-          teampilotRoot: '/tp',
-          configDir: configDir,
-          bundlePoolDir: poolDir,
-          enabledPluginIds: const ['local/demo'],
-          installedCatalog: const [
-            Plugin(
-              id: 'local/demo',
-              name: 'demo',
-              description: '',
-              version: '1.0.0',
-              directory: 'demo',
-              capabilities: PluginCapabilities(),
-              installedAt: 0,
-              updatedAt: 0,
-            ),
-          ],
-          layout: RuntimeLayout(teampilotRoot: '/tp', fs: fs),
-          tool: CliTool.codex,
-        ),
-      );
-
-      final pathCtx = fs.pathContext;
-      final cacheRoot = CodexSessionConfigDir.localPluginCacheRoot(
-        configDir,
-        'demo',
-        version: '1.0.0',
-        pathContext: pathCtx,
-      );
-      expect(
-        (await fs.stat(
-          pathCtx.join(cacheRoot, '.codex-plugin', 'plugin.json'),
-        )).isFile,
-        isTrue,
-      );
-      expect(
-        (await fs.stat(
-          pathCtx.join(
-            CodexSessionConfigDir.localPluginSourceRoot(
-              configDir,
-              'demo',
-              pathContext: pathCtx,
-            ),
-            '.codex-plugin',
-            'plugin.json',
+        await const CodexPluginProvisioner().provision(
+          PluginProvisionContext(
+            fs: fs,
+            teampilotRoot: '/tp',
+            configDir: configDir,
+            bundlePoolDir: poolDir,
+            enabledPluginIds: const ['local/demo'],
+            installedCatalog: const [
+              Plugin(
+                id: 'local/demo',
+                name: 'demo',
+                description: '',
+                version: '1.0.0',
+                directory: 'demo',
+                capabilities: PluginCapabilities(),
+                installedAt: 0,
+                updatedAt: 0,
+              ),
+            ],
+            layout: RuntimeLayout(teampilotRoot: '/tp', fs: fs),
+            tool: CliTool.codex,
           ),
-        )).isFile,
-        isTrue,
-      );
+        );
 
-      final marketplaceText = await fs.readString(
-        CodexSessionConfigDir.localMarketplaceManifestPath(
+        final pathCtx = fs.pathContext;
+        final cacheRoot = CodexSessionConfigDir.localPluginCacheRoot(
           configDir,
+          'demo',
+          version: '1.0.0',
           pathContext: pathCtx,
-        ),
-      );
-      final marketplace = (jsonDecode(marketplaceText!) as Map).cast<String, Object?>();
-      final entries = (marketplace['plugins'] as List).cast<Map>();
-      expect(entries.single['name'], 'demo');
-      expect(
-        (entries.single['source'] as Map)['path'],
-        './plugins/demo',
-      );
+        );
+        expect(
+          (await fs.stat(
+            pathCtx.join(cacheRoot, '.codex-plugin', 'plugin.json'),
+          )).isFile,
+          isTrue,
+        );
+        expect(
+          (await fs.stat(
+            pathCtx.join(
+              CodexSessionConfigDir.localPluginSourceRoot(
+                configDir,
+                'demo',
+                pathContext: pathCtx,
+              ),
+              '.codex-plugin',
+              'plugin.json',
+            ),
+          )).isFile,
+          isTrue,
+        );
 
-      final raw = await fs.readString('$configDir/config.toml');
-      final doc = TomlDocument.parse(raw!).toMap();
-      final plugins = (doc['plugins'] as Map).cast<String, dynamic>();
-      expect((plugins['demo@local'] as Map)['enabled'], isTrue);
-      final marketplaces = (doc['marketplaces'] as Map).cast<String, dynamic>();
-      expect((marketplaces['local'] as Map)['source_type'], 'local');
-      expect((marketplaces['local'] as Map)['source'], configDir);
-    });
+        final marketplaceText = await fs.readString(
+          CodexSessionConfigDir.localMarketplaceManifestPath(
+            configDir,
+            pathContext: pathCtx,
+          ),
+        );
+        final marketplace = (jsonDecode(marketplaceText!) as Map)
+            .cast<String, Object?>();
+        final entries = (marketplace['plugins'] as List).cast<Map>();
+        expect(entries.single['name'], 'demo');
+        expect((entries.single['source'] as Map)['path'], './plugins/demo');
+
+        final raw = await fs.readString('$configDir/config.toml');
+        final doc = TomlDocument.parse(raw!).toMap();
+        final plugins = (doc['plugins'] as Map).cast<String, dynamic>();
+        expect((plugins['demo@local'] as Map)['enabled'], isTrue);
+        final marketplaces = (doc['marketplaces'] as Map)
+            .cast<String, dynamic>();
+        expect((marketplaces['local'] as Map)['source_type'], 'local');
+        expect((marketplaces['local'] as Map)['source'], configDir);
+      },
+    );
 
     test('uses local cache version when manifest omits version', () async {
       final fs = InMemoryFilesystem();
@@ -166,7 +168,10 @@ void main() {
       await fs.writeString(
         '$poolDir/demo/.mcp.json',
         jsonEncode({
-          'context7': {'command': 'npx', 'args': ['-y', '@upstash/context7-mcp']},
+          'context7': {
+            'command': 'npx',
+            'args': ['-y', '@upstash/context7-mcp'],
+          },
         }),
       );
 

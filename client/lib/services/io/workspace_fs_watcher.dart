@@ -92,15 +92,17 @@ class WorkspaceFsWatcher {
     final watcher = _watcher;
     if (watcher == null) return;
     try {
-      _sub = watcher.watchTree(root).listen(
-        _onEvent,
-        onError: (Object error, StackTrace stack) {
-          // A removed/renamed root tears the native watch down; log and stop
-          // rather than spamming. The panel re-creates us on the next cwd.
-          appLogger.w('Workspace watch failed for $root', error: error);
-        },
-        cancelOnError: false,
-      );
+      _sub = watcher
+          .watchTree(root)
+          .listen(
+            _onEvent,
+            onError: (Object error, StackTrace stack) {
+              // A removed/renamed root tears the native watch down; log and stop
+              // rather than spamming. The panel re-creates us on the next cwd.
+              appLogger.w('Workspace watch failed for $root', error: error);
+            },
+            cancelOnError: false,
+          );
     } on Object catch (error) {
       appLogger.w('Workspace watch could not start for $root', error: error);
     }

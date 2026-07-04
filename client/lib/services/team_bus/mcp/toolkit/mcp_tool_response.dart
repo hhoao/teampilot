@@ -3,7 +3,8 @@ import '../mcp_method.dart';
 
 /// MCP `tools/call` JSON-RPC response builders.
 abstract final class McpToolResponse {
-  static JsonRpcResponse ok(Object? id, String text) => JsonRpcResponse.result(id, {
+  static JsonRpcResponse ok(Object? id, String text) =>
+      JsonRpcResponse.result(id, {
         'content': [
           {'type': 'text', 'text': text},
         ],

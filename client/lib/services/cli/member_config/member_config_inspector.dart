@@ -18,13 +18,14 @@ class MemberConfigInspector {
     RuntimeLayout? layout,
     Filesystem? fs,
     CliToolRegistry? registry,
-  })  : _fs = fs ?? AppStorage.fs,
-        _layout = layout ??
-            RuntimeLayout(
-              teampilotRoot: AppStorage.appDataRoot,
-              fs: fs ?? AppStorage.fs,
-            ),
-        _registry = registry ?? CliToolRegistry.builtIn();
+  }) : _fs = fs ?? AppStorage.fs,
+       _layout =
+           layout ??
+           RuntimeLayout(
+             teampilotRoot: AppStorage.appDataRoot,
+             fs: fs ?? AppStorage.fs,
+           ),
+       _registry = registry ?? CliToolRegistry.builtIn();
 
   final Filesystem _fs;
   final RuntimeLayout _layout;
@@ -64,7 +65,7 @@ class MemberConfigInspector {
 
     final capability =
         _registry.capability<MemberConfigInspectionCapability>(cli) ??
-            const DefaultMemberConfigInspection();
+        const DefaultMemberConfigInspection();
 
     return capability.inspect(
       MemberConfigContext(
@@ -110,8 +111,7 @@ class MemberConfigInspector {
               tool,
               memberId: memberId,
             );
-      if (preferExpectedRuntimeDir ||
-          (await fs.stat(runtimeDir)).isDirectory) {
+      if (preferExpectedRuntimeDir || (await fs.stat(runtimeDir)).isDirectory) {
         return _ResolvedDir(runtimeDir, MemberConfigSourceLayer.runtime);
       }
     }

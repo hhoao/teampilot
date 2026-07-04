@@ -16,9 +16,9 @@ class GitRegistryTeamHubSource implements TeamHubSource {
     RawContentFetcher? fetch,
     Filesystem? fs,
     String? cacheDirOverride,
-  })  : _fetch = fetch ?? _httpFetch,
-        _fsOverride = fs,
-        _cacheDirOverride = cacheDirOverride;
+  }) : _fetch = fetch ?? _httpFetch,
+       _fsOverride = fs,
+       _cacheDirOverride = cacheDirOverride;
 
   final TeamHubRegistry registry;
   final RawContentFetcher _fetch;

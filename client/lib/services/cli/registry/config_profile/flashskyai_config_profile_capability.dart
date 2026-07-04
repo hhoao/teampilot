@@ -42,16 +42,10 @@ final class FlashskyaiConfigProfileCapability
     String workspaceId,
     String sessionId, {
     String? memberId,
-  }) =>
-      delegate.pathContext.join(
-        delegate.sessionToolDir(
-          workspaceId,
-          sessionId,
-          toolId,
-          memberId: memberId,
-        ),
-        metadataFileName,
-      );
+  }) => delegate.pathContext.join(
+    delegate.sessionToolDir(workspaceId, sessionId, toolId, memberId: memberId),
+    metadataFileName,
+  );
 
   @override
   Future<void> ensureSessionProfile(ConfigProfileSessionContext ctx) async {
@@ -91,9 +85,9 @@ final class FlashskyaiConfigProfileCapability
     if (ctx.crossMachine) {
       final copied =
           await CrossMachineCredentialBridge.materializeFlashskyaiLlmConfig(
-        catalog: ctx.catalog,
-        work: delegate,
-      );
+            catalog: ctx.catalog,
+            work: delegate,
+          );
       if (!copied) {
         warnings.add('flashskyai_llm_config_missing');
       }
@@ -169,10 +163,7 @@ final class FlashskyaiConfigProfileCapability
   ) async {
     final file = delegate.pathContext.join(memberToolDir, metadataFileName);
     final existing = await delegate.readMetadataFile(file, defaultMetadata);
-    await delegate.writeJsonIfChanged(file, {
-      ...defaultMetadata,
-      ...existing,
-    });
+    await delegate.writeJsonIfChanged(file, {...defaultMetadata, ...existing});
   }
 
   Future<ConfigProfileLaunchContribution> _contributeStandaloneLaunch(
@@ -182,16 +173,20 @@ final class FlashskyaiConfigProfileCapability
   ) async {
     final delegate = ctx.paths;
     final member = standaloneMemberFromPersonal(personal, preset: ctx.preset);
-    final memberToolDir = standaloneSessionToolDir(delegate, standalone, toolId);
+    final memberToolDir = standaloneSessionToolDir(
+      delegate,
+      standalone,
+      toolId,
+    );
     final scope = launchScopeForStandalone(standalone);
     final workingDirectory = ctx.workingDirectory ?? '';
     final warnings = <String>[];
     if (ctx.crossMachine) {
       final copied =
           await CrossMachineCredentialBridge.materializeFlashskyaiLlmConfig(
-        catalog: ctx.catalog,
-        work: delegate,
-      );
+            catalog: ctx.catalog,
+            work: delegate,
+          );
       if (!copied) {
         warnings.add('flashskyai_llm_config_missing');
       }
@@ -392,7 +387,11 @@ final class FlashskyaiConfigProfileCapability
         )) {
       return;
     }
-    var merged = await _teamSettingsMerged(delegate, file, effortLevel: effortLevel);
+    var merged = await _teamSettingsMerged(
+      delegate,
+      file,
+      effortLevel: effortLevel,
+    );
     merged = await delegate.applyExtensionSettings(
       merged,
       memberToolDir,
@@ -430,7 +429,10 @@ final class FlashskyaiConfigProfileCapability
       settingsFileName,
     );
     var settings = _memberSettings(member, effortLevel: effortLevel);
-    settings = MemberRoleProvision.applyTeamSessionPolicy(settings, mixed: mixed);
+    settings = MemberRoleProvision.applyTeamSessionPolicy(
+      settings,
+      mixed: mixed,
+    );
     if (mixed && busIdle != null) {
       settings = mergeStopIdleHook(settings, member.id, busIdle);
     }
@@ -487,7 +489,9 @@ final class FlashskyaiConfigProfileCapability
     required String effortLevel,
   }) async {
     final existing = await delegate.readSettingsFile(path);
-    final merged = Map<String, Object?>.from(_teamSettings(effortLevel: effortLevel));
+    final merged = Map<String, Object?>.from(
+      _teamSettings(effortLevel: effortLevel),
+    );
     final enabledPlugins = existing['enabledPlugins'];
     if (enabledPlugins is Map && enabledPlugins.isNotEmpty) {
       merged['enabledPlugins'] = enabledPlugins;
@@ -522,11 +526,7 @@ final class FlashskyaiConfigProfileCapability
     return resolveLaunchEffort(
       capability: capability,
       cli: CliTool.flashskyai,
-      context: EffortResolveContext(
-        team: team,
-        member: member,
-        model: model,
-      ),
+      context: EffortResolveContext(team: team, member: member, model: model),
     );
   }
 

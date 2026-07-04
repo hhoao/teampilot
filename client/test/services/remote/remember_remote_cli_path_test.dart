@@ -14,10 +14,7 @@ void main() {
         writes.add((targetId, cliValue, path));
       },
     );
-    expect(
-      writes,
-      [('ssh:work', 'claude', '/home/dev/.local/bin/claude')],
-    );
+    expect(writes, [('ssh:work', 'claude', '/home/dev/.local/bin/claude')]);
   });
 
   test('skips write when path matches stored override', () async {

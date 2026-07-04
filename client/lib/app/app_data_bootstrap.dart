@@ -40,11 +40,7 @@ abstract final class AppDataBootstrap {
     required LayoutCubit layoutCubit,
   }) async {
     await Future.wait([
-      _timed(
-        boot,
-        'launchProfiles',
-        () => teamCubit.load(bootSilent: true),
-      ),
+      _timed(boot, 'launchProfiles', () => teamCubit.load(bootSilent: true)),
       _timed(
         boot,
         'loadWorkspaceIndex',
@@ -105,7 +101,8 @@ abstract final class AppDataBootstrap {
     reapplyWorkspaceEntryFromPreferences(
       preferences,
       knownWorkspaceIds: {
-        for (final workspace in chatCubit.state.workspaces) workspace.workspaceId,
+        for (final workspace in chatCubit.state.workspaces)
+          workspace.workspaceId,
       },
     );
 
@@ -150,11 +147,7 @@ abstract final class AppDataBootstrap {
         boot('bootstrapHomeIndex home storage context reinstalled');
       }
       await Future.wait([
-        _timed(
-          boot,
-          'launchProfiles',
-          () => teamCubit.load(bootSilent: true),
-        ),
+        _timed(boot, 'launchProfiles', () => teamCubit.load(bootSilent: true)),
         _timed(
           boot,
           'loadWorkspaceIndex',
@@ -163,11 +156,7 @@ abstract final class AppDataBootstrap {
       ]);
     } else {
       await Future.wait([
-        _timed(
-          boot,
-          'launchProfiles',
-          () => teamCubit.load(bootSilent: true),
-        ),
+        _timed(boot, 'launchProfiles', () => teamCubit.load(bootSilent: true)),
         _timed(
           boot,
           'loadWorkspaceIndex',
@@ -252,9 +241,7 @@ abstract final class AppDataBootstrap {
       () => teamCubit.syncSelectedTeamMcp(installed: mcpCubit.state.servers),
     );
 
-    boot(
-      'warmAuxiliaryData complete +${phaseSw.elapsedMilliseconds}ms',
-    );
+    boot('warmAuxiliaryData complete +${phaseSw.elapsedMilliseconds}ms');
     await yieldUiFrame();
   }
 

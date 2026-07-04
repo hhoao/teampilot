@@ -5,15 +5,13 @@ void main() {
   group('pairChangeBlock', () {
     test('empty deletes -> all inserts', () {
       final ops = pairChangeBlock(const [], const ['a', 'b']);
-      expect(ops.map((o) => o.kind),
-          everyElement(PairOpKind.insert));
+      expect(ops.map((o) => o.kind), everyElement(PairOpKind.insert));
       expect(ops.map((o) => o.rightIndex), [0, 1]);
     });
 
     test('empty inserts -> all deletes', () {
       final ops = pairChangeBlock(const ['a', 'b'], const []);
-      expect(ops.map((o) => o.kind),
-          everyElement(PairOpKind.delete));
+      expect(ops.map((o) => o.kind), everyElement(PairOpKind.delete));
       expect(ops.map((o) => o.leftIndex), [0, 1]);
     });
 
@@ -48,7 +46,10 @@ void main() {
       expect(modify.leftIndex, 0);
       expect(modify.rightIndex, 1); // matched bravo↔bravo, not index 0
       // The unrelated insert remains an insert.
-      expect(ops.where((o) => o.kind == PairOpKind.insert).single.rightIndex, 0);
+      expect(
+        ops.where((o) => o.kind == PairOpKind.insert).single.rightIndex,
+        0,
+      );
     });
 
     test('alignment is monotonic (no crossing pairs)', () {
@@ -95,12 +96,18 @@ void main() {
       final ops = pairChangeBlock(dels, ins);
       sw.stop();
 
-      expect(ops.any((o) => o.kind == PairOpKind.modify), isFalse,
-          reason: 'oversized blocks must not build the similarity matrix');
+      expect(
+        ops.any((o) => o.kind == PairOpKind.modify),
+        isFalse,
+        reason: 'oversized blocks must not build the similarity matrix',
+      );
       expect(ops.where((o) => o.kind == PairOpKind.delete).length, n);
       expect(ops.where((o) => o.kind == PairOpKind.insert).length, n);
-      expect(sw.elapsedMilliseconds, lessThan(100),
-          reason: 'must avoid the quadratic similarity matrix');
+      expect(
+        sw.elapsedMilliseconds,
+        lessThan(100),
+        reason: 'must avoid the quadratic similarity matrix',
+      );
     });
 
     test('very long lines skip similarity pairing even with few lines', () {
@@ -129,8 +136,7 @@ void main() {
       sw.stop();
 
       expect(ops.any((o) => o.kind == PairOpKind.modify), isFalse);
-      expect(ops.map((o) => o.kind),
-          [PairOpKind.delete, PairOpKind.insert]);
+      expect(ops.map((o) => o.kind), [PairOpKind.delete, PairOpKind.insert]);
       expect(sw.elapsedMilliseconds, lessThan(100));
     });
 

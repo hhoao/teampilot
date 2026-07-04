@@ -38,12 +38,7 @@ class LeaderStarCoordinationPolicy implements CoordinationPolicy {
       timestampMs: _env.clock(),
     ).encode();
     return [
-      TeamMessage(
-        id: _env.ids(),
-        from: memberId,
-        to: leaderId,
-        content: body,
-      ),
+      TeamMessage(id: _env.ids(), from: memberId, to: leaderId, content: body),
     ];
   }
 }

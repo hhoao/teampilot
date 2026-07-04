@@ -72,9 +72,10 @@ class LocalGitCommandRunner implements GitCommandRunner {
     ProcessRunner runner = cliToolDefaultProcessRun,
     CliToolLocator? gitLocator,
     HostOneShotRunner? hostRunner,
-  })  : _runner = runner,
-        _gitLocator = gitLocator ?? const CliToolLocator('git') {
-    _host = hostRunner ??
+  }) : _runner = runner,
+       _gitLocator = gitLocator ?? const CliToolLocator('git') {
+    _host =
+        hostRunner ??
         LocalHostOneShotRunner(processRunner: _hostProcessRunnerFrom(runner));
   }
 
@@ -114,12 +115,12 @@ class WslGitCommandRunner implements GitCommandRunner {
     String? distro,
     ProcessRunner? wslRunner,
     HostOneShotRunner? hostRunner,
-  })  : _host =
-            hostRunner ??
-            WslHostOneShotRunner(
-              distro: distro,
-              processRunner: _hostProcessRunnerFrom(wslRunner ?? Process.run),
-            );
+  }) : _host =
+           hostRunner ??
+           WslHostOneShotRunner(
+             distro: distro,
+             processRunner: _hostProcessRunnerFrom(wslRunner ?? Process.run),
+           );
 
   final HostOneShotRunner _host;
 
@@ -137,10 +138,7 @@ class WslGitCommandRunner implements GitCommandRunner {
   @override
   Future<GitCommandResult> runInDirectory(String dir, List<String> args) async {
     final result = await _host.run(
-      HostRunRequest(
-        executable: 'git',
-        arguments: _gitArgv(dir, args),
-      ),
+      HostRunRequest(executable: 'git', arguments: _gitArgv(dir, args)),
     );
     return _gitResultFromHost(result);
   }
@@ -160,9 +158,7 @@ class RemoteGitCommandRunner implements GitCommandRunner {
        _hostKey = hostKey ?? '',
        _host =
            hostRunner ??
-           RemoteHostOneShotRunner(
-             execShell: execShell ?? store!.execShell,
-           );
+           RemoteHostOneShotRunner(execShell: execShell ?? store!.execShell);
 
   final Future<SSHRunResult> Function(String command) _execShell;
   final HostOneShotRunner _host;
@@ -190,10 +186,7 @@ class RemoteGitCommandRunner implements GitCommandRunner {
   @override
   Future<GitCommandResult> runInDirectory(String dir, List<String> args) async {
     final result = await _host.run(
-      HostRunRequest(
-        executable: 'git',
-        arguments: _gitArgv(dir, args),
-      ),
+      HostRunRequest(executable: 'git', arguments: _gitArgv(dir, args)),
     );
     return _gitResultFromHost(result);
   }
@@ -206,9 +199,7 @@ GitCommandRunner gitCommandRunnerForContext(RuntimeContext ctx) {
       store: ctx.remoteFileStore!,
       hostKey: ctx.target.id,
     ),
-    StorageBackendMode.wsl => WslGitCommandRunner(
-      distro: ctx.target.wslDistro,
-    ),
+    StorageBackendMode.wsl => WslGitCommandRunner(distro: ctx.target.wslDistro),
     StorageBackendMode.native => LocalGitCommandRunner(),
   };
 }

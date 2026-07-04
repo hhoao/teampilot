@@ -60,10 +60,10 @@ void main() {
     registry.register(
       const _FakeTool(CliTool.flashskyai, true, [NativeTeamSupport()]),
     );
-    expect(
-      registry.nativeTeamLaunchable.map((d) => d.id),
-      [CliTool.claude, CliTool.flashskyai],
-    );
+    expect(registry.nativeTeamLaunchable.map((d) => d.id), [
+      CliTool.claude,
+      CliTool.flashskyai,
+    ]);
     expect(registry.supportsNativeTeam(CliTool.codex), isFalse);
     expect(registry.supportsNativeTeam(CliTool.claude), isTrue);
   });
@@ -73,7 +73,10 @@ void main() {
     registerBuiltInCliTools(registry);
     expect(registry.supportsMemberAgentPreset(CliTool.codex), isFalse);
     expect(
-      registry.withCapability<MemberAgentPresetCapability>().map((d) => d.id).toSet(),
+      registry
+          .withCapability<MemberAgentPresetCapability>()
+          .map((d) => d.id)
+          .toSet(),
       {CliTool.claude, CliTool.flashskyai},
     );
     expect(
@@ -89,10 +92,10 @@ void main() {
   test('built-in native team CLIs are claude and flashskyai only', () {
     final registry = CliToolRegistry();
     registerBuiltInCliTools(registry);
-    expect(
-      registry.nativeTeamLaunchable.map((d) => d.id).toSet(),
-      {CliTool.claude, CliTool.flashskyai},
-    );
+    expect(registry.nativeTeamLaunchable.map((d) => d.id).toSet(), {
+      CliTool.claude,
+      CliTool.flashskyai,
+    });
     expect(registry.supportsNativeTeam(CliTool.codex), isFalse);
 
     expect(
@@ -130,14 +133,17 @@ void main() {
     expect(installer!.supportsInstaller, isTrue);
   });
 
-  test('opencode built-in has npm InstallerCapability with install support', () {
-    final registry = CliToolRegistry.builtIn();
-    final installer = registry.capability<InstallerCapability>(
-      CliTool.opencode,
-    );
-    expect(installer, isA<OpencodeInstallerCapability>());
-    expect(installer!.supportsInstaller, isTrue);
-  });
+  test(
+    'opencode built-in has npm InstallerCapability with install support',
+    () {
+      final registry = CliToolRegistry.builtIn();
+      final installer = registry.capability<InstallerCapability>(
+        CliTool.opencode,
+      );
+      expect(installer, isA<OpencodeInstallerCapability>());
+      expect(installer!.supportsInstaller, isTrue);
+    },
+  );
 
   test('cursor built-in has curl InstallerCapability with install support', () {
     final registry = CliToolRegistry.builtIn();

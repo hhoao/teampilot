@@ -43,41 +43,46 @@ void main() {
     final spawned = <String>[];
     final session = TerminalSession(
       executable: base,
-      transportStarter: (
-        executable, {
-        required arguments,
-        required workingDirectory,
-        required columns,
-        required rows,
-        environment,
-      }) {
-        spawned.add(executable);
-        return Future.value(_FakeTransport());
-      },
+      transportStarter:
+          (
+            executable, {
+            required arguments,
+            required workingDirectory,
+            required columns,
+            required rows,
+            environment,
+          }) {
+            spawned.add(executable);
+            return Future.value(_FakeTransport());
+          },
     );
     return (session: session, spawned: spawned);
   }
 
-  test('executableOverride spawns the remote CLI path (off-home member)',
-      () async {
-    final b = build();
-    addTearDown(b.session.dispose);
-    b.session.connect(
-      workingDirectory: Directory.systemTemp.path,
-      executableOverride: remote,
-    );
-    await Future<void>.delayed(const Duration(milliseconds: 20));
-    expect(b.spawned, isNotEmpty);
-    expect(b.spawned.first, remote);
-  });
+  test(
+    'executableOverride spawns the remote CLI path (off-home member)',
+    () async {
+      final b = build();
+      addTearDown(b.session.dispose);
+      b.session.connect(
+        workingDirectory: Directory.systemTemp.path,
+        executableOverride: remote,
+      );
+      await Future<void>.delayed(const Duration(milliseconds: 20));
+      expect(b.spawned, isNotEmpty);
+      expect(b.spawned.first, remote);
+    },
+  );
 
-  test('no override spawns the session executable (home member, zero change)',
-      () async {
-    final b = build();
-    addTearDown(b.session.dispose);
-    b.session.connect(workingDirectory: Directory.systemTemp.path);
-    await Future<void>.delayed(const Duration(milliseconds: 20));
-    expect(b.spawned, isNotEmpty);
-    expect(b.spawned.first, base);
-  });
+  test(
+    'no override spawns the session executable (home member, zero change)',
+    () async {
+      final b = build();
+      addTearDown(b.session.dispose);
+      b.session.connect(workingDirectory: Directory.systemTemp.path);
+      await Future<void>.delayed(const Duration(milliseconds: 20));
+      expect(b.spawned, isNotEmpty);
+      expect(b.spawned.first, base);
+    },
+  );
 }

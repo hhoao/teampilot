@@ -67,33 +67,36 @@ void main() {
     );
   });
 
-  test('B4: skills/plugins linker and relay provisioner run on the work fs',
-      () async {
-    final fs = seeded();
-    final linked = <String>[];
-    final relayed = <String>[];
-    final m = RemoteAppDataMaterializer(
-      loadLocalCredentials: (_) async => const [],
-      linkResources: ({
-        required workFs,
-        required machineRoot,
-        required cli,
-        required workspaceId,
-      }) async =>
-          linked.add('${cli.value}@$machineRoot'),
-      provisionRelay: ({required workFs, required machineRoot, required cli}) async =>
-          relayed.add('${cli.value}@$machineRoot'),
-    );
-    await m.materialize(
-      homeFs: fs.homeFs,
-      homeRoot: '/home',
-      workFs: fs.workFs,
-      machineRoot: '/remote',
-      cli: CliTool.claude,
-      workspaceId: 'w1',
-      optInCredentials: false,
-    );
-    expect(linked, ['claude@/remote']);
-    expect(relayed, ['claude@/remote']);
-  });
+  test(
+    'B4: skills/plugins linker and relay provisioner run on the work fs',
+    () async {
+      final fs = seeded();
+      final linked = <String>[];
+      final relayed = <String>[];
+      final m = RemoteAppDataMaterializer(
+        loadLocalCredentials: (_) async => const [],
+        linkResources:
+            ({
+              required workFs,
+              required machineRoot,
+              required cli,
+              required workspaceId,
+            }) async => linked.add('${cli.value}@$machineRoot'),
+        provisionRelay:
+            ({required workFs, required machineRoot, required cli}) async =>
+                relayed.add('${cli.value}@$machineRoot'),
+      );
+      await m.materialize(
+        homeFs: fs.homeFs,
+        homeRoot: '/home',
+        workFs: fs.workFs,
+        machineRoot: '/remote',
+        cli: CliTool.claude,
+        workspaceId: 'w1',
+        optInCredentials: false,
+      );
+      expect(linked, ['claude@/remote']);
+      expect(relayed, ['claude@/remote']);
+    },
+  );
 }

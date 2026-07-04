@@ -19,14 +19,15 @@ import 'package:teampilot/services/team/claude_team_roster_service.dart';
 
 import '../../../support/in_memory_filesystem.dart';
 
-RuntimeContext _memoryContext(String dir, InMemoryFilesystem fs) => RuntimeContext(
-  target: RuntimeTarget.local(),
-  filesystem: fs,
-  home: dir,
-  cwd: dir,
-  appDataRoot: dir,
-  paths: AppPaths(dir),
-);
+RuntimeContext _memoryContext(String dir, InMemoryFilesystem fs) =>
+    RuntimeContext(
+      target: RuntimeTarget.local(),
+      filesystem: fs,
+      home: dir,
+      cwd: dir,
+      appDataRoot: dir,
+      paths: AppPaths(dir),
+    );
 
 void main() {
   const capability = CursorConfigProfileCapability();
@@ -53,12 +54,12 @@ void main() {
   });
 
   LaunchProfileScope mixedScope() => resolveLaunchProfileScope(
-        workspaceId: 'workspace-1',
-        teamId: 'team-a',
-        appSessionId: 'session-1',
-        cliTeamName: 'session-1',
-        memberId: ClaudeTeamRosterService.safeClaudePathSegment(member.id),
-      );
+    workspaceId: 'workspace-1',
+    teamId: 'team-a',
+    appSessionId: 'session-1',
+    cliTeamName: 'session-1',
+    memberId: ClaudeTeamRosterService.safeClaudePathSegment(member.id),
+  );
 
   String memberHome(LaunchProfileScope scope) {
     final cursorDir = paths.sessionToolDir(
@@ -71,84 +72,101 @@ void main() {
   }
 
   group('CursorConfigProfileCapability', () {
-    test('standalone HOME-isolates with CURSOR_CONFIG_DIR at .cursor', () async {
-      const team = TeamProfile(id: 'team-a', name: 'agent', cli: CliTool.cursor);
-      final scope = resolveLaunchProfileScope(
-        workspaceId: 'workspace-1',
-        teamId: 'team-a',
-        appSessionId: 'session-1',
-        cliTeamName: 'session-1',
-      );
-      const profile = PersonalProfile(id: 'workspace-1', display: 'workspace-1',
-        agent: WorkspaceAgentConfig(agent: 'solo'),
-      );
-      const standalone = StandaloneLaunchProfileScope(
-        workspaceId: 'workspace-1',
-        sessionId: 'session-1',
-      );
-
-      final contribution = await capability.contributeLaunch(
-        ConfigProfileLaunchContext(
-        workspaceId: 'workspace-1',
-        teamId: scope.teamId,
-          sessionId: scope.sessionId,
-          scope: scope,
-          team: team,
-          member: member,
-          members: const [member],
-          paths: paths,
-        catalog: paths,
-          standaloneScope: standalone,
-          personal: profile,
-        ),
-      );
-
-      final env = contribution.environment;
-      final home = env['HOME']!;
-      expect(env['USERPROFILE'], home);
-      expect(home, endsWith('${paths.pathContext.separator}home'));
-      expect(env['CURSOR_CONFIG_DIR'], paths.pathContext.join(home, '.cursor'));
-      expect(contribution.warnings, isEmpty);
-    });
-
-    test('standalone pre-provisions workspace trust under isolated home', () async {
-      const workspace = '/home/hhoa/git/hhoa/teampilot';
-      const profile = PersonalProfile(id: 'workspace-1', display: 'workspace-1',
-        agent: WorkspaceAgentConfig(agent: 'solo'),
-      );
-      const standalone = StandaloneLaunchProfileScope(
-        workspaceId: 'workspace-1',
-        sessionId: 'session-1',
-      );
-      final scope = resolveLaunchProfileScope(
-        workspaceId: 'workspace-1',
-        teamId: 'workspace-1',
-        appSessionId: 'session-1',
-        cliTeamName: 'session-1',
-      );
-
-      final contribution = await capability.contributeLaunch(
-        ConfigProfileLaunchContext(
+    test(
+      'standalone HOME-isolates with CURSOR_CONFIG_DIR at .cursor',
+      () async {
+        const team = TeamProfile(
+          id: 'team-a',
+          name: 'agent',
+          cli: CliTool.cursor,
+        );
+        final scope = resolveLaunchProfileScope(
           workspaceId: 'workspace-1',
-          teamId: '',
+          teamId: 'team-a',
+          appSessionId: 'session-1',
+          cliTeamName: 'session-1',
+        );
+        const profile = PersonalProfile(
+          id: 'workspace-1',
+          display: 'workspace-1',
+          agent: WorkspaceAgentConfig(agent: 'solo'),
+        );
+        const standalone = StandaloneLaunchProfileScope(
+          workspaceId: 'workspace-1',
           sessionId: 'session-1',
-          scope: scope,
-          personal: profile,
-          members: const [],
-          paths: paths,
-        catalog: paths,
-          standaloneScope: standalone,
-          workingDirectory: workspace,
-        ),
-      );
+        );
 
-      final trustPath = CursorWorkspaceTrust.trustMarkerPath(
-        contribution.environment['HOME']!,
-        workspace,
-        pathContext: fs.pathContext,
-      );
-      expect((await fs.stat(trustPath)).isFile, isTrue);
-    });
+        final contribution = await capability.contributeLaunch(
+          ConfigProfileLaunchContext(
+            workspaceId: 'workspace-1',
+            teamId: scope.teamId,
+            sessionId: scope.sessionId,
+            scope: scope,
+            team: team,
+            member: member,
+            members: const [member],
+            paths: paths,
+            catalog: paths,
+            standaloneScope: standalone,
+            personal: profile,
+          ),
+        );
+
+        final env = contribution.environment;
+        final home = env['HOME']!;
+        expect(env['USERPROFILE'], home);
+        expect(home, endsWith('${paths.pathContext.separator}home'));
+        expect(
+          env['CURSOR_CONFIG_DIR'],
+          paths.pathContext.join(home, '.cursor'),
+        );
+        expect(contribution.warnings, isEmpty);
+      },
+    );
+
+    test(
+      'standalone pre-provisions workspace trust under isolated home',
+      () async {
+        const workspace = '/home/hhoa/git/hhoa/teampilot';
+        const profile = PersonalProfile(
+          id: 'workspace-1',
+          display: 'workspace-1',
+          agent: WorkspaceAgentConfig(agent: 'solo'),
+        );
+        const standalone = StandaloneLaunchProfileScope(
+          workspaceId: 'workspace-1',
+          sessionId: 'session-1',
+        );
+        final scope = resolveLaunchProfileScope(
+          workspaceId: 'workspace-1',
+          teamId: 'workspace-1',
+          appSessionId: 'session-1',
+          cliTeamName: 'session-1',
+        );
+
+        final contribution = await capability.contributeLaunch(
+          ConfigProfileLaunchContext(
+            workspaceId: 'workspace-1',
+            teamId: '',
+            sessionId: 'session-1',
+            scope: scope,
+            personal: profile,
+            members: const [],
+            paths: paths,
+            catalog: paths,
+            standaloneScope: standalone,
+            workingDirectory: workspace,
+          ),
+        );
+
+        final trustPath = CursorWorkspaceTrust.trustMarkerPath(
+          contribution.environment['HOME']!,
+          workspace,
+          pathContext: fs.pathContext,
+        );
+        expect((await fs.stat(trustPath)).isFile, isTrue);
+      },
+    );
 
     test('mixed pre-provisions workspace trust under member home', () async {
       const team = TeamProfile(
@@ -162,15 +180,15 @@ void main() {
 
       await capability.contributeLaunch(
         ConfigProfileLaunchContext(
-        workspaceId: 'workspace-1',
-        teamId: scope.teamId,
+          workspaceId: 'workspace-1',
+          teamId: scope.teamId,
           sessionId: scope.sessionId,
           scope: scope,
           team: team,
           member: member,
           members: const [member],
           paths: paths,
-        catalog: paths,
+          catalog: paths,
           busIdle: MemberBusIdleEndpoint(url: 'http://127.0.0.1:5050/idle'),
           workingDirectory: workspace,
         ),
@@ -184,227 +202,246 @@ void main() {
       expect((await fs.stat(trustPath)).isFile, isTrue);
     });
 
-    test('mixed contributes HOME and not CURSOR_CONFIG_DIR or plugin dir key',
-        () async {
-      const team = TeamProfile(
-        id: 'team-a',
-        name: 'agent',
-        cli: CliTool.cursor,
-        teamMode: TeamMode.mixed,
-      );
-      final scope = mixedScope();
-
-      final contribution = await capability.contributeLaunch(
-        ConfigProfileLaunchContext(
-        workspaceId: 'workspace-1',
-        teamId: scope.teamId,
-          sessionId: scope.sessionId,
-          scope: scope,
-          team: team,
-          member: member,
-          members: const [member],
-          paths: paths,
-        catalog: paths,
-          busIdle: MemberBusIdleEndpoint(url: 'http://127.0.0.1:5050/idle'),
-        ),
-      );
-
-      final home = memberHome(scope);
-      expect(contribution.environment['HOME'], home);
-      expect(contribution.environment['USERPROFILE'], home);
-      expect(contribution.environment, isNot(contains('CURSOR_CONFIG_DIR')));
-      expect(contribution.environment.keys, isNot(contains(startsWith('TEAMPILOT_'))));
-    });
-
-    test('mixed warns when provider, credentials, and bus port are missing',
-        () async {
-      const team = TeamProfile(
-        id: 'team-a',
-        name: 'agent',
-        cli: CliTool.cursor,
-        teamMode: TeamMode.mixed,
-      );
-      final scope = mixedScope();
-
-      final contribution = await capability.contributeLaunch(
-        ConfigProfileLaunchContext(
-        workspaceId: 'workspace-1',
-        teamId: scope.teamId,
-          sessionId: scope.sessionId,
-          scope: scope,
-          team: team,
-          member: member,
-          members: const [member],
-          paths: paths,
-        catalog: paths,
-        ),
-      );
-
-      expect(contribution.warnings, contains('cursor_provider_missing'));
-      expect(contribution.warnings, contains('cursor_bus_idle_missing'));
-    });
-
-    test('mixed warns cursor_credentials_missing when provider not ready',
-        () async {
-      final repository = AppProviderRepository(basePath: base, fs: fs);
-      await repository.saveProviders(CliTool.cursor, [
-        const AppProviderConfig(
-          id: 'work',
+    test(
+      'mixed contributes HOME and not CURSOR_CONFIG_DIR or plugin dir key',
+      () async {
+        const team = TeamProfile(
+          id: 'team-a',
+          name: 'agent',
           cli: CliTool.cursor,
-          name: 'work',
-          category: AppProviderCategory.thirdParty,
-          config: {},
-        ),
-      ]);
-      const team = TeamProfile(
-        id: 'team-a',
-        name: 'agent',
-        cli: CliTool.cursor,
-        teamMode: TeamMode.mixed,
-        providerIdsByTool: {'cursor': 'work'},
-      );
-      final scope = mixedScope();
+          teamMode: TeamMode.mixed,
+        );
+        final scope = mixedScope();
 
-      final contribution = await capability.contributeLaunch(
-        ConfigProfileLaunchContext(
-        workspaceId: 'workspace-1',
-        teamId: scope.teamId,
-          sessionId: scope.sessionId,
-          scope: scope,
-          team: team,
-          member: member,
-          members: const [member],
-          paths: paths,
-        catalog: paths,
-          busIdle: MemberBusIdleEndpoint(url: 'http://127.0.0.1:5050/idle'),
-        ),
-      );
+        final contribution = await capability.contributeLaunch(
+          ConfigProfileLaunchContext(
+            workspaceId: 'workspace-1',
+            teamId: scope.teamId,
+            sessionId: scope.sessionId,
+            scope: scope,
+            team: team,
+            member: member,
+            members: const [member],
+            paths: paths,
+            catalog: paths,
+            busIdle: MemberBusIdleEndpoint(url: 'http://127.0.0.1:5050/idle'),
+          ),
+        );
 
-      expect(contribution.warnings, isNot(contains('cursor_provider_missing')));
-      expect(contribution.warnings, contains('cursor_credentials_missing'));
-    });
+        final home = memberHome(scope);
+        expect(contribution.environment['HOME'], home);
+        expect(contribution.environment['USERPROFILE'], home);
+        expect(contribution.environment, isNot(contains('CURSOR_CONFIG_DIR')));
+        expect(
+          contribution.environment.keys,
+          isNot(contains(startsWith('TEAMPILOT_'))),
+        );
+      },
+    );
 
-    test('mixed provisions bus overlay under member home when port set', () async {
-      const team = TeamProfile(
-        id: 'team-a',
-        name: 'agent',
-        cli: CliTool.cursor,
-        teamMode: TeamMode.mixed,
-      );
-      final scope = mixedScope();
-      final home = memberHome(scope);
-
-      await capability.contributeLaunch(
-        ConfigProfileLaunchContext(
-        workspaceId: 'workspace-1',
-        teamId: scope.teamId,
-          sessionId: scope.sessionId,
-          scope: scope,
-          team: team,
-          member: member,
-          members: const [member],
-          paths: paths,
-        catalog: paths,
-          busIdle: MemberBusIdleEndpoint(url: 'http://127.0.0.1:4321/idle'),
-        ),
-      );
-
-      expect((await fs.stat(layout.roleRule(home))).isFile, isTrue);
-      expect((await fs.stat(layout.mcpConfig(home))).isFile, isTrue);
-      expect((await fs.stat(layout.hooksConfig(home))).isFile, isTrue);
-      expect((await fs.stat(layout.idleScript(home))).isFile, isTrue);
-    });
-
-    test('standalone crossMachine syncs cursor account auth into isolated home',
-        () async {
-      final homeFs = InMemoryFilesystem();
-      final workFs = InMemoryFilesystem();
-      final catalog = ControlPlaneProfilePaths(
-        _memoryContext('/home-catalog', homeFs),
-      );
-      final workPaths = ConfigProfileService(
-        basePath: '/work',
-        home: '/work-home',
-        fs: workFs,
-        layout: _memoryContext('/work', workFs).layout,
-        catalog: catalog,
-      );
-      final catalogLayout = CursorHomeLayout(pathContext: homeFs.pathContext);
-      const providerId = 'cursor-account';
-      final providerHome = homeFs.pathContext.join(
-        '/home-catalog',
-        'providers',
-        'cursor',
-        providerId,
-        'home',
-      );
-      await homeFs.writeString(
-        catalogLayout.authJson(providerHome),
-        '{"accessToken":"remote-token","refreshToken":"remote-refresh"}',
-      );
-      await homeFs.writeString(
-        catalogLayout.cliConfig(providerHome),
-        '{"authInfo":{"userId":"u1","authId":"a1"}}',
-      );
-      await AppProviderRepository(basePath: catalog.basePath, fs: homeFs)
-          .saveProviders(CliTool.cursor, [
-        const AppProviderConfig(
-          id: providerId,
+    test(
+      'mixed warns when provider, credentials, and bus port are missing',
+      () async {
+        const team = TeamProfile(
+          id: 'team-a',
+          name: 'agent',
           cli: CliTool.cursor,
-          name: 'Cursor Account',
-          category: AppProviderCategory.official,
-          config: {},
-          isOfficial: true,
-        ),
-      ]);
+          teamMode: TeamMode.mixed,
+        );
+        final scope = mixedScope();
 
-      const profile = PersonalProfile(
-        id: 'workspace-1',
-        display: 'workspace-1',
-        agent: WorkspaceAgentConfig(agent: 'solo'),
-        providerIdsByTool: {'cursor': providerId},
-      );
-      const standalone = StandaloneLaunchProfileScope(
-        workspaceId: 'workspace-1',
-        sessionId: 'session-1',
-      );
-      const preset = CliPreset(
-        id: 'cursor-default',
-        name: 'Cursor',
-        cli: CliTool.cursor,
-        provider: providerId,
-        model: '',
-        createdAt: 0,
-        updatedAt: 0,
-      );
-      final scope = resolveLaunchProfileScope(
-        workspaceId: 'workspace-1',
-        teamId: 'workspace-1',
-        appSessionId: 'session-1',
-        cliTeamName: 'session-1',
-      );
+        final contribution = await capability.contributeLaunch(
+          ConfigProfileLaunchContext(
+            workspaceId: 'workspace-1',
+            teamId: scope.teamId,
+            sessionId: scope.sessionId,
+            scope: scope,
+            team: team,
+            member: member,
+            members: const [member],
+            paths: paths,
+            catalog: paths,
+          ),
+        );
 
-      final contribution = await capability.contributeLaunch(
-        ConfigProfileLaunchContext(
-          workspaceId: 'workspace-1',
-          teamId: '',
-          sessionId: 'session-1',
-          scope: scope,
-          personal: profile,
-          members: const [],
-          paths: workPaths,
+        expect(contribution.warnings, contains('cursor_provider_missing'));
+        expect(contribution.warnings, contains('cursor_bus_idle_missing'));
+      },
+    );
+
+    test(
+      'mixed warns cursor_credentials_missing when provider not ready',
+      () async {
+        final repository = AppProviderRepository(basePath: base, fs: fs);
+        await repository.saveProviders(CliTool.cursor, [
+          const AppProviderConfig(
+            id: 'work',
+            cli: CliTool.cursor,
+            name: 'work',
+            category: AppProviderCategory.thirdParty,
+            config: {},
+          ),
+        ]);
+        const team = TeamProfile(
+          id: 'team-a',
+          name: 'agent',
+          cli: CliTool.cursor,
+          teamMode: TeamMode.mixed,
+          providerIdsByTool: {'cursor': 'work'},
+        );
+        final scope = mixedScope();
+
+        final contribution = await capability.contributeLaunch(
+          ConfigProfileLaunchContext(
+            workspaceId: 'workspace-1',
+            teamId: scope.teamId,
+            sessionId: scope.sessionId,
+            scope: scope,
+            team: team,
+            member: member,
+            members: const [member],
+            paths: paths,
+            catalog: paths,
+            busIdle: MemberBusIdleEndpoint(url: 'http://127.0.0.1:5050/idle'),
+          ),
+        );
+
+        expect(
+          contribution.warnings,
+          isNot(contains('cursor_provider_missing')),
+        );
+        expect(contribution.warnings, contains('cursor_credentials_missing'));
+      },
+    );
+
+    test(
+      'mixed provisions bus overlay under member home when port set',
+      () async {
+        const team = TeamProfile(
+          id: 'team-a',
+          name: 'agent',
+          cli: CliTool.cursor,
+          teamMode: TeamMode.mixed,
+        );
+        final scope = mixedScope();
+        final home = memberHome(scope);
+
+        await capability.contributeLaunch(
+          ConfigProfileLaunchContext(
+            workspaceId: 'workspace-1',
+            teamId: scope.teamId,
+            sessionId: scope.sessionId,
+            scope: scope,
+            team: team,
+            member: member,
+            members: const [member],
+            paths: paths,
+            catalog: paths,
+            busIdle: MemberBusIdleEndpoint(url: 'http://127.0.0.1:4321/idle'),
+          ),
+        );
+
+        expect((await fs.stat(layout.roleRule(home))).isFile, isTrue);
+        expect((await fs.stat(layout.mcpConfig(home))).isFile, isTrue);
+        expect((await fs.stat(layout.hooksConfig(home))).isFile, isTrue);
+        expect((await fs.stat(layout.idleScript(home))).isFile, isTrue);
+      },
+    );
+
+    test(
+      'standalone crossMachine syncs cursor account auth into isolated home',
+      () async {
+        final homeFs = InMemoryFilesystem();
+        final workFs = InMemoryFilesystem();
+        final catalog = ControlPlaneProfilePaths(
+          _memoryContext('/home-catalog', homeFs),
+        );
+        final workPaths = ConfigProfileService(
+          basePath: '/work',
+          home: '/work-home',
+          fs: workFs,
+          layout: _memoryContext('/work', workFs).layout,
           catalog: catalog,
-          standaloneScope: standalone,
-          preset: preset,
-        ),
-      );
+        );
+        final catalogLayout = CursorHomeLayout(pathContext: homeFs.pathContext);
+        const providerId = 'cursor-account';
+        final providerHome = homeFs.pathContext.join(
+          '/home-catalog',
+          'providers',
+          'cursor',
+          providerId,
+          'home',
+        );
+        await homeFs.writeString(
+          catalogLayout.authJson(providerHome),
+          '{"accessToken":"remote-token","refreshToken":"remote-refresh"}',
+        );
+        await homeFs.writeString(
+          catalogLayout.cliConfig(providerHome),
+          '{"authInfo":{"userId":"u1","authId":"a1"}}',
+        );
+        await AppProviderRepository(
+          basePath: catalog.basePath,
+          fs: homeFs,
+        ).saveProviders(CliTool.cursor, [
+          const AppProviderConfig(
+            id: providerId,
+            cli: CliTool.cursor,
+            name: 'Cursor Account',
+            category: AppProviderCategory.official,
+            config: {},
+            isOfficial: true,
+          ),
+        ]);
 
-      final home = contribution.environment['HOME']!;
-      expect(contribution.warnings, isEmpty);
-      final authBytes = await workFs.readBytes(catalogLayout.authJson(home));
-      expect(authBytes, isNotNull);
-      expect(String.fromCharCodes(authBytes!), contains('remote-token'));
-      expect(workFs.symlinks[catalogLayout.cliConfig(home)], isNotNull);
-    });
+        const profile = PersonalProfile(
+          id: 'workspace-1',
+          display: 'workspace-1',
+          agent: WorkspaceAgentConfig(agent: 'solo'),
+          providerIdsByTool: {'cursor': providerId},
+        );
+        const standalone = StandaloneLaunchProfileScope(
+          workspaceId: 'workspace-1',
+          sessionId: 'session-1',
+        );
+        const preset = CliPreset(
+          id: 'cursor-default',
+          name: 'Cursor',
+          cli: CliTool.cursor,
+          provider: providerId,
+          model: '',
+          createdAt: 0,
+          updatedAt: 0,
+        );
+        final scope = resolveLaunchProfileScope(
+          workspaceId: 'workspace-1',
+          teamId: 'workspace-1',
+          appSessionId: 'session-1',
+          cliTeamName: 'session-1',
+        );
+
+        final contribution = await capability.contributeLaunch(
+          ConfigProfileLaunchContext(
+            workspaceId: 'workspace-1',
+            teamId: '',
+            sessionId: 'session-1',
+            scope: scope,
+            personal: profile,
+            members: const [],
+            paths: workPaths,
+            catalog: catalog,
+            standaloneScope: standalone,
+            preset: preset,
+          ),
+        );
+
+        final home = contribution.environment['HOME']!;
+        expect(contribution.warnings, isEmpty);
+        final authBytes = await workFs.readBytes(catalogLayout.authJson(home));
+        expect(authBytes, isNotNull);
+        expect(String.fromCharCodes(authBytes!), contains('remote-token'));
+        expect(workFs.symlinks[catalogLayout.cliConfig(home)], isNotNull);
+      },
+    );
   });
 }

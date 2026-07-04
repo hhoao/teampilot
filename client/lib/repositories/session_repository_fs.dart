@@ -81,7 +81,10 @@ class SessionRepositoryFs {
         return null;
       }),
     );
-    return [for (final id in ids) if (id != null) id];
+    return [
+      for (final id in ids)
+        if (id != null) id,
+    ];
   }
 
   /// Caps concurrent `session.json` reads so a workspace with many sessions

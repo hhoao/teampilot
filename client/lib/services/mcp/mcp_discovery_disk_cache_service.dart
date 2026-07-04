@@ -62,9 +62,8 @@ class McpDiscoveryDiskCacheService {
       final listingsJson = json.decode(listingsText) as List<dynamic>;
       final items = listingsJson
           .map(
-            (e) => McpCatalogListing.fromJson(
-              (e as Map).cast<String, Object?>(),
-            ),
+            (e) =>
+                McpCatalogListing.fromJson((e as Map).cast<String, Object?>()),
           )
           .toList();
 

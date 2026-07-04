@@ -45,16 +45,16 @@ class ExtensionRow extends Equatable {
 
   @override
   List<Object?> get props => [
-        id,
-        name,
-        description,
-        homepage,
-        globalEnabled,
-        installed,
-        status,
-        version,
-        missingRequirements,
-      ];
+    id,
+    name,
+    description,
+    homepage,
+    globalEnabled,
+    installed,
+    status,
+    version,
+    missingRequirements,
+  ];
 }
 
 class ExtensionUiState extends Equatable {
@@ -76,25 +76,21 @@ class ExtensionUiState extends Equatable {
     String? errorMessage,
     bool clearError = false,
     Set<String>? busyIds,
-  }) =>
-      ExtensionUiState(
-        rows: rows ?? this.rows,
-        status: status ?? this.status,
-        errorMessage: clearError ? null : (errorMessage ?? this.errorMessage),
-        busyIds: busyIds ?? this.busyIds,
-      );
+  }) => ExtensionUiState(
+    rows: rows ?? this.rows,
+    status: status ?? this.status,
+    errorMessage: clearError ? null : (errorMessage ?? this.errorMessage),
+    busyIds: busyIds ?? this.busyIds,
+  );
 
   @override
   List<Object?> get props => [rows, status, errorMessage, busyIds];
 }
 
 class ExtensionCubit extends Cubit<ExtensionUiState> {
-  ExtensionCubit(
-    this._repository,
-    this._engine, {
-    ExtensionDetector? detector,
-  })  : _detector = detector ?? ExtensionDetector(),
-        super(const ExtensionUiState());
+  ExtensionCubit(this._repository, this._engine, {ExtensionDetector? detector})
+    : _detector = detector ?? ExtensionDetector(),
+      super(const ExtensionUiState());
 
   final ExtensionRepository _repository;
   final ExtensionAcquisitionEngine _engine;
@@ -118,7 +114,9 @@ class ExtensionCubit extends Cubit<ExtensionUiState> {
   /// animate between host `which` / `--version` subprocess calls.
   Future<void> loadForBootstrap() async {
     if (state.rows.isEmpty) {
-      emit(state.copyWith(status: ExtensionLoadStatus.loading, clearError: true));
+      emit(
+        state.copyWith(status: ExtensionLoadStatus.loading, clearError: true),
+      );
     }
     try {
       final persisted = await _repository.load(forceReload: true);
@@ -147,16 +145,29 @@ class ExtensionCubit extends Cubit<ExtensionUiState> {
   Future<void> _load({required bool force}) async {
     if (!force && state.status == ExtensionLoadStatus.ready) return;
     if (state.rows.isEmpty) {
-      emit(state.copyWith(status: ExtensionLoadStatus.loading, clearError: true));
+      emit(
+        state.copyWith(status: ExtensionLoadStatus.loading, clearError: true),
+      );
     }
     try {
       final persisted = await _repository.load(forceReload: force);
       final rows = await Future.wait(
         _repository.manifests.map((m) => _buildRow(m, persisted)),
       );
-      emit(state.copyWith(rows: rows, status: ExtensionLoadStatus.ready, clearError: true));
+      emit(
+        state.copyWith(
+          rows: rows,
+          status: ExtensionLoadStatus.ready,
+          clearError: true,
+        ),
+      );
     } catch (e) {
-      emit(state.copyWith(status: ExtensionLoadStatus.error, errorMessage: e.toString()));
+      emit(
+        state.copyWith(
+          status: ExtensionLoadStatus.error,
+          errorMessage: e.toString(),
+        ),
+      );
     }
   }
 
@@ -169,10 +180,10 @@ class ExtensionCubit extends Cubit<ExtensionUiState> {
     final status = !probe.found
         ? ExtensionStatusCode.notInstalled
         : probe.missingRequirements.isNotEmpty
-            ? ExtensionStatusCode.dependencyMissing
-            : !probe.satisfiesMinVersion
-                ? ExtensionStatusCode.versionTooOld
-                : ExtensionStatusCode.ready;
+        ? ExtensionStatusCode.dependencyMissing
+        : !probe.satisfiesMinVersion
+        ? ExtensionStatusCode.versionTooOld
+        : ExtensionStatusCode.ready;
     return ExtensionRow(
       id: manifest.id,
       name: manifest.name,
@@ -218,11 +229,17 @@ class ExtensionCubit extends Cubit<ExtensionUiState> {
   /// Current per-workspace override map (`{extensionId: bool}`) for [workspaceId].
   Future<Map<String, bool>> workspaceOverrides(String workspaceId) async {
     final state = await _repository.load();
-    return Map<String, bool>.from(state.workspaceOverrides[workspaceId] ?? const {});
+    return Map<String, bool>.from(
+      state.workspaceOverrides[workspaceId] ?? const {},
+    );
   }
 
   /// [value] null clears the override (the workspace falls back to global).
-  Future<void> setWorkspaceOverride(String workspaceId, String id, bool? value) async {
+  Future<void> setWorkspaceOverride(
+    String workspaceId,
+    String id,
+    bool? value,
+  ) async {
     await _repository.setWorkspaceOverride(workspaceId, id, value);
   }
 
@@ -256,9 +273,14 @@ class ExtensionCubit extends Cubit<ExtensionUiState> {
     final manifest = _repository.manifests.firstWhere((m) => m.id == id);
     final persisted = await _repository.load();
     final updated = await _buildRow(manifest, persisted);
-    emit(state.copyWith(
-      rows: [for (final r in state.rows) if (r.id == id) updated else r],
-    ));
+    emit(
+      state.copyWith(
+        rows: [
+          for (final r in state.rows)
+            if (r.id == id) updated else r,
+        ],
+      ),
+    );
   }
 
   Future<void> _withBusy(String id, Future<void> Function() body) async {

@@ -48,11 +48,13 @@ void main() {
       browser = RemoteDirectoryBrowser(fs);
     });
 
-    test('empty input resolves to remote home via resolveSymlink(".")',
-        () async {
-      expect(await browser.resolveInitial(''), '/home/alice');
-      expect(await browser.resolveInitial(null), '/home/alice');
-    });
+    test(
+      'empty input resolves to remote home via resolveSymlink(".")',
+      () async {
+        expect(await browser.resolveInitial(''), '/home/alice');
+        expect(await browser.resolveInitial(null), '/home/alice');
+      },
+    );
 
     test('"~" and "." resolve to remote home', () async {
       expect(await browser.resolveInitial('~'), '/home/alice');
@@ -63,11 +65,13 @@ void main() {
       expect(await browser.resolveInitial('~/work/ws'), '/home/alice/work/ws');
     });
 
-    test('absolute posix path is normalized without Windows mangling',
-        () async {
-      expect(await browser.resolveInitial('/srv//data/'), '/srv/data');
-      expect(await browser.resolveInitial('/a/b/../c'), '/a/c');
-    });
+    test(
+      'absolute posix path is normalized without Windows mangling',
+      () async {
+        expect(await browser.resolveInitial('/srv//data/'), '/srv/data');
+        expect(await browser.resolveInitial('/a/b/../c'), '/a/c');
+      },
+    );
   });
 
   group('RemoteDirectoryBrowser.list', () {
@@ -91,25 +95,27 @@ void main() {
       expect(listing.directories, ['Alpha', 'mid', 'zeta']);
     });
 
-    test('hidden directories excluded by default, included when asked',
-        () async {
-      final fs = _FakeFilesystem(
-        home: '/root',
-        entries: {
-          '/root': const [
-            FsDirEntry(name: '.git', isDirectory: true),
-            FsDirEntry(name: 'src', isDirectory: true),
-          ],
-        },
-      );
-      final browser = RemoteDirectoryBrowser(fs);
+    test(
+      'hidden directories excluded by default, included when asked',
+      () async {
+        final fs = _FakeFilesystem(
+          home: '/root',
+          entries: {
+            '/root': const [
+              FsDirEntry(name: '.git', isDirectory: true),
+              FsDirEntry(name: 'src', isDirectory: true),
+            ],
+          },
+        );
+        final browser = RemoteDirectoryBrowser(fs);
 
-      expect((await browser.list('/root')).directories, ['src']);
-      expect(
-        (await browser.list('/root', includeHidden: true)).directories,
-        ['.git', 'src'],
-      );
-    });
+        expect((await browser.list('/root')).directories, ['src']);
+        expect((await browser.list('/root', includeHidden: true)).directories, [
+          '.git',
+          'src',
+        ]);
+      },
+    );
 
     test('parent is null at the filesystem root', () async {
       final fs = _FakeFilesystem(

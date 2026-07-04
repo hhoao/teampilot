@@ -63,10 +63,8 @@ class CliInstallerCommand {
       executable.contains(r'$') || executable.contains(' ');
 
   /// Wire format for Process / SSH exec — always use this at the transport edge.
-  String get commandLine => [
-    executable,
-    ...arguments.map(_shellQuoteIfNeeded),
-  ].join(' ');
+  String get commandLine =>
+      [executable, ...arguments.map(_shellQuoteIfNeeded)].join(' ');
 
   static String _shellQuoteIfNeeded(String value) {
     if (value.isEmpty) return "''";
@@ -87,9 +85,10 @@ class CliInstallerCommandResult {
   final String stderr;
 
   String get output {
-    final text = [stdout.trim(), stderr.trim()]
-        .where((value) => value.isNotEmpty)
-        .join('\n');
+    final text = [
+      stdout.trim(),
+      stderr.trim(),
+    ].where((value) => value.isNotEmpty).join('\n');
     return text;
   }
 }

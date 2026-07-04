@@ -6,20 +6,22 @@ import '../host/host_execution_environment.dart';
 import '../storage/app_storage.dart';
 import 'extension_probe.dart';
 
-typedef ExtensionProcessRunner = Future<ProcessResult> Function(
-  String executable,
-  List<String> arguments, {
-  Map<String, String>? environment,
-});
+typedef ExtensionProcessRunner =
+    Future<ProcessResult> Function(
+      String executable,
+      List<String> arguments, {
+      Map<String, String>? environment,
+    });
 
 /// Probes the host for an extension's tool + companion binaries, parameterized
 /// by an [ExtensionDetectSpec]. Generalizes the former `RtkDetector`.
 class ExtensionDetector {
   ExtensionDetector({ExtensionProcessRunner? processRunner, bool? probeHost})
-      : _processRunner = processRunner ?? Process.run,
-        _probeHost = probeHost ??
-            (processRunner != null ||
-                Platform.environment['FLUTTER_TEST'] != 'true');
+    : _processRunner = processRunner ?? Process.run,
+      _probeHost =
+          probeHost ??
+          (processRunner != null ||
+              Platform.environment['FLUTTER_TEST'] != 'true');
 
   final ExtensionProcessRunner _processRunner;
   final bool _probeHost;
@@ -43,8 +45,11 @@ class ExtensionDetector {
 
     final missing = <String>[];
     for (final dep in spec.requires) {
-      final depPath =
-          await _resolveExecutable(locator.whichCommand, dep, environment);
+      final depPath = await _resolveExecutable(
+        locator.whichCommand,
+        dep,
+        environment,
+      );
       if (depPath == null) missing.add(dep);
     }
 
@@ -62,7 +67,8 @@ class ExtensionDetector {
       version = null;
     }
 
-    final satisfies = spec.minVersion == null ||
+    final satisfies =
+        spec.minVersion == null ||
         version == null ||
         _meetsMinVersion(version, spec.minVersion!);
 
@@ -114,14 +120,15 @@ class ExtensionDetector {
     Map<String, String>? environment,
   ) async {
     try {
-      final result = await _processRunner(
-        locator,
-        [name],
-        environment: environment,
-      );
+      final result = await _processRunner(locator, [
+        name,
+      ], environment: environment);
       if (result.exitCode != 0) return null;
-      final line =
-          result.stdout.toString().trim().split(RegExp(r'\r?\n')).first;
+      final line = result.stdout
+          .toString()
+          .trim()
+          .split(RegExp(r'\r?\n'))
+          .first;
       return line.isEmpty ? null : line;
     } on Object {
       return null;

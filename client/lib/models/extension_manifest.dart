@@ -38,9 +38,9 @@ class ExtensionManifest {
           : const ExtensionDetectSpec(executable: ''),
       effects: effectsRaw is List
           ? effectsRaw
-              .whereType<Map>()
-              .map((e) => ExtensionEffect.fromJson(e.cast<String, Object?>()))
-              .toList()
+                .whereType<Map>()
+                .map((e) => ExtensionEffect.fromJson(e.cast<String, Object?>()))
+                .toList()
           : const [],
     );
   }
@@ -72,10 +72,12 @@ class ExtensionDetectSpec {
       versionArgs: versionArgs is List
           ? versionArgs.map((e) => e.toString()).toList()
           : const ['--version'],
-      minVersion:
-          trimmedMin == null || trimmedMin.isEmpty ? null : trimmedMin,
+      minVersion: trimmedMin == null || trimmedMin.isEmpty ? null : trimmedMin,
       requires: requires is List
-          ? requires.map((e) => e.toString()).where((e) => e.isNotEmpty).toList()
+          ? requires
+                .map((e) => e.toString())
+                .where((e) => e.isNotEmpty)
+                .toList()
           : const [],
     );
   }
@@ -113,7 +115,10 @@ class ExtensionEffect {
     return ExtensionEffect(
       kind: (json['kind'] as String?)?.trim() ?? '',
       appliesTo: appliesTo is List
-          ? appliesTo.map((e) => e.toString()).where((e) => e.isNotEmpty).toList()
+          ? appliesTo
+                .map((e) => e.toString())
+                .where((e) => e.isNotEmpty)
+                .toList()
           : const [],
       config: Map<String, Object?>.from(json),
     );
@@ -144,7 +149,10 @@ class ExtensionAcquireSpec {
       binary: json['binary'] as String?,
       allowNpx: json['allowNpx'] as bool? ?? false,
       alternatives: alternatives is List
-          ? alternatives.map((e) => e.toString()).where((e) => e.isNotEmpty).toList()
+          ? alternatives
+                .map((e) => e.toString())
+                .where((e) => e.isNotEmpty)
+                .toList()
           : const [],
     );
   }

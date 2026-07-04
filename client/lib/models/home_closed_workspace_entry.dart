@@ -32,13 +32,12 @@ class HomeClosedWorkspaceEntry {
     required String displayName,
     String primaryPath = '',
     WorkspaceTopology? topology,
-  }) =>
-      HomeClosedWorkspaceEntry(
-        workspaceId: tab.workspaceId,
-        displayName: displayName,
-        primaryPath: primaryPath,
-        topology: topology,
-      );
+  }) => HomeClosedWorkspaceEntry(
+    workspaceId: tab.workspaceId,
+    displayName: displayName,
+    primaryPath: primaryPath,
+    topology: topology,
+  );
 
   final String workspaceId;
   final String displayName;
@@ -51,12 +50,12 @@ class HomeClosedWorkspaceEntry {
   String get tabKey => workspaceId;
 
   Map<String, Object?> toJson() => {
-        'workspaceId': workspaceId,
-        'displayName': displayName,
-        'primaryPath': primaryPath,
-        'closedAt': closedAt,
-        if (topology != null) 'topology': topology!.name,
-      };
+    'workspaceId': workspaceId,
+    'displayName': displayName,
+    'primaryPath': primaryPath,
+    'closedAt': closedAt,
+    if (topology != null) 'topology': topology!.name,
+  };
 
   static WorkspaceTopology? _decodeTopology(String? raw) {
     final value = raw?.trim() ?? '';

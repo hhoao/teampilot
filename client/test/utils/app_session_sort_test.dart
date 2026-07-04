@@ -21,8 +21,9 @@ AppSession _session(
   );
 }
 
-List<String> _ids(List<AppSession> sessions) =>
-    [for (final s in sessions) s.sessionId];
+List<String> _ids(List<AppSession> sessions) => [
+  for (final s in sessions) s.sessionId,
+];
 
 void main() {
   group('sortAppSessions manual', () {
@@ -36,17 +37,19 @@ void main() {
       expect(_ids(sorted), ['b', 'c', 'a']);
     });
 
-    test('never-stamped rows (sortOrder 0) sort first, newest created first',
-        () {
-      final sessions = [
-        _session('stamped', sortOrder: 1, createdAt: 100),
-        _session('older', createdAt: 10),
-        _session('newer', createdAt: 20),
-      ];
-      final sorted = sortAppSessions(sessions, sort: AppSessionSort.manual);
-      // 0-order rows (newer, older) come before the stamped row; newest first.
-      expect(_ids(sorted), ['newer', 'older', 'stamped']);
-    });
+    test(
+      'never-stamped rows (sortOrder 0) sort first, newest created first',
+      () {
+        final sessions = [
+          _session('stamped', sortOrder: 1, createdAt: 100),
+          _session('older', createdAt: 10),
+          _session('newer', createdAt: 20),
+        ];
+        final sorted = sortAppSessions(sessions, sort: AppSessionSort.manual);
+        // 0-order rows (newer, older) come before the stamped row; newest first.
+        expect(_ids(sorted), ['newer', 'older', 'stamped']);
+      },
+    );
 
     test('pinned always wins over manual order', () {
       final sessions = [

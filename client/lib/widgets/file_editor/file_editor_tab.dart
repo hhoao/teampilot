@@ -1,4 +1,4 @@
-﻿import 'dart:async';
+import 'dart:async';
 import 'dart:io' show Platform;
 
 import 'package:flutter/material.dart';
@@ -109,9 +109,7 @@ class _FileEditorTabState extends State<FileEditorTab> {
     final cs = Theme.of(context).colorScheme;
     final label = widget.dirty ? '${widget.fileName} •' : widget.fileName;
     final labelColor = widget.selected ? cs.onSecondaryContainer : cs.onSurface;
-    final closeColor = widget.selected
-        ? cs.onSecondaryContainer
-        : cs.iconMuted;
+    final closeColor = widget.selected ? cs.onSecondaryContainer : cs.iconMuted;
 
     return Tooltip(
       message: widget.filePath,

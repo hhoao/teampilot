@@ -184,8 +184,7 @@ void main() {
       service.dispose();
       service = AppUpdateService(
         httpClient: MockClient(
-          (request) async =>
-              http.Response(jsonEncode(releaseJson), 200),
+          (request) async => http.Response(jsonEncode(releaseJson), 200),
         ),
         packageInfoLoader: () async => packageInfo('1.1.0'),
         installKindResolver: () => AppUpdateInstallKind.windowsSetup,
@@ -214,15 +213,21 @@ void main() {
           final url = request.url.toString();
           if (url.contains('/releases/latest') &&
               url.contains('api.github.com')) {
-            return http.Response('rate limit', 403, headers: {
-              'x-ratelimit-remaining': '0',
-            });
+            return http.Response(
+              'rate limit',
+              403,
+              headers: {'x-ratelimit-remaining': '0'},
+            );
           }
           if (url.endsWith('/releases/latest')) {
-            return http.Response('', 302, headers: {
-              'location':
-                  'https://github.com/hhoao/teampilot/releases/tag/v1.1.0',
-            });
+            return http.Response(
+              '',
+              302,
+              headers: {
+                'location':
+                    'https://github.com/hhoao/teampilot/releases/tag/v1.1.0',
+              },
+            );
           }
           if (url.contains('/releases/download/v1.1.0/')) {
             return http.Response('', 200, headers: {'content-length': '1000'});
@@ -252,9 +257,7 @@ void main() {
     test('writes file and reports progress', () async {
       final bytes = List<int>.generate(256, (i) => i % 256);
       final service = AppUpdateService(
-        httpClient: MockClient(
-          (_) async => http.Response.bytes(bytes, 200),
-        ),
+        httpClient: MockClient((_) async => http.Response.bytes(bytes, 200)),
         packageInfoLoader: () async => PackageInfo(
           appName: 'teampilot',
           packageName: 'com.hhoa.teampilot',

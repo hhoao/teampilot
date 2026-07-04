@@ -1,4 +1,4 @@
-﻿import 'dart:async';
+import 'dart:async';
 import 'dart:io';
 
 import 'package:flutter/material.dart';
@@ -93,10 +93,7 @@ class _WorkspaceCardState extends State<WorkspaceCard> {
             width: AppIconButton.kCompactSize,
             height: AppIconButton.kCompactSize,
             child: SidebarActionMenuIconAnchor(
-              icon: Icon(
-                Icons.more_horiz,
-                size: context.appIconSizes.sm,
-              ),
+              icon: Icon(Icons.more_horiz, size: context.appIconSizes.sm),
               onOpen: () => setState(() => _menuOpen = true),
               onClose: () => setState(() => _menuOpen = false),
               buildMenuChildren: (context, controller) => [
@@ -104,32 +101,22 @@ class _WorkspaceCardState extends State<WorkspaceCard> {
                   icon: Icons.drive_file_rename_outline,
                   label: l10n.homeWorkspaceRenameWorkspace,
                   menuController: controller,
-                  onTap: () => unawaited(
-                    showRenameWorkspaceDialog(
-                      context,
-                      workspace,
-                    ),
-                  ),
+                  onTap: () =>
+                      unawaited(showRenameWorkspaceDialog(context, workspace)),
                 ),
                 SidebarActionMenuItem(
                   icon: Icons.copy_all_outlined,
                   label: l10n.homeWorkspaceCloneWorkspace,
                   menuController: controller,
-                  onTap: () => unawaited(
-                    cloneWorkspace(context, workspace),
-                  ),
+                  onTap: () => unawaited(cloneWorkspace(context, workspace)),
                 ),
                 SidebarActionMenuItem(
                   icon: Icons.delete_outline,
                   label: l10n.deleteWorkspace,
                   destructive: true,
                   menuController: controller,
-                  onTap: () => unawaited(
-                    confirmDeleteWorkspace(
-                      context,
-                      workspace,
-                    ),
-                  ),
+                  onTap: () =>
+                      unawaited(confirmDeleteWorkspace(context, workspace)),
                 ),
               ],
             ),
@@ -145,9 +132,7 @@ class _WorkspaceCardState extends State<WorkspaceCard> {
             displayName,
             maxLines: 2,
             overflow: TextOverflow.ellipsis,
-            style: styles.prominent.copyWith(
-              fontWeight: FontWeight.w600,
-            ),
+            style: styles.prominent.copyWith(fontWeight: FontWeight.w600),
           ),
           const SizedBox(height: 6),
           WorkspaceCardMetaRow(
@@ -209,8 +194,7 @@ class _WorkspaceCardHoverShell extends StatefulWidget {
 class _WorkspaceCardHoverShellState extends State<_WorkspaceCardHoverShell> {
   var _hovered = false;
 
-  bool get _showActions =>
-      _hovered || widget.menuOpen || Platform.isAndroid;
+  bool get _showActions => _hovered || widget.menuOpen || Platform.isAndroid;
 
   @override
   Widget build(BuildContext context) {
@@ -228,27 +212,24 @@ class _WorkspaceCardHoverShellState extends State<_WorkspaceCardHoverShell> {
           duration: const Duration(milliseconds: 160),
           curve: Curves.easeOut,
           padding: const EdgeInsets.all(26),
-          decoration: workspaceCardDecoration(
-            cs,
-            radius: 14,
-            borderAlpha: _hovered ? 1 : 0.7,
-          ).copyWith(
-            color: cs.workspaceInset,
-            border: Border.all(
-              color: _hovered
-                  ? cs.primary.withValues(alpha: 0.5)
-                  : cs.outlineVariant.withValues(alpha: 0.7),
-            ),
-          ),
+          decoration:
+              workspaceCardDecoration(
+                cs,
+                radius: 14,
+                borderAlpha: _hovered ? 1 : 0.7,
+              ).copyWith(
+                color: cs.workspaceInset,
+                border: Border.all(
+                  color: _hovered
+                      ? cs.primary.withValues(alpha: 0.5)
+                      : cs.outlineVariant.withValues(alpha: 0.7),
+                ),
+              ),
           child: Stack(
             children: [
               widget.child,
               if (_showActions)
-                Positioned(
-                  top: 0,
-                  right: 0,
-                  child: widget.actions,
-                ),
+                Positioned(top: 0, right: 0, child: widget.actions),
               if (widget.showFavoriteBadge && !_showActions)
                 Positioned(
                   top: 0,

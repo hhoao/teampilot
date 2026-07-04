@@ -15,9 +15,11 @@ import 'model/chat_tab_info.dart';
 class ChatTabStore {
   final Map<String, List<ChatTab>> _byWorkspace = {};
   final Map<String, int> _savedActiveIndex = {};
+  final Map<String, bool> _composeActiveByWorkspace = {};
   String _activeWorkspaceId = '';
 
-  List<ChatTab> get _active => _byWorkspace.putIfAbsent(_activeWorkspaceId, () => []);
+  List<ChatTab> get _active =>
+      _byWorkspace.putIfAbsent(_activeWorkspaceId, () => []);
 
   /// Switches the active bucket. Pass [currentActiveIndex] (the cubit's current
   /// `ChatState.activeTabIndex`) to snapshot the outgoing workspace's selection.
@@ -44,6 +46,24 @@ class ChatTabStore {
   void clear() {
     _byWorkspace.clear();
     _savedActiveIndex.clear();
+    _composeActiveByWorkspace.clear();
+  }
+
+  /// Whether the workspace shows the compose landing instead of a session tab.
+  ///
+  /// Defaults to `true` when the bucket has no open tabs.
+  bool isComposeActive(String workspaceId) {
+    final bucket = _byWorkspace[workspaceId];
+    if (bucket == null || bucket.isEmpty) return true;
+    return _composeActiveByWorkspace[workspaceId] ?? false;
+  }
+
+  void setComposeActive(String workspaceId, bool active) {
+    if (active) {
+      _composeActiveByWorkspace[workspaceId] = true;
+      return;
+    }
+    _composeActiveByWorkspace.remove(workspaceId);
   }
 
   /// Removes and returns all tabs belonging to [workspaceId] (for disposal by the
@@ -51,6 +71,7 @@ class ChatTabStore {
   /// legacy empty-string bucket (tabs added before [setActiveWorkspace] was called).
   List<ChatTab> removeWorkspace(String workspaceId) {
     _savedActiveIndex.remove(workspaceId);
+    _composeActiveByWorkspace.remove(workspaceId);
     final removed = <ChatTab>[];
     // Named bucket.
     final named = _byWorkspace.remove(workspaceId);
@@ -59,12 +80,13 @@ class ChatTabStore {
     if (workspaceId.isNotEmpty) {
       final legacy = _byWorkspace[''];
       if (legacy != null) {
-        final matching =
-            legacy
-                .where((t) => t.persistedSession?.workspaceId == workspaceId)
-                .toList();
+        final matching = legacy
+            .where((t) => t.persistedSession?.workspaceId == workspaceId)
+            .toList();
         if (matching.isNotEmpty) {
-          legacy.removeWhere((t) => t.persistedSession?.workspaceId == workspaceId);
+          legacy.removeWhere(
+            (t) => t.persistedSession?.workspaceId == workspaceId,
+          );
           removed.addAll(matching);
         }
       }
@@ -89,11 +111,13 @@ class ChatTabStore {
     if (workspaceId.isNotEmpty) {
       final legacy = _byWorkspace[''];
       if (legacy != null) {
-        count += legacy.where(
-          (t) =>
-              !t.info.id.startsWith('local-') &&
-              t.persistedSession?.workspaceId == workspaceId,
-        ).length;
+        count += legacy
+            .where(
+              (t) =>
+                  !t.info.id.startsWith('local-') &&
+                  t.persistedSession?.workspaceId == workspaceId,
+            )
+            .length;
       }
     }
     return count;
@@ -102,7 +126,10 @@ class ChatTabStore {
   int savedActiveIndexFor(String workspaceTabKey) {
     final bucket = _byWorkspace[workspaceTabKey];
     if (bucket == null || bucket.isEmpty) return 0;
-    return (_savedActiveIndex[workspaceTabKey] ?? 0).clamp(0, bucket.length - 1);
+    return (_savedActiveIndex[workspaceTabKey] ?? 0).clamp(
+      0,
+      bucket.length - 1,
+    );
   }
 
   List<ChatTab> tabsForWorkspace(String workspaceTabKey) =>

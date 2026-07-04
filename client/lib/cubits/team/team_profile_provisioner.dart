@@ -14,7 +14,8 @@ class TeamProfileProvisioner {
   }) : _configProfileService = configProfileService,
        _storageRootsResolver = storageRootsResolver,
        _appDataBasePathOverride =
-           (appDataBasePathOverride != null && appDataBasePathOverride.isNotEmpty)
+           (appDataBasePathOverride != null &&
+               appDataBasePathOverride.isNotEmpty)
            ? appDataBasePathOverride
            : null;
 

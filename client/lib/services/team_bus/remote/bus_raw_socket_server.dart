@@ -19,15 +19,17 @@ import '../mcp/teammate_bus_session_registry.dart';
 /// through the shared [TeammateBusMcpHandler] (same handler as the HTTP path —
 /// only the framing differs), including the blocking `wait_for_message`.
 class BusRawSocketServer {
-  BusRawSocketServer({required TeammateBusMcpHandler handler, required String token})
-      : _handler = handler,
-        _token = token,
-        _registry = null;
+  BusRawSocketServer({
+    required TeammateBusMcpHandler handler,
+    required String token,
+  }) : _handler = handler,
+       _token = token,
+       _registry = null;
 
   BusRawSocketServer.multiplexed({required TeammateBusSessionRegistry registry})
-      : _handler = null,
-        _token = null,
-        _registry = registry;
+    : _handler = null,
+      _token = null,
+      _registry = registry;
 
   final TeammateBusMcpHandler? _handler;
   final String? _token;
@@ -39,7 +41,7 @@ class BusRawSocketServer {
   TeammateBusMcpHandler? _handlerForToken(String token) {
     final sessionId = _registry!.sessionForToken(token);
     if (sessionId == null) return null;
-    return _registry!.handlerForSession(sessionId);
+    return _registry.handlerForSession(sessionId);
   }
 
   ServerSocket? _server;
@@ -174,11 +176,7 @@ class _SocketSession {
     _server._activeWaits.add(cancel);
     handler.waitCancels.register(req.id, cancel);
     try {
-      final delivery = await handler.beginWait(
-        _memberId,
-        req,
-        cancel: cancel,
-      );
+      final delivery = await handler.beginWait(_memberId, req, cancel: cancel);
       if (cancel.isCancelled || _closed) {
         delivery.abort();
         return;

@@ -21,7 +21,9 @@ void main() {
       name: 'DS',
       category: AppProviderCategory.thirdParty,
       baseUrl: 'https://api.deepseek.com',
-      config: {'env': {'ANTHROPIC_BASE_URL': 'https://api.deepseek.com'}},
+      config: {
+        'env': {'ANTHROPIC_BASE_URL': 'https://api.deepseek.com'},
+      },
     );
     expect(isOfficialClaudeProvider(p), isFalse);
   });

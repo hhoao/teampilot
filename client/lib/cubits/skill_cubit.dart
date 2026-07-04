@@ -201,7 +201,9 @@ class SkillCubit extends Cubit<SkillState> {
       ),
     );
 
-    final batchKeys = reposToSync.map(SkillRepoDiskCacheService.repoKey).toSet();
+    final batchKeys = reposToSync
+        .map(SkillRepoDiskCacheService.repoKey)
+        .toSet();
     final remaining = Set<String>.from(batchKeys);
 
     Future<void> onRepoSyncFinished(String key) async {
@@ -236,8 +238,9 @@ class SkillCubit extends Cubit<SkillState> {
     );
 
     if (generation != _discoveryGeneration) return;
-    final repoSyncingKeys =
-        state.repoSyncingKeys.where((k) => !batchKeys.contains(k)).toSet();
+    final repoSyncingKeys = state.repoSyncingKeys
+        .where((k) => !batchKeys.contains(k))
+        .toSet();
     emit(
       state.copyWith(
         discoveryLoading: false,
@@ -254,8 +257,10 @@ class SkillCubit extends Cubit<SkillState> {
     required bool discoveryLoading,
     required Set<String> repoSyncingKeys,
   }) {
-    final discoverableChanged =
-        !_sameDiscoverableSkills(state.discoverable, discoverable);
+    final discoverableChanged = !_sameDiscoverableSkills(
+      state.discoverable,
+      discoverable,
+    );
     final syncingChanged = state.repoSyncingKeys != repoSyncingKeys;
     final loadingChanged = state.discoveryLoading != discoveryLoading;
     if (!discoverableChanged && !syncingChanged && !loadingChanged) return;
@@ -361,8 +366,9 @@ class SkillCubit extends Cubit<SkillState> {
           discoverable: await _aggregateDiscoverableFromDisk(enabledRepos),
         ),
       );
-      final updated =
-          repos.firstWhere((r) => r.owner == repo.owner && r.name == repo.name);
+      final updated = repos.firstWhere(
+        (r) => r.owner == repo.owner && r.name == repo.name,
+      );
       unawaited(_syncReposInBackground([updated]));
     } catch (e) {
       emit(state.copyWith(errorMessage: '$e'));

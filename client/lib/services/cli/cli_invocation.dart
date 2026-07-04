@@ -147,10 +147,7 @@ class CliInvocation {
     if (invocation.usesWsl) {
       return ResolvedCliProcessLaunch(
         executable: invocation.executable,
-        arguments: invocation.withArgs(
-          subcommand,
-          environment: environment,
-        ),
+        arguments: invocation.withArgs(subcommand, environment: environment),
       );
     }
 

@@ -67,7 +67,8 @@ final class ConfigProfileInfrastructure implements ConfigProfileDelegate {
   final List<ExtensionManifest>? _extensionManifests;
   final Map<String, ScriptFileHookProvisioner>? _extensionHookProvisioners;
   final ScriptFileHookProvisioner? _teamLeadHookProvisioner;
-  final Future<String> Function(HostScriptDialect dialect)? _loadTeamLeadHookScript;
+  final Future<String> Function(HostScriptDialect dialect)?
+  _loadTeamLeadHookScript;
   final ScriptFileHookProvisioner? _teamLeadDelegateHookProvisioner;
   final Future<String> Function(HostScriptDialect dialect)?
   _loadTeamLeadDelegateHookScript;
@@ -95,20 +96,18 @@ final class ConfigProfileInfrastructure implements ConfigProfileDelegate {
     String sessionId,
     String tool, {
     String? memberId,
-  }) =>
-      layout.sessionRuntimeToolDir(
-        workspaceId,
-        sessionId,
-        tool,
-        memberId: memberId,
-      );
+  }) => layout.sessionRuntimeToolDir(
+    workspaceId,
+    sessionId,
+    tool,
+    memberId: memberId,
+  );
 
   @override
   Future<Map<String, Object?>> readMetadataFile(
     String path,
     Map<String, Object?> defaults,
-  ) =>
-      _readMetadataFile(path, defaults);
+  ) => _readMetadataFile(path, defaults);
 
   @override
   Future<void> writeJsonIfChanged(String path, Map<String, Object?> value) =>
@@ -155,7 +154,10 @@ final class ConfigProfileInfrastructure implements ConfigProfileDelegate {
     final trimmedTool = tool.trim();
     if (trimmedWorkspace.isEmpty || trimmedTool.isEmpty) return;
 
-    final toolDir = layout.workspaceConfigToolDir(trimmedWorkspace, trimmedTool);
+    final toolDir = layout.workspaceConfigToolDir(
+      trimmedWorkspace,
+      trimmedTool,
+    );
     await _fs.ensureDir(toolDir);
     final metadataPath = pathContext.join(toolDir, metadataFileName);
     final metadata = await metadataWithTrustedProjects(
@@ -237,24 +239,24 @@ final class ConfigProfileInfrastructure implements ConfigProfileDelegate {
     required String tool,
     String? teamId,
     String? workspaceId,
-  }) =>
-      _writeSettingsFile(
-        path,
-        settings,
-        memberToolDir: memberToolDir,
-        tool: tool,
-        teamId: teamId,
-        workspaceId: workspaceId,
-      );
+  }) => _writeSettingsFile(
+    path,
+    settings,
+    memberToolDir: memberToolDir,
+    tool: tool,
+    teamId: teamId,
+    workspaceId: workspaceId,
+  );
 
   @override
   Future<bool> hasEnabledExtensionSettingsHooks(
     String tool, {
     String? teamId,
     String? workspaceId,
-  }) =>
-      _extensionProvisioner(teamId: teamId, workspaceId: workspaceId)
-          .hasEnabledSettingsHooksForTool(tool);
+  }) => _extensionProvisioner(
+    teamId: teamId,
+    workspaceId: workspaceId,
+  ).hasEnabledSettingsHooksForTool(tool);
 
   @override
   Future<Map<String, Object?>> applyExtensionSettings(
@@ -263,12 +265,10 @@ final class ConfigProfileInfrastructure implements ConfigProfileDelegate {
     required String tool,
     String? teamId,
     String? workspaceId,
-  }) =>
-      _extensionProvisioner(teamId: teamId, workspaceId: workspaceId).applySettings(
-        settings,
-        memberToolDir?.trim() ?? '',
-        tool: tool,
-      );
+  }) => _extensionProvisioner(
+    teamId: teamId,
+    workspaceId: workspaceId,
+  ).applySettings(settings, memberToolDir?.trim() ?? '', tool: tool);
 
   @override
   Future<Map<String, Object?>> maybeApplyTeamLeadHooks(
@@ -338,8 +338,10 @@ final class ConfigProfileInfrastructure implements ConfigProfileDelegate {
     String? workspaceId,
   }) async {
     warnings.addAll(
-      await _extensionProvisioner(teamId: teamId, workspaceId: workspaceId)
-          .collectWarnings(),
+      await _extensionProvisioner(
+        teamId: teamId,
+        workspaceId: workspaceId,
+      ).collectWarnings(),
     );
   }
 
@@ -417,12 +419,10 @@ final class ConfigProfileInfrastructure implements ConfigProfileDelegate {
           fs: _fs,
           runner: host.scriptRunner,
           baseFileName: TeamPilotHookScripts.rtkRewrite,
-          loadScript: (dialect) => loadBundledAssetString(
-            switch (dialect) {
-              HostScriptDialect.bash => 'assets/rtk/rtk-rewrite.sh',
-              HostScriptDialect.powershell => 'assets/rtk/rtk-rewrite.ps1',
-            },
-          ),
+          loadScript: (dialect) => loadBundledAssetString(switch (dialect) {
+            HostScriptDialect.bash => 'assets/rtk/rtk-rewrite.sh',
+            HostScriptDialect.powershell => 'assets/rtk/rtk-rewrite.ps1',
+          }),
         );
       default:
         throw StateError(
@@ -441,14 +441,12 @@ final class ConfigProfileInfrastructure implements ConfigProfileDelegate {
           baseFileName: TeamPilotHookScripts.teamLeadSelf,
           loadScript:
               _loadTeamLeadHookScript ??
-              (dialect) => loadBundledAssetString(
-                switch (dialect) {
-                  HostScriptDialect.bash =>
-                    'assets/hooks/teampilot-deny-team-lead-self-message.sh',
-                  HostScriptDialect.powershell =>
-                    'assets/hooks/teampilot-deny-team-lead-self-message.ps1',
-                },
-              ),
+              (dialect) => loadBundledAssetString(switch (dialect) {
+                HostScriptDialect.bash =>
+                  'assets/hooks/teampilot-deny-team-lead-self-message.sh',
+                HostScriptDialect.powershell =>
+                  'assets/hooks/teampilot-deny-team-lead-self-message.ps1',
+              }),
         );
   }
 
@@ -462,14 +460,12 @@ final class ConfigProfileInfrastructure implements ConfigProfileDelegate {
           baseFileName: TeamPilotHookScripts.teamLeadDelegate,
           loadScript:
               _loadTeamLeadDelegateHookScript ??
-              (dialect) => loadBundledAssetString(
-                switch (dialect) {
-                  HostScriptDialect.bash =>
-                    'assets/hooks/teampilot-team-lead-delegate-only.sh',
-                  HostScriptDialect.powershell =>
-                    'assets/hooks/teampilot-team-lead-delegate-only.ps1',
-                },
-              ),
+              (dialect) => loadBundledAssetString(switch (dialect) {
+                HostScriptDialect.bash =>
+                  'assets/hooks/teampilot-team-lead-delegate-only.sh',
+                HostScriptDialect.powershell =>
+                  'assets/hooks/teampilot-team-lead-delegate-only.ps1',
+              }),
         );
   }
 
@@ -531,8 +527,8 @@ final class ConfigProfileInfrastructure implements ConfigProfileDelegate {
       ),
       teamLeadHookProvisioner: _teamLeadHookProvisioner?.withFilesystem(fs),
       loadTeamLeadHookScript: _loadTeamLeadHookScript,
-      teamLeadDelegateHookProvisioner:
-          _teamLeadDelegateHookProvisioner?.withFilesystem(fs),
+      teamLeadDelegateHookProvisioner: _teamLeadDelegateHookProvisioner
+          ?.withFilesystem(fs),
       loadTeamLeadDelegateHookScript: _loadTeamLeadDelegateHookScript,
       hostEnvironment: _hostEnvironment,
     );

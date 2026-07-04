@@ -11,9 +11,7 @@ void main() {
     final engine = TerminalEngine(config: TerminalConfig.defaults());
     engine.resize(columns: 40, rows: 5);
     engine.initializeEmpty(5, 40);
-    engine.feed(
-      Uint8List.fromList('line one\nline two\n'.codeUnits),
-    );
+    engine.feed(Uint8List.fromList('line one\nline two\n'.codeUnits));
     await flushTerminalEngine(engine);
 
     final text = exportTerminalScrollback(engine);

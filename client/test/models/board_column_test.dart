@@ -5,11 +5,20 @@ import 'package:teampilot/services/team_bus/tasks/team_task.dart';
 void main() {
   group('BoardColumn', () {
     test('maps each TaskStatus to a lane', () {
-      expect(BoardColumnMapping.forStatus(TaskStatus.pending), BoardColumn.pending);
-      expect(BoardColumnMapping.forStatus(TaskStatus.claimed), BoardColumn.claimed);
+      expect(
+        BoardColumnMapping.forStatus(TaskStatus.pending),
+        BoardColumn.pending,
+      );
+      expect(
+        BoardColumnMapping.forStatus(TaskStatus.claimed),
+        BoardColumn.claimed,
+      );
       expect(BoardColumnMapping.forStatus(TaskStatus.done), BoardColumn.done);
       expect(BoardColumnMapping.forStatus(TaskStatus.failed), BoardColumn.done);
-      expect(BoardColumnMapping.forStatus(TaskStatus.cancelled), BoardColumn.done);
+      expect(
+        BoardColumnMapping.forStatus(TaskStatus.cancelled),
+        BoardColumn.done,
+      );
     });
 
     test('statusesFor round-trips every status into exactly one column', () {
@@ -24,10 +33,12 @@ void main() {
     });
 
     test('pending and claimed columns hold exactly one status', () {
-      expect(BoardColumnMapping.statusesFor(BoardColumn.pending),
-          [TaskStatus.pending]);
-      expect(BoardColumnMapping.statusesFor(BoardColumn.claimed),
-          [TaskStatus.claimed]);
+      expect(BoardColumnMapping.statusesFor(BoardColumn.pending), [
+        TaskStatus.pending,
+      ]);
+      expect(BoardColumnMapping.statusesFor(BoardColumn.claimed), [
+        TaskStatus.claimed,
+      ]);
     });
   });
 }

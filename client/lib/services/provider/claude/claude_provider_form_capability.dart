@@ -63,5 +63,6 @@ final class ClaudeProviderFormCapability implements ProviderFormCapability {
     );
   }
 
-  Map<String, Object?> _extraFromConfig(Map<String, Object?> config) => const {};
+  Map<String, Object?> _extraFromConfig(Map<String, Object?> config) =>
+      const {};
 }

@@ -37,20 +37,36 @@ class Plugin {
       marketplaceOwner != null ? '$marketplaceOwner/$marketplaceName' : 'local';
 
   Plugin copyWith({
-    String? id, String? name, String? description, String? version,
-    String? directory, String? marketplaceOwner, String? marketplaceName,
-    String? marketplaceBranch, String? homepageUrl, String? readmeUrl,
-    PluginCapabilities? capabilities, String? contentHash,
-    int? installedAt, int? updatedAt, bool clearMarketplace = false,
+    String? id,
+    String? name,
+    String? description,
+    String? version,
+    String? directory,
+    String? marketplaceOwner,
+    String? marketplaceName,
+    String? marketplaceBranch,
+    String? homepageUrl,
+    String? readmeUrl,
+    PluginCapabilities? capabilities,
+    String? contentHash,
+    int? installedAt,
+    int? updatedAt,
+    bool clearMarketplace = false,
   }) => Plugin(
     id: id ?? this.id,
     name: name ?? this.name,
     description: description ?? this.description,
     version: version ?? this.version,
     directory: directory ?? this.directory,
-    marketplaceOwner: clearMarketplace ? null : (marketplaceOwner ?? this.marketplaceOwner),
-    marketplaceName: clearMarketplace ? null : (marketplaceName ?? this.marketplaceName),
-    marketplaceBranch: clearMarketplace ? null : (marketplaceBranch ?? this.marketplaceBranch),
+    marketplaceOwner: clearMarketplace
+        ? null
+        : (marketplaceOwner ?? this.marketplaceOwner),
+    marketplaceName: clearMarketplace
+        ? null
+        : (marketplaceName ?? this.marketplaceName),
+    marketplaceBranch: clearMarketplace
+        ? null
+        : (marketplaceBranch ?? this.marketplaceBranch),
     homepageUrl: clearMarketplace ? null : (homepageUrl ?? this.homepageUrl),
     readmeUrl: clearMarketplace ? null : (readmeUrl ?? this.readmeUrl),
     capabilities: capabilities ?? this.capabilities,
@@ -88,7 +104,9 @@ class Plugin {
     homepageUrl: json['homepageUrl'] as String?,
     readmeUrl: json['readmeUrl'] as String?,
     capabilities: json['capabilities'] is Map
-        ? PluginCapabilities.fromJson((json['capabilities'] as Map).cast<String, Object?>())
+        ? PluginCapabilities.fromJson(
+            (json['capabilities'] as Map).cast<String, Object?>(),
+          )
         : const PluginCapabilities(),
     contentHash: json['contentHash'] as String?,
     installedAt: (json['installedAt'] as num?)?.toInt() ?? 0,
@@ -112,8 +130,16 @@ class Plugin {
 
   @override
   int get hashCode => Object.hash(
-    id, name, version, directory, marketplaceOwner, marketplaceName,
-    marketplaceBranch, capabilities, contentHash);
+    id,
+    name,
+    version,
+    directory,
+    marketplaceOwner,
+    marketplaceName,
+    marketplaceBranch,
+    capabilities,
+    contentHash,
+  );
 }
 
 class PluginCapabilities {
@@ -139,18 +165,29 @@ class PluginCapabilities {
     'mcpServers': mcpServers.map((m) => m.toJson()).toList(),
   };
 
-  factory PluginCapabilities.fromJson(Map<String, Object?> json) => PluginCapabilities(
-    commands: (json['commands'] as List? ?? const [])
-        .whereType<Map>().map((m) => PluginCommand.fromJson(m.cast<String, Object?>())).toList(),
-    agents: (json['agents'] as List? ?? const [])
-        .whereType<Map>().map((m) => PluginAgent.fromJson(m.cast<String, Object?>())).toList(),
-    skills: (json['skills'] as List? ?? const [])
-        .whereType<Map>().map((m) => PluginSkillRef.fromJson(m.cast<String, Object?>())).toList(),
-    hooks: (json['hooks'] as List? ?? const [])
-        .whereType<Map>().map((m) => PluginHook.fromJson(m.cast<String, Object?>())).toList(),
-    mcpServers: (json['mcpServers'] as List? ?? const [])
-        .whereType<Map>().map((m) => PluginMcpServer.fromJson(m.cast<String, Object?>())).toList(),
-  );
+  factory PluginCapabilities.fromJson(Map<String, Object?> json) =>
+      PluginCapabilities(
+        commands: (json['commands'] as List? ?? const [])
+            .whereType<Map>()
+            .map((m) => PluginCommand.fromJson(m.cast<String, Object?>()))
+            .toList(),
+        agents: (json['agents'] as List? ?? const [])
+            .whereType<Map>()
+            .map((m) => PluginAgent.fromJson(m.cast<String, Object?>()))
+            .toList(),
+        skills: (json['skills'] as List? ?? const [])
+            .whereType<Map>()
+            .map((m) => PluginSkillRef.fromJson(m.cast<String, Object?>()))
+            .toList(),
+        hooks: (json['hooks'] as List? ?? const [])
+            .whereType<Map>()
+            .map((m) => PluginHook.fromJson(m.cast<String, Object?>()))
+            .toList(),
+        mcpServers: (json['mcpServers'] as List? ?? const [])
+            .whereType<Map>()
+            .map((m) => PluginMcpServer.fromJson(m.cast<String, Object?>()))
+            .toList(),
+      );
 
   @override
   bool operator ==(Object other) =>
@@ -164,8 +201,12 @@ class PluginCapabilities {
 
   @override
   int get hashCode => Object.hash(
-    Object.hashAll(commands), Object.hashAll(agents), Object.hashAll(skills),
-    Object.hashAll(hooks), Object.hashAll(mcpServers));
+    Object.hashAll(commands),
+    Object.hashAll(agents),
+    Object.hashAll(skills),
+    Object.hashAll(hooks),
+    Object.hashAll(mcpServers),
+  );
 }
 
 bool _listEq<T>(List<T> a, List<T> b) {
@@ -181,11 +222,15 @@ class PluginCommand {
   final String name;
   final String? description;
   Map<String, Object?> toJson() => {'name': name, 'description': description};
-  factory PluginCommand.fromJson(Map<String, Object?> j) =>
-      PluginCommand(name: j['name'] as String, description: j['description'] as String?);
+  factory PluginCommand.fromJson(Map<String, Object?> j) => PluginCommand(
+    name: j['name'] as String,
+    description: j['description'] as String?,
+  );
   @override
   bool operator ==(Object other) =>
-      other is PluginCommand && other.name == name && other.description == description;
+      other is PluginCommand &&
+      other.name == name &&
+      other.description == description;
   @override
   int get hashCode => Object.hash(name, description);
 }
@@ -195,11 +240,15 @@ class PluginAgent {
   final String name;
   final String? description;
   Map<String, Object?> toJson() => {'name': name, 'description': description};
-  factory PluginAgent.fromJson(Map<String, Object?> j) =>
-      PluginAgent(name: j['name'] as String, description: j['description'] as String?);
+  factory PluginAgent.fromJson(Map<String, Object?> j) => PluginAgent(
+    name: j['name'] as String,
+    description: j['description'] as String?,
+  );
   @override
   bool operator ==(Object other) =>
-      other is PluginAgent && other.name == name && other.description == description;
+      other is PluginAgent &&
+      other.name == name &&
+      other.description == description;
   @override
   int get hashCode => Object.hash(name, description);
 }
@@ -209,11 +258,15 @@ class PluginSkillRef {
   final String name;
   final String? description;
   Map<String, Object?> toJson() => {'name': name, 'description': description};
-  factory PluginSkillRef.fromJson(Map<String, Object?> j) =>
-      PluginSkillRef(name: j['name'] as String, description: j['description'] as String?);
+  factory PluginSkillRef.fromJson(Map<String, Object?> j) => PluginSkillRef(
+    name: j['name'] as String,
+    description: j['description'] as String?,
+  );
   @override
   bool operator ==(Object other) =>
-      other is PluginSkillRef && other.name == name && other.description == description;
+      other is PluginSkillRef &&
+      other.name == name &&
+      other.description == description;
   @override
   int get hashCode => Object.hash(name, description);
 }
@@ -223,8 +276,10 @@ class PluginHook {
   final String event;
   final String matcher;
   Map<String, Object?> toJson() => {'event': event, 'matcher': matcher};
-  factory PluginHook.fromJson(Map<String, Object?> j) =>
-      PluginHook(event: j['event'] as String, matcher: j['matcher'] as String? ?? '');
+  factory PluginHook.fromJson(Map<String, Object?> j) => PluginHook(
+    event: j['event'] as String,
+    matcher: j['matcher'] as String? ?? '',
+  );
   @override
   bool operator ==(Object other) =>
       other is PluginHook && other.event == event && other.matcher == matcher;
@@ -237,8 +292,10 @@ class PluginMcpServer {
   final String name;
   final String type;
   Map<String, Object?> toJson() => {'name': name, 'type': type};
-  factory PluginMcpServer.fromJson(Map<String, Object?> j) =>
-      PluginMcpServer(name: j['name'] as String, type: j['type'] as String? ?? 'stdio');
+  factory PluginMcpServer.fromJson(Map<String, Object?> j) => PluginMcpServer(
+    name: j['name'] as String,
+    type: j['type'] as String? ?? 'stdio',
+  );
   @override
   bool operator ==(Object other) =>
       other is PluginMcpServer && other.name == name && other.type == type;
@@ -265,7 +322,11 @@ class PluginMarketplace {
   String get githubUrl => 'https://github.com/$owner/$name';
 
   PluginMarketplace copyWith({
-    String? owner, String? name, String? branch, bool? enabled, String? displayName,
+    String? owner,
+    String? name,
+    String? branch,
+    bool? enabled,
+    String? displayName,
     bool clearDisplayName = false,
   }) => PluginMarketplace(
     owner: owner ?? this.owner,
@@ -276,17 +337,21 @@ class PluginMarketplace {
   );
 
   Map<String, Object?> toJson() => {
-    'owner': owner, 'name': name, 'branch': branch,
-    'enabled': enabled, 'displayName': displayName,
+    'owner': owner,
+    'name': name,
+    'branch': branch,
+    'enabled': enabled,
+    'displayName': displayName,
   };
 
-  factory PluginMarketplace.fromJson(Map<String, Object?> json) => PluginMarketplace(
-    owner: json['owner'] as String,
-    name: json['name'] as String,
-    branch: json['branch'] as String? ?? 'main',
-    enabled: json['enabled'] as bool? ?? true,
-    displayName: json['displayName'] as String?,
-  );
+  factory PluginMarketplace.fromJson(Map<String, Object?> json) =>
+      PluginMarketplace(
+        owner: json['owner'] as String,
+        name: json['name'] as String,
+        branch: json['branch'] as String? ?? 'main',
+        enabled: json['enabled'] as bool? ?? true,
+        displayName: json['displayName'] as String?,
+      );
 
   @override
   bool operator ==(Object other) =>
@@ -328,10 +393,13 @@ class DiscoverablePlugin {
   final String marketplaceOwner;
   final String marketplaceName;
   final String marketplaceBranch;
+
   /// Relative path inside the synced marketplace repo (install from cache).
   final String source;
+
   /// When false, plugin files are not in the synced marketplace repo (see [externalSource]).
   final bool localInstall;
+
   /// Set for `git-subdir` / `url` / `github` marketplace entries; fetched via git on install.
   final PluginExternalSource? externalSource;
   final List<String> categories;
@@ -357,39 +425,56 @@ class DiscoverablePlugin {
   }
 
   Map<String, Object?> toJson() => {
-    'key': key, 'name': name, 'description': description, 'version': version,
+    'key': key,
+    'name': name,
+    'description': description,
+    'version': version,
     'readmeUrl': readmeUrl,
     'marketplaceOwner': marketplaceOwner,
     'marketplaceName': marketplaceName,
     'marketplaceBranch': marketplaceBranch,
     'source': source,
     'localInstall': localInstall,
-    if (externalSource != null) 'externalSourceCloneUrl': externalSource!.cloneUrl,
+    if (externalSource != null)
+      'externalSourceCloneUrl': externalSource!.cloneUrl,
     'categories': categories,
     'keywords': keywords,
   };
 
-  factory DiscoverablePlugin.fromJson(Map<String, Object?> json) => DiscoverablePlugin(
-    key: json['key'] as String,
-    name: json['name'] as String,
-    description: json['description'] as String? ?? '',
-    version: json['version'] as String? ?? '0.0.0',
-    readmeUrl: json['readmeUrl'] as String?,
-    marketplaceOwner: json['marketplaceOwner'] as String,
-    marketplaceName: json['marketplaceName'] as String,
-    marketplaceBranch: json['marketplaceBranch'] as String? ?? 'main',
-    source: json['source'] as String? ?? '.',
-    localInstall: json['localInstall'] as bool? ?? true,
-    categories: (json['categories'] as List? ?? const []).whereType<String>().toList(),
-    keywords: (json['keywords'] as List? ?? const []).whereType<String>().toList(),
-  );
+  factory DiscoverablePlugin.fromJson(Map<String, Object?> json) =>
+      DiscoverablePlugin(
+        key: json['key'] as String,
+        name: json['name'] as String,
+        description: json['description'] as String? ?? '',
+        version: json['version'] as String? ?? '0.0.0',
+        readmeUrl: json['readmeUrl'] as String?,
+        marketplaceOwner: json['marketplaceOwner'] as String,
+        marketplaceName: json['marketplaceName'] as String,
+        marketplaceBranch: json['marketplaceBranch'] as String? ?? 'main',
+        source: json['source'] as String? ?? '.',
+        localInstall: json['localInstall'] as bool? ?? true,
+        categories: (json['categories'] as List? ?? const [])
+            .whereType<String>()
+            .toList(),
+        keywords: (json['keywords'] as List? ?? const [])
+            .whereType<String>()
+            .toList(),
+      );
 
   DiscoverablePlugin copyWith({
-    String? key, String? name, String? description, String? version,
-    String? readmeUrl, String? marketplaceOwner, String? marketplaceName,
-    String? marketplaceBranch, String? source, bool? localInstall,
+    String? key,
+    String? name,
+    String? description,
+    String? version,
+    String? readmeUrl,
+    String? marketplaceOwner,
+    String? marketplaceName,
+    String? marketplaceBranch,
+    String? source,
+    bool? localInstall,
     PluginExternalSource? externalSource,
-    List<String>? categories, List<String>? keywords,
+    List<String>? categories,
+    List<String>? keywords,
     bool clearReadmeUrl = false,
     bool clearExternalSource = false,
   }) => DiscoverablePlugin(
@@ -431,9 +516,20 @@ class DiscoverablePlugin {
 
   @override
   int get hashCode => Object.hash(
-    key, name, description, version, marketplaceOwner, marketplaceName,
-    marketplaceBranch, readmeUrl, source, localInstall, externalSource,
-    Object.hashAll(categories), Object.hashAll(keywords));
+    key,
+    name,
+    description,
+    version,
+    marketplaceOwner,
+    marketplaceName,
+    marketplaceBranch,
+    readmeUrl,
+    source,
+    localInstall,
+    externalSource,
+    Object.hashAll(categories),
+    Object.hashAll(keywords),
+  );
 }
 
 class PluginUpdateInfo {
@@ -450,23 +546,29 @@ class PluginUpdateInfo {
   final String remoteHash;
 
   Map<String, Object?> toJson() => {
-    'id': id, 'name': name, 'currentHash': currentHash, 'remoteHash': remoteHash,
+    'id': id,
+    'name': name,
+    'currentHash': currentHash,
+    'remoteHash': remoteHash,
   };
 
-  factory PluginUpdateInfo.fromJson(Map<String, Object?> json) => PluginUpdateInfo(
-    id: json['id'] as String,
-    name: json['name'] as String,
-    currentHash: json['currentHash'] as String?,
-    remoteHash: json['remoteHash'] as String,
-  );
+  factory PluginUpdateInfo.fromJson(Map<String, Object?> json) =>
+      PluginUpdateInfo(
+        id: json['id'] as String,
+        name: json['name'] as String,
+        currentHash: json['currentHash'] as String?,
+        remoteHash: json['remoteHash'] as String,
+      );
 
   @override
   bool operator ==(Object other) =>
       identical(this, other) ||
       other is PluginUpdateInfo &&
           runtimeType == other.runtimeType &&
-          id == other.id && remoteHash == other.remoteHash &&
-          currentHash == other.currentHash && name == other.name;
+          id == other.id &&
+          remoteHash == other.remoteHash &&
+          currentHash == other.currentHash &&
+          name == other.name;
 
   @override
   int get hashCode => Object.hash(id, remoteHash, currentHash, name);

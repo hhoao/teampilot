@@ -1,4 +1,4 @@
-﻿import 'package:flutter/material.dart';
+import 'package:flutter/material.dart';
 import 'package:teampilot/theme/app_icon_sizes.dart';
 import 'package:teampilot/theme/app_toast_theme.dart';
 import 'package:teampilot/widgets/app_toast/app_toast.dart';
@@ -73,7 +73,10 @@ class _McpRegistriesSectionState extends State<McpRegistriesSection> {
     return '@$name';
   }
 
-  Future<void> _toggleEnabled(McpRegistrySourceConfig source, bool enabled) async {
+  Future<void> _toggleEnabled(
+    McpRegistrySourceConfig source,
+    bool enabled,
+  ) async {
     final config = _config;
     if (config == null) return;
     final next = McpRegistrySourcesConfig(
@@ -121,7 +124,9 @@ class _McpRegistriesSectionState extends State<McpRegistriesSection> {
           .map(
             (s) => s.kind == source.kind
                 ? s.copyWith(
-                    baseUrl: McpRegistrySourceConfig.defaultBaseUrl(source.kind),
+                    baseUrl: McpRegistrySourceConfig.defaultBaseUrl(
+                      source.kind,
+                    ),
                     enabled: true,
                     clearApiToken: true,
                   )
@@ -227,8 +232,7 @@ class _RegistrySourceEditDialogState extends State<_RegistrySourceEditDialog> {
   late final TextEditingController _tokenCtrl;
   bool _testing = false;
 
-  bool get _isSmithery =>
-      widget.source.kind == McpRegistrySourceKind.smithery;
+  bool get _isSmithery => widget.source.kind == McpRegistrySourceKind.smithery;
 
   @override
   void initState() {
@@ -281,10 +285,7 @@ class _RegistrySourceEditDialogState extends State<_RegistrySourceEditDialog> {
   void _save() {
     final url = _urlCtrl.text.trim();
     if (url.isEmpty) return;
-    Navigator.pop(
-      context,
-      (baseUrl: url, apiToken: _tokenCtrl.text.trim()),
-    );
+    Navigator.pop(context, (baseUrl: url, apiToken: _tokenCtrl.text.trim()));
   }
 
   @override
@@ -301,27 +302,27 @@ class _RegistrySourceEditDialogState extends State<_RegistrySourceEditDialog> {
           AppDialogHeader(title: l10n.mcpRegistryEditTitle),
           const SizedBox(height: 16),
           TextField(
-                controller: _urlCtrl,
-                decoration: InputDecoration(
-                  labelText: l10n.mcpRepoApiUrlLabel,
-                  hintText: McpRegistrySourceConfig.defaultBaseUrl(
-                    widget.source.kind,
-                  ),
-                ),
-                autofocus: !_isSmithery,
+            controller: _urlCtrl,
+            decoration: InputDecoration(
+              labelText: l10n.mcpRepoApiUrlLabel,
+              hintText: McpRegistrySourceConfig.defaultBaseUrl(
+                widget.source.kind,
               ),
-              if (_isSmithery) ...[
-                const SizedBox(height: 12),
-                TextField(
-                  controller: _tokenCtrl,
-                  obscureText: true,
-                  autocorrect: false,
-                  decoration: InputDecoration(
-                    labelText: l10n.mcpSmitheryApiTokenLabel,
-                    hintText: l10n.mcpSmitheryApiTokenHint,
-                  ),
-                ),
-              ],
+            ),
+            autofocus: !_isSmithery,
+          ),
+          if (_isSmithery) ...[
+            const SizedBox(height: 12),
+            TextField(
+              controller: _tokenCtrl,
+              obscureText: true,
+              autocorrect: false,
+              decoration: InputDecoration(
+                labelText: l10n.mcpSmitheryApiTokenLabel,
+                hintText: l10n.mcpSmitheryApiTokenHint,
+              ),
+            ),
+          ],
           AppDialogActions(
             children: [
               TextButton(
@@ -338,10 +339,7 @@ class _RegistrySourceEditDialogState extends State<_RegistrySourceEditDialog> {
                       )
                     : Text(l10n.mcpRepoTestConnection),
               ),
-              FilledButton(
-                onPressed: _save,
-                child: Text(l10n.save),
-              ),
+              FilledButton(onPressed: _save, child: Text(l10n.save)),
             ],
           ),
         ],
@@ -393,9 +391,9 @@ class _RegistryRow extends StatelessWidget {
                     children: [
                       Text(
                         source.baseUrl,
-                        style: AppTextStyles.of(context).bodyStrong.copyWith(
-                          color: textBase,
-                        ),
+                        style: AppTextStyles.of(
+                          context,
+                        ).bodyStrong.copyWith(color: textBase),
                         maxLines: 2,
                         overflow: TextOverflow.ellipsis,
                       ),

@@ -27,7 +27,9 @@ GitState _withStaged() => const GitState(
   repoRoot: '/repo',
   status: GitRepoStatus(
     isRepository: true,
-    staged: [GitFileChange(path: 'a.txt', kind: GitChangeKind.modified, staged: true)],
+    staged: [
+      GitFileChange(path: 'a.txt', kind: GitChangeKind.modified, staged: true),
+    ],
     unstaged: [],
   ),
 );
@@ -37,13 +39,15 @@ void main() {
     final headless = HeadlessAiService(
       resolveProvider: (_, __) async => null,
       resolveExecutable: (name) async => name,
-      tempDirFactory: () async =>
-          Directory.systemTemp.createTempSync('gc_'),
+      tempDirFactory: () async => Directory.systemTemp.createTempSync('gc_'),
       resolveProvisionCapability: (_) => null,
       run: (exe, args, {environment, workingDirectory, timeout}) async =>
           ProcessResult(0, 0, '```\nfeat: generated\n```', ''),
     );
-    final cubit = GitCubit(service: _StubGitService('diff'), headless: headless);
+    final cubit = GitCubit(
+      service: _StubGitService('diff'),
+      headless: headless,
+    );
     cubit.debugSetState(_withStaged());
 
     await cubit.generateCommitMessage(_setting);
@@ -61,7 +65,10 @@ void main() {
       run: (exe, args, {environment, workingDirectory, timeout}) async =>
           ProcessResult(0, 0, '', ''),
     );
-    final cubit = GitCubit(service: _StubGitService('diff'), headless: headless);
+    final cubit = GitCubit(
+      service: _StubGitService('diff'),
+      headless: headless,
+    );
     cubit.debugSetState(_withStaged());
 
     await cubit.generateCommitMessage(_setting);

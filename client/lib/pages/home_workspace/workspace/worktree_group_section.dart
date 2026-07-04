@@ -9,7 +9,6 @@ import '../../../cubits/worktree_cubit.dart';
 import '../../../utils/landing_draft_resolver.dart';
 import '../../../l10n/l10n_extensions.dart';
 import '../../../models/app_session.dart';
-import '../../../models/landing_launch_context.dart';
 import '../../../models/workspace.dart';
 import '../../../repositories/session_repository.dart';
 import '../../../services/git/git_worktree_service.dart';
@@ -113,7 +112,8 @@ class WorktreeGroupSection extends StatelessWidget {
           child: InkWell(
             borderRadius: BorderRadius.circular(8),
             onTap: selectable
-                ? () => context.read<WorktreeCubit>().setCurrentWorktree(wt.path)
+                ? () =>
+                      context.read<WorktreeCubit>().setCurrentWorktree(wt.path)
                 : null,
             child: Padding(
               padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 6),
@@ -143,8 +143,9 @@ class WorktreeGroupSection extends StatelessWidget {
                       worktreePath: wt.path,
                       manageable: manageable,
                       allowNewConversation: !personalLaunchBlocked,
-                      onNewConversation: () =>
-                          unawaited(_startConversationInWorktree(context, wt.path)),
+                      onNewConversation: () => unawaited(
+                        _startConversationInWorktree(context, wt.path),
+                      ),
                       onDelete: () =>
                           unawaited(_confirmAndRemove(context, wt.path, label)),
                     ),
@@ -364,11 +365,7 @@ class _GroupSessionListState extends State<_GroupSessionList> {
                 return;
               }
               unawaited(
-                openWorkspaceSessionTab(
-                  context,
-                  widget.workspace,
-                  session,
-                ),
+                openWorkspaceSessionTab(context, widget.workspace, session),
               );
             },
           ),

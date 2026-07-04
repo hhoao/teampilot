@@ -19,26 +19,29 @@ String standaloneSessionToolDir(
   ConfigProfilePaths paths,
   StandaloneLaunchProfileScope scope,
   String tool,
-) =>
-    paths.layout.sessionRuntimeToolDir(
-      scope.workspaceId,
-      scope.sessionId,
-      tool,
-    );
+) => paths.layout.sessionRuntimeToolDir(
+  scope.workspaceId,
+  scope.sessionId,
+  tool,
+);
 
 /// [LaunchProfileScope] for personal sessions (path keys only; use
 /// [standaloneSessionToolDir] for CONFIG_DIR).
-LaunchProfileScope launchScopeForStandalone(StandaloneLaunchProfileScope scope) =>
-    LaunchProfileScope(
-      workspaceId: scope.workspaceId,
-      teamId: scope.workspaceId,
-      sessionId: scope.sessionId,
-      cliTeamName: scope.sessionId,
-    );
+LaunchProfileScope launchScopeForStandalone(
+  StandaloneLaunchProfileScope scope,
+) => LaunchProfileScope(
+  workspaceId: scope.workspaceId,
+  teamId: scope.workspaceId,
+  sessionId: scope.sessionId,
+  cliTeamName: scope.sessionId,
+);
 
 /// Resolve CLI/provider/model/effort for a personal workspace from its active preset.
 /// Returns null if no preset is active, not found, or [activePresetId] is empty.
-CliPreset? resolveActivePreset(String? activePresetId, List<CliPreset> presets) {
+CliPreset? resolveActivePreset(
+  String? activePresetId,
+  List<CliPreset> presets,
+) {
   if (activePresetId == null || activePresetId.isEmpty) return null;
   for (final p in presets) {
     if (p.id == activePresetId) return p;
@@ -107,20 +110,18 @@ TeamProfile standaloneTeamFromProfile(
   required String workspaceId,
   required String sessionTeamName,
   required CliPreset? preset,
-}) =>
-    standaloneTeamFromPersonal(
-      personal,
-      profileId: workspaceId,
-      sessionTeamName: sessionTeamName,
-      preset: preset,
-    );
+}) => standaloneTeamFromPersonal(
+  personal,
+  profileId: workspaceId,
+  sessionTeamName: sessionTeamName,
+  preset: preset,
+);
 
 @Deprecated('Use standaloneMemberFromPersonal')
 TeamMemberConfig standaloneMemberFromProfile(
   PersonalProfile personal, {
   required CliPreset? preset,
-}) =>
-    standaloneMemberFromPersonal(personal, preset: preset);
+}) => standaloneMemberFromPersonal(personal, preset: preset);
 
 String _standaloneMemberDisplayName(WorkspaceAgentConfig agent) {
   final fromAgent = agent.agent.trim();

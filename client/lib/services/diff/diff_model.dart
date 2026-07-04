@@ -44,8 +44,7 @@ class InlineEdit {
   int get hashCode => Object.hash(start, end, isAdd);
 
   @override
-  String toString() =>
-      'InlineEdit($start..$end, ${isAdd ? 'add' : 'del'})';
+  String toString() => 'InlineEdit($start..$end, ${isAdd ? 'add' : 'del'})';
 }
 
 /// One aligned row across both panes. Filler sides have a null line number and
@@ -94,18 +93,17 @@ class DiffRow {
 
   @override
   int get hashCode => Object.hash(
-        kind,
-        leftLineNo,
-        rightLineNo,
-        leftText,
-        rightText,
-        Object.hashAll(leftInline),
-        Object.hashAll(rightInline),
-      );
+    kind,
+    leftLineNo,
+    rightLineNo,
+    leftText,
+    rightText,
+    Object.hashAll(leftInline),
+    Object.hashAll(rightInline),
+  );
 
   @override
-  String toString() =>
-      'DiffRow(${kind.name}, L$leftLineNo R$rightLineNo)';
+  String toString() => 'DiffRow(${kind.name}, L$leftLineNo R$rightLineNo)';
 }
 
 /// A maximal run of consecutive non-equal rows, used for the connecting ribbon
@@ -146,8 +144,7 @@ class DiffResult {
   final List<DiffRow> rows;
   final List<DiffBlock> blocks;
 
-  int get addedLines =>
-      rows.where((r) => r.kind == DiffRowKind.insert).length;
+  int get addedLines => rows.where((r) => r.kind == DiffRowKind.insert).length;
   int get removedLines =>
       rows.where((r) => r.kind == DiffRowKind.delete).length;
   int get modifiedLines =>

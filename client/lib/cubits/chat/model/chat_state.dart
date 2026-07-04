@@ -43,6 +43,7 @@ class ChatState extends Equatable {
     this.sessionLaunchError,
     this.teamConfigValidation,
     this.workingSessionIds = const {},
+    this.composeActive = true,
   });
 
   final List<ChatTabInfo> tabs;
@@ -71,6 +72,9 @@ class ChatState extends Equatable {
   /// open, bus-backed (mixed) sessions appear here.
   final Set<String> workingSessionIds;
 
+  /// When true, the workbench shows compose landing instead of a session terminal.
+  final bool composeActive;
+
   ChatState copyWith({
     List<ChatTabInfo>? tabs,
     int? activeTabIndex,
@@ -91,6 +95,7 @@ class ChatState extends Equatable {
     TeamConfigValidation? teamConfigValidation,
     bool clearTeamConfigValidation = false,
     Set<String>? workingSessionIds,
+    bool? composeActive,
   }) {
     return ChatState(
       tabs: tabs ?? this.tabs,
@@ -117,6 +122,7 @@ class ChatState extends Equatable {
           ? null
           : (teamConfigValidation ?? this.teamConfigValidation),
       workingSessionIds: workingSessionIds ?? this.workingSessionIds,
+      composeActive: composeActive ?? this.composeActive,
     );
   }
 
@@ -156,5 +162,6 @@ class ChatState extends Equatable {
     sessionLaunchError,
     teamConfigValidation,
     workingSessionIds,
+    composeActive,
   ];
 }

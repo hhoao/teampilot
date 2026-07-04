@@ -41,7 +41,8 @@ void main() {
 
   test('list parses -z porcelain output', () async {
     final runner = _FakeRunner(
-      listOutput: 'worktree /repo\x00HEAD abc\x00branch refs/heads/main\x00\x00',
+      listOutput:
+          'worktree /repo\x00HEAD abc\x00branch refs/heads/main\x00\x00',
     );
     final svc = GitWorktreeService(
       runner: LocalGitCommandRunner(runner: runner.call),
@@ -57,11 +58,21 @@ void main() {
     final svc = GitWorktreeService(
       runner: LocalGitCommandRunner(runner: runner.call),
     );
-    await svc.add('/repo', '/wt/feat', branch: 'feat/x', baseRef: 'origin/main');
-    expect(
-      runner.calls.last,
-      ['worktree', 'add', '--no-track', '-b', 'feat/x', '/wt/feat', 'origin/main'],
+    await svc.add(
+      '/repo',
+      '/wt/feat',
+      branch: 'feat/x',
+      baseRef: 'origin/main',
     );
+    expect(runner.calls.last, [
+      'worktree',
+      'add',
+      '--no-track',
+      '-b',
+      'feat/x',
+      '/wt/feat',
+      'origin/main',
+    ]);
   });
 
   test('add new branch without base omits trailing base ref', () async {
@@ -70,8 +81,14 @@ void main() {
       runner: LocalGitCommandRunner(runner: runner.call),
     );
     await svc.add('/repo', '/wt/feat', branch: 'feat/x');
-    expect(runner.calls.last,
-        ['worktree', 'add', '--no-track', '-b', 'feat/x', '/wt/feat']);
+    expect(runner.calls.last, [
+      'worktree',
+      'add',
+      '--no-track',
+      '-b',
+      'feat/x',
+      '/wt/feat',
+    ]);
   });
 
   test('add existing branch omits -b', () async {
@@ -98,18 +115,24 @@ void main() {
       runner: LocalGitCommandRunner(runner: runner.call),
     );
     await svc.remove('/repo', '/wt/feat', deleteBranch: 'feat/x');
-    expect(runner.calls[runner.calls.length - 2],
-        ['worktree', 'remove', '/wt/feat']);
+    expect(runner.calls[runner.calls.length - 2], [
+      'worktree',
+      'remove',
+      '/wt/feat',
+    ]);
     expect(runner.calls.last, ['branch', '-d', '--', 'feat/x']);
   });
 
-  test('remove tolerates branch -d failure (unmerged branch preserved)', () async {
-    final runner = _FakeRunner(failRemoveBranch: true);
-    final svc = GitWorktreeService(
-      runner: LocalGitCommandRunner(runner: runner.call),
-    );
-    // Should NOT throw even though `branch -d` exits non-zero.
-    await svc.remove('/repo', '/wt/feat', deleteBranch: 'feat/x');
-    expect(runner.calls.last, ['branch', '-d', '--', 'feat/x']);
-  });
+  test(
+    'remove tolerates branch -d failure (unmerged branch preserved)',
+    () async {
+      final runner = _FakeRunner(failRemoveBranch: true);
+      final svc = GitWorktreeService(
+        runner: LocalGitCommandRunner(runner: runner.call),
+      );
+      // Should NOT throw even though `branch -d` exits non-zero.
+      await svc.remove('/repo', '/wt/feat', deleteBranch: 'feat/x');
+      expect(runner.calls.last, ['branch', '-d', '--', 'feat/x']);
+    },
+  );
 }

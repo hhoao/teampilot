@@ -5,6 +5,7 @@ import 'package:teampilot/models/team_config.dart';
 import 'package:teampilot/theme/app_icon_sizes.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
+import '../../cubits/chat/workspace_compose_mode.dart';
 import '../../cubits/layout_cubit.dart';
 import '../../l10n/l10n_extensions.dart';
 import '../../services/cli/registry/cli_tool_registry_scope.dart';
@@ -83,6 +84,7 @@ class WorkspaceShellTabRow extends StatelessWidget {
     this.onTabClosed,
     this.onTabCloseOthers,
     this.onTabCloseRight,
+    this.composeTab,
     this.trailing,
   });
 
@@ -92,6 +94,7 @@ class WorkspaceShellTabRow extends StatelessWidget {
   final ValueChanged<int>? onTabClosed;
   final ValueChanged<int>? onTabCloseOthers;
   final ValueChanged<int>? onTabCloseRight;
+  final Widget? composeTab;
   final Widget? trailing;
 
   @override
@@ -117,7 +120,7 @@ class WorkspaceShellTabRow extends StatelessWidget {
                       key: ValueKey(tabs[i].id),
                       title: tabs[i].title,
                       working: tabs[i].working,
-                      active: i == activeIndex,
+                      active: activeIndex >= 0 && i == activeIndex,
                       onTap: () => onTabSelected?.call(i),
                       onClose: () => onTabClosed?.call(i),
                       onCloseOthers: () => onTabCloseOthers?.call(i),
@@ -126,12 +129,101 @@ class WorkspaceShellTabRow extends StatelessWidget {
                       cli: tabs[i].cli,
                       accentColor: tabs[i].accentColor,
                     ),
+                  if (composeTab != null) composeTab!,
                 ],
               ),
             ),
           ),
           if (trailing != null) trailing!,
         ],
+      ),
+    );
+  }
+}
+
+/// Persistent "+" tab that selects workspace compose landing.
+class WorkspaceShellComposeTab extends StatefulWidget {
+  const WorkspaceShellComposeTab({
+    required this.title,
+    required this.active,
+    required this.closable,
+    this.onTap,
+    this.onClose,
+    super.key,
+  });
+
+  final String title;
+  final bool active;
+  final bool closable;
+  final VoidCallback? onTap;
+  final VoidCallback? onClose;
+
+  @override
+  State<WorkspaceShellComposeTab> createState() =>
+      _WorkspaceShellComposeTabState();
+}
+
+class _WorkspaceShellComposeTabState extends State<WorkspaceShellComposeTab> {
+  var _hovered = false;
+
+  bool get _showClose =>
+      widget.closable && (widget.active || _hovered || Platform.isAndroid);
+
+  @override
+  Widget build(BuildContext context) {
+    final cs = Theme.of(context).colorScheme;
+    final styles = AppTextStyles.of(context);
+    final icons = context.appIconSizes;
+    final active = widget.active;
+    final fg = active ? cs.onSurface : cs.onSurfaceVariant;
+
+    return MouseRegion(
+      key: const ValueKey(workspaceComposeTabId),
+      onEnter: (_) => setState(() => _hovered = true),
+      onExit: (_) => setState(() => _hovered = false),
+      child: Material(
+        color: active
+            ? cs.surfaceContainerHighest.withValues(alpha: 0.85)
+            : Colors.transparent,
+        borderRadius: BorderRadius.circular(8),
+        child: InkWell(
+          onTap: widget.onTap,
+          borderRadius: BorderRadius.circular(8),
+          child: Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Icon(Icons.add_rounded, size: icons.sm, color: fg),
+                const SizedBox(width: 6),
+                Text(
+                  widget.title,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: styles.bodySmall.copyWith(
+                    color: fg,
+                    fontWeight: active ? FontWeight.w600 : FontWeight.w500,
+                  ),
+                ),
+                if (_showClose) ...[
+                  const SizedBox(width: 4),
+                  InkWell(
+                    onTap: widget.onClose,
+                    borderRadius: BorderRadius.circular(12),
+                    child: Padding(
+                      padding: const EdgeInsets.all(2),
+                      child: Icon(
+                        Icons.close_rounded,
+                        size: icons.sm,
+                        color: fg.withValues(alpha: 0.72),
+                      ),
+                    ),
+                  ),
+                ],
+              ],
+            ),
+          ),
+        ),
       ),
     );
   }

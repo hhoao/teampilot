@@ -107,7 +107,10 @@ abstract final class CrossMachineCredentialBridge {
       final src = catalog.fs.pathContext.join(srcCursorDir, relativePath);
       final artifactBytes = await catalog.fs.readBytes(src);
       if (artifactBytes == null || artifactBytes.isEmpty) continue;
-      final artifactDest = work.fs.pathContext.join(destCursorDir, relativePath);
+      final artifactDest = work.fs.pathContext.join(
+        destCursorDir,
+        relativePath,
+      );
       await work.fs.ensureDir(work.fs.pathContext.dirname(artifactDest));
       await work.fs.writeBytes(artifactDest, artifactBytes);
     }

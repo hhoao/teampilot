@@ -1,4 +1,4 @@
-﻿import 'dart:async';
+import 'dart:async';
 
 import 'package:flutter/material.dart';
 import 'package:window_manager/window_manager.dart';
@@ -30,8 +30,7 @@ class WindowDragArea extends StatelessWidget {
   ) async {
     // Resolve the menu anchor synchronously, before any async gap, so the
     // BuildContext is only used while it is guaranteed mounted.
-    final overlay =
-        Overlay.of(context).context.findRenderObject() as RenderBox;
+    final overlay = Overlay.of(context).context.findRenderObject() as RenderBox;
     final position = RelativeRect.fromLTRB(
       globalPosition.dx,
       globalPosition.dy,
@@ -40,8 +39,7 @@ class WindowDragArea extends StatelessWidget {
     );
 
     final expanded = await isDesktopWindowExpanded();
-    final onTop =
-        await windowManagerCall(windowManager.isAlwaysOnTop) ?? false;
+    final onTop = await windowManagerCall(windowManager.isAlwaysOnTop) ?? false;
     if (!context.mounted) return;
 
     final l10n = context.l10n;

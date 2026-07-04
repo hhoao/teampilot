@@ -7,12 +7,11 @@ import '../support/in_memory_filesystem.dart';
 NotificationRepository _repo(
   InMemoryFilesystem fs, {
   DateTime Function()? clock,
-}) =>
-    NotificationRepository(
-      fs: fs,
-      storePath: '/root/notifications.json',
-      clock: clock,
-    );
+}) => NotificationRepository(
+  fs: fs,
+  storePath: '/root/notifications.json',
+  clock: clock,
+);
 
 void main() {
   test('load returns empty store when file absent', () async {
@@ -42,11 +41,7 @@ void main() {
   test('append skips info variant', () async {
     final fs = InMemoryFilesystem();
     final repo = _repo(fs);
-    await repo.append(
-      id: 'n1',
-      message: 'FYI',
-      variant: AppToastVariant.info,
-    );
+    await repo.append(id: 'n1', message: 'FYI', variant: AppToastVariant.info);
     expect((await repo.load()).items, isEmpty);
   });
 
@@ -95,11 +90,7 @@ void main() {
       message: 'one',
       variant: AppToastVariant.success,
     );
-    await repo.append(
-      id: 'b',
-      message: 'two',
-      variant: AppToastVariant.error,
-    );
+    await repo.append(id: 'b', message: 'two', variant: AppToastVariant.error);
 
     await repo.markRead('a');
     expect(

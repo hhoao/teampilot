@@ -42,24 +42,24 @@ void main() {
     expect(lines, isEmpty);
   });
 
-  test('accepts a valid token then dispatches line-delimited JSON-RPC', () async {
-    final sock = await Socket.connect('127.0.0.1', port);
-    final responses = <Map<String, Object?>>[];
-    utf8.decoder.bind(sock).transform(const LineSplitter())
-        .listen((l) {
-          if (l.trim().isNotEmpty) {
-            responses.add(jsonDecode(l) as Map<String, Object?>);
-          }
-        });
-    sock.add(utf8.encode('{"token":"T","memberId":"m1"}\n'));
-    sock.add(
-      utf8.encode('{"jsonrpc":"2.0","id":1,"method":"initialize"}\n'),
-    );
-    await Future<void>.delayed(const Duration(milliseconds: 150));
-    expect(responses, isNotEmpty);
-    expect((responses.first['result'] as Map)['protocolVersion'], isNotNull);
-    await sock.close();
-  });
+  test(
+    'accepts a valid token then dispatches line-delimited JSON-RPC',
+    () async {
+      final sock = await Socket.connect('127.0.0.1', port);
+      final responses = <Map<String, Object?>>[];
+      utf8.decoder.bind(sock).transform(const LineSplitter()).listen((l) {
+        if (l.trim().isNotEmpty) {
+          responses.add(jsonDecode(l) as Map<String, Object?>);
+        }
+      });
+      sock.add(utf8.encode('{"token":"T","memberId":"m1"}\n'));
+      sock.add(utf8.encode('{"jsonrpc":"2.0","id":1,"method":"initialize"}\n'));
+      await Future<void>.delayed(const Duration(milliseconds: 150));
+      expect(responses, isNotEmpty);
+      expect((responses.first['result'] as Map)['protocolVersion'], isNotNull);
+      await sock.close();
+    },
+  );
 
   test('delivers a wait_for_message result over the raw socket', () async {
     bus.declareMember(
@@ -71,10 +71,9 @@ void main() {
     );
     final sock = await Socket.connect('127.0.0.1', port);
     final lines = <String>[];
-    utf8.decoder.bind(sock).transform(const LineSplitter())
-        .listen((l) {
-          if (l.trim().isNotEmpty) lines.add(l);
-        });
+    utf8.decoder.bind(sock).transform(const LineSplitter()).listen((l) {
+      if (l.trim().isNotEmpty) lines.add(l);
+    });
     sock.add(utf8.encode('{"token":"T","memberId":"worker"}\n'));
     sock.add(
       utf8.encode(
@@ -84,9 +83,17 @@ void main() {
     );
     await Future<void>.delayed(const Duration(milliseconds: 100));
     // Another member sends a message → the parked wait returns it.
-    bus.memberById('worker')!.inbox.deliver(
-      TeamMessage(id: '1', from: 'lead', to: 'worker', content: 'hello-remote'),
-    );
+    bus
+        .memberById('worker')!
+        .inbox
+        .deliver(
+          TeamMessage(
+            id: '1',
+            from: 'lead',
+            to: 'worker',
+            content: 'hello-remote',
+          ),
+        );
     await Future<void>.delayed(const Duration(milliseconds: 200));
     expect(lines.any((l) => l.contains('hello-remote')), isTrue);
     await sock.close();
@@ -95,16 +102,17 @@ void main() {
   test('framing splits coalesced + half lines correctly', () async {
     final sock = await Socket.connect('127.0.0.1', port);
     final responses = <Map<String, Object?>>[];
-    utf8.decoder.bind(sock).transform(const LineSplitter())
-        .listen((l) {
-          if (l.trim().isNotEmpty) {
-            responses.add(jsonDecode(l) as Map<String, Object?>);
-          }
-        });
+    utf8.decoder.bind(sock).transform(const LineSplitter()).listen((l) {
+      if (l.trim().isNotEmpty) {
+        responses.add(jsonDecode(l) as Map<String, Object?>);
+      }
+    });
     // handshake + first request coalesced in one write
-    sock.add(utf8.encode(
-      '{"token":"T","memberId":"m1"}\n{"jsonrpc":"2.0","id":1,"method":"ping"}\n',
-    ));
+    sock.add(
+      utf8.encode(
+        '{"token":"T","memberId":"m1"}\n{"jsonrpc":"2.0","id":1,"method":"ping"}\n',
+      ),
+    );
     // a request split across two writes (half line)
     sock.add(utf8.encode('{"jsonrpc":"2.0","id":2,"meth'));
     await Future<void>.delayed(const Duration(milliseconds: 50));

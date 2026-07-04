@@ -25,23 +25,27 @@ final class ReadMessagesTool extends TeammateBusTool {
 
   @override
   Map<String, Object?> get inputSchema => McpSchema.object(
-        properties: {
-          afterId: McpSchema.string,
-          limit: McpSchema.integer(minimum: 1, maximum: 100),
-          unreadOnly: McpSchema.boolean,
-          markRead: McpSchema.boolean,
-        },
-      );
+    properties: {
+      afterId: McpSchema.string,
+      limit: McpSchema.integer(minimum: 1, maximum: 100),
+      unreadOnly: McpSchema.boolean,
+      markRead: McpSchema.boolean,
+    },
+  );
 
   @override
   Future<JsonRpcResponse> call(TeammateBusToolCall call) async {
     final afterId = call.argString(ReadMessagesTool.afterId)?.trim();
     final limit = call.argInt(ReadMessagesTool.limit) ?? 20;
-    final unreadOnly =
-        call.argBool(ReadMessagesTool.unreadOnly, defaultValue: true);
+    final unreadOnly = call.argBool(
+      ReadMessagesTool.unreadOnly,
+      defaultValue: true,
+    );
     // 默认浏览不消费（与工具描述一致）；wait_for_message 才是消费路径。
-    final markRead =
-        call.argBool(ReadMessagesTool.markRead, defaultValue: false);
+    final markRead = call.argBool(
+      ReadMessagesTool.markRead,
+      defaultValue: false,
+    );
     final page = await call.bus.readMessages(
       call.memberId,
       afterId: afterId?.isEmpty == true ? null : afterId,

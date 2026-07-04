@@ -77,22 +77,25 @@ void main() {
     expect(bus.memberById('leader')!.activity, MemberActivity.turnDoneReady);
   });
 
-  test('markTurnStarted moves running-at-prompt member to active (working)', () {
-    final bus = TeamBus(launcher: FakeMemberLauncher());
-    bus.declareMember(
-      AgentNode.test(
-        memberId: 'leader',
-        lifecycle: MemberLifecycle.running,
-        activity: MemberActivity.turnDoneReady,
-      ),
-    );
-    expect(bus.isMemberInTurn('leader'), isFalse);
+  test(
+    'markTurnStarted moves running-at-prompt member to active (working)',
+    () {
+      final bus = TeamBus(launcher: FakeMemberLauncher());
+      bus.declareMember(
+        AgentNode.test(
+          memberId: 'leader',
+          lifecycle: MemberLifecycle.running,
+          activity: MemberActivity.turnDoneReady,
+        ),
+      );
+      expect(bus.isMemberInTurn('leader'), isFalse);
 
-    bus.markTurnStarted('leader');
+      bus.markTurnStarted('leader');
 
-    expect(bus.memberById('leader')!.activity, MemberActivity.active);
-    expect(bus.isMemberInTurn('leader'), isTrue);
-  });
+      expect(bus.memberById('leader')!.activity, MemberActivity.active);
+      expect(bus.isMemberInTurn('leader'), isTrue);
+    },
+  );
 
   test('markTurnStarted is a no-op for a parked (wait_for_message) member', () {
     final bus = TeamBus(launcher: FakeMemberLauncher());
@@ -209,29 +212,26 @@ void main() {
     expect(node.activity, MemberActivity.active);
   });
 
-  test(
-    'onMemberIdle nudges instead of re-pasting when already doorbelled',
-    () {
-      final launcher = FakeMemberLauncher();
-      final bus = TeamBus(launcher: launcher);
-      final node = AgentNode.test(
-        memberId: 'leader',
-        lifecycle: MemberLifecycle.running,
-        activity: MemberActivity.active,
-      );
-      bus.declareMember(node);
-      node.doorbelled = true;
-      node.inbox.deliver(
-        TeamMessage(id: '1', from: 'w', to: 'leader', content: 'x'),
-      );
+  test('onMemberIdle nudges instead of re-pasting when already doorbelled', () {
+    final launcher = FakeMemberLauncher();
+    final bus = TeamBus(launcher: launcher);
+    final node = AgentNode.test(
+      memberId: 'leader',
+      lifecycle: MemberLifecycle.running,
+      activity: MemberActivity.active,
+    );
+    bus.declareMember(node);
+    node.doorbelled = true;
+    node.inbox.deliver(
+      TeamMessage(id: '1', from: 'w', to: 'leader', content: 'x'),
+    );
 
-      bus.onMemberIdle('leader');
+    bus.onMemberIdle('leader');
 
-      expect(launcher.woken, isEmpty);
-      expect(launcher.nudged, ['leader']);
-      expect(node.activity, MemberActivity.turnDoneReady);
-    },
-  );
+    expect(launcher.woken, isEmpty);
+    expect(launcher.nudged, ['leader']);
+    expect(node.activity, MemberActivity.turnDoneReady);
+  });
 
   test(
     'repeated idle edges with one unread ring the doorbell exactly once',
@@ -318,5 +318,4 @@ void main() {
       expect(launcher.materialized.single.bootstrap.content, 'go');
     },
   );
-
 }

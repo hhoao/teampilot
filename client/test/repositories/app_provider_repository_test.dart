@@ -53,9 +53,7 @@ void main() {
     await repo.saveProviders(CliTool.codex, [codexProvider]);
 
     expect(
-      await File(
-        p.join(root.path, 'providers', 'providers.json'),
-      ).exists(),
+      await File(p.join(root.path, 'providers', 'providers.json')).exists(),
       isFalse,
     );
     expect(
@@ -82,23 +80,26 @@ void main() {
     expect(await repo.loadProviders(CliTool.claude), isEmpty);
   });
 
-  test('preserves apiKey within the same cli when edit leaves it empty', () async {
-    const original = AppProviderConfig(
-      id: 'deepseek',
-      cli: CliTool.claude,
-      name: 'DeepSeek',
-      apiKey: 'sk-secret',
-    );
-    await repo.saveProviders(CliTool.claude, [original]);
+  test(
+    'preserves apiKey within the same cli when edit leaves it empty',
+    () async {
+      const original = AppProviderConfig(
+        id: 'deepseek',
+        cli: CliTool.claude,
+        name: 'DeepSeek',
+        apiKey: 'sk-secret',
+      );
+      await repo.saveProviders(CliTool.claude, [original]);
 
-    await repo.saveProviders(CliTool.claude, [
-      original.copyWith(name: 'DeepSeek Renamed', apiKey: ''),
-    ]);
+      await repo.saveProviders(CliTool.claude, [
+        original.copyWith(name: 'DeepSeek Renamed', apiKey: ''),
+      ]);
 
-    final loaded = await repo.loadProviders(CliTool.claude);
-    expect(loaded.single.apiKey, 'sk-secret');
-    expect(loaded.single.name, 'DeepSeek Renamed');
-  });
+      final loaded = await repo.loadProviders(CliTool.claude);
+      expect(loaded.single.apiKey, 'sk-secret');
+      expect(loaded.single.name, 'DeepSeek Renamed');
+    },
+  );
 
   test('writes native codex files for codex providers only', () async {
     const provider = AppProviderConfig(
@@ -126,31 +127,29 @@ void main() {
     );
   });
 
-  test('writes app flashskyai llm_config.json from flashskyai catalog', () async {
-    const provider = AppProviderConfig(
-      id: 'deepseek',
-      cli: CliTool.flashskyai,
-      name: 'DeepSeek',
-      apiKey: 'sk-test',
-      baseUrl: 'https://api.deepseek.com',
-      defaultModel: 'deepseek-chat',
-      config: {'provider_type': 'openai'},
-    );
+  test(
+    'writes app flashskyai llm_config.json from flashskyai catalog',
+    () async {
+      const provider = AppProviderConfig(
+        id: 'deepseek',
+        cli: CliTool.flashskyai,
+        name: 'DeepSeek',
+        apiKey: 'sk-test',
+        baseUrl: 'https://api.deepseek.com',
+        defaultModel: 'deepseek-chat',
+        config: {'provider_type': 'openai'},
+      );
 
-    await repo.saveProviders(CliTool.flashskyai, [provider]);
+      await repo.saveProviders(CliTool.flashskyai, [provider]);
 
-    final appFile = File(
-      p.join(
-        root.path,
-        'cli-defaults',
-        'flashskyai',
-        'llm_config.json',
-      ),
-    );
-    expect(await appFile.exists(), isTrue);
-    final raw = jsonDecode(await appFile.readAsString()) as Map;
-    expect((raw['providers'] as Map).keys, contains('deepseek'));
-  });
+      final appFile = File(
+        p.join(root.path, 'cli-defaults', 'flashskyai', 'llm_config.json'),
+      );
+      expect(await appFile.exists(), isTrue);
+      final raw = jsonDecode(await appFile.readAsString()) as Map;
+      expect((raw['providers'] as Map).keys, contains('deepseek'));
+    },
+  );
 
   test(
     'load follows AppStorage home when basePath is not overridden',

@@ -2,10 +2,7 @@ import '../../l10n/app_localizations.dart';
 import '../../models/app_provider_config.dart';
 import '../../models/credential_action_result.dart';
 
-String providerCredentialSuccessMessage(
-  AppLocalizations l10n,
-  CliTool cli,
-) {
+String providerCredentialSuccessMessage(AppLocalizations l10n, CliTool cli) {
   return switch (cli) {
     CliTool.claude => l10n.claudeOfficialCredentialsActionSuccess,
     CliTool.cursor => l10n.cursorCredentialsActionSuccess,
@@ -55,9 +52,7 @@ String providerCredentialFailureMessage(
     CredentialActionFailureCode.loginFailed =>
       l10n.providerCredentialsFailureLoginFailed(failure.exitCode ?? -1),
     CredentialActionFailureCode.loginProcessError =>
-      l10n.providerCredentialsFailureLoginProcessError(
-        failure.detail ?? '',
-      ),
+      l10n.providerCredentialsFailureLoginProcessError(failure.detail ?? ''),
     CredentialActionFailureCode.revokeFailed =>
       l10n.providerCredentialsFailureRevokeFailed,
     CredentialActionFailureCode.verifyFailed =>
@@ -81,10 +76,7 @@ String _providerEntryMissingMessage(
       keys.join(', '),
     );
   }
-  return l10n.providerCredentialsFailureProviderEntryMissing(
-    providerId,
-    path,
-  );
+  return l10n.providerCredentialsFailureProviderEntryMissing(providerId, path);
 }
 
 String _genericFailureMessage(AppLocalizations l10n, CliTool cli) {

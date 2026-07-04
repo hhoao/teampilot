@@ -6,13 +6,7 @@ import 'package:http/http.dart' as http;
 import '../widgets/app_toast/app_toast.dart';
 import '../theme/app_toast_theme.dart';
 
-enum AppErrorKind {
-  unexpected,
-  network,
-  storage,
-  ssh,
-  cancelled,
-}
+enum AppErrorKind { unexpected, network, storage, ssh, cancelled }
 
 class AppErrorDecision {
   const AppErrorDecision({
@@ -86,10 +80,7 @@ class AppErrorUtils {
   }
 
   static void showUserMessage(String message) {
-    AppToast.showGlobal(
-      message: message,
-      variant: AppToastVariant.error,
-    );
+    AppToast.showGlobal(message: message, variant: AppToastVariant.error);
   }
 
   static bool _isCancelledError(Object error) {

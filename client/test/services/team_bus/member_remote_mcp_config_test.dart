@@ -41,32 +41,34 @@ void main() {
     const mcpRawTunnelPort = 47213;
     const idleHttpTunnelPort = 47214;
 
-    test('long-blocking CLI → stdio relay over the tunnel (token in handshake)',
-        () {
-      final cfg = buildMemberBusMcpConfig(
-        memberId: 'worker',
-        localEndpoint: localEndpoint,
-        sessionId: sessionId,
-        longBlocking: true,
-        remote: const RemoteBusBinding(
-          token: 'tok',
-          idleHttpTunnelPort: idleHttpTunnelPort,
-          mcpRawTunnelPort: mcpRawTunnelPort,
-          mcpRelayArgv: [
-            'sh',
-            '-c',
-            "{ printf '%s\\n' '{\"token\":\"tok\",\"memberId\":\"worker\"}'; cat; } "
-                '| socat - TCP:127.0.0.1:$mcpRawTunnelPort',
-          ],
-        ),
-      );
-      expect(cfg['command'], 'sh');
-      final args = (cfg['args'] as List).join(' ');
-      expect(args, contains('TCP:127.0.0.1:$mcpRawTunnelPort'));
-      expect(args, contains('tok'));
-      expect(args, isNot(contains('5005')));
-      expect(cfg.containsKey('url'), isFalse);
-    });
+    test(
+      'long-blocking CLI → stdio relay over the tunnel (token in handshake)',
+      () {
+        final cfg = buildMemberBusMcpConfig(
+          memberId: 'worker',
+          localEndpoint: localEndpoint,
+          sessionId: sessionId,
+          longBlocking: true,
+          remote: const RemoteBusBinding(
+            token: 'tok',
+            idleHttpTunnelPort: idleHttpTunnelPort,
+            mcpRawTunnelPort: mcpRawTunnelPort,
+            mcpRelayArgv: [
+              'sh',
+              '-c',
+              "{ printf '%s\\n' '{\"token\":\"tok\",\"memberId\":\"worker\"}'; cat; } "
+                  '| socat - TCP:127.0.0.1:$mcpRawTunnelPort',
+            ],
+          ),
+        );
+        expect(cfg['command'], 'sh');
+        final args = (cfg['args'] as List).join(' ');
+        expect(args, contains('TCP:127.0.0.1:$mcpRawTunnelPort'));
+        expect(args, contains('tok'));
+        expect(args, isNot(contains('5005')));
+        expect(cfg.containsKey('url'), isFalse);
+      },
+    );
 
     test('cursor (doorbell) → HTTP over the tunnel with token header', () {
       final cfg = buildMemberBusMcpConfig(

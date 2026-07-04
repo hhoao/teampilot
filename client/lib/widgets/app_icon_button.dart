@@ -40,13 +40,12 @@ class AppIconButton extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final sizes = context.appIconSizes;
-    final resolvedIconSize =
-        iconSize ?? (compact ? sizes.sm : sizes.md);
+    final resolvedIconSize = iconSize ?? (compact ? sizes.sm : sizes.md);
     final effectiveColor = color ?? context.appIconColor;
     final radius = BorderRadius.circular(borderRadius);
 
-    Widget iconChild = iconWidget ??
-        Icon(icon, size: resolvedIconSize, color: effectiveColor);
+    Widget iconChild =
+        iconWidget ?? Icon(icon, size: resolvedIconSize, color: effectiveColor);
     if (!enabled) {
       iconChild = IconTheme(
         data: IconThemeData(color: effectiveColor.withValues(alpha: 0.38)),
@@ -57,10 +56,7 @@ class AppIconButton extends StatelessWidget {
     Widget ink = Ink(
       width: size,
       height: size,
-      decoration: BoxDecoration(
-        borderRadius: radius,
-        color: backgroundColor,
-      ),
+      decoration: BoxDecoration(borderRadius: radius, color: backgroundColor),
       child: InkWell(
         borderRadius: radius,
         hoverColor: effectiveColor.withValues(alpha: 0.12),

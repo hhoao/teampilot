@@ -12,78 +12,84 @@ import 'package:crypto/crypto.dart';
 import 'package:http/http.dart' as http;
 
 /// SHA256 (hex) and byte length must match [google_fonts] package descriptors.
-const _notoSansScBundled = <({
-  String sha256Hex,
-  int byteLength,
-  String assetFileName,
-})>[
-  (
-    sha256Hex: 'a0ecca1c67a4da5a89857703b84a44eba9fce7d7b5941bf4285e8c0a8346cf60',
-    byteLength: 10540376,
-    assetFileName: 'NotoSansSC-Regular.ttf',
-  ),
-  (
-    sha256Hex: 'b85915277d672d101e3b4aa74e16e9f88d0f13e6552579e92a0d54a1291013cd',
-    byteLength: 10533572,
-    assetFileName: 'NotoSansSC-Medium.ttf',
-  ),
-  (
-    sha256Hex: 'a9100a1e77488d43c4dc38cfdd3602f7169181aa8b2696ff63d8ad90308ff1e3',
-    byteLength: 10530080,
-    assetFileName: 'NotoSansSC-SemiBold.ttf',
-  ),
-  (
-    sha256Hex: '2179d44af51b5fc3db254102bd9710fb50e1538754cd33349f1ae1056bf7f3c8',
-    byteLength: 10530140,
-    assetFileName: 'NotoSansSC-Bold.ttf',
-  ),
-  (
-    sha256Hex: '1364bab1dd5a59a96dfe659ea03e8a120af791abb99c2b03b4366f92ed16786a',
-    byteLength: 10525160,
-    assetFileName: 'NotoSansSC-ExtraBold.ttf',
-  ),
-];
+const _notoSansScBundled =
+    <({String sha256Hex, int byteLength, String assetFileName})>[
+      (
+        sha256Hex:
+            'a0ecca1c67a4da5a89857703b84a44eba9fce7d7b5941bf4285e8c0a8346cf60',
+        byteLength: 10540376,
+        assetFileName: 'NotoSansSC-Regular.ttf',
+      ),
+      (
+        sha256Hex:
+            'b85915277d672d101e3b4aa74e16e9f88d0f13e6552579e92a0d54a1291013cd',
+        byteLength: 10533572,
+        assetFileName: 'NotoSansSC-Medium.ttf',
+      ),
+      (
+        sha256Hex:
+            'a9100a1e77488d43c4dc38cfdd3602f7169181aa8b2696ff63d8ad90308ff1e3',
+        byteLength: 10530080,
+        assetFileName: 'NotoSansSC-SemiBold.ttf',
+      ),
+      (
+        sha256Hex:
+            '2179d44af51b5fc3db254102bd9710fb50e1538754cd33349f1ae1056bf7f3c8',
+        byteLength: 10530140,
+        assetFileName: 'NotoSansSC-Bold.ttf',
+      ),
+      (
+        sha256Hex:
+            '1364bab1dd5a59a96dfe659ea03e8a120af791abb99c2b03b4366f92ed16786a',
+        byteLength: 10525160,
+        assetFileName: 'NotoSansSC-ExtraBold.ttf',
+      ),
+    ];
 
 /// JetBrainsMono Nerd Font Mono (ligatures) — terminal + shell icons.
-const _jetbrainsMonoNerdBundled = <({
-  String sha256Hex,
-  int byteLength,
-  String assetFileName,
-  String downloadUrl,
-})>[
-  (
-    sha256Hex: 'f01031f40e48dc29e1112e6b0b0450a2c6cd097f3f35cfff05c55cb311f8034c',
-    byteLength: 2470116,
-    assetFileName: 'JetBrainsMonoNerdFontMono-Regular.ttf',
-    downloadUrl:
-        'https://raw.githubusercontent.com/ryanoasis/nerd-fonts/master/patched-fonts/JetBrainsMono/Ligatures/Regular/JetBrainsMonoNerdFontMono-Regular.ttf',
-  ),
-  (
-    sha256Hex: '5bdd4a873f3cd32f882d2c55545089123926e27707d5880fc9eaf84eb01b6686',
-    byteLength: 2473884,
-    assetFileName: 'JetBrainsMonoNerdFontMono-Bold.ttf',
-    downloadUrl:
-        'https://raw.githubusercontent.com/ryanoasis/nerd-fonts/master/patched-fonts/JetBrainsMono/Ligatures/Bold/JetBrainsMonoNerdFontMono-Bold.ttf',
-  ),
-];
+const _jetbrainsMonoNerdBundled =
+    <
+      ({
+        String sha256Hex,
+        int byteLength,
+        String assetFileName,
+        String downloadUrl,
+      })
+    >[
+      (
+        sha256Hex:
+            'f01031f40e48dc29e1112e6b0b0450a2c6cd097f3f35cfff05c55cb311f8034c',
+        byteLength: 2470116,
+        assetFileName: 'JetBrainsMonoNerdFontMono-Regular.ttf',
+        downloadUrl:
+            'https://raw.githubusercontent.com/ryanoasis/nerd-fonts/master/patched-fonts/JetBrainsMono/Ligatures/Regular/JetBrainsMonoNerdFontMono-Regular.ttf',
+      ),
+      (
+        sha256Hex:
+            '5bdd4a873f3cd32f882d2c55545089123926e27707d5880fc9eaf84eb01b6686',
+        byteLength: 2473884,
+        assetFileName: 'JetBrainsMonoNerdFontMono-Bold.ttf',
+        downloadUrl:
+            'https://raw.githubusercontent.com/ryanoasis/nerd-fonts/master/patched-fonts/JetBrainsMono/Ligatures/Bold/JetBrainsMonoNerdFontMono-Bold.ttf',
+      ),
+    ];
 
 /// Optional terminal fallback ([google_fonts] Ubuntu Sans Mono descriptors).
-const _ubuntuSansMonoBundled = <({
-  String sha256Hex,
-  int byteLength,
-  String assetFileName,
-})>[
-  (
-    sha256Hex: '44ae840b720f3e95bb69bd2449082c72d90272356c78fdbb5721b3ff5a6a97cc',
-    byteLength: 111100,
-    assetFileName: 'UbuntuSansMono-Regular.ttf',
-  ),
-  (
-    sha256Hex: '5224a9bb27672470392ad5693ffe40f876408fc46ff7eea839c0b9e8ab9f144e',
-    byteLength: 110672,
-    assetFileName: 'UbuntuSansMono-Bold.ttf',
-  ),
-];
+const _ubuntuSansMonoBundled =
+    <({String sha256Hex, int byteLength, String assetFileName})>[
+      (
+        sha256Hex:
+            '44ae840b720f3e95bb69bd2449082c72d90272356c78fdbb5721b3ff5a6a97cc',
+        byteLength: 111100,
+        assetFileName: 'UbuntuSansMono-Regular.ttf',
+      ),
+      (
+        sha256Hex:
+            '5224a9bb27672470392ad5693ffe40f876408fc46ff7eea839c0b9e8ab9f144e',
+        byteLength: 110672,
+        assetFileName: 'UbuntuSansMono-Bold.ttf',
+      ),
+    ];
 
 Future<void> main(List<String> args) async {
   final force = args.contains('--force');
@@ -100,7 +106,9 @@ Future<void> main(List<String> args) async {
   print('Sync bundled fonts into ${clientRoot.path}\n');
 
   final googleFontsDir = Directory('${clientRoot.path}/google_fonts');
-  final terminalFontsDir = Directory('${clientRoot.path}/assets/fonts/terminal');
+  final terminalFontsDir = Directory(
+    '${clientRoot.path}/assets/fonts/terminal',
+  );
   await googleFontsDir.create(recursive: true);
   await terminalFontsDir.create(recursive: true);
 
@@ -124,11 +132,7 @@ Future<void> main(List<String> args) async {
 
 Future<void> _syncGstaticFont(
   Directory outDir,
-  ({
-    String sha256Hex,
-    int byteLength,
-    String assetFileName,
-  }) spec,
+  ({String sha256Hex, int byteLength, String assetFileName}) spec,
   bool force,
 ) async {
   final uri = Uri.parse('https://fonts.gstatic.com/s/a/${spec.sha256Hex}.ttf');
@@ -144,12 +148,8 @@ Future<void> _syncGstaticFont(
 
 Future<void> _syncUrlFont(
   Directory outDir,
-  ({
-    String sha256Hex,
-    int byteLength,
-    String assetFileName,
-    String downloadUrl,
-  }) spec,
+  ({String sha256Hex, int byteLength, String assetFileName, String downloadUrl})
+  spec,
   bool force,
 ) async {
   await _syncFontFile(

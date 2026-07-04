@@ -112,9 +112,9 @@ class SkillRepoDiskCacheService {
     );
     await _fs.writeString(
       skillsPath,
-      const JsonEncoder.withIndent('  ').convert(
-        skills.map((s) => s.toJson()).toList(),
-      ),
+      const JsonEncoder.withIndent(
+        '  ',
+      ).convert(skills.map((s) => s.toJson()).toList()),
     );
     return skills;
   }
@@ -222,9 +222,7 @@ class SkillRepoDiskCacheService {
       final downloaded = await _fetch.downloadRepoEntries(
         repo,
         fs: _fs,
-        persistentGitPath: AppStorage.usesPosixPaths
-            ? null
-            : sourceDirPath,
+        persistentGitPath: AppStorage.usesPosixPaths ? null : sourceDirPath,
       );
       final commitSha = downloaded.commitSha;
       final skills = discoverSkillsInTarballEntries(

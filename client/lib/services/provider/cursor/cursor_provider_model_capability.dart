@@ -14,8 +14,7 @@ final class CursorAgentCatalogSource implements ModelCatalogSource {
   List<String> modelsFor({
     required AppProviderConfig? provider,
     required String providerId,
-  }) =>
-      _modelsService?.modelIdsFor(providerId: providerId) ?? const [];
+  }) => _modelsService?.modelIdsFor(providerId: providerId) ?? const [];
 }
 
 /// Cursor models from `cursor-agent models` (cached per provider account).
@@ -30,8 +29,9 @@ final class CursorProviderModelCapability extends CatalogModelCapability
   bool get supportsModelTiers => false;
 
   @override
-  List<ModelCatalogSource> get catalogSources =>
-      [CursorAgentCatalogSource(_modelsService)];
+  List<ModelCatalogSource> get catalogSources => [
+    CursorAgentCatalogSource(_modelsService),
+  ];
 
   @override
   Listenable get catalogUpdates =>

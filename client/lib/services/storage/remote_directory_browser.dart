@@ -36,9 +36,9 @@ class RemoteDirectoryBrowser {
     if (trimmed == '~/' || trimmed.startsWith('~/')) {
       final rest = trimmed.substring(2);
       final home = await _home();
-      return rest.isEmpty ? home : _fs.pathContext.normalize(
-        _fs.pathContext.join(home, rest),
-      );
+      return rest.isEmpty
+          ? home
+          : _fs.pathContext.normalize(_fs.pathContext.join(home, rest));
     }
     return _fs.pathContext.normalize(trimmed);
   }
@@ -65,8 +65,7 @@ class RemoteDirectoryBrowser {
     final entries = await _fs.listDir(path);
     final dirs = <String>[
       for (final e in entries)
-        if (e.isDirectory && (includeHidden || !e.name.startsWith('.')))
-          e.name,
+        if (e.isDirectory && (includeHidden || !e.name.startsWith('.'))) e.name,
     ]..sort((a, b) => a.toLowerCase().compareTo(b.toLowerCase()));
 
     final parent = _fs.pathContext.dirname(path);

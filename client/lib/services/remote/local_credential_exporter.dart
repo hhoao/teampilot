@@ -13,11 +13,9 @@ import 'remote_credential_materializer.dart';
 /// Exports home (control-plane) provider catalog + credential files for
 /// opt-in push to a remote work machine.
 class LocalCredentialExporter {
-  LocalCredentialExporter({
-    String? basePath,
-    String? home,
-  }) : _basePath = basePath ?? AppStorage.appDataRoot,
-       _home = home ?? AppStorage.home;
+  LocalCredentialExporter({String? basePath, String? home})
+    : _basePath = basePath ?? AppStorage.appDataRoot,
+      _home = home ?? AppStorage.home;
 
   final String _basePath;
   final String _home;

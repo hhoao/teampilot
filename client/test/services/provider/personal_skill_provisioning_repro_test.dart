@@ -62,7 +62,9 @@ void main() {
       );
 
       // --- Profile with skill 'demo' enabled ---
-      const profile = PersonalProfile(id: 'p1', display: 'p1',
+      const profile = PersonalProfile(
+        id: 'p1',
+        display: 'p1',
         // TODO: migrate to presets — cli removed
         bundle: ConfigBundle(skillIds: ['demo']),
       );
@@ -76,8 +78,11 @@ void main() {
       );
 
       // --- Assert: the leaf CONFIG_DIR/skills/ must contain demo-skill ---
-      final leafToolDir =
-          layout.sessionRuntimeToolDir('p1', 's1', 'flashskyai');
+      final leafToolDir = layout.sessionRuntimeToolDir(
+        'p1',
+        's1',
+        'flashskyai',
+      );
       final skillsLeafDir = p.join(leafToolDir, 'skills');
       final entries = await fs.listDir(skillsLeafDir);
 
@@ -120,7 +125,9 @@ void main() {
       );
 
       // --- Profile with skill 'ghost' enabled ---
-      const profile = PersonalProfile(id: 'p2', display: 'p2',
+      const profile = PersonalProfile(
+        id: 'p2',
+        display: 'p2',
         // TODO: migrate to presets — cli removed
         bundle: ConfigBundle(skillIds: ['ghost']),
       );

@@ -21,9 +21,9 @@ class BoardPanel extends StatelessWidget {
   String _memberName(String? id) {
     if (id == null) return '';
     final m = team.members.cast<TeamMemberConfig?>().firstWhere(
-          (m) => m?.id == id,
-          orElse: () => null,
-        );
+      (m) => m?.id == id,
+      orElse: () => null,
+    );
     return m?.name ?? id;
   }
 
@@ -31,11 +31,13 @@ class BoardPanel extends StatelessWidget {
     if (assigneeId == null) return;
     final matches = team.members.where((m) => m.id == assigneeId);
     if (matches.isEmpty) return;
-    unawaited(context.read<ChatCubit>().openMemberTab(
-          team,
-          matches.first,
-          workspaceCwd: cwd,
-        ));
+    unawaited(
+      context.read<ChatCubit>().openMemberTab(
+        team,
+        matches.first,
+        workspaceCwd: cwd,
+      ),
+    );
   }
 
   @override
@@ -49,11 +51,13 @@ class BoardPanel extends StatelessWidget {
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            Icon(Icons.view_kanban_outlined,
-                size: 36, color: cs.onSurfaceVariant),
+            Icon(
+              Icons.view_kanban_outlined,
+              size: 36,
+              color: cs.onSurfaceVariant,
+            ),
             const SizedBox(height: 8),
-            Text(l10n.boardEmpty,
-                style: TextStyle(color: cs.onSurfaceVariant)),
+            Text(l10n.boardEmpty, style: TextStyle(color: cs.onSurfaceVariant)),
           ],
         ),
       );
@@ -94,10 +98,8 @@ class _ColumnSection extends StatelessWidget {
     final tt = Theme.of(context).textTheme;
 
     final (icon, label) = switch (column) {
-      BoardColumn.pending =>
-        (Icons.hourglass_top_outlined, l10n.boardPending),
-      BoardColumn.claimed =>
-        (Icons.play_circle_outline, l10n.boardClaimed),
+      BoardColumn.pending => (Icons.hourglass_top_outlined, l10n.boardPending),
+      BoardColumn.claimed => (Icons.play_circle_outline, l10n.boardClaimed),
       BoardColumn.done => (Icons.check_circle_outline, l10n.boardDone),
     };
 
@@ -110,13 +112,18 @@ class _ColumnSection extends StatelessWidget {
             children: [
               Icon(icon, size: 14, color: cs.onSurfaceVariant),
               const SizedBox(width: 6),
-              Text(label,
-                  style: tt.labelSmall?.copyWith(
-                      color: cs.onSurfaceVariant,
-                      fontWeight: FontWeight.w600)),
+              Text(
+                label,
+                style: tt.labelSmall?.copyWith(
+                  color: cs.onSurfaceVariant,
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
               const SizedBox(width: 6),
-              Text('(${cards.length})',
-                  style: tt.labelSmall?.copyWith(color: cs.onSurfaceVariant)),
+              Text(
+                '(${cards.length})',
+                style: tt.labelSmall?.copyWith(color: cs.onSurfaceVariant),
+              ),
             ],
           ),
         ),
@@ -160,22 +167,31 @@ class _CardTile extends StatelessWidget {
         child: Row(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text('#${card.seq}',
-                style: tt.labelSmall?.copyWith(
-                    color: cs.onSurfaceVariant,
-                    fontFeatures: const [FontFeature.tabularFigures()])),
+            Text(
+              '#${card.seq}',
+              style: tt.labelSmall?.copyWith(
+                color: cs.onSurfaceVariant,
+                fontFeatures: const [FontFeature.tabularFigures()],
+              ),
+            ),
             const SizedBox(width: 8),
             Expanded(
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text(card.title,
-                      maxLines: 2, overflow: TextOverflow.ellipsis),
+                  Text(
+                    card.title,
+                    maxLines: 2,
+                    overflow: TextOverflow.ellipsis,
+                  ),
                   if (memberName.isNotEmpty) ...[
                     const SizedBox(height: 2),
-                    Text('› $memberName',
-                        style: tt.labelSmall
-                            ?.copyWith(color: cs.onSurfaceVariant)),
+                    Text(
+                      '› $memberName',
+                      style: tt.labelSmall?.copyWith(
+                        color: cs.onSurfaceVariant,
+                      ),
+                    ),
                   ],
                 ],
               ),
@@ -185,8 +201,8 @@ class _CardTile extends StatelessWidget {
                 card.status == TaskStatus.done
                     ? Icons.check
                     : card.status == TaskStatus.failed
-                        ? Icons.close
-                        : Icons.remove,
+                    ? Icons.close
+                    : Icons.remove,
                 size: 14,
                 color: isError ? cs.error : cs.onSurfaceVariant,
               ),

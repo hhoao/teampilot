@@ -10,10 +10,7 @@ void main() {
   });
 
   test('uses first line only', () {
-    expect(
-      deriveSessionTitleFromFirstPrompt('line one\nline two'),
-      'line one',
-    );
+    expect(deriveSessionTitleFromFirstPrompt('line one\nline two'), 'line one');
   });
 
   test('truncates with ellipsis', () {

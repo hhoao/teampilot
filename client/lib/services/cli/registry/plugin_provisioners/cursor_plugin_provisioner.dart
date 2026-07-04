@@ -18,7 +18,10 @@ final class CursorPluginProvisioner implements PluginProvisionerCapability {
   PluginManifestPaths? get manifestPaths => cursorPluginManifestPaths;
 
   @override
-  List<String> get memberPluginsSubpath => const ['plugins', localPluginsSegment];
+  List<String> get memberPluginsSubpath => const [
+    'plugins',
+    localPluginsSegment,
+  ];
 
   @override
   Set<PluginComponentKind> get supported => const {
@@ -131,7 +134,8 @@ final class CursorPluginProvisioner implements PluginProvisionerCapability {
 
     try {
       final root = (jsonDecode(text) as Map).cast<String, Object?>();
-      final servers = (root['mcpServers'] as Map?)?.cast<String, Object?>() ??
+      final servers =
+          (root['mcpServers'] as Map?)?.cast<String, Object?>() ??
           const <String, Object?>{};
       return servers.entries
           .map(

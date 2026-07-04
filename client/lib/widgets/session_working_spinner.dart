@@ -119,12 +119,7 @@ class _GridWavePainter extends CustomPainter {
         paint.color = color.withValues(alpha: 0.22 + 0.78 * wave);
         canvas.drawRRect(
           RRect.fromRectAndRadius(
-            Rect.fromLTWH(
-              col * (cell + gap),
-              row * (cell + gap),
-              cell,
-              cell,
-            ),
+            Rect.fromLTWH(col * (cell + gap), row * (cell + gap), cell, cell),
             radius,
           ),
           paint,

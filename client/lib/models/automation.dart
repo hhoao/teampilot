@@ -147,8 +147,7 @@ class Automation {
   final int createdAtMs;
   final int updatedAtMs;
 
-  bool get isScheduledMessage =>
-      action == AutomationAction.scheduledMessage;
+  bool get isScheduledMessage => action == AutomationAction.scheduledMessage;
 
   bool get isLaunchPrompt => action == AutomationAction.launchPrompt;
 
@@ -158,9 +157,9 @@ class Automation {
   bool get isRunLimitReached => hasRunLimit && runCount >= maxRunCount!;
 
   AutomationTabScope get tabScope => AutomationTabScope(
-        workspaceId: workspaceId,
-        launchProfileId: launchProfileId,
-      );
+    workspaceId: workspaceId,
+    launchProfileId: launchProfileId,
+  );
 
   void validate() {
     if (id.trim().isEmpty) {
@@ -260,8 +259,7 @@ class Automation {
       targetMemberId: targetMemberId ?? this.targetMemberId,
       message: message ?? this.message,
       cli: clearCli ? null : (cli ?? this.cli),
-      cliPresetId:
-          clearCliPresetId ? null : (cliPresetId ?? this.cliPresetId),
+      cliPresetId: clearCliPresetId ? null : (cliPresetId ?? this.cliPresetId),
       reuseSession: reuseSession ?? this.reuseSession,
       preset: preset ?? this.preset,
       customCron: clearCustomCron ? null : (customCron ?? this.customCron),
@@ -271,10 +269,8 @@ class Automation {
       timezone: timezone ?? this.timezone,
       dtstartMs: dtstartMs ?? this.dtstartMs,
       enabled: enabled ?? this.enabled,
-      nextRunAtMs:
-          clearNextRunAtMs ? null : (nextRunAtMs ?? this.nextRunAtMs),
-      lastRunAtMs:
-          clearLastRunAtMs ? null : (lastRunAtMs ?? this.lastRunAtMs),
+      nextRunAtMs: clearNextRunAtMs ? null : (nextRunAtMs ?? this.nextRunAtMs),
+      lastRunAtMs: clearLastRunAtMs ? null : (lastRunAtMs ?? this.lastRunAtMs),
       missedRunGraceMinutes:
           missedRunGraceMinutes ?? this.missedRunGraceMinutes,
       maxRunCount: clearMaxRunCount ? null : (maxRunCount ?? this.maxRunCount),
@@ -299,7 +295,8 @@ class Automation {
         'cliPresetId': cliPresetId,
       if (reuseSession) 'reuseSession': reuseSession,
       'preset': preset.name,
-      if (customCron != null && customCron!.isNotEmpty) 'customCron': customCron,
+      if (customCron != null && customCron!.isNotEmpty)
+        'customCron': customCron,
       if (dayOfWeek != null) 'dayOfWeek': dayOfWeek,
       'minute': minute,
       'hourMinute': hourMinute,
@@ -351,33 +348,33 @@ class Automation {
 
   @override
   int get hashCode => Object.hashAll([
-        id,
-        name,
-        action,
-        workspaceId,
-        launchProfileId,
-        sessionId,
-        targetMemberId,
-        message,
-        cli,
-        cliPresetId,
-        reuseSession,
-        preset,
-        customCron,
-        dayOfWeek,
-        minute,
-        hourMinute,
-        timezone,
-        dtstartMs,
-        enabled,
-        nextRunAtMs,
-        lastRunAtMs,
-        missedRunGraceMinutes,
-        maxRunCount,
-        runCount,
-        createdAtMs,
-        updatedAtMs,
-      ]);
+    id,
+    name,
+    action,
+    workspaceId,
+    launchProfileId,
+    sessionId,
+    targetMemberId,
+    message,
+    cli,
+    cliPresetId,
+    reuseSession,
+    preset,
+    customCron,
+    dayOfWeek,
+    minute,
+    hourMinute,
+    timezone,
+    dtstartMs,
+    enabled,
+    nextRunAtMs,
+    lastRunAtMs,
+    missedRunGraceMinutes,
+    maxRunCount,
+    runCount,
+    createdAtMs,
+    updatedAtMs,
+  ]);
 }
 
 @immutable
@@ -454,10 +451,10 @@ class AutomationRun {
       trigger: trigger ?? this.trigger,
       sessionId: clearSessionId ? null : (sessionId ?? this.sessionId),
       error: clearError ? null : (error ?? this.error),
-      startedAtMs:
-          clearStartedAtMs ? null : (startedAtMs ?? this.startedAtMs),
-      completedAtMs:
-          clearCompletedAtMs ? null : (completedAtMs ?? this.completedAtMs),
+      startedAtMs: clearStartedAtMs ? null : (startedAtMs ?? this.startedAtMs),
+      completedAtMs: clearCompletedAtMs
+          ? null
+          : (completedAtMs ?? this.completedAtMs),
     );
   }
 
@@ -495,15 +492,15 @@ class AutomationRun {
 
   @override
   int get hashCode => Object.hash(
-        id,
-        automationId,
-        workspaceId,
-        scheduledForMs,
-        status,
-        trigger,
-        sessionId,
-        error,
-        startedAtMs,
-        completedAtMs,
-      );
+    id,
+    automationId,
+    workspaceId,
+    scheduledForMs,
+    status,
+    trigger,
+    sessionId,
+    error,
+    startedAtMs,
+    completedAtMs,
+  );
 }

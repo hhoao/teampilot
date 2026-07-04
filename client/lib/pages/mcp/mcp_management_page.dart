@@ -129,7 +129,9 @@ class _McpManagementPageState extends State<McpManagementPage> {
 
   Future<void> _addFromListing(McpCatalogListing listing) async {
     final cubit = context.read<McpCubit>();
-    final existing = cubit.state.servers.where((s) => s.id == listing.id).toList();
+    final existing = cubit.state.servers
+        .where((s) => s.id == listing.id)
+        .toList();
     if (existing.isNotEmpty) {
       navigateMcpEdit(context, existing.first);
       return;

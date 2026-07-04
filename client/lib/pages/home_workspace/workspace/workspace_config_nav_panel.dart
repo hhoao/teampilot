@@ -46,10 +46,7 @@ class WorkspaceConfigNavPanel extends StatelessWidget {
             icon: Icons.groups_outlined,
             trailingIcon: Icons.open_in_new_rounded,
             density: WorkspaceHubNavDensity.relaxed,
-            onTap: throttledTap(
-              'workspace_config_nav_team',
-              onOpenTeamConfig!,
-            ),
+            onTap: throttledTap('workspace_config_nav_team', onOpenTeamConfig!),
           ),
       ],
     );

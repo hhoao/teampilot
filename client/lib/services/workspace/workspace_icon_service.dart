@@ -26,14 +26,18 @@ class WorkspaceIconService {
     required String workspaceId,
     WorkspaceIconRef? icon,
   }) {
-    if (icon case WorkspaceIconCustom(:final relativePath) when relativePath.isNotEmpty) {
+    if (icon case WorkspaceIconCustom(
+      :final relativePath,
+    ) when relativePath.isNotEmpty) {
       evictCustomIconCache(
         workspaceDir: workspaceDir,
         relativePath: relativePath,
       );
     }
     _bytesCache.removeWhere(
-      (key, _) => key.startsWith('$workspaceDir|${WorkspaceIconStorage.assetsDirName}/'),
+      (key, _) => key.startsWith(
+        '$workspaceDir|${WorkspaceIconStorage.assetsDirName}/',
+      ),
     );
   }
 
@@ -93,7 +97,8 @@ class WorkspaceIconService {
     required WorkspaceIconRef next,
   }) async {
     if (previous is! WorkspaceIconCustom || !previous.isValid) return;
-    if (next is WorkspaceIconCustom && next.relativePath == previous.relativePath) {
+    if (next is WorkspaceIconCustom &&
+        next.relativePath == previous.relativePath) {
       return;
     }
     await _storage.deleteFile(
@@ -111,7 +116,9 @@ class WorkspaceIconService {
     required String workspaceId,
     WorkspaceIconRef? icon,
   }) async {
-    if (icon case WorkspaceIconCustom(:final relativePath) when relativePath.isNotEmpty) {
+    if (icon case WorkspaceIconCustom(
+      :final relativePath,
+    ) when relativePath.isNotEmpty) {
       await _storage.deleteFile(
         workspaceDir: workspaceDir,
         relativePath: relativePath,

@@ -5,11 +5,7 @@ import 'toolkit/teammate_bus_tool_name.dart';
 
 /// 解析后的 JSON-RPC 2.0 请求/通知。
 class JsonRpcRequest {
-  const JsonRpcRequest({
-    required this.method,
-    this.id,
-    this.params = const {},
-  });
+  const JsonRpcRequest({required this.method, this.id, this.params = const {}});
 
   final Object? id; // null = 通知（无响应）
   final String method;
@@ -48,8 +44,7 @@ class JsonRpcResponse {
   const JsonRpcResponse.result(this.id, this.result)
     : error = null,
       code = null;
-  const JsonRpcResponse.error(this.id, this.code, this.error)
-    : result = null;
+  const JsonRpcResponse.error(this.id, this.code, this.error) : result = null;
 
   final Object? id;
   final Map<String, Object?>? result;
@@ -59,10 +54,10 @@ class JsonRpcResponse {
   Map<String, Object?> toJson() => {
     'jsonrpc': '2.0',
     'id': id,
-    if (error == null) 'result': result else 'error': {
-      'code': code,
-      'message': error,
-    },
+    if (error == null)
+      'result': result
+    else
+      'error': {'code': code, 'message': error},
   };
 
   String encode() => jsonEncode(toJson());

@@ -12,7 +12,8 @@ abstract final class CodexAuthArtifacts {
     if (content == null || content.trim().isEmpty) return false;
     try {
       final decoded = jsonDecode(content);
-      return decoded is Map && _mapIndicatesReady(decoded.cast<String, Object?>());
+      return decoded is Map &&
+          _mapIndicatesReady(decoded.cast<String, Object?>());
     } on Object {
       return false;
     }

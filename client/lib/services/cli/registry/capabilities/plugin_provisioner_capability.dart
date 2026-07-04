@@ -9,15 +9,7 @@ import '../cli_tool_registry.dart';
 import 'plugin_manifest_paths.dart';
 
 /// Component kinds a plugin bundle may carry.
-enum PluginComponentKind {
-  skills,
-  agents,
-  commands,
-  hooks,
-  mcp,
-  rules,
-  apps,
-}
+enum PluginComponentKind { skills, agents, commands, hooks, mcp, rules, apps }
 
 /// Inputs for [PluginProvisionerCapability.provision].
 @immutable
@@ -79,14 +71,12 @@ const cursorPluginManifestPaths = PluginManifestPaths(
 PluginManifestPaths? pluginManifestPathsForTool(
   CliTool tool, {
   CliToolRegistry? registry,
-}) =>
-    (registry ?? CliToolRegistry.builtIn())
-        .capability<PluginProvisionerCapability>(tool)
-        ?.manifestPaths;
+}) => (registry ?? CliToolRegistry.builtIn())
+    .capability<PluginProvisionerCapability>(tool)
+    ?.manifestPaths;
 
 PluginProvisionerCapability? pluginProvisionerForTool(
   CliTool tool, {
   CliToolRegistry? registry,
-}) =>
-    (registry ?? CliToolRegistry.builtIn())
-        .capability<PluginProvisionerCapability>(tool);
+}) => (registry ?? CliToolRegistry.builtIn())
+    .capability<PluginProvisionerCapability>(tool);

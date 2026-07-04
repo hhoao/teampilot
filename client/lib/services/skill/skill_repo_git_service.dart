@@ -74,11 +74,8 @@ class SkillRepoGitService {
   }
 
   /// Shallow clone or fetch into [workDirPath]; returns file entries + resolved branch + HEAD sha.
-  Future<({
-    Map<String, Uint8List> entries,
-    String branch,
-    String commitSha,
-  })> syncCheckout(SkillRepo repo, Filesystem fs, String workDirPath) async {
+  Future<({Map<String, Uint8List> entries, String branch, String commitSha})>
+  syncCheckout(SkillRepo repo, Filesystem fs, String workDirPath) async {
     final git = await _git;
     if (git == null) {
       throw StateError('git executable not found on PATH');
@@ -158,9 +155,7 @@ class SkillRepoGitService {
       workDirPath,
     ]);
     if (result.exitCode != 0) {
-      throw SkillFetchException(
-        'git clone failed: ${_stderrSnippet(result)}',
-      );
+      throw SkillFetchException('git clone failed: ${_stderrSnippet(result)}');
     }
   }
 
@@ -168,7 +163,9 @@ class SkillRepoGitService {
   Future<String?> readHeadSha(Filesystem fs, String workDirPath) async {
     final git = await _git;
     if (git == null) return null;
-    if (!(await fs.stat(fs.pathContext.join(workDirPath, '.git'))).isDirectory) return null;
+    if (!(await fs.stat(fs.pathContext.join(workDirPath, '.git'))).isDirectory) {
+      return null;
+    }
     try {
       return await _headSha(git, workDirPath);
     } catch (e) {
@@ -178,12 +175,7 @@ class SkillRepoGitService {
   }
 
   Future<String> _headSha(String git, String workDirPath) async {
-    final result = await _runner(git, [
-      '-C',
-      workDirPath,
-      'rev-parse',
-      'HEAD',
-    ]);
+    final result = await _runner(git, ['-C', workDirPath, 'rev-parse', 'HEAD']);
     if (result.exitCode != 0) {
       throw SkillFetchException(
         'git rev-parse failed: ${_stderrSnippet(result)}',
@@ -192,7 +184,10 @@ class SkillRepoGitService {
     return _firstStdoutLine(result.stdout)?.trim() ?? '';
   }
 
-  Future<Map<String, Uint8List>> _collectRepoFiles(Filesystem fs, String rootPath) async {
+  Future<Map<String, Uint8List>> _collectRepoFiles(
+    Filesystem fs,
+    String rootPath,
+  ) async {
     final out = <String, Uint8List>{};
     if (!(await fs.stat(rootPath)).exists) return out;
 

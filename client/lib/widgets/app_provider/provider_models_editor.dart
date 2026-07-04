@@ -215,15 +215,15 @@ class ProviderModelsEditor extends StatelessWidget {
           for (final entry in entries)
             _ModelRow(
               entry: entry,
-              isDefault: entry.model.trim() == defaultModel.trim() &&
+              isDefault:
+                  entry.model.trim() == defaultModel.trim() &&
                   defaultModel.trim().isNotEmpty,
               showTierToggle: supportsTiers,
               onSetDefault: () => _commit(entries, nextDefault: entry.model),
               onToggleEnabled: (value) {
                 final next = entries
                     .map(
-                      (e) =>
-                          e.id == entry.id ? e.copyWith(enabled: value) : e,
+                      (e) => e.id == entry.id ? e.copyWith(enabled: value) : e,
                     )
                     .toList();
                 _commit(next);
@@ -333,10 +333,7 @@ class _ModelRow extends StatelessWidget {
           ),
           SizedBox(
             width: 48,
-            child: Switch(
-              value: entry.enabled,
-              onChanged: onToggleEnabled,
-            ),
+            child: Switch(value: entry.enabled, onChanged: onToggleEnabled),
           ),
           AppIconButton(
             icon: Icons.edit_outlined,
@@ -434,10 +431,7 @@ class _ProviderModelEntryDialogState extends State<_ProviderModelEntryDialog> {
                 onPressed: () => Navigator.pop(context),
                 child: Text(l10n.cancel),
               ),
-              FilledButton(
-                onPressed: _save,
-                child: Text(l10n.save),
-              ),
+              FilledButton(onPressed: _save, child: Text(l10n.save)),
             ],
           ),
         ],

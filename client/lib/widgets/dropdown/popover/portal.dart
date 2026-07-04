@@ -26,7 +26,8 @@ class AppPortal extends StatefulWidget {
   State<AppPortal> createState() => _AppPortalState();
 }
 
-class _AppPortalState extends State<AppPortal> with SingleTickerProviderStateMixin {
+class _AppPortalState extends State<AppPortal>
+    with SingleTickerProviderStateMixin {
   final layerLink = LayerLink();
   final overlayPortalController = OverlayPortalController();
   final overlayKey = GlobalKey();
@@ -153,8 +154,9 @@ class _AppPortalState extends State<AppPortal> with SingleTickerProviderStateMix
         overlayState.context.findRenderObject()! as RenderBox;
 
     final overlay = overlayKey.currentContext?.findRenderObject() as RenderBox?;
-    final overlaySize =
-        overlay != null && overlay.hasSize ? overlay.size : Size.zero;
+    final overlaySize = overlay != null && overlay.hasSize
+        ? overlay.size
+        : Size.zero;
     final needsMeasure =
         (overlay == null || !overlay.hasSize) &&
         appAnchorAutoNeedsOverlayMeasure(anchor);
@@ -180,10 +182,7 @@ class _AppPortalState extends State<AppPortal> with SingleTickerProviderStateMix
           visible: !needsMeasure,
           child: IgnorePointer(
             ignoring: needsMeasure,
-            child: _buildAnimatedPortal(
-              context,
-              widget.portalBuilder(context),
-            ),
+            child: _buildAnimatedPortal(context, widget.portalBuilder(context)),
           ),
         ),
       ),
@@ -202,9 +201,7 @@ class _AppPortalState extends State<AppPortal> with SingleTickerProviderStateMix
 
   Widget _buildGlobalPosition(BuildContext context, AppGlobalAnchor anchor) {
     return CustomSingleChildLayout(
-      delegate: ContextMenuOverlayPositionDelegate(
-        target: anchor.offset,
-      ),
+      delegate: ContextMenuOverlayPositionDelegate(target: anchor.offset),
       child: _buildAnimatedPortal(context, widget.portalBuilder(context)),
     );
   }
@@ -223,10 +220,15 @@ class _AppPortalState extends State<AppPortal> with SingleTickerProviderStateMix
               widthFactor: 1,
               heightFactor: 1,
               child: switch (widget.anchor) {
-                final AppAnchorAuto anchor => _buildAutoPosition(context, anchor),
+                final AppAnchorAuto anchor => _buildAutoPosition(
+                  context,
+                  anchor,
+                ),
                 final AppAnchor anchor => _buildManualPosition(context, anchor),
-                final AppGlobalAnchor anchor =>
-                  _buildGlobalPosition(context, anchor),
+                final AppGlobalAnchor anchor => _buildGlobalPosition(
+                  context,
+                  anchor,
+                ),
               },
             ),
           );

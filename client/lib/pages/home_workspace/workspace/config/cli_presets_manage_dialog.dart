@@ -69,10 +69,7 @@ class CliPresetsManageDialog extends StatelessWidget {
   }
 
   void _openProviders(BuildContext context) {
-    openCliPresetProviderConfig(
-      context,
-      cli: lockCli ?? CliTool.claude,
-    );
+    openCliPresetProviderConfig(context, cli: lockCli ?? CliTool.claude);
   }
 
   void _openAddDialog(BuildContext context) {

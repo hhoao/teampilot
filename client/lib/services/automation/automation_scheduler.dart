@@ -18,11 +18,11 @@ class AutomationScheduler {
     required AutomationScheduleCalculator scheduleCalculator,
     Duration tickInterval = const Duration(seconds: 30),
     int Function()? nowMs,
-  })  : _repository = repository,
-        _dispatcher = dispatcher,
-        _scheduleCalculator = scheduleCalculator,
-        _tickInterval = tickInterval,
-        _nowMs = nowMs ?? _automationSchedulerDefaultNowMs;
+  }) : _repository = repository,
+       _dispatcher = dispatcher,
+       _scheduleCalculator = scheduleCalculator,
+       _tickInterval = tickInterval,
+       _nowMs = nowMs ?? _automationSchedulerDefaultNowMs;
 
   final AutomationRepository _repository;
   final AutomationDispatcher _dispatcher;
@@ -152,9 +152,6 @@ class AutomationScheduler {
       updatedAtMs: now,
     );
     await _repository.upsert(claimed);
-    await _dispatcher.dispatch(
-      automation,
-      trigger: trigger,
-    );
+    await _dispatcher.dispatch(automation, trigger: trigger);
   }
 }

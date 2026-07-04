@@ -35,9 +35,7 @@ final class CursorInstallerCapability implements InstallerCapability {
             '-Command',
             "irm '$winInstallUrl' | iex",
           ])
-        : CliInstallerCommand.unixShellScript(
-            'curl $installUrl -fsS | bash',
-          );
+        : CliInstallerCommand.unixShellScript('curl $installUrl -fsS | bash');
 
     final install = await host.runLocal(
       installCommand,
@@ -47,7 +45,10 @@ final class CursorInstallerCapability implements InstallerCapability {
     if (install.exitCode != 0) {
       return CliInstallResult(
         success: false,
-        message: installerFailureMessage('$displayName install failed', install),
+        message: installerFailureMessage(
+          '$displayName install failed',
+          install,
+        ),
       );
     }
 
@@ -82,9 +83,7 @@ final class CursorInstallerCapability implements InstallerCapability {
     host.report(CliInstallPhase.installingCli, detail: displayName);
     final install = await host.runSsh(
       profile,
-      CliInstallerCommand.unixShellScript(
-        'curl $installUrl -fsS | bash',
-      ),
+      CliInstallerCommand.unixShellScript('curl $installUrl -fsS | bash'),
     );
     if (install.exitCode != 0) {
       return CliInstallResult(

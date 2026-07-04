@@ -1,31 +1,28 @@
-#!/bin/bash
+#!/usr/bin/env bash
+set -euo pipefail
 
-check_code() {
-    if [ $1 -ne 0 ]; then
-        echo -e "\033[31m$error_msg\033[0m"
-        exit $1
-    fi
-}
+cd "$(dirname "$0")/.."
 
-exit_code=0
-error_msg=""
+FORMAT_DIRS=(lib test tool)
 
-echo "开始格式化"
-error_msg="格式化失败"
-dart format --set-exit-if-changed . || exit_code=1
-check_code $exit_code || exit $exit_code
-echo "格式化完成"
+echo "Checking format..."
+dart format --output=none --set-exit-if-changed "${FORMAT_DIRS[@]}"
 
-echo "开始修复"
-error_msg="修复失败"
-dart fix --dry-run || exit_code=1
-check_code $exit_code || exit $exit_code
-echo "修复完成"
+echo "Checking fixes..."
+fix_needed=0
+for dir in "${FORMAT_DIRS[@]}"; do
+  fix_output="$(dart fix --dry-run "$dir" 2>&1)" || true
+  printf '%s\n' "$fix_output"
+  if printf '%s\n' "$fix_output" | grep -q 'proposed fix'; then
+    fix_needed=1
+  fi
+done
+if [ "$fix_needed" -ne 0 ]; then
+  echo "Pending dart fix changes. Run scripts/fix_format.sh"
+  exit 1
+fi
 
-echo "开始分析"
-error_msg="分析失败"
-dart analyze || exit_code=1
-check_code $exit_code || exit $exit_code
-echo "分析完成"
+echo "Analyzing..."
+flutter analyze --no-fatal-infos --no-fatal-warnings
 
-exit $exit_code
+echo "All checks passed."

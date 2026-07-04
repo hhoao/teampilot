@@ -63,15 +63,15 @@ void main() {
       name: 'Team',
       cli: CliTool.claude,
       teamMode: TeamMode.mixed,
-      members: [
-        TeamMemberConfig(id: 'developer', name: 'Dev'),
-      ],
+      members: [TeamMemberConfig(id: 'developer', name: 'Dev')],
     );
 
-    await tester.pumpWidget(_host(
-      boardCubit: boardCubit,
-      child: BoardPanel(team: team, cwd: '/proj'),
-    ));
+    await tester.pumpWidget(
+      _host(
+        boardCubit: boardCubit,
+        child: BoardPanel(team: team, cwd: '/proj'),
+      ),
+    );
     await tester.pump();
 
     expect(find.text('Task 1'), findsOneWidget);
@@ -92,16 +92,21 @@ void main() {
     );
     boardCubit.attachUi('test-scope');
 
-    await tester.pumpWidget(_host(
-      boardCubit: boardCubit,
-      child: BoardPanel(
-        team: TeamProfile(
-          id: 't1', name: 'Team', cli: CliTool.claude,
-          teamMode: TeamMode.mixed, members: const [],
+    await tester.pumpWidget(
+      _host(
+        boardCubit: boardCubit,
+        child: BoardPanel(
+          team: TeamProfile(
+            id: 't1',
+            name: 'Team',
+            cli: CliTool.claude,
+            teamMode: TeamMode.mixed,
+            members: const [],
+          ),
+          cwd: '/proj',
         ),
-        cwd: '/proj',
       ),
-    ));
+    );
     await tester.pump();
 
     expect(find.byIcon(Icons.view_kanban_outlined), findsOneWidget);

@@ -74,19 +74,24 @@ void main() {
     expect(probe.isReady, isFalse);
   });
 
-  test('unparseable version is treated as satisfying (no false alarm)', () async {
-    final detector = ExtensionDetector(
-      processRunner: (exe, args, {environment}) async {
-        if (args.length == 1 && args.first == 'rtk') return _ok('/usr/bin/rtk');
-        if (args.length == 1 && args.first == 'jq') return _ok('/usr/bin/jq');
-        if (args.contains('--version')) return _ok('rtk dev-build');
-        return _fail();
-      },
-    );
-    final probe = await detector.probe(rtkDetect);
-    expect(probe.version, isNull);
-    expect(probe.satisfiesMinVersion, isTrue);
-  });
+  test(
+    'unparseable version is treated as satisfying (no false alarm)',
+    () async {
+      final detector = ExtensionDetector(
+        processRunner: (exe, args, {environment}) async {
+          if (args.length == 1 && args.first == 'rtk') {
+            return _ok('/usr/bin/rtk');
+          }
+          if (args.length == 1 && args.first == 'jq') return _ok('/usr/bin/jq');
+          if (args.contains('--version')) return _ok('rtk dev-build');
+          return _fail();
+        },
+      );
+      final probe = await detector.probe(rtkDetect);
+      expect(probe.version, isNull);
+      expect(probe.satisfiesMinVersion, isTrue);
+    },
+  );
 
   test('major version >= 1 always satisfies 0.23.0', () async {
     final detector = ExtensionDetector(

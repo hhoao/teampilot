@@ -12,6 +12,5 @@ final class FlashskyaiProviderCatalogCapability
   @override
   Future<ProviderCatalogSnapshot> loadFromLiveSources(
     ProviderCatalogLoadContext context,
-  ) =>
-      FlashskyaiLiveImport.loadSnapshot(context);
+  ) => FlashskyaiLiveImport.loadSnapshot(context);
 }

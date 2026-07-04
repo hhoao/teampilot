@@ -15,9 +15,6 @@ void main() {
 
   test('fromJson round-trips workspace id', () {
     const tab = WorkspaceTabRef(workspaceId: 'ws-3');
-    expect(
-      WorkspaceTabRef.fromJson(tab.toJson()),
-      tab,
-    );
+    expect(WorkspaceTabRef.fromJson(tab.toJson()), tab);
   });
 }

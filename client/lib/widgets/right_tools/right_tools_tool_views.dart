@@ -50,18 +50,12 @@ class RightToolsWorkingTurnListener extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return _WorkingSetDelta(
-      onTurnEnd: onTurnEnd,
-      child: child,
-    );
+    return _WorkingSetDelta(onTurnEnd: onTurnEnd, child: child);
   }
 }
 
 class _WorkingSetDelta extends StatefulWidget {
-  const _WorkingSetDelta({
-    required this.onTurnEnd,
-    required this.child,
-  });
+  const _WorkingSetDelta({required this.onTurnEnd, required this.child});
 
   final VoidCallback onTurnEnd;
   final Widget child;
@@ -112,7 +106,8 @@ class RightToolsPresenceTeamSync extends StatefulWidget {
       _RightToolsPresenceTeamSyncState();
 }
 
-class _RightToolsPresenceTeamSyncState extends State<RightToolsPresenceTeamSync> {
+class _RightToolsPresenceTeamSyncState
+    extends State<RightToolsPresenceTeamSync> {
   String? _syncedTeamId;
 
   @override
@@ -154,7 +149,8 @@ class RightToolsMailboxGate {
     required bool boardVisible,
     required int unreadCount,
   }) {
-    final showMailbox = !isPersonalContext &&
+    final showMailbox =
+        !isPersonalContext &&
         team != null &&
         team.teamMode == TeamMode.mixed &&
         hasTeamBus;
@@ -186,7 +182,10 @@ class RightToolsChatSlice {
     required this.hasTeamBus,
   });
 
-  factory RightToolsChatSlice.from(ChatState state, {required bool hasTeamBus}) {
+  factory RightToolsChatSlice.from(
+    ChatState state, {
+    required bool hasTeamBus,
+  }) {
     return RightToolsChatSlice(
       selectedMemberId: state.selectedMemberId,
       hasActiveTab: state.tabs.isNotEmpty,
@@ -366,7 +365,10 @@ class _RightToolsToolViewsState extends State<RightToolsToolViews> {
       );
     }
 
-    final panel = TabbedPanel(views: _cachedViews!, scopeId: widget.toolsScopeId);
+    final panel = TabbedPanel(
+      views: _cachedViews!,
+      scopeId: widget.toolsScopeId,
+    );
     final branchLabel = _optionalWorktreeBranch(context);
     if (branchLabel == null) return panel;
     return Column(
@@ -521,11 +523,12 @@ class _ScopedMembersPanel extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final presence = context.select<MemberPresenceCubit, Map<String, MemberPresence>>(
-      (c) => c.state.presence,
-    );
-    final providersByCli =
-        context.select<AppProviderCubit, Map<CliTool, List<AppProviderConfig>>>(
+    final presence = context
+        .select<MemberPresenceCubit, Map<String, MemberPresence>>(
+          (c) => c.state.presence,
+        );
+    final providersByCli = context
+        .select<AppProviderCubit, Map<CliTool, List<AppProviderConfig>>>(
           (c) => c.state.providersByCli,
         );
     return MembersPanel(
@@ -552,11 +555,7 @@ class _ScopedMembersPanel extends StatelessWidget {
   void _openMember(BuildContext context, String id) {
     final member = runtimeMembers.firstWhere((m) => m.id == id);
     unawaited(
-      context.read<ChatCubit>().openMemberTab(
-        team,
-        member,
-        workspaceCwd: cwd,
-      ),
+      context.read<ChatCubit>().openMemberTab(team, member, workspaceCwd: cwd),
     );
     maybeDismissDrawer();
   }
@@ -569,8 +568,8 @@ class _ScopedMembersPanel extends StatelessWidget {
     final activeSession = activeSessionId == null
         ? null
         : chatCubit.state.sessions
-            .where((s) => s.sessionId == activeSessionId)
-            .firstOrNull;
+              .where((s) => s.sessionId == activeSessionId)
+              .firstOrNull;
     await showMemberDetailDialog(
       context,
       workspaceId: workspaceId,
@@ -591,8 +590,8 @@ class _ScopedMembersPanel extends StatelessWidget {
     final session = activeSessionId == null
         ? null
         : chatCubit.state.sessions
-            .where((s) => s.sessionId == activeSessionId)
-            .firstOrNull;
+              .where((s) => s.sessionId == activeSessionId)
+              .firstOrNull;
     if (session == null) return;
 
     final cached = activeTab?.memberConfigDirs[id]?.trim();
@@ -618,8 +617,7 @@ class _ScopedMembersPanel extends StatelessWidget {
             workContext: workContext,
             globalPresets: context.read<CliPresetsCubit>().state.presets,
             preferExpectedRuntimeDir: true,
-          ))
-            .resolvedDir;
+          )).resolvedDir;
     if (!context.mounted || path.isEmpty) return;
     await openMemberConfigDirectory(
       context,
@@ -648,7 +646,11 @@ class _WorktreeBreadcrumb extends StatelessWidget {
       ),
       child: Row(
         children: [
-          Icon(Icons.account_tree_outlined, size: 14, color: cs.onSurfaceVariant),
+          Icon(
+            Icons.account_tree_outlined,
+            size: 14,
+            color: cs.onSurfaceVariant,
+          ),
           const SizedBox(width: 6),
           Expanded(
             child: Text(

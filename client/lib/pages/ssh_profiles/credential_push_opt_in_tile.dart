@@ -41,7 +41,8 @@ class CredentialPushOptInTile extends StatelessWidget {
             onChanged(false);
             return;
           }
-          final confirm = confirmTrustBoundary ??
+          final confirm =
+              confirmTrustBoundary ??
               () => showCredentialPushConfirm(context, host);
           confirm().then((ok) {
             if (ok) onChanged(true);
@@ -54,7 +55,10 @@ class CredentialPushOptInTile extends StatelessWidget {
 }
 
 /// Trust-boundary confirmation before the first credential push to [host].
-Future<bool> showCredentialPushConfirm(BuildContext context, String host) async {
+Future<bool> showCredentialPushConfirm(
+  BuildContext context,
+  String host,
+) async {
   final l10n = context.l10n;
   final confirmed = await showDialog<bool>(
     context: context,

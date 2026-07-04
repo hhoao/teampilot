@@ -65,7 +65,9 @@ abstract final class FileEditorTabClose {
             AppDialogHeader(title: l10n.editorUnsavedChangesTitle),
             const SizedBox(height: 16),
             Text(
-              l10n.editorUnsavedChangesDiscardFile(editor.state.fileNameFor(path)),
+              l10n.editorUnsavedChangesDiscardFile(
+                editor.state.fileNameFor(path),
+              ),
             ),
             AppDialogActions(
               children: [

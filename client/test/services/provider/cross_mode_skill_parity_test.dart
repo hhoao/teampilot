@@ -60,7 +60,9 @@ void main() {
         workspaceId: 'p',
         sessionId: 's',
         profileId: 'personal-default',
-        personal: const PersonalProfile(id: 'p', display: 'p',
+        personal: const PersonalProfile(
+          id: 'p',
+          display: 'p',
           bundle: ConfigBundle(skillIds: ['demo']),
         ),
       );

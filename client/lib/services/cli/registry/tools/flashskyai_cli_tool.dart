@@ -35,7 +35,9 @@ import '../resources/default_resource_capability.dart';
 
 final class FlashskyaiCliTool implements CliToolDefinition {
   const FlashskyaiCliTool({
-    this.busTransport = const BusTransportCapability(longBlockingWaitForMessage: true),
+    this.busTransport = const BusTransportCapability(
+      longBlockingWaitForMessage: true,
+    ),
     this.remoteCliLocator = const DefaultRemoteCliLocator('flashskyai'),
     this.launchArgs = const FlashskyaiCliToolAdapter(),
     this.configProfile = const FlashskyaiConfigProfileCapability(),

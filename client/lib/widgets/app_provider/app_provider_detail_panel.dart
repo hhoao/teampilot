@@ -51,7 +51,11 @@ class AppProviderDetailPanel extends StatelessWidget {
           Row(
             crossAxisAlignment: CrossAxisAlignment.center,
             children: [
-              ProviderBrandIcon.fromConfig(provider, size: 40, borderRadius: 10),
+              ProviderBrandIcon.fromConfig(
+                provider,
+                size: 40,
+                borderRadius: 10,
+              ),
               const SizedBox(width: 12),
               Expanded(
                 child: Wrap(
@@ -66,9 +70,11 @@ class AppProviderDetailPanel extends StatelessWidget {
                       ),
                     ),
                     if (isOfficialClaudeProvider(provider) ||
-                        (provider.cli == CliTool.cursor && provider.isOfficial) ||
+                        (provider.cli == CliTool.cursor &&
+                            provider.isOfficial) ||
                         isOfficialCodexOAuthProvider(provider) ||
-                        (provider.cli == CliTool.opencode && provider.isOfficial))
+                        (provider.cli == CliTool.opencode &&
+                            provider.isOfficial))
                       ProviderCredentialStatusBadge(
                         cli: provider.cli,
                         ready: provider.credentialStatus == 'ready',
@@ -115,17 +121,21 @@ class AppProviderDetailPanel extends StatelessWidget {
           if (isOfficialClaudeProvider(provider))
             BlocBuilder<AppProviderCubit, AppProviderState>(
               buildWhen: (prev, next) {
-                final before = prev.providersFor(provider.cli)
+                final before = prev
+                    .providersFor(provider.cli)
                     .where((p) => p.id == provider.id)
                     .firstOrNull;
-                final after = next.providersFor(provider.cli)
+                final after = next
+                    .providersFor(provider.cli)
                     .where((p) => p.id == provider.id)
                     .firstOrNull;
                 return before?.config != after?.config ||
                     before?.updatedAt != after?.updatedAt;
               },
               builder: (context, state) {
-                final current = state.providersFor(provider.cli)
+                final current =
+                    state
+                        .providersFor(provider.cli)
                         .where((p) => p.id == provider.id)
                         .firstOrNull ??
                     provider;
@@ -134,10 +144,9 @@ class AppProviderDetailPanel extends StatelessWidget {
                   child: ClaudeCredentialBindingField(
                     value: resolveCredentialBinding(current),
                     onChanged: (binding) {
-                      context.read<AppProviderCubit>().setClaudeCredentialBinding(
-                        current,
-                        binding,
-                      );
+                      context
+                          .read<AppProviderCubit>()
+                          .setClaudeCredentialBinding(current, binding);
                     },
                   ),
                 );
@@ -228,9 +237,7 @@ class _ProviderJsonPreviewState extends State<_ProviderJsonPreview> {
               height: 120,
               child: Center(child: CircularProgressIndicator(strokeWidth: 2)),
             )
-          : SingleChildScrollView(
-              child: Text(json, style: textStyle),
-            ),
+          : SingleChildScrollView(child: Text(json, style: textStyle)),
     );
   }
 }
@@ -300,11 +307,7 @@ class _InfoRow extends StatelessWidget {
         children: [
           SizedBox(
             width: 100,
-            child: Text(
-              label,
-              maxLines: 2,
-              overflow: TextOverflow.ellipsis,
-            ),
+            child: Text(label, maxLines: 2, overflow: TextOverflow.ellipsis),
           ),
           const SizedBox(width: 8),
           Expanded(

@@ -11,7 +11,10 @@ import 'package:teampilot/services/team_bus/team_message.dart';
 import 'support/fake_member_launcher.dart';
 
 void main() {
-  TeamBus buildBus(FakeMemberLauncher launcher, {bool reportsViaReceiveWork = true}) {
+  TeamBus buildBus(
+    FakeMemberLauncher launcher, {
+    bool reportsViaReceiveWork = true,
+  }) {
     final bus = TeamBus(
       launcher: launcher,
       reportsIdleViaReceiveWork: (_) => reportsViaReceiveWork,
@@ -30,7 +33,10 @@ void main() {
       )
       ..declareMember(
         AgentNode(
-          profile: TeammateRosterProfile.minimal('worker', displayName: 'Worker'),
+          profile: TeammateRosterProfile.minimal(
+            'worker',
+            displayName: 'Worker',
+          ),
           lifecycle: MemberLifecycle.running,
           activity: MemberActivity.active,
         ),
@@ -66,28 +72,25 @@ void main() {
     },
   );
 
-  test(
-    'idle announce to parked leader does not doorbell',
-    () {
-      fakeAsync((async) {
-        final launcher = FakeMemberLauncher();
-        final bus = buildBus(launcher);
-        bus.deliverUserCommand('worker', 'do work');
-        bus.receiveWork('worker');
-        async.flushMicrotasks();
+  test('idle announce to parked leader does not doorbell', () {
+    fakeAsync((async) {
+      final launcher = FakeMemberLauncher();
+      final bus = buildBus(launcher);
+      bus.deliverUserCommand('worker', 'do work');
+      bus.receiveWork('worker');
+      async.flushMicrotasks();
 
-        unawaited(bus.receiveWork('lead'));
-        async.flushMicrotasks();
-        expect(bus.isWaitingForMessage('lead'), isTrue);
+      unawaited(bus.receiveWork('lead'));
+      async.flushMicrotasks();
+      expect(bus.isWaitingForMessage('lead'), isTrue);
 
-        unawaited(bus.receiveWork('worker'));
-        async.flushMicrotasks();
+      unawaited(bus.receiveWork('worker'));
+      async.flushMicrotasks();
 
-        expect(launcher.woken.where((w) => w.memberId == 'lead'), isEmpty);
-        expect(bus.memberById('lead')!.inbox.unreadCount, 1);
-      });
-    },
-  );
+      expect(launcher.woken.where((w) => w.memberId == 'lead'), isEmpty);
+      expect(bus.memberById('lead')!.inbox.unreadCount, 1);
+    });
+  });
 
   test(
     'worker send then idle: parked leader gets mail via waiter without doorbell',
@@ -115,39 +118,31 @@ void main() {
     },
   );
 
-  test(
-    'back-to-back worker idle + send does not re-doorbell team-lead',
-    () {
-      final launcher = FakeMemberLauncher();
-      final bus = buildBus(launcher, reportsViaReceiveWork: false);
-      bus.onMemberIdle('lead');
+  test('back-to-back worker idle + send does not re-doorbell team-lead', () {
+    final launcher = FakeMemberLauncher();
+    final bus = buildBus(launcher, reportsViaReceiveWork: false);
+    bus.onMemberIdle('lead');
 
-      bus.deliverUserCommand('worker', 'do work');
-      bus.send(
-        TeamMessage(id: '1', from: 'worker', to: 'lead', content: 'done'),
-      );
-      expect(launcher.woken.where((w) => w.memberId == 'lead'), hasLength(1));
+    bus.deliverUserCommand('worker', 'do work');
+    bus.send(TeamMessage(id: '1', from: 'worker', to: 'lead', content: 'done'));
+    expect(launcher.woken.where((w) => w.memberId == 'lead'), hasLength(1));
 
-      bus.onMemberIdle('worker');
-      expect(launcher.woken.where((w) => w.memberId == 'lead'), hasLength(1));
-      expect(bus.memberById('lead')!.inbox.unreadCount, 2);
-    },
-  );
+    bus.onMemberIdle('worker');
+    expect(launcher.woken.where((w) => w.memberId == 'lead'), hasLength(1));
+    expect(bus.memberById('lead')!.inbox.unreadCount, 2);
+  });
 
-  test(
-    'cursor-style onMemberIdle doorbells leader only when at prompt',
-    () {
-      final launcher = FakeMemberLauncher();
-      final bus = buildBus(launcher, reportsViaReceiveWork: false);
-      bus.onMemberIdle('lead');
-      bus.deliverUserCommand('worker', 'do work');
-      bus.onMemberIdle('worker');
+  test('cursor-style onMemberIdle doorbells leader only when at prompt', () {
+    final launcher = FakeMemberLauncher();
+    final bus = buildBus(launcher, reportsViaReceiveWork: false);
+    bus.onMemberIdle('lead');
+    bus.deliverUserCommand('worker', 'do work');
+    bus.onMemberIdle('worker');
 
-      expect(bus.memberById('lead')!.inbox.unreadCount, 1);
-      expect(
-        launcher.woken.where((w) => w.memberId == 'lead').single.memberId,
-        'lead',
-      );
-    },
-  );
+    expect(bus.memberById('lead')!.inbox.unreadCount, 1);
+    expect(
+      launcher.woken.where((w) => w.memberId == 'lead').single.memberId,
+      'lead',
+    );
+  });
 }

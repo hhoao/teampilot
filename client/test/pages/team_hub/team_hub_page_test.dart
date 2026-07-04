@@ -11,16 +11,17 @@ import 'package:teampilot/services/team_hub/team_hub_source.dart';
 
 class _FakeSource implements TeamHubSource {
   @override
-  Future<List<DiscoverableTeam>> fetchTeams({bool forceRefresh = false}) async =>
-      const [
-        DiscoverableTeam(
-          key: 'o/r/squad',
-          name: 'Research Squad',
-          description: 'deep research',
-          category: 'AI',
-          updatedAt: 1,
-        ),
-      ];
+  Future<List<DiscoverableTeam>> fetchTeams({
+    bool forceRefresh = false,
+  }) async => const [
+    DiscoverableTeam(
+      key: 'o/r/squad',
+      name: 'Research Squad',
+      description: 'deep research',
+      category: 'AI',
+      updatedAt: 1,
+    ),
+  ];
 
   @override
   Future<List<String>> categories({bool forceRefresh = false}) async => ['AI'];
@@ -54,9 +55,7 @@ void main() {
           create: (_) => LayoutCubit(),
           child: BlocProvider.value(
             value: cubit,
-            child: const Scaffold(
-              body: TeamHubPage(),
-            ),
+            child: const Scaffold(body: TeamHubPage()),
           ),
         ),
       ),

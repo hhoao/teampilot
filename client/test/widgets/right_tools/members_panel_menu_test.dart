@@ -15,7 +15,12 @@ import '../../support/in_memory_filesystem.dart';
 import '../../support/post_frame_test_harness.dart';
 
 const _member = TeamMemberConfig(id: 'm1', name: 'Backend');
-const _team = TeamProfile(id: 't', name: 'T', cli: CliTool.claude, members: [_member]);
+const _team = TeamProfile(
+  id: 't',
+  name: 'T',
+  cli: CliTool.claude,
+  members: [_member],
+);
 
 Widget _host(Widget child, AppProviderCubit providerCubit) {
   final cliPresetsCubit = CliPresetsCubit(
@@ -26,88 +31,96 @@ Widget _host(Widget child, AppProviderCubit providerCubit) {
   );
   addTearDown(cliPresetsCubit.close);
   return MaterialApp(
-      localizationsDelegates: AppLocalizations.localizationsDelegates,
-      supportedLocales: AppLocalizations.supportedLocales,
-      home: MultiBlocProvider(
-        providers: [
-          BlocProvider.value(value: providerCubit),
-          BlocProvider.value(value: cliPresetsCubit),
-        ],
-        child: CliToolRegistryScope(
-          registry: CliToolRegistry.builtIn(),
-          child: Scaffold(body: child),
-        ),
+    localizationsDelegates: AppLocalizations.localizationsDelegates,
+    supportedLocales: AppLocalizations.supportedLocales,
+    home: MultiBlocProvider(
+      providers: [
+        BlocProvider.value(value: providerCubit),
+        BlocProvider.value(value: cliPresetsCubit),
+      ],
+      child: CliToolRegistryScope(
+        registry: CliToolRegistry.builtIn(),
+        child: Scaffold(body: child),
       ),
-    );
+    ),
+  );
 }
 
 void main() {
   setUp(setUpTestAppStorage);
   tearDown(tearDownTestAppStorage);
 
-  testWidgets('right-click opens the member menu with view-detail', (tester) async {
+  testWidgets('right-click opens the member menu with view-detail', (
+    tester,
+  ) async {
     final providerCubit = AppProviderCubit();
     addTearDown(providerCubit.close);
 
-    await tester.pumpWidget(_host(
-      MembersPanel(
-        team: _team,
-        members: const [_member],
-        memberPresence: const {},
-        providersByCli: const {},
-        selectedMemberId: '',
-        onSelected: (_) {},
-        onOpen: (_) {},
-        onLaunchAll: () {},
-        canViewDetail: true,
-        onViewDetail: (_) {},
-        onOpenConfigDir: (_) {},
+    await tester.pumpWidget(
+      _host(
+        MembersPanel(
+          team: _team,
+          members: const [_member],
+          memberPresence: const {},
+          providersByCli: const {},
+          selectedMemberId: '',
+          onSelected: (_) {},
+          onOpen: (_) {},
+          onLaunchAll: () {},
+          canViewDetail: true,
+          onViewDetail: (_) {},
+          onOpenConfigDir: (_) {},
+        ),
+        providerCubit,
       ),
-      providerCubit,
-    ));
+    );
     await tester.pumpAndSettle();
 
-    final l10n = AppLocalizations.of(
-      tester.element(find.byType(MembersPanel)),
-    );
+    final l10n = AppLocalizations.of(tester.element(find.byType(MembersPanel)));
 
-    await tester.tap(find.byKey(const Key('member-row-m1')),
-        buttons: kSecondaryButton);
+    await tester.tap(
+      find.byKey(const Key('member-row-m1')),
+      buttons: kSecondaryButton,
+    );
     await tester.pumpAndSettle();
 
     expect(find.text(l10n.memberDetailViewAction), findsOneWidget);
     expect(find.text(l10n.memberDetailOpenConfigDir), findsOneWidget);
   });
 
-  testWidgets('tapping view-detail dispatches after the menu closes', (tester) async {
+  testWidgets('tapping view-detail dispatches after the menu closes', (
+    tester,
+  ) async {
     final providerCubit = AppProviderCubit();
     addTearDown(providerCubit.close);
 
     String? viewedId;
-    await tester.pumpWidget(_host(
-      MembersPanel(
-        team: _team,
-        members: const [_member],
-        memberPresence: const {},
-        providersByCli: const {},
-        selectedMemberId: '',
-        onSelected: (_) {},
-        onOpen: (_) {},
-        onLaunchAll: () {},
-        canViewDetail: true,
-        onViewDetail: (id) => viewedId = id,
-        onOpenConfigDir: (_) {},
+    await tester.pumpWidget(
+      _host(
+        MembersPanel(
+          team: _team,
+          members: const [_member],
+          memberPresence: const {},
+          providersByCli: const {},
+          selectedMemberId: '',
+          onSelected: (_) {},
+          onOpen: (_) {},
+          onLaunchAll: () {},
+          canViewDetail: true,
+          onViewDetail: (id) => viewedId = id,
+          onOpenConfigDir: (_) {},
+        ),
+        providerCubit,
       ),
-      providerCubit,
-    ));
+    );
     await tester.pumpAndSettle();
 
-    final l10n = AppLocalizations.of(
-      tester.element(find.byType(MembersPanel)),
-    );
+    final l10n = AppLocalizations.of(tester.element(find.byType(MembersPanel)));
 
-    await tester.tap(find.byKey(const Key('member-row-m1')),
-        buttons: kSecondaryButton);
+    await tester.tap(
+      find.byKey(const Key('member-row-m1')),
+      buttons: kSecondaryButton,
+    );
     await tester.pumpAndSettle();
 
     await tester.tap(find.text(l10n.memberDetailViewAction));
@@ -122,30 +135,32 @@ void main() {
     addTearDown(providerCubit.close);
 
     var viewed = false;
-    await tester.pumpWidget(_host(
-      MembersPanel(
-        team: _team,
-        members: const [_member],
-        memberPresence: const {},
-        providersByCli: const {},
-        selectedMemberId: '',
-        onSelected: (_) {},
-        onOpen: (_) {},
-        onLaunchAll: () {},
-        canViewDetail: false,
-        onViewDetail: (_) => viewed = true,
-        onOpenConfigDir: (_) {},
+    await tester.pumpWidget(
+      _host(
+        MembersPanel(
+          team: _team,
+          members: const [_member],
+          memberPresence: const {},
+          providersByCli: const {},
+          selectedMemberId: '',
+          onSelected: (_) {},
+          onOpen: (_) {},
+          onLaunchAll: () {},
+          canViewDetail: false,
+          onViewDetail: (_) => viewed = true,
+          onOpenConfigDir: (_) {},
+        ),
+        providerCubit,
       ),
-      providerCubit,
-    ));
+    );
     await tester.pumpAndSettle();
 
-    final l10n = AppLocalizations.of(
-      tester.element(find.byType(MembersPanel)),
-    );
+    final l10n = AppLocalizations.of(tester.element(find.byType(MembersPanel)));
 
-    await tester.tap(find.byKey(const Key('member-row-m1')),
-        buttons: kSecondaryButton);
+    await tester.tap(
+      find.byKey(const Key('member-row-m1')),
+      buttons: kSecondaryButton,
+    );
     await tester.pumpAndSettle();
 
     await tester.tap(find.text(l10n.memberDetailViewAction));

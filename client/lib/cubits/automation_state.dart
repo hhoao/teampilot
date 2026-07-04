@@ -68,11 +68,11 @@ class AutomationState extends Equatable {
 
   @override
   List<Object?> get props => [
-        automations,
-        runsByAutomationId,
-        status,
-        errorMessage,
-        filterTabScope,
-        filterSessionId,
-      ];
+    automations,
+    runsByAutomationId,
+    status,
+    errorMessage,
+    filterTabScope,
+    filterSessionId,
+  ];
 }

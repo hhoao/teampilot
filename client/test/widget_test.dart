@@ -43,7 +43,6 @@ import 'package:teampilot/repositories/session_preferences_repository.dart';
 import 'package:teampilot/repositories/session_repository.dart';
 import 'package:teampilot/repositories/cli_presets_repository.dart';
 import 'package:teampilot/repositories/extension_repository.dart';
-import 'package:teampilot/repositories/launch_profile_repository.dart';
 import 'package:teampilot/services/extension/builtin_manifests.dart';
 import 'package:teampilot/services/extension/extension_acquisition_engine.dart';
 import 'package:teampilot/services/extension/extension_detector.dart';
@@ -134,7 +133,8 @@ Widget buildTestApp({
       InMemoryAppSettingsRepository(hasCompletedOnboarding: true);
   final aiFeatures =
       aiFeatureSettingsCubit ?? AiFeatureSettingsCubit(repository: settings);
-  final chat = chatCubit ??
+  final chat =
+      chatCubit ??
       ChatCubit(
         executableResolver: _testExecutable,
         automationRepository: testAutomationRepository(),
@@ -215,9 +215,8 @@ Widget buildTestApp({
         BlocProvider(create: (_) => WorkspaceToolsCubit()),
         BlocProvider(create: (_) => NotificationCubit()),
         BlocProvider(
-          create: (_) => testAutomationCubit(
-            sessionRepository: _widgetTestSessionRepo,
-          ),
+          create: (_) =>
+              testAutomationCubit(sessionRepository: _widgetTestSessionRepo),
         ),
       ],
       child: CliToolRegistryScope(
@@ -557,7 +556,9 @@ void main() {
     );
     late final Workspace workspace;
     await tester.runAsync(() async {
-      workspace = await _widgetTestSessionRepo.createWorkspace([WorkspaceFolder(path: '/work/current')]);
+      workspace = await _widgetTestSessionRepo.createWorkspace([
+        WorkspaceFolder(path: '/work/current'),
+      ]);
       chatCubit.ingestWorkspaceSessionSnapshot(
         workspaces: [workspace],
         sessions: const [],
@@ -701,7 +702,9 @@ void main() {
     final repo = SessionRepository(
       rootDir: (await Directory.systemTemp.createTemp('sidebar_sess_')).path,
     );
-    final workspace = await repo.createWorkspace([WorkspaceFolder(path: '/work/current')]);
+    final workspace = await repo.createWorkspace([
+      WorkspaceFolder(path: '/work/current'),
+    ]);
     final session = await repo.createSession(
       workspace.workspaceId,
       sessionTeam: team.id,
@@ -724,12 +727,13 @@ void main() {
     await chatCubit.loadWorkspaceData(repo);
 
     await chatCubit.requestOpenSession(
-        SessionOpenRequest(
-          session: session, team: team,
-      member: team.members.first,
-      repo: repo,
-        ),
-      );
+      SessionOpenRequest(
+        session: session,
+        team: team,
+        member: team.members.first,
+        repo: repo,
+      ),
+    );
     await drainPendingAsyncWork();
     await postFrame.flush();
 
@@ -928,7 +932,9 @@ void main() {
           TeamMemberConfig(id: 'dev', name: 'developer'),
         ],
       );
-      final workspace = await repo.createWorkspace([WorkspaceFolder(path: '/wd')]);
+      final workspace = await repo.createWorkspace([
+        WorkspaceFolder(path: '/wd'),
+      ]);
       await repo.createSession(
         workspace.workspaceId,
         sessionTeam: team.id,
@@ -977,7 +983,9 @@ void main() {
           TeamMemberConfig(id: 'dev', name: 'developer'),
         ],
       );
-      final workspace = await repo.createWorkspace([WorkspaceFolder(path: '/wd')]);
+      final workspace = await repo.createWorkspace([
+        WorkspaceFolder(path: '/wd'),
+      ]);
       await repo.createSession(
         workspace.workspaceId,
         sessionTeam: team.id,
@@ -1053,8 +1061,9 @@ void main() {
 
       await cubit.requestOpenSession(
         SessionOpenRequest(
-          session: session, team: team,
-        member: team.members.first,
+          session: session,
+          team: team,
+          member: team.members.first,
         ),
       );
       await drainPendingAsyncWork();
@@ -1081,7 +1090,9 @@ void main() {
       name: 'TName',
       members: const [TeamMemberConfig(id: 'lid', name: 'team-lead')],
     );
-    final workspace = await repo.createWorkspace([WorkspaceFolder(path: '/wd')]);
+    final workspace = await repo.createWorkspace([
+      WorkspaceFolder(path: '/wd'),
+    ]);
     await repo.createSession(
       workspace.workspaceId,
       sessionTeam: team.id,
@@ -1103,12 +1114,13 @@ void main() {
     await cubit.loadWorkspaceData(repo);
     final rel = cubit.state.sessions.single;
     await cubit.requestOpenSession(
-        SessionOpenRequest(
-          session: rel, team: team,
-      member: team.members.first,
-      repo: repo,
-        ),
-      );
+      SessionOpenRequest(
+        session: rel,
+        team: team,
+        member: team.members.first,
+        repo: repo,
+      ),
+    );
     await drainPendingAsyncWork();
     await postFrame.flush();
     await drainPendingAsyncWork();
@@ -1126,7 +1138,9 @@ void main() {
       name: 'TName',
       members: const [TeamMemberConfig(id: 'lid', name: 'team-lead')],
     );
-    final workspace = await repo.createWorkspace([WorkspaceFolder(path: '/wd')]);
+    final workspace = await repo.createWorkspace([
+      WorkspaceFolder(path: '/wd'),
+    ]);
     final session = await repo.createSession(
       workspace.workspaceId,
       sessionTeam: team.id,
@@ -1151,12 +1165,13 @@ void main() {
     await cubit.loadWorkspaceData(repo);
     final rel = cubit.state.sessions.single;
     await cubit.requestOpenSession(
-        SessionOpenRequest(
-          session: rel, team: team,
-      member: team.members.first,
-      repo: repo,
-        ),
-      );
+      SessionOpenRequest(
+        session: rel,
+        team: team,
+        member: team.members.first,
+        repo: repo,
+      ),
+    );
     await drainPendingAsyncWork();
     await postFrame.flush();
     expect(captured!.lastResumeSessionIds.last, rel.members.single.taskId);
@@ -1174,7 +1189,9 @@ void main() {
         name: 'TName',
         members: const [TeamMemberConfig(id: 'lid', name: 'team-lead')],
       );
-      final workspace = await repo.createWorkspace([WorkspaceFolder(path: '/wd')]);
+      final workspace = await repo.createWorkspace([
+        WorkspaceFolder(path: '/wd'),
+      ]);
       final session = await repo.createSession(
         workspace.workspaceId,
         sessionTeam: team.id,
@@ -1200,9 +1217,10 @@ void main() {
       final rel = cubit.state.sessions.single;
       await cubit.requestOpenSession(
         SessionOpenRequest(
-          session: rel, team: team,
-        member: team.members.first,
-        repo: repo,
+          session: rel,
+          team: team,
+          member: team.members.first,
+          repo: repo,
         ),
       );
       await drainPendingAsyncWork();
@@ -1249,9 +1267,10 @@ void main() {
       final rel = cubit.state.sessions.single;
       await cubit.requestOpenSession(
         SessionOpenRequest(
-          session: rel, team: team,
-        member: team.members.first,
-        repo: repo,
+          session: rel,
+          team: team,
+          member: team.members.first,
+          repo: repo,
         ),
       );
       await drainPendingAsyncWork();

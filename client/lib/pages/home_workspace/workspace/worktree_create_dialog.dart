@@ -59,7 +59,8 @@ Future<WorktreeCreateResult?> showWorktreeCreateDialog(
 
 BranchListLoader branchListLoaderFor(RuntimeContext workContext) {
   return (repoPath) {
-    final git = GitService.debugOverrideFactory?.call() ??
+    final git =
+        GitService.debugOverrideFactory?.call() ??
         GitService.forContext(workContext);
     return git.branches(repoPath);
   };
@@ -74,10 +75,8 @@ String suggestWorktreeBranchName(String? currentBranch) {
 
 /// Minimal seam over [WorkspaceLayout.worktreePathFor] so the dialog can preview
 /// the target path without constructing storage objects itself.
-typedef WorktreeLayoutPathResolver = String Function({
-  required String repoName,
-  required String branch,
-});
+typedef WorktreeLayoutPathResolver =
+    String Function({required String repoName, required String branch});
 
 class _WorktreeCreateDialog extends StatefulWidget {
   const _WorktreeCreateDialog({
@@ -159,8 +158,14 @@ class _WorktreeCreateDialogState extends State<_WorktreeCreateDialog> {
           children: [
             SegmentedButton<bool>(
               segments: [
-                ButtonSegment(value: false, label: Text(l10n.worktreeModeNewBranch)),
-                ButtonSegment(value: true, label: Text(l10n.worktreeModeExistingBranch)),
+                ButtonSegment(
+                  value: false,
+                  label: Text(l10n.worktreeModeNewBranch),
+                ),
+                ButtonSegment(
+                  value: true,
+                  label: Text(l10n.worktreeModeExistingBranch),
+                ),
               ],
               selected: {_existingBranch},
               onSelectionChanged: (s) {
@@ -232,7 +237,8 @@ class _WorktreeCreateDialogState extends State<_WorktreeCreateDialog> {
                 contentPadding: EdgeInsets.zero,
                 controlAffinity: ListTileControlAffinity.leading,
                 value: _startConversation,
-                onChanged: (v) => setState(() => _startConversation = v ?? false),
+                onChanged: (v) =>
+                    setState(() => _startConversation = v ?? false),
                 title: Text(l10n.worktreeStartConversation),
               ),
           ],
@@ -248,15 +254,17 @@ class _WorktreeCreateDialogState extends State<_WorktreeCreateDialog> {
               ? () {
                   final branch = _branch.text.trim();
                   final base = _base.text.trim();
-                  Navigator.of(context).pop(WorktreeCreateResult(
-                    worktreePath: _previewPath,
-                    branch: branch,
-                    baseRef: base.isEmpty ? null : base,
-                    existingBranch: _existingBranch,
-                    startConversation: widget.showStartConversationOption
-                        ? _startConversation
-                        : false,
-                  ));
+                  Navigator.of(context).pop(
+                    WorktreeCreateResult(
+                      worktreePath: _previewPath,
+                      branch: branch,
+                      baseRef: base.isEmpty ? null : base,
+                      existingBranch: _existingBranch,
+                      startConversation: widget.showStartConversationOption
+                          ? _startConversation
+                          : false,
+                    ),
+                  );
                 }
               : null,
           child: Text(l10n.worktreeCreateAction),

@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 
-import '../../l10n/app_localizations.dart';
 import '../../l10n/l10n_extensions.dart';
 import '../dropdown/app_dropdown_decoration.dart';
 import '../dropdown/app_dropdown_field.dart';
@@ -28,8 +27,7 @@ class TeamLaunchConfigTypeField extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final l10n = context.l10n;
-    final dropdownDeco =
-        decoration ?? AppDropdownDecorations.themed(context);
+    final dropdownDeco = decoration ?? AppDropdownDecorations.themed(context);
 
     return SettingsLabeledRow(
       title: l10n.memberLaunchConfigTypeLabel,
@@ -50,10 +48,7 @@ class TeamLaunchConfigTypeField extends StatelessWidget {
     );
   }
 
-  static String _kindLabel(
-    AppLocalizations l10n,
-    TeamLaunchConfigKind kind,
-  ) {
+  static String _kindLabel(AppLocalizations l10n, TeamLaunchConfigKind kind) {
     return switch (kind) {
       TeamLaunchConfigKind.preset => l10n.memberLaunchConfigTypePreset,
       TeamLaunchConfigKind.custom => l10n.memberPresetCustom,

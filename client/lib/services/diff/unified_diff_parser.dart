@@ -63,8 +63,9 @@ class HunkMarker {
   final String section;
 }
 
-final RegExp _hunkHeader =
-    RegExp(r'^@@+ -(\d+)(?:,(\d+))? \+(\d+)(?:,(\d+))? @@+(.*)$');
+final RegExp _hunkHeader = RegExp(
+  r'^@@+ -(\d+)(?:,(\d+))? \+(\d+)(?:,(\d+))? @@+(.*)$',
+);
 
 /// Parses [diff] and flattens all file sections into a single [DiffResult],
 /// concatenating their rows (source control shows one file at a time, but this
@@ -85,7 +86,10 @@ List<UnifiedFileDiff> parseUnifiedDiff(
   DiffOptions options = DiffOptions.none,
 }) {
   if (diff.trim().isEmpty) return const [];
-  final lines = diff.replaceAll('\r\n', '\n').replaceAll('\r', '\n').split('\n');
+  final lines = diff
+      .replaceAll('\r\n', '\n')
+      .replaceAll('\r', '\n')
+      .split('\n');
 
   final files = <UnifiedFileDiff>[];
   _FileAccumulator? current;
@@ -130,7 +134,8 @@ List<UnifiedFileDiff> parseUnifiedDiff(
       current!.isRename = true;
       continue;
     }
-    if (line.startsWith('Binary files ') || line.startsWith('GIT binary patch')) {
+    if (line.startsWith('Binary files ') ||
+        line.startsWith('GIT binary patch')) {
       current!.isBinary = true;
       continue;
     }
@@ -219,12 +224,14 @@ class _FileAccumulator {
     inHunk = true;
     _oldNo = oldStart;
     _newNo = newStart;
-    hunks.add(HunkMarker(
-      rowIndex: rows.length,
-      oldStart: oldStart,
-      newStart: newStart,
-      section: section,
-    ));
+    hunks.add(
+      HunkMarker(
+        rowIndex: rows.length,
+        oldStart: oldStart,
+        newStart: newStart,
+        section: section,
+      ),
+    );
   }
 
   void addBodyLine(String line) {
@@ -242,13 +249,15 @@ class _FileAccumulator {
         _dels.add(text);
       case ' ':
         _flushChange();
-        rows.add(DiffRow(
-          kind: DiffRowKind.equal,
-          leftLineNo: _oldNo,
-          rightLineNo: _newNo,
-          leftText: text,
-          rightText: text,
-        ));
+        rows.add(
+          DiffRow(
+            kind: DiffRowKind.equal,
+            leftLineNo: _oldNo,
+            rightLineNo: _newNo,
+            leftText: text,
+            rightText: text,
+          ),
+        );
         _oldNo++;
         _newNo++;
       default:
@@ -259,13 +268,15 @@ class _FileAccumulator {
 
   void _flushChange() {
     if (_dels.isEmpty && _ins.isEmpty) return;
-    rows.addAll(buildChangeRows(
-      _dels,
-      _ins,
-      leftStartNo: _oldNo,
-      rightStartNo: _newNo,
-      options: _options,
-    ));
+    rows.addAll(
+      buildChangeRows(
+        _dels,
+        _ins,
+        leftStartNo: _oldNo,
+        rightStartNo: _newNo,
+        options: _options,
+      ),
+    );
     _oldNo += _dels.length;
     _newNo += _ins.length;
     _dels.clear();

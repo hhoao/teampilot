@@ -26,9 +26,9 @@ final class ClaimTaskTool extends TeammateBusTool {
 
   @override
   Map<String, Object?> get inputSchema => McpSchema.object(
-        properties: {taskId: McpSchema.string},
-        required: [taskId],
-      );
+    properties: {taskId: McpSchema.string},
+    required: [taskId],
+  );
 
   @override
   Future<JsonRpcResponse> call(TeammateBusToolCall call) async {

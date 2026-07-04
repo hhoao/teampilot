@@ -74,11 +74,10 @@ class WorkspaceLayout {
   String workspaceTabAutomationsFile(
     String workspaceId,
     String launchProfileId,
-  ) =>
-      _ctx.join(
-        workspaceAutomationsDir(workspaceId),
-        '${launchProfileId.trim()}.json',
-      );
+  ) => _ctx.join(
+    workspaceAutomationsDir(workspaceId),
+    '${launchProfileId.trim()}.json',
+  );
 
   String sessionsDir(String workspaceId) =>
       _ctx.join(workspaceDir(workspaceId), 'sessions');
@@ -130,16 +129,10 @@ class WorkspaceLayout {
     String sessionId,
     String tool, {
     String? memberId,
-  }) =>
-      _ctx.join(
-        sessionRuntimeToolDir(
-          workspaceId,
-          sessionId,
-          tool,
-          memberId: memberId,
-        ),
-        'plugins',
-      );
+  }) => _ctx.join(
+    sessionRuntimeToolDir(workspaceId, sessionId, tool, memberId: memberId),
+    'plugins',
+  );
 
   /// App-managed location for a created git worktree:
   /// `<teampilotRoot>/worktrees/<repoName>/<branch>`. Branch slashes become

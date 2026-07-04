@@ -9,9 +9,7 @@ final class CodexEffortCapability implements CliEffortCapability {
   EffortPickerPlacement teamPickerPlacement() => EffortPickerPlacement.team;
 
   @override
-  EffortPickerPlacement memberPickerPlacement({
-    AppProviderConfig? provider,
-  }) =>
+  EffortPickerPlacement memberPickerPlacement({AppProviderConfig? provider}) =>
       EffortPickerPlacement.member;
 
   @override
@@ -26,14 +24,10 @@ final class CodexEffortCapability implements CliEffortCapability {
   List<String> effortCandidates({
     required String model,
     AppProviderConfig? provider,
-  }) =>
-      CodexEffortCatalog.levelsForModel(model);
+  }) => CodexEffortCatalog.levelsForModel(model);
 
   @override
-  String defaultEffort({
-    required String model,
-    AppProviderConfig? provider,
-  }) {
+  String defaultEffort({required String model, AppProviderConfig? provider}) {
     final fromProvider =
         provider?.config['model_reasoning_effort']?.toString().trim() ?? '';
     if (fromProvider.isNotEmpty) return fromProvider;

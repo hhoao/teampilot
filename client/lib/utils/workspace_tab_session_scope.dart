@@ -9,8 +9,10 @@ import '../services/team_bus/team_bus.dart';
 String? scopedActiveSessionId(ChatCubit cubit, String tabScopeId) {
   final store = cubit.tabStore;
   if (store.activeWorkspaceId == tabScopeId) {
+    if (cubit.state.composeActive) return null;
     return cubit.state.activeSessionId;
   }
+  if (store.isComposeActive(tabScopeId)) return null;
   final bucket = store.tabsForWorkspace(tabScopeId);
   if (bucket.isEmpty) return null;
   final index = store.savedActiveIndexFor(tabScopeId);

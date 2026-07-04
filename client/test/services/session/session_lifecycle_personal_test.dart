@@ -8,8 +8,7 @@ import 'package:teampilot/services/session/session_lifecycle_service.dart';
 
 class _Svc extends SessionLifecycleService {
   _Svc() : super(appDataBasePath: Directory.systemTemp.path);
-  bool personalFor(Workspace p, AppSession s) =>
-      debugIsPersonalLaunch(p, s);
+  bool personalFor(Workspace p, AppSession s) => debugIsPersonalLaunch(p, s);
 }
 
 void main() {

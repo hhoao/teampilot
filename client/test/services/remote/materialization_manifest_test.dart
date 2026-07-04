@@ -17,8 +17,10 @@ void main() {
     final m = MaterializationManifest(fs: fs, machineRoot: '/remote');
     await m.save({'cli-defaults/claude/x': 'abc', 'providers/claude/y': 'def'});
 
-    final reloaded =
-        await MaterializationManifest(fs: fs, machineRoot: '/remote').load();
+    final reloaded = await MaterializationManifest(
+      fs: fs,
+      machineRoot: '/remote',
+    ).load();
     expect(reloaded['cli-defaults/claude/x'], 'abc');
     expect(reloaded['providers/claude/y'], 'def');
     // persisted under <machineRoot>/.materialized.json

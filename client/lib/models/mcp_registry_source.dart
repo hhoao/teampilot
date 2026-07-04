@@ -65,10 +65,9 @@ class McpRegistrySourceConfig {
     final kind = McpRegistrySourceKind.decode(json['kind'] as String?);
     return McpRegistrySourceConfig(
       kind: kind,
-      baseUrl:
-          (json['baseUrl'] as String?)?.trim().isNotEmpty == true
-              ? json['baseUrl'] as String
-              : defaultBaseUrl(kind),
+      baseUrl: (json['baseUrl'] as String?)?.trim().isNotEmpty == true
+          ? json['baseUrl'] as String
+          : defaultBaseUrl(kind),
       enabled: json['enabled'] as bool? ?? true,
       apiToken: json['apiToken'] as String?,
     );

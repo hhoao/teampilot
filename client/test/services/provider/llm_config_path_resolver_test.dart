@@ -23,7 +23,10 @@ void main() {
           homeDirectory: '/home/test',
           cliExecutablePath: null,
         );
-        expect(r.path, p.normalize(p.join('/home/test', 'llm/llm_config.json')));
+        expect(
+          r.path,
+          p.normalize(p.join('/home/test', 'llm/llm_config.json')),
+        );
         expect(r.source, LlmConfigPathSource.userOverride);
       });
 
@@ -49,12 +52,7 @@ void main() {
         expect(
           r.path,
           p.normalize(
-            p.join(
-              p.dirname(p.absolute(cli)),
-              '..',
-              'llm',
-              'llm_config.json',
-            ),
+            p.join(p.dirname(p.absolute(cli)), '..', 'llm', 'llm_config.json'),
           ),
         );
         expect(r.source, LlmConfigPathSource.defaultPath);
@@ -73,12 +71,7 @@ void main() {
         expect(
           r.path,
           p.normalize(
-            p.join(
-              p.dirname(p.absolute(cli)),
-              '..',
-              'llm',
-              'llm_config.json',
-            ),
+            p.join(p.dirname(p.absolute(cli)), '..', 'llm', 'llm_config.json'),
           ),
         );
         expect(r.source, LlmConfigPathSource.defaultPath);
@@ -96,8 +89,7 @@ void main() {
       });
 
       test('matches the user real-world setup (CLI under DingDing/dist)', () {
-        const cli =
-            '/home/hhoa/Downloads/DingDing/flashshkyai/dist/flashskyai';
+        const cli = '/home/hhoa/Downloads/DingDing/flashshkyai/dist/flashskyai';
         final r = resolveLlmConfigPath(
           userOverride: null,
           currentDirectory: '/anywhere',
@@ -107,12 +99,7 @@ void main() {
         expect(
           r.path,
           p.normalize(
-            p.join(
-              p.dirname(p.absolute(cli)),
-              '..',
-              'llm',
-              'llm_config.json',
-            ),
+            p.join(p.dirname(p.absolute(cli)), '..', 'llm', 'llm_config.json'),
           ),
         );
         expect(r.source, LlmConfigPathSource.defaultPath);
@@ -126,10 +113,7 @@ void main() {
           cliExecutablePath:
               r'wsl.exe /home/hhoa/flashskai-ubuntu-wsl/dist/flashskyai',
         );
-        expect(
-          r.path,
-          '/home/hhoa/flashskai-ubuntu-wsl/llm/llm_config.json',
-        );
+        expect(r.path, '/home/hhoa/flashskai-ubuntu-wsl/llm/llm_config.json');
         expect(r.source, LlmConfigPathSource.defaultPath);
       });
 

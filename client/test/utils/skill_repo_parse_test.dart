@@ -27,7 +27,11 @@ void main() {
 
   group('formatGithubRepoUrl', () {
     test('builds canonical URL', () {
-      const repo = SkillRepo(owner: 'obra', name: 'superpowers', branch: 'main');
+      const repo = SkillRepo(
+        owner: 'obra',
+        name: 'superpowers',
+        branch: 'main',
+      );
       expect(formatGithubRepoUrl(repo), 'https://github.com/obra/superpowers');
     });
   });

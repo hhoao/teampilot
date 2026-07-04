@@ -64,15 +64,13 @@ void main() {
           key: ValueKey(theme.listTileTheme.subtitleTextStyle?.fontSize),
           theme: theme,
           home: const Scaffold(
-            body: ListTile(
-              title: Text('Title'),
-              subtitle: Text('Subtitle'),
-            ),
+            body: ListTile(title: Text('Title'), subtitle: Text('Subtitle')),
           ),
         ),
       );
-      return DefaultTextStyle.of(tester.element(find.text('Subtitle'))).style
-          .fontSize!;
+      return DefaultTextStyle.of(
+        tester.element(find.text('Subtitle')),
+      ).style.fontSize!;
     }
 
     final stdSize = await subtitleFontSize(std);
@@ -101,10 +99,7 @@ void main() {
       textBaseline: 1.0,
     );
     expect(std.iconTheme.size, AppIconSizes.mdBase * stdIconMult);
-    expect(
-      comfy.iconTheme.size,
-      greaterThan(std.iconTheme.size!),
-    );
+    expect(comfy.iconTheme.size, greaterThan(std.iconTheme.size!));
   });
 
   testWidgets('context.uiScale is fixed at 1.0 (spacing is not text-scaled)', (

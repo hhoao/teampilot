@@ -7,8 +7,7 @@ import '../../../../services/cli/registry/cli_tool_registry.dart';
 bool workspaceCliSupportsProviderCatalog(
   CliTool cli,
   CliToolRegistry registry,
-) =>
-    registry.capability<ProviderCatalogCapability>(cli) != null;
+) => registry.capability<ProviderCatalogCapability>(cli) != null;
 
 String workspaceCliProviderId(PersonalProfile personal, CliTool cli) {
   return personal.providerIdsByTool[cli.value]?.trim() ?? '';

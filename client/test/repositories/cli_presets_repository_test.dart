@@ -46,9 +46,14 @@ void main() {
     test('save writes presets to file and returns them', () async {
       final presets = [
         CliPreset(
-          id: '1', name: 'Test', cli: CliTool.claude,
-          provider: 'p', model: 'm', effort: '',
-          createdAt: 1000, updatedAt: 1000,
+          id: '1',
+          name: 'Test',
+          cli: CliTool.claude,
+          provider: 'p',
+          model: 'm',
+          effort: '',
+          createdAt: 1000,
+          updatedAt: 1000,
         ),
       ];
 
@@ -62,14 +67,24 @@ void main() {
     test('save then load round-trips', () async {
       final presets = [
         CliPreset(
-          id: 'a', name: 'A', cli: CliTool.claude,
-          provider: 'p', model: 'm1', effort: '',
-          createdAt: 1, updatedAt: 1,
+          id: 'a',
+          name: 'A',
+          cli: CliTool.claude,
+          provider: 'p',
+          model: 'm1',
+          effort: '',
+          createdAt: 1,
+          updatedAt: 1,
         ),
         CliPreset(
-          id: 'b', name: 'B', cli: CliTool.flashskyai,
-          provider: 'p2', model: 'm2', effort: 'low',
-          createdAt: 2, updatedAt: 2,
+          id: 'b',
+          name: 'B',
+          cli: CliTool.flashskyai,
+          provider: 'p2',
+          model: 'm2',
+          effort: 'low',
+          createdAt: 2,
+          updatedAt: 2,
         ),
       ];
 

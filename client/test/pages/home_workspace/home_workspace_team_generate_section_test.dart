@@ -20,8 +20,9 @@ Widget _host({
 }
 
 void main() {
-  testWidgets('reports the description as it changes; no progress bar idle',
-      (tester) async {
+  testWidgets('reports the description as it changes; no progress bar idle', (
+    tester,
+  ) async {
     String? got;
     await tester.pumpWidget(_host(onDescriptionChanged: (v) => got = v));
     await tester.pump();
@@ -37,9 +38,7 @@ void main() {
   });
 
   testWidgets('shows the progress bar while generating', (tester) async {
-    await tester.pumpWidget(
-      _host(progress: 0.4, onDescriptionChanged: (_) {}),
-    );
+    await tester.pumpWidget(_host(progress: 0.4, onDescriptionChanged: (_) {}));
     await tester.pump();
 
     final bar = tester.widget<LinearProgressIndicator>(

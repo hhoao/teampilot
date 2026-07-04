@@ -15,25 +15,27 @@ void main() {
     updatedAt: 0,
   );
 
-  test('teamLaunchDefaultsConfigured accepts mixed-team preset for non-default CLI',
-      () {
-    const team = TeamProfile(
-      id: 'team',
-      name: 'Mixed',
-      teamMode: TeamMode.mixed,
-      cli: CliTool.claude,
-      activePresetId: 'preset-codex',
-    );
+  test(
+    'teamLaunchDefaultsConfigured accepts mixed-team preset for non-default CLI',
+    () {
+      const team = TeamProfile(
+        id: 'team',
+        name: 'Mixed',
+        teamMode: TeamMode.mixed,
+        cli: CliTool.claude,
+        activePresetId: 'preset-codex',
+      );
 
-    expect(
-      teamLaunchDefaultsConfigured(
-        team: team,
-        presets: const [codexPreset],
-        catalogCli: CliTool.claude,
-      ),
-      isTrue,
-    );
-  });
+      expect(
+        teamLaunchDefaultsConfigured(
+          team: team,
+          presets: const [codexPreset],
+          catalogCli: CliTool.claude,
+        ),
+        isTrue,
+      );
+    },
+  );
 
   test('teamLaunchDefaultsConfigured still requires preset to exist', () {
     const team = TeamProfile(

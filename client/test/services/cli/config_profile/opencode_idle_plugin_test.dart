@@ -15,10 +15,7 @@ import 'package:teampilot/services/team_bus/mcp/teammate_bus_mcp_config.dart';
 
 void main() {
   test('parseBusPortFromIdleUrl extracts port from idle endpoint', () {
-    expect(
-      parseBusPortFromIdleUrl('http://127.0.0.1:12345/idle'),
-      12345,
-    );
+    expect(parseBusPortFromIdleUrl('http://127.0.0.1:12345/idle'), 12345);
     expect(parseBusPortFromIdleUrl(null), isNull);
     expect(parseBusPortFromIdleUrl(''), isNull);
   });
@@ -64,7 +61,7 @@ void main() {
           member: member,
           members: const [member],
           paths: service,
-        catalog: service,
+          catalog: service,
           busIdle: MemberBusIdleEndpoint(
             url: 'http://127.0.0.1:54321/idle',
             sessionId: 'session-1',
@@ -82,7 +79,8 @@ void main() {
       expect(await fs.stat(pluginPath), isNotNull);
       expect(await fs.readString(pluginPath), opencodeIdlePluginSource);
 
-      final configPath = '$opencodeDir/${OpencodeConfigProfileCapability.opencodeConfigFileName}';
+      final configPath =
+          '$opencodeDir/${OpencodeConfigProfileCapability.opencodeConfigFileName}';
       final raw = await fs.readString(configPath);
       expect(raw, isNotNull);
       final config = jsonDecode(raw!) as Map<String, dynamic>;
@@ -110,7 +108,10 @@ void main() {
     final merged = mergeOpencodeTeammateBusMcp(
       <String, Object?>{
         'mcp': <String, Object?>{
-          'other': <String, Object?>{'type': 'local', 'command': <String>['x']},
+          'other': <String, Object?>{
+            'type': 'local',
+            'command': <String>['x'],
+          },
         },
       },
       'm1',
@@ -168,18 +169,18 @@ void main() {
         layout: RuntimeLayout(teampilotRoot: base.path, fs: fs),
       );
 
-      await AppProviderRepository(basePath: base.path, fs: fs).saveProviders(
-        CliTool.opencode,
-        const [
-          AppProviderConfig(
-            id: 'team-openai',
-            cli: CliTool.opencode,
-            name: 'Team OpenAI',
-            apiKey: 'sk-team',
-            baseUrl: 'https://llm.example.com/v1',
-          ),
-        ],
-      );
+      await AppProviderRepository(
+        basePath: base.path,
+        fs: fs,
+      ).saveProviders(CliTool.opencode, const [
+        AppProviderConfig(
+          id: 'team-openai',
+          cli: CliTool.opencode,
+          name: 'Team OpenAI',
+          apiKey: 'sk-team',
+          baseUrl: 'https://llm.example.com/v1',
+        ),
+      ]);
 
       const member = TeamMemberConfig(
         id: 'm1',
@@ -215,11 +216,11 @@ void main() {
               member: member,
               members: const [member],
               paths: service,
-        catalog: service,
+              catalog: service,
               busIdle: MemberBusIdleEndpoint(
-            url: 'http://127.0.0.1:54321/idle',
-            sessionId: 'session-1',
-          ),
+                url: 'http://127.0.0.1:54321/idle',
+                sessionId: 'session-1',
+              ),
             ),
           );
 
@@ -232,7 +233,10 @@ void main() {
 
       expect(contribution.environment['OPENCODE_CONFIG_DIR'], opencodeDir);
       expect(contribution.environment.containsKey('OPENCODE'), isFalse);
-      expect(contribution.warnings, isNot(contains('opencode_provider_missing')));
+      expect(
+        contribution.warnings,
+        isNot(contains('opencode_provider_missing')),
+      );
 
       final agents = await fs.readString(
         '$opencodeDir/${OpencodeConfigProfileCapability.agentsFileName}',

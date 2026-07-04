@@ -70,7 +70,7 @@ final class OpencodeMcpConfigWriter implements McpConfigWriterCapability {
     final existing = (jsonDecode(text) as Map).cast<String, Object?>();
     final mcp =
         ((existing['mcp'] as Map?)?.cast<String, Object?>() ??
-            <String, Object?>{});
+        <String, Object?>{});
     var changed = false;
 
     for (final entry in oauthEntries.values) {

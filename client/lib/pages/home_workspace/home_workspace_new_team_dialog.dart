@@ -1,4 +1,4 @@
-﻿import 'dart:async';
+import 'dart:async';
 
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
@@ -52,7 +52,9 @@ Future<void> showHomeNewTeamDialog(
 ) async {
   final l10n = context.l10n;
   final result = await showDialog<_NewTeamDialogResult>(
-      context: context, builder: (_) => const HomeNewTeamDialog());
+    context: context,
+    builder: (_) => const HomeNewTeamDialog(),
+  );
   if (result == null || !context.mounted) return;
   if (result.isSolo) {
     await teamCubit.addPersonal(result.name);
@@ -77,12 +79,10 @@ class HomeNewTeamDialog extends StatefulWidget {
   const HomeNewTeamDialog({super.key});
 
   @override
-  State<HomeNewTeamDialog> createState() =>
-      _HomeNewTeamDialogState();
+  State<HomeNewTeamDialog> createState() => _HomeNewTeamDialogState();
 }
 
-class _HomeNewTeamDialogState
-    extends State<HomeNewTeamDialog> {
+class _HomeNewTeamDialogState extends State<HomeNewTeamDialog> {
   late final TextEditingController _nameController;
   _TeamCreationMethod _creationMethod = _TeamCreationMethod.custom;
   TeamMode? _mode;
@@ -187,7 +187,9 @@ class _HomeNewTeamDialogState
     if (_mode != TeamMode.native) return const <String, String>{};
     final catalogCli = _providerCatalogCli(_cli);
     final providerId = _providerId.trim();
-    if (catalogCli == null || providerId.isEmpty) return const <String, String>{};
+    if (catalogCli == null || providerId.isEmpty) {
+      return const <String, String>{};
+    }
     return {catalogCli.value: providerId};
   }
 
@@ -198,16 +200,15 @@ class _HomeNewTeamDialogState
     List<TeamMemberConfig>? members,
     String description = '',
     Map<String, String>? providerIdsByTool,
-  }) =>
-      (
-        isSolo: isSolo,
-        name: name,
-        mode: mode,
-        cli: _cli,
-        providerIdsByTool: providerIdsByTool ?? const <String, String>{},
-        members: members,
-        description: description,
-      );
+  }) => (
+    isSolo: isSolo,
+    name: name,
+    mode: mode,
+    cli: _cli,
+    providerIdsByTool: providerIdsByTool ?? const <String, String>{},
+    members: members,
+    description: description,
+  );
 
   void _submit() {
     final name = _teamNameForSubmit().trim();

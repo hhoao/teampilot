@@ -1,4 +1,4 @@
-﻿import 'package:flutter/material.dart';
+import 'package:flutter/material.dart';
 import 'package:teampilot/theme/app_icon_sizes.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:url_launcher/url_launcher.dart';
@@ -92,9 +92,13 @@ class _McpDiscoveryHeader extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final l10n = context.l10n;
-    return BlocSelector<McpDiscoveryCubit, McpDiscoveryState,
-        ({McpDiscoverySource source, bool loading})>(
-      selector: (discovery) => (source: discovery.source, loading: discovery.loading),
+    return BlocSelector<
+      McpDiscoveryCubit,
+      McpDiscoveryState,
+      ({McpDiscoverySource source, bool loading})
+    >(
+      selector: (discovery) =>
+          (source: discovery.source, loading: discovery.loading),
       builder: (context, header) {
         final canRefresh = header.source != McpDiscoverySource.builtin;
         return McpCardHeader(
@@ -146,7 +150,11 @@ class _McpDiscoverySearchField extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return BlocSelector<McpDiscoveryCubit, McpDiscoveryState, McpDiscoverySource>(
+    return BlocSelector<
+      McpDiscoveryCubit,
+      McpDiscoveryState,
+      McpDiscoverySource
+    >(
       selector: (discovery) => discovery.source,
       builder: (context, source) {
         if (!mcpDiscoveryShowsSearch(source)) {
@@ -196,8 +204,11 @@ class _McpDiscoveryCatalogBody extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return BlocSelector<McpDiscoveryCubit, McpDiscoveryState,
-        _McpDiscoveryCatalogSlice>(
+    return BlocSelector<
+      McpDiscoveryCubit,
+      McpDiscoveryState,
+      _McpDiscoveryCatalogSlice
+    >(
       selector: (discovery) => (
         source: discovery.source,
         query: discovery.query,
@@ -217,7 +228,11 @@ class _McpDiscoveryCatalogBody extends StatelessWidget {
         final l10n = context.l10n;
         final items = _resolveCatalogItems(catalog, l10n);
 
-        return BlocSelector<McpCubit, McpState, ({Set<String> installedIds, Set<String> busyIds})>(
+        return BlocSelector<
+          McpCubit,
+          McpState,
+          ({Set<String> installedIds, Set<String> busyIds})
+        >(
           selector: (mcp) => (
             installedIds: mcp.servers.map((s) => s.id).toSet(),
             busyIds: mcp.busyIds,
@@ -237,7 +252,8 @@ class _McpDiscoveryCatalogBody extends StatelessWidget {
                     ),
                   ),
                 Expanded(
-                  child: catalog.loading &&
+                  child:
+                      catalog.loading &&
                           items.isEmpty &&
                           catalog.source != McpDiscoverySource.builtin &&
                           catalog.source != McpDiscoverySource.all
@@ -250,8 +266,7 @@ class _McpDiscoveryCatalogBody extends StatelessWidget {
                         )
                       : ListView.builder(
                           padding: EdgeInsets.zero,
-                          itemCount: items.length +
-                              (catalog.hasMore ? 1 : 0),
+                          itemCount: items.length + (catalog.hasMore ? 1 : 0),
                           itemBuilder: (context, index) {
                             if (index >= items.length) {
                               return Padding(
@@ -273,8 +288,9 @@ class _McpDiscoveryCatalogBody extends StatelessWidget {
                             final listing = items[index];
                             return McpCatalogListingTile(
                               listing: listing,
-                              installed: installState.installedIds
-                                  .contains(listing.id),
+                              installed: installState.installedIds.contains(
+                                listing.id,
+                              ),
                               busy: installState.busyIds.contains(listing.id),
                               onAdd: () => onAddListing(listing),
                               onOpenHomepage: listing.homepage == null
@@ -311,7 +327,8 @@ List<McpCatalogListing> _resolveCatalogItems(
       official: catalog.officialItems,
       query: catalog.query,
     ),
-    McpDiscoverySource.smithery || McpDiscoverySource.official => catalog.remoteItems,
+    McpDiscoverySource.smithery ||
+    McpDiscoverySource.official => catalog.remoteItems,
   };
 }
 

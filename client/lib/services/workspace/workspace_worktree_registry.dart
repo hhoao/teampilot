@@ -5,7 +5,7 @@ import 'workspace_worktree_store.dart';
 /// [WorkspaceWorktreeStore] for instant hydration on first mount.
 class WorkspaceWorktreeRegistry {
   WorkspaceWorktreeRegistry({WorkspaceWorktreeStore? store})
-      : _store = store ?? WorkspaceWorktreeStore();
+    : _store = store ?? WorkspaceWorktreeStore();
 
   final WorkspaceWorktreeStore _store;
   final Map<String, WorktreeCubit> _cubits = <String, WorktreeCubit>{};
@@ -18,7 +18,11 @@ class WorkspaceWorktreeRegistry {
   }) {
     final ws = workspaceId.trim();
     if (ws.isEmpty) {
-      throw ArgumentError.value(workspaceId, 'workspaceId', 'must not be empty');
+      throw ArgumentError.value(
+        workspaceId,
+        'workspaceId',
+        'must not be empty',
+      );
     }
     final existing = _cubits[ws];
     if (existing != null && !existing.isClosed) return existing;

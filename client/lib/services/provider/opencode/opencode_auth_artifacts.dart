@@ -9,10 +9,7 @@ abstract final class OpencodeAuthArtifacts {
     try {
       final decoded = jsonDecode(content);
       if (decoded is! Map) return false;
-      return entryIndicatesReady(
-        decoded.cast<String, Object?>(),
-        providerKey,
-      );
+      return entryIndicatesReady(decoded.cast<String, Object?>(), providerKey);
     } on Object {
       return false;
     }

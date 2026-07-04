@@ -35,61 +35,66 @@ void main() {
     );
   });
 
-  test('opt-in on materializes creds and rebases link target to machineRoot',
-      () async {
-    final workFs = InMemoryFilesystem();
-    await materializer(workFs).materialize(
-      cli: CliTool.claude,
-      workFs: workFs,
-      machineRoot: '/remote',
-      localRoot: '/local',
-      optIn: true,
-      localCredentials: creds,
-    );
-    final written =
-        await workFs.readString('/remote/providers/claude/providers.json');
-    expect(written, contains('/remote/providers/claude/key.pem'));
-    expect(written, isNot(contains('/local'))); // rebased off the local root
-  });
+  test(
+    'opt-in on materializes creds and rebases link target to machineRoot',
+    () async {
+      final workFs = InMemoryFilesystem();
+      await materializer(workFs).materialize(
+        cli: CliTool.claude,
+        workFs: workFs,
+        machineRoot: '/remote',
+        localRoot: '/local',
+        optIn: true,
+        localCredentials: creds,
+      );
+      final written = await workFs.readString(
+        '/remote/providers/claude/providers.json',
+      );
+      expect(written, contains('/remote/providers/claude/key.pem'));
+      expect(written, isNot(contains('/local'))); // rebased off the local root
+    },
+  );
 
-  test('rotation (changed cred bytes) re-pushes; unchanged is skipped',
-      () async {
-    final workFs = _CountingFs();
-    final m = materializer(workFs);
-    await m.materialize(
-      cli: CliTool.claude,
-      workFs: workFs,
-      machineRoot: '/remote',
-      localRoot: '/local',
-      optIn: true,
-      localCredentials: creds,
-    );
-    expect(workFs.writeStringCount, 1);
+  test(
+    'rotation (changed cred bytes) re-pushes; unchanged is skipped',
+    () async {
+      final workFs = _CountingFs();
+      final m = materializer(workFs);
+      await m.materialize(
+        cli: CliTool.claude,
+        workFs: workFs,
+        machineRoot: '/remote',
+        localRoot: '/local',
+        optIn: true,
+        localCredentials: creds,
+      );
+      expect(workFs.writeStringCount, 1);
 
-    // unchanged → skip
-    await m.materialize(
-      cli: CliTool.claude,
-      workFs: workFs,
-      machineRoot: '/remote',
-      localRoot: '/local',
-      optIn: true,
-      localCredentials: creds,
-    );
-    expect(workFs.writeStringCount, 1);
+      // unchanged → skip
+      await m.materialize(
+        cli: CliTool.claude,
+        workFs: workFs,
+        machineRoot: '/remote',
+        localRoot: '/local',
+        optIn: true,
+        localCredentials: creds,
+      );
+      expect(workFs.writeStringCount, 1);
 
-    // rotated → re-push
-    await m.materialize(
-      cli: CliTool.claude,
-      workFs: workFs,
-      machineRoot: '/remote',
-      localRoot: '/local',
-      optIn: true,
-      localCredentials: const [
-        CredentialFile(relativePath: 'providers.json', content: 'rotated'),
-      ],
-    );
-    expect(workFs.writeStringCount, 2);
-  });
+      // rotated → re-push
+      await m.materialize(
+        cli: CliTool.claude,
+        workFs: workFs,
+        machineRoot: '/remote',
+        localRoot: '/local',
+        optIn: true,
+        localCredentials: const [
+          CredentialFile(relativePath: 'providers.json', content: 'rotated'),
+        ],
+      );
+      expect(workFs.writeStringCount, 2);
+    },
+  );
 }
 
 class _CountingFs extends InMemoryFilesystem {

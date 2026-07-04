@@ -15,7 +15,8 @@ import 'performance_snapshot/report_summary.dart';
 import 'performance_snapshot/snapshot_loader.dart';
 
 Future<void> main(List<String> args) async {
-  final output = _readArg(args, '--output') ?? 'build/perf_workspace_switch.json';
+  final output =
+      _readArg(args, '--output') ?? 'build/perf_workspace_switch.json';
   final clientDir = _clientDirectory();
 
   print('Running workspace switch performance scenario…');

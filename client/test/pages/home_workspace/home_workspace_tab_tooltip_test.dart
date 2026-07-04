@@ -31,11 +31,7 @@ void main() {
   test('omits path lines when every folder path is empty', () {
     expect(
       formatWorkspaceTabTooltip(
-        workspace: _workspace(
-          id: 'p1',
-          display: 'solo',
-          primaryPath: '',
-        ),
+        workspace: _workspace(id: 'p1', display: 'solo', primaryPath: ''),
       ),
       'solo',
     );
@@ -67,9 +63,7 @@ void main() {
   test('remote tooltip prefixes topology label and ssh path', () {
     final workspace = Workspace(
       workspaceId: 'r1',
-      folders: [
-        WorkspaceFolder(path: '/var/www', targetId: 'ssh:profile-1'),
-      ],
+      folders: [WorkspaceFolder(path: '/var/www', targetId: 'ssh:profile-1')],
       display: 'shared',
       createdAt: 1,
     );

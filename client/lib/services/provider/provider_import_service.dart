@@ -69,7 +69,8 @@ class ProviderImportService {
     required bool onlyIfEmpty,
   }) async {
     final results = <ProviderImportResult>[];
-    for (final def in _cliRegistry.withCapability<ProviderCatalogCapability>()) {
+    for (final def
+        in _cliRegistry.withCapability<ProviderCatalogCapability>()) {
       results.add(await importForCli(def.id, onlyIfEmpty: onlyIfEmpty));
     }
     return results;
@@ -89,7 +90,9 @@ class ProviderImportService {
       return ProviderImportResult(cli: cli);
     }
 
-    final currentById = {for (final provider in existing) provider.id: provider};
+    final currentById = {
+      for (final provider in existing) provider.id: provider,
+    };
     var added = 0;
     var updated = 0;
     for (final provider in snapshot.providers) {
@@ -145,10 +148,7 @@ class ProviderImportService {
       added++;
     }
     if (added > 0) {
-      await _repository.saveProviders(
-        CliTool.flashskyai,
-        byId.values.toList(),
-      );
+      await _repository.saveProviders(CliTool.flashskyai, byId.values.toList());
     }
     return _MirrorResult(added: added, skipped: skipped);
   }

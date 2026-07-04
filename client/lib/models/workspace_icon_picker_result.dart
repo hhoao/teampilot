@@ -13,7 +13,8 @@ final class WorkspaceIconPickerCancelled extends WorkspaceIconPickerResult {
 }
 
 @immutable
-final class WorkspaceIconPickerUploadRequested extends WorkspaceIconPickerResult {
+final class WorkspaceIconPickerUploadRequested
+    extends WorkspaceIconPickerResult {
   const WorkspaceIconPickerUploadRequested();
 }
 

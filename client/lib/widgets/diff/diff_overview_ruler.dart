@@ -43,8 +43,10 @@ class DiffOverviewRuler extends StatelessWidget {
     if (!scroller.hasClients) return;
     final pos = scroller.position;
     final contentHeight = pos.maxScrollExtent + pos.viewportDimension;
-    final target = (fraction * contentHeight - pos.viewportDimension / 2)
-        .clamp(0.0, pos.maxScrollExtent);
+    final target = (fraction * contentHeight - pos.viewportDimension / 2).clamp(
+      0.0,
+      pos.maxScrollExtent,
+    );
     scroller.jumpTo(target);
   }
 
@@ -65,7 +67,8 @@ class DiffOverviewRuler extends StatelessWidget {
               listenable: scroll.verticalScroller,
               builder: (context, _) {
                 final scroller = scroll.verticalScroller;
-                final hasClients = scroller.hasClients &&
+                final hasClients =
+                    scroller.hasClients &&
                     scroller.position.hasContentDimensions;
                 final contentHeight = _contentHeight();
                 return CustomPaint(
@@ -76,8 +79,9 @@ class DiffOverviewRuler extends StatelessWidget {
                     topPadding: topPadding,
                     contentHeight: contentHeight,
                     scrollOffset: hasClients ? scroller.offset : 0,
-                    viewportExtent:
-                        hasClients ? scroller.position.viewportDimension : 0,
+                    viewportExtent: hasClients
+                        ? scroller.position.viewportDimension
+                        : 0,
                     trackColor: trackColor ?? cs.surfaceContainerHighest,
                     viewportColor: cs.onSurface.withValues(alpha: 0.12),
                     addColor: const Color(0xFF2EA043),
@@ -141,10 +145,7 @@ class _OverviewRulerPainter extends CustomPainter {
       final bottom = (topPadding + block.endRow * lineHeight) * scale;
       final markHeight = math.max(2.0, bottom - top);
       paint.color = _colorFor(block.kind).withValues(alpha: 0.85);
-      canvas.drawRect(
-        Rect.fromLTWH(2, top, size.width - 4, markHeight),
-        paint,
-      );
+      canvas.drawRect(Rect.fromLTWH(2, top, size.width - 4, markHeight), paint);
     }
 
     // Viewport indicator.
@@ -157,10 +158,10 @@ class _OverviewRulerPainter extends CustomPainter {
   }
 
   Color _colorFor(DiffRowKind kind) => switch (kind) {
-        DiffRowKind.insert => addColor,
-        DiffRowKind.delete => removeColor,
-        _ => modifyColor,
-      };
+    DiffRowKind.insert => addColor,
+    DiffRowKind.delete => removeColor,
+    _ => modifyColor,
+  };
 
   @override
   bool shouldRepaint(_OverviewRulerPainter old) =>

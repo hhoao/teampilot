@@ -181,168 +181,178 @@ void main() {
     // ── workspace switch: overlapping panel attach/detach must not drop UI ──
 
     test(
-        'survives workspace switch: new panel attaches before old panel detaches',
-        () {
-      fakeAsync((async) {
-        final service = _DelayedPresenceService({
-          'm-lead': const MemberPresence(
-            connection: MemberConnection.connected,
-            availability: MemberAvailability.working,
-          ),
+      'survives workspace switch: new panel attaches before old panel detaches',
+      () {
+        fakeAsync((async) {
+          final service = _DelayedPresenceService({
+            'm-lead': const MemberPresence(
+              connection: MemberConnection.connected,
+              availability: MemberAvailability.working,
+            ),
+          });
+          final cubit = MemberPresenceCubit(memberPresenceService: service);
+          addTearDown(() async {
+            await cubit.close();
+          });
+
+          const team = TeamProfile(
+            id: 'team-a',
+            name: 'A',
+            members: [TeamMemberConfig(id: 'm-lead', name: 'team-lead')],
+          );
+
+          final shell = _FakeTerminalSession(executable: 'test');
+          PresenceTarget target() => PresenceTarget(
+            cliTeamName: 'team-a-1',
+            memberToolConfigDir: '/tmp/cfg',
+            memberShells: {'m-lead': shell},
+          );
+
+          void pumpFrame() {
+            SchedulerBinding.instance.handleBeginFrame(Duration.zero);
+            SchedulerBinding.instance.handleDrawFrame();
+          }
+
+          // Two RightToolsPanel instances (one per workspace page) share the single
+          // global cubit. Each panel owns its attach/detach.
+          final panelA = Object();
+          final panelB = Object();
+
+          // Workspace A page mounted → polling starts, presence populated.
+          cubit.attachPresenceUi(panelA);
+          cubit.syncPresenceTeam(team);
+          cubit.updateTarget(target());
+          pumpFrame();
+          async.elapse(const Duration(milliseconds: 100));
+          async.flushMicrotasks();
+          pumpFrame();
+          expect(
+            cubit.state.presence['m-lead']?.connection,
+            MemberConnection.connected,
+          );
+          final callsAfterA = service.computeCalls;
+
+          // Switch to workspace B. Flutter inflates workspace B's panel (attach)
+          // during the build, then finalizeTree disposes workspace A's panel
+          // (detach) AFTER. The cubit must stay attached throughout.
+          cubit.attachPresenceUi(panelB);
+          cubit.updateTarget(target());
+          cubit.detachPresenceUi(panelA);
+
+          // Presence must NOT be cleared by the late detach.
+          expect(
+            cubit.state.presence,
+            isNotEmpty,
+            reason: 'workspace switch must not drop member presence to offline',
+          );
+
+          // Polling must keep running for the still-mounted workspace B panel.
+          pumpFrame();
+          cubit.tickFromIdleWatch();
+          async.elapse(const Duration(milliseconds: 100));
+          async.flushMicrotasks();
+          pumpFrame();
+          expect(
+            service.computeCalls,
+            greaterThan(callsAfterA),
+            reason: 'polling must keep running after a workspace switch',
+          );
+          expect(
+            cubit.state.presence['m-lead']?.connection,
+            MemberConnection.connected,
+          );
         });
-        final cubit = MemberPresenceCubit(memberPresenceService: service);
-        addTearDown(() async {
-          await cubit.close();
-        });
-
-        const team = TeamProfile(
-          id: 'team-a',
-          name: 'A',
-          members: [TeamMemberConfig(id: 'm-lead', name: 'team-lead')],
-        );
-
-        final shell = _FakeTerminalSession(executable: 'test');
-        PresenceTarget target() => PresenceTarget(
-              cliTeamName: 'team-a-1',
-              memberToolConfigDir: '/tmp/cfg',
-              memberShells: {'m-lead': shell},
-            );
-
-        void pumpFrame() {
-          SchedulerBinding.instance.handleBeginFrame(Duration.zero);
-          SchedulerBinding.instance.handleDrawFrame();
-        }
-
-        // Two RightToolsPanel instances (one per workspace page) share the single
-        // global cubit. Each panel owns its attach/detach.
-        final panelA = Object();
-        final panelB = Object();
-
-        // Workspace A page mounted → polling starts, presence populated.
-        cubit.attachPresenceUi(panelA);
-        cubit.syncPresenceTeam(team);
-        cubit.updateTarget(target());
-        pumpFrame();
-        async.elapse(const Duration(milliseconds: 100));
-        async.flushMicrotasks();
-        pumpFrame();
-        expect(
-          cubit.state.presence['m-lead']?.connection,
-          MemberConnection.connected,
-        );
-        final callsAfterA = service.computeCalls;
-
-        // Switch to workspace B. Flutter inflates workspace B's panel (attach)
-        // during the build, then finalizeTree disposes workspace A's panel
-        // (detach) AFTER. The cubit must stay attached throughout.
-        cubit.attachPresenceUi(panelB);
-        cubit.updateTarget(target());
-        cubit.detachPresenceUi(panelA);
-
-        // Presence must NOT be cleared by the late detach.
-        expect(
-          cubit.state.presence,
-          isNotEmpty,
-          reason: 'workspace switch must not drop member presence to offline',
-        );
-
-        // Polling must keep running for the still-mounted workspace B panel.
-        pumpFrame();
-        cubit.tickFromIdleWatch();
-        async.elapse(const Duration(milliseconds: 100));
-        async.flushMicrotasks();
-        pumpFrame();
-        expect(
-          service.computeCalls,
-          greaterThan(callsAfterA),
-          reason: 'polling must keep running after a workspace switch',
-        );
-        expect(
-          cubit.state.presence['m-lead']?.connection,
-          MemberConnection.connected,
-        );
-      });
-    });
+      },
+    );
 
     // ── hysteresis: keep last-known presence on transient ineligibility ──
 
-    test('keeps presence when updateTarget(null), resumes when target restored',
-        () {
-      fakeAsync((async) {
-        final service = _DelayedPresenceService({
-          'm-lead': const MemberPresence(
-            connection: MemberConnection.connected,
-            availability: MemberAvailability.working,
-          ),
+    test(
+      'keeps presence when updateTarget(null), resumes when target restored',
+      () {
+        fakeAsync((async) {
+          final service = _DelayedPresenceService({
+            'm-lead': const MemberPresence(
+              connection: MemberConnection.connected,
+              availability: MemberAvailability.working,
+            ),
+          });
+          final cubit = MemberPresenceCubit(memberPresenceService: service);
+          addTearDown(() async {
+            await cubit.close();
+          });
+
+          const team = TeamProfile(
+            id: 'team-a',
+            name: 'A',
+            members: [TeamMemberConfig(id: 'm-lead', name: 'team-lead')],
+          );
+
+          cubit.attachPresenceUi();
+          cubit.syncPresenceTeam(team);
+
+          final shell = _FakeTerminalSession(executable: 'test');
+          cubit.updateTarget(
+            PresenceTarget(
+              cliTeamName: 'team-a-1',
+              memberToolConfigDir: '/tmp/cfg',
+              memberShells: {'m-lead': shell},
+            ),
+          );
+
+          // Manually run a frame to process post-frame callbacks from
+          // _schedulePresencePollingRestart. SchedulerBinding won't auto-fire
+          // frames in fakeAsync.
+          void pumpFrame() {
+            SchedulerBinding.instance.handleBeginFrame(Duration.zero);
+            SchedulerBinding.instance.handleDrawFrame();
+          }
+
+          pumpFrame();
+          // Advance past the 80ms service delay so compute completes.
+          async.elapse(const Duration(milliseconds: 100));
+          async.flushMicrotasks();
+          // Process post-frame callback that _emitMemberPresence scheduled.
+          pumpFrame();
+
+          expect(service.computeCalls, greaterThan(0));
+          expect(
+            cubit.state.presence['m-lead']?.connection,
+            MemberConnection.connected,
+          );
+          final callsAfterFirstPoll = service.computeCalls;
+
+          // Transient ineligibility: null target should NOT clear presence.
+          cubit.updateTarget(null);
+          pumpFrame();
+          cubit.tickFromIdleWatch();
+          async.elapse(const Duration(milliseconds: 50));
+          async.flushMicrotasks();
+
+          expect(service.computeCalls, callsAfterFirstPoll); // no new polls
+          expect(
+            cubit.state.presence,
+            isNotEmpty,
+          ); // presence KEPT (not cleared)
+
+          // Restore target → polling resumes.
+          cubit.updateTarget(
+            PresenceTarget(
+              cliTeamName: 'team-a-1',
+              memberToolConfigDir: '/tmp/cfg',
+              memberShells: {'m-lead': shell},
+            ),
+          );
+          pumpFrame();
+          async.elapse(const Duration(milliseconds: 100));
+          async.flushMicrotasks();
+          pumpFrame();
+
+          expect(service.computeCalls, greaterThan(callsAfterFirstPoll));
+          expect(cubit.state.presence, isNotEmpty);
         });
-        final cubit = MemberPresenceCubit(memberPresenceService: service);
-        addTearDown(() async {
-          await cubit.close();
-        });
-
-        const team = TeamProfile(
-          id: 'team-a',
-          name: 'A',
-          members: [TeamMemberConfig(id: 'm-lead', name: 'team-lead')],
-        );
-
-        cubit.attachPresenceUi();
-        cubit.syncPresenceTeam(team);
-
-        final shell = _FakeTerminalSession(executable: 'test');
-        cubit.updateTarget(PresenceTarget(
-          cliTeamName: 'team-a-1',
-          memberToolConfigDir: '/tmp/cfg',
-          memberShells: {'m-lead': shell},
-        ));
-
-        // Manually run a frame to process post-frame callbacks from
-        // _schedulePresencePollingRestart. SchedulerBinding won't auto-fire
-        // frames in fakeAsync.
-        void pumpFrame() {
-          SchedulerBinding.instance.handleBeginFrame(Duration.zero);
-          SchedulerBinding.instance.handleDrawFrame();
-        }
-
-        pumpFrame();
-        // Advance past the 80ms service delay so compute completes.
-        async.elapse(const Duration(milliseconds: 100));
-        async.flushMicrotasks();
-        // Process post-frame callback that _emitMemberPresence scheduled.
-        pumpFrame();
-
-        expect(service.computeCalls, greaterThan(0));
-        expect(
-          cubit.state.presence['m-lead']?.connection,
-          MemberConnection.connected,
-        );
-        final callsAfterFirstPoll = service.computeCalls;
-
-        // Transient ineligibility: null target should NOT clear presence.
-        cubit.updateTarget(null);
-        pumpFrame();
-        cubit.tickFromIdleWatch();
-        async.elapse(const Duration(milliseconds: 50));
-        async.flushMicrotasks();
-
-        expect(service.computeCalls, callsAfterFirstPoll); // no new polls
-        expect(cubit.state.presence, isNotEmpty); // presence KEPT (not cleared)
-
-        // Restore target → polling resumes.
-        cubit.updateTarget(PresenceTarget(
-          cliTeamName: 'team-a-1',
-          memberToolConfigDir: '/tmp/cfg',
-          memberShells: {'m-lead': shell},
-        ));
-        pumpFrame();
-        async.elapse(const Duration(milliseconds: 100));
-        async.flushMicrotasks();
-        pumpFrame();
-
-        expect(service.computeCalls, greaterThan(callsAfterFirstPoll));
-        expect(cubit.state.presence, isNotEmpty);
-      });
-    });
+      },
+    );
 
     test('stopPresencePolling clears presence', () {
       fakeAsync((async) {
@@ -367,11 +377,13 @@ void main() {
         cubit.syncPresenceTeam(team);
 
         final shell = _FakeTerminalSession(executable: 'test');
-        cubit.updateTarget(PresenceTarget(
-          cliTeamName: 'team-a-1',
-          memberToolConfigDir: '/tmp/cfg',
-          memberShells: {'m-lead': shell},
-        ));
+        cubit.updateTarget(
+          PresenceTarget(
+            cliTeamName: 'team-a-1',
+            memberToolConfigDir: '/tmp/cfg',
+            memberShells: {'m-lead': shell},
+          ),
+        );
 
         // stopPresencePolling synchronously clears state.
         cubit.stopPresencePolling();
@@ -402,11 +414,13 @@ void main() {
         cubit.syncPresenceTeam(team);
 
         final shell = _FakeTerminalSession(executable: 'test');
-        cubit.updateTarget(PresenceTarget(
-          cliTeamName: 'team-a-1',
-          memberToolConfigDir: '/tmp/cfg',
-          memberShells: {'m-lead': shell},
-        ));
+        cubit.updateTarget(
+          PresenceTarget(
+            cliTeamName: 'team-a-1',
+            memberToolConfigDir: '/tmp/cfg',
+            memberShells: {'m-lead': shell},
+          ),
+        );
 
         // detachPresenceUi synchronously clears state.
         cubit.detachPresenceUi();
@@ -446,13 +460,18 @@ void main() {
         async.flushMicrotasks();
 
         unawaited(
-          repo.createWorkspace([WorkspaceFolder(path: '/tmp')]).then((workspace) async {
-            final localSession = await repo.createSession(workspace.workspaceId);
+          repo.createWorkspace([WorkspaceFolder(path: '/tmp')]).then((
+            workspace,
+          ) async {
+            final localSession = await repo.createSession(
+              workspace.workspaceId,
+            );
             await chatCubit.requestOpenSession(
-        SessionOpenRequest(
-          session: localSession, connectImmediately: false,
-        ),
-      );
+              SessionOpenRequest(
+                session: localSession,
+                connectImmediately: false,
+              ),
+            );
             async.flushMicrotasks();
             unawaited(harness.flush());
             async.flushMicrotasks();
@@ -509,11 +528,13 @@ void main() {
 
         cubit.attachPresenceUi();
         cubit.syncPresenceTeam(team);
-        cubit.updateTarget(PresenceTarget(
-          cliTeamName: 'team-a-1',
-          memberToolConfigDir: '/tmp/cfg',
-          memberShells: {'m-lead': shell},
-        ));
+        cubit.updateTarget(
+          PresenceTarget(
+            cliTeamName: 'team-a-1',
+            memberToolConfigDir: '/tmp/cfg',
+            memberShells: {'m-lead': shell},
+          ),
+        );
 
         pumpFrame();
         async.elapse(const Duration(milliseconds: 50));
@@ -533,7 +554,10 @@ void main() {
 
         expect(service.computeCalls, greaterThan(1));
         expect(identical(service.lastMembers, firstMembers), isTrue);
-        expect(identical(cubit.state.presence['m-lead'], firstPresence), isTrue);
+        expect(
+          identical(cubit.state.presence['m-lead'], firstPresence),
+          isTrue,
+        );
       });
     });
   });

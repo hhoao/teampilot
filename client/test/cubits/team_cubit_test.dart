@@ -324,14 +324,22 @@ void main() {
 
       expect(await cubit.renameSelectedTeamName('New'), isTrue);
       expect(cubit.state.selectedTeam?.name, 'New');
-      final identityFile = p.join(dir.path, 'launch-profiles', 'old', 'profile.json');
+      final identityFile = p.join(
+        dir.path,
+        'launch-profiles',
+        'old',
+        'profile.json',
+      );
       expect(File(identityFile).existsSync(), isTrue);
       expect(File(identityFile).readAsStringSync(), contains('"name": "New"'));
       expect(lifecycle.destroyedTeams, isEmpty);
 
       await cubit.deleteSelected();
       expect(lifecycle.destroyedTeams, ['old']);
-      expect(Directory(p.join(dir.path, 'launch-profiles', 'old')).existsSync(), isFalse);
+      expect(
+        Directory(p.join(dir.path, 'launch-profiles', 'old')).existsSync(),
+        isFalse,
+      );
 
       await _drainAndCloseTeamCubit(cubit);
       await dir.delete(recursive: true);
@@ -339,7 +347,9 @@ void main() {
   );
 
   test('load creates Default Team without seeding a workspace', () async {
-    final base = await Directory.systemTemp.createTemp('team_default_workspace_');
+    final base = await Directory.systemTemp.createTemp(
+      'team_default_workspace_',
+    );
     final sessionRepo = SessionRepository();
     final cubit = LaunchProfileCubit(
       repository: _repo(base),
@@ -351,7 +361,10 @@ void main() {
     await cubit.load();
 
     expect(cubit.state.personals, hasLength(1));
-    expect(cubit.state.personals.single.id, LaunchProfileProvisioner.defaultPersonalId);
+    expect(
+      cubit.state.personals.single.id,
+      LaunchProfileProvisioner.defaultPersonalId,
+    );
     final team = cubit.state.teams.single;
     expect(team.name, 'Default Team');
     expect(await sessionRepo.loadWorkspaces(), isEmpty);
@@ -426,46 +439,53 @@ void main() {
     await base.delete(recursive: true);
   });
 
-  test('setMemberActivePreset syncs member cli from preset in mixed mode', () async {
-    final base = await Directory.systemTemp.createTemp('team_member_preset_');
-    final cubit = LaunchProfileCubit(
-      repository: _repo(base),
-      sessionRepository: SessionRepository(),
-      executableResolver: () => 'flashskyai',
-      pluginLinker: _RecordingPluginLinker(),
-      appDataBasePath: base.path,
-      configProfileService: ConfigProfileService(basePath: base.path),
-    );
+  test(
+    'setMemberActivePreset syncs member cli from preset in mixed mode',
+    () async {
+      final base = await Directory.systemTemp.createTemp('team_member_preset_');
+      final cubit = LaunchProfileCubit(
+        repository: _repo(base),
+        sessionRepository: SessionRepository(),
+        executableResolver: () => 'flashskyai',
+        pluginLinker: _RecordingPluginLinker(),
+        appDataBasePath: base.path,
+        configProfileService: ConfigProfileService(basePath: base.path),
+      );
 
-    expect(
-      await cubit.addTeam('mixed', cli: CliTool.claude, teamMode: TeamMode.mixed),
-      isTrue,
-    );
-    final memberId = cubit.state.selectedTeam!.members.first.id;
+      expect(
+        await cubit.addTeam(
+          'mixed',
+          cli: CliTool.claude,
+          teamMode: TeamMode.mixed,
+        ),
+        isTrue,
+      );
+      final memberId = cubit.state.selectedTeam!.members.first.id;
 
-    await cubit.setMemberActivePreset(
-      memberId,
-      'preset-codex',
-      syncCli: CliTool.codex,
-    );
+      await cubit.setMemberActivePreset(
+        memberId,
+        'preset-codex',
+        syncCli: CliTool.codex,
+      );
 
-    final member = cubit.state.selectedTeam!.members.firstWhere(
-      (m) => m.id == memberId,
-    );
-    expect(member.activePresetId, 'preset-codex');
-    expect(member.cli, CliTool.codex);
+      final member = cubit.state.selectedTeam!.members.firstWhere(
+        (m) => m.id == memberId,
+      );
+      expect(member.activePresetId, 'preset-codex');
+      expect(member.cli, CliTool.codex);
 
-    await cubit.setMemberActivePreset(memberId, TeamProfile.inheritPresetId);
+      await cubit.setMemberActivePreset(memberId, TeamProfile.inheritPresetId);
 
-    final inherited = cubit.state.selectedTeam!.members.firstWhere(
-      (m) => m.id == memberId,
-    );
-    expect(inherited.activePresetId, TeamProfile.inheritPresetId);
-    expect(inherited.cli, isNull);
+      final inherited = cubit.state.selectedTeam!.members.firstWhere(
+        (m) => m.id == memberId,
+      );
+      expect(inherited.activePresetId, TeamProfile.inheritPresetId);
+      expect(inherited.cli, isNull);
 
-    await _drainAndCloseTeamCubit(cubit);
-    await deleteTempDirBestEffort(base);
-  });
+      await _drainAndCloseTeamCubit(cubit);
+      await deleteTempDirBestEffort(base);
+    },
+  );
 
   test('previewFor resolves executable from team cli when available', () async {
     final base = await Directory.systemTemp.createTemp('team_cli_preview_');

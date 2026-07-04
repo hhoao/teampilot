@@ -22,12 +22,9 @@ final class SendMessageTool extends TeammateBusTool {
 
   @override
   Map<String, Object?> get inputSchema => McpSchema.object(
-        properties: {
-          to: McpSchema.string,
-          content: McpSchema.string,
-        },
-        required: [to, content],
-      );
+    properties: {to: McpSchema.string, content: McpSchema.string},
+    required: [to, content],
+  );
 
   @override
   Future<JsonRpcResponse> call(TeammateBusToolCall call) async {

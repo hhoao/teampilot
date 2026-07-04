@@ -88,7 +88,9 @@ void main() {
         presetsPath: '/cli-presets.json',
       ),
     );
-    cliPresetsCubit.emit(const CliPresetsState(status: CliPresetsLoadStatus.ready));
+    cliPresetsCubit.emit(
+      const CliPresetsState(status: CliPresetsLoadStatus.ready),
+    );
     addTearDown(() => cliPresetsCubit.close());
 
     chatCubit.ingestWorkspaceSessionSnapshot(

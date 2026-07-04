@@ -59,8 +59,9 @@ void main() {
       final pane = buildUnifiedPane(rows, _colors);
       // Line 0 is context 'a' with no band.
       expect(pane.text.split('\n').first, 'a');
-      final line0Decorations =
-          pane.decorations.where((d) => d.selection.baseIndex == 0);
+      final line0Decorations = pane.decorations.where(
+        (d) => d.selection.baseIndex == 0,
+      );
       expect(line0Decorations, isEmpty);
     });
 
@@ -83,24 +84,36 @@ void main() {
       final rows = computeLineDiff('a', 'a\nb').rows;
       final deco = buildDiffPaneDecorations(rows, _colors);
 
-      expect(deco.right.any((d) => d.fillLine && d.color == _colors.addBand),
-          isTrue);
-      expect(deco.left.any((d) => d.fillLine && d.color == _colors.fillerBand),
-          isTrue);
+      expect(
+        deco.right.any((d) => d.fillLine && d.color == _colors.addBand),
+        isTrue,
+      );
+      expect(
+        deco.left.any((d) => d.fillLine && d.color == _colors.fillerBand),
+        isTrue,
+      );
     });
 
     test('modify row has bands plus inline ranges on the changed side', () {
-      final rows = computeLineDiff('LABEL, REMARK', 'LABEL, REMARK, LEVEL').rows;
+      final rows = computeLineDiff(
+        'LABEL, REMARK',
+        'LABEL, REMARK, LEVEL',
+      ).rows;
       final deco = buildDiffPaneDecorations(rows, _colors);
 
       // Right gets the add band + at least one non-fillLine inline range.
-      expect(deco.right.any((d) => d.fillLine && d.color == _colors.addBand),
-          isTrue);
+      expect(
+        deco.right.any((d) => d.fillLine && d.color == _colors.addBand),
+        isTrue,
+      );
       final inline = deco.right.where((d) => !d.fillLine).toList();
       expect(inline, isNotEmpty);
       expect(inline.first.color, _colors.addInline);
       // Inline range is intra-line (single line index).
-      expect(inline.first.selection.baseIndex, inline.first.selection.extentIndex);
+      expect(
+        inline.first.selection.baseIndex,
+        inline.first.selection.extentIndex,
+      );
     });
   });
 }

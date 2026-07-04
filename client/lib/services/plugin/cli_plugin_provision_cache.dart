@@ -49,7 +49,7 @@ class CliPluginProvisionCache {
         );
         return '$skills:$agents';
       default:
-         return '';
+        return '';
     }
   }
 
@@ -121,7 +121,10 @@ class CliPluginProvisionCache {
     required String memberPluginsDir,
     required PluginManifestPaths paths,
   }) async {
-    final stampPath = fs.pathContext.join(memberPluginsDir, memberStampFileName);
+    final stampPath = fs.pathContext.join(
+      memberPluginsDir,
+      memberStampFileName,
+    );
     final saved = await _readStamp(fs, stampPath);
     if (saved == null) {
       return null;
@@ -155,10 +158,7 @@ class CliPluginProvisionCache {
       return null;
     }
 
-    return memberProvisionStampJson(
-      fs: fs,
-      memberPluginsDir: memberPluginsDir,
-    );
+    return memberProvisionStampJson(fs: fs, memberPluginsDir: memberPluginsDir);
   }
 
   static bool _stampMissingTeamEntryNames(Map<String, Object?> saved) {
@@ -261,11 +261,7 @@ class CliPluginProvisionCache {
         paths: paths,
       );
       if (root == null) continue;
-      final name = await CliPluginLayout.bundleDirName(
-        fs,
-        root,
-        paths: paths,
-      );
+      final name = await CliPluginLayout.bundleDirName(fs, root, paths: paths);
       if (name == dirName) return child;
     }
     return null;
@@ -328,7 +324,9 @@ class CliPluginProvisionCache {
     required List<Map<String, Object?>> bundles,
   }) {
     final sorted = List<Map<String, Object?>>.from(bundles)
-      ..sort((a, b) => (a['dirName'] as String).compareTo(b['dirName'] as String));
+      ..sort(
+        (a, b) => (a['dirName'] as String).compareTo(b['dirName'] as String),
+      );
     return {
       'version': stampVersion,
       'flavor': paths.manifestDirName,
@@ -365,8 +363,9 @@ class CliPluginProvisionCache {
     );
     _invalidateTeamStampCache();
     _invalidateMemberStampJsonCache(memberPluginsDir);
-    _memberStampJsonCache[memberPluginsDir] =
-        const JsonEncoder.withIndent('  ').convert(stamp);
+    _memberStampJsonCache[memberPluginsDir] = const JsonEncoder.withIndent(
+      '  ',
+    ).convert(stamp);
   }
 
   static Future<Map<String, Object?>> buildMemberProvisionStamp({
@@ -408,7 +407,9 @@ class CliPluginProvisionCache {
         });
       }
     }
-    bundles.sort((a, b) => (a['dirName'] as String).compareTo(b['dirName'] as String));
+    bundles.sort(
+      (a, b) => (a['dirName'] as String).compareTo(b['dirName'] as String),
+    );
     return {
       'version': stampVersion,
       'flavor': paths.manifestDirName,
@@ -510,17 +511,20 @@ class CliPluginProvisionCache {
     String registryArtifacts = '',
   }) {
     final ids = [...enabledPluginIds]..sort();
-    final catalogLines = catalog
-        .map((p) => '${p.id}:${p.version}')
-        .toList()
+    final catalogLines = catalog.map((p) => '${p.id}:${p.version}').toList()
       ..sort();
     final markets = [...marketplaceSourceStamps]
-      ..sort((a, b) => (a['name'] as String? ?? '').compareTo(b['name'] as String? ?? ''));
+      ..sort(
+        (a, b) =>
+            (a['name'] as String? ?? '').compareTo(b['name'] as String? ?? ''),
+      );
     return {
       'version': stampVersion,
       'tool': tool,
       'flavor': paths.manifestDirName,
-      'memberProvision': provisionFingerprintForRegistry(memberProvisionStampJson),
+      'memberProvision': provisionFingerprintForRegistry(
+        memberProvisionStampJson,
+      ),
       'enabledPluginIds': ids,
       'catalog': catalogLines,
       'marketplaces': markets,
@@ -536,9 +540,8 @@ class CliPluginProvisionCache {
       final decoded = jsonDecode(trimmed);
       if (decoded is! Map) return normalizeProvisionJson(raw);
       final root = decoded.cast<String, Object?>();
-      final bundles = (root['bundles'] as List? ?? const [])
-          .whereType<Map>()
-          .map((m) {
+      final bundles =
+          (root['bundles'] as List? ?? const []).whereType<Map>().map((m) {
             final bundle = m.cast<String, Object?>();
             return {
               'dirName': bundle['dirName'],
@@ -546,17 +549,18 @@ class CliPluginProvisionCache {
               'version': bundle['version'],
               'mtimeMs': bundle['mtimeMs'],
             };
-          })
-          .toList()
-        ..sort(
-          (a, b) => (a['dirName'] as String? ?? '')
-              .compareTo(b['dirName'] as String? ?? ''),
-        );
-      return jsonEncode(_canonicalize({
-        'version': root['version'],
-        'flavor': root['flavor'],
-        'bundles': bundles,
-      }));
+          }).toList()..sort(
+            (a, b) => (a['dirName'] as String? ?? '').compareTo(
+              b['dirName'] as String? ?? '',
+            ),
+          );
+      return jsonEncode(
+        _canonicalize({
+          'version': root['version'],
+          'flavor': root['flavor'],
+          'bundles': bundles,
+        }),
+      );
     } on Object {
       return normalizeProvisionJson(raw);
     }
@@ -596,11 +600,7 @@ class CliPluginProvisionCache {
     final meta = await _readStamp(fs, metaPath);
     final commitSha = meta?['commitSha'] as String?;
     if (commitSha != null && commitSha.isNotEmpty) {
-      return {
-        'name': name,
-        'sourcePath': cacheDir,
-        'commitSha': commitSha,
-      };
+      return {'name': name, 'sourcePath': cacheDir, 'commitSha': commitSha};
     }
 
     return marketplaceSourceStampEntry(
@@ -617,7 +617,10 @@ class CliPluginProvisionCache {
     final cached = _memberStampJsonCache[memberPluginsDir];
     if (cached != null) return cached;
 
-    final stampPath = fs.pathContext.join(memberPluginsDir, memberStampFileName);
+    final stampPath = fs.pathContext.join(
+      memberPluginsDir,
+      memberStampFileName,
+    );
     final text = await fs.readString(stampPath);
     if (text == null || text.trim().isEmpty) {
       return '';
@@ -649,7 +652,8 @@ class CliPluginProvisionCache {
     if (!cacheStat.isDirectory) return false;
 
     return saved['sourcePath'] == teampilotCacheDir &&
-        saved['sourceMtimeMs'] == (cacheStat.mtime?.millisecondsSinceEpoch ?? 0);
+        saved['sourceMtimeMs'] ==
+            (cacheStat.mtime?.millisecondsSinceEpoch ?? 0);
   }
 
   static Future<void> writeMarketplaceSourceStamp({
@@ -706,9 +710,7 @@ class CliPluginProvisionCache {
   static Object? _canonicalize(Object? value) {
     if (value is Map) {
       final keys = value.keys.map((k) => k.toString()).toList()..sort();
-      return {
-        for (final key in keys) key: _canonicalize(value[key]),
-      };
+      return {for (final key in keys) key: _canonicalize(value[key])};
     }
     if (value is List) {
       return value.map(_canonicalize).toList();

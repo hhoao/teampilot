@@ -8,8 +8,8 @@ class CompositeTeamHubSource implements TeamHubSource {
   CompositeTeamHubSource({
     required TeamHubSource delegate,
     List<DiscoverableTeam> builtIns = const [],
-  })  : _delegate = delegate,
-        _builtIns = builtIns;
+  }) : _delegate = delegate,
+       _builtIns = builtIns;
 
   factory CompositeTeamHubSource.withDefaults(TeamHubSource delegate) =>
       CompositeTeamHubSource(
@@ -24,8 +24,9 @@ class CompositeTeamHubSource implements TeamHubSource {
   Future<List<DiscoverableTeam>> fetchTeams({bool forceRefresh = false}) async {
     final remote = await _delegate.fetchTeams(forceRefresh: forceRefresh);
     final builtinKeys = _builtIns.map((t) => t.key).toSet();
-    final remoteOnly =
-        remote.where((t) => !builtinKeys.contains(t.key)).toList(growable: false);
+    final remoteOnly = remote
+        .where((t) => !builtinKeys.contains(t.key))
+        .toList(growable: false);
     return [..._builtIns, ...remoteOnly];
   }
 

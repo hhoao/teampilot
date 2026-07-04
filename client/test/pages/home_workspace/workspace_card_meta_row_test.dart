@@ -24,9 +24,7 @@ void main() {
       createdAt: 1,
     );
 
-    await tester.pumpWidget(
-      wrap(WorkspaceCardMetaRow(workspace: workspace)),
-    );
+    await tester.pumpWidget(wrap(WorkspaceCardMetaRow(workspace: workspace)));
     await tester.pumpAndSettle();
 
     expect(find.text('/home/user/my-app'), findsOneWidget);
@@ -36,15 +34,11 @@ void main() {
   testWidgets('shows remote topology for ssh target folders', (tester) async {
     final workspace = Workspace(
       workspaceId: 'p2',
-      folders: [
-        WorkspaceFolder(path: '/var/www', targetId: 'ssh:profile-1'),
-      ],
+      folders: [WorkspaceFolder(path: '/var/www', targetId: 'ssh:profile-1')],
       createdAt: 1,
     );
 
-    await tester.pumpWidget(
-      wrap(WorkspaceCardMetaRow(workspace: workspace)),
-    );
+    await tester.pumpWidget(wrap(WorkspaceCardMetaRow(workspace: workspace)));
     await tester.pumpAndSettle();
 
     expect(find.text('/var/www'), findsOneWidget);
@@ -56,9 +50,7 @@ void main() {
   ) async {
     final workspace = Workspace(workspaceId: 'p3', createdAt: 1);
 
-    await tester.pumpWidget(
-      wrap(WorkspaceCardMetaRow(workspace: workspace)),
-    );
+    await tester.pumpWidget(wrap(WorkspaceCardMetaRow(workspace: workspace)));
     await tester.pumpAndSettle();
 
     expect(find.text('No primary directory selected'), findsOneWidget);

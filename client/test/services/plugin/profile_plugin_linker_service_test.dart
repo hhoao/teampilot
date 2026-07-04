@@ -28,53 +28,66 @@ void main() {
     tmp.deleteSync(recursive: true);
   });
 
-  test('syncForProfile links CLI bundles under team plugin dir on Unix', () async {
-    final pluginsRoot = Directory(p.join(tmp.path, 'plugins', 'installed'))
-      ..createSync(recursive: true);
-    final pluginDir = Directory(p.join(pluginsRoot.path, 'acme__market__p1'))
-      ..createSync();
-    Directory(p.join(pluginDir.path, '.claude-plugin')).createSync();
-    File(
-      p.join(pluginDir.path, '.claude-plugin', 'plugin.json'),
-    ).writeAsStringSync('{"name":"p1","version":"1.0.0"}');
+  test(
+    'syncForProfile links CLI bundles under team plugin dir on Unix',
+    () async {
+      final pluginsRoot = Directory(p.join(tmp.path, 'plugins', 'installed'))
+        ..createSync(recursive: true);
+      final pluginDir = Directory(p.join(pluginsRoot.path, 'acme__market__p1'))
+        ..createSync();
+      Directory(p.join(pluginDir.path, '.claude-plugin')).createSync();
+      File(
+        p.join(pluginDir.path, '.claude-plugin', 'plugin.json'),
+      ).writeAsStringSync('{"name":"p1","version":"1.0.0"}');
 
-    final svc = ProfilePluginLinkerService(appPluginsRoot: pluginsRoot.path);
-    final result = await svc.syncForProfile(
-      profileId: 't1',
-      pluginIds: ['acme/market/p1'],
-      installed: const [
-        Plugin(
-          id: 'acme/market/p1',
-          name: 'p1',
-          description: '',
-          version: '1.0.0',
-          directory: 'acme__market__p1',
-          capabilities: PluginCapabilities(),
-          installedAt: 0,
-          updatedAt: 0,
+      final svc = ProfilePluginLinkerService(appPluginsRoot: pluginsRoot.path);
+      final result = await svc.syncForProfile(
+        profileId: 't1',
+        pluginIds: ['acme/market/p1'],
+        installed: const [
+          Plugin(
+            id: 'acme/market/p1',
+            name: 'p1',
+            description: '',
+            version: '1.0.0',
+            directory: 'acme__market__p1',
+            capabilities: PluginCapabilities(),
+            installedAt: 0,
+            updatedAt: 0,
+          ),
+        ],
+      );
+
+      expect(result.errors, isEmpty);
+      expect(result.linked, ['p1']);
+      final teamBundle = Directory(
+        p.join(
+          tmp.path,
+          'identities-runtime',
+          't1',
+          'flashskyai',
+          'plugins',
+          'p1',
         ),
-      ],
-    );
-
-    expect(result.errors, isEmpty);
-    expect(result.linked, ['p1']);
-    final teamBundle = Directory(
-      p.join(tmp.path, 'identities-runtime', 't1', 'flashskyai', 'plugins', 'p1'),
-    );
-    expect(teamBundle.existsSync(), isTrue);
-    if (Platform.isLinux || Platform.isMacOS) {
-      expect(Link(teamBundle.path).existsSync(), isTrue);
-    }
-    expect(
-      File(p.join(teamBundle.path, '.claude-plugin', 'plugin.json')).existsSync(),
-      isTrue,
-    );
-    expect(
-      File(p.join(teamBundle.path, '.flashskyai-plugin', 'plugin.json'))
-          .existsSync(),
-      isTrue,
-    );
-  });
+      );
+      expect(teamBundle.existsSync(), isTrue);
+      if (Platform.isLinux || Platform.isMacOS) {
+        expect(Link(teamBundle.path).existsSync(), isTrue);
+      }
+      expect(
+        File(
+          p.join(teamBundle.path, '.claude-plugin', 'plugin.json'),
+        ).existsSync(),
+        isTrue,
+      );
+      expect(
+        File(
+          p.join(teamBundle.path, '.flashskyai-plugin', 'plugin.json'),
+        ).existsSync(),
+        isTrue,
+      );
+    },
+  );
 
   test('syncForProfile removes stale links not in pluginIds', () async {
     final teamPluginsDir = Directory(
@@ -97,71 +110,75 @@ void main() {
     );
   });
 
-  test('syncForProfile reports skippedMissingIds when plugin source is missing',
-      () async {
-    final svc = ProfilePluginLinkerService(
-      appPluginsRoot: p.join(tmp.path, 'plugins', 'installed'),
-    );
-    final result = await svc.syncForProfile(
-      profileId: 't1',
-      pluginIds: ['gone/market/p'],
-      installed: const [],
-    );
-    expect(result.skippedMissingIds, ['gone/market/p']);
-  });
-
-  test('syncForProfile resolves plugin-name collision with owner__name fallback',
-      () async {
-    final pluginsRoot = Directory(p.join(tmp.path, 'plugins', 'installed'))
-      ..createSync(recursive: true);
-    void writeBundle(Directory dir, String name) {
-      Directory(p.join(dir.path, '.claude-plugin')).createSync();
-      File(p.join(dir.path, '.claude-plugin', 'plugin.json')).writeAsStringSync(
-        '{"name":"$name","version":"1.0.0"}',
+  test(
+    'syncForProfile reports skippedMissingIds when plugin source is missing',
+    () async {
+      final svc = ProfilePluginLinkerService(
+        appPluginsRoot: p.join(tmp.path, 'plugins', 'installed'),
       );
-    }
+      final result = await svc.syncForProfile(
+        profileId: 't1',
+        pluginIds: ['gone/market/p'],
+        installed: const [],
+      );
+      expect(result.skippedMissingIds, ['gone/market/p']);
+    },
+  );
 
-    final dirA = Directory(p.join(pluginsRoot.path, 'acmeA__market__shared'))
-      ..createSync();
-    writeBundle(dirA, 'shared');
-    final dirB = Directory(p.join(pluginsRoot.path, 'acmeB__market__shared'))
-      ..createSync();
-    writeBundle(dirB, 'shared');
+  test(
+    'syncForProfile resolves plugin-name collision with owner__name fallback',
+    () async {
+      final pluginsRoot = Directory(p.join(tmp.path, 'plugins', 'installed'))
+        ..createSync(recursive: true);
+      void writeBundle(Directory dir, String name) {
+        Directory(p.join(dir.path, '.claude-plugin')).createSync();
+        File(
+          p.join(dir.path, '.claude-plugin', 'plugin.json'),
+        ).writeAsStringSync('{"name":"$name","version":"1.0.0"}');
+      }
 
-    final svc = ProfilePluginLinkerService(appPluginsRoot: pluginsRoot.path);
-    final result = await svc.syncForProfile(
-      profileId: 't1',
-      pluginIds: ['acmeA/market/shared', 'acmeB/market/shared'],
-      installed: [
-        const Plugin(
-          id: 'acmeA/market/shared',
-          name: 'shared',
-          description: '',
-          version: '1.0.0',
-          directory: 'acmeA__market__shared',
-          marketplaceOwner: 'acmeA',
-          marketplaceName: 'market',
-          capabilities: PluginCapabilities(),
-          installedAt: 0,
-          updatedAt: 0,
-        ),
-        const Plugin(
-          id: 'acmeB/market/shared',
-          name: 'shared',
-          description: '',
-          version: '1.0.0',
-          directory: 'acmeB__market__shared',
-          marketplaceOwner: 'acmeB',
-          marketplaceName: 'market',
-          capabilities: PluginCapabilities(),
-          installedAt: 0,
-          updatedAt: 0,
-        ),
-      ],
-    );
+      final dirA = Directory(p.join(pluginsRoot.path, 'acmeA__market__shared'))
+        ..createSync();
+      writeBundle(dirA, 'shared');
+      final dirB = Directory(p.join(pluginsRoot.path, 'acmeB__market__shared'))
+        ..createSync();
+      writeBundle(dirB, 'shared');
 
-    expect(result.conflictResolutions, hasLength(1));
-    expect(result.linked, contains('shared'));
-    expect(result.linked, contains('acmeB__shared'));
-  });
+      final svc = ProfilePluginLinkerService(appPluginsRoot: pluginsRoot.path);
+      final result = await svc.syncForProfile(
+        profileId: 't1',
+        pluginIds: ['acmeA/market/shared', 'acmeB/market/shared'],
+        installed: [
+          const Plugin(
+            id: 'acmeA/market/shared',
+            name: 'shared',
+            description: '',
+            version: '1.0.0',
+            directory: 'acmeA__market__shared',
+            marketplaceOwner: 'acmeA',
+            marketplaceName: 'market',
+            capabilities: PluginCapabilities(),
+            installedAt: 0,
+            updatedAt: 0,
+          ),
+          const Plugin(
+            id: 'acmeB/market/shared',
+            name: 'shared',
+            description: '',
+            version: '1.0.0',
+            directory: 'acmeB__market__shared',
+            marketplaceOwner: 'acmeB',
+            marketplaceName: 'market',
+            capabilities: PluginCapabilities(),
+            installedAt: 0,
+            updatedAt: 0,
+          ),
+        ],
+      );
+
+      expect(result.conflictResolutions, hasLength(1));
+      expect(result.linked, contains('shared'));
+      expect(result.linked, contains('acmeB__shared'));
+    },
+  );
 }

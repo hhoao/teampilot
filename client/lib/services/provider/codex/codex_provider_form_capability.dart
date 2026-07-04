@@ -7,7 +7,8 @@ abstract final class CodexFormExtraKeys {
   static const effort = 'effort';
 }
 
-final class CodexProviderFormCapability extends PassthroughProviderFormCapability {
+final class CodexProviderFormCapability
+    extends PassthroughProviderFormCapability {
   const CodexProviderFormCapability();
 
   @override
@@ -37,7 +38,8 @@ final class CodexProviderFormCapability extends PassthroughProviderFormCapabilit
   @override
   Map<String, Object?> buildConfig(ProviderFormInput input) {
     final config = Map<String, Object?>.from(input.config);
-    final effort = input.extra[CodexFormExtraKeys.effort]?.toString().trim() ?? '';
+    final effort =
+        input.extra[CodexFormExtraKeys.effort]?.toString().trim() ?? '';
     if (effort.isEmpty) {
       config.remove('model_reasoning_effort');
     } else {

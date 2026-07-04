@@ -87,10 +87,7 @@ class _HoverTextTooltipState extends State<HoverTextTooltip> {
               child: Container(
                 padding: tooltipTheme.padding,
                 decoration: tooltipTheme.decoration,
-                child: Text(
-                  widget.message,
-                  style: tooltipTheme.textStyle,
-                ),
+                child: Text(widget.message, style: tooltipTheme.textStyle),
               ),
             ),
           ),

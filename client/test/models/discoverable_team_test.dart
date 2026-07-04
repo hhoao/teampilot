@@ -47,7 +47,10 @@ void main() {
         'id': 'context7',
         'name': 'Context7',
         'description': 'docs',
-        'server': {'command': 'npx', 'args': ['-y', 'context7']},
+        'server': {
+          'command': 'npx',
+          'args': ['-y', 'context7'],
+        },
       },
     ],
   };

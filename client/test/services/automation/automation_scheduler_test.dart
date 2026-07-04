@@ -78,9 +78,7 @@ AutomationDispatcher _buildDispatcher({
   final team = TeamProfile(
     id: 'team-1',
     name: 'Team',
-    members: const [
-      TeamMemberConfig(id: 'team-lead', name: 'Lead'),
-    ],
+    members: const [TeamMemberConfig(id: 'team-lead', name: 'Lead')],
   );
   return AutomationDispatcher(
     repository: repo,
@@ -119,11 +117,7 @@ void main() {
 
     final scheduler = AutomationScheduler(
       repository: repo,
-      dispatcher: _buildDispatcher(
-        repo: repo,
-        bus: bus,
-        sessions: [session],
-      ),
+      dispatcher: _buildDispatcher(repo: repo, bus: bus, sessions: [session]),
       scheduleCalculator: AutomationScheduleCalculator(),
       nowMs: () => 2_000,
     );
@@ -148,11 +142,7 @@ void main() {
 
     final scheduler = AutomationScheduler(
       repository: repo,
-      dispatcher: _buildDispatcher(
-        repo: repo,
-        bus: bus,
-        sessions: const [],
-      ),
+      dispatcher: _buildDispatcher(repo: repo, bus: bus, sessions: const []),
       scheduleCalculator: AutomationScheduleCalculator(),
       nowMs: () => 2_000,
     );
@@ -167,18 +157,12 @@ void main() {
     final repo = AutomationRepository(fs: AppStorage.fs, layout: layout);
     final bus = _RecordingBusGateway();
     await repo.upsert(
-      _dueAutomation(nextRunAtMs: 1_000).copyWith(
-        missedRunGraceMinutes: 15,
-      ),
+      _dueAutomation(nextRunAtMs: 1_000).copyWith(missedRunGraceMinutes: 15),
     );
 
     final scheduler = AutomationScheduler(
       repository: repo,
-      dispatcher: _buildDispatcher(
-        repo: repo,
-        bus: bus,
-        sessions: const [],
-      ),
+      dispatcher: _buildDispatcher(repo: repo, bus: bus, sessions: const []),
       scheduleCalculator: AutomationScheduleCalculator(),
       nowMs: () => 1_000 + (16 * 60 * 1000),
     );
@@ -188,7 +172,10 @@ void main() {
     scheduler.stop();
 
     final runs = await repo.runsFor(_teamTabScope, automationId: 'due-1');
-    expect(runs.any((r) => r.status == AutomationRunStatus.skippedMissed), isTrue);
+    expect(
+      runs.any((r) => r.status == AutomationRunStatus.skippedMissed),
+      isTrue,
+    );
     final updated = (await repo.listForTabScope(_teamTabScope)).single;
     expect(updated.nextRunAtMs, isNotNull);
     expect(updated.nextRunAtMs! > 1_000, isTrue);

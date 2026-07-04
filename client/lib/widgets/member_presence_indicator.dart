@@ -6,15 +6,13 @@ import '../models/member_presence.dart';
 /// Theme-adaptive 12px dot for member list presence (no [Semantics] here —
 /// parent [ListTile] owns accessibility).
 class MemberPresenceIndicator extends StatefulWidget {
-  const MemberPresenceIndicator({
-    required this.presence,
-    super.key,
-  });
+  const MemberPresenceIndicator({required this.presence, super.key});
 
   final MemberPresence presence;
 
   @override
-  State<MemberPresenceIndicator> createState() => _MemberPresenceIndicatorState();
+  State<MemberPresenceIndicator> createState() =>
+      _MemberPresenceIndicatorState();
 }
 
 class _MemberPresenceIndicatorState extends State<MemberPresenceIndicator>

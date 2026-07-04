@@ -12,10 +12,10 @@ class SystemFolderOpener {
     bool? isWindows,
     bool? isLinux,
     ProcessRunner? runner,
-  })  : _isMacOS = isMacOS ?? Platform.isMacOS,
-        _isWindows = isWindows ?? Platform.isWindows,
-        _isLinux = isLinux ?? Platform.isLinux,
-        _runner = runner ?? _defaultRunner;
+  }) : _isMacOS = isMacOS ?? Platform.isMacOS,
+       _isWindows = isWindows ?? Platform.isWindows,
+       _isLinux = isLinux ?? Platform.isLinux,
+       _runner = runner ?? _defaultRunner;
 
   final bool _isMacOS;
   final bool _isWindows;

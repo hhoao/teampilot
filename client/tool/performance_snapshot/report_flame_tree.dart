@@ -74,7 +74,9 @@ void _printNode(SliceTreeNode node, int depth) {
   final indent = '  ' * depth;
   final self = node.selfMsDirect;
   final total = node.totalMs;
-  final track = node.slice.track.contains('.ui') ? '' : ' [${node.slice.trackLabel}]';
+  final track = node.slice.track.contains('.ui')
+      ? ''
+      : ' [${node.slice.trackLabel}]';
   print(
     '$indent${node.slice.name}$track  '
     '${total.toStringAsFixed(2)} ms total, '
@@ -130,14 +132,14 @@ String encodeFlameTreeJson(FlameTreeAnalysis analysis) {
 }
 
 Map<String, Object?> _nodeToJson(SliceTreeNode node) => {
-      'name': node.slice.name,
-      'track': node.slice.trackLabel,
-      'category': node.slice.category,
-      'totalMs': node.totalMs,
-      'selfMs': node.selfMsDirect,
-      if (node.omittedSiblingCount > 0)
-        'omittedSiblingCount': node.omittedSiblingCount,
-      if (node.omittedSiblingCount > 0)
-        'omittedSiblingSelfMs': node.omittedSiblingSelfMs,
-      'children': [for (final c in node.children) _nodeToJson(c)],
-    };
+  'name': node.slice.name,
+  'track': node.slice.trackLabel,
+  'category': node.slice.category,
+  'totalMs': node.totalMs,
+  'selfMs': node.selfMsDirect,
+  if (node.omittedSiblingCount > 0)
+    'omittedSiblingCount': node.omittedSiblingCount,
+  if (node.omittedSiblingCount > 0)
+    'omittedSiblingSelfMs': node.omittedSiblingSelfMs,
+  'children': [for (final c in node.children) _nodeToJson(c)],
+};

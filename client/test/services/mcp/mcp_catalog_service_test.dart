@@ -52,7 +52,10 @@ void main() {
     );
     await catalog.upsert(a);
     await catalog.upsert(
-      a.copyWith(server: const {'type': 'stdio', 'command': 'two'}, updatedAt: 2),
+      a.copyWith(
+        server: const {'type': 'stdio', 'command': 'two'},
+        updatedAt: 2,
+      ),
     );
     final loaded = await catalog.loadAll();
     expect(loaded.single.server['command'], 'two');

@@ -41,8 +41,7 @@ class PairOp {
   int get hashCode => Object.hash(kind, leftIndex, rightIndex);
 
   @override
-  String toString() =>
-      'PairOp(${kind.name}, L$leftIndex R$rightIndex)';
+  String toString() => 'PairOp(${kind.name}, L$leftIndex R$rightIndex)';
 }
 
 /// Largest similarity matrix (`dels.length * ins.length` cells) we will build.
@@ -75,16 +74,22 @@ List<PairOp> pairChangeBlock(
   final n = dels.length;
   final m = ins.length;
   if (n == 0) {
-    return [for (var j = 0; j < m; j++) PairOp(kind: PairOpKind.insert, rightIndex: j)];
+    return [
+      for (var j = 0; j < m; j++)
+        PairOp(kind: PairOpKind.insert, rightIndex: j),
+    ];
   }
   if (m == 0) {
-    return [for (var i = 0; i < n; i++) PairOp(kind: PairOpKind.delete, leftIndex: i)];
+    return [
+      for (var i = 0; i < n; i++) PairOp(kind: PairOpKind.delete, leftIndex: i),
+    ];
   }
 
   if (_exceedsPairingBudget(dels, ins, n, m)) {
     return [
       for (var i = 0; i < n; i++) PairOp(kind: PairOpKind.delete, leftIndex: i),
-      for (var j = 0; j < m; j++) PairOp(kind: PairOpKind.insert, rightIndex: j),
+      for (var j = 0; j < m; j++)
+        PairOp(kind: PairOpKind.insert, rightIndex: j),
     ];
   }
 
@@ -133,12 +138,14 @@ List<PairOp> pairChangeBlock(
   var j = 0;
   while (i < n || j < m) {
     if (i < n && j < m && choice[i][j] == 0) {
-      ops.add(PairOp(
-        kind: PairOpKind.modify,
-        leftIndex: i,
-        rightIndex: j,
-        similarity: sim[i][j],
-      ));
+      ops.add(
+        PairOp(
+          kind: PairOpKind.modify,
+          leftIndex: i,
+          rightIndex: j,
+          similarity: sim[i][j],
+        ),
+      );
       i++;
       j++;
     } else if (i < n && (j >= m || choice[i][j] == 1)) {
@@ -154,12 +161,7 @@ List<PairOp> pairChangeBlock(
 
 /// Whether a change block is too large to pair by similarity without stalling
 /// the UI — too many cells (DP memory) or too much char-LCS work (compute).
-bool _exceedsPairingBudget(
-  List<String> dels,
-  List<String> ins,
-  int n,
-  int m,
-) {
+bool _exceedsPairingBudget(List<String> dels, List<String> ins, int n, int m) {
   if (n * m > _kMaxPairingCells) return true;
   var delChars = 0;
   for (final line in dels) {

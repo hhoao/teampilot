@@ -13,10 +13,7 @@ class WorkspaceDisplayPrefs {
   final bool gridView;
   final WorkspaceSort sort;
 
-  WorkspaceDisplayPrefs copyWith({
-    bool? gridView,
-    WorkspaceSort? sort,
-  }) {
+  WorkspaceDisplayPrefs copyWith({bool? gridView, WorkspaceSort? sort}) {
     return WorkspaceDisplayPrefs(
       gridView: gridView ?? this.gridView,
       sort: sort ?? this.sort,

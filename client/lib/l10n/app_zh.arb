@@ -276,6 +276,7 @@
   "homeWorkspaceWorkspaceList": "工作区列表",
   "homeWorkspaceConversations": "对话管理",
   "homeWorkspaceConversationsSection": "对话",
+  "workspaceRunningSessionsSection": "正在运行",
   "homeWorkspaceWorkspaceAgent": "智能体",
   "workspaceAgentBuiltInSubtitle": "当前 CLI 为 flashskyai 时，对应其 --agent 参数。",
   "workspaceAgentExtraArgs": "额外 CLI 参数",

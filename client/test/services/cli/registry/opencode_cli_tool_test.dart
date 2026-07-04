@@ -15,10 +15,7 @@ void main() {
       registry.capability<ProviderCatalogCapability>(CliTool.opencode),
       isNotNull,
     );
-    expect(
-      registry.launchable.map((d) => d.id),
-      contains(CliTool.opencode),
-    );
+    expect(registry.launchable.map((d) => d.id), contains(CliTool.opencode));
   });
 
   test('LaunchCommandBuilder builds opencode args end-to-end', () {
@@ -37,11 +34,6 @@ void main() {
       workingDirectory: '/work',
     );
 
-    expect(args, [
-      '--model',
-      'anthropic/claude-sonnet-4',
-      '--agent',
-      'build',
-    ]);
+    expect(args, ['--model', 'anthropic/claude-sonnet-4', '--agent', 'build']);
   });
 }

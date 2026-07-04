@@ -223,7 +223,8 @@ ThemeData _applyTypography(
   AppTypographyScale? iconScale,
 }) {
   flexTheme = _withSoftenedForeground(flexTheme);
-  final resolvedIconScale = iconScale ??
+  final resolvedIconScale =
+      iconScale ??
       AppTypographyScale(
         multiplier: AppIconSizes.resolveIconMultiplier(
           effectiveTextMultiplier: typographyScale.multiplier,
@@ -266,7 +267,10 @@ ThemeData _applyTypography(
         AppSpacingTheme.fromScale(AppTypographyScale.standard),
         AppIconSizeTheme.fromScale(resolvedIconScale),
       ],
-      dialogTheme: buildAppDialogTheme(colorScheme: scheme, textTheme: textTheme),
+      dialogTheme: buildAppDialogTheme(
+        colorScheme: scheme,
+        textTheme: textTheme,
+      ),
       tooltipTheme: buildAppTooltipTheme(
         textTheme: textTheme,
         colorScheme: scheme,

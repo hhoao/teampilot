@@ -132,7 +132,8 @@ List<String> modelsDeclaredOnProvider(AppProviderConfig provider) {
   return names.toList();
 }
 
-String resolveDefaultProviderModel(ProviderModelCapability capability, {
+String resolveDefaultProviderModel(
+  ProviderModelCapability capability, {
   required AppProviderConfig? provider,
   required String providerId,
 }) {
@@ -181,7 +182,9 @@ abstract base class CatalogModelCapability implements ProviderModelCapability {
   }) {
     final builtIn = <String>[];
     for (final source in catalogSources) {
-      builtIn.addAll(source.modelsFor(provider: provider, providerId: providerId));
+      builtIn.addAll(
+        source.modelsFor(provider: provider, providerId: providerId),
+      );
     }
     return mergeProviderModelCandidates(
       builtInCatalog: builtIn,
@@ -194,7 +197,11 @@ abstract base class CatalogModelCapability implements ProviderModelCapability {
   String defaultModel({
     required AppProviderConfig? provider,
     required String providerId,
-  }) => resolveDefaultProviderModel(this, provider: provider, providerId: providerId);
+  }) => resolveDefaultProviderModel(
+    this,
+    provider: provider,
+    providerId: providerId,
+  );
 }
 
 /// OpenCode's built-in Zen / direct-API catalog keyed by provider id.
@@ -205,8 +212,7 @@ final class OpencodeCatalogSource implements ModelCatalogSource {
   List<String> modelsFor({
     required AppProviderConfig? provider,
     required String providerId,
-  }) =>
-      OpencodeModelCatalog.knownModelsForProvider(provider?.id ?? providerId);
+  }) => OpencodeModelCatalog.knownModelsForProvider(provider?.id ?? providerId);
 }
 
 final class OpencodeProviderModelCapability extends CatalogModelCapability {
@@ -216,8 +222,9 @@ final class OpencodeProviderModelCapability extends CatalogModelCapability {
   bool get supportsModelTiers => false;
 
   @override
-  List<ModelCatalogSource> get catalogSources =>
-      const [OpencodeCatalogSource()];
+  List<ModelCatalogSource> get catalogSources => const [
+    OpencodeCatalogSource(),
+  ];
 
   @override
   ProviderModelPickerMode pickerMode(AppProviderConfig provider) =>

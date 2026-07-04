@@ -236,8 +236,7 @@ class TabTeamBusCoordinator implements MemberMaterializer {
     if (shell == null || !shell.isConnected) return false;
 
     final session = tab.persistedSession;
-    final isPersonal =
-        session == null || session.sessionTeam.trim().isEmpty;
+    final isPersonal = session == null || session.sessionTeam.trim().isEmpty;
     final globalPresets = _globalPresets();
 
     if (isPersonal) {
@@ -262,8 +261,8 @@ class TabTeamBusCoordinator implements MemberMaterializer {
     );
     if (!member.isValid) return false;
 
-    final presenceCap =
-        CliToolRegistry.builtIn().capability<PresenceCapability>(team.cli);
+    final presenceCap = CliToolRegistry.builtIn()
+        .capability<PresenceCapability>(team.cli);
     return MemberAvailabilityResolver.isReadyForAutomationInput(
       shell: shell,
       member: member,
@@ -373,7 +372,8 @@ class TabTeamBusCoordinator implements MemberMaterializer {
       'preview=${_doorbellLogPreview(trimmed)}',
     );
     if (usesFullScreen) {
-      final base = behavior?.fullScreenPasteSettleDelay ??
+      final base =
+          behavior?.fullScreenPasteSettleDelay ??
           TerminalSession.fullScreenSubmitDelay;
       final settle = automationDelivery
           ? Duration(
@@ -382,10 +382,7 @@ class TabTeamBusCoordinator implements MemberMaterializer {
                   : base.inMilliseconds,
             )
           : base;
-      await shell.submitFullScreenInput(
-        trimmed,
-        pasteSettleDelay: settle,
-      );
+      await shell.submitFullScreenInput(trimmed, pasteSettleDelay: settle);
       if (automationDelivery) {
         await Future<void>.delayed(const Duration(milliseconds: 50));
         await shell.submitPendingCr();

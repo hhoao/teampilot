@@ -1,4 +1,4 @@
-﻿import 'package:flutter/material.dart';
+import 'package:flutter/material.dart';
 import 'package:teampilot/theme/app_icon_sizes.dart';
 
 import '../theme/app_text_styles.dart';
@@ -34,9 +34,8 @@ class AndroidSshProfileSelector extends StatelessWidget {
 
     final homeController = context.read<HomeTargetController>();
     final homeProfileId = sshProfileIdOfId(homeController.currentId);
-    final selected = sshState.profiles
-            .where((p) => p.id == homeProfileId)
-            .firstOrNull ??
+    final selected =
+        sshState.profiles.where((p) => p.id == homeProfileId).firstOrNull ??
         sshState.profiles.first;
     final l10n = context.l10n;
 

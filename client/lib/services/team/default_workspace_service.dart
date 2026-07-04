@@ -38,10 +38,9 @@ abstract final class DefaultWorkspaceService {
 
     var mutated = false;
     if (workspace == null) {
-      workspace = await repository.createWorkspace(
-        [WorkspaceFolder(path: primaryPath)],
-        display: defaultDisplay,
-      );
+      workspace = await repository.createWorkspace([
+        WorkspaceFolder(path: primaryPath),
+      ], display: defaultDisplay);
       mutated = true;
     }
 

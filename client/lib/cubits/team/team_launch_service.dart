@@ -134,7 +134,11 @@ class TeamLaunchService {
         _h.state.copyWith(
           isLaunching: false,
           statusMessage:
-              'Started ${member.name}: ${LaunchCommandBuilder.preview(team, member, executable: _resolveExecutableFor(memberLaunchCli(team: team, member: member, globalPresets: _lifecycle.globalPresets)))}',
+              'Started ${member.name}: ${LaunchCommandBuilder.preview(
+                team,
+                member,
+                executable: _resolveExecutableFor(memberLaunchCli(team: team, member: member, globalPresets: _lifecycle.globalPresets)),
+              )}',
         ),
       );
     } on Object catch (error) {

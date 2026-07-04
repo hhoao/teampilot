@@ -12,14 +12,14 @@ void main() {
   setUp(() => fs = InMemoryFilesystem());
 
   MemberConfigContext ctx() => MemberConfigContext(
-        cli: CliTool.claude,
-        configDir: '/cfg',
-        sourceLayer: MemberConfigSourceLayer.runtime,
-        mcpSnapshotPath: '/mcp/servers.json',
-        provider: 'anthropic',
-        model: 'claude-opus-4-8',
-        fs: fs,
-      );
+    cli: CliTool.claude,
+    configDir: '/cfg',
+    sourceLayer: MemberConfigSourceLayer.runtime,
+    mcpSnapshotPath: '/mcp/servers.json',
+    provider: 'anthropic',
+    model: 'claude-opus-4-8',
+    fs: fs,
+  );
 
   test('reads skills from skills/ subdirectories', () async {
     await fs.writeString(
@@ -30,8 +30,10 @@ void main() {
 
     final detail = await cap.inspect(ctx());
 
-    expect(detail.skills.map((s) => s.name).toList()..sort(),
-        ['Alpha', 'beta']);
+    expect(detail.skills.map((s) => s.name).toList()..sort(), [
+      'Alpha',
+      'beta',
+    ]);
     final alpha = detail.skills.firstWhere((s) => s.name == 'Alpha');
     expect(alpha.description, 'does alpha');
   });
@@ -53,13 +55,15 @@ void main() {
     await fs.writeString(
       '/mcp/servers.json',
       '{"mcpServers":{"fs":{"command":"npx","args":["server-fs"]},'
-      '"web":{"url":"https://example.com/mcp"}}}',
+          '"web":{"url":"https://example.com/mcp"}}}',
     );
 
     final detail = await cap.inspect(ctx());
 
-    expect(detail.mcpServers.map((m) => m.name).toList()..sort(),
-        ['fs', 'web']);
+    expect(detail.mcpServers.map((m) => m.name).toList()..sort(), [
+      'fs',
+      'web',
+    ]);
     final web = detail.mcpServers.firstWhere((m) => m.name == 'web');
     expect(web.summary, contains('https://example.com/mcp'));
   });
@@ -85,10 +89,13 @@ void main() {
     expect(detail.warnings, isEmpty);
   });
 
-  test('corrupt settings.json produces a section warning, not a throw', () async {
-    await fs.writeString('/cfg/settings.json', '{not json');
-    final detail = await cap.inspect(ctx());
-    expect(detail.settings, isEmpty);
-    expect(detail.warnings.map((w) => w.section), contains('settings'));
-  });
+  test(
+    'corrupt settings.json produces a section warning, not a throw',
+    () async {
+      await fs.writeString('/cfg/settings.json', '{not json');
+      final detail = await cap.inspect(ctx());
+      expect(detail.settings, isEmpty);
+      expect(detail.warnings.map((w) => w.section), contains('settings'));
+    },
+  );
 }

@@ -28,10 +28,7 @@ void main() {
       const home = '/fake/home';
       const workspace = '/home/hhoa/Document/testmixed';
 
-      await provisioner.provision(
-        homeRoot: home,
-        workspacePaths: [workspace],
-      );
+      await provisioner.provision(homeRoot: home, workspacePaths: [workspace]);
 
       final trustPath = CursorWorkspaceTrust.trustMarkerPath(
         home,
@@ -44,26 +41,29 @@ void main() {
       expect(trust['trustMethod'], CursorWorkspaceTrust.trustMethod);
     });
 
-    test('provisionLaunchWorkspaces writes markers for each path key', () async {
-      const home = '/fake/home';
-      const workspace = '/workspace/a';
-      const extra = '/workspace/b';
+    test(
+      'provisionLaunchWorkspaces writes markers for each path key',
+      () async {
+        const home = '/fake/home';
+        const workspace = '/workspace/a';
+        const extra = '/workspace/b';
 
-      await provisioner.provisionLaunchWorkspaces(
-        homeRoot: home,
-        workingDirectory: workspace,
-        additionalDirectories: [extra],
-      );
-
-      for (final path in [workspace, extra]) {
-        final trustPath = CursorWorkspaceTrust.trustMarkerPath(
-          home,
-          path,
-          pathContext: fs.pathContext,
+        await provisioner.provisionLaunchWorkspaces(
+          homeRoot: home,
+          workingDirectory: workspace,
+          additionalDirectories: [extra],
         );
-        expect((await fs.stat(trustPath)).isFile, isTrue);
-      }
-    });
+
+        for (final path in [workspace, extra]) {
+          final trustPath = CursorWorkspaceTrust.trustMarkerPath(
+            home,
+            path,
+            pathContext: fs.pathContext,
+          );
+          expect((await fs.stat(trustPath)).isFile, isTrue);
+        }
+      },
+    );
 
     test('provision is a no-op for empty home or workspace list', () async {
       await provisioner.provision(homeRoot: '', workspacePaths: ['/x']);
@@ -75,10 +75,7 @@ void main() {
       const home = '/fake/home';
       const workspace = '/home/hhoa/git/hhoa/teampilot';
 
-      await provisioner.provision(
-        homeRoot: home,
-        workspacePaths: [workspace],
-      );
+      await provisioner.provision(homeRoot: home, workspacePaths: [workspace]);
 
       final trustPath = CursorWorkspaceTrust.trustMarkerPath(
         home,

@@ -9,9 +9,7 @@ final class OpencodeEffortCapability implements CliEffortCapability {
   EffortPickerPlacement teamPickerPlacement() => EffortPickerPlacement.hidden;
 
   @override
-  EffortPickerPlacement memberPickerPlacement({
-    AppProviderConfig? provider,
-  }) =>
+  EffortPickerPlacement memberPickerPlacement({AppProviderConfig? provider}) =>
       EffortPickerPlacement.hidden;
 
   @override
@@ -26,14 +24,10 @@ final class OpencodeEffortCapability implements CliEffortCapability {
   List<String> effortCandidates({
     required String model,
     AppProviderConfig? provider,
-  }) =>
-      OpencodeEffortCatalog.levelsForModel(model);
+  }) => OpencodeEffortCatalog.levelsForModel(model);
 
   @override
-  String defaultEffort({
-    required String model,
-    AppProviderConfig? provider,
-  }) {
+  String defaultEffort({required String model, AppProviderConfig? provider}) {
     final fromProvider =
         provider?.config['reasoningEffort']?.toString().trim() ?? '';
     if (fromProvider.isNotEmpty) return fromProvider;

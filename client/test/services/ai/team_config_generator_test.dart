@@ -16,13 +16,14 @@ void main() {
     String? seenPrompt;
     final progress = <double>[];
     final gen = TeamConfigGenerator(
-      runHeadlessStream: ({required setting, required prompt, required onEvent}) async {
-        seenPrompt = prompt;
-        onEvent('{"type":"assistant"}');
-        onEvent('{"type":"assistant"}');
-        onEvent('{"type":"result","result":"..."}');
-        return '{"members":[{"name":"team-lead"},{"name":"Dev","role":"dev"}]}';
-      },
+      runHeadlessStream:
+          ({required setting, required prompt, required onEvent}) async {
+            seenPrompt = prompt;
+            onEvent('{"type":"assistant"}');
+            onEvent('{"type":"assistant"}');
+            onEvent('{"type":"result","result":"..."}');
+            return '{"members":[{"name":"team-lead"},{"name":"Dev","role":"dev"}]}';
+          },
     );
 
     final draft = await gen.generateStreaming(
@@ -45,11 +46,12 @@ void main() {
   test('returns a parsed draft on first success', () async {
     String? seenPrompt;
     final gen = TeamConfigGenerator(
-      runHeadless: ({required setting, required prompt, required expectJson}) async {
-        seenPrompt = prompt;
-        return '{"members":[{"name":"team-lead"},'
-            '{"name":"Dev","role":"dev"}]}';
-      },
+      runHeadless:
+          ({required setting, required prompt, required expectJson}) async {
+            seenPrompt = prompt;
+            return '{"members":[{"name":"team-lead"},'
+                '{"name":"Dev","role":"dev"}]}';
+          },
     );
 
     final draft = await gen.generate(
@@ -67,10 +69,11 @@ void main() {
   test('mixed mode builds the mixed prompt', () async {
     String? seenPrompt;
     final gen = TeamConfigGenerator(
-      runHeadless: ({required setting, required prompt, required expectJson}) async {
-        seenPrompt = prompt;
-        return '{"members":[{"name":"team-lead"}]}';
-      },
+      runHeadless:
+          ({required setting, required prompt, required expectJson}) async {
+            seenPrompt = prompt;
+            return '{"members":[{"name":"team-lead"}]}';
+          },
     );
     await gen.generate(
       setting: _setting,
@@ -84,10 +87,13 @@ void main() {
   test('retries once on bad JSON then succeeds', () async {
     var calls = 0;
     final gen = TeamConfigGenerator(
-      runHeadless: ({required setting, required prompt, required expectJson}) async {
-        calls++;
-        return calls == 1 ? 'garbage' : '{"members":[{"name":"team-lead"}]}';
-      },
+      runHeadless:
+          ({required setting, required prompt, required expectJson}) async {
+            calls++;
+            return calls == 1
+                ? 'garbage'
+                : '{"members":[{"name":"team-lead"}]}';
+          },
     );
 
     final draft = await gen.generate(
@@ -103,8 +109,9 @@ void main() {
 
   test('throws after two bad JSON attempts', () async {
     final gen = TeamConfigGenerator(
-      runHeadless: ({required setting, required prompt, required expectJson}) async =>
-          'still garbage',
+      runHeadless:
+          ({required setting, required prompt, required expectJson}) async =>
+              'still garbage',
     );
 
     expect(

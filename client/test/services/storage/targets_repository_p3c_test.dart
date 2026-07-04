@@ -35,33 +35,38 @@ void main() {
     expect(await repo.isRootSandboxEnvOptIn('ssh:p1'), isFalse);
   });
 
-  test('install auto-install defaults on; opt-out round-trips (sorted)', () async {
-    expect(await repo.isInstallOptIn('ssh:p1'), isTrue);
-    await repo.setInstallOptIn('ssh:p1', false);
-    await repo.setInstallOptIn('ssh:p2', false);
-    expect(await repo.isInstallOptIn('ssh:p1'), isFalse);
-    final reloaded = await repo.load();
-    expect(reloaded.installOptOut, ['ssh:p1', 'ssh:p2']); // sorted, stable
+  test(
+    'install auto-install defaults on; opt-out round-trips (sorted)',
+    () async {
+      expect(await repo.isInstallOptIn('ssh:p1'), isTrue);
+      await repo.setInstallOptIn('ssh:p1', false);
+      await repo.setInstallOptIn('ssh:p2', false);
+      expect(await repo.isInstallOptIn('ssh:p1'), isFalse);
+      final reloaded = await repo.load();
+      expect(reloaded.installOptOut, ['ssh:p1', 'ssh:p2']); // sorted, stable
 
-    await repo.setInstallOptIn('ssh:p1', true);
-    expect(await repo.isInstallOptIn('ssh:p1'), isTrue);
-    expect((await repo.load()).installOptOut, ['ssh:p2']);
-  });
+      await repo.setInstallOptIn('ssh:p1', true);
+      expect(await repo.isInstallOptIn('ssh:p1'), isTrue);
+      expect((await repo.load()).installOptOut, ['ssh:p2']);
+    },
+  );
 
-  test('cli path override round-trips per target+cli and clears on empty',
-      () async {
-    expect(await repo.cliPathOverride('ssh:p1', 'claude'), isNull);
+  test(
+    'cli path override round-trips per target+cli and clears on empty',
+    () async {
+      expect(await repo.cliPathOverride('ssh:p1', 'claude'), isNull);
 
-    await repo.setCliPathOverride('ssh:p1', 'claude', '/opt/claude');
-    await repo.setCliPathOverride('ssh:p1', 'codex', '/opt/codex');
-    expect(await repo.cliPathOverride('ssh:p1', 'claude'), '/opt/claude');
-    expect(await repo.cliPathOverride('ssh:p1', 'codex'), '/opt/codex');
-    expect(await repo.cliPathOverride('ssh:p2', 'claude'), isNull);
+      await repo.setCliPathOverride('ssh:p1', 'claude', '/opt/claude');
+      await repo.setCliPathOverride('ssh:p1', 'codex', '/opt/codex');
+      expect(await repo.cliPathOverride('ssh:p1', 'claude'), '/opt/claude');
+      expect(await repo.cliPathOverride('ssh:p1', 'codex'), '/opt/codex');
+      expect(await repo.cliPathOverride('ssh:p2', 'claude'), isNull);
 
-    await repo.setCliPathOverride('ssh:p1', 'claude', '');
-    expect(await repo.cliPathOverride('ssh:p1', 'claude'), isNull);
-    expect(await repo.cliPathOverride('ssh:p1', 'codex'), '/opt/codex');
-  });
+      await repo.setCliPathOverride('ssh:p1', 'claude', '');
+      expect(await repo.cliPathOverride('ssh:p1', 'claude'), isNull);
+      expect(await repo.cliPathOverride('ssh:p1', 'codex'), '/opt/codex');
+    },
+  );
 
   test('omits empty p3c fields from json but persists set values', () async {
     await repo.setCredentialOptIn('ssh:p1', true);

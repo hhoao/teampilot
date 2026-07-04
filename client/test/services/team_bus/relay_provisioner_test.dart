@@ -13,8 +13,9 @@ void main() {
     final registry = CliToolRegistry.builtIn();
 
     test('long-blocking CLIs are true, cursor (doorbell) is false', () {
-      bool blocking(CliTool cli) =>
-          registry.capability<BusTransportCapability>(cli)!.longBlockingWaitForMessage;
+      bool blocking(CliTool cli) => registry
+          .capability<BusTransportCapability>(cli)!
+          .longBlockingWaitForMessage;
 
       expect(blocking(CliTool.claude), isTrue);
       expect(blocking(CliTool.flashskyai), isTrue);
@@ -37,35 +38,38 @@ void main() {
       tmp.deleteSync(recursive: true);
       // The bundled-relay path is relative (= remote home under SFTP); under the
       // local test fs it lands in cwd — clean it up.
-      final stray =
-          Directory(RelayProvisioner.bundledRelayDir.split('/').first);
+      final stray = Directory(
+        RelayProvisioner.bundledRelayDir.split('/').first,
+      );
       if (stray.existsSync()) stray.deleteSync(recursive: true);
     });
 
     Future<RelayPlan> provision({
       required Future<String> Function(String) run,
       String arch = 'linux-x64',
-    }) =>
-        provisioner.provision(
-          remoteFs: fs,
-          run: run,
-          tunnelPort: 5599,
-          token: 'tok123',
-          memberId: 'worker',
-          arch: arch,
-        );
+    }) => provisioner.provision(
+      remoteFs: fs,
+      run: run,
+      tunnelPort: 5599,
+      token: 'tok123',
+      memberId: 'worker',
+      arch: arch,
+    );
 
-    test('prefers socat when present, injects handshake + tunnel port', () async {
-      final plan = await provision(
-        run: (cmd) async => cmd.contains('socat') ? '/usr/bin/socat' : '',
-      );
-      expect(plan.kind, RelayKind.socat);
-      final joined = plan.argv.join(' ');
-      expect(joined, contains('/usr/bin/socat'));
-      expect(joined, contains('TCP:127.0.0.1:5599'));
-      expect(joined, contains('tok123'));
-      expect(joined, contains('worker'));
-    });
+    test(
+      'prefers socat when present, injects handshake + tunnel port',
+      () async {
+        final plan = await provision(
+          run: (cmd) async => cmd.contains('socat') ? '/usr/bin/socat' : '',
+        );
+        expect(plan.kind, RelayKind.socat);
+        final joined = plan.argv.join(' ');
+        expect(joined, contains('/usr/bin/socat'));
+        expect(joined, contains('TCP:127.0.0.1:5599'));
+        expect(joined, contains('tok123'));
+        expect(joined, contains('worker'));
+      },
+    );
 
     test('falls back to nc when socat absent', () async {
       final plan = await provision(
@@ -75,41 +79,47 @@ void main() {
       expect(plan.argv.join(' '), contains('/bin/nc 127.0.0.1 5599'));
     });
 
-    test('posix: materializes bundled static relay via asset resolver + chmod',
-        () async {
-      final runCmds = <String>[];
-      final p = RelayProvisioner(assetResolver: (_) async => const [1, 2, 3]);
-      final plan = await p.provision(
-        remoteFs: fs,
-        run: (cmd) async {
-          runCmds.add(cmd);
-          return '';
-        },
-        tunnelPort: 5599,
-        token: 'tok123',
-        memberId: 'worker',
-        arch: 'linux-x64',
-      );
-      expect(plan.kind, RelayKind.bundledStatic);
-      expect(plan.argv.first, contains('flashskyai-bus-relay-linux-x64'));
-      expect(plan.argv.first, isNot(contains('.exe')));
-      expect(plan.argv, containsAll(['--token', 'tok123', '--member', 'worker']));
-      expect(runCmds.any((c) => c.startsWith('chmod +x')), isTrue);
-      expect(await fs.readBytes(plan.argv.first), const [1, 2, 3]);
-    });
+    test(
+      'posix: materializes bundled static relay via asset resolver + chmod',
+      () async {
+        final runCmds = <String>[];
+        final p = RelayProvisioner(assetResolver: (_) async => const [1, 2, 3]);
+        final plan = await p.provision(
+          remoteFs: fs,
+          run: (cmd) async {
+            runCmds.add(cmd);
+            return '';
+          },
+          tunnelPort: 5599,
+          token: 'tok123',
+          memberId: 'worker',
+          arch: 'linux-x64',
+        );
+        expect(plan.kind, RelayKind.bundledStatic);
+        expect(plan.argv.first, contains('flashskyai-bus-relay-linux-x64'));
+        expect(plan.argv.first, isNot(contains('.exe')));
+        expect(
+          plan.argv,
+          containsAll(['--token', 'tok123', '--member', 'worker']),
+        );
+        expect(runCmds.any((c) => c.startsWith('chmod +x')), isTrue);
+        expect(await fs.readBytes(plan.argv.first), const [1, 2, 3]);
+      },
+    );
 
-    test('posix: supported arch but no packaged binary → asset-missing error',
-        () async {
-      expect(
-        () => provision(run: (_) async => ''),
-        throwsA(isA<RelayAssetMissingException>()),
-      );
-    });
+    test(
+      'posix: supported arch but no packaged binary → asset-missing error',
+      () async {
+        expect(
+          () => provision(run: (_) async => ''),
+          throwsA(isA<RelayAssetMissingException>()),
+        );
+      },
+    );
 
     test('posix: unsupported arch with no socat/nc → unavailable', () async {
       expect(
-        () => RelayProvisioner(assetResolver: (_) async => const [1])
-            .provision(
+        () => RelayProvisioner(assetResolver: (_) async => const [1]).provision(
           remoteFs: fs,
           run: (_) async => '',
           tunnelPort: 1,
@@ -159,8 +169,7 @@ void main() {
 
     test('windows: unsupported arch → unavailable', () async {
       expect(
-        () => RelayProvisioner(assetResolver: (_) async => const [1])
-            .provision(
+        () => RelayProvisioner(assetResolver: (_) async => const [1]).provision(
           remoteFs: fs,
           run: (_) async => '',
           tunnelPort: 1,

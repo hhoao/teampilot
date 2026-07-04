@@ -51,7 +51,9 @@ class _HomePersonalContentState extends State<HomePersonalContent> {
       tabs: tabs,
       selectedTabIndex: _tabIndex,
       onTabSelected: (i) => setState(() => _tabIndex = i),
-      bodyAnimationKey: ValueKey('home-personal-content-$personalId-$_tabIndex'),
+      bodyAnimationKey: ValueKey(
+        'home-personal-content-$personalId-$_tabIndex',
+      ),
       tabBody: HomePersonalTab(
         key: ValueKey('home-personal-tab-${active.name}'),
         section: active,

@@ -49,10 +49,7 @@ void main() {
       defaultModel: 'deepseek-v4-pro',
       config: {
         'models': {
-          'alt-model': {
-            'name': 'Alt Name',
-            'model': 'deepseek-chat',
-          },
+          'alt-model': {'name': 'Alt Name', 'model': 'deepseek-chat'},
         },
       },
     );
@@ -73,30 +70,39 @@ void main() {
     );
   });
 
-  test('claude official provider exposes catalog with aliases and full ids', () {
-    const capability = ClaudeProviderModelCapability();
-    const official = AppProviderConfig(
-      id: 'claude-official',
-      cli: CliTool.claude,
-      name: 'Claude Official',
-      category: AppProviderCategory.official,
-      isOfficial: true,
-      config: {'env': {}},
-    );
+  test(
+    'claude official provider exposes catalog with aliases and full ids',
+    () {
+      const capability = ClaudeProviderModelCapability();
+      const official = AppProviderConfig(
+        id: 'claude-official',
+        cli: CliTool.claude,
+        name: 'Claude Official',
+        category: AppProviderCategory.official,
+        isOfficial: true,
+        config: {'env': {}},
+      );
 
-    expect(
-      capability.pickerMode(official),
-      ProviderModelPickerMode.catalogWithCustomEntry,
-    );
-    final models = capability.modelCandidates(
-      provider: official,
-      providerId: 'claude-official',
-      currentModel: '',
-    );
-    expect(models, contains('sonnet'));
-    expect(models, contains('claude-sonnet-4-6'));
-    expect(capability.defaultModel(provider: official, providerId: 'claude-official'), 'sonnet');
-  });
+      expect(
+        capability.pickerMode(official),
+        ProviderModelPickerMode.catalogWithCustomEntry,
+      );
+      final models = capability.modelCandidates(
+        provider: official,
+        providerId: 'claude-official',
+        currentModel: '',
+      );
+      expect(models, contains('sonnet'));
+      expect(models, contains('claude-sonnet-4-6'));
+      expect(
+        capability.defaultModel(
+          provider: official,
+          providerId: 'claude-official',
+        ),
+        'sonnet',
+      );
+    },
+  );
 
   test('claude proxy provider supports custom model entry', () {
     const capability = ClaudeProviderModelCapability();

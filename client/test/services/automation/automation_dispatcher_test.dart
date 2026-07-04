@@ -99,9 +99,7 @@ void main() {
     final team = TeamProfile(
       id: 'team-1',
       name: 'Team',
-      members: const [
-        TeamMemberConfig(id: 'team-lead', name: 'Lead'),
-      ],
+      members: const [TeamMemberConfig(id: 'team-lead', name: 'Lead')],
     );
     final bus = _RecordingBusGateway();
     var openCalls = 0;
@@ -123,7 +121,9 @@ void main() {
       nowMs: () => 100,
     );
 
-    final result = await dispatcher.dispatch(_scheduledMessageAutomation(sessionId: 'sess-1'));
+    final result = await dispatcher.dispatch(
+      _scheduledMessageAutomation(sessionId: 'sess-1'),
+    );
 
     expect(openCalls, 1);
     expect(bus.ensureCalls, [('sess-1', 'team-lead')]);
@@ -152,7 +152,9 @@ void main() {
       nowMs: () => 50,
     );
 
-    final result = await dispatcher.dispatch(_scheduledMessageAutomation(sessionId: 'missing'));
+    final result = await dispatcher.dispatch(
+      _scheduledMessageAutomation(sessionId: 'missing'),
+    );
 
     expect(result.run.status, AutomationRunStatus.skippedUnavailable);
     expect(result.run.error, 'session_not_found');
@@ -184,7 +186,9 @@ void main() {
       memberReadyTimeout: const Duration(milliseconds: 50),
     );
 
-    final result = await dispatcher.dispatch(_scheduledMessageAutomation(sessionId: 'sess-2'));
+    final result = await dispatcher.dispatch(
+      _scheduledMessageAutomation(sessionId: 'sess-2'),
+    );
 
     expect(result.run.status, AutomationRunStatus.dispatchFailed);
     expect(result.run.error, 'member_not_ready');
@@ -203,9 +207,7 @@ void main() {
     final team = TeamProfile(
       id: 'team-1',
       name: 'Team',
-      members: const [
-        TeamMemberConfig(id: 'team-lead', name: 'Lead'),
-      ],
+      members: const [TeamMemberConfig(id: 'team-lead', name: 'Lead')],
     );
     final bus = _RecordingBusGateway();
 
@@ -222,9 +224,9 @@ void main() {
       nowMs: () => 100,
     );
 
-    final automation = _scheduledMessageAutomation(sessionId: 'sess-1').copyWith(
-      maxRunCount: 1,
-    );
+    final automation = _scheduledMessageAutomation(
+      sessionId: 'sess-1',
+    ).copyWith(maxRunCount: 1);
     final result = await dispatcher.dispatch(automation);
 
     expect(result.automation.runCount, 1);

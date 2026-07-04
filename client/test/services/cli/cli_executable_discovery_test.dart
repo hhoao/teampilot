@@ -53,10 +53,8 @@ void main() {
     final discovery = CliExecutableDiscovery();
     final located = await discovery.locateRemoteCli(
       cli: CliTool.claude,
-      run: (_) async => const SshCommandResult(
-        exitCode: 0,
-        stdout: '/remote/bin/claude\n',
-      ),
+      run: (_) async =>
+          const SshCommandResult(exitCode: 0, stdout: '/remote/bin/claude\n'),
     );
 
     expect(located, '/remote/bin/claude');

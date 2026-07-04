@@ -34,7 +34,8 @@ class ProviderCredentialActionBar extends StatefulWidget {
       _ProviderCredentialActionBarState();
 }
 
-class _ProviderCredentialActionBarState extends State<ProviderCredentialActionBar> {
+class _ProviderCredentialActionBarState
+    extends State<ProviderCredentialActionBar> {
   var _running = false;
 
   ProviderCredentialCapability? _capability(BuildContext context) {
@@ -312,11 +313,7 @@ class _ProviderCredentialActionBarState extends State<ProviderCredentialActionBa
       context,
       message: result.ok
           ? providerCredentialSuccessMessage(l10n, widget.provider.cli)
-          : providerCredentialFailureMessage(
-              l10n,
-              widget.provider.cli,
-              result,
-            ),
+          : providerCredentialFailureMessage(l10n, widget.provider.cli, result),
       variant: result.ok ? AppToastVariant.success : AppToastVariant.error,
     );
   }
@@ -426,7 +423,10 @@ String _unauthenticatedLabel(AppLocalizations l10n, CliTool cli) {
   };
 }
 
-String _revokeConfirmMessage(AppLocalizations l10n, AppProviderConfig provider) {
+String _revokeConfirmMessage(
+  AppLocalizations l10n,
+  AppProviderConfig provider,
+) {
   return switch (provider.cli) {
     CliTool.claude => l10n.claudeOfficialCredentialsRevokeConfirm(
       provider.name,

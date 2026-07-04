@@ -75,11 +75,12 @@ class PluginRepoGitService {
   }
 
   /// Shallow clone or fetch into [workDirPath]; returns file entries + resolved branch + HEAD sha.
-  Future<({
-    Map<String, Uint8List> entries,
-    String branch,
-    String commitSha,
-  })> syncCheckout(PluginMarketplace marketplace, Filesystem fs, String workDirPath) async {
+  Future<({Map<String, Uint8List> entries, String branch, String commitSha})>
+  syncCheckout(
+    PluginMarketplace marketplace,
+    Filesystem fs,
+    String workDirPath,
+  ) async {
     final git = await _git;
     if (git == null) {
       throw StateError('git executable not found on PATH');
@@ -96,7 +97,9 @@ class PluginRepoGitService {
         return (entries: entries, branch: branch, commitSha: sha);
       } catch (e) {
         lastError = e;
-        appLogger.d('[PluginRepoGit] checkout ${marketplace.fullName}@$branch: $e');
+        appLogger.d(
+          '[PluginRepoGit] checkout ${marketplace.fullName}@$branch: $e',
+        );
       }
     }
 
@@ -269,7 +272,9 @@ class PluginRepoGitService {
   Future<String?> readHeadSha(Filesystem fs, String workDirPath) async {
     final git = await _git;
     if (git == null) return null;
-    if (!(await fs.stat(fs.pathContext.join(workDirPath, '.git'))).isDirectory) return null;
+    if (!(await fs.stat(fs.pathContext.join(workDirPath, '.git'))).isDirectory) {
+      return null;
+    }
     try {
       return await _headSha(git, workDirPath);
     } catch (e) {
@@ -279,12 +284,7 @@ class PluginRepoGitService {
   }
 
   Future<String> _headSha(String git, String workDirPath) async {
-    final result = await _runner(git, [
-      '-C',
-      workDirPath,
-      'rev-parse',
-      'HEAD',
-    ]);
+    final result = await _runner(git, ['-C', workDirPath, 'rev-parse', 'HEAD']);
     if (result.exitCode != 0) {
       throw MarketplaceUnreachableException(
         'git rev-parse failed: ${_stderrSnippet(result)}',
@@ -293,7 +293,10 @@ class PluginRepoGitService {
     return _firstStdoutLine(result.stdout)?.trim() ?? '';
   }
 
-  Future<Map<String, Uint8List>> _collectRepoFiles(Filesystem fs, String rootPath) async {
+  Future<Map<String, Uint8List>> _collectRepoFiles(
+    Filesystem fs,
+    String rootPath,
+  ) async {
     final out = <String, Uint8List>{};
     if (!(await fs.stat(rootPath)).exists) return out;
 

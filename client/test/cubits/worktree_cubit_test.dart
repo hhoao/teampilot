@@ -45,7 +45,12 @@ class _DelayedPrefsStore extends WorktreeUiPrefsStore {
 }
 
 GitWorktree _wt(String p, {bool main = false}) => GitWorktree(
-    path: p, branch: 'refs/heads/x', head: 'h', isBare: false, isMainWorktree: main);
+  path: p,
+  branch: 'refs/heads/x',
+  head: 'h',
+  isBare: false,
+  isMainWorktree: main,
+);
 
 void main() {
   test('load without lister throws StateError', () {
@@ -53,23 +58,28 @@ void main() {
     expect(cubit.load('/repo'), throwsA(isA<StateError>()));
   });
 
-  test('bindWorktreeService loads worktrees and honors preferCurrentPath', () async {
-    final cubit = WorktreeCubit();
-    cubit.bindWorktreeService(
-      _StubGitWorktreeService([_wt('/repo', main: true), _wt('/wt/a')]),
-      repoPath: '/repo',
-      preferCurrentPath: '/wt/a/lib/main.dart',
-    );
-    await cubit.stream.firstWhere((s) => !s.loading && s.worktrees.isNotEmpty);
-    expect(cubit.state.worktrees, hasLength(2));
-    expect(cubit.state.currentWorktreePath, '/wt/a');
-  });
+  test(
+    'bindWorktreeService loads worktrees and honors preferCurrentPath',
+    () async {
+      final cubit = WorktreeCubit();
+      cubit.bindWorktreeService(
+        _StubGitWorktreeService([_wt('/repo', main: true), _wt('/wt/a')]),
+        repoPath: '/repo',
+        preferCurrentPath: '/wt/a/lib/main.dart',
+      );
+      await cubit.stream.firstWhere(
+        (s) => !s.loading && s.worktrees.isNotEmpty,
+      );
+      expect(cubit.state.worktrees, hasLength(2));
+      expect(cubit.state.currentWorktreePath, '/wt/a');
+    },
+  );
 
   test('hydration runs in parallel with git list on first load', () async {
-    final svc = _DelayedLister(
-      [_wt('/repo', main: true), _wt('/wt/a')],
-      const Duration(milliseconds: 30),
-    );
+    final svc = _DelayedLister([
+      _wt('/repo', main: true),
+      _wt('/wt/a'),
+    ], const Duration(milliseconds: 30));
     final store = _DelayedPrefsStore(
       fs: InMemoryFilesystem(),
       pathOverride: '/prefs/worktree-ui-prefs.json',
@@ -87,14 +97,20 @@ void main() {
     expect(elapsed.inMilliseconds, lessThan(55));
   });
 
-  test('load populates worktrees and defaults current to first (main)', () async {
-    final svc = _FakeWorktreeService([_wt('/repo', main: true), _wt('/wt/a')]);
-    final cubit = WorktreeCubit(lister: svc);
-    await cubit.load('/repo');
-    expect(cubit.state.worktrees, hasLength(2));
-    expect(cubit.state.currentWorktreePath, '/repo');
-    expect(cubit.state.hasMultipleWorktrees, true);
-  });
+  test(
+    'load populates worktrees and defaults current to first (main)',
+    () async {
+      final svc = _FakeWorktreeService([
+        _wt('/repo', main: true),
+        _wt('/wt/a'),
+      ]);
+      final cubit = WorktreeCubit(lister: svc);
+      await cubit.load('/repo');
+      expect(cubit.state.worktrees, hasLength(2));
+      expect(cubit.state.currentWorktreePath, '/repo');
+      expect(cubit.state.hasMultipleWorktrees, true);
+    },
+  );
 
   test('hasMultipleWorktrees is false with a single worktree', () async {
     final svc = _FakeWorktreeService([_wt('/repo', main: true)]);
@@ -147,21 +163,30 @@ void main() {
     expect(cubit.state.currentWorktreePath, '/wt/a');
   });
 
-  test('syncCurrentForSessionPath updates current to the containing worktree', () async {
-    final svc = _FakeWorktreeService([_wt('/repo', main: true), _wt('/wt/a')]);
-    final cubit = WorktreeCubit(lister: svc);
-    await cubit.load('/repo');
-    cubit.syncCurrentForSessionPath('/wt/a/src/foo.dart');
-    expect(cubit.state.currentWorktreePath, '/wt/a');
-  });
+  test(
+    'syncCurrentForSessionPath updates current to the containing worktree',
+    () async {
+      final svc = _FakeWorktreeService([
+        _wt('/repo', main: true),
+        _wt('/wt/a'),
+      ]);
+      final cubit = WorktreeCubit(lister: svc);
+      await cubit.load('/repo');
+      cubit.syncCurrentForSessionPath('/wt/a/src/foo.dart');
+      expect(cubit.state.currentWorktreePath, '/wt/a');
+    },
+  );
 
-  test('syncCurrentForSessionPath is a no-op for orphan session paths', () async {
-    final svc = _FakeWorktreeService([_wt('/repo', main: true)]);
-    final cubit = WorktreeCubit(lister: svc);
-    await cubit.load('/repo');
-    cubit.syncCurrentForSessionPath('/gone/dir');
-    expect(cubit.state.currentWorktreePath, '/repo');
-  });
+  test(
+    'syncCurrentForSessionPath is a no-op for orphan session paths',
+    () async {
+      final svc = _FakeWorktreeService([_wt('/repo', main: true)]);
+      final cubit = WorktreeCubit(lister: svc);
+      await cubit.load('/repo');
+      cubit.syncCurrentForSessionPath('/gone/dir');
+      expect(cubit.state.currentWorktreePath, '/repo');
+    },
+  );
 
   test('persists collapse + current and rehydrates on a fresh cubit', () async {
     final svc = _FakeWorktreeService([_wt('/repo', main: true), _wt('/wt/a')]);
@@ -188,12 +213,18 @@ void main() {
     expect(cubit.state.pathForNewSession, isNull);
   });
 
-  test('pathForNewSession follows current worktree when multiple exist', () async {
-    final svc = _FakeWorktreeService([_wt('/repo', main: true), _wt('/wt/a')]);
-    final cubit = WorktreeCubit(lister: svc);
-    await cubit.load('/repo');
-    expect(cubit.state.pathForNewSession, '/repo');
-    cubit.setCurrentWorktree('/wt/a');
-    expect(cubit.state.pathForNewSession, '/wt/a');
-  });
+  test(
+    'pathForNewSession follows current worktree when multiple exist',
+    () async {
+      final svc = _FakeWorktreeService([
+        _wt('/repo', main: true),
+        _wt('/wt/a'),
+      ]);
+      final cubit = WorktreeCubit(lister: svc);
+      await cubit.load('/repo');
+      expect(cubit.state.pathForNewSession, '/repo');
+      cubit.setCurrentWorktree('/wt/a');
+      expect(cubit.state.pathForNewSession, '/wt/a');
+    },
+  );
 }

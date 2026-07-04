@@ -69,7 +69,8 @@ class IdleNotification {
     if (map['type'] != type) throw FormatException('not idle_notification');
     return IdleNotification(
       from: map['from'] as String? ?? '',
-      displayName: map['displayName'] as String? ?? map['from'] as String? ?? '',
+      displayName:
+          map['displayName'] as String? ?? map['from'] as String? ?? '',
       timestampMs: _parseTimestampMs(map),
       idleReason:
           IdleReason.tryParse(map['idleReason'] as String?) ??
@@ -107,7 +108,9 @@ class IdleNotification {
     'type': type,
     'from': from,
     if (displayName.isNotEmpty) 'displayName': displayName,
-    'timestamp': DateTime.fromMillisecondsSinceEpoch(timestampMs).toIso8601String(),
+    'timestamp': DateTime.fromMillisecondsSinceEpoch(
+      timestampMs,
+    ).toIso8601String(),
     'timestampMs': timestampMs,
     'idleReason': idleReason.value,
     if (summary != null && summary!.trim().isNotEmpty) 'summary': summary,

@@ -11,8 +11,7 @@ abstract final class CursorCliConfigPolicy {
 
   /// All tools on the TeamPilot teammate-bus MCP server (list_teammates,
   /// wait_for_message, send_message, …).
-  static String get teamBusMcpAllowEntry =>
-      'Mcp($teammateBusMcpServerName:*)';
+  static String get teamBusMcpAllowEntry => 'Mcp($teammateBusMcpServerName:*)';
 
   static const defaultVersion = 1;
 

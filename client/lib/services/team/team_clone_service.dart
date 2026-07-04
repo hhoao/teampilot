@@ -61,10 +61,10 @@ class CloneDepInstallSummary {
 
   @override
   int get hashCode => Object.hash(
-        Object.hashAll(skillIds),
-        Object.hashAll(pluginIds),
-        Object.hashAll(mcpIds),
-      );
+    Object.hashAll(skillIds),
+    Object.hashAll(pluginIds),
+    Object.hashAll(mcpIds),
+  );
 }
 
 class CloneResult {

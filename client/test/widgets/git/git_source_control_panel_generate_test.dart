@@ -1,4 +1,3 @@
-
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -119,8 +118,9 @@ void main() {
     await aiSettingsCubit.close();
   });
 
-  testWidgets('multi-root shows a repo selector with per-repo change badges',
-      (tester) async {
+  testWidgets('multi-root shows a repo selector with per-repo change badges', (
+    tester,
+  ) async {
     GitService.debugOverrideFactory = _MultiRepoGitStub.new;
     final aiSettingsCubit = AiFeatureSettingsCubit(
       repository: InMemoryAppSettingsRepository(),
@@ -151,10 +151,7 @@ void main() {
     await tester.pump();
     await tester.pump(const Duration(milliseconds: 100));
     final selectedB = tester.widget<ChoiceChip>(
-      find.ancestor(
-        of: find.text('repoB'),
-        matching: find.byType(ChoiceChip),
-      ),
+      find.ancestor(of: find.text('repoB'), matching: find.byType(ChoiceChip)),
     );
     expect(selectedB.selected, isTrue);
 

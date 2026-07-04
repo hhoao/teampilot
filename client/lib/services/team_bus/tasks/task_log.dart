@@ -11,7 +11,12 @@ abstract interface class TaskLog {
   Future<void> appendClaim(String taskId, String assignee, int at);
 
   /// 追加一条状态变更事件（done / failed / cancelled，带可选 result）。
-  Future<void> appendUpdate(String taskId, TaskStatus status, String? result, int at);
+  Future<void> appendUpdate(
+    String taskId,
+    TaskStatus status,
+    String? result,
+    int at,
+  );
 
   /// 追加一条租约回收事件（claimed → pending）。
   Future<void> appendReclaim(String taskId, int at);

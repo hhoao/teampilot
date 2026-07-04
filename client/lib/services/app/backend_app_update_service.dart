@@ -40,7 +40,9 @@ class BackendAppUpdateService {
     required String downloadUrl,
   }) {
     final fromUrl = p.basename(Uri.parse(downloadUrl).path);
-    if (fromUrl.isNotEmpty && fromUrl != '/' && p.extension(fromUrl).isNotEmpty) {
+    if (fromUrl.isNotEmpty &&
+        fromUrl != '/' &&
+        p.extension(fromUrl).isNotEmpty) {
       return fromUrl;
     }
 
@@ -74,10 +76,9 @@ class BackendAppUpdateService {
   static String _fileSlug(String name) {
     final trimmed = name.trim().toLowerCase();
     if (trimmed.isEmpty) return 'teampilot';
-    return trimmed.replaceAll(RegExp(r'[^a-z0-9]+'), '-').replaceAll(
-      RegExp(r'^-+|-+$'),
-      '',
-    );
+    return trimmed
+        .replaceAll(RegExp(r'[^a-z0-9]+'), '-')
+        .replaceAll(RegExp(r'^-+|-+$'), '');
   }
 
   /// Follows redirect chains for backend download API endpoints.
@@ -114,7 +115,8 @@ class BackendAppUpdateService {
   }
 
   Future<String> resolveFinalDownloadUrl(String url) async {
-    if (url.contains('/app/download/') || url.contains('/autoclip/app/download/')) {
+    if (url.contains('/app/download/') ||
+        url.contains('/autoclip/app/download/')) {
       return resolveRedirectedUrl(url);
     }
     return url;

@@ -44,8 +44,8 @@ class WorktreeState {
   /// repo has multiple worktrees (§7); otherwise `null` → workspace main folder.
   String? get pathForNewSession =>
       hasMultipleWorktrees && currentWorktreePath.isNotEmpty
-          ? currentWorktreePath
-          : null;
+      ? currentWorktreePath
+      : null;
 
   WorktreeState copyWith({
     String? repoPath,
@@ -53,14 +53,13 @@ class WorktreeState {
     String? currentWorktreePath,
     Set<String>? collapsed,
     bool? loading,
-  }) =>
-      WorktreeState(
-        repoPath: repoPath ?? this.repoPath,
-        worktrees: worktrees ?? this.worktrees,
-        currentWorktreePath: currentWorktreePath ?? this.currentWorktreePath,
-        collapsed: collapsed ?? this.collapsed,
-        loading: loading ?? this.loading,
-      );
+  }) => WorktreeState(
+    repoPath: repoPath ?? this.repoPath,
+    worktrees: worktrees ?? this.worktrees,
+    currentWorktreePath: currentWorktreePath ?? this.currentWorktreePath,
+    collapsed: collapsed ?? this.collapsed,
+    loading: loading ?? this.loading,
+  );
 }
 
 /// How [WorkspaceSidebar] lays out the conversation list for the current repo.
@@ -85,11 +84,11 @@ class WorktreeSidebarView {
   });
 
   factory WorktreeSidebarView.from(WorktreeState state) => WorktreeSidebarView(
-        worktrees: state.worktrees,
-        collapsed: state.collapsed,
-        currentWorktreePath: state.currentWorktreePath,
-        loading: state.loading,
-      );
+    worktrees: state.worktrees,
+    collapsed: state.collapsed,
+    currentWorktreePath: state.currentWorktreePath,
+    loading: state.loading,
+  );
 
   final List<GitWorktree> worktrees;
   final Set<String> collapsed;
@@ -117,11 +116,11 @@ class WorktreeSidebarView {
 
   @override
   int get hashCode => Object.hash(
-        sessionListLayout,
-        currentWorktreePath,
-        _collapsedHash(collapsed),
-        Object.hashAll(worktrees.map((w) => w.path)),
-      );
+    sessionListLayout,
+    currentWorktreePath,
+    _collapsedHash(collapsed),
+    Object.hashAll(worktrees.map((w) => w.path)),
+  );
 
   static int _collapsedHash(Set<String> collapsed) {
     final sorted = collapsed.toList()..sort();
@@ -147,16 +146,16 @@ class WorktreeCubit extends Cubit<WorktreeState> {
     WorktreeUiPrefsStore? prefsStore,
     WorkspaceWorktreeStore? worktreeStore,
     String? initialRepoPath,
-  })  : _lister = lister,
-        _prefsStore = prefsStore ?? WorktreeUiPrefsStore(),
-        _worktreeStore = worktreeStore,
-        super(
-          _initialState(
-            workspaceId: workspaceId,
-            worktreeStore: worktreeStore,
-            initialRepoPath: initialRepoPath,
-          ),
-        );
+  }) : _lister = lister,
+       _prefsStore = prefsStore ?? WorktreeUiPrefsStore(),
+       _worktreeStore = worktreeStore,
+       super(
+         _initialState(
+           workspaceId: workspaceId,
+           worktreeStore: worktreeStore,
+           initialRepoPath: initialRepoPath,
+         ),
+       );
 
   WorktreeLister? _lister;
   final WorktreeUiPrefsStore _prefsStore;
@@ -226,8 +225,9 @@ class WorktreeCubit extends Cubit<WorktreeState> {
 
     final hydrating = !_hydrated && workspaceId.isNotEmpty;
     final listFuture = lister.list(repoPath);
-    final prefFuture =
-        hydrating ? _prefsStore.prefsFor(workspaceId) : Future<WorktreeUiPref?>.value(null);
+    final prefFuture = hydrating
+        ? _prefsStore.prefsFor(workspaceId)
+        : Future<WorktreeUiPref?>.value(null);
 
     final list = await listFuture;
     final pref = await prefFuture;
@@ -252,12 +252,14 @@ class WorktreeCubit extends Cubit<WorktreeState> {
     } else {
       current = _initialCurrent(list, preferCurrentPath, repoPath);
     }
-    emit(state.copyWith(
-      worktrees: list,
-      currentWorktreePath: current,
-      collapsed: collapsed,
-      loading: false,
-    ));
+    emit(
+      state.copyWith(
+        worktrees: list,
+        currentWorktreePath: current,
+        collapsed: collapsed,
+        loading: false,
+      ),
+    );
     if (workspaceId.isNotEmpty) {
       _worktreeStore?.remember(workspaceId, repoPath, list);
     }
@@ -265,13 +267,15 @@ class WorktreeCubit extends Cubit<WorktreeState> {
 
   void _persist() {
     if (workspaceId.isEmpty) return;
-    unawaited(_prefsStore.save(
-      workspaceId,
-      WorktreeUiPref(
-        collapsed: state.collapsed,
-        currentPath: state.currentWorktreePath,
+    unawaited(
+      _prefsStore.save(
+        workspaceId,
+        WorktreeUiPref(
+          collapsed: state.collapsed,
+          currentPath: state.currentWorktreePath,
+        ),
       ),
-    ));
+    );
   }
 
   /// Worktree whose path is the longest prefix of [preferPath]; else the main
@@ -292,7 +296,10 @@ class WorktreeCubit extends Cubit<WorktreeState> {
   /// No-op when the list is empty or the session is orphaned.
   void syncCurrentForSessionPath(String sessionPrimaryPath) {
     if (state.worktrees.isEmpty) return;
-    final path = worktreePathForSessionPath(sessionPrimaryPath, state.worktrees);
+    final path = worktreePathForSessionPath(
+      sessionPrimaryPath,
+      state.worktrees,
+    );
     if (path != null) setCurrentWorktree(path);
   }
 

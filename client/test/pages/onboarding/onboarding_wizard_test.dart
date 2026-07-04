@@ -27,7 +27,10 @@ void main() {
   group('onboardingStepsForPlatform', () {
     test('desktop has four steps without SSH', () {
       expect(onboardingStepsForPlatform(), hasLength(4));
-      expect(onboardingStepsForPlatform(), isNot(contains(OnboardingStepKind.ssh)));
+      expect(
+        onboardingStepsForPlatform(),
+        isNot(contains(OnboardingStepKind.ssh)),
+      );
     });
   });
 
@@ -42,28 +45,27 @@ void main() {
       expect(await service.shouldShowOnboarding(), isTrue);
     });
 
-    test('shows wizard when session preferences exist but onboarding incomplete', () async {
-      SharedPreferences.setMockInitialValues({
-        'flashskyai.session_preferences.v1': '{"connectionMode":"localPty"}',
-      });
-      final prefs = await SharedPreferences.getInstance();
-      final repo = SharedPrefsAppSettingsRepository(prefs);
-      final service = OnboardingService(
-        appSettings: repo,
-      );
+    test(
+      'shows wizard when session preferences exist but onboarding incomplete',
+      () async {
+        SharedPreferences.setMockInitialValues({
+          'flashskyai.session_preferences.v1': '{"connectionMode":"localPty"}',
+        });
+        final prefs = await SharedPreferences.getInstance();
+        final repo = SharedPrefsAppSettingsRepository(prefs);
+        final service = OnboardingService(appSettings: repo);
 
-      expect(await service.shouldShowOnboarding(), isTrue);
-      expect(await repo.loadHasCompletedOnboarding(), isFalse);
-    });
+        expect(await service.shouldShowOnboarding(), isTrue);
+        expect(await repo.loadHasCompletedOnboarding(), isFalse);
+      },
+    );
 
     test('skips wizard only when onboarding was completed', () async {
       SharedPreferences.setMockInitialValues({});
       final prefs = await SharedPreferences.getInstance();
       final repo = SharedPrefsAppSettingsRepository(prefs);
       await repo.saveHasCompletedOnboarding(true);
-      final service = OnboardingService(
-        appSettings: repo,
-      );
+      final service = OnboardingService(appSettings: repo);
 
       expect(await service.shouldShowOnboarding(), isFalse);
     });
@@ -72,7 +74,9 @@ void main() {
   group('OnboardingService.applyDefaultPreset', () {
     test('applies preset to personal identities and teams', () async {
       final dir = await Directory.systemTemp.createTemp('onboarding-preset_');
-      final teamRepo = LaunchProfileRepository(rootDir: p.join(dir.path, 'launch-profiles'));
+      final teamRepo = LaunchProfileRepository(
+        rootDir: p.join(dir.path, 'launch-profiles'),
+      );
       const team = TeamProfile(
         id: 'default-team',
         name: 'Default Team',
@@ -135,51 +139,58 @@ void main() {
   });
 
   group('OnboardingService.applyDefaultClaudeProviderBinding', () {
-    test('binds selected claude provider to teams without team binding', () async {
-      final dir = await Directory.systemTemp.createTemp('onboarding-provider-bind_');
-      final teamRepo = LaunchProfileRepository(rootDir: p.join(dir.path, 'launch-profiles'));
-      const team = TeamProfile(
-        id: 'default-team',
-        name: 'Default Team',
-        cli: CliTool.claude,
-        members: [TeamMemberConfig(id: 'team-lead', name: 'team-lead')],
-      );
-      await teamRepo.saveTeamProfiles([team]);
-
-      final teamCubit = LaunchProfileCubit(
-        repository: teamRepo,
-        sessionRepository: SessionRepository(),
-        executableResolver: () => 'claude',
-        pluginLinker: _NoopPluginLinker(),
-      );
-      await teamCubit.load();
-
-      final appProviderCubit = AppProviderCubit(basePath: dir.path);
-      await appProviderCubit.load();
-      await appProviderCubit.upsertProvider(
-        const AppProviderConfig(
-          id: 'deepseek',
+    test(
+      'binds selected claude provider to teams without team binding',
+      () async {
+        final dir = await Directory.systemTemp.createTemp(
+          'onboarding-provider-bind_',
+        );
+        final teamRepo = LaunchProfileRepository(
+          rootDir: p.join(dir.path, 'launch-profiles'),
+        );
+        const team = TeamProfile(
+          id: 'default-team',
+          name: 'Default Team',
           cli: CliTool.claude,
-          name: 'DeepSeek',
-          baseUrl: 'https://api.deepseek.com/anthropic',
-          defaultModel: 'deepseek-chat',
-        ),
-      );
-      appProviderCubit.selectProvider('deepseek');
+          members: [TeamMemberConfig(id: 'team-lead', name: 'team-lead')],
+        );
+        await teamRepo.saveTeamProfiles([team]);
 
-      await OnboardingService.applyDefaultClaudeProviderBinding(
-        appProviderCubit: appProviderCubit,
-        teamCubit: teamCubit,
-      );
+        final teamCubit = LaunchProfileCubit(
+          repository: teamRepo,
+          sessionRepository: SessionRepository(),
+          executableResolver: () => 'claude',
+          pluginLinker: _NoopPluginLinker(),
+        );
+        await teamCubit.load();
 
-      expect(
-        teamCubit.state.selectedTeam!.providerIdsByTool['claude'],
-        'deepseek',
-      );
+        final appProviderCubit = AppProviderCubit(basePath: dir.path);
+        await appProviderCubit.load();
+        await appProviderCubit.upsertProvider(
+          const AppProviderConfig(
+            id: 'deepseek',
+            cli: CliTool.claude,
+            name: 'DeepSeek',
+            baseUrl: 'https://api.deepseek.com/anthropic',
+            defaultModel: 'deepseek-chat',
+          ),
+        );
+        appProviderCubit.selectProvider('deepseek');
 
-      await appProviderCubit.close();
-      await teamCubit.close();
-      await dir.delete(recursive: true);
-    });
+        await OnboardingService.applyDefaultClaudeProviderBinding(
+          appProviderCubit: appProviderCubit,
+          teamCubit: teamCubit,
+        );
+
+        expect(
+          teamCubit.state.selectedTeam!.providerIdsByTool['claude'],
+          'deepseek',
+        );
+
+        await appProviderCubit.close();
+        await teamCubit.close();
+        await dir.delete(recursive: true);
+      },
+    );
   });
 }

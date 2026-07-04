@@ -32,10 +32,7 @@ class TeamConfigDraft {
 /// Parses [rawJson] into a [TeamConfigDraft]. Nameless members are skipped; the
 /// result always contains exactly one `team-lead`. Model, effort, skills, and
 /// CLI are left unset for the user to configure after creation.
-TeamConfigDraft parseTeamConfigDraft(
-  String rawJson, {
-  required int joinedAt,
-}) {
+TeamConfigDraft parseTeamConfigDraft(String rawJson, {required int joinedAt}) {
   final Object? decoded;
   try {
     decoded = jsonDecode(_stripFences(rawJson));
@@ -54,7 +51,8 @@ TeamConfigDraft parseTeamConfigDraft(
       final name = (raw['name'] as String? ?? '').trim();
       if (name.isEmpty) continue;
       final role = (raw['role'] as String? ?? '').trim();
-      final responsibilities = (raw['responsibilities'] as String? ?? '').trim();
+      final responsibilities = (raw['responsibilities'] as String? ?? '')
+          .trim();
       final workingMethod = (raw['workingMethod'] as String? ?? '').trim();
 
       parsed.add(

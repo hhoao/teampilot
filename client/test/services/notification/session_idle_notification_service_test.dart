@@ -52,80 +52,78 @@ void main() {
     expect(recorder.titles, ['Fix login bug']);
     expect(recorder.messages, ['Ready for your next message']);
     expect(recorder.variants, [AppToastVariant.success]);
-    expect(
-      shown,
-      [
-        (
-          title: 'Fix login bug',
-          body: 'Ready for your next message',
-          subtitle: 'Agent ready',
-        ),
-      ],
-    );
-  });
-
-  test('notifySessionsBecameIdle always shows OS notification even when focused',
-      () async {
-    final recorder = _RecordingNotifier();
-    final shown = <({String title, String body, String? subtitle})>[];
-    final service = SessionIdleNotificationService(
-      recorder: recorder,
-      desktopNotifier: DesktopSystemNotifier(
-        show: ({required title, required body, subtitle}) async =>
-            shown.add((title: title, body: body, subtitle: subtitle)),
+    expect(shown, [
+      (
+        title: 'Fix login bug',
+        body: 'Ready for your next message',
+        subtitle: 'Agent ready',
       ),
-    );
-
-    await service.notifySessionsBecameIdle(
-      sessionIds: {'s1'},
-      sessions: [
-        AppSession(
-          sessionId: 's1',
-          workspaceId: 'w1',
-          createdAt: 0,
-        ),
-      ],
-      emptySessionTitle: 'New Chat',
-      notificationSubtitle: 'Ready for your next message',
-      notificationBadge: 'Agent ready',
-    );
-
-    expect(recorder.titles, ['New Chat']);
-    expect(recorder.messages, ['Ready for your next message']);
-    expect(shown, hasLength(1));
+    ]);
   });
 
-  test('notifySessionsBecameIdle skips OS notification when disabled', () async {
-    final recorder = _RecordingNotifier();
-    final shown = <({String title, String body, String? subtitle})>[];
-    final service = SessionIdleNotificationService(
-      recorder: recorder,
-      desktopNotifier: DesktopSystemNotifier(
-        show: ({required title, required body, subtitle}) async =>
-            shown.add((title: title, body: body, subtitle: subtitle)),
-      ),
-    );
-
-    await service.notifySessionsBecameIdle(
-      sessionIds: {'s1'},
-      sessions: [
-        AppSession(
-          sessionId: 's1',
-          workspaceId: 'w1',
-          display: 'Fix login bug',
-          createdAt: 0,
+  test(
+    'notifySessionsBecameIdle always shows OS notification even when focused',
+    () async {
+      final recorder = _RecordingNotifier();
+      final shown = <({String title, String body, String? subtitle})>[];
+      final service = SessionIdleNotificationService(
+        recorder: recorder,
+        desktopNotifier: DesktopSystemNotifier(
+          show: ({required title, required body, subtitle}) async =>
+              shown.add((title: title, body: body, subtitle: subtitle)),
         ),
-      ],
-      emptySessionTitle: 'New Chat',
-      notificationSubtitle: 'Ready for your next message',
-      notificationBadge: 'Agent ready',
-      systemNotificationEnabled: false,
-    );
+      );
 
-    expect(recorder.titles, ['Fix login bug']);
-    expect(recorder.messages, ['Ready for your next message']);
-    expect(shown, isEmpty);
-  });
+      await service.notifySessionsBecameIdle(
+        sessionIds: {'s1'},
+        sessions: [
+          AppSession(sessionId: 's1', workspaceId: 'w1', createdAt: 0),
+        ],
+        emptySessionTitle: 'New Chat',
+        notificationSubtitle: 'Ready for your next message',
+        notificationBadge: 'Agent ready',
+      );
+
+      expect(recorder.titles, ['New Chat']);
+      expect(recorder.messages, ['Ready for your next message']);
+      expect(shown, hasLength(1));
+    },
+  );
+
+  test(
+    'notifySessionsBecameIdle skips OS notification when disabled',
+    () async {
+      final recorder = _RecordingNotifier();
+      final shown = <({String title, String body, String? subtitle})>[];
+      final service = SessionIdleNotificationService(
+        recorder: recorder,
+        desktopNotifier: DesktopSystemNotifier(
+          show: ({required title, required body, subtitle}) async =>
+              shown.add((title: title, body: body, subtitle: subtitle)),
+        ),
+      );
+
+      await service.notifySessionsBecameIdle(
+        sessionIds: {'s1'},
+        sessions: [
+          AppSession(
+            sessionId: 's1',
+            workspaceId: 'w1',
+            display: 'Fix login bug',
+            createdAt: 0,
+          ),
+        ],
+        emptySessionTitle: 'New Chat',
+        notificationSubtitle: 'Ready for your next message',
+        notificationBadge: 'Agent ready',
+        systemNotificationEnabled: false,
+      );
+
+      expect(recorder.titles, ['Fix login bug']);
+      expect(recorder.messages, ['Ready for your next message']);
+      expect(shown, isEmpty);
+    },
+  );
 
   test('notifySessionsBecameIdle ignores closed sessions', () async {
     final recorder = _RecordingNotifier();

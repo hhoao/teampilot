@@ -95,9 +95,7 @@ class _Log4jStylePrinter extends LogPrinter {
     if (event.level.index >= Level.warning.index &&
         event.stackTrace != null &&
         _stackHasDiagnosticFrames(event.stackTrace!)) {
-      lines.add(
-        _colorize(event.stackTrace.toString().trimRight(), style.line),
-      );
+      lines.add(_colorize(event.stackTrace.toString().trimRight(), style.line));
     }
 
     return lines;

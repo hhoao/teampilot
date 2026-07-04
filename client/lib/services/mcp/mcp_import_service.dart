@@ -7,10 +7,7 @@ import '../storage/app_storage.dart';
 import 'mcp_catalog_service.dart';
 
 class McpImportConflict {
-  const McpImportConflict({
-    required this.existing,
-    required this.incoming,
-  });
+  const McpImportConflict({required this.existing, required this.incoming});
 
   final McpServer existing;
   final McpServer incoming;
@@ -30,16 +27,16 @@ class McpImportPreview {
 
 /// Reads machine-level Claude / FlashskyAI global MCP configs.
 class McpImportService {
-  McpImportService({
-    Filesystem? fs,
-    String? homeDirectory,
-  }) : _fs = fs ?? LocalFilesystem(),
-       _home = homeDirectory ?? AppStorage.home;
+  McpImportService({Filesystem? fs, String? homeDirectory})
+    : _fs = fs ?? LocalFilesystem(),
+      _home = homeDirectory ?? AppStorage.home;
 
   final Filesystem _fs;
   final String _home;
 
-  Future<McpImportPreview> previewAgainst(List<McpServer> existingCatalog) async {
+  Future<McpImportPreview> previewAgainst(
+    List<McpServer> existingCatalog,
+  ) async {
     final imported = await _readAllMachineServers();
     final byId = {for (final s in existingCatalog) s.id: s};
     final byConfigKey = {for (final s in existingCatalog) s.configKey: s};

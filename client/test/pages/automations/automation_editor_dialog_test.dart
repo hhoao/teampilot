@@ -6,7 +6,6 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:teampilot/cubits/automation_cubit.dart';
 import 'package:teampilot/cubits/cli_presets_cubit.dart';
 import 'package:teampilot/cubits/launch_profile_cubit.dart';
-import 'package:teampilot/cubits/team/model/launch_profile_state.dart';
 import 'package:teampilot/l10n/app_localizations.dart';
 import 'package:teampilot/models/cli_preset.dart';
 import 'package:teampilot/models/personal_profile.dart';
@@ -115,9 +114,7 @@ Widget _host({
     );
   }
   if (cliPresetsCubit != null) {
-    providers.add(
-      BlocProvider<CliPresetsCubit>.value(value: cliPresetsCubit),
-    );
+    providers.add(BlocProvider<CliPresetsCubit>.value(value: cliPresetsCubit));
   }
 
   return MaterialApp(
@@ -139,7 +136,9 @@ void main() {
   setUp(setUpTestAppStorage);
   tearDown(tearDownTestAppStorage);
 
-  testWidgets('scheduled message editor shows core fields only', (tester) async {
+  testWidgets('scheduled message editor shows core fields only', (
+    tester,
+  ) async {
     final setup = testAutomationSetup();
     addTearDown(setup.cubit.close);
 
@@ -170,7 +169,9 @@ void main() {
     expect(find.text(l10n.automationsTargetMember), findsNothing);
   });
 
-  testWidgets('personal launch prompt shows preset picker only', (tester) async {
+  testWidgets('personal launch prompt shows preset picker only', (
+    tester,
+  ) async {
     final setup = testAutomationSetup();
     final launchProfileCubit = _personalLaunchProfileCubit();
     final cliPresetsCubit = _cliPresetsCubitWithPreset();

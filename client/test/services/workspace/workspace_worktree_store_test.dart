@@ -5,12 +5,12 @@ import 'package:teampilot/services/workspace/workspace_worktree_registry.dart';
 import 'package:teampilot/services/workspace/workspace_worktree_store.dart';
 
 GitWorktree _wt(String path, {bool main = false}) => GitWorktree(
-      path: path,
-      branch: 'refs/heads/main',
-      head: 'abc1234',
-      isBare: false,
-      isMainWorktree: main,
-    );
+  path: path,
+  branch: 'refs/heads/main',
+  head: 'abc1234',
+  isBare: false,
+  isMainWorktree: main,
+);
 
 void main() {
   group('WorkspaceWorktreeStore', () {
@@ -41,9 +41,7 @@ void main() {
 
   group('WorktreeSidebarView.sessionListLayout', () {
     test('empty + loading is indeterminate', () {
-      final view = WorktreeSidebarView.from(
-        const WorktreeState(loading: true),
-      );
+      final view = WorktreeSidebarView.from(const WorktreeState(loading: true));
       expect(view.sessionListLayout, WorktreeSessionListLayout.indeterminate);
     });
 
@@ -76,11 +74,10 @@ void main() {
 
     test('hydrates cubit from store snapshot on first create', () {
       final registry = WorkspaceWorktreeRegistry();
-      registry.store.remember(
-        'ws-1',
-        '/repo',
-        [_wt('/repo', main: true), _wt('/wt')],
-      );
+      registry.store.remember('ws-1', '/repo', [
+        _wt('/repo', main: true),
+        _wt('/wt'),
+      ]);
       final cubit = registry.cubitFor(workspaceId: 'ws-1', repoPath: '/repo');
       expect(cubit.state.worktrees, hasLength(2));
       expect(

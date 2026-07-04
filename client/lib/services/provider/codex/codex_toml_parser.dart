@@ -5,14 +5,18 @@ class CodexTomlParser {
   static const proxyManagedToken = 'PROXY_MANAGED';
 
   static CodexTomlParts parse(String toml) {
-    final model = RegExp(
-      r'^\s*model\s*=\s*"([^"]+)"',
-      multiLine: true,
-    ).firstMatch(toml)?.group(1) ?? '';
-    final baseUrl = RegExp(
-      r'^\s*base_url\s*=\s*"([^"]+)"',
-      multiLine: true,
-    ).firstMatch(toml)?.group(1) ?? '';
+    final model =
+        RegExp(
+          r'^\s*model\s*=\s*"([^"]+)"',
+          multiLine: true,
+        ).firstMatch(toml)?.group(1) ??
+        '';
+    final baseUrl =
+        RegExp(
+          r'^\s*base_url\s*=\s*"([^"]+)"',
+          multiLine: true,
+        ).firstMatch(toml)?.group(1) ??
+        '';
     return CodexTomlParts(model: model, baseUrl: baseUrl);
   }
 

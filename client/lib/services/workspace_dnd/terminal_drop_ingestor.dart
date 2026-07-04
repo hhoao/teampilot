@@ -57,7 +57,10 @@ class TerminalDropIngestor implements WorkspaceDropTarget {
     // matching how a path completion behaves when typed.
     final text = '${tokens.join(' ')} ';
     await _deliver(text);
-    return DropOutcome(delivered: tokens.length, rejectedCrossNamespace: rejected);
+    return DropOutcome(
+      delivered: tokens.length,
+      rejectedCrossNamespace: rejected,
+    );
   }
 
   Future<String?> _resolvePath(WorkspaceFileRef ref) async {

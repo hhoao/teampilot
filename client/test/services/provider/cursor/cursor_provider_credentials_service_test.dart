@@ -60,8 +60,17 @@ void main() {
   });
 
   test('probe missing when auth.json has no tokens', () async {
-    final home = fs.pathContext.join(base, 'providers', 'cursor', 'work', 'home');
-    await fs.writeString(layout.authJson(home), '{"accessToken":"","refreshToken":""}');
+    final home = fs.pathContext.join(
+      base,
+      'providers',
+      'cursor',
+      'work',
+      'home',
+    );
+    await fs.writeString(
+      layout.authJson(home),
+      '{"accessToken":"","refreshToken":""}',
+    );
     final probe = await service.probe('work');
     expect(probe.isReady, isFalse);
   });
@@ -76,10 +85,7 @@ void main() {
     const home = '/home/user';
     await fs.writeString(layout.cliConfig(home), loggedInCliConfig);
     await fs.writeString(layout.authJson(home), loggedInAuthJson);
-    final result = await service.importFromGlobal(
-      'work',
-      homeDirectory: home,
-    );
+    final result = await service.importFromGlobal('work', homeDirectory: home);
     expect(result.ok, isTrue);
     expect((await service.probe('work')).isReady, isTrue);
     final providerHome = fs.pathContext.join(
@@ -162,63 +168,63 @@ void main() {
     );
   });
 
-  test('runAuthLogin with mock runner writes auth.json and returns ready', () async {
-    final loginService = CursorProviderCredentialsService(
-      fs: fs,
-      basePath: base,
-      processRunner: (executable, arguments, {environment}) async {
-        expect(arguments, contains('login'));
-        final home = environment?['HOME'];
-        expect(home, isNotNull);
-        await fs.writeString(
-          layout.cliConfig(home!),
-          jsonEncode({
-            'authInfo': {'userId': 'u1', 'authId': 'a1'},
-          }),
-        );
-        await fs.writeString(
-          layout.authJson(home),
-          jsonEncode({
-            'accessToken': 'at1',
-            'refreshToken': 'rt1',
-          }),
-        );
-        return ProcessResult(0, 0, '', '');
-      },
-    );
+  test(
+    'runAuthLogin with mock runner writes auth.json and returns ready',
+    () async {
+      final loginService = CursorProviderCredentialsService(
+        fs: fs,
+        basePath: base,
+        processRunner: (executable, arguments, {environment}) async {
+          expect(arguments, contains('login'));
+          final home = environment?['HOME'];
+          expect(home, isNotNull);
+          await fs.writeString(
+            layout.cliConfig(home!),
+            jsonEncode({
+              'authInfo': {'userId': 'u1', 'authId': 'a1'},
+            }),
+          );
+          await fs.writeString(
+            layout.authJson(home),
+            jsonEncode({'accessToken': 'at1', 'refreshToken': 'rt1'}),
+          );
+          return ProcessResult(0, 0, '', '');
+        },
+      );
 
-    final loginResult = await loginService.runAuthLogin('work');
-    expect(loginResult.ok, isTrue);
-    expect((await loginService.probe('work')).isReady, isTrue);
-  });
+      final loginResult = await loginService.runAuthLogin('work');
+      expect(loginResult.ok, isTrue);
+      expect((await loginService.probe('work')).isReady, isTrue);
+    },
+  );
 
-  test('runAuthLogin clears partial artifacts when verification fails', () async {
-    final loginService = CursorProviderCredentialsService(
-      fs: fs,
-      basePath: base,
-      processRunner: (executable, arguments, {environment}) async {
-        final home = environment?['HOME'];
-        expect(home, isNotNull);
-        await fs.writeString(
-          layout.cliConfig(home!),
-          loggedInCliConfig,
-        );
-        return ProcessResult(0, 0, '', '');
-      },
-    );
+  test(
+    'runAuthLogin clears partial artifacts when verification fails',
+    () async {
+      final loginService = CursorProviderCredentialsService(
+        fs: fs,
+        basePath: base,
+        processRunner: (executable, arguments, {environment}) async {
+          final home = environment?['HOME'];
+          expect(home, isNotNull);
+          await fs.writeString(layout.cliConfig(home!), loggedInCliConfig);
+          return ProcessResult(0, 0, '', '');
+        },
+      );
 
-    final loginResult = await loginService.runAuthLogin('work');
-    expect(loginResult.ok, isFalse);
-    final providerHome = fs.pathContext.join(
-      base,
-      'providers',
-      'cursor',
-      'work',
-      'home',
-    );
-    expect((await fs.stat(layout.cliConfig(providerHome))).isFile, isFalse);
-    expect((await fs.stat(layout.authJson(providerHome))).isFile, isFalse);
-  });
+      final loginResult = await loginService.runAuthLogin('work');
+      expect(loginResult.ok, isFalse);
+      final providerHome = fs.pathContext.join(
+        base,
+        'providers',
+        'cursor',
+        'work',
+        'home',
+      );
+      expect((await fs.stat(layout.cliConfig(providerHome))).isFile, isFalse);
+      expect((await fs.stat(layout.authJson(providerHome))).isFile, isFalse);
+    },
+  );
 
   test('importFromGlobal replace overwrites existing artifacts', () async {
     const home = '/home/user';
@@ -233,7 +239,10 @@ void main() {
       layout.cliConfig(providerHome),
       '{"authInfo":{"userId":"stale"}}',
     );
-    await fs.writeString(layout.authJson(providerHome), '{"accessToken":"old"}');
+    await fs.writeString(
+      layout.authJson(providerHome),
+      '{"accessToken":"old"}',
+    );
     await fs.writeString(layout.cliConfig(home), loggedInCliConfig);
     await fs.writeString(layout.authJson(home), loggedInAuthJson);
 

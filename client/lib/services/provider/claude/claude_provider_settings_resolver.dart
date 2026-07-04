@@ -31,10 +31,7 @@ class ClaudeProviderSettingsResolver {
     for (final member in team.members) {
       final fromMember = member.provider.trim();
       if (fromMember.isNotEmpty) {
-        final provider = await _repository.findById(
-          CliTool.claude,
-          fromMember,
-        );
+        final provider = await _repository.findById(CliTool.claude, fromMember);
         if (provider != null) return fromMember;
       }
     }

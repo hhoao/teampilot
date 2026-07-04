@@ -73,10 +73,7 @@ class _HoverRowState extends State<HoverRow> {
           children: [
             Expanded(child: widget.child),
             if (_showTrailing && widget.trailingWidth != null)
-              SizedBox(
-                width: widget.trailingWidth,
-                child: widget.trailing!,
-              )
+              SizedBox(width: widget.trailingWidth, child: widget.trailing!)
             else if (_showTrailing)
               widget.trailing!,
           ],

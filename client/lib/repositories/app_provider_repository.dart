@@ -116,8 +116,11 @@ class AppProviderRepository {
   }) async {
     var providers = await _loadProvidersFromDisk(cli);
     if (!reconcileCredentials) return providers;
-    return reconcileProviders(cli, providers,
-        importCredentialsFromGlobal: importCredentialsFromGlobal);
+    return reconcileProviders(
+      cli,
+      providers,
+      importCredentialsFromGlobal: importCredentialsFromGlobal,
+    );
   }
 
   /// Re-runs credential reconciliation for providers already loaded from disk.
@@ -137,9 +140,7 @@ class AppProviderRepository {
     return strategy.reconcileLoaded(_persistenceContext, providers);
   }
 
-  Future<List<AppProviderConfig>> _loadProvidersFromDisk(
-    CliTool cli,
-  ) async {
+  Future<List<AppProviderConfig>> _loadProvidersFromDisk(CliTool cli) async {
     final cached = _diskCache[_diskCacheKey(cli)];
     if (cached != null) return cached;
 

@@ -12,8 +12,9 @@ import '../storage/app_storage.dart';
 import 'workspace_layout.dart';
 
 /// Tools with a `cli-defaults/{tool}/` tree (see [RuntimeLayout]).
-final List<String> runtimeLayoutDefaultTools =
-    CliTool.values.map((c) => c.value).toList(growable: false);
+final List<String> runtimeLayoutDefaultTools = CliTool.values
+    .map((c) => c.value)
+    .toList(growable: false);
 
 /// Canonical paths for CLI **runtime config** under TeamPilot app data.
 ///
@@ -26,7 +27,8 @@ class RuntimeLayout {
     Filesystem? fs,
     WorkspaceLayout? workspace,
   }) : _fs = fs ?? AppStorage.fs,
-       workspace = workspace ?? WorkspaceLayout(teampilotRoot: teampilotRoot, fs: fs);
+       workspace =
+           workspace ?? WorkspaceLayout(teampilotRoot: teampilotRoot, fs: fs);
 
   final String teampilotRoot;
   final Filesystem _fs;
@@ -71,26 +73,24 @@ class RuntimeLayout {
     String sessionId,
     String tool, {
     String? memberId,
-  }) =>
-      workspace.sessionRuntimeToolDir(
-        workspaceId,
-        sessionId,
-        tool,
-        memberId: memberId,
-      );
+  }) => workspace.sessionRuntimeToolDir(
+    workspaceId,
+    sessionId,
+    tool,
+    memberId: memberId,
+  );
 
   String sessionRuntimePluginsDir(
     String workspaceId,
     String sessionId,
     String tool, {
     String? memberId,
-  }) =>
-      workspace.sessionRuntimePluginsDir(
-        workspaceId,
-        sessionId,
-        tool,
-        memberId: memberId,
-      );
+  }) => workspace.sessionRuntimePluginsDir(
+    workspaceId,
+    sessionId,
+    tool,
+    memberId: memberId,
+  );
 
   String get appFlashskyaiLlmConfigFile =>
       _pathContext.join(appToolRoot('flashskyai'), 'llm_config.json');
@@ -183,7 +183,10 @@ class RuntimeLayout {
     if (trimmedWorkspace.isEmpty || trimmedTool.isEmpty) return;
     await _workspaceInheritLocks.synchronized(
       _workspaceInheritLockKey(trimmedWorkspace, trimmedTool),
-      () => _ensureWorkspaceConfigInheritsAppUnlocked(trimmedWorkspace, trimmedTool),
+      () => _ensureWorkspaceConfigInheritsAppUnlocked(
+        trimmedWorkspace,
+        trimmedTool,
+      ),
     );
   }
 
@@ -218,7 +221,10 @@ class RuntimeLayout {
     await _workspaceInheritLocks.synchronized(
       _workspaceInheritLockKey(trimmedWorkspace, trimmedTool),
       () async {
-        await _ensureWorkspaceConfigInheritsAppUnlocked(trimmedWorkspace, trimmedTool);
+        await _ensureWorkspaceConfigInheritsAppUnlocked(
+          trimmedWorkspace,
+          trimmedTool,
+        );
         final sessionRoot = sessionRuntimeToolDir(
           trimmedWorkspace,
           trimmedSession,
@@ -226,7 +232,10 @@ class RuntimeLayout {
           memberId: memberId,
         );
         await _fs.ensureDir(sessionRoot);
-        final workspaceRoot = workspaceConfigToolDir(trimmedWorkspace, trimmedTool);
+        final workspaceRoot = workspaceConfigToolDir(
+          trimmedWorkspace,
+          trimmedTool,
+        );
         await _ensureInheritedChild(
           childName: 'agents',
           parentToolRoot: workspaceRoot,

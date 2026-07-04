@@ -1,4 +1,4 @@
-﻿import 'package:flutter/material.dart';
+import 'package:flutter/material.dart';
 import 'package:teampilot/theme/app_icon_sizes.dart';
 
 import '../../models/layout_preferences.dart';
@@ -127,8 +127,18 @@ class WorkspaceHubNavItem extends StatelessWidget {
         hubStyle ? 16.0 : 18.0,
         0.0,
       ),
-      WorkspaceHubNavDensity.relaxed => (54.0, context.appIconSizes.md, 18.0, 0.0),
-      WorkspaceHubNavDensity.subItem => (44.0, context.appIconSizes.md, 14.0, 14.0),
+      WorkspaceHubNavDensity.relaxed => (
+        54.0,
+        context.appIconSizes.md,
+        18.0,
+        0.0,
+      ),
+      WorkspaceHubNavDensity.subItem => (
+        44.0,
+        context.appIconSizes.md,
+        14.0,
+        14.0,
+      ),
     };
 
     final borderRadius = density == WorkspaceHubNavDensity.subItem
@@ -140,63 +150,65 @@ class WorkspaceHubNavItem extends StatelessWidget {
       child: Padding(
         padding: EdgeInsets.only(left: leftIndent, bottom: 8),
         child: Material(
-        color: selected
-            ? selectedColor
-            : hubStyle
-            ? cs.workspaceSubtleSurface
-            : Colors.transparent,
-        borderRadius: borderRadius,
-        child: InkWell(
+          color: selected
+              ? selectedColor
+              : hubStyle
+              ? cs.workspaceSubtleSurface
+              : Colors.transparent,
           borderRadius: borderRadius,
-          onTap: onTap,
-          child: SizedBox(
-            height: height,
-            child: Padding(
-              padding: EdgeInsets.symmetric(horizontal: horizontalPadding),
-              child: Row(
-                children: [
-                  Icon(
-                    leadingIcon,
-                    color: selected ? selectedFg : muted,
-                    size: iconSize,
-                  ),
-                  const SizedBox(width: 16),
-                  Expanded(
-                    child: Row(
-                      children: [
-                        Expanded(
-                          child: Text(
-                            title,
-                            maxLines: 1,
-                            overflow: TextOverflow.ellipsis,
-                            style:
-                                (hubStyle
-                                        ? AppTextStyles.of(context).sectionTitle
-                                        : AppTextStyles.of(context).body)
-                                    .copyWith(
-                                      fontWeight: hubStyle
-                                          ? FontWeight.w600
-                                          : FontWeight.w500,
-                                      color: selected ? selectedFg : normalFg,
-                                    ),
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                  if (trailing != null)
+          child: InkWell(
+            borderRadius: borderRadius,
+            onTap: onTap,
+            child: SizedBox(
+              height: height,
+              child: Padding(
+                padding: EdgeInsets.symmetric(horizontal: horizontalPadding),
+                child: Row(
+                  children: [
                     Icon(
-                      trailing,
-                      size: hubStyle ? 22 : 18,
+                      leadingIcon,
                       color: selected ? selectedFg : muted,
+                      size: iconSize,
                     ),
-                ],
+                    const SizedBox(width: 16),
+                    Expanded(
+                      child: Row(
+                        children: [
+                          Expanded(
+                            child: Text(
+                              title,
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                              style:
+                                  (hubStyle
+                                          ? AppTextStyles.of(
+                                              context,
+                                            ).sectionTitle
+                                          : AppTextStyles.of(context).body)
+                                      .copyWith(
+                                        fontWeight: hubStyle
+                                            ? FontWeight.w600
+                                            : FontWeight.w500,
+                                        color: selected ? selectedFg : normalFg,
+                                      ),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                    if (trailing != null)
+                      Icon(
+                        trailing,
+                        size: hubStyle ? 22 : 18,
+                        color: selected ? selectedFg : muted,
+                      ),
+                  ],
+                ),
               ),
             ),
           ),
         ),
       ),
-    ),
     );
   }
 }

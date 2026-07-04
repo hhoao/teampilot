@@ -26,15 +26,23 @@ void main() {
     );
 
     expect(find.byType(MacTrafficLightControls), findsOneWidget);
-    expect(find.byKey(const Key('mac_traffic_light_maximize_glyph')), findsNothing);
+    expect(
+      find.byKey(const Key('mac_traffic_light_maximize_glyph')),
+      findsNothing,
+    );
 
     final gesture = await tester.createGesture(kind: PointerDeviceKind.mouse);
     await gesture.addPointer(location: Offset.zero);
     addTearDown(gesture.removePointer);
-    await gesture.moveTo(tester.getCenter(find.byType(MacTrafficLightControls)));
+    await gesture.moveTo(
+      tester.getCenter(find.byType(MacTrafficLightControls)),
+    );
     await tester.pump();
 
-    expect(find.byKey(const Key('mac_traffic_light_maximize_glyph')), findsOneWidget);
+    expect(
+      find.byKey(const Key('mac_traffic_light_maximize_glyph')),
+      findsOneWidget,
+    );
     expect(find.byType(CustomPaint), findsWidgets);
   });
 
@@ -52,15 +60,23 @@ void main() {
       ),
     );
 
-    expect(find.byKey(const Key('mac_traffic_light_restore_glyph')), findsNothing);
+    expect(
+      find.byKey(const Key('mac_traffic_light_restore_glyph')),
+      findsNothing,
+    );
 
     final gesture = await tester.createGesture(kind: PointerDeviceKind.mouse);
     await gesture.addPointer(location: Offset.zero);
     addTearDown(gesture.removePointer);
-    await gesture.moveTo(tester.getCenter(find.byType(MacTrafficLightControls)));
+    await gesture.moveTo(
+      tester.getCenter(find.byType(MacTrafficLightControls)),
+    );
     await tester.pump();
 
-    expect(find.byKey(const Key('mac_traffic_light_restore_glyph')), findsOneWidget);
+    expect(
+      find.byKey(const Key('mac_traffic_light_restore_glyph')),
+      findsOneWidget,
+    );
   });
 
   testWidgets('Windows chrome controls render icon buttons', (tester) async {

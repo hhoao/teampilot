@@ -201,7 +201,8 @@ class GitCubit extends Cubit<GitState> {
     }
     // Only flag loading on the very first fetch for this root; background polls
     // refresh in place so a warm panel never flashes a spinner.
-    if (state.status == GitRepoStatus.notARepository && !_treeExpansionInitialized) {
+    if (state.status == GitRepoStatus.notARepository &&
+        !_treeExpansionInitialized) {
       _publish(state.copyWith(isLoading: true, clearError: true));
     } else if (state.errorMessage != null) {
       _publish(state.copyWith(clearError: true));
@@ -356,7 +357,9 @@ class GitCubit extends Cubit<GitState> {
   }
 
   Future<void> createBranch(String name) async {
-    if (await _mutate(() => _service.createBranch(state.repoRoot, name.trim()))) {
+    if (await _mutate(
+      () => _service.createBranch(state.repoRoot, name.trim()),
+    )) {
       await ensureBranches(force: true);
     }
   }
@@ -397,19 +400,13 @@ class GitCubit extends Cubit<GitState> {
     } on GitException catch (e) {
       if (isClosed) return;
       _publish(
-        state.copyWith(
-          generatingCommitMessage: false,
-          errorMessage: e.message,
-        ),
+        state.copyWith(generatingCommitMessage: false, errorMessage: e.message),
         recomputeRows: false,
       );
     } on HeadlessAiException catch (e) {
       if (isClosed) return;
       _publish(
-        state.copyWith(
-          generatingCommitMessage: false,
-          errorMessage: e.message,
-        ),
+        state.copyWith(generatingCommitMessage: false, errorMessage: e.message),
         recomputeRows: false,
       );
     } on Object catch (e) {
@@ -446,7 +443,10 @@ class GitCubit extends Cubit<GitState> {
   /// failure. Guards against re-entrancy via [GitState.busy].
   Future<bool> _mutate(Future<void> Function() action) async {
     if (state.busy) return false;
-    _publish(state.copyWith(busy: true, clearError: true), recomputeRows: false);
+    _publish(
+      state.copyWith(busy: true, clearError: true),
+      recomputeRows: false,
+    );
     try {
       await action();
       await refresh();

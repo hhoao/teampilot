@@ -18,7 +18,9 @@ abstract final class SessionSnapshotIsolate {
 
   static const sessionFileName = 'session.json';
 
-  static Future<List<Map<String, Object?>>> readSessionMaps(String sessionsDir) {
+  static Future<List<Map<String, Object?>>> readSessionMaps(
+    String sessionsDir,
+  ) {
     return Isolate.run(() => _readSessionMaps(sessionsDir));
   }
 }

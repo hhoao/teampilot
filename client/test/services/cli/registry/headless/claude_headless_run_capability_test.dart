@@ -9,12 +9,12 @@ HeadlessRunContext _ctx({
   String effort = '',
   bool expectJson = false,
 }) => HeadlessRunContext(
-      prompt: 'Write a commit message',
-      model: model,
-      effort: effort,
-      configDir: '/tmp/cfg',
-      expectJson: expectJson,
-    );
+  prompt: 'Write a commit message',
+  model: model,
+  effort: effort,
+  configDir: '/tmp/cfg',
+  expectJson: expectJson,
+);
 
 void main() {
   const cap = ClaudeHeadlessRunCapability();
@@ -25,9 +25,12 @@ void main() {
     final inv = cap.buildInvocation(_ctx(expectJson: true));
     expect(inv.executable, 'claude');
     expect(inv.arguments, [
-      '-p', 'Write a commit message',
-      '--model', 'sonnet',
-      '--output-format', 'json',
+      '-p',
+      'Write a commit message',
+      '--model',
+      'sonnet',
+      '--output-format',
+      'json',
     ]);
     expect(inv.environment['CLAUDE_CONFIG_DIR'], '/tmp/cfg');
   });
@@ -37,9 +40,12 @@ void main() {
     expect(inv.arguments.contains('--output-format'), isFalse);
   });
 
-  test('configFiles is empty (settings come from HeadlessProvisionCapability)', () {
-    expect(cap.configFiles(_ctx(effort: 'high')), isEmpty);
-  });
+  test(
+    'configFiles is empty (settings come from HeadlessProvisionCapability)',
+    () {
+      expect(cap.configFiles(_ctx(effort: 'high')), isEmpty);
+    },
+  );
 
   test('extractText unwraps the JSON result field', () {
     final r = ProcessResult(0, 0, '{"result":"feat: add thing"}', '');
@@ -59,10 +65,7 @@ void main() {
   });
 
   test('streamResultText extracts the terminal result event', () {
-    expect(
-      cap.streamResultText('{"type":"result","result":"hello"}'),
-      'hello',
-    );
+    expect(cap.streamResultText('{"type":"result","result":"hello"}'), 'hello');
     expect(cap.streamResultText('{"type":"assistant"}'), isNull);
     expect(cap.streamResultText('not json'), isNull);
   });
@@ -70,12 +73,16 @@ void main() {
   test('stream ctx adds --output-format stream-json --verbose', () {
     final inv = cap.buildInvocation(
       const HeadlessRunContext(
-        prompt: 'x', model: 'sonnet', effort: '', configDir: '/tmp/cfg',
+        prompt: 'x',
+        model: 'sonnet',
+        effort: '',
+        configDir: '/tmp/cfg',
         stream: true,
       ),
     );
-    expect(inv.arguments, containsAllInOrder(
-      ['--output-format', 'stream-json', '--verbose'],
-    ));
+    expect(
+      inv.arguments,
+      containsAllInOrder(['--output-format', 'stream-json', '--verbose']),
+    );
   });
 }

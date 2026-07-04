@@ -9,9 +9,9 @@ RelativeRect contextMenuPositionForGlobal(
   Offset globalPosition, {
   bool rootOverlay = true,
 }) {
-  final overlay = Overlay.of(context, rootOverlay: rootOverlay)
-      .context
-      .findRenderObject()! as RenderBox;
+  final overlay =
+      Overlay.of(context, rootOverlay: rootOverlay).context.findRenderObject()!
+          as RenderBox;
   final local = overlay.globalToLocal(globalPosition);
   return RelativeRect.fromRect(
     Rect.fromLTWH(local.dx, local.dy, 0, 0),
@@ -27,10 +27,7 @@ RelativeRect contextMenuPositionForGlobal(
 /// Converting [TapDownDetails.localPosition] through [context]'s [RenderBox]
 /// breaks when the caller only supplied [TapDownDetails.globalPosition] (local
 /// defaults to zero) or when local coords belong to a nested hit target.
-Offset contextMenuGlobalPosition(
-  BuildContext context,
-  TapDownDetails details,
-) {
+Offset contextMenuGlobalPosition(BuildContext context, TapDownDetails details) {
   // [context] is kept so call sites document which widget owns the menu.
   assert(context.mounted);
   return details.globalPosition;

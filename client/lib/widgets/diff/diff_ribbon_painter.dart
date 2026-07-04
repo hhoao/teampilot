@@ -40,7 +40,8 @@ class DiffRibbonPainter extends CustomPainter {
     canvas.clipRect(Offset.zero & size);
     final paint = Paint()..style = PaintingStyle.fill;
     for (final block in blocks) {
-      final double topY = topPadding - scrollOffset + block.startRow * lineHeight;
+      final double topY =
+          topPadding - scrollOffset + block.startRow * lineHeight;
       final double botY = topPadding - scrollOffset + block.endRow * lineHeight;
       final double top = topY.clamp(0.0, size.height);
       final double bot = botY.clamp(0.0, size.height);
@@ -59,10 +60,10 @@ class DiffRibbonPainter extends CustomPainter {
   }
 
   Color _colorFor(DiffRowKind kind) => switch (kind) {
-        DiffRowKind.insert => colors.ribbonAdd,
-        DiffRowKind.delete => colors.ribbonRemove,
-        _ => colors.ribbonModify,
-      };
+    DiffRowKind.insert => colors.ribbonAdd,
+    DiffRowKind.delete => colors.ribbonRemove,
+    _ => colors.ribbonModify,
+  };
 
   @override
   bool shouldRepaint(DiffRibbonPainter old) =>

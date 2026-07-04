@@ -49,11 +49,11 @@ String _progressLabel(CliInstallProgress progress) {
   final detail = progress.detail?.trim();
   return switch (progress.phase) {
     CliInstallPhase.checkingNpm => 'Checking remote npm',
-    CliInstallPhase.bootstrappingNode =>
-      'Bootstrapping Node.js on remote host',
-    CliInstallPhase.installingCli => detail == null || detail.isEmpty
-        ? 'Installing CLI on remote host'
-        : 'Installing $detail',
+    CliInstallPhase.bootstrappingNode => 'Bootstrapping Node.js on remote host',
+    CliInstallPhase.installingCli =>
+      detail == null || detail.isEmpty
+          ? 'Installing CLI on remote host'
+          : 'Installing $detail',
     CliInstallPhase.locatingExecutable => 'Locating remote CLI',
   };
 }

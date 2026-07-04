@@ -8,7 +8,6 @@ import '../../../models/workspace_tab_ref.dart';
 import '../../../widgets/file_editor_panel.dart';
 import 'home_workspace_route.dart';
 import 'home_workspace_page.dart';
-import 'workspace/workspace_config_section.dart';
 import 'workspace/workspace_page.dart';
 import 'workspace/workspace_route_active_scope.dart';
 
@@ -95,10 +94,7 @@ class _HomeBodyLayer extends StatelessWidget {
         offstage: offstage,
         child: TickerMode(
           enabled: enabled,
-          child: IgnorePointer(
-            ignoring: offstage,
-            child: child,
-          ),
+          child: IgnorePointer(ignoring: offstage, child: child),
         ),
       ),
     );
@@ -121,19 +117,16 @@ class _WorkspaceTabSlot extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final workspace = context.select<ChatCubit, Workspace?>(
-      (c) {
-        for (final candidate in c.state.workspaces) {
-          if (candidate.workspaceId == tab.workspaceId) return candidate;
-        }
-        return null;
-      },
-    );
+    final workspace = context.select<ChatCubit, Workspace?>((c) {
+      for (final candidate in c.state.workspaces) {
+        if (candidate.workspaceId == tab.workspaceId) return candidate;
+      }
+      return null;
+    });
     if (workspace == null) return const SizedBox.shrink();
 
     final isActive = activeTabKey == tab.tabKey;
-    final view =
-        isActive ? HomeWorkspaceRoute.view(location) : null;
+    final view = isActive ? HomeWorkspaceRoute.view(location) : null;
     final configSection = isActive
         ? HomeWorkspaceRoute.workspaceConfigSection(location)
         : null;

@@ -24,8 +24,12 @@ class ChatDataSnapshot extends Equatable {
   final List<AppSession> visibleSessions;
 
   @override
-  List<Object?> get props =>
-      [workspaces, sessions, visibleWorkspaces, visibleSessions];
+  List<Object?> get props => [
+    workspaces,
+    sessions,
+    visibleWorkspaces,
+    visibleSessions,
+  ];
 }
 
 /// Owns team-scope flags and wraps SessionRepository. Returns snapshots;
@@ -237,8 +241,12 @@ class SessionDataStore {
     WorkspaceFolder folder,
   ) async {
     if (folder.path.trim().isEmpty) return null;
-    if (workspacePathsEqual(folder.path, workspace.firstFolderPath)) return null;
-    if (workspace.folders.any((f) => workspacePathsEqual(f.path, folder.path))) {
+    if (workspacePathsEqual(folder.path, workspace.firstFolderPath)) {
+      return null;
+    }
+    if (workspace.folders.any(
+      (f) => workspacePathsEqual(f.path, folder.path),
+    )) {
       return null;
     }
     await repo.updateWorkspaceFolders(workspace.workspaceId, [

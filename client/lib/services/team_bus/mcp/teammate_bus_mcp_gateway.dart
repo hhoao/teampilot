@@ -102,14 +102,16 @@ class TeammateBusMcpGateway {
   }
 
   String? _resolveSessionId(HttpRequest request) {
-    final sessionHeader =
-        request.headers.value(teammateBusMcpSessionHeader.toLowerCase())?.trim();
+    final sessionHeader = request.headers
+        .value(teammateBusMcpSessionHeader.toLowerCase())
+        ?.trim();
     if (sessionHeader != null && sessionHeader.isNotEmpty) {
       return sessionHeader;
     }
 
-    final token =
-        request.headers.value(teammateBusTokenHeader.toLowerCase())?.trim();
+    final token = request.headers
+        .value(teammateBusTokenHeader.toLowerCase())
+        ?.trim();
     if (token != null && token.isNotEmpty) {
       return _registry.sessionForToken(token);
     }

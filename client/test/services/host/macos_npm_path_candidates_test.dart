@@ -7,14 +7,11 @@ void main() {
   test('paths follow platform', () {
     if (Platform.isMacOS) {
       final home = Platform.environment['HOME'];
-      expect(
-        MacOsNpmPathCandidates.paths(),
-        [
-          '/opt/homebrew/bin/npm',
-          '/usr/local/bin/npm',
-          if (home != null) '$home/.local/bin/npm',
-        ],
-      );
+      expect(MacOsNpmPathCandidates.paths(), [
+        '/opt/homebrew/bin/npm',
+        '/usr/local/bin/npm',
+        if (home != null) '$home/.local/bin/npm',
+      ]);
       return;
     }
     expect(MacOsNpmPathCandidates.paths(), isEmpty);

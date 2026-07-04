@@ -1,4 +1,4 @@
-﻿import 'package:flutter/material.dart';
+import 'package:flutter/material.dart';
 import 'package:teampilot/theme/app_icon_sizes.dart';
 
 import '../../l10n/app_localizations.dart';
@@ -70,7 +70,9 @@ class FileTreeHeaderOverflowMenu extends StatelessWidget {
         SidebarActionMenuSpec.item(
           value: FileTreeHeaderAction.toggleFilter,
           icon: filterVisible ? Icons.search_off : Icons.search,
-          label: filterVisible ? l10n.fileTreeHideFilter : l10n.fileTreeShowFilter,
+          label: filterVisible
+              ? l10n.fileTreeHideFilter
+              : l10n.fileTreeShowFilter,
         ),
         SidebarActionMenuSpec.item(
           value: FileTreeHeaderAction.toggleHidden,

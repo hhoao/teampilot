@@ -364,7 +364,9 @@ class RemoteFileStore {
     }
   }
 
-  Future<List<RemoteDirEntry>> listDirectoryEntriesRecursive(String path) async {
+  Future<List<RemoteDirEntry>> listDirectoryEntriesRecursive(
+    String path,
+  ) async {
     final client = await _clientFactory.clientForStorage(_profile);
     final result = await client.runWithResult(
       'find ${shellSingleQuote(path)} -mindepth 1 -printf "%P\\t%y\\n"',
@@ -377,10 +379,9 @@ class RemoteFileStore {
       if (line.trim().isEmpty) continue;
       final parts = line.split('\t');
       if (parts.length < 2) continue;
-      entries.add(RemoteDirEntry(
-        name: parts.first,
-        isDirectory: parts.last == 'd',
-      ));
+      entries.add(
+        RemoteDirEntry(name: parts.first, isDirectory: parts.last == 'd'),
+      );
     }
     return entries;
   }
@@ -415,11 +416,12 @@ class RemoteFileStore {
     final quoted = shellSingleQuote(resolved);
     final cmd = switch (remoteOs) {
       RemoteOs.windows => 'explorer $quoted',
-      RemoteOs.posix => 'if command -v xdg-open >/dev/null 2>&1; then '
-          'xdg-open -- $quoted; '
-          'elif command -v open >/dev/null 2>&1; then '
-          'open -- $quoted; '
-          'else exit 127; fi',
+      RemoteOs.posix =>
+        'if command -v xdg-open >/dev/null 2>&1; then '
+            'xdg-open -- $quoted; '
+            'elif command -v open >/dev/null 2>&1; then '
+            'open -- $quoted; '
+            'else exit 127; fi',
     };
     final result = await client.runWithResult(cmd, stderr: false);
     return sshRunSucceeded(result);

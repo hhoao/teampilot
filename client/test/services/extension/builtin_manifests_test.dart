@@ -19,7 +19,9 @@ void main() {
   });
 
   test('built-in manifests include a valid codegraph mcp manifest', () {
-    final cg = builtInExtensionManifests().firstWhere((m) => m.id == 'codegraph');
+    final cg = builtInExtensionManifests().firstWhere(
+      (m) => m.id == 'codegraph',
+    );
     expect(cg.detect.executable, 'codegraph');
     expect(cg.acquire!.kind, 'node-package');
     expect(cg.acquire!.package, '@colbymchenry/codegraph');

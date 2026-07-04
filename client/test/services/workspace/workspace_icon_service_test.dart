@@ -8,7 +8,9 @@ import 'package:teampilot/services/workspace/workspace_icon_storage.dart';
 
 void main() {
   test('importCustomFromLocalFile stores custom icon ref', () async {
-    final tmp = await Directory.systemTemp.createTemp('workspace_icon_service_');
+    final tmp = await Directory.systemTemp.createTemp(
+      'workspace_icon_service_',
+    );
     addTearDown(() => tmp.deleteSync(recursive: true));
 
     final source = File('${tmp.path}/source.png');

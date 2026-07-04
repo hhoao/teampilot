@@ -80,10 +80,9 @@ final class WaitForMessageTool extends TeammateBusTool {
     if (acknowledgeMessages) {
       switch (outcome) {
         case MessageWork(:final messages):
-          await call.bus.acknowledgeDelivery(
-            call.memberId,
-            [for (final message in messages) message.id],
-          );
+          await call.bus.acknowledgeDelivery(call.memberId, [
+            for (final message in messages) message.id,
+          ]);
         case TaskWork() || EmptyWork():
           break;
       }

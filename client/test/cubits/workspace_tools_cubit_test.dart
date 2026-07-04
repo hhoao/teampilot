@@ -22,7 +22,9 @@ void main() {
     test('emits a new state when a selection changes', () {
       final cubit = WorkspaceToolsCubit();
       final seen = <Map<String, int>>[];
-      final sub = cubit.stream.listen((s) => seen.add(Map.of(s.selectedByWorkspace)));
+      final sub = cubit.stream.listen(
+        (s) => seen.add(Map.of(s.selectedByWorkspace)),
+      );
       cubit.setSelectedIndex('p1', 3);
       cubit.setSelectedIndex('p1', 3); // no-op, same value
       return Future<void>.delayed(Duration.zero, () {

@@ -60,9 +60,9 @@ class AutomationTabScope {
   }
 
   Map<String, Object?> toJson() => {
-        'workspaceId': workspaceId,
-        'profile': launchProfileId,
-      };
+    'workspaceId': workspaceId,
+    'profile': launchProfileId,
+  };
 
   /// Whether [session] belongs to this tab scope.
   bool ownsSession(AppSession session, LaunchProfileKind launchKind) {

@@ -192,9 +192,9 @@ class _TargetTile extends StatelessWidget {
                 backgroundColor: cs.primary,
                 child: Text(
                   '$instanceCount',
-                  style: Theme.of(context).textTheme.labelSmall?.copyWith(
-                    color: cs.onPrimary,
-                  ),
+                  style: Theme.of(
+                    context,
+                  ).textTheme.labelSmall?.copyWith(color: cs.onPrimary),
                 ),
               )
             : null,
@@ -283,10 +283,7 @@ class _PlacementStepper extends StatelessWidget {
           onPressed: canDecrement ? onDecrement : null,
           icon: const Icon(Icons.remove),
         ),
-        SizedBox(
-          width: 28,
-          child: Text('$value', textAlign: TextAlign.center),
-        ),
+        SizedBox(width: 28, child: Text('$value', textAlign: TextAlign.center)),
         IconButton(
           visualDensity: VisualDensity.compact,
           onPressed: canIncrement ? onIncrement : null,

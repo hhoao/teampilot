@@ -87,15 +87,13 @@ class _RightToolsHostState extends State<RightToolsHost>
       return;
     }
 
-    _widthAnimation = Tween<double>(
-      begin: _animatedWidth,
-      end: targetWidth,
-    ).animate(
-      CurvedAnimation(
-        parent: _revealController,
-        curve: Curves.easeOutCubic,
-      ),
-    );
+    _widthAnimation = Tween<double>(begin: _animatedWidth, end: targetWidth)
+        .animate(
+          CurvedAnimation(
+            parent: _revealController,
+            curve: Curves.easeOutCubic,
+          ),
+        );
     _revealController.forward(from: 0);
   }
 
@@ -122,8 +120,10 @@ class _RightToolsHostState extends State<RightToolsHost>
     return LayoutBuilder(
       builder: (context, constraints) {
         final maxW = constraints.maxWidth;
-        final maxPanel = (maxW - RightToolsHost._minCenterWidth)
-            .clamp(LayoutPreferences.minRightToolsWidth, maxW);
+        final maxPanel = (maxW - RightToolsHost._minCenterWidth).clamp(
+          LayoutPreferences.minRightToolsWidth,
+          maxW,
+        );
         final clampedPanel = panelWidth.clamp(0.0, maxPanel);
 
         return ResizableSplitView(
@@ -131,14 +131,12 @@ class _RightToolsHostState extends State<RightToolsHost>
           primaryAtEnd: true,
           first: RepaintBoundary(child: widget.center),
           second: ClipRect(
-            child: SizedBox(
-              width: clampedPanel,
-              child: widget.rightTools,
-            ),
+            child: SizedBox(width: clampedPanel, child: widget.rightTools),
           ),
           initialPrimarySize: clampedPanel,
-          minPrimarySize:
-              _showDivider ? LayoutPreferences.minRightToolsWidth : 0,
+          minPrimarySize: _showDivider
+              ? LayoutPreferences.minRightToolsWidth
+              : 0,
           minSecondarySize: RightToolsHost._minCenterWidth,
           maxPrimarySize: _showDivider ? maxPanel : 0,
           dividerThickness: _showDivider ? 1 : 0,

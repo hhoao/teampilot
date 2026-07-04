@@ -72,10 +72,7 @@ void main() {
         },
       );
       expect(result.ok, isFalse);
-      expect(
-        result.failure?.code,
-        CredentialActionFailureCode.sourceMissing,
-      );
+      expect(result.failure?.code, CredentialActionFailureCode.sourceMissing);
     } finally {
       await home.delete(recursive: true);
     }

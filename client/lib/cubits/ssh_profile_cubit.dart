@@ -46,8 +46,7 @@ class SshProfileState extends Equatable {
 
 typedef RemoteCliPathsLocator =
     Future<Map<CliTool, String>> Function(SshProfile profile);
-typedef RemoteCliPathHandler =
-    Future<void> Function(CliTool cli, String path);
+typedef RemoteCliPathHandler = Future<void> Function(CliTool cli, String path);
 
 class SshProfileCubit extends Cubit<SshProfileState> {
   SshProfileCubit({

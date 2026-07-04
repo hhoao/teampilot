@@ -20,19 +20,16 @@ DiffRibbonPainter _painter({
   double scrollOffset = 0,
   double lineHeight = 16,
   List<DiffBlock> blocks = const [],
-}) =>
-    DiffRibbonPainter(
-      scrollOffset: scrollOffset,
-      lineHeight: lineHeight,
-      topPadding: 5,
-      blocks: blocks,
-      colors: _colors,
-    );
+}) => DiffRibbonPainter(
+  scrollOffset: scrollOffset,
+  lineHeight: lineHeight,
+  topPadding: 5,
+  blocks: blocks,
+  colors: _colors,
+);
 
 void main() {
-  const blocks = [
-    DiffBlock(startRow: 2, endRow: 4, kind: DiffRowKind.modify),
-  ];
+  const blocks = [DiffBlock(startRow: 2, endRow: 4, kind: DiffRowKind.modify)];
 
   group('DiffRibbonPainter.shouldRepaint', () {
     test('repaints when scroll offset changes', () {
@@ -51,8 +48,10 @@ void main() {
 
     test('does not repaint when nothing changed', () {
       expect(
-        _painter(blocks: blocks, scrollOffset: 8)
-            .shouldRepaint(_painter(blocks: blocks, scrollOffset: 8)),
+        _painter(
+          blocks: blocks,
+          scrollOffset: 8,
+        ).shouldRepaint(_painter(blocks: blocks, scrollOffset: 8)),
         isFalse,
       );
     });

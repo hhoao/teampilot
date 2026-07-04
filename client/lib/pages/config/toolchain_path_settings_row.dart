@@ -98,11 +98,10 @@ class _ToolchainPathSettingsRowState extends State<ToolchainPathSettingsRow> {
 
   String _storedPath() => widget.cubit.toolchainPath(widget.toolId);
 
-  String _resolved() =>
-      widget.cubit.resolveToolchainExecutable(
-        widget.toolId,
-        widget.fallbackExecutable,
-      );
+  String _resolved() => widget.cubit.resolveToolchainExecutable(
+    widget.toolId,
+    widget.fallbackExecutable,
+  );
 
   void _syncFromState(String stored) {
     if (stored == _lastSyncedPath) return;
@@ -175,9 +174,7 @@ class _ToolchainPathSettingsRowState extends State<ToolchainPathSettingsRow> {
     if (widget.toolId == SessionPreferences.toolchainGit) {
       _addProgressLog('Detecting git...');
       final gitInstaller = const GitInstaller();
-      task = gitInstaller.install(
-        onProgress: _onInstallProgress,
-      );
+      task = gitInstaller.install(onProgress: _onInstallProgress);
     } else if (widget.toolId == SessionPreferences.toolchainNode) {
       // Node install is handled by TeampilotNodeInstall in the CLI installer
       // flow. For now, guide the user to the official site.
@@ -309,8 +306,10 @@ class _ToolchainPathSettingsRowState extends State<ToolchainPathSettingsRow> {
                           height: 16,
                           child: CircularProgressIndicator(strokeWidth: 2),
                         )
-                      : Icon(Icons.download_outlined,
-                          size: context.appIconSizes.md),
+                      : Icon(
+                          Icons.download_outlined,
+                          size: context.appIconSizes.md,
+                        ),
                   label: Text(
                     _isInstalling
                         ? l10n.cliInstallInstalling
@@ -322,8 +321,10 @@ class _ToolchainPathSettingsRowState extends State<ToolchainPathSettingsRow> {
               OutlinedButton.icon(
                 key: widget.browseKey,
                 onPressed: _pickFile,
-                icon: Icon(Icons.folder_open_outlined,
-                    size: context.appIconSizes.md),
+                icon: Icon(
+                  Icons.folder_open_outlined,
+                  size: context.appIconSizes.md,
+                ),
                 label: Text(l10n.cliExecutablePathBrowse),
               ),
               const SizedBox(width: 6),

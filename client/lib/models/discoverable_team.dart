@@ -30,14 +30,14 @@ class SkillDependencyRef {
 
   /// Payload for [SkillInstallService.installFromDiscovery] during TeamHub clone.
   DiscoverableSkill toDiscoverableSkill() => DiscoverableSkill(
-        key: expectedLocalId,
-        name: name,
-        description: '',
-        directory: directory,
-        repoOwner: repoOwner,
-        repoName: repoName,
-        repoBranch: repoBranch,
-      );
+    key: expectedLocalId,
+    name: name,
+    description: '',
+    directory: directory,
+    repoOwner: repoOwner,
+    repoName: repoName,
+    repoBranch: repoBranch,
+  );
 
   factory SkillDependencyRef.fromJson(Map<String, Object?> json) =>
       SkillDependencyRef(
@@ -49,12 +49,12 @@ class SkillDependencyRef {
       );
 
   Map<String, Object?> toJson() => {
-        'repoOwner': repoOwner,
-        'repoName': repoName,
-        'repoBranch': repoBranch,
-        'directory': directory,
-        'name': name,
-      };
+    'repoOwner': repoOwner,
+    'repoName': repoName,
+    'repoBranch': repoBranch,
+    'directory': directory,
+    'name': name,
+  };
 
   @override
   bool operator ==(Object other) =>
@@ -89,8 +89,7 @@ class PluginDependencyRef {
 
   /// Deterministic local `Plugin.id` this dep resolves to once installed
   /// (`owner/name/entryName`).
-  String get expectedLocalId =>
-      '$marketplaceOwner/$marketplaceName/$entryName';
+  String get expectedLocalId => '$marketplaceOwner/$marketplaceName/$entryName';
 
   factory PluginDependencyRef.fromJson(Map<String, Object?> json) =>
       PluginDependencyRef(
@@ -102,12 +101,12 @@ class PluginDependencyRef {
       );
 
   Map<String, Object?> toJson() => {
-        'marketplaceOwner': marketplaceOwner,
-        'marketplaceName': marketplaceName,
-        'marketplaceBranch': marketplaceBranch,
-        'entryName': entryName,
-        'name': name,
-      };
+    'marketplaceOwner': marketplaceOwner,
+    'marketplaceName': marketplaceName,
+    'marketplaceBranch': marketplaceBranch,
+    'entryName': entryName,
+    'name': name,
+  };
 
   @override
   bool operator ==(Object other) =>
@@ -120,12 +119,12 @@ class PluginDependencyRef {
 
   @override
   int get hashCode => Object.hash(
-        marketplaceOwner,
-        marketplaceName,
-        marketplaceBranch,
-        entryName,
-        name,
-      );
+    marketplaceOwner,
+    marketplaceName,
+    marketplaceBranch,
+    entryName,
+    name,
+  );
 }
 
 /// Inline MCP server config a public team depends on.
@@ -152,11 +151,11 @@ class McpDependencyRef {
       );
 
   Map<String, Object?> toJson() => {
-        'id': id,
-        'name': name,
-        if (description.isNotEmpty) 'description': description,
-        'server': server,
-      };
+    'id': id,
+    'name': name,
+    if (description.isNotEmpty) 'description': description,
+    'server': server,
+  };
 
   @override
   bool operator ==(Object other) =>
@@ -224,17 +223,17 @@ class DiscoverableTeamMember {
       );
 
   Map<String, Object?> toJson() => {
-        'name': name,
-        'provider': provider,
-        'model': model,
-        'agent': agent,
-        if (agentType.isNotEmpty) 'agentType': agentType,
-        if (capabilities.isNotEmpty) 'capabilities': capabilities.toList(),
-        if (replicas != 1) 'replicas': replicas,
-        'prompt': prompt,
-        if (playbook.isNotEmpty) 'playbook': playbook,
-        'extraArgs': extraArgs,
-      };
+    'name': name,
+    'provider': provider,
+    'model': model,
+    'agent': agent,
+    if (agentType.isNotEmpty) 'agentType': agentType,
+    if (capabilities.isNotEmpty) 'capabilities': capabilities.toList(),
+    if (replicas != 1) 'replicas': replicas,
+    'prompt': prompt,
+    if (playbook.isNotEmpty) 'playbook': playbook,
+    'extraArgs': extraArgs,
+  };
 
   TeamMemberConfig toMemberConfig({required int joinedAt}) {
     final id = TeamMemberNaming.isTeamLeadName(name)
@@ -274,17 +273,17 @@ class DiscoverableTeamMember {
 
   @override
   int get hashCode => Object.hash(
-        name,
-        provider,
-        model,
-        agent,
-        agentType,
-        Object.hashAllUnordered(capabilities),
-        replicas,
-        prompt,
-        playbook,
-        extraArgs,
-      );
+    name,
+    provider,
+    model,
+    agent,
+    agentType,
+    Object.hashAllUnordered(capabilities),
+    replicas,
+    prompt,
+    playbook,
+    extraArgs,
+  );
 }
 
 /// A public team as listed in a TeamHub registry manifest.
@@ -324,11 +323,11 @@ class DiscoverableTeam {
   factory DiscoverableTeam.fromJson(Map<String, Object?> json) {
     List<T> list<T>(Object? raw, T Function(Map<String, Object?>) f) =>
         raw is List
-            ? raw
-                .whereType<Map>()
-                .map((m) => f(m.cast<String, Object?>()))
-                .toList(growable: false)
-            : const [];
+        ? raw
+              .whereType<Map>()
+              .map((m) => f(m.cast<String, Object?>()))
+              .toList(growable: false)
+        : const [];
     return DiscoverableTeam(
       key: json['key'] as String? ?? '',
       name: json['name'] as String? ?? '',
@@ -347,20 +346,20 @@ class DiscoverableTeam {
   }
 
   Map<String, Object?> toJson() => {
-        'key': key,
-        'name': name,
-        'description': description,
-        'category': category,
-        if (author != null) 'author': author,
-        'updatedAt': updatedAt,
-        'cli': cli.value,
-        'teamMode': teamMode.value,
-        if (extraArgs.isNotEmpty) 'extraArgs': extraArgs,
-        'members': members.map((m) => m.toJson()).toList(),
-        'skillDeps': skillDeps.map((d) => d.toJson()).toList(),
-        'pluginDeps': pluginDeps.map((d) => d.toJson()).toList(),
-        'mcpDeps': mcpDeps.map((d) => d.toJson()).toList(),
-      };
+    'key': key,
+    'name': name,
+    'description': description,
+    'category': category,
+    if (author != null) 'author': author,
+    'updatedAt': updatedAt,
+    'cli': cli.value,
+    'teamMode': teamMode.value,
+    if (extraArgs.isNotEmpty) 'extraArgs': extraArgs,
+    'members': members.map((m) => m.toJson()).toList(),
+    'skillDeps': skillDeps.map((d) => d.toJson()).toList(),
+    'pluginDeps': pluginDeps.map((d) => d.toJson()).toList(),
+    'mcpDeps': mcpDeps.map((d) => d.toJson()).toList(),
+  };
 
   @override
   bool operator ==(Object other) =>
@@ -381,18 +380,18 @@ class DiscoverableTeam {
 
   @override
   int get hashCode => Object.hash(
-        key,
-        name,
-        description,
-        category,
-        author,
-        updatedAt,
-        cli,
-        teamMode,
-        extraArgs,
-        Object.hashAll(members),
-        Object.hashAll(skillDeps),
-        Object.hashAll(pluginDeps),
-        Object.hashAll(mcpDeps),
-      );
+    key,
+    name,
+    description,
+    category,
+    author,
+    updatedAt,
+    cli,
+    teamMode,
+    extraArgs,
+    Object.hashAll(members),
+    Object.hashAll(skillDeps),
+    Object.hashAll(pluginDeps),
+    Object.hashAll(mcpDeps),
+  );
 }

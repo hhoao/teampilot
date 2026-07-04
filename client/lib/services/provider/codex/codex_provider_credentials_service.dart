@@ -39,19 +39,11 @@ class CodexProviderCredentialsService {
     List<String> arguments, {
     Map<String, String>? environment,
   }) {
-    return Process.run(
-      executable,
-      arguments,
-      environment: environment,
-    );
+    return Process.run(executable, arguments, environment: environment);
   }
 
-  String providerDir(String providerId) => _fs.pathContext.join(
-    _basePath,
-    'providers',
-    'codex',
-    providerId.trim(),
-  );
+  String providerDir(String providerId) =>
+      _fs.pathContext.join(_basePath, 'providers', 'codex', providerId.trim());
 
   String credentialPath(String providerId) => _fs.pathContext.join(
     providerDir(providerId),

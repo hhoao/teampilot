@@ -61,23 +61,25 @@ void main() {
     expect(Link(link).existsSync(), isTrue);
   });
 
-  test('listDir reports a symlink/junction to a directory as a directory',
-      () async {
-    final target = p.join(root.path, 'installed', 'brainstorming');
-    await fs.ensureDir(target);
-    final container = p.join(root.path, 'skills');
-    await fs.ensureDir(container);
-    await fs.createSymlink(
-      target: target,
-      linkPath: p.join(container, 'brainstorming'),
-    );
+  test(
+    'listDir reports a symlink/junction to a directory as a directory',
+    () async {
+      final target = p.join(root.path, 'installed', 'brainstorming');
+      await fs.ensureDir(target);
+      final container = p.join(root.path, 'skills');
+      await fs.ensureDir(container);
+      await fs.createSymlink(
+        target: target,
+        linkPath: p.join(container, 'brainstorming'),
+      );
 
-    final entries = await fs.listDir(container);
+      final entries = await fs.listDir(container);
 
-    expect(entries, hasLength(1));
-    expect(entries.single.name, 'brainstorming');
-    expect(entries.single.isDirectory, isTrue);
-  });
+      expect(entries, hasLength(1));
+      expect(entries.single.name, 'brainstorming');
+      expect(entries.single.isDirectory, isTrue);
+    },
+  );
 
   test('rename replaces an existing destination directory', () async {
     final from = p.join(root.path, 'next');

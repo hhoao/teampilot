@@ -3,11 +3,7 @@ import '../../models/team_config.dart';
 import '../cli/registry/capabilities/plugin_provisioner_capability.dart';
 import '../cli/registry/cli_tool_registry.dart';
 
-enum PluginCliSupportLevel {
-  fullySupported,
-  partiallySupported,
-  notApplicable,
-}
+enum PluginCliSupportLevel { fullySupported, partiallySupported, notApplicable }
 
 class PluginCliSupportStatus {
   const PluginCliSupportStatus({

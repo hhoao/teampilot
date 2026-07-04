@@ -15,7 +15,7 @@ export 'registry/capabilities/remote_cli_locator_capability.dart'
 /// flashskyai-only `RemoteFlashskyaiCliLocator` across all 5 CLIs.
 class RemoteCliLocator {
   RemoteCliLocator({CliToolRegistry? registry})
-      : _registry = registry ?? CliToolRegistry.builtIn();
+    : _registry = registry ?? CliToolRegistry.builtIn();
 
   final CliToolRegistry _registry;
 

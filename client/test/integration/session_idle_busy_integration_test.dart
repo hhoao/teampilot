@@ -179,8 +179,7 @@ void main() {
         expect(
           worker.ptyInput.where((w) => w.contains('teammate-bus')),
           isNotEmpty,
-          reason:
-              'PTY quiet ends prior turn; pending mail doorbells at prompt',
+          reason: 'PTY quiet ends prior turn; pending mail doorbells at prompt',
         );
         expect(cubit.state.workingSessionIds, contains(opened.sessionId));
       },
@@ -204,12 +203,10 @@ void main() {
       expect(
         bus.isMemberInTurn('team-lead'),
         isFalse,
-        reason: 'mixed bus turn ends when PTY fingerprint is quiet after activity',
+        reason:
+            'mixed bus turn ends when PTY fingerprint is quiet after activity',
       );
-      expect(
-        cubit.state.workingSessionIds,
-        isEmpty,
-      );
+      expect(cubit.state.workingSessionIds, isEmpty);
     });
 
     test('bus turn survives until idleAfter without PTY bytes', () async {
@@ -226,67 +223,75 @@ void main() {
       expect(cubit.state.workingSessionIds, contains(opened.sessionId));
     });
 
-    test('bus turn ends when member enters wait_for_message, not on Stop-hook',
-        () async {
-      final opened = await openMixedSessionWithShells(
-        cubit: cubit,
-        repo: repo,
-        postFrame: postFrame,
-      );
-      final bus = cubit.activeTab!.teamBus!;
-      final mcp = cubit.teammateBusMcpEndpointForSession(opened.sessionId)!;
-      final idle = idleEndpointFromMcp(mcp);
+    test(
+      'bus turn ends when member enters wait_for_message, not on Stop-hook',
+      () async {
+        final opened = await openMixedSessionWithShells(
+          cubit: cubit,
+          repo: repo,
+          postFrame: postFrame,
+        );
+        final bus = cubit.activeTab!.teamBus!;
+        final mcp = cubit.teammateBusMcpEndpointForSession(opened.sessionId)!;
+        final idle = idleEndpointFromMcp(mcp);
 
-      bus.markTurnStarted('team-lead');
-      cubit.debugTickIdleWatch();
-      expect(bus.isMemberInTurn('team-lead'), isTrue);
+        bus.markTurnStarted('team-lead');
+        cubit.debugTickIdleWatch();
+        expect(bus.isMemberInTurn('team-lead'), isTrue);
 
-      await postMemberIdle(idle, 'team-lead', sessionId: opened.sessionId);
-      cubit.debugTickIdleWatch();
-      expect(bus.isMemberInTurn('team-lead'), isTrue);
+        await postMemberIdle(idle, 'team-lead', sessionId: opened.sessionId);
+        cubit.debugTickIdleWatch();
+        expect(bus.isMemberInTurn('team-lead'), isTrue);
 
-      unawaited(bus.receive('team-lead'));
-      await Future<void>.delayed(Duration.zero);
-      expect(bus.isWaitingForMessage('team-lead'), isTrue);
-      expect(bus.isMemberInTurn('team-lead'), isFalse);
-      cubit.debugTickIdleWatch();
-      expect(cubit.state.workingSessionIds, isEmpty);
-    });
+        unawaited(bus.receive('team-lead'));
+        await Future<void>.delayed(Duration.zero);
+        expect(bus.isWaitingForMessage('team-lead'), isTrue);
+        expect(bus.isMemberInTurn('team-lead'), isFalse);
+        cubit.debugTickIdleWatch();
+        expect(cubit.state.workingSessionIds, isEmpty);
+      },
+    );
 
-    test('member parked in wait_for_message is idle on bus and session', () async {
-      final opened = await openMixedSessionWithShells(
-        cubit: cubit,
-        repo: repo,
-        postFrame: postFrame,
-      );
-      final bus = cubit.activeTab!.teamBus!;
-      final shell = cubit.activeTab!.memberShells['team-lead']!;
+    test(
+      'member parked in wait_for_message is idle on bus and session',
+      () async {
+        final opened = await openMixedSessionWithShells(
+          cubit: cubit,
+          repo: repo,
+          postFrame: postFrame,
+        );
+        final bus = cubit.activeTab!.teamBus!;
+        final shell = cubit.activeTab!.memberShells['team-lead']!;
 
-      bus.markTurnStarted('team-lead');
-      final waiting = bus.receive('team-lead');
-      await Future<void>.delayed(Duration.zero);
+        bus.markTurnStarted('team-lead');
+        final waiting = bus.receive('team-lead');
+        await Future<void>.delayed(Duration.zero);
 
-      shell.activityTracker.markActive();
-      cubit.debugTickIdleWatch();
-      expect(
-        cubit.state.workingSessionIds,
-        isEmpty,
-        reason: 'wait_for_message parks the member as idle',
-      );
-      expect(bus.isWaitingForMessage('team-lead'), isTrue);
-      expect(bus.isMemberInTurn('team-lead'), isFalse);
+        shell.activityTracker.markActive();
+        cubit.debugTickIdleWatch();
+        expect(
+          cubit.state.workingSessionIds,
+          isEmpty,
+          reason: 'wait_for_message parks the member as idle',
+        );
+        expect(bus.isWaitingForMessage('team-lead'), isTrue);
+        expect(bus.isMemberInTurn('team-lead'), isFalse);
 
-      bus.memberById('team-lead')!.inbox.deliver(
-        const TeamMessage(
-          id: '1',
-          from: 'worker-1',
-          to: 'team-lead',
-          content: 'ping',
-        ),
-      );
-      final batch = await waiting;
-      expect(batch, hasLength(1));
-    });
+        bus
+            .memberById('team-lead')!
+            .inbox
+            .deliver(
+              const TeamMessage(
+                id: '1',
+                from: 'worker-1',
+                to: 'team-lead',
+                content: 'ping',
+              ),
+            );
+        final batch = await waiting;
+        expect(batch, hasLength(1));
+      },
+    );
   });
 
   group('mixed team member presence (MemberPresenceCubit + TeamBus)', () {
@@ -445,10 +450,10 @@ void main() {
         postFrameScheduler: postFrame.scheduler,
         terminalSessionFactory:
             ({required String executable, int scrollbackLines = 10000}) {
-          final shell = _SimpleRunningShell(executable: executable);
-          created.add(shell);
-          return shell;
-        },
+              final shell = _SimpleRunningShell(executable: executable);
+              created.add(shell);
+              return shell;
+            },
       );
     });
 

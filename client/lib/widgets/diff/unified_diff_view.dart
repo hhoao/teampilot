@@ -88,8 +88,10 @@ class _UnifiedDiffViewState extends State<UnifiedDiffView> {
     final scroller = _scroll.verticalScroller;
     if (!scroller.hasClients) return;
     final startLine = _pane.blocks[index].startRow;
-    final target = (5 + (startLine - 2) * _lineHeightCache)
-        .clamp(0.0, scroller.position.maxScrollExtent);
+    final target = (5 + (startLine - 2) * _lineHeightCache).clamp(
+      0.0,
+      scroller.position.maxScrollExtent,
+    );
     scroller.animateTo(
       target,
       duration: const Duration(milliseconds: 200),
@@ -134,18 +136,18 @@ class _UnifiedDiffViewState extends State<UnifiedDiffView> {
             lineDecorations: pane.decorations,
             indicatorBuilder:
                 (context, editingController, chunkController, notifier) {
-              return DefaultCodeLineNumber(
-                controller: editingController,
-                notifier: notifier,
-                customLineIndex2Text: (lineIndex) {
-                  if (lineIndex < 0 || lineIndex >= pane.numbers.length) {
-                    return '';
-                  }
-                  final no = pane.numbers[lineIndex];
-                  return no == null ? '' : '$no';
+                  return DefaultCodeLineNumber(
+                    controller: editingController,
+                    notifier: notifier,
+                    customLineIndex2Text: (lineIndex) {
+                      if (lineIndex < 0 || lineIndex >= pane.numbers.length) {
+                        return '';
+                      }
+                      final no = pane.numbers[lineIndex];
+                      return no == null ? '' : '$no';
+                    },
+                  );
                 },
-              );
-            },
           ),
         ),
         DiffOverviewRuler(

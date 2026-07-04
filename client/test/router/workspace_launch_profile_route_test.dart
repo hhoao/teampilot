@@ -9,9 +9,6 @@ void main() {
       ),
       'team-1',
     );
-    expect(
-      HomeWorkspaceRoute.profile('/home-v2/workspace/ws-1'),
-      isNull,
-    );
+    expect(HomeWorkspaceRoute.profile('/home-v2/workspace/ws-1'), isNull);
   });
 }

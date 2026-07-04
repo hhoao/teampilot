@@ -694,6 +694,9 @@ class AppLocalizationsZh extends AppLocalizations {
   String get homeWorkspaceConversationsSection => '对话';
 
   @override
+  String get workspaceRunningSessionsSection => '正在运行';
+
+  @override
   String get homeWorkspaceWorkspaceAgent => '智能体';
 
   @override

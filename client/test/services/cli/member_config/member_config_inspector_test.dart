@@ -41,28 +41,30 @@ void main() {
     );
   });
 
-  test('prefers the runtime member dir when it exists (mixed mode nests by id)',
-      () async {
-    final dir = layout.sessionRuntimeToolDir(
-      'workspace-1',
-      'team-a-1',
-      'claude',
-      memberId: 'm1',
-    );
-    await fs.ensureDir(dir);
-    await fs.writeString('$dir/skills/a/SKILL.md', '---\nname: A\n---');
+  test(
+    'prefers the runtime member dir when it exists (mixed mode nests by id)',
+    () async {
+      final dir = layout.sessionRuntimeToolDir(
+        'workspace-1',
+        'team-a-1',
+        'claude',
+        memberId: 'm1',
+      );
+      await fs.ensureDir(dir);
+      await fs.writeString('$dir/skills/a/SKILL.md', '---\nname: A\n---');
 
-    final detail = await inspector.inspect(
-      workspaceId: 'workspace-1',
-      sessionId: 'team-a-1',
-      team: team,
-      member: member,
-    );
+      final detail = await inspector.inspect(
+        workspaceId: 'workspace-1',
+        sessionId: 'team-a-1',
+        team: team,
+        member: member,
+      );
 
-    expect(detail.sourceLayer, MemberConfigSourceLayer.runtime);
-    expect(detail.resolvedDir, dir);
-    expect(detail.skills.single.name, 'A');
-  });
+      expect(detail.sourceLayer, MemberConfigSourceLayer.runtime);
+      expect(detail.resolvedDir, dir);
+      expect(detail.skills.single.name, 'A');
+    },
+  );
 
   test('falls back to the team dir when runtime dir is absent', () async {
     final teamDir = layout.identityToolDir('team-a', 'claude');
@@ -90,78 +92,89 @@ void main() {
     expect(detail.hasConfig, isFalse);
   });
 
-  test('mixed cursor member resolves cursor runtime home/.cursor via preset',
-      () async {
-    const cursorMember = TeamMemberConfig(
-      id: 'reviewer',
-      name: 'Reviewer',
-      activePresetId: 'cursor-preset',
-    );
-    const presets = [
-      CliPreset(
-        id: 'cursor-preset',
-        name: 'Cursor',
-        cli: CliTool.cursor,
-        provider: 'work',
-        model: 'gpt-4',
-        createdAt: 1,
-        updatedAt: 1,
-      ),
-    ];
+  test(
+    'mixed cursor member resolves cursor runtime home/.cursor via preset',
+    () async {
+      const cursorMember = TeamMemberConfig(
+        id: 'reviewer',
+        name: 'Reviewer',
+        activePresetId: 'cursor-preset',
+      );
+      const presets = [
+        CliPreset(
+          id: 'cursor-preset',
+          name: 'Cursor',
+          cli: CliTool.cursor,
+          provider: 'work',
+          model: 'gpt-4',
+          createdAt: 1,
+          updatedAt: 1,
+        ),
+      ];
 
-    final detail = await inspector.inspect(
-      workspaceId: 'workspace-1',
-      sessionId: 'team-a-1',
-      team: team,
-      member: cursorMember,
-      globalPresets: presets,
-      preferExpectedRuntimeDir: true,
-    );
+      final detail = await inspector.inspect(
+        workspaceId: 'workspace-1',
+        sessionId: 'team-a-1',
+        team: team,
+        member: cursorMember,
+        globalPresets: presets,
+        preferExpectedRuntimeDir: true,
+      );
 
-    final expected = p.join(
-      layout.sessionRuntimeToolDir(
+      final expected = p.join(
+        layout.sessionRuntimeToolDir(
+          'workspace-1',
+          'team-a-1',
+          'cursor',
+          memberId: 'reviewer',
+        ),
+        'home',
+        '.cursor',
+      );
+      expect(detail.cli, CliTool.cursor);
+      expect(detail.resolvedDir, expected);
+      expect(detail.sourceLayer, MemberConfigSourceLayer.runtime);
+    },
+  );
+
+  test(
+    'reads from the member work context when it differs from home',
+    () async {
+      final remoteFs = InMemoryFilesystem();
+      final remoteLayout = RuntimeLayout(
+        teampilotRoot: '/remote/app',
+        fs: remoteFs,
+      );
+      final remoteDir = remoteLayout.sessionRuntimeToolDir(
         'workspace-1',
         'team-a-1',
-        'cursor',
-        memberId: 'reviewer',
-      ),
-      'home',
-      '.cursor',
-    );
-    expect(detail.cli, CliTool.cursor);
-    expect(detail.resolvedDir, expected);
-    expect(detail.sourceLayer, MemberConfigSourceLayer.runtime);
-  });
+        'claude',
+        memberId: 'm1',
+      );
+      await remoteFs.ensureDir(remoteDir);
+      await remoteFs.writeString(
+        '$remoteDir/skills/remote/SKILL.md',
+        '---\nname: Remote\n---',
+      );
 
-  test('reads from the member work context when it differs from home', () async {
-    final remoteFs = InMemoryFilesystem();
-    final remoteLayout = RuntimeLayout(teampilotRoot: '/remote/app', fs: remoteFs);
-    final remoteDir = remoteLayout.sessionRuntimeToolDir(
-      'workspace-1',
-      'team-a-1',
-      'claude',
-      memberId: 'm1',
-    );
-    await remoteFs.ensureDir(remoteDir);
-    await remoteFs.writeString('$remoteDir/skills/remote/SKILL.md', '---\nname: Remote\n---');
+      final detail = await inspector.inspect(
+        workspaceId: 'workspace-1',
+        sessionId: 'team-a-1',
+        team: team,
+        member: member,
+        workContext: RuntimeContext(
+          target: RuntimeTarget.ssh('p1', label: 'box'),
+          filesystem: remoteFs,
+          home: '/remote',
+          cwd: '/remote',
+          appDataRoot: '/remote/app',
+          paths: AppPaths('/remote/app'),
+        ),
+      );
 
-    final detail = await inspector.inspect(
-      workspaceId: 'workspace-1',
-      sessionId: 'team-a-1',
-      team: team,
-      member: member,
-      workContext: RuntimeContext(
-        target: RuntimeTarget.ssh('p1', label: 'box'),
-        filesystem: remoteFs,
-        home: '/remote',
-        cwd: '/remote',
-        appDataRoot: '/remote/app',
-        paths: AppPaths('/remote/app'),
-      ),
-    );
-
-    expect(detail.sourceLayer, MemberConfigSourceLayer.runtime);
-    expect(detail.resolvedDir, remoteDir);
-    expect(detail.skills.single.name, 'Remote');
-  });
+      expect(detail.sourceLayer, MemberConfigSourceLayer.runtime);
+      expect(detail.resolvedDir, remoteDir);
+      expect(detail.skills.single.name, 'Remote');
+    },
+  );
 }

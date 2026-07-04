@@ -29,9 +29,9 @@ void main() {
         ..createSync(recursive: true);
       final bundle = Directory(p.join(teamPlugins.path, 'demo'))..createSync();
       Directory(p.join(bundle.path, '.claude-plugin')).createSync();
-      File(p.join(bundle.path, '.claude-plugin', 'plugin.json')).writeAsStringSync(
-        '{"name":"demo","version":"1.0.0"}',
-      );
+      File(
+        p.join(bundle.path, '.claude-plugin', 'plugin.json'),
+      ).writeAsStringSync('{"name":"demo","version":"1.0.0"}');
 
       final memberPlugins = p.join(base.path, 'member', 'plugins');
       await CliPluginLayout.copyBundlesToMember(
@@ -66,42 +66,52 @@ void main() {
       );
     });
 
-    test('copyBundlesToMember recopies when team plugin version changes', () async {
-      final teamPlugins = Directory(p.join(base.path, 'team', 'plugins'))
-        ..createSync(recursive: true);
-      final bundle = Directory(p.join(teamPlugins.path, 'demo'))..createSync();
-      Directory(p.join(bundle.path, '.claude-plugin')).createSync();
-      final manifestPath = p.join(bundle.path, '.claude-plugin', 'plugin.json');
-      File(manifestPath).writeAsStringSync(
-        '{"name":"demo","version":"1.0.0"}',
-      );
+    test(
+      'copyBundlesToMember recopies when team plugin version changes',
+      () async {
+        final teamPlugins = Directory(p.join(base.path, 'team', 'plugins'))
+          ..createSync(recursive: true);
+        final bundle = Directory(p.join(teamPlugins.path, 'demo'))
+          ..createSync();
+        Directory(p.join(bundle.path, '.claude-plugin')).createSync();
+        final manifestPath = p.join(
+          bundle.path,
+          '.claude-plugin',
+          'plugin.json',
+        );
+        File(
+          manifestPath,
+        ).writeAsStringSync('{"name":"demo","version":"1.0.0"}');
 
-      final memberPlugins = p.join(base.path, 'member', 'plugins');
-      await CliPluginLayout.copyBundlesToMember(
-        fs: fs,
-        teamPluginsDir: teamPlugins.path,
-        memberPluginsDir: memberPlugins,
-        paths: flashskyaiPluginManifestPaths,
-      );
-
-      await Future<void>.delayed(const Duration(milliseconds: 10));
-      File(manifestPath).writeAsStringSync(
-        '{"name":"demo","version":"2.0.0"}',
-      );
-
-      expect(
-        await CliPluginProvisionCache.isMemberProvisionCurrent(
+        final memberPlugins = p.join(base.path, 'member', 'plugins');
+        await CliPluginLayout.copyBundlesToMember(
           fs: fs,
           teamPluginsDir: teamPlugins.path,
           memberPluginsDir: memberPlugins,
           paths: flashskyaiPluginManifestPaths,
-        ),
-        isFalse,
-      );
-    });
+        );
 
-    test('provisionFingerprintForRegistry ignores metadata-only stamp fields', () {
-      const legacy = '''
+        await Future<void>.delayed(const Duration(milliseconds: 10));
+        File(
+          manifestPath,
+        ).writeAsStringSync('{"name":"demo","version":"2.0.0"}');
+
+        expect(
+          await CliPluginProvisionCache.isMemberProvisionCurrent(
+            fs: fs,
+            teamPluginsDir: teamPlugins.path,
+            memberPluginsDir: memberPlugins,
+            paths: flashskyaiPluginManifestPaths,
+          ),
+          isFalse,
+        );
+      },
+    );
+
+    test(
+      'provisionFingerprintForRegistry ignores metadata-only stamp fields',
+      () {
+        const legacy = '''
 {
   "version": 1,
   "flavor": "flashskyai",
@@ -110,7 +120,7 @@ void main() {
   ]
 }
 ''';
-      const upgraded = '''
+        const upgraded = '''
 {
   "version": 1,
   "flavor": "flashskyai",
@@ -127,23 +137,36 @@ void main() {
   ]
 }
 ''';
-      expect(
-        CliPluginProvisionCache.provisionFingerprintForRegistry(legacy),
-        CliPluginProvisionCache.provisionFingerprintForRegistry(upgraded),
-      );
-    });
+        expect(
+          CliPluginProvisionCache.provisionFingerprintForRegistry(legacy),
+          CliPluginProvisionCache.provisionFingerprintForRegistry(upgraded),
+        );
+      },
+    );
 
     test('marketplace materialization skips when cache unchanged', () async {
       const marketplaceName = 'demo-marketplace';
       final cacheDir = Directory(
-        p.join(base.path, 'plugins', 'marketplace-cache', 'owner', '$marketplaceName@main'),
+        p.join(
+          base.path,
+          'plugins',
+          'marketplace-cache',
+          'owner',
+          '$marketplaceName@main',
+        ),
       )..createSync(recursive: true);
       Directory(p.join(cacheDir.path, '.claude-plugin')).createSync();
       File(
         p.join(cacheDir.path, '.claude-plugin', 'marketplace.json'),
       ).writeAsStringSync(jsonEncode({'name': marketplaceName, 'plugins': []}));
 
-      final dest = p.join(base.path, 'session', 'plugins', 'marketplaces', marketplaceName);
+      final dest = p.join(
+        base.path,
+        'session',
+        'plugins',
+        'marketplaces',
+        marketplaceName,
+      );
       await fs.ensureDir(dest);
       await fs.copyTree(source: cacheDir.path, destination: dest);
       await CliPluginProvisionCache.writeMarketplaceSourceStamp(

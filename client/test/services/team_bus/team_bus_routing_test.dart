@@ -14,11 +14,11 @@ AgentNode _declared(String id, Set<String> caps) =>
     AgentNode.test(memberId: id, capabilities: caps);
 
 AgentNode _atPrompt(String id, Set<String> caps) => AgentNode.test(
-      memberId: id,
-      lifecycle: MemberLifecycle.running,
-      activity: MemberActivity.turnDoneReady,
-      capabilities: caps,
-    );
+  memberId: id,
+  lifecycle: MemberLifecycle.running,
+  activity: MemberActivity.turnDoneReady,
+  capabilities: caps,
+);
 
 void main() {
   test('engagement cold-starts the capability-matched declared worker', () {
@@ -29,8 +29,11 @@ void main() {
       bus.declareMember(_declared('be', {'backend'}));
 
       bus.addTasks('lead', [
-        const TeamTaskDraft(title: 'api', brief: 'b',
-            requiredCapabilities: {'backend'}),
+        const TeamTaskDraft(
+          title: 'api',
+          brief: 'b',
+          requiredCapabilities: {'backend'},
+        ),
       ]);
       async.flushMicrotasks();
 
@@ -46,8 +49,11 @@ void main() {
       bus.declareMember(_atPrompt('be', {'backend'}));
 
       bus.addTasks('lead', [
-        const TeamTaskDraft(title: 'api', brief: 'b',
-            requiredCapabilities: {'backend'}),
+        const TeamTaskDraft(
+          title: 'api',
+          brief: 'b',
+          requiredCapabilities: {'backend'},
+        ),
       ]);
       async.flushMicrotasks();
 
@@ -72,9 +78,12 @@ void main() {
       // (which relaxes to preferred) cannot match it, forcing escalation to open.
       bus.declareMember(_declared('fe', {'frontend'}));
       bus.addTasks('lead', [
-        const TeamTaskDraft(title: 'api', brief: 'b',
-            requiredCapabilities: {'backend'},
-            preferredCapabilities: {'database'}),
+        const TeamTaskDraft(
+          title: 'api',
+          brief: 'b',
+          requiredCapabilities: {'backend'},
+          preferredCapabilities: {'database'},
+        ),
       ]);
       async.flushMicrotasks();
 
@@ -83,8 +92,10 @@ void main() {
       now += 310 * 1000; // past open window
       bus.reconcileTasks();
 
-      expect(bus.listTasks(status: TaskStatus.pending).single.routing.stage,
-          RoutingStage.open);
+      expect(
+        bus.listTasks(status: TaskStatus.pending).single.routing.stage,
+        RoutingStage.open,
+      );
       // now the frontend worker can claim it as a fungible fallback
       final claimed = bus.claimNextTask('fe');
       expect(claimed!.title, 'api');
@@ -96,19 +107,26 @@ void main() {
   test('a member cannot claim a task routed to another type', () {
     final bus = _busWithQueue(FakeMemberLauncher());
     // ids become capabilities: builder→{builder}, reviewer→{reviewer}
-    bus.declareMember(AgentNode.test(
-      memberId: 'builder',
-      lifecycle: MemberLifecycle.running,
-      activity: MemberActivity.active,
-    ));
-    bus.declareMember(AgentNode.test(
-      memberId: 'reviewer',
-      lifecycle: MemberLifecycle.running,
-      activity: MemberActivity.active,
-    ));
+    bus.declareMember(
+      AgentNode.test(
+        memberId: 'builder',
+        lifecycle: MemberLifecycle.running,
+        activity: MemberActivity.active,
+      ),
+    );
+    bus.declareMember(
+      AgentNode.test(
+        memberId: 'reviewer',
+        lifecycle: MemberLifecycle.running,
+        activity: MemberActivity.active,
+      ),
+    );
     bus.addTasks('lead', [
-      const TeamTaskDraft(title: 'impl', brief: 'b',
-          requiredCapabilities: {'builder'}),
+      const TeamTaskDraft(
+        title: 'impl',
+        brief: 'b',
+        requiredCapabilities: {'builder'},
+      ),
     ]);
 
     // reviewer is ineligible for builder-routed work

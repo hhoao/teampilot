@@ -3,8 +3,10 @@ import 'package:teampilot/cubits/chat/chat_tab_store.dart';
 import 'package:teampilot/cubits/chat/model/chat_tab.dart';
 import 'package:teampilot/cubits/chat/model/chat_tab_info.dart';
 
-ChatTab _tab(String id) =>
-    ChatTab(info: ChatTabInfo(id: id, title: id, subtitle: ''), cliTeamName: id);
+ChatTab _tab(String id) => ChatTab(
+  info: ChatTabInfo(id: id, title: id, subtitle: ''),
+  cliTeamName: id,
+);
 
 void main() {
   group('ChatTabStore bucketing', () {
@@ -78,17 +80,20 @@ void main() {
       expect(store.bySessionId('a1'), isNull);
       expect(store.bySessionId('b1')?.info.id, 'b1');
     });
-    test('tabsForWorkspace and savedActiveIndexFor read non-active buckets', () {
-      final store = ChatTabStore();
-      store.setActiveWorkspace('A');
-      store.append(_tab('a1'));
-      store.append(_tab('a2'));
-      store.setActiveWorkspace('B', currentActiveIndex: 1);
-      store.append(_tab('b1'));
+    test(
+      'tabsForWorkspace and savedActiveIndexFor read non-active buckets',
+      () {
+        final store = ChatTabStore();
+        store.setActiveWorkspace('A');
+        store.append(_tab('a1'));
+        store.append(_tab('a2'));
+        store.setActiveWorkspace('B', currentActiveIndex: 1);
+        store.append(_tab('b1'));
 
-      expect(store.tabsForWorkspace('A').map((t) => t.info.id), ['a1', 'a2']);
-      expect(store.savedActiveIndexFor('A'), 1);
-      expect(store.tabsForWorkspace('B').map((t) => t.info.id), ['b1']);
-    });
+        expect(store.tabsForWorkspace('A').map((t) => t.info.id), ['a1', 'a2']);
+        expect(store.savedActiveIndexFor('A'), 1);
+        expect(store.tabsForWorkspace('B').map((t) => t.info.id), ['b1']);
+      },
+    );
   });
 }

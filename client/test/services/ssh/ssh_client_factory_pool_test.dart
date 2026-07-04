@@ -9,31 +9,34 @@ import 'package:teampilot/repositories/ssh_known_host_repository.dart';
 import 'package:teampilot/services/ssh/ssh_client_factory.dart';
 
 void main() {
-  test('clientForStorage reuses the same pooled client for one profile', () async {
-    var createCount = 0;
-    final factory = SshClientFactory(
-      credentialStore: InMemorySshCredentialStore(),
-      knownHostRepository: InMemorySshKnownHostRepository(),
-      connector: (profile, {timeout = const Duration(seconds: 10)}) async {
-        createCount += 1;
-        return _InstantAuthClient();
-      },
-    );
+  test(
+    'clientForStorage reuses the same pooled client for one profile',
+    () async {
+      var createCount = 0;
+      final factory = SshClientFactory(
+        credentialStore: InMemorySshCredentialStore(),
+        knownHostRepository: InMemorySshKnownHostRepository(),
+        connector: (profile, {timeout = const Duration(seconds: 10)}) async {
+          createCount += 1;
+          return _InstantAuthClient();
+        },
+      );
 
-    const profile = SshProfile(
-      id: 'p1',
-      name: 'dev',
-      host: 'example.com',
-      username: 'alice',
-    );
+      const profile = SshProfile(
+        id: 'p1',
+        name: 'dev',
+        host: 'example.com',
+        username: 'alice',
+      );
 
-    final first = await factory.clientForStorage(profile);
-    final second = await factory.clientForStorage(profile);
+      final first = await factory.clientForStorage(profile);
+      final second = await factory.clientForStorage(profile);
 
-    expect(identical(first, second), isTrue);
-    expect(createCount, 1);
-    expect(first.isClosed, isFalse);
-  });
+      expect(identical(first, second), isTrue);
+      expect(createCount, 1);
+      expect(first.isClosed, isFalse);
+    },
+  );
 
   test('disconnectProfile closes and drops pooled client', () async {
     var createCount = 0;

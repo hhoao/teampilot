@@ -26,7 +26,8 @@ void main() {
           displayName: 'Lead',
           cli: 'claude',
           isTeamLead: true,
-          lifecycle: MemberLifecycle.running, activity: MemberActivity.active,
+          lifecycle: MemberLifecycle.running,
+          activity: MemberActivity.active,
         ),
       )
       ..declareMember(
@@ -39,7 +40,11 @@ void main() {
 
     final roster = bus.listTeammates();
 
-    expect(roster.map((t) => t.memberId), ['team-lead', 'developer', 'reviewer']);
+    expect(roster.map((t) => t.memberId), [
+      'team-lead',
+      'developer',
+      'reviewer',
+    ]);
     expect(roster.first.profile.isTeamLead, isTrue);
     expect(roster[1].profile.cli, 'opencode');
   });
@@ -78,10 +83,17 @@ void main() {
 
   test('listTeammates reports unread mailbox count', () {
     final bus = TeamBus(launcher: FakeMemberLauncher());
-    bus.declareMember(AgentNode.test(memberId: 'leader', lifecycle: MemberLifecycle.running, activity: MemberActivity.active));
-    bus.memberById('leader')!.inbox.deliver(
-      TeamMessage(id: '1', from: 'w', to: 'leader', content: 'x'),
+    bus.declareMember(
+      AgentNode.test(
+        memberId: 'leader',
+        lifecycle: MemberLifecycle.running,
+        activity: MemberActivity.active,
+      ),
     );
+    bus
+        .memberById('leader')!
+        .inbox
+        .deliver(TeamMessage(id: '1', from: 'w', to: 'leader', content: 'x'));
 
     expect(bus.listTeammates().single.unreadCount, 1);
   });
@@ -96,99 +108,130 @@ void main() {
     expect(snap.busPhaseLabel, 'no_pty · mail_queued');
   });
 
-  test('listTeammates reflects waiting flag while blocked in receive', () async {
-    final bus = TeamBus(launcher: FakeMemberLauncher());
-    bus.declareMember(AgentNode.test(memberId: 'leader', lifecycle: MemberLifecycle.running, activity: MemberActivity.active));
-
-    final waiting = bus.receive('leader');
-    await Future<void>.delayed(Duration.zero);
-
-    final snap = bus.listTeammates().single;
-    expect(snap.unreadCount, 0);
-    expect(snap.activity, MemberActivity.turnDoneBusWait);
-    expect(snap.waitingForMessage, isTrue);
-
-    bus.memberById('leader')!.inbox.deliver(
-      TeamMessage(id: '1', from: 'w', to: 'leader', content: 'x'),
-    );
-    final batch = await waiting;
-    expect(batch, hasLength(1));
-    expect(bus.listTeammates().single.activity, MemberActivity.active);
-  });
-
-  test('handler list_teammates includes team header and member fields', () async {
-    final bus = TeamBus(launcher: FakeMemberLauncher())
-      ..installSessionContext(
-        const TeamSessionContext(
-          cliTeamName: 'demo-1',
-          teamId: 'demo',
-          teamName: 'Demo Team',
-          description: 'Cross-CLI squad',
-          workingDirectory: '/tmp/ws',
-          leadAgentId: 'team-lead',
+  test(
+    'listTeammates reflects waiting flag while blocked in receive',
+    () async {
+      final bus = TeamBus(launcher: FakeMemberLauncher());
+      bus.declareMember(
+        AgentNode.test(
+          memberId: 'leader',
+          lifecycle: MemberLifecycle.running,
+          activity: MemberActivity.active,
         ),
       );
-    bus
-      ..declareMember(
-        AgentNode(
-          profile: TeammateRosterProfile.fromMember(
-            member: const TeamMemberConfig(
-              id: 'team-lead',
-              name: 'Team Lead',
-              model: 'claude-opus-4',
-              agentType: 'team-lead',
-            ),
-            team: const TeamProfile(id: 'demo', name: 'Demo Team', teamMode: TeamMode.mixed),
+
+      final waiting = bus.receive('leader');
+      await Future<void>.delayed(Duration.zero);
+
+      final snap = bus.listTeammates().single;
+      expect(snap.unreadCount, 0);
+      expect(snap.activity, MemberActivity.turnDoneBusWait);
+      expect(snap.waitingForMessage, isTrue);
+
+      bus
+          .memberById('leader')!
+          .inbox
+          .deliver(TeamMessage(id: '1', from: 'w', to: 'leader', content: 'x'));
+      final batch = await waiting;
+      expect(batch, hasLength(1));
+      expect(bus.listTeammates().single.activity, MemberActivity.active);
+    },
+  );
+
+  test(
+    'handler list_teammates includes team header and member fields',
+    () async {
+      final bus = TeamBus(launcher: FakeMemberLauncher())
+        ..installSessionContext(
+          const TeamSessionContext(
             cliTeamName: 'demo-1',
-            cwd: '/tmp/ws',
-            taskId: 'lead-task',
+            teamId: 'demo',
+            teamName: 'Demo Team',
+            description: 'Cross-CLI squad',
+            workingDirectory: '/tmp/ws',
+            leadAgentId: 'team-lead',
           ),
-          lifecycle: MemberLifecycle.running, activity: MemberActivity.active,
-        ),
-      )
-      ..declareMember(
-        AgentNode(
-          profile: TeammateRosterProfile.fromMember(
-            member: const TeamMemberConfig(
-              id: 'developer',
-              name: 'Developer',
-              cli: CliTool.opencode,
-              agentType: 'implementer',
+        );
+      bus
+        ..declareMember(
+          AgentNode(
+            profile: TeammateRosterProfile.fromMember(
+              member: const TeamMemberConfig(
+                id: 'team-lead',
+                name: 'Team Lead',
+                model: 'claude-opus-4',
+                agentType: 'team-lead',
+              ),
+              team: const TeamProfile(
+                id: 'demo',
+                name: 'Demo Team',
+                teamMode: TeamMode.mixed,
+              ),
+              cliTeamName: 'demo-1',
+              cwd: '/tmp/ws',
+              taskId: 'lead-task',
             ),
-            team: const TeamProfile(id: 'demo', name: 'Demo Team', teamMode: TeamMode.mixed),
-            cliTeamName: 'demo-1',
-            cwd: '/tmp/ws',
+            lifecycle: MemberLifecycle.running,
+            activity: MemberActivity.active,
           ),
-          lifecycle: MemberLifecycle.declared,
+        )
+        ..declareMember(
+          AgentNode(
+            profile: TeammateRosterProfile.fromMember(
+              member: const TeamMemberConfig(
+                id: 'developer',
+                name: 'Developer',
+                cli: CliTool.opencode,
+                agentType: 'implementer',
+              ),
+              team: const TeamProfile(
+                id: 'demo',
+                name: 'Demo Team',
+                teamMode: TeamMode.mixed,
+              ),
+              cliTeamName: 'demo-1',
+              cwd: '/tmp/ws',
+            ),
+            lifecycle: MemberLifecycle.declared,
+          ),
+        );
+      bus
+          .memberById('developer')!
+          .inbox
+          .deliver(
+            TeamMessage(
+              id: '1',
+              from: 'team-lead',
+              to: 'developer',
+              content: 'hi',
+            ),
+          );
+
+      final res = await TeammateBusMcpHandler(bus: bus).handle(
+        'team-lead',
+        const JsonRpcRequest(
+          id: 1,
+          method: 'tools/call',
+          params: {'name': 'list_teammates', 'arguments': {}},
         ),
       );
-    bus.memberById('developer')!.inbox.deliver(
-      TeamMessage(id: '1', from: 'team-lead', to: 'developer', content: 'hi'),
-    );
 
-    final res = await TeammateBusMcpHandler(bus: bus).handle(
-      'team-lead',
-      const JsonRpcRequest(id: 1, method: 'tools/call', params: {
-        'name': 'list_teammates',
-        'arguments': {},
-      }),
-    );
-
-    final text = (res!.result!['content'] as List).first['text'] as String;
-    expect(text, contains('=== Team: Demo Team (demo-1) ==='));
-    expect(text, contains('description: Cross-CLI squad'));
-    expect(text, contains('lead_agent_id: team-lead'));
-    expect(text, contains('--- team-lead (self) ---'));
-    expect(text, contains('agentId: team-lead'));
-    expect(text, contains('model: claude-opus-4'));
-    expect(text, contains('taskId: lead-task'));
-    expect(text, contains('--- developer ---'));
-    expect(text, contains('agentId: developer@demo-1'));
-    expect(text, contains('agentType: implementer'));
-    expect(text, contains('cli: opencode'));
-    expect(text, contains('bus.activity: active'));
-    expect(text, contains('bus.phase: in_turn'));
-    expect(text, contains('bus.unread: 1'));
-    expect(text, contains('pty.running: false'));
-  });
+      final text = (res!.result!['content'] as List).first['text'] as String;
+      expect(text, contains('=== Team: Demo Team (demo-1) ==='));
+      expect(text, contains('description: Cross-CLI squad'));
+      expect(text, contains('lead_agent_id: team-lead'));
+      expect(text, contains('--- team-lead (self) ---'));
+      expect(text, contains('agentId: team-lead'));
+      expect(text, contains('model: claude-opus-4'));
+      expect(text, contains('taskId: lead-task'));
+      expect(text, contains('--- developer ---'));
+      expect(text, contains('agentId: developer@demo-1'));
+      expect(text, contains('agentType: implementer'));
+      expect(text, contains('cli: opencode'));
+      expect(text, contains('bus.activity: active'));
+      expect(text, contains('bus.phase: in_turn'));
+      expect(text, contains('bus.unread: 1'));
+      expect(text, contains('pty.running: false'));
+    },
+  );
 }

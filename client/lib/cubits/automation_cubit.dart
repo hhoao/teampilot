@@ -18,11 +18,11 @@ class AutomationCubit extends Cubit<AutomationState> {
     required AutomationScheduler scheduler,
     required AutomationScheduleCalculator scheduleCalculator,
     int Function()? nowMs,
-  })  : _repository = repository,
-        _scheduler = scheduler,
-        _scheduleCalculator = scheduleCalculator,
-        _nowMs = nowMs ?? _automationCubitDefaultNowMs,
-        super(const AutomationState()) {
+  }) : _repository = repository,
+       _scheduler = scheduler,
+       _scheduleCalculator = scheduleCalculator,
+       _nowMs = nowMs ?? _automationCubitDefaultNowMs,
+       super(const AutomationState()) {
     _scheduler.onAfterTick = _handleSchedulerTick;
   }
 
@@ -119,9 +119,14 @@ class AutomationCubit extends Cubit<AutomationState> {
     await _reloadPreservingFilters();
   }
 
-  Future<void> toggleEnabled(AutomationTabScope scope, String automationId) async {
+  Future<void> toggleEnabled(
+    AutomationTabScope scope,
+    String automationId,
+  ) async {
     final automations = await _repository.listForTabScope(scope);
-    final automation = automations.where((a) => a.id == automationId).firstOrNull;
+    final automation = automations
+        .where((a) => a.id == automationId)
+        .firstOrNull;
     if (automation == null) return;
     final now = _nowMs();
     final enabled = !automation.enabled;
@@ -160,9 +165,9 @@ class AutomationCubit extends Cubit<AutomationState> {
     if (automations.isEmpty) return const {};
     final byScope = <AutomationTabScope, List<Automation>>{};
     for (final automation in automations) {
-      byScope.putIfAbsent(automation.tabScope, () => <Automation>[]).add(
-            automation,
-          );
+      byScope
+          .putIfAbsent(automation.tabScope, () => <Automation>[])
+          .add(automation);
     }
 
     final runsByAutomationId = <String, List<AutomationRun>>{};

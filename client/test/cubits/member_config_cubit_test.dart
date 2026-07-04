@@ -14,14 +14,14 @@ import 'package:teampilot/services/io/local_filesystem.dart';
 // so none of the injected objects are actually used.
 class _FakeInspector extends MemberConfigInspector {
   _FakeInspector(this._result, {this.throwIt = false})
-      : super(
+    : super(
+        fs: LocalFilesystem(),
+        layout: RuntimeLayout(
+          teampilotRoot: '/tmp/fake',
           fs: LocalFilesystem(),
-          layout: RuntimeLayout(
-            teampilotRoot: '/tmp/fake',
-            fs: LocalFilesystem(),
-          ),
-          registry: CliToolRegistry(),
-        );
+        ),
+        registry: CliToolRegistry(),
+      );
 
   final MemberConfigDetail _result;
   final bool throwIt;
@@ -42,7 +42,12 @@ class _FakeInspector extends MemberConfigInspector {
 }
 
 const _member = TeamMemberConfig(id: 'm1', name: 'Backend');
-const _team = TeamProfile(id: 't', name: 'T', cli: CliTool.claude, members: [_member]);
+const _team = TeamProfile(
+  id: 't',
+  name: 'T',
+  cli: CliTool.claude,
+  members: [_member],
+);
 
 void main() {
   test('emits loading then loaded', () async {

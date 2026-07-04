@@ -41,7 +41,9 @@ void main() {
     });
   });
 
-  testWidgets('shows full label text at large typography scale', (tester) async {
+  testWidgets('shows full label text at large typography scale', (
+    tester,
+  ) async {
     await tester.pumpWidget(
       MaterialApp(
         theme: ThemeData(

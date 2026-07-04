@@ -16,7 +16,18 @@ void main() {
       );
       final coverage = TraceCoverageSummary(
         sliceSpan: TraceTimeSpan(beginNs: 0, endNs: 2236000000),
-        markerFrameNumbers: [2050, 2051, 2052, 2053, 2054, 2055, 2056, 2057, 2058, 2059],
+        markerFrameNumbers: [
+          2050,
+          2051,
+          2052,
+          2053,
+          2054,
+          2055,
+          2056,
+          2057,
+          2058,
+          2059,
+        ],
       );
 
       final message = formatTraceCoverageWarning(

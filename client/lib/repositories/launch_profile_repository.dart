@@ -16,8 +16,8 @@ class LaunchProfileRepository {
   LaunchProfileRepository({
     String? rootDir,
     SessionLifecycleService? lifecycleService,
-  })  : _rootDirOverride = rootDir,
-        _lifecycleService = lifecycleService;
+  }) : _rootDirOverride = rootDir,
+       _lifecycleService = lifecycleService;
 
   final String? _rootDirOverride;
   final SessionLifecycleService? _lifecycleService;
@@ -35,15 +35,12 @@ class LaunchProfileRepository {
     List<LaunchProfile> snapshot,
   ) {
     Future<void>? pending;
-    pending = _revalidateLaunchProfilesSnapshot(
-      paths,
-      store,
-      snapshot,
-    ).whenComplete(() {
-      if (identical(_revalidationFuture, pending)) {
-        _revalidationFuture = null;
-      }
-    });
+    pending = _revalidateLaunchProfilesSnapshot(paths, store, snapshot)
+        .whenComplete(() {
+          if (identical(_revalidationFuture, pending)) {
+            _revalidationFuture = null;
+          }
+        });
     _revalidationFuture = pending;
     unawaited(pending);
   }
@@ -73,7 +70,10 @@ class LaunchProfileRepository {
       final snap = AppStorage.context;
       return (dir: snap.launchProfilesDir, fs: snap.fs);
     }
-    return (dir: AppPathsBootstrapper.current.launchProfilesDir, fs: AppStorage.fs);
+    return (
+      dir: AppPathsBootstrapper.current.launchProfilesDir,
+      fs: AppStorage.fs,
+    );
   }
 
   String _profileFile(Filesystem fs, String dir, String id) =>
@@ -82,7 +82,9 @@ class LaunchProfileRepository {
   LaunchProfileIndexStore _indexStore(({String dir, Filesystem fs}) paths) =>
       LaunchProfileIndexStore(launchProfilesDir: paths.dir, fs: paths.fs);
 
-  Future<List<String>> _listProfileIds(({String dir, Filesystem fs}) paths) async {
+  Future<List<String>> _listProfileIds(
+    ({String dir, Filesystem fs}) paths,
+  ) async {
     try {
       final entries = await paths.fs.listDir(paths.dir);
       final ids = await Future.wait(
@@ -92,13 +94,19 @@ class LaunchProfileRepository {
           return null;
         }),
       );
-      return [for (final id in ids) if (id != null) id];
+      return [
+        for (final id in ids)
+          if (id != null) id,
+      ];
     } on Object {
       return const [];
     }
   }
 
-  static bool _sameProfileIds(List<String> diskIds, List<LaunchProfile> snapshot) {
+  static bool _sameProfileIds(
+    List<String> diskIds,
+    List<LaunchProfile> snapshot,
+  ) {
     if (diskIds.length != snapshot.length) return false;
     final diskSet = diskIds.toSet();
     return snapshot.every((profile) => diskSet.contains(profile.id));
@@ -143,9 +151,7 @@ class LaunchProfileRepository {
     final diskIds = await _listProfileIds(paths);
     final validateMs = validateSw.elapsedMilliseconds;
     if (_sameProfileIds(diskIds, snapshot)) {
-      appLogger.i(
-        '[boot] loadLaunchProfiles validate ok +${validateMs}ms',
-      );
+      appLogger.i('[boot] loadLaunchProfiles validate ok +${validateMs}ms');
       return;
     }
     appLogger.i(
@@ -158,7 +164,9 @@ class LaunchProfileRepository {
     _rememberLoadAll(profiles);
   }
 
-  Future<List<LaunchProfile>> _scanAll(({String dir, Filesystem fs}) paths) async {
+  Future<List<LaunchProfile>> _scanAll(
+    ({String dir, Filesystem fs}) paths,
+  ) async {
     try {
       final entries = await paths.fs.listDir(paths.dir);
       final profiles = await Future.wait(
@@ -253,9 +261,7 @@ class LaunchProfileRepository {
   Future<List<TeamProfile>> loadTeamProfiles() async {
     final teams = (await loadAll()).whereType<TeamProfile>().toList();
     final hasCustomOrder = teams.any((team) => team.sortOrder > 0);
-    teams.sort(
-      (a, b) => _compareTeams(a, b, hasCustomOrder: hasCustomOrder),
-    );
+    teams.sort((a, b) => _compareTeams(a, b, hasCustomOrder: hasCustomOrder));
     return List.unmodifiable(teams);
   }
 

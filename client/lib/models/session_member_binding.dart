@@ -54,11 +54,11 @@ class SessionMemberBinding {
   }
 
   Map<String, Object?> toJson() => {
-        'rosterMemberId': rosterMemberId,
-        if (typeId != rosterMemberId) 'typeId': typeId,
-        'taskId': taskId,
-        if (nativeSessionIds.isNotEmpty) 'nativeSessionIds': nativeSessionIds,
-      };
+    'rosterMemberId': rosterMemberId,
+    if (typeId != rosterMemberId) 'typeId': typeId,
+    'taskId': taskId,
+    if (nativeSessionIds.isNotEmpty) 'nativeSessionIds': nativeSessionIds,
+  };
 
   @override
   bool operator ==(Object other) {
@@ -73,11 +73,11 @@ class SessionMemberBinding {
 
   @override
   int get hashCode => Object.hash(
-        rosterMemberId,
-        typeId,
-        taskId,
-        Object.hashAll(
-          nativeSessionIds.entries.map((e) => Object.hash(e.key, e.value)),
-        ),
-      );
+    rosterMemberId,
+    typeId,
+    taskId,
+    Object.hashAll(
+      nativeSessionIds.entries.map((e) => Object.hash(e.key, e.value)),
+    ),
+  );
 }

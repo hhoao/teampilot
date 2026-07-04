@@ -48,7 +48,9 @@ abstract final class UiInteractiveWarmup {
     }
   }
 
-  static Future<void> _warmGlyphs({LayoutPreferences? layoutPreferences}) async {
+  static Future<void> _warmGlyphs({
+    LayoutPreferences? layoutPreferences,
+  }) async {
     for (final style in textStylesForInteractiveWarmup(
       preferences: layoutPreferences,
     )) {

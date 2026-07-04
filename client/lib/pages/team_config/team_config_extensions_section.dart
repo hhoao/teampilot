@@ -35,13 +35,17 @@ class TeamExtensionsSectionState extends State<TeamExtensionsSection> {
   }
 
   Future<void> _loadOverrides() async {
-    final map = await context.read<ExtensionCubit>().teamOverrides(widget.team.id);
+    final map = await context.read<ExtensionCubit>().teamOverrides(
+      widget.team.id,
+    );
     if (!mounted) return;
     setState(() => _overrides = map);
   }
 
   ExtensionOverrideChoice _choiceFor(String id) {
-    if (!_overrides.containsKey(id)) return ExtensionOverrideChoice.followGlobal;
+    if (!_overrides.containsKey(id)) {
+      return ExtensionOverrideChoice.followGlobal;
+    }
     return _overrides[id]!
         ? ExtensionOverrideChoice.forceOn
         : ExtensionOverrideChoice.forceOff;
@@ -58,7 +62,11 @@ class TeamExtensionsSectionState extends State<TeamExtensionsSection> {
       ExtensionOverrideChoice.forceOn => true,
       ExtensionOverrideChoice.forceOff => false,
     };
-    await context.read<ExtensionCubit>().setTeamOverride(widget.team.id, id, value);
+    await context.read<ExtensionCubit>().setTeamOverride(
+      widget.team.id,
+      id,
+      value,
+    );
     await _loadOverrides();
   }
 
@@ -79,11 +87,10 @@ class TeamExtensionsSectionState extends State<TeamExtensionsSection> {
                 Text(
                   l10n.teamExtensionsSubtitle,
                   style: AppTextStyles.of(context).bodySmall.copyWith(
-                        color: Theme.of(context)
-                            .colorScheme
-                            .onSurface
-                            .withValues(alpha: 0.6),
-                      ),
+                    color: Theme.of(
+                      context,
+                    ).colorScheme.onSurface.withValues(alpha: 0.6),
+                  ),
                 ),
                 const SizedBox(height: 14),
                 for (final row in rows)
@@ -103,7 +110,8 @@ class TeamExtensionsSectionState extends State<TeamExtensionsSection> {
 }
 
 class TeamExtensionRow extends StatelessWidget {
-  const TeamExtensionRow({super.key,
+  const TeamExtensionRow({
+    super.key,
     required this.row,
     required this.choice,
     required this.effective,
@@ -136,17 +144,17 @@ class TeamExtensionRow extends StatelessWidget {
                 children: [
                   Text(
                     row.name,
-                    style: AppTextStyles.of(context)
-                        .body
-                        .copyWith(fontWeight: FontWeight.w700),
+                    style: AppTextStyles.of(
+                      context,
+                    ).body.copyWith(fontWeight: FontWeight.w700),
                   ),
                   Text(
                     effective
                         ? (effectiveOnLabel ?? l10n.teamExtensionEffectiveOn)
                         : (effectiveOffLabel ?? l10n.teamExtensionEffectiveOff),
                     style: AppTextStyles.of(context).bodySmall.copyWith(
-                          color: cs.onSurface.withValues(alpha: 0.6),
-                        ),
+                      color: cs.onSurface.withValues(alpha: 0.6),
+                    ),
                   ),
                 ],
               ),

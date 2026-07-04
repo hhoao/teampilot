@@ -39,10 +39,10 @@ class ArtifactTransferService {
     required String Function(String memberId) inboxDirFor,
     this.maxBytes = defaultMaxBytes,
     int Function()? nowMs,
-  })  : _resolveFs = resolveFs,
-        _targetForMember = targetForMember,
-        _inboxDirFor = inboxDirFor,
-        _nowMs = nowMs ?? (() => DateTime.now().millisecondsSinceEpoch);
+  }) : _resolveFs = resolveFs,
+       _targetForMember = targetForMember,
+       _inboxDirFor = inboxDirFor,
+       _nowMs = nowMs ?? (() => DateTime.now().millisecondsSinceEpoch);
 
   /// 256 MiB. Bytes are buffered in memory during a transfer, so this also
   /// bounds peak memory per fetch.

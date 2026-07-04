@@ -22,7 +22,6 @@ final class ListTeammatesTool extends TeammateBusTool {
   Map<String, Object?> get inputSchema => McpSchema.object();
 
   @override
-  Future<JsonRpcResponse> call(TeammateBusToolCall call) async => call.ok(
-        TeammateBusToolFormat.encodeRoster(call.bus, call.memberId),
-      );
+  Future<JsonRpcResponse> call(TeammateBusToolCall call) async =>
+      call.ok(TeammateBusToolFormat.encodeRoster(call.bus, call.memberId));
 }

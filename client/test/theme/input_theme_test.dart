@@ -23,16 +23,16 @@ void main() {
       MaterialApp(
         theme: buildDarkTheme(),
         home: const Scaffold(
-          body: TextField(
-            decoration: InputDecoration(hintText: 'hint'),
-          ),
+          body: TextField(decoration: InputDecoration(hintText: 'hint')),
         ),
       ),
     );
 
     final textField = tester.widget<TextField>(find.byType(TextField));
     final theme = Theme.of(tester.element(find.byType(TextField)));
-    final merged = textField.decoration!.applyDefaults(theme.inputDecorationTheme);
+    final merged = textField.decoration!.applyDefaults(
+      theme.inputDecorationTheme,
+    );
 
     expect(
       merged.hintStyle?.fontSize,

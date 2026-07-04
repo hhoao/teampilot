@@ -86,13 +86,17 @@ abstract final class OpencodeLiveImport {
     final providerConfig = _providerConfigSection(opencodeConfig, id);
     final baseUrl = _readBaseUrl(providerConfig);
     final defaultModel = _defaultModelForProvider(id, opencodeConfig);
-    final config = _buildConfig(providerConfig, preset?.template.config ?? const {});
+    final config = _buildConfig(
+      providerConfig,
+      preset?.template.config ?? const {},
+    );
 
     if (preset != null) {
       return preset.template.copyWith(
         baseUrl: baseUrl.isNotEmpty ? baseUrl : preset.template.baseUrl,
-        defaultModel:
-            defaultModel.isNotEmpty ? defaultModel : preset.template.defaultModel,
+        defaultModel: defaultModel.isNotEmpty
+            ? defaultModel
+            : preset.template.defaultModel,
         config: config,
         createdAt: now,
         updatedAt: now,
@@ -128,7 +132,10 @@ abstract final class OpencodeLiveImport {
     return entry.cast<String, Object?>();
   }
 
-  static String _readProviderName(Map<String, Object?> providerConfig, String id) {
+  static String _readProviderName(
+    Map<String, Object?> providerConfig,
+    String id,
+  ) {
     final name = providerConfig['name']?.toString().trim() ?? '';
     return name.isNotEmpty ? name : id;
   }

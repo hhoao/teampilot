@@ -26,10 +26,7 @@ void main() {
   setUp(() async {
     IntegrationPrerequisites.resetHttpOverrides();
     messageLog = InMemoryBusMessageLog();
-    bus = TeamBus(
-      launcher: FakeMemberLauncher(),
-      messageLog: messageLog,
-    );
+    bus = TeamBus(launcher: FakeMemberLauncher(), messageLog: messageLog);
     gateway = TeammateBusMcpGateway();
     await gateway.ensureStarted();
     gateway.register(

@@ -9,7 +9,6 @@ import '../host/host_login_shell_lookup.dart';
 import '../storage/runtime_context.dart';
 import '../storage/app_storage.dart';
 
-
 typedef ProcessRunner =
     Future<ProcessResult> Function(
       String executable,
@@ -139,11 +138,10 @@ class CliToolLocator {
   static String? parsePathLookupOutput(
     Object? stdoutValue, {
     required bool isWindows,
-  }) =>
-      HostExecutableLocator.parsePathLookupOutput(
-        stdoutValue,
-        isWindows: isWindows,
-      );
+  }) => HostExecutableLocator.parsePathLookupOutput(
+    stdoutValue,
+    isWindows: isWindows,
+  );
 
   static String? preferWindowsNativeExecutable(List<String> candidates) =>
       HostExecutableLocator.preferWindowsNativeExecutable(candidates);
@@ -184,5 +182,4 @@ class CliToolLocator {
         executable.contains(r'\') ||
         executable.contains(':');
   }
-
 }

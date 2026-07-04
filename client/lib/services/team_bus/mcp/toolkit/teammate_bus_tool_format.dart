@@ -16,9 +16,11 @@ abstract final class TeammateBusToolFormat {
     if (tasks.isEmpty) return 'No tasks on the queue.';
     final caps = bus.capabilitiesOf(memberId);
     final buffer = StringBuffer('Work queue (${tasks.length}):\n\n');
-    buffer.write(tasks
-        .map((t) => formatTask(t, memberId: memberId, memberCaps: caps))
-        .join('\n\n'));
+    buffer.write(
+      tasks
+          .map((t) => formatTask(t, memberId: memberId, memberCaps: caps))
+          .join('\n\n'),
+    );
     return buffer.toString().trimRight();
   }
 
@@ -97,7 +99,9 @@ abstract final class TeammateBusToolFormat {
     );
     buffer.writeln('');
     for (final teammate in snapshot.members) {
-      buffer.writeln(formatTeammate(teammate, callerMemberId == teammate.memberId));
+      buffer.writeln(
+        formatTeammate(teammate, callerMemberId == teammate.memberId),
+      );
       buffer.writeln('');
     }
     return buffer.toString().trimRight();

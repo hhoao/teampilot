@@ -118,9 +118,7 @@ class _WorkspaceTerminalNewSessionMenuButtonState
     final box = _anchorKey.currentContext?.findRenderObject() as RenderBox?;
     if (box == null || !box.hasSize) return;
 
-    final anchor = box.localToGlobal(
-      box.size.bottomLeft(Offset.zero),
-    );
+    final anchor = box.localToGlobal(box.size.bottomLeft(Offset.zero));
 
     setState(() => _menuOpen = true);
     unawaited(_refreshItems());

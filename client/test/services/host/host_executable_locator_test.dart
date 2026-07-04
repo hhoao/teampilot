@@ -23,14 +23,16 @@ void main() {
   });
 
   test('parsePathLookupOutput prefers exe on Windows', () {
-    const stdout =
-        '/usr/bin/foo\nC:\\Tools\\claude.cmd\nC:\\Tools\\claude\n';
+    const stdout = '/usr/bin/foo\nC:\\Tools\\claude.cmd\nC:\\Tools\\claude\n';
     expect(
       HostExecutableLocator.parsePathLookupOutput(stdout, isWindows: true),
       r'C:\Tools\claude.cmd',
     );
     expect(
-      HostExecutableLocator.parsePathLookupOutput('/usr/bin/foo\n', isWindows: false),
+      HostExecutableLocator.parsePathLookupOutput(
+        '/usr/bin/foo\n',
+        isWindows: false,
+      ),
       '/usr/bin/foo',
     );
   });

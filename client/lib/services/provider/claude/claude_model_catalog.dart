@@ -57,8 +57,5 @@ class ClaudeModelCatalog {
     return const [];
   }
 
-  static List<String> get officialModels => [
-    ...aliases,
-    ...officialModelIds,
-  ];
+  static List<String> get officialModels => [...aliases, ...officialModelIds];
 }

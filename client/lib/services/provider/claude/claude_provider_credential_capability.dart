@@ -9,8 +9,9 @@ import 'claude_provider_credentials_service.dart';
 
 final class ClaudeProviderCredentialCapability
     implements ProviderCredentialCapability {
-  ClaudeProviderCredentialCapability({ClaudeProviderCredentialsService? credentials})
-    : _credentials = credentials;
+  ClaudeProviderCredentialCapability({
+    ClaudeProviderCredentialsService? credentials,
+  }) : _credentials = credentials;
 
   final ClaudeProviderCredentialsService? _credentials;
 
@@ -32,8 +33,12 @@ final class ClaudeProviderCredentialCapability
         primary: true,
         showWhenReady: false,
       ),
-      ProviderCredentialActionSpec(kind: ProviderCredentialActionKind.importGlobal),
-      ProviderCredentialActionSpec(kind: ProviderCredentialActionKind.importFile),
+      ProviderCredentialActionSpec(
+        kind: ProviderCredentialActionKind.importGlobal,
+      ),
+      ProviderCredentialActionSpec(
+        kind: ProviderCredentialActionKind.importFile,
+      ),
       ProviderCredentialActionSpec(
         kind: ProviderCredentialActionKind.revoke,
         showWhenReady: true,

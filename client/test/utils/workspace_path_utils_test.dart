@@ -16,7 +16,15 @@ void main() {
       '$root/workspace/workspaces/p1/manifest.json',
     );
     expect(
-      ctx.join(root, 'workspace', 'workspaces', 'p1', 'sessions', 's1', 'session.json'),
+      ctx.join(
+        root,
+        'workspace',
+        'workspaces',
+        'p1',
+        'sessions',
+        's1',
+        'session.json',
+      ),
       '$root/workspace/workspaces/p1/sessions/s1/session.json',
     );
     expect(
@@ -50,16 +58,16 @@ void main() {
       normalizeWorkspacePath(r'C:\Users\dev\repo'),
       p.normalize(r'C:\Users\dev\repo'),
     );
-    expect(normalizeWorkspacePath(r'C:\Users\dev\repo'), isNot(startsWith('/mnt/')));
+    expect(
+      normalizeWorkspacePath(r'C:\Users\dev\repo'),
+      isNot(startsWith('/mnt/')),
+    );
   });
 
   test('normalizeWorkspacePath keeps POSIX paths unchanged', () {
     AppStorage.resetForTesting();
     expect(normalizeWorkspacePath('/tmp/work'), '/tmp/work');
-    expect(
-      normalizeWorkspacePath(r'C:\temp'),
-      p.normalize(r'C:\temp'),
-    );
+    expect(normalizeWorkspacePath(r'C:\temp'), p.normalize(r'C:\temp'));
   });
 
   test('workspaceMetadataKeys includes Windows path separator variants', () {

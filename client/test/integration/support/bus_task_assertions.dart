@@ -48,10 +48,7 @@ Future<List<Map<String, Object?>>> readBusTaskEvents({
   return rows;
 }
 
-String? taskIdForTitle(
-  List<Map<String, Object?>> events,
-  String title,
-) {
+String? taskIdForTitle(List<Map<String, Object?>> events, String title) {
   for (final row in events) {
     if (row['t'] == 'add' && row['title'] == title) {
       return row['id'] as String?;
@@ -100,7 +97,9 @@ Future<bool> waitForTaskClaimedByTitle({
     if (taskId != null &&
         events.any(
           (row) =>
-              row['t'] == 'claim' && row['id'] == taskId && row['by'] == assignee,
+              row['t'] == 'claim' &&
+              row['id'] == taskId &&
+              row['by'] == assignee,
         )) {
       return true;
     }
@@ -124,10 +123,7 @@ int? claimTimestampForTitle(
   return null;
 }
 
-int? doneTimestampForTitle(
-  List<Map<String, Object?>> events,
-  String title,
-) {
+int? doneTimestampForTitle(List<Map<String, Object?>> events, String title) {
   final taskId = taskIdForTitle(events, title);
   if (taskId == null) return null;
   for (final row in events) {
@@ -165,8 +161,7 @@ bool isTaskClaimed(
   List<Map<String, Object?>> events,
   String title, {
   String? assignee,
-}) =>
-    claimTimestampForTitle(events, title, assignee: assignee) != null;
+}) => claimTimestampForTitle(events, title, assignee: assignee) != null;
 
 /// Asserts [title] is enqueued but not yet claimed (L1 mail-priority invariant).
 void expectTaskPendingNotClaimed(

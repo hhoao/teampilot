@@ -79,12 +79,9 @@ class AppUpdateService {
   Future<AppUpdateCheckResult> checkForUpdates({
     bool? preferAndroidArm64,
   }) async {
-    final preferArm64 =
-        preferAndroidArm64 ?? await preferArm64AndroidApk();
+    final preferArm64 = preferAndroidArm64 ?? await preferArm64AndroidApk();
     final current = await currentVersion();
-    final release = await _fetchLatestRelease(
-      preferAndroidArm64: preferArm64,
-    );
+    final release = await _fetchLatestRelease(preferAndroidArm64: preferArm64);
     if (current >= release.version) {
       return AppUpdateUpToDate();
     }
@@ -145,7 +142,10 @@ class AppUpdateService {
   }) async {
     final owner = _githubOwner ?? appUpdateGitHubOwner;
     final repo = _githubRepo ?? appUpdateGitHubRepo;
-    final tagName = await _resolveLatestReleaseTagName(owner: owner, repo: repo);
+    final tagName = await _resolveLatestReleaseTagName(
+      owner: owner,
+      repo: repo,
+    );
     if (tagName == null) {
       throw AppUpdateException(
         'Could not resolve the latest release without GitHub API access. '
@@ -178,7 +178,10 @@ class AppUpdateService {
     );
 
     final headers = await _httpHeaders();
-    final head = await _httpClient.head(Uri.parse(downloadUrl), headers: headers);
+    final head = await _httpClient.head(
+      Uri.parse(downloadUrl),
+      headers: headers,
+    );
     if (head.statusCode != 200) {
       throw AppUpdateAssetNotFoundException(kind, [assetName]);
     }
@@ -231,9 +234,9 @@ class AppUpdateService {
     final fromLink = linkMatch?.group(1)?.trim();
     if (fromLink != null && fromLink.isNotEmpty) return fromLink;
 
-    final titleMatch = RegExp(r'<entry>\s*<title>([^<]+)</title>').firstMatch(
-      body,
-    );
+    final titleMatch = RegExp(
+      r'<entry>\s*<title>([^<]+)</title>',
+    ).firstMatch(body);
     final title = titleMatch?.group(1)?.trim();
     if (title != null && title.isNotEmpty) return title;
     return null;
@@ -336,9 +339,7 @@ class AppUpdateService {
 
     final streamed = await _httpClient.send(request);
     if (streamed.statusCode != 200) {
-      throw AppUpdateException(
-        'Download failed (${streamed.statusCode}).',
-      );
+      throw AppUpdateException('Download failed (${streamed.statusCode}).');
     }
 
     final total = release.fileSize > 0

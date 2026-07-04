@@ -78,10 +78,7 @@ void main() {
     });
 
     test('isKnownAgentId matches builtin and user lists', () {
-      expect(
-        FlashskyaiAgentCatalog.isKnownAgentId('general-purpose'),
-        isTrue,
-      );
+      expect(FlashskyaiAgentCatalog.isKnownAgentId('general-purpose'), isTrue);
       expect(
         FlashskyaiAgentCatalog.isKnownAgentId(
           'test-runner',
@@ -89,10 +86,7 @@ void main() {
         ),
         isTrue,
       );
-      expect(
-        FlashskyaiAgentCatalog.isKnownAgentId('unknown'),
-        isFalse,
-      );
+      expect(FlashskyaiAgentCatalog.isKnownAgentId('unknown'), isFalse);
     });
 
     test('tryParseBuiltinId only matches known ids', () {

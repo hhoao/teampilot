@@ -46,7 +46,10 @@ class WorkspaceIconStorage {
 
     final ctx = AppPaths.pathContextForDataRoot(workspaceDir);
     await _filesystem.ensureDir(ctx.join(workspaceDir, assetsDirName));
-    await deleteAllForWorkspace(workspaceDir: workspaceDir, workspaceId: workspaceId);
+    await deleteAllForWorkspace(
+      workspaceDir: workspaceDir,
+      workspaceId: workspaceId,
+    );
     await _filesystem.writeBytes(absolutePath, bytes);
     return relativePath;
   }

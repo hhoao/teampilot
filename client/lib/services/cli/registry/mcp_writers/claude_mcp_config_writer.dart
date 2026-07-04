@@ -10,7 +10,8 @@ import 'metadata_mcp_merge.dart';
 final class ClaudeMcpConfigWriter implements McpConfigWriterCapability {
   const ClaudeMcpConfigWriter();
 
-  static const metadataFileName = ClaudeConfigProfileCapability.metadataFileName;
+  static const metadataFileName =
+      ClaudeConfigProfileCapability.metadataFileName;
 
   @override
   Future<void> write({

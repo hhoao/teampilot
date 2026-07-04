@@ -66,6 +66,7 @@ dependencies:
   provider: any
   mocktail: ^1.0.5
   flutter_local_notifications: ^20.1.0
+  flutter_native_splash: any
 dependency_overrides:
   flutter_pty:
     path: packages/flutter_pty
@@ -85,7 +86,6 @@ dev_dependencies:
 
   mock_anthropic:
     path: ../tools/mock_anthropic
-  flutter_native_splash: any
   native_splash_screen_cli:
     path: packages/native_splash_screen/native_splash_screen_cli
   vm_service_protos: ^2.0.1

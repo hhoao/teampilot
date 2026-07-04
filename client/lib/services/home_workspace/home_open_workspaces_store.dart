@@ -7,8 +7,8 @@ import '../storage/app_storage.dart';
 /// Persists open title-bar workspace tabs in display order.
 class HomeOpenWorkspacesStore {
   HomeOpenWorkspacesStore({Filesystem? fs, String? pathOverride})
-      : _fsOverride = fs,
-        _pathOverride = pathOverride;
+    : _fsOverride = fs,
+      _pathOverride = pathOverride;
 
   final Filesystem? _fsOverride;
   final String? _pathOverride;
@@ -28,9 +28,7 @@ class HomeOpenWorkspacesStore {
       for (final entry in tabsRaw) {
         if (entry is! Map) continue;
         try {
-          parsed.add(
-            WorkspaceTabRef.fromJson(entry.cast<String, Object?>()),
-          );
+          parsed.add(WorkspaceTabRef.fromJson(entry.cast<String, Object?>()));
         } catch (_) {
           continue;
         }

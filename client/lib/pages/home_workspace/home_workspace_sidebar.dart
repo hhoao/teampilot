@@ -165,9 +165,10 @@ class _HomeSidebarIdentityScroll extends StatelessWidget {
     final cs = Theme.of(context).colorScheme;
     final l10n = context.l10n;
     final identityCubit = context.read<LaunchProfileCubit>();
-    final identities = context.select<LaunchProfileCubit, HomeSidebarIdentitySnapshot>(
-      (c) => LaunchProfileSelectors.sidebarIdentities(c.state),
-    );
+    final identities = context
+        .select<LaunchProfileCubit, HomeSidebarIdentitySnapshot>(
+          (c) => LaunchProfileSelectors.sidebarIdentities(c.state),
+        );
     final personals = identities.personals;
     final teams = identities.teams;
     final onIdentity = this.onIdentity;
@@ -244,7 +245,8 @@ class _HomeSidebarIdentityScroll extends StatelessWidget {
                           const SizedBox(height: 8),
                         _NewTeamRow(
                           label: l10n.homeWorkspaceNewTeam,
-                          onTap: () => showHomeNewTeamDialog(context, identityCubit),
+                          onTap: () =>
+                              showHomeNewTeamDialog(context, identityCubit),
                         ),
                         const SizedBox(height: 10),
                       ],
@@ -337,7 +339,11 @@ class _SectionHeader extends StatelessWidget {
         padding: const EdgeInsets.fromLTRB(8, 6, 6, 10),
         child: Row(
           children: [
-            Icon(icon, size: context.appIconSizes.md, color: cs.onSurfaceVariant),
+            Icon(
+              icon,
+              size: context.appIconSizes.md,
+              color: cs.onSurfaceVariant,
+            ),
             const SizedBox(width: 8),
             Expanded(child: Text(label, style: styles.prominent)),
             AnimatedRotation(
@@ -511,7 +517,11 @@ class _NewTeamRow extends StatelessWidget {
         ),
         child: Row(
           children: [
-            Icon(Icons.add_rounded, size: context.appIconSizes.md, color: cs.primary),
+            Icon(
+              Icons.add_rounded,
+              size: context.appIconSizes.md,
+              color: cs.primary,
+            ),
             const SizedBox(width: 8),
             Text(label, style: styles.prominent.copyWith(color: cs.primary)),
           ],
@@ -668,10 +678,7 @@ class _ProvidersButtonState extends State<_ProvidersButton> {
   }
 }
 
-String _sidebarDisplayName(
-  AppLocalizations l10n,
-  IdentitySidebarEntry entry,
-) {
+String _sidebarDisplayName(AppLocalizations l10n, IdentitySidebarEntry entry) {
   if (entry.kind == LaunchProfileKind.personal &&
       entry.id == LaunchProfileProvisioner.defaultPersonalId) {
     return l10n.homeWorkspaceDefaultPersonalWorkspaceName;

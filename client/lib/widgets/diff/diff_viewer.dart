@@ -60,7 +60,8 @@ class DiffViewer extends StatefulWidget {
   factory DiffViewer.fromUnifiedDiff({
     required String diffText,
     String? filePath,
-    Future<String?> Function(bool ignoreWhitespace, bool fullContext)? reloadDiff,
+    Future<String?> Function(bool ignoreWhitespace, bool fullContext)?
+    reloadDiff,
     DiffViewMode initialMode = DiffViewMode.sideBySide,
     WorkspacePageChrome chrome = WorkspacePageChrome.workspace,
     VoidCallback? onOpenSource,
@@ -89,7 +90,7 @@ class DiffViewer extends StatefulWidget {
   /// Recomputes the diff for the given options, or null when re-diffing is
   /// unavailable (ignore-whitespace / full-context toggles hidden).
   final Future<DiffResult> Function(bool ignoreWhitespace, bool fullContext)?
-      resolve;
+  resolve;
 
   /// Whether the "show all lines" toggle is meaningful for this source.
   final bool supportsFullContext;
@@ -156,24 +157,24 @@ class _DiffViewerState extends State<DiffViewer> {
         child: Text(
           context.l10n.diffNoChanges,
           style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                color: Theme.of(context).colorScheme.onSurfaceVariant,
-              ),
+            color: Theme.of(context).colorScheme.onSurfaceVariant,
+          ),
         ),
       );
     }
     return switch (_mode) {
       DiffViewMode.sideBySide => SideBySideDiffView(
-          result: _result,
-          filePath: widget.filePath,
-          controller: _controller,
-          chrome: widget.chrome,
-        ),
+        result: _result,
+        filePath: widget.filePath,
+        controller: _controller,
+        chrome: widget.chrome,
+      ),
       DiffViewMode.unified => UnifiedDiffView(
-          result: _result,
-          filePath: widget.filePath,
-          controller: _controller,
-          chrome: widget.chrome,
-        ),
+        result: _result,
+        filePath: widget.filePath,
+        controller: _controller,
+        chrome: widget.chrome,
+      ),
     };
   }
 

@@ -1,4 +1,4 @@
-﻿import 'dart:async';
+import 'dart:async';
 
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
@@ -19,8 +19,6 @@ import '../../utils/app_keys.dart';
 import '../../utils/debounce/debounce.dart';
 import '../../utils/workspace_active_context.dart';
 import '../../cubits/workspace_landing_context_cubit.dart';
-import '../../models/landing_launch_context.dart';
-import '../../models/team_config.dart';
 import '../../services/storage/launch_profile_provisioner.dart';
 import '../../widgets/right_tools/right_tools_panel.dart';
 import '../chat_workbench.dart';
@@ -147,16 +145,16 @@ class ChatPageShell extends StatelessWidget {
 
     return _chatLaunchListener(
       context,
-        _ChatPageDrawerLayout(
-          cwd: cwd,
-          additionalPaths: additionalPaths,
-          sessionId: sessionId,
-          isPersonalContext: isPersonalContext,
-          workspaceId: workspaceId,
-          tabScopeId: tabScopeId,
-          routeActive: routeActive,
-          team: team,
-        ),
+      _ChatPageDrawerLayout(
+        cwd: cwd,
+        additionalPaths: additionalPaths,
+        sessionId: sessionId,
+        isPersonalContext: isPersonalContext,
+        workspaceId: workspaceId,
+        tabScopeId: tabScopeId,
+        routeActive: routeActive,
+        team: team,
+      ),
     );
   }
 }
@@ -327,7 +325,11 @@ class _ChatWorkspaceShell extends StatelessWidget {
 
   String? _profileId(BuildContext context) {
     try {
-      return context.read<WorkspaceLandingContextCubit>().state.context.profileId;
+      return context
+          .read<WorkspaceLandingContextCubit>()
+          .state
+          .context
+          .profileId;
     } on Object {
       if (!isPersonalContext && team != null) return team!.id;
       final workspace = context
@@ -351,6 +353,7 @@ class _ChatWorkspaceShell extends StatelessWidget {
     if (!routeActive) return false;
     return previous.tabs != next.tabs ||
         previous.activeTabIndex != next.activeTabIndex ||
+        previous.composeActive != next.composeActive ||
         previous.workingSessionIds != next.workingSessionIds ||
         previous.selectedMemberId != next.selectedMemberId ||
         previous.sessionConnectingId != next.sessionConnectingId ||
@@ -362,8 +365,7 @@ class _ChatWorkspaceShell extends StatelessWidget {
   Widget build(BuildContext context) {
     final cubit = context.read<ChatCubit>();
     return BlocBuilder<ChatCubit, ChatState>(
-      buildWhen: (previous, next) =>
-          _scopedTabBuildWhen(cubit, previous, next),
+      buildWhen: (previous, next) => _scopedTabBuildWhen(cubit, previous, next),
       builder: (context, state) {
         final view = ChatScopedTabView.resolve(cubit, tabScopeId);
         final teamConfig = team;
@@ -383,38 +385,41 @@ class _ChatWorkspaceShell extends StatelessWidget {
           subtitle: isPersonalContext
               ? 'personal workspace / shell wrapper mode'
               : 'target: ${teamConfig != null ? cubit.selectedMemberName(teamConfig) : 'team'} / shell wrapper mode',
-          tabs: view.tabs
-              .map(
-                (t) {
-                  final runtimeTab = tabById[t.id];
-                  final cli = runtimeTab == null
-                      ? null
-                      : resolveSessionTabCli(
-                          tab: runtimeTab,
-                          sessions: state.sessions,
-                          isPersonal: isPersonalContext,
-                          team: teamConfig,
-                          personalFallbackCli: personalFallbackCli,
-                          globalPresets:
-                              context.watch<CliPresetsCubit>().state.presets,
-                        );
-                  return TabInfo(
-                    id: t.id,
-                    title: t.title,
-                    working: view.workingSessionIds.contains(t.id),
-                    cli: cli,
-                    accentColor: Theme.of(context).colorScheme.primary,
+          showComposeTab: true,
+          composeTabActive: view.composeActive,
+          composeTabTitle: context.l10n.homeWorkspaceNewConversation,
+          onComposeTabSelected: routeActive
+              ? () => cubit.enterComposeMode(tabScopeId)
+              : null,
+          onComposeTabClosed: routeActive && view.tabs.isNotEmpty
+              ? () => cubit.exitComposeMode()
+              : null,
+          tabs: view.tabs.map((t) {
+            final runtimeTab = tabById[t.id];
+            final cli = runtimeTab == null
+                ? null
+                : resolveSessionTabCli(
+                    tab: runtimeTab,
+                    sessions: state.sessions,
+                    isPersonal: isPersonalContext,
+                    team: teamConfig,
+                    personalFallbackCli: personalFallbackCli,
+                    globalPresets: context
+                        .watch<CliPresetsCubit>()
+                        .state
+                        .presets,
                   );
-                },
-              )
-              .toList(),
-          activeTabIndex: view.activeTabIndex,
-          onTabSelected: routeActive
-              ? (index) => cubit.selectTab(index)
-              : null,
-          onTabClosed: routeActive
-              ? (index) => cubit.closeTab(index)
-              : null,
+            return TabInfo(
+              id: t.id,
+              title: t.title,
+              working: view.workingSessionIds.contains(t.id),
+              cli: cli,
+              accentColor: Theme.of(context).colorScheme.primary,
+            );
+          }).toList(),
+          activeTabIndex: view.composeActive ? -1 : view.activeTabIndex,
+          onTabSelected: routeActive ? (index) => cubit.selectTab(index) : null,
+          onTabClosed: routeActive ? (index) => cubit.closeTab(index) : null,
           onTabCloseOthers: routeActive
               ? (index) => cubit.closeOtherTabs(index)
               : null,

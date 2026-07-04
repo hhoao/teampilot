@@ -3,7 +3,9 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:teampilot/widgets/settings/settings_dialog_pane_host.dart';
 
 void main() {
-  testWidgets('SettingsDialogPaneHost builds only visited panes', (tester) async {
+  testWidgets('SettingsDialogPaneHost builds only visited panes', (
+    tester,
+  ) async {
     var builtPanes = <int>{};
 
     await tester.pumpWidget(

@@ -30,7 +30,11 @@ class WorkspaceFileTreeStore {
   }) {
     final ws = workspaceId.trim();
     if (ws.isEmpty) {
-      throw ArgumentError.value(workspaceId, 'workspaceId', 'must not be empty');
+      throw ArgumentError.value(
+        workspaceId,
+        'workspaceId',
+        'must not be empty',
+      );
     }
     final tid = targetId.trim().isEmpty ? 'local' : targetId.trim();
     final key = _key(ws, tid);

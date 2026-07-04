@@ -42,12 +42,8 @@ class CursorProviderCredentialsService {
     String executable,
     List<String> arguments, {
     Map<String, String>? environment,
-    }) {
-    return Process.run(
-      executable,
-      arguments,
-      environment: environment,
-    );
+  }) {
+    return Process.run(executable, arguments, environment: environment);
   }
 
   String providerHome(String providerId) => _fs.pathContext.join(
@@ -74,7 +70,8 @@ class CursorProviderCredentialsService {
     }
     final content = await _readText(authPath);
     final ready =
-        content != null && CursorAuthArtifacts.authJsonIndicatesLoggedIn(content);
+        content != null &&
+        CursorAuthArtifacts.authJsonIndicatesLoggedIn(content);
     return CredentialProbe(
       providerId: providerId,
       status: ready ? CredentialStatus.ready : CredentialStatus.missing,
@@ -179,7 +176,12 @@ class CursorProviderCredentialsService {
   }) async {
     final src = _fs.pathContext.join(sourceCursorDir, relativePath);
     final dest = _fs.pathContext.join(destCursorDir, relativePath);
-    return _copyFile(src: src, dest: dest, replace: replace, required: required);
+    return _copyFile(
+      src: src,
+      dest: dest,
+      replace: replace,
+      required: required,
+    );
   }
 
   Future<CredentialActionResult> _copyFile({
@@ -238,7 +240,9 @@ class CursorProviderCredentialsService {
     var anyLinked = false;
     var anyCopied = false;
 
-    for (final relativePath in await _cursorDirAuthFilesPresentAt(srcCursorDir)) {
+    for (final relativePath in await _cursorDirAuthFilesPresentAt(
+      srcCursorDir,
+    )) {
       final dest = _fs.pathContext.join(destCursorDir, relativePath);
       final destStat = await _fs.stat(dest);
       if (destStat.isFile || destStat.isSymlink) continue;
@@ -284,11 +288,10 @@ class CursorProviderCredentialsService {
     String homeDirectory, {
     Map<String, String> platformEnv = const {},
   }) async {
-    for (final candidate
-        in _layout.globalAuthJsonCandidates(
-          homeDirectory,
-          platformEnv: platformEnv,
-        )) {
+    for (final candidate in _layout.globalAuthJsonCandidates(
+      homeDirectory,
+      platformEnv: platformEnv,
+    )) {
       if ((await _fs.stat(candidate)).isFile) return candidate;
     }
     final candidates = _layout.globalAuthJsonCandidates(

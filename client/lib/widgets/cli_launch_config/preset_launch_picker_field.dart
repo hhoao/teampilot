@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 
 import '../../cubits/app_provider_cubit.dart';
-import '../../l10n/app_localizations.dart';
 import '../../l10n/l10n_extensions.dart';
 import '../../models/cli_preset.dart';
 import '../../services/cli/registry/cli_tool_registry.dart';
@@ -48,8 +47,7 @@ class PresetLaunchPickerField extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final l10n = context.l10n;
-    final dropdownDeco =
-        decoration ?? AppDropdownDecorations.themed(context);
+    final dropdownDeco = decoration ?? AppDropdownDecorations.themed(context);
 
     return SettingsLabeledRow(
       title: l10n.memberPresetLabel,
@@ -106,10 +104,7 @@ Widget presetLaunchPickerListItem(
   required AppProviderState providerState,
 }) {
   if (value == kPresetLaunchCustomOption) {
-    return _PresetDropdownOption(
-      title: l10n.memberPresetCustom,
-      enabled: true,
-    );
+    return _PresetDropdownOption(title: l10n.memberPresetCustom, enabled: true);
   }
   for (final preset in eligiblePresets) {
     if (preset.id == value) {
@@ -158,9 +153,9 @@ class _PresetDropdownOption extends StatelessWidget {
           if (subtitle != null)
             Text(
               subtitle!,
-              style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                color: cs.onSurfaceVariant,
-              ),
+              style: Theme.of(
+                context,
+              ).textTheme.bodySmall?.copyWith(color: cs.onSurfaceVariant),
             ),
         ],
       ),
@@ -196,9 +191,7 @@ List<String> presetLaunchDropdownItems({
       ...eligiblePresets.map((p) => p.id),
       kPresetLaunchCustomOption,
     ],
-    PresetLaunchPickerMode.presetOnly => [
-      ...eligiblePresets.map((p) => p.id),
-    ],
+    PresetLaunchPickerMode.presetOnly => [...eligiblePresets.map((p) => p.id)],
   };
 }
 

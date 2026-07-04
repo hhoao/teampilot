@@ -110,7 +110,10 @@ Future<WorkspaceFileSearchResult> searchWorkspaceFiles({
       );
       if (matches.length >= limits.maxResults) {
         truncated = true;
-        return WorkspaceFileSearchResult(matches: matches, truncated: truncated);
+        return WorkspaceFileSearchResult(
+          matches: matches,
+          truncated: truncated,
+        );
       }
     }
   }

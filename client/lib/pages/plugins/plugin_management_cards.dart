@@ -1,4 +1,4 @@
-﻿import 'package:flutter/material.dart';
+import 'package:flutter/material.dart';
 import 'package:teampilot/theme/app_toast_theme.dart';
 import 'package:teampilot/widgets/app_toast/app_toast.dart';
 import 'package:url_launcher/url_launcher.dart';
@@ -113,4 +113,3 @@ Future<void> openPluginUrl(String url) async {
     await launchUrl(uri, mode: LaunchMode.externalApplication);
   }
 }
-

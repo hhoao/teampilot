@@ -9,7 +9,5 @@ Future<void> prefetchHomeIndexSnapshots(String teampilotRoot) async {
   final sw = Stopwatch()..start();
   await SessionRepository(rootDir: teampilotRoot).loadWorkspacesIndex();
   await LaunchProfileRepository().loadAll();
-  appLogger.i(
-    '[boot] prefetchHomeIndexSnapshots +${sw.elapsedMilliseconds}ms',
-  );
+  appLogger.i('[boot] prefetchHomeIndexSnapshots +${sw.elapsedMilliseconds}ms');
 }

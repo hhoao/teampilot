@@ -25,10 +25,19 @@ void main() {
     test('runs executable with argv', () async {
       final calls = <List<String>>[];
       final runner = LocalHostOneShotRunner(
-        processRunner: (exe, args, {workingDirectory, environment, includeParentEnvironment = true, stdoutEncoding, stderrEncoding}) async {
-          calls.add([exe, ...args]);
-          return ProcessResult(0, 0, 'ok\n', '');
-        },
+        processRunner:
+            (
+              exe,
+              args, {
+              workingDirectory,
+              environment,
+              includeParentEnvironment = true,
+              stdoutEncoding,
+              stderrEncoding,
+            }) async {
+              calls.add([exe, ...args]);
+              return ProcessResult(0, 0, 'ok\n', '');
+            },
       );
 
       final result = await runner.run(
@@ -46,10 +55,19 @@ void main() {
       final calls = <List<String>>[];
       final runner = WslHostOneShotRunner(
         distro: 'Ubuntu',
-        processRunner: (exe, args, {workingDirectory, environment, includeParentEnvironment = true, stdoutEncoding, stderrEncoding}) async {
-          calls.add([exe, ...args]);
-          return ProcessResult(0, 0, '', '');
-        },
+        processRunner:
+            (
+              exe,
+              args, {
+              workingDirectory,
+              environment,
+              includeParentEnvironment = true,
+              stdoutEncoding,
+              stderrEncoding,
+            }) async {
+              calls.add([exe, ...args]);
+              return ProcessResult(0, 0, '', '');
+            },
       );
 
       await runner.run(
@@ -62,7 +80,14 @@ void main() {
 
       expect(
         calls.single,
-        containsAll(['-d', 'Ubuntu', '--cd', '/home/user/repo', 'git', 'status']),
+        containsAll([
+          '-d',
+          'Ubuntu',
+          '--cd',
+          '/home/user/repo',
+          'git',
+          'status',
+        ]),
       );
     });
   });

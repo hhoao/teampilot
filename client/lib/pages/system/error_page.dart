@@ -1,4 +1,4 @@
-﻿import 'package:flutter/material.dart';
+import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:package_info_plus/package_info_plus.dart';
 
@@ -18,13 +18,7 @@ Future<void> showInitErrorApp({
   required StackTrace stackTrace,
 }) async {
   final theme = await resolveFatalAppTheme();
-  runApp(
-    _InitErrorApp(
-      error: error,
-      stackTrace: stackTrace,
-      theme: theme,
-    ),
-  );
+  runApp(_InitErrorApp(error: error, stackTrace: stackTrace, theme: theme));
 }
 
 class _InitErrorApp extends StatefulWidget {
@@ -122,10 +116,7 @@ ${AppLogger.instance.getFormattedPendingLogs()}
   void _openLogViewer() {
     navigatorKey.currentState?.push(
       MaterialPageRoute(
-        builder: (_) => Theme(
-          data: widget.theme,
-          child: const LogViewerPage(),
-        ),
+        builder: (_) => Theme(data: widget.theme, child: const LogViewerPage()),
       ),
     );
   }
@@ -169,10 +160,7 @@ ${AppLogger.instance.getFormattedPendingLogs()}
                           title: l10n.initErrorDetails,
                           child: SelectableText(
                             widget.error.toString(),
-                            style: logMonospaceStyle(
-                              context,
-                              color: cs.error,
-                            ),
+                            style: logMonospaceStyle(context, color: cs.error),
                           ),
                         ),
                         _ErrorBlock(
@@ -271,9 +259,9 @@ class _ErrorBlock extends StatelessWidget {
                   Expanded(
                     child: Text(
                       title,
-                      style: AppTextStyles.of(context).bodyStrong.copyWith(
-                        color: cs.onSurface,
-                      ),
+                      style: AppTextStyles.of(
+                        context,
+                      ).bodyStrong.copyWith(color: cs.onSurface),
                     ),
                   ),
                   if (trailing != null) trailing!,
@@ -282,19 +270,13 @@ class _ErrorBlock extends StatelessWidget {
               const SizedBox(height: 10),
               DecoratedBox(
                 decoration: workspaceCodeDecoration(cs),
-                child: Padding(
-                  padding: const EdgeInsets.all(12),
-                  child: child,
-                ),
+                child: Padding(padding: const EdgeInsets.all(12), child: child),
               ),
             ],
           ),
         ),
         if (showDividerBelow)
-          Divider(
-            height: 1,
-            color: cs.outlineVariant.withValues(alpha: 0.5),
-          ),
+          Divider(height: 1, color: cs.outlineVariant.withValues(alpha: 0.5)),
       ],
     );
   }

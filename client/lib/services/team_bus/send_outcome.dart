@@ -1,10 +1,6 @@
 /// Result of [TeamBus.send] — delivered to a member or dropped with a reason.
 class SendOutcome {
-  const SendOutcome._({
-    required this.to,
-    this.memberId,
-    this.reason,
-  });
+  const SendOutcome._({required this.to, this.memberId, this.reason});
 
   const SendOutcome.delivered(String memberId)
     : this._(to: memberId, memberId: memberId);

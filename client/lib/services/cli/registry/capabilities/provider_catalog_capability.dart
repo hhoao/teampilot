@@ -41,8 +41,7 @@ class ProviderCatalogLoadContext {
   /// Fixed timestamp for tests; defaults to UTC now in production.
   final int? now;
 
-  int resolvedNow() =>
-      now ?? DateTime.now().toUtc().millisecondsSinceEpoch;
+  int resolvedNow() => now ?? DateTime.now().toUtc().millisecondsSinceEpoch;
 }
 
 /// Marks a CLI that owns a `providers/{tool}/providers.json` catalog.

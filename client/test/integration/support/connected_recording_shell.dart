@@ -11,10 +11,7 @@ import '../../support/recording_pty_transport.dart';
 /// tests observe real [writeToPty] / [submitFullScreenInput] bytes and can
 /// drive [TerminalActivityTracker] via synthetic PTY output.
 class ConnectedRecordingShell {
-  ConnectedRecordingShell({
-    required this.session,
-    required this.transport,
-  });
+  ConnectedRecordingShell({required this.session, required this.transport});
 
   final TerminalSession session;
   final RecordingPtyTransport transport;

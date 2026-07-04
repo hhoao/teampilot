@@ -56,9 +56,7 @@ class WorkspaceTopologyChip extends StatelessWidget {
     return DecoratedBox(
       decoration: BoxDecoration(
         borderRadius: BorderRadius.circular(8),
-        border: Border.all(
-          color: WorkspaceTopologyColors.borderAlpha(color),
-        ),
+        border: Border.all(color: WorkspaceTopologyColors.borderAlpha(color)),
       ),
       child: Padding(
         padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),

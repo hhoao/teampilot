@@ -307,9 +307,7 @@ class _FileTreePanelState extends State<FileTreePanel> {
                                   _workContext,
                                 ),
                                 remoteFileManagerActions:
-                                    _remoteFileManagerActionsFor(
-                                  _workContext,
-                                ),
+                                    _remoteFileManagerActionsFor(_workContext),
                                 workContext: _workContext,
                               );
                             },
@@ -337,7 +335,9 @@ class _FileTreePanelState extends State<FileTreePanel> {
         icon: filterVisible ? Icons.search_off : Icons.search,
         compact: true,
         size: AppIconButton.kCompactSize,
-        tooltip: filterVisible ? l10n.fileTreeHideFilter : l10n.fileTreeShowFilter,
+        tooltip: filterVisible
+            ? l10n.fileTreeHideFilter
+            : l10n.fileTreeShowFilter,
         onTap: _toggleFilterVisible,
       ),
       AppIconButton(
@@ -426,10 +426,7 @@ class _FileTreeFilterField extends StatelessWidget {
           controller: controller,
           decoration: InputDecoration(
             hintText: hintText,
-            prefixIcon: Icon(
-              Icons.search,
-              size: context.appIconSizes.md,
-            ),
+            prefixIcon: Icon(Icons.search, size: context.appIconSizes.md),
             floatingLabelBehavior: FloatingLabelBehavior.never,
             suffixIcon: value.text.isNotEmpty
                 ? AppIconButton(

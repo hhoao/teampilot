@@ -98,9 +98,7 @@ wire_api = "responses"
         await _writeJson(p.join(home, '.codex', 'auth.json'), {
           'OPENAI_API_KEY': 'PROXY_MANAGED',
         });
-        await _writeText(
-          p.join(home, '.codex', 'config.toml'),
-          '''
+        await _writeText(p.join(home, '.codex', 'config.toml'), '''
 model_provider = "custom"
 model = "deepseek-v4-flash"
 
@@ -110,8 +108,7 @@ experimental_bearer_token = "PROXY_MANAGED"
 
 [features]
 rmcp_client = true
-''',
-        );
+''');
 
         final service = ProviderImportService(repository: repository);
         await service.importForCli(CliTool.codex, onlyIfEmpty: false);

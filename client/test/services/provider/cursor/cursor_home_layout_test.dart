@@ -28,10 +28,7 @@ void main() {
     test('authJson joins .config/cursor/auth.json under homeRoot', () {
       expect(
         layout.authJson(homeRoot),
-        p.join(
-          layout.configCursorDir(homeRoot),
-          CursorHomeLayout.authFileName,
-        ),
+        p.join(layout.configCursorDir(homeRoot), CursorHomeLayout.authFileName),
       );
     });
 
@@ -49,10 +46,7 @@ void main() {
     test('hooksConfig joins hooks.json under cursor dir', () {
       expect(
         layout.hooksConfig(homeRoot),
-        p.join(
-          layout.cursorDir(homeRoot),
-          CursorHomeLayout.hooksFileName,
-        ),
+        p.join(layout.cursorDir(homeRoot), CursorHomeLayout.hooksFileName),
       );
     });
 
@@ -70,20 +64,14 @@ void main() {
     test('mcpConfig joins mcp.json under cursor dir', () {
       expect(
         layout.mcpConfig(homeRoot),
-        p.join(
-          layout.cursorDir(homeRoot),
-          CursorHomeLayout.mcpFileName,
-        ),
+        p.join(layout.cursorDir(homeRoot), CursorHomeLayout.mcpFileName),
       );
     });
 
     test('cliConfig joins cli-config.json under cursor dir', () {
       expect(
         layout.cliConfig(homeRoot),
-        p.join(
-          layout.cursorDir(homeRoot),
-          CursorHomeLayout.cliConfigFileName,
-        ),
+        p.join(layout.cursorDir(homeRoot), CursorHomeLayout.cliConfigFileName),
       );
     });
 

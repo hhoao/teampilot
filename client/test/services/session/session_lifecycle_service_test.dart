@@ -241,61 +241,58 @@ void main() {
     },
   );
 
-  test(
-    'prepareLaunch resumes mixed member whose CLI override differs from '
-    'team.cli',
-    () async {
-      const taskId = '8c30aef6-19f6-469c-9b53-bcbda18b6fd2';
-      const member = TeamMemberConfig(
-        id: 'team-lead',
-        name: 'team-lead',
-        cli: CliTool.claude,
-      );
-      final session = _session(
-        id: 'mixed-session',
-        launchState: AppSessionLaunchState.started,
-      ).copyWith(cliTeamName: 'team-a-4');
-      final bucket = RuntimeLayout.workspaceBucketForPrimaryPath(
-        session.firstFolderPath,
-      );
-      final transcript = File(
-        p.join(
-          layout.sessionRuntimeToolDir(
-            _workspaceId,
-            'mixed-session',
-            'claude',
-            memberId: ClaudeTeamRosterService.safeClaudePathSegment('team-lead'),
-          ),
-          'projects',
-          bucket,
-          '$taskId.jsonl',
+  test('prepareLaunch resumes mixed member whose CLI override differs from '
+      'team.cli', () async {
+    const taskId = '8c30aef6-19f6-469c-9b53-bcbda18b6fd2';
+    const member = TeamMemberConfig(
+      id: 'team-lead',
+      name: 'team-lead',
+      cli: CliTool.claude,
+    );
+    final session = _session(
+      id: 'mixed-session',
+      launchState: AppSessionLaunchState.started,
+    ).copyWith(cliTeamName: 'team-a-4');
+    final bucket = RuntimeLayout.workspaceBucketForPrimaryPath(
+      session.firstFolderPath,
+    );
+    final transcript = File(
+      p.join(
+        layout.sessionRuntimeToolDir(
+          _workspaceId,
+          'mixed-session',
+          'claude',
+          memberId: ClaudeTeamRosterService.safeClaudePathSegment('team-lead'),
         ),
-      );
-      await transcript.parent.create(recursive: true);
-      await transcript.writeAsString('{}\n');
+        'projects',
+        bucket,
+        '$taskId.jsonl',
+      ),
+    );
+    await transcript.parent.create(recursive: true);
+    await transcript.writeAsString('{}\n');
 
-      const binding = SessionMemberBinding(
-        rosterMemberId: 'team-lead',
-        taskId: taskId,
-      );
-      final plan = await service().prepareLaunch(
-        session: session,
-        team: const TeamProfile(
-          id: 'team-a',
-          name: 'Team A',
-          cli: CliTool.flashskyai,
-          teamMode: TeamMode.mixed,
-          members: [member],
-        ),
-        member: member,
-        memberBinding: binding,
-      );
+    const binding = SessionMemberBinding(
+      rosterMemberId: 'team-lead',
+      taskId: taskId,
+    );
+    final plan = await service().prepareLaunch(
+      session: session,
+      team: const TeamProfile(
+        id: 'team-a',
+        name: 'Team A',
+        cli: CliTool.flashskyai,
+        teamMode: TeamMode.mixed,
+        members: [member],
+      ),
+      member: member,
+      memberBinding: binding,
+    );
 
-      expect(plan.resume, isTrue);
-      expect(plan.taskId, taskId);
-      expect(plan.resumeSessionId, taskId);
-    },
-  );
+    expect(plan.resume, isTrue);
+    expect(plan.taskId, taskId);
+    expect(plan.resumeSessionId, taskId);
+  });
 
   test('prepareLaunch preserves llm override for non-team launches', () async {
     final plan = await SessionLifecycleService(

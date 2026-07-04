@@ -18,10 +18,7 @@ void main() {
   });
 
   test('uniqueTeamId avoids collisions', () {
-    expect(
-      TeamMemberNaming.uniqueTeamId('Alpha', const ['alpha']),
-      'alpha-2',
-    );
+    expect(TeamMemberNaming.uniqueTeamId('Alpha', const ['alpha']), 'alpha-2');
     expect(
       TeamMemberNaming.uniqueTeamId('Beta', const ['alpha', 'beta']),
       'beta-2',

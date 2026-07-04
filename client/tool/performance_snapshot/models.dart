@@ -90,10 +90,7 @@ class TimingStats {
 }
 
 class JankyFrame {
-  const JankyFrame({
-    required this.frame,
-    required this.bottleneck,
-  });
+  const JankyFrame({required this.frame, required this.bottleneck});
 
   final FlutterFrame frame;
   final String bottleneck;
@@ -204,10 +201,7 @@ class ShaderSummary {
 }
 
 class CpuSampleSummary {
-  const CpuSampleSummary({
-    required this.sampleCount,
-    required this.topSymbols,
-  });
+  const CpuSampleSummary({required this.sampleCount, required this.topSymbols});
 
   final int sampleCount;
   final Map<String, int> topSymbols;

@@ -41,7 +41,8 @@ final class CursorWorkspaceTrustProvisioner {
     final keys = await collectTrustedProjectKeys(
       fs: _fs,
       directories: [
-        if (workingDirectory?.trim().isNotEmpty ?? false) workingDirectory!.trim(),
+        if (workingDirectory?.trim().isNotEmpty ?? false)
+          workingDirectory!.trim(),
         for (final directory in additionalDirectories)
           if (directory.trim().isNotEmpty) directory.trim(),
       ],

@@ -9,8 +9,8 @@ class SessionIdleNotificationService {
   SessionIdleNotificationService({
     DesktopSystemNotifier? desktopNotifier,
     NotificationRecorder? recorder,
-  })  : _desktop = desktopNotifier ?? DesktopSystemNotifier.instance,
-        _recorder = recorder ?? NotificationRecorder.maybeCurrent;
+  }) : _desktop = desktopNotifier ?? DesktopSystemNotifier.instance,
+       _recorder = recorder ?? NotificationRecorder.maybeCurrent;
 
   final DesktopSystemNotifier _desktop;
   final NotificationRecorder? _recorder;

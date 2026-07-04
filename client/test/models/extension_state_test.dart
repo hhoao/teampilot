@@ -6,7 +6,10 @@ void main() {
     test('falls back to globalEnabled when no workspace override', () {
       const state = ExtensionState(globalEnabled: {'rtk'});
       expect(state.effectiveEnabledForWorkspace('proj-a', 'rtk'), isTrue);
-      expect(state.effectiveEnabledForWorkspace('proj-a', 'codegraph'), isFalse);
+      expect(
+        state.effectiveEnabledForWorkspace('proj-a', 'codegraph'),
+        isFalse,
+      );
     });
 
     test('workspace override wins over global', () {
@@ -96,7 +99,10 @@ void main() {
       const state = ExtensionState();
       expect(state.withGlobalEnabled('rtk', true).globalEnabled, {'rtk'});
       expect(
-        state.withGlobalEnabled('rtk', true).withGlobalEnabled('rtk', false).globalEnabled,
+        state
+            .withGlobalEnabled('rtk', true)
+            .withGlobalEnabled('rtk', false)
+            .globalEnabled,
         isEmpty,
       );
     });

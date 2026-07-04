@@ -22,10 +22,7 @@ class SliceTreeNode {
 }
 
 /// How to rank siblings when applying per-level top-N pruning.
-enum SliceTreeRankMetric {
-  self,
-  total,
-}
+enum SliceTreeRankMetric { self, total }
 
 bool sliceContains(TraceSlice parent, TraceSlice child) {
   if (parent.track != child.track) return false;
@@ -136,7 +133,11 @@ class SliceSelfTimeEntry {
 }
 
 /// Prunes child subtrees below [maxDepth] (0 = roots only).
-void pruneSliceTreeDepth(List<SliceTreeNode> nodes, int maxDepth, [int depth = 0]) {
+void pruneSliceTreeDepth(
+  List<SliceTreeNode> nodes,
+  int maxDepth, [
+  int depth = 0,
+]) {
   if (depth >= maxDepth) {
     for (final node in nodes) {
       node.children.clear();
@@ -158,10 +159,7 @@ void pruneSliceTreeMinTotal(List<SliceTreeNode> nodes, double minTotalMs) {
 
 /// Summary of siblings dropped when trimming the root forest.
 class SliceTreeForestOmitted {
-  const SliceTreeForestOmitted({
-    required this.count,
-    required this.selfMs,
-  });
+  const SliceTreeForestOmitted({required this.count, required this.selfMs});
 
   final int count;
   final double selfMs;
@@ -214,9 +212,9 @@ SliceTreeForestOmitted? _trimSiblingList(
   if (siblings.length <= topK) return null;
 
   double rank(SliceTreeNode n) => switch (metric) {
-        SliceTreeRankMetric.self => n.selfMsDirect,
-        SliceTreeRankMetric.total => n.totalMs,
-      };
+    SliceTreeRankMetric.self => n.selfMsDirect,
+    SliceTreeRankMetric.total => n.totalMs,
+  };
 
   siblings.sort((a, b) => rank(b).compareTo(rank(a)));
   final dropped = siblings.sublist(topK);

@@ -40,83 +40,90 @@ void main() {
         ],
       );
 
-  test('personal leaf skills/ is a real directory, not a staging symlink',
-      () async {
-    final fs = AppStorage.fs;
-    final root = AppStorage.paths.basePath;
-    final layout = RuntimeLayout(teampilotRoot: root, fs: fs);
-    await fs.ensureDir(
-      fs.pathContext.join(
-        AppPaths.skillsDirForTeampilotRoot(root),
-        'demo-skill',
-      ),
-    );
+  test(
+    'personal leaf skills/ is a real directory, not a staging symlink',
+    () async {
+      final fs = AppStorage.fs;
+      final root = AppStorage.paths.basePath;
+      final layout = RuntimeLayout(teampilotRoot: root, fs: fs);
+      await fs.ensureDir(
+        fs.pathContext.join(
+          AppPaths.skillsDirForTeampilotRoot(root),
+          'demo-skill',
+        ),
+      );
 
-    await buildService(root, layout).prepareSessionLaunch(
-      workspaceId: 'p',
-      sessionId: 's',
-      profileId: 'personal-default',
-      personal: const PersonalProfile(id: 'p', display: 'p',
-        bundle: ConfigBundle(skillIds: ['demo']),
-      ),
-    );
+      await buildService(root, layout).prepareSessionLaunch(
+        workspaceId: 'p',
+        sessionId: 's',
+        profileId: 'personal-default',
+        personal: const PersonalProfile(
+          id: 'p',
+          display: 'p',
+          bundle: ConfigBundle(skillIds: ['demo']),
+        ),
+      );
 
-    final leafSkills = fs.pathContext.join(
-      layout.sessionRuntimeToolDir('p', 's', 'flashskyai'),
-      'skills',
-    );
-    final stat = await fs.stat(leafSkills);
-    expect(
-      stat.isSymlink,
-      isFalse,
-      reason: 'leaf skills/ must be a real directory owned by the materializer',
-    );
-    expect(
-      (await fs.listDir(leafSkills)).map((e) => e.name),
-      contains('demo-skill'),
-    );
-  });
+      final leafSkills = fs.pathContext.join(
+        layout.sessionRuntimeToolDir('p', 's', 'flashskyai'),
+        'skills',
+      );
+      final stat = await fs.stat(leafSkills);
+      expect(
+        stat.isSymlink,
+        isFalse,
+        reason:
+            'leaf skills/ must be a real directory owned by the materializer',
+      );
+      expect(
+        (await fs.listDir(leafSkills)).map((e) => e.name),
+        contains('demo-skill'),
+      );
+    },
+  );
 
-  test('team member leaf skills/ is a real directory, not a staging symlink',
-      () async {
-    final fs = AppStorage.fs;
-    final root = AppStorage.paths.basePath;
-    final layout = RuntimeLayout(teampilotRoot: root, fs: fs);
-    await fs.ensureDir(
-      fs.pathContext.join(
-        AppPaths.skillsDirForTeampilotRoot(root),
-        'demo-skill',
-      ),
-    );
+  test(
+    'team member leaf skills/ is a real directory, not a staging symlink',
+    () async {
+      final fs = AppStorage.fs;
+      final root = AppStorage.paths.basePath;
+      final layout = RuntimeLayout(teampilotRoot: root, fs: fs);
+      await fs.ensureDir(
+        fs.pathContext.join(
+          AppPaths.skillsDirForTeampilotRoot(root),
+          'demo-skill',
+        ),
+      );
 
-    await buildService(root, layout).prepareTeamLaunch(
-      workspaceId: 'workspace-1',
-      sessionId: 't-1',
-      teamId: 't',
-      cliTeamName: 't-1',
-      cli: CliTool.flashskyai,
-      team: const TeamProfile(
-        id: 't',
-        name: 'T',
+      await buildService(root, layout).prepareTeamLaunch(
+        workspaceId: 'workspace-1',
+        sessionId: 't-1',
+        teamId: 't',
+        cliTeamName: 't-1',
         cli: CliTool.flashskyai,
-        skillIds: ['demo'],
-      ),
-    );
+        team: const TeamProfile(
+          id: 't',
+          name: 'T',
+          cli: CliTool.flashskyai,
+          skillIds: ['demo'],
+        ),
+      );
 
-    final leafSkills = fs.pathContext.join(
-      layout.sessionRuntimeToolDir('workspace-1', 't-1', 'flashskyai'),
-      'skills',
-    );
-    final stat = await fs.stat(leafSkills);
-    expect(
-      stat.isSymlink,
-      isFalse,
-      reason:
-          'member leaf skills/ must be a real directory owned by the materializer',
-    );
-    expect(
-      (await fs.listDir(leafSkills)).map((e) => e.name),
-      contains('demo-skill'),
-    );
-  });
+      final leafSkills = fs.pathContext.join(
+        layout.sessionRuntimeToolDir('workspace-1', 't-1', 'flashskyai'),
+        'skills',
+      );
+      final stat = await fs.stat(leafSkills);
+      expect(
+        stat.isSymlink,
+        isFalse,
+        reason:
+            'member leaf skills/ must be a real directory owned by the materializer',
+      );
+      expect(
+        (await fs.listDir(leafSkills)).map((e) => e.name),
+        contains('demo-skill'),
+      );
+    },
+  );
 }

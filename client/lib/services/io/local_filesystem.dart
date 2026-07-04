@@ -256,7 +256,9 @@ class LocalFilesystem implements Filesystem, FsWatcher {
   }) async {
     await ensureDir(pathContext.dirname(linkPath));
     await removeRecursive(linkPath);
-    final normalizedTarget = pathContext.normalize(pathContext.absolute(target));
+    final normalizedTarget = pathContext.normalize(
+      pathContext.absolute(target),
+    );
     if (_linkAlreadyPointsTo(target: normalizedTarget, linkPath: linkPath)) {
       return true;
     }

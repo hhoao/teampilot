@@ -65,10 +65,7 @@ class McpCubit extends Cubit<McpState> {
       );
     } catch (e) {
       emit(
-        state.copyWith(
-          status: McpLoadStatus.error,
-          errorMessage: e.toString(),
-        ),
+        state.copyWith(status: McpLoadStatus.error, errorMessage: e.toString()),
       );
     }
   }

@@ -26,9 +26,7 @@ List<AppSession> sessionsForWorkspace(
 
 /// All [sessions] grouped by [AppSession.workspaceId]. Order within each bucket
 /// matches [all] iteration order.
-Map<String, List<AppSession>> groupSessionsByWorkspaceId(
-  List<AppSession> all,
-) {
+Map<String, List<AppSession>> groupSessionsByWorkspaceId(List<AppSession> all) {
   final grouped = <String, List<AppSession>>{};
   for (final session in all) {
     final workspaceId = session.workspaceId;

@@ -1,20 +1,15 @@
 import '../../l10n/app_localizations.dart';
 import '../../models/automation.dart';
 
-enum AutomationSort {
-  nameAsc,
-  nameDesc,
-  nextRunAsc,
-  recentlyUpdated,
-}
+enum AutomationSort { nameAsc, nameDesc, nextRunAsc, recentlyUpdated }
 
 extension AutomationSortLabels on AutomationSort {
   String label(AppLocalizations l10n) => switch (this) {
-        AutomationSort.nameAsc => l10n.automationsSortNameAsc,
-        AutomationSort.nameDesc => l10n.automationsSortNameDesc,
-        AutomationSort.nextRunAsc => l10n.automationsSortNextRun,
-        AutomationSort.recentlyUpdated => l10n.automationsSortRecentlyUpdated,
-      };
+    AutomationSort.nameAsc => l10n.automationsSortNameAsc,
+    AutomationSort.nameDesc => l10n.automationsSortNameDesc,
+    AutomationSort.nextRunAsc => l10n.automationsSortNextRun,
+    AutomationSort.recentlyUpdated => l10n.automationsSortRecentlyUpdated,
+  };
 }
 
 enum AutomationEnabledFilter { all, enabledOnly, disabledOnly }
@@ -28,10 +23,12 @@ List<Automation> sortAutomations(
   final sorted = List<Automation>.from(automations);
   sorted.sort((a, b) {
     return switch (sort) {
-      AutomationSort.nameAsc =>
-        a.name.toLowerCase().compareTo(b.name.toLowerCase()),
-      AutomationSort.nameDesc =>
-        b.name.toLowerCase().compareTo(a.name.toLowerCase()),
+      AutomationSort.nameAsc => a.name.toLowerCase().compareTo(
+        b.name.toLowerCase(),
+      ),
+      AutomationSort.nameDesc => b.name.toLowerCase().compareTo(
+        a.name.toLowerCase(),
+      ),
       AutomationSort.nextRunAsc => _compareNextRun(a, b),
       AutomationSort.recentlyUpdated => b.updatedAtMs.compareTo(a.updatedAtMs),
     };
@@ -65,10 +62,12 @@ List<Automation> filterAutomations({
   };
   items = switch (actionFilter) {
     AutomationActionFilter.all => items,
-    AutomationActionFilter.scheduledMessage =>
-      items.where((a) => a.isScheduledMessage),
-    AutomationActionFilter.launchPrompt =>
-      items.where((a) => !a.isScheduledMessage),
+    AutomationActionFilter.scheduledMessage => items.where(
+      (a) => a.isScheduledMessage,
+    ),
+    AutomationActionFilter.launchPrompt => items.where(
+      (a) => !a.isScheduledMessage,
+    ),
   };
   return items.toList(growable: false);
 }

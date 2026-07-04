@@ -37,7 +37,9 @@ import '../resources/cursor_resource_capability.dart';
 /// provider auth) embedded terminal.
 final class CursorCliTool implements CliToolDefinition {
   CursorCliTool({
-    this.busTransport = const BusTransportCapability(longBlockingWaitForMessage: false),
+    this.busTransport = const BusTransportCapability(
+      longBlockingWaitForMessage: false,
+    ),
     this.remoteCliLocator = const DefaultRemoteCliLocator('cursor-agent'),
     this.launchArgs = const CursorCliToolAdapter(),
     this.configProfile = const CursorConfigProfileCapability(),
@@ -59,7 +61,8 @@ final class CursorCliTool implements CliToolDefinition {
     this.mcpConfigWriter = const CursorMcpConfigWriter(),
     ProviderCredentialCapability? providerCredential,
   }) : providerModel = providerModel ?? CursorProviderModelCapability(),
-       providerCredential = providerCredential ?? CursorProviderCredentialCapability();
+       providerCredential =
+           providerCredential ?? CursorProviderCredentialCapability();
 
   final ProviderCredentialCapability providerCredential;
   final ProviderFormCapability providerForm;

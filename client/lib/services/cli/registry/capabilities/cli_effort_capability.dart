@@ -3,12 +3,7 @@ import '../../../../models/team_config.dart';
 import '../cli_capability.dart';
 
 /// Where effort is configured in TeamPilot UI.
-enum EffortPickerPlacement {
-  hidden,
-  team,
-  member,
-  provider,
-}
+enum EffortPickerPlacement { hidden, team, member, provider }
 
 /// Inputs for catalog filtering and launch resolution.
 class EffortResolveContext {
@@ -30,9 +25,7 @@ class EffortResolveContext {
 abstract interface class CliEffortCapability implements CliCapability {
   EffortPickerPlacement teamPickerPlacement();
 
-  EffortPickerPlacement memberPickerPlacement({
-    AppProviderConfig? provider,
-  });
+  EffortPickerPlacement memberPickerPlacement({AppProviderConfig? provider});
 
   EffortPickerPlacement providerPickerPlacement(AppProviderConfig provider);
 
@@ -43,10 +36,7 @@ abstract interface class CliEffortCapability implements CliCapability {
     AppProviderConfig? provider,
   });
 
-  String defaultEffort({
-    required String model,
-    AppProviderConfig? provider,
-  });
+  String defaultEffort({required String model, AppProviderConfig? provider});
 }
 
 String resolveContextModel(EffortResolveContext context) {
@@ -93,10 +83,11 @@ String resolveLaunchEffort({
 
 String _providerConfiguredEffort(AppProviderConfig? provider) {
   if (provider == null) return '';
-  final fromConfig = provider.config['model_reasoning_effort']?.toString().trim();
+  final fromConfig = provider.config['model_reasoning_effort']
+      ?.toString()
+      .trim();
   if (fromConfig != null && fromConfig.isNotEmpty) return fromConfig;
-  final reasoningEffort =
-      provider.config['reasoningEffort']?.toString().trim();
+  final reasoningEffort = provider.config['reasoningEffort']?.toString().trim();
   if (reasoningEffort != null && reasoningEffort.isNotEmpty) {
     return reasoningEffort;
   }

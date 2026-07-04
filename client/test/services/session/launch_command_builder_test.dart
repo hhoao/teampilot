@@ -156,7 +156,11 @@ void main() {
       name: 'hello team',
       cli: CliTool.flashskyai,
     );
-    const reviewer = TeamMemberConfig(id: 'member-2', name: 'code reviewer', dangerouslySkipPermissions: false);
+    const reviewer = TeamMemberConfig(
+      id: 'member-2',
+      name: 'code reviewer',
+      dangerouslySkipPermissions: false,
+    );
 
     expect(
       LaunchCommandBuilder.preview(team, reviewer, executable: 'flashskyai'),
@@ -166,7 +170,11 @@ void main() {
 
   test('preview honours the supplied executable path', () {
     const team = TeamProfile(id: '1', name: 'agent', cli: CliTool.flashskyai);
-    const planner = TeamMemberConfig(id: 'm', name: 'planner', dangerouslySkipPermissions: false);
+    const planner = TeamMemberConfig(
+      id: 'm',
+      name: 'planner',
+      dangerouslySkipPermissions: false,
+    );
 
     expect(
       LaunchCommandBuilder.preview(
@@ -187,7 +195,11 @@ void main() {
       agent: 'builder',
       cli: CliTool.flashskyai,
     );
-    const nativeClaude = TeamProfile(id: '1', name: 'agent', cli: CliTool.claude);
+    const nativeClaude = TeamProfile(
+      id: '1',
+      name: 'agent',
+      cli: CliTool.claude,
+    );
     const mixedClaude = TeamProfile(
       id: '1',
       name: 'agent',
@@ -273,7 +285,9 @@ void main() {
       );
       expect(capturedEnv?['CLAUDE_CONFIG_DIR'], '/tmp/team/claude');
       expect(
-        capturedEnv?.containsKey(ClaudeConfigProfileCapability.settingsFileEnvKey),
+        capturedEnv?.containsKey(
+          ClaudeConfigProfileCapability.settingsFileEnvKey,
+        ),
         isFalse,
       );
     },
@@ -394,14 +408,17 @@ void main() {
 
   test('ShellLaunchSpec builds full personal CLI launch args', () {
     // TODO: migrate to presets — cli, model, providerIdsByTool removed
-    const profile = PersonalProfile(id: 'proj-1', display: 'proj-1',
+    const profile = PersonalProfile(
+      id: 'proj-1',
+      display: 'proj-1',
       agent: WorkspaceAgentConfig(agent: 'builder'),
     );
     const sessionTeam = 'sess-personal-1';
     final shellLaunch = ShellLaunchSpec(
       plan: LaunchPlan(
         env: {
-          ClaudeConfigProfileCapability.settingsFileEnvKey: '/tmp/settings.json',
+          ClaudeConfigProfileCapability.settingsFileEnvKey:
+              '/tmp/settings.json',
         },
         resume: false,
         taskId: sessionTeam,

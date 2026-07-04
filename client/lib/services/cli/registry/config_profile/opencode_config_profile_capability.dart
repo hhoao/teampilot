@@ -271,10 +271,9 @@ final class OpencodeConfigProfileCapability implements ConfigProfileCapability {
     AppProviderConfig? launchProvider;
 
     if (team != null) {
-      launchProvider = await _resolver(ctx.catalog).resolveForLaunch(
-        team: team,
-        member: member,
-      );
+      launchProvider = await _resolver(
+        ctx.catalog,
+      ).resolveForLaunch(team: team, member: member);
       if (launchProvider == null) {
         warnings.add('opencode_provider_missing');
       } else {
@@ -320,7 +319,8 @@ final class OpencodeConfigProfileCapability implements ConfigProfileCapability {
           sessionId: busIdle.sessionId,
         );
         if (!busIdle.isRemote) {
-          final localNative = !AppStorage.isInstalled ||
+          final localNative =
+              !AppStorage.isInstalled ||
               AppStorage.context.mode == StorageBackendMode.native;
           final bridgePath = localNative ? BusBridgeLocator.resolve() : null;
           config = mergeOpencodeTeammateBusMcp(

@@ -9,10 +9,7 @@ class LinkStrategy {
   final Filesystem _fs;
 
   /// Returns true if a symlink was created, false if it fell back to copy.
-  Future<bool> link({
-    required String source,
-    required String target,
-  }) async {
+  Future<bool> link({required String source, required String target}) async {
     final linked = await _fs.createSymlink(target: source, linkPath: target);
     if (linked) return true;
     await _fs.copyTree(source: source, destination: target);

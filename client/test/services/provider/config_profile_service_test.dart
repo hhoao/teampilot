@@ -94,15 +94,17 @@ String _sessionToolDir(
 String _sessionClaudeDir(String base, String sessionId, {String? memberId}) =>
     _sessionToolDir(base, sessionId, 'claude', memberId: memberId);
 
-String _sessionFlashskyaiDir(String base, String sessionId, {String? memberId}) =>
-    _sessionToolDir(base, sessionId, 'flashskyai', memberId: memberId);
+String _sessionFlashskyaiDir(
+  String base,
+  String sessionId, {
+  String? memberId,
+}) => _sessionToolDir(base, sessionId, 'flashskyai', memberId: memberId);
 
 String _rosterDirName(String cliTeamName) =>
     ClaudeTeamRosterService.safeClaudePathSegment(cliTeamName);
 
 String _appFlashskyaiDirPath(String base) =>
     p.join(base, 'cli-defaults', 'flashskyai');
-
 
 void main() {
   late Directory base;
@@ -177,15 +179,12 @@ void main() {
 
     expect(await Directory(_appFlashskyaiDirPath(base.path)).exists(), isTrue);
     expect(await Directory(memberFlashskyaiDir).exists(), isTrue);
-    expect(
-      env.keys,
-      [
-        FlashskyaiConfigProfileCapability.configDirEnvKey,
-        FlashskyaiConfigProfileCapability.sessionHomeDirEnvKey,
-        'LLM_CONFIG_PATH',
-        'FLASHSKYAI_CODE_NO_FLICKER',
-      ],
-    );
+    expect(env.keys, [
+      FlashskyaiConfigProfileCapability.configDirEnvKey,
+      FlashskyaiConfigProfileCapability.sessionHomeDirEnvKey,
+      'LLM_CONFIG_PATH',
+      'FLASHSKYAI_CODE_NO_FLICKER',
+    ]);
     expect(env['FLASHSKYAI_CODE_NO_FLICKER'], '1');
     expect(
       env[FlashskyaiConfigProfileCapability.configDirEnvKey],
@@ -273,9 +272,7 @@ requires_openai_auth = true
     expect(outcome.warnings, isEmpty);
 
     final auth =
-        jsonDecode(
-              await File(p.join(codexDir, 'auth.json')).readAsString(),
-            )
+        jsonDecode(await File(p.join(codexDir, 'auth.json')).readAsString())
             as Map<String, Object?>;
     expect(auth['OPENAI_API_KEY'], 'PROXY_MANAGED');
 
@@ -297,7 +294,7 @@ base_url = "https://api.example.com/v1"
       await _seedCodexProvider(base.path, id: 'p1', configToml: providerToml);
 
       await service.prepareTeamLaunch(
-      workspaceId: _testWorkspaceId,
+        workspaceId: _testWorkspaceId,
         sessionId: 'sess-mixed-codex',
         teamId: 'team-a',
         cliTeamName: 'sess-mixed-codex',
@@ -352,25 +349,18 @@ base_url = "https://api.example.com/v1"
     )).environment;
 
     final claudeDir = _sessionClaudeDir(base.path, sessionId);
-    final roleFile = p.join(
-      claudeDir,
-      'prompts',
-      'team-lead',
-      'role.md',
-    );
+    final roleFile = p.join(claudeDir, 'prompts', 'team-lead', 'role.md');
     expect(await File(roleFile).exists(), isTrue);
     expect(await File(roleFile).readAsString(), contains('Coordinate only'));
 
-    final appendPath =
-        env[MemberRoleProvision.appendSystemPromptFileEnvKey];
+    final appendPath = env[MemberRoleProvision.appendSystemPromptFileEnvKey];
     expect(appendPath, roleFile);
 
     final settingsPath = env[ClaudeConfigProfileCapability.settingsFileEnvKey]!;
     final settings =
         jsonDecode(await File(settingsPath).readAsString())
             as Map<String, Object?>;
-    final deny =
-        (settings['permissions'] as Map)['deny'] as List;
+    final deny = (settings['permissions'] as Map)['deny'] as List;
     expect(deny, contains('TeamCreate'));
     expect(deny, isNot(contains('Bash')));
     expect(deny, isNot(contains('Edit')));
@@ -384,126 +374,128 @@ base_url = "https://api.example.com/v1"
 
     final pre = (settings['hooks'] as Map)['PreToolUse'] as List;
     for (final matcher in TeamLeadSettingsMerge.guardedTools) {
-      final entry = pre.cast<Map>().firstWhere(
-        (e) => e['matcher'] == matcher,
-      );
+      final entry = pre.cast<Map>().firstWhere((e) => e['matcher'] == matcher);
       final command =
           ((entry['hooks'] as List).first as Map)['command'] as String;
       expect(command, contains('${TeamPilotHookScripts.teamLeadSelf}.sh'));
     }
   });
 
-  test('prepareTeamLaunch adds delegate-only hook when team flag is on', () async {
-    const sessionId = 'sess-delegate-only';
-    const lead = TeamMemberConfig(id: 'team-lead', name: 'team-lead');
-    const team = TeamProfile(
-      id: 'team-a',
-      name: 'agent',
-      cli: CliTool.claude,
-      forceTeamLeadDelegateMode: true,
-    );
-    final env = (await service.prepareTeamLaunch(
-      workspaceId: _testWorkspaceId,
-      sessionId: sessionId,
-      teamId: team.id,
-      cliTeamName: sessionId,
-      cli: team.cli,
-      members: const [lead],
-      member: lead,
-      team: team,
-    )).environment;
+  test(
+    'prepareTeamLaunch adds delegate-only hook when team flag is on',
+    () async {
+      const sessionId = 'sess-delegate-only';
+      const lead = TeamMemberConfig(id: 'team-lead', name: 'team-lead');
+      const team = TeamProfile(
+        id: 'team-a',
+        name: 'agent',
+        cli: CliTool.claude,
+        forceTeamLeadDelegateMode: true,
+      );
+      final env = (await service.prepareTeamLaunch(
+        workspaceId: _testWorkspaceId,
+        sessionId: sessionId,
+        teamId: team.id,
+        cliTeamName: sessionId,
+        cli: team.cli,
+        members: const [lead],
+        member: lead,
+        team: team,
+      )).environment;
 
-    final claudeDir = _sessionClaudeDir(base.path, sessionId);
-    final roleText = await File(
-      p.join(claudeDir, 'prompts', 'team-lead', 'role.md'),
-    ).readAsString();
-    expect(roleText, contains('Delegate-only mode'));
+      final claudeDir = _sessionClaudeDir(base.path, sessionId);
+      final roleText = await File(
+        p.join(claudeDir, 'prompts', 'team-lead', 'role.md'),
+      ).readAsString();
+      expect(roleText, contains('Delegate-only mode'));
 
-    final settingsPath = env[ClaudeConfigProfileCapability.settingsFileEnvKey]!;
-    final settings =
-        jsonDecode(await File(settingsPath).readAsString())
-            as Map<String, Object?>;
-    final pre = (settings['hooks'] as Map)['PreToolUse'] as List;
-    final delegateEntry = pre.cast<Map>().firstWhere(
-      (e) =>
-          (e['matcher'] as String?) ==
-          TeamLeadDelegateSettingsMerge.blockedToolsMatcher,
-    );
-    final command =
-        ((delegateEntry['hooks'] as List).first as Map)['command'] as String;
-    expect(command, contains('${TeamPilotHookScripts.teamLeadDelegate}.sh'));
-
-    expect(
-      await File(
-        p.join(
-          claudeDir,
-          'hooks',
-          '${TeamPilotHookScripts.teamLeadDelegate}.sh',
-        ),
-      ).exists(),
-      isTrue,
-    );
-  });
-
-  test('prepareTeamLaunch flashskyai writes role prompt and append env', () async {
-    const sessionId = 'sess-fs-role';
-    const lead = TeamMemberConfig(
-      id: 'team-lead',
-      name: 'team-lead',
-      prompt: 'Coordinate flashskyai teammates.',
-    );
-    final env = (await service.prepareTeamLaunch(
-      workspaceId: _testWorkspaceId,
-      sessionId: sessionId,
-      teamId: 'team-a',
-      cliTeamName: sessionId,
-      cli: CliTool.flashskyai,
-      members: const [lead],
-      member: lead,
-      workingDirectory: '/workspace',
-    )).environment;
-
-    final flashskyaiDir = _sessionFlashskyaiDir(base.path, sessionId);
-    final roleFile = p.join(flashskyaiDir, 'prompts', 'team-lead', 'role.md');
-    expect(await File(roleFile).exists(), isTrue);
-    expect(
-      await File(roleFile).readAsString(),
-      contains('Coordinate flashskyai'),
-    );
-    expect(
-      env[MemberRoleProvision.appendSystemPromptFileEnvKey],
-      roleFile,
-    );
-
-    final settings =
-        jsonDecode(
-              await File(
-                p.join(
-                  flashskyaiDir,
-                  FlashskyaiConfigProfileCapability.settingsFileName,
-                ),
-              ).readAsString(),
-            )
-            as Map<String, Object?>;
-    final deny = (settings['permissions'] as Map)['deny'] as List;
-    expect(deny, contains('TeamCreate'));
-
-    final hookPath = p.join(
-      flashskyaiDir,
-      'hooks',
-      '${TeamPilotHookScripts.teamLeadSelf}.sh',
-    );
-    expect(await File(hookPath).exists(), isTrue);
-    final pre = (settings['hooks'] as Map)['PreToolUse'] as List;
-    for (final matcher in TeamLeadSettingsMerge.guardedTools) {
-      final entry = pre.cast<Map>().firstWhere(
-        (e) => e['matcher'] == matcher,
+      final settingsPath =
+          env[ClaudeConfigProfileCapability.settingsFileEnvKey]!;
+      final settings =
+          jsonDecode(await File(settingsPath).readAsString())
+              as Map<String, Object?>;
+      final pre = (settings['hooks'] as Map)['PreToolUse'] as List;
+      final delegateEntry = pre.cast<Map>().firstWhere(
+        (e) =>
+            (e['matcher'] as String?) ==
+            TeamLeadDelegateSettingsMerge.blockedToolsMatcher,
       );
       final command =
-          ((entry['hooks'] as List).first as Map)['command'] as String;
-      expect(command, contains('${TeamPilotHookScripts.teamLeadSelf}.sh'));
-    }
-  });
+          ((delegateEntry['hooks'] as List).first as Map)['command'] as String;
+      expect(command, contains('${TeamPilotHookScripts.teamLeadDelegate}.sh'));
+
+      expect(
+        await File(
+          p.join(
+            claudeDir,
+            'hooks',
+            '${TeamPilotHookScripts.teamLeadDelegate}.sh',
+          ),
+        ).exists(),
+        isTrue,
+      );
+    },
+  );
+
+  test(
+    'prepareTeamLaunch flashskyai writes role prompt and append env',
+    () async {
+      const sessionId = 'sess-fs-role';
+      const lead = TeamMemberConfig(
+        id: 'team-lead',
+        name: 'team-lead',
+        prompt: 'Coordinate flashskyai teammates.',
+      );
+      final env = (await service.prepareTeamLaunch(
+        workspaceId: _testWorkspaceId,
+        sessionId: sessionId,
+        teamId: 'team-a',
+        cliTeamName: sessionId,
+        cli: CliTool.flashskyai,
+        members: const [lead],
+        member: lead,
+        workingDirectory: '/workspace',
+      )).environment;
+
+      final flashskyaiDir = _sessionFlashskyaiDir(base.path, sessionId);
+      final roleFile = p.join(flashskyaiDir, 'prompts', 'team-lead', 'role.md');
+      expect(await File(roleFile).exists(), isTrue);
+      expect(
+        await File(roleFile).readAsString(),
+        contains('Coordinate flashskyai'),
+      );
+      expect(env[MemberRoleProvision.appendSystemPromptFileEnvKey], roleFile);
+
+      final settings =
+          jsonDecode(
+                await File(
+                  p.join(
+                    flashskyaiDir,
+                    FlashskyaiConfigProfileCapability.settingsFileName,
+                  ),
+                ).readAsString(),
+              )
+              as Map<String, Object?>;
+      final deny = (settings['permissions'] as Map)['deny'] as List;
+      expect(deny, contains('TeamCreate'));
+
+      final hookPath = p.join(
+        flashskyaiDir,
+        'hooks',
+        '${TeamPilotHookScripts.teamLeadSelf}.sh',
+      );
+      expect(await File(hookPath).exists(), isTrue);
+      final pre = (settings['hooks'] as Map)['PreToolUse'] as List;
+      for (final matcher in TeamLeadSettingsMerge.guardedTools) {
+        final entry = pre.cast<Map>().firstWhere(
+          (e) => e['matcher'] == matcher,
+        );
+        final command =
+            ((entry['hooks'] as List).first as Map)['command'] as String;
+        expect(command, contains('${TeamPilotHookScripts.teamLeadSelf}.sh'));
+      }
+    },
+  );
 
   test(
     'prepareTeamLaunch flashskyai adds delegate-only hook when team flag is on',
@@ -527,8 +519,7 @@ base_url = "https://api.example.com/v1"
         team: team,
       );
 
-      final flashskyaiDir =
-          _sessionFlashskyaiDir(base.path, sessionId);
+      final flashskyaiDir = _sessionFlashskyaiDir(base.path, sessionId);
       final roleText = await File(
         p.join(flashskyaiDir, 'prompts', 'team-lead', 'role.md'),
       ).readAsString();
@@ -556,42 +547,45 @@ base_url = "https://api.example.com/v1"
     },
   );
 
-  test('team-lead SendMessage hook is not added for non-lead members', () async {
-    const sessionId = 'sess-dev-only-hook';
-    const dev = TeamMemberConfig(id: 'developer', name: 'developer');
-    await service.prepareTeamLaunch(
-      workspaceId: _testWorkspaceId,
-      sessionId: sessionId,
-      teamId: 'team-a',
-      cliTeamName: sessionId,
-      cli: CliTool.claude,
-      members: const [
-        TeamMemberConfig(id: 'team-lead', name: 'team-lead'),
-        dev,
-      ],
-      member: dev,
-    );
+  test(
+    'team-lead SendMessage hook is not added for non-lead members',
+    () async {
+      const sessionId = 'sess-dev-only-hook';
+      const dev = TeamMemberConfig(id: 'developer', name: 'developer');
+      await service.prepareTeamLaunch(
+        workspaceId: _testWorkspaceId,
+        sessionId: sessionId,
+        teamId: 'team-a',
+        cliTeamName: sessionId,
+        cli: CliTool.claude,
+        members: const [
+          TeamMemberConfig(id: 'team-lead', name: 'team-lead'),
+          dev,
+        ],
+        member: dev,
+      );
 
-    final claudeDir = _sessionClaudeDir(base.path, sessionId);
-    final devSettingsPath = p.join(claudeDir, 'settings', 'developer.json');
-    final settings =
-        jsonDecode(await File(devSettingsPath).readAsString())
-            as Map<String, Object?>;
-    final devDeny =
-        (settings['permissions'] as Map?)?['deny'] as List? ?? const [];
-    expect(devDeny, contains('TeamCreate'));
-    expect(settings['hooks'], isNull);
+      final claudeDir = _sessionClaudeDir(base.path, sessionId);
+      final devSettingsPath = p.join(claudeDir, 'settings', 'developer.json');
+      final settings =
+          jsonDecode(await File(devSettingsPath).readAsString())
+              as Map<String, Object?>;
+      final devDeny =
+          (settings['permissions'] as Map?)?['deny'] as List? ?? const [];
+      expect(devDeny, contains('TeamCreate'));
+      expect(settings['hooks'], isNull);
 
-    final leadSettingsPath = p.join(claudeDir, 'settings', 'team-lead.json');
-    final leadSettings =
-        jsonDecode(await File(leadSettingsPath).readAsString())
-            as Map<String, Object?>;
-    final pre = (leadSettings['hooks'] as Map)['PreToolUse'] as List;
-    expect(
-      pre.cast<Map>().any((entry) => entry['matcher'] == 'SendMessage'),
-      isTrue,
-    );
-  });
+      final leadSettingsPath = p.join(claudeDir, 'settings', 'team-lead.json');
+      final leadSettings =
+          jsonDecode(await File(leadSettingsPath).readAsString())
+              as Map<String, Object?>;
+      final pre = (leadSettings['hooks'] as Map)['PreToolUse'] as List;
+      expect(
+        pre.cast<Map>().any((entry) => entry['matcher'] == 'SendMessage'),
+        isTrue,
+      );
+    },
+  );
 
   test('prepareTeamLaunch for claude returns env and writes roster', () async {
     const sessionId = '00000000-0000-4000-8000-000000000099';
@@ -641,7 +635,10 @@ base_url = "https://api.example.com/v1"
     final metadata =
         jsonDecode(
               await File(
-                p.join(claudeDir, ClaudeConfigProfileCapability.metadataFileName),
+                p.join(
+                  claudeDir,
+                  ClaudeConfigProfileCapability.metadataFileName,
+                ),
               ).readAsString(),
             )
             as Map<String, Object?>;
@@ -703,7 +700,8 @@ base_url = "https://api.example.com/v1"
       'config.json',
     );
     final first =
-        jsonDecode(await File(rosterPath).readAsString()) as Map<String, Object?>;
+        jsonDecode(await File(rosterPath).readAsString())
+            as Map<String, Object?>;
     final createdAt = first['createdAt'];
 
     await service.prepareTeamLaunch(
@@ -722,7 +720,8 @@ base_url = "https://api.example.com/v1"
       leadSessionId: 'chat-session-uuid',
     );
     final second =
-        jsonDecode(await File(rosterPath).readAsString()) as Map<String, Object?>;
+        jsonDecode(await File(rosterPath).readAsString())
+            as Map<String, Object?>;
     expect(second['createdAt'], createdAt);
     expect(second['description'], 'Research squad');
     expect(second['leadSessionId'], 'chat-session-uuid');
@@ -741,10 +740,10 @@ base_url = "https://api.example.com/v1"
         },
       );
       final env = (await service.prepareTeamLaunch(
-      workspaceId: _testWorkspaceId,
-      sessionId: sessionId,
-      teamId: 'team-a',
-      cliTeamName: sessionId,
+        workspaceId: _testWorkspaceId,
+        sessionId: sessionId,
+        teamId: 'team-a',
+        cliTeamName: sessionId,
         cli: CliTool.claude,
         members: const [
           TeamMemberConfig(id: 'team-lead', name: 'team-lead', model: 'opus'),
@@ -879,8 +878,10 @@ base_url = "https://api.example.com/v1"
 
       final homeFs = LocalFilesystem();
       final workFs = LocalFilesystem();
-      await AppProviderRepository(basePath: homeBase.path, fs: homeFs)
-          .saveProviders(CliTool.claude, [
+      await AppProviderRepository(
+        basePath: homeBase.path,
+        fs: homeFs,
+      ).saveProviders(CliTool.claude, [
         AppProviderConfig(
           id: 'deepseek',
           cli: CliTool.claude,
@@ -923,7 +924,11 @@ base_url = "https://api.example.com/v1"
         cliTeamName: sessionId,
         cli: CliTool.claude,
         members: const [
-          TeamMemberConfig(id: 'builder', name: 'builder', model: 'deepseek-v4-pro'),
+          TeamMemberConfig(
+            id: 'builder',
+            name: 'builder',
+            model: 'deepseek-v4-pro',
+          ),
         ],
         member: const TeamMemberConfig(
           id: 'builder',
@@ -974,9 +979,9 @@ base_url = "https://api.example.com/v1"
     'prepareTeamLaunch for claude without runtime uses adhoc session and team roster name',
     () async {
       await service.prepareTeamLaunch(
-      workspaceId: _testWorkspaceId,
-      sessionId: configProfileAdhocSessionId,
-      teamId: 'team-a',
+        workspaceId: _testWorkspaceId,
+        sessionId: configProfileAdhocSessionId,
+        teamId: 'team-a',
         cli: CliTool.claude,
         members: const [TeamMemberConfig(id: 'developer', name: 'developer')],
       );
@@ -1040,10 +1045,10 @@ base_url = "https://api.example.com/v1"
       );
 
       await service.prepareTeamLaunch(
-      workspaceId: _testWorkspaceId,
-      sessionId: sessionId,
-      teamId: 'team-a',
-      cliTeamName: sessionId,
+        workspaceId: _testWorkspaceId,
+        sessionId: sessionId,
+        teamId: 'team-a',
+        cliTeamName: sessionId,
         cli: CliTool.claude,
         workingDirectory: '/workspace/new',
         additionalDirectories: const ['/workspace/extra'],
@@ -1055,11 +1060,11 @@ base_url = "https://api.example.com/v1"
       expect(metadata['customField'], 'keep-me');
       expect(metadata.containsKey('workspaces'), isFalse);
       final projects = metadata['projects'] as Map<String, Object?>;
-      expect(projects.keys, containsAll(['/workspace/old', '/workspace/new', '/workspace/extra']));
       expect(
-        (projects['/workspace/old'] as Map)['lastOpenedAt'],
-        '2024',
+        projects.keys,
+        containsAll(['/workspace/old', '/workspace/new', '/workspace/extra']),
       );
+      expect((projects['/workspace/old'] as Map)['lastOpenedAt'], '2024');
       expect(
         (projects['/workspace/new'] as Map)['hasTrustDialogAccepted'],
         isTrue,
@@ -1073,11 +1078,13 @@ base_url = "https://api.example.com/v1"
         isTrue,
       );
       expect(
-        (projects['/workspace/new'] as Map)['hasClaudeMdExternalIncludesApproved'],
+        (projects['/workspace/new']
+            as Map)['hasClaudeMdExternalIncludesApproved'],
         isTrue,
       );
       expect(
-        (projects['/workspace/new'] as Map)['hasClaudeMdExternalIncludesWarningShown'],
+        (projects['/workspace/new']
+            as Map)['hasClaudeMdExternalIncludesWarningShown'],
         isTrue,
       );
     },
@@ -1090,10 +1097,10 @@ base_url = "https://api.example.com/v1"
 
       const sessionId = 'sess-win-trust';
       await service.prepareTeamLaunch(
-      workspaceId: _testWorkspaceId,
-      sessionId: sessionId,
-      teamId: 'team-a',
-      cliTeamName: sessionId,
+        workspaceId: _testWorkspaceId,
+        sessionId: sessionId,
+        teamId: 'team-a',
+        cliTeamName: sessionId,
         cli: CliTool.claude,
         workingDirectory: r'C:\Users\haung\Documents',
       );
@@ -1130,10 +1137,10 @@ base_url = "https://api.example.com/v1"
 
       const sessionId = 'sess-flashsky-wsl-trust';
       await service.prepareTeamLaunch(
-      workspaceId: _testWorkspaceId,
-      sessionId: sessionId,
-      teamId: 'team-a',
-      cliTeamName: sessionId,
+        workspaceId: _testWorkspaceId,
+        sessionId: sessionId,
+        teamId: 'team-a',
+        cliTeamName: sessionId,
         cli: CliTool.flashskyai,
         workingDirectory: r'C:\Users\haung\Documents',
       );
@@ -1178,7 +1185,11 @@ base_url = "https://api.example.com/v1"
         jsonDecode(await File(metadataPath).readAsString())
             as Map<String, Object?>;
     expect(metadata['hasCompletedOnboarding'], isTrue);
-    expect(metadata['theme'], 'auto', reason: 'seeds auto so the TUI follows the terminal out of the box');
+    expect(
+      metadata['theme'],
+      'auto',
+      reason: 'seeds auto so the TUI follows the terminal out of the box',
+    );
     expect((metadata['mcpServers'] as Map)['github'], isNotNull);
   });
 }

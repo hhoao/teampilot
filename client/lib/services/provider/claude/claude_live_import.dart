@@ -19,7 +19,11 @@ abstract final class ClaudeLiveImport {
     final sources = <String>{};
     final now = context.resolvedNow();
 
-    for (final provider in await _loadLiveProfiles(context.fs, context.homeDirectory, now)) {
+    for (final provider in await _loadLiveProfiles(
+      context.fs,
+      context.homeDirectory,
+      now,
+    )) {
       byId[provider.id] = provider;
       sources.add('live');
     }
@@ -75,8 +79,13 @@ abstract final class ClaudeLiveImport {
       if (entry.isDirectory) continue;
       final name = entry.name;
       if (!name.startsWith('settings-') || !name.endsWith('.json')) continue;
-      final base = name.substring('settings-'.length, name.length - '.json'.length);
-      files.add(_NamedFile(sanitizeImportedProviderId(base), ctx.join(dirPath, name)));
+      final base = name.substring(
+        'settings-'.length,
+        name.length - '.json'.length,
+      );
+      files.add(
+        _NamedFile(sanitizeImportedProviderId(base), ctx.join(dirPath, name)),
+      );
     }
 
     final providers = <AppProviderConfig>[];
@@ -145,7 +154,10 @@ abstract final class ClaudeLiveImport {
   }
 }
 
-Future<Map<String, Object?>?> _readJsonObject(Filesystem fs, String path) async {
+Future<Map<String, Object?>?> _readJsonObject(
+  Filesystem fs,
+  String path,
+) async {
   try {
     final content = await fs.readString(path);
     if (content == null || content.isEmpty) return null;

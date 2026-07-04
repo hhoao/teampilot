@@ -1,4 +1,4 @@
-﻿import 'dart:async';
+import 'dart:async';
 import 'dart:io';
 
 import 'package:flutter/material.dart';
@@ -19,10 +19,7 @@ const double kDesktopWindowTitleBarHeight = 40;
 /// — see [main.dart]. On macOS the controls are left-aligned traffic lights;
 /// on Linux and Windows they stay on the right in Windows style.
 class DesktopWindowTitleBar extends StatefulWidget {
-  const DesktopWindowTitleBar({
-    this.title = 'TeamPilot',
-    super.key,
-  });
+  const DesktopWindowTitleBar({this.title = 'TeamPilot', super.key});
 
   final String title;
 
@@ -103,9 +100,9 @@ class _DesktopWindowTitleBarState extends State<DesktopWindowTitleBar>
         widget.title,
         maxLines: 1,
         overflow: TextOverflow.ellipsis,
-        style: AppTextStyles.of(context).bodyStrong.copyWith(
-          color: titleColor.withValues(alpha: 0.9),
-        ),
+        style: AppTextStyles.of(
+          context,
+        ).bodyStrong.copyWith(color: titleColor.withValues(alpha: 0.9)),
       ),
     );
 
@@ -126,10 +123,7 @@ class _DesktopWindowTitleBarState extends State<DesktopWindowTitleBar>
               if (useMacWindowChromeStyle) _buildWindowControls(),
               Expanded(
                 child: WindowDragArea(
-                  child: Align(
-                    alignment: Alignment.centerLeft,
-                    child: title,
-                  ),
+                  child: Align(alignment: Alignment.centerLeft, child: title),
                 ),
               ),
               if (!useMacWindowChromeStyle) _buildWindowControls(),

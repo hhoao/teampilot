@@ -75,10 +75,7 @@ class EditorState extends Equatable {
 }
 
 class _OpenFileHandle {
-  _OpenFileHandle({
-    required this.controller,
-    required this.onDirty,
-  });
+  _OpenFileHandle({required this.controller, required this.onDirty});
 
   final CodeLineEditingController controller;
   final VoidCallback onDirty;
@@ -112,7 +109,9 @@ class _OpenFileHandle {
 }
 
 class EditorCubit extends Cubit<EditorState> {
-  EditorCubit({Filesystem? fs}) : _fs = fs ?? AppStorage.fs, super(const EditorState());
+  EditorCubit({Filesystem? fs})
+    : _fs = fs ?? AppStorage.fs,
+      super(const EditorState());
 
   final Filesystem _fs;
   final Map<String, Filesystem> _fsByPath = {};
@@ -142,11 +141,7 @@ class EditorCubit extends Cubit<EditorState> {
     }
 
     if (!isEditorOpenableFilePath(normalized)) {
-      emit(
-        state.copyWith(
-          snackbarMessage: EditorMessage.binaryFile,
-        ),
-      );
+      emit(state.copyWith(snackbarMessage: EditorMessage.binaryFile));
       return;
     }
 
@@ -162,12 +157,7 @@ class EditorCubit extends Cubit<EditorState> {
       }
       final size = stat.size ?? 0;
       if (size > kEditorMaxFileBytes) {
-        emit(
-          _clearLoading(
-            normalized,
-            error: EditorMessage.fileTooLarge,
-          ),
-        );
+        emit(_clearLoading(normalized, error: EditorMessage.fileTooLarge));
         return;
       }
 
@@ -293,9 +283,7 @@ class EditorCubit extends Cubit<EditorState> {
     final handle = _handles[path];
     if (handle == null) return false;
     if (state.readOnlyPaths.contains(path)) {
-      emit(
-        state.copyWith(snackbarMessage: EditorMessage.readOnly),
-      );
+      emit(state.copyWith(snackbarMessage: EditorMessage.readOnly));
       return false;
     }
     final fs = _fsByPath[path] ?? _fs;

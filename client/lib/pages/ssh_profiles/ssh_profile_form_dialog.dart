@@ -89,7 +89,9 @@ class _SshProfileFormDialogState extends State<_SshProfileFormDialog> {
       host: host,
       port: int.tryParse(_portController.text.trim()) ?? 22,
       username: username,
-      authType: _usesPasswordAuth ? SshAuthType.password : SshAuthType.privateKey,
+      authType: _usesPasswordAuth
+          ? SshAuthType.password
+          : SshAuthType.privateKey,
       createdAt: existing == null || existing.createdAt == 0
           ? now
           : existing.createdAt,
@@ -176,14 +178,14 @@ class _SshProfileFormDialogState extends State<_SshProfileFormDialog> {
       } else {
         privateKey = await _readIdentityFile();
         if ((privateKey == null || privateKey.isEmpty) && _isEditing) {
-          privateKey = await context
-              .read<SshCredentialStore>()
-              .loadPrivateKey(profile.id);
+          privateKey = await context.read<SshCredentialStore>().loadPrivateKey(
+            profile.id,
+          );
         }
         passphrase = _passphraseController.text.isEmpty
-            ? await context
-                .read<SshCredentialStore>()
-                .loadPrivateKeyPassphrase(profile.id)
+            ? await context.read<SshCredentialStore>().loadPrivateKeyPassphrase(
+                profile.id,
+              )
             : _passphraseController.text;
       }
       await SshProfileConnectionTester(
@@ -256,10 +258,9 @@ class _SshProfileFormDialogState extends State<_SshProfileFormDialog> {
                 label: l10n.sshProfileFormHost,
                 hint: l10n.sshProfileFormHostHint,
                 required: true,
-                validator: (v) =>
-                    v == null || v.trim().isEmpty
-                        ? l10n.sshProfileFormFieldRequired
-                        : null,
+                validator: (v) => v == null || v.trim().isEmpty
+                    ? l10n.sshProfileFormFieldRequired
+                    : null,
               ),
             ),
             const SizedBox(height: 12),
@@ -337,9 +338,7 @@ class _SshProfileFormDialogState extends State<_SshProfileFormDialog> {
                           child: CircularProgressIndicator(strokeWidth: 2),
                         )
                       : Text(
-                          _isEditing
-                              ? l10n.save
-                              : l10n.sshProfilesAddTarget,
+                          _isEditing ? l10n.save : l10n.sshProfilesAddTarget,
                         ),
                 ),
               ],

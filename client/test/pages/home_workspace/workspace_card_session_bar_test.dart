@@ -18,9 +18,7 @@ void main() {
   testWidgets('session bar shows count and topology icon', (tester) async {
     final workspace = Workspace(
       workspaceId: 'p1',
-      folders: [
-        WorkspaceFolder(path: '/var/www', targetId: 'ssh:host'),
-      ],
+      folders: [WorkspaceFolder(path: '/var/www', targetId: 'ssh:host')],
       display: 'Remote App',
       createdAt: 1,
     );

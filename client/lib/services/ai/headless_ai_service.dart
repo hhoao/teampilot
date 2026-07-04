@@ -169,7 +169,8 @@ class HeadlessAiService {
 
   /// Test seam to override (or disable, by returning null) per-CLI provisioning.
   /// Defaults to the registry's [HeadlessProvisionCapability] for the CLI.
-  final HeadlessProvisionCapability? Function(CliTool)? _resolveProvisionCapability;
+  final HeadlessProvisionCapability? Function(CliTool)?
+  _resolveProvisionCapability;
   final Future<Directory> Function() _tempDirFactory;
 
   Future<HeadlessAiResult> run({

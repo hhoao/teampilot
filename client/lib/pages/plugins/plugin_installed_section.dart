@@ -1,4 +1,4 @@
-﻿import 'dart:io';
+import 'dart:io';
 
 import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
@@ -20,7 +20,11 @@ import '../../widgets/empty_state_block.dart';
 import 'plugin_management_cards.dart';
 
 class PluginInstalledSection extends StatelessWidget {
-  const PluginInstalledSection({super.key, required this.state, required this.onGoDiscovery});
+  const PluginInstalledSection({
+    super.key,
+    required this.state,
+    required this.onGoDiscovery,
+  });
   final PluginState state;
   final VoidCallback onGoDiscovery;
 
@@ -50,7 +54,10 @@ class PluginInstalledSection extends StatelessWidget {
                                   'plugin_update_all',
                                   cubit.updateAll,
                                 ),
-                          icon: Icon(Icons.upgrade, size: context.appIconSizes.md),
+                          icon: Icon(
+                            Icons.upgrade,
+                            size: context.appIconSizes.md,
+                          ),
                           label: Text(
                             l10n.pluginsUpdateAll(state.updates.length),
                           ),
@@ -62,7 +69,10 @@ class PluginInstalledSection extends StatelessWidget {
                                 'plugin_import_disk',
                                 () => _onImportFromDisk(context),
                               ),
-                        icon: Icon(Icons.folder_open_outlined, size: context.appIconSizes.md),
+                        icon: Icon(
+                          Icons.folder_open_outlined,
+                          size: context.appIconSizes.md,
+                        ),
                         label: Text(l10n.pluginsImportFromDisk),
                       ),
                       OutlinedButton.icon(
@@ -72,7 +82,10 @@ class PluginInstalledSection extends StatelessWidget {
                                 'plugin_install_zip',
                                 () => _onInstallZip(context),
                               ),
-                        icon: Icon(Icons.archive_outlined, size: context.appIconSizes.md),
+                        icon: Icon(
+                          Icons.archive_outlined,
+                          size: context.appIconSizes.md,
+                        ),
                         label: Text(l10n.pluginsInstallFromZip),
                       ),
                       OutlinedButton.icon(
@@ -90,7 +103,10 @@ class PluginInstalledSection extends StatelessWidget {
                                   strokeWidth: 2,
                                 ),
                               )
-                            : Icon(Icons.refresh, size: context.appIconSizes.md),
+                            : Icon(
+                                Icons.refresh,
+                                size: context.appIconSizes.md,
+                              ),
                         label: Text(
                           state.updatesLoading
                               ? l10n.pluginsCheckingUpdates
@@ -169,7 +185,8 @@ class PluginImportUnmanagedDialog extends StatefulWidget {
       PluginImportUnmanagedDialogState();
 }
 
-class PluginImportUnmanagedDialogState extends State<PluginImportUnmanagedDialog> {
+class PluginImportUnmanagedDialogState
+    extends State<PluginImportUnmanagedDialog> {
   late Set<String> _selected;
 
   @override
@@ -243,7 +260,8 @@ class PluginImportUnmanagedDialogState extends State<PluginImportUnmanagedDialog
 }
 
 class PluginInstalledRow extends StatelessWidget {
-  const PluginInstalledRow({super.key, 
+  const PluginInstalledRow({
+    super.key,
     required this.plugin,
     this.updateInfo,
     this.busy = false,
@@ -305,9 +323,7 @@ class PluginInstalledRow extends StatelessWidget {
                     ),
                   ),
                 ],
-                PluginCliSupportDisclosure(
-                  capabilities: plugin.capabilities,
-                ),
+                PluginCliSupportDisclosure(capabilities: plugin.capabilities),
               ],
             ),
           ),

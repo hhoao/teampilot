@@ -12,9 +12,9 @@ void main() {
     String memberId = 'team-lead',
   }) {
     return ChatTab(
-      info: ChatTabInfo(id: id, title: id, subtitle: ''),
-      cliTeamName: 'team-1',
-    )
+        info: ChatTabInfo(id: id, title: id, subtitle: ''),
+        cliTeamName: 'team-1',
+      )
       ..persistedSession = AppSession(
         sessionId: id,
         workspaceId: 'ws',

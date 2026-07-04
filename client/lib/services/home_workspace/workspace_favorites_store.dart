@@ -6,8 +6,8 @@ import '../storage/app_storage.dart';
 /// Persists favorited workspace ids at `home-workspace/workspace-favorites.json`.
 class WorkspaceFavoritesStore {
   WorkspaceFavoritesStore({Filesystem? fs, String? pathOverride})
-      : _fsOverride = fs,
-        _pathOverride = pathOverride;
+    : _fsOverride = fs,
+      _pathOverride = pathOverride;
 
   final Filesystem? _fsOverride;
   final String? _pathOverride;
@@ -32,7 +32,10 @@ class WorkspaceFavoritesStore {
   Future<void> _save(Set<String> workspaceIds) async {
     final ctx = _fs.pathContext;
     await _fs.ensureDir(ctx.dirname(_path));
-    await _fs.atomicWrite(_path, jsonEncode({'workspaceIds': workspaceIds.toList()}));
+    await _fs.atomicWrite(
+      _path,
+      jsonEncode({'workspaceIds': workspaceIds.toList()}),
+    );
   }
 
   Future<bool> toggle(String workspaceId) async {

@@ -48,7 +48,9 @@ class StartupGate extends StatelessWidget {
           await sshCubit.load();
           // On Android the freshly created profile becomes the home target.
           if (Platform.isAndroid && sshCubit.state.profiles.isNotEmpty) {
-            await homeController.select('ssh:${sshCubit.state.profiles.first.id}');
+            await homeController.select(
+              'ssh:${sshCubit.state.profiles.first.id}',
+            );
           }
         },
       );

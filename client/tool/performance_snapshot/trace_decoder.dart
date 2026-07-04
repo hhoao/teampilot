@@ -186,11 +186,7 @@ DecodedTrace decodeTrace(List<int> bytes) {
       );
       if (stack.isNotEmpty) {
         cpuSamples.add(
-          CpuSample(
-            timestampNs: ts,
-            tid: sample.tid,
-            frames: stack,
-          ),
+          CpuSample(timestampNs: ts, tid: sample.tid, frames: stack),
         );
       }
     }
@@ -217,17 +213,19 @@ DecodedTrace decodeTrace(List<int> bytes) {
 
     switch (ev.type) {
       case TrackEvent_Type.TYPE_SLICE_BEGIN:
-        openStacks.putIfAbsent(trackUuid, () => []).add(
-          _OpenSlice(
-            name: name,
-            category: category,
-            track: trackName,
-            startNs: ts,
-            flutterFrameNumber: frameNumber,
-            isShaderEvent: isShader,
-            args: args,
-          ),
-        );
+        openStacks
+            .putIfAbsent(trackUuid, () => [])
+            .add(
+              _OpenSlice(
+                name: name,
+                category: category,
+                track: trackName,
+                startNs: ts,
+                flutterFrameNumber: frameNumber,
+                isShaderEvent: isShader,
+                args: args,
+              ),
+            );
       case TrackEvent_Type.TYPE_SLICE_END:
         final stack = openStacks[trackUuid];
         if (stack == null || stack.isEmpty) break;
@@ -294,10 +292,7 @@ class _OpenSlice {
   final Map<String, String> args;
 }
 
-String _resolveCategories(
-  TrackEvent ev,
-  Map<int, String> internedCategories,
-) {
+String _resolveCategories(TrackEvent ev, Map<int, String> internedCategories) {
   if (ev.categories.isNotEmpty) return ev.categories.join(',');
   if (ev.categoryIids.isEmpty) return '';
   return ev.categoryIids
@@ -378,17 +373,15 @@ List<TraceSlice> slicesForFrame({
     ..sort((a, b) => b.durationNs.compareTo(a.durationNs));
 }
 
-Map<String, int> topCpuSymbols(
-  List<CpuSample> samples, {
-  int limit = 20,
-}) {
+Map<String, int> topCpuSymbols(List<CpuSample> samples, {int limit = 20}) {
   final counts = <String, int>{};
   for (final sample in samples) {
     for (final symbol in sample.frames.take(5)) {
       counts[symbol] = (counts[symbol] ?? 0) + 1;
     }
   }
-  final ranked = counts.entries.toList()..sort((a, b) => b.value.compareTo(a.value));
+  final ranked = counts.entries.toList()
+    ..sort((a, b) => b.value.compareTo(a.value));
   return {for (final e in ranked.take(limit)) e.key: e.value};
 }
 
@@ -406,7 +399,9 @@ bool isInterestingDartEvent(String name) {
   return false;
 }
 
-List<MapEntry<String, SliceAggregate>> aggregateSlices(List<TraceSlice> slices) {
+List<MapEntry<String, SliceAggregate>> aggregateSlices(
+  List<TraceSlice> slices,
+) {
   final byName = <String, SliceAggregate>{};
   for (final s in slices) {
     final key = s.category.isEmpty ? s.name : '${s.category}::${s.name}';
@@ -423,7 +418,11 @@ List<MapEntry<String, SliceAggregate>> aggregateSlices(List<TraceSlice> slices) 
 }
 
 class SliceAggregate {
-  SliceAggregate({required this.count, required this.totalNs, required this.maxNs});
+  SliceAggregate({
+    required this.count,
+    required this.totalNs,
+    required this.maxNs,
+  });
   int count;
   int totalNs;
   int maxNs;

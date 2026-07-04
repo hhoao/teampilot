@@ -4,10 +4,11 @@ import 'remote_cli_locator.dart';
 /// Performs the actual install of [cli] on the work machine over its transport,
 /// reporting progress. Returns the absolute remote executable path the install
 /// step resolved (production: [CliInstallResult.executablePath]).
-typedef RemoteInstallAction = Future<String> Function({
-  required SshCommandRunner run,
-  required void Function(String message) onProgress,
-});
+typedef RemoteInstallAction =
+    Future<String> Function({
+      required SshCommandRunner run,
+      required void Function(String message) onProgress,
+    });
 
 enum RemoteCliUnavailableReason { optInOff, noInstaller, installFailed }
 
@@ -18,16 +19,16 @@ class RemoteCliUnavailableException implements Exception {
 
   @override
   String toString() => switch (reason) {
-        RemoteCliUnavailableReason.optInOff =>
-          '${cli.value} not found on the remote host and auto-install is '
-              'disabled for this target. Re-enable it or set a manual CLI path.',
-        RemoteCliUnavailableReason.noInstaller =>
-          '${cli.value} not found and has no installer; set a manual CLI path '
-              'for this target.',
-        RemoteCliUnavailableReason.installFailed =>
-          '${cli.value} install finished but did not report an executable path '
-              'on the remote host.',
-      };
+    RemoteCliUnavailableReason.optInOff =>
+      '${cli.value} not found on the remote host and auto-install is '
+          'disabled for this target. Re-enable it or set a manual CLI path.',
+    RemoteCliUnavailableReason.noInstaller =>
+      '${cli.value} not found and has no installer; set a manual CLI path '
+          'for this target.',
+    RemoteCliUnavailableReason.installFailed =>
+      '${cli.value} install finished but did not report an executable path '
+          'on the remote host.',
+  };
 }
 
 /// Ensures [cli] is present on the work machine (P3c §3.2): locate → (opt-in)
@@ -35,7 +36,7 @@ class RemoteCliUnavailableException implements Exception {
 /// path or throws a clear [RemoteCliUnavailableException].
 class RemoteCliInstaller {
   RemoteCliInstaller({RemoteCliLocator? locator})
-      : _locator = locator ?? RemoteCliLocator();
+    : _locator = locator ?? RemoteCliLocator();
 
   final RemoteCliLocator _locator;
 
@@ -68,8 +69,10 @@ class RemoteCliInstaller {
       );
     }
 
-    final installedPath =
-        (await install(run: run, onProgress: onProgress ?? (_) {})).trim();
+    final installedPath = (await install(
+      run: run,
+      onProgress: onProgress ?? (_) {},
+    )).trim();
     if (installedPath.isNotEmpty) return installedPath;
     throw RemoteCliUnavailableException(
       cli,

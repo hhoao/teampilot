@@ -93,9 +93,10 @@ class _ResizableSplitViewState extends State<ResizableSplitView> {
       // matches _fraction * _lastLayoutAvailable. Don't reset — the
       // recomputed fraction can diverge if the available space changed.
       if (_initialized && _fraction != null && _lastLayoutAvailable != null) {
-        final currentPrimary = (_lastLayoutAvailable! * _fraction!)
-            .clamp(_minPrimarySize(_lastLayoutAvailable!),
-                    _maxPrimarySize(_lastLayoutAvailable!));
+        final currentPrimary = (_lastLayoutAvailable! * _fraction!).clamp(
+          _minPrimarySize(_lastLayoutAvailable!),
+          _maxPrimarySize(_lastLayoutAvailable!),
+        );
         if ((currentPrimary - widget.initialPrimarySize).abs() < 1.0) {
           return; // Drag position matches new initial size — preserve.
         }
@@ -187,7 +188,10 @@ class _ResizableSplitViewState extends State<ResizableSplitView> {
 
     return widget._isHorizontal
         ? Row(crossAxisAlignment: CrossAxisAlignment.stretch, children: panes)
-        : Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: panes);
+        : Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: panes,
+          );
   }
 
   Widget _buildDragHandle({
@@ -256,11 +260,8 @@ class _ResizableSplitViewState extends State<ResizableSplitView> {
     // rebuilds the layout subtree without touching the rest of the tree.
     void onDragUpdate(double delta) {
       final dragDelta = widget.primaryAtEnd ? -delta : delta;
-      _draggingPrimarySize =
-          ((_draggingPrimarySize ?? primarySize) + dragDelta).clamp(
-        _minPrimarySize(available),
-        _maxPrimarySize(available),
-      );
+      _draggingPrimarySize = ((_draggingPrimarySize ?? primarySize) + dragDelta)
+          .clamp(_minPrimarySize(available), _maxPrimarySize(available));
       _fraction = _fractionFromSize(available, _draggingPrimarySize!);
       _fractionNotifier.value = _fraction;
     }
@@ -290,8 +291,9 @@ class _ResizableSplitViewState extends State<ResizableSplitView> {
     final isDark = cs.brightness == Brightness.dark;
     // outlineVariant tracks the active palette; hardcoded gray-200 matched
     // surfaceContainer in light mode and vanished against pane backgrounds.
-    final dividerColor =
-        cs.outlineVariant.withValues(alpha: isDark ? 0.5 : 0.6);
+    final dividerColor = cs.outlineVariant.withValues(
+      alpha: isDark ? 0.5 : 0.6,
+    );
 
     return LayoutBuilder(
       builder: (context, constraints) {
@@ -312,8 +314,12 @@ class _ResizableSplitViewState extends State<ResizableSplitView> {
                           widget.dividerThickness -
                           widget.dividerHitBuffer)
                       .clamp(0.0, available)
-                : (currentPrimary - widget.dividerHitBuffer).clamp(0.0, available);
-            final hitExtent = widget.dividerThickness + 2 * widget.dividerHitBuffer;
+                : (currentPrimary - widget.dividerHitBuffer).clamp(
+                    0.0,
+                    available,
+                  );
+            final hitExtent =
+                widget.dividerThickness + 2 * widget.dividerHitBuffer;
 
             return Stack(
               fit: StackFit.expand,
@@ -327,9 +333,7 @@ class _ResizableSplitViewState extends State<ResizableSplitView> {
                   hitExtent: hitExtent,
                 ),
                 if (_isDragging)
-                  Positioned.fill(
-                    child: MouseRegion(cursor: _resizeCursor),
-                  ),
+                  Positioned.fill(child: MouseRegion(cursor: _resizeCursor)),
               ],
             );
           },

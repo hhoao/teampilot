@@ -34,12 +34,8 @@ class AppAnchorAuto extends AppAnchorBase {
   }
 
   @override
-  int get hashCode => Object.hash(
-        offset,
-        followTargetOnResize,
-        followerAnchor,
-        targetAnchor,
-      );
+  int get hashCode =>
+      Object.hash(offset, followTargetOnResize, followerAnchor, targetAnchor);
 }
 
 /// Positions the overlay with explicit alignments on anchor and follower.

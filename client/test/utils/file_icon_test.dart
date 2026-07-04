@@ -20,8 +20,10 @@ void main() {
     });
 
     test('case-insensitive file name and extension', () {
-      expect(fileIconForFileName('README.MD').iconName,
-          kFileNameIcons['readme.md']);
+      expect(
+        fileIconForFileName('README.MD').iconName,
+        kFileNameIcons['readme.md'],
+      );
       expect(fileIconForFileName('App.DART').iconName, 'dart');
     });
 
@@ -34,8 +36,10 @@ void main() {
     });
 
     test('strips path prefix', () {
-      expect(fileIconForFileName('lib/src/utils/file_icon.dart').iconName,
-          'dart');
+      expect(
+        fileIconForFileName('lib/src/utils/file_icon.dart').iconName,
+        'dart',
+      );
     });
 
     test('light variant flag for known light extension', () {

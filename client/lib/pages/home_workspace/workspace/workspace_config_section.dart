@@ -25,33 +25,37 @@ enum WorkspaceConfigSection implements WorkspaceSectionDescriptor {
 
   static List<WorkspaceConfigSection> forKind(LaunchProfileKind kind) =>
       kind == LaunchProfileKind.team
-          ? [...{_bundleSections.first}, members, ..._bundleSections.skip(1)]
-          : _bundleSections;
+      ? [
+          ...{_bundleSections.first},
+          members,
+          ..._bundleSections.skip(1),
+        ]
+      : _bundleSections;
 
   @override
   String get routeSegment => switch (this) {
-        WorkspaceConfigSection.settings => 'settings',
-        WorkspaceConfigSection.members => 'members',
-        WorkspaceConfigSection.agent => 'agent',
-        WorkspaceConfigSection.skills => 'skills',
-        WorkspaceConfigSection.plugins => 'plugins',
-        WorkspaceConfigSection.mcp => 'mcp',
-        WorkspaceConfigSection.extensions => 'extensions',
-      };
+    WorkspaceConfigSection.settings => 'settings',
+    WorkspaceConfigSection.members => 'members',
+    WorkspaceConfigSection.agent => 'agent',
+    WorkspaceConfigSection.skills => 'skills',
+    WorkspaceConfigSection.plugins => 'plugins',
+    WorkspaceConfigSection.mcp => 'mcp',
+    WorkspaceConfigSection.extensions => 'extensions',
+  };
 
   @override
   String routePath(String basePath) => '$basePath?section=$routeSegment';
 
   @override
   String title(AppLocalizations l10n) => switch (this) {
-        WorkspaceConfigSection.settings => l10n.homeWorkspaceWorkspaceSettings,
-        WorkspaceConfigSection.members => l10n.homeWorkspaceWorkspaceMembers,
-        WorkspaceConfigSection.agent => l10n.homeWorkspaceWorkspaceAgent,
-        WorkspaceConfigSection.skills => l10n.homeWorkspaceWorkspaceSkills,
-        WorkspaceConfigSection.plugins => l10n.homeWorkspaceWorkspacePlugins,
-        WorkspaceConfigSection.mcp => l10n.homeWorkspaceWorkspaceMcp,
-        WorkspaceConfigSection.extensions => l10n.homeWorkspaceWorkspaceExtensions,
-      };
+    WorkspaceConfigSection.settings => l10n.homeWorkspaceWorkspaceSettings,
+    WorkspaceConfigSection.members => l10n.homeWorkspaceWorkspaceMembers,
+    WorkspaceConfigSection.agent => l10n.homeWorkspaceWorkspaceAgent,
+    WorkspaceConfigSection.skills => l10n.homeWorkspaceWorkspaceSkills,
+    WorkspaceConfigSection.plugins => l10n.homeWorkspaceWorkspacePlugins,
+    WorkspaceConfigSection.mcp => l10n.homeWorkspaceWorkspaceMcp,
+    WorkspaceConfigSection.extensions => l10n.homeWorkspaceWorkspaceExtensions,
+  };
 
   @override
   IconData get icon => workspaceConfigSectionIcon(this);

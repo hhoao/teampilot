@@ -52,8 +52,7 @@ void main() {
     provisioner = CursorHomeProvisioner(fs: fs, credentials: credentials);
   });
 
-  const localBusIdle =
-      MemberBusIdleEndpoint(url: 'http://127.0.0.1:4321/idle');
+  const localBusIdle = MemberBusIdleEndpoint(url: 'http://127.0.0.1:4321/idle');
 
   group('CursorHomeProvisioner', () {
     test('provision writes bus files when port set (no provider)', () async {
@@ -86,39 +85,42 @@ void main() {
         mixed: true,
       );
 
-      final cliConfig = jsonDecode(
-        (await fs.readString(layout.cliConfig(memberHome)))!,
-      ) as Map<String, Object?>;
+      final cliConfig =
+          jsonDecode((await fs.readString(layout.cliConfig(memberHome)))!)
+              as Map<String, Object?>;
       final allow = (cliConfig['permissions']! as Map)['allow'] as List;
       expect(allow, contains(CursorCliConfigPolicy.teamBusMcpAllowEntry));
     });
 
-    test('provision syncs auth when provider has logged-in credentials', () async {
-      const memberHome = '/data/tp/members/planner/cursor/home';
-      final providerHomePath = fs.pathContext.join(
-        base,
-        'providers',
-        'cursor',
-        'work',
-        'home',
-      );
-      await writeLoggedInProvider('work');
+    test(
+      'provision syncs auth when provider has logged-in credentials',
+      () async {
+        const memberHome = '/data/tp/members/planner/cursor/home';
+        final providerHomePath = fs.pathContext.join(
+          base,
+          'providers',
+          'cursor',
+          'work',
+          'home',
+        );
+        await writeLoggedInProvider('work');
 
-      await provisioner.provision(
-        memberHome: memberHome,
-        providerId: 'work',
-        member: member,
-        busIdle: null,
-        forceTeamLeadDelegateMode: false,
-        mixed: true,
-      );
+        await provisioner.provision(
+          memberHome: memberHome,
+          providerId: 'work',
+          member: member,
+          busIdle: null,
+          forceTeamLeadDelegateMode: false,
+          mixed: true,
+        );
 
-      expect(
-        fs.symlinks[layout.cliConfig(memberHome)],
-        layout.cliConfig(providerHomePath),
-      );
-      expect((await fs.stat(layout.authJson(memberHome))).isFile, isTrue);
-    });
+        expect(
+          fs.symlinks[layout.cliConfig(memberHome)],
+          layout.cliConfig(providerHomePath),
+        );
+        expect((await fs.stat(layout.authJson(memberHome))).isFile, isTrue);
+      },
+    );
 
     test('provision merges team-bus MCP into existing mcp.json', () async {
       const memberHome = '/data/tp/members/planner/cursor/home';
@@ -165,9 +167,9 @@ void main() {
       expect(roleRule, contains('只做代码审查'));
       expect(roleRule, contains('wait_for_message'));
 
-      final hooksJson = jsonDecode(
-        (await fs.readString(layout.hooksConfig(memberHome)))!,
-      ) as Map<String, Object?>;
+      final hooksJson =
+          jsonDecode((await fs.readString(layout.hooksConfig(memberHome)))!)
+              as Map<String, Object?>;
       final stop = (hooksJson['hooks'] as Map)['stop'] as List;
       expect(
         (stop.single as Map)['command'],
@@ -178,9 +180,9 @@ void main() {
       expect(idleScript, contains('X-Member: planner'));
       expect(idleScript, contains('http://127.0.0.1:4321/idle'));
 
-      final mcpJson = jsonDecode(
-        (await fs.readString(layout.mcpConfig(memberHome)))!,
-      ) as Map<String, Object?>;
+      final mcpJson =
+          jsonDecode((await fs.readString(layout.mcpConfig(memberHome)))!)
+              as Map<String, Object?>;
       final servers = mcpJson['mcpServers'] as Map<String, Object?>;
       final bus = servers[teammateBusMcpServerName] as Map<String, Object?>;
       expect(bus['url'], 'http://127.0.0.1:4321/mcp');
@@ -216,21 +218,24 @@ void main() {
       );
 
       expect((await fs.stat(layout.cliConfig(memberHome))).isFile, isTrue);
-      final cliConfig = jsonDecode(
-        (await fs.readString(layout.cliConfig(memberHome)))!,
-      ) as Map<String, Object?>;
+      final cliConfig =
+          jsonDecode((await fs.readString(layout.cliConfig(memberHome)))!)
+              as Map<String, Object?>;
       final allow = (cliConfig['permissions']! as Map)['allow'] as List;
       expect(allow, contains(CursorCliConfigPolicy.teamBusMcpAllowEntry));
       expect((await fs.stat(layout.mcpConfig(memberHome))).isFile, isTrue);
     });
 
-    test('syncAuthToMemberHome still returns missing for empty provider store', () async {
-      const memberHome = '/data/tp/members/planner/cursor/home';
-      final result = await credentials.syncAuthToMemberHome(
-        'empty',
-        memberHome,
-      );
-      expect(result, CredentialLinkResult.missing);
-    });
+    test(
+      'syncAuthToMemberHome still returns missing for empty provider store',
+      () async {
+        const memberHome = '/data/tp/members/planner/cursor/home';
+        final result = await credentials.syncAuthToMemberHome(
+          'empty',
+          memberHome,
+        );
+        expect(result, CredentialLinkResult.missing);
+      },
+    );
   });
 }

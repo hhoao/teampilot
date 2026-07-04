@@ -24,18 +24,17 @@ class MemberConfigState {
     MemberConfigStatus? status,
     MemberConfigDetail? detail,
     RuntimeContext? workContext,
-  }) =>
-      MemberConfigState(
-        status: status ?? this.status,
-        detail: detail ?? this.detail,
-        workContext: workContext ?? this.workContext,
-      );
+  }) => MemberConfigState(
+    status: status ?? this.status,
+    detail: detail ?? this.detail,
+    workContext: workContext ?? this.workContext,
+  );
 }
 
 class MemberConfigCubit extends Cubit<MemberConfigState> {
   MemberConfigCubit({MemberConfigInspector? inspector})
-      : _inspector = inspector ?? MemberConfigInspector(),
-        super(const MemberConfigState());
+    : _inspector = inspector ?? MemberConfigInspector(),
+      super(const MemberConfigState());
 
   final MemberConfigInspector _inspector;
 
@@ -58,11 +57,13 @@ class MemberConfigCubit extends Cubit<MemberConfigState> {
         globalPresets: globalPresets,
       );
       if (isClosed) return;
-      emit(MemberConfigState(
-        status: MemberConfigStatus.loaded,
-        detail: detail,
-        workContext: workContext,
-      ));
+      emit(
+        MemberConfigState(
+          status: MemberConfigStatus.loaded,
+          detail: detail,
+          workContext: workContext,
+        ),
+      );
     } on Object catch (e, st) {
       appLogger.w('[member-config] inspect failed: $e', stackTrace: st);
       if (isClosed) return;

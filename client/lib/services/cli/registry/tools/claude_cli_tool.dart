@@ -38,7 +38,9 @@ import '../resources/default_resource_capability.dart';
 
 final class ClaudeCliTool implements CliToolDefinition {
   ClaudeCliTool({
-    this.busTransport = const BusTransportCapability(longBlockingWaitForMessage: true),
+    this.busTransport = const BusTransportCapability(
+      longBlockingWaitForMessage: true,
+    ),
     this.remoteCliLocator = const DefaultRemoteCliLocator('claude'),
     this.launchArgs = const ClaudeCodeCliToolAdapter(),
     this.configProfile = const ClaudeConfigProfileCapability(),

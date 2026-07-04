@@ -73,10 +73,10 @@ final class CursorConfigProfileCapability implements ConfigProfileCapability {
       if (ctx.crossMachine) {
         final copied =
             await CrossMachineCredentialBridge.materializeCursorCredential(
-          catalog: ctx.catalog,
-          work: paths,
-          providerId: providerId,
-        );
+              catalog: ctx.catalog,
+              work: paths,
+              providerId: providerId,
+            );
         if (!copied) {
           warnings.add('cursor_credentials_missing');
         }
@@ -176,10 +176,10 @@ final class CursorConfigProfileCapability implements ConfigProfileCapability {
           if (ctx.crossMachine) {
             final copied =
                 await CrossMachineCredentialBridge.materializeCursorCredential(
-              catalog: ctx.catalog,
-              work: paths,
-              providerId: providerId,
-            );
+                  catalog: ctx.catalog,
+                  work: paths,
+                  providerId: providerId,
+                );
             if (!copied) {
               warnings.add('cursor_credentials_missing');
             }
@@ -257,11 +257,12 @@ final class CursorConfigProfileCapability implements ConfigProfileCapability {
         tools: const [CursorConfigProfileCapability.toolId],
       );
     }
-    await CursorWorkspaceTrustProvisioner(fs: ctx.paths.fs)
-        .provisionLaunchWorkspaces(
-          homeRoot: homeRoot,
-          workingDirectory: ctx.workingDirectory,
-          additionalDirectories: ctx.additionalDirectories,
-        );
+    await CursorWorkspaceTrustProvisioner(
+      fs: ctx.paths.fs,
+    ).provisionLaunchWorkspaces(
+      homeRoot: homeRoot,
+      workingDirectory: ctx.workingDirectory,
+      additionalDirectories: ctx.additionalDirectories,
+    );
   }
 }

@@ -5,10 +5,7 @@ import '../storage/runtime_context.dart';
 
 /// Resolved storage backend for the workspace file tree / source-control panels.
 class WorkspaceToolsContext {
-  const WorkspaceToolsContext({
-    required this.targetId,
-    required this.context,
-  });
+  const WorkspaceToolsContext({required this.targetId, required this.context});
 
   final String targetId;
   final RuntimeContext context;
@@ -25,11 +22,7 @@ class WorkspaceToolsContext {
         if (raw.trim().isNotEmpty) raw.trim(),
     ];
     final targetId =
-        targetIdForFolderPaths(
-          folders,
-          probePaths,
-          matchSubpaths: true,
-        ) ??
+        targetIdForFolderPaths(folders, probePaths, matchSubpaths: true) ??
         (folders.isNotEmpty
             ? folders.first.targetId
             : WorkspaceFolder.localTargetId);
@@ -44,15 +37,14 @@ class WorkspaceToolsContext {
     required String primaryPath,
     required List<String> additionalPaths,
     required RuntimeContext context,
-  }) =>
-      rootsForTarget(
-        folders: folders,
-        targetId: targetId,
-        primaryPath: primaryPath,
-        additionalPaths: additionalPaths,
-        context: context,
-        includeCatalogPaths: false,
-      );
+  }) => rootsForTarget(
+    folders: folders,
+    targetId: targetId,
+    primaryPath: primaryPath,
+    additionalPaths: additionalPaths,
+    context: context,
+    includeCatalogPaths: false,
+  );
 
   /// All folder roots on [targetId] for multi-target file trees.
   static List<String> rootsForTarget({
@@ -74,11 +66,9 @@ class WorkspaceToolsContext {
     }
     for (final raw in [primaryPath, ...additionalPaths]) {
       if (raw.isEmpty) continue;
-      final onTarget = targetIdForFolderPaths(
-        folders,
-        [raw],
-        matchSubpaths: true,
-      );
+      final onTarget = targetIdForFolderPaths(folders, [
+        raw,
+      ], matchSubpaths: true);
       if (onTarget != null && onTarget != targetId) continue;
       final normalized = pathCtx.normalize(raw);
       if (!roots.contains(normalized)) roots.add(normalized);

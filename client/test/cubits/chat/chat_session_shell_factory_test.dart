@@ -80,8 +80,9 @@ void main() {
   test('cliForMember resolves member-specific cli', () {
     final factory = ChatSessionShellFactory(
       executableResolver: () => 'flashskyai',
-      terminalSessionFactory: ({required executable, scrollbackLines = 10000}) =>
-          TerminalSession(executable: executable),
+      terminalSessionFactory:
+          ({required executable, scrollbackLines = 10000}) =>
+              TerminalSession(executable: executable),
     );
     const team = TeamProfile(id: 't', name: 'T', members: []);
 

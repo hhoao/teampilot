@@ -8,8 +8,7 @@ void main() {
     test('identical text yields all equal rows and no blocks', () {
       final result = computeLineDiff('a\nb\nc', 'a\nb\nc');
 
-      expect(result.rows.map((r) => r.kind),
-          everyElement(DiffRowKind.equal));
+      expect(result.rows.map((r) => r.kind), everyElement(DiffRowKind.equal));
       expect(result.hasChanges, isFalse);
       expect(result.rows.length, 3);
       expect(result.rows[0].leftLineNo, 1);
@@ -20,7 +19,8 @@ void main() {
       final result = computeLineDiff('a\nc', 'a\nb\nc');
 
       final insert = result.rows.firstWhere(
-          (r) => r.kind == DiffRowKind.insert);
+        (r) => r.kind == DiffRowKind.insert,
+      );
       expect(insert.rightText, 'b');
       expect(insert.hasLeft, isFalse);
       expect(insert.rightLineNo, 2);
@@ -32,25 +32,28 @@ void main() {
       final result = computeLineDiff('a\nb\nc', 'a\nc');
 
       final delete = result.rows.firstWhere(
-          (r) => r.kind == DiffRowKind.delete);
+        (r) => r.kind == DiffRowKind.delete,
+      );
       expect(delete.leftText, 'b');
       expect(delete.hasRight, isFalse);
       expect(delete.leftLineNo, 2);
       expect(result.removedLines, 1);
     });
 
-    test('changed line becomes a modify row with line numbers on both sides',
-        () {
-      final result = computeLineDiff('hello world', 'hello there');
+    test(
+      'changed line becomes a modify row with line numbers on both sides',
+      () {
+        final result = computeLineDiff('hello world', 'hello there');
 
-      expect(result.rows.length, 1);
-      final row = result.rows.single;
-      expect(row.kind, DiffRowKind.modify);
-      expect(row.leftLineNo, 1);
-      expect(row.rightLineNo, 1);
-      expect(row.leftText, 'hello world');
-      expect(row.rightText, 'hello there');
-    });
+        expect(result.rows.length, 1);
+        final row = result.rows.single;
+        expect(row.kind, DiffRowKind.modify);
+        expect(row.leftLineNo, 1);
+        expect(row.rightLineNo, 1);
+        expect(row.leftText, 'hello world');
+        expect(row.rightText, 'hello there');
+      },
+    );
 
     test('modify row carries coalesced inline char edits', () {
       // "LABEL, REMARK" -> "LABEL, REMARK, LEVEL": only ", LEVEL" added.
@@ -73,8 +76,7 @@ void main() {
 
     test('from-empty produces all inserts', () {
       final result = computeLineDiff('', 'x\ny');
-      expect(result.rows.map((r) => r.kind),
-          everyElement(DiffRowKind.insert));
+      expect(result.rows.map((r) => r.kind), everyElement(DiffRowKind.insert));
       expect(result.addedLines, 2);
     });
 
@@ -120,18 +122,16 @@ void main() {
     });
 
     test('separate change regions yield separate blocks', () {
-      final result = computeLineDiff(
-        'a\nb\nc\nd\ne',
-        'a\nB\nc\nd\nE',
-      );
+      final result = computeLineDiff('a\nb\nc\nd\ne', 'a\nB\nc\nd\nE');
       expect(result.blocks.length, 2);
     });
 
     test('large input completes quickly', () {
       final left = List.generate(2000, (i) => 'line $i').join('\n');
-      final right =
-          List.generate(2000, (i) => i == 1000 ? 'line 1000 changed' : 'line $i')
-              .join('\n');
+      final right = List.generate(
+        2000,
+        (i) => i == 1000 ? 'line 1000 changed' : 'line $i',
+      ).join('\n');
 
       final sw = Stopwatch()..start();
       final result = computeLineDiff(left, right);

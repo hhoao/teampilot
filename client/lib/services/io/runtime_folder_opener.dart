@@ -17,15 +17,16 @@ class RuntimeFolderOpener {
     RemoteOsProber? osProber,
     WslProcessRunner? wslRunner,
     HostOneShotRunner Function(RuntimeContext ctx)? oneShotRunnerForContext,
-  })  : _localOpener = localOpener ?? SystemFolderOpener(),
-        _osProber = osProber ?? const RemoteOsProber(),
-        _wslRunner = wslRunner,
-        _oneShotRunnerForContext = oneShotRunnerForContext;
+  }) : _localOpener = localOpener ?? SystemFolderOpener(),
+       _osProber = osProber ?? const RemoteOsProber(),
+       _wslRunner = wslRunner,
+       _oneShotRunnerForContext = oneShotRunnerForContext;
 
   final SystemFolderOpener _localOpener;
   final RemoteOsProber _osProber;
   final WslProcessRunner? _wslRunner;
-  final HostOneShotRunner Function(RuntimeContext ctx)? _oneShotRunnerForContext;
+  final HostOneShotRunner Function(RuntimeContext ctx)?
+  _oneShotRunnerForContext;
 
   Future<bool> reveal({
     required String path,
@@ -51,13 +52,11 @@ class RuntimeFolderOpener {
   }
 
   Future<bool> _revealWsl(RuntimeContext ctx, String path) async {
-    final runner = _oneShotRunnerForContext?.call(ctx) ?? _wslOneShotRunner(ctx);
+    final runner =
+        _oneShotRunnerForContext?.call(ctx) ?? _wslOneShotRunner(ctx);
     try {
       final result = await runner.run(
-        HostRunRequest(
-          executable: 'xdg-open',
-          arguments: ['--', path],
-        ),
+        HostRunRequest(executable: 'xdg-open', arguments: ['--', path]),
       );
       return result.succeeded;
     } on Object {
@@ -70,9 +69,18 @@ class RuntimeFolderOpener {
     if (inject != null) {
       return WslHostOneShotRunner(
         distro: ctx.target.wslDistro,
-        processRunner: (executable, arguments, {workingDirectory, environment, includeParentEnvironment = true, stdoutEncoding, stderrEncoding}) {
-          return inject(executable, arguments);
-        },
+        processRunner:
+            (
+              executable,
+              arguments, {
+              workingDirectory,
+              environment,
+              includeParentEnvironment = true,
+              stdoutEncoding,
+              stderrEncoding,
+            }) {
+              return inject(executable, arguments);
+            },
       );
     }
     return hostOneShotRunnerForContext(ctx);

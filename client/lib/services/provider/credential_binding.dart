@@ -45,9 +45,5 @@ Map<String, Object?> withCredentialBinding(
 }
 
 String globalClaudeCredentialPath(String homeDirectory, dynamic pathContext) {
-  return pathContext.join(
-    homeDirectory.trim(),
-    '.claude',
-    '.credentials.json',
-  );
+  return pathContext.join(homeDirectory.trim(), '.claude', '.credentials.json');
 }

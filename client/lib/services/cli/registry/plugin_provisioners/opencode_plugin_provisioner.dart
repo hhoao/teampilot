@@ -35,8 +35,9 @@ final class OpencodePluginProvisioner implements PluginProvisionerCapability {
     final poolStat = await ctx.fs.stat(ctx.bundlePoolDir);
     if (!poolStat.isDirectory) return;
 
-    final resource =
-        CliToolRegistry.builtIn().capability<ResourceCapability>(ctx.tool);
+    final resource = CliToolRegistry.builtIn().capability<ResourceCapability>(
+      ctx.tool,
+    );
     if (resource == null) return;
 
     final skillSubdir = resource.subdirFor(ResourceKind.skill);
@@ -125,7 +126,8 @@ final class OpencodePluginProvisioner implements PluginProvisionerCapability {
 
     try {
       final root = (jsonDecode(text) as Map).cast<String, Object?>();
-      final servers = (root['mcpServers'] as Map?)?.cast<String, Object?>() ??
+      final servers =
+          (root['mcpServers'] as Map?)?.cast<String, Object?>() ??
           const <String, Object?>{};
       return servers.entries
           .map(

@@ -11,17 +11,14 @@ void main() {
         sessionId: 'sess-1',
       );
 
-      expect(
-        cfg['args'],
-        [
-          '--member',
-          'alice',
-          '--session',
-          'sess-1',
-          '--bus-url',
-          'http://127.0.0.1:1234/mcp',
-        ],
-      );
+      expect(cfg['args'], [
+        '--member',
+        'alice',
+        '--session',
+        'sess-1',
+        '--bus-url',
+        'http://127.0.0.1:1234/mcp',
+      ]);
     });
   });
 }

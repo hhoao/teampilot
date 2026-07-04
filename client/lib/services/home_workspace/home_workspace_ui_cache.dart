@@ -9,10 +9,9 @@ class HomeWorkspaceUiCache {
     WorkspaceFavoritesStore? favoritesStore,
     WorkspaceDisplayPrefsStore? displayPrefsStore,
     HomeOpenWorkspacesStore? openWorkspacesStore,
-  })  : _favoritesStore = favoritesStore ?? WorkspaceFavoritesStore(),
-        _displayPrefsStore = displayPrefsStore ?? WorkspaceDisplayPrefsStore(),
-        _openWorkspacesStore =
-            openWorkspacesStore ?? HomeOpenWorkspacesStore();
+  }) : _favoritesStore = favoritesStore ?? WorkspaceFavoritesStore(),
+       _displayPrefsStore = displayPrefsStore ?? WorkspaceDisplayPrefsStore(),
+       _openWorkspacesStore = openWorkspacesStore ?? HomeOpenWorkspacesStore();
 
   final WorkspaceFavoritesStore _favoritesStore;
   final WorkspaceDisplayPrefsStore _displayPrefsStore;

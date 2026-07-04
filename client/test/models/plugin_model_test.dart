@@ -46,8 +46,12 @@ void main() {
 
   test('PluginMarketplace round-trips', () {
     const m = PluginMarketplace(
-      owner: 'acme', name: 'market', branch: 'main',
-      enabled: false, displayName: 'Acme Market');
+      owner: 'acme',
+      name: 'market',
+      branch: 'main',
+      enabled: false,
+      displayName: 'Acme Market',
+    );
     final decoded = PluginMarketplace.fromJson(m.toJson());
     expect(decoded, m);
     expect(decoded.fullName, 'acme/market');
@@ -74,39 +78,63 @@ void main() {
 
   test('DiscoverablePlugin == considers readmeUrl', () {
     const a = DiscoverablePlugin(
-      key: 'k', name: 'n', description: 'd', version: '1.0.0',
+      key: 'k',
+      name: 'n',
+      description: 'd',
+      version: '1.0.0',
       readmeUrl: 'http://a',
-      marketplaceOwner: 'o', marketplaceName: 'm', marketplaceBranch: 'main',
-      source: '.');
+      marketplaceOwner: 'o',
+      marketplaceName: 'm',
+      marketplaceBranch: 'main',
+      source: '.',
+    );
     const b = DiscoverablePlugin(
-      key: 'k', name: 'n', description: 'd', version: '1.0.0',
+      key: 'k',
+      name: 'n',
+      description: 'd',
+      version: '1.0.0',
       readmeUrl: 'http://b',
-      marketplaceOwner: 'o', marketplaceName: 'm', marketplaceBranch: 'main',
-      source: '.');
+      marketplaceOwner: 'o',
+      marketplaceName: 'm',
+      marketplaceBranch: 'main',
+      source: '.',
+    );
     expect(a == b, isFalse);
   });
 
   test('PluginMarketplace.copyWith can clear displayName', () {
-    const m = PluginMarketplace(
-      owner: 'o', name: 'n', displayName: 'D');
+    const m = PluginMarketplace(owner: 'o', name: 'n', displayName: 'D');
     final cleared = m.copyWith(clearDisplayName: true);
     expect(cleared.displayName, isNull);
   });
 
   test('PluginUpdateInfo round-trips', () {
     const u = PluginUpdateInfo(
-      id: 'acme/market/p', name: 'p', remoteHash: 'r1', currentHash: 'c1');
+      id: 'acme/market/p',
+      name: 'p',
+      remoteHash: 'r1',
+      currentHash: 'c1',
+    );
     expect(PluginUpdateInfo.fromJson(u.toJson()), u);
   });
 
   test('PluginBackup round-trips', () {
     const plugin = Plugin(
-      id: 'a/b/c', name: 'c', description: '', version: '1.0.0',
+      id: 'a/b/c',
+      name: 'c',
+      description: '',
+      version: '1.0.0',
       directory: 'a__b__c',
       capabilities: PluginCapabilities(),
-      installedAt: 1, updatedAt: 2);
+      installedAt: 1,
+      updatedAt: 2,
+    );
     const b = PluginBackup(
-      backupId: 'bk1', backupPath: '/tmp/bk', createdAt: 100, plugin: plugin);
+      backupId: 'bk1',
+      backupPath: '/tmp/bk',
+      createdAt: 100,
+      plugin: plugin,
+    );
     expect(PluginBackup.fromJson(b.toJson()), b);
   });
 

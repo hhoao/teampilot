@@ -28,9 +28,7 @@ class McpOAuthCallbackServer {
 
     _timer = Timer(timeout, () {
       if (!completer.isCompleted) {
-        completer.completeError(
-          TimeoutException('Authentication timed out'),
-        );
+        completer.completeError(TimeoutException('Authentication timed out'));
       }
       unawaited(close());
     });

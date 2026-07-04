@@ -1,4 +1,4 @@
-﻿import 'dart:convert';
+import 'dart:convert';
 
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
@@ -79,7 +79,9 @@ class _AppProviderFormPageState extends State<AppProviderFormPage> {
       CliToolRegistry.builtIn();
 
   ProviderFormCapability _formCap([BuildContext? context]) {
-    final cap = _registry(context).capability<ProviderFormCapability>(widget.cli);
+    final cap = _registry(
+      context,
+    ).capability<ProviderFormCapability>(widget.cli);
     assert(cap != null, '${widget.cli.value} missing ProviderFormCapability');
     return cap!;
   }
@@ -105,9 +107,7 @@ class _AppProviderFormPageState extends State<AppProviderFormPage> {
     _isPartner = e?.isPartner ?? false;
     _partnerPromotionKey = e?.partnerPromotionKey ?? '';
     _endpointCandidates = e?.endpointCandidates.toList() ?? const [];
-    _config = Map<String, Object?>.from(
-      e?.config ?? formCap.defaultConfig(),
-    );
+    _config = Map<String, Object?>.from(e?.config ?? formCap.defaultConfig());
     _credentialBinding = e != null
         ? resolveCredentialBinding(e)
         : CredentialBindingKind.linked;
@@ -231,7 +231,8 @@ class _AppProviderFormPageState extends State<AppProviderFormPage> {
 
   AppProviderConfig _credentialProvider(AppProviderState state) {
     final draft = _buildNormalDraft();
-    final saved = state.providersFor(widget.cli)
+    final saved = state
+        .providersFor(widget.cli)
         .where((p) => p.id == draft.id)
         .firstOrNull;
     return saved ?? draft;
@@ -361,7 +362,8 @@ class _AppProviderFormPageState extends State<AppProviderFormPage> {
                           if (next.name.trim().isEmpty) return null;
                           final cubit = context.read<AppProviderCubit>();
                           await cubit.upsertProvider(next);
-                          return cubit.state.providersFor(widget.cli)
+                          return cubit.state
+                                  .providersFor(widget.cli)
                                   .where((p) => p.id == next.id)
                                   .firstOrNull ??
                               next;
@@ -473,10 +475,7 @@ class _AppProviderFormPageState extends State<AppProviderFormPage> {
                       provider: _buildNormalDraft(),
                       model: _defaultModelCtl.text,
                       onChanged: (value) => setState(() {
-                        _extra = {
-                          ..._extra,
-                          CodexFormExtraKeys.effort: value,
-                        };
+                        _extra = {..._extra, CodexFormExtraKeys.effort: value};
                       }),
                     ),
                   ],
@@ -557,7 +556,9 @@ class _AppProviderFormPageState extends State<AppProviderFormPage> {
   }
 
   bool _showsProviderEffortPicker(BuildContext context) {
-    final capability = _registry(context).capability<CliEffortCapability>(widget.cli);
+    final capability = _registry(
+      context,
+    ).capability<CliEffortCapability>(widget.cli);
     if (capability == null) return false;
     final draft = _buildNormalDraft();
     if (capability.providerPickerPlacement(draft) !=
@@ -611,7 +612,8 @@ class _DefaultModelField extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final draft = draftProvider();
-    final registry = CliToolRegistryScope.maybeOf(context) ?? CliToolRegistry.builtIn();
+    final registry =
+        CliToolRegistryScope.maybeOf(context) ?? CliToolRegistry.builtIn();
     final capability = registry.capability<ProviderModelCapability>(cli);
     if (capability != null &&
         capability.pickerMode(draft) != ProviderModelPickerMode.hidden) {
@@ -640,7 +642,10 @@ T _effectiveItem<T>(T value, List<T> items) {
   return items.contains(value) ? value : items.first;
 }
 
-String _initialPresetId(ProviderFormCapability formCap, AppProviderConfig? existing) {
+String _initialPresetId(
+  ProviderFormCapability formCap,
+  AppProviderConfig? existing,
+) {
   if (existing == null) return 'custom';
   for (final preset in formCap.presets) {
     if (preset.id == existing.id) return preset.id;

@@ -75,7 +75,8 @@ class McpCatalogListing {
       source: McpCatalogSourceWire.fromWireValue(
         json['source'] as String? ?? '',
       ),
-      serverSpec: (json['serverSpec'] as Map?)?.cast<String, Object?>() ?? const {},
+      serverSpec:
+          (json['serverSpec'] as Map?)?.cast<String, Object?>() ?? const {},
       iconUrl: json['iconUrl'] as String?,
       homepage: json['homepage'] as String?,
       docs: json['docs'] as String?,

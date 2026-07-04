@@ -79,20 +79,23 @@ void main() {
     expect(identical(reg.home().filesystem, ssh.filesystem), isFalse);
   });
 
-  test('forTarget(ssh) failure does not break home() reads (offline)', () async {
-    final resolver = _FakeResolver()..offline.add('ssh:gone');
-    final reg = RuntimeContextRegistry(
-      resolver: resolver,
-      homeTarget: RuntimeTarget.local(),
-    );
-    await reg.ensureHome();
-    await expectLater(
-      reg.forTarget(RuntimeTarget.ssh('gone', label: 'x')),
-      throwsStateError,
-    );
-    // Project list / control-plane reads still work.
-    expect(reg.home().appDataRoot, '/tp-local');
-  });
+  test(
+    'forTarget(ssh) failure does not break home() reads (offline)',
+    () async {
+      final resolver = _FakeResolver()..offline.add('ssh:gone');
+      final reg = RuntimeContextRegistry(
+        resolver: resolver,
+        homeTarget: RuntimeTarget.local(),
+      );
+      await reg.ensureHome();
+      await expectLater(
+        reg.forTarget(RuntimeTarget.ssh('gone', label: 'x')),
+        throwsStateError,
+      );
+      // Project list / control-plane reads still work.
+      expect(reg.home().appDataRoot, '/tp-local');
+    },
+  );
 
   test('dispose evicts cached context (re-resolves next time)', () async {
     final resolver = _FakeResolver();

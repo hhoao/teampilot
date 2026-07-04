@@ -47,10 +47,9 @@ abstract final class PresenceReducer {
         final activity = s.activity == MemberActivity.active
             ? MemberActivity.active
             : MemberActivity.turnDoneReady;
-        return _to(s.copyWith(
-          lifecycle: MemberLifecycle.running,
-          activity: activity,
-        ));
+        return _to(
+          s.copyWith(lifecycle: MemberLifecycle.running, activity: activity),
+        );
 
       case MaterializeStarted(:final bootstrap):
         if (s.lifecycle != MemberLifecycle.declared) return _stay(s);
@@ -77,11 +76,13 @@ abstract final class PresenceReducer {
 
       case WaitExited(:final resumeActive):
         if (s.ptyRunning && s.isParked) {
-          return _to(s.copyWith(
-            activity: resumeActive
-                ? MemberActivity.active
-                : MemberActivity.turnDoneReady,
-          ));
+          return _to(
+            s.copyWith(
+              activity: resumeActive
+                  ? MemberActivity.active
+                  : MemberActivity.turnDoneReady,
+            ),
+          );
         }
         return _stay(s);
 
@@ -111,11 +112,13 @@ abstract final class PresenceReducer {
   static PresenceTransition _onMail(Presence s, PresenceContext ctx) {
     // declared 无 PTY:仅同步 mailQueued / none,不响门铃。
     if (s.lifecycle == MemberLifecycle.declared) {
-      return _to(s.copyWith(
-        activity: ctx.hasUnread
-            ? MemberActivity.mailQueued
-            : MemberActivity.none,
-      ));
+      return _to(
+        s.copyWith(
+          activity: ctx.hasUnread
+              ? MemberActivity.mailQueued
+              : MemberActivity.none,
+        ),
+      );
     }
     // 已 park:waiter 直接收,绝不注入门铃。
     if (s.isParked) return _stay(s);
@@ -128,9 +131,7 @@ abstract final class PresenceReducer {
     if (ctx.doorbelled) return _stay(s);
     // Doorbell = TeamPilot 判定 worker 应处理 teammate 信（含 Cursor push 路径：
     // 只注入提示、不走 wait_for_message）。与 TurnStarted / WaitExited 对齐为 working。
-    final next = s.atPrompt
-        ? s.copyWith(activity: MemberActivity.active)
-        : s;
+    final next = s.atPrompt ? s.copyWith(activity: MemberActivity.active) : s;
     return PresenceTransition(next, [DoorbellEffect(ctx.memberId)]);
   }
 

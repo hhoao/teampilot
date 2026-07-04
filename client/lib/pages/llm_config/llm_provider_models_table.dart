@@ -1,4 +1,4 @@
-﻿import 'package:flutter/material.dart';
+import 'package:flutter/material.dart';
 
 import '../../l10n/l10n_extensions.dart';
 import '../../models/llm_config.dart';
@@ -73,13 +73,15 @@ class LlmProviderModelsTable extends StatelessWidget {
                 ),
                 AppIconButton(
                   icon: Icons.edit_outlined,
-                  compact: true, size: AppIconButton.kCompactSize,
+                  compact: true,
+                  size: AppIconButton.kCompactSize,
                   tooltip: l10n.edit,
                   onTap: () => _editModel(context, model),
                 ),
                 AppIconButton(
                   icon: Icons.delete_outline,
-                  compact: true, size: AppIconButton.kCompactSize,
+                  compact: true,
+                  size: AppIconButton.kCompactSize,
                   tooltip: l10n.delete,
                   onTap: () => onDelete(model.id),
                 ),

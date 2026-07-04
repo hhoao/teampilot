@@ -46,24 +46,30 @@ class CliPresetsState extends Equatable {
 
 class CliPresetsCubit extends Cubit<CliPresetsState> {
   CliPresetsCubit({required CliPresetsRepository repository})
-      : _repository = repository,
-        super(const CliPresetsState());
+    : _repository = repository,
+      super(const CliPresetsState());
 
   final CliPresetsRepository _repository;
   static const _uuid = Uuid();
 
   Future<void> load() async {
     if (state.status == CliPresetsLoadStatus.loading) return;
-    emit(state.copyWith(status: CliPresetsLoadStatus.loading, clearError: true));
+    emit(
+      state.copyWith(status: CliPresetsLoadStatus.loading, clearError: true),
+    );
     try {
       final presets = await _repository.load();
-      emit(state.copyWith(presets: presets, status: CliPresetsLoadStatus.ready));
+      emit(
+        state.copyWith(presets: presets, status: CliPresetsLoadStatus.ready),
+      );
     } on Object catch (e) {
       appLogger.e('[cli-presets] load failed: $e');
-      emit(state.copyWith(
-        status: CliPresetsLoadStatus.error,
-        errorMessage: e.toString(),
-      ));
+      emit(
+        state.copyWith(
+          status: CliPresetsLoadStatus.error,
+          errorMessage: e.toString(),
+        ),
+      );
     }
   }
 

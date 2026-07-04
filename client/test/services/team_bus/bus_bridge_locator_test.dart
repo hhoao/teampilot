@@ -7,7 +7,9 @@ void main() {
   group('BusBridgeLocator.isRunnableExecutable', () {
     test('returns false for missing path', () {
       expect(
-        BusBridgeLocator.isRunnableExecutable('/nonexistent/teammate_bus_bridge'),
+        BusBridgeLocator.isRunnableExecutable(
+          '/nonexistent/teammate_bus_bridge',
+        ),
         isFalse,
       );
     });
@@ -16,7 +18,9 @@ void main() {
       final dir = await Directory.systemTemp.createTemp('bus_bridge_locator_');
       addTearDown(() => dir.deleteSync(recursive: true));
 
-      final script = File('${dir.path}/mock_bridge${Platform.isWindows ? '.bat' : ''}');
+      final script = File(
+        '${dir.path}/mock_bridge${Platform.isWindows ? '.bat' : ''}',
+      );
       if (Platform.isWindows) {
         await script.writeAsString('@echo off\r\nexit /b 2\r\n');
       } else {

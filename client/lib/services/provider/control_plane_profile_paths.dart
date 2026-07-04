@@ -32,11 +32,10 @@ final class ControlPlaneProfilePaths implements ConfigProfilePaths {
     String sessionId,
     String tool, {
     String? memberId,
-  }) =>
-      layout.sessionRuntimeToolDir(
-        workspaceId,
-        sessionId,
-        tool,
-        memberId: memberId,
-      );
+  }) => layout.sessionRuntimeToolDir(
+    workspaceId,
+    sessionId,
+    tool,
+    memberId: memberId,
+  );
 }

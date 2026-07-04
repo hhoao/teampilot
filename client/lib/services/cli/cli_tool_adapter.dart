@@ -61,7 +61,8 @@ class CliLaunchContext {
       member: member ?? this.member,
       sessionTeam: sessionTeam ?? this.sessionTeam,
       workingDirectory: workingDirectory ?? this.workingDirectory,
-      additionalDirectories: additionalDirectories ?? this.additionalDirectories,
+      additionalDirectories:
+          additionalDirectories ?? this.additionalDirectories,
       fixedSessionId: fixedSessionId ?? this.fixedSessionId,
       resumeSessionId: resumeSessionId ?? this.resumeSessionId,
       settingsPath: settingsPath ?? this.settingsPath,

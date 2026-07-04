@@ -55,11 +55,17 @@ void main() {
     ..writeln('// Re-run after editing app_en.arb / app_zh.arb:')
     ..writeln('//   dart run tool/gen_warmup_glyphs.dart')
     ..writeln('//')
-    ..writeln('// Every unique glyph across the l10n bundles. [UiInteractiveWarmup] shapes')
-    ..writeln('// these at startup so the first CJK text render does not pay the')
+    ..writeln(
+      '// Every unique glyph across the l10n bundles. [UiInteractiveWarmup] shapes',
+    )
+    ..writeln(
+      '// these at startup so the first CJK text render does not pay the',
+    )
     ..writeln('// one-time Noto Sans SC shaping cost on the UI thread.')
     ..writeln()
-    ..writeln('/// ${sorted.length} unique glyphs from app_en.arb + app_zh.arb.')
+    ..writeln(
+      '/// ${sorted.length} unique glyphs from app_en.arb + app_zh.arb.',
+    )
     ..writeln("const warmupGlyphs = '${_escape(glyphs)}';")
     ..writeln();
 

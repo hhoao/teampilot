@@ -2,13 +2,7 @@
 abstract final class CodexEffortCatalog {
   CodexEffortCatalog._();
 
-  static const levels = <String>[
-    'minimal',
-    'low',
-    'medium',
-    'high',
-    'xhigh',
-  ];
+  static const levels = <String>['minimal', 'low', 'medium', 'high', 'xhigh'];
 
   static const defaultLevel = 'high';
 

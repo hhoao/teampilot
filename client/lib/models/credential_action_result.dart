@@ -49,7 +49,9 @@ class CredentialActionResult {
 
   factory CredentialActionResult.unsupported() {
     return CredentialActionResult.failure(
-      const CredentialActionFailure(code: CredentialActionFailureCode.unsupported),
+      const CredentialActionFailure(
+        code: CredentialActionFailureCode.unsupported,
+      ),
     );
   }
 

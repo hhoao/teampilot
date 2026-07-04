@@ -32,9 +32,7 @@ class CliInstallerService {
        _hostEnvironment =
            hostEnvironment ??
            (AppStorage.isInstalled
-               ? HostExecutionEnvironment.fromStorage(
-                   AppStorage.context,
-                 )
+               ? HostExecutionEnvironment.fromStorage(AppStorage.context)
                : HostExecutionEnvironment.resolve(
                    isWindowsHost: isWindowsOverride ?? Platform.isWindows,
                  )),
@@ -57,8 +55,7 @@ class CliInstallerService {
     SshProfile? sshProfile,
     CliInstallProgressCallback? onProgress,
   }) async {
-    final capability =
-        _cliToolRegistry.capability<InstallerCapability>(cli);
+    final capability = _cliToolRegistry.capability<InstallerCapability>(cli);
     if (capability == null || !capability.supportsInstaller) {
       return const CliInstallResult(
         success: false,
@@ -93,7 +90,9 @@ class CliInstallerService {
   }) async {
     _report(phase);
     final useStreaming =
-        streamOutput && _onProgress != null && identical(_localRunner, _runLocal);
+        streamOutput &&
+        _onProgress != null &&
+        identical(_localRunner, _runLocal);
     if (useStreaming) {
       return _runLocalStreaming(
         command,
@@ -104,24 +103,27 @@ class CliInstallerService {
   }
 
   Future<String?> _locateLocalNpm() async {
-    return const CliToolLocator('npm').locate(
-      runner: (executable, arguments, {stdoutEncoding, stderrEncoding}) async {
-        final result = await _localRunner(
-          CliInstallerCommand(executable, arguments),
-        );
-        return ProcessResult(
-          -1,
-          result.exitCode,
-          result.stdout,
-          result.stderr,
-        );
-      },
-      isWindowsOverride: _hostEnvironment.isWindowsHost,
-    ).then((located) {
-      if (located != null) return located;
-      if (!identical(_localRunner, _runLocal)) return null;
-      return MacOsNpmPathCandidates.firstExisting();
-    });
+    return const CliToolLocator('npm')
+        .locate(
+          runner:
+              (executable, arguments, {stdoutEncoding, stderrEncoding}) async {
+                final result = await _localRunner(
+                  CliInstallerCommand(executable, arguments),
+                );
+                return ProcessResult(
+                  -1,
+                  result.exitCode,
+                  result.stdout,
+                  result.stderr,
+                );
+              },
+          isWindowsOverride: _hostEnvironment.isWindowsHost,
+        )
+        .then((located) {
+          if (located != null) return located;
+          if (!identical(_localRunner, _runLocal)) return null;
+          return MacOsNpmPathCandidates.firstExisting();
+        });
   }
 
   Future<String?> _locateRemoteNpm(SshProfile profile) async {
@@ -140,12 +142,7 @@ class CliInstallerService {
           profile,
           CliInstallerCommand(executable, arguments),
         );
-        return ProcessResult(
-          -1,
-          result.exitCode,
-          result.stdout,
-          result.stderr,
-        );
+        return ProcessResult(-1, result.exitCode, result.stdout, result.stderr);
       },
     );
   }
@@ -156,12 +153,7 @@ class CliInstallerService {
         final result = await _localRunner(
           CliInstallerCommand(executable, arguments),
         );
-        return ProcessResult(
-          -1,
-          result.exitCode,
-          result.stdout,
-          result.stderr,
-        );
+        return ProcessResult(-1, result.exitCode, result.stdout, result.stderr);
       },
       isWindowsOverride: _hostEnvironment.isWindowsHost,
     );
@@ -249,19 +241,17 @@ final class _CliInstallerHost implements CliInstallerHost {
     CliInstallerCommand command, {
     required CliInstallPhase phase,
     bool streamOutput = false,
-  }) =>
-      _service._runLocalTracked(
-        command,
-        phase: phase,
-        streamOutput: streamOutput,
-      );
+  }) => _service._runLocalTracked(
+    command,
+    phase: phase,
+    streamOutput: streamOutput,
+  );
 
   @override
   Future<CliInstallerCommandResult> runSsh(
     SshProfile profile,
     CliInstallerCommand command,
-  ) =>
-      _service._sshRunner(profile, command);
+  ) => _service._sshRunner(profile, command);
 
   @override
   Future<String?> locateExecutable(String name) =>
@@ -308,9 +298,11 @@ class _SshCommandRunner {
   }
 
   static Future<String> _decode(Stream<Uint8List> stream) async {
-    return utf8.decode(await stream.fold<List<int>>(
-      <int>[],
-      (buffer, chunk) => buffer..addAll(chunk),
-    ));
+    return utf8.decode(
+      await stream.fold<List<int>>(
+        <int>[],
+        (buffer, chunk) => buffer..addAll(chunk),
+      ),
+    );
   }
 }

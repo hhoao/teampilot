@@ -47,7 +47,8 @@ class SshProfileTargetCard extends StatelessWidget {
   String _statusLabel(BuildContext context) {
     final l10n = context.l10n;
     return switch (status) {
-      SshProfileConnectionStatus.disconnected => l10n.sshProfileStatusDisconnected,
+      SshProfileConnectionStatus.disconnected =>
+        l10n.sshProfileStatusDisconnected,
       SshProfileConnectionStatus.connecting => l10n.sshProfileStatusConnecting,
       SshProfileConnectionStatus.connected => l10n.sshProfileStatusConnected,
       SshProfileConnectionStatus.error => l10n.sshProfileStatusError,

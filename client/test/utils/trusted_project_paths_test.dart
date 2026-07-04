@@ -17,10 +17,7 @@ void main() {
     await nested.create(recursive: true);
 
     final fs = LocalFilesystem();
-    expect(
-      await findCanonicalGitRoot(fs, nested.path),
-      root.path,
-    );
+    expect(await findCanonicalGitRoot(fs, nested.path), root.path);
   });
 
   test('collectTrustedProjectKeys includes git root for nested path', () async {

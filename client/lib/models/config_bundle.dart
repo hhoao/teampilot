@@ -12,10 +12,10 @@ class ConfigBundle {
   });
 
   factory ConfigBundle.fromJson(Map<String, Object?> json) => ConfigBundle(
-        skillIds: _decodeIds(json['skillIds']),
-        pluginIds: _decodeIds(json['pluginIds']),
-        mcpServerIds: _decodeIds(json['mcpServerIds']),
-      );
+    skillIds: _decodeIds(json['skillIds']),
+    pluginIds: _decodeIds(json['pluginIds']),
+    mcpServerIds: _decodeIds(json['mcpServerIds']),
+  );
 
   final List<String> skillIds;
   final List<String> pluginIds;
@@ -33,18 +33,17 @@ class ConfigBundle {
     List<String>? skillIds,
     List<String>? pluginIds,
     List<String>? mcpServerIds,
-  }) =>
-      ConfigBundle(
-        skillIds: skillIds ?? this.skillIds,
-        pluginIds: pluginIds ?? this.pluginIds,
-        mcpServerIds: mcpServerIds ?? this.mcpServerIds,
-      );
+  }) => ConfigBundle(
+    skillIds: skillIds ?? this.skillIds,
+    pluginIds: pluginIds ?? this.pluginIds,
+    mcpServerIds: mcpServerIds ?? this.mcpServerIds,
+  );
 
   Map<String, Object?> toJson() => {
-        if (skillIds.isNotEmpty) 'skillIds': skillIds,
-        if (pluginIds.isNotEmpty) 'pluginIds': pluginIds,
-        if (mcpServerIds.isNotEmpty) 'mcpServerIds': mcpServerIds,
-      };
+    if (skillIds.isNotEmpty) 'skillIds': skillIds,
+    if (pluginIds.isNotEmpty) 'pluginIds': pluginIds,
+    if (mcpServerIds.isNotEmpty) 'mcpServerIds': mcpServerIds,
+  };
 
   @override
   bool operator ==(Object other) =>
@@ -56,8 +55,8 @@ class ConfigBundle {
 
   @override
   int get hashCode => Object.hash(
-        Object.hashAll(skillIds),
-        Object.hashAll(pluginIds),
-        Object.hashAll(mcpServerIds),
-      );
+    Object.hashAll(skillIds),
+    Object.hashAll(pluginIds),
+    Object.hashAll(mcpServerIds),
+  );
 }

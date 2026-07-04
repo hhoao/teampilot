@@ -20,7 +20,8 @@ import 'llm_providers_list_content.dart';
 // --- Providers tab: split view ---
 
 class LlmProvidersTabContent extends StatefulWidget {
-  const LlmProvidersTabContent({super.key, 
+  const LlmProvidersTabContent({
+    super.key,
     required this.controller,
     this.showAddProviderOnOpen = false,
   });
@@ -117,7 +118,9 @@ class LlmProvidersTabContentState extends State<LlmProvidersTabContent> {
               onShowModels: (selected) {
                 if (selected.cli != CliTool.flashskyai) return;
                 if (useAndroidHubNavigation(context)) {
-                  context.push(llmProviderModelsRoute(selected.cli, selected.id));
+                  context.push(
+                    llmProviderModelsRoute(selected.cli, selected.id),
+                  );
                 } else {
                   setState(() => _modelsProviderId = selected.id);
                 }

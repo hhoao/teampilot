@@ -1,4 +1,4 @@
-﻿import 'package:flutter/material.dart';
+import 'package:flutter/material.dart';
 import 'package:teampilot/theme/app_icon_sizes.dart';
 
 import '../../l10n/l10n_extensions.dart';
@@ -30,7 +30,8 @@ class AppDropdownWithCustomInput extends StatefulWidget {
       _AppDropdownWithCustomInputState();
 }
 
-class _AppDropdownWithCustomInputState extends State<AppDropdownWithCustomInput> {
+class _AppDropdownWithCustomInputState
+    extends State<AppDropdownWithCustomInput> {
   late final TextEditingController _customController;
   late final FocusNode _customFocusNode;
   bool _customMode = false;
@@ -107,10 +108,7 @@ class _AppDropdownWithCustomInputState extends State<AppDropdownWithCustomInput>
     return TextField(
       controller: _customController,
       focusNode: _customFocusNode,
-      decoration: InputDecoration(
-        isDense: true,
-        hintText: widget.hintText,
-      ),
+      decoration: InputDecoration(isDense: true, hintText: widget.hintText),
       textInputAction: TextInputAction.done,
       onSubmitted: (_) {
         if (_canConfirm) _confirmCustom();
@@ -159,8 +157,7 @@ class _AppDropdownWithCustomInputState extends State<AppDropdownWithCustomInput>
   @override
   Widget build(BuildContext context) {
     final dropdownItems = _dropdownItems();
-    final deco =
-        widget.decoration ?? AppDropdownDecorations.themed(context);
+    final deco = widget.decoration ?? AppDropdownDecorations.themed(context);
 
     if (_customMode) {
       return Row(

@@ -2,7 +2,6 @@ import 'dart:io';
 import 'package:archive/archive.dart';
 import 'package:path/path.dart' as p;
 
-
 class PluginFetchService {
   Future<void> extractZip(File zip, Directory destination) async {
     final bytes = await zip.readAsBytes();
@@ -26,7 +25,9 @@ class PluginFetchService {
       final rel = p.relative(entry.path, from: from.path);
       final dest = p.join(to.path, rel);
       if (entry is File) {
-        File(dest)..createSync(recursive: true)..writeAsBytesSync(entry.readAsBytesSync());
+        File(dest)
+          ..createSync(recursive: true)
+          ..writeAsBytesSync(entry.readAsBytesSync());
       } else if (entry is Directory) {
         Directory(dest).createSync(recursive: true);
       }

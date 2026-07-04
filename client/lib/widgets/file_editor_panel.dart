@@ -643,7 +643,8 @@ class _EditorTabBarModel {
   }
 
   @override
-  int get hashCode => Object.hash(activeIndex, dirtyPaths, Object.hashAll(openPaths));
+  int get hashCode =>
+      Object.hash(activeIndex, dirtyPaths, Object.hashAll(openPaths));
 }
 
 @immutable

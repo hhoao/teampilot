@@ -136,9 +136,7 @@ class _GitChangeFolderTileState extends State<GitChangeFolderTile> {
                       ),
                     ),
                     Icon(
-                      isExpanded
-                          ? Icons.folder_open
-                          : Icons.folder_outlined,
+                      isExpanded ? Icons.folder_open : Icons.folder_outlined,
                       color: cs.onSurfaceVariant,
                     ),
                     const SizedBox(width: 6),

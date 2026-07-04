@@ -45,7 +45,8 @@ class RecordingPtyTransport implements TerminalTransport {
     }
   }
 
-  void emitUtf8(String text) => emitBytes(Uint8List.fromList(utf8.encode(text)));
+  void emitUtf8(String text) =>
+      emitBytes(Uint8List.fromList(utf8.encode(text)));
 
   List<String> get decodedWrites => writes.map(utf8.decode).toList();
 

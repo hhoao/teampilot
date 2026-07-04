@@ -13,10 +13,7 @@ void main() {
   setUp(() async {
     temp = await Directory.systemTemp.createTemp('app_provider_cubit_');
     repository = AppProviderRepository(basePath: temp.path);
-    cubit = AppProviderCubit(
-      repository: repository,
-      basePath: temp.path,
-    );
+    cubit = AppProviderCubit(repository: repository, basePath: temp.path);
   });
 
   tearDown(() async {
@@ -28,18 +25,10 @@ void main() {
 
   test('deleteProvider selects next provider within current cli', () async {
     await cubit.upsertProvider(
-      const AppProviderConfig(
-        id: 'a',
-        cli: CliTool.claude,
-        name: 'A',
-      ),
+      const AppProviderConfig(id: 'a', cli: CliTool.claude, name: 'A'),
     );
     await cubit.upsertProvider(
-      const AppProviderConfig(
-        id: 'b',
-        cli: CliTool.claude,
-        name: 'B',
-      ),
+      const AppProviderConfig(id: 'b', cli: CliTool.claude, name: 'B'),
     );
     cubit.selectProvider('a');
 
@@ -94,9 +83,7 @@ void main() {
       ),
     );
 
-    final saved = (await repository.loadProviders(
-      CliTool.flashskyai,
-    )).single;
+    final saved = (await repository.loadProviders(CliTool.flashskyai)).single;
     final models = saved.config['models'] as Map;
     final model = models['deepseek-chat'] as Map;
     expect(model['provider'], 'deepseek');

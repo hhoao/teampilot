@@ -31,7 +31,13 @@ void main() {
     expect(probe.isReady, isFalse);
     expect(
       probe.credentialPath,
-      fs.pathContext.join(base, 'providers', 'claude', 'work', '.credentials.json'),
+      fs.pathContext.join(
+        base,
+        'providers',
+        'claude',
+        'work',
+        '.credentials.json',
+      ),
     );
   });
 
@@ -66,44 +72,62 @@ void main() {
 
   test('work and personal credentials are independent', () async {
     await fs.writeString(
-      fs.pathContext.join(base, 'providers', 'claude', 'work', '.credentials.json'),
+      fs.pathContext.join(
+        base,
+        'providers',
+        'claude',
+        'work',
+        '.credentials.json',
+      ),
       '{"claudeAiOauth":{"accessToken":"work"}}',
     );
     expect(
-      (await service.probe('work', binding: CredentialBindingKind.isolated)).isReady,
+      (await service.probe(
+        'work',
+        binding: CredentialBindingKind.isolated,
+      )).isReady,
       isTrue,
     );
     expect(
-      (await service.probe('personal', binding: CredentialBindingKind.isolated)).isReady,
+      (await service.probe(
+        'personal',
+        binding: CredentialBindingKind.isolated,
+      )).isReady,
       isFalse,
     );
   });
 
-  test('importFromGlobal links provider credential to global home by default', () async {
-    final global = fs.pathContext.join(home, '.claude', '.credentials.json');
-    await fs.writeString(global, '{"claudeAiOauth":{"accessToken":"global"}}');
-    final result = await service.importFromGlobal(
-      'work',
-      homeDirectory: home,
-    );
-    expect(result.ok, isTrue);
-    final providerCred = fs.pathContext.join(
-      base,
-      'providers',
-      'claude',
-      'work',
-      '.credentials.json',
-    );
-    expect(fs.symlinks[providerCred], global);
-    expect(
-      (await service.probe(
+  test(
+    'importFromGlobal links provider credential to global home by default',
+    () async {
+      final global = fs.pathContext.join(home, '.claude', '.credentials.json');
+      await fs.writeString(
+        global,
+        '{"claudeAiOauth":{"accessToken":"global"}}',
+      );
+      final result = await service.importFromGlobal(
         'work',
-        binding: CredentialBindingKind.linked,
         homeDirectory: home,
-      )).isReady,
-      isTrue,
-    );
-  });
+      );
+      expect(result.ok, isTrue);
+      final providerCred = fs.pathContext.join(
+        base,
+        'providers',
+        'claude',
+        'work',
+        '.credentials.json',
+      );
+      expect(fs.symlinks[providerCred], global);
+      expect(
+        (await service.probe(
+          'work',
+          binding: CredentialBindingKind.linked,
+          homeDirectory: home,
+        )).isReady,
+        isTrue,
+      );
+    },
+  );
 
   test('importFromGlobal isolated copies bytes to provider dir', () async {
     await fs.writeString(
@@ -118,7 +142,10 @@ void main() {
     expect(result.ok, isTrue);
     expect(fs.symlinks, isEmpty);
     expect(
-      (await service.probe('work', binding: CredentialBindingKind.isolated)).isReady,
+      (await service.probe(
+        'work',
+        binding: CredentialBindingKind.isolated,
+      )).isReady,
       isTrue,
     );
   });
@@ -131,14 +158,23 @@ void main() {
     final result = await service.importFromFile('work', '/ext/creds.json');
     expect(result.ok, isTrue);
     expect(
-      (await service.probe('work', binding: CredentialBindingKind.isolated)).isReady,
+      (await service.probe(
+        'work',
+        binding: CredentialBindingKind.isolated,
+      )).isReady,
       isTrue,
     );
   });
 
   test('import replace overwrites existing credentials', () async {
     await fs.writeString(
-      fs.pathContext.join(base, 'providers', 'claude', 'work', '.credentials.json'),
+      fs.pathContext.join(
+        base,
+        'providers',
+        'claude',
+        'work',
+        '.credentials.json',
+      ),
       '{"claudeAiOauth":{"accessToken":"old"}}',
     );
     await fs.writeString(
@@ -150,7 +186,13 @@ void main() {
       isTrue,
     );
     final bytes = await fs.readBytes(
-      fs.pathContext.join(base, 'providers', 'claude', 'work', '.credentials.json'),
+      fs.pathContext.join(
+        base,
+        'providers',
+        'claude',
+        'work',
+        '.credentials.json',
+      ),
     );
     expect(bytes, isNotNull);
     expect(String.fromCharCodes(bytes!), contains('new'));
@@ -158,7 +200,13 @@ void main() {
 
   test('ensureLinked symlinks session credentials from provider', () async {
     await fs.writeString(
-      fs.pathContext.join(base, 'providers', 'claude', 'work', '.credentials.json'),
+      fs.pathContext.join(
+        base,
+        'providers',
+        'claude',
+        'work',
+        '.credentials.json',
+      ),
       '{"claudeAiOauth":{"accessToken":"work"}}',
     );
     const sessionDir = '/data/tp/identities-runtime/t1/members/s1/claude';
@@ -176,26 +224,38 @@ void main() {
     );
   });
 
-  test('ensureLinked linked mode symlinks session to global credential', () async {
-    final global = fs.pathContext.join(home, '.claude', '.credentials.json');
-    await fs.writeString(global, '{"claudeAiOauth":{"accessToken":"global"}}');
-    const sessionDir = '/data/tp/identities-runtime/t1/members/s1/claude';
-    final result = await service.ensureLinked(
-      sessionDir,
-      'work',
-      binding: CredentialBindingKind.linked,
-      homeDirectory: home,
-    );
-    expect(result, CredentialLinkResult.linked);
-    expect(
-      fs.symlinks[fs.pathContext.join(sessionDir, '.credentials.json')],
-      global,
-    );
-  });
+  test(
+    'ensureLinked linked mode symlinks session to global credential',
+    () async {
+      final global = fs.pathContext.join(home, '.claude', '.credentials.json');
+      await fs.writeString(
+        global,
+        '{"claudeAiOauth":{"accessToken":"global"}}',
+      );
+      const sessionDir = '/data/tp/identities-runtime/t1/members/s1/claude';
+      final result = await service.ensureLinked(
+        sessionDir,
+        'work',
+        binding: CredentialBindingKind.linked,
+        homeDirectory: home,
+      );
+      expect(result, CredentialLinkResult.linked);
+      expect(
+        fs.symlinks[fs.pathContext.join(sessionDir, '.credentials.json')],
+        global,
+      );
+    },
+  );
 
   test('ensureLinked returns alreadyPresent when session has cred', () async {
     await fs.writeString(
-      fs.pathContext.join(base, 'providers', 'claude', 'work', '.credentials.json'),
+      fs.pathContext.join(
+        base,
+        'providers',
+        'claude',
+        'work',
+        '.credentials.json',
+      ),
       '{"claudeAiOauth":{"accessToken":"work"}}',
     );
     const sessionDir = '/data/tp/identities-runtime/t1/members/s1/claude';
@@ -256,10 +316,7 @@ void main() {
 
     if (invocation.usesWsl) {
       expect(capturedArgs!.first, 'env');
-      expect(
-        capturedArgs,
-        contains('CLAUDE_CONFIG_DIR=/home/user/.claude'),
-      );
+      expect(capturedArgs, contains('CLAUDE_CONFIG_DIR=/home/user/.claude'));
       expect(capturedArgs, contains('CCGUI_CLI_LOGIN_AUTHORIZED=1'));
       expect(capturedEnv, isNull);
     } else {

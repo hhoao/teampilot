@@ -4,13 +4,7 @@
 abstract final class ClaudeEffortCatalog {
   ClaudeEffortCatalog._();
 
-  static const levels = <String>[
-    'low',
-    'medium',
-    'high',
-    'xhigh',
-    'max',
-  ];
+  static const levels = <String>['low', 'medium', 'high', 'xhigh', 'max'];
 
   static const defaultLevel = 'high';
 

@@ -48,9 +48,9 @@ class CliPresetDropdownField extends StatelessWidget {
         if (label != null) ...[
           Text(
             label!,
-            style: AppTextStyles.of(context).bodySmall.copyWith(
-                  fontWeight: FontWeight.w600,
-                ),
+            style: AppTextStyles.of(
+              context,
+            ).bodySmall.copyWith(fontWeight: FontWeight.w600),
           ),
           const SizedBox(height: 8),
         ],
@@ -63,10 +63,7 @@ class CliPresetDropdownField extends StatelessWidget {
           itemBuilder: (context, presetId) {
             final preset = presetsState.presetById(presetId);
             if (preset == null) {
-              return Text(
-                presetId,
-                style: AppTextStyles.of(context).bodySmall,
-              );
+              return Text(presetId, style: AppTextStyles.of(context).bodySmall);
             }
             return _CliPresetDropdownItem(preset: preset);
           },
@@ -110,9 +107,9 @@ class _CliPresetDropdownItem extends StatelessWidget {
             preset.name,
             maxLines: 1,
             overflow: TextOverflow.ellipsis,
-            style: AppTextStyles.of(context).prominent.copyWith(
-                  color: cs.onSurface,
-                ),
+            style: AppTextStyles.of(
+              context,
+            ).prominent.copyWith(color: cs.onSurface),
           ),
         ),
       ],

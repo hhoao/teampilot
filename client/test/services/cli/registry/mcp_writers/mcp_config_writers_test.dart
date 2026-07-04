@@ -13,34 +13,41 @@ import '../../../../support/in_memory_filesystem.dart';
 
 void main() {
   group('ClaudeMcpConfigWriter', () {
-    test('writes stdio and remote into metadata preserving other keys', () async {
-      final fs = InMemoryFilesystem();
-      const configDir = '/cfg';
-      await fs.writeString(
-        '$configDir/.claude.json',
-        jsonEncode({'hasCompletedOnboarding': true}),
-      );
+    test(
+      'writes stdio and remote into metadata preserving other keys',
+      () async {
+        final fs = InMemoryFilesystem();
+        const configDir = '/cfg';
+        await fs.writeString(
+          '$configDir/.claude.json',
+          jsonEncode({'hasCompletedOnboarding': true}),
+        );
 
-      await const ClaudeMcpConfigWriter().write(
-        fs: fs,
-        configDir: configDir,
-        servers: const [
-          StdioMcpServer(name: 'fetch', command: 'npx', args: ['-y', 'fetch']),
-          RemoteMcpServer(
-            name: 'remote',
-            url: 'https://example.com/mcp',
-            headers: {'Authorization': 'Bearer x'},
-          ),
-        ],
-      );
+        await const ClaudeMcpConfigWriter().write(
+          fs: fs,
+          configDir: configDir,
+          servers: const [
+            StdioMcpServer(
+              name: 'fetch',
+              command: 'npx',
+              args: ['-y', 'fetch'],
+            ),
+            RemoteMcpServer(
+              name: 'remote',
+              url: 'https://example.com/mcp',
+              headers: {'Authorization': 'Bearer x'},
+            ),
+          ],
+        );
 
-      final raw = await fs.readString('$configDir/.claude.json');
-      final meta = jsonDecode(raw!) as Map;
-      expect(meta['hasCompletedOnboarding'], isTrue);
-      final servers = meta['mcpServers'] as Map;
-      expect((servers['fetch'] as Map)['command'], 'npx');
-      expect((servers['remote'] as Map)['url'], 'https://example.com/mcp');
-    });
+        final raw = await fs.readString('$configDir/.claude.json');
+        final meta = jsonDecode(raw!) as Map;
+        expect(meta['hasCompletedOnboarding'], isTrue);
+        final servers = meta['mcpServers'] as Map;
+        expect((servers['fetch'] as Map)['command'], 'npx');
+        expect((servers['remote'] as Map)['url'], 'https://example.com/mcp');
+      },
+    );
   });
 
   group('CursorMcpConfigWriter', () {
@@ -97,10 +104,7 @@ model = "gpt-4"
 web_search = true
 ''';
       final merged = CodexTomlMerge.mergePluginEnables(existing, const [
-        CodexPluginEnableSpec(
-          name: 'demo',
-          bundledMcpServerNames: ['bundled'],
-        ),
+        CodexPluginEnableSpec(name: 'demo', bundledMcpServerNames: ['bundled']),
       ]);
 
       final doc = TomlDocument.parse(merged).toMap();
@@ -117,7 +121,10 @@ web_search = true
     });
 
     test('mergeLocalMarketplace writes marketplaces.local block', () {
-      final merged = CodexTomlMerge.mergeLocalMarketplace('', '/tmp/codex-home');
+      final merged = CodexTomlMerge.mergeLocalMarketplace(
+        '',
+        '/tmp/codex-home',
+      );
 
       final doc = TomlDocument.parse(merged).toMap();
       final marketplaces = (doc['marketplaces'] as Map).cast<String, dynamic>();
@@ -166,21 +173,24 @@ model = "deepseek"
       expect(merged, contains("[plugins.'demo@local']"));
       expect(merged, contains('[mcp_servers.time]'));
     });
-    test('applyBearerTokenEnvVars sets bearer_token_env_var and strips auth header', () {
-      const existing = '''
+    test(
+      'applyBearerTokenEnvVars sets bearer_token_env_var and strips auth header',
+      () {
+        const existing = '''
 [mcp_servers.remote]
 url = "https://example.com/mcp"
 http_headers = { Authorization = "Bearer inline" }
 ''';
-      final merged = CodexTomlMerge.applyBearerTokenEnvVars(existing, const {
-        'remote': 'TEAMPILOT_MCP_BEARER_REMOTE',
-      });
+        final merged = CodexTomlMerge.applyBearerTokenEnvVars(existing, const {
+          'remote': 'TEAMPILOT_MCP_BEARER_REMOTE',
+        });
 
-      final doc = TomlDocument.parse(merged).toMap();
-      final remote = (doc['mcp_servers'] as Map)['remote'] as Map;
-      expect(remote['bearer_token_env_var'], 'TEAMPILOT_MCP_BEARER_REMOTE');
-      expect(remote.containsKey('http_headers'), isFalse);
-    });
+        final doc = TomlDocument.parse(merged).toMap();
+        final remote = (doc['mcp_servers'] as Map)['remote'] as Map;
+        expect(remote['bearer_token_env_var'], 'TEAMPILOT_MCP_BEARER_REMOTE');
+        expect(remote.containsKey('http_headers'), isFalse);
+      },
+    );
   });
 
   group('CodexMcpConfigWriter', () {
@@ -192,9 +202,7 @@ http_headers = { Authorization = "Bearer inline" }
       await const CodexMcpConfigWriter().write(
         fs: fs,
         configDir: configDir,
-        servers: const [
-          StdioMcpServer(name: 'fetch', command: 'npx'),
-        ],
+        servers: const [StdioMcpServer(name: 'fetch', command: 'npx')],
       );
 
       final raw = await fs.readString('$configDir/config.toml');
@@ -203,112 +211,118 @@ http_headers = { Authorization = "Bearer inline" }
       expect((doc['mcp_servers'] as Map)['fetch'], isNotNull);
     });
 
-    test('mergeAppCredentials writes env file and bearer_token_env_var', () async {
-      final fs = InMemoryFilesystem();
-      const appDir = '/app';
-      const sessionDir = '/codex';
-      await fs.writeString(
-        '$appDir/.credentials.json',
-        jsonEncode({
-          'mcpOAuth': {
-            'remote|abc': {
-              'serverName': 'remote',
-              'serverUrl': 'https://example.com/mcp',
-              'accessToken': 'oauth-tok',
+    test(
+      'mergeAppCredentials writes env file and bearer_token_env_var',
+      () async {
+        final fs = InMemoryFilesystem();
+        const appDir = '/app';
+        const sessionDir = '/codex';
+        await fs.writeString(
+          '$appDir/.credentials.json',
+          jsonEncode({
+            'mcpOAuth': {
+              'remote|abc': {
+                'serverName': 'remote',
+                'serverUrl': 'https://example.com/mcp',
+                'accessToken': 'oauth-tok',
+              },
             },
-          },
-        }),
-      );
-      await fs.writeString(
-        '$sessionDir/config.toml',
-        '''
+          }),
+        );
+        await fs.writeString('$sessionDir/config.toml', '''
 [mcp_servers.remote]
 url = "https://example.com/mcp"
-''',
-      );
+''');
 
-      await const CodexMcpConfigWriter().mergeAppCredentials(
-        fs: fs,
-        appConfigDir: appDir,
-        sessionConfigDir: sessionDir,
-      );
+        await const CodexMcpConfigWriter().mergeAppCredentials(
+          fs: fs,
+          appConfigDir: appDir,
+          sessionConfigDir: sessionDir,
+        );
 
-      final envRaw = await fs.readString('$sessionDir/.mcp-oauth.env.json');
-      final env = jsonDecode(envRaw!) as Map;
-      expect(env['TEAMPILOT_MCP_BEARER_REMOTE'], 'oauth-tok');
+        final envRaw = await fs.readString('$sessionDir/.mcp-oauth.env.json');
+        final env = jsonDecode(envRaw!) as Map;
+        expect(env['TEAMPILOT_MCP_BEARER_REMOTE'], 'oauth-tok');
 
-      final toml = TomlDocument.parse(
-        await fs.readString('$sessionDir/config.toml') ?? '',
-      ).toMap();
-      final remote = (toml['mcp_servers'] as Map)['remote'] as Map;
-      expect(remote['bearer_token_env_var'], 'TEAMPILOT_MCP_BEARER_REMOTE');
-    });
+        final toml = TomlDocument.parse(
+          await fs.readString('$sessionDir/config.toml') ?? '',
+        ).toMap();
+        final remote = (toml['mcp_servers'] as Map)['remote'] as Map;
+        expect(remote['bearer_token_env_var'], 'TEAMPILOT_MCP_BEARER_REMOTE');
+      },
+    );
   });
 
   group('OpencodeMcpConfigWriter', () {
-    test('writes local and remote entries into opencode.json mcp map', () async {
-      final fs = InMemoryFilesystem();
-      const configDir = '/oc';
-      await fs.writeString('$configDir/opencode.json', '{"plugin":[]}');
+    test(
+      'writes local and remote entries into opencode.json mcp map',
+      () async {
+        final fs = InMemoryFilesystem();
+        const configDir = '/oc';
+        await fs.writeString('$configDir/opencode.json', '{"plugin":[]}');
 
-      await const OpencodeMcpConfigWriter().write(
-        fs: fs,
-        configDir: configDir,
-        servers: const [
-          StdioMcpServer(name: 'local', command: 'node', args: ['srv.js']),
-          RemoteMcpServer(name: 'remote', url: 'https://example.com/mcp'),
-        ],
-      );
+        await const OpencodeMcpConfigWriter().write(
+          fs: fs,
+          configDir: configDir,
+          servers: const [
+            StdioMcpServer(name: 'local', command: 'node', args: ['srv.js']),
+            RemoteMcpServer(name: 'remote', url: 'https://example.com/mcp'),
+          ],
+        );
 
-      final raw = await fs.readString('$configDir/opencode.json');
-      final decoded = jsonDecode(raw!) as Map;
-      expect(decoded['plugin'], isNotNull);
-      final mcp = decoded['mcp'] as Map;
-      expect((mcp['local'] as Map)['type'], 'local');
-      expect((mcp['local'] as Map)['command'], ['node', 'srv.js']);
-      expect((mcp['remote'] as Map)['type'], 'remote');
-    });
+        final raw = await fs.readString('$configDir/opencode.json');
+        final decoded = jsonDecode(raw!) as Map;
+        expect(decoded['plugin'], isNotNull);
+        final mcp = decoded['mcp'] as Map;
+        expect((mcp['local'] as Map)['type'], 'local');
+        expect((mcp['local'] as Map)['command'], ['node', 'srv.js']);
+        expect((mcp['remote'] as Map)['type'], 'remote');
+      },
+    );
 
-    test('mergeAppCredentials injects Authorization header for remote OAuth', () async {
-      final fs = InMemoryFilesystem();
-      const appDir = '/app';
-      const sessionDir = '/oc';
-      await fs.writeString(
-        '$appDir/.credentials.json',
-        jsonEncode({
-          'mcpOAuth': {
-            'remote|abc': {
-              'serverName': 'remote',
-              'serverUrl': 'https://example.com/mcp',
-              'accessToken': 'oauth-tok',
+    test(
+      'mergeAppCredentials injects Authorization header for remote OAuth',
+      () async {
+        final fs = InMemoryFilesystem();
+        const appDir = '/app';
+        const sessionDir = '/oc';
+        await fs.writeString(
+          '$appDir/.credentials.json',
+          jsonEncode({
+            'mcpOAuth': {
+              'remote|abc': {
+                'serverName': 'remote',
+                'serverUrl': 'https://example.com/mcp',
+                'accessToken': 'oauth-tok',
+              },
             },
-          },
-        }),
-      );
-      await fs.writeString(
-        '$sessionDir/opencode.json',
-        jsonEncode({
-          'mcp': {
-            'remote': {
-              'type': 'remote',
-              'url': 'https://example.com/mcp',
-              'enabled': true,
+          }),
+        );
+        await fs.writeString(
+          '$sessionDir/opencode.json',
+          jsonEncode({
+            'mcp': {
+              'remote': {
+                'type': 'remote',
+                'url': 'https://example.com/mcp',
+                'enabled': true,
+              },
             },
-          },
-        }),
-      );
+          }),
+        );
 
-      await const OpencodeMcpConfigWriter().mergeAppCredentials(
-        fs: fs,
-        appConfigDir: appDir,
-        sessionConfigDir: sessionDir,
-      );
+        await const OpencodeMcpConfigWriter().mergeAppCredentials(
+          fs: fs,
+          appConfigDir: appDir,
+          sessionConfigDir: sessionDir,
+        );
 
-      final raw = await fs.readString('$sessionDir/opencode.json');
-      final decoded = jsonDecode(raw!) as Map;
-      final headers =
-          ((decoded['mcp'] as Map)['remote'] as Map)['headers'] as Map;
-      expect(headers['Authorization'], 'Bearer oauth-tok');
-    });
+        final raw = await fs.readString('$sessionDir/opencode.json');
+        final decoded = jsonDecode(raw!) as Map;
+        final headers =
+            ((decoded['mcp'] as Map)['remote'] as Map)['headers'] as Map;
+        expect(headers['Authorization'], 'Bearer oauth-tok');
+      },
+    );
   });
 }

@@ -70,12 +70,10 @@ class SystemTerminalOpener {
       ('gnome-terminal', ['--working-directory', target]),
       ('konsole', ['--workdir', target]),
       ('xfce4-terminal', ['--working-directory', target]),
-      ('x-terminal-emulator', [
-        '-e',
-        'bash',
-        '-lc',
-        'cd ${_shellQuote(target)}; exec bash',
-      ]),
+      (
+        'x-terminal-emulator',
+        ['-e', 'bash', '-lc', 'cd ${_shellQuote(target)}; exec bash'],
+      ),
       ('xterm', ['-e', 'bash', '-lc', 'cd ${_shellQuote(target)}; exec bash']),
     ];
     for (final attempt in attempts) {
@@ -104,7 +102,11 @@ class SystemTerminalOpener {
     ], target);
   }
 
-  Future<bool> _run(String exe, List<String> args, String workingDirectory) async {
+  Future<bool> _run(
+    String exe,
+    List<String> args,
+    String workingDirectory,
+  ) async {
     try {
       final result = await _starter(
         exe,

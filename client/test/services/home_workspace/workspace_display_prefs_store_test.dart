@@ -36,17 +36,16 @@ void main() {
 
   test('save persists grid view and sort mode', () async {
     await store.save(
-      const WorkspaceDisplayPrefs(
-        gridView: false,
-        sort: WorkspaceSort.nameAsc,
-      ),
+      const WorkspaceDisplayPrefs(gridView: false, sort: WorkspaceSort.nameAsc),
     );
 
     final prefs = await store.load();
     expect(prefs.gridView, isFalse);
     expect(prefs.sort, WorkspaceSort.nameAsc);
 
-    final file = File(AppPaths(root.path).homeWorkspaceWorkspaceDisplayPrefsJson);
+    final file = File(
+      AppPaths(root.path).homeWorkspaceWorkspaceDisplayPrefsJson,
+    );
     expect(file.existsSync(), isTrue);
   });
 }

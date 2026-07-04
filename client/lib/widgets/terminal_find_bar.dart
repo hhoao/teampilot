@@ -1,4 +1,4 @@
-﻿import 'package:flutter/material.dart';
+import 'package:flutter/material.dart';
 import 'package:teampilot/theme/app_icon_sizes.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_alacritty/flutter_alacritty.dart';
@@ -92,12 +92,18 @@ class _TerminalFindBarState extends State<TerminalFindBar> {
             ),
             IconButton(
               tooltip: 'Previous',
-              icon: Icon(Icons.keyboard_arrow_up, size: context.appIconSizes.md),
+              icon: Icon(
+                Icons.keyboard_arrow_up,
+                size: context.appIconSizes.md,
+              ),
               onPressed: () => _step(false),
             ),
             IconButton(
               tooltip: 'Next',
-              icon: Icon(Icons.keyboard_arrow_down, size: context.appIconSizes.md),
+              icon: Icon(
+                Icons.keyboard_arrow_down,
+                size: context.appIconSizes.md,
+              ),
               onPressed: () => _step(true),
             ),
             IconButton(
@@ -135,12 +141,17 @@ class TerminalFindShortcuts extends StatelessWidget {
   Widget build(BuildContext context) {
     return Shortcuts(
       shortcuts: <ShortcutActivator, Intent>{
-        const SingleActivator(LogicalKeyboardKey.keyF, control: true, shift: true):
-            const _TerminalFindToggleIntent(),
-        const SingleActivator(LogicalKeyboardKey.f3): const _TerminalFindNextIntent(),
+        const SingleActivator(
+          LogicalKeyboardKey.keyF,
+          control: true,
+          shift: true,
+        ): const _TerminalFindToggleIntent(),
+        const SingleActivator(LogicalKeyboardKey.f3):
+            const _TerminalFindNextIntent(),
         const SingleActivator(LogicalKeyboardKey.f3, shift: true):
             const _TerminalFindPreviousIntent(),
-        const SingleActivator(LogicalKeyboardKey.escape): const _TerminalFindCloseIntent(),
+        const SingleActivator(LogicalKeyboardKey.escape):
+            const _TerminalFindCloseIntent(),
       },
       child: Actions(
         actions: <Type, Action<Intent>>{
@@ -160,12 +171,13 @@ class TerminalFindShortcuts extends StatelessWidget {
               return null;
             },
           ),
-          _TerminalFindPreviousIntent: CallbackAction<_TerminalFindPreviousIntent>(
-            onInvoke: (_) {
-              if (findVisible) onFindPrevious();
-              return null;
-            },
-          ),
+          _TerminalFindPreviousIntent:
+              CallbackAction<_TerminalFindPreviousIntent>(
+                onInvoke: (_) {
+                  if (findVisible) onFindPrevious();
+                  return null;
+                },
+              ),
           _TerminalFindCloseIntent: CallbackAction<_TerminalFindCloseIntent>(
             onInvoke: (_) {
               if (findVisible) onCloseFind();

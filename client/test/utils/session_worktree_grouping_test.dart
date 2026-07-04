@@ -5,19 +5,19 @@ import 'package:teampilot/models/git_worktree.dart';
 import 'package:teampilot/utils/session_worktree_grouping.dart';
 
 GitWorktree _wt(String path, {bool main = false}) => GitWorktree(
-      path: path,
-      branch: 'refs/heads/${path.split('/').last}',
-      head: 'h',
-      isBare: false,
-      isMainWorktree: main,
-    );
+  path: path,
+  branch: 'refs/heads/${path.split('/').last}',
+  head: 'h',
+  isBare: false,
+  isMainWorktree: main,
+);
 
 AppSession _session(String id, String primary) => AppSession(
-      sessionId: id,
-      workspaceId: 'w',
-      folders: [WorkspaceFolder(path: primary)],
-      createdAt: 0,
-    );
+  sessionId: id,
+  workspaceId: 'w',
+  folders: [WorkspaceFolder(path: primary)],
+  createdAt: 0,
+);
 
 void main() {
   final worktrees = [_wt('/repo', main: true), _wt('/wt/feat')];
@@ -32,15 +32,20 @@ void main() {
     expect(groups[1].sessions.single.sessionId, 'b');
   });
 
-  test('a session inside a nested worktree path is matched by longest prefix', () {
-    final groups = groupSessionsByWorktree(
-      worktrees: worktrees,
-      sessions: [_session('c', '/wt/feat/sub/dir')],
-    );
-    // /wt/feat is a prefix of /wt/feat/sub/dir; /repo is not.
-    final featGroup = groups.firstWhere((g) => g.worktree?.path == '/wt/feat');
-    expect(featGroup.sessions.single.sessionId, 'c');
-  });
+  test(
+    'a session inside a nested worktree path is matched by longest prefix',
+    () {
+      final groups = groupSessionsByWorktree(
+        worktrees: worktrees,
+        sessions: [_session('c', '/wt/feat/sub/dir')],
+      );
+      // /wt/feat is a prefix of /wt/feat/sub/dir; /repo is not.
+      final featGroup = groups.firstWhere(
+        (g) => g.worktree?.path == '/wt/feat',
+      );
+      expect(featGroup.sessions.single.sessionId, 'c');
+    },
+  );
 
   test('sibling-prefix path does NOT match (/wt/feat vs /wt/feature)', () {
     final wts = [_wt('/repo', main: true), _wt('/wt/feat')];
@@ -49,8 +54,10 @@ void main() {
       sessions: [_session('s', '/wt/feature/lib')],
     );
     // /wt/feat must not swallow /wt/feature; the session is an orphan.
-    expect(groups.firstWhere((g) => g.worktree?.path == '/wt/feat').sessions,
-        isEmpty);
+    expect(
+      groups.firstWhere((g) => g.worktree?.path == '/wt/feat').sessions,
+      isEmpty,
+    );
     expect(groups.last.isOrphan, true);
     expect(groups.last.sessions.single.sessionId, 's');
   });

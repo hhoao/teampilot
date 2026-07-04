@@ -14,7 +14,8 @@ import 'llm_config_helpers.dart';
 import 'llm_config_routes.dart';
 
 class LlmProvidersListContent extends StatelessWidget {
-  const LlmProvidersListContent({super.key, 
+  const LlmProvidersListContent({
+    super.key,
     required this.controller,
     this.hubStyle = false,
     this.onSelected,

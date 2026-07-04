@@ -15,9 +15,8 @@ import '../ssh/ssh_client_factory.dart';
 import '../storage/runtime_context.dart';
 import 'launch_artifacts.dart';
 
-typedef WorkspaceContextResolver = Future<RuntimeContext> Function(
-  RuntimeTarget target,
-);
+typedef WorkspaceContextResolver =
+    Future<RuntimeContext> Function(RuntimeTarget target);
 
 /// Phase A: workspace-level machine preparation (ancestry, workspace profile,
 /// CLI on path). Not invoked from the session connect hot path once [ready].
@@ -41,8 +40,11 @@ class WorkspaceProvisioner {
       CliTool cli,
       SshProfile profile,
       SshCommandRunner run,
-    )? installActionBuilder,
-  }) : _installer = RemoteCliInstaller(locator: RemoteCliLocator(registry: registry)),
+    )?
+    installActionBuilder,
+  }) : _installer = RemoteCliInstaller(
+         locator: RemoteCliLocator(registry: registry),
+       ),
        _appData = RemoteAppDataMaterializer(
          loadLocalCredentials: loadLocalCredentials,
          linkResources: linkResources,
@@ -74,7 +76,8 @@ class WorkspaceProvisioner {
     CliTool cli,
     SshProfile profile,
     SshCommandRunner run,
-  )? _installActionBuilder;
+  )?
+  _installActionBuilder;
 
   Future<WorkspaceProvisionResult> provision({
     required RuntimeTarget target,
@@ -134,7 +137,8 @@ class WorkspaceProvisioner {
     }
     final client = await sshClientFactory.clientForStorage(profile);
     final run = RemoteCliLocator.runnerForClient(client);
-    final storedPath = (await cliPathOverride(target.id, cli.value) ?? '').trim();
+    final storedPath = (await cliPathOverride(target.id, cli.value) ?? '')
+        .trim();
     final path = await _installer.ensure(
       cli: cli,
       run: run,

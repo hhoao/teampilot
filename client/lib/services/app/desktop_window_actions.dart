@@ -49,8 +49,7 @@ Future<void> toggleDesktopWindowExpand() async {
     return;
   }
 
-  final maximized =
-      await windowManagerCall(windowManager.isMaximized) ?? false;
+  final maximized = await windowManagerCall(windowManager.isMaximized) ?? false;
   if (maximized) {
     await windowManagerCall(windowManager.unmaximize);
   } else {
@@ -70,8 +69,7 @@ Future<void> toggleDesktopWindowZoom() async {
     return;
   }
 
-  final maximized =
-      await windowManagerCall(windowManager.isMaximized) ?? false;
+  final maximized = await windowManagerCall(windowManager.isMaximized) ?? false;
   if (maximized) {
     await windowManagerCall(windowManager.unmaximize);
   } else {

@@ -155,9 +155,7 @@ abstract final class AppToast {
 
     return Row(
       children: [
-        Expanded(
-          child: Text(message, style: messageStyle, maxLines: 3),
-        ),
+        Expanded(child: Text(message, style: messageStyle, maxLines: 3)),
         TextButton(
           onPressed: () {
             dismiss();

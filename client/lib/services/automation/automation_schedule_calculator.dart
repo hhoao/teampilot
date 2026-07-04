@@ -104,13 +104,20 @@ class AutomationScheduleCalculator {
     final (hour, minute) = parseHourMinute(automation.hourMinute);
     switch (automation.preset) {
       case AutomationSchedulePreset.hourly:
-        return _nextHourly(anchor, dtstart, automation.minute)
-            .millisecondsSinceEpoch;
+        return _nextHourly(
+          anchor,
+          dtstart,
+          automation.minute,
+        ).millisecondsSinceEpoch;
       case AutomationSchedulePreset.daily:
         return _nextDaily(anchor, dtstart, hour, minute).millisecondsSinceEpoch;
       case AutomationSchedulePreset.weekdays:
-        return _nextWeekdays(anchor, dtstart, hour, minute)
-            .millisecondsSinceEpoch;
+        return _nextWeekdays(
+          anchor,
+          dtstart,
+          hour,
+          minute,
+        ).millisecondsSinceEpoch;
       case AutomationSchedulePreset.weekly:
         return _nextWeekly(
           anchor,
@@ -229,7 +236,11 @@ class AutomationScheduleCalculator {
       hours: _parseField(parts[1], 0, 23),
       daysOfMonth: _parseField(parts[2], 1, 31),
       months: _parseField(parts[3], 1, 12),
-      daysOfWeek: _parseField(parts[4], 0, 7).map((d) => d == 7 ? 0 : d).toSet(),
+      daysOfWeek: _parseField(
+        parts[4],
+        0,
+        7,
+      ).map((d) => d == 7 ? 0 : d).toSet(),
     );
   }
 

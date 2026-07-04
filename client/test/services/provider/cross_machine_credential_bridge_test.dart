@@ -17,80 +17,88 @@ import 'package:teampilot/services/storage/runtime_layout.dart';
 
 import '../../support/in_memory_filesystem.dart';
 
-RuntimeContext _memoryContext(String dir, InMemoryFilesystem fs) => RuntimeContext(
-  target: RuntimeTarget.local(),
-  filesystem: fs,
-  home: dir,
-  cwd: dir,
-  appDataRoot: dir,
-  paths: AppPaths(dir),
-);
+RuntimeContext _memoryContext(String dir, InMemoryFilesystem fs) =>
+    RuntimeContext(
+      target: RuntimeTarget.local(),
+      filesystem: fs,
+      home: dir,
+      cwd: dir,
+      appDataRoot: dir,
+      paths: AppPaths(dir),
+    );
 
 void main() {
-  test('materializeClaudeCredential copies home credential to work plane', () async {
-    final homeFs = InMemoryFilesystem();
-    final workFs = InMemoryFilesystem();
-    final catalog = ControlPlaneProfilePaths(
-      _memoryContext('/home-catalog', homeFs),
-    );
-    final work = ConfigProfileService(
-      basePath: '/work',
-      home: '/work-home',
-      fs: workFs,
-      layout: _memoryContext('/work', workFs).layout,
-    );
+  test(
+    'materializeClaudeCredential copies home credential to work plane',
+    () async {
+      final homeFs = InMemoryFilesystem();
+      final workFs = InMemoryFilesystem();
+      final catalog = ControlPlaneProfilePaths(
+        _memoryContext('/home-catalog', homeFs),
+      );
+      final work = ConfigProfileService(
+        basePath: '/work',
+        home: '/work-home',
+        fs: workFs,
+        layout: _memoryContext('/work', workFs).layout,
+      );
 
-    final svc = ClaudeProviderCredentialsService(
-      fs: catalog.fs,
-      basePath: catalog.basePath,
-      resolveHomeDirectory: () => catalog.home,
-    );
-    final src = svc.credentialPath('anthropic');
-    await catalog.fs.ensureDir(svc.providerDir('anthropic'));
-    await catalog.fs.writeString(src, '{"token":"home-secret"}');
-    expect(await catalog.fs.readBytes(src), isNotEmpty);
+      final svc = ClaudeProviderCredentialsService(
+        fs: catalog.fs,
+        basePath: catalog.basePath,
+        resolveHomeDirectory: () => catalog.home,
+      );
+      final src = svc.credentialPath('anthropic');
+      await catalog.fs.ensureDir(svc.providerDir('anthropic'));
+      await catalog.fs.writeString(src, '{"token":"home-secret"}');
+      expect(await catalog.fs.readBytes(src), isNotEmpty);
 
-    final copied = await CrossMachineCredentialBridge.materializeClaudeCredential(
-      catalog: catalog,
-      work: work,
-      providerId: 'anthropic',
-      binding: CredentialBindingKind.isolated,
-    );
-    expect(copied, isTrue);
+      final copied =
+          await CrossMachineCredentialBridge.materializeClaudeCredential(
+            catalog: catalog,
+            work: work,
+            providerId: 'anthropic',
+            binding: CredentialBindingKind.isolated,
+          );
+      expect(copied, isTrue);
 
-    final workSvc = ClaudeProviderCredentialsService(
-      fs: work.fs,
-      basePath: work.basePath,
-      resolveHomeDirectory: () => work.home,
-    );
-    final destBytes = await work.fs.readBytes(
-      workSvc.credentialPath('anthropic'),
-    );
-    expect(destBytes, isNotNull);
-    expect(String.fromCharCodes(destBytes!), contains('home-secret'));
-  });
+      final workSvc = ClaudeProviderCredentialsService(
+        fs: work.fs,
+        basePath: work.basePath,
+        resolveHomeDirectory: () => work.home,
+      );
+      final destBytes = await work.fs.readBytes(
+        workSvc.credentialPath('anthropic'),
+      );
+      expect(destBytes, isNotNull);
+      expect(String.fromCharCodes(destBytes!), contains('home-secret'));
+    },
+  );
 
-  test('materializeClaudeCredential returns false when source missing', () async {
-    final catalog = ControlPlaneProfilePaths(
-      _memoryContext('/home-catalog', InMemoryFilesystem()),
-    );
-    final work = ConfigProfileService(
-      basePath: '/work',
-      home: '/work-home',
-      fs: InMemoryFilesystem(),
-      layout: _memoryContext('/work', InMemoryFilesystem()).layout,
-    );
+  test(
+    'materializeClaudeCredential returns false when source missing',
+    () async {
+      final catalog = ControlPlaneProfilePaths(
+        _memoryContext('/home-catalog', InMemoryFilesystem()),
+      );
+      final work = ConfigProfileService(
+        basePath: '/work',
+        home: '/work-home',
+        fs: InMemoryFilesystem(),
+        layout: _memoryContext('/work', InMemoryFilesystem()).layout,
+      );
 
-    expect(
-      await CrossMachineCredentialBridge.materializeClaudeCredential(
-        catalog: catalog,
-        work: work,
-        providerId: 'missing',
-        binding: CredentialBindingKind.linked,
-      ),
-      isFalse,
-    );
-  });
+      expect(
+        await CrossMachineCredentialBridge.materializeClaudeCredential(
+          catalog: catalog,
+          work: work,
+          providerId: 'missing',
+          binding: CredentialBindingKind.linked,
+        ),
+        isFalse,
+      );
+    },
+  );
 
   test('materializeCodexAuth copies auth.json to work plane', () async {
     final homeFs = InMemoryFilesystem();
@@ -135,155 +143,163 @@ void main() {
     );
   });
 
-  test('materializeCursorCredential copies auth.json to work home tree', () async {
-    final homeFs = InMemoryFilesystem();
-    final workFs = InMemoryFilesystem();
-    final catalog = ControlPlaneProfilePaths(
-      _memoryContext('/home-catalog', homeFs),
-    );
-    final work = ConfigProfileService(
-      basePath: '/work',
-      home: '/work-home',
-      fs: workFs,
-      layout: _memoryContext('/work', workFs).layout,
-    );
+  test(
+    'materializeCursorCredential copies auth.json to work home tree',
+    () async {
+      final homeFs = InMemoryFilesystem();
+      final workFs = InMemoryFilesystem();
+      final catalog = ControlPlaneProfilePaths(
+        _memoryContext('/home-catalog', homeFs),
+      );
+      final work = ConfigProfileService(
+        basePath: '/work',
+        home: '/work-home',
+        fs: workFs,
+        layout: _memoryContext('/work', workFs).layout,
+      );
 
-    final catalogSvc = CursorProviderCredentialsService(
-      fs: catalog.fs,
-      basePath: catalog.basePath,
-    );
-    final authPath = CursorHomeLayout(
-      pathContext: catalog.fs.pathContext,
-    ).authJson(catalogSvc.providerHome('default'));
-    await catalog.fs.ensureDir(catalog.fs.pathContext.dirname(authPath));
-    await catalog.fs.writeString(
-      authPath,
-      '{"accessToken":"remote-token"}',
-    );
-    await catalog.fs.writeString(
-      CursorHomeLayout(pathContext: catalog.fs.pathContext).cliConfig(
-        catalogSvc.providerHome('default'),
-      ),
-      '{"authInfo":{"userId":"u1"}}',
-    );
+      final catalogSvc = CursorProviderCredentialsService(
+        fs: catalog.fs,
+        basePath: catalog.basePath,
+      );
+      final authPath = CursorHomeLayout(
+        pathContext: catalog.fs.pathContext,
+      ).authJson(catalogSvc.providerHome('default'));
+      await catalog.fs.ensureDir(catalog.fs.pathContext.dirname(authPath));
+      await catalog.fs.writeString(authPath, '{"accessToken":"remote-token"}');
+      await catalog.fs.writeString(
+        CursorHomeLayout(
+          pathContext: catalog.fs.pathContext,
+        ).cliConfig(catalogSvc.providerHome('default')),
+        '{"authInfo":{"userId":"u1"}}',
+      );
 
-    expect(
-      await CrossMachineCredentialBridge.materializeCursorCredential(
-        catalog: catalog,
-        work: work,
-        providerId: 'default',
-      ),
-      isTrue,
-    );
+      expect(
+        await CrossMachineCredentialBridge.materializeCursorCredential(
+          catalog: catalog,
+          work: work,
+          providerId: 'default',
+        ),
+        isTrue,
+      );
 
-    final workSvc = CursorProviderCredentialsService(
-      fs: work.fs,
-      basePath: work.basePath,
-    );
-    final dest = CursorHomeLayout(pathContext: work.fs.pathContext).authJson(
-      workSvc.providerHome('default'),
-    );
-    expect(
-      String.fromCharCodes((await work.fs.readBytes(dest))!),
-      contains('remote-token'),
-    );
-    expect(
-      String.fromCharCodes(
-        (await work.fs.readBytes(
-          CursorHomeLayout(pathContext: work.fs.pathContext).cliConfig(
-            workSvc.providerHome('default'),
-          ),
-        ))!,
-      ),
-      contains('userId'),
-    );
-  });
+      final workSvc = CursorProviderCredentialsService(
+        fs: work.fs,
+        basePath: work.basePath,
+      );
+      final dest = CursorHomeLayout(
+        pathContext: work.fs.pathContext,
+      ).authJson(workSvc.providerHome('default'));
+      expect(
+        String.fromCharCodes((await work.fs.readBytes(dest))!),
+        contains('remote-token'),
+      );
+      expect(
+        String.fromCharCodes(
+          (await work.fs.readBytes(
+            CursorHomeLayout(
+              pathContext: work.fs.pathContext,
+            ).cliConfig(workSvc.providerHome('default')),
+          ))!,
+        ),
+        contains('userId'),
+      );
+    },
+  );
 
-  test('materializeOpencodeAuth copies provider auth.json to work plane', () async {
-    const layout = OpencodeDataLayout();
-    final homeFs = InMemoryFilesystem();
-    final workFs = InMemoryFilesystem();
-    final catalog = ControlPlaneProfilePaths(
-      _memoryContext('/home-catalog', homeFs),
-    );
-    final work = ConfigProfileService(
-      basePath: '/work',
-      home: '/work-home',
-      fs: workFs,
-      layout: _memoryContext('/work', workFs).layout,
-    );
+  test(
+    'materializeOpencodeAuth copies provider auth.json to work plane',
+    () async {
+      const layout = OpencodeDataLayout();
+      final homeFs = InMemoryFilesystem();
+      final workFs = InMemoryFilesystem();
+      final catalog = ControlPlaneProfilePaths(
+        _memoryContext('/home-catalog', homeFs),
+      );
+      final work = ConfigProfileService(
+        basePath: '/work',
+        home: '/work-home',
+        fs: workFs,
+        layout: _memoryContext('/work', workFs).layout,
+      );
 
-    final src = layout.providerAuthJsonPath(
-      catalog.pathContext.join(
-        catalog.basePath,
-        'providers',
-        CliTool.opencode.value,
-        'official',
-      ),
-    );
-    await catalog.fs.ensureDir(catalog.fs.pathContext.dirname(src));
-    await catalog.fs.writeString(src, '{"provider":"official","ready":true}');
+      final src = layout.providerAuthJsonPath(
+        catalog.pathContext.join(
+          catalog.basePath,
+          'providers',
+          CliTool.opencode.value,
+          'official',
+        ),
+      );
+      await catalog.fs.ensureDir(catalog.fs.pathContext.dirname(src));
+      await catalog.fs.writeString(src, '{"provider":"official","ready":true}');
 
-    expect(
-      await CrossMachineCredentialBridge.materializeOpencodeAuth(
-        catalog: catalog,
-        work: work,
-        providerId: 'official',
-      ),
-      isTrue,
-    );
+      expect(
+        await CrossMachineCredentialBridge.materializeOpencodeAuth(
+          catalog: catalog,
+          work: work,
+          providerId: 'official',
+        ),
+        isTrue,
+      );
 
-    final dest = layout.providerAuthJsonPath(
-      work.pathContext.join(
-        work.basePath,
-        'providers',
-        CliTool.opencode.value,
-        'official',
-      ),
-    );
-    expect(
-      String.fromCharCodes((await work.fs.readBytes(dest))!),
-      contains('official'),
-    );
-  });
+      final dest = layout.providerAuthJsonPath(
+        work.pathContext.join(
+          work.basePath,
+          'providers',
+          CliTool.opencode.value,
+          'official',
+        ),
+      );
+      expect(
+        String.fromCharCodes((await work.fs.readBytes(dest))!),
+        contains('official'),
+      );
+    },
+  );
 
-  test('materializeFlashskyaiLlmConfig copies llm_config.json to work plane',
-      () async {
-    final homeFs = InMemoryFilesystem();
-    final workFs = InMemoryFilesystem();
-    final catalog = ControlPlaneProfilePaths(
-      _memoryContext('/home-catalog', homeFs),
-    );
-    final work = ConfigProfileService(
-      basePath: '/work',
-      home: '/work-home',
-      fs: workFs,
-      layout: _memoryContext('/work', workFs).layout,
-    );
-    final catalogLayout = RuntimeLayout(
-      teampilotRoot: catalog.basePath,
-      fs: homeFs,
-    );
-    await homeFs.ensureDir(
-      homeFs.pathContext.dirname(catalogLayout.appFlashskyaiLlmConfigFile),
-    );
-    await homeFs.writeString(
-      catalogLayout.appFlashskyaiLlmConfigFile,
-      '{"providers":{"p":{"api_key":"k"}},"models":{}}',
-    );
+  test(
+    'materializeFlashskyaiLlmConfig copies llm_config.json to work plane',
+    () async {
+      final homeFs = InMemoryFilesystem();
+      final workFs = InMemoryFilesystem();
+      final catalog = ControlPlaneProfilePaths(
+        _memoryContext('/home-catalog', homeFs),
+      );
+      final work = ConfigProfileService(
+        basePath: '/work',
+        home: '/work-home',
+        fs: workFs,
+        layout: _memoryContext('/work', workFs).layout,
+      );
+      final catalogLayout = RuntimeLayout(
+        teampilotRoot: catalog.basePath,
+        fs: homeFs,
+      );
+      await homeFs.ensureDir(
+        homeFs.pathContext.dirname(catalogLayout.appFlashskyaiLlmConfigFile),
+      );
+      await homeFs.writeString(
+        catalogLayout.appFlashskyaiLlmConfigFile,
+        '{"providers":{"p":{"api_key":"k"}},"models":{}}',
+      );
 
-    expect(
-      await CrossMachineCredentialBridge.materializeFlashskyaiLlmConfig(
-        catalog: catalog,
-        work: work,
-      ),
-      isTrue,
-    );
+      expect(
+        await CrossMachineCredentialBridge.materializeFlashskyaiLlmConfig(
+          catalog: catalog,
+          work: work,
+        ),
+        isTrue,
+      );
 
-    final workLayout = RuntimeLayout(teampilotRoot: work.basePath, fs: workFs);
-    expect(
-      await workFs.readString(workLayout.appFlashskyaiLlmConfigFile),
-      contains('k'),
-    );
-  });
+      final workLayout = RuntimeLayout(
+        teampilotRoot: work.basePath,
+        fs: workFs,
+      );
+      expect(
+        await workFs.readString(workLayout.appFlashskyaiLlmConfigFile),
+        contains('k'),
+      );
+    },
+  );
 }

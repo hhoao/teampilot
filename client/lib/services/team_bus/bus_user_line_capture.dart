@@ -152,8 +152,7 @@ class BusUserLineCapture {
     }
   }
 
-  static bool _isCsiFinal(int codeUnit) =>
-      codeUnit >= 0x40 && codeUnit <= 0x7e;
+  static bool _isCsiFinal(int codeUnit) => codeUnit >= 0x40 && codeUnit <= 0x7e;
 
   void _backspace() {
     if (_pendingUtf8Bytes.isNotEmpty) {

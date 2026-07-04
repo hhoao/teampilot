@@ -1,4 +1,4 @@
-﻿import 'package:flutter/material.dart';
+import 'package:flutter/material.dart';
 import 'package:teampilot/theme/app_icon_sizes.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
@@ -147,7 +147,8 @@ class _SkillDiscoverySourceRow extends StatelessWidget {
           onTap: () => onSourceChanged(SkillSearchSource.skillsSh),
         ),
         const Spacer(),
-        if (source == SkillSearchSource.repos) const _SkillDiscoveryRefreshButton(),
+        if (source == SkillSearchSource.repos)
+          const _SkillDiscoveryRefreshButton(),
       ],
     );
   }
@@ -165,14 +166,15 @@ class _SkillDiscoveryRefreshButton extends StatelessWidget {
         repoSyncingKeys: state.repoSyncingKeys,
       ),
       builder: (context, sync) {
-        final syncing = sync.discoveryLoading || sync.repoSyncingKeys.isNotEmpty;
+        final syncing =
+            sync.discoveryLoading || sync.repoSyncingKeys.isNotEmpty;
         return IconButton(
           tooltip: l10n.skillsCheckUpdates,
           onPressed: syncing
               ? null
               : () => context.read<SkillCubit>().ensureDiscoveryLoaded(
-                    force: true,
-                  ),
+                  force: true,
+                ),
           icon: syncing
               ? const SizedBox(
                   width: 14,

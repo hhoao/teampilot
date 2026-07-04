@@ -18,10 +18,7 @@ void main() {
         home: const Scaffold(
           body: SidebarActionMenuPanel(
             children: [
-              SidebarActionMenuItem(
-                icon: Icons.edit,
-                label: 'Rename',
-              ),
+              SidebarActionMenuItem(icon: Icons.edit, label: 'Rename'),
             ],
           ),
         ),
@@ -37,13 +34,16 @@ void main() {
     tester,
   ) async {
     final compact = await labelFontSizeFor(tester, AppTypographyScale.compact);
-    final comfortable =
-        await labelFontSizeFor(tester, AppTypographyScale.comfortable);
+    final comfortable = await labelFontSizeFor(
+      tester,
+      AppTypographyScale.comfortable,
+    );
 
     expect(
       comfortable,
       greaterThan(compact),
-      reason: 'comfortable (×1.08) must render larger than compact (×0.92); '
+      reason:
+          'comfortable (×1.08) must render larger than compact (×0.92); '
           'a hardcoded fontSize would make them equal',
     );
   });

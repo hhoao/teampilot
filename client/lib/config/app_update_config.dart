@@ -16,10 +16,7 @@ const String appUpdateGitHubRepo = String.fromEnvironment(
 /// Prefix used in CI release asset filenames (`teampilot-1.0.0-linux.deb`, …).
 const String appUpdateReleaseArtifactSlug = 'teampilot';
 
-String appUpdateLatestReleaseApiUrl({
-  String? owner,
-  String? repo,
-}) {
+String appUpdateLatestReleaseApiUrl({String? owner, String? repo}) {
   final o = owner ?? appUpdateGitHubOwner;
   final r = repo ?? appUpdateGitHubRepo;
   return 'https://api.github.com/repos/$o/$r/releases/latest';

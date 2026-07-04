@@ -174,12 +174,11 @@ class _WorkspaceToolsScopeSyncState extends State<WorkspaceToolsScopeSync> {
 
   @override
   Widget build(BuildContext context) {
-    final scopeChild = BlocBuilder<WorkspaceToolsScopeCubit, WorkspaceToolsScopeState>(
-      builder: (context, scopeState) => WorkspaceToolsScope(
-        state: scopeState,
-        child: widget.child,
-      ),
-    );
+    final scopeChild =
+        BlocBuilder<WorkspaceToolsScopeCubit, WorkspaceToolsScopeState>(
+          builder: (context, scopeState) =>
+              WorkspaceToolsScope(state: scopeState, child: widget.child),
+        );
 
     if (!_routeActive) {
       return scopeChild;

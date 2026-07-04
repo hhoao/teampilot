@@ -4,11 +4,9 @@ import '../services/mcp/mcp_server_validator.dart';
 import '../services/storage/app_storage.dart';
 
 class McpRepository {
-  McpRepository({
-    McpCatalogService? catalog,
-    McpServerValidator? validator,
-  }) : _catalog = catalog,
-       _validator = validator ?? McpServerValidator();
+  McpRepository({McpCatalogService? catalog, McpServerValidator? validator})
+    : _catalog = catalog,
+      _validator = validator ?? McpServerValidator();
 
   final McpCatalogService? _catalog;
   final McpServerValidator _validator;

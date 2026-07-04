@@ -1,4 +1,4 @@
-﻿import 'package:file_picker/file_picker.dart';
+import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
 import 'package:teampilot/theme/app_icon_sizes.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
@@ -18,7 +18,8 @@ class SessionLlmConfigPathSettingsRow extends StatefulWidget {
       SessionLlmConfigPathSettingsRowState();
 }
 
-class SessionLlmConfigPathSettingsRowState extends State<SessionLlmConfigPathSettingsRow> {
+class SessionLlmConfigPathSettingsRowState
+    extends State<SessionLlmConfigPathSettingsRow> {
   late final TextEditingController _textController;
   late final FocusNode _llmPathFocus;
   late final Debouncer _llmPathPersistDebouncer;
@@ -162,7 +163,10 @@ class SessionLlmConfigPathSettingsRowState extends State<SessionLlmConfigPathSet
             OutlinedButton.icon(
               key: AppKeys.llmConfigPathOverrideBrowseButton,
               onPressed: state.isLoading ? null : _pickFile,
-              icon: Icon(Icons.folder_open_outlined, size: context.appIconSizes.md),
+              icon: Icon(
+                Icons.folder_open_outlined,
+                size: context.appIconSizes.md,
+              ),
               label: Text(l10n.cliExecutablePathBrowse),
             ),
           ],

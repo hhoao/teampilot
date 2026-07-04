@@ -27,7 +27,11 @@ void main() {
 
   test('resolveProviderId prefers member provider over team binding', () async {
     await seedCursorProviders([
-      const AppProviderConfig(id: 'member-p', cli: CliTool.cursor, name: 'Member'),
+      const AppProviderConfig(
+        id: 'member-p',
+        cli: CliTool.cursor,
+        name: 'Member',
+      ),
       const AppProviderConfig(id: 'team-p', cli: CliTool.cursor, name: 'Team'),
     ]);
 
@@ -45,10 +49,7 @@ void main() {
       provider: 'member-p',
     );
 
-    expect(
-      await resolver.resolveProviderId(team, member: member),
-      'member-p',
-    );
+    expect(await resolver.resolveProviderId(team, member: member), 'member-p');
   });
 
   test('resolveProviderId falls back to team cursor binding', () async {
@@ -68,7 +69,11 @@ void main() {
 
   test('resolveProviderId falls back to roster member provider', () async {
     await seedCursorProviders([
-      const AppProviderConfig(id: 'roster-p', cli: CliTool.cursor, name: 'Roster'),
+      const AppProviderConfig(
+        id: 'roster-p',
+        cli: CliTool.cursor,
+        name: 'Roster',
+      ),
     ]);
 
     const team = TeamProfile(

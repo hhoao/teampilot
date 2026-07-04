@@ -42,7 +42,6 @@ import '../cubits/launch_profile_cubit.dart';
 import '../cubits/team_hub_cubit.dart';
 import '../models/runtime_target.dart';
 import '../models/ssh_profile.dart';
-import '../models/launch_profile_kind.dart';
 import '../models/team_config.dart';
 import '../services/app/boot_splash.dart';
 import '../utils/yield_ui_frame.dart';
@@ -700,8 +699,9 @@ Future<AppShell> buildAppShell({
   chatCubit.bindPresenceCubit(memberPresenceCubit);
 
   final scheduleCalculator = AutomationScheduleCalculator();
-  final personalLaunchContextResolver =
-      PersonalLaunchContextResolver(sessionLifecycleService);
+  final personalLaunchContextResolver = PersonalLaunchContextResolver(
+    sessionLifecycleService,
+  );
   final automationDispatcher = AutomationDispatcher(
     repository: automationRepo,
     scheduleCalculator: scheduleCalculator,
@@ -721,9 +721,7 @@ Future<AppShell> buildAppShell({
     },
     personalContextResolver: personalLaunchContextResolver,
     sessionById: (sessionId, workspaceId) => chatCubit.state.sessions
-        .where(
-          (s) => s.sessionId == sessionId && s.workspaceId == workspaceId,
-        )
+        .where((s) => s.sessionId == sessionId && s.workspaceId == workspaceId)
         .firstOrNull,
   );
   automationScheduler = AutomationScheduler(

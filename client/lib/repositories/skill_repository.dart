@@ -64,7 +64,8 @@ class SkillRepository {
     bool force = false,
   }) => repoCache.ensureSynced(repo, force: force);
 
-  Future<void> deleteRepoCache(SkillRepo repo) => repoCache.deleteRepoCache(repo);
+  Future<void> deleteRepoCache(SkillRepo repo) =>
+      repoCache.deleteRepoCache(repo);
 
   Future<List<SkillUpdateInfo>> checkUpdates(List<Skill> installed) =>
       install.checkUpdates(installed);

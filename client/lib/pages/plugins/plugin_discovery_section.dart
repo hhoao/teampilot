@@ -1,4 +1,4 @@
-﻿import 'package:flutter/material.dart';
+import 'package:flutter/material.dart';
 import 'package:teampilot/theme/app_icon_sizes.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
@@ -135,7 +135,10 @@ class PluginDiscoveryBodyState extends State<PluginDiscoveryBody> {
                       controller: _searchCtrl,
                       decoration: InputDecoration(
                         hintText: l10n.pluginsSearchPlaceholder,
-                        prefixIcon: Icon(Icons.search, size: context.appIconSizes.md),
+                        prefixIcon: Icon(
+                          Icons.search,
+                          size: context.appIconSizes.md,
+                        ),
                         floatingLabelBehavior: FloatingLabelBehavior.never,
                       ),
                       onChanged: (_) => setState(() {}),

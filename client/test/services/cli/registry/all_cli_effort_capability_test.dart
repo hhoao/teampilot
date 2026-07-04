@@ -29,8 +29,10 @@ void main() {
       name: 'P',
       defaultModel: 'gpt-5',
     );
-    expect(capability.providerPickerPlacement(provider),
-        EffortPickerPlacement.provider);
+    expect(
+      capability.providerPickerPlacement(provider),
+      EffortPickerPlacement.provider,
+    );
     expect(capability.teamPickerPlacement(), EffortPickerPlacement.hidden);
     expect(capability.isApplicable(model: 'gpt-5'), isTrue);
     expect(capability.isApplicable(model: 'gpt-4o'), isFalse);
@@ -49,8 +51,7 @@ void main() {
       'high',
       memberModel: 'claude-sonnet-4-20250514',
     );
-    final providerEntry =
-        (merged['provider'] as Map)['anthropic'] as Map;
+    final providerEntry = (merged['provider'] as Map)['anthropic'] as Map;
     final modelEntry =
         (providerEntry['models'] as Map)['claude-sonnet-4-20250514'] as Map;
     final options = modelEntry['options'] as Map;
@@ -66,11 +67,7 @@ void main() {
       members: const [],
       cliEffortLevels: const {'cursor': 'low'},
     );
-    final member = TeamMemberConfig(
-      id: 'm1',
-      name: 'M',
-      model: 'gpt-5',
-    );
+    final member = TeamMemberConfig(id: 'm1', name: 'M', model: 'gpt-5');
     final args = adapter.buildArguments(
       CliLaunchContext(team: team, member: member),
     );
@@ -80,10 +77,7 @@ void main() {
   test('FlashskyaiEffortCapability mirrors Claude placement', () {
     const capability = FlashskyaiEffortCapability();
     expect(capability.teamPickerPlacement(), EffortPickerPlacement.team);
-    expect(
-      capability.memberPickerPlacement(),
-      EffortPickerPlacement.member,
-    );
+    expect(capability.memberPickerPlacement(), EffortPickerPlacement.member);
     expect(capability.isApplicable(model: 'sonnet'), isTrue);
   });
 }

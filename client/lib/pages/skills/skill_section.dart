@@ -35,4 +35,3 @@ IconData skillSectionIcon(SkillSection section) => switch (section) {
   SkillSection.discovery => Icons.travel_explore_outlined,
   SkillSection.repos => Icons.source_outlined,
 };
-

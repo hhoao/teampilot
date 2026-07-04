@@ -9,9 +9,7 @@ final class CursorEffortCapability implements CliEffortCapability {
   EffortPickerPlacement teamPickerPlacement() => EffortPickerPlacement.team;
 
   @override
-  EffortPickerPlacement memberPickerPlacement({
-    AppProviderConfig? provider,
-  }) =>
+  EffortPickerPlacement memberPickerPlacement({AppProviderConfig? provider}) =>
       EffortPickerPlacement.member;
 
   @override
@@ -26,13 +24,9 @@ final class CursorEffortCapability implements CliEffortCapability {
   List<String> effortCandidates({
     required String model,
     AppProviderConfig? provider,
-  }) =>
-      CursorEffortCatalog.levelsForModel(model);
+  }) => CursorEffortCatalog.levelsForModel(model);
 
   @override
-  String defaultEffort({
-    required String model,
-    AppProviderConfig? provider,
-  }) =>
+  String defaultEffort({required String model, AppProviderConfig? provider}) =>
       CursorEffortCatalog.defaultLevel;
 }

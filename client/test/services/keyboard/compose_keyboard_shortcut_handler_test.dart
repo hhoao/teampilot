@@ -15,10 +15,10 @@ void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
 
   KeyDownEvent keyDown(LogicalKeyboardKey logicalKey) => KeyDownEvent(
-        physicalKey: _physicalFor(logicalKey),
-        logicalKey: logicalKey,
-        timeStamp: Duration.zero,
-      );
+    physicalKey: _physicalFor(logicalKey),
+    logicalKey: logicalKey,
+    timeStamp: Duration.zero,
+  );
 
   test('insertNewlineAtSelection inserts at caret', () {
     final controller = TextEditingController(text: 'ab')

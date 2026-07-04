@@ -6,11 +6,7 @@ void main() {
   testWidgets('PaneEntryAnimation renders child', (tester) async {
     await tester.pumpWidget(
       const MaterialApp(
-        home: Scaffold(
-          body: PaneEntryAnimation(
-            child: Text('pane'),
-          ),
-        ),
+        home: Scaffold(body: PaneEntryAnimation(child: Text('pane'))),
       ),
     );
 

@@ -8,5 +8,4 @@ AppProviderRepository providerCatalogRepository(ConfigProfilePaths catalog) {
 bool configProfileCrossMachine(
   ConfigProfilePaths catalog,
   ConfigProfilePaths work,
-) =>
-    catalog.basePath != work.basePath;
+) => catalog.basePath != work.basePath;

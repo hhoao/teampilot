@@ -8,8 +8,9 @@ import 'workspace_terminal_registry.dart';
 
 /// Connect/disconnect orchestration with generation guards (SSH stale-connect safe).
 class WorkspaceTerminalConnectCoordinator {
-  WorkspaceTerminalConnectCoordinator({required WorkspaceShellConnector connector})
-    : _connector = connector;
+  WorkspaceTerminalConnectCoordinator({
+    required WorkspaceShellConnector connector,
+  }) : _connector = connector;
 
   final WorkspaceShellConnector _connector;
 

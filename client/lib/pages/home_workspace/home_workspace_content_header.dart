@@ -12,9 +12,7 @@ class HomeTeamHeader extends StatelessWidget {
   final TeamHeaderSnapshot snapshot;
 
   factory HomeTeamHeader.fromTeam(TeamProfile team) {
-    return HomeTeamHeader(
-      snapshot: LaunchProfileSelectors.teamHeader(team)!,
-    );
+    return HomeTeamHeader(snapshot: LaunchProfileSelectors.teamHeader(team)!);
   }
 
   @override

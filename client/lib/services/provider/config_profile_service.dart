@@ -147,11 +147,7 @@ class ConfigProfileService implements ConfigProfileDelegate {
   }
 
   Future<
-    ({
-      TeamMemberConfig? member,
-      List<TeamMemberConfig> members,
-      CliTool cli,
-    })
+    ({TeamMemberConfig? member, List<TeamMemberConfig> members, CliTool cli})
   >
   _resolveTeamLaunchRoster({
     required TeamProfile? team,
@@ -164,30 +160,20 @@ class ConfigProfileService implements ConfigProfileDelegate {
     }
     final presets = await _loadGlobalPresets();
     final roster = members.isNotEmpty ? members : team.members;
-    final resolvedMember =
-        member != null && member.isValid
-            ? memberForLaunch(
-                team: team,
-                member: member,
-                globalPresets: presets,
-              )
-            : member;
+    final resolvedMember = member != null && member.isValid
+        ? memberForLaunch(team: team, member: member, globalPresets: presets)
+        : member;
     final resolvedRoster = resolveTeamRosterForLaunch(
       team: team,
       members: roster,
       globalPresets: presets,
     );
-    final effectiveCli =
-        resolvedMember != null && resolvedMember.isValid
-            ? (team.teamMode == TeamMode.mixed
-                  ? resolvedMember.cli ?? team.cli
-                  : team.cli)
-            : cli;
-    return (
-      member: resolvedMember,
-      members: resolvedRoster,
-      cli: effectiveCli,
-    );
+    final effectiveCli = resolvedMember != null && resolvedMember.isValid
+        ? (team.teamMode == TeamMode.mixed
+              ? resolvedMember.cli ?? team.cli
+              : team.cli)
+        : cli;
+    return (member: resolvedMember, members: resolvedRoster, cli: effectiveCli);
   }
 
   @override
@@ -249,14 +235,13 @@ class ConfigProfileService implements ConfigProfileDelegate {
     required String workspaceId,
     required String sessionId,
     String? memberId,
-  }) =>
-      sessionConfigDirForTool(
-        cli,
-        layout,
-        workspaceId: workspaceId,
-        sessionId: sessionId,
-        memberId: memberId,
-      );
+  }) => sessionConfigDirForTool(
+    cli,
+    layout,
+    workspaceId: workspaceId,
+    sessionId: sessionId,
+    memberId: memberId,
+  );
 
   Future<void> ensureTeamProfile(
     String teamId, {
@@ -308,9 +293,8 @@ class ConfigProfileService implements ConfigProfileDelegate {
           )
           .then((json) => memberProvisionJson = json),
     ]);
-    final pluginProvisioner = _cliRegistry.capability<PluginProvisionerCapability>(
-      cli,
-    );
+    final pluginProvisioner = _cliRegistry
+        .capability<PluginProvisionerCapability>(cli);
     if (pluginProvisioner != null) {
       await pluginProvisioner.provision(
         PluginProvisionContext(
@@ -395,7 +379,10 @@ class ConfigProfileService implements ConfigProfileDelegate {
         if (directory.trim().isNotEmpty) directory.trim(),
     ];
     if (paths.isNotEmpty) {
-      await WorkspaceTrustProvisioner(layout: layout, fs: fs).provisionWorkspace(
+      await WorkspaceTrustProvisioner(
+        layout: layout,
+        fs: fs,
+      ).provisionWorkspace(
         workspaceId: trimmedWorkspaceId,
         directories: paths,
         tools: [cli.value],
@@ -442,8 +429,8 @@ class ConfigProfileService implements ConfigProfileDelegate {
             .then((json) => sessionProvisionJson = json),
       ]);
 
-      final pluginProvisioner =
-          _cliRegistry.capability<PluginProvisionerCapability>(cli);
+      final pluginProvisioner = _cliRegistry
+          .capability<PluginProvisionerCapability>(cli);
       if (pluginProvisioner != null) {
         await pluginProvisioner.provision(
           PluginProvisionContext(
@@ -516,10 +503,7 @@ class ConfigProfileService implements ConfigProfileDelegate {
     }
 
     final warnings = <String>[];
-    await _infra.collectExtensionWarnings(
-      warnings,
-      teamId: profileId.trim(),
-    );
+    await _infra.collectExtensionWarnings(warnings, teamId: profileId.trim());
 
     final cli = preset?.cli ?? CliTool.claude;
     final standaloneScope = StandaloneLaunchProfileScope(
@@ -654,11 +638,7 @@ class ConfigProfileService implements ConfigProfileDelegate {
       preset: preset,
     );
     final executor = manifestExecutor ?? const ManifestExecutor();
-    await executor.flush(
-      manifest: staged.manifest,
-      targetFs: fs,
-      sourceFs: fs,
-    );
+    await executor.flush(manifest: staged.manifest, targetFs: fs, sourceFs: fs);
     return staged.outcome;
   }
 
@@ -863,11 +843,7 @@ class ConfigProfileService implements ConfigProfileDelegate {
       busIdle: busIdle,
     );
     final executor = manifestExecutor ?? const ManifestExecutor();
-    await executor.flush(
-      manifest: staged.manifest,
-      targetFs: fs,
-      sourceFs: fs,
-    );
+    await executor.flush(manifest: staged.manifest, targetFs: fs, sourceFs: fs);
     return staged.outcome;
   }
 

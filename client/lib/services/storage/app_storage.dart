@@ -83,23 +83,18 @@ class AppPaths {
   String get extensionsStateJson =>
       _ctx.join(basePath, 'extensions', 'state.json');
 
-  String get notificationsJson =>
-      notificationsJsonForTeampilotRoot(basePath);
+  String get notificationsJson => notificationsJsonForTeampilotRoot(basePath);
 
-  String get cliPresetsJson =>
-      _ctx.join(basePath, 'cli-presets.json');
+  String get cliPresetsJson => _ctx.join(basePath, 'cli-presets.json');
 
   /// Linux desktop / `path_provider` app-data id (e.g. `~/.local/share/com.hhoa.teampilot`).
   static const teampilotAppDataDirName = 'com.hhoa.teampilot';
 
   /// Default TeamPilot UI data root for a remote POSIX home (matches [basePath] on desktop).
   static String defaultTeampilotAppDataDirForHome(String home) =>
-      pathContextForDataRoot(home).join(
+      pathContextForDataRoot(
         home,
-        '.local',
-        'share',
-        teampilotAppDataDirName,
-      );
+      ).join(home, '.local', 'share', teampilotAppDataDirName);
 
   static p.Context get posixPathContext => p.Context(style: p.Style.posix);
 
@@ -177,11 +172,13 @@ class AppPaths {
   static String notificationsJsonForTeampilotRoot(String teampilotRoot) =>
       _pathUnderTeampilotRoot(teampilotRoot, 'notifications.json');
 
-  static String pluginMarketplacesConfigPathForTeampilotRoot(String teampilotRoot) =>
-      _pathUnderTeampilotRoot(teampilotRoot, 'plugins/marketplaces.json');
+  static String pluginMarketplacesConfigPathForTeampilotRoot(
+    String teampilotRoot,
+  ) => _pathUnderTeampilotRoot(teampilotRoot, 'plugins/marketplaces.json');
 
-  static String pluginMarketplaceCacheDirForTeampilotRoot(String teampilotRoot) =>
-      _pathUnderTeampilotRoot(teampilotRoot, 'plugins/marketplace-cache');
+  static String pluginMarketplaceCacheDirForTeampilotRoot(
+    String teampilotRoot,
+  ) => _pathUnderTeampilotRoot(teampilotRoot, 'plugins/marketplace-cache');
 
   static String pluginExternalCacheDirForTeampilotRoot(String teampilotRoot) =>
       _pathUnderTeampilotRoot(teampilotRoot, 'plugins/external-cache');
@@ -215,39 +212,28 @@ class AppPaths {
 
   static String homeWorkspaceWorkspaceFavoritesJsonForTeampilotRoot(
     String teampilotRoot,
-  ) =>
-      _pathUnderTeampilotRoot(teampilotRoot, 'ui/workspace-favorites.json');
+  ) => _pathUnderTeampilotRoot(teampilotRoot, 'ui/workspace-favorites.json');
 
   static String homeWorkspaceWorkspaceDisplayPrefsJsonForTeampilotRoot(
     String teampilotRoot,
   ) =>
-      _pathUnderTeampilotRoot(
-        teampilotRoot,
-        'ui/workspace-display-prefs.json',
-      );
+      _pathUnderTeampilotRoot(teampilotRoot, 'ui/workspace-display-prefs.json');
 
   static String homeWorkspaceWorkspaceLaunchPrefsJsonForTeampilotRoot(
     String teampilotRoot,
-  ) =>
-      _pathUnderTeampilotRoot(
-        teampilotRoot,
-        'ui/workspace-launch-prefs.json',
-      );
+  ) => _pathUnderTeampilotRoot(teampilotRoot, 'ui/workspace-launch-prefs.json');
 
   static String homeWorkspaceRecentWorkspacesJsonForTeampilotRoot(
     String teampilotRoot,
-  ) =>
-      _pathUnderTeampilotRoot(teampilotRoot, 'ui/recent-workspaces.json');
+  ) => _pathUnderTeampilotRoot(teampilotRoot, 'ui/recent-workspaces.json');
 
   static String homeWorkspaceClosedWorkspacesJsonForTeampilotRoot(
     String teampilotRoot,
-  ) =>
-      _pathUnderTeampilotRoot(teampilotRoot, 'ui/closed-workspaces.json');
+  ) => _pathUnderTeampilotRoot(teampilotRoot, 'ui/closed-workspaces.json');
 
   static String homeWorkspaceOpenWorkspacesJsonForTeampilotRoot(
     String teampilotRoot,
-  ) =>
-      _pathUnderTeampilotRoot(teampilotRoot, 'ui/open-workspace-tabs.json');
+  ) => _pathUnderTeampilotRoot(teampilotRoot, 'ui/open-workspace-tabs.json');
 
   String get skillRepoCacheDir => skillRepoCacheDirForTeampilotRoot(basePath);
 
@@ -274,7 +260,8 @@ class AppPaths {
   /// App-wide CLI default trees (`cli-defaults/{tool}/`).
   String get cliDefaultsDir => _ctx.join(basePath, 'cli-defaults');
 
-  String get skillReposConfigPath => skillReposConfigPathForTeampilotRoot(basePath);
+  String get skillReposConfigPath =>
+      skillReposConfigPathForTeampilotRoot(basePath);
 
   String get teamHubDir => teamHubDirForTeampilotRoot(basePath);
   String get teamHubCacheDir => teamHubCacheDirForTeampilotRoot(basePath);
@@ -310,7 +297,8 @@ class AppPaths {
   /// Application-level unified provider catalog (`providers/providers.json`).
   String get providerConfigDir => _ctx.join(basePath, 'providers');
 
-  String get providerConfigFile => _ctx.join(providerConfigDir, 'providers.json');
+  String get providerConfigFile =>
+      _ctx.join(providerConfigDir, 'providers.json');
 
   String get sshProfilesDir => _ctx.join(basePath, 'ssh_profiles');
 
@@ -345,7 +333,9 @@ class DefaultWorkspaceDirectory {
     final prefs = preferences;
     if (prefs != null) {
       final persisted = prefs.getString(_prefsKey)?.trim();
-      if (persisted != null && persisted.isNotEmpty && _directoryExists(persisted)) {
+      if (persisted != null &&
+          persisted.isNotEmpty &&
+          _directoryExists(persisted)) {
         _cachedPath = persisted;
         return persisted;
       }

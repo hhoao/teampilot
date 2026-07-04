@@ -32,14 +32,18 @@ void main() {
 
   test('installFromZip extracts plugin and persists Plugin record', () async {
     final archive = Archive();
-    final manifest = '{"name":"my-plugin","version":"1.0.0","description":"hi"}';
-    archive.addFile(ArchiveFile(
-      '.claude-plugin/plugin.json',
-      manifest.length,
-      utf8.encode(manifest),
-    ));
+    final manifest =
+        '{"name":"my-plugin","version":"1.0.0","description":"hi"}';
+    archive.addFile(
+      ArchiveFile(
+        '.claude-plugin/plugin.json',
+        manifest.length,
+        utf8.encode(manifest),
+      ),
+    );
     final zipBytes = ZipEncoder().encode(archive);
-    final zipFile = File(p.join(tmp.path, 'in.zip'))..writeAsBytesSync(zipBytes);
+    final zipFile = File(p.join(tmp.path, 'in.zip'))
+      ..writeAsBytesSync(zipBytes);
 
     final svc = PluginInstallService(manifestService: PluginManifestService());
     final installed = await svc.installFromZip(zipFile);
@@ -47,8 +51,9 @@ void main() {
     expect(installed.name, 'my-plugin');
     expect(installed.id, startsWith('local/'));
     expect(installed.marketplaceOwner, isNull);
-    final installedDir =
-        Directory(p.join(tmp.path, 'plugins', 'installed', installed.directory));
+    final installedDir = Directory(
+      p.join(tmp.path, 'plugins', 'installed', installed.directory),
+    );
     expect(installedDir.existsSync(), isTrue);
     expect(
       File(p.join(installedDir.path, '.plugin', 'plugin.json')).existsSync(),
@@ -62,8 +67,9 @@ void main() {
   test('uninstall removes directory and updates plugins.json', () async {
     final svc = PluginInstallService(manifestService: PluginManifestService());
     final installed = await _installMinimal(svc, tmp);
-    final dir =
-        Directory(p.join(tmp.path, 'plugins', 'installed', installed.directory));
+    final dir = Directory(
+      p.join(tmp.path, 'plugins', 'installed', installed.directory),
+    );
     expect(dir.existsSync(), isTrue);
 
     await svc.uninstall(installed);
@@ -77,7 +83,8 @@ void main() {
 Future<Plugin> _installMinimal(PluginInstallService svc, Directory tmp) async {
   final src = Directory(p.join(tmp.path, 'src-plugin'))..createSync();
   Directory(p.join(src.path, '.claude-plugin')).createSync();
-  File(p.join(src.path, '.claude-plugin', 'plugin.json'))
-      .writeAsStringSync('{"name":"foo","version":"0.1.0"}');
+  File(
+    p.join(src.path, '.claude-plugin', 'plugin.json'),
+  ).writeAsStringSync('{"name":"foo","version":"0.1.0"}');
   return svc.installFromDirectory(src);
 }

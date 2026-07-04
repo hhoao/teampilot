@@ -12,12 +12,9 @@ class CliToolRegistryScope extends InheritedWidget {
   final CliToolRegistry registry;
 
   static CliToolRegistry of(BuildContext context) {
-    final scope =
-        context.dependOnInheritedWidgetOfExactType<CliToolRegistryScope>();
-    assert(
-      scope != null,
-      'CliToolRegistryScope not found in widget tree',
-    );
+    final scope = context
+        .dependOnInheritedWidgetOfExactType<CliToolRegistryScope>();
+    assert(scope != null, 'CliToolRegistryScope not found in widget tree');
     return scope!.registry;
   }
 

@@ -35,7 +35,9 @@ import '../resources/opencode_resource_capability.dart';
 
 final class OpencodeCliTool implements CliToolDefinition {
   OpencodeCliTool({
-    this.busTransport = const BusTransportCapability(longBlockingWaitForMessage: true),
+    this.busTransport = const BusTransportCapability(
+      longBlockingWaitForMessage: true,
+    ),
     this.remoteCliLocator = const DefaultRemoteCliLocator('opencode'),
     this.launchArgs = const OpencodeCliToolAdapter(),
     this.configProfile = const OpencodeConfigProfileCapability(),

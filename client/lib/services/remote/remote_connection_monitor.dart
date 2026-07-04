@@ -35,8 +35,9 @@ class RemoteConnectionState {
   /// any `connected` transition.
   final int missedHeartbeats;
 
-  static const initial =
-      RemoteConnectionState(status: RemoteConnectionStatus.connected);
+  static const initial = RemoteConnectionState(
+    status: RemoteConnectionStatus.connected,
+  );
 
   bool get isHealthy => status == RemoteConnectionStatus.connected;
 
@@ -108,7 +109,8 @@ class RemoteConnectionReducer {
 /// the timer/SSH driver can be swapped freely.
 class RemoteConnectionMonitor {
   RemoteConnectionMonitor({
-    this.maxMissedBeforeDown = RemoteConnectionReducer.defaultMaxMissedBeforeDown,
+    this.maxMissedBeforeDown =
+        RemoteConnectionReducer.defaultMaxMissedBeforeDown,
   });
 
   final int maxMissedBeforeDown;

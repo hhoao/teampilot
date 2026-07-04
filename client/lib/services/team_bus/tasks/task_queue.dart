@@ -71,15 +71,14 @@ class TaskQueue {
   /// (score 降序, seq 升序) 排序。无可认领返回 null。
   /// **此方法体内不得有 await**——保证选择 + 标记在同一微任务内完成。
   TeamTask? claimNext(String memberId, Set<String> memberCaps) {
-    final candidates = _tasks.values
-        .where((t) => t.isClaimable && _depsSatisfied(t))
-        .toList()
-      ..sort((a, b) {
-        final sa = TaskRouter.score(memberCaps, a);
-        final sb = TaskRouter.score(memberCaps, b);
-        if (sa != sb) return sb.compareTo(sa);
-        return a.seq.compareTo(b.seq);
-      });
+    final candidates =
+        _tasks.values.where((t) => t.isClaimable && _depsSatisfied(t)).toList()
+          ..sort((a, b) {
+            final sa = TaskRouter.score(memberCaps, a);
+            final sb = TaskRouter.score(memberCaps, b);
+            if (sa != sb) return sb.compareTo(sa);
+            return a.seq.compareTo(b.seq);
+          });
     for (final t in candidates) {
       if (!TaskRouter.eligible(memberId, memberCaps, t)) continue;
       return _markClaimed(t, memberId);
@@ -186,7 +185,9 @@ class TaskQueue {
 
   /// 任务快照（看板 / `list_tasks`）；[status] 非空时过滤，按 seq 升序。
   List<TeamTask> list({TaskStatus? status}) {
-    final all = _tasks.values.where((t) => status == null || t.status == status);
+    final all = _tasks.values.where(
+      (t) => status == null || t.status == status,
+    );
     return all.toList()..sort((a, b) => a.seq.compareTo(b.seq));
   }
 
@@ -211,7 +212,8 @@ class TaskQueue {
 
   bool _hasClaimableFor(String memberId, Set<String> memberCaps) =>
       _tasks.values.any(
-        (t) => _isClaimableNow(t) && TaskRouter.eligible(memberId, memberCaps, t),
+        (t) =>
+            _isClaimableNow(t) && TaskRouter.eligible(memberId, memberCaps, t),
       );
 
   void dispose() {

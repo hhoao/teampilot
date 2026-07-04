@@ -179,8 +179,7 @@ class SshClientFactory {
   Future<SSHClient> createMemberClient(
     SshProfile profile, {
     Duration timeout = const Duration(seconds: 10),
-  }) =>
-      createClient(profile, timeout: timeout);
+  }) => createClient(profile, timeout: timeout);
 
   Future<SSHClient> createClient(
     SshProfile profile, {

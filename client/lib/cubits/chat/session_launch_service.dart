@@ -13,7 +13,6 @@ import '../../models/personal_profile.dart';
 import '../../models/session_member_binding.dart';
 import '../../models/team_config.dart';
 import '../../models/workspace_topology.dart';
-import '../../models/workspace_tab_ref.dart';
 import '../../repositories/session_repository.dart';
 import '../../services/launch/personal_launch_context_resolver.dart';
 import '../../services/launch/session_connect_orchestrator.dart';
@@ -252,7 +251,9 @@ class SessionLaunchService implements MemberConnector {
     }
 
     final fixedId = request.fixedSessionId?.trim();
-    final sessionId = fixedId != null && fixedId.isNotEmpty ? fixedId : _uuid.v4();
+    final sessionId = fixedId != null && fixedId.isNotEmpty
+        ? fixedId
+        : _uuid.v4();
     final provisional = buildProvisionalSession(
       sessionId: sessionId,
       workspace: request.workspace,
@@ -341,13 +342,18 @@ class SessionLaunchService implements MemberConnector {
     final existing = _tabStore.tabs[existingIdx];
     final memberId = request.member?.id ?? existing.selectedMemberId;
     existing.selectedMemberId = memberId;
-    existing.bumpLaunchGeneration();
+    final connectAlreadyScheduled =
+        _state.sessionConnectingId == session.sessionId;
+    if (!connectAlreadyScheduled) {
+      existing.bumpLaunchGeneration();
+    }
     final generation = existing.launchGeneration;
     _h.applyState(
       _state.copyWith(
         activeTabIndex: existingIdx,
         activeSessionId: session.sessionId,
         selectedMemberId: memberId,
+        composeActive: false,
       ),
     );
     _h.refreshActiveWorkspaceTabs();
@@ -362,8 +368,15 @@ class SessionLaunchService implements MemberConnector {
       );
       return SessionOpenStatus.opened;
     }
-    if (_shouldAutoConnect(request)) {
+    if (_shouldAutoConnect(request) && !connectAlreadyScheduled) {
       _h.beginSessionConnect(session.sessionId);
+    }
+    if (connectAlreadyScheduled && request.connectImmediately) {
+      appLogger.d(
+        '[session-launch] requestOpenSession skip duplicate connect '
+        'session=${session.sessionId}',
+      );
+      return SessionOpenStatus.opened;
     }
     unawaited(
       _prepareExistingTabConnect(
@@ -409,6 +422,7 @@ class SessionLaunchService implements MemberConnector {
         activeTabIndex: _tabStore.length - 1,
         activeSessionId: session.sessionId,
         selectedMemberId: placeholderMemberId,
+        composeActive: false,
       ),
     );
     _h.refreshActiveWorkspaceTabs();
@@ -630,6 +644,13 @@ class SessionLaunchService implements MemberConnector {
     required bool connect,
   }) async {
     var session = request.session;
+    final persisted = tab.persistedSession;
+    if (!request.isPersonal &&
+        session.cliTeamName.isEmpty &&
+        persisted != null &&
+        persisted.cliTeamName.isNotEmpty) {
+      session = persisted;
+    }
     final workspace = request.workspace ?? _workspaceById(session.workspaceId);
     if (request.isPersonal && workspace == null) return;
 
@@ -1012,8 +1033,9 @@ class SessionLaunchService implements MemberConnector {
 
   Workspace? _workspaceMatchingPath(String primaryPath) {
     for (final workspace in _state.workspaces) {
-      if (workspacePathsEqual(workspace.firstFolderPath, primaryPath))
+      if (workspacePathsEqual(workspace.firstFolderPath, primaryPath)) {
         return workspace;
+      }
     }
     return null;
   }
@@ -1507,9 +1529,7 @@ class SessionLaunchService implements MemberConnector {
           launchMember != null &&
           team.teamMode == TeamMode.mixed &&
           tab.teamBus != null &&
-          _h.teammateBusMcpGateway.isSessionRegistered(
-            activeSession.sessionId,
-          );
+          _h.teammateBusMcpGateway.isSessionRegistered(activeSession.sessionId);
       // P3b (#1): a remote (ssh) member connects back to the in-process bus over a
       // reverse tunnel; the resolver returns its binding (relay/HTTP over tunnel),
       // or null for a local member (unchanged transport). Android-mixed fix.
@@ -1837,6 +1857,7 @@ class SessionLaunchService implements MemberConnector {
         tabs: _tabStore.toInfos(),
         activeSessionId: tab.info.id,
         selectedMemberId: member.id,
+        composeActive: false,
       ),
     );
     if (shell.isRunning || shell.isConnecting) {
@@ -2213,6 +2234,7 @@ class SessionLaunchService implements MemberConnector {
           activeTabIndex: _tabStore.length - 1,
           activeSessionId: tab.info.id,
           selectedMemberId: tab.selectedMemberId,
+          composeActive: false,
         ),
       );
     }

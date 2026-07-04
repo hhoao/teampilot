@@ -22,7 +22,8 @@ abstract final class HomeWorkspaceRoute {
     return null;
   }
 
-  static String? view(String location) => parse(location).queryParameters['view'];
+  static String? view(String location) =>
+      parse(location).queryParameters['view'];
 
   /// Manage / landing profile id (`personal` or team id).
   static String? profile(String location) {

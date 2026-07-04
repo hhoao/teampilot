@@ -12,13 +12,7 @@ import 'steps/default_preset_step.dart';
 import 'steps/provider_import_step.dart';
 import 'steps/ssh_step.dart';
 
-enum OnboardingStepKind {
-  appearance,
-  ssh,
-  cli,
-  providerImport,
-  defaultPreset,
-}
+enum OnboardingStepKind { appearance, ssh, cli, providerImport, defaultPreset }
 
 List<OnboardingStepKind> onboardingStepsForPlatform() {
   if (Platform.isAndroid) {
@@ -175,7 +169,10 @@ class _OnboardingWizardState extends State<OnboardingWizard> {
                   _minPageViewportHeight.toDouble(),
                   _maxPageViewportHeight.toDouble(),
                 );
-            final viewportHeight = math.min(_pageViewportHeight, maxViewportHeight);
+            final viewportHeight = math.min(
+              _pageViewportHeight,
+              maxViewportHeight,
+            );
 
             return ConstrainedBox(
               constraints: BoxConstraints(minHeight: constraints.maxHeight),
@@ -203,29 +200,31 @@ class _OnboardingWizardState extends State<OnboardingWizard> {
                               itemCount: _steps.length,
                               itemBuilder: (context, index) {
                                 return _OnboardingStepPage(
-                                  child: NotificationListener<
-                                      SizeChangedLayoutNotification>(
-                                    onNotification: (_) {
-                                      if (index == _pageIndex) {
-                                        _invalidateStepHeightCache(index);
-                                      }
-                                      return false;
-                                    },
-                                    child: SizeChangedLayoutNotifier(
-                                      child: Align(
-                                        alignment: Alignment.topCenter,
-                                        child: SingleChildScrollView(
-                                          child: KeyedSubtree(
-                                            key: _stepMeasureKeys[index],
-                                            child: _buildStep(
-                                              _steps[index],
-                                              isActive: index == _pageIndex,
+                                  child:
+                                      NotificationListener<
+                                        SizeChangedLayoutNotification
+                                      >(
+                                        onNotification: (_) {
+                                          if (index == _pageIndex) {
+                                            _invalidateStepHeightCache(index);
+                                          }
+                                          return false;
+                                        },
+                                        child: SizeChangedLayoutNotifier(
+                                          child: Align(
+                                            alignment: Alignment.topCenter,
+                                            child: SingleChildScrollView(
+                                              child: KeyedSubtree(
+                                                key: _stepMeasureKeys[index],
+                                                child: _buildStep(
+                                                  _steps[index],
+                                                  isActive: index == _pageIndex,
+                                                ),
+                                              ),
                                             ),
                                           ),
                                         ),
                                       ),
-                                    ),
-                                  ),
                                 );
                               },
                             ),

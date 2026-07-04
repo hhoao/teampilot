@@ -1,4 +1,4 @@
-﻿import 'dart:async';
+import 'dart:async';
 
 import 'package:flutter/material.dart';
 import 'package:teampilot/theme/app_icon_sizes.dart';
@@ -142,7 +142,10 @@ class _OnboardingProviderImportStepState
                             ? _providers[i].id
                             : _providers[i].defaultModel,
                       ),
-                      trailing: Icon(Icons.check, size: context.appIconSizes.md),
+                      trailing: Icon(
+                        Icons.check,
+                        size: context.appIconSizes.md,
+                      ),
                     ),
                     if (i < _providers.length - 1) const Divider(height: 1),
                   ],

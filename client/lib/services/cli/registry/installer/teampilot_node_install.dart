@@ -63,10 +63,7 @@ final class TeampilotNodeInstall {
     }
 
     host.report(CliInstallPhase.bootstrappingNode);
-    final bootstrap = await host.runSsh(
-      profile,
-      sshBootstrapCommand(),
-    );
+    final bootstrap = await host.runSsh(profile, sshBootstrapCommand());
     if (bootstrap.exitCode != 0) {
       return RemoteNpmBootstrapFailed(bootstrap);
     }
@@ -94,8 +91,8 @@ final class TeampilotNodeInstall {
         "& (Join-Path \$env:LOCALAPPDATA '$windowsToolchainNodeBase\\$version\\npm.cmd') install -g $package",
       HostScriptDialect.bash =>
         'export PATH="$unixToolchainNodeBase/$version/bin:\$HOME/.local/bin:\$PATH"\n'
-        'npm config set prefix "\$HOME/.local"\n'
-        'npm install -g $package',
+            'npm config set prefix "\$HOME/.local"\n'
+            'npm install -g $package',
     };
     return runner.installerCommandForInline(body);
   }

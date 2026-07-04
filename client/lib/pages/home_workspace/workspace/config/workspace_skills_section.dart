@@ -1,4 +1,4 @@
-﻿import 'dart:async';
+import 'dart:async';
 
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
@@ -32,15 +32,13 @@ class WorkspaceSkillsSection extends StatelessWidget {
     }
 
     final l10n = context.l10n;
-    void onManage() =>
-        context.go(HomeGlobalView.skills.homeLocation);
+    void onManage() => context.go(HomeGlobalView.skills.homeLocation);
     final skillState = context.watch<SkillCubit>().state;
     final enabled = skillState.installed
         .where((s) => s.enabled)
         .toList(growable: false);
     final skillIds = personal.bundle.skillIds;
-    final assignedCount =
-        enabled.where((s) => skillIds.contains(s.id)).length;
+    final assignedCount = enabled.where((s) => skillIds.contains(s.id)).length;
 
     return SingleChildScrollView(
       child: Column(

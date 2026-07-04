@@ -73,7 +73,10 @@ String resolveSkillDiscoveryRepoFilter(
   return 'all';
 }
 
-bool skillDiscoveryMatchesRepoFilter(DiscoverableSkill skill, String filterRepo) {
+bool skillDiscoveryMatchesRepoFilter(
+  DiscoverableSkill skill,
+  String filterRepo,
+) {
   if (filterRepo == 'all') return true;
   final url = 'https://github.com/${skill.repoOwner}/${skill.repoName}';
   return url == filterRepo ||

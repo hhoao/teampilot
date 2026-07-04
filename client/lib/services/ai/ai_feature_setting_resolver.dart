@@ -44,7 +44,8 @@ AiFeatureSetting resolveAiFeatureSetting({
       : appProviders.providersFor(catalogCli);
 
   final storedProviderId = stored?.providerId.trim() ?? '';
-  final providerId = storedProviderId.isNotEmpty &&
+  final providerId =
+      storedProviderId.isNotEmpty &&
           providers.any((p) => p.id == storedProviderId)
       ? storedProviderId
       : _defaultProviderId(appProviders, catalogCli ?? cli, providers);
@@ -67,7 +68,9 @@ AiFeatureSetting resolveAiFeatureSetting({
 }
 
 CliTool? _catalogCli(CliToolRegistry registry, CliTool cli) {
-  return registry.capability<ProviderCatalogCapability>(cli) != null ? cli : null;
+  return registry.capability<ProviderCatalogCapability>(cli) != null
+      ? cli
+      : null;
 }
 
 String _defaultProviderId(
@@ -176,9 +179,7 @@ String aiFeatureConfigLine({
   }
 
   final def = registry.tryGet(resolved.cli);
-  final cliLabel = def == null
-      ? resolved.cli.value
-      : cliDisplayName(def, l10n);
+  final cliLabel = def == null ? resolved.cli.value : cliDisplayName(def, l10n);
   final providerName = provider?.name.trim() ?? '';
   final modelLabel = resolved.model.trim();
   final effortLabel = resolved.effort.trim();

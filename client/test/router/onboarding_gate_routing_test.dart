@@ -35,9 +35,7 @@ void main() {
   });
 
   test('legacy hub entry mode resolves to home', () {
-    final prefs = LayoutPreferences.fromJson({
-      'workspaceEntryMode': 'hub',
-    });
+    final prefs = LayoutPreferences.fromJson({'workspaceEntryMode': 'hub'});
     expect(prefs.workspaceEntryMode, WorkspaceEntryMode.home);
   });
 
@@ -62,9 +60,8 @@ void main() {
       MultiRepositoryProvider(
         providers: [
           RepositoryProvider<AppSettingsRepository>(
-            create: (_) => InMemoryAppSettingsRepository(
-              hasCompletedOnboarding: false,
-            ),
+            create: (_) =>
+                InMemoryAppSettingsRepository(hasCompletedOnboarding: false),
           ),
           RepositoryProvider<ConnectionModeService>(
             create: (_) => ConnectionModeService(

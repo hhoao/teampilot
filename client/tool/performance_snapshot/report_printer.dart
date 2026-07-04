@@ -56,9 +56,14 @@ void _printDrilldownSection(PerformanceAnalysisResult result) {
     print('\nFrame #${result.missingFrameId} not in flutterFrames list.');
   }
   if (result.worstFrameDrilldowns.isNotEmpty) {
-    print('\n=== Worst Frame Drill-downs (${result.worstFrameDrilldowns.length}) ===');
+    print(
+      '\n=== Worst Frame Drill-downs (${result.worstFrameDrilldowns.length}) ===',
+    );
     for (final drilldown in result.worstFrameDrilldowns) {
-      _printFrameDrilldown(drilldown, compact: result.worstFrameDrilldowns.length > 1);
+      _printFrameDrilldown(
+        drilldown,
+        compact: result.worstFrameDrilldowns.length > 1,
+      );
     }
   } else if (result.frameDrilldown != null) {
     _printFrameDrilldown(result.frameDrilldown!);
@@ -103,10 +108,10 @@ void _printHeader(PerformanceAnalysisResult result) {
 }
 
 String _rebuildStatusLabel(RebuildDataStatus status) => switch (status) {
-      RebuildDataStatus.notCaptured => 'not captured',
-      RebuildDataStatus.empty => 'empty',
-      RebuildDataStatus.present => 'present',
-    };
+  RebuildDataStatus.notCaptured => 'not captured',
+  RebuildDataStatus.empty => 'empty',
+  RebuildDataStatus.present => 'present',
+};
 
 void _printFrameSummary(FrameSummary summary, bool jankyOnly) {
   print('\n=== Flutter Frames (${summary.totalCount} recorded) ===');
@@ -124,8 +129,10 @@ void _printFrameSummary(FrameSummary summary, bool jankyOnly) {
     return;
   }
 
-  print('  ${'Frame'.padRight(8)} ${'Total'.padLeft(8)} '
-      '${'Build'.padLeft(8)} ${'Raster'.padLeft(8)} ${'Vsync'.padLeft(8)}  Bottleneck');
+  print(
+    '  ${'Frame'.padRight(8)} ${'Total'.padLeft(8)} '
+    '${'Build'.padLeft(8)} ${'Raster'.padLeft(8)} ${'Vsync'.padLeft(8)}  Bottleneck',
+  );
   for (final janky in summary.jankyFrames) {
     final f = janky.frame;
     print(
@@ -151,7 +158,9 @@ void _printRebuildSummary(RebuildSummary summary, int topN) {
   print('\n=== Widget Rebuild Stats ===');
   if (summary.status != RebuildDataStatus.present) {
     print('No rebuildCountModel data in snapshot.');
-    print('Enable rebuild tracking in DevTools (Rebuild Stats tab) before export.');
+    print(
+      'Enable rebuild tracking in DevTools (Rebuild Stats tab) before export.',
+    );
     return;
   }
 
@@ -198,7 +207,9 @@ void _printTimeline(TimelineAnalysis timeline, int topN) {
 
   if (timeline.aggregatedSlices.isNotEmpty) {
     print('\n=== Top slices aggregated by event name ===');
-    print('  ${'Total'.padLeft(10)} ${'Max'.padLeft(10)} ${'Count'.padLeft(7)}  Event');
+    print(
+      '  ${'Total'.padLeft(10)} ${'Max'.padLeft(10)} ${'Count'.padLeft(7)}  Event',
+    );
     for (final e in timeline.aggregatedSlices) {
       print(
         '  ${e.totalMs.toStringAsFixed(2).padLeft(8)} ms '
@@ -284,8 +295,10 @@ void _printFrameDrilldown(FrameDrilldown drilldown, {bool compact = false}) {
 
   if (compact) {
     if (drilldown.dartHotspots.isNotEmpty) {
-      print('Top hotspot: ${drilldown.dartHotspots.first.name} '
-          '(${drilldown.dartHotspots.first.durationMs.toStringAsFixed(2)} ms)');
+      print(
+        'Top hotspot: ${drilldown.dartHotspots.first.name} '
+        '(${drilldown.dartHotspots.first.durationMs.toStringAsFixed(2)} ms)',
+      );
     }
     return;
   }
@@ -311,7 +324,9 @@ void _printFrameDrilldown(FrameDrilldown drilldown, {bool compact = false}) {
     return;
   }
 
-  print('\nSlices overlapping frame window (${drilldown.overlappingSlices.length} shown):');
+  print(
+    '\nSlices overlapping frame window (${drilldown.overlappingSlices.length} shown):',
+  );
   print('  ${'Duration'.padLeft(10)}  ${'Track'.padRight(28)}  Event');
   for (final s in drilldown.overlappingSlices) {
     print(
@@ -339,7 +354,9 @@ void _printPrecisionSection(PrecisionAnalysis? precision) {
     return;
   }
 
-  print('\n=== Precision Analysis (${precision.frameCountAnalyzed} janky frames) ===');
+  print(
+    '\n=== Precision Analysis (${precision.frameCountAnalyzed} janky frames) ===',
+  );
   final note = precision.rebuildNote;
   print(
     'Rebuild data: ${note.status} (precision impact: ${note.precisionImpact})',
@@ -404,8 +421,8 @@ void _printPrecisionSection(PrecisionAnalysis? precision) {
       final slice = c.matchedSlices.isEmpty
           ? ''
           : ' → ${c.matchedSlices.first.name} '
-              '(${c.matchedSlices.first.selfMs.toStringAsFixed(1)} ms self, '
-              '${c.matchedSlices.first.phase ?? '?'})';
+                '(${c.matchedSlices.first.selfMs.toStringAsFixed(1)} ms self, '
+                '${c.matchedSlices.first.phase ?? '?'})';
       print(
         '  #${c.frameNumber} ${c.widgetName}$loc '
         '${c.rebuildCount}x rebuilds [${c.matchQuality}]$slice',
@@ -426,8 +443,9 @@ void _printPrecisionSection(PrecisionAnalysis? precision) {
   if (precision.unmatchedHighRebuilds.isNotEmpty) {
     print('\nFrequent rebuilds without timeline slice match:');
     for (final u in precision.unmatchedHighRebuilds.take(8)) {
-      final loc =
-          u.file != null && u.line != null ? ' @ ${u.file}:${u.line}' : '';
+      final loc = u.file != null && u.line != null
+          ? ' @ ${u.file}:${u.line}'
+          : '';
       print(
         '  #${u.frameNumber} ${u.widgetName}$loc ${u.rebuildCount}x rebuilds',
       );

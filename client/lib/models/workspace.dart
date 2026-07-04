@@ -140,7 +140,8 @@ class Workspace {
         if (team.key.trim().isNotEmpty)
           team.key: Map<String, String>.unmodifiable({
             for (final member in team.value.entries)
-              if (member.key.trim().isNotEmpty && member.value.trim().isNotEmpty)
+              if (member.key.trim().isNotEmpty &&
+                  member.value.trim().isNotEmpty)
                 member.key.trim(): member.value.trim(),
           }),
     });

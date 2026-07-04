@@ -6,8 +6,9 @@ import 'package:teampilot/widgets/right_tools/tabbed_panel.dart';
 import 'package:teampilot/widgets/right_tools/tool_view.dart';
 
 void main() {
-  testWidgets('shows persisted selection on first frame without a second tap',
-      (tester) async {
+  testWidgets('shows persisted selection on first frame without a second tap', (
+    tester,
+  ) async {
     final toolsCubit = WorkspaceToolsCubit()..setSelectedIndex('ws-1', 1);
 
     await tester.pumpWidget(
@@ -39,23 +40,30 @@ void main() {
     addTearDown(toolsCubit.close);
   });
 
-  testWidgets('switches the visible view when an icon is tapped',
-      (tester) async {
-    await tester.pumpWidget(MaterialApp(
-      home: Scaffold(
-        body: TabbedPanel(views: const [
-          ToolView(
-              icon: Icons.groups_outlined,
-              label: 'Members',
-              child: Text('members-body')),
-          ToolView(
-              icon: Icons.mail_outline,
-              label: 'Mailbox',
-              child: Text('mailbox-body'),
-              badgeCount: 3),
-        ]),
+  testWidgets('switches the visible view when an icon is tapped', (
+    tester,
+  ) async {
+    await tester.pumpWidget(
+      MaterialApp(
+        home: Scaffold(
+          body: TabbedPanel(
+            views: const [
+              ToolView(
+                icon: Icons.groups_outlined,
+                label: 'Members',
+                child: Text('members-body'),
+              ),
+              ToolView(
+                icon: Icons.mail_outline,
+                label: 'Mailbox',
+                child: Text('mailbox-body'),
+                badgeCount: 3,
+              ),
+            ],
+          ),
+        ),
       ),
-    ));
+    );
 
     expect(find.text('members-body'), findsOneWidget);
 

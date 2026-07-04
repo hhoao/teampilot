@@ -71,17 +71,14 @@ void main() {
     return jsonDecode(text) as Map<String, Object?>;
   }
 
-  test(
-    'initialize over HTTP returns protocol version',
-    () async {
-      final res = await rpc('leader', {
-        'jsonrpc': '2.0',
-        'id': 0,
-        'method': 'initialize',
-      });
-      expect((res['result'] as Map)['protocolVersion'], '2025-06-18');
-    },
-  );
+  test('initialize over HTTP returns protocol version', () async {
+    final res = await rpc('leader', {
+      'jsonrpc': '2.0',
+      'id': 0,
+      'method': 'initialize',
+    });
+    expect((res['result'] as Map)['protocolVersion'], '2025-06-18');
+  });
 
   test('send_message routes by member', () async {
     final target = AgentNode.test(
@@ -131,49 +128,46 @@ void main() {
     },
   );
 
-  test(
-    'cancelAllStreams ends an in-flight wait_for_message stream',
-    () async {
-      bus.declareMember(
-        AgentNode.test(
-          memberId: 'leader',
-          lifecycle: MemberLifecycle.running,
-          activity: MemberActivity.active,
-        ),
-      );
-      final req = await client.postUrl(mcpEndpoint());
-      req.headers.set('content-type', 'application/json');
-      req.headers.set('accept', 'application/json, text/event-stream');
-      req.headers.set('X-Member', 'leader');
-      req.add(
-        utf8.encode(
-          jsonEncode({
-            'jsonrpc': '2.0',
-            'id': 3,
-            'method': 'tools/call',
-            'params': {
-              'name': 'wait_for_message',
-              'arguments': <String, Object?>{},
-            },
-          }),
-        ),
-      );
-      final resp = await req.close();
-      final drained = resp.drain<void>().catchError((Object _) {});
-      await Future<void>.delayed(const Duration(milliseconds: 50));
-      expect(bus.isWaitingForMessage('leader'), isTrue);
-      expect(delegate.activeWaitStreamCount, 1);
+  test('cancelAllStreams ends an in-flight wait_for_message stream', () async {
+    bus.declareMember(
+      AgentNode.test(
+        memberId: 'leader',
+        lifecycle: MemberLifecycle.running,
+        activity: MemberActivity.active,
+      ),
+    );
+    final req = await client.postUrl(mcpEndpoint());
+    req.headers.set('content-type', 'application/json');
+    req.headers.set('accept', 'application/json, text/event-stream');
+    req.headers.set('X-Member', 'leader');
+    req.add(
+      utf8.encode(
+        jsonEncode({
+          'jsonrpc': '2.0',
+          'id': 3,
+          'method': 'tools/call',
+          'params': {
+            'name': 'wait_for_message',
+            'arguments': <String, Object?>{},
+          },
+        }),
+      ),
+    );
+    final resp = await req.close();
+    final drained = resp.drain<void>().catchError((Object _) {});
+    await Future<void>.delayed(const Duration(milliseconds: 50));
+    expect(bus.isWaitingForMessage('leader'), isTrue);
+    expect(delegate.activeWaitStreamCount, 1);
 
-      delegate.cancelAllStreams();
+    delegate.cancelAllStreams();
 
-      await drained.timeout(const Duration(seconds: 2));
-      expect(bus.isWaitingForMessage('leader'), isFalse);
-      expect(delegate.activeWaitStreamCount, 0);
-      expect(
-        bus.memberById('leader')!.activity,
-        MemberActivity.turnDoneReady,
-        reason: 'stream cancel must not mark working',
-      );
-    },
-  );
+    await drained.timeout(const Duration(seconds: 2));
+    expect(bus.isWaitingForMessage('leader'), isFalse);
+    expect(delegate.activeWaitStreamCount, 0);
+    expect(
+      bus.memberById('leader')!.activity,
+      MemberActivity.turnDoneReady,
+      reason: 'stream cancel must not mark working',
+    );
+  });
 }

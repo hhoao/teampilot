@@ -15,8 +15,9 @@ class SkillFetchException implements Exception {
   final String message;
   final Object? cause;
   @override
-  String toString() =>
-      cause != null ? 'SkillFetchException: $message ($cause)' : 'SkillFetchException: $message';
+  String toString() => cause != null
+      ? 'SkillFetchException: $message ($cause)'
+      : 'SkillFetchException: $message';
 }
 
 class SkillParseException implements Exception {
@@ -154,7 +155,9 @@ String _skillDisplayName(Uint8List skillMdBytes, String fallback) {
 
 String _skillDescription(Uint8List skillMdBytes) {
   try {
-    return parseSkillFrontmatter(String.fromCharCodes(skillMdBytes)).description;
+    return parseSkillFrontmatter(
+      String.fromCharCodes(skillMdBytes),
+    ).description;
   } on SkillParseException {
     return '';
   }
@@ -207,11 +210,8 @@ class SkillFetchService {
   }
 
   /// Sync via local git when [persistentGitPath] is set; otherwise HTTP tarball/zip.
-  Future<({
-    Map<String, Uint8List> entries,
-    String branch,
-    String commitSha,
-  })> downloadRepoEntries(
+  Future<({Map<String, Uint8List> entries, String branch, String commitSha})>
+  downloadRepoEntries(
     SkillRepo repo, {
     Filesystem? fs,
     String? persistentGitPath,
@@ -286,7 +286,10 @@ class SkillFetchService {
     }
   }
 
-  Future<TarballPayload> _downloadZipArchive(SkillRepo repo, String branch) async {
+  Future<TarballPayload> _downloadZipArchive(
+    SkillRepo repo,
+    String branch,
+  ) async {
     final ref = Uri.encodeComponent(branch);
     final url = Uri.parse(
       'https://github.com/${repo.owner}/${repo.name}/archive/refs/heads/$ref.zip',

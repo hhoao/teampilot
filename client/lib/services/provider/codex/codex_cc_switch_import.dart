@@ -22,8 +22,7 @@ class CodexRuntimeSnapshot {
   final bool proxyTakeover;
   final String currentProviderId;
 
-  bool get hasLive =>
-      liveToml.trim().isNotEmpty || liveAuth.isNotEmpty;
+  bool get hasLive => liveToml.trim().isNotEmpty || liveAuth.isNotEmpty;
 }
 
 /// One Codex row from `~/.cc-switch/cc-switch.db`.
@@ -59,7 +58,10 @@ class CcSwitchCodexCatalogRow {
 class CodexCcSwitchImport {
   const CodexCcSwitchImport();
 
-  Future<CodexRuntimeSnapshot> loadRuntime({Filesystem? fs, String? home}) async {
+  Future<CodexRuntimeSnapshot> loadRuntime({
+    Filesystem? fs,
+    String? home,
+  }) async {
     final store = fs ?? AppStorage.fs;
     final ctx = store.pathContext;
     final homeDir = (home ?? AppStorage.home).trim();
@@ -190,8 +192,9 @@ WHERE app_type = ?
     final effectiveToml = isCurrent && runtime.liveToml.trim().isNotEmpty
         ? runtime.liveToml
         : row.catalogToml;
-    final upstreamToml =
-        isCurrent && row.catalogToml.trim().isNotEmpty ? row.catalogToml : '';
+    final upstreamToml = isCurrent && row.catalogToml.trim().isNotEmpty
+        ? row.catalogToml
+        : '';
     final auth = isCurrent
         ? _mergeCodexAuth(
             catalogAuth: row.catalogAuth,

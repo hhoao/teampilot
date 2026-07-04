@@ -178,7 +178,9 @@ class AppProviderCubit extends Cubit<AppProviderState> {
   Future<void> reconcileCredentials() async {
     if (state.providersByCli.isEmpty) return;
     final sw = Stopwatch()..start();
-    final byCli = Map<CliTool, List<AppProviderConfig>>.from(state.providersByCli);
+    final byCli = Map<CliTool, List<AppProviderConfig>>.from(
+      state.providersByCli,
+    );
     final reconciled = await Future.wait(
       CliTool.values.map((cli) async {
         final current = byCli[cli];
@@ -333,8 +335,8 @@ class AppProviderCubit extends Cubit<AppProviderState> {
     bool replace = false,
     String? homeDirectory,
   }) async {
-    final capability = CliToolRegistry.builtIn().capability<
-        ProviderCredentialCapability>(provider.cli);
+    final capability = CliToolRegistry.builtIn()
+        .capability<ProviderCredentialCapability>(provider.cli);
     if (capability == null || !capability.appliesTo(provider)) {
       return CredentialActionResult.unsupported();
     }
@@ -454,7 +456,8 @@ class AppProviderCubit extends Cubit<AppProviderState> {
   }
 
   Future<bool> loginCursorProvider(String providerId) async {
-    final provider = state.providersFor(CliTool.cursor)
+    final provider = state
+        .providersFor(CliTool.cursor)
         .where((p) => p.id == providerId)
         .firstOrNull;
     if (provider == null) return false;
@@ -468,7 +471,8 @@ class AppProviderCubit extends Cubit<AppProviderState> {
     String providerId, {
     bool replace = false,
   }) async {
-    final provider = state.providersFor(CliTool.cursor)
+    final provider = state
+        .providersFor(CliTool.cursor)
         .where((p) => p.id == providerId)
         .firstOrNull;
     if (provider == null) return false;
@@ -484,7 +488,8 @@ class AppProviderCubit extends Cubit<AppProviderState> {
     String sourceCursorDir, {
     bool replace = false,
   }) async {
-    final provider = state.providersFor(CliTool.cursor)
+    final provider = state
+        .providersFor(CliTool.cursor)
         .where((p) => p.id == providerId)
         .firstOrNull;
     if (provider == null) return false;
@@ -501,7 +506,8 @@ class AppProviderCubit extends Cubit<AppProviderState> {
     String sourceAuthJsonPath, {
     bool replace = false,
   }) async {
-    final provider = state.providersFor(CliTool.cursor)
+    final provider = state
+        .providersFor(CliTool.cursor)
         .where((p) => p.id == providerId)
         .firstOrNull;
     if (provider == null) return false;
@@ -514,7 +520,8 @@ class AppProviderCubit extends Cubit<AppProviderState> {
   }
 
   Future<bool> revokeCursorProvider(String providerId) async {
-    final provider = state.providersFor(CliTool.cursor)
+    final provider = state
+        .providersFor(CliTool.cursor)
         .where((p) => p.id == providerId)
         .firstOrNull;
     if (provider == null) return false;
@@ -525,10 +532,11 @@ class AppProviderCubit extends Cubit<AppProviderState> {
   }
 
   Future<bool> _refreshCredentialStatus(CliTool cli, String providerId) async {
-    final capability = CliToolRegistry.builtIn().capability<
-        ProviderCredentialCapability>(cli);
+    final capability = CliToolRegistry.builtIn()
+        .capability<ProviderCredentialCapability>(cli);
     if (capability == null) return false;
-    final provider = state.providersFor(cli)
+    final provider = state
+        .providersFor(cli)
         .where((p) => p.id == providerId)
         .firstOrNull;
     if (provider == null) return false;
@@ -539,7 +547,10 @@ class AppProviderCubit extends Cubit<AppProviderState> {
   Future<ProviderImportResult> importFromExternal() async {
     final cli = state.selectedCli;
     emit(state.copyWith(isLoading: true, statusMessage: ''));
-    final result = await _importServiceForRequest().importForCli(cli, onlyIfEmpty: false);
+    final result = await _importServiceForRequest().importForCli(
+      cli,
+      onlyIfEmpty: false,
+    );
 
     final byCli = <CliTool, List<AppProviderConfig>>{};
     final selectedByCli = Map<CliTool, String?>.from(
@@ -649,9 +660,6 @@ class AppProviderCubit extends Cubit<AppProviderState> {
         normalizedModels[key] = value;
       }
     }
-    return {
-      ...config,
-      'models': normalizedModels,
-    };
+    return {...config, 'models': normalizedModels};
   }
 }

@@ -433,16 +433,8 @@ void _drawInwardCorner(
   required int axisX,
   required int axisY,
 }) {
-  canvas.drawLine(
-    Offset(corner.dx + arm * axisX, corner.dy),
-    corner,
-    paint,
-  );
-  canvas.drawLine(
-    corner,
-    Offset(corner.dx, corner.dy + arm * axisY),
-    paint,
-  );
+  canvas.drawLine(Offset(corner.dx + arm * axisX, corner.dy), corner, paint);
+  canvas.drawLine(corner, Offset(corner.dx, corner.dy + arm * axisY), paint);
 }
 
 class _TrafficLightButton extends StatelessWidget {

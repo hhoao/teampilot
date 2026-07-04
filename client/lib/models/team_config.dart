@@ -479,10 +479,7 @@ class TeamProfile implements LaunchProfile {
       providerForCli(cli).isNotEmpty;
 
   /// Whether the team has a preset reference or custom launch defaults for [cli].
-  bool hasLaunchDefaultsFor(
-    CliTool cli, {
-    required bool presetExists,
-  }) =>
+  bool hasLaunchDefaultsFor(CliTool cli, {required bool presetExists}) =>
       (activePresetId != null && presetExists) ||
       hasCustomLaunchDefaultsFor(cli);
 
@@ -506,10 +503,10 @@ class TeamProfile implements LaunchProfile {
     } else {
       nextModels[cli.value] = trimmedModel;
     }
-    return withEffortForCli(cli, effort).copyWith(
-      providerIdsByTool: nextProviders,
-      modelsByTool: nextModels,
-    );
+    return withEffortForCli(
+      cli,
+      effort,
+    ).copyWith(providerIdsByTool: nextProviders, modelsByTool: nextModels);
   }
 
   TeamProfile withEffortForCli(CliTool cli, String effort) {
@@ -590,10 +587,10 @@ class TeamProfile implements LaunchProfile {
 
   @override
   ConfigBundle get bundle => ConfigBundle(
-        skillIds: skillIds,
-        pluginIds: pluginIds,
-        mcpServerIds: mcpServerIds,
-      );
+    skillIds: skillIds,
+    pluginIds: pluginIds,
+    mcpServerIds: mcpServerIds,
+  );
 
   bool get isValid => name.trim().isNotEmpty;
 

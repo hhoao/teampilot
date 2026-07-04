@@ -80,10 +80,7 @@ class TerminalLayoutCoordinator {
 
   /// Synchronous variant for purely synchronous layout changes (e.g. immediate
   /// setState that doesn't await anything).
-  void runLayoutTransactionSync(
-    void Function() action, {
-    bool flush = true,
-  }) {
+  void runLayoutTransactionSync(void Function() action, {bool flush = true}) {
     for (final t in _targets) {
       t.beginPtyHold();
     }

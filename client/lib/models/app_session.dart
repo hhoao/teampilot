@@ -81,9 +81,8 @@ class AppSession {
         ? membersRaw
               .whereType<Map>()
               .map(
-                (e) => SessionMemberBinding.fromJson(
-                  Map<String, Object?>.from(e),
-                ),
+                (e) =>
+                    SessionMemberBinding.fromJson(Map<String, Object?>.from(e)),
               )
               .toList()
         : const <SessionMemberBinding>[];
@@ -98,7 +97,8 @@ class AppSession {
     final targets = targetsRaw is Map
         ? <String, String>{
             for (final e in targetsRaw.entries)
-              if ('${e.key}'.trim().isNotEmpty && '${e.value}'.trim().isNotEmpty)
+              if ('${e.key}'.trim().isNotEmpty &&
+                  '${e.value}'.trim().isNotEmpty)
                 '${e.key}'.trim(): '${e.value}'.trim(),
           }
         : const <String, String>{};

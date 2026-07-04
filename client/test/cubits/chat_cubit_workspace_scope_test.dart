@@ -8,8 +8,10 @@ ChatCubit _cubit() => ChatCubit(
   automationRepository: testAutomationRepository(),
 );
 
-ChatTab _tab(String id) =>
-    ChatTab(info: ChatTabInfo(id: id, title: id, subtitle: ''), cliTeamName: id);
+ChatTab _tab(String id) => ChatTab(
+  info: ChatTabInfo(id: id, title: id, subtitle: ''),
+  cliTeamName: id,
+);
 
 void main() {
   group('ChatCubit workspace scoping', () {
@@ -46,35 +48,41 @@ void main() {
       addTearDown(cubit.close);
     });
 
-    test('openTabCountForWorkspace counts only session tabs in that bucket', () {
-      final cubit = _cubit();
-      cubit.setActiveWorkspace('A');
-      cubit.tabStore.append(_tab('sess-1'));
-      cubit.tabStore.append(_tab('local-team'));
-      cubit.setActiveWorkspace('B');
-      cubit.tabStore.append(_tab('sess-2'));
-      expect(cubit.openTabCountForWorkspace('A'), 1);
-      expect(cubit.openTabCountForWorkspace('B'), 1);
-      addTearDown(cubit.close);
-    });
+    test(
+      'openTabCountForWorkspace counts only session tabs in that bucket',
+      () {
+        final cubit = _cubit();
+        cubit.setActiveWorkspace('A');
+        cubit.tabStore.append(_tab('sess-1'));
+        cubit.tabStore.append(_tab('local-team'));
+        cubit.setActiveWorkspace('B');
+        cubit.tabStore.append(_tab('sess-2'));
+        expect(cubit.openTabCountForWorkspace('A'), 1);
+        expect(cubit.openTabCountForWorkspace('B'), 1);
+        addTearDown(cubit.close);
+      },
+    );
 
-    test('activateWorkspaceTab updates tab bucket and session scope together', () {
-      final cubit = _cubit();
-      addTearDown(cubit.close);
+    test(
+      'activateWorkspaceTab updates tab bucket and session scope together',
+      () {
+        final cubit = _cubit();
+        addTearDown(cubit.close);
 
-      cubit.setActiveWorkspace('A');
-      cubit.tabStore.append(_tab('a1'));
-      cubit.refreshActiveWorkspaceTabs();
-      expect(cubit.state.tabs, isNotEmpty);
+        cubit.setActiveWorkspace('A');
+        cubit.tabStore.append(_tab('a1'));
+        cubit.refreshActiveWorkspaceTabs();
+        expect(cubit.state.tabs, isNotEmpty);
 
-      cubit.activateWorkspaceTab(
-        workspaceTabKey: 'B',
-        scopeSessionsToSelectedTeam: true,
-        selectedTeamId: 'team-1',
-      );
+        cubit.activateWorkspaceTab(
+          workspaceTabKey: 'B',
+          scopeSessionsToSelectedTeam: true,
+          selectedTeamId: 'team-1',
+        );
 
-      expect(cubit.tabStore.activeWorkspaceId, 'B');
-      expect(cubit.state.tabs, isEmpty);
-    });
+        expect(cubit.tabStore.activeWorkspaceId, 'B');
+        expect(cubit.state.tabs, isEmpty);
+      },
+    );
   });
 }

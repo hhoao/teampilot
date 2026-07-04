@@ -106,11 +106,13 @@ class _WorktreeDeleteDialogState extends State<_WorktreeDeleteDialog> {
             backgroundColor: Theme.of(context).colorScheme.error,
           ),
           onPressed: _canConfirm
-              ? () => Navigator.of(context).pop(WorktreeDeleteResult(
-                  force: _force,
-                  deleteBranch: _deleteBranch,
-                  deleteSessions: _deleteSessions,
-                ))
+              ? () => Navigator.of(context).pop(
+                  WorktreeDeleteResult(
+                    force: _force,
+                    deleteBranch: _deleteBranch,
+                    deleteSessions: _deleteSessions,
+                  ),
+                )
               : null,
           child: Text(l10n.worktreeDeleteAction),
         ),
@@ -122,12 +124,11 @@ class _WorktreeDeleteDialogState extends State<_WorktreeDeleteDialog> {
     required bool value,
     required String label,
     required ValueChanged<bool> onChanged,
-  }) =>
-      CheckboxListTile(
-        contentPadding: EdgeInsets.zero,
-        controlAffinity: ListTileControlAffinity.leading,
-        value: value,
-        onChanged: (v) => onChanged(v ?? false),
-        title: Text(label),
-      );
+  }) => CheckboxListTile(
+    contentPadding: EdgeInsets.zero,
+    controlAffinity: ListTileControlAffinity.leading,
+    value: value,
+    onChanged: (v) => onChanged(v ?? false),
+    title: Text(label),
+  );
 }

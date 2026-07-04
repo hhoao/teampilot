@@ -189,10 +189,9 @@ class McpCatalogMapper {
 
     final name = server['name']?.toString().trim() ?? '';
     if (name.isEmpty) return null;
-    final title =
-        server['title']?.toString().trim().isNotEmpty == true
-            ? server['title']!.toString().trim()
-            : name.split('/').last;
+    final title = server['title']?.toString().trim().isNotEmpty == true
+        ? server['title']!.toString().trim()
+        : name.split('/').last;
 
     final repo = server['repository'];
     String? repoUrl;

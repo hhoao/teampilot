@@ -56,10 +56,7 @@ Map<String, Object?> buildMemberBusMcpConfig({
           'long-blocking remote member "$memberId" needs a relay argv',
         );
       }
-      return {
-        'command': argv.first,
-        'args': argv.sublist(1),
-      };
+      return {'command': argv.first, 'args': argv.sublist(1)};
     }
     final httpPort = remote.mcpHttpTunnelPort;
     if (httpPort == null) {

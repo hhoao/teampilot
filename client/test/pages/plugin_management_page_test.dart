@@ -38,10 +38,7 @@ void main() {
     home: BlocProvider(
       create: (_) => LayoutCubit(),
       child: Scaffold(
-        body: BlocProvider.value(
-          value: PluginCubit.test(state),
-          child: child,
-        ),
+        body: BlocProvider.value(value: PluginCubit.test(state), child: child),
       ),
     ),
   );
@@ -49,14 +46,16 @@ void main() {
   testWidgets('Installed section renders empty state', (tester) async {
     tester.view.physicalSize = const Size(2400, 1800);
     tester.view.devicePixelRatio = 1.0;
-    await tester.pumpWidget(wrap(
-      const PluginState(
-        installed: [],
-        marketplaces: [],
-        status: PluginLoadStatus.ready,
+    await tester.pumpWidget(
+      wrap(
+        const PluginState(
+          installed: [],
+          marketplaces: [],
+          status: PluginLoadStatus.ready,
+        ),
+        const PluginManagementPage(section: PluginSection.installed),
       ),
-      const PluginManagementPage(section: PluginSection.installed),
-    ));
+    );
     await tester.pumpAndSettle();
     expect(find.text('No plugins installed'), findsOneWidget);
   });
@@ -65,27 +64,29 @@ void main() {
     tester.view.physicalSize = const Size(2400, 1800);
     tester.view.devicePixelRatio = 1.0;
     final now = DateTime.utc(2026, 1, 1).millisecondsSinceEpoch;
-    await tester.pumpWidget(wrap(
-      PluginState(
-        installed: [
-          Plugin(
-            id: 'p-hooks',
-            name: 'hooks-only',
-            description: 'test plugin',
-            version: '1.0.0',
-            directory: '/tmp/p',
-            capabilities: const PluginCapabilities(
-              hooks: [PluginHook(event: 'Stop', matcher: '.*')],
+    await tester.pumpWidget(
+      wrap(
+        PluginState(
+          installed: [
+            Plugin(
+              id: 'p-hooks',
+              name: 'hooks-only',
+              description: 'test plugin',
+              version: '1.0.0',
+              directory: '/tmp/p',
+              capabilities: const PluginCapabilities(
+                hooks: [PluginHook(event: 'Stop', matcher: '.*')],
+              ),
+              installedAt: now,
+              updatedAt: now,
             ),
-            installedAt: now,
-            updatedAt: now,
-          ),
-        ],
-        marketplaces: const [],
-        status: PluginLoadStatus.ready,
+          ],
+          marketplaces: const [],
+          status: PluginLoadStatus.ready,
+        ),
+        const PluginManagementPage(section: PluginSection.installed),
       ),
-      const PluginManagementPage(section: PluginSection.installed),
-    ));
+    );
     await tester.pumpAndSettle();
     expect(find.textContaining('Fully supported'), findsWidgets);
     expect(find.textContaining('Not applicable'), findsWidgets);
@@ -94,19 +95,21 @@ void main() {
   testWidgets('Marketplaces section lists default marketplace', (tester) async {
     tester.view.physicalSize = const Size(2400, 1800);
     tester.view.devicePixelRatio = 1.0;
-    await tester.pumpWidget(wrap(
-      const PluginState(
-        installed: [],
-        marketplaces: [
-          PluginMarketplace(
-            owner: 'anthropics',
-            name: 'claude-plugins-official',
-          ),
-        ],
-        status: PluginLoadStatus.ready,
+    await tester.pumpWidget(
+      wrap(
+        const PluginState(
+          installed: [],
+          marketplaces: [
+            PluginMarketplace(
+              owner: 'anthropics',
+              name: 'claude-plugins-official',
+            ),
+          ],
+          status: PluginLoadStatus.ready,
+        ),
+        const PluginManagementPage(section: PluginSection.marketplaces),
       ),
-      const PluginManagementPage(section: PluginSection.marketplaces),
-    ));
+    );
     await tester.pumpAndSettle();
     expect(
       find.textContaining('anthropics/claude-plugins-official'),
@@ -139,20 +142,22 @@ void main() {
         marketplaceBranch: 'main',
       ),
     ];
-    await tester.pumpWidget(wrap(
-      const PluginState(
-        installed: [],
-        marketplaces: [
-          PluginMarketplace(
-            owner: 'anthropics',
-            name: 'claude-plugins-official',
-          ),
-        ],
-        discoverable: plugins,
-        status: PluginLoadStatus.ready,
+    await tester.pumpWidget(
+      wrap(
+        const PluginState(
+          installed: [],
+          marketplaces: [
+            PluginMarketplace(
+              owner: 'anthropics',
+              name: 'claude-plugins-official',
+            ),
+          ],
+          discoverable: plugins,
+          status: PluginLoadStatus.ready,
+        ),
+        const PluginManagementPage(section: PluginSection.discovery),
       ),
-      const PluginManagementPage(section: PluginSection.discovery),
-    ));
+    );
     await tester.pumpAndSettle();
     // Desktop layout also has a sidebar ListView; discovery uses bottom padding.
     expect(

@@ -15,6 +15,7 @@ abstract final class TerminalUriOpener {
 
   static String stripLineSuffix(String raw) =>
       raw.replaceFirst(lineSuffixPattern, '');
+
   /// When set, existing local files are opened in the in-app editor before
   /// falling back to the OS handler.
   static Future<bool> open(
@@ -50,10 +51,7 @@ abstract final class TerminalUriOpener {
 
   /// Resolves a terminal [file:] URI to an absolute path, using [workingDirectory]
   /// for relative targets when provided.
-  static String? resolveLocalFilePath(
-    String raw, {
-    String? workingDirectory,
-  }) {
+  static String? resolveLocalFilePath(String raw, {String? workingDirectory}) {
     final uriString = fixup(raw);
     if (uriString == null) return null;
 
@@ -106,8 +104,7 @@ abstract final class TerminalUriOpener {
     if (host.isEmpty) return trimmed;
 
     final localHost = Platform.localHostname;
-    if (host == 'localhost' ||
-        host.toLowerCase() == localHost.toLowerCase()) {
+    if (host == 'localhost' || host.toLowerCase() == localHost.toLowerCase()) {
       return uri.replace(host: '').toString();
     }
 
@@ -161,10 +158,7 @@ abstract final class TerminalUriOpener {
     Future<void> Function(String absolutePath)? openInEditor,
     required String? fallbackPath,
   }) async {
-    final path = resolveLocalFilePath(
-      raw,
-      workingDirectory: workingDirectory,
-    );
+    final path = resolveLocalFilePath(raw, workingDirectory: workingDirectory);
     final resolved = path ?? fallbackPath;
     if (resolved == null || resolved.isEmpty) return false;
 
@@ -194,11 +188,12 @@ abstract final class TerminalUriOpener {
       return result.exitCode == 0;
     }
     if (Platform.isWindows) {
-      final result = await Process.run(
-        'cmd',
-        ['/c', 'start', '', path],
-        runInShell: true,
-      );
+      final result = await Process.run('cmd', [
+        '/c',
+        'start',
+        '',
+        path,
+      ], runInShell: true);
       return result.exitCode == 0;
     }
 

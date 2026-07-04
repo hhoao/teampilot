@@ -212,7 +212,9 @@ class _RemoteDirectoryBrowserDialogState
                       child: Text(l10n.cancel),
                     ),
                     FilledButton(
-                      onPressed: listing != null && !_loading ? _useCurrent : null,
+                      onPressed: listing != null && !_loading
+                          ? _useCurrent
+                          : null,
                       child: Text(l10n.remoteDirectoryBrowserUseThisDirectory),
                     ),
                   ],

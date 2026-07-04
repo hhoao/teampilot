@@ -73,10 +73,10 @@ class WorkspaceAgentConfig {
 
   @override
   int get hashCode => Object.hash(
-        agent,
-        agentType,
-        extraArgs,
-        prompt,
-        dangerouslySkipPermissions,
-      );
+    agent,
+    agentType,
+    extraArgs,
+    prompt,
+    dangerouslySkipPermissions,
+  );
 }

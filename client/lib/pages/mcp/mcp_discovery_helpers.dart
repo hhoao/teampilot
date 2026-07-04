@@ -12,13 +12,12 @@ const mcpDiscoverySourceOrder = <McpDiscoverySource>[
 String mcpDiscoverySourceLabel(
   AppLocalizations l10n,
   McpDiscoverySource source,
-) =>
-    switch (source) {
-      McpDiscoverySource.all => l10n.mcpDiscoverySourceAll,
-      McpDiscoverySource.builtin => l10n.mcpDiscoverySourceBuiltin,
-      McpDiscoverySource.smithery => l10n.mcpRegistrySmithery,
-      McpDiscoverySource.official => l10n.mcpRegistryOfficial,
-    };
+) => switch (source) {
+  McpDiscoverySource.all => l10n.mcpDiscoverySourceAll,
+  McpDiscoverySource.builtin => l10n.mcpDiscoverySourceBuiltin,
+  McpDiscoverySource.smithery => l10n.mcpRegistrySmithery,
+  McpDiscoverySource.official => l10n.mcpRegistryOfficial,
+};
 
 bool mcpDiscoveryShowsSearch(McpDiscoverySource source) =>
     source != McpDiscoverySource.builtin;

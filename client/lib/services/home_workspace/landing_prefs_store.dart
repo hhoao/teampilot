@@ -18,12 +18,12 @@ class LandingPrefs {
   final String? personalProfileId;
 
   Map<String, Object?> toJson() => {
-        'isPersonal': isPersonal,
-        if (presetId != null && presetId!.isNotEmpty) 'presetId': presetId,
-        if (teamId != null && teamId!.isNotEmpty) 'teamId': teamId,
-        if (personalProfileId != null && personalProfileId!.isNotEmpty)
-          'personalProfileId': personalProfileId,
-      };
+    'isPersonal': isPersonal,
+    if (presetId != null && presetId!.isNotEmpty) 'presetId': presetId,
+    if (teamId != null && teamId!.isNotEmpty) 'teamId': teamId,
+    if (personalProfileId != null && personalProfileId!.isNotEmpty)
+      'personalProfileId': personalProfileId,
+  };
 }
 
 /// Persists landing mode/selection at `ui/workspace-launch-prefs.json`.

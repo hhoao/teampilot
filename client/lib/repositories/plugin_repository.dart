@@ -22,10 +22,7 @@ class PluginRepository {
     final resolvedManifest = manifest ?? PluginManifestService();
     final resolvedGit = PluginRepoGitService();
     final resolvedCache =
-        diskCache ??
-        PluginRepoDiskCacheService(
-          gitService: resolvedGit,
-        );
+        diskCache ?? PluginRepoDiskCacheService(gitService: resolvedGit);
     return PluginRepository._(
       install:
           install ??
@@ -38,10 +35,7 @@ class PluginRepository {
     );
   }
 
-  PluginRepository._({
-    required this.install,
-    required this.repos,
-  });
+  PluginRepository._({required this.install, required this.repos});
 
   final PluginInstallService install;
   final PluginRepoService repos;
@@ -50,9 +44,7 @@ class PluginRepository {
     final path = AppStorage.isInstalled
         ? AppStorage.context.pluginsJsonPath
         : AppStorage.paths.pluginsJson;
-    final fs = AppStorage.isInstalled
-        ? AppStorage.context.fs
-        : AppStorage.fs;
+    final fs = AppStorage.isInstalled ? AppStorage.context.fs : AppStorage.fs;
     final stat = await fs.stat(path);
     if (!stat.isFile) return const [];
     final text = await fs.readString(path);

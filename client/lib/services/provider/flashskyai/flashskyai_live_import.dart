@@ -61,10 +61,7 @@ abstract final class FlashskyaiLiveImport {
               'models': {
                 for (final model in llm.models.entries)
                   if (model.value.provider == entry.key)
-                    model.key: {
-                      ...model.value.toJson(),
-                      'provider': id,
-                    },
+                    model.key: {...model.value.toJson(), 'provider': id},
               },
           },
           createdAt: now,

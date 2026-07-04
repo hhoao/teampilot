@@ -1,4 +1,4 @@
-﻿import 'dart:io';
+import 'dart:io';
 
 import 'package:android_package_installer/android_package_installer.dart';
 import 'package:flutter/foundation.dart';
@@ -137,16 +137,16 @@ class _AppUpdateDialogState extends State<AppUpdateDialog> {
                   children: [
                     Text(
                       l10n.aboutCurrentVersion,
-                      style: AppTextStyles.of(context).body.copyWith(
-                        color: Colors.grey[600],
-                      ),
+                      style: AppTextStyles.of(
+                        context,
+                      ).body.copyWith(color: Colors.grey[600]),
                     ),
                     const SizedBox(height: 4),
                     Text(
                       currentApp?.version ?? '—',
-                      style: AppTextStyles.of(context).body.copyWith(
-                        fontWeight: FontWeight.w500,
-                      ),
+                      style: AppTextStyles.of(
+                        context,
+                      ).body.copyWith(fontWeight: FontWeight.w500),
                     ),
                   ],
                 ),
@@ -158,9 +158,9 @@ class _AppUpdateDialogState extends State<AppUpdateDialog> {
                   children: [
                     Text(
                       l10n.appUpdateLatestVersion,
-                      style: AppTextStyles.of(context).body.copyWith(
-                        color: Colors.grey[600],
-                      ),
+                      style: AppTextStyles.of(
+                        context,
+                      ).body.copyWith(color: Colors.grey[600]),
                     ),
                     const SizedBox(height: 4),
                     Text(
@@ -190,9 +190,9 @@ class _AppUpdateDialogState extends State<AppUpdateDialog> {
                 collapsedBackgroundColor: Colors.transparent,
                 title: Text(
                   l10n.appUpdateChangelogTitle,
-                  style: AppTextStyles.of(context).bodySmall.copyWith(
-                    color: Colors.grey[600],
-                  ),
+                  style: AppTextStyles.of(
+                    context,
+                  ).bodySmall.copyWith(color: Colors.grey[600]),
                 ),
                 collapsedIconColor: Colors.grey[600],
                 collapsedTextColor: Colors.grey[600],
@@ -247,16 +247,16 @@ class _AppUpdateDialogState extends State<AppUpdateDialog> {
               Expanded(
                 child: Text(
                   _downloadStatus,
-                  style: AppTextStyles.of(context).bodySmall.copyWith(
-                    color: Colors.blue[700],
-                  ),
+                  style: AppTextStyles.of(
+                    context,
+                  ).bodySmall.copyWith(color: Colors.blue[700]),
                 ),
               ),
               Text(
                 '${(_downloadProgress * 100).toStringAsFixed(1)}%',
-                style: AppTextStyles.of(context).bodyStrong.copyWith(
-                  color: Colors.blue[800],
-                ),
+                style: AppTextStyles.of(
+                  context,
+                ).bodyStrong.copyWith(color: Colors.blue[800]),
               ),
             ],
           ),

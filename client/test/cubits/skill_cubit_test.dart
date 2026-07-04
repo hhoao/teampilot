@@ -28,36 +28,42 @@ void main() {
     tmp.deleteSync(recursive: true);
   });
 
-  test('loadAll() populates installed + repos without discovery sync', () async {
-    final cubit = SkillCubit(SkillRepository());
-    await cubit.loadAll();
-    expect(cubit.state.status, SkillLoadStatus.ready);
-    expect(cubit.state.repos, isNotEmpty);
-    expect(cubit.state.installed, isEmpty);
-    expect(cubit.state.discoverable, isEmpty);
-    expect(cubit.state.discoveryLoading, isFalse);
-    expect(cubit.state.repoSyncingKeys, isEmpty);
-  });
+  test(
+    'loadAll() populates installed + repos without discovery sync',
+    () async {
+      final cubit = SkillCubit(SkillRepository());
+      await cubit.loadAll();
+      expect(cubit.state.status, SkillLoadStatus.ready);
+      expect(cubit.state.repos, isNotEmpty);
+      expect(cubit.state.installed, isEmpty);
+      expect(cubit.state.discoverable, isEmpty);
+      expect(cubit.state.discoveryLoading, isFalse);
+      expect(cubit.state.repoSyncingKeys, isEmpty);
+    },
+  );
 
-  test('ensureDiscoveryLoaded does not re-sync when list is populated', () async {
-    final cubit = SkillCubit(SkillRepository());
-    cubit.emit(
-      cubit.state.copyWith(
-        discoverable: const [
-          DiscoverableSkill(
-            key: 'a:b:c',
-            name: 'c',
-            description: '',
-            directory: 'c',
-            repoOwner: 'o',
-            repoName: 'n',
-            repoBranch: 'main',
-          ),
-        ],
-      ),
-    );
-    await cubit.ensureDiscoveryLoaded();
-    expect(cubit.state.discoveryLoading, isFalse);
-    expect(cubit.state.repoSyncingKeys, isEmpty);
-  });
+  test(
+    'ensureDiscoveryLoaded does not re-sync when list is populated',
+    () async {
+      final cubit = SkillCubit(SkillRepository());
+      cubit.emit(
+        cubit.state.copyWith(
+          discoverable: const [
+            DiscoverableSkill(
+              key: 'a:b:c',
+              name: 'c',
+              description: '',
+              directory: 'c',
+              repoOwner: 'o',
+              repoName: 'n',
+              repoBranch: 'main',
+            ),
+          ],
+        ),
+      );
+      await cubit.ensureDiscoveryLoaded();
+      expect(cubit.state.discoveryLoading, isFalse);
+      expect(cubit.state.repoSyncingKeys, isEmpty);
+    },
+  );
 }

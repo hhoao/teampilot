@@ -25,7 +25,10 @@ ToastificationType toastificationTypeFor(AppToastVariant variant) =>
 enum AppToastVariant { info, success, warning, error }
 
 /// Default auto-dismiss duration per variant.
-Duration defaultAppToastDuration(AppToastVariant variant, {bool hasAction = false}) {
+Duration defaultAppToastDuration(
+  AppToastVariant variant, {
+  bool hasAction = false,
+}) {
   if (hasAction) return const Duration(seconds: 8);
   return switch (variant) {
     AppToastVariant.success => const Duration(seconds: 2),
@@ -62,11 +65,7 @@ ToastificationConfig buildAppToastificationConfig() {
         if (useCustomDesktopWindowTitleBar) {
           top += kDesktopWindowTitleBarHeight;
         }
-        return EdgeInsets.only(
-          left: horizontal,
-          right: horizontal,
-          top: top,
-        );
+        return EdgeInsets.only(left: horizontal, right: horizontal, top: top);
       }
       final bottom = spacing.lg + MediaQuery.viewPaddingOf(context).bottom;
       return EdgeInsets.only(
@@ -87,10 +86,8 @@ ToastificationConfig buildAppToastificationConfig() {
   BorderRadius borderRadius,
   List<BoxShadow> boxShadow,
   EdgeInsetsGeometry padding,
-}) appToastStyleFor(
-  ThemeData theme,
-  AppToastVariant variant,
-) {
+})
+appToastStyleFor(ThemeData theme, AppToastVariant variant) {
   final scheme = theme.colorScheme;
   final accent = appToastAccentColor(scheme, variant);
   final isDark = theme.brightness == Brightness.dark;

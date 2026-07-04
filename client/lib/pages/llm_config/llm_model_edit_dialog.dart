@@ -1,4 +1,4 @@
-﻿import 'package:flutter/material.dart';
+import 'package:flutter/material.dart';
 import 'package:teampilot/theme/app_icon_sizes.dart';
 
 import '../../l10n/l10n_extensions.dart';
@@ -77,39 +77,39 @@ class LlmModelEditDialogState extends State<LlmModelEditDialog> {
           AppDialogHeader(title: widget.title),
           const SizedBox(height: 16),
           TextField(
-              key: AppKeys.modelNameDialogField,
-              controller: _nameController,
-              autofocus: true,
-              decoration: InputDecoration(labelText: l10n.modelName),
-            ),
-            const SizedBox(height: 14),
-            Column(
-              crossAxisAlignment: CrossAxisAlignment.stretch,
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Text(
-                  l10n.provider,
-                  style: LlmWorkspaceText(Theme.of(context)).bodyStrong,
-                ),
-                const SizedBox(height: 8),
-                AppDropdownField<String>(
-                  key: AppKeys.modelProviderField,
-                  items: providerNames,
-                  initialItem: initialProvider,
-                  hintText: l10n.provider,
-                  decoration: deco,
-                  onChanged: (value) => setState(() => _provider = value ?? ''),
-                  itemLabel: (value) => value,
-                ),
-              ],
-            ),
-            const SizedBox(height: 14),
-            TextField(
-              key: AppKeys.modelModelIdField,
-              controller: _modelController,
-              decoration: InputDecoration(labelText: l10n.modelId),
-            ),
-            const SizedBox(height: 14),
+            key: AppKeys.modelNameDialogField,
+            controller: _nameController,
+            autofocus: true,
+            decoration: InputDecoration(labelText: l10n.modelName),
+          ),
+          const SizedBox(height: 14),
+          Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Text(
+                l10n.provider,
+                style: LlmWorkspaceText(Theme.of(context)).bodyStrong,
+              ),
+              const SizedBox(height: 8),
+              AppDropdownField<String>(
+                key: AppKeys.modelProviderField,
+                items: providerNames,
+                initialItem: initialProvider,
+                hintText: l10n.provider,
+                decoration: deco,
+                onChanged: (value) => setState(() => _provider = value ?? ''),
+                itemLabel: (value) => value,
+              ),
+            ],
+          ),
+          const SizedBox(height: 14),
+          TextField(
+            key: AppKeys.modelModelIdField,
+            controller: _modelController,
+            decoration: InputDecoration(labelText: l10n.modelId),
+          ),
+          const SizedBox(height: 14),
           SwitchListTile(
             contentPadding: EdgeInsets.zero,
             key: AppKeys.modelEnabledToggle,

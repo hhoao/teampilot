@@ -1,4 +1,5 @@
-﻿import 'dart:async';
+import 'package:collection/collection.dart';
+import 'dart:async';
 
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
@@ -32,6 +33,7 @@ import '../../../theme/app_text_styles.dart';
 import '../../../utils/app_keys.dart';
 import '../../../utils/app_session_sort.dart';
 import '../../../utils/debounce/debounce.dart';
+import '../../../utils/workspace_running_sessions.dart';
 import '../../../utils/workspace_sidebar_sessions.dart';
 import '../../../utils/workspace_tab_session_scope.dart';
 import '../../../widgets/app_icon_button.dart';
@@ -95,6 +97,27 @@ class _WorkspaceSidebarState extends State<WorkspaceSidebar> {
       folders: widget.workspace.folders,
     );
     final toolsContext = WorkspaceToolsScope.maybeOf(context)?.tools?.context;
+    final runningSessionIds = context.select<ChatCubit, List<String>>((c) {
+      final sessions = WorkspaceSidebarSessions.forWorkspace(
+        allSessions: c.state.sessions,
+        workspace: widget.workspace,
+      ).sessions;
+      final working = c.state.workingSessionIds;
+      final openTabIds = openTabSessionIdsForWorkspace(
+        c.tabStore
+            .tabsForWorkspace(widget.tabScopeId)
+            .map((tab) => tab.info.id),
+      );
+      return workspaceRunningSessions(
+        sessions: sessions,
+        workingSessionIds: working,
+        openTabSessionIds: openTabIds,
+      ).map((s) => s.sessionId).toList();
+    });
+    final runningSessions = runningSessionIds
+        .map((id) => sortedSessions.where((s) => s.sessionId == id).firstOrNull)
+        .whereType<AppSession>()
+        .toList();
 
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 18),
@@ -122,6 +145,15 @@ class _WorkspaceSidebarState extends State<WorkspaceSidebar> {
               () => _startNewConversation(context),
             ),
           ),
+          if (runningSessions.isNotEmpty) ...[
+            const SizedBox(height: 14),
+            _RunningSessionsSection(
+              sessions: runningSessions,
+              workspace: widget.workspace,
+              tabScopeId: widget.tabScopeId,
+              personalLaunchBlocked: personalLaunchBlocked,
+            ),
+          ],
           const SizedBox(height: 14),
           Padding(
             padding: const EdgeInsets.fromLTRB(4, 0, 0, 8),
@@ -288,7 +320,10 @@ class _WorkspaceSidebarState extends State<WorkspaceSidebar> {
       await cubit.load(repoPath);
       cubit.setCurrentWorktree(result.worktreePath);
       if (result.startConversation && context.mounted) {
-        final draft = context.read<WorkspaceLandingContextCubit>().state.context;
+        final draft = context
+            .read<WorkspaceLandingContextCubit>()
+            .state
+            .context;
         await createSessionInWorktree(
           context,
           widget.workspace,
@@ -357,8 +392,8 @@ class _WorkspaceSidebarState extends State<WorkspaceSidebar> {
       session: session,
       launchProfileId: session.sessionTeam.trim().isEmpty
           ? (session.profileId.trim().isNotEmpty
-              ? session.profileId
-              : _landingProfileId(context))
+                ? session.profileId
+                : _landingProfileId(context))
           : session.sessionTeam,
       index: index,
       highlightSessionId: scopedActiveSessionId(
@@ -375,13 +410,7 @@ class _WorkspaceSidebarState extends State<WorkspaceSidebar> {
           showPersonalLaunchBlockedToast(context);
           return;
         }
-        unawaited(
-          openWorkspaceSessionTab(
-            context,
-            widget.workspace,
-            session,
-          ),
-        );
+        unawaited(openWorkspaceSessionTab(context, widget.workspace, session));
       },
     );
   }
@@ -486,46 +515,105 @@ class _AutomationsHeaderState extends State<_AutomationsHeader> {
                   color: cs.outlineVariant.withValues(alpha: 0.5),
                 ),
               ),
-            child: Row(
-              children: [
-                Icon(
-                  Icons.bolt_rounded,
-                  size: context.appIconSizes.md,
-                  color: cs.primary,
-                ),
-                const SizedBox(width: 8),
-                Expanded(
-                  child: Text.rich(
-                    TextSpan(
-                      style: styles.prominent,
-                      children: [
-                        TextSpan(text: parts.title),
-                        if (parts.time != null)
-                          TextSpan(
-                            text: ' · ${parts.time}',
-                            style: styles.prominent.copyWith(
-                              color: cs.onSurfaceVariant,
-                            ),
-                          ),
-                      ],
-                    ),
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
+              child: Row(
+                children: [
+                  Icon(
+                    Icons.bolt_rounded,
+                    size: context.appIconSizes.md,
+                    color: cs.primary,
                   ),
-                ),
-                AppIconButton(
-                  icon: Icons.add_rounded,
-                  compact: true,
-                  size: AppIconButton.kCompactSize,
-                  tooltip: l10n.automationsNew,
-                  onTap: widget.onAdd,
-                ),
-              ],
+                  const SizedBox(width: 8),
+                  Expanded(
+                    child: Text.rich(
+                      TextSpan(
+                        style: styles.prominent,
+                        children: [
+                          TextSpan(text: parts.title),
+                          if (parts.time != null)
+                            TextSpan(
+                              text: ' · ${parts.time}',
+                              style: styles.prominent.copyWith(
+                                color: cs.onSurfaceVariant,
+                              ),
+                            ),
+                        ],
+                      ),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                  ),
+                  AppIconButton(
+                    icon: Icons.add_rounded,
+                    compact: true,
+                    size: AppIconButton.kCompactSize,
+                    tooltip: l10n.automationsNew,
+                    onTap: widget.onAdd,
+                  ),
+                ],
+              ),
+            ),
+          ),
+        );
+      },
+    );
+  }
+}
+
+class _RunningSessionsSection extends StatelessWidget {
+  const _RunningSessionsSection({
+    required this.sessions,
+    required this.workspace,
+    required this.tabScopeId,
+    required this.personalLaunchBlocked,
+  });
+
+  final List<AppSession> sessions;
+  final Workspace workspace;
+  final String tabScopeId;
+  final bool personalLaunchBlocked;
+
+  @override
+  Widget build(BuildContext context) {
+    final l10n = context.l10n;
+    final cs = Theme.of(context).colorScheme;
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        Padding(
+          padding: const EdgeInsets.fromLTRB(4, 0, 0, 8),
+          child: Text(
+            l10n.workspaceRunningSessionsSection,
+            style: AppTextStyles.of(context).bodySmall.copyWith(
+              color: cs.onSurfaceVariant,
+              fontWeight: FontWeight.w600,
             ),
           ),
         ),
-        );
-      },
+        for (final session in sessions)
+          SidebarSessionTile(
+            key: ValueKey('workspace-running-session-${session.sessionId}'),
+            session: session,
+            launchProfileId: session.sessionTeam.trim().isEmpty
+                ? session.profileId.trim()
+                : session.sessionTeam,
+            highlightSessionId: scopedActiveSessionId(
+              context.read<ChatCubit>(),
+              tabScopeId,
+            ),
+            tapThrottleKeyPrefix: 'workspace_running_session',
+            onTap: () {
+              final isPersonal = session.sessionTeam.trim().isEmpty;
+              if (personalIdentityBlockedForWorkspace(
+                isPersonal: isPersonal,
+                folders: workspace.folders,
+              )) {
+                showPersonalLaunchBlockedToast(context);
+                return;
+              }
+              unawaited(openWorkspaceSessionTab(context, workspace, session));
+            },
+          ),
+      ],
     );
   }
 }

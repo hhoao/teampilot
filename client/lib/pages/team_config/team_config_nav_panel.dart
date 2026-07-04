@@ -1,4 +1,4 @@
-﻿import 'package:flutter/material.dart';
+import 'package:flutter/material.dart';
 import 'package:teampilot/theme/app_icon_sizes.dart';
 
 import '../../l10n/l10n_extensions.dart';
@@ -11,7 +11,8 @@ import 'dotted_border_container.dart';
 import 'team_config_section.dart';
 
 class TeamConfigNavPanel extends StatelessWidget {
-  const TeamConfigNavPanel({super.key, 
+  const TeamConfigNavPanel({
+    super.key,
     required this.team,
     required this.section,
     required this.selectedMemberId,
@@ -65,7 +66,11 @@ class TeamConfigNavPanel extends StatelessWidget {
 }
 
 class TeamConfigMemberNavAddTile extends StatelessWidget {
-  const TeamConfigMemberNavAddTile({super.key, required this.l10n, required this.onTap});
+  const TeamConfigMemberNavAddTile({
+    super.key,
+    required this.l10n,
+    required this.onTap,
+  });
 
   final AppLocalizations l10n;
   final VoidCallback onTap;
@@ -92,7 +97,11 @@ class TeamConfigMemberNavAddTile extends StatelessWidget {
                 padding: const EdgeInsets.symmetric(horizontal: 14),
                 child: Row(
                   children: [
-                    Icon(Icons.add, size: context.appIconSizes.md, color: muted),
+                    Icon(
+                      Icons.add,
+                      size: context.appIconSizes.md,
+                      color: muted,
+                    ),
                     SizedBox(width: 10),
                     Expanded(
                       child: Text(

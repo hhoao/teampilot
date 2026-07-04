@@ -92,63 +92,72 @@ void main() {
       );
     });
 
-    test('claim_task rejects ineligible worker; eligible worker succeeds',
-        () async {
-      harness = await TeamBusCommTaskHarness.create();
-      final lead = harness.clientFor('team-lead');
-      final backend = harness.clientFor('backend-dev');
-      final frontend = harness.clientFor('frontend-dev');
+    test(
+      'claim_task rejects ineligible worker; eligible worker succeeds',
+      () async {
+        harness = await TeamBusCommTaskHarness.create();
+        final lead = harness.clientFor('team-lead');
+        final backend = harness.clientFor('backend-dev');
+        final frontend = harness.clientFor('frontend-dev');
 
-      final enqueued = await lead.addTasks([
-        <String, Object?>{
-          'title': 'db migration',
-          'brief': 'add users table',
-          'required_capabilities': ['backend'],
-        },
-      ]);
-      final taskId = TeammateBusHttpClient.parseEnqueuedTasks(enqueued).single.id;
+        final enqueued = await lead.addTasks([
+          <String, Object?>{
+            'title': 'db migration',
+            'brief': 'add users table',
+            'required_capabilities': ['backend'],
+          },
+        ]);
+        final taskId = TeammateBusHttpClient.parseEnqueuedTasks(
+          enqueued,
+        ).single.id;
 
-      expect(
-        TeammateBusHttpClient.toolFailed(await frontend.claimTask(taskId)),
-        isTrue,
-      );
-      final claimed = await backend.claimTask(taskId);
-      expect(TeammateBusHttpClient.toolSucceeded(claimed), isTrue);
-      expect(
-        TeammateBusHttpClient.toolResultText(claimed),
-        contains('db migration'),
-      );
-      expect(
-        harness.bus.listTasks(status: TaskStatus.claimed).single.assignee,
-        'backend-dev',
-      );
-    });
+        expect(
+          TeammateBusHttpClient.toolFailed(await frontend.claimTask(taskId)),
+          isTrue,
+        );
+        final claimed = await backend.claimTask(taskId);
+        expect(TeammateBusHttpClient.toolSucceeded(claimed), isTrue);
+        expect(
+          TeammateBusHttpClient.toolResultText(claimed),
+          contains('db migration'),
+        );
+        expect(
+          harness.bus.listTasks(status: TaskStatus.claimed).single.assignee,
+          'backend-dev',
+        );
+      },
+    );
 
-    test('preferred assignee reserves task until the named worker claims', () async {
-      harness = await TeamBusCommTaskHarness.create();
-      final lead = harness.clientFor('team-lead');
-      final backend = harness.clientFor('backend-dev');
-      final frontend = harness.clientFor('frontend-dev');
+    test(
+      'preferred assignee reserves task until the named worker claims',
+      () async {
+        harness = await TeamBusCommTaskHarness.create();
+        final lead = harness.clientFor('team-lead');
+        final backend = harness.clientFor('backend-dev');
+        final frontend = harness.clientFor('frontend-dev');
 
-      final enqueued = await lead.addTasks([
-        <String, Object?>{
-          'title': 'hotfix',
-          'brief': 'patch prod',
-          'required_capabilities': ['backend'],
-          'preferred_assignee': 'backend-dev',
-        },
-      ]);
-      final taskId = TeammateBusHttpClient.parseEnqueuedTasks(enqueued).single.id;
+        final enqueued = await lead.addTasks([
+          <String, Object?>{
+            'title': 'hotfix',
+            'brief': 'patch prod',
+            'required_capabilities': ['backend'],
+            'preferred_assignee': 'backend-dev',
+          },
+        ]);
+        final taskId = TeammateBusHttpClient.parseEnqueuedTasks(
+          enqueued,
+        ).single.id;
 
-      expect(
-        TeammateBusHttpClient.toolFailed(await frontend.claimTask(taskId)),
-        isTrue,
-      );
-      expect(
-        TeammateBusHttpClient.toolSucceeded(await backend.claimTask(taskId)),
-        isTrue,
-      );
-    });
+        expect(
+          TeammateBusHttpClient.toolFailed(await frontend.claimTask(taskId)),
+          isTrue,
+        );
+        expect(
+          TeammateBusHttpClient.toolSucceeded(await backend.claimTask(taskId)),
+          isTrue,
+        );
+      },
+    );
 
     test('message beats queued task on wait_for_message', () async {
       harness = await TeamBusCommTaskHarness.create();
@@ -203,7 +212,10 @@ void main() {
         ]);
         // Let the parked worker process the queue wake before mail is sent.
         await Future<void>.delayed(const Duration(milliseconds: 150));
-        await lead.sendMessage(to: 'backend-dev', content: 'urgent: pause work');
+        await lead.sendMessage(
+          to: 'backend-dev',
+          content: 'urgent: pause work',
+        );
 
         final first = TeammateBusHttpClient.toolResultText(await wait);
         if (first.contains('ASSIGNED TASK')) {
@@ -239,8 +251,9 @@ void main() {
           'depends_on': [foundation.id],
         },
       ]);
-      final featureId =
-          TeammateBusHttpClient.parseEnqueuedTasks(featureEnqueued).single.id;
+      final featureId = TeammateBusHttpClient.parseEnqueuedTasks(
+        featureEnqueued,
+      ).single.id;
 
       expect(harness.bus.claimNextTask('backend-dev')!.title, 'foundation');
       expect(harness.bus.claimNextTask('backend-dev'), isNull);
@@ -276,10 +289,7 @@ void main() {
 
       final setup = TeammateBusHttpClient.parseEnqueuedTasks(
         await lead.addTasks([
-          <String, Object?>{
-            'title': 'setup',
-            'brief': 'create repo layout',
-          },
+          <String, Object?>{'title': 'setup', 'brief': 'create repo layout'},
         ]),
       ).single;
 
@@ -290,24 +300,31 @@ void main() {
           'depends_on': [setup.id],
         },
       ]);
-      final rolloutId =
-          TeammateBusHttpClient.parseEnqueuedTasks(rolloutEnqueued).single.id;
+      final rolloutId = TeammateBusHttpClient.parseEnqueuedTasks(
+        rolloutEnqueued,
+      ).single.id;
 
       final firstWait = backend.waitForMessage();
       await Future<void>.delayed(const Duration(milliseconds: 30));
       // Re-enqueue setup so the parked worker wakes (already pending).
       expect(harness.bus.listTasks(status: TaskStatus.pending), isNotEmpty);
 
-      final firstAssigned = TeammateBusHttpClient.toolResultText(await firstWait);
+      final firstAssigned = TeammateBusHttpClient.toolResultText(
+        await firstWait,
+      );
       expect(firstAssigned, contains('setup'));
 
-      final setupId = harness.bus.listTasks(status: TaskStatus.claimed).single.id;
+      final setupId = harness.bus
+          .listTasks(status: TaskStatus.claimed)
+          .single
+          .id;
       await backend.updateTask(taskId: setupId, status: 'done');
 
       final secondWait = backend.waitForMessage();
       await Future<void>.delayed(const Duration(milliseconds: 30));
-      final secondAssigned =
-          TeammateBusHttpClient.toolResultText(await secondWait);
+      final secondAssigned = TeammateBusHttpClient.toolResultText(
+        await secondWait,
+      );
       expect(secondAssigned, contains('rollout'));
       expect(
         harness.bus.listTasks(status: TaskStatus.claimed).single.id,
@@ -315,52 +332,58 @@ void main() {
       );
     });
 
-    test('two workers each auto-claim one task from the shared queue', () async {
-      harness = await TeamBusCommTaskHarness.create(
-        members: [
-          (
-            id: 'team-lead',
-            isLead: true,
-            capabilities: <String>{},
-            lifecycle: MemberLifecycle.running,
-            activity: MemberActivity.active,
-          ),
-          (
-            id: 'worker-a',
-            isLead: false,
-            capabilities: <String>{},
-            lifecycle: MemberLifecycle.running,
-            activity: MemberActivity.turnDoneReady,
-          ),
-          (
-            id: 'worker-b',
-            isLead: false,
-            capabilities: <String>{},
-            lifecycle: MemberLifecycle.running,
-            activity: MemberActivity.turnDoneReady,
-          ),
-        ],
-      );
-      final lead = harness.clientFor('team-lead');
-      final waitA = harness.clientFor('worker-a').waitForMessage();
-      final waitB = harness.clientFor('worker-b').waitForMessage();
-      await Future<void>.delayed(const Duration(milliseconds: 50));
+    test(
+      'two workers each auto-claim one task from the shared queue',
+      () async {
+        harness = await TeamBusCommTaskHarness.create(
+          members: [
+            (
+              id: 'team-lead',
+              isLead: true,
+              capabilities: <String>{},
+              lifecycle: MemberLifecycle.running,
+              activity: MemberActivity.active,
+            ),
+            (
+              id: 'worker-a',
+              isLead: false,
+              capabilities: <String>{},
+              lifecycle: MemberLifecycle.running,
+              activity: MemberActivity.turnDoneReady,
+            ),
+            (
+              id: 'worker-b',
+              isLead: false,
+              capabilities: <String>{},
+              lifecycle: MemberLifecycle.running,
+              activity: MemberActivity.turnDoneReady,
+            ),
+          ],
+        );
+        final lead = harness.clientFor('team-lead');
+        final waitA = harness.clientFor('worker-a').waitForMessage();
+        final waitB = harness.clientFor('worker-b').waitForMessage();
+        await Future<void>.delayed(const Duration(milliseconds: 50));
 
-      await lead.addTasks([
-        <String, Object?>{'title': 'task-1', 'brief': 'first'},
-        <String, Object?>{'title': 'task-2', 'brief': 'second'},
-      ]);
+        await lead.addTasks([
+          <String, Object?>{'title': 'task-1', 'brief': 'first'},
+          <String, Object?>{'title': 'task-2', 'brief': 'second'},
+        ]);
 
-      final textA = TeammateBusHttpClient.toolResultText(await waitA);
-      final textB = TeammateBusHttpClient.toolResultText(await waitB);
-      expect(textA, contains('ASSIGNED TASK'));
-      expect(textB, contains('ASSIGNED TASK'));
-      expect(textA == textB, isFalse);
+        final textA = TeammateBusHttpClient.toolResultText(await waitA);
+        final textB = TeammateBusHttpClient.toolResultText(await waitB);
+        expect(textA, contains('ASSIGNED TASK'));
+        expect(textB, contains('ASSIGNED TASK'));
+        expect(textA == textB, isFalse);
 
-      final claimed = harness.bus.listTasks(status: TaskStatus.claimed);
-      expect(claimed, hasLength(2));
-      expect(claimed.map((t) => t.assignee).toSet(), {'worker-a', 'worker-b'});
-    });
+        final claimed = harness.bus.listTasks(status: TaskStatus.claimed);
+        expect(claimed, hasLength(2));
+        expect(claimed.map((t) => t.assignee).toSet(), {
+          'worker-a',
+          'worker-b',
+        });
+      },
+    );
 
     test('idle worker notifies lead while parked in wait_for_message', () async {
       harness = await TeamBusCommTaskHarness.create();
@@ -384,78 +407,82 @@ void main() {
       expect(inbox, contains('backend-dev'));
 
       // Unblock the parked wait so tearDown can close the HTTP client cleanly.
-      await harness.clientFor('team-lead').sendMessage(
-        to: 'backend-dev',
-        content: 'ping',
-      );
+      await harness
+          .clientFor('team-lead')
+          .sendMessage(to: 'backend-dev', content: 'ping');
       expect(
         TeammateBusHttpClient.toolResultText(await wait),
         contains('ping'),
       );
     });
 
-    test('add_tasks doorbells idle-at-prompt capability-matched worker', () async {
-      harness = await TeamBusCommTaskHarness.create();
-      final lead = harness.clientFor('team-lead');
+    test(
+      'add_tasks doorbells idle-at-prompt capability-matched worker',
+      () async {
+        harness = await TeamBusCommTaskHarness.create();
+        final lead = harness.clientFor('team-lead');
 
-      await lead.addTasks([
-        <String, Object?>{
-          'title': 'api layer',
-          'brief': 'build handlers',
-          'required_capabilities': ['backend'],
-        },
-      ]);
+        await lead.addTasks([
+          <String, Object?>{
+            'title': 'api layer',
+            'brief': 'build handlers',
+            'required_capabilities': ['backend'],
+          },
+        ]);
 
-      expect(
-        harness.launcher.woken.map((w) => w.memberId),
-        contains('backend-dev'),
-      );
-      expect(harness.launcher.materialized, isEmpty);
-    });
+        expect(
+          harness.launcher.woken.map((w) => w.memberId),
+          contains('backend-dev'),
+        );
+        expect(harness.launcher.materialized, isEmpty);
+      },
+    );
 
-    test('routing opens task when no capable member exists, then fe claims',
-        () async {
-      var now = 1_000_000;
-      harness = await TeamBusCommTaskHarness.create(
-        members: [
-          (
-            id: 'team-lead',
-            isLead: true,
-            capabilities: <String>{},
-            lifecycle: MemberLifecycle.running,
-            activity: MemberActivity.active,
-          ),
-          (
-            id: 'frontend-dev',
-            isLead: false,
-            capabilities: {'frontend'},
-            lifecycle: MemberLifecycle.running,
-            activity: MemberActivity.turnDoneReady,
-          ),
-        ],
-        clock: () => now,
-      );
-      final lead = harness.clientFor('team-lead');
+    test(
+      'routing opens task when no capable member exists, then fe claims',
+      () async {
+        var now = 1_000_000;
+        harness = await TeamBusCommTaskHarness.create(
+          members: [
+            (
+              id: 'team-lead',
+              isLead: true,
+              capabilities: <String>{},
+              lifecycle: MemberLifecycle.running,
+              activity: MemberActivity.active,
+            ),
+            (
+              id: 'frontend-dev',
+              isLead: false,
+              capabilities: {'frontend'},
+              lifecycle: MemberLifecycle.running,
+              activity: MemberActivity.turnDoneReady,
+            ),
+          ],
+          clock: () => now,
+        );
+        final lead = harness.clientFor('team-lead');
 
-      await lead.addTasks([
-        <String, Object?>{
-          'title': 'api',
-          'brief': 'needs backend',
-          'required_capabilities': ['backend'],
-          'preferred_capabilities': ['database'],
-        },
-      ]);
+        await lead.addTasks([
+          <String, Object?>{
+            'title': 'api',
+            'brief': 'needs backend',
+            'required_capabilities': ['backend'],
+            'preferred_capabilities': ['database'],
+          },
+        ]);
 
-      expect(harness.bus.claimNextTask('frontend-dev'), isNull);
+        expect(harness.bus.claimNextTask('frontend-dev'), isNull);
 
-      now += 130 * 1000;
-      harness.bus.reconcileTasks();
-      now += 310 * 1000;
-      harness.bus.reconcileTasks();
+        now += 130 * 1000;
+        harness.bus.reconcileTasks();
+        now += 310 * 1000;
+        harness.bus.reconcileTasks();
 
-      final claimed = harness.bus.claimNextTask('frontend-dev');
-      expect(claimed!.title, 'api');
-      expect(claimed.routing.stage, RoutingStage.open);
-    });
+        final claimed = harness.bus.claimNextTask('frontend-dev');
+        expect(claimed!.title, 'api');
+        expect(claimed.routing.stage, RoutingStage.open);
+      },
+    );
   });
 }

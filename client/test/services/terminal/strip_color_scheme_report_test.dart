@@ -27,9 +27,7 @@ void main() {
 
     test('leaves unrelated OSC sequences untouched', () {
       // ESC]11;rgb:... BEL  (background query response — must survive)
-      final osc11 = _bytes([
-        0x1b, 0x5d, 0x31, 0x31, 0x3b, 0x78, 0x07,
-      ]);
+      final osc11 = _bytes([0x1b, 0x5d, 0x31, 0x31, 0x3b, 0x78, 0x07]);
       expect(stripColorSchemeReport(osc11), osc11);
     });
 

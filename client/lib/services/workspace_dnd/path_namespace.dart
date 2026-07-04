@@ -27,7 +27,9 @@ class PathNamespace {
   const PathNamespace({required this.hostId, required this.style});
 
   /// Local machine, POSIX paths (Linux/macOS desktop, or a WSL CLI view).
-  const PathNamespace.localPosix() : hostId = _localHost, style = PathStyle.posix;
+  const PathNamespace.localPosix()
+    : hostId = _localHost,
+      style = PathStyle.posix;
 
   /// Local machine, Windows paths (native Windows desktop).
   const PathNamespace.localWindows()
@@ -75,9 +77,7 @@ class PathNamespace {
 
   @override
   bool operator ==(Object other) =>
-      other is PathNamespace &&
-      other.hostId == hostId &&
-      other.style == style;
+      other is PathNamespace && other.hostId == hostId && other.style == style;
 
   @override
   int get hashCode => Object.hash(hostId, style);

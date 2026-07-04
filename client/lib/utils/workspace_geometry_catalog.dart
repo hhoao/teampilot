@@ -33,10 +33,15 @@ int workspaceGeometryIndexForWorkspaceId(String workspaceId) {
 }
 
 String workspaceGeometryAssetForWorkspaceId(String workspaceId) {
-  return kWorkspaceGeometryIconAssets[workspaceGeometryIndexForWorkspaceId(workspaceId)];
+  return kWorkspaceGeometryIconAssets[workspaceGeometryIndexForWorkspaceId(
+    workspaceId,
+  )];
 }
 
-String workspaceGeometryAssetForIndex(int index, {required String workspaceId}) {
+String workspaceGeometryAssetForIndex(
+  int index, {
+  required String workspaceId,
+}) {
   final assets = kWorkspaceGeometryIconAssets;
   if (assets.isEmpty) return 'assets/geometry/img1.svg';
   if (index >= 0 && index < assets.length) return assets[index];

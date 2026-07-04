@@ -59,14 +59,16 @@ class PluginCliSupportDisclosure extends StatelessWidget {
         registry.capability<DisplayCapability>(status.tool)?.label(l10n) ??
         status.tool.name;
     return switch (status.level) {
-      PluginCliSupportLevel.fullySupported =>
-        l10n.pluginCliSupportFully(cliLabel),
+      PluginCliSupportLevel.fullySupported => l10n.pluginCliSupportFully(
+        cliLabel,
+      ),
       PluginCliSupportLevel.partiallySupported => l10n.pluginCliSupportPartial(
         cliLabel,
         _droppedLabels(l10n, status.dropped),
       ),
-      PluginCliSupportLevel.notApplicable =>
-        l10n.pluginCliSupportNotApplicable(cliLabel),
+      PluginCliSupportLevel.notApplicable => l10n.pluginCliSupportNotApplicable(
+        cliLabel,
+      ),
     };
   }
 
@@ -113,15 +115,10 @@ class _SupportChip extends StatelessWidget {
         const Color(0xFFFEF9C3),
         const Color(0xFF854D0E),
       ),
-      PluginCliSupportLevel.notApplicable => (
-        const Color(0xFFF3F4F6),
-        muted,
-      ),
+      PluginCliSupportLevel.notApplicable => (const Color(0xFFF3F4F6), muted),
     };
     final isDark = Theme.of(context).brightness == Brightness.dark;
-    final background = isDark
-        ? fg.withValues(alpha: 0.18)
-        : bg;
+    final background = isDark ? fg.withValues(alpha: 0.18) : bg;
     final foreground = isDark ? fg.withValues(alpha: 0.95) : fg;
 
     return Container(
@@ -132,10 +129,9 @@ class _SupportChip extends StatelessWidget {
       ),
       child: Text(
         label,
-        style: AppTextStyles.of(context).caption.copyWith(
-          color: foreground,
-          fontSize: 11,
-        ),
+        style: AppTextStyles.of(
+          context,
+        ).caption.copyWith(color: foreground, fontSize: 11),
       ),
     );
   }

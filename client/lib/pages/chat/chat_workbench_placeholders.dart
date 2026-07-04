@@ -1,4 +1,4 @@
-﻿import 'package:flutter/material.dart';
+import 'package:flutter/material.dart';
 import 'package:teampilot/theme/app_icon_sizes.dart';
 
 import '../../l10n/l10n_extensions.dart';
@@ -37,7 +37,8 @@ class ChatWorkbenchSessionLoadingView extends StatelessWidget {
 }
 
 class ChatWorkbenchTerminalPlaceholder extends StatelessWidget {
-  const ChatWorkbenchTerminalPlaceholder({super.key, 
+  const ChatWorkbenchTerminalPlaceholder({
+    super.key,
     required this.onConnect,
     this.connectDisabled = false,
     this.memberName,

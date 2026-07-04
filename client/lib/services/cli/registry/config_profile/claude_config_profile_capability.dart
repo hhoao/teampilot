@@ -88,16 +88,10 @@ final class ClaudeConfigProfileCapability implements ConfigProfileCapability {
     String workspaceId,
     String sessionId, {
     String? memberId,
-  }) =>
-      delegate.pathContext.join(
-        delegate.sessionToolDir(
-          workspaceId,
-          sessionId,
-          toolId,
-          memberId: memberId,
-        ),
-        metadataFileName,
-      );
+  }) => delegate.pathContext.join(
+    delegate.sessionToolDir(workspaceId, sessionId, toolId, memberId: memberId),
+    metadataFileName,
+  );
 
   static String sessionMemberSettingsFile(
     ConfigProfileDelegate delegate,
@@ -105,17 +99,11 @@ final class ClaudeConfigProfileCapability implements ConfigProfileCapability {
     String sessionId,
     TeamMemberConfig member, {
     String? memberId,
-  }) =>
-      delegate.pathContext.join(
-        delegate.sessionToolDir(
-          workspaceId,
-          sessionId,
-          toolId,
-          memberId: memberId,
-        ),
-        'settings',
-        '${ClaudeTeamRosterService.safeClaudePathSegment(member.id)}.json',
-      );
+  }) => delegate.pathContext.join(
+    delegate.sessionToolDir(workspaceId, sessionId, toolId, memberId: memberId),
+    'settings',
+    '${ClaudeTeamRosterService.safeClaudePathSegment(member.id)}.json',
+  );
 
   Future<ClaudeLaunchExtras> resolveLaunchExtras({
     required TeamProfile team,
@@ -318,10 +306,7 @@ final class ClaudeConfigProfileCapability implements ConfigProfileCapability {
   ) async {
     final file = delegate.pathContext.join(memberToolDir, metadataFileName);
     final existing = await delegate.readMetadataFile(file, defaultMetadata);
-    await delegate.writeJsonIfChanged(file, {
-      ...defaultMetadata,
-      ...existing,
-    });
+    await delegate.writeJsonIfChanged(file, {...defaultMetadata, ...existing});
   }
 
   Future<ConfigProfileLaunchContribution> _contributeStandaloneLaunch(
@@ -338,7 +323,11 @@ final class ClaudeConfigProfileCapability implements ConfigProfileCapability {
     final delegate = ctx.paths;
     final catalog = ctx.catalog;
     final member = standaloneMemberFromPersonal(personal, preset: ctx.preset);
-    final memberToolDir = standaloneSessionToolDir(delegate, standalone, toolId);
+    final memberToolDir = standaloneSessionToolDir(
+      delegate,
+      standalone,
+      toolId,
+    );
     final scope = launchScopeForStandalone(standalone);
     final workingDirectory = ctx.workingDirectory ?? '';
     final warnings = <String>[];
@@ -366,7 +355,11 @@ final class ClaudeConfigProfileCapability implements ConfigProfileCapability {
       workingDirectory: workingDirectory,
       additionalDirectories: ctx.additionalDirectories,
     );
-    _logClaudeContributeLaunchStep(stepSw, 'provisionWorkspaceTrust', sessionId);
+    _logClaudeContributeLaunchStep(
+      stepSw,
+      'provisionWorkspaceTrust',
+      sessionId,
+    );
 
     await _writeMetadataAt(
       delegate,
@@ -401,7 +394,11 @@ final class ClaudeConfigProfileCapability implements ConfigProfileCapability {
       team: null,
       effortLevel: effortLevel,
     );
-    _logClaudeContributeLaunchStep(stepSw, 'writeStandaloneMemberProfile', sessionId);
+    _logClaudeContributeLaunchStep(
+      stepSw,
+      'writeStandaloneMemberProfile',
+      sessionId,
+    );
 
     final trimmedProviderId = resolvedProviderId?.trim() ?? '';
     if (trimmedProviderId.isNotEmpty &&
@@ -441,7 +438,11 @@ final class ClaudeConfigProfileCapability implements ConfigProfileCapability {
         tool: toolId,
         member: member,
       );
-      _logClaudeContributeLaunchStep(stepSw, 'resolveAppendSystemPrompt', sessionId);
+      _logClaudeContributeLaunchStep(
+        stepSw,
+        'resolveAppendSystemPrompt',
+        sessionId,
+      );
       if (appendPath != null) {
         environment[MemberRoleProvision.appendSystemPromptFileEnvKey] =
             appendPath;
@@ -510,12 +511,13 @@ final class ClaudeConfigProfileCapability implements ConfigProfileCapability {
   }) async {
     final binding = await _resolveClaudeCredentialBinding(catalog, providerId);
     if (crossMachine) {
-      final copied = await CrossMachineCredentialBridge.materializeClaudeCredential(
-        catalog: catalog,
-        work: delegate,
-        providerId: providerId,
-        binding: binding,
-      );
+      final copied =
+          await CrossMachineCredentialBridge.materializeClaudeCredential(
+            catalog: catalog,
+            work: delegate,
+            providerId: providerId,
+            binding: binding,
+          );
       if (!copied) {
         warnings.add('claude_credentials_missing');
         return;
@@ -540,11 +542,10 @@ final class ClaudeConfigProfileCapability implements ConfigProfileCapability {
 
   static ClaudeProviderSettingsResolver _claudeResolver(
     ConfigProfilePaths catalog,
-  ) =>
-      ClaudeProviderSettingsResolver(
-        basePath: catalog.basePath,
-        repository: providerCatalogRepository(catalog),
-      );
+  ) => ClaudeProviderSettingsResolver(
+    basePath: catalog.basePath,
+    repository: providerCatalogRepository(catalog),
+  );
 
   /// Official credential linking follows the launched member's provider in
   /// mixed teams (per-member presets), not only the team-level Claude binding.
@@ -891,7 +892,10 @@ final class ClaudeConfigProfileCapability implements ConfigProfileCapability {
       effortLevel: effortLevel,
       mixed: mixed,
     );
-    settings = MemberRoleProvision.applyTeamSessionPolicy(settings, mixed: mixed);
+    settings = MemberRoleProvision.applyTeamSessionPolicy(
+      settings,
+      mixed: mixed,
+    );
     if (mixed && busIdle != null) {
       settings = mergeStopIdleHook(settings, member.id, busIdle);
     }
@@ -996,11 +1000,7 @@ final class ClaudeConfigProfileCapability implements ConfigProfileCapability {
     return resolveLaunchEffort(
       capability: capability,
       cli: CliTool.claude,
-      context: EffortResolveContext(
-        team: team,
-        member: member,
-        model: model,
-      ),
+      context: EffortResolveContext(team: team, member: member, model: model),
     );
   }
 
@@ -1024,8 +1024,7 @@ final class ClaudeConfigProfileCapability implements ConfigProfileCapability {
       // The provider may pin a distinct background (haiku-tier) model; keep it
       // even when the member overrides the main model, so "big main + cheap
       // background" survives. Otherwise all tiers collapse to the member model.
-      final providerMain =
-          (env['ANTHROPIC_MODEL'] as String?)?.trim() ?? '';
+      final providerMain = (env['ANTHROPIC_MODEL'] as String?)?.trim() ?? '';
       final providerHaiku =
           (env['ANTHROPIC_DEFAULT_HAIKU_MODEL'] as String?)?.trim() ?? '';
       final background =

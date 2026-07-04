@@ -101,21 +101,17 @@ String selectReleaseAssetName({
   final lower = names.map((n) => (name: n, low: n.toLowerCase())).toList();
 
   String? selected = switch (kind) {
-    AppUpdateInstallKind.windowsSetup => pick(
-      (n) {
-        final low = n.toLowerCase();
-        return low.endsWith('.exe') && low.contains('-setup');
-      },
-    ),
+    AppUpdateInstallKind.windowsSetup => pick((n) {
+      final low = n.toLowerCase();
+      return low.endsWith('.exe') && low.contains('-setup');
+    }),
     AppUpdateInstallKind.linuxAppImage => pick(
       (n) => n.toLowerCase().endsWith('.appimage'),
     ),
-    AppUpdateInstallKind.linuxDeb => pick(
-      (n) {
-        final low = n.toLowerCase();
-        return low.endsWith('.deb') && low.contains('-linux');
-      },
-    ),
+    AppUpdateInstallKind.linuxDeb => pick((n) {
+      final low = n.toLowerCase();
+      return low.endsWith('.deb') && low.contains('-linux');
+    }),
     AppUpdateInstallKind.macosDmg => pick(
       (n) => n.toLowerCase().endsWith('.dmg'),
     ),

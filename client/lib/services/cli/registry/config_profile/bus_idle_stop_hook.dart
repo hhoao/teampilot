@@ -16,19 +16,13 @@ Map<String, Object?> mergeStopIdleHook(
   final exists = stop.any(
     (e) =>
         e is Map &&
-        (e['hooks'] as List?)?.any(
-              (h) => h is Map && h['url'] == idle.url,
-            ) ==
+        (e['hooks'] as List?)?.any((h) => h is Map && h['url'] == idle.url) ==
             true,
   );
   if (!exists) {
     stop.add({
       'hooks': [
-        {
-          'type': 'http',
-          'url': idle.url,
-          'headers': idle.headersFor(memberId),
-        },
+        {'type': 'http', 'url': idle.url, 'headers': idle.headersFor(memberId)},
       ],
     });
   }

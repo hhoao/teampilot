@@ -20,8 +20,9 @@ import '../../../support/post_frame_test_harness.dart';
 /// Reachability guard: the workspace folders editor is rendered by the *live*
 /// workspace-settings body (WorkspaceInfoSection) — not an orphan view.
 void main() {
-  testWidgets('WorkspaceInfoSection shows the workspace folders editor',
-      (tester) async {
+  testWidgets('WorkspaceInfoSection shows the workspace folders editor', (
+    tester,
+  ) async {
     await tester.runAsync(() async {
       final tmp = await Directory.systemTemp.createTemp('ws_info_target_');
       addTearDown(() => tmp.deleteSync(recursive: true));

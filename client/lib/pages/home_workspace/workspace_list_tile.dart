@@ -1,4 +1,4 @@
-﻿import 'dart:async';
+import 'dart:async';
 import 'dart:io';
 
 import 'package:flutter/material.dart';
@@ -91,7 +91,11 @@ class _WorkspaceListTileState extends State<WorkspaceListTile> {
               ),
           child: Row(
             children: [
-              WorkspaceIcon.fromWorkspace(workspace, size: 40, borderRadius: 10),
+              WorkspaceIcon.fromWorkspace(
+                workspace,
+                size: 40,
+                borderRadius: 10,
+              ),
               const SizedBox(width: 14),
               Expanded(
                 child: Column(
@@ -158,19 +162,15 @@ class _WorkspaceListTileState extends State<WorkspaceListTile> {
                             label: l10n.homeWorkspaceRenameWorkspace,
                             menuController: controller,
                             onTap: () => unawaited(
-                              showRenameWorkspaceDialog(
-                                context,
-                                workspace,
-                              ),
+                              showRenameWorkspaceDialog(context, workspace),
                             ),
                           ),
                           SidebarActionMenuItem(
                             icon: Icons.copy_all_outlined,
                             label: l10n.homeWorkspaceCloneWorkspace,
                             menuController: controller,
-                            onTap: () => unawaited(
-                              cloneWorkspace(context, workspace),
-                            ),
+                            onTap: () =>
+                                unawaited(cloneWorkspace(context, workspace)),
                           ),
                           SidebarActionMenuItem(
                             icon: Icons.delete_outline,
@@ -178,10 +178,7 @@ class _WorkspaceListTileState extends State<WorkspaceListTile> {
                             destructive: true,
                             menuController: controller,
                             onTap: () => unawaited(
-                              confirmDeleteWorkspace(
-                                context,
-                                workspace,
-                              ),
+                              confirmDeleteWorkspace(context, workspace),
                             ),
                           ),
                         ],

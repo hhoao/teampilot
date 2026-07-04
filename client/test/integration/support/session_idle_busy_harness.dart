@@ -42,8 +42,7 @@ const kIdleBusyMixedTeam = TeamProfile(
 );
 
 /// Loopback `/idle` on the teammate-bus HTTP server (same port as `/mcp`).
-Uri idleEndpointFromMcp(Uri mcpEndpoint) =>
-    mcpEndpoint.replace(path: '/idle');
+Uri idleEndpointFromMcp(Uri mcpEndpoint) => mcpEndpoint.replace(path: '/idle');
 
 Future<void> postMemberIdle(
   Uri idleEndpoint,
@@ -63,18 +62,19 @@ Future<void> postMemberIdle(
 }
 
 /// Opens a mixed team session tab and wires connected recording shells + running bus members.
-Future<({
-  String sessionId,
-  ConnectedRecordingShell leadShell,
-  ConnectedRecordingShell workerShell,
-})> openMixedSessionWithShells({
+Future<
+  ({
+    String sessionId,
+    ConnectedRecordingShell leadShell,
+    ConnectedRecordingShell workerShell,
+  })
+>
+openMixedSessionWithShells({
   required ChatCubit cubit,
   required SessionRepository repo,
   required PostFrameTestHarness postFrame,
 }) async {
-  final workspace = await repo.createWorkspace([
-    WorkspaceFolder(path: '/tmp'),
-  ]);
+  final workspace = await repo.createWorkspace([WorkspaceFolder(path: '/tmp')]);
   final session = await repo.createSession(
     workspace.workspaceId,
     sessionTeam: kIdleBusyMixedTeam.id,

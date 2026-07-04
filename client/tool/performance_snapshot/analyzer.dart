@@ -19,8 +19,8 @@ PerformanceAnalysisResult analyzeSnapshot(
   final rebuildRawStatus = snapshot.rebuildData == null
       ? RebuildDataStatus.notCaptured
       : snapshot.rebuildData!.isEmpty
-          ? RebuildDataStatus.empty
-          : RebuildDataStatus.present;
+      ? RebuildDataStatus.empty
+      : RebuildDataStatus.present;
 
   final traceKiB = snapshot.traceBinary != null
       ? snapshot.traceBinary!.length / 1024
@@ -57,10 +57,9 @@ PerformanceAnalysisResult analyzeSnapshot(
   final worstDrilldowns = <FrameDrilldown>[];
   if (timeline != null && options.includes(ReportSection.drilldown)) {
     if (options.worstFrames > 0) {
-      final janky = snapshot.frames
-          .where((f) => f.elapsedMs > budgetMs)
-          .toList()
-        ..sort((a, b) => b.elapsedMs.compareTo(a.elapsedMs));
+      final janky =
+          snapshot.frames.where((f) => f.elapsedMs > budgetMs).toList()
+            ..sort((a, b) => b.elapsedMs.compareTo(a.elapsedMs));
       for (final frame in janky.take(options.worstFrames)) {
         worstDrilldowns.add(
           _analyzeFrameDrilldown(
@@ -76,8 +75,9 @@ PerformanceAnalysisResult analyzeSnapshot(
 
     if (resolvedFrameId != null &&
         (options.worstFrames == 0 || options.frameTarget == FrameTarget.byId)) {
-      final frame =
-          snapshot.frames.where((f) => f.number == resolvedFrameId).firstOrNull;
+      final frame = snapshot.frames
+          .where((f) => f.number == resolvedFrameId)
+          .firstOrNull;
       if (frame != null) {
         drilldown = _analyzeFrameDrilldown(
           frame: frame,
@@ -155,11 +155,11 @@ PerformanceAnalysisResult analyzeSnapshot(
 }
 
 Map<String, Object?> _appliedFiltersMap(AnalyzeOptions options) => {
-      if (options.nameFilter != null) 'nameFilter': options.nameFilter,
-      if (options.categories.isNotEmpty) 'categories': options.categories.toList(),
-      if (options.excludeEmbedder) 'excludeEmbedder': true,
-      if (options.jankyOnly) 'jankyOnly': true,
-    };
+  if (options.nameFilter != null) 'nameFilter': options.nameFilter,
+  if (options.categories.isNotEmpty) 'categories': options.categories.toList(),
+  if (options.excludeEmbedder) 'excludeEmbedder': true,
+  if (options.jankyOnly) 'jankyOnly': true,
+};
 
 int? _resolveFrameId(
   PerformanceSnapshot snapshot,
@@ -263,8 +263,9 @@ TimelineAnalysis _analyzeTimeline(
 ) {
   final trace = decodeTrace(bytes);
   final filteredSlices = filters.applySlices(trace.slices);
-  final filteredInstants =
-      filters.isActive ? trace.instants.where(filters.matchesInstant).toList() : trace.instants;
+  final filteredInstants = filters.isActive
+      ? trace.instants.where(filters.matchesInstant).toList()
+      : trace.instants;
 
   final ranked = List<TraceSlice>.from(filteredSlices)
     ..sort((a, b) => b.durationNs.compareTo(a.durationNs));
@@ -307,15 +308,17 @@ TimelineAnalysis _analyzeTimeline(
 
   ShaderSummary? shaderSummary;
   final shaderSlices = filteredSlices.where((s) => s.isShaderEvent).toList();
-  final shaderInstants =
-      filteredInstants.where((e) => e.isShaderEvent).toList();
+  final shaderInstants = filteredInstants
+      .where((e) => e.isShaderEvent)
+      .toList();
   if (shaderSlices.isNotEmpty || shaderInstants.isNotEmpty) {
     shaderSlices.sort((a, b) => b.durationNs.compareTo(a.durationNs));
     shaderSummary = ShaderSummary(
       sliceCount: shaderSlices.length,
       instantCount: shaderInstants.length,
-      longestSliceMs:
-          shaderSlices.isEmpty ? null : shaderSlices.first.durationMs,
+      longestSliceMs: shaderSlices.isEmpty
+          ? null
+          : shaderSlices.first.durationMs,
       longestSliceName: shaderSlices.isEmpty ? null : shaderSlices.first.name,
     );
   }
@@ -436,8 +439,9 @@ FrameDrilldown _analyzeFrameDrilldown({
         : topCpuSymbols(frameCpu, limit: 10),
     dartUiSliceMs: uiNs / 1e6,
     rasterSliceMs: rasterNs / 1e6,
-    overBudgetMs:
-        frame.elapsedMs > budgetMs ? frame.elapsedMs - budgetMs : null,
+    overBudgetMs: frame.elapsedMs > budgetMs
+        ? frame.elapsedMs - budgetMs
+        : null,
   );
 }
 
@@ -456,10 +460,7 @@ SnapshotComparison _compareSnapshots({
       frameId: options.frameId,
       topN: options.topN,
       budgetMsOverride: options.budgetMsOverride,
-      sections: {
-        ReportSection.frames,
-        ReportSection.timeline,
-      },
+      sections: {ReportSection.frames, ReportSection.timeline},
       nameFilter: options.nameFilter,
       categories: options.categories,
       excludeEmbedder: options.excludeEmbedder,
@@ -470,9 +471,8 @@ SnapshotComparison _compareSnapshots({
   final baselineFrames = baseline.frames;
   final candidateFrames = candidate.frames;
 
-  double worstMs(List<FlutterFrame> frames) => frames.isEmpty
-      ? 0
-      : frames.map((f) => f.elapsedMs).reduce(math.max);
+  double worstMs(List<FlutterFrame> frames) =>
+      frames.isEmpty ? 0 : frames.map((f) => f.elapsedMs).reduce(math.max);
 
   double avgMs(List<FlutterFrame> frames) => frames.isEmpty
       ? 0

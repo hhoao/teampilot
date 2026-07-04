@@ -24,7 +24,10 @@ void main() {
       'commit': '1ec5865e7ab1449f9a0859d164c4b6a8c53b6e2f',
     });
     expect(spec, isNotNull);
-    expect(spec!.cloneUrl, 'https://github.com/fullstorydev/fullstory-skills.git');
+    expect(
+      spec!.cloneUrl,
+      'https://github.com/fullstorydev/fullstory-skills.git',
+    );
     expect(spec.sha, '1ec5865e7ab1449f9a0859d164c4b6a8c53b6e2f');
   });
 }

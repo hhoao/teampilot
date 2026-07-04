@@ -129,15 +129,19 @@ String? _githubUrlFromExternalSource(
 }) {
   final clone = source.cloneUrl.trim();
   if (clone.isEmpty) return null;
-  final match = RegExp(
-    r'github\.com[:/]([^/]+)/([^/]+?)(?:\.git)?/?$',
-    caseSensitive: false,
-  ).firstMatch(clone.replaceAll(RegExp(r'^git@github\.com:'), 'https://github.com/'));
+  final match =
+      RegExp(
+        r'github\.com[:/]([^/]+)/([^/]+?)(?:\.git)?/?$',
+        caseSensitive: false,
+      ).firstMatch(
+        clone.replaceAll(RegExp(r'^git@github\.com:'), 'https://github.com/'),
+      );
   if (match != null) {
     final owner = match.group(1);
     final name = match.group(2);
     if (owner != null && name != null) {
-      final branch = _nonEmpty(source.ref) ?? _nonEmpty(fallbackBranch) ?? 'main';
+      final branch =
+          _nonEmpty(source.ref) ?? _nonEmpty(fallbackBranch) ?? 'main';
       return githubTreeUrl(
         owner: owner,
         name: name,

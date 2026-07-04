@@ -15,8 +15,8 @@ class MaterializeResult {
 /// leaves correct symlinks untouched (idempotent).
 class ResourceMaterializer {
   ResourceMaterializer({required Filesystem fs, LinkStrategy? linkStrategy})
-      : _fs = fs,
-        _link = linkStrategy ?? LinkStrategy(fs);
+    : _fs = fs,
+      _link = linkStrategy ?? LinkStrategy(fs);
 
   final Filesystem _fs;
   final LinkStrategy _link;

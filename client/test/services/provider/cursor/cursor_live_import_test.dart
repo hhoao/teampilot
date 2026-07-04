@@ -31,8 +31,14 @@ void main() {
     expect(snapshot.providers, isNotEmpty);
     expect(snapshot.sources, contains('live'));
     expect(snapshot.providers.single.isOfficial, isTrue);
-    expect(layout.globalAuthJsonCandidates(home, platformEnv: const {
-      'APPDATA': appData,
-    }).first, winContext.join(appData, 'Cursor', 'auth.json'));
+    expect(
+      layout
+          .globalAuthJsonCandidates(
+            home,
+            platformEnv: const {'APPDATA': appData},
+          )
+          .first,
+      winContext.join(appData, 'Cursor', 'auth.json'),
+    );
   });
 }

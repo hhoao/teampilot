@@ -24,10 +24,7 @@ void main() {
     });
 
     test('matches RenderObject slice names', () {
-      expect(
-        widgetMatchesSliceName('Paragraph', 'RenderParagraph'),
-        isTrue,
-      );
+      expect(widgetMatchesSliceName('Paragraph', 'RenderParagraph'), isTrue);
       expect(
         widgetMatchesSliceName('IndexedStack', 'RenderIndexedStack'),
         isTrue,
@@ -35,14 +32,8 @@ void main() {
     });
 
     test('rejects unrelated names', () {
-      expect(
-        widgetMatchesSliceName('RightToolsPanel', 'Scavenge'),
-        isFalse,
-      );
-      expect(
-        widgetMatchesSliceName('Foo', 'Bar'),
-        isFalse,
-      );
+      expect(widgetMatchesSliceName('RightToolsPanel', 'Scavenge'), isFalse);
+      expect(widgetMatchesSliceName('Foo', 'Bar'), isFalse);
     });
   });
 
@@ -62,10 +53,7 @@ void main() {
         isTrue,
       );
       expect(
-        widgetMatchesDartMethodSlice(
-          'RichText',
-          'RenderParagraph.paint',
-        ),
+        widgetMatchesDartMethodSlice('RichText', 'RenderParagraph.paint'),
         isTrue,
       );
     });

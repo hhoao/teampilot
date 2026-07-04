@@ -21,10 +21,7 @@ void main() {
       cli: CliTool.claude,
       name: 'Default',
       category: AppProviderCategory.official,
-      config: {
-        'env': {},
-        credentialBindingConfigKey: 'isolated',
-      },
+      config: {'env': {}, credentialBindingConfigKey: 'isolated'},
     );
     expect(resolveCredentialBinding(provider), CredentialBindingKind.isolated);
   });

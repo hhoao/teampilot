@@ -61,9 +61,7 @@ class WorkspaceIcon extends StatelessWidget {
       decoration: BoxDecoration(
         color: cs.surfaceContainerHighest,
         borderRadius: BorderRadius.circular(borderRadius),
-        border: Border.all(
-          color: cs.outlineVariant.withValues(alpha: 0.35),
-        ),
+        border: Border.all(color: cs.outlineVariant.withValues(alpha: 0.35)),
       ),
       clipBehavior: Clip.antiAlias,
       padding: EdgeInsets.all(padding),
@@ -116,8 +114,9 @@ class _CustomWorkspaceIconImageState extends State<_CustomWorkspaceIconImage> {
 
   Future<List<int>?> _loadBytes() {
     return workspaceIconService.loadCustomBytes(
-      workspaceDir: WorkspaceLayout(teampilotRoot: AppStorage.paths.basePath)
-          .workspaceDir(widget.workspace.workspaceId),
+      workspaceDir: WorkspaceLayout(
+        teampilotRoot: AppStorage.paths.basePath,
+      ).workspaceDir(widget.workspace.workspaceId),
       relativePath: widget.relativePath,
     );
   }
@@ -150,11 +149,9 @@ class _CustomWorkspaceIconImageState extends State<_CustomWorkspaceIconImage> {
   }
 
   Widget _geometryFallback() {
-    final asset = workspaceGeometryAssetForWorkspaceId(widget.workspace.workspaceId);
-    return SvgPicture.asset(
-      asset,
-      fit: BoxFit.contain,
-      semanticsLabel: asset,
+    final asset = workspaceGeometryAssetForWorkspaceId(
+      widget.workspace.workspaceId,
     );
+    return SvgPicture.asset(asset, fit: BoxFit.contain, semanticsLabel: asset);
   }
 }

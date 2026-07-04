@@ -25,9 +25,7 @@ class SessionPreferences {
       cliExecutablePaths: _cliExecutablePathsFromJson(
         json['cliExecutablePaths'],
       ),
-      toolchainPaths: _cliExecutablePathsFromJson(
-        json['toolchainPaths'],
-      ),
+      toolchainPaths: _cliExecutablePathsFromJson(json['toolchainPaths']),
       defaultSshWorkingDirectory:
           json['defaultSshWorkingDirectory'] as String? ?? '',
       sshUseLoginShell: json['sshUseLoginShell'] as bool? ?? false,

@@ -14,33 +14,33 @@ ProcessResult _ok(String stdout) => ProcessResult(0, 0, stdout, '');
 ProcessResult _fail() => ProcessResult(0, 1, '', '');
 
 ExtensionManifest get _rtkManifest => ExtensionManifest.fromJson({
-      'id': 'rtk',
-      'name': 'RTK',
-      'detect': {
-        'executable': 'rtk',
-        'minVersion': '0.23.0',
-        'requires': ['jq'],
-      },
-      'effects': [
-        {
-          'kind': 'settings-hook',
-          'event': 'PreToolUse',
-          'matcher': 'Bash',
-          'scriptAsset': 'rtk-rewrite',
-          'marker': 'rtk-rewrite',
-        },
-      ],
-    });
+  'id': 'rtk',
+  'name': 'RTK',
+  'detect': {
+    'executable': 'rtk',
+    'minVersion': '0.23.0',
+    'requires': ['jq'],
+  },
+  'effects': [
+    {
+      'kind': 'settings-hook',
+      'event': 'PreToolUse',
+      'matcher': 'Bash',
+      'scriptAsset': 'rtk-rewrite',
+      'marker': 'rtk-rewrite',
+    },
+  ],
+});
 
 ExtensionDetector _detectorAllReady() => ExtensionDetector(
-      processRunner: (exe, args, {environment}) async {
-        if (args.length == 1 && (args.first == 'rtk' || args.first == 'jq')) {
-          return _ok('/usr/bin/${args.first}');
-        }
-        if (args.contains('--version')) return _ok('rtk 0.24.1');
-        return _fail();
-      },
-    );
+  processRunner: (exe, args, {environment}) async {
+    if (args.length == 1 && (args.first == 'rtk' || args.first == 'jq')) {
+      return _ok('/usr/bin/${args.first}');
+    }
+    if (args.contains('--version')) return _ok('rtk 0.24.1');
+    return _fail();
+  },
+);
 
 ExtensionProvisioner _provisioner({
   required bool enabled,

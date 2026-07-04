@@ -13,10 +13,7 @@ TextStyle appTooltipTextStyle({
   required ColorScheme colorScheme,
 }) {
   final base = textTheme.bodyMedium ?? const TextStyle();
-  return base.copyWith(
-    color: colorScheme.onSurface,
-    height: 1.4,
-  );
+  return base.copyWith(color: colorScheme.onSurface, height: 1.4);
 }
 
 BoxDecoration appTooltipDecoration({

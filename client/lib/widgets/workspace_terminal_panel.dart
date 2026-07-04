@@ -1,4 +1,4 @@
-﻿import 'dart:async';
+import 'dart:async';
 
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
@@ -66,10 +66,8 @@ class _WorkspaceTerminalPanelState extends State<WorkspaceTerminalPanel> {
   List<WorkspaceFolder> get _folders =>
       WorkspaceToolsScope.maybeOf(context)?.effectiveFolders ?? const [];
 
-  WorkspaceTerminalConnectCoordinator get _connect =>
-      _connectCoordinator ??= WorkspaceTerminalConnectCoordinator(
-        connector: _connector,
-      );
+  WorkspaceTerminalConnectCoordinator get _connect => _connectCoordinator ??=
+      WorkspaceTerminalConnectCoordinator(connector: _connector);
 
   @override
   void didChangeDependencies() {

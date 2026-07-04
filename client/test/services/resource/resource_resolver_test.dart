@@ -9,14 +9,14 @@ import 'package:teampilot/services/resource/resource_resolver.dart';
 import 'package:teampilot/services/resource/resource_scope.dart';
 
 Skill _skill(String id, String dir, {bool enabled = true}) => Skill(
-      id: id,
-      name: id,
-      description: '',
-      directory: dir,
-      enabled: enabled,
-      installedAt: 0,
-      updatedAt: 0,
-    );
+  id: id,
+  name: id,
+  description: '',
+  directory: dir,
+  enabled: enabled,
+  installedAt: 0,
+  updatedAt: 0,
+);
 
 void main() {
   final catalog = ResourceCatalog(
@@ -28,7 +28,11 @@ void main() {
 
   test('personal scope resolves enabled skillIds to refs', () {
     const scope = PersonalResourceScope(
-      personal: PersonalProfile(id: 'p', display: 'p', bundle: ConfigBundle(skillIds: ['a'])),
+      personal: PersonalProfile(
+        id: 'p',
+        display: 'p',
+        bundle: ConfigBundle(skillIds: ['a']),
+      ),
     );
     final set = resolver.resolve(scope: scope, catalog: catalog);
     final refs = set.of(ResourceKind.skill);
@@ -52,7 +56,11 @@ void main() {
       pathContext: p.posix,
     );
     const scope = PersonalResourceScope(
-      personal: PersonalProfile(id: 'p', display: 'p', bundle: ConfigBundle(skillIds: ['a', 'b'])),
+      personal: PersonalProfile(
+        id: 'p',
+        display: 'p',
+        bundle: ConfigBundle(skillIds: ['a', 'b']),
+      ),
     );
     final set = resolver.resolve(scope: scope, catalog: disabledCatalog);
     expect(set.of(ResourceKind.skill).map((r) => r.linkName), ['skill-b']);

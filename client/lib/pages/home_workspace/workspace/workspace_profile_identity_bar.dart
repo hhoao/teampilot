@@ -7,7 +7,6 @@ import 'package:teampilot/theme/app_icon_sizes.dart';
 import '../../../cubits/launch_profile_cubit.dart';
 import '../../../l10n/l10n_extensions.dart';
 import '../../../models/launch_profile_kind.dart';
-import '../../../models/launch_profile_kind.dart';
 import '../../../models/team_config.dart';
 import '../../../theme/app_spacing.dart';
 import '../../../theme/app_text_styles.dart';
@@ -74,7 +73,9 @@ class WorkspaceProfileIdentityBar extends StatelessWidget {
   }
 
   void _selectTeam(BuildContext context, TeamProfile team) {
-    unawaited(context.read<LaunchProfileCubit>().selectTeam(team.id, silent: true));
+    unawaited(
+      context.read<LaunchProfileCubit>().selectTeam(team.id, silent: true),
+    );
     onProfileSelected(team.id);
   }
 }

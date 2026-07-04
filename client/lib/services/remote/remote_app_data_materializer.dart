@@ -7,26 +7,28 @@ import 'work_machine_materializer.dart';
 /// Loads the locally-generated credential files for [cli] (per-CLI credential
 /// services produce them locally). Injected so the work-machine materialize is
 /// unit-testable without touching real credential stores.
-typedef LocalCredentialsLoader = Future<List<CredentialFile>> Function(
-    CliTool cli);
+typedef LocalCredentialsLoader =
+    Future<List<CredentialFile>> Function(CliTool cli);
 
 /// Links a CLI's team skills/plugins on the work machine (over its [workFs]).
 /// Injected; the real linkers are fs-injected services (run on-device against
 /// SFTP). [B4]
-typedef RemoteResourceLinker = Future<void> Function({
-  required Filesystem workFs,
-  required String machineRoot,
-  required CliTool cli,
-  required String workspaceId,
-});
+typedef RemoteResourceLinker =
+    Future<void> Function({
+      required Filesystem workFs,
+      required String machineRoot,
+      required CliTool cli,
+      required String workspaceId,
+    });
 
 /// Materializes the relay (P3b) onto the work machine for a long-blocking CLI.
 /// Injected; real impl runs `RelayProvisioner` over the work transport. [B4]
-typedef RemoteRelayProvisioner = Future<void> Function({
-  required Filesystem workFs,
-  required String machineRoot,
-  required CliTool cli,
-});
+typedef RemoteRelayProvisioner =
+    Future<void> Function({
+      required Filesystem workFs,
+      required String machineRoot,
+      required CliTool cli,
+    });
 
 /// Composes the full work-machine app-data materialize (P3c §3.3): ancestry +
 /// inheritance ([WorkMachineMaterializer]) → skills/plugins linking → relay →
@@ -53,8 +55,10 @@ class RemoteAppDataMaterializer {
     required String workspaceId,
     required bool optInCredentials,
   }) async {
-    final manifest =
-        MaterializationManifest(fs: workFs, machineRoot: machineRoot);
+    final manifest = MaterializationManifest(
+      fs: workFs,
+      machineRoot: machineRoot,
+    );
 
     await WorkMachineMaterializer(
       homeFs: homeFs,
@@ -85,8 +89,9 @@ class RemoteAppDataMaterializer {
       machineRoot: machineRoot,
       localRoot: homeRoot,
       optIn: optInCredentials,
-      localCredentials:
-          optInCredentials ? await loadLocalCredentials(cli) : const [],
+      localCredentials: optInCredentials
+          ? await loadLocalCredentials(cli)
+          : const [],
     );
   }
 }

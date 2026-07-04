@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
 
 import '../../models/keyboard_shortcut_action.dart';
 import 'keyboard_shortcut_bindings.dart';

@@ -53,8 +53,16 @@ class DiffColors {
           other.ribbonModify == ribbonModify;
 
   @override
-  int get hashCode => Object.hash(addBand, addInline, removeBand, removeInline,
-      fillerBand, ribbonAdd, ribbonRemove, ribbonModify);
+  int get hashCode => Object.hash(
+    addBand,
+    addInline,
+    removeBand,
+    removeInline,
+    fillerBand,
+    ribbonAdd,
+    ribbonRemove,
+    ribbonModify,
+  );
 }
 
 /// Theme-independent text + gutter numbers for both panes.
@@ -161,10 +169,10 @@ UnifiedPane buildUnifiedPane(List<DiffRow> rows, DiffColors colors) {
   }
 
   CodeLineDecoration band(int at, Color color) => CodeLineDecoration(
-        selection: CodeLineSelection.collapsed(index: at, offset: 0),
-        color: color,
-        fillLine: true,
-      );
+    selection: CodeLineSelection.collapsed(index: at, offset: 0),
+    color: color,
+    fillLine: true,
+  );
 
   CodeLineDecoration inline(int at, InlineEdit edit, Color color) =>
       CodeLineDecoration(
@@ -232,10 +240,10 @@ DiffPaneDecorations buildDiffPaneDecorations(
   final right = <CodeLineDecoration>[];
 
   CodeLineDecoration band(int line, Color color) => CodeLineDecoration(
-        selection: CodeLineSelection.collapsed(index: line, offset: 0),
-        color: color,
-        fillLine: true,
-      );
+    selection: CodeLineSelection.collapsed(index: line, offset: 0),
+    color: color,
+    fillLine: true,
+  );
 
   CodeLineDecoration inline(int line, InlineEdit edit, Color color) =>
       CodeLineDecoration(

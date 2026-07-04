@@ -147,13 +147,7 @@ Widget _wrapForm(Widget form) {
     supportedLocales: AppLocalizations.supportedLocales,
     home: CliToolRegistryScope(
       registry: CliToolRegistry.builtIn(),
-      child: Scaffold(
-        body: SizedBox(
-          width: 1000,
-          height: 1400,
-          child: form,
-        ),
-      ),
+      child: Scaffold(body: SizedBox(width: 1000, height: 1400, child: form)),
     ),
   );
 }

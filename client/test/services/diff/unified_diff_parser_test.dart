@@ -43,9 +43,13 @@ index 680d11d..e38878e 100644
       expect(modify.rightInline, isNotEmpty);
 
       // 'final int c;' is a genuine insertion.
-      expect(file.rows.any((r) =>
-          r.kind == DiffRowKind.insert && r.rightText == '  final int c;'),
-          isTrue);
+      expect(
+        file.rows.any(
+          (r) =>
+              r.kind == DiffRowKind.insert && r.rightText == '  final int c;',
+        ),
+        isTrue,
+      );
     });
 
     test('handles new and deleted files via /dev/null', () {
@@ -148,9 +152,11 @@ diff --git a/two.dart b/two.dart
       expect(file.rows.single.kind, DiffRowKind.modify);
       // The marker text must not leak into any row.
       expect(
-        file.rows.every((r) =>
-            !(r.leftText ?? '').contains('No newline') &&
-            !(r.rightText ?? '').contains('No newline')),
+        file.rows.every(
+          (r) =>
+              !(r.leftText ?? '').contains('No newline') &&
+              !(r.rightText ?? '').contains('No newline'),
+        ),
         isTrue,
       );
     });

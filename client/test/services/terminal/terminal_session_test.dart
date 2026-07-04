@@ -209,7 +209,10 @@ void main() {
     expect(failed, isTrue);
     expect(session.isRunning, isFalse);
     await flushTerminalEngine(session.engine);
-    expect(exportTerminalScrollback(session.engine), contains('spawn timed out'));
+    expect(
+      exportTerminalScrollback(session.engine),
+      contains('spawn timed out'),
+    );
   });
 
   test('missing absolute executable fails fast without starting pty', () async {
@@ -403,145 +406,147 @@ void main() {
   test(
     'independent Claude sessions spawn concurrently with distinct agent args',
     () async {
-    const team = TeamProfile(
-      id: 'team',
-      name: 'default-team-0',
-      cli: CliTool.claude,
-    );
-    const lead = TeamMemberConfig(id: 'team-lead', name: 'team-lead');
-    const dev = TeamMemberConfig(id: 'dev', name: 'developer');
-    final startedArgs = <List<String>>[];
-
-    TerminalSession sessionFor(TeamMemberConfig member) {
-      return TerminalSession(
-        executable: _ptyTestExecutable,
-        transportStarter:
-            (
-              executable, {
-              required arguments,
-              required workingDirectory,
-              required columns,
-              required rows,
-              environment,
-            }) {
-              startedArgs.add(List<String>.from(arguments));
-              return Future.value(_FakeTransport());
-            },
+      const team = TeamProfile(
+        id: 'team',
+        name: 'default-team-0',
+        cli: CliTool.claude,
       );
-    }
+      const lead = TeamMemberConfig(id: 'team-lead', name: 'team-lead');
+      const dev = TeamMemberConfig(id: 'dev', name: 'developer');
+      final startedArgs = <List<String>>[];
 
-    final leadSession = sessionFor(lead);
-    final devSession = sessionFor(dev);
-    addTearDown(() async {
-      leadSession.dispose();
-      devSession.dispose();
-    });
+      TerminalSession sessionFor(TeamMemberConfig member) {
+        return TerminalSession(
+          executable: _ptyTestExecutable,
+          transportStarter:
+              (
+                executable, {
+                required arguments,
+                required workingDirectory,
+                required columns,
+                required rows,
+                environment,
+              }) {
+                startedArgs.add(List<String>.from(arguments));
+                return Future.value(_FakeTransport());
+              },
+        );
+      }
 
-    final shellLaunch = ShellLaunchSpec.teamMember(
-      team: team,
-      member: lead,
-      workingDirectory: Directory.systemTemp.path,
-    );
-    leadSession.connect(
-      workingDirectory: Directory.systemTemp.path,
-      shellLaunch: shellLaunch,
-    );
-    devSession.connect(
-      workingDirectory: Directory.systemTemp.path,
-      shellLaunch: ShellLaunchSpec.teamMember(
+      final leadSession = sessionFor(lead);
+      final devSession = sessionFor(dev);
+      addTearDown(() async {
+        leadSession.dispose();
+        devSession.dispose();
+      });
+
+      final shellLaunch = ShellLaunchSpec.teamMember(
         team: team,
-        member: dev,
+        member: lead,
         workingDirectory: Directory.systemTemp.path,
-      ),
-    );
-    await Future<void>.delayed(const Duration(milliseconds: 500));
+      );
+      leadSession.connect(
+        workingDirectory: Directory.systemTemp.path,
+        shellLaunch: shellLaunch,
+      );
+      devSession.connect(
+        workingDirectory: Directory.systemTemp.path,
+        shellLaunch: ShellLaunchSpec.teamMember(
+          team: team,
+          member: dev,
+          workingDirectory: Directory.systemTemp.path,
+        ),
+      );
+      await Future<void>.delayed(const Duration(milliseconds: 500));
 
-    expect(startedArgs, hasLength(2));
-    expect(
-      startedArgs.any(
-        (args) => args.contains('--agent-name') && args.contains('team-lead'),
-      ),
-      isTrue,
-    );
-    expect(
-      startedArgs.any(
-        (args) => args.contains('--agent-name') && args.contains('dev'),
-      ),
-      isTrue,
-    );
-    expect(leadSession.isRunning, isTrue);
-    expect(devSession.isRunning, isTrue);
-  });
+      expect(startedArgs, hasLength(2));
+      expect(
+        startedArgs.any(
+          (args) => args.contains('--agent-name') && args.contains('team-lead'),
+        ),
+        isTrue,
+      );
+      expect(
+        startedArgs.any(
+          (args) => args.contains('--agent-name') && args.contains('dev'),
+        ),
+        isTrue,
+      );
+      expect(leadSession.isRunning, isTrue);
+      expect(devSession.isRunning, isTrue);
+    },
+  );
 
   test(
     'independent flashskyai sessions use --team and --member per member',
     () async {
-    const team = TeamProfile(
-      id: 'team',
-      name: 'default-team-0',
-      cli: CliTool.flashskyai,
-    );
-    const lead = TeamMemberConfig(id: 'team-lead', name: 'team-lead');
-    const dev = TeamMemberConfig(id: 'dev', name: 'developer');
-    final startedArgs = <List<String>>[];
-
-    TerminalSession sessionFor(TeamMemberConfig member) {
-      return TerminalSession(
-        executable: _ptyTestExecutable,
-        transportStarter:
-            (
-              executable, {
-              required arguments,
-              required workingDirectory,
-              required columns,
-              required rows,
-              environment,
-            }) {
-              startedArgs.add(List<String>.from(arguments));
-              return Future.value(_FakeTransport());
-            },
+      const team = TeamProfile(
+        id: 'team',
+        name: 'default-team-0',
+        cli: CliTool.flashskyai,
       );
-    }
+      const lead = TeamMemberConfig(id: 'team-lead', name: 'team-lead');
+      const dev = TeamMemberConfig(id: 'dev', name: 'developer');
+      final startedArgs = <List<String>>[];
 
-    final leadSession = sessionFor(lead);
-    final devSession = sessionFor(dev);
-    addTearDown(() async {
-      leadSession.dispose();
-      devSession.dispose();
-    });
+      TerminalSession sessionFor(TeamMemberConfig member) {
+        return TerminalSession(
+          executable: _ptyTestExecutable,
+          transportStarter:
+              (
+                executable, {
+                required arguments,
+                required workingDirectory,
+                required columns,
+                required rows,
+                environment,
+              }) {
+                startedArgs.add(List<String>.from(arguments));
+                return Future.value(_FakeTransport());
+              },
+        );
+      }
 
-    leadSession.connect(
-      workingDirectory: Directory.systemTemp.path,
-      shellLaunch: ShellLaunchSpec.teamMember(
-        team: team,
-        member: lead,
+      final leadSession = sessionFor(lead);
+      final devSession = sessionFor(dev);
+      addTearDown(() async {
+        leadSession.dispose();
+        devSession.dispose();
+      });
+
+      leadSession.connect(
         workingDirectory: Directory.systemTemp.path,
-      ),
-    );
-    devSession.connect(
-      workingDirectory: Directory.systemTemp.path,
-      shellLaunch: ShellLaunchSpec.teamMember(
-        team: team,
-        member: dev,
+        shellLaunch: ShellLaunchSpec.teamMember(
+          team: team,
+          member: lead,
+          workingDirectory: Directory.systemTemp.path,
+        ),
+      );
+      devSession.connect(
         workingDirectory: Directory.systemTemp.path,
-      ),
-    );
-    await Future<void>.delayed(const Duration(milliseconds: 500));
+        shellLaunch: ShellLaunchSpec.teamMember(
+          team: team,
+          member: dev,
+          workingDirectory: Directory.systemTemp.path,
+        ),
+      );
+      await Future<void>.delayed(const Duration(milliseconds: 500));
 
-    expect(startedArgs, hasLength(2));
-    expect(
-      startedArgs.any(
-        (args) => args.contains('--member') && args.contains('team-lead'),
-      ),
-      isTrue,
-    );
-    expect(
-      startedArgs.any(
-        (args) => args.contains('--member') && args.contains('dev'),
-      ),
-      isTrue,
-    );
-  });
+      expect(startedArgs, hasLength(2));
+      expect(
+        startedArgs.any(
+          (args) => args.contains('--member') && args.contains('team-lead'),
+        ),
+        isTrue,
+      );
+      expect(
+        startedArgs.any(
+          (args) => args.contains('--member') && args.contains('dev'),
+        ),
+        isTrue,
+      );
+    },
+  );
 
   test(
     'connect spawns pty with default viewport without TerminalView resize',
@@ -906,7 +911,11 @@ void main() {
       name: 'default-team-0',
       cli: CliTool.flashskyai,
     );
-    const member = TeamMemberConfig(id: 'member', name: 'team-lead', dangerouslySkipPermissions: false);
+    const member = TeamMemberConfig(
+      id: 'member',
+      name: 'team-lead',
+      dangerouslySkipPermissions: false,
+    );
     session.connect(
       workingDirectory: r'C:\Users\haung\git\teampilot\client',
       shellLaunch: ShellLaunchSpec.teamMember(
@@ -977,43 +986,45 @@ void main() {
     );
   });
 
-  test('submitFullScreenInput writes bracketed paste then a standalone CR',
-      () async {
-    final handle = _FakeTransport();
-    final session = TerminalSession(
-      executable: _ptyTestExecutable,
-      confirmFallback: const Duration(milliseconds: 20),
-      transportStarter:
-          (
-            executable, {
-            required arguments,
-            required workingDirectory,
-            required columns,
-            required rows,
-            environment,
-          }) {
-            return Future.value(handle);
-          },
-    );
-    addTearDown(() async {
-      session.dispose();
-      await handle.outputController.close();
-    });
+  test(
+    'submitFullScreenInput writes bracketed paste then a standalone CR',
+    () async {
+      final handle = _FakeTransport();
+      final session = TerminalSession(
+        executable: _ptyTestExecutable,
+        confirmFallback: const Duration(milliseconds: 20),
+        transportStarter:
+            (
+              executable, {
+              required arguments,
+              required workingDirectory,
+              required columns,
+              required rows,
+              environment,
+            }) {
+              return Future.value(handle);
+            },
+      );
+      addTearDown(() async {
+        session.dispose();
+        await handle.outputController.close();
+      });
 
-    session.connect(workingDirectory: Directory.systemTemp.path);
-    session.onViewportResize(80, 24);
-    handle.outputController.add(Uint8List.fromList(utf8.encode('ready\r\n')));
-    await Future<void>.delayed(Duration.zero);
-    expect(session.isRunning, isTrue);
+      session.connect(workingDirectory: Directory.systemTemp.path);
+      session.onViewportResize(80, 24);
+      handle.outputController.add(Uint8List.fromList(utf8.encode('ready\r\n')));
+      await Future<void>.delayed(Duration.zero);
+      expect(session.isRunning, isTrue);
 
-    await session.submitFullScreenInput('hello team');
+      await session.submitFullScreenInput('hello team');
 
-    final writes = handle.writes.map(utf8.decode).toList();
-    // Text arrives wrapped in bracketed-paste markers, and the CR is a separate
-    // write — so Claude Code's full-screen TUI registers a discrete Enter
-    // (submit) rather than a literal newline inside a paste burst.
-    expect(writes, ['\x1B[200~hello team\x1B[201~', '\r']);
-  });
+      final writes = handle.writes.map(utf8.decode).toList();
+      // Text arrives wrapped in bracketed-paste markers, and the CR is a separate
+      // write — so Claude Code's full-screen TUI registers a discrete Enter
+      // (submit) rather than a literal newline inside a paste burst.
+      expect(writes, ['\x1B[200~hello team\x1B[201~', '\r']);
+    },
+  );
 
   test('writeln writes text and CR as a single chunk (line CLIs)', () async {
     final handle = _FakeTransport();
@@ -1050,18 +1061,18 @@ void main() {
 
   group('linkProviders', () {
     TerminalSession makeSession() => TerminalSession(
-          executable: _ptyTestExecutable,
-          validateLaunch: false,
-          transportStarter: (
+      executable: _ptyTestExecutable,
+      validateLaunch: false,
+      transportStarter:
+          (
             executable, {
             required arguments,
             required workingDirectory,
             required columns,
             required rows,
             environment,
-          }) =>
-              Future.value(_FakeTransport()),
-        );
+          }) => Future.value(_FakeTransport()),
+    );
 
     test('returns a UrlLinkProvider and a FilePathLinkProvider', () {
       final session = makeSession();
@@ -1121,7 +1132,10 @@ void main() {
       final expected = TerminalUriOpener.resolveLocalFilePath(
         'file://localhost/tmp/proj',
       );
-      expect(TerminalSession.parseOsc7Cwd('file://localhost/tmp/proj'), expected);
+      expect(
+        TerminalSession.parseOsc7Cwd('file://localhost/tmp/proj'),
+        expected,
+      );
       expect(expected, isNotNull);
     });
 

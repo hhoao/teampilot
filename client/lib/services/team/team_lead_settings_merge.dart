@@ -1,5 +1,3 @@
-
-
 /// Merges team-lead PreToolUse hook entries into Claude Code settings.
 class TeamLeadSettingsMerge {
   const TeamLeadSettingsMerge();

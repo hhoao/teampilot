@@ -13,29 +13,29 @@ enum TeamConfigSection implements WorkspaceSectionDescriptor {
 
   @override
   String get routeSegment => switch (this) {
-        TeamConfigSection.team => 'team',
-        TeamConfigSection.skills => 'skills',
-        TeamConfigSection.plugins => 'plugins',
-        TeamConfigSection.mcp => 'mcp',
-        TeamConfigSection.extensions => 'extensions',
-        TeamConfigSection.members => 'members',
-      };
+    TeamConfigSection.team => 'team',
+    TeamConfigSection.skills => 'skills',
+    TeamConfigSection.plugins => 'plugins',
+    TeamConfigSection.mcp => 'mcp',
+    TeamConfigSection.extensions => 'extensions',
+    TeamConfigSection.members => 'members',
+  };
 
   @override
   String routePath(String basePath) => switch (this) {
-        TeamConfigSection.members => '$basePath/members',
-        _ => '$basePath/$routeSegment',
-      };
+    TeamConfigSection.members => '$basePath/members',
+    _ => '$basePath/$routeSegment',
+  };
 
   @override
   String title(AppLocalizations l10n) => switch (this) {
-        TeamConfigSection.team => l10n.teamSettings,
-        TeamConfigSection.skills => l10n.teamSkillsNav,
-        TeamConfigSection.plugins => l10n.teamPluginsNav,
-        TeamConfigSection.mcp => l10n.teamMcpNav,
-        TeamConfigSection.extensions => l10n.teamExtensionsNav,
-        TeamConfigSection.members => l10n.members,
-      };
+    TeamConfigSection.team => l10n.teamSettings,
+    TeamConfigSection.skills => l10n.teamSkillsNav,
+    TeamConfigSection.plugins => l10n.teamPluginsNav,
+    TeamConfigSection.mcp => l10n.teamMcpNav,
+    TeamConfigSection.extensions => l10n.teamExtensionsNav,
+    TeamConfigSection.members => l10n.members,
+  };
 
   @override
   IconData get icon => teamConfigSectionIcon(this);
@@ -53,13 +53,13 @@ enum TeamConfigSection implements WorkspaceSectionDescriptor {
 }
 
 IconData teamConfigSectionIcon(TeamConfigSection section) => switch (section) {
-      TeamConfigSection.team => Icons.groups_outlined,
-      TeamConfigSection.skills => Icons.extension_outlined,
-      TeamConfigSection.plugins => Icons.widgets_outlined,
-      TeamConfigSection.mcp => Icons.hub_outlined,
-      TeamConfigSection.extensions => Icons.power_outlined,
-      TeamConfigSection.members => Icons.person_outline,
-    };
+  TeamConfigSection.team => Icons.groups_outlined,
+  TeamConfigSection.skills => Icons.extension_outlined,
+  TeamConfigSection.plugins => Icons.widgets_outlined,
+  TeamConfigSection.mcp => Icons.hub_outlined,
+  TeamConfigSection.extensions => Icons.power_outlined,
+  TeamConfigSection.members => Icons.person_outline,
+};
 
 String memberRoutePath(String basePath, String memberId) =>
     '$basePath/members/$memberId';

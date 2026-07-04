@@ -1,4 +1,4 @@
-﻿import 'package:flutter/material.dart';
+import 'package:flutter/material.dart';
 import 'package:teampilot/theme/app_toast_theme.dart';
 import 'package:teampilot/widgets/app_toast/app_toast.dart';
 
@@ -53,10 +53,9 @@ class _CreateWorkspaceDialogState extends State<_CreateWorkspaceDialog> {
       );
       return;
     }
-    Navigator.of(context).pop((
-      folders: valid,
-      display: _displayController.text.trim(),
-    ));
+    Navigator.of(
+      context,
+    ).pop((folders: valid, display: _displayController.text.trim()));
   }
 
   @override

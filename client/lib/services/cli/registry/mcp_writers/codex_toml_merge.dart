@@ -10,30 +10,24 @@ abstract final class CodexTomlMerge {
   static String mergeMcpServers(
     String existingToml,
     Iterable<McpServerSpec> servers,
-  ) =>
-      _merge(
-        existingToml,
-        mutate: (root) => _applyMcpServers(root, servers),
-      );
+  ) => _merge(existingToml, mutate: (root) => _applyMcpServers(root, servers));
 
   /// Sets `bearer_token_env_var` on `[mcp_servers.*]` and strips inline bearer headers.
   static String applyBearerTokenEnvVars(
     String existingToml,
     Map<String, String> serverEnvVars,
-  ) =>
-      _merge(
-        existingToml,
-        mutate: (root) => _applyBearerTokenEnvVars(root, serverEnvVars),
-      );
+  ) => _merge(
+    existingToml,
+    mutate: (root) => _applyBearerTokenEnvVars(root, serverEnvVars),
+  );
 
   static String mergePluginEnables(
     String existingToml,
     Iterable<CodexPluginEnableSpec> plugins,
-  ) =>
-      _merge(
-        existingToml,
-        mutate: (root) => _applyPluginEnables(root, plugins),
-      );
+  ) => _merge(
+    existingToml,
+    mutate: (root) => _applyPluginEnables(root, plugins),
+  );
 
   /// Registers the session-local marketplace Codex discovers via `[marketplaces.local]`.
   static String mergeLocalMarketplace(String existingToml, String configDir) =>

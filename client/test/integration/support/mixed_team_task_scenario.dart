@@ -30,146 +30,146 @@ abstract final class MixedTeamTaskScenario {
   /// (observed in L2 logs); [kickoffWorkerParkedThenLeader] times out because
   /// the worker mock turn completes before MCP opens the wait stream.
   static Future<void> runTaskDispatch() => _run(
-        scenarios: taskDispatchMixedClaudeScenarios(),
-        kickoff: simultaneousKickoff(
-          workerKickoff: taskDispatchWorkerKickoff,
-          leaderKickoff: taskDispatchLeaderKickoff,
-        ),
-        verify: (ctx) async {
-          await ctx.harness.waitForTaskDispatched(
-            workspaceId: ctx.session.workspaceId,
-            sessionId: ctx.session.sessionId,
-            title: 'ship-widget',
-          );
-        },
+    scenarios: taskDispatchMixedClaudeScenarios(),
+    kickoff: simultaneousKickoff(
+      workerKickoff: taskDispatchWorkerKickoff,
+      leaderKickoff: taskDispatchLeaderKickoff,
+    ),
+    verify: (ctx) async {
+      await ctx.harness.waitForTaskDispatched(
+        workspaceId: ctx.session.workspaceId,
+        sessionId: ctx.session.sessionId,
+        title: 'ship-widget',
       );
+    },
+  );
 
   /// Task enqueued + urgent mail: worker must consume mail before claiming.
   static Future<void> runMailPriorityOverTask() => _run(
-        scenarios: mailPriorityMixedClaudeScenarios(),
-        kickoff: simultaneousKickoff(
-          workerKickoff: mailPriorityWorkerKickoff,
-          leaderKickoff: mailPriorityLeaderKickoff,
-        ),
-        verify: (ctx) async {
-          const mailContent = 'urgent: pause work';
-          const taskTitle = 'orphan-task';
+    scenarios: mailPriorityMixedClaudeScenarios(),
+    kickoff: simultaneousKickoff(
+      workerKickoff: mailPriorityWorkerKickoff,
+      leaderKickoff: mailPriorityLeaderKickoff,
+    ),
+    verify: (ctx) async {
+      const mailContent = 'urgent: pause work';
+      const taskTitle = 'orphan-task';
 
-          await ctx.harness.waitForWorkerMail(
-            workspaceId: ctx.session.workspaceId,
-            sessionId: ctx.session.sessionId,
-            fromMemberId: kLeadMember.id,
-            content: mailContent,
-          );
-
-          final root = AppStorage.paths.basePath;
-          final mailRows = await readBusMailLines(
-            teampilotRoot: root,
-            workspaceId: ctx.session.workspaceId,
-            sessionId: ctx.session.sessionId,
-            memberId: kWorkerMember.id,
-          );
-          final mailAt = mailCreatedAtForContent(
-            mailRows,
-            fromMemberId: kLeadMember.id,
-            content: mailContent,
-          );
-          expect(mailAt, isNotNull);
-
-          await ctx.harness.waitForLeaderMail(
-            workspaceId: ctx.session.workspaceId,
-            sessionId: ctx.session.sessionId,
-            fromMemberId: kWorkerMember.id,
-            content: 'copy that',
-          );
-
-          await ctx.harness.waitForTaskDispatched(
-            workspaceId: ctx.session.workspaceId,
-            sessionId: ctx.session.sessionId,
-            title: taskTitle,
-          );
-
-          final tasksFinal = await readBusTaskEvents(
-            teampilotRoot: root,
-            workspaceId: ctx.session.workspaceId,
-            sessionId: ctx.session.sessionId,
-          );
-          final claimAt = claimTimestampForTitle(
-            tasksFinal,
-            taskTitle,
-            assignee: kWorkerMember.id,
-          );
-          expect(claimAt, isNotNull);
-          expectClaimAfterMail(
-            mailCreatedAt: mailAt!,
-            claimAt: claimAt!,
-            title: taskTitle,
-          );
-        },
+      await ctx.harness.waitForWorkerMail(
+        workspaceId: ctx.session.workspaceId,
+        sessionId: ctx.session.sessionId,
+        fromMemberId: kLeadMember.id,
+        content: mailContent,
       );
+
+      final root = AppStorage.paths.basePath;
+      final mailRows = await readBusMailLines(
+        teampilotRoot: root,
+        workspaceId: ctx.session.workspaceId,
+        sessionId: ctx.session.sessionId,
+        memberId: kWorkerMember.id,
+      );
+      final mailAt = mailCreatedAtForContent(
+        mailRows,
+        fromMemberId: kLeadMember.id,
+        content: mailContent,
+      );
+      expect(mailAt, isNotNull);
+
+      await ctx.harness.waitForLeaderMail(
+        workspaceId: ctx.session.workspaceId,
+        sessionId: ctx.session.sessionId,
+        fromMemberId: kWorkerMember.id,
+        content: 'copy that',
+      );
+
+      await ctx.harness.waitForTaskDispatched(
+        workspaceId: ctx.session.workspaceId,
+        sessionId: ctx.session.sessionId,
+        title: taskTitle,
+      );
+
+      final tasksFinal = await readBusTaskEvents(
+        teampilotRoot: root,
+        workspaceId: ctx.session.workspaceId,
+        sessionId: ctx.session.sessionId,
+      );
+      final claimAt = claimTimestampForTitle(
+        tasksFinal,
+        taskTitle,
+        assignee: kWorkerMember.id,
+      );
+      expect(claimAt, isNotNull);
+      expectClaimAfterMail(
+        mailCreatedAt: mailAt!,
+        claimAt: claimAt!,
+        title: taskTitle,
+      );
+    },
+  );
 
   /// Worker at prompt (no initial wait); leader `add_tasks` doorbells → claim.
   static Future<void> runDoorbellDispatch() => _run(
-        scenarios: doorbellDispatchMixedClaudeScenarios(),
-        kickoff: simultaneousKickoff(
-          workerKickoff: doorbellDispatchWorkerKickoff,
-          leaderKickoff: doorbellDispatchLeaderKickoff,
-        ),
-        verify: (ctx) async {
-          final snap = memberSnapshot(
-            ctx.harness.tabBus(ctx.session.sessionId),
-            kWorkerMember.id,
-          );
-          expect(
-            snap?.activity.name,
-            anyOf('turnDoneReady', 'active', 'turnDoneBusWait'),
-          );
-
-          await ctx.harness.waitForTaskDispatched(
-            workspaceId: ctx.session.workspaceId,
-            sessionId: ctx.session.sessionId,
-            title: 'doorbell-widget',
-          );
-        },
+    scenarios: doorbellDispatchMixedClaudeScenarios(),
+    kickoff: simultaneousKickoff(
+      workerKickoff: doorbellDispatchWorkerKickoff,
+      leaderKickoff: doorbellDispatchLeaderKickoff,
+    ),
+    verify: (ctx) async {
+      final snap = memberSnapshot(
+        ctx.harness.tabBus(ctx.session.sessionId),
+        kWorkerMember.id,
       );
+      expect(
+        snap?.activity.name,
+        anyOf('turnDoneReady', 'active', 'turnDoneBusWait'),
+      );
+
+      await ctx.harness.waitForTaskDispatched(
+        workspaceId: ctx.session.workspaceId,
+        sessionId: ctx.session.sessionId,
+        title: 'doorbell-widget',
+      );
+    },
+  );
 
   /// Worker claims via `wait_for_message`, reports `update_task(done)`; jsonl proof.
   static Future<void> runTaskCompleteCycle() => run(
-        scenarios: taskCompleteMixedClaudeScenarios(),
-        kickoff: simultaneousKickoff(
-          workerKickoff: taskCompleteWorkerKickoff,
-          leaderKickoff: taskCompleteLeaderKickoff,
-        ),
-        verify: (ctx) async {
-          const title = 'complete-widget';
+    scenarios: taskCompleteMixedClaudeScenarios(),
+    kickoff: simultaneousKickoff(
+      workerKickoff: taskCompleteWorkerKickoff,
+      leaderKickoff: taskCompleteLeaderKickoff,
+    ),
+    verify: (ctx) async {
+      const title = 'complete-widget';
 
-          await ctx.harness.waitForTaskDispatched(
-            workspaceId: ctx.session.workspaceId,
-            sessionId: ctx.session.sessionId,
-            title: title,
-          );
-          await ctx.harness.waitForTaskCompleted(
-            workspaceId: ctx.session.workspaceId,
-            sessionId: ctx.session.sessionId,
-            title: title,
-          );
-
-          final events = await readBusTaskEvents(
-            teampilotRoot: AppStorage.paths.basePath,
-            workspaceId: ctx.session.workspaceId,
-            sessionId: ctx.session.sessionId,
-          );
-          final claimAt = claimTimestampForTitle(
-            events,
-            title,
-            assignee: kWorkerMember.id,
-          );
-          final doneAt = doneTimestampForTitle(events, title);
-          expect(claimAt, isNotNull);
-          expect(doneAt, isNotNull);
-          expect(doneAt! > claimAt!, isTrue);
-        },
+      await ctx.harness.waitForTaskDispatched(
+        workspaceId: ctx.session.workspaceId,
+        sessionId: ctx.session.sessionId,
+        title: title,
       );
+      await ctx.harness.waitForTaskCompleted(
+        workspaceId: ctx.session.workspaceId,
+        sessionId: ctx.session.sessionId,
+        title: title,
+      );
+
+      final events = await readBusTaskEvents(
+        teampilotRoot: AppStorage.paths.basePath,
+        workspaceId: ctx.session.workspaceId,
+        sessionId: ctx.session.sessionId,
+      );
+      final claimAt = claimTimestampForTitle(
+        events,
+        title,
+        assignee: kWorkerMember.id,
+      );
+      final doneAt = doneTimestampForTitle(events, title);
+      expect(claimAt, isNotNull);
+      expect(doneAt, isNotNull);
+      expect(doneAt! > claimAt!, isTrue);
+    },
+  );
 
   /// L3: local lead + Docker SSH worker task dispatch.
   static Future<void> runTaskDispatchDocker() async {
@@ -234,10 +234,10 @@ abstract final class MixedTeamTaskScenario {
       );
       await drainPendingAsyncWork();
       await postFrame.flush();
-      await harness.waitUntilDockerMembersReady(
-        cubit,
-        [kLeadMember.id, kWorkerMember.id],
-      );
+      await harness.waitUntilDockerMembersReady(cubit, [
+        kLeadMember.id,
+        kWorkerMember.id,
+      ]);
 
       final ctx = MixedTeamScenarioCtx(
         harness: harness,
@@ -336,10 +336,10 @@ abstract final class MixedTeamTaskScenario {
       );
       await drainPendingAsyncWork();
       await postFrame.flush();
-      await harness.waitUntilDockerMembersReady(
-        cubit,
-        [kLeadMember.id, kWorkerMember.id],
-      );
+      await harness.waitUntilDockerMembersReady(cubit, [
+        kLeadMember.id,
+        kWorkerMember.id,
+      ]);
 
       final ctx = MixedTeamScenarioCtx(
         harness: harness,
@@ -380,11 +380,11 @@ abstract final class MixedTeamTaskScenario {
     required String leaderKickoff,
   }) =>
       (ctx) => ctx.harness.kickoffMembers(
-            ctx.cubit,
-            postFrame: ctx.postFrame,
-            workerKickoff: workerKickoff,
-            leaderKickoff: leaderKickoff,
-          );
+        ctx.cubit,
+        postFrame: ctx.postFrame,
+        workerKickoff: workerKickoff,
+        leaderKickoff: leaderKickoff,
+      );
 
   /// Shared L2 session bootstrap (real Claude PTY + mock Anthropic).
   static Future<void> run({
@@ -409,10 +409,7 @@ abstract final class MixedTeamTaskScenario {
       cubit = harness.createCubit(postFrame: postFrame);
       if (withPresence) {
         presenceCubit = MemberPresenceCubit();
-        bindMixedTeamPresence(
-          chatCubit: cubit,
-          presenceCubit: presenceCubit,
-        );
+        bindMixedTeamPresence(chatCubit: cubit, presenceCubit: presenceCubit);
       }
 
       final workspace = await repo.createWorkspace([
@@ -435,10 +432,10 @@ abstract final class MixedTeamTaskScenario {
       );
       await drainPendingAsyncWork();
       await postFrame.flush();
-      await harness.waitUntilMembersReady(
-        cubit,
-        [kLeadMember.id, kWorkerMember.id],
-      );
+      await harness.waitUntilMembersReady(cubit, [
+        kLeadMember.id,
+        kWorkerMember.id,
+      ]);
 
       final ctx = MixedTeamScenarioCtx(
         harness: harness,
@@ -473,13 +470,12 @@ abstract final class MixedTeamTaskScenario {
     required MixedTeamKickoff kickoff,
     required Future<void> Function(MixedTeamScenarioCtx ctx) verify,
     bool withPresence = false,
-  }) =>
-      run(
-        scenarios: scenarios,
-        kickoff: kickoff,
-        verify: verify,
-        withPresence: withPresence,
-      );
+  }) => run(
+    scenarios: scenarios,
+    kickoff: kickoff,
+    verify: verify,
+    withPresence: withPresence,
+  );
 }
 
 typedef MixedTeamKickoff = Future<void> Function(MixedTeamScenarioCtx ctx);

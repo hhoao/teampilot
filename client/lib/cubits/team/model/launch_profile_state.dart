@@ -54,12 +54,13 @@ class LaunchProfileState extends Equatable {
     Map<String, String>? pluginSyncConflicts,
     bool clearSelectedTeamId = false,
   }) {
-    final nextIdentities = identities ??
+    final nextIdentities =
+        identities ??
         (personals != null
             ? [...personals, ...teams ?? this.teams]
             : teams != null
-                ? [...this.personals, ...teams]
-                : this.identities);
+            ? [...this.personals, ...teams]
+            : this.identities);
     return LaunchProfileState(
       identities: nextIdentities,
       selectedTeamId: clearSelectedTeamId
@@ -75,12 +76,12 @@ class LaunchProfileState extends Equatable {
 
   @override
   List<Object?> get props => [
-        identities,
-        selectedTeamId,
-        statusMessage,
-        isLoading,
-        isLaunching,
-        isSyncingPlugins,
-        pluginSyncConflicts,
-      ];
+    identities,
+    selectedTeamId,
+    statusMessage,
+    isLoading,
+    isLaunching,
+    isSyncingPlugins,
+    pluginSyncConflicts,
+  ];
 }

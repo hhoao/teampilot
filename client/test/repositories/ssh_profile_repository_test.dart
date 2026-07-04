@@ -40,7 +40,9 @@ void main() {
   });
 
   test('explicit rootDir override stays pinned', () async {
-    final pinnedRoot = await Directory.systemTemp.createTemp('ssh_profiles_pin_');
+    final pinnedRoot = await Directory.systemTemp.createTemp(
+      'ssh_profiles_pin_',
+    );
     final otherRoot = await Directory.systemTemp.createTemp('other_root_');
     addTearDown(() async {
       if (await pinnedRoot.exists()) await pinnedRoot.delete(recursive: true);

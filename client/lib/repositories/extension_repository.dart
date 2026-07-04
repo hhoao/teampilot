@@ -10,9 +10,9 @@ class ExtensionRepository {
     required Filesystem fs,
     required String stateFilePath,
     required List<ExtensionManifest> manifests,
-  })  : _fs = fs,
-        _stateFilePath = stateFilePath,
-        _manifests = manifests;
+  }) : _fs = fs,
+       _stateFilePath = stateFilePath,
+       _manifests = manifests;
 
   final Filesystem _fs;
   final String _stateFilePath;
@@ -35,8 +35,9 @@ class ExtensionRepository {
     try {
       final decoded = jsonDecode(raw);
       if (decoded is Map) {
-        return _cache =
-            ExtensionState.fromJson(decoded.cast<String, Object?>());
+        return _cache = ExtensionState.fromJson(
+          decoded.cast<String, Object?>(),
+        );
       }
     } on Object {
       // Corrupt file → treat as empty; next save overwrites.
@@ -60,16 +61,19 @@ class ExtensionRepository {
   Future<void> setTeamOverride(String teamId, String id, bool? value) async =>
       save((await load()).withTeamOverride(teamId, id, value));
 
-  Future<void> setWorkspaceOverride(String workspaceId, String id, bool? value) async =>
-      save((await load()).withWorkspaceOverride(workspaceId, id, value));
+  Future<void> setWorkspaceOverride(
+    String workspaceId,
+    String id,
+    bool? value,
+  ) async => save((await load()).withWorkspaceOverride(workspaceId, id, value));
 
   Future<void> recordInstalled(String id, String version) async => save(
-        (await load()).withInstalled(
-          id,
-          version,
-          DateTime.now().millisecondsSinceEpoch,
-        ),
-      );
+    (await load()).withInstalled(
+      id,
+      version,
+      DateTime.now().millisecondsSinceEpoch,
+    ),
+  );
 
   Future<void> recordUninstalled(String id) async =>
       save((await load()).withUninstalled(id));
@@ -87,11 +91,14 @@ class ExtensionRepository {
   }
 
   /// Known extension ids effectively enabled for a personal [workspaceId].
-  Future<Set<String>> effectiveEnabledIdsForWorkspace(String workspaceId) async {
+  Future<Set<String>> effectiveEnabledIdsForWorkspace(
+    String workspaceId,
+  ) async {
     final state = await load();
     return {
       for (final manifest in _manifests)
-        if (state.effectiveEnabledForWorkspace(workspaceId, manifest.id)) manifest.id,
+        if (state.effectiveEnabledForWorkspace(workspaceId, manifest.id))
+          manifest.id,
     };
   }
 }

@@ -17,10 +17,7 @@ void main() {
     );
     final members = config['members'] as List;
     expect(members.length, 2);
-    expect(
-      (members.first as Map)['name'],
-      TeamMemberNaming.teamLeadName,
-    );
+    expect((members.first as Map)['name'], TeamMemberNaming.teamLeadName);
   });
 
   test('mergeConfig preserves createdAt from existing roster', () {
@@ -49,19 +46,13 @@ void main() {
 
     final config = service.mergeConfig(
       cliTeamName: 'runtime-team',
-      members: const [
-        TeamMemberConfig(id: 'dev', name: 'researcher'),
-      ],
+      members: const [TeamMemberConfig(id: 'dev', name: 'researcher')],
       cwd: '/workspace',
       teammateMode: 'in-process',
       existing: {
         'createdAt': 1,
         'members': [
-          {
-            'agentId': 'dev@runtime-team',
-            'name': 'dev',
-            'isActive': true,
-          },
+          {'agentId': 'dev@runtime-team', 'name': 'dev', 'isActive': true},
         ],
       },
     );

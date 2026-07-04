@@ -4,9 +4,8 @@ import '../../models/extension_manifest.dart';
 import '../cli/installer_types.dart';
 import 'extension_detector.dart';
 
-typedef ExtensionInstallRunner = Future<CliInstallerCommandResult> Function(
-  CliInstallerCommand command,
-);
+typedef ExtensionInstallRunner =
+    Future<CliInstallerCommandResult> Function(CliInstallerCommand command);
 
 class ExtensionInstallResult {
   const ExtensionInstallResult({
@@ -27,8 +26,8 @@ class ExtensionAcquisitionEngine {
   ExtensionAcquisitionEngine({
     ExtensionInstallRunner? runner,
     ExtensionDetector? detector,
-  })  : _runner = runner ?? _defaultLocalRunner,
-        _detector = detector ?? ExtensionDetector();
+  }) : _runner = runner ?? _defaultLocalRunner,
+       _detector = detector ?? ExtensionDetector();
 
   final ExtensionInstallRunner _runner;
   final ExtensionDetector _detector;
@@ -90,7 +89,10 @@ class ExtensionAcquisitionEngine {
   Future<ExtensionInstallResult> uninstall(ExtensionManifest manifest) async {
     final acquire = manifest.acquire;
     if (acquire == null) {
-      return const ExtensionInstallResult(success: false, message: 'No installer.');
+      return const ExtensionInstallResult(
+        success: false,
+        message: 'No installer.',
+      );
     }
     final command = _uninstallCommand(acquire);
     if (command == null) {

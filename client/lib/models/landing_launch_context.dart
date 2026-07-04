@@ -56,5 +56,6 @@ class LandingLaunchContext {
           teamId == other.teamId;
 
   @override
-  int get hashCode => Object.hash(isPersonal, personalProfileId, presetId, teamId);
+  int get hashCode =>
+      Object.hash(isPersonal, personalProfileId, presetId, teamId);
 }

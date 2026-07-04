@@ -135,7 +135,9 @@ class _WorkspaceTeamMemberTargetsDialogState
           AppDialogActions(
             children: [
               TextButton(
-                onPressed: _saving ? null : () => Navigator.of(context).pop(false),
+                onPressed: _saving
+                    ? null
+                    : () => Navigator.of(context).pop(false),
                 child: Text(l10n.cancel),
               ),
               FilledButton(

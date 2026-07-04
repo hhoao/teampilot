@@ -33,10 +33,7 @@ import 'open_workspace_tab_actions.dart';
 
 /// Persistent chrome for the workspace-home route family.
 class HomeShell extends StatefulWidget {
-  const HomeShell({
-    required this.location,
-    super.key,
-  });
+  const HomeShell({required this.location, super.key});
 
   final String location;
 
@@ -94,9 +91,9 @@ class _HomeShellState extends State<HomeShell> {
       unawaited(_recentWorkspacesStore.recordVisit(routeTab));
       WidgetsBinding.instance.addPostFrameCallback((_) {
         if (!mounted) return;
-        context
-            .read<LayoutCubit>()
-            .setLastOpenedWorkspaceId(routeTab.workspaceId);
+        context.read<LayoutCubit>().setLastOpenedWorkspaceId(
+          routeTab.workspaceId,
+        );
       });
     }
     await _persistOpenTabs();
@@ -140,9 +137,9 @@ class _HomeShellState extends State<HomeShell> {
           unawaited(_persistOpenTabs());
         }
         unawaited(_recentWorkspacesStore.recordVisit(routeTab));
-        context
-            .read<LayoutCubit>()
-            .setLastOpenedWorkspaceId(routeTab.workspaceId);
+        context.read<LayoutCubit>().setLastOpenedWorkspaceId(
+          routeTab.workspaceId,
+        );
       } else {
         _syncTeamSessionScope(context);
       }
@@ -170,16 +167,11 @@ class _HomeShellState extends State<HomeShell> {
   }
 
   Future<void> _reopenClosedTab(String tabKey) async {
-    final entry = _recentlyClosed
-        .where((e) => e.tabKey == tabKey)
-        .firstOrNull;
+    final entry = _recentlyClosed.where((e) => e.tabKey == tabKey).firstOrNull;
     if (entry == null) return;
     await _closedWorkspacesStore.remove(tabKey);
     if (!mounted) return;
-    _openTab(
-      WorkspaceTabRef(workspaceId: entry.workspaceId),
-      activate: true,
-    );
+    _openTab(WorkspaceTabRef(workspaceId: entry.workspaceId), activate: true);
     await _reloadRecentlyClosed();
   }
 
@@ -314,8 +306,9 @@ class _HomeShellState extends State<HomeShell> {
                 recentlyClosed: _recentlyClosed,
                 onHomeTap: _goHome,
                 onSelectTab: (tabKey) {
-                  final tab =
-                      _openTabs.where((t) => t.tabKey == tabKey).firstOrNull;
+                  final tab = _openTabs
+                      .where((t) => t.tabKey == tabKey)
+                      .firstOrNull;
                   if (tab != null) _selectTab(tab);
                 },
                 onCloseTab: (tabKey) => unawaited(_closeTab(tabKey)),
@@ -388,11 +381,7 @@ class _HomeShellTitleBar extends StatelessWidget {
       for (final tab in openTabs)
         if (_HomeShellState._resolve(openWorkspaces, tab.workspaceId)
             case final workspace?)
-          _workspaceTab(
-            tab: tab,
-            workspace: workspace,
-            l10n: l10n,
-          ),
+          _workspaceTab(tab: tab, workspace: workspace, l10n: l10n),
     ];
 
     return HomeTitleBar(

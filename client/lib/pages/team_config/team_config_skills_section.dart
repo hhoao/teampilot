@@ -1,4 +1,4 @@
-﻿import 'package:flutter/material.dart';
+import 'package:flutter/material.dart';
 import 'package:teampilot/theme/app_icon_sizes.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
@@ -34,9 +34,7 @@ class TeamSkillsSection extends StatelessWidget {
   Widget build(BuildContext context) {
     final l10n = context.l10n;
     final onManage = onManageGlobal ?? () => context.go('/skills');
-    final skillState = context.select<SkillCubit, SkillState>(
-      (c) => c.state,
-    );
+    final skillState = context.select<SkillCubit, SkillState>((c) => c.state);
     final enabled = skillState.installed
         .where((s) => s.enabled)
         .toList(growable: false);
@@ -59,7 +57,10 @@ class TeamSkillsSection extends StatelessWidget {
                   ),
                   trailing: OutlinedButton.icon(
                     onPressed: onManage,
-                    icon: Icon(Icons.extension_outlined, size: context.appIconSizes.md),
+                    icon: Icon(
+                      Icons.extension_outlined,
+                      size: context.appIconSizes.md,
+                    ),
                     label: Text(l10n.teamSkillsManage),
                   ),
                 ),
@@ -102,7 +103,8 @@ class TeamSkillsSection extends StatelessWidget {
 }
 
 class TeamSkillRow extends StatelessWidget {
-  const TeamSkillRow({super.key, 
+  const TeamSkillRow({
+    super.key,
     required this.skill,
     required this.assigned,
     required this.onAssignedChanged,

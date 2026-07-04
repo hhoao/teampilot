@@ -43,19 +43,14 @@ abstract final class WorkspaceTopologyColors {
   static Color toneForTest({
     required Color accent,
     required ColorScheme colorScheme,
-  }) =>
-      _tone(accent: accent, colorScheme: colorScheme);
+  }) => _tone(accent: accent, colorScheme: colorScheme);
 
   static Color _tone({
     required Color accent,
     required ColorScheme colorScheme,
     double accentWeight = 0.70,
   }) {
-    return Color.lerp(
-      colorScheme.onSurfaceVariant,
-      accent,
-      accentWeight,
-    )!;
+    return Color.lerp(colorScheme.onSurfaceVariant, accent, accentWeight)!;
   }
 
   static Color borderAlpha(Color color, {double alpha = 0.38}) {

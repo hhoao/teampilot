@@ -9,29 +9,35 @@ void main() {
     WidgetTester tester,
     List<CodeLineDecoration> decorations,
   ) async {
-    final controller =
-        CodeLineEditingController.fromText('line one\nline two\nline three');
+    final controller = CodeLineEditingController.fromText(
+      'line one\nline two\nline three',
+    );
     addTearDown(controller.dispose);
-    await tester.pumpWidget(MaterialApp(
-      home: Scaffold(
-        body: SizedBox(
-          width: 400,
-          height: 300,
-          child: CodeEditor(
-            controller: controller,
-            readOnly: true,
-            showCursorWhenReadOnly: false,
-            indicatorBuilder: (context, editingController, chunkController, notifier) =>
-                const SizedBox.shrink(),
-            lineDecorations: decorations,
+    await tester.pumpWidget(
+      MaterialApp(
+        home: Scaffold(
+          body: SizedBox(
+            width: 400,
+            height: 300,
+            child: CodeEditor(
+              controller: controller,
+              readOnly: true,
+              showCursorWhenReadOnly: false,
+              indicatorBuilder:
+                  (context, editingController, chunkController, notifier) =>
+                      const SizedBox.shrink(),
+              lineDecorations: decorations,
+            ),
           ),
         ),
       ),
-    ));
+    );
     await tester.pump();
   }
 
-  testWidgets('full-line band decoration renders without error', (tester) async {
+  testWidgets('full-line band decoration renders without error', (
+    tester,
+  ) async {
     await pumpEditor(tester, const [
       CodeLineDecoration(
         selection: CodeLineSelection.collapsed(index: 1, offset: 0),

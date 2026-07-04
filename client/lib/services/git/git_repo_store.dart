@@ -31,7 +31,8 @@ class GitRepoStore {
     return GitCubit(service: service)..setRepoRoot(root);
   }
 
-  final GitCubit Function(String root, RuntimeContext workContext) _cubitFactory;
+  final GitCubit Function(String root, RuntimeContext workContext)
+  _cubitFactory;
   final int _maxRetained;
   final p.Context _ctx = p.Context();
 

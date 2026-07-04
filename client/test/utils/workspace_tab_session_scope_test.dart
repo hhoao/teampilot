@@ -11,14 +11,9 @@ ChatCubit _cubit() => ChatCubit(
 );
 
 ChatTab _tab(String id, {String? launchError}) => ChatTab(
-      info: ChatTabInfo(
-        id: id,
-        title: id,
-        subtitle: '',
-        launchError: launchError,
-      ),
-      cliTeamName: id,
-    );
+  info: ChatTabInfo(id: id, title: id, subtitle: '', launchError: launchError),
+  cliTeamName: id,
+);
 
 void main() {
   group('scopedActiveSessionId', () {
@@ -102,30 +97,33 @@ void main() {
       expect(foreground.activeTabIndex, 0);
     });
 
-    test('background bucket does not inherit foreground sessionLaunchError', () {
-      final cubit = _cubit();
-      addTearDown(cubit.close);
+    test(
+      'background bucket does not inherit foreground sessionLaunchError',
+      () {
+        final cubit = _cubit();
+        addTearDown(cubit.close);
 
-      cubit.setActiveWorkspace('tab-A');
-      cubit.tabStore.append(_tab('a1'));
-      cubit.refreshActiveWorkspaceTabs();
+        cubit.setActiveWorkspace('tab-A');
+        cubit.tabStore.append(_tab('a1'));
+        cubit.refreshActiveWorkspaceTabs();
 
-      cubit.setActiveWorkspace('tab-B');
-      cubit.tabStore.append(_tab('b1'));
-      cubit.refreshActiveWorkspaceTabs();
+        cubit.setActiveWorkspace('tab-B');
+        cubit.tabStore.append(_tab('b1'));
+        cubit.refreshActiveWorkspaceTabs();
 
-      cubit.emit(
-        cubit.state.copyWith(sessionLaunchError: 'foreground-only error'),
-      );
+        cubit.emit(
+          cubit.state.copyWith(sessionLaunchError: 'foreground-only error'),
+        );
 
-      final background = ChatScopedTabView.resolve(cubit, 'tab-A');
-      expect(background.workbenchSlice.sessionLaunchError, isNull);
+        final background = ChatScopedTabView.resolve(cubit, 'tab-A');
+        expect(background.workbenchSlice.sessionLaunchError, isNull);
 
-      final foreground = ChatScopedTabView.resolve(cubit, 'tab-B');
-      expect(
-        foreground.workbenchSlice.sessionLaunchError,
-        'foreground-only error',
-      );
-    });
+        final foreground = ChatScopedTabView.resolve(cubit, 'tab-B');
+        expect(
+          foreground.workbenchSlice.sessionLaunchError,
+          'foreground-only error',
+        );
+      },
+    );
   });
 }

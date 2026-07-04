@@ -31,10 +31,10 @@ class RemoteBusMount {
     this.relayProvisioner = const RelayProvisioner(),
     ReverseTunnel Function()? tunnelFactory,
     String? token,
-  })  : memberSession = memberSession,
-        token = token ?? _randomToken(),
-        _tunnelFactory = tunnelFactory ?? memberSession.newReverseTunnel,
-        _remoteRun = null;
+  }) : memberSession = memberSession,
+       token = token ?? _randomToken(),
+       _tunnelFactory = tunnelFactory ?? memberSession.newReverseTunnel,
+       _remoteRun = null;
 
   /// Test / harness constructor without a live [SshMemberSession].
   RemoteBusMount.testing({
@@ -47,10 +47,10 @@ class RemoteBusMount {
     this.remoteOs = RemoteOs.posix,
     this.relayProvisioner = const RelayProvisioner(),
     String? token,
-  })  : token = token ?? _randomToken(),
-        memberSession = null,
-        _tunnelFactory = tunnelFactory,
-        _remoteRun = remoteRun;
+  }) : token = token ?? _randomToken(),
+       memberSession = null,
+       _tunnelFactory = tunnelFactory,
+       _remoteRun = remoteRun;
 
   final int httpBusPort;
   final int rawSocketPort;
@@ -81,8 +81,8 @@ class RemoteBusMount {
     final existing = _members[memberId];
     if (existing != null) return existing.binding;
 
-    final prepared = _preparedRelay[memberId] ??=
-        await relayProvisioner.prepare(
+    final prepared = _preparedRelay[memberId] ??= await relayProvisioner
+        .prepare(
           remoteFs: storageFs,
           run: _run,
           arch: arch,

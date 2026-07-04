@@ -135,8 +135,7 @@ class SessionLifecycleService {
   Future<CliPreset?> resolveActivePresetForSession(
     AppSession session,
     PersonalProfile personal,
-  ) =>
-      _resolvePersonalPreset(session, personal);
+  ) => _resolvePersonalPreset(session, personal);
 
   Future<PersonalProfile> loadPersonalProfile(
     String profileId, {
@@ -284,11 +283,7 @@ class SessionLifecycleService {
         member: prepared.resolvedMember,
         preset: prepared.activePreset,
       ),
-      sessionTeam: _resolveSessionTeam(
-        session,
-        prepared.plan,
-        true,
-      ),
+      sessionTeam: _resolveSessionTeam(session, prepared.plan, true),
     );
   }
 
@@ -346,10 +341,12 @@ class SessionLifecycleService {
     final trimmedSessionId = sessionId.trim().isNotEmpty
         ? sessionId.trim()
         : trimmedTeamId;
-    final launchMember = member ?? team.members.firstWhere(
-      (m) => m.isValid,
-      orElse: () => const TeamMemberConfig(id: '', name: ''),
-    );
+    final launchMember =
+        member ??
+        team.members.firstWhere(
+          (m) => m.isValid,
+          orElse: () => const TeamMemberConfig(id: '', name: ''),
+        );
     return service.prepareTeamLaunch(
       workspaceId: workspaceId,
       sessionId: trimmedSessionId,
@@ -430,8 +427,7 @@ class SessionLifecycleService {
         memberWork.workingDirectory,
       ),
       persistedNativeId: session.nativeSessionIds[cli.value],
-      previouslyLaunched:
-          session.launchState == AppSessionLaunchState.started,
+      previouslyLaunched: session.launchState == AppSessionLaunchState.started,
     );
 
     final plan = LaunchPlan(
@@ -466,12 +462,7 @@ class SessionLifecycleService {
     );
   }
 
-  Future<
-    ({
-      LaunchPlan plan,
-      TeamMemberConfig resolvedMember,
-    })
-  >
+  Future<({LaunchPlan plan, TeamMemberConfig resolvedMember})>
   _prepareTeamLaunchPlanFromEnvironment({
     required AppSession session,
     required TeamProfile team,
@@ -500,8 +491,10 @@ class SessionLifecycleService {
     final runtimeTeamId = cliTeamName.isNotEmpty ? cliTeamName : sessionId;
     final cli = _memberLaunchCli(team, launchMember);
     final catalog = workspace != null
-        ? WorkspaceLaunchContext(session: session, workspace: workspace)
-            .folderCatalog
+        ? WorkspaceLaunchContext(
+            session: session,
+            workspace: workspace,
+          ).folderCatalog
         : session.folders;
     final memberDirs = session.workDirsForMember(
       memberBinding?.rosterMemberId ?? member.id,
@@ -529,8 +522,7 @@ class SessionLifecycleService {
         memberDirs.workingDirectory,
       ),
       persistedNativeId: memberBinding?.nativeSessionIds[cli.value],
-      previouslyLaunched:
-          session.launchState == AppSessionLaunchState.started,
+      previouslyLaunched: session.launchState == AppSessionLaunchState.started,
     );
 
     final plan = LaunchPlan(
@@ -988,7 +980,10 @@ class SessionLifecycleService {
     }
 
     final catalog = workspace != null
-        ? WorkspaceLaunchContext(session: session, workspace: workspace).folderCatalog
+        ? WorkspaceLaunchContext(
+            session: session,
+            workspace: workspace,
+          ).folderCatalog
         : session.folders;
     final memberDirs = session.workDirsForMember(member.id, folders: catalog);
     return CliLaunchContext(
@@ -1069,8 +1064,10 @@ class SessionLifecycleService {
           ? leadTaskId
           : null;
       final catalog = workspace != null
-          ? WorkspaceLaunchContext(session: session, workspace: workspace)
-              .folderCatalog
+          ? WorkspaceLaunchContext(
+              session: session,
+              workspace: workspace,
+            ).folderCatalog
           : session.folders;
       final memberDirs = member != null
           ? session.workDirsForMember(
@@ -1118,8 +1115,7 @@ class SessionLifecycleService {
   Future<ConfigProfileService> configProfileServiceFor(
     RuntimeContext roots, {
     String? launchWorkspaceId,
-  }) =>
-      _configProfileServiceFor(roots, launchWorkspaceId: launchWorkspaceId);
+  }) => _configProfileServiceFor(roots, launchWorkspaceId: launchWorkspaceId);
 
   Future<ConfigProfileService> _configProfileServiceFor(
     RuntimeContext roots, {
@@ -1198,15 +1194,13 @@ class SessionLifecycleService {
     return _localRoots(_appDataBasePath ?? AppStorage.paths.basePath);
   }
 
-  RuntimeTarget _runtimeTargetFromId(String id) =>
-      switch (runtimeKindOfId(id)) {
-        RuntimeKind.ssh => RuntimeTarget.ssh(
-          sshProfileIdOfId(id) ?? '',
-          label: '',
-        ),
-        RuntimeKind.wsl => RuntimeTarget.wsl(wslDistroOfId(id) ?? ''),
-        RuntimeKind.local => RuntimeTarget.local(),
-      };
+  RuntimeTarget _runtimeTargetFromId(String id) => switch (runtimeKindOfId(
+    id,
+  )) {
+    RuntimeKind.ssh => RuntimeTarget.ssh(sshProfileIdOfId(id) ?? '', label: ''),
+    RuntimeKind.wsl => RuntimeTarget.wsl(wslDistroOfId(id) ?? ''),
+    RuntimeKind.local => RuntimeTarget.local(),
+  };
 
   /// Where the CLI process runs for this launch.
   ///
@@ -1236,10 +1230,9 @@ class SessionLifecycleService {
   Future<RuntimeContext> launchWorkContext(
     WorkspaceLaunchContext ctx, {
     String? memberId,
-  }) =>
-      resolveWorkContextForTargetId(
-        launchWorkTarget(ctx, memberId: memberId).id,
-      );
+  }) => resolveWorkContextForTargetId(
+    launchWorkTarget(ctx, memberId: memberId).id,
+  );
 
   /// P3d: resolve the work-plane context for an arbitrary target id, so the
   /// cross-machine artifact service can read on the publisher's machine and
@@ -1283,11 +1276,7 @@ class SessionLifecycleService {
   ({String workingDirectory, List<String> addDirs}) memberWorkDirs(
     WorkspaceLaunchContext ctx,
     String memberId,
-  ) =>
-      ctx.session.workDirsForMember(
-        memberId,
-        folders: ctx.folderCatalog,
-      );
+  ) => ctx.session.workDirsForMember(memberId, folders: ctx.folderCatalog);
 
   RuntimeContext _localRoots(String basePath) {
     return RuntimeContext(

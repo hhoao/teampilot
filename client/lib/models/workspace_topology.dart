@@ -40,8 +40,7 @@ bool workspaceFolderIsRemote(String targetId) =>
 bool personalIdentityBlockedForWorkspace({
   required bool isPersonal,
   required List<WorkspaceFolder> folders,
-}) =>
-    isPersonal && workspaceTopologyRequiresMemberAssignment(folders);
+}) => isPersonal && workspaceTopologyRequiresMemberAssignment(folders);
 
 /// Mixed workspaces need each roster member pinned to one machine's folders.
 bool workspaceTopologyRequiresMemberAssignment(List<WorkspaceFolder> folders) =>
@@ -148,7 +147,10 @@ MemberPlacementByTarget memberPlacementFromMemberTargets({
   required List<TeamMemberConfig> members,
   required MemberTargetAssignments targets,
 }) {
-  final roster = [for (final m in members) if (m.isValid) m];
+  final roster = [
+    for (final m in members)
+      if (m.isValid) m,
+  ];
   final placement = <String, Map<String, int>>{};
   for (final instance in expandTeamRoster(roster)) {
     final targetId = memberTargetForInstanceId(targets, instance.instanceId);
@@ -164,7 +166,10 @@ MemberTargetAssignments memberTargetsFromMemberPlacement({
   required List<TeamMemberConfig> members,
   required MemberPlacementByTarget placement,
 }) {
-  final roster = [for (final m in members) if (m.isValid) m];
+  final roster = [
+    for (final m in members)
+      if (m.isValid) m,
+  ];
   final result = <String, String>{};
   for (final type in roster) {
     final instances = expandTeamRoster([type]);
@@ -217,7 +222,10 @@ bool memberTargetsComplete({
   if (!workspaceTopologyRequiresMemberAssignment(workspaceFolders)) {
     return true;
   }
-  final roster = [for (final m in members) if (m.isValid) m];
+  final roster = [
+    for (final m in members)
+      if (m.isValid) m,
+  ];
   for (final instance in expandTeamRoster(roster)) {
     final targetId = memberTargetForInstanceId(targets, instance.instanceId);
     if (targetId == null) return false;

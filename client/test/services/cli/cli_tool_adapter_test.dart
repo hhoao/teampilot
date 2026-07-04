@@ -82,7 +82,10 @@ void main() {
       ),
     );
 
-    expect(args, containsAllInOrder(['--agent-name', 'm1', '--agent-id', 'm1@agent']));
+    expect(
+      args,
+      containsAllInOrder(['--agent-name', 'm1', '--agent-id', 'm1@agent']),
+    );
   });
 
   test('claude adapter builds Claude Code team arguments', () {

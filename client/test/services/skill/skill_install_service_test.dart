@@ -103,7 +103,10 @@ void main() {
       description: 'd',
     );
     final backup = await svc.uninstall(s);
-    expect(Directory(p.join(tmp.path, 'skills/installed/foo')).existsSync(), isFalse);
+    expect(
+      Directory(p.join(tmp.path, 'skills/installed/foo')).existsSync(),
+      isFalse,
+    );
     expect(Directory(backup.backupPath).existsSync(), isTrue);
     expect((await manifest.loadSkills()), isEmpty);
     expect((await manifest.loadBackups()).single.backupId, backup.backupId);
@@ -123,27 +126,34 @@ void main() {
     final backup = await svc.uninstall(s);
     final restored = await svc.restoreBackup(backup);
     expect(restored.id, s.id);
-    expect(Directory(p.join(tmp.path, 'skills/installed/foo')).existsSync(), isTrue);
+    expect(
+      Directory(p.join(tmp.path, 'skills/installed/foo')).existsSync(),
+      isTrue,
+    );
     expect(Directory(backup.backupPath).existsSync(), isFalse);
     expect((await manifest.loadBackups()), isEmpty);
     expect((await manifest.loadSkills()).single.id, s.id);
   });
 
   test('scanUnmanaged finds skill dirs not in manifest', () async {
-    Directory(p.join(tmp.path, 'skills/installed/orphan')).createSync(recursive: true);
-    File(p.join(tmp.path, 'skills/installed/orphan/SKILL.md')).writeAsStringSync(
-      '---\nname: orphan\ndescription: yes\n---\n',
-    );
+    Directory(
+      p.join(tmp.path, 'skills/installed/orphan'),
+    ).createSync(recursive: true);
+    File(
+      p.join(tmp.path, 'skills/installed/orphan/SKILL.md'),
+    ).writeAsStringSync('---\nname: orphan\ndescription: yes\n---\n');
     final scanned = await svc.scanUnmanaged();
     expect(scanned.single.directory, 'orphan');
     expect(scanned.single.name, 'orphan');
   });
 
   test('importUnmanaged inserts manifest rows', () async {
-    Directory(p.join(tmp.path, 'skills/installed/orphan')).createSync(recursive: true);
-    File(p.join(tmp.path, 'skills/installed/orphan/SKILL.md')).writeAsStringSync(
-      '---\nname: orphan\ndescription: yes\n---\n',
-    );
+    Directory(
+      p.join(tmp.path, 'skills/installed/orphan'),
+    ).createSync(recursive: true);
+    File(
+      p.join(tmp.path, 'skills/installed/orphan/SKILL.md'),
+    ).writeAsStringSync('---\nname: orphan\ndescription: yes\n---\n');
     final scanned = await svc.scanUnmanaged();
     final added = await svc.importUnmanaged(scanned);
     expect(added.single.id, 'local:orphan');

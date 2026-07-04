@@ -73,8 +73,9 @@ void main() {
     expect(find.textContaining('ssh:'), findsNothing);
   });
 
-  testWidgets('Android lists ssh targets and selecting one switches home',
-      (tester) async {
+  testWidgets('Android lists ssh targets and selecting one switches home', (
+    tester,
+  ) async {
     await setup(home: 'ssh:p1', sshIds: ['p1', 'p2']);
     await tester.pumpWidget(host(isAndroid: true));
     await tester.pumpAndSettle();

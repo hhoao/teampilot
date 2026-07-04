@@ -22,9 +22,8 @@ class TeamHubRegistry {
 
   /// Raw URL for [path], e.g.
   /// `https://raw.githubusercontent.com/{owner}/{name}/{branch}/{path}`.
-  Uri rawUri(String path) => Uri.parse(
-        'https://raw.githubusercontent.com/$owner/$name/$branch/$path',
-      );
+  Uri rawUri(String path) =>
+      Uri.parse('https://raw.githubusercontent.com/$owner/$name/$branch/$path');
 }
 
 /// v1 built-in default registry (mirrors Skills' hardcoded default repos).

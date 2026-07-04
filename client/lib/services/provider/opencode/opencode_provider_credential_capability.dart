@@ -30,8 +30,12 @@ final class OpencodeProviderCredentialCapability
         primary: true,
         showWhenReady: false,
       ),
-      ProviderCredentialActionSpec(kind: ProviderCredentialActionKind.importGlobal),
-      ProviderCredentialActionSpec(kind: ProviderCredentialActionKind.importFile),
+      ProviderCredentialActionSpec(
+        kind: ProviderCredentialActionKind.importGlobal,
+      ),
+      ProviderCredentialActionSpec(
+        kind: ProviderCredentialActionKind.importFile,
+      ),
       ProviderCredentialActionSpec(
         kind: ProviderCredentialActionKind.revoke,
         showWhenReady: true,

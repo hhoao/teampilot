@@ -21,8 +21,8 @@ class WorkMachineMaterializer {
     required this.workFs,
     required this.machineRoot,
     required this.manifest,
-  })  : _homeLayout = RuntimeLayout(teampilotRoot: homeRoot, fs: homeFs),
-        _workLayout = RuntimeLayout(teampilotRoot: machineRoot, fs: workFs);
+  }) : _homeLayout = RuntimeLayout(teampilotRoot: homeRoot, fs: homeFs),
+       _workLayout = RuntimeLayout(teampilotRoot: machineRoot, fs: workFs);
 
   final Filesystem homeFs;
   final String homeRoot;
@@ -43,8 +43,10 @@ class WorkMachineMaterializer {
     final hashes = await manifest.load();
     for (final tool in tools) {
       await _copySubtree(
-        homeFs.pathContext
-            .relative(_homeLayout.appToolRoot(tool), from: homeRoot),
+        homeFs.pathContext.relative(
+          _homeLayout.appToolRoot(tool),
+          from: homeRoot,
+        ),
         hashes,
       );
       await _copySubtree(
@@ -69,13 +71,12 @@ class WorkMachineMaterializer {
     required String sessionId,
     required String tool,
     String? memberId,
-  }) =>
-      _workLayout.ensureSessionRuntimeInheritsWorkspace(
-        workspaceId,
-        sessionId,
-        tool,
-        memberId: memberId,
-      );
+  }) => _workLayout.ensureSessionRuntimeInheritsWorkspace(
+    workspaceId,
+    sessionId,
+    tool,
+    memberId: memberId,
+  );
 
   /// Copies every file under home `<homeRoot>/<relDir>` to the work machine
   /// `<machineRoot>/<relDir>`, skipping files whose content hash matches the

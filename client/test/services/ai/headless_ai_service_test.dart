@@ -11,27 +11,30 @@ import 'package:teampilot/services/cli/registry/capabilities/headless_provision_
 class _NotReadyProvision implements HeadlessProvisionCapability {
   const _NotReadyProvision();
   @override
-  Future<HeadlessProvisionResult> provision(HeadlessProvisionContext ctx) async =>
-      const HeadlessProvisionResult(
-        credentialsReady: false,
-        warnings: ['claude_credentials_missing'],
-      );
+  Future<HeadlessProvisionResult> provision(
+    HeadlessProvisionContext ctx,
+  ) async => const HeadlessProvisionResult(
+    credentialsReady: false,
+    warnings: ['claude_credentials_missing'],
+  );
 }
 
 void main() {
   late Directory tempRoot;
 
-  setUp(() => tempRoot = Directory.systemTemp.createTempSync('tp_headless_test_'));
+  setUp(
+    () => tempRoot = Directory.systemTemp.createTempSync('tp_headless_test_'),
+  );
   tearDown(() {
     if (tempRoot.existsSync()) tempRoot.deleteSync(recursive: true);
   });
 
   AiFeatureSetting setting({String effort = ''}) => AiFeatureSetting(
-        cli: CliTool.claude,
-        providerId: 'claude-official',
-        model: 'sonnet',
-        effort: effort,
-      );
+    cli: CliTool.claude,
+    providerId: 'claude-official',
+    model: 'sonnet',
+    effort: effort,
+  );
 
   test('runs the resolved invocation and returns extracted text', () async {
     late String ranExecutable;
@@ -111,7 +114,11 @@ void main() {
     expect(
       () => service.run(setting: setting(), prompt: 'p'),
       throwsA(
-        isA<HeadlessAiException>().having((e) => e.message, 'message', contains('boom')),
+        isA<HeadlessAiException>().having(
+          (e) => e.message,
+          'message',
+          contains('boom'),
+        ),
       ),
     );
   });

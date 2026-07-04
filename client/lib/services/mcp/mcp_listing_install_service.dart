@@ -57,10 +57,7 @@ class McpListingInstallService {
         listing.source == McpCatalogSource.smithery
         ? await _registryConfig.load()
         : null;
-    final resolved = await resolveForInstall(
-      listing,
-      registryConfig: config,
-    );
+    final resolved = await resolveForInstall(listing, registryConfig: config);
     var draft = McpCatalogMapper.draftFromListing(resolved, now: now);
     if (resolved.source == McpCatalogSource.smithery && config != null) {
       final token = config.byKind(McpRegistrySourceKind.smithery)?.apiToken;

@@ -37,22 +37,24 @@ void main() {
       );
     });
 
-    test('wires a Stop hook that curls /idle and passes the response through',
-        () {
-      expect(toml, contains('[[hooks.Stop]]'));
-      expect(toml, contains('[[hooks.Stop.hooks]]'));
-      expect(toml, contains('type = "command"'));
-      // curl writes the /idle JSON ({"decision":"block"} | {}) to stdout, which
-      // codex reads as the Stop-hook decision — no shim file, no chmod.
-      expect(
-        toml,
-        contains(
-          'command = "curl -sS -X POST -H \\"X-Member: worker-1\\" '
-          '-H \\"X-Session: sess-codex\\" '
-          'http://127.0.0.1:54321/idle"',
-        ),
-      );
-    });
+    test(
+      'wires a Stop hook that curls /idle and passes the response through',
+      () {
+        expect(toml, contains('[[hooks.Stop]]'));
+        expect(toml, contains('[[hooks.Stop.hooks]]'));
+        expect(toml, contains('type = "command"'));
+        // curl writes the /idle JSON ({"decision":"block"} | {}) to stdout, which
+        // codex reads as the Stop-hook decision — no shim file, no chmod.
+        expect(
+          toml,
+          contains(
+            'command = "curl -sS -X POST -H \\"X-Member: worker-1\\" '
+            '-H \\"X-Session: sess-codex\\" '
+            'http://127.0.0.1:54321/idle"',
+          ),
+        );
+      },
+    );
   });
 
   group('CodexTeamBusOverlay remote stop hook', () {

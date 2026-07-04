@@ -52,11 +52,7 @@ FlameTreeAnalysis? buildFlameTreeAnalysis({
   );
 
   final flameSlices = inWindow
-      .where(
-        (s) =>
-            isUiFlameTreeSlice(s) ||
-            isDartFlameTreeSlice(s),
-      )
+      .where((s) => isUiFlameTreeSlice(s) || isDartFlameTreeSlice(s))
       .toList();
 
   var roots = [
@@ -65,7 +61,9 @@ FlameTreeAnalysis? buildFlameTreeAnalysis({
   ];
   dropRedundantDartFrameRoots(roots);
   if (options.treePhases.isNotEmpty) {
-    roots = List<SliceTreeNode>.from(_promotePhaseRoots(roots, options.treePhases));
+    roots = List<SliceTreeNode>.from(
+      _promotePhaseRoots(roots, options.treePhases),
+    );
   }
 
   final coverage = traceCoverageSummary(trace);
@@ -161,8 +159,7 @@ FlutterFrame? _resolveFlameFrame(
       ..sort((a, b) => b.elapsedUs.compareTo(a.elapsedUs));
     if (janky.isNotEmpty) return janky.first;
     if (snapshot.frames.isEmpty) return null;
-    return snapshot.frames
-        .reduce((a, b) => a.elapsedUs > b.elapsedUs ? a : b);
+    return snapshot.frames.reduce((a, b) => a.elapsedUs > b.elapsedUs ? a : b);
   }
   return null;
 }
@@ -170,13 +167,16 @@ FlutterFrame? _resolveFlameFrame(
 Map<String, Object?> _flameFiltersMap(AnalyzeOptions options) {
   return {
     if (options.nameFilter != null) 'nameFilter': options.nameFilter,
-    if (options.categories.isNotEmpty) 'categories': options.categories.toList(),
+    if (options.categories.isNotEmpty)
+      'categories': options.categories.toList(),
     if (options.excludeEmbedder) 'excludeEmbedder': true,
-    if (options.treePhases.isNotEmpty) 'treePhases': options.treePhases.toList(),
+    if (options.treePhases.isNotEmpty)
+      'treePhases': options.treePhases.toList(),
     'treeDepth': options.treeDepth,
     'minSelfMs': options.minSelfMs,
     if (options.treeTopPerLevel > 0) 'treeTopPerLevel': options.treeTopPerLevel,
-    if (options.treeTopPerLevel > 0) 'treeTopMetric': options.treeTopMetric.name,
+    if (options.treeTopPerLevel > 0)
+      'treeTopMetric': options.treeTopMetric.name,
   };
 }
 

@@ -32,7 +32,10 @@ void main() {
       await repo.saveLlmConfigPathOverride(null);
 
       expect(await repo.loadLlmConfigPathOverride(), isNull);
-      expect(prefs.containsKey(SharedPrefsAppSettingsRepository.storageKey), isFalse);
+      expect(
+        prefs.containsKey(SharedPrefsAppSettingsRepository.storageKey),
+        isFalse,
+      );
     });
 
     test('clearing with empty string removes the override', () async {

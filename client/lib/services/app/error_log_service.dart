@@ -14,8 +14,7 @@ import '../io/filesystem.dart';
 ///
 /// TeamPilot has no remote error-reporting API; this file is for support/debug.
 class ErrorLogService {
-  ErrorLogService({Filesystem? fs})
-    : _fs = fs ?? AppStorage.fs;
+  ErrorLogService({Filesystem? fs}) : _fs = fs ?? AppStorage.fs;
 
   static final ErrorLogService instance = ErrorLogService();
 
@@ -31,7 +30,8 @@ class ErrorLogService {
 
   Future<void> initialize({required String appDataRoot}) async {
     _appDataRoot = appDataRoot.trim();
-    _platformLabel = '${Platform.operatingSystem} ${Platform.operatingSystemVersion}';
+    _platformLabel =
+        '${Platform.operatingSystem} ${Platform.operatingSystemVersion}';
     try {
       _packageInfo = await PackageInfo.fromPlatform();
     } on Object catch (e, stackTrace) {
@@ -111,13 +111,11 @@ class ErrorLogService {
     return error.toString();
   }
 
-  String _errorKey(
-    Object error, {
-    String? module,
-    String? action,
-  }) {
+  String _errorKey(Object error, {String? module, String? action}) {
     final message = _messageFor(error);
-    final hashSource = message.length > 120 ? message.substring(0, 120) : message;
+    final hashSource = message.length > 120
+        ? message.substring(0, 120)
+        : message;
     return '${error.runtimeType}_${module ?? 'app'}_${action ?? 'unknown'}_${hashSource.hashCode}';
   }
 

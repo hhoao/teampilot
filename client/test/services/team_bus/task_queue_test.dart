@@ -10,11 +10,7 @@ void main() {
   TaskQueue makeQueue({InMemoryTaskLog? log}) {
     idSeq = 0;
     now = 1000;
-    return TaskQueue(
-      log: log,
-      ids: () => 't${idSeq++}',
-      clock: () => now,
-    );
+    return TaskQueue(log: log, ids: () => 't${idSeq++}', clock: () => now);
   }
 
   TeamTaskDraft draft(String title, {List<String> deps = const []}) =>
@@ -61,13 +57,18 @@ void main() {
     final q = makeQueue();
     final created = q.addTasks('lead', [draft('root')]);
     final rootId = created.single.id;
-    q.addTasks('lead', [draft('child', deps: [rootId])]);
+    q.addTasks('lead', [
+      draft('child', deps: [rootId]),
+    ]);
 
     // child blocked: only root is claimable
     expect(q.claimableCount, 1);
     final root = q.claimNext('w1', const {});
     expect(root!.title, 'root');
-    expect(q.claimNext('w2', const {}), isNull); // child still blocked (root not done)
+    expect(
+      q.claimNext('w2', const {}),
+      isNull,
+    ); // child still blocked (root not done)
 
     q.update(rootId, TaskStatus.done, byMember: 'w1');
     final child = q.claimNext('w2', const {});

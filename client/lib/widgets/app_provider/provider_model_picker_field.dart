@@ -32,7 +32,8 @@ class ProviderModelPickerField extends StatefulWidget {
   final String? hintText;
 
   @override
-  State<ProviderModelPickerField> createState() => _ProviderModelPickerFieldState();
+  State<ProviderModelPickerField> createState() =>
+      _ProviderModelPickerFieldState();
 }
 
 class _ProviderModelPickerFieldState extends State<ProviderModelPickerField> {
@@ -41,7 +42,9 @@ class _ProviderModelPickerFieldState extends State<ProviderModelPickerField> {
   @override
   void initState() {
     super.initState();
-    WidgetsBinding.instance.addPostFrameCallback((_) => _attachCatalogRefresh());
+    WidgetsBinding.instance.addPostFrameCallback(
+      (_) => _attachCatalogRefresh(),
+    );
   }
 
   @override
@@ -50,7 +53,9 @@ class _ProviderModelPickerFieldState extends State<ProviderModelPickerField> {
     if (oldWidget.cli != widget.cli ||
         oldWidget.providerId != widget.providerId) {
       _detachCatalogRefresh();
-      WidgetsBinding.instance.addPostFrameCallback((_) => _attachCatalogRefresh());
+      WidgetsBinding.instance.addPostFrameCallback(
+        (_) => _attachCatalogRefresh(),
+      );
     }
   }
 
@@ -69,9 +74,9 @@ class _ProviderModelPickerFieldState extends State<ProviderModelPickerField> {
 
     _refreshableCapability = capability;
     capability.catalogUpdates.addListener(_onCatalogUpdated);
-    final executable = context.read<SessionPreferencesCubit>().resolveExecutable(
-      widget.cli,
-    );
+    final executable = context
+        .read<SessionPreferencesCubit>()
+        .resolveExecutable(widget.cli);
     capability.refreshModelCatalog(
       providerId: widget.providerId,
       executable: executable,
@@ -123,14 +128,15 @@ class _ProviderModelPickerFieldState extends State<ProviderModelPickerField> {
         onChanged: (next) => widget.onChanged(next ?? ''),
         itemLabel: (item) => item,
       ),
-      ProviderModelPickerMode.catalogWithCustomEntry => AppDropdownWithCustomInput(
-        key: ValueKey('provider-model-custom-${widget.providerId}'),
-        value: widget.value,
-        items: candidates,
-        hintText: hint,
-        decoration: deco,
-        onChanged: widget.onChanged,
-      ),
+      ProviderModelPickerMode.catalogWithCustomEntry =>
+        AppDropdownWithCustomInput(
+          key: ValueKey('provider-model-custom-${widget.providerId}'),
+          value: widget.value,
+          items: candidates,
+          hintText: hint,
+          decoration: deco,
+          onChanged: widget.onChanged,
+        ),
       ProviderModelPickerMode.hidden => const SizedBox.shrink(),
     };
 

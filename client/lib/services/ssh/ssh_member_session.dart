@@ -27,18 +27,14 @@ class SshMemberSession {
   static SshMemberSession testing({
     required SshProfile profile,
     required SSHClient client,
-  }) =>
-      SshMemberSession._(profile, client);
+  }) => SshMemberSession._(profile, client);
 
   Future<String> run(String command) async {
     final out = await client.run(command);
     return String.fromCharCodes(out).trim();
   }
 
-  Future<SSHRunResult> runWithResult(
-    String command, {
-    bool stderr = true,
-  }) =>
+  Future<SSHRunResult> runWithResult(String command, {bool stderr = true}) =>
       client.runWithResult(command, stderr: stderr);
 
   SshReverseTunnel newReverseTunnel({String bindHost = '127.0.0.1'}) =>
@@ -49,16 +45,11 @@ class SshMemberSession {
     required int columns,
     required int rows,
     Map<String, String>? environment,
-  }) =>
-      client.execute(
-        command,
-        pty: SSHPtyConfig(
-          type: 'xterm-256color',
-          width: columns,
-          height: rows,
-        ),
-        environment: environment,
-      );
+  }) => client.execute(
+    command,
+    pty: SSHPtyConfig(type: 'xterm-256color', width: columns, height: rows),
+    environment: environment,
+  );
 
   void close() {
     if (!client.isClosed) {

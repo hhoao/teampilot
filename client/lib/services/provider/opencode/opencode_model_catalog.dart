@@ -41,37 +41,21 @@ class OpencodeModelCatalog {
 
   static const _byProviderId = <String, List<String>>{
     'opencode': zen,
-    'openai': [
-      'gpt-4o',
-      'gpt-4.1',
-      'gpt-4.1-mini',
-      'o3',
-      'o4-mini',
-    ],
+    'openai': ['gpt-4o', 'gpt-4.1', 'gpt-4.1-mini', 'o3', 'o4-mini'],
     'anthropic': [
       'claude-sonnet-4-5',
       'claude-sonnet-4-6',
       'claude-opus-4-6',
       'claude-haiku-4-5',
     ],
-    'google': [
-      'gemini-2.0-flash',
-      'gemini-2.5-pro',
-      'gemini-3-flash',
-    ],
-    'deepseek': [
-      'deepseek-chat',
-      'deepseek-reasoner',
-    ],
+    'google': ['gemini-2.0-flash', 'gemini-2.5-pro', 'gemini-3-flash'],
+    'deepseek': ['deepseek-chat', 'deepseek-reasoner'],
     'groq': [
       'llama-3.3-70b-versatile',
       'llama-3.1-8b-instant',
       'mixtral-8x7b-32768',
     ],
-    'xai': [
-      'grok-3',
-      'grok-3-mini',
-    ],
+    'xai': ['grok-3', 'grok-3-mini'],
   };
 
   static List<String> knownModelsForProvider(String providerId) {

@@ -69,7 +69,9 @@ String localizedScheduleSummary(
     AutomationSchedulePreset.hourly => l10n.automationsScheduleSummaryHourly(
       draft.minute,
     ),
-    AutomationSchedulePreset.daily => l10n.automationsScheduleSummaryDaily(time),
+    AutomationSchedulePreset.daily => l10n.automationsScheduleSummaryDaily(
+      time,
+    ),
     AutomationSchedulePreset.weekdays =>
       l10n.automationsScheduleSummaryWeekdays(time),
     AutomationSchedulePreset.weekly => l10n.automationsScheduleSummaryWeekly(
@@ -161,7 +163,10 @@ class _AutomationSchedulePickerState extends State<AutomationSchedulePicker> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        Text(l10n.automationsSchedule, style: styles.bodySmall.copyWith(fontWeight: FontWeight.w600)),
+        Text(
+          l10n.automationsSchedule,
+          style: styles.bodySmall.copyWith(fontWeight: FontWeight.w600),
+        ),
         const SizedBox(height: 8),
         AppDropdownField<AutomationSchedulePreset>(
           items: presets,
@@ -197,8 +202,8 @@ class _AutomationSchedulePickerState extends State<AutomationSchedulePicker> {
                 ),
                 onChanged: (value) {
                   final trimmed = value.trim();
-                  final valid = trimmed.isEmpty ||
-                      widget.calculator.isValidCron(trimmed);
+                  final valid =
+                      trimmed.isEmpty || widget.calculator.isValidCron(trimmed);
                   setState(() {
                     _cronError = valid ? null : l10n.automationsInvalidCron;
                   });

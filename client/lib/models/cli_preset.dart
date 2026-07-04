@@ -88,5 +88,6 @@ class CliPreset {
   }
 
   @override
-  int get hashCode => Object.hash(id, name, cli, provider, model, effort, createdAt, updatedAt);
+  int get hashCode =>
+      Object.hash(id, name, cli, provider, model, effort, createdAt, updatedAt);
 }

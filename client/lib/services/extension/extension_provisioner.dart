@@ -6,9 +6,8 @@ import 'extension_detector.dart';
 
 /// Builds a hook-script provisioner for a given `scriptAsset`. Supplied by the
 /// caller so asset-specific script loading stays out of this generic engine.
-typedef HookProvisionerFactory = ScriptFileHookProvisioner Function(
-  String scriptAsset,
-);
+typedef HookProvisionerFactory =
+    ScriptFileHookProvisioner Function(String scriptAsset);
 
 /// Orchestrates enabled extension manifests: surfaces readiness warnings and
 /// applies `settings-hook` effects into a settings map. The seam that replaces
@@ -21,11 +20,11 @@ class ExtensionProvisioner {
     ExtensionDetector? detector,
     SettingsHookEffectApplier settingsHookApplier =
         const SettingsHookEffectApplier(),
-  })  : _manifests = manifests,
-        _isEnabled = isEnabled,
-        _hookProvisionerFor = hookProvisionerFor,
-        _detector = detector ?? ExtensionDetector(),
-        _settingsHookApplier = settingsHookApplier;
+  }) : _manifests = manifests,
+       _isEnabled = isEnabled,
+       _hookProvisionerFor = hookProvisionerFor,
+       _detector = detector ?? ExtensionDetector(),
+       _settingsHookApplier = settingsHookApplier;
 
   final List<ExtensionManifest> _manifests;
   final Future<bool> Function(String extensionId) _isEnabled;

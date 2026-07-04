@@ -142,19 +142,19 @@ class TeamConfigPage extends StatelessWidget {
     final body = switch (section) {
       TeamConfigSection.team => TeamInfoSection(team: team, cubit: teamCubit),
       TeamConfigSection.skills => TeamSkillsSection(
-          team: team,
-          cubit: teamCubit,
-        ),
+        team: team,
+        cubit: teamCubit,
+      ),
       TeamConfigSection.plugins => TeamPluginsSection(
-          team: team,
-          cubit: teamCubit,
-        ),
+        team: team,
+        cubit: teamCubit,
+      ),
       TeamConfigSection.mcp => TeamMcpSection(team: team, cubit: teamCubit),
       TeamConfigSection.extensions => TeamExtensionsSection(team: team),
       TeamConfigSection.members => TeamMemberDetailSection(
-          teamId: team.id,
-          selectedMemberId: resolvedMemberId,
-        ),
+        teamId: team.id,
+        selectedMemberId: resolvedMemberId,
+      ),
     };
 
     return WorkspaceAdaptiveSectionPage(

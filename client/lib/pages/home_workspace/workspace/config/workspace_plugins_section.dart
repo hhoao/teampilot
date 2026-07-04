@@ -1,4 +1,4 @@
-﻿import 'dart:async';
+import 'dart:async';
 
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
@@ -32,14 +32,14 @@ class WorkspacePluginsSection extends StatelessWidget {
     }
 
     final l10n = context.l10n;
-    void onManage() =>
-        context.go(HomeGlobalView.plugins.homeLocation);
+    void onManage() => context.go(HomeGlobalView.plugins.homeLocation);
     final pluginState = context.watch<PluginCubit>().state;
     final syncing = identityCubit.state.isSyncingPlugins;
     final installed = pluginState.installed;
     final pluginIds = personal.bundle.pluginIds;
-    final assignedCount =
-        installed.where((p) => pluginIds.contains(p.id)).length;
+    final assignedCount = installed
+        .where((p) => pluginIds.contains(p.id))
+        .length;
 
     return SingleChildScrollView(
       child: Column(

@@ -22,14 +22,11 @@ import 'automation_schedule_calculator.dart';
 
 typedef AutomationWorkspaceResolver = Workspace? Function(String workspaceId);
 typedef AutomationTeamResolver = TeamProfile? Function(String teamId);
-typedef AutomationSessionLookup = AppSession? Function(
-  String sessionId,
-  String workspaceId,
-);
+typedef AutomationSessionLookup =
+    AppSession? Function(String sessionId, String workspaceId);
 
-typedef AutomationLaunchProfileKindResolver = LaunchProfileKind? Function(
-  String launchProfileId,
-);
+typedef AutomationLaunchProfileKindResolver =
+    LaunchProfileKind? Function(String launchProfileId);
 
 int _automationDefaultNowMs() => DateTime.now().millisecondsSinceEpoch;
 
@@ -40,9 +37,9 @@ class AutomationDispatcher {
     required SessionRepository sessionRepository,
     required AutomationBusGateway busGateway,
     required Future<SessionOpenStatus> Function(SessionOpenRequest)
-        requestOpenSession,
+    requestOpenSession,
     required Future<SessionOpenStatus> Function(SessionCreateRequest)
-        requestCreateAndOpenSession,
+    requestCreateAndOpenSession,
     required AutomationWorkspaceResolver workspaceById,
     required AutomationTeamResolver teamById,
     required AutomationLaunchProfileKindResolver launchProfileKindById,
@@ -50,19 +47,19 @@ class AutomationDispatcher {
     AutomationSessionLookup? sessionById,
     int Function()? nowMs,
     Duration memberReadyTimeout = const Duration(seconds: 60),
-  })  : _repository = repository,
-        _scheduleCalculator = scheduleCalculator,
-        _sessionRepository = sessionRepository,
-        _busGateway = busGateway,
-        _requestOpenSession = requestOpenSession,
-        _requestCreateAndOpenSession = requestCreateAndOpenSession,
-        _workspaceById = workspaceById,
-        _teamById = teamById,
-        _launchProfileKindById = launchProfileKindById,
-        _personalContextResolver = personalContextResolver,
-        _sessionById = sessionById,
-        _nowMs = nowMs ?? _automationDefaultNowMs,
-        _memberReadyTimeout = memberReadyTimeout;
+  }) : _repository = repository,
+       _scheduleCalculator = scheduleCalculator,
+       _sessionRepository = sessionRepository,
+       _busGateway = busGateway,
+       _requestOpenSession = requestOpenSession,
+       _requestCreateAndOpenSession = requestCreateAndOpenSession,
+       _workspaceById = workspaceById,
+       _teamById = teamById,
+       _launchProfileKindById = launchProfileKindById,
+       _personalContextResolver = personalContextResolver,
+       _sessionById = sessionById,
+       _nowMs = nowMs ?? _automationDefaultNowMs,
+       _memberReadyTimeout = memberReadyTimeout;
 
   static const _uuid = Uuid();
   static const _leadMemberId = 'team-lead';
@@ -72,9 +69,9 @@ class AutomationDispatcher {
   final SessionRepository _sessionRepository;
   final AutomationBusGateway _busGateway;
   final Future<SessionOpenStatus> Function(SessionOpenRequest)
-      _requestOpenSession;
+  _requestOpenSession;
   final Future<SessionOpenStatus> Function(SessionCreateRequest)
-      _requestCreateAndOpenSession;
+  _requestCreateAndOpenSession;
   final AutomationWorkspaceResolver _workspaceById;
   final AutomationTeamResolver _teamById;
   final AutomationLaunchProfileKindResolver _launchProfileKindById;
@@ -213,9 +210,7 @@ class AutomationDispatcher {
     AppSession? session = _sessionById?.call(sessionId, automation.workspaceId);
     session ??= (await _sessionRepository.loadSessionsForWorkspace(
       automation.workspaceId,
-    ))
-        .where((s) => s.sessionId == sessionId)
-        .firstOrNull;
+    )).where((s) => s.sessionId == sessionId).firstOrNull;
     if (session == null) return null;
     if (!automation.tabScope.ownsSession(session, kind)) return null;
     return session;
@@ -242,8 +237,7 @@ class AutomationDispatcher {
     final SessionOpenStatus status;
     if (kind == LaunchProfileKind.personal) {
       final presetId = automation.cliPresetId?.trim() ?? '';
-      final legacyCli =
-          presetId.isEmpty ? automation.cli : null;
+      final legacyCli = presetId.isEmpty ? automation.cli : null;
       status = await _requestCreateAndOpenSession(
         SessionCreateRequest(
           workspace: workspace,
@@ -272,16 +266,16 @@ class AutomationDispatcher {
     }
     if (status != SessionOpenStatus.opened) return null;
 
-    final fromSnapshot =
-        _sessionById?.call(plannedSessionId, automation.workspaceId);
+    final fromSnapshot = _sessionById?.call(
+      plannedSessionId,
+      automation.workspaceId,
+    );
     if (fromSnapshot != null) return fromSnapshot;
 
     final sessions = await _sessionRepository.loadSessionsForWorkspace(
       automation.workspaceId,
     );
-    return sessions
-        .where((s) => s.sessionId == plannedSessionId)
-        .firstOrNull;
+    return sessions.where((s) => s.sessionId == plannedSessionId).firstOrNull;
   }
 
   Future<bool> _ensureSessionConnected(
@@ -359,10 +353,7 @@ class AutomationDispatcher {
     return target.isEmpty ? _leadMemberId : target;
   }
 
-  TeamMemberConfig? _resolveTeamMember(
-    TeamProfile team,
-    String memberId,
-  ) {
+  TeamMemberConfig? _resolveTeamMember(TeamProfile team, String memberId) {
     final trimmed = memberId.trim();
     if (trimmed.isNotEmpty) {
       final match = team.members.where((m) => m.id == trimmed).firstOrNull;

@@ -2,7 +2,8 @@ import '../../../../models/team_config.dart';
 import '../../../provider/claude/claude_live_import.dart';
 import 'provider_catalog_capability.dart';
 
-final class ClaudeProviderCatalogCapability implements ProviderCatalogCapability {
+final class ClaudeProviderCatalogCapability
+    implements ProviderCatalogCapability {
   const ClaudeProviderCatalogCapability();
 
   @override
@@ -11,6 +12,5 @@ final class ClaudeProviderCatalogCapability implements ProviderCatalogCapability
   @override
   Future<ProviderCatalogSnapshot> loadFromLiveSources(
     ProviderCatalogLoadContext context,
-  ) =>
-      ClaudeLiveImport.loadSnapshot(context);
+  ) => ClaudeLiveImport.loadSnapshot(context);
 }

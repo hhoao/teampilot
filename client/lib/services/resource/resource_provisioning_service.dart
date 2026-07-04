@@ -20,10 +20,10 @@ class ResourceProvisioningService {
     required CliToolRegistry registry,
     ResourceResolver resolver = const ResourceResolver(),
     ResourceMaterializer? materializer,
-  })  : _fs = fs,
-        _registry = registry,
-        _resolver = resolver,
-        _materializer = materializer ?? ResourceMaterializer(fs: fs);
+  }) : _fs = fs,
+       _registry = registry,
+       _resolver = resolver,
+       _materializer = materializer ?? ResourceMaterializer(fs: fs);
 
   final Filesystem _fs;
   final CliToolRegistry _registry;
@@ -42,7 +42,8 @@ class ResourceProvisioningService {
     final effective = _resolver.resolve(scope: scope, catalog: catalog);
     final warnings = <String>[];
     for (final kind in cap.supportedKinds) {
-      if (cap.representationFor(kind) != ResourceRepresentation.linkedDirectory) {
+      if (cap.representationFor(kind) !=
+          ResourceRepresentation.linkedDirectory) {
         continue; // mergedJsonEntry kinds (mcp) handled by their own plan
       }
       final kindDir = _fs.pathContext.join(configDir, cap.subdirFor(kind));

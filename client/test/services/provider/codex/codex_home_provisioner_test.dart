@@ -59,15 +59,12 @@ base_url = "https://api.deepseek.com"
       );
 
       final codexHome = p.join(root.path, 'codex-home');
-      await CodexHomeProvisioner(fs: LocalFilesystem()).provision(
-        codexHome: codexHome,
-        provider: provider,
-      );
+      await CodexHomeProvisioner(
+        fs: LocalFilesystem(),
+      ).provision(codexHome: codexHome, provider: provider);
 
       final auth =
-          jsonDecode(
-                await File(p.join(codexHome, 'auth.json')).readAsString(),
-              )
+          jsonDecode(await File(p.join(codexHome, 'auth.json')).readAsString())
               as Map;
       expect(auth['OPENAI_API_KEY'], 'sk-test');
 
@@ -81,7 +78,8 @@ base_url = "https://api.deepseek.com"
         cli: CliTool.codex,
         name: 'p',
         config: {
-          'configToml': 'model = "m1"\nbase_url = "https://upstream.example.com"\n',
+          'configToml':
+              'model = "m1"\nbase_url = "https://upstream.example.com"\n',
         },
       );
       final overlay = CodexTeamBusOverlay.buildLocal(
@@ -122,25 +120,24 @@ base_url = "https://api.deepseek.com"
       );
 
       final toml = await File(p.join(codexHome, 'config.toml')).readAsString();
-      expect(
-        toml,
-        contains('[projects."/home/user/Document/testmixed"]'),
-      );
+      expect(toml, contains('[projects."/home/user/Document/testmixed"]'));
       expect(toml, contains('trust_level = "trusted"'));
     });
 
-    test('preserves plugins and catalog mcp when rewriting provider config', () async {
-      const provider = AppProviderConfig(
-        id: 'p',
-        cli: CliTool.codex,
-        name: 'p',
-        config: {'configToml': 'model = "m1"\n'},
-      );
+    test(
+      'preserves plugins and catalog mcp when rewriting provider config',
+      () async {
+        const provider = AppProviderConfig(
+          id: 'p',
+          cli: CliTool.codex,
+          name: 'p',
+          config: {'configToml': 'model = "m1"\n'},
+        );
 
-      final codexHome = p.join(root.path, 'codex-preserve');
-      final configPath = p.join(codexHome, 'config.toml');
-      await Directory(codexHome).create(recursive: true);
-      await File(configPath).writeAsString('''
+        final codexHome = p.join(root.path, 'codex-preserve');
+        final configPath = p.join(codexHome, 'config.toml');
+        await Directory(codexHome).create(recursive: true);
+        await File(configPath).writeAsString('''
 [plugins."demo@local"]
 enabled = true
 
@@ -148,15 +145,15 @@ enabled = true
 command = "npx"
 ''');
 
-      await CodexHomeProvisioner(fs: LocalFilesystem()).provision(
-        codexHome: codexHome,
-        provider: provider,
-      );
+        await CodexHomeProvisioner(
+          fs: LocalFilesystem(),
+        ).provision(codexHome: codexHome, provider: provider);
 
-      final toml = await File(configPath).readAsString();
-      expect(toml, contains("model = 'm1'"));
-      expect(toml, contains("[plugins.'demo@local']"));
-      expect(toml, contains('[mcp_servers.time]'));
-    });
+        final toml = await File(configPath).readAsString();
+        expect(toml, contains("model = 'm1'"));
+        expect(toml, contains("[plugins.'demo@local']"));
+        expect(toml, contains('[mcp_servers.time]'));
+      },
+    );
   });
 }

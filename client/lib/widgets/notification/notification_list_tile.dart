@@ -29,13 +29,12 @@ bool notificationMessageIsExpandable(String message) {
   return message.length > _expandableMessageCharThreshold;
 }
 
-IconData notificationVariantIcon(AppToastVariant variant) =>
-    switch (variant) {
-      AppToastVariant.info => Icons.info_outline,
-      AppToastVariant.success => Icons.check_circle_outline,
-      AppToastVariant.warning => Icons.warning_amber_outlined,
-      AppToastVariant.error => Icons.error_outline,
-    };
+IconData notificationVariantIcon(AppToastVariant variant) => switch (variant) {
+  AppToastVariant.info => Icons.info_outline,
+  AppToastVariant.success => Icons.check_circle_outline,
+  AppToastVariant.warning => Icons.warning_amber_outlined,
+  AppToastVariant.error => Icons.error_outline,
+};
 
 Color notificationVariantAccent(ColorScheme scheme, AppToastVariant variant) =>
     appToastAccentColor(scheme, variant);
@@ -171,10 +170,7 @@ class _NotificationListTileState extends State<NotificationListTile> {
                       ),
                       const SizedBox(height: 6),
                       Text(
-                        formatNotificationTime(
-                          context,
-                          notification.createdAt,
-                        ),
+                        formatNotificationTime(context, notification.createdAt),
                         style: textTheme.labelSmall?.copyWith(
                           color: cs.onSurfaceVariant,
                         ),

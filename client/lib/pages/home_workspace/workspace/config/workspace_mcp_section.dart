@@ -1,4 +1,4 @@
-﻿import 'dart:async';
+import 'dart:async';
 
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
@@ -36,8 +36,7 @@ class WorkspaceMcpSection extends StatelessWidget {
     final mcpState = context.watch<McpCubit>().state;
     final enabled = mcpState.servers.where((s) => s.enabled).toList();
     final mcpIds = personal.bundle.mcpServerIds;
-    final assignedCount =
-        enabled.where((s) => mcpIds.contains(s.id)).length;
+    final assignedCount = enabled.where((s) => mcpIds.contains(s.id)).length;
 
     return SingleChildScrollView(
       child: Column(

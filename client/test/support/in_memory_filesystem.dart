@@ -15,7 +15,9 @@ class InMemoryFilesystem implements Filesystem {
 
   @override
   Future<FsStat> stat(String path) async {
-    if (byteFiles.containsKey(path)) return const FsStat(kind: FsEntityKind.file);
+    if (byteFiles.containsKey(path)) {
+      return const FsStat(kind: FsEntityKind.file);
+    }
     if (files.containsKey(path)) return const FsStat(kind: FsEntityKind.file);
     if (directories.contains(path)) {
       return const FsStat(kind: FsEntityKind.directory);
@@ -136,8 +138,7 @@ class InMemoryFilesystem implements Filesystem {
       symlinks[linkPath];
 
   @override
-  Future<String?> resolveSymlink(String path) async =>
-      symlinks[path] ?? path;
+  Future<String?> resolveSymlink(String path) async => symlinks[path] ?? path;
 
   @override
   Future<void> copyTree({
@@ -194,7 +195,8 @@ class InMemoryFilesystem implements Filesystem {
   @override
   Future<String> createTempDir({String? prefix, String? parent}) async {
     final base = parent ?? '/tmp';
-    final name = '${prefix ?? ''}${DateTime.now().microsecondsSinceEpoch}_${_tmpDirCounter++}';
+    final name =
+        '${prefix ?? ''}${DateTime.now().microsecondsSinceEpoch}_${_tmpDirCounter++}';
     final fullPath = pathContext.join(base, name);
     directories.add(fullPath);
     return fullPath;

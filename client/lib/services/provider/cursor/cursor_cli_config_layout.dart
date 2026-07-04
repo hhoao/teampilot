@@ -16,11 +16,10 @@ final class CursorCliConfigLayout implements CliConfigLayoutCapability {
     required String workspaceId,
     required String sessionId,
     String? memberId,
-  }) =>
-      CursorSessionConfigDir.resolve(
-        layout,
-        workspaceId: workspaceId,
-        sessionId: sessionId,
-        memberId: memberId,
-      );
+  }) => CursorSessionConfigDir.resolve(
+    layout,
+    workspaceId: workspaceId,
+    sessionId: sessionId,
+    memberId: memberId,
+  );
 }

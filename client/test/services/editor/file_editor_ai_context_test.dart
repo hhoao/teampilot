@@ -10,9 +10,6 @@ void main() {
       language: 'dart',
       code: 'void main() {}',
     );
-    expect(
-      text,
-      'lib/foo.dart:10-12\n```dart\nvoid main() {}\n```',
-    );
+    expect(text, 'lib/foo.dart:10-12\n```dart\nvoid main() {}\n```');
   });
 }

@@ -50,10 +50,10 @@ void main() {
         },
       );
 
-      final result = await runner.runInDirectory(
-        "/repo/with spaces",
-        ['status', '--porcelain'],
-      );
+      final result = await runner.runInDirectory("/repo/with spaces", [
+        'status',
+        '--porcelain',
+      ]);
 
       expect(result.exitCode, 0);
       expect(commands.single, contains("'--no-optional-locks'"));
@@ -88,9 +88,10 @@ void main() {
     test('uses injected host runner for git execution', () async {
       var hostInvoked = false;
       final runner = LocalGitCommandRunner(
-        runner: (executable, arguments, {stdoutEncoding, stderrEncoding}) async {
-          return ProcessResult(0, 0, '/usr/bin/git\n', '');
-        },
+        runner:
+            (executable, arguments, {stdoutEncoding, stderrEncoding}) async {
+              return ProcessResult(0, 0, '/usr/bin/git\n', '');
+            },
         hostRunner: _RecordingHostRunner(() => hostInvoked = true),
       );
 

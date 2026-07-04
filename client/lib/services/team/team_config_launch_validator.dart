@@ -116,18 +116,15 @@ class TeamConfigLaunchValidator {
         );
         continue;
       }
-      if (await _needsModel(
-        resolved.cli,
-        resolved.provider,
-        resolved.model,
-      )) {
+      if (await _needsModel(resolved.cli, resolved.provider, resolved.model)) {
         issues.add(
           _memberIssue(TeamConfigIssueKind.memberModelMissing, member),
         );
       }
     }
 
-    final allMembersMissingProvider = members.isNotEmpty &&
+    final allMembersMissingProvider =
+        members.isNotEmpty &&
         issues.isNotEmpty &&
         issues.every(
           (issue) =>

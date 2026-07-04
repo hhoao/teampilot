@@ -56,10 +56,7 @@ class CliEffortPickerField extends StatelessWidget {
     );
     if (candidates.isEmpty) return const SizedBox.shrink();
 
-    final items = <String>[
-      if (allowInherit) '',
-      ...candidates,
-    ];
+    final items = <String>[if (allowInherit) '', ...candidates];
     final deco = decoration ?? AppDropdownDecorations.themed(context);
     final current = value.trim();
 

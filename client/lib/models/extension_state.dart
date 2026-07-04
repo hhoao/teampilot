@@ -11,10 +11,10 @@ class InstalledExtension {
   final int installedAt;
 
   Map<String, Object?> toJson() => {
-        'id': id,
-        'version': version,
-        'installedAt': installedAt,
-      };
+    'id': id,
+    'version': version,
+    'installedAt': installedAt,
+  };
 
   factory InstalledExtension.fromJson(Map<String, Object?> json) =>
       InstalledExtension(
@@ -81,7 +81,11 @@ class ExtensionState {
   }
 
   /// [value] null clears the override (fall back to global).
-  ExtensionState withWorkspaceOverride(String workspaceId, String id, bool? value) {
+  ExtensionState withWorkspaceOverride(
+    String workspaceId,
+    String id,
+    bool? value,
+  ) {
     final next = {
       for (final entry in workspaceOverrides.entries)
         entry.key: Map<String, bool>.from(entry.value),
@@ -98,7 +102,11 @@ class ExtensionState {
 
   ExtensionState withInstalled(String id, String version, int installedAt) {
     final next = Map<String, InstalledExtension>.from(installed);
-    next[id] = InstalledExtension(id: id, version: version, installedAt: installedAt);
+    next[id] = InstalledExtension(
+      id: id,
+      version: version,
+      installedAt: installedAt,
+    );
     return _copy(installed: next);
   }
 
@@ -112,28 +120,27 @@ class ExtensionState {
     Set<String>? globalEnabled,
     Map<String, Map<String, bool>>? teamOverrides,
     Map<String, Map<String, bool>>? workspaceOverrides,
-  }) =>
-      ExtensionState(
-        installed: installed ?? this.installed,
-        globalEnabled: globalEnabled ?? this.globalEnabled,
-        teamOverrides: teamOverrides ?? this.teamOverrides,
-        workspaceOverrides: workspaceOverrides ?? this.workspaceOverrides,
-      );
+  }) => ExtensionState(
+    installed: installed ?? this.installed,
+    globalEnabled: globalEnabled ?? this.globalEnabled,
+    teamOverrides: teamOverrides ?? this.teamOverrides,
+    workspaceOverrides: workspaceOverrides ?? this.workspaceOverrides,
+  );
 
   Map<String, Object?> toJson() => {
-        'installed': {
-          for (final entry in installed.entries) entry.key: entry.value.toJson(),
-        },
-        'globalEnabled': globalEnabled.toList()..sort(),
-        'teamOverrides': {
-          for (final entry in teamOverrides.entries)
-            entry.key: Map<String, bool>.from(entry.value),
-        },
-        'workspaceOverrides': {
-          for (final entry in workspaceOverrides.entries)
-            entry.key: Map<String, bool>.from(entry.value),
-        },
-      };
+    'installed': {
+      for (final entry in installed.entries) entry.key: entry.value.toJson(),
+    },
+    'globalEnabled': globalEnabled.toList()..sort(),
+    'teamOverrides': {
+      for (final entry in teamOverrides.entries)
+        entry.key: Map<String, bool>.from(entry.value),
+    },
+    'workspaceOverrides': {
+      for (final entry in workspaceOverrides.entries)
+        entry.key: Map<String, bool>.from(entry.value),
+    },
+  };
 
   factory ExtensionState.fromJson(Map<String, Object?> json) {
     final installedRaw = json['installed'];
@@ -150,7 +157,10 @@ class ExtensionState {
             }
           : const {},
       globalEnabled: globalRaw is List
-          ? globalRaw.map((e) => e.toString()).where((e) => e.isNotEmpty).toSet()
+          ? globalRaw
+                .map((e) => e.toString())
+                .where((e) => e.isNotEmpty)
+                .toSet()
           : const {},
       teamOverrides: overridesRaw is Map
           ? {

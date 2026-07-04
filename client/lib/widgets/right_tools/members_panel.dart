@@ -103,7 +103,8 @@ class MembersPanel extends StatelessWidget {
                   providersByCli[catalogCli] ?? const [],
                   launch.provider,
                 );
-                final brandLabel = memberProvider?.name ??
+                final brandLabel =
+                    memberProvider?.name ??
                     _cliDisplayLabel(registry, memberCli, l10n);
                 final meta = [
                   brandLabel,
@@ -132,7 +133,9 @@ class MembersPanel extends StatelessWidget {
                       TapDownDetails(globalPosition: d.globalPosition),
                     ),
                     child: Material(
-                      color: selected ? cs.secondaryContainer : cs.workspaceInset,
+                      color: selected
+                          ? cs.secondaryContainer
+                          : cs.workspaceInset,
                       borderRadius: BorderRadius.circular(8),
                       child: ListTile(
                         shape: RoundedRectangleBorder(
@@ -229,12 +232,7 @@ class MembersPanel extends StatelessWidget {
   }
 }
 
-enum _MemberMenuAction {
-  viewDetail,
-  open,
-  openConfigDir,
-  launchAll,
-}
+enum _MemberMenuAction { viewDetail, open, openConfigDir, launchAll }
 
 CliTool _catalogCli(CliToolRegistry? registry, CliTool memberCli) {
   if (registry != null &&

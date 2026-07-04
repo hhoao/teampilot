@@ -65,10 +65,10 @@ const String codegraphManifestJson = '''
 
 /// All extensions TeamPilot ships with.
 List<ExtensionManifest> builtInExtensionManifests() => [
-      ExtensionManifest.fromJson(
-        jsonDecode(rtkManifestJson) as Map<String, Object?>,
-      ),
-      ExtensionManifest.fromJson(
-        jsonDecode(codegraphManifestJson) as Map<String, Object?>,
-      ),
-    ];
+  ExtensionManifest.fromJson(
+    jsonDecode(rtkManifestJson) as Map<String, Object?>,
+  ),
+  ExtensionManifest.fromJson(
+    jsonDecode(codegraphManifestJson) as Map<String, Object?>,
+  ),
+];

@@ -52,8 +52,7 @@ class _FakeFilesystem implements Filesystem {
   Future<bool> createSymlink({
     required String target,
     required String linkPath,
-  }) async =>
-      false;
+  }) async => false;
 
   @override
   Future<String?> readSymlinkTarget(String linkPath) async => null;
@@ -71,8 +70,7 @@ class _FakeFilesystem implements Filesystem {
   Future<void> copyFile(String source, String destination) async {}
 
   @override
-  Future<List<FsDirEntry>> listDirRecursive(String path) async =>
-      listDir(path);
+  Future<List<FsDirEntry>> listDirRecursive(String path) async => listDir(path);
 
   @override
   Future<String> createTempDir({String? prefix, String? parent}) async =>
@@ -138,10 +136,7 @@ void main() {
       },
     );
 
-    final rows = visibleFileTreeRows(
-      state: state,
-      pathContextFor: (_) => ctx,
-    );
+    final rows = visibleFileTreeRows(state: state, pathContextFor: (_) => ctx);
 
     // Header A (depth 0), a.dart (depth 1), Header B (depth 0), b.dart (depth 1).
     expect(rows.length, 4);
@@ -174,10 +169,7 @@ void main() {
       },
     );
 
-    final rows = visibleFileTreeRows(
-      state: state,
-      pathContextFor: (_) => ctx,
-    );
+    final rows = visibleFileTreeRows(state: state, pathContextFor: (_) => ctx);
 
     // Header A, a.dart, Header B (collapsed → no child rows).
     expect(rows.length, 3);

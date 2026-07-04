@@ -73,7 +73,12 @@ class _WallClockBootSpinnerPainter extends CustomPainter {
   @override
   void paint(Canvas canvas, Size size) {
     final inset = strokeWidth / 2;
-    final rect = Rect.fromLTWH(inset, inset, size.width - strokeWidth, size.height - strokeWidth);
+    final rect = Rect.fromLTWH(
+      inset,
+      inset,
+      size.width - strokeWidth,
+      size.height - strokeWidth,
+    );
     final paint = Paint()
       ..color = color
       ..style = PaintingStyle.stroke

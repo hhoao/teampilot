@@ -30,31 +30,28 @@ class AutomationCatalogEntry {
   final int updatedAtMs;
 
   AutomationTabScope get tabScope => AutomationTabScope(
-        workspaceId: workspaceId,
-        launchProfileId: launchProfileId,
-      );
+    workspaceId: workspaceId,
+    launchProfileId: launchProfileId,
+  );
 
   Map<String, Object?> toJson() => {
-        'workspaceId': workspaceId,
-        'profile': launchProfileId,
-        'path': path,
-        'updatedAtMs': updatedAtMs,
-      };
+    'workspaceId': workspaceId,
+    'profile': launchProfileId,
+    'path': path,
+    'updatedAtMs': updatedAtMs,
+  };
 }
 
 class _TabAutomationStore {
-  const _TabAutomationStore({
-    required this.automations,
-    required this.runs,
-  });
+  const _TabAutomationStore({required this.automations, required this.runs});
 
   final List<Automation> automations;
   final List<AutomationRun> runs;
 
   Map<String, Object?> toJson() => {
-        'automations': automations.map((a) => a.toJson()).toList(),
-        'runs': runs.map((r) => r.toJson()).toList(),
-      };
+    'automations': automations.map((a) => a.toJson()).toList(),
+    'runs': runs.map((r) => r.toJson()).toList(),
+  };
 
   factory _TabAutomationStore.fromJson(Map<String, Object?> json) {
     final automationsRaw = json['automations'];
@@ -91,8 +88,8 @@ class AutomationRepository {
     required Filesystem fs,
     required WorkspaceLayout layout,
     this.maxRunsPerTabScope = 100,
-  })  : _fs = fs,
-        _layout = layout;
+  }) : _fs = fs,
+       _layout = layout;
 
   final Filesystem _fs;
   final WorkspaceLayout _layout;
@@ -190,28 +187,30 @@ class AutomationRepository {
       scope,
       store.copyWith(automations: automations, runs: runs),
     );
-    await _upsertCatalogEntry(
-      scope,
-      DateTime.now().millisecondsSinceEpoch,
-    );
+    await _upsertCatalogEntry(scope, DateTime.now().millisecondsSinceEpoch);
   }
 
   Future<void> appendRun(AutomationTabScope scope, AutomationRun run) async {
     await upsertRun(scope, run);
   }
 
-  Future<void> disableForSession(AutomationTabScope scope, String sessionId) async {
+  Future<void> disableForSession(
+    AutomationTabScope scope,
+    String sessionId,
+  ) async {
     final trimmedSession = sessionId.trim();
     final store = await _readStore(scope);
     var changed = false;
     final nowMs = DateTime.now().millisecondsSinceEpoch;
-    final automations = store.automations.map((a) {
-      if (a.sessionId != trimmedSession) return a;
-      final next = AutomationLaunchSessionBinding.onBoundSessionRemoved(a);
-      if (next == a) return a;
-      changed = true;
-      return next.copyWith(updatedAtMs: nowMs);
-    }).toList(growable: false);
+    final automations = store.automations
+        .map((a) {
+          if (a.sessionId != trimmedSession) return a;
+          final next = AutomationLaunchSessionBinding.onBoundSessionRemoved(a);
+          if (next == a) return a;
+          changed = true;
+          return next.copyWith(updatedAtMs: nowMs);
+        })
+        .toList(growable: false);
     if (!changed) return;
     await _writeStore(scope, store.copyWith(automations: automations));
     await _upsertCatalogEntry(scope, nowMs);
@@ -254,9 +253,7 @@ class AutomationRepository {
       }
       return _TabAutomationStore.fromJson(decoded);
     } on Object catch (e) {
-      appLogger.w(
-        '[automations] read store failed (${scope.tabKey}): $e',
-      );
+      appLogger.w('[automations] read store failed (${scope.tabKey}): $e');
       return const _TabAutomationStore(automations: [], runs: []);
     }
   }

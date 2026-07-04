@@ -28,7 +28,10 @@ String dartRenderClassName(String sliceName) {
 }
 
 List<TraceSlice> dartMethodSlicesInWindow(List<TraceSlice> inWindow) {
-  return [for (final s in inWindow) if (isDartMethodSlice(s)) s];
+  return [
+    for (final s in inWindow)
+      if (isDartMethodSlice(s)) s,
+  ];
 }
 
 List<DartMethodHotspot> aggregateDartMethodHotspots({
@@ -61,8 +64,9 @@ void accumulateDartMethodSlices(
     if (slice.durationMs < minMs) continue;
     final bucket = agg.putIfAbsent(slice.name, DartMethodAccumulator.new);
     bucket.totalMs += slice.durationMs;
-    bucket.maxMs =
-        bucket.maxMs < slice.durationMs ? slice.durationMs : bucket.maxMs;
+    bucket.maxMs = bucket.maxMs < slice.durationMs
+        ? slice.durationMs
+        : bucket.maxMs;
     if (!bucket.frameNumbers.contains(frameNumber)) {
       bucket.frameNumbers.add(frameNumber);
     }

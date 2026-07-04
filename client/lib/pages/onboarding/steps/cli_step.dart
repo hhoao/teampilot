@@ -1,4 +1,4 @@
-﻿import 'dart:async';
+import 'dart:async';
 
 import 'package:flutter/material.dart';
 import 'package:teampilot/theme/app_icon_sizes.dart';
@@ -281,7 +281,10 @@ class _OnboardingCliStepState extends State<OnboardingCliStep> {
                       height: 16,
                       child: CircularProgressIndicator(strokeWidth: 2),
                     )
-                  : Icon(Icons.download_outlined, size: context.appIconSizes.md),
+                  : Icon(
+                      Icons.download_outlined,
+                      size: context.appIconSizes.md,
+                    ),
               label: Text(
                 _installing ? l10n.cliInstallInstalling : l10n.cliInstallButton,
               ),

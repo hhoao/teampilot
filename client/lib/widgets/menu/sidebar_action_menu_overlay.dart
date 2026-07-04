@@ -19,8 +19,11 @@ Future<T?> showFloatingActionMenuOverlay<T>({
   required bool useRootNavigator,
   required Duration transitionDuration,
   required Curve transitionCurve,
-  required Widget Function(BuildContext overlayContext, void Function(T? value) complete)
-      menuBuilder,
+  required Widget Function(
+    BuildContext overlayContext,
+    void Function(T? value) complete,
+  )
+  menuBuilder,
 }) {
   _activeFloatingContextMenuCloser?.call();
 
@@ -79,7 +82,9 @@ Future<T?> showFloatingActionMenuOverlay<T>({
   overlayState.insert(entry);
 
   return completer.future.whenComplete(() {
-    GestureBinding.instance.pointerRouter.removeGlobalRoute(outsidePointerRoute);
+    GestureBinding.instance.pointerRouter.removeGlobalRoute(
+      outsidePointerRoute,
+    );
     removeEntry();
     if (identical(_activeFloatingContextMenuCloser, thisCloser)) {
       _activeFloatingContextMenuCloser = null;
@@ -174,13 +179,8 @@ class _FloatingContextMenuLayerState extends State<_FloatingContextMenuLayer>
     }
 
     return CustomSingleChildLayout(
-      delegate: ContextMenuOverlayPositionDelegate(
-        target: widget.localTarget,
-      ),
-      child: KeyedSubtree(
-        key: widget.menuBoundsKey,
-        child: panel,
-      ),
+      delegate: ContextMenuOverlayPositionDelegate(target: widget.localTarget),
+      child: KeyedSubtree(key: widget.menuBoundsKey, child: panel),
     );
   }
 }

@@ -26,27 +26,28 @@ void main() {
     activePresetId: activePresetId,
   );
 
-  TeamMemberConfig inheritMember(String name) => member(
-        name,
-        activePresetId: TeamProfile.inheritPresetId,
-      );
+  TeamMemberConfig inheritMember(String name) =>
+      member(name, activePresetId: TeamProfile.inheritPresetId);
 
   group('native mode', () {
-    test('passes when team has an explicit default provider and model', () async {
-      final team = TeamProfile(
-        id: 'team',
-        name: 'Team',
-        cli: CliTool.claude,
-        teamMode: TeamMode.native,
-        providerIdsByTool: const {'claude': 'prov-1'},
-        modelsByTool: const {'claude': 'sonnet'},
-        members: [inheritMember('alice')],
-      );
+    test(
+      'passes when team has an explicit default provider and model',
+      () async {
+        final team = TeamProfile(
+          id: 'team',
+          name: 'Team',
+          cli: CliTool.claude,
+          teamMode: TeamMode.native,
+          providerIdsByTool: const {'claude': 'prov-1'},
+          modelsByTool: const {'claude': 'sonnet'},
+          members: [inheritMember('alice')],
+        );
 
-      final result = await validator.validate(team);
+        final result = await validator.validate(team);
 
-      expect(result.hasIssues, isFalse);
-    });
+        expect(result.hasIssues, isFalse);
+      },
+    );
 
     test('passes when every member supplies provider + model', () async {
       final team = TeamProfile(
@@ -110,21 +111,24 @@ void main() {
       );
     });
 
-    test('passes when team custom defaults satisfy inheriting members', () async {
-      final team = TeamProfile(
-        id: 'team',
-        name: 'Team',
-        cli: CliTool.claude,
-        teamMode: TeamMode.native,
-        providerIdsByTool: const {'claude': 'prov-1'},
-        modelsByTool: const {'claude': 'sonnet'},
-        members: [inheritMember('alice')],
-      );
+    test(
+      'passes when team custom defaults satisfy inheriting members',
+      () async {
+        final team = TeamProfile(
+          id: 'team',
+          name: 'Team',
+          cli: CliTool.claude,
+          teamMode: TeamMode.native,
+          providerIdsByTool: const {'claude': 'prov-1'},
+          modelsByTool: const {'claude': 'sonnet'},
+          members: [inheritMember('alice')],
+        );
 
-      final result = await validator.validate(team);
+        final result = await validator.validate(team);
 
-      expect(result.hasIssues, isFalse);
-    });
+        expect(result.hasIssues, isFalse);
+      },
+    );
 
     test('passes when members inherit team preset via globalPresets', () async {
       const preset = CliPreset(
@@ -198,26 +202,29 @@ void main() {
   });
 
   group('mixed mode', () {
-    test('flags missing provider when custom member has no own config', () async {
-      final team = TeamProfile(
-        id: 'team',
-        name: 'Team',
-        cli: CliTool.flashskyai,
-        teamMode: TeamMode.mixed,
-        members: [member('alice')],
-      );
+    test(
+      'flags missing provider when custom member has no own config',
+      () async {
+        final team = TeamProfile(
+          id: 'team',
+          name: 'Team',
+          cli: CliTool.flashskyai,
+          teamMode: TeamMode.mixed,
+          members: [member('alice')],
+        );
 
-      final result = await validator.validate(team);
+        final result = await validator.validate(team);
 
-      expect(
-        result.issues.map((i) => i.kind),
-        contains(TeamConfigIssueKind.memberCliMissing),
-      );
-      expect(
-        result.issues.map((i) => i.kind),
-        isNot(contains(TeamConfigIssueKind.memberModelMissing)),
-      );
-    });
+        expect(
+          result.issues.map((i) => i.kind),
+          contains(TeamConfigIssueKind.memberCliMissing),
+        );
+        expect(
+          result.issues.map((i) => i.kind),
+          isNot(contains(TeamConfigIssueKind.memberModelMissing)),
+        );
+      },
+    );
 
     test('passes when member inherits team custom defaults', () async {
       final team = TeamProfile(

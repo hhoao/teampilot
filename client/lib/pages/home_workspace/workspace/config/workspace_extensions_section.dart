@@ -17,7 +17,8 @@ class WorkspaceExtensionsSection extends StatefulWidget {
       _WorkspaceExtensionsSectionState();
 }
 
-class _WorkspaceExtensionsSectionState extends State<WorkspaceExtensionsSection> {
+class _WorkspaceExtensionsSectionState
+    extends State<WorkspaceExtensionsSection> {
   Map<String, bool> _overrides = const {};
 
   @override
@@ -41,7 +42,9 @@ class _WorkspaceExtensionsSectionState extends State<WorkspaceExtensionsSection>
   }
 
   ExtensionOverrideChoice _choiceFor(String id) {
-    if (!_overrides.containsKey(id)) return ExtensionOverrideChoice.followGlobal;
+    if (!_overrides.containsKey(id)) {
+      return ExtensionOverrideChoice.followGlobal;
+    }
     return _overrides[id]!
         ? ExtensionOverrideChoice.forceOn
         : ExtensionOverrideChoice.forceOff;

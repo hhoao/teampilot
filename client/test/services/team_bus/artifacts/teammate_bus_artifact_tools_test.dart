@@ -31,10 +31,7 @@ class _Harness {
     'local': publisherFs,
     'ssh:hostB': fetcherFs,
   };
-  final Map<String, String> _targetByMember = {
-    'A': 'local',
-    'B': 'ssh:hostB',
-  };
+  final Map<String, String> _targetByMember = {'A': 'local', 'B': 'ssh:hostB'};
   final Map<String, String> _inboxByMember = {
     'A': '/home/a/inbox',
     'B': '/remote/inbox',
@@ -51,10 +48,11 @@ Future<String> _callText(
 ) async {
   final res = await handler.handle(
     memberId,
-    JsonRpcRequest(id: 1, method: 'tools/call', params: {
-      'name': tool,
-      'arguments': args,
-    }),
+    JsonRpcRequest(
+      id: 1,
+      method: 'tools/call',
+      params: {'name': tool, 'arguments': args},
+    ),
   );
   return (res!.result!['content'] as List).first['text'] as String;
 }
@@ -67,99 +65,105 @@ Future<bool> _callIsError(
 ) async {
   final res = await handler.handle(
     memberId,
-    JsonRpcRequest(id: 1, method: 'tools/call', params: {
-      'name': tool,
-      'arguments': args,
-    }),
+    JsonRpcRequest(
+      id: 1,
+      method: 'tools/call',
+      params: {'name': tool, 'arguments': args},
+    ),
   );
   return res!.result!['isError'] as bool;
 }
 
 void main() {
   group('teammate-bus artifact tools', () {
-    test('tools/list advertises artifact tools only when service injected',
-        () async {
-      final with_ = _Harness();
-      final res = await with_.handler
-          .handle('A', const JsonRpcRequest(id: 1, method: 'tools/list'));
-      final names = [
-        for (final t in res!.result!['tools'] as List) (t as Map)['name'],
-      ];
-      expect(names,
-          containsAll(['publish_artifact', 'list_artifacts', 'fetch_artifact']));
+    test(
+      'tools/list advertises artifact tools only when service injected',
+      () async {
+        final with_ = _Harness();
+        final res = await with_.handler.handle(
+          'A',
+          const JsonRpcRequest(id: 1, method: 'tools/list'),
+        );
+        final names = [
+          for (final t in res!.result!['tools'] as List) (t as Map)['name'],
+        ];
+        expect(
+          names,
+          containsAll(['publish_artifact', 'list_artifacts', 'fetch_artifact']),
+        );
 
-      final without = _Harness(withArtifacts: false);
-      final res2 = await without.handler
-          .handle('A', const JsonRpcRequest(id: 1, method: 'tools/list'));
-      final names2 = [
-        for (final t in res2!.result!['tools'] as List) (t as Map)['name'],
-      ];
-      expect(names2, isNot(contains('publish_artifact')));
-      expect(names2, isNot(contains('list_artifacts')));
-      expect(names2, isNot(contains('fetch_artifact')));
-    });
+        final without = _Harness(withArtifacts: false);
+        final res2 = await without.handler.handle(
+          'A',
+          const JsonRpcRequest(id: 1, method: 'tools/list'),
+        );
+        final names2 = [
+          for (final t in res2!.result!['tools'] as List) (t as Map)['name'],
+        ];
+        expect(names2, isNot(contains('publish_artifact')));
+        expect(names2, isNot(contains('list_artifacts')));
+        expect(names2, isNot(contains('fetch_artifact')));
+      },
+    );
 
-    test('publish → list → fetch round trip dispatches expected text',
-        () async {
-      final h = _Harness();
-      await h.publisherFs
-          .writeBytes('/work/out.bin', List<int>.generate(16, (i) => i));
+    test(
+      'publish → list → fetch round trip dispatches expected text',
+      () async {
+        final h = _Harness();
+        await h.publisherFs.writeBytes(
+          '/work/out.bin',
+          List<int>.generate(16, (i) => i),
+        );
 
-      final publish = await _callText(
-        h.handler, 'A', 'publish_artifact', {
+        final publish = await _callText(h.handler, 'A', 'publish_artifact', {
           'path': '/work/out.bin',
           'name': 'out',
-        },
-      );
-      expect(publish, contains('Published "out"'));
+        });
+        expect(publish, contains('Published "out"'));
 
-      final list = await _callText(h.handler, 'B', 'list_artifacts', {});
-      expect(list, contains('out'));
-      expect(list, contains('by A'));
+        final list = await _callText(h.handler, 'B', 'list_artifacts', {});
+        expect(list, contains('out'));
+        expect(list, contains('by A'));
 
-      final fetch = await _callText(
-        h.handler, 'B', 'fetch_artifact', {
+        final fetch = await _callText(h.handler, 'B', 'fetch_artifact', {
           'name': 'out',
           'destPath': 'got.bin',
-        },
-      );
-      expect(fetch, contains('Fetched "out"'));
-      expect(fetch, contains('/remote/inbox/got.bin'));
-      expect(
-        await h.fetcherFs.readBytes('/remote/inbox/got.bin'),
-        List<int>.generate(16, (i) => i),
-      );
-    });
+        });
+        expect(fetch, contains('Fetched "out"'));
+        expect(fetch, contains('/remote/inbox/got.bin'));
+        expect(
+          await h.fetcherFs.readBytes('/remote/inbox/got.bin'),
+          List<int>.generate(16, (i) => i),
+        );
+      },
+    );
 
     test('fetch of an unknown artifact is a tool error', () async {
       final h = _Harness();
-      final isError = await _callIsError(
-        h.handler, 'B', 'fetch_artifact', {
-          'name': 'ghost',
-          'destPath': 'x.bin',
-        },
-      );
+      final isError = await _callIsError(h.handler, 'B', 'fetch_artifact', {
+        'name': 'ghost',
+        'destPath': 'x.bin',
+      });
       expect(isError, isTrue);
     });
 
     test('publish with a missing path/name is a tool error', () async {
       final h = _Harness();
-      final isError = await _callIsError(
-        h.handler, 'A', 'publish_artifact', {'path': '', 'name': 'out'},
-      );
+      final isError = await _callIsError(h.handler, 'A', 'publish_artifact', {
+        'path': '',
+        'name': 'out',
+      });
       expect(isError, isTrue);
     });
 
     test('publish with an unsupported kind is a tool error', () async {
       final h = _Harness();
       await h.publisherFs.writeBytes('/work/out.bin', [1]);
-      final isError = await _callIsError(
-        h.handler, 'A', 'publish_artifact', {
-          'path': '/work/out.bin',
-          'name': 'out',
-          'kind': 'dir',
-        },
-      );
+      final isError = await _callIsError(h.handler, 'A', 'publish_artifact', {
+        'path': '/work/out.bin',
+        'name': 'out',
+        'kind': 'dir',
+      });
       expect(isError, isTrue);
     });
   });

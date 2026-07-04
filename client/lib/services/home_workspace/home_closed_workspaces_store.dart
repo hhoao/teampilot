@@ -7,8 +7,8 @@ import '../storage/app_storage.dart';
 /// Persists recently closed title-bar workspace tabs (most recent first).
 class HomeClosedWorkspacesStore {
   HomeClosedWorkspacesStore({Filesystem? fs, String? pathOverride})
-      : _fsOverride = fs,
-        _pathOverride = pathOverride;
+    : _fsOverride = fs,
+      _pathOverride = pathOverride;
 
   static const maxEntries = 20;
 

@@ -23,7 +23,7 @@ class _FakeDelegate implements TeamHubSource {
 
 void main() {
   test('prepends built-ins and dedupes remote keys', () async {
-  final remoteDup = DiscoverableTeam(
+    final remoteDup = DiscoverableTeam(
       key: '$kBuiltinTeamHubKeyPrefix/superpowers-trio',
       name: 'Remote override',
       description: '',

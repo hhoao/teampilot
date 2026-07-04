@@ -1,4 +1,4 @@
-﻿import 'dart:io';
+import 'dart:io';
 
 import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
@@ -18,7 +18,11 @@ import '../../widgets/empty_state_block.dart';
 import 'skill_management_cards.dart';
 
 class SkillInstalledSection extends StatelessWidget {
-  const SkillInstalledSection({super.key, required this.state, required this.onGoDiscovery});
+  const SkillInstalledSection({
+    super.key,
+    required this.state,
+    required this.onGoDiscovery,
+  });
   final SkillState state;
   final VoidCallback onGoDiscovery;
 
@@ -48,7 +52,10 @@ class SkillInstalledSection extends StatelessWidget {
                                   'skill_update_all',
                                   cubit.updateAll,
                                 ),
-                          icon: Icon(Icons.upgrade, size: context.appIconSizes.md),
+                          icon: Icon(
+                            Icons.upgrade,
+                            size: context.appIconSizes.md,
+                          ),
                           label: Text(
                             l10n.skillsUpdateAll(state.updates.length),
                           ),
@@ -60,7 +67,10 @@ class SkillInstalledSection extends StatelessWidget {
                                 'skill_import_disk',
                                 () => _onImportFromDisk(context),
                               ),
-                        icon: Icon(Icons.folder_open_outlined, size: context.appIconSizes.md),
+                        icon: Icon(
+                          Icons.folder_open_outlined,
+                          size: context.appIconSizes.md,
+                        ),
                         label: Text(l10n.skillsImportFromDisk),
                       ),
                       OutlinedButton.icon(
@@ -70,7 +80,10 @@ class SkillInstalledSection extends StatelessWidget {
                                 'skill_install_zip',
                                 () => _onInstallZip(context),
                               ),
-                        icon: Icon(Icons.archive_outlined, size: context.appIconSizes.md),
+                        icon: Icon(
+                          Icons.archive_outlined,
+                          size: context.appIconSizes.md,
+                        ),
                         label: Text(l10n.skillsInstallFromZip),
                       ),
                       OutlinedButton.icon(
@@ -88,7 +101,10 @@ class SkillInstalledSection extends StatelessWidget {
                                   strokeWidth: 2,
                                 ),
                               )
-                            : Icon(Icons.refresh, size: context.appIconSizes.md),
+                            : Icon(
+                                Icons.refresh,
+                                size: context.appIconSizes.md,
+                              ),
                         label: Text(
                           state.updatesLoading
                               ? l10n.skillsCheckingUpdates
@@ -159,7 +175,8 @@ class SkillInstalledSection extends StatelessWidget {
 }
 
 class SkillInstalledRow extends StatelessWidget {
-  const SkillInstalledRow({super.key, 
+  const SkillInstalledRow({
+    super.key,
     required this.skill,
     this.updateInfo,
     this.busy = false,
@@ -306,7 +323,8 @@ class SkillImportUnmanagedDialog extends StatefulWidget {
       SkillImportUnmanagedDialogState();
 }
 
-class SkillImportUnmanagedDialogState extends State<SkillImportUnmanagedDialog> {
+class SkillImportUnmanagedDialogState
+    extends State<SkillImportUnmanagedDialog> {
   late Set<String> _selected;
 
   @override

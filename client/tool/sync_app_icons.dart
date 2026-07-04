@@ -27,11 +27,10 @@ Future<void> main() async {
   }
 
   print('Running flutter_launcher_icons…');
-  final gen = await Process.run(
-    'dart',
-    ['run', 'flutter_launcher_icons'],
-    workingDirectory: clientRoot.path,
-  );
+  final gen = await Process.run('dart', [
+    'run',
+    'flutter_launcher_icons',
+  ], workingDirectory: clientRoot.path);
   stdout.write(gen.stdout);
   stderr.write(gen.stderr);
   if (gen.exitCode != 0) {

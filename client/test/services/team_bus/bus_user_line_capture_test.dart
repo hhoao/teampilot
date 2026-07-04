@@ -18,10 +18,10 @@ void main() {
     // While parked: printable bytes pass through so the CLI echoes them;
     // Enter is replaced with Ctrl-U (clear the CLI's line) and the buffered
     // line is delivered to the bus.
-    expect(
-      capture.filter(Uint8List.fromList(utf8.encode('hi\r'))),
-      [...utf8.encode('hi'), 0x15],
-    );
+    expect(capture.filter(Uint8List.fromList(utf8.encode('hi\r'))), [
+      ...utf8.encode('hi'),
+      0x15,
+    ]);
     expect(submitted, 'hi');
 
     // Not intercepting: plain passthrough, nothing delivered to the bus.
@@ -83,10 +83,12 @@ void main() {
     );
 
     // "ab" then DEL then "c" → buffered line is "ac"; all bytes pass through.
-    expect(
-      capture.filter(Uint8List.fromList([0x61, 0x62, 0x7f, 0x63])),
-      [0x61, 0x62, 0x7f, 0x63],
-    );
+    expect(capture.filter(Uint8List.fromList([0x61, 0x62, 0x7f, 0x63])), [
+      0x61,
+      0x62,
+      0x7f,
+      0x63,
+    ]);
     capture.filter(Uint8List.fromList(utf8.encode('\r')));
     expect(submitted, 'ac');
   });

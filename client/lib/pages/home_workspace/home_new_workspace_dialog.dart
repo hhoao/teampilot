@@ -1,4 +1,4 @@
-﻿import 'package:flutter/material.dart';
+import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
 
@@ -19,10 +19,11 @@ Future<void> showHomeNewWorkspaceDialog(
   required SessionRepository repository,
   LaunchProfileRepository? identityRepository,
 }) async {
-  final result = await showDialog<({List<WorkspaceFolder> folders, String display})>(
-    context: context,
-    builder: (_) => const HomeNewWorkspaceDialog(),
-  );
+  final result =
+      await showDialog<({List<WorkspaceFolder> folders, String display})>(
+        context: context,
+        builder: (_) => const HomeNewWorkspaceDialog(),
+      );
   if (result == null || !context.mounted || result.folders.isEmpty) return;
 
   final workspaceId = await chatCubit.createWorkspaceWithFirstSession(

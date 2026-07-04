@@ -298,6 +298,7 @@
   "homeWorkspaceWorkspaceList": "Workspaces",
   "homeWorkspaceConversations": "Conversations",
   "homeWorkspaceConversationsSection": "Conversations",
+  "workspaceRunningSessionsSection": "Running",
   "homeWorkspaceWorkspaceAgent": "Agent",
   "workspaceAgentBuiltInSubtitle": "Maps to flashskyai --agent when that CLI is active.",
   "workspaceAgentExtraArgs": "Extra CLI arguments",

@@ -45,14 +45,15 @@ bool isRasterFlameTreeSlice(TraceSlice slice) {
   return false;
 }
 
-bool isFlameTreeSlice(TraceSlice slice, FlameTreeTrack track) => switch (track) {
+bool isFlameTreeSlice(TraceSlice slice, FlameTreeTrack track) =>
+    switch (track) {
       FlameTreeTrack.ui => isUiFlameTreeSlice(slice),
       FlameTreeTrack.raster => isRasterFlameTreeSlice(slice),
       FlameTreeTrack.dart => isDartFlameTreeSlice(slice),
       FlameTreeTrack.both =>
         isUiFlameTreeSlice(slice) ||
-        isRasterFlameTreeSlice(slice) ||
-        isDartFlameTreeSlice(slice),
+            isRasterFlameTreeSlice(slice) ||
+            isDartFlameTreeSlice(slice),
     };
 
 List<TraceSlice> slicesInFrameWindow({
@@ -74,7 +75,9 @@ List<SliceTreeNode> buildFlameForestForTrack(
   List<TraceSlice> inWindow,
   FlameTreeTrack track,
 ) {
-  final flameSlices = inWindow.where((s) => isFlameTreeSlice(s, track)).toList();
+  final flameSlices = inWindow
+      .where((s) => isFlameTreeSlice(s, track))
+      .toList();
   var roots = buildSliceForest(flameSlices);
   dropRedundantDartFrameRoots(roots);
   return roots;
@@ -103,29 +106,19 @@ List<SliceSelfTimeEntry> collectFrameSelfTimeHotspots({
     filters: filters,
   );
   final roots = buildFlameForestForTrack(inWindow, track);
-  return collectSelfTimeHotspots(
-    roots,
-    minSelfMs: minSelfMs,
-    limit: limit,
-  );
+  return collectSelfTimeHotspots(roots, minSelfMs: minSelfMs, limit: limit);
 }
 
 String trackLabelForFlameTree(FlameTreeTrack track) => switch (track) {
-      FlameTreeTrack.ui => 'ui',
-      FlameTreeTrack.raster => 'raster',
-      FlameTreeTrack.dart => 'dart',
-      FlameTreeTrack.both => 'both',
-    };
+  FlameTreeTrack.ui => 'ui',
+  FlameTreeTrack.raster => 'raster',
+  FlameTreeTrack.dart => 'dart',
+  FlameTreeTrack.both => 'both',
+};
 
 String? inferPhaseFromPath(String path) {
   final upper = path.toUpperCase();
-  for (final phase in [
-    'BUILD',
-    'LAYOUT',
-    'PAINT',
-    'COMPOSITING',
-    'RASTER',
-  ]) {
+  for (final phase in ['BUILD', 'LAYOUT', 'PAINT', 'COMPOSITING', 'RASTER']) {
     if (upper.contains(phase)) return phase;
   }
   return null;

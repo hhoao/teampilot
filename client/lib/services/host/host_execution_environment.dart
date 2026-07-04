@@ -28,7 +28,8 @@ final class HostExecutionEnvironment {
     bool forceRemoteUnix = false,
   }) {
     final windows = isWindowsHost ?? Platform.isWindows;
-    final mode = storageMode ?? _currentStorageMode() ?? StorageBackendMode.native;
+    final mode =
+        storageMode ?? _currentStorageMode() ?? StorageBackendMode.native;
 
     final dialect = _resolveDialect(
       isWindowsHost: windows,

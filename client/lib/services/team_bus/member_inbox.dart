@@ -42,8 +42,7 @@ class MemberInbox {
   int get unreadCount => _unread.length;
 
   /// True iff [id] is still in the unread working set (not yet taken/read).
-  bool containsUnread(String id) =>
-      _unread.any((r) => r.message.id == id);
+  bool containsUnread(String id) => _unread.any((r) => r.message.id == id);
 
   /// 绑定日志层(由 [TeamBus.declareMember] 注入)。
   void bindLog(BusMessageLog log, int Function() clock) {
@@ -74,7 +73,9 @@ class MemberInbox {
       createdAt: _clock(),
     );
     _unread.add(rec);
-    _persist(() => _log?.appendMessage(memberId, rec.seq, message, rec.createdAt));
+    _persist(
+      () => _log?.appendMessage(memberId, rec.seq, message, rec.createdAt),
+    );
     if (_waiters.isEmpty) return;
     _flushTimer?.cancel();
     _flushTimer = Timer(_debounce, _flush);
@@ -257,7 +258,9 @@ class MemberInbox {
     }
     final safeLimit = limit.clamp(1, 100);
     final end = (start + safeLimit).clamp(0, records.length);
-    final slice = start <= end ? records.sublist(start, end) : <LoggedMessage>[];
+    final slice = start <= end
+        ? records.sublist(start, end)
+        : <LoggedMessage>[];
     final hasMore = end < records.length;
     return BusMessagePage(
       messages: [for (final r in slice) r.message],

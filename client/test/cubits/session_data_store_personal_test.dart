@@ -33,35 +33,38 @@ void main() {
     tmp.deleteSync(recursive: true);
   });
 
-  test('createWorkspaceWithFirstSession creates personal session without profile.json',
-      () async {
-    const primaryPath = '/tmp/personal-workspace';
-    final store = SessionDataStore();
+  test(
+    'createWorkspaceWithFirstSession creates personal session without profile.json',
+    () async {
+      const primaryPath = '/tmp/personal-workspace';
+      final store = SessionDataStore();
 
-    final result = await store.createWorkspaceWithFirstSession(
-      [WorkspaceFolder(path: primaryPath)],
-      sessionRepo,
-      sessionTeamId: '',
-      rosterMembers: const [],
-      identityRepository: identityRepo,
-    );
+      final result = await store.createWorkspaceWithFirstSession(
+        [WorkspaceFolder(path: primaryPath)],
+        sessionRepo,
+        sessionTeamId: '',
+        rosterMembers: const [],
+        identityRepository: identityRepo,
+      );
 
-    final sessions = result.snapshot.sessions
-        .where((s) => s.workspaceId == result.workspaceId)
-        .toList();
-    expect(sessions, hasLength(1));
-    expect(sessions.first.sessionTeam, '');
-    expect(sessions.first.cliTeamName, '');
-    expect(sessions.first.members, isEmpty);
+      final sessions = result.snapshot.sessions
+          .where((s) => s.workspaceId == result.workspaceId)
+          .toList();
+      expect(sessions, hasLength(1));
+      expect(sessions.first.sessionTeam, '');
+      expect(sessions.first.cliTeamName, '');
+      expect(sessions.first.members, isEmpty);
 
-    final workspaces = result.snapshot.workspaces
-        .where((p) => p.workspaceId == result.workspaceId)
-        .toList();
-    expect(workspaces, hasLength(1));
-    expect(
-      File('${tmp.path}/workspace/workspaces/${result.workspaceId}/profile.json')
-          .existsSync(),
-      isFalse,
-    );
-  });
+      final workspaces = result.snapshot.workspaces
+          .where((p) => p.workspaceId == result.workspaceId)
+          .toList();
+      expect(workspaces, hasLength(1));
+      expect(
+        File(
+          '${tmp.path}/workspace/workspaces/${result.workspaceId}/profile.json',
+        ).existsSync(),
+        isFalse,
+      );
+    },
+  );
 }

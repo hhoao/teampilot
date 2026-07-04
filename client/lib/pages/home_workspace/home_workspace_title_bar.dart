@@ -551,7 +551,8 @@ class _WorkspaceTabState extends State<_WorkspaceTab> {
           onSecondaryTapDown: widget.closable && widget.onClose != null
               ? _showTabContextMenuFromTap
               : null,
-          onLongPress: widget.closable && widget.onClose != null && Platform.isAndroid
+          onLongPress:
+              widget.closable && widget.onClose != null && Platform.isAndroid
               ? _showTabContextMenuAtChipCenter
               : null,
           child: InkWell(

@@ -11,29 +11,33 @@ import 'package:teampilot/services/cli/installer_types.dart';
 import '../support/in_memory_filesystem.dart';
 
 ExtensionRepository _repo(InMemoryFilesystem fs) => ExtensionRepository(
-      fs: fs,
-      stateFilePath: '/root/extensions/state.json',
-      manifests: builtInExtensionManifests(),
-    );
+  fs: fs,
+  stateFilePath: '/root/extensions/state.json',
+  manifests: builtInExtensionManifests(),
+);
 
 ExtensionDetector _detector() => ExtensionDetector(
-      processRunner: (exe, args, {environment}) async {
-        if (args.length == 1 && (args.first == 'rtk' || args.first == 'jq')) {
-          return ProcessResult(0, 0, '/usr/bin/${args.first}', '');
-        }
-        if (args.length == 1 && args.first == 'codegraph') {
-          return ProcessResult(0, 1, '', '');
-        }
-        if (args.contains('--version')) return ProcessResult(0, 0, 'rtk 0.24.0', '');
-        return ProcessResult(0, 1, '', '');
-      },
-    );
+  processRunner: (exe, args, {environment}) async {
+    if (args.length == 1 && (args.first == 'rtk' || args.first == 'jq')) {
+      return ProcessResult(0, 0, '/usr/bin/${args.first}', '');
+    }
+    if (args.length == 1 && args.first == 'codegraph') {
+      return ProcessResult(0, 1, '', '');
+    }
+    if (args.contains('--version')) {
+      return ProcessResult(0, 0, 'rtk 0.24.0', '');
+    }
+    return ProcessResult(0, 1, '', '');
+  },
+);
 
 void main() {
   test('load derives a row per built-in manifest with status', () async {
     final cubit = ExtensionCubit(
       _repo(InMemoryFilesystem()),
-      ExtensionAcquisitionEngine(runner: (c) async => const CliInstallerCommandResult(exitCode: 0)),
+      ExtensionAcquisitionEngine(
+        runner: (c) async => const CliInstallerCommandResult(exitCode: 0),
+      ),
       detector: _detector(),
     );
 
@@ -52,14 +56,19 @@ void main() {
     final fs = InMemoryFilesystem();
     final cubit = ExtensionCubit(
       _repo(fs),
-      ExtensionAcquisitionEngine(runner: (c) async => const CliInstallerCommandResult(exitCode: 0)),
+      ExtensionAcquisitionEngine(
+        runner: (c) async => const CliInstallerCommandResult(exitCode: 0),
+      ),
       detector: _detector(),
     );
     await cubit.load();
 
     await cubit.setGlobalEnabled('rtk', true);
 
-    expect(cubit.state.rows.firstWhere((r) => r.id == 'rtk').globalEnabled, isTrue);
+    expect(
+      cubit.state.rows.firstWhere((r) => r.id == 'rtk').globalEnabled,
+      isTrue,
+    );
     expect((await _repo(fs).load()).globalEnabled, contains('rtk'));
   });
 
@@ -73,7 +82,9 @@ void main() {
               ? ProcessResult(0, 0, '/usr/bin/codegraph', '')
               : ProcessResult(0, 1, '', '');
         }
-        if (args.contains('--version')) return ProcessResult(0, 0, 'codegraph 1.4.0', '');
+        if (args.contains('--version')) {
+          return ProcessResult(0, 0, 'codegraph 1.4.0', '');
+        }
         return ProcessResult(0, 1, '', '');
       },
     );
@@ -94,14 +105,19 @@ void main() {
 
     expect(cubit.state.busyIds, isEmpty);
     expect((await _repo(fs).load()).installed.containsKey('codegraph'), isTrue);
-    expect(cubit.state.rows.firstWhere((r) => r.id == 'codegraph').status, ExtensionStatusCode.ready);
+    expect(
+      cubit.state.rows.firstWhere((r) => r.id == 'codegraph').status,
+      ExtensionStatusCode.ready,
+    );
   });
 
   test('teamOverrides reads only the requested team map', () async {
     final fs = InMemoryFilesystem();
     final cubit = ExtensionCubit(
       _repo(fs),
-      ExtensionAcquisitionEngine(runner: (c) async => const CliInstallerCommandResult(exitCode: 0)),
+      ExtensionAcquisitionEngine(
+        runner: (c) async => const CliInstallerCommandResult(exitCode: 0),
+      ),
       detector: _detector(),
     );
 
@@ -121,13 +137,17 @@ void main() {
         if (args.length == 1 && (args.first == 'rtk' || args.first == 'jq')) {
           return ProcessResult(0, 0, '/usr/bin/${args.first}', '');
         }
-        if (args.contains('--version')) return ProcessResult(0, 0, 'rtk 0.24.0', '');
+        if (args.contains('--version')) {
+          return ProcessResult(0, 0, 'rtk 0.24.0', '');
+        }
         return ProcessResult(0, 1, '', '');
       },
     );
     final cubit = ExtensionCubit(
       _repo(InMemoryFilesystem()),
-      ExtensionAcquisitionEngine(runner: (c) async => const CliInstallerCommandResult(exitCode: 0)),
+      ExtensionAcquisitionEngine(
+        runner: (c) async => const CliInstallerCommandResult(exitCode: 0),
+      ),
       detector: detector,
     );
 
@@ -147,13 +167,17 @@ void main() {
         if (args.length == 1 && (args.first == 'rtk' || args.first == 'jq')) {
           return ProcessResult(0, 0, '/usr/bin/${args.first}', '');
         }
-        if (args.contains('--version')) return ProcessResult(0, 0, 'rtk 0.24.0', '');
+        if (args.contains('--version')) {
+          return ProcessResult(0, 0, 'rtk 0.24.0', '');
+        }
         return ProcessResult(0, 1, '', '');
       },
     );
     final cubit = ExtensionCubit(
       _repo(InMemoryFilesystem()),
-      ExtensionAcquisitionEngine(runner: (c) async => const CliInstallerCommandResult(exitCode: 0)),
+      ExtensionAcquisitionEngine(
+        runner: (c) async => const CliInstallerCommandResult(exitCode: 0),
+      ),
       detector: detector,
     );
 
@@ -164,32 +188,36 @@ void main() {
     expect(probeCalls, greaterThan(afterFirst));
   });
 
-  test('dependency-missing row carries the missing requirement names', () async {
-    // rtk present, jq absent.
-    final detector = ExtensionDetector(
-      processRunner: (exe, args, {environment}) async {
-        if (args.length == 1 && args.first == 'rtk') {
-          return ProcessResult(0, 0, '/usr/bin/rtk', '');
-        }
-        if (args.contains('--version')) {
-          return ProcessResult(0, 0, 'rtk 0.24.0', '');
-        }
-        return ProcessResult(0, 1, '', '');
-      },
-    );
-    final cubit = ExtensionCubit(
-      _repo(InMemoryFilesystem()),
-      ExtensionAcquisitionEngine(
-          runner: (c) async => const CliInstallerCommandResult(exitCode: 0)),
-      detector: detector,
-    );
+  test(
+    'dependency-missing row carries the missing requirement names',
+    () async {
+      // rtk present, jq absent.
+      final detector = ExtensionDetector(
+        processRunner: (exe, args, {environment}) async {
+          if (args.length == 1 && args.first == 'rtk') {
+            return ProcessResult(0, 0, '/usr/bin/rtk', '');
+          }
+          if (args.contains('--version')) {
+            return ProcessResult(0, 0, 'rtk 0.24.0', '');
+          }
+          return ProcessResult(0, 1, '', '');
+        },
+      );
+      final cubit = ExtensionCubit(
+        _repo(InMemoryFilesystem()),
+        ExtensionAcquisitionEngine(
+          runner: (c) async => const CliInstallerCommandResult(exitCode: 0),
+        ),
+        detector: detector,
+      );
 
-    await cubit.load();
+      await cubit.load();
 
-    final rtk = cubit.state.rows.firstWhere((r) => r.id == 'rtk');
-    expect(rtk.status, ExtensionStatusCode.dependencyMissing);
-    expect(rtk.missingRequirements, ['jq']);
-  });
+      final rtk = cubit.state.rows.firstWhere((r) => r.id == 'rtk');
+      expect(rtk.status, ExtensionStatusCode.dependencyMissing);
+      expect(rtk.missingRequirements, ['jq']);
+    },
+  );
 
   test('recheck re-probes a single row after a dependency appears', () async {
     var jqPresent = false;
@@ -212,7 +240,8 @@ void main() {
     final cubit = ExtensionCubit(
       _repo(InMemoryFilesystem()),
       ExtensionAcquisitionEngine(
-          runner: (c) async => const CliInstallerCommandResult(exitCode: 0)),
+        runner: (c) async => const CliInstallerCommandResult(exitCode: 0),
+      ),
       detector: detector,
     );
     await cubit.load();
@@ -234,7 +263,9 @@ void main() {
     final fs = InMemoryFilesystem();
     final cubit = ExtensionCubit(
       _repo(fs),
-      ExtensionAcquisitionEngine(runner: (c) async => const CliInstallerCommandResult(exitCode: 0)),
+      ExtensionAcquisitionEngine(
+        runner: (c) async => const CliInstallerCommandResult(exitCode: 0),
+      ),
       detector: _detector(),
     );
     await cubit.setTeamOverride('team-a', 'codegraph', true);

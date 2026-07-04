@@ -1,4 +1,4 @@
-﻿import 'package:flutter/foundation.dart';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 
 import '../../theme/app_dialog_theme.dart';
@@ -134,10 +134,9 @@ class _SettingsDialogState extends State<_SettingsDialog> {
                                   key: const ValueKey('settings-pane-host'),
                                   paneCount: widget.entries.length,
                                   selectedIndex: index,
-                                  builder: (context, paneIndex) =>
-                                      widget.entries[paneIndex].bodyBuilder(
-                                        context,
-                                      ),
+                                  builder: (context, paneIndex) => widget
+                                      .entries[paneIndex]
+                                      .bodyBuilder(context),
                                 ),
                               ),
                             ),

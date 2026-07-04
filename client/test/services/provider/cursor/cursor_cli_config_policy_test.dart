@@ -10,28 +10,33 @@ void main() {
     );
   });
 
-  test('applyMixedTeamSessionPolicy adds Mcp allow without clobbering auth', () {
-    const input = {
-      'version': 1,
-      'authInfo': {'userId': 'u1'},
-      'permissions': {
-        'allow': ['Shell(ls)'],
-        'deny': [],
-      },
-    };
-    final merged = CursorCliConfigPolicy.applyMixedTeamSessionPolicy(input);
-    final allow = (merged['permissions']! as Map)['allow'] as List;
-    expect(allow, contains('Shell(ls)'));
-    expect(allow, contains(CursorCliConfigPolicy.teamBusMcpAllowEntry));
-    expect(merged['authInfo'], isNotNull);
-  });
+  test(
+    'applyMixedTeamSessionPolicy adds Mcp allow without clobbering auth',
+    () {
+      const input = {
+        'version': 1,
+        'authInfo': {'userId': 'u1'},
+        'permissions': {
+          'allow': ['Shell(ls)'],
+          'deny': [],
+        },
+      };
+      final merged = CursorCliConfigPolicy.applyMixedTeamSessionPolicy(input);
+      final allow = (merged['permissions']! as Map)['allow'] as List;
+      expect(allow, contains('Shell(ls)'));
+      expect(allow, contains(CursorCliConfigPolicy.teamBusMcpAllowEntry));
+      expect(merged['authInfo'], isNotNull);
+    },
+  );
 
   test('applyMixedTeamSessionPolicy is idempotent', () {
     final once = CursorCliConfigPolicy.applyMixedTeamSessionPolicy(const {});
     final twice = CursorCliConfigPolicy.applyMixedTeamSessionPolicy(once);
     final allow = (twice['permissions']! as Map)['allow'] as List;
     expect(
-      allow.where((e) => e == CursorCliConfigPolicy.teamBusMcpAllowEntry).length,
+      allow
+          .where((e) => e == CursorCliConfigPolicy.teamBusMcpAllowEntry)
+          .length,
       1,
     );
   });

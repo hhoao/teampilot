@@ -196,10 +196,7 @@ abstract final class FileTreeContextMenu {
               final created = cubit.fs.pathContext.join(parentDir, name.trim());
               if (isEditorOpenableFilePath(created)) {
                 unawaited(
-                  context.read<EditorCubit>().openFile(
-                    created,
-                    fs: cubit.fs,
-                  ),
+                  context.read<EditorCubit>().openFile(created, fs: cubit.fs),
                 );
               }
             },
@@ -338,10 +335,7 @@ abstract final class FileTreeContextMenu {
         ? targetPath
         : SystemFolderOpener.revealPathForFile(targetPath);
     if (remoteFileManagerActions) {
-      await RuntimeFolderOpener().reveal(
-        path: path,
-        workContext: workContext,
-      );
+      await RuntimeFolderOpener().reveal(path: path, workContext: workContext);
       return;
     }
     await SystemFolderOpener().reveal(path);

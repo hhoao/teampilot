@@ -7,21 +7,24 @@ import 'package:teampilot/utils/home_workspace_display.dart';
 
 void main() {
   Workspace workspace(String id, {int updatedAt = 0}) => Workspace(
-        workspaceId: id,
-        folders: [WorkspaceFolder(path: '/tmp/$id')],
-        createdAt: 1,
-        updatedAt: updatedAt,
-      );
+    workspaceId: id,
+    folders: [WorkspaceFolder(path: '/tmp/$id')],
+    createdAt: 1,
+    updatedAt: updatedAt,
+  );
 
   AppSession session(String id, String workspaceId) => AppSession(
-        sessionId: id,
-        workspaceId: workspaceId,
-        folders: const [WorkspaceFolder(path: '/tmp')],
-        createdAt: 1,
-      );
+    sessionId: id,
+    workspaceId: workspaceId,
+    folders: const [WorkspaceFolder(path: '/tmp')],
+    createdAt: 1,
+  );
 
   test('computeWorkspaceDisplay is stable when inputs unchanged', () {
-    final workspaces = [workspace('a', updatedAt: 2), workspace('b', updatedAt: 1)];
+    final workspaces = [
+      workspace('a', updatedAt: 2),
+      workspace('b', updatedAt: 1),
+    ];
     final sessions = [session('s1', 'a')];
     const favorites = <String>{};
     const sort = WorkspaceSort.recentlyUpdated;
@@ -49,7 +52,10 @@ void main() {
 
     expect(identical(first.sortedWorkspaces, second.sortedWorkspaces), isTrue);
     expect(identical(first.sessionCounts, second.sessionCounts), isTrue);
-    expect(first.sortedWorkspaces.map((p) => p.workspaceId).toList(), ['a', 'b']);
+    expect(first.sortedWorkspaces.map((p) => p.workspaceId).toList(), [
+      'a',
+      'b',
+    ]);
     expect(first.sessionCounts['a'], 1);
   });
 
@@ -92,6 +98,9 @@ void main() {
       preserveOrder: true,
     );
 
-    expect(display.sortedWorkspaces.map((p) => p.workspaceId).toList(), ['b', 'a']);
+    expect(display.sortedWorkspaces.map((p) => p.workspaceId).toList(), [
+      'b',
+      'a',
+    ]);
   });
 }

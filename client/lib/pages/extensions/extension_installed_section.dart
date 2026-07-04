@@ -22,18 +22,19 @@ class ExtensionInstalledSection extends StatelessWidget {
     final l10n = context.l10n;
     return switch (row.status) {
       ExtensionStatusCode.notInstalled => l10n.extensionStatusNotInstalled,
-      ExtensionStatusCode.dependencyMissing => row.missingRequirements.isEmpty
-          ? l10n.extensionStatusDependencyMissing
-          : l10n.extensionStatusDependencyMissingNamed(
-              row.missingRequirements.join(', '),
-            ),
+      ExtensionStatusCode.dependencyMissing =>
+        row.missingRequirements.isEmpty
+            ? l10n.extensionStatusDependencyMissing
+            : l10n.extensionStatusDependencyMissingNamed(
+                row.missingRequirements.join(', '),
+              ),
       ExtensionStatusCode.versionTooOld => l10n.extensionStatusVersionTooOld,
       ExtensionStatusCode.ready => () {
-          final v = row.version?.trim();
-          return (v == null || v.isEmpty)
-              ? l10n.extensionStatusReady
-              : l10n.extensionStatusReadyVersion(v);
-        }(),
+        final v = row.version?.trim();
+        return (v == null || v.isEmpty)
+            ? l10n.extensionStatusReady
+            : l10n.extensionStatusReadyVersion(v);
+      }(),
     };
   }
 
@@ -58,11 +59,10 @@ class ExtensionInstalledSection extends StatelessWidget {
                 Text(
                   l10n.extensionsSettingsDescription,
                   style: AppTextStyles.of(context).bodySmall.copyWith(
-                        color: Theme.of(context)
-                            .colorScheme
-                            .onSurface
-                            .withValues(alpha: 0.6),
-                      ),
+                    color: Theme.of(
+                      context,
+                    ).colorScheme.onSurface.withValues(alpha: 0.6),
+                  ),
                 ),
                 const SizedBox(height: 14),
                 if (loading)
@@ -114,10 +114,9 @@ class _CountBadge extends StatelessWidget {
       ),
       child: Text(
         '$count',
-        style: AppTextStyles.of(context).caption.copyWith(
-              color: cs.primary,
-              fontWeight: FontWeight.w700,
-            ),
+        style: AppTextStyles.of(
+          context,
+        ).caption.copyWith(color: cs.primary, fontWeight: FontWeight.w700),
       ),
     );
   }
@@ -151,76 +150,76 @@ class _ExtensionRow extends StatelessWidget {
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
             Row(
-          children: [
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Row(
+              children: [
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Flexible(
-                        child: Text(
-                          row.name,
+                      Row(
+                        children: [
+                          Flexible(
+                            child: Text(
+                              row.name,
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                              style: styles.body.copyWith(
+                                fontWeight: FontWeight.w700,
+                              ),
+                            ),
+                          ),
+                          const SizedBox(width: 8),
+                          _StatusChip(
+                            installed: row.installed,
+                            ready: row.status == ExtensionStatusCode.ready,
+                            label: statusText,
+                          ),
+                        ],
+                      ),
+                      if (subtitle.isNotEmpty) ...[
+                        const SizedBox(height: 2),
+                        Text(
+                          subtitle,
                           maxLines: 1,
                           overflow: TextOverflow.ellipsis,
-                          style: styles.body.copyWith(
-                            fontWeight: FontWeight.w700,
+                          style: styles.bodySmall.copyWith(
+                            color: cs.onSurface.withValues(alpha: 0.6),
                           ),
                         ),
-                      ),
-                      const SizedBox(width: 8),
-                      _StatusChip(
-                        installed: row.installed,
-                        ready: row.status == ExtensionStatusCode.ready,
-                        label: statusText,
-                      ),
+                      ],
                     ],
                   ),
-                  if (subtitle.isNotEmpty) ...[
-                    const SizedBox(height: 2),
-                    Text(
-                      subtitle,
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                      style: styles.bodySmall.copyWith(
-                        color: cs.onSurface.withValues(alpha: 0.6),
-                      ),
+                ),
+                const SizedBox(width: 10),
+                if (busy)
+                  const SizedBox(
+                    width: 22,
+                    height: 22,
+                    child: CircularProgressIndicator(strokeWidth: 2),
+                  )
+                else ...[
+                  if (row.installed && row.status != ExtensionStatusCode.ready)
+                    TextButton(
+                      onPressed: () => cubit.recheck(row.id),
+                      child: Text(l10n.extensionRecheck),
                     ),
-                  ],
+                  TextButton(
+                    onPressed: row.installed
+                        ? () => cubit.uninstall(row.id)
+                        : () => cubit.install(row.id),
+                    child: Text(
+                      row.installed
+                          ? l10n.extensionUninstall
+                          : l10n.extensionInstall,
+                    ),
+                  ),
+                  Switch(
+                    value: row.globalEnabled,
+                    onChanged: row.installed
+                        ? (v) => cubit.setGlobalEnabled(row.id, v)
+                        : null,
+                  ),
                 ],
-              ),
-            ),
-            const SizedBox(width: 10),
-            if (busy)
-              const SizedBox(
-                width: 22,
-                height: 22,
-                child: CircularProgressIndicator(strokeWidth: 2),
-              )
-            else ...[
-              if (row.installed && row.status != ExtensionStatusCode.ready)
-                TextButton(
-                  onPressed: () => cubit.recheck(row.id),
-                  child: Text(l10n.extensionRecheck),
-                ),
-              TextButton(
-                onPressed: row.installed
-                    ? () => cubit.uninstall(row.id)
-                    : () => cubit.install(row.id),
-                child: Text(
-                  row.installed
-                      ? l10n.extensionUninstall
-                      : l10n.extensionInstall,
-                ),
-              ),
-              Switch(
-                value: row.globalEnabled,
-                onChanged: row.installed
-                    ? (v) => cubit.setGlobalEnabled(row.id, v)
-                    : null,
-              ),
-            ],
-          ],
+              ],
             ),
             if (row.status == ExtensionStatusCode.dependencyMissing &&
                 row.missingRequirements.isNotEmpty)
@@ -279,8 +278,10 @@ class _DependencyRemediation extends StatelessWidget {
               children: [
                 Expanded(
                   child: Container(
-                    padding:
-                        const EdgeInsets.symmetric(horizontal: 10, vertical: 7),
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 10,
+                      vertical: 7,
+                    ),
                     decoration: BoxDecoration(
                       color: cs.surface.withValues(alpha: 0.5),
                       borderRadius: BorderRadius.circular(6),
@@ -337,8 +338,8 @@ class _StatusChip extends StatelessWidget {
     final Color color = !installed
         ? cs.onSurfaceVariant
         : ready
-            ? cs.primary
-            : cs.error;
+        ? cs.primary
+        : cs.error;
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 2),
       decoration: BoxDecoration(
@@ -347,10 +348,9 @@ class _StatusChip extends StatelessWidget {
       ),
       child: Text(
         label,
-        style: AppTextStyles.of(context).caption.copyWith(
-              color: color,
-              fontWeight: FontWeight.w600,
-            ),
+        style: AppTextStyles.of(
+          context,
+        ).caption.copyWith(color: color, fontWeight: FontWeight.w600),
       ),
     );
   }

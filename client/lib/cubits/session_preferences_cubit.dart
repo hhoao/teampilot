@@ -71,7 +71,8 @@ class SessionPreferencesCubit extends Cubit<SessionPreferencesState> {
   }
 
   Future<void> setCliExecutablePathFor(CliTool cli, String value) {
-    final pathKey = _cliToolRegistry
+    final pathKey =
+        _cliToolRegistry
             .capability<ExecutableResolverCapability>(cli)
             ?.preferencesPathKey ??
         cli.value;
@@ -135,9 +136,7 @@ class SessionPreferencesCubit extends Cubit<SessionPreferencesState> {
 
   Future<void> setTerminalScrollbackLines(int value) {
     final clamped = value.clamp(1000, 200000);
-    return _save(
-      state.preferences.copyWith(terminalScrollbackLines: clamped),
-    );
+    return _save(state.preferences.copyWith(terminalScrollbackLines: clamped));
   }
 
   Future<void> setTerminalLinkClickOpensInApp(bool value) {
@@ -163,13 +162,15 @@ class SessionPreferencesCubit extends Cubit<SessionPreferencesState> {
     if (located != null && located.isNotEmpty) {
       return CliToolLocator.resolveSpawnExecutable(located);
     }
-    final resolver =
-        _cliToolRegistry.capability<ExecutableResolverCapability>(cli);
+    final resolver = _cliToolRegistry.capability<ExecutableResolverCapability>(
+      cli,
+    );
     return resolver?.defaultExecutableName ?? cli.value;
   }
 
   String _userExecutableFor(CliTool cli) {
-    final pathKey = _cliToolRegistry
+    final pathKey =
+        _cliToolRegistry
             .capability<ExecutableResolverCapability>(cli)
             ?.preferencesPathKey ??
         cli.value;

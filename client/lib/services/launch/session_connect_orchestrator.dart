@@ -33,11 +33,10 @@ class SessionConnectOrchestrator {
   final RuntimeContext Function() homeContext;
   final ManifestExecutor manifestExecutor;
 
-  Future<({
-    ShellLaunchSpec shellLaunch,
-    List<String> warnings,
-    String remoteCliPath,
-  })> preparePersonalConnect({
+  Future<
+    ({ShellLaunchSpec shellLaunch, List<String> warnings, String remoteCliPath})
+  >
+  preparePersonalConnect({
     required AppSession session,
     required Workspace workspace,
     required PersonalProfile personal,
@@ -108,19 +107,15 @@ class SessionConnectOrchestrator {
 
     return (
       shellLaunch: shellLaunch,
-      warnings: [
-        ...staged.outcome.warnings,
-        ...shellLaunch.plan.warnings,
-      ],
+      warnings: [...staged.outcome.warnings, ...shellLaunch.plan.warnings],
       remoteCliPath: remoteCliPath,
     );
   }
 
-  Future<({
-    ShellLaunchSpec shellLaunch,
-    List<String> warnings,
-    String remoteCliPath,
-  })> prepareTeamConnect({
+  Future<
+    ({ShellLaunchSpec shellLaunch, List<String> warnings, String remoteCliPath})
+  >
+  prepareTeamConnect({
     required AppSession session,
     required TeamProfile team,
     required TeamMemberConfig member,
@@ -159,7 +154,9 @@ class SessionConnectOrchestrator {
 
     final teamId = team.id.trim();
     final cliTeamName = session.cliTeamName.trim();
-    final runtimeTeamId = cliTeamName.isNotEmpty ? cliTeamName : session.sessionId;
+    final runtimeTeamId = cliTeamName.isNotEmpty
+        ? cliTeamName
+        : session.sessionId;
     final leadTaskId = memberBinding?.taskId.trim() ?? '';
     final leadSessionId =
         TeamMemberNaming.isTeamLead(member) && leadTaskId.isNotEmpty
@@ -208,10 +205,7 @@ class SessionConnectOrchestrator {
 
     return (
       shellLaunch: shellLaunch,
-      warnings: [
-        ...staged.outcome.warnings,
-        ...shellLaunch.plan.warnings,
-      ],
+      warnings: [...staged.outcome.warnings, ...shellLaunch.plan.warnings],
       remoteCliPath: remoteCliPath,
     );
   }
@@ -227,9 +221,7 @@ class SessionConnectOrchestrator {
       workspaceId: workspace.workspaceId,
       cli: cli,
       personal: personal,
-      trustedDirectories: [
-        for (final folder in workspace.folders) folder.path,
-      ],
+      trustedDirectories: [for (final folder in workspace.folders) folder.path],
     );
   }
 
@@ -244,9 +236,7 @@ class SessionConnectOrchestrator {
       workspaceId: workspace.workspaceId,
       cli: cli,
       personal: null,
-      trustedDirectories: [
-        for (final folder in workspace.folders) folder.path,
-      ],
+      trustedDirectories: [for (final folder in workspace.folders) folder.path],
     );
   }
 

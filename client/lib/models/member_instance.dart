@@ -22,8 +22,7 @@ class MemberInstance {
 
   /// A singleton (`replicas == 1`) is named after its type; a replicated type
   /// yields `{typeId}-{ordinal}`.
-  String get instanceId =>
-      replicas <= 1 ? type.id : '${type.id}-$ordinal';
+  String get instanceId => replicas <= 1 ? type.id : '${type.id}-$ordinal';
 
   String get displayName =>
       replicas <= 1 ? type.name : '${type.name} #$ordinal';
@@ -32,12 +31,12 @@ class MemberInstance {
   /// type id seeded as a capability so [TaskRouter] routes the pool by type
   /// (and the pod by its own id, via the id-as-capability rule).
   TeamMemberConfig toMemberConfig() => type.copyWith(
-        id: instanceId,
-        name: displayName,
-        capabilities: {type.id, ...type.capabilities},
-        // A workspaceion is a single concrete pod — never itself re-expandable.
-        replicas: 1,
-      );
+    id: instanceId,
+    name: displayName,
+    capabilities: {type.id, ...type.capabilities},
+    // A workspaceion is a single concrete pod — never itself re-expandable.
+    replicas: 1,
+  );
 }
 
 /// The single Deployment→Pod fan-out. The team-lead is always a singleton; any
@@ -57,5 +56,6 @@ List<MemberInstance> expandTeamRoster(List<TeamMemberConfig> members) {
 
 /// Instance workspaceions the launch/bus layers iterate in place of
 /// `team.members`.
-List<TeamMemberConfig> runtimeRosterMembers(TeamProfile team) =>
-    [for (final inst in expandTeamRoster(team.members)) inst.toMemberConfig()];
+List<TeamMemberConfig> runtimeRosterMembers(TeamProfile team) => [
+  for (final inst in expandTeamRoster(team.members)) inst.toMemberConfig(),
+];

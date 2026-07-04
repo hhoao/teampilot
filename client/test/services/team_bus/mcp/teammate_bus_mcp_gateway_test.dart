@@ -136,11 +136,7 @@ void main() {
   test('missing X-Session and invalid token returns 400', () async {
     final resp = await postMcp(
       member: 'leader',
-      body: {
-        'jsonrpc': '2.0',
-        'id': 0,
-        'method': 'initialize',
-      },
+      body: {'jsonrpc': '2.0', 'id': 0, 'method': 'initialize'},
     );
     expect(resp.statusCode, HttpStatus.badRequest);
     await resp.drain<void>();
@@ -148,11 +144,7 @@ void main() {
     final badToken = await postMcp(
       busToken: 'not-a-real-token',
       member: 'leader',
-      body: {
-        'jsonrpc': '2.0',
-        'id': 1,
-        'method': 'initialize',
-      },
+      body: {'jsonrpc': '2.0', 'id': 1, 'method': 'initialize'},
     );
     expect(badToken.statusCode, HttpStatus.badRequest);
     await badToken.drain<void>();
@@ -162,11 +154,7 @@ void main() {
     final res = await rpc(
       busToken: regA.token,
       member: 'leader',
-      body: {
-        'jsonrpc': '2.0',
-        'id': 0,
-        'method': 'initialize',
-      },
+      body: {'jsonrpc': '2.0', 'id': 0, 'method': 'initialize'},
     );
     expect((res['result'] as Map)['protocolVersion'], '2025-06-18');
   });

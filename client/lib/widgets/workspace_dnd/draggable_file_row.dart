@@ -71,13 +71,17 @@ class _DragFeedback extends StatelessWidget {
         child: Row(
           mainAxisSize: MainAxisSize.min,
           children: [
-            Icon(Icons.insert_drive_file_outlined, size: 14, color: cs.onSecondaryContainer),
+            Icon(
+              Icons.insert_drive_file_outlined,
+              size: 14,
+              color: cs.onSecondaryContainer,
+            ),
             const SizedBox(width: 6),
             Text(
               text,
-              style: AppTextStyles.of(context).bodySmallColored(
-                cs.onSecondaryContainer,
-              ),
+              style: AppTextStyles.of(
+                context,
+              ).bodySmallColored(cs.onSecondaryContainer),
             ),
           ],
         ),

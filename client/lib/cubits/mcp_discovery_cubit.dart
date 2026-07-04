@@ -54,9 +54,12 @@ class McpDiscoveryState extends Equatable {
     final config = registryConfig;
     if (config == null) return null;
     return switch (target) {
-      McpDiscoverySource.smithery => config.byKind(McpRegistrySourceKind.smithery),
-      McpDiscoverySource.official =>
-        config.byKind(McpRegistrySourceKind.officialRegistry),
+      McpDiscoverySource.smithery => config.byKind(
+        McpRegistrySourceKind.smithery,
+      ),
+      McpDiscoverySource.official => config.byKind(
+        McpRegistrySourceKind.officialRegistry,
+      ),
       McpDiscoverySource.all || McpDiscoverySource.builtin => null,
     };
   }
@@ -220,7 +223,11 @@ class McpDiscoveryCubit extends Cubit<McpDiscoveryState> {
     final source = state.source;
     final snapshot = _remoteSnapshots[source]!;
     if (snapshot.items.isNotEmpty && snapshot.query == value) {
-      emit(state.copyWith(remoteItems: List<McpCatalogListing>.from(snapshot.items)));
+      emit(
+        state.copyWith(
+          remoteItems: List<McpCatalogListing>.from(snapshot.items),
+        ),
+      );
       return;
     }
     if (value.isEmpty) {
@@ -323,8 +330,10 @@ class McpDiscoveryCubit extends Cubit<McpDiscoveryState> {
 
   Future<void> _warmRemoteCaches() async {
     if (state.loading) return;
-    final needsSmithery = _remoteSnapshots[McpDiscoverySource.smithery]!.items.isEmpty;
-    final needsOfficial = _remoteSnapshots[McpDiscoverySource.official]!.items.isEmpty;
+    final needsSmithery =
+        _remoteSnapshots[McpDiscoverySource.smithery]!.items.isEmpty;
+    final needsOfficial =
+        _remoteSnapshots[McpDiscoverySource.official]!.items.isEmpty;
     if (!needsSmithery && !needsOfficial) return;
 
     emit(state.copyWith(loading: true, clearError: true));
@@ -378,7 +387,9 @@ class McpDiscoveryCubit extends Cubit<McpDiscoveryState> {
 
     try {
       if (source == McpDiscoverySource.smithery) {
-        final page = reset ? 1 : (activeView ? state.smitheryPage : snapshot.smitheryPage);
+        final page = reset
+            ? 1
+            : (activeView ? state.smitheryPage : snapshot.smitheryPage);
         final result = await _smithery.search(
           query,
           baseUrl: registrySource.baseUrl,
@@ -508,7 +519,9 @@ class McpDiscoveryCubit extends Cubit<McpDiscoveryState> {
       unawaited(_diskCache.delete(cacheKey));
     }
     if (state.source == source) {
-      emit(state.copyWith(remoteItems: const [], loading: false, clearError: true));
+      emit(
+        state.copyWith(remoteItems: const [], loading: false, clearError: true),
+      );
     }
   }
 

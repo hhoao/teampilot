@@ -87,16 +87,12 @@ void main() {
   test(
     'imports claude official credentials from global home during provider import',
     () async {
-      await _writeJson(
-        p.join(home, '.claude', 'settings.json'),
-        const {'env': {}},
-      );
-      await _writeJson(
-        p.join(home, '.claude', '.credentials.json'),
-        const {
-          'claudeAiOauth': {'accessToken': 'global-oauth'},
-        },
-      );
+      await _writeJson(p.join(home, '.claude', 'settings.json'), const {
+        'env': {},
+      });
+      await _writeJson(p.join(home, '.claude', '.credentials.json'), const {
+        'claudeAiOauth': {'accessToken': 'global-oauth'},
+      });
 
       final service = ProviderImportService(repository: repository);
       final result = await service.importForCli(
@@ -127,16 +123,13 @@ void main() {
   test(
     'imports claude from live and cc-switch then mirrors missing ids to flashskyai',
     () async {
-      await _writeJson(
-        p.join(home, '.claude', 'settings-packycode.json'),
-        {
-          'env': {
-            'ANTHROPIC_BASE_URL': 'https://api.packycode.com',
-            'ANTHROPIC_AUTH_TOKEN': 'sk-live',
-            'ANTHROPIC_MODEL': 'claude-live',
-          },
+      await _writeJson(p.join(home, '.claude', 'settings-packycode.json'), {
+        'env': {
+          'ANTHROPIC_BASE_URL': 'https://api.packycode.com',
+          'ANTHROPIC_AUTH_TOKEN': 'sk-live',
+          'ANTHROPIC_MODEL': 'claude-live',
         },
-      );
+      });
       await repository.saveProviders(CliTool.flashskyai, [
         const AppProviderConfig(
           id: 'packycode',
@@ -176,16 +169,17 @@ void main() {
       expect(result.mirrorSkipped, 1);
 
       final claude = await repository.loadProviders(CliTool.claude);
-      expect(claude.map((p) => p.id), containsAll(['packycode', 'router-plus']));
       expect(
-        claude.singleWhere((p) => p.id == 'router-plus').apiKey,
-        'sk-db',
+        claude.map((p) => p.id),
+        containsAll(['packycode', 'router-plus']),
       );
+      expect(claude.singleWhere((p) => p.id == 'router-plus').apiKey, 'sk-db');
 
-      final flashskyai = await repository.loadProviders(
-        CliTool.flashskyai,
+      final flashskyai = await repository.loadProviders(CliTool.flashskyai);
+      expect(
+        flashskyai.map((p) => p.id),
+        containsAll(['packycode', 'router-plus']),
       );
-      expect(flashskyai.map((p) => p.id), containsAll(['packycode', 'router-plus']));
       expect(flashskyai.where((p) => p.id == 'packycode'), hasLength(1));
       final mirrored = flashskyai.singleWhere((p) => p.id == 'router-plus');
       expect(mirrored.baseUrl, 'https://router.example.com');
@@ -210,21 +204,17 @@ void main() {
         baseUrl: 'https://same.example.com/v1',
       ),
     ]);
-    await _writeJson(
-      p.join(home, '.codex', 'auth-deepseek.json'),
-      {'OPENAI_API_KEY': 'sk-codex'},
-    );
-    await _writeText(
-      p.join(home, '.codex', 'config-deepseek.toml'),
-      '''
+    await _writeJson(p.join(home, '.codex', 'auth-deepseek.json'), {
+      'OPENAI_API_KEY': 'sk-codex',
+    });
+    await _writeText(p.join(home, '.codex', 'config-deepseek.toml'), '''
 model_provider = "deepseek"
 model = "deepseek-chat"
 
 [model_providers.deepseek]
 base_url = "https://same.example.com/v1"
 wire_api = "chat"
-''',
-    );
+''');
 
     final service = ProviderImportService(repository: repository);
 
@@ -235,10 +225,11 @@ wire_api = "chat"
 
     expect(result.mirroredToFlashskyai, 1);
     expect(result.mirrorSkipped, 0);
-    final flashskyai = await repository.loadProviders(
-      CliTool.flashskyai,
+    final flashskyai = await repository.loadProviders(CliTool.flashskyai);
+    expect(
+      flashskyai.map((p) => p.id),
+      containsAll(['same-url-existing', 'deepseek']),
     );
-    expect(flashskyai.map((p) => p.id), containsAll(['same-url-existing', 'deepseek']));
     final mirrored = flashskyai.singleWhere((p) => p.id == 'deepseek');
     final mirroredModels = mirrored.config['models'] as Map;
     expect(mirroredModels, contains('deepseek-chat'));
@@ -267,21 +258,17 @@ wire_api = "chat"
           },
         ),
       ]);
-      await _writeJson(
-        p.join(home, '.codex', 'auth-deepseek.json'),
-        {'OPENAI_API_KEY': 'sk-codex'},
-      );
-      await _writeText(
-        p.join(home, '.codex', 'config-deepseek.toml'),
-        '''
+      await _writeJson(p.join(home, '.codex', 'auth-deepseek.json'), {
+        'OPENAI_API_KEY': 'sk-codex',
+      });
+      await _writeText(p.join(home, '.codex', 'config-deepseek.toml'), '''
 model_provider = "deepseek"
 model = "deepseek-chat"
 
 [model_providers.deepseek]
 base_url = "https://codex.example.com/v1"
 wire_api = "chat"
-''',
-      );
+''');
 
       final service = ProviderImportService(repository: repository);
 
@@ -291,22 +278,22 @@ wire_api = "chat"
       );
 
       expect(result.mirroredToFlashskyai, 1);
-      final flashskyai = await repository.loadProviders(
-        CliTool.flashskyai,
-      );
+      final flashskyai = await repository.loadProviders(CliTool.flashskyai);
       final mirrored = flashskyai.singleWhere((p) => p.id == 'deepseek');
       expect(mirrored.config['models'], isNot(contains('deepseek-chat')));
 
-      final llmConfig = jsonDecode(
-        await File(
-          p.join(
-            appData,
-            'cli-defaults',
-            'flashskyai',
-            'llm_config.json',
-          ),
-        ).readAsString(),
-      ) as Map;
+      final llmConfig =
+          jsonDecode(
+                await File(
+                  p.join(
+                    appData,
+                    'cli-defaults',
+                    'flashskyai',
+                    'llm_config.json',
+                  ),
+                ).readAsString(),
+              )
+              as Map;
       final model =
           (llmConfig['models'] as Map)['deepseek-chat'] as Map<String, Object?>;
       expect(model['provider'], 'flashskyai-native');
@@ -317,19 +304,13 @@ wire_api = "chat"
   test(
     'imports cursor account from global auth during provider import',
     () async {
-      await _writeJson(
-        p.join(home, '.config', 'cursor', 'auth.json'),
-        const {
-          'accessToken': 'cursor-at',
-          'refreshToken': 'cursor-rt',
-        },
-      );
-      await _writeJson(
-        p.join(home, '.cursor', 'cli-config.json'),
-        const {
-          'authInfo': {'userId': 'u1', 'authId': 'a1'},
-        },
-      );
+      await _writeJson(p.join(home, '.config', 'cursor', 'auth.json'), const {
+        'accessToken': 'cursor-at',
+        'refreshToken': 'cursor-rt',
+      });
+      await _writeJson(p.join(home, '.cursor', 'cli-config.json'), const {
+        'authInfo': {'userId': 'u1', 'authId': 'a1'},
+      });
 
       final service = ProviderImportService(repository: repository);
       final result = await service.importForCli(
@@ -366,13 +347,10 @@ wire_api = "chat"
   test('imports opencode providers from global auth.json', () async {
     const layout = OpencodeDataLayout();
     final authDir = layout.globalDataHome(home);
-    await _writeJson(
-      layout.authJsonPath(authDir),
-      const {
-        'openai': {'type': 'api', 'key': 'sk-openai'},
-        'anthropic': {'type': 'api', 'key': 'sk-anthropic'},
-      },
-    );
+    await _writeJson(layout.authJsonPath(authDir), const {
+      'openai': {'type': 'api', 'key': 'sk-openai'},
+      'anthropic': {'type': 'api', 'key': 'sk-anthropic'},
+    });
     await _writeJson(
       layout.opencodeConfigPath(layout.globalConfigHome(home)),
       const {'model': 'openai/gpt-4o'},

@@ -42,6 +42,8 @@ CredentialActionResult loginProcessError(String executable) {
 CredentialActionResult revokeVerifyResult(bool cleared) {
   if (cleared) return CredentialActionResult.success;
   return CredentialActionResult.failure(
-    const CredentialActionFailure(code: CredentialActionFailureCode.revokeFailed),
+    const CredentialActionFailure(
+      code: CredentialActionFailureCode.revokeFailed,
+    ),
   );
 }

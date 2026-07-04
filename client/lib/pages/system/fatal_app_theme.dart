@@ -27,9 +27,7 @@ Future<ThemeData> resolveFatalAppTheme() async {
   } on Object {
     final brightness =
         WidgetsBinding.instance.platformDispatcher.platformBrightness;
-    return brightness == Brightness.dark
-        ? buildDarkTheme()
-        : buildLightTheme();
+    return brightness == Brightness.dark ? buildDarkTheme() : buildLightTheme();
   }
 }
 

@@ -59,7 +59,8 @@ Widget _host({
           BlocProvider<AutomationCubit>.value(value: automationCubit),
         ],
         child: Scaffold(
-          body: child ??
+          body:
+              child ??
               SidebarSessionTile(
                 session: _session,
                 launchProfileId: LaunchProfileProvisioner.defaultPersonalId,

@@ -34,7 +34,11 @@ class _SshProfilesSectionState extends State<SshProfilesSection> {
   SshProfileConnectionStatus _statusOf(String id) =>
       _statusById[id] ?? SshProfileConnectionStatus.disconnected;
 
-  void _setStatus(String id, SshProfileConnectionStatus status, {String? error}) {
+  void _setStatus(
+    String id,
+    SshProfileConnectionStatus status, {
+    String? error,
+  }) {
     setState(() {
       _statusById[id] = status;
       if (error == null) {
@@ -52,7 +56,9 @@ class _SshProfilesSectionState extends State<SshProfilesSection> {
     try {
       final creds = await _loadCredentials(profile);
       final tester = SshProfileConnectionTester(
-        clientFactory: context.read<TerminalTransportFactory>().sshClientFactory,
+        clientFactory: context
+            .read<TerminalTransportFactory>()
+            .sshClientFactory,
       );
       await tester.test(
         profile,
@@ -133,11 +139,8 @@ class _SshProfilesSectionState extends State<SshProfilesSection> {
     _setStatus(profile.id, SshProfileConnectionStatus.disconnected);
   }
 
-  Future<({
-    String? password,
-    String? privateKey,
-    String? passphrase,
-  })> _loadCredentials(SshProfile profile) async {
+  Future<({String? password, String? privateKey, String? passphrase})>
+  _loadCredentials(SshProfile profile) async {
     final store = context.read<SshCredentialStore>();
     if (profile.authType == SshAuthType.password) {
       return (
@@ -218,7 +221,10 @@ class _SshProfilesSectionState extends State<SshProfilesSection> {
             else if (profiles.isEmpty)
               Container(
                 alignment: Alignment.center,
-                padding: const EdgeInsets.symmetric(vertical: 28, horizontal: 16),
+                padding: const EdgeInsets.symmetric(
+                  vertical: 28,
+                  horizontal: 16,
+                ),
                 decoration: BoxDecoration(
                   border: Border.all(
                     color: Theme.of(context).colorScheme.outlineVariant,
@@ -245,7 +251,8 @@ class _SshProfilesSectionState extends State<SshProfilesSection> {
                     onTest: () => _runTest(profile),
                     onConnect: () => _connect(profile),
                     onDisconnect: () => _disconnect(profile),
-                    onEdit: () => openSshProfileEditor(context, profile: profile),
+                    onEdit: () =>
+                        openSshProfileEditor(context, profile: profile),
                     onDelete: () => confirmDeleteSshProfile(context, profile),
                     onRefresh: () => context.read<SshProfileCubit>().load(),
                     onConfigure: () => showSshProfileTargetConfigDialog(

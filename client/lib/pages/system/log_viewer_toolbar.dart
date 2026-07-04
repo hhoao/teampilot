@@ -1,4 +1,4 @@
-﻿import 'package:flutter/material.dart';
+import 'package:flutter/material.dart';
 import 'package:teampilot/theme/app_icon_sizes.dart';
 import 'package:path/path.dart' as p;
 
@@ -62,7 +62,8 @@ class LogViewerToolbar extends StatelessWidget {
   Widget build(BuildContext context) {
     final l10n = context.l10n;
     final cs = Theme.of(context).colorScheme;
-    final fileValue = selectedFile ?? (logFiles.isNotEmpty ? logFiles.first : null);
+    final fileValue =
+        selectedFile ?? (logFiles.isNotEmpty ? logFiles.first : null);
 
     return Container(
       padding: const EdgeInsets.fromLTRB(

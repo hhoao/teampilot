@@ -51,8 +51,9 @@ class MemberPresenceService {
     required Map<String, TerminalSession> memberShells,
     PresenceSessionContext? session,
   }) async {
-    final presenceCap =
-        _cliToolRegistry.capability<PresenceCapability>(teamCli);
+    final presenceCap = _cliToolRegistry.capability<PresenceCapability>(
+      teamCli,
+    );
     final usesClaudeRoster = presenceCap?.usesClaudeRoster ?? false;
     final usesShellActivity = presenceCap?.usesShellActivity ?? false;
 
@@ -86,11 +87,10 @@ class MemberPresenceService {
           teamMode: teamMode,
           globalPresets: globalPresets,
           bus: bus,
-          claudeRosterWorking:
-              _claudeRoster.isMemberWorking(
-                memberId: member.id,
-                workingByName: claudeWorking,
-              ),
+          claudeRosterWorking: _claudeRoster.isMemberWorking(
+            memberId: member.id,
+            workingByName: claudeWorking,
+          ),
           usesClaudeRoster: usesClaudeRoster,
           usesShellActivity: usesShellActivity,
         ),

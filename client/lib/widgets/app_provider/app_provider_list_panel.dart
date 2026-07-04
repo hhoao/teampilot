@@ -109,54 +109,62 @@ class _AppProviderListPanelState extends State<AppProviderListPanel> {
                 ),
               ),
             ),
-            child: BlocSelector<AppProviderCubit, AppProviderState,
-                _ProviderListHeaderState>(
-              selector: (state) => _ProviderListHeaderState(
-                isLoading: state.isLoading,
-                selectedCli: state.selectedCli,
-              ),
-              builder: (context, header) {
-                final cubit = context.read<AppProviderCubit>();
-                return _ProviderListControls(
-                  search: _search,
-                  onQueryChanged: (value) => setState(() => _query = value),
-                  onAdd: widget.onAdd,
-                  onImport: widget.onImport,
-                  isLoading: header.isLoading,
-                  selectedCli: header.selectedCli,
-                  onCliChanged: cubit.setSelectedCli,
-                );
-              },
-            ),
-          ),
-          Expanded(
-            child: BlocSelector<AppProviderCubit, AppProviderState,
-                List<AppProviderConfig>>(
-              selector: (state) => state.providers,
-              builder: (context, allProviders) {
-                final providers = _filterProviders(allProviders);
-                if (providers.isEmpty) {
-                  return Center(child: Text(l10n.selectProvider));
-                }
-                return ListView.separated(
-                  padding: const EdgeInsets.fromLTRB(12, 8, 12, 12),
-                  itemCount: providers.length,
-                  separatorBuilder: (_, __) => const SizedBox(height: 8),
-                  itemBuilder: (context, index) {
-                    final provider = providers[index];
-                    return _ProviderListTileHost(
-                      key: ValueKey(provider.id),
-                      provider: provider,
-                      hubStyle: widget.hubStyle,
-                      selectedIdOverride: widget.selectedId,
-                      onTap: () => widget.onSelect(provider.id),
-                      onEdit: () => widget.onEdit(provider),
-                      onDelete: () => widget.onDelete(provider.id),
+            child:
+                BlocSelector<
+                  AppProviderCubit,
+                  AppProviderState,
+                  _ProviderListHeaderState
+                >(
+                  selector: (state) => _ProviderListHeaderState(
+                    isLoading: state.isLoading,
+                    selectedCli: state.selectedCli,
+                  ),
+                  builder: (context, header) {
+                    final cubit = context.read<AppProviderCubit>();
+                    return _ProviderListControls(
+                      search: _search,
+                      onQueryChanged: (value) => setState(() => _query = value),
+                      onAdd: widget.onAdd,
+                      onImport: widget.onImport,
+                      isLoading: header.isLoading,
+                      selectedCli: header.selectedCli,
+                      onCliChanged: cubit.setSelectedCli,
                     );
                   },
-                );
-              },
-            ),
+                ),
+          ),
+          Expanded(
+            child:
+                BlocSelector<
+                  AppProviderCubit,
+                  AppProviderState,
+                  List<AppProviderConfig>
+                >(
+                  selector: (state) => state.providers,
+                  builder: (context, allProviders) {
+                    final providers = _filterProviders(allProviders);
+                    if (providers.isEmpty) {
+                      return Center(child: Text(l10n.selectProvider));
+                    }
+                    return ListView.separated(
+                      padding: const EdgeInsets.fromLTRB(12, 8, 12, 12),
+                      itemCount: providers.length,
+                      separatorBuilder: (_, __) => const SizedBox(height: 8),
+                      itemBuilder: (context, index) {
+                        final provider = providers[index];
+                        return _ProviderListTileHost(
+                          key: ValueKey(provider.id),
+                          provider: provider,
+                          hubStyle: widget.hubStyle,
+                          selectedIdOverride: widget.selectedId,
+                          onTap: () => widget.onSelect(provider.id),
+                          onEdit: () => widget.onEdit(provider),
+                          onDelete: () => widget.onDelete(provider.id),
+                        );
+                      },
+                    );
+                  },
+                ),
           ),
         ],
       ),

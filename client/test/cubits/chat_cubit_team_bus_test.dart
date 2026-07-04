@@ -29,11 +29,7 @@ Future<bool> _mcpEndpointAcceptsHttp(Uri endpoint, String sessionId) async {
     req.headers.set('X-Session', sessionId);
     req.add(
       utf8.encode(
-        jsonEncode({
-          'jsonrpc': '2.0',
-          'id': 0,
-          'method': 'initialize',
-        }),
+        jsonEncode({'jsonrpc': '2.0', 'id': 0, 'method': 'initialize'}),
       ),
     );
     final resp = await req.close();
@@ -91,7 +87,9 @@ void main() {
     });
 
     test('openSessionTab creates TeamBus and loopback MCP server', () async {
-      final workspace = await repo.createWorkspace([WorkspaceFolder(path: '/tmp')]);
+      final workspace = await repo.createWorkspace([
+        WorkspaceFolder(path: '/tmp'),
+      ]);
       final session = await repo.createSession(
         workspace.workspaceId,
         sessionTeam: team.id,
@@ -121,7 +119,9 @@ void main() {
     });
 
     test('two mixed sessions share the same gateway port', () async {
-      final workspace = await repo.createWorkspace([WorkspaceFolder(path: '/tmp')]);
+      final workspace = await repo.createWorkspace([
+        WorkspaceFolder(path: '/tmp'),
+      ]);
       final sessionA = await repo.createSession(
         workspace.workspaceId,
         sessionTeam: team.id,
@@ -161,7 +161,9 @@ void main() {
     });
 
     test('closeTab stops MCP server and clears bus resources', () async {
-      final workspace = await repo.createWorkspace([WorkspaceFolder(path: '/tmp')]);
+      final workspace = await repo.createWorkspace([
+        WorkspaceFolder(path: '/tmp'),
+      ]);
       final session = await repo.createSession(
         workspace.workspaceId,
         sessionTeam: team.id,
@@ -187,10 +189,7 @@ void main() {
       await drainPendingAsyncWork();
 
       expect(cubit.hasTeamBusResources(session.sessionId), isFalse);
-      expect(
-        cubit.teammateBusMcpEndpointForSession(session.sessionId),
-        isNull,
-      );
+      expect(cubit.teammateBusMcpEndpointForSession(session.sessionId), isNull);
       expect(
         await _mcpEndpointAcceptsHttp(endpoint, session.sessionId),
         isFalse,

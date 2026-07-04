@@ -19,7 +19,12 @@ void main() {
 
   test('copyWith replaces the routing policy', () {
     const t = TeamTask(
-      id: 't0', seq: 0, title: 'a', brief: 'b', createdBy: 'lead', createdAt: 0,
+      id: 't0',
+      seq: 0,
+      title: 'a',
+      brief: 'b',
+      createdBy: 'lead',
+      createdAt: 0,
     );
     final r = t.copyWith(
       routing: t.routing.copyWith(stage: RoutingStage.open, escalatedAt: 5),

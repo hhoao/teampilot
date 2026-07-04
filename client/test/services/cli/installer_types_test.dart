@@ -45,8 +45,14 @@ void main() {
 
   group('needsUnixShellInvocation', () {
     test('true when executable contains env var or space', () {
-      expect(CliInstallerCommand.needsUnixShellInvocation(r'$HOME/bin/npm'), isTrue);
-      expect(CliInstallerCommand.needsUnixShellInvocation('/usr/bin/npm'), isFalse);
+      expect(
+        CliInstallerCommand.needsUnixShellInvocation(r'$HOME/bin/npm'),
+        isTrue,
+      );
+      expect(
+        CliInstallerCommand.needsUnixShellInvocation('/usr/bin/npm'),
+        isFalse,
+      );
     });
   });
 }

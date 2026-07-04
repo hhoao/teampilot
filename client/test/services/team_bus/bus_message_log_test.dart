@@ -1,7 +1,6 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:teampilot/services/team_bus/agent_node.dart';
 import 'package:teampilot/services/team_bus/cancellation.dart';
-import 'package:teampilot/services/team_bus/member_state.dart';
 import 'package:teampilot/services/team_bus/persistence/bus_message_log.dart';
 import 'package:teampilot/services/team_bus/persistence/in_memory_bus_message_log.dart';
 import 'package:teampilot/services/team_bus/team_bus.dart';
@@ -17,19 +16,21 @@ TeamMessage _m(String id) =>
     TeamMessage(id: id, from: 'w', to: 'leader', content: id);
 
 AgentNode _runningLeader() => AgentNode.test(
-      memberId: 'leader',
-      lifecycle: MemberLifecycle.running,
-      activity: MemberActivity.active,
-    );
+  memberId: 'leader',
+  lifecycle: MemberLifecycle.running,
+  activity: MemberActivity.active,
+);
 
 void main() {
   test('receivePending unblocks and clears park when cancelled', () async {
     final bus = TeamBus(launcher: FakeMemberLauncher());
-    bus.declareMember(AgentNode.test(
-      memberId: 'leader',
-      lifecycle: MemberLifecycle.running,
-      activity: MemberActivity.turnDoneReady,
-    ));
+    bus.declareMember(
+      AgentNode.test(
+        memberId: 'leader',
+        lifecycle: MemberLifecycle.running,
+        activity: MemberActivity.turnDoneReady,
+      ),
+    );
 
     final cancel = CancellationToken();
     final pending = bus.receivePending('leader', cancel: cancel);
@@ -38,8 +39,11 @@ void main() {
 
     cancel.cancel();
     expect(await pending, isEmpty);
-    expect(bus.isWaitingForMessage('leader'), isFalse,
-        reason: 'cancel must release the park, not leak it');
+    expect(
+      bus.isWaitingForMessage('leader'),
+      isFalse,
+      reason: 'cancel must release the park, not leak it',
+    );
     expect(
       bus.memberById('leader')!.activity,
       MemberActivity.turnDoneReady,
@@ -47,37 +51,43 @@ void main() {
     );
   });
 
-  test('receiveWork MCP cancel resumes active; generic cancel stays at prompt',
-      () async {
-    final bus = TeamBus(launcher: FakeMemberLauncher());
-    bus.declareMember(AgentNode.test(
-      memberId: 'leader',
-      lifecycle: MemberLifecycle.running,
-      activity: MemberActivity.turnDoneReady,
-    ));
+  test(
+    'receiveWork MCP cancel resumes active; generic cancel stays at prompt',
+    () async {
+      final bus = TeamBus(launcher: FakeMemberLauncher());
+      bus.declareMember(
+        AgentNode.test(
+          memberId: 'leader',
+          lifecycle: MemberLifecycle.running,
+          activity: MemberActivity.turnDoneReady,
+        ),
+      );
 
-    final mcpCancel = CancellationToken();
-    final mcpWait = bus.receiveWork('leader', cancel: mcpCancel);
-    await Future<void>.delayed(Duration.zero);
-    expect(bus.isWaitingForMessage('leader'), isTrue);
+      final mcpCancel = CancellationToken();
+      final mcpWait = bus.receiveWork('leader', cancel: mcpCancel);
+      await Future<void>.delayed(Duration.zero);
+      expect(bus.isWaitingForMessage('leader'), isTrue);
 
-    mcpCancel.cancel(WaitCancelReason.mcpCancelled);
-    expect(await mcpWait, isA<EmptyWork>());
-    expect(bus.isWaitingForMessage('leader'), isFalse);
-    expect(bus.memberById('leader')!.activity, MemberActivity.active);
+      mcpCancel.cancel(WaitCancelReason.mcpCancelled);
+      expect(await mcpWait, isA<EmptyWork>());
+      expect(bus.isWaitingForMessage('leader'), isFalse);
+      expect(bus.memberById('leader')!.activity, MemberActivity.active);
 
-    bus.declareMember(AgentNode.test(
-      memberId: 'worker',
-      lifecycle: MemberLifecycle.running,
-      activity: MemberActivity.turnDoneReady,
-    ));
-    final disconnect = CancellationToken();
-    final disconnectWait = bus.receiveWork('worker', cancel: disconnect);
-    await Future<void>.delayed(Duration.zero);
-    disconnect.cancel();
-    expect(await disconnectWait, isA<EmptyWork>());
-    expect(bus.memberById('worker')!.activity, MemberActivity.turnDoneReady);
-  });
+      bus.declareMember(
+        AgentNode.test(
+          memberId: 'worker',
+          lifecycle: MemberLifecycle.running,
+          activity: MemberActivity.turnDoneReady,
+        ),
+      );
+      final disconnect = CancellationToken();
+      final disconnectWait = bus.receiveWork('worker', cancel: disconnect);
+      await Future<void>.delayed(Duration.zero);
+      disconnect.cancel();
+      expect(await disconnectWait, isA<EmptyWork>());
+      expect(bus.memberById('worker')!.activity, MemberActivity.turnDoneReady);
+    },
+  );
 
   test('readMessages browses unread pages without consuming', () async {
     final bus = TeamBus(
@@ -161,21 +171,18 @@ void main() {
     expect((await bus.receivePending('leader')).map((m) => m.id), ['1']);
   });
 
-  test('rehydrateUnread rebuilds the unread set from the log (idempotent)',
-      () async {
-    final log = InMemoryBusMessageLog();
-    await log.appendMessage(
-      'leader',
-      0,
-      _m('a'),
-      0,
-    );
-    final bus = TeamBus(launcher: FakeMemberLauncher(), messageLog: log);
-    bus.declareMember(AgentNode.test(memberId: 'leader'));
+  test(
+    'rehydrateUnread rebuilds the unread set from the log (idempotent)',
+    () async {
+      final log = InMemoryBusMessageLog();
+      await log.appendMessage('leader', 0, _m('a'), 0);
+      final bus = TeamBus(launcher: FakeMemberLauncher(), messageLog: log);
+      bus.declareMember(AgentNode.test(memberId: 'leader'));
 
-    await bus.rehydrateUnread();
-    expect(bus.memberById('leader')!.inbox.unreadCount, 1);
-    await bus.rehydrateUnread();
-    expect(bus.memberById('leader')!.inbox.unreadCount, 1);
-  });
+      await bus.rehydrateUnread();
+      expect(bus.memberById('leader')!.inbox.unreadCount, 1);
+      await bus.rehydrateUnread();
+      expect(bus.memberById('leader')!.inbox.unreadCount, 1);
+    },
+  );
 }

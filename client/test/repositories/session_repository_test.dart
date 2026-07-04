@@ -48,7 +48,9 @@ void main() {
       addTearDown(() => tmp.deleteSync(recursive: true));
 
       final repo = SessionRepository(rootDir: tmp.path);
-      final workspace = await repo.createWorkspace([WorkspaceFolder(path: '/tmp/my-workspace')]);
+      final workspace = await repo.createWorkspace([
+        WorkspaceFolder(path: '/tmp/my-workspace'),
+      ]);
       expect(workspace.firstFolderPath, '/tmp/my-workspace');
 
       final session = await repo.createSession(workspace.workspaceId);
@@ -73,20 +75,25 @@ void main() {
     },
   );
 
-  test('createSession prepends sessionId without bumping workspace updatedAt', () async {
-    final tmp = await Directory.systemTemp.createTemp('fs_session_repo_');
-    addTearDown(() => tmp.deleteSync(recursive: true));
+  test(
+    'createSession prepends sessionId without bumping workspace updatedAt',
+    () async {
+      final tmp = await Directory.systemTemp.createTemp('fs_session_repo_');
+      addTearDown(() => tmp.deleteSync(recursive: true));
 
-    final repo = SessionRepository(rootDir: tmp.path);
-    final workspace = await repo.createWorkspace([WorkspaceFolder(path: '/a')]);
-    final s1 = await repo.createSession(workspace.workspaceId);
-    final afterFirst = (await repo.loadWorkspaces()).single;
-    final s2 = await repo.createSession(workspace.workspaceId);
-    final afterSecond = (await repo.loadWorkspaces()).single;
+      final repo = SessionRepository(rootDir: tmp.path);
+      final workspace = await repo.createWorkspace([
+        WorkspaceFolder(path: '/a'),
+      ]);
+      final s1 = await repo.createSession(workspace.workspaceId);
+      final afterFirst = (await repo.loadWorkspaces()).single;
+      final s2 = await repo.createSession(workspace.workspaceId);
+      final afterSecond = (await repo.loadWorkspaces()).single;
 
-    expect(afterSecond.sessionIds, [s2.sessionId, s1.sessionId]);
-    expect(afterSecond.updatedAt, afterFirst.updatedAt);
-  });
+      expect(afterSecond.sessionIds, [s2.sessionId, s1.sessionId]);
+      expect(afterSecond.updatedAt, afterFirst.updatedAt);
+    },
+  );
 
   test('deleteWorkspace removes workspace and session files', () async {
     final tmp = await Directory.systemTemp.createTemp('fs_session_repo_');
@@ -124,7 +131,9 @@ void main() {
         rootDir: tmp.path,
         lifecycleService: lifecycle,
       );
-      final workspace = await repo.createWorkspace([WorkspaceFolder(path: '/a')]);
+      final workspace = await repo.createWorkspace([
+        WorkspaceFolder(path: '/a'),
+      ]);
       final session = await repo.createSession(
         workspace.workspaceId,
         sessionTeam: 'team-a',
@@ -184,14 +193,11 @@ void main() {
       ]);
       expect(p1.extraFolderPaths, ['/a']);
 
-      final p2 = await repo.createWorkspace(
-        [
-          WorkspaceFolder(path: '/root'),
-          WorkspaceFolder(path: '/b'),
-          WorkspaceFolder(path: '/a'),
-        ],
-        display: 'My display',
-      );
+      final p2 = await repo.createWorkspace([
+        WorkspaceFolder(path: '/root'),
+        WorkspaceFolder(path: '/b'),
+        WorkspaceFolder(path: '/a'),
+      ], display: 'My display');
       expect(p2.workspaceId, p1.workspaceId);
       expect(p2.extraFolderPaths, ['/a', '/b']);
       expect(p2.display, 'My display');
@@ -210,34 +216,40 @@ void main() {
     expect((await repo.loadWorkspaces()).length, 1);
   });
 
-  test('createWorkspace allowDuplicate creates distinct same-path workspace',
-      () async {
-    final tmp = await Directory.systemTemp.createTemp('fs_session_repo_');
-    addTearDown(() => tmp.deleteSync(recursive: true));
+  test(
+    'createWorkspace allowDuplicate creates distinct same-path workspace',
+    () async {
+      final tmp = await Directory.systemTemp.createTemp('fs_session_repo_');
+      addTearDown(() => tmp.deleteSync(recursive: true));
 
-    final repo = SessionRepository(rootDir: tmp.path);
-    final a = await repo.createWorkspace([WorkspaceFolder(path: '/shared')], display: 'First');
-    final b = await repo.createWorkspace([WorkspaceFolder(path: '/shared')], display: 'Second',
-      allowDuplicate: true,
-    );
+      final repo = SessionRepository(rootDir: tmp.path);
+      final a = await repo.createWorkspace([
+        WorkspaceFolder(path: '/shared'),
+      ], display: 'First');
+      final b = await repo.createWorkspace(
+        [WorkspaceFolder(path: '/shared')],
+        display: 'Second',
+        allowDuplicate: true,
+      );
 
-    expect(a.workspaceId, isNot(b.workspaceId));
-    expect(a.firstFolderPath, b.firstFolderPath);
-    final loaded = await repo.loadWorkspaces();
-    expect(loaded.length, 2);
-    expect(loaded.map((w) => w.display).toSet(), {'First', 'Second'});
-  });
+      expect(a.workspaceId, isNot(b.workspaceId));
+      expect(a.firstFolderPath, b.firstFolderPath);
+      final loaded = await repo.loadWorkspaces();
+      expect(loaded.length, 2);
+      expect(loaded.map((w) => w.display).toSet(), {'First', 'Second'});
+    },
+  );
 
   test('updateWorkspaceMetadata updates display', () async {
     final tmp = await Directory.systemTemp.createTemp('fs_session_repo_');
     addTearDown(() => tmp.deleteSync(recursive: true));
 
     final repo = SessionRepository(rootDir: tmp.path);
-    final p = await repo.createWorkspace([WorkspaceFolder(path: '/base'), WorkspaceFolder(path: '/a')]);
-    await repo.updateWorkspaceMetadata(
-      p.workspaceId,
-      display: 'My App',
-    );
+    final p = await repo.createWorkspace([
+      WorkspaceFolder(path: '/base'),
+      WorkspaceFolder(path: '/a'),
+    ]);
+    await repo.updateWorkspaceMetadata(p.workspaceId, display: 'My App');
     final loaded = await repo.loadWorkspaces();
     expect(loaded.single.display, 'My App');
     expect(loaded.single.extraFolderPaths, ['/a']);
@@ -260,24 +272,30 @@ void main() {
     expect(loaded.icon, WorkspaceIconRef.auto);
   });
 
-  test('importCustomWorkspaceIcon persists file and preset clears custom', () async {
-    final tmp = await Directory.systemTemp.createTemp('fs_session_repo_');
-    addTearDown(() => tmp.deleteSync(recursive: true));
+  test(
+    'importCustomWorkspaceIcon persists file and preset clears custom',
+    () async {
+      final tmp = await Directory.systemTemp.createTemp('fs_session_repo_');
+      addTearDown(() => tmp.deleteSync(recursive: true));
 
-    final iconFile = File('${tmp.path}/picked.png');
-    await iconFile.writeAsBytes([0x89, 0x50, 0x4E, 0x47]);
+      final iconFile = File('${tmp.path}/picked.png');
+      await iconFile.writeAsBytes([0x89, 0x50, 0x4E, 0x47]);
 
-    final repo = SessionRepository(rootDir: tmp.path);
-    final p = await repo.createWorkspace([WorkspaceFolder(path: '/base')]);
-    await repo.importCustomWorkspaceIcon(p.workspaceId, iconFile.path);
+      final repo = SessionRepository(rootDir: tmp.path);
+      final p = await repo.createWorkspace([WorkspaceFolder(path: '/base')]);
+      await repo.importCustomWorkspaceIcon(p.workspaceId, iconFile.path);
 
-    var loaded = (await repo.loadWorkspaces()).single;
-    expect(loaded.icon, WorkspaceIconCustom('assets/icon.png'));
+      var loaded = (await repo.loadWorkspaces()).single;
+      expect(loaded.icon, WorkspaceIconCustom('assets/icon.png'));
 
-    await repo.applyWorkspaceIcon(p.workspaceId, const WorkspaceIconPreset(2));
-    loaded = (await repo.loadWorkspaces()).single;
-    expect(loaded.icon, const WorkspaceIconPreset(2));
-  });
+      await repo.applyWorkspaceIcon(
+        p.workspaceId,
+        const WorkspaceIconPreset(2),
+      );
+      loaded = (await repo.loadWorkspaces()).single;
+      expect(loaded.icon, const WorkspaceIconPreset(2));
+    },
+  );
 
   test('updateWorkspaceFolders updates index', () async {
     final tmp = await Directory.systemTemp.createTemp('fs_session_repo_');
@@ -285,7 +303,10 @@ void main() {
 
     final repo = SessionRepository(rootDir: tmp.path);
     final p = await repo.createWorkspace([WorkspaceFolder(path: '/old')]);
-    await repo.updateWorkspaceFolders(p.workspaceId, [WorkspaceFolder(path: '/new'), WorkspaceFolder(path: '/x')]);
+    await repo.updateWorkspaceFolders(p.workspaceId, [
+      WorkspaceFolder(path: '/new'),
+      WorkspaceFolder(path: '/x'),
+    ]);
     final loaded = await repo.loadWorkspaces();
     expect(loaded.single.firstFolderPath, '/new');
     expect(loaded.single.extraFolderPaths, ['/x']);
@@ -298,11 +319,17 @@ void main() {
       addTearDown(() => tmp.deleteSync(recursive: true));
 
       final repo = SessionRepository(rootDir: tmp.path);
-      final p = await repo.createWorkspace([WorkspaceFolder(path: '/p'), WorkspaceFolder(path: '/q')]);
+      final p = await repo.createWorkspace([
+        WorkspaceFolder(path: '/p'),
+        WorkspaceFolder(path: '/q'),
+      ]);
       final s1 = await repo.createSession(p.workspaceId);
       expect(s1.extraFolderPaths, ['/q']);
 
-      await repo.updateWorkspaceFolders(p.workspaceId, [WorkspaceFolder(path: '/p'), WorkspaceFolder(path: '/r')]);
+      await repo.updateWorkspaceFolders(p.workspaceId, [
+        WorkspaceFolder(path: '/p'),
+        WorkspaceFolder(path: '/r'),
+      ]);
       final s2 = await repo.createSession(p.workspaceId);
       expect(s2.extraFolderPaths, ['/r']);
       final s1Reload = (await repo.loadSessions()).firstWhere(
@@ -330,20 +357,25 @@ void main() {
     expect(list.single.sessionId, good.sessionId);
   });
 
-  test('markSessionLaunched sets started without changing sessionTeam', () async {
-    final tmp = await Directory.systemTemp.createTemp('fs_session_repo_');
-    addTearDown(() => tmp.deleteSync(recursive: true));
+  test(
+    'markSessionLaunched sets started without changing sessionTeam',
+    () async {
+      final tmp = await Directory.systemTemp.createTemp('fs_session_repo_');
+      addTearDown(() => tmp.deleteSync(recursive: true));
 
-    final repo = SessionRepository(rootDir: tmp.path);
-    final workspace = await repo.createWorkspace([WorkspaceFolder(path: '/w')]);
-    final session = await repo.createSession(workspace.workspaceId);
-    await repo.markSessionLaunched(session.sessionId);
+      final repo = SessionRepository(rootDir: tmp.path);
+      final workspace = await repo.createWorkspace([
+        WorkspaceFolder(path: '/w'),
+      ]);
+      final session = await repo.createSession(workspace.workspaceId);
+      await repo.markSessionLaunched(session.sessionId);
 
-    final disk = (await repo.loadSessions()).single;
-    expect(disk.launchState, AppSessionLaunchState.started);
-    expect(disk.sessionTeam, '');
-    expect(disk.cliTeamName, '');
-  });
+      final disk = (await repo.loadSessions()).single;
+      expect(disk.launchState, AppSessionLaunchState.started);
+      expect(disk.sessionTeam, '');
+      expect(disk.cliTeamName, '');
+    },
+  );
 
   test('createSession persists sessionTeam when provided', () async {
     final tmp = await Directory.systemTemp.createTemp('fs_session_repo_');
@@ -366,28 +398,25 @@ void main() {
     expect(disk.cliTeamName, 'team-config-id-1-1');
   });
 
-  test(
-    'team session gets cliTeamName and per-member taskIds',
-    () async {
-      final tmp = await Directory.systemTemp.createTemp('fs_session_repo_');
-      addTearDown(() => tmp.deleteSync(recursive: true));
+  test('team session gets cliTeamName and per-member taskIds', () async {
+    final tmp = await Directory.systemTemp.createTemp('fs_session_repo_');
+    addTearDown(() => tmp.deleteSync(recursive: true));
 
-      final repo = SessionRepository(rootDir: tmp.path);
-      final workspace = await repo.createWorkspace([WorkspaceFolder(path: '/w')]);
-      const roster = [
-        TeamMemberConfig(id: 'team-lead', name: 'team-lead'),
-        TeamMemberConfig(id: 'worker', name: 'worker'),
-      ];
-      final s = await repo.createSession(
-        workspace.workspaceId,
-        sessionTeam: 'team-a',
-        rosterMembers: roster,
-      );
-      expect(s.cliTeamName, 'team-a-1');
-      expect(s.members.length, 2);
-      expect(s.members.map((b) => b.taskId).toSet().length, 2);
-    },
-  );
+    final repo = SessionRepository(rootDir: tmp.path);
+    final workspace = await repo.createWorkspace([WorkspaceFolder(path: '/w')]);
+    const roster = [
+      TeamMemberConfig(id: 'team-lead', name: 'team-lead'),
+      TeamMemberConfig(id: 'worker', name: 'worker'),
+    ];
+    final s = await repo.createSession(
+      workspace.workspaceId,
+      sessionTeam: 'team-a',
+      rosterMembers: roster,
+    );
+    expect(s.cliTeamName, 'team-a-1');
+    expect(s.members.length, 2);
+    expect(s.members.map((b) => b.taskId).toSet().length, 2);
+  });
 
   test('ensureMemberBinding appends binding for new roster member', () async {
     final tmp = await Directory.systemTemp.createTemp('fs_session_repo_');
@@ -420,7 +449,9 @@ void main() {
       addTearDown(() => tmp.deleteSync(recursive: true));
 
       final repo = SessionRepository(rootDir: tmp.path);
-      final workspace = await repo.createWorkspace([WorkspaceFolder(path: '/w')]);
+      final workspace = await repo.createWorkspace([
+        WorkspaceFolder(path: '/w'),
+      ]);
       final session = await repo.createSession(workspace.workspaceId);
       await Future.wait([
         repo.updateSessionTeam(session.sessionId, 'team-x'),
@@ -461,45 +492,52 @@ void main() {
     expect((await repo.loadSessions()).single.profileId, 'writing');
   });
 
-  test('team session ignores personalIdentityId (profileId stays empty)',
-      () async {
-    final tmp = await Directory.systemTemp.createTemp('fs_session_repo_');
-    addTearDown(() => tmp.deleteSync(recursive: true));
+  test(
+    'team session ignores personalIdentityId (profileId stays empty)',
+    () async {
+      final tmp = await Directory.systemTemp.createTemp('fs_session_repo_');
+      addTearDown(() => tmp.deleteSync(recursive: true));
 
-    final repo = SessionRepository(rootDir: tmp.path);
-    final workspace = await repo.createWorkspace([WorkspaceFolder(path: '/w')]);
-    final session = await repo.createSession(
-      workspace.workspaceId,
-      sessionTeam: 'team-a',
-      personalIdentityId: 'writing',
-      rosterMembers: [
-        const TeamMemberConfig(id: 'team-lead', name: 'Lead'),
-      ],
-    );
+      final repo = SessionRepository(rootDir: tmp.path);
+      final workspace = await repo.createWorkspace([
+        WorkspaceFolder(path: '/w'),
+      ]);
+      final session = await repo.createSession(
+        workspace.workspaceId,
+        sessionTeam: 'team-a',
+        personalIdentityId: 'writing',
+        rosterMembers: [const TeamMemberConfig(id: 'team-lead', name: 'Lead')],
+      );
 
-    expect(session.profileId, '');
-    expect((await repo.loadSessions()).single.profileId, '');
-  });
+      expect(session.profileId, '');
+      expect((await repo.loadSessions()).single.profileId, '');
+    },
+  );
 
-  test('loadWorkspacesIndex maintains workspaces-index.json snapshot', () async {
-    final tmp = await Directory.systemTemp.createTemp('fs_session_repo_');
-    addTearDown(() => tmp.deleteSync(recursive: true));
+  test(
+    'loadWorkspacesIndex maintains workspaces-index.json snapshot',
+    () async {
+      final tmp = await Directory.systemTemp.createTemp('fs_session_repo_');
+      addTearDown(() => tmp.deleteSync(recursive: true));
 
-    final repo = SessionRepository(rootDir: tmp.path);
-    final workspace = await repo.createWorkspace([WorkspaceFolder(path: '/a')]);
-    final session = await repo.createSession(workspace.workspaceId);
+      final repo = SessionRepository(rootDir: tmp.path);
+      final workspace = await repo.createWorkspace([
+        WorkspaceFolder(path: '/a'),
+      ]);
+      final session = await repo.createSession(workspace.workspaceId);
 
-    final indexPath = '${tmp.path}/workspace/workspaces-index.json';
-    expect(File(indexPath).existsSync(), isTrue);
+      final indexPath = '${tmp.path}/workspace/workspaces-index.json';
+      expect(File(indexPath).existsSync(), isTrue);
 
-    final fromIndex = await repo.loadWorkspacesIndex();
-    expect(fromIndex.single.workspaceId, workspace.workspaceId);
-    expect(fromIndex.single.sessionIds, contains(session.sessionId));
+      final fromIndex = await repo.loadWorkspacesIndex();
+      expect(fromIndex.single.workspaceId, workspace.workspaceId);
+      expect(fromIndex.single.sessionIds, contains(session.sessionId));
 
-    await repo.deleteSession(session.sessionId);
-    final afterDelete = await repo.loadWorkspacesIndex();
-    expect(afterDelete.single.sessionIds, isEmpty);
-  });
+      await repo.deleteSession(session.sessionId);
+      final afterDelete = await repo.loadWorkspacesIndex();
+      expect(afterDelete.single.sessionIds, isEmpty);
+    },
+  );
 
   test('deleteWorkspace removes entry from workspaces-index.json', () async {
     final tmp = await Directory.systemTemp.createTemp('fs_session_repo_');

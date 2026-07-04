@@ -5,10 +5,7 @@ import '../services/io/filesystem.dart';
 import '../utils/logger.dart';
 
 class CliPresetsRepository {
-  CliPresetsRepository({
-    required this.fs,
-    required this.presetsPath,
-  });
+  CliPresetsRepository({required this.fs, required this.presetsPath});
 
   final Filesystem fs;
   final String presetsPath;

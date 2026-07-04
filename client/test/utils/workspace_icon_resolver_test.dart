@@ -25,7 +25,9 @@ void main() {
   });
 
   test('resolveWorkspaceIcon uses preset geometry', () {
-    final resolved = resolveWorkspaceIcon(_workspace(icon: const WorkspaceIconPreset(3)));
+    final resolved = resolveWorkspaceIcon(
+      _workspace(icon: const WorkspaceIconPreset(3)),
+    );
     expect(
       (resolved as ResolvedWorkspaceGeometryIcon).assetPath,
       kWorkspaceGeometryIconAssets[3],

@@ -32,9 +32,17 @@ void main() {
   });
 
   test('removes stale claude provider credential dirs on save', () async {
-    await fs.ensureDir(fs.pathContext.join(base, 'providers', 'claude', 'old-id'));
+    await fs.ensureDir(
+      fs.pathContext.join(base, 'providers', 'claude', 'old-id'),
+    );
     await fs.writeString(
-      fs.pathContext.join(base, 'providers', 'claude', 'old-id', '.credentials.json'),
+      fs.pathContext.join(
+        base,
+        'providers',
+        'claude',
+        'old-id',
+        '.credentials.json',
+      ),
       '{"claudeAiOauth":{"accessToken":"old"}}',
     );
     await fs.writeString(
@@ -63,7 +71,9 @@ void main() {
     ]);
 
     expect(
-      (await fs.stat(fs.pathContext.join(base, 'providers', 'claude', 'old-id'))).exists,
+      (await fs.stat(
+        fs.pathContext.join(base, 'providers', 'claude', 'old-id'),
+      )).exists,
       isFalse,
     );
   });
@@ -85,10 +95,7 @@ void main() {
             'cli': 'claude',
             'name': 'Work',
             'category': 'official',
-            'config': {
-              'env': {},
-              credentialBindingConfigKey: 'linked',
-            },
+            'config': {'env': {}, credentialBindingConfigKey: 'linked'},
             'credentialStatus': 'missing',
           },
         },
@@ -132,10 +139,7 @@ void main() {
               'cli': 'claude',
               'name': 'Default',
               'category': 'official',
-              'config': {
-                'env': {},
-                credentialBindingConfigKey: 'isolated',
-              },
+              'config': {'env': {}, credentialBindingConfigKey: 'isolated'},
               'credentialStatus': 'missing',
             },
           },
@@ -182,10 +186,7 @@ void main() {
               'cli': 'claude',
               'name': 'Default',
               'category': 'official',
-              'config': {
-                'env': {},
-                credentialBindingConfigKey: 'linked',
-              },
+              'config': {'env': {}, credentialBindingConfigKey: 'linked'},
               'credentialStatus': 'missing',
             },
           },
@@ -214,59 +215,59 @@ void main() {
     },
   );
 
-  test('load does not overwrite isolated provider credentials from global', () async {
-    const home = '/home/user';
-    AppStorage.installForTesting(
-      filesystem: fs,
-      paths: AppPaths(base),
-      home: home,
-      cwd: '/tmp',
-    );
-    await fs.writeString(
-      fs.pathContext.join(base, 'providers', 'claude', 'providers.json'),
-      jsonEncode({
-        'providers': {
-          'default': {
-            'id': 'default',
-            'cli': 'claude',
-            'name': 'Default',
-            'category': 'official',
-            'config': {
-              'env': {},
-              credentialBindingConfigKey: 'isolated',
+  test(
+    'load does not overwrite isolated provider credentials from global',
+    () async {
+      const home = '/home/user';
+      AppStorage.installForTesting(
+        filesystem: fs,
+        paths: AppPaths(base),
+        home: home,
+        cwd: '/tmp',
+      );
+      await fs.writeString(
+        fs.pathContext.join(base, 'providers', 'claude', 'providers.json'),
+        jsonEncode({
+          'providers': {
+            'default': {
+              'id': 'default',
+              'cli': 'claude',
+              'name': 'Default',
+              'category': 'official',
+              'config': {'env': {}, credentialBindingConfigKey: 'isolated'},
+              'credentialStatus': 'ready',
             },
-            'credentialStatus': 'ready',
           },
-        },
-      }),
-    );
-    await fs.writeString(
-      fs.pathContext.join(
-        base,
-        'providers',
-        'claude',
-        'default',
-        '.credentials.json',
-      ),
-      '{"claudeAiOauth":{"accessToken":"local"}}',
-    );
-    await fs.writeString(
-      fs.pathContext.join(home, '.claude', '.credentials.json'),
-      '{"claudeAiOauth":{"accessToken":"global"}}',
-    );
+        }),
+      );
+      await fs.writeString(
+        fs.pathContext.join(
+          base,
+          'providers',
+          'claude',
+          'default',
+          '.credentials.json',
+        ),
+        '{"claudeAiOauth":{"accessToken":"local"}}',
+      );
+      await fs.writeString(
+        fs.pathContext.join(home, '.claude', '.credentials.json'),
+        '{"claudeAiOauth":{"accessToken":"global"}}',
+      );
 
-    await repository.loadProviders(CliTool.claude);
+      await repository.loadProviders(CliTool.claude);
 
-    final bytes = await fs.readBytes(
-      fs.pathContext.join(
-        base,
-        'providers',
-        'claude',
-        'default',
-        '.credentials.json',
-      ),
-    );
-    expect(bytes, isNotNull);
-    expect(String.fromCharCodes(bytes!), contains('local'));
-  });
+      final bytes = await fs.readBytes(
+        fs.pathContext.join(
+          base,
+          'providers',
+          'claude',
+          'default',
+          '.credentials.json',
+        ),
+      );
+      expect(bytes, isNotNull);
+      expect(String.fromCharCodes(bytes!), contains('local'));
+    },
+  );
 }

@@ -166,7 +166,8 @@ class LayoutPreferences {
     return LayoutPreferences(
       preset: preset ?? this.preset,
       workspaceEntryMode: workspaceEntryMode ?? this.workspaceEntryMode,
-      lastOpenedWorkspaceId: lastOpenedWorkspaceId ?? this.lastOpenedWorkspaceId,
+      lastOpenedWorkspaceId:
+          lastOpenedWorkspaceId ?? this.lastOpenedWorkspaceId,
       appRailVisible: appRailVisible ?? this.appRailVisible,
       membersVisible: membersVisible ?? this.membersVisible,
       fileTreeVisible: fileTreeVisible ?? this.fileTreeVisible,
@@ -205,9 +206,11 @@ class LayoutPreferences {
       locale: locale ?? this.locale,
       workspaceTerminalVisible:
           workspaceTerminalVisible ?? this.workspaceTerminalVisible,
-      workspaceTerminalHeight: (workspaceTerminalHeight ??
-              this.workspaceTerminalHeight)
-          .clamp(minWorkspaceTerminalHeight, maxWorkspaceTerminalHeight),
+      workspaceTerminalHeight:
+          (workspaceTerminalHeight ?? this.workspaceTerminalHeight).clamp(
+            minWorkspaceTerminalHeight,
+            maxWorkspaceTerminalHeight,
+          ),
     ).withAtLeastOneToolVisible();
   }
 
@@ -240,7 +243,6 @@ class LayoutPreferences {
       workspaceTerminalHeight: workspaceTerminalHeight,
     );
   }
-
 
   Map<String, Object?> toJson() {
     return {

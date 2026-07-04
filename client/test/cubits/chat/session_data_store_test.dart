@@ -23,46 +23,55 @@ void main() {
         createdAt: 0,
       ),
     ];
-    final snap = store.deriveSnapshot(workspaces: workspaces, sessions: sessions);
+    final snap = store.deriveSnapshot(
+      workspaces: workspaces,
+      sessions: sessions,
+    );
     expect(snap.visibleSessions, sessions);
     expect(snap.visibleWorkspaces, workspaces);
   });
 
-  test('team scope filters sessions by sessionTeam; workspaces stay unscoped', () {
-    final store = SessionDataStore()
-      ..setScope(scopeSessionsToSelectedTeam: true, selectedTeamId: 't1');
-    final workspaces = [
-      Workspace(
-        workspaceId: 'p1',
-        folders: [WorkspaceFolder(path: '/p1')],
-        createdAt: 0,
-      ),
-      Workspace(
-        workspaceId: 'p2',
-        folders: [WorkspaceFolder(path: '/p2')],
-        createdAt: 0,
-      ),
-    ];
-    final sessions = [
-      AppSession(
-        sessionId: 's1',
-        workspaceId: 'p1',
-        folders: [WorkspaceFolder(path: '/p1')],
-        sessionTeam: 't1',
-        createdAt: 0,
-      ),
-      AppSession(
-        sessionId: 's2',
-        workspaceId: 'p2',
-        folders: [WorkspaceFolder(path: '/p2')],
-        sessionTeam: 't2',
-        createdAt: 0,
-      ),
-    ];
-    final snap = store.deriveSnapshot(workspaces: workspaces, sessions: sessions);
-    expect(snap.visibleSessions.map((s) => s.sessionId).toList(), ['s1']);
-    expect(snap.visibleWorkspaces, workspaces);
-  });
+  test(
+    'team scope filters sessions by sessionTeam; workspaces stay unscoped',
+    () {
+      final store = SessionDataStore()
+        ..setScope(scopeSessionsToSelectedTeam: true, selectedTeamId: 't1');
+      final workspaces = [
+        Workspace(
+          workspaceId: 'p1',
+          folders: [WorkspaceFolder(path: '/p1')],
+          createdAt: 0,
+        ),
+        Workspace(
+          workspaceId: 'p2',
+          folders: [WorkspaceFolder(path: '/p2')],
+          createdAt: 0,
+        ),
+      ];
+      final sessions = [
+        AppSession(
+          sessionId: 's1',
+          workspaceId: 'p1',
+          folders: [WorkspaceFolder(path: '/p1')],
+          sessionTeam: 't1',
+          createdAt: 0,
+        ),
+        AppSession(
+          sessionId: 's2',
+          workspaceId: 'p2',
+          folders: [WorkspaceFolder(path: '/p2')],
+          sessionTeam: 't2',
+          createdAt: 0,
+        ),
+      ];
+      final snap = store.deriveSnapshot(
+        workspaces: workspaces,
+        sessions: sessions,
+      );
+      expect(snap.visibleSessions.map((s) => s.sessionId).toList(), ['s1']);
+      expect(snap.visibleWorkspaces, workspaces);
+    },
+  );
 
   test('team scope with empty team id shows personal sessions only', () {
     final store = SessionDataStore()
@@ -95,7 +104,10 @@ void main() {
         createdAt: 0,
       ),
     ];
-    final snap = store.deriveSnapshot(workspaces: workspaces, sessions: sessions);
+    final snap = store.deriveSnapshot(
+      workspaces: workspaces,
+      sessions: sessions,
+    );
     expect(snap.visibleSessions.map((s) => s.sessionId).toList(), ['solo']);
     expect(snap.visibleWorkspaces, workspaces);
   });

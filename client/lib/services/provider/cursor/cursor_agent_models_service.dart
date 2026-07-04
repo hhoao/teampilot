@@ -127,8 +127,11 @@ class CursorAgentModelsService {
     final existing = _inFlight[key];
     if (existing != null) return existing;
 
-    final task = _load(key, providerId: providerId, executable: executable)
-        .whenComplete(() => _inFlight.remove(key));
+    final task = _load(
+      key,
+      providerId: providerId,
+      executable: executable,
+    ).whenComplete(() => _inFlight.remove(key));
     _inFlight[key] = task;
     return task;
   }
@@ -177,7 +180,10 @@ class CursorAgentModelsService {
       return _ResolvedStorage(fs: snap.fs, basePath: snap.teampilotRoot);
     }
     _syncMemoryForBasePath(AppStorage.appDataRoot);
-    return _ResolvedStorage(fs: AppStorage.fs, basePath: AppStorage.appDataRoot);
+    return _ResolvedStorage(
+      fs: AppStorage.fs,
+      basePath: AppStorage.appDataRoot,
+    );
   }
 
   void _syncMemoryForBasePath(String basePath) {
@@ -198,13 +204,10 @@ class CursorAgentModelsService {
     return trimmed.isEmpty ? _globalCacheKey : trimmed;
   }
 
-  String _cacheFilePath(_ResolvedStorage roots, String cacheKey) =>
-      roots.fs.pathContext.join(
-        roots.basePath,
-        'cache',
-        'cursor_agent_models',
-        '$cacheKey.json',
-      );
+  String _cacheFilePath(_ResolvedStorage roots, String cacheKey) => roots
+      .fs
+      .pathContext
+      .join(roots.basePath, 'cache', 'cursor_agent_models', '$cacheKey.json');
 
   Future<CursorAgentModelsCacheEntry?> _readDiskCache(
     _ResolvedStorage roots,
@@ -275,8 +278,9 @@ class CursorAgentModelsService {
       basePath: roots.basePath,
     );
     final home = credentials.providerHome(id);
-    final authPath = CursorHomeLayout(pathContext: roots.fs.pathContext)
-        .authJson(home);
+    final authPath = CursorHomeLayout(
+      pathContext: roots.fs.pathContext,
+    ).authJson(home);
     final authStat = await roots.fs.stat(authPath);
     if (!authStat.isFile) return null;
 

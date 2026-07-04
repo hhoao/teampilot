@@ -59,7 +59,8 @@ class WorkspaceAgentConfigForm extends StatefulWidget {
   final LaunchProfileCubit cubit;
 
   @override
-  State<WorkspaceAgentConfigForm> createState() => WorkspaceAgentConfigFormState();
+  State<WorkspaceAgentConfigForm> createState() =>
+      WorkspaceAgentConfigFormState();
 }
 
 class WorkspaceAgentConfigFormState extends State<WorkspaceAgentConfigForm> {
@@ -133,8 +134,9 @@ class WorkspaceAgentConfigFormState extends State<WorkspaceAgentConfigForm> {
     final agent = personal.agent;
     final cliRegistry = CliToolRegistryScope.of(context);
     final presetsCubit = context.read<CliPresetsCubit>();
-    final activePreset =
-        presetsCubit.state.presetById(personal.activePresetId ?? '');
+    final activePreset = presetsCubit.state.presetById(
+      personal.activePresetId ?? '',
+    );
     final effectiveCli = activePreset?.cli ?? CliTool.claude;
     final showAgentPreset = cliRegistry.supportsMemberAgentPreset(effectiveCli);
     final agentPresetStyle = cliRegistry.memberAgentPresetStyle(effectiveCli);
@@ -174,11 +176,16 @@ class WorkspaceAgentConfigFormState extends State<WorkspaceAgentConfigForm> {
                           for (final preset in WorkspaceAgentPromptPreset.all)
                             ActionChip(
                               label: Text(
-                                workspaceAgentPromptPresetLabel(l10n, preset.id),
+                                workspaceAgentPromptPresetLabel(
+                                  l10n,
+                                  preset.id,
+                                ),
                                 style: AppTextStyles.of(context).bodySmall,
                               ),
                               visualDensity: VisualDensity.compact,
-                              padding: const EdgeInsets.symmetric(horizontal: 4),
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 4,
+                              ),
                               onPressed: () => _applyPromptPreset(preset.id),
                             ),
                         ],
@@ -272,7 +279,11 @@ class _PresetInfoRow extends StatelessWidget {
     );
   }
 
-  String _presetSubtitle(CliPreset preset, CliToolRegistry registry, AppLocalizations l10n) {
+  String _presetSubtitle(
+    CliPreset preset,
+    CliToolRegistry registry,
+    AppLocalizations l10n,
+  ) {
     final def = registry.tryGet(preset.cli);
     final cliName = def != null ? cliDisplayName(def, l10n) : preset.cli.value;
     return cliName;

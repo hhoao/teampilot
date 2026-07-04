@@ -139,17 +139,18 @@ class ChatSessionShellFactory {
               final remoteWorkingDirectory = workingDirectory.isNotEmpty
                   ? workingDirectory
                   : (_sshDefaultWorkingDirectoryResolver?.call() ?? '');
-              final command = const RemoteFlashskyaiCommandBuilder().buildCommand(
-                remoteExecutablePath: executable,
-                arguments: arguments,
-                workingDirectory: remoteWorkingDirectory.isEmpty
-                    ? null
-                    : remoteWorkingDirectory,
-                environment: remoteEnvironment.isNotEmpty
-                    ? remoteEnvironment
-                    : null,
-                useLoginShell: _sshUseLoginShellResolver?.call() ?? false,
-              );
+              final command = const RemoteFlashskyaiCommandBuilder()
+                  .buildCommand(
+                    remoteExecutablePath: executable,
+                    arguments: arguments,
+                    workingDirectory: remoteWorkingDirectory.isEmpty
+                        ? null
+                        : remoteWorkingDirectory,
+                    environment: remoteEnvironment.isNotEmpty
+                        ? remoteEnvironment
+                        : null,
+                    useLoginShell: _sshUseLoginShellResolver?.call() ?? false,
+                  );
               return SshPtyTransport.start(
                 memberSession: memberSession,
                 command: SshPtyTransport.buildSessionCommand(command),

@@ -9,7 +9,11 @@ void main() {
     test('adds PreToolUse hooks for SendMessage, TaskUpdate, and Agent', () {
       const merge = TeamLeadSettingsMerge();
       final out = merge.mergeIntoSettings(
-        base: const {'permissions': {'deny': ['Bash']}},
+        base: const {
+          'permissions': {
+            'deny': ['Bash'],
+          },
+        },
         hookCommand: hookCommand,
       );
       final pre = (out['hooks'] as Map)['PreToolUse'] as List;
@@ -39,38 +43,39 @@ void main() {
           ],
         },
       };
-      final out = merge.mergeIntoSettings(
-        base: base,
-        hookCommand: hookCommand,
-      );
+      final out = merge.mergeIntoSettings(base: base, hookCommand: hookCommand);
       expect(out, base);
     });
 
-    test('backfills TaskUpdate and Agent when only SendMessage hook exists', () {
-      const merge = TeamLeadSettingsMerge();
-      final base = {
-        'hooks': {
-          'PreToolUse': [
-            {
-              'matcher': 'SendMessage',
-              'hooks': [
-                {'type': 'command', 'command': hookCommand},
-              ],
-            },
-          ],
-        },
-      };
-      final out = merge.mergeIntoSettings(
-        base: base,
-        hookCommand: hookCommand,
-      );
-      final pre = (out['hooks'] as Map)['PreToolUse'] as List;
-      expect(pre, hasLength(3));
-      expect(
-        pre.map((e) => (e as Map)['matcher']),
-        ['SendMessage', 'TaskUpdate', 'Agent'],
-      );
-    });
+    test(
+      'backfills TaskUpdate and Agent when only SendMessage hook exists',
+      () {
+        const merge = TeamLeadSettingsMerge();
+        final base = {
+          'hooks': {
+            'PreToolUse': [
+              {
+                'matcher': 'SendMessage',
+                'hooks': [
+                  {'type': 'command', 'command': hookCommand},
+                ],
+              },
+            ],
+          },
+        };
+        final out = merge.mergeIntoSettings(
+          base: base,
+          hookCommand: hookCommand,
+        );
+        final pre = (out['hooks'] as Map)['PreToolUse'] as List;
+        expect(pre, hasLength(3));
+        expect(pre.map((e) => (e as Map)['matcher']), [
+          'SendMessage',
+          'TaskUpdate',
+          'Agent',
+        ]);
+      },
+    );
 
     test('appends after existing PreToolUse matchers', () {
       const merge = TeamLeadSettingsMerge();
@@ -86,10 +91,7 @@ void main() {
           ],
         },
       };
-      final out = merge.mergeIntoSettings(
-        base: base,
-        hookCommand: hookCommand,
-      );
+      final out = merge.mergeIntoSettings(base: base, hookCommand: hookCommand);
       final pre = (out['hooks'] as Map)['PreToolUse'] as List;
       expect(pre, hasLength(4));
       expect(

@@ -24,14 +24,8 @@ void main() {
           create: (_) => NotificationCubit(),
           child: const HomeTitleBar(
             tabs: [
-              HomeWorkspaceTab(
-                id: 'ws-a',
-                name: 'Solo',
-              ),
-              HomeWorkspaceTab(
-                id: 'ws-b',
-                name: 'Shared',
-              ),
+              HomeWorkspaceTab(id: 'ws-a', name: 'Solo'),
+              HomeWorkspaceTab(id: 'ws-b', name: 'Shared'),
             ],
             activeTabKey: 'ws-a',
           ),

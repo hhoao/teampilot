@@ -22,10 +22,7 @@ void main() {
       useLoginShell: true,
     );
 
-    expect(
-      command,
-      startsWith(r'TERM="${TERM:-xterm-256color}" bash -lc '),
-    );
+    expect(command, startsWith(r'TERM="${TERM:-xterm-256color}" bash -lc '));
     expect(command, contains(r'export TERM="${TERM:-xterm-256color}"'));
     expect(command, contains('. ~/.bashrc'));
     expect(command, contains('|| true'));

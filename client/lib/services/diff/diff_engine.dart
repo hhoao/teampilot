@@ -34,13 +34,15 @@ DiffResult computeLineDiff(
   while (i < edits.length) {
     final edit = edits[i];
     if (edit.type == _EditType.equal) {
-      rows.add(DiffRow(
-        kind: DiffRowKind.equal,
-        leftLineNo: leftNo,
-        rightLineNo: rightNo,
-        leftText: leftLines[edit.aIndex],
-        rightText: rightLines[edit.bIndex],
-      ));
+      rows.add(
+        DiffRow(
+          kind: DiffRowKind.equal,
+          leftLineNo: leftNo,
+          rightLineNo: rightNo,
+          leftText: leftLines[edit.aIndex],
+          rightText: rightLines[edit.bIndex],
+        ),
+      );
       leftNo++;
       rightNo++;
       i++;
@@ -59,13 +61,15 @@ DiffResult computeLineDiff(
       }
       i++;
     }
-    rows.addAll(buildChangeRows(
-      dels,
-      ins,
-      leftStartNo: leftNo,
-      rightStartNo: rightNo,
-      options: options,
-    ));
+    rows.addAll(
+      buildChangeRows(
+        dels,
+        ins,
+        leftStartNo: leftNo,
+        rightStartNo: rightNo,
+        options: options,
+      ),
+    );
     leftNo += dels.length;
     rightNo += ins.length;
   }
@@ -93,27 +97,33 @@ List<DiffRow> buildChangeRows(
         final left = dels[op.leftIndex];
         final right = ins[op.rightIndex];
         final inline = _charInline(left, right);
-        rows.add(DiffRow(
-          kind: DiffRowKind.modify,
-          leftLineNo: leftStartNo + op.leftIndex,
-          rightLineNo: rightStartNo + op.rightIndex,
-          leftText: left,
-          rightText: right,
-          leftInline: inline.left,
-          rightInline: inline.right,
-        ));
+        rows.add(
+          DiffRow(
+            kind: DiffRowKind.modify,
+            leftLineNo: leftStartNo + op.leftIndex,
+            rightLineNo: rightStartNo + op.rightIndex,
+            leftText: left,
+            rightText: right,
+            leftInline: inline.left,
+            rightInline: inline.right,
+          ),
+        );
       case PairOpKind.delete:
-        rows.add(DiffRow(
-          kind: DiffRowKind.delete,
-          leftLineNo: leftStartNo + op.leftIndex,
-          leftText: dels[op.leftIndex],
-        ));
+        rows.add(
+          DiffRow(
+            kind: DiffRowKind.delete,
+            leftLineNo: leftStartNo + op.leftIndex,
+            leftText: dels[op.leftIndex],
+          ),
+        );
       case PairOpKind.insert:
-        rows.add(DiffRow(
-          kind: DiffRowKind.insert,
-          rightLineNo: rightStartNo + op.rightIndex,
-          rightText: ins[op.rightIndex],
-        ));
+        rows.add(
+          DiffRow(
+            kind: DiffRowKind.insert,
+            rightLineNo: rightStartNo + op.rightIndex,
+            rightText: ins[op.rightIndex],
+          ),
+        );
     }
   }
   return rows;
@@ -226,11 +236,7 @@ class _Edit {
   final int bIndex; // index into b; -1 for delete
 }
 
-List<_Edit> _myers<T>(
-  List<T> a,
-  List<T> b,
-  bool Function(T, T) eq,
-) {
+List<_Edit> _myers<T>(List<T> a, List<T> b, bool Function(T, T) eq) {
   final n = a.length;
   final m = b.length;
   if (n == 0 && m == 0) return const [];

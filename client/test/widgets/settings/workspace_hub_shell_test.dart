@@ -72,10 +72,7 @@ void main() {
       ),
     );
 
-    expect(
-      find.byIcon(WorkspaceHubNavItem.teamLeadNavIcon),
-      findsOneWidget,
-    );
+    expect(find.byIcon(WorkspaceHubNavItem.teamLeadNavIcon), findsOneWidget);
     expect(find.byIcon(Icons.person_outline), findsNothing);
   });
 

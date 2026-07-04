@@ -17,8 +17,8 @@ abstract class TeammateBusTool {
   Future<JsonRpcResponse> call(TeammateBusToolCall call);
 
   Map<String, Object?> toJson() => {
-        'name': name.value,
-        'description': description,
-        'inputSchema': inputSchema,
-      };
+    'name': name.value,
+    'description': description,
+    'inputSchema': inputSchema,
+  };
 }

@@ -15,7 +15,10 @@ abstract final class CodexEffortToml {
     }
     final modelPattern = RegExp(r'^model\s*=\s*".*"$', multiLine: true);
     if (modelPattern.hasMatch(toml)) {
-      return toml.replaceFirst(modelPattern, '${modelPattern.stringMatch(toml)}\n$line');
+      return toml.replaceFirst(
+        modelPattern,
+        '${modelPattern.stringMatch(toml)}\n$line',
+      );
     }
     if (toml.trim().isEmpty) return line;
     return '$toml\n$line';

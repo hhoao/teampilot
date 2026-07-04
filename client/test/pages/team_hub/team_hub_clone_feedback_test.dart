@@ -56,7 +56,11 @@ void main() {
         DependencyFailure(DependencyKind.skill, 'missing-skill'),
       ],
     );
-    final msg = teamHubCloneToastMessage(l10n, teamName: 'Squad', result: result);
+    final msg = teamHubCloneToastMessage(
+      l10n,
+      teamName: 'Squad',
+      result: result,
+    );
     expect(msg, contains('missing-skill'));
     expect(teamHubCloneToastIsWarning(result), isTrue);
   });

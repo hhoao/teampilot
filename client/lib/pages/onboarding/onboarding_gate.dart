@@ -49,7 +49,9 @@ class OnboardingGateState extends State<OnboardingGate> {
 
   Future<void> reopenWizard() async {
     if (!mounted) return;
-    await context.read<AppSettingsRepository>().saveHasCompletedOnboarding(false);
+    await context.read<AppSettingsRepository>().saveHasCompletedOnboarding(
+      false,
+    );
     if (!mounted) return;
     setState(() => _reopenWizard = true);
   }

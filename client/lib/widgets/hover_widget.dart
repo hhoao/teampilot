@@ -59,7 +59,8 @@ class _HoverWidgetState extends State<HoverWidget> {
   @override
   Widget build(BuildContext context) {
     final interactive = widget.onTap != null || widget.onSecondaryTap != null;
-    final cursor = widget.cursor ??
+    final cursor =
+        widget.cursor ??
         (interactive ? SystemMouseCursors.click : SystemMouseCursors.basic);
 
     Widget content = AnimatedContainer(

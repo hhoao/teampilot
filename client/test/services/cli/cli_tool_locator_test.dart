@@ -29,12 +29,7 @@ void main() {
               }
               if (executable == 'bash') {
                 expect(arguments, ['-ilc', 'command -v claude']);
-                return ProcessResult(
-                  2,
-                  0,
-                  '/opt/homebrew/bin/claude\n',
-                  '',
-                );
+                return ProcessResult(2, 0, '/opt/homebrew/bin/claude\n', '');
               }
               fail('unexpected runner call: $executable');
             },
@@ -76,24 +71,21 @@ void main() {
     },
   );
 
-  test(
-    'parsePathLookupOutput prefers Windows-native npm shim on Windows',
-    () {
-      const stdout =
-          r'C:\Users\alice\AppData\Roaming\npm\claude'
-          '\r\n'
-          r'C:\Users\alice\AppData\Roaming\npm\claude.cmd';
+  test('parsePathLookupOutput prefers Windows-native npm shim on Windows', () {
+    const stdout =
+        r'C:\Users\alice\AppData\Roaming\npm\claude'
+        '\r\n'
+        r'C:\Users\alice\AppData\Roaming\npm\claude.cmd';
 
-      expect(
-        CliToolLocator.parsePathLookupOutput(stdout, isWindows: true),
-        r'C:\Users\alice\AppData\Roaming\npm\claude.cmd',
-      );
-      expect(
-        CliToolLocator.parsePathLookupOutput(stdout, isWindows: false),
-        r'C:\Users\alice\AppData\Roaming\npm\claude',
-      );
-    },
-  );
+    expect(
+      CliToolLocator.parsePathLookupOutput(stdout, isWindows: true),
+      r'C:\Users\alice\AppData\Roaming\npm\claude.cmd',
+    );
+    expect(
+      CliToolLocator.parsePathLookupOutput(stdout, isWindows: false),
+      r'C:\Users\alice\AppData\Roaming\npm\claude',
+    );
+  });
 
   test('locate prefers claude.cmd over npm shell shim on Windows', () async {
     final located = await const CliToolLocator('claude').locate(
@@ -104,8 +96,8 @@ void main() {
           1,
           0,
           r'C:\Users\alice\AppData\Roaming\npm\claude'
-          '\r\n'
-          r'C:\Users\alice\AppData\Roaming\npm\claude.cmd',
+              '\r\n'
+              r'C:\Users\alice\AppData\Roaming\npm\claude.cmd',
           '',
         );
       },
@@ -124,10 +116,7 @@ void main() {
     await File(shimPath).writeAsString('#!/bin/sh\n');
     await File('$shimPath.cmd').writeAsString('@echo off\n');
 
-    expect(
-      CliToolLocator.resolveSpawnExecutable(shimPath),
-      '$shimPath.cmd',
-    );
+    expect(CliToolLocator.resolveSpawnExecutable(shimPath), '$shimPath.cmd');
   });
 
   test('resolveSpawnExecutable leaves bare PATH names unchanged', () {

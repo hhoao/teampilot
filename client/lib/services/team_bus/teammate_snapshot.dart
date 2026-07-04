@@ -32,10 +32,7 @@ class TeammateSnapshot {
 }
 
 class TeamRosterSnapshot {
-  const TeamRosterSnapshot({
-    this.team,
-    required this.members,
-  });
+  const TeamRosterSnapshot({this.team, required this.members});
 
   final TeamSessionContext? team;
   final List<TeammateSnapshot> members;

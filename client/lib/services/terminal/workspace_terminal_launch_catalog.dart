@@ -7,11 +7,7 @@ import '../../repositories/ssh_profile_repository.dart';
 import '../host/host_interactive_shell.dart';
 import '../terminal/workspace_shell_connector.dart';
 
-enum WorkspaceTerminalLaunchAction {
-  openSession,
-  newSshProfile,
-  settings,
-}
+enum WorkspaceTerminalLaunchAction { openSession, newSshProfile, settings }
 
 @immutable
 class WorkspaceTerminalLaunchMenuItem {
@@ -95,9 +91,7 @@ abstract final class WorkspaceTerminalLaunchCatalog {
     }
 
     items.add(const WorkspaceTerminalLaunchMenuItem.divider());
-    items.add(
-      WorkspaceTerminalLaunchMenuItem.settings(),
-    );
+    items.add(WorkspaceTerminalLaunchMenuItem.settings());
     return items;
   }
 }

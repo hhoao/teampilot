@@ -4,7 +4,8 @@ import 'executable_resolver_capability.dart';
 import 'presence_capability.dart';
 import 'terminal_behavior_capability.dart';
 
-final class FlashskyaiExecutableResolver implements ExecutableResolverCapability {
+final class FlashskyaiExecutableResolver
+    implements ExecutableResolverCapability {
   const FlashskyaiExecutableResolver();
   @override
   String get defaultExecutableName => 'flashskyai';
@@ -119,8 +120,7 @@ final class FlashskyaiTerminalBehavior implements TerminalBehaviorCapability {
   @override
   bool get usesFullScreenInput => false;
   @override
-  Duration get fullScreenPasteSettleDelay =>
-      const Duration(milliseconds: 10);
+  Duration get fullScreenPasteSettleDelay => const Duration(milliseconds: 10);
   @override
   bool get forwardsColorSchemeReport => true;
   @override
@@ -133,8 +133,7 @@ final class ClaudeTerminalBehavior implements TerminalBehaviorCapability {
   @override
   bool get usesFullScreenInput => true;
   @override
-  Duration get fullScreenPasteSettleDelay =>
-      const Duration(milliseconds: 10);
+  Duration get fullScreenPasteSettleDelay => const Duration(milliseconds: 10);
   @override
   bool get forwardsColorSchemeReport => true;
   @override
@@ -147,8 +146,7 @@ final class CodexTerminalBehavior implements TerminalBehaviorCapability {
   @override
   bool get usesFullScreenInput => true;
   @override
-  Duration get fullScreenPasteSettleDelay =>
-      const Duration(milliseconds: 10);
+  Duration get fullScreenPasteSettleDelay => const Duration(milliseconds: 10);
   @override
   bool get forwardsColorSchemeReport => true;
   @override
@@ -161,8 +159,7 @@ final class OpencodeTerminalBehavior implements TerminalBehaviorCapability {
   @override
   bool get usesFullScreenInput => false;
   @override
-  Duration get fullScreenPasteSettleDelay =>
-      const Duration(milliseconds: 10);
+  Duration get fullScreenPasteSettleDelay => const Duration(milliseconds: 10);
   @override
   bool get forwardsColorSchemeReport => true;
   @override
@@ -175,12 +172,10 @@ final class CursorTerminalBehavior implements TerminalBehaviorCapability {
   @override
   bool get usesFullScreenInput => true;
   @override
-  Duration get fullScreenPasteSettleDelay =>
-      const Duration(milliseconds: 150);
+  Duration get fullScreenPasteSettleDelay => const Duration(milliseconds: 150);
   @override
   bool get forwardsColorSchemeReport => false;
   @override
   TerminalPathDropBehavior get pathDropBehavior =>
       TerminalPathDropBehavior.defaultFor(usesFullScreenInput: true);
 }
-

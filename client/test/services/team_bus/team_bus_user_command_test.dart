@@ -10,7 +10,13 @@ void main() {
   test('isWaitingForMessage tracks receive lifecycle', () {
     fakeAsync((async) {
       final bus = TeamBus(launcher: FakeMemberLauncher());
-      bus.declareMember(AgentNode.test(memberId: 'leader', lifecycle: MemberLifecycle.running, activity: MemberActivity.active));
+      bus.declareMember(
+        AgentNode.test(
+          memberId: 'leader',
+          lifecycle: MemberLifecycle.running,
+          activity: MemberActivity.active,
+        ),
+      );
 
       expect(bus.isWaitingForMessage('leader'), isFalse);
 
@@ -29,13 +35,19 @@ void main() {
 
   test('deliverUserCommand enqueues for later wait when not parked', () async {
     final bus = TeamBus(launcher: FakeMemberLauncher());
-    final node = AgentNode.test(memberId: 'leader', lifecycle: MemberLifecycle.running, activity: MemberActivity.active);
+    final node = AgentNode.test(
+      memberId: 'leader',
+      lifecycle: MemberLifecycle.running,
+      activity: MemberActivity.active,
+    );
     bus.declareMember(node);
 
     bus.deliverUserCommand('leader', 'hello');
     expect(node.inbox.isEmpty, isFalse);
 
-    final batch = await node.inbox.waitAndTake(timeout: const Duration(seconds: 1));
+    final batch = await node.inbox.waitAndTake(
+      timeout: const Duration(seconds: 1),
+    );
     expect(batch.single.from, TeamBus.userSenderId);
     expect(batch.single.content, 'hello');
   });
@@ -61,11 +73,13 @@ void main() {
 
   test('deliverUserCommand returns empty id for blank line', () {
     final bus = TeamBus(launcher: FakeMemberLauncher());
-    bus.declareMember(AgentNode.test(
-      memberId: 'leader',
-      lifecycle: MemberLifecycle.running,
-      activity: MemberActivity.active,
-    ));
+    bus.declareMember(
+      AgentNode.test(
+        memberId: 'leader',
+        lifecycle: MemberLifecycle.running,
+        activity: MemberActivity.active,
+      ),
+    );
     expect(bus.deliverUserCommand('leader', '   '), isEmpty);
   });
 }

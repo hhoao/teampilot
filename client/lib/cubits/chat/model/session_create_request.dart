@@ -30,6 +30,7 @@ class SessionCreateRequest {
   final String? personalPresetId;
   final String? workingDirectory;
   final String emptyDisplayTitleFallback;
+
   /// When set, the staged session uses this id instead of a fresh UUID.
   final String? fixedSessionId;
 }

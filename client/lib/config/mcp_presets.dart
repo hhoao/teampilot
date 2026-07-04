@@ -21,7 +21,10 @@ class McpPreset {
   final String docs;
 }
 
-Map<String, Object?> _npxServer(String package, {List<String> extraArgs = const []}) {
+Map<String, Object?> _npxServer(
+  String package, {
+  List<String> extraArgs = const [],
+}) {
   if (Platform.isWindows) {
     return {
       'type': 'stdio',
@@ -36,7 +39,9 @@ Map<String, Object?> _npxServer(String package, {List<String> extraArgs = const 
   };
 }
 
-List<McpPreset> mcpPresets({required String Function(String id) descriptionFor}) {
+List<McpPreset> mcpPresets({
+  required String Function(String id) descriptionFor,
+}) {
   return [
     McpPreset(
       id: 'fetch',
@@ -44,7 +49,8 @@ List<McpPreset> mcpPresets({required String Function(String id) descriptionFor})
       description: descriptionFor('fetch'),
       tags: const ['stdio', 'http', 'web'],
       homepage: 'https://github.com/modelcontextprotocol/servers',
-      docs: 'https://github.com/modelcontextprotocol/servers/tree/main/src/fetch',
+      docs:
+          'https://github.com/modelcontextprotocol/servers/tree/main/src/fetch',
       server: const {
         'type': 'stdio',
         'command': 'uvx',
@@ -57,8 +63,12 @@ List<McpPreset> mcpPresets({required String Function(String id) descriptionFor})
       description: descriptionFor('time'),
       tags: const ['stdio', 'time', 'utility'],
       homepage: 'https://github.com/modelcontextprotocol/servers',
-      docs: 'https://github.com/modelcontextprotocol/servers/tree/main/src/time',
-      server: _npxServer('@modelcontextprotocol/server-time', extraArgs: ['-y']),
+      docs:
+          'https://github.com/modelcontextprotocol/servers/tree/main/src/time',
+      server: _npxServer(
+        '@modelcontextprotocol/server-time',
+        extraArgs: ['-y'],
+      ),
     ),
     McpPreset(
       id: 'memory',
@@ -66,8 +76,12 @@ List<McpPreset> mcpPresets({required String Function(String id) descriptionFor})
       description: descriptionFor('memory'),
       tags: const ['stdio', 'memory', 'graph'],
       homepage: 'https://github.com/modelcontextprotocol/servers',
-      docs: 'https://github.com/modelcontextprotocol/servers/tree/main/src/memory',
-      server: _npxServer('@modelcontextprotocol/server-memory', extraArgs: ['-y']),
+      docs:
+          'https://github.com/modelcontextprotocol/servers/tree/main/src/memory',
+      server: _npxServer(
+        '@modelcontextprotocol/server-memory',
+        extraArgs: ['-y'],
+      ),
     ),
     McpPreset(
       id: 'sequential-thinking',

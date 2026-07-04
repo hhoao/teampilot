@@ -24,11 +24,13 @@ void main() {
   tearDown(() async => deleteTempDirBestEffort(tmp));
 
   test('saves and loads both kinds', () async {
-    await repo.save(const PersonalProfile(
-      id: 'coding',
-      display: 'Coding',
-      bundle: ConfigBundle(skillIds: ['s']),
-    ));
+    await repo.save(
+      const PersonalProfile(
+        id: 'coding',
+        display: 'Coding',
+        bundle: ConfigBundle(skillIds: ['s']),
+      ),
+    );
     await repo.save(const TeamProfile(id: 'squad', name: 'Squad'));
 
     final all = await repo.loadAll();
@@ -44,16 +46,8 @@ void main() {
   });
 
   test('sorts personals by sortOrder when any has a custom order', () async {
-    await repo.save(const PersonalProfile(
-      id: 'b',
-      display: 'B',
-      sortOrder: 2,
-    ));
-    await repo.save(const PersonalProfile(
-      id: 'a',
-      display: 'A',
-      sortOrder: 1,
-    ));
+    await repo.save(const PersonalProfile(id: 'b', display: 'B', sortOrder: 2));
+    await repo.save(const PersonalProfile(id: 'a', display: 'A', sortOrder: 1));
 
     final personals = await repo.loadPersonalProfiles();
     expect(personals.map((p) => p.id).toList(), ['a', 'b']);

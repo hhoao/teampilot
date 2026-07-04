@@ -9,13 +9,20 @@ void main() {
     final fs = InMemoryFilesystem();
     final log = FileTaskLog(queueRoot: '/q', fs: fs);
 
-    await log.appendAdd(const TeamTask(
-      id: 't0', seq: 0, title: 'a', brief: 'b', createdBy: 'lead', createdAt: 1,
-      requiredCapabilities: {'backend'},
-      preferredCapabilities: {'rust'},
-      preferredAssignee: 'dev2',
-      routing: RoutingPolicy(stage: RoutingStage.reserved, escalatedAt: 1),
-    ));
+    await log.appendAdd(
+      const TeamTask(
+        id: 't0',
+        seq: 0,
+        title: 'a',
+        brief: 'b',
+        createdBy: 'lead',
+        createdAt: 1,
+        requiredCapabilities: {'backend'},
+        preferredCapabilities: {'rust'},
+        preferredAssignee: 'dev2',
+        routing: RoutingPolicy(stage: RoutingStage.reserved, escalatedAt: 1),
+      ),
+    );
     await log.appendEscalate('t0', RoutingStage.open, 99);
 
     final loaded = await log.load();

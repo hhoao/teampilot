@@ -17,32 +17,28 @@ class GitInstallResult {
   final String? executablePath;
 
   const GitInstallResult.found(String path)
-      : success = true,
-        executablePath = path,
-        message = 'Found git at $path';
+    : success = true,
+      executablePath = path,
+      message = 'Found git at $path';
 
   const GitInstallResult.notFound(String detail)
-      : success = false,
-        executablePath = null,
-        message = 'Git not found: $detail';
+    : success = false,
+      executablePath = null,
+      message = 'Git not found: $detail';
 
   const GitInstallResult.installed(String path)
-      : success = true,
-        executablePath = path,
-        message = 'Git installed successfully at $path';
+    : success = true,
+      executablePath = path,
+      message = 'Git installed successfully at $path';
 
   const GitInstallResult.failed(String detail)
-      : success = false,
-        executablePath = null,
-        message = detail;
+    : success = false,
+      executablePath = null,
+      message = detail;
 }
 
 /// Phases of git detection / installation for UI progress reporting.
-enum GitInstallPhase {
-  checking,
-  installing,
-  locating,
-}
+enum GitInstallPhase { checking, installing, locating }
 
 /// Progress report emitted during detection or installation.
 class GitInstallProgress {
@@ -53,21 +49,16 @@ class GitInstallProgress {
 }
 
 /// Callback for UI progress updates during git detection / installation.
-typedef GitInstallProgressCallback = void Function(
-  GitInstallProgress progress,
-);
+typedef GitInstallProgressCallback = void Function(GitInstallProgress progress);
 
 /// Injection point so tests can replace [Process.run] with a mock.
-typedef GitProcessRunner = Future<ProcessResult> Function(
-  String executable,
-  List<String> arguments,
-);
+typedef GitProcessRunner =
+    Future<ProcessResult> Function(String executable, List<String> arguments);
 
 Future<ProcessResult> _defaultProcessRunner(
   String executable,
   List<String> arguments,
-) =>
-    Process.run(executable, arguments);
+) => Process.run(executable, arguments);
 
 /// Detects and optionally installs git on the local host.
 ///
@@ -75,11 +66,9 @@ Future<ProcessResult> _defaultProcessRunner(
 /// the appropriate package manager (`winget` on Windows, `brew` on macOS).
 /// Linux always returns a guide URL — no `sudo` is ever invoked.
 final class GitInstaller {
-  const GitInstaller({
-    GitProcessRunner? processRunner,
-    bool? isWindowsOverride,
-  })  : _processRunner = processRunner ?? _defaultProcessRunner,
-       _isWindowsOverride = isWindowsOverride;
+  const GitInstaller({GitProcessRunner? processRunner, bool? isWindowsOverride})
+    : _processRunner = processRunner ?? _defaultProcessRunner,
+      _isWindowsOverride = isWindowsOverride;
 
   final GitProcessRunner _processRunner;
   final bool? _isWindowsOverride;
@@ -96,9 +85,7 @@ final class GitInstaller {
     if (AppStorage.isInstalled) {
       return HostExecutionEnvironment.fromStorage(AppStorage.context);
     }
-    return HostExecutionEnvironment.resolve(
-      isWindowsHost: _isWindowsOverride,
-    );
+    return HostExecutionEnvironment.resolve(isWindowsHost: _isWindowsOverride);
   }
 
   bool get _isWindows => _hostEnv.isWindowsHost;
@@ -113,9 +100,7 @@ final class GitInstaller {
   Future<GitInstallResult> detectGit({
     GitInstallProgressCallback? onProgress,
   }) async {
-    onProgress?.call(
-      const GitInstallProgress(phase: GitInstallPhase.checking),
-    );
+    onProgress?.call(const GitInstallProgress(phase: GitInstallPhase.checking));
 
     // Fast check: can we run `git --version`?
     try {
@@ -130,9 +115,7 @@ final class GitInstaller {
     }
 
     // Resolve the absolute path via `where` / `which`.
-    onProgress?.call(
-      const GitInstallProgress(phase: GitInstallPhase.locating),
-    );
+    onProgress?.call(const GitInstallProgress(phase: GitInstallPhase.locating));
 
     final locator = HostExecutableLocator(_hostEnv);
     try {
@@ -177,7 +160,7 @@ final class GitInstaller {
     // Linux or any other platform — guide only, no sudo.
     return GitInstallResult.failed(
       'Automatic git installation is not supported on this platform.\n'
-          'Please install git manually: $_linuxGuideUrl',
+      'Please install git manually: $_linuxGuideUrl',
     );
   }
 
@@ -191,7 +174,7 @@ final class GitInstaller {
     if (!hasWinget) {
       return GitInstallResult.failed(
         'winget is not available on this system.\n'
-            'Please install git manually: $_windowsGuideUrl',
+        'Please install git manually: $_windowsGuideUrl',
       );
     }
 
@@ -212,24 +195,23 @@ final class GitInstaller {
 
       if (result.exitCode != 0) {
         final stderr = (result.stderr as String).trim();
-        final detail =
-            stderr.isNotEmpty ? stderr : 'exit code ${result.exitCode}';
+        final detail = stderr.isNotEmpty
+            ? stderr
+            : 'exit code ${result.exitCode}';
         return GitInstallResult.failed(
           'winget install failed ($detail).\n'
-              'Please install git manually: $_windowsGuideUrl',
+          'Please install git manually: $_windowsGuideUrl',
         );
       }
     } on ProcessException catch (e) {
       return GitInstallResult.failed(
         'Failed to run winget: ${e.message}.\n'
-            'Please install git manually: $_windowsGuideUrl',
+        'Please install git manually: $_windowsGuideUrl',
       );
     }
 
     // After install, locate the new executable.
-    onProgress?.call(
-      const GitInstallProgress(phase: GitInstallPhase.locating),
-    );
+    onProgress?.call(const GitInstallProgress(phase: GitInstallPhase.locating));
 
     final detected = await detectGit(onProgress: onProgress);
     if (detected.success) {
@@ -238,7 +220,7 @@ final class GitInstaller {
 
     return GitInstallResult.failed(
       'Installation completed, but git was not found on PATH.\n'
-          'You may need to restart your terminal or add git to your PATH manually.',
+      'You may need to restart your terminal or add git to your PATH manually.',
     );
   }
 
@@ -251,8 +233,8 @@ final class GitInstaller {
     if (!hasBrew) {
       return GitInstallResult.failed(
         'Homebrew is not available on this system.\n'
-            'Please install git manually: $_macOSGuideUrl\n'
-            'Or install Homebrew first: https://brew.sh',
+        'Please install git manually: $_macOSGuideUrl\n'
+        'Or install Homebrew first: https://brew.sh',
       );
     }
 
@@ -265,24 +247,23 @@ final class GitInstaller {
 
       if (result.exitCode != 0) {
         final stderr = (result.stderr as String).trim();
-        final detail =
-            stderr.isNotEmpty ? stderr : 'exit code ${result.exitCode}';
+        final detail = stderr.isNotEmpty
+            ? stderr
+            : 'exit code ${result.exitCode}';
         return GitInstallResult.failed(
           'brew install failed ($detail).\n'
-              'Please install git manually: $_macOSGuideUrl',
+          'Please install git manually: $_macOSGuideUrl',
         );
       }
     } on ProcessException catch (e) {
       return GitInstallResult.failed(
         'Failed to run brew: ${e.message}.\n'
-            'Please install git manually: $_macOSGuideUrl',
+        'Please install git manually: $_macOSGuideUrl',
       );
     }
 
     // After install, locate the new executable.
-    onProgress?.call(
-      const GitInstallProgress(phase: GitInstallPhase.locating),
-    );
+    onProgress?.call(const GitInstallProgress(phase: GitInstallPhase.locating));
 
     final detected = await detectGit(onProgress: onProgress);
     if (detected.success) {
@@ -291,7 +272,7 @@ final class GitInstaller {
 
     return GitInstallResult.failed(
       'Installation completed, but git was not found on PATH.\n'
-          'You may need to restart your terminal or add git to your PATH manually.',
+      'You may need to restart your terminal or add git to your PATH manually.',
     );
   }
 

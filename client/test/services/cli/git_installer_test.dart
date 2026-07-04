@@ -83,7 +83,9 @@ void main() {
           if (exe == 'where' && args.contains('git')) {
             return _fakeResult(
               exitCode: 0,
-              stdout: r'C:\Program Files\Git\cmd\git.exe' '\n',
+              stdout:
+                  r'C:\Program Files\Git\cmd\git.exe'
+                  '\n',
             );
           }
           return _fakeResult(exitCode: 127);
@@ -188,7 +190,8 @@ void main() {
           if (exe == 'where' && args.contains('winget')) {
             return _fakeResult(
               exitCode: 0,
-              stdout: r'C:\Users\test\AppData\Local\Microsoft\WindowsApps\winget.exe',
+              stdout:
+                  r'C:\Users\test\AppData\Local\Microsoft\WindowsApps\winget.exe',
             );
           }
           // winget install
@@ -203,7 +206,9 @@ void main() {
           if (exe == 'where' && args.contains('git')) {
             return _fakeResult(
               exitCode: 0,
-              stdout: r'C:\Program Files\Git\cmd\git.exe' '\n',
+              stdout:
+                  r'C:\Program Files\Git\cmd\git.exe'
+                  '\n',
             );
           }
           return _fakeResult(exitCode: 127);
@@ -216,7 +221,9 @@ void main() {
       expect(result.executablePath, r'C:\Program Files\Git\cmd\git.exe');
       expect(
         commands,
-        contains('winget install --id Git.Git --exact --silent --accept-source-agreements --accept-package-agreements'),
+        contains(
+          'winget install --id Git.Git --exact --silent --accept-source-agreements --accept-package-agreements',
+        ),
       );
       expect(commands.first, 'where winget');
     });
@@ -316,8 +323,11 @@ void main() {
         isWindowsOverride: true,
         processRunner: (exe, args) async {
           if (exe == 'where' && args.contains('winget')) {
-            return _fakeResult(exitCode: 0,
-              stdout: r'C:\Users\test\AppData\Local\Microsoft\WindowsApps\winget.exe');
+            return _fakeResult(
+              exitCode: 0,
+              stdout:
+                  r'C:\Users\test\AppData\Local\Microsoft\WindowsApps\winget.exe',
+            );
           }
           if (exe == 'winget' && args.contains('install')) {
             return _fakeResult(exitCode: 0);
@@ -326,7 +336,12 @@ void main() {
             return _fakeResult(exitCode: 0);
           }
           if (exe == 'where' && args.contains('git')) {
-            return _fakeResult(exitCode: 0, stdout: r'C:\Program Files\Git\cmd\git.exe' '\n');
+            return _fakeResult(
+              exitCode: 0,
+              stdout:
+                  r'C:\Program Files\Git\cmd\git.exe'
+                  '\n',
+            );
           }
           return _fakeResult(exitCode: 127);
         },

@@ -47,8 +47,8 @@ class TeamBus implements CoordinationView {
          launcher: launcher,
          doorbellNotice: doorbellNotice,
        ) {
-    _coordination = coordination ??
-        LeaderStarCoordinationPolicy(environment: _env);
+    _coordination =
+        coordination ?? LeaderStarCoordinationPolicy(environment: _env);
     if (_taskQueue != null) {
       _reconcileTimer = Timer.periodic(
         const Duration(seconds: 15),
@@ -263,7 +263,11 @@ class TeamBus implements CoordinationView {
     Duration? timeout,
     CancellationToken? cancel,
   }) async {
-    final batch = await receivePending(memberId, timeout: timeout, cancel: cancel);
+    final batch = await receivePending(
+      memberId,
+      timeout: timeout,
+      cancel: cancel,
+    );
     if (batch.isNotEmpty) {
       await acknowledgeDelivery(memberId, batch.map((m) => m.id));
     }
@@ -296,7 +300,8 @@ class TeamBus implements CoordinationView {
       _apply(
         node,
         WaitExited(
-          resumeActive: batch.isNotEmpty ||
+          resumeActive:
+              batch.isNotEmpty ||
               cancel?.cancelReason == WaitCancelReason.mcpCancelled,
         ),
       );
@@ -311,7 +316,9 @@ class TeamBus implements CoordinationView {
     final ids = messageIds.toList(growable: false);
     await _members[memberId]?.inbox.confirmRead(ids);
     if (ids.isNotEmpty) {
-      _env.events.emit(DeliveryConfirmed(memberId: memberId, count: ids.length));
+      _env.events.emit(
+        DeliveryConfirmed(memberId: memberId, count: ids.length),
+      );
     }
   }
 
@@ -320,7 +327,9 @@ class TeamBus implements CoordinationView {
   void redeliver(String memberId, List<TeamMessage> batch) {
     if (batch.isEmpty) return;
     _members[memberId]?.inbox.restore(batch);
-    _env.events.emit(DeliveryRolledBack(memberId: memberId, count: batch.length));
+    _env.events.emit(
+      DeliveryRolledBack(memberId: memberId, count: batch.length),
+    );
   }
 
   /// **统一 idle 原语**（`wait_for_message` 落点）：阻塞到 **有消息或有可认领任务**，
@@ -328,7 +337,10 @@ class TeamBus implements CoordinationView {
   /// 要做的事）。消息取走但 **不** 标记已读（传输层成功写回后 [acknowledgeDelivery]，
   /// 断连则 [redeliver]）；任务已原子认领（断连则 [releaseTask] 退回 pending）。
   /// team-lead 不自动认领任务（[_taskQueue] 为空亦然），退化为纯消息等待。
-  Future<WorkBatch> receiveWork(String memberId, {CancellationToken? cancel}) async {
+  Future<WorkBatch> receiveWork(
+    String memberId, {
+    CancellationToken? cancel,
+  }) async {
     final node = _members[memberId];
     if (node == null) return const EmptyWork();
     // team-lead 永不自动认领任务；非 mixed 模式 _taskQueue 为空 → 纯消息等待。
@@ -350,7 +362,9 @@ class TeamBus implements CoordinationView {
         if (!node.inbox.isEmpty) {
           final batch = await node.inbox.waitAndTake(cancel: cancel);
           if (batch.isNotEmpty) {
-            _env.events.emit(BatchTaken(memberId: memberId, count: batch.length));
+            _env.events.emit(
+              BatchTaken(memberId: memberId, count: batch.length),
+            );
             outcome = MessageWork(batch);
             return outcome;
           }
@@ -375,11 +389,15 @@ class TeamBus implements CoordinationView {
           if (!wake.isCompleted) wake.complete();
         }
 
-        unawaited(node.inbox.waitForArrival(cancel: cancel).then((_) => signal()));
+        unawaited(
+          node.inbox.waitForArrival(cancel: cancel).then((_) => signal()),
+        );
         if (queue != null) {
-          unawaited(queue
-              .waitForClaimable(memberId, node.profile.capabilities)
-              .then((_) => signal()));
+          unawaited(
+            queue
+                .waitForClaimable(memberId, node.profile.capabilities)
+                .then((_) => signal()),
+          );
         }
         if (cancel != null) {
           unawaited(cancel.whenCancelled.then((_) => signal()));
@@ -401,8 +419,8 @@ class TeamBus implements CoordinationView {
   ) {
     return switch (outcome) {
       MessageWork() || TaskWork() => true,
-      EmptyWork() || null =>
-        cancel?.cancelReason == WaitCancelReason.mcpCancelled,
+      EmptyWork() ||
+      null => cancel?.cancelReason == WaitCancelReason.mcpCancelled,
     };
   }
 
@@ -526,11 +544,13 @@ class TeamBus implements CoordinationView {
   void _deliverToInbox(AgentNode node, TeamMessage message) {
     _coordination.noteInboundWork(node.memberId);
     node.inbox.deliver(message);
-    _env.events.emit(MessageRouted(
-      messageId: message.id,
-      to: node.memberId,
-      from: message.from,
-    ));
+    _env.events.emit(
+      MessageRouted(
+        messageId: message.id,
+        to: node.memberId,
+        from: message.from,
+      ),
+    );
   }
 
   /// 投递邮件并触发 [MailArrived]（与 [send] 路径一致）。
@@ -558,12 +578,7 @@ class TeamBus implements CoordinationView {
     final id = _env.ids();
     _routeMail(
       memberId,
-      TeamMessage(
-        id: id,
-        from: userSenderId,
-        to: memberId,
-        content: trimmed,
-      ),
+      TeamMessage(id: id, from: userSenderId, to: memberId, content: trimmed),
     );
     return id;
   }
@@ -600,11 +615,13 @@ class TeamBus implements CoordinationView {
   /// 出站投递；按 lifecycle + activity 分流。
   Future<SendOutcome> send(TeamMessage message) async {
     if (message.hop >= maxHop) {
-      _env.events.emit(MessageDropped(
-        messageId: message.id,
-        reason: 'over-hop(${message.hop})',
-        to: message.to,
-      ));
+      _env.events.emit(
+        MessageDropped(
+          messageId: message.id,
+          reason: 'over-hop(${message.hop})',
+          to: message.to,
+        ),
+      );
       return SendOutcome.dropped(
         reason: 'over-hop(${message.hop})',
         to: message.to,
@@ -612,15 +629,19 @@ class TeamBus implements CoordinationView {
     }
     final resolved = resolveMemberId(message.to);
     if (resolved == null) {
-      _env.events.emit(MessageDropped(
-        messageId: message.id,
-        reason: 'unknown-member',
-        to: message.to,
-      ));
+      _env.events.emit(
+        MessageDropped(
+          messageId: message.id,
+          reason: 'unknown-member',
+          to: message.to,
+        ),
+      );
       return SendOutcome.dropped(reason: 'unknown-member', to: message.to);
     }
     final target = _members[resolved]!;
-    final routed = message.to == resolved ? message : message.copyWith(to: resolved);
+    final routed = message.to == resolved
+        ? message
+        : message.copyWith(to: resolved);
     appLogger.d(
       '[team-bus] send to=$resolved '
       'lifecycle=${target.lifecycle.name} '
@@ -783,8 +804,9 @@ class TeamBus implements CoordinationView {
   Future<void> _engageWorkersForQueue(String createdBy) async {
     final queue = _taskQueue;
     if (queue == null) return;
-    final workers =
-        _members.values.where((n) => !n.profile.isTeamLead).toList();
+    final workers = _members.values
+        .where((n) => !n.profile.isTeamLead)
+        .toList();
     for (final task in queue.list(status: TaskStatus.pending)) {
       if (_hasParkedEligibleWorker(workers, task)) continue;
 

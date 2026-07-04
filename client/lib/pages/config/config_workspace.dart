@@ -59,7 +59,8 @@ Future<void> showWorkspaceSettingsDialog(BuildContext context) {
         navLabel: l10n.sshProfilesSettingsTitle,
         title: l10n.sshProfilesPageTitle,
         subtitle: l10n.sshProfilesPageSubtitle,
-        bodyBuilder: (_) => const SshProfilesConfigWorkspace(showHeading: false),
+        bodyBuilder: (_) =>
+            const SshProfilesConfigWorkspace(showHeading: false),
       ),
       SettingsDialogEntry(
         icon: Icons.info_outline,
@@ -131,13 +132,12 @@ class ConfigSettingsHubPage extends StatelessWidget {
           key: AppKeys.configSshProfilesSectionButton,
           title: l10n.sshProfilesSettingsTitle,
           icon: Icons.dns_outlined,
-          onTap: throttledTap(
-            'config_hub_ssh_profiles',
-            () {
-              context.read<ConfigCubit>().selectSection(ConfigSection.sshProfiles);
-              context.push('/config/${ConfigSection.sshProfiles.routeSegment}');
-            },
-          ),
+          onTap: throttledTap('config_hub_ssh_profiles', () {
+            context.read<ConfigCubit>().selectSection(
+              ConfigSection.sshProfiles,
+            );
+            context.push('/config/${ConfigSection.sshProfiles.routeSegment}');
+          }),
         ),
         WorkspaceHubEntry(
           key: AppKeys.configAboutSectionButton,
@@ -154,10 +154,7 @@ class ConfigSettingsHubPage extends StatelessWidget {
 }
 
 class ConfigWorkspace extends StatelessWidget {
-  const ConfigWorkspace({
-    required this.section,
-    super.key,
-  });
+  const ConfigWorkspace({required this.section, super.key});
 
   final ConfigSection section;
 

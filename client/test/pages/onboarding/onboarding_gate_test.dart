@@ -53,7 +53,8 @@ void main() {
                 builder: (_) => Dialog(
                   child: Builder(
                     builder: (dialogChildContext) => TextButton(
-                      onPressed: () => resetOnboardingWizard(dialogChildContext),
+                      onPressed: () =>
+                          resetOnboardingWizard(dialogChildContext),
                       child: const Text('rerun setup'),
                     ),
                   ),

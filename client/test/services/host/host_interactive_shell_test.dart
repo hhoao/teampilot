@@ -42,10 +42,7 @@ void main() {
     });
 
     test('menuLabelFor uses friendly names', () {
-      expect(
-        HostInteractiveShell.menuLabelFor('/bin/zsh'),
-        'zsh (/bin/zsh)',
-      );
+      expect(HostInteractiveShell.menuLabelFor('/bin/zsh'), 'zsh (/bin/zsh)');
     });
   });
 }

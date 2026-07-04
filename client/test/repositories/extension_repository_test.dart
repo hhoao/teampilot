@@ -8,12 +8,11 @@ import '../support/in_memory_filesystem.dart';
 ExtensionRepository _repo(
   InMemoryFilesystem fs, {
   List<ExtensionManifest>? manifests,
-}) =>
-    ExtensionRepository(
-      fs: fs,
-      stateFilePath: '/root/extensions/state.json',
-      manifests: manifests ?? builtInExtensionManifests(),
-    );
+}) => ExtensionRepository(
+  fs: fs,
+  stateFilePath: '/root/extensions/state.json',
+  manifests: manifests ?? builtInExtensionManifests(),
+);
 
 void main() {
   test('load returns empty state when file absent', () async {
@@ -39,7 +38,10 @@ void main() {
     await repo.setTeamOverride('team-a', 'codegraph', false);
 
     expect(await repo.effectiveEnabledIds('team-b'), contains('codegraph'));
-    expect(await repo.effectiveEnabledIds('team-a'), isNot(contains('codegraph')));
+    expect(
+      await repo.effectiveEnabledIds('team-a'),
+      isNot(contains('codegraph')),
+    );
   });
 
   test('recordInstalled / recordUninstalled persist', () async {

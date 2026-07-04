@@ -168,25 +168,28 @@ requires_openai_auth = true
     expect(env, isNot(contains('ANTHROPIC_API_KEY')));
   });
 
-  test('top-level apiKey overrides empty ANTHROPIC_AUTH_TOKEN in config.env', () {
-    const provider = AppProviderConfig(
-      id: 'deepseek',
-      cli: CliTool.claude,
-      name: 'DeepSeek',
-      apiKey: 'sk-deepseek',
-      apiKeyField: 'ANTHROPIC_AUTH_TOKEN',
-      config: {
-        'api_key_field': 'ANTHROPIC_AUTH_TOKEN',
-        'env': {
-          'ANTHROPIC_AUTH_TOKEN': '',
-          'ANTHROPIC_BASE_URL': 'https://api.deepseek.com/anthropic',
+  test(
+    'top-level apiKey overrides empty ANTHROPIC_AUTH_TOKEN in config.env',
+    () {
+      const provider = AppProviderConfig(
+        id: 'deepseek',
+        cli: CliTool.claude,
+        name: 'DeepSeek',
+        apiKey: 'sk-deepseek',
+        apiKeyField: 'ANTHROPIC_AUTH_TOKEN',
+        config: {
+          'api_key_field': 'ANTHROPIC_AUTH_TOKEN',
+          'env': {
+            'ANTHROPIC_AUTH_TOKEN': '',
+            'ANTHROPIC_BASE_URL': 'https://api.deepseek.com/anthropic',
+          },
         },
-      },
-    );
+      );
 
-    final env = generator.buildClaudeSettings(provider)['env'] as Map;
-    expect(env['ANTHROPIC_AUTH_TOKEN'], 'sk-deepseek');
-  });
+      final env = generator.buildClaudeSettings(provider)['env'] as Map;
+      expect(env['ANTHROPIC_AUTH_TOKEN'], 'sk-deepseek');
+    },
+  );
 
   test('writes files atomically without leaving temp artifacts', () async {
     final target = p.join(temp.path, 'nested', 'out.json');

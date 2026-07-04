@@ -48,10 +48,10 @@ abstract final class MixedTeamPingPongScenario {
       );
       await drainPendingAsyncWork();
       await postFrame.flush();
-      await harness.waitUntilMembersReady(
-        cubit,
-        [kLeadMember.id, kWorkerMember.id],
-      );
+      await harness.waitUntilMembersReady(cubit, [
+        kLeadMember.id,
+        kWorkerMember.id,
+      ]);
       await harness.kickoffMembers(cubit, postFrame: postFrame);
       await harness.waitForPingPong(
         workspaceId: session.workspaceId,
@@ -135,10 +135,10 @@ abstract final class MixedTeamPingPongScenario {
       );
       await drainPendingAsyncWork();
       await postFrame.flush();
-      await harness.waitUntilDockerMembersReady(
-        cubit,
-        [kLeadMember.id, kWorkerMember.id],
-      );
+      await harness.waitUntilDockerMembersReady(cubit, [
+        kLeadMember.id,
+        kWorkerMember.id,
+      ]);
       await harness.kickoffMembers(cubit, postFrame: postFrame);
       await harness.waitForPingPong(
         workspaceId: session.workspaceId,

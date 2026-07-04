@@ -19,26 +19,30 @@ class _FakeRun {
 void main() {
   final installer = RemoteCliInstaller();
 
-  test('already installed → returns located path, no install attempted',
-      () async {
-    final run = _FakeRun({
-      'command -v claude':
-          const SshCommandResult(exitCode: 0, stdout: '/usr/bin/claude\n'),
-    });
-    var installed = false;
-    final path = await installer.ensure(
-      cli: CliTool.claude,
-      run: run.call,
-      optIn: true,
-      supportsInstaller: true,
-      install: ({required run, required onProgress}) async {
-        installed = true;
-        return '';
-      },
-    );
-    expect(path, '/usr/bin/claude');
-    expect(installed, isFalse);
-  });
+  test(
+    'already installed → returns located path, no install attempted',
+    () async {
+      final run = _FakeRun({
+        'command -v claude': const SshCommandResult(
+          exitCode: 0,
+          stdout: '/usr/bin/claude\n',
+        ),
+      });
+      var installed = false;
+      final path = await installer.ensure(
+        cli: CliTool.claude,
+        run: run.call,
+        optIn: true,
+        supportsInstaller: true,
+        install: ({required run, required onProgress}) async {
+          installed = true;
+          return '';
+        },
+      );
+      expect(path, '/usr/bin/claude');
+      expect(installed, isFalse);
+    },
+  );
 
   test('opt-in off + missing → error suggesting manual path', () async {
     final run = _FakeRun({});
@@ -49,11 +53,13 @@ void main() {
         optIn: false,
         supportsInstaller: true,
       ),
-      throwsA(isA<RemoteCliUnavailableException>().having(
-        (e) => e.reason,
-        'reason',
-        RemoteCliUnavailableReason.optInOff,
-      )),
+      throwsA(
+        isA<RemoteCliUnavailableException>().having(
+          (e) => e.reason,
+          'reason',
+          RemoteCliUnavailableReason.optInOff,
+        ),
+      ),
     );
   });
 
@@ -66,32 +72,36 @@ void main() {
         optIn: true,
         supportsInstaller: false,
       ),
-      throwsA(isA<RemoteCliUnavailableException>().having(
-        (e) => e.reason,
-        'reason',
-        RemoteCliUnavailableReason.noInstaller,
-      )),
+      throwsA(
+        isA<RemoteCliUnavailableException>().having(
+          (e) => e.reason,
+          'reason',
+          RemoteCliUnavailableReason.noInstaller,
+        ),
+      ),
     );
   });
 
-  test('opt-in on + supportsInstaller → runs install and uses reported path',
-      () async {
-    final fakeRun = _FakeRun({});
-    final progress = <String>[];
-    final path = await installer.ensure(
-      cli: CliTool.codex,
-      run: fakeRun.call,
-      optIn: true,
-      supportsInstaller: true,
-      onProgress: progress.add,
-      install: ({required run, required onProgress}) async {
-        onProgress('installing codex');
-        return '/usr/local/bin/codex';
-      },
-    );
-    expect(path, '/usr/local/bin/codex');
-    expect(progress, contains('installing codex'));
-  });
+  test(
+    'opt-in on + supportsInstaller → runs install and uses reported path',
+    () async {
+      final fakeRun = _FakeRun({});
+      final progress = <String>[];
+      final path = await installer.ensure(
+        cli: CliTool.codex,
+        run: fakeRun.call,
+        optIn: true,
+        supportsInstaller: true,
+        onProgress: progress.add,
+        install: ({required run, required onProgress}) async {
+          onProgress('installing codex');
+          return '/usr/local/bin/codex';
+        },
+      );
+      expect(path, '/usr/local/bin/codex');
+      expect(progress, contains('installing codex'));
+    },
+  );
 
   test('install runs but reports no path → installFailed', () async {
     final run = _FakeRun({}); // stays missing even after install
@@ -105,11 +115,13 @@ void main() {
           return '';
         },
       ),
-      throwsA(isA<RemoteCliUnavailableException>().having(
-        (e) => e.reason,
-        'reason',
-        RemoteCliUnavailableReason.installFailed,
-      )),
+      throwsA(
+        isA<RemoteCliUnavailableException>().having(
+          (e) => e.reason,
+          'reason',
+          RemoteCliUnavailableReason.installFailed,
+        ),
+      ),
     );
   });
 }

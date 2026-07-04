@@ -24,25 +24,25 @@ abstract final class AppFonts {
   /// JP*, whose Japanese `locl` forms center 。、 and misplace ，. Resolving to
   /// the SC face instead gives the Chinese punctuation placement.
   static List<String> get monoFamilyFallback => switch (defaultTargetPlatform) {
-        TargetPlatform.macOS => const [
-            'Ubuntu Sans Mono',
-            'PingFang SC',
-            'Heiti SC',
-            'monospace',
-          ],
-        TargetPlatform.windows => const [
-            'Ubuntu Sans Mono',
-            'Microsoft YaHei',
-            'monospace',
-          ],
-        _ => const [
-            'Ubuntu Sans Mono',
-            'Noto Sans Mono CJK SC',
-            'Noto Sans CJK SC',
-            'WenQuanYi Zen Hei Mono',
-            'monospace',
-          ],
-      };
+    TargetPlatform.macOS => const [
+      'Ubuntu Sans Mono',
+      'PingFang SC',
+      'Heiti SC',
+      'monospace',
+    ],
+    TargetPlatform.windows => const [
+      'Ubuntu Sans Mono',
+      'Microsoft YaHei',
+      'monospace',
+    ],
+    _ => const [
+      'Ubuntu Sans Mono',
+      'Noto Sans Mono CJK SC',
+      'Noto Sans CJK SC',
+      'WenQuanYi Zen Hei Mono',
+      'monospace',
+    ],
+  };
 }
 
 /// Font families attached to [ThemeData.extensions] by [buildLightTheme] /
@@ -62,9 +62,9 @@ final class AppFontTheme extends ThemeExtension<AppFontTheme> {
   final List<String> monoFontFamilyFallback;
 
   static AppFontTheme get fallback => AppFontTheme(
-        monoFontFamily: AppFonts.monoFamily,
-        monoFontFamilyFallback: AppFonts.monoFamilyFallback,
-      );
+    monoFontFamily: AppFonts.monoFamily,
+    monoFontFamilyFallback: AppFonts.monoFamilyFallback,
+  );
 
   @override
   AppFontTheme copyWith({
@@ -127,10 +127,9 @@ TextTheme buildAppUiTextTheme(TextTheme base) {
 
 TextTheme buildAppUiPrimaryTextTheme(TextTheme base) {
   final ui = GoogleFonts.notoSansSc();
-  return GoogleFonts.notoSansScTextTheme(base).apply(
-    fontFamily: ui.fontFamily,
-    fontFamilyFallback: ui.fontFamilyFallback,
-  );
+  return GoogleFonts.notoSansScTextTheme(
+    base,
+  ).apply(fontFamily: ui.fontFamily, fontFamilyFallback: ui.fontFamilyFallback);
 }
 
 AppFontTheme buildAppFontTheme({required TextStyle uiFont}) {

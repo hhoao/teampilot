@@ -12,6 +12,5 @@ final class OpencodeProviderCatalogCapability
   @override
   Future<ProviderCatalogSnapshot> loadFromLiveSources(
     ProviderCatalogLoadContext context,
-  ) =>
-      OpencodeLiveImport.loadSnapshot(context);
+  ) => OpencodeLiveImport.loadSnapshot(context);
 }

@@ -14,9 +14,9 @@ class ScopedBusPollGate {
     required TeamBus? Function(String tabScopeId) busForScope,
     required BusPollTick onTick,
     Duration pollInterval = const Duration(milliseconds: 1500),
-  })  : _busForScope = busForScope,
-        _onTick = onTick,
-        _pollInterval = pollInterval;
+  }) : _busForScope = busForScope,
+       _onTick = onTick,
+       _pollInterval = pollInterval;
 
   final TeamBus? Function(String tabScopeId) _busForScope;
   final BusPollTick _onTick;

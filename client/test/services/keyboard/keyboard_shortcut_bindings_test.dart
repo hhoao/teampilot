@@ -18,16 +18,16 @@ void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
 
   KeyDownEvent keyDown(LogicalKeyboardKey logicalKey) => KeyDownEvent(
-        physicalKey: _physicalFor(logicalKey),
-        logicalKey: logicalKey,
-        timeStamp: Duration.zero,
-      );
+    physicalKey: _physicalFor(logicalKey),
+    logicalKey: logicalKey,
+    timeStamp: Duration.zero,
+  );
 
   KeyUpEvent keyUp(LogicalKeyboardKey logicalKey) => KeyUpEvent(
-        physicalKey: _physicalFor(logicalKey),
-        logicalKey: logicalKey,
-        timeStamp: Duration.zero,
-      );
+    physicalKey: _physicalFor(logicalKey),
+    logicalKey: logicalKey,
+    timeStamp: Duration.zero,
+  );
 
   void pressModifier(LogicalKeyboardKey key) {
     HardwareKeyboard.instance.handleKeyEvent(keyDown(key));
@@ -51,7 +51,9 @@ void main() {
   group('KeyboardShortcutBindings.compose', () {
     test('plain Enter maps to composeSubmit', () {
       expect(
-        KeyboardShortcutBindings.compose.match(keyDown(LogicalKeyboardKey.enter)),
+        KeyboardShortcutBindings.compose.match(
+          keyDown(LogicalKeyboardKey.enter),
+        ),
         KeyboardShortcutAction.composeSubmit,
       );
     });
@@ -61,7 +63,9 @@ void main() {
       addTearDown(() => releaseModifier(LogicalKeyboardKey.controlLeft));
 
       expect(
-        KeyboardShortcutBindings.compose.match(keyDown(LogicalKeyboardKey.enter)),
+        KeyboardShortcutBindings.compose.match(
+          keyDown(LogicalKeyboardKey.enter),
+        ),
         KeyboardShortcutAction.composeNewLine,
       );
     });

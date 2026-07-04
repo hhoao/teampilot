@@ -32,9 +32,13 @@ void main() {
   });
 
   test('buildTrustMarkerJson includes workspacePath and trustMethod', () {
-    final decoded = jsonDecode(
-      CursorWorkspaceTrust.buildTrustMarkerJson('/home/hhoa/Document/testmixed'),
-    ) as Map<String, Object?>;
+    final decoded =
+        jsonDecode(
+              CursorWorkspaceTrust.buildTrustMarkerJson(
+                '/home/hhoa/Document/testmixed',
+              ),
+            )
+            as Map<String, Object?>;
     expect(decoded['workspacePath'], '/home/hhoa/Document/testmixed');
     expect(decoded['trustMethod'], CursorWorkspaceTrust.trustMethod);
     expect(decoded['trustedAt'], isNotEmpty);

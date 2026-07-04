@@ -86,9 +86,7 @@ class ChangelogData {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text('• ', style: theme.textTheme.bodySmall),
-                Expanded(
-                  child: Text(item, style: theme.textTheme.bodySmall),
-                ),
+                Expanded(child: Text(item, style: theme.textTheme.bodySmall)),
               ],
             ),
           ),

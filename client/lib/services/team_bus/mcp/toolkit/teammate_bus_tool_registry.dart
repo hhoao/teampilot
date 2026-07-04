@@ -43,20 +43,14 @@ const allTeammateBusTools = <TeammateBusTool>[
 ];
 
 /// Tools advertised and dispatchable for the current handler capabilities.
-Iterable<TeammateBusTool> enabledTeammateBusTools(
-  TeammateBusToolContext ctx,
-) =>
+Iterable<TeammateBusTool> enabledTeammateBusTools(TeammateBusToolContext ctx) =>
     allTeammateBusTools.where((tool) => tool.isEnabled(ctx));
 
 Map<TeammateBusToolName, TeammateBusTool> teammateBusToolByName(
   TeammateBusToolContext ctx,
-) =>
-    {
-      for (final tool in enabledTeammateBusTools(ctx)) tool.name: tool,
-    };
+) => {for (final tool in enabledTeammateBusTools(ctx)) tool.name: tool};
 
 /// Build the `tools/list` payload for the current handler capabilities.
 List<Map<String, Object?>> listAdvertisedTeammateBusTools(
   TeammateBusToolContext ctx,
-) =>
-    [for (final tool in enabledTeammateBusTools(ctx)) tool.toJson()];
+) => [for (final tool in enabledTeammateBusTools(ctx)) tool.toJson()];

@@ -29,10 +29,7 @@ void main() {
     );
 
     test('appToolRoot is cli-defaults/<tool>', () {
-      expect(
-        layout.appToolRoot('flashskyai'),
-        '/tp/cli-defaults/flashskyai',
-      );
+      expect(layout.appToolRoot('flashskyai'), '/tp/cli-defaults/flashskyai');
       expect(layout.appToolRoot('claude'), '/tp/cli-defaults/claude');
     });
 
@@ -50,23 +47,26 @@ void main() {
       );
     });
 
-    test('transcriptSearchRoots returns app + team + workspace + session for each tool',
-        () {
-      final roots = layout.transcriptSearchRoots(
-        workspaceId: workspaceId,
-        sessionId: 'sess-1',
-        profileId: 'team-a',
-      );
-      expect(roots, [
-        for (final tool in runtimeLayoutDefaultTools) '/tp/cli-defaults/$tool',
-        for (final tool in runtimeLayoutDefaultTools)
-          '/tp/identities-runtime/team-a/$tool',
-        for (final tool in runtimeLayoutDefaultTools)
-          '/tp/workspace/workspaces/proj-1/config/$tool',
-        for (final tool in runtimeLayoutDefaultTools)
-          '/tp/workspace/workspaces/proj-1/sessions/sess-1/runtime/$tool',
-      ]);
-    });
+    test(
+      'transcriptSearchRoots returns app + team + workspace + session for each tool',
+      () {
+        final roots = layout.transcriptSearchRoots(
+          workspaceId: workspaceId,
+          sessionId: 'sess-1',
+          profileId: 'team-a',
+        );
+        expect(roots, [
+          for (final tool in runtimeLayoutDefaultTools)
+            '/tp/cli-defaults/$tool',
+          for (final tool in runtimeLayoutDefaultTools)
+            '/tp/identities-runtime/team-a/$tool',
+          for (final tool in runtimeLayoutDefaultTools)
+            '/tp/workspace/workspaces/proj-1/config/$tool',
+          for (final tool in runtimeLayoutDefaultTools)
+            '/tp/workspace/workspaces/proj-1/sessions/sess-1/runtime/$tool',
+        ]);
+      },
+    );
 
     test('transcriptSearchRoots omits session layer when sessionId empty', () {
       final roots = layout.transcriptSearchRoots(
@@ -82,12 +82,15 @@ void main() {
       ]);
     });
 
-    test('appFlashskyaiLlmConfigFile points at cli-defaults llm_config.json', () {
-      expect(
-        layout.appFlashskyaiLlmConfigFile,
-        '/tp/cli-defaults/flashskyai/llm_config.json',
-      );
-    });
+    test(
+      'appFlashskyaiLlmConfigFile points at cli-defaults llm_config.json',
+      () {
+        expect(
+          layout.appFlashskyaiLlmConfigFile,
+          '/tp/cli-defaults/flashskyai/llm_config.json',
+        );
+      },
+    );
   });
 
   group('WorkspaceLayout workspace paths', () {
@@ -97,10 +100,7 @@ void main() {
     );
 
     test('workspace.workspacesDir is workspace/workspaces', () {
-      expect(
-        layout.workspace.workspacesDir,
-        '/tp/workspace/workspaces',
-      );
+      expect(layout.workspace.workspacesDir, '/tp/workspace/workspaces');
     });
 
     test('workspaceDir nests under workspace/workspaces/<workspaceId>', () {
@@ -142,9 +142,7 @@ void main() {
     test('uses filesystem path context from injected fs', () {
       final windowsLayout = RuntimeLayout(
         teampilotRoot: r'C:\tp',
-        fs: InMemoryFilesystem(
-          pathContext: p.Context(style: p.Style.windows),
-        ),
+        fs: InMemoryFilesystem(pathContext: p.Context(style: p.Style.windows)),
       );
       expect(
         windowsLayout.sessionRuntimeToolDir('proj', 'sess', 'claude'),
@@ -204,47 +202,44 @@ void main() {
       );
     });
 
-    test(
-      'ensureIdentityInheritsApp symlinks agents from app level',
-      () async {
-        final layout = RuntimeLayout(
-          teampilotRoot: base.path,
-          fs: LocalFilesystem(),
-        );
-        await layout.ensureAppToolLayout('flashskyai');
-        final appAgents = Directory(
-          p.join(layout.appToolRoot('flashskyai'), 'agents'),
-        );
-        await appAgents.create(recursive: true);
-        await File(p.join(appAgents.path, 'demo.md')).writeAsString('# demo');
+    test('ensureIdentityInheritsApp symlinks agents from app level', () async {
+      final layout = RuntimeLayout(
+        teampilotRoot: base.path,
+        fs: LocalFilesystem(),
+      );
+      await layout.ensureAppToolLayout('flashskyai');
+      final appAgents = Directory(
+        p.join(layout.appToolRoot('flashskyai'), 'agents'),
+      );
+      await appAgents.create(recursive: true);
+      await File(p.join(appAgents.path, 'demo.md')).writeAsString('# demo');
 
-        await layout.ensureIdentityInheritsApp('team-a', 'flashskyai');
+      await layout.ensureIdentityInheritsApp('team-a', 'flashskyai');
 
-        final teamAgents = p.join(
-          layout.identityToolDir('team-a', 'flashskyai'),
-          'agents',
-        );
-        expect(_inheritedPathExists(teamAgents), isTrue);
-        if (Link(teamAgents).existsSync()) {
-          expect(Link(teamAgents).targetSync(), appAgents.path);
-        }
+      final teamAgents = p.join(
+        layout.identityToolDir('team-a', 'flashskyai'),
+        'agents',
+      );
+      expect(_inheritedPathExists(teamAgents), isTrue);
+      if (Link(teamAgents).existsSync()) {
+        expect(Link(teamAgents).targetSync(), appAgents.path);
+      }
 
-        expect(
-          await File(p.join(teamAgents, 'demo.md')).readAsString(),
-          '# demo',
-        );
+      expect(
+        await File(p.join(teamAgents, 'demo.md')).readAsString(),
+        '# demo',
+      );
 
-        final teamSkills = p.join(
-          layout.identityToolDir('team-a', 'flashskyai'),
-          'skills',
-        );
-        expect(
-          Link(teamSkills).existsSync() || Directory(teamSkills).existsSync(),
-          isFalse,
-          reason: 'team skills/ must not be an inherited symlink or dir',
-        );
-      },
-    );
+      final teamSkills = p.join(
+        layout.identityToolDir('team-a', 'flashskyai'),
+        'skills',
+      );
+      expect(
+        Link(teamSkills).existsSync() || Directory(teamSkills).existsSync(),
+        isFalse,
+        reason: 'team skills/ must not be an inherited symlink or dir',
+      );
+    });
 
     test(
       'ensureSessionRuntimeInheritsIdentity chains agents app → team → session symlinks',
@@ -283,8 +278,11 @@ void main() {
           layout.sessionRuntimeToolDir(workspaceId, 'sess-1', 'flashskyai'),
           'skills',
         );
-        expect(Link(sessionSkills).existsSync(), isFalse,
-            reason: 'session skills/ must not be an inherited symlink');
+        expect(
+          Link(sessionSkills).existsSync(),
+          isFalse,
+          reason: 'session skills/ must not be an inherited symlink',
+        );
       },
     );
 
@@ -327,8 +325,9 @@ void main() {
         );
         expect(File(p.join(copied.path, '.mcp.json')).existsSync(), isTrue);
         expect(
-          File(p.join(copied.path, '.flashskyai-plugin', 'plugin.json'))
-              .existsSync(),
+          File(
+            p.join(copied.path, '.flashskyai-plugin', 'plugin.json'),
+          ).existsSync(),
           isTrue,
         );
 
@@ -353,8 +352,9 @@ void main() {
           isTrue,
         );
         expect(
-          File(p.join(claudeCopied.path, '.flashskyai-plugin', 'plugin.json'))
-              .existsSync(),
+          File(
+            p.join(claudeCopied.path, '.flashskyai-plugin', 'plugin.json'),
+          ).existsSync(),
           isFalse,
         );
       },
@@ -489,47 +489,44 @@ void main() {
       },
     );
 
-    test(
-      'ensureWorkspaceConfigInheritsApp symlinks agents from app',
-      () async {
-        final layout = RuntimeLayout(
-          teampilotRoot: base.path,
-          fs: LocalFilesystem(),
-        );
-        await layout.ensureAppToolLayout('flashskyai');
-        final appAgents = Directory(
-          p.join(layout.appToolRoot('flashskyai'), 'agents'),
-        );
-        await appAgents.create(recursive: true);
-        await File(p.join(appAgents.path, 'demo.md')).writeAsString('# demo');
+    test('ensureWorkspaceConfigInheritsApp symlinks agents from app', () async {
+      final layout = RuntimeLayout(
+        teampilotRoot: base.path,
+        fs: LocalFilesystem(),
+      );
+      await layout.ensureAppToolLayout('flashskyai');
+      final appAgents = Directory(
+        p.join(layout.appToolRoot('flashskyai'), 'agents'),
+      );
+      await appAgents.create(recursive: true);
+      await File(p.join(appAgents.path, 'demo.md')).writeAsString('# demo');
 
-        await layout.ensureWorkspaceConfigInheritsApp('proj-a', 'flashskyai');
+      await layout.ensureWorkspaceConfigInheritsApp('proj-a', 'flashskyai');
 
-        final workspaceAgents = p.join(
-          layout.workspaceConfigToolDir('proj-a', 'flashskyai'),
-          'agents',
-        );
-        expect(_inheritedPathExists(workspaceAgents), isTrue);
-        if (Link(workspaceAgents).existsSync()) {
-          expect(Link(workspaceAgents).targetSync(), appAgents.path);
-        }
-        expect(
-          await File(p.join(workspaceAgents, 'demo.md')).readAsString(),
-          '# demo',
-        );
+      final workspaceAgents = p.join(
+        layout.workspaceConfigToolDir('proj-a', 'flashskyai'),
+        'agents',
+      );
+      expect(_inheritedPathExists(workspaceAgents), isTrue);
+      if (Link(workspaceAgents).existsSync()) {
+        expect(Link(workspaceAgents).targetSync(), appAgents.path);
+      }
+      expect(
+        await File(p.join(workspaceAgents, 'demo.md')).readAsString(),
+        '# demo',
+      );
 
-        final workspaceSkills = p.join(
-          layout.workspaceConfigToolDir('proj-a', 'flashskyai'),
-          'skills',
-        );
-        expect(
-          Link(workspaceSkills).existsSync() ||
-              Directory(workspaceSkills).existsSync(),
-          isFalse,
-          reason: 'workspace skills/ must not be an inherited symlink or dir',
-        );
-      },
-    );
+      final workspaceSkills = p.join(
+        layout.workspaceConfigToolDir('proj-a', 'flashskyai'),
+        'skills',
+      );
+      expect(
+        Link(workspaceSkills).existsSync() ||
+            Directory(workspaceSkills).existsSync(),
+        isFalse,
+        reason: 'workspace skills/ must not be an inherited symlink or dir',
+      );
+    });
 
     test(
       'ensureSessionRuntimeInheritsWorkspace chains agents app → workspace → session',
@@ -567,8 +564,11 @@ void main() {
           layout.sessionRuntimeToolDir('proj-a', 'sess-1', 'flashskyai'),
           'skills',
         );
-        expect(Link(sessionSkills).existsSync(), isFalse,
-            reason: 'session skills/ must not be an inherited symlink');
+        expect(
+          Link(sessionSkills).existsSync(),
+          isFalse,
+          reason: 'session skills/ must not be an inherited symlink',
+        );
       },
     );
   });

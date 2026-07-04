@@ -3,24 +3,27 @@ import 'package:teampilot/models/team_config.dart';
 import 'package:teampilot/services/ai/team_config_prompt.dart';
 
 void main() {
-  test('native prompt: rubric + schema, no cli/model/effort/skillIds fields', () {
-    final p = buildTeamConfigPrompt(
-      mode: TeamMode.native,
-      description: 'Flutter frontend team',
-    );
-    expect(p, contains('Flutter frontend team'));
-    expect(p, contains('NATIVE team'));
-    expect(p, contains('"responsibilities"'));
-    expect(p, contains('"workingMethod"'));
-    expect(p, contains('"description"'));
-    expect(p, contains('Do NOT'));
-    expect(p, contains('exactly one member named "team-lead"'));
-    // none of these fields are generated
-    expect(p.contains('"cli"'), isFalse);
-    expect(p.contains('"model"'), isFalse);
-    expect(p.contains('"effort"'), isFalse);
-    expect(p.contains('"skillIds"'), isFalse);
-  });
+  test(
+    'native prompt: rubric + schema, no cli/model/effort/skillIds fields',
+    () {
+      final p = buildTeamConfigPrompt(
+        mode: TeamMode.native,
+        description: 'Flutter frontend team',
+      );
+      expect(p, contains('Flutter frontend team'));
+      expect(p, contains('NATIVE team'));
+      expect(p, contains('"responsibilities"'));
+      expect(p, contains('"workingMethod"'));
+      expect(p, contains('"description"'));
+      expect(p, contains('Do NOT'));
+      expect(p, contains('exactly one member named "team-lead"'));
+      // none of these fields are generated
+      expect(p.contains('"cli"'), isFalse);
+      expect(p.contains('"model"'), isFalse);
+      expect(p.contains('"effort"'), isFalse);
+      expect(p.contains('"skillIds"'), isFalse);
+    },
+  );
 
   test('mixed prompt: bus context, no cli/model/effort fields', () {
     final p = buildTeamConfigPrompt(

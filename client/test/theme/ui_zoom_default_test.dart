@@ -4,19 +4,28 @@ import 'package:teampilot/theme/app_typography_scale.dart';
 void main() {
   test('autoUiZoomForDevicePixelRatio = 1/dpr (standard zoom baseline)', () {
     expect(autoUiZoomForDevicePixelRatio(1.0), 1.0); // Linux/macOS @100%
-    expect(autoUiZoomForDevicePixelRatio(1.5), closeTo(0.667, 0.001)); // Win @150%
+    expect(
+      autoUiZoomForDevicePixelRatio(1.5),
+      closeTo(0.667, 0.001),
+    ); // Win @150%
     expect(autoUiZoomForDevicePixelRatio(1.25), 0.8);
     expect(autoUiZoomForDevicePixelRatio(2.0), 0.5);
     expect(autoUiZoomForDevicePixelRatio(0.0), 1.0); // guard against /0
   });
 
-  test('autoTextScaleForSystem = osTextScale × dpr (standard text baseline)', () {
-    expect(autoTextScaleForSystem(1.5, 1.0), 1.5); // Ubuntu GNOME 1.5 @100%
-    expect(autoTextScaleForSystem(1.0, 1.5), 1.5); // Windows @150%
-    expect(autoTextScaleForSystem(1.0, 1.0), 1.0);
-    expect(autoTextScaleForSystem(1.5, 2.0), kTypographyCustomMultiplierMax); // clamped
-    expect(autoTextScaleForSystem(0.0, 0.0), 1.0); // guards
-  });
+  test(
+    'autoTextScaleForSystem = osTextScale × dpr (standard text baseline)',
+    () {
+      expect(autoTextScaleForSystem(1.5, 1.0), 1.5); // Ubuntu GNOME 1.5 @100%
+      expect(autoTextScaleForSystem(1.0, 1.5), 1.5); // Windows @150%
+      expect(autoTextScaleForSystem(1.0, 1.0), 1.0);
+      expect(
+        autoTextScaleForSystem(1.5, 2.0),
+        kTypographyCustomMultiplierMax,
+      ); // clamped
+      expect(autoTextScaleForSystem(0.0, 0.0), 1.0); // guards
+    },
+  );
 
   test('resolveRelativeScale = baseline × preset multiplier', () {
     // standard == the baseline itself

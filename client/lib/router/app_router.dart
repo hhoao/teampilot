@@ -95,9 +95,8 @@ final appRouter = GoRouter(
           routes: [
             GoRoute(
               path: '/home-v2',
-              pageBuilder: (context, state) => const NoTransitionPage(
-                child: SizedBox.shrink(),
-              ),
+              pageBuilder: (context, state) =>
+                  const NoTransitionPage(child: SizedBox.shrink()),
             ),
             GoRoute(
               path: '/home-v2/workspace/:workspaceId/manage',
@@ -121,9 +120,8 @@ final appRouter = GoRouter(
             ),
             GoRoute(
               path: '/home-v2/workspace/:workspaceId',
-              pageBuilder: (context, state) => const NoTransitionPage(
-                child: SizedBox.shrink(),
-              ),
+              pageBuilder: (context, state) =>
+                  const NoTransitionPage(child: SizedBox.shrink()),
             ),
           ],
         ),

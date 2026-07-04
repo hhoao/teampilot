@@ -4,11 +4,7 @@ import 'dart:io';
 import 'models.dart';
 import 'rebuild_model.dart';
 
-const performanceTabs = [
-  'Frame Analysis',
-  'Rebuild Stats',
-  'Timeline Events',
-];
+const performanceTabs = ['Frame Analysis', 'Rebuild Stats', 'Timeline Events'];
 
 String tabLabel(int? index) {
   if (index == null) return '';
@@ -79,7 +75,8 @@ PerformanceSnapshot _parseSnapshot(
     isDevToolsSnapshot: root['devToolsSnapshot'] == true,
     activeScreenId: root['activeScreenId'] as String?,
     connectedApp: connectedApp,
-    displayRefreshRateHz: (perf['displayRefreshRate'] as num?)?.toDouble() ?? 60,
+    displayRefreshRateHz:
+        (perf['displayRefreshRate'] as num?)?.toDouble() ?? 60,
     selectedFrameId: perf['selectedFrameId'] as int?,
     selectedTab: perf['selectedTab'] as int?,
     frames: _parseFrames(perf),

@@ -10,7 +10,9 @@ void main() {
     addTearDown(() => tmp.deleteSync(recursive: true));
 
     final repo = SessionRepository(rootDir: tmp.path);
-    final ws = await repo.createWorkspace([WorkspaceFolder(path: '/repo/main')]);
+    final ws = await repo.createWorkspace([
+      WorkspaceFolder(path: '/repo/main'),
+    ]);
     final session = await repo.createSession(
       ws.workspaceId,
       personalIdentityId: 'p',
@@ -20,13 +22,21 @@ void main() {
     expect(session.firstFolderPath, '/repo/wt/feat');
   });
 
-  test('createSession without workingDirectory keeps workspace.firstFolderPath', () async {
-    final tmp = await Directory.systemTemp.createTemp('fs_session_repo_wd_');
-    addTearDown(() => tmp.deleteSync(recursive: true));
+  test(
+    'createSession without workingDirectory keeps workspace.firstFolderPath',
+    () async {
+      final tmp = await Directory.systemTemp.createTemp('fs_session_repo_wd_');
+      addTearDown(() => tmp.deleteSync(recursive: true));
 
-    final repo = SessionRepository(rootDir: tmp.path);
-    final ws = await repo.createWorkspace([WorkspaceFolder(path: '/repo/main')]);
-    final session = await repo.createSession(ws.workspaceId, personalIdentityId: 'p');
-    expect(session.firstFolderPath, '/repo/main');
-  });
+      final repo = SessionRepository(rootDir: tmp.path);
+      final ws = await repo.createWorkspace([
+        WorkspaceFolder(path: '/repo/main'),
+      ]);
+      final session = await repo.createSession(
+        ws.workspaceId,
+        personalIdentityId: 'p',
+      );
+      expect(session.firstFolderPath, '/repo/main');
+    },
+  );
 }

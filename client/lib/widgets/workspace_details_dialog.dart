@@ -16,8 +16,10 @@ Future<void> showWorkspaceDetailsDialog(
 ) {
   return showDialog<void>(
     context: context,
-    builder: (ctx) =>
-        _WorkspaceDetailsDialog(workspace: workspace, sessionCount: sessionCount),
+    builder: (ctx) => _WorkspaceDetailsDialog(
+      workspace: workspace,
+      sessionCount: sessionCount,
+    ),
   );
 }
 
@@ -31,7 +33,8 @@ class _WorkspaceDetailsDialog extends StatefulWidget {
   final int sessionCount;
 
   @override
-  State<_WorkspaceDetailsDialog> createState() => _WorkspaceDetailsDialogState();
+  State<_WorkspaceDetailsDialog> createState() =>
+      _WorkspaceDetailsDialogState();
 }
 
 class _WorkspaceDetailsDialogState extends State<_WorkspaceDetailsDialog> {
@@ -103,7 +106,10 @@ class _WorkspaceDetailsDialogState extends State<_WorkspaceDetailsDialog> {
             decoration: InputDecoration(labelText: l10n.workspaceDisplayName),
           ),
           const SizedBox(height: 16),
-          Text(l10n.workspaceFoldersSectionTitle, style: Theme.of(context).textTheme.labelLarge),
+          Text(
+            l10n.workspaceFoldersSectionTitle,
+            style: Theme.of(context).textTheme.labelLarge,
+          ),
           const SizedBox(height: 8),
           WorkspaceFoldersEditor(
             folders: _folders,

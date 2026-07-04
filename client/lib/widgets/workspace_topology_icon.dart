@@ -6,11 +6,7 @@ import '../theme/workspace_topology_colors.dart';
 
 /// Topology glyph (local / remote / mixed) using shared accent colors.
 class WorkspaceTopologyIcon extends StatelessWidget {
-  const WorkspaceTopologyIcon({
-    required this.topology,
-    this.size,
-    super.key,
-  });
+  const WorkspaceTopologyIcon({required this.topology, this.size, super.key});
 
   final WorkspaceTopology topology;
   final double? size;

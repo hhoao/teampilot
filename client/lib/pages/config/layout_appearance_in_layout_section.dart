@@ -90,96 +90,97 @@ class LayoutAppearanceInLayoutSection extends StatelessWidget {
                 ),
                 SettingsLabeledRow(
                   title: l10n.themeModeTitle,
-              subtitle: l10n.themeModeDescription,
-              trailing: WorkspaceSettingsToggleStrip<String>(
-                segments: [
-                  WorkspaceToggleSegment<String>(
-                    value: 'light',
-                    label: l10n.themeLight,
-                    icon: Icons.light_mode_outlined,
+                  subtitle: l10n.themeModeDescription,
+                  trailing: WorkspaceSettingsToggleStrip<String>(
+                    segments: [
+                      WorkspaceToggleSegment<String>(
+                        value: 'light',
+                        label: l10n.themeLight,
+                        icon: Icons.light_mode_outlined,
+                      ),
+                      WorkspaceToggleSegment<String>(
+                        value: 'dark',
+                        label: l10n.themeDark,
+                        icon: Icons.dark_mode_outlined,
+                      ),
+                      WorkspaceToggleSegment<String>(
+                        value: 'system',
+                        label: l10n.themeSystem,
+                        icon: Icons.desktop_windows_outlined,
+                      ),
+                    ],
+                    selected: themeMode,
+                    onChanged: controller.setThemeMode,
                   ),
-                  WorkspaceToggleSegment<String>(
-                    value: 'dark',
-                    label: l10n.themeDark,
-                    icon: Icons.dark_mode_outlined,
+                  showDividerBelow: true,
+                ),
+                SettingsLabeledRow(
+                  title: l10n.themeColorPresetTitle,
+                  subtitle: l10n.themeColorPresetDescription,
+                  trailing: ThemeColorPresetPicker(
+                    selected: colorPreset,
+                    onSelect: controller.setThemeColorPreset,
                   ),
-                  WorkspaceToggleSegment<String>(
-                    value: 'system',
-                    label: l10n.themeSystem,
-                    icon: Icons.desktop_windows_outlined,
+                  showDividerBelow: true,
+                ),
+                SettingsLabeledRow(
+                  title: l10n.typographyScaleTitle,
+                  subtitle: l10n.typographyScaleDescription,
+                  trailing: TypographyScaleSetting(
+                    scaleId: typographyScale,
+                    customMultiplier: typographyCustomMultiplier,
+                    onScaleIdChanged: controller.setTypographyScale,
+                    onCustomMultiplierChanged:
+                        controller.setTypographyScaleCustom,
                   ),
-                ],
-                selected: themeMode,
-                onChanged: controller.setThemeMode,
-              ),
-              showDividerBelow: true,
-            ),
-            SettingsLabeledRow(
-              title: l10n.themeColorPresetTitle,
-              subtitle: l10n.themeColorPresetDescription,
-              trailing: ThemeColorPresetPicker(
-                selected: colorPreset,
-                onSelect: controller.setThemeColorPreset,
-              ),
-              showDividerBelow: true,
-            ),
-            SettingsLabeledRow(
-              title: l10n.typographyScaleTitle,
-              subtitle: l10n.typographyScaleDescription,
-              trailing: TypographyScaleSetting(
-                scaleId: typographyScale,
-                customMultiplier: typographyCustomMultiplier,
-                onScaleIdChanged: controller.setTypographyScale,
-                onCustomMultiplierChanged: controller.setTypographyScaleCustom,
-              ),
-              showDividerBelow: true,
-            ),
-            SettingsLabeledRow(
-              title: l10n.uiZoomTitle,
-              subtitle: l10n.uiZoomDescription,
-              trailing: TypographyScaleSetting(
-                scaleId: uiZoomScale,
-                customMultiplier: uiZoomCustomMultiplier,
-                onScaleIdChanged: controller.setUiZoomScale,
-                onCustomMultiplierChanged: controller.setUiZoomCustom,
-              ),
-              showDividerBelow: true,
-            ),
-            SettingsLabeledRow(
-              title: '终端主题',
-              subtitle: '跟随主题色或使用固定风格',
-              trailing: SettingsCompactDropdown<String>(
-                value: terminalThemeMode,
-                entries: const [
-                  ('adaptive', '跟随主题'),
-                  ('classicDark', '经典暗色'),
-                  ('highContrast', '高对比'),
-                ],
-                onChanged: (v) {
-                  if (v != null) controller.setTerminalThemeMode(v);
-                },
-              ),
-              showDividerBelow: true,
-            ),
-            SettingsLabeledRow(
-              title: l10n.language,
-              subtitle: l10n.languageDescription,
-              trailing: SettingsCompactDropdown<String>(
-                value: langValue,
-                entries: [
-                  ('en', l10n.languageEnglish),
-                  ('zh', l10n.languageChinese),
-                ],
-                itemKeys: const {
-                  'en': AppKeys.languageEnButton,
-                  'zh': AppKeys.languageZhButton,
-                },
-                onChanged: (v) {
-                  if (v != null) controller.setLocale(v);
-                },
-              ),
-              showDividerBelow: false,
-            ),
+                  showDividerBelow: true,
+                ),
+                SettingsLabeledRow(
+                  title: l10n.uiZoomTitle,
+                  subtitle: l10n.uiZoomDescription,
+                  trailing: TypographyScaleSetting(
+                    scaleId: uiZoomScale,
+                    customMultiplier: uiZoomCustomMultiplier,
+                    onScaleIdChanged: controller.setUiZoomScale,
+                    onCustomMultiplierChanged: controller.setUiZoomCustom,
+                  ),
+                  showDividerBelow: true,
+                ),
+                SettingsLabeledRow(
+                  title: '终端主题',
+                  subtitle: '跟随主题色或使用固定风格',
+                  trailing: SettingsCompactDropdown<String>(
+                    value: terminalThemeMode,
+                    entries: const [
+                      ('adaptive', '跟随主题'),
+                      ('classicDark', '经典暗色'),
+                      ('highContrast', '高对比'),
+                    ],
+                    onChanged: (v) {
+                      if (v != null) controller.setTerminalThemeMode(v);
+                    },
+                  ),
+                  showDividerBelow: true,
+                ),
+                SettingsLabeledRow(
+                  title: l10n.language,
+                  subtitle: l10n.languageDescription,
+                  trailing: SettingsCompactDropdown<String>(
+                    value: langValue,
+                    entries: [
+                      ('en', l10n.languageEnglish),
+                      ('zh', l10n.languageChinese),
+                    ],
+                    itemKeys: const {
+                      'en': AppKeys.languageEnButton,
+                      'zh': AppKeys.languageZhButton,
+                    },
+                    onChanged: (v) {
+                      if (v != null) controller.setLocale(v);
+                    },
+                  ),
+                  showDividerBelow: false,
+                ),
               ],
             );
           },

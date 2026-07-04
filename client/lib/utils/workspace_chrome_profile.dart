@@ -20,10 +20,7 @@ LaunchProfile? resolveWorkspaceChromeProfile(
   return launchProfiles.byId(defaultId);
 }
 
-String workspaceChromeProfileId(
-  Workspace workspace, {
-  String? routeProfileId,
-}) {
+String workspaceChromeProfileId(Workspace workspace, {String? routeProfileId}) {
   final route = routeProfileId?.trim() ?? '';
   if (route.isNotEmpty) return route;
   final defaultId = workspace.defaultProfileId.trim();

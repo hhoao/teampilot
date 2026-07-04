@@ -25,37 +25,44 @@ void main() {
     if (base.existsSync()) base.deleteSync(recursive: true);
   });
 
-  test('seed creates Default workspace with personal and team sessions', () async {
-    final repo = SessionRepository();
-    final team = const TeamRosterEditor().defaultTeam();
+  test(
+    'seed creates Default workspace with personal and team sessions',
+    () async {
+      final repo = SessionRepository();
+      final team = const TeamRosterEditor().defaultTeam();
 
-    final workspace = await DefaultWorkspaceService.seed(
-      repo,
-      defaultTeam: team,
-    );
+      final workspace = await DefaultWorkspaceService.seed(
+        repo,
+        defaultTeam: team,
+      );
 
-    expect(workspace.display, DefaultWorkspaceService.defaultDisplay);
-    expect(
-      workspace.firstFolderPath,
-      normalizeWorkspacePath(p.join(base.path, 'Documents', 'TeamPilot')),
-    );
-    expect(
-      workspace.defaultProfileId,
-      LaunchProfileProvisioner.defaultPersonalId,
-    );
+      expect(workspace.display, DefaultWorkspaceService.defaultDisplay);
+      expect(
+        workspace.firstFolderPath,
+        normalizeWorkspacePath(p.join(base.path, 'Documents', 'TeamPilot')),
+      );
+      expect(
+        workspace.defaultProfileId,
+        LaunchProfileProvisioner.defaultPersonalId,
+      );
 
-    final sessions = await repo.loadSessions();
-    final workspaceSessions =
-        sessions.where((s) => s.workspaceId == workspace.workspaceId).toList();
-    expect(workspaceSessions, hasLength(2));
+      final sessions = await repo.loadSessions();
+      final workspaceSessions = sessions
+          .where((s) => s.workspaceId == workspace.workspaceId)
+          .toList();
+      expect(workspaceSessions, hasLength(2));
 
-    final personal = workspaceSessions.singleWhere((s) => s.sessionTeam.isEmpty);
-    expect(personal.profileId, LaunchProfileProvisioner.defaultPersonalId);
+      final personal = workspaceSessions.singleWhere(
+        (s) => s.sessionTeam.isEmpty,
+      );
+      expect(personal.profileId, LaunchProfileProvisioner.defaultPersonalId);
 
-    final teamSession =
-        workspaceSessions.singleWhere((s) => s.sessionTeam == team.id);
-    expect(teamSession.members, isNotEmpty);
-  });
+      final teamSession = workspaceSessions.singleWhere(
+        (s) => s.sessionTeam == team.id,
+      );
+      expect(teamSession.members, isNotEmpty);
+    },
+  );
 
   test('seed is idempotent', () async {
     final repo = SessionRepository();

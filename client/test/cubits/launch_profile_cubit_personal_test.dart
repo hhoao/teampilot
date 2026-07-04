@@ -10,9 +10,11 @@ import 'package:teampilot/services/session/session_lifecycle_service.dart';
 
 import '../support/post_frame_test_harness.dart';
 
-LaunchProfileRepository _repo(Directory dir) => testLaunchProfileRepository(dir);
+LaunchProfileRepository _repo(Directory dir) =>
+    testLaunchProfileRepository(dir);
 
-LaunchProfileCubit _cubit(Directory dir, LaunchProfileRepository repo) => LaunchProfileCubit(
+LaunchProfileCubit _cubit(Directory dir, LaunchProfileRepository repo) =>
+    LaunchProfileCubit(
       repository: repo,
       sessionRepository: SessionRepository(
         lifecycleService: SessionLifecycleService(appDataBasePath: dir.path),
@@ -64,9 +66,7 @@ void main() {
 
   test('deleting when more than one removes the identity', () async {
     final cubit = _cubit(tmp, repo);
-    await cubit.savePersonal(
-      const PersonalProfile(id: 'a', display: 'A'),
-    );
+    await cubit.savePersonal(const PersonalProfile(id: 'a', display: 'A'));
     await cubit.savePersonal(
       const PersonalProfile(
         id: 'b',

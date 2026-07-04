@@ -1,4 +1,4 @@
-﻿import 'dart:async';
+import 'dart:async';
 import 'dart:io';
 
 import 'package:flutter/material.dart';
@@ -22,10 +22,8 @@ Future<bool> showMcpOAuthConnectDialog({
   final result = await showDialog<bool>(
     context: context,
     barrierDismissible: true,
-    builder: (ctx) => _McpOAuthConnectDialog(
-      server: server,
-      configDir: configDir,
-    ),
+    builder: (ctx) =>
+        _McpOAuthConnectDialog(server: server, configDir: configDir),
   );
   return result == true;
 }
@@ -33,10 +31,7 @@ Future<bool> showMcpOAuthConnectDialog({
 enum _McpOAuthDialogPhase { discovering, waitingCallback, finishing }
 
 class _McpOAuthConnectDialog extends StatefulWidget {
-  const _McpOAuthConnectDialog({
-    required this.server,
-    required this.configDir,
-  });
+  const _McpOAuthConnectDialog({required this.server, required this.configDir});
 
   final McpServer server;
   final String configDir;
@@ -118,7 +113,8 @@ class _McpOAuthConnectDialogState extends State<_McpOAuthConnectDialog> {
       );
       if (!launched && mounted && !_cancelled) {
         setState(
-          () => _error = 'Could not open the system browser. Use the link below or paste the callback URL.',
+          () => _error =
+              'Could not open the system browser. Use the link below or paste the callback URL.',
         );
       }
     } catch (e) {
@@ -138,9 +134,7 @@ class _McpOAuthConnectDialogState extends State<_McpOAuthConnectDialog> {
     }
     if (!uri.queryParameters.containsKey('code') &&
         !uri.queryParameters.containsKey('error')) {
-      setState(
-        () => _error = 'URL must include ?code= or ?error=',
-      );
+      setState(() => _error = 'URL must include ?code= or ?error=');
       return;
     }
     final completer = _manualCompleter;
@@ -167,8 +161,7 @@ class _McpOAuthConnectDialogState extends State<_McpOAuthConnectDialog> {
   }
 
   bool get _showCallbackField =>
-      _authorizationUrl != null ||
-      _phase != _McpOAuthDialogPhase.discovering;
+      _authorizationUrl != null || _phase != _McpOAuthDialogPhase.discovering;
 
   @override
   Widget build(BuildContext context) {
@@ -214,7 +207,10 @@ class _McpOAuthConnectDialogState extends State<_McpOAuthConnectDialog> {
               const SizedBox(height: 12),
               FilledButton.icon(
                 onPressed: finishing ? null : _openBrowser,
-                icon: Icon(Icons.open_in_browser, size: context.appIconSizes.md),
+                icon: Icon(
+                  Icons.open_in_browser,
+                  size: context.appIconSizes.md,
+                ),
                 label: Text(l10n.mcpOAuthOpenBrowser),
               ),
               const SizedBox(height: 8),

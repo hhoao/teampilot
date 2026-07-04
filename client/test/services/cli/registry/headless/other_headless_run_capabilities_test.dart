@@ -23,7 +23,10 @@ void main() {
     expect(inv.executable, 'codex');
     expect(inv.arguments.first, 'exec');
     expect(inv.arguments, containsAllInOrder(['--model', 'm']));
-    expect(inv.arguments, containsAllInOrder(['-c', 'model_reasoning_effort=high']));
+    expect(
+      inv.arguments,
+      containsAllInOrder(['-c', 'model_reasoning_effort=high']),
+    );
     expect(inv.arguments.last, 'P');
     expect(inv.environment['CODEX_HOME'], '/tmp/c');
     expect(cap.extractText(ProcessResult(0, 0, ' out ', '')), 'out');

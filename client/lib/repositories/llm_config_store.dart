@@ -14,11 +14,9 @@ abstract class LlmConfigStore {
 }
 
 class FilesystemLlmConfigStore implements LlmConfigStore {
-  FilesystemLlmConfigStore({
-    required String path,
-    Filesystem? fs,
-  }) : _path = path,
-       _fs = fs ?? AppStorage.fs;
+  FilesystemLlmConfigStore({required String path, Filesystem? fs})
+    : _path = path,
+      _fs = fs ?? AppStorage.fs;
 
   final String _path;
   final Filesystem _fs;

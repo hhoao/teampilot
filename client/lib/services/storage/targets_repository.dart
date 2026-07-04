@@ -55,14 +55,12 @@ class TargetsRegistryFile {
           : const [],
       rootSandboxEnvOptIn: rootSandbox is List
           ? [
-              for (final e in rootSandbox)
-                '$e',
+              for (final e in rootSandbox) '$e',
             ].where((s) => s.isNotEmpty).toList()
           : const [],
       installOptOut: installOptOut is List
           ? [
-              for (final e in installOptOut)
-                '$e',
+              for (final e in installOptOut) '$e',
             ].where((s) => s.isNotEmpty).toList()
           : const [],
       cliPathOverrides: overrides is Map<String, Object?>
@@ -94,16 +92,14 @@ class TargetsRegistryFile {
     List<String>? rootSandboxEnvOptIn,
     List<String>? installOptOut,
     Map<String, Map<String, String>>? cliPathOverrides,
-  }) =>
-      TargetsRegistryFile(
-        schemaVersion: schemaVersion,
-        targets: targets ?? this.targets,
-        credentialOptIn: credentialOptIn ?? this.credentialOptIn,
-        rootSandboxEnvOptIn:
-            rootSandboxEnvOptIn ?? this.rootSandboxEnvOptIn,
-        installOptOut: installOptOut ?? this.installOptOut,
-        cliPathOverrides: cliPathOverrides ?? this.cliPathOverrides,
-      );
+  }) => TargetsRegistryFile(
+    schemaVersion: schemaVersion,
+    targets: targets ?? this.targets,
+    credentialOptIn: credentialOptIn ?? this.credentialOptIn,
+    rootSandboxEnvOptIn: rootSandboxEnvOptIn ?? this.rootSandboxEnvOptIn,
+    installOptOut: installOptOut ?? this.installOptOut,
+    cliPathOverrides: cliPathOverrides ?? this.cliPathOverrides,
+  );
 }
 
 /// Reads/writes `targets.json`. Mirrors [SshProfileRepository]'s injection
@@ -200,8 +196,7 @@ class TargetsRepository {
   ) async {
     final file = await load();
     final overrides = {
-      for (final e in file.cliPathOverrides.entries)
-        e.key: {...e.value},
+      for (final e in file.cliPathOverrides.entries) e.key: {...e.value},
     };
     final forTarget = overrides.putIfAbsent(targetId, () => {});
     final trimmed = path.trim();

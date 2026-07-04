@@ -5,10 +5,7 @@ import 'package:teampilot/services/host/host_login_shell_lookup.dart';
 
 void main() {
   test('commandForExecutable', () {
-    expect(
-      HostLoginShellLookup.commandForExecutable('npm'),
-      'command -v npm',
-    );
+    expect(HostLoginShellLookup.commandForExecutable('npm'), 'command -v npm');
   });
 
   test('locateViaLoginShells returns first successful shell line', () async {

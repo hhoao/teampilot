@@ -151,11 +151,11 @@ class AutomationsSortButton extends StatelessWidget {
   }
 
   static IconData _iconForSort(AutomationSort sort) => switch (sort) {
-        AutomationSort.nameAsc => Icons.sort_by_alpha_rounded,
-        AutomationSort.nameDesc => Icons.sort_by_alpha_rounded,
-        AutomationSort.nextRunAsc => Icons.schedule_rounded,
-        AutomationSort.recentlyUpdated => Icons.update_rounded,
-      };
+    AutomationSort.nameAsc => Icons.sort_by_alpha_rounded,
+    AutomationSort.nameDesc => Icons.sort_by_alpha_rounded,
+    AutomationSort.nextRunAsc => Icons.schedule_rounded,
+    AutomationSort.recentlyUpdated => Icons.update_rounded,
+  };
 }
 
 class AutomationsFilterPanel extends StatelessWidget {
@@ -189,9 +189,9 @@ class AutomationsFilterPanel extends StatelessWidget {
           Text(
             l10n.automationsFilterStatusLabel,
             style: AppTextStyles.of(context).bodySmall.copyWith(
-                  color: cs.onSurfaceVariant,
-                  fontWeight: FontWeight.w600,
-                ),
+              color: cs.onSurfaceVariant,
+              fontWeight: FontWeight.w600,
+            ),
           ),
           const SizedBox(height: 8),
           Wrap(
@@ -210,9 +210,9 @@ class AutomationsFilterPanel extends StatelessWidget {
           Text(
             l10n.automationsFilterActionLabel,
             style: AppTextStyles.of(context).bodySmall.copyWith(
-                  color: cs.onSurfaceVariant,
-                  fontWeight: FontWeight.w600,
-                ),
+              color: cs.onSurfaceVariant,
+              fontWeight: FontWeight.w600,
+            ),
           ),
           const SizedBox(height: 8),
           Wrap(
@@ -235,24 +235,21 @@ class AutomationsFilterPanel extends StatelessWidget {
   static String _enabledFilterLabel(
     AppLocalizations l10n,
     AutomationEnabledFilter filter,
-  ) =>
-      switch (filter) {
-        AutomationEnabledFilter.all => l10n.automationsFilterAll,
-        AutomationEnabledFilter.enabledOnly => l10n.automationsFilterEnabled,
-        AutomationEnabledFilter.disabledOnly => l10n.automationsFilterDisabled,
-      };
+  ) => switch (filter) {
+    AutomationEnabledFilter.all => l10n.automationsFilterAll,
+    AutomationEnabledFilter.enabledOnly => l10n.automationsFilterEnabled,
+    AutomationEnabledFilter.disabledOnly => l10n.automationsFilterDisabled,
+  };
 
   static String _actionFilterLabel(
     AppLocalizations l10n,
     AutomationActionFilter filter,
-  ) =>
-      switch (filter) {
-        AutomationActionFilter.all => l10n.automationsFilterActionAll,
-        AutomationActionFilter.scheduledMessage =>
-          l10n.automationsFilterScheduledMessage,
-        AutomationActionFilter.launchPrompt =>
-          l10n.automationsFilterLaunchPrompt,
-      };
+  ) => switch (filter) {
+    AutomationActionFilter.all => l10n.automationsFilterActionAll,
+    AutomationActionFilter.scheduledMessage =>
+      l10n.automationsFilterScheduledMessage,
+    AutomationActionFilter.launchPrompt => l10n.automationsFilterLaunchPrompt,
+  };
 }
 
 class _FilterPill extends StatefulWidget {

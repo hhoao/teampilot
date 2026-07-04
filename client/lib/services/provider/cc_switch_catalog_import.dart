@@ -43,7 +43,8 @@ WHERE app_type = ?
           CcSwitchCatalogRow(
             id: sanitizeImportedProviderId(row['id']?.toString() ?? ''),
             name: row['name']?.toString() ?? '',
-            settingsConfig: _jsonStringToMap(row['settings_config']) ?? const {},
+            settingsConfig:
+                _jsonStringToMap(row['settings_config']) ?? const {},
             websiteUrl: row['website_url']?.toString() ?? '',
             category: AppProviderCategory.fromJson(row['category']),
             createdAt: (row['created_at'] as int?) ?? 0,

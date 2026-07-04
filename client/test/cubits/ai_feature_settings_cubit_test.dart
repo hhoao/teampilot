@@ -34,7 +34,10 @@ void main() {
       const AiFeatureSetting(cli: CliTool.codex, providerId: 'p', model: 'm'),
     );
 
-    expect(cubit.state.settingFor(AiFeatureId.teamGenerate)?.cli, CliTool.codex);
+    expect(
+      cubit.state.settingFor(AiFeatureId.teamGenerate)?.cli,
+      CliTool.codex,
+    );
     expect(
       (await repo.loadAiFeatureSettings())[AiFeatureId.teamGenerate]?.cli,
       CliTool.codex,

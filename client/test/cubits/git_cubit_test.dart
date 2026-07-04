@@ -228,36 +228,39 @@ void main() {
     await cubit.close();
   });
 
-  test('toggleExpandAllFolders expands then collapses change folders', () async {
-    final service = _FakeGitService(
-      statusToReturn: _repoWith(
-        unstaged: const [
-          GitFileChange(
-            path: 'src/utils/foo.dart',
-            kind: GitChangeKind.modified,
-            staged: false,
-          ),
-        ],
-      ),
-    );
-    final cubit = GitCubit(service: service);
-    await cubit.setRepoRoot('/repo');
+  test(
+    'toggleExpandAllFolders expands then collapses change folders',
+    () async {
+      final service = _FakeGitService(
+        statusToReturn: _repoWith(
+          unstaged: const [
+            GitFileChange(
+              path: 'src/utils/foo.dart',
+              kind: GitChangeKind.modified,
+              staged: false,
+            ),
+          ],
+        ),
+      );
+      final cubit = GitCubit(service: service);
+      await cubit.setRepoRoot('/repo');
 
-    cubit.collapseAllFolders();
-    expect(cubit.state.expandedFolderPaths, isEmpty);
+      cubit.collapseAllFolders();
+      expect(cubit.state.expandedFolderPaths, isEmpty);
 
-    cubit.expandAllFolders();
-    expect(cubit.state.expandedFolderPaths, {'src', 'src/utils'});
-    expect(cubit.state.allChangeFoldersExpanded, isTrue);
+      cubit.expandAllFolders();
+      expect(cubit.state.expandedFolderPaths, {'src', 'src/utils'});
+      expect(cubit.state.allChangeFoldersExpanded, isTrue);
 
-    cubit.toggleExpandAllFolders();
-    expect(cubit.state.expandedFolderPaths, isEmpty);
+      cubit.toggleExpandAllFolders();
+      expect(cubit.state.expandedFolderPaths, isEmpty);
 
-    cubit.toggleExpandAllFolders();
-    expect(cubit.state.allChangeFoldersExpanded, isTrue);
+      cubit.toggleExpandAllFolders();
+      expect(cubit.state.allChangeFoldersExpanded, isTrue);
 
-    await cubit.close();
-  });
+      await cubit.close();
+    },
+  );
 
   test('refresh after close does not throw', () async {
     final service = _SlowGitService(statusToReturn: _repoWith());

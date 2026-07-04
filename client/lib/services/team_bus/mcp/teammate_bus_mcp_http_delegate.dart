@@ -2,7 +2,6 @@ import 'dart:async';
 import 'dart:convert';
 import 'dart:io';
 
-import 'package:meta/meta.dart';
 
 import '../../../utils/logger.dart';
 import '../cancellation.dart';
@@ -43,7 +42,9 @@ class TeammateBusMcpHttpDelegate {
     try {
       await request.drain<void>();
       // Stop-hook only returns CLI decision (block/allow); no bus coordination.
-      final reply = memberId.isEmpty ? '{}' : handler.idleStopDecision(memberId);
+      final reply = memberId.isEmpty
+          ? '{}'
+          : handler.idleStopDecision(memberId);
       request.response
         ..statusCode = HttpStatus.ok
         ..headers.contentType = ContentType(

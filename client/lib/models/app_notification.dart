@@ -15,6 +15,7 @@ class AppNotification extends Equatable {
 
   final String id;
   final AppToastVariant variant;
+
   /// Optional headline (e.g. session name). Empty for legacy toast-only rows.
   final String title;
   final String message;
@@ -55,7 +56,10 @@ class AppNotification extends Equatable {
     final message = json['message']?.toString();
     final variantRaw = json['variant']?.toString();
     final createdRaw = json['createdAt']?.toString();
-    if (id == null || message == null || variantRaw == null || createdRaw == null) {
+    if (id == null ||
+        message == null ||
+        variantRaw == null ||
+        createdRaw == null) {
       return null;
     }
     final variant = _parseVariant(variantRaw);
@@ -82,10 +86,7 @@ class AppNotificationStore extends Equatable {
   final int version;
   final List<AppNotification> items;
 
-  AppNotificationStore copyWith({
-    int? version,
-    List<AppNotification>? items,
-  }) {
+  AppNotificationStore copyWith({int? version, List<AppNotification>? items}) {
     return AppNotificationStore(
       version: version ?? this.version,
       items: items ?? this.items,
@@ -103,7 +104,9 @@ class AppNotificationStore extends Equatable {
     if (rawItems is List) {
       for (final entry in rawItems) {
         if (entry is Map) {
-          final parsed = AppNotification.fromJson(entry.cast<String, Object?>());
+          final parsed = AppNotification.fromJson(
+            entry.cast<String, Object?>(),
+          );
           if (parsed != null) items.add(parsed);
         }
       }

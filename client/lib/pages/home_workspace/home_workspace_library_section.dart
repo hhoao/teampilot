@@ -27,8 +27,7 @@ class HomeLibrarySection extends StatefulWidget {
   final HomeLibraryView view;
 
   @override
-  State<HomeLibrarySection> createState() =>
-      _HomeLibrarySectionState();
+  State<HomeLibrarySection> createState() => _HomeLibrarySectionState();
 }
 
 class _HomeLibrarySectionState extends State<HomeLibrarySection> {
@@ -208,7 +207,8 @@ class _RecentWorkspaceGrid extends StatelessWidget {
           workspace: workspace,
           sessionCount: sessionCounts[workspace.workspaceId] ?? 0,
           favorited: favoriteWorkspaceIds.contains(workspace.workspaceId),
-          onToggleFavorite: () => onToggleWorkspaceFavorite(workspace.workspaceId),
+          onToggleFavorite: () =>
+              onToggleWorkspaceFavorite(workspace.workspaceId),
           showSessionContextIcon: true,
           onTap: () => context.go(tab.route),
           sessions: sessions,
@@ -238,10 +238,7 @@ class _LibraryEmptyState extends StatelessWidget {
             color: cs.onSurfaceVariant.withValues(alpha: 0.55),
           ),
           const SizedBox(height: 12),
-          Text(
-            label,
-            style: styles.body.copyWith(color: cs.onSurfaceVariant),
-          ),
+          Text(label, style: styles.body.copyWith(color: cs.onSurfaceVariant)),
         ],
       ),
     );

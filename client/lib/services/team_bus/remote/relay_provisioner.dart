@@ -230,11 +230,7 @@ class RelayProvisioner {
     required String pipeCommand,
   }) {
     // single-quote the handshake for the shell; it is JSON (no single quotes).
-    return [
-      'sh',
-      '-c',
-      "{ printf '%s\\n' '$handshake'; cat; } | $pipeCommand",
-    ];
+    return ['sh', '-c', "{ printf '%s\\n' '$handshake'; cat; } | $pipeCommand"];
   }
 
   /// Materializes the bundled static relay for ([arch], [os]) under
@@ -269,7 +265,8 @@ class RelayProvisioner {
     return path;
   }
 
-  static String _shellQuote(String value) => "'${value.replaceAll("'", "'\\''")}'";
+  static String _shellQuote(String value) =>
+      "'${value.replaceAll("'", "'\\''")}'";
 
   static Future<List<int>?> _noAsset(String _) async => null;
 }

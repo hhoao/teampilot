@@ -32,10 +32,7 @@ class WorkspaceTeamMemberTargetsSection extends StatelessWidget {
         orElse: () => workspace,
       ),
     );
-    final targets = rememberedMemberTargets(
-      live.memberTargetsByTeam,
-      team.id,
-    );
+    final targets = rememberedMemberTargets(live.memberTargetsByTeam, team.id);
     final roster = team.members.where((m) => m.isValid).toList();
     final instances = expandTeamRoster(roster);
     final total = instances.length;
@@ -52,7 +49,7 @@ class WorkspaceTeamMemberTargetsSection extends StatelessWidget {
 
     final subtitle = total > 0 && !complete
         ? '${l10n.workspaceMemberTargetsSectionSubtitle}\n'
-            '${l10n.mixedWorkspaceMemberPlacementProgress(placed, total)}'
+              '${l10n.mixedWorkspaceMemberPlacementProgress(placed, total)}'
         : l10n.workspaceMemberTargetsSectionSubtitle;
 
     return SettingsSurfaceCard(
@@ -143,10 +140,9 @@ class _AssignmentStatusChip extends StatelessWidget {
             cs.error,
           );
 
-    final labelStyle = Theme.of(context).textTheme.labelSmall?.copyWith(
-      color: color,
-      fontWeight: FontWeight.w600,
-    );
+    final labelStyle = Theme.of(
+      context,
+    ).textTheme.labelSmall?.copyWith(color: color, fontWeight: FontWeight.w600);
     return DecoratedBox(
       decoration: BoxDecoration(
         color: color.withValues(alpha: 0.08),

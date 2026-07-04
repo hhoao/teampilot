@@ -3,10 +3,7 @@
 /// Normalization only affects equality during diffing; the [DiffRow] text always
 /// carries the original, unmodified line so the UI can render it verbatim.
 class DiffOptions {
-  const DiffOptions({
-    this.ignoreWhitespace = false,
-    this.ignoreCase = false,
-  });
+  const DiffOptions({this.ignoreWhitespace = false, this.ignoreCase = false});
 
   /// Collapse runs of whitespace and trim both ends before comparing lines.
   final bool ignoreWhitespace;

@@ -1,5 +1,3 @@
-
-
 /// Environment hints for embedded PTY sessions so child CLIs emit OSC 8 links.
 abstract final class PtyLaunchEnvironment {
   /// VTE-based terminals (GNOME Terminal, etc.) set this; Claude Code also treats
@@ -33,7 +31,10 @@ abstract final class PtyLaunchEnvironment {
   /// Set unconditionally (overriding any inherited value): the host terminal we
   /// were launched from is the wrong context — the child CLI must see *our*
   /// embedded background, not the desktop's.
-  static void applyColorScheme(Map<String, String> env, {required int background}) {
+  static void applyColorScheme(
+    Map<String, String> env, {
+    required int background,
+  }) {
     final r = (background >> 16) & 0xFF;
     final g = (background >> 8) & 0xFF;
     final b = background & 0xFF;

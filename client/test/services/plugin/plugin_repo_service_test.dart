@@ -43,7 +43,9 @@ void main() {
     final svc = PluginRepoService();
     await svc.loadMarketplaces();
     await svc.addMarketplace(const PluginMarketplace(owner: 'x', name: 'y'));
-    await svc.addMarketplace(const PluginMarketplace(owner: 'x', name: 'y', branch: 'dev'));
+    await svc.addMarketplace(
+      const PluginMarketplace(owner: 'x', name: 'y', branch: 'dev'),
+    );
     final list = await svc.loadMarketplaces();
     expect(list.where((m) => m.owner == 'x' && m.name == 'y'), hasLength(1));
   });

@@ -6,8 +6,10 @@ import 'package:teampilot/models/workspace_agent_config.dart';
 
 void main() {
   test('kind is always personal', () {
-    expect(const PersonalProfile(id: 'x', display: 'X').kind,
-        LaunchProfileKind.personal);
+    expect(
+      const PersonalProfile(id: 'x', display: 'X').kind,
+      LaunchProfileKind.personal,
+    );
   });
 
   test('json round-trip preserves bundle, tiering and agent', () {

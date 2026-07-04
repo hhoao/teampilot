@@ -53,7 +53,9 @@ class PluginExternalSource {
         return PluginExternalSource(
           cloneUrl: 'https://github.com/$owner/$name.git',
           subPath: _cleanSubPath(map['path'] as String? ?? ''),
-          sha: _nonEmpty(map['sha'] as String?) ?? _nonEmpty(map['commit'] as String?),
+          sha:
+              _nonEmpty(map['sha'] as String?) ??
+              _nonEmpty(map['commit'] as String?),
         );
       default:
         return null;

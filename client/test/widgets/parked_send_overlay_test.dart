@@ -7,10 +7,10 @@ import 'package:teampilot/services/terminal/pending_user_message.dart';
 import 'package:teampilot/widgets/terminal/parked_send_overlay.dart';
 
 Widget _host(Widget child) => MaterialApp(
-      localizationsDelegates: AppLocalizations.localizationsDelegates,
-      supportedLocales: AppLocalizations.supportedLocales,
-      home: Scaffold(body: Stack(children: [child])),
-    );
+  localizationsDelegates: AppLocalizations.localizationsDelegates,
+  supportedLocales: AppLocalizations.supportedLocales,
+  home: Scaffold(body: Stack(children: [child])),
+);
 
 void main() {
   testWidgets('shows a banner until the message is consumed', (tester) async {
@@ -18,11 +18,15 @@ void main() {
     final unread = <String>{'m1'};
     addTearDown(controller.close);
 
-    await tester.pumpWidget(_host(ParkedSendOverlay(
-      submissions: controller.stream,
-      isUnread: unread.contains,
-      pollInterval: const Duration(milliseconds: 50),
-    )));
+    await tester.pumpWidget(
+      _host(
+        ParkedSendOverlay(
+          submissions: controller.stream,
+          isUnread: unread.contains,
+          pollInterval: const Duration(milliseconds: 50),
+        ),
+      ),
+    );
 
     controller.add(const PendingUserMessage(id: 'm1', content: 'hello'));
     await tester.pump();
@@ -38,11 +42,15 @@ void main() {
     final controller = StreamController<PendingUserMessage>.broadcast();
     addTearDown(controller.close);
 
-    await tester.pumpWidget(_host(ParkedSendOverlay(
-      submissions: controller.stream,
-      isUnread: (_) => true,
-      pollInterval: const Duration(milliseconds: 50),
-    )));
+    await tester.pumpWidget(
+      _host(
+        ParkedSendOverlay(
+          submissions: controller.stream,
+          isUnread: (_) => true,
+          pollInterval: const Duration(milliseconds: 50),
+        ),
+      ),
+    );
 
     controller.add(const PendingUserMessage(id: 'm1', content: 'bye'));
     await tester.pump();

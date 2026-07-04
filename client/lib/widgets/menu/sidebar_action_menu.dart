@@ -7,7 +7,8 @@ import '../app_icon_button.dart';
 import '../dropdown/popover/app_popover.dart';
 import 'sidebar_action_menu_overlay.dart';
 
-export '../dropdown/popover/app_popover.dart' show AppAnchor, AppAnchorAuto, AppGlobalAnchor, AppPopoverController;
+export '../dropdown/popover/app_popover.dart'
+    show AppAnchor, AppAnchorAuto, AppGlobalAnchor, AppPopoverController;
 
 /// Popover-backed menu controller (replaces [MenuAnchor]'s [MenuController]).
 class ActionMenuController {
@@ -218,14 +219,10 @@ class _SidebarActionMenuItemState extends State<SidebarActionMenuItem> {
 
     final iconColor = widget.destructive && _hovered
         ? cs.error
-        : baseIconColor.withValues(
-            alpha: widget.enabled ? 1 : 0.35,
-          );
+        : baseIconColor.withValues(alpha: widget.enabled ? 1 : 0.35);
     final textColor = widget.destructive && _hovered
         ? cs.error
-        : baseTextColor.withValues(
-            alpha: widget.enabled ? 1 : 0.35,
-          );
+        : baseTextColor.withValues(alpha: widget.enabled ? 1 : 0.35);
 
     Widget row = MouseRegion(
       onEnter: (_) => setState(() => _hovered = true),
@@ -808,15 +805,13 @@ Future<T?> _showActionMenuWithChildren<T>({
 }
 
 class _ActionMenuOverlayScope<T> extends InheritedWidget {
-  const _ActionMenuOverlayScope({
-    required this.onChosen,
-    required super.child,
-  });
+  const _ActionMenuOverlayScope({required this.onChosen, required super.child});
 
   final void Function(T? value) onChosen;
 
   static _ActionMenuOverlayScope<T>? maybeOf<T>(BuildContext context) {
-    return context.dependOnInheritedWidgetOfExactType<_ActionMenuOverlayScope<T>>();
+    return context
+        .dependOnInheritedWidgetOfExactType<_ActionMenuOverlayScope<T>>();
   }
 
   @override

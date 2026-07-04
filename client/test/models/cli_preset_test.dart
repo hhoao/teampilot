@@ -63,14 +63,24 @@ void main() {
 
     test('equality and hashCode', () {
       final a = CliPreset(
-        id: '1', name: 'A', cli: CliTool.claude,
-        provider: 'p', model: 'm', effort: '',
-        createdAt: 1, updatedAt: 1,
+        id: '1',
+        name: 'A',
+        cli: CliTool.claude,
+        provider: 'p',
+        model: 'm',
+        effort: '',
+        createdAt: 1,
+        updatedAt: 1,
       );
       final b = CliPreset(
-        id: '1', name: 'A', cli: CliTool.claude,
-        provider: 'p', model: 'm', effort: '',
-        createdAt: 1, updatedAt: 1,
+        id: '1',
+        name: 'A',
+        cli: CliTool.claude,
+        provider: 'p',
+        model: 'm',
+        effort: '',
+        createdAt: 1,
+        updatedAt: 1,
       );
       expect(a, b);
       expect(a.hashCode, b.hashCode);

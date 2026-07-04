@@ -59,7 +59,8 @@ final class WorkspaceTerminalWorkspaceTargetSpec
 
 /// Ad-hoc SSH session via a saved profile (may differ from workspace folders).
 @immutable
-final class WorkspaceTerminalSshProfileSpec extends WorkspaceTerminalSessionSpec {
+final class WorkspaceTerminalSshProfileSpec
+    extends WorkspaceTerminalSessionSpec {
   const WorkspaceTerminalSshProfileSpec(this.profileId);
 
   final String profileId;

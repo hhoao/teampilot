@@ -13,10 +13,11 @@ Tip: use --model <id> (or /model <id> in interactive mode) to switch.
 ''';
 
   test('parseCursorAgentModelsOutput extracts ids', () {
-    expect(
-      parseCursorAgentModelsOutput(sample),
-      ['auto', 'gpt-5.2', 'composer-2.5-fast'],
-    );
+    expect(parseCursorAgentModelsOutput(sample), [
+      'auto',
+      'gpt-5.2',
+      'composer-2.5-fast',
+    ]);
   });
 
   test('parseCursorAgentDefaultModelId reads current default', () {

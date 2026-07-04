@@ -11,10 +11,7 @@ enum MemberAvailability { booting, working, idle }
 
 /// Aggregated presence for the members panel.
 class MemberPresence {
-  const MemberPresence({
-    required this.connection,
-    this.availability,
-  });
+  const MemberPresence({required this.connection, this.availability});
 
   const MemberPresence.offline()
     : connection = MemberConnection.offline,

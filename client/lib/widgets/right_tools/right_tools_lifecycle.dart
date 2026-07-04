@@ -45,7 +45,8 @@ class RightToolsLifecycle extends InheritedWidget {
   final RightToolsLifecycleData data;
 
   static RightToolsLifecycleData of(BuildContext context) {
-    final scope = context.dependOnInheritedWidgetOfExactType<RightToolsLifecycle>();
+    final scope = context
+        .dependOnInheritedWidgetOfExactType<RightToolsLifecycle>();
     assert(scope != null, 'RightToolsLifecycle not found in context');
     return scope!.data;
   }
@@ -74,7 +75,8 @@ class RightToolsLifecycleHost extends StatefulWidget {
   final Widget child;
 
   @override
-  State<RightToolsLifecycleHost> createState() => _RightToolsLifecycleHostState();
+  State<RightToolsLifecycleHost> createState() =>
+      _RightToolsLifecycleHostState();
 }
 
 class _RightToolsLifecycleHostState extends State<RightToolsLifecycleHost> {
@@ -160,10 +162,7 @@ class _RightToolsLifecycleHostState extends State<RightToolsLifecycleHost> {
     if (watcher?.isSupported ?? false) {
       _diskWatchSub = watcher!.onChanged.listen(_onDiskChanged);
     } else {
-      _diskPollTimer = Timer.periodic(
-        _diskPollInterval,
-        (_) => _onDiskPoll(),
-      );
+      _diskPollTimer = Timer.periodic(_diskPollInterval, (_) => _onDiskPoll());
     }
   }
 
@@ -226,6 +225,7 @@ class _RightToolsLifecycleHostState extends State<RightToolsLifecycleHost> {
       if (!mounted) return;
       _setupDiskRefresh();
     }
+
     if (afterInitialPaint) {
       _scheduleAfterFileTreePaintStagger(run);
     } else {
@@ -312,7 +312,8 @@ class _RightToolsLifecycleHostState extends State<RightToolsLifecycleHost> {
       _rebuildWatcher(tools);
       _scheduleMountRoots(mounts);
       _scheduleDiskRefresh(afterInitialPaint: true);
-    } else if (_fileTreeCubit != null && !_mountListsEqual(_lastMounts, mounts)) {
+    } else if (_fileTreeCubit != null &&
+        !_mountListsEqual(_lastMounts, mounts)) {
       _scheduleMountRoots(mounts);
     }
 
@@ -345,10 +346,7 @@ class _RightToolsLifecycleHostState extends State<RightToolsLifecycleHost> {
         ),
   ];
 
-  bool _mountListsEqual(
-    List<FileTreeRootMount> a,
-    List<FileTreeRootMount> b,
-  ) {
+  bool _mountListsEqual(List<FileTreeRootMount> a, List<FileTreeRootMount> b) {
     if (a.length != b.length) return false;
     for (var i = 0; i < a.length; i++) {
       if (a[i].path != b[i].path ||
@@ -363,10 +361,7 @@ class _RightToolsLifecycleHostState extends State<RightToolsLifecycleHost> {
     _fsWatcher?.dispose();
     _fsWatcher = widget.cwd.isEmpty
         ? null
-        : WorkspaceFsWatcher(
-            fs: tools.context.filesystem,
-            root: widget.cwd,
-          );
+        : WorkspaceFsWatcher(fs: tools.context.filesystem, root: widget.cwd);
   }
 
   void _setupDiskRefresh() {
@@ -432,9 +427,7 @@ class _RightToolsLifecycleHostState extends State<RightToolsLifecycleHost> {
       }
       return;
     }
-    final cold = state.rootPaths.any(
-      (root) => state.dirCache[root] == null,
-    );
+    final cold = state.rootPaths.any((root) => state.dirCache[root] == null);
     if (cold) {
       unawaited(cubit.refresh());
     }
@@ -443,10 +436,7 @@ class _RightToolsLifecycleHostState extends State<RightToolsLifecycleHost> {
   void _warmGit() {
     final tools = _scope?.tools?.context;
     if (tools == null) return;
-    context.read<GitRepoStore>().refreshAll(
-      _scope!.roots,
-      workContext: tools,
-    );
+    context.read<GitRepoStore>().refreshAll(_scope!.roots, workContext: tools);
   }
 
   void _pokeOnTurnEnd() => _fsWatcher?.poke();

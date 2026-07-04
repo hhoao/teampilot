@@ -149,9 +149,6 @@ class _SettingsLazyPaneState extends State<_SettingsLazyPane>
     if (!widget.isActive || widget.sectionAnimationKey == null) {
       return content;
     }
-    return PaneEntryAnimation(
-      key: widget.sectionAnimationKey,
-      child: content,
-    );
+    return PaneEntryAnimation(key: widget.sectionAnimationKey, child: content);
   }
 }

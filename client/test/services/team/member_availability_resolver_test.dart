@@ -3,7 +3,6 @@ import 'package:teampilot/models/member_presence.dart';
 import 'package:teampilot/models/team_config.dart';
 import 'package:teampilot/services/team/member_availability_resolver.dart';
 import 'package:teampilot/services/team_bus/agent_node.dart';
-import 'package:teampilot/services/team_bus/member_state.dart';
 import 'package:teampilot/services/team_bus/team_bus.dart';
 import 'package:teampilot/services/terminal/terminal_session.dart';
 
@@ -14,10 +13,7 @@ void main() {
     test('booting until PTY frame is stable', () {
       final shell = _ConnectedShell();
       shell.activityTracker.reset();
-      expect(
-        _resolve(shell, bus: null),
-        MemberAvailability.booting,
-      );
+      expect(_resolve(shell, bus: null), MemberAvailability.booting);
 
       shell.activityTracker.latchBootFrameReadyForTest();
       expect(_resolve(shell, bus: null), MemberAvailability.idle);
@@ -57,75 +53,79 @@ void main() {
       );
     });
 
-    test('mixed forceWait: idle at prompt, automation waits for wait_for_message',
-        () {
-      final shell = _ConnectedShell()..activityTracker.latchBootFrameReadyForTest();
-      final bus = TeamBus(launcher: FakeMemberLauncher());
-      bus.declareMember(
-        AgentNode.test(
-          memberId: 'worker',
-          lifecycle: MemberLifecycle.running,
-          activity: MemberActivity.turnDoneReady,
-        ),
-      );
-
-      expect(
-        _resolve(shell, bus: bus),
-        MemberAvailability.idle,
-        reason: 'turnDoneReady at prompt is idle once TUI is stable',
-      );
-      expect(
-        MemberAvailabilityResolver.isReadyForAutomationInput(
-          shell: shell,
-          member: const TeamMemberConfig(id: 'worker', name: 'worker'),
-          team: const TeamProfile(
-            id: 't',
-            name: 'T',
-            teamMode: TeamMode.mixed,
-            members: [TeamMemberConfig(id: 'worker', name: 'worker')],
+    test(
+      'mixed forceWait: idle at prompt, automation waits for wait_for_message',
+      () {
+        final shell = _ConnectedShell()
+          ..activityTracker.latchBootFrameReadyForTest();
+        final bus = TeamBus(launcher: FakeMemberLauncher());
+        bus.declareMember(
+          AgentNode.test(
+            memberId: 'worker',
+            lifecycle: MemberLifecycle.running,
+            activity: MemberActivity.turnDoneReady,
           ),
-          teamMode: TeamMode.mixed,
-          globalPresets: const [],
-          bus: bus,
-          claudeRosterWorking: false,
-          usesClaudeRoster: false,
-          usesShellActivity: false,
-        ),
-        isFalse,
-        reason: 'scheduled inject still waits for wait_for_message',
-      );
+        );
 
-      bus.declareMember(
-        AgentNode.test(
-          memberId: 'worker',
-          lifecycle: MemberLifecycle.running,
-          activity: MemberActivity.turnDoneBusWait,
-        ),
-      );
-      expect(_resolve(shell, bus: bus), MemberAvailability.idle);
-      expect(
-        MemberAvailabilityResolver.isReadyForAutomationInput(
-          shell: shell,
-          member: const TeamMemberConfig(id: 'worker', name: 'worker'),
-          team: const TeamProfile(
-            id: 't',
-            name: 'T',
+        expect(
+          _resolve(shell, bus: bus),
+          MemberAvailability.idle,
+          reason: 'turnDoneReady at prompt is idle once TUI is stable',
+        );
+        expect(
+          MemberAvailabilityResolver.isReadyForAutomationInput(
+            shell: shell,
+            member: const TeamMemberConfig(id: 'worker', name: 'worker'),
+            team: const TeamProfile(
+              id: 't',
+              name: 'T',
+              teamMode: TeamMode.mixed,
+              members: [TeamMemberConfig(id: 'worker', name: 'worker')],
+            ),
             teamMode: TeamMode.mixed,
-            members: [TeamMemberConfig(id: 'worker', name: 'worker')],
+            globalPresets: const [],
+            bus: bus,
+            claudeRosterWorking: false,
+            usesClaudeRoster: false,
+            usesShellActivity: false,
           ),
-          teamMode: TeamMode.mixed,
-          globalPresets: const [],
-          bus: bus,
-          claudeRosterWorking: false,
-          usesClaudeRoster: false,
-          usesShellActivity: false,
-        ),
-        isTrue,
-      );
-    });
+          isFalse,
+          reason: 'scheduled inject still waits for wait_for_message',
+        );
+
+        bus.declareMember(
+          AgentNode.test(
+            memberId: 'worker',
+            lifecycle: MemberLifecycle.running,
+            activity: MemberActivity.turnDoneBusWait,
+          ),
+        );
+        expect(_resolve(shell, bus: bus), MemberAvailability.idle);
+        expect(
+          MemberAvailabilityResolver.isReadyForAutomationInput(
+            shell: shell,
+            member: const TeamMemberConfig(id: 'worker', name: 'worker'),
+            team: const TeamProfile(
+              id: 't',
+              name: 'T',
+              teamMode: TeamMode.mixed,
+              members: [TeamMemberConfig(id: 'worker', name: 'worker')],
+            ),
+            teamMode: TeamMode.mixed,
+            globalPresets: const [],
+            bus: bus,
+            claudeRosterWorking: false,
+            usesClaudeRoster: false,
+            usesShellActivity: false,
+          ),
+          isTrue,
+        );
+      },
+    );
 
     test('mixed in-turn is working regardless of PTY quiet', () {
-      final shell = _ConnectedShell()..activityTracker.latchBootFrameReadyForTest();
+      final shell = _ConnectedShell()
+        ..activityTracker.latchBootFrameReadyForTest();
       final bus = TeamBus(launcher: FakeMemberLauncher());
       bus.declareMember(
         AgentNode.test(
@@ -139,7 +139,8 @@ void main() {
     });
 
     test('push-CLI PTY churn without turn signal stays idle', () {
-      final shell = _ConnectedShell()..activityTracker.latchBootFrameReadyForTest();
+      final shell = _ConnectedShell()
+        ..activityTracker.latchBootFrameReadyForTest();
       shell.activityTracker.markActive();
       expect(shell.activityTracker.isWorking, isTrue);
 
@@ -156,12 +157,14 @@ void main() {
       expect(
         _resolvePushCli(shell, bus: bus),
         MemberAvailability.idle,
-        reason: 'startup PTY activity must not flip working before a turn signal',
+        reason:
+            'startup PTY activity must not flip working before a turn signal',
       );
     });
 
     test('push-CLI doorbell allows PTY working', () {
-      final shell = _ConnectedShell()..activityTracker.latchBootFrameReadyForTest();
+      final shell = _ConnectedShell()
+        ..activityTracker.latchBootFrameReadyForTest();
       shell.activityTracker.markActive();
 
       final bus = TeamBus(launcher: FakeMemberLauncher());

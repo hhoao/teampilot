@@ -16,18 +16,20 @@ void main() {
     required String newText,
     String? filePath,
   }) async {
-    await tester.pumpWidget(MaterialApp(
-      home: Scaffold(
-        body: SizedBox(
-          width: 800,
-          height: 400,
-          child: SideBySideDiffView(
-            result: computeLineDiff(oldText, newText),
-            filePath: filePath,
+    await tester.pumpWidget(
+      MaterialApp(
+        home: Scaffold(
+          body: SizedBox(
+            width: 800,
+            height: 400,
+            child: SideBySideDiffView(
+              result: computeLineDiff(oldText, newText),
+              filePath: filePath,
+            ),
           ),
         ),
       ),
-    ));
+    );
     await tester.pump();
   }
 
@@ -43,8 +45,9 @@ void main() {
     expect(tester.takeException(), isNull);
   });
 
-  testWidgets('handles pure insertion and deletion without error',
-      (tester) async {
+  testWidgets('handles pure insertion and deletion without error', (
+    tester,
+  ) async {
     await pump(tester, oldText: 'a\nc', newText: 'a\nb\nc');
     expect(tester.takeException(), isNull);
 

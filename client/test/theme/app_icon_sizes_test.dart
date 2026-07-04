@@ -32,8 +32,7 @@ void main() {
       mapped,
       closeTo(
         AppIconSizes.baselineScale *
-            (1.0 +
-                (comfy - 1.0) * AppIconSizes.userScaleTracking),
+            (1.0 + (comfy - 1.0) * AppIconSizes.userScaleTracking),
         0.001,
       ),
     );
@@ -49,10 +48,7 @@ void main() {
       textBaseline: 1.0,
     );
     expect(std.iconTheme.size, AppIconSizes.mdBase * stdIconMult);
-    expect(
-      comfy.iconTheme.size,
-      greaterThan(std.iconTheme.size!),
-    );
+    expect(comfy.iconTheme.size, greaterThan(std.iconTheme.size!));
     expect(
       comfy.extension<AppIconSizeTheme>()!.md,
       greaterThan(std.extension<AppIconSizeTheme>()!.md),

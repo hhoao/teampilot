@@ -27,17 +27,17 @@ void main() {
       // Mirror the panel's keying: a TerminalView under a shared GlobalKey,
       // swapping only the engine prop. With a per-entry key this would remount
       // and `identical(before, after)` would fail.
-      await tester.pumpWidget(MaterialApp(
-        home: Scaffold(
-          body: ValueListenableBuilder<TerminalEngine>(
-            valueListenable: engineNotifier,
-            builder: (context, engine, _) => TerminalView(
-              engine,
-              key: terminalKey,
+      await tester.pumpWidget(
+        MaterialApp(
+          home: Scaffold(
+            body: ValueListenableBuilder<TerminalEngine>(
+              valueListenable: engineNotifier,
+              builder: (context, engine, _) =>
+                  TerminalView(engine, key: terminalKey),
             ),
           ),
         ),
-      ));
+      );
       await tester.pumpAndSettle();
 
       final before = tester.element(find.byType(TerminalView));
@@ -48,7 +48,8 @@ void main() {
       expect(
         identical(before, after),
         isTrue,
-        reason: 'a stable key must reuse the TerminalView element on engine '
+        reason:
+            'a stable key must reuse the TerminalView element on engine '
             'swap so the glyph cache stays warm (no partial-text flash)',
       );
     },

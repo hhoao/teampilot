@@ -47,9 +47,9 @@ class EmptyStateBlock extends StatelessWidget {
             Text(
               hint!,
               textAlign: TextAlign.center,
-              style: AppTextStyles.of(context).bodySmall.copyWith(
-                color: textBase.withValues(alpha: 0.55),
-              ),
+              style: AppTextStyles.of(
+                context,
+              ).bodySmall.copyWith(color: textBase.withValues(alpha: 0.55)),
             ),
           ],
           if (actionLabel != null && onAction != null) ...[

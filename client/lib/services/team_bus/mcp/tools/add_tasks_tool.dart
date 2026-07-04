@@ -50,11 +50,9 @@ final class AddTasksTool extends TeammateBusTool {
 
   @override
   Map<String, Object?> get inputSchema => McpSchema.object(
-        properties: {
-          tasks: McpSchema.array(items: _taskItemSchema),
-        },
-        required: [tasks],
-      );
+    properties: {tasks: McpSchema.array(items: _taskItemSchema)},
+    required: [tasks],
+  );
 
   @override
   Future<JsonRpcResponse> call(TeammateBusToolCall call) async {
@@ -86,8 +84,8 @@ final class AddTasksTool extends TeammateBusTool {
             },
             preferredAssignee:
                 ((item[preferredAssignee] as String?)?.trim() ?? '').isEmpty
-                    ? null
-                    : (item[preferredAssignee] as String).trim(),
+                ? null
+                : (item[preferredAssignee] as String).trim(),
           ),
     ];
     final created = call.bus.addTasks(call.memberId, drafts);

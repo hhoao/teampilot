@@ -12,10 +12,7 @@ void main() {
   test('recentlyClosedEntryLabel falls back to workspace id', () {
     expect(
       recentlyClosedEntryLabel(
-        const HomeClosedWorkspaceEntry(
-          workspaceId: 'proj-a',
-          displayName: '',
-        ),
+        const HomeClosedWorkspaceEntry(workspaceId: 'proj-a', displayName: ''),
       ),
       'proj-a',
     );
@@ -46,9 +43,7 @@ void main() {
     );
     final workspace = Workspace(
       workspaceId: 'proj-a',
-      folders: const [
-        WorkspaceFolder(path: '/remote', targetId: 'ssh:host'),
-      ],
+      folders: const [WorkspaceFolder(path: '/remote', targetId: 'ssh:host')],
       createdAt: 0,
     );
     expect(

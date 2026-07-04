@@ -48,8 +48,9 @@ void main() {
         p.join(dir, 'rollout-2026-06-17T10-00-00-$id.jsonl'),
       ).writeAsString('{}');
 
-      final got = await const CodexResumeStrategy()
-          .detectNativeId(ctx(env: {'CODEX_HOME': base.path}));
+      final got = await const CodexResumeStrategy().detectNativeId(
+        ctx(env: {'CODEX_HOME': base.path}),
+      );
       expect(got, id);
     });
 
@@ -61,8 +62,9 @@ void main() {
     });
 
     test('returns null when nothing is stored', () async {
-      final got = await const CodexResumeStrategy()
-          .detectNativeId(ctx(env: {'CODEX_HOME': base.path}));
+      final got = await const CodexResumeStrategy().detectNativeId(
+        ctx(env: {'CODEX_HOME': base.path}),
+      );
       expect(got, isNull);
     });
   });
@@ -73,8 +75,9 @@ void main() {
       await Directory(dir).create(recursive: true);
       await File(p.join(dir, 'ses_abc123.json')).writeAsString('{}');
 
-      final got = await const OpencodeResumeStrategy()
-          .detectNativeId(ctx(env: {'OPENCODE_DATA_DIR': base.path}));
+      final got = await const OpencodeResumeStrategy().detectNativeId(
+        ctx(env: {'OPENCODE_DATA_DIR': base.path}),
+      );
       expect(got, 'ses_abc123');
     });
   });
@@ -99,39 +102,44 @@ void main() {
       await writeChat('real-old', hasConversation: true, updatedAtMs: 100);
       await writeChat('real-new', hasConversation: true, updatedAtMs: 150);
 
-      final got = await const CursorResumeStrategy()
-          .detectNativeId(ctx(env: {'CURSOR_CONFIG_DIR': base.path}));
+      final got = await const CursorResumeStrategy().detectNativeId(
+        ctx(env: {'CURSOR_CONFIG_DIR': base.path}),
+      );
       expect(got, 'real-new');
     });
 
     test('returns null when only empty chats exist', () async {
       await writeChat('empty', hasConversation: false, updatedAtMs: 200);
-      final got = await const CursorResumeStrategy()
-          .detectNativeId(ctx(env: {'CURSOR_CONFIG_DIR': base.path}));
+      final got = await const CursorResumeStrategy().detectNativeId(
+        ctx(env: {'CURSOR_CONFIG_DIR': base.path}),
+      );
       expect(got, isNull);
     });
 
     test('returns null when there is no chats dir', () async {
-      final got = await const CursorResumeStrategy()
-          .detectNativeId(ctx(env: {'CURSOR_CONFIG_DIR': base.path}));
+      final got = await const CursorResumeStrategy().detectNativeId(
+        ctx(env: {'CURSOR_CONFIG_DIR': base.path}),
+      );
       expect(got, isNull);
     });
 
-    test('mixed mode scans HOME/.cursor/chats when CURSOR_CONFIG_DIR unset',
-        () async {
-      final home = p.join(base.path, 'member-home');
-      final configDir = p.join(home, '.cursor');
-      final dir = p.join(configDir, 'chats', 'wshash', 'mixed-chat');
-      await Directory(dir).create(recursive: true);
-      await File(p.join(dir, 'meta.json')).writeAsString(
-        '{"schemaVersion":1,"hasConversation":true,"updatedAtMs":300}',
-      );
+    test(
+      'mixed mode scans HOME/.cursor/chats when CURSOR_CONFIG_DIR unset',
+      () async {
+        final home = p.join(base.path, 'member-home');
+        final configDir = p.join(home, '.cursor');
+        final dir = p.join(configDir, 'chats', 'wshash', 'mixed-chat');
+        await Directory(dir).create(recursive: true);
+        await File(p.join(dir, 'meta.json')).writeAsString(
+          '{"schemaVersion":1,"hasConversation":true,"updatedAtMs":300}',
+        );
 
-      final got = await const CursorResumeStrategy().detectNativeId(
-        ctx(env: {'HOME': home, 'USERPROFILE': home}),
-      );
-      expect(got, 'mixed-chat');
-    });
+        final got = await const CursorResumeStrategy().detectNativeId(
+          ctx(env: {'HOME': home, 'USERPROFILE': home}),
+        );
+        expect(got, 'mixed-chat');
+      },
+    );
   });
 
   group('ClaudeResumeStrategy', () {

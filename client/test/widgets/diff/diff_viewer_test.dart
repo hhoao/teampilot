@@ -13,27 +13,30 @@ void main() {
   tearDownAll(tearDownTestAppStorage);
 
   Future<void> pump(WidgetTester tester) async {
-    await tester.pumpWidget(MaterialApp(
-      localizationsDelegates: AppLocalizations.localizationsDelegates,
-      supportedLocales: AppLocalizations.supportedLocales,
-      home: Scaffold(
-        body: SizedBox(
-          width: 800,
-          height: 400,
-          child: DiffViewer.fromTexts(
-            oldText: 'final a = 1;\nfinal b = 2;',
-            newText: 'final a = 1;\nfinal b = 22;\nfinal c = 3;',
-            filePath: 'sample.dart',
+    await tester.pumpWidget(
+      MaterialApp(
+        localizationsDelegates: AppLocalizations.localizationsDelegates,
+        supportedLocales: AppLocalizations.supportedLocales,
+        home: Scaffold(
+          body: SizedBox(
+            width: 800,
+            height: 400,
+            child: DiffViewer.fromTexts(
+              oldText: 'final a = 1;\nfinal b = 2;',
+              newText: 'final a = 1;\nfinal b = 22;\nfinal c = 3;',
+              filePath: 'sample.dart',
+            ),
           ),
         ),
       ),
-    ));
+    );
     await tester.pump();
     await tester.pump();
   }
 
-  testWidgets('renders toolbar over a side-by-side body by default',
-      (tester) async {
+  testWidgets('renders toolbar over a side-by-side body by default', (
+    tester,
+  ) async {
     await pump(tester);
     expect(find.byType(DiffToolbar), findsOneWidget);
     expect(find.byType(SideBySideDiffView), findsOneWidget);
@@ -66,9 +69,10 @@ void main() {
     expect(tester.takeException(), isNull);
   });
 
-  testWidgets('fromUnifiedDiff renders and hides ignore-ws without a reloader',
-      (tester) async {
-    const diff = '''
+  testWidgets(
+    'fromUnifiedDiff renders and hides ignore-ws without a reloader',
+    (tester) async {
+      const diff = '''
 --- a/f.dart
 +++ b/f.dart
 @@ -1,2 +1,2 @@
@@ -76,27 +80,30 @@ void main() {
 -final b = 2;
 +final b = 22;
 ''';
-    await tester.pumpWidget(MaterialApp(
-      localizationsDelegates: AppLocalizations.localizationsDelegates,
-      supportedLocales: AppLocalizations.supportedLocales,
-      home: Scaffold(
-        body: SizedBox(
-          width: 800,
-          height: 400,
-          child: DiffViewer.fromUnifiedDiff(
-            diffText: diff,
-            filePath: 'f.dart',
+      await tester.pumpWidget(
+        MaterialApp(
+          localizationsDelegates: AppLocalizations.localizationsDelegates,
+          supportedLocales: AppLocalizations.supportedLocales,
+          home: Scaffold(
+            body: SizedBox(
+              width: 800,
+              height: 400,
+              child: DiffViewer.fromUnifiedDiff(
+                diffText: diff,
+                filePath: 'f.dart',
+              ),
+            ),
           ),
         ),
-      ),
-    ));
-    await tester.pump();
-    await tester.pump();
+      );
+      await tester.pump();
+      await tester.pump();
 
-    final l10n = await AppLocalizations.delegate.load(const Locale('en'));
-    expect(find.byType(SideBySideDiffView), findsOneWidget);
-    // No reloader => ignore-whitespace chip is hidden.
-    expect(find.text(l10n.diffIgnoreWhitespace), findsNothing);
-    expect(tester.takeException(), isNull);
-  });
+      final l10n = await AppLocalizations.delegate.load(const Locale('en'));
+      expect(find.byType(SideBySideDiffView), findsOneWidget);
+      // No reloader => ignore-whitespace chip is hidden.
+      expect(find.text(l10n.diffIgnoreWhitespace), findsNothing);
+      expect(tester.takeException(), isNull);
+    },
+  );
 }

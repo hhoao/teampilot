@@ -23,7 +23,8 @@ class WorkspaceFoldersSection extends StatefulWidget {
   final bool lockTargets;
 
   @override
-  State<WorkspaceFoldersSection> createState() => _WorkspaceFoldersSectionState();
+  State<WorkspaceFoldersSection> createState() =>
+      _WorkspaceFoldersSectionState();
 }
 
 class _WorkspaceFoldersSectionState extends State<WorkspaceFoldersSection> {

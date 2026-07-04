@@ -44,7 +44,11 @@ class TaskRouter {
 
   /// 给定当前时间与「是否存在合格的在线成员」，算出下一阶段（单调，不回退）。
   /// 只有在**无合格在线成员**且超过对应时间窗时才降级要求，实现「先拉人、后放宽」。
-  static RoutingStage nextStage(TeamTask t, int now, bool hasEligibleLiveMember) {
+  static RoutingStage nextStage(
+    TeamTask t,
+    int now,
+    bool hasEligibleLiveMember,
+  ) {
     final r = t.routing;
     final elapsed = now - r.escalatedAt;
     switch (r.stage) {

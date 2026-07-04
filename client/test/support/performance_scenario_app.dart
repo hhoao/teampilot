@@ -34,7 +34,6 @@ import 'package:teampilot/models/runtime_target.dart';
 import 'package:teampilot/repositories/app_provider_repository.dart';
 import 'package:teampilot/repositories/extension_repository.dart';
 import 'package:teampilot/repositories/app_settings_repository.dart';
-import 'package:teampilot/repositories/launch_profile_repository.dart';
 import 'package:teampilot/repositories/session_preferences_repository.dart';
 import 'package:teampilot/repositories/session_repository.dart';
 import 'package:teampilot/repositories/ssh_credential_store.dart';
@@ -98,7 +97,8 @@ class PerformanceScenarioApp {
     final settings = InMemoryAppSettingsRepository(
       hasCompletedOnboarding: true,
     );
-    final chat = chatCubit ??
+    final chat =
+        chatCubit ??
         ChatCubit(
           executableResolver: () => performanceTestExecutable,
           automationRepository: testAutomationRepository(),
@@ -109,127 +109,125 @@ class PerformanceScenarioApp {
     return BlocProvider(
       create: (_) => AppBootstrapCubit(),
       child: MultiRepositoryProvider(
-      providers: [
-        RepositoryProvider<AppSettingsRepository>.value(value: settings),
-        RepositoryProvider<SessionRepository>.value(value: sessionRepository),
-        RepositoryProvider<HomeWorkspaceUiCache>.value(
-          value: homeWorkspaceUiCache,
-        ),
-        RepositoryProvider<ConnectionModeService>.value(
-          value: ConnectionModeService(
-            defaultTargetResolver: RuntimeTarget.local,
-            hasSshProfiles: () => true,
-          ),
-        ),
-        RepositoryProvider<HomeTargetController>.value(
-          value: testHomeTargetController(),
-        ),
-        RepositoryProvider<GitCommandRunner>.value(
-          value: const TestGitCommandRunner(),
-        ),
-        RepositoryProvider<WorkspaceTerminalRegistry>(
-          create: (_) => WorkspaceTerminalRegistry(),
-        ),
-        RepositoryProvider<WorkspaceShellConnector>(
-          create: (_) => WorkspaceShellConnector(
-            transportFactory: TerminalTransportFactory(
-              sshProfileRepository: SshProfileRepository(),
-              sshCredentialStore: InMemorySshCredentialStore(),
-              sshKnownHostRepository: InMemorySshKnownHostRepository(),
-            ),
-            sshProfileRepository: SshProfileRepository(),
-          ),
-        ),
-        RepositoryProvider<GitRepoStore>(create: (_) => GitRepoStore()),
-        RepositoryProvider<WorkspaceFileTreeStore>(
-          create: (_) => WorkspaceFileTreeStore(),
-        ),
-        RepositoryProvider<WorkspaceWorktreeRegistry>(
-          create: (_) => WorkspaceWorktreeRegistry(),
-        ),
-        RepositoryProvider<WorkspaceToolsScopeRegistry>(
-          create: (_) => WorkspaceToolsScopeRegistry(),
-        ),
-      ],
-      child: MultiBlocProvider(
         providers: [
-          BlocProvider.value(value: teamCubit),
-          BlocProvider.value(value: chat),
-          BlocProvider.value(value: presence),
-          BlocProvider(create: (_) => ConfigCubit()),
-          BlocProvider(
-            create: (_) => LlmConfigCubit(
-              appSettings: InMemoryAppSettingsRepository(),
-              initialConfig: const LlmConfig(),
+          RepositoryProvider<AppSettingsRepository>.value(value: settings),
+          RepositoryProvider<SessionRepository>.value(value: sessionRepository),
+          RepositoryProvider<HomeWorkspaceUiCache>.value(
+            value: homeWorkspaceUiCache,
+          ),
+          RepositoryProvider<ConnectionModeService>.value(
+            value: ConnectionModeService(
+              defaultTargetResolver: RuntimeTarget.local,
+              hasSshProfiles: () => true,
             ),
           ),
-          BlocProvider(
-            create: (_) => AppProviderCubit(
-              repository: AppProviderRepository(
-                basePath: Directory.systemTemp.path,
+          RepositoryProvider<HomeTargetController>.value(
+            value: testHomeTargetController(),
+          ),
+          RepositoryProvider<GitCommandRunner>.value(
+            value: const TestGitCommandRunner(),
+          ),
+          RepositoryProvider<WorkspaceTerminalRegistry>(
+            create: (_) => WorkspaceTerminalRegistry(),
+          ),
+          RepositoryProvider<WorkspaceShellConnector>(
+            create: (_) => WorkspaceShellConnector(
+              transportFactory: TerminalTransportFactory(
+                sshProfileRepository: SshProfileRepository(),
+                sshCredentialStore: InMemorySshCredentialStore(),
+                sshKnownHostRepository: InMemorySshKnownHostRepository(),
               ),
+              sshProfileRepository: SshProfileRepository(),
             ),
           ),
-          BlocProvider.value(value: layoutCubit ?? LayoutCubit()),
-          BlocProvider.value(value: sessionPreferencesCubit),
-          BlocProvider(
-            create: (_) => AiFeatureSettingsCubit(repository: settings),
+          RepositoryProvider<GitRepoStore>(create: (_) => GitRepoStore()),
+          RepositoryProvider<WorkspaceFileTreeStore>(
+            create: (_) => WorkspaceFileTreeStore(),
           ),
-          BlocProvider(create: (_) => EditorCubit(fs: LocalFilesystem())),
-          BlocProvider(
-            create: (_) => ExtensionCubit(
-              ExtensionRepository(
-                fs: InMemoryFilesystem(),
-                stateFilePath: '/test/extensions/state.json',
-                manifests: builtInExtensionManifests(),
-              ),
-              ExtensionAcquisitionEngine(
-                runner: (c) async =>
-                    const CliInstallerCommandResult(exitCode: 0),
-              ),
-              detector: ExtensionDetector(
-                processRunner: (e, a, {environment}) async =>
-                    ProcessResult(0, 1, '', ''),
-              ),
-            ),
+          RepositoryProvider<WorkspaceWorktreeRegistry>(
+            create: (_) => WorkspaceWorktreeRegistry(),
           ),
-          BlocProvider(create: (_) => WorkspaceToolsCubit()),
-          BlocProvider(create: (_) => NotificationCubit()),
-          BlocProvider(
-            create: (_) => CliPresetsCubit(
-              repository: CliPresetsRepository(
-                fs: InMemoryFilesystem(),
-                presetsPath: '/test/cli-presets.json',
-              ),
-            ),
-          ),
-          BlocProvider(
-            create: (_) => MailboxCubit(
-              busForScope: (scope) => scopedTeamBus(chat, scope),
-            ),
-          ),
-          BlocProvider(
-            create: (_) => BoardCubit(
-              busForScope: (scope) => scopedTeamBus(chat, scope),
-            ),
-          ),
-          BlocProvider(create: (_) => McpCubit(McpRepository())),
-          BlocProvider(
-            create: (_) => AppUpdateCubit(settings: settings),
-          ),
-          BlocProvider(
-            create: (_) => SshProfileCubit(
-              profileRepository: SshProfileRepository(),
-              credentialStore: InMemorySshCredentialStore(),
-            ),
+          RepositoryProvider<WorkspaceToolsScopeRegistry>(
+            create: (_) => WorkspaceToolsScopeRegistry(),
           ),
         ],
-        child: CliToolRegistryScope(
-          registry: CliToolRegistry.builtIn(),
-          child: const TeamPilotApp(),
+        child: MultiBlocProvider(
+          providers: [
+            BlocProvider.value(value: teamCubit),
+            BlocProvider.value(value: chat),
+            BlocProvider.value(value: presence),
+            BlocProvider(create: (_) => ConfigCubit()),
+            BlocProvider(
+              create: (_) => LlmConfigCubit(
+                appSettings: InMemoryAppSettingsRepository(),
+                initialConfig: const LlmConfig(),
+              ),
+            ),
+            BlocProvider(
+              create: (_) => AppProviderCubit(
+                repository: AppProviderRepository(
+                  basePath: Directory.systemTemp.path,
+                ),
+              ),
+            ),
+            BlocProvider.value(value: layoutCubit ?? LayoutCubit()),
+            BlocProvider.value(value: sessionPreferencesCubit),
+            BlocProvider(
+              create: (_) => AiFeatureSettingsCubit(repository: settings),
+            ),
+            BlocProvider(create: (_) => EditorCubit(fs: LocalFilesystem())),
+            BlocProvider(
+              create: (_) => ExtensionCubit(
+                ExtensionRepository(
+                  fs: InMemoryFilesystem(),
+                  stateFilePath: '/test/extensions/state.json',
+                  manifests: builtInExtensionManifests(),
+                ),
+                ExtensionAcquisitionEngine(
+                  runner: (c) async =>
+                      const CliInstallerCommandResult(exitCode: 0),
+                ),
+                detector: ExtensionDetector(
+                  processRunner: (e, a, {environment}) async =>
+                      ProcessResult(0, 1, '', ''),
+                ),
+              ),
+            ),
+            BlocProvider(create: (_) => WorkspaceToolsCubit()),
+            BlocProvider(create: (_) => NotificationCubit()),
+            BlocProvider(
+              create: (_) => CliPresetsCubit(
+                repository: CliPresetsRepository(
+                  fs: InMemoryFilesystem(),
+                  presetsPath: '/test/cli-presets.json',
+                ),
+              ),
+            ),
+            BlocProvider(
+              create: (_) => MailboxCubit(
+                busForScope: (scope) => scopedTeamBus(chat, scope),
+              ),
+            ),
+            BlocProvider(
+              create: (_) => BoardCubit(
+                busForScope: (scope) => scopedTeamBus(chat, scope),
+              ),
+            ),
+            BlocProvider(create: (_) => McpCubit(McpRepository())),
+            BlocProvider(create: (_) => AppUpdateCubit(settings: settings)),
+            BlocProvider(
+              create: (_) => SshProfileCubit(
+                profileRepository: SshProfileRepository(),
+                credentialStore: InMemorySshCredentialStore(),
+              ),
+            ),
+          ],
+          child: CliToolRegistryScope(
+            registry: CliToolRegistry.builtIn(),
+            child: const TeamPilotApp(),
+          ),
         ),
       ),
-    ),
     );
   }
 }

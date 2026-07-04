@@ -30,11 +30,9 @@ class McpOAuthDiscovery {
       // RFC 9728 not supported — fall back below.
     }
 
-    authorizationServerUrl ??= Uri.parse(serverUrl).replace(
-      path: '/',
-      query: '',
-      fragment: '',
-    ).toString();
+    authorizationServerUrl ??= Uri.parse(
+      serverUrl,
+    ).replace(path: '/', query: '', fragment: '').toString();
 
     final metadata = await discoverAuthorizationServerMetadata(
       authorizationServerUrl,
@@ -57,12 +55,9 @@ class McpOAuthDiscovery {
     Uri? resourceMetadataUrl,
   }) async {
     final issuer = Uri.parse(serverUrl);
-    final url = resourceMetadataUrl ??
-        _wellKnownUrl(
-          issuer,
-          'oauth-protected-resource',
-          prependPath: true,
-        );
+    final url =
+        resourceMetadataUrl ??
+        _wellKnownUrl(issuer, 'oauth-protected-resource', prependPath: true);
     final response = await _fetchMetadata(url);
     if (response.statusCode == 404) {
       throw McpOAuthException('Protected resource metadata not found');
@@ -78,7 +73,9 @@ class McpOAuthDiscovery {
   Future<Map<String, Object?>?> discoverAuthorizationServerMetadata(
     String authorizationServerUrl,
   ) async {
-    for (final candidate in _authorizationDiscoveryUrls(authorizationServerUrl)) {
+    for (final candidate in _authorizationDiscoveryUrls(
+      authorizationServerUrl,
+    )) {
       final response = await _fetchMetadata(candidate.url);
       if (response.statusCode >= 400 && response.statusCode < 500) {
         continue;
@@ -103,7 +100,11 @@ class McpOAuthDiscovery {
     );
   }
 
-  Uri _wellKnownUrl(Uri issuer, String wellKnownType, {required bool prependPath}) {
+  Uri _wellKnownUrl(
+    Uri issuer,
+    String wellKnownType, {
+    required bool prependPath,
+  }) {
     var pathname = issuer.path;
     if (pathname.endsWith('/')) {
       pathname = pathname.substring(0, pathname.length - 1);
@@ -114,7 +115,9 @@ class McpOAuthDiscovery {
     return issuer.replace(path: path, query: issuer.query, fragment: '');
   }
 
-  List<_DiscoveryCandidate> _authorizationDiscoveryUrls(String authorizationServerUrl) {
+  List<_DiscoveryCandidate> _authorizationDiscoveryUrls(
+    String authorizationServerUrl,
+  ) {
     final url = Uri.parse(authorizationServerUrl);
     final hasPath = url.path != '/' && url.path.isNotEmpty;
     if (!hasPath) {

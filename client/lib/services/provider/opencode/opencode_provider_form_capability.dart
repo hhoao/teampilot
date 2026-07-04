@@ -24,8 +24,7 @@ final class OpencodeProviderFormCapability
   Map<String, Object?> extraFromExisting(AppProviderConfig? existing) {
     final config = existing?.config ?? defaultConfig();
     return {
-      OpencodeFormExtraKeys.effort:
-          config['reasoningEffort']?.toString() ?? '',
+      OpencodeFormExtraKeys.effort: config['reasoningEffort']?.toString() ?? '',
     };
   }
 

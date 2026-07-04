@@ -24,10 +24,7 @@ import 'workspace_route_active_scope.dart';
 
 /// Workspace work page with conversations + manage panes.
 class WorkspacePage extends StatefulWidget {
-  const WorkspacePage({
-    required this.workspaceId,
-    super.key,
-  });
+  const WorkspacePage({required this.workspaceId, super.key});
 
   final String workspaceId;
 
@@ -62,8 +59,7 @@ class _WorkspacePageState extends State<WorkspacePage> {
       _scheduleActivation();
     }
     if (active &&
-        (view != _lastScopeView ||
-            (!_wasRouteActive && view == 'manage'))) {
+        (view != _lastScopeView || (!_wasRouteActive && view == 'manage'))) {
       if (view == 'manage') _visitedManage = true;
       setState(() {
         _section = _sectionFromRoute(view);
@@ -86,10 +82,7 @@ class _WorkspacePageState extends State<WorkspacePage> {
     final profile = launchProfiles.byId(routeProfile);
     if (profile == null) return;
     final next = profile.kind == LaunchProfileKind.personal
-        ? LandingLaunchContext(
-            isPersonal: true,
-            personalProfileId: profile.id,
-          )
+        ? LandingLaunchContext(isPersonal: true, personalProfileId: profile.id)
         : LandingLaunchContext(isPersonal: false, teamId: profile.id);
     cubit.update(next);
   }
@@ -156,7 +149,8 @@ class _WorkspacePageState extends State<WorkspacePage> {
 
   @override
   Widget build(BuildContext context) {
-    final scope = context.dependOnInheritedWidgetOfExactType<WorkspaceRouteActiveScope>();
+    final scope = context
+        .dependOnInheritedWidgetOfExactType<WorkspaceRouteActiveScope>();
     final routeActive = scope?.routeActive ?? true;
     final body = routeActive
         ? _buildAndCacheLivePage(context)

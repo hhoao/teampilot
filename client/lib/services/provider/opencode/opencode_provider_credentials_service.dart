@@ -43,11 +43,7 @@ class OpencodeProviderCredentialsService {
     List<String> arguments, {
     Map<String, String>? environment,
   }) {
-    return Process.run(
-      executable,
-      arguments,
-      environment: environment,
-    );
+    return Process.run(executable, arguments, environment: environment);
   }
 
   String providerDir(String providerId) => _fs.pathContext.join(
@@ -129,17 +125,10 @@ class OpencodeProviderCredentialsService {
         ),
       );
     }
-    return _writeProviderEntry(
-      providerId,
-      entry,
-      replace: replace,
-    );
+    return _writeProviderEntry(providerId, entry, replace: replace);
   }
 
-  Map<String, Object?>? _extractProviderEntry(
-    String raw,
-    String providerId,
-  ) {
+  Map<String, Object?>? _extractProviderEntry(String raw, String providerId) {
     try {
       final decoded = jsonDecode(raw);
       if (decoded is! Map) return null;
@@ -171,7 +160,9 @@ class OpencodeProviderCredentialsService {
     Map<String, Object?> entry, {
     required bool replace,
   }) async {
-    if (!OpencodeAuthArtifacts.entryIndicatesReady({providerId: entry}, providerId)) {
+    if (!OpencodeAuthArtifacts.entryIndicatesReady({
+      providerId: entry,
+    }, providerId)) {
       return CredentialActionResult.failure(
         const CredentialActionFailure(
           code: CredentialActionFailureCode.invalidCredential,

@@ -61,5 +61,8 @@ abstract interface class ProviderFormCapability implements CliCapability {
 
   Map<String, Object?> buildConfig(ProviderFormInput input);
 
-  Widget buildExtraSection(BuildContext context, ProviderFormSectionProps props);
+  Widget buildExtraSection(
+    BuildContext context,
+    ProviderFormSectionProps props,
+  );
 }

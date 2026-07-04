@@ -58,7 +58,9 @@ LaunchProfileScope resolveLaunchProfileScope({
   return LaunchProfileScope(
     workspaceId: workspaceId.trim(),
     teamId: teamId.trim(),
-    sessionId: trimmedSession.isNotEmpty ? trimmedSession : configProfileAdhocSessionId,
+    sessionId: trimmedSession.isNotEmpty
+        ? trimmedSession
+        : configProfileAdhocSessionId,
     cliTeamName: trimmedCliTeam.isNotEmpty ? trimmedCliTeam : teamId.trim(),
     memberId: memberId,
   );
@@ -70,8 +72,7 @@ String mixedModeMemberScopeSessionId(
   p.Context pathContext,
   String sessionId,
   TeamMemberConfig member,
-) =>
-    pathContext.join(
-      sessionId,
-      ClaudeTeamRosterService.safeClaudePathSegment(member.id),
-    );
+) => pathContext.join(
+  sessionId,
+  ClaudeTeamRosterService.safeClaudePathSegment(member.id),
+);

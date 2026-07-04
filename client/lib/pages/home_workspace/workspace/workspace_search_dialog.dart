@@ -1,4 +1,4 @@
-﻿import 'dart:async';
+import 'dart:async';
 
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
@@ -46,13 +46,7 @@ Future<void> showWorkspaceSearchDialog(
           showPersonalLaunchBlockedToast(context);
           return;
         }
-        unawaited(
-          openWorkspaceSessionTab(
-            context,
-            workspace,
-            session,
-          ),
-        );
+        unawaited(openWorkspaceSessionTab(context, workspace, session));
       },
       onOpenFile: (path) {
         Navigator.of(dialogContext).pop();
@@ -415,7 +409,8 @@ class _SearchField extends StatelessWidget {
         suffixIcon: controller.text.isNotEmpty
             ? AppIconButton(
                 icon: Icons.clear,
-                compact: true, size: AppIconButton.kCompactSize,
+                compact: true,
+                size: AppIconButton.kCompactSize,
                 onTap: onClear,
               )
             : null,

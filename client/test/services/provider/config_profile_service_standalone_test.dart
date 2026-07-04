@@ -21,17 +21,16 @@ String _standaloneSessionClaudeDir(
   String base,
   String workspaceId,
   String sessionId,
-) =>
-    p.join(
-      base,
-      'workspace',
-      'workspaces',
-      workspaceId,
-      'sessions',
-      sessionId,
-      'runtime',
-      'claude',
-    );
+) => p.join(
+  base,
+  'workspace',
+  'workspaces',
+  workspaceId,
+  'sessions',
+  sessionId,
+  'runtime',
+  'claude',
+);
 
 void main() {
   late Directory base;
@@ -62,7 +61,9 @@ void main() {
     () async {
       const workspaceId = 'proj-standalone-fs';
       const sessionId = 'sess-standalone-fs';
-      const profile = PersonalProfile(id: workspaceId, display: workspaceId,
+      const profile = PersonalProfile(
+        id: workspaceId,
+        display: workspaceId,
         agent: WorkspaceAgentConfig(agent: 'solo'),
       );
       const flashskyaiPreset = CliPreset(
@@ -108,7 +109,9 @@ void main() {
     () async {
       const workspaceId = 'proj-standalone';
       const sessionId = 'sess-standalone';
-      const profile = PersonalProfile(id: workspaceId, display: workspaceId,
+      const profile = PersonalProfile(
+        id: workspaceId,
+        display: workspaceId,
         // TODO: migrate to presets — cli removed
       );
 
@@ -137,7 +140,9 @@ void main() {
       const workspaceId = 'proj-standalone-cursor';
       const sessionId = 'sess-standalone-cursor';
       const workspace = '/home/hhoa/git/hhoa/teampilot';
-      const profile = PersonalProfile(id: workspaceId, display: workspaceId,
+      const profile = PersonalProfile(
+        id: workspaceId,
+        display: workspaceId,
         agent: WorkspaceAgentConfig(agent: 'solo'),
       );
       const cursorPreset = CliPreset(

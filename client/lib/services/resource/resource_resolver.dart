@@ -11,9 +11,7 @@ class ResourceResolver {
     required ResourceScope scope,
     required ResourceCatalog catalog,
   }) {
-    return EffectiveResourceSet({
-      ResourceKind.skill: _skills(scope, catalog),
-    });
+    return EffectiveResourceSet({ResourceKind.skill: _skills(scope, catalog)});
   }
 
   List<ResourceRef> _skills(ResourceScope scope, ResourceCatalog catalog) {
@@ -32,11 +30,16 @@ class ResourceResolver {
     for (final id in ids) {
       final skill = byId[id];
       if (skill == null) continue; // unknown / uninstalled / disabled — dropped
-      refs.add(ResourceRef(
-        id: skill.id,
-        linkName: skill.directory,
-        sourceDir: catalog.pathContext.join(catalog.skillsRoot, skill.directory),
-      ));
+      refs.add(
+        ResourceRef(
+          id: skill.id,
+          linkName: skill.directory,
+          sourceDir: catalog.pathContext.join(
+            catalog.skillsRoot,
+            skill.directory,
+          ),
+        ),
+      );
     }
     return refs;
   }

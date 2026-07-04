@@ -30,7 +30,10 @@ void main() {
     for (final entry in _bins.entries) {
       final bin = entry.value;
       final run = _FakeRun({
-        'command -v $bin': SshCommandResult(exitCode: 0, stdout: '/usr/bin/$bin\n'),
+        'command -v $bin': SshCommandResult(
+          exitCode: 0,
+          stdout: '/usr/bin/$bin\n',
+        ),
       });
       final path = await locator.resolve(cli: entry.key, run: run.call);
       expect(path, '/usr/bin/$bin', reason: 'CLI ${entry.key}');
@@ -39,8 +42,10 @@ void main() {
 
   test('falls back to a login shell when the direct probe misses', () async {
     final run = _FakeRun({
-      "bash -ilc 'command -v claude'":
-          const SshCommandResult(exitCode: 0, stdout: '/opt/claude\n'),
+      "bash -ilc 'command -v claude'": const SshCommandResult(
+        exitCode: 0,
+        stdout: '/opt/claude\n',
+      ),
     });
     final path = await locator.resolve(cli: CliTool.claude, run: run.call);
     expect(path, '/opt/claude');
@@ -49,8 +54,10 @@ void main() {
 
   test('falls back to bash -lc when -ilc probes miss', () async {
     final run = _FakeRun({
-      "bash -lc 'command -v claude'":
-          const SshCommandResult(exitCode: 0, stdout: '/opt/claude\n'),
+      "bash -lc 'command -v claude'": const SshCommandResult(
+        exitCode: 0,
+        stdout: '/opt/claude\n',
+      ),
     });
     final path = await locator.resolve(cli: CliTool.claude, run: run.call);
     expect(path, '/opt/claude');

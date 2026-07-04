@@ -1,4 +1,4 @@
-﻿import 'dart:async';
+import 'dart:async';
 import 'dart:io' show Platform, Process;
 
 import 'package:flutter/material.dart';
@@ -85,7 +85,8 @@ class _FileTreeNodeState extends State<FileTreeNode> {
   @override
   Widget build(BuildContext context) {
     final isDir = widget.entry.isDirectory;
-    final isExpanded = isDir &&
+    final isExpanded =
+        isDir &&
         context.select<FileTreeCubit, bool>(
           (c) => c.state.expandedPaths.contains(widget.path),
         );
@@ -129,113 +130,115 @@ class _FileTreeNodeState extends State<FileTreeNode> {
           ),
           child: GestureDetector(
             behavior: HitTestBehavior.opaque,
-          onTap: () {
-            if (isDir) {
-              widget.cubit.toggleExpand(widget.path);
-            } else {
-              _openFile(context, widget.path);
-            }
-          },
-          onSecondaryTapDown: (details) => unawaited(
-            FileTreeContextMenu.show(
-              context: context,
-              tapDetails: details,
-              cubit: widget.cubit,
-              targetPath: widget.path,
-              targetName: widget.entry.name,
-              isDirectory: isDir,
-              desktopShellActions: widget.desktopShellActions,
-              remoteFileManagerActions: widget.remoteFileManagerActions,
-              workContext: widget.workContext,
+            onTap: () {
+              if (isDir) {
+                widget.cubit.toggleExpand(widget.path);
+              } else {
+                _openFile(context, widget.path);
+              }
+            },
+            onSecondaryTapDown: (details) => unawaited(
+              FileTreeContextMenu.show(
+                context: context,
+                tapDetails: details,
+                cubit: widget.cubit,
+                targetPath: widget.path,
+                targetName: widget.entry.name,
+                isDirectory: isDir,
+                desktopShellActions: widget.desktopShellActions,
+                remoteFileManagerActions: widget.remoteFileManagerActions,
+                workContext: widget.workContext,
+              ),
             ),
-          ),
-          child: Container(
-            width: double.infinity,
-            height: double.infinity,
-            clipBehavior: Clip.none,
-            decoration: rowColor != null
-                ? BoxDecoration(
-                    color: rowColor,
-                    borderRadius: BorderRadius.circular(6),
-                  )
-                : null,
-            padding: EdgeInsets.fromLTRB(
-              widget.depth * kFileTreeIndentWidth +
-                  kFileTreeNodePaddingLeft +
-                  kFileTreeRowHorizontalPadding,
-              kFileTreeRowVerticalPadding,
-              kFileTreeNodePaddingRight + kFileTreeRowHorizontalPadding,
-              kFileTreeRowVerticalPadding,
-            ),
-            child: OverflowBox(
-              maxWidth: double.infinity,
-              alignment: Alignment.centerLeft,
-              child: SizedBox(
-                height: kFileTreeNodeHeight,
-                child: Row(
-                  crossAxisAlignment: CrossAxisAlignment.center,
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    SizedBox(
-                      width: kFileTreeChevronSlotWidth,
-                      child: Center(
-                        child: isDir
-                            ? AnimatedRotation(
-                                turns: isExpanded ? 0.25 : 0.0,
-                                duration: const Duration(milliseconds: 150),
-                                child: Icon(
-                                  Icons.chevron_right,
-                                  size: context.appIconSizes.md,
-                                  color: isActive
-                                      ? iconMuted
-                                      : widget.textColor.withValues(alpha: 0.55),
-                                ),
-                              )
-                            : null,
+            child: Container(
+              width: double.infinity,
+              height: double.infinity,
+              clipBehavior: Clip.none,
+              decoration: rowColor != null
+                  ? BoxDecoration(
+                      color: rowColor,
+                      borderRadius: BorderRadius.circular(6),
+                    )
+                  : null,
+              padding: EdgeInsets.fromLTRB(
+                widget.depth * kFileTreeIndentWidth +
+                    kFileTreeNodePaddingLeft +
+                    kFileTreeRowHorizontalPadding,
+                kFileTreeRowVerticalPadding,
+                kFileTreeNodePaddingRight + kFileTreeRowHorizontalPadding,
+                kFileTreeRowVerticalPadding,
+              ),
+              child: OverflowBox(
+                maxWidth: double.infinity,
+                alignment: Alignment.centerLeft,
+                child: SizedBox(
+                  height: kFileTreeNodeHeight,
+                  child: Row(
+                    crossAxisAlignment: CrossAxisAlignment.center,
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      SizedBox(
+                        width: kFileTreeChevronSlotWidth,
+                        child: Center(
+                          child: isDir
+                              ? AnimatedRotation(
+                                  turns: isExpanded ? 0.25 : 0.0,
+                                  duration: const Duration(milliseconds: 150),
+                                  child: Icon(
+                                    Icons.chevron_right,
+                                    size: context.appIconSizes.md,
+                                    color: isActive
+                                        ? iconMuted
+                                        : widget.textColor.withValues(
+                                            alpha: 0.55,
+                                          ),
+                                  ),
+                                )
+                              : null,
+                        ),
                       ),
-                    ),
-                    const SizedBox(width: kFileTreeChevronIconGap),
-                    SizedBox(
-                      width: context.appIconSizes.md,
-                      height: context.appIconSizes.md,
-                      child: Center(
-                        child: isDir
-                            ? Icon(
+                      const SizedBox(width: kFileTreeChevronIconGap),
+                      SizedBox(
+                        width: context.appIconSizes.md,
+                        height: context.appIconSizes.md,
+                        child: Center(
+                          child: isDir
+                              ? Icon(
+                                  widget.rootMissing
+                                      ? Icons.folder_off_outlined
+                                      : isExpanded
+                                      ? Icons.folder_open
+                                      : Icons.folder_outlined,
+                                  size: context.appIconSizes.md,
+                                )
+                              : FileIconWidget(
+                                  fileName: widget.entry.name,
+                                  size: context.appIconSizes.md,
+                                ),
+                        ),
+                      ),
+                      const SizedBox(width: kFileTreeIconLabelGap),
+                      Text(
+                        widget.entry.name,
+                        maxLines: 1,
+                        style: widget.isRoot
+                            ? AppTextStyles.of(context).fileTreeRootLabel(
                                 widget.rootMissing
-                                    ? Icons.folder_off_outlined
-                                    : isExpanded
-                                    ? Icons.folder_open
-                                    : Icons.folder_outlined,
-                                size: context.appIconSizes.md,
+                                    ? cs.onSurfaceVariant.withValues(alpha: 0.5)
+                                    : labelColor,
                               )
-                            : FileIconWidget(
-                                fileName: widget.entry.name,
-                                size: context.appIconSizes.md,
+                            : AppTextStyles.of(context).fileTreeEntryLabel(
+                                color: widget.rootMissing
+                                    ? cs.onSurfaceVariant.withValues(alpha: 0.5)
+                                    : labelColor,
+                                active: isActive,
                               ),
                       ),
-                    ),
-                    const SizedBox(width: kFileTreeIconLabelGap),
-                    Text(
-                      widget.entry.name,
-                      maxLines: 1,
-                      style: widget.isRoot
-                          ? AppTextStyles.of(context).fileTreeRootLabel(
-                              widget.rootMissing
-                                  ? cs.onSurfaceVariant.withValues(alpha: 0.5)
-                                  : labelColor,
-                            )
-                          : AppTextStyles.of(context).fileTreeEntryLabel(
-                              color: widget.rootMissing
-                                  ? cs.onSurfaceVariant.withValues(alpha: 0.5)
-                                  : labelColor,
-                              active: isActive,
-                            ),
-                    ),
-                  ],
+                    ],
+                  ),
                 ),
               ),
             ),
-          ),
           ),
         ),
       ),

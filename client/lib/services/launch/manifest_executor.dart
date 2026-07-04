@@ -11,10 +11,7 @@ import 'launch_manifest.dart';
 
 /// Applies a staged [LaunchManifest] in one batch (local disk or SSH script).
 class ManifestExecutor {
-  const ManifestExecutor({
-    this.sshClientFactory,
-    this.profileById,
-  });
+  const ManifestExecutor({this.sshClientFactory, this.profileById});
 
   final SshClientFactory? sshClientFactory;
   final SshProfile? Function(String profileId)? profileById;
@@ -139,10 +136,7 @@ class ManifestExecutor {
       );
     }
     manifest.ensureDir(manifest.pathContext.dirname(destination));
-    manifest.writeFile(
-      destination,
-      utf8.decode(bytes, allowMalformed: true),
-    );
+    manifest.writeFile(destination, utf8.decode(bytes, allowMalformed: true));
   }
 
   Future<void> _expandCopyTree({
@@ -194,18 +188,14 @@ class ManifestExecutor {
           final dir = _shellQuote(_dirname(linkPath));
           buffer
             ..writeln('mkdir -p $dir')
-            ..writeln(
-              'ln -sf ${_shellQuote(target)} ${_shellQuote(linkPath)}',
-            );
+            ..writeln('ln -sf ${_shellQuote(target)} ${_shellQuote(linkPath)}');
         case ManifestRemoveRecursive(:final path):
           buffer.writeln('rm -rf ${_shellQuote(path)}');
         case ManifestRename(:final from, :final to):
           final dir = _shellQuote(_dirname(to));
           buffer
             ..writeln('mkdir -p $dir')
-            ..writeln(
-              'mv ${_shellQuote(from)} ${_shellQuote(to)}',
-            );
+            ..writeln('mv ${_shellQuote(from)} ${_shellQuote(to)}');
         case ManifestCopyFile():
         case ManifestCopyTree():
           break;

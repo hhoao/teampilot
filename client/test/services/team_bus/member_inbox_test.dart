@@ -5,7 +5,8 @@ import 'package:teampilot/services/team_bus/member_inbox.dart';
 import 'package:teampilot/services/team_bus/persistence/in_memory_bus_message_log.dart';
 import 'package:teampilot/services/team_bus/team_message.dart';
 
-TeamMessage _msg(String id) => TeamMessage(id: id, from: 'a', to: 'b', content: id);
+TeamMessage _msg(String id) =>
+    TeamMessage(id: id, from: 'a', to: 'b', content: id);
 
 MemberInbox _inbox() => MemberInbox(memberId: 'm');
 
@@ -16,7 +17,9 @@ void main() {
       box.deliver(_msg('1'));
 
       List<TeamMessage>? got;
-      box.waitAndTake(timeout: const Duration(seconds: 30)).then((b) => got = b);
+      box
+          .waitAndTake(timeout: const Duration(seconds: 30))
+          .then((b) => got = b);
       async.flushMicrotasks();
 
       expect(got!.map((m) => m.id), ['1']);
@@ -28,7 +31,9 @@ void main() {
     fakeAsync((async) {
       final box = _inbox();
       List<TeamMessage>? got;
-      box.waitAndTake(timeout: const Duration(seconds: 30)).then((b) => got = b);
+      box
+          .waitAndTake(timeout: const Duration(seconds: 30))
+          .then((b) => got = b);
       async.flushMicrotasks();
       expect(got, isNull); // still parked
 
@@ -44,7 +49,9 @@ void main() {
     fakeAsync((async) {
       final box = _inbox();
       List<TeamMessage>? got;
-      box.waitAndTake(timeout: const Duration(seconds: 30)).then((b) => got = b);
+      box
+          .waitAndTake(timeout: const Duration(seconds: 30))
+          .then((b) => got = b);
       async.elapse(const Duration(seconds: 30));
 
       expect(got, isEmpty);

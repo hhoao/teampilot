@@ -82,8 +82,8 @@ class DefaultMemberConfigInspection
     );
     final skillsSubdir =
         resource != null && resource.supportedKinds.contains(ResourceKind.skill)
-            ? resource.subdirFor(ResourceKind.skill)
-            : 'skills';
+        ? resource.subdirFor(ResourceKind.skill)
+        : 'skills';
     final dir = _pc(ctx).join(ctx.configDir, skillsSubdir);
     if (!(await ctx.fs.stat(dir)).isDirectory) return const [];
     final out = <SkillEntry>[];
@@ -94,8 +94,9 @@ class DefaultMemberConfigInspection
         var name = entry.name;
         var description = '';
         for (final manifest in const ['SKILL.md', 'skill.md']) {
-          final raw =
-              await ctx.fs.readString(_pc(ctx).join(skillDir, manifest));
+          final raw = await ctx.fs.readString(
+            _pc(ctx).join(skillDir, manifest),
+          );
           if (raw == null) continue;
           final fm = _frontMatter(raw);
           name = fm['name']?.trim().isNotEmpty == true
@@ -104,7 +105,9 @@ class DefaultMemberConfigInspection
           description = fm['description']?.trim() ?? '';
           break;
         }
-        out.add(SkillEntry(name: name, description: description, path: skillDir));
+        out.add(
+          SkillEntry(name: name, description: description, path: skillDir),
+        );
       }
     } on Object catch (e) {
       warnings.add(SectionWarning(section: 'skills', message: '$e'));
@@ -118,13 +121,13 @@ class DefaultMemberConfigInspection
   ) async {
     final segments =
         pluginProvisionerForTool(ctx.cli)?.memberPluginsSubpath ??
-            const ['plugins'];
+        const ['plugins'];
     final dir = _pc(ctx).joinAll([ctx.configDir, ...segments]);
     if (!(await ctx.fs.stat(dir)).isDirectory) return const [];
-    final candidates = (pluginManifestPathsForTool(ctx.cli) ??
-            neutralPluginManifestPaths)
-        .manifestCandidates()
-        .toList();
+    final candidates =
+        (pluginManifestPathsForTool(ctx.cli) ?? neutralPluginManifestPaths)
+            .manifestCandidates()
+            .toList();
     final out = <PluginEntry>[];
     try {
       for (final entry in await ctx.fs.listDir(dir)) {
@@ -133,8 +136,7 @@ class DefaultMemberConfigInspection
         var name = entry.name;
         var version = '';
         for (final rel in candidates) {
-          final raw =
-              await ctx.fs.readString(_pc(ctx).join(bundleDir, rel));
+          final raw = await ctx.fs.readString(_pc(ctx).join(bundleDir, rel));
           if (raw == null) continue;
           try {
             final json = jsonDecode(raw) as Map<String, Object?>;
@@ -163,14 +165,12 @@ class DefaultMemberConfigInspection
     if (raw == null) return const [];
     try {
       final json = jsonDecode(raw) as Map<String, Object?>;
-      final servers = json['mcpServers'] as Map<String, Object?>? ??
+      final servers =
+          json['mcpServers'] as Map<String, Object?>? ??
           const <String, Object?>{};
       return [
         for (final e in servers.entries)
-          McpServerEntry(
-            name: e.key,
-            summary: _mcpSummary(e.value),
-          ),
+          McpServerEntry(name: e.key, summary: _mcpSummary(e.value)),
       ];
     } on Object catch (e) {
       warnings.add(SectionWarning(section: 'mcp', message: '$e'));
@@ -182,8 +182,9 @@ class DefaultMemberConfigInspection
     MemberConfigContext ctx,
     List<SectionWarning> warnings,
   ) async {
-    final raw = await ctx.fs
-        .readString(_pc(ctx).join(ctx.configDir, 'settings.json'));
+    final raw = await ctx.fs.readString(
+      _pc(ctx).join(ctx.configDir, 'settings.json'),
+    );
     if (raw == null) return const [];
     try {
       final json = jsonDecode(raw) as Map<String, Object?>;

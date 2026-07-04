@@ -23,7 +23,10 @@ const _userServer = McpServer(
 const _extServer = McpServer(
   id: 'ext:codegraph',
   name: 'codegraph',
-  server: {'command': 'codegraph', 'args': ['serve', '--mcp']},
+  server: {
+    'command': 'codegraph',
+    'args': ['serve', '--mcp'],
+  },
 );
 
 /// Records every `syncForProfile` call and returns queued results in order.
@@ -32,7 +35,9 @@ class _RecordingMcpLinker extends ProfileMcpLinkerService {
 
   final List<ProfileMcpSyncResult> resultsQueue;
   final calls =
-      <({String profileId, List<String> mcpServerIds, List<McpServer> catalog})>[];
+      <
+        ({String profileId, List<String> mcpServerIds, List<McpServer> catalog})
+      >[];
   int _index = 0;
 
   @override
@@ -65,11 +70,11 @@ class _NoopPluginLinker extends ProfilePluginLinkerService {
     required String profileId,
     required List<String> pluginIds,
     required List<Plugin> installed,
-  }) async =>
-      const ProfilePluginSyncResult();
+  }) async => const ProfilePluginSyncResult();
 }
 
-LaunchProfileRepository _repo(Directory dir) => testLaunchProfileRepository(dir);
+LaunchProfileRepository _repo(Directory dir) =>
+    testLaunchProfileRepository(dir);
 
 void main() {
   group('mergeExtensionMcp', () {
@@ -81,7 +86,10 @@ void main() {
     const extServer = McpServer(
       id: 'ext:codegraph',
       name: 'codegraph',
-      server: {'command': 'codegraph', 'args': ['serve', '--mcp']},
+      server: {
+        'command': 'codegraph',
+        'args': ['serve', '--mcp'],
+      },
     );
 
     test('appends contribution id and server to catalog and ids', () {
@@ -123,8 +131,7 @@ void main() {
 
     setUp(() async {
       TestWidgetsFlutterBinding.ensureInitialized();
-      appDataRoot =
-          await Directory.systemTemp.createTemp('teampilot_ext_mcp_');
+      appDataRoot = await Directory.systemTemp.createTemp('teampilot_ext_mcp_');
       final paths = AppPaths(appDataRoot.path);
       AppStorage.installForTesting(
         filesystem: LocalFilesystem(
@@ -186,50 +193,52 @@ void main() {
       await dir.delete(recursive: true);
     });
 
-    test('prune-branch re-sync still includes the extension contribution',
-        () async {
-      final dir = await Directory.systemTemp.createTemp('team-ext-mcp-');
-      final repo = _repo(dir);
-      // First sync reports a missing user id → cubit prunes and re-syncs.
-      final linker = _RecordingMcpLinker(
-        resultsQueue: const [
-          ProfileMcpSyncResult(skippedMissingIds: ['ghost']),
-        ],
-      );
-      final cubit = LaunchProfileCubit(
-        repository: repo,
-        sessionRepository: SessionRepository(),
-        executableResolver: () => 'flashskyai',
-        mcpLinker: linker,
-        pluginLinker: _NoopPluginLinker(),
-        installedMcpLoader: () async => [_userServer],
-        installedPluginsLoader: () async => [],
-        extensionMcpContributor: (teamId) async => [_extServer],
-      );
+    test(
+      'prune-branch re-sync still includes the extension contribution',
+      () async {
+        final dir = await Directory.systemTemp.createTemp('team-ext-mcp-');
+        final repo = _repo(dir);
+        // First sync reports a missing user id → cubit prunes and re-syncs.
+        final linker = _RecordingMcpLinker(
+          resultsQueue: const [
+            ProfileMcpSyncResult(skippedMissingIds: ['ghost']),
+          ],
+        );
+        final cubit = LaunchProfileCubit(
+          repository: repo,
+          sessionRepository: SessionRepository(),
+          executableResolver: () => 'flashskyai',
+          mcpLinker: linker,
+          pluginLinker: _NoopPluginLinker(),
+          installedMcpLoader: () async => [_userServer],
+          installedPluginsLoader: () async => [],
+          extensionMcpContributor: (teamId) async => [_extServer],
+        );
 
-      const team = TeamProfile(
-        id: 't',
-        name: 'T',
-        members: [TeamMemberConfig(id: 'm', name: 'm')],
-        mcpServerIds: ['user-mcp', 'ghost'],
-      );
-      await repo.saveTeamProfiles([team]);
-      await cubit.load();
+        const team = TeamProfile(
+          id: 't',
+          name: 'T',
+          members: [TeamMemberConfig(id: 'm', name: 'm')],
+          mcpServerIds: ['user-mcp', 'ghost'],
+        );
+        await repo.saveTeamProfiles([team]);
+        await cubit.load();
 
-      linker.calls.clear();
-      await cubit.selectTeam('t');
-      await waitUntil(() => linker.calls.length >= 2);
+        linker.calls.clear();
+        await cubit.selectTeam('t');
+        await waitUntil(() => linker.calls.length >= 2);
 
-      // Two calls: initial (skips 'ghost') then the pruned re-sync.
-      expect(linker.calls, hasLength(2));
-      final reSync = linker.calls[1];
-      expect(reSync.mcpServerIds, contains('ext:codegraph'));
-      expect(reSync.mcpServerIds, isNot(contains('ghost')));
-      expect(reSync.mcpServerIds, contains('user-mcp'));
-      expect(reSync.catalog.map((s) => s.id), contains('ext:codegraph'));
+        // Two calls: initial (skips 'ghost') then the pruned re-sync.
+        expect(linker.calls, hasLength(2));
+        final reSync = linker.calls[1];
+        expect(reSync.mcpServerIds, contains('ext:codegraph'));
+        expect(reSync.mcpServerIds, isNot(contains('ghost')));
+        expect(reSync.mcpServerIds, contains('user-mcp'));
+        expect(reSync.catalog.map((s) => s.id), contains('ext:codegraph'));
 
-      await cubit.close();
-      await dir.delete(recursive: true);
-    });
+        await cubit.close();
+        await dir.delete(recursive: true);
+      },
+    );
   });
 }

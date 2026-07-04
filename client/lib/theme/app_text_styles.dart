@@ -26,10 +26,8 @@ final class AppTextStyles {
       caption.copyWith(color: color, fontWeight: fontWeight);
 
   /// 11px bold tracked — right-tool panel headers (file tree, git, members).
-  TextStyle get toolPanelTitle => caption.copyWith(
-        fontWeight: FontWeight.w700,
-        letterSpacing: 0.8,
-      );
+  TextStyle get toolPanelTitle =>
+      caption.copyWith(fontWeight: FontWeight.w700, letterSpacing: 0.8);
 
   TextStyle toolPanelTitleColored(Color color) =>
       toolPanelTitle.copyWith(color: color);
@@ -42,16 +40,13 @@ final class AppTextStyles {
 
   /// File-tree multi-root folder row label.
   TextStyle fileTreeRootLabel(Color color) => body.copyWith(
-        fontWeight: FontWeight.w700,
-        letterSpacing: 0.4,
-        color: color,
-      );
+    fontWeight: FontWeight.w700,
+    letterSpacing: 0.4,
+    color: color,
+  );
 
   /// File-tree file or nested folder row label.
-  TextStyle fileTreeEntryLabel({
-    required Color color,
-    required bool active,
-  }) =>
+  TextStyle fileTreeEntryLabel({required Color color, required bool active}) =>
       body.copyWith(
         fontWeight: active ? FontWeight.w600 : FontWeight.w500,
         color: color,
@@ -95,8 +90,10 @@ final class AppTextStyles {
   TextStyle get subtitle => _resolve(_t.titleMedium, height: 1.25);
 
   /// 16px semibold — dialog titles ([AlertDialog] theme uses the same scale).
-  TextStyle get dialogTitle =>
-      _resolve(_t.titleMedium, height: 1.25).copyWith(fontWeight: FontWeight.w600);
+  TextStyle get dialogTitle => _resolve(
+    _t.titleMedium,
+    height: 1.25,
+  ).copyWith(fontWeight: FontWeight.w600);
 
   TextStyle get mutedBody => body.copyWith(color: _cs.onSurfaceVariant);
 

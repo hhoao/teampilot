@@ -68,11 +68,10 @@ class LocalHostOneShotRunner implements HostOneShotRunner {
 }
 
 class WslHostOneShotRunner implements HostOneShotRunner {
-  WslHostOneShotRunner({
-    String? distro,
-    HostProcessRunner? processRunner,
-  }) : _distro = distro?.trim(),
-       _processRunner = processRunner ?? LocalHostOneShotRunner._defaultProcessRunner;
+  WslHostOneShotRunner({String? distro, HostProcessRunner? processRunner})
+    : _distro = distro?.trim(),
+      _processRunner =
+          processRunner ?? LocalHostOneShotRunner._defaultProcessRunner;
 
   final String? _distro;
   final HostProcessRunner _processRunner;

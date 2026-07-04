@@ -25,10 +25,10 @@ mixin HeadlessProvisionSupport {
   ToolConfigGenerator get generator => const ToolConfigGenerator();
 
   ConfigProfileInfrastructure get profileInfra => ConfigProfileInfrastructure(
-        basePath: basePath,
-        layout: RuntimeLayout(teampilotRoot: basePath, fs: fs),
-        fs: fs,
-      );
+    basePath: basePath,
+    layout: RuntimeLayout(teampilotRoot: basePath, fs: fs),
+    fs: fs,
+  );
 
   Future<void> writeJson(String path, Map<String, Object?> value) async {
     await fs.atomicWrite(

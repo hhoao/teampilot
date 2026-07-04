@@ -79,7 +79,9 @@ class FilePathLinkProvider extends TerminalLinkProvider {
     if (_confirmed.contains(key) || _inFlight.contains(key)) return;
     final neg = _negativeUntil[key];
     if (neg != null && DateTime.now().isBefore(neg)) return;
-    if (_inFlight.length >= _maxConcurrent) return; // best-effort; next scan retries
+    if (_inFlight.length >= _maxConcurrent) {
+      return; // best-effort; next scan retries
+    }
     _inFlight.add(key);
     unawaited(_validate(key, payload));
   }

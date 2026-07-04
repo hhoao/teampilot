@@ -11,8 +11,10 @@ final class ClaudeCatalogSource implements ModelCatalogSource {
   List<String> modelsFor({
     required AppProviderConfig? provider,
     required String providerId,
-  }) =>
-      ClaudeModelCatalog.knownModelsForProviderId(providerId, provider: provider);
+  }) => ClaudeModelCatalog.knownModelsForProviderId(
+    providerId,
+    provider: provider,
+  );
 }
 
 final class ClaudeProviderModelCapability extends CatalogModelCapability {

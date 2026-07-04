@@ -104,9 +104,7 @@ class _AppUpdateAvailableDialogState extends State<AppUpdateAvailableDialog> {
         Expanded(
           child: _versionColumn(
             context.l10n.aboutCurrentVersion,
-            state.currentVersionLabel.isEmpty
-                ? '—'
-                : state.currentVersionLabel,
+            state.currentVersionLabel.isEmpty ? '—' : state.currentVersionLabel,
             CrossAxisAlignment.start,
             styles,
             cs,

@@ -2,7 +2,8 @@ import '../../../../models/team_config.dart';
 import '../../cli/registry/capabilities/provider_catalog_capability.dart';
 import 'cursor_live_import.dart';
 
-final class CursorProviderCatalogCapability implements ProviderCatalogCapability {
+final class CursorProviderCatalogCapability
+    implements ProviderCatalogCapability {
   const CursorProviderCatalogCapability();
 
   @override
@@ -11,6 +12,5 @@ final class CursorProviderCatalogCapability implements ProviderCatalogCapability
   @override
   Future<ProviderCatalogSnapshot> loadFromLiveSources(
     ProviderCatalogLoadContext context,
-  ) =>
-      CursorLiveImport.loadSnapshot(context);
+  ) => CursorLiveImport.loadSnapshot(context);
 }

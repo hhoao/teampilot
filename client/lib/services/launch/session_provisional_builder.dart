@@ -16,7 +16,8 @@ AppSession buildProvisionalSession({
 }) {
   final now = DateTime.now().millisecondsSinceEpoch;
   final trimmedTeam = sessionTeamId.trim();
-  final folders = (workingDirectory != null && workingDirectory.trim().isNotEmpty)
+  final folders =
+      (workingDirectory != null && workingDirectory.trim().isNotEmpty)
       ? [
           WorkspaceFolder(
             path: normalizeWorkspacePath(workingDirectory),

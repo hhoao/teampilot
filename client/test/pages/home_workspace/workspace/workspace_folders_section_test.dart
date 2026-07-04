@@ -14,53 +14,58 @@ import '../../../support/test_home_target_controller.dart';
 import '../../../support/post_frame_test_harness.dart';
 
 void main() {
-  testWidgets('WorkspaceFoldersSection renders folder rows with target catalog',
-      (tester) async {
-    await tester.runAsync(() async {
-      final tmp = await Directory.systemTemp.createTemp('ws_folders_');
-      addTearDown(() => tmp.deleteSync(recursive: true));
+  testWidgets(
+    'WorkspaceFoldersSection renders folder rows with target catalog',
+    (tester) async {
+      await tester.runAsync(() async {
+        final tmp = await Directory.systemTemp.createTemp('ws_folders_');
+        addTearDown(() => tmp.deleteSync(recursive: true));
 
-      final repo = SessionRepository(rootDir: tmp.path);
-      final ws = await repo.createWorkspace([
-        const WorkspaceFolder(path: '/proj'),
-      ]);
-      final chat = ChatCubit(
-        executableResolver: () => 'flashskyai',
-        automationRepository: testAutomationRepository(),
-      );
-      addTearDown(chat.close);
-      chat.ingestWorkspaceSessionSnapshot(workspaces: [ws], sessions: const []);
+        final repo = SessionRepository(rootDir: tmp.path);
+        final ws = await repo.createWorkspace([
+          const WorkspaceFolder(path: '/proj'),
+        ]);
+        final chat = ChatCubit(
+          executableResolver: () => 'flashskyai',
+          automationRepository: testAutomationRepository(),
+        );
+        addTearDown(chat.close);
+        chat.ingestWorkspaceSessionSnapshot(
+          workspaces: [ws],
+          sessions: const [],
+        );
 
-      await tester.pumpWidget(
-        MaterialApp(
-          localizationsDelegates: AppLocalizations.localizationsDelegates,
-          supportedLocales: AppLocalizations.supportedLocales,
-          home: MultiRepositoryProvider(
-            providers: [
-              RepositoryProvider<HomeTargetController>.value(
-                value: testHomeTargetController(),
-              ),
-              RepositoryProvider<SessionRepository>.value(value: repo),
-            ],
-            child: BlocProvider<ChatCubit>.value(
-              value: chat,
-              child: Scaffold(
-                body: SingleChildScrollView(
-                  child: WorkspaceFoldersSection(workspace: ws),
+        await tester.pumpWidget(
+          MaterialApp(
+            localizationsDelegates: AppLocalizations.localizationsDelegates,
+            supportedLocales: AppLocalizations.supportedLocales,
+            home: MultiRepositoryProvider(
+              providers: [
+                RepositoryProvider<HomeTargetController>.value(
+                  value: testHomeTargetController(),
+                ),
+                RepositoryProvider<SessionRepository>.value(value: repo),
+              ],
+              child: BlocProvider<ChatCubit>.value(
+                value: chat,
+                child: Scaffold(
+                  body: SingleChildScrollView(
+                    child: WorkspaceFoldersSection(workspace: ws),
+                  ),
                 ),
               ),
             ),
           ),
-        ),
-      );
-      await tester.pump();
-      await Future<void>.delayed(const Duration(milliseconds: 100));
-      await tester.pump();
+        );
+        await tester.pump();
+        await Future<void>.delayed(const Duration(milliseconds: 100));
+        await tester.pump();
 
-      final l10n = await AppLocalizations.delegate.load(const Locale('en'));
-      expect(find.text(l10n.workspaceFoldersSectionTitle), findsOneWidget);
-      expect(find.text('This device'), findsOneWidget);
-      expect(find.text(l10n.addWorkspaceDirectory), findsOneWidget);
-    });
-  });
+        final l10n = await AppLocalizations.delegate.load(const Locale('en'));
+        expect(find.text(l10n.workspaceFoldersSectionTitle), findsOneWidget);
+        expect(find.text('This device'), findsOneWidget);
+        expect(find.text(l10n.addWorkspaceDirectory), findsOneWidget);
+      });
+    },
+  );
 }

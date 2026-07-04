@@ -15,12 +15,10 @@ class GitChangesVisibleRow extends Equatable {
   }) : change = null,
        isFolder = true;
 
-  const GitChangesVisibleRow.file({
-    required this.change,
-    required this.depth,
-  }) : folderPath = null,
-       name = null,
-       isFolder = false;
+  const GitChangesVisibleRow.file({required this.change, required this.depth})
+    : folderPath = null,
+      name = null,
+      isFolder = false;
 
   final String? folderPath;
   final String? name;
@@ -93,9 +91,7 @@ double gitChangesMinContentWidth({
   final List<GitChangesVisibleRow> measured;
   if (rows.length > _kContentWidthCandidates) {
     measured = [...rows]
-      ..sort(
-        (a, b) => _rowWidthEstimate(b).compareTo(_rowWidthEstimate(a)),
-      );
+      ..sort((a, b) => _rowWidthEstimate(b).compareTo(_rowWidthEstimate(a)));
     measured.length = _kContentWidthCandidates;
   } else {
     measured = rows;
@@ -238,8 +234,9 @@ void _walk({
 }) {
   final folderNames = node.subfolders.keys.toList()..sort();
   for (final name in folderNames) {
-    final childPath =
-        folderPath.isEmpty ? name : p.posix.join(folderPath, name);
+    final childPath = folderPath.isEmpty
+        ? name
+        : p.posix.join(folderPath, name);
     rows.add(
       GitChangesVisibleRow.folder(
         folderPath: childPath,

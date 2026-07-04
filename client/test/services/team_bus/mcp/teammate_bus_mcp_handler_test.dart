@@ -20,15 +20,18 @@ TeammateBusMcpHandler _handler() =>
     TeammateBusMcpHandler(bus: TeamBus(launcher: FakeMemberLauncher()));
 
 void main() {
-  test('initialize advertises tools capability and fixed protocol version', () async {
-    final res = await _handler().handle(
-      'leader',
-      const JsonRpcRequest(id: 0, method: 'initialize'),
-    );
-    expect(res!.result!['protocolVersion'], '2025-06-18');
-    expect(res.result!['capabilities'], {'tools': <String, Object?>{}});
-    expect((res.result!['serverInfo'] as Map)['name'], isNotEmpty);
-  });
+  test(
+    'initialize advertises tools capability and fixed protocol version',
+    () async {
+      final res = await _handler().handle(
+        'leader',
+        const JsonRpcRequest(id: 0, method: 'initialize'),
+      );
+      expect(res!.result!['protocolVersion'], '2025-06-18');
+      expect(res.result!['capabilities'], {'tools': <String, Object?>{}});
+      expect((res.result!['serverInfo'] as Map)['name'], isNotEmpty);
+    },
+  );
 
   test('notifications/initialized returns null (202, no body)', () async {
     final res = await _handler().handle(
@@ -61,7 +64,8 @@ void main() {
       displayName: 'Team Lead',
       cli: 'claude',
       isTeamLead: true,
-      lifecycle: MemberLifecycle.running, activity: MemberActivity.active,
+      lifecycle: MemberLifecycle.running,
+      activity: MemberActivity.active,
     );
     final worker = AgentNode.test(
       memberId: 'developer',
@@ -79,10 +83,11 @@ void main() {
 
     final res = await handler.handle(
       'team-lead',
-      const JsonRpcRequest(id: 8, method: 'tools/call', params: {
-        'name': 'list_teammates',
-        'arguments': {},
-      }),
+      const JsonRpcRequest(
+        id: 8,
+        method: 'tools/call',
+        params: {'name': 'list_teammates', 'arguments': {}},
+      ),
     );
 
     final text = (res!.result!['content'] as List).first['text'] as String;
@@ -119,13 +124,14 @@ void main() {
 
     final res = await handler.handle(
       'team-lead',
-      const JsonRpcRequest(id: 10, method: 'tools/call', params: {
-        'name': 'send_message',
-        'arguments': {
-          'to': 'developer@testmixed-23',
-          'content': 'hello',
+      const JsonRpcRequest(
+        id: 10,
+        method: 'tools/call',
+        params: {
+          'name': 'send_message',
+          'arguments': {'to': 'developer@testmixed-23', 'content': 'hello'},
         },
-      }),
+      ),
     );
 
     expect(developer.inbox.isEmpty, isFalse);
@@ -147,10 +153,14 @@ void main() {
 
     final res = await handler.handle(
       'team-lead',
-      const JsonRpcRequest(id: 11, method: 'tools/call', params: {
-        'name': 'send_message',
-        'arguments': {'to': 'ghost', 'content': 'hi'},
-      }),
+      const JsonRpcRequest(
+        id: 11,
+        method: 'tools/call',
+        params: {
+          'name': 'send_message',
+          'arguments': {'to': 'ghost', 'content': 'hi'},
+        },
+      ),
     );
 
     expect(res!.result!['isError'], isTrue);
@@ -161,20 +171,31 @@ void main() {
 
   test('send_message routes to the target member mailbox', () async {
     final bus = TeamBus(launcher: FakeMemberLauncher());
-    final target = AgentNode.test(memberId: 'worker', lifecycle: MemberLifecycle.running, activity: MemberActivity.active);
+    final target = AgentNode.test(
+      memberId: 'worker',
+      lifecycle: MemberLifecycle.running,
+      activity: MemberActivity.active,
+    );
     bus.declareMember(target);
     final handler = TeammateBusMcpHandler(bus: bus);
 
     final res = await handler.handle(
       'leader',
-      const JsonRpcRequest(id: 2, method: 'tools/call', params: {
-        'name': 'send_message',
-        'arguments': {'to': 'worker', 'content': 'do X'},
-      }),
+      const JsonRpcRequest(
+        id: 2,
+        method: 'tools/call',
+        params: {
+          'name': 'send_message',
+          'arguments': {'to': 'worker', 'content': 'do X'},
+        },
+      ),
     );
 
     expect(target.inbox.isEmpty, isFalse);
-    expect((res!.result!['content'] as List).first, {'type': 'text', 'text': 'sent'});
+    expect((res!.result!['content'] as List).first, {
+      'type': 'text',
+      'text': 'sent',
+    });
   });
 
   test('read_messages browses without consuming by default', () async {
@@ -197,21 +218,30 @@ void main() {
     // No mark_read in the call → default browse, must NOT consume.
     await handler.handle(
       'leader',
-      const JsonRpcRequest(id: 3, method: 'tools/call', params: {
-        'name': 'read_messages',
-        'arguments': <String, Object?>{},
-      }),
+      const JsonRpcRequest(
+        id: 3,
+        method: 'tools/call',
+        params: {'name': 'read_messages', 'arguments': <String, Object?>{}},
+      ),
     );
-    expect(leader.inbox.unreadCount, 1, reason: 'browse must not drain hot queue');
+    expect(
+      leader.inbox.unreadCount,
+      1,
+      reason: 'browse must not drain hot queue',
+    );
     expect(await bus.unreadCountFor('leader'), 1);
 
     // Explicit mark_read=true consumes the page.
     await handler.handle(
       'leader',
-      const JsonRpcRequest(id: 4, method: 'tools/call', params: {
-        'name': 'read_messages',
-        'arguments': {'mark_read': true},
-      }),
+      const JsonRpcRequest(
+        id: 4,
+        method: 'tools/call',
+        params: {
+          'name': 'read_messages',
+          'arguments': {'mark_read': true},
+        },
+      ),
     );
     expect(leader.inbox.unreadCount, 0);
     expect(await bus.unreadCountFor('leader'), 0);
@@ -223,52 +253,85 @@ void main() {
       const JsonRpcRequest(id: 9, method: 'tools/list'),
     );
     final tools = res!.result!['tools'] as List;
-    final readTool = tools.firstWhere((t) => (t as Map)['name'] == 'read_messages')
-        as Map;
+    final readTool =
+        tools.firstWhere((t) => (t as Map)['name'] == 'read_messages') as Map;
     final props =
         (readTool['inputSchema'] as Map)['properties'] as Map<String, Object?>;
     expect(props.containsKey('mark_read'), isTrue);
   });
 
-  test('send_message with to=* broadcasts and materializes declared teammates', () async {
-    final launcher = FakeMemberLauncher();
-    final bus = TeamBus(launcher: launcher);
-    final leader = AgentNode.test(memberId: 'team-lead', lifecycle: MemberLifecycle.running, activity: MemberActivity.active);
-    final worker = AgentNode.test(memberId: 'developer', lifecycle: MemberLifecycle.running, activity: MemberActivity.active);
-    final declared = AgentNode.test(memberId: 'reviewer', lifecycle: MemberLifecycle.declared);
-    bus
-      ..declareMember(leader)
-      ..declareMember(worker)
-      ..declareMember(declared);
-    final handler = TeammateBusMcpHandler(bus: bus);
+  test(
+    'send_message with to=* broadcasts and materializes declared teammates',
+    () async {
+      final launcher = FakeMemberLauncher();
+      final bus = TeamBus(launcher: launcher);
+      final leader = AgentNode.test(
+        memberId: 'team-lead',
+        lifecycle: MemberLifecycle.running,
+        activity: MemberActivity.active,
+      );
+      final worker = AgentNode.test(
+        memberId: 'developer',
+        lifecycle: MemberLifecycle.running,
+        activity: MemberActivity.active,
+      );
+      final declared = AgentNode.test(
+        memberId: 'reviewer',
+        lifecycle: MemberLifecycle.declared,
+      );
+      bus
+        ..declareMember(leader)
+        ..declareMember(worker)
+        ..declareMember(declared);
+      final handler = TeammateBusMcpHandler(bus: bus);
 
-    await handler.handle(
-      'team-lead',
-      const JsonRpcRequest(id: 7, method: 'tools/call', params: {
-        'name': 'send_message',
-        'arguments': {'to': '*', 'content': 'all hands'},
-      }),
-    );
+      await handler.handle(
+        'team-lead',
+        const JsonRpcRequest(
+          id: 7,
+          method: 'tools/call',
+          params: {
+            'name': 'send_message',
+            'arguments': {'to': '*', 'content': 'all hands'},
+          },
+        ),
+      );
 
-    expect(leader.inbox.isEmpty, isTrue); // sender skipped
-    expect(worker.inbox.isEmpty, isFalse);
-    expect(declared.lifecycle, MemberLifecycle.running);
-    expect(launcher.materialized.single.memberId, 'reviewer');
-    expect(declared.inbox.isEmpty, isFalse);
-    final batch = await worker.inbox.waitAndTake(timeout: const Duration(seconds: 1));
-    expect(batch.single.content, 'all hands');
-    expect(batch.single.from, 'team-lead');
-  });
+      expect(leader.inbox.isEmpty, isTrue); // sender skipped
+      expect(worker.inbox.isEmpty, isFalse);
+      expect(declared.lifecycle, MemberLifecycle.running);
+      expect(launcher.materialized.single.memberId, 'reviewer');
+      expect(declared.inbox.isEmpty, isFalse);
+      final batch = await worker.inbox.waitAndTake(
+        timeout: const Duration(seconds: 1),
+      );
+      expect(batch.single.content, 'all hands');
+      expect(batch.single.from, 'team-lead');
+    },
+  );
 
   test('wait_for_message blocks indefinitely without timeout_ms', () {
     fakeAsync((async) {
       final bus = TeamBus(launcher: FakeMemberLauncher());
-      bus.declareMember(AgentNode.test(memberId: 'leader', lifecycle: MemberLifecycle.running, activity: MemberActivity.active));
+      bus.declareMember(
+        AgentNode.test(
+          memberId: 'leader',
+          lifecycle: MemberLifecycle.running,
+          activity: MemberActivity.active,
+        ),
+      );
       final handler = TeammateBusMcpHandler(bus: bus);
       JsonRpcResponse? res;
-      handler.handle('leader', const JsonRpcRequest(id: 6, method: 'tools/call',
-          params: {'name': 'wait_for_message', 'arguments': {}}))
-        .then((r) => res = r);
+      handler
+          .handle(
+            'leader',
+            const JsonRpcRequest(
+              id: 6,
+              method: 'tools/call',
+              params: {'name': 'wait_for_message', 'arguments': {}},
+            ),
+          )
+          .then((r) => res = r);
       async.elapse(const Duration(hours: 1));
       expect(res, isNull); // still blocked
     });
@@ -277,18 +340,31 @@ void main() {
   test('wait_for_message returns a batch when a message is delivered', () {
     fakeAsync((async) {
       final bus = TeamBus(launcher: FakeMemberLauncher());
-      final leader = AgentNode.test(memberId: 'leader', lifecycle: MemberLifecycle.running, activity: MemberActivity.active);
+      final leader = AgentNode.test(
+        memberId: 'leader',
+        lifecycle: MemberLifecycle.running,
+        activity: MemberActivity.active,
+      );
       bus.declareMember(leader);
       final handler = TeammateBusMcpHandler(bus: bus);
 
       JsonRpcResponse? res;
-      handler.handle('leader', const JsonRpcRequest(id: 5, method: 'tools/call',
-          params: {'name': 'wait_for_message', 'arguments': {}}))
-        .then((r) => res = r);
+      handler
+          .handle(
+            'leader',
+            const JsonRpcRequest(
+              id: 5,
+              method: 'tools/call',
+              params: {'name': 'wait_for_message', 'arguments': {}},
+            ),
+          )
+          .then((r) => res = r);
       async.flushMicrotasks();
       expect(res, isNull); // blocked (no timeout)
 
-      leader.inbox.deliver(TeamMessage(id: '1', from: 'w', to: 'leader', content: 'reply'));
+      leader.inbox.deliver(
+        TeamMessage(id: '1', from: 'w', to: 'leader', content: 'reply'),
+      );
       async.elapse(const Duration(milliseconds: 50));
       final text = (res!.result!['content'] as List).first as Map;
       expect(text['text'], contains('FROM w'));
@@ -308,39 +384,49 @@ void main() {
     expect((entry['headers'] as Map)['X-Session'], 'sess-1');
   });
 
-  test('tools/list with a task queue adds queue tools incl claim_task',
-      () async {
-    final bus = TeamBus(launcher: FakeMemberLauncher(), taskQueue: TaskQueue());
-    final res = await TeammateBusMcpHandler(bus: bus).handle(
-      'developer',
-      const JsonRpcRequest(id: 1, method: 'tools/list'),
-    );
-    final names = [
-      for (final t in res!.result!['tools'] as List) (t as Map)['name'],
-    ];
-    expect(names,
-        containsAll(['add_tasks', 'update_task', 'list_tasks', 'claim_task']));
-  });
+  test(
+    'tools/list with a task queue adds queue tools incl claim_task',
+    () async {
+      final bus = TeamBus(
+        launcher: FakeMemberLauncher(),
+        taskQueue: TaskQueue(),
+      );
+      final res = await TeammateBusMcpHandler(
+        bus: bus,
+      ).handle('developer', const JsonRpcRequest(id: 1, method: 'tools/list'));
+      final names = [
+        for (final t in res!.result!['tools'] as List) (t as Map)['name'],
+      ];
+      expect(
+        names,
+        containsAll(['add_tasks', 'update_task', 'list_tasks', 'claim_task']),
+      );
+    },
+  );
 
   test('add_tasks parses capabilities and preferred assignee', () async {
     final bus = TeamBus(launcher: FakeMemberLauncher(), taskQueue: TaskQueue());
     final handler = TeammateBusMcpHandler(bus: bus);
     final res = await handler.handle(
       'lead',
-      const JsonRpcRequest(id: 30, method: 'tools/call', params: {
-        'name': 'add_tasks',
-        'arguments': {
-          'tasks': [
-            {
-              'title': 'api',
-              'brief': 'build it',
-              'required_capabilities': ['backend'],
-              'preferred_capabilities': ['rust'],
-              'preferred_assignee': 'dev2',
-            }
-          ],
+      const JsonRpcRequest(
+        id: 30,
+        method: 'tools/call',
+        params: {
+          'name': 'add_tasks',
+          'arguments': {
+            'tasks': [
+              {
+                'title': 'api',
+                'brief': 'build it',
+                'required_capabilities': ['backend'],
+                'preferred_capabilities': ['rust'],
+                'preferred_assignee': 'dev2',
+              },
+            ],
+          },
         },
-      }),
+      ),
     );
     expect(res!.result!['isError'] as bool, isFalse);
     final task = bus.listTasks().single;
@@ -349,69 +435,105 @@ void main() {
     expect(task.preferredAssignee, 'dev2');
   });
 
-  test('claim_task lets an eligible worker self-pick; rejects ineligible',
-      () async {
-    final bus = TeamBus(launcher: FakeMemberLauncher(), taskQueue: TaskQueue());
-    bus.declareMember(AgentNode.test(
-      memberId: 'be',
-      lifecycle: MemberLifecycle.running,
-      activity: MemberActivity.active,
-      capabilities: {'backend'},
-    ));
-    bus.declareMember(AgentNode.test(
-      memberId: 'fe',
-      lifecycle: MemberLifecycle.running,
-      activity: MemberActivity.active,
-      capabilities: {'frontend'},
-    ));
-    final handler = TeammateBusMcpHandler(bus: bus);
-    final id = bus
-        .addTasks('lead', [
-          const TeamTaskDraft(title: 'api', brief: 'b',
-              requiredCapabilities: {'backend'})
-        ])
-        .single
-        .id;
+  test(
+    'claim_task lets an eligible worker self-pick; rejects ineligible',
+    () async {
+      final bus = TeamBus(
+        launcher: FakeMemberLauncher(),
+        taskQueue: TaskQueue(),
+      );
+      bus.declareMember(
+        AgentNode.test(
+          memberId: 'be',
+          lifecycle: MemberLifecycle.running,
+          activity: MemberActivity.active,
+          capabilities: {'backend'},
+        ),
+      );
+      bus.declareMember(
+        AgentNode.test(
+          memberId: 'fe',
+          lifecycle: MemberLifecycle.running,
+          activity: MemberActivity.active,
+          capabilities: {'frontend'},
+        ),
+      );
+      final handler = TeammateBusMcpHandler(bus: bus);
+      final id = bus
+          .addTasks('lead', [
+            const TeamTaskDraft(
+              title: 'api',
+              brief: 'b',
+              requiredCapabilities: {'backend'},
+            ),
+          ])
+          .single
+          .id;
 
-    final bad = await handler.handle(
-      'fe',
-      JsonRpcRequest(id: 31, method: 'tools/call', params: {
-        'name': 'claim_task',
-        'arguments': {'task_id': id},
-      }),
-    );
-    expect(((bad!.result!['content'] as List).first as Map)['text'] as String,
-        contains('not eligible'));
+      final bad = await handler.handle(
+        'fe',
+        JsonRpcRequest(
+          id: 31,
+          method: 'tools/call',
+          params: {
+            'name': 'claim_task',
+            'arguments': {'task_id': id},
+          },
+        ),
+      );
+      expect(
+        ((bad!.result!['content'] as List).first as Map)['text'] as String,
+        contains('not eligible'),
+      );
 
-    final ok = await handler.handle(
-      'be',
-      JsonRpcRequest(id: 32, method: 'tools/call', params: {
-        'name': 'claim_task',
-        'arguments': {'task_id': id},
-      }),
-    );
-    expect(ok!.result!['isError'] as bool, isFalse);
-    expect(bus.listTasks(status: TaskStatus.claimed).single.assignee, 'be');
-  });
+      final ok = await handler.handle(
+        'be',
+        JsonRpcRequest(
+          id: 32,
+          method: 'tools/call',
+          params: {
+            'name': 'claim_task',
+            'arguments': {'task_id': id},
+          },
+        ),
+      );
+      expect(ok!.result!['isError'] as bool, isFalse);
+      expect(bus.listTasks(status: TaskStatus.claimed).single.assignee, 'be');
+    },
+  );
 
   test('wait_for_message hands a worker a queued task (auto-claimed)', () {
     fakeAsync((async) {
-      final bus = TeamBus(launcher: FakeMemberLauncher(), taskQueue: TaskQueue());
-      bus.declareMember(AgentNode.test(
-        memberId: 'developer',
-        lifecycle: MemberLifecycle.running,
-        activity: MemberActivity.active,
-      ));
+      final bus = TeamBus(
+        launcher: FakeMemberLauncher(),
+        taskQueue: TaskQueue(),
+      );
+      bus.declareMember(
+        AgentNode.test(
+          memberId: 'developer',
+          lifecycle: MemberLifecycle.running,
+          activity: MemberActivity.active,
+        ),
+      );
       final handler = TeammateBusMcpHandler(bus: bus);
 
       JsonRpcResponse? res;
-      handler.handle('developer', const JsonRpcRequest(id: 5, method: 'tools/call',
-          params: {'name': 'wait_for_message', 'arguments': {}}))
-        .then((r) => res = r);
+      handler
+          .handle(
+            'developer',
+            const JsonRpcRequest(
+              id: 5,
+              method: 'tools/call',
+              params: {'name': 'wait_for_message', 'arguments': {}},
+            ),
+          )
+          .then((r) => res = r);
       async.flushMicrotasks();
       expect(res, isNull); // parked: nothing to do
 
-      bus.addTasks('lead', [const TeamTaskDraft(title: 'ship it', brief: 'do X')]);
+      bus.addTasks('lead', [
+        const TeamTaskDraft(title: 'ship it', brief: 'do X'),
+      ]);
       async.flushMicrotasks();
 
       final text = (res!.result!['content'] as List).first as Map;
@@ -419,8 +541,10 @@ void main() {
       expect(text['text'], contains('ship it'));
       expect(text['text'], contains('update_task'));
       // auto-claimed for the asking worker
-      expect(bus.listTasks(status: TaskStatus.claimed).single.assignee,
-          'developer');
+      expect(
+        bus.listTasks(status: TaskStatus.claimed).single.assignee,
+        'developer',
+      );
     });
   });
 
@@ -444,23 +568,25 @@ void main() {
 
     await handler.handle(
       'leader',
-      const JsonRpcRequest(id: 10, method: 'tools/call', params: {
-        'name': 'send_message',
-        'arguments': {'to': 'leader', 'content': 'go'},
-      }),
+      const JsonRpcRequest(
+        id: 10,
+        method: 'tools/call',
+        params: {
+          'name': 'send_message',
+          'arguments': {'to': 'leader', 'content': 'go'},
+        },
+      ),
     );
     await handler.handle(
       'leader',
-      const JsonRpcRequest(id: 11, method: 'tools/call', params: {
-        'name': 'wait_for_message',
-        'arguments': <String, Object?>{},
-      }),
+      const JsonRpcRequest(
+        id: 11,
+        method: 'tools/call',
+        params: {'name': 'wait_for_message', 'arguments': <String, Object?>{}},
+      ),
     );
 
-    expect(
-      jsonDecode(handler.idleStopDecision('leader'))['decision'],
-      'block',
-    );
+    expect(jsonDecode(handler.idleStopDecision('leader'))['decision'], 'block');
   });
 
   test('forceWaitBeforeStop=false lets members stop (no block)', () {
@@ -475,7 +601,11 @@ void main() {
     final handler = TeammateBusMcpHandler(bus: bus, forceWaitBeforeStop: false);
 
     // Never blocks, even across many consecutive idle stops.
-    for (var i = 0; i < TeammateBusMcpHandler.maxConsecutiveIdleStops + 2; i++) {
+    for (
+      var i = 0;
+      i < TeammateBusMcpHandler.maxConsecutiveIdleStops + 2;
+      i++
+    ) {
       expect(handler.idleStopDecision('developer'), '{}');
     }
   });

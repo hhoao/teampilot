@@ -1,4 +1,4 @@
-﻿import 'package:flutter/material.dart';
+import 'package:flutter/material.dart';
 
 import '../../cubits/team_hub_cubit.dart';
 import '../../l10n/l10n_extensions.dart';
@@ -42,7 +42,10 @@ class TeamHubBody extends StatelessWidget {
                 child: TextField(
                   decoration: InputDecoration(
                     hintText: l10n.teamHubSearchHint,
-                    prefixIcon: Icon(Icons.search, size: context.appIconSizes.md),
+                    prefixIcon: Icon(
+                      Icons.search,
+                      size: context.appIconSizes.md,
+                    ),
                     floatingLabelBehavior: FloatingLabelBehavior.never,
                   ),
                   onChanged: cubit.setSearch,

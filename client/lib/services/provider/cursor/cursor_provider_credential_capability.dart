@@ -6,8 +6,9 @@ import 'cursor_provider_credentials_service.dart';
 
 final class CursorProviderCredentialCapability
     implements ProviderCredentialCapability {
-  CursorProviderCredentialCapability({CursorProviderCredentialsService? credentials})
-    : _credentials = credentials;
+  CursorProviderCredentialCapability({
+    CursorProviderCredentialsService? credentials,
+  }) : _credentials = credentials;
 
   final CursorProviderCredentialsService? _credentials;
 
@@ -29,7 +30,9 @@ final class CursorProviderCredentialCapability
         primary: true,
         showWhenReady: false,
       ),
-      ProviderCredentialActionSpec(kind: ProviderCredentialActionKind.importGlobal),
+      ProviderCredentialActionSpec(
+        kind: ProviderCredentialActionKind.importGlobal,
+      ),
       ProviderCredentialActionSpec(
         kind: ProviderCredentialActionKind.importDirectory,
       ),
@@ -110,9 +113,5 @@ Future<CredentialActionResult> _importCursorPath(
   if (path.endsWith('auth.json')) {
     return service.importAuthJsonFile(providerId, path, replace: replace);
   }
-  return service.importFromCursorDirectory(
-    providerId,
-    path,
-    replace: replace,
-  );
+  return service.importFromCursorDirectory(providerId, path, replace: replace);
 }

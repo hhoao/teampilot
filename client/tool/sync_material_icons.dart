@@ -28,7 +28,12 @@ Future<Directory> _prepareNpmPackage(List<String> args) async {
   // Default: download via `npm pack` into a temp dir and extract.
   final temp = await Directory.systemTemp.createTemp('material-icon-theme-');
   print('Downloading $_packageName via npm pack into ${temp.path} ...');
-  final packResult = await Process.run('npm', ['pack', _packageName], workingDirectory: temp.path, runInShell: true);
+  final packResult = await Process.run(
+    'npm',
+    ['pack', _packageName],
+    workingDirectory: temp.path,
+    runInShell: true,
+  );
   if (packResult.exitCode != 0) {
     stderr.writeln('npm pack failed:\n${packResult.stderr}');
     exit(1);
@@ -43,11 +48,13 @@ Future<Directory> _prepareNpmPackage(List<String> args) async {
     exit(1);
   }
   final tgzPath = tgzFiles.first.path;
-  final extractResult = await Process.run(
-    'tar',
-    ['-xzf', tgzPath, '-C', temp.path, '--force-local'],
-    runInShell: true,
-  );
+  final extractResult = await Process.run('tar', [
+    '-xzf',
+    tgzPath,
+    '-C',
+    temp.path,
+    '--force-local',
+  ], runInShell: true);
   if (extractResult.exitCode != 0) {
     stderr.writeln('tar extract failed:\n${extractResult.stderr}');
     exit(1);
@@ -90,7 +97,13 @@ Set<String> _collectReferencedIconNames(Map<String, dynamic> json) {
   addFromMap(json['fileNames']);
   addFromMap(json['languageIds']);
   // Default folder/file icons referenced at top level.
-  for (final k in const ['file', 'folder', 'folderExpanded', 'rootFolder', 'rootFolderExpanded']) {
+  for (final k in const [
+    'file',
+    'folder',
+    'folderExpanded',
+    'rootFolder',
+    'rootFolderExpanded',
+  ]) {
     final v = json[k];
     if (v is String) names.add(v);
   }
@@ -172,8 +185,12 @@ void _writeMappingFile({
   final extMap = castMap(json['fileExtensions']);
   final nameMap = castMap(json['fileNames']);
   final light = json['light'];
-  final lightExt = light is Map ? castMap(light['fileExtensions']).keys.toSet() : <String>{};
-  final lightName = light is Map ? castMap(light['fileNames']).keys.toSet() : <String>{};
+  final lightExt = light is Map
+      ? castMap(light['fileExtensions']).keys.toSet()
+      : <String>{};
+  final lightName = light is Map
+      ? castMap(light['fileNames']).keys.toSet()
+      : <String>{};
   final defaultIcon = (json['file'] ?? 'file').toString();
 
   final buf = StringBuffer()
@@ -182,7 +199,9 @@ void _writeMappingFile({
     ..writeln()
     ..writeln('const materialFileIconsVersion = ${dartStringLiteral(version)};')
     ..writeln()
-    ..writeln('const String kDefaultFileIcon = ${dartStringLiteral(defaultIcon)};')
+    ..writeln(
+      'const String kDefaultFileIcon = ${dartStringLiteral(defaultIcon)};',
+    )
     ..writeln();
   writeMap('kFileExtensionIcons', extMap, buf);
   writeMap('kFileNameIcons', nameMap, buf);
@@ -190,9 +209,11 @@ void _writeMappingFile({
   writeSet('kLightFileNames', lightName, buf);
 
   File(_targetMappingFile).writeAsStringSync(buf.toString());
-  print('Wrote $_targetMappingFile '
-      '(extensions=${extMap.length}, fileNames=${nameMap.length}, '
-      'lightExt=${lightExt.length}, lightName=${lightName.length}).');
+  print(
+    'Wrote $_targetMappingFile '
+    '(extensions=${extMap.length}, fileNames=${nameMap.length}, '
+    'lightExt=${lightExt.length}, lightName=${lightName.length}).',
+  );
 }
 
 Future<void> main(List<String> args) async {
@@ -206,7 +227,8 @@ Future<void> main(List<String> args) async {
     stderr.writeln('material-icons.json not found at ${mappingFile.path}');
     exit(1);
   }
-  final json = jsonDecode(mappingFile.readAsStringSync()) as Map<String, dynamic>;
+  final json =
+      jsonDecode(mappingFile.readAsStringSync()) as Map<String, dynamic>;
 
   final referenced = _collectReferencedIconNames(json);
   print('Referenced icon names: ${referenced.length}');
@@ -219,7 +241,9 @@ Future<void> main(List<String> args) async {
   );
   print('Copied $copied SVGs into $_targetSvgDir/.');
   if (missing.isNotEmpty) {
-    print('WARNING: ${missing.length} referenced icons missing in source: $missing');
+    print(
+      'WARNING: ${missing.length} referenced icons missing in source: $missing',
+    );
   }
   if (force) print('(force: version cache check skipped)');
 
@@ -227,16 +251,18 @@ Future<void> main(List<String> args) async {
 
   // Asset integrity assertion: every icon name referenced by the generated
   // mapping must have a copied SVG on disk.
-  final allReferencedInMapping = <String>{
-    ..._collectReferencedIconNames(json),
-  };
+  final allReferencedInMapping = <String>{..._collectReferencedIconNames(json)};
   final missingOnDisk = allReferencedInMapping
       .where((n) => !File('$_targetSvgDir/$n.svg').existsSync())
-      .where((n) => !missing.contains(n)) // exclude icons known-missing from source
+      .where(
+        (n) => !missing.contains(n),
+      ) // exclude icons known-missing from source
       .toList();
   if (missingOnDisk.isNotEmpty) {
-    stderr.writeln('FATAL: ${missingOnDisk.length} mapping icons have no SVG on disk: '
-        '${missingOnDisk.take(20).toList()}');
+    stderr.writeln(
+      'FATAL: ${missingOnDisk.length} mapping icons have no SVG on disk: '
+      '${missingOnDisk.take(20).toList()}',
+    );
     exit(1);
   }
 

@@ -139,10 +139,9 @@ class FileTreeCubit extends Cubit<FileTreeState> {
   String _pendingFilter = '';
 
   /// Primary filesystem (first mount, else constructor default).
-  Filesystem get fs =>
-      _mountsByRoot.isNotEmpty
-          ? _mountsByRoot.values.first.filesystem
-          : _defaultFs;
+  Filesystem get fs => _mountsByRoot.isNotEmpty
+      ? _mountsByRoot.values.first.filesystem
+      : _defaultFs;
 
   Filesystem fsFor(String path) {
     final mount = _mountFor(path);
@@ -199,7 +198,8 @@ class FileTreeCubit extends Cubit<FileTreeState> {
     if (a.length != b.length) return false;
     for (final entry in a.entries) {
       final other = b[entry.key];
-      if (other == null || !identical(other.filesystem, entry.value.filesystem)) {
+      if (other == null ||
+          !identical(other.filesystem, entry.value.filesystem)) {
         return false;
       }
     }
@@ -207,8 +207,9 @@ class FileTreeCubit extends Cubit<FileTreeState> {
   }
 
   /// Single-root convenience wrapper around [mountRoots].
-  Future<void> setRoot(String path) =>
-      mountRoots(path.isEmpty ? const [] : [FileTreeRootMount(path: path, filesystem: fs)]);
+  Future<void> setRoot(String path) => mountRoots(
+    path.isEmpty ? const [] : [FileTreeRootMount(path: path, filesystem: fs)],
+  );
 
   /// Mounts [paths] on a single [filesystem] (legacy single-target callers).
   Future<void> setRoots(List<String> paths, {Filesystem? filesystem}) {
@@ -251,7 +252,10 @@ class FileTreeCubit extends Cubit<FileTreeState> {
       );
     }
     final expanded = roots.length > 1
-        ? {for (final r in roots) if (r.exists) r.path}
+        ? {
+            for (final r in roots)
+              if (r.exists) r.path,
+          }
         : <String>{};
     _publish(FileTreeState(roots: roots, expandedPaths: expanded));
     for (final root in roots) {
@@ -347,10 +351,7 @@ class FileTreeCubit extends Cubit<FileTreeState> {
   }
 
   /// Expands ancestor folders and scrolls [filePath] into view in the tree.
-  Future<bool> revealPath(
-    String filePath, {
-    bool clearFilter = true,
-  }) async {
+  Future<bool> revealPath(String filePath, {bool clearFilter = true}) async {
     final normalized = fsFor(filePath).pathContext.normalize(filePath.trim());
     if (normalized.isEmpty) return false;
 
@@ -407,8 +408,7 @@ class FileTreeCubit extends Cubit<FileTreeState> {
       final stat = await activeFs.stat(path);
       if (!stat.exists || !stat.isDirectory) return null;
       final allEntries = await activeFs.listDir(path);
-      return allEntries.where(_matchesFilter).toList()
-        ..sort(_compareEntries);
+      return allEntries.where(_matchesFilter).toList()..sort(_compareEntries);
     } catch (_) {
       return null;
     }

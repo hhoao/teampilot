@@ -97,7 +97,8 @@ class _AppPopoverState extends State<AppPopover> {
   Widget build(BuildContext context) {
     final effectivePadding =
         widget.padding ?? const EdgeInsets.fromLTRB(8, 12, 8, 12);
-    final effectiveAnchor = widget.anchor ??
+    final effectiveAnchor =
+        widget.anchor ??
         const AppAnchor(
           childAlignment: Alignment.topCenter,
           overlayAlignment: Alignment.bottomCenter,
@@ -160,8 +161,7 @@ class _AppPopoverState extends State<AppPopover> {
             const SingleActivator(LogicalKeyboardKey.escape): controller.hide,
           },
           child: AppPortal(
-            visible:
-                controller.isOpen && (widget.overlayVisible ?? true),
+            visible: controller.isOpen && (widget.overlayVisible ?? true),
             anchor: effectiveAnchor,
             transitionDuration: widget.transitionDuration,
             transitionCurve: widget.transitionCurve,

@@ -32,14 +32,15 @@ class WorkspaceLandingContextCubit extends Cubit<WorkspaceLandingContextState> {
     required this.workspaceId,
     LandingLaunchContext? initial,
   }) : super(
-          WorkspaceLandingContextState(
-            context: initial ??
-                const LandingLaunchContext(
-                  isPersonal: true,
-                  personalProfileId: LaunchProfileProvisioner.defaultPersonalId,
-                ),
-          ),
-        );
+         WorkspaceLandingContextState(
+           context:
+               initial ??
+               const LandingLaunchContext(
+                 isPersonal: true,
+                 personalProfileId: LaunchProfileProvisioner.defaultPersonalId,
+               ),
+         ),
+       );
 
   final String workspaceId;
 

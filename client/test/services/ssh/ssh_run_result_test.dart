@@ -32,7 +32,10 @@ void main() {
   test('non-zero exitCode is failure', () {
     expect(sshRunSucceeded(_result(exitCode: 1, stderr: 'denied')), isFalse);
     expect(sshRunFailureLabel(_result(exitCode: 127)), '127');
-    expect(sshRunOutputDetail(_result(exitCode: 1, stderr: 'denied')), 'denied');
+    expect(
+      sshRunOutputDetail(_result(exitCode: 1, stderr: 'denied')),
+      'denied',
+    );
   });
 
   test('exitSignal is failure even when exitCode is null', () {

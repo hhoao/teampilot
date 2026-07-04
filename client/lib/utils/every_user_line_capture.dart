@@ -37,8 +37,7 @@ class EveryUserLineCapture {
       return;
     }
     if (_mode == _EveryInputMode.oscEsc) {
-      _mode =
-          codeUnit == 0x5c ? _EveryInputMode.normal : _EveryInputMode.osc;
+      _mode = codeUnit == 0x5c ? _EveryInputMode.normal : _EveryInputMode.osc;
     }
   }
 
@@ -89,8 +88,7 @@ class EveryUserLineCapture {
     }
   }
 
-  static bool _isCsiFinal(int codeUnit) =>
-      codeUnit >= 0x40 && codeUnit <= 0x7e;
+  static bool _isCsiFinal(int codeUnit) => codeUnit >= 0x40 && codeUnit <= 0x7e;
 
   void _backspace() {
     final text = _buffer.toString();

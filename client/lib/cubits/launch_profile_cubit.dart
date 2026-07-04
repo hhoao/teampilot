@@ -475,9 +475,7 @@ class LaunchProfileCubit extends Cubit<LaunchProfileState>
       ),
     );
     if (!syncResources) return;
-    unawaited(
-      Future.wait([_sync.syncPluginsForSelected(), _sync.syncMcp()]),
-    );
+    unawaited(Future.wait([_sync.syncPluginsForSelected(), _sync.syncMcp()]));
   }
 
   Future<bool> addTeam(
@@ -829,10 +827,7 @@ class LaunchProfileCubit extends Cubit<LaunchProfileState>
     if (effectiveId == null) {
       await updateMember(
         memberId,
-        member.copyWith(
-          activePresetId: null,
-          updateActivePresetId: true,
-        ),
+        member.copyWith(activePresetId: null, updateActivePresetId: true),
       );
       return;
     }

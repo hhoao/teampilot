@@ -23,12 +23,10 @@ void main() {
       expandedFolderPaths: {'src', 'src/utils'},
     );
 
-    expect(rows.map((r) => r.isFolder ? 'D:${r.name}' : 'F:${r.change!.path}'), [
-      'D:src',
-      'D:utils',
-      'F:src/utils/foo.dart',
-      'F:readme.md',
-    ]);
+    expect(
+      rows.map((r) => r.isFolder ? 'D:${r.name}' : 'F:${r.change!.path}'),
+      ['D:src', 'D:utils', 'F:src/utils/foo.dart', 'F:readme.md'],
+    );
   });
 
   test('visibleGitChangesRows hides nested files when folder collapsed', () {
@@ -86,10 +84,7 @@ void main() {
       ),
     ];
 
-    expect(
-      gitChangesDefaultExpandedFolders(changes),
-      {'src', 'src/utils'},
-    );
+    expect(gitChangesDefaultExpandedFolders(changes), {'src', 'src/utils'});
   });
 
   test('visibleGitChangesTreeViewData splits staged and unstaged rows', () {
@@ -115,7 +110,10 @@ void main() {
     );
 
     expect(data.stagedRows.any((r) => r.change?.path == 'lib/a.dart'), isTrue);
-    expect(data.unstagedRows.any((r) => r.change?.path == 'lib/b.dart'), isTrue);
+    expect(
+      data.unstagedRows.any((r) => r.change?.path == 'lib/b.dart'),
+      isTrue,
+    );
   });
 
   test('gitChangesMinContentWidth samples rows on large trees', () {

@@ -112,10 +112,7 @@ class TunnelPump {
   Future<void> _onChannel(TunnelChannel channel) async {
     final Socket socket;
     try {
-      socket = await Socket.connect(
-        InternetAddress.loopbackIPv4,
-        _localPort,
-      );
+      socket = await Socket.connect(InternetAddress.loopbackIPv4, _localPort);
     } on Object {
       await channel.close();
       return;

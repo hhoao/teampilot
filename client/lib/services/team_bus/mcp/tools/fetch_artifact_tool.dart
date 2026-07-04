@@ -28,13 +28,13 @@ final class FetchArtifactTool extends TeammateBusTool {
 
   @override
   Map<String, Object?> get inputSchema => McpSchema.object(
-        properties: {
-          nameKey: McpSchema.string,
-          destPathKey: McpSchema.string,
-          overwriteKey: McpSchema.boolean,
-        },
-        required: [nameKey, destPathKey],
-      );
+    properties: {
+      nameKey: McpSchema.string,
+      destPathKey: McpSchema.string,
+      overwriteKey: McpSchema.boolean,
+    },
+    required: [nameKey, destPathKey],
+  );
 
   @override
   Future<JsonRpcResponse> call(TeammateBusToolCall call) async {
@@ -42,14 +42,17 @@ final class FetchArtifactTool extends TeammateBusTool {
     if (unavailable != null) return unavailable;
 
     final name = call.argString(FetchArtifactTool.nameKey)?.trim() ?? '';
-    final destPath = call.argString(FetchArtifactTool.destPathKey)?.trim() ?? '';
+    final destPath =
+        call.argString(FetchArtifactTool.destPathKey)?.trim() ?? '';
     if (name.isEmpty || destPath.isEmpty) {
       return call.toolError(
         'fetch_artifact requires a non-empty "name" and "destPath".',
       );
     }
-    final overwrite =
-        call.argBool(FetchArtifactTool.overwriteKey, defaultValue: false);
+    final overwrite = call.argBool(
+      FetchArtifactTool.overwriteKey,
+      defaultValue: false,
+    );
     try {
       final result = await call.artifacts.fetch(
         fetcherMemberId: call.memberId,

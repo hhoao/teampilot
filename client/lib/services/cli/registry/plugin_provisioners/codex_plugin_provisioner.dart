@@ -45,7 +45,9 @@ final class CodexPluginProvisioner implements PluginProvisionerCapability {
       CodexHomeProvisioner.configFileName,
     );
     final stat = await ctx.fs.stat(configPath);
-    final existing = stat.isFile ? await ctx.fs.readString(configPath) ?? '' : '';
+    final existing = stat.isFile
+        ? await ctx.fs.readString(configPath) ?? ''
+        : '';
     var merged = CodexTomlMerge.mergeLocalMarketplace(existing, ctx.configDir);
     merged = CodexTomlMerge.mergePluginEnables(merged, enables);
     if (merged.trim().isEmpty) return;
@@ -95,7 +97,11 @@ final class CodexPluginProvisioner implements PluginProvisionerCapability {
       );
       if (catalogPlugin == null && ctx.enabledPluginIds.isNotEmpty) continue;
 
-      final cacheVersion = await _pluginCacheVersion(ctx.fs, root, paths: paths);
+      final cacheVersion = await _pluginCacheVersion(
+        ctx.fs,
+        root,
+        paths: paths,
+      );
       final sourceRoot = CodexSessionConfigDir.localPluginSourceRoot(
         ctx.configDir,
         pluginName,
@@ -156,14 +162,8 @@ final class CodexPluginProvisioner implements PluginProvisionerCapability {
   static Map<String, Object?> _localMarketplaceEntry(String pluginName) {
     return {
       'name': pluginName,
-      'source': {
-        'source': 'local',
-        'path': './plugins/$pluginName',
-      },
-      'policy': {
-        'installation': 'AVAILABLE',
-        'authentication': 'ON_INSTALL',
-      },
+      'source': {'source': 'local', 'path': './plugins/$pluginName'},
+      'policy': {'installation': 'AVAILABLE', 'authentication': 'ON_INSTALL'},
       'category': 'Productivity',
     };
   }
@@ -222,12 +222,13 @@ final class CodexPluginProvisioner implements PluginProvisionerCapability {
       }
 
       const reservedKeys = {'mcpServers', 'mcp_servers'};
-      final direct = root.entries
-          .where((entry) => !reservedKeys.contains(entry.key))
-          .where((entry) => entry.value is Map)
-          .map((entry) => entry.key)
-          .toList()
-        ..sort();
+      final direct =
+          root.entries
+              .where((entry) => !reservedKeys.contains(entry.key))
+              .where((entry) => entry.value is Map)
+              .map((entry) => entry.key)
+              .toList()
+            ..sort();
       return direct;
     } catch (_) {
       return const [];

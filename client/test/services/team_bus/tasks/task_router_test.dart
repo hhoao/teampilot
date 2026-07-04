@@ -10,7 +10,12 @@ TeamTask task({
   int escalatedAt = 0,
 }) {
   return TeamTask(
-    id: 't', seq: 0, title: 'a', brief: 'b', createdBy: 'lead', createdAt: 0,
+    id: 't',
+    seq: 0,
+    title: 'a',
+    brief: 'b',
+    createdBy: 'lead',
+    createdAt: 0,
     requiredCapabilities: required,
     preferredCapabilities: preferred,
     preferredAssignee: assignee,
@@ -31,15 +36,21 @@ void main() {
     });
 
     test('reserved stage admits only the preferred assignee', () {
-      final t = task(required: {'backend'}, assignee: 'dev2',
-          stage: RoutingStage.reserved);
+      final t = task(
+        required: {'backend'},
+        assignee: 'dev2',
+        stage: RoutingStage.reserved,
+      );
       expect(TaskRouter.eligible('dev2', {'backend'}, t), isTrue);
       expect(TaskRouter.eligible('other', {'backend'}, t), isFalse);
     });
 
     test('widened stage relaxes required to preferred', () {
-      final t = task(required: {'backend'}, preferred: {'rust'},
-          stage: RoutingStage.widened);
+      final t = task(
+        required: {'backend'},
+        preferred: {'rust'},
+        stage: RoutingStage.widened,
+      );
       // no longer needs backend; needs preferred (rust)
       expect(TaskRouter.eligible('w1', {'rust'}, t), isTrue);
       expect(TaskRouter.eligible('w2', {'go'}, t), isFalse);
@@ -61,7 +72,11 @@ void main() {
 
   group('nextStage', () {
     test('reserved → matched after reserve window', () {
-      final t = task(assignee: 'd', stage: RoutingStage.reserved, escalatedAt: 0);
+      final t = task(
+        assignee: 'd',
+        stage: RoutingStage.reserved,
+        escalatedAt: 0,
+      );
       expect(TaskRouter.nextStage(t, 44 * 1000, true), RoutingStage.reserved);
       expect(TaskRouter.nextStage(t, 45 * 1000, true), RoutingStage.matched);
     });
@@ -71,11 +86,20 @@ void main() {
       expect(TaskRouter.nextStage(t, 999 * 1000, true), RoutingStage.matched);
     });
 
-    test('matched → widened after widen window with no eligible live member', () {
-      final t = task(required: {'backend'}, escalatedAt: 0);
-      expect(TaskRouter.nextStage(t, 119 * 1000, false), RoutingStage.matched);
-      expect(TaskRouter.nextStage(t, 120 * 1000, false), RoutingStage.widened);
-    });
+    test(
+      'matched → widened after widen window with no eligible live member',
+      () {
+        final t = task(required: {'backend'}, escalatedAt: 0);
+        expect(
+          TaskRouter.nextStage(t, 119 * 1000, false),
+          RoutingStage.matched,
+        );
+        expect(
+          TaskRouter.nextStage(t, 120 * 1000, false),
+          RoutingStage.widened,
+        );
+      },
+    );
 
     test('widened → open after open window with no eligible live member', () {
       final t = task(stage: RoutingStage.widened, escalatedAt: 0);

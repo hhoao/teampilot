@@ -33,7 +33,13 @@ final class FlashskyaiProviderPersistence extends ProviderPersistenceStrategy {
       unknownFields: unknownFields,
     );
 
-    final configFile = RuntimeLayout(teampilotRoot: ctx.basePath).appFlashskyaiLlmConfigFile;
-    await ctx.generator.writeJsonAtomic(configFile, config.toJson(), fs: ctx.fs);
+    final configFile = RuntimeLayout(
+      teampilotRoot: ctx.basePath,
+    ).appFlashskyaiLlmConfigFile;
+    await ctx.generator.writeJsonAtomic(
+      configFile,
+      config.toJson(),
+      fs: ctx.fs,
+    );
   }
 }

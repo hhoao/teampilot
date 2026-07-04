@@ -97,10 +97,7 @@ final class CursorHomeProvisioner {
     );
     await _fs.atomicWrite(
       idleScriptPath,
-      CursorHomeBusOverlay.idleScript(
-        memberId: member.id,
-        idle: busIdle,
-      ),
+      CursorHomeBusOverlay.idleScript(memberId: member.id, idle: busIdle),
     );
     await _fs.atomicWrite(
       _layout.hooksConfig(memberHome),
@@ -133,12 +130,14 @@ final class CursorHomeProvisioner {
       ...((existing['mcpServers'] as Map?)?.cast<String, Object?>() ??
           const <String, Object?>{}),
       ...((jsonDecode(
-                CursorHomeBusOverlay.buildMcpJson(
-                  memberId: memberId,
-                  idle: busIdle,
-                ),
-              ) as Map)
-              .cast<String, Object?>()['mcpServers'] as Map)
+                        CursorHomeBusOverlay.buildMcpJson(
+                          memberId: memberId,
+                          idle: busIdle,
+                        ),
+                      )
+                      as Map)
+                  .cast<String, Object?>()['mcpServers']
+              as Map)
           .cast<String, Object?>(),
     };
     existing['mcpServers'] = mergedServers;

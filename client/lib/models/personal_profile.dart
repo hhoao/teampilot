@@ -95,37 +95,36 @@ class PersonalProfile implements LaunchProfile {
     String? activePresetId,
     int? createdAt,
     int? sortOrder,
-  }) =>
-      PersonalProfile(
-        id: id,
-        display: display ?? this.display,
-        icon: icon ?? this.icon,
-        bundle: bundle ?? this.bundle,
-        providerIdsByTool: providerIdsByTool ?? this.providerIdsByTool,
-        modelsByTool: modelsByTool ?? this.modelsByTool,
-        effortsByTool: effortsByTool ?? this.effortsByTool,
-        agent: agent ?? this.agent,
-        activePresetId: activePresetId ?? this.activePresetId,
-        createdAt: createdAt ?? this.createdAt,
-        sortOrder: sortOrder ?? this.sortOrder,
-      );
+  }) => PersonalProfile(
+    id: id,
+    display: display ?? this.display,
+    icon: icon ?? this.icon,
+    bundle: bundle ?? this.bundle,
+    providerIdsByTool: providerIdsByTool ?? this.providerIdsByTool,
+    modelsByTool: modelsByTool ?? this.modelsByTool,
+    effortsByTool: effortsByTool ?? this.effortsByTool,
+    agent: agent ?? this.agent,
+    activePresetId: activePresetId ?? this.activePresetId,
+    createdAt: createdAt ?? this.createdAt,
+    sortOrder: sortOrder ?? this.sortOrder,
+  );
 
   @override
   Map<String, Object?> toJson() => {
-        'id': id,
-        'kind': kind.value,
-        'display': display,
-        if (icon.toJson() case final iconJson?) 'icon': iconJson,
-        'bundle': bundle.toJson(),
-        if (providerIdsByTool.isNotEmpty) 'providerIdsByTool': providerIdsByTool,
-        if (modelsByTool.isNotEmpty) 'modelsByTool': modelsByTool,
-        if (effortsByTool.isNotEmpty) 'effortsByTool': effortsByTool,
-        'agent': agent.toJson(),
-        if (activePresetId != null && activePresetId!.isNotEmpty)
-          'activePresetId': activePresetId,
-        if (createdAt > 0) 'createdAt': createdAt,
-        if (sortOrder > 0) 'sortOrder': sortOrder,
-      };
+    'id': id,
+    'kind': kind.value,
+    'display': display,
+    if (icon.toJson() case final iconJson?) 'icon': iconJson,
+    'bundle': bundle.toJson(),
+    if (providerIdsByTool.isNotEmpty) 'providerIdsByTool': providerIdsByTool,
+    if (modelsByTool.isNotEmpty) 'modelsByTool': modelsByTool,
+    if (effortsByTool.isNotEmpty) 'effortsByTool': effortsByTool,
+    'agent': agent.toJson(),
+    if (activePresetId != null && activePresetId!.isNotEmpty)
+      'activePresetId': activePresetId,
+    if (createdAt > 0) 'createdAt': createdAt,
+    if (sortOrder > 0) 'sortOrder': sortOrder,
+  };
 
   @override
   bool operator ==(Object other) =>
@@ -145,16 +144,16 @@ class PersonalProfile implements LaunchProfile {
 
   @override
   int get hashCode => Object.hash(
-        id,
-        display,
-        icon,
-        bundle,
-        Object.hashAll(providerIdsByTool.entries.map((e) => '${e.key}=${e.value}')),
-        Object.hashAll(modelsByTool.entries.map((e) => '${e.key}=${e.value}')),
-        Object.hashAll(effortsByTool.entries.map((e) => '${e.key}=${e.value}')),
-        agent,
-        activePresetId,
-        createdAt,
-        sortOrder,
-      );
+    id,
+    display,
+    icon,
+    bundle,
+    Object.hashAll(providerIdsByTool.entries.map((e) => '${e.key}=${e.value}')),
+    Object.hashAll(modelsByTool.entries.map((e) => '${e.key}=${e.value}')),
+    Object.hashAll(effortsByTool.entries.map((e) => '${e.key}=${e.value}')),
+    agent,
+    activePresetId,
+    createdAt,
+    sortOrder,
+  );
 }

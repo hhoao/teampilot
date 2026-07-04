@@ -11,15 +11,15 @@ final class DefaultResourceCapability implements ResourceCapability {
 
   @override
   String subdirFor(ResourceKind kind) => switch (kind) {
-        ResourceKind.skill => 'skills',
-        ResourceKind.plugin => 'plugins',
-        ResourceKind.mcp => 'mcp',
-      };
+    ResourceKind.skill => 'skills',
+    ResourceKind.plugin => 'plugins',
+    ResourceKind.mcp => 'mcp',
+  };
 
   @override
   ResourceRepresentation representationFor(ResourceKind kind) => switch (kind) {
-        ResourceKind.skill => ResourceRepresentation.linkedDirectory,
-        ResourceKind.plugin => ResourceRepresentation.linkedDirectory,
-        ResourceKind.mcp => ResourceRepresentation.mergedJsonEntry,
-      };
+    ResourceKind.skill => ResourceRepresentation.linkedDirectory,
+    ResourceKind.plugin => ResourceRepresentation.linkedDirectory,
+    ResourceKind.mcp => ResourceRepresentation.mergedJsonEntry,
+  };
 }

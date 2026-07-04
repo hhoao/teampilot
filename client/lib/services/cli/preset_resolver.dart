@@ -190,13 +190,8 @@ CliTool memberLaunchCli({
 }
 
 /// Presets whose [CliPreset.cli] matches [catalogCli].
-List<CliPreset> presetsForCli(
-  List<CliPreset> allPresets,
-  CliTool catalogCli,
-) {
-  return allPresets
-      .where((p) => p.cli == catalogCli)
-      .toList(growable: false);
+List<CliPreset> presetsForCli(List<CliPreset> allPresets, CliTool catalogCli) {
+  return allPresets.where((p) => p.cli == catalogCli).toList(growable: false);
 }
 
 /// Presets for a team-level picker.

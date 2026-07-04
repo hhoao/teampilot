@@ -37,8 +37,10 @@ class WorkspaceShellConnector {
         WorkspaceTerminalLocalSpec() => RuntimeTarget.local(),
         WorkspaceTerminalWorkspaceTargetSpec(:final targetId) =>
           _runtimeTargetFromId(targetId),
-        WorkspaceTerminalSshProfileSpec(:final profileId) =>
-          RuntimeTarget.ssh(profileId, label: ''),
+        WorkspaceTerminalSshProfileSpec(:final profileId) => RuntimeTarget.ssh(
+          profileId,
+          label: '',
+        ),
       };
 
   TerminalSession createSession(WorkspaceTerminalSessionSpec spec) {
@@ -80,10 +82,7 @@ class WorkspaceShellConnector {
   ) async {
     final profile = await _profileFor(spec);
     if (profile == null) return null;
-    return SshMemberSession.open(
-      _transportFactory.sshClientFactory,
-      profile,
-    );
+    return SshMemberSession.open(_transportFactory.sshClientFactory, profile);
   }
 
   Future<void> disposeRemotePlane(TerminalSession session) async {
@@ -235,22 +234,23 @@ class WorkspaceShellConnector {
     );
   }
 
-  RuntimeTarget _runtimeTargetFromId(String id) => switch (runtimeKindOfId(id)) {
-    RuntimeKind.ssh => RuntimeTarget.ssh(
-      sshProfileIdOfId(id) ?? '',
-      label: '',
-    ),
+  RuntimeTarget _runtimeTargetFromId(String id) => switch (runtimeKindOfId(
+    id,
+  )) {
+    RuntimeKind.ssh => RuntimeTarget.ssh(sshProfileIdOfId(id) ?? '', label: ''),
     RuntimeKind.wsl => RuntimeTarget.wsl(wslDistroOfId(id) ?? ''),
     RuntimeKind.local => RuntimeTarget.local(),
   };
 
-  dnd.RuntimeTarget _dndTargetFor(RuntimeTarget target) => switch (target.kind) {
-    RuntimeKind.ssh => const dnd.RuntimeTarget.ssh(),
-    RuntimeKind.wsl => dnd.RuntimeTarget.wsl(),
-    RuntimeKind.local => Platform.isWindows
-        ? dnd.RuntimeTarget.localWindows()
-        : dnd.RuntimeTarget.localPosix(),
-  };
+  dnd.RuntimeTarget _dndTargetFor(RuntimeTarget target) =>
+      switch (target.kind) {
+        RuntimeKind.ssh => const dnd.RuntimeTarget.ssh(),
+        RuntimeKind.wsl => dnd.RuntimeTarget.wsl(),
+        RuntimeKind.local =>
+          Platform.isWindows
+              ? dnd.RuntimeTarget.localWindows()
+              : dnd.RuntimeTarget.localPosix(),
+      };
 
   String _nonEmptyCwd(String cwd) =>
       cwd.trim().isNotEmpty ? cwd.trim() : Directory.current.path;

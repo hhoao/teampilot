@@ -40,9 +40,7 @@ void main() {
 
   test('fetches teams from the registry and stamps keys', () async {
     final net = network();
-    final source = GitRegistryTeamHubSource(
-      fetch: (uri) async => net[uri],
-    );
+    final source = GitRegistryTeamHubSource(fetch: (uri) async => net[uri]);
 
     final teams = await source.fetchTeams();
     expect(teams, hasLength(2));

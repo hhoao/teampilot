@@ -723,6 +723,9 @@ class AppLocalizationsEn extends AppLocalizations {
   String get homeWorkspaceConversationsSection => 'Conversations';
 
   @override
+  String get workspaceRunningSessionsSection => 'Running';
+
+  @override
   String get homeWorkspaceWorkspaceAgent => 'Agent';
 
   @override

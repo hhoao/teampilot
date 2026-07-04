@@ -24,13 +24,9 @@ enum _LandingConversationMode { team, simple }
 
 enum _LandingPermissionMode { defaultPermissions, fullAccess }
 
-typedef LandingComposeSubmit = void Function(
-  String message,
-  LandingLaunchContext draft,
-);
+typedef LandingComposeSubmit =
+    void Function(String message, LandingLaunchContext draft);
 
-/// WorkBuddy-style compose landing shown on the workspace chat pane when no
-/// session tab is open.
 class WorkspaceChatLanding extends StatefulWidget {
   const WorkspaceChatLanding({
     required this.workspace,
@@ -414,7 +410,9 @@ class _ComposeCard extends StatelessWidget {
           decoration: BoxDecoration(
             color: cs.surface,
             borderRadius: BorderRadius.circular(20),
-            border: Border.all(color: cs.outlineVariant.withValues(alpha: 0.45)),
+            border: Border.all(
+              color: cs.outlineVariant.withValues(alpha: 0.45),
+            ),
             boxShadow: [
               BoxShadow(
                 color: cs.shadow.withValues(alpha: 0.06),
@@ -598,11 +596,7 @@ class _ToolbarMenuChip extends StatelessWidget {
 }
 
 class _ToolbarChip extends StatelessWidget {
-  const _ToolbarChip({
-    required this.icon,
-    required this.label,
-    this.onTap,
-  });
+  const _ToolbarChip({required this.icon, required this.label, this.onTap});
 
   final IconData icon;
   final String label;
@@ -785,7 +779,11 @@ class _WorkspaceSelectorBar extends StatelessWidget {
       child: Row(
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
-          Icon(Icons.folder_outlined, size: icons.sm, color: cs.onSurfaceVariant),
+          Icon(
+            Icons.folder_outlined,
+            size: icons.sm,
+            color: cs.onSurfaceVariant,
+          ),
           SizedBox(width: spacing.sm),
           Flexible(
             child: Text(

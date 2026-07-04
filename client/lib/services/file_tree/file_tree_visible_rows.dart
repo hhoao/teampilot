@@ -1,4 +1,4 @@
-﻿import 'dart:math' as math;
+import 'dart:math' as math;
 
 import 'package:flutter/painting.dart';
 import 'package:path/path.dart' as p;
@@ -88,9 +88,7 @@ double fileTreeMinContentWidth({
   final List<FileTreeVisibleRow> measured;
   if (rows.length > _kContentWidthCandidates) {
     measured = [...rows]
-      ..sort(
-        (a, b) => _rowWidthEstimate(b).compareTo(_rowWidthEstimate(a)),
-      );
+      ..sort((a, b) => _rowWidthEstimate(b).compareTo(_rowWidthEstimate(a)));
     measured.length = _kContentWidthCandidates;
   } else {
     measured = rows;
@@ -186,9 +184,7 @@ List<FileTreeVisibleRow> visibleFileTreeRows({
     }
     for (final entry in entries) {
       final childPath = ctx.join(dirPath, entry.name);
-      rows.add(
-        FileTreeVisibleRow(path: childPath, entry: entry, depth: depth),
-      );
+      rows.add(FileTreeVisibleRow(path: childPath, entry: entry, depth: depth));
       if (entry.isDirectory && state.expandedPaths.contains(childPath)) {
         walk(childPath, depth + 1);
       }
@@ -203,7 +199,10 @@ List<FileTreeVisibleRow> visibleFileTreeRows({
       rows.add(
         FileTreeVisibleRow(
           path: root.path,
-          entry: FsDirEntry(name: _rootLabel(ctx, root.path), isDirectory: true),
+          entry: FsDirEntry(
+            name: _rootLabel(ctx, root.path),
+            isDirectory: true,
+          ),
           depth: 0,
           isRoot: true,
           rootMissing: !root.exists,

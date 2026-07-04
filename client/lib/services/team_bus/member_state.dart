@@ -44,8 +44,7 @@ extension MemberActivitySemantics on MemberActivity {
   bool get isTurnDone => switch (this) {
     MemberActivity.turnDoneReady ||
     MemberActivity.turnDoneBusWait ||
-    MemberActivity.mailQueued =>
-      true,
+    MemberActivity.mailQueued => true,
     _ => false,
   };
 

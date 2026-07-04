@@ -1,4 +1,4 @@
-﻿import 'package:flutter/material.dart';
+import 'package:flutter/material.dart';
 import 'package:teampilot/theme/app_icon_sizes.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
@@ -32,7 +32,8 @@ class SkillDiscoveryReposFilters extends StatefulWidget {
       _SkillDiscoveryReposFiltersState();
 }
 
-class _SkillDiscoveryReposFiltersState extends State<SkillDiscoveryReposFilters> {
+class _SkillDiscoveryReposFiltersState
+    extends State<SkillDiscoveryReposFilters> {
   final _searchCtl = TextEditingController();
 
   @override
@@ -45,7 +46,8 @@ class _SkillDiscoveryReposFiltersState extends State<SkillDiscoveryReposFilters>
   Widget build(BuildContext context) {
     final l10n = context.l10n;
     return BlocSelector<SkillCubit, SkillState, SkillDiscoveryFilterSlice>(
-      selector: (state) => (repos: state.repos, discoverable: state.discoverable),
+      selector: (state) =>
+          (repos: state.repos, discoverable: state.discoverable),
       builder: (context, filterData) {
         final repoChoices = skillDiscoveryRepoFilterChoices(
           filterData.repos,
@@ -196,9 +198,8 @@ class SkillDiscoveryReposBody extends StatelessWidget {
                   githubUrl: skill.githubBrowseUrl,
                   installed: installedKeys.contains(installKey),
                   busy: grid.busyIds.contains(skill.key),
-                  onInstall: () => context
-                      .read<SkillCubit>()
-                      .installFromDiscovery(skill),
+                  onInstall: () =>
+                      context.read<SkillCubit>().installFromDiscovery(skill),
                 );
               },
             );

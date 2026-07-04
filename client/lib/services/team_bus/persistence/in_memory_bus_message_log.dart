@@ -15,9 +15,9 @@ class InMemoryBusMessageLog implements BusMessageLog {
     TeamMessage message,
     int createdAt,
   ) async {
-    _records(memberId).add(
-      LoggedMessage(seq: seq, message: message, createdAt: createdAt),
-    );
+    _records(
+      memberId,
+    ).add(LoggedMessage(seq: seq, message: message, createdAt: createdAt));
   }
 
   @override

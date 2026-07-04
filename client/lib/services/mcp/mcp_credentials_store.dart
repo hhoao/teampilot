@@ -102,7 +102,7 @@ class McpCredentialsStore {
     final data = await read(configDir);
     final mcpOAuth =
         ((data['mcpOAuth'] as Map?)?.cast<String, Object?>() ??
-            <String, Object?>{});
+        <String, Object?>{});
     final key = mcpOAuthServerKey(serverName, serverConfig);
     final prev = (mcpOAuth[key] as Map?)?.cast<String, Object?>() ?? {};
     mcpOAuth[key] = {
@@ -131,7 +131,7 @@ class McpCredentialsStore {
     final data = await read(configDir);
     final mcpOAuth =
         ((data['mcpOAuth'] as Map?)?.cast<String, Object?>() ??
-            <String, Object?>{});
+        <String, Object?>{});
     final key = mcpOAuthServerKey(serverName, serverConfig);
     final prev = (mcpOAuth[key] as Map?)?.cast<String, Object?>() ?? {};
     mcpOAuth[key] = {
@@ -162,7 +162,7 @@ class McpCredentialsStore {
     final to = await read(toConfigDir);
     final toOAuth =
         ((to['mcpOAuth'] as Map?)?.cast<String, Object?>() ??
-            <String, Object?>{});
+        <String, Object?>{});
     toOAuth.addAll(fromOAuth);
     to['mcpOAuth'] = toOAuth;
     await write(toConfigDir, to);
@@ -227,8 +227,7 @@ class McpCredentialsStore {
     String? fallbackConfigDir,
   }) async {
     final primaryData = await read(primaryConfigDir);
-    final primary =
-        (primaryData['mcpOAuth'] as Map?)?.cast<String, Object?>();
+    final primary = (primaryData['mcpOAuth'] as Map?)?.cast<String, Object?>();
     if (primary != null && primary.isNotEmpty) return primary;
 
     final fallbackDir = fallbackConfigDir?.trim() ?? '';

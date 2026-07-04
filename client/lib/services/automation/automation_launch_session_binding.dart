@@ -11,7 +11,9 @@ class AutomationLaunchSessionBinding {
   /// Whether this launch-prompt automation is bound to a reusable session.
   static bool hasBinding(Automation automation) {
     final id = automation.sessionId?.trim() ?? '';
-    return automation.isLaunchPrompt && automation.reuseSession && id.isNotEmpty;
+    return automation.isLaunchPrompt &&
+        automation.reuseSession &&
+        id.isNotEmpty;
   }
 
   /// Persists or clears the bound session after a successful delivery.
@@ -50,10 +52,7 @@ class AutomationLaunchSessionBinding {
 
     if (automation.isScheduledMessage) {
       if (!automation.enabled) return automation;
-      return automation.copyWith(
-        enabled: false,
-        clearNextRunAtMs: true,
-      );
+      return automation.copyWith(enabled: false, clearNextRunAtMs: true);
     }
     if (automation.isLaunchPrompt && automation.reuseSession) {
       return automation.copyWith(clearSessionId: true);

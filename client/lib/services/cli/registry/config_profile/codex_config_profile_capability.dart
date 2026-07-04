@@ -72,17 +72,16 @@ final class CodexConfigProfileCapability implements ConfigProfileCapability {
         warnings.add('codex_provider_missing');
       } else {
         final busIdle = mixed ? ctx.busIdle : null;
-        final busOverlay =
-            busIdle != null && member != null && member.isValid
+        final busOverlay = busIdle != null && member != null && member.isValid
             ? (busIdle.isRemote
-                ? CodexTeamBusOverlay.buildStopHook(
-                    memberId: member.id,
-                    idle: busIdle,
-                  )
-                : CodexTeamBusOverlay.buildLocal(
-                    memberId: member.id,
-                    idle: busIdle,
-                  ))
+                  ? CodexTeamBusOverlay.buildStopHook(
+                      memberId: member.id,
+                      idle: busIdle,
+                    )
+                  : CodexTeamBusOverlay.buildLocal(
+                      memberId: member.id,
+                      idle: busIdle,
+                    ))
             : null;
         final trustedDirectories = await _trustedProjectDirectories(
           paths: paths,
@@ -231,8 +230,7 @@ final class CodexConfigProfileCapability implements ConfigProfileCapability {
   static String buildCodexConfigToml({
     required String memberId,
     required MemberBusIdleEndpoint idle,
-  }) =>
-      CodexTeamBusOverlay.buildLocal(memberId: memberId, idle: idle);
+  }) => CodexTeamBusOverlay.buildLocal(memberId: memberId, idle: idle);
 
   static String _resolveCodexEffort({
     required TeamProfile? team,
@@ -310,9 +308,8 @@ final class CodexConfigProfileCapability implements ConfigProfileCapability {
 
   static CodexProviderSettingsResolver _codexResolver(
     ConfigProfilePaths catalog,
-  ) =>
-      CodexProviderSettingsResolver(
-        basePath: catalog.basePath,
-        repository: providerCatalogRepository(catalog),
-      );
+  ) => CodexProviderSettingsResolver(
+    basePath: catalog.basePath,
+    repository: providerCatalogRepository(catalog),
+  );
 }

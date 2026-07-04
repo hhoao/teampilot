@@ -49,7 +49,9 @@ abstract final class CursorHomeBusOverlay {
     final followup = jsonEncode({
       'followup_message': TeammateBusMcpHandler.stopRedirectReason,
     });
-    final headerArgs = idle.headersFor(memberId).entries
+    final headerArgs = idle
+        .headersFor(memberId)
+        .entries
         .map((e) => "-H '${e.key}: ${e.value}'")
         .join(' ');
     return '''

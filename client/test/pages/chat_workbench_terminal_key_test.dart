@@ -13,18 +13,32 @@ void main() {
     });
 
     test('loading, running, and placeholder keys are distinct', () {
-      final loading = chatWorkbenchTerminalViewKey(loading: true, running: false);
-      final running = chatWorkbenchTerminalViewKey(loading: false, running: true);
-      final placeholder =
-          chatWorkbenchTerminalViewKey(loading: false, running: false);
+      final loading = chatWorkbenchTerminalViewKey(
+        loading: true,
+        running: false,
+      );
+      final running = chatWorkbenchTerminalViewKey(
+        loading: false,
+        running: true,
+      );
+      final placeholder = chatWorkbenchTerminalViewKey(
+        loading: false,
+        running: false,
+      );
       expect(loading, isNot(equals(running)));
       expect(running, isNot(equals(placeholder)));
       expect(loading, isNot(equals(placeholder)));
     });
 
     test('loading takes precedence over running', () {
-      final loading = chatWorkbenchTerminalViewKey(loading: true, running: true);
-      final running = chatWorkbenchTerminalViewKey(loading: false, running: true);
+      final loading = chatWorkbenchTerminalViewKey(
+        loading: true,
+        running: true,
+      );
+      final running = chatWorkbenchTerminalViewKey(
+        loading: false,
+        running: true,
+      );
       expect(loading, isNot(equals(running)));
     });
   });

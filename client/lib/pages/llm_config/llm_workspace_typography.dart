@@ -115,7 +115,11 @@ class LlmSettingRow extends StatelessWidget {
 }
 
 class LlmSettingFieldBlock extends StatelessWidget {
-  const LlmSettingFieldBlock({super.key, required this.title, required this.child});
+  const LlmSettingFieldBlock({
+    super.key,
+    required this.title,
+    required this.child,
+  });
 
   final String title;
   final Widget child;

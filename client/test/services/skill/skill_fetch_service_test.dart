@@ -82,22 +82,21 @@ void main() {
 
     test('finds nested and root SKILL.md', () {
       final found = discoverSkillsInTarballEntries(
-        entries: {
-          'SKILL.md': skillMd,
-          'skills/foo/SKILL.md': skillMd,
-        },
+        entries: {'SKILL.md': skillMd, 'skills/foo/SKILL.md': skillMd},
         repo: repo,
         resolvedBranch: 'main',
       );
       expect(found.length, 2);
-      expect(
-        found.map((s) => s.directory).toSet(),
-        {'skills-repo', 'skills/foo'},
-      );
+      expect(found.map((s) => s.directory).toSet(), {
+        'skills-repo',
+        'skills/foo',
+      });
     });
 
     test('uses directory name when frontmatter has no name', () {
-      final noName = Uint8List.fromList('---\ndescription: only\n---\n'.codeUnits);
+      final noName = Uint8List.fromList(
+        '---\ndescription: only\n---\n'.codeUnits,
+      );
       final found = discoverSkillsInTarballEntries(
         entries: {'bar/SKILL.md': noName},
         repo: repo,
@@ -108,9 +107,7 @@ void main() {
 
     test('finds SKILL.md with Windows path separators', () {
       final found = discoverSkillsInTarballEntries(
-        entries: {
-          r'skills\foo\SKILL.md': skillMd,
-        },
+        entries: {r'skills\foo\SKILL.md': skillMd},
         repo: repo,
         resolvedBranch: 'main',
       );

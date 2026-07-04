@@ -22,10 +22,12 @@ void main() {
     mount = RemoteBusMount.testing(
       httpBusPort: gateway.mcpEndpoint.port,
       rawSocketPort: gateway.rawSocketPort,
-      token: gateway.register(
-        sessionId: 'sess-test',
-        handler: TeammateBusMcpHandler(bus: bus),
-      ).token,
+      token: gateway
+          .register(
+            sessionId: 'sess-test',
+            handler: TeammateBusMcpHandler(bus: bus),
+          )
+          .token,
       tunnelFactory: () {
         final tunnel = FakeReverseTunnel(port: nextPort++);
         openedTunnels.add(tunnel);
@@ -49,30 +51,32 @@ void main() {
     await gateway.unregister('sess-test');
   });
 
-  test('remote long-blocking member → relay binding at the MCP tunnel port',
-      () async {
-    final resolver = makeResolver();
-    final binding = await resolver.bindMember(
-      mount: mount,
-      memberId: 'worker',
-      cli: CliTool.claude,
-    );
-    expect(binding.mcpRelayArgv, isNotNull);
-    expect(binding.mcpRawTunnelPort, openedTunnels.first.port);
-    expect(binding.idleHttpTunnelPort, openedTunnels.last.port);
-    expect(binding.idleHttpTunnelPort, isNot(binding.mcpRawTunnelPort));
+  test(
+    'remote long-blocking member → relay binding at the MCP tunnel port',
+    () async {
+      final resolver = makeResolver();
+      final binding = await resolver.bindMember(
+        mount: mount,
+        memberId: 'worker',
+        cli: CliTool.claude,
+      );
+      expect(binding.mcpRelayArgv, isNotNull);
+      expect(binding.mcpRawTunnelPort, openedTunnels.first.port);
+      expect(binding.idleHttpTunnelPort, openedTunnels.last.port);
+      expect(binding.idleHttpTunnelPort, isNot(binding.mcpRawTunnelPort));
 
-    final cfg = buildMemberBusMcpConfig(
-      memberId: 'worker',
-      localEndpoint: gateway.mcpEndpoint,
-      sessionId: 'sess-test',
-      longBlocking: true,
-      remote: binding,
-    );
-    final args = (cfg['args'] as List).join(' ');
-    expect(args, contains('TCP:127.0.0.1:${binding.mcpRawTunnelPort}'));
-    expect(args, isNot(contains('${gateway.mcpEndpoint.port}')));
-  });
+      final cfg = buildMemberBusMcpConfig(
+        memberId: 'worker',
+        localEndpoint: gateway.mcpEndpoint,
+        sessionId: 'sess-test',
+        longBlocking: true,
+        remote: binding,
+      );
+      final args = (cfg['args'] as List).join(' ');
+      expect(args, contains('TCP:127.0.0.1:${binding.mcpRawTunnelPort}'));
+      expect(args, isNot(contains('${gateway.mcpEndpoint.port}')));
+    },
+  );
 
   test('remote cursor member → HTTP-over-tunnel binding (no relay)', () async {
     final resolver = makeResolver();

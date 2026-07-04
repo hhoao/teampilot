@@ -44,19 +44,11 @@ class ClaudeProviderCredentialsService {
     List<String> arguments, {
     Map<String, String>? environment,
   }) {
-    return Process.run(
-      executable,
-      arguments,
-      environment: environment,
-    );
+    return Process.run(executable, arguments, environment: environment);
   }
 
-  String providerDir(String providerId) => _fs.pathContext.join(
-    _basePath,
-    'providers',
-    'claude',
-    providerId.trim(),
-  );
+  String providerDir(String providerId) =>
+      _fs.pathContext.join(_basePath, 'providers', 'claude', providerId.trim());
 
   String credentialPath(String providerId) =>
       _fs.pathContext.join(providerDir(providerId), credentialsFileName);
@@ -331,10 +323,7 @@ class ClaudeProviderCredentialsService {
         useWslPaths: true,
       );
     }
-    return {
-      'CLAUDE_CONFIG_DIR': configDir,
-      'CCGUI_CLI_LOGIN_AUTHORIZED': '1',
-    };
+    return {'CLAUDE_CONFIG_DIR': configDir, 'CCGUI_CLI_LOGIN_AUTHORIZED': '1'};
   }
 
   String _resolvedClaudeExecutable() {
@@ -461,10 +450,12 @@ class ClaudeProviderCredentialsService {
         await _fs.removeRecursive(path);
       }
     }
-    return revokeVerifyResult(!(await probe(
-      providerId,
-      binding: binding,
-      homeDirectory: homeDirectory,
-    )).isReady);
+    return revokeVerifyResult(
+      !(await probe(
+        providerId,
+        binding: binding,
+        homeDirectory: homeDirectory,
+      )).isReady,
+    );
   }
 }

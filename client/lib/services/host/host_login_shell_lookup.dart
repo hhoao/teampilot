@@ -78,10 +78,7 @@ abstract final class HostLoginShellLookup {
     );
     try {
       final result = await host.run(
-        HostRunRequest(
-          executable: 'bash',
-          arguments: ['-ilc', innerCommand],
-        ),
+        HostRunRequest(executable: 'bash', arguments: ['-ilc', innerCommand]),
       );
       if (!result.succeeded) return null;
       for (final raw in result.stdout.split(RegExp(r'\r?\n'))) {

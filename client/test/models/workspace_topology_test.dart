@@ -73,10 +73,7 @@ void main() {
         memberTargetsComplete(
           workspaceFolders: folders,
           members: members,
-          targets: const {
-            'lead': 'local',
-            'dev-0': 'local',
-          },
+          targets: const {'lead': 'local', 'dev-0': 'local'},
         ),
         isFalse,
       );
@@ -84,11 +81,7 @@ void main() {
         memberTargetsComplete(
           workspaceFolders: folders,
           members: members,
-          targets: const {
-            'lead': 'local',
-            'dev-0': 'local',
-            'dev-1': 'ssh:p1',
-          },
+          targets: const {'lead': 'local', 'dev-0': 'local', 'dev-1': 'ssh:p1'},
         ),
         isTrue,
       );
@@ -130,10 +123,7 @@ void main() {
       expect(targets['dev-1'], 'local');
       expect(targets['dev-2'], 'ssh:p1');
       expect(
-        memberPlacementFromMemberTargets(
-          members: members,
-          targets: targets,
-        ),
+        memberPlacementFromMemberTargets(members: members, targets: targets),
         placement,
       );
     });

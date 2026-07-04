@@ -57,7 +57,10 @@ void main() {
   test('updatePreset modifies an existing preset', () async {
     await cubit.load();
     await cubit.addPreset(
-      name: 'Old', cli: CliTool.claude, provider: 'p', model: 'm',
+      name: 'Old',
+      cli: CliTool.claude,
+      provider: 'p',
+      model: 'm',
     );
     final id = cubit.state.presets.first.id;
 
@@ -81,7 +84,10 @@ void main() {
   test('deletePreset removes a preset', () async {
     await cubit.load();
     await cubit.addPreset(
-      name: 'To Delete', cli: CliTool.claude, provider: 'p', model: 'm',
+      name: 'To Delete',
+      cli: CliTool.claude,
+      provider: 'p',
+      model: 'm',
     );
     final id = cubit.state.presets.first.id;
 
@@ -93,7 +99,10 @@ void main() {
   test('addPreset does not allow empty name', () async {
     await cubit.load();
     await cubit.addPreset(
-      name: '  ', cli: CliTool.claude, provider: 'p', model: 'm',
+      name: '  ',
+      cli: CliTool.claude,
+      provider: 'p',
+      model: 'm',
     );
     // Should not add — name must be non-blank
     expect(cubit.state.presets, isEmpty);

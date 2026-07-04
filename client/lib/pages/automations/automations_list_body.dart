@@ -13,7 +13,6 @@ import '../../l10n/l10n_extensions.dart';
 import '../../models/automation.dart';
 import '../../models/automation_tab_scope.dart';
 import '../../models/launch_profile.dart';
-import '../../models/launch_profile_ref.dart';
 import '../../models/workspace.dart';
 import '../../repositories/automation_repository.dart';
 import '../../services/automation/automation_launch_session_binding.dart';
@@ -381,10 +380,7 @@ String automationTabScopeGroupLabel(
   if (workspace == null) {
     return scope.workspaceId;
   }
-  return workspaceTabDisplayLabel(
-    l10n: l10n,
-    workspace: workspace,
-  );
+  return workspaceTabDisplayLabel(l10n: l10n, workspace: workspace);
 }
 
 class AutomationRow extends StatelessWidget {
@@ -447,7 +443,9 @@ class AutomationRow extends StatelessWidget {
                     overflow: TextOverflow.ellipsis,
                     style: styles.caption.copyWith(color: cs.onSurfaceVariant),
                   ),
-                  if (AutomationLaunchSessionBinding.hasBinding(automation)) ...[
+                  if (AutomationLaunchSessionBinding.hasBinding(
+                    automation,
+                  )) ...[
                     const SizedBox(height: 2),
                     Text(
                       l10n.automationsReuseSessionListHint(

@@ -7,8 +7,7 @@ void main() {
       RemoteConnectionState s,
       RemoteConnectionEvent e, {
       int max = 3,
-    }) =>
-        RemoteConnectionReducer.reduce(s, e, maxMissedBeforeDown: max);
+    }) => RemoteConnectionReducer.reduce(s, e, maxMissedBeforeDown: max);
 
     test('one missed heartbeat → degraded; threshold → down', () {
       var s = RemoteConnectionState.initial;

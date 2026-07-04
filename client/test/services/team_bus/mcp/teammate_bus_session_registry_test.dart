@@ -6,16 +6,19 @@ import 'package:teampilot/services/team_bus/team_bus.dart';
 import '../support/fake_member_launcher.dart';
 
 void main() {
-  test('register returns token and resolves handler by sessionId and token', () {
-    final registry = TeammateBusSessionRegistry();
-    final bus = TeamBus(launcher: FakeMemberLauncher());
-    final handler = TeammateBusMcpHandler(bus: bus);
+  test(
+    'register returns token and resolves handler by sessionId and token',
+    () {
+      final registry = TeammateBusSessionRegistry();
+      final bus = TeamBus(launcher: FakeMemberLauncher());
+      final handler = TeammateBusMcpHandler(bus: bus);
 
-    final reg = registry.register(sessionId: 'sess-a', handler: handler);
+      final reg = registry.register(sessionId: 'sess-a', handler: handler);
 
-    expect(registry.handlerForSession('sess-a'), same(handler));
-    expect(registry.sessionForToken(reg.token), 'sess-a');
-  });
+      expect(registry.handlerForSession('sess-a'), same(handler));
+      expect(registry.sessionForToken(reg.token), 'sess-a');
+    },
+  );
 
   test('unregister removes session and invalidates token', () {
     final registry = TeammateBusSessionRegistry();

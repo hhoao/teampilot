@@ -20,7 +20,8 @@ class McpRegistryService {
     McpRegistryConfigService? registryConfigService,
     CliToolRegistry? cliRegistry,
   }) : _fs = fs ?? LocalFilesystem(),
-       _registryConfigService = registryConfigService ??
+       _registryConfigService =
+           registryConfigService ??
            McpRegistryConfigService(
              fs: fs,
              teampilotRoot: layout.teampilotRoot,
@@ -61,7 +62,9 @@ class McpRegistryService {
       specs: specs,
     );
 
-    if (await _hasCatalogSnapshot(layout.identityMcpServersFile(trimmedTeamId))) {
+    if (await _hasCatalogSnapshot(
+      layout.identityMcpServersFile(trimmedTeamId),
+    )) {
       await _mergeAppCredentialsForAllTools(
         workspaceId: trimmedWorkspaceId,
         sessionId: trimmedSessionId,
@@ -117,13 +120,11 @@ class McpRegistryService {
     final catalogServers = await _loadCatalogServers(snapshotPath);
     if (catalogServers != null && catalogServers.isNotEmpty) {
       final registry = await _registryConfigService.load();
-      final smitheryToken =
-          registry.byKind(McpRegistrySourceKind.smithery)?.apiToken;
+      final smitheryToken = registry
+          .byKind(McpRegistrySourceKind.smithery)
+          ?.apiToken;
       mergedServers.addAll(
-        SmitheryMcpAuth.applyToCatalogServers(
-          catalogServers,
-          smitheryToken,
-        ),
+        SmitheryMcpAuth.applyToCatalogServers(catalogServers, smitheryToken),
       );
     }
     if (extraServers != null) {
@@ -133,7 +134,8 @@ class McpRegistryService {
     }
     return [
       for (final entry in mergedServers.entries)
-        if (McpServerSpec.fromCatalogJson(entry.key, entry.value) case final spec?)
+        if (McpServerSpec.fromCatalogJson(entry.key, entry.value)
+            case final spec?)
           spec,
     ];
   }
@@ -145,16 +147,14 @@ class McpRegistryService {
     if (!snapshotStat.isFile) return null;
     final snapshotText = await _fs.readString(snapshotPath);
     if (snapshotText == null || snapshotText.trim().isEmpty) return null;
-    final snapshotRoot =
-        (jsonDecode(snapshotText) as Map).cast<String, Object?>();
-    return (snapshotRoot['mcpServers'] as Map?)
-        ?.cast<String, Object?>()
-        .map(
-          (key, value) => MapEntry(
-            key,
-            value is Map ? value.cast<String, Object?>() : <String, Object?>{},
-          ),
-        );
+    final snapshotRoot = (jsonDecode(snapshotText) as Map)
+        .cast<String, Object?>();
+    return (snapshotRoot['mcpServers'] as Map?)?.cast<String, Object?>().map(
+      (key, value) => MapEntry(
+        key,
+        value is Map ? value.cast<String, Object?>() : <String, Object?>{},
+      ),
+    );
   }
 
   Future<bool> _hasCatalogSnapshot(String snapshotPath) async {

@@ -54,8 +54,7 @@ PrecisionAnalysis? buildPrecisionAnalysis({
     );
   }
 
-  final frameCount =
-      options.precisionFrameCount.clamp(1, tracedJanky.length);
+  final frameCount = options.precisionFrameCount.clamp(1, tracedJanky.length);
   final frames = tracedJanky.take(frameCount).toList();
 
   final traceCoverageNote = _buildTraceCoverageNote(
@@ -230,8 +229,8 @@ PrecisionAnalysis? buildPrecisionAnalysis({
           track: h.track.contains('raster') || h.name == rasterEventName
               ? 'raster'
               : isDartMethodSliceByName(h.name)
-                  ? 'dart'
-                  : 'ui',
+              ? 'dart'
+              : 'ui',
           selfMs: h.selfMs,
           path: h.path,
           phase: inferPhaseFromPath(h.path),
@@ -262,8 +261,10 @@ PrecisionAnalysis? buildPrecisionAnalysis({
     frameGuides: orderedGuides,
     uiHotPaths: _finalizeHotPaths(uiPathAgg, options.topN),
     rasterHotPaths: _finalizeHotPaths(rasterPathAgg, options.topN),
-    dartMethodHotspots:
-        aggregateDartMethodHotspots(agg: dartMethodAgg, limit: options.topN),
+    dartMethodHotspots: aggregateDartMethodHotspots(
+      agg: dartMethodAgg,
+      limit: options.topN,
+    ),
     dartHotPaths: _finalizeHotPaths(dartPathAgg, options.topN),
     rebuildCorrelations: correlations.take(options.topN).toList(),
     unmatchedHighSelfSlices: unmatchedSlices.take(options.topN).toList(),
@@ -288,7 +289,9 @@ void _accumulateHotPaths(
     final key = '$track:${h.path}';
     final bucket = agg.putIfAbsent(key, _HotPathAccumulator.new);
     bucket.totalSelfMs += h.selfMs;
-    bucket.maxSelfMs = bucket.maxSelfMs < h.selfMs ? h.selfMs : bucket.maxSelfMs;
+    bucket.maxSelfMs = bucket.maxSelfMs < h.selfMs
+        ? h.selfMs
+        : bucket.maxSelfMs;
     if (!bucket.frameNumbers.contains(frameNumber)) {
       bucket.frameNumbers.add(frameNumber);
     }
@@ -368,8 +371,7 @@ String _dartMatchQuality(String widgetName, List<TraceSlice> matches) {
     }
     if (widgetMatchesDartMethodSlice(widgetName, m.name)) {
       const textWidgets = {'Text', 'RichText', 'SelectableText'};
-      if (textWidgets.contains(normalized) &&
-          m.name.contains('Paragraph')) {
+      if (textWidgets.contains(normalized) && m.name.contains('Paragraph')) {
         return 'weak';
       }
       return 'strong';
@@ -399,8 +401,9 @@ TraceCoverageNote? _buildTraceCoverageNote({
     (f) => skippedNoTrace.contains(f.number),
   );
   final worstOverall = janky.first;
-  final precisionExcludesWorst =
-      !tracedJanky.any((t) => t.number == worstOverall.number);
+  final precisionExcludesWorst = !tracedJanky.any(
+    (t) => t.number == worstOverall.number,
+  );
   final precisionFrameNumbers = [
     for (final frame in precisionFrames) frame.number,
   ];

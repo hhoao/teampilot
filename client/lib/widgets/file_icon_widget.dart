@@ -10,11 +10,7 @@ import '../utils/file_icon.dart';
 /// runtime theme is light and the file type has a light variant, the
 /// `{iconName}_light.svg` asset is used instead.
 class FileIconWidget extends StatelessWidget {
-  const FileIconWidget({
-    required this.fileName,
-    this.size = 16,
-    super.key,
-  });
+  const FileIconWidget({required this.fileName, this.size = 16, super.key});
 
   final String fileName;
   final double size;
@@ -24,14 +20,10 @@ class FileIconWidget extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final info = fileIconForFileName(fileName);
-    final useLight = Theme.of(context).brightness == Brightness.light &&
-        info.isLightVariant;
+    final useLight =
+        Theme.of(context).brightness == Brightness.light && info.isLightVariant;
     final suffix = useLight ? '_light' : '';
     final path = '$_assetDir/${info.iconName}$suffix.svg';
-    return SvgPicture.asset(
-      path,
-      width: size,
-      height: size,
-    );
+    return SvgPicture.asset(path, width: size, height: size);
   }
 }

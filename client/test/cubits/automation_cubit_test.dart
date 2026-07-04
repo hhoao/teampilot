@@ -136,11 +136,7 @@ void main() {
     addTearDown(cubit.close);
 
     await repo.upsert(
-      _sampleAutomation(
-        id: 'a1',
-        enabled: true,
-        nextRunAtMs: 123,
-      ),
+      _sampleAutomation(id: 'a1', enabled: true, nextRunAtMs: 123),
     );
     await cubit.loadForTabScope(personalAutomationTabScope);
     await cubit.toggleEnabled(personalAutomationTabScope, 'a1');

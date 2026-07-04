@@ -17,8 +17,8 @@ class WorktreeUiPref {
 /// Persists per-workspace worktree UI prefs at `ui/worktree-ui-prefs.json`.
 class WorktreeUiPrefsStore {
   WorktreeUiPrefsStore({Filesystem? fs, String? pathOverride})
-      : _fsOverride = fs,
-        _pathOverride = pathOverride;
+    : _fsOverride = fs,
+      _pathOverride = pathOverride;
 
   final Filesystem? _fsOverride;
   final String? _pathOverride;
@@ -36,9 +36,8 @@ class WorktreeUiPrefsStore {
         final value = entry.value;
         if (value is Map) {
           final m = value.cast<String, Object?>();
-          final collapsed = (m['collapsed'] as List?)
-                  ?.whereType<String>()
-                  .toSet() ??
+          final collapsed =
+              (m['collapsed'] as List?)?.whereType<String>().toSet() ??
               const <String>{};
           out[entry.key] = WorktreeUiPref(
             collapsed: collapsed,

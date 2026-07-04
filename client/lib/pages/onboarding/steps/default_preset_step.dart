@@ -65,8 +65,7 @@ class OnboardingDefaultPresetStepState
     WidgetsBinding.instance.addPostFrameCallback((_) => _syncFromState());
   }
 
-  List<CliPreset> get _presets =>
-      context.read<CliPresetsCubit>().state.presets;
+  List<CliPreset> get _presets => context.read<CliPresetsCubit>().state.presets;
 
   List<AppProviderConfig> _providersForCli(CliTool cli) =>
       context.read<AppProviderCubit>().state.providersFor(cli);
@@ -113,9 +112,8 @@ class OnboardingDefaultPresetStepState
           appProvider.state.selectedProviderIdByCli[CliTool.claude]?.trim() ??
           '';
       final providers = _providersForCli(CliTool.claude);
-      final provider = providers
-          .where((p) => p.id == providerId)
-          .firstOrNull ??
+      final provider =
+          providers.where((p) => p.id == providerId).firstOrNull ??
           providers.firstOrNull;
       _providerId = provider?.id ?? '';
       _modelId = provider?.defaultModel.trim() ?? '';
@@ -257,9 +255,7 @@ class OnboardingDefaultPresetStepState
                         const SizedBox(width: 8),
                         Expanded(
                           child: Text(
-                            def != null
-                                ? cliDisplayName(def, l10n)
-                                : cli.value,
+                            def != null ? cliDisplayName(def, l10n) : cli.value,
                           ),
                         ),
                       ],

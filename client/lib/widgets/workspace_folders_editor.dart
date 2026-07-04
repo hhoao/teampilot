@@ -59,10 +59,7 @@ class _FolderGroupEntry {
 }
 
 class _TargetFolderGroup {
-  const _TargetFolderGroup({
-    required this.targetId,
-    required this.entries,
-  });
+  const _TargetFolderGroup({required this.targetId, required this.entries});
 
   final String targetId;
   final List<_FolderGroupEntry> entries;
@@ -100,19 +97,16 @@ class _WorkspaceFoldersEditorState extends State<WorkspaceFoldersEditor> {
     final byTarget = <String, List<_FolderGroupEntry>>{};
     for (var i = 0; i < _folders.length; i++) {
       final folder = _folders[i];
-      byTarget.putIfAbsent(folder.targetId, () => []).add(
-        _FolderGroupEntry(index: i, folder: folder),
-      );
+      byTarget
+          .putIfAbsent(folder.targetId, () => [])
+          .add(_FolderGroupEntry(index: i, folder: folder));
       if (!order.contains(folder.targetId)) {
         order.add(folder.targetId);
       }
     }
     return [
       for (final targetId in order)
-        _TargetFolderGroup(
-          targetId: targetId,
-          entries: byTarget[targetId]!,
-        ),
+        _TargetFolderGroup(targetId: targetId, entries: byTarget[targetId]!),
     ];
   }
 
@@ -125,15 +119,12 @@ class _WorkspaceFoldersEditorState extends State<WorkspaceFoldersEditor> {
     );
     if (path == null || path.trim().isEmpty || !mounted) return;
     final trimmed = normalizeWorkspacePath(path);
-    final dup = _folders
-        .asMap()
-        .entries
-        .any(
-          (e) =>
-              e.key != index &&
-              e.value.targetId == folder.targetId &&
-              workspacePathsEqual(e.value.path, trimmed),
-        );
+    final dup = _folders.asMap().entries.any(
+      (e) =>
+          e.key != index &&
+          e.value.targetId == folder.targetId &&
+          workspacePathsEqual(e.value.path, trimmed),
+    );
     if (dup) {
       AppToast.show(
         context,
@@ -204,15 +195,11 @@ class _WorkspaceFoldersEditorState extends State<WorkspaceFoldersEditor> {
     if (path == null || path.trim().isEmpty || !mounted) return;
     final trimmed = normalizeWorkspacePath(path);
     if (_folders.any(
-      (f) =>
-          f.targetId == targetId && workspacePathsEqual(f.path, trimmed),
+      (f) => f.targetId == targetId && workspacePathsEqual(f.path, trimmed),
     )) {
       return;
     }
-    _emit([
-      ..._folders,
-      WorkspaceFolder(path: trimmed, targetId: targetId),
-    ]);
+    _emit([..._folders, WorkspaceFolder(path: trimmed, targetId: targetId)]);
   }
 
   bool get _targetsLocked =>
@@ -247,8 +234,7 @@ class _WorkspaceFoldersEditorState extends State<WorkspaceFoldersEditor> {
                 primaryIndex: primaryIndex,
                 enabled: widget.enabled,
                 allowRowTargetChange: !lockTargets,
-                onAddDirectory: () =>
-                    _addFolderOnTarget(groups.first.targetId),
+                onAddDirectory: () => _addFolderOnTarget(groups.first.targetId),
                 onPickPath: _pickPath,
                 onPickTargetForRow: _pickTargetForRow,
                 emptyHint: l10n.homeWorkspaceNewWorkspaceDirectoryHint,
@@ -315,7 +301,9 @@ class _MachineFolderCard extends StatelessWidget {
     final cs = Theme.of(context).colorScheme;
     final l10n = context.l10n;
     final styles = AppTextStyles.of(context);
-    final listed = entries.where((e) => e.folder.path.trim().isNotEmpty).toList();
+    final listed = entries
+        .where((e) => e.folder.path.trim().isNotEmpty)
+        .toList();
     final showEmptyHint = listed.isEmpty && emptyHint != null;
 
     return DecoratedBox(
@@ -378,8 +366,9 @@ class _MachineFolderCard extends StatelessWidget {
                         targets: targets,
                         showTarget: false,
                         contentIndent: 0,
-                        onPickPath:
-                            enabled ? () => onPickPath(entry.index) : null,
+                        onPickPath: enabled
+                            ? () => onPickPath(entry.index)
+                            : null,
                         onPickTarget: enabled && allowRowTargetChange
                             ? () => onPickTargetForRow(entry.index)
                             : null,

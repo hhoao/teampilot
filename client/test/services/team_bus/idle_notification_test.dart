@@ -24,7 +24,10 @@ void main() {
 
   test('onMemberIdle delivers idle_notification to team-lead mailbox', () {
     final launcher = FakeMemberLauncher();
-    final bus = TeamBus(launcher: launcher, messageLog: InMemoryBusMessageLog());
+    final bus = TeamBus(
+      launcher: launcher,
+      messageLog: InMemoryBusMessageLog(),
+    );
     bus
       ..declareMember(
         AgentNode(
@@ -39,7 +42,10 @@ void main() {
       )
       ..declareMember(
         AgentNode(
-          profile: TeammateRosterProfile.minimal('developer', displayName: 'Dev'),
+          profile: TeammateRosterProfile.minimal(
+            'developer',
+            displayName: 'Dev',
+          ),
           lifecycle: MemberLifecycle.running,
           activity: MemberActivity.active,
         ),
@@ -73,7 +79,10 @@ void main() {
       )
       ..declareMember(
         AgentNode(
-          profile: TeammateRosterProfile.minimal('developer', displayName: 'Dev'),
+          profile: TeammateRosterProfile.minimal(
+            'developer',
+            displayName: 'Dev',
+          ),
           lifecycle: MemberLifecycle.running,
           activity: MemberActivity.active,
         ),
@@ -91,7 +100,8 @@ void main() {
     bus.declareMember(
       AgentNode(
         profile: TeammateRosterProfile.minimal('team-lead', isTeamLead: true),
-        lifecycle: MemberLifecycle.running, activity: MemberActivity.active,
+        lifecycle: MemberLifecycle.running,
+        activity: MemberActivity.active,
       ),
     );
 
@@ -106,13 +116,15 @@ void main() {
       ..declareMember(
         AgentNode(
           profile: TeammateRosterProfile.minimal('team-lead', isTeamLead: true),
-          lifecycle: MemberLifecycle.running, activity: MemberActivity.active,
+          lifecycle: MemberLifecycle.running,
+          activity: MemberActivity.active,
         ),
       )
       ..declareMember(
         AgentNode(
           profile: const TeammateRosterProfile(memberId: 'developer'),
-          lifecycle: MemberLifecycle.running, activity: MemberActivity.active,
+          lifecycle: MemberLifecycle.running,
+          activity: MemberActivity.active,
         ),
       );
     final leader = bus.memberById('team-lead')!;

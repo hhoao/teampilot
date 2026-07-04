@@ -3,10 +3,7 @@ import 'dart:convert';
 import 'package:crypto/crypto.dart';
 
 /// Matches Claude Code [`getServerKey`](https://github.com/anthropics/claude-code).
-String mcpOAuthServerKey(
-  String serverName,
-  Map<String, Object?> serverConfig,
-) {
+String mcpOAuthServerKey(String serverName, Map<String, Object?> serverConfig) {
   final configJson = jsonEncode(_configJsonForHash(serverConfig));
   final hash = sha256
       .convert(utf8.encode(configJson))

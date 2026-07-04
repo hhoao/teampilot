@@ -27,22 +27,20 @@ final class ClaudeProviderPersistence extends ProviderPersistenceStrategy
   @override
   CredentialProbeFn get credentialProbe => (provider) {
     final binding = resolveCredentialBinding(provider);
-    return _credentials.probe(
-      provider.id,
-      binding: binding,
-    );
+    return _credentials.probe(provider.id, binding: binding);
   };
 
   @override
-  CredentialImportFn get credentialImport => (provider, {required homeDirectory, replace = false}) {
-    final binding = resolveCredentialBinding(provider);
-    return _credentials.importFromGlobal(
-      provider.id,
-      homeDirectory: homeDirectory,
-      replace: replace || binding == CredentialBindingKind.linked,
-      binding: binding,
-    );
-  };
+  CredentialImportFn get credentialImport =>
+      (provider, {required homeDirectory, replace = false}) {
+        final binding = resolveCredentialBinding(provider);
+        return _credentials.importFromGlobal(
+          provider.id,
+          homeDirectory: homeDirectory,
+          replace: replace || binding == CredentialBindingKind.linked,
+          binding: binding,
+        );
+      };
 
   @override
   Future<List<AppProviderConfig>> reconcileLoaded(
@@ -54,7 +52,8 @@ final class ClaudeProviderPersistence extends ProviderPersistenceStrategy
       await Future.wait(
         providers.map((provider) async {
           if (!appliesToProbe(provider)) return;
-          if (resolveCredentialBinding(provider) != CredentialBindingKind.linked) {
+          if (resolveCredentialBinding(provider) !=
+              CredentialBindingKind.linked) {
             return;
           }
           await _credentials.materializeLinkedBinding(
@@ -120,7 +119,8 @@ final class ClaudeProviderPersistence extends ProviderPersistenceStrategy
     if (home.isNotEmpty) {
       for (final provider in providers) {
         if (!appliesToProbe(provider)) continue;
-        if (resolveCredentialBinding(provider) != CredentialBindingKind.linked) {
+        if (resolveCredentialBinding(provider) !=
+            CredentialBindingKind.linked) {
           continue;
         }
         await _credentials.materializeLinkedBinding(
@@ -133,7 +133,10 @@ final class ClaudeProviderPersistence extends ProviderPersistenceStrategy
     await removeStaleProviderDirs(ctx, cli, providers);
   }
 
-  void _logImportFailure(String providerId, CredentialActionResult importResult) {
+  void _logImportFailure(
+    String providerId,
+    CredentialActionResult importResult,
+  ) {
     AppLogger.instance.d(
       'Credential import failed for $providerId: '
       '${importResult.failure?.code.name}'

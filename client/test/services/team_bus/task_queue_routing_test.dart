@@ -16,8 +16,16 @@ void main() {
   test('claimNext skips tasks the member is not eligible for', () {
     final q = makeQueue();
     q.addTasks('lead', [
-      const TeamTaskDraft(title: 'fe', brief: 'b', requiredCapabilities: {'frontend'}),
-      const TeamTaskDraft(title: 'be', brief: 'b', requiredCapabilities: {'backend'}),
+      const TeamTaskDraft(
+        title: 'fe',
+        brief: 'b',
+        requiredCapabilities: {'frontend'},
+      ),
+      const TeamTaskDraft(
+        title: 'be',
+        brief: 'b',
+        requiredCapabilities: {'backend'},
+      ),
     ]);
 
     final claimed = q.claimNext('w1', {'backend'});
@@ -28,9 +36,16 @@ void main() {
   test('claimNext orders eligible tasks by score then seq', () {
     final q = makeQueue();
     q.addTasks('lead', [
-      const TeamTaskDraft(title: 'low', brief: 'b', preferredCapabilities: {'rust'}),
-      const TeamTaskDraft(title: 'high', brief: 'b',
-          preferredCapabilities: {'rust', 'async'}),
+      const TeamTaskDraft(
+        title: 'low',
+        brief: 'b',
+        preferredCapabilities: {'rust'},
+      ),
+      const TeamTaskDraft(
+        title: 'high',
+        brief: 'b',
+        preferredCapabilities: {'rust', 'async'},
+      ),
     ]);
     // worker has both preferred caps for 'high' (score 2) vs 'low' (score 1)
     final claimed = q.claimNext('w1', {'rust', 'async'});
@@ -50,8 +65,11 @@ void main() {
     final q = makeQueue();
     final id = q
         .addTasks('lead', [
-          const TeamTaskDraft(title: 'be', brief: 'b',
-              requiredCapabilities: {'backend'})
+          const TeamTaskDraft(
+            title: 'be',
+            brief: 'b',
+            requiredCapabilities: {'backend'},
+          ),
         ])
         .single
         .id;
@@ -79,47 +97,66 @@ void main() {
   test('reconcile widens then opens when no eligible live member exists', () {
     final q = makeQueue();
     q.addTasks('lead', [
-      const TeamTaskDraft(title: 'a', brief: 'b', requiredCapabilities: {'backend'}),
+      const TeamTaskDraft(
+        title: 'a',
+        brief: 'b',
+        requiredCapabilities: {'backend'},
+      ),
     ]);
 
     now += 120 * 1000;
-    expect(q.reconcile(now, (_) => false).single.routing.stage,
-        RoutingStage.widened);
+    expect(
+      q.reconcile(now, (_) => false).single.routing.stage,
+      RoutingStage.widened,
+    );
 
     now += 300 * 1000;
-    expect(q.reconcile(now, (_) => false).single.routing.stage,
-        RoutingStage.open);
+    expect(
+      q.reconcile(now, (_) => false).single.routing.stage,
+      RoutingStage.open,
+    );
     expect(q.claimNext('anyone', const {})!.title, 'a'); // fungible fallback
   });
 
-  test('waitForClaimable parks a worker with no eligible task (no spin/leak)', () {
-    fakeAsync((async) {
-      final q = makeQueue();
-      q.addTasks('lead', [
-        const TeamTaskDraft(title: 'be', brief: 'b',
-            requiredCapabilities: {'backend'}),
-      ]);
+  test(
+    'waitForClaimable parks a worker with no eligible task (no spin/leak)',
+    () {
+      fakeAsync((async) {
+        final q = makeQueue();
+        q.addTasks('lead', [
+          const TeamTaskDraft(
+            title: 'be',
+            brief: 'b',
+            requiredCapabilities: {'backend'},
+          ),
+        ]);
 
-      // Ineligible worker (no 'backend') must PARK, not short-circuit. The
-      // regression: a globally-claimable-but-ineligible task made
-      // waitForClaimable complete immediately → receiveWork spun (CPU) and
-      // leaked an inbox waiter per turn.
-      var ineligibleDone = false;
-      q.waitForClaimable('w1', const {}).then((_) => ineligibleDone = true);
-      async.flushMicrotasks();
-      expect(ineligibleDone, isFalse,
-          reason: 'ineligible worker must park, not spin');
+        // Ineligible worker (no 'backend') must PARK, not short-circuit. The
+        // regression: a globally-claimable-but-ineligible task made
+        // waitForClaimable complete immediately → receiveWork spun (CPU) and
+        // leaked an inbox waiter per turn.
+        var ineligibleDone = false;
+        q.waitForClaimable('w1', const {}).then((_) => ineligibleDone = true);
+        async.flushMicrotasks();
+        expect(
+          ineligibleDone,
+          isFalse,
+          reason: 'ineligible worker must park, not spin',
+        );
 
-      // An eligible worker short-circuits immediately.
-      var eligibleDone = false;
-      q.waitForClaimable('w2', const {'backend'}).then((_) => eligibleDone = true);
-      async.flushMicrotasks();
-      expect(eligibleDone, isTrue);
+        // An eligible worker short-circuits immediately.
+        var eligibleDone = false;
+        q
+            .waitForClaimable('w2', const {'backend'})
+            .then((_) => eligibleDone = true);
+        async.flushMicrotasks();
+        expect(eligibleDone, isTrue);
 
-      // Enqueuing work the parked worker CAN claim wakes it.
-      q.addTasks('lead', [const TeamTaskDraft(title: 'any', brief: 'b')]);
-      async.flushMicrotasks();
-      expect(ineligibleDone, isTrue);
-    });
-  });
+        // Enqueuing work the parked worker CAN claim wakes it.
+        q.addTasks('lead', [const TeamTaskDraft(title: 'any', brief: 'b')]);
+        async.flushMicrotasks();
+        expect(ineligibleDone, isTrue);
+      });
+    },
+  );
 }

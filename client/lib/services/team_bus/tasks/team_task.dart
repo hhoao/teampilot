@@ -161,7 +161,8 @@ class TeamTask {
       result: result ?? this.result,
       dependsOn: dependsOn,
       requiredCapabilities: requiredCapabilities ?? this.requiredCapabilities,
-      preferredCapabilities: preferredCapabilities ?? this.preferredCapabilities,
+      preferredCapabilities:
+          preferredCapabilities ?? this.preferredCapabilities,
       preferredAssignee: preferredAssignee ?? this.preferredAssignee,
       routing: routing ?? this.routing,
     );

@@ -18,15 +18,21 @@ List<WorktreeGroup> groupSessionsByWorktree({
   required List<GitWorktree> worktrees,
   required List<AppSession> sessions,
 }) {
-  final ordered = [...worktrees]..sort((a, b) {
-      if (a.isMainWorktree != b.isMainWorktree) return a.isMainWorktree ? -1 : 1;
+  final ordered = [...worktrees]
+    ..sort((a, b) {
+      if (a.isMainWorktree != b.isMainWorktree) {
+        return a.isMainWorktree ? -1 : 1;
+      }
       return a.shortBranch.compareTo(b.shortBranch);
     });
   final buckets = {for (final w in ordered) w.path: <AppSession>[]};
   final orphans = <AppSession>[];
 
   for (final session in sessions) {
-    final bestPath = worktreePathForSessionPath(session.firstFolderPath, ordered);
+    final bestPath = worktreePathForSessionPath(
+      session.firstFolderPath,
+      ordered,
+    );
     if (bestPath == null) {
       orphans.add(session);
     } else {

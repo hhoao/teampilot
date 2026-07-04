@@ -19,7 +19,10 @@ void main() {
     final loaded = await repo.listForTabScope(personalAutomationTabScope);
     expect(loaded, hasLength(1));
     expect(loaded.first.id, 'a1');
-    expect(loaded.first.launchProfileId, personalAutomationTabScope.launchProfileId);
+    expect(
+      loaded.first.launchProfileId,
+      personalAutomationTabScope.launchProfileId,
+    );
   });
 
   test('catalog updated on upsert and listAll aggregates tab scopes', () async {
@@ -27,11 +30,7 @@ void main() {
     final repo = AutomationRepository(fs: AppStorage.fs, layout: layout);
     await repo.upsert(sampleAutomation(id: 'a1', workspaceId: 'ws1'));
     await repo.upsert(
-      sampleAutomation(
-        id: 'a2',
-        workspaceId: 'ws2',
-        launchProfileId: 'team-1',
-      ),
+      sampleAutomation(id: 'a2', workspaceId: 'ws2', launchProfileId: 'team-1'),
     );
     final all = await repo.listAll();
     expect(all.map((a) => a.id), containsAll(['a1', 'a2']));
@@ -64,7 +63,10 @@ void main() {
         trigger: AutomationRunTrigger.scheduled,
       ),
     );
-    final runs = await repo.runsFor(personalAutomationTabScope, automationId: 'a1');
+    final runs = await repo.runsFor(
+      personalAutomationTabScope,
+      automationId: 'a1',
+    );
     expect(runs, hasLength(1));
     expect(runs.single.status, AutomationRunStatus.completed);
   });
@@ -95,19 +97,24 @@ void main() {
     expect(runs.map((r) => r.id), ['r1', 'r2']);
   });
 
-  test('disableForSession disables matching automations in tab scope', () async {
-    final layout = WorkspaceLayout(teampilotRoot: AppStorage.paths.basePath);
-    final repo = AutomationRepository(fs: AppStorage.fs, layout: layout);
-    await repo.upsert(
-      sampleAutomation(id: 'a1', workspaceId: 'ws1', sessionId: 's1').copyWith(
-        nextRunAtMs: 9_000,
-      ),
-    );
-    await repo.disableForSession(personalAutomationTabScope, 's1');
-    final loaded = await repo.listForTabScope(personalAutomationTabScope);
-    expect(loaded.single.enabled, isFalse);
-    expect(loaded.single.nextRunAtMs, isNull);
-  });
+  test(
+    'disableForSession disables matching automations in tab scope',
+    () async {
+      final layout = WorkspaceLayout(teampilotRoot: AppStorage.paths.basePath);
+      final repo = AutomationRepository(fs: AppStorage.fs, layout: layout);
+      await repo.upsert(
+        sampleAutomation(
+          id: 'a1',
+          workspaceId: 'ws1',
+          sessionId: 's1',
+        ).copyWith(nextRunAtMs: 9_000),
+      );
+      await repo.disableForSession(personalAutomationTabScope, 's1');
+      final loaded = await repo.listForTabScope(personalAutomationTabScope);
+      expect(loaded.single.enabled, isFalse);
+      expect(loaded.single.nextRunAtMs, isNull);
+    },
+  );
 
   test('disableForSession unbinds reusable launch prompts', () async {
     final layout = WorkspaceLayout(teampilotRoot: AppStorage.paths.basePath);

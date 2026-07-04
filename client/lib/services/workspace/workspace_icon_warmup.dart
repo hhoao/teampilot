@@ -60,8 +60,9 @@ abstract final class WorkspaceIconWarmup {
     if (relativePath.isEmpty) return false;
 
     final bytes = await workspaceIconService.loadCustomBytes(
-      workspaceDir: WorkspaceLayout(teampilotRoot: AppStorage.paths.basePath)
-          .workspaceDir(workspace.workspaceId),
+      workspaceDir: WorkspaceLayout(
+        teampilotRoot: AppStorage.paths.basePath,
+      ).workspaceDir(workspace.workspaceId),
       relativePath: relativePath,
     );
     if (bytes == null || bytes.isEmpty) return false;

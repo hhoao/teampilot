@@ -84,8 +84,12 @@ class FileTaskLog implements TaskLog {
 
   @override
   Future<void> appendEscalate(String taskId, RoutingStage stage, int at) {
-    return _append(
-        {'t': 'escalate', 'id': taskId, 'stage': stage.name, 'at': at});
+    return _append({
+      't': 'escalate',
+      'id': taskId,
+      'stage': stage.name,
+      'at': at,
+    });
   }
 
   @override

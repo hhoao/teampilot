@@ -6,8 +6,8 @@ import '../storage/app_storage.dart';
 /// Persists the set of favorited public-team keys at `team-hub/favorites.json`.
 class TeamHubFavoritesStore {
   TeamHubFavoritesStore({Filesystem? fs, String? pathOverride})
-      : _fsOverride = fs,
-        _pathOverride = pathOverride;
+    : _fsOverride = fs,
+      _pathOverride = pathOverride;
 
   final Filesystem? _fsOverride;
   final String? _pathOverride;
@@ -35,12 +35,14 @@ class TeamHubFavoritesStore {
   }
 
   Future<void> add(String key) async {
-    final keys = await load()..add(key);
+    final keys = await load()
+      ..add(key);
     await _save(keys);
   }
 
   Future<void> remove(String key) async {
-    final keys = await load()..remove(key);
+    final keys = await load()
+      ..remove(key);
     await _save(keys);
   }
 

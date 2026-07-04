@@ -74,9 +74,6 @@ void main() {
     );
     final restored = Workspace.fromJson(p.toJson());
     expect(restored.defaultProfileId, 'coding');
-    expect(
-      Workspace.fromJson({'workspaceId': 'x'}).defaultProfileId,
-      '',
-    );
+    expect(Workspace.fromJson({'workspaceId': 'x'}).defaultProfileId, '');
   });
 }

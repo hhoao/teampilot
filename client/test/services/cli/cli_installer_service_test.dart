@@ -10,44 +10,47 @@ bool _isRemoteClaudeLocate(String line) =>
     line.startsWith('sh -c') && line.contains('command -v claude');
 
 void main() {
-  test('installs Claude Code locally with npm and resolves the executable', () async {
-    final commands = <String>[];
-    final installer = CliInstallerService(
-      isWindowsOverride: false,
-      localRunner: (command) async {
-        commands.add(command.commandLine);
-        if (command.commandLine == 'which npm') {
-          return const CliInstallerCommandResult(
-            exitCode: 0,
-            stdout: '/usr/bin/npm\n',
-          );
-        }
-        if (_isClaudeNpmInstall(command.commandLine) &&
-            command.commandLine.contains('/usr/bin/npm')) {
-          return const CliInstallerCommandResult(exitCode: 0);
-        }
-        if (command.commandLine == 'which claude') {
-          return const CliInstallerCommandResult(
-            exitCode: 0,
-            stdout: '/usr/local/bin/claude\n',
-          );
-        }
-        return const CliInstallerCommandResult(exitCode: 127);
-      },
-    );
+  test(
+    'installs Claude Code locally with npm and resolves the executable',
+    () async {
+      final commands = <String>[];
+      final installer = CliInstallerService(
+        isWindowsOverride: false,
+        localRunner: (command) async {
+          commands.add(command.commandLine);
+          if (command.commandLine == 'which npm') {
+            return const CliInstallerCommandResult(
+              exitCode: 0,
+              stdout: '/usr/bin/npm\n',
+            );
+          }
+          if (_isClaudeNpmInstall(command.commandLine) &&
+              command.commandLine.contains('/usr/bin/npm')) {
+            return const CliInstallerCommandResult(exitCode: 0);
+          }
+          if (command.commandLine == 'which claude') {
+            return const CliInstallerCommandResult(
+              exitCode: 0,
+              stdout: '/usr/local/bin/claude\n',
+            );
+          }
+          return const CliInstallerCommandResult(exitCode: 127);
+        },
+      );
 
-    final result = await installer.install(
-      cli: CliTool.claude,
-      mode: CliInstallMode.local,
-    );
+      final result = await installer.install(
+        cli: CliTool.claude,
+        mode: CliInstallMode.local,
+      );
 
-    expect(result.success, isTrue);
-    expect(result.executablePath, '/usr/local/bin/claude');
-    expect(commands.length, 3);
-    expect(commands[0], 'which npm');
-    expect(_isClaudeNpmInstall(commands[1]), isTrue);
-    expect(commands[2], 'which claude');
-  });
+      expect(result.success, isTrue);
+      expect(result.executablePath, '/usr/local/bin/claude');
+      expect(commands.length, 3);
+      expect(commands[0], 'which npm');
+      expect(_isClaudeNpmInstall(commands[1]), isTrue);
+      expect(commands[2], 'which claude');
+    },
+  );
 
   test('reports install progress phases locally', () async {
     final phases = <CliInstallPhase>[];
@@ -126,7 +129,10 @@ void main() {
     );
 
     expect(result.success, isTrue);
-    expect(result.executablePath, r'C:\Users\alice\AppData\Roaming\npm\claude.cmd');
+    expect(
+      result.executablePath,
+      r'C:\Users\alice\AppData\Roaming\npm\claude.cmd',
+    );
     expect(commands, [
       'where npm',
       r"cmd /c 'C:\Program Files\nodejs\npm.cmd' install -g @anthropic-ai/claude-code",
@@ -200,7 +206,9 @@ void main() {
           );
         }
         if (command.commandLine.contains('export PATH=') &&
-            command.commandLine.contains('npm install -g @anthropic-ai/claude-code')) {
+            command.commandLine.contains(
+              'npm install -g @anthropic-ai/claude-code',
+            )) {
           return const CliInstallerCommandResult(exitCode: 0);
         }
         if (command.commandLine == 'which claude') {
@@ -391,48 +399,51 @@ void main() {
     );
   });
 
-  test('uses login-shell npm on SSH host when bare command -v misses', () async {
-    final commands = <String>[];
-    final installer = CliInstallerService(
-      sshRunner: (profile, command) async {
-        commands.add(command.commandLine);
-        if (command.commandLine == 'command -v npm') {
-          return const CliInstallerCommandResult(exitCode: 1);
-        }
-        if (command.commandLine == "bash -ilc 'command -v npm'") {
-          return const CliInstallerCommandResult(
-            exitCode: 0,
-            stdout: '/opt/homebrew/bin/npm\n',
-          );
-        }
-        if (_isClaudeNpmInstall(command.commandLine) &&
-            command.commandLine.contains('/opt/homebrew/bin/npm')) {
-          return const CliInstallerCommandResult(exitCode: 0);
-        }
-        if (_isRemoteClaudeLocate(command.commandLine)) {
-          return const CliInstallerCommandResult(
-            exitCode: 0,
-            stdout: '/opt/homebrew/bin/claude\n',
-          );
-        }
-        return const CliInstallerCommandResult(exitCode: 127);
-      },
-    );
+  test(
+    'uses login-shell npm on SSH host when bare command -v misses',
+    () async {
+      final commands = <String>[];
+      final installer = CliInstallerService(
+        sshRunner: (profile, command) async {
+          commands.add(command.commandLine);
+          if (command.commandLine == 'command -v npm') {
+            return const CliInstallerCommandResult(exitCode: 1);
+          }
+          if (command.commandLine == "bash -ilc 'command -v npm'") {
+            return const CliInstallerCommandResult(
+              exitCode: 0,
+              stdout: '/opt/homebrew/bin/npm\n',
+            );
+          }
+          if (_isClaudeNpmInstall(command.commandLine) &&
+              command.commandLine.contains('/opt/homebrew/bin/npm')) {
+            return const CliInstallerCommandResult(exitCode: 0);
+          }
+          if (_isRemoteClaudeLocate(command.commandLine)) {
+            return const CliInstallerCommandResult(
+              exitCode: 0,
+              stdout: '/opt/homebrew/bin/claude\n',
+            );
+          }
+          return const CliInstallerCommandResult(exitCode: 127);
+        },
+      );
 
-    final result = await installer.install(
-      cli: CliTool.claude,
-      mode: CliInstallMode.ssh,
-      sshProfile: _profile,
-    );
+      final result = await installer.install(
+        cli: CliTool.claude,
+        mode: CliInstallMode.ssh,
+        sshProfile: _profile,
+      );
 
-    expect(result.success, isTrue, reason: result.message);
-    expect(result.executablePath, '/opt/homebrew/bin/claude');
-    expect(commands.length, 4);
-    expect(commands[0], 'command -v npm');
-    expect(commands[1], "bash -ilc 'command -v npm'");
-    expect(_isClaudeNpmInstall(commands[2]), isTrue);
-    expect(_isRemoteClaudeLocate(commands[3]), isTrue);
-  });
+      expect(result.success, isTrue, reason: result.message);
+      expect(result.executablePath, '/opt/homebrew/bin/claude');
+      expect(commands.length, 4);
+      expect(commands[0], 'command -v npm');
+      expect(commands[1], "bash -ilc 'command -v npm'");
+      expect(_isClaudeNpmInstall(commands[2]), isTrue);
+      expect(_isRemoteClaudeLocate(commands[3]), isTrue);
+    },
+  );
 
   test('requires an SSH profile for SSH install', () async {
     final installer = CliInstallerService(
@@ -448,36 +459,41 @@ void main() {
     expect(result.message, contains('SSH'));
   });
 
-  test('installs Cursor CLI locally on Unix via official curl script', () async {
-    final commands = <String>[];
-    final installer = CliInstallerService(
-      isWindowsOverride: false,
-      localRunner: (command) async {
-        commands.add(command.commandLine);
-        if (command.commandLine.contains('curl https://cursor.com/install -fsS | bash')) {
-          return const CliInstallerCommandResult(exitCode: 0);
-        }
-        if (command.commandLine == 'which cursor-agent') {
-          return const CliInstallerCommandResult(
-            exitCode: 0,
-            stdout: '/home/alice/.local/bin/cursor-agent\n',
-          );
-        }
-        return const CliInstallerCommandResult(exitCode: 127);
-      },
-    );
+  test(
+    'installs Cursor CLI locally on Unix via official curl script',
+    () async {
+      final commands = <String>[];
+      final installer = CliInstallerService(
+        isWindowsOverride: false,
+        localRunner: (command) async {
+          commands.add(command.commandLine);
+          if (command.commandLine.contains(
+            'curl https://cursor.com/install -fsS | bash',
+          )) {
+            return const CliInstallerCommandResult(exitCode: 0);
+          }
+          if (command.commandLine == 'which cursor-agent') {
+            return const CliInstallerCommandResult(
+              exitCode: 0,
+              stdout: '/home/alice/.local/bin/cursor-agent\n',
+            );
+          }
+          return const CliInstallerCommandResult(exitCode: 127);
+        },
+      );
 
-    final result = await installer.install(
-      cli: CliTool.cursor,
-      mode: CliInstallMode.local,
-    );
+      final result = await installer.install(
+        cli: CliTool.cursor,
+        mode: CliInstallMode.local,
+      );
 
-    expect(result.success, isTrue, reason: result.message);
-    expect(result.executablePath, '/home/alice/.local/bin/cursor-agent');
-    expect(commands.length, 2);
-    expect(commands[0], contains('curl https://cursor.com/install'));
-    expect(commands[1], 'which cursor-agent');
-  });
+      expect(result.success, isTrue, reason: result.message);
+      expect(result.executablePath, '/home/alice/.local/bin/cursor-agent');
+      expect(commands.length, 2);
+      expect(commands[0], contains('curl https://cursor.com/install'));
+      expect(commands[1], 'which cursor-agent');
+    },
+  );
 
   test('installs Cursor CLI locally on Windows via PowerShell', () async {
     final commands = <String>[];
@@ -507,7 +523,10 @@ void main() {
     );
 
     expect(result.success, isTrue, reason: result.message);
-    expect(result.executablePath, r'C:\Users\alice\.local\bin\cursor-agent.cmd');
+    expect(
+      result.executablePath,
+      r'C:\Users\alice\.local\bin\cursor-agent.cmd',
+    );
     expect(commands.length, 2);
     expect(commands[0], contains('cursor.com/install?win32=true'));
     expect(commands[1], 'where cursor-agent');
@@ -518,7 +537,9 @@ void main() {
     final installer = CliInstallerService(
       sshRunner: (profile, command) async {
         commands.add(command.commandLine);
-        if (command.commandLine.contains('curl https://cursor.com/install -fsS | bash')) {
+        if (command.commandLine.contains(
+          'curl https://cursor.com/install -fsS | bash',
+        )) {
           return const CliInstallerCommandResult(exitCode: 0);
         }
         if (command.commandLine.startsWith('sh -c') &&

@@ -56,11 +56,11 @@ class AppUpdateInstaller {
   }
 
   Future<void> _installWindowsSetup(File exe) async {
-    final process = await Process.start(
-      exe.path,
-      const ['/VERYSILENT', '/SUPPRESSMSGBOXES', '/NORESTART'],
-      mode: ProcessStartMode.detached,
-    );
+    final process = await Process.start(exe.path, const [
+      '/VERYSILENT',
+      '/SUPPRESSMSGBOXES',
+      '/NORESTART',
+    ], mode: ProcessStartMode.detached);
     await process.exitCode;
     _exitProcess(0);
   }
@@ -94,11 +94,7 @@ class AppUpdateInstaller {
   }
 
   Future<void> _installLinuxDeb(File deb) async {
-    final result = await _processRunner('pkexec', [
-      'dpkg',
-      '-i',
-      deb.path,
-    ]);
+    final result = await _processRunner('pkexec', ['dpkg', '-i', deb.path]);
     if (result.exitCode != 0) {
       final stderr = (result.stderr as String?)?.trim() ?? '';
       throw AppUpdateException(
@@ -119,9 +115,7 @@ class AppUpdateInstaller {
       dmg.path,
     ]);
     if (attach.exitCode != 0) {
-      throw AppUpdateException(
-        'Could not mount DMG: ${attach.stderr}',
-      );
+      throw AppUpdateException('Could not mount DMG: ${attach.stderr}');
     }
 
     String? mountPoint;
