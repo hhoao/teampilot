@@ -138,6 +138,13 @@ Future<void> waitUntilWorkerIdleOnBus({
     final snap = memberSnapshot(bus, memberId);
     if (snap?.waitingForMessage == true) return;
     if (snap?.activity.name == 'turnDoneBusWait') return;
+    // Idle-at-prompt (turn done, not in bus turn) — no wait_for_message required
+    // for presence; automation still gates on bus wait separately.
+    if (snap?.activity.name == 'turnDoneReady' &&
+        bus != null &&
+        !bus.isMemberInTurn(memberId)) {
+      return;
+    }
     await Future<void>.delayed(const Duration(milliseconds: 200));
   }
   throw StateError(
