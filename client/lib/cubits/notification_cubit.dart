@@ -40,19 +40,25 @@ class NotificationCubit extends Cubit<NotificationState>
   }
 
   @override
-  void record({required String message, required AppToastVariant variant}) {
+  void record({
+    required String message,
+    required AppToastVariant variant,
+    String title = '',
+  }) {
     if (variant == AppToastVariant.info) return;
-    unawaited(_record(message: message, variant: variant));
+    unawaited(_record(message: message, variant: variant, title: title));
   }
 
   Future<void> _record({
     required String message,
     required AppToastVariant variant,
+    String title = '',
   }) async {
     final store = await _repository.append(
       id: _uuid.v4(),
       message: message,
       variant: variant,
+      title: title,
     );
     _emitFromStore(store);
   }

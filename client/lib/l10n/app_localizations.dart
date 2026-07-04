@@ -2096,11 +2096,11 @@ abstract class AppLocalizations {
   /// **'Agent ready'**
   String get sessionIdleNotificationTitle;
 
-  /// No description provided for @sessionIdleNotificationBody.
+  /// No description provided for @sessionIdleNotificationSubtitle.
   ///
   /// In en, this message translates to:
-  /// **'{title} is idle and waiting for input'**
-  String sessionIdleNotificationBody(String title);
+  /// **'Ready for your next message'**
+  String get sessionIdleNotificationSubtitle;
 
   /// No description provided for @sessionStarting.
   ///
@@ -3427,6 +3427,18 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'When enabled, the sidebar shows only sessions assigned to the current team. New sessions are always tagged with the selected team so they appear here if you turn this on later.'**
   String get scopeSessionsToSelectedTeamDescription;
+
+  /// No description provided for @notifyOnSessionIdleTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Agent idle system notification'**
+  String get notifyOnSessionIdleTitle;
+
+  /// No description provided for @notifyOnSessionIdleDescription.
+  ///
+  /// In en, this message translates to:
+  /// **'When a session finishes a turn and becomes idle, show an OS notification in addition to the in-app notification center.'**
+  String get notifyOnSessionIdleDescription;
 
   /// No description provided for @memberTargetAssignmentTitle.
   ///

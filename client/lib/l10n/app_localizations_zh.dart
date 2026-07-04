@@ -1067,9 +1067,7 @@ class AppLocalizationsZh extends AppLocalizations {
   String get sessionIdleNotificationTitle => 'Agent 已就绪';
 
   @override
-  String sessionIdleNotificationBody(String title) {
-    return '「$title」已进入空闲，等待输入';
-  }
+  String get sessionIdleNotificationSubtitle => '可以继续对话了';
 
   @override
   String get sessionStarting => '正在启动会话…';
@@ -1767,6 +1765,13 @@ class AppLocalizationsZh extends AppLocalizations {
   @override
   String get scopeSessionsToSelectedTeamDescription =>
       '开启后，侧边栏仅显示归属当前团队的会话。新建会话仍会写入当前所选团队，之后开启本选项即可看到它们。';
+
+  @override
+  String get notifyOnSessionIdleTitle => 'Agent 空闲系统通知';
+
+  @override
+  String get notifyOnSessionIdleDescription =>
+      '会话结束一轮工作并进入空闲时，除应用内通知中心外，同时发送操作系统通知。';
 
   @override
   String get memberTargetAssignmentTitle => '成员所在机器';

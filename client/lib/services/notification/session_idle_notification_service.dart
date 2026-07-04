@@ -1,5 +1,6 @@
 import '../../models/app_session.dart';
 import '../../theme/app_toast_theme.dart';
+import '../../utils/logger.dart';
 import 'desktop_system_notifier.dart';
 import 'notification_recorder.dart';
 
@@ -18,14 +19,12 @@ class SessionIdleNotificationService {
     required Iterable<String> sessionIds,
     required List<AppSession> sessions,
     required String emptySessionTitle,
-    required String notificationTitle,
-    required String Function(String sessionTitle) bodyForTitle,
-    String? activeSessionId,
+    required String notificationSubtitle,
+    required String notificationBadge,
+    bool systemNotificationEnabled = true,
   }) async {
     final ids = sessionIds.toList();
     if (ids.isEmpty) return;
-
-    final focused = await _desktop.isAppFocused();
 
     for (final sessionId in ids) {
       AppSession? session;
@@ -37,15 +36,29 @@ class SessionIdleNotificationService {
       }
       if (session == null) continue;
 
-      final title = session.resolveDisplayTitle(emptySessionTitle);
-      final message = bodyForTitle(title);
+      final sessionTitle = session.resolveDisplayTitle(emptySessionTitle);
 
-      _recorder?.record(message: message, variant: AppToastVariant.success);
+      _recorder?.record(
+        title: sessionTitle,
+        message: notificationSubtitle,
+        variant: AppToastVariant.success,
+      );
 
-      // Skip OS toast when the user is already looking at this session.
-      if (focused && activeSessionId == sessionId) continue;
+      if (!systemNotificationEnabled) continue;
 
-      await _desktop.showNotification(title: notificationTitle, body: message);
+      try {
+        await _desktop.showNotification(
+          title: sessionTitle,
+          body: notificationSubtitle,
+          subtitle: notificationBadge,
+        );
+      } on Object catch (error, stackTrace) {
+        appLogger.w(
+          '[session-idle-notify] OS notification failed session=$sessionId',
+          error: error,
+          stackTrace: stackTrace,
+        );
+      }
     }
   }
 }

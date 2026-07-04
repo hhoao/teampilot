@@ -1122,9 +1122,7 @@ class AppLocalizationsEn extends AppLocalizations {
   String get sessionIdleNotificationTitle => 'Agent ready';
 
   @override
-  String sessionIdleNotificationBody(String title) {
-    return '$title is idle and waiting for input';
-  }
+  String get sessionIdleNotificationSubtitle => 'Ready for your next message';
 
   @override
   String get sessionStarting => 'Starting session…';
@@ -1844,6 +1842,13 @@ class AppLocalizationsEn extends AppLocalizations {
   @override
   String get scopeSessionsToSelectedTeamDescription =>
       'When enabled, the sidebar shows only sessions assigned to the current team. New sessions are always tagged with the selected team so they appear here if you turn this on later.';
+
+  @override
+  String get notifyOnSessionIdleTitle => 'Agent idle system notification';
+
+  @override
+  String get notifyOnSessionIdleDescription =>
+      'When a session finishes a turn and becomes idle, show an OS notification in addition to the in-app notification center.';
 
   @override
   String get memberTargetAssignmentTitle => 'Member machine';

@@ -61,7 +61,9 @@ class _NotificationListTileState extends State<NotificationListTile> {
   var _expanded = false;
 
   Future<void> _copyMessage() async {
-    await Clipboard.setData(ClipboardData(text: widget.notification.message));
+    final n = widget.notification;
+    final text = n.hasTitle ? '${n.title}\n${n.message}' : n.message;
+    await Clipboard.setData(ClipboardData(text: text));
     if (!mounted) return;
     AppToast.show(
       context,
@@ -81,10 +83,17 @@ class _NotificationListTileState extends State<NotificationListTile> {
     final textTheme = Theme.of(context).textTheme;
     final accent = notificationVariantAccent(cs, widget.notification.variant);
     final l10n = context.l10n;
-    final message = widget.notification.message;
+    final notification = widget.notification;
+    final message = notification.message;
+    final hasTitle = notification.hasTitle;
     final expandable = notificationMessageIsExpandable(message);
-    final messageStyle = textTheme.bodyMedium?.copyWith(
+    final titleStyle = textTheme.titleSmall?.copyWith(
+      fontWeight: FontWeight.w600,
       color: cs.onSurface,
+      height: 1.25,
+    );
+    final messageStyle = textTheme.bodyMedium?.copyWith(
+      color: hasTitle ? cs.onSurfaceVariant : cs.onSurface,
       height: 1.35,
     );
 
@@ -101,22 +110,24 @@ class _NotificationListTileState extends State<NotificationListTile> {
     }
 
     return Material(
-      color: Colors.transparent,
+      color: notification.isRead
+          ? Colors.transparent
+          : cs.primaryContainer.withValues(alpha: 0.22),
       child: Padding(
         padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
         child: Row(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Container(
-              width: 32,
-              height: 32,
+              width: 36,
+              height: 36,
               decoration: BoxDecoration(
-                color: accent.withValues(alpha: 0.12),
-                shape: BoxShape.circle,
+                color: accent.withValues(alpha: 0.14),
+                borderRadius: BorderRadius.circular(10),
               ),
               child: Icon(
-                notificationVariantIcon(widget.notification.variant),
-                size: 18,
+                notificationVariantIcon(notification.variant),
+                size: 20,
                 color: accent,
               ),
             ),
@@ -132,6 +143,15 @@ class _NotificationListTileState extends State<NotificationListTile> {
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
+                      if (hasTitle) ...[
+                        Text(
+                          notification.title,
+                          maxLines: 2,
+                          overflow: TextOverflow.ellipsis,
+                          style: titleStyle,
+                        ),
+                        const SizedBox(height: 4),
+                      ],
                       Row(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
@@ -149,13 +169,13 @@ class _NotificationListTileState extends State<NotificationListTile> {
                             ),
                         ],
                       ),
-                      const SizedBox(height: 4),
+                      const SizedBox(height: 6),
                       Text(
                         formatNotificationTime(
                           context,
-                          widget.notification.createdAt,
+                          notification.createdAt,
                         ),
-                        style: textTheme.bodySmall?.copyWith(
+                        style: textTheme.labelSmall?.copyWith(
                           color: cs.onSurfaceVariant,
                         ),
                       ),
@@ -164,7 +184,7 @@ class _NotificationListTileState extends State<NotificationListTile> {
                 ),
               ),
             ),
-            if (!widget.notification.isRead)
+            if (!notification.isRead)
               Container(
                 width: 8,
                 height: 8,

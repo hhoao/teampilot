@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
 import '../../cubits/chat_cubit.dart';
+import '../../cubits/session_preferences_cubit.dart';
 import '../../l10n/l10n_extensions.dart';
 import '../../router/app_router.dart';
 import '../../services/notification/session_idle_notification_service.dart';
@@ -50,14 +51,19 @@ class _SessionIdleNotificationListenerState
     final l10nContext = appRouter.routerDelegate.navigatorKey.currentContext;
     if (l10nContext == null || !l10nContext.mounted) return;
     final l10n = l10nContext.l10n;
+    final notifyOnSessionIdle = l10nContext
+        .read<SessionPreferencesCubit>()
+        .state
+        .preferences
+        .notifyOnSessionIdle;
     unawaited(
       _service.notifySessionsBecameIdle(
         sessionIds: becameIdle,
         sessions: state.sessions,
         emptySessionTitle: l10n.defaultNewChatSessionTitle,
-        notificationTitle: l10n.sessionIdleNotificationTitle,
-        bodyForTitle: l10n.sessionIdleNotificationBody,
-        activeSessionId: state.activeSessionId,
+        notificationSubtitle: l10n.sessionIdleNotificationSubtitle,
+        notificationBadge: l10n.sessionIdleNotificationTitle,
+        systemNotificationEnabled: notifyOnSessionIdle,
       ),
     );
   }

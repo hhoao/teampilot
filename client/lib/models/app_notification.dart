@@ -9,18 +9,24 @@ class AppNotification extends Equatable {
     required this.variant,
     required this.message,
     required this.createdAt,
+    this.title = '',
     this.isRead = false,
   });
 
   final String id;
   final AppToastVariant variant;
+  /// Optional headline (e.g. session name). Empty for legacy toast-only rows.
+  final String title;
   final String message;
   final DateTime createdAt;
   final bool isRead;
 
+  bool get hasTitle => title.trim().isNotEmpty;
+
   AppNotification copyWith({
     String? id,
     AppToastVariant? variant,
+    String? title,
     String? message,
     DateTime? createdAt,
     bool? isRead,
@@ -28,6 +34,7 @@ class AppNotification extends Equatable {
     return AppNotification(
       id: id ?? this.id,
       variant: variant ?? this.variant,
+      title: title ?? this.title,
       message: message ?? this.message,
       createdAt: createdAt ?? this.createdAt,
       isRead: isRead ?? this.isRead,
@@ -37,6 +44,7 @@ class AppNotification extends Equatable {
   Map<String, Object?> toJson() => {
     'id': id,
     'variant': variant.name,
+    if (title.trim().isNotEmpty) 'title': title.trim(),
     'message': message,
     'createdAt': createdAt.toUtc().toIso8601String(),
     'isRead': isRead,
@@ -57,6 +65,7 @@ class AppNotification extends Equatable {
     return AppNotification(
       id: id,
       variant: variant,
+      title: json['title']?.toString().trim() ?? '',
       message: message,
       createdAt: createdAt.toLocal(),
       isRead: json['isRead'] == true,
@@ -64,7 +73,7 @@ class AppNotification extends Equatable {
   }
 
   @override
-  List<Object?> get props => [id, variant, message, createdAt, isRead];
+  List<Object?> get props => [id, variant, title, message, createdAt, isRead];
 }
 
 class AppNotificationStore extends Equatable {

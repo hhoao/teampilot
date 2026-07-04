@@ -1,19 +1,21 @@
 import 'dart:io';
 
 import 'package:flutter/foundation.dart';
-import 'package:flutter/widgets.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
-import 'package:window_manager/window_manager.dart';
+
+import '../../utils/logger.dart';
 
 /// OS-level notifications via [flutter_local_notifications].
 class DesktopSystemNotifier {
   DesktopSystemNotifier({
     FlutterLocalNotificationsPlugin? plugin,
-    Future<bool> Function()? isAppFocused,
     Future<void> Function(String appName)? setup,
-    Future<void> Function({required String title, required String body})? show,
+    Future<void> Function({
+      required String title,
+      required String body,
+      String? subtitle,
+    })? show,
   })  : _plugin = plugin,
-        _isAppFocused = isAppFocused ?? _defaultIsAppFocused,
         _setup = setup,
         _show = show;
 
@@ -23,15 +25,18 @@ class DesktopSystemNotifier {
   static FlutterLocalNotificationsPlugin? _sharedPlugin;
 
   static const _androidChannelId = 'session_idle';
-  static const _androidChannelName = 'Session idle';
+  static const _androidChannelName = 'Agent updates';
   static const _windowsAppUserModelId = 'com.hhoa.teampilot';
   static const _windowsGuid = '7c4f8a2e-1b9d-4e6a-9f3c-2d8e5a1b6c0d';
+  static const _linuxAppIconPath = 'assets/icons/icon_bg.png';
 
   final FlutterLocalNotificationsPlugin? _plugin;
-  final Future<bool> Function() _isAppFocused;
   final Future<void> Function(String appName)? _setup;
-  final Future<void> Function({required String title, required String body})?
-  _show;
+  final Future<void> Function({
+    required String title,
+    required String body,
+    String? subtitle,
+  })? _show;
 
   int _nextNotificationId = 1;
 
@@ -45,18 +50,17 @@ class DesktopSystemNotifier {
     _initialized = true;
   }
 
-  Future<bool> isAppFocused() => _isAppFocused();
-
   Future<void> showNotification({
     required String title,
     required String body,
+    String? subtitle,
   }) async {
     final show = _show;
     if (show != null) {
-      await show(title: title, body: body);
+      await show(title: title, body: body, subtitle: subtitle);
       return;
     }
-    await _defaultShow(title: title, body: body);
+    await _defaultShow(title: title, body: body, subtitle: subtitle);
   }
 
   Future<void> _ensureReady() async {
@@ -70,25 +74,21 @@ class DesktopSystemNotifier {
     }
   }
 
-  static Future<bool> _defaultIsAppFocused() async {
-    if (Platform.isAndroid || Platform.isIOS) {
-      return WidgetsBinding.instance.lifecycleState == AppLifecycleState.resumed;
-    }
-    return windowManager.isFocused();
-  }
-
   static Future<void> _initializePlugin(
     FlutterLocalNotificationsPlugin plugin,
     String appName,
   ) async {
-    await plugin.initialize(
+    final ok = await plugin.initialize(
       settings: InitializationSettings(
         android: Platform.isAndroid
             ? const AndroidInitializationSettings('@mipmap/ic_launcher')
             : null,
         macOS: Platform.isMacOS ? const DarwinInitializationSettings() : null,
         linux: Platform.isLinux
-            ? const LinuxInitializationSettings(defaultActionName: 'Open')
+            ? LinuxInitializationSettings(
+                defaultActionName: 'Open',
+                defaultIcon: AssetsLinuxIcon(_linuxAppIconPath),
+              )
             : null,
         windows: Platform.isWindows
             ? WindowsInitializationSettings(
@@ -99,42 +99,79 @@ class DesktopSystemNotifier {
             : null,
       ),
     );
+    if (ok != true) {
+      appLogger.w('[system-notifier] flutter_local_notifications init failed');
+    }
 
     if (Platform.isAndroid) {
-      await plugin
+      final granted = await plugin
           .resolvePlatformSpecificImplementation<
             AndroidFlutterLocalNotificationsPlugin
           >()
           ?.requestNotificationsPermission();
+      appLogger.d('[system-notifier] Android notification permission=$granted');
     } else if (Platform.isMacOS) {
-      await plugin
+      final granted = await plugin
           .resolvePlatformSpecificImplementation<
             MacOSFlutterLocalNotificationsPlugin
           >()
           ?.requestPermissions(alert: true, badge: false, sound: true);
+      appLogger.d('[system-notifier] macOS notification permission=$granted');
+    } else if (Platform.isLinux) {
+      final linux = plugin.resolvePlatformSpecificImplementation<
+        LinuxFlutterLocalNotificationsPlugin
+      >();
+      final caps = await linux?.getCapabilities();
+      appLogger.d('[system-notifier] Linux notification capabilities=$caps');
     }
   }
 
   Future<void> _defaultShow({
     required String title,
     required String body,
+    String? subtitle,
   }) async {
     await _ensureReady();
 
     final id = _nextNotificationId++;
+    final badge = subtitle?.trim();
     final details = NotificationDetails(
       android: Platform.isAndroid
-          ? const AndroidNotificationDetails(
+          ? AndroidNotificationDetails(
               _androidChannelId,
               _androidChannelName,
-              channelDescription: 'Notifies when an agent session becomes idle',
-              importance: Importance.defaultImportance,
-              priority: Priority.defaultPriority,
+              channelDescription:
+                  'Alerts when an agent session finishes and waits for you',
+              importance: Importance.high,
+              priority: Priority.high,
+              ticker: title,
+              styleInformation: BigTextStyleInformation(
+                body,
+                contentTitle: title,
+                summaryText: badge?.isNotEmpty == true ? badge : 'TeamPilot',
+              ),
             )
           : null,
-      macOS: Platform.isMacOS ? const DarwinNotificationDetails() : null,
-      linux: Platform.isLinux ? const LinuxNotificationDetails() : null,
-      windows: Platform.isWindows ? const WindowsNotificationDetails() : null,
+      macOS: Platform.isMacOS
+          ? DarwinNotificationDetails(
+              subtitle: badge?.isNotEmpty == true ? badge : 'TeamPilot',
+              presentAlert: true,
+              presentSound: true,
+            )
+          : null,
+      linux: Platform.isLinux
+          ? LinuxNotificationDetails(
+              urgency: LinuxNotificationUrgency.normal,
+              category: LinuxNotificationCategory.im,
+              icon: AssetsLinuxIcon(_linuxAppIconPath),
+            )
+          : null,
+      windows: Platform.isWindows
+          ? WindowsNotificationDetails(
+              subtitle: badge?.isNotEmpty == true ? badge : null,
+              duration: WindowsNotificationDuration.short,
+            )
+          : null,
     );
 
     await _effectivePlugin.show(
@@ -143,5 +180,6 @@ class DesktopSystemNotifier {
       body: body,
       notificationDetails: details,
     );
+    appLogger.d('[system-notifier] showed id=$id title=$title');
   }
 }

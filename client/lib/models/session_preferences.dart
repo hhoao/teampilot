@@ -8,6 +8,7 @@ class SessionPreferences {
     this.scopeSessionsToSelectedTeam = true,
     this.terminalScrollbackLines = 10000,
     this.terminalLinkClickOpensInApp = true,
+    this.notifyOnSessionIdle = true,
   }) : cliExecutablePaths = Map.unmodifiable(
          _normalizeCliExecutablePaths(cliExecutablePaths),
        ),
@@ -38,6 +39,7 @@ class SessionPreferences {
           (json['terminalScrollbackLines'] as num?)?.toInt() ?? 10000,
       terminalLinkClickOpensInApp:
           json['terminalLinkClickOpensInApp'] as bool? ?? true,
+      notifyOnSessionIdle: json['notifyOnSessionIdle'] as bool? ?? true,
     );
   }
 
@@ -75,6 +77,9 @@ class SessionPreferences {
   /// Ctrl/Cmd-click always opens in-app regardless of this setting.
   final bool terminalLinkClickOpensInApp;
 
+  /// When true, show an OS notification when a session leaves the working state.
+  final bool notifyOnSessionIdle;
+
   String cliExecutablePathFor(String toolId) =>
       cliExecutablePaths[toolId]?.trim() ?? '';
 
@@ -87,6 +92,7 @@ class SessionPreferences {
     bool? scopeSessionsToSelectedTeam,
     int? terminalScrollbackLines,
     bool? terminalLinkClickOpensInApp,
+    bool? notifyOnSessionIdle,
   }) {
     return SessionPreferences(
       cliExecutablePaths: cliExecutablePaths ?? this.cliExecutablePaths,
@@ -102,6 +108,7 @@ class SessionPreferences {
           terminalScrollbackLines ?? this.terminalScrollbackLines,
       terminalLinkClickOpensInApp:
           terminalLinkClickOpensInApp ?? this.terminalLinkClickOpensInApp,
+      notifyOnSessionIdle: notifyOnSessionIdle ?? this.notifyOnSessionIdle,
     );
   }
 
@@ -115,6 +122,7 @@ class SessionPreferences {
       'scopeSessionsToSelectedTeam': scopeSessionsToSelectedTeam,
       'terminalScrollbackLines': terminalScrollbackLines,
       'terminalLinkClickOpensInApp': terminalLinkClickOpensInApp,
+      'notifyOnSessionIdle': notifyOnSessionIdle,
     };
   }
 

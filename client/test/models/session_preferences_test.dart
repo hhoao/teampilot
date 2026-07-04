@@ -10,6 +10,7 @@ void main() {
       expect(prefs.sshUseLoginShell, false);
       expect(prefs.autoLaunchAllMembersOnConnect, true);
       expect(prefs.scopeSessionsToSelectedTeam, true);
+      expect(prefs.notifyOnSessionIdle, true);
     });
 
     test('toJson/fromJson round-trips', () {
@@ -23,6 +24,7 @@ void main() {
         sshUseLoginShell: true,
         autoLaunchAllMembersOnConnect: true,
         scopeSessionsToSelectedTeam: true,
+        notifyOnSessionIdle: false,
       );
       final restored = SessionPreferences.fromJson(prefs.toJson());
       expect(restored.cliExecutablePaths, {
@@ -34,6 +36,7 @@ void main() {
       expect(restored.sshUseLoginShell, true);
       expect(restored.autoLaunchAllMembersOnConnect, true);
       expect(restored.scopeSessionsToSelectedTeam, true);
+      expect(restored.notifyOnSessionIdle, false);
     });
 
     test('toJson is free of legacy runtime knobs', () {

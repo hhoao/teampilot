@@ -271,6 +271,15 @@ class _SessionControlsState extends State<_SessionControls> {
                     onChanged: (value) =>
                         cubit.setScopeSessionsToSelectedTeam(value),
                   ),
+                  showDividerBelow: true,
+                ),
+                SettingsLabeledRow(
+                  title: l10n.notifyOnSessionIdleTitle,
+                  subtitle: l10n.notifyOnSessionIdleDescription,
+                  trailing: Switch(
+                    value: snapshot.notifyOnSessionIdle,
+                    onChanged: (value) => cubit.setNotifyOnSessionIdle(value),
+                  ),
                   showDividerBelow: false,
                 ),
               ],
@@ -290,6 +299,7 @@ class _SessionControlsSnapshot {
     required this.terminalLinkClickOpensInApp,
     required this.autoLaunchAllMembersOnConnect,
     required this.scopeSessionsToSelectedTeam,
+    required this.notifyOnSessionIdle,
   });
 
   final String defaultSshWorkingDirectory;
@@ -298,6 +308,7 @@ class _SessionControlsSnapshot {
   final bool terminalLinkClickOpensInApp;
   final bool autoLaunchAllMembersOnConnect;
   final bool scopeSessionsToSelectedTeam;
+  final bool notifyOnSessionIdle;
 
   static _SessionControlsSnapshot from(SessionPreferences preferences) {
     return _SessionControlsSnapshot(
@@ -308,6 +319,7 @@ class _SessionControlsSnapshot {
       autoLaunchAllMembersOnConnect:
           preferences.autoLaunchAllMembersOnConnect,
       scopeSessionsToSelectedTeam: preferences.scopeSessionsToSelectedTeam,
+      notifyOnSessionIdle: preferences.notifyOnSessionIdle,
     );
   }
 
@@ -319,7 +331,8 @@ class _SessionControlsSnapshot {
         other.terminalScrollbackLines == terminalScrollbackLines &&
         other.terminalLinkClickOpensInApp == terminalLinkClickOpensInApp &&
         other.autoLaunchAllMembersOnConnect == autoLaunchAllMembersOnConnect &&
-        other.scopeSessionsToSelectedTeam == scopeSessionsToSelectedTeam;
+        other.scopeSessionsToSelectedTeam == scopeSessionsToSelectedTeam &&
+        other.notifyOnSessionIdle == notifyOnSessionIdle;
   }
 
   @override
@@ -330,5 +343,6 @@ class _SessionControlsSnapshot {
     terminalLinkClickOpensInApp,
     autoLaunchAllMembersOnConnect,
     scopeSessionsToSelectedTeam,
+    notifyOnSessionIdle,
   );
 }

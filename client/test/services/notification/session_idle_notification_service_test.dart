@@ -6,11 +6,17 @@ import 'package:teampilot/services/notification/session_idle_notification_servic
 import 'package:teampilot/theme/app_toast_theme.dart';
 
 class _RecordingNotifier implements NotificationRecorder {
+  final titles = <String>[];
   final messages = <String>[];
   final variants = <AppToastVariant>[];
 
   @override
-  void record({required String message, required AppToastVariant variant}) {
+  void record({
+    required String message,
+    required AppToastVariant variant,
+    String title = '',
+  }) {
+    titles.add(title);
     messages.add(message);
     variants.add(variant);
   }
@@ -19,13 +25,12 @@ class _RecordingNotifier implements NotificationRecorder {
 void main() {
   test('notifySessionsBecameIdle records and shows OS notification', () async {
     final recorder = _RecordingNotifier();
-    final shown = <({String title, String body})>[];
+    final shown = <({String title, String body, String? subtitle})>[];
     final service = SessionIdleNotificationService(
       recorder: recorder,
       desktopNotifier: DesktopSystemNotifier(
-        isAppFocused: () async => false,
-        show: ({required title, required body}) async =>
-            shown.add((title: title, body: body)),
+        show: ({required title, required body, subtitle}) async =>
+            shown.add((title: title, body: body, subtitle: subtitle)),
       ),
     );
 
@@ -40,26 +45,34 @@ void main() {
         ),
       ],
       emptySessionTitle: 'New Chat',
-      notificationTitle: 'Agent ready',
-      bodyForTitle: (title) => '$title is idle',
-      activeSessionId: 'other',
+      notificationSubtitle: 'Ready for your next message',
+      notificationBadge: 'Agent ready',
     );
 
-    expect(recorder.messages, ['Fix login bug is idle']);
+    expect(recorder.titles, ['Fix login bug']);
+    expect(recorder.messages, ['Ready for your next message']);
     expect(recorder.variants, [AppToastVariant.success]);
-    expect(shown, [(title: 'Agent ready', body: 'Fix login bug is idle')]);
+    expect(
+      shown,
+      [
+        (
+          title: 'Fix login bug',
+          body: 'Ready for your next message',
+          subtitle: 'Agent ready',
+        ),
+      ],
+    );
   });
 
-  test('notifySessionsBecameIdle skips OS notification for focused active tab',
+  test('notifySessionsBecameIdle always shows OS notification even when focused',
       () async {
     final recorder = _RecordingNotifier();
-    final shown = <({String title, String body})>[];
+    final shown = <({String title, String body, String? subtitle})>[];
     final service = SessionIdleNotificationService(
       recorder: recorder,
       desktopNotifier: DesktopSystemNotifier(
-        isAppFocused: () async => true,
-        show: ({required title, required body}) async =>
-            shown.add((title: title, body: body)),
+        show: ({required title, required body, subtitle}) async =>
+            shown.add((title: title, body: body, subtitle: subtitle)),
       ),
     );
 
@@ -73,12 +86,44 @@ void main() {
         ),
       ],
       emptySessionTitle: 'New Chat',
-      notificationTitle: 'Agent ready',
-      bodyForTitle: (title) => '$title is idle',
-      activeSessionId: 's1',
+      notificationSubtitle: 'Ready for your next message',
+      notificationBadge: 'Agent ready',
     );
 
-    expect(recorder.messages, ['New Chat is idle']);
+    expect(recorder.titles, ['New Chat']);
+    expect(recorder.messages, ['Ready for your next message']);
+    expect(shown, hasLength(1));
+  });
+
+  test('notifySessionsBecameIdle skips OS notification when disabled', () async {
+    final recorder = _RecordingNotifier();
+    final shown = <({String title, String body, String? subtitle})>[];
+    final service = SessionIdleNotificationService(
+      recorder: recorder,
+      desktopNotifier: DesktopSystemNotifier(
+        show: ({required title, required body, subtitle}) async =>
+            shown.add((title: title, body: body, subtitle: subtitle)),
+      ),
+    );
+
+    await service.notifySessionsBecameIdle(
+      sessionIds: {'s1'},
+      sessions: [
+        AppSession(
+          sessionId: 's1',
+          workspaceId: 'w1',
+          display: 'Fix login bug',
+          createdAt: 0,
+        ),
+      ],
+      emptySessionTitle: 'New Chat',
+      notificationSubtitle: 'Ready for your next message',
+      notificationBadge: 'Agent ready',
+      systemNotificationEnabled: false,
+    );
+
+    expect(recorder.titles, ['Fix login bug']);
+    expect(recorder.messages, ['Ready for your next message']);
     expect(shown, isEmpty);
   });
 
@@ -87,8 +132,7 @@ void main() {
     final service = SessionIdleNotificationService(
       recorder: recorder,
       desktopNotifier: DesktopSystemNotifier(
-        isAppFocused: () async => false,
-        show: ({required title, required body}) async {},
+        show: ({required title, required body, subtitle}) async {},
       ),
     );
 
@@ -96,8 +140,8 @@ void main() {
       sessionIds: {'gone'},
       sessions: const [],
       emptySessionTitle: 'New Chat',
-      notificationTitle: 'Agent ready',
-      bodyForTitle: (title) => title,
+      notificationSubtitle: 'Ready',
+      notificationBadge: 'Agent ready',
     );
 
     expect(recorder.messages, isEmpty);

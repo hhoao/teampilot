@@ -64,6 +64,7 @@ class NotificationRepository {
     required String id,
     required String message,
     required AppToastVariant variant,
+    String title = '',
   }) async {
     if (variant == AppToastVariant.info) {
       return _cache;
@@ -72,6 +73,7 @@ class NotificationRepository {
     final next = AppNotification(
       id: id,
       variant: variant,
+      title: title.trim(),
       message: message,
       createdAt: now,
     );
