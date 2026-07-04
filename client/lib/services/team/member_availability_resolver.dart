@@ -78,9 +78,23 @@ abstract final class MemberAvailabilityResolver {
       return MemberAvailability.booting;
     }
 
-    // Push-CLI (cursor): idle-at-prompt when the frame is quiet.
+    // Push-CLI (cursor): idle-at-prompt when quiet. PTY bytes only count after
+    // a bus turn signal (user submit → active, mail/task doorbell), not startup
+    // TUI churn.
+    if (!_pushCliAllowsPtyWorking(bus: bus, memberId: memberId)) {
+      return MemberAvailability.idle;
+    }
     return shell.activityTracker.isWorking
         ? MemberAvailability.working
         : MemberAvailability.idle;
+  }
+
+  /// Gate for push-CLI PTY heuristics — avoids boot-time repaint false positives.
+  static bool _pushCliAllowsPtyWorking({
+    required TeamBus bus,
+    required String memberId,
+  }) {
+    if (bus.isMemberInTurn(memberId)) return true;
+    return bus.memberById(memberId)?.doorbelled ?? false;
   }
 }

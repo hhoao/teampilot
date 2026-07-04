@@ -63,6 +63,44 @@ void main() {
 
       expect(_resolve(shell, bus: bus), MemberAvailability.working);
     });
+
+    test('push-CLI PTY churn without turn signal stays idle', () {
+      final shell = _ConnectedShell()..activityTracker.latchBootFrameReadyForTest();
+      shell.activityTracker.markActive();
+      expect(shell.activityTracker.isWorking, isTrue);
+
+      final bus = TeamBus(launcher: FakeMemberLauncher());
+      bus.declareMember(
+        AgentNode.test(
+          memberId: 'worker',
+          cli: 'cursor',
+          lifecycle: MemberLifecycle.running,
+          activity: MemberActivity.turnDoneReady,
+        ),
+      );
+
+      expect(
+        _resolvePushCli(shell, bus: bus),
+        MemberAvailability.idle,
+        reason: 'startup PTY activity must not flip working before a turn signal',
+      );
+    });
+
+    test('push-CLI doorbell allows PTY working', () {
+      final shell = _ConnectedShell()..activityTracker.latchBootFrameReadyForTest();
+      shell.activityTracker.markActive();
+
+      final bus = TeamBus(launcher: FakeMemberLauncher());
+      final node = AgentNode.test(
+        memberId: 'worker',
+        cli: 'cursor',
+        lifecycle: MemberLifecycle.running,
+        activity: MemberActivity.turnDoneReady,
+      )..doorbelled = true;
+      bus.declareMember(node);
+
+      expect(_resolvePushCli(shell, bus: bus), MemberAvailability.working);
+    });
   });
 }
 
@@ -75,6 +113,35 @@ MemberAvailability _resolve(TerminalSession shell, {required TeamBus? bus}) {
       name: 'T',
       teamMode: TeamMode.mixed,
       members: [TeamMemberConfig(id: 'worker', name: 'worker')],
+    ),
+    teamMode: TeamMode.mixed,
+    globalPresets: const [],
+    bus: bus,
+    claudeRosterWorking: false,
+    usesClaudeRoster: false,
+    usesShellActivity: false,
+  );
+}
+
+MemberAvailability _resolvePushCli(
+  TerminalSession shell, {
+  required TeamBus bus,
+}) {
+  return MemberAvailabilityResolver.forConnected(
+    shell: shell,
+    member: const TeamMemberConfig(
+      id: 'worker',
+      name: 'worker',
+      cli: CliTool.cursor,
+    ),
+    team: const TeamProfile(
+      id: 't',
+      name: 'T',
+      teamMode: TeamMode.mixed,
+      cli: CliTool.claude,
+      members: [
+        TeamMemberConfig(id: 'worker', name: 'worker', cli: CliTool.cursor),
+      ],
     ),
     teamMode: TeamMode.mixed,
     globalPresets: const [],
