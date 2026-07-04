@@ -17,6 +17,7 @@ import '../../../theme/app_spacing.dart';
 import '../../../theme/app_text_styles.dart';
 import '../../../utils/debounce/debounce.dart';
 import '../../../utils/landing_draft_resolver.dart';
+import '../../../services/keyboard/compose_keyboard_shortcut_handler.dart';
 import '../../../widgets/menu/sidebar_action_menu.dart';
 
 enum _LandingConversationMode { team, simple }
@@ -50,7 +51,7 @@ class WorkspaceChatLanding extends StatefulWidget {
 
 class _WorkspaceChatLandingState extends State<WorkspaceChatLanding> {
   final _controller = TextEditingController();
-  final _focusNode = FocusNode();
+  late final FocusNode _focusNode;
 
   var _conversationMode = _LandingConversationMode.simple;
   var _permissionMode = _LandingPermissionMode.defaultPermissions;
@@ -60,6 +61,13 @@ class _WorkspaceChatLandingState extends State<WorkspaceChatLanding> {
   @override
   void initState() {
     super.initState();
+    _focusNode = FocusNode(
+      onKeyEvent: ComposeKeyboardShortcutHandler.keyHandler(
+        controller: _controller,
+        onSubmit: _submit,
+        canSubmit: () => _canSubmit,
+      ),
+    );
     unawaited(_loadDraft());
   }
 
@@ -432,7 +440,6 @@ class _ComposeCard extends StatelessWidget {
                   maxLines: 6,
                   enabled: !isSubmitting,
                   onChanged: onChanged,
-                  onSubmitted: (_) => onSubmit(),
                   decoration: InputDecoration(
                     hintText: hint,
                     hintStyle: styles.body.copyWith(
