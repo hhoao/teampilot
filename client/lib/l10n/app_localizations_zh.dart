@@ -4437,10 +4437,57 @@ class AppLocalizationsZh extends AppLocalizations {
   }
 
   @override
+  String get automationsSidebarTitle => '自动化';
+
+  @override
+  String automationsSidebarWithNextRun(String time) {
+    return '自动化 · $time';
+  }
+
+  @override
   String get automationsFilterAll => '全部';
 
   @override
   String get automationsFilterEnabled => '仅已启用';
+
+  @override
+  String get automationsFilterDisabled => '仅已禁用';
+
+  @override
+  String get automationsFilterStatusLabel => '状态';
+
+  @override
+  String get automationsFilterActionLabel => '类型';
+
+  @override
+  String get automationsFilterActionAll => '全部类型';
+
+  @override
+  String get automationsFilterScheduledMessage => '定时消息';
+
+  @override
+  String get automationsFilterLaunchPrompt => '启动 prompt';
+
+  @override
+  String get automationsSort => '排序自动化';
+
+  @override
+  String get automationsSortNameAsc => '名称 (A–Z)';
+
+  @override
+  String get automationsSortNameDesc => '名称 (Z–A)';
+
+  @override
+  String get automationsSortNextRun => '下次运行';
+
+  @override
+  String get automationsSortRecentlyUpdated => '最近更新';
+
+  @override
+  String get automationsShowFilter => '显示筛选';
+
+  @override
+  String get automationsHideFilter => '隐藏筛选';
 
   @override
   String automationsScheduleSummaryHourly(int minute) {

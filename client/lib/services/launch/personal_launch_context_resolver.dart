@@ -18,15 +18,17 @@ class PersonalLaunchContextResolver {
     required AppSession session,
     required Workspace workspace,
     String personalIdentityIdOverride = '',
+    String presetIdOverride = '',
   }) {
     final key =
-        '${session.sessionId}:${personalIdentityIdOverride.trim()}:${workspace.workspaceId}';
+        '${session.sessionId}:${personalIdentityIdOverride.trim()}:${presetIdOverride.trim()}:${workspace.workspaceId}';
     return _inflight.putIfAbsent(key, () async {
       try {
         return await _resolveUncached(
           session: session,
           workspace: workspace,
           personalIdentityIdOverride: personalIdentityIdOverride,
+          presetIdOverride: presetIdOverride,
         );
       } finally {
         _inflight.remove(key);
@@ -38,6 +40,7 @@ class PersonalLaunchContextResolver {
     required AppSession session,
     required Workspace workspace,
     String personalIdentityIdOverride = '',
+    String presetIdOverride = '',
   }) async {
     var profileId = personalIdentityIdOverride.trim();
     if (profileId.isEmpty) {
@@ -52,9 +55,10 @@ class PersonalLaunchContextResolver {
       profileId = LaunchProfileProvisioner.defaultPersonalId;
     }
     final personalIdentity = await _lifecycle.loadPersonalProfile(profileId);
-    final personalPreset = await _lifecycle.resolveActivePresetForPersonal(
-      personalIdentity,
-    );
+    final overrideId = presetIdOverride.trim();
+    final personalPreset = overrideId.isNotEmpty
+        ? await _lifecycle.resolvePresetById(overrideId)
+        : await _lifecycle.resolveActivePresetForPersonal(personalIdentity);
     final personalMember = standaloneMemberFromPersonal(
       personalIdentity,
       preset: personalPreset,

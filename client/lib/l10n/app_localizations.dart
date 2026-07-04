@@ -8325,6 +8325,18 @@ abstract class AppLocalizations {
   /// **'Automations · {count}'**
   String automationsHeaderCount(int count);
 
+  /// No description provided for @automationsSidebarTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Automations'**
+  String get automationsSidebarTitle;
+
+  /// No description provided for @automationsSidebarWithNextRun.
+  ///
+  /// In en, this message translates to:
+  /// **'Automations · {time}'**
+  String automationsSidebarWithNextRun(String time);
+
   /// No description provided for @automationsFilterAll.
   ///
   /// In en, this message translates to:
@@ -8336,6 +8348,84 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Enabled only'**
   String get automationsFilterEnabled;
+
+  /// No description provided for @automationsFilterDisabled.
+  ///
+  /// In en, this message translates to:
+  /// **'Disabled only'**
+  String get automationsFilterDisabled;
+
+  /// No description provided for @automationsFilterStatusLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Status'**
+  String get automationsFilterStatusLabel;
+
+  /// No description provided for @automationsFilterActionLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Action type'**
+  String get automationsFilterActionLabel;
+
+  /// No description provided for @automationsFilterActionAll.
+  ///
+  /// In en, this message translates to:
+  /// **'All actions'**
+  String get automationsFilterActionAll;
+
+  /// No description provided for @automationsFilterScheduledMessage.
+  ///
+  /// In en, this message translates to:
+  /// **'Scheduled messages'**
+  String get automationsFilterScheduledMessage;
+
+  /// No description provided for @automationsFilterLaunchPrompt.
+  ///
+  /// In en, this message translates to:
+  /// **'Launch prompts'**
+  String get automationsFilterLaunchPrompt;
+
+  /// No description provided for @automationsSort.
+  ///
+  /// In en, this message translates to:
+  /// **'Sort automations'**
+  String get automationsSort;
+
+  /// No description provided for @automationsSortNameAsc.
+  ///
+  /// In en, this message translates to:
+  /// **'Name (A–Z)'**
+  String get automationsSortNameAsc;
+
+  /// No description provided for @automationsSortNameDesc.
+  ///
+  /// In en, this message translates to:
+  /// **'Name (Z–A)'**
+  String get automationsSortNameDesc;
+
+  /// No description provided for @automationsSortNextRun.
+  ///
+  /// In en, this message translates to:
+  /// **'Next run'**
+  String get automationsSortNextRun;
+
+  /// No description provided for @automationsSortRecentlyUpdated.
+  ///
+  /// In en, this message translates to:
+  /// **'Recently updated'**
+  String get automationsSortRecentlyUpdated;
+
+  /// No description provided for @automationsShowFilter.
+  ///
+  /// In en, this message translates to:
+  /// **'Show filters'**
+  String get automationsShowFilter;
+
+  /// No description provided for @automationsHideFilter.
+  ///
+  /// In en, this message translates to:
+  /// **'Hide filters'**
+  String get automationsHideFilter;
 
   /// No description provided for @automationsScheduleSummaryHourly.
   ///

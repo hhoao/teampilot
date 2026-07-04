@@ -271,6 +271,7 @@ class SessionLaunchService implements MemberConnector {
           ? const []
           : (request.team?.members ?? const []),
       cli: request.cli,
+      personalPresetId: request.personalPresetId,
       workingDirectory: request.workingDirectory,
     );
 
@@ -283,6 +284,7 @@ class SessionLaunchService implements MemberConnector {
         repo: request.repo,
         emptyDisplayTitleFallback: request.emptyDisplayTitleFallback,
         persistParams: persistParams,
+        personalPresetId: request.personalPresetId,
       ),
       session: provisional,
     );
@@ -763,6 +765,7 @@ class SessionLaunchService implements MemberConnector {
       final personalCtx = await _personalContext.resolve(
         session: session,
         workspace: resolvedWorkspace,
+        presetIdOverride: _personalPresetIdOverride(request),
       );
       return (
         team: null,
@@ -783,6 +786,12 @@ class SessionLaunchService implements MemberConnector {
       ),
       personalIdentity: null,
     );
+  }
+
+  String _personalPresetIdOverride(SessionOpenRequest request) {
+    final direct = request.personalPresetId?.trim() ?? '';
+    if (direct.isNotEmpty) return direct;
+    return request.persistParams?.personalPresetId?.trim() ?? '';
   }
 
   Future<void> _installTeamRuntimeIfNeeded({

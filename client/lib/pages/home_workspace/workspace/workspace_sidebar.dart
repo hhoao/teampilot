@@ -31,7 +31,8 @@ import 'worktree_create_dialog.dart';
 import 'worktree_group_section.dart';
 import '../../../models/automation_tab_scope.dart';
 import '../../../pages/automations/automation_editor_dialog.dart';
-import '../../../pages/automations/automations_panel.dart';
+import '../../../pages/automations/automations_dialog.dart';
+import '../../../pages/automations/automations_list_body.dart';
 import '../../../theme/app_text_styles.dart';
 import '../../../utils/app_keys.dart';
 import '../../../utils/app_session_sort.dart';
@@ -77,12 +78,10 @@ class WorkspaceSidebar extends StatefulWidget {
   final String tabScopeId;
 
   @override
-  State<WorkspaceSidebar> createState() =>
-      _WorkspaceSidebarState();
+  State<WorkspaceSidebar> createState() => _WorkspaceSidebarState();
 }
 
-class _WorkspaceSidebarState
-    extends State<WorkspaceSidebar> {
+class _WorkspaceSidebarState extends State<WorkspaceSidebar> {
   bool get _isPersonal => widget.isPersonalWorkspace;
 
   AppSessionSort _sessionSort = AppSessionSort.manual;
@@ -98,8 +97,10 @@ class _WorkspaceSidebarState
         sessionTeamFilter: widget.sessionTeamFilter,
       ),
     );
-    final sortedSessions =
-        sortAppSessions(sessionSnapshot.sessions, sort: _sessionSort);
+    final sortedSessions = sortAppSessions(
+      sessionSnapshot.sessions,
+      sort: _sessionSort,
+    );
     final sessionsHydrated = context.select<ChatCubit, bool>(
       (c) => c.sessionsLoadedForWorkspace(widget.workspace.workspaceId),
     );
@@ -117,8 +118,7 @@ class _WorkspaceSidebarState
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          if (personalLaunchBlocked)
-            const MixedWorkspacePersonalLaunchBanner(),
+          if (personalLaunchBlocked) const MixedWorkspacePersonalLaunchBanner(),
           if (_isPersonal && !personalLaunchBlocked) ...[
             _PresetDropdown(
               workspaceId: widget.workspace.workspaceId,
@@ -167,7 +167,8 @@ class _WorkspaceSidebarState
                 const SizedBox(width: 2),
                 AppIconButton(
                   icon: Icons.search_rounded,
-                  compact: true, size: AppIconButton.kCompactSize,
+                  compact: true,
+                  size: AppIconButton.kCompactSize,
                   tooltip: l10n.workspaceSearchTitle,
                   onTap: throttledTap(
                     'workspace_sidebar_search',
@@ -187,19 +188,23 @@ class _WorkspaceSidebarState
                   const SizedBox(width: 2),
                   AppIconButton(
                     icon: Icons.refresh_rounded,
-                    compact: true, size: AppIconButton.kCompactSize,
+                    compact: true,
+                    size: AppIconButton.kCompactSize,
                     tooltip: l10n.worktreeRefreshTooltip,
                     onTap: throttledTap(
                       'workspace_sidebar_refresh_worktrees',
                       () => unawaited(
-                        context.read<WorktreeCubit>().load(widget.workspace.firstFolderPath),
+                        context.read<WorktreeCubit>().load(
+                          widget.workspace.firstFolderPath,
+                        ),
                       ),
                     ),
                   ),
                   const SizedBox(width: 2),
                   AppIconButton(
                     icon: Icons.account_tree_outlined,
-                    compact: true, size: AppIconButton.kCompactSize,
+                    compact: true,
+                    size: AppIconButton.kCompactSize,
                     tooltip: l10n.worktreeNewWorktreeTooltip,
                     onTap: throttledTap(
                       'workspace_sidebar_new_worktree',
@@ -270,9 +275,11 @@ class _WorkspaceSidebarState
                 widget.tabScopeId,
               ),
               personalLaunchBlocked: personalLaunchBlocked,
-              collapsed:
-                  wtView.collapsed.contains(worktreeGroupCollapseKey(group)),
-              isCurrent: group.worktree != null &&
+              collapsed: wtView.collapsed.contains(
+                worktreeGroupCollapseKey(group),
+              ),
+              isCurrent:
+                  group.worktree != null &&
                   workspacePathsEqual(
                     group.worktree!.path,
                     wtView.currentWorktreePath,
@@ -338,10 +345,7 @@ class _WorkspaceSidebarState
     return parts.isEmpty ? path : parts.last;
   }
 
-  Widget _buildSessionList(
-    BuildContext context,
-    List<AppSession> sessions,
-  ) {
+  Widget _buildSessionList(BuildContext context, List<AppSession> sessions) {
     // Drag-to-reorder is only meaningful in manual order; the auto-sorted modes
     // use a plain (crash-safe) ListView so frequent re-sorts never reparent
     // [ReorderableListView]'s keyed items under the workbench's LayoutBuilders.
@@ -349,8 +353,7 @@ class _WorkspaceSidebarState
       return ListView.builder(
         padding: EdgeInsets.zero,
         itemCount: sessions.length,
-        itemBuilder: (context, index) =>
-            _sessionTile(context, sessions[index]),
+        itemBuilder: (context, index) => _sessionTile(context, sessions[index]),
       );
     }
     return ReorderableListView.builder(
@@ -365,9 +368,9 @@ class _WorkspaceSidebarState
         final moved = reordered.removeAt(oldIndex);
         reordered.insert(target, moved);
         unawaited(
-          context.read<ChatCubit>().reorderSessions(
-            [for (final s in reordered) s.sessionId],
-          ),
+          context.read<ChatCubit>().reorderSessions([
+            for (final s in reordered) s.sessionId,
+          ]),
         );
       },
       itemBuilder: (context, index) =>
@@ -465,23 +468,23 @@ class _AutomationsHeader extends StatefulWidget {
 
 class _AutomationsHeaderState extends State<_AutomationsHeader> {
   var _didLoad = false;
+  var _hovered = false;
 
   @override
   void didChangeDependencies() {
     super.didChangeDependencies();
     if (_didLoad) return;
     _didLoad = true;
-    unawaited(
-      context.read<AutomationCubit>().loadForTabScope(widget.tabScope),
-    );
+    unawaited(context.read<AutomationCubit>().loadForTabScope(widget.tabScope));
   }
 
-  String _nextRunLabel(AppLocalizations l10n, int? ms) {
-    if (ms == null) return '';
+  ({String title, String? time}) _sidebarParts(AppLocalizations l10n, int? ms) {
+    final title = l10n.automationsSidebarTitle;
+    if (ms == null) return (title: title, time: null);
     final dt = DateTime.fromMillisecondsSinceEpoch(ms);
     final time =
         '${dt.hour.toString().padLeft(2, '0')}:${dt.minute.toString().padLeft(2, '0')}';
-    return l10n.automationsNextRun(time);
+    return (title: title, time: time);
   }
 
   @override
@@ -496,18 +499,26 @@ class _AutomationsHeaderState extends State<_AutomationsHeader> {
           state.automations,
           widget.tabScope,
         );
-        final nextRun = _nextRunLabel(l10n, summary.nearestNextRunAtMs);
+        final parts = _sidebarParts(l10n, summary.nearestNextRunAtMs);
+        final hoverTint = cs.onSurface.withValues(alpha: 0.05);
+        final background = _hovered ? hoverTint : Colors.transparent;
 
-        return InkWell(
-          onTap: widget.onTap,
-          borderRadius: BorderRadius.circular(8),
-          child: Container(
-            padding: const EdgeInsets.fromLTRB(8, 8, 4, 8),
-            decoration: BoxDecoration(
-              color: cs.surfaceContainerLow,
-              borderRadius: BorderRadius.circular(8),
-              border: Border.all(color: cs.outlineVariant.withValues(alpha: 0.5)),
-            ),
+        return MouseRegion(
+          onEnter: (_) => setState(() => _hovered = true),
+          onExit: (_) => setState(() => _hovered = false),
+          cursor: SystemMouseCursors.click,
+          child: InkWell(
+            onTap: widget.onTap,
+            borderRadius: BorderRadius.circular(8),
+            child: Container(
+              padding: const EdgeInsets.fromLTRB(8, 8, 4, 8),
+              decoration: BoxDecoration(
+                color: background,
+                borderRadius: BorderRadius.circular(8),
+                border: Border.all(
+                  color: cs.outlineVariant.withValues(alpha: 0.5),
+                ),
+              ),
             child: Row(
               children: [
                 Icon(
@@ -517,27 +528,22 @@ class _AutomationsHeaderState extends State<_AutomationsHeader> {
                 ),
                 const SizedBox(width: 8),
                 Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        l10n.automationsHeaderCount(summary.enabledCount),
-                        style: styles.prominent,
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                      ),
-                      if (nextRun.isNotEmpty) ...[
-                        const SizedBox(height: 2),
-                        Text(
-                          nextRun,
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
-                          style: styles.caption.copyWith(
-                            color: cs.onSurfaceVariant,
+                  child: Text.rich(
+                    TextSpan(
+                      style: styles.prominent,
+                      children: [
+                        TextSpan(text: parts.title),
+                        if (parts.time != null)
+                          TextSpan(
+                            text: ' · ${parts.time}',
+                            style: styles.prominent.copyWith(
+                              color: cs.onSurfaceVariant,
+                            ),
                           ),
-                        ),
                       ],
-                    ],
+                    ),
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
                   ),
                 ),
                 AppIconButton(
@@ -550,6 +556,7 @@ class _AutomationsHeaderState extends State<_AutomationsHeader> {
               ],
             ),
           ),
+        ),
         );
       },
     );
@@ -575,10 +582,12 @@ class _PresetDropdownState extends State<_PresetDropdown> {
     final presetsState = context.watch<CliPresetsCubit>().state;
     final identityCubit = context.watch<LaunchProfileCubit>();
     final opened = identityCubit.state.byId(widget.profileId);
-    final personal =
-        opened is PersonalProfile ? opened : identityCubit.activePersonal;
+    final personal = opened is PersonalProfile
+        ? opened
+        : identityCubit.activePersonal;
 
-    if (personal == null || presetsState.status == CliPresetsLoadStatus.loading) {
+    if (personal == null ||
+        presetsState.status == CliPresetsLoadStatus.loading) {
       return const Padding(
         padding: EdgeInsets.fromLTRB(4, 0, 4, 0),
         child: LinearProgressIndicator(minHeight: 2),
@@ -600,9 +609,7 @@ class _PresetDropdownState extends State<_PresetDropdown> {
           },
           icon: const Icon(Icons.add, size: 18),
           label: Text(l10n.workspaceCliAddPresetTitle),
-          style: OutlinedButton.styleFrom(
-            visualDensity: VisualDensity.compact,
-          ),
+          style: OutlinedButton.styleFrom(visualDensity: VisualDensity.compact),
         ),
       );
     }
@@ -615,9 +622,10 @@ class _PresetDropdownState extends State<_PresetDropdown> {
       _didAutoActivate = true;
       WidgetsBinding.instance.addPostFrameCallback((_) {
         if (!mounted) return;
-        context
-            .read<LaunchProfileCubit>()
-            .setPersonalPreset(widget.profileId, presets.first.id);
+        context.read<LaunchProfileCubit>().setPersonalPreset(
+          widget.profileId,
+          presets.first.id,
+        );
       });
     }
 
@@ -631,20 +639,26 @@ class _PresetDropdownState extends State<_PresetDropdown> {
         children: [
           Expanded(
             child: AppDropdownField<String>(
-              key: ValueKey('workspace-sidebar-preset-${widget.workspaceId}-$initialId'),
+              key: ValueKey(
+                'workspace-sidebar-preset-${widget.workspaceId}-$initialId',
+              ),
               items: presetNames,
               initialItem: initialId,
               decoration: AppDropdownDecorations.themed(context),
               onChanged: (value) {
                 if (value == null) return;
-                context
-                    .read<LaunchProfileCubit>()
-                    .setPersonalPreset(widget.profileId, value);
+                context.read<LaunchProfileCubit>().setPersonalPreset(
+                  widget.profileId,
+                  value,
+                );
               },
               itemBuilder: (context, presetId) {
                 final preset = presetsState.presetById(presetId);
                 if (preset == null) {
-                  return Text(presetId, style: AppTextStyles.of(context).bodySmall);
+                  return Text(
+                    presetId,
+                    style: AppTextStyles.of(context).bodySmall,
+                  );
                 }
                 return _PresetDropdownItem(preset: preset);
               },
@@ -697,7 +711,9 @@ class _PresetDropdownItem extends StatelessWidget {
             preset.name,
             maxLines: 1,
             overflow: TextOverflow.ellipsis,
-            style: AppTextStyles.of(context).prominent.copyWith(color: cs.onSurface),
+            style: AppTextStyles.of(
+              context,
+            ).prominent.copyWith(color: cs.onSurface),
           ),
         ),
       ],
@@ -756,7 +772,11 @@ class _SidebarActionTileState extends State<_SidebarActionTile> {
             padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 10),
             child: Row(
               children: [
-                Icon(widget.icon, size: context.appIconSizes.md, color: foreground),
+                Icon(
+                  widget.icon,
+                  size: context.appIconSizes.md,
+                  color: foreground,
+                ),
                 const SizedBox(width: 10),
                 Expanded(
                   child: Text(
@@ -815,10 +835,9 @@ class _SessionSortButton extends StatelessWidget {
                   ? Icon(
                       Icons.check,
                       size: context.appIconSizes.md,
-                      color: Theme.of(context)
-                          .colorScheme
-                          .onSurface
-                          .withValues(alpha: 0.7),
+                      color: Theme.of(
+                        context,
+                      ).colorScheme.onSurface.withValues(alpha: 0.7),
                     )
                   : null,
               menuController: controller,
@@ -832,12 +851,11 @@ class _SessionSortButton extends StatelessWidget {
   static String _labelForSessionSort(
     AppSessionSort sort,
     AppLocalizations l10n,
-  ) =>
-      switch (sort) {
-        AppSessionSort.manual => l10n.sessionSortManual,
-        AppSessionSort.recentlyUpdated => l10n.sessionSortRecentlyUpdated,
-        AppSessionSort.createdDesc => l10n.sessionSortCreatedDesc,
-      };
+  ) => switch (sort) {
+    AppSessionSort.manual => l10n.sessionSortManual,
+    AppSessionSort.recentlyUpdated => l10n.sessionSortRecentlyUpdated,
+    AppSessionSort.createdDesc => l10n.sessionSortCreatedDesc,
+  };
 
   static IconData _iconForSessionSort(AppSessionSort sort) => switch (sort) {
     AppSessionSort.manual => Icons.drag_indicator_rounded,

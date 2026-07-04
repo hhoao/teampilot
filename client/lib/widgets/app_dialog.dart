@@ -171,6 +171,7 @@ class AppDialogHeader extends StatelessWidget {
     this.titleAlignment = Alignment.topLeft,
     this.showDividerBelow = true,
     this.horizontalInset = kAppDialogContentHorizontalInset,
+    this.trailing,
   });
 
   final String title;
@@ -188,6 +189,9 @@ class AppDialogHeader extends StatelessWidget {
   /// Horizontal bleed for [AppDialogDivider]; match [AppDialog.contentPadding].
   final double horizontalInset;
 
+  /// Optional actions between the title and the close button.
+  final Widget? trailing;
+
   @override
   Widget build(BuildContext context) {
     final cs = Theme.of(context).colorScheme;
@@ -197,36 +201,32 @@ class AppDialogHeader extends StatelessWidget {
       mainAxisSize: MainAxisSize.min,
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        Stack(
-          clipBehavior: Clip.none,
+        Row(
+          crossAxisAlignment: CrossAxisAlignment.center,
           children: [
-            Padding(
-              padding: const EdgeInsets.only(right: 40),
-              child: SizedBox(
-                width: double.infinity,
-                child: Text(
-                  title,
-                  textAlign: centered ? TextAlign.center : TextAlign.start,
-                  style: styles.dialogTitle.copyWith(
-                    color: cs.onSurface,
-                    fontWeight: FontWeight.w700,
-                  ),
+            Expanded(
+              child: Text(
+                title,
+                textAlign: centered ? TextAlign.center : TextAlign.start,
+                style: styles.dialogTitle.copyWith(
+                  color: cs.onSurface,
+                  fontWeight: FontWeight.w700,
                 ),
               ),
             ),
-            Positioned(
-              right: 0,
-              top: 0,
-              child: IconButton(
-                tooltip: context.l10n.cancel,
-                visualDensity: VisualDensity.compact,
-                icon: Icon(
-                  Icons.close_rounded,
-                  size: context.appIconSizes.md,
-                  color: cs.onSurfaceVariant,
-                ),
-                onPressed: onClose ?? () => Navigator.of(context).pop(),
+            if (trailing != null) ...[
+              trailing!,
+              const SizedBox(width: 4),
+            ],
+            IconButton(
+              tooltip: context.l10n.cancel,
+              visualDensity: VisualDensity.compact,
+              icon: Icon(
+                Icons.close_rounded,
+                size: context.appIconSizes.md,
+                color: cs.onSurfaceVariant,
               ),
+              onPressed: onClose ?? () => Navigator.of(context).pop(),
             ),
           ],
         ),

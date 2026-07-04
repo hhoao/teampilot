@@ -7,6 +7,7 @@ class SessionPersistParams {
     this.personalIdentityId = '',
     this.rosterMembers = const [],
     this.cli,
+    this.personalPresetId,
     this.workingDirectory,
   });
 
@@ -14,5 +15,6 @@ class SessionPersistParams {
   final String personalIdentityId;
   final List<TeamMemberConfig> rosterMembers;
   final CliTool? cli;
+  final String? personalPresetId;
   final String? workingDirectory;
 }

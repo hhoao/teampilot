@@ -59,6 +59,7 @@ class Automation {
     this.targetMemberId = 'team-lead',
     required this.message,
     this.cli,
+    this.cliPresetId,
     this.reuseSession = false,
     required this.preset,
     this.customCron,
@@ -92,6 +93,7 @@ class Automation {
       targetMemberId: json['targetMemberId'] as String? ?? 'team-lead',
       message: json['message'] as String? ?? '',
       cli: json['cli'] == null ? null : CliTool.parse(json['cli']),
+      cliPresetId: json['cliPresetId'] as String?,
       reuseSession: json['reuseSession'] as bool? ?? false,
       preset: _requireEnum(
         AutomationSchedulePreset.values,
@@ -125,6 +127,9 @@ class Automation {
   final String targetMemberId;
   final String message;
   final CliTool? cli;
+
+  /// Personal [launchPrompt]: global CLI preset id (provider/model/effort).
+  final String? cliPresetId;
   final bool reuseSession;
   final AutomationSchedulePreset preset;
   final String? customCron;
@@ -185,9 +190,7 @@ class Automation {
           throw ArgumentError('scheduledMessage must not reuse session');
         }
       case AutomationAction.launchPrompt:
-        if (cli == null) {
-          throw ArgumentError('launchPrompt requires cli');
-        }
+        break;
     }
     if (preset == AutomationSchedulePreset.custom &&
         (customCron == null || customCron!.trim().isEmpty)) {
@@ -223,6 +226,8 @@ class Automation {
     String? message,
     CliTool? cli,
     bool clearCli = false,
+    String? cliPresetId,
+    bool clearCliPresetId = false,
     bool? reuseSession,
     AutomationSchedulePreset? preset,
     String? customCron,
@@ -255,6 +260,8 @@ class Automation {
       targetMemberId: targetMemberId ?? this.targetMemberId,
       message: message ?? this.message,
       cli: clearCli ? null : (cli ?? this.cli),
+      cliPresetId:
+          clearCliPresetId ? null : (cliPresetId ?? this.cliPresetId),
       reuseSession: reuseSession ?? this.reuseSession,
       preset: preset ?? this.preset,
       customCron: clearCustomCron ? null : (customCron ?? this.customCron),
@@ -288,6 +295,8 @@ class Automation {
       if (isLaunchPrompt) 'targetMemberId': targetMemberId,
       'message': message,
       if (cli != null) 'cli': cli!.value,
+      if (cliPresetId != null && cliPresetId!.isNotEmpty)
+        'cliPresetId': cliPresetId,
       if (reuseSession) 'reuseSession': reuseSession,
       'preset': preset.name,
       if (customCron != null && customCron!.isNotEmpty) 'customCron': customCron,
@@ -321,6 +330,7 @@ class Automation {
             targetMemberId == other.targetMemberId &&
             message == other.message &&
             cli == other.cli &&
+            cliPresetId == other.cliPresetId &&
             reuseSession == other.reuseSession &&
             preset == other.preset &&
             customCron == other.customCron &&
@@ -350,6 +360,7 @@ class Automation {
         targetMemberId,
         message,
         cli,
+        cliPresetId,
         reuseSession,
         preset,
         customCron,

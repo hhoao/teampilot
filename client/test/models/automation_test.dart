@@ -59,27 +59,29 @@ void main() {
     expect(back, a);
   });
 
-  test('launchPrompt requires cli', () {
-    expect(
-      () => Automation(
-        id: 'x',
-        name: 'n',
-        action: AutomationAction.launchPrompt,
-        workspaceId: 'ws',
-        launchProfileId: _defaultLaunchProfileId,
-        targetMemberId: 'team-lead',
-        message: 'ping',
-        preset: AutomationSchedulePreset.daily,
-        minute: 0,
-        hourMinute: '09:00',
-        timezone: 'UTC',
-        dtstartMs: 0,
-        enabled: true,
-        createdAtMs: 0,
-        updatedAtMs: 0,
-      ).validate(),
-      throwsA(isA<ArgumentError>()),
+  test('launchPrompt round-trips cliPresetId', () {
+    final a = Automation(
+      id: 'x',
+      name: 'n',
+      action: AutomationAction.launchPrompt,
+      workspaceId: 'ws',
+      launchProfileId: _defaultLaunchProfileId,
+      targetMemberId: 'team-lead',
+      message: 'ping',
+      cliPresetId: 'preset-1',
+      preset: AutomationSchedulePreset.daily,
+      minute: 0,
+      hourMinute: '09:00',
+      timezone: 'UTC',
+      dtstartMs: 0,
+      enabled: true,
+      createdAtMs: 0,
+      updatedAtMs: 0,
     );
+    a.validate();
+    final back = Automation.fromJson(a.toJson());
+    expect(back.cliPresetId, 'preset-1');
+    expect(back.cli, isNull);
   });
 
   test('scheduledMessage requires sessionId', () {

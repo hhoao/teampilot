@@ -4607,10 +4607,57 @@ class AppLocalizationsEn extends AppLocalizations {
   }
 
   @override
+  String get automationsSidebarTitle => 'Automations';
+
+  @override
+  String automationsSidebarWithNextRun(String time) {
+    return 'Automations · $time';
+  }
+
+  @override
   String get automationsFilterAll => 'All';
 
   @override
   String get automationsFilterEnabled => 'Enabled only';
+
+  @override
+  String get automationsFilterDisabled => 'Disabled only';
+
+  @override
+  String get automationsFilterStatusLabel => 'Status';
+
+  @override
+  String get automationsFilterActionLabel => 'Action type';
+
+  @override
+  String get automationsFilterActionAll => 'All actions';
+
+  @override
+  String get automationsFilterScheduledMessage => 'Scheduled messages';
+
+  @override
+  String get automationsFilterLaunchPrompt => 'Launch prompts';
+
+  @override
+  String get automationsSort => 'Sort automations';
+
+  @override
+  String get automationsSortNameAsc => 'Name (A–Z)';
+
+  @override
+  String get automationsSortNameDesc => 'Name (Z–A)';
+
+  @override
+  String get automationsSortNextRun => 'Next run';
+
+  @override
+  String get automationsSortRecentlyUpdated => 'Recently updated';
+
+  @override
+  String get automationsShowFilter => 'Show filters';
+
+  @override
+  String get automationsHideFilter => 'Hide filters';
 
   @override
   String automationsScheduleSummaryHourly(int minute) {

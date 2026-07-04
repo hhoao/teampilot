@@ -240,13 +240,17 @@ class AutomationDispatcher {
     final plannedSessionId = _uuid.v4();
     final SessionOpenStatus status;
     if (kind == LaunchProfileKind.personal) {
+      final presetId = automation.cliPresetId?.trim() ?? '';
+      final legacyCli =
+          presetId.isEmpty ? automation.cli : null;
       status = await _requestCreateAndOpenSession(
         SessionCreateRequest(
           workspace: workspace,
           isPersonal: true,
           personalIdentityId: automation.launchProfileId,
           repo: _sessionRepository,
-          cli: automation.cli,
+          cli: legacyCli,
+          personalPresetId: presetId.isNotEmpty ? presetId : null,
           fixedSessionId: plannedSessionId,
         ),
       );
@@ -261,7 +265,6 @@ class AutomationDispatcher {
           team: team,
           member: member,
           repo: _sessionRepository,
-          cli: automation.cli,
           fixedSessionId: plannedSessionId,
         ),
       );
@@ -345,6 +348,7 @@ class AutomationDispatcher {
         final ctx = await resolver.resolve(
           session: session,
           workspace: workspace,
+          presetIdOverride: automation.cliPresetId?.trim() ?? '',
         );
         return ctx.personalMember.id;
       }

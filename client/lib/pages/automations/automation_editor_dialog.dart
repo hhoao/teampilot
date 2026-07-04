@@ -1,17 +1,21 @@
+import 'package:collection/collection.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:uuid/uuid.dart';
 
 import '../../cubits/automation_cubit.dart';
+import '../../cubits/cli_presets_cubit.dart';
+import '../../cubits/launch_profile_cubit.dart';
 import '../../l10n/l10n_extensions.dart';
 import '../../models/automation.dart';
+import '../../models/launch_profile_kind.dart';
+import '../../models/personal_profile.dart';
 import '../../models/team_config.dart';
 import '../../services/automation/automation_schedule_calculator.dart';
-import '../../services/cli/registry/cli_display_name.dart';
-import '../../services/cli/registry/cli_tool_registry_scope.dart';
 import '../../theme/app_text_styles.dart';
 import '../../widgets/app_dialog.dart';
+import '../../widgets/cli/cli_preset_dropdown_field.dart';
 import '../../widgets/dropdown/app_dropdown_decoration.dart';
 import '../../widgets/dropdown/app_dropdown_field.dart';
 import 'automation_schedule_picker.dart';
@@ -67,18 +71,34 @@ class _AutomationEditorDialogState extends State<AutomationEditorDialog> {
   final _calculator = AutomationScheduleCalculator();
   late final TextEditingController _nameCtl;
   late final TextEditingController _messageCtl;
-  late final TextEditingController _targetMemberCtl;
   late final TextEditingController _maxRunCountCtl;
-  late CliTool _cli;
   late bool _reuseSession;
   late bool _enabled;
   late AutomationScheduleDraft _schedule;
   String? _errorMessage;
+  String? _cliPresetId;
+  String _targetMemberId = 'team-lead';
+  var _didSeedLaunchFields = false;
 
   bool get _isScheduledMessage =>
       widget.kind == AutomationEditorKind.scheduledMessage;
 
   bool get _isEditing => widget.initial != null;
+
+  String get _launchProfileId =>
+      widget.initial?.launchProfileId ?? widget.launchProfileId ?? '';
+
+  LaunchProfileKind get _launchKind {
+    final profile = context.read<LaunchProfileCubit>().state.byId(_launchProfileId);
+    return profile?.kind ?? LaunchProfileKind.personal;
+  }
+
+  bool get _isPersonalLaunch => _launchKind == LaunchProfileKind.personal;
+
+  TeamProfile? get _teamProfile {
+    final profile = context.read<LaunchProfileCubit>().state.byId(_launchProfileId);
+    return profile is TeamProfile ? profile : null;
+  }
 
   @override
   void initState() {
@@ -92,13 +112,11 @@ class _AutomationEditorDialogState extends State<AutomationEditorDialog> {
       text: initial?.name ?? widget.defaultName ?? '',
     );
     _messageCtl = TextEditingController(text: initial?.message ?? '');
-    _targetMemberCtl = TextEditingController(
-      text: initial?.targetMemberId ?? 'team-lead',
-    );
     _maxRunCountCtl = TextEditingController(
       text: initial?.maxRunCount?.toString() ?? '',
     );
-    _cli = initial?.cli ?? CliTool.claude;
+    _cliPresetId = initial?.cliPresetId;
+    _targetMemberId = initial?.targetMemberId ?? 'team-lead';
     _reuseSession = initial?.reuseSession ?? false;
     _enabled = initial?.enabled ?? true;
     _schedule = initial != null
@@ -118,10 +136,70 @@ class _AutomationEditorDialogState extends State<AutomationEditorDialog> {
   }
 
   @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    if (_didSeedLaunchFields || _isScheduledMessage) return;
+    _didSeedLaunchFields = true;
+    _seedLaunchPromptDefaults();
+  }
+
+  void _seedLaunchPromptDefaults() {
+    final initial = widget.initial;
+    if (_cliPresetId != null && _cliPresetId!.trim().isNotEmpty) return;
+
+    if (initial?.cliPresetId != null && initial!.cliPresetId!.trim().isNotEmpty) {
+      setState(() => _cliPresetId = initial.cliPresetId);
+      return;
+    }
+
+    if (_isPersonalLaunch) {
+      final presets = context.read<CliPresetsCubit>().state.presets;
+      final profile =
+          context.read<LaunchProfileCubit>().state.byId(_launchProfileId);
+      final personal = profile is PersonalProfile ? profile : null;
+      final activePresetId = personal?.activePresetId?.trim() ?? '';
+      if (activePresetId.isNotEmpty &&
+          presets.any((p) => p.id == activePresetId)) {
+        setState(() => _cliPresetId = activePresetId);
+        return;
+      }
+      if (initial?.cli != null) {
+        final match =
+            presets.where((p) => p.cli == initial!.cli).firstOrNull;
+        if (match != null) {
+          setState(() => _cliPresetId = match.id);
+          return;
+        }
+      }
+      if (presets.isNotEmpty) {
+        setState(() => _cliPresetId = presets.first.id);
+      }
+      return;
+    }
+
+    final team = _teamProfile;
+    if (team == null) return;
+    final memberId = initial?.targetMemberId.trim() ?? '';
+    if (memberId.isNotEmpty &&
+        team.members.any((m) => m.id == memberId && m.isValid)) {
+      setState(() => _targetMemberId = memberId);
+      return;
+    }
+    final lead = team.members.where((m) => m.id == 'team-lead').firstOrNull;
+    if (lead != null && lead.isValid) {
+      setState(() => _targetMemberId = lead.id);
+      return;
+    }
+    final first = team.members.where((m) => m.isValid).firstOrNull;
+    if (first != null) {
+      setState(() => _targetMemberId = first.id);
+    }
+  }
+
+  @override
   void dispose() {
     _nameCtl.dispose();
     _messageCtl.dispose();
-    _targetMemberCtl.dispose();
     _maxRunCountCtl.dispose();
     super.dispose();
   }
@@ -133,6 +211,14 @@ class _AutomationEditorDialogState extends State<AutomationEditorDialog> {
     if (name.isEmpty || message.isEmpty) {
       setState(() => _errorMessage = l10n.automationsValidationRequired);
       return;
+    }
+
+    if (!_isScheduledMessage && _isPersonalLaunch) {
+      final presetId = _cliPresetId?.trim() ?? '';
+      if (presetId.isEmpty) {
+        setState(() => _errorMessage = l10n.workspaceCliPresetsEmptyHint);
+        return;
+      }
     }
 
     if (_schedule.preset == AutomationSchedulePreset.custom) {
@@ -170,6 +256,7 @@ class _AutomationEditorDialogState extends State<AutomationEditorDialog> {
         ? (widget.initial?.sessionId ?? widget.sessionId)
         : null;
 
+    final presetId = _cliPresetId?.trim();
     final automation = Automation(
       id: widget.initial?.id ?? const Uuid().v4(),
       name: name,
@@ -179,11 +266,10 @@ class _AutomationEditorDialogState extends State<AutomationEditorDialog> {
       workspaceId: workspaceId,
       launchProfileId: launchProfileId,
       sessionId: sessionId,
-      targetMemberId: _targetMemberCtl.text.trim().isEmpty
-          ? 'team-lead'
-          : _targetMemberCtl.text.trim(),
+      targetMemberId: _isPersonalLaunch ? 'team-lead' : _targetMemberId,
       message: message,
-      cli: _isScheduledMessage ? null : _cli,
+      cli: null,
+      cliPresetId: _isPersonalLaunch ? presetId : null,
       reuseSession: _isScheduledMessage ? false : _reuseSession,
       preset: _schedule.preset,
       customCron: _schedule.customCron,
@@ -221,6 +307,11 @@ class _AutomationEditorDialogState extends State<AutomationEditorDialog> {
     await cubit.save(saved);
     if (!mounted) return;
     Navigator.of(context).pop(saved);
+  }
+
+  List<TeamMemberConfig> get _teamMemberItems {
+    final members = _teamProfile?.members ?? const [];
+    return members.where((m) => m.isValid).toList(growable: false);
   }
 
   @override
@@ -266,34 +357,51 @@ class _AutomationEditorDialogState extends State<AutomationEditorDialog> {
           ),
           if (!_isScheduledMessage) ...[
             const SizedBox(height: 16),
-            Text(l10n.automationsCli, style: styles.bodySmall.copyWith(fontWeight: FontWeight.w600)),
-            const SizedBox(height: 8),
-            AppDropdownField<CliTool>(
-              items: CliTool.values,
-              initialItem: _cli,
-              decoration: AppDropdownDecorations.themed(context),
-              itemLabel: (cli) {
-                final registry = CliToolRegistryScope.of(context);
-                final def = registry.tryGet(cli);
-                if (def == null) return cli.value;
-                return cliDisplayName(def, l10n, registry: registry);
-              },
-              onChanged: (value) {
-                if (value == null) return;
-                setState(() => _cli = value);
-              },
-            ),
+            if (_isPersonalLaunch) ...[
+              CliPresetDropdownField(
+                label: l10n.presetPickerTitle,
+                selectedPresetId: _cliPresetId,
+                onChanged: (value) {
+                  if (value == null) return;
+                  setState(() => _cliPresetId = value);
+                },
+              ),
+            ] else ...[
+              Text(
+                l10n.automationsTargetMember,
+                style: styles.bodySmall.copyWith(fontWeight: FontWeight.w600),
+              ),
+              const SizedBox(height: 8),
+              if (_teamMemberItems.isEmpty)
+                Text(
+                  l10n.automationsValidationRequired,
+                  style: styles.bodySmall.copyWith(color: cs.error),
+                )
+              else
+                AppDropdownField<String>(
+                  items: _teamMemberItems.map((m) => m.id).toList(),
+                  initialItem: _teamMemberItems
+                          .any((m) => m.id == _targetMemberId)
+                      ? _targetMemberId
+                      : _teamMemberItems.first.id,
+                  decoration: AppDropdownDecorations.themed(context),
+                  itemLabel: (memberId) {
+                    final member =
+                        _teamMemberItems.where((m) => m.id == memberId).firstOrNull;
+                    return member?.name ?? memberId;
+                  },
+                  onChanged: (value) {
+                    if (value == null) return;
+                    setState(() => _targetMemberId = value);
+                  },
+                ),
+            ],
             const SizedBox(height: 8),
             SwitchListTile(
               contentPadding: EdgeInsets.zero,
               title: Text(l10n.automationsReuseSession),
               value: _reuseSession,
               onChanged: (v) => setState(() => _reuseSession = v),
-            ),
-            const SizedBox(height: 8),
-            TextField(
-              controller: _targetMemberCtl,
-              decoration: InputDecoration(labelText: l10n.automationsTargetMember),
             ),
           ],
           const SizedBox(height: 16),

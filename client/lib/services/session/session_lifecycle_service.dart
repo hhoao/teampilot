@@ -106,6 +106,16 @@ class SessionLifecycleService {
     return resolveActivePreset(personal.activePresetId, presets);
   }
 
+  /// Resolves a global CLI preset by id.
+  Future<CliPreset?> resolvePresetById(String presetId) async {
+    final trimmed = presetId.trim();
+    if (trimmed.isEmpty) return null;
+    final repo = _cliPresetsRepository;
+    if (repo == null) return null;
+    final presets = await repo.load();
+    return resolveActivePreset(trimmed, presets);
+  }
+
   Future<CliPreset?> _resolvePersonalPreset(
     AppSession session,
     PersonalProfile personal,
