@@ -157,11 +157,11 @@ AutomationRepository testAutomationRepository() {
 
 class _NoopAutomationBusGateway implements AutomationBusGateway {
   @override
-  void deliverUserCommandToMember(
+  Future<void> deliverUserCommandToMember(
     String sessionId,
     String memberId,
     String message,
-  ) {}
+  ) async {}
 
   @override
   Future<void> ensureMemberReady(String sessionId, String memberId) async {}

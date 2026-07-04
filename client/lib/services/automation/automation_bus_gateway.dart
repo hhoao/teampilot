@@ -2,12 +2,13 @@ import '../../cubits/chat/tab_team_bus_coordinator.dart';
 
 /// Delivery seam for automation dispatch (TeamBus / PTY inject path).
 abstract interface class AutomationBusGateway {
-  void deliverUserCommandToMember(
+  Future<void> deliverUserCommandToMember(
     String sessionId,
     String memberId,
     String message,
   );
 
+  /// PTY connected and member past startup (TUI frame + agent loop when needed).
   Future<void> ensureMemberReady(String sessionId, String memberId);
 }
 
@@ -17,16 +18,20 @@ class TabTeamBusGateway implements AutomationBusGateway {
   final TabTeamBusCoordinator _coordinator;
 
   @override
-  void deliverUserCommandToMember(
+  Future<void> deliverUserCommandToMember(
     String sessionId,
     String memberId,
     String message,
   ) {
-    _coordinator.deliverUserCommandToMember(sessionId, memberId, message);
+    return _coordinator.deliverUserCommandToMember(
+      sessionId,
+      memberId,
+      message,
+    );
   }
 
   @override
   Future<void> ensureMemberReady(String sessionId, String memberId) {
-    return _coordinator.materializeMember(sessionId, memberId, '');
+    return _coordinator.ensureMemberInputReady(sessionId, memberId);
   }
 }

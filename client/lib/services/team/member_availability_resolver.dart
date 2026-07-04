@@ -89,6 +89,33 @@ abstract final class MemberAvailabilityResolver {
         : MemberAvailability.idle;
   }
 
+  /// Automation / scheduled message inject: safe once startup finished (TUI
+  /// frame stable; mixed forceWait CLIs also parked in `wait_for_message`).
+  static bool isReadyForAutomationInput({
+    required TerminalSession shell,
+    required TeamMemberConfig member,
+    required TeamProfile team,
+    required TeamMode teamMode,
+    required List<CliPreset> globalPresets,
+    TeamBus? bus,
+    required bool claudeRosterWorking,
+    required bool usesClaudeRoster,
+    required bool usesShellActivity,
+  }) {
+    return forConnected(
+          shell: shell,
+          member: member,
+          team: team,
+          teamMode: teamMode,
+          globalPresets: globalPresets,
+          bus: bus,
+          claudeRosterWorking: claudeRosterWorking,
+          usesClaudeRoster: usesClaudeRoster,
+          usesShellActivity: usesShellActivity,
+        ) !=
+        MemberAvailability.booting;
+  }
+
   /// Gate for push-CLI PTY heuristics — avoids boot-time repaint false positives.
   static bool _pushCliAllowsPtyWorking({
     required TeamBus bus,

@@ -37,11 +37,11 @@ class _RecordingBusGateway implements AutomationBusGateway {
   final ensureCalls = <(String sessionId, String memberId)>[];
 
   @override
-  void deliverUserCommandToMember(
+  Future<void> deliverUserCommandToMember(
     String sessionId,
     String memberId,
     String message,
-  ) {
+  ) async {
     deliverCalls.add((sessionId, memberId, message));
   }
 
@@ -186,7 +186,7 @@ void main() {
     final result = await dispatcher.dispatch(_scheduledMessageAutomation(sessionId: 'sess-2'));
 
     expect(result.run.status, AutomationRunStatus.dispatchFailed);
-    expect(result.run.error, 'member_connect_timeout');
+    expect(result.run.error, 'member_not_ready');
   });
 
   test('dispatch increments runCount and disables at maxRunCount', () async {
@@ -234,11 +234,11 @@ void main() {
 
 class _SlowBusGateway implements AutomationBusGateway {
   @override
-  void deliverUserCommandToMember(
+  Future<void> deliverUserCommandToMember(
     String sessionId,
     String memberId,
     String message,
-  ) {}
+  ) async {}
 
   @override
   Future<void> ensureMemberReady(String sessionId, String memberId) async {

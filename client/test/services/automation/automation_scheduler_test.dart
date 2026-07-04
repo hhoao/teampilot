@@ -37,11 +37,11 @@ class _RecordingBusGateway implements AutomationBusGateway {
   var deliverCount = 0;
 
   @override
-  void deliverUserCommandToMember(
+  Future<void> deliverUserCommandToMember(
     String sessionId,
     String memberId,
     String message,
-  ) {
+  ) async {
     deliverCount++;
   }
 

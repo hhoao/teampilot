@@ -9,6 +9,8 @@ import '../../models/team_config.dart';
 import '../../services/cli/preset_resolver.dart';
 import '../../services/cli/registry/capabilities/terminal_behavior_capability.dart';
 import '../../services/cli/registry/cli_tool_registry.dart';
+import '../../services/cli/registry/capabilities/presence_capability.dart';
+import '../../services/team/member_availability_resolver.dart';
 import '../../services/team/member_turn_idle_sync.dart';
 import '../../services/team_bus/agent_node.dart';
 import '../../services/team_bus/artifacts/artifact_transfer_service.dart';
@@ -21,6 +23,7 @@ import '../../services/team_bus/tasks/task_log_factory.dart';
 import '../../services/team_bus/tasks/task_queue.dart';
 import '../../services/team_bus/team_bus.dart';
 import '../../services/team_bus/teammate_roster_profile.dart';
+import '../../services/terminal/terminal_session.dart';
 import '../../utils/logger.dart';
 import '../../utils/team_member_naming.dart';
 import 'chat_session_shell_factory.dart';
@@ -212,6 +215,68 @@ class TabTeamBusCoordinator implements MemberMaterializer {
     _memberReady.remove((sessionId, memberId))?.complete();
   }
 
+  /// PTY connect + TUI/agent startup complete — used before automation inject.
+  Future<void> ensureMemberInputReady(String sessionId, String memberId) async {
+    await materializeMember(sessionId, memberId, '');
+    while (!_isClosed()) {
+      if (_isMemberReadyForAutomationInput(sessionId, memberId)) {
+        appLogger.d(
+          '[team-bus] input-ready member=$memberId session=$sessionId',
+        );
+        return;
+      }
+      await Future<void>.delayed(const Duration(milliseconds: 100));
+    }
+  }
+
+  bool _isMemberReadyForAutomationInput(String sessionId, String memberId) {
+    final tab = _tabStore.bySessionId(sessionId);
+    if (tab == null) return false;
+    final shell = tab.memberShells[memberId];
+    if (shell == null || !shell.isConnected) return false;
+
+    final session = tab.persistedSession;
+    final isPersonal =
+        session == null || session.sessionTeam.trim().isEmpty;
+    final globalPresets = _globalPresets();
+
+    if (isPersonal) {
+      return MemberAvailabilityResolver.isReadyForAutomationInput(
+        shell: shell,
+        member: TeamMemberConfig(id: memberId, name: memberId),
+        team: const TeamProfile(id: '', name: ''),
+        teamMode: TeamMode.native,
+        globalPresets: globalPresets,
+        bus: null,
+        claudeRosterWorking: false,
+        usesClaudeRoster: false,
+        usesShellActivity: true,
+      );
+    }
+
+    final team = _activeTeam();
+    if (team == null) return false;
+    final member = team.members.firstWhere(
+      (m) => m.id == memberId,
+      orElse: () => const TeamMemberConfig(id: '', name: ''),
+    );
+    if (!member.isValid) return false;
+
+    final presenceCap =
+        CliToolRegistry.builtIn().capability<PresenceCapability>(team.cli);
+    return MemberAvailabilityResolver.isReadyForAutomationInput(
+      shell: shell,
+      member: member,
+      team: team,
+      teamMode: team.teamMode,
+      globalPresets: globalPresets,
+      bus: tab.teamBus,
+      claudeRosterWorking: false,
+      usesClaudeRoster: presenceCap?.usesClaudeRoster ?? false,
+      usesShellActivity: presenceCap?.usesShellActivity ?? false,
+    );
+  }
+
   @override
   Future<void> materializeMember(
     String sessionId,
@@ -267,6 +332,18 @@ class TabTeamBusCoordinator implements MemberMaterializer {
 
   @override
   void injectMemberStdin(String sessionId, String memberId, String text) {
+    unawaited(_submitMemberStdin(sessionId, memberId, text));
+  }
+
+  /// Bracketed-paste + CR for full-screen CLIs; [automationDelivery] uses a
+  /// longer settle and awaits a follow-up CR (first Enter often becomes a
+  /// literal newline right after boot).
+  Future<void> _submitMemberStdin(
+    String sessionId,
+    String memberId,
+    String text, {
+    bool automationDelivery = false,
+  }) async {
     final shell = _tabStore.bySessionId(sessionId)?.memberShells[memberId];
     if (shell == null) {
       appLogger.w(
@@ -291,16 +368,28 @@ class TabTeamBusCoordinator implements MemberMaterializer {
     appLogger.d(
       '[team-bus] pty-inject member=$memberId '
       'session=$sessionId fullscreen=$usesFullScreen '
+      'automation=$automationDelivery '
       'chars=${trimmed.length} '
       'preview=${_doorbellLogPreview(trimmed)}',
     );
     if (usesFullScreen) {
-      unawaited(
-        shell.submitFullScreenInput(
-          trimmed,
-          pasteSettleDelay: behavior?.fullScreenPasteSettleDelay,
-        ),
+      final base = behavior?.fullScreenPasteSettleDelay ??
+          TerminalSession.fullScreenSubmitDelay;
+      final settle = automationDelivery
+          ? Duration(
+              milliseconds: base.inMilliseconds < 150
+                  ? 150
+                  : base.inMilliseconds,
+            )
+          : base;
+      await shell.submitFullScreenInput(
+        trimmed,
+        pasteSettleDelay: settle,
       );
+      if (automationDelivery) {
+        await Future<void>.delayed(const Duration(milliseconds: 50));
+        await shell.submitPendingCr();
+      }
     } else {
       shell.writeln(trimmed);
     }
@@ -358,18 +447,22 @@ class TabTeamBusCoordinator implements MemberMaterializer {
   TeamBus? busForSession(String sessionId) =>
       _tabStore.bySessionId(sessionId)?.teamBus;
 
-  void deliverUserCommandToMember(
+  Future<void> deliverUserCommandToMember(
     String sessionId,
     String memberId,
     String message,
-  ) {
+  ) async {
     final bus = busForSession(sessionId);
     if (bus != null) {
       bus.deliverUserCommand(memberId, message);
       return;
     }
-    injectMemberStdin(sessionId, memberId, message);
-    submitMemberPending(sessionId, memberId);
+    await _submitMemberStdin(
+      sessionId,
+      memberId,
+      message,
+      automationDelivery: true,
+    );
   }
 
   bool hasTeamBusResources(String sessionId) {

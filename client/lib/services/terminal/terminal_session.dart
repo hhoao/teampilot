@@ -237,7 +237,10 @@ class TerminalSession implements TerminalTextSink {
 
   /// Settle window between bracketed-paste content and the standalone CR for
   /// full-screen TUI CLIs, matching Claude Code's own ~10ms child-PTY delay.
-  static const _fullScreenSubmitDelay = Duration(milliseconds: 10);
+  /// Default settle between bracketed-paste content and standalone CR (local PTY).
+  static const fullScreenSubmitDelay = Duration(milliseconds: 10);
+
+  static const _fullScreenSubmitDelay = fullScreenSubmitDelay;
 
   int get viewWidth => _pendingViewportCols;
   int get viewHeight => _pendingViewportRows;

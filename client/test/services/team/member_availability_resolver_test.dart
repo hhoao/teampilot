@@ -23,7 +23,41 @@ void main() {
       expect(_resolve(shell, bus: null), MemberAvailability.idle);
     });
 
-    test('mixed forceWait: idle only in wait_for_message', () {
+    test('isReadyForAutomationInput false while booting', () {
+      final shell = _ConnectedShell();
+      shell.activityTracker.reset();
+      expect(
+        MemberAvailabilityResolver.isReadyForAutomationInput(
+          shell: shell,
+          member: const TeamMemberConfig(id: 'worker', name: 'worker'),
+          team: const TeamProfile(id: 't', name: 'T', teamMode: TeamMode.mixed),
+          teamMode: TeamMode.mixed,
+          globalPresets: const [],
+          bus: null,
+          claudeRosterWorking: false,
+          usesClaudeRoster: false,
+          usesShellActivity: true,
+        ),
+        isFalse,
+      );
+      shell.activityTracker.latchBootFrameReadyForTest();
+      expect(
+        MemberAvailabilityResolver.isReadyForAutomationInput(
+          shell: shell,
+          member: const TeamMemberConfig(id: 'worker', name: 'worker'),
+          team: const TeamProfile(id: 't', name: 'T', teamMode: TeamMode.mixed),
+          teamMode: TeamMode.mixed,
+          globalPresets: const [],
+          bus: null,
+          claudeRosterWorking: false,
+          usesClaudeRoster: false,
+          usesShellActivity: true,
+        ),
+        isTrue,
+      );
+    });
+
+    test('mixed forceWait: not ready until wait_for_message', () {
       final shell = _ConnectedShell()..activityTracker.latchBootFrameReadyForTest();
       final bus = TeamBus(launcher: FakeMemberLauncher());
       bus.declareMember(
@@ -48,6 +82,25 @@ void main() {
         ),
       );
       expect(_resolve(shell, bus: bus), MemberAvailability.idle);
+      expect(
+        MemberAvailabilityResolver.isReadyForAutomationInput(
+          shell: shell,
+          member: const TeamMemberConfig(id: 'worker', name: 'worker'),
+          team: const TeamProfile(
+            id: 't',
+            name: 'T',
+            teamMode: TeamMode.mixed,
+            members: [TeamMemberConfig(id: 'worker', name: 'worker')],
+          ),
+          teamMode: TeamMode.mixed,
+          globalPresets: const [],
+          bus: bus,
+          claudeRosterWorking: false,
+          usesClaudeRoster: false,
+          usesShellActivity: false,
+        ),
+        isTrue,
+      );
     });
 
     test('mixed in-turn is working regardless of PTY quiet', () {

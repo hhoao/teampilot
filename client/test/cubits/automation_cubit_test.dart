@@ -29,11 +29,11 @@ class _FakeSessionRepository implements SessionRepository {
 
 class _NoopBusGateway implements AutomationBusGateway {
   @override
-  void deliverUserCommandToMember(
+  Future<void> deliverUserCommandToMember(
     String sessionId,
     String memberId,
     String message,
-  ) {}
+  ) async {}
 
   @override
   Future<void> ensureMemberReady(String sessionId, String memberId) async {}

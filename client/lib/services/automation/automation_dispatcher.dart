@@ -167,7 +167,7 @@ class AutomationDispatcher {
         AutomationRunStatus.dispatchFailed,
         startedAtMs: startedAtMs,
         sessionId: session.sessionId,
-        error: 'member_connect_timeout',
+        error: 'member_not_ready',
       );
       final updated = _advanceAutomationAfterRun(
         automation,
@@ -176,7 +176,7 @@ class AutomationDispatcher {
       return (failed, updated);
     }
 
-    _busGateway.deliverUserCommandToMember(
+    await _busGateway.deliverUserCommandToMember(
       session.sessionId,
       memberId,
       automation.message,
