@@ -31,7 +31,7 @@ class AutomationTabScope {
 
   factory AutomationTabScope.fromJson(Map<String, Object?> json) {
     final workspaceId = (json['workspaceId'] as String?)?.trim() ?? '';
-    final launchProfileId = (json['as'] as String?)?.trim() ?? '';
+    final launchProfileId = (json['profile'] as String?)?.trim() ?? '';
     if (workspaceId.isEmpty || launchProfileId.isEmpty) {
       throw FormatException('invalid automation tab scope: $json');
     }
@@ -61,10 +61,10 @@ class AutomationTabScope {
 
   Map<String, Object?> toJson() => {
         'workspaceId': workspaceId,
-        'as': launchProfileId,
+        'profile': launchProfileId,
       };
 
-  /// Whether [session] belongs to this tab scope (same rule as sidebar filtering).
+  /// Whether [session] belongs to this tab scope.
   bool ownsSession(AppSession session, LaunchProfileKind launchKind) {
     if (session.workspaceId != workspaceId) return false;
     return session.sessionTeam.trim() == sessionTeamFilterForKind(launchKind);

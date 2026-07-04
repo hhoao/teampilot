@@ -18,7 +18,7 @@ class AutomationCatalogEntry {
   factory AutomationCatalogEntry.fromJson(Map<String, Object?> json) {
     return AutomationCatalogEntry(
       workspaceId: json['workspaceId'] as String? ?? '',
-      launchProfileId: json['as'] as String? ?? '',
+      launchProfileId: json['profile'] as String? ?? '',
       path: json['path'] as String? ?? '',
       updatedAtMs: (json['updatedAtMs'] as num?)?.toInt() ?? 0,
     );
@@ -36,7 +36,7 @@ class AutomationCatalogEntry {
 
   Map<String, Object?> toJson() => {
         'workspaceId': workspaceId,
-        'as': launchProfileId,
+        'profile': launchProfileId,
         'path': path,
         'updatedAtMs': updatedAtMs,
       };

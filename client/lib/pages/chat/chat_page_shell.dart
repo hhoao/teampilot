@@ -125,7 +125,7 @@ class ChatPageShell extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final active = _activeContext(context);
-    final isPersonalWorkspace = active.isPersonal;
+    final isPersonalContext = active.isPersonal;
     final team = active.team;
     final toolsAsDrawer = useRightToolsAsDrawer(context);
 
@@ -136,7 +136,7 @@ class ChatPageShell extends StatelessWidget {
           cwd: cwd,
           additionalPaths: additionalPaths,
           sessionId: sessionId,
-          isPersonalWorkspace: isPersonalWorkspace,
+          isPersonalContext: isPersonalContext,
           workspaceId: workspaceId,
           tabScopeId: tabScopeId,
           routeActive: routeActive,
@@ -151,7 +151,7 @@ class ChatPageShell extends StatelessWidget {
           cwd: cwd,
           additionalPaths: additionalPaths,
           sessionId: sessionId,
-          isPersonalWorkspace: isPersonalWorkspace,
+          isPersonalContext: isPersonalContext,
           workspaceId: workspaceId,
           tabScopeId: tabScopeId,
           routeActive: routeActive,
@@ -168,7 +168,7 @@ class _ChatPageSplitLayout extends StatelessWidget {
     required this.cwd,
     required this.additionalPaths,
     required this.sessionId,
-    required this.isPersonalWorkspace,
+    required this.isPersonalContext,
     required this.workspaceId,
     required this.tabScopeId,
     required this.routeActive,
@@ -178,7 +178,7 @@ class _ChatPageSplitLayout extends StatelessWidget {
   final String cwd;
   final List<String> additionalPaths;
   final String? sessionId;
-  final bool isPersonalWorkspace;
+  final bool isPersonalContext;
   final String workspaceId;
   final String tabScopeId;
   final bool routeActive;
@@ -192,7 +192,7 @@ class _ChatPageSplitLayout extends StatelessWidget {
       center: _ChatWorkspaceShell(
         cwd: cwd,
         sessionId: sessionId,
-        isPersonalWorkspace: isPersonalWorkspace,
+        isPersonalContext: isPersonalContext,
         workspaceId: workspaceId,
         tabScopeId: tabScopeId,
         routeActive: routeActive,
@@ -201,7 +201,7 @@ class _ChatPageSplitLayout extends StatelessWidget {
       rightTools: _ChatRightToolsPanelSlot(
         cwd: cwd,
         additionalPaths: additionalPaths,
-        isPersonalWorkspace: isPersonalWorkspace,
+        isPersonalContext: isPersonalContext,
         team: team,
         workspaceId: workspaceId,
         tabScopeId: tabScopeId,
@@ -215,7 +215,7 @@ class _ChatRightToolsPanelSlot extends StatelessWidget {
   const _ChatRightToolsPanelSlot({
     required this.cwd,
     required this.additionalPaths,
-    required this.isPersonalWorkspace,
+    required this.isPersonalContext,
     required this.team,
     required this.workspaceId,
     required this.tabScopeId,
@@ -223,7 +223,7 @@ class _ChatRightToolsPanelSlot extends StatelessWidget {
 
   final String cwd;
   final List<String> additionalPaths;
-  final bool isPersonalWorkspace;
+  final bool isPersonalContext;
   final TeamProfile? team;
   final String workspaceId;
   final String tabScopeId;
@@ -239,7 +239,7 @@ class _ChatRightToolsPanelSlot extends StatelessWidget {
       preferences: layout.asPreferences,
       panelKey: AppKeys.rightToolsPanel,
       dismissDrawerOnAction: false,
-      isPersonalWorkspace: isPersonalWorkspace,
+      isPersonalContext: isPersonalContext,
       team: team,
       workspaceId: workspaceId,
       toolsScopeId: tabScopeId,
@@ -252,7 +252,7 @@ class _ChatPageDrawerLayout extends StatelessWidget {
     required this.cwd,
     required this.additionalPaths,
     required this.sessionId,
-    required this.isPersonalWorkspace,
+    required this.isPersonalContext,
     required this.workspaceId,
     required this.tabScopeId,
     required this.routeActive,
@@ -262,7 +262,7 @@ class _ChatPageDrawerLayout extends StatelessWidget {
   final String cwd;
   final List<String> additionalPaths;
   final String? sessionId;
-  final bool isPersonalWorkspace;
+  final bool isPersonalContext;
   final String workspaceId;
   final String tabScopeId;
   final bool routeActive;
@@ -280,7 +280,7 @@ class _ChatPageDrawerLayout extends StatelessWidget {
       preferences: preferences,
       panelKey: AppKeys.rightToolsPanel,
       dismissDrawerOnAction: true,
-      isPersonalWorkspace: isPersonalWorkspace,
+      isPersonalContext: isPersonalContext,
       team: team,
       workspaceId: workspaceId,
       toolsScopeId: tabScopeId,
@@ -296,7 +296,7 @@ class _ChatPageDrawerLayout extends StatelessWidget {
       body: _ChatWorkspaceShell(
         cwd: cwd,
         sessionId: sessionId,
-        isPersonalWorkspace: isPersonalWorkspace,
+        isPersonalContext: isPersonalContext,
         workspaceId: workspaceId,
         tabScopeId: tabScopeId,
         routeActive: routeActive,
@@ -310,7 +310,7 @@ class _ChatWorkspaceShell extends StatelessWidget {
   const _ChatWorkspaceShell({
     required this.cwd,
     required this.sessionId,
-    required this.isPersonalWorkspace,
+    required this.isPersonalContext,
     required this.workspaceId,
     required this.tabScopeId,
     required this.routeActive,
@@ -319,7 +319,7 @@ class _ChatWorkspaceShell extends StatelessWidget {
 
   final String cwd;
   final String? sessionId;
-  final bool isPersonalWorkspace;
+  final bool isPersonalContext;
   final String workspaceId;
   final String tabScopeId;
   final bool routeActive;
@@ -329,7 +329,7 @@ class _ChatWorkspaceShell extends StatelessWidget {
     try {
       return context.read<WorkspaceLandingContextCubit>().state.context.profileId;
     } on Object {
-      if (!isPersonalWorkspace && team != null) return team!.id;
+      if (!isPersonalContext && team != null) return team!.id;
       final workspace = context
           .read<ChatCubit>()
           .state
@@ -369,18 +369,18 @@ class _ChatWorkspaceShell extends StatelessWidget {
         final teamConfig = team;
         final runtimeTabs = _runtimeTabsForScope(cubit, tabScopeId);
         final tabById = {for (final t in runtimeTabs) t.info.id: t};
-        final personalFallbackCli = isPersonalWorkspace
+        final personalFallbackCli = isPersonalContext
             ? _personalPresetCli(context)
             : null;
         return WorkspaceShell(
           workspaceTerminalWorkingDirectory: cwd,
           workspaceWorkspaceId: tabScopeId,
           showHeader: false,
-          breadcrumb: isPersonalWorkspace
+          breadcrumb: isPersonalContext
               ? 'Personal / Chat / Shell chat workbench'
               : '${teamConfig?.name ?? 'Team'} / Chat / Shell chat workbench',
           title: 'Shell chat workbench',
-          subtitle: isPersonalWorkspace
+          subtitle: isPersonalContext
               ? 'personal workspace / shell wrapper mode'
               : 'target: ${teamConfig != null ? cubit.selectedMemberName(teamConfig) : 'team'} / shell wrapper mode',
           tabs: view.tabs
@@ -392,7 +392,7 @@ class _ChatWorkspaceShell extends StatelessWidget {
                       : resolveSessionTabCli(
                           tab: runtimeTab,
                           sessions: state.sessions,
-                          isPersonal: isPersonalWorkspace,
+                          isPersonal: isPersonalContext,
                           team: teamConfig,
                           personalFallbackCli: personalFallbackCli,
                           globalPresets:
@@ -422,7 +422,7 @@ class _ChatWorkspaceShell extends StatelessWidget {
               ? (index) => cubit.closeRightTabs(index)
               : null,
           showRightToolsVisibilityToggle: true,
-          actions: isPersonalWorkspace || teamConfig == null
+          actions: isPersonalContext || teamConfig == null
               ? const []
               : _chatActions(context, teamConfig),
           child: ChatWorkbench(
@@ -431,7 +431,7 @@ class _ChatWorkspaceShell extends StatelessWidget {
             profileId: _profileId(context),
             routeActive: routeActive,
             sessionId: sessionId,
-            isPersonalWorkspace: isPersonalWorkspace,
+            isPersonalContext: isPersonalContext,
             team: team,
             workbenchSlice: view.workbenchSlice,
           ),

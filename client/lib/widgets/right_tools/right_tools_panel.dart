@@ -21,7 +21,7 @@ class RightToolsPanel extends StatefulWidget {
     this.preferences = const LayoutPreferences(),
     this.panelKey = AppKeys.rightToolsPanel,
     this.dismissDrawerOnAction = false,
-    this.isPersonalWorkspace = false,
+    this.isPersonalContext = false,
     this.team,
     super.key,
   });
@@ -29,7 +29,7 @@ class RightToolsPanel extends StatefulWidget {
   final LayoutPreferences preferences;
   final Key panelKey;
   final bool dismissDrawerOnAction;
-  final bool isPersonalWorkspace;
+  final bool isPersonalContext;
   final TeamProfile? team;
   final String cwd;
   final List<String> additionalPaths;
@@ -121,7 +121,7 @@ class _RightToolsPanelState extends State<RightToolsPanel> {
         cwd: widget.cwd,
         workspaceId: widget.workspaceId,
         toolsScopeId: widget._toolsScopeId,
-        isPersonalWorkspace: widget.isPersonalWorkspace,
+        isPersonalContext: widget.isPersonalContext,
         team: widget.team,
         dismissDrawerOnAction: widget.dismissDrawerOnAction,
       ),
@@ -136,7 +136,7 @@ class _RightToolsPanelBody extends StatelessWidget {
     required this.cwd,
     required this.workspaceId,
     required this.toolsScopeId,
-    required this.isPersonalWorkspace,
+    required this.isPersonalContext,
     required this.team,
     required this.dismissDrawerOnAction,
   });
@@ -146,7 +146,7 @@ class _RightToolsPanelBody extends StatelessWidget {
   final String cwd;
   final String workspaceId;
   final String toolsScopeId;
-  final bool isPersonalWorkspace;
+  final bool isPersonalContext;
   final TeamProfile? team;
   final bool dismissDrawerOnAction;
 
@@ -172,7 +172,7 @@ class _RightToolsPanelBody extends StatelessWidget {
             cwd: cwd,
             workspaceId: workspaceId,
             toolsScopeId: toolsScopeId,
-            isPersonalWorkspace: isPersonalWorkspace,
+            isPersonalContext: isPersonalContext,
             team: team,
             dismissDrawerOnAction: dismissDrawerOnAction,
             fileTreeCubit: fileTreeCubit,

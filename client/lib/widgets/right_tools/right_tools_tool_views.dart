@@ -148,13 +148,13 @@ class RightToolsMailboxGate {
   final int unreadCount;
 
   static RightToolsMailboxGate resolve({
-    required bool isPersonalWorkspace,
+    required bool isPersonalContext,
     required TeamProfile? team,
     required bool hasTeamBus,
     required bool boardVisible,
     required int unreadCount,
   }) {
-    final showMailbox = !isPersonalWorkspace &&
+    final showMailbox = !isPersonalContext &&
         team != null &&
         team.teamMode == TeamMode.mixed &&
         hasTeamBus;
@@ -221,7 +221,7 @@ class RightToolsToolViews extends StatefulWidget {
     required this.cwd,
     required this.workspaceId,
     required this.toolsScopeId,
-    required this.isPersonalWorkspace,
+    required this.isPersonalContext,
     required this.team,
     required this.dismissDrawerOnAction,
     required this.fileTreeCubit,
@@ -234,7 +234,7 @@ class RightToolsToolViews extends StatefulWidget {
   final String cwd;
   final String workspaceId;
   final String toolsScopeId;
-  final bool isPersonalWorkspace;
+  final bool isPersonalContext;
   final TeamProfile? team;
   final bool dismissDrawerOnAction;
   final FileTreeCubit fileTreeCubit;
@@ -249,7 +249,7 @@ class RightToolsToolViews extends StatefulWidget {
 class _RightToolsViewsCacheKey {
   const _RightToolsViewsCacheKey({
     required this.preferences,
-    required this.isPersonalWorkspace,
+    required this.isPersonalContext,
     required this.team,
     required this.chatSlice,
     required this.mailboxGate,
@@ -260,7 +260,7 @@ class _RightToolsViewsCacheKey {
   });
 
   final RightToolsToolPreferences preferences;
-  final bool isPersonalWorkspace;
+  final bool isPersonalContext;
   final TeamProfile? team;
   final RightToolsChatSlice chatSlice;
   final RightToolsMailboxGate mailboxGate;
@@ -274,7 +274,7 @@ class _RightToolsViewsCacheKey {
     return identical(this, other) ||
         other is _RightToolsViewsCacheKey &&
             preferences == other.preferences &&
-            isPersonalWorkspace == other.isPersonalWorkspace &&
+            isPersonalContext == other.isPersonalContext &&
             team == other.team &&
             chatSlice == other.chatSlice &&
             mailboxGate == other.mailboxGate &&
@@ -287,7 +287,7 @@ class _RightToolsViewsCacheKey {
   @override
   int get hashCode => Object.hash(
     preferences,
-    isPersonalWorkspace,
+    isPersonalContext,
     team,
     chatSlice,
     mailboxGate,
@@ -325,7 +325,7 @@ class _RightToolsToolViewsState extends State<RightToolsToolViews> {
     required bool hasMailboxCubit,
   }) {
     final team = widget.team;
-    if (!widget.isPersonalWorkspace && team == null) {
+    if (!widget.isPersonalContext && team == null) {
       return const SizedBox.shrink();
     }
 
@@ -337,7 +337,7 @@ class _RightToolsToolViewsState extends State<RightToolsToolViews> {
     );
 
     final mailboxGate = RightToolsMailboxGate.resolve(
-      isPersonalWorkspace: widget.isPersonalWorkspace,
+      isPersonalContext: widget.isPersonalContext,
       team: team,
       hasTeamBus: chatSlice.hasTeamBus && hasMailboxCubit,
       boardVisible: widget.preferences.boardVisible,
@@ -346,7 +346,7 @@ class _RightToolsToolViewsState extends State<RightToolsToolViews> {
 
     final cacheKey = _RightToolsViewsCacheKey(
       preferences: widget.preferences,
-      isPersonalWorkspace: widget.isPersonalWorkspace,
+      isPersonalContext: widget.isPersonalContext,
       team: team,
       chatSlice: chatSlice,
       mailboxGate: mailboxGate,
@@ -415,7 +415,7 @@ class _RightToolsToolViewsState extends State<RightToolsToolViews> {
       }
     }
 
-    if (!widget.isPersonalWorkspace &&
+    if (!widget.isPersonalContext &&
         widget.preferences.membersVisible &&
         team != null) {
       final runtimeMembers = runtimeRosterMembers(team);

@@ -37,7 +37,7 @@ class ChatWorkbench extends StatefulWidget {
     this.profileId,
     this.routeActive = true,
     this.sessionId,
-    this.isPersonalWorkspace = false,
+    this.isPersonalContext = false,
     this.team,
     super.key,
   });
@@ -47,7 +47,7 @@ class ChatWorkbench extends StatefulWidget {
   final String? profileId;
   final bool routeActive;
   final String? sessionId;
-  final bool isPersonalWorkspace;
+  final bool isPersonalContext;
   final TeamProfile? team;
   final ChatWorkbenchSlice workbenchSlice;
 
@@ -178,7 +178,7 @@ class _ChatWorkbenchState extends State<ChatWorkbench> {
         profileId: widget.profileId,
         routeActive: widget.routeActive,
         sessionId: widget.sessionId,
-        isPersonalWorkspace: widget.isPersonalWorkspace,
+        isPersonalContext: widget.isPersonalContext,
         slice: slice,
         team: team,
         findVisible: _findVisible,
@@ -197,7 +197,7 @@ class _ChatWorkbenchBody extends StatefulWidget {
     this.profileId,
     required this.routeActive,
     required this.sessionId,
-    required this.isPersonalWorkspace,
+    required this.isPersonalContext,
     required this.slice,
     required this.team,
     required this.findVisible,
@@ -211,7 +211,7 @@ class _ChatWorkbenchBody extends StatefulWidget {
   final String? profileId;
   final bool routeActive;
   final String? sessionId;
-  final bool isPersonalWorkspace;
+  final bool isPersonalContext;
   final ChatWorkbenchSlice slice;
   final TeamProfile? team;
   final bool findVisible;
@@ -395,7 +395,7 @@ class _ChatWorkbenchBodyState extends State<_ChatWorkbenchBody> {
     // Pre-connect placeholder shell for the foreground team tab only.
     if (widget.routeActive &&
         chatCubit.tabStore.activeWorkspaceId == widget.tabScopeId &&
-        !widget.isPersonalWorkspace &&
+        !widget.isPersonalContext &&
         team != null) {
       return chatCubit.ensureSession(team);
     }
@@ -439,7 +439,7 @@ class _ChatWorkbenchBodyState extends State<_ChatWorkbenchBody> {
                     session: session,
                     terminalTheme: terminalTheme,
                     chatCubit: chatCubit,
-                    isPersonal: widget.isPersonalWorkspace,
+                    isPersonal: widget.isPersonalContext,
                     team: team,
                     autofocus: !sessionConnectInProgress && terminalVisible,
                   ),
@@ -452,12 +452,12 @@ class _ChatWorkbenchBodyState extends State<_ChatWorkbenchBody> {
                 ChatWorkbenchTerminalPlaceholder(
                   onConnect: () => unawaited(
                     widget.onConnect(
-                      isPersonal: widget.isPersonalWorkspace,
+                      isPersonal: widget.isPersonalContext,
                       team: team,
                     ),
                   ),
                   connectDisabled: sessionConnectInProgress,
-                  memberName: widget.isPersonalWorkspace
+                  memberName: widget.isPersonalContext
                       ? context.l10n.homeWorkspaceWorkspaceAgent
                       : chatCubit.selectedMemberName(team!),
                   launchError: launchError,

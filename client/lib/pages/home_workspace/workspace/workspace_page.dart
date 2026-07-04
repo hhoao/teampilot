@@ -14,6 +14,7 @@ import '../../../models/launch_profile_kind.dart';
 import '../../../models/launch_profile.dart';
 import '../../../pages/home_workspace/home_workspace_route.dart';
 import '../../../theme/workspace_surface_layers.dart';
+import '../../../utils/workspace_chrome_profile.dart';
 import 'workspace_config_workspace.dart';
 import 'workspace_rail.dart';
 import 'workspace_section.dart';
@@ -194,10 +195,12 @@ class _WorkspacePageState extends State<WorkspacePage> {
       );
     }
 
-    final workspaceIdentity = context.select<LaunchProfileCubit, LaunchProfile?>(
-      (c) => c.byId(
-        context.watch<WorkspaceLandingContextCubit>().state.context.profileId,
-      ),
+    final location = GoRouterState.of(context).uri.toString();
+    final routeProfile = HomeWorkspaceRoute.profile(location);
+    final workspaceIdentity = resolveWorkspaceChromeProfile(
+      context.watch<LaunchProfileCubit>(),
+      workspace,
+      routeProfileId: routeProfile,
     );
     if (workspaceIdentity == null) {
       return WorkspacePageCardShell(
