@@ -6,7 +6,6 @@ import '../../cubits/chat_cubit.dart';
 import '../../models/workspace_folder.dart';
 import '../../repositories/launch_profile_repository.dart';
 import '../../repositories/session_repository.dart';
-import '../../services/storage/launch_profile_provisioner.dart';
 import '../../theme/app_text_styles.dart';
 import '../../widgets/app_dialog.dart';
 import '../../widgets/workspace_create_directory_picker.dart';
@@ -36,9 +35,7 @@ Future<void> showHomeNewWorkspaceDialog(
         identityRepository ?? context.read<LaunchProfileRepository>(),
   );
   if (!context.mounted) return;
-  context.go(
-    '/home-v2/workspace/$workspaceId?as=${LaunchProfileProvisioner.defaultPersonalId}',
-  );
+  context.go('/home-v2/workspace/$workspaceId');
 }
 
 class HomeNewWorkspaceDialog extends StatefulWidget {

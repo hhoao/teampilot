@@ -26,16 +26,12 @@ import 'workspace_session_actions.dart';
 Future<void> showWorkspaceSearchDialog(
   BuildContext context, {
   required Workspace workspace,
-  required bool isPersonal,
-  String sessionTeamFilter = '',
   bool personalLaunchBlocked = false,
 }) {
   final chatCubit = context.read<ChatCubit>();
   final editorCubit = context.read<EditorCubit>();
   final fallback = context.l10n.defaultNewChatSessionTitle;
-  final sessions = sessionsForWorkspace(workspace, chatCubit.state.sessions)
-      .where((s) => s.sessionTeam.trim() == sessionTeamFilter)
-      .toList();
+  final sessions = sessionsForWorkspace(workspace, chatCubit.state.sessions);
 
   return showDialog<void>(
     context: context,
@@ -55,7 +51,6 @@ Future<void> showWorkspaceSearchDialog(
             context,
             workspace,
             session,
-            isPersonal: isPersonal,
           ),
         );
       },

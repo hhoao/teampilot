@@ -7,17 +7,12 @@ import 'package:teampilot/theme/app_icon_sizes.dart';
 import '../../../cubits/automation_cubit.dart';
 import '../../../cubits/automation_state.dart';
 import '../../../cubits/chat_cubit.dart';
-import '../../../cubits/cli_presets_cubit.dart';
-import '../../../cubits/launch_profile_cubit.dart';
+import '../../../cubits/workspace_landing_context_cubit.dart';
 import '../../../cubits/worktree_cubit.dart';
 import '../../../l10n/l10n_extensions.dart';
 import '../../../models/workspace.dart';
 import '../../../models/app_session.dart';
-import '../../../models/cli_preset.dart';
-import '../../../models/personal_profile.dart';
-import '../../../models/team_config.dart';
 import '../../../models/workspace_topology.dart';
-import '../../../services/cli/registry/cli_tool_registry_scope.dart';
 import '../../../services/git/git_worktree_service.dart';
 import '../../../services/storage/app_storage.dart';
 import '../../../services/storage/workspace_layout.dart';
@@ -40,11 +35,7 @@ import '../../../utils/debounce/debounce.dart';
 import '../../../utils/workspace_sidebar_sessions.dart';
 import '../../../utils/workspace_tab_session_scope.dart';
 import '../../../widgets/app_icon_button.dart';
-import '../../../widgets/cli/cli_brand_icon.dart';
 import '../../../widgets/menu/sidebar_action_menu.dart';
-import 'config/cli_presets_manage_dialog.dart';
-import '../../../widgets/dropdown/app_dropdown_decoration.dart';
-import '../../../widgets/dropdown/app_dropdown_field.dart';
 import '../../../widgets/sidebar_session_tile.dart';
 import 'workspace_search_dialog.dart';
 import 'workspace_session_actions.dart';
@@ -58,23 +49,15 @@ class WorkspaceSidebarLayout {
   static const double maxWidth = 480;
 }
 
-/// Workspace conversation sidebar (personal and team workbenches).
+/// Workspace conversation sidebar.
 class WorkspaceSidebar extends StatefulWidget {
   const WorkspaceSidebar({
     required this.workspace,
-    required this.isPersonalWorkspace,
-    required this.profileId,
-    required this.sessionTeamFilter,
     required this.tabScopeId,
     super.key,
   });
 
   final Workspace workspace;
-  final bool isPersonalWorkspace;
-
-  /// The launch identity the workspace was opened against ([LaunchProfile.id]).
-  final String profileId;
-  final String sessionTeamFilter;
   final String tabScopeId;
 
   @override
@@ -82,9 +65,10 @@ class WorkspaceSidebar extends StatefulWidget {
 }
 
 class _WorkspaceSidebarState extends State<WorkspaceSidebar> {
-  bool get _isPersonal => widget.isPersonalWorkspace;
-
   AppSessionSort _sessionSort = AppSessionSort.manual;
+
+  String _landingProfileId(BuildContext context) =>
+      context.read<WorkspaceLandingContextCubit>().state.context.profileId;
 
   @override
   Widget build(BuildContext context) {
@@ -94,7 +78,6 @@ class _WorkspaceSidebarState extends State<WorkspaceSidebar> {
       (c) => WorkspaceSidebarSessions.forWorkspace(
         allSessions: c.state.sessions,
         workspace: widget.workspace,
-        sessionTeamFilter: widget.sessionTeamFilter,
       ),
     );
     final sortedSessions = sortAppSessions(
@@ -108,7 +91,7 @@ class _WorkspaceSidebarState extends State<WorkspaceSidebar> {
       (c) => WorktreeSidebarView.from(c.state),
     );
     final personalLaunchBlocked = personalIdentityBlockedForWorkspace(
-      isPersonal: _isPersonal,
+      isPersonal: true,
       folders: widget.workspace.folders,
     );
     final toolsContext = WorkspaceToolsScope.maybeOf(context)?.tools?.context;
@@ -119,17 +102,10 @@ class _WorkspaceSidebarState extends State<WorkspaceSidebar> {
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
           if (personalLaunchBlocked) const MixedWorkspacePersonalLaunchBanner(),
-          if (_isPersonal && !personalLaunchBlocked) ...[
-            _PresetDropdown(
-              workspaceId: widget.workspace.workspaceId,
-              profileId: widget.profileId,
-            ),
-            const SizedBox(height: 12),
-          ],
           _AutomationsHeader(
             tabScope: AutomationTabScope(
               workspaceId: widget.workspace.workspaceId,
-              launchProfileId: widget.profileId,
+              launchProfileId: _landingProfileId(context),
             ),
             onTap: () => _openAutomationsPanel(context),
             onAdd: () => _openAutomationsPanel(context, create: true),
@@ -139,7 +115,7 @@ class _WorkspaceSidebarState extends State<WorkspaceSidebar> {
             key: AppKeys.newChatSidebarTile,
             icon: Icons.edit_outlined,
             label: l10n.homeWorkspaceNewConversation,
-            enabled: !personalLaunchBlocked,
+            enabled: true,
             disabledTooltip: l10n.mixedWorkspaceRequiresTeamLaunch,
             onTap: throttledAsync(
               'workspace_sidebar_new_chat',
@@ -176,8 +152,6 @@ class _WorkspaceSidebarState extends State<WorkspaceSidebar> {
                       showWorkspaceSearchDialog(
                         context,
                         workspace: widget.workspace,
-                        isPersonal: widget.isPersonalWorkspace,
-                        sessionTeamFilter: widget.sessionTeamFilter,
                         personalLaunchBlocked: personalLaunchBlocked,
                       ),
                     ),
@@ -267,9 +241,6 @@ class _WorkspaceSidebarState extends State<WorkspaceSidebar> {
               key: ValueKey('wt-group-${worktreeGroupCollapseKey(group)}'),
               group: group,
               workspace: widget.workspace,
-              isPersonal: widget.isPersonalWorkspace,
-              profileId: widget.profileId,
-              sessionTeamFilter: widget.sessionTeamFilter,
               highlightSessionId: scopedActiveSessionId(
                 context.read<ChatCubit>(),
                 widget.tabScopeId,
@@ -303,10 +274,7 @@ class _WorkspaceSidebarState extends State<WorkspaceSidebar> {
       repoPath: repoPath,
       layout: layout.worktreePathFor,
       branchLoader: branchListLoaderFor(tools.context),
-      showStartConversationOption: !personalIdentityBlockedForWorkspace(
-        isPersonal: widget.isPersonalWorkspace,
-        folders: widget.workspace.folders,
-      ),
+      showStartConversationOption: true,
     );
     if (result == null) return;
     try {
@@ -320,13 +288,14 @@ class _WorkspaceSidebarState extends State<WorkspaceSidebar> {
       await cubit.load(repoPath);
       cubit.setCurrentWorktree(result.worktreePath);
       if (result.startConversation && context.mounted) {
+        final draft = context.read<WorkspaceLandingContextCubit>().state.context;
         await createSessionInWorktree(
           context,
           widget.workspace,
-          isPersonal: widget.isPersonalWorkspace,
+          isPersonal: draft.isPersonal,
           worktreePath: result.worktreePath,
-          sessionTeamId: widget.sessionTeamFilter,
-          personalIdentityId: widget.profileId,
+          sessionTeamId: draft.isPersonal ? '' : (draft.teamId ?? ''),
+          personalIdentityId: draft.personalProfileId,
         );
       }
     } on Object catch (error) {
@@ -386,7 +355,11 @@ class _WorkspaceSidebarState extends State<WorkspaceSidebar> {
     return SidebarSessionTile(
       key: ValueKey('workspace-sidebar-session-${session.sessionId}'),
       session: session,
-      launchProfileId: widget.profileId,
+      launchProfileId: session.sessionTeam.trim().isEmpty
+          ? (session.profileId.trim().isNotEmpty
+              ? session.profileId
+              : _landingProfileId(context))
+          : session.sessionTeam,
       index: index,
       highlightSessionId: scopedActiveSessionId(
         context.read<ChatCubit>(),
@@ -394,8 +367,9 @@ class _WorkspaceSidebarState extends State<WorkspaceSidebar> {
       ),
       tapThrottleKeyPrefix: 'workspace_sidebar_session',
       onTap: () {
+        final isPersonal = session.sessionTeam.trim().isEmpty;
         if (personalIdentityBlockedForWorkspace(
-          isPersonal: widget.isPersonalWorkspace,
+          isPersonal: isPersonal,
           folders: widget.workspace.folders,
         )) {
           showPersonalLaunchBlockedToast(context);
@@ -406,25 +380,17 @@ class _WorkspaceSidebarState extends State<WorkspaceSidebar> {
             context,
             widget.workspace,
             session,
-            isPersonal: widget.isPersonalWorkspace,
           ),
         );
       },
     );
   }
 
-  Future<void> _startNewConversation(
-    BuildContext context, {
-    CliTool? cli,
-  }) async {
-    await createAndOpenWorkspaceConversation(
+  Future<void> _startNewConversation(BuildContext context) async {
+    await showWorkspaceComposeLanding(
       context,
       widget.workspace,
-      isPersonal: widget.isPersonalWorkspace,
-      sessionTeamId: widget.sessionTeamFilter,
-      personalIdentityId: widget.profileId,
-      cli: cli,
-      workingDirectory: context.read<WorktreeCubit>().state.pathForNewSession,
+      tabScopeId: widget.tabScopeId,
     );
   }
 
@@ -432,10 +398,11 @@ class _WorkspaceSidebarState extends State<WorkspaceSidebar> {
     BuildContext context, {
     bool create = false,
   }) async {
+    final profileId = _landingProfileId(context);
     if (create) {
       final saved = await AutomationEditorDialog.show(
         context,
-        launchProfileId: widget.profileId,
+        launchProfileId: profileId,
         workspaceId: widget.workspace.workspaceId,
       );
       if (saved == null || !context.mounted) return;
@@ -445,7 +412,7 @@ class _WorkspaceSidebarState extends State<WorkspaceSidebar> {
       context,
       filterTabScope: AutomationTabScope(
         workspaceId: widget.workspace.workspaceId,
-        launchProfileId: widget.profileId,
+        launchProfileId: profileId,
       ),
     );
   }
@@ -559,164 +526,6 @@ class _AutomationsHeaderState extends State<_AutomationsHeader> {
         ),
         );
       },
-    );
-  }
-}
-
-class _PresetDropdown extends StatefulWidget {
-  const _PresetDropdown({required this.workspaceId, required this.profileId});
-
-  final String workspaceId;
-  final String profileId;
-
-  @override
-  State<_PresetDropdown> createState() => _PresetDropdownState();
-}
-
-class _PresetDropdownState extends State<_PresetDropdown> {
-  bool _didAutoActivate = false;
-
-  @override
-  Widget build(BuildContext context) {
-    final l10n = context.l10n;
-    final presetsState = context.watch<CliPresetsCubit>().state;
-    final identityCubit = context.watch<LaunchProfileCubit>();
-    final opened = identityCubit.state.byId(widget.profileId);
-    final personal = opened is PersonalProfile
-        ? opened
-        : identityCubit.activePersonal;
-
-    if (personal == null ||
-        presetsState.status == CliPresetsLoadStatus.loading) {
-      return const Padding(
-        padding: EdgeInsets.fromLTRB(4, 0, 4, 0),
-        child: LinearProgressIndicator(minHeight: 2),
-      );
-    }
-
-    final presets = presetsState.presets;
-    final activePreset = presetsState.presetById(personal.activePresetId ?? '');
-
-    if (presets.isEmpty) {
-      return Padding(
-        padding: const EdgeInsets.fromLTRB(4, 0, 4, 0),
-        child: OutlinedButton.icon(
-          onPressed: () {
-            showDialog<void>(
-              context: context,
-              builder: (_) => const CliPresetsManageDialog(),
-            );
-          },
-          icon: const Icon(Icons.add, size: 18),
-          label: Text(l10n.workspaceCliAddPresetTitle),
-          style: OutlinedButton.styleFrom(visualDensity: VisualDensity.compact),
-        ),
-      );
-    }
-
-    // Auto-activate the first preset when none is active (e.g., after the
-    // user adds their first preset).  Without this the dropdown shows a
-    // preset as selected while activePresetId stays null, so sessions
-    // launch with the default CLI instead of the preset config.
-    if (!_didAutoActivate && activePreset == null && presets.isNotEmpty) {
-      _didAutoActivate = true;
-      WidgetsBinding.instance.addPostFrameCallback((_) {
-        if (!mounted) return;
-        context.read<LaunchProfileCubit>().setPersonalPreset(
-          widget.profileId,
-          presets.first.id,
-        );
-      });
-    }
-
-    final presetNames = presets.map((p) => p.id).toList();
-    final initialId = activePreset?.id ?? presets.first.id;
-
-    return Padding(
-      padding: const EdgeInsets.fromLTRB(4, 0, 4, 0),
-      child: Row(
-        crossAxisAlignment: CrossAxisAlignment.center,
-        children: [
-          Expanded(
-            child: AppDropdownField<String>(
-              key: ValueKey(
-                'workspace-sidebar-preset-${widget.workspaceId}-$initialId',
-              ),
-              items: presetNames,
-              initialItem: initialId,
-              decoration: AppDropdownDecorations.themed(context),
-              onChanged: (value) {
-                if (value == null) return;
-                context.read<LaunchProfileCubit>().setPersonalPreset(
-                  widget.profileId,
-                  value,
-                );
-              },
-              itemBuilder: (context, presetId) {
-                final preset = presetsState.presetById(presetId);
-                if (preset == null) {
-                  return Text(
-                    presetId,
-                    style: AppTextStyles.of(context).bodySmall,
-                  );
-                }
-                return _PresetDropdownItem(preset: preset);
-              },
-            ),
-          ),
-          const SizedBox(width: 4),
-          AppIconButton(
-            icon: Icons.tune_outlined,
-            tooltip: l10n.workspaceCliPresetsManageTitle,
-            onTap: throttledTap(
-              'workspace_sidebar_presets_manage',
-              () => unawaited(
-                showDialog<void>(
-                  context: context,
-                  builder: (_) => const CliPresetsManageDialog(),
-                ),
-              ),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-class _PresetDropdownItem extends StatelessWidget {
-  const _PresetDropdownItem({required this.preset});
-
-  final CliPreset preset;
-
-  @override
-  Widget build(BuildContext context) {
-    final l10n = context.l10n;
-    final registry = CliToolRegistryScope.of(context);
-    final def = registry.tryGet(preset.cli);
-    final cs = Theme.of(context).colorScheme;
-
-    return Row(
-      mainAxisSize: MainAxisSize.min,
-      children: [
-        CliBrandIcon(
-          cli: preset.cli,
-          definition: def,
-          size: 22,
-          borderRadius: 6,
-        ),
-        const SizedBox(width: 10),
-        Flexible(
-          child: Text(
-            preset.name,
-            maxLines: 1,
-            overflow: TextOverflow.ellipsis,
-            style: AppTextStyles.of(
-              context,
-            ).prominent.copyWith(color: cs.onSurface),
-          ),
-        ),
-      ],
     );
   }
 }

@@ -56,7 +56,6 @@ class HomeClosedWorkspacesStore {
         displayName: entry.displayName,
         primaryPath: entry.primaryPath,
         closedAt: now,
-        identity: entry.identity,
         topology: entry.topology,
       ),
       for (final e in existing)

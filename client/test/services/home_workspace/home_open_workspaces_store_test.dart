@@ -1,8 +1,6 @@
 import 'dart:io';
 
 import 'package:flutter_test/flutter_test.dart';
-import 'package:teampilot/services/storage/launch_profile_provisioner.dart';
-import 'package:teampilot/models/launch_profile_ref.dart';
 import 'package:teampilot/models/workspace_tab_ref.dart';
 import 'package:teampilot/services/home_workspace/home_open_workspaces_store.dart';
 import 'package:teampilot/services/io/local_filesystem.dart';
@@ -30,17 +28,15 @@ void main() {
     }
   });
 
-  test('saveOrderedTabs persists workspace id and launch identity', () async {
-    const personal = LaunchProfileRef(LaunchProfileProvisioner.defaultPersonalId);
-    const team = LaunchProfileRef('team-a');
+  test('saveOrderedTabs persists workspace ids', () async {
     await store.saveOrderedTabs([
-      const WorkspaceTabRef(workspaceId: 'proj-a', identity: personal),
-      const WorkspaceTabRef(workspaceId: 'proj-a', identity: team),
+      const WorkspaceTabRef(workspaceId: 'proj-a'),
+      const WorkspaceTabRef(workspaceId: 'proj-b'),
     ]);
 
     expect(await store.loadOrderedTabs(), [
-      const WorkspaceTabRef(workspaceId: 'proj-a', identity: personal),
-      const WorkspaceTabRef(workspaceId: 'proj-a', identity: team),
+      const WorkspaceTabRef(workspaceId: 'proj-a'),
+      const WorkspaceTabRef(workspaceId: 'proj-b'),
     ]);
 
     final file = File(AppPaths(root.path).homeWorkspaceOpenWorkspacesJson);

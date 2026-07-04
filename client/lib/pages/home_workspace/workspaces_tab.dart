@@ -16,100 +16,17 @@ import '../../models/launch_profile_kind.dart';
 import '../../models/launch_profile_ref.dart';
 import '../../models/workspace_topology.dart';
 import '../../repositories/session_repository.dart';
-import '../../services/home_workspace/workspace_launch_prefs_store.dart';
+import '../../services/home_workspace/landing_prefs_store.dart';
 import '../../theme/app_text_styles.dart';
 import '../../utils/home_workspace_display.dart';
 import '../../utils/workspace_display_name.dart';
 import '../../widgets/menu/sidebar_action_menu.dart';
-import 'home_launch_workspace_dialog.dart';
 import 'home_new_workspace_dialog.dart';
 import 'open_workspace_tab_actions.dart';
 import 'workspace_card.dart';
 import 'workspace_list_tile.dart';
 import 'workspace_pane_animations.dart';
 import 'workspace_sort.dart';
-
-/// Route for [workspace] under [identity].
-String workspaceLaunchRoute(String workspaceId, LaunchProfileRef identity) =>
-    '/home-v2/workspace/$workspaceId?as=${identity.encode()}';
-
-/// When a remembered, well-formed choice exists for [workspace], the route to
-/// open it directly (skipping the dialog); otherwise null (show the dialog).
-String? rememberedLaunchRoute(
-  Workspace workspace,
-  WorkspaceLaunchPref? pref, {
-  LaunchProfileKind? Function(String profileId)? profileKindFor,
-}) {
-  if (pref == null || !pref.remember) return null;
-  final id = LaunchProfileRef.decode(pref.lastIdentity);
-  if (id == null) return null;
-  final kind = profileKindFor?.call(id.profileId);
-  if (kind == LaunchProfileKind.personal &&
-      personalIdentityBlockedForWorkspace(
-        isPersonal: true,
-        folders: workspace.folders,
-      )) {
-    return null;
-  }
-  return workspaceLaunchRoute(workspace.workspaceId, id);
-}
-
-Future<void> openWorkspace(BuildContext context, Workspace workspace) async {
-  final chatCubit = context.read<ChatCubit>();
-  await chatCubit.ensureSessionsForWorkspace(workspace.workspaceId);
-  final sessions = await chatCubit.sessionsForWorkspaceReady(
-    workspace.workspaceId,
-  );
-  final store = WorkspaceLaunchPrefsStore();
-  final pref = await store.prefsFor(workspace.workspaceId);
-  if (!context.mounted) return;
-
-  final l10n = context.l10n;
-  final identityCubit = context.read<LaunchProfileCubit>();
-  final remembered = rememberedLaunchRoute(
-    workspace,
-    pref,
-    profileKindFor: (id) => identityCubit.byId(id)?.kind,
-  );
-  if (remembered != null) {
-    context.go(remembered);
-    return;
-  }
-
-  final options = buildLaunchIdentityOptions(
-    l10n: l10n,
-    identities: identityCubit.state.identities,
-    workspace: workspace,
-    sessions: sessions,
-  );
-  final choice = await showHomeLaunchWorkspaceDialog(
-    context,
-    workspaceName: workspace.effectiveDisplay,
-    identities: options,
-    preselected: resolveWorkspaceLaunchPreselection(
-      workspace: workspace,
-      pref: pref,
-      lookupById: identityCubit.byId,
-    ),
-  );
-  if (choice == null || !context.mounted) return;
-  if (choice.remember) {
-    await context.read<ChatCubit>().updateWorkspaceMetadata(
-      context.read<SessionRepository>(),
-      workspace.workspaceId,
-      defaultProfileId: choice.identity.profileId,
-    );
-  }
-  await store.save(
-    workspace.workspaceId,
-    WorkspaceLaunchPref(
-      lastIdentity: choice.identity.encode(),
-      remember: choice.remember,
-    ),
-  );
-  if (!context.mounted) return;
-  context.go(workspaceLaunchRoute(workspace.workspaceId, choice.identity));
-}
 
 class WorkspacesTab extends StatelessWidget {
   const WorkspacesTab({
@@ -644,11 +561,6 @@ class WorkspaceGrid extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final launchProfiles = context
-        .select<LaunchProfileCubit, List<LaunchProfile>>(
-          (c) => c.state.identities,
-        );
-
     return GridView.builder(
       gridDelegate: const SliverGridDelegateWithMaxCrossAxisExtent(
         maxCrossAxisExtent: 460,
@@ -669,9 +581,7 @@ class WorkspaceGrid extends StatelessWidget {
             onToggleFavorite: () =>
                 onToggleWorkspaceFavorite(workspace.workspaceId),
             sessions: sessions,
-            launchProfiles: launchProfiles,
             showSessionContextIcon: showSessionContextIcon,
-            sessionBarTopologyIconOnly: sessionBarTopologyIconOnly,
             onTap: () => unawaited(openWorkspace(context, workspace)),
           ),
         );
@@ -702,11 +612,6 @@ class WorkspaceList extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final launchProfiles = context
-        .select<LaunchProfileCubit, List<LaunchProfile>>(
-          (c) => c.state.identities,
-        );
-
     return ListView.separated(
       itemCount: workspaces.length,
       separatorBuilder: (_, __) => const SizedBox(height: 10),
@@ -721,9 +626,7 @@ class WorkspaceList extends StatelessWidget {
           onToggleFavorite: () =>
               onToggleWorkspaceFavorite(workspace.workspaceId),
           sessions: sessions,
-          launchProfiles: launchProfiles,
           showSessionContextIcon: showSessionContextIcon,
-          sessionBarTopologyIconOnly: sessionBarTopologyIconOnly,
           onTap: () => unawaited(openWorkspace(context, workspace)),
         );
       },

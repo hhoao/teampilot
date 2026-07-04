@@ -14,7 +14,7 @@ class WorktreeUiPref {
 
 /// Persists [WorktreeUiPref] keyed by workspace id at
 /// `ui/worktree-ui-prefs.json` as `{ workspaceId: {...} }`. Mirrors
-/// [WorkspaceLaunchPrefsStore].
+/// Persists per-workspace worktree UI prefs at `ui/worktree-ui-prefs.json`.
 class WorktreeUiPrefsStore {
   WorktreeUiPrefsStore({Filesystem? fs, String? pathOverride})
       : _fsOverride = fs,

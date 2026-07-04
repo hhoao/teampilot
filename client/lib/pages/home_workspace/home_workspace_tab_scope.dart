@@ -1,7 +1,5 @@
 import 'package:flutter/material.dart';
 
-import '../../models/launch_profile_ref.dart';
-
 /// Title-bar tab control for the workspace home shell.
 class HomeTabScope extends InheritedWidget {
   const HomeTabScope({
@@ -11,11 +9,7 @@ class HomeTabScope extends InheritedWidget {
   });
 
   /// When [activate] is false, adds a workspace tab without leaving the current route.
-  final void Function(
-    String workspaceId, {
-    bool activate,
-    LaunchProfileRef? identity,
-  }) openWorkspace;
+  final void Function(String workspaceId, {bool activate}) openWorkspace;
 
   static HomeTabScope? maybeOf(BuildContext context) {
     return context.dependOnInheritedWidgetOfExactType<HomeTabScope>();
@@ -25,13 +19,8 @@ class HomeTabScope extends InheritedWidget {
     BuildContext context,
     String workspaceId, {
     bool activate = true,
-    LaunchProfileRef? identity,
   }) {
-    maybeOf(context)?.openWorkspace(
-      workspaceId,
-      activate: activate,
-      identity: identity,
-    );
+    maybeOf(context)?.openWorkspace(workspaceId, activate: activate);
   }
 
   @override

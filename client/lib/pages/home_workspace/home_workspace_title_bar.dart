@@ -8,13 +8,10 @@ import 'package:window_manager/window_manager.dart';
 import '../../l10n/l10n_extensions.dart';
 import '../../models/home_closed_workspace_entry.dart';
 import '../../models/launch_profile.dart';
-import '../../models/launch_profile_kind.dart';
-import '../../models/launch_profile_ref.dart';
 import '../../models/workspace.dart';
 import '../../models/workspace_topology.dart';
 import '../../services/app/desktop_window_actions.dart';
 import '../../services/app/platform_utils.dart';
-import '../../services/storage/launch_profile_provisioner.dart';
 import '../../theme/app_text_styles.dart';
 import '../../theme/workspace_surface_layers.dart';
 import '../../theme/workspace_topology_colors.dart';
@@ -25,17 +22,9 @@ import '../../widgets/team_pilot_brand_logo.dart';
 import '../../widgets/window_chrome_controls.dart';
 import '../../widgets/window_drag_area.dart';
 import '../config/config_workspace.dart';
-import 'open_workspace_tab_actions.dart';
 
 /// Height of the Apifox-style workspace title bar.
 const double kHomeTitleBarHeight = 58;
-
-/// Custom window title bar for the new workspace home: brand mark, a "Home"
-/// pill, optional open-workspace tab, decorative action glyphs, and the real
-/// minimize/maximize/close controls. Reuses theme tokens only — no hardcoded
-/// brand colors.
-/// Personal vs team discriminator for title-bar workspace tabs.
-enum HomeWorkspaceTabKind { personal, team }
 
 @visibleForTesting
 double homeWorkspaceTabBarAlpha({required bool active, required bool hovered}) {
@@ -44,29 +33,12 @@ double homeWorkspaceTabBarAlpha({required bool active, required bool hovered}) {
   return 0.4;
 }
 
-/// Hue-rotated complement of [base] on the color wheel (反色系).
 @visibleForTesting
-Color homeWorkspaceTabComplementColor(Color base) {
-  final hsl = HSLColor.fromColor(base);
-  return hsl.withHue((hsl.hue + 180) % 360).toColor();
-}
-
-@visibleForTesting
-Color homeWorkspaceTabKindAccentColor({
-  required HomeWorkspaceTabKind kind,
-  required ColorScheme colorScheme,
-}) {
-  final personal = colorScheme.primary;
-  return kind == HomeWorkspaceTabKind.personal
-      ? personal
-      : homeWorkspaceTabComplementColor(personal);
-}
-
-@visibleForTesting
-IconData homeWorkspaceTabKindIcon(HomeWorkspaceTabKind kind) {
-  return switch (kind) {
-    HomeWorkspaceTabKind.personal => Icons.person_outline_rounded,
-    HomeWorkspaceTabKind.team => Icons.groups_2_outlined,
+IconData workspaceTabTopologyIconData(WorkspaceTopology topology) {
+  return switch (topology) {
+    WorkspaceTopology.local => Icons.folder_outlined,
+    WorkspaceTopology.remote => Icons.cloud_outlined,
+    WorkspaceTopology.mixed => Icons.hub_outlined,
   };
 }
 
@@ -106,77 +78,10 @@ Color workspaceTabTopologyIconColor({
 }
 
 @visibleForTesting
-Color homeWorkspaceTabKindIconColor({
-  required HomeWorkspaceTabKind kind,
-  required ColorScheme colorScheme,
-  required bool active,
-  required bool hovered,
-}) {
-  final base = homeWorkspaceTabKindAccentColor(
-    kind: kind,
-    colorScheme: colorScheme,
-  );
-  // Keep kind readable on inactive tabs; bar alone was too subtle on warm presets.
-  final alpha = active ? 1.0 : (hovered ? 0.9 : 0.8);
-  return base.withValues(alpha: alpha);
-}
-
-@visibleForTesting
 String recentlyClosedEntryLabel(HomeClosedWorkspaceEntry entry) {
   final name = entry.displayName.trim();
   return name.isNotEmpty ? name : entry.workspaceId;
 }
-
-@visibleForTesting
-bool recentlyClosedShowIdentityInSubtitle({
-  required HomeClosedWorkspaceEntry entry,
-  required List<HomeClosedWorkspaceEntry> entries,
-  required List<LaunchProfile> identities,
-}) {
-  final duplicateDirectory =
-      entries
-          .where((candidate) => candidate.workspaceId == entry.workspaceId)
-          .length >
-      1;
-  if (duplicateDirectory) return true;
-  final profile =
-      identities.where((e) => e.id == entry.identity.profileId).firstOrNull ??
-      identities
-          .where((e) => e.id == LaunchProfileProvisioner.defaultPersonalId)
-          .firstOrNull;
-  return profile?.kind == LaunchProfileKind.team;
-}
-
-HomeWorkspaceTabKind workspaceTabKindForIdentity({
-  required LaunchProfileRef identity,
-  required List<LaunchProfile> identities,
-}) {
-  final profile =
-      identities.where((e) => e.id == identity.profileId).firstOrNull ??
-      identities
-          .where((e) => e.id == LaunchProfileProvisioner.defaultPersonalId)
-          .firstOrNull;
-  return profile?.kind == LaunchProfileKind.team
-      ? HomeWorkspaceTabKind.team
-      : HomeWorkspaceTabKind.personal;
-}
-
-@visibleForTesting
-HomeWorkspaceTabKind recentlyClosedTabKind({
-  required LaunchProfileRef identity,
-  required List<LaunchProfile> identities,
-}) => workspaceTabKindForIdentity(identity: identity, identities: identities);
-
-@visibleForTesting
-String recentlyClosedIdentityLabel({
-  required AppLocalizations l10n,
-  required HomeClosedWorkspaceEntry entry,
-  required List<LaunchProfile> identities,
-}) => workspaceTabIdentityLabel(
-  l10n: l10n,
-  identity: entry.identity,
-  identities: identities,
-);
 
 @visibleForTesting
 String? recentlyClosedSubtitleLine({
@@ -186,23 +91,7 @@ String? recentlyClosedSubtitleLine({
   required List<LaunchProfile> identities,
 }) {
   final path = entry.primaryPath.trim();
-  final showIdentity = recentlyClosedShowIdentityInSubtitle(
-    entry: entry,
-    entries: entries,
-    identities: identities,
-  );
-  final identityPart = showIdentity
-      ? recentlyClosedIdentityLabel(
-          l10n: l10n,
-          entry: entry,
-          identities: identities,
-        )
-      : null;
-  if (identityPart != null && path.isNotEmpty) {
-    return '$identityPart · $path';
-  }
-  if (path.isNotEmpty) return path;
-  return identityPart;
+  return path.isNotEmpty ? path : null;
 }
 
 @visibleForTesting
@@ -216,10 +105,9 @@ WorkspaceTopology? recentlyClosedTopology({
   return entry.topology;
 }
 
-/// Personal/team glyph colored by workspace topology (local / remote / mixed).
-class WorkspaceTabKindTopologyIcon extends StatelessWidget {
-  const WorkspaceTabKindTopologyIcon({
-    required this.kind,
+/// Workspace tab glyph colored by topology (local / remote / mixed).
+class WorkspaceTabTopologyIcon extends StatelessWidget {
+  const WorkspaceTabTopologyIcon({
     required this.topology,
     required this.colorScheme,
     required this.brightness,
@@ -229,7 +117,6 @@ class WorkspaceTabKindTopologyIcon extends StatelessWidget {
     super.key,
   });
 
-  final HomeWorkspaceTabKind kind;
   final WorkspaceTopology topology;
   final ColorScheme colorScheme;
   final Brightness brightness;
@@ -240,7 +127,7 @@ class WorkspaceTabKindTopologyIcon extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Icon(
-      homeWorkspaceTabKindIcon(kind),
+      workspaceTabTopologyIconData(topology),
       size: size,
       color: workspaceTabTopologyIconColor(
         colorScheme: colorScheme,
@@ -258,7 +145,6 @@ class HomeWorkspaceTab {
   const HomeWorkspaceTab({
     required this.id,
     required this.name,
-    required this.kind,
     this.topology = WorkspaceTopology.local,
     this.tooltip,
     this.closable = true,
@@ -266,7 +152,6 @@ class HomeWorkspaceTab {
 
   final String id;
   final String name;
-  final HomeWorkspaceTabKind kind;
   final WorkspaceTopology topology;
 
   /// Shown on hover; defaults to [name] when omitted.
@@ -288,7 +173,6 @@ class HomeTitleBar extends StatefulWidget {
     this.onSelectTab,
     this.onCloseTab,
     this.onReopenClosedTab,
-    this.onOpenTabWithOtherIdentity,
     super.key,
   });
 
@@ -313,7 +197,6 @@ class HomeTitleBar extends StatefulWidget {
   final ValueChanged<String>? onSelectTab;
   final ValueChanged<String>? onCloseTab;
   final ValueChanged<String>? onReopenClosedTab;
-  final ValueChanged<String>? onOpenTabWithOtherIdentity;
 
   @override
   State<HomeTitleBar> createState() => _HomeTitleBarState();
@@ -455,7 +338,6 @@ class _HomeTitleBarState extends State<HomeTitleBar> with WindowListener {
                                   child: _WorkspaceTab(
                                     label: tab.name,
                                     tooltip: tab.tooltip ?? tab.name,
-                                    kind: tab.kind,
                                     topology: tab.topology,
                                     active: tab.id == widget.activeTabKey,
                                     closable: tab.closable,
@@ -463,9 +345,6 @@ class _HomeTitleBarState extends State<HomeTitleBar> with WindowListener {
                                         widget.onSelectTab?.call(tab.id),
                                     onClose: () =>
                                         widget.onCloseTab?.call(tab.id),
-                                    onOpenWithOtherIdentity: () => widget
-                                        .onOpenTabWithOtherIdentity
-                                        ?.call(tab.id),
                                   ),
                                 ),
                               ],
@@ -584,24 +463,20 @@ class _WorkspaceTab extends StatefulWidget {
   const _WorkspaceTab({
     required this.label,
     required this.tooltip,
-    required this.kind,
     this.topology = WorkspaceTopology.local,
     this.active = false,
     this.closable = true,
     this.onTap,
     this.onClose,
-    this.onOpenWithOtherIdentity,
   });
 
   final String label;
   final String tooltip;
-  final HomeWorkspaceTabKind kind;
   final WorkspaceTopology topology;
   final bool active;
   final bool closable;
   final VoidCallback? onTap;
   final VoidCallback? onClose;
-  final VoidCallback? onOpenWithOtherIdentity;
 
   @override
   State<_WorkspaceTab> createState() => _WorkspaceTabState();
@@ -614,32 +489,21 @@ class _WorkspaceTabState extends State<_WorkspaceTab> {
   bool get _showChrome => widget.active || _hovered || Platform.isAndroid;
 
   Future<void> _showTabContextMenuAtGlobal(Offset globalPosition) async {
-    if (widget.onOpenWithOtherIdentity == null) return;
+    if (!widget.closable || widget.onClose == null) return;
     final l10n = context.l10n;
     final selected = await showSidebarActionMenuFromSpecs<String>(
       context: context,
       globalPosition: globalPosition,
       specs: [
         SidebarActionMenuSpec.item(
-          value: 'otherIdentity',
-          icon: Icons.badge_outlined,
-          label: l10n.homeWorkspaceOpenInNewTabWithOtherIdentity,
+          value: 'close',
+          icon: Icons.close,
+          label: l10n.closeTab,
         ),
-        if (widget.closable && widget.onClose != null)
-          SidebarActionMenuSpec.item(
-            value: 'close',
-            icon: Icons.close,
-            label: l10n.closeTab,
-          ),
       ],
     );
     if (!mounted || selected == null) return;
-    switch (selected) {
-      case 'otherIdentity':
-        widget.onOpenWithOtherIdentity?.call();
-      case 'close':
-        widget.onClose?.call();
-    }
+    if (selected == 'close') widget.onClose?.call();
   }
 
   Future<void> _showTabContextMenuAtTap(TapDownDetails details) async {
@@ -684,13 +548,12 @@ class _WorkspaceTabState extends State<_WorkspaceTab> {
         child: GestureDetector(
           behavior: HitTestBehavior.opaque,
           onTap: widget.onTap,
-          onSecondaryTapDown: widget.onOpenWithOtherIdentity == null
-              ? null
-              : _showTabContextMenuFromTap,
-          onLongPress:
-              widget.onOpenWithOtherIdentity == null || !Platform.isAndroid
-              ? null
-              : _showTabContextMenuAtChipCenter,
+          onSecondaryTapDown: widget.closable && widget.onClose != null
+              ? _showTabContextMenuFromTap
+              : null,
+          onLongPress: widget.closable && widget.onClose != null && Platform.isAndroid
+              ? _showTabContextMenuAtChipCenter
+              : null,
           child: InkWell(
             onTap: widget.onTap,
             borderRadius: BorderRadius.circular(8),
@@ -734,8 +597,7 @@ class _WorkspaceTabState extends State<_WorkspaceTab> {
                   const SizedBox(width: 8),
                   _TabChromeSlot(
                     visible: _showChrome,
-                    child: WorkspaceTabKindTopologyIcon(
-                      kind: widget.kind,
+                    child: WorkspaceTabTopologyIcon(
                       topology: widget.topology,
                       colorScheme: cs,
                       brightness: brightness,
@@ -987,10 +849,6 @@ class _RecentlyClosedMenuItem extends StatelessWidget {
     final l10n = context.l10n;
     final styles = AppTextStyles.of(context);
     final cs = Theme.of(context).colorScheme;
-    final kind = workspaceTabKindForIdentity(
-      identity: entry.identity,
-      identities: identities,
-    );
     final subtitle = recentlyClosedSubtitleLine(
       l10n: l10n,
       entry: entry,
@@ -1001,8 +859,7 @@ class _RecentlyClosedMenuItem extends StatelessWidget {
     final brightness = Theme.of(context).brightness;
 
     return SidebarActionMenuItem(
-      iconWidget: WorkspaceTabKindTopologyIcon(
-        kind: kind,
+      iconWidget: WorkspaceTabTopologyIcon(
         topology: topology ?? WorkspaceTopology.local,
         colorScheme: cs,
         brightness: brightness,

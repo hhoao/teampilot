@@ -234,10 +234,6 @@
   "homeWorkspaceRecentVisits": "Recent",
   "homeWorkspacePersonal": "Simple mode",
   "homeWorkspaceAllWorkspaces": "All workspaces",
-  "homeWorkspaceWorkspaceTabKindPersonal": "Personal",
-  "@homeWorkspaceWorkspaceTabKindPersonal": {
-    "description": "Short personal-workspace label in title-bar tab tooltips."
-  },
   "homeWorkspaceDefaultPersonalWorkspaceName": "Personal assistant",
   "@homeWorkspaceDefaultPersonalWorkspaceName": {
     "description": "Name shown for the built-in personal workspace in simple mode."
@@ -495,6 +491,15 @@
   },
   "sessionReadySubtitleGeneric": "Start a conversation in this workspace.",
   "sessionReadyHint": "Describe what you want in everyday language — no terminal commands needed.",
+  "workspaceChatLandingInputHint": "What can I help you with today? @ reference files, / invoke skills",
+  "workspaceChatLandingSelectWorkspace": "Select workspace >",
+  "workspaceChatLandingModeTeam": "Team",
+  "workspaceChatLandingModeSimple": "Simple chat",
+  "workspaceChatLandingUsePreset": "Use preset",
+  "workspaceChatLandingFullAccessPermissions": "Full access permissions",
+  "workspaceChatLandingSkills": "Skills",
+  "workspaceChatLandingConnectApps": "Connect apps",
+  "workspaceChatLandingDefaultPermissions": "Default permissions",
   "sessionStartButton": "Start conversation",
   "sessionFailedTitle": "Couldn't start session",
   "sessionRetryButton": "Try again",

@@ -6,10 +6,8 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../cubits/chat_cubit.dart';
-import '../../cubits/launch_profile_cubit.dart';
 import '../../l10n/l10n_extensions.dart';
 import '../../models/app_session.dart';
-import '../../models/launch_profile.dart';
 import '../../models/workspace.dart';
 import '../../models/workspace_tab_ref.dart';
 import '../../services/home_workspace/home_recent_workspaces_store.dart';
@@ -90,9 +88,6 @@ class _HomeLibrarySectionState extends State<HomeLibrarySection> {
     final sessions = context.select<ChatCubit, List<AppSession>>(
       (c) => c.state.sessions,
     );
-    final identities = context.select<LaunchProfileCubit, List<LaunchProfile>>(
-      (c) => c.state.identities,
-    );
 
     final workspaces = isFavorites
         ? [
@@ -147,7 +142,6 @@ class _HomeLibrarySectionState extends State<HomeLibrarySection> {
                 : _RecentWorkspaceGrid(
                     entries: recentEntries,
                     sessions: sessions,
-                    identities: identities,
                     favoriteWorkspaceIds: _favoriteWorkspaceIds,
                     onToggleWorkspaceFavorite: _toggleWorkspaceFavorite,
                   ),
@@ -179,14 +173,12 @@ class _RecentWorkspaceGrid extends StatelessWidget {
   const _RecentWorkspaceGrid({
     required this.entries,
     required this.sessions,
-    required this.identities,
     required this.favoriteWorkspaceIds,
     required this.onToggleWorkspaceFavorite,
   });
 
   final List<({Workspace workspace, WorkspaceTabRef tab})> entries;
   final List<AppSession> sessions;
-  final List<LaunchProfile> identities;
   final Set<String> favoriteWorkspaceIds;
   final Future<void> Function(String workspaceId) onToggleWorkspaceFavorite;
 
@@ -217,8 +209,6 @@ class _RecentWorkspaceGrid extends StatelessWidget {
           sessionCount: sessionCounts[workspace.workspaceId] ?? 0,
           favorited: favoriteWorkspaceIds.contains(workspace.workspaceId),
           onToggleFavorite: () => onToggleWorkspaceFavorite(workspace.workspaceId),
-          tabIdentity: tab.identity,
-          launchProfiles: identities,
           showSessionContextIcon: true,
           onTap: () => context.go(tab.route),
           sessions: sessions,

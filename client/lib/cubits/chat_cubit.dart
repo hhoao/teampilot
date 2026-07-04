@@ -411,6 +411,7 @@ class ChatCubit extends Cubit<ChatState>
           tabs: const [],
           activeTabIndex: 0,
           clearActiveSessionId: true,
+          clearSessionConnectingId: true,
           selectedMemberId: '',
           workspaces: empty?.workspaces,
           sessions: empty?.sessions,

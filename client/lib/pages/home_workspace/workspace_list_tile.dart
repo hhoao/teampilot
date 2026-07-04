@@ -6,8 +6,6 @@ import 'package:teampilot/theme/app_icon_sizes.dart';
 
 import '../../l10n/l10n_extensions.dart';
 import '../../models/app_session.dart';
-import '../../models/launch_profile.dart';
-import '../../models/launch_profile_ref.dart';
 import '../../models/workspace.dart';
 import '../../theme/app_text_styles.dart';
 import '../../theme/workspace_surface_layers.dart';
@@ -17,7 +15,6 @@ import '../../widgets/menu/sidebar_action_menu.dart';
 import '../../widgets/workspace_icon.dart';
 import 'open_workspace_tab_actions.dart';
 import 'workspace_actions.dart';
-import 'home_workspace_tab_scope.dart';
 import 'workspace_card_meta_row.dart';
 import 'workspace_card_session_bar.dart';
 
@@ -30,10 +27,7 @@ class WorkspaceListTile extends StatefulWidget {
     required this.onToggleFavorite,
     this.onTap,
     this.sessions = const [],
-    this.tabIdentity,
-    this.launchProfiles = const [],
     this.showSessionContextIcon = false,
-    this.sessionBarTopologyIconOnly = false,
     this.displayNameOverride,
     super.key,
   });
@@ -44,15 +38,11 @@ class WorkspaceListTile extends StatefulWidget {
   final Future<void> Function() onToggleFavorite;
   final VoidCallback? onTap;
   final List<AppSession> sessions;
-  final LaunchProfileRef? tabIdentity;
-  final List<LaunchProfile> launchProfiles;
   final bool showSessionContextIcon;
-  final bool sessionBarTopologyIconOnly;
   final String? displayNameOverride;
 
   @override
-  State<WorkspaceListTile> createState() =>
-      _WorkspaceListTileState();
+  State<WorkspaceListTile> createState() => _WorkspaceListTileState();
 }
 
 class _WorkspaceListTileState extends State<WorkspaceListTile> {
@@ -62,21 +52,7 @@ class _WorkspaceListTileState extends State<WorkspaceListTile> {
   bool get _showActions => _hovered || _menuOpen || Platform.isAndroid;
 
   void _openInNewTab() {
-    HomeTabScope.openInTab(
-      context,
-      widget.workspace.workspaceId,
-      activate: false,
-      identity: widget.tabIdentity,
-    );
-  }
-
-  Future<void> _openWithOtherIdentity() {
-    return openWorkspaceInNewTabWithIdentityPicker(
-      context,
-      workspace: widget.workspace,
-      sessions: widget.sessions,
-      excludeIdentity: widget.tabIdentity,
-    );
+    unawaited(openWorkspace(context, widget.workspace));
   }
 
   @override
@@ -138,10 +114,7 @@ class _WorkspaceListTileState extends State<WorkspaceListTile> {
                       sessionCount: widget.sessionCount,
                       sessionCountLabel: l10n.homeWorkspaceSessionsLabel,
                       workspace: workspace,
-                      tabIdentity: widget.tabIdentity,
-                      launchProfiles: widget.launchProfiles,
                       showContextIcon: widget.showSessionContextIcon,
-                      topologyIconOnly: widget.sessionBarTopologyIconOnly,
                     ),
                   ],
                 ),
@@ -180,12 +153,6 @@ class _WorkspaceListTileState extends State<WorkspaceListTile> {
                         onOpen: () => setState(() => _menuOpen = true),
                         onClose: () => setState(() => _menuOpen = false),
                         buildMenuChildren: (context, controller) => [
-                          SidebarActionMenuItem(
-                            icon: Icons.badge_outlined,
-                            label: l10n.homeWorkspaceOpenInNewTabWithOtherIdentity,
-                            menuController: controller,
-                            onTap: () => unawaited(_openWithOtherIdentity()),
-                          ),
                           SidebarActionMenuItem(
                             icon: Icons.drive_file_rename_outline,
                             label: l10n.homeWorkspaceRenameWorkspace,
@@ -242,11 +209,6 @@ class _WorkspaceListTileState extends State<WorkspaceListTile> {
       tapDetails: TapDownDetails(globalPosition: details.globalPosition),
       specs: [
         SidebarActionMenuSpec.item(
-          value: 'otherIdentity',
-          icon: Icons.badge_outlined,
-          label: l10n.homeWorkspaceOpenInNewTabWithOtherIdentity,
-        ),
-        SidebarActionMenuSpec.item(
           value: 'newTab',
           icon: Icons.open_in_new_rounded,
           label: l10n.homeWorkspaceOpenWorkspaceInNewTab,
@@ -254,11 +216,6 @@ class _WorkspaceListTileState extends State<WorkspaceListTile> {
       ],
     );
     if (!mounted || selected == null) return;
-    switch (selected) {
-      case 'otherIdentity':
-        await _openWithOtherIdentity();
-      case 'newTab':
-        _openInNewTab();
-    }
+    if (selected == 'newTab') _openInNewTab();
   }
 }

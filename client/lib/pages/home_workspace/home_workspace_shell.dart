@@ -12,17 +12,11 @@ import '../../cubits/launch_profile_cubit.dart';
 import '../../cubits/workspace_tools_cubit.dart';
 import '../../l10n/l10n_extensions.dart';
 import '../../models/workspace.dart';
-import '../../models/launch_profile_ref.dart';
-import '../../models/launch_profile_kind.dart';
-import '../../models/launch_profile.dart';
 import '../../models/workspace_tab_ref.dart';
 import '../../models/workspace_topology.dart';
-import '../../services/storage/launch_profile_provisioner.dart';
-import '../../utils/launch_profile_display_name.dart';
-import '../../utils/workspace_display_name.dart';
-import '../../utils/workspace_tab_session_scope.dart';
 import '../../models/home_closed_workspace_entry.dart';
 import '../../theme/workspace_surface_layers.dart';
+import '../../utils/workspace_display_name.dart';
 import '../../services/home_workspace/home_closed_workspaces_store.dart';
 import '../../services/home_workspace/home_open_workspaces_store.dart';
 import '../../services/home_workspace/home_recent_workspaces_store.dart';
@@ -37,27 +31,17 @@ import 'home_workspace_tab_scope.dart';
 import 'home_workspace_title_bar.dart';
 import 'open_workspace_tab_actions.dart';
 
-/// Persistent chrome for the workspace-home route family. Owns the open workspace
-/// tabs (kept until explicitly closed), the title bar, and [HomeWorkspaceBodyStack]
-/// (GoRouter supplies the URL only — not the body widget tree).
+/// Persistent chrome for the workspace-home route family.
 class HomeShell extends StatefulWidget {
   const HomeShell({
     required this.location,
     super.key,
   });
 
-  /// Current router location (path + query), e.g. `/home-v2/workspace/<id>?as=personal`.
   final String location;
 
   @override
   State<HomeShell> createState() => _HomeShellState();
-
-  static String? identityNameFor(
-    AppLocalizations l10n,
-    List<LaunchProfile> identities,
-    String profileId,
-  ) =>
-      launchProfileDisplayNameForId(l10n, identities, profileId);
 
   @visibleForTesting
   static List<WorkspaceTabRef> mergeOpenTabs({
@@ -84,7 +68,6 @@ class _HomeShellState extends State<HomeShell> {
   final _closedWorkspacesStore = HomeClosedWorkspacesStore();
   final _openWorkspacesStore = HomeOpenWorkspacesStore();
 
-  /// Open workspace tabs in display order; persisted across app restarts.
   late List<WorkspaceTabRef> _openTabs;
   List<HomeClosedWorkspaceEntry> _recentlyClosed = const [];
 
@@ -118,16 +101,11 @@ class _HomeShellState extends State<HomeShell> {
     }
     await _persistOpenTabs();
     await _reloadRecentlyClosed();
-    // Warm sessions for every restored tab so switching to a background tab is
-    // instant on first click instead of paying the cold disk/SFTP load then.
     for (final tab in _openTabs) {
       _prefetchWorkspaceSessions(tab.workspaceId);
     }
   }
 
-  /// Best-effort background hydration of a workspace's sessions. Deduped by
-  /// [ChatCubit.ensureSessionsForWorkspace] (skips when already loaded/in
-  /// flight), so it is safe to call eagerly on tab open or hover.
   void _prefetchWorkspaceSessions(String workspaceId) {
     if (!mounted || workspaceId.trim().isEmpty) return;
     unawaited(
@@ -187,44 +165,8 @@ class _HomeShellState extends State<HomeShell> {
     }
   }
 
-  void _openWorkspace(
-    String workspaceId, {
-    required bool activate,
-    LaunchProfileRef? identity,
-  }) {
-    final resolved = identity ?? _defaultIdentityFor(workspaceId);
-    _openTab(
-      WorkspaceTabRef(workspaceId: workspaceId, identity: resolved),
-      activate: activate,
-    );
-  }
-
-  LaunchProfileRef _defaultIdentityFor(String workspaceId) {
-    final workspace = _resolve(
-      context.read<ChatCubit>().state.workspaces,
-      workspaceId,
-    );
-    final profileId = workspace?.defaultProfileId.trim() ?? '';
-    if (profileId.isNotEmpty) {
-      return LaunchProfileRef(profileId);
-    }
-    return const LaunchProfileRef(LaunchProfileProvisioner.defaultPersonalId);
-  }
-
-  Future<void> _openTabWithOtherIdentity(String tabKey) async {
-    final tab = _openTabs.where((t) => t.tabKey == tabKey).firstOrNull;
-    if (tab == null) return;
-    final chat = context.read<ChatCubit>();
-    final workspace = _resolve(chat.state.workspaces, tab.workspaceId);
-    if (workspace == null) return;
-    await chat.ensureSessionsForWorkspace(tab.workspaceId);
-    final sessions = await chat.sessionsForWorkspaceReady(tab.workspaceId);
-    await openWorkspaceInNewTabWithIdentityPicker(
-      context,
-      workspace: workspace,
-      sessions: sessions,
-      excludeIdentity: tab.identity,
-    );
+  void _openWorkspace(String workspaceId, {required bool activate}) {
+    _openTab(WorkspaceTabRef(workspaceId: workspaceId), activate: activate);
   }
 
   Future<void> _reopenClosedTab(String tabKey) async {
@@ -235,10 +177,7 @@ class _HomeShellState extends State<HomeShell> {
     await _closedWorkspacesStore.remove(tabKey);
     if (!mounted) return;
     _openTab(
-      WorkspaceTabRef(
-        workspaceId: entry.workspaceId,
-        identity: entry.identity,
-      ),
+      WorkspaceTabRef(workspaceId: entry.workspaceId),
       activate: true,
     );
     await _reloadRecentlyClosed();
@@ -283,15 +222,9 @@ class _HomeShellState extends State<HomeShell> {
     workspaceTools.removeWorkspace(tab.tabKey);
     context.read<WorkspaceToolsScopeRegistry>().removeScope(tab.tabKey);
 
-    final stillOpenSameDirectory = next.any(
-      (t) => t.workspaceId == tab.workspaceId,
-    );
-    if (!stillOpenSameDirectory) {
-      context.read<WorkspaceFileTreeStore>().removeWorkspace(tab.workspaceId);
-      context.read<WorkspaceWorktreeRegistry>().removeWorkspace(
-        tab.workspaceId,
-      );
-    }
+    context.read<WorkspaceFileTreeStore>().removeWorkspace(tab.workspaceId);
+    context.read<WorkspaceWorktreeRegistry>().removeWorkspace(tab.workspaceId);
+
     if (running == 0) {
       chat.closeTabsForWorkspace(tab.tabKey);
     }
@@ -350,18 +283,11 @@ class _HomeShellState extends State<HomeShell> {
         .preferences
         .scopeSessionsToSelectedTeam;
     final selectedTeam = context.read<LaunchProfileCubit>().state.selectedTeam;
-    final activeTab = WorkspaceTabRef.fromLocation(widget.location);
-    final scopeTeamId = activeTab != null
-        ? _sessionTeamScopeId(context, activeTab.identity)
-        : selectedTeam?.id;
     context.read<ChatCubit>().setTeamSessionScope(
       scopeSessionsToSelectedTeam: scopeOn,
-      selectedTeamId: scopeTeamId,
+      selectedTeamId: selectedTeam?.id,
     );
   }
-
-  bool _hasDuplicateDirectory(WorkspaceTabRef tab) =>
-      _openTabs.where((t) => t.workspaceId == tab.workspaceId).length > 1;
 
   @override
   Widget build(BuildContext context) {
@@ -395,20 +321,13 @@ class _HomeShellState extends State<HomeShell> {
                 onCloseTab: (tabKey) => unawaited(_closeTab(tabKey)),
                 onReopenClosedTab: (tabKey) =>
                     unawaited(_reopenClosedTab(tabKey)),
-                onOpenTabWithOtherIdentity: (tabKey) =>
-                    unawaited(_openTabWithOtherIdentity(tabKey)),
-                hasDuplicateDirectory: _hasDuplicateDirectory,
               ),
               Expanded(
                 child: SafeArea(
                   top: false,
                   child: HomeTabScope(
-                    openWorkspace: (id, {activate = true, identity}) =>
-                        _openWorkspace(
-                          id,
-                          activate: activate,
-                          identity: identity,
-                        ),
+                    openWorkspace: (id, {activate = true}) =>
+                        _openWorkspace(id, activate: activate),
                     child: HomeWorkspaceBodyStack(
                       location: widget.location,
                       openTabs: _openTabs,
@@ -423,16 +342,6 @@ class _HomeShellState extends State<HomeShell> {
     );
   }
 
-  static String _sessionTeamScopeId(
-    BuildContext context,
-    LaunchProfileRef identity,
-  ) {
-    final workspaceIdentity = context.read<LaunchProfileCubit>().byId(
-          identity.profileId,
-        );
-    return workspaceTabSessionTeamScopeId(identity, workspaceIdentity);
-  }
-
   static Workspace? _resolve(List<Workspace> workspaces, String id) {
     for (final p in workspaces) {
       if (p.workspaceId == id) return p;
@@ -441,8 +350,6 @@ class _HomeShellState extends State<HomeShell> {
   }
 }
 
-/// Title bar isolated from [HomeShell] body so session/tab [ChatCubit] updates
-/// during workspace switches do not rebuild the workbench subtree.
 class _HomeShellTitleBar extends StatelessWidget {
   const _HomeShellTitleBar({
     required this.location,
@@ -452,8 +359,6 @@ class _HomeShellTitleBar extends StatelessWidget {
     required this.onSelectTab,
     required this.onCloseTab,
     required this.onReopenClosedTab,
-    required this.onOpenTabWithOtherIdentity,
-    required this.hasDuplicateDirectory,
   });
 
   final String location;
@@ -463,8 +368,6 @@ class _HomeShellTitleBar extends StatelessWidget {
   final ValueChanged<String> onSelectTab;
   final ValueChanged<String> onCloseTab;
   final ValueChanged<String> onReopenClosedTab;
-  final ValueChanged<String> onOpenTabWithOtherIdentity;
-  final bool Function(WorkspaceTabRef tab) hasDuplicateDirectory;
 
   @override
   Widget build(BuildContext context) {
@@ -481,9 +384,6 @@ class _HomeShellTitleBar extends StatelessWidget {
         if (openWorkspaceIds.contains(workspace.workspaceId)) workspace,
     ];
     final l10n = context.l10n;
-    final identities = context.select<LaunchProfileCubit, List<LaunchProfile>>(
-      (c) => c.state.identities,
-    );
     final tabs = <HomeWorkspaceTab>[
       for (final tab in openTabs)
         if (_HomeShellState._resolve(openWorkspaces, tab.workspaceId)
@@ -492,7 +392,6 @@ class _HomeShellTitleBar extends StatelessWidget {
             tab: tab,
             workspace: workspace,
             l10n: l10n,
-            identities: identities,
           ),
     ];
 
@@ -502,12 +401,10 @@ class _HomeShellTitleBar extends StatelessWidget {
       pageChrome: pageChrome,
       recentlyClosed: recentlyClosed,
       workspaces: workspaces,
-      launchProfiles: identities,
       onHomeTap: onHomeTap,
       onSelectTab: onSelectTab,
       onCloseTab: onCloseTab,
       onReopenClosedTab: onReopenClosedTab,
-      onOpenTabWithOtherIdentity: onOpenTabWithOtherIdentity,
     );
   }
 
@@ -515,35 +412,15 @@ class _HomeShellTitleBar extends StatelessWidget {
     required WorkspaceTabRef tab,
     required Workspace workspace,
     required AppLocalizations l10n,
-    required List<LaunchProfile> identities,
   }) {
-    final workspaceIdentity = identities
-            .where((e) => e.id == tab.identity.profileId)
-            .firstOrNull ??
-        identities
-            .where((e) => e.id == LaunchProfileProvisioner.defaultPersonalId)
-            .firstOrNull;
-    final isPersonal = workspaceIdentity?.kind == LaunchProfileKind.personal;
-    final profileId = tab.identity.profileId;
-    final identityLabel = isPersonal
-        ? l10n.homeWorkspaceWorkspaceTabKindPersonal
-        : (HomeShell.identityNameFor(l10n, identities, profileId) ?? profileId);
     final workspaceName = workspace.localizedName(l10n);
-    final showIdentityInLabel = hasDuplicateDirectory(tab);
     final topology = workspaceTopologyOf(workspace.folders);
     return HomeWorkspaceTab(
       id: tab.tabKey,
-      name: showIdentityInLabel
-          ? '$identityLabel · $workspaceName'
-          : workspaceName,
-      kind: isPersonal ? HomeWorkspaceTabKind.personal : HomeWorkspaceTabKind.team,
+      name: workspaceName,
       topology: topology,
       tooltip: formatWorkspaceTabTooltip(
         workspace: workspace,
-        personalKindLabel: l10n.homeWorkspaceWorkspaceTabKindPersonal,
-        isPersonal: isPersonal,
-        teamName: HomeShell.identityNameFor(l10n, identities, profileId),
-        teamId: profileId,
         displayName: workspaceName,
         topology: topology,
         topologyLabel: workspaceTopologyLabel(l10n, topology),

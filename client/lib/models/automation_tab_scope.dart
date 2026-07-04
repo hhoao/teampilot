@@ -22,10 +22,10 @@ class AutomationTabScope {
 
   String get tabKey => '$workspaceId$tabKeySeparator$launchProfileId';
 
-  factory AutomationTabScope.fromTabRef(WorkspaceTabRef tab) {
+  factory AutomationTabScope.fromWorkspaceTab(WorkspaceTabRef tab) {
     return AutomationTabScope(
       workspaceId: tab.workspaceId,
-      launchProfileId: tab.identity.profileId,
+      launchProfileId: LaunchProfileProvisioner.defaultPersonalId,
     );
   }
 

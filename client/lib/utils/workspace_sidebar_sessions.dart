@@ -15,17 +15,12 @@ class WorkspaceSidebarSessions {
   static WorkspaceSidebarSessions forWorkspace({
     required List<AppSession> allSessions,
     required Workspace workspace,
-    required String sessionTeamFilter,
   }) {
     final grouped = groupSessionsByWorkspaceId(allSessions);
     final bucket = grouped[workspace.workspaceId];
     final filtered = bucket == null || bucket.isEmpty
         ? sessionsForWorkspace(workspace, const <AppSession>[])
-            .where((s) => s.sessionTeam.trim() == sessionTeamFilter)
-            .toList()
-        : sessionsForWorkspace(workspace, bucket)
-            .where((s) => s.sessionTeam.trim() == sessionTeamFilter)
-            .toList();
+        : sessionsForWorkspace(workspace, bucket);
     return WorkspaceSidebarSessions(filtered);
   }
 

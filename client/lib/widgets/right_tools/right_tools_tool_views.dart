@@ -11,7 +11,6 @@ import '../../cubits/file_tree_cubit.dart';
 import '../../cubits/mailbox_cubit.dart';
 import '../../cubits/member_presence_cubit.dart';
 import '../../utils/workspace_tab_session_scope.dart';
-import '../../cubits/launch_profile_cubit.dart';
 import '../../cubits/worktree_cubit.dart';
 import '../../l10n/l10n_extensions.dart';
 import '../../models/app_provider_config.dart';
@@ -100,12 +99,12 @@ class _WorkingSetDeltaState extends State<_WorkingSetDelta> {
 /// Syncs member presence when the selected team changes.
 class RightToolsPresenceTeamSync extends StatefulWidget {
   const RightToolsPresenceTeamSync({
-    required this.isPersonalWorkspace,
+    required this.team,
     required this.child,
     super.key,
   });
 
-  final bool isPersonalWorkspace;
+  final TeamProfile? team;
   final Widget child;
 
   @override
@@ -121,13 +120,11 @@ class _RightToolsPresenceTeamSyncState extends State<RightToolsPresenceTeamSync>
     if (!TickerMode.valuesOf(context).enabled) {
       return widget.child;
     }
-    if (!widget.isPersonalWorkspace) {
-      final teamId = context.select<LaunchProfileCubit, String?>(
-        (c) => c.state.selectedTeam?.id,
-      );
+    final team = widget.team;
+    if (team != null) {
+      final teamId = team.id;
       if (teamId != _syncedTeamId) {
         _syncedTeamId = teamId;
-        final team = context.read<LaunchProfileCubit>().state.selectedTeam;
         WidgetsBinding.instance.addPostFrameCallback((_) {
           if (!mounted) return;
           context.read<MemberPresenceCubit>().syncPresenceTeam(team);
@@ -225,6 +222,7 @@ class RightToolsToolViews extends StatefulWidget {
     required this.workspaceId,
     required this.toolsScopeId,
     required this.isPersonalWorkspace,
+    required this.team,
     required this.dismissDrawerOnAction,
     required this.fileTreeCubit,
     required this.workContext,
@@ -237,6 +235,7 @@ class RightToolsToolViews extends StatefulWidget {
   final String workspaceId;
   final String toolsScopeId;
   final bool isPersonalWorkspace;
+  final TeamProfile? team;
   final bool dismissDrawerOnAction;
   final FileTreeCubit fileTreeCubit;
   final RuntimeContext workContext;
@@ -325,11 +324,7 @@ class _RightToolsToolViewsState extends State<RightToolsToolViews> {
     required int unreadCount,
     required bool hasMailboxCubit,
   }) {
-    final team = widget.isPersonalWorkspace
-        ? null
-        : context.select<LaunchProfileCubit, TeamProfile?>(
-            (c) => c.state.selectedTeam,
-          );
+    final team = widget.team;
     if (!widget.isPersonalWorkspace && team == null) {
       return const SizedBox.shrink();
     }

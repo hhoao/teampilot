@@ -8,10 +8,16 @@ import 'package:teampilot/cubits/editor_cubit.dart';
 import 'package:teampilot/cubits/layout_cubit.dart';
 import 'package:teampilot/cubits/member_presence_cubit.dart';
 import 'package:teampilot/cubits/launch_profile_cubit.dart';
+import 'package:teampilot/cubits/cli_presets_cubit.dart';
+import 'package:teampilot/cubits/workspace_landing_context_cubit.dart';
 import 'package:teampilot/cubits/workspace_tools_cubit.dart';
 import 'package:teampilot/l10n/app_localizations.dart';
+import 'package:teampilot/models/landing_launch_context.dart';
+import 'package:teampilot/models/workspace.dart';
+import 'package:teampilot/models/workspace_folder.dart';
 import 'package:teampilot/pages/chat_page.dart';
 import 'package:teampilot/pages/workspace_shell/workspace_shell.dart';
+import 'package:teampilot/repositories/cli_presets_repository.dart';
 import 'package:teampilot/repositories/session_repository.dart';
 import 'package:teampilot/repositories/launch_profile_repository.dart';
 import 'package:teampilot/services/file_tree/workspace_file_tree_store.dart';
@@ -20,6 +26,7 @@ import 'package:teampilot/services/io/local_filesystem.dart';
 import 'package:teampilot/services/provider/config_profile_service.dart';
 import 'package:teampilot/services/workspace/workspace_tools_scope.dart';
 
+import '../support/in_memory_filesystem.dart';
 import '../support/post_frame_test_harness.dart';
 
 String _executable() => 'flashskyai';
@@ -75,6 +82,26 @@ void main() {
     chatCubit.bindPresenceCubit(presenceCubit);
     addTearDown(() => presenceCubit.close());
 
+    final cliPresetsCubit = CliPresetsCubit(
+      repository: CliPresetsRepository(
+        fs: InMemoryFilesystem(),
+        presetsPath: '/cli-presets.json',
+      ),
+    );
+    cliPresetsCubit.emit(const CliPresetsState(status: CliPresetsLoadStatus.ready));
+    addTearDown(() => cliPresetsCubit.close());
+
+    chatCubit.ingestWorkspaceSessionSnapshot(
+      workspaces: [
+        Workspace(
+          workspaceId: 'personal-test',
+          folders: [WorkspaceFolder(path: '/tmp/personal-workspace')],
+          createdAt: 1,
+        ),
+      ],
+      sessions: const [],
+    );
+
     await tester.pumpWidget(
       MaterialApp(
         localizationsDelegates: AppLocalizations.localizationsDelegates,
@@ -95,14 +122,20 @@ void main() {
               BlocProvider.value(value: editorCubit),
               BlocProvider.value(value: presenceCubit),
               BlocProvider.value(value: WorkspaceToolsCubit()),
+              BlocProvider.value(value: cliPresetsCubit),
+              BlocProvider(
+                create: (_) => WorkspaceLandingContextCubit(
+                  workspaceId: 'personal-test',
+                  initial: const LandingLaunchContext(isPersonal: true),
+                ),
+              ),
             ],
             child: WorkspaceToolsScope(
               state: const WorkspaceToolsScopeState(resolving: false),
-              child: const Scaffold(
+              child: Scaffold(
                 body: ChatPage(
                   cwd: '/tmp/personal-workspace',
                   workspaceId: 'personal-test',
-                  isPersonalWorkspace: true,
                 ),
               ),
             ),

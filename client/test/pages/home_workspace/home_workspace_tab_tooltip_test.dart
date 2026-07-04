@@ -21,36 +21,11 @@ Workspace _workspace({
 }
 
 void main() {
-  test('personal tooltip prefixes kind label', () {
+  test('tooltip shows workspace name only for local tabs', () {
     final tooltip = formatWorkspaceTabTooltip(
       workspace: _workspace(id: 'p1', display: 'solo'),
-      personalKindLabel: 'Personal',
-      isPersonal: true,
-      teamName: null,
     );
-    expect(tooltip, 'Personal · solo\n/home/user/my-app');
-  });
-
-  test('team tooltip uses team name prefix', () {
-    final tooltip = formatWorkspaceTabTooltip(
-      workspace: _workspace(id: 't1', display: 'shared'),
-      personalKindLabel: 'Personal',
-      isPersonal: false,
-      teamName: 'Alpha Team',
-      teamId: 'team-1',
-    );
-    expect(tooltip, 'Alpha Team · shared\n/home/user/my-app');
-  });
-
-  test('team tooltip falls back to teamId when name missing', () {
-    final tooltip = formatWorkspaceTabTooltip(
-      workspace: _workspace(id: 't1', display: 'shared'),
-      personalKindLabel: 'Personal',
-      isPersonal: false,
-      teamName: null,
-      teamId: 'team-1',
-    );
-    expect(tooltip, 'team-1 · shared\n/home/user/my-app');
+    expect(tooltip, 'solo\n/home/user/my-app');
   });
 
   test('omits path lines when every folder path is empty', () {
@@ -61,11 +36,8 @@ void main() {
           display: 'solo',
           primaryPath: '',
         ),
-        personalKindLabel: 'Personal',
-        isPersonal: true,
-        teamName: null,
       ),
-      'Personal · solo',
+      'solo',
     );
   });
 
@@ -81,15 +53,12 @@ void main() {
     );
     final tooltip = formatWorkspaceTabTooltip(
       workspace: workspace,
-      personalKindLabel: 'Personal',
-      isPersonal: true,
-      teamName: null,
       topology: WorkspaceTopology.mixed,
       topologyLabel: 'Mixed workspace',
     );
     expect(
       tooltip,
-      'Mixed workspace · Personal · mixed-app\n'
+      'Mixed workspace · mixed-app\n'
       '/home/user/app\n'
       'SSH: /var/www',
     );
@@ -106,13 +75,10 @@ void main() {
     );
     final tooltip = formatWorkspaceTabTooltip(
       workspace: workspace,
-      personalKindLabel: 'Personal',
-      isPersonal: false,
-      teamName: 'Alpha Team',
       topology: WorkspaceTopology.remote,
       topologyLabel: 'Remote workspace',
     );
-    expect(tooltip, 'Remote workspace · Alpha Team · shared\nSSH: /var/www');
+    expect(tooltip, 'Remote workspace · shared\nSSH: /var/www');
   });
 
   test('formatWorkspaceFolderTooltipLine prefixes ssh targets', () {

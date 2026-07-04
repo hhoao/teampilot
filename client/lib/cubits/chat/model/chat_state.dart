@@ -131,6 +131,7 @@ class ChatState extends Equatable {
   }
 
   bool get isActiveSessionConnecting {
+    if (tabs.isEmpty) return false;
     final id = sessionConnectingId;
     final active = activeSessionId;
     if (id == null || id.isEmpty) return false;

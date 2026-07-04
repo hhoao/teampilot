@@ -1,12 +1,10 @@
 import 'dart:io';
 
 import 'package:flutter_test/flutter_test.dart';
-import 'package:teampilot/models/launch_profile_ref.dart';
 import 'package:teampilot/models/workspace_tab_ref.dart';
 import 'package:teampilot/services/home_workspace/home_recent_workspaces_store.dart';
 import 'package:teampilot/services/io/local_filesystem.dart';
 import 'package:teampilot/services/storage/app_storage.dart';
-import 'package:teampilot/services/storage/launch_profile_provisioner.dart';
 
 void main() {
   late Directory root;
@@ -30,41 +28,25 @@ void main() {
     }
   });
 
-  test('recordVisit keeps distinct tabs for same directory', () async {
-    const personal = LaunchProfileRef(LaunchProfileProvisioner.defaultPersonalId);
-    const team = LaunchProfileRef('team-a');
-    const personalTab = WorkspaceTabRef(
-      workspaceId: 'proj-a',
-      identity: personal,
-    );
-    const teamTab = WorkspaceTabRef(
-      workspaceId: 'proj-a',
-      identity: team,
-    );
+  test('recordVisit dedupes by workspace id', () async {
+    const tabA = WorkspaceTabRef(workspaceId: 'proj-a');
+    const tabB = WorkspaceTabRef(workspaceId: 'proj-b');
 
-    await store.recordVisit(personalTab);
-    await store.recordVisit(teamTab);
+    await store.recordVisit(tabA);
+    await store.recordVisit(tabB);
 
-    expect(await store.loadOrderedTabs(), [teamTab, personalTab]);
+    expect(await store.loadOrderedTabs(), [tabB, tabA]);
   });
 
-  test('recordVisit moves existing tab key to front', () async {
-    const personal = LaunchProfileRef(LaunchProfileProvisioner.defaultPersonalId);
-    const team = LaunchProfileRef('team-a');
-    const personalTab = WorkspaceTabRef(
-      workspaceId: 'proj-a',
-      identity: personal,
-    );
-    const teamTab = WorkspaceTabRef(
-      workspaceId: 'proj-a',
-      identity: team,
-    );
+  test('recordVisit moves existing workspace id to front', () async {
+    const tabA = WorkspaceTabRef(workspaceId: 'proj-a');
+    const tabB = WorkspaceTabRef(workspaceId: 'proj-b');
 
-    await store.recordVisit(personalTab);
-    await store.recordVisit(teamTab);
-    await store.recordVisit(personalTab);
+    await store.recordVisit(tabA);
+    await store.recordVisit(tabB);
+    await store.recordVisit(tabA);
 
-    expect(await store.loadOrderedTabs(), [personalTab, teamTab]);
+    expect(await store.loadOrderedTabs(), [tabA, tabB]);
   });
 
   test('loadOrderedTabs ignores legacy workspaceIds payload', () async {

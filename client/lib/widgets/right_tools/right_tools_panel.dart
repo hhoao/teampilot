@@ -6,6 +6,7 @@ import '../../cubits/chat_cubit.dart';
 import '../../cubits/mailbox_cubit.dart';
 import '../../cubits/member_presence_cubit.dart';
 import '../../models/layout_preferences.dart';
+import '../../models/team_config.dart';
 import '../../utils/app_keys.dart';
 import 'right_tools_lifecycle.dart';
 import 'right_tools_tool_preferences.dart';
@@ -21,6 +22,7 @@ class RightToolsPanel extends StatefulWidget {
     this.panelKey = AppKeys.rightToolsPanel,
     this.dismissDrawerOnAction = false,
     this.isPersonalWorkspace = false,
+    this.team,
     super.key,
   });
 
@@ -28,6 +30,7 @@ class RightToolsPanel extends StatefulWidget {
   final Key panelKey;
   final bool dismissDrawerOnAction;
   final bool isPersonalWorkspace;
+  final TeamProfile? team;
   final String cwd;
   final List<String> additionalPaths;
   final String workspaceId;
@@ -119,6 +122,7 @@ class _RightToolsPanelState extends State<RightToolsPanel> {
         workspaceId: widget.workspaceId,
         toolsScopeId: widget._toolsScopeId,
         isPersonalWorkspace: widget.isPersonalWorkspace,
+        team: widget.team,
         dismissDrawerOnAction: widget.dismissDrawerOnAction,
       ),
     );
@@ -133,6 +137,7 @@ class _RightToolsPanelBody extends StatelessWidget {
     required this.workspaceId,
     required this.toolsScopeId,
     required this.isPersonalWorkspace,
+    required this.team,
     required this.dismissDrawerOnAction,
   });
 
@@ -142,6 +147,7 @@ class _RightToolsPanelBody extends StatelessWidget {
   final String workspaceId;
   final String toolsScopeId;
   final bool isPersonalWorkspace;
+  final TeamProfile? team;
   final bool dismissDrawerOnAction;
 
   @override
@@ -158,7 +164,7 @@ class _RightToolsPanelBody extends StatelessWidget {
     return RightToolsWorkingTurnListener(
       onTurnEnd: lifecycle.pokeOnTurnEnd,
       child: RightToolsPresenceTeamSync(
-        isPersonalWorkspace: isPersonalWorkspace,
+        team: team,
         child: Container(
           key: panelKey,
           child: RightToolsToolViews(
@@ -167,6 +173,7 @@ class _RightToolsPanelBody extends StatelessWidget {
             workspaceId: workspaceId,
             toolsScopeId: toolsScopeId,
             isPersonalWorkspace: isPersonalWorkspace,
+            team: team,
             dismissDrawerOnAction: dismissDrawerOnAction,
             fileTreeCubit: fileTreeCubit,
             workContext: tools.context,

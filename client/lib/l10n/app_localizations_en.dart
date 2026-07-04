@@ -551,9 +551,6 @@ class AppLocalizationsEn extends AppLocalizations {
   String get homeWorkspaceAllWorkspaces => 'All workspaces';
 
   @override
-  String get homeWorkspaceWorkspaceTabKindPersonal => 'Personal';
-
-  @override
   String get homeWorkspaceDefaultPersonalWorkspaceName => 'Personal assistant';
 
   @override
@@ -1142,6 +1139,35 @@ class AppLocalizationsEn extends AppLocalizations {
   @override
   String get sessionReadyHint =>
       'Describe what you want in everyday language — no terminal commands needed.';
+
+  @override
+  String get workspaceChatLandingInputHint =>
+      'What can I help you with today? @ reference files, / invoke skills';
+
+  @override
+  String get workspaceChatLandingSelectWorkspace => 'Select workspace >';
+
+  @override
+  String get workspaceChatLandingModeTeam => 'Team';
+
+  @override
+  String get workspaceChatLandingModeSimple => 'Simple chat';
+
+  @override
+  String get workspaceChatLandingUsePreset => 'Use preset';
+
+  @override
+  String get workspaceChatLandingFullAccessPermissions =>
+      'Full access permissions';
+
+  @override
+  String get workspaceChatLandingSkills => 'Skills';
+
+  @override
+  String get workspaceChatLandingConnectApps => 'Connect apps';
+
+  @override
+  String get workspaceChatLandingDefaultPermissions => 'Default permissions';
 
   @override
   String get sessionStartButton => 'Start conversation';

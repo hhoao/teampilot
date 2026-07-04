@@ -6,18 +6,14 @@ import 'package:go_router/go_router.dart';
 
 import '../../../cubits/chat_cubit.dart';
 import '../../../cubits/launch_profile_cubit.dart';
-import '../../../cubits/session_preferences_cubit.dart';
+import '../../../cubits/workspace_landing_context_cubit.dart';
 import '../../../l10n/l10n_extensions.dart';
+import '../../../models/landing_launch_context.dart';
 import '../../../models/workspace.dart';
 import '../../../models/launch_profile_kind.dart';
-import '../../../models/launch_profile_ref.dart';
-import '../../../models/personal_profile.dart';
-import '../../../models/runtime_target.dart';
-import '../../../models/team_config.dart';
 import '../../../models/launch_profile.dart';
-import '../../../services/storage/launch_profile_provisioner.dart';
+import '../../../pages/home_workspace/home_workspace_route.dart';
 import '../../../theme/workspace_surface_layers.dart';
-import '../../../utils/workspace_tab_session_scope.dart';
 import 'workspace_config_workspace.dart';
 import 'workspace_rail.dart';
 import 'workspace_section.dart';
@@ -25,27 +21,16 @@ import 'workspace_split_pane.dart';
 import 'workspace_config_section.dart';
 import 'workspace_route_active_scope.dart';
 
-/// Workspace work page.
-///
-/// Personal and team workspaces share the icon rail + floated card layout.
-/// Personal [WorkspaceSection.manage] opens the config workspace
-/// with in-page section nav; the rail only switches conversations vs manage.
+/// Workspace work page with conversations + manage panes.
 class WorkspacePage extends StatefulWidget {
   const WorkspacePage({
     required this.workspaceId,
-    required this.tabKey,
-    this.identity,
     super.key,
   });
 
   final String workspaceId;
 
-  /// Stable scope for chat buckets, terminals, and tool-panel state.
-  final String tabKey;
-
-  /// Launch identity from `?as=`. Null means "no identity chosen" → the page
-  /// redirects to the workspace grid.
-  final LaunchProfileRef? identity;
+  String get tabKey => workspaceId;
 
   @override
   State<WorkspacePage> createState() => _WorkspacePageState();
@@ -67,13 +52,6 @@ class _WorkspacePageState extends State<WorkspacePage> {
       _readScope(context)?.configSection ?? WorkspaceConfigSection.settings;
 
   @override
-  void initState() {
-    super.initState();
-    // The manage panel is built lazily on first rail click (?view=manage). Once
-    // visited it stays mounted; [Offstage] skips layout for the hidden pane.
-  }
-
-  @override
   void didChangeDependencies() {
     super.didChangeDependencies();
     final scope = _readScope(context);
@@ -93,21 +71,26 @@ class _WorkspacePageState extends State<WorkspacePage> {
     }
     _wasRouteActive = active;
     _lastScopeView = view;
+    _syncProfileFromRoute();
   }
 
-  @override
-  void didUpdateWidget(covariant WorkspacePage oldWidget) {
-    super.didUpdateWidget(oldWidget);
-    if (oldWidget.tabKey != widget.tabKey ||
-        oldWidget.identity != widget.identity) {
-      _invalidateFrozenPage();
-    }
-    final active = _readScope(context)?.routeActive ?? true;
-    if (active &&
-        (oldWidget.tabKey != widget.tabKey ||
-            oldWidget.identity != widget.identity)) {
-      _scheduleActivation();
-    }
+  void _syncProfileFromRoute() {
+    final location = GoRouterState.of(context).uri.toString();
+    final routeProfile = HomeWorkspaceRoute.profile(location)?.trim() ?? '';
+    if (routeProfile.isEmpty) return;
+    final cubit = context.read<WorkspaceLandingContextCubit>();
+    final current = cubit.state.context.profileId;
+    if (current == routeProfile) return;
+    final launchProfiles = context.read<LaunchProfileCubit>();
+    final profile = launchProfiles.byId(routeProfile);
+    if (profile == null) return;
+    final next = profile.kind == LaunchProfileKind.personal
+        ? LandingLaunchContext(
+            isPersonal: true,
+            personalProfileId: profile.id,
+          )
+        : LandingLaunchContext(isPersonal: false, teamId: profile.id);
+    cubit.update(next);
   }
 
   WorkspaceSection _sectionFromRoute(String? view) {
@@ -131,111 +114,12 @@ class _WorkspacePageState extends State<WorkspacePage> {
   void _invalidateFrozenPage() => _frozenPage = null;
 
   void _activateRoute() {
-    final launchIdentity = widget.identity;
-    if (launchIdentity == null) return;
-    final prefs = context.read<SessionPreferencesCubit>().state.preferences;
     context.read<ChatCubit>().activateWorkspaceTab(
       workspaceTabKey: widget.tabKey,
-      scopeSessionsToSelectedTeam: prefs.scopeSessionsToSelectedTeam,
-      selectedTeamId: workspaceTabSessionTeamScopeId(
-        launchIdentity,
-        _resolveIdentity(),
-      ),
+      scopeSessionsToSelectedTeam: false,
     );
     unawaited(
       context.read<ChatCubit>().ensureSessionsForWorkspace(widget.workspaceId),
-    );
-    WidgetsBinding.instance.addPostFrameCallback((_) => _syncWorkspaceContext());
-  }
-
-  LaunchProfile? _resolveIdentity() {
-    final launchIdentity = widget.identity;
-    if (launchIdentity == null) return null;
-    final cubit = context.read<LaunchProfileCubit>();
-    final resolved = cubit.byId(launchIdentity.profileId);
-    if (resolved != null) return resolved;
-    return cubit.byId(LaunchProfileProvisioner.defaultPersonalId);
-  }
-
-  void _syncWorkspaceContext() {
-    if (!mounted) return;
-    if (widget.identity == null) return;
-    final chatCubit = context.read<ChatCubit>();
-    final workspace = _findWorkspace(
-      chatCubit.state.workspaces,
-      widget.workspaceId,
-    );
-    if (workspace == null) return;
-    final workspaceIdentity = _resolveIdentity();
-    if (workspaceIdentity is TeamProfile) {
-      _syncSelectedTeam(workspaceIdentity.id);
-      unawaited(
-        _scheduleTeamWorkspaceProvision(
-          chatCubit: chatCubit,
-          workspace: workspace,
-          team: workspaceIdentity,
-        ),
-      );
-    } else if (workspaceIdentity is PersonalProfile) {
-      unawaited(
-        _scheduleWorkspaceProvision(
-          chatCubit: chatCubit,
-          workspace: workspace,
-          personal: workspaceIdentity,
-        ),
-      );
-    }
-  }
-
-  Future<void> _scheduleWorkspaceProvision({
-    required ChatCubit chatCubit,
-    required Workspace workspace,
-    required PersonalProfile personal,
-  }) async {
-    if (!mounted) return;
-    if (workspace.folders.isEmpty) return;
-    final targetId = workspace.folders.first.targetId;
-    final launchTarget = switch (runtimeKindOfId(targetId)) {
-      RuntimeKind.ssh => RuntimeTarget.ssh(
-        sshProfileIdOfId(targetId) ?? '',
-        label: targetId,
-      ),
-      RuntimeKind.wsl => RuntimeTarget.wsl(wslDistroOfId(targetId) ?? ''),
-      RuntimeKind.local => RuntimeTarget.local(),
-    };
-    final preset = await chatCubit.lifecycle.resolveActivePresetForPersonal(
-      personal,
-    );
-    final cli = preset?.cli ?? CliTool.claude;
-    chatCubit.sessionConnect.scheduleWorkspaceProvision(
-      launchTarget: launchTarget,
-      workspace: workspace,
-      personal: personal,
-      cli: cli,
-    );
-  }
-
-  Future<void> _scheduleTeamWorkspaceProvision({
-    required ChatCubit chatCubit,
-    required Workspace workspace,
-    required TeamProfile team,
-  }) async {
-    if (!mounted) return;
-    if (workspace.folders.isEmpty) return;
-    final targetId = workspace.folders.first.targetId;
-    final launchTarget = switch (runtimeKindOfId(targetId)) {
-      RuntimeKind.ssh => RuntimeTarget.ssh(
-        sshProfileIdOfId(targetId) ?? '',
-        label: targetId,
-      ),
-      RuntimeKind.wsl => RuntimeTarget.wsl(wslDistroOfId(targetId) ?? ''),
-      RuntimeKind.local => RuntimeTarget.local(),
-    };
-    chatCubit.sessionConnect.scheduleTeamWorkspaceProvision(
-      launchTarget: launchTarget,
-      workspace: workspace,
-      team: team,
-      cli: team.cli,
     );
   }
 
@@ -251,16 +135,16 @@ class _WorkspacePageState extends State<WorkspacePage> {
       }
     });
 
-    final base =
-        '/home-v2/workspace/${workspace.workspaceId}?as=${workspaceIdentity.id}';
-    final path = switch (section) {
-      WorkspaceSection.conversations => base,
-      WorkspaceSection.manage => '$base&view=manage',
-      _ => base,
+    final params = <String, String>{
+      'profile': workspaceIdentity.id,
+      if (section == WorkspaceSection.manage) 'view': 'manage',
     };
+    final path = Uri(
+      path: '/home-v2/workspace/${workspace.workspaceId}',
+      queryParameters: params,
+    ).toString();
     final current = GoRouterState.of(context).uri.toString();
     if (current == path) return;
-    // Paint the section switch before GoRouter rebuilds [HomeShell].
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (!mounted) return;
       if (GoRouterState.of(context).uri.toString() != path) {
@@ -273,8 +157,6 @@ class _WorkspacePageState extends State<WorkspacePage> {
   Widget build(BuildContext context) {
     final scope = context.dependOnInheritedWidgetOfExactType<WorkspaceRouteActiveScope>();
     final routeActive = scope?.routeActive ?? true;
-    // Foreground tab: always rebuild so rail section / route view updates apply.
-    // Background tab: show the last foreground snapshot only.
     final body = routeActive
         ? _buildAndCacheLivePage(context)
         : (_frozenPage ?? const SizedBox.shrink());
@@ -312,60 +194,28 @@ class _WorkspacePageState extends State<WorkspacePage> {
       );
     }
 
-    final launchIdentity = widget.identity;
-    if (launchIdentity == null) {
-      // No identity chosen (e.g. a hand-typed workspace URL). Bounce back to the
-      // workspace home, which opens on the All Workspaces pane by default.
-      WidgetsBinding.instance.addPostFrameCallback((_) {
-        if (mounted) context.go('/home-v2');
-      });
-      return WorkspacePageCardShell(
-        chrome: WorkspacePageChrome.workspace,
-        child: const SizedBox.shrink(),
-      );
-    }
-
-    final workspaceIdentity = context
-        .select<LaunchProfileCubit, LaunchProfile?>((c) {
-          final resolved = c.byId(launchIdentity.profileId);
-          if (resolved != null) return resolved;
-          return c.byId(LaunchProfileProvisioner.defaultPersonalId);
-        });
+    final workspaceIdentity = context.select<LaunchProfileCubit, LaunchProfile?>(
+      (c) => c.byId(
+        context.watch<WorkspaceLandingContextCubit>().state.context.profileId,
+      ),
+    );
     if (workspaceIdentity == null) {
       return WorkspacePageCardShell(
         chrome: WorkspacePageChrome.workspace,
-        child: _MissingWorkspace(label: l10n.homeWorkspaceEmptyWorkspaces),
+        child: const Center(child: CircularProgressIndicator()),
       );
     }
 
-    final isPersonal = workspaceIdentity.kind == LaunchProfileKind.personal;
-    final sessionTeamFilter = isPersonal ? '' : workspaceIdentity.id;
     final cardBody = _buildCardBody(
       workspace: workspace,
-      workspaceIdentity: workspaceIdentity,
-      sessionTeamFilter: sessionTeamFilter,
+      profileId: workspaceIdentity.id,
     );
 
-    return _buildWorkspacePageWithRail(
-      workspace: workspace,
-      workspaceIdentity: workspaceIdentity,
-      isPersonal: isPersonal,
-      cardBody: cardBody,
-    );
-  }
-
-  Widget _buildWorkspacePageWithRail({
-    required Workspace workspace,
-    required LaunchProfile workspaceIdentity,
-    required bool isPersonal,
-    required Widget cardBody,
-  }) {
     return Row(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
         WorkspaceRail(
           section: _section,
-          isPersonalWorkspace: isPersonal,
           onSectionChanged: (section) =>
               _onSectionChanged(section, workspace, workspaceIdentity),
           onLogoTap: () => context.go('/home-v2'),
@@ -383,18 +233,9 @@ class _WorkspacePageState extends State<WorkspacePage> {
 
   Widget _buildCardBody({
     required Workspace workspace,
-    required LaunchProfile workspaceIdentity,
-    required String sessionTeamFilter,
+    required String profileId,
   }) {
     final showManage = _section == WorkspaceSection.manage;
-    // Keep both panes mounted after first visit, but [Offstage] skips layout and
-    // paint for the hidden one. [IndexedStack] laid out both every frame — opening
-    // manage still ran the conversations subtree (file-tree [TextField], git
-    // chips, etc.) and amplified first-mount jank.
-    //
-    // [TickerMode] gates tickers so a terminal is active only when its workspace
-    // is foreground *and* the conversations pane is showing — which scopes OS file
-    // drops to the single visible terminal.
     return Stack(
       fit: StackFit.expand,
       children: [
@@ -406,10 +247,6 @@ class _WorkspacePageState extends State<WorkspacePage> {
               key: ValueKey('conversations-${widget.tabKey}'),
               workspace: workspace,
               tabScopeId: widget.tabKey,
-              isPersonalWorkspace:
-                  workspaceIdentity.kind == LaunchProfileKind.personal,
-              profileId: workspaceIdentity.id,
-              sessionTeamFilter: sessionTeamFilter,
             ),
           ),
         ),
@@ -420,21 +257,12 @@ class _WorkspacePageState extends State<WorkspacePage> {
               enabled: showManage,
               child: WorkspaceConfigPanel(
                 workspace: workspace,
-                profileId: workspaceIdentity.id,
+                profileId: profileId,
                 section: _configSection(context),
               ),
             ),
           ),
       ],
-    );
-  }
-
-  void _syncSelectedTeam(String teamId) {
-    if (teamId.isEmpty) return;
-    final teamCubit = context.read<LaunchProfileCubit>();
-    if (teamCubit.state.selectedTeam?.id == teamId) return;
-    unawaited(
-      teamCubit.selectTeam(teamId, syncResources: false, silent: true),
     );
   }
 

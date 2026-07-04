@@ -532,9 +532,6 @@ class AppLocalizationsZh extends AppLocalizations {
   String get homeWorkspaceAllWorkspaces => '全部工作区';
 
   @override
-  String get homeWorkspaceWorkspaceTabKindPersonal => '个人';
-
-  @override
   String get homeWorkspaceDefaultPersonalWorkspaceName => '个人助手';
 
   @override
@@ -1085,6 +1082,33 @@ class AppLocalizationsZh extends AppLocalizations {
 
   @override
   String get sessionReadyHint => '用日常语言描述你想做的事即可，无需输入命令。';
+
+  @override
+  String get workspaceChatLandingInputHint => '今天帮你做些什么？ @ 引用对话文件，/ 调用技能与指令';
+
+  @override
+  String get workspaceChatLandingSelectWorkspace => '选择工作空间 >';
+
+  @override
+  String get workspaceChatLandingModeTeam => '团队';
+
+  @override
+  String get workspaceChatLandingModeSimple => '简单对话';
+
+  @override
+  String get workspaceChatLandingUsePreset => '使用预设';
+
+  @override
+  String get workspaceChatLandingFullAccessPermissions => '完成访问权限';
+
+  @override
+  String get workspaceChatLandingSkills => '技能';
+
+  @override
+  String get workspaceChatLandingConnectApps => '连应用';
+
+  @override
+  String get workspaceChatLandingDefaultPermissions => '默认权限';
 
   @override
   String get sessionStartButton => '开始对话';

@@ -43,14 +43,18 @@ void main() {
     expect(personal, cs.primary);
   });
 
-  test('kind icons match home sidebar semantics', () {
+  test('topology tab icons reflect workspace kind', () {
     expect(
-      homeWorkspaceTabKindIcon(HomeWorkspaceTabKind.personal),
-      Icons.person_outline_rounded,
+      workspaceTabTopologyIconData(WorkspaceTopology.local),
+      Icons.folder_outlined,
     );
     expect(
-      homeWorkspaceTabKindIcon(HomeWorkspaceTabKind.team),
-      Icons.groups_2_outlined,
+      workspaceTabTopologyIconData(WorkspaceTopology.remote),
+      Icons.cloud_outlined,
+    );
+    expect(
+      workspaceTabTopologyIconData(WorkspaceTopology.mixed),
+      Icons.hub_outlined,
     );
   });
 

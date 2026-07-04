@@ -1,19 +1,17 @@
 import 'package:flutter_test/flutter_test.dart';
-import 'package:teampilot/models/launch_profile_ref.dart';
-import 'package:teampilot/services/storage/launch_profile_provisioner.dart';
+import 'package:teampilot/pages/home_workspace/home_workspace_route.dart';
 
 void main() {
-  test('?as= query value decodes to the launch identity', () {
-    // The route reads state.uri.queryParameters['as'] and passes it through
-    // LaunchProfileRef.decode. This guards the contract the route relies on.
+  test('profile query decodes manage deep link identity', () {
     expect(
-      LaunchProfileRef.decode('squad'),
-      const LaunchProfileRef('squad'),
+      HomeWorkspaceRoute.profile(
+        '/home-v2/workspace/ws-1?view=manage&section=members&profile=team-1',
+      ),
+      'team-1',
     );
     expect(
-      LaunchProfileRef.decode(LaunchProfileProvisioner.defaultPersonalId),
-      LaunchProfileRef(LaunchProfileProvisioner.defaultPersonalId),
+      HomeWorkspaceRoute.profile('/home-v2/workspace/ws-1'),
+      isNull,
     );
-    expect(LaunchProfileRef.decode(null), isNull);
   });
 }

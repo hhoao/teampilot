@@ -21,6 +21,7 @@ import 'config/workspace_skills_section.dart';
 import 'workspace_config_nav_panel.dart';
 import 'workspace_config_section.dart';
 import 'workspace_info_section.dart';
+import 'workspace_profile_identity_bar.dart';
 import '../../team_config/team_config_info_section.dart';
 import '../../team_config/team_config_section.dart';
 
@@ -45,11 +46,14 @@ class WorkspaceConfigPanel extends StatefulWidget {
 
 class _WorkspaceConfigPanelState
     extends State<WorkspaceConfigPanel> {
-  String _managePath(WorkspaceConfigSection section) {
+  String _managePath(
+    WorkspaceConfigSection section, {
+    String? profileId,
+  }) {
     return Uri(
       path: '/home-v2/workspace/${widget.workspace.workspaceId}',
       queryParameters: {
-        'as': widget.profileId,
+        'profile': profileId ?? widget.profileId,
         'view': 'manage',
         'section': section.routeSegment,
       },
@@ -149,7 +153,18 @@ class _WorkspaceConfigPanelState
         l10n: l10n,
         onSelect: (s) => context.go(_managePath(s)),
       ),
-      body: body,
+      body: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          WorkspaceProfileIdentityBar(
+            selectedProfileId: widget.profileId,
+            onProfileSelected: (profileId) {
+              context.go(_managePath(section, profileId: profileId));
+            },
+          ),
+          Expanded(child: body),
+        ],
+      ),
     );
   }
 }

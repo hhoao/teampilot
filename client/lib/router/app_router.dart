@@ -105,9 +105,13 @@ final appRouter = GoRouter(
                 final id = state.pathParameters['workspaceId'];
                 if (id == null) return '/home-v2';
                 final section = state.uri.queryParameters['section'];
+                final profile = state.uri.queryParameters['profile'];
                 final params = <String, String>{'view': 'manage'};
                 if (section != null && section.isNotEmpty) {
                   params['section'] = section;
+                }
+                if (profile != null && profile.isNotEmpty) {
+                  params['profile'] = profile;
                 }
                 return Uri(
                   path: '/home-v2/workspace/$id',

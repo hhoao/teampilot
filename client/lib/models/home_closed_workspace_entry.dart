@@ -1,6 +1,5 @@
 import 'package:flutter/foundation.dart';
 
-import 'launch_profile_ref.dart';
 import 'workspace_tab_ref.dart';
 import 'workspace_topology.dart';
 
@@ -9,7 +8,6 @@ class HomeClosedWorkspaceEntry {
   const HomeClosedWorkspaceEntry({
     required this.workspaceId,
     required this.displayName,
-    required this.identity,
     this.primaryPath = '',
     this.closedAt = 0,
     this.topology,
@@ -17,8 +15,7 @@ class HomeClosedWorkspaceEntry {
 
   factory HomeClosedWorkspaceEntry.fromJson(Map<String, Object?> json) {
     final workspaceId = json['workspaceId'] as String? ?? '';
-    final identity = LaunchProfileRef.decode(json['as'] as String?);
-    if (workspaceId.isEmpty || identity == null) {
+    if (workspaceId.isEmpty) {
       throw FormatException('invalid closed workspace entry: $json');
     }
     return HomeClosedWorkspaceEntry(
@@ -26,7 +23,6 @@ class HomeClosedWorkspaceEntry {
       displayName: json['displayName'] as String? ?? '',
       primaryPath: json['primaryPath'] as String? ?? '',
       closedAt: json['closedAt'] as int? ?? 0,
-      identity: identity,
       topology: _decodeTopology(json['topology'] as String?),
     );
   }
@@ -41,7 +37,6 @@ class HomeClosedWorkspaceEntry {
         workspaceId: tab.workspaceId,
         displayName: displayName,
         primaryPath: primaryPath,
-        identity: tab.identity,
         topology: topology,
       );
 
@@ -49,22 +44,17 @@ class HomeClosedWorkspaceEntry {
   final String displayName;
   final String primaryPath;
   final int closedAt;
-  final LaunchProfileRef identity;
 
   /// Snapshot at close time when the workspace record may later disappear.
   final WorkspaceTopology? topology;
 
-  String get tabKey => WorkspaceTabRef(
-        workspaceId: workspaceId,
-        identity: identity,
-      ).tabKey;
+  String get tabKey => workspaceId;
 
   Map<String, Object?> toJson() => {
         'workspaceId': workspaceId,
         'displayName': displayName,
         'primaryPath': primaryPath,
         'closedAt': closedAt,
-        'as': identity.encode(),
         if (topology != null) 'topology': topology!.name,
       };
 

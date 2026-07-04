@@ -379,19 +379,11 @@ String automationTabScopeGroupLabel(
       .where((w) => w.workspaceId == scope.workspaceId)
       .firstOrNull;
   if (workspace == null) {
-    final identityLabel = workspaceTabIdentityLabel(
-      l10n: l10n,
-      identity: LaunchProfileRef(scope.launchProfileId),
-      identities: identities,
-    );
-    return '$identityLabel · ${scope.workspaceId}';
+    return scope.workspaceId;
   }
   return workspaceTabDisplayLabel(
     l10n: l10n,
     workspace: workspace,
-    identity: LaunchProfileRef(scope.launchProfileId),
-    identities: identities,
-    alwaysShowIdentity: true,
   );
 }
 

@@ -985,8 +985,7 @@ class SessionLaunchService implements MemberConnector {
     if (explicit.isNotEmpty) return explicit;
     final bucketKey = _tabStore.activeWorkspaceId.trim();
     if (bucketKey.isEmpty) return null;
-    final tab = WorkspaceTabRef.decodeTabKey(bucketKey);
-    final workspaceId = tab?.workspaceId ?? bucketKey;
+    final workspaceId = _workspaceIdFromBucketKey(bucketKey);
     return _workspaceById(workspaceId)?.firstFolderPath;
   }
 
@@ -1094,6 +1093,14 @@ class SessionLaunchService implements MemberConnector {
         connectImmediately: connectImmediately,
       ),
     );
+  }
+
+  /// Legacy tab keys appended `\x1e<launchProfileId>`; strip suffix if present.
+  static String _workspaceIdFromBucketKey(String bucketKey) {
+    const sep = '\x1e';
+    final idx = bucketKey.indexOf(sep);
+    if (idx < 0) return bucketKey;
+    return bucketKey.substring(0, idx);
   }
 
   Workspace? _workspaceById(String workspaceId) {

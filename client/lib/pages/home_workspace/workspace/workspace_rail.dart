@@ -7,19 +7,16 @@ import 'workspace_section.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import '../../../cubits/layout_cubit.dart';
 
-/// Narrow vertical icon rail on the left of the workspace page (mirrors Apifox's
-/// 接口管理 / 自动化测试 / … rail).
+/// Narrow vertical icon rail on the left of the workspace page.
 class WorkspaceRail extends StatelessWidget {
   const WorkspaceRail({
     required this.section,
-    required this.isPersonalWorkspace,
     required this.onSectionChanged,
     required this.onLogoTap,
     super.key,
   });
 
   final WorkspaceSection section;
-  final bool isPersonalWorkspace;
   final ValueChanged<WorkspaceSection> onSectionChanged;
   final VoidCallback onLogoTap;
 
@@ -28,9 +25,18 @@ class WorkspaceRail extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final l10n = context.l10n;
-    final items = isPersonalWorkspace
-        ? _personalItems(l10n)
-        : _teamItems(l10n, context);
+    final items = [
+      _sectionItem(
+        icon: Icons.forum_outlined,
+        label: l10n.homeWorkspaceConversations,
+        value: WorkspaceSection.conversations,
+      ),
+      _sectionItem(
+        icon: Icons.tune_outlined,
+        label: l10n.homeWorkspaceWorkspaceManagement,
+        value: WorkspaceSection.manage,
+      ),
+    ];
 
     return SizedBox(
       width: width,
@@ -67,36 +73,6 @@ class WorkspaceRail extends StatelessWidget {
         ],
       ),
     );
-  }
-
-  List<Widget> _personalItems(AppLocalizations l10n) {
-    return [
-      _sectionItem(
-        icon: Icons.forum_outlined,
-        label: l10n.homeWorkspaceConversations,
-        value: WorkspaceSection.conversations,
-      ),
-      _sectionItem(
-        icon: Icons.tune_outlined,
-        label: l10n.homeWorkspaceWorkspaceManagement,
-        value: WorkspaceSection.manage,
-      ),
-    ];
-  }
-
-  List<Widget> _teamItems(AppLocalizations l10n, BuildContext context) {
-    return [
-      _sectionItem(
-        icon: Icons.forum_outlined,
-        label: l10n.homeWorkspaceConversations,
-        value: WorkspaceSection.conversations,
-      ),
-      _sectionItem(
-        icon: Icons.tune_outlined,
-        label: l10n.homeWorkspaceWorkspaceManagement,
-        value: WorkspaceSection.manage,
-      ),
-    ];
   }
 
   Widget _sectionItem({

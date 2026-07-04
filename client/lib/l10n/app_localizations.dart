@@ -1100,12 +1100,6 @@ abstract class AppLocalizations {
   /// **'All workspaces'**
   String get homeWorkspaceAllWorkspaces;
 
-  /// Short personal-workspace label in title-bar tab tooltips.
-  ///
-  /// In en, this message translates to:
-  /// **'Personal'**
-  String get homeWorkspaceWorkspaceTabKindPersonal;
-
   /// Name shown for the built-in personal workspace in simple mode.
   ///
   /// In en, this message translates to:
@@ -2131,6 +2125,60 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Describe what you want in everyday language — no terminal commands needed.'**
   String get sessionReadyHint;
+
+  /// No description provided for @workspaceChatLandingInputHint.
+  ///
+  /// In en, this message translates to:
+  /// **'What can I help you with today? @ reference files, / invoke skills'**
+  String get workspaceChatLandingInputHint;
+
+  /// No description provided for @workspaceChatLandingSelectWorkspace.
+  ///
+  /// In en, this message translates to:
+  /// **'Select workspace >'**
+  String get workspaceChatLandingSelectWorkspace;
+
+  /// No description provided for @workspaceChatLandingModeTeam.
+  ///
+  /// In en, this message translates to:
+  /// **'Team'**
+  String get workspaceChatLandingModeTeam;
+
+  /// No description provided for @workspaceChatLandingModeSimple.
+  ///
+  /// In en, this message translates to:
+  /// **'Simple chat'**
+  String get workspaceChatLandingModeSimple;
+
+  /// No description provided for @workspaceChatLandingUsePreset.
+  ///
+  /// In en, this message translates to:
+  /// **'Use preset'**
+  String get workspaceChatLandingUsePreset;
+
+  /// No description provided for @workspaceChatLandingFullAccessPermissions.
+  ///
+  /// In en, this message translates to:
+  /// **'Full access permissions'**
+  String get workspaceChatLandingFullAccessPermissions;
+
+  /// No description provided for @workspaceChatLandingSkills.
+  ///
+  /// In en, this message translates to:
+  /// **'Skills'**
+  String get workspaceChatLandingSkills;
+
+  /// No description provided for @workspaceChatLandingConnectApps.
+  ///
+  /// In en, this message translates to:
+  /// **'Connect apps'**
+  String get workspaceChatLandingConnectApps;
+
+  /// No description provided for @workspaceChatLandingDefaultPermissions.
+  ///
+  /// In en, this message translates to:
+  /// **'Default permissions'**
+  String get workspaceChatLandingDefaultPermissions;
 
   /// No description provided for @sessionStartButton.
   ///

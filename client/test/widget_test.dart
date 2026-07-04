@@ -564,8 +564,7 @@ void main() {
       );
     });
     await pumpDesktopApp(tester, teamCubit, chatCubit: chatCubit);
-    final teamId = teamCubit.state.selectedTeam!.id;
-    appRouter.go('/home-v2/workspace/${workspace.workspaceId}?as=$teamId');
+    appRouter.go('/home-v2/workspace/${workspace.workspaceId}');
     await tester.pump();
     await pumpPhaseTransitions(tester);
 

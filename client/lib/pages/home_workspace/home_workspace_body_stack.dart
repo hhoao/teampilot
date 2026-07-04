@@ -1,10 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
-import '../../cubits/chat_cubit.dart';
-import '../../models/workspace.dart';
-import '../../models/workspace_tab_ref.dart';
-import '../../widgets/file_editor_panel.dart';
+import '../../../cubits/chat_cubit.dart';
+import '../../../cubits/workspace_landing_context_cubit.dart';
+import '../../../models/workspace.dart';
+import '../../../models/workspace_tab_ref.dart';
+import '../../../widgets/file_editor_panel.dart';
 import 'home_workspace_route.dart';
 import 'home_workspace_page.dart';
 import 'workspace/workspace_config_section.dart';
@@ -150,11 +151,14 @@ class _WorkspaceTabSlot extends StatelessWidget {
               enabled: isActive,
               child: IgnorePointer(
                 ignoring: !isActive,
-                child: WorkspacePage(
-                  key: ValueKey('workspace-body-${tab.tabKey}'),
-                  workspaceId: tab.workspaceId,
-                  tabKey: tab.tabKey,
-                  identity: tab.identity,
+                child: BlocProvider(
+                  create: (_) =>
+                      WorkspaceLandingContextCubit(workspaceId: tab.workspaceId)
+                        ..initialize(workspace),
+                  child: WorkspacePage(
+                    key: ValueKey('workspace-body-${tab.tabKey}'),
+                    workspaceId: tab.workspaceId,
+                  ),
                 ),
               ),
             ),

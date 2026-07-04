@@ -6,8 +6,10 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 
 import '../../../cubits/chat_cubit.dart';
 import '../../../cubits/worktree_cubit.dart';
+import '../../../utils/landing_draft_resolver.dart';
 import '../../../l10n/l10n_extensions.dart';
 import '../../../models/app_session.dart';
+import '../../../models/landing_launch_context.dart';
 import '../../../models/workspace.dart';
 import '../../../repositories/session_repository.dart';
 import '../../../services/git/git_worktree_service.dart';
@@ -43,9 +45,6 @@ class WorktreeGroupSection extends StatelessWidget {
   const WorktreeGroupSection({
     required this.group,
     required this.workspace,
-    required this.isPersonal,
-    required this.profileId,
-    required this.sessionTeamFilter,
     required this.collapsed,
     required this.isCurrent,
     this.highlightSessionId,
@@ -55,9 +54,6 @@ class WorktreeGroupSection extends StatelessWidget {
 
   final WorktreeGroup group;
   final Workspace workspace;
-  final bool isPersonal;
-  final String profileId;
-  final String sessionTeamFilter;
   final bool collapsed;
   final bool isCurrent;
   final String? highlightSessionId;
@@ -67,6 +63,28 @@ class WorktreeGroupSection extends StatelessWidget {
     final tools = WorkspaceToolsScope.maybeOf(context)?.tools;
     if (tools == null) return null;
     return GitWorktreeService.forContext(tools.context);
+  }
+
+  Future<void> _startConversationInWorktree(
+    BuildContext context,
+    String worktreePath,
+  ) async {
+    final draft = await resolveLandingDraft(
+      workspaceId: workspace.workspaceId,
+      workspace: workspace,
+    );
+    if (!context.mounted) return;
+    context.read<WorktreeCubit>().setCurrentWorktree(worktreePath);
+    unawaited(
+      createSessionInWorktree(
+        context,
+        workspace,
+        isPersonal: draft.isPersonal,
+        worktreePath: worktreePath,
+        sessionTeamId: draft.isPersonal ? '' : (draft.teamId ?? ''),
+        personalIdentityId: draft.personalProfileId,
+      ),
+    );
   }
 
   @override
@@ -125,21 +143,8 @@ class WorktreeGroupSection extends StatelessWidget {
                       worktreePath: wt.path,
                       manageable: manageable,
                       allowNewConversation: !personalLaunchBlocked,
-                      onNewConversation: () {
-                        context.read<WorktreeCubit>().setCurrentWorktree(
-                          wt.path,
-                        );
-                        unawaited(
-                          createSessionInWorktree(
-                            context,
-                            workspace,
-                            isPersonal: isPersonal,
-                            worktreePath: wt.path,
-                            sessionTeamId: sessionTeamFilter,
-                            personalIdentityId: profileId,
-                          ),
-                        );
-                      },
+                      onNewConversation: () =>
+                          unawaited(_startConversationInWorktree(context, wt.path)),
                       onDelete: () =>
                           unawaited(_confirmAndRemove(context, wt.path, label)),
                     ),
@@ -153,7 +158,6 @@ class WorktreeGroupSection extends StatelessWidget {
             key: ValueKey('wt-sessions-${worktreeGroupCollapseKey(group)}'),
             sessions: group.sessions,
             workspace: workspace,
-            isPersonal: isPersonal,
             highlightSessionId: highlightSessionId,
             personalLaunchBlocked: personalLaunchBlocked,
           ),
@@ -162,19 +166,7 @@ class WorktreeGroupSection extends StatelessWidget {
             wt != null &&
             !personalLaunchBlocked)
           _EmptyGroupCta(
-            onTap: () {
-              context.read<WorktreeCubit>().setCurrentWorktree(wt.path);
-              unawaited(
-                createSessionInWorktree(
-                  context,
-                  workspace,
-                  isPersonal: isPersonal,
-                  worktreePath: wt.path,
-                  sessionTeamId: sessionTeamFilter,
-                  personalIdentityId: profileId,
-                ),
-              );
-            },
+            onTap: () => _startConversationInWorktree(context, wt.path),
           ),
       ],
     );
@@ -330,7 +322,6 @@ class _GroupSessionList extends StatefulWidget {
   const _GroupSessionList({
     required this.sessions,
     required this.workspace,
-    required this.isPersonal,
     this.highlightSessionId,
     this.personalLaunchBlocked = false,
     super.key,
@@ -338,7 +329,6 @@ class _GroupSessionList extends StatefulWidget {
 
   final List<AppSession> sessions;
   final Workspace workspace;
-  final bool isPersonal;
   final String? highlightSessionId;
   final bool personalLaunchBlocked;
 
@@ -378,7 +368,6 @@ class _GroupSessionListState extends State<_GroupSessionList> {
                   context,
                   widget.workspace,
                   session,
-                  isPersonal: widget.isPersonal,
                 ),
               );
             },

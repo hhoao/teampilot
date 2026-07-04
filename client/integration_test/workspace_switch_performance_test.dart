@@ -92,12 +92,12 @@ void main() {
     // Startup: land on home, open first workspace.
     appRouter.go('/home-v2');
     await pumpPerformanceFrames(tester);
-    appRouter.go('/home-v2/workspace/${workspaceA.workspaceId}?as=$personalAs');
+    appRouter.go('/home-v2/workspace/${workspaceA.workspaceId}');
     await pumpPerformanceFrames(tester);
     expect(find.byKey(AppKeys.chatWorkspace), findsOneWidget);
 
     // Open second workspace tab, then switch back and forth.
-    appRouter.go('/home-v2/workspace/${workspaceB.workspaceId}?as=$personalAs');
+    appRouter.go('/home-v2/workspace/${workspaceB.workspaceId}');
     await pumpPerformanceFrames(tester);
     expect(find.text('Alpha'), findsOneWidget);
     expect(find.text('Beta'), findsOneWidget);

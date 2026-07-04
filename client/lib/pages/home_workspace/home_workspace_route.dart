@@ -1,4 +1,3 @@
-import '../../models/launch_profile_ref.dart';
 import '../team_config/team_config_section.dart';
 import 'home_workspace_global_section.dart';
 import 'workspace/workspace_config_section.dart';
@@ -23,10 +22,13 @@ abstract final class HomeWorkspaceRoute {
     return null;
   }
 
-  static LaunchProfileRef? identity(String location) =>
-      LaunchProfileRef.decode(parse(location).queryParameters['as']);
-
   static String? view(String location) => parse(location).queryParameters['view'];
+
+  /// Manage / landing profile id (`personal` or team id).
+  static String? profile(String location) {
+    final raw = parse(location).queryParameters['profile']?.trim() ?? '';
+    return raw.isEmpty ? null : raw;
+  }
 
   static TeamConfigSection? homeTeamSection(String location) =>
       TeamConfigSection.fromSegment(parse(location).queryParameters['section']);

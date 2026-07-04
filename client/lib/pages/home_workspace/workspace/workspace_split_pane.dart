@@ -17,23 +17,11 @@ class WorkspaceSplitPane extends StatefulWidget {
   const WorkspaceSplitPane({
     required this.workspace,
     required this.tabScopeId,
-    required this.isPersonalWorkspace,
-    required this.profileId,
-    required this.sessionTeamFilter,
     super.key,
   });
 
   final Workspace workspace;
-
-  /// Scopes chat terminals and right-tools UI for this title-bar tab.
   final String tabScopeId;
-  final bool isPersonalWorkspace;
-
-  /// The launch identity the workspace was opened against ([LaunchProfile.id]).
-  final String profileId;
-
-  /// Empty for personal mode; team id when opened as a team.
-  final String sessionTeamFilter;
 
   @override
   State<WorkspaceSplitPane> createState() => _WorkspaceSplitPaneState();
@@ -84,9 +72,6 @@ class _WorkspaceSplitPaneState extends State<WorkspaceSplitPane> {
                 return ResizableSplitView(
                   first: WorkspaceSidebar(
                     workspace: widget.workspace,
-                    isPersonalWorkspace: widget.isPersonalWorkspace,
-                    profileId: widget.profileId,
-                    sessionTeamFilter: widget.sessionTeamFilter,
                     tabScopeId: widget.tabScopeId,
                   ),
                   second: ChatPage(
@@ -94,8 +79,6 @@ class _WorkspaceSplitPaneState extends State<WorkspaceSplitPane> {
                     additionalPaths: widget.workspace.extraFolderPaths,
                     workspaceId: widget.workspace.workspaceId,
                     tabScopeId: widget.tabScopeId,
-                    profileId: widget.profileId,
-                    isPersonalWorkspace: widget.isPersonalWorkspace,
                   ),
                   initialPrimarySize: initialSidebar,
                   minPrimarySize: minSidebar,

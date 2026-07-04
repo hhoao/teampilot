@@ -15,7 +15,7 @@ void main() {
     tearDownTestAppStorage();
   });
 
-  testWidgets('title bar renders personal and team tabs', (tester) async {
+  testWidgets('title bar renders workspace tabs', (tester) async {
     await tester.pumpWidget(
       MaterialApp(
         localizationsDelegates: AppLocalizations.localizationsDelegates,
@@ -25,17 +25,15 @@ void main() {
           child: const HomeTitleBar(
             tabs: [
               HomeWorkspaceTab(
-                id: 'personal',
+                id: 'ws-a',
                 name: 'Solo',
-                kind: HomeWorkspaceTabKind.personal,
               ),
               HomeWorkspaceTab(
-                id: 'team',
+                id: 'ws-b',
                 name: 'Shared',
-                kind: HomeWorkspaceTabKind.team,
               ),
             ],
-            activeTabKey: 'personal',
+            activeTabKey: 'ws-a',
           ),
         ),
       ),

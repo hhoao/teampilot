@@ -38,6 +38,7 @@ class ChatWorkbenchSlice {
   final String? sessionLaunchError;
 
   bool get isActiveSessionConnecting {
+    if (tabCount == 0) return false;
     final id = sessionConnectingId;
     final active = activeSessionId;
     if (id == null || id.isEmpty) return false;

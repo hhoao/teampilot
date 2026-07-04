@@ -1,7 +1,6 @@
 import 'package:flutter/foundation.dart';
 
-/// Which identity a directory is opened against. Encoded on the workspace route
-/// as `?as=<profileId>`. Kind is resolved from the loaded identity record.
+/// Which identity a workspace route encodes via `?profile=<profileId>`.
 @immutable
 class LaunchProfileRef {
   const LaunchProfileRef(this.profileId);

@@ -1,19 +1,6 @@
 import '../cubits/chat_cubit.dart';
 import '../cubits/chat/model/chat_tab.dart';
-import '../models/launch_profile.dart';
-import '../models/launch_profile_kind.dart';
-import '../models/launch_profile_ref.dart';
 import '../services/team_bus/team_bus.dart';
-
-/// Team id used by [ChatCubit.setTeamSessionScope] for a title-bar workspace tab.
-/// Personal identities scope to '' (no team filter).
-String workspaceTabSessionTeamScopeId(
-  LaunchProfileRef identity,
-  LaunchProfile? resolvedIdentity,
-) {
-  if (resolvedIdentity?.kind == LaunchProfileKind.personal) return '';
-  return identity.profileId;
-}
 
 /// Session id highlighted in a kept-alive workspace sidebar for [tabScopeId].
 ///
