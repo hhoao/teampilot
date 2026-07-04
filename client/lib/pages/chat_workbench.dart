@@ -334,19 +334,21 @@ class _ChatWorkbenchBodyState extends State<_ChatWorkbenchBody> {
       if (workspace == null) {
         return const Center(child: CircularProgressIndicator());
       }
-      return Container(
-        key: AppKeys.chatWorkspace,
-        color: cs.surface,
-        child: sessionConnectInProgress || _landingSubmitting
-            ? ChatWorkbenchSessionLoadingView(
-                message: context.l10n.sessionStarting,
-              )
-            : WorkspaceChatLanding(
-                workspace: workspace,
-                isSubmitting: _landingSubmitting,
-                onSubmit: (message, draft) =>
-                    unawaited(_submitLandingMessage(message, draft)),
-              ),
+      return SizedBox.expand(
+        child: Container(
+          key: AppKeys.chatWorkspace,
+          color: cs.surface,
+          child: sessionConnectInProgress || _landingSubmitting
+              ? ChatWorkbenchSessionLoadingView(
+                  message: context.l10n.sessionStarting,
+                )
+              : WorkspaceChatLanding(
+                  workspace: workspace,
+                  isSubmitting: _landingSubmitting,
+                  onSubmit: (message, draft) =>
+                      unawaited(_submitLandingMessage(message, draft)),
+                ),
+        ),
       );
     } else if (slice.tabCount == 0) {
       return const Center(child: CircularProgressIndicator());

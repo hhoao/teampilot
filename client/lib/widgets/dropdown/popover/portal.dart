@@ -28,7 +28,6 @@ class AppPortal extends StatefulWidget {
 
 class _AppPortalState extends State<AppPortal>
     with SingleTickerProviderStateMixin {
-  final layerLink = LayerLink();
   final overlayPortalController = OverlayPortalController();
   final overlayKey = GlobalKey();
   final _targetKey = GlobalKey();
@@ -190,12 +189,51 @@ class _AppPortalState extends State<AppPortal>
   }
 
   Widget _buildManualPosition(BuildContext context, AppAnchor anchor) {
-    return CompositedTransformFollower(
-      link: layerLink,
-      offset: anchor.offset,
-      followerAnchor: anchor.childAlignment,
-      targetAnchor: anchor.overlayAlignment,
-      child: _buildAnimatedPortal(context, widget.portalBuilder(context)),
+    MediaQuery.sizeOf(context);
+    final overlayState = Overlay.of(context, debugRequiredFor: widget);
+    final box = _targetKey.currentContext?.findRenderObject() as RenderBox?;
+    if (box == null || !box.hasSize) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (mounted) setState(() {});
+      });
+      return const SizedBox.shrink();
+    }
+    final overlayAncestor =
+        overlayState.context.findRenderObject()! as RenderBox;
+
+    final overlay = overlayKey.currentContext?.findRenderObject() as RenderBox?;
+    final overlaySize = overlay != null && overlay.hasSize
+        ? overlay.size
+        : Size.zero;
+    final needsMeasure =
+        (overlay == null || !overlay.hasSize) &&
+        appAnchorNeedsOverlayMeasure(anchor);
+
+    final overlayTopLeft = computeAppAnchorOverlayTopLeft(
+      anchorBox: box,
+      overlayAncestor: overlayAncestor,
+      overlaySize: overlaySize,
+      anchor: anchor,
+    );
+
+    if (needsMeasure) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (mounted) setState(() {});
+      });
+    }
+
+    return CustomSingleChildLayout(
+      delegate: ContextMenuOverlayPositionDelegate(target: overlayTopLeft),
+      child: KeyedSubtree(
+        key: overlayKey,
+        child: Visibility.maintain(
+          visible: !needsMeasure,
+          child: IgnorePointer(
+            ignoring: needsMeasure,
+            child: _buildAnimatedPortal(context, widget.portalBuilder(context)),
+          ),
+        ),
+      ),
     );
   }
 
@@ -208,9 +246,8 @@ class _AppPortalState extends State<AppPortal>
 
   @override
   Widget build(BuildContext context) {
-    return CompositedTransformTarget(
+    return KeyedSubtree(
       key: _targetKey,
-      link: layerLink,
       child: OverlayPortal(
         controller: overlayPortalController,
         overlayChildBuilder: (context) {

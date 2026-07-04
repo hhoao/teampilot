@@ -125,6 +125,30 @@ bool appAnchorAutoNeedsOverlayMeasure(AppAnchorAuto anchor) {
   return anchor.followerAnchor != Alignment.topLeft;
 }
 
+/// Top-left position of a manually anchored overlay in the overlay ancestor's coords.
+Offset computeAppAnchorOverlayTopLeft({
+  required RenderBox anchorBox,
+  required RenderBox overlayAncestor,
+  required Size overlaySize,
+  required AppAnchor anchor,
+}) {
+  final targetPoint = alignmentPointOnRect(
+    anchorBox.size,
+    anchor.overlayAlignment,
+  );
+  final followerPoint = alignmentPointOnRect(
+    overlaySize,
+    anchor.childAlignment,
+  );
+  final topLeftInAnchorBox = targetPoint + anchor.offset - followerPoint;
+  return anchorBox.localToGlobal(topLeftInAnchorBox, ancestor: overlayAncestor);
+}
+
+/// True when overlay size must be known before [AppAnchor.childAlignment] is stable.
+bool appAnchorNeedsOverlayMeasure(AppAnchor anchor) {
+  return anchor.childAlignment != Alignment.topLeft;
+}
+
 /// Positions the overlay at a fixed global offset (screen coordinates).
 ///
 /// Used for right-click menus: the menu's top-left is placed at [offset],

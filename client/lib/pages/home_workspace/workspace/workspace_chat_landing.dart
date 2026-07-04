@@ -286,74 +286,102 @@ class _WorkspaceChatLandingState extends State<WorkspaceChatLanding> {
 
     return ColoredBox(
       color: cs.surface,
-      child: Center(
-        child: SingleChildScrollView(
-          padding: EdgeInsets.symmetric(
-            horizontal: spacing.xl,
-            vertical: spacing.xxl,
-          ),
-          child: ConstrainedBox(
-            constraints: const BoxConstraints(maxWidth: 720),
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                _ComposeCard(
-                  controller: _controller,
-                  focusNode: _focusNode,
-                  hint: l10n.workspaceChatLandingInputHint,
-                  isSubmitting: widget.isSubmitting,
-                  canSubmit: _canSubmit,
-                  onSubmit: _submit,
-                  onChanged: (_) => setState(() {}),
-                  conversationModeLabel: _conversationModeLabel(l10n),
-                  autoChipLabel: _autoChipLabel(
-                    l10n,
-                    presets: presets,
-                    teams: teams,
+      child: SizedBox.expand(
+        child: Center(
+          child: SingleChildScrollView(
+            padding: EdgeInsets.symmetric(
+              horizontal: spacing.xl,
+              vertical: spacing.xxl,
+            ),
+            child: ConstrainedBox(
+              constraints: const BoxConstraints(maxWidth: 880),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  _ComposeCard(
+                    controller: _controller,
+                    focusNode: _focusNode,
+                    hint: l10n.workspaceChatLandingInputHint,
+                    isSubmitting: widget.isSubmitting,
+                    canSubmit: _canSubmit,
+                    onSubmit: _submit,
+                    onChanged: (_) => setState(() {}),
+                    conversationModeLabel: _conversationModeLabel(l10n),
+                    autoChipLabel: _autoChipLabel(
+                      l10n,
+                      presets: presets,
+                      teams: teams,
+                    ),
+                    permissionChipLabel: _permissionChipLabel(l10n),
+                    conversationModeSpecs: _conversationModeSpecs(l10n),
+                    autoChipSpecs: _autoChipSpecs(
+                      l10n,
+                      presets: presets,
+                      teams: teams,
+                    ),
+                    permissionSpecs: _permissionSpecs(l10n),
+                    onConversationModeSelected: (value) {
+                      if (value is _LandingConversationMode) {
+                        _setConversationMode(value);
+                      }
+                    },
+                    onAutoChipSelected: (value) {
+                      if (value is! String || value.isEmpty) return;
+                      if (_conversationMode ==
+                          _LandingConversationMode.simple) {
+                        _selectPreset(value);
+                      } else {
+                        _selectTeam(value);
+                      }
+                    },
+                    onPermissionSelected: (value) {
+                      if (value is _LandingPermissionMode) {
+                        _setPermissionMode(value);
+                      }
+                    },
+                    skillsLabel: l10n.workspaceChatLandingSkills,
+                    connectAppsLabel: l10n.workspaceChatLandingConnectApps,
                   ),
-                  permissionChipLabel: _permissionChipLabel(l10n),
-                  conversationModeSpecs: _conversationModeSpecs(l10n),
-                  autoChipSpecs: _autoChipSpecs(
-                    l10n,
-                    presets: presets,
-                    teams: teams,
+                  SizedBox(height: spacing.xl),
+                  _WorkspaceSelectorBar(
+                    label: workspaceLabel.isNotEmpty
+                        ? workspaceLabel
+                        : l10n.workspaceChatLandingSelectWorkspace,
+                    hintWhenEmpty: l10n.workspaceChatLandingSelectWorkspace,
                   ),
-                  permissionSpecs: _permissionSpecs(l10n),
-                  onConversationModeSelected: (value) {
-                    if (value is _LandingConversationMode) {
-                      _setConversationMode(value);
-                    }
-                  },
-                  onAutoChipSelected: (value) {
-                    if (value is! String || value.isEmpty) return;
-                    if (_conversationMode == _LandingConversationMode.simple) {
-                      _selectPreset(value);
-                    } else {
-                      _selectTeam(value);
-                    }
-                  },
-                  onPermissionSelected: (value) {
-                    if (value is _LandingPermissionMode) {
-                      _setPermissionMode(value);
-                    }
-                  },
-                  skillsLabel: l10n.workspaceChatLandingSkills,
-                  connectAppsLabel: l10n.workspaceChatLandingConnectApps,
-                ),
-                SizedBox(height: spacing.xl),
-                _WorkspaceSelectorBar(
-                  label: workspaceLabel.isNotEmpty
-                      ? workspaceLabel
-                      : l10n.workspaceChatLandingSelectWorkspace,
-                  hintWhenEmpty: l10n.workspaceChatLandingSelectWorkspace,
-                ),
-              ],
+                ],
+              ),
             ),
           ),
         ),
       ),
     );
   }
+}
+
+/// Shared surface, border, and foreground tokens for the landing compose UI.
+@immutable
+class _LandingPalette {
+  _LandingPalette(ColorScheme cs)
+    : elevated = cs.surfaceContainerLow,
+      chipFill = cs.surfaceContainerHigh,
+      border = cs.outlineVariant.withValues(alpha: 0.38),
+      muted = cs.onSurfaceVariant,
+      hint = cs.onSurfaceVariant.withValues(alpha: 0.62),
+      disabled = cs.onSurfaceVariant.withValues(alpha: 0.38),
+      sendIdle = cs.onSurfaceVariant.withValues(alpha: 0.18),
+      sendActive = cs.onSurface,
+      sendIcon = cs.surface;
+
+  final Color elevated;
+  final Color chipFill;
+  final Color border;
+  final Color muted;
+  final Color hint;
+  final Color disabled;
+  final Color sendIdle;
+  final Color sendActive;
+  final Color sendIcon;
 }
 
 class _ComposeCard extends StatelessWidget {
@@ -399,7 +427,7 @@ class _ComposeCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final cs = Theme.of(context).colorScheme;
+    final palette = _LandingPalette(Theme.of(context).colorScheme);
     final spacing = context.appSpacing;
     final styles = AppTextStyles.of(context);
 
@@ -408,18 +436,9 @@ class _ComposeCard extends StatelessWidget {
       children: [
         DecoratedBox(
           decoration: BoxDecoration(
-            color: cs.surface,
+            color: palette.elevated,
             borderRadius: BorderRadius.circular(20),
-            border: Border.all(
-              color: cs.outlineVariant.withValues(alpha: 0.45),
-            ),
-            boxShadow: [
-              BoxShadow(
-                color: cs.shadow.withValues(alpha: 0.06),
-                blurRadius: 24,
-                offset: const Offset(0, 8),
-              ),
-            ],
+            border: Border.all(color: palette.border),
           ),
           child: Padding(
             padding: EdgeInsets.fromLTRB(
@@ -441,7 +460,7 @@ class _ComposeCard extends StatelessWidget {
                   decoration: InputDecoration(
                     hintText: hint,
                     hintStyle: styles.body.copyWith(
-                      color: cs.onSurfaceVariant.withValues(alpha: 0.72),
+                      color: palette.hint,
                       height: 1.5,
                     ),
                     border: InputBorder.none,
@@ -462,6 +481,7 @@ class _ComposeCard extends StatelessWidget {
                         child: Row(
                           children: [
                             _ToolbarMenuChip(
+                              palette: palette,
                               icon: Icons.groups_outlined,
                               label: conversationModeLabel,
                               specs: conversationModeSpecs,
@@ -469,6 +489,7 @@ class _ComposeCard extends StatelessWidget {
                             ),
                             SizedBox(width: spacing.sm),
                             _ToolbarMenuChip(
+                              palette: palette,
                               icon: Icons.autorenew,
                               label: autoChipLabel,
                               specs: autoChipSpecs,
@@ -476,16 +497,19 @@ class _ComposeCard extends StatelessWidget {
                             ),
                             SizedBox(width: spacing.sm),
                             _ToolbarChip(
+                              palette: palette,
                               icon: Icons.auto_fix_high_outlined,
                               label: skillsLabel,
                             ),
                             SizedBox(width: spacing.sm),
                             _ToolbarChip(
+                              palette: palette,
                               icon: Icons.link,
                               label: connectAppsLabel,
                             ),
                             SizedBox(width: spacing.sm),
                             _ToolbarMenuChip(
+                              palette: palette,
                               icon: Icons.verified_outlined,
                               label: permissionChipLabel,
                               specs: permissionSpecs,
@@ -497,18 +521,21 @@ class _ComposeCard extends StatelessWidget {
                     ),
                     SizedBox(width: spacing.sm),
                     _ComposeActionIcon(
+                      palette: palette,
                       tooltip: 'Attach',
                       icon: Icons.add,
                       enabled: !isSubmitting,
                       onTap: () {},
                     ),
                     _ComposeActionIcon(
+                      palette: palette,
                       tooltip: 'Enhance',
                       icon: Icons.auto_awesome_outlined,
                       enabled: !isSubmitting,
                       onTap: () {},
                     ),
                     _ComposeActionIcon(
+                      palette: palette,
                       tooltip: 'Voice',
                       icon: Icons.mic_none_outlined,
                       enabled: !isSubmitting,
@@ -516,6 +543,7 @@ class _ComposeCard extends StatelessWidget {
                     ),
                     SizedBox(width: spacing.xs),
                     _SendButton(
+                      palette: palette,
                       canSubmit: canSubmit,
                       isSubmitting: isSubmitting,
                       onSubmit: onSubmit,
@@ -531,21 +559,15 @@ class _ComposeCard extends StatelessWidget {
           right: 28,
           child: DecoratedBox(
             decoration: BoxDecoration(
-              color: cs.primaryContainer,
+              color: palette.chipFill,
               shape: BoxShape.circle,
-              boxShadow: [
-                BoxShadow(
-                  color: cs.shadow.withValues(alpha: 0.08),
-                  blurRadius: 8,
-                  offset: const Offset(0, 2),
-                ),
-              ],
+              border: Border.all(color: palette.border),
             ),
             child: Padding(
               padding: EdgeInsets.all(spacing.sm),
               child: Icon(
                 Icons.smart_toy_rounded,
-                color: cs.onPrimaryContainer,
+                color: palette.muted,
                 size: context.appIconSizes.lg,
               ),
             ),
@@ -558,12 +580,14 @@ class _ComposeCard extends StatelessWidget {
 
 class _ToolbarMenuChip extends StatelessWidget {
   const _ToolbarMenuChip({
+    required this.palette,
     required this.icon,
     required this.label,
     required this.specs,
     required this.onSelected,
   });
 
+  final _LandingPalette palette;
   final IconData icon;
   final String label;
   final List<SidebarActionMenuSpec> specs;
@@ -574,6 +598,7 @@ class _ToolbarMenuChip extends StatelessWidget {
     return SidebarActionMenuIconAnchor(
       minWidth: 200,
       triggerBuilder: (context, controller) => _ToolbarChip(
+        palette: palette,
         icon: icon,
         label: label,
         onTap: () {
@@ -596,8 +621,14 @@ class _ToolbarMenuChip extends StatelessWidget {
 }
 
 class _ToolbarChip extends StatelessWidget {
-  const _ToolbarChip({required this.icon, required this.label, this.onTap});
+  const _ToolbarChip({
+    required this.palette,
+    required this.icon,
+    required this.label,
+    this.onTap,
+  });
 
+  final _LandingPalette palette;
   final IconData icon;
   final String label;
   final VoidCallback? onTap;
@@ -606,19 +637,16 @@ class _ToolbarChip extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final cs = Theme.of(context).colorScheme;
     final spacing = context.appSpacing;
     final icons = context.appIconSizes;
     final labelStyle = AppTextStyles.of(context).bodySmall.copyWith(
-      color: cs.onSurfaceVariant,
+      color: palette.muted,
       fontWeight: FontWeight.w500,
     );
 
     return Material(
-      color: cs.surfaceContainerHighest.withValues(alpha: 0.55),
-      shape: StadiumBorder(
-        side: BorderSide(color: cs.outlineVariant.withValues(alpha: 0.35)),
-      ),
+      color: palette.chipFill,
+      shape: StadiumBorder(side: BorderSide(color: palette.border)),
       clipBehavior: Clip.antiAlias,
       child: InkWell(
         onTap: onTap,
@@ -632,13 +660,13 @@ class _ToolbarChip extends StatelessWidget {
             child: Row(
               mainAxisSize: MainAxisSize.min,
               children: [
-                Icon(icon, size: icons.sm, color: cs.onSurfaceVariant),
+                Icon(icon, size: icons.sm, color: palette.muted),
                 SizedBox(width: spacing.xs),
                 Text(label, style: labelStyle),
                 Icon(
                   Icons.keyboard_arrow_down_rounded,
                   size: icons.md,
-                  color: cs.onSurfaceVariant,
+                  color: palette.muted,
                 ),
               ],
             ),
@@ -651,12 +679,14 @@ class _ToolbarChip extends StatelessWidget {
 
 class _ComposeActionIcon extends StatelessWidget {
   const _ComposeActionIcon({
+    required this.palette,
     required this.tooltip,
     required this.icon,
     required this.enabled,
     required this.onTap,
   });
 
+  final _LandingPalette palette;
   final String tooltip;
   final IconData icon;
   final bool enabled;
@@ -666,7 +696,6 @@ class _ComposeActionIcon extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final cs = Theme.of(context).colorScheme;
     final icons = context.appIconSizes;
 
     return Tooltip(
@@ -684,9 +713,7 @@ class _ComposeActionIcon extends StatelessWidget {
             child: Icon(
               icon,
               size: icons.md,
-              color: enabled
-                  ? cs.onSurfaceVariant
-                  : cs.onSurfaceVariant.withValues(alpha: 0.38),
+              color: enabled ? palette.muted : palette.disabled,
             ),
           ),
         ),
@@ -697,11 +724,13 @@ class _ComposeActionIcon extends StatelessWidget {
 
 class _SendButton extends StatelessWidget {
   const _SendButton({
+    required this.palette,
     required this.canSubmit,
     required this.isSubmitting,
     required this.onSubmit,
   });
 
+  final _LandingPalette palette;
   final bool canSubmit;
   final bool isSubmitting;
   final VoidCallback onSubmit;
@@ -710,12 +739,11 @@ class _SendButton extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final cs = Theme.of(context).colorScheme;
     final icons = context.appIconSizes;
     final active = canSubmit && !isSubmitting;
 
     return Material(
-      color: active ? cs.onSurface : cs.onSurface.withValues(alpha: 0.25),
+      color: active ? palette.sendActive : palette.sendIdle,
       shape: const CircleBorder(),
       clipBehavior: Clip.antiAlias,
       child: InkWell(
@@ -733,12 +761,12 @@ class _SendButton extends StatelessWidget {
                     height: icons.sm,
                     child: CircularProgressIndicator(
                       strokeWidth: 2,
-                      color: cs.surface,
+                      color: palette.sendIcon,
                     ),
                   )
                 : Icon(
                     Icons.arrow_upward_rounded,
-                    color: cs.surface,
+                    color: active ? palette.sendIcon : palette.disabled,
                     size: icons.md,
                   ),
           ),
@@ -759,7 +787,7 @@ class _WorkspaceSelectorBar extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final cs = Theme.of(context).colorScheme;
+    final palette = _LandingPalette(Theme.of(context).colorScheme);
     final spacing = context.appSpacing;
     final icons = context.appIconSizes;
     final styles = AppTextStyles.of(context);
@@ -772,18 +800,14 @@ class _WorkspaceSelectorBar extends StatelessWidget {
         vertical: spacing.md,
       ),
       decoration: BoxDecoration(
-        color: cs.surfaceContainerHighest.withValues(alpha: 0.55),
+        color: palette.elevated,
         borderRadius: BorderRadius.circular(999),
-        border: Border.all(color: cs.outlineVariant.withValues(alpha: 0.35)),
+        border: Border.all(color: palette.border),
       ),
       child: Row(
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
-          Icon(
-            Icons.folder_outlined,
-            size: icons.sm,
-            color: cs.onSurfaceVariant,
-          ),
+          Icon(Icons.folder_outlined, size: icons.sm, color: palette.muted),
           SizedBox(width: spacing.sm),
           Flexible(
             child: Text(
@@ -791,12 +815,12 @@ class _WorkspaceSelectorBar extends StatelessWidget {
               maxLines: 1,
               overflow: TextOverflow.ellipsis,
               style: styles.body.copyWith(
-                color: cs.onSurfaceVariant,
+                color: palette.muted,
                 fontWeight: FontWeight.w500,
               ),
             ),
           ),
-          Icon(Icons.chevron_right, size: icons.md, color: cs.onSurfaceVariant),
+          Icon(Icons.chevron_right, size: icons.md, color: palette.muted),
         ],
       ),
     );

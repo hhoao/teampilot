@@ -18,11 +18,15 @@ class RightToolsHost extends StatefulWidget {
     required this.center,
     required this.rightTools,
     required this.onRightToolsWidthChanged,
+    this.hidePanel = false,
   });
 
   final Widget center;
   final Widget rightTools;
   final ValueChanged<double>? onRightToolsWidthChanged;
+
+  /// When true, the panel is collapsed regardless of layout prefs (e.g. compose landing).
+  final bool hidePanel;
 
   static const double _minCenterWidth = 150.0;
   static const Duration _revealDuration = Duration(milliseconds: 200);
@@ -113,7 +117,8 @@ class _RightToolsHostState extends State<RightToolsHost>
         c.state.preferences.rightToolsWidth,
       ),
     );
-    _applyLayoutTargets(layout.$1, layout.$2);
+    final effectiveVisible = layout.$1 && !widget.hidePanel;
+    _applyLayoutTargets(effectiveVisible, layout.$2);
 
     final panelWidth = _animatedWidth.clamp(0.0, double.infinity);
 

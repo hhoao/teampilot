@@ -29,11 +29,11 @@ class WorkspaceShell extends StatelessWidget {
     this.showRightToolsVisibilityToggle = false,
     this.workspaceTerminalWorkingDirectory,
     this.workspaceWorkspaceId,
-    this.showComposeTab = false,
-    this.composeTabActive = false,
-    this.composeTabTitle = '',
-    this.onComposeTabSelected,
-    this.onComposeTabClosed,
+    this.showNewChatButton = false,
+    this.newChatTooltip = '',
+    this.onNewChatPressed,
+    this.hideWorkspaceTerminal = false,
+    this.showSessionTabRow = true,
     super.key,
   });
 
@@ -61,12 +61,17 @@ class WorkspaceShell extends StatelessWidget {
   /// [workspaceTerminalWorkingDirectory] / active tab cwd when null.
   final String? workspaceWorkspaceId;
 
-  /// When true, renders a persistent "+" compose tab after session tabs.
-  final bool showComposeTab;
-  final bool composeTabActive;
-  final String composeTabTitle;
-  final VoidCallback? onComposeTabSelected;
-  final VoidCallback? onComposeTabClosed;
+  /// "+" action at the end of the session tab row — opens landing; not a tab.
+  final bool showNewChatButton;
+  final String newChatTooltip;
+  final VoidCallback? onNewChatPressed;
+
+  /// When true, the bottom workspace terminal is hidden so [child] fills the
+  /// center column (compose landing).
+  final bool hideWorkspaceTerminal;
+
+  /// When false, the session tab row is hidden (landing owns the full pane).
+  final bool showSessionTabRow;
 
   @override
   Widget build(BuildContext context) {
@@ -133,21 +138,18 @@ class WorkspaceShell extends StatelessWidget {
               ],
             ),
           ),
-        if (tabs.isNotEmpty || showComposeTab)
+        if (showSessionTabRow && (tabs.isNotEmpty || showNewChatButton))
           WorkspaceShellTabRow(
             tabs: tabs,
-            activeIndex: composeTabActive ? -1 : activeTabIndex,
+            activeIndex: activeTabIndex,
             onTabSelected: onTabSelected,
             onTabClosed: onTabClosed,
             onTabCloseOthers: onTabCloseOthers,
             onTabCloseRight: onTabCloseRight,
-            composeTab: showComposeTab
-                ? WorkspaceShellComposeTab(
-                    title: composeTabTitle,
-                    active: composeTabActive,
-                    closable: tabs.isNotEmpty,
-                    onTap: onComposeTabSelected,
-                    onClose: onComposeTabClosed,
+            newChatButton: showNewChatButton
+                ? WorkspaceShellNewChatButton(
+                    tooltip: newChatTooltip,
+                    onPressed: onNewChatPressed,
                   )
                 : null,
             trailing: WorkspaceShellTabRowTrailing(
@@ -160,11 +162,12 @@ class WorkspaceShell extends StatelessWidget {
               showRightToolsToggle: showRightToolsVisibilityToggle,
             ),
           ),
-        if (tabs.isEmpty && !showComposeTab && actions.isNotEmpty && showHeader)
+        if (tabs.isEmpty && !showNewChatButton && actions.isNotEmpty && showHeader)
           WorkspaceShellActionsBar(actions: actions),
         Expanded(
           child: WorkspaceShellMainWithTerminal(
             preferences: layoutPreferences,
+            hideWorkspaceTerminal: hideWorkspaceTerminal,
             workspaceTerminalWorkingDirectory:
                 workspaceTerminalWorkingDirectory,
             workspaceWorkspaceId: workspaceWorkspaceId,
