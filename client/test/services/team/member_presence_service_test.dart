@@ -67,13 +67,32 @@ void main() {
     expect(working['dev']!.availability, MemberAvailability.working);
   });
 
-  test('mixed session: idle only when parked in wait_for_message', () async {
+  test('mixed session: booting only until PTY frame is stable', () async {
     final service = MemberPresenceService();
     final shell = _ConnectedShell()..activityTracker.latchBootFrameReadyForTest();
     final bus = TeamBus(launcher: FakeMemberLauncher());
     bus.declareMember(AgentNode.test(memberId: 'waiter'));
     bus.markMemberRunning('waiter');
 
+    final atPrompt = await service.compute(
+      teamCli: CliTool.claude,
+      members: const [TeamMemberConfig(id: 'waiter', name: 'waiter')],
+      cliTeamName: 't-1',
+      memberToolConfigDir: '/tmp/cfg',
+      memberShells: {'waiter': shell},
+      session: PresenceSessionContext(
+        team: const TeamProfile(
+          id: 't',
+          name: 'T',
+          teamMode: TeamMode.mixed,
+          members: [TeamMemberConfig(id: 'waiter', name: 'waiter')],
+        ),
+        teamBus: bus,
+      ),
+    );
+    expect(atPrompt['waiter']!.availability, MemberAvailability.idle);
+
+    shell.activityTracker.reset();
     final booting = await service.compute(
       teamCli: CliTool.claude,
       members: const [TeamMemberConfig(id: 'waiter', name: 'waiter')],
@@ -92,6 +111,7 @@ void main() {
     );
     expect(booting['waiter']!.availability, MemberAvailability.booting);
 
+    shell.activityTracker.latchBootFrameReadyForTest();
     bus.declareMember(
       AgentNode.test(
         memberId: 'waiter',

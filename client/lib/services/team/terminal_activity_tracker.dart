@@ -1,9 +1,12 @@
 import 'dart:typed_data';
 
+typedef _VisibleTailScan = ({int hash, bool hasVisibleContent});
+
 /// Heuristic workload signal from PTY output (FlashskyAI v1).
 ///
-/// **Boot frame** ([isBootFrameReady]): visible PTY output observed and the
-/// trailing-line fingerprint unchanged for [bootQuietAfter] — TUI paint stable.
+/// **Boot frame** ([isBootFrameReady]): meaningful visible PTY content in the
+/// trailing-line window, then fingerprint unchanged for [bootQuietAfter].
+/// Latches true on first success until [reset].
 ///
 /// **Turn workload** ([isWorking]): after the longer [idleAfter] boot-quiet
 /// window, tracks recent PTY activity for working/idle during a turn.
@@ -60,13 +63,27 @@ class TerminalActivityTracker {
   /// At least one [notePtyBytes] since [reset] (boot/session frame tracking).
   bool _bootPtyObserved = false;
 
-  /// True when visible PTY output has been observed and the fingerprint has
-  /// been unchanged for [bootQuietAfter]. Used for TUI startup readiness.
+  /// Non-whitespace visible glyphs seen in the tail window since [reset].
+  bool _bootVisibleContentSeen = false;
+
+  /// Once the boot frame has been stable, stay ready until [reset] — avoids
+  /// presence flicker when startup TUI keeps repainting after the first quiet
+  /// window (spinners, welcome banners, status rows).
+  bool _bootFrameLatched = false;
+
+  /// True once meaningful visible content has appeared in the tail window and
+  /// the fingerprint has been unchanged for [bootQuietAfter].
+  /// Latches true on first success and does not revert until [reset].
   bool get isBootFrameReady {
-    if (!_bootPtyObserved) return false;
+    if (_bootFrameLatched) return true;
+    if (!_bootPtyObserved || !_bootVisibleContentSeen) return false;
     final since = _fingerprintStableSince;
     if (since == null) return false;
-    return DateTime.now().difference(since) >= bootQuietAfter;
+    if (DateTime.now().difference(since) >= bootQuietAfter) {
+      _bootFrameLatched = true;
+      return true;
+    }
+    return false;
   }
 
   void markActive([DateTime? at]) {
@@ -95,13 +112,11 @@ class TerminalActivityTracker {
     if (bytes.isEmpty) return;
     final raw = bytes is Uint8List ? bytes : Uint8List.fromList(bytes);
     final now = at ?? DateTime.now();
-    final hash = visiblePtyFingerprintHash(
-      raw,
-      tailLines: fingerprintTailLines,
-    );
+    final scan = _scanVisibleTail(raw, tailLines: fingerprintTailLines);
+    final hash = scan.hash;
 
     if (!_turnPtyObserved) {
-      _beginTurnFingerprint(hash, raw, now);
+      _beginTurnFingerprint(scan, raw, now);
       return;
     }
 
@@ -114,7 +129,7 @@ class TerminalActivityTracker {
 
     if (hash == _lastFingerprintHash) return;
 
-    _bootPtyObserved = true;
+    _noteBootPtyObserved(scan.hasVisibleContent);
     _lastFingerprintHash = hash;
     _lastRawChunk = raw.length <= _rawFastPathMaxBytes
         ? Uint8List.fromList(raw)
@@ -123,10 +138,14 @@ class TerminalActivityTracker {
     noteOutput(now);
   }
 
-  void _beginTurnFingerprint(int hash, Uint8List raw, DateTime now) {
-    _bootPtyObserved = true;
+  void _beginTurnFingerprint(
+    _VisibleTailScan scan,
+    Uint8List raw,
+    DateTime now,
+  ) {
+    _noteBootPtyObserved(scan.hasVisibleContent);
     _turnPtyObserved = true;
-    _lastFingerprintHash = hash;
+    _lastFingerprintHash = scan.hash;
     _lastRawChunk = raw.length <= _rawFastPathMaxBytes
         ? Uint8List.fromList(raw)
         : null;
@@ -134,31 +153,40 @@ class TerminalActivityTracker {
     noteOutput(now);
   }
 
-  /// Single-pass FNV-1a over the chunk's last [tailLines] visible lines: strips
+  void _noteBootPtyObserved(bool hasVisibleContent) {
+    _bootPtyObserved = true;
+    if (hasVisibleContent) _bootVisibleContentSeen = true;
+  }
+
+  /// Single-pass scan of the chunk's last [tailLines] visible lines: strips
   /// ESC/CSI/OSC, skips `\\r` and UTF-8 block elements (U+2580–U+259F).
-  /// Exposed for tests.
-  static int visiblePtyFingerprintHash(
+  static _VisibleTailScan _scanVisibleTail(
     List<int> bytes, {
     int tailLines = defaultFingerprintTailLines,
   }) {
     assert(tailLines >= 1);
     final window = <int>[];
+    final windowVisible = <bool>[];
     var lineHash = _fnvOffsetBasis;
+    var lineHasVisible = false;
     var i = 0;
     var afterEsc = false;
     var inCsi = false;
     var inOsc = false;
 
-    void pushLine(int hash) {
+    void pushLine(int hash, bool visible) {
       window.add(hash);
+      windowVisible.add(visible);
       if (window.length > tailLines) {
         window.removeAt(0);
+        windowVisible.removeAt(0);
       }
     }
 
     void flushCurrentLine() {
-      pushLine(lineHash);
+      pushLine(lineHash, lineHasVisible);
       lineHash = _fnvOffsetBasis;
+      lineHasVisible = false;
     }
 
     while (i < bytes.length) {
@@ -218,16 +246,32 @@ class TerminalActivityTracker {
         }
       }
 
+      if (_isMeaningfulVisibleByte(b)) lineHasVisible = true;
       lineHash = _fnv1a(lineHash, b);
       i++;
     }
 
     if (lineHash != _fnvOffsetBasis) {
-      pushLine(lineHash);
+      pushLine(lineHash, lineHasVisible);
     }
 
-    return _combineLineHashes(window);
+    return (
+      hash: _combineLineHashes(window),
+      hasVisibleContent: windowVisible.any((visible) => visible),
+    );
   }
+
+  static bool _isMeaningfulVisibleByte(int b) {
+    if (b == 0x09 || b == 0x20) return false;
+    if (b >= 0x21 && b <= 0x7e) return true;
+    return b >= 0x80;
+  }
+
+  /// FNV hash of trailing visible lines. Exposed for tests.
+  static int visiblePtyFingerprintHash(
+    List<int> bytes, {
+    int tailLines = defaultFingerprintTailLines,
+  }) => _scanVisibleTail(bytes, tailLines: tailLines).hash;
 
   static int _combineLineHashes(List<int> lineHashes) {
     if (lineHashes.isEmpty) return _fnvOffsetBasis;
@@ -260,12 +304,16 @@ class TerminalActivityTracker {
     _fingerprintStableSince = null;
     _turnLatchedAt = null;
     _bootPtyObserved = false;
+    _bootVisibleContentSeen = false;
+    _bootFrameLatched = false;
   }
 
   /// Tests: latch a stable boot frame without waiting real time.
   void latchBootFrameReadyForTest([DateTime? at]) {
     final now = at ?? DateTime.now();
     _bootPtyObserved = true;
+    _bootVisibleContentSeen = true;
+    _bootFrameLatched = true;
     _turnPtyObserved = true;
     _fingerprintStableSince = now.subtract(bootQuietAfter);
     _armed = true;

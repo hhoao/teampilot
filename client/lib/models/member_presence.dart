@@ -4,8 +4,7 @@ enum MemberConnection { offline, connecting, connected }
 /// Agent availability once [MemberConnection.connected].
 ///
 /// Distinct phases:
-/// - [booting]: PTY linked but TUI frame not stable, or (mixed + forceWait) not
-///   yet parked in `wait_for_message`.
+/// - [booting]: PTY linked but meaningful visible TUI content not yet stable.
 /// - [working]: in-turn / active PTY during a turn.
 /// - [idle]: truly available (parked in wait, or push-CLI at quiet prompt).
 enum MemberAvailability { booting, working, idle }

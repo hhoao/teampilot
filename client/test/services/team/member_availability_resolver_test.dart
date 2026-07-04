@@ -57,7 +57,8 @@ void main() {
       );
     });
 
-    test('mixed forceWait: not ready until wait_for_message', () {
+    test('mixed forceWait: idle at prompt, automation waits for wait_for_message',
+        () {
       final shell = _ConnectedShell()..activityTracker.latchBootFrameReadyForTest();
       final bus = TeamBus(launcher: FakeMemberLauncher());
       bus.declareMember(
@@ -70,8 +71,28 @@ void main() {
 
       expect(
         _resolve(shell, bus: bus),
-        MemberAvailability.booting,
-        reason: 'turnDoneReady without wait is still booting',
+        MemberAvailability.idle,
+        reason: 'turnDoneReady at prompt is idle once TUI is stable',
+      );
+      expect(
+        MemberAvailabilityResolver.isReadyForAutomationInput(
+          shell: shell,
+          member: const TeamMemberConfig(id: 'worker', name: 'worker'),
+          team: const TeamProfile(
+            id: 't',
+            name: 'T',
+            teamMode: TeamMode.mixed,
+            members: [TeamMemberConfig(id: 'worker', name: 'worker')],
+          ),
+          teamMode: TeamMode.mixed,
+          globalPresets: const [],
+          bus: bus,
+          claudeRosterWorking: false,
+          usesClaudeRoster: false,
+          usesShellActivity: false,
+        ),
+        isFalse,
+        reason: 'scheduled inject still waits for wait_for_message',
       );
 
       bus.declareMember(

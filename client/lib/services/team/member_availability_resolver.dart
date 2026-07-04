@@ -65,19 +65,6 @@ abstract final class MemberAvailabilityResolver {
       return MemberAvailability.idle;
     }
 
-    final forceWait = member.effectiveForceWaitBeforeStop(
-      team,
-      launchCli: memberLaunchCli(
-        team: team,
-        member: member,
-        globalPresets: globalPresets,
-      ),
-    );
-    if (forceWait) {
-      // TUI stable but agent loop not yet parked in wait_for_message.
-      return MemberAvailability.booting;
-    }
-
     // Push-CLI (cursor): idle-at-prompt when quiet. PTY bytes only count after
     // a bus turn signal (user submit → active, mail/task doorbell), not startup
     // TUI churn.
@@ -89,8 +76,8 @@ abstract final class MemberAvailabilityResolver {
         : MemberAvailability.idle;
   }
 
-  /// Automation / scheduled message inject: safe once startup finished (TUI
-  /// frame stable; mixed forceWait CLIs also parked in `wait_for_message`).
+  /// Automation / scheduled message inject: safe once the TUI boot frame is
+  /// stable. Mixed forceWait CLIs must also be parked in `wait_for_message`.
   static bool isReadyForAutomationInput({
     required TerminalSession shell,
     required TeamMemberConfig member,
@@ -102,18 +89,19 @@ abstract final class MemberAvailabilityResolver {
     required bool usesClaudeRoster,
     required bool usesShellActivity,
   }) {
-    return forConnected(
-          shell: shell,
-          member: member,
-          team: team,
-          teamMode: teamMode,
-          globalPresets: globalPresets,
-          bus: bus,
-          claudeRosterWorking: claudeRosterWorking,
-          usesClaudeRoster: usesClaudeRoster,
-          usesShellActivity: usesShellActivity,
-        ) !=
-        MemberAvailability.booting;
+    if (!shell.activityTracker.isBootFrameReady) return false;
+    if (teamMode == TeamMode.mixed && bus != null) {
+      final launchCli = memberLaunchCli(
+        team: team,
+        member: member,
+        globalPresets: globalPresets,
+      );
+      if (member.effectiveForceWaitBeforeStop(team, launchCli: launchCli) &&
+          !bus.isWaitingForMessage(member.id)) {
+        return false;
+      }
+    }
+    return true;
   }
 
   /// Gate for push-CLI PTY heuristics — avoids boot-time repaint false positives.
