@@ -434,11 +434,12 @@ class _ComposeCard extends StatelessWidget {
     return Stack(
       clipBehavior: Clip.none,
       children: [
-        DecoratedBox(
-          decoration: BoxDecoration(
-            color: palette.elevated,
+        Material(
+          color: palette.elevated,
+          clipBehavior: Clip.antiAlias,
+          shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(20),
-            border: Border.all(color: palette.border),
+            side: BorderSide(color: palette.border),
           ),
           child: Padding(
             padding: EdgeInsets.fromLTRB(
@@ -477,7 +478,6 @@ class _ComposeCard extends StatelessWidget {
                     Expanded(
                       child: SingleChildScrollView(
                         scrollDirection: Axis.horizontal,
-                        clipBehavior: Clip.none,
                         child: Row(
                           children: [
                             _ToolbarMenuChip(
@@ -515,6 +515,7 @@ class _ComposeCard extends StatelessWidget {
                               specs: permissionSpecs,
                               onSelected: onPermissionSelected,
                             ),
+                            SizedBox(width: spacing.sm),
                           ],
                         ),
                       ),
