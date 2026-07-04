@@ -2,6 +2,7 @@ import 'dart:convert';
 
 import '../models/automation.dart';
 import '../models/automation_tab_scope.dart';
+import '../services/automation/automation_launch_session_binding.dart';
 import '../services/io/filesystem.dart';
 import '../services/storage/workspace_layout.dart';
 import '../utils/logger.dart';
@@ -205,13 +206,11 @@ class AutomationRepository {
     var changed = false;
     final nowMs = DateTime.now().millisecondsSinceEpoch;
     final automations = store.automations.map((a) {
-      if (a.sessionId != trimmedSession || !a.enabled) return a;
+      if (a.sessionId != trimmedSession) return a;
+      final next = AutomationLaunchSessionBinding.onBoundSessionRemoved(a);
+      if (next == a) return a;
       changed = true;
-      return a.copyWith(
-        enabled: false,
-        clearNextRunAtMs: true,
-        updatedAtMs: nowMs,
-      );
+      return next.copyWith(updatedAtMs: nowMs);
     }).toList(growable: false);
     if (!changed) return;
     await _writeStore(scope, store.copyWith(automations: automations));

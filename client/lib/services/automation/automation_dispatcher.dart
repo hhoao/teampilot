@@ -8,7 +8,6 @@ import '../../cubits/chat/model/session_open_request.dart';
 import '../../cubits/chat/model/session_open_status.dart';
 import '../../models/app_session.dart';
 import '../../models/automation.dart';
-import '../../models/automation_tab_scope.dart';
 import '../../models/launch_profile_kind.dart';
 import '../../models/team_config.dart';
 import '../../models/workspace.dart';
@@ -18,6 +17,7 @@ import '../../services/launch/personal_launch_context_resolver.dart';
 import '../../utils/logger.dart';
 import 'automation_bus_gateway.dart';
 import 'automation_dispatch_result.dart';
+import 'automation_launch_session_binding.dart';
 import 'automation_schedule_calculator.dart';
 
 typedef AutomationWorkspaceResolver = Workspace? Function(String workspaceId);
@@ -199,6 +199,7 @@ class AutomationDispatcher {
     final updated = _advanceAutomationAfterRun(
       automation,
       lastRunAtMs: startedAtMs,
+      dispatchedSessionId: session.sessionId,
     );
     return (completed, updated);
   }
@@ -407,6 +408,7 @@ class AutomationDispatcher {
   Automation _advanceAutomationAfterRun(
     Automation automation, {
     required int lastRunAtMs,
+    String? dispatchedSessionId,
   }) {
     final nextRunCount = automation.runCount + 1;
     final limitReached =
@@ -418,7 +420,7 @@ class AutomationDispatcher {
             afterMs: lastRunAtMs,
           )
         : null;
-    return automation.copyWith(
+    var updated = automation.copyWith(
       lastRunAtMs: lastRunAtMs,
       runCount: nextRunCount,
       enabled: stillEnabled,
@@ -426,5 +428,12 @@ class AutomationDispatcher {
       clearNextRunAtMs: nextRunAtMs == null,
       updatedAtMs: _nowMs(),
     );
+    if (dispatchedSessionId != null && dispatchedSessionId.trim().isNotEmpty) {
+      updated = AutomationLaunchSessionBinding.applyAfterSuccessfulDispatch(
+        updated,
+        sessionId: dispatchedSessionId,
+      );
+    }
+    return updated;
   }
 }

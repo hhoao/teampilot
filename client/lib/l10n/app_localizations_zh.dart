@@ -4405,6 +4405,22 @@ class AppLocalizationsZh extends AppLocalizations {
   String get automationsReuseSession => '复用会话';
 
   @override
+  String get automationsReuseSessionSubtitleOff => '每次运行都会新建一个对话。';
+
+  @override
+  String get automationsReuseSessionSubtitlePending => '首次运行会创建对话，之后在同一会话中继续。';
+
+  @override
+  String automationsReuseSessionSubtitleBound(String sessionId) {
+    return '已绑定会话 $sessionId';
+  }
+
+  @override
+  String automationsReuseSessionListHint(String sessionId) {
+    return '复用对话 $sessionId';
+  }
+
+  @override
   String get automationsTargetMember => '目标成员';
 
   @override

@@ -8265,6 +8265,30 @@ abstract class AppLocalizations {
   /// **'Reuse session'**
   String get automationsReuseSession;
 
+  /// No description provided for @automationsReuseSessionSubtitleOff.
+  ///
+  /// In en, this message translates to:
+  /// **'Each run opens a new conversation.'**
+  String get automationsReuseSessionSubtitleOff;
+
+  /// No description provided for @automationsReuseSessionSubtitlePending.
+  ///
+  /// In en, this message translates to:
+  /// **'First run creates a conversation; later runs reuse it.'**
+  String get automationsReuseSessionSubtitlePending;
+
+  /// No description provided for @automationsReuseSessionSubtitleBound.
+  ///
+  /// In en, this message translates to:
+  /// **'Bound to session {sessionId}'**
+  String automationsReuseSessionSubtitleBound(String sessionId);
+
+  /// No description provided for @automationsReuseSessionListHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Reuses conversation {sessionId}'**
+  String automationsReuseSessionListHint(String sessionId);
+
   /// No description provided for @automationsTargetMember.
   ///
   /// In en, this message translates to:

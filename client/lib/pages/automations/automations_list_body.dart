@@ -16,6 +16,7 @@ import '../../models/launch_profile.dart';
 import '../../models/launch_profile_ref.dart';
 import '../../models/workspace.dart';
 import '../../repositories/automation_repository.dart';
+import '../../services/automation/automation_launch_session_binding.dart';
 import '../../theme/app_text_styles.dart';
 import '../../utils/coarse_relative_time.dart';
 import '../../widgets/app_dialog.dart';
@@ -454,6 +455,19 @@ class AutomationRow extends StatelessWidget {
                     overflow: TextOverflow.ellipsis,
                     style: styles.caption.copyWith(color: cs.onSurfaceVariant),
                   ),
+                  if (AutomationLaunchSessionBinding.hasBinding(automation)) ...[
+                    const SizedBox(height: 2),
+                    Text(
+                      l10n.automationsReuseSessionListHint(
+                        automation.sessionId!,
+                      ),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: styles.caption.copyWith(
+                        color: cs.onSurfaceVariant,
+                      ),
+                    ),
+                  ],
                   if (runCountLabel.isNotEmpty) ...[
                     const SizedBox(height: 2),
                     Text(

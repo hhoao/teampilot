@@ -109,6 +109,25 @@ void main() {
     expect(loaded.single.nextRunAtMs, isNull);
   });
 
+  test('disableForSession unbinds reusable launch prompts', () async {
+    final layout = WorkspaceLayout(teampilotRoot: AppStorage.paths.basePath);
+    final repo = AutomationRepository(fs: AppStorage.fs, layout: layout);
+    await repo.upsert(
+      sampleAutomation(id: 'a1', workspaceId: 'ws1').copyWith(
+        action: AutomationAction.launchPrompt,
+        sessionId: 's1',
+        reuseSession: true,
+        enabled: true,
+        nextRunAtMs: 9_000,
+      ),
+    );
+    await repo.disableForSession(personalAutomationTabScope, 's1');
+    final loaded = await repo.listForTabScope(personalAutomationTabScope);
+    expect(loaded.single.enabled, isTrue);
+    expect(loaded.single.sessionId, isNull);
+    expect(loaded.single.nextRunAtMs, 9_000);
+  });
+
   test('removeWorkspace drops catalog entries and tab scope stores', () async {
     final layout = WorkspaceLayout(teampilotRoot: AppStorage.paths.basePath);
     final repo = AutomationRepository(fs: AppStorage.fs, layout: layout);

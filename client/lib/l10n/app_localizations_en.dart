@@ -4574,6 +4574,24 @@ class AppLocalizationsEn extends AppLocalizations {
   String get automationsReuseSession => 'Reuse session';
 
   @override
+  String get automationsReuseSessionSubtitleOff =>
+      'Each run opens a new conversation.';
+
+  @override
+  String get automationsReuseSessionSubtitlePending =>
+      'First run creates a conversation; later runs reuse it.';
+
+  @override
+  String automationsReuseSessionSubtitleBound(String sessionId) {
+    return 'Bound to session $sessionId';
+  }
+
+  @override
+  String automationsReuseSessionListHint(String sessionId) {
+    return 'Reuses conversation $sessionId';
+  }
+
+  @override
   String get automationsTargetMember => 'Target member';
 
   @override

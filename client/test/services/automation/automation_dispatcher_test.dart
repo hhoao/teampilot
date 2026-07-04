@@ -11,6 +11,7 @@ import 'package:teampilot/models/automation_tab_scope.dart';
 import 'package:teampilot/services/automation/automation_dispatcher.dart';
 import 'package:teampilot/services/automation/automation_schedule_calculator.dart';
 import 'package:teampilot/services/storage/app_storage.dart';
+import 'package:teampilot/services/storage/launch_profile_provisioner.dart';
 import 'package:teampilot/services/storage/workspace_layout.dart';
 
 import '../../support/automation_test_fixtures.dart';
@@ -229,6 +230,136 @@ void main() {
     expect(result.automation.runCount, 1);
     expect(result.automation.enabled, isFalse);
     expect(result.automation.nextRunAtMs, isNull);
+  });
+
+  test('launchPrompt with reuse binds session after first dispatch', () async {
+    final layout = WorkspaceLayout(teampilotRoot: AppStorage.paths.basePath);
+    final repo = AutomationRepository(fs: AppStorage.fs, layout: layout);
+    final workspace = Workspace(workspaceId: 'ws1', createdAt: 1);
+    final bus = _RecordingBusGateway();
+    var createCalls = 0;
+    String? createdSessionId;
+
+    final dispatcher = AutomationDispatcher(
+      repository: repo,
+      scheduleCalculator: AutomationScheduleCalculator(),
+      sessionRepository: _FakeSessionRepository(const []),
+      busGateway: bus,
+      requestOpenSession: (request) async {
+        expect(request.session.sessionId, createdSessionId);
+        return SessionOpenStatus.opened;
+      },
+      requestCreateAndOpenSession: (request) async {
+        createCalls++;
+        createdSessionId = request.fixedSessionId;
+        return SessionOpenStatus.opened;
+      },
+      workspaceById: (_) => workspace,
+      teamById: (_) => null,
+      launchProfileKindById: testLaunchProfileKindResolver(),
+      sessionById: (sessionId, workspaceId) {
+        if (createdSessionId == null || sessionId != createdSessionId) {
+          return null;
+        }
+        return AppSession(
+          sessionId: sessionId,
+          workspaceId: workspaceId,
+          profileId: LaunchProfileProvisioner.defaultPersonalId,
+          createdAt: 1,
+        );
+      },
+      nowMs: () => 100,
+    );
+
+    final automation = Automation(
+      id: 'launch-1',
+      name: 'Daily prompt',
+      action: AutomationAction.launchPrompt,
+      workspaceId: 'ws1',
+      launchProfileId: LaunchProfileProvisioner.defaultPersonalId,
+      cliPresetId: 'preset-1',
+      message: 'summarize inbox',
+      reuseSession: true,
+      preset: AutomationSchedulePreset.daily,
+      hourMinute: '09:00',
+      timezone: 'UTC',
+      dtstartMs: 1,
+      enabled: true,
+      nextRunAtMs: 1,
+      createdAtMs: 1,
+      updatedAtMs: 1,
+    );
+
+    final result = await dispatcher.dispatch(automation);
+
+    expect(createCalls, 1);
+    expect(result.run.status, AutomationRunStatus.completed);
+    expect(createdSessionId, isNotNull);
+    expect(result.automation.sessionId, createdSessionId);
+    final persisted = await repo.listForTabScope(personalAutomationTabScope);
+    expect(persisted.single.sessionId, createdSessionId);
+  });
+
+  test('launchPrompt with reuse reopens bound session on later runs', () async {
+    final layout = WorkspaceLayout(teampilotRoot: AppStorage.paths.basePath);
+    final repo = AutomationRepository(fs: AppStorage.fs, layout: layout);
+    final session = AppSession(
+      sessionId: 'bound-sess',
+      workspaceId: 'ws1',
+      profileId: LaunchProfileProvisioner.defaultPersonalId,
+      createdAt: 1,
+    );
+    final workspace = Workspace(workspaceId: 'ws1', createdAt: 1);
+    final bus = _RecordingBusGateway();
+    var createCalls = 0;
+    var openCalls = 0;
+
+    final dispatcher = AutomationDispatcher(
+      repository: repo,
+      scheduleCalculator: AutomationScheduleCalculator(),
+      sessionRepository: _FakeSessionRepository([session]),
+      busGateway: bus,
+      requestOpenSession: (request) async {
+        openCalls++;
+        expect(request.session.sessionId, 'bound-sess');
+        return SessionOpenStatus.opened;
+      },
+      requestCreateAndOpenSession: (_) async {
+        createCalls++;
+        return SessionOpenStatus.opened;
+      },
+      workspaceById: (_) => workspace,
+      teamById: (_) => null,
+      launchProfileKindById: testLaunchProfileKindResolver(),
+      nowMs: () => 200,
+    );
+
+    final automation = Automation(
+      id: 'launch-2',
+      name: 'Reuse',
+      action: AutomationAction.launchPrompt,
+      workspaceId: 'ws1',
+      launchProfileId: LaunchProfileProvisioner.defaultPersonalId,
+      cliPresetId: 'preset-1',
+      sessionId: 'bound-sess',
+      message: 'continue',
+      reuseSession: true,
+      preset: AutomationSchedulePreset.daily,
+      hourMinute: '09:00',
+      timezone: 'UTC',
+      dtstartMs: 1,
+      enabled: true,
+      nextRunAtMs: 1,
+      createdAtMs: 1,
+      updatedAtMs: 1,
+    );
+
+    final result = await dispatcher.dispatch(automation);
+
+    expect(createCalls, 0);
+    expect(openCalls, 1);
+    expect(result.run.status, AutomationRunStatus.completed);
+    expect(result.automation.sessionId, 'bound-sess');
   });
 }
 

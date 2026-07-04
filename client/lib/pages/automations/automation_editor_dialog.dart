@@ -12,6 +12,7 @@ import '../../models/automation.dart';
 import '../../models/launch_profile_kind.dart';
 import '../../models/personal_profile.dart';
 import '../../models/team_config.dart';
+import '../../services/automation/automation_launch_session_binding.dart';
 import '../../services/automation/automation_schedule_calculator.dart';
 import '../../theme/app_text_styles.dart';
 import '../../widgets/app_dialog.dart';
@@ -85,18 +86,32 @@ class _AutomationEditorDialogState extends State<AutomationEditorDialog> {
 
   bool get _isEditing => widget.initial != null;
 
+  /// True when persisted [runCount] has already hit the current max-run field.
+  bool get _runLimitReached {
+    final runCount = widget.initial?.runCount ?? 0;
+    final maxRunRaw = _maxRunCountCtl.text.trim();
+    if (maxRunRaw.isEmpty) return false;
+    final maxRun = int.tryParse(maxRunRaw);
+    if (maxRun == null || maxRun < 1) return false;
+    return runCount >= maxRun;
+  }
+
   String get _launchProfileId =>
       widget.initial?.launchProfileId ?? widget.launchProfileId ?? '';
 
   LaunchProfileKind get _launchKind {
-    final profile = context.read<LaunchProfileCubit>().state.byId(_launchProfileId);
+    final profile = context.read<LaunchProfileCubit>().state.byId(
+      _launchProfileId,
+    );
     return profile?.kind ?? LaunchProfileKind.personal;
   }
 
   bool get _isPersonalLaunch => _launchKind == LaunchProfileKind.personal;
 
   TeamProfile? get _teamProfile {
-    final profile = context.read<LaunchProfileCubit>().state.byId(_launchProfileId);
+    final profile = context.read<LaunchProfileCubit>().state.byId(
+      _launchProfileId,
+    );
     return profile is TeamProfile ? profile : null;
   }
 
@@ -147,15 +162,17 @@ class _AutomationEditorDialogState extends State<AutomationEditorDialog> {
     final initial = widget.initial;
     if (_cliPresetId != null && _cliPresetId!.trim().isNotEmpty) return;
 
-    if (initial?.cliPresetId != null && initial!.cliPresetId!.trim().isNotEmpty) {
+    if (initial?.cliPresetId != null &&
+        initial!.cliPresetId!.trim().isNotEmpty) {
       setState(() => _cliPresetId = initial.cliPresetId);
       return;
     }
 
     if (_isPersonalLaunch) {
       final presets = context.read<CliPresetsCubit>().state.presets;
-      final profile =
-          context.read<LaunchProfileCubit>().state.byId(_launchProfileId);
+      final profile = context.read<LaunchProfileCubit>().state.byId(
+        _launchProfileId,
+      );
       final personal = profile is PersonalProfile ? profile : null;
       final activePresetId = personal?.activePresetId?.trim() ?? '';
       if (activePresetId.isNotEmpty &&
@@ -164,8 +181,7 @@ class _AutomationEditorDialogState extends State<AutomationEditorDialog> {
         return;
       }
       if (initial?.cli != null) {
-        final match =
-            presets.where((p) => p.cli == initial!.cli).firstOrNull;
+        final match = presets.where((p) => p.cli == initial!.cli).firstOrNull;
         if (match != null) {
           setState(() => _cliPresetId = match.id);
           return;
@@ -248,16 +264,15 @@ class _AutomationEditorDialogState extends State<AutomationEditorDialog> {
     }
 
     final nowMs = DateTime.now().millisecondsSinceEpoch;
-    final workspaceId =
-        widget.initial?.workspaceId ?? widget.workspaceId ?? '';
+    final workspaceId = widget.initial?.workspaceId ?? widget.workspaceId ?? '';
     final launchProfileId =
         widget.initial?.launchProfileId ?? widget.launchProfileId ?? '';
-    final sessionId = _isScheduledMessage
+    final launchSessionId = _isScheduledMessage
         ? (widget.initial?.sessionId ?? widget.sessionId)
-        : null;
+        : (_reuseSession ? widget.initial?.sessionId : null);
 
     final presetId = _cliPresetId?.trim();
-    final automation = Automation(
+    var automation = Automation(
       id: widget.initial?.id ?? const Uuid().v4(),
       name: name,
       action: _isScheduledMessage
@@ -265,7 +280,7 @@ class _AutomationEditorDialogState extends State<AutomationEditorDialog> {
           : AutomationAction.launchPrompt,
       workspaceId: workspaceId,
       launchProfileId: launchProfileId,
-      sessionId: sessionId,
+      sessionId: launchSessionId,
       targetMemberId: _isPersonalLaunch ? 'team-lead' : _targetMemberId,
       message: message,
       cli: null,
@@ -286,6 +301,9 @@ class _AutomationEditorDialogState extends State<AutomationEditorDialog> {
       createdAtMs: widget.initial?.createdAtMs ?? nowMs,
       updatedAtMs: nowMs,
     );
+    automation = AutomationLaunchSessionBinding.stripWhenReuseDisabled(
+      automation,
+    );
 
     try {
       automation.validate();
@@ -294,13 +312,13 @@ class _AutomationEditorDialogState extends State<AutomationEditorDialog> {
       return;
     }
 
-    final nextRun = _enabled && !automation.isRunLimitReached
+    final nextRun = _enabled && !_runLimitReached
         ? _calculator.computeNextRunAtMs(automation, afterMs: nowMs)
         : null;
     final saved = automation.copyWith(
       nextRunAtMs: nextRun,
       clearNextRunAtMs: nextRun == null,
-      enabled: _enabled && !automation.isRunLimitReached,
+      enabled: _enabled && !_runLimitReached,
     );
 
     final cubit = context.read<AutomationCubit>();
@@ -314,6 +332,13 @@ class _AutomationEditorDialogState extends State<AutomationEditorDialog> {
     return members.where((m) => m.isValid).toList(growable: false);
   }
 
+  String _reuseSessionBoundSubtitle(AppLocalizations l10n) {
+    if (!_reuseSession) return l10n.automationsReuseSessionSubtitleOff;
+    final bound = widget.initial?.sessionId?.trim() ?? '';
+    if (bound.isEmpty) return l10n.automationsReuseSessionSubtitlePending;
+    return l10n.automationsReuseSessionSubtitleBound(bound);
+  }
+
   @override
   Widget build(BuildContext context) {
     final l10n = context.l10n;
@@ -321,11 +346,11 @@ class _AutomationEditorDialogState extends State<AutomationEditorDialog> {
     final cs = Theme.of(context).colorScheme;
     final title = _isEditing
         ? (_isScheduledMessage
-            ? l10n.automationsCompactTitle
-            : l10n.automationsEditTitle)
+              ? l10n.automationsCompactTitle
+              : l10n.automationsEditTitle)
         : (_isScheduledMessage
-            ? l10n.automationsCompactTitle
-            : l10n.automationsCreateTitle);
+              ? l10n.automationsCompactTitle
+              : l10n.automationsCreateTitle);
 
     return AppDialog(
       maxWidth: _isScheduledMessage ? 480 : 560,
@@ -380,14 +405,15 @@ class _AutomationEditorDialogState extends State<AutomationEditorDialog> {
               else
                 AppDropdownField<String>(
                   items: _teamMemberItems.map((m) => m.id).toList(),
-                  initialItem: _teamMemberItems
-                          .any((m) => m.id == _targetMemberId)
+                  initialItem:
+                      _teamMemberItems.any((m) => m.id == _targetMemberId)
                       ? _targetMemberId
                       : _teamMemberItems.first.id,
                   decoration: AppDropdownDecorations.themed(context),
                   itemLabel: (memberId) {
-                    final member =
-                        _teamMemberItems.where((m) => m.id == memberId).firstOrNull;
+                    final member = _teamMemberItems
+                        .where((m) => m.id == memberId)
+                        .firstOrNull;
                     return member?.name ?? memberId;
                   },
                   onChanged: (value) {
@@ -396,10 +422,10 @@ class _AutomationEditorDialogState extends State<AutomationEditorDialog> {
                   },
                 ),
             ],
-            const SizedBox(height: 8),
-            SwitchListTile(
-              contentPadding: EdgeInsets.zero,
-              title: Text(l10n.automationsReuseSession),
+            const SizedBox(height: 16),
+            _EditorSwitchRow(
+              title: l10n.automationsReuseSession,
+              subtitle: _reuseSessionBoundSubtitle(l10n),
               value: _reuseSession,
               onChanged: (v) => setState(() => _reuseSession = v),
             ),
@@ -419,13 +445,17 @@ class _AutomationEditorDialogState extends State<AutomationEditorDialog> {
             ),
             keyboardType: TextInputType.number,
             inputFormatters: [FilteringTextInputFormatter.digitsOnly],
+            onChanged: (_) => setState(() {
+              if (_runLimitReached && _enabled) _enabled = false;
+            }),
           ),
           const SizedBox(height: 12),
-          SwitchListTile(
-            contentPadding: EdgeInsets.zero,
-            title: Text(l10n.automationsEnabled),
-            value: _enabled,
-            onChanged: (v) => setState(() => _enabled = v),
+          _EditorSwitchRow(
+            title: l10n.automationsEnabled,
+            value: _runLimitReached ? false : _enabled,
+            onChanged: _runLimitReached
+                ? null
+                : (v) => setState(() => _enabled = v),
           ),
           AppDialogActions(
             children: [
@@ -433,14 +463,60 @@ class _AutomationEditorDialogState extends State<AutomationEditorDialog> {
                 onPressed: () => Navigator.of(context).pop(),
                 child: Text(l10n.cancel),
               ),
-              FilledButton(
-                onPressed: _save,
-                child: Text(l10n.save),
-              ),
+              FilledButton(onPressed: _save, child: Text(l10n.save)),
             ],
           ),
         ],
       ),
+    );
+  }
+}
+
+/// Switch row without [SwitchListTile] ink/hover — cleaner inside dialogs.
+class _EditorSwitchRow extends StatelessWidget {
+  const _EditorSwitchRow({
+    required this.title,
+    required this.value,
+    required this.onChanged,
+    this.subtitle,
+  });
+
+  final String title;
+  final String? subtitle;
+  final bool value;
+  final ValueChanged<bool>? onChanged;
+
+  @override
+  Widget build(BuildContext context) {
+    final styles = AppTextStyles.of(context);
+    final cs = Theme.of(context).colorScheme;
+    final hasSubtitle = subtitle != null && subtitle!.isNotEmpty;
+
+    return Row(
+      crossAxisAlignment: hasSubtitle
+          ? CrossAxisAlignment.start
+          : CrossAxisAlignment.center,
+      children: [
+        Expanded(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                title,
+                style: styles.body.copyWith(fontWeight: FontWeight.w500),
+              ),
+              if (hasSubtitle) ...[
+                const SizedBox(height: 2),
+                Text(
+                  subtitle!,
+                  style: styles.caption.copyWith(color: cs.onSurfaceVariant),
+                ),
+              ],
+            ],
+          ),
+        ),
+        Switch(value: value, onChanged: onChanged),
+      ],
     );
   }
 }

@@ -2102,6 +2102,20 @@
   "automationsEnabled": "Enabled",
   "automationsCli": "CLI",
   "automationsReuseSession": "Reuse session",
+  "automationsReuseSessionSubtitleOff": "Each run opens a new conversation.",
+  "automationsReuseSessionSubtitlePending": "First run creates a conversation; later runs reuse it.",
+  "automationsReuseSessionSubtitleBound": "Bound to session {sessionId}",
+  "@automationsReuseSessionSubtitleBound": {
+    "placeholders": {
+      "sessionId": { "type": "String" }
+    }
+  },
+  "automationsReuseSessionListHint": "Reuses conversation {sessionId}",
+  "@automationsReuseSessionListHint": {
+    "placeholders": {
+      "sessionId": { "type": "String" }
+    }
+  },
   "automationsTargetMember": "Target member",
   "automationsCustomCron": "Cron expression",
   "automationsInvalidCron": "Invalid cron expression (5 fields required)",
