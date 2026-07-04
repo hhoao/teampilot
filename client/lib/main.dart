@@ -44,7 +44,9 @@ import 'services/workspace/workspace_tools_scope_registry.dart';
 import 'services/workspace/workspace_worktree_registry.dart';
 import 'services/terminal/workspace_shell_connector.dart';
 import 'services/terminal/workspace_terminal_registry.dart';
+import 'services/notification/desktop_system_notifier.dart';
 import 'services/notification/notification_recorder.dart';
+import 'widgets/notification/session_idle_notification_listener.dart';
 import 'services/terminal/terminal_fonts.dart';
 import 'theme/app_icon_sizes.dart';
 import 'theme/app_toast_theme.dart';
@@ -373,6 +375,7 @@ void main() async {
   if (!Platform.isAndroid) {
     await windowManager.setPreventClose(true);
   }
+  await DesktopSystemNotifier.ensureInitialized();
 
   runApp(
     BlocProvider.value(
@@ -495,7 +498,9 @@ void main() async {
               ],
               child: CliToolRegistryScope(
                 registry: shell.cliToolRegistry,
-                child: const TeamPilotApp(),
+                child: const SessionIdleNotificationListener(
+                  child: TeamPilotApp(),
+                ),
               ),
             ),
           ),

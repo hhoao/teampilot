@@ -1064,6 +1064,14 @@ class AppLocalizationsZh extends AppLocalizations {
   String get defaultNewChatSessionTitle => '新对话';
 
   @override
+  String get sessionIdleNotificationTitle => 'Agent 已就绪';
+
+  @override
+  String sessionIdleNotificationBody(String title) {
+    return '「$title」已进入空闲，等待输入';
+  }
+
+  @override
   String get sessionStarting => '正在启动会话…';
 
   @override

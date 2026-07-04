@@ -2090,6 +2090,18 @@ abstract class AppLocalizations {
   /// **'New Chat'**
   String get defaultNewChatSessionTitle;
 
+  /// No description provided for @sessionIdleNotificationTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Agent ready'**
+  String get sessionIdleNotificationTitle;
+
+  /// No description provided for @sessionIdleNotificationBody.
+  ///
+  /// In en, this message translates to:
+  /// **'{title} is idle and waiting for input'**
+  String sessionIdleNotificationBody(String title);
+
   /// No description provided for @sessionStarting.
   ///
   /// In en, this message translates to:

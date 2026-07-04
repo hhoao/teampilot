@@ -1119,6 +1119,14 @@ class AppLocalizationsEn extends AppLocalizations {
   String get defaultNewChatSessionTitle => 'New Chat';
 
   @override
+  String get sessionIdleNotificationTitle => 'Agent ready';
+
+  @override
+  String sessionIdleNotificationBody(String title) {
+    return '$title is idle and waiting for input';
+  }
+
+  @override
   String get sessionStarting => 'Starting session…';
 
   @override

@@ -456,6 +456,15 @@
   "workspaceDirectoryAdded": "已添加目录到工作区",
   "newSessionTooltip": "新建会话",
   "defaultNewChatSessionTitle": "新对话",
+  "sessionIdleNotificationTitle": "Agent 已就绪",
+  "sessionIdleNotificationBody": "「{title}」已进入空闲，等待输入",
+  "@sessionIdleNotificationBody": {
+    "placeholders": {
+      "title": {
+        "type": "String"
+      }
+    }
+  },
   "sessionStarting": "正在启动会话…",
   "sessionReadyTitle": "准备开始对话",
   "sessionReadySubtitle": "与 {memberName} 在此工作区中开始对话",

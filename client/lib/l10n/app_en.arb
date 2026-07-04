@@ -481,6 +481,15 @@
   "workspaceDirectoryAdded": "Directory added to workspace",
   "newSessionTooltip": "New session",
   "defaultNewChatSessionTitle": "New Chat",
+  "sessionIdleNotificationTitle": "Agent ready",
+  "sessionIdleNotificationBody": "{title} is idle and waiting for input",
+  "@sessionIdleNotificationBody": {
+    "placeholders": {
+      "title": {
+        "type": "String"
+      }
+    }
+  },
   "sessionStarting": "Starting session…",
   "sessionReadyTitle": "Ready to chat",
   "sessionReadySubtitle": "Start a conversation with {memberName} in this workspace.",
