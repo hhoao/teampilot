@@ -15,6 +15,7 @@ import '../../../models/workspace.dart';
 import '../../../services/storage/launch_profile_provisioner.dart';
 import '../../../theme/app_spacing.dart';
 import '../../../theme/app_text_styles.dart';
+import '../../../theme/workspace_surface_layers.dart';
 import '../../../utils/debounce/debounce.dart';
 import '../../../utils/landing_draft_resolver.dart';
 import '../../../services/keyboard/compose_keyboard_shortcut_handler.dart';
@@ -363,12 +364,12 @@ class _WorkspaceChatLandingState extends State<WorkspaceChatLanding> {
 @immutable
 class _LandingPalette {
   _LandingPalette(ColorScheme cs)
-    : elevated = cs.surfaceContainerLow,
-      chipFill = cs.surfaceContainerHigh,
-      border = cs.outlineVariant.withValues(alpha: 0.38),
-      muted = cs.onSurfaceVariant,
-      hint = cs.onSurfaceVariant.withValues(alpha: 0.62),
-      disabled = cs.onSurfaceVariant.withValues(alpha: 0.38),
+    : elevated = cs.workspaceCard,
+      chipFill = cs.workspaceInset,
+      border = cs.outlineVariant.withValues(alpha: 0.7),
+      muted = cs.workspaceMutedText,
+      hint = cs.workspaceMutedText.withValues(alpha: 0.72),
+      disabled = cs.workspaceMutedText.withValues(alpha: 0.38),
       sendIdle = cs.onSurfaceVariant.withValues(alpha: 0.18),
       sendActive = cs.onSurface,
       sendIcon = cs.surface;
@@ -458,7 +459,13 @@ class _ComposeCard extends StatelessWidget {
                   maxLines: 6,
                   enabled: !isSubmitting,
                   onChanged: onChanged,
+                  style: styles.body.copyWith(
+                    color: palette.muted,
+                    height: 1.5,
+                  ),
                   decoration: InputDecoration(
+                    filled: true,
+                    fillColor: palette.elevated,
                     hintText: hint,
                     hintStyle: styles.body.copyWith(
                       color: palette.hint,
@@ -467,6 +474,7 @@ class _ComposeCard extends StatelessWidget {
                     border: InputBorder.none,
                     enabledBorder: InputBorder.none,
                     focusedBorder: InputBorder.none,
+                    disabledBorder: InputBorder.none,
                     contentPadding: EdgeInsets.zero,
                     isDense: true,
                   ),
