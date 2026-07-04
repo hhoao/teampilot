@@ -914,6 +914,12 @@ abstract class AppLocalizations {
   /// **'Connecting…'**
   String get memberPresenceConnecting;
 
+  /// No description provided for @memberPresenceBooting.
+  ///
+  /// In en, this message translates to:
+  /// **'Starting…'**
+  String get memberPresenceBooting;
+
   /// No description provided for @memberPresenceIdle.
   ///
   /// In en, this message translates to:

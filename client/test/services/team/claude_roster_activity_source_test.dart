@@ -2,7 +2,6 @@ import 'dart:convert';
 import 'dart:io';
 
 import 'package:flutter_test/flutter_test.dart';
-import 'package:teampilot/models/member_presence.dart';
 import 'package:teampilot/services/io/local_filesystem.dart';
 import 'package:teampilot/services/team/claude_roster_activity_source.dart';
 
@@ -41,12 +40,12 @@ void main() {
     expect(map['dev'], isFalse);
     expect(map.containsKey('team-lead'), isTrue);
     expect(
-      source.workloadForMember(memberId: 'dev', workingByName: map),
-      MemberWorkload.idle,
+      source.isMemberWorking(memberId: 'dev', workingByName: map),
+      isFalse,
     );
     expect(
-      source.workloadForMember(memberId: 'team-lead', workingByName: map),
-      MemberWorkload.working,
+      source.isMemberWorking(memberId: 'team-lead', workingByName: map),
+      isTrue,
     );
   });
 
@@ -95,8 +94,8 @@ void main() {
 
     expect(map['dev'], isFalse);
     expect(
-      source.workloadForMember(memberId: 'dev', workingByName: map),
-      MemberWorkload.idle,
+      source.isMemberWorking(memberId: 'dev', workingByName: map),
+      isFalse,
     );
   });
 }

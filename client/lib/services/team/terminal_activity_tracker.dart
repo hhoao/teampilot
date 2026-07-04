@@ -2,8 +2,11 @@ import 'dart:typed_data';
 
 /// Heuristic workload signal from PTY output (FlashskyAI v1).
 ///
-/// Ignores the initial boot burst: [isWorking] stays false until output has
-/// been quiet for [idleAfter], then tracks activity the same way.
+/// **Boot frame** ([isBootFrameReady]): visible PTY output observed and the
+/// trailing-line fingerprint unchanged for [bootQuietAfter] — TUI paint stable.
+///
+/// **Turn workload** ([isWorking]): after the longer [idleAfter] boot-quiet
+/// window, tracks recent PTY activity for working/idle during a turn.
 ///
 /// [notePtyBytes] dedupes repaint noise on the PTY hot path with a single-pass
 /// FNV hash of the chunk's **last [fingerprintTailLines] visible lines** (ANSI
@@ -17,13 +20,18 @@ import 'dart:typed_data';
 class TerminalActivityTracker {
   TerminalActivityTracker({
     this.idleAfter = const Duration(milliseconds: 2500),
+    this.bootQuietAfter = const Duration(milliseconds: 500),
     this.fingerprintTailLines = defaultFingerprintTailLines,
   }) : assert(fingerprintTailLines >= 1);
 
   /// Default tail window — covers prompt + status rows in full-screen TUIs.
   static const int defaultFingerprintTailLines = 8;
 
+  /// Turn-level working/idle quiet window (post-boot).
   final Duration idleAfter;
+
+  /// Boot frame stable quiet window (visible output + fingerprint unchanged).
+  final Duration bootQuietAfter;
 
   /// How many trailing visible lines feed the PTY fingerprint hash.
   final int fingerprintTailLines;
@@ -48,6 +56,18 @@ class TerminalActivityTracker {
 
   /// When [latchTurnQuietBaseline] ran for the current bus/simple turn.
   DateTime? _turnLatchedAt;
+
+  /// At least one [notePtyBytes] since [reset] (boot/session frame tracking).
+  bool _bootPtyObserved = false;
+
+  /// True when visible PTY output has been observed and the fingerprint has
+  /// been unchanged for [bootQuietAfter]. Used for TUI startup readiness.
+  bool get isBootFrameReady {
+    if (!_bootPtyObserved) return false;
+    final since = _fingerprintStableSince;
+    if (since == null) return false;
+    return DateTime.now().difference(since) >= bootQuietAfter;
+  }
 
   void markActive([DateTime? at]) {
     noteOutput(at);
@@ -94,6 +114,7 @@ class TerminalActivityTracker {
 
     if (hash == _lastFingerprintHash) return;
 
+    _bootPtyObserved = true;
     _lastFingerprintHash = hash;
     _lastRawChunk = raw.length <= _rawFastPathMaxBytes
         ? Uint8List.fromList(raw)
@@ -103,6 +124,7 @@ class TerminalActivityTracker {
   }
 
   void _beginTurnFingerprint(int hash, Uint8List raw, DateTime now) {
+    _bootPtyObserved = true;
     _turnPtyObserved = true;
     _lastFingerprintHash = hash;
     _lastRawChunk = raw.length <= _rawFastPathMaxBytes
@@ -237,6 +259,18 @@ class TerminalActivityTracker {
     _turnPtyObserved = false;
     _fingerprintStableSince = null;
     _turnLatchedAt = null;
+    _bootPtyObserved = false;
+  }
+
+  /// Tests: latch a stable boot frame without waiting real time.
+  void latchBootFrameReadyForTest([DateTime? at]) {
+    final now = at ?? DateTime.now();
+    _bootPtyObserved = true;
+    _turnPtyObserved = true;
+    _fingerprintStableSince = now.subtract(bootQuietAfter);
+    _armed = true;
+    _lastActivity = now;
+    _bootOutputAt = null;
   }
 
   /// True when output arrived within [idleAfter] after the boot quiet window.

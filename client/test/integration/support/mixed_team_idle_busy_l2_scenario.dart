@@ -32,12 +32,12 @@ abstract final class MixedTeamIdleBusyL2Scenario {
           );
           expectSessionIdle(ctx.cubit, ctx.session.sessionId);
           expect(
-            ctx.presenceCubit!.memberPresenceFor(kWorkerMember.id).workload,
-            MemberWorkload.idle,
+            ctx.presenceCubit!.memberPresenceFor(kWorkerMember.id).availability,
+            MemberAvailability.idle,
           );
           expect(
-            ctx.presenceCubit!.memberPresenceFor(kLeadMember.id).workload,
-            MemberWorkload.idle,
+            ctx.presenceCubit!.memberPresenceFor(kLeadMember.id).availability,
+            MemberAvailability.idle,
           );
         },
       );
@@ -64,13 +64,13 @@ abstract final class MixedTeamIdleBusyL2Scenario {
           expect(bus.isWaitingForMessage(kWorkerMember.id), isTrue);
           expect(bus.isMemberInTurn(kWorkerMember.id), isFalse);
           expect(
-            ctx.presenceCubit!.memberPresenceFor(kWorkerMember.id).workload,
-            MemberWorkload.idle,
+            ctx.presenceCubit!.memberPresenceFor(kWorkerMember.id).availability,
+            MemberAvailability.idle,
           );
           // Worker idle-notify may doorbell an idle-at-prompt leader.
           expect(
-            ctx.presenceCubit!.memberPresenceFor(kLeadMember.id).workload,
-            anyOf(MemberWorkload.idle, MemberWorkload.working),
+            ctx.presenceCubit!.memberPresenceFor(kLeadMember.id).availability,
+            anyOf(MemberAvailability.idle, MemberAvailability.working),
           );
         },
       );
@@ -113,17 +113,17 @@ abstract final class MixedTeamIdleBusyL2Scenario {
             sessionId: ctx.session.sessionId,
             gateway: ctx.harness.tabGateway(ctx.cubit),
           );
-          await waitUntilMemberWorkload(
+          await waitUntilMemberAvailability(
             presenceCubit: ctx.presenceCubit!,
             cubit: ctx.cubit,
             memberId: kWorkerMember.id,
-            workload: MemberWorkload.idle,
+            availability: MemberAvailability.idle,
           );
-          await waitUntilMemberWorkload(
+          await waitUntilMemberAvailability(
             presenceCubit: ctx.presenceCubit!,
             cubit: ctx.cubit,
             memberId: kLeadMember.id,
-            workload: MemberWorkload.idle,
+            availability: MemberAvailability.idle,
           );
         },
       );

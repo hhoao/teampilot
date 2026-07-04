@@ -95,11 +95,11 @@ Future<void> waitUntilBusCalmAndSessionIdle({
   );
 }
 
-Future<void> waitUntilMemberWorkload({
+Future<void> waitUntilMemberAvailability({
   required MemberPresenceCubit presenceCubit,
   ChatCubit? cubit,
   required String memberId,
-  required MemberWorkload workload,
+  required MemberAvailability availability,
   Duration timeout = const Duration(seconds: 90),
 }) async {
   final deadline = DateTime.now().add(timeout);
@@ -108,12 +108,12 @@ Future<void> waitUntilMemberWorkload({
     await waitForPresencePoll(cubit: cubit);
     await pumpSchedulerFrames();
     final snap = presenceCubit.memberPresenceFor(memberId);
-    if (snap.workload == workload) return;
+    if (snap.availability == availability) return;
     await Future<void>.delayed(const Duration(milliseconds: 200));
   }
   throw StateError(
-    'Timed out waiting for $memberId workload=$workload '
-    '(got ${presenceCubit.memberPresenceFor(memberId).workload})',
+    'Timed out waiting for $memberId availability=$availability '
+    '(got ${presenceCubit.memberPresenceFor(memberId).availability})',
   );
 }
 
@@ -138,10 +138,6 @@ Future<void> waitUntilWorkerIdleOnBus({
     final snap = memberSnapshot(bus, memberId);
     if (snap?.waitingForMessage == true) return;
     if (snap?.activity.name == 'turnDoneBusWait') return;
-    if (snap?.activity.name == 'turnDoneReady') return;
-    // Do not treat idle_notification mail as parked: PTY quiet can fire
-    // onMemberIdle during tool gaps while the member is still bus-active.
-    if (snap?.claudeIsActive == false) return;
     await Future<void>.delayed(const Duration(milliseconds: 200));
   }
   throw StateError(

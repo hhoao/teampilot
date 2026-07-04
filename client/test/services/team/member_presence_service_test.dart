@@ -2,10 +2,14 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:teampilot/models/member_presence.dart';
 import 'package:teampilot/models/team_config.dart';
 import 'package:teampilot/services/team/member_presence_service.dart';
+import 'package:teampilot/services/team_bus/agent_node.dart';
+import 'package:teampilot/services/team_bus/team_bus.dart';
 import 'package:teampilot/services/terminal/terminal_session.dart';
 
+import '../team_bus/support/fake_member_launcher.dart';
+
 void main() {
-  test('compute maps connection and flashskyai workload', () async {
+  test('compute maps connection and flashskyai availability', () async {
     final service = MemberPresenceService();
     final shell = TerminalSession(executable: 'flashskyai', validateLaunch: false);
     shell.activityTracker.markActive();
@@ -21,18 +25,20 @@ void main() {
     );
 
     expect(presence['team-lead']!.connection, MemberConnection.offline);
-    expect(presence['team-lead']!.workload, isNull);
+    expect(presence['team-lead']!.availability, isNull);
   });
 
-  test('connected flashskyai shell uses activity tracker', () async {
+  test('connected flashskyai shell uses activity tracker after boot frame', () async {
     final service = MemberPresenceService();
     final shell = _ConnectedShell();
     shell.activityTracker.reset();
-    expect(shell.activityTracker.isWorking, isFalse);
-    shell.activityTracker.markActive();
-    expect(shell.activityTracker.isWorking, isTrue);
+    expect(
+      shell.activityTracker.isBootFrameReady,
+      isFalse,
+      reason: 'no PTY bytes yet',
+    );
 
-    final presence = await service.compute(
+    final booting = await service.compute(
       teamCli: CliTool.flashskyai,
       members: const [
         TeamMemberConfig(id: 'dev', name: 'developer'),
@@ -40,41 +46,81 @@ void main() {
       cliTeamName: 't-1',
       memberToolConfigDir: null,
       memberShells: {'dev': shell},
+      session: _session(),
     );
+    expect(booting['dev']!.availability, MemberAvailability.booting);
 
-    expect(presence['dev']!.connection, MemberConnection.connected);
-    expect(presence['dev']!.workload, MemberWorkload.working);
-  });
+    shell.activityTracker.latchBootFrameReadyForTest();
+    shell.activityTracker.markActive();
+    expect(shell.activityTracker.isWorking, isTrue);
 
-  test(
-      'mixed workloadResolver overrides CLI capability: working unless '
-      'parked in wait_for_message', () async {
-    final service = MemberPresenceService();
-    final waiting = _ConnectedShell();
-    final working = _ConnectedShell();
-
-    // teamCli=claude (usesClaudeRoster) would idle a non-claude member, but the
-    // resolver (TeamBus truth) must win and key purely off wait_for_message.
-    final presence = await service.compute(
-      teamCli: CliTool.claude,
+    final working = await service.compute(
+      teamCli: CliTool.flashskyai,
       members: const [
-        TeamMemberConfig(id: 'waiter', name: 'waiter'),
-        TeamMemberConfig(id: 'busy', name: 'busy'),
+        TeamMemberConfig(id: 'dev', name: 'developer'),
       ],
       cliTeamName: 't-1',
-      memberToolConfigDir: '/tmp/does-not-matter',
-      memberShells: {'waiter': waiting, 'busy': working},
-      workloadResolver: (id) =>
-          id == 'waiter' ? MemberWorkload.idle : MemberWorkload.working,
+      memberToolConfigDir: null,
+      memberShells: {'dev': shell},
+      session: _session(),
     );
-
-    expect(presence['waiter']!.workload, MemberWorkload.idle);
-    expect(presence['busy']!.workload, MemberWorkload.working);
+    expect(working['dev']!.availability, MemberAvailability.working);
   });
 
-  test('resolver only consulted for connected members', () async {
+  test('mixed session: idle only when parked in wait_for_message', () async {
     final service = MemberPresenceService();
-    final consulted = <String>[];
+    final shell = _ConnectedShell()..activityTracker.latchBootFrameReadyForTest();
+    final bus = TeamBus(launcher: FakeMemberLauncher());
+    bus.declareMember(AgentNode.test(memberId: 'waiter'));
+    bus.markMemberRunning('waiter');
+
+    final booting = await service.compute(
+      teamCli: CliTool.claude,
+      members: const [TeamMemberConfig(id: 'waiter', name: 'waiter')],
+      cliTeamName: 't-1',
+      memberToolConfigDir: '/tmp/cfg',
+      memberShells: {'waiter': shell},
+      session: PresenceSessionContext(
+        team: const TeamProfile(
+          id: 't',
+          name: 'T',
+          teamMode: TeamMode.mixed,
+          members: [TeamMemberConfig(id: 'waiter', name: 'waiter')],
+        ),
+        teamBus: bus,
+      ),
+    );
+    expect(booting['waiter']!.availability, MemberAvailability.booting);
+
+    bus.declareMember(
+      AgentNode.test(
+        memberId: 'waiter',
+        lifecycle: MemberLifecycle.running,
+        activity: MemberActivity.turnDoneBusWait,
+      ),
+    );
+    final idle = await service.compute(
+      teamCli: CliTool.claude,
+      members: const [TeamMemberConfig(id: 'waiter', name: 'waiter')],
+      cliTeamName: 't-1',
+      memberToolConfigDir: '/tmp/cfg',
+      memberShells: {'waiter': shell},
+      session: PresenceSessionContext(
+        team: const TeamProfile(
+          id: 't',
+          name: 'T',
+          teamMode: TeamMode.mixed,
+          members: [TeamMemberConfig(id: 'waiter', name: 'waiter')],
+        ),
+        teamBus: bus,
+      ),
+    );
+    expect(idle['waiter']!.availability, MemberAvailability.idle);
+  });
+
+  test('session context only consulted for connected members', () async {
+    final service = MemberPresenceService();
+    final bus = TeamBus(launcher: FakeMemberLauncher());
 
     final presence = await service.compute(
       teamCli: CliTool.codex,
@@ -83,18 +129,21 @@ void main() {
       ],
       cliTeamName: 't-1',
       memberToolConfigDir: null,
-      memberShells: const {}, // no shell → offline
-      workloadResolver: (id) {
-        consulted.add(id);
-        return MemberWorkload.working;
-      },
+      memberShells: const {},
+      session: PresenceSessionContext(
+        team: const TeamProfile(id: 't', name: 'T', teamMode: TeamMode.mixed),
+        teamBus: bus,
+      ),
     );
 
     expect(presence['offline']!.connection, MemberConnection.offline);
-    expect(presence['offline']!.workload, isNull);
-    expect(consulted, isEmpty);
+    expect(presence['offline']!.availability, isNull);
   });
 }
+
+PresenceSessionContext _session() => const PresenceSessionContext(
+      team: TeamProfile(id: 't', name: 'T'),
+    );
 
 class _ConnectedShell extends TerminalSession {
   _ConnectedShell() : super(executable: 'flashskyai', validateLaunch: false);

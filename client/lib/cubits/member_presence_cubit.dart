@@ -19,16 +19,16 @@ class PresenceTarget {
     required this.cliTeamName,
     required this.memberToolConfigDir,
     required this.memberShells,
-    this.workloadResolver,
+    this.session,
   });
 
   final String cliTeamName;
   final String? memberToolConfigDir;
   final Map<String, TerminalSession> memberShells;
 
-  /// mixed 模式:用 TeamBus 协调真值判定 working/idle(见
-  /// [MemberPresenceService.compute])。由 idle watch 驱动刷新。native 单 CLI 时为 null。
-  final MemberWorkload Function(String memberId)? workloadResolver;
+  /// Team + bus context for [MemberPresenceService.compute]. Null for tabs
+  /// without a team session (personal / local-only).
+  final PresenceSessionContext? session;
 
   bool get eligible =>
       memberShells.isNotEmpty ||
@@ -169,7 +169,7 @@ class MemberPresenceCubit extends Cubit<MemberPresenceState> {
         cliTeamName: target.cliTeamName,
         memberToolConfigDir: target.memberToolConfigDir,
         memberShells: target.memberShells,
-        workloadResolver: target.workloadResolver,
+        session: target.session,
       );
       if (isClosed ||
           generation != _presencePollGeneration ||
@@ -194,7 +194,7 @@ class MemberPresenceCubit extends Cubit<MemberPresenceState> {
       appLogger.d(
         '[presence] ${entry.key} '
         'conn=${p.connection.name} '
-        'workload=${p.workload?.name ?? 'null'}',
+        'avail=${p.availability?.name ?? 'null'}',
       );
     }
   }

@@ -31,6 +31,21 @@ void main() {
     expect(tracker.isWorking, isTrue);
   });
 
+  test('isBootFrameReady after visible output and boot quiet', () async {
+    final tracker = TerminalActivityTracker(
+      bootQuietAfter: const Duration(milliseconds: 40),
+    );
+    tracker.reset();
+    expect(tracker.isBootFrameReady, isFalse);
+
+    final frame = Uint8List.fromList('→ prompt\n'.codeUnits);
+    tracker.notePtyBytes(frame);
+    expect(tracker.isBootFrameReady, isFalse);
+
+    await Future<void>.delayed(const Duration(milliseconds: 50));
+    expect(tracker.isBootFrameReady, isTrue);
+  });
+
   test('isWorking false after idleAfter elapses', () async {
     final tracker = TerminalActivityTracker(
       idleAfter: const Duration(milliseconds: 40),

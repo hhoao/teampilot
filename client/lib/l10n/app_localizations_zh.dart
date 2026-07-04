@@ -437,6 +437,9 @@ class AppLocalizationsZh extends AppLocalizations {
   String get memberPresenceConnecting => '连接中…';
 
   @override
+  String get memberPresenceBooting => '启动中…';
+
+  @override
   String get memberPresenceIdle => '空闲';
 
   @override

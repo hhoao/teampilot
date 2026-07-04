@@ -9,7 +9,7 @@ import '../models/workspace.dart';
 import '../models/workspace_folder.dart';
 import '../models/workspace_launch_context.dart';
 import '../models/app_session.dart';
-import '../models/member_presence.dart';
+import '../services/team/member_presence_service.dart';
 import '../models/workspace_icon_picker_result.dart';
 import '../models/workspace_icon_ref.dart';
 import '../models/team_config.dart';
@@ -344,24 +344,19 @@ class ChatCubit extends Cubit<ChatState>
         cliTeamName: tab.cliTeamName,
         memberToolConfigDir: tab.memberToolConfigDir,
         memberShells: tab.memberShells,
-        workloadResolver: _busWorkloadResolver(tab),
+        session: _presenceSessionContext(tab),
       ),
     );
   }
 
-  /// mixed 模式成员列表 working/idle：只读 TeamBus（PTY 落沿由 idle watch 写 bus）。
-  MemberWorkload Function(String memberId)? _busWorkloadResolver(ChatTab tab) {
-    final bus = tab.teamBus;
-    if (_activeTeam?.teamMode != TeamMode.mixed || bus == null) return null;
-    return (memberId) {
-      if (bus.isWaitingForMessage(memberId)) {
-        return MemberWorkload.idle;
-      }
-      if (bus.isMemberInTurn(memberId)) {
-        return MemberWorkload.working;
-      }
-      return MemberWorkload.idle;
-    };
+  PresenceSessionContext? _presenceSessionContext(ChatTab tab) {
+    final team = _activeTeam;
+    if (team == null) return null;
+    return PresenceSessionContext(
+      team: team,
+      teamBus: tab.teamBus,
+      globalPresets: _lifecycle.globalPresets,
+    );
   }
 
   /// Switches the active workspace bucket and republishes its tabs into state.

@@ -347,8 +347,8 @@ void main() {
 
       expect(bus.isMemberInTurn('team-lead'), isFalse);
       expect(
-        presenceCubit.memberPresenceFor('team-lead').workload,
-        MemberWorkload.idle,
+        presenceCubit.memberPresenceFor('team-lead').availability,
+        MemberAvailability.idle,
         reason: 'mixed presence follows TeamBus only',
       );
     });
@@ -369,8 +369,8 @@ void main() {
       );
 
       expect(
-        presenceCubit.memberPresenceFor('team-lead').workload,
-        MemberWorkload.idle,
+        presenceCubit.memberPresenceFor('team-lead').availability,
+        MemberAvailability.idle,
       );
     });
 
@@ -391,12 +391,12 @@ void main() {
       );
 
       expect(
-        presenceCubit.memberPresenceFor('worker-1').workload,
-        MemberWorkload.working,
+        presenceCubit.memberPresenceFor('worker-1').availability,
+        MemberAvailability.working,
       );
       expect(
-        presenceCubit.memberPresenceFor('team-lead').workload,
-        MemberWorkload.idle,
+        presenceCubit.memberPresenceFor('team-lead').availability,
+        MemberAvailability.idle,
       );
     });
 
@@ -420,8 +420,8 @@ void main() {
       );
 
       expect(
-        presenceCubit.memberPresenceFor('team-lead').workload,
-        MemberWorkload.idle,
+        presenceCubit.memberPresenceFor('team-lead').availability,
+        MemberAvailability.idle,
       );
     });
   });

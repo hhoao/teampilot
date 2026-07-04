@@ -20,6 +20,7 @@ class MemberPresenceIndicator extends StatefulWidget {
 class _MemberPresenceIndicatorState extends State<MemberPresenceIndicator>
     with SingleTickerProviderStateMixin {
   static const _pulseDuration = Duration(milliseconds: 1000);
+  static const _bootPulseDuration = Duration(milliseconds: 1400);
   static const _minAlpha = 0.18;
   static const _maxAlpha = 1.0;
   static const _minScale = 0.88;
@@ -43,13 +44,22 @@ class _MemberPresenceIndicatorState extends State<MemberPresenceIndicator>
   @override
   void didUpdateWidget(MemberPresenceIndicator oldWidget) {
     super.didUpdateWidget(oldWidget);
-    if (oldWidget.presence.isWorking != widget.presence.isWorking) {
+    if (oldWidget.presence.isWorking != widget.presence.isWorking ||
+        oldWidget.presence.isBooting != widget.presence.isBooting) {
       _syncPulse();
     }
   }
 
   void _syncPulse() {
     if (widget.presence.isWorking) {
+      _pulseController.duration = _pulseDuration;
+      if (!_pulseController.isAnimating) {
+        _pulseController.repeat(reverse: true);
+      }
+      return;
+    }
+    if (widget.presence.isBooting) {
+      _pulseController.duration = _bootPulseDuration;
       if (!_pulseController.isAnimating) {
         _pulseController.repeat(reverse: true);
       }
@@ -77,10 +87,29 @@ class _MemberPresenceIndicatorState extends State<MemberPresenceIndicator>
             final t = _pulse.value;
             final coreAlpha = _minAlpha + (_maxAlpha - _minAlpha) * t;
             final scale = _minScale + (_maxScale - _minScale) * t;
-            return _WorkingPresenceDot(
-              primary: cs.primary,
+            return _PulsingPresenceDot(
+              color: cs.primary,
               coreAlpha: coreAlpha,
               glowT: t,
+              scale: scale,
+            );
+          },
+        ),
+      );
+    }
+
+    if (widget.presence.isBooting) {
+      return RepaintBoundary(
+        child: AnimatedBuilder(
+          animation: _pulse,
+          builder: (context, _) {
+            final t = _pulse.value;
+            final coreAlpha = 0.35 + 0.45 * t;
+            final scale = 0.92 + 0.08 * t;
+            return _PulsingPresenceDot(
+              color: cs.tertiary,
+              coreAlpha: coreAlpha,
+              glowT: t * 0.6,
               scale: scale,
             );
           },
@@ -105,16 +134,15 @@ class _MemberPresenceIndicatorState extends State<MemberPresenceIndicator>
   }
 }
 
-/// Pulsing working dot: stronger alpha swing, scale, and primary glow.
-class _WorkingPresenceDot extends StatelessWidget {
-  const _WorkingPresenceDot({
-    required this.primary,
+class _PulsingPresenceDot extends StatelessWidget {
+  const _PulsingPresenceDot({
+    required this.color,
     required this.coreAlpha,
     required this.glowT,
     required this.scale,
   });
 
-  final Color primary;
+  final Color color;
   final double coreAlpha;
   final double glowT;
   final double scale;
@@ -123,7 +151,7 @@ class _WorkingPresenceDot extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final dotSize = _MemberPresenceIndicatorState._dotSize;
+    const dotSize = _MemberPresenceIndicatorState._dotSize;
     return SizedBox(
       width: _boxSize,
       height: _boxSize,
@@ -133,20 +161,20 @@ class _WorkingPresenceDot extends StatelessWidget {
           child: DecoratedBox(
             decoration: BoxDecoration(
               shape: BoxShape.circle,
-              color: primary.withValues(alpha: coreAlpha),
+              color: color.withValues(alpha: coreAlpha),
               border: Border.all(
-                color: primary.withValues(alpha: 0.35 + 0.65 * glowT),
+                color: color.withValues(alpha: 0.35 + 0.65 * glowT),
                 width: 1.25,
               ),
               boxShadow: [
                 BoxShadow(
-                  color: primary.withValues(alpha: 0.15 + 0.55 * glowT),
+                  color: color.withValues(alpha: 0.15 + 0.55 * glowT),
                   blurRadius: 2 + 5 * glowT,
                   spreadRadius: 0.5 + 2.5 * glowT,
                 ),
               ],
             ),
-            child: SizedBox(width: dotSize, height: dotSize),
+            child: const SizedBox(width: dotSize, height: dotSize),
           ),
         ),
       ),
@@ -169,6 +197,7 @@ String memberPresenceStatusLabel(
   MemberPresence presence,
 ) {
   if (presence.isWorking) return l10n.memberPresenceWorking;
+  if (presence.isBooting) return l10n.memberPresenceBooting;
   if (presence.isIdle) return l10n.memberPresenceIdle;
   if (presence.isConnecting) return l10n.memberPresenceConnecting;
   return l10n.memberPresenceOffline;

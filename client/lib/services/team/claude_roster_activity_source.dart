@@ -1,6 +1,5 @@
 import 'dart:convert';
 
-import '../../models/member_presence.dart';
 import '../io/filesystem.dart';
 import 'claude_team_roster_service.dart';
 
@@ -84,15 +83,14 @@ class ClaudeRosterActivitySource {
     _cacheWorking = null;
   }
 
-  MemberWorkload workloadForMember({
+  /// `true` = working, `false` = idle. Missing member omitted (treat as idle).
+  bool isMemberWorking({
     required String memberId,
     required Map<String, bool> workingByName,
   }) {
     if (!workingByName.containsKey(memberId)) {
-      return MemberWorkload.idle;
+      return false;
     }
-    return workingByName[memberId] == true
-        ? MemberWorkload.working
-        : MemberWorkload.idle;
+    return workingByName[memberId] == true;
   }
 }

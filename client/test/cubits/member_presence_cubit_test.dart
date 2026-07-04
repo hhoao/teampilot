@@ -72,7 +72,7 @@ class _DelayedPresenceService extends MemberPresenceService {
     required String cliTeamName,
     required String? memberToolConfigDir,
     required Map<String, TerminalSession> memberShells,
-    MemberWorkload Function(String memberId)? workloadResolver,
+    PresenceSessionContext? session,
   }) async {
     computeCalls++;
     await Future<void>.delayed(_delay);
@@ -91,7 +91,7 @@ class _TrackingPresenceService extends MemberPresenceService {
     required String cliTeamName,
     required String? memberToolConfigDir,
     required Map<String, TerminalSession> memberShells,
-    MemberWorkload Function(String memberId)? workloadResolver,
+    PresenceSessionContext? session,
   }) async {
     computeCalls++;
     lastMembers = members;
@@ -99,7 +99,7 @@ class _TrackingPresenceService extends MemberPresenceService {
       for (final m in members)
         m.id: const MemberPresence(
           connection: MemberConnection.connected,
-          workload: MemberWorkload.idle,
+          availability: MemberAvailability.idle,
         ),
     };
   }
@@ -131,7 +131,7 @@ void main() {
         final service = _DelayedPresenceService({
           'm-lead': const MemberPresence(
             connection: MemberConnection.connected,
-            workload: MemberWorkload.working,
+            availability: MemberAvailability.working,
           ),
         });
         final harness = PostFrameTestHarness();
@@ -187,7 +187,7 @@ void main() {
         final service = _DelayedPresenceService({
           'm-lead': const MemberPresence(
             connection: MemberConnection.connected,
-            workload: MemberWorkload.working,
+            availability: MemberAvailability.working,
           ),
         });
         final cubit = MemberPresenceCubit(memberPresenceService: service);
@@ -272,7 +272,7 @@ void main() {
         final service = _DelayedPresenceService({
           'm-lead': const MemberPresence(
             connection: MemberConnection.connected,
-            workload: MemberWorkload.working,
+            availability: MemberAvailability.working,
           ),
         });
         final cubit = MemberPresenceCubit(memberPresenceService: service);
@@ -349,7 +349,7 @@ void main() {
         final service = _DelayedPresenceService({
           'm-lead': const MemberPresence(
             connection: MemberConnection.connected,
-            workload: MemberWorkload.working,
+            availability: MemberAvailability.working,
           ),
         });
         final cubit = MemberPresenceCubit(memberPresenceService: service);
@@ -384,7 +384,7 @@ void main() {
         final service = _DelayedPresenceService({
           'm-lead': const MemberPresence(
             connection: MemberConnection.connected,
-            workload: MemberWorkload.working,
+            availability: MemberAvailability.working,
           ),
         });
         final cubit = MemberPresenceCubit(memberPresenceService: service);

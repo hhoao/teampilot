@@ -190,6 +190,7 @@
   "openMember": "Open member",
   "memberPresenceOffline": "Offline",
   "memberPresenceConnecting": "Connecting…",
+  "memberPresenceBooting": "Starting…",
   "memberPresenceIdle": "Idle",
   "memberPresenceWorking": "Working",
   "filterFiles": "Filter files",

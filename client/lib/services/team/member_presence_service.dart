@@ -1,13 +1,29 @@
+import '../../models/cli_preset.dart';
 import '../../models/member_presence.dart';
 import '../../models/team_config.dart';
 import '../cli/registry/capabilities/presence_capability.dart';
 import '../cli/registry/cli_tool_registry.dart';
 import '../io/filesystem.dart';
 import '../storage/app_storage.dart';
+import '../team_bus/team_bus.dart';
 import '../terminal/terminal_session.dart';
 import 'claude_roster_activity_source.dart';
+import 'member_availability_resolver.dart';
 
-/// Aggregates terminal connection + per-CLI workload into [MemberPresence].
+/// Session-scoped inputs for [MemberPresenceService.compute].
+class PresenceSessionContext {
+  const PresenceSessionContext({
+    required this.team,
+    this.teamBus,
+    this.globalPresets = const [],
+  });
+
+  final TeamProfile team;
+  final TeamBus? teamBus;
+  final List<CliPreset> globalPresets;
+}
+
+/// Aggregates terminal connection + agent availability into [MemberPresence].
 class MemberPresenceService {
   MemberPresenceService({
     Filesystem? fs,
@@ -27,22 +43,22 @@ class MemberPresenceService {
   final ClaudeRosterActivitySource _claudeRoster;
   final CliToolRegistry _cliToolRegistry;
 
-  /// [workloadResolver] (mixed 模式专属) 越过 per-CLI 能力路径,只读 TeamBus:
-  /// `wait_for_message` → idle; `isMemberInTurn` → working; 否则 idle。
-  /// PTY 指纹安静由 idle watch 触发 [TeamBus.onMemberIdle]。null 时回落 [_workloadFor]。
   Future<Map<String, MemberPresence>> compute({
     required CliTool teamCli,
     required List<TeamMemberConfig> members,
     required String cliTeamName,
     required String? memberToolConfigDir,
     required Map<String, TerminalSession> memberShells,
-    MemberWorkload Function(String memberId)? workloadResolver,
+    PresenceSessionContext? session,
   }) async {
     final presenceCap =
         _cliToolRegistry.capability<PresenceCapability>(teamCli);
+    final usesClaudeRoster = presenceCap?.usesClaudeRoster ?? false;
+    final usesShellActivity = presenceCap?.usesShellActivity ?? false;
+
     var claudeWorking = const <String, bool>{};
-    if (workloadResolver == null &&
-        (presenceCap?.usesClaudeRoster ?? false) &&
+    if (session?.team.teamMode != TeamMode.mixed &&
+        usesClaudeRoster &&
         memberToolConfigDir != null &&
         memberToolConfigDir.trim().isNotEmpty &&
         cliTeamName.trim().isNotEmpty) {
@@ -52,25 +68,37 @@ class MemberPresenceService {
       );
     }
 
+    final team = session?.team;
+    final teamMode = team?.teamMode ?? TeamMode.native;
+    final bus = session?.teamBus;
+    final globalPresets = session?.globalPresets ?? const [];
+
     final out = <String, MemberPresence>{};
     for (final member in members) {
       if (!member.isValid) continue;
       final shell = memberShells[member.id];
       final connection = _connectionOf(shell);
-      final workload = switch (connection) {
-        MemberConnection.connected => workloadResolver != null
-            ? workloadResolver(member.id)
-            : _workloadFor(
-                presenceCap: presenceCap,
+      final availability = switch (connection) {
+        MemberConnection.connected => MemberAvailabilityResolver.forConnected(
+          shell: shell!,
+          member: member,
+          team: team ?? TeamProfile(id: '', name: '', cli: teamCli),
+          teamMode: teamMode,
+          globalPresets: globalPresets,
+          bus: bus,
+          claudeRosterWorking:
+              _claudeRoster.isMemberWorking(
                 memberId: member.id,
-                shell: shell!,
-                claudeWorking: claudeWorking,
+                workingByName: claudeWorking,
               ),
+          usesClaudeRoster: usesClaudeRoster,
+          usesShellActivity: usesShellActivity,
+        ),
         _ => null,
       };
       out[member.id] = MemberPresence(
         connection: connection,
-        workload: workload,
+        availability: availability,
       );
     }
     return out.isEmpty ? const {} : out;
@@ -81,25 +109,5 @@ class MemberPresenceService {
     if (shell.isConnecting) return MemberConnection.connecting;
     if (shell.isConnected) return MemberConnection.connected;
     return MemberConnection.offline;
-  }
-
-  MemberWorkload _workloadFor({
-    required PresenceCapability? presenceCap,
-    required String memberId,
-    required TerminalSession shell,
-    required Map<String, bool> claudeWorking,
-  }) {
-    if (presenceCap?.usesClaudeRoster ?? false) {
-      return _claudeRoster.workloadForMember(
-        memberId: memberId,
-        workingByName: claudeWorking,
-      );
-    }
-    if (presenceCap?.usesShellActivity ?? false) {
-      return shell.activityTracker.isWorking
-          ? MemberWorkload.working
-          : MemberWorkload.idle;
-    }
-    return MemberWorkload.idle;
   }
 }

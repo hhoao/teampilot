@@ -454,6 +454,9 @@ class AppLocalizationsEn extends AppLocalizations {
   String get memberPresenceConnecting => 'Connecting…';
 
   @override
+  String get memberPresenceBooting => 'Starting…';
+
+  @override
   String get memberPresenceIdle => 'Idle';
 
   @override
