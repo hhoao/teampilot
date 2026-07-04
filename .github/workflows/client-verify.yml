@@ -163,4 +163,4 @@ jobs:
       - name: Mixed team Claude integration tests (L2 + L3)
         env:
           LD_LIBRARY_PATH: build/linux/x64/debug/bundle/lib
-        run: flutter test --tags "integration && linux-pty"
+        run: flutter test --tags "integration && linux-pty" --concurrency=1
