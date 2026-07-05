@@ -210,6 +210,22 @@ class AppPaths {
   static String teamHubFavoritesJsonForTeampilotRoot(String teampilotRoot) =>
       _pathUnderTeampilotRoot(teampilotRoot, 'team-hub/favorites.json');
 
+  static String memberHubDirForTeampilotRoot(String teampilotRoot) =>
+      _pathUnderTeampilotRoot(teampilotRoot, 'member-hub');
+
+  static String memberHubFavoritesJsonForTeampilotRoot(String teampilotRoot) =>
+      _pathUnderTeampilotRoot(teampilotRoot, 'member-hub/favorites.json');
+
+  static String memberHubRecentJsonForTeampilotRoot(String teampilotRoot) =>
+      _pathUnderTeampilotRoot(teampilotRoot, 'member-hub/recent.json');
+
+  static String memberHubLocalTemplatesDirForTeampilotRoot(
+    String teampilotRoot,
+  ) => _pathUnderTeampilotRoot(teampilotRoot, 'member-hub/local-templates');
+
+  static String memberHubCacheDirForTeampilotRoot(String teampilotRoot) =>
+      _pathUnderTeampilotRoot(teampilotRoot, 'member-hub/cache');
+
   static String homeWorkspaceWorkspaceFavoritesJsonForTeampilotRoot(
     String teampilotRoot,
   ) => _pathUnderTeampilotRoot(teampilotRoot, 'ui/workspace-favorites.json');
@@ -269,6 +285,15 @@ class AppPaths {
       teamHubRegistriesJsonForTeampilotRoot(basePath);
   String get teamHubFavoritesJson =>
       teamHubFavoritesJsonForTeampilotRoot(basePath);
+
+  String get memberHubDir => memberHubDirForTeampilotRoot(basePath);
+  String get memberHubFavoritesJson =>
+      memberHubFavoritesJsonForTeampilotRoot(basePath);
+  String get memberHubRecentJson =>
+      memberHubRecentJsonForTeampilotRoot(basePath);
+  String get memberHubLocalTemplatesDir =>
+      memberHubLocalTemplatesDirForTeampilotRoot(basePath);
+  String get memberHubCacheDir => memberHubCacheDirForTeampilotRoot(basePath);
 
   String get homeWorkspaceWorkspaceFavoritesJson =>
       homeWorkspaceWorkspaceFavoritesJsonForTeampilotRoot(basePath);
