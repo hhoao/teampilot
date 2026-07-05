@@ -1,0 +1,207 @@
+/// Locates pasted full-screen TUI input on the visible terminal grid and tests
+/// whether staged prompt text is still at that anchor after CR.
+///
+/// Grid reads must follow [TerminalSession.syncDisplayGrid] — PTY damage is
+/// applied on post-frame drains, so a stale mirror misses pasted CJK text even
+/// when the on-screen painter already shows it.
+abstract interface class TerminalScreenGrid {
+  int get rows;
+  int get columns;
+  int codepointAt(int row, int col);
+  int flagsAt(int row, int col);
+}
+
+/// Screen position of a staged prompt substring (one row, column-aligned).
+class FullscreenPromptAnchor {
+  const FullscreenPromptAnchor({
+    required this.row,
+    required this.startCol,
+    required this.needle,
+  });
+
+  final int row;
+  final int startCol;
+
+  /// Distinctive substring located on [row] at [startCol].
+  final String needle;
+
+  @override
+  String toString() =>
+      'FullscreenPromptAnchor(row=$row, col=$startCol, needle=$needle)';
+}
+
+// Mirror flutter_alacritty `cell_flags.dart` / rust `engine.rs`.
+const int _flagWideSpacer = 1 << 5;
+
+/// Bottom-up search for [needle] in the last [scanRows] visible rows.
+FullscreenPromptAnchor? locateFullscreenPromptNeedle(
+  TerminalScreenGrid grid,
+  String needle, {
+  int scanRows = 8,
+}) {
+  if (needle.isEmpty) return null;
+  final rows = grid.rows;
+  if (rows == 0 || grid.columns == 0) return null;
+
+  final needleRunes = needle.runes.toList();
+  final startRow = (rows - scanRows).clamp(0, rows - 1);
+  for (var r = rows - 1; r >= startRow; r--) {
+    final startCol = _findNeedleStartCol(grid, r, needleRunes);
+    if (startCol >= 0) {
+      return FullscreenPromptAnchor(row: r, startCol: startCol, needle: needle);
+    }
+  }
+  return null;
+}
+
+/// Anchor for whatever non-whitespace text sits on the bottom input row (nudge).
+FullscreenPromptAnchor? captureBottomInputAnchor(
+  TerminalScreenGrid grid, {
+  int scanRows = 3,
+}) {
+  final rows = grid.rows;
+  if (rows == 0 || grid.columns == 0) return null;
+
+  final startRow = (rows - scanRows).clamp(0, rows - 1);
+  for (var r = rows - 1; r >= startRow; r--) {
+    final bounds = _trimmedLogicalBounds(grid, r);
+    if (bounds == null) continue;
+    final (start, endCol) = bounds;
+    final needle = _logicalText(grid, r, start, endCol);
+    if (needle.isEmpty) continue;
+    return FullscreenPromptAnchor(row: r, startCol: start, needle: needle);
+  }
+  return null;
+}
+
+/// True when [anchor.needle] still occupies the same cells on [anchor.row].
+bool isFullscreenPromptAtAnchor(
+  TerminalScreenGrid grid,
+  FullscreenPromptAnchor anchor,
+) {
+  final needleRunes = anchor.needle.runes.toList();
+  return _matchesNeedleAt(grid, anchor.row, anchor.startCol, needleRunes);
+}
+
+/// Debug helper: logical text of the bottom [scanRows] (for ACK miss logs).
+String describeProbeWindow(
+  TerminalScreenGrid grid, {
+  int scanRows = 8,
+}) {
+  final rows = grid.rows;
+  if (rows == 0) return '<empty grid>';
+  final startRow = (rows - scanRows).clamp(0, rows - 1);
+  final sb = StringBuffer();
+  for (var r = startRow; r < rows; r++) {
+    sb.writeln('r$r: "${_logicalRowText(grid, r)}"');
+  }
+  return sb.toString().trimRight();
+}
+
+int _findNeedleStartCol(
+  TerminalScreenGrid grid,
+  int row,
+  List<int> needleRunes,
+) {
+  for (var start = 0; start < grid.columns; start++) {
+    if (_isWideSpacer(grid, row, start)) continue;
+    if (_matchesNeedleAt(grid, row, start, needleRunes)) return start;
+  }
+  return -1;
+}
+
+bool _matchesNeedleAt(
+  TerminalScreenGrid grid,
+  int row,
+  int startCol,
+  List<int> needleRunes,
+) {
+  var col = startCol;
+  for (final cp in needleRunes) {
+    col = _skipWideSpacers(grid, row, col);
+    if (col >= grid.columns) return false;
+    if (grid.codepointAt(row, col) != cp) return false;
+    col = _advancePastCell(grid, row, col);
+  }
+  return true;
+}
+
+(int start, int endCol)? _trimmedLogicalBounds(
+  TerminalScreenGrid grid,
+  int row,
+) {
+  int? start;
+  var end = -1;
+  for (var col = 0; col < grid.columns; col++) {
+    if (_isWideSpacer(grid, row, col)) continue;
+    final cp = grid.codepointAt(row, col);
+    if (cp == 0 || cp == 0x20) continue;
+    start ??= col;
+    end = col;
+    if (col + 1 < grid.columns && _isWideSpacer(grid, row, col + 1)) {
+      end = col + 1;
+    }
+  }
+  if (start == null || end < start) return null;
+  return (start, end);
+}
+
+String _logicalText(
+  TerminalScreenGrid grid,
+  int row,
+  int startCol,
+  int endCol,
+) {
+  final sb = StringBuffer();
+  for (var col = startCol; col <= endCol; col++) {
+    if (_isWideSpacer(grid, row, col)) continue;
+    final cp = grid.codepointAt(row, col);
+    if (cp == 0) continue;
+    sb.writeCharCode(cp);
+  }
+  return sb.toString();
+}
+
+String _logicalRowText(TerminalScreenGrid grid, int row) {
+  final bounds = _trimmedLogicalBounds(grid, row);
+  if (bounds == null) return '';
+  return _logicalText(grid, row, bounds.$1, bounds.$2);
+}
+
+bool _isWideSpacer(TerminalScreenGrid grid, int row, int col) =>
+    (grid.flagsAt(row, col) & _flagWideSpacer) != 0;
+
+int _skipWideSpacers(TerminalScreenGrid grid, int row, int col) {
+  while (col < grid.columns && _isWideSpacer(grid, row, col)) {
+    col++;
+  }
+  return col;
+}
+
+int _advancePastCell(TerminalScreenGrid grid, int row, int col) {
+  var next = col + 1;
+  if (next < grid.columns && _isWideSpacer(grid, row, next)) {
+    next++;
+  }
+  return next;
+}
+
+/// Wraps flutter_alacritty's grid view for [TerminalScreenGrid] probes.
+TerminalScreenGrid terminalScreenGrid(dynamic grid) => _GridViewAdapter(grid);
+
+final class _GridViewAdapter implements TerminalScreenGrid {
+  _GridViewAdapter(this._grid);
+  final dynamic _grid;
+
+  @override
+  int get rows => _grid.rows as int;
+
+  @override
+  int get columns => _grid.columns as int;
+
+  @override
+  int codepointAt(int row, int col) => _grid.codepointAt(row, col) as int;
+
+  @override
+  int flagsAt(int row, int col) => _grid.flagsAt(row, col) as int;
+}

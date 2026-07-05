@@ -10,6 +10,7 @@ import '../cli/preset_resolver.dart';
 import '../cli/cli_invocation.dart';
 import '../cli/cli_tool_locator.dart';
 import '../cli/registry/capabilities/terminal_behavior_capability.dart';
+import 'fullscreen_input_screen_probe.dart' as probe;
 import '../cli/registry/cli_tool_registry.dart';
 import '../session/launch_command_builder.dart';
 import '../session/shell_launch_spec.dart';
@@ -901,9 +902,97 @@ class TerminalSession implements TerminalTextSink {
     return next;
   }
 
+  /// Clears the CLI's current input line (readline / Ink Ctrl-U). Serialized
+  /// through [_ptySubmitChain] so it never races a paste or CR injection.
+  Future<void> clearInputLine() {
+    final next = _ptySubmitChain.then((_) async {
+      writeToPty('\x15');
+    });
+    _ptySubmitChain = next.catchError((_) {});
+    return next;
+  }
+
+  /// Repeated Ctrl-U to drop staged full-screen input before a fresh paste.
+  Future<void> clearStagedInput({int killLines = 3}) {
+    final next = _ptySubmitChain.then((_) async {
+      for (var i = 0; i < killLines; i++) {
+        writeToPty('\x15');
+        if (i < killLines - 1) {
+          await Future<void>.delayed(const Duration(milliseconds: 80));
+        }
+      }
+    });
+    _ptySubmitChain = next.catchError((_) {});
+    return next;
+  }
+
+  /// Applies pending PTY damage to the mirror grid before screen probes.
+  /// Without this, [locateFullscreenPromptNeedle] can miss pasted CJK text that
+  /// the painter already shows (engine drains on post-frame callbacks).
+  Future<void> syncDisplayGrid() => engine.drainForTest();
+
+  probe.FullscreenPromptAnchor? locateFullscreenPromptNeedle(
+    String needle, {
+    int scanRows = 8,
+  }) =>
+      probe.locateFullscreenPromptNeedle(
+        _screenGrid,
+        needle,
+        scanRows: scanRows,
+      );
+
+  bool isFullscreenPromptAtAnchor(probe.FullscreenPromptAnchor anchor) =>
+      probe.isFullscreenPromptAtAnchor(_screenGrid, anchor);
+
+  probe.FullscreenPromptAnchor? captureBottomInputAnchor({int scanRows = 3}) =>
+      probe.captureBottomInputAnchor(_screenGrid, scanRows: scanRows);
+
+  String describeProbeWindow({int scanRows = 8}) =>
+      probe.describeProbeWindow(_screenGrid, scanRows: scanRows);
+
+  probe.TerminalScreenGrid get _screenGrid =>
+      probe.terminalScreenGrid(engine.grid);
+
   void writeln(String text) {
     markUserTurnStarted();
     writeToPty('$text\r');
+  }
+
+  /// Checks whether [needle] appears in the bottom [scanRows] of the visible
+  /// terminal screen. Used by the automation ACK loop to detect whether pasted
+  /// text is still sitting in a full-screen TUI's input box (CR swallowed) or
+  /// has been submitted (input box cleared).
+  ///
+  /// This is a **content-based ACK** — far more reliable than byte-generation
+  /// counters, which cannot distinguish "CR repaint" from "agent response".
+  /// After a bracketed paste, the text appears in the TUI input box (bottom
+  /// rows). After a successful CR (submit), the input box clears and the text
+  /// disappears. If the text is still there after CR, the CR was swallowed.
+  ///
+  /// [needle] should be a distinctive substring of the pasted text (not the
+  /// full text, which may be wrapped/truncated by the TUI). [scanRows] defaults
+  /// to 5 — enough to cover Claude Code's Ink input box area.
+  bool screenContainsText(String needle, {int scanRows = 5}) =>
+      locateFullscreenPromptNeedle(needle, scanRows: scanRows) != null;
+
+  /// Checks whether the bottom rows of the visible screen contain any
+  /// non-whitespace content — used by the nudge ACK loop to detect whether
+  /// text is still sitting in a full-screen TUI's input box.
+  bool hasInputBoxContent({int scanRows = 3}) {
+    final grid = engine.grid;
+    final rows = grid.rows;
+    final cols = grid.columns;
+    if (rows == 0 || cols == 0) return false;
+
+    final startRow = (rows - scanRows).clamp(0, rows - 1);
+    for (var r = startRow; r < rows; r++) {
+      for (var c = 0; c < cols; c++) {
+        final cp = grid.codepointAt(r, c);
+        // Non-space, non-null content means there's text in the input box.
+        if (cp != 0 && cp != 32) return true;
+      }
+    }
+    return false;
   }
 
   /// Submit a line to a full-screen TUI CLI (e.g. Claude Code) on the alternate

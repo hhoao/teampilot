@@ -23,6 +23,7 @@ import '../../services/team_bus/tasks/task_log_factory.dart';
 import '../../services/team_bus/tasks/task_queue.dart';
 import '../../services/team_bus/team_bus.dart';
 import '../../services/team_bus/teammate_roster_profile.dart';
+import '../../services/terminal/pty_inject_ack_retry.dart';
 import '../../services/terminal/terminal_session.dart';
 import '../../utils/logger.dart';
 import '../../utils/team_member_naming.dart';
@@ -87,6 +88,10 @@ class TabTeamBusCoordinator implements MemberMaterializer {
 
   /// Per-member rising edge of in-turn (`userTurnActive` or bus `active`).
   final Map<String, bool> _wasInTurn = {};
+
+  /// Members currently running a PTY inject ACK loop (automation or nudge).
+  /// Prevents the 1s watchdog from stacking a second loop while one is active.
+  final Set<String> _ptyAckInProgress = {};
 
   Future<void> installBusForTab(
     ChatTab tab,
@@ -373,7 +378,13 @@ class TabTeamBusCoordinator implements MemberMaterializer {
 
   @override
   void injectMemberStdin(String sessionId, String memberId, String text) {
-    unawaited(_submitMemberStdin(sessionId, memberId, text));
+    // Doorbell notices are automation — they need the ACK loop just as much
+    // as operator direct-to-PTY injections. The bus fires this at teammates
+    // on mail/task arrival; if the first CR is swallowed by a not-yet-ready
+    // Ink input box, the message is lost without the loop.
+    unawaited(
+      _submitMemberStdin(sessionId, memberId, text, automationDelivery: true),
+    );
   }
 
   /// Bracketed-paste + CR for full-screen CLIs; [automationDelivery] uses a
@@ -395,6 +406,7 @@ class TabTeamBusCoordinator implements MemberMaterializer {
     }
     final trimmed = text.trim();
     if (trimmed.isEmpty) return;
+    _beginMemberTurnForPtyDelivery(sessionId, memberId, shell);
     final team = _activeTeam();
     final cli = team == null
         ? CliTool.claude
@@ -419,19 +431,228 @@ class TabTeamBusCoordinator implements MemberMaterializer {
           TerminalSession.fullScreenSubmitDelay;
       final settle = automationDelivery
           ? Duration(
-              milliseconds: base.inMilliseconds < 150
-                  ? 150
+              milliseconds: base.inMilliseconds < 500
+                  ? 500
                   : base.inMilliseconds,
             )
           : base;
-      await shell.submitFullScreenInput(trimmed, pasteSettleDelay: settle);
       if (automationDelivery) {
-        await Future<void>.delayed(const Duration(milliseconds: 50));
-        await shell.submitPendingCr();
+        // Paste → verify → CR → verify. Do not call [submitFullScreenInput]
+        // first — a successful submit clears the input box and the old ACK loop
+        // misread that as "paste never landed", reinjecting duplicates.
+        await _ensureAutomationDelivered(
+          shell,
+          memberId,
+          sessionId,
+          trimmed,
+          settle,
+        );
+      } else {
+        await shell.submitFullScreenInput(trimmed, pasteSettleDelay: settle);
       }
     } else {
       shell.writeln(trimmed);
     }
+  }
+
+  /// Content-based ACK for doorbell / landing / automation PTY inject.
+  ///
+  /// 1. Clear staged input → bracketed paste only.
+  /// 2. Locate [needle] on the visible grid (row/col anchor).
+  /// 3. Standalone CR → re-check the **same anchor** (not global screen search).
+  Future<void> _ensureAutomationDelivered(
+    TerminalSession shell,
+    String memberId,
+    String sessionId,
+    String text,
+    Duration settle,
+  ) async {
+    if (_ptyAckInProgress.contains(memberId)) {
+      appLogger.d(
+        '[team-bus] submit-ack skipped ack-in-progress '
+        'member=$memberId session=$sessionId',
+      );
+      return;
+    }
+    _ptyAckInProgress.add(memberId);
+    try {
+      final needle = _screenNeedle(text);
+      final maxReinject = PtyInjectAckTiming.reinjectMaxAttempts;
+      appLogger.d(
+        '[team-bus] submit-ack-start member=$memberId session=$sessionId '
+        'needle="${_doorbellLogPreview(needle)}" '
+        'pasteSettleMs=${settle.inMilliseconds} '
+        'afterClearMs=${PtyInjectAckTiming.afterClear.inMilliseconds} '
+        'afterPasteMs=${PtyInjectAckTiming.afterPaste.inMilliseconds} '
+        'afterCrMs=${PtyInjectAckTiming.afterCr.inMilliseconds} '
+        'afterReinjectMs=${PtyInjectAckTiming.afterReinject.inMilliseconds} '
+        'crMax=${PtyInjectAckTiming.crMaxAttempts} '
+        'reinjectMax=$maxReinject',
+      );
+
+      for (var reinject = 0; reinject <= maxReinject; reinject++) {
+        if (_ptyAckAborted(shell)) {
+          appLogger.w(
+            '[team-bus] submit-ack-aborted member=$memberId session=$sessionId '
+            'reinject=$reinject/$maxReinject (closed/disconnected)',
+          );
+          return;
+        }
+
+        if (reinject > 0) {
+          await Future<void>.delayed(PtyInjectAckTiming.afterReinject);
+        }
+
+        await shell.syncDisplayGrid();
+        var anchor = shell.locateFullscreenPromptNeedle(
+          needle,
+          scanRows: 24,
+        );
+        if (anchor != null) {
+          appLogger.d(
+            '[team-bus] submit-paste-already-visible member=$memberId '
+            'session=$sessionId reinject=$reinject/$maxReinject '
+            'anchor=$anchor — skip clear→paste',
+          );
+        } else {
+          appLogger.d(
+            '[team-bus] submit-ack-round member=$memberId session=$sessionId '
+            'reinject=$reinject/$maxReinject phase=clear→paste',
+          );
+          await shell.clearStagedInput();
+          await Future<void>.delayed(PtyInjectAckTiming.afterClear);
+          await shell.pasteText(text);
+          await Future<void>.delayed(settle);
+          await Future<void>.delayed(PtyInjectAckTiming.afterPaste);
+
+          appLogger.d(
+            '[team-bus] submit-ack-scan member=$memberId session=$sessionId '
+            'reinject=$reinject/$maxReinject phase=locate-anchor',
+          );
+          await shell.syncDisplayGrid();
+          anchor = shell.locateFullscreenPromptNeedle(needle, scanRows: 24);
+        }
+        if (anchor == null) {
+          appLogger.w(
+            '[team-bus] submit-paste-not-found member=$memberId '
+            'session=$sessionId reinject=$reinject/$maxReinject '
+            'needle="${_doorbellLogPreview(needle)}" '
+            'probeWindow:\n${shell.describeProbeWindow()}',
+          );
+          if (reinject < maxReinject) {
+            appLogger.d(
+              '[team-bus] submit-paste-retry member=$memberId session=$sessionId '
+              'reinject=$reinject/$maxReinject '
+              'afterReinjectMs=${PtyInjectAckTiming.afterReinject.inMilliseconds}',
+            );
+            continue;
+          }
+          appLogger.w(
+            '[team-bus] submit-ack-failed member=$memberId session=$sessionId '
+            '— paste never landed after $maxReinject reinjects',
+          );
+          return;
+        }
+        final pasteAnchor = anchor;
+        appLogger.d(
+          '[team-bus] submit-paste-found member=$memberId session=$sessionId '
+          'reinject=$reinject/$maxReinject anchor=$pasteAnchor',
+        );
+
+        appLogger.d(
+          '[team-bus] submit-cr-first member=$memberId session=$sessionId '
+          'reinject=$reinject anchor=$pasteAnchor',
+        );
+        await shell.submitPendingCr();
+
+        final crOutcome = await ptyAckPollRetry(
+          settle: PtyInjectAckTiming.afterCr,
+          maxAttempts: PtyInjectAckTiming.crMaxAttempts,
+          aborted: () => _ptyAckAborted(shell),
+          isAcked: (_) async {
+            await shell.syncDisplayGrid();
+            return !shell.isFullscreenPromptAtAnchor(pasteAnchor);
+          },
+          onRetry: (ctx) async {
+            appLogger.d(
+              '[team-bus] submit-cr-retry member=$memberId session=$sessionId '
+              'reinject=$reinject crAttempt=${ctx.attempt + 1}/${ctx.maxAttempts}',
+            );
+            await shell.submitPendingCr();
+          },
+          onStillPending: (ctx) {
+            appLogger.w(
+              '[team-bus] submit-cr-swallowed member=$memberId '
+              'session=$sessionId reinject=$reinject '
+              'crAttempt=${ctx.attempt}/${ctx.maxAttempts} '
+              'anchor=$pasteAnchor — prompt still at anchor',
+            );
+          },
+          onAcked: (ctx) {
+            appLogger.d(
+              '[team-bus] submit-ack member=$memberId session=$sessionId '
+              'reinject=$reinject crAttempt=${ctx.attempt}/${ctx.maxAttempts} '
+              '— prompt cleared at anchor (CR succeeded)',
+            );
+          },
+        );
+        switch (crOutcome) {
+          case PtyAckPollOutcome.acked:
+            return;
+          case PtyAckPollOutcome.aborted:
+            appLogger.w(
+              '[team-bus] submit-ack-aborted member=$memberId session=$sessionId '
+              'reinject=$reinject phase=cr-poll',
+            );
+            return;
+          case PtyAckPollOutcome.exhausted:
+            appLogger.w(
+              '[team-bus] submit-cr-exhausted member=$memberId session=$sessionId '
+              'reinject=$reinject/$maxReinject — will clear and repaste',
+            );
+        }
+      }
+      appLogger.w(
+        '[team-bus] submit-ack-failed member=$memberId session=$sessionId '
+        '— text stuck in input box after $maxReinject reinjects',
+      );
+    } finally {
+      _ptyAckInProgress.remove(memberId);
+    }
+  }
+
+  bool _ptyAckAborted(TerminalSession shell) =>
+      _isClosed() || !shell.isConnected;
+
+  /// All PTY message delivery (doorbell, landing directToPty, automation) must
+  /// mark in-turn the same way as a user line at the member prompt.
+  void _beginMemberTurnForPtyDelivery(
+    String sessionId,
+    String memberId,
+    TerminalSession shell,
+  ) {
+    final bus = busForSession(sessionId);
+    if (bus != null) {
+      shell.activityTracker.latchTurnQuietBaseline();
+      bus.markTurnStarted(memberId);
+      return;
+    }
+    shell.markUserTurnStarted();
+  }
+
+  /// Distinctive substring for grid anchor search after paste.
+  ///
+  /// Doorbell lines carry a stable `[teammate-bus]` prefix; short landing text
+  /// (e.g. CJK) fits whole. Long free-form text falls back to the tail ~40
+  /// chars where the cursor usually sits.
+  static String _screenNeedle(String text) {
+    final trimmed = text.trim();
+    const busTag = '[teammate-bus]';
+    if (trimmed.startsWith(busTag)) {
+      return trimmed.length <= 40 ? trimmed : trimmed.substring(0, 40);
+    }
+    if (trimmed.length <= 40) return trimmed;
+    return trimmed.substring(trimmed.length - 40);
   }
 
   static String _doorbellLogPreview(String text) {
@@ -453,8 +674,108 @@ class TabTeamBusCoordinator implements MemberMaterializer {
       );
       return;
     }
+    // Don't stack a second ACK loop if one is already polling for this member
+    // — the 1s watchdog tick can fire before the previous loop's ACK window
+    // expires. The in-flight loop will retry the CR itself if needed.
+    if (_ptyAckInProgress.contains(memberId)) {
+      appLogger.d(
+        '[team-bus] pty-nudge-cr skipped ack-in-progress '
+        'member=$memberId session=$sessionId',
+      );
+      return;
+    }
     appLogger.d('[team-bus] pty-nudge-cr member=$memberId session=$sessionId');
-    unawaited(shell.submitPendingCr());
+    unawaited(_nudgeAndAck(shell, memberId, sessionId));
+  }
+
+  /// Nudge CR loop for the doorbell watchdog path. Sends one CR at a time and
+  /// checks whether the input row cleared — avoids burst CRs that stack submits.
+  Future<void> _nudgeAndAck(
+    TerminalSession shell,
+    String memberId,
+    String sessionId,
+  ) async {
+    _ptyAckInProgress.add(memberId);
+    try {
+      final maxRounds = PtyInjectAckTiming.nudgeMaxAttempts;
+      appLogger.d(
+        '[team-bus] nudge-ack-start member=$memberId session=$sessionId '
+        'afterCrMs=${PtyInjectAckTiming.afterCr.inMilliseconds} '
+        'roundMax=$maxRounds',
+      );
+
+      for (var round = 0; round <= maxRounds; round++) {
+        if (_ptyAckAborted(shell)) {
+          appLogger.w(
+            '[team-bus] nudge-ack-aborted member=$memberId session=$sessionId '
+            'round=$round/$maxRounds (closed/disconnected)',
+          );
+          return;
+        }
+        await shell.syncDisplayGrid();
+        final anchor = shell.captureBottomInputAnchor();
+        if (anchor == null) {
+          appLogger.d(
+            '[team-bus] nudge-ack-done member=$memberId session=$sessionId '
+            'round=$round/$maxRounds — no staged input anchor',
+          );
+          return;
+        }
+        appLogger.d(
+          '[team-bus] nudge-ack-round member=$memberId session=$sessionId '
+          'round=$round/$maxRounds anchor=$anchor',
+        );
+
+        await shell.submitPendingCr();
+
+        final outcome = await ptyAckPollRetry(
+          settle: PtyInjectAckTiming.afterCr,
+          maxAttempts: 0,
+          aborted: () => _ptyAckAborted(shell),
+          isAcked: (_) async {
+            await shell.syncDisplayGrid();
+            return !shell.isFullscreenPromptAtAnchor(anchor);
+          },
+          onRetry: (_) async {},
+          onStillPending: (ctx) {
+            appLogger.w(
+              '[team-bus] nudge-ack-still-stuck member=$memberId '
+              'session=$sessionId round=$round/$maxRounds '
+              'anchor=$anchor attempt=${ctx.attempt}/${ctx.maxAttempts}',
+            );
+          },
+          onAcked: (ctx) {
+            appLogger.d(
+              '[team-bus] nudge-ack-done member=$memberId session=$sessionId '
+              'round=$round/$maxRounds attempt=${ctx.attempt}/${ctx.maxAttempts} '
+              '— prompt cleared at anchor',
+            );
+          },
+        );
+        switch (outcome) {
+          case PtyAckPollOutcome.acked:
+            return;
+          case PtyAckPollOutcome.aborted:
+            appLogger.w(
+              '[team-bus] nudge-ack-aborted member=$memberId session=$sessionId '
+              'round=$round phase=cr-poll',
+            );
+            return;
+          case PtyAckPollOutcome.exhausted:
+            appLogger.w(
+              '[team-bus] nudge-ack-retry member=$memberId session=$sessionId '
+              'round=$round/$maxRounds — will retry next round',
+            );
+        }
+      }
+      appLogger.w(
+        '[team-bus] nudge-ack-failed member=$memberId session=$sessionId '
+        '— input box still has content after $maxRounds rounds; '
+        'watchdog will retry',
+      );
+    } finally {
+      _ptyAckInProgress.remove(memberId);
+    }
   }
 
   void ensureIdleWatch() {

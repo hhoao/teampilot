@@ -728,6 +728,11 @@ class TeamBus implements CoordinationView {
 
   /// 注入门铃全文并置幂等闸（绕过 reducer 的路径也必须设 [AgentNode.doorbelled]）。
   void _ringDoorbell(AgentNode node, String notice) {
+    // Task-queue / watchdog doorbells skip MailArrived — still align with
+    // send-path delivery: in-turn before PTY inject (see [markTurnStarted]).
+    if (node.lifecycle == MemberLifecycle.running && !node.waitingForMessage) {
+      _apply(node, const TurnStarted());
+    }
     node.doorbelled = true;
     node.doorbelledAt = _env.clock();
     _env.events.emit(MemberDoorbelled(node.memberId));
@@ -875,7 +880,13 @@ class TeamBus implements CoordinationView {
     for (final node in _members.values) {
       if (node.profile.isTeamLead) continue;
       if (node.lifecycle != MemberLifecycle.running) continue;
-      if (node.activity != MemberActivity.turnDoneReady) continue; // atPrompt
+      final doorbellPending = node.doorbelled || node.doorbelledAt != null;
+      final atPromptIdle = node.activity == MemberActivity.turnDoneReady;
+      // Delivery marks in-turn before inject; a swallowed CR leaves the member
+      // active + doorbelled — still needs nudge retries.
+      final inTurnStuck =
+          node.activity == MemberActivity.active && doorbellPending;
+      if (!atPromptIdle && !inTurnStuck) continue;
       if (_recentlyDoorbelled(node)) continue;
       final String notice;
       if (!node.inbox.isEmpty) {

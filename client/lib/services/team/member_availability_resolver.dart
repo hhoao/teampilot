@@ -58,22 +58,26 @@ abstract final class MemberAvailabilityResolver {
     required List<CliPreset> globalPresets,
   }) {
     final memberId = member.id;
-    if (bus.isMemberInTurn(memberId)) {
-      return MemberAvailability.working;
-    }
     if (bus.isWaitingForMessage(memberId)) {
       return MemberAvailability.idle;
     }
 
-    // Push-CLI (cursor): idle-at-prompt when quiet. PTY bytes only count after
-    // a bus turn signal (user submit → active, mail/task doorbell), not startup
-    // TUI churn.
+    // PTY quiet wins over bus in-turn / doorbell: members panel should reflect
+    // visible terminal stillness even when mail is queued unconsumed.
+    if (!shell.activityTracker.isWorking) {
+      return MemberAvailability.idle;
+    }
+
+    if (bus.isMemberInTurn(memberId)) {
+      return MemberAvailability.working;
+    }
+
+    // Push-CLI (cursor): PTY bytes only count after a bus turn signal (user
+    // submit → active, mail/task doorbell), not startup TUI churn.
     if (!_pushCliAllowsPtyWorking(bus: bus, memberId: memberId)) {
       return MemberAvailability.idle;
     }
-    return shell.activityTracker.isWorking
-        ? MemberAvailability.working
-        : MemberAvailability.idle;
+    return MemberAvailability.working;
   }
 
   /// Automation / scheduled message inject: safe once the TUI boot frame is
