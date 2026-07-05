@@ -71,6 +71,7 @@ class _WorkspaceChatLandingState extends State<WorkspaceChatLanding> {
   var _voiceListening = false;
   var _voiceSoundLevel = 0.0;
   var _discardVoiceTranscript = false;
+  TextEditingValue? _voiceInsertBaseline;
   Stopwatch? _voiceStopwatch;
   Timer? _voiceTimer;
   String? _selectedWorkingDirectoryPath;
@@ -90,12 +91,16 @@ class _WorkspaceChatLandingState extends State<WorkspaceChatLanding> {
     _voiceInput = ComposeVoiceInput(
       onFinalTranscript: (text) {
         if (!mounted || _discardVoiceTranscript) return;
+        if (_voiceInsertBaseline != null) {
+          _controller.value = _voiceInsertBaseline!;
+        }
         _controller.value = insertTextAtSelection(
           _controller,
           text,
           separatorBefore: ' ',
           separatorAfter: ' ',
         );
+        _voiceInsertBaseline = null;
         setState(() {});
       },
       onListeningChanged: (listening) {
@@ -127,6 +132,7 @@ class _WorkspaceChatLandingState extends State<WorkspaceChatLanding> {
   void _applyVoiceListening(bool listening) {
     if (listening) {
       _discardVoiceTranscript = false;
+      _voiceInsertBaseline ??= _controller.value;
       final needsRebuild = !_voiceListening || _voiceStopwatch == null;
       _voiceListening = true;
       if (_voiceStopwatch == null) _startVoiceSessionClock();
@@ -134,6 +140,9 @@ class _WorkspaceChatLandingState extends State<WorkspaceChatLanding> {
       return;
     }
     if (!_voiceListening && _voiceStopwatch == null) return;
+    if (_discardVoiceTranscript) {
+      _voiceInsertBaseline = null;
+    }
     _voiceListening = false;
     _stopVoiceSessionClock();
     if (mounted) setState(() {});
@@ -272,7 +281,9 @@ class _WorkspaceChatLandingState extends State<WorkspaceChatLanding> {
       return;
     }
 
-    final started = await _voiceInput.toggleListening();
+    final started = await _voiceInput.toggleListening(
+      preferredLocale: Localizations.localeOf(context),
+    );
     if (!mounted) return;
     if (!started && !_voiceInput.isSessionActive) return;
     if (started || _voiceInput.isSessionActive) {

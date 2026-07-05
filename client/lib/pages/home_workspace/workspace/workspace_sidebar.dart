@@ -22,7 +22,6 @@ import '../../../utils/session_worktree_grouping.dart';
 import '../../../utils/workspace_path_utils.dart';
 import '../../../widgets/app_toast/app_toast.dart';
 import '../../../theme/app_toast_theme.dart';
-import 'mixed_workspace_personal_launch_banner.dart';
 import 'worktree_create_dialog.dart';
 import 'worktree_group_section.dart';
 import '../../../models/automation_tab_scope.dart';
@@ -124,7 +123,6 @@ class _WorkspaceSidebarState extends State<WorkspaceSidebar> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          if (personalLaunchBlocked) const MixedWorkspacePersonalLaunchBanner(),
           _AutomationsHeader(
             tabScope: AutomationTabScope(
               workspaceId: widget.workspace.workspaceId,
