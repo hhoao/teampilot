@@ -9,11 +9,15 @@ import '../../cubits/cli_presets_cubit.dart';
 import '../../cubits/launch_profile_cubit.dart';
 import '../../l10n/l10n_extensions.dart';
 import '../../models/automation.dart';
+import '../../models/launch_profile.dart';
 import '../../models/launch_profile_kind.dart';
 import '../../models/personal_profile.dart';
 import '../../models/team_config.dart';
+import '../../models/workspace.dart';
+import '../../cubits/chat_cubit.dart';
 import '../../services/automation/automation_launch_session_binding.dart';
 import '../../services/automation/automation_schedule_calculator.dart';
+import '../../services/automation/workspace_automation_profiles.dart';
 import '../../theme/app_text_styles.dart';
 import '../../widgets/app_dialog.dart';
 import '../../widgets/cli/cli_preset_dropdown_field.dart';
@@ -32,6 +36,7 @@ class AutomationEditorDialog extends StatefulWidget {
     this.launchProfileId,
     this.sessionId,
     this.defaultName,
+    this.pickLaunchProfile = false,
     super.key,
   });
 
@@ -41,6 +46,7 @@ class AutomationEditorDialog extends StatefulWidget {
   final String? launchProfileId;
   final String? sessionId;
   final String? defaultName;
+  final bool pickLaunchProfile;
 
   static Future<Automation?> show(
     BuildContext context, {
@@ -50,6 +56,7 @@ class AutomationEditorDialog extends StatefulWidget {
     String? launchProfileId,
     String? sessionId,
     String? defaultName,
+    bool pickLaunchProfile = false,
   }) {
     return showDialog<Automation>(
       context: context,
@@ -60,6 +67,7 @@ class AutomationEditorDialog extends StatefulWidget {
         launchProfileId: launchProfileId,
         sessionId: sessionId,
         defaultName: defaultName,
+        pickLaunchProfile: pickLaunchProfile,
       ),
     );
   }
@@ -79,6 +87,7 @@ class _AutomationEditorDialogState extends State<AutomationEditorDialog> {
   String? _errorMessage;
   String? _cliPresetId;
   String _targetMemberId = 'team-lead';
+  String _selectedLaunchProfileId = '';
   var _didSeedLaunchFields = false;
 
   bool get _isScheduledMessage =>
@@ -96,8 +105,16 @@ class _AutomationEditorDialogState extends State<AutomationEditorDialog> {
     return runCount >= maxRun;
   }
 
-  String get _launchProfileId =>
-      widget.initial?.launchProfileId ?? widget.launchProfileId ?? '';
+  String get _launchProfileId {
+    if (widget.initial != null) return widget.initial!.launchProfileId;
+    if (_selectedLaunchProfileId.trim().isNotEmpty) {
+      return _selectedLaunchProfileId;
+    }
+    return widget.launchProfileId ?? '';
+  }
+
+  bool get _showsLaunchProfilePicker =>
+      widget.pickLaunchProfile && !_isEditing && !_isScheduledMessage;
 
   LaunchProfileKind get _launchKind {
     final profile = context.read<LaunchProfileCubit>().state.byId(
@@ -122,6 +139,7 @@ class _AutomationEditorDialogState extends State<AutomationEditorDialog> {
     final workspaceId = initial?.workspaceId ?? widget.workspaceId ?? '';
     final launchProfileId =
         initial?.launchProfileId ?? widget.launchProfileId ?? '';
+    _selectedLaunchProfileId = launchProfileId;
 
     _nameCtl = TextEditingController(
       text: initial?.name ?? widget.defaultName ?? '',
@@ -145,15 +163,54 @@ class _AutomationEditorDialogState extends State<AutomationEditorDialog> {
 
     if (workspaceId.isEmpty && initial == null) {
       _errorMessage = 'workspaceId required';
-    } else if (launchProfileId.isEmpty && initial == null) {
+    } else if (launchProfileId.isEmpty &&
+        initial == null &&
+        !widget.pickLaunchProfile) {
       _errorMessage = 'launchProfileId required';
     }
+  }
+
+  Workspace? get _workspace {
+    final workspaceId = widget.initial?.workspaceId ?? widget.workspaceId ?? '';
+    if (workspaceId.isEmpty) return null;
+    return context.read<ChatCubit>().state.workspaces
+        .where((w) => w.workspaceId == workspaceId)
+        .firstOrNull;
+  }
+
+  List<LaunchProfile> get _launchProfileChoices {
+    final workspace = _workspace;
+    if (workspace == null) return const [];
+    return launchProfilesForWorkspaceAutomations(
+      workspace: workspace,
+      profiles: context.read<LaunchProfileCubit>().state,
+    );
   }
 
   @override
   void didChangeDependencies() {
     super.didChangeDependencies();
+    if (_showsLaunchProfilePicker && _selectedLaunchProfileId.trim().isEmpty) {
+      final workspace = _workspace;
+      if (workspace != null) {
+        _selectedLaunchProfileId = defaultLaunchProfileIdForWorkspace(
+          workspace: workspace,
+          profiles: context.read<LaunchProfileCubit>().state,
+        );
+      }
+    }
     if (_didSeedLaunchFields || _isScheduledMessage) return;
+    _didSeedLaunchFields = true;
+    _seedLaunchPromptDefaults();
+  }
+
+  void _onLaunchProfileChanged(String profileId) {
+    setState(() {
+      _selectedLaunchProfileId = profileId;
+      _cliPresetId = null;
+      _targetMemberId = 'team-lead';
+      _didSeedLaunchFields = false;
+    });
     _didSeedLaunchFields = true;
     _seedLaunchPromptDefaults();
   }
@@ -265,8 +322,11 @@ class _AutomationEditorDialogState extends State<AutomationEditorDialog> {
 
     final nowMs = DateTime.now().millisecondsSinceEpoch;
     final workspaceId = widget.initial?.workspaceId ?? widget.workspaceId ?? '';
-    final launchProfileId =
-        widget.initial?.launchProfileId ?? widget.launchProfileId ?? '';
+    final launchProfileId = _launchProfileId.trim();
+    if (launchProfileId.isEmpty) {
+      setState(() => _errorMessage = l10n.automationsValidationRequired);
+      return;
+    }
     final launchSessionId = _isScheduledMessage
         ? (widget.initial?.sessionId ?? widget.sessionId)
         : (_reuseSession ? widget.initial?.sessionId : null);
@@ -380,6 +440,40 @@ class _AutomationEditorDialogState extends State<AutomationEditorDialog> {
             minLines: 2,
             maxLines: 5,
           ),
+          if (_showsLaunchProfilePicker) ...[
+            Text(
+              l10n.automationsLaunchProfile,
+              style: styles.bodySmall.copyWith(fontWeight: FontWeight.w600),
+            ),
+            const SizedBox(height: 8),
+            if (_launchProfileChoices.isEmpty)
+              Text(
+                l10n.automationsValidationRequired,
+                style: styles.bodySmall.copyWith(color: cs.error),
+              )
+            else
+              AppDropdownField<String>(
+                items: _launchProfileChoices.map((profile) => profile.id).toList(),
+                initialItem:
+                    _launchProfileChoices.any(
+                      (profile) => profile.id == _selectedLaunchProfileId,
+                    )
+                    ? _selectedLaunchProfileId
+                    : _launchProfileChoices.first.id,
+                decoration: AppDropdownDecorations.themed(context),
+                itemLabel: (profileId) {
+                  final profile = _launchProfileChoices
+                      .where((candidate) => candidate.id == profileId)
+                      .firstOrNull;
+                  return profile?.display ?? profileId;
+                },
+                onChanged: (value) {
+                  if (value == null) return;
+                  _onLaunchProfileChanged(value);
+                },
+              ),
+            const SizedBox(height: 16),
+          ],
           if (!_isScheduledMessage) ...[
             const SizedBox(height: 16),
             if (_isPersonalLaunch) ...[

@@ -6,13 +6,15 @@ abstract final class PtyAutomationDeliveryGuard {
 
   /// True when a queued paste/CR retry no longer matches bus obligations.
   ///
-  /// Parked workers consume mail via MCP `wait_for_message` — PTY nudges would
-  /// corrupt presence and the working indicator. Cleared inboxes with no pending
-  /// doorbell/task notice mean the worker already handled the mail another way.
+  /// Parked workers consume mail via MCP `wait_for_message` — doorbell PTY nudges
+  /// must not retry. Operator turns (compose / automation) keep retrying while
+  /// [operatorTurnActive] is latched.
   static bool shouldSkipRetry({
     required TeamBus? bus,
     required String memberId,
+    bool operatorTurnActive = false,
   }) {
+    if (operatorTurnActive) return false;
     if (bus == null) return false;
     if (bus.isWaitingForMessage(memberId)) return true;
     return bus.pendingDoorbellNoticeFor(memberId) == null;

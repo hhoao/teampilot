@@ -150,4 +150,52 @@ void main() {
     expect(reenabled.enabled, isTrue);
     expect(reenabled.nextRunAtMs, isNotNull);
   });
+
+  test('loadForWorkspace keeps automations from every launch profile', () async {
+    final layout = WorkspaceLayout(teampilotRoot: AppStorage.paths.basePath);
+    final repo = AutomationRepository(fs: AppStorage.fs, layout: layout);
+    final calculator = AutomationScheduleCalculator();
+    final dispatcher = AutomationDispatcher(
+      repository: repo,
+      scheduleCalculator: calculator,
+      sessionRepository: _FakeSessionRepository(),
+      busGateway: _NoopBusGateway(),
+      requestOpenSession: (_) async => SessionOpenStatus.opened,
+      requestCreateAndOpenSession: (_) async => SessionOpenStatus.opened,
+      workspaceById: (_) => Workspace(workspaceId: 'ws1', createdAt: 1),
+      teamById: (_) => null,
+      launchProfileKindById: testLaunchProfileKindResolver(),
+      nowMs: () => 1_700_000_000_000,
+    );
+    final scheduler = AutomationScheduler(
+      repository: repo,
+      dispatcher: dispatcher,
+      scheduleCalculator: calculator,
+      nowMs: () => 1_700_000_000_000,
+    );
+    final cubit = AutomationCubit(
+      repository: repo,
+      scheduler: scheduler,
+      scheduleCalculator: calculator,
+      nowMs: () => 1_700_000_000_000,
+    );
+    addTearDown(cubit.close);
+
+    await repo.upsert(_sampleAutomation(id: 'personal'));
+    await repo.upsert(
+      _sampleAutomation(id: 'team').copyWith(
+        launchProfileId: 'team-1',
+        action: AutomationAction.launchPrompt,
+        clearSessionId: true,
+        clearCli: true,
+      ),
+    );
+    await cubit.loadForWorkspace('ws1');
+
+    expect(cubit.state.listScope?.isWorkspace, isTrue);
+    expect(cubit.state.visibleAutomations.map((a) => a.id), containsAll([
+      'personal',
+      'team',
+    ]));
+  });
 }

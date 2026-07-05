@@ -8,20 +8,20 @@ import 'package:teampilot/theme/app_icon_sizes.dart';
 import '../../cubits/automation_cubit.dart';
 import '../../cubits/automation_state.dart';
 import '../../cubits/chat_cubit.dart';
+import '../../cubits/cli_presets_cubit.dart';
 import '../../cubits/launch_profile_cubit.dart';
 import '../../l10n/l10n_extensions.dart';
 import '../../models/automation.dart';
-import '../../models/automation_tab_scope.dart';
-import '../../models/launch_profile.dart';
+import '../../models/automation_list_scope.dart';
 import '../../models/workspace.dart';
-import '../../repositories/automation_repository.dart';
 import '../../services/automation/automation_launch_session_binding.dart';
+import '../../services/automation/automation_scope_label.dart';
 import '../../theme/app_text_styles.dart';
 import '../../utils/coarse_relative_time.dart';
+import '../../utils/workspace_display_name.dart';
 import '../../widgets/app_dialog.dart';
 import '../../widgets/app_icon_button.dart';
 import '../../widgets/menu/sidebar_action_menu.dart';
-import '../home_workspace/open_workspace_tab_actions.dart';
 import 'automation_editor_dialog.dart';
 import 'automation_schedule_picker.dart';
 import 'automation_sort.dart';
@@ -46,18 +46,14 @@ String formatAutomationRunCountLabel(
 /// dialog content wrapper.
 class AutomationsListBody extends StatefulWidget {
   const AutomationsListBody({
-    this.filterTabScope,
-    this.filterSessionId,
-    this.groupByTabScope = false,
+    this.listScope,
     this.sort = AutomationSort.nameAsc,
     this.enabledFilter = AutomationEnabledFilter.all,
     this.actionFilter = AutomationActionFilter.all,
     super.key,
   });
 
-  final AutomationTabScope? filterTabScope;
-  final String? filterSessionId;
-  final bool groupByTabScope;
+  final AutomationListScope? listScope;
   final AutomationSort sort;
   final AutomationEnabledFilter enabledFilter;
   final AutomationActionFilter actionFilter;
@@ -67,38 +63,72 @@ class AutomationsListBody extends StatefulWidget {
 }
 
 class _AutomationsListBodyState extends State<AutomationsListBody> {
-  var _didLoad = false;
+  var _loadedScopeKey = '';
 
   @override
   void didChangeDependencies() {
     super.didChangeDependencies();
-    if (_didLoad) return;
-    _didLoad = true;
-    final cubit = context.read<AutomationCubit>();
-    if (widget.filterTabScope != null) {
-      unawaited(cubit.loadForTabScope(widget.filterTabScope!));
-    } else {
-      unawaited(cubit.load());
+    _ensureLoaded();
+  }
+
+  @override
+  void didUpdateWidget(covariant AutomationsListBody oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.listScope != widget.listScope) {
+      _loadedScopeKey = '';
+      _ensureLoaded();
     }
   }
 
-  List<Automation> _visible(List<Automation> automations) {
+  void _ensureLoaded() {
+    final scopeKey = _scopeKey(widget.listScope);
+    if (_loadedScopeKey == scopeKey) return;
+    _loadedScopeKey = scopeKey;
+    unawaited(_reload(context.read<AutomationCubit>()));
+  }
+
+  String _scopeKey(AutomationListScope? scope) {
+    if (scope == null) return 'all';
+    if (scope.isWorkspace) return 'workspace:${scope.workspaceId}';
+    if (scope.isTab) {
+      final sessionId = scope.sessionId ?? '';
+      return 'tab:${scope.tabScope!.tabKey}:$sessionId';
+    }
+    return 'all';
+  }
+
+  List<Automation> _visible(AutomationState state) {
+    final sessionId = widget.listScope?.isTab == true
+        ? widget.listScope!.sessionId
+        : null;
     final filtered = filterAutomations(
-      automations: automations,
+      automations: state.visibleAutomations,
       enabledFilter: widget.enabledFilter,
       actionFilter: widget.actionFilter,
-      sessionId: widget.filterSessionId,
+      sessionId: sessionId,
     );
     return sortAutomations(filtered, widget.sort);
   }
 
-  Future<void> _reload() async {
-    final cubit = context.read<AutomationCubit>();
-    if (widget.filterTabScope != null) {
-      await cubit.loadForTabScope(widget.filterTabScope!);
-    } else {
+  Future<void> _reload(AutomationCubit cubit) async {
+    final scope = widget.listScope;
+    if (scope == null || scope.isAll) {
       await cubit.load();
+      return;
     }
+    if (scope.isWorkspace) {
+      await cubit.loadForWorkspace(scope.workspaceId!);
+      return;
+    }
+    await cubit.loadForTabScope(
+      scope.tabScope!,
+      sessionId: scope.sessionId,
+    );
+  }
+
+  bool get _groupByLaunchProfile {
+    final scope = widget.listScope;
+    return scope == null || scope.isAll || scope.isWorkspace;
   }
 
   Future<void> _toggleEnabled(Automation automation) async {
@@ -155,7 +185,7 @@ class _AutomationsListBodyState extends State<AutomationsListBody> {
       workspaceId: automation.workspaceId,
       sessionId: automation.sessionId,
     );
-    if (saved != null) await _reload();
+    if (saved != null) await _reload(context.read<AutomationCubit>());
   }
 
   Future<void> _runNow(Automation automation) async {
@@ -187,7 +217,7 @@ class _AutomationsListBodyState extends State<AutomationsListBody> {
             state.automations.isEmpty) {
           return const Center(child: CircularProgressIndicator());
         }
-        final automations = _visible(state.automations);
+        final automations = _visible(state);
         if (automations.isEmpty) {
           return Center(
             child: Padding(
@@ -200,9 +230,10 @@ class _AutomationsListBodyState extends State<AutomationsListBody> {
             ),
           );
         }
-        if (widget.groupByTabScope) {
+        if (_groupByLaunchProfile) {
           return _GroupedList(
             automations: automations,
+            listScope: widget.listScope,
             runsByAutomationId: state.runsByAutomationId,
             onToggleEnabled: _toggleEnabled,
             onShowRunHistory: _showRunHistory,
@@ -212,29 +243,15 @@ class _AutomationsListBodyState extends State<AutomationsListBody> {
             formatNextRun: (ms) => _formatNextRun(l10n, ms),
           );
         }
-        return ListView.builder(
-          padding: const EdgeInsets.fromLTRB(0, 0, 0, 8),
-          itemCount: automations.length,
-          itemBuilder: (context, index) {
-            final a = automations[index];
-            final runs = List<AutomationRun>.of(
-              state.runsByAutomationId[a.id] ?? const [],
-            )..sort((x, y) => y.scheduledForMs.compareTo(x.scheduledForMs));
-            return AutomationRow(
-              automation: a,
-              scheduleSummary: localizedScheduleSummary(
-                l10n,
-                scheduleDraftFromAutomation(a),
-              ),
-              runCountLabel: formatAutomationRunCountLabel(l10n, a),
-              nextRunLabel: _formatNextRun(l10n, a.nextRunAtMs),
-              onToggleEnabled: () => unawaited(_toggleEnabled(a)),
-              onShowRunHistory: () => _showRunHistory(a, runs),
-              onEdit: () => unawaited(_edit(a)),
-              onDelete: () => unawaited(_delete(a)),
-              onRunNow: () => unawaited(_runNow(a)),
-            );
-          },
+        return _FlatList(
+          automations: automations,
+          runsByAutomationId: state.runsByAutomationId,
+          onToggleEnabled: _toggleEnabled,
+          onShowRunHistory: _showRunHistory,
+          onEdit: _edit,
+          onDelete: _delete,
+          onRunNow: _runNow,
+          formatNextRun: (ms) => _formatNextRun(l10n, ms),
         );
       },
     );
@@ -256,8 +273,8 @@ class _AutomationsListBodyState extends State<AutomationsListBody> {
   }
 }
 
-class _GroupedList extends StatelessWidget {
-  const _GroupedList({
+class _FlatList extends StatelessWidget {
+  const _FlatList({
     required this.automations,
     required this.runsByAutomationId,
     required this.onToggleEnabled,
@@ -279,6 +296,76 @@ class _GroupedList extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    return BlocBuilder<LaunchProfileCubit, LaunchProfileState>(
+      builder: (context, profileState) {
+        return BlocBuilder<CliPresetsCubit, CliPresetsState>(
+          builder: (context, presetState) {
+            final l10n = context.l10n;
+            return ListView.builder(
+              padding: const EdgeInsets.fromLTRB(0, 0, 0, 8),
+              itemCount: automations.length,
+              itemBuilder: (context, index) {
+                final automation = automations[index];
+                final runs = List<AutomationRun>.of(
+                  runsByAutomationId[automation.id] ?? const [],
+                )..sort((x, y) => y.scheduledForMs.compareTo(x.scheduledForMs));
+                return AutomationRow(
+                  automation: automation,
+                  scopeSubtitle: automationScopeSubtitle(
+                    l10n,
+                    automation: automation,
+                    profiles: profileState,
+                    presets: presetState,
+                  ),
+                  scheduleSummary: localizedScheduleSummary(
+                    l10n,
+                    scheduleDraftFromAutomation(automation),
+                  ),
+                  runCountLabel: formatAutomationRunCountLabel(
+                    l10n,
+                    automation,
+                  ),
+                  nextRunLabel: formatNextRun(automation.nextRunAtMs),
+                  onToggleEnabled: () => unawaited(onToggleEnabled(automation)),
+                  onShowRunHistory: () => onShowRunHistory(automation, runs),
+                  onEdit: () => unawaited(onEdit(automation)),
+                  onDelete: () => unawaited(onDelete(automation)),
+                  onRunNow: () => unawaited(onRunNow(automation)),
+                );
+              },
+            );
+          },
+        );
+      },
+    );
+  }
+}
+
+class _GroupedList extends StatelessWidget {
+  const _GroupedList({
+    required this.automations,
+    required this.listScope,
+    required this.runsByAutomationId,
+    required this.onToggleEnabled,
+    required this.onShowRunHistory,
+    required this.onEdit,
+    required this.onDelete,
+    required this.onRunNow,
+    required this.formatNextRun,
+  });
+
+  final List<Automation> automations;
+  final AutomationListScope? listScope;
+  final Map<String, List<AutomationRun>> runsByAutomationId;
+  final Future<void> Function(Automation) onToggleEnabled;
+  final void Function(Automation, List<AutomationRun>) onShowRunHistory;
+  final Future<void> Function(Automation) onEdit;
+  final Future<void> Function(Automation) onDelete;
+  final Future<void> Function(Automation) onRunNow;
+  final String Function(int?) formatNextRun;
+
+  @override
+  Widget build(BuildContext context) {
     final l10n = context.l10n;
     final cs = Theme.of(context).colorScheme;
     final styles = AppTextStyles.of(context);
@@ -286,101 +373,115 @@ class _GroupedList extends StatelessWidget {
       builder: (context, chatState) {
         return BlocBuilder<LaunchProfileCubit, LaunchProfileState>(
           builder: (context, profileState) {
-            return _buildGroupedList(
-              context,
-              l10n: l10n,
-              cs: cs,
-              styles: styles,
-              workspaces: chatState.workspaces,
-              identities: profileState.identities,
+            return BlocBuilder<CliPresetsCubit, CliPresetsState>(
+              builder: (context, presetState) {
+                final groups = _groupAutomations(
+                  automations,
+                  listScope: listScope,
+                  workspaces: chatState.workspaces,
+                  profiles: profileState,
+                  l10n: l10n,
+                );
+                return ListView(
+                  padding: const EdgeInsets.fromLTRB(0, 0, 0, 8),
+                  children: [
+                    for (final group in groups) ...[
+                      Padding(
+                        padding: const EdgeInsets.fromLTRB(0, 12, 0, 6),
+                        child: Text(
+                          group.label,
+                          style: styles.bodySmall.copyWith(
+                            color: cs.onSurfaceVariant,
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
+                      ),
+                      ...group.automations.map((automation) {
+                        final runs = List<AutomationRun>.of(
+                          runsByAutomationId[automation.id] ?? const [],
+                        )..sort(
+                          (x, y) =>
+                              y.scheduledForMs.compareTo(x.scheduledForMs),
+                        );
+                        return AutomationRow(
+                          automation: automation,
+                          scopeSubtitle: automationScopeSubtitle(
+                            l10n,
+                            automation: automation,
+                            profiles: profileState,
+                            presets: presetState,
+                          ),
+                          scheduleSummary: localizedScheduleSummary(
+                            l10n,
+                            scheduleDraftFromAutomation(automation),
+                          ),
+                          runCountLabel: formatAutomationRunCountLabel(
+                            l10n,
+                            automation,
+                          ),
+                          nextRunLabel: formatNextRun(automation.nextRunAtMs),
+                          onToggleEnabled: () =>
+                              unawaited(onToggleEnabled(automation)),
+                          onShowRunHistory: () =>
+                              onShowRunHistory(automation, runs),
+                          onEdit: () => unawaited(onEdit(automation)),
+                          onDelete: () => unawaited(onDelete(automation)),
+                          onRunNow: () => unawaited(onRunNow(automation)),
+                        );
+                      }),
+                    ],
+                  ],
+                );
+              },
             );
           },
         );
       },
     );
   }
-
-  Widget _buildGroupedList(
-    BuildContext context, {
-    required AppLocalizations l10n,
-    required ColorScheme cs,
-    required AppTextStyles styles,
-    required List<Workspace> workspaces,
-    required List<LaunchProfile> identities,
-  }) {
-    final grouped = <AutomationTabScope, List<Automation>>{};
-    for (final a in automations) {
-      grouped.putIfAbsent(a.tabScope, () => []).add(a);
-    }
-    final sortedGroups = grouped.entries.toList()
-      ..sort(
-        (a, b) =>
-            automationTabScopeGroupLabel(
-              l10n,
-              a.key,
-              workspaces,
-              identities,
-            ).compareTo(
-              automationTabScopeGroupLabel(l10n, b.key, workspaces, identities),
-            ),
-      );
-    return ListView(
-      padding: const EdgeInsets.fromLTRB(0, 0, 0, 8),
-      children: [
-        for (final entry in sortedGroups) ...[
-          Padding(
-            padding: const EdgeInsets.fromLTRB(0, 12, 0, 6),
-            child: Text(
-              automationTabScopeGroupLabel(
-                l10n,
-                entry.key,
-                workspaces,
-                identities,
-              ),
-              style: styles.bodySmall.copyWith(
-                color: cs.onSurfaceVariant,
-                fontWeight: FontWeight.w600,
-              ),
-            ),
-          ),
-          ...entry.value.map((a) {
-            final runs = List<AutomationRun>.of(
-              runsByAutomationId[a.id] ?? const [],
-            )..sort((x, y) => y.scheduledForMs.compareTo(x.scheduledForMs));
-            return AutomationRow(
-              automation: a,
-              scheduleSummary: localizedScheduleSummary(
-                l10n,
-                scheduleDraftFromAutomation(a),
-              ),
-              runCountLabel: formatAutomationRunCountLabel(l10n, a),
-              nextRunLabel: formatNextRun(a.nextRunAtMs),
-              onToggleEnabled: () => unawaited(onToggleEnabled(a)),
-              onShowRunHistory: () => onShowRunHistory(a, runs),
-              onEdit: () => unawaited(onEdit(a)),
-              onDelete: () => unawaited(onDelete(a)),
-              onRunNow: () => unawaited(onRunNow(a)),
-            );
-          }),
-        ],
-      ],
-    );
-  }
 }
 
-String automationTabScopeGroupLabel(
-  AppLocalizations l10n,
-  AutomationTabScope scope,
-  List<Workspace> workspaces,
-  List<LaunchProfile> identities,
-) {
-  final workspace = workspaces
-      .where((w) => w.workspaceId == scope.workspaceId)
-      .firstOrNull;
-  if (workspace == null) {
-    return scope.workspaceId;
+class _AutomationGroup {
+  const _AutomationGroup({required this.label, required this.automations});
+
+  final String label;
+  final List<Automation> automations;
+}
+
+List<_AutomationGroup> _groupAutomations(
+  List<Automation> automations, {
+  required AutomationListScope? listScope,
+  required List<Workspace> workspaces,
+  required LaunchProfileState profiles,
+  required AppLocalizations l10n,
+}) {
+  final includeWorkspaceName = listScope == null || listScope.isAll;
+  final grouped = <String, List<Automation>>{};
+  for (final automation in automations) {
+    final key = includeWorkspaceName
+        ? '${automation.workspaceId}\x1f${automation.launchProfileId}'
+        : automation.launchProfileId;
+    grouped.putIfAbsent(key, () => []).add(automation);
   }
-  return workspaceTabDisplayLabel(l10n: l10n, workspace: workspace);
+
+  final groups = grouped.entries.map((entry) {
+    final automation = entry.value.first;
+    final profileLabel = automationLaunchProfileGroupLabel(
+      l10n,
+      launchProfileId: automation.launchProfileId,
+      profiles: profiles,
+    );
+    final workspace = workspaces
+        .where((w) => w.workspaceId == automation.workspaceId)
+        .firstOrNull;
+    final label = includeWorkspaceName && workspace != null
+        ? '${workspace.localizedName(l10n)} · $profileLabel'
+        : profileLabel;
+    return _AutomationGroup(label: label, automations: entry.value);
+  }).toList();
+
+  groups.sort((a, b) => a.label.compareTo(b.label));
+  return groups;
 }
 
 class AutomationRow extends StatelessWidget {
@@ -394,10 +495,12 @@ class AutomationRow extends StatelessWidget {
     required this.onEdit,
     required this.onDelete,
     required this.onRunNow,
+    this.scopeSubtitle,
     super.key,
   });
 
   final Automation automation;
+  final String? scopeSubtitle;
   final String scheduleSummary;
   final String runCountLabel;
   final String nextRunLabel;
@@ -436,6 +539,18 @@ class AutomationRow extends StatelessWidget {
                     overflow: TextOverflow.ellipsis,
                     style: styles.prominent,
                   ),
+                  if (scopeSubtitle != null && scopeSubtitle!.isNotEmpty) ...[
+                    const SizedBox(height: 2),
+                    Text(
+                      scopeSubtitle!,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: styles.caption.copyWith(
+                        color: cs.onSurfaceVariant,
+                        fontWeight: FontWeight.w500,
+                      ),
+                    ),
+                  ],
                   const SizedBox(height: 2),
                   Text(
                     scheduleSummary,
@@ -627,48 +742,5 @@ class AutomationRunHistoryRow extends StatelessWidget {
       AutomationRunStatus.dispatchFailed => cs.error,
       _ => cs.onSurface,
     };
-  }
-}
-
-/// Summary for workspace sidebar header: enabled count + nearest next run.
-class AutomationWorkspaceSummary {
-  const AutomationWorkspaceSummary({
-    required this.enabledCount,
-    this.nearestNextRunAtMs,
-  });
-
-  final int enabledCount;
-  final int? nearestNextRunAtMs;
-
-  static AutomationWorkspaceSummary fromAutomations(
-    List<Automation> automations,
-    AutomationTabScope tabScope,
-  ) {
-    final enabled = automations
-        .where(
-          (a) =>
-              a.workspaceId == tabScope.workspaceId &&
-              a.launchProfileId == tabScope.launchProfileId &&
-              a.enabled,
-        )
-        .toList();
-    int? nearest;
-    for (final a in enabled) {
-      final next = a.nextRunAtMs;
-      if (next == null) continue;
-      if (nearest == null || next < nearest) nearest = next;
-    }
-    return AutomationWorkspaceSummary(
-      enabledCount: enabled.length,
-      nearestNextRunAtMs: nearest,
-    );
-  }
-
-  static Future<AutomationWorkspaceSummary> load(
-    AutomationRepository repo,
-    AutomationTabScope tabScope,
-  ) async {
-    final automations = await repo.listForTabScope(tabScope);
-    return fromAutomations(automations, tabScope);
   }
 }

@@ -9,6 +9,7 @@ import '../cubits/automation_state.dart';
 import '../cubits/chat_cubit.dart';
 import '../l10n/l10n_extensions.dart';
 import '../models/app_session.dart';
+import '../models/automation_list_scope.dart';
 import '../models/automation_tab_scope.dart';
 import '../pages/automations/automation_editor_dialog.dart';
 import '../pages/automations/automations_dialog.dart';
@@ -218,8 +219,10 @@ class _SidebarSessionTileState extends State<SidebarSessionTile> {
       case 'manage_schedule':
         await showAutomationsPanelDialog(
           context,
-          filterTabScope: _tabScopeForSession(session),
-          filterSessionId: session.sessionId,
+          listScope: AutomationListScope.tab(
+            _tabScopeForSession(session),
+            sessionId: session.sessionId,
+          ),
         );
         if (mounted) {
           _refreshSessionAutomationCount(context.read<AutomationCubit>().state);

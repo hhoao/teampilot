@@ -59,6 +59,26 @@ void main() {
       expect(bus.pendingDoorbellNoticeFor('worker'), isNotNull);
     });
 
+    test('does not skip when operator turn is latched', () {
+      final bus = TeamBus(launcher: FakeMemberLauncher());
+      bus.declareMember(
+        AgentNode.test(
+          memberId: 'worker',
+          lifecycle: MemberLifecycle.running,
+          activity: MemberActivity.turnDoneBusWait,
+        ),
+      );
+
+      expect(
+        PtyAutomationDeliveryGuard.shouldSkipRetry(
+          bus: bus,
+          memberId: 'worker',
+          operatorTurnActive: true,
+        ),
+        isFalse,
+      );
+    });
+
     test('null bus never skips', () {
       expect(
         PtyAutomationDeliveryGuard.shouldSkipRetry(bus: null, memberId: 'worker'),

@@ -1,7 +1,7 @@
 import '../../cubits/launch_profile_cubit.dart';
 import '../../models/launch_profile.dart';
 import '../../models/workspace.dart';
-import '../../utils/workspace_path_utils.dart';
+import '../../models/workspace_topology.dart';
 import '../storage/launch_profile_provisioner.dart';
 
 /// Launch profiles that may own automations for [workspace].

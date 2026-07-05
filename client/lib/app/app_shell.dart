@@ -752,7 +752,7 @@ Future<AppShell> buildAppShell({
   );
   chatCubit.bindAutomationsChangeNotifier(() {
     if (!automationCubit.isClosed) {
-      unawaited(automationCubit.reloadPreservingFilters());
+      unawaited(automationCubit.reloadPreservingScope());
     }
   });
 

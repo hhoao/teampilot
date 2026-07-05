@@ -27,11 +27,16 @@ class TabTeamBusGateway implements AutomationBusGateway {
       sessionId,
       memberId,
       message,
+      directToPty: true,
     );
   }
 
   @override
   Future<void> ensureMemberReady(String sessionId, String memberId) {
-    return _coordinator.ensureMemberInputReady(sessionId, memberId);
+    return _coordinator.ensureMemberInputReady(
+      sessionId,
+      memberId,
+      directToPty: true,
+    );
   }
 }

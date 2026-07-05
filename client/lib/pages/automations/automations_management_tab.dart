@@ -54,7 +54,6 @@ class AutomationsManagementTab extends StatelessWidget {
         const SizedBox(height: 16),
         Expanded(
           child: AutomationsListBody(
-            groupByTabScope: true,
             sort: sort,
             enabledFilter: enabledFilter,
             actionFilter: actionFilter,

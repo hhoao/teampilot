@@ -5,7 +5,6 @@ import '../../cubits/launch_profile_cubit.dart';
 import '../../l10n/app_localizations.dart';
 import '../../models/automation.dart';
 import '../../models/launch_profile_kind.dart';
-import '../../models/personal_profile.dart';
 import '../../models/team_config.dart';
 
 /// Short subtitle for workspace sidebar rows and list grouping.

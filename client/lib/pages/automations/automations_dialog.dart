@@ -5,7 +5,7 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 
 import '../../cubits/automation_cubit.dart';
 import '../../l10n/l10n_extensions.dart';
-import '../../models/automation_tab_scope.dart';
+import '../../models/automation_list_scope.dart';
 import '../../widgets/app_dialog.dart';
 import '../../widgets/app_icon_button.dart';
 import '../../widgets/dropdown/app_dropdown_decoration.dart';
@@ -16,14 +16,9 @@ import 'automations_list_body.dart';
 
 /// Workspace-scoped automations list in a modal dialog.
 class AutomationsDialog extends StatefulWidget {
-  const AutomationsDialog({
-    required this.filterTabScope,
-    this.filterSessionId,
-    super.key,
-  });
+  const AutomationsDialog({required this.listScope, super.key});
 
-  final AutomationTabScope filterTabScope;
-  final String? filterSessionId;
+  final AutomationListScope listScope;
 
   @override
   State<AutomationsDialog> createState() => _AutomationsDialogState();
@@ -33,17 +28,34 @@ class _AutomationsDialogState extends State<AutomationsDialog> {
   AutomationEnabledFilter _enabledFilter = AutomationEnabledFilter.all;
 
   Future<void> _create() async {
+    final scope = widget.listScope;
     final saved = await AutomationEditorDialog.show(
       context,
-      launchProfileId: widget.filterTabScope.launchProfileId,
-      workspaceId: widget.filterTabScope.workspaceId,
-      sessionId: widget.filterSessionId,
+      workspaceId: scope.isWorkspace ? scope.workspaceId : null,
+      launchProfileId: scope.isTab ? scope.tabScope!.launchProfileId : null,
+      sessionId: scope.sessionId,
+      pickLaunchProfile: scope.isWorkspace,
     );
     if (saved != null && mounted) {
-      await context.read<AutomationCubit>().loadForTabScope(
-        widget.filterTabScope,
-      );
+      await _reload();
     }
+  }
+
+  Future<void> _reload() async {
+    final cubit = context.read<AutomationCubit>();
+    final scope = widget.listScope;
+    if (scope.isWorkspace) {
+      await cubit.loadForWorkspace(scope.workspaceId!);
+      return;
+    }
+    if (scope.isTab) {
+      await cubit.loadForTabScope(
+        scope.tabScope!,
+        sessionId: scope.sessionId,
+      );
+      return;
+    }
+    await cubit.load();
   }
 
   @override
@@ -96,8 +108,7 @@ class _AutomationsDialogState extends State<AutomationsDialog> {
           ),
           Flexible(
             child: AutomationsListBody(
-              filterTabScope: widget.filterTabScope,
-              filterSessionId: widget.filterSessionId,
+              listScope: widget.listScope,
               enabledFilter: _enabledFilter,
             ),
           ),
@@ -110,14 +121,10 @@ class _AutomationsDialogState extends State<AutomationsDialog> {
 /// Opens [AutomationsDialog] from the workspace sidebar or session menu.
 Future<void> showAutomationsPanelDialog(
   BuildContext context, {
-  required AutomationTabScope filterTabScope,
-  String? filterSessionId,
+  required AutomationListScope listScope,
 }) {
   return showDialog<void>(
     context: context,
-    builder: (dialogContext) => AutomationsDialog(
-      filterTabScope: filterTabScope,
-      filterSessionId: filterSessionId,
-    ),
+    builder: (dialogContext) => AutomationsDialog(listScope: listScope),
   );
 }

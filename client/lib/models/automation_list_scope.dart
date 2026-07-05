@@ -16,12 +16,23 @@ class AutomationListScope extends Equatable {
   const AutomationListScope.all() : this._();
 
   /// One workspace — personal plus every team store under [workspaceId].
-  const AutomationListScope.workspace(String workspaceId)
-    : this._(workspaceId: workspaceId.trim());
+  factory AutomationListScope.workspace(String workspaceId) {
+    return AutomationListScope._(workspaceId: workspaceId.trim());
+  }
 
   /// One launch-profile store, optionally narrowed to [sessionId].
-  const AutomationListScope.tab(AutomationTabScope tabScope, {String? sessionId})
-    : this._(tabScope: tabScope, sessionId: sessionId?.trim());
+  factory AutomationListScope.tab(
+    AutomationTabScope tabScope, {
+    String? sessionId,
+  }) {
+    final trimmedSession = sessionId?.trim();
+    return AutomationListScope._(
+      tabScope: tabScope,
+      sessionId: trimmedSession == null || trimmedSession.isEmpty
+          ? null
+          : trimmedSession,
+    );
+  }
 
   final String? workspaceId;
   final AutomationTabScope? tabScope;
@@ -30,12 +41,6 @@ class AutomationListScope extends Equatable {
   bool get isAll => workspaceId == null && tabScope == null;
   bool get isWorkspace => workspaceId != null && tabScope == null;
   bool get isTab => tabScope != null;
-
-  List<AutomationListScope> get reloadTargets {
-    if (isTab) return [this];
-    if (isWorkspace) return [this];
-    return const [AutomationListScope.all()];
-  }
 
   @override
   List<Object?> get props => [workspaceId, tabScope, sessionId];

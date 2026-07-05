@@ -5,8 +5,6 @@ import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:teampilot/theme/app_icon_sizes.dart';
 
-import '../../../cubits/automation_cubit.dart';
-import '../../../cubits/automation_state.dart';
 import '../../../cubits/chat_cubit.dart';
 import '../../../cubits/workspace_landing_context_cubit.dart';
 import '../../../cubits/worktree_cubit.dart';
@@ -24,10 +22,6 @@ import '../../../widgets/app_toast/app_toast.dart';
 import '../../../theme/app_toast_theme.dart';
 import 'worktree_create_dialog.dart';
 import 'worktree_group_section.dart';
-import '../../../models/automation_tab_scope.dart';
-import '../../../pages/automations/automation_editor_dialog.dart';
-import '../../../pages/automations/automations_dialog.dart';
-import '../../../pages/automations/automations_list_body.dart';
 import '../../../theme/app_text_styles.dart';
 import '../../../utils/app_keys.dart';
 import '../../../utils/app_session_sort.dart';
@@ -38,6 +32,7 @@ import '../../../utils/workspace_tab_session_scope.dart';
 import '../../../widgets/app_icon_button.dart';
 import '../../../widgets/menu/sidebar_action_menu.dart';
 import '../../../widgets/sidebar_session_tile.dart';
+import 'workspace_automations_section.dart';
 import 'workspace_search_dialog.dart';
 import 'workspace_session_actions.dart';
 
@@ -123,14 +118,7 @@ class _WorkspaceSidebarState extends State<WorkspaceSidebar> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          _AutomationsHeader(
-            tabScope: AutomationTabScope(
-              workspaceId: widget.workspace.workspaceId,
-              launchProfileId: _landingProfileId(context),
-            ),
-            onTap: () => _openAutomationsPanel(context),
-            onAdd: () => _openAutomationsPanel(context, create: true),
-          ),
+          WorkspaceAutomationsSection(workspace: widget.workspace),
           const SizedBox(height: 12),
           _SidebarActionTile(
             key: AppKeys.newChatSidebarTile,
@@ -413,141 +401,6 @@ class _WorkspaceSidebarState extends State<WorkspaceSidebar> {
       context,
       widget.workspace,
       tabScopeId: widget.tabScopeId,
-    );
-  }
-
-  Future<void> _openAutomationsPanel(
-    BuildContext context, {
-    bool create = false,
-  }) async {
-    final profileId = _landingProfileId(context);
-    if (create) {
-      final saved = await AutomationEditorDialog.show(
-        context,
-        launchProfileId: profileId,
-        workspaceId: widget.workspace.workspaceId,
-      );
-      if (saved == null || !context.mounted) return;
-    }
-    if (!context.mounted) return;
-    await showAutomationsPanelDialog(
-      context,
-      filterTabScope: AutomationTabScope(
-        workspaceId: widget.workspace.workspaceId,
-        launchProfileId: profileId,
-      ),
-    );
-  }
-}
-
-class _AutomationsHeader extends StatefulWidget {
-  const _AutomationsHeader({
-    required this.tabScope,
-    required this.onTap,
-    required this.onAdd,
-  });
-
-  final AutomationTabScope tabScope;
-  final VoidCallback onTap;
-  final VoidCallback onAdd;
-
-  @override
-  State<_AutomationsHeader> createState() => _AutomationsHeaderState();
-}
-
-class _AutomationsHeaderState extends State<_AutomationsHeader> {
-  var _didLoad = false;
-  var _hovered = false;
-
-  @override
-  void didChangeDependencies() {
-    super.didChangeDependencies();
-    if (_didLoad) return;
-    _didLoad = true;
-    unawaited(context.read<AutomationCubit>().loadForTabScope(widget.tabScope));
-  }
-
-  ({String title, String? time}) _sidebarParts(AppLocalizations l10n, int? ms) {
-    final title = l10n.automationsSidebarTitle;
-    if (ms == null) return (title: title, time: null);
-    final dt = DateTime.fromMillisecondsSinceEpoch(ms);
-    final time =
-        '${dt.hour.toString().padLeft(2, '0')}:${dt.minute.toString().padLeft(2, '0')}';
-    return (title: title, time: time);
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    final l10n = context.l10n;
-    final cs = Theme.of(context).colorScheme;
-    final styles = AppTextStyles.of(context);
-
-    return BlocBuilder<AutomationCubit, AutomationState>(
-      builder: (context, state) {
-        final summary = AutomationWorkspaceSummary.fromAutomations(
-          state.automations,
-          widget.tabScope,
-        );
-        final parts = _sidebarParts(l10n, summary.nearestNextRunAtMs);
-        final hoverTint = cs.onSurface.withValues(alpha: 0.05);
-        final background = _hovered ? hoverTint : Colors.transparent;
-
-        return MouseRegion(
-          onEnter: (_) => setState(() => _hovered = true),
-          onExit: (_) => setState(() => _hovered = false),
-          cursor: SystemMouseCursors.click,
-          child: InkWell(
-            onTap: widget.onTap,
-            borderRadius: BorderRadius.circular(8),
-            child: Container(
-              padding: const EdgeInsets.fromLTRB(8, 8, 4, 8),
-              decoration: BoxDecoration(
-                color: background,
-                borderRadius: BorderRadius.circular(8),
-                border: Border.all(
-                  color: cs.outlineVariant.withValues(alpha: 0.5),
-                ),
-              ),
-              child: Row(
-                children: [
-                  Icon(
-                    Icons.bolt_rounded,
-                    size: context.appIconSizes.md,
-                    color: cs.primary,
-                  ),
-                  const SizedBox(width: 8),
-                  Expanded(
-                    child: Text.rich(
-                      TextSpan(
-                        style: styles.prominent,
-                        children: [
-                          TextSpan(text: parts.title),
-                          if (parts.time != null)
-                            TextSpan(
-                              text: ' · ${parts.time}',
-                              style: styles.prominent.copyWith(
-                                color: cs.onSurfaceVariant,
-                              ),
-                            ),
-                        ],
-                      ),
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                    ),
-                  ),
-                  AppIconButton(
-                    icon: Icons.add_rounded,
-                    compact: true,
-                    size: AppIconButton.kCompactSize,
-                    tooltip: l10n.automationsNew,
-                    onTap: widget.onAdd,
-                  ),
-                ],
-              ),
-            ),
-          ),
-        );
-      },
     );
   }
 }

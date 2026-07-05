@@ -379,7 +379,13 @@ class TabTeamBusCoordinator implements MemberMaterializer {
   @override
   void injectMemberStdin(String sessionId, String memberId, String text) {
     unawaited(
-      _deliverMemberStdin(sessionId, memberId, text, automation: true),
+      _deliverMemberStdin(
+        sessionId,
+        memberId,
+        text,
+        automation: true,
+        latchUserTurn: false,
+      ),
     );
   }
 
@@ -389,6 +395,7 @@ class TabTeamBusCoordinator implements MemberMaterializer {
     String memberId,
     String text, {
     required bool automation,
+    bool latchUserTurn = true,
   }) async {
     final shell = _tabStore.bySessionId(sessionId)?.memberShells[memberId];
     if (shell == null) {
@@ -400,7 +407,12 @@ class TabTeamBusCoordinator implements MemberMaterializer {
     }
     final trimmed = text.trim();
     if (trimmed.isEmpty) return;
-    _beginMemberTurnForPtyDelivery(sessionId, memberId, shell);
+    _beginMemberTurnForPtyDelivery(
+      sessionId,
+      memberId,
+      shell,
+      latchUserTurn: latchUserTurn,
+    );
     final usesFullScreen = _memberUsesFullScreen(sessionId, memberId);
     appLogger.d(
       '[team-bus] pty-inject member=$memberId '
@@ -504,7 +516,12 @@ class TabTeamBusCoordinator implements MemberMaterializer {
     }
     final trimmed = notice.trim();
     if (trimmed.isEmpty) return;
-    _beginMemberTurnForPtyDelivery(sessionId, memberId, shell);
+    _beginMemberTurnForPtyDelivery(
+      sessionId,
+      memberId,
+      shell,
+      latchUserTurn: false,
+    );
     appLogger.d(
       '[team-bus] retry-delivery member=$memberId session=$sessionId '
       'preview=${_doorbellLogPreview(trimmed)}',
@@ -524,25 +541,29 @@ class TabTeamBusCoordinator implements MemberMaterializer {
     );
   }
 
-  /// All PTY message delivery (doorbell, landing directToPty, automation) must
-  /// mark in-turn the same way as a user line at the member prompt — unless the
-  /// worker is already parked in MCP `wait_for_message`.
+  /// Operator paste (compose / automation / directToPty) latches
+  /// [TerminalSession.userTurnActive]. Doorbell stdin inject does not — parked
+  /// workers consume mail via MCP `wait_for_message`.
   void _beginMemberTurnForPtyDelivery(
     String sessionId,
     String memberId,
-    TerminalSession shell,
-  ) {
+    TerminalSession shell, {
+    bool latchUserTurn = true,
+  }) {
     final bus = busForSession(sessionId);
-    if (bus?.isWaitingForMessage(memberId) ?? false) return;
-    // Same "send → working" latch as personal mode ([TerminalSession.userTurnActive]).
+    if (!latchUserTurn && (bus?.isWaitingForMessage(memberId) ?? false)) {
+      return;
+    }
     shell.markUserTurnStarted();
     bus?.markTurnStarted(memberId);
   }
 
   bool _shouldSkipAutomationRetry(String sessionId, String memberId) {
+    final shell = _tabStore.bySessionId(sessionId)?.memberShells[memberId];
     return PtyAutomationDeliveryGuard.shouldSkipRetry(
       bus: busForSession(sessionId),
       memberId: memberId,
+      operatorTurnActive: shell?.userTurnActive ?? false,
     );
   }
 
@@ -615,8 +636,8 @@ class TabTeamBusCoordinator implements MemberMaterializer {
 
   /// Delivers operator text to a member.
   ///
-  /// Default: TeamBus mailbox when a bus is installed. [directToPty] skips the
-  /// bus and injects into the member PTY (compose landing / first prompt).
+  /// Default: TeamBus mailbox when a bus is installed. [directToPty] injects at
+  /// the member prompt (compose landing, automation, first prompt).
   Future<void> deliverUserCommandToMember(
     String sessionId,
     String memberId,
@@ -687,9 +708,8 @@ class TabTeamBusCoordinator implements MemberMaterializer {
       tab.memberShells.forEach((memberId, shell) {
         final key = '${tab.info.id}:$memberId';
         final parked = bus?.isWaitingForMessage(memberId) ?? false;
-        final inTurn = !parked &&
-            (shell.userTurnActive ||
-                (bus?.isMemberInTurn(memberId) ?? false));
+        final inTurn = shell.userTurnActive ||
+            (!parked && (bus?.isMemberInTurn(memberId) ?? false));
         final stillWorking = MemberTurnIdleSync.tick(
           turnKey: key,
           inTurn: inTurn,
