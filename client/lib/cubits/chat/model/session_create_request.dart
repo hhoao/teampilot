@@ -1,3 +1,4 @@
+import '../../../models/expert_session_overlay.dart';
 import '../../../models/team_config.dart';
 import '../../../models/workspace.dart';
 import '../../../repositories/session_repository.dart';
@@ -16,6 +17,7 @@ class SessionCreateRequest {
     this.workingDirectory,
     this.emptyDisplayTitleFallback = 'New Chat',
     this.fixedSessionId,
+    this.expertOverlay,
   });
 
   final Workspace workspace;
@@ -33,4 +35,7 @@ class SessionCreateRequest {
 
   /// When set, the staged session uses this id instead of a fresh UUID.
   final String? fixedSessionId;
+
+  /// Personal summon: expert prompt/playbook snapshot at create time.
+  final ExpertSessionOverlay? expertOverlay;
 }

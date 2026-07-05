@@ -8,6 +8,7 @@ import '../models/workspace.dart';
 import '../models/workspace_topology.dart';
 import '../models/workspace_folder.dart';
 import '../models/app_session.dart';
+import '../models/expert_session_overlay.dart';
 import '../models/member_instance.dart';
 import '../models/session_member_binding.dart';
 import '../models/team_config.dart';
@@ -466,6 +467,7 @@ class SessionRepository {
     CliTool? cli,
     String? workingDirectory,
     String? fixedSessionId,
+    ExpertSessionOverlay? expertOverlay,
   }) async {
     final fs = await _fs();
     final workspace = await _readManifest(fs, workspaceId);
@@ -517,6 +519,7 @@ class SessionRepository {
     final pinnedId = fixedSessionId?.trim() ?? '';
     final sessionId = pinnedId.isNotEmpty ? pinnedId : const Uuid().v4();
     final now = DateTime.now().millisecondsSinceEpoch;
+    final overlayKey = expertOverlay?.expertKey.trim() ?? '';
     final session = AppSession(
       sessionId: sessionId,
       workspaceId: workspaceId,
@@ -534,6 +537,8 @@ class SessionRepository {
       launchState: AppSessionLaunchState.created,
       createdAt: now,
       updatedAt: now,
+      expertKey: overlayKey,
+      expertOverlay: expertOverlay,
     );
     await fs.ensureSessionDir(workspaceId, sessionId);
     await fs.writeText(

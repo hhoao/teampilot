@@ -1,3 +1,4 @@
+import '../../../models/expert_session_overlay.dart';
 import '../../../models/team_config.dart';
 
 /// Disk-write parameters for a session that is already surfaced in the UI.
@@ -9,6 +10,7 @@ class SessionPersistParams {
     this.cli,
     this.personalPresetId,
     this.workingDirectory,
+    this.expertOverlay,
   });
 
   final String sessionTeamId;
@@ -17,4 +19,5 @@ class SessionPersistParams {
   final CliTool? cli;
   final String? personalPresetId;
   final String? workingDirectory;
+  final ExpertSessionOverlay? expertOverlay;
 }

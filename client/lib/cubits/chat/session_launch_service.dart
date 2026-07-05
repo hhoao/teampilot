@@ -209,6 +209,7 @@ class SessionLaunchService
       cli: params.cli,
       workingDirectory: params.workingDirectory,
       fixedSessionId: session.sessionId,
+      expertOverlay: params.expertOverlay,
     );
     tab.persistedSession = persisted;
     _h.replaceSessionSnapshot(persisted);
