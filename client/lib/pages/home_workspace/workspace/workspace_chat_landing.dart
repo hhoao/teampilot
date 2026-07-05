@@ -9,6 +9,7 @@ import 'package:teampilot/widgets/app_toast/app_toast.dart';
 import '../../../cubits/app_provider_cubit.dart';
 import '../../../cubits/chat_cubit.dart';
 import '../../../cubits/cli_presets_cubit.dart';
+import '../../../cubits/expert_hub_cubit.dart';
 import '../../../cubits/launch_profile_cubit.dart';
 import '../../../cubits/plugin_cubit.dart';
 import '../../../cubits/skill_cubit.dart';
@@ -27,6 +28,7 @@ import '../../../services/compose/compose_landing_bundle.dart';
 import '../../../services/compose/compose_prompt_enhance.dart';
 import '../../../services/compose/compose_text_edit.dart';
 import '../../../services/compose/compose_voice_input.dart';
+import '../../../services/expert_hub/expert_member_resolver.dart';
 import '../../../services/cli/registry/cli_tool_registry_scope.dart';
 import '../../../services/storage/launch_profile_provisioner.dart';
 import '../../../theme/app_spacing.dart';
@@ -36,6 +38,7 @@ import '../../../services/storage/home_target_controller.dart';
 import '../../../widgets/menu/sidebar_action_menu.dart';
 import '../../../services/launch/workspace_landing_launch_gate.dart';
 import '../../../repositories/workspace_project_config_repository.dart';
+import '../../expert_hub/expert_landing_picker_sheet.dart';
 import 'workspace_chat_landing_compose_card.dart';
 import 'workspace_landing_launch_feedback.dart';
 import 'workspace_landing_selectors.dart';
@@ -44,6 +47,8 @@ import 'workspace_landing_team_settings_dialog.dart';
 enum _LandingConversationMode { team, simple }
 
 enum _LandingPermissionMode { defaultPermissions, fullAccess }
+
+enum _ExpertChipAction { clear, browseAll }
 
 typedef LandingComposeSubmit =
     void Function(String message, LandingLaunchContext draft);
@@ -76,6 +81,7 @@ class _WorkspaceChatLandingState extends State<WorkspaceChatLanding> {
   var _permissionMode = _LandingPermissionMode.defaultPermissions;
   String? _selectedPresetId;
   String? _selectedTeamId;
+  String? _selectedExpertKey;
   var _enhancing = false;
   var _voiceListening = false;
   var _voiceSoundLevel = 0.0;
@@ -476,6 +482,9 @@ class _WorkspaceChatLandingState extends State<WorkspaceChatLanding> {
         : _LandingConversationMode.team;
     _selectedTeamId = draft.teamId;
     _selectedPresetId = draft.presetId;
+    _selectedExpertKey = draft.expertKey?.trim().isNotEmpty == true
+        ? draft.expertKey!.trim()
+        : null;
     _selectedProjectPath = draft.projectFolderPath?.trim().isNotEmpty == true
         ? draft.projectFolderPath!.trim()
         : null;
@@ -606,11 +615,13 @@ class _WorkspaceChatLandingState extends State<WorkspaceChatLanding> {
     final selectedProjectPath = projectResolver.resolveSelectedProjectPath();
     final worktreeResolver = _worktreeResolver(worktreeState);
     final selectedWorktreePath = worktreeResolver.resolveSelectedWorktreePath();
+    final isSimple = _conversationMode == _LandingConversationMode.simple;
     return LandingLaunchContext(
-      isPersonal: _conversationMode == _LandingConversationMode.simple,
+      isPersonal: isSimple,
       personalProfileId: defaultProfile,
       presetId: _selectedPresetId,
       teamId: _selectedTeamId,
+      expertKey: isSimple ? _selectedExpertKey : null,
       projectFolderPath: selectedProjectPath.trim().isEmpty
           ? null
           : selectedProjectPath,
@@ -744,6 +755,71 @@ class _WorkspaceChatLandingState extends State<WorkspaceChatLanding> {
     if (saved == true && mounted) {
       _scheduleTeamLaunchReadinessCheck();
     }
+  }
+
+  void _selectExpert(String? expertKey) {
+    final trimmed = expertKey?.trim();
+    setState(
+      () => _selectedExpertKey = trimmed?.isNotEmpty == true ? trimmed : null,
+    );
+    _persistDraft();
+  }
+
+  Future<void> _openExpertPicker() async {
+    final key = await showExpertLandingPickerSheet(
+      context,
+      selectedKey: _selectedExpertKey,
+    );
+    if (!mounted || key == null) return;
+    _selectExpert(key);
+  }
+
+  void _onExpertChipSelected(Object? value) {
+    if (value == _ExpertChipAction.clear) {
+      _selectExpert(null);
+      return;
+    }
+    if (value == _ExpertChipAction.browseAll) {
+      unawaited(_openExpertPicker());
+      return;
+    }
+    if (value is String && value.isNotEmpty) {
+      _selectExpert(value);
+    }
+  }
+
+  ExpertHubState? _expertHubState(BuildContext context) {
+    try {
+      return context.watch<ExpertHubCubit>().state;
+    } on ProviderNotFoundException {
+      return null;
+    }
+  }
+
+  String _expertChipLabel(AppLocalizations l10n, ExpertHubState? hubState) {
+    return ExpertMemberResolver.labelForKey(
+      key: _selectedExpertKey,
+      fallbackLabel: l10n.expertHubNoneSelected,
+      hubState: hubState,
+    );
+  }
+
+  List<SidebarActionMenuSpec> _expertChipSpecs(AppLocalizations l10n) {
+    return [
+      SidebarActionMenuSpec.item(
+        value: _ExpertChipAction.clear,
+        icon: Icons.person_off_outlined,
+        label: l10n.expertHubNoneSelected,
+        selected:
+            _selectedExpertKey == null || _selectedExpertKey!.trim().isEmpty,
+      ),
+      const SidebarActionMenuSpec.divider(),
+      SidebarActionMenuSpec.item(
+        value: _ExpertChipAction.browseAll,
+        icon: Icons.travel_explore_outlined,
+        label: l10n.expertHubBrowseAll,
+      ),
+    ];
   }
 
   String _conversationModeLabel(AppLocalizations l10n) {
@@ -881,6 +957,8 @@ class _WorkspaceChatLandingState extends State<WorkspaceChatLanding> {
     final skills = context.watch<SkillCubit>().state.installed;
     final plugins = context.watch<PluginCubit>().state.installed;
     final slashBundle = _slashBundleForDraft(_currentDraft(), launchProfiles, teams);
+    final hubState = _expertHubState(context);
+    final isSimple = _conversationMode == _LandingConversationMode.simple;
     final worktreeState = _worktreeState(context);
     final projectResolver = _projectResolver();
     final selectedProjectPath = projectResolver.resolveSelectedProjectPath();
@@ -981,6 +1059,13 @@ class _WorkspaceChatLandingState extends State<WorkspaceChatLanding> {
                           _setPermissionMode(value);
                         }
                       },
+                      expertChipLabel: isSimple
+                          ? _expertChipLabel(l10n, hubState)
+                          : null,
+                      expertChipSpecs:
+                          isSimple ? _expertChipSpecs(l10n) : const [],
+                      onExpertChipSelected:
+                          isSimple ? _onExpertChipSelected : null,
                       attachTooltip: l10n.workspaceChatLandingAttach,
                       enhanceTooltip: l10n.workspaceChatLandingEnhance,
                       voiceTooltip: l10n.workspaceChatLandingVoice,

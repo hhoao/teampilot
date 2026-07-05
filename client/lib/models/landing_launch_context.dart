@@ -13,6 +13,7 @@ class LandingLaunchContext {
     this.presetId,
     this.teamId,
     this.projectFolderPath,
+    this.expertKey,
     this.workingDirectoryPath,
   });
 
@@ -29,6 +30,9 @@ class LandingLaunchContext {
 
   /// Workspace folder (git project root) for the new session.
   final String? projectFolderPath;
+
+  /// Expert Hub member key when [isPersonal] is true (Simple mode).
+  final String? expertKey;
 
   /// Launch cwd: the selected worktree path under [projectFolderPath].
   final String? workingDirectoryPath;
@@ -48,6 +52,7 @@ class LandingLaunchContext {
     String? presetId,
     String? teamId,
     Object? projectFolderPath = _unset,
+    Object? expertKey = _unset,
     Object? workingDirectoryPath = _unset,
   }) {
     return LandingLaunchContext(
@@ -58,6 +63,7 @@ class LandingLaunchContext {
       projectFolderPath: projectFolderPath == _unset
           ? this.projectFolderPath
           : projectFolderPath as String?,
+      expertKey: expertKey == _unset ? this.expertKey : expertKey as String?,
       workingDirectoryPath: workingDirectoryPath == _unset
           ? this.workingDirectoryPath
           : workingDirectoryPath as String?,
@@ -73,6 +79,7 @@ class LandingLaunchContext {
           presetId == other.presetId &&
           teamId == other.teamId &&
           projectFolderPath == other.projectFolderPath &&
+          expertKey == other.expertKey &&
           workingDirectoryPath == other.workingDirectoryPath;
 
   @override
@@ -82,6 +89,7 @@ class LandingLaunchContext {
     presetId,
     teamId,
     projectFolderPath,
+    expertKey,
     workingDirectoryPath,
   );
 }

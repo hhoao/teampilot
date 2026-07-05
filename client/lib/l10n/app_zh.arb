@@ -1247,6 +1247,9 @@
       "failedNames": {}
     }
   },
+  "expertHubNoneSelected": "未选择专家",
+  "expertHubBrowseAll": "浏览全部专家",
+  "expertHubRecent": "最近使用",
   "teamMcpAssignedCount": "已启用 {assigned}/{total}",
   "@teamMcpAssignedCount": {
     "placeholders": {

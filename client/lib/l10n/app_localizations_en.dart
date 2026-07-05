@@ -3311,6 +3311,15 @@ class AppLocalizationsEn extends AppLocalizations {
   }
 
   @override
+  String get expertHubNoneSelected => 'No expert';
+
+  @override
+  String get expertHubBrowseAll => 'Browse all experts';
+
+  @override
+  String get expertHubRecent => 'Recent';
+
+  @override
   String teamMcpAssignedCount(int assigned, int total) {
     return '$assigned of $total enabled';
   }

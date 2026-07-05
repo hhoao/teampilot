@@ -3199,6 +3199,15 @@ class AppLocalizationsZh extends AppLocalizations {
   }
 
   @override
+  String get expertHubNoneSelected => '未选择专家';
+
+  @override
+  String get expertHubBrowseAll => '浏览全部专家';
+
+  @override
+  String get expertHubRecent => '最近使用';
+
+  @override
   String teamMcpAssignedCount(int assigned, int total) {
     return '已启用 $assigned/$total';
   }

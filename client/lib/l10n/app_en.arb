@@ -1529,6 +1529,9 @@
       "failedNames": {}
     }
   },
+  "expertHubNoneSelected": "No expert",
+  "expertHubBrowseAll": "Browse all experts",
+  "expertHubRecent": "Recent",
   "teamMcpAssignedCount": "{assigned} of {total} enabled",
   "@teamMcpAssignedCount": {
     "placeholders": {

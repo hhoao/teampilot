@@ -6014,6 +6014,24 @@ abstract class AppLocalizations {
     Object failedNames,
   );
 
+  /// No description provided for @expertHubNoneSelected.
+  ///
+  /// In en, this message translates to:
+  /// **'No expert'**
+  String get expertHubNoneSelected;
+
+  /// No description provided for @expertHubBrowseAll.
+  ///
+  /// In en, this message translates to:
+  /// **'Browse all experts'**
+  String get expertHubBrowseAll;
+
+  /// No description provided for @expertHubRecent.
+  ///
+  /// In en, this message translates to:
+  /// **'Recent'**
+  String get expertHubRecent;
+
   /// No description provided for @teamMcpAssignedCount.
   ///
   /// In en, this message translates to:

@@ -25,6 +25,7 @@ Future<LandingLaunchContext> resolveLandingDraft({
     presetId: prefs.presetId,
     teamId: prefs.teamId,
     projectFolderPath: prefs.projectFolderPath,
+    expertKey: prefs.expertKey,
     workingDirectoryPath: prefs.workingDirectoryPath,
   );
 }
@@ -42,6 +43,7 @@ Future<void> persistLandingDraft(
       teamId: draft.teamId,
       personalProfileId: draft.personalProfileId,
       projectFolderPath: draft.projectFolderPath,
+      expertKey: draft.expertKey,
       workingDirectoryPath: draft.workingDirectoryPath,
     ),
   );
