@@ -3327,6 +3327,23 @@ class AppLocalizationsEn extends AppLocalizations {
   String get expertHubNotFound => 'Expert not found.';
 
   @override
+  String get expertHubAddFromHub => 'Add from Expert Hub';
+
+  @override
+  String get expertHubSaveAsTemplate => 'Save as template';
+
+  @override
+  String expertHubTemplateSaved(Object name) {
+    return 'Saved \"$name\" to My templates.';
+  }
+
+  @override
+  String get expertHubViewInHub => 'View in Expert Hub';
+
+  @override
+  String get expertHubViewOriginTeam => 'View origin team';
+
+  @override
   String teamMcpAssignedCount(int assigned, int total) {
     return '$assigned of $total enabled';
   }

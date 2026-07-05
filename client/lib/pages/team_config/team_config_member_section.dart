@@ -3,20 +3,27 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:teampilot/theme/app_icon_sizes.dart';
+import 'package:teampilot/theme/app_toast_theme.dart';
+import 'package:teampilot/widgets/app_toast/app_toast.dart';
 
+import '../../cubits/expert_hub_cubit.dart';
 import '../../cubits/launch_profile_cubit.dart';
 import '../../cubits/team/launch_profile_selectors.dart';
 import '../../l10n/l10n_extensions.dart';
+import '../../models/discoverable_member.dart';
+import '../../models/discoverable_team.dart';
 import '../../models/team_config.dart';
 import '../../models/team_member_prompt_presets.dart';
 import '../../services/app/flashskyai_agent_catalog_service.dart';
 import '../../services/cli/registry/cli_tool_registry_scope.dart';
+import '../../services/expert_hub/local_member_template_store.dart';
 import '../../theme/app_text_styles.dart';
 import '../../utils/debounce/debounce.dart';
 import '../../widgets/cli/member_agent_preset_field.dart';
 import '../../widgets/settings/focus_gated_text_field.dart';
 import '../../widgets/settings/workspace_settings_widgets.dart';
 import '../../widgets/team/team_lead_badge.dart';
+import '../expert_hub/expert_landing_picker_sheet.dart';
 import '../home_workspace/home_workspace_lazy_mount.dart';
 import 'team_config_helpers.dart';
 import 'team_config_member_dialogs.dart';
@@ -299,6 +306,79 @@ class TeamMemberConfigFormState extends State<TeamMemberConfigForm> {
     _persistImmediate(member.copyWith(prompt: prompt, playbook: playbook));
   }
 
+  void _applyFromExpertHub(DiscoverableMember expert) {
+    final member = _member;
+    if (member == null) return;
+    final prompt = expert.member.prompt;
+    final playbook = expert.member.playbook;
+    _promptCtl.text = prompt;
+    _promptCtl.selection = TextSelection.collapsed(offset: prompt.length);
+    _playbookCtl.text = playbook;
+    _playbookCtl.selection = TextSelection.collapsed(offset: playbook.length);
+    _persistImmediate(
+      member.copyWith(
+        prompt: prompt,
+        playbook: playbook,
+        capabilities: expert.member.capabilities.isNotEmpty
+            ? expert.member.capabilities
+            : member.capabilities,
+      ),
+    );
+  }
+
+  Future<void> _openExpertHubPicker() async {
+    await showExpertApplyPickerSheet(
+      context,
+      onApply: _applyFromExpertHub,
+    );
+  }
+
+  DiscoverableMember _discoverableMemberFromForm(TeamMemberConfig member) {
+    final displayName = _nameCtl.text.trim().isNotEmpty
+        ? _nameCtl.text.trim()
+        : member.name;
+    return DiscoverableMember(
+      key: '',
+      name: displayName,
+      description: _promptCtl.text.trim(),
+      category: 'Custom',
+      source: ExpertMemberSource.local,
+      member: DiscoverableTeamMember(
+        name: displayName,
+        provider: member.provider,
+        model: member.model,
+        agent: _agentCtl.text,
+        agentType: member.agentType,
+        capabilities: member.capabilities,
+        replicas: member.replicas,
+        prompt: _promptCtl.text,
+        playbook: _playbookCtl.text,
+        extraArgs: _argsCtl.text,
+      ),
+    );
+  }
+
+  Future<void> _saveAsTemplate() async {
+    final member = _member;
+    if (member == null) return;
+    final l10n = context.l10n;
+    final saved = await LocalMemberTemplateStore().save(
+      _discoverableMemberFromForm(member),
+    );
+    if (!mounted) return;
+    try {
+      await context.read<ExpertHubCubit>().load(forceRefresh: true);
+    } catch (_) {
+      // Best-effort refresh; save already succeeded.
+    }
+    if (!mounted) return;
+    AppToast.show(
+      context,
+      message: l10n.expertHubTemplateSaved(saved.name),
+      variant: AppToastVariant.success,
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final l10n = context.l10n;
@@ -397,10 +477,39 @@ class TeamMemberConfigFormState extends State<TeamMemberConfigForm> {
           SettingsLabeledStackedRow(
             title: l10n.memberResponsibilities,
             subtitle: l10n.memberPromptSubtitle,
+            titleTrailing: PopupMenuButton<String>(
+              icon: Icon(Icons.more_vert, size: context.appIconSizes.md),
+              onSelected: (value) {
+                if (value == 'save_template') {
+                  unawaited(_saveAsTemplate());
+                }
+              },
+              itemBuilder: (context) => [
+                PopupMenuItem(
+                  value: 'save_template',
+                  child: Text(l10n.expertHubSaveAsTemplate),
+                ),
+              ],
+            ),
             body: Column(
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
                 _MemberPromptPresetChips(onApply: _applyPromptPreset),
+                const SizedBox(height: 8),
+                Align(
+                  alignment: Alignment.centerLeft,
+                  child: OutlinedButton(
+                    onPressed: _openExpertHubPicker,
+                    style: OutlinedButton.styleFrom(
+                      visualDensity: VisualDensity.compact,
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 12,
+                        vertical: 8,
+                      ),
+                    ),
+                    child: Text(l10n.expertHubAddFromHub),
+                  ),
+                ),
                 const SizedBox(height: 8),
                 FocusGatedTextField(
                   controller: _promptCtl,

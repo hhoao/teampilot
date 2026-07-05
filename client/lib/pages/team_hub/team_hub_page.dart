@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:go_router/go_router.dart';
 import 'package:teampilot/theme/app_toast_theme.dart';
 import 'package:teampilot/widgets/app_toast/app_toast.dart';
 
@@ -9,6 +10,7 @@ import '../../models/discoverable_team.dart';
 import '../../services/app/platform_utils.dart';
 import '../../services/team/team_clone_service.dart';
 import '../../widgets/settings/workspace_hub_shell.dart';
+import '../home_workspace/home_workspace_route.dart';
 import 'team_hub_body.dart';
 import 'team_hub_clone_feedback.dart';
 import 'team_hub_detail_overlay.dart';
@@ -26,13 +28,41 @@ class _TeamHubPageState extends State<TeamHubPage> {
   static const _pageKey = ValueKey('team-hub-workspace');
 
   DiscoverableTeam? _detail;
+  String? _pendingTeamKey;
 
   @override
   void initState() {
     super.initState();
+    _pendingTeamKey = _readTeamQueryParam();
     final cubit = context.read<TeamHubCubit>();
     if (cubit.state.status == TeamHubLoadStatus.idle) {
       cubit.load();
+    } else {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (mounted) _tryOpenPendingTeam(cubit.state);
+      });
+    }
+  }
+
+  String? _readTeamQueryParam() {
+    final location = GoRouterState.of(context).uri.toString();
+    return HomeWorkspaceRoute.teamHubTeamKey(location);
+  }
+
+  void _tryOpenPendingTeam(TeamHubState state) {
+    final key = _pendingTeamKey;
+    if (key == null || _detail != null) return;
+    for (final team in state.allTeams) {
+      if (team.key == key) {
+        setState(() {
+          _detail = team;
+          _pendingTeamKey = null;
+        });
+        return;
+      }
+    }
+    if (state.status == TeamHubLoadStatus.ready) {
+      _pendingTeamKey = null;
     }
   }
 
@@ -67,8 +97,14 @@ class _TeamHubPageState extends State<TeamHubPage> {
   Widget build(BuildContext context) {
     return BlocConsumer<TeamHubCubit, TeamHubState>(
       listenWhen: (a, b) =>
-          a.errorMessage != b.errorMessage && b.errorMessage != null,
+          (_pendingTeamKey != null &&
+              (a.allTeams != b.allTeams || a.status != b.status)) ||
+          (a.errorMessage != b.errorMessage && b.errorMessage != null),
       listener: (context, state) {
+        if (_pendingTeamKey != null) {
+          _tryOpenPendingTeam(state);
+        }
+        if (state.errorMessage == null) return;
         if (!mounted) return;
         AppToast.show(
           context,

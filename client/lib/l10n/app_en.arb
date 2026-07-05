@@ -1534,6 +1534,12 @@
   "expertHubRecent": "Recent",
   "expertHubIgnoredInTeamMode": "Experts are only available in Simple mode. Switch to Simple to summon an expert.",
   "expertHubNotFound": "Expert not found.",
+  "expertHubAddFromHub": "Add from Expert Hub",
+  "expertHubSaveAsTemplate": "Save as template",
+  "expertHubTemplateSaved": "Saved \"{name}\" to My templates.",
+  "@expertHubTemplateSaved": { "placeholders": { "name": {} } },
+  "expertHubViewInHub": "View in Expert Hub",
+  "expertHubViewOriginTeam": "View origin team",
   "teamMcpAssignedCount": "{assigned} of {total} enabled",
   "@teamMcpAssignedCount": {
     "placeholders": {

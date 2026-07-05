@@ -1,9 +1,12 @@
 ﻿import 'package:flutter/material.dart';
+import 'package:go_router/go_router.dart';
 
 import '../../l10n/l10n_extensions.dart';
 import '../../models/discoverable_team.dart';
 import '../../theme/app_text_styles.dart';
 import '../../theme/workspace_surface_layers.dart';
+import '../../utils/team_member_naming.dart';
+import '../home_workspace/home_workspace_route.dart';
 import 'team_hub_cards.dart';
 import 'team_hub_visuals.dart';
 
@@ -139,6 +142,8 @@ class TeamHubDetailOverlay extends StatelessWidget {
                           label: m.model.isEmpty
                               ? m.name
                               : '${m.name} · ${m.provider} ${m.model}'.trim(),
+                          memberKey:
+                              '${team.key}#${TeamMemberNaming.slugMemberName(m.name)}',
                         ),
                     ],
                   ),
@@ -275,17 +280,24 @@ class _DepSection extends StatelessWidget {
 }
 
 /// One dependency line. When [installed] is non-null, a trailing status badge
-/// shows installed (✓) vs to-pull (⬇).
+/// shows installed (✓) vs to-pull (⬇). When [memberKey] is set, a link opens
+/// Expert Hub detail for that indexed member.
 class _DepRow extends StatelessWidget {
-  const _DepRow({required this.label, this.installed});
+  const _DepRow({
+    required this.label,
+    this.installed,
+    this.memberKey,
+  });
 
   final String label;
   final bool? installed;
+  final String? memberKey;
 
   @override
   Widget build(BuildContext context) {
     final cs = Theme.of(context).colorScheme;
     final styles = AppTextStyles.of(context);
+    final l10n = context.l10n;
     return Container(
       margin: const EdgeInsets.only(bottom: 6),
       padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
@@ -300,7 +312,21 @@ class _DepRow extends StatelessWidget {
               style: styles.body.copyWith(color: cs.onSurface),
             ),
           ),
-          if (installed != null) _StatusBadge(installed: installed!),
+          if (memberKey != null)
+            TextButton(
+              onPressed: () {
+                context.go(
+                  HomeWorkspaceRoute.expertHubMemberLocation(memberKey!),
+                );
+              },
+              style: TextButton.styleFrom(
+                visualDensity: VisualDensity.compact,
+                padding: const EdgeInsets.symmetric(horizontal: 8),
+              ),
+              child: Text(l10n.expertHubViewInHub),
+            )
+          else if (installed != null)
+            _StatusBadge(installed: installed!),
         ],
       ),
     );

@@ -48,6 +48,38 @@ abstract final class HomeWorkspaceRoute {
         parse(location).queryParameters[HomeGlobalView.globalQueryParam],
       );
 
+  /// Expert Hub member key when [homeGlobalView] is [HomeGlobalView.expertHub].
+  static String? expertHubMemberKey(String location) {
+    if (homeGlobalView(location) != HomeGlobalView.expertHub) return null;
+    final raw = parse(location).queryParameters['member']?.trim() ?? '';
+    return raw.isEmpty ? null : raw;
+  }
+
+  /// Team Hub team key when [homeGlobalView] is [HomeGlobalView.teamHub].
+  static String? teamHubTeamKey(String location) {
+    if (homeGlobalView(location) != HomeGlobalView.teamHub) return null;
+    final raw = parse(location).queryParameters['team']?.trim() ?? '';
+    return raw.isEmpty ? null : raw;
+  }
+
+  /// `/home-v2?global=expertHub&member=<key>` — opens Expert Hub detail.
+  static String expertHubMemberLocation(String memberKey) => Uri(
+    path: '/home-v2',
+    queryParameters: {
+      HomeGlobalView.globalQueryParam: HomeGlobalView.expertHub.routeSegment,
+      'member': memberKey,
+    },
+  ).toString();
+
+  /// `/home-v2?global=teamHub&team=<key>` — opens Team Hub detail.
+  static String teamHubTeamLocation(String teamKey) => Uri(
+    path: '/home-v2',
+    queryParameters: {
+      HomeGlobalView.globalQueryParam: HomeGlobalView.teamHub.routeSegment,
+      'team': teamKey,
+    },
+  ).toString();
+
   static WorkspaceConfigSection? workspaceConfigSection(String location) =>
       WorkspaceConfigSection.fromSegment(
         parse(location).queryParameters['section'],

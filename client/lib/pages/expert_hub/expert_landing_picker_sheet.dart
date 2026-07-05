@@ -25,10 +25,31 @@ Future<String?> showExpertLandingPickerSheet(
   );
 }
 
+/// Apply-mode picker for team member config — invokes [onApply] instead of
+/// returning a landing expert key.
+Future<void> showExpertApplyPickerSheet(
+  BuildContext context, {
+  required ValueChanged<DiscoverableMember> onApply,
+}) {
+  return showModalBottomSheet<void>(
+    context: context,
+    showDragHandle: true,
+    isScrollControlled: true,
+    builder: (_) => ExpertLandingPickerSheet(onApply: onApply),
+  );
+}
+
 class ExpertLandingPickerSheet extends StatefulWidget {
-  const ExpertLandingPickerSheet({this.selectedKey, super.key});
+  const ExpertLandingPickerSheet({
+    this.selectedKey,
+    this.onApply,
+    super.key,
+  });
 
   final String? selectedKey;
+
+  /// When set, selection applies the member and closes without returning a key.
+  final ValueChanged<DiscoverableMember>? onApply;
 
   @override
   State<ExpertLandingPickerSheet> createState() =>
@@ -102,6 +123,12 @@ class _ExpertLandingPickerSheetState extends State<ExpertLandingPickerSheet> {
   }
 
   void _select(DiscoverableMember member) {
+    final onApply = widget.onApply;
+    if (onApply != null) {
+      onApply(member);
+      Navigator.of(context).pop();
+      return;
+    }
     Navigator.of(context).pop(member.key);
   }
 

@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:go_router/go_router.dart';
 import 'package:teampilot/theme/app_toast_theme.dart';
 import 'package:teampilot/widgets/app_toast/app_toast.dart';
 
@@ -9,6 +10,7 @@ import '../../models/discoverable_member.dart';
 import '../../services/app/platform_utils.dart';
 import '../../services/expert_hub/member_clone_service.dart';
 import '../../widgets/settings/workspace_hub_shell.dart';
+import '../home_workspace/home_workspace_route.dart';
 import 'expert_hub_body.dart';
 import 'expert_hub_detail_overlay.dart';
 import 'member_hub_add_feedback.dart';
@@ -46,13 +48,41 @@ class _ExpertHubPageState extends State<ExpertHubPage> {
   static const _pageKey = ValueKey('expert-hub-workspace');
 
   DiscoverableMember? _detail;
+  String? _pendingMemberKey;
 
   @override
   void initState() {
     super.initState();
+    _pendingMemberKey = _readMemberQueryParam();
     final cubit = context.read<ExpertHubCubit>();
     if (cubit.state.status == ExpertHubLoadStatus.idle) {
       cubit.load();
+    } else {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (mounted) _tryOpenPendingMember(cubit.state);
+      });
+    }
+  }
+
+  String? _readMemberQueryParam() {
+    final location = GoRouterState.of(context).uri.toString();
+    return HomeWorkspaceRoute.expertHubMemberKey(location);
+  }
+
+  void _tryOpenPendingMember(ExpertHubState state) {
+    final key = _pendingMemberKey;
+    if (key == null || _detail != null) return;
+    for (final member in state.allMembers) {
+      if (member.key == key) {
+        setState(() {
+          _detail = member;
+          _pendingMemberKey = null;
+        });
+        return;
+      }
+    }
+    if (state.status == ExpertHubLoadStatus.ready) {
+      _pendingMemberKey = null;
     }
   }
 
@@ -118,8 +148,14 @@ class _ExpertHubPageState extends State<ExpertHubPage> {
   Widget build(BuildContext context) {
     return BlocConsumer<ExpertHubCubit, ExpertHubState>(
       listenWhen: (a, b) =>
-          a.errorMessage != b.errorMessage && b.errorMessage != null,
+          (_pendingMemberKey != null &&
+              (a.allMembers != b.allMembers || a.status != b.status)) ||
+          (a.errorMessage != b.errorMessage && b.errorMessage != null),
       listener: (context, state) {
+        if (_pendingMemberKey != null) {
+          _tryOpenPendingMember(state);
+        }
+        if (state.errorMessage == null) return;
         if (!mounted) return;
         AppToast.show(
           context,

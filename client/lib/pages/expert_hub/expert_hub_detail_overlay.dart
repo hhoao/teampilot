@@ -1,9 +1,11 @@
 import 'package:flutter/material.dart';
+import 'package:go_router/go_router.dart';
 
 import '../../l10n/l10n_extensions.dart';
 import '../../models/discoverable_member.dart';
 import '../../theme/app_text_styles.dart';
 import '../../theme/workspace_surface_layers.dart';
+import '../home_workspace/home_workspace_route.dart';
 import '../team_hub/team_hub_cards.dart';
 import 'expert_hub_cards.dart';
 import 'expert_hub_visuals.dart';
@@ -158,6 +160,23 @@ class ExpertHubDetailOverlay extends StatelessWidget {
                     Text(
                       member.description,
                       style: styles.body.copyWith(height: 1.45),
+                    ),
+                  ],
+                  if (member.originTeamKey != null &&
+                      member.originTeamKey!.trim().isNotEmpty) ...[
+                    const SizedBox(height: 12),
+                    Align(
+                      alignment: Alignment.centerLeft,
+                      child: TextButton(
+                        onPressed: () {
+                          context.go(
+                            HomeWorkspaceRoute.teamHubTeamLocation(
+                              member.originTeamKey!.trim(),
+                            ),
+                          );
+                        },
+                        child: Text(l10n.expertHubViewOriginTeam),
+                      ),
                     ),
                   ],
                   if (teamMember.prompt.trim().isNotEmpty) ...[

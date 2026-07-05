@@ -6044,6 +6044,36 @@ abstract class AppLocalizations {
   /// **'Expert not found.'**
   String get expertHubNotFound;
 
+  /// No description provided for @expertHubAddFromHub.
+  ///
+  /// In en, this message translates to:
+  /// **'Add from Expert Hub'**
+  String get expertHubAddFromHub;
+
+  /// No description provided for @expertHubSaveAsTemplate.
+  ///
+  /// In en, this message translates to:
+  /// **'Save as template'**
+  String get expertHubSaveAsTemplate;
+
+  /// No description provided for @expertHubTemplateSaved.
+  ///
+  /// In en, this message translates to:
+  /// **'Saved \"{name}\" to My templates.'**
+  String expertHubTemplateSaved(Object name);
+
+  /// No description provided for @expertHubViewInHub.
+  ///
+  /// In en, this message translates to:
+  /// **'View in Expert Hub'**
+  String get expertHubViewInHub;
+
+  /// No description provided for @expertHubViewOriginTeam.
+  ///
+  /// In en, this message translates to:
+  /// **'View origin team'**
+  String get expertHubViewOriginTeam;
+
   /// No description provided for @teamMcpAssignedCount.
   ///
   /// In en, this message translates to:
