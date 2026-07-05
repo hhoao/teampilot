@@ -1202,6 +1202,51 @@
   "teamHubSkillsLabel": "技能",
   "teamHubPluginsLabel": "插件",
   "teamHubMcpLabel": "MCP",
+  "expertHubNav": "专家中心",
+  "expertHubTitle": "专家中心",
+  "expertHubSubtitle": "发现成员角色与模板",
+  "expertHubSearchHint": "搜索专家",
+  "expertHubFavorites": "收藏",
+  "expertHubMyTemplates": "我的模板",
+  "expertHubFromTeams": "来自团队",
+  "expertHubCategoryAll": "全部",
+  "expertHubSortName": "名称",
+  "expertHubSortUpdated": "最近更新",
+  "expertHubAddToTeam": "添加到团队",
+  "expertHubLaunchInWorkspace": "在工作区启动",
+  "expertHubAdding": "添加中…",
+  "expertHubAddFailed": "无法添加该成员。",
+  "expertHubEmptyTitle": "暂无专家",
+  "expertHubEmptyHint": "刷新以从注册表获取专家。",
+  "expertHubFavoritesEmptyTitle": "暂无收藏",
+  "expertHubFavoritesEmptyHint": "点击专家卡片上的星标即可收藏。",
+  "expertHubRefresh": "刷新",
+  "expertHubLoadError": "无法加载专家。",
+  "expertHubSourceBuiltin": "内置",
+  "expertHubSourceRegistry": "注册表",
+  "expertHubSourceLocal": "我的模板",
+  "expertHubSourceTeamExtract": "来自团队",
+  "expertHubPrompt": "提示词",
+  "expertHubPlaybook": "工作手册",
+  "expertHubCapabilities": "能力",
+  "expertHubAddSuccess": "已将「{name}」添加到团队。",
+  "@expertHubAddSuccess": { "placeholders": { "name": {} } },
+  "expertHubAddSuccessWithSkills": "已添加「{name}」。安装了 {skillCount} 个技能。",
+  "@expertHubAddSuccessWithSkills": {
+    "placeholders": {
+      "name": {},
+      "skillCount": {"type": "int"}
+    }
+  },
+  "expertHubAddPartial": "已添加「{name}」。安装了 {skillCount} 个技能。{failedCount} 个无法安装：{failedNames}。",
+  "@expertHubAddPartial": {
+    "placeholders": {
+      "name": {},
+      "skillCount": {"type": "int"},
+      "failedCount": {"type": "int"},
+      "failedNames": {}
+    }
+  },
   "teamMcpAssignedCount": "已启用 {assigned}/{total}",
   "@teamMcpAssignedCount": {
     "placeholders": {

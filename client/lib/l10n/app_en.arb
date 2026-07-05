@@ -1484,6 +1484,51 @@
   "teamHubSkillsLabel": "Skills",
   "teamHubPluginsLabel": "Plugins",
   "teamHubMcpLabel": "MCP",
+  "expertHubNav": "Expert Hub",
+  "expertHubTitle": "Expert Hub",
+  "expertHubSubtitle": "Discover member personas and templates",
+  "expertHubSearchHint": "Search experts",
+  "expertHubFavorites": "Favorites",
+  "expertHubMyTemplates": "My templates",
+  "expertHubFromTeams": "From teams",
+  "expertHubCategoryAll": "All",
+  "expertHubSortName": "Name",
+  "expertHubSortUpdated": "Recently updated",
+  "expertHubAddToTeam": "Add to team",
+  "expertHubLaunchInWorkspace": "Launch in workspace",
+  "expertHubAdding": "Adding…",
+  "expertHubAddFailed": "Could not add this member.",
+  "expertHubEmptyTitle": "No experts yet",
+  "expertHubEmptyHint": "Refresh to fetch experts from the registry.",
+  "expertHubFavoritesEmptyTitle": "No favorites yet",
+  "expertHubFavoritesEmptyHint": "Tap the star on an expert to save it here.",
+  "expertHubRefresh": "Refresh",
+  "expertHubLoadError": "Could not load experts.",
+  "expertHubSourceBuiltin": "Built-in",
+  "expertHubSourceRegistry": "Registry",
+  "expertHubSourceLocal": "My template",
+  "expertHubSourceTeamExtract": "From team",
+  "expertHubPrompt": "Prompt",
+  "expertHubPlaybook": "Playbook",
+  "expertHubCapabilities": "Capabilities",
+  "expertHubAddSuccess": "Added \"{name}\" to team.",
+  "@expertHubAddSuccess": { "placeholders": { "name": {} } },
+  "expertHubAddSuccessWithSkills": "Added \"{name}\". Installed {skillCount} skills.",
+  "@expertHubAddSuccessWithSkills": {
+    "placeholders": {
+      "name": {},
+      "skillCount": {"type": "int"}
+    }
+  },
+  "expertHubAddPartial": "Added \"{name}\". Installed {skillCount} skills. {failedCount} could not be installed: {failedNames}.",
+  "@expertHubAddPartial": {
+    "placeholders": {
+      "name": {},
+      "skillCount": {"type": "int"},
+      "failedCount": {"type": "int"},
+      "failedNames": {}
+    }
+  },
   "teamMcpAssignedCount": "{assigned} of {total} enabled",
   "@teamMcpAssignedCount": {
     "placeholders": {

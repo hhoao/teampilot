@@ -3098,6 +3098,107 @@ class AppLocalizationsZh extends AppLocalizations {
   String get teamHubMcpLabel => 'MCP';
 
   @override
+  String get expertHubNav => '专家中心';
+
+  @override
+  String get expertHubTitle => '专家中心';
+
+  @override
+  String get expertHubSubtitle => '发现成员角色与模板';
+
+  @override
+  String get expertHubSearchHint => '搜索专家';
+
+  @override
+  String get expertHubFavorites => '收藏';
+
+  @override
+  String get expertHubMyTemplates => '我的模板';
+
+  @override
+  String get expertHubFromTeams => '来自团队';
+
+  @override
+  String get expertHubCategoryAll => '全部';
+
+  @override
+  String get expertHubSortName => '名称';
+
+  @override
+  String get expertHubSortUpdated => '最近更新';
+
+  @override
+  String get expertHubAddToTeam => '添加到团队';
+
+  @override
+  String get expertHubLaunchInWorkspace => '在工作区启动';
+
+  @override
+  String get expertHubAdding => '添加中…';
+
+  @override
+  String get expertHubAddFailed => '无法添加该成员。';
+
+  @override
+  String get expertHubEmptyTitle => '暂无专家';
+
+  @override
+  String get expertHubEmptyHint => '刷新以从注册表获取专家。';
+
+  @override
+  String get expertHubFavoritesEmptyTitle => '暂无收藏';
+
+  @override
+  String get expertHubFavoritesEmptyHint => '点击专家卡片上的星标即可收藏。';
+
+  @override
+  String get expertHubRefresh => '刷新';
+
+  @override
+  String get expertHubLoadError => '无法加载专家。';
+
+  @override
+  String get expertHubSourceBuiltin => '内置';
+
+  @override
+  String get expertHubSourceRegistry => '注册表';
+
+  @override
+  String get expertHubSourceLocal => '我的模板';
+
+  @override
+  String get expertHubSourceTeamExtract => '来自团队';
+
+  @override
+  String get expertHubPrompt => '提示词';
+
+  @override
+  String get expertHubPlaybook => '工作手册';
+
+  @override
+  String get expertHubCapabilities => '能力';
+
+  @override
+  String expertHubAddSuccess(Object name) {
+    return '已将「$name」添加到团队。';
+  }
+
+  @override
+  String expertHubAddSuccessWithSkills(Object name, int skillCount) {
+    return '已添加「$name」。安装了 $skillCount 个技能。';
+  }
+
+  @override
+  String expertHubAddPartial(
+    Object name,
+    int skillCount,
+    int failedCount,
+    Object failedNames,
+  ) {
+    return '已添加「$name」。安装了 $skillCount 个技能。$failedCount 个无法安装：$failedNames。';
+  }
+
+  @override
   String teamMcpAssignedCount(int assigned, int total) {
     return '已启用 $assigned/$total';
   }

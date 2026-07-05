@@ -5829,6 +5829,191 @@ abstract class AppLocalizations {
   /// **'MCP'**
   String get teamHubMcpLabel;
 
+  /// No description provided for @expertHubNav.
+  ///
+  /// In en, this message translates to:
+  /// **'Expert Hub'**
+  String get expertHubNav;
+
+  /// No description provided for @expertHubTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Expert Hub'**
+  String get expertHubTitle;
+
+  /// No description provided for @expertHubSubtitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Discover member personas and templates'**
+  String get expertHubSubtitle;
+
+  /// No description provided for @expertHubSearchHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Search experts'**
+  String get expertHubSearchHint;
+
+  /// No description provided for @expertHubFavorites.
+  ///
+  /// In en, this message translates to:
+  /// **'Favorites'**
+  String get expertHubFavorites;
+
+  /// No description provided for @expertHubMyTemplates.
+  ///
+  /// In en, this message translates to:
+  /// **'My templates'**
+  String get expertHubMyTemplates;
+
+  /// No description provided for @expertHubFromTeams.
+  ///
+  /// In en, this message translates to:
+  /// **'From teams'**
+  String get expertHubFromTeams;
+
+  /// No description provided for @expertHubCategoryAll.
+  ///
+  /// In en, this message translates to:
+  /// **'All'**
+  String get expertHubCategoryAll;
+
+  /// No description provided for @expertHubSortName.
+  ///
+  /// In en, this message translates to:
+  /// **'Name'**
+  String get expertHubSortName;
+
+  /// No description provided for @expertHubSortUpdated.
+  ///
+  /// In en, this message translates to:
+  /// **'Recently updated'**
+  String get expertHubSortUpdated;
+
+  /// No description provided for @expertHubAddToTeam.
+  ///
+  /// In en, this message translates to:
+  /// **'Add to team'**
+  String get expertHubAddToTeam;
+
+  /// No description provided for @expertHubLaunchInWorkspace.
+  ///
+  /// In en, this message translates to:
+  /// **'Launch in workspace'**
+  String get expertHubLaunchInWorkspace;
+
+  /// No description provided for @expertHubAdding.
+  ///
+  /// In en, this message translates to:
+  /// **'Adding…'**
+  String get expertHubAdding;
+
+  /// No description provided for @expertHubAddFailed.
+  ///
+  /// In en, this message translates to:
+  /// **'Could not add this member.'**
+  String get expertHubAddFailed;
+
+  /// No description provided for @expertHubEmptyTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'No experts yet'**
+  String get expertHubEmptyTitle;
+
+  /// No description provided for @expertHubEmptyHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Refresh to fetch experts from the registry.'**
+  String get expertHubEmptyHint;
+
+  /// No description provided for @expertHubFavoritesEmptyTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'No favorites yet'**
+  String get expertHubFavoritesEmptyTitle;
+
+  /// No description provided for @expertHubFavoritesEmptyHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Tap the star on an expert to save it here.'**
+  String get expertHubFavoritesEmptyHint;
+
+  /// No description provided for @expertHubRefresh.
+  ///
+  /// In en, this message translates to:
+  /// **'Refresh'**
+  String get expertHubRefresh;
+
+  /// No description provided for @expertHubLoadError.
+  ///
+  /// In en, this message translates to:
+  /// **'Could not load experts.'**
+  String get expertHubLoadError;
+
+  /// No description provided for @expertHubSourceBuiltin.
+  ///
+  /// In en, this message translates to:
+  /// **'Built-in'**
+  String get expertHubSourceBuiltin;
+
+  /// No description provided for @expertHubSourceRegistry.
+  ///
+  /// In en, this message translates to:
+  /// **'Registry'**
+  String get expertHubSourceRegistry;
+
+  /// No description provided for @expertHubSourceLocal.
+  ///
+  /// In en, this message translates to:
+  /// **'My template'**
+  String get expertHubSourceLocal;
+
+  /// No description provided for @expertHubSourceTeamExtract.
+  ///
+  /// In en, this message translates to:
+  /// **'From team'**
+  String get expertHubSourceTeamExtract;
+
+  /// No description provided for @expertHubPrompt.
+  ///
+  /// In en, this message translates to:
+  /// **'Prompt'**
+  String get expertHubPrompt;
+
+  /// No description provided for @expertHubPlaybook.
+  ///
+  /// In en, this message translates to:
+  /// **'Playbook'**
+  String get expertHubPlaybook;
+
+  /// No description provided for @expertHubCapabilities.
+  ///
+  /// In en, this message translates to:
+  /// **'Capabilities'**
+  String get expertHubCapabilities;
+
+  /// No description provided for @expertHubAddSuccess.
+  ///
+  /// In en, this message translates to:
+  /// **'Added \"{name}\" to team.'**
+  String expertHubAddSuccess(Object name);
+
+  /// No description provided for @expertHubAddSuccessWithSkills.
+  ///
+  /// In en, this message translates to:
+  /// **'Added \"{name}\". Installed {skillCount} skills.'**
+  String expertHubAddSuccessWithSkills(Object name, int skillCount);
+
+  /// No description provided for @expertHubAddPartial.
+  ///
+  /// In en, this message translates to:
+  /// **'Added \"{name}\". Installed {skillCount} skills. {failedCount} could not be installed: {failedNames}.'**
+  String expertHubAddPartial(
+    Object name,
+    int skillCount,
+    int failedCount,
+    Object failedNames,
+  );
+
   /// No description provided for @teamMcpAssignedCount.
   ///
   /// In en, this message translates to:

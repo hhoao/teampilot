@@ -3208,6 +3208,109 @@ class AppLocalizationsEn extends AppLocalizations {
   String get teamHubMcpLabel => 'MCP';
 
   @override
+  String get expertHubNav => 'Expert Hub';
+
+  @override
+  String get expertHubTitle => 'Expert Hub';
+
+  @override
+  String get expertHubSubtitle => 'Discover member personas and templates';
+
+  @override
+  String get expertHubSearchHint => 'Search experts';
+
+  @override
+  String get expertHubFavorites => 'Favorites';
+
+  @override
+  String get expertHubMyTemplates => 'My templates';
+
+  @override
+  String get expertHubFromTeams => 'From teams';
+
+  @override
+  String get expertHubCategoryAll => 'All';
+
+  @override
+  String get expertHubSortName => 'Name';
+
+  @override
+  String get expertHubSortUpdated => 'Recently updated';
+
+  @override
+  String get expertHubAddToTeam => 'Add to team';
+
+  @override
+  String get expertHubLaunchInWorkspace => 'Launch in workspace';
+
+  @override
+  String get expertHubAdding => 'Adding…';
+
+  @override
+  String get expertHubAddFailed => 'Could not add this member.';
+
+  @override
+  String get expertHubEmptyTitle => 'No experts yet';
+
+  @override
+  String get expertHubEmptyHint =>
+      'Refresh to fetch experts from the registry.';
+
+  @override
+  String get expertHubFavoritesEmptyTitle => 'No favorites yet';
+
+  @override
+  String get expertHubFavoritesEmptyHint =>
+      'Tap the star on an expert to save it here.';
+
+  @override
+  String get expertHubRefresh => 'Refresh';
+
+  @override
+  String get expertHubLoadError => 'Could not load experts.';
+
+  @override
+  String get expertHubSourceBuiltin => 'Built-in';
+
+  @override
+  String get expertHubSourceRegistry => 'Registry';
+
+  @override
+  String get expertHubSourceLocal => 'My template';
+
+  @override
+  String get expertHubSourceTeamExtract => 'From team';
+
+  @override
+  String get expertHubPrompt => 'Prompt';
+
+  @override
+  String get expertHubPlaybook => 'Playbook';
+
+  @override
+  String get expertHubCapabilities => 'Capabilities';
+
+  @override
+  String expertHubAddSuccess(Object name) {
+    return 'Added \"$name\" to team.';
+  }
+
+  @override
+  String expertHubAddSuccessWithSkills(Object name, int skillCount) {
+    return 'Added \"$name\". Installed $skillCount skills.';
+  }
+
+  @override
+  String expertHubAddPartial(
+    Object name,
+    int skillCount,
+    int failedCount,
+    Object failedNames,
+  ) {
+    return 'Added \"$name\". Installed $skillCount skills. $failedCount could not be installed: $failedNames.';
+  }
+
+  @override
   String teamMcpAssignedCount(int assigned, int total) {
     return '$assigned of $total enabled';
   }
