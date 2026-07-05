@@ -95,6 +95,30 @@ class TeamRosterEditor {
     return displayName;
   }
 
+  /// Appends [template] to [team], uniquifying slug id and display name.
+  ({TeamProfile team, TeamMemberConfig added}) addMemberFromConfig(
+    TeamProfile team,
+    TeamMemberConfig template,
+  ) {
+    final id = uniqueMemberSlug(
+      team,
+      template.id.isNotEmpty ? template.id : template.name,
+    );
+    final names = team.members.map((m) => m.name).toSet();
+    final display = uniqueDisplayName(
+      template.name.trim().isEmpty ? id : template.name.trim(),
+      names,
+    );
+    final added = template.copyWith(
+      id: id,
+      name: display,
+      joinedAt: DateTime.now().millisecondsSinceEpoch,
+      activePresetId: TeamProfile.inheritPresetId,
+      updateActivePresetId: true,
+    );
+    return (team: team.copyWith(members: [...team.members, added]), added: added);
+  }
+
   /// Appends a fresh default-worker member to [team].
   ({TeamProfile team, TeamMemberConfig added}) addMember(TeamProfile team) {
     final id = uniqueMemberSlug(team, TeamMemberNaming.defaultWorkerName);

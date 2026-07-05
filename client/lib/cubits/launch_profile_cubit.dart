@@ -740,6 +740,32 @@ class LaunchProfileCubit extends Cubit<LaunchProfileState>
     emit(state.copyWith(statusMessage: 'Added ${added.name}.'));
   }
 
+  /// Appends [member] to the team with [teamId], uniquifying slug and display name.
+  Future<TeamMemberConfig?> addMemberToTeam(
+    String teamId,
+    TeamMemberConfig member,
+  ) async {
+    final index = state.teams.indexWhere((team) => team.id == teamId);
+    if (index < 0) return null;
+    final team = state.teams[index];
+    final (team: updated, :added) = _rosterEditor.addMemberFromConfig(
+      team,
+      member,
+    );
+    final normalized = _rosterEditor.normalizeTeam(updated);
+    final teams = [
+      for (final t in state.teams) if (t.id == teamId) normalized else t,
+    ];
+    emit(
+      state.copyWith(
+        teams: teams,
+        statusMessage: 'Added ${added.name}.',
+      ),
+    );
+    await saveTeamProfiles(teams);
+    return added;
+  }
+
   Future<void> updateMember(String memberId, TeamMemberConfig updated) async {
     final team = state.selectedTeam;
     if (team == null) return;
