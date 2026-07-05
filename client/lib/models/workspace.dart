@@ -1,5 +1,6 @@
 import 'package:flutter/foundation.dart';
 
+import '../utils/workspace_path_utils.dart';
 import 'workspace_folder.dart';
 import 'workspace_icon_ref.dart';
 import 'workspace_topology.dart';
@@ -83,7 +84,42 @@ class Workspace {
       display.isNotEmpty ? display : _basename(firstFolderPath);
 
   /// Basename of [firstFolderPath]; empty when no primary directory is set.
-  String get primaryDirectoryName => _basename(firstFolderPath);
+  String get primaryDirectoryName => directoryName(firstFolderPath);
+
+  static String directoryName(String path) => _basename(path);
+
+  /// Reorders [folders] so [primaryPath] is first, or prepends an out-of-catalog
+  /// path (e.g. a git worktree) while keeping the rest as additional directories.
+  static List<WorkspaceFolder> foldersForPrimaryPath(
+    List<WorkspaceFolder> folders,
+    String primaryPath,
+  ) {
+    if (folders.isEmpty) {
+      final primary = normalizeWorkspacePath(primaryPath);
+      if (primary.isEmpty) return folders;
+      return [WorkspaceFolder(path: primary)];
+    }
+    final primary = normalizeWorkspacePath(primaryPath);
+    if (primary.isEmpty) return folders;
+
+    final matchIndex = folders.indexWhere(
+      (f) => workspacePathsEqual(f.path, primary),
+    );
+    if (matchIndex > 0) {
+      final selected = folders[matchIndex];
+      return [
+        selected,
+        ...folders.take(matchIndex),
+        ...folders.skip(matchIndex + 1),
+      ];
+    }
+    if (matchIndex == 0) return folders;
+
+    return [
+      WorkspaceFolder(path: primary, targetId: folders.first.targetId),
+      ...folders,
+    ];
+  }
 
   static String _basename(String path) {
     if (path.isEmpty) return '';

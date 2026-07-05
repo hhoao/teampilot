@@ -38,10 +38,16 @@ class _WorkspaceComposeLandingPaneState extends State<WorkspaceComposeLandingPan
     setState(() => _submitting = true);
     try {
       String? workingDirectory;
-      try {
-        workingDirectory = context.read<WorktreeCubit>().state.pathForNewSession;
-      } on ProviderNotFoundException {
-        workingDirectory = widget.workspace.firstFolderPath;
+      final draftPath = draft.workingDirectoryPath?.trim();
+      if (draftPath != null && draftPath.isNotEmpty) {
+        workingDirectory = draftPath;
+      } else {
+        try {
+          workingDirectory =
+              context.read<WorktreeCubit>().state.pathForNewSession;
+        } on ProviderNotFoundException {
+          workingDirectory = widget.workspace.firstFolderPath;
+        }
       }
 
       if (!draft.isPersonal) {

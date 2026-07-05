@@ -270,18 +270,20 @@ class TabTeamBusCoordinator implements MemberMaterializer {
     }
 
     final team = _activeTeam();
-    if (team == null) return false;
-    final member = team.members.firstWhere(
-      (m) => m.id == memberId,
-      orElse: () => const TeamMemberConfig(id: '', name: ''),
-    );
-    if (!member.isValid) return false;
-
-    final presenceCap = CliToolRegistry.builtIn()
-        .capability<PresenceCapability>(team.cli);
     if (directToPty) {
-      // Landing / operator stdin: same readiness as personal — boot frame, not
-      // parked in MCP wait_for_message.
+      // Team runtime may still be wiring [activeTeam] while the tab connects;
+      // landing only needs a connected shell past the boot frame.
+      if (team == null) {
+        return shell.activityTracker.isBootFrameReady;
+      }
+      final member = team.members.firstWhere(
+        (m) => m.id == memberId,
+        orElse: () => const TeamMemberConfig(id: '', name: ''),
+      );
+      if (!member.isValid) return shell.activityTracker.isBootFrameReady;
+
+      final presenceCap = CliToolRegistry.builtIn()
+          .capability<PresenceCapability>(team.cli);
       return MemberAvailabilityResolver.isReadyForAutomationInput(
         shell: shell,
         member: member,
@@ -294,6 +296,15 @@ class TabTeamBusCoordinator implements MemberMaterializer {
         usesShellActivity: presenceCap?.usesShellActivity ?? false,
       );
     }
+    if (team == null) return false;
+    final member = team.members.firstWhere(
+      (m) => m.id == memberId,
+      orElse: () => const TeamMemberConfig(id: '', name: ''),
+    );
+    if (!member.isValid) return false;
+
+    final presenceCap = CliToolRegistry.builtIn()
+        .capability<PresenceCapability>(team.cli);
     return MemberAvailabilityResolver.isReadyForAutomationInput(
       shell: shell,
       member: member,

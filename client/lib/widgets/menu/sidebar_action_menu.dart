@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:teampilot/theme/app_icon_sizes.dart';
 
+import '../../theme/app_spacing.dart';
 import '../../theme/app_text_styles.dart';
 import '../../utils/context_menu_position.dart';
 import '../app_icon_button.dart';
@@ -172,6 +173,7 @@ class SidebarActionMenuItem extends StatefulWidget {
     this.iconWidget,
     required this.label,
     this.subtitle,
+    this.subtitleSuffix,
     this.trailing,
     this.onTap,
     this.destructive = false,
@@ -184,6 +186,9 @@ class SidebarActionMenuItem extends StatefulWidget {
   final Widget? iconWidget;
   final String label;
   final Widget? subtitle;
+
+  /// Muted suffix on the same line as [label] (e.g. machine name).
+  final String? subtitleSuffix;
   final Widget? trailing;
   final VoidCallback? onTap;
   final bool destructive;
@@ -269,24 +274,54 @@ class _SidebarActionMenuItemState extends State<SidebarActionMenuItem> {
               SizedBox(width: SidebarActionMenuMetrics.iconGap),
               Flexible(
                 fit: FlexFit.loose,
-                child: Column(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      widget.label,
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                      softWrap: false,
-                      style: dropdownFieldTextStyle(
-                        context,
-                        fontWeight: FontWeight.w500,
-                        color: textColor,
-                      ).copyWith(height: 18 / 14),
-                    ),
-                    if (widget.subtitle != null) widget.subtitle!,
-                  ],
-                ),
+                child: widget.subtitleSuffix != null
+                    ? Row(
+                        children: [
+                          Flexible(
+                            child: Text(
+                              widget.label,
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                              softWrap: false,
+                              style: dropdownFieldTextStyle(
+                                context,
+                                fontWeight: FontWeight.w500,
+                                color: textColor,
+                              ).copyWith(height: 18 / 14),
+                            ),
+                          ),
+                          SizedBox(width: context.appSpacing.lg),
+                          Text(
+                            widget.subtitleSuffix!,
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                            softWrap: false,
+                            style: dropdownFieldTextStyle(
+                              context,
+                              fontWeight: FontWeight.w400,
+                              color: textColor.withValues(alpha: 0.45),
+                            ).copyWith(height: 18 / 14),
+                          ),
+                        ],
+                      )
+                    : Column(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            widget.label,
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                            softWrap: false,
+                            style: dropdownFieldTextStyle(
+                              context,
+                              fontWeight: FontWeight.w500,
+                              color: textColor,
+                            ).copyWith(height: 18 / 14),
+                          ),
+                          if (widget.subtitle != null) widget.subtitle!,
+                        ],
+                      ),
               ),
               if (widget.trailing != null) ...[
                 const SizedBox(width: 8),
@@ -555,6 +590,7 @@ class SidebarActionMenuSpec {
       icon = null,
       label = null,
       subtitle = null,
+      subtitleSuffix = null,
       trailing = null,
       destructive = false,
       enabled = true,
@@ -567,6 +603,7 @@ class SidebarActionMenuSpec {
     required this.icon,
     required this.label,
     this.subtitle,
+    this.subtitleSuffix,
     this.trailing,
     this.destructive = false,
     this.enabled = true,
@@ -580,6 +617,7 @@ class SidebarActionMenuSpec {
   final IconData? icon;
   final String? label;
   final Widget? subtitle;
+  final String? subtitleSuffix;
   final Widget? trailing;
   final bool destructive;
   final bool enabled;
@@ -640,6 +678,7 @@ Widget _specToMenuItem({
     icon: spec.icon,
     label: spec.label ?? '',
     subtitle: spec.subtitle,
+    subtitleSuffix: spec.subtitleSuffix,
     trailing: trailing,
     destructive: spec.destructive,
     enabled: spec.enabled,

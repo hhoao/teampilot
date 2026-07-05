@@ -1151,6 +1151,9 @@ class AppLocalizationsEn extends AppLocalizations {
   String get workspaceChatLandingSelectWorkspace => 'Select workspace >';
 
   @override
+  String get workspaceChatLandingSelectLaunchDirectory => 'Select directory >';
+
+  @override
   String get workspaceChatLandingModeTeam => 'Team';
 
   @override
@@ -1171,6 +1174,40 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get workspaceChatLandingDefaultPermissions => 'Default permissions';
+
+  @override
+  String get workspaceChatLandingAttach => 'Attach files';
+
+  @override
+  String get workspaceChatLandingEnhance => 'Enhance prompt';
+
+  @override
+  String get workspaceChatLandingVoice => 'Voice input';
+
+  @override
+  String get workspaceChatLandingVoiceCancel => 'Cancel recording';
+
+  @override
+  String get workspaceChatLandingVoiceStop => 'Stop recording';
+
+  @override
+  String get workspaceChatLandingEnhanceEmpty =>
+      'Type a message before enhancing';
+
+  @override
+  String get workspaceChatLandingEnhanceNotConfigured =>
+      'Configure a CLI preset or team provider first';
+
+  @override
+  String get workspaceChatLandingEnhanceFailed => 'Could not enhance prompt';
+
+  @override
+  String get workspaceChatLandingVoiceUnavailable =>
+      'Voice input is not available on this device';
+
+  @override
+  String get workspaceChatLandingVoicePermissionDenied =>
+      'Microphone permission denied';
 
   @override
   String get sessionStartButton => 'Start conversation';

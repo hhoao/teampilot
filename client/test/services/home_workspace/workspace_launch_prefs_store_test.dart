@@ -9,11 +9,16 @@ void main() {
 
     await store.save(
       'ws-a',
-      const LandingPrefs(isPersonal: false, teamId: 'team-1'),
+      const LandingPrefs(
+        isPersonal: false,
+        teamId: 'team-1',
+        workingDirectoryPath: '/projects/app',
+      ),
     );
 
     final loaded = await store.prefsFor('ws-a');
     expect(loaded?.isPersonal, isFalse);
     expect(loaded?.teamId, 'team-1');
+    expect(loaded?.workingDirectoryPath, '/projects/app');
   });
 }

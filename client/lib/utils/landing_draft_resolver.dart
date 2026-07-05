@@ -24,6 +24,7 @@ Future<LandingLaunchContext> resolveLandingDraft({
     personalProfileId: prefs.personalProfileId ?? defaultProfile,
     presetId: prefs.presetId,
     teamId: prefs.teamId,
+    workingDirectoryPath: prefs.workingDirectoryPath,
   );
 }
 
@@ -39,6 +40,7 @@ Future<void> persistLandingDraft(
       presetId: draft.presetId,
       teamId: draft.teamId,
       personalProfileId: draft.personalProfileId,
+      workingDirectoryPath: draft.workingDirectoryPath,
     ),
   );
 }

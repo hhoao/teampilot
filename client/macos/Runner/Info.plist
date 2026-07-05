@@ -28,5 +28,9 @@
 	<string>MainMenu</string>
 	<key>NSPrincipalClass</key>
 	<string>NSApplication</string>
+	<key>NSMicrophoneUsageDescription</key>
+	<string>TeamPilot uses the microphone for voice input in the compose field.</string>
+	<key>NSSpeechRecognitionUsageDescription</key>
+	<string>TeamPilot uses speech recognition for voice input in the compose field.</string>
 </dict>
 </plist>

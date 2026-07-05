@@ -1,8 +1,6 @@
 import '../../models/app_session.dart';
 import '../../models/workspace.dart';
-import '../../models/workspace_folder.dart';
 import '../../models/team_config.dart';
-import '../../utils/workspace_path_utils.dart';
 
 /// In-memory session used to stage the workbench before disk persistence.
 AppSession buildProvisionalSession({
@@ -16,18 +14,10 @@ AppSession buildProvisionalSession({
 }) {
   final now = DateTime.now().millisecondsSinceEpoch;
   final trimmedTeam = sessionTeamId.trim();
-  final folders =
-      (workingDirectory != null && workingDirectory.trim().isNotEmpty)
-      ? [
-          WorkspaceFolder(
-            path: normalizeWorkspacePath(workingDirectory),
-            targetId: workspace.folders.isEmpty
-                ? WorkspaceFolder.localTargetId
-                : workspace.folders.first.targetId,
-          ),
-          ...workspace.folders.skip(1),
-        ]
-      : workspace.folders;
+  final folders = Workspace.foldersForPrimaryPath(
+    workspace.folders,
+    workingDirectory ?? '',
+  );
 
   return AppSession(
     sessionId: sessionId,

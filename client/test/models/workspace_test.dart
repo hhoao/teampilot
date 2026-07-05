@@ -65,6 +65,43 @@ void main() {
     // No teamId surface exists; the field is simply dropped.
   });
 
+  test('foldersForPrimaryPath reorders workspace folders', () {
+    const folders = [
+      WorkspaceFolder(path: '/main'),
+      WorkspaceFolder(path: '/extra'),
+    ];
+    final reordered = Workspace.foldersForPrimaryPath(folders, '/extra');
+    expect(reordered.map((f) => f.path), ['/extra', '/main']);
+  });
+
+  test('foldersForPrimaryPath prepends out-of-catalog worktree path', () {
+    const folders = [WorkspaceFolder(path: '/repo')];
+    final withWorktree = Workspace.foldersForPrimaryPath(
+      folders,
+      '/repo/.worktrees/feature',
+    );
+    expect(withWorktree.map((f) => f.path), [
+      '/repo/.worktrees/feature',
+      '/repo',
+    ]);
+  });
+
+  test('foldersForPrimaryPath is no-op when primary path is empty', () {
+    const folders = [
+      WorkspaceFolder(path: '/main'),
+      WorkspaceFolder(path: '/extra'),
+    ];
+    expect(Workspace.foldersForPrimaryPath(folders, ''), folders);
+  });
+
+  test('foldersForPrimaryPath leaves list unchanged when primary is first', () {
+    const folders = [
+      WorkspaceFolder(path: '/main'),
+      WorkspaceFolder(path: '/extra'),
+    ];
+    expect(Workspace.foldersForPrimaryPath(folders, '/main'), folders);
+  });
+
   test('defaultProfileId round-trips and defaults empty', () {
     final p = Workspace(
       workspaceId: 'p1',

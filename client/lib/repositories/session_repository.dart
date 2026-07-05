@@ -241,14 +241,6 @@ class SessionRepository {
     return sessions;
   }
 
-  bool _pathsEqual(List<String> a, List<String> b) {
-    if (a.length != b.length) return false;
-    for (var i = 0; i < a.length; i++) {
-      if (a[i] != b[i]) return false;
-    }
-    return true;
-  }
-
   /// Creates a workspace for [primaryPath].
   ///
   /// By default, an existing workspace with the same normalized [primaryPath]
@@ -536,17 +528,10 @@ class SessionRepository {
     final session = AppSession(
       sessionId: sessionId,
       workspaceId: workspaceId,
-      folders: (workingDirectory != null && workingDirectory.trim().isNotEmpty)
-          ? [
-              WorkspaceFolder(
-                path: normalizeWorkspacePath(workingDirectory),
-                targetId: workspace.folders.isEmpty
-                    ? WorkspaceFolder.localTargetId
-                    : workspace.folders.first.targetId,
-              ),
-              ...workspace.folders.skip(1),
-            ]
-          : workspace.folders,
+      folders: Workspace.foldersForPrimaryPath(
+        workspace.folders,
+        workingDirectory ?? '',
+      ),
       display: '',
       sessionTeam: sessionTeam,
       profileId: trimmedTeam.isEmpty ? personalIdentityId.trim() : '',

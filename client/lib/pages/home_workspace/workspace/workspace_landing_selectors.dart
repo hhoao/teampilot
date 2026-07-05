@@ -1,0 +1,265 @@
+import 'package:flutter/material.dart';
+import 'package:teampilot/theme/app_icon_sizes.dart';
+
+import '../../../cubits/worktree_cubit.dart';
+import '../../../models/runtime_target.dart';
+import '../../../models/workspace.dart';
+import '../../../models/workspace_topology.dart';
+import '../../../theme/app_spacing.dart';
+import '../../../theme/app_text_styles.dart';
+import '../../../utils/workspace_path_utils.dart';
+import '../../../widgets/menu/sidebar_action_menu.dart';
+import '../../../widgets/workspace_folder_directory_row.dart';
+import 'workspace_chat_landing_palette.dart';
+
+/// Label for the workspace row (display name, else primary directory basename).
+String workspaceLandingWorkspaceLabel(Workspace workspace) {
+  final display = workspace.display.trim();
+  if (display.isNotEmpty) return display;
+  return workspace.primaryDirectoryName;
+}
+
+/// One launch-directory choice (workspace folder or git worktree).
+class LaunchDirectoryOption {
+  const LaunchDirectoryOption({
+    required this.path,
+    required this.label,
+    required this.icon,
+    this.subtitle,
+  });
+
+  final String path;
+  final String label;
+  final String? subtitle;
+  final IconData icon;
+}
+
+/// Resolves compose-landing cwd options and the effective selected path.
+class WorkspaceLandingDirectoryResolver {
+  const WorkspaceLandingDirectoryResolver({
+    required this.workspace,
+    this.worktreeState,
+    this.runtimeTargets = const [],
+    this.storedPath,
+  });
+
+  final Workspace workspace;
+  final WorktreeState? worktreeState;
+  final List<RuntimeTarget> runtimeTargets;
+  final String? storedPath;
+
+  List<LaunchDirectoryOption> get options {
+    if (worktreeState?.hasMultipleWorktrees == true) {
+      return [
+        for (final wt in worktreeState!.worktrees)
+          LaunchDirectoryOption(
+            path: wt.path,
+            label: wt.shortBranch,
+            icon: Icons.account_tree_outlined,
+          ),
+      ];
+    }
+    if (workspace.folders.length > 1) {
+      final isMixed =
+          workspaceTopologyOf(workspace.folders) == WorkspaceTopology.mixed;
+      return [
+        for (final folder in workspace.folders)
+          LaunchDirectoryOption(
+            path: folder.path,
+            label: Workspace.directoryName(folder.path),
+            subtitle: isMixed
+                ? workspaceFolderTargetLabel(runtimeTargets, folder.targetId)
+                : null,
+            icon: workspaceFolderTargetIcon(folder.targetId),
+          ),
+      ];
+    }
+    return const [];
+  }
+
+  /// Precedence: explicit stored path → current worktree → first option → workspace primary.
+  String resolveSelectedPath() {
+    final stored = storedPath?.trim() ?? '';
+    final opts = options;
+    if (stored.isNotEmpty &&
+        opts.any((o) => workspacePathsEqual(o.path, stored))) {
+      return stored;
+    }
+    if (worktreeState?.hasMultipleWorktrees == true &&
+        worktreeState!.currentWorktreePath.isNotEmpty) {
+      return worktreeState!.currentWorktreePath;
+    }
+    if (opts.isNotEmpty) return opts.first.path;
+    return workspace.firstFolderPath;
+  }
+
+  String labelFor(String selectedPath) {
+    for (final option in options) {
+      if (workspacePathsEqual(option.path, selectedPath)) {
+        return option.label;
+      }
+    }
+    return Workspace.directoryName(selectedPath);
+  }
+
+  List<SidebarActionMenuSpec> menuSpecs(String selectedPath) {
+    return [
+      for (final option in options)
+        SidebarActionMenuSpec.item(
+          value: option.path,
+          icon: option.icon,
+          label: option.label,
+          subtitleSuffix: option.subtitle,
+          selected: workspacePathsEqual(option.path, selectedPath),
+        ),
+    ];
+  }
+}
+
+/// Workspace title + optional launch-directory selector on one header row.
+class WorkspaceLandingHeaderRow extends StatelessWidget {
+  const WorkspaceLandingHeaderRow({
+    required this.workspaceLabel,
+    required this.workspaceHintWhenEmpty,
+    required this.directoryLabel,
+    required this.directoryHintWhenEmpty,
+    this.directoryMenuSpecs = const [],
+    this.onDirectorySelected,
+    super.key,
+  });
+
+  final String workspaceLabel;
+  final String workspaceHintWhenEmpty;
+  final String directoryLabel;
+  final String directoryHintWhenEmpty;
+  final List<SidebarActionMenuSpec> directoryMenuSpecs;
+  final ValueChanged<Object?>? onDirectorySelected;
+
+  @override
+  Widget build(BuildContext context) {
+    final spacing = context.appSpacing;
+    final showDirectory =
+        directoryMenuSpecs.length > 1 && onDirectorySelected != null;
+
+    return Align(
+      alignment: Alignment.centerLeft,
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          WorkspaceLandingSelectorBar(
+            compact: true,
+            label: workspaceLabel,
+            hintWhenEmpty: workspaceHintWhenEmpty,
+          ),
+          if (showDirectory) ...[
+            SizedBox(width: spacing.sm),
+            WorkspaceLandingSelectorBar(
+              compact: true,
+              label: directoryLabel,
+              hintWhenEmpty: directoryHintWhenEmpty,
+              menuSpecs: directoryMenuSpecs,
+              onSelected: onDirectorySelected,
+            ),
+          ],
+        ],
+      ),
+    );
+  }
+}
+
+/// Minimal header selector: text + optional dropdown menu.
+class WorkspaceLandingSelectorBar extends StatelessWidget {
+  const WorkspaceLandingSelectorBar({
+    required this.label,
+    required this.hintWhenEmpty,
+    this.menuSpecs = const [],
+    this.onSelected,
+    this.compact = false,
+    super.key,
+  });
+
+  final String label;
+  final String hintWhenEmpty;
+  final List<SidebarActionMenuSpec> menuSpecs;
+  final ValueChanged<Object?>? onSelected;
+
+  /// When true, sizes to content for use inside [WorkspaceLandingHeaderRow].
+  final bool compact;
+
+  @override
+  Widget build(BuildContext context) {
+    final cs = Theme.of(context).colorScheme;
+    final palette = WorkspaceChatLandingPalette(cs);
+    final icons = context.appIconSizes;
+    final styles = AppTextStyles.of(context);
+    final isEmpty = label.trim().isEmpty;
+    final display = isEmpty ? hintWhenEmpty : label.trim();
+    final foreground = isEmpty
+        ? palette.hint
+        : cs.onSurface.withValues(alpha: 0.88);
+    final textStyle = styles.body.copyWith(
+      color: foreground,
+      fontWeight: FontWeight.w500,
+    );
+    final selectable = menuSpecs.length > 1 && onSelected != null;
+    if (!selectable) {
+      final labelWidget = Text(
+        display,
+        maxLines: 1,
+        overflow: TextOverflow.ellipsis,
+        style: textStyle,
+      );
+      if (compact) return labelWidget;
+      return Row(
+        children: [
+          Flexible(child: labelWidget),
+        ],
+      );
+    }
+
+    final menuRow = Row(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        Text(
+          display,
+          maxLines: 1,
+          overflow: TextOverflow.ellipsis,
+          style: textStyle,
+        ),
+        Icon(
+          Icons.expand_more,
+          size: icons.md,
+          color: foreground.withValues(alpha: isEmpty ? 1 : 0.72),
+        ),
+      ],
+    );
+
+    final menu = SidebarActionMenuIconAnchor(
+      minWidth: 240,
+      triggerBuilder: (context, controller) => InkWell(
+        onTap: () {
+          if (controller.isOpen) {
+            controller.close();
+          } else {
+            controller.open();
+          }
+        },
+        borderRadius: BorderRadius.circular(6),
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 2, vertical: 2),
+          child: menuRow,
+        ),
+      ),
+      buildMenuChildren: (context, controller) =>
+          buildSidebarActionMenuChildren(
+            context: context,
+            specs: menuSpecs,
+            menuController: controller,
+            onSelect: onSelected!,
+          ),
+    );
+
+    if (compact) return menu;
+    return Align(alignment: Alignment.centerLeft, child: menu);
+  }
+}

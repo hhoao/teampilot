@@ -2144,6 +2144,12 @@ abstract class AppLocalizations {
   /// **'Select workspace >'**
   String get workspaceChatLandingSelectWorkspace;
 
+  /// No description provided for @workspaceChatLandingSelectLaunchDirectory.
+  ///
+  /// In en, this message translates to:
+  /// **'Select directory >'**
+  String get workspaceChatLandingSelectLaunchDirectory;
+
   /// No description provided for @workspaceChatLandingModeTeam.
   ///
   /// In en, this message translates to:
@@ -2185,6 +2191,66 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Default permissions'**
   String get workspaceChatLandingDefaultPermissions;
+
+  /// No description provided for @workspaceChatLandingAttach.
+  ///
+  /// In en, this message translates to:
+  /// **'Attach files'**
+  String get workspaceChatLandingAttach;
+
+  /// No description provided for @workspaceChatLandingEnhance.
+  ///
+  /// In en, this message translates to:
+  /// **'Enhance prompt'**
+  String get workspaceChatLandingEnhance;
+
+  /// No description provided for @workspaceChatLandingVoice.
+  ///
+  /// In en, this message translates to:
+  /// **'Voice input'**
+  String get workspaceChatLandingVoice;
+
+  /// No description provided for @workspaceChatLandingVoiceCancel.
+  ///
+  /// In en, this message translates to:
+  /// **'Cancel recording'**
+  String get workspaceChatLandingVoiceCancel;
+
+  /// No description provided for @workspaceChatLandingVoiceStop.
+  ///
+  /// In en, this message translates to:
+  /// **'Stop recording'**
+  String get workspaceChatLandingVoiceStop;
+
+  /// No description provided for @workspaceChatLandingEnhanceEmpty.
+  ///
+  /// In en, this message translates to:
+  /// **'Type a message before enhancing'**
+  String get workspaceChatLandingEnhanceEmpty;
+
+  /// No description provided for @workspaceChatLandingEnhanceNotConfigured.
+  ///
+  /// In en, this message translates to:
+  /// **'Configure a CLI preset or team provider first'**
+  String get workspaceChatLandingEnhanceNotConfigured;
+
+  /// No description provided for @workspaceChatLandingEnhanceFailed.
+  ///
+  /// In en, this message translates to:
+  /// **'Could not enhance prompt'**
+  String get workspaceChatLandingEnhanceFailed;
+
+  /// No description provided for @workspaceChatLandingVoiceUnavailable.
+  ///
+  /// In en, this message translates to:
+  /// **'Voice input is not available on this device'**
+  String get workspaceChatLandingVoiceUnavailable;
+
+  /// No description provided for @workspaceChatLandingVoicePermissionDenied.
+  ///
+  /// In en, this message translates to:
+  /// **'Microphone permission denied'**
+  String get workspaceChatLandingVoicePermissionDenied;
 
   /// No description provided for @sessionStartButton.
   ///

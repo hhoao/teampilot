@@ -558,7 +558,7 @@ class _SidebarTile extends StatelessWidget {
   final Widget? trailing;
   final double contentLeftInset;
 
-  static const _selectedFillAlpha = 0.22;
+  static const _selectedFillAlpha = 0.10;
 
   Color _selectedFillColor(ColorScheme cs) {
     return Color.alphaBlend(

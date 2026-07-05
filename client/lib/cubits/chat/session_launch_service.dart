@@ -857,7 +857,7 @@ class SessionLaunchService implements MemberConnector {
         return;
       }
       try {
-        await _connectShell(
+        final connected = await _connectShell(
           tab: tab,
           session: session,
           shell: shell,
@@ -868,13 +868,16 @@ class SessionLaunchService implements MemberConnector {
           workspace: workspace,
           personal: personal,
         );
-        if (!request.isPersonal &&
+        if (connected &&
+            !request.isPersonal &&
             team != null &&
             member != null &&
             _h.autoLaunchAllMembersOnConnect?.call() == true) {
           _launchRemainingMembersForTab(team, member.id, tab);
         }
-        _h.updateTabRunning(tab.info.id);
+        if (connected) {
+          _h.updateTabRunning(tab.info.id);
+        }
       } on Object catch (e, st) {
         appLogger.e(
           '[session-launch] connect failed for ${tab.info.id}: $e',
@@ -1381,7 +1384,7 @@ class SessionLaunchService implements MemberConnector {
     ChatTab tab,
   ) => _scheduleMemberConnect(team, member, tab);
 
-  Future<void> _connectMemberShell({
+  Future<bool> _connectMemberShell({
     required ChatTab tab,
     required AppSession session,
     required TeamProfile team,
@@ -1399,7 +1402,30 @@ class SessionLaunchService implements MemberConnector {
     member: member,
   );
 
-  Future<void> _connectShell({
+  bool _teamSessionPersistedEnough(AppSession session) {
+    if (session.cliTeamName.trim().isEmpty) return false;
+    if (session.sessionId.startsWith('local-')) return true;
+    return session.members.isNotEmpty;
+  }
+
+  /// Staged tabs carry a provisional snapshot until [SessionRepository.createSession]
+  /// finishes; connect must not race that path with empty [AppSession.cliTeamName].
+  Future<AppSession?> _waitForPersistedTeamSession(
+    ChatTab tab, {
+    Duration timeout = const Duration(seconds: 30),
+  }) async {
+    final deadline = DateTime.now().add(timeout);
+    while (DateTime.now().isBefore(deadline)) {
+      final persisted = tab.persistedSession;
+      if (persisted != null && _teamSessionPersistedEnough(persisted)) {
+        return persisted;
+      }
+      await Future<void>.delayed(const Duration(milliseconds: 50));
+    }
+    return tab.persistedSession;
+  }
+
+  Future<bool> _connectShell({
     required ChatTab tab,
     required AppSession session,
     required TerminalSession shell,
@@ -1410,8 +1436,11 @@ class SessionLaunchService implements MemberConnector {
     Workspace? workspace,
     PersonalProfile? personal,
   }) async {
-    final isPersonal = session.sessionTeam.trim().isEmpty;
-    final memberLabel = isPersonal ? session.sessionId : (member?.id ?? '');
+    var connectSession = tab.persistedSession ?? session;
+    final isPersonal = connectSession.sessionTeam.trim().isEmpty;
+    final memberLabel = isPersonal
+        ? connectSession.sessionId
+        : (member?.id ?? '');
     appLogger.d(
       '[session-launch] connectShell start '
       'session=${tab.info.id} member=$memberLabel personal=$isPersonal '
@@ -1427,7 +1456,7 @@ class SessionLaunchService implements MemberConnector {
           tab.info.id,
           'Personal session is missing personal identity.',
         );
-        return;
+        return false;
       }
     } else if (team == null || member == null) {
       appLogger.d(
@@ -1438,11 +1467,16 @@ class SessionLaunchService implements MemberConnector {
         tab.info.id,
         'Team session requires team and member to connect.',
       );
-      return;
+      return false;
+    }
+
+    if (team != null && !_teamSessionPersistedEnough(connectSession)) {
+      final waited = await _waitForPersistedTeamSession(tab);
+      if (waited != null) connectSession = waited;
     }
 
     if (team != null) {
-      if (session.cliTeamName.isEmpty) {
+      if (connectSession.cliTeamName.isEmpty) {
         appLogger.d(
           '[session-launch] connectShell aborted session=${tab.info.id} '
           'reason=missing_cli_team_name',
@@ -1452,9 +1486,10 @@ class SessionLaunchService implements MemberConnector {
           'Session is missing CLI team identity (cliTeamName). '
           'Create a new team session.',
         );
-        return;
+        return false;
       }
-      if (!session.sessionId.startsWith('local-') && session.members.isEmpty) {
+      if (!connectSession.sessionId.startsWith('local-') &&
+          connectSession.members.isEmpty) {
         appLogger.d(
           '[session-launch] connectShell aborted session=${tab.info.id} '
           'reason=missing_member_bindings',
@@ -1463,14 +1498,14 @@ class SessionLaunchService implements MemberConnector {
           tab.info.id,
           'Session is missing member task bindings. Create a new team session.',
         );
-        return;
+        return false;
       }
     }
 
-    final activeSession = tab.persistedSession ?? session;
+    final activeSession = connectSession;
     final SessionMemberBinding? binding = team != null && member != null
         ? await _resolveMemberBinding(
-            session: session,
+            session: activeSession,
             member: member,
             tab: tab,
             repo: repo,
@@ -1483,7 +1518,7 @@ class SessionLaunchService implements MemberConnector {
         shell: shell,
         reason: 'tab_or_shell_gone_after_member_binding',
       );
-      return;
+      return false;
     }
 
     final launchMember = member;
@@ -1633,7 +1668,7 @@ class SessionLaunchService implements MemberConnector {
           reason: 'tab_or_shell_gone_after_prepare_connect',
           remoteMemberKey: remoteMemberKeyForRollback,
         );
-        return;
+        return false;
       }
 
       if (launchTarget.kind == RuntimeKind.ssh) {
@@ -1655,7 +1690,7 @@ class SessionLaunchService implements MemberConnector {
           reason: 'tab_or_shell_gone_after_ssh_constraints',
           remoteMemberKey: remoteMemberKeyForRollback,
         );
-        return;
+        return false;
       }
 
       final plan = shellLaunch.plan;
@@ -1683,7 +1718,7 @@ class SessionLaunchService implements MemberConnector {
           reason: 'tab_or_shell_gone_after_persist_native_id',
           remoteMemberKey: remoteMemberKeyForRollback,
         );
-        return;
+        return false;
       }
 
       // P3a: the member runs in its assigned working directory (default = session
@@ -1749,6 +1784,7 @@ class SessionLaunchService implements MemberConnector {
         },
       );
       remoteMemberKeyForRollback = null;
+      return true;
     } on Object catch (e, st) {
       if (remoteMemberKeyForRollback != null) {
         await tab.closeMemberRemotePlane(remoteMemberKeyForRollback);
@@ -1760,6 +1796,7 @@ class SessionLaunchService implements MemberConnector {
         stackTrace: st,
       );
       _h.failSessionConnect(tab.info.id, 'Failed to connect session: $e');
+      return false;
     }
   }
 

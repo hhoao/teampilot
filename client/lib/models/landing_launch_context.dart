@@ -5,11 +5,14 @@ import '../services/storage/launch_profile_provisioner.dart';
 /// Snapshot of compose-landing choices used to create a new session.
 @immutable
 class LandingLaunchContext {
+  static const Object _unset = Object();
+
   const LandingLaunchContext({
     required this.isPersonal,
     this.personalProfileId = '',
     this.presetId,
     this.teamId,
+    this.workingDirectoryPath,
   });
 
   final bool isPersonal;
@@ -22,6 +25,9 @@ class LandingLaunchContext {
 
   /// Selected team when [isPersonal] is false.
   final String? teamId;
+
+  /// Primary working directory for the new session (workspace folder or worktree).
+  final String? workingDirectoryPath;
 
   /// Profile id for manage panel / automation scope.
   String get profileId {
@@ -37,12 +43,16 @@ class LandingLaunchContext {
     String? personalProfileId,
     String? presetId,
     String? teamId,
+    Object? workingDirectoryPath = _unset,
   }) {
     return LandingLaunchContext(
       isPersonal: isPersonal ?? this.isPersonal,
       personalProfileId: personalProfileId ?? this.personalProfileId,
       presetId: presetId ?? this.presetId,
       teamId: teamId ?? this.teamId,
+      workingDirectoryPath: workingDirectoryPath == _unset
+          ? this.workingDirectoryPath
+          : workingDirectoryPath as String?,
     );
   }
 
@@ -53,9 +63,15 @@ class LandingLaunchContext {
           isPersonal == other.isPersonal &&
           personalProfileId == other.personalProfileId &&
           presetId == other.presetId &&
-          teamId == other.teamId;
+          teamId == other.teamId &&
+          workingDirectoryPath == other.workingDirectoryPath;
 
   @override
-  int get hashCode =>
-      Object.hash(isPersonal, personalProfileId, presetId, teamId);
+  int get hashCode => Object.hash(
+    isPersonal,
+    personalProfileId,
+    presetId,
+    teamId,
+    workingDirectoryPath,
+  );
 }
