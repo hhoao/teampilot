@@ -273,6 +273,7 @@ class _WorkspaceSidebarState extends State<WorkspaceSidebar> {
               key: ValueKey('wt-group-${worktreeGroupCollapseKey(group)}'),
               group: group,
               workspace: widget.workspace,
+              tabScopeId: widget.tabScopeId,
               highlightSessionId: scopedActiveSessionId(
                 context.read<ChatCubit>(),
                 widget.tabScopeId,
@@ -320,17 +321,11 @@ class _WorkspaceSidebarState extends State<WorkspaceSidebar> {
       await cubit.load(repoPath);
       cubit.setCurrentWorktree(result.worktreePath);
       if (result.startConversation && context.mounted) {
-        final draft = context
-            .read<WorkspaceLandingContextCubit>()
-            .state
-            .context;
-        await createSessionInWorktree(
+        await showWorkspaceComposeLandingWithWorktree(
           context,
           widget.workspace,
-          isPersonal: draft.isPersonal,
+          tabScopeId: widget.tabScopeId,
           worktreePath: result.worktreePath,
-          sessionTeamId: draft.isPersonal ? '' : (draft.teamId ?? ''),
-          personalIdentityId: draft.personalProfileId,
         );
       }
     } on Object catch (error) {

@@ -6,7 +6,6 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 
 import '../../../cubits/chat_cubit.dart';
 import '../../../cubits/worktree_cubit.dart';
-import '../../../utils/landing_draft_resolver.dart';
 import '../../../l10n/l10n_extensions.dart';
 import '../../../models/app_session.dart';
 import '../../../models/workspace.dart';
@@ -44,6 +43,7 @@ class WorktreeGroupSection extends StatelessWidget {
   const WorktreeGroupSection({
     required this.group,
     required this.workspace,
+    required this.tabScopeId,
     required this.collapsed,
     required this.isCurrent,
     this.highlightSessionId,
@@ -53,6 +53,7 @@ class WorktreeGroupSection extends StatelessWidget {
 
   final WorktreeGroup group;
   final Workspace workspace;
+  final String tabScopeId;
   final bool collapsed;
   final bool isCurrent;
   final String? highlightSessionId;
@@ -68,21 +69,11 @@ class WorktreeGroupSection extends StatelessWidget {
     BuildContext context,
     String worktreePath,
   ) async {
-    final draft = await resolveLandingDraft(
-      workspaceId: workspace.workspaceId,
-      workspace: workspace,
-    );
-    if (!context.mounted) return;
-    context.read<WorktreeCubit>().setCurrentWorktree(worktreePath);
-    unawaited(
-      createSessionInWorktree(
-        context,
-        workspace,
-        isPersonal: draft.isPersonal,
-        worktreePath: worktreePath,
-        sessionTeamId: draft.isPersonal ? '' : (draft.teamId ?? ''),
-        personalIdentityId: draft.personalProfileId,
-      ),
+    await showWorkspaceComposeLandingWithWorktree(
+      context,
+      workspace,
+      tabScopeId: tabScopeId,
+      worktreePath: worktreePath,
     );
   }
 

@@ -20,8 +20,10 @@ import '../../../models/team_config.dart';
 import '../../../models/workspace_topology.dart';
 import '../../../repositories/session_repository.dart';
 import '../../../services/launch/personal_launch_context_resolver.dart';
+import '../../../utils/landing_draft_resolver.dart';
 import '../../../utils/team_member_naming.dart';
 import '../../../utils/logger.dart';
+import '../../../utils/workspace_path_utils.dart';
 
 const _uuid = Uuid();
 
@@ -214,6 +216,39 @@ Future<void> showWorkspaceComposeLanding(
     chat.setActiveWorkspace(tabScopeId);
   }
   chat.enterComposeMode(tabScopeId);
+}
+
+/// Opens compose landing with [worktreePath] pre-selected as the session cwd.
+Future<void> showWorkspaceComposeLandingWithWorktree(
+  BuildContext context,
+  Workspace workspace, {
+  required String tabScopeId,
+  required String worktreePath,
+}) async {
+  final draft = await resolveLandingDraft(
+    workspaceId: workspace.workspaceId,
+    workspace: workspace,
+  );
+  if (!context.mounted) return;
+
+  final normalizedPath = normalizeWorkspacePath(worktreePath);
+  await persistLandingDraft(
+    workspace.workspaceId,
+    draft.copyWith(workingDirectoryPath: normalizedPath),
+  );
+  if (!context.mounted) return;
+
+  try {
+    context.read<WorktreeCubit>().setCurrentWorktree(normalizedPath);
+  } on ProviderNotFoundException {
+    // Outside the workspace split pane — draft still carries the path.
+  }
+
+  await showWorkspaceComposeLanding(
+    context,
+    workspace,
+    tabScopeId: tabScopeId,
+  );
 }
 
 /// Creates a conversation from the compose landing, connects like automation
