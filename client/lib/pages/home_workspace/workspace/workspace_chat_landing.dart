@@ -1,11 +1,13 @@
 ﻿import 'dart:async';
 
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:teampilot/theme/app_toast_theme.dart';
 import 'package:teampilot/widgets/app_toast/app_toast.dart';
 
 import '../../../cubits/app_provider_cubit.dart';
+import '../../../cubits/chat_cubit.dart';
 import '../../../cubits/cli_presets_cubit.dart';
 import '../../../cubits/launch_profile_cubit.dart';
 import '../../../cubits/worktree_cubit.dart';
@@ -159,6 +161,27 @@ class _WorkspaceChatLandingState extends State<WorkspaceChatLanding> {
   void didChangeDependencies() {
     super.didChangeDependencies();
     _runtimeTargetsLoad ??= _loadRuntimeTargets();
+  }
+
+  @override
+  void didUpdateWidget(covariant WorkspaceChatLanding oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (!mapEquals(
+          oldWidget.workspace.memberTargetsByTeam,
+          widget.workspace.memberTargetsByTeam,
+        ) ||
+        oldWidget.workspace.updatedAt != widget.workspace.updatedAt) {
+      _scheduleTeamLaunchReadinessCheck();
+    }
+  }
+
+  /// Latest workspace manifest (member machine pins) from [ChatCubit].
+  Workspace _workspaceForLaunch() {
+    final id = widget.workspace.workspaceId;
+    return context.read<ChatCubit>().state.workspaces.firstWhere(
+      (w) => w.workspaceId == id,
+      orElse: () => widget.workspace,
+    );
   }
 
   Future<void> _loadRuntimeTargets() async {
@@ -345,7 +368,7 @@ class _WorkspaceChatLandingState extends State<WorkspaceChatLanding> {
       return;
     }
     final sync = _launchGate.syncBlock(
-      workspace: widget.workspace,
+      workspace: _workspaceForLaunch(),
       draft: _currentDraft(),
       team: team,
     );
@@ -372,12 +395,15 @@ class _WorkspaceChatLandingState extends State<WorkspaceChatLanding> {
   WorkspaceLandingLaunchBlock? _resolveLaunchWarningBlock(TeamProfile? team) {
     if (_conversationMode != _LandingConversationMode.team) return null;
     final sync = _launchGate.syncBlock(
-      workspace: widget.workspace,
+      workspace: _workspaceForLaunch(),
       draft: _currentDraft(),
       team: team,
     );
     if (sync != null) return sync;
-    return _launchWarningBlock;
+    if (_launchWarningBlock is TeamConfigIncompleteLaunchBlock) {
+      return _launchWarningBlock;
+    }
+    return null;
   }
 
   void _applyDraft(LandingLaunchContext draft) {
@@ -507,14 +533,16 @@ class _WorkspaceChatLandingState extends State<WorkspaceChatLanding> {
       final teams = context.read<LaunchProfileCubit>().state.teams;
       final team = _selectedTeamProfile(teams);
       if (_launchGate.syncBlock(
-            workspace: widget.workspace,
+            workspace: _workspaceForLaunch(),
             draft: _currentDraft(),
             team: team,
           ) !=
           null) {
         return false;
       }
-      if (!_teamConfigLaunchReady) return false;
+      if (_launchWarningBlock is TeamConfigIncompleteLaunchBlock) {
+        return false;
+      }
     }
     return true;
   }
@@ -531,18 +559,45 @@ class _WorkspaceChatLandingState extends State<WorkspaceChatLanding> {
       final teams = context.read<LaunchProfileCubit>().state.teams;
       final team = _selectedTeamProfile(teams);
       final draft = _currentDraft();
-      final presets = context.read<CliPresetsCubit>().state.presets;
-      final block = await _launchGate.evaluate(
-        workspace: widget.workspace,
+      final workspace = _workspaceForLaunch();
+
+      final sync = _launchGate.syncBlock(
+        workspace: workspace,
         draft: draft,
         team: team,
-        globalPresets: presets,
       );
       if (!mounted) return;
-      if (block != null) {
-        showWorkspaceLandingLaunchBlock(context, block);
+      if (sync != null) {
+        showWorkspaceLandingLaunchBlock(context, sync);
         _scheduleTeamLaunchReadinessCheck();
         return;
+      }
+
+      if (_launchWarningBlock is TeamConfigIncompleteLaunchBlock) {
+        showWorkspaceLandingLaunchBlock(context, _launchWarningBlock!);
+        _scheduleTeamLaunchReadinessCheck();
+        return;
+      }
+
+      if (team != null) {
+        final presets = context.read<CliPresetsCubit>().state.presets;
+        final asyncBlock = await _launchGate.asyncBlock(
+          team: team,
+          globalPresets: presets,
+        );
+        if (!mounted) return;
+        if (asyncBlock != null) {
+          setState(() {
+            _teamConfigLaunchReady = false;
+            _launchWarningBlock = asyncBlock;
+          });
+          showWorkspaceLandingLaunchBlock(context, asyncBlock);
+          return;
+        }
+        setState(() {
+          _teamConfigLaunchReady = true;
+          _launchWarningBlock = null;
+        });
       }
     }
 
@@ -583,11 +638,10 @@ class _WorkspaceChatLandingState extends State<WorkspaceChatLanding> {
     if (team == null) return;
     final saved = await showLandingTeamSettingsDialog(
       context,
-      workspace: widget.workspace,
+      workspace: _workspaceForLaunch(),
       team: team,
     );
     if (saved == true && mounted) {
-      setState(() {});
       _scheduleTeamLaunchReadinessCheck();
     }
   }
@@ -715,6 +769,12 @@ class _WorkspaceChatLandingState extends State<WorkspaceChatLanding> {
     final l10n = context.l10n;
     final cs = Theme.of(context).colorScheme;
     final spacing = context.appSpacing;
+    final launchWorkspace = context.select<ChatCubit, Workspace>(
+      (c) => c.state.workspaces.firstWhere(
+        (w) => w.workspaceId == widget.workspace.workspaceId,
+        orElse: () => widget.workspace,
+      ),
+    );
     final presets = context.watch<CliPresetsCubit>().state.presets;
     final teams = context.watch<LaunchProfileCubit>().state.teams;
     final worktreeState = _worktreeState(context);
@@ -730,11 +790,20 @@ class _WorkspaceChatLandingState extends State<WorkspaceChatLanding> {
         : null;
     final launchWarningBlock = _resolveLaunchWarningBlock(selectedTeam);
 
-    return BlocListener<WorktreeCubit, WorktreeState>(
-      listenWhen: (previous, current) =>
-          previous.currentWorktreePath != current.currentWorktreePath,
-      listener: (context, state) => _syncLaunchDirectoryFromWorktree(state),
-      child: ColoredBox(
+    return BlocListener<LaunchProfileCubit, LaunchProfileState>(
+      listenWhen: (previous, current) {
+        final id = _selectedTeamId?.trim() ?? '';
+        if (id.isEmpty) return false;
+        TeamProfile? teamIn(List<TeamProfile> teams) =>
+            teams.where((t) => t.id == id).firstOrNull;
+        return teamIn(previous.teams) != teamIn(current.teams);
+      },
+      listener: (context, state) => _scheduleTeamLaunchReadinessCheck(),
+      child: BlocListener<WorktreeCubit, WorktreeState>(
+        listenWhen: (previous, current) =>
+            previous.currentWorktreePath != current.currentWorktreePath,
+        listener: (context, state) => _syncLaunchDirectoryFromWorktree(state),
+        child: ColoredBox(
         color: cs.surface,
         child: SizedBox.expand(
           child: Center(
@@ -830,7 +899,7 @@ class _WorkspaceChatLandingState extends State<WorkspaceChatLanding> {
                           : null,
                       showTeamSettingsAttention: selectedTeam != null &&
                           landingTeamSettingsNeedsAttention(
-                            workspace: widget.workspace,
+                            workspace: launchWorkspace,
                             team: selectedTeam,
                           ),
                       submitBlockedTooltip:
@@ -849,6 +918,7 @@ class _WorkspaceChatLandingState extends State<WorkspaceChatLanding> {
           ),
         ),
       ),
+    ),
     );
   }
 }

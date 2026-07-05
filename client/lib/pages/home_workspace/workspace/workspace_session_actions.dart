@@ -268,11 +268,15 @@ Future<void> submitWorkspaceLandingMessage(
   final chatCubit = context.read<ChatCubit>();
   final repo = context.read<SessionRepository>();
   final l10n = context.l10n;
+  final liveWorkspace = chatCubit.state.workspaces.firstWhere(
+    (w) => w.workspaceId == workspace.workspaceId,
+    orElse: () => workspace,
+  );
   final team = isPersonal ? null : _teamProfileById(context, sessionTeamId);
 
   if (!_canLaunchWorkspaceSession(
     context,
-    workspace,
+    liveWorkspace,
     isPersonal: isPersonal,
     team: team,
   )) {
@@ -282,7 +286,7 @@ Future<void> submitWorkspaceLandingMessage(
   final plannedSessionId = _uuid.v4();
   final status = await _requestCreateWorkspaceConversation(
     context,
-    workspace,
+    liveWorkspace,
     isPersonal: isPersonal,
     sessionTeamId: sessionTeamId,
     personalIdentityId: personalIdentityId,
@@ -308,12 +312,12 @@ Future<void> submitWorkspaceLandingMessage(
     chatCubit: chatCubit,
     repo: repo,
     sessionId: plannedSessionId,
-    workspaceId: workspace.workspaceId,
+    workspaceId: liveWorkspace.workspaceId,
   );
   if (session == null) {
     appLogger.w(
       'submitWorkspaceLandingMessage: session missing after open '
-      'sessionId=$plannedSessionId workspace=${workspace.workspaceId}',
+      'sessionId=$plannedSessionId workspace=${liveWorkspace.workspaceId}',
     );
     return;
   }
@@ -321,7 +325,7 @@ Future<void> submitWorkspaceLandingMessage(
   final memberId = await _resolveLandingMemberId(
     chatCubit: chatCubit,
     session: session,
-    workspace: workspace,
+    workspace: liveWorkspace,
     isPersonal: isPersonal,
     team: team,
     personalIdentityId: personalIdentityId,

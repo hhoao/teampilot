@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:provider/provider.dart';
 
+import '../../../cubits/chat_cubit.dart';
 import '../../../cubits/launch_profile_cubit.dart';
 import '../../../cubits/worktree_cubit.dart';
 import '../../../l10n/l10n_extensions.dart';
@@ -32,11 +33,20 @@ class WorkspaceComposeLandingPane extends StatefulWidget {
 class _WorkspaceComposeLandingPaneState extends State<WorkspaceComposeLandingPane> {
   var _submitting = false;
 
+  Workspace _workspaceForSubmit(BuildContext context) {
+    final id = widget.workspace.workspaceId;
+    return context.read<ChatCubit>().state.workspaces.firstWhere(
+      (w) => w.workspaceId == id,
+      orElse: () => widget.workspace,
+    );
+  }
+
   Future<void> _submit(String message, LandingLaunchContext draft) async {
     if (_submitting) return;
 
     setState(() => _submitting = true);
     try {
+      final workspace = _workspaceForSubmit(context);
       String? workingDirectory;
       final draftPath = draft.workingDirectoryPath?.trim();
       if (draftPath != null && draftPath.isNotEmpty) {
@@ -46,7 +56,7 @@ class _WorkspaceComposeLandingPaneState extends State<WorkspaceComposeLandingPan
           workingDirectory =
               context.read<WorktreeCubit>().state.pathForNewSession;
         } on ProviderNotFoundException {
-          workingDirectory = widget.workspace.firstFolderPath;
+          workingDirectory = workspace.firstFolderPath;
         }
       }
 
@@ -70,11 +80,11 @@ class _WorkspaceComposeLandingPaneState extends State<WorkspaceComposeLandingPan
         }
       }
 
-      await persistLandingDraft(widget.workspace.workspaceId, draft);
+      await persistLandingDraft(workspace.workspaceId, draft);
 
       await submitWorkspaceLandingMessage(
         context,
-        widget.workspace,
+        workspace,
         isPersonal: draft.isPersonal,
         message: message,
         sessionTeamId: draft.isPersonal ? '' : (draft.teamId ?? ''),
@@ -89,6 +99,12 @@ class _WorkspaceComposeLandingPaneState extends State<WorkspaceComposeLandingPan
   @override
   Widget build(BuildContext context) {
     final cs = Theme.of(context).colorScheme;
+    final workspace = context.select<ChatCubit, Workspace>(
+      (c) => c.state.workspaces.firstWhere(
+        (w) => w.workspaceId == widget.workspace.workspaceId,
+        orElse: () => widget.workspace,
+      ),
+    );
     return SizedBox.expand(
       child: ColoredBox(
         color: cs.surface,
@@ -98,7 +114,7 @@ class _WorkspaceComposeLandingPaneState extends State<WorkspaceComposeLandingPan
                 message: context.l10n.sessionStarting,
               )
             : WorkspaceChatLanding(
-                workspace: widget.workspace,
+                workspace: workspace,
                 isSubmitting: _submitting,
                 onSubmit: (message, draft) => unawaited(_submit(message, draft)),
               ),

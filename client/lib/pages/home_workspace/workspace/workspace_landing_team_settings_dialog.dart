@@ -6,6 +6,7 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:teampilot/theme/app_icon_sizes.dart';
 
 import '../../../cubits/app_provider_cubit.dart';
+import '../../../cubits/chat_cubit.dart';
 import '../../../cubits/cli_presets_cubit.dart';
 import '../../../cubits/launch_profile_cubit.dart';
 import '../../../l10n/l10n_extensions.dart';
@@ -269,6 +270,9 @@ class _LandingTeamSettingsDialogState extends State<_LandingTeamSettingsDialog> 
           widget.team.id,
           targets: _memberTargets,
         );
+        if (mounted) {
+          await context.read<ChatCubit>().loadWorkspaceData(sessions);
+        }
       }
       _cubitDirty = false;
       _initialTeam = _teamDraft;
