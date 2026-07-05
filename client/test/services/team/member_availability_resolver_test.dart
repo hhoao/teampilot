@@ -123,9 +123,32 @@ void main() {
       },
     );
 
-    test('mixed in-turn is working regardless of PTY quiet', () {
+    test('mixed in-turn is idle when PTY is quiet (e.g. unconsumed doorbell)', () {
+      final shell = _ConnectedShell()
+        ..activityTracker.latchBootFrameReadyForTest(
+          DateTime.now().subtract(const Duration(milliseconds: 3000)),
+        );
+      final bus = TeamBus(launcher: FakeMemberLauncher());
+      bus.declareMember(
+        AgentNode.test(
+          memberId: 'worker',
+          lifecycle: MemberLifecycle.running,
+          activity: MemberActivity.active,
+        ),
+      );
+
+      expect(
+        _resolve(shell, bus: bus),
+        MemberAvailability.idle,
+        reason: 'bus in-turn must not override a quiet terminal',
+      );
+    });
+
+    test('mixed in-turn is working when PTY has recent activity', () {
       final shell = _ConnectedShell()
         ..activityTracker.latchBootFrameReadyForTest();
+      shell.activityTracker.markActive();
+
       final bus = TeamBus(launcher: FakeMemberLauncher());
       bus.declareMember(
         AgentNode.test(
@@ -177,6 +200,29 @@ void main() {
       bus.declareMember(node);
 
       expect(_resolvePushCli(shell, bus: bus), MemberAvailability.working);
+    });
+
+    test('push-CLI doorbell is idle when PTY is quiet', () {
+      final shell = _ConnectedShell()
+        ..activityTracker.latchBootFrameReadyForTest(
+          DateTime.now().subtract(const Duration(milliseconds: 3000)),
+        );
+
+      final bus = TeamBus(launcher: FakeMemberLauncher());
+      final node = AgentNode.test(
+        memberId: 'worker',
+        cli: 'cursor',
+        lifecycle: MemberLifecycle.running,
+        activity: MemberActivity.active,
+      )..doorbelled = true;
+      bus.declareMember(node);
+
+      expect(
+        _resolvePushCli(shell, bus: bus),
+        MemberAvailability.idle,
+        reason:
+            'unconsumed doorbell must not pin working when terminal is still',
+      );
     });
   });
 }

@@ -10,12 +10,20 @@ import '../../support/in_memory_filesystem.dart';
 /// [WorkspaceFsWatcher] without touching the real disk.
 class _WatchableFs extends InMemoryFilesystem implements FsWatcher {
   final _controller = StreamController<FsChangeEvent>.broadcast();
+  var closeCount = 0;
 
   void emit(FsChangeType type, String path) =>
       _controller.add(FsChangeEvent(path: path, type: type));
 
   @override
-  Stream<FsChangeEvent> watchTree(String path) => _controller.stream;
+  FsTreeWatch watchTree(String path) {
+    return FsTreeWatch(
+      events: _controller.stream,
+      close: () async {
+        closeCount++;
+      },
+    );
+  }
 }
 
 void main() {
@@ -77,6 +85,7 @@ void main() {
         fs: fs,
         root: '/repo',
         debounce: const Duration(milliseconds: 20),
+        autoStart: true,
       );
       addTearDown(watcher.dispose);
 
@@ -104,6 +113,7 @@ void main() {
         fs: fs,
         root: '/repo',
         debounce: const Duration(milliseconds: 20),
+        autoStart: true,
       );
       addTearDown(watcher.dispose);
 
@@ -143,6 +153,7 @@ void main() {
         fs: fs,
         root: '/repo',
         debounce: const Duration(milliseconds: 20),
+        autoStart: true,
       );
       addTearDown(watcher.dispose);
 
@@ -168,18 +179,73 @@ void main() {
         fs: fs,
         root: '/repo',
         debounce: const Duration(milliseconds: 20),
+        autoStart: true,
       );
 
       var count = 0;
       watcher.onChanged.listen((_) => count++);
-      watcher.dispose();
+      fs.emit(FsChangeType.created, '/repo/a.txt');
+      await Future<void>.delayed(const Duration(milliseconds: 60));
+      expect(count, 1);
+
+      await watcher.stopAndDispose();
 
       fs.emit(FsChangeType.created, '/repo/a.txt');
       await Future<void>.delayed(const Duration(milliseconds: 60));
-      expect(count, 0);
+      expect(count, 1);
     });
 
     test('suspend stops events and resume delivers again', () async {
+      final fs = _WatchableFs();
+      final watcher = WorkspaceFsWatcher(
+        fs: fs,
+        root: '/repo',
+        debounce: const Duration(milliseconds: 20),
+        autoStart: true,
+      );
+      addTearDown(watcher.dispose);
+
+      var count = 0;
+      watcher.onChanged.listen((_) => count++);
+
+      fs.emit(FsChangeType.created, '/repo/a.txt');
+      await Future<void>.delayed(const Duration(milliseconds: 60));
+      expect(count, 1);
+
+      watcher.suspend();
+      await Future<void>.delayed(const Duration(milliseconds: 20));
+      expect(fs.closeCount, 1);
+
+      fs.emit(FsChangeType.created, '/repo/b.txt');
+      await Future<void>.delayed(const Duration(milliseconds: 60));
+      expect(count, 1);
+
+      watcher.resume();
+      await Future<void>.delayed(const Duration(milliseconds: 20));
+
+      fs.emit(FsChangeType.created, '/repo/c.txt');
+      await Future<void>.delayed(const Duration(milliseconds: 60));
+      expect(count, 2);
+    });
+
+    test('dispose closes the native tree watch', () async {
+      final fs = _WatchableFs();
+      final watcher = WorkspaceFsWatcher(
+        fs: fs,
+        root: '/repo',
+        debounce: const Duration(milliseconds: 20),
+        autoStart: true,
+      );
+
+      watcher.onChanged.listen((_) {});
+      await Future<void>.delayed(const Duration(milliseconds: 20));
+      expect(fs.closeCount, 0);
+
+      await watcher.stopAndDispose();
+      expect(fs.closeCount, 1);
+    });
+
+    test('native watch stays off until resume', () async {
       final fs = _WatchableFs();
       final watcher = WorkspaceFsWatcher(
         fs: fs,
@@ -193,17 +259,14 @@ void main() {
 
       fs.emit(FsChangeType.created, '/repo/a.txt');
       await Future<void>.delayed(const Duration(milliseconds: 60));
-      expect(count, 1);
+      expect(count, 0);
 
-      watcher.suspend();
+      watcher.resume();
+      await Future<void>.delayed(const Duration(milliseconds: 20));
+
       fs.emit(FsChangeType.created, '/repo/b.txt');
       await Future<void>.delayed(const Duration(milliseconds: 60));
       expect(count, 1);
-
-      watcher.resume();
-      fs.emit(FsChangeType.created, '/repo/c.txt');
-      await Future<void>.delayed(const Duration(milliseconds: 60));
-      expect(count, 2);
     });
   });
 }

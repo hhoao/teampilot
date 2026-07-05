@@ -278,6 +278,24 @@ void main() {
   });
 
   test(
+    'add_tasks task doorbell marks at-prompt worker in-turn before inject',
+    () {
+      fakeAsync((async) {
+        final launcher = FakeMemberLauncher();
+        final bus = _busWithQueue(launcher);
+        bus.declareMember(_idleAtPromptWorker('w1'));
+        expect(bus.isMemberInTurn('w1'), isFalse);
+
+        bus.addTasks('lead', [const TeamTaskDraft(title: 'a', brief: 'do a')]);
+        async.flushMicrotasks();
+
+        expect(bus.isMemberInTurn('w1'), isTrue);
+        expect(launcher.woken.length, 1);
+      });
+    },
+  );
+
+  test(
     'reengageIdleWorkers re-rings a stranded task worker after the retry interval',
     () {
       fakeAsync((async) {
