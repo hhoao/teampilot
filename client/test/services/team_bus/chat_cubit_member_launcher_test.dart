@@ -18,6 +18,11 @@ class _Spy implements MemberMaterializer {
   void submitMemberPending(String s, String m) {
     calls.add('submit:$s:$m');
   }
+
+  @override
+  void retryDelivery(String s, String m, String notice) {
+    calls.add('retry:$s:$m:$notice');
+  }
 }
 
 void main() {
@@ -33,11 +38,13 @@ void main() {
       );
       l.wake('worker', 'ding');
       l.nudgeSubmit('worker');
+      l.retryDelivery('worker', 'retry-notice');
 
       expect(spy.calls, [
         'materialize:sess:worker:do X',
         'inject:sess:worker:ding',
         'submit:sess:worker',
+        'retry:sess:worker:retry-notice',
       ]);
     },
   );

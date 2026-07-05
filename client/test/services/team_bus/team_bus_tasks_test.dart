@@ -321,19 +321,19 @@ void main() {
         expect(launcher.woken.length, 1);
         expect(launcher.nudged, isEmpty);
 
-        // After the retry interval the watchdog retries — but with a bare CR
-        // (nudgeSubmit), NOT a re-pasted notice. Re-pasting would stack duplicate
-        // copies in the input box (the "several in a short time" the user saw).
+        // After the retry interval the watchdog retries via screen-gated delivery
+        // (coordinator decides nudge CR vs re-paste; fake records the call).
         now += TeamBus.doorbellRetryMs;
         bus.reengageIdleWorkers();
-        expect(launcher.woken.length, 1); // no second full-notice paste
-        expect(launcher.nudged, ['w1']);
+        expect(launcher.woken.length, 1); // no second full-notice paste from bus
+        expect(launcher.retried.length, 1);
+        expect(launcher.retried.single.memberId, 'w1');
 
-        // Still stuck a window later → another CR, still no re-paste.
+        // Still stuck a window later → another retry-delivery tick.
         now += TeamBus.doorbellRetryMs;
         bus.reengageIdleWorkers();
         expect(launcher.woken.length, 1);
-        expect(launcher.nudged, ['w1', 'w1']);
+        expect(launcher.retried.length, 2);
       });
     },
   );
@@ -380,11 +380,13 @@ void main() {
         bus.reengageIdleWorkers();
         expect(launcher.woken.single.notice, TeamBus.doorbellNotice);
 
-        // Swallowed CR → retry submits with a bare CR, not a second notice paste.
+        // Swallowed CR → retry goes through retryDelivery (screen-gated in prod).
         now += TeamBus.doorbellRetryMs;
         bus.reengageIdleWorkers();
         expect(launcher.woken.length, 1);
-        expect(launcher.nudged, ['w1']);
+        expect(launcher.retried, [
+          (memberId: 'w1', notice: TeamBus.doorbellNotice),
+        ]);
       });
     },
   );

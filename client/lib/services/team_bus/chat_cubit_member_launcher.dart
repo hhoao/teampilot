@@ -10,8 +10,11 @@ abstract interface class MemberMaterializer {
   );
   void injectMemberStdin(String sessionId, String memberId, String text);
 
-  /// 只提交输入框里已有内容（补回车），不注入任何文本。见 [MemberLauncher.nudgeSubmit]。
+  /// 只提交输入框里已有内容（补回车）。由 [retryDelivery] 在扫屏确认已贴上后调用。
   void submitMemberPending(String sessionId, String memberId);
+
+  /// 扫屏后决定补 CR 还是重新粘贴 [notice]。
+  void retryDelivery(String sessionId, String memberId, String notice);
 }
 
 /// 把 TeamBus 的 materialize/wake 接到 ChatCubit 的真实终端启动 / stdin 注入。
@@ -41,5 +44,10 @@ class ChatCubitMemberLauncher implements MemberLauncher {
   @override
   void nudgeSubmit(String memberId) {
     materializer.submitMemberPending(sessionId, memberId);
+  }
+
+  @override
+  void retryDelivery(String memberId, String notice) {
+    materializer.retryDelivery(sessionId, memberId, notice);
   }
 }

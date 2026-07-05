@@ -54,26 +54,6 @@ FullscreenPromptAnchor? locateFullscreenPromptNeedle(
   return null;
 }
 
-/// Anchor for whatever non-whitespace text sits on the bottom input row (nudge).
-FullscreenPromptAnchor? captureBottomInputAnchor(
-  TerminalScreenGrid grid, {
-  int scanRows = 3,
-}) {
-  final rows = grid.rows;
-  if (rows == 0 || grid.columns == 0) return null;
-
-  final startRow = (rows - scanRows).clamp(0, rows - 1);
-  for (var r = rows - 1; r >= startRow; r--) {
-    final bounds = _trimmedLogicalBounds(grid, r);
-    if (bounds == null) continue;
-    final (start, endCol) = bounds;
-    final needle = _logicalText(grid, r, start, endCol);
-    if (needle.isEmpty) continue;
-    return FullscreenPromptAnchor(row: r, startCol: start, needle: needle);
-  }
-  return null;
-}
-
 /// True when [anchor.needle] still occupies the same cells on [anchor.row].
 bool isFullscreenPromptAtAnchor(
   TerminalScreenGrid grid,

@@ -944,9 +944,6 @@ class TerminalSession implements TerminalTextSink {
   bool isFullscreenPromptAtAnchor(probe.FullscreenPromptAnchor anchor) =>
       probe.isFullscreenPromptAtAnchor(_screenGrid, anchor);
 
-  probe.FullscreenPromptAnchor? captureBottomInputAnchor({int scanRows = 3}) =>
-      probe.captureBottomInputAnchor(_screenGrid, scanRows: scanRows);
-
   String describeProbeWindow({int scanRows = 8}) =>
       probe.describeProbeWindow(_screenGrid, scanRows: scanRows);
 

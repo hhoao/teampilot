@@ -212,7 +212,7 @@ void main() {
     expect(node.activity, MemberActivity.active);
   });
 
-  test('onMemberIdle nudges instead of re-pasting when already doorbelled', () {
+  test('onMemberIdle retries delivery instead of re-pasting when already doorbelled', () {
     final launcher = FakeMemberLauncher();
     final bus = TeamBus(launcher: launcher);
     final node = AgentNode.test(
@@ -229,7 +229,9 @@ void main() {
     bus.onMemberIdle('leader');
 
     expect(launcher.woken, isEmpty);
-    expect(launcher.nudged, ['leader']);
+    expect(launcher.retried, [
+      (memberId: 'leader', notice: TeamBus.doorbellNotice),
+    ]);
     expect(node.activity, MemberActivity.turnDoneReady);
   });
 

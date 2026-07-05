@@ -121,6 +121,18 @@ class TeamBus implements CoordinationView {
 
   AgentNode? memberById(String memberId) => _members[memberId];
 
+  /// Mail or task doorbell text still owed to [memberId], if any.
+  String? pendingDoorbellNoticeFor(String memberId) {
+    final node = _members[memberId];
+    if (node == null || node.lifecycle != MemberLifecycle.running) return null;
+    if (!node.inbox.isEmpty) return doorbellNotice;
+    final queue = _taskQueue;
+    if (queue != null && _hasEligiblePendingTask(node, queue)) {
+      return taskDoorbellNotice;
+    }
+    return null;
+  }
+
   /// PTY 已 spawn → [MemberLifecycle.running] + [MemberActivity.turnDoneReady]。
   void markMemberRunning(String memberId) {
     final node = _members[memberId];
@@ -718,8 +730,11 @@ class TeamBus implements CoordinationView {
     _apply(node, const TurnEnded());
     if (!node.inbox.isEmpty) {
       if (node.doorbelled) {
-        appLogger.d('[team-bus] mail-nudge-after-idle member=$memberId');
-        _launcher.nudgeSubmit(memberId);
+        final notice = pendingDoorbellNoticeFor(memberId);
+        if (notice != null) {
+          appLogger.d('[team-bus] mail-nudge-after-idle member=$memberId');
+          _launcher.retryDelivery(memberId, notice);
+        }
       } else {
         _apply(node, const MailArrived());
       }
@@ -896,10 +911,12 @@ class TeamBus implements CoordinationView {
       } else {
         continue; // 没有欠它的门铃。
       }
-      // 已响过门铃（或曾响过）→ 只补回车，绝不重贴全文（全屏输入框会叠字）。
+      // 已响过门铃：扫屏后重贴或补 CR（coordinator 决定，避免盲 nudge 状态栏）。
       if (node.doorbelled || node.doorbelledAt != null) {
-        appLogger.d('[team-bus] reengage nudge-cr member=${node.memberId}');
-        _launcher.nudgeSubmit(node.memberId);
+        appLogger.d(
+          '[team-bus] reengage retry-delivery member=${node.memberId}',
+        );
+        _launcher.retryDelivery(node.memberId, notice);
       } else {
         appLogger.d(
           '[team-bus] reengage wake member=${node.memberId} '

@@ -53,16 +53,15 @@ void main() {
     expect(isFullscreenPromptAtAnchor(grid, anchor), isFalse);
   });
 
-  test('captureBottomInputAnchor spans trimmed bottom row', () {
+  test('locateNeedle finds teammate-bus doorbell above status chrome', () {
     final grid = _FakeGrid.fromRows([
-      'noise',
-      '   staged doorbell text   ',
+      '[teammate-bus] You have unread teammate messages',
+      '⏵⏵ bypass permissions on (shift+tab to cycle) · ← for agents',
     ]);
-    final anchor = captureBottomInputAnchor(grid);
+    final anchor = locateFullscreenPromptNeedle(grid, '[teammate-bus]');
     expect(anchor, isNotNull);
-    expect(anchor!.needle, 'staged doorbell text');
-    expect(anchor.row, 1);
-    expect(anchor.startCol, 3);
+    expect(anchor!.needle, '[teammate-bus]');
+    expect(anchor.row, 0);
   });
 }
 

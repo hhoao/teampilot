@@ -6,6 +6,7 @@ class FakeMemberLauncher implements MemberLauncher {
   final List<({String memberId, TeamMessage bootstrap})> materialized = [];
   final List<({String memberId, String notice})> woken = [];
   final List<String> nudged = [];
+  final List<({String memberId, String notice})> retried = [];
 
   @override
   Future<void> materialize(String memberId, TeamMessage bootstrap) async {
@@ -20,5 +21,10 @@ class FakeMemberLauncher implements MemberLauncher {
   @override
   void nudgeSubmit(String memberId) {
     nudged.add(memberId);
+  }
+
+  @override
+  void retryDelivery(String memberId, String notice) {
+    retried.add((memberId: memberId, notice: notice));
   }
 }
