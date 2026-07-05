@@ -23,7 +23,8 @@ import '../../services/team_bus/tasks/task_log_factory.dart';
 import '../../services/team_bus/tasks/task_queue.dart';
 import '../../services/team_bus/team_bus.dart';
 import '../../services/team_bus/teammate_roster_profile.dart';
-import '../../services/terminal/pty_inject_ack_retry.dart';
+import '../../services/terminal/member_pty_inject_service.dart';
+import '../../services/terminal/pty_automation_retry_queue.dart';
 import '../../services/terminal/terminal_session.dart';
 import '../../utils/logger.dart';
 import '../../utils/team_member_naming.dart';
@@ -89,23 +90,7 @@ class TabTeamBusCoordinator implements MemberMaterializer {
   /// Per-member rising edge of in-turn (`userTurnActive` or bus `active`).
   final Map<String, bool> _wasInTurn = {};
 
-  /// Members currently running a PTY inject ACK loop (automation or nudge).
-  /// Keyed by session+member so two open tabs with the same roster id do not
-  /// block each other's doorbell delivery.
-  final Set<String> _ptyAckInProgress = {};
-
-  static String _ptyAckKey(String sessionId, String memberId) =>
-      '$sessionId:$memberId';
-
-  /// Stable prefix on all TeamBus doorbell notices; nudge CR only targets this.
-  static const _busDoorbellTag = '[teammate-bus]';
-
-  static const _nudgeScanRows = 24;
-
-  /// Idle-watch retries for automation (landing / directToPty) after screen ACK fails.
-  static const _maxAutomationIdleRetries = 24;
-
-  final Map<String, _PendingAutomationRetry> _pendingAutomationRetries = {};
+  final MemberPtyInjectService _ptyInject = MemberPtyInjectService();
 
   Future<void> installBusForTab(
     ChatTab tab,
@@ -392,23 +377,17 @@ class TabTeamBusCoordinator implements MemberMaterializer {
 
   @override
   void injectMemberStdin(String sessionId, String memberId, String text) {
-    // Doorbell notices are automation — they need the ACK loop just as much
-    // as operator direct-to-PTY injections. The bus fires this at teammates
-    // on mail/task arrival; if the first CR is swallowed by a not-yet-ready
-    // Ink input box, the message is lost without the loop.
     unawaited(
-      _submitMemberStdin(sessionId, memberId, text, automationDelivery: true),
+      _deliverMemberStdin(sessionId, memberId, text, automation: true),
     );
   }
 
-  /// Bracketed-paste + CR for full-screen CLIs; [automationDelivery] uses a
-  /// longer settle and awaits a follow-up CR (first Enter often becomes a
-  /// literal newline right after boot).
-  Future<void> _submitMemberStdin(
+  /// Bracketed-paste + CR for full-screen CLIs; [automation] uses grid ACK.
+  Future<void> _deliverMemberStdin(
     String sessionId,
     String memberId,
     String text, {
-    bool automationDelivery = false,
+    required bool automation,
   }) async {
     final shell = _tabStore.bySessionId(sessionId)?.memberShells[memberId];
     if (shell == null) {
@@ -421,6 +400,41 @@ class TabTeamBusCoordinator implements MemberMaterializer {
     final trimmed = text.trim();
     if (trimmed.isEmpty) return;
     _beginMemberTurnForPtyDelivery(sessionId, memberId, shell);
+    final usesFullScreen = _memberUsesFullScreen(sessionId, memberId);
+    appLogger.d(
+      '[team-bus] pty-inject member=$memberId '
+      'session=$sessionId fullscreen=$usesFullScreen '
+      'automation=$automation '
+      'chars=${trimmed.length} '
+      'preview=${_doorbellLogPreview(trimmed)}',
+    );
+    if (usesFullScreen) {
+      final settle = _pasteSettleForMember(
+        sessionId,
+        memberId,
+        automation: automation,
+      );
+      if (automation) {
+        await _ptyInject.deliver(
+          shell: shell,
+          sessionId: sessionId,
+          memberId: memberId,
+          text: trimmed,
+          pasteSettle: settle,
+          aborted: () => _ptyAckAborted(shell),
+        );
+      } else {
+        await shell.submitFullScreenInput(trimmed, pasteSettleDelay: settle);
+      }
+    } else {
+      shell.writeln(trimmed);
+    }
+  }
+
+  bool _ptyAckAborted(TerminalSession shell) =>
+      _isClosed() || !shell.isConnected;
+
+  bool _memberUsesFullScreen(String sessionId, String memberId) {
     final team = _activeTeam();
     final cli = team == null
         ? CliTool.claude
@@ -431,247 +445,31 @@ class TabTeamBusCoordinator implements MemberMaterializer {
           );
     final behavior = CliToolRegistry.builtIn()
         .capability<TerminalBehaviorCapability>(cli);
-    final usesFullScreen = behavior?.usesFullScreenInput ?? false;
-    appLogger.d(
-      '[team-bus] pty-inject member=$memberId '
-      'session=$sessionId fullscreen=$usesFullScreen '
-      'automation=$automationDelivery '
-      'chars=${trimmed.length} '
-      'preview=${_doorbellLogPreview(trimmed)}',
+    return behavior?.usesFullScreenInput ?? false;
+  }
+
+  Duration _pasteSettleForMember(
+    String sessionId,
+    String memberId, {
+    required bool automation,
+  }) {
+    final team = _activeTeam();
+    final cli = team == null
+        ? CliTool.claude
+        : _shellFactory.cliForMember(
+            team,
+            memberId,
+            globalPresets: _globalPresets(),
+          );
+    final behavior = CliToolRegistry.builtIn()
+        .capability<TerminalBehaviorCapability>(cli);
+    final base =
+        behavior?.fullScreenPasteSettleDelay ??
+        TerminalSession.fullScreenSubmitDelay;
+    if (!automation) return base;
+    return Duration(
+      milliseconds: base.inMilliseconds < 500 ? 500 : base.inMilliseconds,
     );
-    if (usesFullScreen) {
-      final base =
-          behavior?.fullScreenPasteSettleDelay ??
-          TerminalSession.fullScreenSubmitDelay;
-      final settle = automationDelivery
-          ? Duration(
-              milliseconds: base.inMilliseconds < 500
-                  ? 500
-                  : base.inMilliseconds,
-            )
-          : base;
-      if (automationDelivery) {
-        // Paste → verify → CR → verify. Do not call [submitFullScreenInput]
-        // first — a successful submit clears the input box and the old ACK loop
-        // misread that as "paste never landed", reinjecting duplicates.
-        await _ensureAutomationDelivered(
-          shell,
-          memberId,
-          sessionId,
-          trimmed,
-          settle,
-        );
-      } else {
-        await shell.submitFullScreenInput(trimmed, pasteSettleDelay: settle);
-      }
-    } else {
-      shell.writeln(trimmed);
-    }
-  }
-
-  /// Content-based ACK for doorbell / landing / automation PTY inject.
-  ///
-  /// 1. Clear staged input → bracketed paste only.
-  /// 2. Locate [needle] on the visible grid (row/col anchor).
-  /// 3. Standalone CR → re-check the **same anchor** (not global screen search).
-  Future<void> _ensureAutomationDelivered(
-    TerminalSession shell,
-    String memberId,
-    String sessionId,
-    String text,
-    Duration settle,
-  ) async {
-    if (_ptyAckInProgress.contains(_ptyAckKey(sessionId, memberId))) {
-      appLogger.d(
-        '[team-bus] submit-ack skipped ack-in-progress '
-        'member=$memberId session=$sessionId',
-      );
-      _scheduleAutomationRetry(sessionId, memberId, text);
-      return;
-    }
-    final ackKey = _ptyAckKey(sessionId, memberId);
-    _ptyAckInProgress.add(ackKey);
-    try {
-      final needle = _screenNeedle(text);
-      final maxReinject = PtyInjectAckTiming.reinjectMaxAttempts;
-      appLogger.d(
-        '[team-bus] submit-ack-start member=$memberId session=$sessionId '
-        'needle="${_doorbellLogPreview(needle)}" '
-        'pasteSettleMs=${settle.inMilliseconds} '
-        'afterClearMs=${PtyInjectAckTiming.afterClear.inMilliseconds} '
-        'afterPasteMs=${PtyInjectAckTiming.afterPaste.inMilliseconds} '
-        'afterCrMs=${PtyInjectAckTiming.afterCr.inMilliseconds} '
-        'afterReinjectMs=${PtyInjectAckTiming.afterReinject.inMilliseconds} '
-        'crMax=${PtyInjectAckTiming.crMaxAttempts} '
-        'reinjectMax=$maxReinject',
-      );
-
-      for (var reinject = 0; reinject <= maxReinject; reinject++) {
-        if (_ptyAckAborted(shell)) {
-          appLogger.w(
-            '[team-bus] submit-ack-aborted member=$memberId session=$sessionId '
-            'reinject=$reinject/$maxReinject (closed/disconnected)',
-          );
-          return;
-        }
-
-        if (reinject > 0) {
-          await Future<void>.delayed(PtyInjectAckTiming.afterReinject);
-        }
-
-        await shell.syncDisplayGrid();
-        var anchor = shell.locateFullscreenPromptNeedle(
-          needle,
-          scanRows: 24,
-        );
-        if (anchor != null) {
-          appLogger.d(
-            '[team-bus] submit-paste-already-visible member=$memberId '
-            'session=$sessionId reinject=$reinject/$maxReinject '
-            'anchor=$anchor — skip clear→paste',
-          );
-        } else {
-          appLogger.d(
-            '[team-bus] submit-ack-round member=$memberId session=$sessionId '
-            'reinject=$reinject/$maxReinject phase=clear→paste',
-          );
-          await shell.clearStagedInput();
-          await Future<void>.delayed(PtyInjectAckTiming.afterClear);
-          await shell.pasteText(text);
-          await Future<void>.delayed(settle);
-          await Future<void>.delayed(PtyInjectAckTiming.afterPaste);
-
-          appLogger.d(
-            '[team-bus] submit-ack-scan member=$memberId session=$sessionId '
-            'reinject=$reinject/$maxReinject phase=locate-anchor',
-          );
-          await shell.syncDisplayGrid();
-          anchor = shell.locateFullscreenPromptNeedle(needle, scanRows: 24);
-        }
-        if (anchor == null) {
-          appLogger.w(
-            '[team-bus] submit-paste-not-found member=$memberId '
-            'session=$sessionId reinject=$reinject/$maxReinject '
-            'needle="${_doorbellLogPreview(needle)}" '
-            'probeWindow:\n${shell.describeProbeWindow()}',
-          );
-          if (reinject < maxReinject) {
-            appLogger.d(
-              '[team-bus] submit-paste-retry member=$memberId session=$sessionId '
-              'reinject=$reinject/$maxReinject '
-              'afterReinjectMs=${PtyInjectAckTiming.afterReinject.inMilliseconds}',
-            );
-            continue;
-          }
-          appLogger.w(
-            '[team-bus] submit-ack-failed member=$memberId session=$sessionId '
-            '— paste never landed after $maxReinject reinjects',
-          );
-          _scheduleAutomationRetry(sessionId, memberId, text);
-          return;
-        }
-        final pasteAnchor = anchor;
-        appLogger.d(
-          '[team-bus] submit-paste-found member=$memberId session=$sessionId '
-          'reinject=$reinject/$maxReinject anchor=$pasteAnchor',
-        );
-
-        appLogger.d(
-          '[team-bus] submit-cr-first member=$memberId session=$sessionId '
-          'reinject=$reinject anchor=$pasteAnchor',
-        );
-        await shell.submitPendingCr();
-
-        final crOutcome = await ptyAckPollRetry(
-          settle: PtyInjectAckTiming.afterCr,
-          maxAttempts: PtyInjectAckTiming.crMaxAttempts,
-          aborted: () => _ptyAckAborted(shell),
-          isAcked: (_) async {
-            await shell.syncDisplayGrid();
-            return !shell.isFullscreenPromptAtAnchor(pasteAnchor);
-          },
-          onRetry: (ctx) async {
-            appLogger.d(
-              '[team-bus] submit-cr-retry member=$memberId session=$sessionId '
-              'reinject=$reinject crAttempt=${ctx.attempt + 1}/${ctx.maxAttempts}',
-            );
-            await shell.submitPendingCr();
-          },
-          onStillPending: (ctx) {
-            appLogger.w(
-              '[team-bus] submit-cr-swallowed member=$memberId '
-              'session=$sessionId reinject=$reinject '
-              'crAttempt=${ctx.attempt}/${ctx.maxAttempts} '
-              'anchor=$pasteAnchor — prompt still at anchor',
-            );
-          },
-          onAcked: (ctx) {
-            appLogger.d(
-              '[team-bus] submit-ack member=$memberId session=$sessionId '
-              'reinject=$reinject crAttempt=${ctx.attempt}/${ctx.maxAttempts} '
-              '— prompt cleared at anchor (CR succeeded)',
-            );
-          },
-        );
-        switch (crOutcome) {
-          case PtyAckPollOutcome.acked:
-            _clearAutomationRetry(sessionId, memberId);
-            return;
-          case PtyAckPollOutcome.aborted:
-            appLogger.w(
-              '[team-bus] submit-ack-aborted member=$memberId session=$sessionId '
-              'reinject=$reinject phase=cr-poll',
-            );
-            return;
-          case PtyAckPollOutcome.exhausted:
-            appLogger.w(
-              '[team-bus] submit-cr-exhausted member=$memberId session=$sessionId '
-              'reinject=$reinject/$maxReinject — will clear and repaste',
-            );
-        }
-      }
-      appLogger.w(
-        '[team-bus] submit-ack-failed member=$memberId session=$sessionId '
-        '— text stuck in input box after $maxReinject reinjects',
-      );
-      _scheduleAutomationRetry(sessionId, memberId, text);
-    } finally {
-      _ptyAckInProgress.remove(ackKey);
-    }
-  }
-
-  bool _ptyAckAborted(TerminalSession shell) =>
-      _isClosed() || !shell.isConnected;
-
-  /// All PTY message delivery (doorbell, landing directToPty, automation) must
-  /// mark in-turn the same way as a user line at the member prompt.
-  void _beginMemberTurnForPtyDelivery(
-    String sessionId,
-    String memberId,
-    TerminalSession shell,
-  ) {
-    final bus = busForSession(sessionId);
-    if (bus != null) {
-      shell.activityTracker.latchTurnQuietBaseline();
-      bus.markTurnStarted(memberId);
-      return;
-    }
-    shell.markUserTurnStarted();
-  }
-
-  /// Distinctive substring for grid anchor search after paste.
-  ///
-  /// Doorbell lines carry a stable `[teammate-bus]` prefix; short landing text
-  /// (e.g. CJK) fits whole. Long free-form text falls back to the tail ~40
-  /// chars where the cursor usually sits.
-  static String _screenNeedle(String text) {
-    final trimmed = text.trim();
-    const busTag = '[teammate-bus]';
-    if (trimmed.startsWith(busTag)) {
-      return trimmed.length <= 40 ? trimmed : trimmed.substring(0, 40);
-    }
-    if (trimmed.length <= 40) return trimmed;
-    return trimmed.substring(trimmed.length - 40);
   }
 
   static String _doorbellLogPreview(String text) {
@@ -682,25 +480,14 @@ class TabTeamBusCoordinator implements MemberMaterializer {
 
   @override
   void retryDelivery(String sessionId, String memberId, String notice) {
-    unawaited(_retryDelivery(sessionId, memberId, notice));
+    unawaited(_retryMemberDelivery(sessionId, memberId, notice));
   }
 
-  /// Screen-gated retry: repaste when [notice] is absent from the grid, nudge CR
-  /// when it is already staged (doorbell watchdog + idle-watch automation retry).
-  Future<void> _retryDelivery(
+  Future<void> _retryMemberDelivery(
     String sessionId,
     String memberId,
     String notice,
   ) async {
-    final ackKey = _ptyAckKey(sessionId, memberId);
-    if (_ptyAckInProgress.contains(ackKey)) {
-      appLogger.d(
-        '[team-bus] retry-delivery skipped ack-in-progress '
-        'member=$memberId session=$sessionId',
-      );
-      _scheduleAutomationRetry(sessionId, memberId, notice);
-      return;
-    }
     final shell = _tabStore.bySessionId(sessionId)?.memberShells[memberId];
     if (shell == null) {
       appLogger.w(
@@ -710,220 +497,62 @@ class TabTeamBusCoordinator implements MemberMaterializer {
       return;
     }
     if (_ptyAckAborted(shell)) return;
-
-    await shell.syncDisplayGrid();
-    if (_isTextVisibleOnScreen(shell, notice)) {
-      appLogger.d(
-        '[team-bus] retry-delivery visible→nudge '
-        'member=$memberId session=$sessionId',
-      );
-      await _nudgeAndAck(shell, memberId, sessionId);
-    } else {
-      appLogger.d(
-        '[team-bus] retry-delivery not-visible→repaste '
-        'member=$memberId session=$sessionId '
-        'preview=${_doorbellLogPreview(notice)}',
-      );
-      await _submitMemberStdin(
-        sessionId,
-        memberId,
-        notice,
-        automationDelivery: true,
-      );
-    }
-  }
-
-  bool _isTextVisibleOnScreen(TerminalSession shell, String text) {
-    final needle = _screenNeedle(text);
-    return shell.locateFullscreenPromptNeedle(needle, scanRows: _nudgeScanRows) !=
-        null;
-  }
-
-  void _scheduleAutomationRetry(
-    String sessionId,
-    String memberId,
-    String text,
-  ) {
-    final key = _ptyAckKey(sessionId, memberId);
-    final prev = _pendingAutomationRetries[key];
-    final attempt = (prev?.attempt ?? 0) + 1;
-    if (attempt > _maxAutomationIdleRetries) {
-      appLogger.w(
-        '[team-bus] automation-retry-gave-up member=$memberId '
-        'session=$sessionId attempts=$attempt',
-      );
-      _pendingAutomationRetries.remove(key);
-      return;
-    }
-    _pendingAutomationRetries[key] = _PendingAutomationRetry(
+    final trimmed = notice.trim();
+    if (trimmed.isEmpty) return;
+    _beginMemberTurnForPtyDelivery(sessionId, memberId, shell);
+    appLogger.d(
+      '[team-bus] retry-delivery member=$memberId session=$sessionId '
+      'preview=${_doorbellLogPreview(trimmed)}',
+    );
+    final settle = _pasteSettleForMember(
+      sessionId,
+      memberId,
+      automation: true,
+    );
+    await _ptyInject.retry(
+      shell: shell,
       sessionId: sessionId,
       memberId: memberId,
-      text: text,
-      nextRetryAtMs:
-          DateTime.now().millisecondsSinceEpoch + TeamBus.doorbellRetryMs,
-      attempt: attempt,
-    );
-    appLogger.d(
-      '[team-bus] automation-retry-scheduled member=$memberId '
-      'session=$sessionId attempt=$attempt',
+      text: trimmed,
+      pasteSettle: settle,
+      aborted: () => _ptyAckAborted(shell),
     );
   }
 
-  void _clearAutomationRetry(String sessionId, String memberId) {
-    _pendingAutomationRetries.remove(_ptyAckKey(sessionId, memberId));
-  }
-
-  void _tickPendingAutomationRetries() {
-    if (_pendingAutomationRetries.isEmpty) return;
-    final now = DateTime.now().millisecondsSinceEpoch;
-    for (final entry in _pendingAutomationRetries.entries.toList()) {
-      final pending = entry.value;
-      if (pending.nextRetryAtMs > now) continue;
-      if (_ptyAckInProgress.contains(entry.key)) continue;
-      _pendingAutomationRetries.remove(entry.key);
-      appLogger.d(
-        '[team-bus] automation-retry-tick member=${pending.memberId} '
-        'session=${pending.sessionId} attempt=${pending.attempt}',
-      );
-      unawaited(
-        _retryDelivery(pending.sessionId, pending.memberId, pending.text),
-      );
-    }
-  }
-
-  @override
-  void submitMemberPending(String sessionId, String memberId) {
-    // CR-only nudge after [retryDelivery] confirms the doorbell is on-screen.
-    // Empty prompt + CR is a no-op on full-screen and line-oriented CLIs alike.
-    final shell = _tabStore.bySessionId(sessionId)?.memberShells[memberId];
-    if (shell == null) {
-      appLogger.w(
-        '[team-bus] pty-nudge-cr skipped no-shell '
-        'member=$memberId session=$sessionId',
-      );
-      return;
-    }
-    // Don't stack a second ACK loop if one is already polling for this member
-    // — the 1s watchdog tick can fire before the previous loop's ACK window
-    // expires. The in-flight loop will retry the CR itself if needed.
-    if (_ptyAckInProgress.contains(_ptyAckKey(sessionId, memberId))) {
-      appLogger.d(
-        '[team-bus] pty-nudge-cr skipped ack-in-progress '
-        'member=$memberId session=$sessionId',
-      );
-      return;
-    }
-    appLogger.d('[team-bus] pty-nudge-cr member=$memberId session=$sessionId');
-    unawaited(_nudgeAndAck(shell, memberId, sessionId));
-  }
-
-  /// Nudge CR loop for the doorbell watchdog path. Sends one CR at a time and
-  /// checks whether the staged [teammate-bus] line cleared — avoids burst CRs
-  /// that stack submits. Non-bus automation (landing CJK, etc.) uses
-  /// [_ensureAutomationDelivered] with a content-specific needle instead.
-  Future<void> _nudgeAndAck(
-    TerminalSession shell,
-    String memberId,
+  /// All PTY message delivery (doorbell, landing directToPty, automation) must
+  /// mark in-turn the same way as a user line at the member prompt.
+  void _beginMemberTurnForPtyDelivery(
     String sessionId,
-  ) async {
-    final ackKey = _ptyAckKey(sessionId, memberId);
-    _ptyAckInProgress.add(ackKey);
-    try {
-      final maxRounds = PtyInjectAckTiming.nudgeMaxAttempts;
-      appLogger.d(
-        '[team-bus] nudge-ack-start member=$memberId session=$sessionId '
-        'afterCrMs=${PtyInjectAckTiming.afterCr.inMilliseconds} '
-        'roundMax=$maxRounds',
-      );
-
-      for (var round = 0; round <= maxRounds; round++) {
-        if (_ptyAckAborted(shell)) {
-          appLogger.w(
-            '[team-bus] nudge-ack-aborted member=$memberId session=$sessionId '
-            'round=$round/$maxRounds (closed/disconnected)',
-          );
-          return;
-        }
-        await shell.syncDisplayGrid();
-        final anchor = shell.locateFullscreenPromptNeedle(
-          _busDoorbellTag,
-          scanRows: _nudgeScanRows,
-        );
-        if (anchor == null) {
-          final notice =
-              busForSession(sessionId)?.pendingDoorbellNoticeFor(memberId);
-          if (notice != null) {
-            _ptyAckInProgress.remove(ackKey);
-            await _submitMemberStdin(
-              sessionId,
-              memberId,
-              notice,
-              automationDelivery: true,
-            );
-            return;
-          }
-          appLogger.d(
-            '[team-bus] nudge-ack-done member=$memberId session=$sessionId '
-            'round=$round/$maxRounds — no $_busDoorbellTag on screen',
-          );
-          return;
-        }
-        appLogger.d(
-          '[team-bus] nudge-ack-round member=$memberId session=$sessionId '
-          'round=$round/$maxRounds anchor=$anchor',
-        );
-
-        await shell.submitPendingCr();
-        final nudgeAnchor = anchor;
-
-        final outcome = await ptyAckPollRetry(
-          settle: PtyInjectAckTiming.afterCr,
-          maxAttempts: 0,
-          aborted: () => _ptyAckAborted(shell),
-          isAcked: (_) async {
-            await shell.syncDisplayGrid();
-            return !shell.isFullscreenPromptAtAnchor(nudgeAnchor);
-          },
-          onRetry: (_) async {},
-          onStillPending: (ctx) {
-            appLogger.w(
-              '[team-bus] nudge-ack-still-stuck member=$memberId '
-              'session=$sessionId round=$round/$maxRounds '
-              'anchor=$anchor attempt=${ctx.attempt}/${ctx.maxAttempts}',
-            );
-          },
-          onAcked: (ctx) {
-            appLogger.d(
-              '[team-bus] nudge-ack-done member=$memberId session=$sessionId '
-              'round=$round/$maxRounds attempt=${ctx.attempt}/${ctx.maxAttempts} '
-              '— prompt cleared at anchor',
-            );
-          },
-        );
-        switch (outcome) {
-          case PtyAckPollOutcome.acked:
-            return;
-          case PtyAckPollOutcome.aborted:
-            appLogger.w(
-              '[team-bus] nudge-ack-aborted member=$memberId session=$sessionId '
-              'round=$round phase=cr-poll',
-            );
-            return;
-          case PtyAckPollOutcome.exhausted:
-            appLogger.w(
-              '[team-bus] nudge-ack-retry member=$memberId session=$sessionId '
-              'round=$round/$maxRounds — will retry next round',
-            );
-        }
-      }
-      appLogger.w(
-        '[team-bus] nudge-ack-failed member=$memberId session=$sessionId '
-        '— input box still has content after $maxRounds rounds; '
-        'watchdog will retry',
-      );
-    } finally {
-      _ptyAckInProgress.remove(ackKey);
+    String memberId,
+    TerminalSession shell,
+  ) {
+    // Same "send → working" latch as personal mode ([TerminalSession.userTurnActive]).
+    shell.markUserTurnStarted();
+    final bus = busForSession(sessionId);
+    if (bus != null) {
+      bus.markTurnStarted(memberId);
     }
+  }
+
+  Future<void> _retryAutomationTick(PtyAutomationRetryTick tick) async {
+    final shell =
+        _tabStore.bySessionId(tick.sessionId)?.memberShells[tick.memberId];
+    if (shell == null) return;
+    if (_ptyAckAborted(shell)) return;
+    _beginMemberTurnForPtyDelivery(tick.sessionId, tick.memberId, shell);
+    final settle = _pasteSettleForMember(
+      tick.sessionId,
+      tick.memberId,
+      automation: true,
+    );
+    await _ptyInject.retry(
+      shell: shell,
+      sessionId: tick.sessionId,
+      memberId: tick.memberId,
+      text: tick.text,
+      pasteSettle: settle,
+      aborted: () => _ptyAckAborted(shell),
+    );
   }
 
   void ensureIdleWatch() {
@@ -972,11 +601,11 @@ class TabTeamBusCoordinator implements MemberMaterializer {
         return;
       }
     }
-    await _submitMemberStdin(
+    await _deliverMemberStdin(
       sessionId,
       memberId,
       message,
-      automationDelivery: true,
+      automation: true,
     );
   }
 
@@ -1000,7 +629,11 @@ class TabTeamBusCoordinator implements MemberMaterializer {
 
   void _tickIdleWatch() {
     if (_isClosed()) return;
-    _tickPendingAutomationRetries();
+    _ptyInject.tickRetries(
+      onTick: (tick) {
+        unawaited(_retryAutomationTick(tick));
+      },
+    );
     final working = <String>{};
     for (final tab in _tabStore.tabs) {
       final bus = tab.teamBus;
@@ -1011,9 +644,8 @@ class TabTeamBusCoordinator implements MemberMaterializer {
       var tabWorking = false;
       tab.memberShells.forEach((memberId, shell) {
         final key = '${tab.info.id}:$memberId';
-        final inTurn = bus != null
-            ? bus.isMemberInTurn(memberId)
-            : shell.userTurnActive;
+        final inTurn = shell.userTurnActive ||
+            (bus?.isMemberInTurn(memberId) ?? false);
         final stillWorking = MemberTurnIdleSync.tick(
           turnKey: key,
           inTurn: inTurn,
@@ -1027,15 +659,14 @@ class TabTeamBusCoordinator implements MemberMaterializer {
             );
             if (bus != null) {
               bus.onMemberIdle(memberId, fromPtyQuietWatch: true);
-            } else {
-              shell.markUserTurnIdle();
             }
+            shell.markUserTurnIdle();
           },
         );
         if (stillWorking) tabWorking = true;
       });
       if (bus != null) {
-        if (bus.anyMemberInTurn) working.add(tab.info.id);
+        if (bus.anyMemberInTurn || tabWorking) working.add(tab.info.id);
       } else if (tabWorking) {
         working.add(tab.info.id);
       }
@@ -1054,20 +685,4 @@ class TabTeamBusCoordinator implements MemberMaterializer {
     _lastWorkingSessions = working;
     cb(working);
   }
-}
-
-final class _PendingAutomationRetry {
-  const _PendingAutomationRetry({
-    required this.sessionId,
-    required this.memberId,
-    required this.text,
-    required this.nextRetryAtMs,
-    required this.attempt,
-  });
-
-  final String sessionId;
-  final String memberId;
-  final String text;
-  final int nextRetryAtMs;
-  final int attempt;
 }

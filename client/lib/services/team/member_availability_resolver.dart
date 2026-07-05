@@ -62,6 +62,11 @@ abstract final class MemberAvailabilityResolver {
       return MemberAvailability.idle;
     }
 
+    // Operator send / compose landing — same latch as personal mode.
+    if (shell.userTurnActive) {
+      return MemberAvailability.working;
+    }
+
     // PTY quiet wins over bus in-turn / doorbell: members panel should reflect
     // visible terminal stillness even when mail is queued unconsumed.
     if (!shell.activityTracker.isWorking) {

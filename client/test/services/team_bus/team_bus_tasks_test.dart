@@ -319,7 +319,7 @@ void main() {
         // still claimable. A watchdog tick before the retry window stays quiet.
         bus.reengageIdleWorkers();
         expect(launcher.woken.length, 1);
-        expect(launcher.nudged, isEmpty);
+        expect(launcher.retried, isEmpty);
 
         // After the retry interval the watchdog retries via screen-gated delivery
         // (coordinator decides nudge CR vs re-paste; fake records the call).

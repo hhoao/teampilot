@@ -144,6 +144,32 @@ void main() {
       );
     });
 
+    test(
+      'mixed operator turn shows working when PTY quiet (compose landing parity)',
+      () {
+        final shell = _ConnectedShell()
+          ..activityTracker.latchBootFrameReadyForTest(
+            DateTime.now().subtract(const Duration(milliseconds: 3000)),
+          );
+        final bus = TeamBus(launcher: FakeMemberLauncher());
+        bus.declareMember(
+          AgentNode.test(
+            memberId: 'worker',
+            lifecycle: MemberLifecycle.running,
+            activity: MemberActivity.active,
+          ),
+        );
+        shell.markUserTurnStarted();
+
+        expect(
+          _resolve(shell, bus: bus),
+          MemberAvailability.working,
+          reason:
+              'send latches userTurnActive — same as personal mode, no PTY bytes needed',
+        );
+      },
+    );
+
     test('mixed in-turn is working when PTY has recent activity', () {
       final shell = _ConnectedShell()
         ..activityTracker.latchBootFrameReadyForTest();

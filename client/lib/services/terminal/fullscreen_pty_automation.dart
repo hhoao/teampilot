@@ -1,0 +1,202 @@
+import 'fullscreen_input_screen_probe.dart';
+import 'fullscreen_pty_delivery_port.dart';
+import 'pty_automation_needle.dart';
+import 'pty_inject_ack_retry.dart';
+
+/// Outcome of a full-screen paste+CR or CR-only automation pass.
+enum FullscreenPtyDeliveryOutcome {
+  /// Anchor cleared after CR (message submitted).
+  submitted,
+
+  /// Paste rounds exhausted without locating the needle on the grid.
+  pasteNotFound,
+
+  /// CR rounds exhausted while anchor still visible.
+  crStuck,
+
+  /// Shell closed or disconnected mid-flight.
+  aborted,
+}
+
+/// Injectable timing for unit tests ([PtyAutomationTiming.instant]).
+class PtyAutomationTiming {
+  const PtyAutomationTiming({
+    required this.afterClear,
+    required this.afterPaste,
+    required this.afterCr,
+    required this.afterReinject,
+    required this.crMaxAttempts,
+    required this.reinjectMaxAttempts,
+    required this.nudgeMaxAttempts,
+    required this.scanRows,
+  });
+
+  factory PtyAutomationTiming.production() => const PtyAutomationTiming(
+    afterClear: PtyInjectAckTiming.afterClear,
+    afterPaste: PtyInjectAckTiming.afterPaste,
+    afterCr: PtyInjectAckTiming.afterCr,
+    afterReinject: PtyInjectAckTiming.afterReinject,
+    crMaxAttempts: PtyInjectAckTiming.crMaxAttempts,
+    reinjectMaxAttempts: PtyInjectAckTiming.reinjectMaxAttempts,
+    nudgeMaxAttempts: PtyInjectAckTiming.nudgeMaxAttempts,
+    scanRows: 24,
+  );
+
+  factory PtyAutomationTiming.instant() => const PtyAutomationTiming(
+    afterClear: Duration.zero,
+    afterPaste: Duration.zero,
+    afterCr: Duration.zero,
+    afterReinject: Duration.zero,
+    crMaxAttempts: 2,
+    reinjectMaxAttempts: 1,
+    nudgeMaxAttempts: 2,
+    scanRows: 24,
+  );
+
+  final Duration afterClear;
+  final Duration afterPaste;
+  final Duration afterCr;
+  final Duration afterReinject;
+  final int crMaxAttempts;
+  final int reinjectMaxAttempts;
+  final int nudgeMaxAttempts;
+  final int scanRows;
+}
+
+/// Content-based full-screen PTY delivery: paste → grid ACK → CR → anchor ACK.
+class FullscreenPtyAutomation {
+  FullscreenPtyAutomation({PtyAutomationTiming? timing})
+    : _timing = timing ?? PtyAutomationTiming.production();
+
+  final PtyAutomationTiming _timing;
+
+  bool isTextVisible(FullscreenPtyDeliveryPort port, String text) {
+    final needle = PtyAutomationNeedle.forText(text);
+    return port.locateNeedle(needle, scanRows: _timing.scanRows) != null;
+  }
+
+  /// Clear → paste → locate needle → CR until anchor clears.
+  Future<FullscreenPtyDeliveryOutcome> deliverPasteAndSubmit({
+    required FullscreenPtyDeliveryPort port,
+    required String text,
+    required Duration pasteSettle,
+  }) async {
+    final needle = PtyAutomationNeedle.forText(text);
+    final maxReinject = _timing.reinjectMaxAttempts;
+
+    for (var reinject = 0; reinject <= maxReinject; reinject++) {
+      if (port.isAborted) return FullscreenPtyDeliveryOutcome.aborted;
+
+      if (reinject > 0) {
+        await Future<void>.delayed(_timing.afterReinject);
+      }
+
+      await port.syncDisplayGrid();
+      var anchor = port.locateNeedle(needle, scanRows: _timing.scanRows);
+      if (anchor == null) {
+        await port.clearStagedInput();
+        await Future<void>.delayed(_timing.afterClear);
+        await port.pasteText(text);
+        await Future<void>.delayed(pasteSettle);
+        await Future<void>.delayed(_timing.afterPaste);
+        await port.syncDisplayGrid();
+        anchor = port.locateNeedle(needle, scanRows: _timing.scanRows);
+      }
+
+      if (anchor == null) {
+        if (reinject < maxReinject) continue;
+        return FullscreenPtyDeliveryOutcome.pasteNotFound;
+      }
+
+      final crOutcome = await _pollCrUntilAnchorClears(port, anchor);
+      switch (crOutcome) {
+        case FullscreenPtyDeliveryOutcome.submitted:
+          return FullscreenPtyDeliveryOutcome.submitted;
+        case FullscreenPtyDeliveryOutcome.aborted:
+          return FullscreenPtyDeliveryOutcome.aborted;
+        case FullscreenPtyDeliveryOutcome.crStuck:
+          if (reinject < maxReinject) continue;
+          return FullscreenPtyDeliveryOutcome.crStuck;
+        case FullscreenPtyDeliveryOutcome.pasteNotFound:
+          return FullscreenPtyDeliveryOutcome.crStuck;
+      }
+    }
+    return FullscreenPtyDeliveryOutcome.crStuck;
+  }
+
+  /// CR-only pass when [text] is already visible on the grid.
+  Future<FullscreenPtyDeliveryOutcome> nudgeCrUntilClear({
+    required FullscreenPtyDeliveryPort port,
+    required String text,
+  }) async {
+    final needle = PtyAutomationNeedle.forText(text);
+    final maxRounds = _timing.nudgeMaxAttempts;
+
+    for (var round = 0; round <= maxRounds; round++) {
+      if (port.isAborted) return FullscreenPtyDeliveryOutcome.aborted;
+
+      await port.syncDisplayGrid();
+      final anchor = port.locateNeedle(needle, scanRows: _timing.scanRows);
+      if (anchor == null) {
+        return FullscreenPtyDeliveryOutcome.pasteNotFound;
+      }
+
+      final outcome = await _pollCrUntilAnchorClears(
+        port,
+        anchor,
+        maxAttempts: 0,
+      );
+      switch (outcome) {
+        case FullscreenPtyDeliveryOutcome.submitted:
+          return FullscreenPtyDeliveryOutcome.submitted;
+        case FullscreenPtyDeliveryOutcome.aborted:
+          return FullscreenPtyDeliveryOutcome.aborted;
+        case FullscreenPtyDeliveryOutcome.crStuck:
+        case FullscreenPtyDeliveryOutcome.pasteNotFound:
+          if (round < maxRounds) continue;
+          return FullscreenPtyDeliveryOutcome.crStuck;
+      }
+    }
+    return FullscreenPtyDeliveryOutcome.crStuck;
+  }
+
+  /// Screen-gated retry: visible → CR nudge; missing → full paste+submit.
+  Future<FullscreenPtyDeliveryOutcome> retry({
+    required FullscreenPtyDeliveryPort port,
+    required String text,
+    required Duration pasteSettle,
+  }) async {
+    await port.syncDisplayGrid();
+    if (isTextVisible(port, text)) {
+      return nudgeCrUntilClear(port: port, text: text);
+    }
+    return deliverPasteAndSubmit(
+      port: port,
+      text: text,
+      pasteSettle: pasteSettle,
+    );
+  }
+
+  Future<FullscreenPtyDeliveryOutcome> _pollCrUntilAnchorClears(
+    FullscreenPtyDeliveryPort port,
+    FullscreenPromptAnchor anchor, {
+    int? maxAttempts,
+  }) async {
+    await port.submitCr();
+    final outcome = await ptyAckPollRetry(
+      settle: _timing.afterCr,
+      maxAttempts: maxAttempts ?? _timing.crMaxAttempts,
+      aborted: () => port.isAborted,
+      isAcked: (_) async {
+        await port.syncDisplayGrid();
+        return !port.isAtAnchor(anchor);
+      },
+      onRetry: (_) async => port.submitCr(),
+    );
+    return switch (outcome) {
+      PtyAckPollOutcome.acked => FullscreenPtyDeliveryOutcome.submitted,
+      PtyAckPollOutcome.aborted => FullscreenPtyDeliveryOutcome.aborted,
+      PtyAckPollOutcome.exhausted => FullscreenPtyDeliveryOutcome.crStuck,
+    };
+  }
+}

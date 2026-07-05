@@ -10,9 +10,6 @@ abstract interface class MemberMaterializer {
   );
   void injectMemberStdin(String sessionId, String memberId, String text);
 
-  /// 只提交输入框里已有内容（补回车）。由 [retryDelivery] 在扫屏确认已贴上后调用。
-  void submitMemberPending(String sessionId, String memberId);
-
   /// 扫屏后决定补 CR 还是重新粘贴 [notice]。
   void retryDelivery(String sessionId, String memberId, String notice);
 }
@@ -39,11 +36,6 @@ class ChatCubitMemberLauncher implements MemberLauncher {
   @override
   void wake(String memberId, String notice) {
     materializer.injectMemberStdin(sessionId, memberId, notice);
-  }
-
-  @override
-  void nudgeSubmit(String memberId) {
-    materializer.submitMemberPending(sessionId, memberId);
   }
 
   @override

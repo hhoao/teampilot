@@ -148,8 +148,23 @@ void main() {
 
     bus.markTurnStarted('leader');
 
-    expect(bus.memberById('leader')!.lifecycle, MemberLifecycle.declared);
     expect(bus.isMemberInTurn('leader'), isFalse);
+    expect(bus.memberById('leader')!.activity, MemberActivity.none);
+  });
+
+  test('markTurnStarted works after markMemberRunning promotes declared', () {
+    final bus = TeamBus(launcher: FakeMemberLauncher());
+    bus.declareMember(
+      AgentNode.test(memberId: 'leader', lifecycle: MemberLifecycle.declared),
+    );
+
+    bus.markTurnStarted('leader');
+    expect(bus.isMemberInTurn('leader'), isFalse);
+
+    bus.markMemberRunning('leader');
+    bus.markTurnStarted('leader');
+
+    expect(bus.isMemberInTurn('leader'), isTrue);
   });
 
   test(
@@ -190,7 +205,7 @@ void main() {
 
     expect(node.activity, MemberActivity.active);
     expect(launcher.woken, isEmpty);
-    expect(launcher.nudged, isEmpty);
+    expect(launcher.retried, isEmpty);
   });
 
   test('onMemberIdle with pending mail rings at prompt after turn end', () {

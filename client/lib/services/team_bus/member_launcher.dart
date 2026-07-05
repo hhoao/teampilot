@@ -9,9 +9,6 @@ abstract interface class MemberLauncher {
   /// 门铃：往已 idle 成员的 stdin 注入一条 [notice]（仅提示去 pull，不含真实内容）。
   void wake(String memberId, String notice);
 
-  /// 已确认门铃在输入框里时，只补 CR 提交（由 [retryDelivery] 扫屏后调用）。
-  void nudgeSubmit(String memberId);
-
-  /// 扫屏重试：已贴上 → [nudgeSubmit]；未贴上 → [wake] 全量粘贴。
+  /// 扫屏重试：已贴上 → CR nudge；未贴上 → 全量粘贴+提交。
   void retryDelivery(String memberId, String notice);
 }
