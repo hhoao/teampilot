@@ -504,18 +504,6 @@ class _ComposeCard extends StatelessWidget {
                               onSelected: onAutoChipSelected,
                             ),
                             SizedBox(width: spacing.sm),
-                            _ToolbarChip(
-                              palette: palette,
-                              icon: Icons.auto_fix_high_outlined,
-                              label: skillsLabel,
-                            ),
-                            SizedBox(width: spacing.sm),
-                            _ToolbarChip(
-                              palette: palette,
-                              icon: Icons.link,
-                              label: connectAppsLabel,
-                            ),
-                            SizedBox(width: spacing.sm),
                             _ToolbarMenuChip(
                               palette: palette,
                               icon: Icons.verified_outlined,
@@ -648,10 +636,9 @@ class _ToolbarChip extends StatelessWidget {
   Widget build(BuildContext context) {
     final spacing = context.appSpacing;
     final icons = context.appIconSizes;
-    final labelStyle = AppTextStyles.of(context).bodySmall.copyWith(
-      color: palette.muted,
-      fontWeight: FontWeight.w500,
-    );
+    final labelStyle = AppTextStyles.of(
+      context,
+    ).bodySmall.copyWith(color: palette.muted, fontWeight: FontWeight.w500);
 
     return Material(
       color: palette.chipFill,

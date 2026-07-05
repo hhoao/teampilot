@@ -301,9 +301,10 @@ class _SidebarSessionTileState extends State<SidebarSessionTile> {
     final Widget indicator = SessionWorkingIndicator(
       working: working,
       size: 13,
-      color: selected ? cs.onPrimaryContainer : cs.primary,
-      idleColor: (selected ? cs.onPrimaryContainer : cs.onSurfaceVariant)
-          .withValues(alpha: 0.5),
+      color: cs.primary,
+      idleColor: (selected ? cs.primary : cs.onSurfaceVariant).withValues(
+        alpha: 0.5,
+      ),
     );
     final Widget leadingWidget;
     if (widget.index >= 0) {
@@ -480,7 +481,7 @@ class _SessionCoarseRelativeTime extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final cs = Theme.of(context).colorScheme;
-    final textBase = selected ? cs.onPrimaryContainer : cs.onSurface;
+    final textBase = cs.onSurface;
     final label = formatCoarseRelativeTime(
       context.l10n,
       DateTime.fromMillisecondsSinceEpoch(timestampMs),
@@ -557,15 +558,21 @@ class _SidebarTile extends StatelessWidget {
   final Widget? trailing;
   final double contentLeftInset;
 
+  static const _selectedFillAlpha = 0.22;
+
+  Color _selectedFillColor(ColorScheme cs) {
+    return Color.alphaBlend(
+      cs.primary.withValues(alpha: _selectedFillAlpha),
+      cs.surfaceContainer,
+    );
+  }
+
   Color _materialFillColor(BuildContext context) {
     final cs = Theme.of(context).colorScheme;
-    final hoverTint = Theme.of(
-      context,
-    ).colorScheme.onSurface.withValues(alpha: 0.10);
+    final hoverTint = cs.onSurface.withValues(alpha: 0.10);
     if (selected) {
-      return rowHovered
-          ? Color.alphaBlend(hoverTint, cs.primaryContainer)
-          : cs.primaryContainer;
+      final base = _selectedFillColor(cs);
+      return rowHovered ? Color.alphaBlend(hoverTint, base) : base;
     }
     if (rowHovered) {
       return Color.alphaBlend(hoverTint, cs.surfaceContainer);
@@ -591,7 +598,9 @@ class _SidebarTile extends StatelessWidget {
             padding: EdgeInsets.fromLTRB(8 + contentLeftInset, 6, 8, 6),
             decoration: BoxDecoration(
               borderRadius: BorderRadius.circular(8),
-              border: selected ? Border.all(color: cs.primaryContainer) : null,
+              border: selected
+                  ? Border.all(color: cs.primary.withValues(alpha: 0.28))
+                  : null,
             ),
             child: Row(
               crossAxisAlignment: CrossAxisAlignment.center,

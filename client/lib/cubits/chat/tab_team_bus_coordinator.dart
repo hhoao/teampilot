@@ -216,12 +216,24 @@ class TabTeamBusCoordinator implements MemberMaterializer {
   }
 
   /// PTY connect + TUI/agent startup complete — used before automation inject.
-  Future<void> ensureMemberInputReady(String sessionId, String memberId) async {
+  ///
+  /// [directToPty]: compose-landing operator input — boot frame only, inject at
+  /// the TUI prompt (never wait for bus `wait_for_message`).
+  Future<void> ensureMemberInputReady(
+    String sessionId,
+    String memberId, {
+    bool directToPty = false,
+  }) async {
     await materializeMember(sessionId, memberId, '');
     while (!_isClosed()) {
-      if (_isMemberReadyForAutomationInput(sessionId, memberId)) {
+      if (_isMemberReadyForAutomationInput(
+        sessionId,
+        memberId,
+        directToPty: directToPty,
+      )) {
         appLogger.d(
-          '[team-bus] input-ready member=$memberId session=$sessionId',
+          '[team-bus] input-ready member=$memberId session=$sessionId '
+          'directToPty=$directToPty',
         );
         return;
       }
@@ -229,7 +241,11 @@ class TabTeamBusCoordinator implements MemberMaterializer {
     }
   }
 
-  bool _isMemberReadyForAutomationInput(String sessionId, String memberId) {
+  bool _isMemberReadyForAutomationInput(
+    String sessionId,
+    String memberId, {
+    bool directToPty = false,
+  }) {
     final tab = _tabStore.bySessionId(sessionId);
     if (tab == null) return false;
     final shell = tab.memberShells[memberId];
@@ -263,6 +279,21 @@ class TabTeamBusCoordinator implements MemberMaterializer {
 
     final presenceCap = CliToolRegistry.builtIn()
         .capability<PresenceCapability>(team.cli);
+    if (directToPty) {
+      // Landing / operator stdin: same readiness as personal — boot frame, not
+      // parked in MCP wait_for_message.
+      return MemberAvailabilityResolver.isReadyForAutomationInput(
+        shell: shell,
+        member: member,
+        team: team,
+        teamMode: TeamMode.native,
+        globalPresets: globalPresets,
+        bus: null,
+        claudeRosterWorking: false,
+        usesClaudeRoster: presenceCap?.usesClaudeRoster ?? false,
+        usesShellActivity: presenceCap?.usesShellActivity ?? false,
+      );
+    }
     return MemberAvailabilityResolver.isReadyForAutomationInput(
       shell: shell,
       member: member,
@@ -444,15 +475,22 @@ class TabTeamBusCoordinator implements MemberMaterializer {
   TeamBus? busForSession(String sessionId) =>
       _tabStore.bySessionId(sessionId)?.teamBus;
 
+  /// Delivers operator text to a member.
+  ///
+  /// Default: TeamBus mailbox when a bus is installed. [directToPty] skips the
+  /// bus and injects into the member PTY (compose landing / first prompt).
   Future<void> deliverUserCommandToMember(
     String sessionId,
     String memberId,
-    String message,
-  ) async {
-    final bus = busForSession(sessionId);
-    if (bus != null) {
-      bus.deliverUserCommand(memberId, message);
-      return;
+    String message, {
+    bool directToPty = false,
+  }) async {
+    if (!directToPty) {
+      final bus = busForSession(sessionId);
+      if (bus != null) {
+        bus.deliverUserCommand(memberId, message);
+        return;
+      }
     }
     await _submitMemberStdin(
       sessionId,

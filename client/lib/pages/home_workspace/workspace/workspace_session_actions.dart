@@ -254,15 +254,20 @@ Future<void> submitWorkspaceLandingMessage(
     workingDirectory: workingDirectory,
     fixedSessionId: plannedSessionId,
   );
-  if (!context.mounted || status == null) return;
+  if (status == null) return;
   if (status != SessionOpenStatus.opened) {
-    _handleSessionOpenStatus(
-      context,
-      status,
-      blockedMixedMessage: l10n.mixedWorkspaceCreateSessionBlocked,
-    );
+    if (context.mounted) {
+      _handleSessionOpenStatus(
+        context,
+        status,
+        blockedMixedMessage: l10n.mixedWorkspaceCreateSessionBlocked,
+      );
+    }
     return;
   }
+
+  // Opening the session exits compose mode and unmounts [WorkspaceComposeLandingPane].
+  // Delivery must keep going via cubits/repos captured above — not [context.mounted].
 
   final session = await _sessionById(
     chatCubit: chatCubit,
@@ -270,7 +275,13 @@ Future<void> submitWorkspaceLandingMessage(
     sessionId: plannedSessionId,
     workspaceId: workspace.workspaceId,
   );
-  if (session == null || !context.mounted) return;
+  if (session == null) {
+    appLogger.w(
+      'submitWorkspaceLandingMessage: session missing after open '
+      'sessionId=$plannedSessionId workspace=${workspace.workspaceId}',
+    );
+    return;
+  }
 
   final memberId = await _resolveLandingMemberId(
     chatCubit: chatCubit,
@@ -280,23 +291,24 @@ Future<void> submitWorkspaceLandingMessage(
     team: team,
     personalIdentityId: personalIdentityId,
   );
-  if (!context.mounted) return;
 
   final connected = await _ensureLandingSessionConnected(
-    context,
+    chatCubit: chatCubit,
     session: session,
-    workspace: workspace,
-    isPersonal: isPersonal,
-    team: team,
     memberId: memberId,
-    repo: repo,
   );
-  if (!connected || !context.mounted) {
-    AppToast.show(
-      context,
-      message: l10n.homeWorkspaceNewConversation,
-      variant: AppToastVariant.error,
+  if (!connected) {
+    appLogger.w(
+      'submitWorkspaceLandingMessage: member not ready '
+      'session=${session.sessionId} member=$memberId',
     );
+    if (context.mounted) {
+      AppToast.show(
+        context,
+        message: l10n.homeWorkspaceNewConversation,
+        variant: AppToastVariant.error,
+      );
+    }
     return;
   }
 
@@ -305,6 +317,7 @@ Future<void> submitWorkspaceLandingMessage(
       session.sessionId,
       memberId,
       trimmed,
+      directToPty: true,
     );
   } on Object catch (error, stackTrace) {
     appLogger.e(
@@ -312,12 +325,13 @@ Future<void> submitWorkspaceLandingMessage(
       error: error,
       stackTrace: stackTrace,
     );
-    if (!context.mounted) return;
-    AppToast.show(
-      context,
-      message: '${l10n.homeWorkspaceNewConversation}: $error',
-      variant: AppToastVariant.error,
-    );
+    if (context.mounted) {
+      AppToast.show(
+        context,
+        message: '${l10n.homeWorkspaceNewConversation}: $error',
+        variant: AppToastVariant.error,
+      );
+    }
   }
 }
 
@@ -356,22 +370,21 @@ Future<String> _resolveLandingMemberId({
   return lead?.id ?? 'team-lead';
 }
 
-Future<bool> _ensureLandingSessionConnected(
-  BuildContext context, {
+Future<bool> _ensureLandingSessionConnected({
+  required ChatCubit chatCubit,
   required AppSession session,
-  required Workspace workspace,
-  required bool isPersonal,
-  required TeamProfile? team,
   required String memberId,
-  required SessionRepository repo,
 }) async {
-  final chatCubit = context.read<ChatCubit>();
   // requestCreateAndOpenSession already staged the tab and scheduled async
   // persist+connect. Re-opening here races that path and can connect with the
   // provisional session (empty cliTeamName) before disk persistence finishes.
   try {
     await chatCubit.busCoordinator
-        .ensureMemberInputReady(session.sessionId, memberId)
+        .ensureMemberInputReady(
+          session.sessionId,
+          memberId,
+          directToPty: true,
+        )
         .timeout(const Duration(seconds: 120));
     return true;
   } on TimeoutException {
