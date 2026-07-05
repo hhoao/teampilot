@@ -1,6 +1,8 @@
 import '../../models/discoverable_member.dart';
 import '../../models/discoverable_team.dart';
 import 'builtin_member_templates.dart';
+import 'expert_hub_source.dart';
+import 'git_registry_expert_hub_source.dart';
 import 'team_member_index_source.dart';
 
 /// Stable hash of member prompt + playbook for deduping team-extracted entries
@@ -14,30 +16,27 @@ String memberContentHash(DiscoverableTeamMember member) =>
 class CompositeExpertHubSource {
   CompositeExpertHubSource({
     List<DiscoverableMember> builtIns = const [],
-    Future<List<DiscoverableMember>> Function({bool forceRefresh})?
-    fetchRegistry,
+    ExpertHubSource? registry,
     List<DiscoverableTeam> teams = const [],
     Future<List<DiscoverableMember>> Function()? fetchLocal,
   }) : _builtIns = builtIns,
-       _fetchRegistry = fetchRegistry,
+       _registry = registry ?? GitRegistryExpertHubSource(),
        _teams = teams,
        _fetchLocal = fetchLocal;
 
   factory CompositeExpertHubSource.withDefaults({
-    Future<List<DiscoverableMember>> Function({bool forceRefresh})?
-    fetchRegistry,
+    ExpertHubSource? registry,
     List<DiscoverableTeam> teams = const [],
     Future<List<DiscoverableMember>> Function()? fetchLocal,
   }) => CompositeExpertHubSource(
     builtIns: builtinExpertMembers(),
-    fetchRegistry: fetchRegistry,
+    registry: registry,
     teams: teams,
     fetchLocal: fetchLocal,
   );
 
   final List<DiscoverableMember> _builtIns;
-  final Future<List<DiscoverableMember>> Function({bool forceRefresh})?
-  _fetchRegistry;
+  final ExpertHubSource _registry;
   final List<DiscoverableTeam> _teams;
   final Future<List<DiscoverableMember>> Function()? _fetchLocal;
 
@@ -45,9 +44,7 @@ class CompositeExpertHubSource {
     bool forceRefresh = false,
   }) async {
     final builtIns = _builtIns;
-    final registry =
-        await (_fetchRegistry?.call(forceRefresh: forceRefresh) ??
-            Future.value(const <DiscoverableMember>[]));
+    final registry = await _registry.fetchMembers(forceRefresh: forceRefresh);
     final teamExtract = indexMembersFromTeams(_teams);
     final local =
         await (_fetchLocal?.call() ?? Future.value(const <DiscoverableMember>[]));
