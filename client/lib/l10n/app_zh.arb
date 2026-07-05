@@ -1250,6 +1250,8 @@
   "expertHubNoneSelected": "未选择专家",
   "expertHubBrowseAll": "浏览全部专家",
   "expertHubRecent": "最近使用",
+  "expertHubIgnoredInTeamMode": "专家仅在简单模式下可用。请切换到简单模式以召唤专家。",
+  "expertHubNotFound": "未找到该专家。",
   "teamMcpAssignedCount": "已启用 {assigned}/{total}",
   "@teamMcpAssignedCount": {
     "placeholders": {

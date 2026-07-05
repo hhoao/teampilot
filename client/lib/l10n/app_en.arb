@@ -1532,6 +1532,8 @@
   "expertHubNoneSelected": "No expert",
   "expertHubBrowseAll": "Browse all experts",
   "expertHubRecent": "Recent",
+  "expertHubIgnoredInTeamMode": "Experts are only available in Simple mode. Switch to Simple to summon an expert.",
+  "expertHubNotFound": "Expert not found.",
   "teamMcpAssignedCount": "{assigned} of {total} enabled",
   "@teamMcpAssignedCount": {
     "placeholders": {

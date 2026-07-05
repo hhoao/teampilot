@@ -10,16 +10,20 @@ import 'package:uuid/uuid.dart';
 
 import '../../../cubits/chat_cubit.dart';
 import '../../../cubits/cli_presets_cubit.dart';
+import '../../../cubits/expert_hub_cubit.dart';
 import '../../../cubits/launch_profile_cubit.dart';
 import '../../../cubits/worktree_cubit.dart';
 import '../../../l10n/l10n_extensions.dart';
 import '../../../models/landing_launch_context.dart';
+import '../../../models/expert_session_overlay.dart';
 import '../../../models/workspace.dart';
 import '../../../models/app_session.dart';
 import '../../../models/personal_profile.dart';
 import '../../../models/team_config.dart';
 import '../../../repositories/session_repository.dart';
 import '../../../services/cli/preset_resolver.dart';
+import '../../../services/expert_hub/expert_hub_recent_store.dart';
+import '../../../services/expert_hub/expert_member_resolver.dart';
 import '../../../services/launch/personal_launch_context_resolver.dart';
 import '../../../utils/landing_draft_resolver.dart';
 import '../../../utils/team_member_naming.dart';
@@ -221,6 +225,7 @@ Future<void> submitWorkspaceLandingMessage(
   required LandingLaunchContext launch,
   required String message,
   String? workingDirectory,
+  String? expertKey,
 }) async {
   final trimmed = message.trim();
   if (trimmed.isEmpty) return;
@@ -238,6 +243,16 @@ Future<void> submitWorkspaceLandingMessage(
   final personalPresetId = launch.presetId?.trim() ?? '';
   final team = isPersonal ? null : _teamProfileById(context, sessionTeamId);
 
+  ExpertSessionOverlay? expertOverlay;
+  final trimmedExpert =
+      expertKey?.trim() ?? launch.expertKey?.trim() ?? '';
+  if (isPersonal && trimmedExpert.isNotEmpty) {
+    expertOverlay = await ExpertMemberResolver.resolveOverlay(
+      trimmedExpert,
+      cubit: context.mounted ? context.read<ExpertHubCubit>() : null,
+    );
+  }
+
   final plannedSessionId = _uuid.v4();
   final status = await _requestCreateWorkspaceConversation(
     context,
@@ -248,6 +263,7 @@ Future<void> submitWorkspaceLandingMessage(
     personalPresetId: personalPresetId.isNotEmpty ? personalPresetId : null,
     workingDirectory: workingDirectory,
     fixedSessionId: plannedSessionId,
+    expertOverlay: expertOverlay,
   );
   if (status == null) return;
   if (status != SessionOpenStatus.opened) {
@@ -259,6 +275,10 @@ Future<void> submitWorkspaceLandingMessage(
       );
     }
     return;
+  }
+
+  if (trimmedExpert.isNotEmpty) {
+    unawaited(ExpertHubRecentStore().touch(trimmedExpert));
   }
 
   // Opening the session exits compose mode and unmounts [WorkspaceComposeLandingPane].
@@ -402,6 +422,7 @@ Future<SessionOpenStatus?> _requestCreateWorkspaceConversation(
   CliTool? cli,
   String? workingDirectory,
   String? fixedSessionId,
+  ExpertSessionOverlay? expertOverlay,
 }) async {
   final chatCubit = context.read<ChatCubit>();
   final repo = context.read<SessionRepository>();
@@ -435,6 +456,7 @@ Future<SessionOpenStatus?> _requestCreateWorkspaceConversation(
         workingDirectory: workingDirectory,
         emptyDisplayTitleFallback: l10n.defaultNewChatSessionTitle,
         fixedSessionId: fixedSessionId,
+        expertOverlay: expertOverlay,
       ),
     );
   } on Object catch (error, stackTrace) {

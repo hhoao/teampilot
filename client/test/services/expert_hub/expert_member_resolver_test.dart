@@ -40,4 +40,24 @@ void main() {
       'No expert',
     );
   });
+
+  test('overlayFromMember snapshots prompt and playbook', () {
+    const member = DiscoverableMember(
+      key: 'teampilot/builtin/developer',
+      name: 'Developer',
+      description: '',
+      category: 'Development',
+      source: ExpertMemberSource.builtin,
+      member: DiscoverableTeamMember(
+        name: 'developer',
+        prompt: 'Build features',
+        playbook: 'Use TDD',
+      ),
+    );
+    final overlay = ExpertMemberResolver.overlayFromMember(member);
+    expect(overlay.expertKey, member.key);
+    expect(overlay.displayName, 'Developer');
+    expect(overlay.prompt, 'Build features');
+    expect(overlay.playbook, 'Use TDD');
+  });
 }

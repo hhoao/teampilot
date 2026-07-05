@@ -3320,6 +3320,13 @@ class AppLocalizationsEn extends AppLocalizations {
   String get expertHubRecent => 'Recent';
 
   @override
+  String get expertHubIgnoredInTeamMode =>
+      'Experts are only available in Simple mode. Switch to Simple to summon an expert.';
+
+  @override
+  String get expertHubNotFound => 'Expert not found.';
+
+  @override
   String teamMcpAssignedCount(int assigned, int total) {
     return '$assigned of $total enabled';
   }

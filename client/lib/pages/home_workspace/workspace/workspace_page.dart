@@ -1,10 +1,12 @@
 import 'dart:async';
 
+import 'package:collection/collection.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../../cubits/chat_cubit.dart';
+import '../../../cubits/expert_hub_cubit.dart';
 import '../../../cubits/launch_profile_cubit.dart';
 import '../../../cubits/workspace_landing_context_cubit.dart';
 import '../../../l10n/l10n_extensions.dart';
@@ -13,7 +15,10 @@ import '../../../models/workspace.dart';
 import '../../../models/launch_profile_kind.dart';
 import '../../../models/launch_profile.dart';
 import '../../../pages/home_workspace/home_workspace_route.dart';
+import '../../../services/expert_hub/expert_landing_deep_link.dart';
 import '../../../theme/workspace_surface_layers.dart';
+import '../../../theme/app_toast_theme.dart';
+import '../../../widgets/app_toast/app_toast.dart';
 import '../../../utils/workspace_chrome_profile.dart';
 import 'workspace_config_workspace.dart';
 import 'workspace_rail.dart';
@@ -21,6 +26,7 @@ import 'workspace_section.dart';
 import 'workspace_split_pane.dart';
 import 'workspace_config_section.dart';
 import 'workspace_route_active_scope.dart';
+import 'workspace_session_actions.dart';
 
 /// Workspace work page with conversations + manage panes.
 class WorkspacePage extends StatefulWidget {
@@ -41,6 +47,8 @@ class _WorkspacePageState extends State<WorkspacePage> {
   bool _wasRouteActive = false;
   String? _lastScopeView;
   bool _activationScheduled = false;
+  String? _lastSyncedRouteExpert;
+  bool _expertSyncScheduled = false;
 
   WorkspaceRouteActiveScope? _readScope(BuildContext context) {
     return context.getInheritedWidgetOfExactType<WorkspaceRouteActiveScope>();
@@ -69,6 +77,7 @@ class _WorkspacePageState extends State<WorkspacePage> {
     _wasRouteActive = active;
     _lastScopeView = view;
     _syncProfileFromRoute();
+    _syncExpertFromRoute();
   }
 
   void _syncProfileFromRoute() {
@@ -85,6 +94,79 @@ class _WorkspacePageState extends State<WorkspacePage> {
         ? LandingLaunchContext(isPersonal: true, personalProfileId: profile.id)
         : LandingLaunchContext(isPersonal: false, teamId: profile.id);
     cubit.update(next);
+  }
+
+  void _syncExpertFromRoute() {
+    final location = GoRouterState.of(context).uri.toString();
+    final expert = HomeWorkspaceRoute.expert(location);
+    if (expert == _lastSyncedRouteExpert) return;
+    _lastSyncedRouteExpert = expert;
+    if (expert == null) return;
+    if (_expertSyncScheduled) return;
+    _expertSyncScheduled = true;
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _expertSyncScheduled = false;
+      if (!mounted) return;
+      unawaited(_applyExpertFromRoute(expert));
+    });
+  }
+
+  Future<void> _applyExpertFromRoute(String expertKey) async {
+    final workspace = context.read<ChatCubit>().state.workspaces
+        .where((w) => w.workspaceId == widget.workspaceId)
+        .firstOrNull;
+    if (workspace == null) return;
+
+    final location = GoRouterState.of(context).uri.toString();
+    final routeProfile = HomeWorkspaceRoute.profile(location);
+    final launchProfiles = context.read<LaunchProfileCubit>();
+    final profile = routeProfile == null ? null : launchProfiles.byId(routeProfile);
+    final routeProfileIsTeam = profile != null
+        ? profile.kind == LaunchProfileKind.team
+        : false;
+
+    final outcome = await applyExpertDeepLink(
+      expertKey: expertKey,
+      workspaceId: widget.workspaceId,
+      workspace: workspace,
+      routeProfileIsTeam: routeProfileIsTeam,
+      hubState: context.mounted ? context.read<ExpertHubCubit>().state : null,
+    );
+    if (!mounted) return;
+
+    final l10n = context.l10n;
+    switch (outcome) {
+      case ExpertDeepLinkOutcome.none:
+      case ExpertDeepLinkOutcome.applied:
+        if (outcome == ExpertDeepLinkOutcome.applied) {
+          context.read<WorkspaceLandingContextCubit>().update(
+            context.read<WorkspaceLandingContextCubit>().state.context.copyWith(
+              isPersonal: true,
+              expertKey: expertKey,
+            ),
+          );
+          await showWorkspaceComposeLanding(
+            context,
+            workspace,
+            tabScopeId: widget.tabKey,
+          );
+        }
+        return;
+      case ExpertDeepLinkOutcome.ignoredTeamMode:
+        AppToast.show(
+          context,
+          message: l10n.expertHubIgnoredInTeamMode,
+          variant: AppToastVariant.warning,
+        );
+        return;
+      case ExpertDeepLinkOutcome.notFound:
+        AppToast.show(
+          context,
+          message: l10n.expertHubNotFound,
+          variant: AppToastVariant.warning,
+        );
+        return;
+    }
   }
 
   WorkspaceSection _sectionFromRoute(String? view) {

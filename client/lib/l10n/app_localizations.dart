@@ -6032,6 +6032,18 @@ abstract class AppLocalizations {
   /// **'Recent'**
   String get expertHubRecent;
 
+  /// No description provided for @expertHubIgnoredInTeamMode.
+  ///
+  /// In en, this message translates to:
+  /// **'Experts are only available in Simple mode. Switch to Simple to summon an expert.'**
+  String get expertHubIgnoredInTeamMode;
+
+  /// No description provided for @expertHubNotFound.
+  ///
+  /// In en, this message translates to:
+  /// **'Expert not found.'**
+  String get expertHubNotFound;
+
   /// No description provided for @teamMcpAssignedCount.
   ///
   /// In en, this message translates to:

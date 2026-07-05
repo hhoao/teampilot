@@ -3208,6 +3208,12 @@ class AppLocalizationsZh extends AppLocalizations {
   String get expertHubRecent => '最近使用';
 
   @override
+  String get expertHubIgnoredInTeamMode => '专家仅在简单模式下可用。请切换到简单模式以召唤专家。';
+
+  @override
+  String get expertHubNotFound => '未找到该专家。';
+
+  @override
   String teamMcpAssignedCount(int assigned, int total) {
     return '已启用 $assigned/$total';
   }

@@ -3,6 +3,7 @@
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:go_router/go_router.dart';
 import 'package:teampilot/theme/app_toast_theme.dart';
 import 'package:teampilot/widgets/app_toast/app_toast.dart';
 
@@ -31,6 +32,7 @@ import '../../../services/compose/compose_voice_input.dart';
 import '../../../services/expert_hub/expert_member_resolver.dart';
 import '../../../services/cli/registry/cli_tool_registry_scope.dart';
 import '../../../services/storage/launch_profile_provisioner.dart';
+import '../../../pages/home_workspace/home_workspace_route.dart';
 import '../../../theme/app_spacing.dart';
 import '../../../utils/landing_draft_resolver.dart';
 import '../../../utils/workspace_path_utils.dart';
@@ -99,6 +101,7 @@ class _WorkspaceChatLandingState extends State<WorkspaceChatLanding> {
   int _teamLaunchReadinessGeneration = 0;
   ConfigBundle _workspaceProjectBundle = const ConfigBundle();
   int _workspaceBundleGeneration = 0;
+  String? _lastRouteExpert;
 
   @override
   void initState() {
@@ -169,6 +172,16 @@ class _WorkspaceChatLandingState extends State<WorkspaceChatLanding> {
   void didChangeDependencies() {
     super.didChangeDependencies();
     _runtimeTargetsLoad ??= _loadRuntimeTargets();
+    _reloadDraftIfRouteExpertChanged();
+  }
+
+  void _reloadDraftIfRouteExpertChanged() {
+    final location = GoRouterState.of(context).uri.toString();
+    final routeExpert = HomeWorkspaceRoute.expert(location);
+    if (routeExpert == _lastRouteExpert) return;
+    _lastRouteExpert = routeExpert;
+    if (routeExpert == null) return;
+    unawaited(_loadDraft());
   }
 
   @override

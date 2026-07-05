@@ -37,6 +37,12 @@ abstract final class HomeWorkspaceRoute {
   static String? homeMemberId(String location) =>
       parse(location).queryParameters['member'];
 
+  /// Expert Hub member key for compose-landing summon (`?expert=`).
+  static String? expert(String location) {
+    final raw = parse(location).queryParameters['expert']?.trim() ?? '';
+    return raw.isEmpty ? null : raw;
+  }
+
   static HomeGlobalView? homeGlobalView(String location) =>
       HomeGlobalView.fromSegment(
         parse(location).queryParameters[HomeGlobalView.globalQueryParam],

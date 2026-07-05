@@ -82,6 +82,7 @@ class _WorkspaceComposeLandingPaneState extends State<WorkspaceComposeLandingPan
         launch: draft,
         message: message,
         workingDirectory: workingDirectory,
+        expertKey: draft.expertKey,
       );
     } finally {
       if (mounted) setState(() => _submitting = false);
