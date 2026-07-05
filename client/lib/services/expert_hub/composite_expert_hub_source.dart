@@ -3,6 +3,7 @@ import '../../models/discoverable_team.dart';
 import 'builtin_member_templates.dart';
 import 'expert_hub_source.dart';
 import 'git_registry_expert_hub_source.dart';
+import 'local_member_template_store.dart';
 import 'team_member_index_source.dart';
 
 /// Stable hash of member prompt + playbook for deduping team-extracted entries
@@ -18,27 +19,27 @@ class CompositeExpertHubSource {
     List<DiscoverableMember> builtIns = const [],
     ExpertHubSource? registry,
     List<DiscoverableTeam> teams = const [],
-    Future<List<DiscoverableMember>> Function()? fetchLocal,
+    LocalMemberTemplateStore? localStore,
   }) : _builtIns = builtIns,
        _registry = registry ?? GitRegistryExpertHubSource(),
        _teams = teams,
-       _fetchLocal = fetchLocal;
+       _localStore = localStore ?? LocalMemberTemplateStore();
 
   factory CompositeExpertHubSource.withDefaults({
     ExpertHubSource? registry,
     List<DiscoverableTeam> teams = const [],
-    Future<List<DiscoverableMember>> Function()? fetchLocal,
+    LocalMemberTemplateStore? localStore,
   }) => CompositeExpertHubSource(
     builtIns: builtinExpertMembers(),
     registry: registry,
     teams: teams,
-    fetchLocal: fetchLocal,
+    localStore: localStore,
   );
 
   final List<DiscoverableMember> _builtIns;
   final ExpertHubSource _registry;
   final List<DiscoverableTeam> _teams;
-  final Future<List<DiscoverableMember>> Function()? _fetchLocal;
+  final LocalMemberTemplateStore _localStore;
 
   Future<List<DiscoverableMember>> fetchMembers({
     bool forceRefresh = false,
@@ -46,8 +47,7 @@ class CompositeExpertHubSource {
     final builtIns = _builtIns;
     final registry = await _registry.fetchMembers(forceRefresh: forceRefresh);
     final teamExtract = indexMembersFromTeams(_teams);
-    final local =
-        await (_fetchLocal?.call() ?? Future.value(const <DiscoverableMember>[]));
+    final local = await _localStore.loadAll();
 
     final builtinKeys = builtIns.map((m) => m.key).toSet();
     final registryOnly = registry
