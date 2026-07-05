@@ -274,6 +274,13 @@ class _HomeSidebarIdentityScroll extends StatelessWidget {
                   active: activeGlobalView == HomeGlobalView.teamHub,
                   onTap: () => onGlobal?.call(HomeGlobalView.teamHub),
                 ),
+                const SizedBox(height: 4),
+                _ShortcutRow(
+                  icon: Icons.psychology_outlined,
+                  label: l10n.expertHubNav,
+                  active: activeGlobalView == HomeGlobalView.expertHub,
+                  onTap: () => onGlobal?.call(HomeGlobalView.expertHub),
+                ),
                 const SizedBox(height: 8),
                 Divider(
                   height: 1,
