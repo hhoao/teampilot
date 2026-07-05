@@ -170,6 +170,30 @@ void main() {
       },
     );
 
+    test(
+      'mixed parked wait_for_message stays idle even with stale userTurnActive',
+      () {
+        final shell = _ConnectedShell()
+          ..activityTracker.latchBootFrameReadyForTest();
+        shell.markUserTurnStarted();
+
+        final bus = TeamBus(launcher: FakeMemberLauncher());
+        bus.declareMember(
+          AgentNode.test(
+            memberId: 'worker',
+            lifecycle: MemberLifecycle.running,
+            activity: MemberActivity.turnDoneBusWait,
+          ),
+        );
+
+        expect(
+          _resolve(shell, bus: bus),
+          MemberAvailability.idle,
+          reason: 'bus wait wins over stale automation userTurnActive latch',
+        );
+      },
+    );
+
     test('mixed in-turn is working when PTY has recent activity', () {
       final shell = _ConnectedShell()
         ..activityTracker.latchBootFrameReadyForTest();

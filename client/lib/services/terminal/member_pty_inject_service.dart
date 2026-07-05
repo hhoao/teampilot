@@ -30,6 +30,10 @@ final class MemberPtyInjectService {
   bool isBusy(String sessionId, String memberId) =>
       _lock.isBusy(sessionId, memberId);
 
+  void clearPending(String sessionId, String memberId) {
+    _retryQueue.clear(PtyAutomationSessionLock.key(sessionId, memberId));
+  }
+
   /// First delivery: clear → paste → grid ACK → CR.
   Future<FullscreenPtyDeliveryOutcome> deliver({
     required TerminalSession shell,
@@ -78,6 +82,7 @@ final class MemberPtyInjectService {
 
   void tickRetries({
     required void Function(PtyAutomationRetryTick tick) onTick,
+    bool Function(PtyAutomationRetryTick tick)? shouldSkip,
   }) {
     final due = _retryQueue.due(
       blocked: (key) {
@@ -87,6 +92,10 @@ final class MemberPtyInjectService {
       },
     );
     for (final tick in due) {
+      if (shouldSkip?.call(tick) ?? false) {
+        _retryQueue.clear(tick.key);
+        continue;
+      }
       appLogger.d(
         '[team-bus] automation-retry-tick member=${tick.memberId} '
         'session=${tick.sessionId} attempt=${tick.attempt}',

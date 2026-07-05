@@ -24,6 +24,7 @@ import '../../services/team_bus/tasks/task_queue.dart';
 import '../../services/team_bus/team_bus.dart';
 import '../../services/team_bus/teammate_roster_profile.dart';
 import '../../services/terminal/member_pty_inject_service.dart';
+import '../../services/terminal/pty_automation_delivery_guard.dart';
 import '../../services/terminal/pty_automation_retry_queue.dart';
 import '../../services/terminal/terminal_session.dart';
 import '../../utils/logger.dart';
@@ -497,6 +498,10 @@ class TabTeamBusCoordinator implements MemberMaterializer {
       return;
     }
     if (_ptyAckAborted(shell)) return;
+    if (_shouldSkipAutomationRetry(sessionId, memberId)) {
+      _dropStaleAutomationRetry(sessionId, memberId, shell);
+      return;
+    }
     final trimmed = notice.trim();
     if (trimmed.isEmpty) return;
     _beginMemberTurnForPtyDelivery(sessionId, memberId, shell);
@@ -520,18 +525,38 @@ class TabTeamBusCoordinator implements MemberMaterializer {
   }
 
   /// All PTY message delivery (doorbell, landing directToPty, automation) must
-  /// mark in-turn the same way as a user line at the member prompt.
+  /// mark in-turn the same way as a user line at the member prompt — unless the
+  /// worker is already parked in MCP `wait_for_message`.
   void _beginMemberTurnForPtyDelivery(
     String sessionId,
     String memberId,
     TerminalSession shell,
   ) {
+    final bus = busForSession(sessionId);
+    if (bus?.isWaitingForMessage(memberId) ?? false) return;
     // Same "send → working" latch as personal mode ([TerminalSession.userTurnActive]).
     shell.markUserTurnStarted();
-    final bus = busForSession(sessionId);
-    if (bus != null) {
-      bus.markTurnStarted(memberId);
-    }
+    bus?.markTurnStarted(memberId);
+  }
+
+  bool _shouldSkipAutomationRetry(String sessionId, String memberId) {
+    return PtyAutomationDeliveryGuard.shouldSkipRetry(
+      bus: busForSession(sessionId),
+      memberId: memberId,
+    );
+  }
+
+  void _dropStaleAutomationRetry(
+    String sessionId,
+    String memberId,
+    TerminalSession shell,
+  ) {
+    _ptyInject.clearPending(sessionId, memberId);
+    shell.markUserTurnIdle();
+    appLogger.d(
+      '[team-bus] automation-retry-skipped member=$memberId '
+      'session=$sessionId',
+    );
   }
 
   Future<void> _retryAutomationTick(PtyAutomationRetryTick tick) async {
@@ -539,6 +564,10 @@ class TabTeamBusCoordinator implements MemberMaterializer {
         _tabStore.bySessionId(tick.sessionId)?.memberShells[tick.memberId];
     if (shell == null) return;
     if (_ptyAckAborted(shell)) return;
+    if (_shouldSkipAutomationRetry(tick.sessionId, tick.memberId)) {
+      _dropStaleAutomationRetry(tick.sessionId, tick.memberId, shell);
+      return;
+    }
     _beginMemberTurnForPtyDelivery(tick.sessionId, tick.memberId, shell);
     final settle = _pasteSettleForMember(
       tick.sessionId,
@@ -630,6 +659,19 @@ class TabTeamBusCoordinator implements MemberMaterializer {
   void _tickIdleWatch() {
     if (_isClosed()) return;
     _ptyInject.tickRetries(
+      shouldSkip: (tick) {
+        if (!_shouldSkipAutomationRetry(tick.sessionId, tick.memberId)) {
+          return false;
+        }
+        final shell =
+            _tabStore.bySessionId(tick.sessionId)?.memberShells[tick.memberId];
+        if (shell != null) {
+          _dropStaleAutomationRetry(tick.sessionId, tick.memberId, shell);
+        } else {
+          _ptyInject.clearPending(tick.sessionId, tick.memberId);
+        }
+        return true;
+      },
       onTick: (tick) {
         unawaited(_retryAutomationTick(tick));
       },
@@ -644,8 +686,10 @@ class TabTeamBusCoordinator implements MemberMaterializer {
       var tabWorking = false;
       tab.memberShells.forEach((memberId, shell) {
         final key = '${tab.info.id}:$memberId';
-        final inTurn = shell.userTurnActive ||
-            (bus?.isMemberInTurn(memberId) ?? false);
+        final parked = bus?.isWaitingForMessage(memberId) ?? false;
+        final inTurn = !parked &&
+            (shell.userTurnActive ||
+                (bus?.isMemberInTurn(memberId) ?? false));
         final stillWorking = MemberTurnIdleSync.tick(
           turnKey: key,
           inTurn: inTurn,
