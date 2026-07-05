@@ -100,6 +100,17 @@ class AutomationRepository {
     return store.automations;
   }
 
+  Future<List<Automation>> listForWorkspace(String workspaceId) async {
+    final trimmed = workspaceId.trim();
+    if (trimmed.isEmpty) return const [];
+    final catalog = await _readCatalog();
+    final automations = <Automation>[];
+    for (final entry in catalog.where((e) => e.workspaceId == trimmed)) {
+      automations.addAll(await listForTabScope(entry.tabScope));
+    }
+    return automations;
+  }
+
   Future<List<Automation>> listForSession(
     AutomationTabScope scope,
     String sessionId,

@@ -2198,5 +2198,19 @@
   "automationsRunCountUnlimited": "Ran {count} times",
   "@automationsRunCountUnlimited": { "placeholders": { "count": { "type": "int" } } },
   "automationsRunCountLimited": "Ran {count} / {max}",
-  "@automationsRunCountLimited": { "placeholders": { "count": { "type": "int" }, "max": { "type": "int" } } }
+  "@automationsRunCountLimited": { "placeholders": { "count": { "type": "int" }, "max": { "type": "int" } } },
+  "automationsScopeModePersonal": "Personal · {profile}",
+  "@automationsScopeModePersonal": { "placeholders": { "profile": { "type": "String" } } },
+  "automationsScopeModeTeam": "Team · {team}",
+  "@automationsScopeModeTeam": { "placeholders": { "team": { "type": "String" } } },
+  "automationsScopePersonal": "Personal · {preset}",
+  "@automationsScopePersonal": { "placeholders": { "preset": { "type": "String" } } },
+  "automationsScopeTeam": "Team · {team} · {member}",
+  "@automationsScopeTeam": { "placeholders": { "team": { "type": "String" }, "member": { "type": "String" } } },
+  "automationsScopeTeamMember": "Team · {member}",
+  "@automationsScopeTeamMember": { "placeholders": { "member": { "type": "String" } } },
+  "automationsScopeScheduledMessage": "Scheduled message · {sessionId}",
+  "@automationsScopeScheduledMessage": { "placeholders": { "sessionId": { "type": "String" } } },
+  "automationsLaunchProfile": "Launch identity",
+  "@automationsLaunchProfile": { "description": "Label for workspace automation launch-profile picker" }
 }

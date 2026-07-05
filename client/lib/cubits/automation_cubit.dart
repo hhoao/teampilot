@@ -4,6 +4,7 @@ import 'package:collection/collection.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
 import '../models/automation.dart';
+import '../models/automation_list_scope.dart';
 import '../models/automation_tab_scope.dart';
 import '../repositories/automation_repository.dart';
 import '../services/automation/automation_schedule_calculator.dart';
@@ -35,8 +36,7 @@ class AutomationCubit extends Cubit<AutomationState> {
     emit(
       state.copyWith(
         status: AutomationLoadStatus.loading,
-        clearFilterTabScope: true,
-        clearFilterSessionId: true,
+        listScope: const AutomationListScope.all(),
         clearError: true,
       ),
     );
@@ -60,17 +60,49 @@ class AutomationCubit extends Cubit<AutomationState> {
     }
   }
 
-  Future<void> loadForTabScope(AutomationTabScope scope) async {
+  Future<void> loadForWorkspace(String workspaceId) async {
+    final scope = AutomationListScope.workspace(workspaceId);
     emit(
       state.copyWith(
         status: AutomationLoadStatus.loading,
-        filterTabScope: scope,
-        clearFilterSessionId: true,
+        listScope: scope,
         clearError: true,
       ),
     );
     try {
-      final automations = await _repository.listForTabScope(scope);
+      final automations = await _repository.listForWorkspace(workspaceId);
+      final runsByAutomationId = await _loadRunsByAutomation(automations);
+      emit(
+        state.copyWith(
+          automations: automations,
+          runsByAutomationId: runsByAutomationId,
+          status: AutomationLoadStatus.ready,
+        ),
+      );
+    } on Object catch (error) {
+      emit(
+        state.copyWith(
+          status: AutomationLoadStatus.error,
+          errorMessage: error.toString(),
+        ),
+      );
+    }
+  }
+
+  Future<void> loadForTabScope(
+    AutomationTabScope tabScope, {
+    String? sessionId,
+  }) async {
+    final scope = AutomationListScope.tab(tabScope, sessionId: sessionId);
+    emit(
+      state.copyWith(
+        status: AutomationLoadStatus.loading,
+        listScope: scope,
+        clearError: true,
+      ),
+    );
+    try {
+      final automations = await _repository.listForTabScope(tabScope);
       final runsByAutomationId = await _loadRunsByAutomation(automations);
       emit(
         state.copyWith(
@@ -111,12 +143,12 @@ class AutomationCubit extends Cubit<AutomationState> {
       next = next.copyWith(clearNextRunAtMs: true);
     }
     await _repository.upsert(next);
-    await _reloadPreservingFilters();
+    await _reloadPreservingScope();
   }
 
   Future<void> delete(AutomationTabScope scope, String automationId) async {
     await _repository.delete(scope, automationId);
-    await _reloadPreservingFilters();
+    await _reloadPreservingScope();
   }
 
   Future<void> toggleEnabled(
@@ -140,23 +172,34 @@ class AutomationCubit extends Cubit<AutomationState> {
       next = next.copyWith(clearNextRunAtMs: true);
     }
     await _repository.upsert(next);
-    await _reloadPreservingFilters();
+    await _reloadPreservingScope();
   }
 
   Future<void> runNow(AutomationTabScope scope, String automationId) async {
     await _scheduler.runNow(scope, automationId);
-    await reloadPreservingFilters();
+    await reloadPreservingScope();
   }
 
-  Future<void> reloadPreservingFilters() => _reloadPreservingFilters();
+  Future<void> reloadPreservingScope() => _reloadPreservingScope();
 
-  Future<void> _reloadPreservingFilters() async {
-    final scope = state.filterTabScope;
-    if (scope != null) {
-      await loadForTabScope(scope);
-    } else {
+  Future<void> _reloadPreservingScope() async {
+    final scope = state.listScope;
+    if (scope == null) {
       await load();
+      return;
     }
+    if (scope.isWorkspace) {
+      await loadForWorkspace(scope.workspaceId!);
+      return;
+    }
+    if (scope.isTab) {
+      await loadForTabScope(
+        scope.tabScope!,
+        sessionId: scope.sessionId,
+      );
+      return;
+    }
+    await load();
   }
 
   Future<Map<String, List<AutomationRun>>> _loadRunsByAutomation(
@@ -187,6 +230,6 @@ class AutomationCubit extends Cubit<AutomationState> {
 
   void _handleSchedulerTick() {
     if (isClosed) return;
-    unawaited(_reloadPreservingFilters());
+    unawaited(_reloadPreservingScope());
   }
 }

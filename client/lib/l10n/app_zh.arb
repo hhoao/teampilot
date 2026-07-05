@@ -1795,5 +1795,12 @@
   "automationsMaxRunCountHint": "留空表示无限制",
   "automationsInvalidMaxRunCount": "运行次数上限须为正整数",
   "automationsRunCountUnlimited": "已运行 {count} 次",
-  "automationsRunCountLimited": "已运行 {count} / {max}"
+  "automationsRunCountLimited": "已运行 {count} / {max}",
+  "automationsScopeModePersonal": "个人 · {profile}",
+  "automationsScopeModeTeam": "团队 · {team}",
+  "automationsScopePersonal": "个人 · {preset}",
+  "automationsScopeTeam": "团队 · {team} · {member}",
+  "automationsScopeTeamMember": "团队 · {member}",
+  "automationsScopeScheduledMessage": "定时消息 · {sessionId}",
+  "automationsLaunchProfile": "启动身份"
 }

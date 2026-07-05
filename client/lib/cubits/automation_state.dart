@@ -1,7 +1,7 @@
 import 'package:equatable/equatable.dart';
 
 import '../models/automation.dart';
-import '../models/automation_tab_scope.dart';
+import '../models/automation_list_scope.dart';
 
 enum AutomationLoadStatus { idle, loading, ready, error }
 
@@ -11,35 +11,17 @@ class AutomationState extends Equatable {
     this.runsByAutomationId = const {},
     this.status = AutomationLoadStatus.idle,
     this.errorMessage,
-    this.filterTabScope,
-    this.filterSessionId,
+    this.listScope,
   });
 
   final List<Automation> automations;
   final Map<String, List<AutomationRun>> runsByAutomationId;
   final AutomationLoadStatus status;
   final String? errorMessage;
-  final AutomationTabScope? filterTabScope;
-  final String? filterSessionId;
+  final AutomationListScope? listScope;
 
-  List<Automation> get visibleAutomations {
-    var items = automations;
-    final scope = filterTabScope;
-    if (scope != null) {
-      items = items
-          .where(
-            (a) =>
-                a.workspaceId == scope.workspaceId &&
-                a.launchProfileId == scope.launchProfileId,
-          )
-          .toList();
-    }
-    final sessionId = filterSessionId?.trim();
-    if (sessionId != null && sessionId.isNotEmpty) {
-      items = items.where((a) => a.sessionId == sessionId).toList();
-    }
-    return items;
-  }
+  List<Automation> get visibleAutomations =>
+      filterAutomationsForScope(automations, listScope);
 
   AutomationState copyWith({
     List<Automation>? automations,
@@ -47,22 +29,15 @@ class AutomationState extends Equatable {
     AutomationLoadStatus? status,
     String? errorMessage,
     bool clearError = false,
-    AutomationTabScope? filterTabScope,
-    bool clearFilterTabScope = false,
-    String? filterSessionId,
-    bool clearFilterSessionId = false,
+    AutomationListScope? listScope,
+    bool clearListScope = false,
   }) {
     return AutomationState(
       automations: automations ?? this.automations,
       runsByAutomationId: runsByAutomationId ?? this.runsByAutomationId,
       status: status ?? this.status,
       errorMessage: clearError ? null : (errorMessage ?? this.errorMessage),
-      filterTabScope: clearFilterTabScope
-          ? null
-          : (filterTabScope ?? this.filterTabScope),
-      filterSessionId: clearFilterSessionId
-          ? null
-          : (filterSessionId ?? this.filterSessionId),
+      listScope: clearListScope ? null : (listScope ?? this.listScope),
     );
   }
 
@@ -72,7 +47,30 @@ class AutomationState extends Equatable {
     runsByAutomationId,
     status,
     errorMessage,
-    filterTabScope,
-    filterSessionId,
+    listScope,
   ];
+}
+
+List<Automation> filterAutomationsForScope(
+  List<Automation> automations,
+  AutomationListScope? scope,
+) {
+  if (scope == null || scope.isAll) return automations;
+  if (scope.isWorkspace) {
+    final workspaceId = scope.workspaceId!;
+    return automations
+        .where((a) => a.workspaceId == workspaceId)
+        .toList(growable: false);
+  }
+  final tab = scope.tabScope!;
+  var items = automations.where(
+    (a) =>
+        a.workspaceId == tab.workspaceId &&
+        a.launchProfileId == tab.launchProfileId,
+  );
+  final sessionId = scope.sessionId?.trim();
+  if (sessionId != null && sessionId.isNotEmpty) {
+    items = items.where((a) => a.sessionId == sessionId);
+  }
+  return items.toList(growable: false);
 }

@@ -4841,4 +4841,37 @@ class AppLocalizationsEn extends AppLocalizations {
   String automationsRunCountLimited(int count, int max) {
     return 'Ran $count / $max';
   }
+
+  @override
+  String automationsScopeModePersonal(String profile) {
+    return 'Personal · $profile';
+  }
+
+  @override
+  String automationsScopeModeTeam(String team) {
+    return 'Team · $team';
+  }
+
+  @override
+  String automationsScopePersonal(String preset) {
+    return 'Personal · $preset';
+  }
+
+  @override
+  String automationsScopeTeam(String team, String member) {
+    return 'Team · $team · $member';
+  }
+
+  @override
+  String automationsScopeTeamMember(String member) {
+    return 'Team · $member';
+  }
+
+  @override
+  String automationsScopeScheduledMessage(String sessionId) {
+    return 'Scheduled message · $sessionId';
+  }
+
+  @override
+  String get automationsLaunchProfile => 'Launch identity';
 }

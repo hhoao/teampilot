@@ -4662,4 +4662,37 @@ class AppLocalizationsZh extends AppLocalizations {
   String automationsRunCountLimited(int count, int max) {
     return '已运行 $count / $max';
   }
+
+  @override
+  String automationsScopeModePersonal(String profile) {
+    return '个人 · $profile';
+  }
+
+  @override
+  String automationsScopeModeTeam(String team) {
+    return '团队 · $team';
+  }
+
+  @override
+  String automationsScopePersonal(String preset) {
+    return '个人 · $preset';
+  }
+
+  @override
+  String automationsScopeTeam(String team, String member) {
+    return '团队 · $team · $member';
+  }
+
+  @override
+  String automationsScopeTeamMember(String member) {
+    return '团队 · $member';
+  }
+
+  @override
+  String automationsScopeScheduledMessage(String sessionId) {
+    return '定时消息 · $sessionId';
+  }
+
+  @override
+  String get automationsLaunchProfile => '启动身份';
 }

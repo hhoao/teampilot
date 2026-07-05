@@ -8732,6 +8732,48 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Ran {count} / {max}'**
   String automationsRunCountLimited(int count, int max);
+
+  /// No description provided for @automationsScopeModePersonal.
+  ///
+  /// In en, this message translates to:
+  /// **'Personal · {profile}'**
+  String automationsScopeModePersonal(String profile);
+
+  /// No description provided for @automationsScopeModeTeam.
+  ///
+  /// In en, this message translates to:
+  /// **'Team · {team}'**
+  String automationsScopeModeTeam(String team);
+
+  /// No description provided for @automationsScopePersonal.
+  ///
+  /// In en, this message translates to:
+  /// **'Personal · {preset}'**
+  String automationsScopePersonal(String preset);
+
+  /// No description provided for @automationsScopeTeam.
+  ///
+  /// In en, this message translates to:
+  /// **'Team · {team} · {member}'**
+  String automationsScopeTeam(String team, String member);
+
+  /// No description provided for @automationsScopeTeamMember.
+  ///
+  /// In en, this message translates to:
+  /// **'Team · {member}'**
+  String automationsScopeTeamMember(String member);
+
+  /// No description provided for @automationsScopeScheduledMessage.
+  ///
+  /// In en, this message translates to:
+  /// **'Scheduled message · {sessionId}'**
+  String automationsScopeScheduledMessage(String sessionId);
+
+  /// Label for workspace automation launch-profile picker
+  ///
+  /// In en, this message translates to:
+  /// **'Launch identity'**
+  String get automationsLaunchProfile;
 }
 
 class _AppLocalizationsDelegate
