@@ -11,6 +11,11 @@ import 'team_member_index_source.dart';
 String memberContentHash(DiscoverableTeamMember member) =>
     Object.hash(member.prompt, member.playbook).toString();
 
+/// Loads team templates for team-extracted member indexing (e.g. Team Hub source).
+typedef TeamIndexLoader = Future<List<DiscoverableTeam>> Function({
+  bool forceRefresh,
+});
+
 /// Merges builtin, registry, team-extracted, and local member templates.
 /// Built-ins are listed first; team-extracted entries whose content hash
 /// matches a builtin or registry entry are omitted (prefer catalog entry).
@@ -19,26 +24,31 @@ class CompositeExpertHubSource {
     List<DiscoverableMember> builtIns = const [],
     ExpertHubSource? registry,
     List<DiscoverableTeam> teams = const [],
+    TeamIndexLoader? teamIndex,
     LocalMemberTemplateStore? localStore,
   }) : _builtIns = builtIns,
        _registry = registry ?? GitRegistryExpertHubSource(),
        _teams = teams,
+       _teamIndex = teamIndex,
        _localStore = localStore ?? LocalMemberTemplateStore();
 
   factory CompositeExpertHubSource.withDefaults({
     ExpertHubSource? registry,
     List<DiscoverableTeam> teams = const [],
+    TeamIndexLoader? teamIndex,
     LocalMemberTemplateStore? localStore,
   }) => CompositeExpertHubSource(
     builtIns: builtinExpertMembers(),
     registry: registry,
     teams: teams,
+    teamIndex: teamIndex,
     localStore: localStore,
   );
 
   final List<DiscoverableMember> _builtIns;
   final ExpertHubSource _registry;
   final List<DiscoverableTeam> _teams;
+  final TeamIndexLoader? _teamIndex;
   final LocalMemberTemplateStore _localStore;
 
   Future<List<DiscoverableMember>> fetchMembers({
@@ -46,7 +56,11 @@ class CompositeExpertHubSource {
   }) async {
     final builtIns = _builtIns;
     final registry = await _registry.fetchMembers(forceRefresh: forceRefresh);
-    final teamExtract = indexMembersFromTeams(_teams);
+    final teamIndex = _teamIndex;
+    final teams = teamIndex != null
+        ? await teamIndex(forceRefresh: forceRefresh)
+        : _teams;
+    final teamExtract = indexMembersFromTeams(teams);
     final local = await _localStore.loadAll();
 
     final builtinKeys = builtIns.map((m) => m.key).toSet();

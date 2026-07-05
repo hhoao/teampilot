@@ -40,6 +40,7 @@ import '../services/mcp/profile_mcp_linker_service.dart';
 import '../cubits/ssh_profile_cubit.dart';
 import '../cubits/launch_profile_cubit.dart';
 import '../cubits/team_hub_cubit.dart';
+import '../cubits/expert_hub_cubit.dart';
 import '../models/runtime_target.dart';
 import '../models/ssh_profile.dart';
 import '../models/team_config.dart';
@@ -75,6 +76,10 @@ import '../services/team/team_clone_service.dart';
 import '../services/team_hub/composite_team_hub_source.dart';
 import '../services/team_hub/git_registry_team_hub_source.dart';
 import '../services/team_hub/team_hub_favorites_store.dart';
+import '../services/expert_hub/composite_expert_hub_source.dart';
+import '../services/expert_hub/expert_hub_favorites_store.dart';
+import '../services/expert_hub/git_registry_expert_hub_source.dart';
+import '../services/expert_hub/member_clone_service.dart';
 import '../services/cli/cli_executable_discovery.dart';
 import '../services/cli/registry/cli_bootstrap.dart';
 import '../services/cli/registry/cli_tool_registry.dart';
@@ -153,6 +158,7 @@ class AppShell {
     required this.skillCubit,
     required this.mcpCubit,
     required this.teamHubCubit,
+    required this.expertHubCubit,
     required this.extensionCubit,
     required this.appUpdateCubit,
     required this.sshProfileCubit,
@@ -204,6 +210,7 @@ class AppShell {
   final SkillCubit skillCubit;
   final McpCubit mcpCubit;
   final TeamHubCubit teamHubCubit;
+  final ExpertHubCubit expertHubCubit;
   final ExtensionCubit extensionCubit;
   final AppUpdateCubit appUpdateCubit;
   final SshProfileCubit sshProfileCubit;
@@ -319,6 +326,7 @@ Future<AppShell> buildAppShell({
   late final SkillCubit skillCubit;
   late final McpCubit mcpCubit;
   late final TeamHubCubit teamHubCubit;
+  late final ExpertHubCubit expertHubCubit;
   late final ExtensionCubit extensionCubit;
   late final SessionRepository sessionRepo;
   late final ChatCubit chatCubit;
@@ -646,6 +654,26 @@ Future<AppShell> buildAppShell({
     },
   );
 
+  final expertHubFavorites = ExpertHubFavoritesStore();
+  final memberCloneService = MemberCloneService(
+    installSkill: skillCubit.installTeamDependency,
+  );
+  final compositeExpertHubSource = CompositeExpertHubSource.withDefaults(
+    registry: GitRegistryExpertHubSource(),
+    teamIndex: teamHubSource.fetchTeams,
+  );
+  expertHubCubit = ExpertHubCubit(
+    source: compositeExpertHubSource,
+    loadFavorites: expertHubFavorites.load,
+    saveFavoriteToggle: expertHubFavorites.toggle,
+    memberCloneService: memberCloneService,
+    launchProfiles: () => teamCubit,
+    loadInstalledDepIds: () async {
+      final skills = await skillRepo.loadInstalled();
+      return skills.map((s) => s.id).toSet();
+    },
+  );
+
   final appUpdateCubit = AppUpdateCubit(settings: appSettings);
   final layoutCubit = LayoutCubit(repository: LayoutRepository(preferences));
   final workspaceToolsCubit = WorkspaceToolsCubit();
@@ -960,6 +988,7 @@ Future<AppShell> buildAppShell({
     skillCubit: skillCubit,
     mcpCubit: mcpCubit,
     teamHubCubit: teamHubCubit,
+    expertHubCubit: expertHubCubit,
     extensionCubit: extensionCubit,
     appUpdateCubit: appUpdateCubit,
     sshProfileCubit: sshProfileCubit,
