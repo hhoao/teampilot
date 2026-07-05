@@ -52,6 +52,14 @@ cd client
 flutter analyze --no-fatal-infos --no-fatal-warnings
 ```
 
+Format and fix helpers (app sources only — `lib/`, `test/`, `tool/`; vendored `packages/` excluded, same as `analysis_options.yaml`):
+
+```bash
+cd client
+bash scripts/fix_format.sh    # apply dart format + dart fix
+bash scripts/check_format.sh  # verify format, pending fixes, and analyze (CI-aligned)
+```
+
 ## Tests
 
 Unit and widget tests (default; excludes the `integration` tag):
