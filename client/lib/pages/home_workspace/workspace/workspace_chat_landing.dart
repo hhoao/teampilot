@@ -29,8 +29,11 @@ import '../../../utils/workspace_path_utils.dart';
 import '../../../services/keyboard/compose_keyboard_shortcut_handler.dart';
 import '../../../services/storage/home_target_controller.dart';
 import '../../../widgets/menu/sidebar_action_menu.dart';
+import '../../../services/launch/workspace_landing_launch_gate.dart';
 import 'workspace_chat_landing_compose_card.dart';
+import 'workspace_landing_launch_feedback.dart';
 import 'workspace_landing_selectors.dart';
+import 'workspace_landing_team_settings_dialog.dart';
 
 enum _LandingConversationMode { team, simple }
 
@@ -77,6 +80,10 @@ class _WorkspaceChatLandingState extends State<WorkspaceChatLanding> {
   String? _selectedWorkingDirectoryPath;
   List<RuntimeTarget> _runtimeTargets = const [];
   Future<void>? _runtimeTargetsLoad;
+  final _launchGate = WorkspaceLandingLaunchGate();
+  var _teamConfigLaunchReady = true;
+  WorkspaceLandingLaunchBlock? _launchWarningBlock;
+  int _teamLaunchReadinessGeneration = 0;
 
   @override
   void initState() {
@@ -310,6 +317,67 @@ class _WorkspaceChatLandingState extends State<WorkspaceChatLanding> {
     );
     if (!mounted) return;
     setState(() => _applyDraft(draft));
+    _scheduleTeamLaunchReadinessCheck();
+  }
+
+  void _scheduleTeamLaunchReadinessCheck() {
+    if (_conversationMode != _LandingConversationMode.team) {
+      if (_teamConfigLaunchReady && _launchWarningBlock == null) return;
+      setState(() {
+        _teamConfigLaunchReady = true;
+        _launchWarningBlock = null;
+      });
+      return;
+    }
+    final generation = ++_teamLaunchReadinessGeneration;
+    unawaited(_refreshTeamLaunchReadiness(generation));
+  }
+
+  Future<void> _refreshTeamLaunchReadiness(int generation) async {
+    final teams = context.read<LaunchProfileCubit>().state.teams;
+    final team = _selectedTeamProfile(teams);
+    if (team == null) {
+      if (!mounted || generation != _teamLaunchReadinessGeneration) return;
+      setState(() {
+        _teamConfigLaunchReady = false;
+        _launchWarningBlock = const TeamNotSelectedLaunchBlock();
+      });
+      return;
+    }
+    final sync = _launchGate.syncBlock(
+      workspace: widget.workspace,
+      draft: _currentDraft(),
+      team: team,
+    );
+    if (sync != null) {
+      if (!mounted || generation != _teamLaunchReadinessGeneration) return;
+      setState(() {
+        _teamConfigLaunchReady = false;
+        _launchWarningBlock = sync;
+      });
+      return;
+    }
+    final presets = context.read<CliPresetsCubit>().state.presets;
+    final block = await _launchGate.asyncBlock(
+      team: team,
+      globalPresets: presets,
+    );
+    if (!mounted || generation != _teamLaunchReadinessGeneration) return;
+    setState(() {
+      _teamConfigLaunchReady = block == null;
+      _launchWarningBlock = block;
+    });
+  }
+
+  WorkspaceLandingLaunchBlock? _resolveLaunchWarningBlock(TeamProfile? team) {
+    if (_conversationMode != _LandingConversationMode.team) return null;
+    final sync = _launchGate.syncBlock(
+      workspace: widget.workspace,
+      draft: _currentDraft(),
+      team: team,
+    );
+    if (sync != null) return sync;
+    return _launchWarningBlock;
   }
 
   void _applyDraft(LandingLaunchContext draft) {
@@ -432,14 +500,52 @@ class _WorkspaceChatLandingState extends State<WorkspaceChatLanding> {
     );
   }
 
-  bool get _canSubmit =>
-      !widget.disabled &&
-      !widget.isSubmitting &&
-      _controller.text.trim().isNotEmpty;
+  bool get _canSubmit {
+    if (widget.disabled || widget.isSubmitting) return false;
+    if (_controller.text.trim().isEmpty) return false;
+    if (_conversationMode == _LandingConversationMode.team) {
+      final teams = context.read<LaunchProfileCubit>().state.teams;
+      final team = _selectedTeamProfile(teams);
+      if (_launchGate.syncBlock(
+            workspace: widget.workspace,
+            draft: _currentDraft(),
+            team: team,
+          ) !=
+          null) {
+        return false;
+      }
+      if (!_teamConfigLaunchReady) return false;
+    }
+    return true;
+  }
 
   void _submit() {
+    unawaited(_submitAfterLaunchGate());
+  }
+
+  Future<void> _submitAfterLaunchGate() async {
     final text = _controller.text.trim();
     if (text.isEmpty || widget.disabled || widget.isSubmitting) return;
+
+    if (_conversationMode == _LandingConversationMode.team) {
+      final teams = context.read<LaunchProfileCubit>().state.teams;
+      final team = _selectedTeamProfile(teams);
+      final draft = _currentDraft();
+      final presets = context.read<CliPresetsCubit>().state.presets;
+      final block = await _launchGate.evaluate(
+        workspace: widget.workspace,
+        draft: draft,
+        team: team,
+        globalPresets: presets,
+      );
+      if (!mounted) return;
+      if (block != null) {
+        showWorkspaceLandingLaunchBlock(context, block);
+        _scheduleTeamLaunchReadinessCheck();
+        return;
+      }
+    }
+
     widget.onSubmit(text, _currentDraft());
   }
 
@@ -447,6 +553,7 @@ class _WorkspaceChatLandingState extends State<WorkspaceChatLanding> {
     if (_conversationMode == mode) return;
     setState(() => _conversationMode = mode);
     _persistDraft();
+    _scheduleTeamLaunchReadinessCheck();
   }
 
   void _setPermissionMode(_LandingPermissionMode mode) {
@@ -462,6 +569,27 @@ class _WorkspaceChatLandingState extends State<WorkspaceChatLanding> {
   void _selectTeam(String teamId) {
     setState(() => _selectedTeamId = teamId);
     _persistDraft();
+    _scheduleTeamLaunchReadinessCheck();
+  }
+
+  TeamProfile? _selectedTeamProfile(List<TeamProfile> teams) {
+    final id = _selectedTeamId?.trim() ?? '';
+    if (id.isEmpty) return null;
+    return teams.where((team) => team.id == id).firstOrNull;
+  }
+
+  Future<void> _openTeamSettings(List<TeamProfile> teams) async {
+    final team = _selectedTeamProfile(teams);
+    if (team == null) return;
+    final saved = await showLandingTeamSettingsDialog(
+      context,
+      workspace: widget.workspace,
+      team: team,
+    );
+    if (saved == true && mounted) {
+      setState(() {});
+      _scheduleTeamLaunchReadinessCheck();
+    }
   }
 
   String _conversationModeLabel(AppLocalizations l10n) {
@@ -597,6 +725,10 @@ class _WorkspaceChatLandingState extends State<WorkspaceChatLanding> {
     final workspaceLabel = workspaceLandingWorkspaceLabel(widget.workspace);
     final launchDirectoryLabel =
         directoryResolver.labelFor(selectedLaunchDirectoryPath);
+    final selectedTeam = _conversationMode == _LandingConversationMode.team
+        ? _selectedTeamProfile(teams)
+        : null;
+    final launchWarningBlock = _resolveLaunchWarningBlock(selectedTeam);
 
     return BlocListener<WorktreeCubit, WorktreeState>(
       listenWhen: (previous, current) =>
@@ -690,6 +822,25 @@ class _WorkspaceChatLandingState extends State<WorkspaceChatLanding> {
                       onVoice: () => unawaited(_toggleVoice()),
                       onVoiceCancel: () => unawaited(_cancelVoice()),
                       onVoiceStop: () => unawaited(_stopVoice()),
+                      teamSettingsTooltip: selectedTeam != null
+                          ? l10n.teamSettings
+                          : null,
+                      onTeamSettings: selectedTeam != null
+                          ? () => unawaited(_openTeamSettings(teams))
+                          : null,
+                      showTeamSettingsAttention: selectedTeam != null &&
+                          landingTeamSettingsNeedsAttention(
+                            workspace: widget.workspace,
+                            team: selectedTeam,
+                          ),
+                      submitBlockedTooltip:
+                          launchWarningBlock != null &&
+                              _controller.text.trim().isNotEmpty
+                          ? landingLaunchBlockMessage(
+                              l10n,
+                              launchWarningBlock,
+                            )
+                          : null,
                     ),
                   ],
                 ),

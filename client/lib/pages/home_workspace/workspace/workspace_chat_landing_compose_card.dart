@@ -41,6 +41,10 @@ class WorkspaceChatLandingComposeCard extends StatelessWidget {
     required this.onVoice,
     required this.onVoiceCancel,
     required this.onVoiceStop,
+    this.teamSettingsTooltip,
+    this.onTeamSettings,
+    this.showTeamSettingsAttention = false,
+    this.submitBlockedTooltip,
     super.key,
   });
 
@@ -74,6 +78,10 @@ class WorkspaceChatLandingComposeCard extends StatelessWidget {
   final VoidCallback onVoice;
   final VoidCallback onVoiceCancel;
   final VoidCallback onVoiceStop;
+  final String? teamSettingsTooltip;
+  final VoidCallback? onTeamSettings;
+  final bool showTeamSettingsAttention;
+  final String? submitBlockedTooltip;
 
   bool get _composeActionsEnabled => !isSubmitting && !isEnhancing;
 
@@ -103,6 +111,16 @@ class WorkspaceChatLandingComposeCard extends StatelessWidget {
                 specs: autoChipSpecs,
                 onSelected: onAutoChipSelected,
               ),
+              if (onTeamSettings != null) ...[
+                SizedBox(width: spacing.xs),
+                _TeamSettingsButton(
+                  palette: palette,
+                  tooltip: teamSettingsTooltip ?? '',
+                  showAttention: showTeamSettingsAttention,
+                  enabled: _composeActionsEnabled,
+                  onTap: onTeamSettings!,
+                ),
+              ],
               SizedBox(width: spacing.sm),
               _ToolbarMenuChip(
                 palette: palette,
@@ -146,6 +164,7 @@ class WorkspaceChatLandingComposeCard extends StatelessWidget {
         canSubmit: canSubmit,
         isSubmitting: isSubmitting,
         onSubmit: onSubmit,
+        blockedTooltip: submitBlockedTooltip,
       ),
     ];
   }
@@ -192,6 +211,7 @@ class WorkspaceChatLandingComposeCard extends StatelessWidget {
         canSubmit: canSubmit,
         isSubmitting: isSubmitting,
         onSubmit: onSubmit,
+        blockedTooltip: submitBlockedTooltip,
       ),
     ];
   }
@@ -386,6 +406,133 @@ class _ToolbarChip extends StatelessWidget {
   }
 }
 
+class _TeamSettingsButton extends StatelessWidget {
+  const _TeamSettingsButton({
+    required this.palette,
+    required this.tooltip,
+    required this.showAttention,
+    required this.enabled,
+    required this.onTap,
+  });
+
+  final WorkspaceChatLandingPalette palette;
+  final String tooltip;
+  final bool showAttention;
+  final bool enabled;
+  final VoidCallback onTap;
+
+  static const double _size = 36;
+
+  @override
+  Widget build(BuildContext context) {
+    final icons = context.appIconSizes;
+    final color = enabled ? palette.muted : palette.disabled;
+
+    return Tooltip(
+      message: tooltip,
+      child: Material(
+        color: palette.chipFill,
+        shape: CircleBorder(side: BorderSide(color: palette.border)),
+        clipBehavior: Clip.antiAlias,
+        child: InkWell(
+          onTap: enabled ? onTap : null,
+          customBorder: const CircleBorder(),
+          child: SizedBox(
+            width: _size,
+            height: _size,
+            child: Stack(
+              alignment: Alignment.center,
+              children: [
+                Icon(Icons.settings_outlined, size: icons.md, color: color),
+                if (showAttention)
+                  Positioned(
+                    top: 6,
+                    right: 6,
+                    child: Container(
+                      width: 8,
+                      height: 8,
+                      decoration: BoxDecoration(
+                        color: Theme.of(context).colorScheme.error,
+                        shape: BoxShape.circle,
+                        border: Border.all(
+                          color: palette.chipFill,
+                          width: 1.5,
+                        ),
+                      ),
+                    ),
+                  ),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _SendButton extends StatelessWidget {
+  const _SendButton({
+    required this.palette,
+    required this.canSubmit,
+    required this.isSubmitting,
+    required this.onSubmit,
+    this.blockedTooltip,
+  });
+
+  final WorkspaceChatLandingPalette palette;
+  final bool canSubmit;
+  final bool isSubmitting;
+  final VoidCallback onSubmit;
+  final String? blockedTooltip;
+
+  static const double _size = 36;
+
+  @override
+  Widget build(BuildContext context) {
+    final icons = context.appIconSizes;
+    final active = canSubmit && !isSubmitting;
+    final tooltip = blockedTooltip?.trim();
+
+    final button = Material(
+      color: active ? palette.sendActive : palette.sendIdle,
+      shape: const CircleBorder(),
+      clipBehavior: Clip.antiAlias,
+      child: InkWell(
+        onTap: active
+            ? throttledOnPressed('workspace_chat_landing_send', onSubmit)
+            : tooltip != null && tooltip.isNotEmpty
+            ? () {}
+            : null,
+        customBorder: const CircleBorder(),
+        child: SizedBox(
+          width: _size,
+          height: _size,
+          child: Center(
+            child: isSubmitting
+                ? SizedBox(
+                    width: icons.sm,
+                    height: icons.sm,
+                    child: CircularProgressIndicator(
+                      strokeWidth: 2,
+                      color: palette.sendIcon,
+                    ),
+                  )
+                : Icon(
+                    Icons.arrow_upward_rounded,
+                    color: active ? palette.sendIcon : palette.disabled,
+                    size: icons.md,
+                  ),
+          ),
+        ),
+      ),
+    );
+
+    if (tooltip == null || tooltip.isEmpty || active) return button;
+
+    return Tooltip(message: tooltip, child: button);
+  }
+}
+
 class _ComposeActionIcon extends StatelessWidget {
   const _ComposeActionIcon({
     required this.palette,
@@ -438,60 +585,6 @@ class _ComposeActionIcon extends StatelessWidget {
                     icon,
                     size: icons.md,
                     color: color,
-                  ),
-          ),
-        ),
-      ),
-    );
-  }
-}
-
-class _SendButton extends StatelessWidget {
-  const _SendButton({
-    required this.palette,
-    required this.canSubmit,
-    required this.isSubmitting,
-    required this.onSubmit,
-  });
-
-  final WorkspaceChatLandingPalette palette;
-  final bool canSubmit;
-  final bool isSubmitting;
-  final VoidCallback onSubmit;
-
-  static const double _size = 36;
-
-  @override
-  Widget build(BuildContext context) {
-    final icons = context.appIconSizes;
-    final active = canSubmit && !isSubmitting;
-
-    return Material(
-      color: active ? palette.sendActive : palette.sendIdle,
-      shape: const CircleBorder(),
-      clipBehavior: Clip.antiAlias,
-      child: InkWell(
-        onTap: active
-            ? throttledOnPressed('workspace_chat_landing_send', onSubmit)
-            : null,
-        customBorder: const CircleBorder(),
-        child: SizedBox(
-          width: _size,
-          height: _size,
-          child: Center(
-            child: isSubmitting
-                ? SizedBox(
-                    width: icons.sm,
-                    height: icons.sm,
-                    child: CircularProgressIndicator(
-                      strokeWidth: 2,
-                      color: palette.sendIcon,
-                    ),
-                  )
-                : Icon(
-                    Icons.arrow_upward_rounded,
-                    color: active ? palette.sendIcon : palette.disabled,
-                    size: icons.md,
                   ),
           ),
         ),

@@ -1148,6 +1148,23 @@ class AppLocalizationsZh extends AppLocalizations {
   String get workspaceChatLandingVoicePermissionDenied => '未获得麦克风权限';
 
   @override
+  String get landingTeamSettingsNavTeam => '团队默认';
+
+  @override
+  String get landingTeamSettingsNavMachines => '机器分配';
+
+  @override
+  String get landingTeamSettingsGlobalHint => '更改将应用于该团队的全局配置。';
+
+  @override
+  String get workspaceChatLandingMixedLaunchBlocked =>
+      '请先在团队设置中完成成员机器分配，再发送消息。';
+
+  @override
+  String get workspaceChatLandingTeamLaunchBlocked =>
+      '请先在团队设置中配置团队与成员的模型预设，再发送消息。';
+
+  @override
   String get sessionStartButton => '开始对话';
 
   @override

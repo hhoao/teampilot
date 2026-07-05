@@ -259,7 +259,7 @@ class TeamInfoSectionState extends State<TeamInfoSection> {
                     ),
                     showDividerBelow: true,
                   ),
-                _TeamDefaultPresetRow(
+                TeamDefaultPresetRow(
                   team: widget.team,
                   cubit: widget.cubit,
                   showDividerBelow: showDelegateRow || showForceWaitRow,
@@ -305,11 +305,13 @@ class TeamInfoSectionState extends State<TeamInfoSection> {
   }
 }
 
-class _TeamDefaultPresetRow extends StatelessWidget {
-  const _TeamDefaultPresetRow({
+/// Team default preset summary + configure entry (team settings surfaces).
+class TeamDefaultPresetRow extends StatelessWidget {
+  const TeamDefaultPresetRow({
     required this.team,
     required this.cubit,
     required this.showDividerBelow,
+    super.key,
   });
 
   final TeamProfile team;

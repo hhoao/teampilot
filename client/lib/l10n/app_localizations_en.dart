@@ -1210,6 +1210,24 @@ class AppLocalizationsEn extends AppLocalizations {
       'Microphone permission denied';
 
   @override
+  String get landingTeamSettingsNavTeam => 'Team defaults';
+
+  @override
+  String get landingTeamSettingsNavMachines => 'Machine assignment';
+
+  @override
+  String get landingTeamSettingsGlobalHint =>
+      'Changes apply to this team\'s global configuration.';
+
+  @override
+  String get workspaceChatLandingMixedLaunchBlocked =>
+      'Complete member machine assignment in Team Settings before sending.';
+
+  @override
+  String get workspaceChatLandingTeamLaunchBlocked =>
+      'Configure team and member model presets in Team Settings before sending.';
+
+  @override
   String get sessionStartButton => 'Start conversation';
 
   @override

@@ -2252,6 +2252,36 @@ abstract class AppLocalizations {
   /// **'Microphone permission denied'**
   String get workspaceChatLandingVoicePermissionDenied;
 
+  /// No description provided for @landingTeamSettingsNavTeam.
+  ///
+  /// In en, this message translates to:
+  /// **'Team defaults'**
+  String get landingTeamSettingsNavTeam;
+
+  /// No description provided for @landingTeamSettingsNavMachines.
+  ///
+  /// In en, this message translates to:
+  /// **'Machine assignment'**
+  String get landingTeamSettingsNavMachines;
+
+  /// No description provided for @landingTeamSettingsGlobalHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Changes apply to this team\'s global configuration.'**
+  String get landingTeamSettingsGlobalHint;
+
+  /// No description provided for @workspaceChatLandingMixedLaunchBlocked.
+  ///
+  /// In en, this message translates to:
+  /// **'Complete member machine assignment in Team Settings before sending.'**
+  String get workspaceChatLandingMixedLaunchBlocked;
+
+  /// No description provided for @workspaceChatLandingTeamLaunchBlocked.
+  ///
+  /// In en, this message translates to:
+  /// **'Configure team and member model presets in Team Settings before sending.'**
+  String get workspaceChatLandingTeamLaunchBlocked;
+
   /// No description provided for @sessionStartButton.
   ///
   /// In en, this message translates to:
