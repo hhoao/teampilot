@@ -32,8 +32,6 @@ class WorkspaceShell extends StatelessWidget {
     this.showNewChatButton = false,
     this.newChatTooltip = '',
     this.onNewChatPressed,
-    this.hideWorkspaceTerminal = false,
-    this.showSessionTabRow = true,
     super.key,
   });
 
@@ -65,13 +63,6 @@ class WorkspaceShell extends StatelessWidget {
   final bool showNewChatButton;
   final String newChatTooltip;
   final VoidCallback? onNewChatPressed;
-
-  /// When true, the bottom workspace terminal is hidden so [child] fills the
-  /// center column (compose landing).
-  final bool hideWorkspaceTerminal;
-
-  /// When false, the session tab row is hidden (landing owns the full pane).
-  final bool showSessionTabRow;
 
   @override
   Widget build(BuildContext context) {
@@ -138,7 +129,7 @@ class WorkspaceShell extends StatelessWidget {
               ],
             ),
           ),
-        if (showSessionTabRow && (tabs.isNotEmpty || showNewChatButton))
+        if (tabs.isNotEmpty || showNewChatButton)
           WorkspaceShellTabRow(
             tabs: tabs,
             activeIndex: activeTabIndex,
@@ -167,7 +158,6 @@ class WorkspaceShell extends StatelessWidget {
         Expanded(
           child: WorkspaceShellMainWithTerminal(
             preferences: layoutPreferences,
-            hideWorkspaceTerminal: hideWorkspaceTerminal,
             workspaceTerminalWorkingDirectory:
                 workspaceTerminalWorkingDirectory,
             workspaceWorkspaceId: workspaceWorkspaceId,

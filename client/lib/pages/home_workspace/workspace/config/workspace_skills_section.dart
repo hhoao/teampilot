@@ -4,9 +4,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
 
-import '../../../../models/personal_profile.dart';
-import '../../../../cubits/launch_profile_cubit.dart';
 import '../../../../cubits/skill_cubit.dart';
+import '../../../../cubits/workspace_project_config_cubit.dart';
 import '../../../../l10n/l10n_extensions.dart';
 import '../../home_workspace_global_section.dart';
 import '../../../../widgets/empty_state_block.dart';
@@ -14,31 +13,26 @@ import '../../../team_config/team_config_cards.dart';
 import '../../../team_config/team_config_skills_section.dart';
 
 class WorkspaceSkillsSection extends StatelessWidget {
-  const WorkspaceSkillsSection({
-    required this.workspaceId,
-    required this.profileId,
-    super.key,
-  });
+  const WorkspaceSkillsSection({required this.workspaceId, super.key});
 
   final String workspaceId;
-  final String profileId;
 
   @override
   Widget build(BuildContext context) {
-    final identityCubit = context.watch<LaunchProfileCubit>();
-    final personal = identityCubit.byId(profileId);
-    if (personal is! PersonalProfile) {
+    final l10n = context.l10n;
+    final projectState = context.watch<WorkspaceProjectConfigCubit>().state;
+    if (projectState.loading) {
       return const Center(child: CircularProgressIndicator());
     }
 
-    final l10n = context.l10n;
     void onManage() => context.go(HomeGlobalView.skills.homeLocation);
     final skillState = context.watch<SkillCubit>().state;
     final enabled = skillState.installed
         .where((s) => s.enabled)
         .toList(growable: false);
-    final skillIds = personal.bundle.skillIds;
+    final skillIds = projectState.config.bundle.skillIds;
     final assignedCount = enabled.where((s) => skillIds.contains(s.id)).length;
+    final projectCubit = context.read<WorkspaceProjectConfigCubit>();
 
     return SingleChildScrollView(
       child: Column(
@@ -84,11 +78,9 @@ class WorkspaceSkillsSection extends StatelessWidget {
                               ids.remove(skill.id);
                             }
                             unawaited(
-                              identityCubit.savePersonal(
-                                personal.copyWith(
-                                  bundle: personal.bundle.copyWith(
-                                    skillIds: List<String>.unmodifiable(ids),
-                                  ),
+                              projectCubit.updateBundle(
+                                projectState.config.bundle.copyWith(
+                                  skillIds: List<String>.unmodifiable(ids),
                                 ),
                               ),
                             );

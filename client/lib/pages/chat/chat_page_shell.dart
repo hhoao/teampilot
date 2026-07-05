@@ -184,11 +184,7 @@ class _ChatPageSplitLayout extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final hideRightTools = context.select<ChatCubit, bool>(
-      (c) => _isComposeLandingActive(c, tabScopeId),
-    );
     return RightToolsHost(
-      hidePanel: hideRightTools,
       onRightToolsWidthChanged: (w) =>
           context.read<LayoutCubit>().setRightToolsWidth(w),
       center: _ChatWorkspaceShell(
@@ -275,9 +271,6 @@ class _ChatPageDrawerLayout extends StatelessWidget {
     final layout = context.select<LayoutCubit, _ChatPageShellLayoutView>(
       (c) => _ChatPageShellLayoutView.from(c.state.preferences),
     );
-    final hideRightTools = context.select<ChatCubit, bool>(
-      (c) => _isComposeLandingActive(c, tabScopeId),
-    );
     final preferences = layout.asPreferences;
     final rightToolsPanel = RightToolsPanel(
       cwd: cwd,
@@ -292,7 +285,7 @@ class _ChatPageDrawerLayout extends StatelessWidget {
     );
 
     return Scaffold(
-      endDrawer: preferences.rightToolsVisible && !hideRightTools
+      endDrawer: preferences.rightToolsVisible
           ? Drawer(
               width: rightToolsDrawerWidth(context, preferences),
               child: SafeArea(child: rightToolsPanel),
@@ -393,8 +386,6 @@ class _ChatWorkspaceShell extends StatelessWidget {
               ? 'personal workspace / shell wrapper mode'
               : 'target: ${teamConfig != null ? cubit.selectedMemberName(teamConfig) : 'team'} / shell wrapper mode',
           showNewChatButton: true,
-          showSessionTabRow: !view.composeActive,
-          hideWorkspaceTerminal: view.composeActive,
           newChatTooltip: context.l10n.homeWorkspaceNewConversation,
           onNewChatPressed: routeActive
               ? () => cubit.enterComposeMode(tabScopeId)
@@ -422,7 +413,7 @@ class _ChatWorkspaceShell extends StatelessWidget {
               accentColor: Theme.of(context).colorScheme.primary,
             );
           }).toList(),
-          activeTabIndex: view.composeActive ? -1 : view.activeTabIndex,
+          activeTabIndex: view.activeTabIndex,
           onTabSelected: routeActive ? (index) => cubit.selectTab(index) : null,
           onTabClosed: routeActive ? (index) => cubit.closeTab(index) : null,
           onTabCloseOthers: routeActive
@@ -503,14 +494,6 @@ CliTool? _personalPresetCli(BuildContext context) {
   final activePresetId = personal?.activePresetId;
   if (activePresetId == null || activePresetId.isEmpty) return null;
   return context.read<CliPresetsCubit>().state.presetById(activePresetId)?.cli;
-}
-
-bool _isComposeLandingActive(ChatCubit cubit, String tabScopeId) {
-  final store = cubit.tabStore;
-  if (store.activeWorkspaceId == tabScopeId) {
-    return cubit.state.composeActive;
-  }
-  return store.isComposeActive(tabScopeId);
 }
 
 Widget _chatLaunchListener(BuildContext context, Widget child) {

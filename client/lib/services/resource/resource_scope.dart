@@ -1,5 +1,6 @@
 import 'package:path/path.dart' as p;
 
+import '../../models/config_bundle.dart';
 import '../../models/personal_profile.dart';
 import '../../models/skill.dart';
 import '../../models/team_config.dart';
@@ -23,6 +24,12 @@ class TeamResourceScope extends ResourceScope {
   const TeamResourceScope({required this.team, this.member});
   final TeamProfile team;
   final TeamMemberConfig? member;
+}
+
+/// Workspace project bindings from `project-config.json`.
+class WorkspaceResourceScope extends ResourceScope {
+  const WorkspaceResourceScope({required this.bundle});
+  final ConfigBundle bundle;
 }
 
 /// Installed catalogs + source roots needed to turn enabled ids into refs.

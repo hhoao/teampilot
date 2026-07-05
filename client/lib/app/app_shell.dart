@@ -58,6 +58,7 @@ import '../repositories/ssh_credential_store.dart';
 import '../repositories/ssh_known_host_repository.dart';
 import '../repositories/ssh_profile_repository.dart';
 import '../repositories/extension_repository.dart';
+import '../repositories/workspace_project_config_repository.dart';
 import '../router/app_router.dart';
 import '../services/extension/builtin_manifests.dart';
 import '../services/extension/extension_acquisition_engine.dart';
@@ -123,6 +124,7 @@ class AppShell {
     required this.notificationCubit,
     required this.editorCubit,
     required this.sessionRepo,
+    required this.workspaceProjectConfigRepository,
     required this.sshProfileRepo,
     required this.sshCredentialStore,
     required this.sshKnownHostRepo,
@@ -172,6 +174,7 @@ class AppShell {
   final NotificationCubit notificationCubit;
   final EditorCubit editorCubit;
   final SessionRepository sessionRepo;
+  final WorkspaceProjectConfigRepository workspaceProjectConfigRepository;
   final SshProfileRepository sshProfileRepo;
   final SshCredentialStore sshCredentialStore;
   final SshKnownHostRepository sshKnownHostRepo;
@@ -484,6 +487,9 @@ Future<AppShell> buildAppShell({
     stateFilePath: AppStorage.paths.extensionsStateJson,
     manifests: builtInExtensionManifests(),
   );
+  final workspaceProjectConfigRepository = WorkspaceProjectConfigRepository(
+    fs: AppStorage.fs,
+  );
   extensionCubit = ExtensionCubit(
     extensionRepository,
     ExtensionAcquisitionEngine(),
@@ -508,9 +514,18 @@ Future<AppShell> buildAppShell({
       }
       final trimmedWorkspaceId = workspaceId?.trim() ?? '';
       if (trimmedWorkspaceId.isNotEmpty) {
-        return extensionRepository.effectiveEnabledIds(
-          LaunchProfileProvisioner.defaultPersonalId,
+        final config = await workspaceProjectConfigRepository.load(
+          trimmedWorkspaceId,
         );
+        final global = (await extensionRepository.load()).globalEnabled;
+        return {
+          for (final manifest in builtInExtensionManifests())
+            if (config.effectiveExtensionEnabled(
+              extensionId: manifest.id,
+              globalEnabled: global,
+            ))
+              manifest.id,
+        };
       }
       return (await extensionRepository.load(forceReload: true)).globalEnabled;
     },
@@ -519,6 +534,7 @@ Future<AppShell> buildAppShell({
     loadInstalledSkills: () => skillRepo.loadInstalled(),
     cliPresetsRepository: cliPresetsRepo,
     loadPresets: () => cliPresetsCubit.state.presets,
+    projectConfigRepository: workspaceProjectConfigRepository,
   );
   sessionRepo = SessionRepository(lifecycleService: sessionLifecycleService);
   boot('prefetching home index snapshots');
@@ -888,6 +904,7 @@ Future<AppShell> buildAppShell({
     notificationCubit: notificationCubit,
     editorCubit: editorCubit,
     sessionRepo: sessionRepo,
+    workspaceProjectConfigRepository: workspaceProjectConfigRepository,
     sshProfileRepo: sshProfileRepo,
     sshCredentialStore: sshCredentialStore,
     sshKnownHostRepo: sshKnownHostRepo,

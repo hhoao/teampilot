@@ -1,42 +1,21 @@
 import 'package:flutter/material.dart';
 
 import '../../../l10n/l10n_extensions.dart';
-import '../../../models/launch_profile_kind.dart';
 import '../../../widgets/settings/workspace_section_navigation.dart';
 
-/// Personal / team workspace configuration sections (mirrors [TeamConfigSection]).
+/// Project-scoped workspace manage sections.
 enum WorkspaceConfigSection implements WorkspaceSectionDescriptor {
   settings,
-  members,
-  agent,
   skills,
   plugins,
   mcp,
   extensions;
 
-  static const _bundleSections = [
-    settings,
-    agent,
-    skills,
-    plugins,
-    mcp,
-    extensions,
-  ];
-
-  static List<WorkspaceConfigSection> forKind(LaunchProfileKind kind) =>
-      kind == LaunchProfileKind.team
-      ? [
-          ...{_bundleSections.first},
-          members,
-          ..._bundleSections.skip(1),
-        ]
-      : _bundleSections;
+  static const sections = values;
 
   @override
   String get routeSegment => switch (this) {
     WorkspaceConfigSection.settings => 'settings',
-    WorkspaceConfigSection.members => 'members',
-    WorkspaceConfigSection.agent => 'agent',
     WorkspaceConfigSection.skills => 'skills',
     WorkspaceConfigSection.plugins => 'plugins',
     WorkspaceConfigSection.mcp => 'mcp',
@@ -49,8 +28,6 @@ enum WorkspaceConfigSection implements WorkspaceSectionDescriptor {
   @override
   String title(AppLocalizations l10n) => switch (this) {
     WorkspaceConfigSection.settings => l10n.homeWorkspaceWorkspaceSettings,
-    WorkspaceConfigSection.members => l10n.homeWorkspaceWorkspaceMembers,
-    WorkspaceConfigSection.agent => l10n.homeWorkspaceWorkspaceAgent,
     WorkspaceConfigSection.skills => l10n.homeWorkspaceWorkspaceSkills,
     WorkspaceConfigSection.plugins => l10n.homeWorkspaceWorkspacePlugins,
     WorkspaceConfigSection.mcp => l10n.homeWorkspaceWorkspaceMcp,
@@ -73,8 +50,6 @@ enum WorkspaceConfigSection implements WorkspaceSectionDescriptor {
 IconData workspaceConfigSectionIcon(WorkspaceConfigSection section) =>
     switch (section) {
       WorkspaceConfigSection.settings => Icons.tune_outlined,
-      WorkspaceConfigSection.members => Icons.person_outline,
-      WorkspaceConfigSection.agent => Icons.smart_toy_outlined,
       WorkspaceConfigSection.skills => Icons.extension_outlined,
       WorkspaceConfigSection.plugins => Icons.widgets_outlined,
       WorkspaceConfigSection.mcp => Icons.hub_outlined,

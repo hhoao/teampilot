@@ -12,6 +12,7 @@ import 'app_storage.dart';
 /// workspace/workspaces-index.json   # derived startup snapshot (manifest + session dir ids)
 /// workspace/workspaces/{workspaceId}/
 ///   manifest.json       # Workspace
+///   project-config.json # Project-scoped skills/plugins/mcp/extensions
 ///   profile.json        # PersonalProfile (personal workspaces)
 ///   assets/icon.*       # custom workspace icon
 ///   config/             # workspace-level CLI overrides
@@ -53,6 +54,10 @@ class WorkspaceLayout {
 
   String profileFile(String workspaceId) =>
       _ctx.join(workspaceDir(workspaceId), 'profile.json');
+
+  /// Project-scoped skills/plugins/mcp/extension bindings.
+  String projectConfigFile(String workspaceId) =>
+      _ctx.join(workspaceDir(workspaceId), 'project-config.json');
 
   String assetsDir(String workspaceId) =>
       _ctx.join(workspaceDir(workspaceId), 'assets');

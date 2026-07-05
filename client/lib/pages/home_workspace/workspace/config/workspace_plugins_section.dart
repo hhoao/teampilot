@@ -4,42 +4,34 @@ import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
 
-import '../../../../cubits/launch_profile_cubit.dart';
 import '../../../../cubits/plugin_cubit.dart';
+import '../../../../cubits/workspace_project_config_cubit.dart';
 import '../../../../l10n/l10n_extensions.dart';
-import '../../../../models/personal_profile.dart';
 import '../../home_workspace_global_section.dart';
 import '../../../../widgets/empty_state_block.dart';
 import '../../../team_config/team_config_cards.dart';
 import '../../../team_config/team_config_plugins_section.dart';
 
 class WorkspacePluginsSection extends StatelessWidget {
-  const WorkspacePluginsSection({
-    required this.workspaceId,
-    required this.profileId,
-    super.key,
-  });
+  const WorkspacePluginsSection({required this.workspaceId, super.key});
 
   final String workspaceId;
-  final String profileId;
 
   @override
   Widget build(BuildContext context) {
-    final identityCubit = context.watch<LaunchProfileCubit>();
-    final personal = identityCubit.byId(profileId);
-    if (personal is! PersonalProfile) {
+    final projectState = context.watch<WorkspaceProjectConfigCubit>().state;
+    if (projectState.loading) {
       return const Center(child: CircularProgressIndicator());
     }
 
     final l10n = context.l10n;
     void onManage() => context.go(HomeGlobalView.plugins.homeLocation);
-    final pluginState = context.watch<PluginCubit>().state;
-    final syncing = identityCubit.state.isSyncingPlugins;
-    final installed = pluginState.installed;
-    final pluginIds = personal.bundle.pluginIds;
+    final installed = context.watch<PluginCubit>().state.installed;
+    final pluginIds = projectState.config.bundle.pluginIds;
     final assignedCount = installed
         .where((p) => pluginIds.contains(p.id))
         .length;
+    final projectCubit = context.read<WorkspaceProjectConfigCubit>();
 
     return SingleChildScrollView(
       child: Column(
@@ -60,10 +52,6 @@ class WorkspacePluginsSection extends StatelessWidget {
                     label: Text(l10n.workspacePluginsManage),
                   ),
                 ),
-                if (syncing) ...[
-                  const SizedBox(height: 12),
-                  const LinearProgressIndicator(),
-                ],
                 const SizedBox(height: 14),
                 if (installed.isEmpty)
                   EmptyStateBlock(
@@ -89,11 +77,9 @@ class WorkspacePluginsSection extends StatelessWidget {
                               ids.remove(plugin.id);
                             }
                             unawaited(
-                              identityCubit.savePersonal(
-                                personal.copyWith(
-                                  bundle: personal.bundle.copyWith(
-                                    pluginIds: List<String>.unmodifiable(ids),
-                                  ),
+                              projectCubit.updateBundle(
+                                projectState.config.bundle.copyWith(
+                                  pluginIds: List<String>.unmodifiable(ids),
                                 ),
                               ),
                             );

@@ -1,6 +1,7 @@
 import 'package:path/path.dart' as p;
 
 import '../../../storage/runtime_layout.dart';
+import '../../../../models/config_bundle.dart';
 import '../../../../models/cli_preset.dart';
 import '../../../../models/personal_profile.dart';
 import '../../../../models/workspace_agent_config.dart';
@@ -67,16 +68,18 @@ TeamProfile standaloneTeamFromPersonal(
   required String profileId,
   required String sessionTeamName,
   required CliPreset? preset,
+  ConfigBundle projectBundle = const ConfigBundle(),
 }) {
   final member = standaloneMemberFromPersonal(personal, preset: preset);
+  final bundle = projectBundle;
   return TeamProfile(
     id: profileId.trim(),
     name: sessionTeamName.trim(),
     cli: preset?.cli ?? CliTool.claude,
     members: [member],
-    skillIds: personal.bundle.skillIds,
-    pluginIds: personal.bundle.pluginIds,
-    mcpServerIds: personal.bundle.mcpServerIds,
+    skillIds: bundle.skillIds,
+    pluginIds: bundle.pluginIds,
+    mcpServerIds: bundle.mcpServerIds,
     teamMode: TeamMode.native,
     forceTeamLeadDelegateMode: false,
   );

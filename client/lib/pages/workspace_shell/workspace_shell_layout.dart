@@ -16,21 +16,18 @@ class WorkspaceShellMainWithTerminal extends StatelessWidget {
     super.key,
     required this.preferences,
     required this.child,
-    this.hideWorkspaceTerminal = false,
     this.workspaceTerminalWorkingDirectory,
     this.workspaceWorkspaceId,
   });
 
   final LayoutPreferences preferences;
   final Widget child;
-  final bool hideWorkspaceTerminal;
   final String? workspaceTerminalWorkingDirectory;
   final String? workspaceWorkspaceId;
 
   @override
   Widget build(BuildContext context) {
     return WorkspaceShellCenterColumnWithTerminal(
-      hideWorkspaceTerminal: hideWorkspaceTerminal,
       workspaceTerminalWorkingDirectory: workspaceTerminalWorkingDirectory,
       workspaceWorkspaceId: workspaceWorkspaceId,
       child: child,
@@ -43,13 +40,11 @@ class WorkspaceShellCenterColumnWithTerminal extends StatelessWidget {
   const WorkspaceShellCenterColumnWithTerminal({
     super.key,
     required this.child,
-    this.hideWorkspaceTerminal = false,
     this.workspaceTerminalWorkingDirectory,
     this.workspaceWorkspaceId,
   });
 
   final Widget child;
-  final bool hideWorkspaceTerminal;
   final String? workspaceTerminalWorkingDirectory;
   final String? workspaceWorkspaceId;
 
@@ -64,7 +59,7 @@ class WorkspaceShellCenterColumnWithTerminal extends StatelessWidget {
       builder: (context, layoutState) {
         final prefs = layoutState.preferences;
         final foreground = TickerMode.valuesOf(context).enabled;
-        if (!prefs.workspaceTerminalVisible || !foreground || hideWorkspaceTerminal) {
+        if (!prefs.workspaceTerminalVisible || !foreground) {
           return child;
         }
         final scoped = workspaceTerminalWorkingDirectory?.trim() ?? '';

@@ -2,77 +2,43 @@ import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
 import '../../../../cubits/extension_cubit.dart';
+import '../../../../cubits/workspace_project_config_cubit.dart';
 import '../../../../l10n/l10n_extensions.dart';
 import '../../../../theme/app_text_styles.dart';
 import '../../../team_config/team_config_cards.dart';
 import '../../../team_config/team_config_extensions_section.dart';
 
-class WorkspaceExtensionsSection extends StatefulWidget {
+class WorkspaceExtensionsSection extends StatelessWidget {
   const WorkspaceExtensionsSection({required this.workspaceId, super.key});
 
   final String workspaceId;
 
   @override
-  State<WorkspaceExtensionsSection> createState() =>
-      _WorkspaceExtensionsSectionState();
-}
-
-class _WorkspaceExtensionsSectionState
-    extends State<WorkspaceExtensionsSection> {
-  Map<String, bool> _overrides = const {};
-
-  @override
-  void initState() {
-    super.initState();
-    _loadOverrides();
-  }
-
-  @override
-  void didUpdateWidget(covariant WorkspaceExtensionsSection oldWidget) {
-    super.didUpdateWidget(oldWidget);
-    if (oldWidget.workspaceId != widget.workspaceId) _loadOverrides();
-  }
-
-  Future<void> _loadOverrides() async {
-    final map = await context.read<ExtensionCubit>().workspaceOverrides(
-      widget.workspaceId,
-    );
-    if (!mounted) return;
-    setState(() => _overrides = map);
-  }
-
-  ExtensionOverrideChoice _choiceFor(String id) {
-    if (!_overrides.containsKey(id)) {
-      return ExtensionOverrideChoice.followGlobal;
-    }
-    return _overrides[id]!
-        ? ExtensionOverrideChoice.forceOn
-        : ExtensionOverrideChoice.forceOff;
-  }
-
-  bool _effective(ExtensionRow row) {
-    final override = _overrides[row.id];
-    return override ?? row.globalEnabled;
-  }
-
-  Future<void> _setChoice(String id, ExtensionOverrideChoice choice) async {
-    final value = switch (choice) {
-      ExtensionOverrideChoice.followGlobal => null,
-      ExtensionOverrideChoice.forceOn => true,
-      ExtensionOverrideChoice.forceOff => false,
-    };
-    await context.read<ExtensionCubit>().setWorkspaceOverride(
-      widget.workspaceId,
-      id,
-      value,
-    );
-    await _loadOverrides();
-  }
-
-  @override
   Widget build(BuildContext context) {
     final l10n = context.l10n;
+    final projectState = context.watch<WorkspaceProjectConfigCubit>().state;
+    if (projectState.loading) {
+      return const Center(child: CircularProgressIndicator());
+    }
+
     final rows = context.watch<ExtensionCubit>().state.rows;
+    final overrides = projectState.config.extensionOverrides;
+    final projectCubit = context.read<WorkspaceProjectConfigCubit>();
+
+    ExtensionOverrideChoice choiceFor(String id) {
+      if (!overrides.containsKey(id)) {
+        return ExtensionOverrideChoice.followGlobal;
+      }
+      return overrides[id]!
+          ? ExtensionOverrideChoice.forceOn
+          : ExtensionOverrideChoice.forceOff;
+    }
+
+    bool effective(ExtensionRow row) {
+      final override = overrides[row.id];
+      return override ?? row.globalEnabled;
+    }
+
     return SingleChildScrollView(
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -95,9 +61,16 @@ class _WorkspaceExtensionsSectionState
                 for (final row in rows)
                   TeamExtensionRow(
                     row: row,
-                    choice: _choiceFor(row.id),
-                    effective: _effective(row),
-                    onChoice: (c) => _setChoice(row.id, c),
+                    choice: choiceFor(row.id),
+                    effective: effective(row),
+                    onChoice: (choice) {
+                      final value = switch (choice) {
+                        ExtensionOverrideChoice.followGlobal => null,
+                        ExtensionOverrideChoice.forceOn => true,
+                        ExtensionOverrideChoice.forceOff => false,
+                      };
+                      projectCubit.setExtensionOverride(row.id, value);
+                    },
                     effectiveOnLabel: l10n.workspaceExtensionEffectiveOn,
                     effectiveOffLabel: l10n.workspaceExtensionEffectiveOff,
                   ),

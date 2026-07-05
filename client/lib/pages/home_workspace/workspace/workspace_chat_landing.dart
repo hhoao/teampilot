@@ -464,8 +464,8 @@ class _ComposeCard extends StatelessWidget {
                     height: 1.5,
                   ),
                   decoration: InputDecoration(
-                    filled: true,
-                    fillColor: palette.elevated,
+                    filled: false,
+                    hoverColor: Colors.transparent,
                     hintText: hint,
                     hintStyle: styles.body.copyWith(
                       color: palette.hint,

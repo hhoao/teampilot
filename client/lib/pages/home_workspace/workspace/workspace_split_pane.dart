@@ -8,8 +8,10 @@ import '../../../models/layout_preferences.dart';
 import '../../../services/workspace/workspace_tools_scope.dart';
 import '../../../services/workspace/workspace_tools_scope_registry.dart';
 import '../../../services/workspace/workspace_worktree_registry.dart';
+import '../../../utils/workspace_compose_active.dart';
 import '../../../widgets/resizable_split_view.dart';
 import '../../chat_page.dart';
+import 'workspace_compose_landing_pane.dart';
 import 'workspace_sidebar.dart';
 import 'workspace_tools_scope_sync.dart';
 
@@ -74,11 +76,10 @@ class _WorkspaceSplitPaneState extends State<WorkspaceSplitPane> {
                     workspace: widget.workspace,
                     tabScopeId: widget.tabScopeId,
                   ),
-                  second: ChatPage(
-                    cwd: cwd,
-                    additionalPaths: widget.workspace.extraFolderPaths,
-                    workspaceId: widget.workspace.workspaceId,
+                  second: _WorkspaceMainPane(
+                    workspace: widget.workspace,
                     tabScopeId: widget.tabScopeId,
+                    cwd: cwd,
                   ),
                   initialPrimarySize: initialSidebar,
                   minPrimarySize: minSidebar,
@@ -91,6 +92,35 @@ class _WorkspaceSplitPaneState extends State<WorkspaceSplitPane> {
           );
         },
       ),
+    );
+  }
+}
+
+/// Right pane of the workspace split: compose landing or session workbench.
+class _WorkspaceMainPane extends StatelessWidget {
+  const _WorkspaceMainPane({
+    required this.workspace,
+    required this.tabScopeId,
+    required this.cwd,
+  });
+
+  final Workspace workspace;
+  final String tabScopeId;
+  final String cwd;
+
+  @override
+  Widget build(BuildContext context) {
+    final composeActive = context.select<ChatCubit, bool>(
+      (c) => workspaceComposeActive(c, tabScopeId),
+    );
+    if (composeActive) {
+      return WorkspaceComposeLandingPane(workspace: workspace);
+    }
+    return ChatPage(
+      cwd: cwd,
+      additionalPaths: workspace.extraFolderPaths,
+      workspaceId: workspace.workspaceId,
+      tabScopeId: tabScopeId,
     );
   }
 }

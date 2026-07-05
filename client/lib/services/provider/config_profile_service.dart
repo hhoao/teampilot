@@ -1,5 +1,6 @@
 import 'package:path/path.dart' as p;
 
+import '../../models/config_bundle.dart';
 import '../../models/cli_preset.dart';
 import '../../models/extension_manifest.dart';
 import '../../models/personal_profile.dart';
@@ -17,6 +18,7 @@ import '../cli/registry/cli_tool_registry.dart';
 import '../plugin/installed_plugin_catalog.dart';
 import '../mcp/profile_mcp_linker_service.dart';
 import '../../repositories/mcp_repository.dart';
+import '../../repositories/workspace_project_config_repository.dart';
 import '../io/filesystem.dart';
 import '../mcp/mcp_registry_service.dart';
 import '../resource/resource_provisioning_service.dart';
@@ -74,6 +76,7 @@ class ConfigProfileService implements ConfigProfileDelegate {
     Future<List<Skill>> Function()? loadInstalledSkills,
     Future<List<CliPreset>> Function() loadGlobalPresets =
         _defaultLoadGlobalPresets,
+    WorkspaceProjectConfigRepository? projectConfigRepository,
   }) : _infra = ConfigProfileInfrastructure(
          basePath: basePath,
          home: home,
@@ -94,7 +97,8 @@ class ConfigProfileService implements ConfigProfileDelegate {
        _catalogOverride = catalog,
        _cliRegistry = cliRegistry ?? _defaultCliRegistry,
        _loadInstalledSkills = loadInstalledSkills,
-       _loadGlobalPresets = loadGlobalPresets;
+       _loadGlobalPresets = loadGlobalPresets,
+       _projectConfigRepository = projectConfigRepository;
 
   ConfigProfileService._fromInfrastructure({
     required ConfigProfileInfrastructure infra,
@@ -103,18 +107,28 @@ class ConfigProfileService implements ConfigProfileDelegate {
     Future<List<Skill>> Function()? loadInstalledSkills,
     Future<List<CliPreset>> Function() loadGlobalPresets =
         _defaultLoadGlobalPresets,
+    WorkspaceProjectConfigRepository? projectConfigRepository,
   }) : _infra = infra,
        _catalogOverride = catalog,
        _cliRegistry = cliRegistry ?? _defaultCliRegistry,
        _loadInstalledSkills = loadInstalledSkills,
-       _loadGlobalPresets = loadGlobalPresets;
+       _loadGlobalPresets = loadGlobalPresets,
+       _projectConfigRepository = projectConfigRepository;
 
   final ConfigProfileInfrastructure _infra;
   final ConfigProfilePaths? _catalogOverride;
   final CliToolRegistry _cliRegistry;
   final Future<List<Skill>> Function()? _loadInstalledSkills;
   final Future<List<CliPreset>> Function() _loadGlobalPresets;
+  final WorkspaceProjectConfigRepository? _projectConfigRepository;
   StandaloneLaunchProfileScope? _activeStandaloneScope;
+
+  Future<ConfigBundle> _projectBundle(String workspaceId) async {
+    final repo =
+        _projectConfigRepository ??
+        WorkspaceProjectConfigRepository(fs: fs, layout: layout.workspace);
+    return (await repo.load(workspaceId)).bundle;
+  }
 
   /// Control-plane paths for provider catalog reads (home when work != home).
   ConfigProfilePaths get catalog => _catalogOverride ?? _infra;
@@ -143,6 +157,7 @@ class ConfigProfileService implements ConfigProfileDelegate {
       cliRegistry: _cliRegistry,
       loadInstalledSkills: _loadInstalledSkills,
       loadGlobalPresets: _loadGlobalPresets,
+      projectConfigRepository: _projectConfigRepository,
     );
   }
 
@@ -296,6 +311,7 @@ class ConfigProfileService implements ConfigProfileDelegate {
     final pluginProvisioner = _cliRegistry
         .capability<PluginProvisionerCapability>(cli);
     if (pluginProvisioner != null) {
+      final projectPlugins = (await _projectBundle(trimmedWorkspaceId)).pluginIds;
       await pluginProvisioner.provision(
         PluginProvisionContext(
           fs: fs,
@@ -312,7 +328,7 @@ class ConfigProfileService implements ConfigProfileDelegate {
             cli.value,
             memberId: memberId,
           ),
-          enabledPluginIds: team?.pluginIds ?? const <String>[],
+          enabledPluginIds: projectPlugins,
           installedCatalog: await InstalledPluginCatalog.load(fs, basePath),
           layout: layout,
           tool: cli,
@@ -365,10 +381,11 @@ class ConfigProfileService implements ConfigProfileDelegate {
     await ensureStandalonePersonalProfile(trimmedWorkspaceId, cli: cli);
 
     final profileId = personal.id.trim();
+    final projectBundle = await _projectBundle(trimmedWorkspaceId);
     if (profileId.isNotEmpty) {
       await ProfileMcpLinkerService(fs: fs).syncForProfile(
         profileId: profileId,
-        mcpServerIds: personal.bundle.mcpServerIds,
+        mcpServerIds: projectBundle.mcpServerIds,
         catalog: await McpRepository().loadAll(),
         layout: layout,
       );
@@ -413,6 +430,7 @@ class ConfigProfileService implements ConfigProfileDelegate {
 
     return _withStandaloneScope(standaloneScope, () async {
       String? sessionProvisionJson;
+      final projectBundle = await _projectBundle(trimmedWorkspaceId);
       await Future.wait([
         layout.ensureSessionRuntimeInheritsWorkspace(
           trimmedWorkspaceId,
@@ -446,7 +464,7 @@ class ConfigProfileService implements ConfigProfileDelegate {
               trimmedSessionId,
               cli.value,
             ),
-            enabledPluginIds: personal.bundle.pluginIds,
+            enabledPluginIds: projectBundle.pluginIds,
             installedCatalog: await InstalledPluginCatalog.load(fs, basePath),
             layout: layout,
             tool: cli,
@@ -460,7 +478,7 @@ class ConfigProfileService implements ConfigProfileDelegate {
             fs: fs,
             registry: _cliRegistry,
           ).provisionForLaunch(
-            scope: PersonalResourceScope(personal: personal),
+            scope: WorkspaceResourceScope(bundle: projectBundle),
             cli: cli,
             configDir: _launchResourceConfigDir(
               cli: cli,
@@ -741,12 +759,13 @@ class ConfigProfileService implements ConfigProfileDelegate {
     );
 
     if (team != null) {
+      final projectBundle = await _projectBundle(trimmedWorkspaceId);
       final provisionResult =
           await ResourceProvisioningService(
             fs: stagingFs,
             registry: _cliRegistry,
           ).provisionForLaunch(
-            scope: TeamResourceScope(team: team, member: launchMember),
+            scope: WorkspaceResourceScope(bundle: projectBundle),
             cli: launchCli,
             configDir: staging._launchResourceConfigDir(
               cli: launchCli,

@@ -22,32 +22,7 @@ import 'cli_presets_manage_dialog.dart';
 
 const _kAgentCardGap = 12.0;
 
-/// Personal-workspace agent + CLI defaults (backed by [LaunchProfileCubit]).
-class WorkspaceAgentSection extends StatelessWidget {
-  const WorkspaceAgentSection({
-    required this.workspaceId,
-    required this.profileId,
-    super.key,
-  });
-
-  final String workspaceId;
-  final String profileId;
-
-  @override
-  Widget build(BuildContext context) {
-    final identityCubit = context.watch<LaunchProfileCubit>();
-    final personal = identityCubit.byId(profileId);
-    if (personal is! PersonalProfile) {
-      return const Center(child: CircularProgressIndicator());
-    }
-    return WorkspaceAgentConfigForm(
-      key: ValueKey(personal.id),
-      personal: personal,
-      cubit: context.read<LaunchProfileCubit>(),
-    );
-  }
-}
-
+/// Personal identity agent + CLI preset form (home workspace only).
 class WorkspaceAgentConfigForm extends StatefulWidget {
   const WorkspaceAgentConfigForm({
     super.key,

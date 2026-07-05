@@ -18,6 +18,7 @@ class ResourceResolver {
     final ids = switch (scope) {
       PersonalResourceScope(:final personal) => personal.bundle.skillIds,
       TeamResourceScope(:final team) => team.skillIds,
+      WorkspaceResourceScope(:final bundle) => bundle.skillIds,
     };
     if (ids.isEmpty) return const [];
     // Honor the global enable toggle: a skill disabled in the library is an

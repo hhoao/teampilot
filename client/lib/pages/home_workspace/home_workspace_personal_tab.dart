@@ -1,55 +1,43 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
-import '../../cubits/launch_profile_cubit.dart';
 import '../../cubits/extension_cubit.dart';
 import '../../models/personal_profile.dart';
 import '../team_config/team_config_extensions_section.dart';
-import 'home_workspace_global_section.dart';
-import 'workspace/config/workspace_agent_section.dart';
-import 'workspace/config/workspace_mcp_section.dart';
-import 'workspace/config/workspace_plugins_section.dart';
-import 'workspace/config/workspace_skills_section.dart';
-import 'workspace/workspace_config_section.dart';
+import 'home_identity_config_section.dart';
+import 'home_personal_agent_section.dart';
+import 'home_personal_bundle_sections.dart';
 
-/// Embeds personal-identity config sections inside the workspace-home tab.
+/// Personal identity configuration tabs on the home workspace.
 class HomePersonalTab extends StatelessWidget {
   const HomePersonalTab({
     required this.section,
     required this.personal,
-    required this.cubit,
-    this.onSelectGlobalView,
     super.key,
   });
 
-  final WorkspaceConfigSection section;
+  final HomeIdentityConfigSection section;
   final PersonalProfile personal;
-  final LaunchProfileCubit cubit;
-  final ValueChanged<HomeGlobalView>? onSelectGlobalView;
 
   @override
   Widget build(BuildContext context) {
+    final profileId = personal.id;
     final body = switch (section) {
-      WorkspaceConfigSection.agent => WorkspaceAgentSection(
-        workspaceId: '',
-        profileId: personal.id,
+      HomeIdentityConfigSection.agent => HomePersonalAgentSection(
+        profileId: profileId,
       ),
-      WorkspaceConfigSection.skills => WorkspaceSkillsSection(
-        workspaceId: '',
-        profileId: personal.id,
+      HomeIdentityConfigSection.skills => HomePersonalSkillsSection(
+        profileId: profileId,
       ),
-      WorkspaceConfigSection.plugins => WorkspacePluginsSection(
-        workspaceId: '',
-        profileId: personal.id,
+      HomeIdentityConfigSection.plugins => HomePersonalPluginsSection(
+        profileId: profileId,
       ),
-      WorkspaceConfigSection.mcp => WorkspaceMcpSection(
-        workspaceId: '',
-        profileId: personal.id,
+      HomeIdentityConfigSection.mcp => HomePersonalMcpSection(
+        profileId: profileId,
       ),
-      WorkspaceConfigSection.extensions => _IdentityExtensionsSection(
-        profileId: personal.id,
+      HomeIdentityConfigSection.extensions => _HomePersonalExtensionsSection(
+        profileId: profileId,
       ),
-      _ => const SizedBox.shrink(),
     };
 
     return Padding(
@@ -59,18 +47,18 @@ class HomePersonalTab extends StatelessWidget {
   }
 }
 
-class _IdentityExtensionsSection extends StatefulWidget {
-  const _IdentityExtensionsSection({required this.profileId});
+class _HomePersonalExtensionsSection extends StatefulWidget {
+  const _HomePersonalExtensionsSection({required this.profileId});
 
   final String profileId;
 
   @override
-  State<_IdentityExtensionsSection> createState() =>
-      _IdentityExtensionsSectionState();
+  State<_HomePersonalExtensionsSection> createState() =>
+      _HomePersonalExtensionsSectionState();
 }
 
-class _IdentityExtensionsSectionState
-    extends State<_IdentityExtensionsSection> {
+class _HomePersonalExtensionsSectionState
+    extends State<_HomePersonalExtensionsSection> {
   Map<String, bool> _overrides = const {};
 
   @override
@@ -80,7 +68,7 @@ class _IdentityExtensionsSectionState
   }
 
   @override
-  void didUpdateWidget(covariant _IdentityExtensionsSection oldWidget) {
+  void didUpdateWidget(covariant _HomePersonalExtensionsSection oldWidget) {
     super.didUpdateWidget(oldWidget);
     if (oldWidget.profileId != widget.profileId) _loadOverrides();
   }

@@ -13,7 +13,6 @@ class WorkspaceConfigNavPanel extends StatelessWidget {
     required this.section,
     required this.onSelect,
     required this.l10n,
-    this.onOpenTeamConfig,
     super.key,
   });
 
@@ -21,7 +20,6 @@ class WorkspaceConfigNavPanel extends StatelessWidget {
   final WorkspaceConfigSection section;
   final ValueChanged<WorkspaceConfigSection> onSelect;
   final AppLocalizations l10n;
-  final VoidCallback? onOpenTeamConfig;
 
   @override
   Widget build(BuildContext context) {
@@ -37,16 +35,6 @@ class WorkspaceConfigNavPanel extends StatelessWidget {
               'workspace_config_nav_${s.name}',
               () => onSelect(s),
             ),
-          ),
-      ],
-      trailingChildren: [
-        if (onOpenTeamConfig != null)
-          WorkspaceHubNavItem(
-            title: l10n.homeWorkspaceTeamConfig,
-            icon: Icons.groups_outlined,
-            trailingIcon: Icons.open_in_new_rounded,
-            density: WorkspaceHubNavDensity.relaxed,
-            onTap: throttledTap('workspace_config_nav_team', onOpenTeamConfig!),
           ),
       ],
     );

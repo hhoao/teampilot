@@ -203,10 +203,7 @@ class _WorkspacePageState extends State<WorkspacePage> {
       );
     }
 
-    final cardBody = _buildCardBody(
-      workspace: workspace,
-      profileId: workspaceIdentity.id,
-    );
+    final cardBody = _buildCardBody(workspace: workspace);
 
     return Row(
       crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -228,10 +225,7 @@ class _WorkspacePageState extends State<WorkspacePage> {
     );
   }
 
-  Widget _buildCardBody({
-    required Workspace workspace,
-    required String profileId,
-  }) {
+  Widget _buildCardBody({required Workspace workspace}) {
     final showManage = _section == WorkspaceSection.manage;
     return Stack(
       fit: StackFit.expand,
@@ -254,7 +248,6 @@ class _WorkspacePageState extends State<WorkspacePage> {
               enabled: showManage,
               child: WorkspaceConfigPanel(
                 workspace: workspace,
-                profileId: profileId,
                 section: _configSection(context),
               ),
             ),

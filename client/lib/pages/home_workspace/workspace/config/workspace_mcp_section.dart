@@ -4,39 +4,34 @@ import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
 
-import '../../../../cubits/launch_profile_cubit.dart';
 import '../../../../cubits/mcp_cubit.dart';
+import '../../../../cubits/workspace_project_config_cubit.dart';
 import '../../../../l10n/l10n_extensions.dart';
-import '../../../../models/personal_profile.dart';
 import '../../home_workspace_global_section.dart';
 import '../../../../widgets/empty_state_block.dart';
 import '../../../team_config/team_config_cards.dart';
 import '../../../team_config/team_config_mcp_section.dart';
 
 class WorkspaceMcpSection extends StatelessWidget {
-  const WorkspaceMcpSection({
-    required this.workspaceId,
-    required this.profileId,
-    super.key,
-  });
+  const WorkspaceMcpSection({required this.workspaceId, super.key});
 
   final String workspaceId;
-  final String profileId;
 
   @override
   Widget build(BuildContext context) {
-    final identityCubit = context.watch<LaunchProfileCubit>();
-    final personal = identityCubit.byId(profileId);
-    if (personal is! PersonalProfile) {
+    final projectState = context.watch<WorkspaceProjectConfigCubit>().state;
+    if (projectState.loading) {
       return const Center(child: CircularProgressIndicator());
     }
 
     final l10n = context.l10n;
     void onManage() => context.go(HomeGlobalView.mcp.homeLocation);
-    final mcpState = context.watch<McpCubit>().state;
-    final enabled = mcpState.servers.where((s) => s.enabled).toList();
-    final mcpIds = personal.bundle.mcpServerIds;
+    final enabled = context.watch<McpCubit>().state.servers
+        .where((s) => s.enabled)
+        .toList();
+    final mcpIds = projectState.config.bundle.mcpServerIds;
     final assignedCount = enabled.where((s) => mcpIds.contains(s.id)).length;
+    final projectCubit = context.read<WorkspaceProjectConfigCubit>();
 
     return SingleChildScrollView(
       child: Column(
@@ -79,11 +74,9 @@ class WorkspaceMcpSection extends StatelessWidget {
                           ids.remove(server.id);
                         }
                         unawaited(
-                          identityCubit.savePersonal(
-                            personal.copyWith(
-                              bundle: personal.bundle.copyWith(
-                                mcpServerIds: List<String>.unmodifiable(ids),
-                              ),
+                          projectCubit.updateBundle(
+                            projectState.config.bundle.copyWith(
+                              mcpServerIds: List<String>.unmodifiable(ids),
                             ),
                           ),
                         );

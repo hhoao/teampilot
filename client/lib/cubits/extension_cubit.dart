@@ -226,23 +226,6 @@ class ExtensionCubit extends Cubit<ExtensionUiState> {
     await _repository.setTeamOverride(teamId, id, value);
   }
 
-  /// Current per-workspace override map (`{extensionId: bool}`) for [workspaceId].
-  Future<Map<String, bool>> workspaceOverrides(String workspaceId) async {
-    final state = await _repository.load();
-    return Map<String, bool>.from(
-      state.workspaceOverrides[workspaceId] ?? const {},
-    );
-  }
-
-  /// [value] null clears the override (the workspace falls back to global).
-  Future<void> setWorkspaceOverride(
-    String workspaceId,
-    String id,
-    bool? value,
-  ) async {
-    await _repository.setWorkspaceOverride(workspaceId, id, value);
-  }
-
   Future<void> install(String id) async {
     await _withBusy(id, () async {
       final manifest = _repository.manifests.firstWhere((m) => m.id == id);

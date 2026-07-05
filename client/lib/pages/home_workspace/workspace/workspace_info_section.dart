@@ -6,6 +6,7 @@ import 'package:teampilot/theme/app_toast_theme.dart';
 import 'package:teampilot/widgets/app_toast/app_toast.dart';
 
 import '../../../cubits/chat_cubit.dart';
+import '../../../cubits/launch_profile_cubit.dart';
 import '../../../l10n/l10n_extensions.dart';
 import '../../../models/team_config.dart';
 import '../../../models/workspace.dart';
@@ -20,12 +21,9 @@ import 'workspace_icon_settings_row.dart';
 
 /// Workspace basic settings + danger zone (same layout as [TeamInfoSection]).
 class WorkspaceInfoSection extends StatelessWidget {
-  const WorkspaceInfoSection({required this.workspace, this.team, super.key});
+  const WorkspaceInfoSection({required this.workspace, super.key});
 
   final Workspace workspace;
-
-  /// When set on a mixed workspace, shows the team default member→machine pins.
-  final TeamProfile? team;
 
   @override
   Widget build(BuildContext context) {
@@ -95,11 +93,10 @@ class WorkspaceInfoSection extends StatelessWidget {
             ),
           ),
           const SizedBox(height: 12),
-          WorkspaceFoldersSection(workspace: live, lockTargets: team == null),
-          if (team != null &&
-              workspaceTopologyRequiresMemberAssignment(live.folders)) ...[
+          WorkspaceFoldersSection(workspace: live, lockTargets: true),
+          if (workspaceTopologyRequiresMemberAssignment(live.folders)) ...[
             const SizedBox(height: 12),
-            WorkspaceTeamMemberTargetsSection(workspace: live, team: team!),
+            _WorkspaceMemberTargetsSections(workspace: live),
           ],
           const SizedBox(height: 12),
           WorkspaceConfigDangerZone(workspace: live),
@@ -217,6 +214,43 @@ class _WorkspaceSettingsInlineRow extends StatelessWidget {
             thickness: 1,
             color: cs.outlineVariant.withValues(alpha: 0.5),
           ),
+      ],
+    );
+  }
+}
+
+class _WorkspaceMemberTargetsSections extends StatelessWidget {
+  const _WorkspaceMemberTargetsSections({required this.workspace});
+
+  final Workspace workspace;
+
+  @override
+  Widget build(BuildContext context) {
+    final launchProfiles = context.watch<LaunchProfileCubit>();
+    final teamIds = workspace.memberTargetsByTeam.keys
+        .map((id) => id.trim())
+        .where((id) => id.isNotEmpty)
+        .toList(growable: false);
+    if (teamIds.isEmpty) {
+      return const SizedBox.shrink();
+    }
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        for (final teamId in teamIds) ...[
+          Builder(
+            builder: (context) {
+              final profile = launchProfiles.byId(teamId);
+              if (profile is! TeamProfile) return const SizedBox.shrink();
+              return WorkspaceTeamMemberTargetsSection(
+                workspace: workspace,
+                team: profile,
+              );
+            },
+          ),
+          const SizedBox(height: 12),
+        ],
       ],
     );
   }

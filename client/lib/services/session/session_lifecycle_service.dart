@@ -11,6 +11,8 @@ import '../../models/team_config.dart';
 import '../../models/launch_profile.dart';
 import '../../repositories/cli_presets_repository.dart';
 import '../../repositories/launch_profile_repository.dart';
+import '../../repositories/workspace_project_config_repository.dart';
+import '../../models/config_bundle.dart';
 import '../../services/storage/launch_profile_provisioner.dart';
 import '../../utils/team_member_naming.dart';
 import '../../utils/logger.dart';
@@ -57,6 +59,7 @@ class SessionLifecycleService {
     Future<List<Skill>> Function()? loadInstalledSkills,
     CliPresetsRepository? cliPresetsRepository,
     List<CliPreset> Function()? loadPresets,
+    WorkspaceProjectConfigRepository? projectConfigRepository,
   }) : _appDataBasePath = appDataBasePath,
        _llmConfigPathOverride = llmConfigPathOverride,
        _configProfileService = configProfileService,
@@ -68,7 +71,8 @@ class SessionLifecycleService {
        _identityRepository = identityRepository,
        _loadInstalledSkills = loadInstalledSkills,
        _cliPresetsRepository = cliPresetsRepository,
-       _loadPresets = loadPresets;
+       _loadPresets = loadPresets,
+       _projectConfigRepository = projectConfigRepository;
 
   final String? _appDataBasePath;
   final String? Function()? _llmConfigPathOverride;
@@ -91,6 +95,20 @@ class SessionLifecycleService {
   final Future<List<Skill>> Function()? _loadInstalledSkills;
   final CliPresetsRepository? _cliPresetsRepository;
   final List<CliPreset> Function()? _loadPresets;
+  final WorkspaceProjectConfigRepository? _projectConfigRepository;
+
+  Future<ConfigBundle> _projectBundle(String workspaceId) async {
+    final repo = _projectConfigRepository ?? WorkspaceProjectConfigRepository();
+    return (await repo.load(workspaceId)).bundle;
+  }
+
+  TeamProfile _teamWithProjectBundle(TeamProfile team, ConfigBundle bundle) {
+    return team.copyWith(
+      skillIds: bundle.skillIds,
+      pluginIds: bundle.pluginIds,
+      mcpServerIds: bundle.mcpServerIds,
+    );
+  }
 
   /// Global CLI presets used by [resolveMemberLaunch] and launch validation.
   List<CliPreset> get globalPresets => _loadPresets?.call() ?? const [];
@@ -229,6 +247,9 @@ class SessionLifecycleService {
       extraMcpServers: extraMcpServers,
       busIdle: busIdle,
     );
+    final projectBundle = workspace != null
+        ? await _projectBundle(workspace.workspaceId)
+        : const ConfigBundle();
 
     return ShellLaunchSpec(
       plan: prepared.plan,
@@ -241,6 +262,7 @@ class SessionLifecycleService {
         team: team,
         member: prepared.resolvedMember ?? member,
         preset: prepared.activePreset,
+        projectBundle: projectBundle,
       ),
       sessionTeam: _resolveSessionTeam(
         session,
@@ -946,6 +968,7 @@ class SessionLifecycleService {
     TeamProfile? team,
     TeamMemberConfig? member,
     CliPreset? preset,
+    ConfigBundle projectBundle = const ConfigBundle(),
   }) {
     if (isPersonal) {
       if (workspace == null || personal == null) {
@@ -962,6 +985,7 @@ class SessionLifecycleService {
         profileId: personal.id,
         sessionTeamName: plan.cliTeamName,
         preset: preset,
+        projectBundle: projectBundle,
       );
       return CliLaunchContext(
         team: launchTeam,
@@ -987,7 +1011,7 @@ class SessionLifecycleService {
         : session.folders;
     final memberDirs = session.workDirsForMember(member.id, folders: catalog);
     return CliLaunchContext(
-      team: team,
+      team: _teamWithProjectBundle(team, projectBundle),
       member: member,
       sessionTeam: _resolveSessionTeam(session, plan, false),
       workingDirectory: memberDirs.workingDirectory.isNotEmpty
