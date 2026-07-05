@@ -61,7 +61,6 @@ dependencies:
   meta: ^1.16.0
   flutter_svg: ^2.3.0
   intl: any
-  watcher: ^1.2.0
   native_splash_screen:
     path: packages/native_splash_screen/native_splash_screen
   provider: any

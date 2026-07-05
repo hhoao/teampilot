@@ -81,6 +81,7 @@ class RightToolsLifecycleHost extends StatefulWidget {
 
 class _RightToolsLifecycleHostState extends State<RightToolsLifecycleHost> {
   WorkspaceFsWatcher? _fsWatcher;
+  Future<void> _watcherLifecycle = Future<void>.value();
   WorkspaceToolsScopeState? _scope;
   String? _lastTargetId;
   FileTreeCubit? _fileTreeCubit;
@@ -150,7 +151,9 @@ class _RightToolsLifecycleHostState extends State<RightToolsLifecycleHost> {
 
   void _resumeDiskSideEffects() {
     if (!_lifecycleActive || _diskListenersActive) return;
-    _fsWatcher?.resume();
+    if (widget.preferences.needsDiskSideEffects) {
+      _fsWatcher?.resume();
+    }
     _attachDiskListeners();
     _diskListenersActive = true;
   }
@@ -358,10 +361,26 @@ class _RightToolsLifecycleHostState extends State<RightToolsLifecycleHost> {
   }
 
   void _rebuildWatcher(WorkspaceToolsContext tools) {
-    _fsWatcher?.dispose();
-    _fsWatcher = widget.cwd.isEmpty
-        ? null
-        : WorkspaceFsWatcher(fs: tools.context.filesystem, root: widget.cwd);
+    if (widget.cwd.isEmpty) {
+      _watcherLifecycle = _watcherLifecycle.then((_) async {
+        final old = _fsWatcher;
+        _fsWatcher = null;
+        if (old != null) await old.stopAndDispose();
+      });
+      return;
+    }
+    final cwd = widget.cwd;
+    final fs = tools.context.filesystem;
+    _watcherLifecycle = _watcherLifecycle.then((_) async {
+      final old = _fsWatcher;
+      _fsWatcher = null;
+      if (old != null) await old.stopAndDispose();
+      if (!mounted) return;
+      _fsWatcher = WorkspaceFsWatcher(fs: fs, root: cwd);
+      if (_diskListenersActive && widget.preferences.needsDiskSideEffects) {
+        _fsWatcher?.resume();
+      }
+    });
   }
 
   void _setupDiskRefresh() {
@@ -383,7 +402,9 @@ class _RightToolsLifecycleHostState extends State<RightToolsLifecycleHost> {
     if (needsFileTree) _warmFileTree();
     if (needsGit) _warmGit();
 
-    _fsWatcher?.resume();
+    if (widget.preferences.needsDiskSideEffects) {
+      _fsWatcher?.resume();
+    }
     _attachDiskListeners();
     _diskListenersActive = true;
   }
@@ -445,7 +466,11 @@ class _RightToolsLifecycleHostState extends State<RightToolsLifecycleHost> {
   void dispose() {
     _diskWatchSub?.cancel();
     _diskPollTimer?.cancel();
-    _fsWatcher?.dispose();
+    final watcher = _fsWatcher;
+    _fsWatcher = null;
+    if (watcher != null) {
+      _watcherLifecycle = _watcherLifecycle.then((_) => watcher.stopAndDispose());
+    }
     super.dispose();
   }
 

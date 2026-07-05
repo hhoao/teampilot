@@ -31,6 +31,20 @@ class FsChangeEvent {
   final FsChangeType type;
 }
 
+/// A cancellable recursive tree watch started by [FsWatcher.watchTree].
+///
+/// Callers must [close] the watch when done so the native subscription is
+/// cancelled before a replacement watch is started.
+class FsTreeWatch {
+  const FsTreeWatch({required this.events, required Future<void> Function() close})
+    : _close = close;
+
+  final Stream<FsChangeEvent> events;
+  final Future<void> Function() _close;
+
+  Future<void> close() => _close();
+}
+
 /// Optional [Filesystem] capability: backends that can push change
 /// notifications for a directory subtree implement this.
 ///
@@ -39,8 +53,11 @@ class FsChangeEvent {
 /// back to manual / activity-driven refresh. Treat emitted events as coarse
 /// hints — re-read the affected state rather than trusting the payload exactly.
 abstract interface class FsWatcher {
-  /// Emits change events for anything under [path], recursively.
-  Stream<FsChangeEvent> watchTree(String path);
+  /// Watches anything under [path], recursively.
+  ///
+  /// The returned [FsTreeWatch] must be [FsTreeWatch.close]d when the watch is
+  /// no longer needed.
+  FsTreeWatch watchTree(String path);
 }
 
 abstract interface class Filesystem {

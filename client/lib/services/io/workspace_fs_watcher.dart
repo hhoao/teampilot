@@ -27,9 +27,12 @@ class WorkspaceFsWatcher {
     required Filesystem fs,
     required this.root,
     this.debounce = const Duration(milliseconds: 400),
+    bool autoStart = false,
   }) : _watcher = debugDisable || fs is! FsWatcher ? null : fs as FsWatcher,
        _pathContext = fs.pathContext {
-    if (!debugDisable && root.isNotEmpty) _start();
+    if (autoStart && !debugDisable && root.isNotEmpty) {
+      _attachNativeWatch();
+    }
   }
 
   /// When true, skips native watch setup (widget tests use a process-free fs).
@@ -48,7 +51,9 @@ class WorkspaceFsWatcher {
   static const _ignoredSegments = {'node_modules', '.dart_tool', '.gradle'};
 
   final _controller = StreamController<Set<String>>.broadcast();
+  FsTreeWatch? _treeWatch;
   StreamSubscription<FsChangeEvent>? _sub;
+  Future<void> _watchChain = Future<void>.value();
   Timer? _debounceTimer;
   final Set<String> _pendingDirs = {};
   bool _pendingFull = false;
@@ -76,36 +81,54 @@ class WorkspaceFsWatcher {
     if (_disposed) return;
     _debounceTimer?.cancel();
     _debounceTimer = null;
-    unawaited(_sub?.cancel());
-    _sub = null;
+    _enqueueWatchOp(_stopNativeWatch);
     _pendingDirs.clear();
     _pendingFull = false;
   }
 
   /// Restarts native watch after [suspend].
   void resume() {
-    if (_disposed || _sub != null) return;
-    if (root.isNotEmpty) _start();
+    if (_disposed || root.isEmpty) return;
+    _enqueueWatchOp(_restartNativeWatch);
   }
 
-  void _start() {
+  void _enqueueWatchOp(Future<void> Function() op) {
+    _watchChain = _watchChain.then((_) => op());
+  }
+
+  Future<void> _stopNativeWatch() async {
+    final sub = _sub;
+    _sub = null;
+    await sub?.cancel();
+    final treeWatch = _treeWatch;
+    _treeWatch = null;
+    await treeWatch?.close();
+  }
+
+  void _attachNativeWatch() {
+    if (_disposed || _sub != null) return;
     final watcher = _watcher;
-    if (watcher == null) return;
+    if (watcher == null || root.isEmpty) return;
     try {
-      _sub = watcher
-          .watchTree(root)
-          .listen(
-            _onEvent,
-            onError: (Object error, StackTrace stack) {
-              // A removed/renamed root tears the native watch down; log and stop
-              // rather than spamming. The panel re-creates us on the next cwd.
-              appLogger.w('Workspace watch failed for $root', error: error);
-            },
-            cancelOnError: false,
-          );
+      final treeWatch = watcher.watchTree(root);
+      _treeWatch = treeWatch;
+      _sub = treeWatch.events.listen(
+        _onEvent,
+        onError: (Object error, StackTrace stack) {
+          appLogger.w('Workspace watch failed for $root', error: error);
+        },
+        cancelOnError: false,
+      );
     } on Object catch (error) {
       appLogger.w('Workspace watch could not start for $root', error: error);
     }
+  }
+
+  Future<void> _restartNativeWatch() async {
+    if (_disposed) return;
+    await _stopNativeWatch();
+    if (_disposed) return;
+    _attachNativeWatch();
   }
 
   void _onEvent(FsChangeEvent event) {
@@ -139,11 +162,19 @@ class WorkspaceFsWatcher {
   }
 
   void dispose() {
+    unawaited(stopAndDispose());
+  }
+
+  /// Stops the native watch and closes [onChanged]. Await before starting a
+  /// replacement watcher so the prior OS subscription is fully cancelled.
+  Future<void> stopAndDispose() async {
+    if (_disposed) return;
     _disposed = true;
     _debounceTimer?.cancel();
     _debounceTimer = null;
-    unawaited(_sub?.cancel());
-    _sub = null;
-    unawaited(_controller.close());
+    await _stopNativeWatch();
+    if (!_controller.isClosed) {
+      await _controller.close();
+    }
   }
 }

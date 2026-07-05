@@ -1,6 +1,6 @@
+import 'dart:async';
 import 'dart:io';
 import 'package:path/path.dart' as p;
-import 'package:watcher/watcher.dart';
 
 import '../../utils/lock_pool.dart';
 import 'filesystem.dart';
@@ -409,22 +409,67 @@ class LocalFilesystem implements Filesystem, FsWatcher {
     await File(path).writeAsString(content, mode: FileMode.append);
   }
 
-  /// Recursive directory watch via `package:watcher`, which picks the best
-  /// native backend per platform (inotify / FSEvents / ReadDirectoryChangesW)
-  /// and falls back to polling elsewhere — more reliable than `Directory.watch`
-  /// whose recursive support is uneven across platforms.
+  /// Recursive directory watch via `Directory.watch`.
+  ///
+  /// We intentionally avoid `package:watcher`'s recursive backend on Windows:
+  /// it synchronously walks the entire tree with [listSync] on startup (one
+  /// [DirectoryTree] node per subdirectory), which freezes the UI on large
+  /// workspaces. Coarse OS events are enough here — [WorkspaceFsWatcher]
+  /// debounces and callers re-read affected directories anyway.
   @override
-  Stream<FsChangeEvent> watchTree(String path) {
-    return DirectoryWatcher(path).events.map(
-      (event) => FsChangeEvent(
-        path: event.path,
-        type: switch (event.type) {
-          ChangeType.ADD => FsChangeType.created,
-          ChangeType.MODIFY => FsChangeType.modified,
-          ChangeType.REMOVE => FsChangeType.deleted,
-          _ => FsChangeType.unknown,
+  FsTreeWatch watchTree(String path) {
+    final controller = StreamController<FsChangeEvent>();
+    StreamSubscription<FileSystemEvent>? subscription;
+
+    if (!FileSystemEntity.isWatchSupported) {
+      return FsTreeWatch(
+        events: const Stream<FsChangeEvent>.empty(),
+        close: () async {
+          if (!controller.isClosed) {
+            await controller.close();
+          }
         },
-      ),
+      );
+    }
+
+    subscription = Directory(path).watch(recursive: true).listen(
+      (event) {
+        if (controller.isClosed) return;
+        controller.add(
+          FsChangeEvent(path: event.path, type: _mapFsChangeType(event)),
+        );
+      },
+      onError: (Object error, StackTrace stack) {
+        if (!controller.isClosed) {
+          controller.addError(error, stack);
+        }
+      },
+      onDone: () {
+        if (!controller.isClosed) {
+          unawaited(controller.close());
+        }
+      },
+      cancelOnError: false,
     );
+
+    return FsTreeWatch(
+      events: controller.stream,
+      close: () async {
+        await subscription?.cancel();
+        subscription = null;
+        if (!controller.isClosed) {
+          await controller.close();
+        }
+      },
+    );
+  }
+
+  static FsChangeType _mapFsChangeType(FileSystemEvent event) {
+    return switch (event.type) {
+      FileSystemEvent.create => FsChangeType.created,
+      FileSystemEvent.modify => FsChangeType.modified,
+      FileSystemEvent.delete => FsChangeType.deleted,
+      _ => FsChangeType.unknown,
+    };
   }
 }
