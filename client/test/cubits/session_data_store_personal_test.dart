@@ -67,4 +67,33 @@ void main() {
       );
     },
   );
+
+  test(
+    'createWorkspaceWithFirstSession skips personal session on mixed workspace',
+    () async {
+      final store = SessionDataStore();
+
+      final result = await store.createWorkspaceWithFirstSession(
+        const [
+          WorkspaceFolder(path: '/local'),
+          WorkspaceFolder(path: '/remote', targetId: 'ssh:p1'),
+        ],
+        sessionRepo,
+        sessionTeamId: '',
+        rosterMembers: const [],
+        identityRepository: identityRepo,
+      );
+
+      final workspaces = result.snapshot.workspaces
+          .where((p) => p.workspaceId == result.workspaceId)
+          .toList();
+      expect(workspaces, hasLength(1));
+      expect(workspaces.first.folders, hasLength(2));
+
+      final sessions = result.snapshot.sessions
+          .where((s) => s.workspaceId == result.workspaceId)
+          .toList();
+      expect(sessions, isEmpty);
+    },
+  );
 }

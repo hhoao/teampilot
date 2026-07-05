@@ -2,6 +2,7 @@ import 'package:equatable/equatable.dart';
 
 import '../../models/workspace_folder.dart';
 import '../../models/workspace.dart';
+import '../../models/workspace_topology.dart';
 import '../../models/app_session.dart';
 import '../../models/workspace_icon_ref.dart';
 import '../../models/team_config.dart' show CliTool, TeamMemberConfig;
@@ -226,11 +227,17 @@ class SessionDataStore {
       display: display,
       allowDuplicate: allowDuplicate,
     );
-    await repo.createSession(
-      workspace.workspaceId,
-      sessionTeam: sessionTeamId,
-      rosterMembers: rosterMembers,
-    );
+    final isPersonal = sessionTeamId.trim().isEmpty;
+    if (!personalIdentityBlockedForWorkspace(
+      isPersonal: isPersonal,
+      folders: workspace.folders,
+    )) {
+      await repo.createSession(
+        workspace.workspaceId,
+        sessionTeam: sessionTeamId,
+        rosterMembers: rosterMembers,
+      );
+    }
     final snapshot = await loadWorkspaceData(repo);
     return (workspaceId: workspace.workspaceId, snapshot: snapshot);
   }

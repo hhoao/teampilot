@@ -4,8 +4,10 @@ import 'package:go_router/go_router.dart';
 
 import '../../cubits/chat_cubit.dart';
 import '../../models/workspace_folder.dart';
+import '../../models/workspace_topology.dart';
 import '../../repositories/launch_profile_repository.dart';
 import '../../repositories/session_repository.dart';
+import 'workspace/workspace_session_actions.dart';
 import '../../theme/app_text_styles.dart';
 import '../../widgets/app_dialog.dart';
 import '../../widgets/workspace_create_directory_picker.dart';
@@ -26,6 +28,8 @@ Future<void> showHomeNewWorkspaceDialog(
       );
   if (result == null || !context.mounted || result.folders.isEmpty) return;
 
+  final mixedTopology =
+      workspaceTopologyOf(result.folders) == WorkspaceTopology.mixed;
   final workspaceId = await chatCubit.createWorkspaceWithFirstSession(
     result.folders,
     repository,
@@ -36,6 +40,9 @@ Future<void> showHomeNewWorkspaceDialog(
         identityRepository ?? context.read<LaunchProfileRepository>(),
   );
   if (!context.mounted) return;
+  if (mixedTopology) {
+    showPersonalLaunchBlockedToast(context);
+  }
   context.go('/home-v2/workspace/$workspaceId');
 }
 
