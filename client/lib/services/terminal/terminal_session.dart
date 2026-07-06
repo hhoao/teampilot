@@ -10,6 +10,7 @@ import '../cli/preset_resolver.dart';
 import '../cli/cli_invocation.dart';
 import '../cli/cli_tool_locator.dart';
 import '../cli/registry/capabilities/terminal_behavior_capability.dart';
+import 'fullscreen_cr_ack_config.dart';
 import 'fullscreen_input_screen_probe.dart' as probe;
 import '../cli/registry/cli_tool_registry.dart';
 import '../session/launch_command_builder.dart';
@@ -943,6 +944,20 @@ class TerminalSession implements TerminalTextSink {
 
   bool isFullscreenPromptAtAnchor(probe.FullscreenPromptAnchor anchor) =>
       probe.isFullscreenPromptAtAnchor(_screenGrid, anchor);
+
+  bool isFullscreenPromptSubmitted(
+    probe.FullscreenPromptAnchor anchor, {
+    required FullscreenCrAckStrategy strategy,
+    String? composerPrefix,
+    int scanRows = 24,
+  }) =>
+      probe.isFullscreenPromptSubmitted(
+        _screenGrid,
+        anchor,
+        strategy: strategy,
+        composerPrefix: composerPrefix,
+        scanRows: scanRows,
+      );
 
   String describeProbeWindow({int scanRows = 8}) =>
       probe.describeProbeWindow(_screenGrid, scanRows: scanRows);

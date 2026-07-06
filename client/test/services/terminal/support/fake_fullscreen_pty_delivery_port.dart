@@ -1,6 +1,6 @@
+import 'package:teampilot/services/terminal/fullscreen_cr_ack_config.dart';
 import 'package:teampilot/services/terminal/fullscreen_input_screen_probe.dart';
 import 'package:teampilot/services/terminal/fullscreen_pty_delivery_port.dart';
-import 'package:teampilot/services/terminal/pty_automation_needle.dart';
 
 /// In-memory [FullscreenPtyDeliveryPort] for automation unit tests.
 final class FakeFullscreenPtyDeliveryPort implements FullscreenPtyDeliveryPort {
@@ -9,12 +9,15 @@ final class FakeFullscreenPtyDeliveryPort implements FullscreenPtyDeliveryPort {
     this.crsToClear = 1,
     this.pastesBeforeVisible = 1,
     this.visibleAfterPaste = true,
+    this.crAckConfig = const FullscreenCrAckConfig.productionDefault(),
   });
 
   bool aborted;
   int crsToClear;
   final int pastesBeforeVisible;
   final bool visibleAfterPaste;
+  @override
+  final FullscreenCrAckConfig crAckConfig;
 
   String? staged;
   int pasteCount = 0;
@@ -46,6 +49,13 @@ final class FakeFullscreenPtyDeliveryPort implements FullscreenPtyDeliveryPort {
   bool isAtAnchor(FullscreenPromptAnchor anchor) {
     if (staged == null) return false;
     return staged!.contains(anchor.needle);
+  }
+
+  @override
+  bool isSubmittedAfterCr(FullscreenPromptAnchor anchor, {int scanRows = 24}) {
+    if (crCount < crsToClear) return false;
+    if (staged == null) return true;
+    return !staged!.contains(anchor.needle);
   }
 
   @override

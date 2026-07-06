@@ -1,3 +1,4 @@
+import 'fullscreen_cr_ack_config.dart';
 import 'fullscreen_input_screen_probe.dart';
 import 'fullscreen_pty_delivery_port.dart';
 import 'pty_automation_needle.dart';
@@ -204,14 +205,21 @@ class FullscreenPtyAutomation {
     FullscreenPromptAnchor anchor, {
     int? maxAttempts,
   }) async {
+    if (port.crAckConfig.strategy == FullscreenCrAckStrategy.timed) {
+      await port.submitCr();
+      await Future<void>.delayed(_timing.afterCr);
+      return FullscreenPtyDeliveryOutcome.submitted;
+    }
+
     await port.submitCr();
+    final scanRows = _probeScanRows(port);
     final outcome = await ptyAckPollRetry(
       settle: _timing.afterCr,
       maxAttempts: maxAttempts ?? _timing.crMaxAttempts,
       aborted: () => port.isAborted,
       isAcked: (_) async {
         await port.syncDisplayGrid();
-        return !port.isAtAnchor(anchor);
+        return port.isSubmittedAfterCr(anchor, scanRows: scanRows);
       },
       onRetry: (_) async => port.submitCr(),
     );

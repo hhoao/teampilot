@@ -1,4 +1,5 @@
 import '../../../workspace_dnd/path_reference_formatter.dart';
+import '../../../terminal/fullscreen_cr_ack_config.dart';
 import '../cli_capability.dart';
 
 /// How a dropped file path is injected into a CLI's input box.
@@ -54,4 +55,12 @@ abstract interface class TerminalBehaviorCapability implements CliCapability {
 
   /// How a file dropped onto this CLI's terminal is quoted and injected.
   TerminalPathDropBehavior get pathDropBehavior;
+
+  /// How grid automation ACKs a CR after paste. Most TUIs clear the anchor
+  /// cell; codex keeps the line as history and paints a new composer below.
+  FullscreenCrAckStrategy get fullscreenCrAckStrategy;
+
+  /// Leading prefix on mirror-grid rows that identify an editable composer line.
+  /// Required when [fullscreenCrAckStrategy] is [FullscreenCrAckStrategy.composerMovesDown].
+  String? get fullscreenComposerPrefix;
 }

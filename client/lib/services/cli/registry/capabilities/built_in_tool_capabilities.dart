@@ -1,4 +1,5 @@
 import '../../../../l10n/app_localizations.dart';
+import '../../../terminal/fullscreen_cr_ack_config.dart';
 import 'display_capability.dart';
 import 'executable_resolver_capability.dart';
 import 'presence_capability.dart';
@@ -128,6 +129,11 @@ final class FlashskyaiTerminalBehavior implements TerminalBehaviorCapability {
   @override
   TerminalPathDropBehavior get pathDropBehavior =>
       TerminalPathDropBehavior.defaultFor(usesFullScreenInput: false);
+  @override
+  FullscreenCrAckStrategy get fullscreenCrAckStrategy =>
+      FullscreenCrAckStrategy.anchorCellClears;
+  @override
+  String? get fullscreenComposerPrefix => null;
 }
 
 final class ClaudeTerminalBehavior implements TerminalBehaviorCapability {
@@ -143,6 +149,11 @@ final class ClaudeTerminalBehavior implements TerminalBehaviorCapability {
   @override
   TerminalPathDropBehavior get pathDropBehavior =>
       TerminalPathDropBehavior.defaultFor(usesFullScreenInput: true);
+  @override
+  FullscreenCrAckStrategy get fullscreenCrAckStrategy =>
+      FullscreenCrAckStrategy.anchorCellClears;
+  @override
+  String? get fullscreenComposerPrefix => null;
 }
 
 final class CodexTerminalBehavior implements TerminalBehaviorCapability {
@@ -158,6 +169,11 @@ final class CodexTerminalBehavior implements TerminalBehaviorCapability {
   @override
   TerminalPathDropBehavior get pathDropBehavior =>
       TerminalPathDropBehavior.defaultFor(usesFullScreenInput: true);
+  @override
+  FullscreenCrAckStrategy get fullscreenCrAckStrategy =>
+      FullscreenCrAckStrategy.composerMovesDown;
+  @override
+  String? get fullscreenComposerPrefix => '\u203a';
 }
 
 final class OpencodeTerminalBehavior implements TerminalBehaviorCapability {
@@ -173,6 +189,11 @@ final class OpencodeTerminalBehavior implements TerminalBehaviorCapability {
   @override
   TerminalPathDropBehavior get pathDropBehavior =>
       TerminalPathDropBehavior.defaultFor(usesFullScreenInput: false);
+  @override
+  FullscreenCrAckStrategy get fullscreenCrAckStrategy =>
+      FullscreenCrAckStrategy.anchorCellClears;
+  @override
+  String? get fullscreenComposerPrefix => null;
 }
 
 final class CursorTerminalBehavior implements TerminalBehaviorCapability {
@@ -191,4 +212,9 @@ final class CursorTerminalBehavior implements TerminalBehaviorCapability {
   @override
   TerminalPathDropBehavior get pathDropBehavior =>
       TerminalPathDropBehavior.defaultFor(usesFullScreenInput: true);
+  @override
+  FullscreenCrAckStrategy get fullscreenCrAckStrategy =>
+      FullscreenCrAckStrategy.anchorCellClears;
+  @override
+  String? get fullscreenComposerPrefix => null;
 }

@@ -4,6 +4,8 @@
 /// Grid reads must follow [TerminalSession.syncDisplayGrid] — PTY damage is
 /// applied on post-frame drains, so a stale mirror misses pasted CJK text even
 /// when the on-screen painter already shows it.
+import 'fullscreen_cr_ack_config.dart';
+
 abstract interface class TerminalScreenGrid {
   int get rows;
   int get columns;
@@ -61,6 +63,53 @@ bool isFullscreenPromptAtAnchor(
 ) {
   final needleRunes = anchor.needle.runes.toList();
   return _matchesNeedleAt(grid, anchor.row, anchor.startCol, needleRunes);
+}
+
+/// Whether a CR submit is complete per [config].
+bool isFullscreenPromptSubmitted(
+  TerminalScreenGrid grid,
+  FullscreenPromptAnchor anchor, {
+  required FullscreenCrAckStrategy strategy,
+  String? composerPrefix,
+  int scanRows = 24,
+}) {
+  switch (strategy) {
+    case FullscreenCrAckStrategy.timed:
+      return true;
+    case FullscreenCrAckStrategy.anchorCellClears:
+      return !isFullscreenPromptAtAnchor(grid, anchor);
+    case FullscreenCrAckStrategy.composerMovesDown:
+      if (!isFullscreenPromptAtAnchor(grid, anchor)) return true;
+      final prefix = composerPrefix?.trim();
+      if (prefix == null || prefix.isEmpty) return false;
+      return _hasComposerRowBelow(
+        grid,
+        anchor.row,
+        composerPrefix: prefix,
+        scanRows: scanRows,
+      );
+  }
+}
+
+bool _hasComposerRowBelow(
+  TerminalScreenGrid grid,
+  int aboveRow, {
+  required String composerPrefix,
+  int scanRows = 24,
+}) {
+  final rows = grid.rows;
+  if (rows == 0 || aboveRow >= rows - 1) return false;
+  final startRow = (rows - scanRows).clamp(0, rows - 1);
+  for (var r = rows - 1; r > aboveRow; r--) {
+    if (r < startRow) break;
+    if (_rowStartsWith(grid, r, composerPrefix)) return true;
+  }
+  return false;
+}
+
+bool _rowStartsWith(TerminalScreenGrid grid, int row, String prefix) {
+  final text = _logicalRowText(grid, row).trimLeft();
+  return text.startsWith(prefix);
 }
 
 /// Debug helper: logical text of the bottom [scanRows] (for ACK miss logs).

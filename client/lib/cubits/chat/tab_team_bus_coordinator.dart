@@ -23,6 +23,7 @@ import '../../services/team_bus/tasks/task_log_factory.dart';
 import '../../services/team_bus/tasks/task_queue.dart';
 import '../../services/team_bus/team_bus.dart';
 import '../../services/team_bus/teammate_roster_profile.dart';
+import '../../services/terminal/fullscreen_cr_ack_config.dart';
 import '../../services/terminal/member_pty_inject_service.dart';
 import '../../services/terminal/pty_automation_delivery_guard.dart';
 import '../../services/terminal/pty_automation_retry_queue.dart';
@@ -437,6 +438,7 @@ class TabTeamBusCoordinator implements MemberMaterializer {
           text: trimmed,
           pasteSettle: settle,
           aborted: () => _ptyAckAborted(shell),
+          crAckConfig: _crAckForMember(sessionId, memberId),
         );
       } else {
         await shell.submitFullScreenInput(trimmed, pasteSettleDelay: settle);
@@ -488,6 +490,18 @@ class TabTeamBusCoordinator implements MemberMaterializer {
     if (!automation) return base;
     return Duration(
       milliseconds: base.inMilliseconds < 500 ? 500 : base.inMilliseconds,
+    );
+  }
+
+  FullscreenCrAckConfig _crAckForMember(String sessionId, String memberId) {
+    final cli = _memberCli(sessionId, memberId);
+    final behavior = CliToolRegistry.builtIn()
+        .capability<TerminalBehaviorCapability>(cli);
+    return FullscreenCrAckConfig(
+      strategy:
+          behavior?.fullscreenCrAckStrategy ??
+          FullscreenCrAckStrategy.anchorCellClears,
+      composerPrefix: behavior?.fullscreenComposerPrefix,
     );
   }
 
@@ -553,6 +567,7 @@ class TabTeamBusCoordinator implements MemberMaterializer {
       text: trimmed,
       pasteSettle: settle,
       aborted: () => _ptyAckAborted(shell),
+      crAckConfig: _crAckForMember(sessionId, memberId),
     );
   }
 
@@ -622,6 +637,7 @@ class TabTeamBusCoordinator implements MemberMaterializer {
       text: tick.text,
       pasteSettle: settle,
       aborted: () => _ptyAckAborted(shell),
+      crAckConfig: _crAckForMember(tick.sessionId, tick.memberId),
     );
   }
 

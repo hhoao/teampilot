@@ -1,3 +1,4 @@
+import 'fullscreen_cr_ack_config.dart';
 import '../../utils/logger.dart';
 import '../team_bus/team_bus.dart';
 import 'fullscreen_pty_automation.dart';
@@ -45,6 +46,7 @@ final class MemberPtyInjectService {
     required String text,
     required Duration pasteSettle,
     required bool Function() aborted,
+    required FullscreenCrAckConfig crAckConfig,
   }) {
     return _runLocked(
       shell: shell,
@@ -52,6 +54,7 @@ final class MemberPtyInjectService {
       memberId: memberId,
       text: text,
       aborted: aborted,
+      crAckConfig: crAckConfig,
       run: (port) => _automation.deliverPasteAndSubmit(
         port: port,
         text: text,
@@ -68,6 +71,7 @@ final class MemberPtyInjectService {
     required String text,
     required Duration pasteSettle,
     required bool Function() aborted,
+    required FullscreenCrAckConfig crAckConfig,
   }) {
     return _runLocked(
       shell: shell,
@@ -75,6 +79,7 @@ final class MemberPtyInjectService {
       memberId: memberId,
       text: text,
       aborted: aborted,
+      crAckConfig: crAckConfig,
       run: (port) => _automation.retry(
         port: port,
         text: text,
@@ -113,6 +118,7 @@ final class MemberPtyInjectService {
     required String memberId,
     required String text,
     required bool Function() aborted,
+    required FullscreenCrAckConfig crAckConfig,
     required Future<FullscreenPtyDeliveryOutcome> Function(
       TerminalFullscreenPtyPort port,
     )
@@ -128,7 +134,11 @@ final class MemberPtyInjectService {
       return FullscreenPtyDeliveryOutcome.crStuck;
     }
     try {
-      final port = TerminalFullscreenPtyPort(shell, aborted: aborted);
+      final port = TerminalFullscreenPtyPort(
+        shell,
+        aborted: aborted,
+        crAckConfig: crAckConfig,
+      );
       final outcome = await run(port);
       _handleOutcome(key, sessionId, memberId, text, outcome);
       return outcome;
