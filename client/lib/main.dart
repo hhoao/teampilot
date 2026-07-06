@@ -38,6 +38,7 @@ import 'services/storage/home_target_controller.dart';
 import 'services/storage/workspace_directory_picker.dart';
 import 'services/app/desktop_window_actions.dart';
 import 'services/ssh/ssh_client_factory.dart';
+import 'services/ssh/ssh_profile_connection_coordinator.dart';
 import 'services/terminal/terminal_transport_factory.dart';
 import 'services/file_tree/workspace_file_tree_store.dart';
 import 'services/git/git_repo_store.dart';
@@ -445,6 +446,9 @@ void main() async {
                 ),
                 RepositoryProvider<SshClientFactory>.value(
                   value: shell.sshClientFactory,
+                ),
+                RepositoryProvider<SshProfileConnectionCoordinator>.value(
+                  value: shell.sshProfileConnectionCoordinator,
                 ),
                 RepositoryProvider<ConnectionModeService>.value(
                   value: shell.connectionModeService,

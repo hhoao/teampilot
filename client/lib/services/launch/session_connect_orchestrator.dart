@@ -6,6 +6,7 @@ import '../../models/session_member_binding.dart';
 import '../../models/team_config.dart';
 import '../../models/workspace.dart';
 import '../../utils/team_member_naming.dart';
+import '../cli/registry/mcp_writers/claude_project_mcp_cleanup.dart';
 import '../team_bus/member_bus_idle_endpoint.dart';
 import '../provider/config_profile_service.dart';
 import '../../services/cli/preset_resolver.dart';
@@ -200,6 +201,17 @@ class SessionConnectOrchestrator {
       targetFs: workContext.fs,
       sourceFs: offHome ? homeContext().fs : workContext.fs,
       sshProfileId: offHome ? launchTarget.sshProfileId : null,
+    );
+
+    // Off-home staging reads the control-plane catalog; project `.mcp.json` lives
+    // on the work machine — scrub stale teammate-bus there after flush.
+    await maybeRemoveStaleProjectTeammateBus(
+      fs: workContext.fs,
+      extraServers: extraMcpServers,
+      projectRoots: projectMcpRootsFromLaunch(
+        workingDirectory: workingDirectory,
+        additionalDirectories: additionalDirectories,
+      ),
     );
 
     final environment = offHome

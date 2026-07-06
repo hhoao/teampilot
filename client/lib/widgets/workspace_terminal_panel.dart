@@ -9,8 +9,10 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 
 import '../cubits/layout_cubit.dart';
 import '../l10n/l10n_extensions.dart';
+import '../models/runtime_target.dart';
 import '../models/workspace_folder.dart';
 import '../models/workspace_terminal_session_spec.dart';
+import '../services/ssh/ssh_profile_connection_coordinator.dart';
 import '../services/terminal/terminal_layout_coordinator.dart';
 import '../services/terminal/terminal_theme_mapper.dart';
 import '../services/terminal/terminal_uri_opener.dart';
@@ -53,6 +55,8 @@ class _WorkspaceTerminalPanelState extends State<WorkspaceTerminalPanel> {
   WorkspaceTerminalConnectCoordinator? _connectCoordinator;
 
   var _bootstrapped = false;
+  var _sshReconnectHooked = false;
+  StreamSubscription<String>? _sshReconnectSub;
 
   final _terminalViewKey = GlobalKey<TerminalViewState>(
     debugLabel: kWorkspaceTerminalViewDebugLabel,
@@ -72,6 +76,13 @@ class _WorkspaceTerminalPanelState extends State<WorkspaceTerminalPanel> {
   @override
   void didChangeDependencies() {
     super.didChangeDependencies();
+    if (!_sshReconnectHooked) {
+      _sshReconnectHooked = true;
+      _sshReconnectSub = context
+          .read<SshProfileConnectionCoordinator>()
+          .sessionReconnectSignals
+          .listen(_onSshReconnectSignal);
+    }
     if (_bootstrapped) return;
     _bootstrapped = true;
     _ensureDefaultEntry();
@@ -88,6 +99,7 @@ class _WorkspaceTerminalPanelState extends State<WorkspaceTerminalPanel> {
 
   @override
   void dispose() {
+    unawaited(_sshReconnectSub?.cancel());
     if (_registeredHoldTarget != null) {
       _coordinator?.unregister(_registeredHoldTarget!);
     }
@@ -211,6 +223,21 @@ class _WorkspaceTerminalPanelState extends State<WorkspaceTerminalPanel> {
       },
       mounted: () => mounted,
     );
+  }
+
+  void _onSshReconnectSignal(String profileId) {
+    for (final entry in _group.entries) {
+      final target = _connector.runtimeTargetFor(entry.spec);
+      if (target.kind != RuntimeKind.ssh) continue;
+      final pid = target.sshProfileId ?? sshProfileIdOfId(target.id);
+      if (pid != profileId) continue;
+      if (!entry.connected && !entry.session.isRunning) continue;
+      entry.connected = false;
+      entry.session.sshMemberSession?.close();
+      entry.session.disconnect();
+      if (!mounted) return;
+      unawaited(_runConnect(entry));
+    }
   }
 
   void _selectEntry(String id) {

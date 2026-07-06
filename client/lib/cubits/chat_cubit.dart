@@ -75,9 +75,11 @@ class ChatCubit extends Cubit<ChatState>
     RemoteBusBindingResolver? remoteBusResolver,
     SessionConnectOrchestrator? sessionConnect,
     TeammateBusMcpGateway? teammateBusMcpGateway,
+    Future<TeamProfile?> Function(String teamId)? teamById,
     required AutomationRepository automationRepository,
   }) : _remoteBusResolver = remoteBusResolver,
        _sessionConnect = sessionConnect,
+       _teamById = teamById,
        _teammateBusMcpGateway =
            teammateBusMcpGateway ?? TeammateBusMcpGateway(),
        _automationRepository = automationRepository,
@@ -101,6 +103,7 @@ class ChatCubit extends Cubit<ChatState>
 
   final RemoteBusBindingResolver? _remoteBusResolver;
   final SessionConnectOrchestrator? _sessionConnect;
+  final Future<TeamProfile?> Function(String teamId)? _teamById;
   final TeammateBusMcpGateway _teammateBusMcpGateway;
   final AutomationRepository _automationRepository;
   VoidCallback? _onAutomationsChanged;
@@ -315,6 +318,14 @@ class ChatCubit extends Cubit<ChatState>
   @override
   WorkspaceProvisionCoordinator get workspaceProvision =>
       sessionConnect.workspaceProvision;
+
+  @override
+  Future<TeamProfile?> teamProfileById(String teamId) async {
+    final id = teamId.trim();
+    if (id.isEmpty) return null;
+    if (_activeTeam?.id == id) return _activeTeam;
+    return _teamById?.call(id);
+  }
 
   /// Drops cached Phase A provision for [workspace] (e.g. after folder/target edits).
   void invalidateWorkspaceProvision(Workspace workspace) {
@@ -814,6 +825,9 @@ class ChatCubit extends Cubit<ChatState>
     workspaceCwd: workspaceCwd,
     scheduleTeamConfigValidation: scheduleTeamConfigValidation,
   );
+
+  Future<void> reconnectSshProfile(String profileId) =>
+      _launchService.reconnectSshProfile(profileId);
 
   Future<void> _tearDownTab(ChatTab tab) async {
     for (final session in tab.sessions) {

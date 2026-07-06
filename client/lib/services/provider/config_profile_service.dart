@@ -20,6 +20,7 @@ import '../mcp/profile_mcp_linker_service.dart';
 import '../../repositories/mcp_repository.dart';
 import '../../repositories/workspace_project_config_repository.dart';
 import '../io/filesystem.dart';
+import '../cli/registry/mcp_writers/claude_project_mcp_cleanup.dart';
 import '../mcp/mcp_registry_service.dart';
 import '../resource/resource_provisioning_service.dart';
 import '../resource/resource_scope.dart';
@@ -276,6 +277,7 @@ class ConfigProfileService implements ConfigProfileDelegate {
     TeamProfile? team,
     String? memberId,
     Map<String, Map<String, Object?>>? extraMcpServers,
+    Iterable<String> projectMcpRoots = const [],
   }) async {
     final trimmedWorkspaceId = effectiveLaunchWorkspaceId(
       workspaceId: workspaceId,
@@ -357,6 +359,7 @@ class ConfigProfileService implements ConfigProfileDelegate {
       sessionId: trimmedSessionId,
       memberId: memberId,
       extraServers: extraMcpServers,
+      projectMcpRoots: projectMcpRoots,
     );
   }
 
@@ -415,6 +418,7 @@ class ConfigProfileService implements ConfigProfileDelegate {
     required PersonalProfile personal,
     CliTool cli = CliTool.claude,
     Map<String, Map<String, Object?>>? extraMcpServers,
+    Iterable<String> projectMcpRoots = const [],
   }) async {
     final trimmedWorkspaceId = workspaceId.trim();
     final trimmedSessionId = sessionId.trim();
@@ -498,6 +502,7 @@ class ConfigProfileService implements ConfigProfileDelegate {
         sessionId: trimmedSessionId,
         profileId: personalProfileId,
         extraServers: extraMcpServers,
+        projectMcpRoots: projectMcpRoots,
       );
 
       return warnings;
@@ -615,6 +620,10 @@ class ConfigProfileService implements ConfigProfileDelegate {
       personal: personal,
       cli: preset?.cli ?? CliTool.claude,
       extraMcpServers: extraMcpServers,
+      projectMcpRoots: projectMcpRootsFromLaunch(
+        workingDirectory: workingDirectory,
+        additionalDirectories: additionalDirectories,
+      ),
     );
     final outcome = await staging.contributeSessionLaunch(
       workspaceId: workspaceId,
@@ -767,6 +776,10 @@ class ConfigProfileService implements ConfigProfileDelegate {
       team: team,
       memberId: memberId,
       extraMcpServers: extraMcpServers,
+      projectMcpRoots: projectMcpRootsFromLaunch(
+        workingDirectory: workingDirectory,
+        additionalDirectories: additionalDirectories,
+      ),
     );
 
     if (team != null) {

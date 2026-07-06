@@ -42,6 +42,13 @@ class ChatTabStore {
   int get length => _active.length;
   bool get isEmpty => _active.isEmpty;
 
+  /// Every open tab across all workspace buckets.
+  Iterable<ChatTab> get allTabs sync* {
+    for (final bucket in _byWorkspace.values) {
+      yield* bucket;
+    }
+  }
+
   /// Clears every bucket (used on cubit close).
   void clear() {
     _byWorkspace.clear();
@@ -227,12 +234,5 @@ class ChatTabStore {
       if (s.sessionId == tabId) return s;
     }
     return null;
-  }
-
-  /// Every tab across all buckets (used on cubit close to dispose sessions).
-  Iterable<ChatTab> get allTabs sync* {
-    for (final bucket in _byWorkspace.values) {
-      yield* bucket;
-    }
   }
 }

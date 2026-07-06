@@ -102,6 +102,7 @@ import '../services/skill/skill_repo_disk_cache_service.dart';
 import '../services/skill/skill_repo_git_service.dart';
 import '../services/skill/skill_repo_service.dart';
 import '../services/ssh/ssh_client_factory.dart';
+import '../services/ssh/ssh_connection_events.dart';
 import '../services/ssh/ssh_profile_connection_coordinator.dart';
 import '../services/plugin/profile_plugin_linker_service.dart';
 import '../services/terminal/terminal_transport_factory.dart';
@@ -137,6 +138,7 @@ class AppShell {
     required this.workspaceWorktreeRegistry,
     required this.workspaceToolsScopeRegistry,
     required this.sshClientFactory,
+    required this.sshProfileConnectionCoordinator,
     required this.connectionModeService,
     required this.identityRepository,
     required this.teamCubit,
@@ -187,6 +189,7 @@ class AppShell {
   final WorkspaceWorktreeRegistry workspaceWorktreeRegistry;
   final WorkspaceToolsScopeRegistry workspaceToolsScopeRegistry;
   final SshClientFactory sshClientFactory;
+  final SshProfileConnectionCoordinator sshProfileConnectionCoordinator;
   final ConnectionModeService connectionModeService;
   final LaunchProfileRepository identityRepository;
   final LaunchProfileCubit teamCubit;
@@ -264,19 +267,11 @@ Future<AppShell> buildAppShell({
     FlutterSecureKeyValueStore(),
   );
   final sshKnownHostRepo = SharedPrefsSshKnownHostRepository(preferences);
+  final sshConnectionEvents = SshConnectionEvents();
   final sshClientFactory = SshClientFactory(
     credentialStore: sshCredentialStore,
     knownHostRepository: sshKnownHostRepo,
-  );
-  SshProfileConnectionCoordinator(
-    factory: sshClientFactory,
-    onDisconnect: (profileId, error, stackTrace) {
-      appLogger.w(
-        '[ssh] profile $profileId transport closed: $error',
-        error: error,
-        stackTrace: stackTrace,
-      );
-    },
+    events: sshConnectionEvents,
   );
 
   // P1: the home target (the machine the control plane runs on) is the single
@@ -694,6 +689,12 @@ Future<AppShell> buildAppShell({
     transportFactory: transportFactory,
     sshProfileResolver: () => sshProfileCubit.state.selectedProfile,
     sshProfileById: sshProfileById,
+    teamById: (teamId) async {
+      for (final team in await identityRepository.loadTeamProfiles()) {
+        if (team.id == teamId) return team;
+      }
+      return null;
+    },
     sshDefaultWorkingDirectoryResolver: () =>
         sessionPreferencesCubit.state.preferences.defaultSshWorkingDirectory,
     sshUseLoginShellResolver: () =>
@@ -724,6 +725,20 @@ Future<AppShell> buildAppShell({
 
   memberPresenceCubit = MemberPresenceCubit();
   chatCubit.bindPresenceCubit(memberPresenceCubit);
+
+  final sshProfileConnectionCoordinator = SshProfileConnectionCoordinator(
+    factory: sshClientFactory,
+    events: sshConnectionEvents,
+    profileResolver: sshProfileById,
+    onDisconnect: (profileId, error, stackTrace) {
+      appLogger.w(
+        '[ssh] profile $profileId transport closed: $error',
+        error: error,
+        stackTrace: stackTrace,
+      );
+    },
+    onReconnectSessionPlane: chatCubit.reconnectSshProfile,
+  );
 
   final scheduleCalculator = AutomationScheduleCalculator();
   final personalLaunchContextResolver = PersonalLaunchContextResolver(
@@ -927,6 +942,7 @@ Future<AppShell> buildAppShell({
     workspaceWorktreeRegistry: workspaceWorktreeRegistry,
     workspaceToolsScopeRegistry: workspaceToolsScopeRegistry,
     sshClientFactory: sshClientFactory,
+    sshProfileConnectionCoordinator: sshProfileConnectionCoordinator,
     connectionModeService: connectionModeService,
     identityRepository: identityRepository,
     teamCubit: teamCubit,

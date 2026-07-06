@@ -5,6 +5,7 @@ import '../../models/team_config.dart';
 import '../cli/registry/capabilities/mcp_config_writer_capability.dart';
 import '../cli/registry/cli_tool_registry.dart';
 import '../cli/registry/capabilities/cli_config_layout_capability.dart';
+import '../cli/registry/mcp_writers/claude_project_mcp_cleanup.dart';
 import '../storage/runtime_layout.dart';
 import '../io/filesystem.dart';
 import '../io/local_filesystem.dart';
@@ -39,6 +40,7 @@ class McpRegistryService {
     required String sessionId,
     String? memberId,
     Map<String, Map<String, Object?>>? extraServers,
+    Iterable<String> projectMcpRoots = const [],
   }) async {
     final trimmedWorkspaceId = workspaceId.trim();
     final trimmedTeamId = teamId.trim();
@@ -62,6 +64,12 @@ class McpRegistryService {
       specs: specs,
     );
 
+    await maybeRemoveStaleProjectTeammateBus(
+      fs: _fs,
+      extraServers: extraServers,
+      projectRoots: projectMcpRoots,
+    );
+
     if (await _hasCatalogSnapshot(
       layout.identityMcpServersFile(trimmedTeamId),
     )) {
@@ -78,6 +86,7 @@ class McpRegistryService {
     required String sessionId,
     required String profileId,
     Map<String, Map<String, Object?>>? extraServers,
+    Iterable<String> projectMcpRoots = const [],
   }) async {
     final trimmedWorkspaceId = workspaceId.trim();
     final trimmedSessionId = sessionId.trim();
@@ -102,6 +111,12 @@ class McpRegistryService {
       workspaceId: trimmedWorkspaceId,
       sessionId: trimmedSessionId,
       specs: specs,
+    );
+
+    await maybeRemoveStaleProjectTeammateBus(
+      fs: _fs,
+      extraServers: extraServers,
+      projectRoots: projectMcpRoots,
     );
 
     if (await _hasCatalogSnapshot(snapshotPath)) {
