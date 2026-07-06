@@ -1,6 +1,8 @@
 import 'package:flutter_test/flutter_test.dart';
+import 'package:path/path.dart' as p;
 import 'package:teampilot/models/runtime_target.dart';
 import 'package:teampilot/models/team_config.dart';
+import 'package:teampilot/services/launch/work_plane_paths.dart';
 import 'package:teampilot/services/provider/claude/claude_provider_credentials_service.dart';
 import 'package:teampilot/services/provider/codex/codex_auth_artifacts.dart';
 import 'package:teampilot/services/provider/codex/codex_provider_credentials_service.dart';
@@ -243,17 +245,69 @@ void main() {
         isTrue,
       );
 
-      final dest = layout.providerAuthJsonPath(
-        work.pathContext.join(
-          work.basePath,
-          'providers',
-          CliTool.opencode.value,
-          'official',
+      final dest = work.normalizeWork(
+        layout.providerAuthJsonPath(
+          work.joinWork(
+            work.basePath,
+            'providers',
+            CliTool.opencode.value,
+            'official',
+          ),
         ),
       );
       expect(
         String.fromCharCodes((await work.fs.readBytes(dest))!),
         contains('official'),
+      );
+    },
+  );
+
+  test(
+    'materializeCodexAuth uses POSIX dest when work base is remote',
+    () async {
+      final homeFs = InMemoryFilesystem();
+      final workFs = InMemoryFilesystem(
+        pathContext: p.Context(style: p.Style.windows),
+      );
+      const workRoot = '/root/.local/share/com.hhoa.teampilot';
+      final catalog = ControlPlaneProfilePaths(
+        _memoryContext('/home-catalog', homeFs),
+      );
+      final work = ConfigProfileService(
+        basePath: workRoot,
+        home: '/work-home',
+        fs: workFs,
+        layout: _memoryContext(workRoot, workFs).layout,
+      );
+
+      final catalogSvc = CodexProviderCredentialsService(
+        fs: catalog.fs,
+        basePath: catalog.basePath,
+      );
+      final src = catalogSvc.credentialPath('openai');
+      await catalog.fs.ensureDir(catalogSvc.providerDir('openai'));
+      await catalog.fs.writeString(src, '{"access_token":"x"}');
+
+      expect(
+        await CrossMachineCredentialBridge.materializeCodexAuth(
+          catalog: catalog,
+          work: work,
+          providerId: 'openai',
+        ),
+        isTrue,
+      );
+
+      final dest = work.joinWork(
+        work.basePath,
+        'providers',
+        CliTool.codex.value,
+        'openai',
+        CodexAuthArtifacts.authFileName,
+      );
+      expect(dest, isNot(contains(r'\')));
+      expect(
+        String.fromCharCodes((await workFs.readBytes(dest))!),
+        contains('access_token'),
       );
     },
   );

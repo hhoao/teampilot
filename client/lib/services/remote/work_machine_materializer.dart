@@ -92,7 +92,7 @@ class WorkMachineMaterializer {
       final bytes = await homeFs.readBytes(homePath);
       if (bytes == null) continue;
       final homeKey = homeFs.pathContext.relative(homePath, from: homeRoot);
-      final key = workRelativeKey(workFs, homeKey);
+      final key = normalizeWorkPath(workFs, homeKey);
       final hash = manifest.hashOf(bytes);
       if (hashes[key] == hash) continue; // unchanged → skip re-copy
       final workPath = workFs.pathContext.join(machineRoot, key);

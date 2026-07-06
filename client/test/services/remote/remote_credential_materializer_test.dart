@@ -95,6 +95,30 @@ void main() {
       expect(workFs.writeStringCount, 2);
     },
   );
+
+  test(
+    'windows-style relativePath is normalized for POSIX work fs',
+    () async {
+      final workFs = InMemoryFilesystem();
+      await materializer(workFs).materialize(
+        cli: CliTool.cursor,
+        workFs: workFs,
+        machineRoot: '/remote',
+        localRoot: r'C:\tp',
+        optIn: true,
+        localCredentials: const [
+          CredentialFile(
+            relativePath: r'p1\auth.json',
+            content: '{}',
+          ),
+        ],
+      );
+      expect(
+        (await workFs.stat('/remote/providers/cursor/p1/auth.json')).isFile,
+        isTrue,
+      );
+    },
+  );
 }
 
 class _CountingFs extends InMemoryFilesystem {

@@ -5,6 +5,7 @@ import 'package:flutter/foundation.dart';
 import '../../../../models/app_provider_config.dart';
 import '../../../../models/personal_profile.dart';
 import '../../../../models/team_config.dart';
+import '../../../launch/work_plane_paths.dart';
 import '../../../provider/cross_machine_credential_bridge.dart';
 import '../../../provider/provider_catalog_access.dart';
 import '../../../provider/opencode/opencode_auth_artifacts.dart';
@@ -262,7 +263,7 @@ final class OpencodeConfigProfileCapability implements ConfigProfileCapability {
 
     await paths.fs.ensureDir(opencodeDir);
 
-    final configPath = paths.pathContext.join(
+    final configPath = paths.joinWork(
       opencodeDir,
       opencodeConfigFileName,
     );
@@ -355,8 +356,8 @@ final class OpencodeConfigProfileCapability implements ConfigProfileCapability {
     }
 
     final environment = <String, String>{
-      configDirEnv: opencodeDir,
-      dataDirEnv: opencodeDir,
+      configDirEnv: paths.normalizeWork(opencodeDir),
+      dataDirEnv: paths.normalizeWork(opencodeDir),
     };
     final authContent = launchProvider == null
         ? null
@@ -380,7 +381,7 @@ final class OpencodeConfigProfileCapability implements ConfigProfileCapability {
     final opencodeDir = standaloneSessionToolDir(paths, standalone, toolId);
     await paths.fs.ensureDir(opencodeDir);
 
-    final configPath = paths.pathContext.join(
+    final configPath = paths.joinWork(
       opencodeDir,
       opencodeConfigFileName,
     );
@@ -437,8 +438,8 @@ final class OpencodeConfigProfileCapability implements ConfigProfileCapability {
     }
 
     final environment = <String, String>{
-      configDirEnv: opencodeDir,
-      dataDirEnv: opencodeDir,
+      configDirEnv: paths.normalizeWork(opencodeDir),
+      dataDirEnv: paths.normalizeWork(opencodeDir),
     };
     final authContent = provider == null
         ? null
@@ -458,13 +459,15 @@ final class OpencodeConfigProfileCapability implements ConfigProfileCapability {
     AppProviderConfig provider,
   ) async {
     if (!provider.isOfficial) return null;
-    final providerDir = paths.pathContext.join(
+    final providerDir = paths.joinWork(
       paths.basePath,
       'providers',
       'opencode',
       provider.id,
     );
-    final authPath = _opencodeDataLayout.providerAuthJsonPath(providerDir);
+    final authPath = paths.normalizeWork(
+      _opencodeDataLayout.providerAuthJsonPath(providerDir),
+    );
     if (!(await paths.fs.stat(authPath)).isFile) return null;
     final bytes = await paths.fs.readBytes(authPath);
     final content = bytes != null
@@ -500,7 +503,7 @@ final class OpencodeConfigProfileCapability implements ConfigProfileCapability {
     ).trim();
     if (prompt.isEmpty) return false;
     await paths.fs.atomicWrite(
-      paths.pathContext.join(opencodeDir, agentsFileName),
+      paths.joinWork(opencodeDir, agentsFileName),
       '$prompt\n',
     );
     return true;
@@ -510,7 +513,7 @@ final class OpencodeConfigProfileCapability implements ConfigProfileCapability {
     required ConfigProfileDelegate paths,
     required String opencodeDir,
   }) async {
-    final pluginPath = paths.pathContext.join(
+    final pluginPath = paths.joinWork(
       opencodeDir,
       opencodeIdlePluginFileName,
     );

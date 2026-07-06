@@ -1,5 +1,6 @@
 import '../../models/team_config.dart';
 import '../cli/registry/config_profile/config_profile_context.dart';
+import '../launch/work_plane_paths.dart';
 import '../provider/credential_binding.dart';
 import 'claude/claude_provider_credentials_service.dart';
 import 'codex/codex_auth_artifacts.dart';
@@ -41,8 +42,8 @@ abstract final class CrossMachineCredentialBridge {
     if (bytes == null || bytes.isEmpty) return false;
 
     final dest = workSvc.credentialPath(providerId);
-    await work.fs.ensureDir(workSvc.providerDir(providerId));
-    await work.fs.writeBytes(dest, bytes);
+    await ensureWorkDir(work.fs, workSvc.providerDir(providerId));
+    await writeWorkBytes(work.fs, dest, bytes);
     return true;
   }
 
@@ -59,15 +60,15 @@ abstract final class CrossMachineCredentialBridge {
     final bytes = await catalog.fs.readBytes(src);
     if (bytes == null || bytes.isEmpty) return false;
 
-    final dest = work.pathContext.join(
+    final dest = work.joinWork(
       work.basePath,
       'providers',
       CliTool.codex.value,
       providerId,
       CodexAuthArtifacts.authFileName,
     );
-    await work.fs.ensureDir(work.pathContext.dirname(dest));
-    await work.fs.writeBytes(dest, bytes);
+    await ensureWorkDir(work.fs, work.workPathContext.dirname(dest));
+    await writeWorkBytes(work.fs, dest, bytes);
     return true;
   }
 
@@ -90,11 +91,11 @@ abstract final class CrossMachineCredentialBridge {
       fs: work.fs,
       basePath: work.basePath,
     );
-    final workLayout = CursorHomeLayout(pathContext: work.fs.pathContext);
+    final workLayout = CursorHomeLayout(pathContext: work.workPathContext);
     final workHome = workSvc.providerHome(providerId);
     final dest = workLayout.authJson(workHome);
-    await work.fs.ensureDir(work.fs.pathContext.dirname(dest));
-    await work.fs.writeBytes(dest, bytes);
+    await ensureWorkDir(work.fs, work.workPathContext.dirname(dest));
+    await writeWorkBytes(work.fs, dest, bytes);
 
     final catalogHome = catalogSvc.providerHome(providerId);
     final catalogLayout = CursorHomeLayout(pathContext: catalog.fs.pathContext);
@@ -107,12 +108,12 @@ abstract final class CrossMachineCredentialBridge {
       final src = catalog.fs.pathContext.join(srcCursorDir, relativePath);
       final artifactBytes = await catalog.fs.readBytes(src);
       if (artifactBytes == null || artifactBytes.isEmpty) continue;
-      final artifactDest = work.fs.pathContext.join(
-        destCursorDir,
-        relativePath,
+      final artifactDest = work.joinWork(destCursorDir, relativePath);
+      await ensureWorkDir(
+        work.fs,
+        work.workPathContext.dirname(artifactDest),
       );
-      await work.fs.ensureDir(work.fs.pathContext.dirname(artifactDest));
-      await work.fs.writeBytes(artifactDest, artifactBytes);
+      await writeWorkBytes(work.fs, artifactDest, artifactBytes);
     }
     return true;
   }
@@ -128,17 +129,17 @@ abstract final class CrossMachineCredentialBridge {
     );
     final workLayout = RuntimeLayout(teampilotRoot: work.basePath, fs: work.fs);
     final src = catalogLayout.appFlashskyaiLlmConfigFile;
-    final dest = workLayout.appFlashskyaiLlmConfigFile;
+    final dest = work.normalizeWork(workLayout.appFlashskyaiLlmConfigFile);
     final content = await catalog.fs.readString(src);
     if (content != null && content.trim().isNotEmpty) {
-      await work.fs.ensureDir(work.fs.pathContext.dirname(dest));
-      await work.fs.writeString(dest, content);
+      await ensureWorkDir(work.fs, work.workPathContext.dirname(dest));
+      await writeWorkString(work.fs, dest, content);
       return true;
     }
     final bytes = await catalog.fs.readBytes(src);
     if (bytes == null || bytes.isEmpty) return false;
-    await work.fs.ensureDir(work.fs.pathContext.dirname(dest));
-    await work.fs.writeBytes(dest, bytes);
+    await ensureWorkDir(work.fs, work.workPathContext.dirname(dest));
+    await writeWorkBytes(work.fs, dest, bytes);
     return true;
   }
 
@@ -156,24 +157,26 @@ abstract final class CrossMachineCredentialBridge {
         providerId.trim(),
       ),
     );
-    final dest = layout.providerAuthJsonPath(
-      work.pathContext.join(
-        work.basePath,
-        'providers',
-        CliTool.opencode.value,
-        providerId.trim(),
+    final dest = work.normalizeWork(
+      layout.providerAuthJsonPath(
+        work.joinWork(
+          work.basePath,
+          'providers',
+          CliTool.opencode.value,
+          providerId.trim(),
+        ),
       ),
     );
     final bytes = await catalog.fs.readBytes(src);
     if (bytes != null && bytes.isNotEmpty) {
-      await work.fs.ensureDir(work.pathContext.dirname(dest));
-      await work.fs.writeBytes(dest, bytes);
+      await ensureWorkDir(work.fs, work.workPathContext.dirname(dest));
+      await writeWorkBytes(work.fs, dest, bytes);
       return true;
     }
     final content = await catalog.fs.readString(src);
     if (content == null || content.trim().isEmpty) return false;
-    await work.fs.ensureDir(work.pathContext.dirname(dest));
-    await work.fs.writeString(dest, content);
+    await ensureWorkDir(work.fs, work.workPathContext.dirname(dest));
+    await writeWorkString(work.fs, dest, content);
     return true;
   }
 

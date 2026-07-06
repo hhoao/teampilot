@@ -1,6 +1,7 @@
 import '../../../../models/personal_profile.dart';
 import '../../../../models/team_config.dart';
 import '../../../../utils/team_member_naming.dart';
+import '../../../launch/work_plane_paths.dart';
 import '../../../provider/cross_machine_credential_bridge.dart';
 import '../../../provider/flashskyai/flashskyai_effort_capability.dart';
 import '../../../session/member_role_provision.dart';
@@ -42,7 +43,7 @@ final class FlashskyaiConfigProfileCapability
     String workspaceId,
     String sessionId, {
     String? memberId,
-  }) => delegate.pathContext.join(
+  }) => delegate.joinWork(
     delegate.sessionToolDir(workspaceId, sessionId, toolId, memberId: memberId),
     metadataFileName,
   );
@@ -161,7 +162,7 @@ final class FlashskyaiConfigProfileCapability
     ConfigProfileDelegate delegate,
     String memberToolDir,
   ) async {
-    final file = delegate.pathContext.join(memberToolDir, metadataFileName);
+    final file = delegate.joinWork(memberToolDir, metadataFileName);
     final existing = await delegate.readMetadataFile(file, defaultMetadata);
     await delegate.writeJsonIfChanged(file, {...defaultMetadata, ...existing});
   }
@@ -242,7 +243,7 @@ final class FlashskyaiConfigProfileCapability
     String workingDirectory, {
     List<String> additionalDirectories = const [],
   }) async {
-    final metadataPath = delegate.pathContext.join(
+    final metadataPath = delegate.joinWork(
       memberToolDir,
       metadataFileName,
     );
@@ -277,7 +278,7 @@ final class FlashskyaiConfigProfileCapability
       forceTeamLeadDelegateMode: false,
       mixed: false,
     );
-    final settingsFile = delegate.pathContext.join(
+    final settingsFile = delegate.joinWork(
       memberToolDir,
       settingsFileName,
     );
@@ -364,7 +365,7 @@ final class FlashskyaiConfigProfileCapability
     LaunchProfileScope scope, {
     required String effortLevel,
   }) async {
-    final file = delegate.pathContext.join(
+    final file = delegate.joinWork(
       delegate.sessionToolDir(
         scope.workspaceId,
         scope.sessionId,
@@ -424,7 +425,7 @@ final class FlashskyaiConfigProfileCapability
       forceTeamLeadDelegateMode: isLead && forceTeamLeadDelegateMode,
       mixed: mixed,
     );
-    final settingsFile = delegate.pathContext.join(
+    final settingsFile = delegate.joinWork(
       memberToolDir,
       settingsFileName,
     );

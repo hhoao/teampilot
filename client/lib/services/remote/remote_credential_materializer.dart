@@ -1,5 +1,6 @@
 import '../../models/team_config.dart';
 import '../io/filesystem.dart';
+import '../launch/launch_manifest_paths.dart';
 import 'materialization_manifest.dart';
 
 /// One locally-generated credential file destined for `providers/{tool}/` on the
@@ -37,7 +38,8 @@ class RemoteCredentialMaterializer {
     for (final cred in localCredentials) {
       // Rebase any embedded local-root absolute path to the work machine root.
       final rewritten = cred.content.replaceAll(localRoot, machineRoot);
-      final key = 'providers/${cli.value}/${cred.relativePath}';
+      final rel = normalizeWorkPath(workFs, cred.relativePath);
+      final key = 'providers/${cli.value}/$rel';
       final hash = manifest.hashOf(rewritten.codeUnits);
       if (hashes[key] == hash) continue; // unchanged → skip
       await workFs.writeString(

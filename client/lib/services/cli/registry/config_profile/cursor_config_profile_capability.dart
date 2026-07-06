@@ -9,7 +9,7 @@ import '../../../provider/cursor/cursor_provider_settings_resolver.dart';
 import '../../../provider/provider_catalog_access.dart';
 import '../../../provider/cursor/cursor_session_config_dir.dart';
 import '../../../provider/workspace_trust_provisioner.dart';
-import '../../../launch/launch_manifest_paths.dart';
+import '../../../launch/work_plane_paths.dart';
 import '../../../provider/cursor/cursor_workspace_trust_provisioner.dart';
 import '../capabilities/config_profile_capability.dart';
 
@@ -53,11 +53,11 @@ final class CursorConfigProfileCapability implements ConfigProfileCapability {
     // session's `~/.cursor` — plugins/MCP/skills are materialized there.
     // CURSOR_CONFIG_DIR alone does NOT relocate the `.cursor` data dir.
     final toolDir = standaloneSessionToolDir(paths, standalone, toolId);
-    final home = paths.pathContext.join(
+    final home = paths.joinWork(
       toolDir,
       CursorSessionConfigDir.homeSegment,
     );
-    final layout = CursorHomeLayout(pathContext: paths.pathContext);
+    final layout = CursorHomeLayout(pathContext: paths.workPathContext);
     final cursorDir = layout.cursorDir(home);
     await paths.fs.ensureDir(cursorDir);
 
@@ -147,11 +147,7 @@ final class CursorConfigProfileCapability implements ConfigProfileCapability {
     final warnings = <String>[];
 
     if (mixed) {
-      final workCtx = manifestPathContextFor(
-        readDelegate: paths.fs,
-        workTeampilotRoot: paths.basePath,
-      );
-      final memberHome = workCtx.join(cursorDir, 'home');
+      final memberHome = paths.joinWork(cursorDir, 'home');
       await paths.fs.ensureDir(memberHome);
 
       final credentials = CursorProviderCredentialsService(
@@ -161,7 +157,7 @@ final class CursorConfigProfileCapability implements ConfigProfileCapability {
       final provisioner = CursorHomeProvisioner(
         fs: paths.fs,
         credentials: credentials,
-        layout: CursorHomeLayout(pathContext: workCtx),
+        layout: CursorHomeLayout(pathContext: paths.workPathContext),
       );
 
       String? providerId;
@@ -224,12 +220,12 @@ final class CursorConfigProfileCapability implements ConfigProfileCapability {
 
     // Non-mixed team fallback (cursor is not native-team-launchable, so this is
     // effectively unreachable) — still HOME-isolate for consistency.
-    final home = paths.pathContext.join(
+    final home = paths.joinWork(
       cursorDir,
       CursorSessionConfigDir.homeSegment,
     );
     final cursorConfigDir = CursorHomeLayout(
-      pathContext: paths.pathContext,
+      pathContext: paths.workPathContext,
     ).cursorDir(home);
     await paths.fs.ensureDir(cursorConfigDir);
     await _provisionWorkspaceTrust(ctx: ctx, homeRoot: home);

@@ -13,6 +13,7 @@ import '../../../provider/cross_machine_credential_bridge.dart';
 import '../../../provider/provider_catalog_access.dart';
 import '../../../provider/codex/codex_provider_settings_resolver.dart';
 import '../../../provider/codex/codex_team_bus_overlay.dart';
+import '../../../launch/work_plane_paths.dart';
 import '../../../provider/workspace_trust_provisioner.dart';
 import '../../../session/member_role_provision.dart';
 import '../../../team_bus/member_bus_idle_endpoint.dart';
@@ -124,7 +125,7 @@ final class CodexConfigProfileCapability implements ConfigProfileCapability {
       ).trim();
       if (prompt.isNotEmpty) {
         await paths.fs.atomicWrite(
-          paths.pathContext.join(codexHome, agentsFileName),
+          paths.joinWork(codexHome, agentsFileName),
           '$prompt\n',
         );
       }
@@ -132,7 +133,7 @@ final class CodexConfigProfileCapability implements ConfigProfileCapability {
 
     return ConfigProfileLaunchContribution(
       environment: {
-        'CODEX_HOME': codexHome,
+        'CODEX_HOME': paths.normalizeWork(codexHome),
         ...await McpCredentialsStore(fs: paths.fs).readOAuthEnv(codexHome),
       },
       warnings: warnings,
@@ -200,7 +201,7 @@ final class CodexConfigProfileCapability implements ConfigProfileCapability {
       ).trim();
       if (prompt.isNotEmpty) {
         await paths.fs.atomicWrite(
-          paths.pathContext.join(codexHome, agentsFileName),
+          paths.joinWork(codexHome, agentsFileName),
           '$prompt\n',
         );
       }
@@ -208,7 +209,7 @@ final class CodexConfigProfileCapability implements ConfigProfileCapability {
 
     return ConfigProfileLaunchContribution(
       environment: {
-        'CODEX_HOME': codexHome,
+        'CODEX_HOME': paths.normalizeWork(codexHome),
         ...await McpCredentialsStore(fs: paths.fs).readOAuthEnv(codexHome),
       },
       warnings: warnings,
@@ -261,7 +262,7 @@ final class CodexConfigProfileCapability implements ConfigProfileCapability {
     AppProviderConfig provider,
   ) {
     if (!isOfficialCodexOAuthProvider(provider)) return null;
-    return paths.pathContext.join(
+    return paths.joinWork(
       paths.basePath,
       'providers',
       'codex',

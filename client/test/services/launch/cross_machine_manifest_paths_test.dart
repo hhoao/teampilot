@@ -14,12 +14,12 @@ void main() {
   setUp(setUpTestAppStorage);
   tearDown(tearDownTestAppStorage);
 
-  test('manifestPathContextFor uses POSIX when work root is remote', () {
+  test('workPathContextFor uses POSIX when work root is remote', () {
     final windowsFs = InMemoryFilesystem(
       pathContext: p.Context(style: p.Style.windows),
     );
     const workRoot = '/root/.local/share/com.hhoa.teampilot';
-    final ctx = manifestPathContextFor(
+    final ctx = workPathContextFor(
       readDelegate: windowsFs,
       workTeampilotRoot: workRoot,
     );

@@ -11,6 +11,7 @@ import '../provider/config_profile_service.dart';
 import '../../services/cli/preset_resolver.dart';
 import '../session/session_lifecycle_service.dart';
 import '../storage/runtime_context.dart';
+import 'launch_manifest_paths.dart';
 import 'manifest_executor.dart';
 import 'workspace_provision_coordinator.dart';
 
@@ -95,12 +96,19 @@ class SessionConnectOrchestrator {
       sshProfileId: offHome ? launchTarget.sshProfileId : null,
     );
 
+    final environment = offHome
+        ? normalizeWorkEnvironment(
+            workContext.fs,
+            staged.outcome.environment,
+          )
+        : staged.outcome.environment;
+
     final shellLaunch = await lifecycle.prepareShellLaunchFromEnvironment(
       session: session,
       workspace: workspace,
       personal: personal,
       preset: preset,
-      environment: staged.outcome.environment,
+      environment: environment,
       extraMcpServers: extraMcpServers,
       busIdle: busIdle,
     );
@@ -194,13 +202,20 @@ class SessionConnectOrchestrator {
       sshProfileId: offHome ? launchTarget.sshProfileId : null,
     );
 
+    final environment = offHome
+        ? normalizeWorkEnvironment(
+            workContext.fs,
+            staged.outcome.environment,
+          )
+        : staged.outcome.environment;
+
     final shellLaunch = await lifecycle.prepareTeamShellLaunchFromEnvironment(
       session: session,
       team: team,
       member: member,
       memberBinding: memberBinding,
       workspace: workspace,
-      environment: staged.outcome.environment,
+      environment: environment,
     );
 
     return (

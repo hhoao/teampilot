@@ -9,6 +9,7 @@ import '../../../provider/claude/claude_official_provider.dart';
 import '../capabilities/cli_effort_capability.dart';
 import '../../../provider/claude/claude_provider_credentials_service.dart';
 import '../../../provider/credential_binding.dart';
+import '../../../launch/work_plane_paths.dart';
 import '../../../provider/cross_machine_credential_bridge.dart';
 import '../../../provider/provider_catalog_access.dart';
 import '../../../provider/claude/claude_provider_settings_resolver.dart';
@@ -88,7 +89,7 @@ final class ClaudeConfigProfileCapability implements ConfigProfileCapability {
     String workspaceId,
     String sessionId, {
     String? memberId,
-  }) => delegate.pathContext.join(
+  }) => delegate.joinWork(
     delegate.sessionToolDir(workspaceId, sessionId, toolId, memberId: memberId),
     metadataFileName,
   );
@@ -99,7 +100,7 @@ final class ClaudeConfigProfileCapability implements ConfigProfileCapability {
     String sessionId,
     TeamMemberConfig member, {
     String? memberId,
-  }) => delegate.pathContext.join(
+  }) => delegate.joinWork(
     delegate.sessionToolDir(workspaceId, sessionId, toolId, memberId: memberId),
     'settings',
     '${ClaudeTeamRosterService.safeClaudePathSegment(member.id)}.json',
@@ -304,7 +305,7 @@ final class ClaudeConfigProfileCapability implements ConfigProfileCapability {
     ConfigProfileDelegate delegate,
     String memberToolDir,
   ) async {
-    final file = delegate.pathContext.join(memberToolDir, metadataFileName);
+    final file = delegate.joinWork(memberToolDir, metadataFileName);
     final existing = await delegate.readMetadataFile(file, defaultMetadata);
     await delegate.writeJsonIfChanged(file, {...defaultMetadata, ...existing});
   }
@@ -423,7 +424,7 @@ final class ClaudeConfigProfileCapability implements ConfigProfileCapability {
     final environment = <String, String>{
       'CLAUDE_CONFIG_DIR': memberToolDir,
       if (member.isValid)
-        settingsFileEnvKey: delegate.pathContext.join(
+        settingsFileEnvKey: delegate.joinWork(
           memberToolDir,
           'settings',
           '${ClaudeTeamRosterService.safeClaudePathSegment(member.id)}.json',
@@ -588,7 +589,7 @@ final class ClaudeConfigProfileCapability implements ConfigProfileCapability {
     String workingDirectory, {
     List<String> additionalDirectories = const [],
   }) async {
-    final metadataPath = delegate.pathContext.join(
+    final metadataPath = delegate.joinWork(
       memberToolDir,
       metadataFileName,
     );
@@ -614,7 +615,7 @@ final class ClaudeConfigProfileCapability implements ConfigProfileCapability {
     bool mixed = false,
     bool standalone = false,
   }) async {
-    final file = delegate.pathContext.join(memberToolDir, 'settings.json');
+    final file = delegate.joinWork(memberToolDir, 'settings.json');
     final settings = _teamSettings(
       providerSettings,
       effortLevel: effortLevel,
@@ -653,7 +654,7 @@ final class ClaudeConfigProfileCapability implements ConfigProfileCapability {
       forceTeamLeadDelegateMode: false,
       mixed: false,
     );
-    final file = delegate.pathContext.join(
+    final file = delegate.joinWork(
       memberToolDir,
       'settings',
       '${ClaudeTeamRosterService.safeClaudePathSegment(member.id)}.json',
@@ -687,7 +688,7 @@ final class ClaudeConfigProfileCapability implements ConfigProfileCapability {
     required String teammateMode,
     required bool mixed,
   }) async {
-    final file = delegate.pathContext.join(
+    final file = delegate.joinWork(
       delegate.sessionToolDir(
         scope.workspaceId,
         scope.sessionId,
@@ -765,12 +766,12 @@ final class ClaudeConfigProfileCapability implements ConfigProfileCapability {
       toolId,
       memberId: scope.memberId,
     );
-    final rosterDir = delegate.pathContext.join(
+    final rosterDir = delegate.joinWork(
       claudeDir,
       'teams',
       ClaudeTeamRosterService.safeClaudePathSegment(scope.cliTeamName),
     );
-    final rosterPath = delegate.pathContext.join(rosterDir, 'config.json');
+    final rosterPath = delegate.joinWork(rosterDir, 'config.json');
 
     final cwd = ClaudeTeamRosterService.resolveWorkingDirectory(
       workingDirectory: workingDirectory,
@@ -1094,7 +1095,7 @@ final class ClaudeConfigProfileCapability implements ConfigProfileCapability {
     final apiKey = _apiKeyFromClaudeProviderSettings(providerSettings);
     if (apiKey.isEmpty) return;
 
-    final metadataPath = delegate.pathContext.join(
+    final metadataPath = delegate.joinWork(
       memberToolDir,
       metadataFileName,
     );

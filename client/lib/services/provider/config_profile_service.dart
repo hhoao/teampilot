@@ -594,7 +594,7 @@ class ConfigProfileService implements ConfigProfileDelegate {
     MemberBusIdleEndpoint? busIdle,
     CliPreset? preset,
   }) async {
-    final manifestCtx = manifestPathContextFor(
+    final manifestCtx = workPathContextFor(
       readDelegate: readDelegate,
       workTeampilotRoot: workTeampilotRoot,
     );
@@ -744,7 +744,7 @@ class ConfigProfileService implements ConfigProfileDelegate {
       memberId: memberId,
     );
 
-    final manifestCtx = manifestPathContextFor(
+    final manifestCtx = workPathContextFor(
       readDelegate: readDelegate,
       workTeampilotRoot: workTeampilotRoot,
     );

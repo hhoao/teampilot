@@ -26,7 +26,7 @@ class ManifestFilesystem implements Filesystem {
   final Map<String, String> _overlaySymlinks = {};
   final Set<String> _overlayDirs = {};
 
-  String _normalize(String path) => workRelativeKey(this, path);
+  String _normalize(String path) => normalizeWorkPath(this, path);
 
   void _clearOverlayUnder(String path) {
     path = _normalize(path);

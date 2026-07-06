@@ -102,6 +102,7 @@ import '../services/skill/skill_repo_disk_cache_service.dart';
 import '../services/skill/skill_repo_git_service.dart';
 import '../services/skill/skill_repo_service.dart';
 import '../services/ssh/ssh_client_factory.dart';
+import '../services/ssh/ssh_profile_connection_coordinator.dart';
 import '../services/plugin/profile_plugin_linker_service.dart';
 import '../services/terminal/terminal_transport_factory.dart';
 import '../services/file_tree/workspace_file_tree_store.dart';
@@ -266,6 +267,16 @@ Future<AppShell> buildAppShell({
   final sshClientFactory = SshClientFactory(
     credentialStore: sshCredentialStore,
     knownHostRepository: sshKnownHostRepo,
+  );
+  SshProfileConnectionCoordinator(
+    factory: sshClientFactory,
+    onDisconnect: (profileId, error, stackTrace) {
+      appLogger.w(
+        '[ssh] profile $profileId transport closed: $error',
+        error: error,
+        stackTrace: stackTrace,
+      );
+    },
   );
 
   // P1: the home target (the machine the control plane runs on) is the single
