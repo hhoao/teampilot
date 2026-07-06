@@ -422,12 +422,13 @@ class TabTeamBusCoordinator implements MemberMaterializer {
       'preview=${_doorbellLogPreview(trimmed)}',
     );
     if (usesFullScreen) {
+      final gridAck = _memberUsesGridPasteAck(sessionId, memberId);
       final settle = _pasteSettleForMember(
         sessionId,
         memberId,
-        automation: automation,
+        automation: automation && gridAck,
       );
-      if (automation) {
+      if (automation && gridAck) {
         await _ptyInject.deliver(
           shell: shell,
           sessionId: sessionId,
@@ -459,6 +460,20 @@ class TabTeamBusCoordinator implements MemberMaterializer {
     final behavior = CliToolRegistry.builtIn()
         .capability<TerminalBehaviorCapability>(cli);
     return behavior?.usesFullScreenInput ?? false;
+  }
+
+  bool _memberUsesGridPasteAck(String sessionId, String memberId) {
+    final team = _activeTeam();
+    final cli = team == null
+        ? CliTool.claude
+        : _shellFactory.cliForMember(
+            team,
+            memberId,
+            globalPresets: _globalPresets(),
+          );
+    final behavior = CliToolRegistry.builtIn()
+        .capability<TerminalBehaviorCapability>(cli);
+    return behavior?.usesGridPasteAck ?? true;
   }
 
   Duration _pasteSettleForMember(
@@ -526,6 +541,15 @@ class TabTeamBusCoordinator implements MemberMaterializer {
       '[team-bus] retry-delivery member=$memberId session=$sessionId '
       'preview=${_doorbellLogPreview(trimmed)}',
     );
+    if (!_memberUsesGridPasteAck(sessionId, memberId)) {
+      final settle = _pasteSettleForMember(
+        sessionId,
+        memberId,
+        automation: false,
+      );
+      await shell.submitFullScreenInput(trimmed, pasteSettleDelay: settle);
+      return;
+    }
     final settle = _pasteSettleForMember(
       sessionId,
       memberId,
@@ -564,6 +588,7 @@ class TabTeamBusCoordinator implements MemberMaterializer {
       bus: busForSession(sessionId),
       memberId: memberId,
       operatorTurnActive: shell?.userTurnActive ?? false,
+      pendingAutomationRetry: _ptyInject.hasPendingRetry(sessionId, memberId),
     );
   }
 
@@ -595,6 +620,10 @@ class TabTeamBusCoordinator implements MemberMaterializer {
       tick.memberId,
       automation: true,
     );
+    if (!_memberUsesGridPasteAck(tick.sessionId, tick.memberId)) {
+      await shell.submitFullScreenInput(tick.text, pasteSettleDelay: settle);
+      return;
+    }
     await _ptyInject.retry(
       shell: shell,
       sessionId: tick.sessionId,
@@ -708,7 +737,10 @@ class TabTeamBusCoordinator implements MemberMaterializer {
       tab.memberShells.forEach((memberId, shell) {
         final key = '${tab.info.id}:$memberId';
         final parked = bus?.isWaitingForMessage(memberId) ?? false;
+        final sessionId = tab.info.id;
         final inTurn = shell.userTurnActive ||
+            _ptyInject.hasPendingRetry(sessionId, memberId) ||
+            _ptyInject.isBusy(sessionId, memberId) ||
             (!parked && (bus?.isMemberInTurn(memberId) ?? false));
         final stillWorking = MemberTurnIdleSync.tick(
           turnKey: key,

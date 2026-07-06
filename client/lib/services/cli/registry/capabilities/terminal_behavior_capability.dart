@@ -41,6 +41,11 @@ abstract interface class TerminalBehaviorCapability implements CliCapability {
   /// Cursor's agent TUI needs longer or the CR is coalesced into the paste.
   Duration get fullScreenPasteSettleDelay;
 
+  /// Whether full-screen inject should content-ACK on the mirror grid before CR.
+  /// Cursor accepts bracketed paste but does not echo staged input into PTY
+  /// output, so grid probes always miss — use timed paste+CR instead.
+  bool get usesGridPasteAck;
+
   /// Whether the embedded terminal may forward the OSC 997 color-scheme report
   /// (mode 2031) to this CLI's TUI. Most CLIs use it for live light/dark
   /// theming; Cursor's TUI mishandles it (the report leaks into its input box),

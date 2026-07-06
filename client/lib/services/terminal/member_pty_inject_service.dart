@@ -30,6 +30,9 @@ final class MemberPtyInjectService {
   bool isBusy(String sessionId, String memberId) =>
       _lock.isBusy(sessionId, memberId);
 
+  bool hasPendingRetry(String sessionId, String memberId) =>
+      _retryQueue.isPending(PtyAutomationSessionLock.key(sessionId, memberId));
+
   void clearPending(String sessionId, String memberId) {
     _retryQueue.clear(PtyAutomationSessionLock.key(sessionId, memberId));
   }

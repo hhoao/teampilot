@@ -13,8 +13,10 @@ abstract final class PtyAutomationDeliveryGuard {
     required TeamBus? bus,
     required String memberId,
     bool operatorTurnActive = false,
+    bool pendingAutomationRetry = false,
   }) {
     if (operatorTurnActive) return false;
+    if (pendingAutomationRetry) return false;
     if (bus == null) return false;
     if (bus.isWaitingForMessage(memberId)) return true;
     return bus.pendingDoorbellNoticeFor(memberId) == null;

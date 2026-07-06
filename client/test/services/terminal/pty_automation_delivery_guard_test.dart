@@ -79,6 +79,26 @@ void main() {
       );
     });
 
+    test('does not skip when automation retry is still queued', () {
+      final bus = TeamBus(launcher: FakeMemberLauncher());
+      bus.declareMember(
+        AgentNode.test(
+          memberId: 'worker',
+          lifecycle: MemberLifecycle.running,
+          activity: MemberActivity.turnDoneReady,
+        ),
+      );
+
+      expect(
+        PtyAutomationDeliveryGuard.shouldSkipRetry(
+          bus: bus,
+          memberId: 'worker',
+          pendingAutomationRetry: true,
+        ),
+        isFalse,
+      );
+    });
+
     test('null bus never skips', () {
       expect(
         PtyAutomationDeliveryGuard.shouldSkipRetry(bus: null, memberId: 'worker'),

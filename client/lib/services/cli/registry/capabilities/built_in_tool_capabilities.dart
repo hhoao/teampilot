@@ -122,6 +122,8 @@ final class FlashskyaiTerminalBehavior implements TerminalBehaviorCapability {
   @override
   Duration get fullScreenPasteSettleDelay => const Duration(milliseconds: 10);
   @override
+  bool get usesGridPasteAck => true;
+  @override
   bool get forwardsColorSchemeReport => true;
   @override
   TerminalPathDropBehavior get pathDropBehavior =>
@@ -134,6 +136,8 @@ final class ClaudeTerminalBehavior implements TerminalBehaviorCapability {
   bool get usesFullScreenInput => true;
   @override
   Duration get fullScreenPasteSettleDelay => const Duration(milliseconds: 10);
+  @override
+  bool get usesGridPasteAck => true;
   @override
   bool get forwardsColorSchemeReport => true;
   @override
@@ -148,6 +152,8 @@ final class CodexTerminalBehavior implements TerminalBehaviorCapability {
   @override
   Duration get fullScreenPasteSettleDelay => const Duration(milliseconds: 10);
   @override
+  bool get usesGridPasteAck => true;
+  @override
   bool get forwardsColorSchemeReport => true;
   @override
   TerminalPathDropBehavior get pathDropBehavior =>
@@ -161,6 +167,8 @@ final class OpencodeTerminalBehavior implements TerminalBehaviorCapability {
   @override
   Duration get fullScreenPasteSettleDelay => const Duration(milliseconds: 10);
   @override
+  bool get usesGridPasteAck => true;
+  @override
   bool get forwardsColorSchemeReport => true;
   @override
   TerminalPathDropBehavior get pathDropBehavior =>
@@ -173,6 +181,8 @@ final class CursorTerminalBehavior implements TerminalBehaviorCapability {
   bool get usesFullScreenInput => true;
   @override
   Duration get fullScreenPasteSettleDelay => const Duration(milliseconds: 150);
+  @override
+  bool get usesGridPasteAck => false;
   @override
   bool get forwardsColorSchemeReport => false;
   @override
