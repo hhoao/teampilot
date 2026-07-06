@@ -73,7 +73,13 @@ class WorkspaceProvisionCoordinator {
       cli: cli,
     );
     final cached = _ready[key.cacheKey];
-    if (cached != null) return cached;
+    if (cached != null) {
+      appLogger.d(
+        '[workspace-provision] cache hit target=${key.targetId} '
+        'workspace=${key.workspaceId} cli=${key.cli.value}',
+      );
+      return cached;
+    }
 
     final inFlight = _inFlight[key.cacheKey];
     if (inFlight != null) return inFlight;

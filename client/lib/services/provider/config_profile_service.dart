@@ -24,6 +24,7 @@ import '../mcp/mcp_registry_service.dart';
 import '../resource/resource_provisioning_service.dart';
 import '../resource/resource_scope.dart';
 import '../launch/launch_manifest.dart';
+import '../launch/launch_manifest_paths.dart';
 import '../launch/manifest_executor.dart';
 import '../launch/manifest_filesystem.dart';
 import '../provider/workspace_trust_provisioner.dart';
@@ -593,10 +594,15 @@ class ConfigProfileService implements ConfigProfileDelegate {
     MemberBusIdleEndpoint? busIdle,
     CliPreset? preset,
   }) async {
-    final manifest = LaunchManifest(pathContext: readDelegate.pathContext);
+    final manifestCtx = manifestPathContextFor(
+      readDelegate: readDelegate,
+      workTeampilotRoot: workTeampilotRoot,
+    );
+    final manifest = LaunchManifest(pathContext: manifestCtx);
     final stagingFs = ManifestFilesystem(
       manifest: manifest,
       readDelegate: readDelegate,
+      pathContext: manifestCtx,
     );
     final staging = _stagingService(
       stagingFs: stagingFs,
@@ -738,10 +744,15 @@ class ConfigProfileService implements ConfigProfileDelegate {
       memberId: memberId,
     );
 
-    final manifest = LaunchManifest(pathContext: readDelegate.pathContext);
+    final manifestCtx = manifestPathContextFor(
+      readDelegate: readDelegate,
+      workTeampilotRoot: workTeampilotRoot,
+    );
+    final manifest = LaunchManifest(pathContext: manifestCtx);
     final stagingFs = ManifestFilesystem(
       manifest: manifest,
       readDelegate: readDelegate,
+      pathContext: manifestCtx,
     );
     final staging = _stagingService(
       stagingFs: stagingFs,

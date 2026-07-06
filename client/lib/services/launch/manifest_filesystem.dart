@@ -4,6 +4,7 @@ import 'package:path/path.dart' as p;
 
 import '../io/filesystem.dart';
 import 'launch_manifest.dart';
+import 'launch_manifest_paths.dart';
 
 /// [Filesystem] that records mutations into [manifest] and reads through
 /// [readDelegate]. Destructive ops are staged only — [readDelegate] is never
@@ -25,7 +26,10 @@ class ManifestFilesystem implements Filesystem {
   final Map<String, String> _overlaySymlinks = {};
   final Set<String> _overlayDirs = {};
 
+  String _normalize(String path) => workRelativeKey(this, path);
+
   void _clearOverlayUnder(String path) {
+    path = _normalize(path);
     _overlayFiles.removeWhere(
       (key, _) => key == path || pathContext.isWithin(path, key),
     );
@@ -53,6 +57,7 @@ class ManifestFilesystem implements Filesystem {
 
   @override
   Future<void> ensureDir(String path) async {
+    path = _normalize(path);
     var current = pathContext.rootPrefix(path);
     for (final part in pathContext.split(path)) {
       if (part == current || part.isEmpty) continue;
@@ -127,6 +132,7 @@ class ManifestFilesystem implements Filesystem {
 
   @override
   Future<void> writeString(String path, String content) async {
+    path = _normalize(path);
     await ensureDir(pathContext.dirname(path));
     _overlayFiles[path] = content;
     manifest.writeFile(path, content);
@@ -156,6 +162,8 @@ class ManifestFilesystem implements Filesystem {
     required String target,
     required String linkPath,
   }) async {
+    target = _normalize(target);
+    linkPath = _normalize(linkPath);
     await ensureDir(pathContext.dirname(linkPath));
     _overlaySymlinks[linkPath] = target;
     manifest.symlink(linkPath: linkPath, target: target);

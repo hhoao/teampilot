@@ -9,6 +9,7 @@ import '../../../provider/cursor/cursor_provider_settings_resolver.dart';
 import '../../../provider/provider_catalog_access.dart';
 import '../../../provider/cursor/cursor_session_config_dir.dart';
 import '../../../provider/workspace_trust_provisioner.dart';
+import '../../../launch/launch_manifest_paths.dart';
 import '../../../provider/cursor/cursor_workspace_trust_provisioner.dart';
 import '../capabilities/config_profile_capability.dart';
 
@@ -146,7 +147,11 @@ final class CursorConfigProfileCapability implements ConfigProfileCapability {
     final warnings = <String>[];
 
     if (mixed) {
-      final memberHome = paths.pathContext.join(cursorDir, 'home');
+      final workCtx = manifestPathContextFor(
+        readDelegate: paths.fs,
+        workTeampilotRoot: paths.basePath,
+      );
+      final memberHome = workCtx.join(cursorDir, 'home');
       await paths.fs.ensureDir(memberHome);
 
       final credentials = CursorProviderCredentialsService(
@@ -156,7 +161,7 @@ final class CursorConfigProfileCapability implements ConfigProfileCapability {
       final provisioner = CursorHomeProvisioner(
         fs: paths.fs,
         credentials: credentials,
-        layout: CursorHomeLayout(pathContext: paths.pathContext),
+        layout: CursorHomeLayout(pathContext: workCtx),
       );
 
       String? providerId;

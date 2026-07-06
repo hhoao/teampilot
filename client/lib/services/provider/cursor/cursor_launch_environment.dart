@@ -5,9 +5,12 @@ abstract final class CursorLaunchEnvironment {
     required String homeRoot,
     required bool useWslPaths,
   }) {
-    final home = useWslPaths
+    var home = useWslPaths
         ? LaunchCommandBuilder.normalizePathForCli(homeRoot, useWslPaths: true)
         : homeRoot;
+    if (!useWslPaths && home.contains(r'\')) {
+      home = home.replaceAll(r'\', '/');
+    }
     return {'HOME': home, 'USERPROFILE': home};
   }
 

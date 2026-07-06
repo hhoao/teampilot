@@ -1,4 +1,5 @@
 import 'package:flutter_test/flutter_test.dart';
+import 'package:path/path.dart' as p;
 import 'package:teampilot/services/remote/materialization_manifest.dart';
 import 'package:teampilot/services/remote/work_machine_materializer.dart';
 import 'package:teampilot/services/storage/runtime_layout.dart';
@@ -78,6 +79,32 @@ void main() {
       expect(workFs.writeBytesCount, 2); // no re-copy
     },
   );
+
+  test('windows home relative keys normalize to POSIX on remote work fs', () async {
+    final homeFs = InMemoryFilesystem(
+      pathContext: p.Context(style: p.Style.windows),
+    );
+    const homeRoot = r'C:\tp';
+    await homeFs.writeString(
+      r'C:\tp\cli-defaults\cursor\agents\x.md',
+      'A',
+    );
+    final workFs = _CountingFs();
+    final m = WorkMachineMaterializer(
+      homeFs: homeFs,
+      homeRoot: homeRoot,
+      workFs: workFs,
+      machineRoot: '/remote',
+      manifest: MaterializationManifest(fs: workFs, machineRoot: '/remote'),
+    );
+
+    await m.reconcile(tools: {'cursor'}, workspaceId: 'w1');
+
+    expect(
+      (await workFs.stat('/remote/cli-defaults/cursor/agents/x.md')).isFile,
+      isTrue,
+    );
+  });
 
   test('changing one file re-copies only that file', () async {
     final homeFs = InMemoryFilesystem();

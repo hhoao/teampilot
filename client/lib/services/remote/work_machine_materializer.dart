@@ -1,4 +1,5 @@
 import '../io/filesystem.dart';
+import '../launch/launch_manifest_paths.dart';
 import '../storage/runtime_layout.dart';
 import 'materialization_manifest.dart';
 
@@ -90,7 +91,8 @@ class WorkMachineMaterializer {
       final homePath = homeFs.pathContext.join(homeDir, entry.name);
       final bytes = await homeFs.readBytes(homePath);
       if (bytes == null) continue;
-      final key = homeFs.pathContext.relative(homePath, from: homeRoot);
+      final homeKey = homeFs.pathContext.relative(homePath, from: homeRoot);
+      final key = workRelativeKey(workFs, homeKey);
       final hash = manifest.hashOf(bytes);
       if (hashes[key] == hash) continue; // unchanged → skip re-copy
       final workPath = workFs.pathContext.join(machineRoot, key);
