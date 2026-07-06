@@ -115,8 +115,11 @@ class Workspace {
     }
     if (matchIndex == 0) return folders;
 
+    final targetId =
+        targetIdForFolderPaths(folders, [primary], matchSubpaths: true) ??
+        folders.first.targetId;
     return [
-      WorkspaceFolder(path: primary, targetId: folders.first.targetId),
+      WorkspaceFolder(path: primary, targetId: targetId),
       ...folders,
     ];
   }

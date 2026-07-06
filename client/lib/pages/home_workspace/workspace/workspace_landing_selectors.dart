@@ -2,8 +2,10 @@ import 'package:flutter/material.dart';
 import 'package:teampilot/theme/app_icon_sizes.dart';
 
 import '../../../cubits/worktree_cubit.dart';
+import '../../../models/git_worktree.dart';
 import '../../../models/runtime_target.dart';
 import '../../../models/workspace.dart';
+import '../../../models/workspace_folder.dart';
 import '../../../models/workspace_topology.dart';
 import '../../../theme/app_spacing.dart';
 import '../../../theme/app_text_styles.dart';
@@ -12,16 +14,9 @@ import '../../../widgets/menu/sidebar_action_menu.dart';
 import '../../../widgets/workspace_folder_directory_row.dart';
 import 'workspace_chat_landing_palette.dart';
 
-/// Label for the workspace row (display name, else primary directory basename).
-String workspaceLandingWorkspaceLabel(Workspace workspace) {
-  final display = workspace.display.trim();
-  if (display.isNotEmpty) return display;
-  return workspace.primaryDirectoryName;
-}
-
-/// One launch-directory choice (workspace folder or git worktree).
-class LaunchDirectoryOption {
-  const LaunchDirectoryOption({
+/// One row in a landing selector menu.
+class LaunchSelectorOption {
+  const LaunchSelectorOption({
     required this.path,
     required this.label,
     required this.icon,
@@ -34,63 +29,163 @@ class LaunchDirectoryOption {
   final IconData icon;
 }
 
-/// Resolves compose-landing cwd options and the effective selected path.
-class WorkspaceLandingDirectoryResolver {
-  const WorkspaceLandingDirectoryResolver({
+/// Workspace folder (project) choices for compose landing.
+class WorkspaceLandingProjectResolver {
+  const WorkspaceLandingProjectResolver({
     required this.workspace,
-    this.worktreeState,
     this.runtimeTargets = const [],
-    this.storedPath,
+    this.storedProjectPath,
   });
 
   final Workspace workspace;
-  final WorktreeState? worktreeState;
   final List<RuntimeTarget> runtimeTargets;
-  final String? storedPath;
+  final String? storedProjectPath;
 
-  List<LaunchDirectoryOption> get options {
-    if (worktreeState?.hasMultipleWorktrees == true) {
+  List<LaunchSelectorOption> get options {
+    if (workspace.folders.isEmpty) {
+      final primary = workspace.firstFolderPath.trim();
+      if (primary.isEmpty) return const [];
       return [
-        for (final wt in worktreeState!.worktrees)
-          LaunchDirectoryOption(
-            path: wt.path,
-            label: wt.shortBranch,
-            icon: Icons.account_tree_outlined,
-          ),
+        LaunchSelectorOption(
+          path: primary,
+          label: Workspace.directoryName(primary),
+          icon: Icons.folder_outlined,
+        ),
       ];
     }
-    if (workspace.folders.length > 1) {
-      final isMixed =
-          workspaceTopologyOf(workspace.folders) == WorkspaceTopology.mixed;
-      return [
-        for (final folder in workspace.folders)
-          LaunchDirectoryOption(
-            path: folder.path,
-            label: Workspace.directoryName(folder.path),
-            subtitle: isMixed
-                ? workspaceFolderTargetLabel(runtimeTargets, folder.targetId)
-                : null,
-            icon: workspaceFolderTargetIcon(folder.targetId),
-          ),
-      ];
-    }
-    return const [];
+
+    final isMixed =
+        workspaceTopologyOf(workspace.folders) == WorkspaceTopology.mixed;
+    return [
+      for (final folder in workspace.folders)
+        LaunchSelectorOption(
+          path: folder.path,
+          label: Workspace.directoryName(folder.path),
+          subtitle: isMixed
+              ? workspaceFolderTargetLabel(runtimeTargets, folder.targetId)
+              : null,
+          icon: workspaceFolderTargetIcon(folder.targetId),
+        ),
+    ];
   }
 
-  /// Precedence: explicit stored path → current worktree → first option → workspace primary.
-  String resolveSelectedPath() {
-    final stored = storedPath?.trim() ?? '';
+  String resolveSelectedProjectPath() {
+    final stored = storedProjectPath?.trim() ?? '';
     final opts = options;
     if (stored.isNotEmpty &&
         opts.any((o) => workspacePathsEqual(o.path, stored))) {
       return stored;
     }
-    if (worktreeState?.hasMultipleWorktrees == true &&
-        worktreeState!.currentWorktreePath.isNotEmpty) {
-      return worktreeState!.currentWorktreePath;
-    }
     if (opts.isNotEmpty) return opts.first.path;
     return workspace.firstFolderPath;
+  }
+
+  String labelFor(String projectPath) {
+    for (final option in options) {
+      if (workspacePathsEqual(option.path, projectPath)) {
+        return option.label;
+      }
+    }
+    return Workspace.directoryName(projectPath);
+  }
+
+  List<SidebarActionMenuSpec> menuSpecs(String selectedPath) {
+    return [
+      for (final option in options)
+        SidebarActionMenuSpec.item(
+          value: option.path,
+          icon: option.icon,
+          label: option.label,
+          subtitleSuffix: option.subtitle,
+          selected: workspacePathsEqual(option.path, selectedPath),
+        ),
+    ];
+  }
+}
+
+/// Git worktree choices for the active project on compose landing.
+class WorkspaceLandingWorktreeResolver {
+  const WorkspaceLandingWorktreeResolver({
+    required this.projectPath,
+    this.worktreeState,
+    this.storedWorktreePath,
+    List<GitWorktree> cachedWorktrees = const [],
+  }) : _cachedWorktrees = cachedWorktrees;
+
+  final String projectPath;
+  final WorktreeState? worktreeState;
+  final String? storedWorktreePath;
+  final List<GitWorktree> _cachedWorktrees;
+
+  List<LaunchSelectorOption> get options {
+    final project = normalizeWorkspacePath(projectPath.trim());
+    if (project.isEmpty) return const [];
+
+    final worktrees = _worktreesForProject();
+    if (worktrees.isEmpty) {
+      return [
+        LaunchSelectorOption(
+          path: project,
+          label: Workspace.directoryName(project),
+          icon: Icons.folder_outlined,
+        ),
+      ];
+    }
+
+    return [
+      for (final wt in worktrees)
+        LaunchSelectorOption(
+          path: wt.path,
+          label: wt.shortBranch,
+          icon: Icons.account_tree_outlined,
+        ),
+    ];
+  }
+
+  List<GitWorktree> _worktreesForProject() {
+    final project = normalizeWorkspacePath(projectPath.trim());
+    if (project.isEmpty) return const [];
+    final state = worktreeState;
+    if (state != null &&
+        workspacePathsEqual(state.repoPath, project) &&
+        state.worktrees.isNotEmpty) {
+      return state.worktrees;
+    }
+    return _cachedWorktrees;
+  }
+
+  /// False for non-git folders (empty worktree list after load) and while the
+  /// active project's worktree list is still loading.
+  bool get showsWorktreeSelector {
+    final worktrees = _worktreesForProject();
+    if (worktrees.isNotEmpty) return true;
+    final state = worktreeState;
+    if (state != null &&
+        workspacePathsEqual(state.repoPath, projectPath) &&
+        state.loading) {
+      return false;
+    }
+    return false;
+  }
+
+  String resolveSelectedWorktreePath() {
+    final stored = storedWorktreePath?.trim() ?? '';
+    final opts = options;
+    if (stored.isNotEmpty &&
+        opts.any((o) => workspacePathsEqual(o.path, stored))) {
+      return stored;
+    }
+    final state = worktreeState;
+    if (state != null &&
+        workspacePathsEqual(state.repoPath, projectPath) &&
+        state.currentWorktreePath.isNotEmpty &&
+        opts.any(
+          (o) => workspacePathsEqual(o.path, state.currentWorktreePath),
+        )) {
+      return state.currentWorktreePath;
+    }
+    if (opts.isNotEmpty) return opts.first.path;
+    return normalizeWorkspacePath(projectPath);
   }
 
   String labelFor(String selectedPath) {
@@ -116,30 +211,34 @@ class WorkspaceLandingDirectoryResolver {
   }
 }
 
-/// Workspace title + optional launch-directory selector on one header row.
+/// Compose-landing header: project folder + worktree selectors.
 class WorkspaceLandingHeaderRow extends StatelessWidget {
   const WorkspaceLandingHeaderRow({
-    required this.workspaceLabel,
-    required this.workspaceHintWhenEmpty,
-    required this.directoryLabel,
-    required this.directoryHintWhenEmpty,
-    this.directoryMenuSpecs = const [],
-    this.onDirectorySelected,
+    required this.projectLabel,
+    required this.projectHintWhenEmpty,
+    required this.projectMenuSpecs,
+    required this.onProjectSelected,
+    this.showWorktreeSelector = true,
+    this.worktreeLabel = '',
+    this.worktreeHintWhenEmpty = '',
+    this.worktreeMenuSpecs = const [],
+    this.onWorktreeSelected,
     super.key,
   });
 
-  final String workspaceLabel;
-  final String workspaceHintWhenEmpty;
-  final String directoryLabel;
-  final String directoryHintWhenEmpty;
-  final List<SidebarActionMenuSpec> directoryMenuSpecs;
-  final ValueChanged<Object?>? onDirectorySelected;
+  final String projectLabel;
+  final String projectHintWhenEmpty;
+  final List<SidebarActionMenuSpec> projectMenuSpecs;
+  final ValueChanged<Object?> onProjectSelected;
+  final bool showWorktreeSelector;
+  final String worktreeLabel;
+  final String worktreeHintWhenEmpty;
+  final List<SidebarActionMenuSpec> worktreeMenuSpecs;
+  final ValueChanged<Object?>? onWorktreeSelected;
 
   @override
   Widget build(BuildContext context) {
     final spacing = context.appSpacing;
-    final showDirectory =
-        directoryMenuSpecs.length > 1 && onDirectorySelected != null;
 
     return Align(
       alignment: Alignment.centerLeft,
@@ -148,17 +247,19 @@ class WorkspaceLandingHeaderRow extends StatelessWidget {
         children: [
           WorkspaceLandingSelectorBar(
             compact: true,
-            label: workspaceLabel,
-            hintWhenEmpty: workspaceHintWhenEmpty,
+            label: projectLabel,
+            hintWhenEmpty: projectHintWhenEmpty,
+            menuSpecs: projectMenuSpecs,
+            onSelected: onProjectSelected,
           ),
-          if (showDirectory) ...[
+          if (showWorktreeSelector) ...[
             SizedBox(width: spacing.sm),
             WorkspaceLandingSelectorBar(
               compact: true,
-              label: directoryLabel,
-              hintWhenEmpty: directoryHintWhenEmpty,
-              menuSpecs: directoryMenuSpecs,
-              onSelected: onDirectorySelected,
+              label: worktreeLabel,
+              hintWhenEmpty: worktreeHintWhenEmpty,
+              menuSpecs: worktreeMenuSpecs,
+              onSelected: onWorktreeSelected,
             ),
           ],
         ],
@@ -201,7 +302,7 @@ class WorkspaceLandingSelectorBar extends StatelessWidget {
       color: foreground,
       fontWeight: FontWeight.w500,
     );
-    final selectable = menuSpecs.length > 1 && onSelected != null;
+    final selectable = menuSpecs.isNotEmpty && onSelected != null;
     if (!selectable) {
       final labelWidget = Text(
         display,
@@ -307,3 +408,7 @@ class _LandingSelectorMenuTriggerState
     );
   }
 }
+
+// Re-export legacy names used by tests during transition.
+typedef LaunchDirectoryOption = LaunchSelectorOption;
+typedef WorkspaceLandingDirectoryResolver = WorkspaceLandingProjectResolver;

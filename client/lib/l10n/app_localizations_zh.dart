@@ -1099,6 +1099,12 @@ class AppLocalizationsZh extends AppLocalizations {
   String get workspaceChatLandingSelectWorkspace => '选择工作空间 >';
 
   @override
+  String get workspaceChatLandingSelectProject => '选择项目 >';
+
+  @override
+  String get workspaceChatLandingSelectWorktree => '选择 worktree >';
+
+  @override
   String get workspaceChatLandingSelectLaunchDirectory => '选择目录 >';
 
   @override
@@ -4398,6 +4404,9 @@ class AppLocalizationsZh extends AppLocalizations {
   String worktreeShowMore(Object count) {
     return '显示更多 $count 个';
   }
+
+  @override
+  String get worktreeMore => '更多';
 
   @override
   String get worktreeShowLess => '收起';

@@ -144,7 +144,7 @@ class AppSession {
     required List<WorkspaceFolder> folders,
   }) {
     if (memberId == null || memberId.trim().isEmpty) {
-      return (workingDirectory: firstFolderPath, addDirs: extraFolderPaths);
+      return personalWorkDirsForPrimaryPath(folders, firstFolderPath);
     }
     final targetId = memberTargetForInstanceId(memberTargets, memberId);
     if (targetId == null) {

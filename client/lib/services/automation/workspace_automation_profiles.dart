@@ -1,7 +1,6 @@
 import '../../cubits/launch_profile_cubit.dart';
 import '../../models/launch_profile.dart';
 import '../../models/workspace.dart';
-import '../../models/workspace_topology.dart';
 import '../storage/launch_profile_provisioner.dart';
 
 /// Launch profiles that may own automations for [workspace].
@@ -16,12 +15,7 @@ List<LaunchProfile> launchProfilesForWorkspaceAutomations({
     final trimmed = teamId.trim();
     if (trimmed.isNotEmpty) ids.add(trimmed);
   }
-  if (!personalIdentityBlockedForWorkspace(
-    isPersonal: true,
-    folders: workspace.folders,
-  )) {
-    ids.add(LaunchProfileProvisioner.defaultPersonalId);
-  }
+  ids.add(LaunchProfileProvisioner.defaultPersonalId);
 
   final result = <LaunchProfile>[];
   for (final id in ids) {

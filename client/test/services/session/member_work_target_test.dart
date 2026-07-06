@@ -317,43 +317,20 @@ void main() {
     expect(lifecycle.launchWorkTarget(_ctx(session)).id, 'ssh:p1');
   });
 
-  test(
-    'prepareShellLaunch rejects personal launch on mixed workspace',
-    () async {
-      final lifecycle = SessionLifecycleService();
-      final session = AppSession(
-        sessionId: 's-personal',
-        workspaceId: 'w1',
-        sessionTeam: '',
-        folders: const [
-          WorkspaceFolder(path: '/local', targetId: 'local'),
-          WorkspaceFolder(path: '/remote', targetId: 'ssh:p1'),
-        ],
-        createdAt: 1,
-      );
-      const personal = PersonalProfile(
-        id: LaunchProfileProvisioner.defaultPersonalId,
-        display: 'Me',
-      );
-      final workspace = Workspace(
-        workspaceId: 'w1',
-        folders: session.folders,
-        createdAt: 0,
-      );
-      await expectLater(
-        lifecycle.prepareShellLaunch(
-          session: session,
-          workspace: workspace,
-          personal: personal,
-        ),
-        throwsA(
-          isA<StateError>().having(
-            (e) => e.message,
-            'message',
-            'mixed_workspace_personal_launch_blocked',
-          ),
-        ),
-      );
-    },
-  );
+  test('personal session workDirs on mixed workspace filters add-dirs by target', () {
+    final session = AppSession(
+      sessionId: 's-personal',
+      workspaceId: 'w1',
+      sessionTeam: '',
+      folders: const [
+        WorkspaceFolder(path: '/local', targetId: 'local'),
+        WorkspaceFolder(path: '/local-extra', targetId: 'local'),
+        WorkspaceFolder(path: '/remote', targetId: 'ssh:p1'),
+      ],
+      createdAt: 1,
+    );
+    final dirs = session.workDirsForMember(null, folders: session.folders);
+    expect(dirs.workingDirectory, '/local');
+    expect(dirs.addDirs, ['/local-extra']);
+  });
 }

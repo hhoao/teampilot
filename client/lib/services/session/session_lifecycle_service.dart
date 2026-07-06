@@ -601,14 +601,6 @@ class SessionLifecycleService {
       workspace: workspace,
       profileId: profileId,
     );
-    if (isPersonal &&
-        workspace != null &&
-        personalIdentityBlockedForWorkspace(
-          isPersonal: true,
-          folders: workspace.folders,
-        )) {
-      throw StateError('mixed_workspace_personal_launch_blocked');
-    }
     // P3a: the member runs in its assigned working directory (default = session
     // first folder). Personal sessions have no roster member → inherit.
     final memberWork = session.workDirsForMember(
@@ -987,12 +979,17 @@ class SessionLifecycleService {
         preset: preset,
         projectBundle: projectBundle,
       );
+      final catalog = WorkspaceLaunchContext(
+        session: session,
+        workspace: workspace,
+      ).folderCatalog;
+      final personalDirs = session.workDirsForMember(null, folders: catalog);
       return CliLaunchContext(
         team: launchTeam,
         member: launchMember,
         sessionTeam: plan.cliTeamName,
-        workingDirectory: session.firstFolderPath,
-        additionalDirectories: session.extraFolderPaths,
+        workingDirectory: personalDirs.workingDirectory,
+        additionalDirectories: personalDirs.addDirs,
         isFreshConversation: plan.isFreshConversation,
       );
     }
@@ -1058,13 +1055,20 @@ class SessionLifecycleService {
       final resolvedPersonal =
           personal ??
           await loadPersonalProfile(LaunchProfileProvisioner.defaultPersonalId);
+      final catalog = WorkspaceLaunchContext(
+        session: session,
+        workspace: personalWorkspace,
+      ).folderCatalog;
+      final personalDirs = session.workDirsForMember(null, folders: catalog);
       final outcome = await service.prepareSessionLaunch(
         workspaceId: personalWorkspace.workspaceId,
         sessionId: session.sessionId,
         profileId: resolvedPersonal.id,
         personal: resolvedPersonal,
-        workingDirectory: workingDirectory,
-        additionalDirectories: session.extraFolderPaths,
+        workingDirectory: workingDirectory.isNotEmpty
+            ? workingDirectory
+            : personalDirs.workingDirectory,
+        additionalDirectories: personalDirs.addDirs,
         extraMcpServers: extraMcpServers,
         busIdle: busIdle,
         preset: preset,

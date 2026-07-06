@@ -314,4 +314,39 @@ class WorktreeCubit extends Cubit<WorktreeState> {
     emit(state.copyWith(collapsed: next));
     _persist();
   }
+
+  /// Switches the active git project and reloads its worktrees.
+  Future<void> selectProject(
+    String projectPath, {
+    String? preferWorktreePath,
+  }) => load(projectPath, preferCurrentPath: preferWorktreePath);
+
+  /// Warms the worktree cache for every workspace folder (sidebar grouping).
+  Future<void> prefetchProjects(Iterable<String> projectPaths) async {
+    final lister = _lister;
+    if (lister == null || workspaceId.isEmpty) return;
+    for (final raw in projectPaths) {
+      final path = normalizeWorkspacePath(raw.trim());
+      if (path.isEmpty) continue;
+      final cached = _worktreeStore?.peek(workspaceId, path);
+      if (cached != null) continue;
+      try {
+        final list = await lister.list(path);
+        if (isClosed) return;
+        _worktreeStore?.remember(workspaceId, path, list);
+      } on Object {
+        if (isClosed) return;
+        _worktreeStore?.remember(workspaceId, path, const []);
+      }
+    }
+  }
+
+  List<GitWorktree> worktreesForProject(String projectPath) {
+    final path = normalizeWorkspacePath(projectPath.trim());
+    if (path.isEmpty) return const [];
+    if (workspacePathsEqual(state.repoPath, path) && state.worktrees.isNotEmpty) {
+      return state.worktrees;
+    }
+    return _worktreeStore?.peek(workspaceId, path)?.worktrees ?? const [];
+  }
 }

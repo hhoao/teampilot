@@ -1157,6 +1157,12 @@ class AppLocalizationsEn extends AppLocalizations {
   String get workspaceChatLandingSelectWorkspace => 'Select workspace >';
 
   @override
+  String get workspaceChatLandingSelectProject => 'Select project >';
+
+  @override
+  String get workspaceChatLandingSelectWorktree => 'Select worktree >';
+
+  @override
   String get workspaceChatLandingSelectLaunchDirectory => 'Select directory >';
 
   @override
@@ -4571,6 +4577,9 @@ class AppLocalizationsEn extends AppLocalizations {
   String worktreeShowMore(Object count) {
     return 'Show $count more';
   }
+
+  @override
+  String get worktreeMore => 'More';
 
   @override
   String get worktreeShowLess => 'Show less';

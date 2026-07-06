@@ -79,7 +79,8 @@ class _WorkspaceChatLandingState extends State<WorkspaceChatLanding> {
   TextEditingValue? _voiceInsertBaseline;
   Stopwatch? _voiceStopwatch;
   Timer? _voiceTimer;
-  String? _selectedWorkingDirectoryPath;
+  String? _selectedProjectPath;
+  String? _selectedWorktreePath;
   List<RuntimeTarget> _runtimeTargets = const [];
   Future<void>? _runtimeTargetsLoad;
   final _launchGate = WorkspaceLandingLaunchGate();
@@ -340,7 +341,25 @@ class _WorkspaceChatLandingState extends State<WorkspaceChatLanding> {
     );
     if (!mounted) return;
     setState(() => _applyDraft(draft));
+    await _syncActiveProjectFromDraft();
     _scheduleTeamLaunchReadinessCheck();
+  }
+
+  Future<void> _syncActiveProjectFromDraft() async {
+    final projectPath = _projectResolver().resolveSelectedProjectPath();
+    if (projectPath.trim().isEmpty) return;
+    try {
+      final cubit = context.read<WorktreeCubit>();
+      await cubit.selectProject(
+        projectPath,
+        preferWorktreePath: _selectedWorktreePath,
+      );
+      if (!mounted) return;
+      final worktreePath = _worktreeResolver(cubit.state).resolveSelectedWorktreePath();
+      setState(() => _selectedWorktreePath = worktreePath);
+    } on ProviderNotFoundException {
+      // Landing rendered outside the workspace split pane.
+    }
   }
 
   void _scheduleTeamLaunchReadinessCheck() {
@@ -412,8 +431,10 @@ class _WorkspaceChatLandingState extends State<WorkspaceChatLanding> {
         : _LandingConversationMode.team;
     _selectedTeamId = draft.teamId;
     _selectedPresetId = draft.presetId;
-    _selectedWorkingDirectoryPath = draft.workingDirectoryPath?.trim().isNotEmpty ==
-            true
+    _selectedProjectPath = draft.projectFolderPath?.trim().isNotEmpty == true
+        ? draft.projectFolderPath!.trim()
+        : null;
+    _selectedWorktreePath = draft.workingDirectoryPath?.trim().isNotEmpty == true
         ? draft.workingDirectoryPath!.trim()
         : null;
 
@@ -440,45 +461,74 @@ class _WorkspaceChatLandingState extends State<WorkspaceChatLanding> {
     }
   }
 
-  WorkspaceLandingDirectoryResolver _directoryResolver(
-    WorktreeState? worktreeState,
-  ) {
-    return WorkspaceLandingDirectoryResolver(
+  WorkspaceLandingProjectResolver _projectResolver() {
+    return WorkspaceLandingProjectResolver(
       workspace: widget.workspace,
-      worktreeState: worktreeState,
       runtimeTargets: _runtimeTargets,
-      storedPath: _selectedWorkingDirectoryPath,
+      storedProjectPath: _selectedProjectPath,
     );
   }
 
-  void _selectLaunchDirectory(
-    Object? value, {
-    required bool syncWorktree,
-  }) {
+  WorkspaceLandingWorktreeResolver _worktreeResolver(WorktreeState? worktreeState) {
+    final projectPath = _projectResolver().resolveSelectedProjectPath();
+    WorktreeCubit? cubit;
+    try {
+      cubit = context.read<WorktreeCubit>();
+    } on ProviderNotFoundException {
+      cubit = null;
+    }
+    return WorkspaceLandingWorktreeResolver(
+      projectPath: projectPath,
+      worktreeState: worktreeState,
+      storedWorktreePath: _selectedWorktreePath,
+      cachedWorktrees: cubit?.worktreesForProject(projectPath) ?? const [],
+    );
+  }
+
+  Future<void> _selectProject(Object? value) async {
     if (value is! String || value.trim().isEmpty) return;
     final path = normalizeWorkspacePath(value);
-    setState(() => _selectedWorkingDirectoryPath = path);
+    setState(() {
+      _selectedProjectPath = path;
+      _selectedWorktreePath = null;
+    });
+    try {
+      final cubit = context.read<WorktreeCubit>();
+      await cubit.selectProject(path, preferWorktreePath: _selectedWorktreePath);
+      if (!mounted) return;
+      final worktreePath = _worktreeResolver(cubit.state).resolveSelectedWorktreePath();
+      setState(() => _selectedWorktreePath = worktreePath);
+      cubit.setCurrentWorktree(worktreePath);
+    } on ProviderNotFoundException {
+      // Landing rendered outside the workspace split pane.
+    }
     _persistDraft();
-    if (syncWorktree) {
-      try {
-        context.read<WorktreeCubit>().setCurrentWorktree(path);
-      } on ProviderNotFoundException {
-        // Landing rendered outside the workspace split pane.
-      }
+  }
+
+  void _selectWorktree(Object? value) {
+    if (value is! String || value.trim().isEmpty) return;
+    final path = normalizeWorkspacePath(value);
+    setState(() => _selectedWorktreePath = path);
+    _persistDraft();
+    try {
+      context.read<WorktreeCubit>().setCurrentWorktree(path);
+    } on ProviderNotFoundException {
+      // Landing rendered outside the workspace split pane.
     }
   }
 
-  void _syncLaunchDirectoryFromWorktree(WorktreeState state) {
-    if (!state.hasMultipleWorktrees) return;
+  void _syncLaunchFromWorktree(WorktreeState state) {
+    final projectPath = _projectResolver().resolveSelectedProjectPath();
+    if (!workspacePathsEqual(state.repoPath, projectPath)) return;
     final path = normalizeWorkspacePath(state.currentWorktreePath);
     if (path.isEmpty) return;
-    final resolver = _directoryResolver(state);
+    final resolver = _worktreeResolver(state);
     if (!resolver.options.any((o) => workspacePathsEqual(o.path, path))) {
       return;
     }
-    final stored = _selectedWorkingDirectoryPath?.trim() ?? '';
+    final stored = _selectedWorktreePath?.trim() ?? '';
     if (stored.isNotEmpty && workspacePathsEqual(stored, path)) return;
-    setState(() => _selectedWorkingDirectoryPath = path);
+    setState(() => _selectedWorktreePath = path);
     _persistDraft();
   }
 
@@ -489,7 +539,7 @@ class _WorkspaceChatLandingState extends State<WorkspaceChatLanding> {
     } on ProviderNotFoundException {
       worktreeState = null;
     }
-    return _directoryResolver(worktreeState).resolveSelectedPath();
+    return _worktreeResolver(worktreeState).resolveSelectedWorktreePath();
   }
 
   String? _optionalLaunchDirectory() {
@@ -507,16 +557,21 @@ class _WorkspaceChatLandingState extends State<WorkspaceChatLanding> {
     } on ProviderNotFoundException {
       worktreeState = null;
     }
-    final options = _directoryResolver(worktreeState);
-    final workingDirectoryPath = options.resolveSelectedPath();
+    final projectResolver = _projectResolver();
+    final selectedProjectPath = projectResolver.resolveSelectedProjectPath();
+    final worktreeResolver = _worktreeResolver(worktreeState);
+    final selectedWorktreePath = worktreeResolver.resolveSelectedWorktreePath();
     return LandingLaunchContext(
       isPersonal: _conversationMode == _LandingConversationMode.simple,
       personalProfileId: defaultProfile,
       presetId: _selectedPresetId,
       teamId: _selectedTeamId,
-      workingDirectoryPath: workingDirectoryPath.trim().isEmpty
+      projectFolderPath: selectedProjectPath.trim().isEmpty
           ? null
-          : workingDirectoryPath,
+          : selectedProjectPath,
+      workingDirectoryPath: selectedWorktreePath.trim().isEmpty
+          ? null
+          : selectedWorktreePath,
     );
   }
 
@@ -778,13 +833,12 @@ class _WorkspaceChatLandingState extends State<WorkspaceChatLanding> {
     final presets = context.watch<CliPresetsCubit>().state.presets;
     final teams = context.watch<LaunchProfileCubit>().state.teams;
     final worktreeState = _worktreeState(context);
-    final directoryResolver = _directoryResolver(worktreeState);
-    final launchDirectoryOptions = directoryResolver.options;
-    final selectedLaunchDirectoryPath =
-        directoryResolver.resolveSelectedPath();
-    final workspaceLabel = workspaceLandingWorkspaceLabel(widget.workspace);
-    final launchDirectoryLabel =
-        directoryResolver.labelFor(selectedLaunchDirectoryPath);
+    final projectResolver = _projectResolver();
+    final selectedProjectPath = projectResolver.resolveSelectedProjectPath();
+    final projectLabel = projectResolver.labelFor(selectedProjectPath);
+    final worktreeResolver = _worktreeResolver(worktreeState);
+    final selectedWorktreePath = worktreeResolver.resolveSelectedWorktreePath();
+    final worktreeLabel = worktreeResolver.labelFor(selectedWorktreePath);
     final selectedTeam = _conversationMode == _LandingConversationMode.team
         ? _selectedTeamProfile(teams)
         : null;
@@ -802,7 +856,7 @@ class _WorkspaceChatLandingState extends State<WorkspaceChatLanding> {
       child: BlocListener<WorktreeCubit, WorktreeState>(
         listenWhen: (previous, current) =>
             previous.currentWorktreePath != current.currentWorktreePath,
-        listener: (context, state) => _syncLaunchDirectoryFromWorktree(state),
+        listener: (context, state) => _syncLaunchFromWorktree(state),
         child: ColoredBox(
         color: cs.surface,
         child: SizedBox.expand(
@@ -818,22 +872,23 @@ class _WorkspaceChatLandingState extends State<WorkspaceChatLanding> {
                   mainAxisSize: MainAxisSize.min,
                   children: [
                     WorkspaceLandingHeaderRow(
-                      workspaceLabel: workspaceLabel,
-                      workspaceHintWhenEmpty:
-                          l10n.workspaceChatLandingSelectWorkspace,
-                      directoryLabel: launchDirectoryLabel,
-                      directoryHintWhenEmpty:
-                          l10n.workspaceChatLandingSelectLaunchDirectory,
-                      directoryMenuSpecs: directoryResolver.menuSpecs(
-                        selectedLaunchDirectoryPath,
+                      projectLabel: projectLabel,
+                      projectHintWhenEmpty:
+                          l10n.workspaceChatLandingSelectProject,
+                      projectMenuSpecs: projectResolver.menuSpecs(
+                        selectedProjectPath,
                       ),
-                      onDirectorySelected: launchDirectoryOptions.length > 1
-                          ? (value) => _selectLaunchDirectory(
-                              value,
-                              syncWorktree:
-                                  worktreeState?.hasMultipleWorktrees == true,
-                            )
-                          : null,
+                      onProjectSelected: (value) =>
+                          unawaited(_selectProject(value)),
+                      showWorktreeSelector:
+                          worktreeResolver.showsWorktreeSelector,
+                      worktreeLabel: worktreeLabel,
+                      worktreeHintWhenEmpty:
+                          l10n.workspaceChatLandingSelectWorktree,
+                      worktreeMenuSpecs: worktreeResolver.menuSpecs(
+                        selectedWorktreePath,
+                      ),
+                      onWorktreeSelected: _selectWorktree,
                     ),
                     SizedBox(height: spacing.sm),
                     WorkspaceChatLandingComposeCard(

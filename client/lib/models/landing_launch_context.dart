@@ -12,6 +12,7 @@ class LandingLaunchContext {
     this.personalProfileId = '',
     this.presetId,
     this.teamId,
+    this.projectFolderPath,
     this.workingDirectoryPath,
   });
 
@@ -26,7 +27,10 @@ class LandingLaunchContext {
   /// Selected team when [isPersonal] is false.
   final String? teamId;
 
-  /// Primary working directory for the new session (workspace folder or worktree).
+  /// Workspace folder (git project root) for the new session.
+  final String? projectFolderPath;
+
+  /// Launch cwd: the selected worktree path under [projectFolderPath].
   final String? workingDirectoryPath;
 
   /// Profile id for manage panel / automation scope.
@@ -43,6 +47,7 @@ class LandingLaunchContext {
     String? personalProfileId,
     String? presetId,
     String? teamId,
+    Object? projectFolderPath = _unset,
     Object? workingDirectoryPath = _unset,
   }) {
     return LandingLaunchContext(
@@ -50,6 +55,9 @@ class LandingLaunchContext {
       personalProfileId: personalProfileId ?? this.personalProfileId,
       presetId: presetId ?? this.presetId,
       teamId: teamId ?? this.teamId,
+      projectFolderPath: projectFolderPath == _unset
+          ? this.projectFolderPath
+          : projectFolderPath as String?,
       workingDirectoryPath: workingDirectoryPath == _unset
           ? this.workingDirectoryPath
           : workingDirectoryPath as String?,
@@ -64,6 +72,7 @@ class LandingLaunchContext {
           personalProfileId == other.personalProfileId &&
           presetId == other.presetId &&
           teamId == other.teamId &&
+          projectFolderPath == other.projectFolderPath &&
           workingDirectoryPath == other.workingDirectoryPath;
 
   @override
@@ -72,6 +81,7 @@ class LandingLaunchContext {
     personalProfileId,
     presetId,
     teamId,
+    projectFolderPath,
     workingDirectoryPath,
   );
 }

@@ -18,7 +18,6 @@ import '../../../models/workspace.dart';
 import '../../../models/app_session.dart';
 import '../../../models/personal_profile.dart';
 import '../../../models/team_config.dart';
-import '../../../models/workspace_topology.dart';
 import '../../../repositories/session_repository.dart';
 import '../../../services/cli/preset_resolver.dart';
 import '../../../services/launch/personal_launch_context_resolver.dart';
@@ -41,18 +40,6 @@ Future<void> openWorkspaceSessionTab(
     'personal=$isPersonal launchState=${session.launchState.name}',
   );
   final team = await _syncSessionTeam(context, session);
-  if (!_canLaunchWorkspaceSession(
-    context,
-    workspace,
-    isPersonal: isPersonal,
-    team: team,
-  )) {
-    appLogger.w(
-      '[session-launch] openWorkspaceSessionTab blocked '
-      'session=${session.sessionId} personal=$isPersonal',
-    );
-    return;
-  }
 
   _syncWorktreeForSession(context, session);
 
@@ -140,35 +127,6 @@ TeamMemberConfig? _teamLead(TeamProfile? team) {
     if (TeamMemberNaming.isTeamLead(member)) return member;
   }
   return null;
-}
-
-bool _canLaunchWorkspaceSession(
-  BuildContext context,
-  Workspace workspace, {
-  required bool isPersonal,
-  TeamProfile? team,
-}) {
-  if (personalIdentityBlockedForWorkspace(
-    isPersonal: isPersonal,
-    folders: workspace.folders,
-  )) {
-    showPersonalLaunchBlockedToast(context);
-    return false;
-  }
-  if (workspaceTopologyRequiresMemberAssignment(workspace.folders) &&
-      team == null) {
-    showPersonalLaunchBlockedToast(context);
-    return false;
-  }
-  return true;
-}
-
-void showPersonalLaunchBlockedToast(BuildContext context) {
-  AppToast.show(
-    context,
-    message: context.l10n.mixedWorkspaceRequiresTeamLaunch,
-    variant: AppToastVariant.warning,
-  );
 }
 
 void _syncWorktreeForSession(BuildContext context, AppSession session) {
@@ -279,15 +237,6 @@ Future<void> submitWorkspaceLandingMessage(
   final personalIdentityId = launch.personalProfileId.trim();
   final personalPresetId = launch.presetId?.trim() ?? '';
   final team = isPersonal ? null : _teamProfileById(context, sessionTeamId);
-
-  if (!_canLaunchWorkspaceSession(
-    context,
-    liveWorkspace,
-    isPersonal: isPersonal,
-    team: team,
-  )) {
-    return;
-  }
 
   final plannedSessionId = _uuid.v4();
   final status = await _requestCreateWorkspaceConversation(
@@ -456,15 +405,6 @@ Future<SessionOpenStatus?> _requestCreateWorkspaceConversation(
   final repo = context.read<SessionRepository>();
   final l10n = context.l10n;
   final team = isPersonal ? null : _teamProfileById(context, sessionTeamId);
-
-  if (!_canLaunchWorkspaceSession(
-    context,
-    workspace,
-    isPersonal: isPersonal,
-    team: team,
-  )) {
-    return null;
-  }
 
   final effectiveCli = isPersonal
       ? _resolvePersonalSessionCli(

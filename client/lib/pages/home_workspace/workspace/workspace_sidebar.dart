@@ -9,13 +9,14 @@ import '../../../cubits/chat_cubit.dart';
 import '../../../cubits/workspace_landing_context_cubit.dart';
 import '../../../cubits/worktree_cubit.dart';
 import '../../../l10n/l10n_extensions.dart';
-import '../../../models/workspace.dart';
 import '../../../models/app_session.dart';
-import '../../../models/workspace_topology.dart';
+import '../../../models/git_worktree.dart';
+import '../../../models/workspace.dart';
 import '../../../services/git/git_worktree_service.dart';
 import '../../../services/storage/app_storage.dart';
 import '../../../services/storage/workspace_layout.dart';
 import '../../../services/workspace/workspace_tools_scope.dart';
+import '../../../utils/session_project_grouping.dart';
 import '../../../utils/session_worktree_grouping.dart';
 import '../../../utils/workspace_path_utils.dart';
 import '../../../widgets/app_toast/app_toast.dart';
@@ -67,6 +68,18 @@ class _WorkspaceSidebarState extends State<WorkspaceSidebar> {
       context.read<WorkspaceLandingContextCubit>().state.context.profileId;
 
   @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    if (widget.workspace.folders.length > 1) {
+      unawaited(
+        context.read<WorktreeCubit>().prefetchProjects(
+          widget.workspace.folders.map((f) => f.path),
+        ),
+      );
+    }
+  }
+
+  @override
   Widget build(BuildContext context) {
     final cs = Theme.of(context).colorScheme;
     final l10n = context.l10n;
@@ -85,10 +98,6 @@ class _WorkspaceSidebarState extends State<WorkspaceSidebar> {
     );
     final wtView = context.select<WorktreeCubit, WorktreeSidebarView>(
       (c) => WorktreeSidebarView.from(c.state),
-    );
-    final personalLaunchBlocked = personalIdentityBlockedForWorkspace(
-      isPersonal: true,
-      folders: widget.workspace.folders,
     );
     final toolsContext = WorkspaceToolsScope.maybeOf(context)?.tools?.context;
     final runningSessionIds = context.select<ChatCubit, List<String>>((c) {
@@ -125,7 +134,6 @@ class _WorkspaceSidebarState extends State<WorkspaceSidebar> {
             icon: Icons.edit_outlined,
             label: l10n.homeWorkspaceNewConversation,
             enabled: true,
-            disabledTooltip: l10n.mixedWorkspaceRequiresTeamLaunch,
             onTap: throttledAsync(
               'workspace_sidebar_new_chat',
               () => _startNewConversation(context),
@@ -137,7 +145,6 @@ class _WorkspaceSidebarState extends State<WorkspaceSidebar> {
               sessions: runningSessions,
               workspace: widget.workspace,
               tabScopeId: widget.tabScopeId,
-              personalLaunchBlocked: personalLaunchBlocked,
             ),
           ],
           const SizedBox(height: 14),
@@ -170,7 +177,6 @@ class _WorkspaceSidebarState extends State<WorkspaceSidebar> {
                       showWorkspaceSearchDialog(
                         context,
                         workspace: widget.workspace,
-                        personalLaunchBlocked: personalLaunchBlocked,
                       ),
                     ),
                   ),
@@ -185,11 +191,13 @@ class _WorkspaceSidebarState extends State<WorkspaceSidebar> {
                     tooltip: l10n.worktreeRefreshTooltip,
                     onTap: throttledTap(
                       'workspace_sidebar_refresh_worktrees',
-                      () => unawaited(
-                        context.read<WorktreeCubit>().load(
-                          widget.workspace.firstFolderPath,
-                        ),
-                      ),
+                      () {
+                        final cubit = context.read<WorktreeCubit>();
+                        final repoPath = cubit.state.repoPath.trim().isNotEmpty
+                            ? cubit.state.repoPath
+                            : widget.workspace.firstFolderPath;
+                        unawaited(cubit.load(repoPath));
+                      },
                     ),
                   ),
                   const SizedBox(width: 2),
@@ -212,7 +220,6 @@ class _WorkspaceSidebarState extends State<WorkspaceSidebar> {
               context,
               sortedSessions,
               wtView,
-              personalLaunchBlocked: personalLaunchBlocked,
               sessionsHydrated: sessionsHydrated,
             ),
           ),
@@ -228,7 +235,6 @@ class _WorkspaceSidebarState extends State<WorkspaceSidebar> {
     BuildContext context,
     List<AppSession> sortedSessions,
     WorktreeSidebarView wtView, {
-    required bool personalLaunchBlocked,
     required bool sessionsHydrated,
   }) {
     final l10n = context.l10n;
@@ -238,10 +244,32 @@ class _WorkspaceSidebarState extends State<WorkspaceSidebar> {
     if (!sessionsHydrated && sortedSessions.isEmpty) {
       return const _SessionListSkeleton();
     }
+    if (widget.workspace.folders.length > 1) {
+      return _buildMultiProjectWorktreeGroupedList(
+        context,
+        sortedSessions,
+        wtView,
+      );
+    }
     switch (wtView.sessionListLayout) {
       case WorktreeSessionListLayout.indeterminate:
         return const _SessionListSkeleton();
       case WorktreeSessionListLayout.flat:
+        if (!wtView.loading && wtView.worktrees.isEmpty) {
+          return _buildWorktreeGroupList(
+            context,
+            [
+              WorktreeGroup(
+                worktree: null,
+                sessions: sortedSessions,
+                projectFolderPath: widget.workspace.firstFolderPath,
+                isProjectGroup: true,
+              ),
+            ],
+            wtView,
+            emptyWhenNoSessions: true,
+          );
+        }
         return sortedSessions.isEmpty
             ? _EmptyConversations(label: l10n.homeWorkspaceNoConversations)
             : _buildSessionList(context, sortedSessions);
@@ -250,34 +278,80 @@ class _WorkspaceSidebarState extends State<WorkspaceSidebar> {
           worktrees: wtView.worktrees,
           sessions: sortedSessions,
         );
-        return ListView.builder(
-          padding: EdgeInsets.zero,
-          itemCount: groups.length,
-          itemBuilder: (context, index) {
-            final group = groups[index];
-            return WorktreeGroupSection(
-              key: ValueKey('wt-group-${worktreeGroupCollapseKey(group)}'),
-              group: group,
-              workspace: widget.workspace,
-              tabScopeId: widget.tabScopeId,
-              highlightSessionId: scopedActiveSessionId(
-                context.read<ChatCubit>(),
-                widget.tabScopeId,
-              ),
-              personalLaunchBlocked: personalLaunchBlocked,
-              collapsed: wtView.collapsed.contains(
-                worktreeGroupCollapseKey(group),
-              ),
-              isCurrent:
-                  group.worktree != null &&
-                  workspacePathsEqual(
-                    group.worktree!.path,
-                    wtView.currentWorktreePath,
-                  ),
-            );
-          },
-        );
+        return _buildWorktreeGroupList(context, groups, wtView);
     }
+  }
+
+  Widget _buildWorktreeGroupList(
+    BuildContext context,
+    List<WorktreeGroup> groups,
+    WorktreeSidebarView wtView, {
+    bool emptyWhenNoSessions = false,
+  }) {
+    final l10n = context.l10n;
+    final cubit = context.read<WorktreeCubit>();
+    final hasAnySession = groups.any((g) => g.sessions.isNotEmpty);
+    if (emptyWhenNoSessions && !hasAnySession) {
+      return _EmptyConversations(label: l10n.homeWorkspaceNoConversations);
+    }
+    return ListView.builder(
+      padding: EdgeInsets.zero,
+      itemCount: groups.length,
+      itemBuilder: (context, index) {
+        final group = groups[index];
+        return WorktreeGroupSection(
+          key: ValueKey('wt-group-${worktreeGroupCollapseKey(group)}'),
+          group: group,
+          workspace: widget.workspace,
+          tabScopeId: widget.tabScopeId,
+          highlightSessionId: scopedActiveSessionId(
+            context.read<ChatCubit>(),
+            widget.tabScopeId,
+          ),
+          collapsed: wtView.collapsed.contains(
+            worktreeGroupCollapseKey(group),
+          ),
+          isCurrent: _isCurrentSidebarGroup(group, wtView, cubit),
+        );
+      },
+    );
+  }
+
+  bool _isCurrentSidebarGroup(
+    WorktreeGroup group,
+    WorktreeSidebarView wtView,
+    WorktreeCubit cubit,
+  ) {
+    if (group.isProjectGroup) {
+      final projectPath = group.projectFolderPath?.trim() ?? '';
+      return projectPath.isNotEmpty &&
+          workspacePathsEqual(projectPath, cubit.state.repoPath);
+    }
+    return group.worktree != null &&
+        workspacePathsEqual(group.worktree!.path, wtView.currentWorktreePath);
+  }
+
+  Widget _buildMultiProjectWorktreeGroupedList(
+    BuildContext context,
+    List<AppSession> sortedSessions,
+    WorktreeSidebarView wtView,
+  ) {
+    final l10n = context.l10n;
+    final cubit = context.read<WorktreeCubit>();
+    final worktreesByProject = <String, List<GitWorktree>>{
+      for (final folder in widget.workspace.folders)
+        folder.path: cubit.worktreesForProject(folder.path),
+    };
+    final groups = groupSessionsByWorktreeAcrossProjects(
+      folders: widget.workspace.folders,
+      worktreesByProjectPath: worktreesByProject,
+      sessions: sortedSessions,
+    );
+    final hasAnySession = groups.any((g) => g.sessions.isNotEmpty);
+    if (!hasAnySession && sortedSessions.isEmpty) {
+      return _EmptyConversations(label: l10n.homeWorkspaceNoConversations);
+    }
+    return _buildWorktreeGroupList(context, groups, wtView);
   }
 
   Future<void> _createWorktree(BuildContext context) async {
@@ -285,7 +359,9 @@ class _WorkspaceSidebarState extends State<WorkspaceSidebar> {
     final l10n = context.l10n;
     final tools = WorkspaceToolsScope.of(context).tools;
     if (tools == null) return;
-    final repoPath = widget.workspace.firstFolderPath;
+    final repoPath = context.read<WorktreeCubit>().state.repoPath.trim().isNotEmpty
+        ? context.read<WorktreeCubit>().state.repoPath
+        : widget.workspace.firstFolderPath;
     final layout = WorkspaceLayout(teampilotRoot: AppStorage.paths.basePath);
     final result = await showWorktreeCreateDialog(
       context,
@@ -383,14 +459,6 @@ class _WorkspaceSidebarState extends State<WorkspaceSidebar> {
       ),
       tapThrottleKeyPrefix: 'workspace_sidebar_session',
       onTap: () {
-        final isPersonal = session.sessionTeam.trim().isEmpty;
-        if (personalIdentityBlockedForWorkspace(
-          isPersonal: isPersonal,
-          folders: widget.workspace.folders,
-        )) {
-          showPersonalLaunchBlockedToast(context);
-          return;
-        }
         unawaited(openWorkspaceSessionTab(context, widget.workspace, session));
       },
     );
@@ -410,13 +478,11 @@ class _RunningSessionsSection extends StatelessWidget {
     required this.sessions,
     required this.workspace,
     required this.tabScopeId,
-    required this.personalLaunchBlocked,
   });
 
   final List<AppSession> sessions;
   final Workspace workspace;
   final String tabScopeId;
-  final bool personalLaunchBlocked;
 
   @override
   Widget build(BuildContext context) {
@@ -448,14 +514,6 @@ class _RunningSessionsSection extends StatelessWidget {
             ),
             tapThrottleKeyPrefix: 'workspace_running_session',
             onTap: () {
-              final isPersonal = session.sessionTeam.trim().isEmpty;
-              if (personalIdentityBlockedForWorkspace(
-                isPersonal: isPersonal,
-                folders: workspace.folders,
-              )) {
-                showPersonalLaunchBlockedToast(context);
-                return;
-              }
               unawaited(openWorkspaceSessionTab(context, workspace, session));
             },
           ),

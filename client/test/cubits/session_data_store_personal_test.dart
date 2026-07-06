@@ -69,7 +69,7 @@ void main() {
   );
 
   test(
-    'createWorkspaceWithFirstSession skips personal session on mixed workspace',
+    'createWorkspaceWithFirstSession creates personal session on mixed workspace',
     () async {
       final store = SessionDataStore();
 
@@ -93,7 +93,8 @@ void main() {
       final sessions = result.snapshot.sessions
           .where((s) => s.workspaceId == result.workspaceId)
           .toList();
-      expect(sessions, isEmpty);
+      expect(sessions, hasLength(1));
+      expect(sessions.first.sessionTeam, '');
     },
   );
 }

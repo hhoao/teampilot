@@ -502,14 +502,6 @@ class SessionRepository {
         ? rememberedMemberTargets(workspace.memberTargetsByTeam, trimmedTeam)
         : const <String, String>{};
 
-    if (trimmedTeam.isEmpty &&
-        personalIdentityBlockedForWorkspace(
-          isPersonal: true,
-          folders: workspace.folders,
-        )) {
-      throw StateError('mixed_workspace_personal_launch_blocked');
-    }
-
     if (trimmedTeam.isNotEmpty &&
         workspaceTopologyRequiresMemberAssignment(workspace.folders)) {
       final valid = rosterMembers.where((m) => m.isValid).toList();

@@ -47,7 +47,7 @@ void main() {
         ws.workspaceId,
         workingDirectory: '/override',
       );
-      expect(overridden.folders.map((f) => f.path), ['/override', '/x']);
+      expect(overridden.folders.map((f) => f.path), ['/override', '/main', '/x']);
     },
   );
 
@@ -91,7 +91,7 @@ void main() {
     },
   );
 
-  test('createSession rejects personal launch on mixed workspace', () async {
+  test('createSession allows personal launch on mixed workspace', () async {
     final tmp = await Directory.systemTemp.createTemp('fs_repo_folders_');
     addTearDown(() => tmp.deleteSync(recursive: true));
     final repo = SessionRepository(rootDir: tmp.path);
@@ -101,16 +101,12 @@ void main() {
       const WorkspaceFolder(path: '/remote', targetId: 'ssh:p1'),
     ]);
 
-    expect(
-      () => repo.createSession(ws.workspaceId),
-      throwsA(
-        isA<StateError>().having(
-          (e) => e.message,
-          'message',
-          'mixed_workspace_personal_launch_blocked',
-        ),
-      ),
+    final session = await repo.createSession(
+      ws.workspaceId,
+      workingDirectory: '/remote',
     );
+    expect(session.folders.first.path, '/remote');
+    expect(session.folders.last.path, '/local');
   });
 
   test(

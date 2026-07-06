@@ -26,7 +26,6 @@ import 'workspace_session_actions.dart';
 Future<void> showWorkspaceSearchDialog(
   BuildContext context, {
   required Workspace workspace,
-  bool personalLaunchBlocked = false,
 }) {
   final chatCubit = context.read<ChatCubit>();
   final editorCubit = context.read<EditorCubit>();
@@ -42,10 +41,6 @@ Future<void> showWorkspaceSearchDialog(
       onOpenSession: (session) {
         Navigator.of(dialogContext).pop();
         if (!context.mounted) return;
-        if (personalLaunchBlocked) {
-          showPersonalLaunchBlockedToast(context);
-          return;
-        }
         unawaited(openWorkspaceSessionTab(context, workspace, session));
       },
       onOpenFile: (path) {

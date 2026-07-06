@@ -142,5 +142,20 @@ void main() {
         '/repo',
       );
     });
+
+    test('personalWorkDirsForPrimaryPath keeps add-dirs on same target only', () {
+      const folders = [
+        WorkspaceFolder(path: '/local', targetId: 'local'),
+        WorkspaceFolder(path: '/local-extra', targetId: 'local'),
+        WorkspaceFolder(path: '/remote', targetId: 'ssh:p1'),
+      ];
+      final local = personalWorkDirsForPrimaryPath(folders, '/local');
+      expect(local.workingDirectory, '/local');
+      expect(local.addDirs, ['/local-extra']);
+
+      final remote = personalWorkDirsForPrimaryPath(folders, '/remote');
+      expect(remote.workingDirectory, '/remote');
+      expect(remote.addDirs, isEmpty);
+    });
   });
 }

@@ -36,12 +36,6 @@ WorkspaceTopology workspaceTopologyOf(List<WorkspaceFolder> folders) {
 bool workspaceFolderIsRemote(String targetId) =>
     runtimeKindOfId(targetId) == RuntimeKind.ssh;
 
-/// Personal identity cannot launch sessions on a mixed (cross-machine) workspace.
-bool personalIdentityBlockedForWorkspace({
-  required bool isPersonal,
-  required List<WorkspaceFolder> folders,
-}) => isPersonal && workspaceTopologyRequiresMemberAssignment(folders);
-
 /// Mixed workspaces need each roster member pinned to one machine's folders.
 bool workspaceTopologyRequiresMemberAssignment(List<WorkspaceFolder> folders) =>
     workspaceTopologyOf(folders) == WorkspaceTopology.mixed;
@@ -126,6 +120,50 @@ String? memberTargetForInstanceId(
   final targetId = targets[trimmed]?.trim();
   if (targetId == null || targetId.isEmpty) return null;
   return targetId;
+}
+
+/// Personal launch: [primaryPath] is cwd; add-dirs are other catalog folders on
+/// the same target (cross-machine paths are not reachable from one PTY).
+({String workingDirectory, List<String> addDirs}) personalWorkDirsForPrimaryPath(
+  List<WorkspaceFolder> catalog,
+  String primaryPath,
+) {
+  final normalizedPrimary = normalizeWorkspacePath(primaryPath.trim());
+  if (catalog.isEmpty) {
+    return (
+      workingDirectory: normalizedPrimary,
+      addDirs: const [],
+    );
+  }
+
+  final targetId =
+      targetIdForFolderPaths(
+        catalog,
+        [normalizedPrimary],
+        matchSubpaths: true,
+      ) ??
+      catalog.first.targetId;
+
+  var cwd = normalizedPrimary;
+  for (final folder in catalog) {
+    if (folder.targetId == targetId &&
+        workspacePathsEqual(folder.path, normalizedPrimary)) {
+      cwd = folder.path;
+      break;
+    }
+  }
+  if (cwd.isEmpty) {
+    final onTarget = folderPathsForTarget(catalog, targetId);
+    cwd = onTarget.isNotEmpty ? onTarget.first : catalog.first.path;
+  }
+
+  final addDirs = <String>[
+    for (final folder in catalog)
+      if (folder.targetId == targetId && !workspacePathsEqual(folder.path, cwd))
+        folder.path,
+  ];
+
+  return (workingDirectory: cwd, addDirs: addDirs);
 }
 
 /// Working directory + add-dirs for a member pinned to [targetId].

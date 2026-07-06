@@ -1,13 +1,31 @@
 import '../models/app_session.dart';
 import '../models/git_worktree.dart';
+import '../models/workspace.dart';
 import 'workspace_path_utils.dart';
 
-/// One sidebar group: a worktree (null == orphan/"other") + its sessions.
+/// One sidebar group: a git worktree, a non-git project folder, or orphans.
 class WorktreeGroup {
-  const WorktreeGroup({required this.worktree, required this.sessions});
+  const WorktreeGroup({
+    required this.worktree,
+    required this.sessions,
+    this.projectFolderPath,
+    this.sidebarLabel,
+    this.isProjectGroup = false,
+  });
+
   final GitWorktree? worktree;
   final List<AppSession> sessions;
-  bool get isOrphan => worktree == null;
+
+  /// Workspace folder (git project) that owns [worktree], when known.
+  final String? projectFolderPath;
+
+  /// Optional disambiguated label (e.g. `project/main` when branch names collide).
+  final String? sidebarLabel;
+
+  /// True when [worktree] is absent because the folder is not a git repo.
+  final bool isProjectGroup;
+
+  bool get isOrphan => worktree == null && !isProjectGroup;
 }
 
 /// Bucket [sessions] under the worktree whose normalized path is the longest

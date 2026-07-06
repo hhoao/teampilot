@@ -2156,6 +2156,18 @@ abstract class AppLocalizations {
   /// **'Select workspace >'**
   String get workspaceChatLandingSelectWorkspace;
 
+  /// No description provided for @workspaceChatLandingSelectProject.
+  ///
+  /// In en, this message translates to:
+  /// **'Select project >'**
+  String get workspaceChatLandingSelectProject;
+
+  /// No description provided for @workspaceChatLandingSelectWorktree.
+  ///
+  /// In en, this message translates to:
+  /// **'Select worktree >'**
+  String get workspaceChatLandingSelectWorktree;
+
   /// No description provided for @workspaceChatLandingSelectLaunchDirectory.
   ///
   /// In en, this message translates to:
@@ -8252,6 +8264,12 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Show {count} more'**
   String worktreeShowMore(Object count);
+
+  /// No description provided for @worktreeMore.
+  ///
+  /// In en, this message translates to:
+  /// **'More'**
+  String get worktreeMore;
 
   /// No description provided for @worktreeShowLess.
   ///

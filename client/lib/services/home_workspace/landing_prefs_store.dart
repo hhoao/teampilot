@@ -10,6 +10,7 @@ class LandingPrefs {
     this.presetId,
     this.teamId,
     this.personalProfileId,
+    this.projectFolderPath,
     this.workingDirectoryPath,
   });
 
@@ -17,6 +18,7 @@ class LandingPrefs {
   final String? presetId;
   final String? teamId;
   final String? personalProfileId;
+  final String? projectFolderPath;
   final String? workingDirectoryPath;
 
   Map<String, Object?> toJson() => {
@@ -25,6 +27,8 @@ class LandingPrefs {
     if (teamId != null && teamId!.isNotEmpty) 'teamId': teamId,
     if (personalProfileId != null && personalProfileId!.isNotEmpty)
       'personalProfileId': personalProfileId,
+    if (projectFolderPath != null && projectFolderPath!.isNotEmpty)
+      'projectFolderPath': projectFolderPath,
     if (workingDirectoryPath != null && workingDirectoryPath!.isNotEmpty)
       'workingDirectoryPath': workingDirectoryPath,
   };
@@ -58,6 +62,7 @@ class LandingPrefsStore {
           presetId: m['presetId'] as String?,
           teamId: m['teamId'] as String?,
           personalProfileId: m['personalProfileId'] as String?,
+          projectFolderPath: m['projectFolderPath'] as String?,
           workingDirectoryPath: m['workingDirectoryPath'] as String?,
         );
       }
