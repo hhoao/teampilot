@@ -16,6 +16,9 @@ final class TerminalFullscreenPtyPort implements FullscreenPtyDeliveryPort {
   bool get isAborted => _aborted();
 
   @override
+  int get viewportRows => _session.engine.grid.rows;
+
+  @override
   Future<void> syncDisplayGrid() => _session.syncDisplayGrid();
 
   @override
@@ -34,4 +37,8 @@ final class TerminalFullscreenPtyPort implements FullscreenPtyDeliveryPort {
 
   @override
   Future<void> submitCr() => _session.submitPendingCr();
+
+  @override
+  String describeProbeWindow({int scanRows = 24}) =>
+      _session.describeProbeWindow(scanRows: scanRows);
 }

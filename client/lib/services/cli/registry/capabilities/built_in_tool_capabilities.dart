@@ -181,8 +181,11 @@ final class CursorTerminalBehavior implements TerminalBehaviorCapability {
   bool get usesFullScreenInput => true;
   @override
   Duration get fullScreenPasteSettleDelay => const Duration(milliseconds: 150);
+  // Verified by cursor_agent_grid_probe_integration_test: cursor-agent echoes
+  // staged input to PTY output, so the grid-ACK probe works (its TUI just
+  // repaints slower than claude — hence the longer settle above).
   @override
-  bool get usesGridPasteAck => false;
+  bool get usesGridPasteAck => true;
   @override
   bool get forwardsColorSchemeReport => false;
   @override

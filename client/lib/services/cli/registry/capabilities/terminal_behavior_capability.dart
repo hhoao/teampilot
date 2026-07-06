@@ -42,8 +42,8 @@ abstract interface class TerminalBehaviorCapability implements CliCapability {
   Duration get fullScreenPasteSettleDelay;
 
   /// Whether full-screen inject should content-ACK on the mirror grid before CR.
-  /// Cursor accepts bracketed paste but does not echo staged input into PTY
-  /// output, so grid probes always miss — use timed paste+CR instead.
+  /// False falls back to timed paste+CR for TUIs that stage input without
+  /// echoing it into PTY output (none of the built-in CLIs currently need it).
   bool get usesGridPasteAck;
 
   /// Whether the embedded terminal may forward the OSC 997 color-scheme report

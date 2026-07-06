@@ -131,8 +131,16 @@ abstract final class LocalPtyProbeHarness {
     required String executable,
     List<String> arguments = const [],
     Duration confirmFallback = const Duration(seconds: 2),
+    Map<String, String>? extraEnvironment,
+    String? workingDirectory,
+    int viewportColumns = 80,
+    int viewportRows = 24,
   }) async {
     IntegrationPrerequisites.skipUnlessNativePty();
+    // The bare PTY must launch with exactly the caller's arguments.
+    // TerminalSession.connect() synthesizes CLI session args (`--dir …`) that
+    // plain shells / fixtures reject — the closure param would shadow these in.
+    final callerArguments = arguments;
     final session = TerminalSession(
       executable: executable,
       validateLaunch: false,
@@ -150,16 +158,18 @@ abstract final class LocalPtyProbeHarness {
           }) {
             return _startBarePty(
               executable,
-              arguments,
+              callerArguments,
               workingDirectory: workingDirectory,
               columns: columns,
               rows: rows,
-              environment: environment,
+              environment: extraEnvironment ?? environment,
             );
           },
     );
-    session.connect(workingDirectory: Directory.systemTemp.path);
-    session.onViewportResize(80, 24);
+    session.connect(
+      workingDirectory: workingDirectory ?? Directory.systemTemp.path,
+    );
+    session.onViewportResize(viewportColumns, viewportRows);
     await waitUntilConnected(session);
     return session;
   }

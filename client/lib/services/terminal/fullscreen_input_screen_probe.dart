@@ -64,10 +64,7 @@ bool isFullscreenPromptAtAnchor(
 }
 
 /// Debug helper: logical text of the bottom [scanRows] (for ACK miss logs).
-String describeProbeWindow(
-  TerminalScreenGrid grid, {
-  int scanRows = 8,
-}) {
+String describeProbeWindow(TerminalScreenGrid grid, {int scanRows = 8}) {
   final rows = grid.rows;
   if (rows == 0) return '<empty grid>';
   final startRow = (rows - scanRows).clamp(0, rows - 1);

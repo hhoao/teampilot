@@ -26,6 +26,7 @@ import '../../services/team_bus/teammate_roster_profile.dart';
 import '../../services/terminal/member_pty_inject_service.dart';
 import '../../services/terminal/pty_automation_delivery_guard.dart';
 import '../../services/terminal/pty_automation_retry_queue.dart';
+import '../../services/terminal/session_member_cli_resolver.dart';
 import '../../services/terminal/terminal_session.dart';
 import '../../utils/logger.dart';
 import '../../utils/team_member_naming.dart';
@@ -448,29 +449,26 @@ class TabTeamBusCoordinator implements MemberMaterializer {
   bool _ptyAckAborted(TerminalSession shell) =>
       _isClosed() || !shell.isConnected;
 
+  CliTool _memberCli(String sessionId, String memberId) {
+    final tab = _tabStore.bySessionId(sessionId);
+    return SessionMemberCliResolver.resolve(
+      persistedSession: tab?.persistedSession,
+      team: _activeTeam(),
+      memberId: memberId,
+      cliForMember: _shellFactory.cliForMember,
+      globalPresets: _globalPresets(),
+    );
+  }
+
   bool _memberUsesFullScreen(String sessionId, String memberId) {
-    final team = _activeTeam();
-    final cli = team == null
-        ? CliTool.claude
-        : _shellFactory.cliForMember(
-            team,
-            memberId,
-            globalPresets: _globalPresets(),
-          );
+    final cli = _memberCli(sessionId, memberId);
     final behavior = CliToolRegistry.builtIn()
         .capability<TerminalBehaviorCapability>(cli);
     return behavior?.usesFullScreenInput ?? false;
   }
 
   bool _memberUsesGridPasteAck(String sessionId, String memberId) {
-    final team = _activeTeam();
-    final cli = team == null
-        ? CliTool.claude
-        : _shellFactory.cliForMember(
-            team,
-            memberId,
-            globalPresets: _globalPresets(),
-          );
+    final cli = _memberCli(sessionId, memberId);
     final behavior = CliToolRegistry.builtIn()
         .capability<TerminalBehaviorCapability>(cli);
     return behavior?.usesGridPasteAck ?? true;
@@ -481,14 +479,7 @@ class TabTeamBusCoordinator implements MemberMaterializer {
     String memberId, {
     required bool automation,
   }) {
-    final team = _activeTeam();
-    final cli = team == null
-        ? CliTool.claude
-        : _shellFactory.cliForMember(
-            team,
-            memberId,
-            globalPresets: _globalPresets(),
-          );
+    final cli = _memberCli(sessionId, memberId);
     final behavior = CliToolRegistry.builtIn()
         .capability<TerminalBehaviorCapability>(cli);
     final base =

@@ -25,6 +25,9 @@ final class FakeFullscreenPtyDeliveryPort implements FullscreenPtyDeliveryPort {
   bool get isAborted => aborted;
 
   @override
+  int get viewportRows => 24;
+
+  @override
   Future<void> syncDisplayGrid() async {}
 
   @override
@@ -66,4 +69,8 @@ final class FakeFullscreenPtyDeliveryPort implements FullscreenPtyDeliveryPort {
       staged = null;
     }
   }
+
+  @override
+  String describeProbeWindow({int scanRows = 24}) =>
+      staged == null ? '<empty staged>' : 'staged="$staged"';
 }

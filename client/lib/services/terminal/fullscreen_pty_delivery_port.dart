@@ -4,6 +4,9 @@ import 'fullscreen_input_screen_probe.dart';
 abstract interface class FullscreenPtyDeliveryPort {
   bool get isAborted;
 
+  /// Visible viewport height in mirror-grid rows (0 when unknown).
+  int get viewportRows;
+
   Future<void> syncDisplayGrid();
 
   FullscreenPromptAnchor? locateNeedle(String needle, {int scanRows = 24});
@@ -15,4 +18,7 @@ abstract interface class FullscreenPtyDeliveryPort {
   Future<void> pasteText(String text);
 
   Future<void> submitCr();
+
+  /// Bottom [scanRows] of the mirror grid for ACK-miss diagnostics.
+  String describeProbeWindow({int scanRows = 24});
 }

@@ -2,6 +2,7 @@ import 'fullscreen_input_screen_probe.dart';
 import 'fullscreen_pty_delivery_port.dart';
 import 'pty_automation_needle.dart';
 import 'pty_inject_ack_retry.dart';
+import '../../utils/logger.dart';
 
 /// Outcome of a full-screen paste+CR or CR-only automation pass.
 enum FullscreenPtyDeliveryOutcome {
@@ -29,6 +30,8 @@ class PtyAutomationTiming {
     required this.reinjectMaxAttempts,
     required this.nudgeMaxAttempts,
     required this.scanRows,
+    this.pollTimeout = const Duration(seconds: 3),
+    this.pollInterval = const Duration(milliseconds: 100),
   });
 
   factory PtyAutomationTiming.production() => const PtyAutomationTiming(
@@ -40,6 +43,8 @@ class PtyAutomationTiming {
     reinjectMaxAttempts: PtyInjectAckTiming.reinjectMaxAttempts,
     nudgeMaxAttempts: PtyInjectAckTiming.nudgeMaxAttempts,
     scanRows: 24,
+    pollTimeout: Duration(seconds: 3),
+    pollInterval: Duration(milliseconds: 100),
   );
 
   factory PtyAutomationTiming.instant() => const PtyAutomationTiming(
@@ -51,6 +56,8 @@ class PtyAutomationTiming {
     reinjectMaxAttempts: 1,
     nudgeMaxAttempts: 2,
     scanRows: 24,
+    pollTimeout: Duration.zero,
+    pollInterval: Duration.zero,
   );
 
   final Duration afterClear;
@@ -61,6 +68,8 @@ class PtyAutomationTiming {
   final int reinjectMaxAttempts;
   final int nudgeMaxAttempts;
   final int scanRows;
+  final Duration pollTimeout;
+  final Duration pollInterval;
 }
 
 /// Content-based full-screen PTY delivery: paste → grid ACK → CR → anchor ACK.
@@ -70,9 +79,17 @@ class FullscreenPtyAutomation {
 
   final PtyAutomationTiming _timing;
 
+  /// Tall TUIs (e.g. cursor-agent) pin the input box near the top; a fixed
+  /// bottom-only window misses staged text when the viewport is larger.
+  int _probeScanRows(FullscreenPtyDeliveryPort port) {
+    final rows = port.viewportRows;
+    if (rows <= 0) return _timing.scanRows;
+    return rows > _timing.scanRows ? rows : _timing.scanRows;
+  }
+
   bool isTextVisible(FullscreenPtyDeliveryPort port, String text) {
     final needle = PtyAutomationNeedle.forText(text);
-    return port.locateNeedle(needle, scanRows: _timing.scanRows) != null;
+    return port.locateNeedle(needle, scanRows: _probeScanRows(port)) != null;
   }
 
   /// Clear → paste → locate needle → CR until anchor clears.
@@ -92,19 +109,22 @@ class FullscreenPtyAutomation {
       }
 
       await port.syncDisplayGrid();
-      var anchor = port.locateNeedle(needle, scanRows: _timing.scanRows);
+      final scanRows = _probeScanRows(port);
+      var anchor = port.locateNeedle(needle, scanRows: scanRows);
       if (anchor == null) {
         await port.clearStagedInput();
         await Future<void>.delayed(_timing.afterClear);
         await port.pasteText(text);
-        await Future<void>.delayed(pasteSettle);
-        await Future<void>.delayed(_timing.afterPaste);
-        await port.syncDisplayGrid();
-        anchor = port.locateNeedle(needle, scanRows: _timing.scanRows);
+        anchor = await _pollForNeedle(
+          port,
+          needle,
+          minSettle: pasteSettle + _timing.afterPaste,
+        );
       }
 
       if (anchor == null) {
         if (reinject < maxReinject) continue;
+        _logProbeMiss(port, needle, text, outcome: 'pasteNotFound');
         return FullscreenPtyDeliveryOutcome.pasteNotFound;
       }
 
@@ -136,8 +156,10 @@ class FullscreenPtyAutomation {
       if (port.isAborted) return FullscreenPtyDeliveryOutcome.aborted;
 
       await port.syncDisplayGrid();
-      final anchor = port.locateNeedle(needle, scanRows: _timing.scanRows);
+      final scanRows = _probeScanRows(port);
+      final anchor = port.locateNeedle(needle, scanRows: scanRows);
       if (anchor == null) {
+        _logProbeMiss(port, needle, text, outcome: 'nudge-pasteNotFound');
         return FullscreenPtyDeliveryOutcome.pasteNotFound;
       }
 
@@ -198,5 +220,50 @@ class FullscreenPtyAutomation {
       PtyAckPollOutcome.aborted => FullscreenPtyDeliveryOutcome.aborted,
       PtyAckPollOutcome.exhausted => FullscreenPtyDeliveryOutcome.crStuck,
     };
+  }
+
+  /// Polls the mirror grid after paste — PTY echo and [syncDisplayGrid] can lag
+  /// the painter (see [TerminalSession.syncDisplayGrid]).
+  Future<FullscreenPromptAnchor?> _pollForNeedle(
+    FullscreenPtyDeliveryPort port,
+    String needle, {
+    required Duration minSettle,
+  }) async {
+    if (minSettle > Duration.zero) {
+      await Future<void>.delayed(minSettle);
+    }
+    if (_timing.pollTimeout <= Duration.zero) {
+      await port.syncDisplayGrid();
+      return port.locateNeedle(needle, scanRows: _probeScanRows(port));
+    }
+    final deadline = DateTime.now().add(_timing.pollTimeout);
+    while (DateTime.now().isBefore(deadline)) {
+      if (port.isAborted) return null;
+      await port.syncDisplayGrid();
+      final anchor = port.locateNeedle(
+        needle,
+        scanRows: _probeScanRows(port),
+      );
+      if (anchor != null) return anchor;
+      if (_timing.pollInterval > Duration.zero) {
+        await Future<void>.delayed(_timing.pollInterval);
+      }
+    }
+    return null;
+  }
+
+  void _logProbeMiss(
+    FullscreenPtyDeliveryPort port,
+    String needle,
+    String text, {
+    required String outcome,
+  }) {
+    final scanRows = _probeScanRows(port);
+    appLogger.w(
+      '[team-bus] pty-probe-miss outcome=$outcome '
+      'needle="$needle" textChars=${text.length} '
+      'scanRows=$scanRows viewportRows=${port.viewportRows}\n'
+      '${port.describeProbeWindow(scanRows: scanRows)}',
+    );
   }
 }
