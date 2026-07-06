@@ -13,6 +13,7 @@ import '../../l10n/l10n_extensions.dart';
 import '../../models/app_session.dart';
 import '../../models/team_config.dart';
 import '../../repositories/session_repository.dart';
+import '../../utils/team_member_naming.dart';
 import '../../services/terminal/terminal_session.dart';
 import '../../services/terminal/terminal_uri_opener.dart';
 import '../../services/terminal/terminal_fonts.dart';
@@ -208,24 +209,11 @@ void consumeChatWorkbenchRouteSession({
 
   onHandled(true);
 
-  final team = teamCubit.state.selectedTeam;
-  final lead = team != null
-      ? team.members.where((m) => m.id == 'team-lead').toList()
-      : <TeamMemberConfig>[];
-  if (team != null && lead.isNotEmpty) {
-    unawaited(chatCubit.scheduleTeamConfigValidation(team));
-    unawaited(
-      chatCubit.requestOpenSession(
-        SessionOpenRequest(
-          session: session,
-          team: team,
-          member: lead.first,
-          repo: sessionRepo,
-          emptyDisplayTitleFallback: l10n.defaultNewChatSessionTitle,
-        ),
-      ),
-    );
-  } else {
+  if (chatCubit.tabStore.bySessionId(routeSessionId) != null) {
+    return;
+  }
+
+  if (session.sessionTeam.trim().isEmpty) {
     unawaited(
       chatCubit.requestOpenSession(
         SessionOpenRequest(
@@ -235,12 +223,39 @@ void consumeChatWorkbenchRouteSession({
         ),
       ),
     );
-    if (team != null) {
-      chatCubit.addSystemMessage(
-        'FlashskyAI requires a member named team-lead.',
-      );
+    return;
+  }
+
+  final teamId = session.sessionTeam.trim();
+  final profile = teamCubit.byId(teamId);
+  if (profile is! TeamProfile) {
+    chatCubit.addSystemMessage(l10n.sessionLaunchMissingTeamMember);
+    return;
+  }
+  TeamMemberConfig? lead;
+  for (final member in profile.members) {
+    if (TeamMemberNaming.isTeamLead(member)) {
+      lead = member;
+      break;
     }
   }
+  if (lead == null) {
+    chatCubit.addSystemMessage(l10n.sessionLaunchMissingTeamMember);
+    return;
+  }
+
+  unawaited(chatCubit.scheduleTeamConfigValidation(profile));
+  unawaited(
+    chatCubit.requestOpenSession(
+      SessionOpenRequest(
+        session: session,
+        team: profile,
+        member: lead,
+        repo: sessionRepo,
+        emptyDisplayTitleFallback: l10n.defaultNewChatSessionTitle,
+      ),
+    ),
+  );
 }
 
 /// Stable key for the chat workbench terminal stack.

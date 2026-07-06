@@ -46,7 +46,7 @@ class ChatWorkbenchSlice {
     final active = activeSessionId;
     if (id == null || id.isEmpty) return false;
     if (id == 'pending') return true;
-    if (active == null || active.isEmpty) return true;
+    if (active == null || active.isEmpty) return false;
     return id == active;
   }
 

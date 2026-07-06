@@ -343,8 +343,12 @@ class SessionLaunchService implements MemberConnector {
       'session=${session.sessionId} idx=$existingIdx',
     );
     final existing = _tabStore.tabs[existingIdx];
-    final memberId = request.member?.id ?? existing.selectedMemberId;
-    existing.selectedMemberId = memberId;
+    final memberId = request.isPersonal
+        ? existing.selectedMemberId
+        : (request.member?.id ?? existing.selectedMemberId);
+    if (memberId.isNotEmpty) {
+      existing.selectedMemberId = memberId;
+    }
     final connectAlreadyScheduled =
         _state.sessionConnectingId == session.sessionId;
     if (!connectAlreadyScheduled) {
@@ -355,7 +359,7 @@ class SessionLaunchService implements MemberConnector {
       _state.copyWith(
         activeTabIndex: existingIdx,
         activeSessionId: session.sessionId,
-        selectedMemberId: memberId,
+        selectedMemberId: memberId.isNotEmpty ? memberId : null,
         composeActive: false,
       ),
     );
@@ -401,7 +405,9 @@ class SessionLaunchService implements MemberConnector {
       return SessionOpenStatus.missingWorkspace;
     }
 
-    final placeholderMemberId = request.member?.id ?? 'team-lead';
+    final placeholderMemberId = request.isPersonal
+        ? ''
+        : (request.member?.id ?? TeamMemberNaming.teamLeadName);
     final info = ChatTabInfo(
       id: session.sessionId,
       title: session.resolveDisplayTitle(request.emptyDisplayTitleFallback),
