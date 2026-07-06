@@ -240,4 +240,18 @@ void main() {
 
     expect(await service.branches('/repo'), ['main', 'dev', 'feature/x']);
   });
+
+  test('remoteBranches parses remote refs and omits HEAD', () async {
+    final runner = _FakeRunner({
+      'branch -r': _ok('origin/main\norigin/feature/x\norigin/HEAD\n'),
+    });
+    final service = GitService(
+      runner: LocalGitCommandRunner(runner: runner.call),
+    );
+
+    expect(await service.remoteBranches('/repo'), [
+      'origin/main',
+      'origin/feature/x',
+    ]);
+  });
 }

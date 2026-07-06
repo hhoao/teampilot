@@ -287,6 +287,16 @@ class GitService {
         .toList();
   }
 
+  /// Remote-tracking branch names (e.g. `origin/main`); omits `*/HEAD`.
+  Future<List<String>> remoteBranches(String dir) async {
+    final out = await _run(dir, ['branch', '-r', '--format=%(refname:short)']);
+    return const LineSplitter()
+        .convert(out)
+        .map((l) => l.trim())
+        .where((l) => l.isNotEmpty && !l.endsWith('/HEAD'))
+        .toList();
+  }
+
   Future<void> checkout(String dir, String name) =>
       _run(dir, ['checkout', name]);
 
