@@ -427,6 +427,8 @@
   "workspaceSearchFilesSection": "文件",
   "workspaceSearchSearching": "正在搜索文件…",
   "workspaceSearchNoResults": "没有匹配结果",
+  "appDropdownSearchHint": "搜索…",
+  "appDropdownSearchNoResults": "未找到结果",
   "workspaceSearchFilesTruncated": "还有更多文件，请细化搜索",
   "homeWorkspaceOpenWorkspaceInNewTab": "在新标签页中打开",
   "homeWorkspaceOpenInNewTabWithOtherIdentity": "以其他身份在新标签页打开…",

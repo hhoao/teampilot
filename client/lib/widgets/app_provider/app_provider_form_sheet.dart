@@ -291,6 +291,7 @@ class _AppProviderFormPageState extends State<AppProviderFormPage> {
                     child: AppDropdownField<CliTool>(
                       items: CliTool.values,
                       initialItem: widget.cli,
+                      itemLabel: (cli) => l10n.appProviderToolLabel(cli),
                       itemBuilder: (context, cli) => cliDropdownRow(
                         context,
                         cli: cli,
@@ -324,6 +325,13 @@ class _AppProviderFormPageState extends State<AppProviderFormPage> {
                   key: ValueKey('app-provider-preset-${widget.cli.value}'),
                   items: presetItems,
                   initialItem: _effectiveItem(_presetId, presetItems),
+                  itemLabel: (id) {
+                    if (id == 'custom') return l10n.appProviderPresetCustom;
+                    final preset = formCap.presets
+                        .where((p) => p.id == id)
+                        .firstOrNull;
+                    return preset?.label ?? id;
+                  },
                   itemBuilder: (context, id) {
                     if (id == 'custom') {
                       return Text(l10n.appProviderPresetCustom);

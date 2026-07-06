@@ -7,6 +7,7 @@ import '../../models/app_provider_config.dart';
 import '../../theme/app_text_styles.dart';
 import '../../theme/workspace_surface_layers.dart';
 import '../../utils/app_keys.dart';
+import '../../services/cli/registry/cli_display_name.dart';
 import '../../services/cli/registry/cli_tool_registry_scope.dart';
 import '../dropdown/app_dropdown_field.dart';
 import '../menu/sidebar_action_menu.dart';
@@ -311,6 +312,10 @@ class _ProviderListControls extends StatelessWidget {
           child: AppDropdownField<CliTool>(
             items: CliTool.values,
             initialItem: selectedCli,
+            itemLabel: (cli) {
+              final def = CliToolRegistryScope.maybeOf(context)?.tryGet(cli);
+              return def == null ? cli.value : cliDisplayName(def, l10n);
+            },
             itemBuilder: cliDropdownItemBuilder(
               registry: CliToolRegistryScope.maybeOf(context),
               l10n: l10n,

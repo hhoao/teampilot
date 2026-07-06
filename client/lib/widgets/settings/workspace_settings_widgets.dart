@@ -380,9 +380,7 @@ class SettingsCompactDropdown<T extends Object> extends StatelessWidget {
         onChanged: onChanged,
         decoration: decoration,
         listItemKey: itemKeys == null ? null : (item) => itemKeys![item],
-        itemLabel: itemBuilder == null && listItemBuilder == null
-            ? labelOf
-            : null,
+        itemLabel: labelOf,
         itemBuilder: itemBuilder,
         listItemBuilder: listItemBuilder,
       ),

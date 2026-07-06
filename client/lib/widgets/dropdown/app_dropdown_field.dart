@@ -1,7 +1,10 @@
 ﻿import 'package:flutter/material.dart';
 import 'package:teampilot/theme/app_icon_sizes.dart';
 
+import '../../l10n/l10n_extensions.dart';
 import 'app_dropdown_decoration.dart';
+import 'app_dropdown_item_filter.dart';
+import 'app_dropdown_search_field.dart';
 import 'dropdown_menu_item_button.dart';
 import 'popover/app_popover.dart';
 
@@ -45,6 +48,14 @@ class AppDropdownField<T extends Object> extends StatefulWidget {
     this.listItemPadding,
     this.listItemKey,
     this.controller,
+    this.searchable = true,
+    this.searchHintText,
+    this.emptySearchText,
+    this.itemSearchText,
+    this.filterPredicate,
+    this.searchMinItems = 8,
+    this.clearSearchOnClose = true,
+    this.onSearchChanged,
   }) : assert(
          itemLabel != null || itemBuilder != null || listItemBuilder != null,
          'Provide itemLabel, itemBuilder, or listItemBuilder',
@@ -69,6 +80,30 @@ class AppDropdownField<T extends Object> extends StatefulWidget {
   final Key? Function(T item)? listItemKey;
   final AppPopoverController? controller;
 
+  /// When true, shows a shadcn Combobox-style search field above the option list.
+  final bool searchable;
+
+  /// Placeholder for the overlay search field (defaults to l10n).
+  final String? searchHintText;
+
+  /// Shown when the query filters out every option (defaults to l10n).
+  final String? emptySearchText;
+
+  /// Text used for search when [itemLabel] is absent or insufficient.
+  final String Function(T item)? itemSearchText;
+
+  /// Custom match predicate; receives the raw query string (not normalized).
+  final bool Function(T item, String query)? filterPredicate;
+
+  /// Only show search when [items].length is at least this value (0 = always).
+  final int searchMinItems;
+
+  /// Clears the overlay search field when the menu closes (shadcn default).
+  final bool clearSearchOnClose;
+
+  /// Notified when the overlay search query changes.
+  final ValueChanged<String>? onSearchChanged;
+
   @override
   State<AppDropdownField<T>> createState() => _AppDropdownFieldState<T>();
 }
@@ -80,10 +115,16 @@ class _AppDropdownFieldState<T extends Object>
   late final bool _ownsController;
   late T? _selected;
   bool _isHovering = false;
+  late final TextEditingController _searchController;
+  late final FocusNode _searchFocusNode;
+  String _searchQuery = '';
 
   /// Measured trigger width for the overlay panel. Updated after layout only —
   /// never read [RenderBox] during [build] or constrain the trigger from it.
   double? _overlayWidth;
+
+  bool get _showsSearch =>
+      widget.searchable && widget.items.length >= widget.searchMinItems;
 
   @override
   void initState() {
@@ -91,6 +132,8 @@ class _AppDropdownFieldState<T extends Object>
     _ownsController = widget.controller == null;
     _popoverController = widget.controller ?? AppPopoverController();
     _popoverController.addListener(_onPopoverChanged);
+    _searchController = TextEditingController();
+    _searchFocusNode = FocusNode();
     _selected = widget.initialItem;
   }
 
@@ -105,6 +148,8 @@ class _AppDropdownFieldState<T extends Object>
   @override
   void dispose() {
     _popoverController.removeListener(_onPopoverChanged);
+    _searchController.dispose();
+    _searchFocusNode.dispose();
     if (_ownsController) {
       _popoverController.dispose();
     }
@@ -117,8 +162,73 @@ class _AppDropdownFieldState<T extends Object>
       if (!mounted) return;
       if (_popoverController.isOpen) {
         _syncOverlayWidth();
+        if (_showsSearch) {
+          _searchFocusNode.requestFocus();
+        }
+      } else {
+        _onPopoverClosed();
       }
     });
+  }
+
+  void _onPopoverClosed() {
+    if (_searchFocusNode.hasFocus) {
+      _searchFocusNode.unfocus();
+    }
+    if (widget.clearSearchOnClose) {
+      _clearSearch();
+    }
+  }
+
+  void _clearSearch() {
+    final hadQuery =
+        _searchQuery.isNotEmpty || _searchController.text.isNotEmpty;
+    _searchController.clear();
+    if (_searchQuery.isNotEmpty) {
+      _searchQuery = '';
+      if (mounted) setState(() {});
+    }
+    if (hadQuery) {
+      widget.onSearchChanged?.call('');
+    }
+  }
+
+  void _onSearchChanged(String query) {
+    setState(() => _searchQuery = query);
+    widget.onSearchChanged?.call(query);
+  }
+
+  String _searchTextFor(T item) {
+    if (widget.itemSearchText != null) {
+      return widget.itemSearchText!(item);
+    }
+    if (widget.itemLabel != null) {
+      return widget.itemLabel!(item);
+    }
+    if (item is String) {
+      return item;
+    }
+    return item.toString();
+  }
+
+  bool _matchesSearch(T item) {
+    if (widget.filterPredicate != null) {
+      return widget.filterPredicate!(item, _searchQuery);
+    }
+    return appDropdownItemMatchesQuery(
+      query: _searchQuery,
+      searchText: _searchTextFor(item),
+    );
+  }
+
+  bool get _hasActiveSearchQuery =>
+      _showsSearch && _searchQuery.trim().isNotEmpty;
+
+  bool _anyItemMatchesSearch() {
+    for (final item in widget.items) {
+      if (_matchesSearch(item)) return true;
+    }
+    return false;
   }
 
   void _syncOverlayWidth() {
@@ -246,45 +356,15 @@ class _AppDropdownFieldState<T extends Object>
         overlayAlignment: Alignment.bottomCenter,
         offset: Offset(0, 4),
       ),
-      popover: (_) {
+      popover: (popoverContext) {
         return ConstrainedBox(
           constraints: BoxConstraints(maxHeight: maxHeight),
           child: FocusScope(
-            autofocus: true,
-            child: ListView.separated(
-              shrinkWrap: true,
-              physics: const ClampingScrollPhysics(),
-              padding: EdgeInsets.zero,
-              itemCount: widget.items.length,
-              separatorBuilder: (_, _) =>
-                  const SizedBox(height: kAppDropdownListItemGap),
-              itemBuilder: (context, index) {
-                final item = widget.items[index];
-                final isSelected = _selected == item;
-                return SizedBox(
-                  width: double.infinity,
-                  child: DropdownMenuItemButton(
-                    padding: itemPadding,
-                    borderRadius: deco.listItemBorderRadius,
-                    highlightColor: deco.listItemHighlightColor,
-                    selectedColor: deco.listItemSelectedColor,
-                    isSelected: isSelected,
-                    enabled: widget.enabled,
-                    onTap: () {
-                      setState(() => _selected = item);
-                      widget.onChanged(item);
-                      _popoverController.hide();
-                    },
-                    child: _buildItemChild(
-                      context,
-                      item,
-                      maxLines: widget.listItemMaxLines,
-                      inList: true,
-                      style: deco.listItemStyle,
-                    ),
-                  ),
-                );
-              },
+            autofocus: !_showsSearch,
+            child: _buildPopoverBody(
+              popoverContext,
+              deco: deco,
+              itemPadding: itemPadding,
             ),
           ),
         );
@@ -321,6 +401,136 @@ class _AppDropdownFieldState<T extends Object>
               },
             ),
           ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildPopoverBody(
+    BuildContext context, {
+    required AppDropdownDecoration deco,
+    required EdgeInsets itemPadding,
+  }) {
+    final list = _showsSearch
+        ? _buildSearchableList(context, deco: deco, itemPadding: itemPadding)
+        : _buildPlainList(context, deco: deco, itemPadding: itemPadding);
+
+    if (!_showsSearch) {
+      return list;
+    }
+
+    return Column(
+      mainAxisSize: MainAxisSize.min,
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        AppDropdownSearchField(
+          controller: _searchController,
+          focusNode: _searchFocusNode,
+          hintText: widget.searchHintText ?? context.l10n.appDropdownSearchHint,
+          onChanged: _onSearchChanged,
+        ),
+        Divider(
+          height: 1,
+          thickness: 1,
+          color: Theme.of(
+            context,
+          ).colorScheme.outlineVariant.withValues(alpha: 0.5),
+        ),
+        const SizedBox(height: 4),
+        Flexible(child: list),
+      ],
+    );
+  }
+
+  Widget _buildPlainList(
+    BuildContext context, {
+    required AppDropdownDecoration deco,
+    required EdgeInsets itemPadding,
+  }) {
+    return ListView.separated(
+      shrinkWrap: true,
+      physics: const ClampingScrollPhysics(),
+      padding: EdgeInsets.zero,
+      itemCount: widget.items.length,
+      separatorBuilder: (_, _) =>
+          const SizedBox(height: kAppDropdownListItemGap),
+      itemBuilder: (context, index) {
+        return _buildListItem(
+          context,
+          item: widget.items[index],
+          deco: deco,
+          itemPadding: itemPadding,
+        );
+      },
+    );
+  }
+
+  /// Keeps every option in the tree via [Offstage] so the search field keeps
+  /// focus when matches reappear (shadcn `ShadSelect.withSearch` pattern).
+  Widget _buildSearchableList(
+    BuildContext context, {
+    required AppDropdownDecoration deco,
+    required EdgeInsets itemPadding,
+  }) {
+    final showEmptyState = _hasActiveSearchQuery && !_anyItemMatchesSearch();
+
+    return ListView(
+      shrinkWrap: true,
+      physics: const ClampingScrollPhysics(),
+      padding: EdgeInsets.zero,
+      children: [
+        if (showEmptyState)
+          Padding(
+            padding: itemPadding,
+            child: Text(
+              widget.emptySearchText ?? context.l10n.appDropdownSearchNoResults,
+              style: deco.hintStyle,
+            ),
+          ),
+        for (final item in widget.items)
+          Offstage(
+            offstage: _hasActiveSearchQuery && !_matchesSearch(item),
+            child: Padding(
+              padding: const EdgeInsets.only(bottom: kAppDropdownListItemGap),
+              child: _buildListItem(
+                context,
+                item: item,
+                deco: deco,
+                itemPadding: itemPadding,
+              ),
+            ),
+          ),
+      ],
+    );
+  }
+
+  Widget _buildListItem(
+    BuildContext context, {
+    required T item,
+    required AppDropdownDecoration deco,
+    required EdgeInsets itemPadding,
+  }) {
+    final isSelected = _selected == item;
+    return SizedBox(
+      width: double.infinity,
+      child: DropdownMenuItemButton(
+        padding: itemPadding,
+        borderRadius: deco.listItemBorderRadius,
+        highlightColor: deco.listItemHighlightColor,
+        selectedColor: deco.listItemSelectedColor,
+        isSelected: isSelected,
+        enabled: widget.enabled,
+        onTap: () {
+          setState(() => _selected = item);
+          widget.onChanged(item);
+          _popoverController.hide();
+        },
+        child: _buildItemChild(
+          context,
+          item,
+          maxLines: widget.listItemMaxLines,
+          inList: true,
+          style: deco.listItemStyle,
         ),
       ),
     );

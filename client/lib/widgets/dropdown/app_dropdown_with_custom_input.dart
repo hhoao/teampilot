@@ -15,6 +15,12 @@ class AppDropdownWithCustomInput extends StatefulWidget {
     required this.hintText,
     this.decoration,
     this.customInputTooltip,
+    this.searchable = true,
+    this.searchHintText,
+    this.emptySearchText,
+    this.searchMinItems = 8,
+    this.clearSearchOnClose = true,
+    this.onSearchChanged,
     super.key,
   });
 
@@ -24,6 +30,12 @@ class AppDropdownWithCustomInput extends StatefulWidget {
   final String hintText;
   final AppDropdownDecoration? decoration;
   final String? customInputTooltip;
+  final bool searchable;
+  final String? searchHintText;
+  final String? emptySearchText;
+  final int searchMinItems;
+  final bool clearSearchOnClose;
+  final ValueChanged<String>? onSearchChanged;
 
   @override
   State<AppDropdownWithCustomInput> createState() =>
@@ -184,6 +196,12 @@ class _AppDropdownWithCustomInputState
                 : widget.value.trim(),
             hintText: widget.hintText,
             decoration: deco,
+            searchable: widget.searchable,
+            searchHintText: widget.searchHintText,
+            emptySearchText: widget.emptySearchText,
+            searchMinItems: widget.searchMinItems,
+            clearSearchOnClose: widget.clearSearchOnClose,
+            onSearchChanged: widget.onSearchChanged,
             onChanged: (next) => widget.onChanged(next ?? ''),
             itemLabel: (item) => item,
           ),

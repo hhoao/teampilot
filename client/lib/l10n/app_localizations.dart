@@ -1982,6 +1982,18 @@ abstract class AppLocalizations {
   /// **'More files match — refine your search'**
   String get workspaceSearchFilesTruncated;
 
+  /// No description provided for @appDropdownSearchHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Search…'**
+  String get appDropdownSearchHint;
+
+  /// No description provided for @appDropdownSearchNoResults.
+  ///
+  /// In en, this message translates to:
+  /// **'No results found.'**
+  String get appDropdownSearchNoResults;
+
   /// No description provided for @homeWorkspaceOpenWorkspaceInNewTab.
   ///
   /// In en, this message translates to:

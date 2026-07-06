@@ -1059,6 +1059,12 @@ class AppLocalizationsEn extends AppLocalizations {
       'More files match — refine your search';
 
   @override
+  String get appDropdownSearchHint => 'Search…';
+
+  @override
+  String get appDropdownSearchNoResults => 'No results found.';
+
+  @override
   String get homeWorkspaceOpenWorkspaceInNewTab => 'Open in new tab';
 
   @override

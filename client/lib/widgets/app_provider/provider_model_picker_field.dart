@@ -135,6 +135,8 @@ class _ProviderModelPickerFieldState extends State<ProviderModelPickerField> {
           items: candidates,
           hintText: hint,
           decoration: deco,
+          searchable: true,
+          searchMinItems: 8,
           onChanged: widget.onChanged,
         ),
       ProviderModelPickerMode.hidden => const SizedBox.shrink(),

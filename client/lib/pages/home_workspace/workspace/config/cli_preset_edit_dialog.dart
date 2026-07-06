@@ -157,6 +157,10 @@ class _CliPresetEditDialogState extends State<CliPresetEditDialog> {
                   _effortId = '';
                 });
               },
+              itemLabel: (value) {
+                final def = registry.tryGet(CliTool.decode(value));
+                return def == null ? value : cliDisplayName(def, l10n);
+              },
               itemBuilder: (context, value) => cliDropdownRow(
                 context,
                 cli: CliTool.decode(value),
@@ -183,6 +187,12 @@ class _CliPresetEditDialogState extends State<CliPresetEditDialog> {
                   _modelId = '';
                   _effortId = '';
                 });
+              },
+              itemLabel: (value) {
+                for (final p in providers) {
+                  if (p.id == value) return p.name;
+                }
+                return value;
               },
               itemBuilder: providerDropdownItemBuilder(
                 providers: providers,

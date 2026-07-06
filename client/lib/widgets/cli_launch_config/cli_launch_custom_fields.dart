@@ -138,6 +138,7 @@ class CliLaunchCustomFields extends StatelessWidget {
                   if (value == null || value.isEmpty) return;
                   onProviderChanged(value);
                 },
+                itemLabel: (value) => providerLabels[value] ?? value,
                 itemBuilder: providerDropdownItemBuilder(
                   providers: providers,
                   labelFor: (value) => providerLabels[value] ?? value,

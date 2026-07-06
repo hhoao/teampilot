@@ -1006,6 +1006,12 @@ class AppLocalizationsZh extends AppLocalizations {
   String get workspaceSearchFilesTruncated => '还有更多文件，请细化搜索';
 
   @override
+  String get appDropdownSearchHint => '搜索…';
+
+  @override
+  String get appDropdownSearchNoResults => '未找到结果';
+
+  @override
   String get homeWorkspaceOpenWorkspaceInNewTab => '在新标签页中打开';
 
   @override

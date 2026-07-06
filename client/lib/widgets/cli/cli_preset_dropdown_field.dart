@@ -60,6 +60,8 @@ class CliPresetDropdownField extends StatelessWidget {
           initialItem: initialId,
           decoration: AppDropdownDecorations.themed(context),
           onChanged: onChanged,
+          itemLabel: (presetId) =>
+              presetsState.presetById(presetId)?.name ?? presetId,
           itemBuilder: (context, presetId) {
             final preset = presetsState.presetById(presetId);
             if (preset == null) {

@@ -450,6 +450,8 @@
   "workspaceSearchSearching": "Searching files…",
   "workspaceSearchNoResults": "No matches",
   "workspaceSearchFilesTruncated": "More files match — refine your search",
+  "appDropdownSearchHint": "Search…",
+  "appDropdownSearchNoResults": "No results found.",
   "homeWorkspaceOpenWorkspaceInNewTab": "Open in new tab",
   "homeWorkspaceOpenInNewTabWithOtherIdentity": "Open in new tab with other identity…",
   "homeWorkspaceFavoriteWorkspace": "Favorite workspace",
