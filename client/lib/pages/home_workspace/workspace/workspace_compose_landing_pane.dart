@@ -60,23 +60,17 @@ class _WorkspaceComposeLandingPaneState extends State<WorkspaceComposeLandingPan
         }
       }
 
+      final launchProfiles = context.read<LaunchProfileCubit>();
       if (!draft.isPersonal) {
         final teamId = draft.teamId?.trim() ?? '';
         if (teamId.isNotEmpty) {
-          unawaited(
-            context.read<LaunchProfileCubit>().selectTeam(teamId, silent: true),
-          );
+          await launchProfiles.selectTeam(teamId, silent: true);
         }
       } else {
         final profileId = draft.personalProfileId.trim();
         final presetId = draft.presetId?.trim() ?? '';
         if (profileId.isNotEmpty && presetId.isNotEmpty) {
-          unawaited(
-            context.read<LaunchProfileCubit>().setPersonalPreset(
-              profileId,
-              presetId,
-            ),
-          );
+          await launchProfiles.setPersonalPreset(profileId, presetId);
         }
       }
 
@@ -85,10 +79,8 @@ class _WorkspaceComposeLandingPaneState extends State<WorkspaceComposeLandingPan
       await submitWorkspaceLandingMessage(
         context,
         workspace,
-        isPersonal: draft.isPersonal,
+        launch: draft,
         message: message,
-        sessionTeamId: draft.isPersonal ? '' : (draft.teamId ?? ''),
-        personalIdentityId: draft.personalProfileId,
         workingDirectory: workingDirectory,
       );
     } finally {

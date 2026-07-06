@@ -218,7 +218,17 @@ CliTool stagedMemberLaunchCli(TeamProfile team, TeamMemberConfig stagedMember) {
       : team.cli;
 }
 
+CliPreset? presetById(String id, List<CliPreset> presets) {
+  return _findPreset(id.trim(), presets);
+}
+
+/// CLI for a pinned global preset id (landing compose, automation, etc.).
+CliTool? cliForPresetId(String? presetId, List<CliPreset> globalPresets) {
+  return presetById(presetId ?? '', globalPresets)?.cli;
+}
+
 CliPreset? _findPreset(String id, List<CliPreset> presets) {
+  if (id.isEmpty) return null;
   for (final p in presets) {
     if (p.id == id) return p;
   }

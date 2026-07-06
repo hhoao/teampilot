@@ -8,6 +8,7 @@ import '../../models/workspace.dart';
 import '../../models/workspace_launch_context.dart';
 import '../../models/workspace_folder.dart';
 import '../../models/app_session.dart';
+import '../../models/cli_preset.dart';
 import '../../models/member_instance.dart';
 import '../../models/personal_profile.dart';
 import '../../models/session_member_binding.dart';
@@ -414,6 +415,10 @@ class SessionLaunchService implements MemberConnector {
           )
           ..persistedSession = session
           ..selectedMemberId = placeholderMemberId;
+    final pinnedPresetId = _personalPresetIdOverride(request);
+    if (pinnedPresetId.isNotEmpty) {
+      tab.personalPresetId = pinnedPresetId;
+    }
     tab.bumpLaunchGeneration();
     final generation = tab.launchGeneration;
 
@@ -790,10 +795,16 @@ class SessionLaunchService implements MemberConnector {
         workspace: resolvedWorkspace,
         presetIdOverride: _personalPresetIdOverride(request),
       );
+      final presetOverride = _personalPresetIdOverride(request);
+      final cli = presetOverride.isNotEmpty
+          ? (personalCtx.personalPreset?.cli ?? CliTool.claude)
+          : (session.cli ??
+                personalCtx.personalPreset?.cli ??
+                CliTool.claude);
       return (
         team: null,
         member: personalCtx.personalMember,
-        cli: session.cli ?? personalCtx.personalPreset?.cli ?? CliTool.claude,
+        cli: cli,
         personalIdentity: personalCtx.personalIdentity,
       );
     }
@@ -1530,8 +1541,18 @@ class SessionLaunchService implements MemberConnector {
       launchCtx,
       memberId: isPersonal ? null : (rosterMemberId ?? launchMember?.id),
     );
+    CliPreset? personalLaunchPreset;
+    if (isPersonal) {
+      final pinnedPresetId = tab.personalPresetId?.trim() ?? '';
+      personalLaunchPreset = pinnedPresetId.isNotEmpty
+          ? await _h.lifecycle.resolvePresetById(pinnedPresetId)
+          : await _h.lifecycle.resolveActivePresetForSession(
+              activeSession,
+              personal!,
+            );
+    }
     final launchCli = isPersonal
-        ? (activeSession.cli ?? CliTool.claude)
+        ? (personalLaunchPreset?.cli ?? activeSession.cli ?? CliTool.claude)
         : memberLaunchCli(
             team: team!,
             member: launchMember!,
@@ -1580,10 +1601,7 @@ class SessionLaunchService implements MemberConnector {
           session: activeSession,
           workspace: workspace!,
           personal: personal!,
-          preset: await _h.lifecycle.resolveActivePresetForSession(
-            activeSession,
-            personal,
-          ),
+          preset: personalLaunchPreset,
           launchTarget: launchTarget,
         );
         shellLaunch = connectResult.shellLaunch;
@@ -1764,6 +1782,7 @@ class SessionLaunchService implements MemberConnector {
             tab.teamBus?.markMemberRunning(member.id);
             _h.busCoordinator.markMemberReady(tab.info.id, member.id);
           } else if (isPersonal) {
+            tab.personalPresetId = null;
             final personalMemberId = tab.selectedMemberId.trim();
             if (personalMemberId.isNotEmpty) {
               _h.busCoordinator.markMemberReady(tab.info.id, personalMemberId);

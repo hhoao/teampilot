@@ -216,4 +216,17 @@ void main() {
 
     expect(items, const [claudePreset]);
   });
+
+  test('cliForPresetId resolves CLI from global preset id', () {
+    expect(
+      cliForPresetId('preset-cursor', const [claudePreset, cursorPreset]),
+      CliTool.cursor,
+    );
+    expect(
+      cliForPresetId('preset-claude', const [claudePreset, cursorPreset]),
+      CliTool.claude,
+    );
+    expect(cliForPresetId('missing', const [claudePreset]), isNull);
+    expect(cliForPresetId('', const [claudePreset]), isNull);
+  });
 }

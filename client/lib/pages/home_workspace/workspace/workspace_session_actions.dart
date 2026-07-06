@@ -13,12 +13,14 @@ import '../../../cubits/cli_presets_cubit.dart';
 import '../../../cubits/launch_profile_cubit.dart';
 import '../../../cubits/worktree_cubit.dart';
 import '../../../l10n/l10n_extensions.dart';
+import '../../../models/landing_launch_context.dart';
 import '../../../models/workspace.dart';
 import '../../../models/app_session.dart';
 import '../../../models/personal_profile.dart';
 import '../../../models/team_config.dart';
 import '../../../models/workspace_topology.dart';
 import '../../../repositories/session_repository.dart';
+import '../../../services/cli/preset_resolver.dart';
 import '../../../services/launch/personal_launch_context_resolver.dart';
 import '../../../utils/landing_draft_resolver.dart';
 import '../../../utils/team_member_naming.dart';
@@ -253,13 +255,13 @@ Future<void> showWorkspaceComposeLandingWithWorktree(
 
 /// Creates a conversation from the compose landing, connects like automation
 /// dispatch, and delivers [message] to the member PTY.
+///
+/// [launch] is the sole source of launch intent (preset, team, identity, mode).
 Future<void> submitWorkspaceLandingMessage(
   BuildContext context,
   Workspace workspace, {
-  required bool isPersonal,
+  required LandingLaunchContext launch,
   required String message,
-  String sessionTeamId = '',
-  String personalIdentityId = '',
   String? workingDirectory,
 }) async {
   final trimmed = message.trim();
@@ -272,6 +274,10 @@ Future<void> submitWorkspaceLandingMessage(
     (w) => w.workspaceId == workspace.workspaceId,
     orElse: () => workspace,
   );
+  final isPersonal = launch.isPersonal;
+  final sessionTeamId = isPersonal ? '' : (launch.teamId?.trim() ?? '');
+  final personalIdentityId = launch.personalProfileId.trim();
+  final personalPresetId = launch.presetId?.trim() ?? '';
   final team = isPersonal ? null : _teamProfileById(context, sessionTeamId);
 
   if (!_canLaunchWorkspaceSession(
@@ -290,6 +296,7 @@ Future<void> submitWorkspaceLandingMessage(
     isPersonal: isPersonal,
     sessionTeamId: sessionTeamId,
     personalIdentityId: personalIdentityId,
+    personalPresetId: personalPresetId.isNotEmpty ? personalPresetId : null,
     workingDirectory: workingDirectory,
     fixedSessionId: plannedSessionId,
   );
@@ -329,6 +336,7 @@ Future<void> submitWorkspaceLandingMessage(
     isPersonal: isPersonal,
     team: team,
     personalIdentityId: personalIdentityId,
+    personalPresetId: personalPresetId.isNotEmpty ? personalPresetId : null,
   );
 
   final connected = await _ensureLandingSessionConnected(
@@ -395,6 +403,7 @@ Future<String> _resolveLandingMemberId({
   required bool isPersonal,
   required TeamProfile? team,
   required String personalIdentityId,
+  String? personalPresetId,
 }) async {
   if (isPersonal) {
     final resolver = PersonalLaunchContextResolver(chatCubit.lifecycle);
@@ -402,6 +411,7 @@ Future<String> _resolveLandingMemberId({
       session: session,
       workspace: workspace,
       personalIdentityIdOverride: personalIdentityId,
+      presetIdOverride: personalPresetId ?? '',
     );
     return ctx.personalMember.id;
   }
@@ -437,6 +447,7 @@ Future<SessionOpenStatus?> _requestCreateWorkspaceConversation(
   required bool isPersonal,
   String sessionTeamId = '',
   String personalIdentityId = '',
+  String? personalPresetId,
   CliTool? cli,
   String? workingDirectory,
   String? fixedSessionId,
@@ -456,7 +467,12 @@ Future<SessionOpenStatus?> _requestCreateWorkspaceConversation(
   }
 
   final effectiveCli = isPersonal
-      ? (cli ?? _activePresetCli(context, personalIdentityId) ?? CliTool.claude)
+      ? _resolvePersonalSessionCli(
+          context,
+          personalPresetId: personalPresetId,
+          personalIdentityId: personalIdentityId,
+          cliOverride: cli,
+        )
       : null;
 
   if (team != null) {
@@ -473,6 +489,7 @@ Future<SessionOpenStatus?> _requestCreateWorkspaceConversation(
         repo: repo,
         personalIdentityId: personalIdentityId,
         cli: effectiveCli,
+        personalPresetId: personalPresetId,
         workingDirectory: workingDirectory,
         emptyDisplayTitleFallback: l10n.defaultNewChatSessionTitle,
         fixedSessionId: fixedSessionId,
@@ -515,17 +532,30 @@ Future<void> createSessionInWorktree(
   workingDirectory: worktreePath,
 );
 
-/// CLI of the opened personal identity's active preset, or `null` when
-/// unavailable (e.g. no preset selected yet). Used to pin a new personal
-/// session's CLI. Falls back to the cubit's default personal when
-/// [personalIdentityId] is empty or unknown.
-CliTool? _activePresetCli(BuildContext context, String personalIdentityId) {
+/// Pins CLI for a new personal session.
+///
+/// [personalPresetId] wins when set (landing / automation). Otherwise falls
+/// back to the identity's saved active preset, then [cliOverride], then Claude.
+CliTool _resolvePersonalSessionCli(
+  BuildContext context, {
+  String? personalPresetId,
+  String personalIdentityId = '',
+  CliTool? cliOverride,
+}) {
+  final presets = context.read<CliPresetsCubit>().state.presets;
+  final pinned = cliForPresetId(personalPresetId, presets);
+  if (pinned != null) return pinned;
+  if (cliOverride != null) return cliOverride;
+
   final cubit = context.read<LaunchProfileCubit>();
   final byId = personalIdentityId.isEmpty
       ? null
       : cubit.state.byId(personalIdentityId);
   final personal = byId is PersonalProfile ? byId : cubit.activePersonal;
   final activePresetId = personal?.activePresetId;
-  if (activePresetId == null || activePresetId.isEmpty) return null;
-  return context.read<CliPresetsCubit>().state.presetById(activePresetId)?.cli;
+  if (activePresetId != null && activePresetId.isNotEmpty) {
+    final fromProfile = cliForPresetId(activePresetId, presets);
+    if (fromProfile != null) return fromProfile;
+  }
+  return CliTool.claude;
 }
