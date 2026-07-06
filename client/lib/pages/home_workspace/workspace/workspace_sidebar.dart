@@ -18,7 +18,6 @@ import '../../../services/storage/workspace_layout.dart';
 import '../../../services/workspace/workspace_tools_scope.dart';
 import '../../../utils/session_project_grouping.dart';
 import '../../../utils/session_worktree_grouping.dart';
-import '../../../utils/workspace_path_utils.dart';
 import '../../../widgets/app_toast/app_toast.dart';
 import '../../../theme/app_toast_theme.dart';
 import 'worktree_create_dialog.dart';
@@ -289,7 +288,6 @@ class _WorkspaceSidebarState extends State<WorkspaceSidebar> {
     bool emptyWhenNoSessions = false,
   }) {
     final l10n = context.l10n;
-    final cubit = context.read<WorktreeCubit>();
     final hasAnySession = groups.any((g) => g.sessions.isNotEmpty);
     if (emptyWhenNoSessions && !hasAnySession) {
       return _EmptyConversations(label: l10n.homeWorkspaceNoConversations);
@@ -311,24 +309,9 @@ class _WorkspaceSidebarState extends State<WorkspaceSidebar> {
           collapsed: wtView.collapsed.contains(
             worktreeGroupCollapseKey(group),
           ),
-          isCurrent: _isCurrentSidebarGroup(group, wtView, cubit),
         );
       },
     );
-  }
-
-  bool _isCurrentSidebarGroup(
-    WorktreeGroup group,
-    WorktreeSidebarView wtView,
-    WorktreeCubit cubit,
-  ) {
-    if (group.isProjectGroup) {
-      final projectPath = group.projectFolderPath?.trim() ?? '';
-      return projectPath.isNotEmpty &&
-          workspacePathsEqual(projectPath, cubit.state.repoPath);
-    }
-    return group.worktree != null &&
-        workspacePathsEqual(group.worktree!.path, wtView.currentWorktreePath);
   }
 
   Widget _buildMultiProjectWorktreeGroupedList(

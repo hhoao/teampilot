@@ -13,6 +13,7 @@ import '../models/automation_list_scope.dart';
 import '../models/automation_tab_scope.dart';
 import '../pages/automations/automation_editor_dialog.dart';
 import '../pages/automations/automations_dialog.dart';
+import '../pages/home_workspace/workspace/workspace_sidebar_row_metrics.dart';
 import '../repositories/session_repository.dart';
 import '../theme/app_icon_sizes.dart';
 import '../theme/app_text_styles.dart';
@@ -572,13 +573,19 @@ class _SidebarTile extends StatelessWidget {
 
   Color _materialFillColor(BuildContext context) {
     final cs = Theme.of(context).colorScheme;
-    final hoverTint = cs.onSurface.withValues(alpha: 0.10);
     if (selected) {
       final base = _selectedFillColor(cs);
-      return rowHovered ? Color.alphaBlend(hoverTint, base) : base;
+      return rowHovered
+          ? Color.alphaBlend(
+              cs.onSurface.withValues(
+                alpha: kWorkspaceSidebarRowHoverTintAlpha,
+              ),
+              base,
+            )
+          : base;
     }
     if (rowHovered) {
-      return Color.alphaBlend(hoverTint, cs.surfaceContainer);
+      return workspaceSidebarRowHoverFill(cs);
     }
     return Colors.transparent;
   }

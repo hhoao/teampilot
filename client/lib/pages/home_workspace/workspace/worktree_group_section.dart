@@ -25,6 +25,7 @@ import '../../../widgets/menu/sidebar_action_menu.dart';
 import '../../../widgets/sidebar_session_tile.dart';
 import 'worktree_delete_dialog.dart';
 import 'workspace_session_actions.dart';
+import 'workspace_sidebar_row_metrics.dart';
 
 /// Collapse-set key for a group: worktree path, project folder path, or orphan.
 String worktreeGroupCollapseKey(WorktreeGroup group) {
@@ -43,19 +44,14 @@ bool worktreeManagementEnabled(RuntimeContext workContext) =>
     workContext.mode == StorageBackendMode.wsl ||
     workContext.mode == StorageBackendMode.ssh;
 
-/// Shared left inset so group titles line up with [SidebarSessionTile] text.
-const double kWorkspaceSidebarGroupTextInset = 8 + 24 + 8;
-
-/// One collapsible worktree group in [WorkspaceSidebar]: a branch header (with
-/// management menu) plus its session tiles. Selecting the header makes the
-/// worktree the workspace's current one; the caret toggles collapse.
+/// One collapsible worktree group in [WorkspaceSidebar]: header toggles collapse;
+/// right-click opens management actions.
 class WorktreeGroupSection extends StatelessWidget {
   const WorktreeGroupSection({
     required this.group,
     required this.workspace,
     required this.tabScopeId,
     required this.collapsed,
-    required this.isCurrent,
     this.highlightSessionId,
     super.key,
   });
@@ -64,7 +60,6 @@ class WorktreeGroupSection extends StatelessWidget {
   final Workspace workspace;
   final String tabScopeId;
   final bool collapsed;
-  final bool isCurrent;
   final String? highlightSessionId;
 
   GitWorktreeService? _worktreeService(BuildContext context) {
@@ -83,29 +78,6 @@ class WorktreeGroupSection extends StatelessWidget {
       tabScopeId: tabScopeId,
       worktreePath: worktreePath,
     );
-  }
-
-  Future<void> _selectWorktree(BuildContext context, String worktreePath) async {
-    final cubit = context.read<WorktreeCubit>();
-    final projectPath = group.projectFolderPath?.trim() ?? '';
-    if (projectPath.isNotEmpty &&
-        !workspacePathsEqual(cubit.state.repoPath, projectPath)) {
-      await cubit.selectProject(projectPath, preferWorktreePath: worktreePath);
-      return;
-    }
-    cubit.setCurrentWorktree(worktreePath);
-  }
-
-  String _repoPathForGroup(WorktreeCubit cubit) {
-    final projectPath = group.projectFolderPath?.trim() ?? '';
-    if (projectPath.isNotEmpty) return projectPath;
-    return cubit.state.repoPath;
-  }
-
-  Future<void> _selectProjectFolder(BuildContext context) async {
-    final projectPath = group.projectFolderPath?.trim() ?? '';
-    if (projectPath.isEmpty) return;
-    await context.read<WorktreeCubit>().selectProject(projectPath);
   }
 
   @override
@@ -136,14 +108,8 @@ class WorktreeGroupSection extends StatelessWidget {
       children: [
         _WorktreeGroupHeader(
           collapsed: collapsed,
-          isCurrent: isCurrent,
           label: label,
           launchPath: launchPath,
-          onSelect: isProject
-              ? () => unawaited(_selectProjectFolder(context))
-              : wt != null
-              ? () => unawaited(_selectWorktree(context, wt.path))
-              : null,
           onToggleCollapse: () => context.read<WorktreeCubit>().toggleCollapsed(
             worktreeGroupCollapseKey(group),
           ),
@@ -224,26 +190,28 @@ class WorktreeGroupSection extends StatelessWidget {
       );
     }
   }
+
+  String _repoPathForGroup(WorktreeCubit cubit) {
+    final projectPath = group.projectFolderPath?.trim() ?? '';
+    if (projectPath.isNotEmpty) return projectPath;
+    return cubit.state.repoPath;
+  }
 }
 
 class _WorktreeGroupHeader extends StatefulWidget {
   const _WorktreeGroupHeader({
     required this.collapsed,
-    required this.isCurrent,
     required this.label,
     required this.launchPath,
     required this.onToggleCollapse,
-    this.onSelect,
     this.onNewConversation,
     this.onCopyPath,
     this.onDelete,
   });
 
   final bool collapsed;
-  final bool isCurrent;
   final String label;
   final String? launchPath;
-  final VoidCallback? onSelect;
   final VoidCallback onToggleCollapse;
   final VoidCallback? onNewConversation;
   final VoidCallback? onCopyPath;
@@ -307,59 +275,64 @@ class _WorktreeGroupHeaderState extends State<_WorktreeGroupHeader> {
   @override
   Widget build(BuildContext context) {
     final cs = Theme.of(context).colorScheme;
+    final rowFill = _rowHovered || _menuOpen
+        ? workspaceSidebarRowHoverFill(cs)
+        : Colors.transparent;
 
-    return MouseRegion(
-      onEnter: (_) => setState(() => _rowHovered = true),
-      onExit: (_) => setState(() => _rowHovered = false),
-      child: Material(
-        color: widget.isCurrent
-            ? cs.primary.withValues(alpha: 0.10)
-            : Colors.transparent,
-        borderRadius: BorderRadius.circular(8),
-        child: GestureDetector(
-          onSecondaryTapDown: (details) => unawaited(_showContextMenu(details)),
-          child: InkWell(
-            borderRadius: BorderRadius.circular(8),
-            onTap: widget.onSelect,
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 2),
+      child: MouseRegion(
+        onEnter: (_) => setState(() => _rowHovered = true),
+        onExit: (_) => setState(() => _rowHovered = false),
+        child: Material(
+          color: rowFill,
+          borderRadius: BorderRadius.circular(8),
+          child: GestureDetector(
+            onSecondaryTapDown: (details) => unawaited(_showContextMenu(details)),
+            onTap: widget.onToggleCollapse,
+            behavior: HitTestBehavior.opaque,
             child: Padding(
-              padding: const EdgeInsets.fromLTRB(8, 6, 8, 6),
+              padding: kWorkspaceSidebarRowPadding,
               child: Row(
-                children: [
-                  _GroupCollapseLeading(
-                    collapsed: widget.collapsed,
-                    showChevron: _showRowActions,
-                    onToggle: widget.onToggleCollapse,
-                  ),
-                  const SizedBox(width: 8),
-                  Expanded(
-                    child: Text(
-                      widget.label,
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
+                  crossAxisAlignment: CrossAxisAlignment.center,
+                  children: [
+                    _GroupCollapseLeading(
+                      collapsed: widget.collapsed,
+                      showChevron: _showRowActions,
                     ),
-                  ),
-                  if (widget.onNewConversation != null)
-                    AnimatedOpacity(
-                      opacity: _showRowActions ? 1 : 0,
-                      duration: const Duration(milliseconds: 120),
-                      curve: Curves.easeOut,
-                      child: IgnorePointer(
-                        ignoring: !_showRowActions,
-                        child: AppIconButton(
-                          icon: Icons.add_rounded,
-                          compact: true,
-                          size: AppIconButton.kCompactSize,
-                          tooltip: null,
-                          onTap: widget.onNewConversation,
+                    const SizedBox(width: 8),
+                    Expanded(
+                      child: Align(
+                        alignment: Alignment.centerLeft,
+                        child: ConstrainedBox(
+                          constraints: const BoxConstraints(
+                            minHeight: kWorkspaceSidebarRowMinHeight,
+                          ),
+                          child: Align(
+                            alignment: Alignment.centerLeft,
+                            child: Text(
+                              widget.label,
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                            ),
+                          ),
                         ),
                       ),
                     ),
-                ],
+                    if (widget.onNewConversation != null && _showRowActions)
+                      AppIconButton(
+                        icon: Icons.add_rounded,
+                        compact: true,
+                        size: AppIconButton.kCompactSize,
+                        tooltip: null,
+                        onTap: widget.onNewConversation,
+                      ),
+                  ],
+                ),
               ),
             ),
           ),
         ),
-      ),
     );
   }
 }
@@ -369,12 +342,10 @@ class _GroupCollapseLeading extends StatelessWidget {
   const _GroupCollapseLeading({
     required this.collapsed,
     required this.showChevron,
-    required this.onToggle,
   });
 
   final bool collapsed;
   final bool showChevron;
-  final VoidCallback onToggle;
 
   @override
   Widget build(BuildContext context) {
@@ -386,19 +357,14 @@ class _GroupCollapseLeading extends StatelessWidget {
               : Icons.expand_more_rounded
         : Icons.folder_outlined;
 
-    return GestureDetector(
-      onTap: onToggle,
-      behavior: HitTestBehavior.opaque,
-      child: MouseRegion(
-        cursor: SystemMouseCursors.click,
-        child: SizedBox(
-          width: 24,
-          height: 24,
-          child: Icon(
-            icon,
-            size: icons.md,
-            color: cs.onSurfaceVariant,
-          ),
+    return SizedBox(
+      width: 24,
+      height: 24,
+      child: Center(
+        child: Icon(
+          icon,
+          size: icons.md,
+          color: cs.onSurfaceVariant,
         ),
       ),
     );
@@ -478,16 +444,6 @@ class _GroupShowMoreRow extends StatefulWidget {
 class _GroupShowMoreRowState extends State<_GroupShowMoreRow> {
   var _hovered = false;
 
-  static const _moreHoverTintAlpha = 0.07;
-
-  Color _fillColor(ColorScheme cs) {
-    if (!_hovered) return Colors.transparent;
-    return Color.alphaBlend(
-      cs.onSurface.withValues(alpha: _moreHoverTintAlpha),
-      cs.surfaceContainer,
-    );
-  }
-
   @override
   Widget build(BuildContext context) {
     final cs = Theme.of(context).colorScheme;
@@ -498,7 +454,7 @@ class _GroupShowMoreRowState extends State<_GroupShowMoreRow> {
         onEnter: (_) => setState(() => _hovered = true),
         onExit: (_) => setState(() => _hovered = false),
         child: Material(
-          color: _fillColor(cs),
+          color: _hovered ? workspaceSidebarRowHoverFill(cs) : Colors.transparent,
           borderRadius: BorderRadius.circular(8),
           child: GestureDetector(
             behavior: HitTestBehavior.opaque,
@@ -506,20 +462,25 @@ class _GroupShowMoreRowState extends State<_GroupShowMoreRow> {
             child: Padding(
               padding: EdgeInsets.fromLTRB(
                 kWorkspaceSidebarGroupTextInset,
-                6,
-                8,
-                6,
+                kWorkspaceSidebarRowPadding.top,
+                kWorkspaceSidebarRowPadding.right,
+                kWorkspaceSidebarRowPadding.bottom,
               ),
               child: Align(
                 alignment: Alignment.centerLeft,
                 child: ConstrainedBox(
-                  constraints: const BoxConstraints(minHeight: 32),
-                  child: Text(
-                    widget.label,
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                    style: AppTextStyles.of(context).body.copyWith(
-                      color: cs.onSurface.withValues(alpha: 0.55),
+                  constraints: const BoxConstraints(
+                    minHeight: kWorkspaceSidebarRowMinHeight,
+                  ),
+                  child: Align(
+                    alignment: Alignment.centerLeft,
+                    child: Text(
+                      widget.label,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: AppTextStyles.of(context).body.copyWith(
+                        color: cs.onSurface.withValues(alpha: 0.55),
+                      ),
                     ),
                   ),
                 ),
