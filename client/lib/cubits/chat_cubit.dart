@@ -147,6 +147,27 @@ class ChatCubit extends Cubit<ChatState>
     globalPresets: () => _lifecycle.globalPresets,
     onAfterTurnLatched: _recomputeWorkingSessions,
     artifactServiceFactory: _buildArtifactService,
+    cliRegistry: _lifecycle.cliToolRegistry,
+    resolveLifecyclePaths: (session) async {
+      final workCtx = await _lifecycle.launchWorkContext(
+        WorkspaceLaunchContext(
+          session: session,
+          workspace:
+              state.workspaces
+                  .where((w) => w.workspaceId == session.workspaceId)
+                  .firstOrNull ??
+              Workspace(
+                workspaceId: session.workspaceId,
+                folders: session.folders,
+                createdAt: 0,
+              ),
+        ),
+      );
+      return _lifecycle.configProfileServiceFor(
+        workCtx,
+        launchWorkspaceId: session.workspaceId,
+      );
+    },
   );
 
   /// P3d: a per-session cross-machine artifact transfer service. The registry is

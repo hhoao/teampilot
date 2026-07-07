@@ -39,6 +39,11 @@ import '../../services/team_bus/remote/ssh_remote_bus_mount_factory.dart';
 import '../../services/cli/registry/cli_tool_registry.dart';
 import '../../services/cli/registry/capabilities/bus_transport_capability.dart';
 import '../../services/cli/registry/capabilities/cli_session_lifecycle_capability.dart';
+import '../../services/cli/session_lifecycle/cursor/cursor_index_completion_probe.dart';
+import '../../services/cli/session_lifecycle/cursor/cursor_session_lifecycle_capability.dart';
+import '../../services/cli/session_lifecycle/cursor/cursor_session_lifecycle_paths.dart';
+import '../../services/cli/session_lifecycle/cli_session_manifest.dart';
+import '../../services/cli/session_lifecycle/cli_session_manifest_store.dart';
 import '../../services/terminal/session_member_cli_resolver.dart';
 import '../../services/terminal/terminal_session.dart';
 import '../../utils/logger.dart';
@@ -146,6 +151,9 @@ class SessionLaunchService implements MemberConnector {
   static const _uuid = Uuid();
   final _teamConfigValidator = TeamConfigLaunchValidator();
   final _lastTouchTimes = <String, int>{};
+  final _indexPollTimers = <String, Timer>{};
+  static const _indexPollInterval = Duration(seconds: 2);
+  static const _indexPollTimeout = Duration(minutes: 10);
 
   ChatState get _state => _h.state;
   ChatTabStore get _tabStore => _h.tabStore;
@@ -1272,6 +1280,117 @@ class SessionLaunchService implements MemberConnector {
     return true;
   }
 
+  void _stopIndexPolling(String sessionId) {
+    _indexPollTimers.remove(sessionId)?.cancel();
+  }
+
+  Future<void> _maybeStartIndexPolling({
+    required ChatTab tab,
+    required AppSession session,
+    required TeamProfile team,
+    required TeamMemberConfig member,
+  }) async {
+    if (team.teamMode != TeamMode.mixed) return;
+    final cli = memberLaunchCli(
+      team: team,
+      member: member,
+      globalPresets: _h.lifecycle.globalPresets,
+    );
+    if (cli != CliTool.cursor) return;
+
+    final lifecycle = _h.cliRegistry.lifecycleFor(cli);
+    if (lifecycle is! CursorSessionLifecycleCapability) return;
+    final cursorLifecycle = lifecycle;
+
+    final launchCtx = _launchContextFor(session);
+    final paths = await _h.lifecycle.configProfileServiceFor(
+      await _h.lifecycle.launchWorkContext(launchCtx, memberId: member.id),
+      launchWorkspaceId: session.workspaceId,
+    );
+    final manifest = await CliSessionManifestStore(
+      fs: paths.fs,
+      layout: paths.layout,
+    ).read(
+      workspaceId: session.workspaceId,
+      sessionId: session.sessionId,
+      tool: CursorSessionLifecyclePaths.tool,
+    );
+    if (manifest == null || manifest.phase != CliSessionPhase.indexing) return;
+    if (manifest.index.leaderMemberId != member.id) return;
+
+    final sessionId = session.sessionId;
+    _stopIndexPolling(sessionId);
+
+    final memberWork = _h.lifecycle.memberWorkDirs(launchCtx, member.id);
+    final lifecyclePaths = CursorSessionLifecyclePaths(
+      fs: paths.fs,
+      layout: paths.layout,
+      workspaceId: session.workspaceId,
+      sessionId: session.sessionId,
+      workingDirectory: memberWork.workingDirectory,
+    );
+    final workerLog = lifecyclePaths.workerLogPath(member.id);
+    final startedAt = DateTime.now();
+
+    _indexPollTimers[sessionId] = Timer.periodic(_indexPollInterval, (
+      timer,
+    ) async {
+      if (_h.isClosed || _tabStore.indexOfSession(tab.info.id) == -1) {
+        timer.cancel();
+        _indexPollTimers.remove(sessionId);
+        return;
+      }
+      if (DateTime.now().difference(startedAt) > _indexPollTimeout) {
+        timer.cancel();
+        _indexPollTimers.remove(sessionId);
+        await cursorLifecycle.markIndexFailed(
+          workspaceId: session.workspaceId,
+          sessionId: sessionId,
+          error: 'index_timeout',
+          paths: paths,
+        );
+        _retryLifecycleBlockedMembers(tab: tab, team: team);
+        return;
+      }
+
+      final tail = await paths.fs.readString(workerLog) ?? '';
+      switch (CursorIndexCompletionProbe.scan(tail)) {
+        case IndexProbeResult.done:
+          timer.cancel();
+          _indexPollTimers.remove(sessionId);
+          await cursorLifecycle.markIndexDone(
+            workspaceId: session.workspaceId,
+            sessionId: sessionId,
+            paths: paths,
+          );
+          _retryLifecycleBlockedMembers(tab: tab, team: team);
+        case IndexProbeResult.failed:
+          timer.cancel();
+          _indexPollTimers.remove(sessionId);
+          await cursorLifecycle.markIndexFailed(
+            workspaceId: session.workspaceId,
+            sessionId: sessionId,
+            paths: paths,
+          );
+          _retryLifecycleBlockedMembers(tab: tab, team: team);
+        case IndexProbeResult.pending:
+          break;
+      }
+    });
+  }
+
+  void _retryLifecycleBlockedMembers({
+    required ChatTab tab,
+    required TeamProfile team,
+  }) {
+    for (final member in team.members) {
+      if (!member.isValid) continue;
+      final shell = tab.memberShells[member.id];
+      if (shell != null && (shell.isRunning || shell.isConnecting)) continue;
+      _scheduleMemberConnect(team, member, tab);
+    }
+  }
+
   /// Ensures [tab] holds a [TerminalSession] whose transport matches [session]'s
   /// launch target (local PTY vs SSH).
   TerminalSession _shellForLaunch({
@@ -1872,6 +1991,14 @@ class SessionLaunchService implements MemberConnector {
           if (team != null && member != null) {
             tab.teamBus?.markMemberRunning(member.id);
             _h.memberMaterializer.markMemberReady(tab.info.id, member.id);
+            unawaited(
+              _maybeStartIndexPolling(
+                tab: tab,
+                session: activeSession,
+                team: team,
+                member: member,
+              ),
+            );
           } else if (isPersonal) {
             tab.personalPresetId = null;
             final personalMemberId = tab.selectedMemberId.trim();

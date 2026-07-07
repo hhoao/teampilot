@@ -9,6 +9,7 @@ import '../../../provider/cursor/cursor_provider_credentials_service.dart';
 import '../../../provider/cursor/cursor_provider_settings_resolver.dart';
 import '../../../storage/runtime_layout.dart';
 import '../../../team_bus/member_bus_idle_endpoint.dart';
+import '../../registry/config_profile/config_profile_context.dart';
 import '../../registry/capabilities/cli_session_lifecycle_capability.dart';
 import '../cli_session_manifest.dart';
 import '../cli_session_manifest_store.dart';
@@ -27,20 +28,33 @@ typedef CursorSessionProviderResolver =
 /// Cursor mixed-session lifecycle: warm tier, manifest phases, connect gate.
 final class CursorSessionLifecycleCapability
     implements CliSessionLifecycleCapability {
-  CursorSessionLifecycleCapability({
-    required CliSessionManifestStore manifestStore,
+  const CursorSessionLifecycleCapability({
+    CliSessionManifestStore? manifestStore,
     CursorSessionAuthSync? authSync,
     CursorSessionProviderResolver? resolveProviderId,
     int Function()? clock,
-  }) : _manifestStore = manifestStore,
+  }) : _manifestStoreOverride = manifestStore,
        _authSync = authSync,
        _resolveProviderId = resolveProviderId,
        _clock = clock;
 
-  final CliSessionManifestStore _manifestStore;
+  final CliSessionManifestStore? _manifestStoreOverride;
+  static final Map<String, CliSessionManifestStore> _storesByRoot = {};
   final CursorSessionAuthSync? _authSync;
   final CursorSessionProviderResolver? _resolveProviderId;
   final int Function()? _clock;
+
+  CliSessionManifestStore _store(ConfigProfileDelegate paths) {
+    final override = _manifestStoreOverride;
+    if (override != null) return override;
+    return _storesByRoot.putIfAbsent(
+      paths.basePath,
+      () => CliSessionManifestStore(fs: paths.fs, layout: paths.layout),
+    );
+  }
+
+  CliSessionManifestStore? _storeOrOverride(ConfigProfileDelegate? paths) =>
+      paths != null ? _store(paths) : _manifestStoreOverride;
 
   /// Stable overlay generation from bus idle endpoint binding (port/token).
   static int overlayGenerationForBus(MemberBusIdleEndpoint? busIdle) {
@@ -67,7 +81,8 @@ final class CursorSessionLifecycleCapability
       await paths.ensureMemberHomeLayout(memberId: memberId);
     }
 
-    final existing = await _manifestStore.read(
+    final store = _store(ctx.paths);
+    final existing = await store.read(
       workspaceId: ctx.workspaceId,
       sessionId: ctx.sessionId,
       tool: CursorSessionLifecyclePaths.tool,
@@ -140,7 +155,7 @@ final class CursorSessionLifecycleCapability
       members: members,
     );
 
-    await _manifestStore.write(
+    await store.write(
       workspaceId: ctx.workspaceId,
       sessionId: ctx.sessionId,
       tool: CursorSessionLifecyclePaths.tool,
@@ -157,7 +172,8 @@ final class CursorSessionLifecycleCapability
   }) async {
     final warnings = <String>[];
 
-    var manifest = await _manifestStore.read(
+    final store = _store(ctx.paths);
+    var manifest = await store.read(
       workspaceId: ctx.workspaceId,
       sessionId: ctx.sessionId,
       tool: CursorSessionLifecyclePaths.tool,
@@ -172,6 +188,33 @@ final class CursorSessionLifecycleCapability
 
     if (manifest.phase == CliSessionPhase.ready ||
         manifest.phase == CliSessionPhase.degraded) {
+      final expectedOverlay = overlayGenerationForBus(ctx.busIdle);
+      final memberState = manifest.members[ctx.memberId];
+      if (memberState != null &&
+          memberState.overlayGeneration == expectedOverlay) {
+        return CliSessionInitResult(phase: manifest.phase, warnings: warnings);
+      }
+      final paths = _pathsForInit(ctx);
+      final memberHome = paths.memberHomeRoot(ctx.memberId);
+      final homeLayout = CursorHomeLayout(
+        pathContext: ctx.paths.fs.pathContext,
+      );
+      manifest = await _runOverlayPhase(
+        ctx,
+        paths,
+        homeLayout,
+        manifest,
+        memberHome,
+      );
+      if (manifest.phase != CliSessionPhase.degraded) {
+        manifest = await _writeManifest(
+          ctx.paths,
+          manifest.copyWith(
+            phase: CliSessionPhase.ready,
+            phaseUpdatedAtMs: _now(),
+          ),
+        );
+      }
       return CliSessionInitResult(phase: manifest.phase, warnings: warnings);
     }
 
@@ -185,6 +228,7 @@ final class CursorSessionLifecycleCapability
 
     if (!_phaseAtLeast(manifest.phase, CliSessionPhase.resume)) {
       manifest = await _writeManifest(
+        ctx.paths,
         manifest.copyWith(
           phase: CliSessionPhase.resume,
           phaseUpdatedAtMs: _now(),
@@ -194,6 +238,7 @@ final class CursorSessionLifecycleCapability
 
     if (await _indexFastPathReady(ctx, paths, manifest)) {
       manifest = await _writeManifest(
+        ctx.paths,
         manifest.copyWith(
           phase: CliSessionPhase.ready,
           phaseUpdatedAtMs: _now(),
@@ -216,8 +261,12 @@ final class CursorSessionLifecycleCapability
   Future<void> markIndexDone({
     required String workspaceId,
     required String sessionId,
+    ConfigProfileDelegate? paths,
   }) async {
-    final manifest = await _manifestStore.read(
+    final store = _storeOrOverride(paths);
+    if (store == null) return;
+
+    final manifest = await store.read(
       workspaceId: workspaceId,
       sessionId: sessionId,
       tool: CursorSessionLifecyclePaths.tool,
@@ -226,6 +275,7 @@ final class CursorSessionLifecycleCapability
 
     final now = _now();
     await _writeManifest(
+      paths,
       manifest.copyWith(
         phase: CliSessionPhase.ready,
         phaseUpdatedAtMs: now,
@@ -244,8 +294,12 @@ final class CursorSessionLifecycleCapability
     required String workspaceId,
     required String sessionId,
     String? error,
+    ConfigProfileDelegate? paths,
   }) async {
-    final manifest = await _manifestStore.read(
+    final store = _storeOrOverride(paths);
+    if (store == null) return;
+
+    final manifest = await store.read(
       workspaceId: workspaceId,
       sessionId: sessionId,
       tool: CursorSessionLifecyclePaths.tool,
@@ -254,6 +308,7 @@ final class CursorSessionLifecycleCapability
 
     final now = _now();
     await _writeManifest(
+      paths,
       manifest.copyWith(
         phase: CliSessionPhase.degraded,
         phaseUpdatedAtMs: now,
@@ -267,12 +322,82 @@ final class CursorSessionLifecycleCapability
     );
   }
 
+  /// Bus gateway re-register changed port/token — step manifest back to overlay.
+  Future<void> onBusEndpointChanged({
+    required String workspaceId,
+    required String sessionId,
+    required ConfigProfileDelegate paths,
+    required MemberBusIdleEndpoint busIdle,
+  }) async {
+    final store = _store(paths);
+    final manifest = await store.read(
+      workspaceId: workspaceId,
+      sessionId: sessionId,
+      tool: CursorSessionLifecyclePaths.tool,
+    );
+    if (manifest == null) return;
+
+    final expected = overlayGenerationForBus(busIdle);
+    final stale = manifest.members.values.any(
+      (member) => member.overlayGeneration != expected,
+    );
+    if (!stale) return;
+
+    final phase = _phaseAtLeast(manifest.phase, CliSessionPhase.overlay)
+        ? CliSessionPhase.overlay
+        : manifest.phase;
+    await _writeManifest(
+      paths,
+      manifest.copyWith(phase: phase, phaseUpdatedAtMs: _now()),
+    );
+  }
+
   @override
-  Future<void> finalize(CliSessionFinalizeContext ctx) async {}
+  Future<void> finalize(CliSessionFinalizeContext ctx) async {
+    final memberId = ctx.memberId?.trim() ?? '';
+    if (memberId.isEmpty) return;
+
+    final store = _store(ctx.paths);
+    final manifest = await store.read(
+      workspaceId: ctx.workspaceId,
+      sessionId: ctx.sessionId,
+      tool: CursorSessionLifecyclePaths.tool,
+    );
+    if (manifest == null) return;
+
+    final paths = CursorSessionLifecyclePaths(
+      fs: ctx.paths.fs,
+      layout: ctx.paths.layout,
+      workspaceId: ctx.workspaceId,
+      sessionId: ctx.sessionId,
+      workingDirectory: ctx.workingDirectory,
+    );
+    final chatId = await _scanLatestChatId(
+      fs: ctx.paths.fs,
+      memberHome: paths.memberHomeRoot(memberId),
+    );
+    if (chatId == null) return;
+
+    final members = Map<String, CliSessionManifestMember>.from(manifest.members);
+    final existing = members[memberId];
+    if (existing == null) return;
+
+    members[memberId] = CliSessionManifestMember(
+      homeRoot: existing.homeRoot,
+      overlayGeneration: existing.overlayGeneration,
+      chatId: chatId,
+      resumeCapturedAtMs: _now(),
+    );
+    await _writeManifest(
+      ctx.paths,
+      manifest.copyWith(members: members),
+    );
+  }
 
   @override
   CliSessionGateDecision gateConnect(CliSessionGateContext ctx) {
-    final manifest = _manifestStore.peek(
+    final store = ctx.paths != null ? _store(ctx.paths!) : _manifestStoreOverride;
+    final manifest = store?.peek(
       workspaceId: ctx.workspaceId,
       sessionId: ctx.sessionId,
       tool: CursorSessionLifecyclePaths.tool,
@@ -338,6 +463,7 @@ final class CursorSessionLifecycleCapability
 
     await paths.linkOrCopyAuth(memberHome: memberHome);
     return _writeManifest(
+      ctx.paths,
       manifest.copyWith(phase: CliSessionPhase.auth, phaseUpdatedAtMs: _now()),
     );
   }
@@ -366,6 +492,7 @@ final class CursorSessionLifecycleCapability
     );
 
     return _writeManifest(
+      ctx.paths,
       manifest.copyWith(phase: CliSessionPhase.config, phaseUpdatedAtMs: _now()),
     );
   }
@@ -377,7 +504,11 @@ final class CursorSessionLifecycleCapability
     CliSessionManifest manifest,
     String memberHome,
   ) async {
-    if (_phaseAtLeast(manifest.phase, CliSessionPhase.overlay)) {
+    final expectedOverlay = overlayGenerationForBus(ctx.busIdle);
+    final memberState = manifest.members[ctx.memberId];
+    final overlayStale =
+        memberState != null && memberState.overlayGeneration != expectedOverlay;
+    if (_phaseAtLeast(manifest.phase, CliSessionPhase.overlay) && !overlayStale) {
       return manifest;
     }
 
@@ -415,6 +546,7 @@ final class CursorSessionLifecycleCapability
     }
 
     return _writeManifest(
+      ctx.paths,
       manifest.copyWith(
         phase: CliSessionPhase.overlay,
         phaseUpdatedAtMs: _now(),
@@ -437,6 +569,7 @@ final class CursorSessionLifecycleCapability
         manifest.index.leaderMemberId ?? _firstCursorMemberId(ctx) ?? ctx.memberId;
 
     return _writeManifest(
+      ctx.paths,
       manifest.copyWith(
         phase: CliSessionPhase.indexing,
         phaseUpdatedAtMs: now,
@@ -517,14 +650,64 @@ final class CursorSessionLifecycleCapability
     return null;
   }
 
-  Future<CliSessionManifest> _writeManifest(CliSessionManifest manifest) async {
-    await _manifestStore.write(
+  Future<CliSessionManifest> _writeManifest(
+    ConfigProfileDelegate? paths,
+    CliSessionManifest manifest,
+  ) async {
+    final store = _storeOrOverride(paths);
+    if (store == null) return manifest;
+    await store.write(
       workspaceId: manifest.workspaceId,
       sessionId: manifest.sessionId,
       tool: manifest.tool,
       manifest: manifest,
     );
     return manifest;
+  }
+
+  Future<String?> _scanLatestChatId({
+    required Filesystem fs,
+    required String memberHome,
+  }) async {
+    final path = fs.pathContext;
+    final chatsRoot = path.join(
+      CursorHomeLayout(pathContext: path).cursorDir(memberHome),
+      'chats',
+    );
+    String? best;
+    var bestUpdated = -1;
+    try {
+      for (final wsHash in await fs.listDir(chatsRoot)) {
+        if (!wsHash.isDirectory) continue;
+        final wsDir = path.join(chatsRoot, wsHash.name);
+        for (final chat in await fs.listDir(wsDir)) {
+          if (!chat.isDirectory) continue;
+          final metaRaw = await fs.readString(
+            path.join(wsDir, chat.name, 'meta.json'),
+          );
+          if (metaRaw == null || metaRaw.isEmpty) continue;
+          final meta = _decodeJson(metaRaw);
+          if (meta == null || meta['hasConversation'] != true) continue;
+          final updated = (meta['updatedAtMs'] as num?)?.toInt() ?? 0;
+          if (updated > bestUpdated) {
+            bestUpdated = updated;
+            best = chat.name;
+          }
+        }
+      }
+    } on Object {
+      return null;
+    }
+    return best;
+  }
+
+  Map<String, Object?>? _decodeJson(String raw) {
+    try {
+      final decoded = jsonDecode(raw);
+      return decoded is Map<String, Object?> ? decoded : null;
+    } on Object {
+      return null;
+    }
   }
 
   String _absoluteSessionPath(CliSessionInitContext ctx, String relativePath) {

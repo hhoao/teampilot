@@ -64,6 +64,14 @@ final class CursorSessionLifecyclePaths {
 
   String memberCursorDir(String memberHome) => _homeLayout.cursorDir(memberHome);
 
+  /// Cursor writes workspace index progress to `projects/<slug>/worker.log`.
+  String workerLogPath(String memberId) => _ctx.join(
+    memberCursorDir(memberHomeRoot(memberId)),
+    CursorWorkspaceTrust.projectsDirName,
+    workspaceSlug,
+    'worker.log',
+  );
+
   Future<void> ensureSharedDirs() async {
     await _fs.ensureDir(sharedRoot());
     await _fs.ensureDir(sharedAuthDir());
