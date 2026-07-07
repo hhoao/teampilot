@@ -12,6 +12,7 @@ import 'package:teampilot/services/cli/registry/installer/opencode_installer_cap
 import 'package:teampilot/services/cli/registry/built_in_cli_tools.dart';
 import 'package:teampilot/services/cli/registry/capabilities/member_agent_preset_capability.dart';
 import 'package:teampilot/services/cli/registry/capabilities/native_team_capability.dart';
+import 'package:teampilot/services/cli/registry/capabilities/noop_cli_session_lifecycle_capability.dart';
 import 'package:teampilot/services/cli/registry/cli_capability.dart';
 import 'package:teampilot/services/cli/registry/cli_tool_definition.dart';
 import 'package:teampilot/services/cli/registry/cli_tool_registry.dart';
@@ -172,5 +173,22 @@ void main() {
     for (final def in registry.launchable) {
       expect(registry.capability<ProviderModelCapability>(def.id), isNotNull);
     }
+  });
+
+  test('lifecycleFor returns no-op when tool has no lifecycle capability', () {
+    final registry = CliToolRegistry.builtIn();
+    expect(
+      registry.lifecycleFor(CliTool.claude),
+      isA<NoopCliSessionLifecycleCapability>(),
+    );
+  });
+
+  test('lifecycleFor returns registered lifecycle capability', () {
+    const lifecycle = NoopCliSessionLifecycleCapability();
+    final registry = CliToolRegistry();
+    registry.register(
+      const _FakeTool(CliTool.codex, true, [lifecycle]),
+    );
+    expect(identical(registry.lifecycleFor(CliTool.codex), lifecycle), isTrue);
   });
 }

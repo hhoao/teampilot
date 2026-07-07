@@ -1,7 +1,9 @@
 import '../../../models/team_config.dart';
 import 'built_in_cli_tools.dart';
+import 'capabilities/cli_session_lifecycle_capability.dart';
 import 'capabilities/member_agent_preset_capability.dart';
 import 'capabilities/native_team_capability.dart';
+import 'capabilities/noop_cli_session_lifecycle_capability.dart';
 import 'cli_bootstrap.dart';
 import 'cli_capability.dart';
 import 'cli_tool_definition.dart';
@@ -68,4 +70,9 @@ class CliToolRegistry {
 
   Iterable<CliToolDefinition> withCapability<T extends CliCapability>() =>
       _definitions.values.where((d) => d.capabilities.any((c) => c is T));
+
+  /// Session lifecycle for [cli], or a no-op that allows connect immediately.
+  CliSessionLifecycleCapability lifecycleFor(CliTool cli) =>
+      capability<CliSessionLifecycleCapability>(cli) ??
+      const NoopCliSessionLifecycleCapability();
 }

@@ -31,6 +31,7 @@ import '../launch/manifest_filesystem.dart';
 import '../provider/workspace_trust_provisioner.dart';
 import '../team/claude_team_roster_service.dart';
 import '../cli/registry/capabilities/cli_config_layout_capability.dart';
+import '../cli/registry/capabilities/cli_session_lifecycle_capability.dart';
 import '../storage/app_storage.dart';
 import '../cli/preset_resolver.dart';
 import 'config_profile_infrastructure.dart';
@@ -353,6 +354,16 @@ class ConfigProfileService implements ConfigProfileDelegate {
         ),
       );
     }
+    await _cliRegistry.lifecycleFor(cli).ensurePersisted(
+      CliSessionPersistContext(
+        workspaceId: trimmedWorkspaceId,
+        sessionId: trimmedSessionId,
+        memberId: memberId,
+        tool: cli,
+        paths: this,
+        team: team,
+      ),
+    );
     await McpRegistryService(fs: fs, layout: layout).writeForSession(
       workspaceId: trimmedWorkspaceId,
       teamId: trimmedTeamId,
