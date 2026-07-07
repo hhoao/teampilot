@@ -1,6 +1,6 @@
 # CLI Session Lifecycle：分层持久化与分阶段初始化
 
-> 状态：**草案** · 日期：2026-07-07  
+> 状态：**Phase A 已落地** · 日期：2026-07-07  
 > 背景：TeamPilot 嵌入的 cursor-agent 频繁 **Reconnecting**，本地终端单开 `agent` 稳定；mixed 4×cursor 冷启动索引 + 多路 HTTP/2 并发  
 > 相关代码：`cursor_config_profile_capability.dart`、`cursor_home_provisioner.dart`、`config_profile_service.dart`、`session_lifecycle_service.dart`、`tab_team_bus_coordinator.dart`、`runtime_layout.dart`、`cursor_auth_artifacts.dart`  
 > 关联设计：[2026-07-07-mailbox-delivery-state-design.md](./2026-07-07-mailbox-delivery-state-design.md)（PTY doorbell 与 Presence 解耦，**正交**）
@@ -350,12 +350,12 @@ abstract interface class CliSessionLifecycleCapability implements CliCapability 
 
 ### Phase A — cursor + mixed 团队（本期）
 
-- [ ] `CliSessionLifecycleCapability` 接口 + no-op 默认  
-- [ ] `WorkspaceLayout.sessionRuntimeSharedToolDir`  
-- [ ] `CursorSessionLifecycleCapability`（persist + init + gate）  
-- [ ] 挂接 `session_launch_service` 门控  
-- [ ] 单测：manifest 读写、merge cli-config、gate 逻辑  
-- [ ] 集成：2×cursor 会话，断言仅 1 路 indexing  
+- [x] `CliSessionLifecycleCapability` 接口 + no-op 默认  
+- [x] `WorkspaceLayout.sessionRuntimeSharedToolDir`  
+- [x] `CursorSessionLifecycleCapability`（persist + init + gate）  
+- [x] 挂接 `session_launch_service` 门控  
+- [x] 单测：manifest 读写、merge cli-config、gate 逻辑  
+- [x] 集成：2×cursor 会话，断言仅 1 路 indexing  
 
 **预期：** Reconnecting 频率显著下降；reopen 会话索引复用。
 
