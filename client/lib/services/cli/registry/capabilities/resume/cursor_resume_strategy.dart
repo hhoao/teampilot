@@ -3,6 +3,9 @@ import 'dart:convert';
 import 'package:path/path.dart' as p;
 
 import '../../../../provider/cursor/cursor_home_layout.dart';
+import '../../../session_lifecycle/cli_session_manifest_store.dart';
+import '../../../session_lifecycle/cursor/cursor_session_lifecycle_paths.dart';
+import '../../../../storage/runtime_layout.dart';
 import '../session_resume_capability.dart';
 
 /// `postCaptured` strategy for cursor. cursor stores each chat under the
@@ -25,14 +28,15 @@ final class CursorResumeStrategy implements SessionResumeCapability {
 
   @override
   Future<String?> detectNativeId(ResumeContext ctx) async {
+    final manifestChatId = await _chatIdFromManifest(ctx);
+    if (manifestChatId != null) return manifestChatId;
+
     final configDir = _cursorConfigRoot(ctx.env, ctx.fs.pathContext);
     if (configDir == null) return null;
     final path = ctx.fs.pathContext;
     final chatsRoot = path.join(configDir, 'chats');
 
-    // Always scan (cheap, per-session isolated) so a stale/empty persisted id
-    // never shadows the real conversation: pick the chat with a real
-    // conversation and the newest update.
+    // Scan (cheap, per-session isolated) when manifest has no captured chat.
     String? best;
     var bestUpdated = -1;
     try {
@@ -58,6 +62,30 @@ final class CursorResumeStrategy implements SessionResumeCapability {
       return null;
     }
     return best;
+  }
+
+  Future<String?> _chatIdFromManifest(ResumeContext ctx) async {
+    final workspaceId = ctx.workspaceId?.trim() ?? '';
+    final sessionId = ctx.sessionId?.trim() ?? '';
+    final memberId = ctx.memberId?.trim() ?? '';
+    final dataRoot = ctx.manifestDataRoot?.trim() ?? '';
+    if (workspaceId.isEmpty || sessionId.isEmpty || memberId.isEmpty) {
+      return null;
+    }
+    if (dataRoot.isEmpty) return null;
+
+    final store = CliSessionManifestStore(
+      fs: ctx.fs,
+      layout: RuntimeLayout(teampilotRoot: dataRoot, fs: ctx.fs),
+    );
+    final manifest = await store.read(
+      workspaceId: workspaceId,
+      sessionId: sessionId,
+      tool: CursorSessionLifecyclePaths.tool,
+    );
+    final chatId = manifest?.members[memberId]?.chatId?.trim();
+    if (chatId == null || chatId.isEmpty) return null;
+    return chatId;
   }
 
   static String? _cursorConfigRoot(Map<String, String> env, p.Context path) {

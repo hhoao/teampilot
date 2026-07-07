@@ -23,6 +23,8 @@ import '../capabilities/session_resume_capability.dart';
 import '../capabilities/resume/cursor_resume_strategy.dart';
 import '../installer/cursor_installer_capability.dart';
 import '../config_profile/cursor_config_profile_capability.dart';
+import '../../session_lifecycle/cursor/cursor_session_lifecycle_capability.dart';
+import '../capabilities/cli_session_lifecycle_capability.dart';
 import '../headless/cursor_headless_run_capability.dart';
 import '../../../provider/cursor/cursor_effort_capability.dart';
 import '../../../provider/cursor/cursor_provider_form_capability.dart';
@@ -43,6 +45,7 @@ final class CursorCliTool implements CliToolDefinition {
     this.remoteCliLocator = const DefaultRemoteCliLocator('cursor-agent'),
     this.launchArgs = const CursorCliToolAdapter(),
     this.configProfile = const CursorConfigProfileCapability(),
+    this.sessionLifecycle = const CursorSessionLifecycleCapability(),
     this.sessionResume = const CursorResumeStrategy(),
     this.executableResolver = const CursorExecutableResolver(),
     this.installer = const CursorInstallerCapability(),
@@ -69,6 +72,7 @@ final class CursorCliTool implements CliToolDefinition {
 
   final LaunchArgsCapability launchArgs;
   final ConfigProfileCapability configProfile;
+  final CliSessionLifecycleCapability sessionLifecycle;
   final SessionResumeCapability sessionResume;
   final ExecutableResolverCapability executableResolver;
   final InstallerCapability installer;
@@ -100,6 +104,7 @@ final class CursorCliTool implements CliToolDefinition {
     remoteCliLocator,
     launchArgs,
     configProfile,
+    sessionLifecycle,
     sessionResume,
     executableResolver,
     installer,

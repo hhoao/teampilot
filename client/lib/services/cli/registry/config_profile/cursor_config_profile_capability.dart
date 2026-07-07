@@ -11,6 +11,7 @@ import '../../../provider/cursor/cursor_session_config_dir.dart';
 import '../../../provider/workspace_trust_provisioner.dart';
 import '../../../launch/work_plane_paths.dart';
 import '../../../provider/cursor/cursor_workspace_trust_provisioner.dart';
+import '../../session_lifecycle/cli_session_manifest_store.dart';
 import '../capabilities/config_profile_capability.dart';
 
 /// Cursor CLI launch profile.
@@ -147,20 +148,19 @@ final class CursorConfigProfileCapability implements ConfigProfileCapability {
     final warnings = <String>[];
 
     if (mixed) {
-      final memberHome = paths.joinWork(cursorDir, 'home');
-      await paths.fs.ensureDir(memberHome);
+      final memberId = ctx.scope.memberId?.trim() ?? '';
+      final memberHome = await _resolveMixedMemberHome(
+        paths: paths,
+        workspaceId: ctx.scope.workspaceId,
+        sessionId: ctx.scope.sessionId,
+        memberId: memberId,
+      );
 
       final credentials = CursorProviderCredentialsService(
         fs: paths.fs,
         basePath: paths.basePath,
       );
-      final provisioner = CursorHomeProvisioner(
-        fs: paths.fs,
-        credentials: credentials,
-        layout: CursorHomeLayout(pathContext: paths.workPathContext),
-      );
 
-      String? providerId;
       if (team != null) {
         final resolver = CursorProviderSettingsResolver(
           basePath: ctx.catalog.basePath,
@@ -173,7 +173,7 @@ final class CursorConfigProfileCapability implements ConfigProfileCapability {
         if (provider == null) {
           warnings.add('cursor_provider_missing');
         } else {
-          providerId = provider.id;
+          final providerId = provider.id;
           if (ctx.crossMachine) {
             final copied =
                 await CrossMachineCredentialBridge.materializeCursorCredential(
@@ -195,18 +195,6 @@ final class CursorConfigProfileCapability implements ConfigProfileCapability {
       final busIdle = ctx.busIdle;
       if (member != null && member.isValid && busIdle == null) {
         warnings.add('cursor_bus_idle_missing');
-      }
-
-      if (member != null && member.isValid && busIdle != null) {
-        await provisioner.provision(
-          memberHome: memberHome,
-          providerId: providerId,
-          member: member,
-          busIdle: busIdle,
-          forceTeamLeadDelegateMode: team?.forceTeamLeadDelegateMode ?? false,
-          mixed: true,
-        );
-        await _provisionWorkspaceTrust(ctx: ctx, homeRoot: memberHome);
       }
 
       return ConfigProfileLaunchContribution(
@@ -236,6 +224,37 @@ final class CursorConfigProfileCapability implements ConfigProfileCapability {
       ),
       warnings: warnings,
     );
+  }
+
+  Future<String> _resolveMixedMemberHome({
+    required ConfigProfilePaths paths,
+    required String workspaceId,
+    required String sessionId,
+    required String memberId,
+  }) async {
+    final manifest = await CliSessionManifestStore(
+      fs: paths.fs,
+      layout: paths.layout,
+    ).read(
+      workspaceId: workspaceId,
+      sessionId: sessionId,
+      tool: toolId,
+    );
+    final homeRoot = manifest?.members[memberId]?.homeRoot.trim() ?? '';
+    if (homeRoot.isNotEmpty) {
+      final sessionDir = paths.layout.workspace.sessionDir(workspaceId, sessionId);
+      return paths.fs.pathContext.normalize(
+        paths.fs.pathContext.join(sessionDir, homeRoot),
+      );
+    }
+
+    final cursorDir = paths.sessionToolDir(
+      workspaceId,
+      sessionId,
+      toolId,
+      memberId: memberId,
+    );
+    return paths.fs.pathContext.join(cursorDir, 'home');
   }
 
   Future<void> _provisionWorkspaceTrust({

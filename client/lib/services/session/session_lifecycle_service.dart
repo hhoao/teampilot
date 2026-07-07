@@ -452,6 +452,8 @@ class SessionLifecycleService {
       ),
       persistedNativeId: session.nativeSessionIds[cli.value],
       previouslyLaunched: session.launchState == AppSessionLaunchState.started,
+      workspaceId: workspace.workspaceId,
+      sessionId: sessionId,
     );
 
     final plan = LaunchPlan(
@@ -547,6 +549,9 @@ class SessionLifecycleService {
       ),
       persistedNativeId: memberBinding?.nativeSessionIds[cli.value],
       previouslyLaunched: session.launchState == AppSessionLaunchState.started,
+      workspaceId: session.workspaceId,
+      sessionId: sessionId,
+      memberId: memberBinding?.rosterMemberId ?? member.id,
     );
 
     final plan = LaunchPlan(
@@ -757,6 +762,11 @@ class SessionLifecycleService {
                   : memberBinding?.nativeSessionIds[cli.value]),
         previouslyLaunched:
             session.launchState == AppSessionLaunchState.started,
+        workspaceId: session.workspaceId,
+        sessionId: sessionId,
+        memberId: isPersonal
+            ? null
+            : (memberBinding?.rosterMemberId ?? launchMember?.id),
       );
       _logPrepareLaunchStep(prepSw, 'resolveResume', sessionId);
       prepSw.stop();
@@ -1334,6 +1344,9 @@ class SessionLifecycleService {
     required String bucket,
     required String? persistedNativeId,
     required bool previouslyLaunched,
+    String? workspaceId,
+    String? sessionId,
+    String? memberId,
   }) async {
     final cap = cli == null
         ? null
@@ -1348,6 +1361,10 @@ class SessionLifecycleService {
       transcriptRoots: transcriptRoots,
       bucket: bucket,
       persistedNativeId: persistedNativeId,
+      workspaceId: workspaceId,
+      sessionId: sessionId,
+      memberId: memberId,
+      manifestDataRoot: roots.appDataRoot,
     );
 
     String? nativeId;

@@ -24,6 +24,10 @@ class ResumeContext {
     required this.transcriptRoots,
     required this.bucket,
     this.persistedNativeId,
+    this.workspaceId,
+    this.sessionId,
+    this.memberId,
+    this.manifestDataRoot,
   });
 
   final Filesystem fs;
@@ -45,6 +49,14 @@ class ResumeContext {
 
   /// The native id already recorded on the session-member binding, if any.
   final String? persistedNativeId;
+
+  /// Optional session scope for lifecycle manifest resume (`chatId`).
+  final String? workspaceId;
+  final String? sessionId;
+  final String? memberId;
+
+  /// Teampilot data root for [manifestDataRoot]-relative manifest paths.
+  final String? manifestDataRoot;
 }
 
 /// Owns session-identity detection for one CLI: whether/how it pins, and how to

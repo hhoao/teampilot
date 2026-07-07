@@ -4,6 +4,7 @@ import 'package:path/path.dart' as p;
 import 'package:teampilot/services/cli/registry/capabilities/resume/claude_resume_strategy.dart';
 import 'package:teampilot/services/cli/registry/capabilities/resume/codex_resume_strategy.dart';
 import 'package:teampilot/services/cli/registry/capabilities/resume/cursor_resume_strategy.dart';
+import 'package:teampilot/services/storage/runtime_layout.dart';
 import 'package:teampilot/services/cli/registry/capabilities/resume/opencode_resume_strategy.dart';
 import 'package:teampilot/services/cli/registry/capabilities/resume/transcript_resume_strategy.dart';
 import 'package:teampilot/services/cli/registry/capabilities/session_resume_capability.dart';
@@ -27,6 +28,10 @@ void main() {
     String bucket = '',
     String taskId = 'task-1',
     String? persistedNativeId,
+    String? workspaceId,
+    String? sessionId,
+    String? memberId,
+    String? manifestDataRoot,
   }) {
     return ResumeContext(
       fs: fs,
@@ -36,6 +41,10 @@ void main() {
       transcriptRoots: transcriptRoots,
       bucket: bucket,
       persistedNativeId: persistedNativeId,
+      workspaceId: workspaceId,
+      sessionId: sessionId,
+      memberId: memberId,
+      manifestDataRoot: manifestDataRoot,
     );
   }
 
@@ -140,6 +149,44 @@ void main() {
         expect(got, 'mixed-chat');
       },
     );
+
+    test('manifest chatId wins before scanning chats', () async {
+      final home = p.join(base.path, 'member-home');
+      final configDir = p.join(home, '.cursor');
+      final dir = p.join(configDir, 'chats', 'wshash', 'scanned-chat');
+      await Directory(dir).create(recursive: true);
+      await File(p.join(dir, 'meta.json')).writeAsString(
+        '{"schemaVersion":1,"hasConversation":true,"updatedAtMs":300}',
+      );
+
+      final layout = RuntimeLayout(teampilotRoot: base.path, fs: fs);
+      final manifestPath = layout.sessionLifecycleManifestPath(
+        'ws',
+        'sess',
+        'cursor',
+      );
+      await Directory(p.dirname(manifestPath)).create(recursive: true);
+      await File(manifestPath).writeAsString(
+        '{"schemaVersion":1,"tool":"cursor","workspaceId":"ws","sessionId":"sess",'
+        '"workspacePathHash":"slug","workspaceSlug":"slug","phase":"ready",'
+        '"shared":{"root":"runtime/_shared/cursor","projectsDir":"runtime/_shared/cursor/projects/slug",'
+        '"cliConfigBase":"runtime/_shared/cursor/cli-config.base.json",'
+        '"authDir":"runtime/_shared/cursor/auth"},'
+        '"index":{},"members":{"team-lead":{"homeRoot":"runtime/team-lead/cursor/home",'
+        '"overlayGeneration":0,"chatId":"manifest-chat"}}}',
+      );
+
+      final got = await const CursorResumeStrategy().detectNativeId(
+        ctx(
+          env: {'HOME': home, 'USERPROFILE': home},
+          workspaceId: 'ws',
+          sessionId: 'sess',
+          memberId: 'team-lead',
+          manifestDataRoot: base.path,
+        ),
+      );
+      expect(got, 'manifest-chat');
+    });
   });
 
   group('ClaudeResumeStrategy', () {
