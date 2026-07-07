@@ -40,7 +40,31 @@ final class CursorHomeProvisioner {
 
     if (!mixed || !member.isValid) return;
 
-    await _mergeTeamBusPermissions(memberHome);
+    await provisionOverlayOnly(
+      memberHome: memberHome,
+      member: member,
+      busIdle: busIdle,
+      forceTeamLeadDelegateMode: forceTeamLeadDelegateMode,
+    );
+  }
+
+  /// Writes per-member bus overlay files and merged [cli-config.json] only.
+  ///
+  /// Does not sync auth or touch member-private paths such as `chats/`.
+  Future<void> provisionOverlayOnly({
+    required String memberHome,
+    required TeamMemberConfig member,
+    required MemberBusIdleEndpoint? busIdle,
+    required bool forceTeamLeadDelegateMode,
+    String? cliConfigJson,
+  }) async {
+    if (!member.isValid) return;
+
+    await _ensureOverlayDirs(memberHome);
+    await _mergeTeamBusPermissions(
+      memberHome,
+      cliConfigJson: cliConfigJson,
+    );
 
     if (busIdle == null) return;
 
@@ -64,12 +88,31 @@ final class CursorHomeProvisioner {
     await _fs.ensureDir(_layout.configCursorDir(memberHome));
   }
 
-  Future<void> _mergeTeamBusPermissions(String memberHome) async {
+  Future<void> _ensureOverlayDirs(String memberHome) async {
+    final cursorDir = _layout.cursorDir(memberHome);
+    await _fs.ensureDir(cursorDir);
+    await _fs.ensureDir(
+      _fs.pathContext.join(cursorDir, CursorHomeLayout.rulesDirName),
+    );
+    await _fs.ensureDir(
+      _fs.pathContext.join(cursorDir, CursorHomeLayout.hooksDirName),
+    );
+  }
+
+  Future<void> _mergeTeamBusPermissions(
+    String memberHome, {
+    String? cliConfigJson,
+  }) async {
     final path = _layout.cliConfig(memberHome);
-    final raw = await _fs.readString(path);
-    final existing = raw != null
-        ? CursorCliConfigPolicy.parseConfigJson(raw)
-        : null;
+    Map<String, Object?>? existing;
+    if (cliConfigJson != null) {
+      existing = CursorCliConfigPolicy.parseConfigJson(cliConfigJson);
+    } else {
+      final raw = await _fs.readString(path);
+      existing = raw != null
+          ? CursorCliConfigPolicy.parseConfigJson(raw)
+          : null;
+    }
     final merged = CursorCliConfigPolicy.applyMixedTeamSessionPolicy(
       existing ?? const {},
     );
