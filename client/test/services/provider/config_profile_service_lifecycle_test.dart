@@ -42,11 +42,11 @@ class _RecordingLifecycle implements CliSessionLifecycleCapability {
       const CliSessionGateDecision(allowed: true);
 }
 
-class _ToolWithExtraCapability implements CliToolDefinition {
-  const _ToolWithExtraCapability(this._inner, this._extra);
+class _ToolWithLifecycleOverride implements CliToolDefinition {
+  const _ToolWithLifecycleOverride(this._inner, this._lifecycle);
 
   final CliToolDefinition _inner;
-  final CliCapability _extra;
+  final CliSessionLifecycleCapability _lifecycle;
 
   @override
   CliTool get id => _inner.id;
@@ -56,8 +56,9 @@ class _ToolWithExtraCapability implements CliToolDefinition {
 
   @override
   Iterable<CliCapability> get capabilities => [
-    ..._inner.capabilities,
-    _extra,
+    for (final cap in _inner.capabilities)
+      if (cap is! CliSessionLifecycleCapability) cap,
+    _lifecycle,
   ];
 }
 
@@ -69,7 +70,7 @@ CliToolRegistry _registryWithLifecycle(
   registerBuiltInCliTools(registry);
   final inner = registry.tryGet(cli);
   expect(inner, isNotNull);
-  registry.register(_ToolWithExtraCapability(inner!, lifecycle));
+  registry.register(_ToolWithLifecycleOverride(inner!, lifecycle));
   return registry;
 }
 
