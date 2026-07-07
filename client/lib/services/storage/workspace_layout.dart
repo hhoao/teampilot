@@ -111,6 +111,26 @@ class WorkspaceLayout {
   String sessionRuntimeDir(String workspaceId, String sessionId) =>
       _ctx.join(sessionDir(workspaceId, sessionId), 'runtime');
 
+  /// Session-level shared CLI state (e.g. cursor warm tier under `_shared/`).
+  String sessionRuntimeSharedToolDir(
+    String workspaceId,
+    String sessionId,
+    String tool,
+  ) => _ctx.join(
+    sessionRuntimeDir(workspaceId, sessionId),
+    '_shared',
+    tool.trim(),
+  );
+
+  String sessionLifecycleManifestPath(
+    String workspaceId,
+    String sessionId,
+    String tool,
+  ) => _ctx.join(
+    sessionRuntimeSharedToolDir(workspaceId, sessionId, tool),
+    'init.json',
+  );
+
   /// PTY CONFIG_DIR for [tool]. Pass [memberId] in mixed team mode.
   String sessionRuntimeToolDir(
     String workspaceId,
