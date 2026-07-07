@@ -35,25 +35,77 @@ class FullscreenPromptAnchor {
 // Mirror flutter_alacritty `cell_flags.dart` / rust `engine.rs`.
 const int _flagWideSpacer = 1 << 5;
 
+/// Rows above the bottom composer chrome to search for wrapped multi-line paste
+/// (cursor doorbell above `→`, etc.).
+const int fullscreenComposerLocateAboveSlack = 12;
+
 /// Bottom-up search for [needle] in the last [scanRows] visible rows.
+///
+/// When [composerPrefix] is set, only rows at or above the bottommost composer
+/// chrome row (within [composerAboveSlack]) are searched so stale transcript
+/// higher on a tall viewport is not mistaken for staged input.
 FullscreenPromptAnchor? locateFullscreenPromptNeedle(
   TerminalScreenGrid grid,
   String needle, {
   int scanRows = 8,
+  String? composerPrefix,
+  int composerAboveSlack = fullscreenComposerLocateAboveSlack,
 }) {
   if (needle.isEmpty) return null;
   final rows = grid.rows;
   if (rows == 0 || grid.columns == 0) return null;
 
   final needleRunes = needle.runes.toList();
-  final startRow = (rows - scanRows).clamp(0, rows - 1);
-  for (var r = rows - 1; r >= startRow; r--) {
+  final windowStart = (rows - scanRows).clamp(0, rows - 1);
+  final searchStart = _composerLocateStartRow(
+    grid,
+    windowStart: windowStart,
+    scanRows: scanRows,
+    composerPrefix: composerPrefix,
+    composerAboveSlack: composerAboveSlack,
+  );
+  for (var r = rows - 1; r >= searchStart; r--) {
     final startCol = _findNeedleStartCol(grid, r, needleRunes);
     if (startCol >= 0) {
       return FullscreenPromptAnchor(row: r, startCol: startCol, needle: needle);
     }
   }
   return null;
+}
+
+/// Bottom-most mirror row whose trimmed text starts with [composerPrefix].
+int? bottomComposerChromeRow(
+  TerminalScreenGrid grid,
+  String composerPrefix, {
+  int scanRows = 8,
+}) {
+  final prefix = composerPrefix.trim();
+  if (prefix.isEmpty) return null;
+  final rows = grid.rows;
+  if (rows == 0) return null;
+  final startRow = (rows - scanRows).clamp(0, rows - 1);
+  for (var r = rows - 1; r >= startRow; r--) {
+    if (_rowStartsWith(grid, r, prefix)) return r;
+  }
+  return null;
+}
+
+int _composerLocateStartRow(
+  TerminalScreenGrid grid, {
+  required int windowStart,
+  required int scanRows,
+  String? composerPrefix,
+  required int composerAboveSlack,
+}) {
+  final prefix = composerPrefix?.trim();
+  if (prefix == null || prefix.isEmpty) return windowStart;
+  final composerRow = bottomComposerChromeRow(
+    grid,
+    prefix,
+    scanRows: scanRows,
+  );
+  if (composerRow == null) return windowStart;
+  return (composerRow - composerAboveSlack).clamp(windowStart, grid.rows - 1);
 }
 
 /// True when [anchor.needle] still occupies the same cells on [anchor.row].

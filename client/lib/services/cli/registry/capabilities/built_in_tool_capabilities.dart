@@ -133,7 +133,7 @@ final class FlashskyaiTerminalBehavior implements TerminalBehaviorCapability {
   FullscreenCrAckStrategy get fullscreenCrAckStrategy =>
       FullscreenCrAckStrategy.anchorCellClears;
   @override
-  String? get fullscreenComposerPrefix => null;
+  String? get fullscreenComposerPrefix => '\u276f';
 }
 
 final class ClaudeTerminalBehavior implements TerminalBehaviorCapability {
@@ -153,7 +153,7 @@ final class ClaudeTerminalBehavior implements TerminalBehaviorCapability {
   FullscreenCrAckStrategy get fullscreenCrAckStrategy =>
       FullscreenCrAckStrategy.anchorCellClears;
   @override
-  String? get fullscreenComposerPrefix => null;
+  String? get fullscreenComposerPrefix => '\u276f';
 }
 
 final class CodexTerminalBehavior implements TerminalBehaviorCapability {
@@ -193,7 +193,7 @@ final class OpencodeTerminalBehavior implements TerminalBehaviorCapability {
   FullscreenCrAckStrategy get fullscreenCrAckStrategy =>
       FullscreenCrAckStrategy.anchorCellClears;
   @override
-  String? get fullscreenComposerPrefix => null;
+  String? get fullscreenComposerPrefix => '\u2503';
 }
 
 final class CursorTerminalBehavior implements TerminalBehaviorCapability {
@@ -202,9 +202,8 @@ final class CursorTerminalBehavior implements TerminalBehaviorCapability {
   bool get usesFullScreenInput => true;
   @override
   Duration get fullScreenPasteSettleDelay => const Duration(milliseconds: 150);
-  // Verified by cursor_agent_grid_probe_integration_test: cursor-agent echoes
-  // staged input to PTY output, so the grid-ACK probe works (its TUI just
-  // repaints slower than claude — hence the longer settle above).
+  // Cursor echoes staged input, then keeps submitted text in transcript while
+  // repainting a fresh composer below it; ACK on composer movement, not clear.
   @override
   bool get usesGridPasteAck => true;
   @override
@@ -214,7 +213,7 @@ final class CursorTerminalBehavior implements TerminalBehaviorCapability {
       TerminalPathDropBehavior.defaultFor(usesFullScreenInput: true);
   @override
   FullscreenCrAckStrategy get fullscreenCrAckStrategy =>
-      FullscreenCrAckStrategy.anchorCellClears;
+      FullscreenCrAckStrategy.composerMovesDown;
   @override
-  String? get fullscreenComposerPrefix => null;
+  String? get fullscreenComposerPrefix => '→';
 }

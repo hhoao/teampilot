@@ -24,7 +24,8 @@ final class FullscreenCrAckConfig {
 
   final FullscreenCrAckStrategy strategy;
 
-  /// Row-leading prefix that marks an editable composer line. Required for
+  /// Row-leading prefix that marks composer chrome on the mirror grid. Scopes
+  /// paste needle search on tall viewports and is required for
   /// [FullscreenCrAckStrategy.composerMovesDown].
   final String? composerPrefix;
 }

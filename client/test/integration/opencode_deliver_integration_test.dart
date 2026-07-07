@@ -150,6 +150,7 @@ void main() {
             aborted: () => false,
             crAckConfig: const FullscreenCrAckConfig(
               strategy: FullscreenCrAckStrategy.anchorCellClears,
+              composerPrefix: '\u2503',
             ),
           );
 

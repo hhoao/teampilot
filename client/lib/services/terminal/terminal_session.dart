@@ -935,11 +935,13 @@ class TerminalSession implements TerminalTextSink {
   probe.FullscreenPromptAnchor? locateFullscreenPromptNeedle(
     String needle, {
     int scanRows = 8,
+    String? composerPrefix,
   }) =>
       probe.locateFullscreenPromptNeedle(
         _screenGrid,
         needle,
         scanRows: scanRows,
+        composerPrefix: composerPrefix,
       );
 
   bool isFullscreenPromptAtAnchor(probe.FullscreenPromptAnchor anchor) =>

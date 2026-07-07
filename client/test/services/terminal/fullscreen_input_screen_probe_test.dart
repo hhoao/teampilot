@@ -65,6 +65,55 @@ void main() {
     expect(anchor.row, 0);
   });
 
+  test('locateNeedle ignores stale transcript above composer slack window', () {
+    final lines = List<String>.filled(24, '');
+    lines[2] = '[teammate-bus] stale delivery in transcript';
+    lines[22] = '→ Plan, search, build anything';
+    final grid = _FakeGrid.fromRows(lines);
+
+    expect(
+      locateFullscreenPromptNeedle(
+        grid,
+        '[teammate-bus]',
+        scanRows: 24,
+        composerPrefix: '→',
+      ),
+      isNull,
+    );
+    expect(
+      locateFullscreenPromptNeedle(grid, '[teammate-bus]', scanRows: 24),
+      isNotNull,
+    );
+  });
+
+  test('locateNeedle finds wrapped paste above cursor composer chrome', () {
+    final lines = List<String>.filled(24, '');
+    lines[18] = '[teammate-bus] fresh doorbell paste';
+    lines[22] = '→ Plan, search, build anything';
+    final grid = _FakeGrid.fromRows(lines);
+
+    final anchor = locateFullscreenPromptNeedle(
+      grid,
+      '[teammate-bus]',
+      scanRows: 24,
+      composerPrefix: '→',
+    );
+    expect(anchor, isNotNull);
+    expect(anchor!.row, 18);
+  });
+
+  test('bottomComposerChromeRow finds lowest prefix row in scan window', () {
+    final lines = List<String>.filled(8, '');
+    lines[3] = '› older composer';
+    lines[6] = '› active composer';
+    final grid = _FakeGrid.fromRows(lines);
+
+    expect(
+      bottomComposerChromeRow(grid, '\u203a', scanRows: 8),
+      6,
+    );
+  });
+
   test('isSubmitted true for composerMovesDown when prefix row appears below', () {
     final grid = _FakeGrid.fromRows([
       'codex output above',

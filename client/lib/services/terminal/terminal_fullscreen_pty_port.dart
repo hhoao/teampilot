@@ -30,7 +30,11 @@ final class TerminalFullscreenPtyPort implements FullscreenPtyDeliveryPort {
 
   @override
   FullscreenPromptAnchor? locateNeedle(String needle, {int scanRows = 24}) =>
-      _session.locateFullscreenPromptNeedle(needle, scanRows: scanRows);
+      _session.locateFullscreenPromptNeedle(
+        needle,
+        scanRows: scanRows,
+        composerPrefix: _crAckConfig.composerPrefix,
+      );
 
   @override
   bool isAtAnchor(FullscreenPromptAnchor anchor) =>
