@@ -2,6 +2,8 @@ import 'dart:io';
 
 import 'package:flutter_test/flutter_test.dart';
 import 'package:teampilot/cubits/chat_cubit.dart';
+import 'package:teampilot/cubits/member_presence_cubit.dart';
+import 'package:teampilot/models/member_presence.dart';
 import 'package:teampilot/models/workspace_folder.dart';
 import 'package:teampilot/repositories/session_repository.dart';
 import 'package:teampilot/services/terminal/terminal_session.dart';
@@ -14,6 +16,9 @@ class _RunningFakeSession extends TerminalSession {
 
   @override
   bool get isRunning => true;
+
+  @override
+  bool get isConnected => true;
 
   @override
   void dispose() {}
@@ -78,6 +83,7 @@ void main() {
 
       // Idle before any send: not working.
       cubit.debugTickIdleWatch();
+      await drainPendingAsyncWork();
       expect(cubit.state.workingSessionIds, isEmpty);
 
       // Send → turn starts; agent output makes the activity tracker active.
@@ -85,6 +91,7 @@ void main() {
       shell.activityTracker.isWorking; // arm past the boot-quiet window
       shell.activityTracker.markActive();
       cubit.debugTickIdleWatch();
+      await drainPendingAsyncWork();
       expect(
         cubit.state.workingSessionIds,
         contains(session.sessionId),
@@ -98,8 +105,58 @@ void main() {
         DateTime.now().subtract(const Duration(seconds: 5)),
       );
       cubit.debugTickIdleWatch();
+      await drainPendingAsyncWork();
       expect(cubit.state.workingSessionIds, isEmpty);
     });
+
+    test(
+      'personal send recomputes working even with stale team presence',
+      () async {
+        final workspace = await repo.createWorkspace([
+          WorkspaceFolder(path: '/tmp'),
+        ]);
+        final session = await repo.createSession(workspace.workspaceId);
+        await cubit.loadWorkspaceData(repo);
+
+        await cubit.requestOpenSession(
+          SessionOpenRequest(
+            session: session,
+            workspace: workspace,
+            repo: repo,
+            connectImmediately: false,
+          ),
+        );
+        await drainPendingAsyncWork();
+
+        final presenceCubit = MemberPresenceCubit();
+        cubit.bindPresenceCubit(presenceCubit);
+        presenceCubit.emit(
+          const MemberPresenceState(
+            presence: {
+              'team-lead': MemberPresence(
+                connection: MemberConnection.connected,
+                availability: MemberAvailability.idle,
+              ),
+            },
+          ),
+        );
+
+        final shell = cubit.activeTab!.memberShells.values.single;
+        shell.activityTracker.latchBootFrameReadyForTest(
+          DateTime.now().subtract(const Duration(seconds: 5)),
+        );
+        shell.markUserTurnStarted();
+
+        cubit.debugRecomputeWorkingSessions();
+
+        expect(
+          cubit.state.workingSessionIds,
+          contains(session.sessionId),
+          reason: 'personal tab must not mirror unrelated team presence',
+        );
+        await presenceCubit.close();
+      },
+    );
 
     test('real 1s idle-watch timer is running for a simple-mode tab', () async {
       final workspace = await repo.createWorkspace([

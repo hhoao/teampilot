@@ -10,6 +10,7 @@ import '../models/workspace_folder.dart';
 import '../models/workspace_launch_context.dart';
 import '../models/app_session.dart';
 import '../services/team/member_presence_service.dart';
+import '../services/team/session_working_resolver.dart';
 import '../models/workspace_icon_picker_result.dart';
 import '../models/workspace_icon_ref.dart';
 import '../models/team_config.dart';
@@ -38,6 +39,8 @@ import 'chat/session_data_store.dart';
 import 'chat/chat_session_shell_factory.dart';
 import 'chat/chat_tab_store.dart';
 import 'chat/session_launch_service.dart';
+import 'chat/tab_member_materializer.dart';
+import 'chat/tab_session_runtime_coordinator.dart';
 import 'chat/tab_team_bus_coordinator.dart';
 import 'member_presence_cubit.dart';
 import 'chat/model/chat_state.dart';
@@ -117,17 +120,31 @@ class ChatCubit extends Cubit<ChatState>
   final ChatTabStore _tabStore = ChatTabStore();
   final SessionDataStore _dataStore = SessionDataStore();
   final Map<String, Future<void>> _sessionHydrationByWorkspace = {};
+  late final SessionWorkingResolver _sessionWorking = SessionWorkingResolver();
   late final SessionLaunchService _launchService = SessionLaunchService(this);
-  late final TabTeamBusCoordinator _busCoordinator = TabTeamBusCoordinator(
-    gateway: _teammateBusMcpGateway,
+  late final TabSessionRuntimeCoordinator _sessionRuntime =
+      TabSessionRuntimeCoordinator(
+        tabStore: _tabStore,
+        shellFactory: _shellFactory,
+        activeTeam: () => _activeTeam,
+        isClosed: () => isClosed,
+        globalPresets: () => _lifecycle.globalPresets,
+        onAfterIdleWatchTick: () => unawaited(_onIdleWatchTick()),
+        onAfterTurnLatched: _recomputeWorkingSessions,
+      );
+  late final TabMemberMaterializer _memberMaterializer = TabMemberMaterializer(
+    runtime: _sessionRuntime,
     tabStore: _tabStore,
-    shellFactory: _shellFactory,
     connector: _launchService,
     activeTeam: () => _activeTeam,
     isClosed: () => isClosed,
+  );
+  late final TabTeamBusCoordinator _teamBus = TabTeamBusCoordinator(
+    gateway: _teammateBusMcpGateway,
+    tabStore: _tabStore,
+    materializer: _memberMaterializer,
     globalPresets: () => _lifecycle.globalPresets,
-    onWorkingSessionsChanged: _updateWorkingSessions,
-    onAfterIdleWatchTick: () => unawaited(_presenceCubit?.tickFromIdleWatch()),
+    onAfterTurnLatched: _recomputeWorkingSessions,
     artifactServiceFactory: _buildArtifactService,
   );
 
@@ -274,7 +291,13 @@ class ChatCubit extends Cubit<ChatState>
   ChatSessionShellFactory get shellFactory => _shellFactory;
 
   @override
-  TabTeamBusCoordinator get busCoordinator => _busCoordinator;
+  TabSessionRuntimeCoordinator get sessionRuntime => _sessionRuntime;
+
+  @override
+  TabTeamBusCoordinator get teamBus => _teamBus;
+
+  @override
+  TabMemberMaterializer get memberMaterializer => _memberMaterializer;
 
   @override
   TeammateBusMcpGateway get teammateBusMcpGateway => _teammateBusMcpGateway;
@@ -335,12 +358,50 @@ class ChatCubit extends Cubit<ChatState>
   /// Wired by app_shell after both cubits are constructed.
   void bindPresenceCubit(MemberPresenceCubit cubit) => _presenceCubit = cubit;
 
-  /// Pushed by [TabTeamBusCoordinator] (1s idle-watch tick) whenever the set of
-  /// sessions with a member in-turn changes. Member presence refreshes on the
-  /// same tick via [onAfterIdleWatchTick].
+  /// Pushed after each idle-watch tick once member presence has been refreshed.
+  /// Session spinners follow the members panel ([MemberAvailability.working]).
   void _updateWorkingSessions(Set<String> ids) {
     if (isClosed || setEquals(ids, state.workingSessionIds)) return;
     emit(state.copyWith(workingSessionIds: ids));
+  }
+
+  Future<void> _onIdleWatchTick() async {
+    await _presenceCubit?.tickFromIdleWatch();
+    if (isClosed) return;
+    _recomputeWorkingSessions();
+  }
+
+  void _recomputeWorkingSessions() {
+    final working = <String>{};
+    final activeSessionId = state.activeSessionId;
+    final presence = _presenceCubit?.state.presence ?? const {};
+
+    for (final tab in _tabStore.tabs) {
+      final sessionId = tab.info.id;
+      final usesPresenceSnapshot =
+          _sessionWorking.usesPresenceSnapshotForTab(
+            tab: tab,
+            activeSessionId: activeSessionId,
+            presenceNonEmpty: presence.isNotEmpty,
+          );
+      final sessionWorking = usesPresenceSnapshot
+          ? presence.values.any((p) => p.isWorking)
+          : _sessionWorking.tabHasWorkingMember(
+              tab: tab,
+              team: _teamForTab(tab),
+              globalPresets: _lifecycle.globalPresets,
+            );
+      if (sessionWorking) working.add(sessionId);
+    }
+    _updateWorkingSessions(working);
+  }
+
+  TeamProfile? _teamForTab(ChatTab tab) {
+    final session = tab.persistedSession;
+    if (session == null || session.sessionTeam.trim().isEmpty) return null;
+    final teamId = session.sessionTeam.trim();
+    if (_activeTeam?.id == teamId) return _activeTeam;
+    return null;
   }
 
   @visibleForTesting
@@ -348,7 +409,10 @@ class ChatCubit extends Cubit<ChatState>
       _updateWorkingSessions(ids);
 
   @visibleForTesting
-  void debugTickIdleWatch() => _busCoordinator.debugTickIdleWatch();
+  void debugTickIdleWatch() => _sessionRuntime.debugTickIdleWatch();
+
+  @visibleForTesting
+  void debugRecomputeWorkingSessions() => _recomputeWorkingSessions();
 
   void _pushPresenceTarget() {
     final cubit = _presenceCubit;
@@ -833,7 +897,7 @@ class ChatCubit extends Cubit<ChatState>
     for (final session in tab.sessions) {
       session.dispose();
     }
-    await _busCoordinator.disposeSessionBus(tab.info.id);
+    await _teamBus.disposeSessionBus(tab.info.id);
     await tab.disposeBus();
   }
 
@@ -841,7 +905,7 @@ class ChatCubit extends Cubit<ChatState>
     if (index < 0 || index >= _tabStore.length) return;
     final tab = _tabStore.removeAt(index);
     unawaited(_tearDownTab(tab));
-    _busCoordinator.maybeStopIdleWatch();
+    _sessionRuntime.maybeStopIdleWatch();
     if (_tabStore.isEmpty) {
       _tabStore.setComposeActive(_tabStore.activeWorkspaceId, true);
       emit(
@@ -883,7 +947,7 @@ class ChatCubit extends Cubit<ChatState>
     for (final tab in removed) {
       unawaited(_tearDownTab(tab));
     }
-    _busCoordinator.maybeStopIdleWatch();
+    _sessionRuntime.maybeStopIdleWatch();
     // Republish whenever the active bucket was affected: either it was the
     // named bucket for this workspace, or it is the legacy empty-string bucket
     // and tabs were removed from it (legacy path before setActiveWorkspace).
@@ -902,7 +966,7 @@ class ChatCubit extends Cubit<ChatState>
       final tab = _tabStore.removeAt(i);
       unawaited(_tearDownTab(tab));
     }
-    _busCoordinator.maybeStopIdleWatch();
+    _sessionRuntime.maybeStopIdleWatch();
     final kept = _tabStore.tabs.single;
     _tabStore.setComposeActive(_tabStore.activeWorkspaceId, false);
     emit(
@@ -923,7 +987,7 @@ class ChatCubit extends Cubit<ChatState>
       final tab = _tabStore.removeAt(i);
       unawaited(_tearDownTab(tab));
     }
-    _busCoordinator.maybeStopIdleWatch();
+    _sessionRuntime.maybeStopIdleWatch();
     final active = _activeTab;
     _tabStore.setComposeActive(_tabStore.activeWorkspaceId, false);
     emit(
@@ -1139,7 +1203,7 @@ class ChatCubit extends Cubit<ChatState>
     if (idx != -1) {
       final tab = _tabStore.removeAt(idx);
       await _tearDownTab(tab);
-      _busCoordinator.maybeStopIdleWatch();
+      _sessionRuntime.maybeStopIdleWatch();
     }
     final tabs = _tabStore.tabs.map((t) => t.info).toList();
 
@@ -1232,16 +1296,16 @@ class ChatCubit extends Cubit<ChatState>
   }
 
   bool hasTeamBusResources(String sessionId) =>
-      _busCoordinator.hasTeamBusResources(sessionId);
+      _teamBus.hasTeamBusResources(sessionId);
 
   @visibleForTesting
   Uri? teammateBusMcpEndpointForSession(String sessionId) =>
-      _busCoordinator.teammateBusMcpEndpointForSession(sessionId);
+      _teamBus.teammateBusMcpEndpointForSession(sessionId);
 
   @override
   Future<void> close() async {
     if (isClosed) return;
-    _busCoordinator.disposeIdleWatch();
+    _sessionRuntime.disposeIdleWatch();
     final busDisposals = <Future<void>>[];
     for (final tab in _tabStore.allTabs) {
       busDisposals.add(_tearDownTab(tab));

@@ -224,7 +224,7 @@ void main() {
     bus.onMemberIdle('leader');
 
     expect(launcher.woken.single.memberId, 'leader');
-    expect(node.activity, MemberActivity.active);
+    expect(node.activity, MemberActivity.turnDoneReady);
   });
 
   test('onMemberIdle retries delivery instead of re-pasting when already doorbelled', () {

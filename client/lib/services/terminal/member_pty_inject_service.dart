@@ -13,20 +13,27 @@ final class MemberPtyInjectService {
     FullscreenPtyAutomation? automation,
     PtyAutomationSessionLock? lock,
     PtyAutomationRetryQueue? retryQueue,
+    this.onDeliveryRetryExhausted,
   }) : _automation = automation ?? FullscreenPtyAutomation(),
        _lock = lock ?? PtyAutomationSessionLock(),
        _retryQueue =
            retryQueue ??
            PtyAutomationRetryQueue(
              retryIntervalMs: TeamBus.doorbellRetryMs,
-             maxAttempts: _defaultMaxIdleRetries,
+             maxAttempts: TeamBus.maxPtyNotifyAttempts,
            );
 
-  static const _defaultMaxIdleRetries = 24;
+  static const maxPtyNotifyAttempts = TeamBus.maxPtyNotifyAttempts;
 
   final FullscreenPtyAutomation _automation;
   final PtyAutomationSessionLock _lock;
   final PtyAutomationRetryQueue _retryQueue;
+  final void Function(
+    String sessionId,
+    String memberId,
+    FullscreenPtyDeliveryOutcome outcome,
+  )?
+  onDeliveryRetryExhausted;
 
   bool isBusy(String sessionId, String memberId) =>
       _lock.isBusy(sessionId, memberId);
@@ -130,7 +137,7 @@ final class MemberPtyInjectService {
         '[team-bus] pty-automation deferred ack-in-progress '
         'member=$memberId session=$sessionId',
       );
-      _scheduleRetry(key, sessionId, memberId, text);
+      _scheduleRetry(key, sessionId, memberId, text, FullscreenPtyDeliveryOutcome.crStuck);
       return FullscreenPtyDeliveryOutcome.crStuck;
     }
     try {
@@ -165,7 +172,7 @@ final class MemberPtyInjectService {
           '[team-bus] pty-automation-failed member=$memberId session=$sessionId '
           'outcome=$outcome',
         );
-        _scheduleRetry(key, sessionId, memberId, text);
+        _scheduleRetry(key, sessionId, memberId, text, outcome);
     }
   }
 
@@ -174,6 +181,7 @@ final class MemberPtyInjectService {
     String sessionId,
     String memberId,
     String text,
+    FullscreenPtyDeliveryOutcome outcome,
   ) {
     final scheduled = _retryQueue.schedule(
       key: key,
@@ -191,6 +199,7 @@ final class MemberPtyInjectService {
         '[team-bus] automation-retry-gave-up member=$memberId '
         'session=$sessionId',
       );
+      onDeliveryRetryExhausted?.call(sessionId, memberId, outcome);
     }
   }
 }

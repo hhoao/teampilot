@@ -25,6 +25,9 @@ class _SimpleRunningShell extends TerminalSession {
   bool get isRunning => true;
 
   @override
+  bool get isConnected => true;
+
+  @override
   void dispose() {}
 }
 
@@ -74,14 +77,16 @@ void main() {
 
       bus.markTurnStarted('worker-1');
       cubit.debugTickIdleWatch();
+      await drainPendingAsyncWork();
       expect(
         cubit.state.workingSessionIds,
         contains(opened.sessionId),
-        reason: 'in-turn member should light the session spinner',
+        reason: 'bus in-turn after submit should light the session spinner',
       );
 
       bus.onMemberIdle('worker-1');
       cubit.debugTickIdleWatch();
+      await drainPendingAsyncWork();
       expect(
         cubit.state.workingSessionIds,
         isEmpty,
@@ -110,10 +115,14 @@ void main() {
             'mixed mode must not infer working from PTY bytes (spinner repaint)',
       );
 
-      // Sanity: bus turn still lights working.
+      // Bus in-turn lights the spinner even when PTY is quiet.
       tab.teamBus!.markTurnStarted('team-lead');
       cubit.debugTickIdleWatch();
-      expect(cubit.state.workingSessionIds, contains(opened.sessionId));
+      await drainPendingAsyncWork();
+      expect(
+        cubit.state.workingSessionIds,
+        contains(opened.sessionId),
+      );
     });
 
     test('HTTP POST /idle blocks CLI without ending bus turn', () async {
@@ -128,7 +137,11 @@ void main() {
 
       bus.markTurnStarted('team-lead');
       cubit.debugTickIdleWatch();
-      expect(cubit.state.workingSessionIds, contains(opened.sessionId));
+      await drainPendingAsyncWork();
+      expect(
+        cubit.state.workingSessionIds,
+        contains(opened.sessionId),
+      );
 
       await postMemberIdle(idle, 'team-lead', sessionId: opened.sessionId);
       cubit.debugTickIdleWatch();
@@ -173,15 +186,13 @@ void main() {
         worker.simulateQuietGap();
         cubit.debugTickIdleWatch();
         await drainPendingAsyncWork();
-        await Future<void>.delayed(const Duration(milliseconds: 50));
 
-        expect(bus.isMemberInTurn('worker-1'), isTrue);
+        expect(bus.isMemberInTurn('worker-1'), isFalse);
         expect(
-          worker.ptyInput.where((w) => w.contains('teammate-bus')),
-          isNotEmpty,
+          bus.memberById('worker-1')!.doorbelled,
+          isTrue,
           reason: 'PTY quiet ends prior turn; pending mail doorbells at prompt',
         );
-        expect(cubit.state.workingSessionIds, contains(opened.sessionId));
       },
     );
 
@@ -196,10 +207,19 @@ void main() {
 
       bus.markTurnStarted('team-lead');
       cubit.debugTickIdleWatch();
-      expect(cubit.state.workingSessionIds, contains(opened.sessionId));
+      await drainPendingAsyncWork();
+      expect(
+        cubit.state.workingSessionIds,
+        contains(opened.sessionId),
+        reason: 'bus in-turn shows working before PTY quiet ends the turn',
+      );
 
+      shell.activityTracker.notePtyBytes(
+        Uint8List.fromList('agent output\n'.codeUnits),
+      );
       simulateFingerprintQuietGap(shell);
       cubit.debugTickIdleWatch();
+      await drainPendingAsyncWork();
       expect(
         bus.isMemberInTurn('team-lead'),
         isFalse,
@@ -219,8 +239,13 @@ void main() {
 
       bus.markTurnStarted('team-lead');
       cubit.debugTickIdleWatch();
+      await drainPendingAsyncWork();
       expect(bus.isMemberInTurn('team-lead'), isTrue);
-      expect(cubit.state.workingSessionIds, contains(opened.sessionId));
+      expect(
+        cubit.state.workingSessionIds,
+        contains(opened.sessionId),
+        reason: 'bus in-turn shows working even without PTY bytes',
+      );
     });
 
     test(
@@ -481,20 +506,23 @@ void main() {
         ),
       );
       await drainPendingAsyncWork();
-      final shell = created.single;
+      final tab = cubit.activeTab!;
+      final shell = tab.memberShells.values.single;
 
       cubit.debugTickIdleWatch();
       expect(cubit.state.workingSessionIds, isEmpty);
 
-      shell.markUserTurnStarted();
-      shell.activityTracker.notePtyBytes(
-        Uint8List.fromList('working\n'.codeUnits),
+      shell.activityTracker.latchBootFrameReadyForTest(
+        DateTime.now().subtract(const Duration(seconds: 5)),
       );
+      shell.markUserTurnStarted();
       cubit.debugTickIdleWatch();
+      await drainPendingAsyncWork();
       expect(cubit.state.workingSessionIds, contains(session.sessionId));
 
       simulateFingerprintQuietGap(shell);
       cubit.debugTickIdleWatch();
+      await drainPendingAsyncWork();
       expect(cubit.state.workingSessionIds, isEmpty);
     });
 

@@ -309,7 +309,7 @@ Future<void> submitWorkspaceLandingMessage(
   }
 
   try {
-    await chatCubit.busCoordinator.deliverUserCommandToMember(
+    await chatCubit.sessionRuntime.deliverUserCommandToMember(
       session.sessionId,
       memberId,
       trimmed,
@@ -377,7 +377,7 @@ Future<bool> _ensureLandingSessionConnected({
   // persist+connect. Re-opening here races that path and can connect with the
   // provisional session (empty cliTeamName) before disk persistence finishes.
   try {
-    await chatCubit.busCoordinator
+    await chatCubit.memberMaterializer
         .ensureMemberInputReady(
           session.sessionId,
           memberId,

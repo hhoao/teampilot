@@ -1,7 +1,7 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:teampilot/models/member_presence.dart';
 import 'package:teampilot/models/team_config.dart';
-import 'package:teampilot/services/team/member_availability_resolver.dart';
+import 'package:teampilot/services/team/member_coordination.dart';
 import 'package:teampilot/services/team_bus/agent_node.dart';
 import 'package:teampilot/services/team_bus/team_bus.dart';
 import 'package:teampilot/services/terminal/terminal_session.dart';
@@ -9,7 +9,7 @@ import 'package:teampilot/services/terminal/terminal_session.dart';
 import '../team_bus/support/fake_member_launcher.dart';
 
 void main() {
-  group('MemberAvailabilityResolver', () {
+  group('MemberCoordination availability', () {
     test('booting until PTY frame is stable', () {
       final shell = _ConnectedShell();
       shell.activityTracker.reset();
@@ -19,11 +19,35 @@ void main() {
       expect(_resolve(shell, bus: null), MemberAvailability.idle);
     });
 
+    test('personal userTurnActive shows working when PTY is quiet', () {
+      final shell = _ConnectedShell()
+        ..activityTracker.latchBootFrameReadyForTest(
+          DateTime.now().subtract(const Duration(milliseconds: 3000)),
+        )
+        ..markUserTurnStarted();
+
+      expect(
+        MemberCoordination.resolve(
+          shell: shell,
+          member: const TeamMemberConfig(id: 'solo', name: 'solo'),
+          team: const TeamProfile(id: '', name: ''),
+          teamMode: TeamMode.native,
+          globalPresets: const [],
+          bus: null,
+          claudeRosterWorking: false,
+          usesClaudeRoster: false,
+          usesShellActivity: true,
+        ).availability(),
+        MemberAvailability.working,
+        reason: 'submit success latches turn before PTY bytes arrive',
+      );
+    });
+
     test('isReadyForAutomationInput false while booting', () {
       final shell = _ConnectedShell();
       shell.activityTracker.reset();
       expect(
-        MemberAvailabilityResolver.isReadyForAutomationInput(
+        MemberCoordination.resolve(
           shell: shell,
           member: const TeamMemberConfig(id: 'worker', name: 'worker'),
           team: const TeamProfile(id: 't', name: 'T', teamMode: TeamMode.mixed),
@@ -33,12 +57,12 @@ void main() {
           claudeRosterWorking: false,
           usesClaudeRoster: false,
           usesShellActivity: true,
-        ),
+        ).isReadyForAutomationInput(),
         isFalse,
       );
       shell.activityTracker.latchBootFrameReadyForTest();
       expect(
-        MemberAvailabilityResolver.isReadyForAutomationInput(
+        MemberCoordination.resolve(
           shell: shell,
           member: const TeamMemberConfig(id: 'worker', name: 'worker'),
           team: const TeamProfile(id: 't', name: 'T', teamMode: TeamMode.mixed),
@@ -48,7 +72,7 @@ void main() {
           claudeRosterWorking: false,
           usesClaudeRoster: false,
           usesShellActivity: true,
-        ),
+        ).isReadyForAutomationInput(),
         isTrue,
       );
     });
@@ -73,7 +97,7 @@ void main() {
           reason: 'turnDoneReady at prompt is idle once TUI is stable',
         );
         expect(
-          MemberAvailabilityResolver.isReadyForAutomationInput(
+          MemberCoordination.resolve(
             shell: shell,
             member: const TeamMemberConfig(id: 'worker', name: 'worker'),
             team: const TeamProfile(
@@ -88,7 +112,7 @@ void main() {
             claudeRosterWorking: false,
             usesClaudeRoster: false,
             usesShellActivity: false,
-          ),
+          ).isReadyForAutomationInput(),
           isFalse,
           reason: 'scheduled inject still waits for wait_for_message',
         );
@@ -102,7 +126,7 @@ void main() {
         );
         expect(_resolve(shell, bus: bus), MemberAvailability.idle);
         expect(
-          MemberAvailabilityResolver.isReadyForAutomationInput(
+          MemberCoordination.resolve(
             shell: shell,
             member: const TeamMemberConfig(id: 'worker', name: 'worker'),
             team: const TeamProfile(
@@ -117,35 +141,56 @@ void main() {
             claudeRosterWorking: false,
             usesClaudeRoster: false,
             usesShellActivity: false,
-          ),
+          ).isReadyForAutomationInput(),
           isTrue,
         );
       },
     );
 
-    test('mixed in-turn is idle when PTY is quiet (e.g. unconsumed doorbell)', () {
+    test('mixed pre-submit doorbell is idle when PTY is quiet (crStuck)', () {
       final shell = _ConnectedShell()
         ..activityTracker.latchBootFrameReadyForTest(
           DateTime.now().subtract(const Duration(milliseconds: 3000)),
         );
       final bus = TeamBus(launcher: FakeMemberLauncher());
-      bus.declareMember(
-        AgentNode.test(
-          memberId: 'worker',
-          lifecycle: MemberLifecycle.running,
-          activity: MemberActivity.active,
-        ),
-      );
+      final node = AgentNode.test(
+        memberId: 'worker',
+        lifecycle: MemberLifecycle.running,
+        activity: MemberActivity.turnDoneReady,
+      )..doorbelled = true;
+      bus.declareMember(node);
 
       expect(
         _resolve(shell, bus: bus),
         MemberAvailability.idle,
-        reason: 'bus in-turn must not override a quiet terminal',
+        reason: 'doorbell not yet submitted — no bus in-turn',
+      );
+    });
+
+    test('mixed shows working after mail doorbell submitted with quiet PTY', () {
+      final shell = _ConnectedShell()
+        ..activityTracker.latchBootFrameReadyForTest(
+          DateTime.now().subtract(const Duration(milliseconds: 3000)),
+        );
+      final bus = TeamBus(launcher: FakeMemberLauncher());
+      final node = AgentNode.test(
+        memberId: 'worker',
+        lifecycle: MemberLifecycle.running,
+        activity: MemberActivity.turnDoneReady,
+      )..doorbelled = true;
+      bus.declareMember(node);
+
+      bus.noteMailDeliverySubmitted('worker');
+
+      expect(
+        _resolve(shell, bus: bus),
+        MemberAvailability.working,
+        reason: 'submitted doorbell starts agent turn even when PTY is quiet',
       );
     });
 
     test(
-      'mixed operator turn shows working when PTY quiet (compose landing parity)',
+      'mixed operator turn shows working when PTY quiet after submit',
       () {
         final shell = _ConnectedShell()
           ..activityTracker.latchBootFrameReadyForTest(
@@ -159,40 +204,29 @@ void main() {
             activity: MemberActivity.active,
           ),
         );
-        shell.markUserTurnStarted();
 
         expect(
           _resolve(shell, bus: bus),
           MemberAvailability.working,
-          reason:
-              'send latches userTurnActive — same as personal mode, no PTY bytes needed',
+          reason: 'bus in-turn after successful submit — no PTY bytes needed',
         );
       },
     );
 
-    test(
-      'mixed parked wait_for_message stays idle even with stale userTurnActive',
-      () {
-        final shell = _ConnectedShell()
-          ..activityTracker.latchBootFrameReadyForTest();
-        shell.markUserTurnStarted();
+    test('mixed parked wait_for_message stays idle', () {
+      final shell = _ConnectedShell()
+        ..activityTracker.latchBootFrameReadyForTest();
+      final bus = TeamBus(launcher: FakeMemberLauncher());
+      bus.declareMember(
+        AgentNode.test(
+          memberId: 'worker',
+          lifecycle: MemberLifecycle.running,
+          activity: MemberActivity.turnDoneBusWait,
+        ),
+      );
 
-        final bus = TeamBus(launcher: FakeMemberLauncher());
-        bus.declareMember(
-          AgentNode.test(
-            memberId: 'worker',
-            lifecycle: MemberLifecycle.running,
-            activity: MemberActivity.turnDoneBusWait,
-          ),
-        );
-
-        expect(
-          _resolve(shell, bus: bus),
-          MemberAvailability.idle,
-          reason: 'bus wait wins over stale automation userTurnActive latch',
-        );
-      },
-    );
+      expect(_resolve(shell, bus: bus), MemberAvailability.idle);
+    });
 
     test('mixed in-turn is working when PTY has recent activity', () {
       final shell = _ConnectedShell()
@@ -235,7 +269,7 @@ void main() {
       );
     });
 
-    test('push-CLI doorbell allows PTY working', () {
+    test('push-CLI doorbell allows PTY working when terminal is active', () {
       final shell = _ConnectedShell()
         ..activityTracker.latchBootFrameReadyForTest();
       shell.activityTracker.markActive();
@@ -252,7 +286,24 @@ void main() {
       expect(_resolvePushCli(shell, bus: bus), MemberAvailability.working);
     });
 
-    test('push-CLI doorbell is idle when PTY is quiet', () {
+    test('push-CLI agent in-turn with PTY activity shows working', () {
+      final shell = _ConnectedShell()
+        ..activityTracker.latchBootFrameReadyForTest();
+      shell.activityTracker.markActive();
+
+      final bus = TeamBus(launcher: FakeMemberLauncher());
+      final node = AgentNode.test(
+        memberId: 'worker',
+        cli: 'cursor',
+        lifecycle: MemberLifecycle.running,
+        activity: MemberActivity.active,
+      );
+      bus.declareMember(node);
+
+      expect(_resolvePushCli(shell, bus: bus), MemberAvailability.working);
+    });
+
+    test('push-CLI doorbell not yet submitted is idle when PTY is quiet', () {
       final shell = _ConnectedShell()
         ..activityTracker.latchBootFrameReadyForTest(
           DateTime.now().subtract(const Duration(milliseconds: 3000)),
@@ -263,7 +314,7 @@ void main() {
         memberId: 'worker',
         cli: 'cursor',
         lifecycle: MemberLifecycle.running,
-        activity: MemberActivity.active,
+        activity: MemberActivity.turnDoneReady,
       )..doorbelled = true;
       bus.declareMember(node);
 
@@ -274,11 +325,30 @@ void main() {
             'unconsumed doorbell must not pin working when terminal is still',
       );
     });
+
+    test('push-CLI doorbell submitted shows working when PTY is quiet', () {
+      final shell = _ConnectedShell()
+        ..activityTracker.latchBootFrameReadyForTest(
+          DateTime.now().subtract(const Duration(milliseconds: 3000)),
+        );
+
+      final bus = TeamBus(launcher: FakeMemberLauncher());
+      final node = AgentNode.test(
+        memberId: 'worker',
+        cli: 'cursor',
+        lifecycle: MemberLifecycle.running,
+        activity: MemberActivity.turnDoneReady,
+      )..doorbelled = true;
+      bus.declareMember(node);
+      bus.noteMailDeliverySubmitted('worker');
+
+      expect(_resolvePushCli(shell, bus: bus), MemberAvailability.working);
+    });
   });
 }
 
 MemberAvailability _resolve(TerminalSession shell, {required TeamBus? bus}) {
-  return MemberAvailabilityResolver.forConnected(
+  return MemberCoordination.resolve(
     shell: shell,
     member: const TeamMemberConfig(id: 'worker', name: 'worker'),
     team: const TeamProfile(
@@ -293,14 +363,14 @@ MemberAvailability _resolve(TerminalSession shell, {required TeamBus? bus}) {
     claudeRosterWorking: false,
     usesClaudeRoster: false,
     usesShellActivity: false,
-  );
+  ).availability();
 }
 
 MemberAvailability _resolvePushCli(
   TerminalSession shell, {
   required TeamBus bus,
 }) {
-  return MemberAvailabilityResolver.forConnected(
+  return MemberCoordination.resolve(
     shell: shell,
     member: const TeamMemberConfig(
       id: 'worker',
@@ -322,7 +392,7 @@ MemberAvailability _resolvePushCli(
     claudeRosterWorking: false,
     usesClaudeRoster: false,
     usesShellActivity: false,
-  );
+  ).availability();
 }
 
 class _ConnectedShell extends TerminalSession {

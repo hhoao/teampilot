@@ -99,6 +99,9 @@ openMixedSessionWithShells({
   final workerShell = await ConnectedRecordingShell.connect();
   tab.memberShells['team-lead'] = leadShell.session;
   tab.memberShells['worker-1'] = workerShell.session;
+  final bootAt = DateTime.now().subtract(const Duration(seconds: 5));
+  leadShell.session.activityTracker.latchBootFrameReadyForTest(bootAt);
+  workerShell.session.activityTracker.latchBootFrameReadyForTest(bootAt);
   bus.markMemberRunning('team-lead');
   bus.markMemberRunning('worker-1');
   cubit.pushPresenceTarget();
@@ -140,6 +143,9 @@ void armActivityTracker(TerminalSession shell) {
   shell.activityTracker.reset();
   shell.activityTracker.isWorking;
   shell.activityTracker.markActive();
+  shell.activityTracker.latchBootFrameReadyForTest(
+    DateTime.now().subtract(const Duration(seconds: 5)),
+  );
 }
 
 /// Backdates the per-turn fingerprint baseline so [isQuietAfterTurnPtyActivity]

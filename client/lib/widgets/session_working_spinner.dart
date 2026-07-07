@@ -47,7 +47,7 @@ class SessionWorkingIndicator extends StatelessWidget {
 
 /// A 3×3 grid of rounded squares whose brightness sweeps diagonally, reading as
 /// a rotating "blocks" spinner. Shown left of a session tab / sidebar list item
-/// while that session has a member in a turn (TeamBus truth).
+/// while that session has a member in [MemberAvailability.working] (members panel).
 ///
 /// Pure UI: it animates on its own [AnimationController]; callers just mount it
 /// when the session is working and unmount it when idle.

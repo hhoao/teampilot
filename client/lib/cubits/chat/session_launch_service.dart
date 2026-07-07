@@ -53,7 +53,10 @@ import 'model/session_open_request.dart';
 import 'model/session_open_status.dart';
 import 'model/session_persist_params.dart';
 import 'model/session_connect_request.dart';
+import 'member_connector.dart';
 import 'session_data_store.dart';
+import 'tab_member_materializer.dart';
+import 'tab_session_runtime_coordinator.dart';
 import 'tab_team_bus_coordinator.dart';
 
 /// Seam [SessionLaunchService] uses to read/emit ChatState and reach the other
@@ -99,7 +102,9 @@ abstract interface class SessionLaunchHost {
   // Collaborators.
   ChatTabStore get tabStore;
   ChatSessionShellFactory get shellFactory;
-  TabTeamBusCoordinator get busCoordinator;
+  TabSessionRuntimeCoordinator get sessionRuntime;
+  TabTeamBusCoordinator get teamBus;
+  TabMemberMaterializer get memberMaterializer;
   SessionLifecycleService get lifecycle;
   SessionDataStore get dataStore;
 
@@ -429,7 +434,7 @@ class SessionLaunchService implements MemberConnector {
     final generation = tab.launchGeneration;
 
     _tabStore.append(tab);
-    _h.busCoordinator.ensureIdleWatch();
+    _h.sessionRuntime.ensureIdleWatch();
     _h.applyState(
       _state.copyWith(
         activeTabIndex: _tabStore.length - 1,
@@ -848,7 +853,7 @@ class SessionLaunchService implements MemberConnector {
       '[session-launch] installing team bus '
       'session=${session.sessionId} team=${team.id}',
     );
-    await _h.busCoordinator.installBusForTab(tab, team, session);
+    await _h.teamBus.installBusForTab(tab, team, session);
     if (!_launchStillValid(tab, generation)) return;
   }
 
@@ -1768,7 +1773,7 @@ class SessionLaunchService implements MemberConnector {
         shellLaunch: shellLaunch,
         extraEnvironment: plan.env.isEmpty ? null : plan.env,
         busUserInputRouting: team != null && member != null
-            ? _h.busCoordinator.busUserInputRouting(tab, team, member)
+            ? _h.teamBus.busUserInputRouting(tab, team, member)
             : null,
         onFirstUserLineSubmitted: _autoRenameOnFirstPrompt(
           activeSession.sessionId,
@@ -1786,12 +1791,12 @@ class SessionLaunchService implements MemberConnector {
         onProcessStarted: () {
           if (team != null && member != null) {
             tab.teamBus?.markMemberRunning(member.id);
-            _h.busCoordinator.markMemberReady(tab.info.id, member.id);
+            _h.memberMaterializer.markMemberReady(tab.info.id, member.id);
           } else if (isPersonal) {
             tab.personalPresetId = null;
             final personalMemberId = tab.selectedMemberId.trim();
             if (personalMemberId.isNotEmpty) {
-              _h.busCoordinator.markMemberReady(tab.info.id, personalMemberId);
+              _h.memberMaterializer.markMemberReady(tab.info.id, personalMemberId);
             }
           }
           _h.clearLaunchError(tab.info.id);

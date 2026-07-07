@@ -1,5 +1,6 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:teampilot/services/team_bus/agent_node.dart';
+import 'package:teampilot/services/team_bus/mailbox_delivery.dart';
 import 'package:teampilot/services/team_bus/team_bus.dart';
 import 'package:teampilot/services/team_bus/team_message.dart';
 import 'package:teampilot/services/terminal/pty_automation_delivery_guard.dart';
@@ -59,7 +60,7 @@ void main() {
       expect(bus.pendingDoorbellNoticeFor('worker'), isNotNull);
     });
 
-    test('does not skip when operator turn is latched', () {
+    test('does not skip when member is in-turn', () {
       final bus = TeamBus(launcher: FakeMemberLauncher());
       bus.declareMember(
         AgentNode.test(
@@ -73,7 +74,7 @@ void main() {
         PtyAutomationDeliveryGuard.shouldSkipRetry(
           bus: bus,
           memberId: 'worker',
-          operatorTurnActive: true,
+          memberInTurn: true,
         ),
         isFalse,
       );
@@ -96,6 +97,28 @@ void main() {
           pendingAutomationRetry: true,
         ),
         isFalse,
+      );
+    });
+
+    test('skips when mail delivery failed but unread remains', () {
+      final bus = TeamBus(launcher: FakeMemberLauncher());
+      final node = AgentNode.test(
+        memberId: 'worker',
+        lifecycle: MemberLifecycle.running,
+        activity: MemberActivity.turnDoneReady,
+      );
+      bus.declareMember(node);
+      node.inbox.deliver(
+        TeamMessage(id: 'm1', from: 'lead', to: 'worker', content: 'ping'),
+      );
+      bus.markMailDeliveryFailed(
+        'worker',
+        error: MailboxDeliveryError.crStuck,
+      );
+
+      expect(
+        PtyAutomationDeliveryGuard.shouldSkipRetry(bus: bus, memberId: 'worker'),
+        isTrue,
       );
     });
 

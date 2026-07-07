@@ -99,7 +99,7 @@ class TerminalSession implements TerminalTextSink {
   /// Single-CLI working-turn state — mirrors mixed-mode bus turn truth without a
   /// bus. A turn *begins* on a **send** (the user submitting a line, or a
   /// programmatic prompt injection) and *ends* when PTY output goes quiet,
-  /// detected as the [activityTracker] falling edge by [TabTeamBusCoordinator].
+  /// detected as the [activityTracker] falling edge by [TabSessionRuntimeCoordinator].
   /// Drives the sidebar/tab working spinner in simple & native single-CLI mode.
   /// Screen output never *enters* working — it only clears it (team-mode parity).
   bool _userTurnActive = false;

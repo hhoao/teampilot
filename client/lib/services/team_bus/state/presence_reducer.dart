@@ -129,10 +129,9 @@ abstract final class PresenceReducer {
     // 已响过一记「去 read_messages」、worker 尚未消费 → 不重复注入：back-to-back
     // 邮件会把同一条提示打好几遍。真没送达（回车被吞）由看门狗重敲兜底。
     if (ctx.doorbelled) return _stay(s);
-    // Doorbell = TeamPilot 判定 worker 应处理 teammate 信（含 Cursor push 路径：
-    // 只注入提示、不走 wait_for_message）。与 TurnStarted / WaitExited 对齐为 working。
-    final next = s.atPrompt ? s.copyWith(activity: MemberActivity.active) : s;
-    return PresenceTransition(next, [DoorbellEffect(ctx.memberId)]);
+    // Doorbell = TeamPilot 判定 worker 应处理 teammate 信；presence 保持 at-prompt，
+    // delivery 维度单独跟踪（mailbox-delivery spec）。
+    return PresenceTransition(s, [DoorbellEffect(ctx.memberId)]);
   }
 
   static PresenceTransition _to(Presence next) =>

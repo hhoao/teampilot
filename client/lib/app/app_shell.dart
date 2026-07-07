@@ -748,7 +748,10 @@ Future<AppShell> buildAppShell({
     repository: automationRepo,
     scheduleCalculator: scheduleCalculator,
     sessionRepository: sessionRepo,
-    busGateway: TabTeamBusGateway(chatCubit.busCoordinator),
+    busGateway: TabTeamBusGateway(
+      memberMaterializer: chatCubit.memberMaterializer,
+      sessionRuntime: chatCubit.sessionRuntime,
+    ),
     requestOpenSession: chatCubit.requestOpenSession,
     requestCreateAndOpenSession: chatCubit.requestCreateAndOpenSession,
     workspaceById: (workspaceId) => chatCubit.state.workspaces

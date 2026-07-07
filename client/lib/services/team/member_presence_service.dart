@@ -8,7 +8,7 @@ import '../storage/app_storage.dart';
 import '../team_bus/team_bus.dart';
 import '../terminal/terminal_session.dart';
 import 'claude_roster_activity_source.dart';
-import 'member_availability_resolver.dart';
+import 'member_coordination.dart';
 
 /// Session-scoped inputs for [MemberPresenceService.compute].
 class PresenceSessionContext {
@@ -80,7 +80,7 @@ class MemberPresenceService {
       final shell = memberShells[member.id];
       final connection = _connectionOf(shell);
       final availability = switch (connection) {
-        MemberConnection.connected => MemberAvailabilityResolver.forConnected(
+        MemberConnection.connected => MemberCoordination.resolve(
           shell: shell!,
           member: member,
           team: team ?? TeamProfile(id: '', name: '', cli: teamCli),
@@ -93,7 +93,7 @@ class MemberPresenceService {
           ),
           usesClaudeRoster: usesClaudeRoster,
           usesShellActivity: usesShellActivity,
-        ),
+        ).availability(),
         _ => null,
       };
       out[member.id] = MemberPresence(

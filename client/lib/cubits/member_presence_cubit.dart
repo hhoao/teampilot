@@ -107,7 +107,7 @@ class MemberPresenceCubit extends Cubit<MemberPresenceState> {
     _presencePollGeneration++;
   }
 
-  /// Called each second from [TabTeamBusCoordinator] idle watch (via ChatCubit).
+  /// Called each second from [TabSessionRuntimeCoordinator] idle watch (via ChatCubit).
   Future<void> tickFromIdleWatch() async {
     await _tickMemberPresence(_presencePollGeneration);
   }

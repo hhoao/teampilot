@@ -1,3 +1,4 @@
+import 'mailbox_delivery.dart';
 import 'member_inbox.dart';
 import 'member_state.dart';
 import 'teammate_roster_profile.dart';
@@ -52,6 +53,15 @@ class AgentNode {
   /// （首个回车被全屏 TUI 输入框吞掉的竞态）时，按间隔补敲，治「永久卡在 prompt」。
   /// 真正消费（进 wait / 抽干未读）后清零。null = 本轮还没敲过。
   int? doorbelledAt;
+
+  /// PTY mail-notify lifecycle; see mailbox-delivery design spec.
+  MailboxDeliveryPhase deliveryPhase = MailboxDeliveryPhase.none;
+
+  /// Set when [deliveryPhase] is [MailboxDeliveryPhase.failed].
+  MailboxDeliveryError? deliveryLastError;
+
+  /// PTY mail-notify attempts (inject + reengage); see [TeamBus.maxPtyNotifyAttempts].
+  int deliveryAttempts = 0;
 
   String get memberId => profile.memberId;
 

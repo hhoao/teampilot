@@ -9,6 +9,8 @@ import 'coordination/leader_star_coordination_policy.dart';
 import 'env/bus_environment.dart';
 import 'env/bus_observation.dart';
 import 'idle_notification.dart';
+import 'mailbox_delivery.dart';
+import 'mailbox_delivery_reducer.dart';
 import 'member_launcher.dart';
 import 'persistence/bus_message_log.dart';
 import 'persistence/bus_message_page.dart';
@@ -86,6 +88,9 @@ class TeamBus implements CoordinationView {
   /// 输入框偶发吞掉首个回车导致的「永久卡在 prompt」。
   static const int doorbellRetryMs = 5 * 1000;
 
+  /// PTY mail-notify attempts (inject queue + reengage); see mailbox-delivery spec.
+  static const int maxPtyNotifyAttempts = 6;
+
   final BusEnvironment _env;
   final BusMessageLog? _messageLog;
   final TaskQueue? _taskQueue;
@@ -125,7 +130,10 @@ class TeamBus implements CoordinationView {
   String? pendingDoorbellNoticeFor(String memberId) {
     final node = _members[memberId];
     if (node == null || node.lifecycle != MemberLifecycle.running) return null;
-    if (!node.inbox.isEmpty) return doorbellNotice;
+    if (!node.inbox.isEmpty) {
+      if (node.deliveryPhase == MailboxDeliveryPhase.failed) return null;
+      return doorbellNotice;
+    }
     final queue = _taskQueue;
     if (queue != null && _hasEligiblePendingTask(node, queue)) {
       return taskDoorbellNotice;
@@ -193,6 +201,7 @@ class TeamBus implements CoordinationView {
     if (event is! MailArrived) return;
     final unread = _hotUnreadCount(node);
     if (effects.any((e) => e is DoorbellEffect)) {
+      _applyMailDelivery(node, const MailDeliveryScheduled());
       appLogger.d(
         '[team-bus] mail-doorbell member=${node.memberId} unread=$unread',
       );
@@ -233,7 +242,91 @@ class TeamBus implements CoordinationView {
   bool shouldDeferPtyIdleEnd(String memberId) {
     final node = _members[memberId];
     if (node == null) return false;
+    if (node.deliveryPhase == MailboxDeliveryPhase.failed) return false;
+    if (node.deliveryPhase == MailboxDeliveryPhase.inFlight) return false;
     return node.doorbelled && !node.inbox.isEmpty;
+  }
+
+  void noteMailDeliveryStarted(String memberId) {
+    final node = _members[memberId];
+    if (node == null || node.inbox.isEmpty) return;
+    _applyMailDelivery(node, const MailDeliveryStarted());
+  }
+
+  void noteMailDeliverySubmitted(String memberId) {
+    final node = _members[memberId];
+    if (node == null) return;
+    _applyMailDelivery(node, const MailDeliverySubmitted());
+    // Grid ACK accepted the doorbell prompt — agent turn begins (MCP read may
+    // not move PTY bytes; members panel still shows working until turn ends).
+    if (node.lifecycle == MemberLifecycle.running && !node.waitingForMessage) {
+      _apply(node, const TurnStarted());
+    }
+  }
+
+  void noteMailDeliveryAttemptFailed(
+    String memberId, {
+    required MailboxDeliveryError error,
+  }) {
+    final node = _members[memberId];
+    if (node == null) return;
+    _applyMailDelivery(node, MailDeliveryFailed(error));
+  }
+
+  void noteMailDeliveryAborted(String memberId) {
+    final node = _members[memberId];
+    if (node == null) return;
+    _applyMailDelivery(node, const MailDeliveryAborted());
+  }
+
+  /// PTY automation retry budget exhausted — stop mail doorbell, keep unread.
+  void markMailDeliveryFailed(
+    String memberId, {
+    required MailboxDeliveryError error,
+  }) {
+    final node = _members[memberId];
+    if (node == null) return;
+    node.deliveryPhase = MailboxDeliveryPhase.failed;
+    node.deliveryLastError = error;
+    node.deliveryAttempts = maxPtyNotifyAttempts;
+    appLogger.w(
+      '[team-bus] mail-delivery-failed member=$memberId error=${error.name}',
+    );
+  }
+
+  void _applyMailDelivery(AgentNode node, MailboxDeliveryEvent event) {
+    final before = MailboxDeliverySnapshot(
+      phase: node.deliveryPhase,
+      attempts: node.deliveryAttempts,
+      lastError: node.deliveryLastError,
+    );
+    final after = MailboxDeliveryReducer.reduce(
+      before,
+      event,
+      hasUnread: !node.inbox.isEmpty,
+      maxAttempts: maxPtyNotifyAttempts,
+    );
+    final wasFailed = node.deliveryPhase == MailboxDeliveryPhase.failed;
+    node.deliveryPhase = after.phase;
+    node.deliveryAttempts = after.attempts;
+    node.deliveryLastError = after.lastError;
+    if (after.phase == MailboxDeliveryPhase.failed && !wasFailed) {
+      appLogger.w(
+        '[team-bus] mail-delivery-failed member=${node.memberId} '
+        'error=${after.lastError?.name ?? 'unknown'}',
+      );
+    }
+  }
+
+  void _clearMailDeliveryIfConsumed(AgentNode node) {
+    _applyMailDelivery(node, const MailConsumed());
+  }
+
+  void _resetMailDeliveryOnInbound(AgentNode node) {
+    if (node.deliveryPhase != MailboxDeliveryPhase.failed) return;
+    node.deliveryPhase = MailboxDeliveryPhase.none;
+    node.deliveryLastError = null;
+    node.deliveryAttempts = 0;
   }
 
   /// 队里是否**任一**成员在回合中。会话级 working 指示器(tab / 列表项 spinner)用。
@@ -496,6 +589,7 @@ class TeamBus implements CoordinationView {
       );
       node.doorbelled = false;
       node.doorbelledAt = null;
+      _clearMailDeliveryIfConsumed(node);
     }
     return page;
   }
@@ -554,6 +648,7 @@ class TeamBus implements CoordinationView {
   /// 纯数据投递（内存 + 日志由 inbox 自洽）；活动态 / 门铃交给 [MailArrived]，
   /// 协调上报由 [CoordinationPolicy] 记账。
   void _deliverToInbox(AgentNode node, TeamMessage message) {
+    _resetMailDeliveryOnInbound(node);
     _coordination.noteInboundWork(node.memberId);
     node.inbox.deliver(message);
     _env.events.emit(
@@ -743,9 +838,14 @@ class TeamBus implements CoordinationView {
 
   /// 注入门铃全文并置幂等闸（绕过 reducer 的路径也必须设 [AgentNode.doorbelled]）。
   void _ringDoorbell(AgentNode node, String notice) {
-    // Task-queue / watchdog doorbells skip MailArrived — still align with
-    // send-path delivery: in-turn before PTY inject (see [markTurnStarted]).
-    if (node.lifecycle == MemberLifecycle.running && !node.waitingForMessage) {
+    if (notice == doorbellNotice &&
+        node.deliveryPhase == MailboxDeliveryPhase.failed) {
+      return;
+    }
+    // Task doorbell still marks agent in-turn; mail notify uses delivery only.
+    if (notice == taskDoorbellNotice &&
+        node.lifecycle == MemberLifecycle.running &&
+        !node.waitingForMessage) {
       _apply(node, const TurnStarted());
     }
     node.doorbelled = true;
@@ -895,16 +995,19 @@ class TeamBus implements CoordinationView {
     for (final node in _members.values) {
       if (node.profile.isTeamLead) continue;
       if (node.lifecycle != MemberLifecycle.running) continue;
-      final doorbellPending = node.doorbelled || node.doorbelledAt != null;
       final atPromptIdle = node.activity == MemberActivity.turnDoneReady;
-      // Delivery marks in-turn before inject; a swallowed CR leaves the member
-      // active + doorbelled — still needs nudge retries.
-      final inTurnStuck =
-          node.activity == MemberActivity.active && doorbellPending;
-      if (!atPromptIdle && !inTurnStuck) continue;
+      final taskDoorbellStuck =
+          node.inbox.isEmpty &&
+          queue != null &&
+          _hasEligiblePendingTask(node, queue) &&
+          (node.doorbelled || node.doorbelledAt != null) &&
+          node.activity == MemberActivity.active;
+      if (!atPromptIdle && !taskDoorbellStuck) continue;
       if (_recentlyDoorbelled(node)) continue;
       final String notice;
       if (!node.inbox.isEmpty) {
+        if (node.deliveryPhase == MailboxDeliveryPhase.failed) continue;
+        if (node.deliveryAttempts >= maxPtyNotifyAttempts) continue;
         notice = doorbellNotice;
       } else if (queue != null && _hasEligiblePendingTask(node, queue)) {
         notice = taskDoorbellNotice;

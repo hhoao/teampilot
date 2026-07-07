@@ -85,9 +85,9 @@ void main() {
       expect(t.effects, isEmpty);
     });
 
-    test('at-prompt → doorbell + active (working)', () {
+    test('at-prompt → doorbell, presence stays at-prompt', () {
       final t = _run(_atPrompt, const MailArrived(), hasUnread: true);
-      expect(t.presence, _active);
+      expect(t.presence, _atPrompt);
       expect(t.effects.single, isA<DoorbellEffect>());
     });
 
