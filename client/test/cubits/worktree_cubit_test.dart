@@ -227,4 +227,27 @@ void main() {
       expect(cubit.state.pathForNewSession, '/wt/a');
     },
   );
+
+  test('stale load completion is ignored when a newer load finishes', () async {
+    final lister = _RepoDelayedLister();
+    final cubit = WorktreeCubit(lister: lister);
+    final slow = cubit.load('/repo-a');
+    final fast = cubit.load('/repo-b');
+    cubit.setCurrentWorktree('/repo-b/wt');
+    await Future.wait([slow, fast]);
+    expect(cubit.state.repoPath, '/repo-b');
+    expect(cubit.state.currentWorktreePath, '/repo-b/wt');
+    expect(cubit.state.worktrees, hasLength(2));
+  });
+}
+
+class _RepoDelayedLister implements WorktreeLister {
+  @override
+  Future<List<GitWorktree>> list(String repoPath) async {
+    if (repoPath == '/repo-a') {
+      await Future<void>.delayed(const Duration(milliseconds: 40));
+      return [_wt('/repo-a', main: true)];
+    }
+    return [_wt('/repo-b', main: true), _wt('/repo-b/wt')];
+  }
 }

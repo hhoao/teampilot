@@ -166,6 +166,7 @@ class WorktreeCubit extends Cubit<WorktreeState> {
   final String workspaceId;
 
   bool _hydrated = false;
+  int _loadGeneration = 0;
 
   static WorktreeState _initialState({
     required String workspaceId,
@@ -221,17 +222,20 @@ class WorktreeCubit extends Cubit<WorktreeState> {
       );
     }
 
-    emit(state.copyWith(repoPath: repoPath, loading: true));
+    final generation = ++_loadGeneration;
+    final requestedRepo = normalizeWorkspacePath(repoPath.trim());
+
+    emit(state.copyWith(repoPath: requestedRepo, loading: true));
 
     final hydrating = !_hydrated && workspaceId.isNotEmpty;
-    final listFuture = lister.list(repoPath);
+    final listFuture = lister.list(requestedRepo);
     final prefFuture = hydrating
         ? _prefsStore.prefsFor(workspaceId)
         : Future<WorktreeUiPref?>.value(null);
 
     final list = await listFuture;
     final pref = await prefFuture;
-    if (isClosed) return;
+    if (generation != _loadGeneration || isClosed) return;
     if (hydrating) _hydrated = true;
 
     var collapsed = state.collapsed;
@@ -250,7 +254,7 @@ class WorktreeCubit extends Cubit<WorktreeState> {
     } else if (persistedCurrent != null && inList(persistedCurrent)) {
       current = persistedCurrent;
     } else {
-      current = _initialCurrent(list, preferCurrentPath, repoPath);
+      current = _initialCurrent(list, preferCurrentPath, requestedRepo);
     }
     emit(
       state.copyWith(
@@ -261,7 +265,7 @@ class WorktreeCubit extends Cubit<WorktreeState> {
       ),
     );
     if (workspaceId.isNotEmpty) {
-      _worktreeStore?.remember(workspaceId, repoPath, list);
+      _worktreeStore?.remember(workspaceId, requestedRepo, list);
     }
   }
 

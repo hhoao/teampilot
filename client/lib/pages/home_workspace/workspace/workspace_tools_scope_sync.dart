@@ -12,6 +12,7 @@ import '../../../services/git/git_command_runner.dart';
 import '../../../services/git/git_worktree_service.dart';
 import '../../../services/storage/runtime_context.dart';
 import '../../../services/workspace/workspace_tools_scope.dart';
+import '../../../utils/workspace_path_utils.dart';
 import '../../../utils/workspace_tab_session_scope.dart';
 import 'workspace_route_active_scope.dart';
 
@@ -98,10 +99,19 @@ class _WorkspaceToolsScopeSyncState extends State<WorkspaceToolsScopeSync> {
     // separately via WorktreeCubit.syncCurrentForSessionPath on tab open.
     if (_lastWorktreeTargetId != tools.targetId) {
       _lastWorktreeTargetId = tools.targetId;
-      context.read<WorktreeCubit>().bindWorktreeService(
+      final worktreeCubit = context.read<WorktreeCubit>();
+      final repoPath = worktreeRepoPathForToolsTarget(
+        folders: widget.workspace.folders,
+        activeTargetId: tools.targetId,
+        cwd: widget.cwd,
+        cubitRepoPath: worktreeCubit.state.repoPath,
+        sessionPrimaryPath: session?.firstFolderPath,
+        fallbackRepoPath: widget.workspace.firstFolderPath,
+      );
+      worktreeCubit.bindWorktreeService(
         _worktreeServiceFor(context, tools.context),
-        repoPath: widget.workspace.firstFolderPath,
-        preferCurrentPath: session?.firstFolderPath,
+        repoPath: repoPath,
+        preferCurrentPath: session?.firstFolderPath ?? widget.cwd,
       );
     }
   }

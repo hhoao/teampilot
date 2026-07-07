@@ -2,6 +2,7 @@ import 'dart:io';
 
 import 'package:flutter_test/flutter_test.dart';
 import 'package:path/path.dart' as p;
+import 'package:teampilot/models/workspace_folder.dart';
 import 'package:teampilot/services/storage/app_storage.dart';
 import 'package:teampilot/services/io/local_filesystem.dart';
 import 'package:teampilot/services/io/wsl_filesystem.dart';
@@ -106,5 +107,51 @@ void main() {
   test('workspaceMetadataKeys keeps single key for POSIX paths', () {
     if (Platform.isWindows) return;
     expect(workspaceMetadataKeys('/tmp/work'), ['/tmp/work']);
+  });
+
+  group('worktreeRepoPathForToolsTarget', () {
+    const folders = [
+      WorkspaceFolder(path: '/local/repo', targetId: WorkspaceFolder.localTargetId),
+      WorkspaceFolder(path: '/wsl/repo', targetId: 'wsl:ubuntu'),
+    ];
+
+    test('prefers cubit repo on the active target', () {
+      expect(
+        worktreeRepoPathForToolsTarget(
+          folders: folders,
+          activeTargetId: 'wsl:ubuntu',
+          cwd: '/wsl/repo/.worktrees/feature',
+          cubitRepoPath: '/wsl/repo',
+          fallbackRepoPath: '/local/repo',
+        ),
+        '/wsl/repo',
+      );
+    });
+
+    test('resolves repo from cwd when cubit repo is on another target', () {
+      expect(
+        worktreeRepoPathForToolsTarget(
+          folders: folders,
+          activeTargetId: 'wsl:ubuntu',
+          cwd: '/wsl/repo/.worktrees/feature',
+          cubitRepoPath: '/local/repo',
+          fallbackRepoPath: '/local/repo',
+        ),
+        '/wsl/repo',
+      );
+    });
+
+    test('falls back to first folder on the active target', () {
+      expect(
+        worktreeRepoPathForToolsTarget(
+          folders: folders,
+          activeTargetId: WorkspaceFolder.localTargetId,
+          cwd: '/unknown',
+          cubitRepoPath: '',
+          fallbackRepoPath: '/local/repo',
+        ),
+        '/local/repo',
+      );
+    });
   });
 }

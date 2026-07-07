@@ -2,6 +2,7 @@ import 'dart:io';
 
 import 'package:path/path.dart' as p;
 
+import '../models/workspace_folder.dart';
 import '../services/storage/app_storage.dart';
 import '../services/session/launch_command_builder.dart';
 
@@ -39,6 +40,87 @@ bool workspacePathsContains(Iterable<String> paths, String target) {
     if (normalizeWorkspacePath(existing) == normalized) return true;
   }
   return false;
+}
+
+/// Whether [path] is exactly [folderPath] or a subpath of it.
+bool workspacePathUnderFolder(String path, String folderPath) {
+  final normalized = normalizeWorkspacePath(path.trim());
+  final root = normalizeWorkspacePath(folderPath.trim());
+  if (normalized.isEmpty || root.isEmpty) return false;
+  if (workspacePathsEqual(normalized, root)) return true;
+  return normalized.startsWith(root.endsWith('/') ? root : '$root/');
+}
+
+/// Longest workspace-folder path that contains [path].
+String? owningWorkspaceFolderForPath(
+  List<WorkspaceFolder> folders,
+  String path,
+) {
+  final normalized = normalizeWorkspacePath(path.trim());
+  if (normalized.isEmpty) return null;
+
+  String? bestPath;
+  var bestLen = -1;
+  for (final folder in folders) {
+    final root = normalizeWorkspacePath(folder.path);
+    if (root.isEmpty || !workspacePathUnderFolder(normalized, folder.path)) {
+      continue;
+    }
+    if (root.length > bestLen) {
+      bestPath = folder.path;
+      bestLen = root.length;
+    }
+  }
+  return bestPath;
+}
+
+/// Git repo path to load after the tools plane switches to [activeTargetId].
+String worktreeRepoPathForToolsTarget({
+  required List<WorkspaceFolder> folders,
+  required String activeTargetId,
+  required String cwd,
+  required String cubitRepoPath,
+  String? sessionPrimaryPath,
+  String? fallbackRepoPath,
+}) {
+  if (folders.isEmpty) {
+    final fallback = fallbackRepoPath?.trim() ?? '';
+    return fallback.isNotEmpty ? fallback : cwd;
+  }
+
+  String? folderOnTarget(String folderPath) {
+    for (final folder in folders) {
+      if (workspacePathsEqual(folder.path, folderPath) &&
+          folder.targetId == activeTargetId) {
+        return folder.path;
+      }
+    }
+    return null;
+  }
+
+  String? repoForPath(String path) {
+    final trimmed = path.trim();
+    if (trimmed.isEmpty) return null;
+    final owner = owningWorkspaceFolderForPath(folders, trimmed);
+    if (owner != null) {
+      final onTarget = folderOnTarget(owner);
+      if (onTarget != null) return onTarget;
+    }
+    return folderOnTarget(trimmed);
+  }
+
+  for (final candidate in [cubitRepoPath, cwd, sessionPrimaryPath ?? '']) {
+    final repo = repoForPath(candidate);
+    if (repo != null) return repo;
+  }
+
+  for (final folder in folders) {
+    if (folder.targetId == activeTargetId) return folder.path;
+  }
+
+  final fallback = fallbackRepoPath?.trim() ?? '';
+  if (fallback.isNotEmpty) return fallback;
+  return folders.first.path;
 }
 
 /// All `workspaces` keys a CLI may use for [path] in metadata JSON.
