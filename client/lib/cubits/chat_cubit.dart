@@ -30,6 +30,7 @@ import '../services/team_bus/remote/remote_bus_binding_resolver.dart';
 import '../services/launch/launch_factory.dart';
 import '../services/launch/session_connect_orchestrator.dart';
 import '../services/launch/workspace_provision_coordinator.dart';
+import '../services/cli/registry/cli_tool_registry.dart';
 import '../services/terminal/terminal_session.dart';
 import '../services/terminal/terminal_transport_factory.dart';
 import '../utils/workspace_sessions.dart';
@@ -341,6 +342,9 @@ class ChatCubit extends Cubit<ChatState>
   @override
   WorkspaceProvisionCoordinator get workspaceProvision =>
       sessionConnect.workspaceProvision;
+
+  @override
+  CliToolRegistry get cliRegistry => _lifecycle.cliToolRegistry;
 
   @override
   Future<TeamProfile?> teamProfileById(String teamId) async {

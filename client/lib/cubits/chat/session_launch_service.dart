@@ -38,6 +38,8 @@ import '../../services/team_bus/remote/remote_bus_mount.dart';
 import '../../services/team_bus/remote/ssh_remote_bus_mount_factory.dart';
 import '../../services/cli/registry/cli_tool_registry.dart';
 import '../../services/cli/registry/capabilities/bus_transport_capability.dart';
+import '../../services/cli/registry/capabilities/cli_session_lifecycle_capability.dart';
+import '../../services/terminal/session_member_cli_resolver.dart';
 import '../../services/terminal/terminal_session.dart';
 import '../../utils/logger.dart';
 import '../../utils/workspace_path_utils.dart';
@@ -124,6 +126,9 @@ abstract interface class SessionLaunchHost {
 
   /// Exposes workspace Phase A for team / mixed off-home paths.
   WorkspaceProvisionCoordinator get workspaceProvision;
+
+  /// CLI registry for lifecycle gating and tool capabilities at connect time.
+  CliToolRegistry get cliRegistry;
 
   Future<TeamProfile?> teamProfileById(String teamId);
 }
@@ -1192,6 +1197,81 @@ class SessionLaunchService implements MemberConnector {
       .lifecycle
       .launchWorkTarget(_launchContextFor(session), memberId: memberId);
 
+  /// Returns true when lifecycle [gateConnect] denies PTY connect for [member].
+  Future<bool> _lifecycleGateBlocksConnect({
+    required TeamProfile team,
+    required TeamMemberConfig member,
+    required AppSession session,
+    required ChatTab tab,
+  }) async {
+    if (session.sessionTeam.trim().isEmpty) return false;
+
+    final cli = memberLaunchCli(
+      team: team,
+      member: member,
+      globalPresets: _h.lifecycle.globalPresets,
+    );
+    final lifecycle = _h.cliRegistry.lifecycleFor(cli);
+    final launchCtx = _launchContextFor(session);
+    final memberWork = _h.lifecycle.memberWorkDirs(launchCtx, member.id);
+    final workCtx = await _h.lifecycle.launchWorkContext(
+      launchCtx,
+      memberId: member.id,
+    );
+    final paths = await _h.lifecycle.configProfileServiceFor(
+      workCtx,
+      launchWorkspaceId: session.workspaceId,
+    );
+    final launchTarget = _h.lifecycle.launchWorkTarget(
+      launchCtx,
+      memberId: member.id,
+    );
+    final mixedBus =
+        team.teamMode == TeamMode.mixed &&
+        tab.teamBus != null &&
+        _h.teammateBusMcpGateway.isSessionRegistered(session.sessionId);
+    final busIdle = mixedBus && launchTarget.kind != RuntimeKind.ssh
+        ? MemberBusIdleEndpoint.local(
+            _h.teammateBusMcpGateway,
+            sessionId: session.sessionId,
+          )
+        : null;
+
+    await lifecycle.initialize(
+      CliSessionInitContext(
+        workspaceId: session.workspaceId,
+        sessionId: session.sessionId,
+        memberId: member.id,
+        tool: cli,
+        paths: paths,
+        team: team,
+        busIdle: busIdle,
+        workingDirectory: memberWork.workingDirectory,
+        crossMachine: launchTarget.kind == RuntimeKind.ssh,
+      ),
+    );
+    final gate = lifecycle.gateConnect(
+      CliSessionGateContext(
+        workspaceId: session.workspaceId,
+        sessionId: session.sessionId,
+        memberId: member.id,
+        tool: cli,
+        paths: paths,
+        team: team,
+        busIdle: busIdle,
+        workingDirectory: memberWork.workingDirectory,
+        crossMachine: launchTarget.kind == RuntimeKind.ssh,
+      ),
+    );
+    if (gate.allowed) return false;
+
+    appLogger.d(
+      '[session-launch] lifecycle gate deny member=${member.id} '
+      'reason=${gate.reason ?? ''}',
+    );
+    return true;
+  }
+
   /// Ensures [tab] holds a [TerminalSession] whose transport matches [session]'s
   /// launch target (local PTY vs SSH).
   TerminalSession _shellForLaunch({
@@ -1965,6 +2045,16 @@ class SessionLaunchService implements MemberConnector {
             tab.info.id,
             'No persisted session for this tab. Create a team session first.',
           );
+          return;
+        }
+        if (await _lifecycleGateBlocksConnect(
+          team: team,
+          member: member,
+          session: session,
+          tab: tab,
+        )) {
+          tab.membersPendingConnect.remove(member.id);
+          _h.finishSessionConnect(tab.info.id);
           return;
         }
         await _connectMemberShell(
