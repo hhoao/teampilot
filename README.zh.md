@@ -2,7 +2,7 @@
 
 [English](README.md) · [开发指南](docs/DEVELOPMENT.md) · 架构与 AI 约定见 [AGENTS.md](AGENTS.md)
 
-**TeamPilot** 是基于终端 AI Agent 封装的面向团队易用的桌面客户端。它的核心是 **团队能力**：在 GUI 里为每位成员单独指定模型、提示词、乃至不同的 CLI，按角色分档协作（省 Token、快实现、准验收），并一键为每个成员启动独立内嵌终端，通过本机或远程的 Claude Code、Codex、opencode、cursor、flashskyai 等 CLI 与 Agent 协作；项目与会话则负责把这套团队绑定到具体仓库与对话上。
+**TeamPilot** 是基于终端 AI Agent 封装的面向团队易用的桌面客户端。它的核心是 **团队能力**：在 GUI 里为每位成员单独指定模型、提示词、乃至不同的 CLI，按角色分档协作（省 Token、快实现、准验收），并一键为每个成员启动独立内嵌终端，通过本机或远程的 Claude Code、Codex、opencode、cursor、flashskyai 等 CLI 与 Agent 协作；**工作区**与**会话**则负责把这套团队（或单人个人身份）绑定到具体仓库目录与对话上。
 
 ![应用预览](assets/image.png)
 ![应用预览](assets/image1.png)
@@ -14,12 +14,12 @@
 | **简单模式**（个人） | 只想在某个仓库里跑一个 Agent | 跳过组队——直接拉起**单个 CLI** 开聊，无需搭建成员名册。 |
 | **团队模式** | 多 Agent / 分档协作 / 混合 CLI | 先配好团队，再**每个成员一个终端**并行工作。这是 TeamPilot 的核心能力（见下文）。 |
 
-**简单模式不是阉割版。** 个人项目同样拥有完整的项目级配置，只是省去了多成员名册：
+**简单模式不是阉割版。** 个人工作区同样拥有完整的配置能力，只是省去了多成员名册：
 
-- **多 CLI、多模型，可随时切换。** 每个 CLI（Claude Code、Codex、opencode、cursor、flashskyai）在项目里各自保存**自己的 Provider + 模型 + 推理力度（effort）**，所以可以为每个工具配置多套模型、随时切换当前 CLI/模型，无需改全局设置——单 Agent 也能享受和团队一样的分档收益。
+- **多 CLI、多模型，可随时切换。** 每个 CLI（Claude Code、Codex、opencode、cursor、flashskyai）在**个人启动身份**上各自保存**自己的 Provider + 模型 + 推理力度（effort）**，所以可以为每个工具配置多套模型、随时切换当前 CLI/模型，无需改全局设置——单 Agent 也能享受和团队一样的分档收益。
 - **CLI 预设**：把常用 CLI + 模型组合保存为具名预设，一键切换。
-- **逐项目的 Agent、技能、插件、MCP、扩展**——个人项目自带提示词与能力集；技能 / MCP / 插件在全局库安装一次，各 CLI 共用。
-- **一个永久内置的 *个人助手* 项目**，加上你新建的任意个人项目，都与团队项目并列摆放——先用简单模式起步，等任务需要时再升级成团队。
+- **按身份的 Agent** 与**按工作区的技能、插件、MCP、扩展**——个人身份承载提示词与模型分档；能力挂载在工作区上。技能 / MCP / 插件在全局库安装一次，各 CLI 共用。
+- **一个永久内置的 *个人助手* 身份**，加上你在任意仓库上打开的工作区，与团队工作区并列摆放——先用简单模式起步，等任务需要时再升级成团队。
 
 ## 核心功能：团队配置
 
@@ -49,9 +49,9 @@
 - **分工协作**：`team-lead` 负责统筹与委派（Claude Code 要求存在名为 `team-lead` 的成员），其他成员承担实现、审查等子任务，在同一窗口内切换终端即可。
 - **混合 CLI**：在 **mixed** 团队中，成员可运行不同的 CLI（Claude Code、Codex、opencode、cursor、flashskyai），并通过进程内消息总线协调——让每个工具各尽所长。
 - **场景切换**：为「日常开发」「深度重构」「文档撰写」各建一个团队，换任务时切换团队，无需重配模型与提示词。也可从内置 **Team Hub** 浏览并导入可分享的团队模板。
-- **与会话联动**：打开项目会话时，TeamPilot 将当前团队注入启动参数（如 `--team-name`、每位成员的会话 id、独立 `CONFIG_DIR`），并支持恢复历史 CLI 会话。
+- **与会话联动**：打开工作区会话时，TeamPilot 将当前启动身份注入启动参数（如 `--team-name`、每位成员的会话 id、独立 `CONFIG_DIR`），并支持恢复历史 CLI 会话。
 
-设置入口：**设置 → 团队配置**（路由 `/team-config`）。团队 JSON 保存在应用数据目录的 `teams/` 下；每位成员的运行时 CLI 配置隔离在 `config-profiles/teams/<团队>/members/…`。
+设置入口：**设置 → 团队配置**（路由 `/team-config`）。团队启动身份保存在 `launch-profiles/{id}/profile.json`；按身份隔离的运行时 CLI 目录在 `identities-runtime/{profileId}/` 下。详见[工作区存储布局](docs/workspace-storage-layout.md)。
 
 ## 工作区与内置 IDE
 
@@ -118,7 +118,7 @@ TeamPilot 不只是「多开几个 Agent 终端」——同一个窗口里就能
 ### 聊天与工作台
 
 - **多标签终端**：多个成员 / 会话放在一个窗口里推进，少开一堆系统终端。
-- **项目与会话**：按仓库和对话整理记录，并把**当前选中的团队**绑定到该次工作。
+- **工作区与会话**：按仓库目录和对话整理记录，并把**当前选中的启动身份**（个人或团队）绑定到该次工作。
 - **自动会话标题**：侧栏一眼看出每条对话在聊什么。
 - **右侧工具栏**：文件树、Git、成员列表与提示词就在聊天旁，减少来回切换。
 
@@ -140,7 +140,7 @@ sudo dpkg -i teampilot-*-linux.deb
 sudo apt install -f
 ```
 
-安装后从应用菜单启动 **TeamPilot**。卸载：`sudo apt remove flashskyai-client`（包名以 deb 元数据为准）。
+安装后从应用菜单启动 **TeamPilot**。卸载：`sudo apt remove teampilot`（包名以 deb 元数据为准）。
 
 **AppImage（免安装）**
 
@@ -205,7 +205,8 @@ Android 版**不运行本机 PTY**，需通过 **SSH** 连接已安装目标 Age
 | 文档 | 读者 | 内容 |
 |------|------|------|
 | [开发指南](docs/DEVELOPMENT.md) | 贡献者 / 维护者 | 环境、本地运行、测试、打包与 CI |
-| [AGENTS.md](AGENTS.md) | 贡献者 / AI | 仓库结构、数据目录、架构约定 |
+| [AGENTS.md](AGENTS.md) | 贡献者 / AI | 仓库结构、架构约定 |
+| [工作区存储布局](docs/workspace-storage-layout.md) | 贡献者 / AI | `<teampilotRoot>` 下的磁盘路径 |
 
 ## 终端
 

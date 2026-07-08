@@ -25,9 +25,25 @@ Run these commands and confirm success before claiming work is done.
 | Domain | `services/` | Install, probe, terminal, CLI profiles, skill/plugin linking |
 | Models | `models/` | Immutable data, serialization |
 
-**Paths:** `AppStorage` / `RuntimeStorageContext` only — not `Directory.current` for workspace or app data roots.
+**Paths:** `AppStorage` / `RuntimeContextRegistry` only — not `Directory.current` for workspace or app data roots.
 
 **DI:** Services that touch processes, network, or disk should accept injectable runners/clients (see `ExtensionAcquisitionEngine`, `ExtensionDetector`).
+
+## Seven design principles
+
+Apply these when adding or refactoring code. They complement the layering table above — not a substitute for it.
+
+| Principle | Rule of thumb | In TeamPilot |
+|-----------|---------------|--------------|
+| **Single responsibility** | One class/file has one reason to change. | Split oversized cubits/services (see [file size](#file-size-soft-limits)); `SessionLaunchService` owns launch orchestration, `SessionLifecycleService` owns provisioning — do not merge unrelated flows. |
+| **Open/closed** | Open for extension, closed for modification. | Add or extend a `CliToolDefinition` + capabilities under `services/cli/registry/` instead of scattering `if (cli == …)` across pages and cubits. |
+| **Liskov substitution** | Subtypes must honor the contract of the base type. | Fakes in tests (`Filesystem`, transport runners) must behave like production implementations at the boundary you mock; do not rely on “test-only” quirks callers do not expect. |
+| **Interface segregation** | Prefer small, focused interfaces over fat ones. | Registry **capabilities** expose only what a CLI needs; cubits depend on narrow service seams (constructor injection), not whole `AppShell` or god-objects. |
+| **Dependency inversion** | Depend on abstractions, not concretions. | Inject `Filesystem`, `TerminalTransportFactory`, subprocess runners, and repositories from `app_shell.dart` / tests — no hidden `Process.run` or disk access inside `build()` or static singletons in feature code. |
+| **Law of Demeter** | Talk to immediate collaborators; avoid long chains. | Pages `context.read<Cubit>()` and call cubit methods; cubits call services/repositories — avoid `context.read<A>().read<B>().foo` or reaching through three layers of internal state from UI. |
+| **Composition over inheritance** | Favor composing objects/widgets over deep subclass trees. | Compose `pages/<domain>/` sections and small `widgets/`; use widget composition and capability composition — limit deep inheritance except where Flutter/SDK requires it. |
+
+When a change violates more than one principle, fix structure first (split file, inject dependency, add capability) before adding behavior.
 
 ### `pages/` vs `widgets/`
 
@@ -145,10 +161,10 @@ Structure: **Arrange–Act–Assert** (or Given–When–Then); one behavior per
 
 ### Test environment
 
-If code touches `AppStorage` / `RuntimeStorageContext`:
+If code touches `AppStorage` / `RuntimeContextRegistry`:
 
 - `setUpTestAppStorage()` / `tearDownTestAppStorage()` in `client/test/support/post_frame_test_harness.dart`.
-- Avoid cubit tests that trigger background work without storage — warnings like `RuntimeStorageContext.install() must be called` hide real failures.
+- Avoid cubit tests that trigger background work without storage — warnings like `AppStorage home not bound` hide real failures.
 
 For post-frame work (`ChatCubit`), use `PostFrameTestHarness` / `runScheduledCallback`.
 
@@ -165,7 +181,7 @@ For post-frame work (`ChatCubit`), use `PostFrameTestHarness` / `runScheduledCal
 
 - Wire new types explicitly on `AppShell`; avoid hidden singletons.
 - If a single change adds **~80+ lines** to `app_shell.dart`, extract a domain bootstrap factory.
-- Tests: `RuntimeStorageContext.installForTesting`, not production `install()` unless testing bootstrap itself.
+- Tests: `AppStorage.installForTesting` / `setUpTestAppStorage()`, not production bootstrap unless testing bootstrap itself.
 
 ## Dart conventions
 

@@ -2,7 +2,7 @@
 
 [简体中文](README.zh.md) · [Development guide](docs/DEVELOPMENT.md) · Architecture & AI: [AGENTS.md](AGENTS.md)
 
-**TeamPilot** is a desktop client based on terminal AI Agent Team. Its centerpiece is **team capabilities**: assign **a model — and even a different CLI — per member** for tiered collaboration (save tokens, implement fast, review accurately), plus roles, prompts, skills, and plugins in the GUI—then launch **one embedded terminal per member** that talks to agents through Claude Code, Codex, opencode, cursor, or flashskyai, locally or over SSH. Projects and sessions attach that team to a repo and conversation.
+**TeamPilot** is a desktop client based on terminal AI Agent Team. Its centerpiece is **team capabilities**: assign **a model — and even a different CLI — per member** for tiered collaboration (save tokens, implement fast, review accurately), plus roles, prompts, skills, and plugins in the GUI—then launch **one embedded terminal per member** that talks to agents through Claude Code, Codex, opencode, cursor, or flashskyai, locally or over SSH. **Workspaces** and **sessions** attach that team (or a solo personal identity) to a repo folder and conversation.
 
 ![App preview](assets/image.png)
 ![App preview](assets/image1.png)
@@ -14,12 +14,12 @@
 | **Simple mode** (personal) | You just want one agent in a repo | Skip the team roster—launch a **single CLI** and start chatting. No member list to build. |
 | **Team mode** | Multi-agent / tiered or mixed-CLI collaboration | Define a team once, then run **one terminal per member** in parallel. This is TeamPilot's centerpiece (below). |
 
-**Simple mode is not stripped-down.** A personal project still gives you the full per-project config—you just skip the multi-member roster:
+**Simple mode is not stripped-down.** A personal workspace still gives you the full config surface—you just skip the multi-member roster:
 
-- **Multiple CLIs and models, switchable.** Each CLI (Claude Code, Codex, opencode, cursor, flashskyai) keeps **its own provider + model + reasoning-effort** in the project, so you can configure several models per tool and switch the active CLI/model without retuning globally—the same tiering benefit as teams, for a single agent.
+- **Multiple CLIs and models, switchable.** Each CLI (Claude Code, Codex, opencode, cursor, flashskyai) keeps **its own provider + model + reasoning-effort** on your **personal launch identity**, so you can configure several models per tool and switch the active CLI/model without retuning globally—the same tiering benefit as teams, for a single agent.
 - **CLI presets**: Save frequent CLI + model combos as named presets and switch with one click. 
-- **Per-project agent, skills, plugins, MCP, and extensions**—the personal project carries its own prompt and capability set; skills / MCP / plugins are installed once in the global library and shared across CLIs.
-- **A permanent built-in *Personal assistant* project**, plus any personal projects you create, all alongside your team projects—start simple and graduate to a team when a task needs it.
+- **Per-identity agent** plus **per-workspace skills, plugins, MCP, and extensions**—the personal identity carries prompt and model tiering; capability bindings mount on the workspace. Skills / MCP / plugins are installed once in the global library and shared across CLIs.
+- **A permanent built-in *Personal assistant* identity**, plus any workspaces you open on a repo—all alongside team-backed workspaces. Start simple and graduate to a team when a task needs it.
 
 ## Core feature: team configuration
 
@@ -49,9 +49,9 @@ This is not coding-only: docs, research, ops triage, or any **multi-step pipelin
 - **Parallel roles**: `team-lead` coordinates and delegates (Claude Code expects a member named exactly `team-lead`); other members handle implementation, review, etc.—switch terminals in one window.
 - **Mixed CLIs**: In a **mixed** team, members can run different CLIs (Claude Code, Codex, opencode, cursor, flashskyai) and still coordinate through an in-process team bus—use each tool where it's strongest.
 - **Scenario presets**: Maintain teams for “daily dev”, “deep refactor”, “docs”—switch teams instead of retyping models and prompts. Browse and import shareable team templates from the built-in **Team Hub**.
-- **Session binding**: Opening a project session injects the active team into CLI args (e.g. `--team-name` / per-member session id, per-member `CONFIG_DIR`) and can resume prior CLI sessions.
+- **Session binding**: Opening a workspace session injects the active launch identity into CLI args (e.g. `--team-name` / per-member session id, per-member `CONFIG_DIR`) and can resume prior CLI sessions.
 
-Configure under **Settings → Team configuration** (route `/team-config`). Team JSON lives under `teams/` in app data; per-member runtime CLI dirs under `config-profiles/teams/<team>/members/…`.
+Configure under **Settings → Team configuration** (route `/team-config`). Team launch identities persist under `launch-profiles/{id}/profile.json`; per-identity runtime CLI trees under `identities-runtime/{profileId}/`. See [workspace storage layout](docs/workspace-storage-layout.md).
 
 ## Workspace & built-in IDE
 
@@ -118,7 +118,7 @@ Personal workspaces default to file tree + Git; team workspaces add members, mai
 ### Chat workbench
 
 - **Multi-tab terminal**: Several members and/or sessions in one window instead of many OS terminal tabs.
-- **Projects & sessions**: Organize by repo and chat, with the **selected team** bound to that work.
+- **Workspaces & sessions**: Organize by repo folder and chat, with the **selected launch identity** (personal or team) bound to that work.
 - **Auto session titles**: See what each chat is about in the sidebar.
 - **Right tools panel**: File tree, Git, member list, and prompts next to the chat with less context switching.
 
@@ -205,7 +205,8 @@ First launch can run the built-in CLI detection. Installers are built by CI; bui
 | Doc | Audience | Topic |
 |-----|----------|--------|
 | [Development guide](docs/DEVELOPMENT.md) | Contributors / maintainers | Setup, run, test, package, CI |
-| [AGENTS.md](AGENTS.md) | Contributors / AI | Repo layout, data dirs, architecture |
+| [AGENTS.md](AGENTS.md) | Contributors / AI | Repo layout, architecture, conventions |
+| [Workspace storage layout](docs/workspace-storage-layout.md) | Contributors / AI | On-disk paths under `<teampilotRoot>` |
 
 ## Terminal
 
