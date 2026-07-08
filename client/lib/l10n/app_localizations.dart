@@ -1106,11 +1106,17 @@ abstract class AppLocalizations {
   /// **'Personal assistant'**
   String get homeWorkspaceDefaultPersonalWorkspaceName;
 
-  /// Name shown for the built-in default team created on first launch.
+  /// Name shown for the built-in default native team created on first launch.
   ///
   /// In en, this message translates to:
-  /// **'Default Team'**
-  String get homeWorkspaceDefaultTeamName;
+  /// **'Default Native Team'**
+  String get homeWorkspaceDefaultNativeTeamName;
+
+  /// Name shown for the built-in default mixed team created on first launch.
+  ///
+  /// In en, this message translates to:
+  /// **'Default Mixed Team'**
+  String get homeWorkspaceDefaultMixedTeamName;
 
   /// No description provided for @homeWorkspacePersonalSubtitle.
   ///

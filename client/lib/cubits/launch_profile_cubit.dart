@@ -376,13 +376,18 @@ class LaunchProfileCubit extends Cubit<LaunchProfileState>
     if (!all.any((profile) => profile.id == defaultPersonal.id)) {
       all = List<LaunchProfile>.of(all)..add(defaultPersonal);
     }
+    final builtInTeams = await _identityProvisioner.ensureDefaultTeams(
+      buildNative: _rosterEditor.defaultNativeTeam,
+      buildMixed: _rosterEditor.defaultMixedTeam,
+      loaded: all,
+    );
+    for (final team in [builtInTeams.native, builtInTeams.mixed]) {
+      if (!all.any((profile) => profile.id == team.id)) {
+        all = List<LaunchProfile>.of(all)..add(team);
+      }
+    }
     var teams = _sortTeams(all.whereType<TeamProfile>().toList());
     final personals = _sortPersonals(all.whereType<PersonalProfile>().toList());
-    if (teams.isEmpty) {
-      final team = _rosterEditor.defaultTeam();
-      teams = [team];
-      await _repository.save(team);
-    }
     final selectedId = state.selectedTeamId;
     final nextSelected =
         selectedId != null && teams.any((team) => team.id == selectedId)
@@ -707,7 +712,13 @@ class LaunchProfileCubit extends Cubit<LaunchProfileState>
     }
     await _repository.delete(teamId);
     var teams = state.teams.where((team) => team.id != selected.id).toList();
-    if (teams.isEmpty) teams = [_rosterEditor.defaultTeam()];
+    if (teams.isEmpty) {
+      final builtIn = await _identityProvisioner.ensureDefaultTeams(
+        buildNative: _rosterEditor.defaultNativeTeam,
+        buildMixed: _rosterEditor.defaultMixedTeam,
+      );
+      teams = _sortTeams([builtIn.native, builtIn.mixed]);
+    }
     emit(
       state.copyWith(
         teams: teams,

@@ -2,9 +2,9 @@ import 'package:flutter/material.dart';
 
 import '../../cubits/team/launch_profile_selectors.dart';
 import '../../models/team_config.dart';
-import '../../services/storage/launch_profile_provisioner.dart';
 import '../../theme/app_text_styles.dart';
 import '../../l10n/l10n_extensions.dart';
+import '../../utils/launch_profile_display_name.dart';
 
 class HomeTeamHeader extends StatelessWidget {
   const HomeTeamHeader({super.key, required this.snapshot});
@@ -28,9 +28,8 @@ class HomeTeamHeader extends StatelessWidget {
         ? l10n.teamModeMixedTitle
         : l10n.teamModeNativeTitle;
     final badgeColor = isMixed ? cs.tertiary : cs.primary;
-    final title = snapshot.id == LaunchProfileProvisioner.defaultTeamId
-        ? l10n.homeWorkspaceDefaultTeamName
-        : snapshot.display;
+    final title =
+        builtInTeamDisplayName(l10n, snapshot.id) ?? snapshot.display;
     return Row(
       children: [
         Icon(Icons.groups_2_outlined, color: cs.primary),

@@ -346,7 +346,7 @@ void main() {
     },
   );
 
-  test('load creates Default Team without seeding a workspace', () async {
+  test('load creates built-in teams without seeding a workspace', () async {
     final base = await Directory.systemTemp.createTemp(
       'team_default_workspace_',
     );
@@ -365,8 +365,20 @@ void main() {
       cubit.state.personals.single.id,
       LaunchProfileProvisioner.defaultPersonalId,
     );
-    final team = cubit.state.teams.single;
-    expect(team.name, 'Default Team');
+    expect(cubit.state.teams, hasLength(2));
+    expect(
+      cubit.state.teams.map((t) => t.id).toSet(),
+      {
+        LaunchProfileProvisioner.defaultNativeTeamId,
+        LaunchProfileProvisioner.defaultMixedTeamId,
+      },
+    );
+    expect(
+      cubit.state.teams
+          .singleWhere((t) => t.id == LaunchProfileProvisioner.defaultNativeTeamId)
+          .name,
+      'Default Native Team',
+    );
     expect(await sessionRepo.loadWorkspaces(), isEmpty);
 
     await _drainAndCloseTeamCubit(cubit);
@@ -617,7 +629,7 @@ void main() {
     await base.delete(recursive: true);
   });
 
-  test('load creates runtime profile directories for default team', () async {
+  test('load creates runtime profile directories for built-in teams', () async {
     final base = await Directory.systemTemp.createTemp('team_profile_load_');
     final cubit = LaunchProfileCubit(
       repository: _repo(base),
@@ -630,9 +642,11 @@ void main() {
 
     await cubit.load(awaitProfiles: true);
 
-    final teamRoot = p.join(base.path, 'identities-runtime', 'default-team');
-    expect(await Directory(teamRoot).exists(), isTrue);
-    expect(await Directory(p.join(teamRoot, 'flashskyai')).exists(), isFalse);
+    for (final teamId in LaunchProfileProvisioner.builtInTeamIds) {
+      final teamRoot = p.join(base.path, 'identities-runtime', teamId);
+      expect(await Directory(teamRoot).exists(), isTrue);
+      expect(await Directory(p.join(teamRoot, 'flashskyai')).exists(), isFalse);
+    }
 
     await _drainAndCloseTeamCubit(cubit);
     await base.delete(recursive: true);
@@ -651,8 +665,8 @@ void main() {
       );
 
       const team = TeamProfile(
-        id: 'default-team',
-        name: 'Default Team',
+        id: LaunchProfileProvisioner.defaultNativeTeamId,
+        name: 'Default Native Team',
         cli: CliTool.claude,
         members: [TeamMemberConfig(id: 'team-lead', name: 'team-lead')],
       );
@@ -683,8 +697,8 @@ void main() {
       );
 
       const team = TeamProfile(
-        id: 'default-team',
-        name: 'Default Team',
+        id: LaunchProfileProvisioner.defaultNativeTeamId,
+        name: 'Default Native Team',
         cli: CliTool.claude,
         members: [TeamMemberConfig(id: 'team-lead', name: 'team-lead')],
         providerIdsByTool: {'claude': 'official'},

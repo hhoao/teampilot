@@ -57,6 +57,7 @@ import 'package:teampilot/services/io/local_filesystem.dart';
 import 'package:teampilot/services/git/git_command_runner.dart';
 import 'package:teampilot/services/home_workspace/home_workspace_ui_cache.dart';
 import 'package:teampilot/services/storage/home_target_controller.dart';
+import 'package:teampilot/services/storage/launch_profile_provisioner.dart';
 import 'support/test_runtime_context.dart';
 import 'package:teampilot/services/session/session_lifecycle_service.dart';
 import 'package:teampilot/services/team_bus/member_bus_idle_endpoint.dart';
@@ -694,8 +695,8 @@ void main() {
 
   test('opening a team session tab starts team-lead member shell', () async {
     final team = TeamProfile(
-      id: 'default-team',
-      name: 'Default Team',
+      id: LaunchProfileProvisioner.defaultNativeTeamId,
+      name: 'Default Native Team',
       members: TeamMemberNaming.defaultRoster(),
     );
     final postFrame = PostFrameTestHarness();
@@ -772,8 +773,9 @@ void main() {
     );
     await cubit.load();
 
-    expect(cubit.state.selectedTeam?.name, 'Default Team');
-    expect(cubit.state.teams.length, 1);
+    expect(cubit.state.teams.length, 2);
+    expect(cubit.state.selectedTeam?.id, LaunchProfileProvisioner.defaultNativeTeamId);
+    expect(cubit.state.selectedTeam?.name, 'Default Native Team');
     expect(cubit.state.selectedTeam?.members.length, 3);
     expect(cubit.state.selectedTeam?.members.map((m) => m.id).toList(), [
       'team-lead',
@@ -781,8 +783,8 @@ void main() {
       'reviewer',
     ]);
 
-    cubit.selectTeam('default-team');
-    expect(cubit.state.selectedTeam?.name, 'Default Team');
+    cubit.selectTeam(LaunchProfileProvisioner.defaultMixedTeamId);
+    expect(cubit.state.selectedTeam?.name, 'Default Mixed Team');
 
     await cubit.addMember();
     expect(cubit.state.selectedTeam?.members.length, 4);

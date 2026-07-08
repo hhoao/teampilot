@@ -15,15 +15,21 @@ void main() {
       id: LaunchProfileProvisioner.defaultPersonalId,
       display: 'Personal',
     );
-    final team = TeamProfile(
-      id: LaunchProfileProvisioner.defaultTeamId,
-      name: 'Default Team',
+    final native = TeamProfile(
+      id: LaunchProfileProvisioner.defaultNativeTeamId,
+      name: 'Default Native Team',
+    );
+    final mixed = TeamProfile(
+      id: LaunchProfileProvisioner.defaultMixedTeamId,
+      name: 'Default Mixed Team',
     );
 
     expect(launchProfileDisplayName(en, personal), 'Personal assistant');
     expect(launchProfileDisplayName(zh, personal), '个人助手');
-    expect(launchProfileDisplayName(en, team), 'Default Team');
-    expect(launchProfileDisplayName(zh, team), '默认团队');
+    expect(launchProfileDisplayName(en, native), 'Default Native Team');
+    expect(launchProfileDisplayName(zh, native), '默认原生团队');
+    expect(launchProfileDisplayName(en, mixed), 'Default Mixed Team');
+    expect(launchProfileDisplayName(zh, mixed), '默认混合团队');
   });
 
   test('user-created identities use persisted display', () {

@@ -11,6 +11,7 @@ import '../../services/storage/launch_profile_provisioner.dart';
 import '../../theme/app_text_styles.dart';
 import '../../theme/workspace_surface_layers.dart';
 import '../../utils/app_keys.dart';
+import '../../utils/launch_profile_display_name.dart';
 import 'home_workspace_global_section.dart';
 import 'home_workspace_library_view.dart';
 import 'home_workspace_new_team_dialog.dart';
@@ -683,9 +684,9 @@ String _sidebarDisplayName(AppLocalizations l10n, IdentitySidebarEntry entry) {
       entry.id == LaunchProfileProvisioner.defaultPersonalId) {
     return l10n.homeWorkspaceDefaultPersonalWorkspaceName;
   }
-  if (entry.kind == LaunchProfileKind.team &&
-      entry.id == LaunchProfileProvisioner.defaultTeamId) {
-    return l10n.homeWorkspaceDefaultTeamName;
+  if (entry.kind == LaunchProfileKind.team) {
+    final builtIn = builtInTeamDisplayName(l10n, entry.id);
+    if (builtIn != null) return builtIn;
   }
   return entry.display;
 }

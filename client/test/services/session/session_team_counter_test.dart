@@ -4,6 +4,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:teampilot/services/storage/runtime_layout.dart';
 import 'package:teampilot/services/io/local_filesystem.dart';
 import 'package:teampilot/services/session/session_team_counter.dart';
+import 'package:teampilot/services/storage/launch_profile_provisioner.dart';
 
 void main() {
   test('increments per teamId', () async {
@@ -15,6 +16,9 @@ void main() {
     expect(await counter.nextCliTeamName('team-a'), 'team-a-1');
     expect(await counter.nextCliTeamName('team-a'), 'team-a-2');
     expect(await counter.nextCliTeamName('team-b'), 'team-b-1');
-    expect(await counter.nextCliTeamName('default-team'), 'default-team-1');
+    expect(
+      await counter.nextCliTeamName(LaunchProfileProvisioner.defaultNativeTeamId),
+      'default-native-team-1',
+    );
   });
 }

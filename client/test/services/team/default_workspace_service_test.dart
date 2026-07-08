@@ -29,7 +29,7 @@ void main() {
     'seed creates Default workspace with personal and team sessions',
     () async {
       final repo = SessionRepository();
-      final team = const TeamRosterEditor().defaultTeam();
+      final team = const TeamRosterEditor().defaultNativeTeam();
 
       final workspace = await DefaultWorkspaceService.seed(
         repo,
@@ -66,7 +66,7 @@ void main() {
 
   test('seed is idempotent', () async {
     final repo = SessionRepository();
-    final team = const TeamRosterEditor().defaultTeam();
+    final team = const TeamRosterEditor().defaultNativeTeam();
 
     await DefaultWorkspaceService.seed(repo, defaultTeam: team);
     await DefaultWorkspaceService.seed(repo, defaultTeam: team);
@@ -82,7 +82,7 @@ void main() {
 
   test('ensureDefault is idempotent and reports no mutation', () async {
     final repo = SessionRepository();
-    final team = const TeamRosterEditor().defaultTeam();
+    final team = const TeamRosterEditor().defaultNativeTeam();
 
     final first = await DefaultWorkspaceService.ensureDefault(
       repo,

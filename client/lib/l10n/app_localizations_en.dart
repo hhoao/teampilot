@@ -554,7 +554,10 @@ class AppLocalizationsEn extends AppLocalizations {
   String get homeWorkspaceDefaultPersonalWorkspaceName => 'Personal assistant';
 
   @override
-  String get homeWorkspaceDefaultTeamName => 'Default Team';
+  String get homeWorkspaceDefaultNativeTeamName => 'Default Native Team';
+
+  @override
+  String get homeWorkspaceDefaultMixedTeamName => 'Default Mixed Team';
 
   @override
   String get homeWorkspacePersonalSubtitle =>

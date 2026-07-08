@@ -21,12 +21,32 @@ class MemberMutation {
 class TeamRosterEditor {
   const TeamRosterEditor();
 
-  TeamProfile defaultTeam() {
-    const name = 'Default Team';
+  TeamProfile defaultNativeTeam() => _defaultBuiltInTeam(
+    id: LaunchProfileProvisioner.defaultNativeTeamId,
+    name: 'Default Native Team',
+    teamMode: TeamMode.native,
+    sortOrder: 1,
+  );
+
+  TeamProfile defaultMixedTeam() => _defaultBuiltInTeam(
+    id: LaunchProfileProvisioner.defaultMixedTeamId,
+    name: 'Default Mixed Team',
+    teamMode: TeamMode.mixed,
+    sortOrder: 2,
+  );
+
+  TeamProfile _defaultBuiltInTeam({
+    required String id,
+    required String name,
+    required TeamMode teamMode,
+    required int sortOrder,
+  }) {
     final now = DateTime.now().millisecondsSinceEpoch;
     return TeamProfile(
-      id: LaunchProfileProvisioner.defaultTeamId,
+      id: id,
       name: name,
+      teamMode: teamMode,
+      sortOrder: sortOrder,
       createdAt: now,
       members: TeamMemberNaming.defaultRoster(joinedAt: now),
     );
