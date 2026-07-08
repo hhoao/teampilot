@@ -23,6 +23,7 @@ import '../services/workspace/workspace_icon_service.dart';
 import '../services/workspace/workspace_icon_storage.dart';
 import '../services/storage/app_storage.dart';
 import '../services/session/session_lifecycle_service.dart';
+import '../services/storage/targets_repository.dart';
 import '../services/team_bus/artifacts/artifact_registry.dart';
 import '../services/team_bus/artifacts/artifact_transfer_service.dart';
 import '../services/team_bus/mcp/teammate_bus_mcp_gateway.dart';
@@ -39,6 +40,7 @@ import 'chat/chat_connect_state_mixin.dart';
 import 'chat/session_data_store.dart';
 import 'chat/chat_session_shell_factory.dart';
 import 'chat/chat_tab_store.dart';
+import 'chat/session_launch_host.dart';
 import 'chat/session_launch_service.dart';
 import 'chat/tab_member_materializer.dart';
 import 'chat/tab_session_runtime_coordinator.dart';
@@ -356,6 +358,10 @@ class ChatCubit extends Cubit<ChatState>
     if (_activeTeam?.id == id) return _activeTeam;
     return _teamById?.call(id);
   }
+
+  @override
+  Future<bool> isRootSandboxEnvOptIn(String targetId) =>
+      TargetsRepository().isRootSandboxEnvOptIn(targetId);
 
   /// Drops cached Phase A provision for [workspace] (e.g. after folder/target edits).
   void invalidateWorkspaceProvision(Workspace workspace) {
