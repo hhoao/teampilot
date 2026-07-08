@@ -1,17 +1,21 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:teampilot/services/cli/session_lifecycle/cursor/cursor_session_lifecycle_paths.dart';
+import 'package:teampilot/services/cli/registry/resources/cursor_resource_capability.dart';
 import 'package:teampilot/services/io/local_filesystem.dart';
 import 'package:teampilot/services/provider/cursor/cursor_home_layout.dart';
 import 'package:teampilot/services/provider/cursor/cursor_workspace_trust.dart';
+import 'package:teampilot/services/provider/cursor/cursor_workspace_warm_tier.dart';
 import 'package:teampilot/services/storage/runtime_layout.dart';
 
+import '../../../../support/cursor_warm_tier_manifest_paths.dart';
 import '../../../../support/in_memory_filesystem.dart';
 
 void main() {
   const workspaceId = 'ws';
-  const sessionId = 'sess';
   const workingDirectory = '/home/hhoa/git/hhoa/teampilot';
   const slug = 'home-hhoa-git-hhoa-teampilot';
+  const teamRuntimeRoot =
+      '/tp/workspace/workspaces/ws/runtime/teams/$cursorTestTeamId';
 
   group('CursorSessionLifecyclePaths path resolution', () {
     late RuntimeLayout layout;
@@ -23,7 +27,7 @@ void main() {
         fs: LocalFilesystem(),
         layout: layout,
         workspaceId: workspaceId,
-        sessionId: sessionId,
+        teamId: cursorTestTeamId,
         workingDirectory: workingDirectory,
       );
     });
@@ -36,24 +40,24 @@ void main() {
       expect(paths.workspaceSlug, slug);
     });
 
-    test('sharedRoot is under workspace runtime/cursor', () {
+    test('sharedRoot is under workspace runtime/teams/{teamId}/cursor', () {
       expect(
         paths.sharedRoot(),
-        '/tp/workspace/workspaces/ws/runtime/cursor',
+        '$teamRuntimeRoot/cursor',
       );
     });
 
     test('sharedProjectsDir(slug) is under workspace projects', () {
       expect(
         paths.sharedProjectsDir(slug),
-        '/tp/workspace/workspaces/ws/runtime/cursor/projects/$slug',
+        '$teamRuntimeRoot/cursor/projects/$slug',
       );
     });
 
-    test('memberHomeRoot points at workspace runtime/{memberId}/cursor/home', () {
+    test('memberHomeRoot points at team-scoped member cursor home', () {
       expect(
         paths.memberHomeRoot('team-lead'),
-        '/tp/workspace/workspaces/ws/runtime/team-lead/cursor/home',
+        '$teamRuntimeRoot/team-lead/cursor/home',
       );
       expect(paths.memberHomeRoot('team-lead'), isNot(contains('/sessions/')));
     });
@@ -73,7 +77,7 @@ void main() {
         fs: fs,
         layout: layout,
         workspaceId: workspaceId,
-        sessionId: sessionId,
+        teamId: cursorTestTeamId,
         workingDirectory: workingDirectory,
         homeLayout: homeLayout,
       );
@@ -116,6 +120,74 @@ void main() {
           fs.pathContext.join(memberHome, '.rustup'),
         ),
         fs.pathContext.join(realHome, '.rustup'),
+      );
+    });
+
+    test('ensureSharedDirs creates warm-tier plugin and skills dirs', () async {
+      await paths.ensureSharedDirs();
+
+      expect((await fs.stat(paths.sharedPluginsLocalDir())).isDirectory, isTrue);
+      expect(
+        (await fs.stat(paths.sharedPluginsMarketplacesDir())).isDirectory,
+        isTrue,
+      );
+      expect((await fs.stat(paths.sharedSkillsCursorDir())).isDirectory, isTrue);
+    });
+
+    test('ensureMemberHomeLayout symlinks warm-tier artifacts to shared root', () async {
+      await paths.ensureSharedDirs();
+      await fs.atomicWrite(
+        paths.sharedSettingsFile(),
+        '{"enabledPlugins":[]}',
+      );
+
+      const memberId = 'architect';
+      const realHome = '/home/user';
+      await fs.ensureDir(realHome);
+      await paths.ensureMemberHomeLayout(
+        memberId: memberId,
+        realHomeRoot: realHome,
+      );
+
+      final memberHome = paths.memberHomeRoot(memberId);
+      final cursorDir = homeLayout.cursorDir(memberHome);
+      final memberPluginsDir = fs.pathContext.join(
+        cursorDir,
+        CursorWorkspaceWarmTier.pluginsDirName,
+      );
+
+      expect(
+        await fs.readSymlinkTarget(
+          fs.pathContext.join(
+            memberPluginsDir,
+            CursorWorkspaceWarmTier.localPluginsSegment,
+          ),
+        ),
+        paths.sharedPluginsLocalDir(),
+      );
+      expect(
+        await fs.readSymlinkTarget(
+          fs.pathContext.join(
+            memberPluginsDir,
+            CursorWorkspaceWarmTier.marketplacesSegment,
+          ),
+        ),
+        paths.sharedPluginsMarketplacesDir(),
+      );
+      expect(
+        await fs.readSymlinkTarget(
+          fs.pathContext.join(cursorDir, CursorWorkspaceWarmTier.settingsFileName),
+        ),
+        paths.sharedSettingsFile(),
+      );
+      expect(
+        await fs.readSymlinkTarget(
+          fs.pathContext.join(
+            cursorDir,
+            CursorResourceCapability.skillsSubdirName,
+          ),
+        ),
+        paths.sharedSkillsCursorDir(),
       );
     });
 

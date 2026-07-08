@@ -119,6 +119,7 @@ final class CursorPluginProvisioner implements PluginProvisionerCapability {
       fs: ctx.fs,
       configDir: ctx.configDir,
       servers: specs,
+      outputBasename: ctx.mcpConfigFileName,
     );
   }
 

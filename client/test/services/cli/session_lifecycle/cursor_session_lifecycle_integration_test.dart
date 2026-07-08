@@ -1,9 +1,11 @@
+import 'package:path/path.dart' as p;
 import 'package:flutter_test/flutter_test.dart';
 import 'package:teampilot/models/team_config.dart';
 import 'package:teampilot/services/cli/registry/capabilities/cli_session_lifecycle_capability.dart';
 import 'package:teampilot/services/cli/session_lifecycle/cli_session_manifest_store.dart';
 import 'package:teampilot/services/cli/session_lifecycle/cursor/cursor_session_lifecycle_capability.dart';
 import 'package:teampilot/services/cli/session_lifecycle/cursor/cursor_session_lifecycle_paths.dart';
+import 'package:teampilot/services/provider/cursor/cursor_home_layout.dart';
 import 'package:teampilot/services/storage/runtime_layout.dart';
 import 'package:teampilot/services/team_bus/member_bus_idle_endpoint.dart';
 import 'package:teampilot/utils/team_member_naming.dart';
@@ -47,8 +49,24 @@ void main() {
         memberId: memberId,
         tool: CliTool.cursor,
         paths: pathsDelegate,
+        team: mixedCursorTeam(),
         busIdle: busIdle,
       ),
+    );
+  }
+
+  Future<void> seedMemberAuth(String memberId) async {
+    final memberHome = layout.workspaceRuntimeMemberToolDir(
+      workspaceId,
+      'superpowers',
+      memberId,
+      'cursor',
+    );
+    final authDir = p.join(memberHome, 'home', '.config', 'cursor');
+    await fs.ensureDir(authDir);
+    await fs.writeString(
+      p.join(authDir, CursorHomeLayout.authFileName),
+      '{"accessToken":"test","email":"user@example.com"}',
     );
   }
 
@@ -75,6 +93,9 @@ void main() {
         ),
       );
 
+      await seedMemberAuth(TeamMemberNaming.teamLeadName);
+      await seedMemberAuth('architect');
+
       final leaderInit = await capability.initialize(
         CliSessionInitContext(
           workspaceId: workspaceId,
@@ -91,6 +112,20 @@ void main() {
       expect(leaderInit.blocked, isFalse);
       expect(gate(TeamMemberNaming.teamLeadName).allowed, isTrue);
 
+      final architectInit = await capability.initialize(
+        CliSessionInitContext(
+          workspaceId: workspaceId,
+          sessionId: sessionId,
+          memberId: 'architect',
+          tool: CliTool.cursor,
+          paths: pathsDelegate,
+          team: team,
+          busIdle: busIdle,
+          workingDirectory: workingDirectory,
+        ),
+      );
+      expect(architectInit.phase, CliSessionPhase.ready);
+
       final followerGate = gate('architect');
       expect(followerGate.allowed, isTrue);
 
@@ -98,7 +133,7 @@ void main() {
         fs: fs,
         layout: layout,
         workspaceId: workspaceId,
-        sessionId: sessionId,
+        teamId: 'superpowers',
         workingDirectory: workingDirectory,
       );
       final sharedProjects = lifecyclePaths.sharedProjectsDir(slug);
@@ -115,6 +150,7 @@ void main() {
 
       final manifest = await store.read(
         workspaceId: workspaceId,
+        teamId: 'superpowers',
         tool: CursorSessionLifecyclePaths.tool,
       );
       expect(manifest?.phase, CliSessionPhase.ready);

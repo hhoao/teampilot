@@ -105,7 +105,7 @@ void main() {
       fs: fs,
       layout: layout,
       workspaceId: workspaceId,
-      sessionId: sessionId,
+      teamId: 'superpowers',
       workingDirectory: workingDirectory,
       homeLayout: homeLayout,
     );
@@ -147,6 +147,7 @@ void main() {
 
       final manifest = await store.read(
         workspaceId: workspaceId,
+        teamId: 'superpowers',
         tool: CursorSessionLifecyclePaths.tool,
       );
       expect(manifest!.phase, CliSessionPhase.ready);
@@ -202,6 +203,7 @@ void main() {
       expect(result.blocked, isFalse);
       final manifest = await store.read(
         workspaceId: workspaceId,
+        teamId: 'superpowers',
         tool: CursorSessionLifecyclePaths.tool,
       );
       expect(manifest!.phase, CliSessionPhase.ready);

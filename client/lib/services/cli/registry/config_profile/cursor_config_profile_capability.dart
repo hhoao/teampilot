@@ -150,10 +150,11 @@ final class CursorConfigProfileCapability implements ConfigProfileCapability {
 
     if (mixed) {
       final memberId = ctx.scope.memberId?.trim() ?? '';
+      final teamId = team?.id.trim() ?? '';
       final memberHome = await _resolveMixedMemberHome(
         paths: paths,
         workspaceId: ctx.scope.workspaceId,
-        sessionId: ctx.scope.sessionId,
+        teamId: teamId,
         memberId: memberId,
       );
 
@@ -230,27 +231,33 @@ final class CursorConfigProfileCapability implements ConfigProfileCapability {
   Future<String> _resolveMixedMemberHome({
     required ConfigProfilePaths paths,
     required String workspaceId,
-    required String sessionId,
+    required String teamId,
     required String memberId,
   }) async {
-    final manifest = await CliSessionManifestStore(
-      fs: paths.fs,
-      layout: paths.layout,
-    ).read(
-      workspaceId: workspaceId,
-      tool: toolId,
-    );
-    final homeRoot = manifest?.members[memberId]?.homeRoot.trim() ?? '';
-    if (homeRoot.isNotEmpty) {
-      final workspaceDir = paths.layout.workspace.workspaceDir(workspaceId);
-      return paths.fs.pathContext.normalize(
-        paths.fs.pathContext.join(workspaceDir, homeRoot),
+    final trimmedTeamId = teamId.trim();
+    final trimmedMemberId = memberId.trim();
+    if (trimmedTeamId.isNotEmpty) {
+      final manifest = await CliSessionManifestStore(
+        fs: paths.fs,
+        layout: paths.layout,
+      ).read(
+        workspaceId: workspaceId,
+        teamId: trimmedTeamId,
+        tool: toolId,
       );
+      final homeRoot = manifest?.members[trimmedMemberId]?.homeRoot.trim() ?? '';
+      if (homeRoot.isNotEmpty) {
+        final workspaceDir = paths.layout.workspace.workspaceDir(workspaceId);
+        return paths.fs.pathContext.normalize(
+          paths.fs.pathContext.join(workspaceDir, homeRoot),
+        );
+      }
     }
 
     final cursorDir = paths.layout.workspaceRuntimeMemberToolDir(
       workspaceId,
-      memberId,
+      trimmedTeamId,
+      trimmedMemberId,
       toolId,
     );
     return paths.fs.pathContext.join(cursorDir, 'home');

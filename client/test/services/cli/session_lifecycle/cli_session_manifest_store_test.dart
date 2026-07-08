@@ -7,6 +7,8 @@ import 'package:teampilot/services/cli/session_lifecycle/cli_session_manifest_st
 import 'package:teampilot/services/io/local_filesystem.dart';
 import 'package:teampilot/services/storage/runtime_layout.dart';
 
+import '../../../support/cursor_warm_tier_manifest_paths.dart';
+
 void main() {
   late Directory root;
   late LocalFilesystem fs;
@@ -14,7 +16,6 @@ void main() {
   late CliSessionManifestStore store;
 
   const workspaceId = 'ws-1';
-  const sessionId = 'sess-1';
   const tool = 'cursor';
 
   setUp(() {
@@ -32,22 +33,19 @@ void main() {
 
   CliSessionManifest sampleManifest({CliSessionPhase phase = CliSessionPhase.persisted}) {
     return CliSessionManifest(
-      schemaVersion: 3,
       tool: tool,
       workspaceId: workspaceId,
+      teamId: cursorTestTeamId,
       workspacePathHash: 'home-hhoa-git-hhoa-teampilot',
       workspaceSlug: 'home-hhoa-git-hhoa-teampilot',
       phase: phase,
       phaseUpdatedAtMs: 1_700_000_000_000,
-      shared: const CliSessionManifestShared(
-        root: 'runtime/cursor',
-        projectsDir:
-            'runtime/cursor/projects/home-hhoa-git-hhoa-teampilot',
-        cliConfigBase: 'runtime/cursor/cli-config.base.json',
+      shared: cursorTestSharedManifest(
+        slug: 'home-hhoa-git-hhoa-teampilot',
       ),
-      members: const {
+      members: {
         'team-lead': CliSessionManifestMember(
-          homeRoot: 'runtime/team-lead/cursor/home',
+          homeRoot: cursorTestMemberHomeRelative('team-lead'),
           chatId: 'f4950284-7dcd-4655-9af3-9a2120ba24d4',
           resumeCapturedAtMs: 1_783_400_100_000,
         ),
@@ -59,12 +57,14 @@ void main() {
     final manifest = sampleManifest();
     await store.write(
       workspaceId: workspaceId,
+      teamId: cursorTestTeamId,
       tool: tool,
       manifest: manifest,
     );
 
     final readBack = await store.read(
       workspaceId: workspaceId,
+      teamId: cursorTestTeamId,
       tool: tool,
     );
 
@@ -75,6 +75,7 @@ void main() {
     final manifest = sampleManifest();
     await store.write(
       workspaceId: workspaceId,
+      teamId: cursorTestTeamId,
       tool: tool,
       manifest: manifest,
     );
@@ -82,6 +83,7 @@ void main() {
     const updatedAt = 1_783_400_000_000;
     final updated = await store.updatePhase(
       workspaceId: workspaceId,
+      teamId: cursorTestTeamId,
       tool: tool,
       phase: CliSessionPhase.auth,
       phaseUpdatedAtMs: updatedAt,
@@ -93,6 +95,7 @@ void main() {
 
     final readBack = await store.read(
       workspaceId: workspaceId,
+      teamId: cursorTestTeamId,
       tool: tool,
     );
     expect(readBack!.phase, CliSessionPhase.auth);

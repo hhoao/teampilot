@@ -11,6 +11,8 @@ import 'package:teampilot/services/cli/registry/capabilities/session_resume_capa
 import 'package:teampilot/services/io/local_filesystem.dart';
 import 'package:flutter_test/flutter_test.dart';
 
+import '../../../support/cursor_warm_tier_manifest_paths.dart';
+
 void main() {
   late Directory base;
   final fs = LocalFilesystem();
@@ -31,6 +33,7 @@ void main() {
     String? workspaceId,
     String? sessionId,
     String? memberId,
+    String? teamId,
     String? manifestDataRoot,
   }) {
     return ResumeContext(
@@ -44,6 +47,7 @@ void main() {
       workspaceId: workspaceId,
       sessionId: sessionId,
       memberId: memberId,
+      teamId: teamId,
       manifestDataRoot: manifestDataRoot,
     );
   }
@@ -162,15 +166,21 @@ void main() {
       final layout = RuntimeLayout(teampilotRoot: base.path, fs: fs);
       final manifestPath = layout.workspaceLifecycleManifestPath(
         'ws',
+        cursorTestTeamId,
         'cursor',
       );
       await Directory(p.dirname(manifestPath)).create(recursive: true);
       await File(manifestPath).writeAsString(
-        '{"schemaVersion":3,"tool":"cursor","workspaceId":"ws",'
+        '{"schemaVersion":4,"tool":"cursor","workspaceId":"ws","teamId":"$cursorTestTeamId",'
         '"workspacePathHash":"slug","workspaceSlug":"slug","phase":"ready",'
-        '"shared":{"root":"runtime/cursor","projectsDir":"runtime/cursor/projects/slug",'
-        '"cliConfigBase":"runtime/cursor/cli-config.base.json"},'
-        '"members":{"team-lead":{"homeRoot":"runtime/team-lead/cursor/home",'
+        '"shared":{"root":"runtime/teams/$cursorTestTeamId/cursor",'
+        '"projectsDir":"runtime/teams/$cursorTestTeamId/cursor/projects/slug",'
+        '"cliConfigBase":"runtime/teams/$cursorTestTeamId/cursor/cli-config.base.json",'
+        '"pluginsLocalDir":"runtime/teams/$cursorTestTeamId/cursor/plugins/local",'
+        '"skillsCursorDir":"runtime/teams/$cursorTestTeamId/cursor/skills-cursor",'
+        '"mcpBase":"runtime/teams/$cursorTestTeamId/cursor/mcp.base.json",'
+        '"settingsJson":"runtime/teams/$cursorTestTeamId/cursor/settings.json"},'
+        '"members":{"team-lead":{"homeRoot":"runtime/teams/$cursorTestTeamId/team-lead/cursor/home",'
         '"chatId":"manifest-chat"}},"sessionOverlays":{}}',
       );
 
@@ -180,6 +190,7 @@ void main() {
           workspaceId: 'ws',
           sessionId: 'sess',
           memberId: 'team-lead',
+          teamId: cursorTestTeamId,
           manifestDataRoot: base.path,
         ),
       );

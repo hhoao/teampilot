@@ -10,6 +10,7 @@ import 'package:teampilot/services/storage/runtime_layout.dart';
 import 'package:teampilot/services/team_bus/member_bus_idle_endpoint.dart';
 import 'package:teampilot/utils/team_member_naming.dart';
 
+import '../../../../support/cursor_warm_tier_manifest_paths.dart';
 import '../../../../support/cursor_lifecycle_test_paths.dart';
 import '../../../../support/in_memory_filesystem.dart';
 
@@ -47,31 +48,31 @@ void main() {
       final oldGen = CursorSessionLifecycleCapability.overlayGenerationForBus(
         oldBus,
       );
-      await fs.ensureDir(layout.workspaceRuntimeToolDir(workspaceId, 'cursor'));
+      await fs.ensureDir(
+        layout.workspaceRuntimeToolDir(workspaceId, cursorTestTeamId, 'cursor'),
+      );
       await fs.ensureDir(
         fs.pathContext.join(
-          layout.workspaceRuntimeToolDir(workspaceId, 'cursor'),
+          layout.workspaceRuntimeToolDir(workspaceId, cursorTestTeamId, 'cursor'),
           'projects',
           slug,
         ),
       );
       await store.write(
         workspaceId: workspaceId,
+        teamId: cursorTestTeamId,
         tool: 'cursor',
         manifest: CliSessionManifest(
           tool: 'cursor',
           workspaceId: workspaceId,
+          teamId: cursorTestTeamId,
           workspacePathHash: slug,
           workspaceSlug: slug,
           phase: CliSessionPhase.ready,
-          shared: CliSessionManifestShared(
-            root: 'runtime/cursor',
-            projectsDir: 'runtime/cursor/projects/$slug',
-            cliConfigBase: 'runtime/cursor/cli-config.base.json',
-          ),
+          shared: cursorTestSharedManifest(slug: slug),
           members: {
-            TeamMemberNaming.teamLeadName: const CliSessionManifestMember(
-              homeRoot: 'runtime/team-lead/cursor/home',
+            TeamMemberNaming.teamLeadName: CliSessionManifestMember(
+              homeRoot: cursorTestMemberHomeRelative(TeamMemberNaming.teamLeadName),
             ),
           },
           sessionOverlays: {
@@ -86,6 +87,7 @@ void main() {
 
       final memberHome = layout.workspaceRuntimeMemberToolDir(
         workspaceId,
+        cursorTestTeamId,
         TeamMemberNaming.teamLeadName,
         'cursor',
       );
@@ -103,6 +105,18 @@ void main() {
           memberId: TeamMemberNaming.teamLeadName,
           tool: CliTool.cursor,
           paths: pathsDelegate,
+          team: TeamProfile(
+            id: cursorTestTeamId,
+            name: 'Team',
+            cli: CliTool.cursor,
+            teamMode: TeamMode.mixed,
+            members: const [
+              TeamMemberConfig(
+                id: TeamMemberNaming.teamLeadName,
+                name: 'Lead',
+              ),
+            ],
+          ),
           busIdle: newBus,
         ),
       );
@@ -117,7 +131,7 @@ void main() {
           tool: CliTool.cursor,
           paths: pathsDelegate,
           team: TeamProfile(
-            id: 'team',
+            id: cursorTestTeamId,
             name: 'Team',
             cli: CliTool.cursor,
             teamMode: TeamMode.mixed,
@@ -141,6 +155,18 @@ void main() {
           memberId: TeamMemberNaming.teamLeadName,
           tool: CliTool.cursor,
           paths: pathsDelegate,
+          team: TeamProfile(
+            id: cursorTestTeamId,
+            name: 'Team',
+            cli: CliTool.cursor,
+            teamMode: TeamMode.mixed,
+            members: const [
+              TeamMemberConfig(
+                id: TeamMemberNaming.teamLeadName,
+                name: 'Lead',
+              ),
+            ],
+          ),
           busIdle: newBus,
         ),
       );

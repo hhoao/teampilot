@@ -27,7 +27,7 @@ import 'app_storage.dart';
 ///     runtime/{tool}/           # native / personal PTY CONFIG_DIR
 ///     runtime/{memberId}/{tool}/ # mixed-mode per-member CONFIG_DIR
 ///
-///   runtime/                    # workspace-level CLI warm tier (mixed cursor)
+///   runtime/teams/{teamId}/     # workspace+team CLI warm tier (mixed cursor)
 ///     cursor/init.json
 ///     cursor/projects/{slug}/
 ///     {memberId}/cursor/home/
@@ -116,22 +116,37 @@ class WorkspaceLayout {
   String sessionRuntimeDir(String workspaceId, String sessionId) =>
       _ctx.join(sessionDir(workspaceId, sessionId), 'runtime');
 
-  /// Workspace-level shared CLI warm tier (cursor projects index, lifecycle manifest).
+  /// Workspace-level runtime root (team-scoped children below).
   String workspaceRuntimeDir(String workspaceId) =>
       _ctx.join(workspaceDir(workspaceId), 'runtime');
 
-  String workspaceRuntimeToolDir(String workspaceId, String tool) =>
-      _ctx.join(workspaceRuntimeDir(workspaceId), tool.trim());
+  /// Per-team runtime root under [workspaceRuntimeDir].
+  String workspaceTeamRuntimeDir(String workspaceId, String teamId) =>
+      _ctx.join(workspaceRuntimeDir(workspaceId), 'teams', teamId.trim());
 
-  String workspaceLifecycleManifestPath(String workspaceId, String tool) =>
-      _ctx.join(workspaceRuntimeToolDir(workspaceId, tool), 'init.json');
+  /// Shared CLI warm tier for one team in a workspace (cursor projects, plugins).
+  String workspaceRuntimeToolDir(
+    String workspaceId,
+    String teamId,
+    String tool,
+  ) => _ctx.join(workspaceTeamRuntimeDir(workspaceId, teamId), tool.trim());
+
+  String workspaceLifecycleManifestPath(
+    String workspaceId,
+    String teamId,
+    String tool,
+  ) => _ctx.join(
+    workspaceRuntimeToolDir(workspaceId, teamId, tool),
+    'init.json',
+  );
 
   String workspaceRuntimeMemberToolDir(
     String workspaceId,
+    String teamId,
     String memberId,
     String tool,
   ) => _ctx.join(
-    workspaceRuntimeDir(workspaceId),
+    workspaceTeamRuntimeDir(workspaceId, teamId),
     memberId.trim(),
     tool.trim(),
   );

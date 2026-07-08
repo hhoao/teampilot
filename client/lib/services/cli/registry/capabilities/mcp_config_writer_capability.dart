@@ -8,6 +8,7 @@ abstract interface class McpConfigWriterCapability implements CliCapability {
     required Filesystem fs,
     required String configDir,
     required List<McpServerSpec> servers,
+    String? outputBasename,
   });
 
   /// Merges app-level OAuth credential entries into the session config dir.

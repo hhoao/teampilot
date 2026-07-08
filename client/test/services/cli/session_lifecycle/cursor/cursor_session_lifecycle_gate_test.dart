@@ -7,6 +7,7 @@ import 'package:teampilot/services/cli/session_lifecycle/cursor/cursor_session_l
 import 'package:teampilot/services/storage/runtime_layout.dart';
 import 'package:teampilot/services/team_bus/member_bus_idle_endpoint.dart';
 
+import '../../../../support/cursor_warm_tier_manifest_paths.dart';
 import '../../../../support/in_memory_filesystem.dart';
 
 void main() {
@@ -30,10 +31,20 @@ void main() {
     capability = CursorSessionLifecycleCapability(manifestStore: store);
   });
 
-  CliSessionManifestShared sharedPaths() => const CliSessionManifestShared(
-    root: 'runtime/cursor',
-    projectsDir: 'runtime/cursor/projects/$slug',
-    cliConfigBase: 'runtime/cursor/cli-config.base.json',
+  CliSessionManifestShared sharedPaths() =>
+      cursorTestSharedManifest(slug: slug);
+
+  const teamId = cursorTestTeamId;
+
+  TeamProfile gateTeam() => const TeamProfile(
+    id: teamId,
+    name: 'Team',
+    cli: CliTool.cursor,
+    teamMode: TeamMode.mixed,
+    members: [
+      TeamMemberConfig(id: 'team-lead', name: 'Team Lead'),
+      TeamMemberConfig(id: 'architect', name: 'Architect'),
+    ],
   );
 
   Future<void> seedManifest({
@@ -43,10 +54,12 @@ void main() {
   }) {
     return store.write(
       workspaceId: workspaceId,
+      teamId: teamId,
       tool: tool,
       manifest: CliSessionManifest(
         tool: tool,
         workspaceId: workspaceId,
+        teamId: teamId,
         workspacePathHash: slug,
         workspaceSlug: slug,
         phase: phase,
@@ -59,7 +72,7 @@ void main() {
 
   CliSessionManifestMember memberWithOverlay(int overlayGeneration) {
     return CliSessionManifestMember(
-      homeRoot: 'runtime/team-lead/cursor/home',
+      homeRoot: cursorTestMemberHomeRelative('team-lead'),
     );
   }
 
@@ -88,6 +101,7 @@ void main() {
         sessionId: sessionId,
         memberId: memberId,
         tool: CliTool.cursor,
+        team: gateTeam(),
         busIdle: endpoint ?? busIdle,
       ),
     );
@@ -120,6 +134,19 @@ void main() {
       );
 
       expect(gate(memberId: 'team-lead').allowed, isTrue);
+    });
+
+    test('ready denies when overlay is missing for current session', () async {
+      final overlayGen =
+          CursorSessionLifecycleCapability.overlayGenerationForBus(busIdle);
+      await seedManifest(
+        phase: CliSessionPhase.ready,
+        members: {'team-lead': memberWithOverlay(overlayGen)},
+      );
+
+      final decision = gate(memberId: 'team-lead');
+      expect(decision.allowed, isFalse);
+      expect(decision.reason, 'overlay');
     });
 
     test('ready denies when overlay generation is stale', () async {

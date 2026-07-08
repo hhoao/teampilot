@@ -24,6 +24,7 @@ class PluginProvisionContext {
     required this.layout,
     required this.tool,
     this.memberProvisionJson,
+    this.mcpConfigFileName,
   });
 
   final Filesystem fs;
@@ -35,6 +36,8 @@ class PluginProvisionContext {
   final RuntimeLayout layout;
   final CliTool tool;
   final String? memberProvisionJson;
+  /// When set, overrides the MCP config filename (e.g. `mcp.base.json`).
+  final String? mcpConfigFileName;
 }
 
 /// Owns materialize + native registration for one CLI's plugin format.

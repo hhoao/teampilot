@@ -552,6 +552,7 @@ class SessionLifecycleService {
       workspaceId: session.workspaceId,
       sessionId: sessionId,
       memberId: memberBinding?.rosterMemberId ?? member.id,
+      teamId: teamId,
     );
 
     final plan = LaunchPlan(
@@ -767,6 +768,7 @@ class SessionLifecycleService {
         memberId: isPersonal
             ? null
             : (memberBinding?.rosterMemberId ?? launchMember?.id),
+        teamId: isPersonal ? null : teamId,
       );
       _logPrepareLaunchStep(prepSw, 'resolveResume', sessionId);
       prepSw.stop();
@@ -1347,6 +1349,7 @@ class SessionLifecycleService {
     String? workspaceId,
     String? sessionId,
     String? memberId,
+    String? teamId,
   }) async {
     final cap = cli == null
         ? null
@@ -1364,6 +1367,7 @@ class SessionLifecycleService {
       workspaceId: workspaceId,
       sessionId: sessionId,
       memberId: memberId,
+      teamId: teamId,
       manifestDataRoot: roots.appDataRoot,
     );
 

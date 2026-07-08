@@ -16,6 +16,7 @@ abstract interface class CliConfigLayoutCapability implements CliCapability {
     required String workspaceId,
     required String sessionId,
     String? memberId,
+    String? teamId,
   });
 }
 
@@ -30,6 +31,7 @@ final class DefaultCliConfigLayout implements CliConfigLayoutCapability {
     required String workspaceId,
     required String sessionId,
     String? memberId,
+    String? teamId,
   }) => layout.sessionRuntimeToolDir(
     workspaceId,
     sessionId,
@@ -46,6 +48,7 @@ String sessionConfigDirForTool(
   required String workspaceId,
   required String sessionId,
   String? memberId,
+  String? teamId,
   CliToolRegistry? registry,
 }) {
   final cap =
@@ -58,5 +61,6 @@ String sessionConfigDirForTool(
     workspaceId: workspaceId,
     sessionId: sessionId,
     memberId: memberId,
+    teamId: teamId,
   );
 }

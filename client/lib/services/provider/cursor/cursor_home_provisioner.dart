@@ -63,6 +63,7 @@ final class CursorHomeProvisioner {
     required MemberBusIdleEndpoint? busIdle,
     required bool forceTeamLeadDelegateMode,
     String? cliConfigJson,
+    String? sharedMcpBasePath,
   }) async {
     if (!member.isValid) return;
 
@@ -74,6 +75,10 @@ final class CursorHomeProvisioner {
 
     if (busIdle == null) return;
 
+    await _seedMemberMcpFromBase(
+      memberHome: memberHome,
+      sharedMcpBasePath: sharedMcpBasePath,
+    );
     await _writeBusOverlay(
       memberHome: memberHome,
       member: member,
@@ -171,6 +176,41 @@ final class CursorHomeProvisioner {
       memberId: member.id,
       busIdle: busIdle,
     );
+  }
+
+  Future<void> _seedMemberMcpFromBase({
+    required String memberHome,
+    String? sharedMcpBasePath,
+  }) async {
+    final basePath = sharedMcpBasePath?.trim() ?? '';
+    if (basePath.isEmpty) return;
+
+    final baseRaw = await _fs.readString(basePath);
+    if (baseRaw == null || baseRaw.trim().isEmpty) return;
+
+    final memberPath = _layout.mcpConfig(memberHome);
+    final memberRaw = await _fs.readString(memberPath);
+    Map<String, Object?> existing;
+    if (memberRaw != null && memberRaw.trim().isNotEmpty) {
+      existing = (jsonDecode(memberRaw) as Map).cast<String, Object?>();
+    } else {
+      existing = (jsonDecode(baseRaw) as Map).cast<String, Object?>();
+    }
+
+    final baseServers =
+        ((jsonDecode(baseRaw) as Map).cast<String, Object?>()['mcpServers']
+                as Map?)
+            ?.cast<String, Object?>() ??
+        const <String, Object?>{};
+    final memberServers =
+        ((existing['mcpServers'] as Map?)?.cast<String, Object?>() ??
+        const <String, Object?>{});
+    existing['mcpServers'] = <String, Object?>{
+      ...baseServers,
+      ...memberServers,
+    };
+
+    await _fs.atomicWrite(memberPath, _jsonPretty(existing));
   }
 
   Future<void> _mergeTeamBusMcp({

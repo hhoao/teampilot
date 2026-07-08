@@ -30,6 +30,7 @@ import '../launch/manifest_executor.dart';
 import '../launch/manifest_filesystem.dart';
 import '../provider/workspace_trust_provisioner.dart';
 import '../team/claude_team_roster_service.dart';
+import 'cursor/cursor_workspace_warm_tier.dart';
 import '../cli/registry/capabilities/cli_config_layout_capability.dart';
 import '../cli/registry/capabilities/cli_session_lifecycle_capability.dart';
 import '../storage/app_storage.dart';
@@ -253,13 +254,24 @@ class ConfigProfileService implements ConfigProfileDelegate {
     required String workspaceId,
     required String sessionId,
     String? memberId,
-  }) => sessionConfigDirForTool(
-    cli,
-    layout,
-    workspaceId: workspaceId,
-    sessionId: sessionId,
-    memberId: memberId,
-  );
+    TeamProfile? team,
+  }) {
+    if (CursorWorkspaceWarmTier.applies(team: team, cli: cli)) {
+      return CursorWorkspaceWarmTier.sharedRoot(
+        layout,
+        workspaceId,
+        team!.id,
+      );
+    }
+    return sessionConfigDirForTool(
+      cli,
+      layout,
+      workspaceId: workspaceId,
+      sessionId: sessionId,
+      memberId: memberId,
+      teamId: team?.id,
+    );
+  }
 
   Future<void> ensureTeamProfile(
     String teamId, {
@@ -316,6 +328,7 @@ class ConfigProfileService implements ConfigProfileDelegate {
     ]);
     final pluginProvisioner = _cliRegistry
         .capability<PluginProvisionerCapability>(cli);
+    final warmTier = CursorWorkspaceWarmTier.applies(team: team, cli: cli);
     if (pluginProvisioner != null) {
       final projectPlugins = (await _projectBundle(trimmedWorkspaceId)).pluginIds;
       await pluginProvisioner.provision(
@@ -327,6 +340,7 @@ class ConfigProfileService implements ConfigProfileDelegate {
             workspaceId: trimmedWorkspaceId,
             sessionId: trimmedSessionId,
             memberId: memberId,
+            team: team,
           ),
           bundlePoolDir: layout.sessionRuntimePluginsDir(
             trimmedWorkspaceId,
@@ -339,6 +353,9 @@ class ConfigProfileService implements ConfigProfileDelegate {
           layout: layout,
           tool: cli,
           memberProvisionJson: memberProvisionJson,
+          mcpConfigFileName: warmTier
+              ? CursorWorkspaceWarmTier.mcpBaseFileName
+              : null,
         ),
       );
     }
@@ -368,14 +385,33 @@ class ConfigProfileService implements ConfigProfileDelegate {
         workingDirectory: workingDirectory,
       ),
     );
-    await McpRegistryService(fs: fs, layout: layout).writeForSession(
-      workspaceId: trimmedWorkspaceId,
-      teamId: trimmedTeamId,
-      sessionId: trimmedSessionId,
-      memberId: memberId,
-      extraServers: extraMcpServers,
-      projectMcpRoots: projectMcpRoots,
-    );
+    final mcpRegistry = McpRegistryService(fs: fs, layout: layout);
+    if (warmTier) {
+      await mcpRegistry.writeCursorWorkspaceMcpBase(
+        workspaceId: trimmedWorkspaceId,
+        teamId: trimmedTeamId,
+        extraServers: extraMcpServers,
+        projectMcpRoots: projectMcpRoots,
+      );
+      final trimmedMemberId = memberId?.trim() ?? '';
+      if (trimmedMemberId.isNotEmpty) {
+        await mcpRegistry.mergeCursorMemberMcpCredentials(
+          workspaceId: trimmedWorkspaceId,
+          sessionId: trimmedSessionId,
+          teamId: trimmedTeamId,
+          memberId: trimmedMemberId,
+        );
+      }
+    } else {
+      await mcpRegistry.writeForSession(
+        workspaceId: trimmedWorkspaceId,
+        teamId: trimmedTeamId,
+        sessionId: trimmedSessionId,
+        memberId: memberId,
+        extraServers: extraMcpServers,
+        projectMcpRoots: projectMcpRoots,
+      );
+    }
   }
 
   Future<void> ensureStandalonePersonalProfile(
@@ -813,6 +849,7 @@ class ConfigProfileService implements ConfigProfileDelegate {
               workspaceId: trimmedWorkspaceId,
               sessionId: trimmedSessionId,
               memberId: memberId,
+              team: team,
             ),
             catalog: await _skillCatalog(),
           );

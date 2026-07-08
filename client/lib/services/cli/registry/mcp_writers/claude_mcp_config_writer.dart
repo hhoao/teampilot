@@ -18,6 +18,7 @@ final class ClaudeMcpConfigWriter implements McpConfigWriterCapability {
     required Filesystem fs,
     required String configDir,
     required List<McpServerSpec> servers,
+    String? outputBasename,
   }) async {
     await mergeMetadataMcpServers(
       fs: fs,
@@ -54,6 +55,7 @@ final class FlashskyaiMcpConfigWriter implements McpConfigWriterCapability {
     required Filesystem fs,
     required String configDir,
     required List<McpServerSpec> servers,
+    String? outputBasename,
   }) async {
     await mergeMetadataMcpServers(
       fs: fs,

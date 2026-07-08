@@ -21,13 +21,22 @@ abstract final class CursorSessionConfigDir {
     required String workspaceId,
     required String sessionId,
     String? memberId,
+    String? teamId,
   }) {
-    final toolDir = layout.sessionRuntimeToolDir(
-      workspaceId,
-      sessionId,
-      toolId,
-      memberId: memberId,
-    );
+    final trimmedMemberId = memberId?.trim() ?? '';
+    final trimmedTeamId = teamId?.trim() ?? '';
+    final toolDir = trimmedMemberId.isNotEmpty && trimmedTeamId.isNotEmpty
+        ? layout.workspaceRuntimeMemberToolDir(
+            workspaceId,
+            trimmedTeamId,
+            trimmedMemberId,
+            toolId,
+          )
+        : layout.sessionRuntimeToolDir(
+            workspaceId,
+            sessionId,
+            toolId,
+          );
     return p.join(toolDir, homeSegment, CursorHomeLayout.cursorDirName);
   }
 
@@ -35,15 +44,15 @@ abstract final class CursorSessionConfigDir {
   static String mixedHomeRoot(
     RuntimeLayout layout, {
     required String workspaceId,
-    required String sessionId,
+    required String teamId,
     required String memberId,
   }) {
     return p.join(
-      layout.sessionRuntimeToolDir(
+      layout.workspaceRuntimeMemberToolDir(
         workspaceId,
-        sessionId,
+        teamId.trim(),
+        memberId.trim(),
         toolId,
-        memberId: memberId,
       ),
       homeSegment,
     );

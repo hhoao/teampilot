@@ -27,6 +27,7 @@ class ResumeContext {
     this.workspaceId,
     this.sessionId,
     this.memberId,
+    this.teamId,
     this.manifestDataRoot,
   });
 
@@ -54,6 +55,7 @@ class ResumeContext {
   final String? workspaceId;
   final String? sessionId;
   final String? memberId;
+  final String? teamId;
 
   /// Teampilot data root for [manifestDataRoot]-relative manifest paths.
   final String? manifestDataRoot;

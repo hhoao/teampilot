@@ -13,6 +13,7 @@ import 'package:teampilot/services/provider/cursor/cursor_workspace_trust.dart';
 import 'package:teampilot/services/storage/runtime_layout.dart';
 import 'package:teampilot/utils/team_member_naming.dart';
 
+import '../../../../support/cursor_warm_tier_manifest_paths.dart';
 import '../../../../support/in_memory_filesystem.dart';
 
 void main() {
@@ -62,7 +63,7 @@ void main() {
       fs: fs,
       layout: layout,
       workspaceId: workspaceId,
-      sessionId: sessionId,
+      teamId: 'superpowers',
       workingDirectory: workingDirectory,
       homeLayout: homeLayout,
     );
@@ -74,6 +75,7 @@ void main() {
 
       final manifest = await store.read(
         workspaceId: workspaceId,
+        teamId: 'superpowers',
         tool: CursorSessionLifecyclePaths.tool,
       );
       expect(manifest, isNotNull);
@@ -113,12 +115,14 @@ void main() {
       await capability.ensurePersisted(ctx);
       final first = await store.read(
         workspaceId: workspaceId,
+        teamId: 'superpowers',
         tool: CursorSessionLifecyclePaths.tool,
       );
 
       await capability.ensurePersisted(ctx);
       final second = await store.read(
         workspaceId: workspaceId,
+        teamId: 'superpowers',
         tool: CursorSessionLifecyclePaths.tool,
       );
 
@@ -144,12 +148,14 @@ void main() {
       );
       final first = await store.read(
         workspaceId: workspaceId,
+        teamId: 'superpowers',
         tool: CursorSessionLifecyclePaths.tool,
       );
 
       await capability.ensurePersisted(persistContext());
       final second = await store.read(
         workspaceId: workspaceId,
+        teamId: 'superpowers',
         tool: CursorSessionLifecyclePaths.tool,
       );
 

@@ -1,3 +1,4 @@
+import '../../provider/cursor/cursor_workspace_warm_tier.dart';
 import '../registry/capabilities/cli_session_lifecycle_capability.dart';
 
 /// Workspace-level shared warm-tier paths (relative to workspace root).
@@ -6,23 +7,44 @@ class CliSessionManifestShared {
     required this.root,
     required this.projectsDir,
     required this.cliConfigBase,
+    required this.pluginsLocalDir,
+    required this.skillsCursorDir,
+    required this.mcpBase,
+    required this.settingsJson,
   });
 
   final String root;
   final String projectsDir;
   final String cliConfigBase;
+  final String pluginsLocalDir;
+  final String skillsCursorDir;
+  final String mcpBase;
+  final String settingsJson;
 
   Map<String, Object?> toJson() => {
     'root': root,
     'projectsDir': projectsDir,
     'cliConfigBase': cliConfigBase,
+    'pluginsLocalDir': pluginsLocalDir,
+    'skillsCursorDir': skillsCursorDir,
+    'mcpBase': mcpBase,
+    'settingsJson': settingsJson,
   };
 
   factory CliSessionManifestShared.fromJson(Map<String, Object?> json) {
+    final root = _requireString(json, 'root');
+    final warmPaths = CursorWorkspaceWarmTier.manifestPaths(root);
     return CliSessionManifestShared(
-      root: _requireString(json, 'root'),
+      root: root,
       projectsDir: _requireString(json, 'projectsDir'),
       cliConfigBase: _requireString(json, 'cliConfigBase'),
+      pluginsLocalDir:
+          _optionalString(json, 'pluginsLocalDir') ?? warmPaths.pluginsLocalDir,
+      skillsCursorDir:
+          _optionalString(json, 'skillsCursorDir') ?? warmPaths.skillsCursorDir,
+      mcpBase: _optionalString(json, 'mcpBase') ?? warmPaths.mcpBase,
+      settingsJson:
+          _optionalString(json, 'settingsJson') ?? warmPaths.settingsJson,
     );
   }
 
@@ -32,10 +54,22 @@ class CliSessionManifestShared {
       other is CliSessionManifestShared &&
           root == other.root &&
           projectsDir == other.projectsDir &&
-          cliConfigBase == other.cliConfigBase;
+          cliConfigBase == other.cliConfigBase &&
+          pluginsLocalDir == other.pluginsLocalDir &&
+          skillsCursorDir == other.skillsCursorDir &&
+          mcpBase == other.mcpBase &&
+          settingsJson == other.settingsJson;
 
   @override
-  int get hashCode => Object.hash(root, projectsDir, cliConfigBase);
+  int get hashCode => Object.hash(
+    root,
+    projectsDir,
+    cliConfigBase,
+    pluginsLocalDir,
+    skillsCursorDir,
+    mcpBase,
+    settingsJson,
+  );
 }
 
 /// Per-member workspace state recorded in the lifecycle manifest.
@@ -100,12 +134,13 @@ class CliSessionManifestSessionOverlay {
   int get hashCode => overlayGeneration.hashCode;
 }
 
-/// `init.json` lifecycle manifest for a workspace CLI warm tier.
+/// `init.json` lifecycle manifest for a workspace+team CLI warm tier.
 class CliSessionManifest {
   const CliSessionManifest({
-    this.schemaVersion = 3,
+    this.schemaVersion = 4,
     required this.tool,
     required this.workspaceId,
+    required this.teamId,
     required this.workspacePathHash,
     required this.workspaceSlug,
     required this.phase,
@@ -118,6 +153,7 @@ class CliSessionManifest {
   final int schemaVersion;
   final String tool;
   final String workspaceId;
+  final String teamId;
   final String workspacePathHash;
   final String workspaceSlug;
   final CliSessionPhase phase;
@@ -134,6 +170,7 @@ class CliSessionManifest {
     'schemaVersion': schemaVersion,
     'tool': tool,
     'workspaceId': workspaceId,
+    'teamId': teamId,
     'workspacePathHash': workspacePathHash,
     'workspaceSlug': workspaceSlug,
     'phase': phase.name,
@@ -190,6 +227,7 @@ class CliSessionManifest {
       schemaVersion: _requireSchemaVersion(json),
       tool: _requireString(json, 'tool'),
       workspaceId: _requireString(json, 'workspaceId'),
+      teamId: _requireString(json, 'teamId'),
       workspacePathHash: _requireString(json, 'workspacePathHash'),
       workspaceSlug: _requireString(json, 'workspaceSlug'),
       phase: _parsePhase(_requireString(json, 'phase')),
@@ -206,6 +244,7 @@ class CliSessionManifest {
     int? schemaVersion,
     String? tool,
     String? workspaceId,
+    String? teamId,
     String? workspacePathHash,
     String? workspaceSlug,
     CliSessionPhase? phase,
@@ -218,6 +257,7 @@ class CliSessionManifest {
       schemaVersion: schemaVersion ?? this.schemaVersion,
       tool: tool ?? this.tool,
       workspaceId: workspaceId ?? this.workspaceId,
+      teamId: teamId ?? this.teamId,
       workspacePathHash: workspacePathHash ?? this.workspacePathHash,
       workspaceSlug: workspaceSlug ?? this.workspaceSlug,
       phase: phase ?? this.phase,
@@ -235,6 +275,7 @@ class CliSessionManifest {
           schemaVersion == other.schemaVersion &&
           tool == other.tool &&
           workspaceId == other.workspaceId &&
+          teamId == other.teamId &&
           workspacePathHash == other.workspacePathHash &&
           workspaceSlug == other.workspaceSlug &&
           phase == other.phase &&
@@ -248,6 +289,7 @@ class CliSessionManifest {
     schemaVersion,
     tool,
     workspaceId,
+    teamId,
     workspacePathHash,
     workspaceSlug,
     phase,
@@ -264,7 +306,7 @@ class CliSessionManifest {
 
 int _requireSchemaVersion(Map<String, Object?> json) {
   final version = _optionalInt(json, 'schemaVersion');
-  if (version == null || version != 3) {
+  if (version == null || version != 4) {
     throw FormatException(
       'unsupported cli session manifest schemaVersion: $version',
     );

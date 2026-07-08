@@ -4,6 +4,7 @@ import '../../models/mcp_registry_source.dart';
 import '../../models/team_config.dart';
 import '../cli/registry/capabilities/mcp_config_writer_capability.dart';
 import '../cli/registry/cli_tool_registry.dart';
+import '../provider/cursor/cursor_workspace_warm_tier.dart';
 import '../cli/registry/capabilities/cli_config_layout_capability.dart';
 import '../cli/registry/mcp_writers/claude_project_mcp_cleanup.dart';
 import '../storage/runtime_layout.dart';
@@ -79,6 +80,89 @@ class McpRegistryService {
         memberId: memberId,
       );
     }
+  }
+
+  /// Writes team MCP catalog into the cursor workspace warm tier (`mcp.base.json`).
+  Future<void> writeCursorWorkspaceMcpBase({
+    required String workspaceId,
+    required String teamId,
+    Map<String, Map<String, Object?>>? extraServers,
+    Iterable<String> projectMcpRoots = const [],
+  }) async {
+    final trimmedWorkspaceId = workspaceId.trim();
+    final trimmedTeamId = teamId.trim();
+    if (trimmedWorkspaceId.isEmpty || trimmedTeamId.isEmpty) return;
+
+    final specs = await _resolveSpecs(
+      snapshotPath: layout.identityMcpServersFile(trimmedTeamId),
+      extraServers: extraServers,
+    );
+    if (specs.isEmpty) return;
+
+    final writer = _cliRegistry.capability<McpConfigWriterCapability>(
+      CliTool.cursor,
+    );
+    if (writer == null) return;
+
+    await writer.write(
+      fs: _fs,
+      configDir: CursorWorkspaceWarmTier.sharedRoot(
+        layout,
+        trimmedWorkspaceId,
+        trimmedTeamId,
+      ),
+      servers: specs,
+      outputBasename: CursorWorkspaceWarmTier.mcpBaseFileName,
+    );
+
+    await maybeRemoveStaleProjectTeammateBus(
+      fs: _fs,
+      extraServers: extraServers,
+      projectRoots: projectMcpRoots,
+    );
+  }
+
+  /// Merges app MCP OAuth credentials into a mixed-mode member cursor config dir.
+  Future<void> mergeCursorMemberMcpCredentials({
+    required String workspaceId,
+    required String sessionId,
+    required String teamId,
+    required String memberId,
+  }) async {
+    final trimmedWorkspaceId = workspaceId.trim();
+    final trimmedSessionId = sessionId.trim();
+    final trimmedTeamId = teamId.trim();
+    final trimmedMemberId = memberId.trim();
+    if (trimmedWorkspaceId.isEmpty ||
+        trimmedSessionId.isEmpty ||
+        trimmedTeamId.isEmpty ||
+        trimmedMemberId.isEmpty) {
+      return;
+    }
+
+    if (!await _hasCatalogSnapshot(
+      layout.identityMcpServersFile(trimmedTeamId),
+    )) {
+      return;
+    }
+
+    final writer = _cliRegistry.capability<McpConfigWriterCapability>(
+      CliTool.cursor,
+    );
+    if (writer == null) return;
+
+    await writer.mergeAppCredentials(
+      fs: _fs,
+      appConfigDir: layout.appToolRoot(CliTool.cursor.value),
+      sessionConfigDir: _sessionConfigDir(
+        tool: CliTool.cursor,
+        workspaceId: trimmedWorkspaceId,
+        sessionId: trimmedSessionId,
+        memberId: trimmedMemberId,
+        teamId: trimmedTeamId,
+      ),
+      fallbackAppConfigDir: layout.appToolRoot(CliTool.claude.value),
+    );
   }
 
   Future<void> writeForStandaloneWorkspace({
@@ -182,6 +266,7 @@ class McpRegistryService {
     required String sessionId,
     required List<McpServerSpec> specs,
     String? memberId,
+    String? teamId,
   }) async {
     for (final tool in CliTool.values) {
       final writer = _cliRegistry.capability<McpConfigWriterCapability>(tool);
@@ -191,6 +276,7 @@ class McpRegistryService {
         workspaceId: workspaceId,
         sessionId: sessionId,
         memberId: memberId,
+        teamId: teamId,
       );
       await writer.write(fs: _fs, configDir: configDir, servers: specs);
     }
@@ -200,6 +286,7 @@ class McpRegistryService {
     required String workspaceId,
     required String sessionId,
     String? memberId,
+    String? teamId,
   }) async {
     for (final tool in CliTool.values) {
       final writer = _cliRegistry.capability<McpConfigWriterCapability>(tool);
@@ -212,6 +299,7 @@ class McpRegistryService {
           workspaceId: workspaceId,
           sessionId: sessionId,
           memberId: memberId,
+          teamId: teamId,
         ),
         fallbackAppConfigDir: layout.appToolRoot(CliTool.claude.value),
       );
@@ -223,6 +311,7 @@ class McpRegistryService {
     required String workspaceId,
     required String sessionId,
     String? memberId,
+    String? teamId,
   }) {
     return sessionConfigDirForTool(
       tool,
@@ -230,6 +319,7 @@ class McpRegistryService {
       workspaceId: workspaceId,
       sessionId: sessionId,
       memberId: memberId,
+      teamId: teamId,
     );
   }
 }
