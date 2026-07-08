@@ -4,6 +4,7 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import '../../../cubits/chat_cubit.dart';
 import '../../../cubits/worktree_cubit.dart';
 import '../../../models/workspace.dart';
+import '../../../services/git/git_worktree_service.dart';
 import '../../../models/layout_preferences.dart';
 import '../../../services/workspace/workspace_tools_scope.dart';
 import '../../../services/workspace/workspace_tools_scope_registry.dart';
@@ -31,6 +32,25 @@ class WorkspaceSplitPane extends StatefulWidget {
 
 class _WorkspaceSplitPaneState extends State<WorkspaceSplitPane> {
   double? _sidebarWidth;
+  var _initialWorktreeBindDone = false;
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    if (_initialWorktreeBindDone) return;
+    _initialWorktreeBindDone = true;
+    // Bind before child initState (e.g. compose landing draft restore) so
+    // WorktreeCubit.load is never called on an unbound lister. Tools-scope
+    // sync re-binds when the storage target changes.
+    final repoPath = widget.workspace.firstFolderPath;
+    context.read<WorkspaceWorktreeRegistry>().cubitFor(
+      workspaceId: widget.workspace.workspaceId,
+      repoPath: repoPath,
+    ).bindWorktreeService(
+      GitWorktreeService(),
+      repoPath: repoPath,
+    );
+  }
 
   @override
   Widget build(BuildContext context) {
