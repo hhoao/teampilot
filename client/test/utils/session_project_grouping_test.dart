@@ -193,6 +193,64 @@ void main() {
       expect(groups[1].sessions.map((s) => s.sessionId), ['s2']);
     });
 
+    test(
+      'app-managed worktree outside repo tree groups under owning project',
+      () {
+        const repo = '/home/hhoa/git/hhoa/teampilot';
+        const parent = '/home/hhoa/git';
+        const externalWt =
+            '/home/hhoa/.local/share/com.hhoa.teampilot/worktrees/teampilot/feature/expert-hub';
+        const folders = [
+          WorkspaceFolder(path: repo),
+          WorkspaceFolder(path: parent),
+        ];
+        final worktreesByProject = {
+          repo: [
+            GitWorktree(
+              path: repo,
+              branch: 'refs/heads/main',
+              head: 'a',
+              isBare: false,
+              isMainWorktree: true,
+            ),
+            GitWorktree(
+              path: externalWt,
+              branch: 'refs/heads/feature/expert-hub',
+              head: 'b',
+              isBare: false,
+              isMainWorktree: false,
+            ),
+          ],
+          parent: const <GitWorktree>[],
+        };
+        final sessions = [
+          AppSession(
+            sessionId: 's-expert',
+            workspaceId: 'w1',
+            folders: const [
+              WorkspaceFolder(path: externalWt),
+              WorkspaceFolder(path: repo),
+              WorkspaceFolder(path: parent),
+            ],
+            createdAt: 1,
+          ),
+        ];
+
+        final groups = groupSessionsByWorktreeAcrossProjects(
+          folders: folders,
+          worktreesByProjectPath: worktreesByProject,
+          sessions: sessions,
+        );
+
+        final expertGroup = groups.firstWhere(
+          (g) => g.worktree?.path == externalWt,
+        );
+        expect(expertGroup.projectFolderPath, repo);
+        expect(expertGroup.sessions.map((s) => s.sessionId), ['s-expert']);
+        expect(groups.any((g) => g.isOrphan), isFalse);
+      },
+    );
+
     test('nested workspace folders assign each session to the deepest match', () {
       const folders = [
         WorkspaceFolder(path: '/home/hhoa/git'),

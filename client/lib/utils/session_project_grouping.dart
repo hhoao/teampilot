@@ -13,13 +13,35 @@ bool sessionBelongsToProject(AppSession session, String projectPath) {
   return primary.startsWith(root.endsWith('/') ? root : '$root/');
 }
 
-/// The workspace folder that owns [session]: the longest path prefix match.
+/// The workspace folder that owns [session].
+///
+/// Git-backed projects ([worktreesByProjectPath] entry non-empty): the repo
+/// whose `git worktree list` contains [session.firstFolderPath]. Plain folders
+/// (no worktrees): longest workspace-folder path prefix match.
 String? owningProjectFolderForSession(
   AppSession session,
-  List<WorkspaceFolder> folders,
-) {
+  List<WorkspaceFolder> folders, {
+  Map<String, List<GitWorktree>>? worktreesByProjectPath,
+}) {
   final primary = normalizeWorkspacePath(session.firstFolderPath);
   if (primary.isEmpty) return null;
+
+  if (worktreesByProjectPath != null) {
+    String? bestWorktreeOwner;
+    var bestWorktreeLen = -1;
+    for (final folder in folders) {
+      final worktrees = worktreesByProjectPath[folder.path] ?? const [];
+      if (worktrees.isEmpty) continue;
+      final matched = worktreePathForSessionPath(primary, worktrees);
+      if (matched == null) continue;
+      final matchedLen = normalizeWorkspacePath(matched).length;
+      if (matchedLen > bestWorktreeLen) {
+        bestWorktreeOwner = folder.path;
+        bestWorktreeLen = matchedLen;
+      }
+    }
+    if (bestWorktreeOwner != null) return bestWorktreeOwner;
+  }
 
   String? bestPath;
   var bestLen = -1;
@@ -38,11 +60,16 @@ String? owningProjectFolderForSession(
 
 Map<String, List<AppSession>> _sessionsByOwningProjectFolder({
   required List<WorkspaceFolder> folders,
+  required Map<String, List<GitWorktree>> worktreesByProjectPath,
   required List<AppSession> sessions,
 }) {
   final buckets = <String, List<AppSession>>{};
   for (final session in sessions) {
-    final owner = owningProjectFolderForSession(session, folders);
+    final owner = owningProjectFolderForSession(
+      session,
+      folders,
+      worktreesByProjectPath: worktreesByProjectPath,
+    );
     if (owner == null) continue;
     final key = _folderBucketKey(folders, owner);
     if (key == null) continue;
@@ -74,6 +101,7 @@ List<WorktreeGroup> groupSessionsByWorktreeAcrossProjects({
   final orphanSessions = <AppSession>[];
   final sessionsByFolder = _sessionsByOwningProjectFolder(
     folders: folders,
+    worktreesByProjectPath: worktreesByProjectPath,
     sessions: sessions,
   );
   final assigned = sessionsByFolder.values
