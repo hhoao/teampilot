@@ -1,24 +1,21 @@
 import '../registry/capabilities/cli_session_lifecycle_capability.dart';
 
-/// Session-level shared warm-tier paths (relative to session runtime root).
+/// Workspace-level shared warm-tier paths (relative to workspace root).
 class CliSessionManifestShared {
   const CliSessionManifestShared({
     required this.root,
     required this.projectsDir,
     required this.cliConfigBase,
-    required this.authDir,
   });
 
   final String root;
   final String projectsDir;
   final String cliConfigBase;
-  final String authDir;
 
   Map<String, Object?> toJson() => {
     'root': root,
     'projectsDir': projectsDir,
     'cliConfigBase': cliConfigBase,
-    'authDir': authDir,
   };
 
   factory CliSessionManifestShared.fromJson(Map<String, Object?> json) {
@@ -26,7 +23,6 @@ class CliSessionManifestShared {
       root: _requireString(json, 'root'),
       projectsDir: _requireString(json, 'projectsDir'),
       cliConfigBase: _requireString(json, 'cliConfigBase'),
-      authDir: _requireString(json, 'authDir'),
     );
   }
 
@@ -36,74 +32,26 @@ class CliSessionManifestShared {
       other is CliSessionManifestShared &&
           root == other.root &&
           projectsDir == other.projectsDir &&
-          cliConfigBase == other.cliConfigBase &&
-          authDir == other.authDir;
+          cliConfigBase == other.cliConfigBase;
 
   @override
-  int get hashCode => Object.hash(root, projectsDir, cliConfigBase, authDir);
+  int get hashCode => Object.hash(root, projectsDir, cliConfigBase);
 }
 
-/// Indexing phase metadata for the session warm tier.
-class CliSessionManifestIndex {
-  const CliSessionManifestIndex({
-    this.leaderMemberId,
-    this.startedAtMs,
-    this.finishedAtMs,
-    this.lastError,
-  });
-
-  final String? leaderMemberId;
-  final int? startedAtMs;
-  final int? finishedAtMs;
-  final String? lastError;
-
-  Map<String, Object?> toJson() => {
-    if (leaderMemberId != null) 'leaderMemberId': leaderMemberId,
-    if (startedAtMs != null) 'startedAtMs': startedAtMs,
-    if (finishedAtMs != null) 'finishedAtMs': finishedAtMs,
-    if (lastError != null) 'lastError': lastError,
-  };
-
-  factory CliSessionManifestIndex.fromJson(Map<String, Object?> json) {
-    return CliSessionManifestIndex(
-      leaderMemberId: _optionalString(json, 'leaderMemberId'),
-      startedAtMs: _optionalInt(json, 'startedAtMs'),
-      finishedAtMs: _optionalInt(json, 'finishedAtMs'),
-      lastError: _optionalString(json, 'lastError'),
-    );
-  }
-
-  @override
-  bool operator ==(Object other) =>
-      identical(this, other) ||
-      other is CliSessionManifestIndex &&
-          leaderMemberId == other.leaderMemberId &&
-          startedAtMs == other.startedAtMs &&
-          finishedAtMs == other.finishedAtMs &&
-          lastError == other.lastError;
-
-  @override
-  int get hashCode =>
-      Object.hash(leaderMemberId, startedAtMs, finishedAtMs, lastError);
-}
-
-/// Per-member overlay state recorded in the session manifest.
+/// Per-member workspace state recorded in the lifecycle manifest.
 class CliSessionManifestMember {
   const CliSessionManifestMember({
     required this.homeRoot,
-    this.overlayGeneration = 0,
     this.chatId,
     this.resumeCapturedAtMs,
   });
 
   final String homeRoot;
-  final int overlayGeneration;
   final String? chatId;
   final int? resumeCapturedAtMs;
 
   Map<String, Object?> toJson() => {
     'homeRoot': homeRoot,
-    'overlayGeneration': overlayGeneration,
     if (chatId != null) 'chatId': chatId,
     if (resumeCapturedAtMs != null) 'resumeCapturedAtMs': resumeCapturedAtMs,
   };
@@ -111,7 +59,6 @@ class CliSessionManifestMember {
   factory CliSessionManifestMember.fromJson(Map<String, Object?> json) {
     return CliSessionManifestMember(
       homeRoot: _requireString(json, 'homeRoot'),
-      overlayGeneration: _optionalInt(json, 'overlayGeneration') ?? 0,
       chatId: _optionalString(json, 'chatId'),
       resumeCapturedAtMs: _optionalInt(json, 'resumeCapturedAtMs'),
     );
@@ -122,56 +69,85 @@ class CliSessionManifestMember {
       identical(this, other) ||
       other is CliSessionManifestMember &&
           homeRoot == other.homeRoot &&
-          overlayGeneration == other.overlayGeneration &&
           chatId == other.chatId &&
           resumeCapturedAtMs == other.resumeCapturedAtMs;
 
   @override
-  int get hashCode =>
-      Object.hash(homeRoot, overlayGeneration, chatId, resumeCapturedAtMs);
+  int get hashCode => Object.hash(homeRoot, chatId, resumeCapturedAtMs);
 }
 
-/// `init.json` manifest for CLI session lifecycle on the work plane.
+/// Per-session bus overlay generation for one roster member.
+class CliSessionManifestSessionOverlay {
+  const CliSessionManifestSessionOverlay({required this.overlayGeneration});
+
+  final int overlayGeneration;
+
+  Map<String, Object?> toJson() => {'overlayGeneration': overlayGeneration};
+
+  factory CliSessionManifestSessionOverlay.fromJson(Map<String, Object?> json) {
+    return CliSessionManifestSessionOverlay(
+      overlayGeneration: _optionalInt(json, 'overlayGeneration') ?? 0,
+    );
+  }
+
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      other is CliSessionManifestSessionOverlay &&
+          overlayGeneration == other.overlayGeneration;
+
+  @override
+  int get hashCode => overlayGeneration.hashCode;
+}
+
+/// `init.json` lifecycle manifest for a workspace CLI warm tier.
 class CliSessionManifest {
   const CliSessionManifest({
-    this.schemaVersion = 1,
+    this.schemaVersion = 3,
     required this.tool,
     required this.workspaceId,
-    required this.sessionId,
     required this.workspacePathHash,
     required this.workspaceSlug,
     required this.phase,
     this.phaseUpdatedAtMs,
     required this.shared,
-    required this.index,
     this.members = const {},
+    this.sessionOverlays = const {},
   });
 
   final int schemaVersion;
   final String tool;
   final String workspaceId;
-  final String sessionId;
   final String workspacePathHash;
   final String workspaceSlug;
   final CliSessionPhase phase;
   final int? phaseUpdatedAtMs;
   final CliSessionManifestShared shared;
-  final CliSessionManifestIndex index;
   final Map<String, CliSessionManifestMember> members;
+  final Map<String, Map<String, CliSessionManifestSessionOverlay>> sessionOverlays;
+
+  CliSessionManifestSessionOverlay? overlayFor(String sessionId, String memberId) {
+    return sessionOverlays[sessionId]?[memberId];
+  }
 
   Map<String, Object?> toJson() => {
     'schemaVersion': schemaVersion,
     'tool': tool,
     'workspaceId': workspaceId,
-    'sessionId': sessionId,
     'workspacePathHash': workspacePathHash,
     'workspaceSlug': workspaceSlug,
     'phase': phase.name,
     if (phaseUpdatedAtMs != null) 'phaseUpdatedAtMs': phaseUpdatedAtMs,
     'shared': shared.toJson(),
-    'index': index.toJson(),
     'members': {
       for (final entry in members.entries) entry.key: entry.value.toJson(),
+    },
+    'sessionOverlays': {
+      for (final sessionEntry in sessionOverlays.entries)
+        sessionEntry.key: {
+          for (final memberEntry in sessionEntry.value.entries)
+            memberEntry.key: memberEntry.value.toJson(),
+        },
     },
   };
 
@@ -189,11 +165,31 @@ class CliSessionManifest {
       }
     }
 
+    final overlaysRaw = json['sessionOverlays'];
+    final sessionOverlays =
+        <String, Map<String, CliSessionManifestSessionOverlay>>{};
+    if (overlaysRaw is Map) {
+      for (final sessionEntry in overlaysRaw.entries) {
+        final sessionId = sessionEntry.key;
+        final memberMap = sessionEntry.value;
+        if (sessionId is! String || memberMap is! Map) continue;
+        final overlays = <String, CliSessionManifestSessionOverlay>{};
+        for (final memberEntry in memberMap.entries) {
+          final memberId = memberEntry.key;
+          final overlayJson = memberEntry.value;
+          if (memberId is! String || overlayJson is! Map) continue;
+          overlays[memberId] = CliSessionManifestSessionOverlay.fromJson(
+            overlayJson.cast<String, Object?>(),
+          );
+        }
+        sessionOverlays[sessionId] = overlays;
+      }
+    }
+
     return CliSessionManifest(
-      schemaVersion: _optionalInt(json, 'schemaVersion') ?? 1,
+      schemaVersion: _requireSchemaVersion(json),
       tool: _requireString(json, 'tool'),
       workspaceId: _requireString(json, 'workspaceId'),
-      sessionId: _requireString(json, 'sessionId'),
       workspacePathHash: _requireString(json, 'workspacePathHash'),
       workspaceSlug: _requireString(json, 'workspaceSlug'),
       phase: _parsePhase(_requireString(json, 'phase')),
@@ -201,8 +197,8 @@ class CliSessionManifest {
       shared: CliSessionManifestShared.fromJson(
         _requireMap(json, 'shared'),
       ),
-      index: CliSessionManifestIndex.fromJson(_requireMap(json, 'index')),
       members: members,
+      sessionOverlays: sessionOverlays,
     );
   }
 
@@ -210,27 +206,25 @@ class CliSessionManifest {
     int? schemaVersion,
     String? tool,
     String? workspaceId,
-    String? sessionId,
     String? workspacePathHash,
     String? workspaceSlug,
     CliSessionPhase? phase,
     int? phaseUpdatedAtMs,
     CliSessionManifestShared? shared,
-    CliSessionManifestIndex? index,
     Map<String, CliSessionManifestMember>? members,
+    Map<String, Map<String, CliSessionManifestSessionOverlay>>? sessionOverlays,
   }) {
     return CliSessionManifest(
       schemaVersion: schemaVersion ?? this.schemaVersion,
       tool: tool ?? this.tool,
       workspaceId: workspaceId ?? this.workspaceId,
-      sessionId: sessionId ?? this.sessionId,
       workspacePathHash: workspacePathHash ?? this.workspacePathHash,
       workspaceSlug: workspaceSlug ?? this.workspaceSlug,
       phase: phase ?? this.phase,
       phaseUpdatedAtMs: phaseUpdatedAtMs ?? this.phaseUpdatedAtMs,
       shared: shared ?? this.shared,
-      index: index ?? this.index,
       members: members ?? this.members,
+      sessionOverlays: sessionOverlays ?? this.sessionOverlays,
     );
   }
 
@@ -241,29 +235,41 @@ class CliSessionManifest {
           schemaVersion == other.schemaVersion &&
           tool == other.tool &&
           workspaceId == other.workspaceId &&
-          sessionId == other.sessionId &&
           workspacePathHash == other.workspacePathHash &&
           workspaceSlug == other.workspaceSlug &&
           phase == other.phase &&
           phaseUpdatedAtMs == other.phaseUpdatedAtMs &&
           shared == other.shared &&
-          index == other.index &&
-          _mapEquals(members, other.members);
+          _mapEquals(members, other.members) &&
+          _nestedOverlayEquals(sessionOverlays, other.sessionOverlays);
 
   @override
   int get hashCode => Object.hash(
     schemaVersion,
     tool,
     workspaceId,
-    sessionId,
     workspacePathHash,
     workspaceSlug,
     phase,
     phaseUpdatedAtMs,
     shared,
-    index,
     Object.hashAllUnordered(members.entries),
+    Object.hashAllUnordered(
+      sessionOverlays.entries.map(
+        (e) => Object.hash(e.key, Object.hashAllUnordered(e.value.entries)),
+      ),
+    ),
   );
+}
+
+int _requireSchemaVersion(Map<String, Object?> json) {
+  final version = _optionalInt(json, 'schemaVersion');
+  if (version == null || version != 3) {
+    throw FormatException(
+      'unsupported cli session manifest schemaVersion: $version',
+    );
+  }
+  return version;
 }
 
 CliSessionPhase _parsePhase(String raw) {
@@ -310,6 +316,20 @@ bool _mapEquals<K, V>(Map<K, V> a, Map<K, V> b) {
   if (a.length != b.length) return false;
   for (final entry in a.entries) {
     if (!b.containsKey(entry.key) || b[entry.key] != entry.value) {
+      return false;
+    }
+  }
+  return true;
+}
+
+bool _nestedOverlayEquals(
+  Map<String, Map<String, CliSessionManifestSessionOverlay>> a,
+  Map<String, Map<String, CliSessionManifestSessionOverlay>> b,
+) {
+  if (a.length != b.length) return false;
+  for (final entry in a.entries) {
+    final otherMembers = b[entry.key];
+    if (otherMembers == null || !_mapEquals(entry.value, otherMembers)) {
       return false;
     }
   }

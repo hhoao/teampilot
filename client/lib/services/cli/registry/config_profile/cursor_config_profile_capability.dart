@@ -98,6 +98,7 @@ final class CursorConfigProfileCapability implements ConfigProfileCapability {
       busIdle: null,
       forceTeamLeadDelegateMode: false,
       mixed: false,
+      realHomeRoot: paths.home,
     );
 
     await _provisionWorkspaceTrust(ctx: ctx, homeRoot: home);
@@ -237,22 +238,20 @@ final class CursorConfigProfileCapability implements ConfigProfileCapability {
       layout: paths.layout,
     ).read(
       workspaceId: workspaceId,
-      sessionId: sessionId,
       tool: toolId,
     );
     final homeRoot = manifest?.members[memberId]?.homeRoot.trim() ?? '';
     if (homeRoot.isNotEmpty) {
-      final sessionDir = paths.layout.workspace.sessionDir(workspaceId, sessionId);
+      final workspaceDir = paths.layout.workspace.workspaceDir(workspaceId);
       return paths.fs.pathContext.normalize(
-        paths.fs.pathContext.join(sessionDir, homeRoot),
+        paths.fs.pathContext.join(workspaceDir, homeRoot),
       );
     }
 
-    final cursorDir = paths.sessionToolDir(
+    final cursorDir = paths.layout.workspaceRuntimeMemberToolDir(
       workspaceId,
-      sessionId,
+      memberId,
       toolId,
-      memberId: memberId,
     );
     return paths.fs.pathContext.join(cursorDir, 'home');
   }

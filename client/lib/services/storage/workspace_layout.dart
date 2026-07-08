@@ -27,6 +27,11 @@ import 'app_storage.dart';
 ///     runtime/{tool}/           # native / personal PTY CONFIG_DIR
 ///     runtime/{memberId}/{tool}/ # mixed-mode per-member CONFIG_DIR
 ///
+///   runtime/                    # workspace-level CLI warm tier (mixed cursor)
+///     cursor/init.json
+///     cursor/projects/{slug}/
+///     {memberId}/cursor/home/
+///
 /// {teampilotRoot}/automations/catalog.json  # global index for home sidebar
 /// ```
 class WorkspaceLayout {
@@ -111,24 +116,24 @@ class WorkspaceLayout {
   String sessionRuntimeDir(String workspaceId, String sessionId) =>
       _ctx.join(sessionDir(workspaceId, sessionId), 'runtime');
 
-  /// Session-level shared CLI state (e.g. cursor warm tier under `_shared/`).
-  String sessionRuntimeSharedToolDir(
-    String workspaceId,
-    String sessionId,
-    String tool,
-  ) => _ctx.join(
-    sessionRuntimeDir(workspaceId, sessionId),
-    '_shared',
-    tool.trim(),
-  );
+  /// Workspace-level shared CLI warm tier (cursor projects index, lifecycle manifest).
+  String workspaceRuntimeDir(String workspaceId) =>
+      _ctx.join(workspaceDir(workspaceId), 'runtime');
 
-  String sessionLifecycleManifestPath(
+  String workspaceRuntimeToolDir(String workspaceId, String tool) =>
+      _ctx.join(workspaceRuntimeDir(workspaceId), tool.trim());
+
+  String workspaceLifecycleManifestPath(String workspaceId, String tool) =>
+      _ctx.join(workspaceRuntimeToolDir(workspaceId, tool), 'init.json');
+
+  String workspaceRuntimeMemberToolDir(
     String workspaceId,
-    String sessionId,
+    String memberId,
     String tool,
   ) => _ctx.join(
-    sessionRuntimeSharedToolDir(workspaceId, sessionId, tool),
-    'init.json',
+    workspaceRuntimeDir(workspaceId),
+    memberId.trim(),
+    tool.trim(),
   );
 
   /// PTY CONFIG_DIR for [tool]. Pass [memberId] in mixed team mode.

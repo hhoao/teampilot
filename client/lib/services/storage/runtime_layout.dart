@@ -92,17 +92,17 @@ class RuntimeLayout {
     memberId: memberId,
   );
 
-  String sessionRuntimeSharedToolDir(
-    String workspaceId,
-    String sessionId,
-    String tool,
-  ) => workspace.sessionRuntimeSharedToolDir(workspaceId, sessionId, tool);
+  String workspaceRuntimeToolDir(String workspaceId, String tool) =>
+      workspace.workspaceRuntimeToolDir(workspaceId, tool);
 
-  String sessionLifecycleManifestPath(
+  String workspaceLifecycleManifestPath(String workspaceId, String tool) =>
+      workspace.workspaceLifecycleManifestPath(workspaceId, tool);
+
+  String workspaceRuntimeMemberToolDir(
     String workspaceId,
-    String sessionId,
+    String memberId,
     String tool,
-  ) => workspace.sessionLifecycleManifestPath(workspaceId, sessionId, tool);
+  ) => workspace.workspaceRuntimeMemberToolDir(workspaceId, memberId, tool);
 
   String get appFlashskyaiLlmConfigFile =>
       _pathContext.join(appToolRoot('flashskyai'), 'llm_config.json');

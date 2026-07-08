@@ -160,20 +160,18 @@ void main() {
       );
 
       final layout = RuntimeLayout(teampilotRoot: base.path, fs: fs);
-      final manifestPath = layout.sessionLifecycleManifestPath(
+      final manifestPath = layout.workspaceLifecycleManifestPath(
         'ws',
-        'sess',
         'cursor',
       );
       await Directory(p.dirname(manifestPath)).create(recursive: true);
       await File(manifestPath).writeAsString(
-        '{"schemaVersion":1,"tool":"cursor","workspaceId":"ws","sessionId":"sess",'
+        '{"schemaVersion":3,"tool":"cursor","workspaceId":"ws",'
         '"workspacePathHash":"slug","workspaceSlug":"slug","phase":"ready",'
-        '"shared":{"root":"runtime/_shared/cursor","projectsDir":"runtime/_shared/cursor/projects/slug",'
-        '"cliConfigBase":"runtime/_shared/cursor/cli-config.base.json",'
-        '"authDir":"runtime/_shared/cursor/auth"},'
-        '"index":{},"members":{"team-lead":{"homeRoot":"runtime/team-lead/cursor/home",'
-        '"overlayGeneration":0,"chatId":"manifest-chat"}}}',
+        '"shared":{"root":"runtime/cursor","projectsDir":"runtime/cursor/projects/slug",'
+        '"cliConfigBase":"runtime/cursor/cli-config.base.json"},'
+        '"members":{"team-lead":{"homeRoot":"runtime/team-lead/cursor/home",'
+        '"chatId":"manifest-chat"}},"sessionOverlays":{}}',
       );
 
       final got = await const CursorResumeStrategy().detectNativeId(

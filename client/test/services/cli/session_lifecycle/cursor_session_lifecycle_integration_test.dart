@@ -61,7 +61,7 @@ void main() {
   });
 
   group('cursor session lifecycle integration', () {
-    test('two members share projects dir and indexing gates follower connect', () async {
+    test('two members share projects dir and connect in parallel', () async {
       final team = mixedCursorTeam();
       await capability.ensurePersisted(
         CliSessionPersistContext(
@@ -87,13 +87,12 @@ void main() {
           workingDirectory: workingDirectory,
         ),
       );
-      expect(leaderInit.phase, CliSessionPhase.indexing);
+      expect(leaderInit.phase, CliSessionPhase.ready);
       expect(leaderInit.blocked, isFalse);
       expect(gate(TeamMemberNaming.teamLeadName).allowed, isTrue);
 
       final followerGate = gate('architect');
-      expect(followerGate.allowed, isFalse);
-      expect(followerGate.reason, 'indexing');
+      expect(followerGate.allowed, isTrue);
 
       final lifecyclePaths = CursorSessionLifecyclePaths(
         fs: fs,
@@ -112,16 +111,10 @@ void main() {
       expect(sharedProjects, isNotEmpty);
       expect(leaderProjects, isNotEmpty);
 
-      await capability.markIndexDone(
-        workspaceId: workspaceId,
-        sessionId: sessionId,
-      );
-
       expect(gate('architect').allowed, isTrue);
 
       final manifest = await store.read(
         workspaceId: workspaceId,
-        sessionId: sessionId,
         tool: CursorSessionLifecyclePaths.tool,
       );
       expect(manifest?.phase, CliSessionPhase.ready);

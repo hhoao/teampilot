@@ -4,6 +4,7 @@ import 'package:path/path.dart' as p;
 
 import '../../../io/filesystem.dart';
 import '../../../provider/cursor/cursor_home_layout.dart';
+import '../../../provider/cursor/cursor_member_home_passthrough.dart';
 import '../../../provider/cursor/cursor_workspace_trust.dart';
 import '../../../storage/runtime_layout.dart';
 
@@ -38,13 +39,7 @@ final class CursorSessionLifecyclePaths {
   String get workspaceSlug =>
       CursorWorkspaceTrust.slugifyWorkspacePath(_workingDirectory);
 
-  String sharedRoot() => _layout.sessionRuntimeSharedToolDir(
-    _workspaceId,
-    _sessionId,
-    tool,
-  );
-
-  String sharedAuthDir() => _ctx.join(sharedRoot(), 'auth');
+  String sharedRoot() => _layout.workspaceRuntimeToolDir(_workspaceId, tool);
 
   String sharedProjectsDir([String? slug]) => _ctx.join(
     sharedRoot(),
@@ -53,32 +48,29 @@ final class CursorSessionLifecyclePaths {
   );
 
   String memberHomeRoot(String memberId) => _ctx.join(
-    _layout.sessionRuntimeToolDir(
-      _workspaceId,
-      _sessionId,
-      tool,
-      memberId: memberId,
-    ),
+    _layout.workspaceRuntimeMemberToolDir(_workspaceId, memberId, tool),
     'home',
   );
 
   String memberCursorDir(String memberHome) => _homeLayout.cursorDir(memberHome);
 
-  /// Cursor writes workspace index progress to `projects/<slug>/worker.log`.
-  String workerLogPath(String memberId) => _ctx.join(
-    memberCursorDir(memberHomeRoot(memberId)),
-    CursorWorkspaceTrust.projectsDirName,
-    workspaceSlug,
-    'worker.log',
-  );
-
   Future<void> ensureSharedDirs() async {
     await _fs.ensureDir(sharedRoot());
-    await _fs.ensureDir(sharedAuthDir());
     await _fs.ensureDir(sharedProjectsDir());
   }
 
-  Future<void> ensureMemberHomeLayout({required String memberId}) async {
+  String memberAuthDir(String memberHome) =>
+      _homeLayout.configCursorDir(memberHome);
+
+  String memberAuthFile(String memberHome) => _ctx.join(
+    memberAuthDir(memberHome),
+    CursorHomeLayout.authFileName,
+  );
+
+  Future<void> ensureMemberHomeLayout({
+    required String memberId,
+    required String realHomeRoot,
+  }) async {
     final memberHome = memberHomeRoot(memberId);
     await _fs.ensureDir(memberHome);
     final cursorDir = memberCursorDir(memberHome);
@@ -86,22 +78,15 @@ final class CursorSessionLifecyclePaths {
     await _fs.ensureDir(_ctx.join(cursorDir, CursorHomeLayout.rulesDirName));
     await _fs.ensureDir(_ctx.join(cursorDir, CursorHomeLayout.hooksDirName));
     await _linkMemberProjects(memberHome: memberHome);
-    await linkOrCopyAuth(memberHome: memberHome);
+    await ensureMemberAuthDir(memberHome: memberHome);
+    await CursorMemberHomePassthrough(fs: _fs, layout: _homeLayout).mirror(
+      realHomeRoot: realHomeRoot,
+      memberHomeRoot: memberHome,
+    );
   }
 
-  Future<void> linkOrCopyAuth({required String memberHome}) async {
-    final memberAuthDir = _homeLayout.configCursorDir(memberHome);
-    final sharedAuth = sharedAuthDir();
-    if (await _linkDirectory(source: sharedAuth, target: memberAuthDir)) {
-      return;
-    }
-    // Windows / transports without symlink privilege: copy auth.json only.
-    await _fs.ensureDir(memberAuthDir);
-    final sourceAuth = _ctx.join(sharedAuth, CursorHomeLayout.authFileName);
-    final destAuth = _ctx.join(memberAuthDir, CursorHomeLayout.authFileName);
-    if ((await _fs.stat(sourceAuth)).isFile) {
-      await _fs.copyFile(sourceAuth, destAuth);
-    }
+  Future<void> ensureMemberAuthDir({required String memberHome}) async {
+    await _fs.ensureDir(memberAuthDir(memberHome));
   }
 
   Future<void> _linkMemberProjects({required String memberHome}) async {

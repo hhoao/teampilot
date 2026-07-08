@@ -1,8 +1,5 @@
-import 'dart:io';
-
 import 'package:flutter_test/flutter_test.dart';
 import 'package:teampilot/services/cli/session_lifecycle/cursor/cursor_session_lifecycle_paths.dart';
-import 'package:teampilot/services/io/filesystem.dart';
 import 'package:teampilot/services/io/local_filesystem.dart';
 import 'package:teampilot/services/provider/cursor/cursor_home_layout.dart';
 import 'package:teampilot/services/provider/cursor/cursor_workspace_trust.dart';
@@ -39,33 +36,26 @@ void main() {
       expect(paths.workspaceSlug, slug);
     });
 
-    test('sharedRoot is under runtime/_shared/cursor', () {
+    test('sharedRoot is under workspace runtime/cursor', () {
       expect(
         paths.sharedRoot(),
-        '/tp/workspace/workspaces/ws/sessions/sess/runtime/_shared/cursor',
+        '/tp/workspace/workspaces/ws/runtime/cursor',
       );
     });
 
-    test('sharedAuthDir is under shared root', () {
-      expect(
-        paths.sharedAuthDir(),
-        '/tp/workspace/workspaces/ws/sessions/sess/runtime/_shared/cursor/auth',
-      );
-    });
-
-    test('sharedProjectsDir(slug) is under shared projects', () {
+    test('sharedProjectsDir(slug) is under workspace projects', () {
       expect(
         paths.sharedProjectsDir(slug),
-        '/tp/workspace/workspaces/ws/sessions/sess/runtime/_shared/cursor/projects/$slug',
+        '/tp/workspace/workspaces/ws/runtime/cursor/projects/$slug',
       );
     });
 
-    test('memberHomeRoot points at runtime/{memberId}/cursor/home', () {
+    test('memberHomeRoot points at workspace runtime/{memberId}/cursor/home', () {
       expect(
         paths.memberHomeRoot('team-lead'),
-        '/tp/workspace/workspaces/ws/sessions/sess/runtime/team-lead/cursor/home',
+        '/tp/workspace/workspaces/ws/runtime/team-lead/cursor/home',
       );
-      expect(paths.memberHomeRoot('team-lead'), isNot(contains('/_shared/')));
+      expect(paths.memberHomeRoot('team-lead'), isNot(contains('/sessions/')));
     });
   });
 
@@ -89,11 +79,10 @@ void main() {
       );
     });
 
-    test('ensureSharedDirs creates shared root, auth, and workspace slug dir', () async {
+    test('ensureSharedDirs creates shared root and workspace slug dir', () async {
       await paths.ensureSharedDirs();
 
       expect((await fs.stat(paths.sharedRoot())).isDirectory, isTrue);
-      expect((await fs.stat(paths.sharedAuthDir())).isDirectory, isTrue);
       expect((await fs.stat(paths.sharedProjectsDir())).isDirectory, isTrue);
     });
 
@@ -101,7 +90,13 @@ void main() {
       await paths.ensureSharedDirs();
 
       const memberId = 'team-lead';
-      await paths.ensureMemberHomeLayout(memberId: memberId);
+      const realHome = '/home/user';
+      await fs.ensureDir(realHome);
+      await fs.ensureDir(fs.pathContext.join(realHome, '.rustup'));
+      await paths.ensureMemberHomeLayout(
+        memberId: memberId,
+        realHomeRoot: realHome,
+      );
 
       final memberHome = paths.memberHomeRoot(memberId);
       final memberProjects = fs.pathContext.join(
@@ -116,139 +111,29 @@ void main() {
       expect((await fs.stat(memberHome)).isDirectory, isTrue);
       expect((await fs.stat(homeLayout.cursorDir(memberHome))).isDirectory, isTrue);
       expect(await fs.readSymlinkTarget(memberProjects), sharedProjectsRoot);
+      expect(
+        await fs.readSymlinkTarget(
+          fs.pathContext.join(memberHome, '.rustup'),
+        ),
+        fs.pathContext.join(realHome, '.rustup'),
+      );
     });
 
-    test('linkOrCopyAuth symlinks member .config/cursor to shared auth dir', () async {
-      await paths.ensureSharedDirs();
-      await fs.writeString(
-        fs.pathContext.join(paths.sharedAuthDir(), CursorHomeLayout.authFileName),
-        '{"accessToken":"tok"}',
-      );
-
+    test('ensureMemberAuthDir creates per-member auth directory', () async {
       const memberId = 'architect';
       final memberHome = paths.memberHomeRoot(memberId);
       await fs.ensureDir(memberHome);
 
-      await paths.linkOrCopyAuth(memberHome: memberHome);
+      await paths.ensureMemberAuthDir(memberHome: memberHome);
 
-      final memberAuthDir = homeLayout.configCursorDir(memberHome);
-      expect(await fs.readSymlinkTarget(memberAuthDir), paths.sharedAuthDir());
+      expect(
+        (await fs.stat(homeLayout.configCursorDir(memberHome))).isDirectory,
+        isTrue,
+      );
+      expect(
+        (await fs.stat(paths.memberAuthFile(memberHome))).exists,
+        isFalse,
+      );
     });
-
-    test(
-      'linkOrCopyAuth copies auth.json when symlink is unavailable',
-      () async {
-        await paths.ensureSharedDirs();
-        const authBody = '{"accessToken":"tok"}';
-        await fs.writeString(
-          fs.pathContext.join(
-            paths.sharedAuthDir(),
-            CursorHomeLayout.authFileName,
-          ),
-          authBody,
-        );
-
-        const memberId = 'architect';
-        final memberHome = paths.memberHomeRoot(memberId);
-        await fs.ensureDir(memberHome);
-
-        final failingFs = _SymlinkFailingFilesystem(fs);
-        final copyPaths = CursorSessionLifecyclePaths(
-          fs: failingFs,
-          layout: layout,
-          workspaceId: workspaceId,
-          sessionId: sessionId,
-          workingDirectory: workingDirectory,
-          homeLayout: homeLayout,
-        );
-
-        await copyPaths.linkOrCopyAuth(memberHome: memberHome);
-
-        final memberAuthJson = homeLayout.authJson(memberHome);
-        expect(await failingFs.readString(memberAuthJson), authBody);
-        expect((await failingFs.stat(memberAuthJson)).isFile, isTrue);
-      },
-      skip: Platform.isWindows ? 'Windows uses junction/copy paths in integration' : false,
-    );
   });
-}
-
-/// Delegates to [delegate] but refuses symlinks so auth fallback is exercised.
-final class _SymlinkFailingFilesystem implements Filesystem {
-  _SymlinkFailingFilesystem(this.delegate);
-
-  final Filesystem delegate;
-
-  @override
-  get pathContext => delegate.pathContext;
-
-  @override
-  Future<FsStat> stat(String path) => delegate.stat(path);
-
-  @override
-  Future<void> ensureDir(String path) => delegate.ensureDir(path);
-
-  @override
-  Future<void> removeRecursive(String path) => delegate.removeRecursive(path);
-
-  @override
-  Future<void> rename(String from, String to) => delegate.rename(from, to);
-
-  @override
-  Future<String?> readString(String path) => delegate.readString(path);
-
-  @override
-  Future<List<int>?> readBytes(String path) => delegate.readBytes(path);
-
-  @override
-  Future<void> writeString(String path, String content) =>
-      delegate.writeString(path, content);
-
-  @override
-  Future<void> writeBytes(String path, List<int> bytes) =>
-      delegate.writeBytes(path, bytes);
-
-  @override
-  Future<void> atomicWrite(String path, String content) =>
-      delegate.atomicWrite(path, content);
-
-  @override
-  Future<List<FsDirEntry>> listDir(String path) => delegate.listDir(path);
-
-  @override
-  Future<bool> createSymlink({
-    required String target,
-    required String linkPath,
-  }) async =>
-      false;
-
-  @override
-  Future<String?> readSymlinkTarget(String linkPath) =>
-      delegate.readSymlinkTarget(linkPath);
-
-  @override
-  Future<String?> resolveSymlink(String path) => delegate.resolveSymlink(path);
-
-  @override
-  Future<void> copyTree({
-    required String source,
-    required String destination,
-  }) =>
-      delegate.copyTree(source: source, destination: destination);
-
-  @override
-  Future<void> copyFile(String source, String destination) =>
-      delegate.copyFile(source, destination);
-
-  @override
-  Future<List<FsDirEntry>> listDirRecursive(String path) =>
-      delegate.listDirRecursive(path);
-
-  @override
-  Future<String> createTempDir({String? prefix, String? parent}) =>
-      delegate.createTempDir(prefix: prefix, parent: parent);
-
-  @override
-  Future<void> appendString(String path, String content) =>
-      delegate.appendString(path, content);
 }

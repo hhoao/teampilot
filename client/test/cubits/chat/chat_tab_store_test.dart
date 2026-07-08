@@ -13,6 +13,22 @@ ChatTab _tab(String id) => ChatTab(
 );
 
 void main() {
+  test('effectiveCliTeamName prefers persisted session over provisional', () {
+    final tab = ChatTab(
+      info: ChatTabInfo(id: 's1', title: 'S', subtitle: ''),
+      cliTeamName: '',
+    )..persistedSession = AppSession(
+        sessionId: 's1',
+        workspaceId: 'ws',
+        folders: const [],
+        sessionTeam: 'team-1',
+        cliTeamName: 'default-native-team-3',
+        createdAt: 0,
+      );
+
+    expect(tab.effectiveCliTeamName, 'default-native-team-3');
+  });
+
   test('append + bySessionId + toInfos', () {
     final store = ChatTabStore();
     store.append(_tab('a'));

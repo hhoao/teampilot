@@ -55,6 +55,31 @@ void main() {
   const localBusIdle = MemberBusIdleEndpoint(url: 'http://127.0.0.1:4321/idle');
 
   group('CursorHomeProvisioner', () {
+    test('provision mirrors real home passthrough when realHomeRoot set', () async {
+      const memberHome = '/data/tp/members/planner/cursor/home';
+      const realHome = '/home/user';
+      await fs.ensureDir(realHome);
+      await fs.ensureDir(fs.pathContext.join(realHome, '.pub-cache'));
+
+      await provisioner.provision(
+        memberHome: memberHome,
+        providerId: null,
+        member: member,
+        busIdle: null,
+        forceTeamLeadDelegateMode: false,
+        mixed: false,
+        realHomeRoot: realHome,
+      );
+
+      expect(
+        await fs.readSymlinkTarget(
+          fs.pathContext.join(memberHome, '.pub-cache'),
+        ),
+        fs.pathContext.join(realHome, '.pub-cache'),
+      );
+      expect((await fs.stat(layout.cursorDir(memberHome))).isDirectory, isTrue);
+    });
+
     test('provision writes bus files when port set (no provider)', () async {
       const memberHome = '/data/tp/members/planner/cursor/home';
 

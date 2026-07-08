@@ -36,6 +36,29 @@ void main() {
       );
     });
 
+    test('native active tab uses presence snapshot when roster is published', () {
+      final tab = ChatTab(
+        info: ChatTabInfo(id: 'native-1', title: 'N', subtitle: ''),
+        cliTeamName: '',
+      )..persistedSession = AppSession(
+          sessionId: 'native-1',
+          workspaceId: 'ws',
+          folders: const [],
+          sessionTeam: 'team-1',
+          cliTeamName: 'default-native-team-3',
+          createdAt: 0,
+        );
+
+      expect(
+        resolver.usesPresenceSnapshotForTab(
+          tab: tab,
+          activeSessionId: 'native-1',
+          presenceNonEmpty: true,
+        ),
+        isTrue,
+      );
+    });
+
     test('mixed active tab uses presence snapshot when bus is installed', () {
       final tab = ChatTab(
         info: ChatTabInfo(id: 'mixed-1', title: 'M', subtitle: ''),

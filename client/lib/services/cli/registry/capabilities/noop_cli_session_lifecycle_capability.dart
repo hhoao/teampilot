@@ -27,4 +27,7 @@ final class NoopCliSessionLifecycleCapability
 
   @override
   CliSessionGateDecision gateConnect(CliSessionGateContext ctx) => _allow;
+
+  @override
+  CliSessionPhase? peekSessionPhase(CliSessionGateContext ctx) => null;
 }

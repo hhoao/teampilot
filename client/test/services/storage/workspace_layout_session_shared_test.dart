@@ -4,38 +4,42 @@ import 'package:teampilot/services/storage/runtime_layout.dart';
 import 'package:teampilot/services/storage/workspace_layout.dart';
 
 void main() {
-  group('WorkspaceLayout session shared paths', () {
+  group('WorkspaceLayout workspace runtime paths', () {
     final layout = WorkspaceLayout(teampilotRoot: '/tp', fs: LocalFilesystem());
 
-    test('sessionRuntimeSharedToolDir is under runtime/_shared', () {
-      final path = layout.sessionRuntimeSharedToolDir('ws', 'sess', 'cursor');
-      expect(path, contains('/runtime/_shared/cursor'));
-      expect(path, isNot(contains('/team-lead/')));
+    test('workspaceRuntimeToolDir is under workspace runtime', () {
+      final path = layout.workspaceRuntimeToolDir('ws', 'cursor');
+      expect(path, '/tp/workspace/workspaces/ws/runtime/cursor');
+      expect(path, isNot(contains('/sessions/')));
     });
 
-    test('sessionLifecycleManifestPath ends with init.json under shared tool dir', () {
-      final path = layout.sessionLifecycleManifestPath('ws', 'sess', 'cursor');
+    test('workspaceLifecycleManifestPath ends with init.json under workspace runtime', () {
+      final path = layout.workspaceLifecycleManifestPath('ws', 'cursor');
+      expect(path, '/tp/workspace/workspaces/ws/runtime/cursor/init.json');
+    });
+
+    test('workspaceRuntimeMemberToolDir is under workspace runtime', () {
       expect(
-        path,
-        '/tp/workspace/workspaces/ws/sessions/sess/runtime/_shared/cursor/init.json',
+        layout.workspaceRuntimeMemberToolDir('ws', 'team-lead', 'cursor'),
+        '/tp/workspace/workspaces/ws/runtime/team-lead/cursor',
       );
     });
   });
 
-  group('RuntimeLayout session shared path delegates', () {
+  group('RuntimeLayout workspace runtime path delegates', () {
     final layout = RuntimeLayout(teampilotRoot: '/tp', fs: LocalFilesystem());
 
-    test('sessionRuntimeSharedToolDir delegates to workspace layout', () {
+    test('workspaceRuntimeToolDir delegates to workspace layout', () {
       expect(
-        layout.sessionRuntimeSharedToolDir('ws', 'sess', 'cursor'),
-        '/tp/workspace/workspaces/ws/sessions/sess/runtime/_shared/cursor',
+        layout.workspaceRuntimeToolDir('ws', 'cursor'),
+        '/tp/workspace/workspaces/ws/runtime/cursor',
       );
     });
 
-    test('sessionLifecycleManifestPath delegates to workspace layout', () {
+    test('workspaceLifecycleManifestPath delegates to workspace layout', () {
       expect(
-        layout.sessionLifecycleManifestPath('ws', 'sess', 'cursor'),
-        '/tp/workspace/workspaces/ws/sessions/sess/runtime/_shared/cursor/init.json',
+        layout.workspaceLifecycleManifestPath('ws', 'cursor'),
+        '/tp/workspace/workspaces/ws/runtime/cursor/init.json',
       );
     });
   });

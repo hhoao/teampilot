@@ -31,31 +31,28 @@ void main() {
   });
 
   CliSessionManifestShared sharedPaths() => const CliSessionManifestShared(
-    root: 'runtime/_shared/cursor',
-    projectsDir: 'runtime/_shared/cursor/projects/$slug',
-    cliConfigBase: 'runtime/_shared/cursor/cli-config.base.json',
-    authDir: 'runtime/_shared/cursor/auth',
+    root: 'runtime/cursor',
+    projectsDir: 'runtime/cursor/projects/$slug',
+    cliConfigBase: 'runtime/cursor/cli-config.base.json',
   );
 
   Future<void> seedManifest({
     required CliSessionPhase phase,
-    String? leaderMemberId,
     required Map<String, CliSessionManifestMember> members,
+    Map<String, Map<String, CliSessionManifestSessionOverlay>>? sessionOverlays,
   }) {
     return store.write(
       workspaceId: workspaceId,
-      sessionId: sessionId,
       tool: tool,
       manifest: CliSessionManifest(
         tool: tool,
         workspaceId: workspaceId,
-        sessionId: sessionId,
         workspacePathHash: slug,
         workspaceSlug: slug,
         phase: phase,
         shared: sharedPaths(),
-        index: CliSessionManifestIndex(leaderMemberId: leaderMemberId),
         members: members,
+        sessionOverlays: sessionOverlays ?? const {},
       ),
     );
   }
@@ -63,8 +60,22 @@ void main() {
   CliSessionManifestMember memberWithOverlay(int overlayGeneration) {
     return CliSessionManifestMember(
       homeRoot: 'runtime/team-lead/cursor/home',
-      overlayGeneration: overlayGeneration,
     );
+  }
+
+  Map<String, Map<String, CliSessionManifestSessionOverlay>> overlaysFor(
+    int overlayGeneration,
+  ) {
+    return {
+      sessionId: {
+        'team-lead': CliSessionManifestSessionOverlay(
+          overlayGeneration: overlayGeneration,
+        ),
+        'architect': CliSessionManifestSessionOverlay(
+          overlayGeneration: overlayGeneration,
+        ),
+      },
+    };
   }
 
   CliSessionGateDecision gate({
@@ -92,28 +103,11 @@ void main() {
           'team-lead': memberWithOverlay(overlayGen),
           'architect': memberWithOverlay(overlayGen),
         },
+        sessionOverlays: overlaysFor(overlayGen),
       );
 
       expect(gate(memberId: 'team-lead').allowed, isTrue);
       expect(gate(memberId: 'architect').allowed, isTrue);
-    });
-
-    test('indexing allows leader only', () async {
-      final overlayGen =
-          CursorSessionLifecycleCapability.overlayGenerationForBus(busIdle);
-      await seedManifest(
-        phase: CliSessionPhase.indexing,
-        leaderMemberId: 'architect',
-        members: {
-          'architect': memberWithOverlay(overlayGen),
-          'team-lead': memberWithOverlay(overlayGen),
-        },
-      );
-
-      expect(gate(memberId: 'architect').allowed, isTrue);
-      final follower = gate(memberId: 'team-lead');
-      expect(follower.allowed, isFalse);
-      expect(follower.reason, 'indexing');
     });
 
     test('degraded allows any member when overlay matches', () async {
@@ -122,6 +116,7 @@ void main() {
       await seedManifest(
         phase: CliSessionPhase.degraded,
         members: {'team-lead': memberWithOverlay(overlayGen)},
+        sessionOverlays: overlaysFor(overlayGen),
       );
 
       expect(gate(memberId: 'team-lead').allowed, isTrue);
@@ -133,6 +128,13 @@ void main() {
       await seedManifest(
         phase: CliSessionPhase.ready,
         members: {'team-lead': memberWithOverlay(overlayGen + 1)},
+        sessionOverlays: {
+          sessionId: {
+            'team-lead': CliSessionManifestSessionOverlay(
+              overlayGeneration: overlayGen + 1,
+            ),
+          },
+        },
       );
 
       final decision = gate(memberId: 'team-lead');

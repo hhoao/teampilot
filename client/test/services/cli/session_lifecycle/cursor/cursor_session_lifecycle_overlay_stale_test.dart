@@ -2,11 +2,10 @@ import 'package:path/path.dart' as p;
 import 'package:flutter_test/flutter_test.dart';
 import 'package:teampilot/models/team_config.dart';
 import 'package:teampilot/services/cli/registry/capabilities/cli_session_lifecycle_capability.dart';
-import 'package:teampilot/services/cli/registry/config_profile/config_profile_context.dart';
 import 'package:teampilot/services/cli/session_lifecycle/cli_session_manifest.dart';
 import 'package:teampilot/services/cli/session_lifecycle/cli_session_manifest_store.dart';
 import 'package:teampilot/services/cli/session_lifecycle/cursor/cursor_session_lifecycle_capability.dart';
-import 'package:teampilot/services/io/filesystem.dart';
+import 'package:teampilot/services/provider/cursor/cursor_home_layout.dart';
 import 'package:teampilot/services/storage/runtime_layout.dart';
 import 'package:teampilot/services/team_bus/member_bus_idle_endpoint.dart';
 import 'package:teampilot/utils/team_member_naming.dart';
@@ -48,41 +47,53 @@ void main() {
       final oldGen = CursorSessionLifecycleCapability.overlayGenerationForBus(
         oldBus,
       );
-      await fs.ensureDir(
-        layout.sessionRuntimeSharedToolDir(workspaceId, sessionId, 'cursor'),
-      );
+      await fs.ensureDir(layout.workspaceRuntimeToolDir(workspaceId, 'cursor'));
       await fs.ensureDir(
         fs.pathContext.join(
-          layout.sessionRuntimeSharedToolDir(workspaceId, sessionId, 'cursor'),
+          layout.workspaceRuntimeToolDir(workspaceId, 'cursor'),
           'projects',
           slug,
         ),
       );
       await store.write(
         workspaceId: workspaceId,
-        sessionId: sessionId,
         tool: 'cursor',
         manifest: CliSessionManifest(
           tool: 'cursor',
           workspaceId: workspaceId,
-          sessionId: sessionId,
           workspacePathHash: slug,
           workspaceSlug: slug,
           phase: CliSessionPhase.ready,
           shared: CliSessionManifestShared(
-            root: 'runtime/_shared/cursor',
-            projectsDir: 'runtime/_shared/cursor/projects/$slug',
-            cliConfigBase: 'runtime/_shared/cursor/cli-config.base.json',
-            authDir: 'runtime/_shared/cursor/auth',
+            root: 'runtime/cursor',
+            projectsDir: 'runtime/cursor/projects/$slug',
+            cliConfigBase: 'runtime/cursor/cli-config.base.json',
           ),
-          index: const CliSessionManifestIndex(finishedAtMs: 1),
           members: {
-            TeamMemberNaming.teamLeadName: CliSessionManifestMember(
+            TeamMemberNaming.teamLeadName: const CliSessionManifestMember(
               homeRoot: 'runtime/team-lead/cursor/home',
-              overlayGeneration: oldGen,
             ),
           },
+          sessionOverlays: {
+            sessionId: {
+              TeamMemberNaming.teamLeadName: CliSessionManifestSessionOverlay(
+                overlayGeneration: oldGen,
+              ),
+            },
+          },
         ),
+      );
+
+      final memberHome = layout.workspaceRuntimeMemberToolDir(
+        workspaceId,
+        TeamMemberNaming.teamLeadName,
+        'cursor',
+      );
+      final memberAuthDir = p.join(memberHome, 'home', '.config', 'cursor');
+      await fs.ensureDir(memberAuthDir);
+      await fs.writeString(
+        p.join(memberAuthDir, CursorHomeLayout.authFileName),
+        '{"accessToken":"test","email":"user@example.com"}',
       );
 
       final denied = capability.gateConnect(

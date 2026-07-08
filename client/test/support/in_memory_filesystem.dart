@@ -57,10 +57,57 @@ class InMemoryFilesystem implements Filesystem {
 
   @override
   Future<void> rename(String from, String to) async {
+    final fromStat = await stat(from);
+    if (!fromStat.exists) return;
+
+    await ensureDir(pathContext.dirname(to));
+
+    if (fromStat.isDirectory) {
+      directories.add(to);
+      directories.remove(from);
+
+      for (final dir in directories.toList()) {
+        if (pathContext.isWithin(from, dir) && dir != from) {
+          directories.remove(dir);
+          directories.add(pathContext.join(to, pathContext.relative(dir, from: from)));
+        }
+      }
+      for (final key in files.keys.toList()) {
+        if (pathContext.isWithin(from, key)) {
+          files[pathContext.join(to, pathContext.relative(key, from: from))] =
+              files.remove(key)!;
+        }
+      }
+      for (final key in byteFiles.keys.toList()) {
+        if (pathContext.isWithin(from, key)) {
+          byteFiles[pathContext.join(to, pathContext.relative(key, from: from))] =
+              byteFiles.remove(key)!;
+        }
+      }
+      for (final key in symlinks.keys.toList()) {
+        if (pathContext.isWithin(from, key)) {
+          symlinks[pathContext.join(to, pathContext.relative(key, from: from))] =
+              symlinks.remove(key)!;
+        }
+      }
+      return;
+    }
+
     final content = files.remove(from);
     if (content != null) {
-      await ensureDir(pathContext.dirname(to));
       files[to] = content;
+      return;
+    }
+
+    final bytes = byteFiles.remove(from);
+    if (bytes != null) {
+      byteFiles[to] = bytes;
+      return;
+    }
+
+    final linkTarget = symlinks.remove(from);
+    if (linkTarget != null) {
+      symlinks[to] = linkTarget;
     }
   }
 

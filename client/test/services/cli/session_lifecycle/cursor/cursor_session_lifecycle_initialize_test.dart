@@ -147,10 +147,9 @@ void main() {
 
       final manifest = await store.read(
         workspaceId: workspaceId,
-        sessionId: sessionId,
         tool: CursorSessionLifecyclePaths.tool,
       );
-      expect(manifest!.phase, CliSessionPhase.indexing);
+      expect(manifest!.phase, CliSessionPhase.ready);
     });
 
     test('provisions overlay with teammate-bus permissions and X-Member', () async {
@@ -175,76 +174,37 @@ void main() {
       expect(headers[teammateBusMcpMemberHeader], TeamMemberNaming.teamLeadName);
     });
 
-    test('syncs session auth once and links member config cursor dir', () async {
+    test('syncs per-member auth from provider store', () async {
       await seedPersisted();
 
       final cap = await capability();
       await cap.initialize(initContext());
 
       expect(authSync.callCount, 1);
-      expect(
-        await fs.readString(
-          fs.pathContext.join(
-            lifecyclePaths.sharedAuthDir(),
-            CursorHomeLayout.authFileName,
-          ),
-        ),
-        isNotNull,
-      );
-
       final memberHome = lifecyclePaths.memberHomeRoot(TeamMemberNaming.teamLeadName);
       expect(
-        await fs.readSymlinkTarget(homeLayout.configCursorDir(memberHome)),
-        lifecyclePaths.sharedAuthDir(),
+        await fs.readString(lifecyclePaths.memberAuthFile(memberHome)),
+        isNotNull,
+      );
+      expect(
+        (await fs.stat(homeLayout.configCursorDir(memberHome))).isDirectory,
+        isTrue,
       );
     });
 
-    test('index fast-path skips indexing when projects already warmed', () async {
-      await seedPersisted();
-      final manifest = await store.read(
-        workspaceId: workspaceId,
-        sessionId: sessionId,
-        tool: CursorSessionLifecyclePaths.tool,
-      );
-      await store.write(
-        workspaceId: workspaceId,
-        sessionId: sessionId,
-        tool: CursorSessionLifecyclePaths.tool,
-        manifest: manifest!.copyWith(
-          index: const CliSessionManifestIndex(finishedAtMs: 1_700_000_000_000),
-        ),
-      );
-      await fs.writeString(
-        fs.pathContext.join(lifecyclePaths.sharedProjectsDir(), 'worker.log'),
-        'prior run',
-      );
-
-      final cap = await capability();
-      final result = await cap.initialize(initContext());
-
-      expect(result.phase, CliSessionPhase.ready);
-      final updated = await store.read(
-        workspaceId: workspaceId,
-        sessionId: sessionId,
-        tool: CursorSessionLifecyclePaths.tool,
-      );
-      expect(updated!.phase, CliSessionPhase.ready);
-    });
-
-    test('assigns roster-first leader and enters indexing when not warmed', () async {
+    test('initialize reaches ready for any roster member', () async {
       await seedPersisted();
 
       final cap = await capability();
       final result = await cap.initialize(initContext(memberId: 'architect'));
 
-      expect(result.phase, CliSessionPhase.indexing);
+      expect(result.phase, CliSessionPhase.ready);
+      expect(result.blocked, isFalse);
       final manifest = await store.read(
         workspaceId: workspaceId,
-        sessionId: sessionId,
         tool: CursorSessionLifecyclePaths.tool,
       );
-      expect(manifest!.index.leaderMemberId, TeamMemberNaming.teamLeadName);
-      expect(manifest.index.startedAtMs, isNotNull);
+      expect(manifest!.phase, CliSessionPhase.ready);
     });
   });
 }
@@ -258,12 +218,12 @@ final class _RecordingAuthSync {
 
   Future<void> call({
     required String providerId,
-    required String sharedAuthDir,
+    required String memberAuthDir,
   }) async {
     callCount++;
-    await fs.ensureDir(sharedAuthDir);
+    await fs.ensureDir(memberAuthDir);
     await fs.writeString(
-      fs.pathContext.join(sharedAuthDir, CursorHomeLayout.authFileName),
+      fs.pathContext.join(memberAuthDir, CursorHomeLayout.authFileName),
       '{"accessToken":"test","email":"user@example.com"}',
     );
   }

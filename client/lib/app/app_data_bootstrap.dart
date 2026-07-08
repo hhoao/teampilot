@@ -370,7 +370,7 @@ abstract final class AppDataBootstrap {
     required SessionRepository sessionRepo,
   }) async {
     final defaultTeam = teamCubit.state.teams
-        .where((t) => t.id == LaunchProfileProvisioner.defaultTeamId)
+        .where((t) => t.id == LaunchProfileProvisioner.defaultNativeTeamId)
         .firstOrNull;
     if (defaultTeam == null) return;
 

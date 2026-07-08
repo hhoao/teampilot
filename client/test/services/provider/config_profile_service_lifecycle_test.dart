@@ -40,6 +40,9 @@ class _RecordingLifecycle implements CliSessionLifecycleCapability {
   @override
   CliSessionGateDecision gateConnect(CliSessionGateContext ctx) =>
       const CliSessionGateDecision(allowed: true);
+
+  @override
+  CliSessionPhase? peekSessionPhase(CliSessionGateContext ctx) => null;
 }
 
 class _ToolWithLifecycleOverride implements CliToolDefinition {

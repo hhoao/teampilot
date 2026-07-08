@@ -139,6 +139,9 @@ class ChatCubit extends Cubit<ChatState>
     connector: _launchService,
     activeTeam: () => _activeTeam,
     isClosed: () => isClosed,
+    isMixedBusRegistered: _teammateBusMcpGateway.isSessionRegistered,
+    isMemberConnectOwnedElsewhere: _launchService.isMemberConnectOwnedElsewhere,
+    isDirectPtyLifecycleReady: _launchService.isMemberDirectPtyLifecycleReady,
   );
   late final TabTeamBusCoordinator _teamBus = TabTeamBusCoordinator(
     gateway: _teammateBusMcpGateway,
@@ -147,27 +150,6 @@ class ChatCubit extends Cubit<ChatState>
     globalPresets: () => _lifecycle.globalPresets,
     onAfterTurnLatched: _recomputeWorkingSessions,
     artifactServiceFactory: _buildArtifactService,
-    cliRegistry: _lifecycle.cliToolRegistry,
-    resolveLifecyclePaths: (session) async {
-      final workCtx = await _lifecycle.launchWorkContext(
-        WorkspaceLaunchContext(
-          session: session,
-          workspace:
-              state.workspaces
-                  .where((w) => w.workspaceId == session.workspaceId)
-                  .firstOrNull ??
-              Workspace(
-                workspaceId: session.workspaceId,
-                folders: session.folders,
-                createdAt: 0,
-              ),
-        ),
-      );
-      return _lifecycle.configProfileServiceFor(
-        workCtx,
-        launchWorkspaceId: session.workspaceId,
-      );
-    },
   );
 
   /// P3d: a per-session cross-machine artifact transfer service. The registry is
@@ -449,7 +431,7 @@ class ChatCubit extends Cubit<ChatState>
     }
     cubit.updateTarget(
       PresenceTarget(
-        cliTeamName: tab.cliTeamName,
+        cliTeamName: tab.effectiveCliTeamName,
         memberToolConfigDir: tab.memberToolConfigDir,
         memberShells: tab.memberShells,
         session: _presenceSessionContext(tab),

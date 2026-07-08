@@ -4,11 +4,16 @@ import '../../models/team_config.dart';
 import '../../services/team/member_coordination.dart';
 import '../../services/team_bus/chat_cubit_member_launcher.dart';
 import '../../utils/logger.dart';
+import 'model/chat_tab.dart';
 import 'chat_tab_store.dart';
 import 'member_connector.dart';
 import 'tab_session_runtime_coordinator.dart';
 
-/// Bridges TeamBus [MemberMaterializer] to PTY shells and team member connects.
+/// Bridges TeamBus [MemberMaterializer] to PTY shells.
+///
+/// Mixed sessions never race the primary tab launch: this type waits until the
+/// teammate bus is registered and only schedules a member connect when no other
+/// path already owns that member's PTY attach.
 class TabMemberMaterializer implements MemberMaterializer {
   TabMemberMaterializer({
     required TabSessionRuntimeCoordinator runtime,
@@ -16,17 +21,30 @@ class TabMemberMaterializer implements MemberMaterializer {
     required MemberConnector connector,
     required TeamProfile? Function() activeTeam,
     required bool Function() isClosed,
+    required bool Function(String sessionId) isMixedBusRegistered,
+    required bool Function(String sessionId, String memberId)
+    isMemberConnectOwnedElsewhere,
+    Future<bool> Function(String sessionId, String memberId)?
+    isDirectPtyLifecycleReady,
   }) : _runtime = runtime,
        _tabStore = tabStore,
        _connector = connector,
        _activeTeam = activeTeam,
-       _isClosed = isClosed;
+       _isClosed = isClosed,
+       _isMixedBusRegistered = isMixedBusRegistered,
+       _isMemberConnectOwnedElsewhere = isMemberConnectOwnedElsewhere,
+       _isDirectPtyLifecycleReady = isDirectPtyLifecycleReady;
 
   final TabSessionRuntimeCoordinator _runtime;
   final ChatTabStore _tabStore;
   final MemberConnector _connector;
   final TeamProfile? Function() _activeTeam;
   final bool Function() _isClosed;
+  final bool Function(String sessionId) _isMixedBusRegistered;
+  final bool Function(String sessionId, String memberId)
+  _isMemberConnectOwnedElsewhere;
+  final Future<bool> Function(String sessionId, String memberId)?
+  _isDirectPtyLifecycleReady;
 
   final Map<(String, String), Completer<void>> _memberReady = {};
 
@@ -45,11 +63,20 @@ class TabMemberMaterializer implements MemberMaterializer {
   }) async {
     await materializeMember(sessionId, memberId, '');
     while (!_isClosed()) {
-      if (_runtime.isMemberReadyForAutomationInput(
+      final shellReady = _runtime.isMemberReadyForAutomationInput(
         sessionId,
         memberId,
         directToPty: directToPty,
-      )) {
+      );
+      if (shellReady) {
+        if (directToPty) {
+          final lifecycleReady = _isDirectPtyLifecycleReady;
+          if (lifecycleReady != null &&
+              !await lifecycleReady(sessionId, memberId)) {
+            await Future<void>.delayed(const Duration(milliseconds: 100));
+            continue;
+          }
+        }
         appLogger.d(
           '[member-materializer] input-ready member=$memberId '
           'session=$sessionId directToPty=$directToPty',
@@ -87,27 +114,53 @@ class TabMemberMaterializer implements MemberMaterializer {
       orElse: () => const TeamMemberConfig(id: '', name: ''),
     );
     if (!member.isValid) return;
+
     final ready = Completer<void>();
     _memberReady[(sessionId, memberId)] = ready;
-    final shell = tab.memberShells[memberId];
-    if (shell != null && shell.isRunning) {
-      if (shell.isConnected) {
-        appLogger.d(
-          '[member-materializer] materialize already-connected '
-          'member=$memberId session=$sessionId',
-        );
-      }
-      markMemberReady(sessionId, memberId);
-    } else {
+
+    if (_isMemberConnectOwnedElsewhere(sessionId, memberId) ||
+        tab.membersPendingConnect.contains(memberId)) {
       appLogger.d(
         '[member-materializer] materialize await-connect '
-        'member=$memberId session=$sessionId '
-        'isRunning=${shell?.isRunning ?? false} '
-        'isConnecting=${shell?.isConnecting ?? false}',
+        'member=$memberId session=$sessionId owned_elsewhere=true',
       );
-      _connector.scheduleMemberConnect(team, member, tab);
+      await ready.future;
+      return;
     }
+
+    if (team.teamMode == TeamMode.mixed) {
+      await _awaitMixedBusReady(sessionId, tab);
+    }
+
+    final shell = tab.memberShells[memberId];
+    if (shell != null && shell.isRunning) {
+      markMemberReady(sessionId, memberId);
+      await ready.future;
+      return;
+    }
+
+    if (shell?.isConnecting ?? false) {
+      appLogger.d(
+        '[member-materializer] materialize await-connect '
+        'member=$memberId session=$sessionId connecting=true',
+      );
+      await ready.future;
+      return;
+    }
+
+    appLogger.d(
+      '[member-materializer] materialize schedule-connect '
+      'member=$memberId session=$sessionId',
+    );
+    _connector.scheduleMemberConnect(team, member, tab);
     await ready.future;
+  }
+
+  Future<void> _awaitMixedBusReady(String sessionId, ChatTab tab) async {
+    while (!_isClosed()) {
+      if (tab.teamBus != null && _isMixedBusRegistered(sessionId)) return;
+      await Future<void>.delayed(const Duration(milliseconds: 50));
+    }
   }
 
   @override

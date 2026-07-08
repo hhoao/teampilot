@@ -279,6 +279,8 @@ class ConfigProfileService implements ConfigProfileDelegate {
     String? memberId,
     Map<String, Map<String, Object?>>? extraMcpServers,
     Iterable<String> projectMcpRoots = const [],
+    String workingDirectory = '',
+    MemberBusIdleEndpoint? busIdle,
   }) async {
     final trimmedWorkspaceId = effectiveLaunchWorkspaceId(
       workspaceId: workspaceId,
@@ -362,6 +364,8 @@ class ConfigProfileService implements ConfigProfileDelegate {
         tool: cli,
         paths: this,
         team: team,
+        busIdle: busIdle,
+        workingDirectory: workingDirectory,
       ),
     );
     await McpRegistryService(fs: fs, layout: layout).writeForSession(
@@ -791,6 +795,8 @@ class ConfigProfileService implements ConfigProfileDelegate {
         workingDirectory: workingDirectory,
         additionalDirectories: additionalDirectories,
       ),
+      workingDirectory: workingDirectory,
+      busIdle: busIdle,
     );
 
     if (team != null) {

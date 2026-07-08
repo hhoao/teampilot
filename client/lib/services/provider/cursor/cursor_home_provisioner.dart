@@ -7,6 +7,7 @@ import '../../team_bus/member_bus_idle_endpoint.dart';
 import 'cursor_cli_config_policy.dart';
 import 'cursor_home_bus_overlay.dart';
 import 'cursor_home_layout.dart';
+import 'cursor_member_home_passthrough.dart';
 import 'cursor_provider_credentials_service.dart';
 
 /// Merges provider auth and mixed-mode team-bus overlay into a member fake HOME.
@@ -30,8 +31,13 @@ final class CursorHomeProvisioner {
     required MemberBusIdleEndpoint? busIdle,
     required bool forceTeamLeadDelegateMode,
     required bool mixed,
+    String? realHomeRoot,
   }) async {
     await _ensureCursorDirs(memberHome);
+    await _mirrorRealHomePassthrough(
+      memberHome: memberHome,
+      realHomeRoot: realHomeRoot,
+    );
 
     final id = providerId?.trim();
     if (id != null && id.isNotEmpty) {
@@ -73,6 +79,18 @@ final class CursorHomeProvisioner {
       member: member,
       busIdle: busIdle,
       forceTeamLeadDelegateMode: forceTeamLeadDelegateMode,
+    );
+  }
+
+  Future<void> _mirrorRealHomePassthrough({
+    required String memberHome,
+    String? realHomeRoot,
+  }) async {
+    final realHome = realHomeRoot?.trim() ?? '';
+    if (realHome.isEmpty) return;
+    await CursorMemberHomePassthrough(fs: _fs, layout: _layout).mirror(
+      realHomeRoot: realHome,
+      memberHomeRoot: memberHome,
     );
   }
 

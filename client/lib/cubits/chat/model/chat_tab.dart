@@ -29,6 +29,16 @@ class ChatTab {
   /// CLI `--team-name` and config-profiles runtime id ([AppSession.cliTeamName]).
   final String cliTeamName;
 
+  /// [cliTeamName] from construction, or [AppSession.cliTeamName] once persisted.
+  ///
+  /// Staged tabs start with an empty provisional name; roster presence and
+  /// launch paths must read this instead of the immutable [cliTeamName] field.
+  String get effectiveCliTeamName {
+    final persisted = persistedSession?.cliTeamName.trim() ?? '';
+    if (persisted.isNotEmpty) return persisted;
+    return cliTeamName.trim();
+  }
+
   /// Persisted session for team member connect (may be absent before index load).
   AppSession? persistedSession;
 

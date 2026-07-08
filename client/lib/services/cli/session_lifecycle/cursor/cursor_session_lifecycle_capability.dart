@@ -1,12 +1,14 @@
 import 'dart:convert';
 
 import '../../../../models/team_config.dart';
+import '../../../provider/cursor/cursor_auth_artifacts.dart';
 import '../../../io/filesystem.dart';
 import '../../../provider/cursor/cursor_cli_config_policy.dart';
 import '../../../provider/cursor/cursor_home_layout.dart';
 import '../../../provider/cursor/cursor_home_provisioner.dart';
 import '../../../provider/cursor/cursor_provider_credentials_service.dart';
 import '../../../provider/cursor/cursor_provider_settings_resolver.dart';
+import '../../../provider/cursor/cursor_workspace_trust_provisioner.dart';
 import '../../../storage/runtime_layout.dart';
 import '../../../team_bus/member_bus_idle_endpoint.dart';
 import '../../registry/config_profile/config_profile_context.dart';
@@ -19,7 +21,7 @@ import 'cursor_session_lifecycle_paths.dart';
 typedef CursorSessionAuthSync =
     Future<void> Function({
       required String providerId,
-      required String sharedAuthDir,
+      required String memberAuthDir,
     });
 
 typedef CursorSessionProviderResolver =
@@ -78,91 +80,92 @@ final class CursorSessionLifecycleCapability
 
     final memberIds = _resolveMemberIds(ctx);
     for (final memberId in memberIds) {
-      await paths.ensureMemberHomeLayout(memberId: memberId);
-    }
-
-    final store = _store(ctx.paths);
-    final existing = await store.read(
-      workspaceId: ctx.workspaceId,
-      sessionId: ctx.sessionId,
-      tool: CursorSessionLifecyclePaths.tool,
-    );
-
-    final members = Map<String, CliSessionManifestMember>.from(
-      existing?.members ?? const {},
-    );
-    for (final memberId in memberIds) {
-      final prior = members[memberId];
-      members[memberId] = CliSessionManifestMember(
-        homeRoot: _sessionRelativePath(
-          fs: ctx.paths.fs,
-          layout: ctx.paths.layout,
-          workspaceId: ctx.workspaceId,
-          sessionId: ctx.sessionId,
-          absolutePath: paths.memberHomeRoot(memberId),
-        ),
-        overlayGeneration: prior?.overlayGeneration ?? overlayGen,
-        chatId: prior?.chatId,
-        resumeCapturedAtMs: prior?.resumeCapturedAtMs,
+      await paths.ensureMemberHomeLayout(
+        memberId: memberId,
+        realHomeRoot: ctx.paths.home,
+      );
+      await _provisionMemberWorkspaceTrust(
+        fs: ctx.paths.fs,
+        memberHome: paths.memberHomeRoot(memberId),
+        workingDirectory: ctx.workingDirectory,
       );
     }
 
-    final shared = CliSessionManifestShared(
-      root: _sessionRelativePath(
-        fs: ctx.paths.fs,
-        layout: ctx.paths.layout,
-        workspaceId: ctx.workspaceId,
-        sessionId: ctx.sessionId,
-        absolutePath: paths.sharedRoot(),
-      ),
-      projectsDir: _sessionRelativePath(
-        fs: ctx.paths.fs,
-        layout: ctx.paths.layout,
-        workspaceId: ctx.workspaceId,
-        sessionId: ctx.sessionId,
-        absolutePath: paths.sharedProjectsDir(slug),
-      ),
-      cliConfigBase: _sessionRelativePath(
-        fs: ctx.paths.fs,
-        layout: ctx.paths.layout,
-        workspaceId: ctx.workspaceId,
-        sessionId: ctx.sessionId,
-        absolutePath: ctx.paths.fs.pathContext.join(
-          paths.sharedRoot(),
-          'cli-config.base.json',
-        ),
-      ),
-      authDir: _sessionRelativePath(
-        fs: ctx.paths.fs,
-        layout: ctx.paths.layout,
-        workspaceId: ctx.workspaceId,
-        sessionId: ctx.sessionId,
-        absolutePath: paths.sharedAuthDir(),
-      ),
-    );
+    final store = _store(ctx.paths);
 
-    final manifest = CliSessionManifest(
-      schemaVersion: existing?.schemaVersion ?? 1,
-      tool: CursorSessionLifecyclePaths.tool,
+    final manifest = await store.merge(
       workspaceId: ctx.workspaceId,
-      sessionId: ctx.sessionId,
-      workspacePathHash: slug,
-      workspaceSlug: slug,
-      phase: existing?.phase ?? CliSessionPhase.persisted,
-      phaseUpdatedAtMs: existing?.phaseUpdatedAtMs,
-      shared: shared,
-      index: existing?.index ?? const CliSessionManifestIndex(),
-      members: members,
-    );
-
-    await store.write(
-      workspaceId: ctx.workspaceId,
-      sessionId: ctx.sessionId,
       tool: CursorSessionLifecyclePaths.tool,
-      manifest: manifest,
+      merge: (existing) {
+        final members = Map<String, CliSessionManifestMember>.from(
+          existing?.members ?? const {},
+        );
+        final sessionOverlays =
+            Map<String, Map<String, CliSessionManifestSessionOverlay>>.from(
+              existing?.sessionOverlays ?? const {},
+            );
+        final memberOverlays = Map<String, CliSessionManifestSessionOverlay>.from(
+          sessionOverlays[ctx.sessionId] ?? const {},
+        );
+        for (final memberId in memberIds) {
+          final prior = members[memberId];
+          members[memberId] = CliSessionManifestMember(
+            homeRoot: _workspaceRelativePath(
+              fs: ctx.paths.fs,
+              layout: ctx.paths.layout,
+              workspaceId: ctx.workspaceId,
+              absolutePath: paths.memberHomeRoot(memberId),
+            ),
+            chatId: prior?.chatId,
+            resumeCapturedAtMs: prior?.resumeCapturedAtMs,
+          );
+          memberOverlays[memberId] = CliSessionManifestSessionOverlay(
+            overlayGeneration:
+                memberOverlays[memberId]?.overlayGeneration ?? overlayGen,
+          );
+        }
+        sessionOverlays[ctx.sessionId] = memberOverlays;
+
+        final shared = CliSessionManifestShared(
+          root: _workspaceRelativePath(
+            fs: ctx.paths.fs,
+            layout: ctx.paths.layout,
+            workspaceId: ctx.workspaceId,
+            absolutePath: paths.sharedRoot(),
+          ),
+          projectsDir: _workspaceRelativePath(
+            fs: ctx.paths.fs,
+            layout: ctx.paths.layout,
+            workspaceId: ctx.workspaceId,
+            absolutePath: paths.sharedProjectsDir(slug),
+          ),
+          cliConfigBase: _workspaceRelativePath(
+            fs: ctx.paths.fs,
+            layout: ctx.paths.layout,
+            workspaceId: ctx.workspaceId,
+            absolutePath: ctx.paths.fs.pathContext.join(
+              paths.sharedRoot(),
+              'cli-config.base.json',
+            ),
+          ),
+        );
+
+        return CliSessionManifest(
+          schemaVersion: 3,
+          tool: CursorSessionLifecyclePaths.tool,
+          workspaceId: ctx.workspaceId,
+          workspacePathHash: slug,
+          workspaceSlug: slug,
+          phase: existing?.phase ?? CliSessionPhase.persisted,
+          phaseUpdatedAtMs: existing?.phaseUpdatedAtMs,
+          shared: shared,
+          members: members,
+          sessionOverlays: sessionOverlays,
+        );
+      },
     );
 
-    return const CliSessionPersistResult(phase: CliSessionPhase.persisted);
+    return CliSessionPersistResult(phase: manifest.phase);
   }
 
   @override
@@ -175,27 +178,58 @@ final class CursorSessionLifecycleCapability
     final store = _store(ctx.paths);
     var manifest = await store.read(
       workspaceId: ctx.workspaceId,
-      sessionId: ctx.sessionId,
       tool: CursorSessionLifecyclePaths.tool,
     );
     if (manifest == null) {
-      return const CliSessionInitResult(
-        phase: CliSessionPhase.persisted,
-        blocked: true,
-        warnings: ['manifest_missing'],
+      await ensurePersisted(
+        CliSessionPersistContext(
+          workspaceId: ctx.workspaceId,
+          sessionId: ctx.sessionId,
+          memberId: ctx.memberId,
+          tool: ctx.tool,
+          paths: ctx.paths,
+          team: ctx.team,
+          busIdle: ctx.busIdle,
+          workingDirectory: ctx.workingDirectory,
+          crossMachine: ctx.crossMachine,
+        ),
       );
+      manifest = await store.read(
+        workspaceId: ctx.workspaceId,
+        tool: CursorSessionLifecyclePaths.tool,
+      );
+      if (manifest == null) {
+        return const CliSessionInitResult(
+          phase: CliSessionPhase.persisted,
+          blocked: true,
+          warnings: ['manifest_missing'],
+        );
+      }
     }
 
     if (manifest.phase == CliSessionPhase.ready ||
         manifest.phase == CliSessionPhase.degraded) {
-      final expectedOverlay = overlayGenerationForBus(ctx.busIdle);
-      final memberState = manifest.members[ctx.memberId];
-      if (memberState != null &&
-          memberState.overlayGeneration == expectedOverlay) {
-        return CliSessionInitResult(phase: manifest.phase, warnings: warnings);
-      }
       final paths = _pathsForInit(ctx);
       final memberHome = paths.memberHomeRoot(ctx.memberId);
+      await _syncMemberAuth(ctx: ctx, paths: paths, memberHome: memberHome);
+      if (!await _memberAuthReady(ctx, memberHome)) {
+        return CliSessionInitResult(
+          phase: manifest.phase,
+          warnings: warnings,
+          blocked: true,
+        );
+      }
+      final expectedOverlay = overlayGenerationForBus(ctx.busIdle);
+      final sessionOverlay = manifest.overlayFor(ctx.sessionId, ctx.memberId);
+      if (manifest.members[ctx.memberId] != null &&
+          sessionOverlay?.overlayGeneration == expectedOverlay) {
+        await _provisionMemberWorkspaceTrust(
+          fs: ctx.paths.fs,
+          memberHome: memberHome,
+          workingDirectory: ctx.workingDirectory,
+        );
+        return CliSessionInitResult(phase: manifest.phase, warnings: warnings);
+      }
       final homeLayout = CursorHomeLayout(
         pathContext: ctx.paths.fs.pathContext,
       );
@@ -226,17 +260,7 @@ final class CursorSessionLifecycleCapability
     manifest = await _runConfigPhase(ctx, paths, homeLayout, manifest);
     manifest = await _runOverlayPhase(ctx, paths, homeLayout, manifest, memberHome);
 
-    if (!_phaseAtLeast(manifest.phase, CliSessionPhase.resume)) {
-      manifest = await _writeManifest(
-        ctx.paths,
-        manifest.copyWith(
-          phase: CliSessionPhase.resume,
-          phaseUpdatedAtMs: _now(),
-        ),
-      );
-    }
-
-    if (await _indexFastPathReady(ctx, paths, manifest)) {
+    if (manifest.phase != CliSessionPhase.degraded) {
       manifest = await _writeManifest(
         ctx.paths,
         manifest.copyWith(
@@ -244,112 +268,8 @@ final class CursorSessionLifecycleCapability
           phaseUpdatedAtMs: _now(),
         ),
       );
-      return CliSessionInitResult(phase: CliSessionPhase.ready, warnings: warnings);
     }
-
-    manifest = await _ensureIndexingPhase(ctx, manifest);
-    return CliSessionInitResult(
-      phase: manifest.phase,
-      warnings: warnings,
-      blocked:
-          manifest.phase == CliSessionPhase.indexing &&
-          manifest.index.leaderMemberId != ctx.memberId,
-    );
-  }
-
-  /// Marks shared index complete and allows non-leader members to connect.
-  Future<void> markIndexDone({
-    required String workspaceId,
-    required String sessionId,
-    ConfigProfileDelegate? paths,
-  }) async {
-    final store = _storeOrOverride(paths);
-    if (store == null) return;
-
-    final manifest = await store.read(
-      workspaceId: workspaceId,
-      sessionId: sessionId,
-      tool: CursorSessionLifecyclePaths.tool,
-    );
-    if (manifest == null) return;
-
-    final now = _now();
-    await _writeManifest(
-      paths,
-      manifest.copyWith(
-        phase: CliSessionPhase.ready,
-        phaseUpdatedAtMs: now,
-        index: CliSessionManifestIndex(
-          leaderMemberId: manifest.index.leaderMemberId,
-          startedAtMs: manifest.index.startedAtMs ?? now,
-          finishedAtMs: now,
-          lastError: null,
-        ),
-      ),
-    );
-  }
-
-  /// Marks shared index failed while still allowing degraded connect.
-  Future<void> markIndexFailed({
-    required String workspaceId,
-    required String sessionId,
-    String? error,
-    ConfigProfileDelegate? paths,
-  }) async {
-    final store = _storeOrOverride(paths);
-    if (store == null) return;
-
-    final manifest = await store.read(
-      workspaceId: workspaceId,
-      sessionId: sessionId,
-      tool: CursorSessionLifecyclePaths.tool,
-    );
-    if (manifest == null) return;
-
-    final now = _now();
-    await _writeManifest(
-      paths,
-      manifest.copyWith(
-        phase: CliSessionPhase.degraded,
-        phaseUpdatedAtMs: now,
-        index: CliSessionManifestIndex(
-          leaderMemberId: manifest.index.leaderMemberId,
-          startedAtMs: manifest.index.startedAtMs ?? now,
-          finishedAtMs: manifest.index.finishedAtMs,
-          lastError: error ?? 'index_failed',
-        ),
-      ),
-    );
-  }
-
-  /// Bus gateway re-register changed port/token — step manifest back to overlay.
-  Future<void> onBusEndpointChanged({
-    required String workspaceId,
-    required String sessionId,
-    required ConfigProfileDelegate paths,
-    required MemberBusIdleEndpoint busIdle,
-  }) async {
-    final store = _store(paths);
-    final manifest = await store.read(
-      workspaceId: workspaceId,
-      sessionId: sessionId,
-      tool: CursorSessionLifecyclePaths.tool,
-    );
-    if (manifest == null) return;
-
-    final expected = overlayGenerationForBus(busIdle);
-    final stale = manifest.members.values.any(
-      (member) => member.overlayGeneration != expected,
-    );
-    if (!stale) return;
-
-    final phase = _phaseAtLeast(manifest.phase, CliSessionPhase.overlay)
-        ? CliSessionPhase.overlay
-        : manifest.phase;
-    await _writeManifest(
-      paths,
-      manifest.copyWith(phase: phase, phaseUpdatedAtMs: _now()),
-    );
+    return CliSessionInitResult(phase: manifest.phase, warnings: warnings);
   }
 
   @override
@@ -360,7 +280,6 @@ final class CursorSessionLifecycleCapability
     final store = _store(ctx.paths);
     final manifest = await store.read(
       workspaceId: ctx.workspaceId,
-      sessionId: ctx.sessionId,
       tool: CursorSessionLifecyclePaths.tool,
     );
     if (manifest == null) return;
@@ -384,7 +303,6 @@ final class CursorSessionLifecycleCapability
 
     members[memberId] = CliSessionManifestMember(
       homeRoot: existing.homeRoot,
-      overlayGeneration: existing.overlayGeneration,
       chatId: chatId,
       resumeCapturedAtMs: _now(),
     );
@@ -395,11 +313,24 @@ final class CursorSessionLifecycleCapability
   }
 
   @override
+  CliSessionPhase? peekSessionPhase(CliSessionGateContext ctx) {
+    final manifest = _peekManifest(ctx);
+    return manifest?.phase;
+  }
+
+  CliSessionManifest? _peekManifest(CliSessionGateContext ctx) {
+    final store = ctx.paths != null ? _store(ctx.paths!) : _manifestStoreOverride;
+    return store?.peek(
+      workspaceId: ctx.workspaceId,
+      tool: CursorSessionLifecyclePaths.tool,
+    );
+  }
+
+  @override
   CliSessionGateDecision gateConnect(CliSessionGateContext ctx) {
     final store = ctx.paths != null ? _store(ctx.paths!) : _manifestStoreOverride;
     final manifest = store?.peek(
       workspaceId: ctx.workspaceId,
-      sessionId: ctx.sessionId,
       tool: CursorSessionLifecyclePaths.tool,
     );
     if (manifest == null) {
@@ -408,24 +339,17 @@ final class CursorSessionLifecycleCapability
 
     final member = manifest.members[ctx.memberId];
     final expectedOverlay = overlayGenerationForBus(ctx.busIdle);
-    if (member != null && member.overlayGeneration != expectedOverlay) {
+    final sessionOverlay = manifest.overlayFor(ctx.sessionId, ctx.memberId);
+    if (member != null &&
+        sessionOverlay != null &&
+        sessionOverlay.overlayGeneration != expectedOverlay) {
       return const CliSessionGateDecision(allowed: false, reason: 'overlay');
     }
 
     switch (manifest.phase) {
       case CliSessionPhase.ready:
-        return const CliSessionGateDecision(allowed: true);
       case CliSessionPhase.degraded:
         return const CliSessionGateDecision(allowed: true);
-      case CliSessionPhase.indexing:
-        final leader = manifest.index.leaderMemberId;
-        if (leader != null && leader == ctx.memberId) {
-          return const CliSessionGateDecision(allowed: true);
-        }
-        return const CliSessionGateDecision(
-          allowed: false,
-          reason: 'indexing',
-        );
       default:
         return CliSessionGateDecision(
           allowed: false,
@@ -441,31 +365,102 @@ final class CursorSessionLifecycleCapability
     String memberHome,
   ) async {
     if (_phaseAtLeast(manifest.phase, CliSessionPhase.auth)) {
-      await paths.linkOrCopyAuth(memberHome: memberHome);
+      await _syncMemberAuth(ctx: ctx, paths: paths, memberHome: memberHome);
       return manifest;
     }
 
-    final sharedAuthDir = paths.sharedAuthDir();
-    final authFile = ctx.paths.fs.pathContext.join(
-      sharedAuthDir,
-      CursorHomeLayout.authFileName,
-    );
-    if (!(await ctx.paths.fs.stat(authFile)).isFile) {
-      final providerId = await _providerIdFor(ctx);
-      if (providerId != null) {
-        await _syncSessionAuth(
-          ctx: ctx,
-          providerId: providerId,
-          sharedAuthDir: sharedAuthDir,
-        );
-      }
+    await _syncMemberAuth(ctx: ctx, paths: paths, memberHome: memberHome);
+    if (!await _memberAuthReady(ctx, memberHome)) {
+      return manifest;
     }
-
-    await paths.linkOrCopyAuth(memberHome: memberHome);
     return _writeManifest(
       ctx.paths,
       manifest.copyWith(phase: CliSessionPhase.auth, phaseUpdatedAtMs: _now()),
     );
+  }
+
+  Future<bool> _memberAuthReady(
+    CliSessionInitContext ctx,
+    String memberHome,
+  ) async {
+    final authFile = CursorSessionLifecyclePaths(
+      fs: ctx.paths.fs,
+      layout: ctx.paths.layout,
+      workspaceId: ctx.workspaceId,
+      sessionId: ctx.sessionId,
+      workingDirectory: ctx.workingDirectory,
+    ).memberAuthFile(memberHome);
+    final content = await ctx.paths.fs.readString(authFile);
+    return content != null &&
+        CursorAuthArtifacts.authJsonIndicatesLoggedIn(content);
+  }
+
+  Future<void> _syncMemberAuth({
+    required CliSessionInitContext ctx,
+    required CursorSessionLifecyclePaths paths,
+    required String memberHome,
+  }) async {
+    await paths.ensureMemberAuthDir(memberHome: memberHome);
+    final memberAuthDir = paths.memberAuthDir(memberHome);
+    final authFile = paths.memberAuthFile(memberHome);
+    final providerId = await _providerIdFor(ctx);
+    if (providerId != null) {
+      if (!(await ctx.paths.fs.stat(authFile)).isFile) {
+        await _syncSessionAuth(
+          ctx: ctx,
+          providerId: providerId,
+          memberAuthDir: memberAuthDir,
+        );
+      }
+      final credentials = CursorProviderCredentialsService(
+        fs: _credentialFs(ctx),
+        basePath: _credentialBasePath(ctx),
+      );
+      await credentials.syncAuthToMemberHome(providerId, memberHome);
+      return;
+    }
+
+    await _syncGlobalAuthToMember(
+      ctx: ctx,
+      paths: paths,
+      memberHome: memberHome,
+      authFile: authFile,
+    );
+  }
+
+  Future<void> _syncGlobalAuthToMember({
+    required CliSessionInitContext ctx,
+    required CursorSessionLifecyclePaths paths,
+    required String memberHome,
+    required String authFile,
+  }) async {
+    final layout = CursorHomeLayout(pathContext: ctx.paths.fs.pathContext);
+    final home = ctx.paths.home.trim();
+    if (home.isEmpty) return;
+
+    for (final candidate in layout.globalAuthJsonCandidates(home)) {
+      final content = await _credentialFs(ctx).readString(candidate);
+      if (content == null ||
+          !CursorAuthArtifacts.authJsonIndicatesLoggedIn(content)) {
+        continue;
+      }
+      await paths.ensureMemberAuthDir(memberHome: memberHome);
+      await ctx.paths.fs.atomicWrite(authFile, content);
+      return;
+    }
+  }
+
+  String _credentialBasePath(CliSessionInitContext ctx) {
+    final override = ctx.credentialBasePath?.trim() ?? '';
+    return override.isNotEmpty ? override : ctx.paths.basePath;
+  }
+
+  Filesystem _credentialFs(CliSessionInitContext ctx) {
+    final credentialRoot = _credentialBasePath(ctx);
+    if (credentialRoot == ctx.paths.basePath) return ctx.paths.fs;
+    // Provider store lives on the control plane; read through the same fs when
+    // roots match (native). Callers pass credentialBasePath only when needed.
+    return ctx.paths.fs;
   }
 
   Future<CliSessionManifest> _runConfigPhase(
@@ -485,7 +480,7 @@ final class CursorSessionLifecycleCapability
         : <String, Object?>{};
     final warm = CursorCliConfigMerger.extractWarmTier(userConfig);
 
-    final basePath = _absoluteSessionPath(ctx, manifest.shared.cliConfigBase);
+    final basePath = _absoluteWorkspacePath(ctx, manifest.shared.cliConfigBase);
     await ctx.paths.fs.atomicWrite(
       basePath,
       const JsonEncoder.withIndent('  ').convert(warm),
@@ -505,17 +500,21 @@ final class CursorSessionLifecycleCapability
     String memberHome,
   ) async {
     final expectedOverlay = overlayGenerationForBus(ctx.busIdle);
-    final memberState = manifest.members[ctx.memberId];
+    final sessionOverlay = manifest.overlayFor(ctx.sessionId, ctx.memberId);
     final overlayStale =
-        memberState != null && memberState.overlayGeneration != expectedOverlay;
-    if (_phaseAtLeast(manifest.phase, CliSessionPhase.overlay) && !overlayStale) {
+        sessionOverlay != null &&
+        sessionOverlay.overlayGeneration != expectedOverlay;
+    final overlayMissing = sessionOverlay == null;
+    if (_phaseAtLeast(manifest.phase, CliSessionPhase.overlay) &&
+        !overlayStale &&
+        !overlayMissing) {
       return manifest;
     }
 
     final team = ctx.team;
     final member = _memberFor(ctx);
     if (team != null && member != null && member.isValid) {
-      final basePath = _absoluteSessionPath(ctx, manifest.shared.cliConfigBase);
+      final basePath = _absoluteWorkspacePath(ctx, manifest.shared.cliConfigBase);
       final baseJson = await ctx.paths.fs.readString(basePath);
       final credentials = CursorProviderCredentialsService(
         fs: ctx.paths.fs,
@@ -534,51 +533,36 @@ final class CursorSessionLifecycleCapability
       );
     }
 
+    await _provisionMemberWorkspaceTrust(
+      fs: ctx.paths.fs,
+      memberHome: memberHome,
+      workingDirectory: ctx.workingDirectory,
+    );
+
     final members = Map<String, CliSessionManifestMember>.from(manifest.members);
-    final existing = members[ctx.memberId];
-    if (existing != null) {
-      members[ctx.memberId] = CliSessionManifestMember(
-        homeRoot: existing.homeRoot,
-        overlayGeneration: overlayGenerationForBus(ctx.busIdle),
-        chatId: existing.chatId,
-        resumeCapturedAtMs: existing.resumeCapturedAtMs,
-      );
-    }
+    final sessionOverlays =
+        Map<String, Map<String, CliSessionManifestSessionOverlay>>.from(
+          manifest.sessionOverlays,
+        );
+    final memberOverlays = Map<String, CliSessionManifestSessionOverlay>.from(
+      sessionOverlays[ctx.sessionId] ?? const {},
+    );
+    memberOverlays[ctx.memberId] = CliSessionManifestSessionOverlay(
+      overlayGeneration: expectedOverlay,
+    );
+    sessionOverlays[ctx.sessionId] = memberOverlays;
+
+    final keepReadyPhase =
+        manifest.phase == CliSessionPhase.ready ||
+        manifest.phase == CliSessionPhase.degraded;
 
     return _writeManifest(
       ctx.paths,
       manifest.copyWith(
-        phase: CliSessionPhase.overlay,
+        phase: keepReadyPhase ? manifest.phase : CliSessionPhase.overlay,
         phaseUpdatedAtMs: _now(),
         members: members,
-      ),
-    );
-  }
-
-  Future<CliSessionManifest> _ensureIndexingPhase(
-    CliSessionInitContext ctx,
-    CliSessionManifest manifest,
-  ) async {
-    if (manifest.phase == CliSessionPhase.indexing &&
-        manifest.index.leaderMemberId != null) {
-      return manifest;
-    }
-
-    final now = _now();
-    final leaderId =
-        manifest.index.leaderMemberId ?? _firstCursorMemberId(ctx) ?? ctx.memberId;
-
-    return _writeManifest(
-      ctx.paths,
-      manifest.copyWith(
-        phase: CliSessionPhase.indexing,
-        phaseUpdatedAtMs: now,
-        index: CliSessionManifestIndex(
-          leaderMemberId: leaderId,
-          startedAtMs: manifest.index.startedAtMs ?? now,
-          finishedAtMs: manifest.index.finishedAtMs,
-          lastError: manifest.index.lastError,
-        ),
+        sessionOverlays: sessionOverlays,
       ),
     );
   }
@@ -586,27 +570,27 @@ final class CursorSessionLifecycleCapability
   Future<void> _syncSessionAuth({
     required CliSessionInitContext ctx,
     required String providerId,
-    required String sharedAuthDir,
+    required String memberAuthDir,
   }) async {
     final authSync = _authSync;
     if (authSync != null) {
-      await authSync(providerId: providerId, sharedAuthDir: sharedAuthDir);
+      await authSync(providerId: providerId, memberAuthDir: memberAuthDir);
       return;
     }
 
     final credentials = CursorProviderCredentialsService(
-      fs: ctx.paths.fs,
-      basePath: ctx.paths.basePath,
+      fs: _credentialFs(ctx),
+      basePath: _credentialBasePath(ctx),
     );
     final layout = CursorHomeLayout(pathContext: ctx.paths.fs.pathContext);
     final providerHome = credentials.providerHome(providerId);
     final srcAuth = layout.authJson(providerHome);
     final destAuth = ctx.paths.fs.pathContext.join(
-      sharedAuthDir,
+      memberAuthDir,
       CursorHomeLayout.authFileName,
     );
     if ((await ctx.paths.fs.stat(srcAuth)).isFile) {
-      await ctx.paths.fs.ensureDir(sharedAuthDir);
+      await ctx.paths.fs.ensureDir(memberAuthDir);
       await ctx.paths.fs.copyFile(srcAuth, destAuth);
     }
   }
@@ -615,21 +599,18 @@ final class CursorSessionLifecycleCapability
     final resolver = _resolveProviderId;
     if (resolver != null) return resolver(ctx);
 
+    final credentialBase = _credentialBasePath(ctx);
+    final settings = CursorProviderSettingsResolver(basePath: credentialBase);
+
+    final fromLaunch = ctx.resolvedProviderId?.trim() ?? '';
+    if (fromLaunch.isNotEmpty) {
+      final provider = await settings.findById(fromLaunch);
+      if (provider != null) return fromLaunch;
+    }
+
     final team = ctx.team;
     if (team == null) return null;
-    return CursorProviderSettingsResolver(
-      basePath: ctx.paths.basePath,
-    ).resolveProviderId(team, member: _memberFor(ctx));
-  }
-
-  Future<bool> _indexFastPathReady(
-    CliSessionInitContext ctx,
-    CursorSessionLifecyclePaths paths,
-    CliSessionManifest manifest,
-  ) async {
-    if (manifest.index.finishedAtMs == null) return false;
-    final entries = await ctx.paths.fs.listDir(paths.sharedProjectsDir());
-    return entries.isNotEmpty;
+    return settings.resolveProviderId(team, member: _memberFor(ctx));
   }
 
   TeamMemberConfig? _memberFor(CliSessionInitContext ctx) {
@@ -637,15 +618,6 @@ final class CursorSessionLifecycleCapability
     if (team == null) return null;
     for (final member in team.members) {
       if (member.id == ctx.memberId) return member;
-    }
-    return null;
-  }
-
-  String? _firstCursorMemberId(CliSessionInitContext ctx) {
-    final team = ctx.team;
-    if (team == null) return null;
-    for (final member in team.members) {
-      if (_memberUsesCursor(member, team)) return member.id;
     }
     return null;
   }
@@ -658,7 +630,6 @@ final class CursorSessionLifecycleCapability
     if (store == null) return manifest;
     await store.write(
       workspaceId: manifest.workspaceId,
-      sessionId: manifest.sessionId,
       tool: manifest.tool,
       manifest: manifest,
     );
@@ -710,13 +681,12 @@ final class CursorSessionLifecycleCapability
     }
   }
 
-  String _absoluteSessionPath(CliSessionInitContext ctx, String relativePath) {
-    final sessionDir = ctx.paths.layout.workspace.sessionDir(
+  String _absoluteWorkspacePath(CliSessionInitContext ctx, String relativePath) {
+    final workspaceDir = ctx.paths.layout.workspace.workspaceDir(
       ctx.workspaceId,
-      ctx.sessionId,
     );
     return ctx.paths.fs.pathContext.normalize(
-      ctx.paths.fs.pathContext.join(sessionDir, relativePath),
+      ctx.paths.fs.pathContext.join(workspaceDir, relativePath),
     );
   }
 
@@ -729,10 +699,8 @@ final class CursorSessionLifecycleCapability
     CliSessionPhase.auth => 1,
     CliSessionPhase.config => 2,
     CliSessionPhase.overlay => 3,
-    CliSessionPhase.resume => 4,
-    CliSessionPhase.indexing => 5,
-    CliSessionPhase.ready => 6,
-    CliSessionPhase.degraded => 6,
+    CliSessionPhase.ready => 4,
+    CliSessionPhase.degraded => 4,
   };
 
   int _now() => _clock?.call() ?? DateTime.now().millisecondsSinceEpoch;
@@ -757,16 +725,15 @@ final class CursorSessionLifecycleCapability
     );
   }
 
-  String _sessionRelativePath({
+  String _workspaceRelativePath({
     required Filesystem fs,
     required RuntimeLayout layout,
     required String workspaceId,
-    required String sessionId,
     required String absolutePath,
   }) {
-    final sessionDir = layout.workspace.sessionDir(workspaceId, sessionId);
+    final workspaceDir = layout.workspace.workspaceDir(workspaceId);
     return fs.pathContext.normalize(
-      fs.pathContext.relative(absolutePath, from: sessionDir),
+      fs.pathContext.relative(absolutePath, from: workspaceDir),
     );
   }
 
@@ -785,5 +752,19 @@ final class CursorSessionLifecycleCapability
 
   bool _memberUsesCursor(TeamMemberConfig member, TeamProfile team) {
     return (member.cli ?? team.cli) == CliTool.cursor;
+  }
+
+  Future<void> _provisionMemberWorkspaceTrust({
+    required Filesystem fs,
+    required String memberHome,
+    required String workingDirectory,
+  }) async {
+    final home = memberHome.trim();
+    final workDir = workingDirectory.trim();
+    if (home.isEmpty || workDir.isEmpty) return;
+    await CursorWorkspaceTrustProvisioner(fs: fs).provisionLaunchWorkspaces(
+      homeRoot: home,
+      workingDirectory: workDir,
+    );
   }
 }

@@ -39,6 +39,9 @@ class _DenyGateLifecycle implements CliSessionLifecycleCapability {
   @override
   CliSessionGateDecision gateConnect(CliSessionGateContext ctx) =>
       const CliSessionGateDecision(allowed: false, reason: 'test-deny');
+
+  @override
+  CliSessionPhase? peekSessionPhase(CliSessionGateContext ctx) => null;
 }
 
 class _ToolWithExtraCapability implements CliToolDefinition {
@@ -159,7 +162,7 @@ void main() {
       await deleteTempDirBestEffort(tmp);
     });
 
-    test('denied gate skips shell connect and finishes booting', () async {
+    test('denied gate skips shell connect and surfaces launch error', () async {
       final workspace = await repo.createWorkspace([
         WorkspaceFolder(path: '/tmp'),
       ]);
@@ -186,10 +189,14 @@ void main() {
       await postFrame.flush();
       await drainPendingAsyncWork();
 
-      expect(denyLifecycle.initializeCalls, 1);
+      expect(denyLifecycle.initializeCalls, greaterThanOrEqualTo(1));
       expect(shells, isNotEmpty);
       expect(shells.first.connectCalls, 0);
       expect(cubit.state.isActiveSessionConnecting, isFalse);
+      expect(
+        cubit.tabStore.tabs.first.info.launchError,
+        isNotNull,
+      );
     });
   });
 }

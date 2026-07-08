@@ -9,8 +9,6 @@ enum CliSessionPhase {
   auth,
   config,
   overlay,
-  indexing,
-  resume,
   ready,
   degraded,
 }
@@ -57,6 +55,8 @@ class CliSessionInitContext {
     this.busIdle,
     this.workingDirectory = '',
     this.crossMachine = false,
+    this.resolvedProviderId,
+    this.credentialBasePath,
   });
 
   final String workspaceId;
@@ -68,6 +68,13 @@ class CliSessionInitContext {
   final MemberBusIdleEndpoint? busIdle;
   final String workingDirectory;
   final bool crossMachine;
+
+  /// Launch-resolved Cursor provider id (preset / member / team), when known.
+  final String? resolvedProviderId;
+
+  /// Control-plane teampilot root for provider credential reads (defaults to
+  /// [paths.basePath] when omitted).
+  final String? credentialBasePath;
 }
 
 class CliSessionGateContext {
@@ -158,4 +165,7 @@ abstract interface class CliSessionLifecycleCapability implements CliCapability 
 
   /// Whether PTY connect is allowed for this member right now.
   CliSessionGateDecision gateConnect(CliSessionGateContext ctx);
+
+  /// Manifest phase when [ctx.paths] is set; null when unknown.
+  CliSessionPhase? peekSessionPhase(CliSessionGateContext ctx);
 }

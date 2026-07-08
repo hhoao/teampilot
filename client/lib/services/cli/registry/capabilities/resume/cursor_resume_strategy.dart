@@ -66,10 +66,9 @@ final class CursorResumeStrategy implements SessionResumeCapability {
 
   Future<String?> _chatIdFromManifest(ResumeContext ctx) async {
     final workspaceId = ctx.workspaceId?.trim() ?? '';
-    final sessionId = ctx.sessionId?.trim() ?? '';
     final memberId = ctx.memberId?.trim() ?? '';
     final dataRoot = ctx.manifestDataRoot?.trim() ?? '';
-    if (workspaceId.isEmpty || sessionId.isEmpty || memberId.isEmpty) {
+    if (workspaceId.isEmpty || memberId.isEmpty) {
       return null;
     }
     if (dataRoot.isEmpty) return null;
@@ -80,7 +79,6 @@ final class CursorResumeStrategy implements SessionResumeCapability {
     );
     final manifest = await store.read(
       workspaceId: workspaceId,
-      sessionId: sessionId,
       tool: CursorSessionLifecyclePaths.tool,
     );
     final chatId = manifest?.members[memberId]?.chatId?.trim();

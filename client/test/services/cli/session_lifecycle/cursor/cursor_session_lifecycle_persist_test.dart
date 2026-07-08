@@ -74,7 +74,6 @@ void main() {
 
       final manifest = await store.read(
         workspaceId: workspaceId,
-        sessionId: sessionId,
         tool: CursorSessionLifecyclePaths.tool,
       );
       expect(manifest, isNotNull);
@@ -99,6 +98,13 @@ void main() {
           CursorWorkspaceTrust.projectsDirName,
         );
         expect(await fs.readSymlinkTarget(memberProjects), sharedProjectsRoot);
+
+        final trustPath = CursorWorkspaceTrust.trustMarkerPath(
+          memberHome,
+          workingDirectory,
+          pathContext: fs.pathContext,
+        );
+        expect((await fs.stat(trustPath)).isFile, isTrue);
       }
     });
 
@@ -107,14 +113,12 @@ void main() {
       await capability.ensurePersisted(ctx);
       final first = await store.read(
         workspaceId: workspaceId,
-        sessionId: sessionId,
         tool: CursorSessionLifecyclePaths.tool,
       );
 
       await capability.ensurePersisted(ctx);
       final second = await store.read(
         workspaceId: workspaceId,
-        sessionId: sessionId,
         tool: CursorSessionLifecyclePaths.tool,
       );
 
@@ -140,14 +144,12 @@ void main() {
       );
       final first = await store.read(
         workspaceId: workspaceId,
-        sessionId: sessionId,
         tool: CursorSessionLifecyclePaths.tool,
       );
 
       await capability.ensurePersisted(persistContext());
       final second = await store.read(
         workspaceId: workspaceId,
-        sessionId: sessionId,
         tool: CursorSessionLifecyclePaths.tool,
       );
 

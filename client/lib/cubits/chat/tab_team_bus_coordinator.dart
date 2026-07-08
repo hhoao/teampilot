@@ -3,14 +3,10 @@ import '../../models/member_instance.dart';
 import '../../models/cli_preset.dart';
 import '../../models/team_config.dart';
 import '../../services/cli/preset_resolver.dart';
-import '../../services/cli/registry/cli_tool_registry.dart';
-import '../../services/cli/registry/config_profile/config_profile_context.dart';
-import '../../services/cli/session_lifecycle/cursor/cursor_session_lifecycle_capability.dart';
 import '../../services/team_bus/agent_node.dart';
 import '../../services/team_bus/artifacts/artifact_transfer_service.dart';
 import '../../services/team_bus/bus_user_line_capture.dart';
 import '../../services/team_bus/chat_cubit_member_launcher.dart';
-import '../../services/team_bus/member_bus_idle_endpoint.dart';
 import '../../services/team_bus/mcp/teammate_bus_mcp_gateway.dart';
 import '../../services/team_bus/mcp/teammate_bus_mcp_handler.dart';
 import '../../services/team_bus/persistence/bus_message_log_factory.dart';
@@ -33,17 +29,12 @@ class TabTeamBusCoordinator {
     void Function()? onAfterTurnLatched,
     ArtifactTransferService Function(AppSession session)?
     artifactServiceFactory,
-    CliToolRegistry? cliRegistry,
-    Future<ConfigProfileDelegate> Function(AppSession session)?
-    resolveLifecyclePaths,
   }) : _gateway = gateway,
        _tabStore = tabStore,
        _materializer = materializer,
        _globalPresets = globalPresets,
        _onAfterTurnLatched = onAfterTurnLatched,
-       _artifactServiceFactory = artifactServiceFactory,
-       _cliRegistry = cliRegistry,
-       _resolveLifecyclePaths = resolveLifecyclePaths;
+       _artifactServiceFactory = artifactServiceFactory;
 
   final TeammateBusMcpGateway _gateway;
   final ChatTabStore _tabStore;
@@ -55,35 +46,6 @@ class TabTeamBusCoordinator {
   /// the three artifact MCP tools are not advertised (single-machine / tests).
   final ArtifactTransferService Function(AppSession session)?
   _artifactServiceFactory;
-  final CliToolRegistry? _cliRegistry;
-  final Future<ConfigProfileDelegate> Function(AppSession session)?
-  _resolveLifecyclePaths;
-
-  Future<void> _invalidateStaleCursorOverlay({
-    required TeamProfile team,
-    required AppSession session,
-  }) async {
-    if (team.teamMode != TeamMode.mixed) return;
-    final registry = _cliRegistry;
-    final resolvePaths = _resolveLifecyclePaths;
-    if (registry == null || resolvePaths == null) return;
-
-    final lifecycle = registry.lifecycleFor(CliTool.cursor);
-    if (lifecycle is! CursorSessionLifecycleCapability) return;
-
-    final paths = await resolvePaths(session);
-    final busIdle = MemberBusIdleEndpoint.local(
-      _gateway,
-      sessionId: session.sessionId,
-    );
-    final cursorLifecycle = lifecycle;
-    await cursorLifecycle.onBusEndpointChanged(
-      workspaceId: session.workspaceId,
-      sessionId: session.sessionId,
-      paths: paths,
-      busIdle: busIdle,
-    );
-  }
 
   Future<void> installBusForTab(
     ChatTab tab,
@@ -181,10 +143,6 @@ class TabTeamBusCoordinator {
     );
     tab.teamBus = bus;
     tab.busSessionRegistration = reg;
-    await _invalidateStaleCursorOverlay(
-      team: team,
-      session: session,
-    );
     appLogger.d(
       '[session-launch] installBusForTab ready '
       'session=${session.sessionId} endpoint=${_gateway.mcpEndpoint}',
