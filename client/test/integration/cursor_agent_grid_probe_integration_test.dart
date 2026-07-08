@@ -45,8 +45,8 @@ Future<FullscreenPromptAnchor?> _pollNeedle(
 }) async {
   final deadline = DateTime.now().add(timeout);
   while (DateTime.now().isBefore(deadline)) {
-    await session.syncDisplayGrid();
-    final anchor = session.locateFullscreenPromptNeedle(
+    await session.probe.syncDisplayGrid();
+    final anchor = session.probe.locateFullscreenPromptNeedle(
       needle,
       scanRows: scanRows,
     );
@@ -63,8 +63,8 @@ Future<bool> _waitUntilPresent(
 }) async {
   final deadline = DateTime.now().add(timeout);
   while (DateTime.now().isBefore(deadline)) {
-    await session.syncDisplayGrid();
-    if (session.describeProbeWindow(scanRows: 24).contains(marker)) {
+    await session.probe.syncDisplayGrid();
+    if (session.probe.describeProbeWindow(scanRows: 24).contains(marker)) {
       return true;
     }
     await Future<void>.delayed(const Duration(milliseconds: 200));
@@ -79,8 +79,8 @@ Future<bool> _waitForTuiPaint(
 }) async {
   final deadline = DateTime.now().add(timeout);
   while (DateTime.now().isBefore(deadline)) {
-    await session.syncDisplayGrid();
-    if (session.hasInputBoxContent(scanRows: 24)) return true;
+    await session.probe.syncDisplayGrid();
+    if (session.probe.hasInputBoxContent(scanRows: 24)) return true;
     await Future<void>.delayed(const Duration(milliseconds: 200));
   }
   return false;
@@ -116,17 +116,17 @@ void main() {
       final painted = await _waitForTuiPaint(session);
       // ignore: avoid_print
       print('--- cursor-agent boot frame (painted=$painted) ---\n'
-          '${session.describeProbeWindow(scanRows: 24)}');
+          '${session.probe.describeProbeWindow(scanRows: 24)}');
       if (!painted) {
         fail('cursor-agent TUI never painted anything\n'
-            '${session.describeProbeWindow(scanRows: 24)}');
+            '${session.probe.describeProbeWindow(scanRows: 24)}');
       }
 
       // Fresh workspace shows a trust dialog before the input box.
       if (session
           .describeProbeWindow(scanRows: 24)
           .contains('Trust this workspace')) {
-        session.writeToPty('a');
+        session.input.writeToPty('a');
       }
       // Trust residue stays on screen; wait for the input prompt row instead.
       final promptReady = await _waitUntilPresent(
@@ -136,23 +136,23 @@ void main() {
       );
       if (!promptReady) {
         fail('input prompt (→) never appeared\n'
-            '${session.describeProbeWindow(scanRows: 24)}');
+            '${session.probe.describeProbeWindow(scanRows: 24)}');
       }
 
       // Give the TUI extra settle after first paint (auth prompt / input box).
       await Future<void>.delayed(const Duration(seconds: 3));
-      await session.syncDisplayGrid();
+      await session.probe.syncDisplayGrid();
       // ignore: avoid_print
       print('--- pre-paste frame ---\n'
-          '${session.describeProbeWindow(scanRows: 24)}');
+          '${session.probe.describeProbeWindow(scanRows: 24)}');
 
       const needle = 'grid-probe-hello-42';
-      await session.pasteText(needle);
+      await session.input.pasteText(needle);
 
       final anchor = await _pollNeedle(session, needle);
       // ignore: avoid_print
       print('--- after paste (anchor=$anchor) ---\n'
-          '${session.describeProbeWindow(scanRows: 24)}');
+          '${session.probe.describeProbeWindow(scanRows: 24)}');
 
       // No CR on purpose: submitting would start a real agent turn on the
       // user's cursor account. Paste visibility alone answers the grid-ACK
@@ -163,23 +163,23 @@ void main() {
         reason:
             'pasted text should be visible on the mirror grid if cursor-agent '
             'echoes staged input to PTY output. Bottom rows:\n'
-            '${session.describeProbeWindow(scanRows: 24)}',
+            '${session.probe.describeProbeWindow(scanRows: 24)}',
       );
 
       // Production-shaped case: doorbell-style long text (needle = 40-char
       // prefix) with the same clear→paste sequence deliverPasteAndSubmit uses.
-      await session.clearStagedInput();
+      await session.input.clearStagedInput();
       await Future<void>.delayed(const Duration(milliseconds: 200));
       const doorbell =
           '[teammate-bus] you have 1 unread message from user (operator) — '
           'call read_messages to fetch it, then continue your idle loop';
       final doorbellNeedle = PtyAutomationNeedle.forText(doorbell);
-      await session.pasteText(doorbell);
+      await session.input.pasteText(doorbell);
       final doorbellAnchor = await _pollNeedle(session, doorbellNeedle);
       // ignore: avoid_print
       print('--- after doorbell paste (anchor=$doorbellAnchor, '
           'needle="$doorbellNeedle") ---\n'
-          '${session.describeProbeWindow(scanRows: 24)}');
+          '${session.probe.describeProbeWindow(scanRows: 24)}');
       expect(
         doorbellAnchor,
         isNotNull,

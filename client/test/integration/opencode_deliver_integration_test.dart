@@ -44,18 +44,18 @@ Future<void> _dismissOpencodeModals(
   final deadline = DateTime.now().add(timeout);
   var lastEsc = DateTime(0);
   while (DateTime.now().isBefore(deadline)) {
-    await session.syncDisplayGrid();
-    final frame = session.describeProbeWindow(scanRows: scanRows);
+    await session.probe.syncDisplayGrid();
+    final frame = session.probe.describeProbeWindow(scanRows: scanRows);
     if (!frame.contains('Update Available')) return;
     final now = DateTime.now();
     if (now.difference(lastEsc).inMilliseconds > 400) {
-      session.writeToPty('\x1b');
+      session.input.writeToPty('\x1b');
       lastEsc = now;
     }
     await Future<void>.delayed(const Duration(milliseconds: 150));
   }
   // Fallback: select "Skip" on the update modal.
-  session.writeToPty('\x1b[D\r');
+  session.input.writeToPty('\x1b[D\r');
   await Future<void>.delayed(const Duration(milliseconds: 300));
 }
 
@@ -67,8 +67,8 @@ Future<void> _bootOpencodePrompt(
   final deadline = DateTime.now().add(const Duration(seconds: 45));
   var stableReads = 0;
   while (DateTime.now().isBefore(deadline)) {
-    await session.syncDisplayGrid();
-    final frame = session.describeProbeWindow(scanRows: scanRows);
+    await session.probe.syncDisplayGrid();
+    final frame = session.probe.describeProbeWindow(scanRows: scanRows);
 
     if (frame.contains('Update Available')) {
       await _dismissOpencodeModals(session, scanRows: scanRows);
@@ -90,7 +90,7 @@ Future<void> _bootOpencodePrompt(
     await Future<void>.delayed(const Duration(milliseconds: 200));
   }
   fail('opencode composer never appeared\n'
-      '${session.describeProbeWindow(scanRows: scanRows)}');
+      '${session.probe.describeProbeWindow(scanRows: scanRows)}');
 }
 
 void main() {
@@ -132,17 +132,17 @@ void main() {
 
           await _bootOpencodePrompt(session, scanRows: viewport.rows);
           await _dismissOpencodeModals(session, scanRows: viewport.rows);
-          await session.syncDisplayGrid();
+          await session.probe.syncDisplayGrid();
 
           final text = 'opencode-probe-${DateTime.now().millisecondsSinceEpoch}';
 
           // Pre-paste so deliverPasteAndSubmit skips clearStagedInput (Ctrl-U).
           // On a 24-row viewport that keystroke races opencode's async update
           // modal and paste probes miss the needle.
-          await session.pasteText(text);
+          await session.input.pasteText(text);
           await Future<void>.delayed(const Duration(milliseconds: 500));
           await _dismissOpencodeModals(session, scanRows: viewport.rows);
-          await session.syncDisplayGrid();
+          await session.probe.syncDisplayGrid();
 
           final automation = FullscreenPtyAutomation();
           final port = TerminalFullscreenPtyPort(
@@ -158,7 +158,7 @@ void main() {
           // ignore: avoid_print
           print('--- pre-deliver ${viewport.cols}x${viewport.rows} '
               'grid=${grid.columns}x${grid.rows} ---\n'
-              '${session.describeProbeWindow(scanRows: viewport.rows)}');
+              '${session.probe.describeProbeWindow(scanRows: viewport.rows)}');
 
           final outcome = await automation.deliverPasteAndSubmit(
             port: port,
@@ -166,8 +166,8 @@ void main() {
             pasteSettle: const Duration(milliseconds: 500),
           );
 
-          await session.syncDisplayGrid();
-          final afterDeliver = session.describeProbeWindow(scanRows: viewport.rows);
+          await session.probe.syncDisplayGrid();
+          final afterDeliver = session.probe.describeProbeWindow(scanRows: viewport.rows);
           // ignore: avoid_print
           print('--- deliver outcome=$outcome ---\n$afterDeliver');
 

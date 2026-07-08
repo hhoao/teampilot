@@ -41,8 +41,8 @@ Future<bool> _waitUntilPresent(
 }) async {
   final deadline = DateTime.now().add(timeout);
   while (DateTime.now().isBefore(deadline)) {
-    await session.syncDisplayGrid();
-    if (session.describeProbeWindow(scanRows: scanRows).contains(marker)) {
+    await session.probe.syncDisplayGrid();
+    if (session.probe.describeProbeWindow(scanRows: scanRows).contains(marker)) {
       return true;
     }
     await Future<void>.delayed(const Duration(milliseconds: 200));
@@ -56,21 +56,21 @@ Future<void> _bootCursorPrompt(
 }) async {
   final deadline = DateTime.now().add(const Duration(seconds: 20));
   while (DateTime.now().isBefore(deadline)) {
-    await session.syncDisplayGrid();
-    if (session.hasInputBoxContent(scanRows: scanRows)) break;
+    await session.probe.syncDisplayGrid();
+    if (session.probe.hasInputBoxContent(scanRows: scanRows)) break;
     await Future<void>.delayed(const Duration(milliseconds: 200));
   }
 
-  if (session.describeProbeWindow(scanRows: scanRows).contains('Trust')) {
-    session.writeToPty('a');
+  if (session.probe.describeProbeWindow(scanRows: scanRows).contains('Trust')) {
+    session.input.writeToPty('a');
   }
   final promptReady = await _waitUntilPresent(session, '→', scanRows: scanRows);
   if (!promptReady) {
     fail('input prompt never appeared\n'
-        '${session.describeProbeWindow(scanRows: scanRows)}');
+        '${session.probe.describeProbeWindow(scanRows: scanRows)}');
   }
   await Future<void>.delayed(const Duration(seconds: 2));
-  await session.syncDisplayGrid();
+  await session.probe.syncDisplayGrid();
 }
 
 void main() {
@@ -107,12 +107,12 @@ void main() {
           const scanRows = 24;
           await _bootCursorPrompt(session, scanRows: viewport.rows);
 
-          await session.syncDisplayGrid();
+          await session.probe.syncDisplayGrid();
           final grid = session.engine.grid;
           // ignore: avoid_print
           print('--- pre-deliver ${viewport.cols}x${viewport.rows} '
               'grid=${grid.columns}x${grid.rows} ---\n'
-              '${session.describeProbeWindow(scanRows: viewport.rows)}');
+              '${session.probe.describeProbeWindow(scanRows: viewport.rows)}');
 
           const text = 'hello';
           final automation = FullscreenPtyAutomation();
@@ -123,10 +123,10 @@ void main() {
             pasteSettle: const Duration(milliseconds: 150),
           );
 
-          await session.syncDisplayGrid();
+          await session.probe.syncDisplayGrid();
           // ignore: avoid_print
           print('--- deliver outcome=$outcome ---\n'
-              '${session.describeProbeWindow(scanRows: viewport.rows)}');
+              '${session.probe.describeProbeWindow(scanRows: viewport.rows)}');
 
           expect(
             outcome,
@@ -134,7 +134,7 @@ void main() {
             reason:
                 'production deliverPasteAndSubmit should paste, grid-ACK, and '
                 'CR-submit at ${viewport.cols}x${viewport.rows}. '
-                'Grid dump:\n${session.describeProbeWindow(scanRows: viewport.rows)}',
+                'Grid dump:\n${session.probe.describeProbeWindow(scanRows: viewport.rows)}',
           );
         },
       );

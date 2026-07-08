@@ -231,7 +231,7 @@ class FullscreenPtyAutomation {
   }
 
   /// Polls the mirror grid after paste — PTY echo and [syncDisplayGrid] can lag
-  /// the painter (see [TerminalSession.syncDisplayGrid]).
+  /// the painter (see [TerminalScreenProbeController.syncDisplayGrid]).
   Future<FullscreenPromptAnchor?> _pollForNeedle(
     FullscreenPtyDeliveryPort port,
     String needle, {

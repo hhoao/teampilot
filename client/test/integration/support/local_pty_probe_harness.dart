@@ -214,7 +214,7 @@ abstract final class LocalPtyProbeHarness {
     final deadline = DateTime.now().add(timeout);
     while (DateTime.now().isBefore(deadline)) {
       if (session.isConnected) {
-        await session.syncDisplayGrid();
+        await session.probe.syncDisplayGrid();
         return;
       }
       await Future<void>.delayed(const Duration(milliseconds: 50));
@@ -224,6 +224,6 @@ abstract final class LocalPtyProbeHarness {
 
   static Future<void> settleGrid(TerminalSession session) async {
     await Future<void>.delayed(const Duration(milliseconds: 300));
-    await session.syncDisplayGrid();
+    await session.probe.syncDisplayGrid();
   }
 }

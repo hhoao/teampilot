@@ -19,8 +19,8 @@ Future<FullscreenPromptAnchor?> _waitForNeedle(
 }) async {
   final deadline = DateTime.now().add(timeout);
   while (DateTime.now().isBefore(deadline)) {
-    await session.syncDisplayGrid();
-    final anchor = session.locateFullscreenPromptNeedle(
+    await session.probe.syncDisplayGrid();
+    final anchor = session.probe.locateFullscreenPromptNeedle(
       needle,
       scanRows: scanRows,
     );
@@ -31,7 +31,7 @@ Future<FullscreenPromptAnchor?> _waitForNeedle(
 }
 
 String _gridDump(TerminalSession session) =>
-    '${session.describeProbeWindow(scanRows: 24)}\n'
+    '${session.probe.describeProbeWindow(scanRows: 24)}\n'
     '--- export ---\n'
     '${exportTerminalScrollback(session.engine)}';
 
@@ -44,7 +44,7 @@ void main() {
       addTearDown(session.dispose);
 
       await LocalPtyProbeHarness.settleGrid(session);
-      session.writeToPty(LocalPtyProbeHarness.cjkEchoBytes);
+      session.input.writeToPty(LocalPtyProbeHarness.cjkEchoBytes);
       final anchor = await _waitForNeedle(session, LocalPtyProbeHarness.needle);
       expect(
         anchor,
@@ -53,7 +53,7 @@ void main() {
             'CJK from real PTY should match after syncDisplayGrid '
             '(wide-char columns)\n${_gridDump(session)}',
       );
-      expect(session.isFullscreenPromptAtAnchor(anchor!), isTrue);
+      expect(session.probe.isFullscreenPromptAtAnchor(anchor!), isTrue);
     });
 
     test('locates CJK after bracketed paste on a PTY fixture prompt', () async {
@@ -61,11 +61,11 @@ void main() {
       addTearDown(session.dispose);
 
       await LocalPtyProbeHarness.settleGrid(session);
-      await session.clearStagedInput();
+      await session.input.clearStagedInput();
       await Future<void>.delayed(PtyInjectAckTiming.afterClear);
-      await session.pasteText(LocalPtyProbeHarness.needle);
+      await session.input.pasteText(LocalPtyProbeHarness.needle);
       await Future<void>.delayed(PtyInjectAckTiming.afterPaste);
-      await session.syncDisplayGrid();
+      await session.probe.syncDisplayGrid();
 
       final anchor = await _waitForNeedle(session, LocalPtyProbeHarness.needle);
       expect(
@@ -76,7 +76,7 @@ void main() {
             '${_gridDump(session)}',
       );
       expect(anchor!.needle, LocalPtyProbeHarness.needle);
-      expect(session.isFullscreenPromptAtAnchor(anchor), isTrue);
+      expect(session.probe.isFullscreenPromptAtAnchor(anchor), isTrue);
     });
 
     test('syncDisplayGrid is required for bracketed paste probe', () async {
@@ -84,10 +84,10 @@ void main() {
       addTearDown(session.dispose);
 
       await LocalPtyProbeHarness.settleGrid(session);
-      await session.pasteText(LocalPtyProbeHarness.needle);
+      await session.input.pasteText(LocalPtyProbeHarness.needle);
       await Future<void>.delayed(PtyInjectAckTiming.afterPaste);
 
-      final beforeSync = session.locateFullscreenPromptNeedle(
+      final beforeSync = session.probe.locateFullscreenPromptNeedle(
         LocalPtyProbeHarness.needle,
       );
       final afterSync = await _waitForNeedle(session, LocalPtyProbeHarness.needle);

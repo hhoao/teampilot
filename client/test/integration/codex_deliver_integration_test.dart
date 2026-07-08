@@ -47,8 +47,8 @@ Future<void> _bootCodexPrompt(
   final deadline = DateTime.now().add(const Duration(seconds: 30));
   var lastNudge = DateTime(0);
   while (DateTime.now().isBefore(deadline)) {
-    await session.syncDisplayGrid();
-    final frame = session.describeProbeWindow(scanRows: scanRows);
+    await session.probe.syncDisplayGrid();
+    final frame = session.probe.describeProbeWindow(scanRows: scanRows);
 
     // Composer ready: codex paints the model/cwd status footer
     // (`<model> default · <cwd>`) only after every landing/trust screen clears.
@@ -65,13 +65,13 @@ Future<void> _bootCodexPrompt(
         frame.contains('Yes, continue') ||
         frame.contains('Sign in with ChatGPT');
     if (needsEnter && now.difference(lastNudge).inMilliseconds > 600) {
-      session.writeToPty('\r');
+      session.input.writeToPty('\r');
       lastNudge = now;
     }
     await Future<void>.delayed(const Duration(milliseconds: 200));
   }
   fail('codex composer never appeared\n'
-      '${session.describeProbeWindow(scanRows: scanRows)}');
+      '${session.probe.describeProbeWindow(scanRows: scanRows)}');
 }
 
 void main() {
@@ -132,13 +132,13 @@ void main() {
 
           await _bootCodexPrompt(session, scanRows: viewport.rows);
           await Future<void>.delayed(const Duration(seconds: 1));
-          await session.syncDisplayGrid();
+          await session.probe.syncDisplayGrid();
 
           final grid = session.engine.grid;
           // ignore: avoid_print
           print('--- pre-deliver ${viewport.cols}x${viewport.rows} '
               'grid=${grid.columns}x${grid.rows} ---\n'
-              '${session.describeProbeWindow(scanRows: viewport.rows)}');
+              '${session.probe.describeProbeWindow(scanRows: viewport.rows)}');
 
           // Unique marker so a matched needle can only be our just-sent text,
           // never a codex placeholder / tip row.
@@ -158,8 +158,8 @@ void main() {
             pasteSettle: const Duration(milliseconds: 150),
           );
 
-          await session.syncDisplayGrid();
-          final afterDeliver = session.describeProbeWindow(scanRows: viewport.rows);
+          await session.probe.syncDisplayGrid();
+          final afterDeliver = session.probe.describeProbeWindow(scanRows: viewport.rows);
           // ignore: avoid_print
           print('--- deliver outcome=$outcome ---\n$afterDeliver');
 

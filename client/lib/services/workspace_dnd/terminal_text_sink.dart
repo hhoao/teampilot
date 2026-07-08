@@ -1,5 +1,5 @@
 /// The terminal-write surface the drop ingestor needs, narrowed to the two
-/// injection styles a dropped path uses. `TerminalSession` implements it;
+/// injection styles a dropped path uses. [TerminalInputController] implements it;
 /// tests supply a fake so the ingestor is exercised without a PTY.
 abstract interface class TerminalTextSink {
   /// Write [text] straight to the PTY with no trailing CR.

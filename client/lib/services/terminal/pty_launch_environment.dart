@@ -1,3 +1,5 @@
+import 'dart:io';
+
 /// Environment hints for embedded PTY sessions so child CLIs emit OSC 8 links.
 abstract final class PtyLaunchEnvironment {
   /// VTE-based terminals (GNOME Terminal, etc.) set this; Claude Code also treats
@@ -42,5 +44,32 @@ abstract final class PtyLaunchEnvironment {
     // `is_dark_bg` so COLORFGBG and the OSC 997 report can't disagree.
     final isDark = 0.2126 * r + 0.7152 * g + 0.0722 * b < 128.0;
     env['COLORFGBG'] = isDark ? '15;0' : '0;15';
+  }
+
+  /// Full process environment for [Pty.start], including OSC 8 identity hints.
+  ///
+  /// [inheritHostEnvironment] is true for local/WSL PTY (PATH, locale, …).
+  /// SSH remote launches must pass false so the control-plane host's proxy and
+  /// API endpoint env vars are not exported onto the work machine.
+  static Map<String, String> buildPtyEnvironment(
+    Map<String, String>? environment, {
+    int? themeBackground,
+    bool inheritHostEnvironment = true,
+  }) {
+    final merged = <String, String>{
+      if (inheritHostEnvironment) ...Platform.environment,
+      if (environment != null) ...environment,
+    };
+    applyHyperlinkIdentity(merged);
+    if (themeBackground != null) {
+      applyColorScheme(merged, background: themeBackground);
+    }
+    if (Platform.isWindows) {
+      final path = merged['Path'] ?? merged['PATH'];
+      if (path != null && path.isNotEmpty) {
+        merged['PATH'] = path;
+      }
+    }
+    return merged;
   }
 }

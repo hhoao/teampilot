@@ -5,7 +5,8 @@ import 'fullscreen_pty_automation.dart';
 import 'pty_automation_retry_queue.dart';
 import 'pty_automation_session_lock.dart';
 import 'terminal_fullscreen_pty_port.dart';
-import 'terminal_session.dart';
+import 'terminal_input_controller.dart';
+import 'terminal_screen_probe_controller.dart';
 
 /// Session-scoped full-screen PTY inject with lock + idle-watch retry queue.
 final class MemberPtyInjectService {
@@ -47,7 +48,8 @@ final class MemberPtyInjectService {
 
   /// First delivery: clear → paste → grid ACK → CR.
   Future<FullscreenPtyDeliveryOutcome> deliver({
-    required TerminalSession shell,
+    required TerminalInputController input,
+    required TerminalScreenProbeController probe,
     required String sessionId,
     required String memberId,
     required String text,
@@ -56,7 +58,8 @@ final class MemberPtyInjectService {
     required FullscreenCrAckConfig crAckConfig,
   }) {
     return _runLocked(
-      shell: shell,
+      input: input,
+      probe: probe,
       sessionId: sessionId,
       memberId: memberId,
       text: text,
@@ -72,7 +75,8 @@ final class MemberPtyInjectService {
 
   /// Screen-gated retry: visible → CR; missing → full deliver.
   Future<FullscreenPtyDeliveryOutcome> retry({
-    required TerminalSession shell,
+    required TerminalInputController input,
+    required TerminalScreenProbeController probe,
     required String sessionId,
     required String memberId,
     required String text,
@@ -81,7 +85,8 @@ final class MemberPtyInjectService {
     required FullscreenCrAckConfig crAckConfig,
   }) {
     return _runLocked(
-      shell: shell,
+      input: input,
+      probe: probe,
       sessionId: sessionId,
       memberId: memberId,
       text: text,
@@ -120,7 +125,8 @@ final class MemberPtyInjectService {
   }
 
   Future<FullscreenPtyDeliveryOutcome> _runLocked({
-    required TerminalSession shell,
+    required TerminalInputController input,
+    required TerminalScreenProbeController probe,
     required String sessionId,
     required String memberId,
     required String text,
@@ -142,7 +148,8 @@ final class MemberPtyInjectService {
     }
     try {
       final port = TerminalFullscreenPtyPort(
-        shell,
+        input: input,
+        probe: probe,
         aborted: aborted,
         crAckConfig: crAckConfig,
       );

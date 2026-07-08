@@ -1,7 +1,7 @@
 /// Locates pasted full-screen TUI input on the visible terminal grid and tests
 /// whether staged prompt text is still at that anchor after CR.
 ///
-/// Grid reads must follow [TerminalSession.syncDisplayGrid] — PTY damage is
+/// Grid reads must follow [TerminalScreenProbeController.syncDisplayGrid] — PTY damage is
 /// applied on post-frame drains, so a stale mirror misses pasted CJK text even
 /// when the on-screen painter already shows it.
 import 'fullscreen_cr_ack_config.dart';

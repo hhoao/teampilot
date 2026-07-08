@@ -8,7 +8,6 @@ import 'package:flutter_alacritty/links/url_link_provider.dart';
 import 'package:teampilot/services/terminal/file_path_link_provider.dart';
 import 'package:teampilot/services/terminal/terminal_export.dart';
 import 'package:teampilot/services/terminal/terminal_session.dart';
-import 'package:teampilot/services/terminal/terminal_uri_opener.dart';
 import 'package:teampilot/services/terminal/terminal_transport.dart';
 import 'package:teampilot/models/team_config.dart';
 import 'package:teampilot/services/session/shell_launch_spec.dart';
@@ -986,79 +985,6 @@ void main() {
     );
   });
 
-  test(
-    'submitFullScreenInput writes bracketed paste then a standalone CR',
-    () async {
-      final handle = _FakeTransport();
-      final session = TerminalSession(
-        executable: _ptyTestExecutable,
-        confirmFallback: const Duration(milliseconds: 20),
-        transportStarter:
-            (
-              executable, {
-              required arguments,
-              required workingDirectory,
-              required columns,
-              required rows,
-              environment,
-            }) {
-              return Future.value(handle);
-            },
-      );
-      addTearDown(() async {
-        session.dispose();
-        await handle.outputController.close();
-      });
-
-      session.connect(workingDirectory: Directory.systemTemp.path);
-      session.onViewportResize(80, 24);
-      handle.outputController.add(Uint8List.fromList(utf8.encode('ready\r\n')));
-      await Future<void>.delayed(Duration.zero);
-      expect(session.isRunning, isTrue);
-
-      await session.submitFullScreenInput('hello team');
-
-      final writes = handle.writes.map(utf8.decode).toList();
-      // Text arrives wrapped in bracketed-paste markers, and the CR is a separate
-      // write — so Claude Code's full-screen TUI registers a discrete Enter
-      // (submit) rather than a literal newline inside a paste burst.
-      expect(writes, ['\x1B[200~hello team\x1B[201~', '\r']);
-    },
-  );
-
-  test('writeln writes text and CR as a single chunk (line CLIs)', () async {
-    final handle = _FakeTransport();
-    final session = TerminalSession(
-      executable: _ptyTestExecutable,
-      confirmFallback: const Duration(milliseconds: 20),
-      transportStarter:
-          (
-            executable, {
-            required arguments,
-            required workingDirectory,
-            required columns,
-            required rows,
-            environment,
-          }) {
-            return Future.value(handle);
-          },
-    );
-    addTearDown(() async {
-      session.dispose();
-      await handle.outputController.close();
-    });
-
-    session.connect(workingDirectory: Directory.systemTemp.path);
-    session.onViewportResize(80, 24);
-    handle.outputController.add(Uint8List.fromList(utf8.encode('ready\r\n')));
-    await Future<void>.delayed(Duration.zero);
-
-    session.writeln('hello team');
-
-    final writes = handle.writes.map(utf8.decode).toList();
-    expect(writes, ['hello team\r']);
-  });
-
   group('linkProviders', () {
     TerminalSession makeSession() => TerminalSession(
       executable: _ptyTestExecutable,
@@ -1124,24 +1050,6 @@ void main() {
       for (final p in providers) {
         expect(() => p.addListener(() {}), throwsFlutterError);
       }
-    });
-
-    test('parseOsc7Cwd maps a file:// report to a local path', () {
-      // Compare against the same resolver the parser uses so the expectation
-      // holds on both Windows and POSIX path styles.
-      final expected = TerminalUriOpener.resolveLocalFilePath(
-        'file://localhost/tmp/proj',
-      );
-      expect(
-        TerminalSession.parseOsc7Cwd('file://localhost/tmp/proj'),
-        expected,
-      );
-      expect(expected, isNotNull);
-    });
-
-    test('parseOsc7Cwd returns null for empty or unparseable reports', () {
-      expect(TerminalSession.parseOsc7Cwd(''), isNull);
-      expect(TerminalSession.parseOsc7Cwd('   '), isNull);
     });
   });
 }

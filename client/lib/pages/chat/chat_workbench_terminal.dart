@@ -54,7 +54,7 @@ class ChatWorkbenchRunningTerminal extends StatelessWidget {
   /// Fresh per-build ingestor for a drop region — stateless, captures the
   /// session's current namespace + CLI paste behavior.
   TerminalDropIngestor _dropIngestor() => TerminalDropIngestor(
-    sink: session,
+    sink: session.input,
     target: session.runtimeTarget,
     behavior: session.pathDropBehavior,
   );

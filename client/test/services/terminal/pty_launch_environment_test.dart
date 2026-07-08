@@ -2,18 +2,17 @@ import 'dart:io';
 
 import 'package:flutter_test/flutter_test.dart';
 import 'package:teampilot/services/terminal/pty_launch_environment.dart';
-import 'package:teampilot/services/terminal/terminal_session.dart';
 
 void main() {
   test('buildPtyEnvironment injects TERM_PROGRAM and VTE_VERSION', () {
-    final env = TerminalSession.buildPtyEnvironment(const {'FOO': 'bar'});
+    final env = PtyLaunchEnvironment.buildPtyEnvironment(const {'FOO': 'bar'});
     expect(env['TERM_PROGRAM'], PtyLaunchEnvironment.termProgram);
     expect(env['VTE_VERSION'], PtyLaunchEnvironment.vteVersion);
     expect(env['FOO'], 'bar');
   });
 
   test('buildPtyEnvironment does not override explicit TERM_PROGRAM', () {
-    final env = TerminalSession.buildPtyEnvironment(const {
+    final env = PtyLaunchEnvironment.buildPtyEnvironment(const {
       'TERM_PROGRAM': 'custom',
     });
     expect(env['TERM_PROGRAM'], 'custom');
@@ -23,7 +22,7 @@ void main() {
   test(
     'buildPtyEnvironment leaves COLORFGBG untouched when no theme is given',
     () {
-      final env = TerminalSession.buildPtyEnvironment(const {});
+      final env = PtyLaunchEnvironment.buildPtyEnvironment(const {});
       // No theme → we neither add nor rewrite it; it stays whatever was inherited.
       expect(env['COLORFGBG'], Platform.environment['COLORFGBG']);
     },
@@ -32,7 +31,7 @@ void main() {
   test(
     'buildPtyEnvironment maps a dark theme background to COLORFGBG 15;0',
     () {
-      final env = TerminalSession.buildPtyEnvironment(
+      final env = PtyLaunchEnvironment.buildPtyEnvironment(
         const {},
         themeBackground: 0x0A0C10,
       );
@@ -43,7 +42,7 @@ void main() {
   test(
     'buildPtyEnvironment maps a light theme background to COLORFGBG 0;15',
     () {
-      final env = TerminalSession.buildPtyEnvironment(
+      final env = PtyLaunchEnvironment.buildPtyEnvironment(
         const {},
         themeBackground: 0xF7F9FC,
       );
@@ -66,7 +65,7 @@ void main() {
   test(
     'buildPtyEnvironment omits host Platform.environment for SSH remote launches',
     () {
-      final env = TerminalSession.buildPtyEnvironment(const {
+      final env = PtyLaunchEnvironment.buildPtyEnvironment(const {
         'CLAUDE_CONFIG_DIR': '/tmp/claude',
       }, inheritHostEnvironment: false);
       expect(env['CLAUDE_CONFIG_DIR'], '/tmp/claude');

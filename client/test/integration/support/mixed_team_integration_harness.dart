@@ -465,11 +465,11 @@ class MixedTeamIntegrationHarness {
     if (shell.runtimeTarget.namespace.isSsh) {
       // Bracketed paste + CR in one Future can lose the Enter over SSH latency;
       // stage text, settle, then submit on its own chain slot.
-      await shell.pasteText(text);
+      await shell.input.pasteText(text);
       await Future<void>.delayed(const Duration(milliseconds: 800));
-      await shell.submitPendingCr();
+      await shell.input.submitPendingCr();
     } else {
-      await shell.submitFullScreenInput(text);
+      await shell.input.submitFullScreenInput(text);
     }
   }
 

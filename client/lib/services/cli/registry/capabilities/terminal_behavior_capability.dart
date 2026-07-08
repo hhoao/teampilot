@@ -38,7 +38,7 @@ abstract interface class TerminalBehaviorCapability implements CliCapability {
   bool get usesFullScreenInput;
 
   /// Delay between bracketed-paste content and the standalone CR in
-  /// [TerminalSession.submitFullScreenInput]. Claude Ink settles in ~10ms;
+  /// [TerminalInputController.submitFullScreenInput]. Claude Ink settles in ~10ms;
   /// Cursor's agent TUI needs longer or the CR is coalesced into the paste.
   Duration get fullScreenPasteSettleDelay;
 

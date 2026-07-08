@@ -12,6 +12,7 @@ import '../../services/terminal/member_pty_inject_service.dart';
 import '../../services/terminal/pty_automation_delivery_guard.dart';
 import '../../services/terminal/pty_automation_retry_queue.dart';
 import '../../services/terminal/session_member_cli_resolver.dart';
+import '../../services/terminal/terminal_input_controller.dart';
 import '../../services/terminal/terminal_session.dart';
 import '../../utils/logger.dart';
 import 'chat_session_shell_factory.dart';
@@ -113,7 +114,7 @@ final class TabMemberPtyDelivery {
       );
       return;
     }
-    shell.writeln(trimmed);
+    shell.input.writeln(trimmed);
     if (isOperatorTurn) {
       _markMemberTurnStartedOnSubmitSuccess(sessionId, memberId);
     }
@@ -152,7 +153,7 @@ final class TabMemberPtyDelivery {
         memberId,
         automation: false,
       );
-      await shell.submitFullScreenInput(trimmed, pasteSettleDelay: settle);
+      await shell.input.submitFullScreenInput(trimmed, pasteSettleDelay: settle);
       if (isMailDoorbell) {
         _reportMailDeliveryOutcome(
           sessionId,
@@ -168,7 +169,8 @@ final class TabMemberPtyDelivery {
       automation: true,
     );
     final outcome = await _ptyInject.retry(
-      shell: shell,
+      input: shell.input,
+      probe: shell.probe,
       sessionId: sessionId,
       memberId: memberId,
       text: trimmed,
@@ -242,7 +244,7 @@ final class TabMemberPtyDelivery {
       automation: true,
     );
     if (!_memberUsesGridPasteAck(tick.sessionId, tick.memberId)) {
-      await shell.submitFullScreenInput(tick.text, pasteSettleDelay: settle);
+      await shell.input.submitFullScreenInput(tick.text, pasteSettleDelay: settle);
       if (_isMailDoorbellText(tick.text)) {
         _reportMailDeliveryOutcome(
           tick.sessionId,
@@ -255,7 +257,8 @@ final class TabMemberPtyDelivery {
       return;
     }
     final outcome = await _ptyInject.retry(
-      shell: shell,
+      input: shell.input,
+      probe: shell.probe,
       sessionId: tick.sessionId,
       memberId: tick.memberId,
       text: tick.text,
@@ -287,7 +290,8 @@ final class TabMemberPtyDelivery {
     );
     if (automation && gridAck) {
       final outcome = await _ptyInject.deliver(
-        shell: shell,
+        input: shell.input,
+        probe: shell.probe,
         sessionId: sessionId,
         memberId: memberId,
         text: text,
@@ -303,7 +307,7 @@ final class TabMemberPtyDelivery {
       }
       return;
     }
-    await shell.submitFullScreenInput(text, pasteSettleDelay: settle);
+    await shell.input.submitFullScreenInput(text, pasteSettleDelay: settle);
     if (isMailDoorbell) {
       _reportMailDeliveryOutcome(
         sessionId,
@@ -360,7 +364,7 @@ final class TabMemberPtyDelivery {
         .capability<TerminalBehaviorCapability>(cli);
     final base =
         behavior?.fullScreenPasteSettleDelay ??
-        TerminalSession.fullScreenSubmitDelay;
+        TerminalInputController.fullScreenSubmitDelay;
     if (!automation) return base;
     return Duration(
       milliseconds: base.inMilliseconds < 500 ? 500 : base.inMilliseconds,

@@ -1,0 +1,67 @@
+import 'dart:convert';
+import 'dart:typed_data';
+
+import 'terminal_fullscreen_input_channel.dart';
+import 'terminal_launch_controller.dart';
+import '../workspace_dnd/terminal_text_sink.dart';
+
+/// PTY write and full-screen TUI input operations for a connected session.
+///
+/// ISP: callers that inject stdin depend on this narrow surface, not
+/// [TerminalSession] lifecycle or display state.
+final class TerminalInputController implements TerminalTextSink {
+  TerminalInputController({
+    required TerminalLaunchController launch,
+    required void Function() onTurnStart,
+    required Duration Function() defaultFullscreenSettleDelay,
+    TerminalFullscreenInputChannel? fullscreen,
+  }) : _launch = launch,
+       _onTurnStart = onTurnStart,
+       _defaultFullscreenSettleDelay = defaultFullscreenSettleDelay,
+       _fullscreen =
+           fullscreen ??
+           TerminalFullscreenInputChannel(writeToPty: (text) {
+             launch.writeToPty(Uint8List.fromList(utf8.encode(text)));
+           });
+
+  final TerminalLaunchController _launch;
+  final void Function() _onTurnStart;
+  final Duration Function() _defaultFullscreenSettleDelay;
+  final TerminalFullscreenInputChannel _fullscreen;
+
+  static const fullScreenSubmitDelay =
+      TerminalFullscreenInputChannel.fullScreenSubmitDelay;
+
+  void writeToPty(String text) =>
+      _launch.writeToPty(Uint8List.fromList(utf8.encode(text)));
+
+  @override
+  void appendText(String text) => writeToPty(text);
+
+  @override
+  Future<void> pasteWithoutSubmit(String text) => pasteText(text);
+
+  Future<void> pasteText(String text) => _fullscreen.pasteText(text);
+
+  Future<void> clearInputLine() => _fullscreen.clearInputLine();
+
+  Future<void> clearStagedInput({int killLines = 3}) =>
+      _fullscreen.clearStagedInput(killLines: killLines);
+
+  void writeln(String text) =>
+      _fullscreen.writeln(text, onTurnStart: _onTurnStart);
+
+  Future<void> submitFullScreenInput(
+    String text, {
+    Duration? pasteSettleDelay,
+  }) {
+    return _fullscreen.submitFullScreenInput(
+      text,
+      pasteSettleDelay: pasteSettleDelay,
+      defaultSettleDelay: pasteSettleDelay ?? _defaultFullscreenSettleDelay(),
+      onTurnStart: _onTurnStart,
+    );
+  }
+
+  Future<void> submitPendingCr() => _fullscreen.submitPendingCr();
+}
