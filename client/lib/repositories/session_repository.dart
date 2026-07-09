@@ -51,7 +51,11 @@ class SessionRepository {
   }
 
   List<Workspace> _rememberWorkspacesIndex(List<Workspace> workspaces) {
-    final remembered = List<Workspace>.unmodifiable(workspaces);
+    final inferred = [
+      for (final workspace in workspaces)
+        _withInferredMemberPlacementInit(workspace),
+    ];
+    final remembered = List<Workspace>.unmodifiable(inferred);
     _workspacesIndexByRoot[_workspacesIndexCacheKey()] = remembered;
     return remembered;
   }
@@ -90,12 +94,62 @@ class SessionRepository {
         final sessionIds = indexOnly
             ? await fs.listSessionDirectoryIds(workspaceId)
             : await fs.listSessionIdsForWorkspace(workspaceId);
-        return workspace.copyWith(sessionIds: sessionIds);
+        // Migration: infer mixed placement init in-memory only when remembered
+        // targets are non-empty and all host ids are still in the workspace.
+        // Roster/lead is unavailable at load, so pass members: [] (lead check
+        // vacuous). Disk is not rewritten here — next explicit placement save
+        // persists the flag.
+        return _withInferredMemberPlacementInit(
+          workspace.copyWith(sessionIds: sessionIds),
+        );
       }
     } on Object {
       // ignore
     }
     return null;
+  }
+
+  /// In-memory migration for mixed workspaces that already have valid pins.
+  ///
+  /// Skips teams with an explicit `false` entry (host-set / topology reset)
+  /// so load-time infer does not undo a deliberate re-confirm requirement.
+  static Workspace _withInferredMemberPlacementInit(Workspace workspace) {
+    if (workspaceTopologyOf(workspace.folders) != WorkspaceTopology.mixed) {
+      return workspace;
+    }
+    if (workspace.memberTargetsByTeam.isEmpty) return workspace;
+
+    var nextInitialized = workspace.memberPlacementInitializedByTeam;
+    var changed = false;
+    for (final entry in workspace.memberTargetsByTeam.entries) {
+      final teamId = entry.key.trim();
+      if (teamId.isEmpty) continue;
+      // Missing key → eligible for migration infer.
+      // Explicit true → already initialized.
+      // Explicit false → host-set reset; do not re-infer.
+      if (nextInitialized.containsKey(teamId)) continue;
+      final targets = rememberedMemberTargets(
+        workspace.memberTargetsByTeam,
+        teamId,
+      );
+      if (!inferMemberPlacementInitialized(
+        folders: workspace.folders,
+        members: const [],
+        targets: targets,
+        alreadyInitialized: false,
+      )) {
+        continue;
+      }
+      if (!changed) {
+        nextInitialized = Map<String, bool>.from(nextInitialized);
+        changed = true;
+      }
+      nextInitialized[teamId] = true;
+    }
+    if (!changed) return workspace;
+    return workspace.copyWith(
+      memberPlacementInitializedByTeam: nextInitialized,
+    );
   }
 
   Future<void> _writeManifest(
@@ -405,7 +459,10 @@ class SessionRepository {
     );
     final nextInitialized =
         (becameMixed || targetSetChanged)
-            ? const <String, bool>{}
+            ? <String, bool>{
+                for (final teamId in existing.memberTargetsByTeam.keys)
+                  if (teamId.trim().isNotEmpty) teamId.trim(): false,
+              }
             : existing.memberPlacementInitializedByTeam;
     final updated = existing.copyWith(
       folders: nextFolders,

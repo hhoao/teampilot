@@ -1172,9 +1172,6 @@ class AppLocalizationsZh extends AppLocalizations {
   String get landingTeamSettingsGlobalHint => '更改将应用于该团队的全局配置。';
 
   @override
-  String get workspaceChatLandingMixedLaunchBlocked => '请先在团队设置中确认机器分配，再发送消息。';
-
-  @override
   String get workspaceChatLandingTeamLaunchBlocked =>
       '请先在团队设置中配置团队与成员的模型预设，再发送消息。';
 

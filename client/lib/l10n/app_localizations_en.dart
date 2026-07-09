@@ -1235,10 +1235,6 @@ class AppLocalizationsEn extends AppLocalizations {
       'Changes apply to this team\'s global configuration.';
 
   @override
-  String get workspaceChatLandingMixedLaunchBlocked =>
-      'Confirm machine assignment in Team Settings before sending.';
-
-  @override
   String get workspaceChatLandingTeamLaunchBlocked =>
       'Configure team and member model presets in Team Settings before sending.';
 

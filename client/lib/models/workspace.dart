@@ -185,7 +185,8 @@ class Workspace {
         },
       if (memberPlacementInitializedByTeam.isNotEmpty)
         'memberPlacementInitializedByTeam': {
-          for (final e in memberPlacementInitializedByTeam.entries) e.key: e.value,
+          for (final e in memberPlacementInitializedByTeam.entries)
+            e.key: e.value,
         },
     };
   }
@@ -228,7 +229,7 @@ class Workspace {
   static Map<String, bool> _freezeInitializedByTeam(Map<String, bool> raw) {
     return Map<String, bool>.unmodifiable({
       for (final e in raw.entries)
-        if (e.key.trim().isNotEmpty && e.value == true) e.key.trim(): true,
+        if (e.key.trim().isNotEmpty) e.key.trim(): e.value,
     });
   }
 
@@ -238,7 +239,12 @@ class Workspace {
     for (final e in raw.entries) {
       final id = e.key.toString().trim();
       if (id.isEmpty) continue;
-      if (e.value == true) out[id] = true;
+      // Persist explicit false so host-set resets survive load-time infer.
+      if (e.value == true) {
+        out[id] = true;
+      } else if (e.value == false) {
+        out[id] = false;
+      }
     }
     return Map.unmodifiable(out);
   }

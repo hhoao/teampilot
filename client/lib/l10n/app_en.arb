@@ -523,7 +523,6 @@
   "landingTeamSettingsNavTeam": "Team defaults",
   "landingTeamSettingsNavMachines": "Machine assignment",
   "landingTeamSettingsGlobalHint": "Changes apply to this team's global configuration.",
-  "workspaceChatLandingMixedLaunchBlocked": "Confirm machine assignment in Team Settings before sending.",
   "workspaceChatLandingTeamLaunchBlocked": "Configure team and member model presets in Team Settings before sending.",
   "sessionStartButton": "Start conversation",
   "sessionFailedTitle": "Couldn't start session",

@@ -171,4 +171,80 @@ void main() {
       ),
     );
   });
+
+  test(
+    'loadWorkspaces infers mixed placement init from valid remembered targets',
+    () async {
+      final tmp = await Directory.systemTemp.createTemp('fs_session_repo_infer_');
+      addTearDown(() => tmp.deleteSync(recursive: true));
+      final repo = SessionRepository(rootDir: tmp.path);
+
+      final ws = await repo.createWorkspace([
+        const WorkspaceFolder(path: '/local'),
+        const WorkspaceFolder(path: '/remote', targetId: 'ssh:p1'),
+      ]);
+      // Persist targets without the init flag (pre-migration / old manifests).
+      await repo.updateWorkspaceMemberTargets(
+        ws.workspaceId,
+        'team-a',
+        targets: const {'team-lead': 'local', 'dev-0': 'ssh:p1'},
+      );
+
+      final before = (await repo.loadWorkspaces()).single;
+      expect(before.memberPlacementInitializedByTeam['team-a'], isTrue);
+      expect(
+        before.memberTargetsByTeam['team-a'],
+        {'team-lead': 'local', 'dev-0': 'ssh:p1'},
+      );
+
+      // Infer is in-memory only — disk still lacks the flag until an explicit save.
+      final reloaded = SessionRepository(rootDir: tmp.path);
+      final again = (await reloaded.loadWorkspaces()).single;
+      expect(again.memberPlacementInitializedByTeam['team-a'], isTrue);
+    },
+  );
+
+  test(
+    'loadWorkspaces does not infer init when remembered targets are empty',
+    () async {
+      final tmp = await Directory.systemTemp.createTemp(
+        'fs_session_repo_infer_empty_',
+      );
+      addTearDown(() => tmp.deleteSync(recursive: true));
+      final repo = SessionRepository(rootDir: tmp.path);
+
+      final ws = await repo.createWorkspace([
+        const WorkspaceFolder(path: '/local'),
+        const WorkspaceFolder(path: '/remote', targetId: 'ssh:p1'),
+      ]);
+
+      final loaded = (await repo.loadWorkspaces()).single;
+      expect(loaded.workspaceId, ws.workspaceId);
+      expect(loaded.memberPlacementInitializedByTeam, isEmpty);
+    },
+  );
+
+  test(
+    'loadWorkspaces does not infer init when a target id is unknown',
+    () async {
+      final tmp = await Directory.systemTemp.createTemp(
+        'fs_session_repo_infer_bad_',
+      );
+      addTearDown(() => tmp.deleteSync(recursive: true));
+      final repo = SessionRepository(rootDir: tmp.path);
+
+      final ws = await repo.createWorkspace([
+        const WorkspaceFolder(path: '/local'),
+        const WorkspaceFolder(path: '/remote', targetId: 'ssh:p1'),
+      ]);
+      await repo.updateWorkspaceMemberTargets(
+        ws.workspaceId,
+        'team-a',
+        targets: const {'team-lead': 'ssh:gone'},
+      );
+
+      final loaded = (await repo.loadWorkspaces()).single;
+      expect(loaded.memberPlacementInitializedByTeam['team-a'], isNot(true));
+    },
+  );
 }

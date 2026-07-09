@@ -132,4 +132,17 @@ void main() {
       isFalse,
     );
   });
+
+  test('memberPlacementInitializedByTeam preserves explicit false', () {
+    final w = Workspace(
+      workspaceId: 'ws',
+      folders: const [WorkspaceFolder(path: '/a')],
+      createdAt: 1,
+      memberPlacementInitializedByTeam: const {'team-1': false},
+    );
+    final json = w.toJson();
+    expect(json['memberPlacementInitializedByTeam'], {'team-1': false});
+    final decoded = Workspace.fromJson(json);
+    expect(decoded.memberPlacementInitializedByTeam['team-1'], isFalse);
+  });
 }

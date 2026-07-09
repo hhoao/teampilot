@@ -2300,12 +2300,6 @@ abstract class AppLocalizations {
   /// **'Changes apply to this team\'s global configuration.'**
   String get landingTeamSettingsGlobalHint;
 
-  /// No description provided for @workspaceChatLandingMixedLaunchBlocked.
-  ///
-  /// In en, this message translates to:
-  /// **'Confirm machine assignment in Team Settings before sending.'**
-  String get workspaceChatLandingMixedLaunchBlocked;
-
   /// No description provided for @workspaceChatLandingTeamLaunchBlocked.
   ///
   /// In en, this message translates to:

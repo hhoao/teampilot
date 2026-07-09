@@ -168,8 +168,8 @@ void main() {
       ]);
 
       final reloaded = (await repo.loadWorkspaces()).single;
-      expect(reloaded.memberPlacementInitializedByTeam['team-a'], isNot(true));
-      expect(reloaded.memberPlacementInitializedByTeam, isEmpty);
+      // Explicit false survives load-time infer so users must re-confirm.
+      expect(reloaded.memberPlacementInitializedByTeam['team-a'], isFalse);
     },
   );
 
@@ -293,7 +293,7 @@ void main() {
   );
 
   test(
-    'updateWorkspaceMemberTargets does not mark placement initialized',
+    'updateWorkspaceMemberTargets leaves disk uninitialized; load may infer',
     () async {
       final tmp = await Directory.systemTemp.createTemp('fs_repo_folders_');
       addTearDown(() => tmp.deleteSync(recursive: true));
@@ -311,7 +311,9 @@ void main() {
 
       final reloaded = (await repo.loadWorkspaces()).single;
       expect(reloaded.memberTargetsByTeam['team-a']?['team-lead'], 'local');
-      expect(reloaded.memberPlacementInitializedByTeam['team-a'], isNot(true));
+      // Valid remembered targets are inferred initialized on load (migration).
+      // Disk still lacks an explicit Machines save flag until placement save.
+      expect(reloaded.memberPlacementInitializedByTeam['team-a'], isTrue);
     },
   );
 }
