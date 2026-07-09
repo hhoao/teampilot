@@ -23,6 +23,7 @@ import '../../services/ssh/ssh_member_session.dart';
 import '../../services/team_bus/member_bus_idle_endpoint.dart';
 import '../../services/team_bus/remote/member_bus_mcp_config.dart';
 import '../../services/team_bus/mcp/teammate_bus_mcp_config.dart';
+import '../../services/team_bus/remote/remote_bus_binding_resolver.dart';
 import '../../services/team_bus/remote/remote_bus_mount.dart';
 import '../../services/team_bus/remote/ssh_remote_bus_mount_factory.dart';
 import '../../services/terminal/terminal_session.dart';
@@ -265,22 +266,13 @@ class SessionShellConnector {
           );
           final resolver = _host.remoteBusResolver;
           if (resolver != null) {
-            final workCtx = await _host.lifecycle.resolveWorkContextForTargetId(
-              launchTarget.id,
-            );
-            final arch = archFromUname(await memberSshSession.run('uname -m'));
-            final mount = buildRemoteBusMount(
-              memberSession: memberSshSession,
-              gateway: _host.teammateBusMcpGateway,
-              registration: tab.busSessionRegistration!,
-              storageFs: workCtx.fs,
-              arch: arch,
-            );
-            tab.memberRemoteBusMounts[preflightMemberId] = mount;
-            remoteBinding = await resolver.bindMember(
-              mount: mount,
+            remoteBinding = await _bindMixedRemoteBus(
+              tab: tab,
               memberId: preflightMemberId,
-              cli: launchCli,
+              launchCli: launchCli,
+              launchTarget: launchTarget,
+              memberSshSession: memberSshSession,
+              resolver: resolver,
             );
           } else {
             launchWarnings.add('remote_bus_binding_unavailable');
@@ -622,6 +614,68 @@ class SessionShellConnector {
       await Future<void>.delayed(const Duration(milliseconds: 50));
     }
     return tab.persistedSession;
+  }
+
+  /// Work context + reverse tunnels for a mixed remote member.
+  ///
+  /// Times out so a hung `forwardRemote` / SFTP resolve cannot leave the
+  /// member forever in `membersPendingConnect` (builder-1 symptom).
+  Future<RemoteBusBinding> _bindMixedRemoteBus({
+    required ChatTab tab,
+    required String memberId,
+    required CliTool launchCli,
+    required RuntimeTarget launchTarget,
+    required SshMemberSession memberSshSession,
+    required RemoteBusBindingResolver resolver,
+    Duration timeout = const Duration(seconds: 45),
+  }) async {
+    Future<RemoteBusBinding> run() async {
+      appLogger.d(
+        '[session-launch] mixed bus remote resolve-work-ctx '
+        'session=${tab.info.id} member=$memberId target=${launchTarget.id}',
+      );
+      final workCtx = await _host.lifecycle.resolveWorkContextForTargetId(
+        launchTarget.id,
+      );
+      appLogger.d(
+        '[session-launch] mixed bus remote uname '
+        'session=${tab.info.id} member=$memberId',
+      );
+      final arch = archFromUname(await memberSshSession.run('uname -m'));
+      final mount = buildRemoteBusMount(
+        memberSession: memberSshSession,
+        gateway: _host.teammateBusMcpGateway,
+        registration: tab.busSessionRegistration!,
+        storageFs: workCtx.fs,
+        arch: arch,
+      );
+      tab.memberRemoteBusMounts[memberId] = mount;
+      appLogger.d(
+        '[session-launch] mixed bus remote bind '
+        'session=${tab.info.id} member=$memberId arch=$arch cli=${launchCli.value}',
+      );
+      final binding = await resolver.bindMember(
+        mount: mount,
+        memberId: memberId,
+        cli: launchCli,
+      );
+      appLogger.d(
+        '[session-launch] mixed bus remote setup ready '
+        'session=${tab.info.id} member=$memberId',
+      );
+      return binding;
+    }
+
+    try {
+      return await run().timeout(timeout);
+    } on TimeoutException {
+      throw TimeoutException(
+        'mixed bus remote setup timed out after ${timeout.inSeconds}s '
+        '(member=$memberId target=${launchTarget.id}). Check remote '
+        'AllowTcpForwarding / GatewayPorts and SSH connectivity.',
+        timeout,
+      );
+    }
   }
 
   Future<SshMemberSession?> _beginRemoteMemberSshSession({

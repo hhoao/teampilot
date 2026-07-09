@@ -176,6 +176,8 @@ class SessionMemberConnectScheduler {
         final message = 'Failed to start session: $e';
         shell.write('\r\n[$message]\r\n');
         _host.failSessionConnect(tab.info.id, message);
+        // Unblock TeamBus materialize waiters even when PTY never started.
+        _host.memberMaterializer.markMemberReady(tab.info.id, member.id);
       } finally {
         tab.membersPendingConnect.remove(member.id);
       }
