@@ -41,8 +41,10 @@ bool workspaceTopologyRequiresMemberAssignment(List<WorkspaceFolder> folders) =>
     workspaceTopologyOf(folders) == WorkspaceTopology.mixed;
 
 /// Effective pool size for [type] (leader is always a singleton).
-int memberTypeReplicaCount(TeamMemberConfig type) =>
-    TeamMemberNaming.isTeamLead(type) || type.replicas < 1 ? 1 : type.replicas;
+int memberTypeReplicaCount(TeamMemberConfig type) {
+  if (TeamMemberNaming.isTeamLead(type)) return 1;
+  return type.replicas < 0 ? 0 : type.replicas;
+}
 
 List<String> workspaceTargetIds(List<WorkspaceFolder> folders) {
   final seen = <String>[];

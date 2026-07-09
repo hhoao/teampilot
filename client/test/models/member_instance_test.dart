@@ -43,6 +43,20 @@ void main() {
     expect(insts.single.instanceId, 'team-lead');
   });
 
+  test('non-lead replicas 0 yields no instances', () {
+    final insts = expandTeamRoster(const [
+      TeamMemberConfig(id: 'builder', name: 'Builder', replicas: 0),
+    ]);
+    expect(insts, isEmpty);
+  });
+
+  test('lead with replicas 0 still yields one instance', () {
+    final insts = expandTeamRoster(const [
+      TeamMemberConfig(id: 'team-lead', name: 'team-lead', replicas: 0),
+    ]);
+    expect(insts.single.instanceId, 'team-lead');
+  });
+
   test('workspaceion seeds the type id as a capability', () {
     final inst = expandTeamRoster(const [
       TeamMemberConfig(
