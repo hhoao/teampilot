@@ -4,21 +4,26 @@ import 'package:teampilot/models/team_config.dart';
 import 'package:teampilot/services/cli/registry/capabilities/cli_effort_capability.dart';
 import 'package:teampilot/services/cli/registry/cli_tool_registry.dart';
 import 'package:teampilot/services/cli/registry/config_profile/opencode_config_profile_capability.dart';
-import 'package:teampilot/services/cli/cli_tool_adapter.dart';
 import 'package:teampilot/services/provider/flashskyai/flashskyai_effort_capability.dart';
 import 'package:teampilot/services/provider/opencode/opencode_effort_capability.dart';
 
 void main() {
-  test('built-in registry registers effort on all five CLIs', () {
+  test('built-in registry registers effort on CLIs that support it', () {
     final registry = CliToolRegistry.builtIn();
-    for (final tool in CliTool.values) {
-      if (!registry.tryGet(tool)!.isLaunchSupported) continue;
+    const withEffort = {
+      CliTool.claude,
+      CliTool.codex,
+      CliTool.opencode,
+      CliTool.flashskyai,
+    };
+    for (final tool in withEffort) {
       expect(
         registry.capability<CliEffortCapability>(tool),
         isNotNull,
         reason: tool.name,
       );
     }
+    expect(registry.capability<CliEffortCapability>(CliTool.cursor), isNull);
   });
 
   test('OpencodeEffortCapability uses provider placement', () {
@@ -56,22 +61,6 @@ void main() {
         (providerEntry['models'] as Map)['claude-sonnet-4-20250514'] as Map;
     final options = modelEntry['options'] as Map;
     expect(options['reasoningEffort'], 'high');
-  });
-
-  test('cursor adapter emits reasoning effort flag', () {
-    const adapter = CursorCliToolAdapter();
-    final team = TeamProfile(
-      id: 't1',
-      name: 'Team',
-      cli: CliTool.cursor,
-      members: const [],
-      cliEffortLevels: const {'cursor': 'low'},
-    );
-    final member = TeamMemberConfig(id: 'm1', name: 'M', model: 'gpt-5');
-    final args = adapter.buildArguments(
-      CliLaunchContext(team: team, member: member),
-    );
-    expect(args, containsAll(['--reasoning-effort', 'low']));
   });
 
   test('FlashskyaiEffortCapability mirrors Claude placement', () {

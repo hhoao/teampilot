@@ -16,7 +16,6 @@ import '../capabilities/launch_args_capability.dart';
 import '../capabilities/presence_capability.dart';
 import '../../../provider/cursor/cursor_provider_credential_capability.dart';
 import '../../../provider/cursor/cursor_provider_model_capability.dart';
-import '../capabilities/cli_effort_capability.dart';
 import '../capabilities/headless_run_capability.dart';
 import '../capabilities/provider_credential_capability.dart';
 import '../capabilities/session_resume_capability.dart';
@@ -26,7 +25,6 @@ import '../config_profile/cursor_config_profile_capability.dart';
 import '../../session_lifecycle/cursor/cursor_session_lifecycle_capability.dart';
 import '../capabilities/cli_session_lifecycle_capability.dart';
 import '../headless/cursor_headless_run_capability.dart';
-import '../../../provider/cursor/cursor_effort_capability.dart';
 import '../../../provider/cursor/cursor_provider_form_capability.dart';
 import '../capabilities/member_config_inspection_capability.dart';
 import '../capabilities/provider_form_capability.dart';
@@ -56,7 +54,6 @@ final class CursorCliTool implements CliToolDefinition {
     this.pluginProvisioner = const CursorPluginProvisioner(),
     this.providerCatalog = const CursorProviderCatalogCapability(),
     CursorProviderModelCapability? providerModel,
-    this.effort = const CursorEffortCapability(),
     this.headlessRun = const CursorHeadlessRunCapability(),
     this.providerForm = const CursorProviderFormCapability(),
     this.resource = const CursorResourceCapability(),
@@ -83,7 +80,6 @@ final class CursorCliTool implements CliToolDefinition {
   final CursorPluginProvisioner pluginProvisioner;
   final ProviderCatalogCapability providerCatalog;
   final CursorProviderModelCapability providerModel;
-  final CliEffortCapability effort;
   final HeadlessRunCapability headlessRun;
   final ResourceCapability resource;
   final CliConfigLayoutCapability configLayout;
@@ -117,7 +113,6 @@ final class CursorCliTool implements CliToolDefinition {
     providerModel,
     providerCredential,
     providerForm,
-    effort,
     headlessRun,
     resource,
     configLayout,
