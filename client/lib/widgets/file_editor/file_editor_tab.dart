@@ -8,6 +8,7 @@ import '../../l10n/l10n_extensions.dart';
 import '../../theme/app_text_styles.dart';
 import '../file_icon_widget.dart';
 import '../menu/sidebar_action_menu.dart';
+import '../tab_close_button.dart';
 
 /// Single open-file tab in the editor tab bar (icon, label, close, context menu).
 class FileEditorTab extends StatefulWidget {
@@ -140,13 +141,10 @@ class _FileEditorTabState extends State<FileEditorTab> {
                   ),
                 ),
                 const SizedBox(width: 4),
-                GestureDetector(
+                TabCloseButton(
+                  active: widget.selected,
+                  tint: closeColor,
                   onTap: widget.onClose,
-                  child: Icon(
-                    Icons.close,
-                    size: context.appIconSizes.md,
-                    color: closeColor,
-                  ),
                 ),
               ],
             ),

@@ -12,6 +12,7 @@ import '../../theme/app_text_styles.dart';
 import '../../theme/workspace_surface_layers.dart';
 import '../../utils/app_keys.dart';
 import '../../widgets/app_icon_button.dart';
+import '../../widgets/tab_close_button.dart';
 import '../../widgets/cli/cli_brand_icon.dart';
 import '../../widgets/menu/sidebar_action_menu.dart';
 import '../../widgets/session_working_spinner.dart';
@@ -370,17 +371,9 @@ class WorkspaceShellTabChipState extends State<WorkspaceShellTabChip> {
                   // Close button
                   _TabChromeSlot(
                     visible: _showChrome,
-                    child: InkWell(
+                    child: TabCloseButton(
+                      active: active,
                       onTap: widget.onClose,
-                      borderRadius: BorderRadius.circular(5),
-                      child: Padding(
-                        padding: const EdgeInsets.all(2),
-                        child: Icon(
-                          Icons.close,
-                          size: context.appIconSizes.md,
-                          color: cs.onSurfaceVariant,
-                        ),
-                      ),
                     ),
                   ),
                 ],
