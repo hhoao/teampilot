@@ -3108,6 +3108,24 @@ class AppLocalizationsEn extends AppLocalizations {
   String get teamMcpNav => 'MCP';
 
   @override
+  String get myTeamsNav => 'My Teams';
+
+  @override
+  String get myTeamsTitle => 'My Teams';
+
+  @override
+  String get myTeamsSubtitle => 'Manage your local team configurations';
+
+  @override
+  String get myExpertsNav => 'My Experts';
+
+  @override
+  String get myExpertsTitle => 'My Experts';
+
+  @override
+  String get myExpertsSubtitle => 'Manage your local expert personas';
+
+  @override
   String get teamHubNav => 'TeamHub';
 
   @override

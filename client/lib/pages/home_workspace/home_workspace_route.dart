@@ -55,9 +55,23 @@ abstract final class HomeWorkspaceRoute {
     return raw.isEmpty ? null : raw;
   }
 
+  /// My Experts member key when [homeGlobalView] is [HomeGlobalView.myExperts].
+  static String? myExpertsMemberKey(String location) {
+    if (homeGlobalView(location) != HomeGlobalView.myExperts) return null;
+    final raw = parse(location).queryParameters['member']?.trim() ?? '';
+    return raw.isEmpty ? null : raw;
+  }
+
   /// Team Hub team key when [homeGlobalView] is [HomeGlobalView.teamHub].
   static String? teamHubTeamKey(String location) {
     if (homeGlobalView(location) != HomeGlobalView.teamHub) return null;
+    final raw = parse(location).queryParameters['team']?.trim() ?? '';
+    return raw.isEmpty ? null : raw;
+  }
+
+  /// My Teams team id when [homeGlobalView] is [HomeGlobalView.myTeams].
+  static String? myTeamsTeamId(String location) {
+    if (homeGlobalView(location) != HomeGlobalView.myTeams) return null;
     final raw = parse(location).queryParameters['team']?.trim() ?? '';
     return raw.isEmpty ? null : raw;
   }

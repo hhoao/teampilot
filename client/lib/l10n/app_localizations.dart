@@ -5655,6 +5655,42 @@ abstract class AppLocalizations {
   /// **'MCP'**
   String get teamMcpNav;
 
+  /// No description provided for @myTeamsNav.
+  ///
+  /// In en, this message translates to:
+  /// **'My Teams'**
+  String get myTeamsNav;
+
+  /// No description provided for @myTeamsTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'My Teams'**
+  String get myTeamsTitle;
+
+  /// No description provided for @myTeamsSubtitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Manage your local team configurations'**
+  String get myTeamsSubtitle;
+
+  /// No description provided for @myExpertsNav.
+  ///
+  /// In en, this message translates to:
+  /// **'My Experts'**
+  String get myExpertsNav;
+
+  /// No description provided for @myExpertsTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'My Experts'**
+  String get myExpertsTitle;
+
+  /// No description provided for @myExpertsSubtitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Manage your local expert personas'**
+  String get myExpertsSubtitle;
+
   /// No description provided for @teamHubNav.
   ///
   /// In en, this message translates to:

@@ -17,6 +17,8 @@ import '../mcp/mcp_management_page.dart';
 import '../plugins/plugin_management_page.dart';
 import '../skills/skill_management_page.dart';
 import '../llm_config/llm_config_workspace.dart';
+import '../my_experts/my_experts_page.dart';
+import '../my_teams/my_teams_page.dart';
 import '../team_hub/team_hub_page.dart';
 
 /// Which global management view is shown in the workspace-home right pane.
@@ -25,6 +27,8 @@ enum HomeGlobalView {
   plugins,
   mcp,
   extensions,
+  myTeams,
+  myExperts,
   teamHub,
   expertHub,
   providers,
@@ -91,6 +95,8 @@ class _HomeGlobalSectionState extends State<HomeGlobalSection> {
         section: _extension,
         onSelectSection: (s) => setState(() => _extension = s),
       ),
+      HomeGlobalView.myTeams => const MyTeamsPage(),
+      HomeGlobalView.myExperts => const MyExpertsPage(),
       HomeGlobalView.teamHub => const TeamHubPage(),
       HomeGlobalView.expertHub => ExpertHubPage(
         onAddToTeam: _expertAddToTeam,

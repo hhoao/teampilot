@@ -2999,6 +2999,24 @@ class AppLocalizationsZh extends AppLocalizations {
   String get teamMcpNav => 'MCP';
 
   @override
+  String get myTeamsNav => '我的团队';
+
+  @override
+  String get myTeamsTitle => '我的团队';
+
+  @override
+  String get myTeamsSubtitle => '管理本地团队配置';
+
+  @override
+  String get myExpertsNav => '我的专家';
+
+  @override
+  String get myExpertsTitle => '我的专家';
+
+  @override
+  String get myExpertsSubtitle => '管理本地专家人设';
+
+  @override
   String get teamHubNav => '团队中心';
 
   @override
