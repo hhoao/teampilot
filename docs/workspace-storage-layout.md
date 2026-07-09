@@ -77,9 +77,32 @@ At launch, `RuntimeLayout` links each layer into the session runtime tree (PTY `
 
 Persona prompt/playbook is **not** stored at layers 1–3 for teams; it is resolved from the expert catalog at connect and written into layer 4 via `MemberRoleProvision`.
 
+## Team Hub (`team-hub/`)
+
+Team **templates** — same roster shape as user teams (`roster[]` of expert keys, not embedded prompts).
+
+**Git registry (app repo):** public templates are fetched from
+`https://github.com/hhoao/teampilot` under the `team-hub/` subdirectory
+(`index.json` + `teams/<slug>/team.json`). Catalog keys:
+`hhoao/teampilot/team-hub/<slug>`.
+
+**Local app-data cache** (under `<teampilotRoot>`):
+
+```
+team-hub/cache/{owner}-{repo}/
+  teams.json                     # fetched index
+```
+
 ## Expert Hub (`member-hub/`)
 
 Catalog UX and user-authored experts. Persona source-of-truth for shared experts. Spec: [Expert Hub design](superpowers/specs/2026-07-05-expert-hub-design.md).
+
+**Git registry (app repo):** public experts are fetched from the same
+`hhoao/teampilot` repo under `member-hub/` (`index.json` +
+`members/<slug>/member.json`). Catalog keys:
+`hhoao/teampilot/member-hub/<slug>`.
+
+**Local app-data** (under `<teampilotRoot>`):
 
 ```
 member-hub/
@@ -87,17 +110,7 @@ member-hub/
   recent.json                    # landing picker recents
   local-templates/{id}.json      # DiscoverableMember (user-owned experts)
   cache/{owner}-{repo}/
-    members.json                 # git registry cache (flashskyai/member-hub)
-```
-
-## Team Hub (`team-hub/`)
-
-Team **templates** — same roster shape as user teams (`roster[]` of expert keys, not embedded prompts):
-
-```
-team-hub/cache/{owner}-{repo}/
-  teams.json                     # fetched index
-teams/{slug}/team.json           # DiscoverableTeam with roster[]
+    members.json                 # git registry cache
 ```
 
 ## Hub publish (`hub-publish/`)
@@ -138,7 +151,7 @@ Teams persist **references** to catalog experts:
     },
     {
       "id": "developer",
-      "expertKey": "flashskyai/member-hub/developer",
+      "expertKey": "hhoao/teampilot/member-hub/developer",
       "joinedAt": 1710000001000
     }
   ]
