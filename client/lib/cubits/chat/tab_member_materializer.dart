@@ -1,5 +1,6 @@
 import 'dart:async';
 
+import '../../models/app_session.dart';
 import '../../models/team_config.dart';
 import '../../services/team/member_coordination.dart';
 import '../../services/team_bus/chat_cubit_member_launcher.dart';
@@ -109,11 +110,17 @@ class TabMemberMaterializer implements MemberMaterializer {
 
     final team = _activeTeam();
     if (team == null) return;
-    final member = team.members.firstWhere(
-      (m) => m.id == memberId,
-      orElse: () => const TeamMemberConfig(id: '', name: ''),
-    );
-    if (!member.isValid) return;
+    // Prefer session pods (builder-0/1) over type ids on team.members —
+    // looking up "builder-1" in types-only roster returns empty and the bus
+    // falsely completes MaterializeCompleted without a PTY.
+    final member = _resolveMemberForMaterialize(tab, team, memberId);
+    if (member == null || !member.isValid) {
+      appLogger.w(
+        '[member-materializer] materialize skip unknown member=$memberId '
+        'session=$sessionId',
+      );
+      return;
+    }
 
     final ready = Completer<void>();
     _memberReady[(sessionId, memberId)] = ready;
@@ -161,6 +168,23 @@ class TabMemberMaterializer implements MemberMaterializer {
       if (tab.teamBus != null && _isMixedBusRegistered(sessionId)) return;
       await Future<void>.delayed(const Duration(milliseconds: 50));
     }
+  }
+
+  TeamMemberConfig? _resolveMemberForMaterialize(
+    ChatTab tab,
+    TeamProfile team,
+    String memberId,
+  ) {
+    final session = tab.persistedSession;
+    if (session != null && session.members.isNotEmpty) {
+      for (final m in sessionRosterMembers(session, team)) {
+        if (m.id == memberId) return m;
+      }
+    }
+    for (final m in team.members) {
+      if (m.id == memberId) return m;
+    }
+    return null;
   }
 
   @override
