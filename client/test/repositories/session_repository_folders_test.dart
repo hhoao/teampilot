@@ -227,4 +227,54 @@ void main() {
       expect(session.memberTargets['dev'], 'ssh:p1');
     },
   );
+
+  test(
+    'updateWorkspaceMemberPlacement writes targets and init flag together',
+    () async {
+      final tmp = await Directory.systemTemp.createTemp('fs_repo_folders_');
+      addTearDown(() => tmp.deleteSync(recursive: true));
+      final repo = SessionRepository(rootDir: tmp.path);
+
+      final ws = await repo.createWorkspace([
+        const WorkspaceFolder(path: '/local'),
+        const WorkspaceFolder(path: '/remote', targetId: 'ssh:p1'),
+      ]);
+      expect(ws.memberPlacementInitializedByTeam['team-a'], isNot(true));
+
+      await repo.updateWorkspaceMemberPlacement(
+        ws.workspaceId,
+        'team-a',
+        targets: const {'team-lead': 'local', 'dev-0': 'local', 'dev-1': 'ssh:p1'},
+      );
+
+      final reloaded = (await repo.loadWorkspaces()).single;
+      expect(reloaded.memberTargetsByTeam['team-a']?['team-lead'], 'local');
+      expect(reloaded.memberTargetsByTeam['team-a']?['dev-0'], 'local');
+      expect(reloaded.memberTargetsByTeam['team-a']?['dev-1'], 'ssh:p1');
+      expect(reloaded.memberPlacementInitializedByTeam['team-a'], isTrue);
+    },
+  );
+
+  test(
+    'updateWorkspaceMemberTargets does not mark placement initialized',
+    () async {
+      final tmp = await Directory.systemTemp.createTemp('fs_repo_folders_');
+      addTearDown(() => tmp.deleteSync(recursive: true));
+      final repo = SessionRepository(rootDir: tmp.path);
+
+      final ws = await repo.createWorkspace([
+        const WorkspaceFolder(path: '/local'),
+        const WorkspaceFolder(path: '/remote', targetId: 'ssh:p1'),
+      ]);
+      await repo.updateWorkspaceMemberTargets(
+        ws.workspaceId,
+        'team-a',
+        targets: const {'team-lead': 'local'},
+      );
+
+      final reloaded = (await repo.loadWorkspaces()).single;
+      expect(reloaded.memberTargetsByTeam['team-a']?['team-lead'], 'local');
+      expect(reloaded.memberPlacementInitializedByTeam['team-a'], isNot(true));
+    },
+  );
 }

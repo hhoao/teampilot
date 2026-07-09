@@ -404,6 +404,34 @@ class SessionRepository {
     String teamId, {
     required MemberTargetAssignments targets,
   }) async {
+    await _updateWorkspaceMemberTargetsAndInit(
+      workspaceId,
+      teamId,
+      targets: targets,
+      markInitialized: false,
+    );
+  }
+
+  /// Persists member targets and marks placement initialized for [teamId].
+  Future<void> updateWorkspaceMemberPlacement(
+    String workspaceId,
+    String teamId, {
+    required MemberTargetAssignments targets,
+  }) async {
+    await _updateWorkspaceMemberTargetsAndInit(
+      workspaceId,
+      teamId,
+      targets: targets,
+      markInitialized: true,
+    );
+  }
+
+  Future<void> _updateWorkspaceMemberTargetsAndInit(
+    String workspaceId,
+    String teamId, {
+    required MemberTargetAssignments targets,
+    required bool markInitialized,
+  }) async {
     final trimmedTeam = teamId.trim();
     if (trimmedTeam.isEmpty) return;
     final fs = await _fs();
@@ -425,9 +453,18 @@ class SessionRepository {
     } else {
       nextByTeam[trimmedTeam] = normalized;
     }
+    var nextInitialized = existing.memberPlacementInitializedByTeam;
+    if (markInitialized) {
+      nextInitialized = Map<String, bool>.from(nextInitialized)
+        ..[trimmedTeam] = true;
+    }
     await _writeManifest(
       fs,
-      existing.copyWith(memberTargetsByTeam: nextByTeam, updatedAt: now),
+      existing.copyWith(
+        memberTargetsByTeam: nextByTeam,
+        memberPlacementInitializedByTeam: nextInitialized,
+        updatedAt: now,
+      ),
     );
   }
 
