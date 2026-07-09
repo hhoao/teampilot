@@ -25,12 +25,14 @@ class MyTeamsCard extends StatefulWidget {
     required this.selected,
     required this.onOpen,
     required this.onDelete,
+    this.onUpload,
   });
 
   final TeamProfile team;
   final bool selected;
   final VoidCallback onOpen;
   final VoidCallback onDelete;
+  final VoidCallback? onUpload;
 
   @override
   State<MyTeamsCard> createState() => _MyTeamsCardState();
@@ -83,15 +85,30 @@ class _MyTeamsCardState extends State<MyTeamsCard> {
               children: [
                 TeamHubCardHeader(
                   title: team.name,
-                  trailing: IconButton(
-                    key: Key('my-teams-delete-${team.id}'),
-                    tooltip: l10n.deleteTeam,
-                    onPressed: widget.onDelete,
-                    icon: Icon(
-                      Icons.delete_outline,
-                      size: context.appIconSizes.md,
-                      color: cs.error,
-                    ),
+                  trailing: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      if (widget.onUpload != null)
+                        IconButton(
+                          key: Key('my-teams-upload-${team.id}'),
+                          tooltip: l10n.myTeamsUpload,
+                          onPressed: widget.onUpload,
+                          icon: Icon(
+                            Icons.upload_outlined,
+                            size: context.appIconSizes.md,
+                          ),
+                        ),
+                      IconButton(
+                        key: Key('my-teams-delete-${team.id}'),
+                        tooltip: l10n.deleteTeam,
+                        onPressed: widget.onDelete,
+                        icon: Icon(
+                          Icons.delete_outline,
+                          size: context.appIconSizes.md,
+                          color: cs.error,
+                        ),
+                      ),
+                    ],
                   ),
                 ),
                 const SizedBox(height: 10),

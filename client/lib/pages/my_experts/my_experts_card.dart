@@ -8,7 +8,7 @@ import '../../theme/workspace_surface_layers.dart';
 import '../expert_hub/expert_hub_visuals.dart';
 import '../team_hub/team_hub_cards.dart';
 
-enum MyExpertsCardAction { edit, delete, addToTeam }
+enum MyExpertsCardAction { edit, delete, addToTeam, upload }
 
 class MyExpertsCard extends StatefulWidget {
   const MyExpertsCard({
@@ -75,6 +75,10 @@ class _MyExpertsCardState extends State<MyExpertsCard> {
                       PopupMenuItem(
                         value: MyExpertsCardAction.edit,
                         child: Text(l10n.myExpertsEdit),
+                      ),
+                      PopupMenuItem(
+                        value: MyExpertsCardAction.upload,
+                        child: Text(l10n.myExpertsUpload),
                       ),
                       PopupMenuItem(
                         value: MyExpertsCardAction.addToTeam,

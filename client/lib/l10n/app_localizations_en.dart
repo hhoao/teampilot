@@ -3178,6 +3178,105 @@ class AppLocalizationsEn extends AppLocalizations {
   String get myExpertsUpload => 'Upload';
 
   @override
+  String get myTeamsUpload => 'Upload';
+
+  @override
+  String get hubPublishExpertTitle => 'Publish expert to Hub';
+
+  @override
+  String get hubPublishTeamTitle => 'Publish team to Hub';
+
+  @override
+  String get hubPublishAuthHint =>
+      'A GitHub personal access token with repo scope is required to open a pull request into the Hub registry.';
+
+  @override
+  String get hubPublishTokenLabel => 'GitHub token';
+
+  @override
+  String get hubPublishTokenHint => 'ghp_…';
+
+  @override
+  String get hubPublishTokenStored =>
+      'A token is already saved. You can replace it below.';
+
+  @override
+  String get hubPublishTokenRequired => 'GitHub token is required to publish';
+
+  @override
+  String get hubPublishTokenSaveFailed => 'Could not save the GitHub token';
+
+  @override
+  String get hubPublishNext => 'Next';
+
+  @override
+  String get hubPublishPublish => 'Publish';
+
+  @override
+  String get hubPublishDone => 'Done';
+
+  @override
+  String get hubPublishSlugLabel => 'Slug';
+
+  @override
+  String get hubPublishSlugHint => 'url-safe-id';
+
+  @override
+  String get hubPublishSlugRequired => 'Slug is required';
+
+  @override
+  String get hubPublishCategoryRequired => 'Category is required';
+
+  @override
+  String get hubPublishAuthorLabel => 'Author';
+
+  @override
+  String get hubPublishLocalExpertHint =>
+      'Local experts on the roster must be remapped to a published or builtin expert before upload.';
+
+  @override
+  String get hubPublishLocalExpertBlocked =>
+      'Remap every local expert before continuing';
+
+  @override
+  String get hubPublishRemapLabel => 'Publish as';
+
+  @override
+  String get hubPublishNonPortableHint =>
+      'These dependencies have no portable provenance. Remove them from the team bundle before publishing:';
+
+  @override
+  String get hubPublishNonPortableBlocked =>
+      'Remove non-portable dependencies before continuing';
+
+  @override
+  String get hubPublishGatesClear =>
+      'All dependencies look portable. Continue to confirm.';
+
+  @override
+  String get hubPublishConfirmHint =>
+      'Review the package metadata, then publish a fork-based pull request.';
+
+  @override
+  String get hubPublishKindLabel => 'Kind';
+
+  @override
+  String get hubPublishKindExpert => 'Expert';
+
+  @override
+  String get hubPublishKindTeam => 'Team';
+
+  @override
+  String get hubPublishSuccessHint =>
+      'Pull request opened. Share or open the link below.';
+
+  @override
+  String get hubPublishCopyLink => 'Copy link';
+
+  @override
+  String get hubPublishOpenPr => 'Open PR';
+
+  @override
   String get expertHubCreate => 'New';
 
   @override

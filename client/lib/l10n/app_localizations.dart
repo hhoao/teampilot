@@ -5763,6 +5763,186 @@ abstract class AppLocalizations {
   /// **'Upload'**
   String get myExpertsUpload;
 
+  /// No description provided for @myTeamsUpload.
+  ///
+  /// In en, this message translates to:
+  /// **'Upload'**
+  String get myTeamsUpload;
+
+  /// No description provided for @hubPublishExpertTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Publish expert to Hub'**
+  String get hubPublishExpertTitle;
+
+  /// No description provided for @hubPublishTeamTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Publish team to Hub'**
+  String get hubPublishTeamTitle;
+
+  /// No description provided for @hubPublishAuthHint.
+  ///
+  /// In en, this message translates to:
+  /// **'A GitHub personal access token with repo scope is required to open a pull request into the Hub registry.'**
+  String get hubPublishAuthHint;
+
+  /// No description provided for @hubPublishTokenLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'GitHub token'**
+  String get hubPublishTokenLabel;
+
+  /// No description provided for @hubPublishTokenHint.
+  ///
+  /// In en, this message translates to:
+  /// **'ghp_…'**
+  String get hubPublishTokenHint;
+
+  /// No description provided for @hubPublishTokenStored.
+  ///
+  /// In en, this message translates to:
+  /// **'A token is already saved. You can replace it below.'**
+  String get hubPublishTokenStored;
+
+  /// No description provided for @hubPublishTokenRequired.
+  ///
+  /// In en, this message translates to:
+  /// **'GitHub token is required to publish'**
+  String get hubPublishTokenRequired;
+
+  /// No description provided for @hubPublishTokenSaveFailed.
+  ///
+  /// In en, this message translates to:
+  /// **'Could not save the GitHub token'**
+  String get hubPublishTokenSaveFailed;
+
+  /// No description provided for @hubPublishNext.
+  ///
+  /// In en, this message translates to:
+  /// **'Next'**
+  String get hubPublishNext;
+
+  /// No description provided for @hubPublishPublish.
+  ///
+  /// In en, this message translates to:
+  /// **'Publish'**
+  String get hubPublishPublish;
+
+  /// No description provided for @hubPublishDone.
+  ///
+  /// In en, this message translates to:
+  /// **'Done'**
+  String get hubPublishDone;
+
+  /// No description provided for @hubPublishSlugLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Slug'**
+  String get hubPublishSlugLabel;
+
+  /// No description provided for @hubPublishSlugHint.
+  ///
+  /// In en, this message translates to:
+  /// **'url-safe-id'**
+  String get hubPublishSlugHint;
+
+  /// No description provided for @hubPublishSlugRequired.
+  ///
+  /// In en, this message translates to:
+  /// **'Slug is required'**
+  String get hubPublishSlugRequired;
+
+  /// No description provided for @hubPublishCategoryRequired.
+  ///
+  /// In en, this message translates to:
+  /// **'Category is required'**
+  String get hubPublishCategoryRequired;
+
+  /// No description provided for @hubPublishAuthorLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Author'**
+  String get hubPublishAuthorLabel;
+
+  /// No description provided for @hubPublishLocalExpertHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Local experts on the roster must be remapped to a published or builtin expert before upload.'**
+  String get hubPublishLocalExpertHint;
+
+  /// No description provided for @hubPublishLocalExpertBlocked.
+  ///
+  /// In en, this message translates to:
+  /// **'Remap every local expert before continuing'**
+  String get hubPublishLocalExpertBlocked;
+
+  /// No description provided for @hubPublishRemapLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Publish as'**
+  String get hubPublishRemapLabel;
+
+  /// No description provided for @hubPublishNonPortableHint.
+  ///
+  /// In en, this message translates to:
+  /// **'These dependencies have no portable provenance. Remove them from the team bundle before publishing:'**
+  String get hubPublishNonPortableHint;
+
+  /// No description provided for @hubPublishNonPortableBlocked.
+  ///
+  /// In en, this message translates to:
+  /// **'Remove non-portable dependencies before continuing'**
+  String get hubPublishNonPortableBlocked;
+
+  /// No description provided for @hubPublishGatesClear.
+  ///
+  /// In en, this message translates to:
+  /// **'All dependencies look portable. Continue to confirm.'**
+  String get hubPublishGatesClear;
+
+  /// No description provided for @hubPublishConfirmHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Review the package metadata, then publish a fork-based pull request.'**
+  String get hubPublishConfirmHint;
+
+  /// No description provided for @hubPublishKindLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Kind'**
+  String get hubPublishKindLabel;
+
+  /// No description provided for @hubPublishKindExpert.
+  ///
+  /// In en, this message translates to:
+  /// **'Expert'**
+  String get hubPublishKindExpert;
+
+  /// No description provided for @hubPublishKindTeam.
+  ///
+  /// In en, this message translates to:
+  /// **'Team'**
+  String get hubPublishKindTeam;
+
+  /// No description provided for @hubPublishSuccessHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Pull request opened. Share or open the link below.'**
+  String get hubPublishSuccessHint;
+
+  /// No description provided for @hubPublishCopyLink.
+  ///
+  /// In en, this message translates to:
+  /// **'Copy link'**
+  String get hubPublishCopyLink;
+
+  /// No description provided for @hubPublishOpenPr.
+  ///
+  /// In en, this message translates to:
+  /// **'Open PR'**
+  String get hubPublishOpenPr;
+
   /// No description provided for @expertHubCreate.
   ///
   /// In en, this message translates to:

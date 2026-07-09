@@ -9,8 +9,29 @@ import 'hub_publish_credentials_store.dart';
 import 'hub_publish_record_store.dart';
 import 'team_profile_publish_mapper.dart';
 
+/// Injectable publish surface for Hub wizard UI and tests.
+abstract interface class HubPublishApi {
+  Future<HubPublishResult> publishExpert({
+    required DiscoverableMember member,
+    required String slug,
+    ExpertHubRegistry? upstream,
+    String? author,
+    String? category,
+    List<String>? skillIds,
+  });
+
+  Future<HubPublishResult> publishTeam({
+    required TeamProfile team,
+    required String slug,
+    required String category,
+    required Map<String, String> expertKeyRemap,
+    TeamHubRegistry? upstream,
+    String? author,
+  });
+}
+
 /// Thin facade: resolve token → map → publish → record badge.
-class HubPublishService {
+class HubPublishService implements HubPublishApi {
   HubPublishService({
     required HubPublishCredentialsStore credentials,
     required HubPublishRecordStore records,
@@ -31,16 +52,18 @@ class HubPublishService {
   final BundleProvenanceLookup _lookup;
   final int Function() _nowMs;
 
+  @override
   Future<HubPublishResult> publishExpert({
     required DiscoverableMember member,
     required String slug,
-    ExpertHubRegistry upstream = kDefaultExpertHubRegistry,
+    ExpertHubRegistry? upstream,
     String? author,
     String? category,
     List<String>? skillIds,
   }) async {
+    final resolvedUpstream = upstream ?? kDefaultExpertHubRegistry;
     final token = await _requireToken();
-    final key = '${upstream.fullName}/$slug';
+    final key = '${resolvedUpstream.fullName}/$slug';
     final mapped = ExpertPublishMapper.map(
       member: member,
       lookup: _lookup,
@@ -58,7 +81,7 @@ class HubPublishService {
     }
     final ready = mapped as PublishReadyExpert;
     final result = await _publisher.publishExpert(
-      upstream: upstream,
+      upstream: resolvedUpstream,
       slug: slug,
       memberJson: ready.member.toJson(),
       token: token,
@@ -75,16 +98,18 @@ class HubPublishService {
     return result;
   }
 
+  @override
   Future<HubPublishResult> publishTeam({
     required TeamProfile team,
     required String slug,
     required String category,
     required Map<String, String> expertKeyRemap,
-    TeamHubRegistry upstream = kDefaultTeamHubRegistry,
+    TeamHubRegistry? upstream,
     String? author,
   }) async {
+    final resolvedUpstream = upstream ?? kDefaultTeamHubRegistry;
     final token = await _requireToken();
-    final key = '${upstream.fullName}/$slug';
+    final key = '${resolvedUpstream.fullName}/$slug';
     final mapped = TeamProfilePublishMapper.map(
       team: team,
       expertKeyRemap: expertKeyRemap,
@@ -102,7 +127,7 @@ class HubPublishService {
     }
     final ready = mapped as PublishReadyTeam;
     final result = await _publisher.publishTeam(
-      upstream: upstream,
+      upstream: resolvedUpstream,
       slug: slug,
       teamJson: ready.team.toJson(),
       token: token,

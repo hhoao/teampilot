@@ -3066,6 +3066,97 @@ class AppLocalizationsZh extends AppLocalizations {
   String get myExpertsUpload => '上传';
 
   @override
+  String get myTeamsUpload => '上传';
+
+  @override
+  String get hubPublishExpertTitle => '发布专家到 Hub';
+
+  @override
+  String get hubPublishTeamTitle => '发布团队到 Hub';
+
+  @override
+  String get hubPublishAuthHint =>
+      '需要具有 repo 权限的 GitHub 个人访问令牌，才能向 Hub 仓库发起拉取请求。';
+
+  @override
+  String get hubPublishTokenLabel => 'GitHub 令牌';
+
+  @override
+  String get hubPublishTokenHint => 'ghp_…';
+
+  @override
+  String get hubPublishTokenStored => '已保存令牌，可在下方替换。';
+
+  @override
+  String get hubPublishTokenRequired => '发布需要 GitHub 令牌';
+
+  @override
+  String get hubPublishTokenSaveFailed => '无法保存 GitHub 令牌';
+
+  @override
+  String get hubPublishNext => '下一步';
+
+  @override
+  String get hubPublishPublish => '发布';
+
+  @override
+  String get hubPublishDone => '完成';
+
+  @override
+  String get hubPublishSlugLabel => '标识（slug）';
+
+  @override
+  String get hubPublishSlugHint => 'url-safe-id';
+
+  @override
+  String get hubPublishSlugRequired => '标识为必填项';
+
+  @override
+  String get hubPublishCategoryRequired => '分类为必填项';
+
+  @override
+  String get hubPublishAuthorLabel => '作者';
+
+  @override
+  String get hubPublishLocalExpertHint => '花名册中的本地专家须先映射为已发布或内置专家，才能上传。';
+
+  @override
+  String get hubPublishLocalExpertBlocked => '请先映射所有本地专家后再继续';
+
+  @override
+  String get hubPublishRemapLabel => '发布为';
+
+  @override
+  String get hubPublishNonPortableHint => '以下依赖没有可移植来源。请先从团队配置中移除后再发布：';
+
+  @override
+  String get hubPublishNonPortableBlocked => '请先移除不可移植依赖后再继续';
+
+  @override
+  String get hubPublishGatesClear => '依赖均可移植，可继续确认。';
+
+  @override
+  String get hubPublishConfirmHint => '请核对包元数据，然后发布基于 fork 的拉取请求。';
+
+  @override
+  String get hubPublishKindLabel => '类型';
+
+  @override
+  String get hubPublishKindExpert => '专家';
+
+  @override
+  String get hubPublishKindTeam => '团队';
+
+  @override
+  String get hubPublishSuccessHint => '拉取请求已创建。可复制或打开下方链接。';
+
+  @override
+  String get hubPublishCopyLink => '复制链接';
+
+  @override
+  String get hubPublishOpenPr => '打开 PR';
+
+  @override
   String get expertHubCreate => '新建';
 
   @override

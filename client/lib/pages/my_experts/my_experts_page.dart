@@ -11,6 +11,7 @@ import '../../models/discoverable_member.dart';
 import '../../models/team_config.dart';
 import '../../services/expert_hub/local_expert_writer.dart';
 import '../../services/expert_hub/member_roster_service.dart';
+import '../../services/hub_publish/hub_publish_record_store.dart';
 import '../../widgets/app_dialog.dart';
 import '../../widgets/empty_state_block.dart';
 import '../../widgets/settings/workspace_hub_shell.dart';
@@ -18,6 +19,7 @@ import '../expert_hub/expert_editor_dialog.dart';
 import '../expert_hub/expert_team_picker_dialog.dart';
 import '../expert_hub/member_hub_add_feedback.dart';
 import '../home_workspace/home_workspace_route.dart';
+import '../hub_publish/show_hub_publish_wizard.dart';
 import 'my_experts_card.dart';
 
 /// Ownership surface for local expert templates — list, create, edit, delete.
@@ -251,6 +253,14 @@ class _MyExpertsPageState extends State<MyExpertsPage> {
     }
   }
 
+  Future<void> _upload(DiscoverableMember member) async {
+    await showHubPublishWizard(
+      context,
+      kind: HubPublishKind.expert,
+      member: member,
+    );
+  }
+
   void _onCardAction(DiscoverableMember member, MyExpertsCardAction action) {
     switch (action) {
       case MyExpertsCardAction.edit:
@@ -259,6 +269,8 @@ class _MyExpertsPageState extends State<MyExpertsPage> {
         _delete(member);
       case MyExpertsCardAction.addToTeam:
         _addToTeam(member);
+      case MyExpertsCardAction.upload:
+        _upload(member);
     }
   }
 

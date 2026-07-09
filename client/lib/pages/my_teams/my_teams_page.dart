@@ -5,10 +5,12 @@ import 'package:go_router/go_router.dart';
 import '../../cubits/launch_profile_cubit.dart';
 import '../../l10n/l10n_extensions.dart';
 import '../../models/team_config.dart';
+import '../../services/hub_publish/hub_publish_record_store.dart';
 import '../../widgets/empty_state_block.dart';
 import '../../widgets/settings/workspace_hub_shell.dart';
 import '../home_workspace/home_workspace_new_team_dialog.dart';
 import '../home_workspace/home_workspace_route.dart';
+import '../hub_publish/show_hub_publish_wizard.dart';
 import '../team_config/team_delete_confirm_dialog.dart';
 import 'my_teams_card.dart';
 
@@ -84,6 +86,14 @@ class _MyTeamsPageState extends State<MyTeamsPage> {
     await cubit.deleteTeam(team.id);
   }
 
+  Future<void> _uploadTeam(TeamProfile team) async {
+    await showHubPublishWizard(
+      context,
+      kind: HubPublishKind.team,
+      team: team,
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final l10n = context.l10n;
@@ -147,6 +157,7 @@ class _MyTeamsPageState extends State<MyTeamsPage> {
                       team: team,
                       selected: team.id == highlightId,
                       onOpen: () => widget.onOpenTeam?.call(team.id),
+                      onUpload: () => _uploadTeam(team),
                       onDelete: () => _deleteTeam(
                         context,
                         context.read<LaunchProfileCubit>(),
