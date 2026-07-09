@@ -31,7 +31,7 @@ void main() {
       updatedAt: 1,
     );
     const remoteOther = DiscoverableTeam(
-      key: 'flashskyai/team-hub/other',
+      key: 'hhoao/teampilot/team-hub/other',
       name: 'Other',
       description: '',
       category: 'Y',

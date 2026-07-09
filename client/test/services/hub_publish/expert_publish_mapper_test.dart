@@ -51,14 +51,14 @@ void main() {
     final result = ExpertPublishMapper.map(
       member: local,
       lookup: lookup,
-      key: 'flashskyai/member-hub/arch',
+      key: 'hhoao/teampilot/member-hub/arch',
       author: 'flashskyai',
       updatedAt: 1700000000000,
     );
 
     expect(result, isA<PublishReadyExpert>());
     final ready = result as PublishReadyExpert;
-    expect(ready.member.key, 'flashskyai/member-hub/arch');
+    expect(ready.member.key, 'hhoao/teampilot/member-hub/arch');
     expect(ready.member.source, ExpertMemberSource.registry);
     expect(ready.member.originTeamKey, isNull);
     expect(ready.member.author, 'flashskyai');
@@ -101,7 +101,7 @@ void main() {
       member: local,
       lookup: lookup,
       skillIds: const ['local-skill'],
-      key: 'flashskyai/member-hub/arch',
+      key: 'hhoao/teampilot/member-hub/arch',
     );
 
     expect(result, isA<PublishBlockedExpert>());

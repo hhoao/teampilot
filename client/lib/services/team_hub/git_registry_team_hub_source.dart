@@ -85,7 +85,7 @@ class GitRegistryTeamHubSource implements TeamHubSource {
       try {
         final json = (jsonDecode(raw) as Map).cast<String, Object?>();
         // Stamp the canonical key from registry + slug (manifest key ignored).
-        json['key'] = '${registry.fullName}/$slug';
+        json['key'] = '${registry.catalogPrefix}/$slug';
         out.add(DiscoverableTeam.fromJson(json));
       } on FormatException catch (e) {
         appLogger.w('[team-hub] bad team.json for $slug: $e');

@@ -38,7 +38,7 @@ void main() {
 
     final members = await source.fetchMembers();
     expect(members, hasLength(1));
-    expect(members.single.key, 'flashskyai/member-hub/security-reviewer');
+    expect(members.single.key, 'hhoao/teampilot/member-hub/security-reviewer');
     expect(members.single.source, ExpertMemberSource.registry);
     expect(members.single.name, 'Security Reviewer');
     expect(

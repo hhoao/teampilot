@@ -10,7 +10,7 @@ class FakeGithubApi implements GithubApiClient {
     this.defaultSha = 'abc123',
     this.forkOwner = 'alice',
     this.authenticatedLogin = 'alice',
-    this.prHtmlUrl = 'https://github.com/flashskyai/member-hub/pull/1',
+    this.prHtmlUrl = 'https://github.com/hhoao/teampilot/pull/1',
   });
 
   String upstreamIndexJson;
@@ -59,7 +59,7 @@ class FakeGithubApi implements GithubApiClient {
     String? ref,
     required String token,
   }) async {
-    if (path == 'index.json') {
+    if (path.endsWith('index.json')) {
       return GithubFileContent(
         path: path,
         content: upstreamIndexJson,
@@ -107,7 +107,7 @@ class FakeGithubApi implements GithubApiClient {
     required String token,
   }) async {
     writtenPaths.add(path);
-    if (path == 'index.json') {
+    if (path.endsWith('index.json')) {
       updatedIndex = true;
       upstreamIndexJson = content;
     }
@@ -142,7 +142,7 @@ void main() {
         upstream: kDefaultExpertHubRegistry,
         slug: 'arch',
         memberJson: {
-          'key': 'flashskyai/member-hub/arch',
+          'key': 'hhoao/teampilot/member-hub/arch',
           'name': 'Arch',
           'description': 'Architect',
           'category': 'Engineering',
@@ -153,14 +153,15 @@ void main() {
 
       expect(result.prUrl, isNotEmpty);
       expect(result.prUrl, api.prHtmlUrl);
+      expect(result.registryFullName, kDefaultExpertHubRegistry.catalogPrefix);
       expect(api.ensuredFork, isTrue);
-      expect(api.writtenPaths, contains('members/arch/member.json'));
-      expect(api.writtenPaths, contains('index.json'));
+      expect(api.writtenPaths, contains('member-hub/members/arch/member.json'));
+      expect(api.writtenPaths, contains('member-hub/index.json'));
       expect(api.updatedIndex, isTrue);
       expect(api.openedPr, isTrue);
       expect(api.lastPrHead, 'alice:publish-expert-arch');
       expect(api.lastPrBase, 'main');
-      expect(api.createdBranches.single, contains('alice/member-hub:'));
+      expect(api.createdBranches.single, contains('alice/teampilot:'));
     });
 
     test('slug collision on upstream index fails before write', () async {
@@ -174,7 +175,7 @@ void main() {
           upstream: kDefaultExpertHubRegistry,
           slug: 'arch',
           memberJson: {
-            'key': 'flashskyai/member-hub/arch',
+            'key': 'hhoao/teampilot/member-hub/arch',
             'name': 'Arch',
             'description': '',
             'category': '',
@@ -199,7 +200,7 @@ void main() {
     test('publish team writes teams/<slug>/team.json and updates index', () async {
       final api = FakeGithubApi(
         upstreamIndexJson: '{"teams":[{"slug":"existing"}]}',
-        prHtmlUrl: 'https://github.com/flashskyai/team-hub/pull/2',
+        prHtmlUrl: 'https://github.com/hhoao/teampilot/pull/2',
       );
       final publisher = GithubRegistryPublisher(api: api);
 
@@ -207,7 +208,7 @@ void main() {
         upstream: kDefaultTeamHubRegistry,
         slug: 'platform',
         teamJson: {
-          'key': 'flashskyai/team-hub/platform',
+          'key': 'hhoao/teampilot/team-hub/platform',
           'name': 'Platform',
           'description': 'Platform team',
           'category': 'Engineering',
@@ -218,9 +219,10 @@ void main() {
       );
 
       expect(result.prUrl, api.prHtmlUrl);
+      expect(result.registryFullName, kDefaultTeamHubRegistry.catalogPrefix);
       expect(api.ensuredFork, isTrue);
-      expect(api.writtenPaths, contains('teams/platform/team.json'));
-      expect(api.writtenPaths, contains('index.json'));
+      expect(api.writtenPaths, contains('team-hub/teams/platform/team.json'));
+      expect(api.writtenPaths, contains('team-hub/index.json'));
       expect(api.updatedIndex, isTrue);
       expect(api.openedPr, isTrue);
       expect(api.lastPrHead, 'alice:publish-team-platform');
@@ -238,7 +240,7 @@ void main() {
           upstream: kDefaultTeamHubRegistry,
           slug: 'platform',
           teamJson: {
-            'key': 'flashskyai/team-hub/platform',
+            'key': 'hhoao/teampilot/team-hub/platform',
             'name': 'Platform',
             'description': '',
             'category': '',

@@ -10,9 +10,9 @@ void main() {
     await records.upsert(
       HubPublishRecord(
         kind: HubPublishKind.expert,
-        registryFullName: 'flashskyai/member-hub',
+        registryFullName: 'hhoao/teampilot/member-hub',
         slug: 'arch',
-        prUrl: 'https://github.com/flashskyai/member-hub/pull/1',
+        prUrl: 'https://github.com/hhoao/teampilot/pull/1',
         publishedAtMs: 1,
         localId: 'local/abc',
       ),
@@ -34,9 +34,9 @@ void main() {
     await writer.upsert(
       HubPublishRecord(
         kind: HubPublishKind.team,
-        registryFullName: 'flashskyai/team-hub',
+        registryFullName: 'hhoao/teampilot/team-hub',
         slug: 'alpha',
-        prUrl: 'https://github.com/flashskyai/team-hub/pull/2',
+        prUrl: 'https://github.com/hhoao/teampilot/pull/2',
         publishedAtMs: 2,
         localId: 'team-alpha',
       ),

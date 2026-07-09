@@ -81,14 +81,14 @@ void main() {
     );
 
     expect(result.prUrl, api.prHtmlUrl);
-    expect(api.writtenPaths, contains('members/arch/member.json'));
+    expect(api.writtenPaths, contains('member-hub/members/arch/member.json'));
     expect(
       records.find(kind: HubPublishKind.expert, slug: 'arch')?.prUrl,
       api.prHtmlUrl,
     );
     expect(
       records.find(kind: HubPublishKind.expert, slug: 'arch')?.registryFullName,
-      kDefaultExpertHubRegistry.fullName,
+      kDefaultExpertHubRegistry.catalogPrefix,
     );
     expect(
       records.find(kind: HubPublishKind.expert, slug: 'arch')?.localId,
@@ -126,7 +126,7 @@ void main() {
       name: 'Platform',
       description: 'Platform team',
       roster: const [
-        TeamRosterSlot(id: 'arch', expertKey: 'flashskyai/member-hub/arch'),
+        TeamRosterSlot(id: 'arch', expertKey: 'hhoao/teampilot/member-hub/arch'),
       ],
       createdAt: 1,
     );
@@ -141,10 +141,10 @@ void main() {
     );
 
     expect(result.prUrl, isNotEmpty);
-    expect(api.writtenPaths, contains('teams/platform/team.json'));
+    expect(api.writtenPaths, contains('team-hub/teams/platform/team.json'));
     expect(
       records.find(kind: HubPublishKind.team, slug: 'platform')?.registryFullName,
-      kDefaultTeamHubRegistry.fullName,
+      kDefaultTeamHubRegistry.catalogPrefix,
     );
     expect(
       records.find(kind: HubPublishKind.team, slug: 'platform')?.localId,

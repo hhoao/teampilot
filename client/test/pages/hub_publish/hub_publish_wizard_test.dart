@@ -29,7 +29,7 @@ class _MemoryKv implements SecureKeyValueStore {
 }
 
 class FakeHubPublishService implements HubPublishApi {
-  FakeHubPublishService({this.prUrl = 'https://github.com/flashskyai/member-hub/pull/42'});
+  FakeHubPublishService({this.prUrl = 'https://github.com/hhoao/teampilot/pull/42'});
 
   final String prUrl;
   var publishExpertCalls = 0;
@@ -50,7 +50,7 @@ class FakeHubPublishService implements HubPublishApi {
     if (lastError != null) throw lastError!;
     return HubPublishResult(
       prUrl: prUrl,
-      registryFullName: 'flashskyai/member-hub',
+      registryFullName: 'hhoao/teampilot/member-hub',
       slug: slug,
     );
   }
@@ -69,7 +69,7 @@ class FakeHubPublishService implements HubPublishApi {
     if (lastError != null) throw lastError!;
     return HubPublishResult(
       prUrl: prUrl,
-      registryFullName: 'flashskyai/team-hub',
+      registryFullName: 'hhoao/teampilot/team-hub',
       slug: slug,
     );
   }
@@ -90,7 +90,7 @@ DiscoverableMember _localExpert() => DiscoverableMember(
 );
 
 DiscoverableMember _publishedExpert() => DiscoverableMember(
-  key: 'flashskyai/member-hub/arch',
+  key: 'hhoao/teampilot/member-hub/arch',
   name: 'Arch (published)',
   description: '',
   category: 'Engineering',

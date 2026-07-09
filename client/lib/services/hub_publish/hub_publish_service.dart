@@ -63,7 +63,7 @@ class HubPublishService implements HubPublishApi {
   }) async {
     final resolvedUpstream = upstream ?? kDefaultExpertHubRegistry;
     final token = await _requireToken();
-    final key = '${resolvedUpstream.fullName}/$slug';
+    final key = '${resolvedUpstream.catalogPrefix}/$slug';
     final mapped = ExpertPublishMapper.map(
       member: member,
       lookup: _lookup,
@@ -110,7 +110,7 @@ class HubPublishService implements HubPublishApi {
   }) async {
     final resolvedUpstream = upstream ?? kDefaultTeamHubRegistry;
     final token = await _requireToken();
-    final key = '${resolvedUpstream.fullName}/$slug';
+    final key = '${resolvedUpstream.catalogPrefix}/$slug';
     final mapped = TeamProfilePublishMapper.map(
       team: team,
       expertKeyRemap: expertKeyRemap,

@@ -156,8 +156,10 @@ class GithubRegistryPublisher {
     return _publish(
       owner: upstream.owner,
       name: upstream.name,
+      catalogPrefix: upstream.catalogPrefix,
       slug: slug,
-      packagePath: 'members/$slug/member.json',
+      packagePath: upstream.repoPath('members/$slug/member.json'),
+      indexPath: upstream.repoPath('index.json'),
       packageJson: memberJson,
       indexListKey: 'members',
       indexEntryIsObject: false,
@@ -177,8 +179,10 @@ class GithubRegistryPublisher {
     return _publish(
       owner: upstream.owner,
       name: upstream.name,
+      catalogPrefix: upstream.catalogPrefix,
       slug: slug,
-      packagePath: 'teams/$slug/team.json',
+      packagePath: upstream.repoPath('teams/$slug/team.json'),
+      indexPath: upstream.repoPath('index.json'),
       packageJson: teamJson,
       indexListKey: 'teams',
       indexEntryIsObject: true,
@@ -191,8 +195,10 @@ class GithubRegistryPublisher {
   Future<HubPublishResult> _publish({
     required String owner,
     required String name,
+    required String catalogPrefix,
     required String slug,
     required String packagePath,
+    required String indexPath,
     required Map<String, Object?> packageJson,
     required String indexListKey,
     required bool indexEntryIsObject,
@@ -214,7 +220,7 @@ class GithubRegistryPublisher {
     final upstreamIndex = await _api.getFileContent(
       owner: owner,
       name: name,
-      path: 'index.json',
+      path: indexPath,
       ref: defaultBranch,
       token: token,
     );
@@ -227,7 +233,7 @@ class GithubRegistryPublisher {
     if (existingSlugs.contains(trimmedSlug)) {
       throw HubPublishException(
         HubPublishErrorCode.slugCollision,
-        'Slug "$trimmedSlug" already exists in $owner/$name index.json',
+        'Slug "$trimmedSlug" already exists in $catalogPrefix/$indexPath',
       );
     }
 
@@ -270,17 +276,17 @@ class GithubRegistryPublisher {
     final forkIndex = await _api.getFileContent(
       owner: fork.owner,
       name: fork.name,
-      path: 'index.json',
+      path: indexPath,
       ref: branchName,
       token: token,
     );
     await _api.putFile(
       owner: fork.owner,
       name: fork.name,
-      path: 'index.json',
+      path: indexPath,
       branch: branchName,
       content: updatedIndex,
-      message: 'Update index.json for $trimmedSlug',
+      message: 'Update $indexPath for $trimmedSlug',
       sha: forkIndex?.sha,
       token: token,
     );
@@ -297,7 +303,7 @@ class GithubRegistryPublisher {
 
     return HubPublishResult(
       prUrl: pr.htmlUrl,
-      registryFullName: '$owner/$name',
+      registryFullName: catalogPrefix,
       slug: trimmedSlug,
     );
   }

@@ -230,9 +230,9 @@ void main() {
     await records.upsert(
       HubPublishRecord(
         kind: HubPublishKind.team,
-        registryFullName: 'flashskyai/team-hub',
+        registryFullName: 'hhoao/teampilot/team-hub',
         slug: 'alpha-squad',
-        prUrl: 'https://github.com/flashskyai/team-hub/pull/9',
+        prUrl: 'https://github.com/hhoao/teampilot/pull/9',
         publishedAtMs: 1,
         localId: 'team-alpha',
       ),

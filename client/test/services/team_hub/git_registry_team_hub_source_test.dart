@@ -47,8 +47,8 @@ void main() {
     expect(
       teams.map((t) => t.key),
       containsAll(<String>[
-        'flashskyai/team-hub/research-squad',
-        'flashskyai/team-hub/qa-pair',
+        'hhoao/teampilot/team-hub/research-squad',
+        'hhoao/teampilot/team-hub/qa-pair',
       ]),
     );
     final categories = await source.categories();

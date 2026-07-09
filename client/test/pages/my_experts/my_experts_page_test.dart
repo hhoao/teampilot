@@ -288,9 +288,9 @@ void main() {
     await records.upsert(
       HubPublishRecord(
         kind: HubPublishKind.expert,
-        registryFullName: 'flashskyai/member-hub',
+        registryFullName: 'hhoao/teampilot/member-hub',
         slug: 'published-one',
-        prUrl: 'https://github.com/flashskyai/member-hub/pull/3',
+        prUrl: 'https://github.com/hhoao/teampilot/pull/3',
         publishedAtMs: 1,
         localId: 'local/e1',
       ),

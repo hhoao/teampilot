@@ -88,7 +88,7 @@ class GitRegistryExpertHubSource implements ExpertHubSource {
       try {
         final json = (jsonDecode(raw) as Map).cast<String, Object?>();
         // Stamp the canonical key from registry + slug (manifest key ignored).
-        json['key'] = '${registry.fullName}/$slug';
+        json['key'] = '${registry.catalogPrefix}/$slug';
         json['source'] = ExpertMemberSource.registry.value;
         out.add(DiscoverableMember.fromJson(json));
       } on FormatException catch (e) {

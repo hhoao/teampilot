@@ -4,7 +4,7 @@ import 'package:teampilot/models/team_config.dart';
 
 void main() {
   const json = <String, Object?>{
-    'key': 'flashskyai/team-hub/research-squad',
+    'key': 'hhoao/teampilot/team-hub/research-squad',
     'name': 'Research Squad',
     'description': 'A team for deep research.',
     'category': 'Research',
@@ -56,7 +56,7 @@ void main() {
 
   test('round-trips through fromJson/toJson', () {
     final team = DiscoverableTeam.fromJson(json);
-    expect(team.key, 'flashskyai/team-hub/research-squad');
+    expect(team.key, 'hhoao/teampilot/team-hub/research-squad');
     expect(team.cli, CliTool.claude);
     expect(team.teamMode, TeamMode.mixed);
     expect(team.roster.single.id, 'team-lead');
