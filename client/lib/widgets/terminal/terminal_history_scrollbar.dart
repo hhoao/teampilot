@@ -172,11 +172,17 @@ class _TerminalHistoryScrollbarState extends State<TerminalHistoryScrollbar> {
         final thumbTop = geom.thumbTopAt(paintFraction);
         final theme = ScrollbarTheme.of(context);
         final thickness = theme.thickness?.resolve({}) ?? 8.0;
-        final radius = theme.radius ?? const Radius.circular(4);
+        final radius = theme.radius ?? const Radius.circular(8);
+        // Match Material [Scrollbar] defaults (same as file tree / panels).
+        final onSurface = Theme.of(context).colorScheme.onSurface;
+        final isDark = Theme.of(context).brightness == Brightness.dark;
         final trackColor =
-            theme.trackColor?.resolve({}) ?? const Color(0x33FFFFFF);
+            theme.trackColor?.resolve({}) ?? Colors.transparent;
+        final idleThumb = onSurface.withValues(alpha: isDark ? 0.3 : 0.1);
+        final dragThumb = onSurface.withValues(alpha: isDark ? 0.75 : 0.6);
         final thumbColor =
-            theme.thumbColor?.resolve({}) ?? const Color(0x99FFFFFF);
+            theme.thumbColor?.resolve({}) ??
+            (_dragging ? dragThumb : idleThumb);
 
         return SizedBox(
           width: 12,
