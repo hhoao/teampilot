@@ -116,7 +116,11 @@ void main() {
 
           const text = 'hello';
           final automation = FullscreenPtyAutomation();
-          final port = TerminalFullscreenPtyPort(session, aborted: () => false);
+          final port = TerminalFullscreenPtyPort(
+            input: session.input,
+            probe: session.probe,
+            aborted: () => false,
+          );
           final outcome = await automation.deliverPasteAndSubmit(
             port: port,
             text: text,

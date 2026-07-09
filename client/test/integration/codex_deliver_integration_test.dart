@@ -145,7 +145,8 @@ void main() {
           final text = 'codex-probe-${DateTime.now().millisecondsSinceEpoch}';
           final automation = FullscreenPtyAutomation();
           final port = TerminalFullscreenPtyPort(
-            session,
+            input: session.input,
+            probe: session.probe,
             aborted: () => false,
             crAckConfig: const FullscreenCrAckConfig(
               strategy: FullscreenCrAckStrategy.composerMovesDown,

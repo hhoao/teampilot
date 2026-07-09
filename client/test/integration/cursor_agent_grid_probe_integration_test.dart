@@ -123,7 +123,7 @@ void main() {
       }
 
       // Fresh workspace shows a trust dialog before the input box.
-      if (session
+      if (session.probe
           .describeProbeWindow(scanRows: 24)
           .contains('Trust this workspace')) {
         session.input.writeToPty('a');

@@ -146,7 +146,8 @@ void main() {
 
           final automation = FullscreenPtyAutomation();
           final port = TerminalFullscreenPtyPort(
-            session,
+            input: session.input,
+            probe: session.probe,
             aborted: () => false,
             crAckConfig: const FullscreenCrAckConfig(
               strategy: FullscreenCrAckStrategy.anchorCellClears,
