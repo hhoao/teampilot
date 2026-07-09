@@ -350,14 +350,16 @@ class TeamMemberConfigFormState extends State<TeamMemberConfigForm> {
         widget.memberId,
       ),
     );
-    final expertLabel = context.select<LaunchProfileCubit, String>((c) {
-      final slot = _slotSnapshot(c, widget.memberId);
-      return ExpertMemberResolver.labelForKey(
-        key: slot?.expertKey,
-        fallbackLabel: l10n.expertHubNoneSelected,
-        hubState: context.read<ExpertHubCubit>().state,
-      );
+    // Keep Provider lookups outside select callbacks (nested read/watch is forbidden).
+    final expertKey = context.select<LaunchProfileCubit, String?>((c) {
+      return _slotSnapshot(c, widget.memberId)?.expertKey;
     });
+    final hubState = context.watch<ExpertHubCubit>().state;
+    final expertLabel = ExpertMemberResolver.labelForKey(
+      key: expertKey,
+      fallbackLabel: l10n.expertHubNoneSelected,
+      hubState: hubState,
+    );
     final team = _team;
     final member = _member;
     if (team == null ||
