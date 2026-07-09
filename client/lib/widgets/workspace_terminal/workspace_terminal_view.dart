@@ -10,6 +10,7 @@ import '../../services/terminal/terminal_fonts.dart';
 import '../../services/terminal/terminal_uri_opener.dart';
 import '../../services/terminal/workspace_terminal_registry.dart';
 import '../../services/terminal/workspace_terminal_title_resolver.dart';
+import '../terminal/terminal_with_history_scrollbar.dart';
 
 class WorkspaceTerminalView extends StatelessWidget {
   const WorkspaceTerminalView({
@@ -39,35 +40,39 @@ class WorkspaceTerminalView extends StatelessWidget {
       color: background,
       child: Semantics(
         label: title,
-        child: TerminalView(
-          entry.session.engine,
-          key: terminalViewKey,
+        child: TerminalWithHistoryScrollbar(
+          engine: entry.session.engine,
           controller: entry.controller,
-          theme: theme,
-          backgroundOpacity: 0.98,
-          padding: const EdgeInsets.symmetric(horizontal: 36, vertical: 8),
-          textStyle: appTerminalTextStyle(context),
-          autofocus: true,
-          linkProviders: entry.session.linkProviders,
-          primaryTapActivatesLink: context
-              .watch<SessionPreferencesCubit>()
-              .state
-              .preferences
-              .terminalLinkClickOpensInApp,
-          onPtyResize: entry.session.onTerminalPtyResize,
-          onLinkActivate: (uri) {
-            final editorCubit = context.read<EditorCubit>();
-            unawaited(
-              TerminalUriOpener.open(
-                uri,
-                workingDirectory: entry.cwd,
-                openInEditor: (path) => editorCubit.openFile(path),
-              ),
-            );
-          },
-          onSecondaryTapDown: (details, offset) {
-            onContextMenu(details.globalPosition, offset);
-          },
+          child: TerminalView(
+            entry.session.engine,
+            key: terminalViewKey,
+            controller: entry.controller,
+            theme: theme,
+            backgroundOpacity: 0.98,
+            padding: const EdgeInsets.symmetric(horizontal: 36, vertical: 8),
+            textStyle: appTerminalTextStyle(context),
+            autofocus: true,
+            linkProviders: entry.session.linkProviders,
+            primaryTapActivatesLink: context
+                .watch<SessionPreferencesCubit>()
+                .state
+                .preferences
+                .terminalLinkClickOpensInApp,
+            onPtyResize: entry.session.onTerminalPtyResize,
+            onLinkActivate: (uri) {
+              final editorCubit = context.read<EditorCubit>();
+              unawaited(
+                TerminalUriOpener.open(
+                  uri,
+                  workingDirectory: entry.cwd,
+                  openInEditor: (path) => editorCubit.openFile(path),
+                ),
+              );
+            },
+            onSecondaryTapDown: (details, offset) {
+              onContextMenu(details.globalPosition, offset);
+            },
+          ),
         ),
       ),
     );

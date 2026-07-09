@@ -20,6 +20,7 @@ import '../../services/terminal/terminal_fonts.dart';
 import '../../services/workspace_dnd/terminal_drop_ingestor.dart';
 import '../../services/workspace_dnd/workspace_drop_target.dart';
 import '../../widgets/terminal/parked_send_overlay.dart';
+import '../../widgets/terminal/terminal_with_history_scrollbar.dart';
 import '../../widgets/terminal_find_bar.dart';
 import '../../widgets/workspace_dnd/external_file_drop_region.dart';
 import '../../widgets/workspace_dnd/workspace_file_drop_region.dart';
@@ -92,55 +93,59 @@ class ChatWorkbenchRunningTerminal extends StatelessWidget {
             child: WorkspaceFileDropRegion(
               target: _dropIngestor(),
               onOutcome: (outcome) => _showDropOutcome(context, outcome),
-              child: TerminalView(
-                session.engine,
+              child: TerminalWithHistoryScrollbar(
+                engine: session.engine,
                 controller: terminalController,
-                theme: terminalTheme,
-                backgroundOpacity: 0.98,
-                padding: const EdgeInsets.symmetric(
-                  horizontal: 36,
-                  vertical: 16,
+                child: TerminalView(
+                  session.engine,
+                  controller: terminalController,
+                  theme: terminalTheme,
+                  backgroundOpacity: 0.98,
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 36,
+                    vertical: 16,
+                  ),
+                  textStyle: appTerminalTextStyle(context),
+                  autofocus: autofocus && !findVisible,
+                  linkProviders: session.linkProviders,
+                  primaryTapActivatesLink: context
+                      .watch<SessionPreferencesCubit>()
+                      .state
+                      .preferences
+                      .terminalLinkClickOpensInApp,
+                  onPtyResize: session.onTerminalPtyResize,
+                  onTapDown: (_, offset) {
+                    if (!HardwareKeyboard.instance.isControlPressed &&
+                        !HardwareKeyboard.instance.isMetaPressed) {
+                      terminalController.clearSelection();
+                    }
+                  },
+                  onLinkActivate: (uri) {
+                    unawaited(onOpenLink(uri));
+                  },
+                  onSecondaryTapDown: (details, offset) {
+                    unawaited(
+                      showChatWorkbenchTerminalContextMenu(
+                        context: context,
+                        menuContext: context,
+                        terminalController: terminalController,
+                        globalPosition: details.globalPosition,
+                        engine: session.engine,
+                        cellOffset: offset,
+                        sessionRunning: session.isRunning,
+                        onFindRequested: () => onFindVisibleChanged(true),
+                        onOpenLink: onOpenLink,
+                        onExportScrollback: () =>
+                            exportChatWorkbenchTerminalScrollback(
+                              context,
+                              session.engine,
+                            ),
+                        onDisconnect: onDisconnect,
+                        onRestart: onRestart,
+                      ),
+                    );
+                  },
                 ),
-                textStyle: appTerminalTextStyle(context),
-                autofocus: autofocus && !findVisible,
-                linkProviders: session.linkProviders,
-                primaryTapActivatesLink: context
-                    .watch<SessionPreferencesCubit>()
-                    .state
-                    .preferences
-                    .terminalLinkClickOpensInApp,
-                onPtyResize: session.onTerminalPtyResize,
-                onTapDown: (_, offset) {
-                  if (!HardwareKeyboard.instance.isControlPressed &&
-                      !HardwareKeyboard.instance.isMetaPressed) {
-                    terminalController.clearSelection();
-                  }
-                },
-                onLinkActivate: (uri) {
-                  unawaited(onOpenLink(uri));
-                },
-                onSecondaryTapDown: (details, offset) {
-                  unawaited(
-                    showChatWorkbenchTerminalContextMenu(
-                      context: context,
-                      menuContext: context,
-                      terminalController: terminalController,
-                      globalPosition: details.globalPosition,
-                      engine: session.engine,
-                      cellOffset: offset,
-                      sessionRunning: session.isRunning,
-                      onFindRequested: () => onFindVisibleChanged(true),
-                      onOpenLink: onOpenLink,
-                      onExportScrollback: () =>
-                          exportChatWorkbenchTerminalScrollback(
-                            context,
-                            session.engine,
-                          ),
-                      onDisconnect: onDisconnect,
-                      onRestart: onRestart,
-                    ),
-                  );
-                },
               ),
             ),
           ),
