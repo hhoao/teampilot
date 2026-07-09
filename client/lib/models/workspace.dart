@@ -17,6 +17,7 @@ class Workspace {
     this.updatedAt = 0,
     this.sessionIds = const [],
     this.memberTargetsByTeam = const {},
+    this.memberPlacementInitializedByTeam = const {},
   });
 
   factory Workspace({
@@ -29,6 +30,7 @@ class Workspace {
     int updatedAt = 0,
     List<String> sessionIds = const [],
     Map<String, MemberTargetAssignments> memberTargetsByTeam = const {},
+    Map<String, bool> memberPlacementInitializedByTeam = const {},
   }) {
     return Workspace._(
       workspaceId: workspaceId,
@@ -40,6 +42,9 @@ class Workspace {
       updatedAt: updatedAt,
       sessionIds: sessionIds,
       memberTargetsByTeam: _freezeTargetsByTeam(memberTargetsByTeam),
+      memberPlacementInitializedByTeam: _freezeInitializedByTeam(
+        memberPlacementInitializedByTeam,
+      ),
     );
   }
 
@@ -58,6 +63,9 @@ class Workspace {
       updatedAt: json['updatedAt'] as int? ?? 0,
       sessionIds: sessionIds,
       memberTargetsByTeam: _targetsByTeamFromJson(json['memberTargetsByTeam']),
+      memberPlacementInitializedByTeam: _initializedByTeamFromJson(
+        json['memberPlacementInitializedByTeam'],
+      ),
     );
   }
 
@@ -72,6 +80,9 @@ class Workspace {
 
   /// Remembered mixed-workspace machine pins keyed by team id.
   final Map<String, MemberTargetAssignments> memberTargetsByTeam;
+
+  /// Teams whose member placement has been initialized for this workspace.
+  final Map<String, bool> memberPlacementInitializedByTeam;
 
   String get firstFolderPath => folders.isEmpty ? '' : folders.first.path;
   List<String> get extraFolderPaths => folders.length <= 1
@@ -140,6 +151,7 @@ class Workspace {
     int? updatedAt,
     List<String>? sessionIds,
     Map<String, MemberTargetAssignments>? memberTargetsByTeam,
+    Map<String, bool>? memberPlacementInitializedByTeam,
   }) {
     return Workspace(
       workspaceId: workspaceId ?? this.workspaceId,
@@ -151,6 +163,9 @@ class Workspace {
       updatedAt: updatedAt ?? this.updatedAt,
       sessionIds: sessionIds ?? this.sessionIds,
       memberTargetsByTeam: memberTargetsByTeam ?? this.memberTargetsByTeam,
+      memberPlacementInitializedByTeam:
+          memberPlacementInitializedByTeam ??
+          this.memberPlacementInitializedByTeam,
     );
   }
 
@@ -167,6 +182,10 @@ class Workspace {
       if (memberTargetsByTeam.isNotEmpty)
         'memberTargetsByTeam': {
           for (final e in memberTargetsByTeam.entries) e.key: e.value,
+        },
+      if (memberPlacementInitializedByTeam.isNotEmpty)
+        'memberPlacementInitializedByTeam': {
+          for (final e in memberPlacementInitializedByTeam.entries) e.key: e.value,
         },
     };
   }
@@ -206,6 +225,24 @@ class Workspace {
     return _freezeTargetsByTeam(out);
   }
 
+  static Map<String, bool> _freezeInitializedByTeam(Map<String, bool> raw) {
+    return Map<String, bool>.unmodifiable({
+      for (final e in raw.entries)
+        if (e.key.trim().isNotEmpty && e.value == true) e.key.trim(): true,
+    });
+  }
+
+  static Map<String, bool> _initializedByTeamFromJson(Object? raw) {
+    if (raw is! Map) return const {};
+    final out = <String, bool>{};
+    for (final e in raw.entries) {
+      final id = e.key.toString().trim();
+      if (id.isEmpty) continue;
+      if (e.value == true) out[id] = true;
+    }
+    return Map.unmodifiable(out);
+  }
+
   @override
   bool operator ==(Object other) {
     return identical(this, other) ||
@@ -219,7 +256,11 @@ class Workspace {
             createdAt == other.createdAt &&
             updatedAt == other.updatedAt &&
             listEquals(sessionIds, other.sessionIds) &&
-            mapEquals(memberTargetsByTeam, other.memberTargetsByTeam);
+            mapEquals(memberTargetsByTeam, other.memberTargetsByTeam) &&
+            mapEquals(
+              memberPlacementInitializedByTeam,
+              other.memberPlacementInitializedByTeam,
+            );
   }
 
   @override
@@ -237,6 +278,7 @@ class Workspace {
         (e) => Object.hash(e.key, Object.hashAll(e.value.entries)),
       ),
     ),
+    Object.hashAll(memberPlacementInitializedByTeam.entries),
   );
 }
 
