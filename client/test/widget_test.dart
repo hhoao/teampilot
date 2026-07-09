@@ -14,7 +14,12 @@ import 'package:teampilot/cubits/config_cubit.dart';
 import 'package:teampilot/cubits/extension_cubit.dart';
 import 'package:teampilot/cubits/editor_cubit.dart';
 import 'package:teampilot/cubits/layout_cubit.dart';
+import 'package:teampilot/cubits/plugin_cubit.dart';
+import 'package:teampilot/cubits/skill_cubit.dart';
 import 'package:teampilot/cubits/workspace_tools_cubit.dart';
+import 'package:teampilot/repositories/plugin_repository.dart';
+import 'package:teampilot/repositories/skill_repository.dart';
+import 'package:teampilot/services/plugin/plugin_repo_service.dart';
 import 'package:teampilot/services/terminal/workspace_shell_connector.dart';
 import 'package:teampilot/services/terminal/workspace_terminal_registry.dart';
 import 'package:teampilot/repositories/ssh_credential_store.dart';
@@ -213,6 +218,17 @@ Widget buildTestApp({
               presetsPath: '/cli-presets.json',
             ),
           ),
+        ),
+        BlocProvider(create: (_) => SkillCubit(SkillRepository())),
+        BlocProvider(
+          create: (_) {
+            final repo = PluginRepository();
+            return PluginCubit(
+              repository: repo,
+              installService: repo.install,
+              repoService: PluginRepoService(),
+            );
+          },
         ),
         BlocProvider(create: (_) => WorkspaceToolsCubit()),
         BlocProvider(create: (_) => NotificationCubit()),
