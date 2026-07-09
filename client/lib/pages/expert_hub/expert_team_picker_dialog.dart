@@ -5,7 +5,7 @@ import '../../cubits/launch_profile_cubit.dart';
 import '../../l10n/app_localizations.dart';
 import '../../l10n/l10n_extensions.dart';
 import '../../models/team_config.dart';
-import '../../services/storage/launch_profile_provisioner.dart';
+import '../../utils/launch_profile_display_name.dart';
 import '../../widgets/app_dialog.dart';
 import '../team_hub/team_hub_visuals.dart';
 
@@ -59,10 +59,6 @@ class ExpertTeamPickerDialog extends StatelessWidget {
   }
 
   static String _teamLabel(AppLocalizations l10n, TeamProfile team) {
-    if (team.id == LaunchProfileProvisioner.defaultTeamId) {
-      return l10n.homeWorkspaceDefaultTeamName;
-    }
-    final display = team.display.trim();
-    return display.isNotEmpty ? display : team.id;
+    return launchProfileDisplayName(l10n, team);
   }
 }

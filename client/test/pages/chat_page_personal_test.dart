@@ -64,6 +64,8 @@ void main() {
     );
     addTearDown(() => teamCubit.close());
 
+    await tester.runAsync(() => teamCubit.load());
+
     final sessionRepo = SessionRepository(rootDir: appData.path);
     final chatCubit = ChatCubit(
       executableResolver: _executable,
@@ -146,9 +148,9 @@ void main() {
       ),
     );
     await tester.pump();
+    await tester.pump(const Duration(milliseconds: 100));
 
-    expect(teamCubit.state.selectedTeam, isNull);
-    expect(find.byType(CircularProgressIndicator), findsNothing);
+    expect(teamCubit.state.isLoading, isFalse);
     expect(find.byType(WorkspaceShell), findsOneWidget);
   });
 }

@@ -160,11 +160,11 @@ void main() {
         busIdle: MemberBusIdleEndpoint(url: 'http://127.0.0.1:5050/idle'),
       );
 
-      final cursorDir = layout.sessionRuntimeToolDir(
+      final cursorDir = layout.workspaceRuntimeMemberToolDir(
         _workspaceId,
-        'mixed-session',
+        'team-a',
+        ClaudeTeamRosterService.safeClaudePathSegment('planner'),
         'cursor',
-        memberId: ClaudeTeamRosterService.safeClaudePathSegment('planner'),
       );
       final memberHome = p.join(cursorDir, 'home');
       expect(plan.memberConfigDir, memberHome);

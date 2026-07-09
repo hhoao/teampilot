@@ -15,7 +15,6 @@ import '../../../cubits/launch_profile_cubit.dart';
 import '../../../cubits/worktree_cubit.dart';
 import '../../../l10n/l10n_extensions.dart';
 import '../../../models/landing_launch_context.dart';
-import '../../../models/expert_session_overlay.dart';
 import '../../../models/workspace.dart';
 import '../../../models/app_session.dart';
 import '../../../models/personal_profile.dart';
@@ -243,14 +242,22 @@ Future<void> submitWorkspaceLandingMessage(
   final personalPresetId = launch.presetId?.trim() ?? '';
   final team = isPersonal ? null : _teamProfileById(context, sessionTeamId);
 
-  ExpertSessionOverlay? expertOverlay;
   final trimmedExpert =
       expertKey?.trim() ?? launch.expertKey?.trim() ?? '';
   if (isPersonal && trimmedExpert.isNotEmpty) {
-    expertOverlay = await ExpertMemberResolver.resolveOverlay(
-      trimmedExpert,
-      cubit: context.mounted ? context.read<ExpertHubCubit>() : null,
+    final resolved = await ExpertMemberResolver.resolveMember(
+      key: trimmedExpert,
+      hubState: context.mounted ? context.read<ExpertHubCubit>().state : null,
     );
+    if (!context.mounted) return;
+    if (resolved == null) {
+      AppToast.show(
+        context,
+        message: l10n.expertHubNotFound,
+        variant: AppToastVariant.warning,
+      );
+      return;
+    }
   }
 
   final plannedSessionId = _uuid.v4();
@@ -263,7 +270,7 @@ Future<void> submitWorkspaceLandingMessage(
     personalPresetId: personalPresetId.isNotEmpty ? personalPresetId : null,
     workingDirectory: workingDirectory,
     fixedSessionId: plannedSessionId,
-    expertOverlay: expertOverlay,
+    expertKey: trimmedExpert.isNotEmpty ? trimmedExpert : null,
   );
   if (status == null) return;
   if (status != SessionOpenStatus.opened) {
@@ -422,7 +429,7 @@ Future<SessionOpenStatus?> _requestCreateWorkspaceConversation(
   CliTool? cli,
   String? workingDirectory,
   String? fixedSessionId,
-  ExpertSessionOverlay? expertOverlay,
+  String? expertKey,
 }) async {
   final chatCubit = context.read<ChatCubit>();
   final repo = context.read<SessionRepository>();
@@ -456,7 +463,7 @@ Future<SessionOpenStatus?> _requestCreateWorkspaceConversation(
         workingDirectory: workingDirectory,
         emptyDisplayTitleFallback: l10n.defaultNewChatSessionTitle,
         fixedSessionId: fixedSessionId,
-        expertOverlay: expertOverlay,
+        expertKey: expertKey,
       ),
     );
   } on Object catch (error, stackTrace) {

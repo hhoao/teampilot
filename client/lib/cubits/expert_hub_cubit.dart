@@ -3,7 +3,7 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 
 import '../models/discoverable_member.dart';
 import '../services/expert_hub/composite_expert_hub_source.dart';
-import '../services/expert_hub/member_clone_service.dart';
+import '../services/expert_hub/member_roster_service.dart';
 import 'launch_profile_cubit.dart';
 
 enum ExpertHubLoadStatus { idle, loading, ready, error }
@@ -138,13 +138,13 @@ class ExpertHubCubit extends Cubit<ExpertHubState> {
     required CompositeExpertHubSource source,
     required FavoritesLoader loadFavorites,
     required FavoriteToggler saveFavoriteToggle,
-    required MemberCloneService memberCloneService,
+    required MemberRosterService memberRosterService,
     required LaunchProfilesAccessor launchProfiles,
     InstalledDepIdsLoader? loadInstalledDepIds,
   }) : _source = source,
        _loadFavorites = loadFavorites,
        _saveFavoriteToggle = saveFavoriteToggle,
-       _memberCloneService = memberCloneService,
+       _memberRosterService = memberRosterService,
        _launchProfiles = launchProfiles,
        _loadInstalledDepIds = loadInstalledDepIds,
        super(const ExpertHubState());
@@ -152,7 +152,7 @@ class ExpertHubCubit extends Cubit<ExpertHubState> {
   final CompositeExpertHubSource _source;
   final FavoritesLoader _loadFavorites;
   final FavoriteToggler _saveFavoriteToggle;
-  final MemberCloneService _memberCloneService;
+  final MemberRosterService _memberRosterService;
   final LaunchProfilesAccessor _launchProfiles;
   final InstalledDepIdsLoader? _loadInstalledDepIds;
 
@@ -228,9 +228,9 @@ class ExpertHubCubit extends Cubit<ExpertHubState> {
   }) async {
     emit(state.copyWith(addingKeys: {...state.addingKeys, member.key}));
     try {
-      final result = await _memberCloneService.addToTeam(
+      final result = await _memberRosterService.addExpertToTeam(
         teamId: teamId,
-        member: member,
+        expert: member,
         launchProfiles: _launchProfiles(),
       );
       final installed =

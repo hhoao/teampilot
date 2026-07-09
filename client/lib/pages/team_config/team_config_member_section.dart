@@ -13,9 +13,10 @@ import '../../l10n/l10n_extensions.dart';
 import '../../models/discoverable_member.dart';
 import '../../models/discoverable_team.dart';
 import '../../models/team_config.dart';
-import '../../models/team_member_prompt_presets.dart';
+import '../../models/team_roster_slot.dart';
 import '../../services/app/flashskyai_agent_catalog_service.dart';
 import '../../services/cli/registry/cli_tool_registry_scope.dart';
+import '../../services/expert_hub/expert_member_resolver.dart';
 import '../../services/expert_hub/local_member_template_store.dart';
 import '../../theme/app_text_styles.dart';
 import '../../utils/debounce/debounce.dart';
@@ -96,14 +97,8 @@ class TeamMemberConfigForm extends StatefulWidget {
 }
 
 class TeamMemberConfigFormState extends State<TeamMemberConfigForm> {
-  late TextEditingController _nameCtl;
   late TextEditingController _agentCtl;
   late TextEditingController _argsCtl;
-  late TextEditingController _promptCtl;
-  late TextEditingController _playbookCtl;
-  late FocusNode _nameFocus;
-  late FocusNode _promptFocus;
-  late FocusNode _playbookFocus;
   late FocusNode _argsFocus;
   late Debouncer _persistDebouncer;
   List<String> _userAgentIds = const [];
@@ -119,6 +114,15 @@ class TeamMemberConfigFormState extends State<TeamMemberConfigForm> {
   TeamMemberConfig? _memberSnapshot(LaunchProfileCubit cubit, String memberId) {
     final team = LaunchProfileSelectors.teamById(cubit.state, widget.teamId);
     return LaunchProfileSelectors.memberById(team, memberId);
+  }
+
+  TeamRosterSlot? _slotSnapshot(LaunchProfileCubit cubit, String memberId) {
+    final team = LaunchProfileSelectors.teamById(cubit.state, widget.teamId);
+    if (team == null) return null;
+    for (final slot in team.roster) {
+      if (slot.id == memberId) return slot;
+    }
+    return null;
   }
 
   TeamMemberConfig? get _member => _memberSnapshot(_cubit, widget.memberId);
@@ -148,17 +152,11 @@ class TeamMemberConfigFormState extends State<TeamMemberConfigForm> {
   }
 
   void _initControllersForMember(TeamMemberConfig? member) {
-    _nameCtl = TextEditingController(text: member?.name ?? '');
     _agentCtl = TextEditingController(text: member?.agent ?? '');
     _argsCtl = TextEditingController(text: member?.extraArgs ?? '');
-    _promptCtl = TextEditingController(text: member?.prompt ?? '');
-    _playbookCtl = TextEditingController(text: member?.playbook ?? '');
   }
 
   void _initFocusNodes() {
-    _nameFocus = FocusNode()..addListener(_onNameFocusChanged);
-    _promptFocus = FocusNode()..addListener(_onPromptFocusChanged);
-    _playbookFocus = FocusNode()..addListener(_onPlaybookFocusChanged);
     _argsFocus = FocusNode()..addListener(_onArgsFocusChanged);
   }
 
@@ -181,11 +179,8 @@ class TeamMemberConfigFormState extends State<TeamMemberConfigForm> {
     }
     final member = _member;
     if (member == null) return;
-    _syncControllerIfIdle(_nameCtl, _nameFocus, member.name);
     _syncControllerIfIdle(_agentCtl, null, member.agent);
     _syncControllerIfIdle(_argsCtl, _argsFocus, member.extraArgs);
-    _syncControllerIfIdle(_promptCtl, _promptFocus, member.prompt);
-    _syncControllerIfIdle(_playbookCtl, _playbookFocus, member.playbook);
   }
 
   Future<void> _loadUserAgents() async {
@@ -196,11 +191,8 @@ class TeamMemberConfigFormState extends State<TeamMemberConfigForm> {
 
   void _syncControllersFromMember(TeamMemberConfig? member) {
     if (member == null) return;
-    _nameCtl.text = member.name;
     _agentCtl.text = member.agent;
     _argsCtl.text = member.extraArgs;
-    _promptCtl.text = member.prompt;
-    _playbookCtl.text = member.playbook;
   }
 
   void _syncControllerIfIdle(
@@ -217,25 +209,16 @@ class TeamMemberConfigFormState extends State<TeamMemberConfigForm> {
   void dispose() {
     _flushPersistOnDispose(widget.memberId);
     _persistDebouncer.dispose();
-    _nameFocus.dispose();
-    _promptFocus.dispose();
-    _playbookFocus.dispose();
     _argsFocus.dispose();
-    _nameCtl.dispose();
     _agentCtl.dispose();
     _argsCtl.dispose();
-    _promptCtl.dispose();
-    _playbookCtl.dispose();
     super.dispose();
   }
 
   TeamMemberConfig _memberFromControllers(TeamMemberConfig base) {
     return base.copyWith(
-      name: _nameCtl.text,
       agent: _agentCtl.text,
       extraArgs: _argsCtl.text,
-      prompt: _promptCtl.text,
-      playbook: _playbookCtl.text,
     );
   }
 
@@ -260,11 +243,7 @@ class TeamMemberConfigFormState extends State<TeamMemberConfigForm> {
   }
 
   bool _membersEqualForPersist(TeamMemberConfig a, TeamMemberConfig b) {
-    return a.name == b.name &&
-        a.agent == b.agent &&
-        a.extraArgs == b.extraArgs &&
-        a.prompt == b.prompt &&
-        a.playbook == b.playbook;
+    return a.agent == b.agent && a.extraArgs == b.extraArgs;
   }
 
   void _persistImmediate(TeamMemberConfig next) {
@@ -283,87 +262,62 @@ class TeamMemberConfigFormState extends State<TeamMemberConfigForm> {
     });
   }
 
-  void _onNameFocusChanged() => _onFieldFocusChanged(_nameFocus);
-  void _onPromptFocusChanged() => _onFieldFocusChanged(_promptFocus);
-  void _onPlaybookFocusChanged() => _onFieldFocusChanged(_playbookFocus);
   void _onArgsFocusChanged() => _onFieldFocusChanged(_argsFocus);
 
   void _onFieldFocusChanged(FocusNode node) {
     if (!node.hasFocus) _flushPersistForMember(widget.memberId);
   }
 
-  void _applyPromptPreset(String presetId) {
-    final member = _member;
-    if (member == null) return;
-    final l10n = context.l10n;
-    final prompt = teamMemberPromptPresetText(l10n, presetId);
-    final playbook = teamMemberPlaybookPresetText(l10n, presetId);
-    if (prompt.isEmpty && playbook.isEmpty) return;
-    _promptCtl.text = prompt;
-    _promptCtl.selection = TextSelection.collapsed(offset: prompt.length);
-    _playbookCtl.text = playbook;
-    _playbookCtl.selection = TextSelection.collapsed(offset: playbook.length);
-    _persistImmediate(member.copyWith(prompt: prompt, playbook: playbook));
-  }
-
-  void _applyFromExpertHub(DiscoverableMember expert) {
-    final member = _member;
-    if (member == null) return;
-    final prompt = expert.member.prompt;
-    final playbook = expert.member.playbook;
-    _promptCtl.text = prompt;
-    _promptCtl.selection = TextSelection.collapsed(offset: prompt.length);
-    _playbookCtl.text = playbook;
-    _playbookCtl.selection = TextSelection.collapsed(offset: playbook.length);
-    _persistImmediate(
-      member.copyWith(
-        prompt: prompt,
-        playbook: playbook,
-        capabilities: expert.member.capabilities.isNotEmpty
-            ? expert.member.capabilities
-            : member.capabilities,
-      ),
-    );
+  Future<void> _applyExpert(DiscoverableMember expert) async {
+    await _cubit.setMemberExpert(widget.memberId, expert.key);
   }
 
   Future<void> _openExpertHubPicker() async {
     await showExpertApplyPickerSheet(
       context,
-      onApply: _applyFromExpertHub,
+      onApply: (expert) => unawaited(_applyExpert(expert)),
     );
   }
 
-  DiscoverableMember _discoverableMemberFromForm(TeamMemberConfig member) {
-    final displayName = _nameCtl.text.trim().isNotEmpty
-        ? _nameCtl.text.trim()
-        : member.name;
+  DiscoverableMember _discoverableMemberForSave(
+    TeamMemberConfig member,
+    TeamRosterSlot? slot,
+  ) {
+    final hubState = context.read<ExpertHubCubit>().state;
+    final resolved = ExpertMemberResolver.resolve(
+      key: slot?.expertKey,
+      hubState: hubState,
+    );
+    if (resolved != null) return resolved;
     return DiscoverableMember(
-      key: '',
-      name: displayName,
-      description: _promptCtl.text.trim(),
+      key: slot?.expertKey ?? '',
+      name: member.name,
+      description: member.prompt.trim(),
       category: 'Custom',
       source: ExpertMemberSource.local,
       member: DiscoverableTeamMember(
-        name: displayName,
+        name: member.name,
         provider: member.provider,
         model: member.model,
-        agent: _agentCtl.text,
+        agent: member.agent,
         agentType: member.agentType,
         capabilities: member.capabilities,
         replicas: member.replicas,
-        prompt: _promptCtl.text,
-        playbook: _playbookCtl.text,
-        extraArgs: _argsCtl.text,
+        prompt: member.prompt,
+        playbook: member.playbook,
+        extraArgs: member.extraArgs,
       ),
     );
   }
 
   Future<void> _saveAsTemplate() async {
     final member = _member;
-    if (member == null) return;
+    final team = _team;
+    if (member == null || team == null) return;
     final l10n = context.l10n;
+    final slot = _slotSnapshot(_cubit, widget.memberId);
     final saved = await LocalMemberTemplateStore().save(
-      _discoverableMemberFromForm(member),
+      _discoverableMemberForSave(member, slot),
     );
     if (!mounted) return;
     try {
@@ -382,6 +336,8 @@ class TeamMemberConfigFormState extends State<TeamMemberConfigForm> {
   @override
   Widget build(BuildContext context) {
     final l10n = context.l10n;
+    final styles = AppTextStyles.of(context);
+    final muted = Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.55);
     final teamShell = context.select<LaunchProfileCubit, TeamMemberFormShell?>(
       (c) => LaunchProfileSelectors.memberFormShell(
         LaunchProfileSelectors.teamById(c.state, widget.teamId),
@@ -394,6 +350,14 @@ class TeamMemberConfigFormState extends State<TeamMemberConfigForm> {
         widget.memberId,
       ),
     );
+    final expertLabel = context.select<LaunchProfileCubit, String>((c) {
+      final slot = _slotSnapshot(c, widget.memberId);
+      return ExpertMemberResolver.labelForKey(
+        key: slot?.expertKey,
+        fallbackLabel: l10n.expertHubNoneSelected,
+        hubState: context.read<ExpertHubCubit>().state,
+      );
+    });
     final team = _team;
     final member = _member;
     if (team == null ||
@@ -457,10 +421,35 @@ class TeamMemberConfigFormState extends State<TeamMemberConfigForm> {
                     ],
                   )
                 : null,
-            body: FocusGatedTextField(
-              controller: _nameCtl,
-              focusNode: _nameFocus,
-              decoration: const InputDecoration(),
+            body: Text(
+              member.name.trim().isEmpty ? l10n.memberName : member.name,
+              style: styles.body,
+            ),
+            showDividerBelow: true,
+          ),
+          SettingsLabeledStackedRow(
+            title: l10n.expertHubNav,
+            subtitle: l10n.expertHubSubtitle,
+            body: Row(
+              children: [
+                Expanded(
+                  child: Text(
+                    expertLabel,
+                    style: styles.body,
+                  ),
+                ),
+                OutlinedButton(
+                  onPressed: _openExpertHubPicker,
+                  style: OutlinedButton.styleFrom(
+                    visualDensity: VisualDensity.compact,
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 12,
+                      vertical: 8,
+                    ),
+                  ),
+                  child: Text(l10n.expertHubBrowseAll),
+                ),
+              ],
             ),
             showDividerBelow: true,
           ),
@@ -491,48 +480,22 @@ class TeamMemberConfigFormState extends State<TeamMemberConfigForm> {
                 ),
               ],
             ),
-            body: Column(
-              crossAxisAlignment: CrossAxisAlignment.stretch,
-              children: [
-                _MemberPromptPresetChips(onApply: _applyPromptPreset),
-                const SizedBox(height: 8),
-                Align(
-                  alignment: Alignment.centerLeft,
-                  child: OutlinedButton(
-                    onPressed: _openExpertHubPicker,
-                    style: OutlinedButton.styleFrom(
-                      visualDensity: VisualDensity.compact,
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 12,
-                        vertical: 8,
-                      ),
-                    ),
-                    child: Text(l10n.expertHubAddFromHub),
-                  ),
-                ),
-                const SizedBox(height: 8),
-                FocusGatedTextField(
-                  controller: _promptCtl,
-                  focusNode: _promptFocus,
-                  minLines: 3,
-                  maxLines: 6,
-                  decoration: const InputDecoration(),
-                  onChanged: (_) => _schedulePersist(),
-                ),
-              ],
+            body: _ReadOnlyMultilineText(
+              text: member.prompt,
+              emptyHint: l10n.expertHubNoneSelected,
+              style: styles.body,
+              mutedStyle: styles.body.copyWith(color: muted),
             ),
             showDividerBelow: true,
           ),
           SettingsLabeledStackedRow(
             title: l10n.memberPlaybook,
             subtitle: l10n.memberPlaybookSubtitle,
-            body: FocusGatedTextField(
-              controller: _playbookCtl,
-              focusNode: _playbookFocus,
-              minLines: 3,
-              maxLines: 8,
-              decoration: const InputDecoration(),
-              onChanged: (_) => _schedulePersist(),
+            body: _ReadOnlyMultilineText(
+              text: member.playbook,
+              emptyHint: l10n.expertHubNoneSelected,
+              style: styles.body,
+              mutedStyle: styles.body.copyWith(color: muted),
             ),
             showDividerBelow: true,
           ),
@@ -584,30 +547,26 @@ class TeamMemberConfigFormState extends State<TeamMemberConfigForm> {
   }
 }
 
-class _MemberPromptPresetChips extends StatelessWidget {
-  const _MemberPromptPresetChips({required this.onApply});
+class _ReadOnlyMultilineText extends StatelessWidget {
+  const _ReadOnlyMultilineText({
+    required this.text,
+    required this.emptyHint,
+    required this.style,
+    required this.mutedStyle,
+  });
 
-  final ValueChanged<String> onApply;
+  final String text;
+  final String emptyHint;
+  final TextStyle style;
+  final TextStyle mutedStyle;
 
   @override
   Widget build(BuildContext context) {
-    final l10n = context.l10n;
-    return Wrap(
-      spacing: 6,
-      runSpacing: 6,
-      children: [
-        for (final preset in TeamMemberPromptPreset.all)
-          ActionChip(
-            label: Text(
-              teamMemberPromptPresetLabel(l10n, preset.id),
-              style: AppTextStyles.of(context).bodySmall,
-            ),
-            visualDensity: VisualDensity.compact,
-            padding: const EdgeInsets.symmetric(horizontal: 4),
-            onPressed: () => onApply(preset.id),
-          ),
-      ],
-    );
+    final trimmed = text.trim();
+    if (trimmed.isEmpty) {
+      return Text(emptyHint, style: mutedStyle);
+    }
+    return SelectableText(trimmed, style: style);
   }
 }
 

@@ -188,6 +188,7 @@ class SessionLaunchPipeline {
       cli: request.cli,
       workingDirectory: request.workingDirectory,
       sessionTeamId: sessionTeamId,
+      expertKey: request.expertKey,
     );
     _host.appendSessionSnapshot(provisional);
 
@@ -200,6 +201,7 @@ class SessionLaunchPipeline {
       cli: request.cli,
       personalPresetId: request.personalPresetId,
       workingDirectory: request.workingDirectory,
+      expertKey: request.expertKey,
     );
 
     final status = _tabSurface.surfaceNewTab(

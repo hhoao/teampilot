@@ -1,5 +1,6 @@
 import 'package:path/path.dart' as p;
 
+import '../../models/discoverable_member.dart';
 import '../../models/config_bundle.dart';
 import '../../models/cli_preset.dart';
 import '../../models/extension_manifest.dart';
@@ -570,6 +571,8 @@ class ConfigProfileService implements ConfigProfileDelegate {
     List<String> additionalDirectories = const [],
     MemberBusIdleEndpoint? busIdle,
     CliPreset? preset,
+    String? sessionExpertKey,
+    DiscoverableMember? resolvedExpert,
   }) async {
     final trimmedWorkspaceId = workspaceId.trim();
     final trimmedSessionId = sessionId.trim();
@@ -618,6 +621,8 @@ class ConfigProfileService implements ConfigProfileDelegate {
             catalog: catalog,
             busIdle: busIdle,
             preset: preset,
+            sessionExpertKey: sessionExpertKey,
+            resolvedExpert: resolvedExpert,
           ),
         );
       } on Object catch (e) {
@@ -649,6 +654,8 @@ class ConfigProfileService implements ConfigProfileDelegate {
     Map<String, Map<String, Object?>>? extraMcpServers,
     MemberBusIdleEndpoint? busIdle,
     CliPreset? preset,
+    String? sessionExpertKey,
+    DiscoverableMember? resolvedExpert,
   }) async {
     final manifestCtx = workPathContextFor(
       readDelegate: readDelegate,
@@ -685,6 +692,8 @@ class ConfigProfileService implements ConfigProfileDelegate {
       additionalDirectories: additionalDirectories,
       busIdle: busIdle,
       preset: preset,
+      sessionExpertKey: sessionExpertKey,
+      resolvedExpert: resolvedExpert,
     );
     return (
       outcome: TeamLaunchOutcome(
@@ -706,6 +715,8 @@ class ConfigProfileService implements ConfigProfileDelegate {
     Map<String, Map<String, Object?>>? extraMcpServers,
     MemberBusIdleEndpoint? busIdle,
     CliPreset? preset,
+    String? sessionExpertKey,
+    DiscoverableMember? resolvedExpert,
     ManifestExecutor? manifestExecutor,
   }) async {
     final staged = await stageSessionLaunch(
@@ -720,6 +731,8 @@ class ConfigProfileService implements ConfigProfileDelegate {
       extraMcpServers: extraMcpServers,
       busIdle: busIdle,
       preset: preset,
+      sessionExpertKey: sessionExpertKey,
+      resolvedExpert: resolvedExpert,
     );
     final executor = manifestExecutor ?? const ManifestExecutor();
     await executor.flush(manifest: staged.manifest, targetFs: fs, sourceFs: fs);

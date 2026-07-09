@@ -7,6 +7,7 @@ import '../../repositories/session_repository.dart';
 import '../../services/storage/app_storage.dart';
 import '../../services/storage/launch_profile_provisioner.dart';
 import '../../utils/workspace_path_utils.dart';
+import '../expert_hub/expert_member_materializer.dart';
 
 /// First-launch bootstrap for the built-in workspace and starter sessions.
 ///
@@ -72,10 +73,15 @@ abstract final class DefaultWorkspaceService {
       (s) => s.sessionTeam.trim() == defaultTeam.id,
     );
     if (!hasTeam) {
+      final rosterMembers = defaultTeam.members.isNotEmpty
+          ? defaultTeam.members
+          : await ExpertMemberMaterializer.materializeRosterAsync(
+              team: defaultTeam,
+            );
       await repository.createSession(
         workspace.workspaceId,
         sessionTeam: defaultTeam.id,
-        rosterMembers: defaultTeam.members,
+        rosterMembers: rosterMembers,
       );
       mutated = true;
     }

@@ -13,9 +13,17 @@ import 'package:teampilot/services/io/local_filesystem.dart';
 import 'package:teampilot/services/session/session_lifecycle_service.dart';
 import 'package:teampilot/services/plugin/profile_plugin_linker_service.dart';
 import 'package:teampilot/services/storage/launch_profile_provisioner.dart';
+import 'package:teampilot/models/team_roster_slot.dart';
 import 'package:teampilot/utils/team_member_naming.dart';
 
 import '../support/post_frame_test_harness.dart';
+
+const _soloRoster = [
+  TeamRosterSlot(id: 'm', expertKey: 'teampilot/builtin/team-lead'),
+];
+
+TeamProfile _teamById(Iterable<TeamProfile> teams, String id) =>
+    teams.firstWhere((t) => t.id == id);
 
 class _RecordingPluginLinker extends ProfilePluginLinkerService {
   _RecordingPluginLinker() : super(appPluginsRoot: '/tmp');
@@ -114,18 +122,18 @@ void main() {
     const team = TeamProfile(
       id: 't',
       name: 'T',
-      members: [TeamMemberConfig(id: 'm', name: 'm')],
+      roster: _soloRoster,
       skillIds: ['gone'],
     );
     await repo.saveTeamProfiles([team]);
     await cubit.load();
-    expect(cubit.state.teams.single.skillIds, ['gone']);
+    expect(_teamById(cubit.state.teams, 't').skillIds, ['gone']);
 
     await cubit.removeSkillFromAllTeams('gone');
 
-    expect(cubit.state.selectedTeam?.skillIds, isEmpty);
+    expect(_teamById(cubit.state.teams, 't').skillIds, isEmpty);
     final persisted = await repo.loadTeamProfiles();
-    expect(persisted.single.skillIds, isEmpty);
+    expect(_teamById(persisted, 't').skillIds, isEmpty);
 
     await dir.delete(recursive: true);
   });
@@ -145,13 +153,13 @@ void main() {
     const teamA = TeamProfile(
       id: 'a',
       name: 'A',
-      members: [TeamMemberConfig(id: 'm', name: 'm')],
+      roster: _soloRoster,
       pluginIds: ['acme/market/p1'],
     );
     const teamB = TeamProfile(
       id: 'b',
       name: 'B',
-      members: [TeamMemberConfig(id: 'm', name: 'm')],
+      roster: _soloRoster,
       pluginIds: ['acme/market/p1'],
     );
     await repo.saveTeamProfiles([teamA, teamB]);
@@ -516,6 +524,12 @@ void main() {
       id: 'claude-team',
       name: 'Claude Team',
       cli: CliTool.claude,
+      roster: [
+        TeamRosterSlot(
+          id: 'team-lead',
+          expertKey: 'teampilot/builtin/team-lead',
+        ),
+      ],
       members: [member],
     );
     await _repo(base).saveTeamProfiles([team]);
@@ -611,17 +625,24 @@ void main() {
       id: 'claude-team',
       name: 'Claude Team',
       cli: CliTool.claude,
-      members: [
-        TeamMemberConfig(id: 'team-lead', name: 'team-lead'),
-        TeamMemberConfig(id: 'developer', name: 'developer'),
+      roster: [
+        TeamRosterSlot(
+          id: 'team-lead',
+          expertKey: 'teampilot/builtin/team-lead',
+        ),
+        TeamRosterSlot(
+          id: 'developer',
+          expertKey: 'teampilot/builtin/developer',
+        ),
       ],
     );
     await repo.saveTeamProfiles([team]);
     await cubit.load(awaitProfiles: true);
+    await cubit.selectTeam('claude-team');
 
     await cubit.launchSelectedTeam();
 
-    expect(launched, ['team-lead', 'developer']);
+    expect(launched, ['Team lead', 'Developer']);
     final teamRoot = p.join(base.path, 'identities-runtime', 'claude-team');
     expect(await Directory(teamRoot).exists(), isTrue);
 
@@ -668,16 +689,29 @@ void main() {
         id: LaunchProfileProvisioner.defaultNativeTeamId,
         name: 'Default Native Team',
         cli: CliTool.claude,
-        members: [TeamMemberConfig(id: 'team-lead', name: 'team-lead')],
+        roster: [
+          TeamRosterSlot(
+            id: 'team-lead',
+            expertKey: 'teampilot/builtin/team-lead',
+          ),
+        ],
       );
       await repo.saveTeamProfiles([team]);
       await cubit.load();
 
       await cubit.bindClaudeProviderForTeamsWithoutBinding('deepseek');
 
-      expect(cubit.state.selectedTeam!.providerIdsByTool['claude'], 'deepseek');
+      expect(
+        _teamById(cubit.state.teams, LaunchProfileProvisioner.defaultNativeTeamId)
+            .providerIdsByTool['claude'],
+        'deepseek',
+      );
       final reloaded = await repo.loadTeamProfiles();
-      expect(reloaded.single.providerIdsByTool['claude'], 'deepseek');
+      expect(
+        _teamById(reloaded, LaunchProfileProvisioner.defaultNativeTeamId)
+            .providerIdsByTool['claude'],
+        'deepseek',
+      );
 
       await _drainAndCloseTeamCubit(cubit);
       await dir.delete(recursive: true);
@@ -700,7 +734,12 @@ void main() {
         id: LaunchProfileProvisioner.defaultNativeTeamId,
         name: 'Default Native Team',
         cli: CliTool.claude,
-        members: [TeamMemberConfig(id: 'team-lead', name: 'team-lead')],
+        roster: [
+          TeamRosterSlot(
+            id: 'team-lead',
+            expertKey: 'teampilot/builtin/team-lead',
+          ),
+        ],
         providerIdsByTool: {'claude': 'official'},
       );
       await repo.saveTeamProfiles([team]);
@@ -730,34 +769,48 @@ void main() {
         id: 'first',
         name: 'First',
         createdAt: 1,
-        members: [TeamMemberConfig(id: 'm', name: 'm')],
+        roster: _soloRoster,
       ),
       TeamProfile(
         id: 'second',
         name: 'Second',
         createdAt: 2,
-        members: [TeamMemberConfig(id: 'm', name: 'm')],
+        roster: _soloRoster,
       ),
       TeamProfile(
         id: 'third',
         name: 'Third',
         createdAt: 3,
-        members: [TeamMemberConfig(id: 'm', name: 'm')],
+        roster: _soloRoster,
       ),
     ]);
     await cubit.load();
 
-    await cubit.reorderTeams(0, 3);
+    final teams = cubit.state.teams;
+    final firstIdx = teams.indexWhere((t) => t.id == 'first');
+    expect(firstIdx, greaterThanOrEqualTo(0));
+    await cubit.reorderTeams(firstIdx, teams.length);
 
-    expect(cubit.state.teams.map((t) => t.name).toList(), [
+    final userTeams = cubit.state.teams
+        .where((t) => const {'first', 'second', 'third'}.contains(t.id))
+        .toList()
+      ..sort((a, b) => a.sortOrder.compareTo(b.sortOrder));
+    expect(userTeams.map((t) => t.name).toList(), [
       'Second',
       'Third',
       'First',
     ]);
-    expect(cubit.state.teams.map((t) => t.sortOrder).toList(), [1, 2, 3]);
 
     final reloaded = await repo.loadTeamProfiles();
-    expect(reloaded.map((t) => t.name).toList(), ['Second', 'Third', 'First']);
+    final reloadedUser = reloaded
+        .where((t) => const {'first', 'second', 'third'}.contains(t.id))
+        .toList()
+      ..sort((a, b) => a.sortOrder.compareTo(b.sortOrder));
+    expect(reloadedUser.map((t) => t.name).toList(), [
+      'Second',
+      'Third',
+      'First',
+    ]);
 
     await _drainAndCloseTeamCubit(cubit);
     await dir.delete(recursive: true);

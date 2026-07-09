@@ -8,7 +8,7 @@ import '../../cubits/expert_hub_cubit.dart';
 import '../../l10n/l10n_extensions.dart';
 import '../../models/discoverable_member.dart';
 import '../../services/app/platform_utils.dart';
-import '../../services/expert_hub/member_clone_service.dart';
+import '../../services/expert_hub/member_roster_service.dart';
 import '../../widgets/settings/workspace_hub_shell.dart';
 import '../home_workspace/home_workspace_route.dart';
 import 'expert_hub_body.dart';

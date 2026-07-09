@@ -146,7 +146,7 @@ final class CodexConfigProfileCapability implements ConfigProfileCapability {
     PersonalProfile personal,
   ) async {
     final paths = ctx.paths;
-    final member = standaloneMemberFromPersonal(personal, preset: ctx.preset);
+    final member = personalMemberForSession(personal, preset: ctx.preset, sessionExpertKey: ctx.sessionExpertKey, resolvedExpert: ctx.resolvedExpert);
     final codexHome = standaloneSessionToolDir(paths, standalone, toolId);
     final warnings = <String>[];
 

@@ -32,7 +32,10 @@ import '../../models/runtime_target.dart';
 import '../io/local_filesystem.dart';
 import '../storage/runtime_context.dart';
 import '../io/filesystem.dart';
+import '../../models/discoverable_member.dart';
 import '../cli/cli_tool_adapter.dart';
+import '../cli/registry/config_profile/config_profile_context.dart';
+import '../expert_hub/expert_member_resolver.dart';
 import 'shell_launch_spec.dart';
 
 export 'shell_launch_spec.dart';
@@ -252,6 +255,9 @@ class SessionLifecycleService {
     final projectBundle = workspace != null
         ? await _projectBundle(workspace.workspaceId)
         : const ConfigBundle();
+    final resolvedExpert = prepared.isPersonal
+        ? await _resolveSessionExpert(session)
+        : null;
 
     return ShellLaunchSpec(
       plan: prepared.plan,
@@ -265,6 +271,7 @@ class SessionLifecycleService {
         member: prepared.resolvedMember ?? member,
         preset: prepared.activePreset,
         projectBundle: projectBundle,
+        resolvedExpert: resolvedExpert,
       ),
       sessionTeam: _resolveSessionTeam(
         session,
@@ -306,6 +313,7 @@ class SessionLifecycleService {
         team: null,
         member: prepared.resolvedMember,
         preset: prepared.activePreset,
+        resolvedExpert: await _resolveSessionExpert(session),
       ),
       sessionTeam: _resolveSessionTeam(session, prepared.plan, true),
     );
@@ -481,9 +489,11 @@ class SessionLifecycleService {
       isPersonal: true,
       resolvedPersonal: personal,
       activePreset: activePreset,
-      resolvedMember: standaloneMemberFromPersonal(
+      resolvedMember: personalMemberForSession(
         personal,
         preset: activePreset ?? preset,
+        sessionExpertKey: session.expertKey,
+        resolvedExpert: await _resolveSessionExpert(session),
       ),
     );
   }
@@ -975,6 +985,7 @@ class SessionLifecycleService {
     TeamMemberConfig? member,
     CliPreset? preset,
     ConfigBundle projectBundle = const ConfigBundle(),
+    DiscoverableMember? resolvedExpert,
   }) {
     if (isPersonal) {
       if (workspace == null || personal == null) {
@@ -982,9 +993,11 @@ class SessionLifecycleService {
           'prepareShellLaunch requires workspace and personal identity for personal sessions',
         );
       }
-      final launchMember = standaloneMemberFromPersonal(
+      final launchMember = personalMemberForSession(
         personal,
         preset: preset,
+        sessionExpertKey: session.expertKey,
+        resolvedExpert: resolvedExpert,
       );
       final launchTeam = standaloneTeamFromPersonal(
         personal,
@@ -992,6 +1005,8 @@ class SessionLifecycleService {
         sessionTeamName: plan.cliTeamName,
         preset: preset,
         projectBundle: projectBundle,
+        sessionExpertKey: session.expertKey,
+        resolvedExpert: resolvedExpert,
       );
       final catalog = WorkspaceLaunchContext(
         session: session,
@@ -1074,6 +1089,7 @@ class SessionLifecycleService {
         workspace: personalWorkspace,
       ).folderCatalog;
       final personalDirs = session.workDirsForMember(null, folders: catalog);
+      final resolvedExpert = await _resolveSessionExpert(session);
       final outcome = await service.prepareSessionLaunch(
         workspaceId: personalWorkspace.workspaceId,
         sessionId: session.sessionId,
@@ -1086,6 +1102,8 @@ class SessionLifecycleService {
         extraMcpServers: extraMcpServers,
         busIdle: busIdle,
         preset: preset,
+        sessionExpertKey: session.expertKey,
+        resolvedExpert: resolvedExpert,
       );
       return _PreparedLaunch(
         env: outcome.environment,
@@ -1479,6 +1497,12 @@ class SessionLifecycleService {
         env[FlashskyaiConfigProfileCapability.sessionHomeDirEnvKey] ??
         env['CODEX_HOME'] ??
         '';
+  }
+
+  Future<DiscoverableMember?> _resolveSessionExpert(AppSession session) async {
+    final key = session.expertKey.trim();
+    if (key.isEmpty) return null;
+    return ExpertMemberResolver.resolveMember(key: key);
   }
 }
 

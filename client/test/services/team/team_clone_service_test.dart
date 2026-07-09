@@ -1,6 +1,7 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:teampilot/models/discoverable_team.dart';
 import 'package:teampilot/models/team_config.dart';
+import 'package:teampilot/models/team_roster_slot.dart';
 import 'package:teampilot/services/team/team_clone_service.dart';
 
 DiscoverableTeam team() => const DiscoverableTeam(
@@ -11,7 +12,12 @@ DiscoverableTeam team() => const DiscoverableTeam(
   updatedAt: 1,
   cli: CliTool.claude,
   teamMode: TeamMode.mixed,
-  members: [DiscoverableTeamMember(name: 'team-lead')],
+  roster: [
+    TeamRosterSlot(
+      id: 'team-lead',
+      expertKey: 'teampilot/builtin/team-lead',
+    ),
+  ],
   skillDeps: [
     SkillDependencyRef(
       repoOwner: 'anthropics',
@@ -46,7 +52,7 @@ void main() {
             required name,
             required cli,
             required teamMode,
-            required members,
+            required roster,
             required skillIds,
             required pluginIds,
             required mcpServerIds,
@@ -57,7 +63,7 @@ void main() {
             createdSkillIds = skillIds;
             expect(pluginIds, ['acme/plugins/linter']);
             expect(mcpServerIds, ['context7']);
-            expect(members.single.name, 'team-lead');
+            expect(roster.single.id, 'team-lead');
             return 'squad';
           },
     );
@@ -81,7 +87,7 @@ void main() {
             required name,
             required cli,
             required teamMode,
-            required members,
+            required roster,
             required skillIds,
             required pluginIds,
             required mcpServerIds,
@@ -109,7 +115,7 @@ void main() {
             required name,
             required cli,
             required teamMode,
-            required members,
+            required roster,
             required skillIds,
             required pluginIds,
             required mcpServerIds,

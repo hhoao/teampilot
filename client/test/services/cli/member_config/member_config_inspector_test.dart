@@ -122,11 +122,11 @@ void main() {
       );
 
       final expected = p.join(
-        layout.sessionRuntimeToolDir(
+        layout.workspaceRuntimeMemberToolDir(
           'workspace-1',
-          'team-a-1',
+          'team-a',
+          'reviewer',
           'cursor',
-          memberId: 'reviewer',
         ),
         'home',
         '.cursor',

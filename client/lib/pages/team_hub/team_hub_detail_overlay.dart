@@ -97,7 +97,7 @@ class TeamHubDetailOverlay extends StatelessWidget {
                                 TeamStatChip(
                                   icon: Icons.people_alt_outlined,
                                   label:
-                                      '${team.members.length} ${l10n.teamHubMembersLabel}',
+                                      '${team.roster.length} ${l10n.teamHubMembersLabel}',
                                 ),
                                 if (team.skillDeps.isNotEmpty)
                                   TeamStatChip(
@@ -137,13 +137,10 @@ class TeamHubDetailOverlay extends StatelessWidget {
                   _DepSection(
                     title: l10n.teamHubMembersLabel,
                     rows: [
-                      for (final m in team.members)
+                      for (final slot in team.roster)
                         _DepRow(
-                          label: m.model.isEmpty
-                              ? m.name
-                              : '${m.name} · ${m.provider} ${m.model}'.trim(),
-                          memberKey:
-                              '${team.key}#${TeamMemberNaming.slugMemberName(m.name)}',
+                          label: slot.id,
+                          memberKey: slot.expertKey,
                         ),
                     ],
                   ),

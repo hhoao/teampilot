@@ -7,6 +7,9 @@ import 'package:path/path.dart' as p;
 import '../../utils/workspace_path_utils.dart';
 import 'compose_text_edit.dart';
 
+bool _isWindowsStylePath(String path) =>
+    RegExp(r'^[A-Za-z]:[/\\]').hasMatch(path.trim());
+
 /// Formats an absolute path as an `@` reference for compose input.
 ///
 /// Paths under [workspaceRoot] are expressed relative to that root with forward
@@ -26,15 +29,23 @@ String formatComposeFileReference(
 }
 
 String _pathKey(String path) {
-  if (Platform.isWindows) return path.toLowerCase();
+  if (Platform.isWindows || _isWindowsStylePath(path)) {
+    return path.toLowerCase();
+  }
   return path;
+}
+
+String _separatorForPath(String path) {
+  if (_isWindowsStylePath(path)) return r'\';
+  return p.separator;
 }
 
 String _stripRootPrefix(String path, String root) {
   if (_pathKey(path) == _pathKey(root)) return '';
+  final sep = _separatorForPath(path);
   final rootWithSep = root.endsWith('/') || root.endsWith(r'\')
       ? root
-      : '$root${p.separator}';
+      : '$root$sep';
   if (_pathKey(path).startsWith(_pathKey(rootWithSep))) {
     return path.substring(rootWithSep.length);
   }
@@ -47,9 +58,10 @@ String _stripRootPrefix(String path, String root) {
 
 bool _isUnderRoot(String path, String root) {
   if (_pathKey(path) == _pathKey(root)) return true;
+  final sep = _separatorForPath(path);
   final rootWithSep = root.endsWith('/') || root.endsWith(r'\')
       ? root
-      : '$root${p.separator}';
+      : '$root$sep';
   return _pathKey(path).startsWith(_pathKey(rootWithSep));
 }
 

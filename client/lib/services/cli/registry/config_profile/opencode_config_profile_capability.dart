@@ -393,7 +393,7 @@ final class OpencodeConfigProfileCapability implements ConfigProfileCapability {
     provider ??= await resolver.resolveSole();
     if (provider != null) {
       config = mergeOpencodeProvider(config, provider);
-      final member = standaloneMemberFromPersonal(personal, preset: ctx.preset);
+      final member = personalMemberForSession(personal, preset: ctx.preset, sessionExpertKey: ctx.sessionExpertKey, resolvedExpert: ctx.resolvedExpert);
       final effort = _resolveOpencodeEffort(
         team: null,
         member: member,
@@ -414,7 +414,7 @@ final class OpencodeConfigProfileCapability implements ConfigProfileCapability {
     if (await _writeMemberIdentity(
       paths: paths,
       opencodeDir: opencodeDir,
-      member: standaloneMemberFromPersonal(personal, preset: ctx.preset),
+      member: personalMemberForSession(personal, preset: ctx.preset, sessionExpertKey: ctx.sessionExpertKey, resolvedExpert: ctx.resolvedExpert),
       forceTeamLeadDelegateMode: false,
       mixed: false,
     )) {

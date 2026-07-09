@@ -1,5 +1,4 @@
 import '../../models/app_session.dart';
-import '../../models/expert_session_overlay.dart';
 import '../../models/workspace.dart';
 import '../../models/team_config.dart';
 
@@ -12,7 +11,7 @@ AppSession buildProvisionalSession({
   CliTool? cli,
   String? workingDirectory,
   String sessionTeamId = '',
-  ExpertSessionOverlay? expertOverlay,
+  String? expertKey,
 }) {
   final now = DateTime.now().millisecondsSinceEpoch;
   final trimmedTeam = sessionTeamId.trim();
@@ -35,7 +34,6 @@ AppSession buildProvisionalSession({
     launchState: AppSessionLaunchState.created,
     createdAt: now,
     updatedAt: now,
-    expertKey: expertOverlay?.expertKey.trim() ?? '',
-    expertOverlay: expertOverlay,
+    expertKey: expertKey?.trim() ?? '',
   );
 }

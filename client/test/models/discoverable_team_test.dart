@@ -13,15 +13,14 @@ void main() {
     'cli': 'claude',
     'teamMode': 'mixed',
     'extraArgs': '--foo',
-    'members': [
+    'roster': [
       {
-        'name': 'team-lead',
-        'provider': 'anthropic',
-        'model': 'claude-opus-4-8',
-        'agent': 'lead',
-        'agentType': 'lead',
-        'prompt': 'Coordinate.',
-        'extraArgs': '',
+        'id': 'team-lead',
+        'expertKey': 'teampilot/builtin/team-lead',
+        'overrides': {
+          'provider': 'anthropic',
+          'model': 'claude-opus-4-8',
+        },
       },
     ],
     'skillDeps': [
@@ -60,28 +59,11 @@ void main() {
     expect(team.key, 'flashskyai/team-hub/research-squad');
     expect(team.cli, CliTool.claude);
     expect(team.teamMode, TeamMode.mixed);
-    expect(team.members.single.name, 'team-lead');
+    expect(team.roster.single.id, 'team-lead');
+    expect(team.roster.single.expertKey, 'teampilot/builtin/team-lead');
     expect(team.skillDeps.single.directory, 'skills/deep-research');
     expect(team.pluginDeps.single.entryName, 'linter');
     expect(team.mcpDeps.single.server['command'], 'npx');
     expect(DiscoverableTeam.fromJson(team.toJson()), team);
-  });
-
-  test('toMemberConfig produces a slugged, joined member', () {
-    final team = DiscoverableTeam.fromJson(json);
-    final member = team.members.single.toMemberConfig(joinedAt: 42);
-    expect(member.id, 'team-lead');
-    expect(member.name, 'team-lead');
-    expect(member.model, 'claude-opus-4-8');
-    expect(member.joinedAt, 42);
-    expect(member.activePresetId, TeamProfile.inheritPresetId);
-    expect(member.inheritsTeamPreset, isTrue);
-  });
-
-  test('member replicas round-trips and flows to TeamMemberConfig', () {
-    const dm = DiscoverableTeamMember(name: 'builder', replicas: 4);
-    expect(dm.replicas, 4);
-    expect(DiscoverableTeamMember.fromJson(dm.toJson()).replicas, 4);
-    expect(dm.toMemberConfig(joinedAt: 1).replicas, 4);
   });
 }

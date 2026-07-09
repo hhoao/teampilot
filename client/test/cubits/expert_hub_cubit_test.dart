@@ -4,7 +4,7 @@ import 'package:teampilot/models/discoverable_member.dart';
 import 'package:teampilot/models/discoverable_team.dart';
 import 'package:teampilot/services/expert_hub/composite_expert_hub_source.dart';
 import 'package:teampilot/services/expert_hub/expert_hub_source.dart';
-import 'package:teampilot/services/expert_hub/member_clone_service.dart';
+import 'package:teampilot/services/expert_hub/member_roster_service.dart';
 
 class _FakeSource extends CompositeExpertHubSource {
   _FakeSource(this.members)
@@ -62,7 +62,7 @@ void main() {
       source: source,
       loadFavorites: () async => {'o/r/alpha'},
       saveFavoriteToggle: (key) async => true,
-      memberCloneService: MemberCloneService(installSkill: (_) async => null),
+      memberRosterService: MemberRosterService(installSkill: (_) async => null),
       launchProfiles: () => throw UnimplementedError('not used in filter tests'),
     );
   });

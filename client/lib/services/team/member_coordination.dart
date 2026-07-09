@@ -49,12 +49,13 @@ sealed class MemberCoordination {
   }) {
     final personal =
         isPersonalSession ??
-        MemberCoordinationScope.inferPersonalFromLegacyFlags(
+        (MemberCoordinationScope.inferPersonalFromLegacyFlags(
           teamMode: teamMode,
           bus: bus,
           usesClaudeRoster: usesClaudeRoster,
           usesShellActivity: usesShellActivity,
-        );
+        ) &&
+            team.id.trim().isEmpty);
     final coordinationScope = MemberCoordinationScope(
       shell: shell,
       member: member,

@@ -17,4 +17,5 @@
 
 [submodule "client/packages/native_splash_screen"]
 	path = client/packages/native_splash_screen
-	url = https://github.com/hhoao/native_splash_screen.git
+	url = https://github.com/hhoa/native_splash_screen.git
+	branch = main

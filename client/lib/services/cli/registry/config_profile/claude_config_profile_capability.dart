@@ -323,7 +323,7 @@ final class ClaudeConfigProfileCapability implements ConfigProfileCapability {
 
     final delegate = ctx.paths;
     final catalog = ctx.catalog;
-    final member = standaloneMemberFromPersonal(personal, preset: ctx.preset);
+    final member = personalMemberForSession(personal, preset: ctx.preset, sessionExpertKey: ctx.sessionExpertKey, resolvedExpert: ctx.resolvedExpert);
     final memberToolDir = standaloneSessionToolDir(
       delegate,
       standalone,

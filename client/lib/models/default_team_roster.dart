@@ -1,62 +1,32 @@
-import '../l10n/app_localizations.dart';
-import '../l10n/app_localizations_en.dart';
+import '../services/team_hub/builtin_team_templates.dart';
 import '../utils/team_member_naming.dart';
-import 'team_config.dart';
-import 'team_member_prompt_presets.dart';
+import 'team_roster_slot.dart';
 
-/// Default members and role prompts for a newly created team.
+/// Default roster slots for a newly created team (leader + developer + reviewer).
 abstract final class DefaultTeamRoster {
   static const developerMemberId = 'developer';
   static const reviewerMemberId = 'reviewer';
 
-  static List<TeamMemberConfig> localized(
-    AppLocalizations l10n, {
-    int? joinedAt,
-  }) {
-    return _build(
-      joinedAt: joinedAt,
-      teamLeadPrompt: teamMemberPromptPresetText(l10n, 'team_lead'),
-      developerPrompt: teamMemberPromptPresetText(l10n, 'developer'),
-      reviewerPrompt: teamMemberPromptPresetText(l10n, 'reviewer'),
-      developerName: l10n.memberPromptPresetDeveloper,
-      reviewerName: l10n.memberPromptPresetReviewer,
-    );
-  }
+  static String expertKeyForSlug(String slug) =>
+      '$kBuiltinTeamHubKeyPrefix/$slug';
 
-  /// English prompts when no [AppLocalizations] is available (bootstrap/tests).
-  static List<TeamMemberConfig> bootstrap({int? joinedAt}) =>
-      localized(AppLocalizationsEn(), joinedAt: joinedAt);
-
-  static List<TeamMemberConfig> _build({
-    required String teamLeadPrompt,
-    required String developerPrompt,
-    required String reviewerPrompt,
-    required String developerName,
-    required String reviewerName,
-    int? joinedAt,
-  }) {
+  static List<TeamRosterSlot> bootstrap({int? joinedAt}) {
     final ts = joinedAt ?? DateTime.now().millisecondsSinceEpoch;
     return [
-      TeamMemberConfig(
+      TeamRosterSlot(
         id: TeamMemberNaming.teamLeadName,
-        name: TeamMemberNaming.teamLeadName,
-        prompt: teamLeadPrompt,
+        expertKey: expertKeyForSlug('team-lead'),
         joinedAt: ts,
-        activePresetId: TeamProfile.inheritPresetId,
       ),
-      TeamMemberConfig(
+      TeamRosterSlot(
         id: developerMemberId,
-        name: developerName,
-        prompt: developerPrompt,
+        expertKey: expertKeyForSlug('developer'),
         joinedAt: ts,
-        activePresetId: TeamProfile.inheritPresetId,
       ),
-      TeamMemberConfig(
+      TeamRosterSlot(
         id: reviewerMemberId,
-        name: reviewerName,
-        prompt: reviewerPrompt,
+        expertKey: expertKeyForSlug('reviewer'),
         joinedAt: ts,
-        activePresetId: TeamProfile.inheritPresetId,
       ),
     ];
   }

@@ -1,8 +1,8 @@
 import '../../models/app_session.dart';
 import '../../models/workspace.dart';
 import '../../services/cli/registry/config_profile/config_profile_context.dart';
-import '../../services/expert_hub/expert_member_overlay.dart';
 import '../../services/session/session_lifecycle_service.dart';
+import '../../services/expert_hub/expert_member_resolver.dart';
 import '../../services/storage/launch_profile_provisioner.dart';
 import 'personal_launch_context.dart';
 
@@ -60,11 +60,15 @@ class PersonalLaunchContextResolver {
     final personalPreset = overrideId.isNotEmpty
         ? await _lifecycle.resolvePresetById(overrideId)
         : await _lifecycle.resolveActivePresetForPersonal(personalIdentity);
-    var personalMember = standaloneMemberFromPersonal(
+    final resolvedExpert = session.expertKey.trim().isNotEmpty
+        ? await ExpertMemberResolver.resolveMember(key: session.expertKey)
+        : null;
+    var personalMember = personalMemberForSession(
       personalIdentity,
       preset: personalPreset,
+      sessionExpertKey: session.expertKey,
+      resolvedExpert: resolvedExpert,
     );
-    personalMember = applyExpertOverlay(personalMember, session.expertOverlay);
     return PersonalLaunchContext(
       personalIdentity: personalIdentity,
       personalPreset: personalPreset,

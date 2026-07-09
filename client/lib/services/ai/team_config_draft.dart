@@ -115,8 +115,15 @@ List<TeamMemberConfig> _enforceSingleLead(
     }
   }
   if (!leadSeen) {
-    final lead = DefaultTeamRoster.bootstrap(joinedAt: joinedAt).first;
-    result.insert(0, lead);
+    result.insert(
+      0,
+      TeamMemberConfig(
+        id: TeamMemberNaming.teamLeadName,
+        name: TeamMemberNaming.teamLeadName,
+        joinedAt: joinedAt,
+        activePresetId: TeamProfile.inheritPresetId,
+      ),
+    );
   }
   return result;
 }

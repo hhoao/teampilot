@@ -47,7 +47,7 @@ void main() {
         cliTeamName: 't-1',
         memberToolConfigDir: null,
         memberShells: {'dev': shell},
-        session: _session(),
+        session: _session(cli: CliTool.flashskyai),
       );
       expect(booting['dev']!.availability, MemberAvailability.booting);
 
@@ -61,7 +61,7 @@ void main() {
         cliTeamName: 't-1',
         memberToolConfigDir: null,
         memberShells: {'dev': shell},
-        session: _session(),
+        session: _session(cli: CliTool.flashskyai),
       );
       expect(working['dev']!.availability, MemberAvailability.working);
     },
@@ -160,9 +160,10 @@ void main() {
   });
 }
 
-PresenceSessionContext _session() => const PresenceSessionContext(
-  team: TeamProfile(id: 't', name: 'T'),
-);
+PresenceSessionContext _session({CliTool cli = CliTool.claude}) =>
+    PresenceSessionContext(
+      team: TeamProfile(id: 't', name: 'T', cli: cli),
+    );
 
 class _ConnectedShell extends TerminalSession {
   _ConnectedShell() : super(executable: 'flashskyai', validateLaunch: false);

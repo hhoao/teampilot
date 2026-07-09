@@ -62,11 +62,12 @@ void main() {
   );
 
   String memberHome(LaunchProfileScope scope) {
-    final cursorDir = paths.sessionToolDir(
+    final memberId = scope.memberId ?? '';
+    final cursorDir = paths.layout.workspaceRuntimeMemberToolDir(
       scope.workspaceId,
-      scope.sessionId,
+      scope.teamId,
+      memberId,
       CursorConfigProfileCapability.toolId,
-      memberId: scope.memberId,
     );
     return paths.pathContext.join(cursorDir, 'home');
   }
@@ -168,39 +169,37 @@ void main() {
       },
     );
 
-    test('mixed pre-provisions workspace trust under member home', () async {
-      const team = TeamProfile(
-        id: 'team-a',
-        name: 'agent',
-        cli: CliTool.cursor,
-        teamMode: TeamMode.mixed,
-      );
-      final scope = mixedScope();
-      const workspace = '/home/hhoa/Document/testmixed';
+    test(
+      'mixed contributeLaunch sets HOME without provisioning overlay files',
+      () async {
+        const team = TeamProfile(
+          id: 'team-a',
+          name: 'agent',
+          cli: CliTool.cursor,
+          teamMode: TeamMode.mixed,
+        );
+        final scope = mixedScope();
+        final home = memberHome(scope);
 
-      await capability.contributeLaunch(
-        ConfigProfileLaunchContext(
-          workspaceId: 'workspace-1',
-          teamId: scope.teamId,
-          sessionId: scope.sessionId,
-          scope: scope,
-          team: team,
-          member: member,
-          members: const [member],
-          paths: paths,
-          catalog: paths,
-          busIdle: MemberBusIdleEndpoint(url: 'http://127.0.0.1:5050/idle'),
-          workingDirectory: workspace,
-        ),
-      );
+        final contribution = await capability.contributeLaunch(
+          ConfigProfileLaunchContext(
+            workspaceId: 'workspace-1',
+            teamId: scope.teamId,
+            sessionId: scope.sessionId,
+            scope: scope,
+            team: team,
+            member: member,
+            members: const [member],
+            paths: paths,
+            catalog: paths,
+            busIdle: MemberBusIdleEndpoint(url: 'http://127.0.0.1:4321/idle'),
+          ),
+        );
 
-      final trustPath = CursorWorkspaceTrust.trustMarkerPath(
-        memberHome(scope),
-        workspace,
-        pathContext: fs.pathContext,
-      );
-      expect((await fs.stat(trustPath)).isFile, isTrue);
-    });
+        expect(contribution.environment['HOME'], home);
+        expect((await fs.stat(layout.roleRule(home))).exists, isFalse);
+      },
+    );
 
     test(
       'mixed contributes HOME and not CURSOR_CONFIG_DIR or plugin dir key',
@@ -315,7 +314,7 @@ void main() {
     );
 
     test(
-      'mixed provisions bus overlay under member home when port set',
+      'mixed overlay files are provisioned by session lifecycle, not contributeLaunch',
       () async {
         const team = TeamProfile(
           id: 'team-a',
@@ -341,10 +340,8 @@ void main() {
           ),
         );
 
-        expect((await fs.stat(layout.roleRule(home))).isFile, isTrue);
-        expect((await fs.stat(layout.mcpConfig(home))).isFile, isTrue);
-        expect((await fs.stat(layout.hooksConfig(home))).isFile, isTrue);
-        expect((await fs.stat(layout.idleScript(home))).isFile, isTrue);
+        expect((await fs.stat(layout.roleRule(home))).exists, isFalse);
+        expect((await fs.stat(layout.mcpConfig(home))).exists, isFalse);
       },
     );
 

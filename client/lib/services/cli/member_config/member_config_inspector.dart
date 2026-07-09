@@ -104,6 +104,7 @@ class MemberConfigInspector {
               workspaceId: trimmedWorkspaceId,
               sessionId: trimmedSessionId,
               memberId: memberId,
+              teamId: team.teamMode == TeamMode.mixed ? team.id : null,
             )
           : layout.sessionRuntimeToolDir(
               trimmedWorkspaceId,

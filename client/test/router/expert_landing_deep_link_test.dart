@@ -25,20 +25,22 @@ void main() {
     });
   });
 
-  group('ExpertMemberResolver.resolveOverlay', () {
-    test('builds overlay from builtin member', () async {
+  group('ExpertMemberResolver.resolveMember', () {
+    test('resolves builtin member by key', () async {
       final builtin = builtinExpertMembers().first;
-      final overlay = await ExpertMemberResolver.resolveOverlay(builtin.key);
-      expect(overlay, isNotNull);
-      expect(overlay!.expertKey, builtin.key);
-      expect(overlay.displayName, builtin.name);
-      expect(overlay.prompt, builtin.member.prompt);
-      expect(overlay.playbook, builtin.member.playbook);
+      final member = await ExpertMemberResolver.resolveMember(
+        key: builtin.key,
+      );
+      expect(member, isNotNull);
+      expect(member!.key, builtin.key);
+      expect(member.name, builtin.name);
+      expect(member.member.prompt, builtin.member.prompt);
+      expect(member.member.playbook, builtin.member.playbook);
     });
 
     test('returns null for unknown key without source', () async {
       expect(
-        await ExpertMemberResolver.resolveOverlay('missing/expert'),
+        await ExpertMemberResolver.resolveMember(key: 'missing/expert'),
         isNull,
       );
     });
@@ -61,13 +63,10 @@ void main() {
         key: custom.key,
         hubState: const ExpertHubState(allMembers: [custom]),
       );
-      final overlay = member == null
-          ? null
-          : ExpertMemberResolver.overlayFromMember(member);
 
-      expect(overlay?.displayName, 'Custom Dev');
-      expect(overlay?.prompt, 'Custom prompt');
-      expect(overlay?.playbook, 'Custom playbook');
+      expect(member?.name, 'Custom Dev');
+      expect(member?.member.prompt, 'Custom prompt');
+      expect(member?.member.playbook, 'Custom playbook');
     });
   });
 

@@ -1,12 +1,11 @@
 import '../../models/discoverable_member.dart';
-import '../../models/expert_session_overlay.dart';
 import '../../cubits/expert_hub_cubit.dart';
 import 'builtin_member_templates.dart';
 import 'composite_expert_hub_source.dart';
 import 'local_member_template_store.dart';
 
 /// Resolves an Expert Hub member key to a [DiscoverableMember] for UI labels
-/// and session overlay snapshots.
+/// and connect-time materialization.
 class ExpertMemberResolver {
   const ExpertMemberResolver._();
 
@@ -46,6 +45,7 @@ class ExpertMemberResolver {
     ExpertHubState? hubState,
     CompositeExpertHubSource? source,
     LocalMemberTemplateStore? localStore,
+    ExpertHubCubit? cubit,
   }) async {
     final trimmed = key?.trim() ?? '';
     if (trimmed.isEmpty) return null;
@@ -57,7 +57,13 @@ class ExpertMemberResolver {
       if (local != null) return local;
     }
 
-    final cached = resolve(key: trimmed, hubState: hubState);
+    ExpertHubState? effectiveHub = hubState ?? cubit?.state;
+    if (cubit != null && (effectiveHub?.allMembers.isEmpty ?? true)) {
+      await cubit.load();
+      effectiveHub = cubit.state;
+    }
+
+    final cached = resolve(key: trimmed, hubState: effectiveHub);
     if (cached != null) return cached;
 
     if (source != null) {
@@ -68,37 +74,5 @@ class ExpertMemberResolver {
     }
 
     return null;
-  }
-
-  static ExpertSessionOverlay overlayFromMember(DiscoverableMember member) {
-    return ExpertSessionOverlay(
-      expertKey: member.key,
-      displayName: member.name,
-      prompt: member.member.prompt,
-      playbook: member.member.playbook,
-    );
-  }
-
-  /// Resolves [expertKey] and builds a session overlay snapshot.
-  static Future<ExpertSessionOverlay?> resolveOverlay(
-    String? expertKey, {
-    ExpertHubCubit? cubit,
-    CompositeExpertHubSource? source,
-    LocalMemberTemplateStore? localStore,
-  }) async {
-    ExpertHubState? hubState = cubit?.state;
-    if (cubit != null && hubState!.allMembers.isEmpty) {
-      await cubit.load();
-      hubState = cubit.state;
-    }
-
-    final member = await resolveMember(
-      key: expertKey,
-      hubState: hubState,
-      source: source,
-      localStore: localStore,
-    );
-    if (member == null) return null;
-    return overlayFromMember(member);
   }
 }

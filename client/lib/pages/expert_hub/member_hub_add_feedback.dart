@@ -1,5 +1,5 @@
 import '../../l10n/app_localizations.dart';
-import '../../services/expert_hub/member_clone_service.dart';
+import '../../services/expert_hub/member_roster_service.dart';
 
 /// User-facing toast copy after an Expert Hub add-to-team attempt.
 String memberHubAddToastMessage(

@@ -357,6 +357,44 @@ void main() {
     },
   );
 
+  test('prepareShellLaunch applies expert overlay to launch member', () async {
+    const workspaceId = 'personal-proj';
+    const sessionId = 'personal-sess';
+    const profile = PersonalProfile(
+      id: workspaceId,
+      display: workspaceId,
+      agent: WorkspaceAgentConfig(
+        agent: 'solo',
+        prompt: 'Base prompt.',
+      ),
+    );
+    final workspace = Workspace(
+      workspaceId: workspaceId,
+      folders: const [WorkspaceFolder(path: '/work/personal')],
+      createdAt: 1,
+    );
+    final session = AppSession(
+      sessionId: sessionId,
+      workspaceId: workspaceId,
+      folders: const [WorkspaceFolder(path: '/work/personal')],
+      sessionTeam: '',
+      expertKey: 'teampilot/builtin/architect',
+      createdAt: 1,
+    );
+
+    final shellLaunch = await service().prepareShellLaunch(
+      session: session,
+      workspace: workspace,
+      personal: profile,
+    );
+
+    expect(shellLaunch.launchContext.member.name, 'Architect');
+    expect(shellLaunch.launchContext.member.prompt, contains('design'));
+    expect(shellLaunch.launchContext.member.playbook, contains('approved'));
+    expect(shellLaunch.launchContext.team.members.single.prompt,
+        contains('design'));
+  });
+
   test('destroyStandaloneCliState removes standalone session tree', () async {
     const workspaceId = 'personal-proj';
     const sessionId = 'personal-sess';

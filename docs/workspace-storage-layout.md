@@ -34,7 +34,8 @@ Typical `<teampilotRoot>` paths:
   cli-presets.json
   ssh_profiles/
   targets.json                   # runtime targets registry (local / WSL / SSH)
-  team-hub/                      # TeamHub cache + registries
+  team-hub/                      # Team Hub template registry + cache
+  member-hub/                    # Expert Hub catalog UX state + local templates
   worktrees/{repoName}/{branch}/ # app-managed git worktrees
   ui/                            # home workspace UI prefs (tabs, favorites, …)
   notifications.json
@@ -69,15 +70,36 @@ workspace/workspaces/{workspaceId}/
 At launch, `RuntimeLayout` links each layer into the session runtime tree (PTY `CONFIG_DIR`):
 
 1. **App** — `cli-defaults/{tool}/`
-2. **Identity** — `identities-runtime/{profileId}/{tool}/` (launch profile id)
+2. **Identity** — `identities-runtime/{profileId}/{tool}/`
 3. **Workspace** — `workspace/workspaces/{workspaceId}/config/{tool}/`
 4. **Session** — `workspace/workspaces/{workspaceId}/sessions/{sessionId}/runtime/…`
 
-`SessionLifecycleService` performs provisioning and per-CLI writers; see `runtime_layout.dart` and `session_lifecycle_service.dart`.
+Persona prompt/playbook is **not** stored at layers 1–3 for teams; it is resolved from the expert catalog at connect and written into layer 4 via `MemberRoleProvision`.
+
+## Expert Hub (`member-hub/`)
+
+Catalog UX and user-authored experts. Persona source-of-truth for shared experts. Spec: [Expert Hub design](superpowers/specs/2026-07-05-expert-hub-design.md).
+
+```
+member-hub/
+  favorites.json                 # { "keys": ["teampilot/builtin/architect", ...] }
+  recent.json                    # landing picker recents
+  local-templates/{id}.json      # DiscoverableMember (user-owned experts)
+  cache/{owner}-{repo}/
+    members.json                 # git registry cache (flashskyai/member-hub)
+```
+
+## Team Hub (`team-hub/`)
+
+Team **templates** — same roster shape as user teams (`roster[]` of expert keys, not embedded prompts):
+
+```
+team-hub/cache/{owner}-{repo}/
+  teams.json                     # fetched index
+teams/{slug}/team.json           # DiscoverableTeam with roster[]
+```
 
 ## Launch profiles
-
-Reusable launch identities (personal or team) live outside any workspace:
 
 ```
 launch-profiles/{profileId}/profile.json
@@ -85,7 +107,58 @@ launch-profiles/{profileId}/profile.json
 
 `LaunchProfileRepository` is source of truth; `launch-profiles-index.json` is a derived startup snapshot.
 
+### Team profile (`TeamProfile`)
+
+Teams persist **references** to catalog experts:
+
+```json
+{
+  "kind": "team",
+  "id": "my-squad",
+  "name": "My Squad",
+  "teamMode": "native",
+  "cli": "claude",
+  "skillIds": ["..."],
+  "roster": [
+    {
+      "id": "team-lead",
+      "expertKey": "teampilot/builtin/lead",
+      "overrides": { "model": "opus" },
+      "joinedAt": 1710000000000
+    },
+    {
+      "id": "developer",
+      "expertKey": "flashskyai/member-hub/developer",
+      "joinedAt": 1710000001000
+    }
+  ]
+}
+```
+
+- `expertKey` is **required** on every slot.
+- `overrides` may set provider/model/cli/effort/replicas/capabilities — **not** prompt/playbook.
+- `TeamMemberConfig` exists only in memory after `materializeRosterSlot()` at connect.
+
+### Personal profile (`PersonalProfile`)
+
+Single-agent identity (`agent`, `activePresetId`). Optional session-level `expertKey` selects a catalog expert for Simple launch without mutating this file.
+
+## Session (`session.json`)
+
+Personal Simple launch with expert:
+
+```json
+{
+  "sessionId": "...",
+  "sessionTeam": "",
+  "expertKey": "teampilot/builtin/architect"
+}
+```
+
+No persisted overlay blob — persona is live-resolved from catalog at connect (same as team roster slots).
+
 ## Related docs
 
+- [Expert Hub design spec](superpowers/specs/2026-07-05-expert-hub-design.md) — teams as expert collections
 - [AGENTS.md](../AGENTS.md) — architecture overview for AI assistants
 - [README.md](../README.md) — user-facing feature descriptions

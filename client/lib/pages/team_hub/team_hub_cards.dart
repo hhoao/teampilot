@@ -169,7 +169,7 @@ class _TeamHubCardState extends State<TeamHubCard> {
                   children: [
                     TeamStatChip(
                       icon: Icons.people_alt_outlined,
-                      label: '${team.members.length}',
+                      label: '${team.roster.length}',
                       tooltip: context.l10n.teamHubMembersLabel,
                     ),
                     TeamStatChip(

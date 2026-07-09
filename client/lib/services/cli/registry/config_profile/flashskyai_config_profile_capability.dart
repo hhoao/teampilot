@@ -173,7 +173,7 @@ final class FlashskyaiConfigProfileCapability
     PersonalProfile personal,
   ) async {
     final delegate = ctx.paths;
-    final member = standaloneMemberFromPersonal(personal, preset: ctx.preset);
+    final member = personalMemberForSession(personal, preset: ctx.preset, sessionExpertKey: ctx.sessionExpertKey, resolvedExpert: ctx.resolvedExpert);
     final memberToolDir = standaloneSessionToolDir(
       delegate,
       standalone,

@@ -79,7 +79,7 @@ import '../services/team_hub/team_hub_favorites_store.dart';
 import '../services/expert_hub/composite_expert_hub_source.dart';
 import '../services/expert_hub/expert_hub_favorites_store.dart';
 import '../services/expert_hub/git_registry_expert_hub_source.dart';
-import '../services/expert_hub/member_clone_service.dart';
+import '../services/expert_hub/member_roster_service.dart';
 import '../services/cli/cli_executable_discovery.dart';
 import '../services/cli/registry/cli_bootstrap.dart';
 import '../services/cli/registry/cli_tool_registry.dart';
@@ -619,7 +619,7 @@ Future<AppShell> buildAppShell({
           required name,
           required cli,
           required teamMode,
-          required members,
+          required roster,
           required skillIds,
           required pluginIds,
           required mcpServerIds,
@@ -629,7 +629,7 @@ Future<AppShell> buildAppShell({
           name: name,
           cli: cli,
           teamMode: teamMode,
-          members: members,
+          roster: roster,
           skillIds: skillIds,
           pluginIds: pluginIds,
           mcpServerIds: mcpServerIds,
@@ -655,7 +655,7 @@ Future<AppShell> buildAppShell({
   );
 
   final expertHubFavorites = ExpertHubFavoritesStore();
-  final memberCloneService = MemberCloneService(
+  final memberRosterService = MemberRosterService(
     installSkill: skillCubit.installTeamDependency,
   );
   final compositeExpertHubSource = CompositeExpertHubSource.withDefaults(
@@ -666,7 +666,7 @@ Future<AppShell> buildAppShell({
     source: compositeExpertHubSource,
     loadFavorites: expertHubFavorites.load,
     saveFavoriteToggle: expertHubFavorites.toggle,
-    memberCloneService: memberCloneService,
+    memberRosterService: memberRosterService,
     launchProfiles: () => teamCubit,
     loadInstalledDepIds: () async {
       final skills = await skillRepo.loadInstalled();

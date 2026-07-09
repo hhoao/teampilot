@@ -1,24 +1,28 @@
 import '../../models/discoverable_member.dart';
 import '../../models/discoverable_team.dart';
-import '../../utils/team_member_naming.dart';
 
-/// Denormalizes [DiscoverableTeam.members] into standalone [DiscoverableMember]
-/// entries for Expert Hub discovery.
+/// Flattens template [DiscoverableTeam.roster] expert keys for Expert Hub
+/// "from teams" discovery. Skips built-in catalog keys (already listed).
 List<DiscoverableMember> indexMembersFromTeams(List<DiscoverableTeam> teams) {
+  const builtinPrefix = 'teampilot/builtin/';
   final indexed = <DiscoverableMember>[];
+  final seen = <String>{};
   for (final team in teams) {
-    for (final member in team.members) {
-      final slug = TeamMemberNaming.slugMemberName(member.name);
+    for (final slot in team.roster) {
+      final key = slot.expertKey.trim();
+      if (key.isEmpty || key.startsWith(builtinPrefix) || seen.contains(key)) {
+        continue;
+      }
+      seen.add(key);
       indexed.add(
         DiscoverableMember(
-          key: '${team.key}#$slug',
-          name: member.name.trim().isNotEmpty ? member.name.trim() : slug,
+          key: key,
+          name: slot.id,
           description: team.description,
           category: team.category,
           source: ExpertMemberSource.teamExtract,
           originTeamKey: team.key,
-          member: member,
-          skillDeps: team.skillDeps,
+          member: DiscoverableTeamMember(name: slot.id),
         ),
       );
     }

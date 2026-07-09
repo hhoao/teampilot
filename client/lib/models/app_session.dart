@@ -1,6 +1,5 @@
 import 'package:flutter/foundation.dart';
 
-import 'expert_session_overlay.dart';
 import 'session_member_binding.dart';
 import 'team_config.dart';
 import 'workspace_folder.dart';
@@ -28,7 +27,6 @@ class AppSession {
     this.pinned = false,
     this.sortOrder = 0,
     this.expertKey = '',
-    this.expertOverlay,
   });
 
   factory AppSession({
@@ -49,7 +47,6 @@ class AppSession {
     bool pinned = false,
     int sortOrder = 0,
     String expertKey = '',
-    ExpertSessionOverlay? expertOverlay,
   }) {
     return AppSession._(
       sessionId: sessionId,
@@ -73,7 +70,6 @@ class AppSession {
       pinned: pinned,
       sortOrder: sortOrder,
       expertKey: expertKey.trim(),
-      expertOverlay: expertOverlay,
     );
   }
 
@@ -109,10 +105,6 @@ class AppSession {
                 '${e.key}'.trim(): '${e.value}'.trim(),
           }
         : const <String, String>{};
-    final overlayRaw = json['expertOverlay'];
-    final expertOverlay = overlayRaw is Map
-        ? ExpertSessionOverlay.fromJson(overlayRaw.cast<String, Object?>())
-        : null;
     return AppSession(
       sessionId: json['sessionId'] as String? ?? '',
       workspaceId: json['workspaceId'] as String? ?? '',
@@ -131,7 +123,6 @@ class AppSession {
       pinned: json['pinned'] as bool? ?? false,
       sortOrder: json['sortOrder'] as int? ?? 0,
       expertKey: json['expertKey'] as String? ?? '',
-      expertOverlay: expertOverlay,
     );
   }
 
@@ -190,11 +181,8 @@ class AppSession {
   final bool pinned;
   final int sortOrder;
 
-  /// Expert Hub discovery key when this session was summoned with an overlay.
+  /// Expert Hub discovery key when this personal session summons an expert.
   final String expertKey;
-
-  /// Snapshot of expert prompt/playbook at session create time.
-  final ExpertSessionOverlay? expertOverlay;
 
   String resolveDisplayTitle(String whenDisplayEmpty) =>
       display.isNotEmpty ? display : whenDisplayEmpty;
@@ -228,8 +216,6 @@ class AppSession {
     bool? pinned,
     int? sortOrder,
     String? expertKey,
-    ExpertSessionOverlay? expertOverlay,
-    bool updateExpertOverlay = false,
   }) {
     return AppSession(
       sessionId: sessionId ?? this.sessionId,
@@ -249,7 +235,6 @@ class AppSession {
       pinned: pinned ?? this.pinned,
       sortOrder: sortOrder ?? this.sortOrder,
       expertKey: expertKey ?? this.expertKey,
-      expertOverlay: updateExpertOverlay ? expertOverlay : this.expertOverlay,
     );
   }
 
@@ -274,7 +259,6 @@ class AppSession {
       'pinned': pinned,
       if (sortOrder != 0) 'sortOrder': sortOrder,
       if (expertKey.isNotEmpty) 'expertKey': expertKey,
-      if (expertOverlay != null) 'expertOverlay': expertOverlay!.toJson(),
     };
   }
 
@@ -299,8 +283,7 @@ class AppSession {
             updatedAt == other.updatedAt &&
             pinned == other.pinned &&
             sortOrder == other.sortOrder &&
-            expertKey == other.expertKey &&
-            expertOverlay == other.expertOverlay;
+            expertKey == other.expertKey;
   }
 
   @override
@@ -324,6 +307,5 @@ class AppSession {
     pinned,
     sortOrder,
     expertKey,
-    expertOverlay,
   );
 }

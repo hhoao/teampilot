@@ -1,4 +1,7 @@
+import 'package:collection/collection.dart';
 import 'package:flutter/foundation.dart';
+
+import 'team_roster_slot.dart';
 
 import '../utils/team_member_naming.dart';
 import 'config_bundle.dart';
@@ -338,6 +341,7 @@ class TeamProfile implements LaunchProfile {
     required this.name,
     this.description = '',
     this.extraArgs = '',
+    this.roster = const [],
     this.members = const [],
     this.skillIds = const [],
     this.pluginIds = const [],
@@ -409,16 +413,16 @@ class TeamProfile implements LaunchProfile {
   }
 
   factory TeamProfile.fromJson(Map<String, Object?> json) {
-    final rawMembers = json['members'];
-    final members = rawMembers is List
-        ? rawMembers
+    final rawRoster = json['roster'];
+    final roster = rawRoster is List
+        ? rawRoster
               .whereType<Map>()
               .map(
                 (item) =>
-                    TeamMemberConfig.fromJson(Map<String, Object?>.from(item)),
+                    TeamRosterSlot.fromJson(Map<String, Object?>.from(item)),
               )
               .toList(growable: false)
-        : const <TeamMemberConfig>[];
+        : const <TeamRosterSlot>[];
 
     final name = json['name'] as String? ?? '';
     return TeamProfile(
@@ -426,7 +430,7 @@ class TeamProfile implements LaunchProfile {
       name: name,
       description: json['description'] as String? ?? '',
       extraArgs: json['extraArgs'] as String? ?? '',
-      members: members,
+      roster: roster,
       skillIds: decodeSkillIds(json['skillIds']),
       pluginIds: decodePluginIds(json['pluginIds']),
       mcpServerIds: decodeMcpServerIds(json['mcpServerIds']),
@@ -526,6 +530,10 @@ class TeamProfile implements LaunchProfile {
   final String name;
   final String description;
   final String extraArgs;
+  /// Persisted expert references for this team.
+  final List<TeamRosterSlot> roster;
+
+  /// Runtime roster resolved from [roster] at load/connect; not persisted.
   final List<TeamMemberConfig> members;
 
   /// Manifest [Skill.id] values enabled for this team.
@@ -599,6 +607,7 @@ class TeamProfile implements LaunchProfile {
     String? name,
     String? description,
     String? extraArgs,
+    List<TeamRosterSlot>? roster,
     List<TeamMemberConfig>? members,
     List<String>? skillIds,
     List<String>? pluginIds,
@@ -627,6 +636,7 @@ class TeamProfile implements LaunchProfile {
       name: name ?? this.name,
       description: description ?? this.description,
       extraArgs: extraArgs ?? this.extraArgs,
+      roster: roster ?? this.roster,
       members: members ?? this.members,
       skillIds: skillIds ?? this.skillIds,
       pluginIds: pluginIds ?? this.pluginIds,
@@ -663,7 +673,7 @@ class TeamProfile implements LaunchProfile {
       'name': name,
       if (description.isNotEmpty) 'description': description,
       'extraArgs': extraArgs,
-      'members': members.map((member) => member.toJson()).toList(),
+      'roster': roster.map((slot) => slot.toJson()).toList(),
       if (skillIds.isNotEmpty) 'skillIds': skillIds,
       if (pluginIds.isNotEmpty) 'pluginIds': pluginIds,
       if (mcpServerIds.isNotEmpty) 'mcpServerIds': mcpServerIds,
@@ -694,6 +704,7 @@ class TeamProfile implements LaunchProfile {
             name == other.name &&
             description == other.description &&
             extraArgs == other.extraArgs &&
+            listEquals(roster, other.roster) &&
             listEquals(members, other.members) &&
             listEquals(skillIds, other.skillIds) &&
             listEquals(pluginIds, other.pluginIds) &&
@@ -719,6 +730,7 @@ class TeamProfile implements LaunchProfile {
     name,
     description,
     extraArgs,
+    Object.hashAll(roster),
     Object.hashAll(members),
     Object.hashAll(skillIds),
     Object.hashAll(pluginIds),

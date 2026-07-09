@@ -14,6 +14,7 @@ import '../../widgets/settings/workspace_section_host.dart';
 import 'team_config_extensions_section.dart';
 import 'team_config_info_section.dart';
 import 'team_config_mcp_section.dart';
+import 'team_config_member_dialogs.dart';
 import 'team_config_member_section.dart';
 import 'team_config_nav_panel.dart';
 import 'team_config_plugins_section.dart';
@@ -91,12 +92,12 @@ class TeamConfigHubPage extends StatelessWidget {
         title: '${l10n.add} ${l10n.memberName}',
         icon: Icons.person_add_outlined,
         onTap: throttledAsync('team_config_hub_add_member', () async {
-          await teamCubit.addMember();
-          final updated = teamCubit.state.selectedTeam;
-          if (!context.mounted || updated == null || updated.members.isEmpty) {
-            return;
-          }
-          context.push('/team-config/members/${updated.members.last.id}');
+          final addedId = await pickAndAddTeamMemberFromExpertHub(
+            context,
+            teamCubit,
+          );
+          if (!context.mounted || addedId == null) return;
+          context.push('/team-config/members/$addedId');
         }),
       ),
     ];
@@ -183,14 +184,15 @@ class TeamConfigPage extends StatelessWidget {
           memberRoutePath('/team-config', id),
         ),
         onAddMember: () async {
-          await teamCubit.addMember();
-          final t = teamCubit.state.selectedTeam;
-          if (t != null && t.members.isNotEmpty && context.mounted) {
-            navigateWorkspaceRoute(
-              context,
-              memberRoutePath('/team-config', t.members.last.id),
-            );
-          }
+          final addedId = await pickAndAddTeamMemberFromExpertHub(
+            context,
+            teamCubit,
+          );
+          if (!context.mounted || addedId == null) return;
+          navigateWorkspaceRoute(
+            context,
+            memberRoutePath('/team-config', addedId),
+          );
         },
         l10n: l10n,
       ),

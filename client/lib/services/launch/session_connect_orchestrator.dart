@@ -10,6 +10,7 @@ import '../cli/registry/mcp_writers/claude_project_mcp_cleanup.dart';
 import '../team_bus/member_bus_idle_endpoint.dart';
 import '../provider/config_profile_service.dart';
 import '../../services/cli/preset_resolver.dart';
+import '../expert_hub/expert_member_resolver.dart';
 import '../session/session_lifecycle_service.dart';
 import '../storage/runtime_context.dart';
 import 'launch_manifest_paths.dart';
@@ -76,6 +77,9 @@ class SessionConnectOrchestrator {
     final catalogProfile = await configProfileFor(
       offHome ? homeContext() : workContext,
     );
+    final resolvedExpert = session.expertKey.trim().isNotEmpty
+        ? await ExpertMemberResolver.resolveMember(key: session.expertKey)
+        : null;
     final staged = await catalogProfile.stageSessionLaunch(
       readDelegate: offHome ? homeContext().fs : workContext.fs,
       workTeampilotRoot: workContext.appDataRoot,
@@ -88,6 +92,8 @@ class SessionConnectOrchestrator {
       extraMcpServers: extraMcpServers,
       busIdle: busIdle,
       preset: preset,
+      sessionExpertKey: session.expertKey,
+      resolvedExpert: resolvedExpert,
     );
 
     await manifestExecutor.flush(

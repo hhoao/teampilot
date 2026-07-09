@@ -1,28 +1,31 @@
 import 'package:teampilot/models/team_config.dart';
+import 'package:teampilot/models/team_roster_slot.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 void main() {
-  test('round trips team config json with members', () {
+  test('round trips team config json with roster', () {
     const team = TeamProfile(
       id: 'team-1',
       name: 'hello',
       extraArgs: '--permission-mode acceptEdits',
       loop: true,
-      members: [
-        TeamMemberConfig(
+      roster: [
+        TeamRosterSlot(
           id: 'member-1',
-          name: 'planner',
-          provider: 'anthropic',
-          model: 'sonnet',
-          agent: 'builder',
-          extraArgs: '--continue',
-          dangerouslySkipPermissions: true,
+          expertKey: 'teampilot/builtin/developer',
+          overrides: TeamRosterSlotOverrides(
+            provider: 'anthropic',
+            model: 'sonnet',
+            extraArgs: '--continue',
+          ),
         ),
-        TeamMemberConfig(
+        TeamRosterSlot(
           id: 'member-2',
-          name: 'reviewer',
-          provider: 'openai',
-          model: 'gpt-5.4',
+          expertKey: 'teampilot/builtin/reviewer',
+          overrides: TeamRosterSlotOverrides(
+            provider: 'openai',
+            model: 'gpt-5.4',
+          ),
         ),
       ],
     );
@@ -139,6 +142,7 @@ void main() {
       'agent': 'builder',
     });
 
+    expect(team.roster, isEmpty);
     expect(team.members, isEmpty);
   });
 
@@ -155,20 +159,22 @@ void main() {
     );
   });
 
-  test('copyWith updates team and member fields', () {
+  test('copyWith updates team roster and runtime members', () {
+    const slot = TeamRosterSlot(
+      id: 'member-1',
+      expertKey: 'teampilot/builtin/developer',
+    );
     const member = TeamMemberConfig(id: 'member-1', name: 'planner');
-    final changedMember = member.copyWith(provider: 'openai', model: 'gpt-5.4');
-
     const team = TeamProfile(id: 'team-1', name: 'hello');
     final changedTeam = team.copyWith(
       extraArgs: '--continue',
-      members: [changedMember],
+      roster: [slot],
+      members: [member],
     );
 
-    expect(changedMember.provider, 'openai');
-    expect(changedMember.model, 'gpt-5.4');
     expect(changedTeam.extraArgs, '--continue');
-    expect(changedTeam.members.single, changedMember);
+    expect(changedTeam.roster.single, slot);
+    expect(changedTeam.members.single, member);
   });
 
   test('round trips cli and defaults to claude for legacy json', () {

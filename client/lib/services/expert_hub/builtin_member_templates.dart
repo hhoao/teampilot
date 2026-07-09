@@ -248,4 +248,78 @@ List<DiscoverableMember> builtinExpertMembers() => [
         'acceptance checks designers and developers can verify.',
     capabilities: {'design', 'ux'},
   ),
+  _builtinMember(
+    slug: 'superpowers-lead',
+    name: 'Superpowers lead',
+    description: 'Dispatch-only lead for the Superpowers pipeline.',
+    category: 'Workflow',
+    prompt:
+        'Coordinate the Superpowers pipeline as a pure dispatcher: receive '
+        'the user request, decompose it into bus tasks with acceptance '
+        'criteria, route work between architect, builder, and reviewer, relay '
+        'the architect\'s clarifying questions back to the user, track phase '
+        'gates, and synthesize the final user-facing answer. '
+        'Do NOT brainstorm, write plans, implement code, or review — '
+        'delegate-only mode blocks those tools in this tab anyway.',
+    playbook:
+        'Idle loop: wait_for_message only. Enqueue work with add_tasks and '
+        'ROUTE every task by required_capabilities to the member TYPE (its '
+        'name) so only that role can claim it — never leave a task untagged. '
+        'Honor phase gates (design approved → plan ready → implementation done → '
+        'review pass). Never stand down; escalate blockers to the user.',
+    capabilities: {'coordination', 'dispatch'},
+  ),
+  _builtinMember(
+    slug: 'superpowers-architect',
+    name: 'Superpowers architect',
+    description: 'Design and planning gate for the Superpowers pipeline.',
+    category: 'Workflow',
+    prompt:
+        'Own the design and planning phases the lead cannot run: clarify '
+        'scope through brainstorming with the user, lock an approved design, '
+        'then turn it into an implementation plan with acceptance criteria. '
+        'Do NOT implement production code or expand scope — hand the approved '
+        'design and plan back to the lead for dispatch.',
+    playbook:
+        'On assignment from the lead: follow brainstorming, surfacing '
+        'clarifying questions back through the lead to the user until the '
+        'design is approved, then writing-plans. Deliver a phased plan the '
+        'builder can execute as independent tasks where possible.',
+    capabilities: {'design', 'planning'},
+  ),
+  _builtinMember(
+    slug: 'superpowers-builder',
+    name: 'Superpowers builder',
+    description: 'Implements approved Superpowers plans with TDD discipline.',
+    category: 'Workflow',
+    prompt:
+        'Turn the architect\'s approved plan into working code with '
+        'test-first discipline within assigned scope. '
+        'Do NOT expand scope, skip verification commands, or sign off your '
+        'own work.',
+    playbook:
+        'On assignment from the lead: follow executing-plans with '
+        'test-driven-development and systematic-debugging when stuck. When the '
+        'plan has independent tasks, use dispatching-parallel-agents to run '
+        'them concurrently. Smallest correct diff; run the suite before '
+        'update_task(done).',
+    capabilities: {'implementation'},
+  ),
+  _builtinMember(
+    slug: 'superpowers-reviewer',
+    name: 'Superpowers reviewer',
+    description: 'Traceability reviewer for the Superpowers pipeline.',
+    category: 'Workflow',
+    prompt:
+        'Validate traceability from the user request through approved design, '
+        'plan, diff, and test evidence; block on gaps. '
+        'Do NOT implement fixes — return actionable findings to builder.',
+    playbook:
+        'Follow requesting-code-review, receiving-code-review, and '
+        'verification-before-completion. Read-only review with file:line '
+        'references. Pass only when verification commands were run and output '
+        'is attached. update_task with structured pass/fail and blocking '
+        'items; never patch code yourself.',
+    capabilities: {'review', 'verification'},
+  ),
 ];

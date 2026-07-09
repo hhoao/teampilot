@@ -41,7 +41,7 @@ void main() {
     );
   });
 
-  test('overlayFromMember snapshots prompt and playbook', () {
+  test('resolveMember returns full builtin snapshot', () async {
     const member = DiscoverableMember(
       key: 'teampilot/builtin/developer',
       name: 'Developer',
@@ -54,10 +54,13 @@ void main() {
         playbook: 'Use TDD',
       ),
     );
-    final overlay = ExpertMemberResolver.overlayFromMember(member);
-    expect(overlay.expertKey, member.key);
-    expect(overlay.displayName, 'Developer');
-    expect(overlay.prompt, 'Build features');
-    expect(overlay.playbook, 'Use TDD');
+    final resolved = await ExpertMemberResolver.resolveMember(
+      key: member.key,
+      hubState: const ExpertHubState(allMembers: [member]),
+    );
+    expect(resolved?.key, member.key);
+    expect(resolved?.name, 'Developer');
+    expect(resolved?.member.prompt, 'Build features');
+    expect(resolved?.member.playbook, 'Use TDD');
   });
 }

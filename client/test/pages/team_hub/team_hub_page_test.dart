@@ -1,10 +1,12 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:go_router/go_router.dart';
 import 'package:teampilot/cubits/layout_cubit.dart';
 import 'package:teampilot/cubits/team_hub_cubit.dart';
 import 'package:teampilot/l10n/app_localizations.dart';
 import 'package:teampilot/models/discoverable_team.dart';
+import 'package:teampilot/models/team_roster_slot.dart';
 import 'package:teampilot/pages/team_hub/team_hub_page.dart';
 import 'package:teampilot/services/team/team_clone_service.dart';
 import 'package:teampilot/services/team_hub/team_hub_source.dart';
@@ -20,6 +22,12 @@ class _FakeSource implements TeamHubSource {
       description: 'deep research',
       category: 'AI',
       updatedAt: 1,
+      roster: const [
+        TeamRosterSlot(
+          id: 'team-lead',
+          expertKey: 'teampilot/builtin/team-lead',
+        ),
+      ],
     ),
   ];
 
@@ -48,15 +56,22 @@ void main() {
     );
 
     await tester.pumpWidget(
-      MaterialApp(
+      MaterialApp.router(
         localizationsDelegates: AppLocalizations.localizationsDelegates,
         supportedLocales: AppLocalizations.supportedLocales,
-        home: BlocProvider(
-          create: (_) => LayoutCubit(),
-          child: BlocProvider.value(
-            value: cubit,
-            child: const Scaffold(body: TeamHubPage()),
-          ),
+        routerConfig: GoRouter(
+          routes: [
+            GoRoute(
+              path: '/',
+              builder: (context, state) => BlocProvider(
+                create: (_) => LayoutCubit(),
+                child: BlocProvider.value(
+                  value: cubit,
+                  child: const Scaffold(body: TeamHubPage()),
+                ),
+              ),
+            ),
+          ],
         ),
       ),
     );

@@ -66,6 +66,7 @@ import 'package:teampilot/services/terminal/terminal_session.dart';
 import 'package:teampilot/router/app_router.dart';
 import 'package:teampilot/theme/app_theme.dart';
 import 'package:teampilot/utils/app_keys.dart';
+import 'package:teampilot/services/expert_hub/expert_member_materializer.dart';
 import 'package:teampilot/utils/team_member_naming.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
@@ -571,19 +572,18 @@ void main() {
     await pumpPhaseTransitions(tester);
 
     expect(find.byKey(AppKeys.chatWorkspace), findsOneWidget);
-    expect(find.byKey(AppKeys.rightToolsPanel), findsOneWidget);
-    expect(find.byKey(AppKeys.membersPanel), findsOneWidget);
+    // Compose landing is default until a session tab is opened.
+    expect(find.byKey(AppKeys.rightToolsPanel), findsNothing);
+    expect(find.byKey(AppKeys.membersPanel), findsNothing);
     // Lazy TabbedPanel mounts only the selected tool tab; file tree is off-tab.
     expect(find.byKey(AppKeys.fileTreePanel), findsNothing);
-    expect(find.text('team-lead'), findsWidgets);
+    final selectedTeam = teamCubit.state.selectedTeam;
+    expect(selectedTeam, isNotNull);
     expect(chatCubit.state.tabs.length, 0);
     final workbenchCtx = tester.element(find.byKey(AppKeys.chatWorkspace));
     final l10n = AppLocalizations.of(workbenchCtx);
-    expect(find.text(l10n.sessionReadyTitle), findsOneWidget);
-    expect(find.text(l10n.sessionReadySubtitle('team-lead')), findsOneWidget);
+    expect(find.text(l10n.workspaceChatLandingInputHint), findsOneWidget);
 
-    final selectedTeam = teamCubit.state.selectedTeam;
-    expect(selectedTeam, isNotNull);
     chatCubit.setActiveWorkspace(workspace.workspaceId);
     // Real repository I/O must run inside runAsync in widget tests.
     await tester.runAsync(() async {
@@ -600,6 +600,8 @@ void main() {
     expect(chatCubit.state.tabs.length, 1);
     expect(chatCubit.state.tabs.single.id.startsWith('local-'), isFalse);
     expect(chatCubit.isMemberRunning('team-lead'), isTrue);
+    await pumpPhaseTransitions(tester);
+    expect(find.byKey(AppKeys.rightToolsPanel), findsOneWidget);
   });
 
   testWidgets('renders settings shell with title bar and icon navigation', (
@@ -694,10 +696,12 @@ void main() {
   });
 
   test('opening a team session tab starts team-lead member shell', () async {
-    final team = TeamProfile(
-      id: LaunchProfileProvisioner.defaultNativeTeamId,
-      name: 'Default Native Team',
-      members: TeamMemberNaming.defaultRoster(),
+    final team = await ExpertMemberMaterializer.attachMaterializedMembers(
+      TeamProfile(
+        id: LaunchProfileProvisioner.defaultNativeTeamId,
+        name: 'Default Native Team',
+        roster: TeamMemberNaming.defaultRoster(),
+      ),
     );
     final postFrame = PostFrameTestHarness();
     final repo = SessionRepository(

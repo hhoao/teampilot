@@ -94,7 +94,7 @@ final class CursorConfigProfileCapability implements ConfigProfileCapability {
     ).provision(
       memberHome: home,
       providerId: providerId.isEmpty ? null : providerId,
-      member: standaloneMemberFromPersonal(personal, preset: ctx.preset),
+      member: personalMemberForSession(personal, preset: ctx.preset, sessionExpertKey: ctx.sessionExpertKey, resolvedExpert: ctx.resolvedExpert),
       busIdle: null,
       forceTeamLeadDelegateMode: false,
       mixed: false,

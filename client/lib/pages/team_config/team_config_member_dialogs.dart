@@ -3,7 +3,9 @@ import 'package:flutter/material.dart';
 import '../../cubits/launch_profile_cubit.dart';
 import '../../l10n/l10n_extensions.dart';
 import '../../models/team_config.dart';
+import '../../utils/team_member_naming.dart';
 import '../../widgets/app_dialog.dart';
+import '../expert_hub/expert_landing_picker_sheet.dart';
 
 Future<void> confirmDeleteTeamMember(
   BuildContext context,
@@ -48,4 +50,27 @@ Future<void> confirmDeleteTeamMember(
   if (confirmed == true) {
     await cubit.deleteMember(member.id);
   }
+}
+
+/// Opens the Expert Hub picker and appends the chosen expert to [cubit]'s team.
+/// Returns the new slot id when a member was added.
+Future<String?> pickAndAddTeamMemberFromExpertHub(
+  BuildContext context,
+  LaunchProfileCubit cubit,
+) async {
+  final team = cubit.state.selectedTeam;
+  if (team == null) return null;
+  String? addedId;
+  await showExpertApplyPickerSheet(
+    context,
+    onApply: (expert) async {
+      final added = await cubit.addExpertToTeam(
+        team.id,
+        expert.key,
+        slotIdHint: TeamMemberNaming.slugMemberName(expert.member.name),
+      );
+      addedId = added?.id;
+    },
+  );
+  return addedId;
 }

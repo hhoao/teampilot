@@ -33,7 +33,6 @@ class _TeamHubPageState extends State<TeamHubPage> {
   @override
   void initState() {
     super.initState();
-    _pendingTeamKey = _readTeamQueryParam();
     final cubit = context.read<TeamHubCubit>();
     if (cubit.state.status == TeamHubLoadStatus.idle) {
       cubit.load();
@@ -41,6 +40,15 @@ class _TeamHubPageState extends State<TeamHubPage> {
       WidgetsBinding.instance.addPostFrameCallback((_) {
         if (mounted) _tryOpenPendingTeam(cubit.state);
       });
+    }
+  }
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    _pendingTeamKey ??= _readTeamQueryParam();
+    if (_pendingTeamKey != null) {
+      _tryOpenPendingTeam(context.read<TeamHubCubit>().state);
     }
   }
 

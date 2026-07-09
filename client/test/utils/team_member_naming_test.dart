@@ -46,7 +46,7 @@ void main() {
     expect(TeamMemberNaming.leadAgentId('my-team'), 'team-lead');
   });
 
-  test('defaultRoster creates team-lead, developer, and reviewer', () {
+  test('defaultRoster creates team-lead, developer, and reviewer slots', () {
     final roster = TeamMemberNaming.defaultRoster(joinedAt: 42);
     expect(roster.map((m) => m.id).toList(), [
       'team-lead',
@@ -54,9 +54,8 @@ void main() {
       'reviewer',
     ]);
     expect(roster.every((m) => m.joinedAt == 42), isTrue);
-    expect(roster.every((m) => m.prompt.trim().isNotEmpty), isTrue);
     expect(
-      roster.every((m) => m.activePresetId == TeamProfile.inheritPresetId),
+      roster.every((m) => m.expertKey.startsWith('teampilot/builtin/')),
       isTrue,
     );
   });

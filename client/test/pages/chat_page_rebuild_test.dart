@@ -169,7 +169,9 @@ void main() {
           ),
         ),
       );
-      await tester.pumpAndSettle();
+      for (var i = 0; i < 12; i++) {
+        await tester.pump(const Duration(milliseconds: 50));
+      }
 
       final countAfterSettle = probeKey.currentState!.buildCount;
 
@@ -291,7 +293,9 @@ void main() {
           ),
         ),
       );
-      await tester.pumpAndSettle();
+      for (var i = 0; i < 12; i++) {
+        await tester.pump(const Duration(milliseconds: 50));
+      }
 
       final countAfterSettle = probeKey.currentState!.buildCount;
 

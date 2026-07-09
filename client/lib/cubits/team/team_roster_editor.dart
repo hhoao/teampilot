@@ -1,8 +1,10 @@
-import '../../services/storage/launch_profile_provisioner.dart';
+import '../../models/default_team_roster.dart';
 import '../../models/team_config.dart';
+import '../../models/team_roster_slot.dart';
+import '../../services/storage/launch_profile_provisioner.dart';
 import '../../utils/team_member_naming.dart';
 
-/// Outcome of a member mutation: either an [team] to persist, or a
+/// Outcome of a roster mutation: either an [team] to persist, or a
 /// [statusMessage] explaining why the mutation was rejected. Exactly one of
 /// the two is non-null.
 class MemberMutation {
@@ -16,7 +18,7 @@ class MemberMutation {
   bool get isRejected => team == null;
 }
 
-/// Pure roster/member transforms. No IO, no state, no emit — callers persist
+/// Pure roster transforms. No IO, no state, no emit — callers persist
 /// and emit the returned values.
 class TeamRosterEditor {
   const TeamRosterEditor();
@@ -48,32 +50,30 @@ class TeamRosterEditor {
       teamMode: teamMode,
       sortOrder: sortOrder,
       createdAt: now,
-      members: TeamMemberNaming.defaultRoster(joinedAt: now),
+      roster: TeamMemberNaming.defaultRoster(joinedAt: now),
     );
   }
 
-  TeamMemberConfig defaultMember({int? now}) {
+  TeamRosterSlot defaultSlot({int? now}) {
     final ts = now ?? DateTime.now().millisecondsSinceEpoch;
     return TeamMemberNaming.defaultRoster(joinedAt: ts).first;
   }
 
   /// Ensures the roster contains a team-lead, prepending a default one if not.
   TeamProfile normalizeTeam(TeamProfile team) {
-    final hasLead = team.members.any(TeamMemberNaming.isTeamLead);
+    final hasLead = team.roster.any(TeamMemberNaming.isTeamLeadSlot);
     if (hasLead) return team;
     final now = DateTime.now().millisecondsSinceEpoch;
     return team.copyWith(
-      members: [
-        defaultMember(now: now),
-        ...team.members,
+      roster: [
+        defaultSlot(now: now),
+        ...team.roster,
       ],
     );
   }
 
-  TeamMemberConfig normalizeMember(TeamMemberConfig member) => member;
-
   String uniqueMemberSlug(TeamProfile team, String base) {
-    final existing = team.members.map((m) => m.id).toSet();
+    final existing = team.roster.map((s) => s.id).toSet();
     final first = TeamMemberNaming.slugMemberName(base);
     if (!existing.contains(first)) return first;
     var i = 2;
@@ -95,96 +95,123 @@ class TeamRosterEditor {
     return displayName;
   }
 
-  /// Appends [template] to [team], uniquifying slug id and display name.
-  ({TeamProfile team, TeamMemberConfig added}) addMemberFromConfig(
+  /// Appends an expert reference to [team], uniquifying slot id.
+  ({TeamProfile team, TeamRosterSlot added}) addExpertToTeam(
     TeamProfile team,
-    TeamMemberConfig template,
-  ) {
+    String expertKey, {
+    TeamRosterSlotOverrides? overrides,
+    String? slotIdHint,
+  }) {
+    final key = expertKey.trim();
     final id = uniqueMemberSlug(
       team,
-      template.id.isNotEmpty ? template.id : template.name,
+      slotIdHint?.trim().isNotEmpty == true
+          ? slotIdHint!.trim()
+          : DefaultTeamRoster.developerMemberId,
     );
-    final names = team.members.map((m) => m.name).toSet();
-    final display = uniqueDisplayName(
-      template.name.trim().isEmpty ? id : template.name.trim(),
-      names,
-    );
-    final added = template.copyWith(
+    final added = TeamRosterSlot(
       id: id,
-      name: display,
+      expertKey: key,
+      overrides: overrides ?? const TeamRosterSlotOverrides(),
       joinedAt: DateTime.now().millisecondsSinceEpoch,
-      activePresetId: TeamProfile.inheritPresetId,
-      updateActivePresetId: true,
     );
-    return (team: team.copyWith(members: [...team.members, added]), added: added);
+    return (team: team.copyWith(roster: [...team.roster, added]), added: added);
   }
 
-  /// Appends a fresh default-worker member to [team].
-  ({TeamProfile team, TeamMemberConfig added}) addMember(TeamProfile team) {
+  /// Appends a fresh slot referencing the default developer expert.
+  ({TeamProfile team, TeamRosterSlot added}) addMember(TeamProfile team) {
     final id = uniqueMemberSlug(team, TeamMemberNaming.defaultWorkerName);
     final now = DateTime.now().millisecondsSinceEpoch;
-    final member = TeamMemberConfig(
+    final slot = TeamRosterSlot(
       id: id,
-      name: TeamMemberNaming.defaultWorkerName,
+      expertKey: DefaultTeamRoster.expertKeyForSlug('developer'),
       joinedAt: now,
-      activePresetId: TeamProfile.inheritPresetId,
+      overrides: const TeamRosterSlotOverrides(
+        activePresetId: TeamProfile.inheritPresetId,
+      ),
     );
-    return (
-      team: team.copyWith(members: [...team.members, member]),
-      added: member,
-    );
+    return (team: team.copyWith(roster: [...team.roster, slot]), added: slot);
   }
 
-  /// Validates and applies an update to the member with [memberId].
-  MemberMutation updateMember(
+  TeamRosterSlot? slotById(TeamProfile team, String memberId) {
+    for (final slot in team.roster) {
+      if (slot.id == memberId) return slot;
+    }
+    return null;
+  }
+
+  /// Applies launch overrides from a materialized [member] view onto the slot.
+  MemberMutation updateMemberOverrides(
     TeamProfile team,
     String memberId,
-    TeamMemberConfig updated,
+    TeamMemberConfig member,
   ) {
-    final error = TeamMemberNaming.validateMemberName(updated.name);
-    if (error != null) {
-      return MemberMutation.reject(
-        error == 'at_sign'
-            ? 'Member name cannot contain @.'
-            : 'Member name is required.',
-      );
+    final slot = slotById(team, memberId);
+    if (slot == null) {
+      return const MemberMutation.reject('Member not found.');
     }
-    final normalized = normalizeMember(updated);
+    final overrides = TeamRosterSlotOverrides(
+      provider: member.provider,
+      model: member.model,
+      effort: member.effort,
+      extraArgs: member.extraArgs,
+      cli: member.cli,
+      replicas: member.replicas,
+      capabilities: member.capabilities,
+      activePresetId: member.activePresetId,
+    );
     return MemberMutation.update(
       team.copyWith(
-        members: [
-          for (final m in team.members)
-            if (m.id == memberId) normalized else m,
+        roster: [
+          for (final s in team.roster)
+            if (s.id == memberId) s.copyWith(overrides: overrides) else s,
         ],
       ),
     );
   }
 
-  /// Validates and removes the member with [memberId] from [team].
+  /// Updates slot id or expert key (not persona text).
+  MemberMutation updateSlot(
+    TeamProfile team,
+    String memberId,
+    TeamRosterSlot updated,
+  ) {
+    if (slotById(team, memberId) == null) {
+      return const MemberMutation.reject('Member not found.');
+    }
+    return MemberMutation.update(
+      team.copyWith(
+        roster: [
+          for (final s in team.roster) if (s.id == memberId) updated else s,
+        ],
+      ),
+    );
+  }
+
+  /// Validates and removes the slot with [memberId] from [team].
   MemberMutation removeMember(TeamProfile team, String memberId) {
-    TeamMemberConfig? target;
-    for (final m in team.members) {
-      if (m.id == memberId) {
-        target = m;
+    TeamRosterSlot? target;
+    for (final s in team.roster) {
+      if (s.id == memberId) {
+        target = s;
         break;
       }
     }
-    if (target != null && TeamMemberNaming.isTeamLead(target)) {
+    if (target != null && TeamMemberNaming.isTeamLeadSlot(target)) {
       return const MemberMutation.reject(
         'Cannot remove team-lead from the roster.',
       );
     }
-    if (team.members.length == 1) {
+    if (team.roster.length == 1) {
       return const MemberMutation.reject('A team needs at least one member.');
     }
-    final deleted = team.members.firstWhere((m) => m.id == memberId);
     return MemberMutation.update(
       team.copyWith(
-        members: team.members
-            .where((m) => m.id != memberId)
+        roster: team.roster
+            .where((s) => s.id != memberId)
             .toList(growable: false),
       ),
-      statusMessage: 'Deleted ${deleted.name}.',
+      statusMessage: 'Deleted $memberId.',
     );
   }
 }

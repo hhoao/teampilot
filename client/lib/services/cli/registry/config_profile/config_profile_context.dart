@@ -1,15 +1,17 @@
 import 'package:path/path.dart' as p;
 
-import '../../../storage/runtime_layout.dart';
 import '../../../../models/config_bundle.dart';
 import '../../../../models/cli_preset.dart';
+import '../../../../models/discoverable_member.dart';
 import '../../../../models/personal_profile.dart';
 import '../../../../models/workspace_agent_config.dart';
 import '../../../../models/team_config.dart';
 import '../../../../utils/team_member_naming.dart';
+import '../../../expert_hub/expert_member_materializer.dart';
 import '../../../io/filesystem.dart';
 import '../../../host/host_execution_environment.dart';
 import '../../../provider/provider_catalog_access.dart';
+import '../../../storage/runtime_layout.dart';
 import '../../../team_bus/member_bus_idle_endpoint.dart';
 import 'config_profile_scope.dart';
 
@@ -69,8 +71,15 @@ TeamProfile standaloneTeamFromPersonal(
   required String sessionTeamName,
   required CliPreset? preset,
   ConfigBundle projectBundle = const ConfigBundle(),
+  String? sessionExpertKey,
+  DiscoverableMember? resolvedExpert,
 }) {
-  final member = standaloneMemberFromPersonal(personal, preset: preset);
+  final member = personalMemberForSession(
+    personal,
+    preset: preset,
+    sessionExpertKey: sessionExpertKey,
+    resolvedExpert: resolvedExpert,
+  );
   final bundle = projectBundle;
   return TeamProfile(
     id: profileId.trim(),
@@ -106,6 +115,19 @@ TeamMemberConfig standaloneMemberFromPersonal(
     effort: preset?.effort.trim() ?? '',
   );
 }
+
+/// Personal stand-in for launch, with optional session expert materialized at connect.
+TeamMemberConfig personalMemberForSession(
+  PersonalProfile personal, {
+  required CliPreset? preset,
+  String? sessionExpertKey,
+  DiscoverableMember? resolvedExpert,
+}) => ExpertMemberMaterializer.personalMemberForSession(
+  personal: personal,
+  preset: preset,
+  sessionExpertKey: sessionExpertKey,
+  resolvedExpert: resolvedExpert,
+);
 
 @Deprecated('Use standaloneTeamFromPersonal')
 TeamProfile standaloneTeamFromProfile(
@@ -262,6 +284,8 @@ class ConfigProfileLaunchContext {
     this.personal,
     this.preset,
     this.memberId,
+    this.sessionExpertKey,
+    this.resolvedExpert,
   });
 
   final String workspaceId;
@@ -285,6 +309,8 @@ class ConfigProfileLaunchContext {
   final PersonalProfile? personal;
   final CliPreset? preset;
   final String? memberId;
+  final String? sessionExpertKey;
+  final DiscoverableMember? resolvedExpert;
 
   bool get crossMachine => configProfileCrossMachine(catalog, paths);
 }

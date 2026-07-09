@@ -7,6 +7,9 @@ import '../models/mcp_server.dart';
 import '../models/personal_profile.dart';
 import '../models/plugin.dart';
 import '../models/team_config.dart';
+import '../models/default_team_roster.dart';
+import '../models/team_roster_slot.dart';
+import '../services/expert_hub/expert_member_materializer.dart';
 import '../models/launch_profile.dart';
 import '../repositories/mcp_repository.dart';
 import '../repositories/plugin_repository.dart';
@@ -151,6 +154,12 @@ class LaunchProfileCubit extends Cubit<LaunchProfileState>
       await _repository.save(team);
     }
   }
+
+  Future<TeamProfile> _materializeTeam(TeamProfile team) =>
+      ExpertMemberMaterializer.attachMaterializedMembers(team);
+
+  Future<List<TeamProfile>> _materializeTeams(List<TeamProfile> teams) =>
+      ExpertMemberMaterializer.attachMaterializedMembersAll(teams);
 
   LaunchProfile? byId(String id) => state.byId(id);
 
@@ -387,6 +396,15 @@ class LaunchProfileCubit extends Cubit<LaunchProfileState>
       }
     }
     var teams = _sortTeams(all.whereType<TeamProfile>().toList());
+    teams = [
+      for (final t in teams)
+        _rosterEditor.normalizeTeam(
+          t.roster.isEmpty
+              ? t.copyWith(roster: TeamMemberNaming.defaultRoster())
+              : t,
+        ),
+    ];
+    teams = await _materializeTeams(teams);
     final personals = _sortPersonals(all.whereType<PersonalProfile>().toList());
     final selectedId = state.selectedTeamId;
     final nextSelected =
@@ -488,7 +506,7 @@ class LaunchProfileCubit extends Cubit<LaunchProfileState>
     CliTool cli = CliTool.claude,
     TeamMode teamMode = TeamMode.native,
     Map<String, String> providerIdsByTool = const {},
-    List<TeamMemberConfig>? members,
+    List<TeamRosterSlot>? roster,
     String description = '',
     List<String> skillIds = const [],
   }) async {
@@ -525,18 +543,21 @@ class LaunchProfileCubit extends Cubit<LaunchProfileState>
       providerIdsByTool: providerIdsByTool,
       skillIds: skillIds,
       createdAt: now,
-      members: members ?? TeamMemberNaming.defaultRoster(joinedAt: now),
+      roster: roster ?? TeamMemberNaming.defaultRoster(joinedAt: now),
     );
-    final teams = [...state.teams, team];
+    final materialized = await _materializeTeam(
+      _rosterEditor.normalizeTeam(team),
+    );
+    final teams = [...state.teams, materialized];
     emit(
       state.copyWith(
         teams: teams,
-        selectedTeamId: team.id,
-        statusMessage: 'Added ${team.name}.',
+        selectedTeamId: materialized.id,
+        statusMessage: 'Added ${materialized.name}.',
       ),
     );
     await saveTeamProfiles(teams);
-    await _provisioner.ensureTeamProfile(team.id, cli: team.cli);
+    await _provisioner.ensureTeamProfile(materialized.id, cli: materialized.cli);
     unawaited(_sync.syncPluginsForSelected());
     return true;
   }
@@ -548,7 +569,7 @@ class LaunchProfileCubit extends Cubit<LaunchProfileState>
     required String name,
     required CliTool cli,
     TeamMode teamMode = TeamMode.native,
-    required List<TeamMemberConfig> members,
+    required List<TeamRosterSlot> roster,
     List<String> skillIds = const [],
     List<String> pluginIds = const [],
     List<String> mcpServerIds = const [],
@@ -575,34 +596,37 @@ class LaunchProfileCubit extends Cubit<LaunchProfileState>
       displayName,
       state.teams.map((t) => t.id),
     );
-    final roster = members.isEmpty
+    final nextRoster = roster.isEmpty
         ? TeamMemberNaming.defaultRoster(joinedAt: now)
-        : members;
-    final team = TeamProfile(
-      id: teamId,
-      name: displayName,
-      description: description,
-      extraArgs: extraArgs,
-      cli: cli,
-      teamMode: teamMode,
-      createdAt: now,
-      members: roster,
-      skillIds: skillIds,
-      pluginIds: pluginIds,
-      mcpServerIds: mcpServerIds,
+        : roster;
+    final normalized = _rosterEditor.normalizeTeam(
+      TeamProfile(
+        id: teamId,
+        name: displayName,
+        description: description,
+        extraArgs: extraArgs,
+        cli: cli,
+        teamMode: teamMode,
+        createdAt: now,
+        roster: nextRoster,
+        skillIds: skillIds,
+        pluginIds: pluginIds,
+        mcpServerIds: mcpServerIds,
+      ),
     );
-    final teams = [...state.teams, team];
+    final materialized = await _materializeTeam(normalized);
+    final teams = [...state.teams, materialized];
     emit(
       state.copyWith(
         teams: teams,
-        selectedTeamId: team.id,
-        statusMessage: 'Cloned ${team.name}.',
+        selectedTeamId: materialized.id,
+        statusMessage: 'Cloned ${materialized.name}.',
       ),
     );
     await saveTeamProfiles(teams);
-    await _provisioner.ensureTeamProfile(team.id, cli: team.cli);
+    await _provisioner.ensureTeamProfile(materialized.id, cli: materialized.cli);
     unawaited(_sync.syncPluginsForSelected());
-    return team.id;
+    return materialized.id;
   }
 
   /// Renames the selected team and removes persisted files keyed by the old name.
@@ -675,20 +699,21 @@ class LaunchProfileCubit extends Cubit<LaunchProfileState>
     final pluginsChanged = !listEquals(selected.pluginIds, updated.pluginIds);
     final mcpChanged = !listEquals(selected.mcpServerIds, updated.mcpServerIds);
     final normalized = _rosterEditor.normalizeTeam(
-      updated.members.isEmpty
-          ? updated.copyWith(members: TeamMemberNaming.defaultRoster())
+      updated.roster.isEmpty
+          ? updated.copyWith(roster: TeamMemberNaming.defaultRoster())
           : updated,
     );
+    final materialized = await _materializeTeam(normalized);
     final teams = [
       for (final team in state.teams)
-        if (team.id == selected.id) normalized else team,
+        if (team.id == selected.id) materialized else team,
     ];
     emit(
       state.copyWith(
         teams: teams,
-        selectedTeamId: normalized.id,
-        statusMessage: normalized.isValid
-            ? 'Saved ${normalized.name}.'
+        selectedTeamId: materialized.id,
+        statusMessage: materialized.isValid
+            ? 'Saved ${materialized.name}.'
             : 'Name is required.',
       ),
     );
@@ -737,39 +762,99 @@ class LaunchProfileCubit extends Cubit<LaunchProfileState>
     if (team == null) return;
     final (team: updated, :added) = _rosterEditor.addMember(team);
     await updateSelected(updated);
-    emit(state.copyWith(statusMessage: 'Added ${added.name}.'));
+    emit(state.copyWith(statusMessage: 'Added ${added.id}.'));
   }
 
-  /// Appends [member] to the team with [teamId], uniquifying slug and display name.
-  Future<TeamMemberConfig?> addMemberToTeam(
+  /// Appends an expert reference to the team with [teamId].
+  Future<TeamRosterSlot?> addExpertToTeam(
     String teamId,
-    TeamMemberConfig member,
-  ) async {
+    String expertKey, {
+    String? slotIdHint,
+    TeamRosterSlotOverrides? overrides,
+  }) async {
     final index = state.teams.indexWhere((team) => team.id == teamId);
     if (index < 0) return null;
     final team = state.teams[index];
-    final (team: updated, :added) = _rosterEditor.addMemberFromConfig(
+    final (team: updated, :added) = _rosterEditor.addExpertToTeam(
       team,
-      member,
+      expertKey,
+      overrides: overrides,
+      slotIdHint: slotIdHint,
     );
     final normalized = _rosterEditor.normalizeTeam(updated);
+    final materialized = await _materializeTeam(normalized);
     final teams = [
-      for (final t in state.teams) if (t.id == teamId) normalized else t,
+      for (final t in state.teams) if (t.id == teamId) materialized else t,
     ];
     emit(
       state.copyWith(
         teams: teams,
-        statusMessage: 'Added ${added.name}.',
+        statusMessage: 'Added ${added.id}.',
       ),
     );
     await saveTeamProfiles(teams);
     return added;
   }
 
+  @Deprecated('Use addExpertToTeam with expertKey')
+  Future<TeamMemberConfig?> addMemberToTeam(
+    String teamId,
+    TeamMemberConfig member,
+  ) async {
+    final added = await addExpertToTeam(
+      teamId,
+      DefaultTeamRoster.expertKeyForSlug('developer'),
+      slotIdHint: member.id,
+      overrides: TeamRosterSlotOverrides(
+        provider: member.provider,
+        model: member.model,
+        effort: member.effort,
+        extraArgs: member.extraArgs,
+        cli: member.cli,
+        replicas: member.replicas,
+        capabilities: member.capabilities,
+        activePresetId: member.activePresetId,
+      ),
+    );
+    if (added == null) return null;
+    return TeamMemberConfig(
+      id: added.id,
+      name: member.name,
+      provider: member.provider,
+      model: member.model,
+      joinedAt: added.joinedAt,
+    );
+  }
+
   Future<void> updateMember(String memberId, TeamMemberConfig updated) async {
     final team = state.selectedTeam;
     if (team == null) return;
-    final mutation = _rosterEditor.updateMember(team, memberId, updated);
+    final mutation = _rosterEditor.updateMemberOverrides(
+      team,
+      memberId,
+      updated,
+    );
+    if (mutation.isRejected) {
+      emit(state.copyWith(statusMessage: mutation.statusMessage));
+      return;
+    }
+    await updateSelected(mutation.team!);
+  }
+
+  /// Swaps the catalog expert referenced by a roster slot (persona is
+  /// materialized at load/connect — not copied into team JSON).
+  Future<void> setMemberExpert(String memberId, String expertKey) async {
+    final team = state.selectedTeam;
+    if (team == null) return;
+    final slot = _rosterEditor.slotById(team, memberId);
+    if (slot == null) return;
+    final key = expertKey.trim();
+    if (key.isEmpty || key == slot.expertKey) return;
+    final mutation = _rosterEditor.updateSlot(
+      team,
+      memberId,
+      slot.copyWith(expertKey: key),
+    );
     if (mutation.isRejected) {
       emit(state.copyWith(statusMessage: mutation.statusMessage));
       return;
@@ -835,55 +920,60 @@ class LaunchProfileCubit extends Cubit<LaunchProfileState>
   }) async {
     final team = state.selectedTeam;
     if (team == null) return;
-    final member = team.members.cast<TeamMemberConfig?>().firstWhere(
-      (m) => m!.id == memberId,
-      orElse: () => null,
-    );
-    if (member == null) return;
+    final slot = _rosterEditor.slotById(team, memberId);
+    if (slot == null) return;
+    final overrides = slot.overrides;
     final effectiveId = (presetId == null || presetId.trim().isEmpty)
         ? null
         : presetId.trim();
 
+    TeamRosterSlotOverrides nextOverrides;
     if (effectiveId == TeamProfile.inheritPresetId) {
-      await updateMember(
-        memberId,
-        member.copyWith(
-          activePresetId: TeamProfile.inheritPresetId,
-          updateActivePresetId: true,
-          cli: null,
-          updateCli: true,
-          provider: '',
-          model: '',
-          effort: '',
-          updateEffort: true,
-        ),
-      );
-      return;
-    }
-
-    if (effectiveId == null) {
-      await updateMember(
-        memberId,
-        member.copyWith(activePresetId: null, updateActivePresetId: true),
-      );
-      return;
-    }
-
-    final syncCliFromPreset =
-        team.teamMode == TeamMode.mixed && syncCli != null;
-    await updateMember(
-      memberId,
-      member.copyWith(
-        activePresetId: effectiveId,
-        updateActivePresetId: true,
-        cli: syncCliFromPreset ? syncCli : null,
-        updateCli: syncCliFromPreset,
+      nextOverrides = TeamRosterSlotOverrides(
         provider: '',
         model: '',
         effort: '',
-        updateEffort: true,
-      ),
+        extraArgs: overrides.extraArgs,
+        cli: null,
+        replicas: overrides.replicas,
+        capabilities: overrides.capabilities,
+        activePresetId: TeamProfile.inheritPresetId,
+      );
+    } else if (effectiveId == null) {
+      nextOverrides = TeamRosterSlotOverrides(
+        provider: overrides.provider,
+        model: overrides.model,
+        effort: overrides.effort,
+        extraArgs: overrides.extraArgs,
+        cli: overrides.cli,
+        replicas: overrides.replicas,
+        capabilities: overrides.capabilities,
+        activePresetId: null,
+      );
+    } else {
+      final syncCliFromPreset =
+          team.teamMode == TeamMode.mixed && syncCli != null;
+      nextOverrides = TeamRosterSlotOverrides(
+        provider: '',
+        model: '',
+        effort: '',
+        extraArgs: overrides.extraArgs,
+        cli: syncCliFromPreset ? syncCli : overrides.cli,
+        replicas: overrides.replicas,
+        capabilities: overrides.capabilities,
+        activePresetId: effectiveId,
+      );
+    }
+    final mutation = _rosterEditor.updateSlot(
+      team,
+      memberId,
+      slot.copyWith(overrides: nextOverrides),
     );
+    if (mutation.isRejected) {
+      emit(state.copyWith(statusMessage: mutation.statusMessage));
+      return;
+    }
+    await updateSelected(mutation.team!);
   }
 
   Future<void> deleteMember(String memberId) async {
@@ -898,24 +988,28 @@ class LaunchProfileCubit extends Cubit<LaunchProfileState>
     emit(state.copyWith(statusMessage: mutation.statusMessage));
   }
 
-  /// Updates [TeamMemberConfig.provider] on every team when an LLM provider is renamed.
+  /// Updates provider override on roster slots when an LLM provider is renamed.
   Future<void> renameLlmProviderReference(String from, String to) async {
     if (from == to) return;
     var changed = false;
     final teams = <TeamProfile>[];
     for (final team in state.teams) {
       var teamChanged = false;
-      final members = <TeamMemberConfig>[];
-      for (final m in team.members) {
-        if (m.provider == from) {
+      final roster = <TeamRosterSlot>[];
+      for (final slot in team.roster) {
+        if (slot.overrides.provider == from) {
           teamChanged = true;
           changed = true;
-          members.add(m.copyWith(provider: to));
+          roster.add(
+            slot.copyWith(
+              overrides: slot.overrides.copyWith(provider: to),
+            ),
+          );
         } else {
-          members.add(m);
+          roster.add(slot);
         }
       }
-      teams.add(teamChanged ? team.copyWith(members: members) : team);
+      teams.add(teamChanged ? team.copyWith(roster: roster) : team);
     }
     if (!changed) return;
     emit(state.copyWith(teams: teams));

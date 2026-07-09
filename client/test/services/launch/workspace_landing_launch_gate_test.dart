@@ -71,7 +71,12 @@ TeamProfile _team() {
   return TeamProfile(
     id: 'team-1',
     name: 'Team',
-    members: TeamMemberNaming.defaultRoster(),
+    roster: TeamMemberNaming.defaultRoster(),
+    members: const [
+      TeamMemberConfig(id: 'team-lead', name: 'Team Lead'),
+      TeamMemberConfig(id: 'developer', name: 'Developer'),
+      TeamMemberConfig(id: 'reviewer', name: 'Reviewer'),
+    ],
     createdAt: 1,
   );
 }

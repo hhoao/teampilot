@@ -2,9 +2,9 @@
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
-**Goal:** Ship v1 Expert Hub — browse/summon/clone `DiscoverableMember` templates with Team Hub UI patterns, Personal session overlay on workspace landing, and main-window add-to-team / launch-in-workspace actions.
+**Goal:** Expert Hub discovery + **reference-only team rosters** (`TeamProfile.roster[]` of `expertKey`s). Teams are collections of experts; persona text lives in the catalog and is **materialized at connect** — no embedded copies, no `ExpertSessionOverlay`, no migration.
 
-**Architecture:** Mirror `TeamHubCubit` + `GitRegistryTeamHubSource` for members; aggregate builtin + git registry + team-extracted + local templates via `CompositeExpertHubSource`. Personal summon snapshots `ExpertSessionOverlay` on `AppSession` and merges into `standaloneMemberFromPersonal` at connect time without mutating `PersonalProfile`.
+**Architecture:** See design spec § *Teams as expert collections* and § *Code to remove*. This plan’s task steps predate the 2026-07-09 revision — **rewrite tasks** against `TeamRosterSlot` / `MemberRosterService` / `materializeRosterSlot` before implementation.
 
 **Tech Stack:** Flutter / `flutter_bloc`, existing `AppStorage` paths, JSON registry on GitHub (`flashskyai/member-hub`), l10n ARB en/zh.
 
@@ -12,34 +12,30 @@
 
 ---
 
-## File map (v1)
+## File map (target)
 
 | File | Responsibility |
 |------|----------------|
-| `client/lib/models/discoverable_member.dart` | Catalog model + `ExpertMemberSource` enum |
-| `client/lib/models/expert_session_overlay.dart` | Session-scoped prompt/playbook snapshot |
+| `client/lib/models/team_roster_slot.dart` | Persisted roster slot (`expertKey` + overrides) |
+| `client/lib/models/discoverable_member.dart` | Catalog expert |
+| `client/lib/services/expert_hub/expert_member_materializer.dart` | `materializeRosterSlot` → runtime `TeamMemberConfig` |
+| `client/lib/services/expert_hub/member_roster_service.dart` | Add expert reference to team (replaces clone service) |
+| `client/lib/models/team_config.dart` | `TeamProfile.roster` (drop embedded `members` persistence) |
+| `client/lib/models/discoverable_team.dart` | `DiscoverableTeam.roster` (drop embedded `members`) |
+| `client/lib/models/app_session.dart` | Optional `expertKey` only |
 | `client/lib/services/expert_hub/builtin_member_templates.dart` | Built-in `DiscoverableMember` list |
 | `client/lib/services/expert_hub/expert_hub_source.dart` | `ExpertHubRegistry`, `ExpertHubSource` interface |
 | `client/lib/services/expert_hub/git_registry_expert_hub_source.dart` | Git fetch + cache (mirror team hub) |
-| `client/lib/services/expert_hub/team_member_index_source.dart` | Index members from `DiscoverableTeam` list |
-| `client/lib/services/expert_hub/composite_expert_hub_source.dart` | Merge + dedupe |
+| `client/lib/services/expert_hub/composite_expert_hub_source.dart` | Merge builtin + registry + local + template key index |
 | `client/lib/services/expert_hub/expert_hub_favorites_store.dart` | favorites.json |
 | `client/lib/services/expert_hub/expert_hub_recent_store.dart` | recent.json (landing picker) |
 | `client/lib/services/expert_hub/local_member_template_store.dart` | local-templates/*.json CRUD |
-| `client/lib/services/expert_hub/member_clone_service.dart` | addToTeam + skill dep install |
-| `client/lib/services/expert_hub/expert_member_resolver.dart` | Resolve key → member (all sources) |
-| `client/lib/services/expert_hub/expert_member_overlay.dart` | `applyExpertOverlay` on `TeamMemberConfig` |
+| `client/lib/services/expert_hub/expert_member_resolver.dart` | Resolve `expertKey` → `DiscoverableMember` |
 | `client/lib/cubits/expert_hub_cubit.dart` | State + filters (mirror TeamHubCubit) |
 | `client/lib/pages/expert_hub/*` | Page, body, cards, detail, feedback, picker sheet |
-| `client/lib/pages/home_workspace/home_workspace_global_section.dart` | `HomeGlobalView.expertHub` |
-| `client/lib/pages/home_workspace/home_workspace_sidebar.dart` | Sidebar shortcut |
 | `client/lib/models/landing_launch_context.dart` | `expertKey` field |
-| `client/lib/services/home_workspace/landing_prefs_store.dart` | Persist `expertKey` |
-| `client/lib/models/app_session.dart` | `expertKey` + `expertOverlay` JSON fields |
-| `client/lib/cubits/chat/model/session_create_request.dart` | `expertOverlay` param |
-| `client/lib/cubits/launch_profile_cubit.dart` | `addMemberToTeam(teamId, member)` |
-| `client/lib/cubits/team/team_roster_editor.dart` | `addMemberFromConfig(team, config)` |
-| `client/lib/app/app_shell.dart` | Register `ExpertHubCubit` + deps |
+| `client/lib/cubits/launch_profile_cubit.dart` | `addRosterSlotToTeam(teamId, TeamRosterSlot)` |
+| `client/lib/cubits/team/team_roster_editor.dart` | Roster CRUD (slots, not inline prompts) |
 
 ---
 
@@ -513,12 +509,14 @@ expertHubViewOriginTeam, expertHubViewInHub
 
 ---
 
-## Deferred (v1.5 / v2) — separate plans
+## Deferred — separate specs
 
 | Phase | Scope |
 |-------|--------|
-| v1.5 | Export/import `.teampilot-member.json`, share URL handler |
-| v2 | `flashskyai/member-hub` publish docs + in-app wizard |
+| Share | Export/import `.teampilot-member.json`, share URL handler |
+| Publish | `flashskyai/member-hub` PR docs + in-app publish wizard |
+
+**In scope for Expert Hub refactor (this plan):** reference-only `TeamProfile.roster`, `TeamRosterSlot`, `materializeRosterSlot`, remove copy/overlay legacy — see design spec § *Delivery scope* and *Code to remove*.
 
 ---
 

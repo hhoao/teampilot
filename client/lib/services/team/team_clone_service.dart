@@ -2,6 +2,7 @@ import 'package:flutter/foundation.dart';
 
 import '../../models/discoverable_team.dart';
 import '../../models/team_config.dart';
+import '../../models/team_roster_slot.dart';
 
 /// Installs one skill dep; returns its local skill id, or null on failure.
 typedef SkillDepInstaller = Future<String?> Function(SkillDependencyRef ref);
@@ -18,7 +19,7 @@ typedef ClonedTeamCreator =
       required String name,
       required CliTool cli,
       required TeamMode teamMode,
-      required List<TeamMemberConfig> members,
+      required List<TeamRosterSlot> roster,
       required List<String> skillIds,
       required List<String> pluginIds,
       required List<String> mcpServerIds,
@@ -158,15 +159,19 @@ class TeamCloneService {
     }
 
     final now = DateTime.now().millisecondsSinceEpoch;
-    final members = team.members
-        .map((m) => m.toMemberConfig(joinedAt: now))
+    final roster = team.roster
+        .map(
+          (slot) => slot.joinedAt == 0
+              ? slot.copyWith(joinedAt: now)
+              : slot,
+        )
         .toList(growable: false);
 
     final teamId = await createTeam(
       name: team.name,
       cli: team.cli,
       teamMode: team.teamMode,
-      members: members,
+      roster: roster,
       skillIds: skillIds,
       pluginIds: pluginIds,
       mcpServerIds: mcpIds,

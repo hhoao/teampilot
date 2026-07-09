@@ -3,6 +3,7 @@ import 'package:flutter/foundation.dart';
 import '../utils/team_member_naming.dart';
 import 'skill.dart';
 import 'team_config.dart';
+import 'team_roster_slot.dart';
 
 /// Source descriptor for a skill a public team depends on (resolved to a local
 /// id only at clone time, never stored as a local id in the template).
@@ -299,7 +300,7 @@ class DiscoverableTeam {
     this.cli = CliTool.claude,
     this.teamMode = TeamMode.native,
     this.extraArgs = '',
-    this.members = const [],
+    this.roster = const [],
     this.skillDeps = const [],
     this.pluginDeps = const [],
     this.mcpDeps = const [],
@@ -315,7 +316,7 @@ class DiscoverableTeam {
   final CliTool cli;
   final TeamMode teamMode;
   final String extraArgs;
-  final List<DiscoverableTeamMember> members;
+  final List<TeamRosterSlot> roster;
   final List<SkillDependencyRef> skillDeps;
   final List<PluginDependencyRef> pluginDeps;
   final List<McpDependencyRef> mcpDeps;
@@ -338,7 +339,7 @@ class DiscoverableTeam {
       cli: CliTool.decode(json['cli']),
       teamMode: TeamMode.decode(json['teamMode']),
       extraArgs: json['extraArgs'] as String? ?? '',
-      members: list(json['members'], DiscoverableTeamMember.fromJson),
+      roster: list(json['roster'], TeamRosterSlot.fromJson),
       skillDeps: list(json['skillDeps'], SkillDependencyRef.fromJson),
       pluginDeps: list(json['pluginDeps'], PluginDependencyRef.fromJson),
       mcpDeps: list(json['mcpDeps'], McpDependencyRef.fromJson),
@@ -355,7 +356,7 @@ class DiscoverableTeam {
     'cli': cli.value,
     'teamMode': teamMode.value,
     if (extraArgs.isNotEmpty) 'extraArgs': extraArgs,
-    'members': members.map((m) => m.toJson()).toList(),
+    'roster': roster.map((s) => s.toJson()).toList(),
     'skillDeps': skillDeps.map((d) => d.toJson()).toList(),
     'pluginDeps': pluginDeps.map((d) => d.toJson()).toList(),
     'mcpDeps': mcpDeps.map((d) => d.toJson()).toList(),
@@ -373,7 +374,7 @@ class DiscoverableTeam {
       cli == other.cli &&
       teamMode == other.teamMode &&
       extraArgs == other.extraArgs &&
-      listEquals(members, other.members) &&
+      listEquals(roster, other.roster) &&
       listEquals(skillDeps, other.skillDeps) &&
       listEquals(pluginDeps, other.pluginDeps) &&
       listEquals(mcpDeps, other.mcpDeps);
@@ -389,7 +390,7 @@ class DiscoverableTeam {
     cli,
     teamMode,
     extraArgs,
-    Object.hashAll(members),
+    Object.hashAll(roster),
     Object.hashAll(skillDeps),
     Object.hashAll(pluginDeps),
     Object.hashAll(mcpDeps),

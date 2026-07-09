@@ -3,10 +3,16 @@ import 'dart:io';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:teampilot/cubits/launch_profile_cubit.dart';
 import 'package:teampilot/models/team_config.dart';
+import 'package:teampilot/models/team_roster_slot.dart';
 import 'package:teampilot/repositories/session_repository.dart';
 import 'package:teampilot/repositories/launch_profile_repository.dart';
 
 import '../support/post_frame_test_harness.dart';
+
+const _leadSlot = TeamRosterSlot(
+  id: 'team-lead',
+  expertKey: 'teampilot/builtin/team-lead',
+);
 
 void main() {
   setUp(setUpTestAppStorage);
@@ -19,7 +25,7 @@ void main() {
   );
 
   test(
-    'addClonedTeam persists ids, members, and selects the new team',
+    'addClonedTeam persists ids, roster, and selects the new team',
     () async {
       final dir = await Directory.systemTemp.createTemp('clone-team-');
       final repo = testLaunchProfileRepository(dir);
@@ -30,7 +36,7 @@ void main() {
         name: 'Research Squad',
         cli: CliTool.claude,
         teamMode: TeamMode.mixed,
-        members: const [TeamMemberConfig(id: 'team-lead', name: 'team-lead')],
+        roster: const [_leadSlot],
         skillIds: const ['anthropics/skills:deep-research'],
         pluginIds: const ['acme/plugins/linter'],
         mcpServerIds: const ['context7'],
@@ -63,12 +69,12 @@ void main() {
     final first = await cubit.addClonedTeam(
       name: 'Squad',
       cli: CliTool.claude,
-      members: const [TeamMemberConfig(id: 'team-lead', name: 'team-lead')],
+      roster: const [_leadSlot],
     );
     final second = await cubit.addClonedTeam(
       name: 'Squad',
       cli: CliTool.claude,
-      members: const [TeamMemberConfig(id: 'team-lead', name: 'team-lead')],
+      roster: const [_leadSlot],
     );
 
     expect(first, isNotNull);

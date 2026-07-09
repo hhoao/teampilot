@@ -1,19 +1,21 @@
 # Expert Hub (Member Discovery) design
 
 **Date:** 2026-07-05  
-**Status:** Approved (2026-07-05)
+**Status:** Approved; **canonical architecture revised 2026-07-09** (reference-only rosters, no embedded member copies, no backward compatibility)
 
 ## Summary
 
-Add an **Expert Hub** (专家中心) — a WorkBuddy Expert Center–style discovery surface for TeamPilot **members** (`TeamMemberConfig` / `DiscoverableMember`). Users browse, favorite, and summon expert personas; clone them into team rosters; and save/share local templates. Expert Hub complements the existing **Team Hub** (whole-team templates).
+Add an **Expert Hub** (专家中心) — discovery for reusable **experts** (`DiscoverableMember`). A **team is an ordered collection of expert references** plus team-level coordination (`TeamMode`, shared skills/plugins/MCP, default CLI). Persona text lives in the catalog; rosters store **`expertKey` + per-slot overrides only**.
+
+Expert Hub complements **Team Hub** (curated team templates that are themselves lists of expert keys). There is **no** copy-on-add, **no** embedded prompt/playbook on team rosters, and **no** migration path for legacy inline members — refactor replaces the old shape entirely.
 
 ## Goals
 
 | Goal | Description |
 |------|-------------|
-| Discover | Browse/search members by category; built-in, registry, team-extracted, and local sources |
-| Summon | Workspace landing: Personal-only expert overlay for one-shot sessions |
-| Clone | Main window: add expert to an existing team roster |
+| Discover | Browse/search experts: builtin, registry, local; “from teams” = keys referenced by Team Hub templates |
+| Summon | Workspace landing (Simple): `expertKey` on session → materialize at connect |
+| Clone | Add **expert reference** to team roster (`expertKey` + overrides) |
 | Own | Favorites, local templates, export/import, future registry publish |
 
 ## Non-goals (v1)
@@ -27,10 +29,101 @@ Add an **Expert Hub** (专家中心) — a WorkBuddy Expert Center–style disco
 
 | WorkBuddy | TeamPilot |
 |-----------|-----------|
-| Expert | `DiscoverableMember` → `TeamMemberConfig` |
-| Expert Team | `DiscoverableTeam` (Team Hub) |
-| Summon | Session-scoped role overlay (Personal) |
-| My experts | Local templates + favorites |
+| Expert | `DiscoverableMember` (catalog atom; canonical `key`) |
+| Expert Team | `DiscoverableTeam` = metadata + `roster[]` of expert keys |
+| User team | `TeamProfile` = metadata + `roster[]` of expert keys |
+| Summon (Personal) | `AppSession.expertKey` → resolve at connect (same pipeline as team slots) |
+| My experts | Local templates + favorites under `member-hub/` |
+
+## Teams as expert collections (canonical architecture)
+
+**团队 = 多个专家的集合.** This is the only roster model — not a future phase. **No backward compatibility:** remove embedded member copies and copy-on-add code paths entirely.
+
+### Primitives
+
+| Primitive | Persisted shape | Resolved at connect |
+|-----------|-----------------|---------------------|
+| **Expert** | `DiscoverableMember` in builtin / registry / `member-hub/local-templates/` | — |
+| **Roster slot** | `TeamRosterSlot { id, expertKey, overrides?, joinedAt }` | → `TeamMemberConfig` (runtime only) |
+| **Team** | `TeamProfile { …team bundle…, roster: TeamRosterSlot[] }` | per slot |
+| **Team template** | `DiscoverableTeam { …meta…, roster: TeamRosterSlot[] }` | clone → new `TeamProfile` |
+| **Personal session** | optional `AppSession.expertKey` | → materialized member for Simple launch |
+
+**Rule:** `prompt`, `playbook`, and display `name` for a roster seat come **only** from the resolved expert (plus optional slot `overrides` for provider/model/cli/effort/replicas — never duplicate persona prose on the team).
+
+### `TeamRosterSlot` (persisted)
+
+```dart
+TeamRosterSlot {
+  id              // roster seat: team-lead | developer | … (TeamMemberNaming)
+  expertKey       // required — teampilot/builtin/architect | owner/repo/slug | local/{uuid}
+  overrides? {    // per-team/per-slot only — no prompt/playbook fields
+    provider, model, cli, effort, replicas, capabilities?, extraArgs?
+  }
+  joinedAt
+}
+```
+
+`TeamProfile.roster` replaces `TeamProfile.members` (`TeamMemberConfig[]` with inline prompts is **deleted**).
+
+### Materialization (single code path)
+
+```
+materializeRosterSlot(expertKey, overrides?, presetInheritance?) → TeamMemberConfig
+```
+
+Used by team connect, Personal connect (`AppSession.expertKey`), and preview UI. Always live-resolve from catalog on connect.
+
+```
+ExpertMemberResolver.resolve(expertKey)
+  → DiscoverableMember → base TeamMemberConfig
+  → apply TeamRosterSlot.overrides
+  → apply preset / team CLI inheritance
+  → MemberRoleProvision.syncRolePromptFile + append-system-prompt
+```
+
+### Expert Hub vs Team Hub
+
+| Surface | Responsibility |
+|---------|----------------|
+| **Expert Hub** | Browse atomic experts; favorite; add expert **reference** to team; Personal launch; save local template |
+| **Team Hub** | Browse team templates (`DiscoverableTeam.roster[]`); clone → new `TeamProfile` with same keys |
+| **Team config** | Reorder roster; pick `expertKey` per slot; edit **overrides** only; edit persona in Expert Hub |
+
+**Delete:** inline prompt editor on team member form; `MemberCloneService` copy semantics; `DiscoverableTeam.members[]` embedded bodies; `teamExtract` hash-dedup of copied prose; persisted `ExpertSessionOverlay` on sessions.
+
+### `DiscoverableTeam` (team templates)
+
+```dart
+DiscoverableTeam {
+  key, name, description, category, skillDeps[], …
+  roster: TeamRosterSlot[]   // not members[] with inline prompts
+}
+```
+
+### Code to remove (refactor checklist)
+
+| Remove | Replace with |
+|--------|----------------|
+| `TeamProfile.members: TeamMemberConfig[]` | `TeamProfile.roster: TeamRosterSlot[]` |
+| `MemberCloneService.addToTeam` + `toMemberConfig()` copy | `MemberRosterService.addExpertToTeam(teamId, expertKey, …)` |
+| `DiscoverableTeam.members` | `DiscoverableTeam.roster` |
+| `indexMembersFromTeams()` | Optional: flatten template `roster[].expertKey` for “from teams” filter |
+| `ExpertSessionOverlay` on `AppSession` | `AppSession.expertKey` only |
+| `applyExpertOverlay` as parallel Personal path | `materializeRosterSlot` |
+
+`TeamMemberConfig` remains **runtime-only** after materialization.
+
+### Implementation map
+
+| Concern | Path |
+|---------|------|
+| Persisted slot model | `client/lib/models/team_roster_slot.dart` (new) |
+| Materialize | `client/lib/services/expert_hub/expert_member_materializer.dart` |
+| Add to team | `MemberRosterService` |
+| Resolve key | `ExpertMemberResolver` |
+| Connect | `session_lifecycle_service`, config-profile capabilities |
+| Role files | `MemberRoleProvision` |
 
 ## Architecture
 
@@ -42,15 +135,15 @@ Add an **Expert Hub** (专家中心) — a WorkBuddy Expert Center–style disco
 
 ```
 CompositeExpertHubSource
-  ├─ BuiltinMemberTemplates      (client/lib/services/expert_hub/builtin_member_templates.dart)
-  ├─ GitMemberHubSource          (mirror TeamHubSource → flashskyai/member-hub)
-  ├─ TeamMemberIndexSource       (denormalize DiscoverableTeam.members from TeamHub fetch)
-  └─ LocalMemberTemplateStore    (<teampilotRoot>/member-hub/local-templates/*.json)
+  ├─ BuiltinMemberTemplates
+  ├─ GitRegistryExpertHubSource     (flashskyai/member-hub)
+  ├─ TeamTemplateExpertIndex        (flatten DiscoverableTeam.roster[].expertKey)
+  └─ LocalMemberTemplateStore
 
-ExpertHubFavoritesStore          (<teampilotRoot>/member-hub/favorites.json)
-ExpertHubRecentStore             (<teampilotRoot>/member-hub/recent.json, landing picker)
-MemberCloneService               (addToTeam, export, import; reuse TeamCloneService dep installers)
-ExpertHubCubit                   (mirror TeamHubCubit)
+ExpertHubFavoritesStore / ExpertHubRecentStore
+MemberRosterService                 (addExpertToTeam — reference only)
+ExpertMemberMaterializer            (materializeRosterSlot)
+ExpertHubCubit
 ```
 
 ### Model: `DiscoverableMember`
@@ -59,44 +152,42 @@ Extends the portable shape of `DiscoverableTeamMember` with catalog metadata:
 
 ```dart
 DiscoverableMember {
-  key              // teampilot/builtin/architect | owner/repo/slug | local/{uuid} | {teamKey}#{slug}
+  key              // teampilot/builtin/architect | owner/repo/slug | local/{uuid}
   name, description, category, author?, updatedAt
-  tags[]           // search
-  member           // prompt, playbook, capabilities, cli, provider, model, agent, replicas, extraArgs
-  skillDeps[]      // optional; clone/add prompts install like Team Hub
-  source           // builtin | registry | teamExtract | local
-  originTeamKey?   // when source == teamExtract
+  tags[]
+  member           // DiscoverableTeamMember body: prompt, playbook, capabilities, cli hints, …
+  skillDeps[]
+  source           // builtin | registry | local | teamTemplateRef
+  originTeamKey?   // when listed because a team template references this key
 }
 ```
 
-**Key collision policy:** composite keys are namespaced by source prefix. Team-extracted members use `{teamKey}#{memberSlug}` and are deduped in UI when prompt+playbook hash matches a registry entry (prefer registry entry, show “also in team X” link).
+**Keys are global** in the catalog. Team templates and user teams reference the same keys in `roster[]`.
 
-### Personal summon: session overlay
+### Personal summon
 
-Extend compose/launch pipeline without mutating `PersonalProfile`:
+Simple-mode landing only; does not mutate `PersonalProfile`:
 
-1. `LandingLaunchContext.expertKey` — optional; persisted in `LandingPrefsStore` per workspace.
-2. `SessionCreateRequest.expertOverlay` — resolved `DiscoverableMember` snapshot at create time.
-3. `SessionLifecycleService` / `MemberRoleProvision` — merge overlay `prompt` + `playbook` into the personal agent role body for **this session only** via the same path used for team members: `MemberRoleProvision.composeRolePrompt` → session-scoped `role.md` / CLI append-system-prompt file.
-4. `AppSession` stores `expertKey` (optional) for display/debug; overlay text is snapshotted at create so registry changes do not affect open sessions.
+1. `LandingLaunchContext.expertKey` — optional; persisted in `LandingPrefsStore`.
+2. `AppSession.expertKey` — set at session create (no separate overlay blob).
+3. Connect: `materializeRosterSlot(session.expertKey)` merged with personal preset base → `MemberRoleProvision`.
 
-Team-mode landing **does not** expose expert chip. Deep link `?expert=` on a team-profile landing shows a toast and ignores the param.
+Team-mode landing has no expert chip. `?expert=` on team landing → toast + ignore.
 
 ### Add to team
 
-`MemberCloneService.addToTeam(teamId, member)`:
+`MemberRosterService.addExpertToTeam(teamId, expertKey, slotId?, overrides?)`:
 
-1. Resolve `DiscoverableMember` → `TeamMemberConfig` (new slug id from name; `joinedAt` now).
-2. Optional: prompt to install skill deps (same UX as Team Hub clone partial success).
-3. `LaunchProfileCubit.addMember` (or equivalent persist API).
-4. Does not auto-start a session.
+1. Append or update `TeamRosterSlot` on `TeamProfile.roster` (reference only).
+2. Optional skill dep install for the expert (non-blocking failures → toast).
+3. Persist via `LaunchProfileCubit`; does not start a session.
 
 ### Launch from main window
 
 1. User picks workspace in dialog.
 2. Navigate `/home-v2/workspace/:workspaceId?expert=:key`.
 3. `WorkspaceLandingContextCubit` / landing resolver pre-selects expert; forces Simple mode.
-4. User types message → `submitWorkspaceLandingMessage` with overlay.
+4. User types message → create session with `expertKey` → materialize at connect.
 
 ## UI reference patterns (Team Hub, Skills, Plugins, MCP)
 
@@ -174,20 +265,21 @@ Landing was refactored into focused modules; Expert chip integrates there — **
   - **Launch in workspace** (workspace picker → deep link) — primary
   - Export (v1.5)
   - Publish (v2)
-  - View origin team (if `teamExtract`)
+  - View origin team template (if `originTeamKey`)
 
 ### Workspace — landing
 
 - New **Expert chip** on compose toolbar when Simple mode only.
 - Inline picker sheet: search, favorites, recents; link “Browse all experts →” opens main Expert Hub.
 - Selected expert shown on chip; clear via menu.
-- Submit uses Personal summon overlay.
+- Submit persists `expertKey` on session; materialize at connect.
 
-### Team config — member form
+### Team config — roster editor
 
-- **Add from Expert Hub** — fills prompt/playbook/capabilities (default: replace prompt + playbook).
-- **Save as template** — writes local `DiscoverableMember` JSON.
-- **Export** (v1.5).
+- Each row is a **`TeamRosterSlot`**: expert picker + overrides (provider/model/cli/effort/replicas).
+- **No** inline prompt/playbook fields — “Edit expert” opens Expert Hub or local template editor.
+- **Add from Expert Hub** appends a slot with `expertKey` set.
+- **Save as template** writes `DiscoverableMember` to `member-hub/local-templates/`.
 
 ### Team Hub cross-links
 
@@ -211,86 +303,112 @@ ExpertHubCubit.load()
 
 ```
 Landing submit (Simple + expertKey)
-  → resolve DiscoverableMember by key (local → registry → builtin → team extract)
-  → SessionCreateRequest(expertOverlay: member)
-  → SessionLaunchService.create → provision personal role with overlay
-  → connect → deliverUserCommandToMember(message)
+  → validate key resolves (toast + abort if not)
+  → create AppSession with expertKey
+  → connect: materializeRosterSlot + personal preset base
+  → deliverUserCommandToMember(message)
   → ExpertHubRecentStore.touch(key)
+```
+
+### Team session connect
+
+```
+For each TeamProfile.roster slot:
+  → materializeRosterSlot(slot.expertKey, slot.overrides, team preset inheritance)
+  → prepareTeamLaunch / MemberRoleProvision (same as today, runtime TeamMemberConfig)
 ```
 
 ### Add to team (main window)
 
 ```
-ExpertHubDetail → team picker → MemberCloneService.addToTeam
+ExpertHubDetail → team picker → MemberRosterService.addExpertToTeam
   → optional skill dep install
-  → LaunchProfileCubit persist
+  → persist TeamProfile.roster
   → toast success
 ```
 
 ## Storage layout
 
-Under `<teampilotRoot>/member-hub/`:
+Under `<teampilotRoot>/member-hub/` (see also [workspace-storage-layout.md](../../workspace-storage-layout.md)):
 
 | Path | Purpose |
 |------|---------|
 | `favorites.json` | `{ "keys": ["..."] }` |
 | `recent.json` | `{ "keys": ["...", ...], max 10 }` |
 | `local-templates/{id}.json` | User-saved `DiscoverableMember` |
+| `cache/{owner}-{repo}/members.json` | Git registry fetch cache |
+
+**Team rosters** — `launch-profiles/{teamId}/profile.json`:
+
+```json
+{
+  "kind": "team",
+  "id": "my-squad",
+  "name": "My Squad",
+  "teamMode": "native",
+  "cli": "claude",
+  "skillIds": ["..."],
+  "roster": [
+    {
+      "id": "team-lead",
+      "expertKey": "teampilot/builtin/lead",
+      "overrides": { "model": "opus" },
+      "joinedAt": 1710000000000
+    }
+  ]
+}
+```
+
+**Personal session** — optional `expertKey` on `session.json` (no `expertOverlay` object).
+
+**Team Hub registry** — `team-hub/…/team.json` uses the same `roster[]` shape (not `members[]` with inline prompts).
 
 Registry default (v1): `flashskyai/member-hub` on `main`, layout mirrors Team Hub:
 
 - `index.json` → `{ "members": ["architect", "pm", ...] }`
 - `members/<slug>/member.json` → `DiscoverableMember` JSON; canonical key stamped as `{owner}/{repo}/{slug}`
-- Cache: `<teampilotRoot>/member-hub/cache/{owner}-{name}/members.json`
 
 Built-in templates: `teampilot/builtin/*` key prefix (same convention as Team Hub).
 
-## Phased delivery
+## Delivery scope
 
-### v1 — Core
+Single refactor — no parallel legacy paths:
 
-- `DiscoverableMember` model + builtin templates (~20–30 roles, expand existing 4 presets)
-- Git registry fetch + team member index
-- Expert Hub page + cubit + favorites
-- Landing expert chip + Personal overlay launch
-- Main window: add to team + launch in workspace
-- Local templates: save from member form + My templates filter
-- Team Hub ↔ Expert Hub cross-links
-- l10n en/zh
+1. **Models:** `TeamRosterSlot`; `TeamProfile.roster`; `DiscoverableTeam.roster`; drop embedded roster copies.
+2. **Materialization:** `ExpertMemberMaterializer.materializeRosterSlot` at all connect entry points.
+3. **Expert Hub UI:** discovery, favorites, add reference to team, Personal launch, local templates.
+4. **Team Hub:** template JSON + clone → roster of keys; registry schema update.
+5. **Team config UI:** roster editor (expert picker + overrides only).
+6. **Remove:** `MemberCloneService`, `ExpertSessionOverlay`, `indexMembersFromTeams`, inline prompt copy flows.
 
-### v1.5 — Share
+### Later (separate specs)
 
-- Export/import `.teampilot-member.json`
-- Share link: `teampilot://import-member?url=` or raw GitHub raw URL handler
-- Import validates schema; assigns new `local/{uuid}` key
-
-### v2 — Publish
-
-- Document contributing to `flashskyai/member-hub` (PR template)
-- In-app publish wizard (optional): export + open browser to fork/PR
+| Phase | Scope |
+|-------|--------|
+| Share | Export/import `.teampilot-member.json`, share URL handler |
+| Publish | `flashskyai/member-hub` PR docs + in-app publish wizard |
 
 ## Error handling
 
 | Case | Behavior |
 |------|----------|
 | Registry fetch fails | Show cached/builtin/local only; error banner + retry (mirror Team Hub) |
-| Unknown `expertKey` on landing | Clear chip; toast “Expert not found” |
+| Unknown `expertKey` (landing / connect / roster slot) | Toast `expertHubNotFound`; block create/connect for that path |
+| Duplicate slot `id` on add | Append numeric suffix (`developer-2`) |
+| Skill dep install partial failure | Toast warning with failed dep names |
 | `expertKey` on team landing | Toast; ignore param |
-| Duplicate member id on addToTeam | Append numeric suffix to slug (`developer-2`) |
-| Skill dep install partial failure | Toast warning with failed dep names (CloneResult pattern) |
-| Overlay resolve at create fails | Block session create; toast error |
+| Expert missing at team connect | Toast; block member connect for that slot |
 
 ## Testing
 
 | Area | Tests |
 |------|-------|
-| Model | `DiscoverableMember` JSON round-trip; key namespacing |
-| Source | Composite merge + dedupe; team extract indexing |
-| MemberCloneService | addToTeam id slugging; dep install mocked |
-| Landing | expert chip visible only Simple; draft persists `expertKey` |
-| Launch | overlay merged into role provision (unit test on composeRolePrompt path) |
-| Widget | ExpertHubBody empty/loading/grid; detail overlay actions |
-| Router | `?expert=` deep link pre-fills landing |
+| Model | `TeamRosterSlot`, `DiscoverableMember` JSON round-trip |
+| Materializer | `materializeRosterSlot` applies overrides + expert body |
+| MemberRosterService | addExpertToTeam persists reference; dep install mocked |
+| Team connect | each roster slot resolves to role prompt at launch |
+| Landing | expert chip Simple-only; session stores `expertKey` only |
+| Widget / router | ExpertHubBody; `?expert=` deep link |
 
 Run: `cd client && flutter analyze && flutter test --exclude-tags integration`
 
@@ -300,18 +418,19 @@ Run: `cd client && flutter analyze && flutter test --exclude-tags integration`
 - **Sources:** Built-in + registry + team extract + user local (C+D)
 - **Launch context:** Workspace = Personal only; main window = add to team or workspace Personal (user confirmed)
 - **User templates:** Local + export + publish path (A+B+C phased)
+- **Team = expert collection:** reference-only `TeamProfile.roster[]`; no embedded copies (2026-07-09)
 
 ## Related code
 
 | Area | Path |
 |------|------|
-| Team Hub (primary UI reference) | `client/lib/pages/team_hub/`, `client/lib/services/team_hub/` |
-| Skills discovery (search debounce, filter card) | `client/lib/pages/skills/skill_discovery_section.dart`, `skill_management_cards.dart` |
-| Plugins / MCP (section embed pattern) | `client/lib/pages/plugins/`, `client/lib/pages/mcp/` |
-| Hub shell primitives | `client/lib/widgets/settings/workspace_hub_shell.dart` |
-| Global home embed | `client/lib/pages/home_workspace/home_workspace_global_section.dart`, `home_workspace_sidebar.dart` |
-| Landing compose | `client/lib/pages/home_workspace/workspace/workspace_chat_landing_compose_card.dart`, `workspace_landing_selectors.dart` |
-| Launch context | `client/lib/models/landing_launch_context.dart` |
+| Roster slot model | `client/lib/models/team_roster_slot.dart` (new) |
+| Materializer | `client/lib/services/expert_hub/expert_member_materializer.dart` (new) |
+| Add to team | `client/lib/services/expert_hub/member_roster_service.dart` (replaces clone service) |
+| Catalog | `client/lib/services/expert_hub/composite_expert_hub_source.dart` |
+| Resolve key | `client/lib/services/expert_hub/expert_member_resolver.dart` |
+| Connect | `client/lib/services/session/session_lifecycle_service.dart` |
 | Role provision | `client/lib/services/session/member_role_provision.dart` |
-| Member presets | `client/lib/models/team_member_prompt_presets.dart` |
-| Team clone / dep install | `client/lib/services/team/team_clone_service.dart` |
+| Team Hub templates | `client/lib/models/discoverable_team.dart`, `client/lib/services/team_hub/` |
+| Expert Hub UI | `client/lib/pages/expert_hub/` |
+| Landing | `client/lib/pages/home_workspace/workspace/workspace_chat_landing*.dart` |

@@ -14,10 +14,12 @@ import '../../models/ai_feature_setting.dart';
 import '../../l10n/l10n_extensions.dart';
 import '../../models/app_provider_config.dart';
 import '../../models/default_team_roster.dart';
+import '../../models/team_roster_slot.dart';
 import '../../models/team_config.dart';
 import '../../services/ai/ai_feature_setting_resolver.dart';
 import '../../services/ai/team_config_draft.dart';
 import '../../services/ai/team_config_generator.dart';
+import '../../services/ai/team_draft_roster_mapper.dart';
 import '../../services/cli/registry/capabilities/provider_catalog_capability.dart';
 import '../../services/cli/registry/cli_display_name.dart';
 import '../../services/cli/registry/cli_tool_registry_scope.dart';
@@ -38,7 +40,7 @@ typedef _NewTeamDialogResult = ({
   TeamMode mode,
   CliTool cli,
   Map<String, String> providerIdsByTool,
-  List<TeamMemberConfig>? members,
+  List<TeamRosterSlot>? roster,
   String description,
 });
 
@@ -66,10 +68,9 @@ Future<void> showHomeNewTeamDialog(
     teamMode: result.mode,
     providerIdsByTool: result.providerIdsByTool,
     description: result.description,
-    members: (result.members != null && result.members!.isNotEmpty)
-        ? result.members
-        : DefaultTeamRoster.localized(
-            l10n,
+    roster: (result.roster != null && result.roster!.isNotEmpty)
+        ? result.roster
+        : DefaultTeamRoster.bootstrap(
             joinedAt: DateTime.now().millisecondsSinceEpoch,
           ),
   );
@@ -197,7 +198,7 @@ class _HomeNewTeamDialogState extends State<HomeNewTeamDialog> {
     required bool isSolo,
     required String name,
     required TeamMode mode,
-    List<TeamMemberConfig>? members,
+    List<TeamRosterSlot>? roster,
     String description = '',
     Map<String, String>? providerIdsByTool,
   }) => (
@@ -206,14 +207,15 @@ class _HomeNewTeamDialogState extends State<HomeNewTeamDialog> {
     mode: mode,
     cli: _cli,
     providerIdsByTool: providerIdsByTool ?? const <String, String>{},
-    members: members,
+    roster: roster,
     description: description,
   );
 
-  void _submit() {
+  Future<void> _submit() async {
     final name = _teamNameForSubmit().trim();
     if (name.isEmpty) return;
     if (_creationMethod == _TeamCreationMethod.solo) {
+      if (!mounted) return;
       Navigator.of(context).pop(
         _buildDialogResult(isSolo: true, name: name, mode: TeamMode.native),
       );
@@ -221,13 +223,18 @@ class _HomeNewTeamDialogState extends State<HomeNewTeamDialog> {
     }
     final mode = _mode;
     if (mode == null) return;
+    List<TeamRosterSlot>? roster;
+    if (_draft != null) {
+      roster = await rosterSlotsFromTeamDraft(_draft!);
+    }
+    if (!mounted) return;
     Navigator.of(context).pop(
       _buildDialogResult(
         isSolo: false,
         name: name,
         mode: mode,
         providerIdsByTool: _providerIdsByToolForSubmit(),
-        members: _draft?.members,
+        roster: roster,
         description: _draft?.description?.trim() ?? '',
       ),
     );
@@ -304,7 +311,7 @@ class _HomeNewTeamDialogState extends State<HomeNewTeamDialog> {
         _providerId = setting.providerId;
       });
       // Auto-create the team from the streamed draft and close the dialog.
-      _submit();
+      await _submit();
     } on Object {
       _easeTimer?.cancel();
       if (!mounted) return;
