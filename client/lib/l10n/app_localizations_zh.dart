@@ -2999,6 +2999,197 @@ class AppLocalizationsZh extends AppLocalizations {
   String get teamMcpNav => 'MCP';
 
   @override
+  String get myTeamsNav => '我的团队';
+
+  @override
+  String get myTeamsTitle => '我的团队';
+
+  @override
+  String get myTeamsSubtitle => '管理本地团队配置';
+
+  @override
+  String myTeamsMemberCount(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count 名成员',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String myTeamsCreatedAt(Object date) {
+    return '创建于 $date';
+  }
+
+  @override
+  String get myTeamsEmptyTitle => '还没有团队';
+
+  @override
+  String get myTeamsEmptyHint => '创建团队以管理成员、技能与插件。';
+
+  @override
+  String get myExpertsNav => '我的专家';
+
+  @override
+  String get myExpertsTitle => '我的专家';
+
+  @override
+  String get myExpertsSubtitle => '管理本地专家人设';
+
+  @override
+  String get myExpertsEmptyTitle => '还没有专家';
+
+  @override
+  String get myExpertsEmptyHint => '创建本地专家人设，以便在多个团队中复用。';
+
+  @override
+  String get myExpertsCreate => '新建专家';
+
+  @override
+  String get myExpertsEdit => '编辑';
+
+  @override
+  String get myExpertsDelete => '删除';
+
+  @override
+  String myExpertsDeleteConfirm(Object name) {
+    return '删除专家「$name」？此操作无法撤销。';
+  }
+
+  @override
+  String myExpertsDeleteReferenced(Object name) {
+    return '无法删除「$name」——仍有团队花名册引用该专家。请先改派相关成员。';
+  }
+
+  @override
+  String get myExpertsUpload => '上传';
+
+  @override
+  String get myTeamsUpload => '上传';
+
+  @override
+  String get hubPublishExpertTitle => '发布专家到 Hub';
+
+  @override
+  String get hubPublishTeamTitle => '发布团队到 Hub';
+
+  @override
+  String get hubPublishAuthHint =>
+      '需要具有 repo 权限的 GitHub 个人访问令牌，才能向 Hub 仓库发起拉取请求。';
+
+  @override
+  String get hubPublishTokenLabel => 'GitHub 令牌';
+
+  @override
+  String get hubPublishTokenHint => 'ghp_…';
+
+  @override
+  String get hubPublishTokenStored => '已保存令牌，可在下方替换。';
+
+  @override
+  String get hubPublishTokenRequired => '发布需要 GitHub 令牌';
+
+  @override
+  String get hubPublishTokenSaveFailed => '无法保存 GitHub 令牌';
+
+  @override
+  String get hubPublishNext => '下一步';
+
+  @override
+  String get hubPublishPublish => '发布';
+
+  @override
+  String get hubPublishDone => '完成';
+
+  @override
+  String get hubPublishSlugLabel => '标识（slug）';
+
+  @override
+  String get hubPublishSlugHint => 'url-safe-id';
+
+  @override
+  String get hubPublishSlugRequired => '标识为必填项';
+
+  @override
+  String get hubPublishCategoryRequired => '分类为必填项';
+
+  @override
+  String get hubPublishAuthorLabel => '作者';
+
+  @override
+  String get hubPublishLocalExpertHint => '花名册中的本地专家须先映射为已发布或内置专家，才能上传。';
+
+  @override
+  String get hubPublishLocalExpertBlocked => '请先映射所有本地专家后再继续';
+
+  @override
+  String get hubPublishRemapLabel => '发布为';
+
+  @override
+  String get hubPublishNonPortableHint => '以下依赖没有可移植来源。请先从团队配置中移除后再发布：';
+
+  @override
+  String get hubPublishNonPortableBlocked => '请先移除不可移植依赖后再继续';
+
+  @override
+  String get hubPublishGatesClear => '依赖均可移植，可继续确认。';
+
+  @override
+  String get hubPublishConfirmHint => '请核对包元数据，然后发布基于 fork 的拉取请求。';
+
+  @override
+  String get hubPublishKindLabel => '类型';
+
+  @override
+  String get hubPublishKindExpert => '专家';
+
+  @override
+  String get hubPublishKindTeam => '团队';
+
+  @override
+  String get hubPublishSuccessHint => '拉取请求已创建。可复制或打开下方链接。';
+
+  @override
+  String get hubPublishCopyLink => '复制链接';
+
+  @override
+  String get hubPublishOpenPr => '打开 PR';
+
+  @override
+  String get hubPublishBadgePrOpen => 'PR 已开';
+
+  @override
+  String get hubPublishBadgePublished => '已发布';
+
+  @override
+  String get expertHubCreate => '新建';
+
+  @override
+  String get expertEditorCreateTitle => '新建专家';
+
+  @override
+  String get expertEditorEditTitle => '编辑专家';
+
+  @override
+  String get expertEditorDescription => '描述';
+
+  @override
+  String get expertEditorCategory => '分类';
+
+  @override
+  String get expertEditorTags => '标签';
+
+  @override
+  String get expertEditorTagsHint => '逗号分隔';
+
+  @override
+  String get expertEditorNameRequired => '名称为必填项。';
+
+  @override
+  String get expertEditorPromptRequired => '提示词为必填项。';
+
+  @override
   String get teamHubNav => '团队中心';
 
   @override
@@ -3215,14 +3406,6 @@ class AppLocalizationsZh extends AppLocalizations {
 
   @override
   String get expertHubAddFromHub => '从专家中心添加';
-
-  @override
-  String get expertHubSaveAsTemplate => '保存为模板';
-
-  @override
-  String expertHubTemplateSaved(Object name) {
-    return '已将「$name」保存到我的模板。';
-  }
 
   @override
   String get expertHubViewInHub => '在专家中心查看';

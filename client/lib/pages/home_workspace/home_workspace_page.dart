@@ -154,6 +154,7 @@ class _HomePageState extends State<HomePage> {
                   _globalView = view;
                   _libraryView = null;
                 }),
+                onOpenTeam: _selectIdentity,
               ),
             ),
           ),
@@ -172,6 +173,7 @@ class _HomeRightPane extends StatefulWidget {
     required this.initialSection,
     required this.initialMemberId,
     required this.onSelectGlobalView,
+    required this.onOpenTeam,
   });
 
   final HomeGlobalView? globalView;
@@ -181,6 +183,7 @@ class _HomeRightPane extends StatefulWidget {
   final TeamConfigSection? initialSection;
   final String? initialMemberId;
   final ValueChanged<HomeGlobalView> onSelectGlobalView;
+  final ValueChanged<String> onOpenTeam;
 
   @override
   State<_HomeRightPane> createState() => _HomeRightPaneState();
@@ -282,6 +285,7 @@ class _HomeRightPaneState extends State<_HomeRightPane> {
       WorkspaceRightPaneKind.allWorkspaces => const HomeAllWorkspacesPane(),
       WorkspaceRightPaneKind.global => HomeGlobalSection(
         view: descriptor.globalView!,
+        onOpenTeam: widget.onOpenTeam,
       ),
       WorkspaceRightPaneKind.library => HomeLibrarySection(
         view: descriptor.libraryView!,

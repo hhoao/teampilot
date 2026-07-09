@@ -34,8 +34,8 @@ void main() {
     expect(added.expertKey, expertKey);
   });
 
-  test('addExpertToTeam uses default developer expert for generic addMember', () {
-    final (team: updated, :added) = editor.addMember(
+  test('addExpertToTeam defaults slot id to developer when hint omitted', () {
+    final (team: updated, :added) = editor.addExpertToTeam(
       teamWithRoster(const [
         TeamRosterSlot(
           id: 'team-lead',
@@ -43,9 +43,11 @@ void main() {
           joinedAt: 1,
         ),
       ]),
+      expertKey,
     );
 
     expect(updated.roster, hasLength(2));
-    expect(added.expertKey, DefaultTeamRoster.expertKeyForSlug('developer'));
+    expect(added.id, DefaultTeamRoster.developerMemberId);
+    expect(added.expertKey, expertKey);
   });
 }

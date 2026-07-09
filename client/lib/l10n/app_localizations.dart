@@ -5655,6 +5655,360 @@ abstract class AppLocalizations {
   /// **'MCP'**
   String get teamMcpNav;
 
+  /// No description provided for @myTeamsNav.
+  ///
+  /// In en, this message translates to:
+  /// **'My Teams'**
+  String get myTeamsNav;
+
+  /// No description provided for @myTeamsTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'My Teams'**
+  String get myTeamsTitle;
+
+  /// No description provided for @myTeamsSubtitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Manage your local team configurations'**
+  String get myTeamsSubtitle;
+
+  /// No description provided for @myTeamsMemberCount.
+  ///
+  /// In en, this message translates to:
+  /// **'{count, plural, =1{1 member} other{{count} members}}'**
+  String myTeamsMemberCount(int count);
+
+  /// No description provided for @myTeamsCreatedAt.
+  ///
+  /// In en, this message translates to:
+  /// **'Created {date}'**
+  String myTeamsCreatedAt(Object date);
+
+  /// No description provided for @myTeamsEmptyTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'No teams yet'**
+  String get myTeamsEmptyTitle;
+
+  /// No description provided for @myTeamsEmptyHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Create a team to manage members, skills, and plugins.'**
+  String get myTeamsEmptyHint;
+
+  /// No description provided for @myExpertsNav.
+  ///
+  /// In en, this message translates to:
+  /// **'My Experts'**
+  String get myExpertsNav;
+
+  /// No description provided for @myExpertsTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'My Experts'**
+  String get myExpertsTitle;
+
+  /// No description provided for @myExpertsSubtitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Manage your local expert personas'**
+  String get myExpertsSubtitle;
+
+  /// No description provided for @myExpertsEmptyTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'No experts yet'**
+  String get myExpertsEmptyTitle;
+
+  /// No description provided for @myExpertsEmptyHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Create a local expert persona to reuse across teams.'**
+  String get myExpertsEmptyHint;
+
+  /// No description provided for @myExpertsCreate.
+  ///
+  /// In en, this message translates to:
+  /// **'New Expert'**
+  String get myExpertsCreate;
+
+  /// No description provided for @myExpertsEdit.
+  ///
+  /// In en, this message translates to:
+  /// **'Edit'**
+  String get myExpertsEdit;
+
+  /// No description provided for @myExpertsDelete.
+  ///
+  /// In en, this message translates to:
+  /// **'Delete'**
+  String get myExpertsDelete;
+
+  /// No description provided for @myExpertsDeleteConfirm.
+  ///
+  /// In en, this message translates to:
+  /// **'Delete expert \"{name}\"? This cannot be undone.'**
+  String myExpertsDeleteConfirm(Object name);
+
+  /// No description provided for @myExpertsDeleteReferenced.
+  ///
+  /// In en, this message translates to:
+  /// **'Cannot delete \"{name}\" — it is still referenced by one or more teams. Reassign those roster slots first.'**
+  String myExpertsDeleteReferenced(Object name);
+
+  /// No description provided for @myExpertsUpload.
+  ///
+  /// In en, this message translates to:
+  /// **'Upload'**
+  String get myExpertsUpload;
+
+  /// No description provided for @myTeamsUpload.
+  ///
+  /// In en, this message translates to:
+  /// **'Upload'**
+  String get myTeamsUpload;
+
+  /// No description provided for @hubPublishExpertTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Publish expert to Hub'**
+  String get hubPublishExpertTitle;
+
+  /// No description provided for @hubPublishTeamTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Publish team to Hub'**
+  String get hubPublishTeamTitle;
+
+  /// No description provided for @hubPublishAuthHint.
+  ///
+  /// In en, this message translates to:
+  /// **'A GitHub personal access token with repo scope is required to open a pull request into the Hub registry.'**
+  String get hubPublishAuthHint;
+
+  /// No description provided for @hubPublishTokenLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'GitHub token'**
+  String get hubPublishTokenLabel;
+
+  /// No description provided for @hubPublishTokenHint.
+  ///
+  /// In en, this message translates to:
+  /// **'ghp_…'**
+  String get hubPublishTokenHint;
+
+  /// No description provided for @hubPublishTokenStored.
+  ///
+  /// In en, this message translates to:
+  /// **'A token is already saved. You can replace it below.'**
+  String get hubPublishTokenStored;
+
+  /// No description provided for @hubPublishTokenRequired.
+  ///
+  /// In en, this message translates to:
+  /// **'GitHub token is required to publish'**
+  String get hubPublishTokenRequired;
+
+  /// No description provided for @hubPublishTokenSaveFailed.
+  ///
+  /// In en, this message translates to:
+  /// **'Could not save the GitHub token'**
+  String get hubPublishTokenSaveFailed;
+
+  /// No description provided for @hubPublishNext.
+  ///
+  /// In en, this message translates to:
+  /// **'Next'**
+  String get hubPublishNext;
+
+  /// No description provided for @hubPublishPublish.
+  ///
+  /// In en, this message translates to:
+  /// **'Publish'**
+  String get hubPublishPublish;
+
+  /// No description provided for @hubPublishDone.
+  ///
+  /// In en, this message translates to:
+  /// **'Done'**
+  String get hubPublishDone;
+
+  /// No description provided for @hubPublishSlugLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Slug'**
+  String get hubPublishSlugLabel;
+
+  /// No description provided for @hubPublishSlugHint.
+  ///
+  /// In en, this message translates to:
+  /// **'url-safe-id'**
+  String get hubPublishSlugHint;
+
+  /// No description provided for @hubPublishSlugRequired.
+  ///
+  /// In en, this message translates to:
+  /// **'Slug is required'**
+  String get hubPublishSlugRequired;
+
+  /// No description provided for @hubPublishCategoryRequired.
+  ///
+  /// In en, this message translates to:
+  /// **'Category is required'**
+  String get hubPublishCategoryRequired;
+
+  /// No description provided for @hubPublishAuthorLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Author'**
+  String get hubPublishAuthorLabel;
+
+  /// No description provided for @hubPublishLocalExpertHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Local experts on the roster must be remapped to a published or builtin expert before upload.'**
+  String get hubPublishLocalExpertHint;
+
+  /// No description provided for @hubPublishLocalExpertBlocked.
+  ///
+  /// In en, this message translates to:
+  /// **'Remap every local expert before continuing'**
+  String get hubPublishLocalExpertBlocked;
+
+  /// No description provided for @hubPublishRemapLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Publish as'**
+  String get hubPublishRemapLabel;
+
+  /// No description provided for @hubPublishNonPortableHint.
+  ///
+  /// In en, this message translates to:
+  /// **'These dependencies have no portable provenance. Remove them from the team bundle before publishing:'**
+  String get hubPublishNonPortableHint;
+
+  /// No description provided for @hubPublishNonPortableBlocked.
+  ///
+  /// In en, this message translates to:
+  /// **'Remove non-portable dependencies before continuing'**
+  String get hubPublishNonPortableBlocked;
+
+  /// No description provided for @hubPublishGatesClear.
+  ///
+  /// In en, this message translates to:
+  /// **'All dependencies look portable. Continue to confirm.'**
+  String get hubPublishGatesClear;
+
+  /// No description provided for @hubPublishConfirmHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Review the package metadata, then publish a fork-based pull request.'**
+  String get hubPublishConfirmHint;
+
+  /// No description provided for @hubPublishKindLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Kind'**
+  String get hubPublishKindLabel;
+
+  /// No description provided for @hubPublishKindExpert.
+  ///
+  /// In en, this message translates to:
+  /// **'Expert'**
+  String get hubPublishKindExpert;
+
+  /// No description provided for @hubPublishKindTeam.
+  ///
+  /// In en, this message translates to:
+  /// **'Team'**
+  String get hubPublishKindTeam;
+
+  /// No description provided for @hubPublishSuccessHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Pull request opened. Share or open the link below.'**
+  String get hubPublishSuccessHint;
+
+  /// No description provided for @hubPublishCopyLink.
+  ///
+  /// In en, this message translates to:
+  /// **'Copy link'**
+  String get hubPublishCopyLink;
+
+  /// No description provided for @hubPublishOpenPr.
+  ///
+  /// In en, this message translates to:
+  /// **'Open PR'**
+  String get hubPublishOpenPr;
+
+  /// No description provided for @hubPublishBadgePrOpen.
+  ///
+  /// In en, this message translates to:
+  /// **'PR open'**
+  String get hubPublishBadgePrOpen;
+
+  /// No description provided for @hubPublishBadgePublished.
+  ///
+  /// In en, this message translates to:
+  /// **'Published'**
+  String get hubPublishBadgePublished;
+
+  /// No description provided for @expertHubCreate.
+  ///
+  /// In en, this message translates to:
+  /// **'New'**
+  String get expertHubCreate;
+
+  /// No description provided for @expertEditorCreateTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'New expert'**
+  String get expertEditorCreateTitle;
+
+  /// No description provided for @expertEditorEditTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Edit expert'**
+  String get expertEditorEditTitle;
+
+  /// No description provided for @expertEditorDescription.
+  ///
+  /// In en, this message translates to:
+  /// **'Description'**
+  String get expertEditorDescription;
+
+  /// No description provided for @expertEditorCategory.
+  ///
+  /// In en, this message translates to:
+  /// **'Category'**
+  String get expertEditorCategory;
+
+  /// No description provided for @expertEditorTags.
+  ///
+  /// In en, this message translates to:
+  /// **'Tags'**
+  String get expertEditorTags;
+
+  /// No description provided for @expertEditorTagsHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Comma-separated'**
+  String get expertEditorTagsHint;
+
+  /// No description provided for @expertEditorNameRequired.
+  ///
+  /// In en, this message translates to:
+  /// **'Name is required.'**
+  String get expertEditorNameRequired;
+
+  /// No description provided for @expertEditorPromptRequired.
+  ///
+  /// In en, this message translates to:
+  /// **'Prompt is required.'**
+  String get expertEditorPromptRequired;
+
   /// No description provided for @teamHubNav.
   ///
   /// In en, this message translates to:
@@ -6049,18 +6403,6 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Add from Expert Hub'**
   String get expertHubAddFromHub;
-
-  /// No description provided for @expertHubSaveAsTemplate.
-  ///
-  /// In en, this message translates to:
-  /// **'Save as template'**
-  String get expertHubSaveAsTemplate;
-
-  /// No description provided for @expertHubTemplateSaved.
-  ///
-  /// In en, this message translates to:
-  /// **'Saved \"{name}\" to My templates.'**
-  String expertHubTemplateSaved(Object name);
 
   /// No description provided for @expertHubViewInHub.
   ///

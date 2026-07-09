@@ -226,6 +226,12 @@ class AppPaths {
   static String memberHubCacheDirForTeampilotRoot(String teampilotRoot) =>
       _pathUnderTeampilotRoot(teampilotRoot, 'member-hub/cache');
 
+  static String hubPublishDirForTeampilotRoot(String teampilotRoot) =>
+      _pathUnderTeampilotRoot(teampilotRoot, 'hub-publish');
+
+  static String hubPublishRecordsJsonForTeampilotRoot(String teampilotRoot) =>
+      _pathUnderTeampilotRoot(teampilotRoot, 'hub-publish/records.json');
+
   static String homeWorkspaceWorkspaceFavoritesJsonForTeampilotRoot(
     String teampilotRoot,
   ) => _pathUnderTeampilotRoot(teampilotRoot, 'ui/workspace-favorites.json');
@@ -294,6 +300,9 @@ class AppPaths {
   String get memberHubLocalTemplatesDir =>
       memberHubLocalTemplatesDirForTeampilotRoot(basePath);
   String get memberHubCacheDir => memberHubCacheDirForTeampilotRoot(basePath);
+  String get hubPublishDir => hubPublishDirForTeampilotRoot(basePath);
+  String get hubPublishRecordsJson =>
+      hubPublishRecordsJsonForTeampilotRoot(basePath);
 
   String get homeWorkspaceWorkspaceFavoritesJson =>
       homeWorkspaceWorkspaceFavoritesJsonForTeampilotRoot(basePath);

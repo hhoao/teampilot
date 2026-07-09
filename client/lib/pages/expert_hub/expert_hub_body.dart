@@ -17,11 +17,16 @@ class ExpertHubBody extends StatefulWidget {
     super.key,
     required this.cubit,
     required this.onOpen,
+    this.onCreate,
     this.inset = 28,
   });
 
   final ExpertHubCubit cubit;
   final void Function(DiscoverableMember) onOpen;
+
+  /// Opens the shared expert editor (create). When null, the create button is
+  /// still shown but does nothing until the page wires it.
+  final VoidCallback? onCreate;
 
   /// Horizontal page inset (tighter on Android).
   final double inset;
@@ -82,6 +87,13 @@ class _ExpertHubBodyState extends State<ExpertHubBody> {
                   },
                   onChanged: (s) => s == null ? null : widget.cubit.setSort(s),
                 ),
+              ),
+              const SizedBox(width: 12),
+              FilledButton.tonalIcon(
+                key: const Key('expert-hub-create'),
+                onPressed: () => widget.onCreate?.call(),
+                icon: const Icon(Icons.add),
+                label: Text(l10n.expertHubCreate),
               ),
             ],
           ),

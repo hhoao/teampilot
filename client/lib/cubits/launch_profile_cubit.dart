@@ -7,7 +7,6 @@ import '../models/mcp_server.dart';
 import '../models/personal_profile.dart';
 import '../models/plugin.dart';
 import '../models/team_config.dart';
-import '../models/default_team_roster.dart';
 import '../models/team_roster_slot.dart';
 import '../services/expert_hub/expert_member_materializer.dart';
 import '../models/launch_profile.dart';
@@ -727,17 +726,16 @@ class LaunchProfileCubit extends Cubit<LaunchProfileState>
     }
   }
 
-  Future<void> deleteSelected() async {
-    final selected = state.selectedTeam;
-    if (selected == null) return;
-    final teamId = selected.id;
+  Future<void> deleteTeam(String id) async {
+    final deleted = state.teams.where((team) => team.id == id).firstOrNull;
+    if (deleted == null) return;
     for (final session in await _sessionRepository.loadSessions()) {
-      if (session.sessionTeam.trim() == teamId) {
+      if (session.sessionTeam.trim() == id) {
         await _sessionRepository.deleteSession(session.sessionId);
       }
     }
-    await _repository.delete(teamId);
-    var teams = state.teams.where((team) => team.id != selected.id).toList();
+    await _repository.delete(id);
+    var teams = state.teams.where((team) => team.id != id).toList();
     if (teams.isEmpty) {
       final builtIn = await _identityProvisioner.ensureDefaultTeams(
         buildNative: _rosterEditor.defaultNativeTeam,
@@ -745,26 +743,27 @@ class LaunchProfileCubit extends Cubit<LaunchProfileState>
       );
       teams = _sortTeams([builtIn.native, builtIn.mixed]);
     }
+    final nextSelected = state.selectedTeamId == id
+        ? teams.first.id
+        : state.selectedTeamId ?? teams.first.id;
     emit(
       state.copyWith(
         teams: teams,
-        selectedTeamId: teams.first.id,
-        statusMessage: 'Deleted ${selected.name}.',
+        selectedTeamId: nextSelected,
+        statusMessage: 'Deleted ${deleted.name}.',
       ),
     );
     await saveTeamProfiles(teams);
     unawaited(_sync.syncPluginsForSelected());
   }
 
-  // ===== Members =====
-
-  Future<void> addMember() async {
-    final team = state.selectedTeam;
-    if (team == null) return;
-    final (team: updated, :added) = _rosterEditor.addMember(team);
-    await updateSelected(updated);
-    emit(state.copyWith(statusMessage: 'Added ${added.id}.'));
+  Future<void> deleteSelected() async {
+    final selected = state.selectedTeam;
+    if (selected == null) return;
+    await deleteTeam(selected.id);
   }
+
+  // ===== Members =====
 
   /// Appends an expert reference to the team with [teamId].
   Future<TeamRosterSlot?> addExpertToTeam(
@@ -795,36 +794,6 @@ class LaunchProfileCubit extends Cubit<LaunchProfileState>
     );
     await saveTeamProfiles(teams);
     return added;
-  }
-
-  @Deprecated('Use addExpertToTeam with expertKey')
-  Future<TeamMemberConfig?> addMemberToTeam(
-    String teamId,
-    TeamMemberConfig member,
-  ) async {
-    final added = await addExpertToTeam(
-      teamId,
-      DefaultTeamRoster.expertKeyForSlug('developer'),
-      slotIdHint: member.id,
-      overrides: TeamRosterSlotOverrides(
-        provider: member.provider,
-        model: member.model,
-        effort: member.effort,
-        extraArgs: member.extraArgs,
-        cli: member.cli,
-        replicas: member.replicas,
-        capabilities: member.capabilities,
-        activePresetId: member.activePresetId,
-      ),
-    );
-    if (added == null) return null;
-    return TeamMemberConfig(
-      id: added.id,
-      name: member.name,
-      provider: member.provider,
-      model: member.model,
-      joinedAt: added.joinedAt,
-    );
   }
 
   Future<void> updateMember(String memberId, TeamMemberConfig updated) async {
