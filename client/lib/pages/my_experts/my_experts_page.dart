@@ -198,6 +198,7 @@ class _MyExpertsPageState extends State<MyExpertsPage> {
     if (confirmed != true || !mounted) return;
 
     await _writer.delete(member.key);
+    if (!mounted) return;
     ExpertHubCubit? hub;
     try {
       hub = context.read<ExpertHubCubit>();
