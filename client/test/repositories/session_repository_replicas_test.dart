@@ -41,6 +41,47 @@ void main() {
   );
 
   test(
+    'createSession heals stale replicas from remembered instance pins',
+    () async {
+      final tmp = await Directory.systemTemp.createTemp('fs_session_repo_heal_');
+      addTearDown(() => tmp.deleteSync(recursive: true));
+      final repo = SessionRepository(rootDir: tmp.path);
+
+      final ws = await repo.createWorkspace([
+        const WorkspaceFolder(path: '/local'),
+        const WorkspaceFolder(path: '/remote', targetId: 'ssh:p1'),
+      ]);
+      await repo.updateWorkspaceMemberPlacement(
+        ws.workspaceId,
+        'team-a',
+        targets: const {
+          'team-lead': 'local',
+          'builder-0': 'local',
+          'builder-1': 'ssh:p1',
+        },
+      );
+
+      // Profile still says replicas:1 (bug: placement wrote targets only).
+      final session = await repo.createSession(
+        ws.workspaceId,
+        sessionTeam: 'team-a',
+        rosterMembers: const [
+          TeamMemberConfig(id: 'team-lead', name: 'team-lead'),
+          TeamMemberConfig(id: 'builder', name: 'Builder', replicas: 1),
+        ],
+      );
+
+      expect(session.members.map((b) => b.rosterMemberId).toList(), [
+        'team-lead',
+        'builder-0',
+        'builder-1',
+      ]);
+      expect(session.memberTargets['builder-0'], 'local');
+      expect(session.memberTargets['builder-1'], 'ssh:p1');
+    },
+  );
+
+  test(
     'createSession omits mixed instances without targets when initialized',
     () async {
       final tmp = await Directory.systemTemp.createTemp('fs_session_repo_omit_');

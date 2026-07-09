@@ -94,10 +94,10 @@ class WorkspaceInfoSection extends StatelessWidget {
           ),
           const SizedBox(height: 12),
           WorkspaceFoldersSection(workspace: live, lockTargets: true),
-          if (workspaceTopologyRequiresMemberAssignment(live.folders)) ...[
-            const SizedBox(height: 12),
-            _WorkspaceMemberTargetsSections(workspace: live),
-          ],
+          // Placement is configured for all topologies; section lists teams that
+          // already have remembered targets (local/remote/mixed).
+          const SizedBox(height: 12),
+          _WorkspaceMemberTargetsSections(workspace: live),
           const SizedBox(height: 12),
           WorkspaceConfigDangerZone(workspace: live),
         ],

@@ -139,6 +139,48 @@ List<TeamMemberConfig> applyPlacementReplicasToMembers({
   ];
 }
 
+/// Raises stale profile [replicas] when remembered targets imply more pods.
+///
+/// Placement save must write `roster.overrides.replicas`. Older saves only
+/// wrote `memberTargets` (`builder-0`/`builder-1`) while profile stayed at 1,
+/// so createSession expanded a singleton `builder` that never matched those
+/// pins and was omitted. Heal at session create / materialize so existing
+/// workspaces recover without re-opening Machines.
+List<TeamMemberConfig> healMemberReplicasFromTargets({
+  required List<TeamMemberConfig> members,
+  required MemberTargetAssignments targets,
+}) {
+  if (targets.isEmpty) return members;
+  return [
+    for (final m in members)
+      if (TeamMemberNaming.isTeamLead(m))
+        m.copyWith(replicas: 1)
+      else
+        m.copyWith(
+          replicas: _max(
+            m.replicas < 0 ? 0 : m.replicas,
+            _pinnedInstanceCountForType(targets, m.id),
+          ),
+        ),
+  ];
+}
+
+int _pinnedInstanceCountForType(
+  MemberTargetAssignments targets,
+  String typeId,
+) {
+  final trimmed = typeId.trim();
+  if (trimmed.isEmpty) return 0;
+  var count = 0;
+  for (final instanceId in targets.keys) {
+    final id = instanceId.trim();
+    if (id == trimmed || id.startsWith('$trimmed-')) count++;
+  }
+  return count;
+}
+
+int _max(int a, int b) => a >= b ? a : b;
+
 /// Infer mixed first-init from remembered targets (migration / load path).
 bool inferMemberPlacementInitialized({
   required List<WorkspaceFolder> folders,
@@ -360,6 +402,7 @@ int memberPlacementCountForType(
   return total;
 }
 
+/// Progress helper only — not a launch gate (see [workspaceNeedsMixedPlacementInit]).
 bool memberPlacementComplete({
   required List<WorkspaceFolder> workspaceFolders,
   required List<TeamMemberConfig> members,

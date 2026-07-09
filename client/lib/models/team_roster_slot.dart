@@ -34,7 +34,7 @@ class TeamRosterSlotOverrides {
       effort: json['effort'] as String? ?? '',
       extraArgs: json['extraArgs'] as String? ?? '',
       cli: rawCli == null ? null : CliTool.tryParse(rawCli.toString()),
-      replicas: (json['replicas'] as num?)?.toInt().clamp(1, 999) ?? 1,
+      replicas: (json['replicas'] as num?)?.toInt().clamp(0, 999) ?? 1,
       capabilities: {
         for (final c in (json['capabilities'] as List?) ?? const [])
           if (c is String && c.trim().isNotEmpty) c.trim(),

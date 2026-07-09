@@ -60,16 +60,20 @@ class _WorkspaceTeamMemberTargetsDialogState
       workspace.memberTargetsByTeam,
       widget.team.id,
     );
+    final members = healMemberReplicasFromTargets(
+      members: widget.team.members,
+      targets: remembered,
+    );
     if (remembered.isEmpty) {
       // In-memory defaults only — persist on Save via prepareMemberPlacementSave.
       _placement = defaultMemberPlacement(
         folders: workspace.folders,
-        members: widget.team.members,
+        members: members,
       );
       return;
     }
     _placement = memberPlacementFromMemberTargets(
-      members: widget.team.members,
+      members: members,
       targets: remembered,
     );
   }
@@ -105,9 +109,9 @@ class _WorkspaceTeamMemberTargetsDialogState
         silent: true,
         syncResources: false,
       );
-      await cubit.updateSelected(
-        widget.team.copyWith(members: prepared.members),
-      );
+      // Persist placement totals on roster.overrides.replicas (members alone
+      // are runtime-only and would be dropped on the next materialize).
+      await cubit.updateSelected(prepared.team);
       await widget.repository.updateWorkspaceMemberPlacement(
         widget.workspace.workspaceId,
         widget.team.id,

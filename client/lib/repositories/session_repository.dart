@@ -610,11 +610,17 @@ class SessionRepository {
         throw StateError('mixed_workspace_member_placement_uninitialized');
       }
 
-      final instances = expandTeamRoster(valid);
       final remembered = rememberedMemberTargets(
         workspace.memberTargetsByTeam,
         trimmedTeam,
       );
+      // Heal stale profile replicas when remembered pins imply more pods
+      // (placement used to write targets without roster.overrides.replicas).
+      final healed = healMemberReplicasFromTargets(
+        members: valid,
+        targets: remembered,
+      );
+      final instances = expandTeamRoster(healed);
       final resolved = _resolveSessionMemberTargets(
         workspace: workspace,
         instances: instances,
@@ -642,10 +648,10 @@ class SessionRepository {
       ];
       if (!leadPlacementValid(
             folders: workspace.folders,
-            members: valid,
+            members: healed,
             targets: resolved.targets,
           ) ||
-          !_includedLeadWhenRequired(valid, included)) {
+          !_includedLeadWhenRequired(healed, included)) {
         throw StateError('lead_placement_invalid');
       }
 

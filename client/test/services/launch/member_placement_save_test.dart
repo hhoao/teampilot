@@ -1,5 +1,6 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:teampilot/models/team_config.dart';
+import 'package:teampilot/models/team_roster_slot.dart';
 import 'package:teampilot/models/workspace_folder.dart';
 import 'package:teampilot/services/launch/member_placement_save.dart';
 
@@ -10,6 +11,10 @@ void main() {
         team: TeamProfile(
           id: 't1',
           name: 'T',
+          roster: const [
+            TeamRosterSlot(id: 'team-lead', expertKey: 'teampilot/builtin/lead'),
+            TeamRosterSlot(id: 'dev', expertKey: 'teampilot/builtin/dev'),
+          ],
           members: const [
             TeamMemberConfig(id: 'team-lead', name: 'Lead'),
             TeamMemberConfig(id: 'dev', name: 'Dev'),
@@ -26,11 +31,50 @@ void main() {
         },
       );
       expect(prepared.members.firstWhere((m) => m.id == 'dev').replicas, 2);
+      expect(
+        prepared.team.roster.firstWhere((s) => s.id == 'dev').overrides.replicas,
+        2,
+      );
+      expect(
+        prepared.team.roster
+            .firstWhere((s) => s.id == 'team-lead')
+            .overrides
+            .replicas,
+        1,
+      );
       expect(prepared.targets['dev-0'], 'local');
       expect(prepared.targets['dev-1'], 'ssh:p1');
       expect(prepared.targets['team-lead'], 'local');
       expect(prepared.markInitialized, isTrue);
       expect(prepared.leadValid, isTrue);
+    });
+
+    test('persists zero replicas onto roster overrides', () {
+      final prepared = prepareMemberPlacementSave(
+        team: TeamProfile(
+          id: 't1',
+          name: 'T',
+          roster: const [
+            TeamRosterSlot(id: 'team-lead', expertKey: 'k'),
+            TeamRosterSlot(id: 'dev', expertKey: 'k'),
+          ],
+          members: const [
+            TeamMemberConfig(id: 'team-lead', name: 'Lead'),
+            TeamMemberConfig(id: 'dev', name: 'Dev', replicas: 3),
+          ],
+          createdAt: 1,
+        ),
+        folders: const [WorkspaceFolder(path: '/a')],
+        placement: {
+          'local': {'team-lead': 1},
+        },
+      );
+      expect(prepared.members.firstWhere((m) => m.id == 'dev').replicas, 0);
+      expect(
+        prepared.team.roster.firstWhere((s) => s.id == 'dev').overrides.replicas,
+        0,
+      );
+      expect(prepared.targets.containsKey('dev'), isFalse);
     });
 
     test('leadValid is false when lead is on wrong host', () {

@@ -158,15 +158,19 @@ class _LandingTeamSettingsDialogState extends State<_LandingTeamSettingsDialog> 
       workspace.memberTargetsByTeam,
       team.id,
     );
+    final members = healMemberReplicasFromTargets(
+      members: team.members,
+      targets: remembered,
+    );
     if (remembered.isEmpty) {
       // In-memory defaults only — persist on Save via prepareMemberPlacementSave.
       return defaultMemberPlacement(
         folders: workspace.folders,
-        members: team.members,
+        members: members,
       );
     }
     return memberPlacementFromMemberTargets(
-      members: team.members,
+      members: members,
       targets: remembered,
     );
   }
@@ -288,7 +292,9 @@ class _LandingTeamSettingsDialogState extends State<_LandingTeamSettingsDialog> 
       );
       if (!prepared.leadValid) return;
       await cubit.selectTeam(widget.team.id, silent: true, syncResources: false);
-      _teamDraft = _teamDraft.copyWith(members: prepared.members);
+      // Persist placement totals on roster.overrides.replicas (members alone
+      // are runtime-only and would be dropped on the next materialize).
+      _teamDraft = prepared.team;
       await cubit.updateSelected(_teamDraft);
       await sessions.updateWorkspaceMemberPlacement(
         widget.workspace.workspaceId,
