@@ -2,13 +2,14 @@
 
 **Date:** 2026-07-09  
 **Status:** Draft (brainstorm approved; pending spec review)  
-**Approach:** Sidebar ownership pages for local configs; hubs for discovery; publish via PR
+**Approach:** Sidebar ownership pages for local configs; hubs for discovery; publish via fork PR  
+**Supersedes (for this scope):** Expert Hub design notes that deferred in-app publish and kept team-config “Save as template” — those are replaced here.
 
 ## Summary
 
-Add two home-shell global views — **我的团队 (My Teams)** and **我的专家 (My Experts)** — as the ownership surfaces for local team and expert configuration. Local configuration **is** the template. Team Hub / Expert Hub remain discovery + clone surfaces. Users publish local configs to the corresponding git registries through an in-app upload wizard that opens a PR.
+Add two home-shell global views — **我的团队 (My Teams)** and **我的专家 (My Experts)** — as the ownership surfaces for local team and expert configuration. Local configuration **is** the template. Team Hub / Expert Hub remain discovery + clone surfaces. Users publish local configs to the corresponding git registries through an in-app upload wizard that opens a **fork-based PR** into the upstream registry.
 
-Create experts only from Expert Hub / My Experts. Remove “save as template” from member settings. Do **not** keep parallel legacy paths, compatibility shims, or deprecated APIs.
+Local experts are written only through one service used by My Experts, Expert Hub create, and AI New Team. Remove “save as template” from member settings. Do **not** keep parallel legacy paths, compatibility shims, or deprecated APIs.
 
 ## Goals
 
@@ -16,7 +17,7 @@ Create experts only from Expert Hub / My Experts. Remove “save as template” 
 |------|-------------|
 | Own teams | Sidebar **我的团队** lists local `TeamProfile`s for manage / open / delete / upload |
 | Own experts | Sidebar **我的专家** is the CRUD home for local experts (`member-hub/local-templates`) |
-| Create experts | Expert Hub + My Experts share one create/edit form; no member-settings bypass |
+| Create experts | One local-expert writer; UI editor (Hub + My Experts) + AI New Team; no member-settings bypass |
 | Publish | Upload local team or expert to registry as a PR (`team-hub` / `member-hub`) |
 | Clean cut | No backward/downward compatibility; delete superseded UI and APIs in the same change |
 
@@ -90,7 +91,7 @@ Skills / Plugins / MCP / Extensions
 
 | Action | Behavior |
 |--------|----------|
-| List | Name, member count, CLI / teamMode, updated time |
+| List | Name, member count, CLI / teamMode, `createdAt` (no separate `updatedAt` on `TeamProfile` in v1) |
 | Open | Navigate into existing team config (home team tab / team-config) |
 | New | Reuse existing New Team dialog (blank / AI); no second creator |
 | Delete | Same confirmation + delete path as today |
@@ -111,7 +112,18 @@ Skills / Plugins / MCP / Extensions
 | Upload | Publish wizard → Expert Hub registry PR |
 | Add to team | Reuse existing Expert Hub team picker |
 
-**Create entry points (same editor)**
+**Single write path for local experts**
+
+All local expert persistence goes through one injectable writer (thin facade over `LocalMemberTemplateStore.save` / `delete` / `loadAll`). Callers:
+
+| Caller | How |
+|--------|-----|
+| My Experts / Expert Hub UI | Shared expert editor → writer |
+| AI New Team (`rosterSlotsFromTeamDraft`) | Programmatic create via the **same writer** (no UI form); must not invent a second JSON shape or store |
+
+“One create path” means **one persistence API**, not “AI must open the editor dialog.” Member settings must not call the writer.
+
+**Create UI entry points (shared editor)**
 
 1. My Experts primary CTA
 2. Expert Hub toolbar “新建”
@@ -120,7 +132,7 @@ Skills / Plugins / MCP / Extensions
 
 - Delete member-settings overflow “保存为模板” (`team_config_member_section.dart` `_saveAsTemplate` / `save_template` menu item)
 - Delete related tests and unused l10n once no callers remain
-- Do not leave a hidden API that recreates the bypass
+- Refactor AI draft mapper to use the shared writer; delete any duplicate save helpers
 
 **Expert Hub relationship**
 
@@ -138,15 +150,28 @@ Skills / Plugins / MCP / Extensions
 
 Defaults: `flashskyai/team-hub`, `flashskyai/member-hub` (configurable owner/repo).
 
+**Publish transport (v1 rule)**
+
+End users are not assumed to have write access to `flashskyai/*`. v1 always:
+
+1. Ensure a **user fork** of the target registry exists (create fork via API if missing)
+2. Commit on a new branch **on the fork**
+3. Open a **PR from the fork into upstream** `owner/repo` default branch
+4. Show the PR URL
+
+Do not implement “push branch on upstream” as a parallel mode. Collaborator-only shortcuts are out of scope.
+
 **Wizard steps (shared shell)**
 
-1. Metadata: slug, display name, description, category, tags, author
-2. Dependency gate (teams): every roster `expertKey` that is `local/…` must be published first or remapped to an already-published key; unresolved → cannot continue
+1. Metadata: slug, display name, description, category, author; **tags only for experts** (`DiscoverableMember.tags`; teams have no tags field)
+2. Dependency gates:
+   - **Experts on team roster:** every `local/…` `expertKey` must be published first **or** remapped via an in-wizard picker to an already-published / builtin / registry expert key; unresolved → cannot continue
+   - **Bundle deps:** map local `skillIds` / `pluginIds` / `mcpServerIds` → portable `skillDeps` / `pluginDeps` / `mcpDeps` by reverse-looking up install provenance (repo owner/name/branch/directory or marketplace refs). IDs with **no portable provenance** (ad-hoc local-only installs) are listed in the wizard; user must remove them from the team bundle or cancel — v1 does **not** publish opaque local ids
 3. Serialize:
-   - Team: `TeamProfile` → `DiscoverableTeam` (roster = expertKey + overrides only)
-   - Expert: local `DiscoverableMember` → `member.json`
+   - Team: `TeamProfile` → `DiscoverableTeam` with roster (`expertKey` + overrides only), `cli`, `teamMode`, `extraArgs`, description/name, and resolved `*Deps` only
+   - Expert: local `DiscoverableMember` → `member.json` (including its `skillDeps` if already portable)
 4. Auth: GitHub token from secure store (never embedded in template JSON)
-5. Publish: branch → write package file(s) → update `index.json` → open PR → show PR URL in app
+5. Publish: fork → branch on fork → write package file(s) → update fork `index.json` → open upstream PR → show PR URL
 
 **After success**
 
@@ -157,11 +182,11 @@ Defaults: `flashskyai/team-hub`, `flashskyai/member-hub` (configurable owner/rep
 **Security**
 
 - Strip API keys, SSH profiles, workspace paths, and other secrets from payloads
-- PR only — never push default branch in v1
+- Fork PR only — never push upstream default branch in v1
 
 **Failure modes**
 
-- Missing token, slug collision, network errors, unresolved local expert deps → in-wizard errors; no partial `index.json` update
+- Missing token, fork/PR API errors, slug collision on upstream index, network errors, unresolved local expert keys, non-portable bundle deps → in-wizard errors; no half-applied upstream state (fork branch may exist; PR creation is the success criterion)
 
 ### 5. Components
 
@@ -169,13 +194,15 @@ Defaults: `flashskyai/team-hub`, `flashskyai/member-hub` (configurable owner/rep
 |-----------|----------------|
 | `HomeGlobalView.myTeams` / `myExperts` | Route + sidebar |
 | `MyTeamsPage` / `MyExpertsPage` | Ownership UI |
-| Shared expert editor | Create/edit local experts |
-| `HubPublishService` | Serialize → git branch → index update → PR |
+| Shared expert editor | Create/edit local experts (UI) |
+| Local expert writer | Sole persistence API for local experts (UI + AI) |
+| `HubPublishService` | Serialize → fork branch → index update → upstream PR |
 | `HubPublishCredentialsStore` | Token storage |
 | `HubPublishRecordStore` | Local publish badges / history |
-| `TeamProfile → DiscoverableTeam` mapper | Sanitize for publish |
+| `TeamProfile → DiscoverableTeam` mapper | Sanitize + reverse-map portable `*Deps` |
+| Bundle provenance lookup | Resolve local skill/plugin/MCP ids → dependency refs |
 
-Reuse: `LaunchProfileCubit`, `LocalMemberTemplateStore`, `ExpertHubCubit`, existing team navigation.
+Reuse: `LaunchProfileCubit`, `LocalMemberTemplateStore` (behind writer), `ExpertHubCubit`, existing team navigation.
 
 ### 6. Cleanup checklist (delete, do not wrap)
 
@@ -183,10 +210,10 @@ Reuse: `LaunchProfileCubit`, `LocalMemberTemplateStore`, `ExpertHubCubit`, exist
 |--------|-----|
 | Member-settings “保存为模板” | Ownership moves to My Experts / Expert Hub create |
 | `@Deprecated addMemberToTeam` | Callers must use `addExpertToTeam` only |
-| Any dual “save template vs create expert” helpers introduced during AI flows that duplicate the editor | One editor, one store write path |
+| Duplicate AI save helpers that bypass the shared writer | One persistence API |
 | Orphan l10n / tests for removed UI | No dead strings or skipped tests left behind |
 
-Prefer deleting unused `addMember()` production dead ends if nothing outside tests needs a “default developer” shortcut; if tests need a fixture helper, put it in test support — not in the cubit public API.
+Delete unused `addMember()` from the cubit public API if production UI does not call it; test fixtures that need a default developer slot live in test support, not the cubit.
 
 ### 7. Testing
 
@@ -216,12 +243,15 @@ Prefer deleting unused `addMember()` production dead ends if nothing outside tes
 | Expert create | Expert Hub + My Experts; remove member-settings save-as-template |
 | My pages | New sidebar items (not Hub filters) |
 | My Teams content | Local launch identities (`TeamProfile`), not a separate template copy |
-| Upload in v1 | Yes — PR to registry |
+| Upload in v1 | Yes — fork-based PR into upstream registry |
+| Publish deps | Only portable `*Deps`; non-portable local ids block until removed |
+| Local expert writes | One writer: UI editor + AI New Team; no member-settings path |
 | Approach | Sidebar ownership pages + Hub discovery + publish wizard |
 | Compatibility | None — clean architecture, delete leftovers |
 
 ## Open points for implementation plan (not design blockers)
 
-- Exact GitHub API client vs `gh` CLI for PR creation (plan should pick one injectable port)
+- Exact GitHub API client vs `gh` CLI behind the publish port (plan picks one injectable implementation)
 - Whether Expert Hub “local” filter remains a chip or becomes a link to My Experts (UX detail; both keep local list readable from Hub)
+- Where skill/plugin/MCP install provenance is already stored on disk (plan locates existing metadata vs adds a minimal provenance index if missing)
 )
