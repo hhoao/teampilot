@@ -5943,6 +5943,18 @@ abstract class AppLocalizations {
   /// **'Open PR'**
   String get hubPublishOpenPr;
 
+  /// No description provided for @hubPublishBadgePrOpen.
+  ///
+  /// In en, this message translates to:
+  /// **'PR open'**
+  String get hubPublishBadgePrOpen;
+
+  /// No description provided for @hubPublishBadgePublished.
+  ///
+  /// In en, this message translates to:
+  /// **'Published'**
+  String get hubPublishBadgePublished;
+
   /// No description provided for @expertHubCreate.
   ///
   /// In en, this message translates to:

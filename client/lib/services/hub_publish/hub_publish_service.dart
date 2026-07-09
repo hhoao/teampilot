@@ -93,6 +93,7 @@ class HubPublishService implements HubPublishApi {
         slug: result.slug,
         prUrl: result.prUrl,
         publishedAtMs: _nowMs(),
+        localId: member.key,
       ),
     );
     return result;
@@ -139,6 +140,7 @@ class HubPublishService implements HubPublishApi {
         slug: result.slug,
         prUrl: result.prUrl,
         publishedAtMs: _nowMs(),
+        localId: team.id,
       ),
     );
     return result;

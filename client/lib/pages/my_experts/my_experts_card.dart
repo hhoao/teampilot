@@ -2,10 +2,12 @@ import 'package:flutter/material.dart';
 
 import '../../l10n/l10n_extensions.dart';
 import '../../models/discoverable_member.dart';
+import '../../services/hub_publish/hub_publish_record_store.dart';
 import '../../theme/app_icon_sizes.dart';
 import '../../theme/app_text_styles.dart';
 import '../../theme/workspace_surface_layers.dart';
 import '../expert_hub/expert_hub_visuals.dart';
+import '../hub_publish/hub_publish_badge.dart';
 import '../team_hub/team_hub_cards.dart';
 
 enum MyExpertsCardAction { edit, delete, addToTeam, upload }
@@ -17,12 +19,14 @@ class MyExpertsCard extends StatefulWidget {
     required this.selected,
     required this.onAction,
     this.onTap,
+    this.publishRecord,
   });
 
   final DiscoverableMember member;
   final bool selected;
   final ValueChanged<MyExpertsCardAction> onAction;
   final VoidCallback? onTap;
+  final HubPublishRecord? publishRecord;
 
   @override
   State<MyExpertsCard> createState() => _MyExpertsCardState();
@@ -113,6 +117,16 @@ class _MyExpertsCardState extends State<MyExpertsCard> {
                   overflow: TextOverflow.ellipsis,
                   style: styles.caption.copyWith(color: cs.onSurfaceVariant),
                 ),
+                if (widget.publishRecord != null) ...[
+                  const SizedBox(height: 8),
+                  Align(
+                    alignment: Alignment.centerLeft,
+                    child: HubPublishBadge(
+                      key: Key('hub-publish-badge-expert-${member.key}'),
+                      record: widget.publishRecord!,
+                    ),
+                  ),
+                ],
               ],
             ),
           ),

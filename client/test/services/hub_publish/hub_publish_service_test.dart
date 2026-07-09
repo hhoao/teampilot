@@ -90,6 +90,10 @@ void main() {
       records.find(kind: HubPublishKind.expert, slug: 'arch')?.registryFullName,
       kDefaultExpertHubRegistry.fullName,
     );
+    expect(
+      records.find(kind: HubPublishKind.expert, slug: 'arch')?.localId,
+      'local/abc',
+    );
   });
 
   test('publishExpert fails when token missing', () async {
@@ -141,6 +145,10 @@ void main() {
     expect(
       records.find(kind: HubPublishKind.team, slug: 'platform')?.registryFullName,
       kDefaultTeamHubRegistry.fullName,
+    );
+    expect(
+      records.find(kind: HubPublishKind.team, slug: 'platform')?.localId,
+      'team-1',
     );
   });
 

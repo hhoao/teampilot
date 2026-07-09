@@ -1506,6 +1506,8 @@
   "hubPublishSuccessHint": "Pull request opened. Share or open the link below.",
   "hubPublishCopyLink": "Copy link",
   "hubPublishOpenPr": "Open PR",
+  "hubPublishBadgePrOpen": "PR open",
+  "hubPublishBadgePublished": "Published",
   "expertHubCreate": "New",
   "expertEditorCreateTitle": "New expert",
   "expertEditorEditTitle": "Edit expert",

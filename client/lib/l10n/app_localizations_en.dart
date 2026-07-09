@@ -3277,6 +3277,12 @@ class AppLocalizationsEn extends AppLocalizations {
   String get hubPublishOpenPr => 'Open PR';
 
   @override
+  String get hubPublishBadgePrOpen => 'PR open';
+
+  @override
+  String get hubPublishBadgePublished => 'Published';
+
+  @override
   String get expertHubCreate => 'New';
 
   @override

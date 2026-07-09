@@ -12,6 +12,7 @@ class HubPublishRecord {
     required this.slug,
     required this.prUrl,
     required this.publishedAtMs,
+    this.localId,
   });
 
   final HubPublishKind kind;
@@ -19,6 +20,9 @@ class HubPublishRecord {
   final String slug;
   final String prUrl;
   final int publishedAtMs;
+
+  /// Local team profile id or expert key (`local/…`) used for list badges.
+  final String? localId;
 
   String get _key => '${kind.name}:$slug';
 
@@ -28,6 +32,7 @@ class HubPublishRecord {
     'slug': slug,
     'prUrl': prUrl,
     'publishedAtMs': publishedAtMs,
+    if (localId != null && localId!.isNotEmpty) 'localId': localId,
   };
 
   static HubPublishRecord? fromJson(Map<String, Object?> json) {
@@ -43,6 +48,7 @@ class HubPublishRecord {
     final slug = json['slug']?.toString();
     final prUrl = json['prUrl']?.toString();
     final publishedAtMs = json['publishedAtMs'];
+    final localIdRaw = json['localId']?.toString();
     if (kind == null ||
         registryFullName == null ||
         registryFullName.isEmpty ||
@@ -59,6 +65,7 @@ class HubPublishRecord {
       slug: slug,
       prUrl: prUrl,
       publishedAtMs: publishedAtMs.toInt(),
+      localId: (localIdRaw == null || localIdRaw.isEmpty) ? null : localIdRaw,
     );
   }
 }
@@ -81,6 +88,25 @@ class HubPublishRecordStore {
     required HubPublishKind kind,
     required String slug,
   }) => _records['${kind.name}:$slug'];
+
+  HubPublishRecord? findByLocalId({
+    required HubPublishKind kind,
+    required String localId,
+  }) {
+    final needle = localId.trim();
+    if (needle.isEmpty) return null;
+    for (final record in _records.values) {
+      if (record.kind == kind && record.localId == needle) return record;
+    }
+    return null;
+  }
+
+  /// Loads (or reloads) records from disk into memory.
+  Future<void> load() async {
+    _loaded = false;
+    _records.clear();
+    await _loadIfNeeded();
+  }
 
   Future<void> upsert(HubPublishRecord record) async {
     await _loadIfNeeded();

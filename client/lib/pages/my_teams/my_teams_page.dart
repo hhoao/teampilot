@@ -20,6 +20,7 @@ class MyTeamsPage extends StatefulWidget {
     super.key,
     this.onOpenTeam,
     this.initialTeamId,
+    this.records,
   });
 
   /// Clears the global view and opens team config for [id].
@@ -28,6 +29,9 @@ class MyTeamsPage extends StatefulWidget {
   /// Deep-link team id (`?team=` on `/home-v2?global=myTeams`).
   final String? initialTeamId;
 
+  /// Injectable for tests; defaults to [HubPublishRecordStore].
+  final HubPublishRecordStore? records;
+
   static const _pageKey = ValueKey('my-teams-workspace');
 
   @override
@@ -35,14 +39,24 @@ class MyTeamsPage extends StatefulWidget {
 }
 
 class _MyTeamsPageState extends State<MyTeamsPage> {
+  late final HubPublishRecordStore _records =
+      widget.records ?? HubPublishRecordStore();
   String? _highlightTeamId;
   var _didAutoOpen = false;
+  var _recordsEpoch = 0;
 
   @override
   void initState() {
     super.initState();
     _highlightTeamId = widget.initialTeamId;
     WidgetsBinding.instance.addPostFrameCallback((_) => _maybeAutoOpen());
+    _loadRecords();
+  }
+
+  Future<void> _loadRecords() async {
+    await _records.load();
+    if (!mounted) return;
+    setState(() => _recordsEpoch++);
   }
 
   @override
@@ -91,7 +105,10 @@ class _MyTeamsPageState extends State<MyTeamsPage> {
       context,
       kind: HubPublishKind.team,
       team: team,
+      records: _records,
     );
+    if (!mounted) return;
+    await _loadRecords();
   }
 
   @override
@@ -143,6 +160,7 @@ class _MyTeamsPageState extends State<MyTeamsPage> {
                 }
                 final highlightId = _highlightTeamId ?? state.selectedTeamId;
                 return GridView.builder(
+                  key: ValueKey('my-teams-grid-$_recordsEpoch'),
                   padding: const EdgeInsets.fromLTRB(28, 18, 28, 24),
                   gridDelegate: const SliverGridDelegateWithMaxCrossAxisExtent(
                     maxCrossAxisExtent: 380,
@@ -156,6 +174,10 @@ class _MyTeamsPageState extends State<MyTeamsPage> {
                     return MyTeamsCard(
                       team: team,
                       selected: team.id == highlightId,
+                      publishRecord: _records.findByLocalId(
+                        kind: HubPublishKind.team,
+                        localId: team.id,
+                      ),
                       onOpen: () => widget.onOpenTeam?.call(team.id),
                       onUpload: () => _uploadTeam(team),
                       onDelete: () => _deleteTeam(

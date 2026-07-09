@@ -1215,6 +1215,8 @@
   "hubPublishSuccessHint": "拉取请求已创建。可复制或打开下方链接。",
   "hubPublishCopyLink": "复制链接",
   "hubPublishOpenPr": "打开 PR",
+  "hubPublishBadgePrOpen": "PR 已开",
+  "hubPublishBadgePublished": "已发布",
   "expertHubCreate": "新建",
   "expertEditorCreateTitle": "新建专家",
   "expertEditorEditTitle": "编辑专家",

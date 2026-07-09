@@ -24,6 +24,7 @@ Future<void> showHubPublishWizard(
   TeamProfile? team,
   HubPublishApi? publishApi,
   HubPublishCredentialsStore? credentials,
+  HubPublishRecordStore? records,
   BundleProvenanceLookup? lookup,
   List<DiscoverableMember>? remapCandidates,
 }) {
@@ -39,11 +40,12 @@ Future<void> showHubPublishWizard(
   final resolvedLookup = lookup ?? _lookupFromContext(context);
   final resolvedRemap =
       remapCandidates ?? _remapCandidatesFromContext(context);
+  final resolvedRecords = records ?? HubPublishRecordStore();
   final resolvedApi =
       publishApi ??
       HubPublishService(
         credentials: resolvedCredentials,
-        records: HubPublishRecordStore(),
+        records: resolvedRecords,
         publisher: GithubRegistryPublisher(),
         lookup: resolvedLookup,
       );

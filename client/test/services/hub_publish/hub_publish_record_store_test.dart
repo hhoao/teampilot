@@ -14,11 +14,40 @@ void main() {
         slug: 'arch',
         prUrl: 'https://github.com/flashskyai/member-hub/pull/1',
         publishedAtMs: 1,
+        localId: 'local/abc',
       ),
     );
     expect(
       records.find(kind: HubPublishKind.expert, slug: 'arch')?.prUrl,
       contains('/pull/1'),
+    );
+    expect(
+      records.findByLocalId(kind: HubPublishKind.expert, localId: 'local/abc')
+          ?.slug,
+      'arch',
+    );
+  });
+
+  test('load restores records for badge lookup', () async {
+    final fs = InMemoryFilesystem();
+    final writer = HubPublishRecordStore(fs: fs, pathOverride: '/p.json');
+    await writer.upsert(
+      HubPublishRecord(
+        kind: HubPublishKind.team,
+        registryFullName: 'flashskyai/team-hub',
+        slug: 'alpha',
+        prUrl: 'https://github.com/flashskyai/team-hub/pull/2',
+        publishedAtMs: 2,
+        localId: 'team-alpha',
+      ),
+    );
+
+    final reader = HubPublishRecordStore(fs: fs, pathOverride: '/p.json');
+    await reader.load();
+    expect(
+      reader.findByLocalId(kind: HubPublishKind.team, localId: 'team-alpha')
+          ?.prUrl,
+      contains('/pull/2'),
     );
   });
 }

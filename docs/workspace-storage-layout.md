@@ -36,6 +36,7 @@ Typical `<teampilotRoot>` paths:
   targets.json                   # runtime targets registry (local / WSL / SSH)
   team-hub/                      # Team Hub template registry + cache
   member-hub/                    # Expert Hub catalog UX state + local templates
+  hub-publish/                   # Hub publish credentials metadata + PR badge records
   worktrees/{repoName}/{branch}/ # app-managed git worktrees
   ui/                            # home workspace UI prefs (tabs, favorites, …)
   notifications.json
@@ -97,6 +98,15 @@ Team **templates** — same roster shape as user teams (`roster[]` of expert key
 team-hub/cache/{owner}-{repo}/
   teams.json                     # fetched index
 teams/{slug}/team.json           # DiscoverableTeam with roster[]
+```
+
+## Hub publish (`hub-publish/`)
+
+Local metadata for Hub upload badges (fork PR history). Spec: [My Teams / My Experts + Hub Publish](superpowers/specs/2026-07-09-my-teams-experts-and-hub-publish-design.md).
+
+```
+hub-publish/
+  records.json                   # HubPublishRecord[] keyed by kind+slug (+ localId)
 ```
 
 ## Launch profiles

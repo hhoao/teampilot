@@ -5,9 +5,11 @@ import '../../models/team_config.dart';
 import '../../services/cli/registry/cli_display_name.dart';
 import '../../services/cli/registry/cli_tool_registry.dart';
 import '../../services/cli/registry/cli_tool_registry_scope.dart';
+import '../../services/hub_publish/hub_publish_record_store.dart';
 import '../../theme/app_icon_sizes.dart';
 import '../../theme/app_text_styles.dart';
 import '../../widgets/settings/workspace_settings_widgets.dart';
+import '../hub_publish/hub_publish_badge.dart';
 import '../team_hub/team_hub_cards.dart';
 
 String formatMyTeamsTimestamp(int ms) {
@@ -26,6 +28,7 @@ class MyTeamsCard extends StatefulWidget {
     required this.onOpen,
     required this.onDelete,
     this.onUpload,
+    this.publishRecord,
   });
 
   final TeamProfile team;
@@ -33,6 +36,7 @@ class MyTeamsCard extends StatefulWidget {
   final VoidCallback onOpen;
   final VoidCallback onDelete;
   final VoidCallback? onUpload;
+  final HubPublishRecord? publishRecord;
 
   @override
   State<MyTeamsCard> createState() => _MyTeamsCardState();
@@ -123,6 +127,16 @@ class _MyTeamsCardState extends State<MyTeamsCard> {
                   overflow: TextOverflow.ellipsis,
                   style: styles.bodySmall.copyWith(color: cs.onSurfaceVariant),
                 ),
+                if (widget.publishRecord != null) ...[
+                  const SizedBox(height: 8),
+                  Align(
+                    alignment: Alignment.centerLeft,
+                    child: HubPublishBadge(
+                      key: Key('hub-publish-badge-team-${team.id}'),
+                      record: widget.publishRecord!,
+                    ),
+                  ),
+                ],
                 const Spacer(),
                 Text(
                   l10n.myTeamsCreatedAt(formatMyTeamsTimestamp(team.createdAt)),

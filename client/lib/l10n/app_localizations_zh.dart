@@ -3157,6 +3157,12 @@ class AppLocalizationsZh extends AppLocalizations {
   String get hubPublishOpenPr => '打开 PR';
 
   @override
+  String get hubPublishBadgePrOpen => 'PR 已开';
+
+  @override
+  String get hubPublishBadgePublished => '已发布';
+
+  @override
   String get expertHubCreate => '新建';
 
   @override

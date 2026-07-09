@@ -10,7 +10,9 @@ import 'package:teampilot/models/team_config.dart';
 import 'package:teampilot/models/team_roster_slot.dart';
 import 'package:teampilot/pages/my_teams/my_teams_page.dart';
 import 'package:teampilot/repositories/session_repository.dart';
+import 'package:teampilot/services/hub_publish/hub_publish_record_store.dart';
 
+import '../../support/in_memory_filesystem.dart';
 import '../../support/post_frame_test_harness.dart';
 
 const _roster = [
@@ -211,5 +213,47 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(openedIds, ['team-beta']);
+  });
+
+  testWidgets('shows PR open badge when HubPublishRecord matches team', (
+    tester,
+  ) async {
+    _largeTestSurface(tester);
+
+    final cubit = _loadedCubit();
+    addTearDown(() async {
+      if (!cubit.isClosed) await cubit.close();
+    });
+
+    final fs = InMemoryFilesystem();
+    final records = HubPublishRecordStore(fs: fs, pathOverride: '/p.json');
+    await records.upsert(
+      HubPublishRecord(
+        kind: HubPublishKind.team,
+        registryFullName: 'flashskyai/team-hub',
+        slug: 'alpha-squad',
+        prUrl: 'https://github.com/flashskyai/team-hub/pull/9',
+        publishedAtMs: 1,
+        localId: 'team-alpha',
+      ),
+    );
+
+    await tester.pumpWidget(
+      MaterialApp(
+        localizationsDelegates: AppLocalizations.localizationsDelegates,
+        supportedLocales: AppLocalizations.supportedLocales,
+        home: BlocProvider<LaunchProfileCubit>.value(
+          value: cubit,
+          child: Scaffold(
+            body: MyTeamsPage(records: records),
+          ),
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    expect(find.byKey(const Key('hub-publish-badge-team-team-alpha')), findsOneWidget);
+    expect(find.text('PR open'), findsOneWidget);
+    expect(find.byKey(const Key('hub-publish-badge-team-team-beta')), findsNothing);
   });
 }

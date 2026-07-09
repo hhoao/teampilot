@@ -17,6 +17,7 @@ import 'package:teampilot/services/expert_hub/expert_hub_source.dart';
 import 'package:teampilot/services/expert_hub/local_expert_writer.dart';
 import 'package:teampilot/services/expert_hub/local_member_template_store.dart';
 import 'package:teampilot/services/expert_hub/member_roster_service.dart';
+import 'package:teampilot/services/hub_publish/hub_publish_record_store.dart';
 
 import '../../support/in_memory_filesystem.dart';
 import '../../support/post_frame_test_harness.dart';
@@ -79,7 +80,14 @@ Widget _host({
   required LaunchProfileCubit launch,
   ExpertHubCubit? hub,
   String? initialMemberKey,
+  HubPublishRecordStore? records,
 }) {
+  final resolvedRecords =
+      records ??
+      HubPublishRecordStore(
+        fs: InMemoryFilesystem(),
+        pathOverride: '/hub-publish/records.json',
+      );
   return MaterialApp(
     localizationsDelegates: AppLocalizations.localizationsDelegates,
     supportedLocales: AppLocalizations.supportedLocales,
@@ -92,6 +100,7 @@ Widget _host({
         body: MyExpertsPage(
           writer: writer,
           initialMemberKey: initialMemberKey,
+          records: resolvedRecords,
         ),
       ),
     ),
@@ -261,5 +270,50 @@ void main() {
     );
     expect(find.text('In Use'), findsOneWidget);
     expect(await writer.getByKey('local/used'), isNotNull);
+  });
+
+  testWidgets('shows PR open badge when HubPublishRecord matches expert', (
+    tester,
+  ) async {
+    _largeSurface(tester);
+
+    final fs = InMemoryFilesystem();
+    final writer = LocalExpertWriter(
+      store: LocalMemberTemplateStore(fs: fs, dirOverride: '/experts'),
+    );
+    await writer.save(_localExpert(id: 'e1', name: 'Published One'));
+    await writer.save(_localExpert(id: 'e2', name: 'Unpublished'));
+
+    final records = HubPublishRecordStore(fs: fs, pathOverride: '/p.json');
+    await records.upsert(
+      HubPublishRecord(
+        kind: HubPublishKind.expert,
+        registryFullName: 'flashskyai/member-hub',
+        slug: 'published-one',
+        prUrl: 'https://github.com/flashskyai/member-hub/pull/3',
+        publishedAtMs: 1,
+        localId: 'local/e1',
+      ),
+    );
+
+    final launch = _launchCubit();
+    addTearDown(() async {
+      if (!launch.isClosed) await launch.close();
+    });
+
+    await tester.pumpWidget(
+      _host(writer: writer, launch: launch, records: records),
+    );
+    await tester.pumpAndSettle();
+
+    expect(
+      find.byKey(const Key('hub-publish-badge-expert-local/e1')),
+      findsOneWidget,
+    );
+    expect(find.text('PR open'), findsOneWidget);
+    expect(
+      find.byKey(const Key('hub-publish-badge-expert-local/e2')),
+      findsNothing,
+    );
   });
 }

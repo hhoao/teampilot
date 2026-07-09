@@ -28,6 +28,7 @@ class MyExpertsPage extends StatefulWidget {
     super.key,
     this.writer,
     this.initialMemberKey,
+    this.records,
   });
 
   /// Injectable for tests; defaults to [LocalExpertWriter].
@@ -35,6 +36,9 @@ class MyExpertsPage extends StatefulWidget {
 
   /// Deep-link member key (`?member=` on `/home-v2?global=myExperts`).
   final String? initialMemberKey;
+
+  /// Injectable for tests; defaults to [HubPublishRecordStore].
+  final HubPublishRecordStore? records;
 
   static const _pageKey = ValueKey('my-experts-workspace');
 
@@ -45,10 +49,13 @@ class MyExpertsPage extends StatefulWidget {
 class _MyExpertsPageState extends State<MyExpertsPage> {
   late final LocalExpertWriter _writer =
       widget.writer ?? LocalExpertWriter();
+  late final HubPublishRecordStore _records =
+      widget.records ?? HubPublishRecordStore();
   List<DiscoverableMember> _members = const [];
   var _loading = true;
   String? _highlightMemberKey;
   var _didAutoOpenEditor = false;
+  var _recordsEpoch = 0;
 
   @override
   void initState() {
@@ -80,14 +87,27 @@ class _MyExpertsPageState extends State<MyExpertsPage> {
 
   Future<void> _reload() async {
     setState(() => _loading = true);
-    final members = await _writer.loadAll();
-    members.sort((a, b) => a.name.toLowerCase().compareTo(b.name.toLowerCase()));
-    if (!mounted) return;
-    setState(() {
-      _members = members;
-      _loading = false;
-    });
-    WidgetsBinding.instance.addPostFrameCallback((_) => _maybeAutoOpenEditor());
+    try {
+      final members = await _writer.loadAll();
+      members.sort(
+        (a, b) => a.name.toLowerCase().compareTo(b.name.toLowerCase()),
+      );
+      try {
+        await _records.load();
+      } catch (_) {
+        // Badge lookup is best-effort; list should still render.
+      }
+      if (!mounted) return;
+      setState(() {
+        _members = members;
+        _loading = false;
+        _recordsEpoch++;
+      });
+      WidgetsBinding.instance.addPostFrameCallback((_) => _maybeAutoOpenEditor());
+    } catch (_) {
+      if (!mounted) return;
+      setState(() => _loading = false);
+    }
   }
 
   void _maybeAutoOpenEditor() {
@@ -258,7 +278,12 @@ class _MyExpertsPageState extends State<MyExpertsPage> {
       context,
       kind: HubPublishKind.expert,
       member: member,
+      records: _records,
     );
+    if (!mounted) return;
+    await _records.load();
+    if (!mounted) return;
+    setState(() => _recordsEpoch++);
   }
 
   void _onCardAction(DiscoverableMember member, MyExpertsCardAction action) {
@@ -311,6 +336,7 @@ class _MyExpertsPageState extends State<MyExpertsPage> {
                     onAction: _create,
                   )
                 : GridView.builder(
+                    key: ValueKey('my-experts-grid-$_recordsEpoch'),
                     padding: const EdgeInsets.fromLTRB(28, 18, 28, 24),
                     gridDelegate:
                         const SliverGridDelegateWithMaxCrossAxisExtent(
@@ -325,6 +351,10 @@ class _MyExpertsPageState extends State<MyExpertsPage> {
                       return MyExpertsCard(
                         member: member,
                         selected: member.key == _highlightMemberKey,
+                        publishRecord: _records.findByLocalId(
+                          kind: HubPublishKind.expert,
+                          localId: member.key,
+                        ),
                         onTap: () => _edit(member),
                         onAction: (action) => _onCardAction(member, action),
                       );
