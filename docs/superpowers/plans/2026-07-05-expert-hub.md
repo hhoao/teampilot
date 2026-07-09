@@ -6,7 +6,7 @@
 
 **Architecture:** See design spec § *Teams as expert collections* and § *Code to remove*. This plan’s task steps predate the 2026-07-09 revision — **rewrite tasks** against `TeamRosterSlot` / `MemberRosterService` / `materializeRosterSlot` before implementation.
 
-**Tech Stack:** Flutter / `flutter_bloc`, existing `AppStorage` paths, JSON registry on GitHub (`flashskyai/member-hub`), l10n ARB en/zh.
+**Tech Stack:** Flutter / `flutter_bloc`, existing `AppStorage` paths, JSON registry on GitHub (`hhoao/teampilot/member-hub`), l10n ARB en/zh.
 
 **Spec:** [docs/superpowers/specs/2026-07-05-expert-hub-design.md](../specs/2026-07-05-expert-hub-design.md)
 
@@ -221,7 +221,7 @@ String memberContentHash(DiscoverableTeamMember m) =>
 
 ```dart
 const kDefaultExpertHubRegistry = ExpertHubRegistry(
-  owner: 'flashskyai',
+  owner: 'teampilot',
   name: 'member-hub',
   branch: 'main',
 );
@@ -229,7 +229,7 @@ const kDefaultExpertHubRegistry = ExpertHubRegistry(
 
 - [ ] **Step 2: Test** with injected `RawContentFetcher` returning minimal `index.json` + one `member.json`
 
-- [ ] **Step 3: Seed repo** — optional follow-up PR to `flashskyai/member-hub`; v1 works with builtin + team extract if registry empty
+- [ ] **Step 3: Seed repo** — optional follow-up PR to `hhoao/teampilot/member-hub`; v1 works with builtin + team extract if registry empty
 
 - [ ] **Step 4: Commit** `feat: git registry expert hub source`
 
@@ -514,7 +514,7 @@ expertHubViewOriginTeam, expertHubViewInHub
 | Phase | Scope |
 |-------|--------|
 | Share | Export/import `.teampilot-member.json`, share URL handler |
-| Publish | `flashskyai/member-hub` PR docs + in-app publish wizard |
+| Publish | `hhoao/teampilot/member-hub` PR docs + in-app publish wizard |
 
 **In scope for Expert Hub refactor (this plan):** reference-only `TeamProfile.roster`, `TeamRosterSlot`, `materializeRosterSlot`, remove copy/overlay legacy — see design spec § *Delivery scope* and *Code to remove*.
 

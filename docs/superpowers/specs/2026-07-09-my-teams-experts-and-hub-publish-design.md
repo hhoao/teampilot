@@ -148,7 +148,7 @@ All local expert persistence goes through one injectable writer (thin facade ove
 | Team | `index.json` + `teams/<slug>/team.json` | `{owner}/{repo}/{slug}` |
 | Expert | `index.json` + `members/<slug>/member.json` | `{owner}/{repo}/{slug}` |
 
-Defaults: `flashskyai/team-hub`, `flashskyai/member-hub` (configurable owner/repo).
+Defaults: same app repo `hhoao/teampilot`, subdirs `team-hub/` and `member-hub/` (catalog keys `hhoao/teampilot/team-hub/<slug>`, `hhoao/teampilot/member-hub/<slug>`).
 
 **Publish transport (v1 rule)**
 

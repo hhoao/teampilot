@@ -136,7 +136,7 @@ DiscoverableTeam {
 ```
 CompositeExpertHubSource
   ├─ BuiltinMemberTemplates
-  ├─ GitRegistryExpertHubSource     (flashskyai/member-hub)
+  ├─ GitRegistryExpertHubSource     (hhoao/teampilot/member-hub)
   ├─ TeamTemplateExpertIndex        (flatten DiscoverableTeam.roster[].expertKey)
   └─ LocalMemberTemplateStore
 
@@ -363,7 +363,7 @@ Under `<teampilotRoot>/member-hub/` (see also [workspace-storage-layout.md](../.
 
 **Team Hub registry** — `team-hub/…/team.json` uses the same `roster[]` shape (not `members[]` with inline prompts).
 
-Registry default (v1): `flashskyai/member-hub` on `main`, layout mirrors Team Hub:
+Registry default (v1): `hhoao/teampilot/member-hub` on `main`, layout mirrors Team Hub:
 
 - `index.json` → `{ "members": ["architect", "pm", ...] }`
 - `members/<slug>/member.json` → `DiscoverableMember` JSON; canonical key stamped as `{owner}/{repo}/{slug}`
@@ -386,7 +386,7 @@ Single refactor — no parallel legacy paths:
 | Phase | Scope |
 |-------|--------|
 | Share | Export/import `.teampilot-member.json`, share URL handler |
-| Publish | `flashskyai/member-hub` PR docs + in-app publish wizard |
+| Publish | `hhoao/teampilot/member-hub` PR docs + in-app publish wizard |
 
 ## Error handling
 

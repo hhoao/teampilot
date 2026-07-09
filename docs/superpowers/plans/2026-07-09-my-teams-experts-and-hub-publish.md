@@ -357,9 +357,9 @@ test('records publish badge fields', () async {
   final records = HubPublishRecordStore(fs: fs, pathOverride: '/p.json');
   await records.upsert(HubPublishRecord(
     kind: HubPublishKind.expert,
-    registryFullName: 'flashskyai/member-hub',
+    registryFullName: 'hhoao/teampilot/member-hub',
     slug: 'arch',
-    prUrl: 'https://github.com/flashskyai/member-hub/pull/1',
+    prUrl: 'https://github.com/hhoao/teampilot/pull/1',
     publishedAtMs: 1,
   ));
   expect(records.find(kind: HubPublishKind.expert, slug: 'arch')?.prUrl, contains('/pull/1'));
