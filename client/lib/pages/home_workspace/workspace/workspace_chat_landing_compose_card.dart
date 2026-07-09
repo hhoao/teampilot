@@ -1,9 +1,13 @@
 import 'package:flutter/material.dart';
 import 'package:teampilot/theme/app_icon_sizes.dart';
 
+import '../../../models/plugin.dart';
+import '../../../models/skill.dart';
+import '../../../models/config_bundle.dart';
 import '../../../theme/app_spacing.dart';
 import '../../../theme/app_text_styles.dart';
 import '../../../utils/debounce/debounce.dart';
+import '../../../widgets/compose/compose_trigger_field.dart';
 import '../../../widgets/menu/sidebar_action_menu.dart';
 import 'workspace_chat_landing_palette.dart';
 import 'workspace_chat_landing_voice_bar.dart';
@@ -41,6 +45,10 @@ class WorkspaceChatLandingComposeCard extends StatelessWidget {
     required this.onVoice,
     required this.onVoiceCancel,
     required this.onVoiceStop,
+    required this.workspaceRoot,
+    required this.skills,
+    required this.plugins,
+    required this.slashBundle,
     this.teamSettingsTooltip,
     this.onTeamSettings,
     this.showTeamSettingsAttention = false,
@@ -78,6 +86,10 @@ class WorkspaceChatLandingComposeCard extends StatelessWidget {
   final VoidCallback onVoice;
   final VoidCallback onVoiceCancel;
   final VoidCallback onVoiceStop;
+  final String workspaceRoot;
+  final List<Skill> skills;
+  final List<Plugin> plugins;
+  final ConfigBundle slashBundle;
   final String? teamSettingsTooltip;
   final VoidCallback? onTeamSettings;
   final bool showTeamSettingsAttention;
@@ -220,7 +232,6 @@ class WorkspaceChatLandingComposeCard extends StatelessWidget {
   Widget build(BuildContext context) {
     final palette = WorkspaceChatLandingPalette(Theme.of(context).colorScheme);
     final spacing = context.appSpacing;
-    final styles = AppTextStyles.of(context);
 
     return Stack(
       clipBehavior: Clip.none,
@@ -242,32 +253,20 @@ class WorkspaceChatLandingComposeCard extends StatelessWidget {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
-                TextField(
+                ComposeTriggerField(
                   controller: controller,
                   focusNode: focusNode,
-                  minLines: 3,
-                  maxLines: 6,
+                  hint: hint,
                   enabled: !isSubmitting,
                   onChanged: onChanged,
-                  style: styles.body.copyWith(
-                    color: palette.muted,
-                    height: 1.5,
-                  ),
-                  decoration: InputDecoration(
-                    filled: false,
-                    hoverColor: Colors.transparent,
-                    hintText: hint,
-                    hintStyle: styles.body.copyWith(
-                      color: palette.hint,
-                      height: 1.5,
-                    ),
-                    border: InputBorder.none,
-                    enabledBorder: InputBorder.none,
-                    focusedBorder: InputBorder.none,
-                    disabledBorder: InputBorder.none,
-                    contentPadding: EdgeInsets.zero,
-                    isDense: true,
-                  ),
+                  onSubmit: onSubmit,
+                  canSubmit: () => canSubmit,
+                  workspaceRoot: workspaceRoot,
+                  skills: skills,
+                  plugins: plugins,
+                  slashBundle: slashBundle,
+                  mutedColor: palette.muted,
+                  hintColor: palette.hint,
                 ),
                 SizedBox(height: spacing.md),
                 Row(

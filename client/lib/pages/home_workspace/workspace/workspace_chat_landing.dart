@@ -10,7 +10,10 @@ import '../../../cubits/app_provider_cubit.dart';
 import '../../../cubits/chat_cubit.dart';
 import '../../../cubits/cli_presets_cubit.dart';
 import '../../../cubits/launch_profile_cubit.dart';
+import '../../../cubits/plugin_cubit.dart';
+import '../../../cubits/skill_cubit.dart';
 import '../../../cubits/worktree_cubit.dart';
+import '../../../models/config_bundle.dart';
 import '../../../models/landing_launch_context.dart';
 import '../../../l10n/l10n_extensions.dart';
 import '../../../models/cli_preset.dart';
@@ -20,6 +23,7 @@ import '../../../models/workspace.dart';
 import '../../../models/runtime_target.dart';
 import '../../../services/ai/headless_ai_service.dart';
 import '../../../services/compose/compose_file_attach.dart';
+import '../../../services/compose/compose_landing_bundle.dart';
 import '../../../services/compose/compose_prompt_enhance.dart';
 import '../../../services/compose/compose_text_edit.dart';
 import '../../../services/compose/compose_voice_input.dart';
@@ -28,10 +32,10 @@ import '../../../services/storage/launch_profile_provisioner.dart';
 import '../../../theme/app_spacing.dart';
 import '../../../utils/landing_draft_resolver.dart';
 import '../../../utils/workspace_path_utils.dart';
-import '../../../services/keyboard/compose_keyboard_shortcut_handler.dart';
 import '../../../services/storage/home_target_controller.dart';
 import '../../../widgets/menu/sidebar_action_menu.dart';
 import '../../../services/launch/workspace_landing_launch_gate.dart';
+import '../../../repositories/workspace_project_config_repository.dart';
 import 'workspace_chat_landing_compose_card.dart';
 import 'workspace_landing_launch_feedback.dart';
 import 'workspace_landing_selectors.dart';
@@ -87,17 +91,13 @@ class _WorkspaceChatLandingState extends State<WorkspaceChatLanding> {
   var _teamConfigLaunchReady = true;
   WorkspaceLandingLaunchBlock? _launchWarningBlock;
   int _teamLaunchReadinessGeneration = 0;
+  ConfigBundle _workspaceProjectBundle = const ConfigBundle();
+  int _workspaceBundleGeneration = 0;
 
   @override
   void initState() {
     super.initState();
-    _focusNode = FocusNode(
-      onKeyEvent: ComposeKeyboardShortcutHandler.keyHandler(
-        controller: _controller,
-        onSubmit: _submit,
-        canSubmit: () => _canSubmit,
-      ),
-    );
+    _focusNode = FocusNode();
     _voiceInput = ComposeVoiceInput(
       onFinalTranscript: (text) {
         if (!mounted || _discardVoiceTranscript) return;
@@ -137,6 +137,7 @@ class _WorkspaceChatLandingState extends State<WorkspaceChatLanding> {
     );
     unawaited(_voiceInput.initialize());
     unawaited(_loadDraft());
+    unawaited(_loadWorkspaceProjectBundle());
   }
 
   void _applyVoiceListening(bool listening) {
@@ -167,6 +168,9 @@ class _WorkspaceChatLandingState extends State<WorkspaceChatLanding> {
   @override
   void didUpdateWidget(covariant WorkspaceChatLanding oldWidget) {
     super.didUpdateWidget(oldWidget);
+    if (oldWidget.workspace.workspaceId != widget.workspace.workspaceId) {
+      unawaited(_loadWorkspaceProjectBundle());
+    }
     if (!mapEquals(
           oldWidget.workspace.memberTargetsByTeam,
           widget.workspace.memberTargetsByTeam,
@@ -332,6 +336,47 @@ class _WorkspaceChatLandingState extends State<WorkspaceChatLanding> {
     if (!_voiceListening && !_voiceInput.isSessionActive) return;
     _discardVoiceTranscript = false;
     await _voiceInput.endSession(discard: false);
+  }
+
+  Future<void> _loadWorkspaceProjectBundle() async {
+    final generation = ++_workspaceBundleGeneration;
+    try {
+      final config = await WorkspaceProjectConfigRepository().load(
+        widget.workspace.workspaceId,
+      );
+      if (!mounted || generation != _workspaceBundleGeneration) return;
+      setState(() => _workspaceProjectBundle = config.bundle);
+    } on Object {
+      if (!mounted || generation != _workspaceBundleGeneration) return;
+      setState(() => _workspaceProjectBundle = const ConfigBundle());
+    }
+  }
+
+  ConfigBundle _slashBundleForDraft(
+    LandingLaunchContext draft,
+    LaunchProfileCubit launchProfiles,
+    List<TeamProfile> teams,
+  ) {
+    PersonalProfile? personal;
+    TeamProfile? team;
+    if (draft.isPersonal) {
+      final profileId = draft.personalProfileId.trim().isNotEmpty
+          ? draft.personalProfileId.trim()
+          : LaunchProfileProvisioner.defaultPersonalId;
+      final opened = launchProfiles.byId(profileId);
+      if (opened is PersonalProfile) personal = opened;
+    } else {
+      final teamId = draft.teamId?.trim() ?? '';
+      if (teamId.isNotEmpty) {
+        team = teams.where((t) => t.id == teamId).firstOrNull;
+      }
+    }
+    final identityBundle = identityBundleForLanding(
+      draft: draft,
+      personal: personal,
+      team: team,
+    );
+    return unionConfigBundles(identityBundle, _workspaceProjectBundle);
   }
 
   Future<void> _loadDraft() async {
@@ -832,6 +877,10 @@ class _WorkspaceChatLandingState extends State<WorkspaceChatLanding> {
     );
     final presets = context.watch<CliPresetsCubit>().state.presets;
     final teams = context.watch<LaunchProfileCubit>().state.teams;
+    final launchProfiles = context.watch<LaunchProfileCubit>();
+    final skills = context.watch<SkillCubit>().state.installed;
+    final plugins = context.watch<PluginCubit>().state.installed;
+    final slashBundle = _slashBundleForDraft(_currentDraft(), launchProfiles, teams);
     final worktreeState = _worktreeState(context);
     final projectResolver = _projectResolver();
     final selectedProjectPath = projectResolver.resolveSelectedProjectPath();
@@ -946,6 +995,10 @@ class _WorkspaceChatLandingState extends State<WorkspaceChatLanding> {
                       onVoice: () => unawaited(_toggleVoice()),
                       onVoiceCancel: () => unawaited(_cancelVoice()),
                       onVoiceStop: () => unawaited(_stopVoice()),
+                      workspaceRoot: _activeLaunchDirectory(),
+                      skills: skills,
+                      plugins: plugins,
+                      slashBundle: slashBundle,
                       teamSettingsTooltip: selectedTeam != null
                           ? l10n.teamSettings
                           : null,
