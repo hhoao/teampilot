@@ -1,19 +1,94 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:go_router/go_router.dart';
 
+import '../../cubits/launch_profile_cubit.dart';
 import '../../l10n/l10n_extensions.dart';
+import '../../models/team_config.dart';
+import '../../widgets/empty_state_block.dart';
 import '../../widgets/settings/workspace_hub_shell.dart';
+import '../home_workspace/home_workspace_new_team_dialog.dart';
+import '../home_workspace/home_workspace_route.dart';
+import '../team_config/team_delete_confirm_dialog.dart';
+import 'my_teams_card.dart';
 
-/// Ownership surface for local [TeamProfile]s — list and actions land in later tasks.
-class MyTeamsPage extends StatelessWidget {
-  const MyTeamsPage({super.key});
+/// Ownership surface for local [TeamProfile]s — list, open, new, and delete.
+class MyTeamsPage extends StatefulWidget {
+  const MyTeamsPage({
+    super.key,
+    this.onOpenTeam,
+    this.initialTeamId,
+  });
+
+  /// Clears the global view and opens team config for [id].
+  final ValueChanged<String>? onOpenTeam;
+
+  /// Deep-link team id (`?team=` on `/home-v2?global=myTeams`).
+  final String? initialTeamId;
 
   static const _pageKey = ValueKey('my-teams-workspace');
+
+  @override
+  State<MyTeamsPage> createState() => _MyTeamsPageState();
+}
+
+class _MyTeamsPageState extends State<MyTeamsPage> {
+  String? _highlightTeamId;
+  var _didAutoOpen = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _highlightTeamId = widget.initialTeamId;
+    WidgetsBinding.instance.addPostFrameCallback((_) => _maybeAutoOpen());
+  }
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    final fromRoute = _readTeamQueryParam();
+    if (fromRoute != null && fromRoute != _highlightTeamId) {
+      _highlightTeamId = fromRoute;
+      _didAutoOpen = false;
+      _maybeAutoOpen();
+    }
+  }
+
+  String? _readTeamQueryParam() {
+    final router = GoRouter.maybeOf(context);
+    if (router != null) {
+      return HomeWorkspaceRoute.myTeamsTeamId(
+        router.routeInformationProvider.value.uri.toString(),
+      );
+    }
+    return widget.initialTeamId;
+  }
+
+  void _maybeAutoOpen() {
+    if (_didAutoOpen) return;
+    final teamId = _highlightTeamId;
+    if (teamId == null) return;
+    final cubit = context.read<LaunchProfileCubit>();
+    if (!cubit.state.teams.any((team) => team.id == teamId)) return;
+    _didAutoOpen = true;
+    widget.onOpenTeam?.call(teamId);
+  }
+
+  Future<void> _deleteTeam(
+    BuildContext context,
+    LaunchProfileCubit cubit,
+    TeamProfile team,
+  ) async {
+    final confirmed = await confirmDeleteTeam(context, team.name);
+    if (!confirmed || !context.mounted) return;
+    await cubit.deleteTeam(team.id);
+  }
 
   @override
   Widget build(BuildContext context) {
     final l10n = context.l10n;
     return Container(
-      key: _pageKey,
+      key: MyTeamsPage._pageKey,
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
@@ -21,7 +96,68 @@ class MyTeamsPage extends StatelessWidget {
             title: l10n.myTeamsTitle,
             subtitle: l10n.myTeamsSubtitle,
           ),
-          const Expanded(child: SizedBox.shrink()),
+          Padding(
+            padding: const EdgeInsets.fromLTRB(28, 18, 28, 0),
+            child: Align(
+              alignment: Alignment.centerRight,
+              child: FilledButton.icon(
+                onPressed: () => showHomeNewTeamDialog(
+                  context,
+                  context.read<LaunchProfileCubit>(),
+                ),
+                icon: const Icon(Icons.add),
+                label: Text(l10n.homeWorkspaceNewTeam),
+              ),
+            ),
+          ),
+          Expanded(
+            child: BlocBuilder<LaunchProfileCubit, LaunchProfileState>(
+              buildWhen: (a, b) => a.teams != b.teams || a.isLoading != b.isLoading,
+              builder: (context, state) {
+                if (state.isLoading) {
+                  return const Center(child: CircularProgressIndicator());
+                }
+                final teams = state.teams;
+                if (teams.isEmpty) {
+                  return EmptyStateBlock(
+                    centered: true,
+                    icon: Icons.groups_2_outlined,
+                    title: l10n.myTeamsEmptyTitle,
+                    hint: l10n.myTeamsEmptyHint,
+                    actionLabel: l10n.homeWorkspaceNewTeam,
+                    onAction: () => showHomeNewTeamDialog(
+                      context,
+                      context.read<LaunchProfileCubit>(),
+                    ),
+                  );
+                }
+                final highlightId = _highlightTeamId ?? state.selectedTeamId;
+                return GridView.builder(
+                  padding: const EdgeInsets.fromLTRB(28, 18, 28, 24),
+                  gridDelegate: const SliverGridDelegateWithMaxCrossAxisExtent(
+                    maxCrossAxisExtent: 380,
+                    mainAxisExtent: 186,
+                    crossAxisSpacing: 14,
+                    mainAxisSpacing: 14,
+                  ),
+                  itemCount: teams.length,
+                  itemBuilder: (context, index) {
+                    final team = teams[index];
+                    return MyTeamsCard(
+                      team: team,
+                      selected: team.id == highlightId,
+                      onOpen: () => widget.onOpenTeam?.call(team.id),
+                      onDelete: () => _deleteTeam(
+                        context,
+                        context.read<LaunchProfileCubit>(),
+                        team,
+                      ),
+                    );
+                  },
+                );
+              },
+            ),
+          ),
         ],
       ),
     );

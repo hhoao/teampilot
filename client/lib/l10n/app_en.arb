@@ -1441,6 +1441,20 @@
   "myTeamsNav": "My Teams",
   "myTeamsTitle": "My Teams",
   "myTeamsSubtitle": "Manage your local team configurations",
+  "myTeamsMemberCount": "{count, plural, =1{1 member} other{{count} members}}",
+  "@myTeamsMemberCount": {
+    "placeholders": {
+      "count": { "type": "int" }
+    }
+  },
+  "myTeamsCreatedAt": "Created {date}",
+  "@myTeamsCreatedAt": {
+    "placeholders": {
+      "date": {}
+    }
+  },
+  "myTeamsEmptyTitle": "No teams yet",
+  "myTeamsEmptyHint": "Create a team to manage members, skills, and plugins.",
   "myExpertsNav": "My Experts",
   "myExpertsTitle": "My Experts",
   "myExpertsSubtitle": "Manage your local expert personas",

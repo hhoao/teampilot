@@ -727,17 +727,16 @@ class LaunchProfileCubit extends Cubit<LaunchProfileState>
     }
   }
 
-  Future<void> deleteSelected() async {
-    final selected = state.selectedTeam;
-    if (selected == null) return;
-    final teamId = selected.id;
+  Future<void> deleteTeam(String id) async {
+    final deleted = state.teams.where((team) => team.id == id).firstOrNull;
+    if (deleted == null) return;
     for (final session in await _sessionRepository.loadSessions()) {
-      if (session.sessionTeam.trim() == teamId) {
+      if (session.sessionTeam.trim() == id) {
         await _sessionRepository.deleteSession(session.sessionId);
       }
     }
-    await _repository.delete(teamId);
-    var teams = state.teams.where((team) => team.id != selected.id).toList();
+    await _repository.delete(id);
+    var teams = state.teams.where((team) => team.id != id).toList();
     if (teams.isEmpty) {
       final builtIn = await _identityProvisioner.ensureDefaultTeams(
         buildNative: _rosterEditor.defaultNativeTeam,
@@ -745,15 +744,24 @@ class LaunchProfileCubit extends Cubit<LaunchProfileState>
       );
       teams = _sortTeams([builtIn.native, builtIn.mixed]);
     }
+    final nextSelected = state.selectedTeamId == id
+        ? teams.first.id
+        : state.selectedTeamId ?? teams.first.id;
     emit(
       state.copyWith(
         teams: teams,
-        selectedTeamId: teams.first.id,
-        statusMessage: 'Deleted ${selected.name}.',
+        selectedTeamId: nextSelected,
+        statusMessage: 'Deleted ${deleted.name}.',
       ),
     );
     await saveTeamProfiles(teams);
     unawaited(_sync.syncPluginsForSelected());
+  }
+
+  Future<void> deleteSelected() async {
+    final selected = state.selectedTeam;
+    if (selected == null) return;
+    await deleteTeam(selected.id);
   }
 
   // ===== Members =====

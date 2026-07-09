@@ -3117,6 +3117,29 @@ class AppLocalizationsEn extends AppLocalizations {
   String get myTeamsSubtitle => 'Manage your local team configurations';
 
   @override
+  String myTeamsMemberCount(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count members',
+      one: '1 member',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String myTeamsCreatedAt(Object date) {
+    return 'Created $date';
+  }
+
+  @override
+  String get myTeamsEmptyTitle => 'No teams yet';
+
+  @override
+  String get myTeamsEmptyHint =>
+      'Create a team to manage members, skills, and plugins.';
+
+  @override
   String get myExpertsNav => 'My Experts';
 
   @override

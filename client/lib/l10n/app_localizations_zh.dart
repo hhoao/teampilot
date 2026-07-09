@@ -3008,6 +3008,27 @@ class AppLocalizationsZh extends AppLocalizations {
   String get myTeamsSubtitle => '管理本地团队配置';
 
   @override
+  String myTeamsMemberCount(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count 名成员',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String myTeamsCreatedAt(Object date) {
+    return '创建于 $date';
+  }
+
+  @override
+  String get myTeamsEmptyTitle => '还没有团队';
+
+  @override
+  String get myTeamsEmptyHint => '创建团队以管理成员、技能与插件。';
+
+  @override
   String get myExpertsNav => '我的专家';
 
   @override

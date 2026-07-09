@@ -62,9 +62,16 @@ enum HomeGlobalView {
 /// navigation stays local (via [onSelectSection] overrides) so it never breaks
 /// out of the home shell.
 class HomeGlobalSection extends StatefulWidget {
-  const HomeGlobalSection({required this.view, super.key});
+  const HomeGlobalSection({
+    required this.view,
+    this.onOpenTeam,
+    super.key,
+  });
 
   final HomeGlobalView view;
+
+  /// Selects a team and leaves the global view (My Teams open action).
+  final ValueChanged<String>? onOpenTeam;
 
   @override
   State<HomeGlobalSection> createState() => _HomeGlobalSectionState();
@@ -95,7 +102,7 @@ class _HomeGlobalSectionState extends State<HomeGlobalSection> {
         section: _extension,
         onSelectSection: (s) => setState(() => _extension = s),
       ),
-      HomeGlobalView.myTeams => const MyTeamsPage(),
+      HomeGlobalView.myTeams => MyTeamsPage(onOpenTeam: widget.onOpenTeam),
       HomeGlobalView.myExperts => const MyExpertsPage(),
       HomeGlobalView.teamHub => const TeamHubPage(),
       HomeGlobalView.expertHub => ExpertHubPage(

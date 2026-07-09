@@ -5673,6 +5673,30 @@ abstract class AppLocalizations {
   /// **'Manage your local team configurations'**
   String get myTeamsSubtitle;
 
+  /// No description provided for @myTeamsMemberCount.
+  ///
+  /// In en, this message translates to:
+  /// **'{count, plural, =1{1 member} other{{count} members}}'**
+  String myTeamsMemberCount(int count);
+
+  /// No description provided for @myTeamsCreatedAt.
+  ///
+  /// In en, this message translates to:
+  /// **'Created {date}'**
+  String myTeamsCreatedAt(Object date);
+
+  /// No description provided for @myTeamsEmptyTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'No teams yet'**
+  String get myTeamsEmptyTitle;
+
+  /// No description provided for @myTeamsEmptyHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Create a team to manage members, skills, and plugins.'**
+  String get myTeamsEmptyHint;
+
   /// No description provided for @myExpertsNav.
   ///
   /// In en, this message translates to:
