@@ -2,7 +2,9 @@ import 'dart:async';
 
 import 'package:file_picker/file_picker.dart';
 import 'package:flutter/foundation.dart';
+import 'package:flutter/scheduler.dart';
 import 'package:flutter/widgets.dart';
+import 'package:flutter_alacritty/flutter_alacritty.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
 import '../models/workspace.dart';
@@ -32,6 +34,7 @@ import '../services/launch/session_connect_orchestrator.dart';
 import '../services/launch/workspace_provision_coordinator.dart';
 import '../services/cli/registry/cli_tool_registry.dart';
 import '../services/terminal/terminal_session.dart';
+import '../services/terminal/terminal_theme_for_launch.dart';
 import '../services/terminal/terminal_transport_factory.dart';
 import '../utils/workspace_sessions.dart';
 import '../../widgets/workspace_icon_picker_dialog.dart';
@@ -44,6 +47,7 @@ import 'chat/session_launch_service.dart';
 import 'chat/tab_member_materializer.dart';
 import 'chat/tab_session_runtime_coordinator.dart';
 import 'chat/tab_team_bus_coordinator.dart';
+import 'layout_cubit.dart';
 import 'member_presence_cubit.dart';
 import 'chat/model/chat_state.dart';
 import 'chat/model/chat_tab.dart';
@@ -82,12 +86,14 @@ class ChatCubit extends Cubit<ChatState>
     TeammateBusMcpGateway? teammateBusMcpGateway,
     Future<TeamProfile?> Function(String teamId)? teamById,
     required AutomationRepository automationRepository,
+    LayoutCubit? layoutCubit,
   }) : _remoteBusResolver = remoteBusResolver,
        _sessionConnect = sessionConnect,
        _teamById = teamById,
        _teammateBusMcpGateway =
            teammateBusMcpGateway ?? TeammateBusMcpGateway(),
        _automationRepository = automationRepository,
+       _layoutCubit = layoutCubit,
        _shellFactory = ChatSessionShellFactory(
          executableResolver: executableResolver,
          cliExecutableResolver: cliExecutableResolver,
@@ -111,6 +117,7 @@ class ChatCubit extends Cubit<ChatState>
   final Future<TeamProfile?> Function(String teamId)? _teamById;
   final TeammateBusMcpGateway _teammateBusMcpGateway;
   final AutomationRepository _automationRepository;
+  final LayoutCubit? _layoutCubit;
   VoidCallback? _onAutomationsChanged;
   SessionConnectOrchestrator? _defaultSessionConnect;
 
@@ -362,6 +369,16 @@ class ChatCubit extends Cubit<ChatState>
   @override
   Future<bool> isRootSandboxEnvOptIn(String targetId) =>
       TargetsRepository().isRootSandboxEnvOptIn(targetId);
+
+  @override
+  TerminalTheme? resolveTerminalThemeForLaunch() {
+    final layout = _layoutCubit;
+    if (layout == null) return null;
+    return resolveTerminalThemeFromLayout(
+      preferences: layout.state.preferences,
+      platformBrightness: SchedulerBinding.instance.platformDispatcher.platformBrightness,
+    );
+  }
 
   /// Drops cached Phase A provision for [workspace] (e.g. after folder/target edits).
   void invalidateWorkspaceProvision(Workspace workspace) {

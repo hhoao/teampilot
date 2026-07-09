@@ -1,4 +1,4 @@
-import 'package:flutter/foundation.dart';
+import 'package:flutter_alacritty/flutter_alacritty.dart';
 
 import '../../models/app_session.dart';
 import '../../models/team_config.dart';
@@ -99,4 +99,8 @@ abstract interface class SessionLaunchHost
 
   /// SSH root-sandbox env injection preference for a runtime target.
   Future<bool> isRootSandboxEnvOptIn(String targetId);
+
+  /// Terminal theme for member PTY spawn (COLORFGBG / Claude `theme: auto`).
+  /// Null skips apply — tests and early bootstrap may omit it.
+  TerminalTheme? resolveTerminalThemeForLaunch();
 }

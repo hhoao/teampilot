@@ -710,6 +710,7 @@ Future<AppShell> buildAppShell({
     sessionRepository: sessionRepo,
     lifecycleService: sessionLifecycleService,
     automationRepository: automationRepo,
+    layoutCubit: layoutCubit,
     autoLaunchAllMembersOnConnect: () =>
         sessionPreferencesCubit.state.preferences.autoLaunchAllMembersOnConnect,
     executableResolver: () => sessionPreferencesCubit.resolveExecutable(),

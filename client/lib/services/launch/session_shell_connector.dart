@@ -26,6 +26,7 @@ import '../../services/team_bus/mcp/teammate_bus_mcp_config.dart';
 import '../../services/team_bus/remote/remote_bus_mount.dart';
 import '../../services/team_bus/remote/ssh_remote_bus_mount_factory.dart';
 import '../../services/terminal/terminal_session.dart';
+import '../../services/terminal/terminal_theme_for_launch.dart';
 import '../../utils/logger.dart';
 
 /// Hooks [SessionShellConnector] delegates back to [SessionLaunchService].
@@ -412,6 +413,12 @@ class SessionShellConnector {
         'session=${tab.info.id} member=$memberLabel '
         'cwd=${memberWork.workingDirectory} addDirs=${memberWork.addDirs.length}',
       );
+      // Background members never hit workbench theme sync before spawn; apply
+      // here so COLORFGBG matches the embedded light/dark (Claude theme: auto).
+      final launchTheme = _host.resolveTerminalThemeForLaunch();
+      if (launchTheme != null) {
+        applyShellTerminalThemeForLaunch(shell, launchTheme);
+      }
       shell.connect(
         workingDirectory: memberWork.workingDirectory,
         additionalDirectories: memberWork.addDirs,
