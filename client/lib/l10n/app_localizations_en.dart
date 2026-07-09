@@ -1236,7 +1236,7 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get workspaceChatLandingMixedLaunchBlocked =>
-      'Complete member machine assignment in Team Settings before sending.';
+      'Confirm machine assignment in Team Settings before sending.';
 
   @override
   String get workspaceChatLandingTeamLaunchBlocked =>
@@ -2038,11 +2038,11 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get mixedWorkspaceRequiresTeamLaunch =>
-      'Mixed workspaces can only be started with a team identity. Switch to a team and assign each member to a machine.';
+      'Mixed workspaces can only be started with a team identity. Switch to a team and confirm machine assignment in Team Settings.';
 
   @override
   String get mixedWorkspacePersonalLaunchBlockedHint =>
-      'This is a mixed workspace. Switch to a team tab to start conversations and assign members to machines.';
+      'This is a mixed workspace. Switch to a team tab to start conversations and confirm machine assignment.';
 
   @override
   String get mixedWorkspaceMemberAssignmentTitle =>
@@ -2054,7 +2054,11 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get mixedWorkspaceMemberAssignmentIncomplete =>
-      'Every member instance must be assigned to a machine.';
+      'Confirm machine assignment once before starting this team in a mixed workspace.';
+
+  @override
+  String get mixedWorkspaceLeadPlacementInvalid =>
+      'Team lead must be assigned to the local machine when this workspace has a local folder.';
 
   @override
   String get mixedWorkspaceMemberAssignmentConfirm => 'Start team';
@@ -2082,15 +2086,18 @@ class AppLocalizationsEn extends AppLocalizations {
   String get workspaceMemberTargetsUnassigned => 'Not assigned';
 
   @override
+  String get workspaceMemberTargetsNeedsConfirmation => 'Needs confirmation';
+
+  @override
   String get workspaceMemberTargetsPartiallyAssigned => 'Partially assigned';
 
   @override
   String get mixedWorkspaceCreateSessionBlocked =>
-      'Complete member machine assignment in workspace settings before starting a conversation.';
+      'Confirm machine assignment in Team Settings before starting a conversation in this mixed workspace.';
 
   @override
   String get mixedWorkspaceSessionLaunchBlocked =>
-      'This conversation has incomplete member assignments. Configure assignment in workspace settings and start a new conversation.';
+      'Machine assignment for this conversation is no longer valid. Confirm assignment in Team Settings and start a new conversation.';
 
   @override
   String get sessionLaunchMissingWorkspace =>
@@ -4024,13 +4031,6 @@ class AppLocalizationsEn extends AppLocalizations {
   @override
   String get memberExtraArgsSubtitle =>
       'Extra flags applied only when this member starts.';
-
-  @override
-  String get memberReplicas => 'Replicas';
-
-  @override
-  String get memberReplicasSubtitle =>
-      'Run this role as N interchangeable instances (pods) that share its task queue. 1 = a single instance.';
 
   @override
   String get workspaceAdvancedSettings => 'Advanced';

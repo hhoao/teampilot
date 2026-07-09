@@ -1172,8 +1172,7 @@ class AppLocalizationsZh extends AppLocalizations {
   String get landingTeamSettingsGlobalHint => '更改将应用于该团队的全局配置。';
 
   @override
-  String get workspaceChatLandingMixedLaunchBlocked =>
-      '请先在团队设置中完成成员机器分配，再发送消息。';
+  String get workspaceChatLandingMixedLaunchBlocked => '请先在团队设置中确认机器分配，再发送消息。';
 
   @override
   String get workspaceChatLandingTeamLaunchBlocked =>
@@ -1954,11 +1953,11 @@ class AppLocalizationsZh extends AppLocalizations {
 
   @override
   String get mixedWorkspaceRequiresTeamLaunch =>
-      '混合工作区只能通过团队身份启动。请切换到团队并为每位成员指定机器。';
+      '混合工作区只能通过团队身份启动。请切换到团队，并在团队设置中确认机器分配。';
 
   @override
   String get mixedWorkspacePersonalLaunchBlockedHint =>
-      '这是混合工作区。请切换到团队标签页启动对话，并为成员分配机器。';
+      '这是混合工作区。请切换到团队标签页启动对话，并确认机器分配。';
 
   @override
   String get mixedWorkspaceMemberAssignmentTitle => '分配成员到机器';
@@ -1968,7 +1967,12 @@ class AppLocalizationsZh extends AppLocalizations {
       '左侧选择机器，右侧用 + / − 放置各成员的实例。';
 
   @override
-  String get mixedWorkspaceMemberAssignmentIncomplete => '请为每个成员实例都分配到一台机器。';
+  String get mixedWorkspaceMemberAssignmentIncomplete =>
+      '混合工作区首次启动前，请先确认成员的机器分配。';
+
+  @override
+  String get mixedWorkspaceLeadPlacementInvalid =>
+      '工作区包含本地文件夹时，团队负责人必须分配到本地主机。';
 
   @override
   String get mixedWorkspaceMemberAssignmentConfirm => '启动团队';
@@ -1996,15 +2000,18 @@ class AppLocalizationsZh extends AppLocalizations {
   String get workspaceMemberTargetsUnassigned => '未分配';
 
   @override
+  String get workspaceMemberTargetsNeedsConfirmation => '需要确认';
+
+  @override
   String get workspaceMemberTargetsPartiallyAssigned => '部分分配';
 
   @override
   String get mixedWorkspaceCreateSessionBlocked =>
-      '请先在 workspace 设置中完成成员机器分配，再新建对话。';
+      '请先在团队设置中确认机器分配，再在此混合工作区新建对话。';
 
   @override
   String get mixedWorkspaceSessionLaunchBlocked =>
-      '该对话的成员分配不完整。请在 workspace 设置中配置分配后新建对话。';
+      '该对话的机器分配已失效。请在团队设置中确认分配后新建对话。';
 
   @override
   String get sessionLaunchMissingWorkspace => '找不到该对话所属的工作区。';
@@ -3878,13 +3885,6 @@ class AppLocalizationsZh extends AppLocalizations {
 
   @override
   String get memberExtraArgsSubtitle => '仅附加在该成员的 CLI 启动参数。';
-
-  @override
-  String get memberReplicas => '副本数';
-
-  @override
-  String get memberReplicasSubtitle =>
-      '把该角色作为 N 个可互换实例(pod)运行，共享其任务队列。1 = 单实例。';
 
   @override
   String get workspaceAdvancedSettings => '高级配置';

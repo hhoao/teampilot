@@ -352,7 +352,15 @@ class _LandingTeamSettingsDialogState extends State<_LandingTeamSettingsDialog> 
                           _PaneHeader(
                             section: section,
                             team: _teamDraft,
-                            showMixedInitHint: _needsMixedInit,
+                            machinesHint: !_preparedSave.leadValid
+                                ? context
+                                      .l10n
+                                      .mixedWorkspaceLeadPlacementInvalid
+                                : _needsMixedInit
+                                ? context
+                                      .l10n
+                                      .mixedWorkspaceMemberAssignmentIncomplete
+                                : null,
                             placement: _placement,
                             onClose: _cancel,
                           ),
@@ -400,7 +408,15 @@ class _LandingTeamSettingsDialogState extends State<_LandingTeamSettingsDialog> 
                           _Footer(
                             canSave: _canSave,
                             saving: _saving,
-                            showPlacementHint: _needsMixedInit,
+                            placementHint: !_preparedSave.leadValid
+                                ? context
+                                      .l10n
+                                      .mixedWorkspaceLeadPlacementInvalid
+                                : _needsMixedInit
+                                ? context
+                                      .l10n
+                                      .mixedWorkspaceMemberAssignmentIncomplete
+                                : null,
                             onCancel: _cancel,
                             onSave: _save,
                           ),
@@ -503,14 +519,14 @@ class _PaneHeader extends StatelessWidget {
   const _PaneHeader({
     required this.section,
     required this.team,
-    required this.showMixedInitHint,
+    required this.machinesHint,
     required this.placement,
     required this.onClose,
   });
 
   final _LandingTeamSettingsSection section;
   final TeamProfile team;
-  final bool showMixedInitHint;
+  final String? machinesHint;
   final MemberPlacementByTarget placement;
   final VoidCallback onClose;
 
@@ -569,11 +585,11 @@ class _PaneHeader extends StatelessWidget {
                     ),
                   ),
                 ],
-                if (showMixedInitHint &&
+                if (machinesHint != null &&
                     section == _LandingTeamSettingsSection.machines) ...[
                   const SizedBox(height: 6),
                   Text(
-                    l10n.mixedWorkspaceMemberAssignmentIncomplete,
+                    machinesHint!,
                     style: Theme.of(context).textTheme.bodySmall?.copyWith(
                       color: cs.error,
                     ),
@@ -1132,14 +1148,14 @@ class _Footer extends StatelessWidget {
   const _Footer({
     required this.canSave,
     required this.saving,
-    required this.showPlacementHint,
+    required this.placementHint,
     required this.onCancel,
     required this.onSave,
   });
 
   final bool canSave;
   final bool saving;
-  final bool showPlacementHint;
+  final String? placementHint;
   final VoidCallback onCancel;
   final VoidCallback onSave;
 
@@ -1156,10 +1172,10 @@ class _Footer extends StatelessWidget {
       ),
       child: Row(
         children: [
-          if (showPlacementHint)
+          if (placementHint != null)
             Expanded(
               child: Text(
-                l10n.mixedWorkspaceMemberAssignmentIncomplete,
+                placementHint!,
                 style: Theme.of(context).textTheme.bodySmall?.copyWith(
                   color: cs.error,
                 ),

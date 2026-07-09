@@ -159,7 +159,7 @@ class _AssignmentStatusChip extends StatelessWidget {
         cs.tertiary,
       ),
       WorkspaceMemberTargetsStatus.needsConfirmation => (
-        l10n.workspaceMemberTargetsUnassigned,
+        l10n.workspaceMemberTargetsNeedsConfirmation,
         Icons.error_outline,
         cs.error,
       ),

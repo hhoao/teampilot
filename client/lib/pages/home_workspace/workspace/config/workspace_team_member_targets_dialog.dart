@@ -150,11 +150,13 @@ class _WorkspaceTeamMemberTargetsDialogState
               ),
             ),
           ),
-          if (_needsMixedInit)
+          if (!_preparedSave.leadValid || _needsMixedInit)
             Padding(
               padding: const EdgeInsets.fromLTRB(16, 0, 16, 8),
               child: Text(
-                l10n.mixedWorkspaceMemberAssignmentIncomplete,
+                !_preparedSave.leadValid
+                    ? l10n.mixedWorkspaceLeadPlacementInvalid
+                    : l10n.mixedWorkspaceMemberAssignmentIncomplete,
                 style: Theme.of(context).textTheme.bodySmall?.copyWith(
                   color: Theme.of(context).colorScheme.error,
                 ),

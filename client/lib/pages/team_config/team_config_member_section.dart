@@ -470,12 +470,6 @@ class TeamMemberConfigFormState extends State<TeamMemberConfigForm> {
                   ),
                   showDividerBelow: true,
                 ),
-              if (!discrete.isTeamLead)
-                _MemberReplicasRow(
-                  teamId: widget.teamId,
-                  memberId: widget.memberId,
-                  onPersist: _persistImmediate,
-                ),
               SettingsLabeledStackedRow(
                 title: l10n.memberExtraArgs,
                 subtitle: l10n.memberExtraArgsSubtitle,
@@ -559,80 +553,6 @@ class _MemberSkipPermissionsSwitch extends StatelessWidget {
         },
       ),
       showDividerBelow: true,
-    );
-  }
-}
-
-class _MemberReplicasRow extends StatelessWidget {
-  const _MemberReplicasRow({
-    required this.teamId,
-    required this.memberId,
-    required this.onPersist,
-  });
-
-  final String teamId;
-  final String memberId;
-  final void Function(TeamMemberConfig next) onPersist;
-
-  @override
-  Widget build(BuildContext context) {
-    final l10n = context.l10n;
-    final replicas = context.select<LaunchProfileCubit, int?>(
-      (c) => LaunchProfileSelectors.memberDiscreteFields(
-        c.state,
-        teamId,
-        memberId,
-      )?.replicas,
-    );
-    if (replicas == null) return const SizedBox.shrink();
-
-    return SettingsLabeledRow(
-      title: l10n.memberReplicas,
-      subtitle: l10n.memberReplicasSubtitle,
-      trailing: _ReplicasStepper(
-        value: replicas,
-        onChanged: (v) {
-          final member = LaunchProfileSelectors.memberById(
-            LaunchProfileSelectors.teamById(
-              context.read<LaunchProfileCubit>().state,
-              teamId,
-            ),
-            memberId,
-          );
-          if (member == null) return;
-          onPersist(member.copyWith(replicas: v));
-        },
-      ),
-      showDividerBelow: true,
-    );
-  }
-}
-
-class _ReplicasStepper extends StatelessWidget {
-  const _ReplicasStepper({required this.value, required this.onChanged});
-
-  final int value;
-  final ValueChanged<int> onChanged;
-
-  @override
-  Widget build(BuildContext context) {
-    return Row(
-      mainAxisSize: MainAxisSize.min,
-      children: [
-        IconButton(
-          visualDensity: VisualDensity.compact,
-          tooltip: '-',
-          onPressed: value > 1 ? () => onChanged(value - 1) : null,
-          icon: const Icon(Icons.remove),
-        ),
-        SizedBox(width: 28, child: Text('$value', textAlign: TextAlign.center)),
-        IconButton(
-          visualDensity: VisualDensity.compact,
-          tooltip: '+',
-          onPressed: () => onChanged(value + 1),
-          icon: const Icon(Icons.add),
-        ),
-      ],
     );
   }
 }
