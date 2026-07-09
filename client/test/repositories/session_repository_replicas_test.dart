@@ -1,6 +1,7 @@
 import 'dart:io';
 
 import 'package:flutter_test/flutter_test.dart';
+import 'package:teampilot/models/app_session.dart';
 import 'package:teampilot/models/team_config.dart';
 import 'package:teampilot/models/workspace_folder.dart';
 import 'package:teampilot/repositories/session_repository.dart';
@@ -78,6 +79,73 @@ void main() {
       ]);
       expect(session.memberTargets['builder-0'], 'local');
       expect(session.memberTargets['builder-1'], 'ssh:p1');
+    },
+  );
+
+  test(
+    'healed session still yields builder pods when in-memory team replicas lag',
+    () async {
+      // Regression: createSession wrote builder-0/1 from workspace pins, but
+      // LaunchProfileCubit still held replicas=1. Bus/UI used to expand+filter
+      // and drop both builders (members=3, no builder connect).
+      final tmp = await Directory.systemTemp.createTemp(
+        'fs_session_repo_roster_',
+      );
+      addTearDown(() => tmp.deleteSync(recursive: true));
+      final repo = SessionRepository(rootDir: tmp.path);
+
+      final ws = await repo.createWorkspace([
+        const WorkspaceFolder(path: '/local'),
+        const WorkspaceFolder(path: '/remote', targetId: 'ssh:p1'),
+      ]);
+      await repo.updateWorkspaceMemberPlacement(
+        ws.workspaceId,
+        'team-a',
+        targets: const {
+          'team-lead': 'local',
+          'architect': 'local',
+          'builder-0': 'local',
+          'builder-1': 'ssh:p1',
+          'reviewer': 'local',
+        },
+      );
+
+      const staleTeam = TeamProfile(
+        id: 'team-a',
+        name: 'Team A',
+        cli: CliTool.claude,
+        teamMode: TeamMode.mixed,
+        members: [
+          TeamMemberConfig(id: 'team-lead', name: 'team-lead'),
+          TeamMemberConfig(id: 'architect', name: 'Architect'),
+          TeamMemberConfig(id: 'builder', name: 'Builder', replicas: 1),
+          TeamMemberConfig(id: 'reviewer', name: 'Reviewer'),
+        ],
+      );
+
+      final session = await repo.createSession(
+        ws.workspaceId,
+        sessionTeam: 'team-a',
+        rosterMembers: staleTeam.members,
+      );
+
+      expect(session.members.map((b) => b.rosterMemberId).toList(), [
+        'team-lead',
+        'architect',
+        'builder-0',
+        'builder-1',
+        'reviewer',
+      ]);
+      expect(
+        sessionRosterMembers(session, staleTeam).map((m) => m.id).toList(),
+        [
+          'team-lead',
+          'architect',
+          'builder-0',
+          'builder-1',
+          'reviewer',
+        ],
+      );
     },
   );
 

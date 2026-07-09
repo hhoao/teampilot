@@ -105,6 +105,64 @@ void main() {
     );
   });
 
+  test(
+    'sessionRosterMembers materializes bindings when team replicas are stale',
+    () {
+      // createSession heals expansion from workspace pins, but LaunchProfileCubit
+      // may still hold replicas=1 until reload — bus/UI must trust session pods.
+      final profile = team(const [
+        TeamMemberConfig(id: 'team-lead', name: 'team-lead'),
+        TeamMemberConfig(id: 'builder', name: 'Builder', replicas: 1),
+      ]);
+      final session = AppSession(
+        sessionId: 's1',
+        workspaceId: 'w1',
+        createdAt: 1,
+        members: const [
+          SessionMemberBinding(rosterMemberId: 'team-lead', taskId: 't1'),
+          SessionMemberBinding(
+            rosterMemberId: 'builder-0',
+            taskId: 't2',
+            typeId: 'builder',
+          ),
+          SessionMemberBinding(
+            rosterMemberId: 'builder-1',
+            taskId: 't3',
+            typeId: 'builder',
+          ),
+        ],
+      );
+      final ids = sessionRosterMembers(session, profile).map((m) => m.id);
+      expect(ids, ['team-lead', 'builder-0', 'builder-1']);
+      expect(
+        sessionRosterMembers(session, profile).map((m) => m.name),
+        ['team-lead', 'Builder #0', 'Builder #1'],
+      );
+    },
+  );
+
+  test(
+    'sessionRosterMembers infers type from numbered instance id without typeId',
+    () {
+      final profile = team(const [
+        TeamMemberConfig(id: 'builder', name: 'Builder', replicas: 1),
+      ]);
+      final session = AppSession(
+        sessionId: 's1',
+        workspaceId: 'w1',
+        createdAt: 1,
+        members: const [
+          SessionMemberBinding(rosterMemberId: 'builder-0', taskId: 't1'),
+          SessionMemberBinding(rosterMemberId: 'builder-1', taskId: 't2'),
+        ],
+      );
+      expect(
+        sessionRosterMembers(session, profile).map((m) => m.id),
+        ['builder-0', 'builder-1'],
+      );
+    },
+  );
+
   test('RuntimeRosterCache returns the same list for the same team', () {
     final cache = RuntimeRosterCache();
     final profile = team(const [
