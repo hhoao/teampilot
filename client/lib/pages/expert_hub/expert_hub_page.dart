@@ -53,7 +53,6 @@ class _ExpertHubPageState extends State<ExpertHubPage> {
   @override
   void initState() {
     super.initState();
-    _pendingMemberKey = _readMemberQueryParam();
     final cubit = context.read<ExpertHubCubit>();
     if (cubit.state.status == ExpertHubLoadStatus.idle) {
       cubit.load();
@@ -61,6 +60,16 @@ class _ExpertHubPageState extends State<ExpertHubPage> {
       WidgetsBinding.instance.addPostFrameCallback((_) {
         if (mounted) _tryOpenPendingMember(cubit.state);
       });
+    }
+  }
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    // GoRouterState.of depends on ModalRoute — unsafe in initState.
+    _pendingMemberKey ??= _readMemberQueryParam();
+    if (_pendingMemberKey != null) {
+      _tryOpenPendingMember(context.read<ExpertHubCubit>().state);
     }
   }
 
