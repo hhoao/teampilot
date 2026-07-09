@@ -35,7 +35,7 @@ Local experts are written only through one service used by My Experts, Expert Hu
 1. **No backward / downward compatibility.** Replace superseded flows; do not dual-write, feature-flag old UI, or keep deprecated wrappers “for callers.”
 2. **No leftover code.** When a path is replaced, delete call sites, tests, l10n keys, and dead helpers in the same work — including already-deprecated APIs such as `LaunchProfileCubit.addMemberToTeam`.
 3. **One ownership model.** Local `TeamProfile` = team template. Local `DiscoverableMember` under `member-hub/local-templates` = expert template. Do not introduce a second “saved template copy” store for teams.
-4. **One create path for experts.** Shared editor used by My Experts and Expert Hub. Member settings must not write local templates.
+4. **One write path for local experts.** Shared persistence writer used by My Experts UI, Expert Hub create UI, and AI New Team. Member settings must not write local templates.
 5. **Reference-only rosters stay canonical.** Teams remain ordered expert references + overrides; persona text lives only on experts (aligned with Expert Hub design).
 
 ## Current state (baseline)
