@@ -2,19 +2,19 @@ import '../../models/discoverable_member.dart';
 import '../../models/discoverable_team.dart';
 import '../../models/team_config.dart';
 import '../../models/team_roster_slot.dart';
-import '../expert_hub/local_member_template_store.dart';
+import '../expert_hub/local_expert_writer.dart';
 import 'team_config_draft.dart';
 
 /// Persists AI-generated member personas as local expert templates and returns
 /// roster slots that reference them by key.
 Future<List<TeamRosterSlot>> rosterSlotsFromTeamDraft(
   TeamConfigDraft draft, {
-  LocalMemberTemplateStore? localStore,
+  LocalExpertWriter? writer,
 }) async {
-  final store = localStore ?? LocalMemberTemplateStore();
+  final expertWriter = writer ?? LocalExpertWriter();
   final slots = <TeamRosterSlot>[];
   for (final member in draft.members) {
-    final saved = await store.save(_discoverableFromDraftMember(member));
+    final saved = await expertWriter.save(_discoverableFromDraftMember(member));
     final overrides = member.activePresetId == TeamProfile.inheritPresetId
         ? const TeamRosterSlotOverrides(
             activePresetId: TeamProfile.inheritPresetId,
