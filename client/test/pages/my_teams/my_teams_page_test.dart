@@ -3,6 +3,7 @@ import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:go_router/go_router.dart';
 import 'package:teampilot/cubits/launch_profile_cubit.dart';
 import 'package:teampilot/l10n/app_localizations.dart';
 import 'package:teampilot/models/team_config.dart';
@@ -32,6 +33,53 @@ class _SpyLaunchProfileCubit extends LaunchProfileCubit {
   }
 }
 
+TeamProfile _teamAlpha() => TeamProfile(
+  id: 'team-alpha',
+  name: 'Alpha Squad',
+  cli: CliTool.claude,
+  teamMode: TeamMode.native,
+  roster: _roster,
+  createdAt: DateTime(2026, 1, 15).millisecondsSinceEpoch,
+);
+
+TeamProfile _teamBeta() => TeamProfile(
+  id: 'team-beta',
+  name: 'Beta Crew',
+  cli: CliTool.flashskyai,
+  teamMode: TeamMode.mixed,
+  roster: const [
+    TeamRosterSlot(id: 'lead', expertKey: 'teampilot/builtin/team-lead'),
+  ],
+  createdAt: DateTime(2026, 2, 20).millisecondsSinceEpoch,
+);
+
+_SpyLaunchProfileCubit _loadedCubit() {
+  final cubit = _SpyLaunchProfileCubit(
+    repository: testLaunchProfileRepository(
+      Directory.systemTemp.createTempSync('my_teams_page_'),
+    ),
+    sessionRepository: SessionRepository(),
+    executableResolver: () => 'flashskyai',
+  );
+  cubit.emit(
+    cubit.state.copyWith(
+      identities: [_teamAlpha(), _teamBeta()],
+      selectedTeamId: 'team-alpha',
+      isLoading: false,
+    ),
+  );
+  return cubit;
+}
+
+void _largeTestSurface(WidgetTester tester) {
+  tester.view.physicalSize = const Size(1600, 1200);
+  tester.view.devicePixelRatio = 1.0;
+  addTearDown(() {
+    tester.view.resetPhysicalSize();
+    tester.view.resetDevicePixelRatio();
+  });
+}
+
 void main() {
   setUp(setUpTestAppStorage);
   tearDown(tearDownTestAppStorage);
@@ -39,46 +87,9 @@ void main() {
   testWidgets('lists teams, shows New Team, and deletes on confirm', (
     tester,
   ) async {
-    tester.view.physicalSize = const Size(1600, 1200);
-    tester.view.devicePixelRatio = 1.0;
-    addTearDown(() {
-      tester.view.resetPhysicalSize();
-      tester.view.resetDevicePixelRatio();
-    });
+    _largeTestSurface(tester);
 
-    final teamAlpha = TeamProfile(
-      id: 'team-alpha',
-      name: 'Alpha Squad',
-      cli: CliTool.claude,
-      teamMode: TeamMode.native,
-      roster: _roster,
-      createdAt: DateTime(2026, 1, 15).millisecondsSinceEpoch,
-    );
-    final teamBeta = TeamProfile(
-      id: 'team-beta',
-      name: 'Beta Crew',
-      cli: CliTool.flashskyai,
-      teamMode: TeamMode.mixed,
-      roster: const [
-        TeamRosterSlot(id: 'lead', expertKey: 'teampilot/builtin/team-lead'),
-      ],
-      createdAt: DateTime(2026, 2, 20).millisecondsSinceEpoch,
-    );
-
-    final cubit = _SpyLaunchProfileCubit(
-      repository: testLaunchProfileRepository(
-        Directory.systemTemp.createTempSync('my_teams_page_'),
-      ),
-      sessionRepository: SessionRepository(),
-      executableResolver: () => 'flashskyai',
-    );
-    cubit.emit(
-      cubit.state.copyWith(
-        identities: [teamAlpha, teamBeta],
-        selectedTeamId: teamAlpha.id,
-        isLoading: false,
-      ),
-    );
+    final cubit = _loadedCubit();
     addTearDown(() async {
       if (!cubit.isClosed) await cubit.close();
     });
@@ -106,5 +117,99 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(cubit.deletedTeamIds, ['team-beta']);
+  });
+
+  testWidgets('tap card invokes onOpenTeam with team id', (tester) async {
+    _largeTestSurface(tester);
+
+    final cubit = _loadedCubit();
+    addTearDown(() async {
+      if (!cubit.isClosed) await cubit.close();
+    });
+    final openedIds = <String>[];
+
+    await tester.pumpWidget(
+      MaterialApp(
+        localizationsDelegates: AppLocalizations.localizationsDelegates,
+        supportedLocales: AppLocalizations.supportedLocales,
+        home: BlocProvider<LaunchProfileCubit>.value(
+          value: cubit,
+          child: Scaffold(
+            body: MyTeamsPage(onOpenTeam: openedIds.add),
+          ),
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.text('Beta Crew'));
+    await tester.pumpAndSettle();
+
+    expect(openedIds, ['team-beta']);
+  });
+
+  testWidgets('initialTeamId auto-opens matching team via onOpenTeam', (
+    tester,
+  ) async {
+    _largeTestSurface(tester);
+
+    final cubit = _loadedCubit();
+    addTearDown(() async {
+      if (!cubit.isClosed) await cubit.close();
+    });
+    final openedIds = <String>[];
+
+    await tester.pumpWidget(
+      MaterialApp(
+        localizationsDelegates: AppLocalizations.localizationsDelegates,
+        supportedLocales: AppLocalizations.supportedLocales,
+        home: BlocProvider<LaunchProfileCubit>.value(
+          value: cubit,
+          child: Scaffold(
+            body: MyTeamsPage(
+              initialTeamId: 'team-alpha',
+              onOpenTeam: openedIds.add,
+            ),
+          ),
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    expect(openedIds, ['team-alpha']);
+  });
+
+  testWidgets('deep link team query auto-opens via onOpenTeam', (tester) async {
+    _largeTestSurface(tester);
+
+    final cubit = _loadedCubit();
+    addTearDown(() async {
+      if (!cubit.isClosed) await cubit.close();
+    });
+    final openedIds = <String>[];
+
+    await tester.pumpWidget(
+      MaterialApp.router(
+        localizationsDelegates: AppLocalizations.localizationsDelegates,
+        supportedLocales: AppLocalizations.supportedLocales,
+        routerConfig: GoRouter(
+          initialLocation: '/home-v2?global=myTeams&team=team-beta',
+          routes: [
+            GoRoute(
+              path: '/home-v2',
+              builder: (context, state) => BlocProvider<LaunchProfileCubit>.value(
+                value: cubit,
+                child: Scaffold(
+                  body: MyTeamsPage(onOpenTeam: openedIds.add),
+                ),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    expect(openedIds, ['team-beta']);
   });
 }

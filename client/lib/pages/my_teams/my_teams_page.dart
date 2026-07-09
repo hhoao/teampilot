@@ -50,7 +50,7 @@ class _MyTeamsPageState extends State<MyTeamsPage> {
     if (fromRoute != null && fromRoute != _highlightTeamId) {
       _highlightTeamId = fromRoute;
       _didAutoOpen = false;
-      _maybeAutoOpen();
+      WidgetsBinding.instance.addPostFrameCallback((_) => _maybeAutoOpen());
     }
   }
 
