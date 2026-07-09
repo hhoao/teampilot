@@ -315,6 +315,8 @@ Future<void> submitWorkspaceLandingMessage(
       trimmed,
       directToPty: true,
     );
+    // Landing inject bypasses FirstUserLineCapture (keyboard path only).
+    await chatCubit.applyFirstPromptTitle(session.sessionId, trimmed);
   } on Object catch (error, stackTrace) {
     appLogger.e(
       'submitWorkspaceLandingMessage',

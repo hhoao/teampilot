@@ -20,11 +20,21 @@ class SessionPromptMetadataSync {
 
   void Function(String line)? autoRenameOnFirstPrompt(String sessionId) {
     if (sessionId.startsWith('local-')) return null;
-    final repo = _host.sessionRepository;
-    if (repo == null) return null;
+    if (_host.sessionRepository == null) return null;
     return (line) {
-      unawaited(_maybeAutoRenameFromFirstPrompt(repo, sessionId, line));
+      unawaited(applyFirstPromptTitle(sessionId, line));
     };
+  }
+
+  /// Renames an untitled session from the first operator prompt.
+  ///
+  /// Used by keyboard capture and compose-landing PTY inject (which bypasses
+  /// [FirstUserLineCapture]).
+  Future<void> applyFirstPromptTitle(String sessionId, String firstPrompt) async {
+    if (sessionId.startsWith('local-')) return;
+    final repo = _host.sessionRepository;
+    if (repo == null) return;
+    await _maybeAutoRenameFromFirstPrompt(repo, sessionId, firstPrompt);
   }
 
   /// Bumps session updatedAt on every user-submitted line (debounced per

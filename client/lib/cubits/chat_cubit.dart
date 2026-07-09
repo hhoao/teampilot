@@ -1161,6 +1161,10 @@ class ChatCubit extends Cubit<ChatState>
     );
   }
 
+  /// Compose-landing / inject path: rename untitled session from first prompt.
+  Future<void> applyFirstPromptTitle(String sessionId, String firstPrompt) =>
+      _launchService.applyFirstPromptTitle(sessionId, firstPrompt);
+
   Future<void> touchSession(String sessionId) async {
     final repo = _sessionRepository;
     if (repo == null) return;

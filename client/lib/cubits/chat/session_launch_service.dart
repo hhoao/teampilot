@@ -651,6 +651,9 @@ class SessionLaunchService
   void Function(String line)? autoTouchOnEveryPrompt(String sessionId) =>
       _promptMetadata.autoTouchOnEveryPrompt(sessionId);
 
+  Future<void> applyFirstPromptTitle(String sessionId, String firstPrompt) =>
+      _promptMetadata.applyFirstPromptTitle(sessionId, firstPrompt);
+
   ChatTab _appendLocalTab(TeamProfile team, {required bool emitChange}) {
     final tab = _tabStore.appendLocalTab(team, cliTeamName: _uuid.v4());
     if (emitChange) {
