@@ -6212,18 +6212,6 @@ abstract class AppLocalizations {
   /// **'Add from Expert Hub'**
   String get expertHubAddFromHub;
 
-  /// No description provided for @expertHubSaveAsTemplate.
-  ///
-  /// In en, this message translates to:
-  /// **'Save as template'**
-  String get expertHubSaveAsTemplate;
-
-  /// No description provided for @expertHubTemplateSaved.
-  ///
-  /// In en, this message translates to:
-  /// **'Saved \"{name}\" to My templates.'**
-  String expertHubTemplateSaved(Object name);
-
   /// No description provided for @expertHubViewInHub.
   ///
   /// In en, this message translates to:

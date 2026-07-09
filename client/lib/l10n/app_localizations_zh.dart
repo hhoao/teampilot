@@ -3311,14 +3311,6 @@ class AppLocalizationsZh extends AppLocalizations {
   String get expertHubAddFromHub => '从专家中心添加';
 
   @override
-  String get expertHubSaveAsTemplate => '保存为模板';
-
-  @override
-  String expertHubTemplateSaved(Object name) {
-    return '已将「$name」保存到我的模板。';
-  }
-
-  @override
   String get expertHubViewInHub => '在专家中心查看';
 
   @override

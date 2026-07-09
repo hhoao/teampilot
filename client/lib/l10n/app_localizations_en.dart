@@ -3427,14 +3427,6 @@ class AppLocalizationsEn extends AppLocalizations {
   String get expertHubAddFromHub => 'Add from Expert Hub';
 
   @override
-  String get expertHubSaveAsTemplate => 'Save as template';
-
-  @override
-  String expertHubTemplateSaved(Object name) {
-    return 'Saved \"$name\" to My templates.';
-  }
-
-  @override
   String get expertHubViewInHub => 'View in Expert Hub';
 
   @override

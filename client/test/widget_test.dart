@@ -790,7 +790,10 @@ void main() {
     cubit.selectTeam(LaunchProfileProvisioner.defaultMixedTeamId);
     expect(cubit.state.selectedTeam?.name, 'Default Mixed Team');
 
-    await cubit.addMember();
+    await cubit.addExpertToTeam(
+      LaunchProfileProvisioner.defaultMixedTeamId,
+      'teampilot/builtin/developer',
+    );
     expect(cubit.state.selectedTeam?.members.length, 4);
     expect(cubit.state.statusMessage, contains('Added'));
   });

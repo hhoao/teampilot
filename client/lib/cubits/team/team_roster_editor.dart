@@ -118,21 +118,6 @@ class TeamRosterEditor {
     return (team: team.copyWith(roster: [...team.roster, added]), added: added);
   }
 
-  /// Appends a fresh slot referencing the default developer expert.
-  ({TeamProfile team, TeamRosterSlot added}) addMember(TeamProfile team) {
-    final id = uniqueMemberSlug(team, TeamMemberNaming.defaultWorkerName);
-    final now = DateTime.now().millisecondsSinceEpoch;
-    final slot = TeamRosterSlot(
-      id: id,
-      expertKey: DefaultTeamRoster.expertKeyForSlug('developer'),
-      joinedAt: now,
-      overrides: const TeamRosterSlotOverrides(
-        activePresetId: TeamProfile.inheritPresetId,
-      ),
-    );
-    return (team: team.copyWith(roster: [...team.roster, slot]), added: slot);
-  }
-
   TeamRosterSlot? slotById(TeamProfile team, String memberId) {
     for (final slot in team.roster) {
       if (slot.id == memberId) return slot;
