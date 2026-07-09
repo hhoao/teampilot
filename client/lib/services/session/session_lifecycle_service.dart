@@ -628,17 +628,37 @@ class SessionLifecycleService {
     if (!isPersonal) {
       final rosterId =
           memberBinding?.rosterMemberId.trim() ?? member?.id.trim() ?? '';
-      if (rosterId.isNotEmpty &&
-          workspace != null &&
-          workspaceTopologyRequiresMemberAssignment(workspace.folders) &&
-          !memberTargetIsValid(
-            WorkspaceLaunchContext(session: session, workspace: workspace),
-            rosterId,
-          )) {
-        throw StateError(
-          'Member target assignment is invalid '
-          '(member=$rosterId target=${session.memberTargets[rosterId]})',
+      if (rosterId.isNotEmpty && workspace != null) {
+        final teamId = (team?.id ?? session.sessionTeam).trim();
+        if (workspaceNeedsMixedPlacementInit(
+          folders: workspace.folders,
+          teamId: teamId,
+          initializedByTeam: workspace.memberPlacementInitializedByTeam,
+        )) {
+          throw StateError('mixed_workspace_member_placement_uninitialized');
+        }
+        // Session create omits unpinned mixed instances from bindings; only
+        // validate pins for members that are actually in this session.
+        final bound = session.members.any(
+          (b) => b.rosterMemberId == rosterId,
         );
+        final hasPin =
+            memberTargetForInstanceId(session.memberTargets, rosterId) != null;
+        final mustValidatePin =
+            bound &&
+            (workspaceTopologyOf(workspace.folders) ==
+                    WorkspaceTopology.mixed ||
+                hasPin);
+        if (mustValidatePin &&
+            !memberTargetIsValid(
+              WorkspaceLaunchContext(session: session, workspace: workspace),
+              rosterId,
+            )) {
+          throw StateError(
+            'Member target assignment is invalid '
+            '(member=$rosterId target=${session.memberTargets[rosterId]})',
+          );
+        }
       }
     }
     TeamMemberConfig? launchMember = member;

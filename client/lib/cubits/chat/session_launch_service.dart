@@ -124,7 +124,7 @@ class SessionLaunchService
       (
         persistSessionIfNeeded: _persistSessionIfNeeded,
         ensureTeamSessionReady: _ensureTeamSessionReady,
-        onMixedMemberTargetsIncomplete: _onMixedMemberTargetsIncomplete,
+        onMixedPlacementNotReady: _onMixedPlacementNotReady,
         resolveLaunchMembers: _resolveLaunchMembers,
         installTeamRuntimeIfNeeded: _installTeamRuntimeIfNeeded,
         updateSelectedMember: _updateSelectedMember,
@@ -152,7 +152,7 @@ class SessionLaunchService
     }
   }
 
-  void _onMixedMemberTargetsIncomplete({
+  void _onMixedPlacementNotReady({
     required ChatTab tab,
     required AppSession launchSession,
     required SessionOpenRequest request,
@@ -162,12 +162,12 @@ class SessionLaunchService
         tab: tab,
         sessionId: launchSession.sessionId,
         request: request,
-        message: 'mixed_workspace_member_targets_incomplete',
+        message: 'mixed_workspace_member_placement_uninitialized',
       );
     } else {
       _h.failSessionConnect(
         launchSession.sessionId,
-        'mixed_workspace_member_targets_incomplete',
+        'mixed_workspace_member_placement_uninitialized',
       );
     }
   }
@@ -426,7 +426,11 @@ class SessionLaunchService
     String keepSelectedMemberId,
     ChatTab tab,
   ) {
-    final instances = runtimeRosterMembers(team).where((m) => m.isValid);
+    final session = tab.persistedSession;
+    final instances = (session == null
+            ? runtimeRosterMembers(team)
+            : sessionRosterMembers(session, team))
+        .where((m) => m.isValid);
     for (final candidate in instances) {
       if (candidate.id == keepSelectedMemberId) continue;
       _memberConnectScheduler.schedule(team, candidate, tab);

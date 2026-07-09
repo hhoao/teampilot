@@ -22,6 +22,7 @@ import '../services/session/session_lifecycle_service.dart';
 import '../services/provider/workspace_trust_provisioner.dart';
 import '../utils/lock_pool.dart';
 import '../utils/logger.dart';
+import '../utils/team_member_naming.dart';
 import '../utils/workspace_path_utils.dart';
 import '../utils/workspace_sessions.dart';
 import 'session_repository_fs.dart';
@@ -386,16 +387,38 @@ class SessionRepository {
     final existing = await _readManifest(fs, workspaceId);
     if (existing == null) return;
     final now = DateTime.now().millisecondsSinceEpoch;
+    final nextFolders = [
+      for (final f in folders)
+        if (f.path.trim().isNotEmpty)
+          f.copyWith(path: normalizeWorkspacePath(f.path)),
+    ];
+    final previousTopology = workspaceTopologyOf(existing.folders);
+    final previousTargetIds = workspaceTargetIds(existing.folders);
+    final nextTopology = workspaceTopologyOf(nextFolders);
+    final nextTargetIds = workspaceTargetIds(nextFolders);
+    final becameMixed =
+        previousTopology != WorkspaceTopology.mixed &&
+        nextTopology == WorkspaceTopology.mixed;
+    final targetSetChanged = !_sameTargetIdSet(
+      previousTargetIds,
+      nextTargetIds,
+    );
+    final nextInitialized =
+        (becameMixed || targetSetChanged)
+            ? const <String, bool>{}
+            : existing.memberPlacementInitializedByTeam;
     final updated = existing.copyWith(
-      folders: [
-        for (final f in folders)
-          if (f.path.trim().isNotEmpty)
-            f.copyWith(path: normalizeWorkspacePath(f.path)),
-      ],
+      folders: nextFolders,
+      memberPlacementInitializedByTeam: nextInitialized,
       updatedAt: now,
     );
     await _writeManifest(fs, updated);
     await _provisionWorkspaceTrust(fs, updated);
+  }
+
+  static bool _sameTargetIdSet(List<String> a, List<String> b) {
+    if (a.length != b.length) return false;
+    return Set<String>.from(a).containsAll(b);
   }
 
   /// Persists remembered mixed-workspace machine pins for a team.
@@ -506,13 +529,15 @@ class SessionRepository {
     String? expertKey,
   }) async {
     final fs = await _fs();
-    final workspace = await _readManifest(fs, workspaceId);
+    var workspace = await _readManifest(fs, workspaceId);
     if (workspace == null) {
       throw StateError('Unknown workspaceId: $workspaceId');
     }
     final trimmedTeam = sessionTeam.trim();
     var cliTeamName = '';
     var members = const <SessionMemberBinding>[];
+    var sessionTargets = const <String, String>{};
+
     if (trimmedTeam.isNotEmpty) {
       final valid = rosterMembers.where((m) => m.isValid).toList();
       if (valid.isEmpty) {
@@ -520,6 +545,53 @@ class SessionRepository {
           'Team session requires at least one valid roster member',
         );
       }
+      if (workspaceNeedsMixedPlacementInit(
+        folders: workspace.folders,
+        teamId: trimmedTeam,
+        initializedByTeam: workspace.memberPlacementInitializedByTeam,
+      )) {
+        throw StateError('mixed_workspace_member_placement_uninitialized');
+      }
+
+      final instances = expandTeamRoster(valid);
+      final remembered = rememberedMemberTargets(
+        workspace.memberTargetsByTeam,
+        trimmedTeam,
+      );
+      final resolved = _resolveSessionMemberTargets(
+        workspace: workspace,
+        instances: instances,
+        remembered: remembered,
+      );
+      if (resolved.persistTargets) {
+        await updateWorkspaceMemberTargets(
+          workspaceId,
+          trimmedTeam,
+          targets: resolved.targets,
+        );
+        workspace =
+            await _readManifest(fs, workspaceId) ??
+            workspace.copyWith(
+              memberTargetsByTeam: {
+                ...workspace.memberTargetsByTeam,
+                trimmedTeam: resolved.targets,
+              },
+            );
+      }
+
+      final included = [
+        for (final inst in instances)
+          if (resolved.targets.containsKey(inst.instanceId)) inst,
+      ];
+      if (!leadPlacementValid(
+            folders: workspace.folders,
+            members: valid,
+            targets: resolved.targets,
+          ) ||
+          !_includedLeadWhenRequired(valid, included)) {
+        throw StateError('lead_placement_invalid');
+      }
+
       final counterCtx = await _counterContext();
       final counter = SessionTeamCounter(
         fs: counterCtx.fs,
@@ -527,29 +599,17 @@ class SessionRepository {
       );
       cliTeamName = await counter.nextCliTeamName(trimmedTeam);
       members = [
-        for (final inst in expandTeamRoster(valid))
+        for (final inst in included)
           SessionMemberBinding(
             rosterMemberId: inst.instanceId,
             typeId: inst.type.id,
             taskId: const Uuid().v4(),
           ),
       ];
-    }
-
-    final rememberedTargets = trimmedTeam.isNotEmpty
-        ? rememberedMemberTargets(workspace.memberTargetsByTeam, trimmedTeam)
-        : const <String, String>{};
-
-    if (trimmedTeam.isNotEmpty &&
-        workspaceTopologyRequiresMemberAssignment(workspace.folders)) {
-      final valid = rosterMembers.where((m) => m.isValid).toList();
-      if (!memberTargetsComplete(
-        workspaceFolders: workspace.folders,
-        members: valid,
-        targets: rememberedTargets,
-      )) {
-        throw StateError('mixed_workspace_member_targets_incomplete');
-      }
+      sessionTargets = {
+        for (final inst in included)
+          inst.instanceId: resolved.targets[inst.instanceId]!,
+      };
     }
 
     final pinnedId = fixedSessionId?.trim() ?? '';
@@ -569,7 +629,7 @@ class SessionRepository {
       cliTeamName: cliTeamName,
       cli: trimmedTeam.isEmpty ? cli : null,
       members: members,
-      memberTargets: rememberedTargets,
+      memberTargets: sessionTargets,
       launchState: AppSessionLaunchState.created,
       createdAt: now,
       updatedAt: now,
@@ -582,6 +642,66 @@ class SessionRepository {
     );
     await _syncWorkspaceIndexEntry(fs, workspace);
     return session;
+  }
+
+  /// Resolves instance pins for session create.
+  ///
+  /// Single-host: fill every expanded instance to the sole host (persist when
+  /// empty/partial). Mixed: never invent pins; omit unresolvable instances.
+  ({MemberTargetAssignments targets, bool persistTargets})
+  _resolveSessionMemberTargets({
+    required Workspace workspace,
+    required List<MemberInstance> instances,
+    required MemberTargetAssignments remembered,
+  }) {
+    final folders = workspace.folders;
+    final hostIds = workspaceTargetIds(folders);
+    final topology = workspaceTopologyOf(folders);
+
+    if (topology != WorkspaceTopology.mixed) {
+      final host = hostIds.isEmpty
+          ? WorkspaceFolder.localTargetId
+          : hostIds.first;
+      final pinned = <String, String>{};
+      var filledGap = false;
+      for (final inst in instances) {
+        final existing = memberTargetForInstanceId(
+          remembered,
+          inst.instanceId,
+        );
+        if (existing != null &&
+            hostIds.contains(existing) &&
+            folderPathsForTarget(folders, existing).isNotEmpty) {
+          pinned[inst.instanceId] = existing;
+        } else {
+          pinned[inst.instanceId] = host;
+          filledGap = true;
+        }
+      }
+      return (
+        targets: pinned,
+        persistTargets: remembered.isEmpty || filledGap,
+      );
+    }
+
+    final pinned = <String, String>{};
+    for (final inst in instances) {
+      final existing = memberTargetForInstanceId(remembered, inst.instanceId);
+      if (existing == null) continue;
+      if (!hostIds.contains(existing)) continue;
+      if (folderPathsForTarget(folders, existing).isEmpty) continue;
+      pinned[inst.instanceId] = existing;
+    }
+    return (targets: pinned, persistTargets: false);
+  }
+
+  static bool _includedLeadWhenRequired(
+    List<TeamMemberConfig> valid,
+    List<MemberInstance> included,
+  ) {
+    final requiresLead = valid.any(TeamMemberNaming.isTeamLead);
+    if (!requiresLead) return true;
+    return included.any((inst) => TeamMemberNaming.isTeamLead(inst.type));
   }
 
   Future<AppSession?> _readSession(

@@ -3,8 +3,10 @@ String formatSessionLaunchError(String raw) {
   var text = raw.trim();
   if (text.isEmpty) return text;
 
-  if (text == 'mixed_workspace_member_targets_incomplete') {
-    return 'Member assignments are incomplete for this mixed workspace.';
+  if (text == 'mixed_workspace_member_targets_incomplete' ||
+      text == 'mixed_workspace_member_placement_uninitialized' ||
+      text == 'lead_placement_invalid') {
+    return 'Member placement is not ready for this mixed workspace.';
   }
 
   if (text.startsWith('[') && text.endsWith(']')) {

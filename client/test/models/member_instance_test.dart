@@ -1,5 +1,7 @@
 import 'package:flutter_test/flutter_test.dart';
+import 'package:teampilot/models/app_session.dart';
 import 'package:teampilot/models/member_instance.dart';
+import 'package:teampilot/models/session_member_binding.dart';
 import 'package:teampilot/models/team_config.dart';
 import 'package:teampilot/services/team/runtime_roster_cache.dart';
 
@@ -81,6 +83,26 @@ void main() {
       ]),
     );
     expect(members.map((m) => m.id), ['team-lead', 'builder-0', 'builder-1']);
+  });
+
+  test('sessionRosterMembers keeps only session-bound instances', () {
+    final profile = team(const [
+      TeamMemberConfig(id: 'team-lead', name: 'team-lead'),
+      TeamMemberConfig(id: 'builder', name: 'Builder', replicas: 2),
+    ]);
+    final session = AppSession(
+      sessionId: 's1',
+      workspaceId: 'w1',
+      createdAt: 1,
+      members: const [
+        SessionMemberBinding(rosterMemberId: 'team-lead', taskId: 't1'),
+        SessionMemberBinding(rosterMemberId: 'builder-1', taskId: 't2'),
+      ],
+    );
+    expect(
+      sessionRosterMembers(session, profile).map((m) => m.id),
+      ['team-lead', 'builder-1'],
+    );
   });
 
   test('RuntimeRosterCache returns the same list for the same team', () {
