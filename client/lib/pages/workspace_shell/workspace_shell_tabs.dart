@@ -345,7 +345,7 @@ class WorkspaceShellTabChipState extends State<WorkspaceShellTabChip> {
                   if (widget.working)
                     SessionWorkingIndicator(
                       working: true,
-                      size: context.appIconSizes.md,
+                      size: context.appIconSizes.sm,
                       color: iconColor,
                     )
                   else
