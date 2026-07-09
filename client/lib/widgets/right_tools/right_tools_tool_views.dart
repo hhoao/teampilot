@@ -13,6 +13,7 @@ import '../../cubits/member_presence_cubit.dart';
 import '../../utils/workspace_tab_session_scope.dart';
 import '../../cubits/worktree_cubit.dart';
 import '../../l10n/l10n_extensions.dart';
+import '../../models/app_session.dart';
 import '../../models/app_provider_config.dart';
 import '../../models/member_instance.dart';
 import '../../models/member_presence.dart';
@@ -180,17 +181,20 @@ class RightToolsChatSlice {
     required this.hasActiveTab,
     required this.activeSessionId,
     required this.hasTeamBus,
+    this.persistedSession,
   });
 
   factory RightToolsChatSlice.from(
     ChatState state, {
     required bool hasTeamBus,
+    AppSession? persistedSession,
   }) {
     return RightToolsChatSlice(
       selectedMemberId: state.selectedMemberId,
       hasActiveTab: state.tabs.isNotEmpty,
       activeSessionId: state.activeSessionId,
       hasTeamBus: hasTeamBus,
+      persistedSession: persistedSession,
     );
   }
 
@@ -198,6 +202,7 @@ class RightToolsChatSlice {
   final bool hasActiveTab;
   final String? activeSessionId;
   final bool hasTeamBus;
+  final AppSession? persistedSession;
 
   @override
   bool operator ==(Object other) {
@@ -205,12 +210,18 @@ class RightToolsChatSlice {
         selectedMemberId == other.selectedMemberId &&
         hasActiveTab == other.hasActiveTab &&
         activeSessionId == other.activeSessionId &&
-        hasTeamBus == other.hasTeamBus;
+        hasTeamBus == other.hasTeamBus &&
+        identical(persistedSession, other.persistedSession);
   }
 
   @override
-  int get hashCode =>
-      Object.hash(selectedMemberId, hasActiveTab, activeSessionId, hasTeamBus);
+  int get hashCode => Object.hash(
+    selectedMemberId,
+    hasActiveTab,
+    activeSessionId,
+    hasTeamBus,
+    persistedSession,
+  );
 }
 
 /// Builds the tabbed tool views with narrow bloc subscriptions.
@@ -332,6 +343,7 @@ class _RightToolsToolViewsState extends State<RightToolsToolViews> {
       (c) => RightToolsChatSlice.from(
         c.state,
         hasTeamBus: scopedTeamBus(c, widget.toolsScopeId) != null,
+        persistedSession: c.activeTab?.persistedSession,
       ),
     );
 
@@ -420,7 +432,10 @@ class _RightToolsToolViewsState extends State<RightToolsToolViews> {
     if (!widget.isPersonalContext &&
         widget.preferences.membersVisible &&
         team != null) {
-      final runtimeMembers = runtimeRosterMembers(team);
+      final session = chatSlice.persistedSession;
+      final runtimeMembers = session != null && session.members.isNotEmpty
+          ? sessionRosterMembers(session, team)
+          : runtimeRosterMembers(team);
       final members = [...runtimeMembers]
         ..sort((a, b) {
           if (TeamMemberNaming.isTeamLead(a)) return -1;

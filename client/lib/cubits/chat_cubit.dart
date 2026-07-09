@@ -438,6 +438,7 @@ class ChatCubit extends Cubit<ChatState>
     if (team == null) return null;
     return PresenceSessionContext(
       team: team,
+      appSession: tab.persistedSession,
       teamBus: tab.teamBus,
       globalPresets: _lifecycle.globalPresets,
     );

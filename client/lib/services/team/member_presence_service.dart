@@ -1,3 +1,4 @@
+import '../../models/app_session.dart';
 import '../../models/cli_preset.dart';
 import '../../models/member_presence.dart';
 import '../../models/team_config.dart';
@@ -14,11 +15,16 @@ import 'member_coordination.dart';
 class PresenceSessionContext {
   const PresenceSessionContext({
     required this.team,
+    this.appSession,
     this.teamBus,
     this.globalPresets = const [],
   });
 
   final TeamProfile team;
+
+  /// Active tab session — when set, presence polls session pods (not a fresh
+  /// expand of possibly-stale [TeamMemberConfig.replicas]).
+  final AppSession? appSession;
   final TeamBus? teamBus;
   final List<CliPreset> globalPresets;
 }

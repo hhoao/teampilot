@@ -7,6 +7,7 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 
 import '../utils/logger.dart';
 import '../services/team/runtime_roster_cache.dart';
+import '../models/app_session.dart';
 import '../models/member_presence.dart';
 import '../models/team_config.dart';
 import '../services/team/member_presence_service.dart';
@@ -162,9 +163,13 @@ class MemberPresenceCubit extends Cubit<MemberPresenceState> {
 
     _presenceTickInFlight = true;
     try {
+      final appSession = target.session?.appSession;
+      final members = appSession != null && appSession.members.isNotEmpty
+          ? sessionRosterMembers(appSession, rosterTeam)
+          : _runtimeRosterCache.resolve(rosterTeam);
       final next = await _memberPresenceService.compute(
         teamCli: rosterTeam.cli,
-        members: _runtimeRosterCache.resolve(rosterTeam),
+        members: members,
         cliTeamName: target.cliTeamName,
         memberToolConfigDir: target.memberToolConfigDir,
         memberShells: target.memberShells,

@@ -1,4 +1,5 @@
 import '../../cubits/chat/model/chat_tab.dart';
+import '../../models/app_session.dart';
 import '../../models/cli_preset.dart';
 import '../../models/member_instance.dart';
 import '../../models/member_presence.dart';
@@ -43,8 +44,12 @@ final class SessionWorkingResolver {
     final bus = tab.teamBus;
     final isPersonal = isPersonalTab(tab);
 
+    final session = tab.persistedSession;
     final members = team != null
-        ? runtimeRosterMembers(team).where((m) => m.isValid)
+        ? (session != null && session.members.isNotEmpty
+                  ? sessionRosterMembers(session, team)
+                  : runtimeRosterMembers(team))
+              .where((m) => m.isValid)
         : tab.memberShells.keys.map(
             (id) => TeamMemberConfig(id: id, name: id),
           );
