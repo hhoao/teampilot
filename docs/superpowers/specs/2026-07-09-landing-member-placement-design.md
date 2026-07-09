@@ -209,9 +209,10 @@ mixed && !memberPlacementInitializedByTeam[teamId]
 - `client/lib/models/member_instance.dart` — allow zero replicas
 - `client/lib/pages/home_workspace/workspace/workspace_landing_team_settings_dialog.dart`
 - `client/lib/pages/home_workspace/workspace/mixed_workspace_member_placement_panel.dart`
+- `client/lib/pages/home_workspace/workspace/config/workspace_team_member_targets_section.dart` (+ dialog) — same save path as Landing
 - `client/lib/pages/team_config/team_config_member_section.dart` — remove replicas row
 - `client/lib/services/launch/workspace_landing_launch_gate.dart` (+ readiness / pipeline / session_repository gates)
-- `client/lib/repositories/session_repository.dart` — persist flag; reset on folder/target changes
+- `client/lib/repositories/session_repository.dart` — persist flag; reset on folder/target changes; shared Machines save helper
 - l10n `app_en.arb` / `app_zh.arb`
 - tests under `client/test/models/`, `client/test/services/launch/`, landing/team settings widget tests
 
