@@ -5,13 +5,11 @@ import '../../services/storage/app_storage.dart';
 import 'model/chat_tab.dart';
 import 'model/chat_tab_info.dart';
 
-/// Owns the open-tab list and all pure queries/derivations over it.
-/// Never emits — callers read results and update ChatState themselves.
+/// Owns open chat tabs bucketed by workspace.
 ///
-/// Tabs are bucketed by `workspaceId`. Every query/mutation below operates on the
-/// *active* workspace's bucket ([setActiveWorkspace]); callers keep using the same
-/// flat-list API. Per-workspace active-tab index is snapshotted on workspace switch,
-/// not mirrored on every selection, so cubit call sites stay unchanged.
+/// Two projections:
+/// - **View** ([activeTabs], [activeTabBySessionId]): the foreground workspace.
+/// - **Runtime** ([openTabs], [openTabBySessionId]): every open tab with live PTY/bus.
 class ChatTabStore {
   final Map<String, List<ChatTab>> _byWorkspace = {};
   final Map<String, int> _savedActiveIndex = {};
@@ -38,15 +36,25 @@ class ChatTabStore {
 
   String get activeWorkspaceId => _activeWorkspaceId;
 
-  List<ChatTab> get tabs => _active;
-  int get length => _active.length;
-  bool get isEmpty => _active.isEmpty;
+  /// Tabs in the foreground workspace bucket (view projection).
+  List<ChatTab> get activeTabs => _active;
 
-  /// Every open tab across all workspace buckets.
-  Iterable<ChatTab> get allTabs sync* {
+  int get activeTabCount => _active.length;
+
+  bool get activeTabsIsEmpty => _active.isEmpty;
+
+  /// Every open tab across all workspace buckets (runtime projection).
+  Iterable<ChatTab> get openTabs sync* {
     for (final bucket in _byWorkspace.values) {
       yield* bucket;
     }
+  }
+
+  bool get hasOpenTabs {
+    for (final bucket in _byWorkspace.values) {
+      if (bucket.isNotEmpty) return true;
+    }
+    return false;
   }
 
   /// Clears every bucket (used on cubit close).
@@ -145,7 +153,7 @@ class ChatTabStore {
   List<ChatTabInfo> tabInfosForWorkspace(String workspaceTabKey) =>
       tabsForWorkspace(workspaceTabKey).map((t) => t.info).toList();
 
-  List<ChatTabInfo> toInfos() => _active.map((t) => t.info).toList();
+  List<ChatTabInfo> activeTabInfos() => _active.map((t) => t.info).toList();
 
   ChatTab? activeTab(int activeTabIndex) {
     if (_active.isEmpty) return null;
@@ -153,14 +161,25 @@ class ChatTabStore {
     return _active[index];
   }
 
-  ChatTab? bySessionId(String id) {
+  /// View projection: session in the foreground workspace bucket only.
+  ChatTab? activeTabBySessionId(String id) {
     for (final tab in _active) {
       if (tab.info.id == id) return tab;
     }
     return null;
   }
 
-  int indexOfSession(String id) => _active.indexWhere((t) => t.info.id == id);
+  /// Runtime projection: session in any open workspace bucket.
+  ChatTab? openTabBySessionId(String id) {
+    for (final tab in openTabs) {
+      if (tab.info.id == id) return tab;
+    }
+    return null;
+  }
+
+  /// View projection: index within the foreground workspace bucket.
+  int activeIndexOfSession(String id) =>
+      _active.indexWhere((t) => t.info.id == id);
 
   void append(ChatTab tab) {
     tab.workspaceId = _activeWorkspaceId;

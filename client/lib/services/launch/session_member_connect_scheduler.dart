@@ -99,7 +99,7 @@ class SessionMemberConnectScheduler {
     final state = _state();
     _host.applyState(
       state.copyWith(
-        tabs: _tabStore.toInfos(),
+        tabs: _tabStore.activeTabInfos(),
         activeSessionId: tab.info.id,
         selectedMemberId: member.id,
         composeActive: false,

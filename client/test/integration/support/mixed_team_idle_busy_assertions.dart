@@ -75,7 +75,7 @@ Future<void> waitUntilBusCalmAndSessionIdle({
 }) async {
   final deadline = DateTime.now().add(timeout);
   while (DateTime.now().isBefore(deadline)) {
-    final tab = cubit.tabStore.bySessionId(sessionId);
+    final tab = cubit.tabStore.openTabBySessionId(sessionId);
     if (tab != null) {
       for (final shell in tab.memberShells.values) {
         simulateFingerprintQuietGap(shell);

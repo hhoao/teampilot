@@ -54,7 +54,7 @@ final class TabMemberPtyDelivery {
   late final MemberPtyInjectService _ptyInject;
 
   TeamBus? busForSession(String sessionId) =>
-      _tabStore.bySessionId(sessionId)?.teamBus;
+      _tabStore.openTabBySessionId(sessionId)?.teamBus;
 
   bool hasPendingRetry(String sessionId, String memberId) =>
       _ptyInject.hasPendingRetry(sessionId, memberId);
@@ -80,7 +80,7 @@ final class TabMemberPtyDelivery {
     required bool automation,
     bool latchUserTurn = true,
   }) async {
-    final shell = _tabStore.bySessionId(sessionId)?.memberShells[memberId];
+    final shell = _tabStore.openTabBySessionId(sessionId)?.memberShells[memberId];
     if (shell == null) {
       appLogger.w(
         '[session-runtime] pty-inject skipped no-shell '
@@ -125,7 +125,7 @@ final class TabMemberPtyDelivery {
     String memberId,
     String notice,
   ) async {
-    final shell = _tabStore.bySessionId(sessionId)?.memberShells[memberId];
+    final shell = _tabStore.openTabBySessionId(sessionId)?.memberShells[memberId];
     if (shell == null) {
       appLogger.w(
         '[session-runtime] retry-delivery skipped no-shell '
@@ -231,7 +231,7 @@ final class TabMemberPtyDelivery {
 
   Future<void> retryAutomationTick(PtyAutomationRetryTick tick) async {
     final shell =
-        _tabStore.bySessionId(tick.sessionId)?.memberShells[tick.memberId];
+        _tabStore.openTabBySessionId(tick.sessionId)?.memberShells[tick.memberId];
     if (shell == null) return;
     if (_ptyAckAborted(shell)) return;
     if (shouldSkipAutomationRetry(tick.sessionId, tick.memberId)) {
@@ -330,7 +330,7 @@ final class TabMemberPtyDelivery {
       _isClosed() || !shell.isConnected;
 
   CliTool _memberCli(String sessionId, String memberId) {
-    final tab = _tabStore.bySessionId(sessionId);
+    final tab = _tabStore.openTabBySessionId(sessionId);
     return SessionMemberCliResolver.resolve(
       persistedSession: tab?.persistedSession,
       team: _activeTeam(),

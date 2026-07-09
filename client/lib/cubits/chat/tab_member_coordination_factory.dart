@@ -29,7 +29,7 @@ final class TabMemberCoordinationFactory {
     String memberId, {
     bool directToPty = false,
   }) {
-    final tab = _tabStore.bySessionId(sessionId);
+    final tab = _tabStore.openTabBySessionId(sessionId);
     if (tab == null) return null;
     final shell = tab.memberShells[memberId];
     if (shell == null || !shell.isConnected) return null;

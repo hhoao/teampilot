@@ -93,7 +93,7 @@ class TabMemberMaterializer implements MemberMaterializer {
     String memberId,
     String bootstrap,
   ) async {
-    final tab = _tabStore.bySessionId(sessionId);
+    final tab = _tabStore.openTabBySessionId(sessionId);
     if (tab == null) return;
 
     if (MemberCoordinationScope.isPersonalSession(tab: tab)) {

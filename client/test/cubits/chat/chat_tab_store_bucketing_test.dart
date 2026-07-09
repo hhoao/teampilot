@@ -18,13 +18,12 @@ void main() {
       store.setActiveWorkspace('B');
       store.append(_tab('b1'));
 
-      expect(store.length, 1);
-      expect(store.tabs.single.info.id, 'b1');
+      expect(store.activeTabCount, 1);
+      expect(store.activeTabs.single.info.id, 'b1');
 
       final restoredA = store.setActiveWorkspace('A');
-      expect(store.length, 2);
-      expect(store.tabs.map((t) => t.info.id), ['a1', 'a2']);
-      // A had no saved active index yet -> 0.
+      expect(store.activeTabCount, 2);
+      expect(store.activeTabs.map((t) => t.info.id), ['a1', 'a2']);
       expect(restoredA, 0);
     });
 
@@ -42,7 +41,6 @@ void main() {
       store.append(_tab('a1'));
       store.append(_tab('a2'));
       store.append(_tab('a3'));
-      // Working in A, user is on index 2; snapshot it on the way out.
       store.setActiveWorkspace('B', currentActiveIndex: 2);
       store.append(_tab('b1'));
       final restored = store.setActiveWorkspace('A', currentActiveIndex: 0);
@@ -56,9 +54,8 @@ void main() {
       store.append(_tab('a2'));
       final removed = store.removeWorkspace('A');
       expect(removed.map((t) => t.info.id), ['a1', 'a2']);
-      // Active bucket is now empty.
       store.setActiveWorkspace('A');
-      expect(store.isEmpty, isTrue);
+      expect(store.activeTabsIsEmpty, isTrue);
     });
 
     test('sessionBackedCountForWorkspace ignores local scratch tabs', () {
@@ -69,17 +66,21 @@ void main() {
       expect(store.sessionBackedCountForWorkspace('A'), 1);
     });
 
-    test('indexOfSession and bySessionId scope to the active bucket', () {
+    test('view vs runtime session lookup', () {
       final store = ChatTabStore();
       store.setActiveWorkspace('A');
       store.append(_tab('a1'));
       store.setActiveWorkspace('B');
       store.append(_tab('b1'));
-      expect(store.indexOfSession('a1'), -1);
-      expect(store.indexOfSession('b1'), 0);
-      expect(store.bySessionId('a1'), isNull);
-      expect(store.bySessionId('b1')?.info.id, 'b1');
+      expect(store.activeIndexOfSession('a1'), -1);
+      expect(store.activeIndexOfSession('b1'), 0);
+      expect(store.activeTabBySessionId('a1'), isNull);
+      expect(store.activeTabBySessionId('b1')?.info.id, 'b1');
+      expect(store.openTabBySessionId('a1')?.info.id, 'a1');
+      expect(store.openTabBySessionId('b1')?.info.id, 'b1');
+      expect(store.hasOpenTabs, isTrue);
     });
+
     test(
       'tabsForWorkspace and savedActiveIndexFor read non-active buckets',
       () {

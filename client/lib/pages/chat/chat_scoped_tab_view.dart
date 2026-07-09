@@ -34,7 +34,7 @@ class ChatScopedTabView {
     final store = cubit.tabStore;
     final isForeground = store.activeWorkspaceId == workspaceTabKey;
     if (isForeground) {
-      final bucketIds = store.tabs.map((t) => t.info.id).toSet();
+      final bucketIds = store.activeTabs.map((t) => t.info.id).toSet();
       return ChatScopedTabView(
         tabs: state.tabs,
         activeTabIndex: state.activeTabIndex,

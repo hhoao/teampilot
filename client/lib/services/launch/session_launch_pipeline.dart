@@ -130,7 +130,7 @@ class SessionLaunchPipeline {
     );
     if (blocked != null) return LaunchOpened(blocked);
 
-    final existingIdx = _tabStore.indexOfSession(session.sessionId);
+    final existingIdx = _tabStore.activeIndexOfSession(session.sessionId);
     if (existingIdx != -1) {
       final status = _tabSurface.surfaceExistingTab(
         request: request.withSession(session),
@@ -269,7 +269,7 @@ class SessionLaunchPipeline {
       unawaited(_scheduleTeamConfigValidation(team));
     }
     final r = repo ?? _host.sessionRepository;
-    if (_tabStore.isEmpty && r != null) {
+    if (_tabStore.activeTabsIsEmpty && r != null) {
       _host.beginSessionConnect('pending');
       try {
         await _materializer.materializeTeamSession(
@@ -309,7 +309,7 @@ class SessionLaunchPipeline {
     final validMembers = team.members.where((m) => m.isValid).toList();
     if (validMembers.isEmpty) return LaunchCompleted();
 
-    if (_tabStore.isEmpty && r != null) {
+    if (_tabStore.activeTabsIsEmpty && r != null) {
       try {
         await _materializer.materializeTeamSession(
           team,
@@ -359,7 +359,7 @@ class SessionLaunchPipeline {
       _host.failSessionConnect('pending', 'Workspace not found.');
       return;
     }
-    if (_tabStore.isEmpty) {
+    if (_tabStore.activeTabsIsEmpty) {
       _host.beginSessionConnect('pending');
       try {
         await _materializer.materializePersonalSession(
@@ -402,7 +402,7 @@ class SessionLaunchPipeline {
     unawaited(_scheduleTeamConfigValidation(team));
 
     final r = repo ?? _host.sessionRepository;
-    if (_tabStore.isEmpty && r == null) {
+    if (_tabStore.activeTabsIsEmpty && r == null) {
       _appendLocalTab(team, emitChange: true);
     }
 

@@ -90,7 +90,7 @@ class SessionLaunchService
       activeTab: () => _activeTab,
       autoLaunchAllMembersOnConnect: () =>
           _h.autoLaunchAllMembersOnConnect?.call() == true,
-      isTabsEmpty: () => _tabStore.isEmpty,
+      isTabsEmpty: () => _tabStore.activeTabsIsEmpty,
       activeBucketKey: () => _tabStore.activeWorkspaceId,
       uuid: _uuid,
     ),
@@ -103,7 +103,7 @@ class SessionLaunchService
     launchContextFor: launchContextFor,
     scheduleMemberConnect: _memberConnectScheduler.schedule,
     workspaceIndex: () => _workspaceIndex,
-    allTabs: () => _tabStore.allTabs,
+    openTabs: () => _tabStore.openTabs,
   );
   late final SessionLifecycleConnectCoordinator _lifecycleCoordinator =
       SessionLifecycleConnectCoordinator(
@@ -111,7 +111,7 @@ class SessionLaunchService
         launchContextFor: launchContextFor,
         launchWorkTarget: _launchWorkTarget,
         scheduleMemberConnect: _memberConnectScheduler.schedule,
-        tabIndexOfSession: _tabStore.indexOfSession,
+        tabIndexOfSession: _tabStore.activeIndexOfSession,
       );
   late final SessionPromptMetadataSync _promptMetadata = SessionPromptMetadataSync(
     host: _h,
@@ -238,7 +238,7 @@ class SessionLaunchService
 
   bool _launchStillValid(ChatTab tab, int generation) {
     if (_h.isClosed) return false;
-    if (_tabStore.indexOfSession(tab.info.id) == -1) return false;
+    if (_tabStore.activeIndexOfSession(tab.info.id) == -1) return false;
     return tab.launchGeneration == generation;
   }
 
@@ -477,7 +477,7 @@ class SessionLaunchService
     String sessionId,
     String memberId,
   ) async {
-    final tab = _tabStore.bySessionId(sessionId);
+    final tab = _tabStore.openTabBySessionId(sessionId);
     if (tab == null) return false;
     final session = tab.persistedSession;
     if (session == null || session.sessionTeam.trim().isEmpty) return true;
@@ -575,7 +575,7 @@ class SessionLaunchService
   /// True when another launch path already owns PTY connect for [memberId].
   bool isMemberConnectOwnedElsewhere(String sessionId, String memberId) {
     if (_state.sessionConnectingId == sessionId) return true;
-    final tab = _tabStore.bySessionId(sessionId);
+    final tab = _tabStore.openTabBySessionId(sessionId);
     if (tab == null) return false;
     if (tab.membersPendingConnect.contains(memberId)) return true;
     final shell = tab.memberShells[memberId];
@@ -659,8 +659,8 @@ class SessionLaunchService
     if (emitChange) {
       _h.applyState(
         _state.copyWith(
-          tabs: _tabStore.toInfos(),
-          activeTabIndex: _tabStore.length - 1,
+          tabs: _tabStore.activeTabInfos(),
+          activeTabIndex: _tabStore.activeTabCount - 1,
           activeSessionId: tab.info.id,
           selectedMemberId: tab.selectedMemberId,
           composeActive: false,

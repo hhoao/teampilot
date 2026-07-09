@@ -10,7 +10,6 @@ import '../models/workspace_folder.dart';
 import '../models/workspace_launch_context.dart';
 import '../models/app_session.dart';
 import '../services/team/member_presence_service.dart';
-import '../services/team/session_working_resolver.dart';
 import '../models/workspace_icon_picker_result.dart';
 import '../models/workspace_icon_ref.dart';
 import '../models/team_config.dart';
@@ -123,7 +122,6 @@ class ChatCubit extends Cubit<ChatState>
   final ChatTabStore _tabStore = ChatTabStore();
   final SessionDataStore _dataStore = SessionDataStore();
   final Map<String, Future<void>> _sessionHydrationByWorkspace = {};
-  late final SessionWorkingResolver _sessionWorking = SessionWorkingResolver();
   late final SessionLaunchService _launchService = SessionLaunchService(this);
   late final TabSessionRuntimeCoordinator _sessionRuntime =
       TabSessionRuntimeCoordinator(
@@ -132,6 +130,8 @@ class ChatCubit extends Cubit<ChatState>
         activeTeam: () => _activeTeam,
         isClosed: () => isClosed,
         globalPresets: () => _lifecycle.globalPresets,
+        activeSessionId: () => state.activeSessionId,
+        presence: () => _presenceCubit?.state.presence ?? const {},
         onAfterIdleWatchTick: () => unawaited(_onIdleWatchTick()),
         onAfterTurnLatched: _recomputeWorkingSessions,
       );
@@ -280,7 +280,7 @@ class ChatCubit extends Cubit<ChatState>
 
   @override
   void closeSessionTab(String sessionId) {
-    final idx = _tabStore.indexOfSession(sessionId);
+    final idx = _tabStore.activeIndexOfSession(sessionId);
     if (idx != -1) closeTab(idx);
   }
 
@@ -385,36 +385,7 @@ class ChatCubit extends Cubit<ChatState>
   }
 
   void _recomputeWorkingSessions() {
-    final working = <String>{};
-    final activeSessionId = state.activeSessionId;
-    final presence = _presenceCubit?.state.presence ?? const {};
-
-    for (final tab in _tabStore.tabs) {
-      final sessionId = tab.info.id;
-      final usesPresenceSnapshot =
-          _sessionWorking.usesPresenceSnapshotForTab(
-            tab: tab,
-            activeSessionId: activeSessionId,
-            presenceNonEmpty: presence.isNotEmpty,
-          );
-      final sessionWorking = usesPresenceSnapshot
-          ? presence.values.any((p) => p.isWorking)
-          : _sessionWorking.tabHasWorkingMember(
-              tab: tab,
-              team: _teamForTab(tab),
-              globalPresets: _lifecycle.globalPresets,
-            );
-      if (sessionWorking) working.add(sessionId);
-    }
-    _updateWorkingSessions(working);
-  }
-
-  TeamProfile? _teamForTab(ChatTab tab) {
-    final session = tab.persistedSession;
-    if (session == null || session.sessionTeam.trim().isEmpty) return null;
-    final teamId = session.sessionTeam.trim();
-    if (_activeTeam?.id == teamId) return _activeTeam;
-    return null;
+    _updateWorkingSessions(_sessionRuntime.recomputeWorkingSessions());
   }
 
   @visibleForTesting
@@ -501,7 +472,7 @@ class ChatCubit extends Cubit<ChatState>
     ChatDataSnapshot? snapshot,
   }) {
     final workspaceId = _tabStore.activeWorkspaceId;
-    if (_tabStore.isEmpty) {
+    if (_tabStore.activeTabsIsEmpty) {
       _tabStore.setComposeActive(workspaceId, true);
       final empty = snapshot;
       emit(
@@ -521,12 +492,12 @@ class ChatCubit extends Cubit<ChatState>
       _pushPresenceTarget();
       return;
     }
-    final index = desiredIndex.clamp(0, _tabStore.length - 1);
+    final index = desiredIndex.clamp(0, _tabStore.activeTabCount - 1);
     final composeActive = _tabStore.isComposeActive(workspaceId);
     if (composeActive) {
       emit(
         state.copyWith(
-          tabs: _tabStore.toInfos(),
+          tabs: _tabStore.activeTabInfos(),
           activeTabIndex: index,
           clearActiveSessionId: true,
           selectedMemberId: '',
@@ -540,10 +511,10 @@ class ChatCubit extends Cubit<ChatState>
       _pushPresenceTarget();
       return;
     }
-    final tab = _tabStore.tabs[index];
+    final tab = _tabStore.activeTabs[index];
     emit(
       state.copyWith(
-        tabs: _tabStore.toInfos(),
+        tabs: _tabStore.activeTabInfos(),
         activeTabIndex: index,
         activeSessionId: tab.info.id,
         selectedMemberId: tab.selectedMemberId,
@@ -615,9 +586,9 @@ class ChatCubit extends Cubit<ChatState>
 
   /// Last launch failure for the active tab, or [ChatState.sessionLaunchError].
   String? get activeLaunchError {
-    if (!_tabStore.isEmpty) {
-      final index = state.activeTabIndex.clamp(0, _tabStore.length - 1);
-      final error = _tabStore.tabs[index].info.launchError;
+    if (!_tabStore.activeTabsIsEmpty) {
+      final index = state.activeTabIndex.clamp(0, _tabStore.activeTabCount - 1);
+      final error = _tabStore.activeTabs[index].info.launchError;
       if (error != null && error.isNotEmpty) return error;
     }
     final pending = state.sessionLaunchError;
@@ -915,11 +886,11 @@ class ChatCubit extends Cubit<ChatState>
   }
 
   void closeTab(int index) {
-    if (index < 0 || index >= _tabStore.length) return;
+    if (index < 0 || index >= _tabStore.activeTabCount) return;
     final tab = _tabStore.removeAt(index);
     unawaited(_tearDownTab(tab));
     _sessionRuntime.maybeStopIdleWatch();
-    if (_tabStore.isEmpty) {
+    if (_tabStore.activeTabsIsEmpty) {
       _tabStore.setComposeActive(_tabStore.activeWorkspaceId, true);
       emit(
         state.copyWith(
@@ -930,13 +901,13 @@ class ChatCubit extends Cubit<ChatState>
         ),
       );
     } else {
-      final newIdx = state.activeTabIndex >= _tabStore.length
-          ? _tabStore.length - 1
+      final newIdx = state.activeTabIndex >= _tabStore.activeTabCount
+          ? _tabStore.activeTabCount - 1
           : state.activeTabIndex;
-      final nextTab = _tabStore.tabs[newIdx];
+      final nextTab = _tabStore.activeTabs[newIdx];
       emit(
         state.copyWith(
-          tabs: _tabStore.toInfos(),
+          tabs: _tabStore.activeTabInfos(),
           activeTabIndex: newIdx,
           activeSessionId: nextTab.info.id,
           selectedMemberId: nextTab.selectedMemberId,
@@ -973,18 +944,18 @@ class ChatCubit extends Cubit<ChatState>
   }
 
   void closeOtherTabs(int index) {
-    if (index < 0 || index >= _tabStore.length) return;
-    for (var i = _tabStore.length - 1; i >= 0; i--) {
+    if (index < 0 || index >= _tabStore.activeTabCount) return;
+    for (var i = _tabStore.activeTabCount - 1; i >= 0; i--) {
       if (i == index) continue;
       final tab = _tabStore.removeAt(i);
       unawaited(_tearDownTab(tab));
     }
     _sessionRuntime.maybeStopIdleWatch();
-    final kept = _tabStore.tabs.single;
+    final kept = _tabStore.activeTabs.single;
     _tabStore.setComposeActive(_tabStore.activeWorkspaceId, false);
     emit(
       state.copyWith(
-        tabs: _tabStore.toInfos(),
+        tabs: _tabStore.activeTabInfos(),
         activeTabIndex: 0,
         activeSessionId: kept.info.id,
         selectedMemberId: kept.selectedMemberId,
@@ -995,8 +966,8 @@ class ChatCubit extends Cubit<ChatState>
   }
 
   void closeRightTabs(int index) {
-    if (index < 0 || index >= _tabStore.length) return;
-    for (var i = _tabStore.length - 1; i > index; i--) {
+    if (index < 0 || index >= _tabStore.activeTabCount) return;
+    for (var i = _tabStore.activeTabCount - 1; i > index; i--) {
       final tab = _tabStore.removeAt(i);
       unawaited(_tearDownTab(tab));
     }
@@ -1005,8 +976,8 @@ class ChatCubit extends Cubit<ChatState>
     _tabStore.setComposeActive(_tabStore.activeWorkspaceId, false);
     emit(
       state.copyWith(
-        tabs: _tabStore.toInfos(),
-        activeTabIndex: state.activeTabIndex.clamp(0, _tabStore.length - 1),
+        tabs: _tabStore.activeTabInfos(),
+        activeTabIndex: state.activeTabIndex.clamp(0, _tabStore.activeTabCount - 1),
         activeSessionId: active?.info.id,
         selectedMemberId: active?.selectedMemberId ?? '',
         composeActive: false,
@@ -1016,8 +987,8 @@ class ChatCubit extends Cubit<ChatState>
   }
 
   void selectTab(int index) {
-    if (index < 0 || index >= _tabStore.length) return;
-    final tab = _tabStore.tabs[index];
+    if (index < 0 || index >= _tabStore.activeTabCount) return;
+    final tab = _tabStore.activeTabs[index];
     _tabStore.setComposeActive(_tabStore.activeWorkspaceId, false);
     emit(
       state.copyWith(
@@ -1040,7 +1011,7 @@ class ChatCubit extends Cubit<ChatState>
     _tabStore.setComposeActive(workspaceId, true);
     final index = state.activeTabIndex.clamp(
       0,
-      _tabStore.length == 0 ? 0 : _tabStore.length - 1,
+      _tabStore.activeTabCount == 0 ? 0 : _tabStore.activeTabCount - 1,
     );
     emit(
       state.copyWith(
@@ -1058,13 +1029,13 @@ class ChatCubit extends Cubit<ChatState>
     final workspaceId = _tabStore.activeWorkspaceId;
     if (!_tabStore.isComposeActive(workspaceId)) return;
     _tabStore.setComposeActive(workspaceId, false);
-    if (_tabStore.isEmpty) {
+    if (_tabStore.activeTabsIsEmpty) {
       _tabStore.setComposeActive(workspaceId, true);
       emit(state.copyWith(composeActive: true));
       return;
     }
-    final index = state.activeTabIndex.clamp(0, _tabStore.length - 1);
-    final tab = _tabStore.tabs[index];
+    final index = state.activeTabIndex.clamp(0, _tabStore.activeTabCount - 1);
+    final tab = _tabStore.activeTabs[index];
     emit(
       state.copyWith(
         activeTabIndex: index,
@@ -1147,7 +1118,7 @@ class ChatCubit extends Cubit<ChatState>
       if (t.id == sessionId) return t.copyWith(title: newName);
       return t;
     }).toList();
-    for (final tab in _tabStore.tabs) {
+    for (final tab in _tabStore.openTabs) {
       if (tab.info.id == sessionId) {
         tab.info = tab.info.copyWith(title: newName);
       }
@@ -1216,17 +1187,17 @@ class ChatCubit extends Cubit<ChatState>
     final sessions = state.sessions
         .where((s) => s.sessionId != sessionId)
         .toList();
-    final idx = _tabStore.indexOfSession(sessionId);
+    final idx = _tabStore.activeIndexOfSession(sessionId);
     if (idx != -1) {
       final tab = _tabStore.removeAt(idx);
       await _tearDownTab(tab);
       _sessionRuntime.maybeStopIdleWatch();
     }
-    final tabs = _tabStore.tabs.map((t) => t.info).toList();
+    final tabs = _tabStore.activeTabs.map((t) => t.info).toList();
 
-    if (wasActive && !_tabStore.isEmpty) {
-      final newIdx = idx < _tabStore.length ? idx : _tabStore.length - 1;
-      final nextTab = _tabStore.tabs[newIdx];
+    if (wasActive && !_tabStore.activeTabsIsEmpty) {
+      final newIdx = idx < _tabStore.activeTabCount ? idx : _tabStore.activeTabCount - 1;
+      final nextTab = _tabStore.activeTabs[newIdx];
       _emitSnapshot(
         _dataStore.deriveSnapshot(
           workspaces: state.workspaces,
@@ -1239,7 +1210,7 @@ class ChatCubit extends Cubit<ChatState>
           selectedMemberId: nextTab.selectedMemberId,
         ),
       );
-    } else if (_tabStore.isEmpty) {
+    } else if (_tabStore.activeTabsIsEmpty) {
       _emitSnapshot(
         _dataStore.deriveSnapshot(
           workspaces: state.workspaces,
@@ -1324,7 +1295,7 @@ class ChatCubit extends Cubit<ChatState>
     if (isClosed) return;
     _sessionRuntime.disposeIdleWatch();
     final busDisposals = <Future<void>>[];
-    for (final tab in _tabStore.allTabs) {
+    for (final tab in _tabStore.openTabs) {
       busDisposals.add(_tearDownTab(tab));
     }
     await Future.wait(busDisposals);

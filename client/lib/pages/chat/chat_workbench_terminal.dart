@@ -214,7 +214,7 @@ void consumeChatWorkbenchRouteSession({
 
   onHandled(true);
 
-  if (chatCubit.tabStore.bySessionId(routeSessionId) != null) {
+  if (chatCubit.tabStore.openTabBySessionId(routeSessionId) != null) {
     return;
   }
 

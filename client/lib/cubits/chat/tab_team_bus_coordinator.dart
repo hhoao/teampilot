@@ -171,10 +171,10 @@ class TabTeamBusCoordinator {
   }
 
   TeamBus? busForSession(String sessionId) =>
-      _tabStore.bySessionId(sessionId)?.teamBus;
+      _tabStore.openTabBySessionId(sessionId)?.teamBus;
 
   bool hasTeamBusResources(String sessionId) {
-    final tab = _tabStore.bySessionId(sessionId);
+    final tab = _tabStore.openTabBySessionId(sessionId);
     return tab?.teamBus != null && _gateway.isSessionRegistered(sessionId);
   }
 

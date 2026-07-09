@@ -391,7 +391,7 @@ class MixedTeamIntegrationHarness {
   }
 
   TeamBus? _busForSession(ChatCubit? cubit, String sessionId) =>
-      cubit?.tabStore.bySessionId(sessionId)?.teamBus;
+      cubit?.tabStore.openTabBySessionId(sessionId)?.teamBus;
 
   TeammateBusMcpGateway? _gatewayForSession(ChatCubit? cubit) =>
       cubit?.teammateBusMcpGateway;
@@ -668,7 +668,7 @@ class MixedTeamIntegrationHarness {
   }
 
   TeamBus? tabBus(String sessionId) =>
-      cubit?.tabStore.bySessionId(sessionId)?.teamBus;
+      cubit?.tabStore.openTabBySessionId(sessionId)?.teamBus;
 
   TeammateBusMcpGateway? tabGateway(ChatCubit? cubit) =>
       _gatewayForSession(cubit ?? this.cubit);

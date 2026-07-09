@@ -23,14 +23,14 @@ class SessionSshProfileReconnect {
     required WorkspaceLaunchContext Function(AppSession session) launchContextFor,
     required ScheduleMemberConnectFn scheduleMemberConnect,
     required SessionLaunchWorkspaceIndex Function() workspaceIndex,
-    required Iterable<ChatTab> Function() allTabs,
+    required Iterable<ChatTab> Function() openTabs,
   }) : _host = host,
        _shellConnector = shellConnector,
        _personalContext = personalContext,
        _launchContextFor = launchContextFor,
        _scheduleMemberConnect = scheduleMemberConnect,
        _workspaceIndex = workspaceIndex,
-       _allTabs = allTabs;
+       _openTabs = openTabs;
 
   final SessionLaunchHost _host;
   final SessionShellConnector _shellConnector;
@@ -38,13 +38,13 @@ class SessionSshProfileReconnect {
   final WorkspaceLaunchContext Function(AppSession session) _launchContextFor;
   final ScheduleMemberConnectFn _scheduleMemberConnect;
   final SessionLaunchWorkspaceIndex Function() _workspaceIndex;
-  final Iterable<ChatTab> Function() _allTabs;
+  final Iterable<ChatTab> Function() _openTabs;
 
   Future<void> reconnect(String profileId) async {
     if (_host.isClosed) return;
     appLogger.i('[session-launch] reconnectSshProfile profile=$profileId');
 
-    for (final tab in _allTabs()) {
+    for (final tab in _openTabs()) {
       final session = tab.persistedSession;
       if (session == null) continue;
 

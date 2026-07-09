@@ -194,7 +194,7 @@ void main() {
       expect(shells.first.connectCalls, 0);
       expect(cubit.state.isActiveSessionConnecting, isFalse);
       expect(
-        cubit.tabStore.tabs.first.info.launchError,
+        cubit.tabStore.activeTabs.first.info.launchError,
         isNotNull,
       );
     });

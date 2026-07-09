@@ -79,7 +79,7 @@ class SessionTabSurfaceCoordinator {
       '[session-launch] requestOpenSession reuse existing tab '
       'session=${session.sessionId} idx=$existingIdx',
     );
-    final existing = _tabStore.tabs[existingIdx];
+    final existing = _tabStore.activeTabs[existingIdx];
     final memberId = request.isPersonal
         ? existing.selectedMemberId
         : (request.member?.id ?? existing.selectedMemberId);
@@ -170,7 +170,7 @@ class SessionTabSurfaceCoordinator {
     _host.sessionRuntime.ensureIdleWatch();
     _host.applyState(
       _state().copyWith(
-        activeTabIndex: _tabStore.length - 1,
+        activeTabIndex: _tabStore.activeTabCount - 1,
         activeSessionId: session.sessionId,
         selectedMemberId: placeholderMemberId,
         composeActive: false,

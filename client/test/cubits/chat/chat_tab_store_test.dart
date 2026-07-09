@@ -29,14 +29,14 @@ void main() {
     expect(tab.effectiveCliTeamName, 'default-native-team-3');
   });
 
-  test('append + bySessionId + toInfos', () {
+  test('append + activeTabBySessionId + activeTabInfos', () {
     final store = ChatTabStore();
     store.append(_tab('a'));
     store.append(_tab('b'));
 
-    expect(store.length, 2);
-    expect(store.bySessionId('b')!.cliTeamName, 'b');
-    expect(store.toInfos().map((i) => i.id).toList(), ['a', 'b']);
+    expect(store.activeTabCount, 2);
+    expect(store.activeTabBySessionId('b')!.cliTeamName, 'b');
+    expect(store.activeTabInfos().map((i) => i.id).toList(), ['a', 'b']);
   });
 
   test('activeTab clamps index', () {
@@ -78,7 +78,6 @@ void main() {
       expect(m1.$1, '/remote');
       expect(m1.$2, isEmpty);
 
-      // An unassigned member inherits the session folders.
       final tab2 = _tab('s1')..selectedMemberId = 'm2';
       final m2 = store.workingDirectoryAndAddDirsForTab(
         tab2,
@@ -101,6 +100,6 @@ void main() {
       ],
     );
     expect(store.defaultMemberId(team), 'team-lead');
-    expect(store.length, 0);
+    expect(store.activeTabCount, 0);
   });
 }

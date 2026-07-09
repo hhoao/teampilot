@@ -28,18 +28,18 @@ mixin ChatConnectStateMixin on Cubit<ChatState> {
   void setLaunchError(String sessionId, String rawMessage) {
     final message = formatSessionLaunchError(rawMessage);
     if (message.isEmpty) return;
-    final idx = tabStore.indexOfSession(sessionId);
-    if (idx != -1) {
-      tabStore.tabs[idx].info = tabStore.tabs[idx].info.copyWith(
-        launchError: message,
-      );
-      emit(
-        state.copyWith(
-          tabs: tabStore.toInfos(),
-          clearSessionLaunchError: true,
-          stateVersion: state.stateVersion + 1,
-        ),
-      );
+    final tab = tabStore.openTabBySessionId(sessionId);
+    if (tab != null) {
+      tab.info = tab.info.copyWith(launchError: message);
+      if (tabStore.activeIndexOfSession(sessionId) != -1) {
+        emit(
+          state.copyWith(
+            tabs: tabStore.activeTabInfos(),
+            clearSessionLaunchError: true,
+            stateVersion: state.stateVersion + 1,
+          ),
+        );
+      }
       return;
     }
     emit(
@@ -52,17 +52,15 @@ mixin ChatConnectStateMixin on Cubit<ChatState> {
 
   void clearLaunchError(String sessionId) {
     var tabChanged = false;
-    final idx = tabStore.indexOfSession(sessionId);
-    if (idx != -1 && tabStore.tabs[idx].info.launchError != null) {
-      tabStore.tabs[idx].info = tabStore.tabs[idx].info.copyWith(
-        clearLaunchError: true,
-      );
-      tabChanged = true;
+    final tab = tabStore.openTabBySessionId(sessionId);
+    if (tab != null && tab.info.launchError != null) {
+      tab.info = tab.info.copyWith(clearLaunchError: true);
+      tabChanged = tabStore.activeIndexOfSession(sessionId) != -1;
     }
     if (!tabChanged && state.sessionLaunchError == null) return;
     emit(
       state.copyWith(
-        tabs: tabChanged ? tabStore.toInfos() : state.tabs,
+        tabs: tabChanged ? tabStore.activeTabInfos() : state.tabs,
         clearSessionLaunchError: true,
         stateVersion: state.stateVersion + 1,
       ),
@@ -91,14 +89,16 @@ mixin ChatConnectStateMixin on Cubit<ChatState> {
   }
 
   void updateTabRunning(String tabId) {
-    final idx = tabStore.indexOfSession(tabId);
-    if (idx == -1) return;
-    tabStore.tabs[idx].info = tabStore.tabs[idx].info.copyWith(
-      isRunning: tabStore.tabs[idx].isRunning,
-    );
+    final tab = tabStore.openTabBySessionId(tabId);
+    if (tab == null) return;
+    tab.info = tab.info.copyWith(isRunning: tab.isRunning);
+    if (tabStore.activeIndexOfSession(tabId) == -1) {
+      onTabRunningChanged();
+      return;
+    }
     emit(
       state.copyWith(
-        tabs: tabStore.toInfos(),
+        tabs: tabStore.activeTabInfos(),
         stateVersion: state.stateVersion + 1,
       ),
     );

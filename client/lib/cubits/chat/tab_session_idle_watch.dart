@@ -41,7 +41,7 @@ final class TabSessionIdleWatch {
   void maybeStop() {
     // 任何打开的 tab（含简单 / 原生单 CLI）都靠该看门狗驱动 working 指示器，
     // 故仅在全部关闭后才停表。
-    if (_tabStore.tabs.isEmpty) {
+    if (!_tabStore.hasOpenTabs) {
       _timer?.cancel();
       _timer = null;
       _wasInTurn.clear();
@@ -67,7 +67,7 @@ final class TabSessionIdleWatch {
           return false;
         }
         final shell = _tabStore
-            .bySessionId(retryTick.sessionId)
+            .openTabBySessionId(retryTick.sessionId)
             ?.memberShells[retryTick.memberId];
         if (shell != null) {
           _delivery.dropStaleAutomationRetry(
@@ -84,7 +84,7 @@ final class TabSessionIdleWatch {
         unawaited(_delivery.retryAutomationTick(retryTick));
       },
     );
-    for (final tab in _tabStore.tabs) {
+    for (final tab in _tabStore.openTabs) {
       final bus = tab.teamBus;
       if (bus != null) {
         if (bus.hasTaskQueue) bus.reclaimExpiredTasks();

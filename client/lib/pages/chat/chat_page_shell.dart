@@ -484,7 +484,7 @@ List<ChatTab> _runtimeTabsForScope(ChatCubit cubit, String tabScopeId) {
   final bucket = cubit.tabStore.tabsForWorkspace(tabScopeId);
   if (bucket.isNotEmpty) return bucket;
   if (cubit.tabStore.activeWorkspaceId == tabScopeId) {
-    return cubit.tabStore.tabs;
+    return cubit.tabStore.activeTabs;
   }
   return bucket;
 }
