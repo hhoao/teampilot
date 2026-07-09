@@ -55,21 +55,33 @@ Future<bool?> showLandingTeamSettingsDialog(
   );
 }
 
-/// Whether the landing gear should show an attention dot (mixed placement incomplete).
+/// Whether the landing gear should show an attention dot.
+///
+/// Mixed workspaces need a first Machines confirmation; any topology with
+/// remembered pins must keep the lead on a valid preferred host. Empty
+/// local/remote targets do not alert (defaults materialize at session create).
 bool landingTeamSettingsNeedsAttention({
   required Workspace workspace,
   required TeamProfile team,
 }) {
-  if (!workspaceTopologyRequiresMemberAssignment(workspace.folders)) {
-    return false;
+  if (workspaceNeedsMixedPlacementInit(
+    folders: workspace.folders,
+    teamId: team.id,
+    initializedByTeam: workspace.memberPlacementInitializedByTeam,
+  )) {
+    return true;
   }
   final targets = rememberedMemberTargets(
     workspace.memberTargetsByTeam,
     team.id,
   );
-  return !memberTargetsComplete(
-    workspaceFolders: workspace.folders,
-    members: team.members,
+  if (targets.isEmpty &&
+      workspaceTopologyOf(workspace.folders) != WorkspaceTopology.mixed) {
+    return false;
+  }
+  return !leadPlacementValid(
+    folders: workspace.folders,
+    members: team.members.where((m) => m.isValid).toList(),
     targets: targets,
   );
 }

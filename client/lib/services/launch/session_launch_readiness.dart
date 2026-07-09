@@ -7,29 +7,40 @@ import '../../models/workspace_topology.dart';
 import '../../repositories/session_repository.dart';
 
 /// Returns a fresh session snapshot when launch may proceed, or `null` when
-/// mixed-workspace member targets are incomplete.
+/// mixed placement is uninitialized or lead host placement is invalid.
 Future<AppSession?> ensureSessionLaunchReady({
   required Workspace workspace,
   required AppSession session,
   required TeamProfile team,
   required SessionRepository repository,
 }) async {
-  if (!workspaceTopologyRequiresMemberAssignment(workspace.folders)) {
-    // Remote / local / pure-SSH workspaces: in-memory session is authoritative.
+  if (workspaceNeedsMixedPlacementInit(
+    folders: workspace.folders,
+    teamId: team.id,
+    initializedByTeam: workspace.memberPlacementInitializedByTeam,
+  )) {
+    return null;
+  }
+
+  final validMembers = team.members.where((m) => m.isValid).toList();
+  final mustValidateLead =
+      session.memberTargets.isNotEmpty ||
+      workspaceTopologyOf(workspace.folders) == WorkspaceTopology.mixed;
+  if (!mustValidateLead) {
     return session;
   }
-  if (memberTargetsComplete(
-    workspaceFolders: workspace.folders,
-    members: team.members,
+  if (leadPlacementValid(
+    folders: workspace.folders,
+    members: validMembers,
     targets: session.memberTargets,
   )) {
     return session;
   }
-  // Mixed topology with stale sidebar snapshot — reload once from disk.
+  // Mixed / pinned topology with stale sidebar snapshot — reload once from disk.
   final current = await _reloadSession(repository, session);
-  if (memberTargetsComplete(
-    workspaceFolders: workspace.folders,
-    members: team.members,
+  if (leadPlacementValid(
+    folders: workspace.folders,
+    members: validMembers,
     targets: current.memberTargets,
   )) {
     return current;

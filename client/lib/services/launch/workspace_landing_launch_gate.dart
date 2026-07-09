@@ -15,10 +15,16 @@ final class TeamNotSelectedLaunchBlock extends WorkspaceLandingLaunchBlock {
   const TeamNotSelectedLaunchBlock();
 }
 
-/// Mixed workspace: [Workspace.memberTargetsByTeam] incomplete for the team.
-final class MixedMemberTargetsIncompleteLaunchBlock
+/// Mixed workspace: Machines placement has not been confirmed for this team.
+final class MixedMemberPlacementUninitializedLaunchBlock
     extends WorkspaceLandingLaunchBlock {
-  const MixedMemberTargetsIncompleteLaunchBlock();
+  const MixedMemberPlacementUninitializedLaunchBlock();
+}
+
+/// Lead instance is missing or pinned to an invalid host.
+final class LeadPlacementInvalidLaunchBlock
+    extends WorkspaceLandingLaunchBlock {
+  const LeadPlacementInvalidLaunchBlock();
 }
 
 /// Team provider/model preset configuration is incomplete for launch.
@@ -45,16 +51,31 @@ class WorkspaceLandingLaunchGate {
     if (draft.isPersonal) return null;
     if (team == null) return const TeamNotSelectedLaunchBlock();
 
-    if (workspaceTopologyRequiresMemberAssignment(workspace.folders) &&
-        !memberTargetsComplete(
-          workspaceFolders: workspace.folders,
-          members: team.members.where((m) => m.isValid).toList(),
-          targets: rememberedMemberTargets(
-            workspace.memberTargetsByTeam,
-            team.id,
-          ),
+    if (workspaceNeedsMixedPlacementInit(
+      folders: workspace.folders,
+      teamId: team.id,
+      initializedByTeam: workspace.memberPlacementInitializedByTeam,
+    )) {
+      return const MixedMemberPlacementUninitializedLaunchBlock();
+    }
+    final targets = rememberedMemberTargets(
+      workspace.memberTargetsByTeam,
+      team.id,
+    );
+    final validMembers = team.members.where((m) => m.isValid).toList();
+    // Empty targets on local/remote are OK until session create materializes
+    // defaults (Task 6). Mixed (initialized) and any saved pins must keep
+    // the lead on a valid preferred host.
+    final mustValidateLead =
+        targets.isNotEmpty ||
+        workspaceTopologyOf(workspace.folders) == WorkspaceTopology.mixed;
+    if (mustValidateLead &&
+        !leadPlacementValid(
+          folders: workspace.folders,
+          members: validMembers,
+          targets: targets,
         )) {
-      return const MixedMemberTargetsIncompleteLaunchBlock();
+      return const LeadPlacementInvalidLaunchBlock();
     }
     return null;
   }

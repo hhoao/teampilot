@@ -67,7 +67,7 @@ void main() {
       expect(status, SessionOpenStatus.missingTeamMember);
     });
 
-    test('mixed workspace blocks when member targets incomplete', () {
+    test('mixed workspace blocks when placement not initialized', () {
       final session = AppSession(
         sessionId: 's1',
         workspaceId: mixedWorkspace.workspaceId,
@@ -86,6 +86,34 @@ void main() {
         workspaceById: workspaceById,
       );
       expect(status, SessionOpenStatus.blockedMixedMemberTargets);
+    });
+
+    test('mixed workspace allows open when initialized with valid lead', () {
+      final initialized = mixedWorkspace.copyWith(
+        memberTargetsByTeam: {
+          team.id: {'team-lead': 'local'},
+        },
+        memberPlacementInitializedByTeam: {team.id: true},
+      );
+      final session = AppSession(
+        sessionId: 's1',
+        workspaceId: initialized.workspaceId,
+        folders: initialized.folders,
+        sessionTeam: team.id,
+        memberTargets: const {'team-lead': 'local'},
+        createdAt: 0,
+      );
+      final status = validateSessionOpenRequest(
+        request: SessionOpenRequest(
+          session: session,
+          workspace: initialized,
+          team: team,
+          member: team.members.first,
+        ),
+        session: session,
+        workspaceById: (_) => initialized,
+      );
+      expect(status, isNull);
     });
 
     test('returns null when request is valid', () {
