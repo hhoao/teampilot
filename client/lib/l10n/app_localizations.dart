@@ -5715,6 +5715,108 @@ abstract class AppLocalizations {
   /// **'Manage your local expert personas'**
   String get myExpertsSubtitle;
 
+  /// No description provided for @myExpertsEmptyTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'No experts yet'**
+  String get myExpertsEmptyTitle;
+
+  /// No description provided for @myExpertsEmptyHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Create a local expert persona to reuse across teams.'**
+  String get myExpertsEmptyHint;
+
+  /// No description provided for @myExpertsCreate.
+  ///
+  /// In en, this message translates to:
+  /// **'New Expert'**
+  String get myExpertsCreate;
+
+  /// No description provided for @myExpertsEdit.
+  ///
+  /// In en, this message translates to:
+  /// **'Edit'**
+  String get myExpertsEdit;
+
+  /// No description provided for @myExpertsDelete.
+  ///
+  /// In en, this message translates to:
+  /// **'Delete'**
+  String get myExpertsDelete;
+
+  /// No description provided for @myExpertsDeleteConfirm.
+  ///
+  /// In en, this message translates to:
+  /// **'Delete expert \"{name}\"? This cannot be undone.'**
+  String myExpertsDeleteConfirm(Object name);
+
+  /// No description provided for @myExpertsDeleteReferenced.
+  ///
+  /// In en, this message translates to:
+  /// **'Cannot delete \"{name}\" — it is still referenced by one or more teams. Reassign those roster slots first.'**
+  String myExpertsDeleteReferenced(Object name);
+
+  /// No description provided for @myExpertsUpload.
+  ///
+  /// In en, this message translates to:
+  /// **'Upload'**
+  String get myExpertsUpload;
+
+  /// No description provided for @expertHubCreate.
+  ///
+  /// In en, this message translates to:
+  /// **'New'**
+  String get expertHubCreate;
+
+  /// No description provided for @expertEditorCreateTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'New expert'**
+  String get expertEditorCreateTitle;
+
+  /// No description provided for @expertEditorEditTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Edit expert'**
+  String get expertEditorEditTitle;
+
+  /// No description provided for @expertEditorDescription.
+  ///
+  /// In en, this message translates to:
+  /// **'Description'**
+  String get expertEditorDescription;
+
+  /// No description provided for @expertEditorCategory.
+  ///
+  /// In en, this message translates to:
+  /// **'Category'**
+  String get expertEditorCategory;
+
+  /// No description provided for @expertEditorTags.
+  ///
+  /// In en, this message translates to:
+  /// **'Tags'**
+  String get expertEditorTags;
+
+  /// No description provided for @expertEditorTagsHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Comma-separated'**
+  String get expertEditorTagsHint;
+
+  /// No description provided for @expertEditorNameRequired.
+  ///
+  /// In en, this message translates to:
+  /// **'Name is required.'**
+  String get expertEditorNameRequired;
+
+  /// No description provided for @expertEditorPromptRequired.
+  ///
+  /// In en, this message translates to:
+  /// **'Prompt is required.'**
+  String get expertEditorPromptRequired;
+
   /// No description provided for @teamHubNav.
   ///
   /// In en, this message translates to:

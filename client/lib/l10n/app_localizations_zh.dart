@@ -3038,6 +3038,61 @@ class AppLocalizationsZh extends AppLocalizations {
   String get myExpertsSubtitle => '管理本地专家人设';
 
   @override
+  String get myExpertsEmptyTitle => '还没有专家';
+
+  @override
+  String get myExpertsEmptyHint => '创建本地专家人设，以便在多个团队中复用。';
+
+  @override
+  String get myExpertsCreate => '新建专家';
+
+  @override
+  String get myExpertsEdit => '编辑';
+
+  @override
+  String get myExpertsDelete => '删除';
+
+  @override
+  String myExpertsDeleteConfirm(Object name) {
+    return '删除专家「$name」？此操作无法撤销。';
+  }
+
+  @override
+  String myExpertsDeleteReferenced(Object name) {
+    return '无法删除「$name」——仍有团队花名册引用该专家。请先改派相关成员。';
+  }
+
+  @override
+  String get myExpertsUpload => '上传';
+
+  @override
+  String get expertHubCreate => '新建';
+
+  @override
+  String get expertEditorCreateTitle => '新建专家';
+
+  @override
+  String get expertEditorEditTitle => '编辑专家';
+
+  @override
+  String get expertEditorDescription => '描述';
+
+  @override
+  String get expertEditorCategory => '分类';
+
+  @override
+  String get expertEditorTags => '标签';
+
+  @override
+  String get expertEditorTagsHint => '逗号分隔';
+
+  @override
+  String get expertEditorNameRequired => '名称为必填项。';
+
+  @override
+  String get expertEditorPromptRequired => '提示词为必填项。';
+
+  @override
   String get teamHubNav => '团队中心';
 
   @override

@@ -13,6 +13,7 @@ import '../../widgets/settings/workspace_hub_shell.dart';
 import '../home_workspace/home_workspace_route.dart';
 import 'expert_hub_body.dart';
 import 'expert_hub_detail_overlay.dart';
+import 'expert_editor_dialog.dart';
 import 'member_hub_add_feedback.dart';
 
 typedef ExpertAddToTeamHandler =
@@ -121,6 +122,12 @@ class _ExpertHubPageState extends State<ExpertHubPage> {
     widget.onLaunchInWorkspace?.call(context, member);
   }
 
+  Future<void> _handleCreate() async {
+    final saved = await showExpertEditorDialog(context);
+    if (saved == null || !mounted) return;
+    await context.read<ExpertHubCubit>().load(forceRefresh: true);
+  }
+
   /// Shows a success/warning toast after [cubit.addToTeam] completes.
   Future<void> addToTeamWithFeedback({
     required ExpertHubCubit cubit,
@@ -201,6 +208,7 @@ class _ExpertHubPageState extends State<ExpertHubPage> {
                 key: paneKey,
                 cubit: cubit,
                 onOpen: (m) => setState(() => _detail = m),
+                onCreate: _handleCreate,
                 inset: inset,
               );
 

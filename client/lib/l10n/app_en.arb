@@ -1458,6 +1458,33 @@
   "myExpertsNav": "My Experts",
   "myExpertsTitle": "My Experts",
   "myExpertsSubtitle": "Manage your local expert personas",
+  "myExpertsEmptyTitle": "No experts yet",
+  "myExpertsEmptyHint": "Create a local expert persona to reuse across teams.",
+  "myExpertsCreate": "New Expert",
+  "myExpertsEdit": "Edit",
+  "myExpertsDelete": "Delete",
+  "myExpertsDeleteConfirm": "Delete expert \"{name}\"? This cannot be undone.",
+  "@myExpertsDeleteConfirm": {
+    "placeholders": {
+      "name": {}
+    }
+  },
+  "myExpertsDeleteReferenced": "Cannot delete \"{name}\" — it is still referenced by one or more teams. Reassign those roster slots first.",
+  "@myExpertsDeleteReferenced": {
+    "placeholders": {
+      "name": {}
+    }
+  },
+  "myExpertsUpload": "Upload",
+  "expertHubCreate": "New",
+  "expertEditorCreateTitle": "New expert",
+  "expertEditorEditTitle": "Edit expert",
+  "expertEditorDescription": "Description",
+  "expertEditorCategory": "Category",
+  "expertEditorTags": "Tags",
+  "expertEditorTagsHint": "Comma-separated",
+  "expertEditorNameRequired": "Name is required.",
+  "expertEditorPromptRequired": "Prompt is required.",
   "teamHubNav": "TeamHub",
   "teamHubSubtitle": "Discover more public teams",
   "teamHubTitle": "TeamHub",

@@ -3149,6 +3149,62 @@ class AppLocalizationsEn extends AppLocalizations {
   String get myExpertsSubtitle => 'Manage your local expert personas';
 
   @override
+  String get myExpertsEmptyTitle => 'No experts yet';
+
+  @override
+  String get myExpertsEmptyHint =>
+      'Create a local expert persona to reuse across teams.';
+
+  @override
+  String get myExpertsCreate => 'New Expert';
+
+  @override
+  String get myExpertsEdit => 'Edit';
+
+  @override
+  String get myExpertsDelete => 'Delete';
+
+  @override
+  String myExpertsDeleteConfirm(Object name) {
+    return 'Delete expert \"$name\"? This cannot be undone.';
+  }
+
+  @override
+  String myExpertsDeleteReferenced(Object name) {
+    return 'Cannot delete \"$name\" — it is still referenced by one or more teams. Reassign those roster slots first.';
+  }
+
+  @override
+  String get myExpertsUpload => 'Upload';
+
+  @override
+  String get expertHubCreate => 'New';
+
+  @override
+  String get expertEditorCreateTitle => 'New expert';
+
+  @override
+  String get expertEditorEditTitle => 'Edit expert';
+
+  @override
+  String get expertEditorDescription => 'Description';
+
+  @override
+  String get expertEditorCategory => 'Category';
+
+  @override
+  String get expertEditorTags => 'Tags';
+
+  @override
+  String get expertEditorTagsHint => 'Comma-separated';
+
+  @override
+  String get expertEditorNameRequired => 'Name is required.';
+
+  @override
+  String get expertEditorPromptRequired => 'Prompt is required.';
+
+  @override
   String get teamHubNav => 'TeamHub';
 
   @override
