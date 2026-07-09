@@ -256,7 +256,8 @@ class LaunchProfileCubit extends Cubit<LaunchProfileState>
 
   Future<void> _reloadIdentities() async {
     final all = await _repository.loadAll();
-    final teams = _sortTeams(all.whereType<TeamProfile>().toList());
+    var teams = _sortTeams(all.whereType<TeamProfile>().toList());
+    teams = await _materializeTeams(teams);
     final personals = _sortPersonals(all.whereType<PersonalProfile>().toList());
     emit(state.copyWith(identities: [...personals, ...teams]));
   }

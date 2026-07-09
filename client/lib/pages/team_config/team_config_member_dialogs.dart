@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 
 import '../../cubits/launch_profile_cubit.dart';
 import '../../l10n/l10n_extensions.dart';
+import '../../models/discoverable_member.dart';
 import '../../models/team_config.dart';
 import '../../utils/team_member_naming.dart';
 import '../../widgets/app_dialog.dart';
@@ -60,17 +61,18 @@ Future<String?> pickAndAddTeamMemberFromExpertHub(
 ) async {
   final team = cubit.state.selectedTeam;
   if (team == null) return null;
-  String? addedId;
+  // Capture selection synchronously — the sheet's onApply is not awaited
+  // before pop, so addExpertToTeam must run after the sheet closes.
+  DiscoverableMember? selected;
   await showExpertApplyPickerSheet(
     context,
-    onApply: (expert) async {
-      final added = await cubit.addExpertToTeam(
-        team.id,
-        expert.key,
-        slotIdHint: TeamMemberNaming.slugMemberName(expert.member.name),
-      );
-      addedId = added?.id;
-    },
+    onApply: (expert) => selected = expert,
   );
-  return addedId;
+  if (selected == null) return null;
+  final added = await cubit.addExpertToTeam(
+    team.id,
+    selected!.key,
+    slotIdHint: TeamMemberNaming.slugMemberName(selected!.member.name),
+  );
+  return added?.id;
 }

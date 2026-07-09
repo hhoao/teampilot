@@ -3754,10 +3754,19 @@ class AppLocalizationsZh extends AppLocalizations {
   String get memberPromptPresetResearcherText => '只调研并汇报。除非被要求，否则不要改动生产代码。';
 
   @override
-  String get memberPlaybook => '提示词';
+  String get memberPlaybook => '工作手册';
 
   @override
   String get memberPlaybookSubtitle => '接到任务后怎么执行：步骤、检查点、汇报格式。会作为 Agent 的操作指令。';
+
+  @override
+  String get memberPersonaEmptyNoExpert => '选择专家后可查看人设内容。';
+
+  @override
+  String get memberResponsibilitiesEmpty => '该专家未填写职责';
+
+  @override
+  String get memberPlaybookEmpty => '该专家未填写工作手册';
 
   @override
   String get memberPlaybookPresetDeveloperText =>

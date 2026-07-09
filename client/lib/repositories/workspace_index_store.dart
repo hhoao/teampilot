@@ -1,5 +1,7 @@
 import 'dart:convert';
 
+import 'package:synchronized/synchronized.dart';
+
 import '../models/workspace.dart';
 import '../services/io/local_filesystem.dart';
 import '../utils/logger.dart';
@@ -16,13 +18,23 @@ class WorkspaceIndexStore {
 
   final SessionRepositoryFs _fs;
 
+  /// Serializes read-modify-write so concurrent upserts do not drop entries.
+  static final _mutationLocks = <String, Lock>{};
+
   static const indexVersion = 1;
 
   String get _indexFile => _fs.layout.workspacesIndexFile;
 
-  Future<List<Workspace>?> tryRead() async {
+  Lock get _mutationLock =>
+      _mutationLocks.putIfAbsent(_indexFile, Lock.new);
+
+  /// Reads the derived index.
+  ///
+  /// [preferIsolate] is for cold-start prefetch only. Mutation paths must pass
+  /// `false` — `Isolate.run` has hung on Linux debug during first-boot upsert.
+  Future<List<Workspace>?> tryRead({bool preferIsolate = true}) async {
     final indexFile = _indexFile;
-    if (_fs.fs is LocalFilesystem) {
+    if (preferIsolate && _fs.fs is LocalFilesystem) {
       try {
         final maps = await IndexSnapshotIsolate.readWorkspacesMaps(indexFile);
         final workspaces = _workspacesFromMaps(maps);
@@ -33,6 +45,15 @@ class WorkspaceIndexStore {
       } on Object {
         // Fall back to filesystem abstraction (WSL / SSH).
       }
+    }
+    return _tryReadLocal(indexFile);
+  }
+
+  Future<List<Workspace>?> _tryReadLocal(String indexFile) async {
+    if (_fs.fs is LocalFilesystem) {
+      final maps = IndexSnapshotIsolate.readWorkspacesMapsSync(indexFile);
+      final workspaces = _workspacesFromMaps(maps);
+      if (workspaces != null) return workspaces;
     }
     final raw = await _fs.readText(indexFile);
     if (raw == null || raw.isEmpty) return null;
@@ -62,7 +83,11 @@ class WorkspaceIndexStore {
     return workspaces;
   }
 
-  Future<void> writeAll(List<Workspace> workspaces) async {
+  Future<void> writeAll(List<Workspace> workspaces) {
+    return _mutationLock.synchronized(() => _writeAllUnlocked(workspaces));
+  }
+
+  Future<void> _writeAllUnlocked(List<Workspace> workspaces) async {
     final payload = <String, Object?>{
       'version': indexVersion,
       'updatedAt': DateTime.now().millisecondsSinceEpoch,
@@ -74,26 +99,30 @@ class WorkspaceIndexStore {
     );
   }
 
-  Future<void> upsert(Workspace workspace) async {
-    final current = await tryRead() ?? <Workspace>[];
-    final id = workspace.workspaceId;
-    final next = <Workspace>[
-      for (final existing in current)
-        if (existing.workspaceId != id) existing,
-      workspace,
-    ];
-    await writeAll(next);
+  Future<void> upsert(Workspace workspace) {
+    return _mutationLock.synchronized(() async {
+      final current = await tryRead(preferIsolate: false) ?? <Workspace>[];
+      final id = workspace.workspaceId;
+      final next = <Workspace>[
+        for (final existing in current)
+          if (existing.workspaceId != id) existing,
+        workspace,
+      ];
+      await _writeAllUnlocked(next);
+    });
   }
 
-  Future<void> remove(String workspaceId) async {
-    final trimmed = workspaceId.trim();
-    if (trimmed.isEmpty) return;
-    final current = await tryRead();
-    if (current == null) return;
-    final next = current
-        .where((workspace) => workspace.workspaceId != trimmed)
-        .toList(growable: false);
-    if (next.length == current.length) return;
-    await writeAll(next);
+  Future<void> remove(String workspaceId) {
+    return _mutationLock.synchronized(() async {
+      final trimmed = workspaceId.trim();
+      if (trimmed.isEmpty) return;
+      final current = await tryRead(preferIsolate: false);
+      if (current == null) return;
+      final next = current
+          .where((workspace) => workspace.workspaceId != trimmed)
+          .toList(growable: false);
+      if (next.length == current.length) return;
+      await _writeAllUnlocked(next);
+    });
   }
 }

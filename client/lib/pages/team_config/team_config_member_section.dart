@@ -355,6 +355,10 @@ class TeamMemberConfigFormState extends State<TeamMemberConfigForm> {
       return _slotSnapshot(c, widget.memberId)?.expertKey;
     });
     final hubState = context.watch<ExpertHubCubit>().state;
+    final resolvedExpert = ExpertMemberResolver.resolve(
+      key: expertKey,
+      hubState: hubState,
+    );
     final expertLabel = ExpertMemberResolver.labelForKey(
       key: expertKey,
       fallbackLabel: l10n.expertHubNoneSelected,
@@ -368,6 +372,19 @@ class TeamMemberConfigFormState extends State<TeamMemberConfigForm> {
         member == null) {
       return const SizedBox.shrink();
     }
+    // Persona prose lives on the catalog expert; prefer live resolve so a
+    // stale/empty materialized member cache cannot blank the read-only fields.
+    final hasExpert = (expertKey?.trim().isNotEmpty ?? false);
+    final responsibilities = resolvedExpert?.member.prompt.trim().isNotEmpty ==
+            true
+        ? resolvedExpert!.member.prompt
+        : member.prompt;
+    final playbook = resolvedExpert?.member.playbook.trim().isNotEmpty == true
+        ? resolvedExpert!.member.playbook
+        : member.playbook;
+    final emptyPersonaHint = hasExpert
+        ? null
+        : l10n.memberPersonaEmptyNoExpert;
 
     final showMemberAgentPreset = memberShowsAgentPresetUi(
       context,
@@ -483,8 +500,9 @@ class TeamMemberConfigFormState extends State<TeamMemberConfigForm> {
               ],
             ),
             body: _ReadOnlyMultilineText(
-              text: member.prompt,
-              emptyHint: l10n.expertHubNoneSelected,
+              text: responsibilities,
+              emptyHint:
+                  emptyPersonaHint ?? l10n.memberResponsibilitiesEmpty,
               style: styles.body,
               mutedStyle: styles.body.copyWith(color: muted),
             ),
@@ -494,8 +512,8 @@ class TeamMemberConfigFormState extends State<TeamMemberConfigForm> {
             title: l10n.memberPlaybook,
             subtitle: l10n.memberPlaybookSubtitle,
             body: _ReadOnlyMultilineText(
-              text: member.playbook,
-              emptyHint: l10n.expertHubNoneSelected,
+              text: playbook,
+              emptyHint: emptyPersonaHint ?? l10n.memberPlaybookEmpty,
               style: styles.body,
               mutedStyle: styles.body.copyWith(color: muted),
             ),

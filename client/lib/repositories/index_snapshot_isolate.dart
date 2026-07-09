@@ -2,26 +2,55 @@ import 'dart:convert';
 import 'dart:io';
 import 'dart:isolate';
 
+import 'package:flutter/foundation.dart';
+
 /// Disk read + JSON decode for derived index snapshots off the UI isolate.
 ///
 /// Top-level parsers only — no model imports so [Isolate.run] stays valid.
+///
+/// Startup prefetch uses [Isolate.run]; mutation paths (`upsert` / `remove`)
+/// must read on the calling isolate — cold-start `Isolate.run` can hang on
+/// Linux debug and leave the boot splash stuck.
 abstract final class IndexSnapshotIsolate {
   IndexSnapshotIsolate._();
 
   static const workspacesIndexVersion = 1;
   static const launchProfilesIndexVersion = 1;
 
+  /// Test seam: when set, [readWorkspacesMaps] uses this instead of [Isolate.run].
+  @visibleForTesting
+  static Future<List<Map<String, Object?>>?> Function(String indexPath)?
+  debugWorkspacesReaderOverride;
+
+  /// Test seam: when set, [readLaunchProfileMaps] uses this instead of [Isolate.run].
+  @visibleForTesting
+  static Future<List<Map<String, Object?>>?> Function(String indexPath)?
+  debugLaunchProfilesReaderOverride;
+
   static Future<List<Map<String, Object?>>?> readWorkspacesMaps(
     String indexPath,
   ) {
+    final override = debugWorkspacesReaderOverride;
+    if (override != null) return override(indexPath);
     return Isolate.run(() => _readWorkspacesMaps(indexPath));
   }
 
   static Future<List<Map<String, Object?>>?> readLaunchProfileMaps(
     String indexPath,
   ) {
+    final override = debugLaunchProfilesReaderOverride;
+    if (override != null) return override(indexPath);
     return Isolate.run(() => _readLaunchProfileMaps(indexPath));
   }
+
+  /// Same parse as the isolate path, but on the calling isolate (mutation-safe).
+  static List<Map<String, Object?>>? readWorkspacesMapsSync(String indexPath) =>
+      _readWorkspacesMaps(indexPath);
+
+  /// Same parse as the isolate path, but on the calling isolate (mutation-safe).
+  static List<Map<String, Object?>>? readLaunchProfileMapsSync(
+    String indexPath,
+  ) => _readLaunchProfileMaps(indexPath);
 }
 
 List<Map<String, Object?>>? _readWorkspacesMaps(String indexPath) {

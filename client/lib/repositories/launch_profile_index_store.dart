@@ -1,5 +1,7 @@
 import 'dart:convert';
 
+import 'package:synchronized/synchronized.dart';
+
 import '../models/launch_profile.dart';
 import '../models/launch_profile_kind.dart';
 import '../models/personal_profile.dart';
@@ -19,12 +21,18 @@ class LaunchProfileIndexStore {
   final String launchProfilesDir;
   final Filesystem fs;
 
+  /// Serializes read-modify-write so concurrent upserts do not drop entries.
+  static final _mutationLocks = <String, Lock>{};
+
   static const indexVersion = 1;
 
   String get _indexFile => fs.pathContext.join(
     fs.pathContext.dirname(launchProfilesDir),
     'launch-profiles-index.json',
   );
+
+  Lock get _mutationLock =>
+      _mutationLocks.putIfAbsent(_indexFile, Lock.new);
 
   static LaunchProfile decodeProfile(Map<String, Object?> json) {
     return switch (LaunchProfileKind.decode(json['kind'])) {
@@ -33,9 +41,13 @@ class LaunchProfileIndexStore {
     };
   }
 
-  Future<List<LaunchProfile>?> tryRead() async {
+  /// Reads the derived index.
+  ///
+  /// [preferIsolate] is for cold-start prefetch only. Mutation paths must pass
+  /// `false` — `Isolate.run` has hung on Linux debug during first-boot upsert.
+  Future<List<LaunchProfile>?> tryRead({bool preferIsolate = true}) async {
     final indexFile = _indexFile;
-    if (fs is LocalFilesystem) {
+    if (preferIsolate && fs is LocalFilesystem) {
       try {
         final maps = await IndexSnapshotIsolate.readLaunchProfileMaps(
           indexFile,
@@ -48,6 +60,15 @@ class LaunchProfileIndexStore {
       } on Object {
         // Fall back to filesystem abstraction (WSL / SSH).
       }
+    }
+    return _tryReadLocal(indexFile);
+  }
+
+  Future<List<LaunchProfile>?> _tryReadLocal(String indexFile) async {
+    if (fs is LocalFilesystem) {
+      final maps = IndexSnapshotIsolate.readLaunchProfileMapsSync(indexFile);
+      final profiles = _profilesFromMaps(maps);
+      if (profiles != null) return profiles;
     }
     final raw = await fs.readString(indexFile);
     if (raw == null || raw.isEmpty) return null;
@@ -77,7 +98,11 @@ class LaunchProfileIndexStore {
     return profiles;
   }
 
-  Future<void> writeAll(List<LaunchProfile> profiles) async {
+  Future<void> writeAll(List<LaunchProfile> profiles) {
+    return _mutationLock.synchronized(() => _writeAllUnlocked(profiles));
+  }
+
+  Future<void> _writeAllUnlocked(List<LaunchProfile> profiles) async {
     final payload = <String, Object?>{
       'version': indexVersion,
       'updatedAt': DateTime.now().millisecondsSinceEpoch,
@@ -89,26 +114,30 @@ class LaunchProfileIndexStore {
     );
   }
 
-  Future<void> upsert(LaunchProfile profile) async {
-    final current = await tryRead() ?? <LaunchProfile>[];
-    final id = profile.id.trim();
-    final next = <LaunchProfile>[
-      for (final existing in current)
-        if (existing.id != id) existing,
-      profile,
-    ];
-    await writeAll(next);
+  Future<void> upsert(LaunchProfile profile) {
+    return _mutationLock.synchronized(() async {
+      final current = await tryRead(preferIsolate: false) ?? <LaunchProfile>[];
+      final id = profile.id.trim();
+      final next = <LaunchProfile>[
+        for (final existing in current)
+          if (existing.id != id) existing,
+        profile,
+      ];
+      await _writeAllUnlocked(next);
+    });
   }
 
-  Future<void> remove(String profileId) async {
-    final trimmed = profileId.trim();
-    if (trimmed.isEmpty) return;
-    final current = await tryRead();
-    if (current == null) return;
-    final next = current
-        .where((profile) => profile.id != trimmed)
-        .toList(growable: false);
-    if (next.length == current.length) return;
-    await writeAll(next);
+  Future<void> remove(String profileId) {
+    return _mutationLock.synchronized(() async {
+      final trimmed = profileId.trim();
+      if (trimmed.isEmpty) return;
+      final current = await tryRead(preferIsolate: false);
+      if (current == null) return;
+      final next = current
+          .where((profile) => profile.id != trimmed)
+          .toList(growable: false);
+      if (next.length == current.length) return;
+      await _writeAllUnlocked(next);
+    });
   }
 }

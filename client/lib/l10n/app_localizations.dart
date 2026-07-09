@@ -7061,7 +7061,7 @@ abstract class AppLocalizations {
   /// No description provided for @memberPlaybook.
   ///
   /// In en, this message translates to:
-  /// **'Prompt'**
+  /// **'Playbook'**
   String get memberPlaybook;
 
   /// No description provided for @memberPlaybookSubtitle.
@@ -7069,6 +7069,24 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'How to execute assigned work: steps, checkpoints, and report format. Sent to the agent as operating instructions.'**
   String get memberPlaybookSubtitle;
+
+  /// No description provided for @memberPersonaEmptyNoExpert.
+  ///
+  /// In en, this message translates to:
+  /// **'Select an expert to see persona text.'**
+  String get memberPersonaEmptyNoExpert;
+
+  /// No description provided for @memberResponsibilitiesEmpty.
+  ///
+  /// In en, this message translates to:
+  /// **'No responsibilities on this expert'**
+  String get memberResponsibilitiesEmpty;
+
+  /// No description provided for @memberPlaybookEmpty.
+  ///
+  /// In en, this message translates to:
+  /// **'No playbook on this expert'**
+  String get memberPlaybookEmpty;
 
   /// No description provided for @memberPlaybookPresetDeveloperText.
   ///

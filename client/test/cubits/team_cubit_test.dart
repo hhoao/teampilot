@@ -815,4 +815,36 @@ void main() {
     await _drainAndCloseTeamCubit(cubit);
     await dir.delete(recursive: true);
   });
+
+  test('savePersonal rematerializes team member prompts from roster', () async {
+    final dir = await Directory.systemTemp.createTemp('team-cubit-reload-');
+    final repo = _repo(dir);
+    final cubit = LaunchProfileCubit(
+      repository: repo,
+      sessionRepository: SessionRepository(),
+      executableResolver: () => 'claude',
+    );
+
+    const team = TeamProfile(
+      id: 't',
+      name: 'T',
+      roster: _soloRoster,
+    );
+    await repo.saveTeamProfiles([team]);
+    await cubit.load();
+    final before = _teamById(cubit.state.teams, 't');
+    expect(before.members, isNotEmpty);
+    expect(before.members.first.prompt.trim(), isNotEmpty);
+
+    final personal = cubit.state.personals.first;
+    await cubit.savePersonal(personal.copyWith(display: '${personal.display}x'));
+
+    final after = _teamById(cubit.state.teams, 't');
+    expect(after.members, isNotEmpty);
+    expect(after.members.first.prompt.trim(), isNotEmpty);
+    expect(after.members.first.prompt, before.members.first.prompt);
+
+    await _drainAndCloseTeamCubit(cubit);
+    await dir.delete(recursive: true);
+  });
 }

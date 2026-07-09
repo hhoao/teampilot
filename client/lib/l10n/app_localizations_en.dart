@@ -3894,11 +3894,22 @@ class AppLocalizationsEn extends AppLocalizations {
       'Investigate and report only. Do not change production code unless asked.';
 
   @override
-  String get memberPlaybook => 'Prompt';
+  String get memberPlaybook => 'Playbook';
 
   @override
   String get memberPlaybookSubtitle =>
       'How to execute assigned work: steps, checkpoints, and report format. Sent to the agent as operating instructions.';
+
+  @override
+  String get memberPersonaEmptyNoExpert =>
+      'Select an expert to see persona text.';
+
+  @override
+  String get memberResponsibilitiesEmpty =>
+      'No responsibilities on this expert';
+
+  @override
+  String get memberPlaybookEmpty => 'No playbook on this expert';
 
   @override
   String get memberPlaybookPresetDeveloperText =>

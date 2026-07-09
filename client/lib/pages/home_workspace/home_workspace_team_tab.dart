@@ -9,6 +9,7 @@ import '../../theme/app_text_styles.dart';
 import '../team_config/team_config_extensions_section.dart';
 import '../team_config/team_config_info_section.dart';
 import '../team_config/team_config_mcp_section.dart';
+import '../team_config/team_config_member_dialogs.dart';
 import '../team_config/team_config_member_section.dart';
 import '../team_config/team_config_plugins_section.dart';
 import '../team_config/team_config_section.dart';
@@ -98,14 +99,12 @@ class _HomeTeamTabState extends State<HomeTeamTab> {
           selectedMemberId: _selectedMemberId,
           onSelect: (id) => setState(() => _selectedMemberId = id),
           onAddMember: () async {
-            await _cubit.addMember();
-            final team = LaunchProfileSelectors.teamById(
-              _cubit.state,
-              widget.team.id,
+            final addedId = await pickAndAddTeamMemberFromExpertHub(
+              context,
+              _cubit,
             );
-            if (team != null && team.members.isNotEmpty) {
-              setState(() => _selectedMemberId = team.members.last.id);
-            }
+            if (!mounted || addedId == null) return;
+            setState(() => _selectedMemberId = addedId);
           },
         ),
         Expanded(
